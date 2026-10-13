@@ -191,79 +191,34 @@
 .st-clip-meta select { min-width: 0; max-width: 100%; }
 .st-clip-src { color: var(--accent-deep); }
 
-/* ---- the path (plan rev. 3 §1) -------------------------------
-   Six tabs, every one clickable. The current one is filled with the
-   accent's wash and outlined, a done one carries a solid rule on its
-   number, so state is never carried by colour alone: each tab also
-   SAYS "Done" or "To do". */
-.st-path { margin-block: var(--s4) var(--s2); }
-/* Wide: the step bar stays pinned under the band, so where you are and
-   the way to every step never scroll away; a step lands just under it. */
-@media (min-width: 720px) {
-  .st-path {
-    position: sticky;
-    top: var(--sh-chrome-h, 0px);
-    z-index: 4;
-    background: var(--paper);
-    padding-block: var(--s2);
-  }
-  main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--stp-bar-h, 0px); }
-  /* One compact row while pinned: a bar that covers a third of the
-     screen is a bar in the way. The state line moves to the tooltip. */
-  .st-path .st-path-list { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: var(--s1); }
-  .st-path .st-path-list > li { flex: 0 0 auto; }
-  .st-path .st-path-tab { width: auto; min-height: 36px; padding: var(--s1) var(--s3); grid-template-rows: auto; }
-  .st-path .st-path-tab .st-path-n { grid-row: auto; width: 1.4rem; height: 1.4rem; }
-  .st-path .st-path-state { display: none; }
-  .st-path .st-path-label { white-space: nowrap; overflow-wrap: normal; }
-  .st-path { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); }
-  .st-path .st-path-list { flex: 1 1 28rem; min-width: 0; }
-  .st-path .st-path-count, .st-path .st-extras { margin: 0; }
-  .st-path .st-extras .st-extra { min-height: 36px; padding: var(--s1) var(--s3); }
+/* ---- the path = the shared section menu ----------------------
+   The steps are src/ui/section-menu.js's grouped menu (tabs.css): the
+   same control as the admin console. <main class="st-main tabs-has-side">
+   is its container: at 1100px and over it is a grid of [menu | panel],
+   with the header, the import/export bar (and the start cards) spanning
+   the width; below that the menu is a sticky strip over the step with a
+   "Steps" button that opens the grouped list as a sheet. State is the
+   row's tick and its tooltip ("Done · 4 of 9 cards" / "To do"), read
+   aloud as "done"; nothing is carried by colour alone. */
+.st-main { --side-pad: 0px; }
+.st-main > .tabs[hidden] { display: none; }
+main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--stp-bar-h, 0px); }
+@media (min-width: 1100px) {
+  /* a hidden step is out of the grid, so the open one is placed by NAME,
+     not by being the sibling after the menu */
+  .st-main.tabs-has-side > section[data-path],
+  .st-main.tabs-has-side > #pacing,
+  .st-main.tabs-has-side > #pitch,
+  .st-main.tabs-has-side > #guide { grid-column: panel-start / panel-end; }
+  .st-main.tabs-has-side > .bd-head { max-width: none; }
 }
-.st-path-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
-  gap: var(--s2);
+/* 1100-1279px: the menu takes 220px of a content column that is only
+   about 1000px, which would halve the synopsis step's two panes. They
+   stack there (one column of ~750px) and sit side by side again from
+   1280px, where the column is wide enough for both. */
+@media (min-width: 1100px) and (max-width: 1279px) {
+  .st-main.tabs-has-side .st-panes { grid-template-columns: minmax(0, 1fr); }
 }
-.st-path-tab, .st-extra {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  column-gap: var(--s2);
-  align-items: center;
-  width: 100%;
-  min-height: 44px;
-  padding: var(--s2) var(--s3);
-  background: var(--paper-raised);
-  border: var(--sk-card-line-w, 1px) solid var(--rule);
-  border-radius: var(--sk-radius, var(--radius));
-  color: var(--ink);
-}
-.st-path-tab:hover, .st-extra:hover { border-color: var(--accent); }
-.st-path-tab:focus-visible, .st-extra:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
-.st-path-tab.is-on, .st-extra.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.st-path-n {
-  grid-row: 1 / span 2;
-  display: inline-grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 1px dashed var(--ink-muted);
-  border-radius: var(--radius-pill);
-  font-family: var(--f-mono);
-  font-size: var(--t-small);
-  color: var(--ink);
-}
-.st-path-tab.is-done .st-path-n { border-style: solid; border-width: 2px; border-color: var(--accent); }
-.st-path-label { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
-.st-path-state { font-size: var(--t-tiny); color: var(--ink-muted); min-width: 0; overflow-wrap: anywhere; }
 
 .st-step { padding-block: var(--s5); border-bottom: 1px solid var(--rule); }
 .st-step .st-text { max-width: var(--measure, 70ch); }
@@ -390,14 +345,4 @@
 /* ---- one step at a time (src/ui/stepper.js) ----------------------
    The panels not shown carry `hidden`; this keeps a display rule from
    beating the attribute. Back / Next sit at the foot of the step. */
-.st-step[hidden], .st-section[hidden], #guide[hidden], .st-path[hidden] { display: none; }
-.st-path-count { margin: var(--s2) 0 0; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
-.st-extras { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); }
-.st-extras-k { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
-.st-extras .st-extra { width: auto; display: inline-flex; }
-@media (max-width: 720px) {
-  /* the ten tabs become one strip that scrolls sideways inside itself */
-  .st-path-list { display: flex; overflow-x: auto; scrollbar-width: thin; padding-bottom: var(--s2); }
-  .st-path-list > li { flex: 0 0 auto; width: 11rem; }
-  .st-path-state { display: none; }
-}
+.st-step[hidden], .st-section[hidden], #guide[hidden] { display: none; }

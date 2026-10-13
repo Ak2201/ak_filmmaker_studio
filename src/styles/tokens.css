@@ -328,6 +328,11 @@
      glyph, and Catamaran is the family that carries Tamil. */
   --face-serif:   'Plus Jakarta Sans', 'Catamaran', ui-sans-serif, system-ui, sans-serif;
   --face-display: 'Playfair Display', 'Catamaran', ui-serif, Georgia, serif;
+  /* The italic accent word in a headline (hub: 'where you left off.'). Same
+     stack as --face-display, named for its job so a page that wants the
+     accent face never has to restate the family; Catamaran stays after
+     Playfair so Tamil falls back per glyph. */
+  --face-accent:  var(--face-display);
 
   --f-display: var(--sk-display, var(--face-serif));
   --f-body:    var(--sk-body, var(--face-serif));

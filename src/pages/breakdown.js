@@ -39,6 +39,7 @@ import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/bre
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
 import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { measureEighths } from '../lib/scene-sync.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
@@ -64,6 +65,12 @@ function renderHeader(scenes) {
       stat(String(Songs.listSongs().length), 'songs')
     ]),
     scenes.length ? h('p.bd-measure', {}, [
+      aiPill({
+        label: 'AI Desk',
+        tasks: [{ id: 'scene-notes', label: 'Scene notes' }, { id: 'breakdown-tags', label: 'Breakdown tags' },
+                { id: 'genre-comps', label: 'Genre and comparables' }],
+        ctx: { elements: () => loadScript().elements, after: () => render() }
+      }),
       h('button.btn', {
         type: 'button', 'data-action': 'eighths-measure', text: 'RE-MEASURE PAGES FROM THE SCRIPT',
         title: 'Recount each scene\u2019s length in eighths from the script as it stands now'
@@ -314,6 +321,15 @@ function renderScene(scene, i, total) {
       sel.append(opt);
     });
     detail.append(h('label.bd-scene-songlink', {}, [h('span', { text: 'song' }), sel]));
+  }
+
+  /* The Desk's scene note, when one was accepted: a reader's sentence
+     that rests on a verified quote, and the cut flag it earned. */
+  if (scene.readerNote) {
+    detail.append(h('p.bd-reader-note', {}, [
+      h('span.bd-reader-lab', { text: scene.cutCandidate ? 'Reader note · cut candidate' : 'Reader note' }),
+      h('span', { text: ' ' + scene.readerNote })
+    ]));
   }
 
   const tags = h('div.bd-tags');

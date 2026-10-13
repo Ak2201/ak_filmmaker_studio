@@ -112,6 +112,12 @@ export function blankScene(patch = {}) {
        songId and beatId: spread under every stored row, so older rows
        read back '' and no migration exists. */
     scriptElId: '',
+    /* A script reader's one-line note on this scene, and whether the
+       story loses nothing without it. Written only when somebody accepts
+       the Desk's scene-notes task; the note rests on a verified quote.
+       Fields spread under older rows, so no migration. */
+    readerNote: '',
+    cutCandidate: false,
     ...patch
   };
 }

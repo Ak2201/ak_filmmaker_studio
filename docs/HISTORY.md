@@ -1963,3 +1963,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - **Checks.** Local `verify` all pages pass (`dist-verify`, gate off);
       CI Gate green on `3039bb6`. The full release-gate list (every `test:*`,
       `prove:*`, the gated build, the budget) was not run by hand.
+
+41. **Script-to-screen lesson, Phases 1–2 (13 Oct 2026).** A survey of the
+    studio against a pipeline lesson (AI analysis, breakdown, visual
+    planning, schedule/budget, cloud post) found most of it already built;
+    the plan is in the session plan file and only the gaps are done.
+    - **Phase 1 (`4e4a1b8`).** `setdressing` and `sfx` join
+      `ELEMENT_CATEGORIES` (additive ids). Stunts, VFX and Animals stopped
+      sharing a hue with another category: five `--el-*` families in all four
+      palette blocks plus print. Auto-tag reads every lexicon list, not five;
+      ADD ALL still takes only the original five (the new lists are loose),
+      one chip or ADD THESE takes the rest. `measureEighths()` in
+      `scene-sync.js` + a "re-measure pages" button, content-matched pairs
+      only, Undo. NOT done: an INT/EXT × day/night strip-colour mode (it needs
+      a remembered preference, i.e. a storage key).
+    - **Phase 2.** Three Desk tasks, each a draft/apply over verified quotes:
+      `genre-comps` (one call; comparables are the model's memory and the note
+      says so), `scene-notes` (a cut flag needs a quote that is in the scene),
+      `breakdown-tags` (an element with no words behind it is dropped; apply is
+      `tagMany`, undo `untagMany`). Scene-batched through `runSceneBatches`.
+      New additive fields: story `genre/audience/budgetTier/comps`, scene
+      `readerNote/cutCandidate`. `story.audience` steers coverage's
+      marketability wording; blank keeps the old Tamil-theatrical-and-OTT
+      default, so nothing changes until a writer sets it. The Coverage tab's
+      heading still reads "Marketability — Tamil theatrical & OTT" whatever the
+      audience is. `test:ai-phase2`. Never run against a real provider.

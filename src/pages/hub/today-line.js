@@ -35,10 +35,13 @@ function draw() {
       title = project.title || '';
     }
   } catch (e) { console.warn('[today-line]', e); next = null; }
-  if (!next) { host.hidden = true; host.replaceChildren(); return; }
+  if (!next) { if (host.dataset.sig !== '') { host.dataset.sig = ''; host.hidden = true; host.replaceChildren(); } return; }
   const where = all
     ? 'Pre-production · every step done'
     : 'Pre-production · step ' + next.n + ' of ' + total;
+  const sig = [where, next.label, next.tool.href, title, all].join('|');
+  if (host.dataset.sig === sig) return;
+  host.dataset.sig = sig;
   host.replaceChildren(
     h('span.tl-lab', { text: 'Today' }),
     h('p.tl-text', {}, [

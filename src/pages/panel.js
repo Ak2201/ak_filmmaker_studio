@@ -231,6 +231,9 @@ async function render() {
          : g === 'unknown' ? h('main#main.pn-main', {}, [head('One moment', 'Checking your invite\u2026', 'Asking the studio whether this account is through the gate and free to open here.')])
          : renderPipeline();
   }
+  const sig = view.outerHTML;   // an auth/gate echo that changes nothing does not repaint
+  if (app.dataset.sig === sig && app.firstElementChild) return;
+  app.dataset.sig = sig;
   app.replaceChildren(view);
   try { StudioUI.autoAriaLabels(); } catch (e) { /* chrome not ready */ }
 }

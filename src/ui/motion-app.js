@@ -81,7 +81,9 @@ const pick = (root, sel) => {
    A main added after the first one is marked `ma-same-page`; it gets no
    entrance and its contents are not veiled. */
 let mainSeen = !!document.querySelector('main');
-const replay = (n) => !(n.closest && n.closest('main.ma-same-page'));
+/* `[data-ma-painted]` is the same idea for a container a page redraws in
+   place (the hub's project grid): its nodes are re-added, not new. */
+const replay = (n) => !(n.closest && n.closest('main.ma-same-page, [data-ma-painted]'));
 function markReplacedMain(records) {
   for (const r of records) for (const n of r.addedNodes) {
     if (n.nodeName !== 'MAIN') continue;

@@ -36,7 +36,7 @@ import { mountTamilType, setTamilTyping, isTamilTyping } from '../ui/tamil-type.
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
 import { commitImportedScript } from '../lib/script-commit.js';
-import { sceneSyncLater } from '../ui/handoff.js';
+import { sceneSyncLater, mountHandoff } from '../ui/handoff.js';
 import Keys from '../lib/write-keys.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
@@ -64,6 +64,13 @@ let doc = Script.loadScript();
 /* An empty script gets one blank scene line IN MEMORY so there is a
    line to type in. Not saved here; the first keystroke saves it. */
 if (!doc.elements.length) doc.elements.push(blankElement({ type: 'scene' }));
+/* THE SCRIPT DRIVES THE SCENES (open item 16), here as on write.html.
+   handoff.js reads the in-memory script through getDoc and keeps the
+   heading baseline the sync compares against; without this call getDoc
+   stayed `() => null`, so every sceneSyncLater() below was a no-op and
+   headings typed in the Screenplay Writer never reached the Breakdown.
+   prove:storage's "two projects" block is what caught it. */
+try { mountHandoff({ getDoc: () => doc }); } catch (e) { console.warn('[screenplay] hand-off', e); }
 
 const SAVE_DELAY = 500;
 let saveTimer = null;

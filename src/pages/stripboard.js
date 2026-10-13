@@ -127,16 +127,17 @@ function renderHeader(scenes) {
           + 'exterior together — then hand each group a shoot day. The day out of '
           + 'days below builds itself from that.'
     }),
-    h('div.bd-stats', {}, [
-      stat(String(scenes.length), scenes.length === 1 ? 'strip' : 'strips'),
-      stat(formatEighths(eighths), eighths === 8 ? 'page' : 'pages'),
-      stat(String(days.length), days.length === 1 ? 'shoot day' : 'shoot days'),
-      stat(String(unscheduled), 'unscheduled')
+    h('div.bd-stats.sb-kpis', {}, [
+      stat(scenes.length ? String(scenes.length) : '\u2014', scenes.length === 1 ? 'strip' : 'strips', 'one per scene'),
+      stat(scenes.length ? formatEighths(eighths) : '\u2014', eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : ''),
+      stat(days.length ? String(days.length) : '\u2014', days.length === 1 ? 'shoot day' : 'shoot days', days.length ? 'scheduled' : ''),
+      stat(String(unscheduled), 'unscheduled', unscheduled ? 'still to place' : 'all placed')
     ])
   ]);
 }
-const stat = (value, label) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+const stat = (value, label, note) =>
+  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label }),
+    note ? h('em.bd-stat-note', { text: note }) : null]);
 
 /* ---- the teaching empty state -------------------------------
    Same shape as the breakdown's: an empty module explains what it is
@@ -343,6 +344,15 @@ function dayPicker(scene, maxDay) {
 }
 
 /* ---- the board ----------------------------------------------- */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** 'YYYY-MM-DD' as "Mon 27 Oct 2025"; '' when it is not a date. */
+function localDate(str) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
+  if (!m) return '';
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
 function renderBoard(scenes) {
   const wrap = h('section.sb-board', { id: 'stripboard' });
   wrap.append(
@@ -381,7 +391,6 @@ function renderBoard(scenes) {
 
   const byDay = view.group === 'day';
   if (byDay) {
-    wrap.append(loadTargetControl());
     wrap.append(h('p.sb-hint', {
       text: 'Drag a strip by its handle to change its place in the day or drop it on '
           + 'another day — the order you set here is the order the shoot day and the '
@@ -394,6 +403,7 @@ function renderBoard(scenes) {
   const maxDay = shootDays(scenes).reduce((a, b) => Math.max(a, b), 0);
   const target = DPR.pageTarget();
   const banners = byDay ? DPR.allBanners() : {};
+  const calDays = new Map(byDay ? Locations.calendarDays(scenes).map((d) => [d.day, d]) : []);
   let hasUnscheduled = false;
   for (const group of groupScenes(scenes, view.group)) {
     const eighths = totalEighths(group.scenes);
@@ -405,7 +415,19 @@ function renderBoard(scenes) {
         text: `${group.scenes.length} ${group.scenes.length === 1 ? 'scene' : 'scenes'} · ${formatEighths(eighths)} ${eighths === 8 ? 'page' : 'pages'}`
       })
     ]);
-    if (isDay) head.append(...dayLoadBits(group.key, eighths, target), bannerMenu(group.key));
+    if (isDay) {
+      const cal = calDays.get(group.key);
+      const dated = cal && localDate(cal.date);
+      if (dated) head.querySelector('.sb-group-name').after(h('span.sb-group-date', { text: dated }));
+      if (group.scenes.length && group.scenes.every((sc) => sc.dayNight === 'NIGHT')) {
+        head.append(h('span.sb-night-badge', { text: 'Night shoot' }));
+      }
+      head.append(...dayLoadBits(group.key, eighths, target));
+      if (cal && cal.locations && cal.locations.length) {
+        head.append(h('span.sb-group-locs', { text: 'Locations: ' + cal.locations.join(', ') }));
+      }
+      head.append(bannerMenu(group.key));
+    }
     section.append(head);
     /* In the day grouping every rack names its day, so a drop knows
        where it landed; "Not scheduled yet" is day 0 and a drop there
@@ -473,7 +495,7 @@ function loadTargetControl() {
     sel.append(opt);
   }
   return h('div.sb-target', {}, [
-    h('label.sb-day-lab', { for: 'sb-target', text: 'Pages per day before a warning' }),
+    h('label.sb-day-lab', { for: 'sb-target', text: 'Pages per day warning' }),
     sel
   ]);
 }
@@ -569,7 +591,7 @@ const dropZone = (day, label) =>
 
 function legend() {
   const l = h('div.sb-legend', { 'aria-label': 'Strip colour key' });
-  l.append(h('span.sb-legend-lab', { text: 'Key' }));
+  l.append(h('span.sb-legend-lab', { text: 'Time legend' }));
   [['DAY', 'tod-day'], ['DAWN', 'tod-dawn'], ['DUSK', 'tod-dusk'], ['NIGHT', 'tod-night'], ['CONTINUOUS', 'tod-cont']]
     .forEach(([label, cls]) => {
       l.append(h(`span.sb-legend-item.${cls}`, {}, [h('span.sb-legend-chip'), h('span', { text: label })]));
@@ -578,6 +600,15 @@ function legend() {
     h('span.sb-ie.is-ext', { text: 'EXT' }),
     h('span', { text: 'filled badge is exterior' })
   ]));
+  l.append(h('span.sb-legend-item', {}, [
+    h('span.sb-ie', { text: 'INT' }),
+    h('span', { text: 'outline badge is interior' })
+  ]));
+  /* The pacing threshold sits in the legend row in every grouping; the
+     warning it drives is drawn on the day grouping's headers. */
+  const t = loadTargetControl();
+  t.classList.add('sb-legend-target');
+  l.append(t);
   return l;
 }
 

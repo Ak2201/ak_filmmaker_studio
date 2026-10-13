@@ -408,14 +408,22 @@ function renderCover() {
     h('div', {}, [
       h('div.cover-mark', { text: 'A reference companion to every stage of the studio' }),
       h('h1.cover-title', {}, [
-        'The ', h('span.light', { text: 'Filmmaker\'s' }), h('br'), 'Library.'
+        'The ', h('span.light', { text: 'Filmmaker\'s' }), ' Library.'
       ]),
-      h('p.cover-sub', { text: blurb }),
+      h('div.cover-row', {}, [
+        h('p.cover-sub', { text: blurb }),
+        /* the count is the real number of shelves below */
+        h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${SECTIONS.length} SHELVES`])])
+      ]),
       h('nav.cover-toc', { 'aria-label': 'Contents' },
         SECTIONS.map((s, i) => h('a.toc-item', { href: `#${s.id}` }, [
-          h('span.num', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
+          h('span.toc-head', {}, [
+            h('span.num', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
+            h('span.toc-go', { 'aria-hidden': 'true', text: '\u2197' })
+          ]),
           h('span.title', { text: s.tocTitle }),
-          h('span.desc', { text: s.tocDesc })
+          h('span.desc', { text: s.tocDesc }),
+          h('span.toc-foot', {}, [h('span.toc-count', { text: '\u25B6 ' + s.count.toLowerCase() })])
         ])))
     ])
   ]);

@@ -1988,3 +1988,18 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       default, so nothing changes until a writer sets it. The Coverage tab's
       heading still reads "Marketability — Tamil theatrical & OTT" whatever the
       audience is. `test:ai-phase2`. Never run against a real provider.
+
+42. **Script-to-screen lesson, Phase 3 (13 Oct 2026).** Visual planning on one
+    surface. `src/ui/blocking.js` adds two Visualize tabs: **Blocking** (an
+    overhead SVG map per setup: actor / camera / mark, draggable, arrow keys
+    move and `[` `]` turn, optional move to a second point) and **Scene
+    board** (script, shots, frames and maps for one scene, read from their own
+    models, printable). Blocking is a fourth collection in `fms_shots_v1`
+    (`blocks`, scene-keyed, vector data only) — `readAll()` in `shots.js` MUST
+    list it or every shot save drops it, and it rides in the scene's bin entry
+    (`takeSceneOut`/`putSceneBack`, `entryCounts().blocks`). A drag writes once,
+    on pointerup. The lens field gains a `<datalist>` of focal lengths, still
+    free text. `test:blocking` (new), `test:sync` extended. NOT done: the
+    shot-list share link, which waits on B7's security review and a schema
+    section. Verify needed one allowlist row removed (`use` came back on the
+    page, so its row went stale); no re-baseline.

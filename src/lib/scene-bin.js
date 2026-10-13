@@ -22,6 +22,7 @@
      IN OTHER MODELS (taken out here, put back on restore):
        shots      fms_shots_v1 .shots[].sceneId       (shots.js)
        frames     fms_shots_v1 .frames[].shotId → those shots
+       blocks     fms_shots_v1 .blocks[].sceneId      (shots.js)
        call sheets fms_contacts_v1 .callSheets[].sceneIds (contacts.js)
        edit log   fms_edit_v1 .scenes[sceneId], .pickups[].sceneId
      READS ONLY (nothing stored, nothing to cascade):
@@ -93,6 +94,7 @@ export function entryCounts(entry) {
   return {
     shots: (e.shots || []).length,
     frames: (e.frames || []).length,
+    blocks: (e.blocks || []).length,
     sheets: (e.sheets || []).length,
     pickups: ((e.edit && e.edit.pickups) || []).length,
     edit: !!(e.edit && e.edit.scene),
@@ -109,6 +111,7 @@ export function describeEntry(entry) {
   const n = (k, word) => { if (k) bits.push(k + ' ' + word + (k === 1 ? '' : 's')); };
   n(c.shots, 'shot');
   n(c.frames, 'frame');
+  n(c.blocks, 'blocking diagram');
   if (c.day) bits.push('Day ' + c.day);
   n(c.sheets, 'call sheet');
   n(c.pickups, 'pick-up');
@@ -138,6 +141,7 @@ export function binScene(sceneId, opts = {}) {
     scene: { index, row },
     shots: shots.shots,
     frames: shots.frames,
+    blocks: shots.blocks,
     sheets,
     edit
   };
@@ -154,7 +158,7 @@ export function binScene(sceneId, opts = {}) {
   bin.entries.push(entry);
   const kept = writeBin(bin) && readBin().entries.some((e) => e.id === entry.id);
   if (!kept) {
-    Shots.putSceneBack({ shots: entry.shots, frames: entry.frames });
+    Shots.putSceneBack({ shots: entry.shots, frames: entry.frames, blocks: entry.blocks });
     Contacts.putSceneBack(sceneId, entry.sheets);
     Edit.putSceneBack(sceneId, entry.edit);
     return null;
@@ -183,7 +187,7 @@ export function restoreFromBin(entryId, opts = {}) {
     rows.splice(Math.min(entry.scene.index, rows.length), 0, row);
     writeRawScenes(rows);
   }
-  Shots.putSceneBack({ shots: entry.shots, frames: entry.frames });
+  Shots.putSceneBack({ shots: entry.shots, frames: entry.frames, blocks: entry.blocks });
   Contacts.putSceneBack(sceneId, entry.sheets);
   Edit.putSceneBack(sceneId, entry.edit);
   bin.entries.splice(at, 1);
@@ -230,7 +234,7 @@ export function unaddScenes(ids) {
     if (!e) continue;
     n++;
     const c = entryCounts(e);
-    if (!c.shots && !c.frames && !c.sheets && !c.pickups && !c.edit) deleteBinEntry(e.id);
+    if (!c.shots && !c.frames && !c.blocks && !c.sheets && !c.pickups && !c.edit) deleteBinEntry(e.id);
   }
   return n;
 }

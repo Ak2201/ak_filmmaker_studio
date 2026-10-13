@@ -170,7 +170,7 @@ plan = Sync.reconcile(els, Scenes.listScenes(), { prev: Sync.headingMap(base()) 
 eq(plan.bin, [{ sceneId: target.id, heading: 'EXT. STREET - NIGHT' }], 'a deleted heading bins its row');
 res = Sync.applySync(plan);
 const entry = res.binned[0];
-eq(Bin.entryCounts(entry), { shots: 2, frames: 3, sheets: 1, pickups: 1, edit: true, day: 3 }, 'the entry holds 2 shots, 3 frames, 1 sheet, 1 pick-up, the edit note and Day 3');
+eq(Bin.entryCounts(entry), { shots: 2, frames: 3, blocks: 0, sheets: 1, pickups: 1, edit: true, day: 3 }, 'the entry holds 2 shots, 3 frames, 1 sheet, 1 pick-up, the edit note and Day 3');
 eq(Bin.describeEntry(entry), 'Scene 2: 2 shots, 3 frames, Day 3, 1 call sheet, 1 pick-up, an edit note', 'the confirm\'s words');
 ok(!Scenes.listScenes().some((s) => s.id === target.id), 'the row is gone from the scene list');
 ok(!Shots.listShots().some((s) => s.sceneId === target.id), '…its shots from the shot list');
@@ -261,6 +261,79 @@ reset();
   ok(ch[0] && ch[0].to > ch[0].from && ch[0].from === 1, 'the long scene grows past its stale 1/8');
   eq(Sync.measureEighths(els, Scenes.listScenes().map((r) => ({ ...r, eighths: ch[0] ? (r.id === ch[0].sceneId ? ch[0].to : r.eighths) : r.eighths }))), [], 'once applied, nothing is left to measure');
   eq(Sync.measureEighths([], Scenes.listScenes()), [], 'an empty script measures nothing');
+}
+
+/* ---- blocking diagrams ride the bin ------------------------------ */
+reset();
+Sync.syncScript(base());
+{
+  const rs = Scenes.listScenes();
+  const tg = rs[1];
+  const bA = Shots.addBlock(rs[0].id, { name: 'other' });
+  const bT1 = Shots.addBlock(tg.id);
+  Shots.addMark(bT1.id, 'actor'); Shots.addMark(bT1.id, 'camera', { toX: 20, toY: 30 });
+  const bC = Shots.addBlock(rs[2].id, { name: 'office' });
+  const bT2 = Shots.addBlock(tg.id, { note: 'second setup' });
+  const sh = Shots.addShot(tg.id, { description: 'wide' });
+  Shots.addFrame(sh.id, { caption: 'f' });
+  Shots.addBoard({ name: 'B' });
+  const rawBlocks = () => JSON.parse(mem.get('fms_shots_v1')).blocks;
+  const rawOf = (id) => JSON.stringify(rawBlocks().find((b) => b.id === id));
+  const beforeShots = mem.get('fms_shots_v1');
+  const rawT1 = rawOf(bT1.id), rawT2 = rawOf(bT2.id);
+
+  // saving shots / frames / boards must never drop blocks (the readAll trap)
+  const n0 = rawBlocks().length;
+  Shots.addShot(rs[0].id, { description: 'x' });
+  Shots.saveShots(Shots.listShots());
+  Shots.addFrame(sh.id, { caption: 'g' });
+  Shots.saveFrames(Shots.listFrames());
+  Shots.addBoard({ name: 'B2' });
+  eq(rawBlocks().length, n0, 'saving shots, frames and boards never drops blocks');
+  // put the file back to the pre-noise bytes so restore can be compared
+  mem.set('fms_shots_v1', beforeShots);
+
+  const e = Bin.binScene(tg.id, { reason: 'hand' });
+  eq(Bin.entryCounts(e).blocks, 2, 'entryCounts().blocks counts the scene\'s diagrams');
+  ok(/2 blocking diagrams/.test(Bin.describeEntry(e)), 'describeEntry says "2 blocking diagrams": ' + Bin.describeEntry(e));
+  ok(!rawBlocks().some((b) => b.sceneId === tg.id), 'blocks leave fms_shots_v1 when the scene is binned');
+  eq(rawBlocks().map((b) => b.id).sort(), [bA.id, bC.id].sort(), 'other scenes\' blocks stay');
+  eq(Shots.blocksOfScene(tg.id), [], 'blocksOfScene is empty while binned');
+
+  Bin.restoreFromBin(e.id);
+  eq(rawOf(bT1.id), rawT1, 'restore puts block 1 back byte-identical');
+  eq(rawOf(bT2.id), rawT2, 'restore puts block 2 back byte-identical');
+  eq(mem.get('fms_shots_v1'), beforeShots, 'the whole shots blob is byte-identical after restore');
+
+  // one block alone: singular wording
+  const e1 = Bin.binScene(rs[2].id, { reason: 'hand' });
+  ok(/1 blocking diagram(?!s)/.test(Bin.describeEntry(e1)), 'one diagram reads singular: ' + Bin.describeEntry(e1));
+  Bin.restoreFromBin(e1.id);
+
+  // delete / empty leave no block with that sceneId
+  const e2 = Bin.binScene(tg.id, { reason: 'hand' });
+  Bin.deleteBinEntry(e2.id);
+  ok(!rawBlocks().some((b) => b.sceneId === tg.id), 'deleteBinEntry leaves no block for the scene');
+  const e3 = Bin.binScene(rs[0].id, { reason: 'hand' });
+  Bin.emptyBin();
+  ok(!rawBlocks().some((b) => b.sceneId === rs[0].id), 'emptyBin leaves no block for the scene');
+  void e3;
+
+  // removeScene goes through the same cascade
+  reset();
+  Sync.syncScript(base());
+  const r2 = Scenes.listScenes();
+  Shots.addBlock(r2[0].id);
+  Scenes.removeScene(r2[0].id);
+  eq(Bin.entryCounts(Bin.listBin()[0]).blocks, 1, 'removeScene bins the scene\'s diagram too');
+  ok(!Shots.listBlocks().some((b) => b.sceneId === r2[0].id), '…out of the live list');
+  // a block-only scene is not dropped by unaddScenes
+  reset();
+  Sync.syncScript(base());
+  const r3 = Scenes.listScenes();
+  Shots.addBlock(r3[1].id);
+  Bin.unaddScenes([r3[1].id]);
+  eq(Bin.listBin().length, 1, 'unaddScenes keeps an entry that holds only a blocking diagram');
 }
 
 console.log(`test:sync — ${pass} passed, ${fail} failed`);

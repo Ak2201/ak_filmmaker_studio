@@ -49,8 +49,9 @@ import Scenes, { formatEighths } from '../lib/scenes.js';
 import Script from '../lib/script.js';
 import { matchScenes, describeMatch } from '../lib/screenplay-analysis.js';
 import Shots, {
-  SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, isLinkable
+  SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, isLinkable
 } from '../lib/shots.js';
+import { renderBlocking, renderSceneBoard } from '../ui/blocking.js';
 import { basicShotDivision, jobFor } from '../lib/shot-rules.js';
 
 /* A lazy chunk, for the reason CLAUDE.md gives for Supabase and
@@ -334,7 +335,7 @@ function renderShotRow(shot, i, total) {
   row.append(h('td', {}, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
   row.append(h('td.vz-c-lens', {}, [
     field('input.vz-lens', {
-      type: 'text', placeholder: '35mm',
+      type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off',
       'data-shot-field': 'lens', 'aria-label': 'Lens'
     }, shot.lens)
   ]));
@@ -879,6 +880,13 @@ function noImageNote(text) {
 }
 
 /* ---- render --------------------------------------------------- */
+/* The scene board reads the script through the same content match every
+   other view uses, never a copy of it. */
+function sceneBoardPairs(scenes) {
+  try { return matchScenes(scenes, Script.loadScript().elements).pairs; }
+  catch (e) { return []; }
+}
+
 function render(focus) {
   const scenes = Scenes.listScenes();
   const shots = Shots.listShots();
@@ -891,7 +899,10 @@ function render(focus) {
     renderShotList(scenes, shots),
     renderAI(scenes, shots),
     renderStoryboard(scenes, shots, frames),
-    renderLookbook(boards)
+    renderBlocking(scenes, render),
+    renderSceneBoard(scenes, shots, frames, null, sceneBoardPairs(scenes), render),
+    renderLookbook(boards),
+    h('datalist#vzLenses', {}, SHOT_LENSES.map((l) => h('option', { value: l })))
   );
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it

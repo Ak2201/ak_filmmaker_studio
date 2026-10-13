@@ -219,30 +219,51 @@ export async function runBeats(patch, { onStatus, signal } = {}) {
    than an inference: appending to an existing board and wiping it
    are different acts and the UI asks which.
    ============================================================ */
-export async function runScenes(patch, { onStatus, signal, replaceScenes = false } = {}) {
+/* The Desk (src/ui/ai-desk.js) shows a proposal BEFORE anything is
+   written, so the stage is split: draftScenes() asks the model and
+   writes nothing; applyScenes() commits the rows the writer kept and
+   hands back an undo. runScenes() is the two in a row, unchanged for
+   every caller that wants the old one-press behaviour. */
+export async function draftScenes(patch, { onStatus, signal, extra = '' } = {}) {
   const job = { ...load(), ...patch };
   if (!job.beats.length) throw new GenError('Draft the beat sheet first.', 'nobeats');
   const AI = await ai();
-
   const labelled = job.beats.map((b) => ({
     id: b.id, label: beatLabel(job, b.id), happens: b.happens
   }));
   const res = await AI.draftSceneList({
-    synopsis: job.synopsis,
+    /* A Desk refinement rides on the synopsis, the one free-text field
+       this request already sends (ai-refine.js refineBlock). */
+    synopsis: extra ? job.synopsis + '\n\n' + extra : job.synopsis,
     logline: job.logline,
     format: job.format,
     lang: job.lang,
     target: job.target,
     beats: labelled
   }, { onStatus, signal });
+  return { proposals: res.scenes, truncated: res.truncated, model: res.model };
+}
+
+/**
+ * Commit proposed scenes (all, or the ones the writer kept) to the
+ * scene model and move the job to stage 3. Resolves to
+ * { job, scenes, undo } — undo puts back the scene list and the job
+ * exactly as they were.
+ */
+export function applyScenes(patch, proposals, { replaceScenes = false, model } = {}) {
+  const prevJob = load();
+  const prevScenes = Scenes.listScenes();
+  const job = { ...prevJob, ...patch };
+  const kept = (proposals || []).filter(Boolean);
+  if (!kept.length) throw new GenError('No scenes to lay out.', 'noscenes');
 
   /* Commit. Scene rows go in through blankScene() so a row this
      module writes is the same shape as a row the user typed — the
      breakdown reads `elements`, the stripboard reads `eighths`,
      and a row missing either is a row that renders wrong. */
-  const existing = replaceScenes ? [] : Scenes.listScenes();
+  const existing = replaceScenes ? [] : prevScenes;
   const startNumber = existing.length;
-  const rows = res.scenes.map((s, i) => Scenes.blankScene({
+  const rows = kept.map((s, i) => Scenes.blankScene({
     number: String(startNumber + i + 1),
     intExt: s.intExt,
     dayNight: s.dayNight,
@@ -251,7 +272,7 @@ export async function runScenes(patch, { onStatus, signal, replaceScenes = false
     eighths: s.eighths,
     // Cast lands in the breakdown's own vocabulary, so the element
     // index and the day-out-of-days see it without a second pass.
-    elements: s.cast.length ? { cast: s.cast.slice() } : {}
+    elements: (s.cast || []).length ? { cast: s.cast.slice() } : {}
   }));
   Scenes.saveScenes(existing.concat(rows));
 
@@ -260,15 +281,22 @@ export async function runScenes(patch, { onStatus, signal, replaceScenes = false
     slug: slugFor(r),
     synopsis: r.synopsis,
     eighths: r.eighths,
-    cast: res.scenes[i].cast.slice(),
-    beat: res.scenes[i].beat
+    cast: (kept[i].cast || []).slice(),
+    beat: kept[i].beat
   }));
   job.cursor = 0;
-  job.model = res.model || job.model;
+  job.model = model || job.model;
   job.stage = 'pages';
   job.startedAt = new Date().toISOString();
   save(job);
-  return { job, truncated: res.truncated, scenes: rows.length };
+  const undo = () => { Scenes.saveScenes(prevScenes); save(prevJob); };
+  return { job, scenes: rows.length, undo };
+}
+
+export async function runScenes(patch, { onStatus, signal, replaceScenes = false } = {}) {
+  const d = await draftScenes(patch, { onStatus, signal });
+  const r = applyScenes(patch, d.proposals, { replaceScenes, model: d.model });
+  return { job: r.job, truncated: d.truncated, scenes: r.scenes };
 }
 
 /* ============================================================
@@ -299,17 +327,18 @@ function knownCharacters(job) {
 }
 
 /**
- * Write the next batch and commit it.
+ * Draft the next batch WITHOUT writing it (the Desk's half).
  *
- * Resolves to { job, wrote, truncated, done }. `done` means the
- * cursor reached the end — there is nothing left to run.
- * Throws AIError on anything the user can act on; the cursor is
- * NOT advanced when it throws, so a retry redoes that batch only.
+ * Resolves to { cursor, batch, byScene, truncated, model, done }:
+ * `byScene` is { sceneId: [{type, text}] } for the scenes the reply
+ * covered, `cursor` is the job cursor this draft was made at, so
+ * applyBatch() can refuse a draft that went stale. `extra` is a Desk
+ * refinement, carried on the logline (ai-refine.js refineBlock).
  */
-export async function runNextBatch({ onStatus, signal } = {}) {
+export async function draftBatch({ onStatus, signal, extra = '' } = {}) {
   const job = load();
   if (job.stage !== 'pages') throw new GenError('Lay out the scenes first.', 'nostage');
-  if (job.cursor >= job.scenes.length) return { job, wrote: 0, truncated: false, done: true };
+  if (job.cursor >= job.scenes.length) return { cursor: job.cursor, batch: [], byScene: {}, truncated: false, done: true };
   const AI = await ai();
 
   const batch = job.scenes.slice(job.cursor, job.cursor + BATCH_SIZE);
@@ -318,7 +347,7 @@ export async function runNextBatch({ onStatus, signal } = {}) {
 
   const res = await AI.draftScenePages({
     lang: job.lang,
-    logline: job.logline,
+    logline: extra ? job.logline + '\n\n' + extra : job.logline,
     format: job.format,
     characters: knownCharacters(job),
     scenes: batch.map((s) => ({
@@ -333,47 +362,85 @@ export async function runNextBatch({ onStatus, signal } = {}) {
     after: after.map((s) => ({ slug: s.slug, synopsis: s.synopsis }))
   }, { onStatus, signal });
 
+  const byScene = {};
+  for (const s of batch) {
+    const els = res.byScene.get(s.sceneId);
+    if (els && els.length) byScene[s.sceneId] = els.map((el) => ({ type: el.type, text: el.text }));
+  }
+  return { cursor: job.cursor, batch, byScene, truncated: res.truncated, model: res.model, done: false };
+}
+
+/**
+ * Commit a drafted batch. `keep` is the list of sceneIds the writer
+ * kept (null = all of them). Resolves to
+ * { job, wrote, skipped, truncated, done, undo }.
+ *
+ * A scene the writer did not keep is skipped exactly like a scene the
+ * reply missed: the cursor still moves past the WHOLE batch, because a
+ * run that stops at the first gap can never finish, and the gap is
+ * visible in the editor where that scene can be asked for again.
+ */
+export function applyBatch(draft, keep = null) {
+  const prevJob = load();
+  if (prevJob.stage !== 'pages' || prevJob.cursor !== draft.cursor) {
+    throw new GenError('That batch is out of date — the draft moved on since it was written. Ask for the next batch again.', 'stale');
+  }
+  const job = { ...prevJob };
+  const doc = Script.loadScript();
+  const prevDoc = JSON.parse(JSON.stringify(doc));
+  const wanted = keep ? new Set(keep) : null;
+
   /* Commit, in the batch's own scene order rather than the reply's,
      so a reply that returns scene 3 before scene 1 does not write
-     the script out of order. */
-  const doc = Script.loadScript();
+     the script out of order.
 
-  // A revision before the FIRST batch touches a non-empty script, and
-  // only then: one revision per run, not one per batch, or a feature
-  // would leave twenty-five of them behind.
+     A revision before the FIRST batch touches a non-empty script, and
+     only then: one revision per run, not one per batch, or a feature
+     would leave twenty-five of them behind. */
   if (job.cursor === 0 && doc.elements.length) {
     doc.revisions.push(Script.makeRevision(doc.elements, 'Before generated draft'));
   }
-
   let wrote = 0;
-  for (const s of batch) {
-    const els = res.byScene.get(s.sceneId);
+  for (const s of draft.batch) {
+    const els = draft.byScene[s.sceneId];
     if (!els || !els.length) continue;
-    for (const el of els) {
-      doc.elements.push(Script.blankElement({ type: el.type, text: el.text }));
-    }
+    if (wanted && !wanted.has(s.sceneId)) continue;
+    for (const el of els) doc.elements.push(Script.blankElement({ type: el.type, text: el.text }));
     wrote++;
   }
   Script.saveScript(doc);
 
-  /* Advance past the whole batch, including any scene the reply
-     skipped. The alternative — stopping at the first gap — turns one
-     bad scene into a run that can never finish, and the gap is
-     visible in the editor, where the writer can ask for that scene
-     again. Silently looping forever is worse than a hole. */
-  job.cursor += batch.length;
-  if (res.truncated) job.truncations += 1;
-  job.model = res.model || job.model;
+  job.cursor += draft.batch.length;
+  if (draft.truncated) job.truncations += 1;
+  job.model = draft.model || job.model;
   if (job.cursor >= job.scenes.length) job.stage = 'done';
   save(job);
 
+  const undo = () => { Script.saveScript(prevDoc); save(prevJob); };
   return {
     job,
     wrote,
-    skipped: batch.length - wrote,
-    truncated: res.truncated,
-    done: job.cursor >= job.scenes.length
+    skipped: draft.batch.length - wrote,
+    truncated: draft.truncated,
+    done: job.cursor >= job.scenes.length,
+    undo
   };
+}
+
+/**
+ * Write the next batch and commit it — draftBatch() then applyBatch()
+ * with every scene kept, for the bulk "write all the rest" path.
+ *
+ * Resolves to { job, wrote, truncated, done }. `done` means the
+ * cursor reached the end — there is nothing left to run.
+ * Throws AIError on anything the user can act on; the cursor is
+ * NOT advanced when it throws, so a retry redoes that batch only.
+ */
+export async function runNextBatch({ onStatus, signal } = {}) {
+  const d = await draftBatch({ onStatus, signal });
+  if (d.done) return { job: load(), wrote: 0, truncated: false, done: true };
+  const r = applyBatch(d, null);
+  return { job: r.job, wrote: r.wrote, skipped: r.skipped, truncated: r.truncated, done: r.done };
 }
 
 /** Pages written so far, and whether that number is arithmetic or an

@@ -35,6 +35,10 @@
      story-steps/map  story.js models, saved by the page's commit()
      shot-draft       shots.js addShot (append only)
      synopsis-script  scriptgen.js's job (stage 1 → the beat sheet)
+     gen-scenes       scriptgen.js applyScenes (stage 2 → scenes.js)
+     gen-batch        scriptgen.js applyBatch (stage 3, one batch →
+                      the script blob, cursor advanced)
+     voice-check      coverage.js addTake (a line's alternates)
      logline          the page's setLogline()
    beat-critique is a read: it writes nothing.
 
@@ -642,10 +646,11 @@ const shotTask = {
 /* ============================================================
    SYNOPSIS → SCRIPT, STAGE 1 — list. ctx { prepare?(), after?() }
    ------------------------------------------------------------
-   The staged flow lives in scriptgen.js and on write.html#generate,
-   and stays there: stage 2 writes the scene board and stage 3 writes
-   pages in resumable batches, and both keep their own panel. This
-   task is the first stage — the synopsis becomes this story's beat
+   The staged flow lives in scriptgen.js and on write.html#generate.
+   Each stage is its own task: this one, then 'gen-scenes' (the scene
+   board) and 'gen-batch' (one batch of pages) below; the bulk
+   "write all the rest" run stays on the page. This task is the first
+   stage — the synopsis becomes this story's beat
    sheet — so the writer can argue with the structure in the Desk,
    tick the beats to keep, and Accept writes them into the job,
    exactly where "Draft the beat sheet" wrote them. The page's panel
@@ -695,6 +700,270 @@ const synopsisTask = {
     Gen.save(job);
     call(c.after, job);
     return () => { Gen.save(prev); call(c.after, prev); };
+  }
+};
+
+/* A refinement whose `previous` is what this task's model actually
+   said (the proposal objects, the drafted elements), not the Desk's
+   one-line item texts — so "keep scene 3 but move it to night" has
+   the scene to work on. ai.js's own refineBlock(), trimmed. */
+function refineWith(refine, previous) {
+  if (!refine) return '';
+  const block = AI && typeof AI.refineBlock === 'function'
+    ? AI.refineBlock({ previous, instructions: refine.instructions })
+    : refineText(refine);
+  return String(block || '').trim();
+}
+
+/* A short fingerprint, for a Desk identity that has to change when
+   the words it was derived from change. Not a security hash. */
+function fingerprint(s) {
+  let x = 5381;
+  const t = String(s || '');
+  for (let i = 0; i < t.length; i++) x = ((x << 5) + x + t.charCodeAt(i)) | 0;
+  return (x >>> 0).toString(36);
+}
+
+/* ============================================================
+   SYNOPSIS → SCRIPT, STAGE 2 — list. ctx { patch(), replaceScenes(),
+                                           after?() }
+   ------------------------------------------------------------
+   The beat sheet becomes a scene board. draftScenes() asks the model
+   and writes nothing; the items are its proposed scenes; Accept hands
+   the ticked ones to applyScenes(), which writes the SCENE MODEL (so
+   the breakdown, stripboard and budget can read them) and moves the
+   job to stage 3. `replaceScenes()` is the page's checkbox, read at
+   the moment of Accept. Undo puts back the scene list and the job.
+   ============================================================ */
+const sceneSlug = (p) => (p.intExt || 'INT') + '. ' + String(p.location || 'Location TBC').toUpperCase() + ' — ' + (p.dayNight || 'DAY');
+
+function scenesJob(c) {
+  const patch = call(c.patch) || {};
+  return { ...Gen.load(), ...patch };
+}
+
+const genScenesTask = {
+  id: 'gen-scenes',
+  label: 'Lay out the scenes',
+  kind: 'list',
+  editable: false,
+  identity(ctx) {
+    try {
+      const j = scenesJob(resolve(ctx));
+      return 'scenes:' + fingerprint(JSON.stringify([j.synopsis, j.logline, j.format, j.lang, j.target, (j.beats || []).map((b) => b.happens)]));
+    } catch (e) { return 'scenes'; }
+  },
+  input(ctx) {
+    const j = scenesJob(resolve(ctx));
+    if (!(j.beats || []).length) return 'Draft the beat sheet first.';
+    const L = ['The beat sheet as it stands on the page, with the logline and the synopsis — nothing else from the studio.', ''];
+    if (j.logline) L.push('Logline: ' + j.logline);
+    L.push('Length: ' + (j.format || 'feature') + (j.target ? ' · about ' + j.target + ' scenes' : ''), '');
+    L.push('The beats (' + plural(j.beats.length, 'beat', 'beats') + '):');
+    for (const b of j.beats) L.push('· ' + (b.label || b.id) + ' — ' + String(b.happens || '').trim());
+    if (String(j.synopsis || '').trim()) L.push('', 'Synopsis:', String(j.synopsis).slice(0, 6000));
+    return L.join('\n');
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const patch = call(c.patch) || {};
+    const prevItems = refine && refine.previous && Array.isArray(refine.previous.items) ? refine.previous.items : [];
+    const extra = refineWith(refine, prevItems.map((it) => it.proposal).filter(Boolean));
+    const res = await Gen.draftScenes(patch, { onStatus, signal, extra });
+    const proposals = res.proposals || [];
+    if (!proposals.length) fail('The reply held no scenes, so nothing changed.');
+    last.set('gen-scenes', { proposals, model: res.model });
+    const items = proposals.map((p, i) => ({
+      id: 'p' + i, proposal: p, model: res.model,
+      text: sceneSlug(p),
+      detail: [String(p.synopsis || '').trim(), (p.cast || []).length ? 'Cast: ' + p.cast.join(', ') : '',
+        p.eighths ? p.eighths + '/8 pp' : ''].filter(Boolean).join(' · ')
+    }));
+    const note = plural(items.length, 'scene', 'scenes') + ' proposed. Untick any you do not want; the rest go on the scene board in this order.'
+      + (res.truncated ? '\nThe reply was cut short at the length limit, so the list may stop early.' : '');
+    return { items, note };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const kept = (selected || []).map((it) => it && it.proposal).filter(Boolean);
+    if (!kept.length) return null;
+    const model = ((selected || []).find((it) => it && it.model) || {}).model || (last.get('gen-scenes') || {}).model;
+    const r = Gen.applyScenes(call(c.patch) || {}, kept, { replaceScenes: !!call(c.replaceScenes), model });
+    call(c.after, r.job);
+    return () => { r.undo(); call(c.after, null); };
+  }
+};
+
+/* ============================================================
+   SYNOPSIS → SCRIPT, STAGE 3 — list, ONE BATCH. ctx { after?() }
+   ------------------------------------------------------------
+   draftBatch() drafts the next BATCH_SIZE scenes at the job's cursor
+   and writes nothing; the items are those scenes (heading and first
+   lines). Accept hands the ticked sceneIds to applyBatch(), which
+   appends them to the screenplay (a revision first, on the first
+   batch only), and moves the cursor past the WHOLE batch — an unticked
+   scene is skipped exactly as a scene the reply missed. The identity
+   is the job and its cursor, so every batch is its own Desk session,
+   and a draft made at an old cursor is refused ('stale') rather than
+   written in the wrong place.
+   ============================================================ */
+function batchSlice() {
+  const job = Gen.load();
+  const batch = job.scenes.slice(job.cursor, job.cursor + Gen.BATCH_SIZE);
+  return { job, batch };
+}
+
+const elLine = (el) => {
+  const t = String(el.text || '').trim();
+  if (el.type === 'character') return t.toUpperCase();
+  if (el.type === 'paren') return '(' + t.replace(/^\(|\)$/g, '') + ')';
+  return t;
+};
+
+const genBatchTask = {
+  id: 'gen-batch',
+  label: 'Write the next scenes',
+  kind: 'list',
+  editable: false,
+  identity() {
+    try { const j = Gen.load(); return 'batch:' + (j.startedAt || '') + ':' + j.cursor; }
+    catch (e) { return 'batch'; }
+  },
+  input() {
+    const { job, batch } = batchSlice();
+    if (job.stage !== 'pages' && job.stage !== 'done') return 'Lay out the scenes first.';
+    if (!batch.length) return 'Every scene on the list is written. There is nothing left to send.';
+    const L = ['Scenes ' + (job.cursor + 1) + '–' + (job.cursor + batch.length) + ' of ' + job.scenes.length
+      + ', each with its slug line and one-line synopsis; the logline; the character names written so far; '
+      + 'and the slugs and synopses of the two scenes either side, for continuity. Nothing else.', ''];
+    batch.forEach((s, i) => {
+      L.push((job.cursor + i + 1) + '. ' + s.slug);
+      if (s.synopsis) L.push('   ' + s.synopsis);
+    });
+    return L.join('\n');
+  },
+  async run(input, { onStatus, signal, refine } = {}) {
+    await ready();
+    const prevItems = refine && refine.previous && Array.isArray(refine.previous.items) ? refine.previous.items : [];
+    const prevDraft = prevItems.length ? prevItems[0].draft : null;
+    const extra = refineWith(refine, prevDraft ? prevDraft.byScene : undefined);
+    const draft = await Gen.draftBatch({ onStatus, signal, extra });
+    if (draft.done) fail('Every scene on the list is written. There is nothing left to draft.');
+    last.set('gen-batch', { draft });
+    const items = [];
+    const missed = [];
+    for (const s of draft.batch) {
+      const els = draft.byScene[s.sceneId];
+      if (!els || !els.length) { missed.push(s.slug); continue; }
+      const body = els.filter((el) => el.type !== 'scene' && String(el.text || '').trim()).slice(0, 3).map(elLine);
+      items.push({ id: s.sceneId, draft, text: s.slug, detail: body.join(' / ') + (els.length > 4 ? ' …' : '') });
+    }
+    if (!items.length) fail('The reply held none of the scenes it was asked for, so nothing was written. Ask again.');
+    const note = [
+      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one is skipped and the run moves on past it.',
+      missed.length ? 'Not in the reply (skipped if you accept): ' + missed.join('; ') + '.' : '',
+      draft.truncated ? 'The reply was cut short at the length limit, so the last scene may stop mid-page.' : ''
+    ].filter(Boolean).join('\n');
+    return { items, note };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const chosen = (selected || []).filter(Boolean);
+    const draft = (chosen[0] && chosen[0].draft) || (last.get('gen-batch') || {}).draft;
+    if (!draft) fail('There is no batch to keep. Run it first.');
+    /* applyBatch throws GenError 'stale' with a sentence the writer can
+       act on; the Desk shows it and writes nothing. */
+    const r = Gen.applyBatch(draft, chosen.map((it) => it.id));
+    call(c.after, r.job);
+    return () => { r.undo(); call(c.after, null); };
+  }
+};
+
+/* ============================================================
+   VOICE CHECK — list. ctx { character() | character, elements?,
+                             getDoc?, after?() }
+   ------------------------------------------------------------
+   voiceCheck() reads every line one character speaks and flags the
+   ones that break the voice, every quote checked against the line.
+   The items are the suggested REWRITES; Accept adds the ticked ones
+   to their lines' alternates through coverage.js's own addTake() —
+   the line in use never changes — and Undo removes exactly those.
+   A flagged line with no rewrite is in the note.
+   ============================================================ */
+const voiceName = (c) => String(call(c.character) ?? c.character ?? '').trim();
+
+const voiceTask = {
+  id: 'voice-check',
+  label: 'Voice check',
+  kind: 'list',
+  editable: false,
+  identity(ctx) {
+    const c = resolve(ctx);
+    if (c.identity != null) return String(c.identity);
+    try { return 'voice:' + voiceName(c) + ':' + AI.scriptSignature(scriptElements(c)); } catch (e) { return 'voice:' + voiceName(c); }
+  },
+  input(ctx) {
+    const c = resolve(ctx);
+    const name = voiceName(c);
+    if (!name) return 'Pick a character first.';
+    const lines = AI.characterLines(scriptElements(c), name);
+    if (lines.length < 2) return name + ' has ' + (lines.length ? 'one line' : 'no lines') + ' — a voice needs a few lines to be established.';
+    const plan = AI.planVoiceCheck(lines);
+    return 'Every line ' + name + ' speaks — ' + plural(lines.length, 'line', 'lines') + ' with their scene numbers, '
+      + 'nothing else from the script — in ' + plural(plan.requests, 'request', 'requests') + ', roughly '
+      + plan.tokensIn.toLocaleString('en-IN') + ' tokens.\n\n'
+      + lines.slice(0, 200).map((l) => 'scene ' + l.scene + ': ' + l.text).join('\n')
+      + (lines.length > 200 ? '\n…' : '');
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const name = voiceName(c);
+    if (!name) fail('Pick a character first.');
+    const res = await AI.voiceCheck({
+      elements: scriptElements(c).map((e) => ({ ...e })), character: name,
+      context: withRefineContext(BP.blueprintContext(), refine)
+    }, { onStatus, signal });
+    const items = [];
+    const bare = [];
+    res.breaks.forEach((b, i) => {
+      if (!b.rewrite) { bare.push('Sc ' + b.scene + ': “' + b.quote + '”' + (b.why ? ' — ' + b.why : '')); return; }
+      items.push({
+        id: 'b' + i, elId: b.id, scene: b.scene, line: b.line, rewrite: b.rewrite,
+        text: b.rewrite,
+        detail: 'Sc ' + b.scene + ' · your line: “' + b.line + '”' + (b.why ? ' · ' + b.why : '')
+      });
+    });
+    const out = [];
+    if (res.voice) out.push('The voice: ' + res.voice);
+    out.push(res.breaks.length
+      ? plural(res.breaks.length, 'line', 'lines') + ' flagged of ' + plural(res.lines, 'line', 'lines') + ' read. A ticked rewrite goes into that line’s alternates, beside your line — the line in use does not change.'
+      : 'No line was flagged: every line read as ' + res.character + '.');
+    if (bare.length) out.push('Flagged without a rewrite:\n' + bare.join('\n'));
+    if (res.removed) out.push(plural(res.removed, 'quote', 'quotes') + ' removed because ' + (res.removed === 1 ? 'it was' : 'they were') + ' not in ' + res.character + '’s lines.');
+    if (res.remapped) out.push(plural(res.remapped, 'quote was', 'quotes were') + ' matched to the line ' + (res.remapped === 1 ? 'it is' : 'they are') + ' actually in.');
+    if (res.truncated) out.push('The reply was cut short.');
+    out.push('Read by ' + res.model + '.');
+    return { items, note: out.join('\n') };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const added = [];
+    let gone = 0, dup = 0;
+    for (const it of selected || []) {
+      if (!it || !it.elId || !it.rewrite) continue;
+      const r = Cov.addTake(it.elId, it.rewrite);
+      if (r === 'ok') added.push(it); else if (r === 'gone') gone++; else dup++;
+    }
+    if (!added.length) {
+      fail(gone ? 'Those lines are no longer in the script, so nothing was added.' : 'Those takes are already on their lines.');
+    }
+    call(c.after);
+    return () => {
+      for (let i = added.length - 1; i >= 0; i--) Cov.removeTake(added[i].elId, added[i].rewrite);
+      call(c.after);
+    };
   }
 };
 
@@ -749,7 +1018,8 @@ const loglineTask = {
 };
 
 /* ---- registration ------------------------------------------- */
-const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, synopsisTask, loglineTask];
+const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, synopsisTask,
+  genScenesTask, genBatchTask, voiceTask, loglineTask];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once

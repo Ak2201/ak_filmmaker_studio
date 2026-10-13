@@ -206,7 +206,7 @@ function statusBar() {
 function pendingCounts() {
   const b = billingSnapshot();
   return {
-    requests: ov.phase === 'ok' ? Number(ov.data.requests_pending) || 0 : 0,
+    requests: ov.data ? Number(ov.data.requests_pending) || 0 : 0,
     purchases: b ? Number(b.refundRequestsPending) || 0 : 0
   };
 }
@@ -312,7 +312,9 @@ function overviewTab() {
     sec.append(errorState({ title: 'The numbers could not load', why: ov.error, onRetry: () => { ov = { ...ov, phase: 'idle' }; loadOverview(); } }));
     return sec;
   }
-  if (ov.phase !== 'ok') { sec.append(skeleton({ kind: 'kpi' }), skeleton({ kind: 'block', count: 2 })); return sec; }
+  /* Stale-while-refresh: a REFRESH keeps the numbers on screen (the header says
+     Refreshing…); the skeleton is for when there is nothing to show yet. */
+  if (!ov.data) { sec.append(skeleton({ kind: 'kpi' }), skeleton({ kind: 'block', count: 2 })); return sec; }
   const d = ov.data;
   const b = billingSnapshot();
   const g = growthSnapshot();
@@ -425,8 +427,8 @@ function peopleTab(st) {
   return fill(tab('people'), [
     adminSection(block, st, { part: 'members' }),
     accessAdminSection(block, st),
-    ov.phase === 'ok' ? signedInBlock() : null,
-    ov.phase === 'ok' ? organisationsBlock() : null
+    ov.data ? signedInBlock() : null,
+    ov.data ? organisationsBlock() : null
   ]);
 }
 function requestsTab(st) {
@@ -490,12 +492,21 @@ function carryFields({ saved, focus }) {
 let drawerSynced = false;   // the hash's drawer is opened once, on the first admin render
 let st = null;   // the last studio_status(); null until asked
 let askedFor = '';
+let painted = false;      // render() got past the boot wait at least once
+let forceRender = false;  // the fallback below: draw even if cloud:booted never came
 
 async function refreshStatus() {
   const c = cloud();
-  if (!c || !c.gate || !c.getSession()) { st = null; askedFor = ''; renderSoon(); return; }
+  if (!c || !c.gate || !c.getSession()) {
+    const changed = st !== null || askedFor !== '' || ov.data;
+    st = null; askedFor = ''; ov = { phase: 'idle', data: null, accounts: [], users: [], error: '', loadedAt: 0 };   // nobody's numbers outlive their session
+    if (changed || !painted) renderSoon();
+    return;
+  }
   const who = c.getUserEmail ? c.getUserEmail() : '';
-  if (askedFor === who && st) { renderSoon(); return; }
+  /* Nothing new to say (same account, status already held, page already
+     drawn): an auth or gate echo does not repaint. */
+  if (askedFor === who && st) { if (!painted) renderSoon(); return; }
   try { st = await c.gate.status(); askedFor = who; } catch (e) { st = null; }
   renderSoon();
 }
@@ -505,7 +516,8 @@ function render() {
   /* The session is restored asynchronously. Drawing before it lands shows a
      signed-in administrator the Sign-in card, then Checking…, then the
      console — three pages in a row. Wait for the boot; it renotifies. */
-  if (c && c.isConfigured() && c.isBooted && !c.isBooted()) return;
+  if (!forceRender && c && c.isConfigured() && c.isBooted && !c.isBooted()) return;
+  painted = true;
   const signedIn = !!(c && c.getSession && c.getSession());
   const isAdmin = !!(st && st.deployed && st.role === 'admin');
   const kept = snapshotFields();
@@ -589,3 +601,6 @@ Store.subscribe('gate:changed', refreshStatus);
 Store.subscribe('cloud:booted', refreshStatus);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshStatus, 0));
 refreshStatus();
+/* If the boot never announces itself, the page must not stay blank: after 3s
+   draw with what is known (the sign-in or checking state). */
+setTimeout(() => { if (!painted) { forceRender = true; refreshStatus(); renderSoon(); } }, 3000);

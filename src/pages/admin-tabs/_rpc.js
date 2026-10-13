@@ -35,17 +35,22 @@ async function call(ctx, name, args) {
 }
 
 /** A read slot: { phase: 'idle'|'loading'|'ok'|'error', data, error, key, at }. */
-export const slot = () => ({ phase: 'idle', data: null, error: '', key: '', at: 0 });
+export const slot = () => ({ phase: 'idle', data: null, error: '', key: '', at: 0, stale: false, refreshing: false });
 
 /** Start the read when the slot is idle or its key changed. Returns the slot. */
 export function load(ctx, s, name, args, key = '') {
-  if (s.phase === 'loading') return s;
-  if (s.phase !== 'idle' && s.key === key) return s;
-  s.phase = 'loading'; s.key = key; s.error = '';
+  if (s.phase === 'loading' || s.refreshing) return s;
+  if (s.phase !== 'idle' && s.key === key && !s.stale) return s;
+  /* A refresh of the SAME read keeps its data on screen (phase stays 'ok',
+     `refreshing` is true); a new key or a first read shows the skeleton. */
+  const keep = s.stale && s.phase === 'ok' && s.data != null && s.key === key;
+  if (keep) s.refreshing = true; else s.phase = 'loading';
+  s.stale = false; s.key = key; s.error = '';
   call(ctx, name, args)
     .then((d) => { s.data = d; s.phase = 'ok'; s.at = Date.now(); })
     .catch((e) => { s.phase = 'error'; s.error = reasonOf(name, e); })
-    .finally(() => ctx.rerender());
+    .finally(() => { s.refreshing = false; ctx.rerender(); });
   return s;
 }
-export const reset = (s) => { s.phase = 'idle'; s.key = ''; };
+/** Ask again on the next load(). Data already held stays drawn until the new answer lands. */
+export const reset = (s) => { if (s.phase === 'ok' && s.data != null) s.stale = true; else { s.phase = 'idle'; s.key = ''; } };

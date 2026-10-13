@@ -79,17 +79,19 @@ async function load({ more = false } = {}) {
 export function recentState() { return R; }
 export async function loadRecent(ctx) {
   if (ctx) ctxRef = ctx;
-  if (R.phase === 'loading') return;
-  R.phase = 'loading';
+  if (R.phase === 'loading' || R.busy) return;
+  if (R.phase !== 'ok') R.phase = 'loading';
+  R.busy = true;
   try {
     const out = await callRpc(ctxRef && ctxRef.cloud, 'admin_list_audit', { p_limit: 15 });
     R.rows = Array.isArray(out && out.rows) ? out.rows : [];
     R.phase = 'ok'; R.error = ''; R.at = Date.now();
   } catch (e) { R.phase = 'error'; R.error = e.message || 'The server did not say why.'; }
+  R.busy = false;
   again();
 }
 export function ensureRecent(ctx) { if (R.phase === 'idle') loadRecent(ctx); }
-export function reloadRecent(ctx) { R.phase = 'idle'; loadRecent(ctx); }
+export function reloadRecent(ctx) { if (R.phase !== 'ok') R.phase = 'idle'; loadRecent(ctx); }
 
 /** A short line for one audit row, shared with the Overview feed. */
 export function rowTitle(r) {

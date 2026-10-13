@@ -455,6 +455,14 @@ function after(focus) {
   }
   /* The blueprint's post-production questions, answered here (src/ui/stage-guide.js). */
   mountStageGuide(document.getElementById('main'), { stage: 'post' });
+  /* Learn-in-place (src/ui/learn.js, loaded on demand so it stays out of first paint).
+     It writes nothing; an unknown topic id returns null and is filtered. */
+  import('../ui/learn.js').then((m) => {
+    const at = document.getElementById("main");
+    if (!at) return;
+    const boxes = ["camera-to-cloud","proxy","backup-321","checksum"].map((id) => m.learn(id)).filter(Boolean);
+    if (boxes.length) at.append(...boxes);
+  }).catch(() => { /* a nicety, never the page */ });
   mountShell();
   try {
     StudioUI.autoAriaLabels();

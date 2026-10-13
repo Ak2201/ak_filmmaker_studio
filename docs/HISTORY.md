@@ -2044,3 +2044,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     URL). Open: after a LIVE theme toggle without reload, `.btn` text colour
     can stay on the old theme's value (seen on deliverables.html; probably
     older than this work, not confirmed).
+
+45. **Script-to-screen lesson, Phase 6 (14 Oct 2026).** The lesson's concepts
+    as original learn content, and the start page told the truth about what was
+    built. `glossary.json` +19 terms (122 → 141): page eighths, scene number,
+    breakdown category, background actors, props, set dressing, SFX, VFX,
+    special equipment, blocking diagram, above/below the line, producer, line
+    producer, shoot day, camera to cloud, proxy, 3-2-1 backup, checksum — each
+    with a Tanglish line and an example in all four films. `learn.json` +13
+    topics as pointers, mounted where the reader meets the tool (breakdown
+    #scenes/#elements; visualize #blocking; budget #estimate; edit, appended).
+    None of the lesson's product names, prices or accuracy/speed figures is in
+    any data file: they were unverified marketing numbers. `start.html`
+    `#everything`: Auto-Tag and Breakdown lines corrected, Blocking, Scene
+    Board, Schedule Impact, Budget Versions, Cut Versions and Cloud Workflow
+    added, the AI Desk card names the three new tasks. A browser read-through
+    found real content errors, fixed before commit: a "breath in cold air" SFX
+    example (not an effect), a 3-2-1 example that showed one media type, a props
+    definition that blurred props and dressing, "above the line" tagging a
+    tension chart in prose (now `notag`), off-topic videos on five topics
+    (their `steps` pointers removed), and "sound, SFX" reading as sound effects
+    on the start page. `verify` needed one EXPECTED row, `library: '122'` (the
+    library prints the glossary's term count). Open: the four cloud learn boxes
+    sit at the foot of edit.html, away from the Cloud workflow checklist on
+    deliverables.html; `props`/`above the line` are `notag`, so they never
+    pop over in prose.

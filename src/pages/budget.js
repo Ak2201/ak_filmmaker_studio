@@ -113,6 +113,14 @@ function render() {
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
+  /* Learn-in-place (src/ui/learn.js, loaded on demand so it stays out of first paint).
+     It writes nothing; an unknown topic id returns null and is filtered. */
+  import('../ui/learn.js').then((m) => {
+    const at = document.querySelector("#estimate");
+    if (!at) return;
+    const boxes = ["atl-btl","schedule-budget","who-owns-what"].map((id) => m.learn(id)).filter(Boolean);
+    if (boxes.length) at.prepend(...boxes);
+  }).catch(() => { /* a nicety, never the page */ });
   mountShell();
   initBudget(app);
   initCosts(app);

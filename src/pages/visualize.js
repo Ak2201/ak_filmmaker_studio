@@ -907,6 +907,14 @@ function render(focus) {
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
+  /* Learn-in-place (src/ui/learn.js, loaded on demand so it stays out of first paint).
+     It writes nothing; an unknown topic id returns null and is filtered. */
+  import('../ui/learn.js').then((m) => {
+    const at = document.querySelector("#blocking > h2");
+    if (!at) return;
+    const boxes = ["blocking-diagram"].map((id) => m.learn(id)).filter(Boolean);
+    if (boxes.length) at.after(...boxes);
+  }).catch(() => { /* a nicety, never the page */ });
   mountShell();
   wireActionBar();
   // Chrome initialises at import time, when #app is still empty — the

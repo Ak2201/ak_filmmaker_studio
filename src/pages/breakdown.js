@@ -921,6 +921,13 @@ function render(focus) {
   }
   mountStageGuide(document.getElementById('main'), { stage: 'preprod' });   // the blueprint's questions for this stage
   mountShell();
+  /* Learn-in-place slots for the craft ideas this page uses (src/data/learn.json).
+     mountLearn() fills them; an unknown id leaves the slot empty. */
+  const learnSlots = (ids) => ids.map((id) => h('div.bdo-learn', { 'data-learn': id }));
+  const scenesBox = main.querySelector('#scenes');
+  if (scenesBox) scenesBox.prepend(...learnSlots(['page-eighths', 'scene-number']));
+  const elementsBox = main.querySelector('#elements .bd-sub');
+  if (elementsBox) elementsBox.after(...learnSlots(['breakdown-categories', 'props-dressing', 'sfx-vfx']));
   mountLearn(main);
   try {
     StudioUI.autoAriaLabels();

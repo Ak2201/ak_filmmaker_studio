@@ -167,9 +167,11 @@ src/
                        prompt; a native one fails test:dialogs
              idea-vault.js ← the Idea Vault (vault.html)
              activity-log.js ← Settings → Activity
-             tabs.js ← a page's sibling sections as tabs, on the twelve
+             tabs.js ← a page's sibling sections as tabs, on the eleven
                        pages it names; hash picks the tab, nothing is
                        removed from the DOM (the gate reads innerHTML)
+             section-menu.js ← the ONE navigation control (side menu,
+                       strip, phone Sections sheet); tabs.js builds on it
              mobile-nav.js ← the phone's bottom bar + Go-to / Tools sheets
              learn.js ← learn(): the topic panel, built on first open
              story-bible.js ← the Story Bible: characters, conflict, stakes, theme, world
@@ -1297,8 +1299,9 @@ add must be a variable, or you have quietly made it unskinnable.
 **Tabs, not scrolling (owner, 6 Oct 2026).** `src/ui/tabs.js` turns the
 top-level `section[id]` siblings of a page into tabs — a strip pinned under
 the shell, one section shown, the rest `hidden` — on an explicit list of
-twelve pages: settings, admin, library, study, dissect, breakdown,
-stripboard, reports, contacts, visualize, write, plan. The list is a UI
+eleven pages: settings, admin, library, breakdown, stripboard, reports,
+contacts, visualize, write, plan, budget (study and dissect are redirect
+stubs now, not tabbed pages). The list is a UI
 decision, not a derivation: the two blueprints are a reading flow with a
 step rail, the hub is the landing page the gate drives, invite.html is two
 routes meant to be read together, story.html is its editor. The hash picks
@@ -1311,6 +1314,41 @@ a MutationObserver because settings and admin replace `main` on every
 render. **A proof that targets a section inside a hidden tab reaches it by
 hash** (`admin.html#billing`), not by scrolling — three proofs were edited
 for exactly that.
+
+**ONE section menu (owner, 13 Oct 2026).** The strip tabs.js draws, Settings'
+and the console's side menus and the Library's are one control,
+`src/ui/section-menu.js`, and Story's path should be a fourth user, not a
+fourth copy. Each row is icon + sentence-case label + optional count, with
+one selected style (accent fill and a leading bar; hover is a tint, never an
+outline; nothing is underlined). Three or more tabs get the SIDE layout: at
+1100px and over `tabs.js` puts `.tabs-has-side` on the container and
+`tabs.css` makes it a grid (pad | menu | gap | panel | pad) with the page's
+header, path bar and footer spanning it; below 1100px it is the scrolling
+strip with a "Sections" button that opens the same grouped list as a
+`mobile-nav` sheet. A container that is already the page's column sets
+`--side-pad: 0px` (settings, the console, the budget's list). A section says
+what its row looks like with `data-tab-group`, `data-tab-icon`,
+`data-tab-hint`, `data-tab-badge` (and plan-gate's `data-tab-lock` draws the
+PLAN flag); module pages that were not edited are described in
+`src/data/section-icons.json` `pages` instead. THE ICON FONT IS A SUBSET
+built from `navigation.json` plus that file: an icon name used anywhere must
+be listed there or it prints as a word, and a misspelt one makes Google
+serve the whole 1.2MB face (check the size). API for a menu built from an
+explicit list (not from `section[id]`): `buildSectionMenu({groups:[{label,
+items:[{id,label,icon,badge,hint,done,locked}]}], active, ariaLabel,
+orientation, onSelect})`, `updateSectionMenu(el, groups, active)` (patches
+in place), `openSectionsSheet({groups, active, onSelect, title, returnTo})`.
+Passing `onSelect` makes the menu self-managed (`[data-sm-self]`, which
+tabs.js's delegated click/arrow-key handlers ignore). **THE `.tabs-ink`
+TRAP:** motion-app.js used to append a sliding underline to every `.tabs`,
+placed with `bottom: 0`; in a column that is under the LAST row ("ADMIN"
+underlined in the owner's screenshot). It is not created any more, and an
+indicator positioned from a strip's bottom edge must never go on a control
+that can turn vertical. Under webdriver motion-app.js is inert, so no browser
+check can see a regression there; `test:undef` can. The Library's in-tab index
+is a jump list until its panel is 62rem wide (a container query on
+`.lib-sec`), then the sticky column: measured, the cards stay >= 652px at
+1100px and the column appears (658px of cards) at about a 1350px window.
 
 **Add something to the command palette** → usually nothing. `src/ui/palette.js`
 derives its index: modules and global entries from `navigation.json`, skins

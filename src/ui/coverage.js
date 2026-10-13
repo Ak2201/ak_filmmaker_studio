@@ -48,7 +48,6 @@
    ============================================================ */
 import '../styles/coverage.css';
 import { h, delegate } from '../lib/dom.js';
-import StudioUI from './chrome.js';
 import PDF from '../lib/pdf.js';
 import { apiHost } from '../lib/ai-providers.js';
 import { ask } from './dialog.js';
@@ -62,7 +61,7 @@ let loading = null;
 
 /* View state, in memory only — none of it is the writer's work. */
 const run = { running: false, abort: null, status: '', error: '' };
-const voice = { character: '', running: false, abort: null, status: '', error: '', result: null, added: new Set() };
+const voice = { character: '' };   // the picked character; the run and its result live in the AI Desk
 let viewId = '';              // which stored report is open
 
 const SECTION_ID = 'coverage';
@@ -258,10 +257,6 @@ function paint() {
   watchVisible(fresh);
   if (sel) { const n = fresh.querySelector(sel); if (n) n.focus(); }
 }
-function setStatus(sel, text) {
-  const n = document.querySelector('#' + SECTION_ID + ' ' + sel);
-  if (n) n.textContent = text;
-}
 
 function renderSection() {
   const sec = h('section.wr-section.cv', { id: SECTION_ID, 'data-tab-label': 'Coverage', 'aria-label': 'Coverage' });
@@ -454,12 +449,8 @@ function renderReport() {
 function renderVoicePanel() {
   const panel = h('div.ai-panel.cv-voice.cv-noprint');
   panel.append(h('div.ai-head', {}, [h('h3.ai-title', { text: 'A character’s voice' }), Panelm.aiMark('AI')]));
-  /* Locked plan → the locked pill; no key → the Settings link. */
-  const kg = Panelm.keyGate('The voice check');
-  if (kg) {
-    panel.append(kg);
-    if (kg.dataset.blocking === 'true') return panel;
-  }
+  /* No key gate: the AI pill below is the way in (locked plan → the
+     Pro offer; no key → Settings), as in the reader's report above. */
   const els = liveElements();
   const cast = AIm.speakingCharacters(els);
   if (!cast.length) {
@@ -489,59 +480,28 @@ function renderVoicePanel() {
     }
   }
   const can = voice.character && lines.length >= 2;
-  panel.append(h('div.ai-acts', {}, [
-    voice.running
-      ? h('button.btn.danger', { type: 'button', 'data-action': 'cv-voice-stop', text: 'Stop' })
-      : h('button.btn.primary', { type: 'button', 'data-action': 'cv-voice-run', disabled: !can,
-        text: voice.character ? 'Check ' + voice.character + '’s voice' : 'Check the voice' }),
-    voice.result && !voice.running ? h('button.btn', { type: 'button', 'data-action': 'cv-voice-clear', text: 'Clear the result' }) : null
-  ]));
-  const st = Panelm.statusLine(voice.status);
-  if (st) panel.append(st);
-  if (voice.error) panel.append(errorText(voice.error));
-  if (voice.result) panel.append(renderVoiceResult(voice.result));
+  /* The run is the AI Desk's 'voice-check' task (src/lib/ai-tasks.js):
+     the same voiceCheck(), and its suggested rewrites become alternate
+     takes through addTake() below, only the ones the writer ticks, with
+     an Undo. Until a character with two lines is picked there is
+     nothing to send, so the button stays a disabled one. */
+  const acts = h('div.ai-acts');
+  if (can) {
+    const pill = aiPill({
+      label: 'Check ' + voice.character + '’s voice', tasks: ['voice-check'],
+      ctx: {
+        identity: 'voice:' + voice.character + ':' + AIm.scriptSignature(els),
+        character: voice.character, elements: () => liveElements(), getDoc: () => getDoc(),
+        after: () => paint()
+      }
+    });
+    if (pill) acts.append(pill);
+  } else {
+    acts.append(h('button.btn.primary', { type: 'button', disabled: true,
+      text: voice.character ? 'Check ' + voice.character + '’s voice' : 'Check the voice' }));
+  }
+  panel.append(acts);
   return panel;
-}
-
-function renderVoiceResult(res) {
-  const box = h('div.ai-result');
-  box.append(h('div.ai-result-head', {}, [
-    Panelm.aiMark('MODEL READING'),
-    h('span.ai-result-meta', { text: 'by ' + res.model + ' · ' + plural(res.lines, 'line', 'lines') + ' read · nothing changes unless you add a take'
-      + (res.truncated ? ' · the reply was cut short' : '') })
-  ]));
-  if (res.voice) box.append(h('p.ai-verdict', {}, [h('span.ai-try-label', { text: 'THE VOICE' }), h('span', { text: ' ' + res.voice })]));
-  if (res.removed || res.remapped) {
-    const t = [];
-    if (res.removed) t.push(plural(res.removed, 'quote', 'quotes') + ' removed because ' + (res.removed === 1 ? 'it was' : 'they were') + ' not in ' + res.character + '’s lines.');
-    if (res.remapped) t.push(plural(res.remapped, 'quote was', 'quotes were') + ' matched to the line ' + (res.remapped === 1 ? 'it is' : 'they are') + ' actually in.');
-    box.append(h('p.cv-removed', { role: 'note', text: t.join(' ') }));
-  }
-  if (!res.breaks.length) {
-    box.append(h('p.cv-note', { text: 'No line was flagged: every line read as ' + res.character + '.' }));
-    return box;
-  }
-  const ul = h('ul.cv-points');
-  res.breaks.forEach((b, i) => {
-    const li = h('li.cv-point');
-    li.append(h('p.cv-point-head', {}, [h('span.cv-sc', { text: 'Sc ' + b.scene })]));
-    li.append(h('blockquote.cv-quote', { text: '“' + b.quote + '”' }));
-    if (b.line !== b.quote) li.append(h('p.cv-line', {}, [h('span.ai-col-label', { text: 'THE LINE ' }), h('span', { text: b.line })]));
-    if (b.why) li.append(h('p.cv-note', { text: b.why }));
-    if (b.rewrite) {
-      const added = voice.added.has(b.id + '\u0001' + b.rewrite);
-      li.append(h('div.ai-option.cv-rewrite', {}, [
-        h('p.ai-col-label', { text: 'A SUGGESTED TAKE' }),
-        h('p.ai-speech', { text: b.rewrite }),
-        h('button.btn', { type: 'button', 'data-action': 'cv-add-take', 'data-i': String(i), disabled: added,
-          text: added ? 'Added as an alternate take' : 'Add as an alternate take' })
-      ]));
-    }
-    ul.append(li);
-  });
-  box.append(ul);
-  box.append(h('p.ai-caveat', { text: 'A suggested take goes into that line’s alternates, beside your line — the line in use does not change. Choose it later from the line’s Alternates if you want it.' }));
-  return box;
 }
 
 /* ---- the alternates path -------------------------------------
@@ -559,7 +519,7 @@ function commitRow(id, el) {
   if (ta) { el.text = ta.value; ta.dispatchEvent(new Event('input', { bubbles: true })); }
   else save();
 }
-function addTake(id, text) {
+export function addTake(id, text) {
   const d = getDoc();
   const el = d && Array.isArray(d.elements) ? d.elements.find((e) => String(e.id) === String(id)) : null;
   if (!el || el.type !== 'dialogue') return 'gone';
@@ -570,7 +530,7 @@ function addTake(id, text) {
   commitRow(id, el);
   return 'ok';
 }
-function removeTake(id, text) {
+export function removeTake(id, text) {
   const d = getDoc();
   const el = d && Array.isArray(d.elements) ? d.elements.find((e) => String(e.id) === String(id)) : null;
   if (!el) return;
@@ -599,27 +559,6 @@ async function discardPartial() {
   paint();
 }
 
-async function startVoice() {
-  if (voice.running || !AIm || !voice.character) return;
-  voice.running = true; voice.error = ''; voice.result = null; voice.status = 'Starting…';
-  voice.abort = new AbortController();
-  paint();
-  try {
-    voice.result = await AIm.voiceCheck({
-      elements: liveElements().map((e) => ({ ...e })), character: voice.character, context: BPm.blueprintContext()
-    }, {
-      signal: voice.abort.signal,
-      onStatus: (m) => { voice.status = m; setStatus('.cv-voice .ai-status', m); }
-    });
-    voice.status = plural(voice.result.breaks.length, 'line', 'lines') + ' flagged. Nothing has changed.';
-  } catch (e) {
-    voice.error = (e && e.message) || 'Something went wrong and nothing was changed.';
-    voice.status = '';
-  }
-  voice.running = false; voice.abort = null;
-  paint();
-}
-
 function printReport(docId) {
   const d = done().find((x) => x.id === docId);
   if (!d) return;
@@ -637,27 +576,8 @@ function wire() {
   delegate(document, 'change', 'select[data-action="cv-view"]', (e, sel) => { viewId = sel.value; paint(); });
   delegate(document, 'click', '[data-action="cv-print"]', (e, btn) => printReport(btn.dataset.doc));
   delegate(document, 'change', 'select[data-action="cv-voice-pick"]', (e, sel) => {
-    voice.character = sel.value; voice.result = null; voice.error = ''; voice.status = '';
+    voice.character = sel.value;
     paint();
-  });
-  delegate(document, 'click', '[data-action="cv-voice-run"]', () => { startVoice(); });
-  delegate(document, 'click', '[data-action="cv-voice-stop"]', () => { if (voice.abort) voice.abort.abort(); });
-  delegate(document, 'click', '[data-action="cv-voice-clear"]', () => {
-    voice.result = null; voice.status = ''; voice.added = new Set(); paint();
-  });
-  delegate(document, 'click', '[data-action="cv-add-take"]', (e, btn) => {
-    const b = voice.result && voice.result.breaks[Number(btn.dataset.i)];
-    if (!b || !b.rewrite) return;
-    const r = addTake(b.id, b.rewrite);
-    if (r === 'gone') { StudioUI.toast('That line is no longer in the script, so nothing was added.', { type: 'info' }); return; }
-    const tag = b.id + '\u0001' + b.rewrite;
-    voice.added.add(tag);
-    paint();
-    if (r === 'dup') { StudioUI.toast('That take is already on the line.', { type: 'info' }); return; }
-    StudioUI.toast('Added as an alternate take of the line in scene ' + b.scene + '. The line in use has not changed.', {
-      type: 'success', action: 'Undo',
-      onAction: () => { removeTake(b.id, b.rewrite); voice.added.delete(tag); paint(); }
-    });
   });
 }
 

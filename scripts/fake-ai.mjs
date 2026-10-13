@@ -159,6 +159,12 @@ export function deskAnswer({ system = '', user = '' } = {}) {
   const v = refineRound(user) + 1;
   const tag = ' (v' + v + ')';
 
+  /* Before the dialogue pass: the voice check's system prompt also
+     says "dialogue editor". */
+  if (/--- THE LINES TO CHECK/.test(user)) return voiceAnswer(user, v);
+  if (/Break this story into a scene list/.test(user)) return sceneListAnswer(user, v);
+  if (/marked WRITE THIS below/.test(user)) return scenePagesAnswer(user, v);
+
   if (/--- THE SPEECH TO WORK ON ---/.test(user) || /dialogue editor/i.test(system)) {
     const speech = speechOf(user) || 'Line one.';
     return {
@@ -209,4 +215,100 @@ export function deskAnswer({ system = '', user = '' } = {}) {
     };
   }
   return { ok: true };
+}
+
+/* ============================================================
+   SYNOPSIS → SCRIPT AND THE VOICE CHECK
+   ------------------------------------------------------------
+   The prompts src/lib/ai.js writes for draftSceneList (stage 2),
+   draftScenePages (stage 3) and voiceCheck. A refinement may ride
+   INSIDE the prompt (scriptgen.js puts it on the synopsis or the
+   logline, ahead of the beats and the scenes), so each parser keys
+   off line shapes the previous-answer JSON can never have ("· id (",
+   "--- SCENE ---\nsceneId:", "[id] scene N:"), and the voice block
+   stops at a refine block appended after it.
+
+     scene list   FAKE_SCENES.length scenes, beats taken in turn from
+                  the beats sent; every synopsis ends "(vN)".
+     pages        one entry per sceneId sent, each four elements: the
+                  heading copied, an action, a cue, a speech — the
+                  action and the speech carry the sceneId and "(vN)".
+     voice        one break per line sent: the quote is the first
+                  words of that line copied verbatim (so quoteChecker
+                  keeps it), the rewrite is the line + " (voice vN)".
+   ============================================================ */
+const beforeRefine = (user) => String(user || '').split('\n\n---\nYour previous answer')[0];
+
+export const FAKE_SCENES = [
+  { intExt: 'INT', location: 'ANBU HOUSE', dayNight: 'NIGHT', eighths: 8, cast: ['ANBU', 'AMMA'], what: 'Anbu tells Amma he is leaving' },
+  { intExt: 'EXT', location: 'BUS STAND', dayNight: 'DAY', eighths: 4, cast: ['ANBU'], what: 'Anbu waits for the first bus' },
+  { intExt: 'INT', location: 'CHENNAI MANSION', dayNight: 'NIGHT', eighths: 6, cast: ['ANBU', 'RAVI'], what: 'Ravi shows Anbu the room' },
+  { intExt: 'EXT', location: 'TEA SHOP', dayNight: 'DAY', eighths: 5, cast: ['ANBU', 'RAVI'], what: 'Anbu asks about work' }
+];
+
+/** The beat ids draftSceneList lists ("· id (label): happens"). */
+export function beatIdsOf(user) {
+  return [...String(user || '').matchAll(/^· (\S+) \(/gm)].map((m) => m[1]);
+}
+
+export function sceneListAnswer(user, v = refineRound(user) + 1) {
+  const beats = beatIdsOf(user);
+  return {
+    scenes: FAKE_SCENES.map((s, i) => ({
+      intExt: s.intExt, location: s.location, dayNight: s.dayNight,
+      synopsis: s.what + ' (v' + v + ')',
+      eighths: s.eighths,
+      beat: beats.length ? beats[i % beats.length] : '',
+      cast: s.cast.slice()
+    }))
+  };
+}
+
+/** The scenes draftScenePages sends: [{ sceneId, heading, cast }]. */
+export function batchScenesOf(user) {
+  const text = String(user || '');
+  return [...text.matchAll(/--- SCENE ---\nsceneId: ([^\n]+)\nheading: ([^\n]*)([\s\S]*?)(?=\n--- SCENE ---|\n\n|$)/g)]
+    .map((m) => {
+      const cast = (m[3].match(/\nin the scene: ([^\n]+)/) || [])[1];
+      return { sceneId: m[1].trim(), heading: m[2].trim(), cast: cast ? cast.split(',').map((c) => c.trim()).filter(Boolean) : [] };
+    });
+}
+
+/** The four elements the fake writes for one scene. */
+export function fakePagesFor(scene, v = 1) {
+  return [
+    { type: 'scene', text: scene.heading },
+    { type: 'action', text: 'Action for ' + scene.sceneId + ' (v' + v + ')' },
+    { type: 'character', text: (scene.cast && scene.cast[0]) || 'ANBU' },
+    { type: 'dialogue', text: 'Speech for ' + scene.sceneId + ' (v' + v + ')' }
+  ];
+}
+
+export function scenePagesAnswer(user, v = refineRound(user) + 1) {
+  return { scenes: batchScenesOf(user).map((s) => ({ sceneId: s.sceneId, elements: fakePagesFor(s, v) })) };
+}
+
+/** The lines the voice check sends: [{ id, scene, text }]. */
+export function voiceLinesOf(user) {
+  const text = String(user || '');
+  const at = text.indexOf('--- THE LINES TO CHECK');
+  const block = at >= 0 ? beforeRefine(text.slice(at)) : '';
+  return [...block.matchAll(/^\[([^\]\n]+)\] scene ([^:\n]+): ([^\n]*)$/gm)]
+    .map((m) => ({ id: m[1], scene: m[2].trim(), text: m[3] }));
+}
+
+/** What the fake proposes for a line at version v. */
+export function voiceRewrite(text, v = 1) { return String(text).trim() + ' (voice v' + v + ')'; }
+
+export function voiceAnswer(user, v = refineRound(user) + 1) {
+  const lines = voiceLinesOf(user);
+  return {
+    voice: 'Short, plain sentences; he never explains himself (v' + v + ')',
+    breaks: lines.map((l) => {
+      const words = l.text.trim().split(/\s+/);
+      let quote = words.slice(0, 3).join(' ');
+      if (quote.length < 4) quote = l.text.trim();
+      return { line: l.id, quote, why: 'Sounds like the writer explaining (v' + v + ')', rewrite: voiceRewrite(l.text, v) };
+    })
+  };
 }

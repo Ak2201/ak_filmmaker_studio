@@ -316,14 +316,27 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper
   await page.selectOption('select[data-action="cv-voice-pick"]', 'ANBU');
   const vdisc = await page.locator('.cv-voice .ai-disclose').textContent();
   check(tag + 'the voice disclosure names what is sent', /40 lines/.test(vdisc), vdisc);
+  /* The run is the AI Desk's 'voice-check' task: the pill opens it,
+     Run sends, the suggested rewrites are the items, Accept adds the
+     ticked ones as takes. */
+  const VPILL = '#coverage .cv-voice .ai-pill';
+  check(tag + 'the voice check is an AI pill, unlocked on Pro with a key', await page.locator(VPILL).first().evaluate((el) => el.dataset.aiState) === 'ready');
   requests.length = 0;
-  await page.click('[data-action="cv-voice-run"]');
-  await page.waitForSelector('.cv-voice .ai-result', { timeout: 15000 });
+  await openPill(page, VPILL);
+  check(tag + 'the voice pill opens the Desk on the voice check', /Voice check/.test(await deskSays(page, '.ai-desk-title')));
+  const vin = await page.locator('aside.ai-desk .ai-desk-input').inputValue();
+  check(tag + 'voice: "What goes in" names ANBU\'s 40 lines', /Every line ANBU speaks/.test(vin) && /40 lines/.test(vin), vin.slice(0, 160));
+  check(tag + 'voice: opening the Desk sent nothing', requests.length === 0, requests.length);
+  await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+  await page.waitForSelector('aside.ai-desk .ai-desk-item input[type="checkbox"]', { timeout: 15000 });
   check(tag + 'only ANBU\'s lines were sent', requests.length === 1 && !/Saapittiya/.test(requests[0].user));
-  const vrem = await page.locator('.cv-voice .cv-removed').textContent();
+  const vrem = await deskSays(page, '.ai-desk-note');
   check(tag + 'voice: the fabricated quote is counted', /1 quote removed/.test(vrem), vrem);
-  check(tag + 'voice: scene numbers are the script\'s', (await page.locator('.cv-voice .cv-sc').allTextContents()).every((t) => /^Sc (4|9|14|19|24|29|34|39)$/.test(t)));
-  await page.locator('[data-action="cv-add-take"]').first().click();
+  const vdet = await page.locator('aside.ai-desk .ai-desk-item p').allTextContents();
+  check(tag + 'voice: scene numbers are the script\'s', vdet.length >= 1 && vdet.every((t) => /^Sc (4|9|14|19|24|29|34|39) /.test(t)), vdet);
+  const vnone = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_script_v1')).elements.filter((e) => Array.isArray(e.alts)).length);
+  check(tag + 'voice: nothing is added before Accept', vnone === 0, vnone);
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
   await page.waitForTimeout(800);
   const line = await page.evaluate(() => {
     const b = JSON.parse(localStorage.getItem('fms_script_v1'));

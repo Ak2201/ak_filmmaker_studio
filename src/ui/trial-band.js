@@ -92,7 +92,34 @@ const SAY = {
   0: 'Your trial has ended.'
 };
 
+/* THE TEN-MINUTE NOTICE, FOR EYES. The polite region above speaks to a
+   screen reader; a sighted reader got a colour change and nothing else,
+   so the first they heard of the end was the wall. One toast, once per
+   page, the moment ten minutes is crossed (or on arrival inside the last
+   ten): what is left, what a plan costs, and that the work stays. It is
+   the server's clock, so it is not urgency invented to hurry anyone. A
+   toast with an action stays until answered (chrome.js), which is right
+   for something carrying the only button that matters. Memory only. */
+let warned = false;
+function warnVisibly(secs) {
+  if (warned || !(secs > 0) || secs > URGENT_SECS) return;
+  warned = true;
+  const mins = Math.max(1, Math.ceil(secs / 60));
+  const lead = (mins === 1 ? 'One minute' : mins + ' minutes') + ' left in your free trial.';
+  const say = (o) => {
+    try {
+      const ui = window.StudioUI;
+      if (!ui || !ui.toast) return;
+      ui.toast(lead + (o && o.price ? ' Plans from ' + o.price + ', one payment.' : '') + ' Everything you did stays.', {
+        type: 'info', action: 'SEE PLANS', onAction: () => { location.href = 'purchase.html'; } });
+    } catch (e) { /* no chrome: the rail still counts */ }
+  };
+  /* offerFor([]) is the cheapest plan above this one: "from" its price. */
+  PlanGate.offerFor([]).then(say, () => say(null));
+}
+
 function announce(block, secs) {
+  warnVisibly(secs);
   const say = block.querySelector('.sh-rail-trial-say');
   if (!say || lastSecs == null) return;
   for (const t of [0, 60, 600]) {   // the LOWEST threshold crossed wins

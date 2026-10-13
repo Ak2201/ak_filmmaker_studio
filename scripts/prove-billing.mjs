@@ -15,7 +15,7 @@
      (b) BUY: rzp-order is asked for the plan and period, Checkout opens,
          rzp-verify receives a GENUINE signature, the plan activates,
          the page shows the tier and its expiry, the ledger reads paid
-     (c) PAYING GRANTS ENTRY: a signed-in stranger on invite.html buys a
+     (c) PAYING GRANTS ENTRY: a signed-in stranger on purchase.html buys a
          plan and is a member — the gate opens with no code and no
          admin
      (d) a tampered signature is refused and nothing activates
@@ -254,16 +254,16 @@ try {
   F.reset(); RZP.mode = 'pay';
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });   // Ben is NOT a member
-    await page.goto(BASE + 'invite.html');
+    await page.goto(BASE + 'purchase.html');
     ok(await waitGate(page, 'closed'), 'Ben (a stranger) is outside the gate');
-    await page.waitForSelector('#buy .pl-card', { timeout: 10000 });
-    ok(true, 'invite.html offers the tiers as a way in');
+    await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    ok(true, 'purchase.html offers the tiers to a signed-in stranger who is outside the gate');
     await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
     ok(await waitGate(page, 'open'), 'after paying, the gate is OPEN with no code and no admin');
     ok(F.db.members.has(USERS['tok-ben'].id), 'Ben is a member');
     ok(F.db.accounts.some((a) => a.owner_id === USERS['tok-ben'].id && a.plan === 'starter'), 'with an organisation on Starter');
-    /* A purchase on invite.html now lands on the hub's welcome card. */
-    await page.waitForURL(/index\.html\?welcome=plan|index\.html/, { timeout: 8000 }).then(() => ok(true, 'the page sends Ben on to the studio (welcome=plan)'), () => ok(false, 'the page sends Ben on to the studio (welcome=plan)'));
+    /* Paying keeps the buyer on the purchase page, whose success card says what unlocked. */
+    await page.waitForSelector('.pl-success', { timeout: 8000 }).then(() => ok(true, 'the purchase page says what unlocked (Payment received)'), () => ok(false, 'the purchase page says what unlocked (Payment received)'));
     allErrors.push(...errors); await ctx.close();
   }
 
@@ -497,17 +497,17 @@ try {
 
     // a stranger on invite.html: the deactivated code is refused, the new one prices Pro and not Starter
     const B = await newContext(browser, { tok: 'tok-ben' });
-    await B.page.goto(BASE + 'invite.html');
-    await B.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
-    await B.page.click('#buy .pl-promo summary');
+    await B.page.goto(BASE + 'purchase.html');
+    await B.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    await B.page.click('#plan .pl-promo summary');
     await B.page.fill('#plPromoCode', 'LAUNCH10');
-    await B.page.click('#buy .pl-promo-form button[type="submit"]');
-    await B.page.waitForSelector('#buy .pl-promo-msg.is-error', { timeout: 8000 });
-    ok(/not active/.test(await B.page.textContent('#buy .pl-promo-msg')), 'invite.html: the deactivated code is refused as inactive');
+    await B.page.click('#plan .pl-promo-form button[type="submit"]');
+    await B.page.waitForSelector('#plan .pl-promo-msg.is-error', { timeout: 8000 });
+    ok(/not active/.test(await B.page.textContent('#plan .pl-promo-msg')), 'invite.html: the deactivated code is refused as inactive');
     await B.page.fill('#plPromoCode', 'FEST500');
-    await B.page.click('#buy .pl-promo-form button[type="submit"]');
-    await B.page.waitForSelector('#buy .pl-card[data-plan="pro"].has-promo', { timeout: 8000 });
-    ok(!(await B.page.$('#buy .pl-card[data-plan="starter"].has-promo')) && /FEST500 applied to Intermediate, Pro/.test(await B.page.textContent('#buy .pl-promo-msg')), 'FEST500 prices Indie and Pro and leaves Starter alone');
+    await B.page.click('#plan .pl-promo-form button[type="submit"]');
+    await B.page.waitForSelector('#plan .pl-card[data-plan="pro"].has-promo', { timeout: 8000 });
+    ok(!(await B.page.$('#plan .pl-card[data-plan="starter"].has-promo')) && /FEST500 applied to Intermediate, Pro/.test(await B.page.textContent('#plan .pl-promo-msg')), 'FEST500 prices Indie and Pro and leaves Starter alone');
     ok((await prices(B.page)).find((x) => x[0] === 'pro')[1] === '₹19,499', 'Pro reads ₹19,499 (₹500 off)');
     allErrors.push(...B.errors); await B.ctx.close();
   }
@@ -572,16 +572,16 @@ try {
     ok(/your own referral code/.test(await page.textContent('#plan .pl-promo-msg')), 'self-referral is refused with the server’s sentence');
     allErrors.push(...errors); await ctx.close();
 
-    // Ben, a stranger, buys Starter with it on invite.html
+    // Ben, a stranger, buys Starter with it on purchase.html
     const B = await newContext(browser, { tok: 'tok-ben' });
-    await B.page.goto(BASE + 'invite.html');
-    await B.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
-    await B.page.click('#buy .pl-promo summary');
+    await B.page.goto(BASE + 'purchase.html');
+    await B.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    await B.page.click('#plan .pl-promo summary');
     await B.page.fill('#plPromoCode', code.toLowerCase());
-    await B.page.click('#buy .pl-promo-form button[type="submit"]');
-    await B.page.waitForSelector('#buy .pl-card[data-plan="starter"].has-promo', { timeout: 8000 });
+    await B.page.click('#plan .pl-promo-form button[type="submit"]');
+    await B.page.waitForSelector('#plan .pl-card[data-plan="starter"].has-promo', { timeout: 8000 });
     ok((await prices(B.page)).find((x) => x[0] === 'starter')[1] === '₹2,699.10', 'a friend sees Starter at 10% off (₹2,699.10)');
-    await B.page.click('#buy .pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await B.page.click('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]');
     ok(await waitGate(B.page, 'open'), 'the friend’s purchase goes through');
     const credit = F.db.credits.find((r) => r.referrer_user_id === USERS['tok-amy'].id);
     ok(credit && credit.status === 'owed' && credit.basis_paise === 269910 && credit.amount_paise === 26991, 'activation credited Amy 10% of what Ben paid (₹269.91), owed');
@@ -641,13 +641,13 @@ try {
     allErrors.push(...A.errors); await A.ctx.close();
 
     const C = await newContext(browser, { tok: 'tok-cal' });
-    await C.page.goto(BASE + 'invite.html');
-    await C.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
-    await C.page.click('#buy .pl-promo summary');
+    await C.page.goto(BASE + 'purchase.html');
+    await C.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    await C.page.click('#plan .pl-promo summary');
     await C.page.fill('#plPromoCode', 'FESTDESK');
-    await C.page.click('#buy .pl-promo-form button[type="submit"]');
-    await C.page.waitForSelector('#buy .pl-card[data-plan="indie"].has-promo', { timeout: 8000 });
-    await C.page.click('#buy .pl-card[data-plan="indie"] [data-plan-action="buy"]');
+    await C.page.click('#plan .pl-promo-form button[type="submit"]');
+    await C.page.waitForSelector('#plan .pl-card[data-plan="indie"].has-promo', { timeout: 8000 });
+    await C.page.click('#plan .pl-card[data-plan="indie"] [data-plan-action="buy"]');
     ok(await waitGate(C.page, 'open'), 'Cal buys Indie through the affiliate code');
     allErrors.push(...C.errors); await C.ctx.close();
 
@@ -1182,9 +1182,11 @@ try {
     await N.page.goto(BASE + 'invite.html');
     await N.page.waitForSelector('[data-iv-action="start-trial"]', { timeout: 12000 }).catch(() => {});
     ok(/START MY 3 HOURS/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: START MY 3 HOURS');
-    await N.page.waitForSelector('#buy .pl-card', { timeout: 12000 }).catch(() => {});
-    const inv = await N.page.$$eval('#buy .pl-card', (c) => c.map((x) => x.dataset.plan)).catch(() => []);
-    ok(inv.length === 3 && !inv.includes('free'), 'invite.html’s cards are the three paid plans, no Free card: ' + inv.join(','));
+    ok(!(await N.page.$('.pl-card')) && !!(await N.page.$('#buy a[href="purchase.html"]')), 'invite.html draws no plan cards: it links to purchase.html, where plans are bought');
+    await N.page.goto(BASE + 'purchase.html');
+    await N.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
+    const inv = await N.page.$$eval('#plan .pl-card', (c) => c.map((x) => x.dataset.plan)).catch(() => []);
+    ok(inv.length === 3 && !inv.includes('free'), 'purchase.html’s cards are the three paid plans, no Free card: ' + inv.join(','));
     allErrors.push(...N.errors); await N.ctx.close();
 
     /* start.html: no Free tier, no Free column, and the trial card says 3 hours. */
@@ -1287,13 +1289,13 @@ try {
     ok(/Not on the Basic plan/.test(await T.page.textContent('.pg-lock').catch(() => '')), 'naming the plan');
     ok(/Included in the Intermediate plan/.test(await T.page.waitForFunction(() => /Included in the/.test((document.querySelector('.pg-lock-plan') || {}).textContent || ''), null, { timeout: 8000 }).then(() => T.page.textContent('.pg-lock-plan'), () => '')), 'and the lowest plan that has it (Intermediate)');
     ok(await locked('shoot.html'), 'Basic: shoot.html (Shoot Day) is locked');
-    ok(await unlocked('script.html'), 'Basic: script.html (Script) opens');
-    ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts & revisions) opens');
+    ok(await unlocked('screenplay.html'), 'Basic: screenplay.html (Screenplay Writer) opens');
+    ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts) opens');
     ok(await unlocked('story.html'), 'Basic: story.html (Beats & Pacing) opens');
     ok(await unlocked('reports.html'), 'Basic: reports.html opens — Screen Time is Basic');
     await T.page.waitForSelector('#cast-matrix[data-tab-lock] .pg-lock-inline', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: on reports.html the Cast Matrix section is locked in place'), () => ok(false, 'Basic: on reports.html the Cast Matrix section is locked in place'));
     ok(!(await T.page.$('#screentime[data-tab-lock]')), 'and Screen Time is not');
-    ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Script Breakdown, Scene List)');
+    ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Screenplay Analysis, Scene List)');
     await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
     ok(!(await T.page.$('#scenes[data-tab-lock]')) && !(await T.page.$('#breakdown[data-tab-lock]')), 'and the Scene List (with the cards nested in it) is not');
     await open('settings.html#drive');

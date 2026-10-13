@@ -22,6 +22,7 @@ import '../styles/budget.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { h } from '../lib/dom.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
 import { costSections, initCosts } from '../ui/budget-costs.js';
@@ -70,7 +71,7 @@ function render() {
      other pages use, rather than a budget stylesheet of its own; the
      blueprint pill finds its host by `header.bd-head` too. */
   main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Plan · what it costs' }),
+    h('p.bd-eyebrow', { text: 'Budget & People · what it costs' }),
     h('h1.bd-title', { text: 'Budget.' }),
     h('p.bd-deck', {
       text: 'A line-item estimate that reads your schedule. Days come from the '
@@ -110,6 +111,7 @@ function render() {
   body.append(estimate, ...costSections());
   main.append(body);
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   initBudget(app);

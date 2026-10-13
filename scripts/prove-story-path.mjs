@@ -95,8 +95,13 @@ await project('feature', 'Proof Feature');
 await open();
 check('feature: its own path, every step on the page', await pathIds(),
   ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
-check('feature: the stepper lists the same ten', await page.evaluate(() => [...document.querySelectorAll('.st-path-tab')].map((b) => b.getAttribute('data-path'))),
+check('feature: the stepper lists the same ten', await page.evaluate(() => [...document.querySelectorAll('.st-path-tab:not(.st-path-extra)')].map((b) => b.getAttribute('data-path'))),
   ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
+/* Beats & pacing, Pitch deck and the Cover sheet are the strip's LAST
+   steps since 12 Oct 2026 (owner): numbered on from the path, no done
+   state, so they are .st-path-extra with data-stepper-go, not data-path. */
+check('feature: …then the three extras, in order', await page.evaluate(() => [...document.querySelectorAll('.st-path-tab.st-path-extra')].map((b) => b.getAttribute('data-stepper-go'))),
+  ['pacing', 'pitch', 'guide']);
 check('feature: no tab and no Format drop-down', await page.evaluate(() => [document.querySelectorAll('[role="tab"]').length, !!document.getElementById('stFw')]), [0, false]);
 check('feature: no favourite-film picker on the page', await page.evaluate(() => document.querySelectorAll('.fav-picker, .fav-switch, .st-fav').length), 0);
 check('feature: Beats & pacing and the Pitch deck are plain sections, then the Guide', await page.evaluate(() =>

@@ -28,9 +28,10 @@ import '../lib/cloud.js';              /* sets window.StudioCloud */
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h } from '../lib/dom.js';
+import { h, commitMain } from '../lib/dom.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageList } from '../ui/plan-cards.js';
+import { listPriceBlock } from '../ui/list-prices.js';
 import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
@@ -40,6 +41,41 @@ import { timeLeft } from '../lib/trial-time.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
+
+/* A referral link (growth-panels.js referralLink) opens this page as
+   /purchase?ref=REF-XXXXXX. The code is read from the address and held in
+   memory for this visit only — nothing is stored, so it survives neither a
+   reload nor the Google round trip, which is why the signed-out line below
+   says what to do rather than promising it is remembered. `code` is accepted
+   too, for a link somebody typed by hand. Same shape the server accepts. */
+const LINK_CODE = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    const v = (q.get('ref') || q.get('code') || '').trim();
+    return /^[A-Za-z0-9_-]{3,40}$/.test(v) ? v.toUpperCase() : '';
+  } catch (e) { return ''; }
+})();
+let linkCodeApplied = false;
+
+/* Put the linked code in the "Have a code?" box and press APPLY — through
+   the box's own form, so the quote, the sentence a refused code gets and the
+   self-referral refusal are all plan-cards.js's, not copied here. Once per
+   visit, and deferred: the form's submit handler redraws this page, and doing
+   that from inside a render is a recursion. */
+function applyLinkCode() {
+  if (!LINK_CODE || linkCodeApplied) return;
+  const input = document.getElementById('plPromoCode');
+  const form = input && input.closest('form');
+  if (!input || !form || input.disabled) return;
+  linkCodeApplied = true;
+  const det = input.closest('details');
+  if (det) det.open = true;
+  input.value = LINK_CODE;
+  setTimeout(() => {
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }, 0);
+}
 
 let billing = { plans: null, st: null, error: '', missing: false, loading: false };
 
@@ -101,7 +137,14 @@ function trialLine(st) {
   return null;
 }
 
-const DECK = 'A plan sets how much you can do in the cloud — synced projects, share links, collaborators and team seats — and unlocks the Chrome extension. Work on this device is never limited.';
+/* What a plan actually does. This said "work on this device is never
+   limited", which stopped being true with the three-plan split: a plan
+   decides which STAGES open (plan-matrix.json), and the trial's end walls
+   the studio. Nothing written is ever deleted — that part was true and
+   stays. Names from planName(), never typed. */
+const DECK = 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
+  + Billing.planName('indie') + ' to prepare it, ' + Billing.planName('pro') + ' to shoot and finish it — and sets how much syncs to the cloud. '
+  + 'One payment, yours for good. Nothing you write is ever deleted, on any plan or none.';
 
 function planSection() {
   const c = cloud();
@@ -113,11 +156,18 @@ function planSection() {
     return sec;
   }
   if (!signedIn) {
-    const sec = section('plan', 'Plan', 'Sign in to see the plans.',
-      DECK + ' A plan belongs to an account, so the plans and your usage show here once you are signed in.');
+    const sec = section('plan', 'Plan', 'Sign in to buy a plan.',
+      DECK + ' A plan belongs to an account, so you sign in with Google first — you come straight back to this page.');
+    /* The prices HERE, not one page away (start.html#pricing), which
+       took a buyer off the buying path to learn the one fact they came
+       for. The link stays for the full comparison. */
+    sec.append(listPriceBlock());
+    if (LINK_CODE) {
+      sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
+    }
     sec.append(h('div.pu-actions', {}, [
       h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
-      h('a.btn', { href: 'start.html#pricing', text: 'SEE PLANS AND PRICES' })
+      h('a.btn', { href: 'start.html#pricing', text: 'COMPARE EVERY FEATURE' })
     ]));
     const x1 = planExtras(null); if (x1) sec.append(x1);
     return sec;
@@ -183,9 +233,9 @@ function render() {
   const body = h('div.pu-body');
   body.append(planSection());
   main.append(body);
-  app.replaceChildren(main);
-  mountShell();
+  if (!commitMain(app, main, mountShell)) return;
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[purchase] chrome', e); }
+  applyLinkCode();
 }
 
 document.addEventListener('click', (e) => {

@@ -94,6 +94,23 @@
   color: var(--ink-body);
 }
 
+/* The plans, on the wall: one row each, the whole row a link. */
+.pg-wall-plans { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.pg-wall-plan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s1) var(--s3);
+  padding: var(--s3);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink);
+  text-decoration: none;
+}
+.pg-wall-plan:hover, .pg-wall-plan:focus-visible { border-color: var(--brand); }
+.pg-wall-price { font-weight: 700; color: var(--accent-deep); }
+.pg-wall-blurb { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--t-small); }
+.pg-wall-once { color: var(--ink-muted); font-size: var(--t-small); }
+
 /* The page under the wall is hidden by the existing [data-plan-lock]
    rules. [data-paywall] is here so a page can tell the two apart —
    the shell uses it to drop its own sticky chrome, which otherwise

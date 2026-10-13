@@ -1,8 +1,8 @@
 /* ============================================================
    THE COMMAND PALETTE — one key for twenty-two modules
    ------------------------------------------------------------
-   The studio has 22 modules across six phases, four themes, six
-   skins, a project list, and however many scenes and contacts the
+   The studio has 22 modules across six phases, two themes, a
+   project list, and however many scenes and contacts the
    film has. The shell answers "where am I"; the launcher answers
    "what exists". Neither answers the question a person actually
    has at 2am, which is "take me to Scene 14", and the honest
@@ -13,8 +13,7 @@
    front of it, and three rules:
 
    1. IT IS DERIVED, NEVER LISTED. Modules come from
-      navigation.json, skins from skin.js reading the CSSOM,
-      themes from StudioUI.themeOrder(), projects from
+      navigation.json, themes from StudioUI.themeOrder(), projects from
       listProjects(), scenes and contacts from their own models.
       A hand-written list of what the app contains is a list that
       is wrong by the second change — the same rule that keeps the
@@ -76,7 +75,8 @@ import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId } from '../lib/store.js';
 import { switchProject } from './project-switcher.js';
-import { markLocked } from '../lib/plan-gate.js';
+import { markLocked, aiUnlocked } from '../lib/plan-gate.js';
+import { pageFile } from '../lib/page-file.js';
 import '../styles/palette.css';
 
 const MAX_ROWS = 60;
@@ -86,22 +86,53 @@ let input = null;
 let listEl = null;
 let countEl = null;
 let emptyEl = null;
+let hintEl = null;      // the one-line explanation of a prefix, shown when the field is just that character
+let recentCount = 0;    // how many of `shown` are the Recent group (empty field only)
 
 let items = [];         // the full index
 let shown = [];         // what is on screen, scored and sorted
 let active = 0;         // index into `shown`
 let closeBtn = null;    // the dialog's one other focus stop
 let opener = null;      // what to give focus back to
-let loaded = false;     // have the late models been pulled in
+let loading = false;    // a content pull is in flight
+let base = [];          // the index that needs no model: modules, settings, commands
+let late = [];          // the film's own contents, from the last pull
 let open = false;
 
-/* In memory, for this session only. See rule 2. */
+/* In memory, for this session only. See rule 2. The ENTRIES are kept,
+   not just their ids, so a row that is not in the index (a script
+   line, found by typing) can be offered again as a recent. */
 const recent = [];
-function remember(id) {
+const recentEntries = new Map();
+function remember(it) {
+  const id = it.id;
   const i = recent.indexOf(id);
   if (i >= 0) recent.splice(i, 1);
   recent.unshift(id);
-  if (recent.length > 8) recent.length = 8;
+  recentEntries.set(id, it);
+  while (recent.length > 8) recentEntries.delete(recent.pop());
+}
+
+/* ------------------------------------------------------------
+   PREFIXES
+   ------------------------------------------------------------
+   The first character can say what KIND of thing is wanted:
+     >  commands only (back up, switch theme, open Settings...)
+     #  scenes, by number (#12 finds scene 12 and 12A)
+     @  people only (crew contacts and the script's characters)
+   Nothing else about the field changes. A prefix narrows the index
+   it already has; it does not add a second one.
+   ------------------------------------------------------------ */
+const HINTS = {
+  '>': 'Commands only: back up, switch theme, open Settings, take the tour. Type to narrow.',
+  '#': 'Scenes by number: type 12 for scene 12 and 12A.',
+  '@': 'People only: crew contacts and the characters in your script.'
+};
+function parseQuery(raw) {
+  const t = String(raw || '').replace(/^\s+/, '');
+  const c = t.charAt(0);
+  if (c === '>' || c === '#' || c === '@') return { mode: c, needle: t.slice(1).trim().toLowerCase() };
+  return { mode: '', needle: t.trim().toLowerCase() };
 }
 
 /* ------------------------------------------------------------
@@ -140,17 +171,79 @@ function score(item, q) {
   return 0;
 }
 
+let scriptLines = [];
+/* A script hit opens the page AT the line: screenplay.html#line-<element id>.
+   script.js reads the hash on load and on hashchange. Already on the
+   script page, choosing the SAME hash again would fire no hashchange and
+   a different one would be a full reload for nothing, so the hash is set
+   quietly and the event dispatched, which is what fragments.js does for
+   a same-page link. */
+function lineHref(id) { return 'screenplay.html#line-' + encodeURIComponent(String(id)); }
+function goToLine(id) {
+  const href = lineHref(id);
+  if (pageFile(location.pathname) === 'screenplay.html') {
+    history.replaceState(null, '', href.slice(href.indexOf('#')));
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } else {
+    location.href = href;
+  }
+}
+/** Up to six script lines containing the query (three characters or more),
+ *  as ordinary palette entries that open the script at that line. */
+function scriptHits(needle) {
+  if (needle.length < 3 || !scriptLines.length) return [];
+  const out = [];
+  for (const l of scriptLines) {
+    const at = l.text.toLowerCase().indexOf(needle);
+    if (at < 0) continue;
+    const from = Math.max(0, at - 24);
+    out.push(entry({
+      id: 'line:' + l.id,
+      label: (from ? '…' : '') + l.text.slice(from, at + needle.length + 48).trim(),
+      sub: 'Screenplay · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
+      group: 'Screenplay',
+      hueClass: 'sh-ph-screenplay',
+      icon: '¶',
+      href: lineHref(l.id),
+      run: () => goToLine(l.id)
+    }));
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+/* "12", "12a": a scene number as a person types it. */
+const SCENE_NO = /^\d+[a-z]?$/;
+function sceneNoScore(it, needle) {
+  const no = it.sceneNo;
+  if (!no) return 0;
+  if (no === needle) return 10000;
+  if (no.startsWith(needle)) return 8000 - no.length;
+  return 0;
+}
+
 function rank(q) {
-  const needle = q.trim().toLowerCase();
+  const { mode, needle } = parseQuery(q);
   const out = [];
   for (const it of items) {
-    const s = score(it, needle);
+    if (mode === '>' && !it.cmd) continue;
+    if (mode === '#' && it.group !== 'Scenes') continue;
+    if (mode === '@' && !it.person) continue;
+    const s = mode === '#' && SCENE_NO.test(needle) ? sceneNoScore(it, needle) : score(it, needle);
     if (!s) continue;
     const bump = recent.indexOf(it.id);
     out.push({ it, s: s + (bump >= 0 ? (8 - bump) * 50 : 0) });
   }
-  out.sort((a, b) => b.s - a.s || a.it.label.localeCompare(b.it.label));
-  return out.slice(0, MAX_ROWS).map((r) => r.it);
+  /* Scenes keep their script order on a tie, so "#1" reads 1, 10, 11
+     rather than the alphabet of their sluglines. The rest sort by name. */
+  out.sort((a, b) => b.s - a.s
+    || (a.it.ord !== undefined && b.it.ord !== undefined ? a.it.ord - b.it.ord : 0)
+    || a.it.label.localeCompare(b.it.label));
+  const rows = out.slice(0, MAX_ROWS).map((r) => r.it);
+  if (mode) return rows;
+  /* Script lines come last: a module or a person named like the query is
+     a better answer than a line that happens to contain it. */
+  return rows.concat(scriptHits(needle)).slice(0, MAX_ROWS + 6);
 }
 
 /* ------------------------------------------------------------
@@ -234,35 +327,22 @@ function projectItems() {
 function settingItems() {
   const out = [];
   const UI = typeof window !== 'undefined' ? window.StudioUI : null;
-  const SK = typeof window !== 'undefined' ? window.StudioSkin : null;
 
-  /* Themes and skins are asked for, not listed. THEME_ORDER lives
-     in chrome.js and the skins are discovered from the CSSOM, so
-     a fifth theme or a seventh skin appears here by existing. */
+  /* The themes are asked for, not listed: THEME_ORDER lives in chrome.js.
+     They read Dark and Light (StudioUI.themeLabel), never the internal
+     ids. There is no "Design" row: one skin ships, so it is not a choice. */
   if (UI && UI.themeOrder) {
-    const LABEL = { paper: 'Paper', sepia: 'Sepia', ink: 'Ink', desk: 'Desk' };
     for (const t of UI.themeOrder()) {
+      const name = (UI.themeLabel && UI.themeLabel(t)) || t;
       out.push(entry({
         id: 'theme:' + t,
-        label: 'Theme: ' + (LABEL[t] || t),
-        sub: 'Change the palette',
+        label: 'Theme: ' + name,
+        sub: 'Switch the whole studio to ' + String(name).toLowerCase(),
         group: 'Appearance',
-        icon: '◐',
-        keywords: ['theme', 'colour', 'color', 'dark', 'light', 'mode'],
+        icon: t === 'ink' ? '☾' : '☀',
+        cmd: true,
+        keywords: ['theme', 'colour', 'color', 'dark', 'light', 'mode', 'appearance', 'switch'],
         run: () => UI.applyTheme(t)
-      }));
-    }
-  }
-  if (SK && SK.listSkins) {
-    for (const s of SK.listSkins()) {
-      out.push(entry({
-        id: 'skin:' + s.id,
-        label: 'Design: ' + s.label,
-        sub: 'Change the shapes and the type',
-        group: 'Appearance',
-        icon: '◇',
-        keywords: ['skin', 'design', 'look', 'style', 'shape', 'font'],
-        run: () => SK.applySkin(s.id)
       }));
     }
   }
@@ -272,6 +352,7 @@ function settingItems() {
     sub: 'Everything this desk answers to',
     group: 'Help',
     icon: '⌨',
+    cmd: true,
     keywords: ['keys', 'help', 'bindings', '?'],
     run: () => UI && UI.openShortcutSheet && UI.openShortcutSheet()
   }));
@@ -281,6 +362,7 @@ function settingItems() {
     sub: 'Uses the print stylesheet, not the screen one',
     group: 'Help',
     icon: '⎙',
+    cmd: true,
     keywords: ['print', 'pdf', 'paper', 'export'],
     run: () => window.print()
   }));
@@ -290,21 +372,89 @@ function settingItems() {
     sub: 'Same as g g',
     group: 'Help',
     icon: '↑',
+    cmd: true,
     keywords: ['scroll', 'top', 'start', 'beginning'],
     run: () => window.scrollTo({ top: 0, behavior: 'smooth' })
   }));
   return out;
 }
 
+/* Press a data-action the page already answers. The Backup menu in the
+   band (topbar-backup.js) owns export and import and listens for
+   `data-action` clicks on the document, so the palette asks it the same
+   way a menu item does rather than importing the backup code (CORE stays
+   light). Where that menu is not on the page, say where Backup lives
+   instead of doing nothing. */
+function pressAction(action, fallbackHref) {
+  if (!document.querySelector('[data-tb-backup]')) { if (fallbackHref) location.href = fallbackHref; return; }
+  const b = h('button', { type: 'button', 'data-action': action, hidden: true });
+  document.body.append(b);
+  b.click();
+  b.remove();
+}
+
+/* Commands: things that DO something, listed under `>`. Navigation to a
+   place is not a command, so Settings is here only because the person
+   typing "settings" after `>` means it. Nothing here writes at the moment
+   the palette opens; each row acts only when chosen. */
+function commandItems() {
+  const out = [];
+  const c = (o) => out.push(entry({ group: 'Commands', cmd: true, ...o }));
+  c({
+    id: 'cmd:export', label: 'Export a backup', sub: 'Every project, as one .json file', icon: '⇩',
+    keywords: ['backup', 'download', 'save', 'json', 'export everything'],
+    run: () => pressAction('bk-export', 'settings.html#backup')
+  });
+  c({
+    id: 'cmd:import', label: 'Import a backup', sub: 'Restore from a .json backup file', icon: '⇧',
+    keywords: ['backup', 'restore', 'upload', 'json'],
+    run: () => pressAction('bk-import', 'settings.html#backup')
+  });
+  c({
+    id: 'cmd:overview', label: 'Studio overview (PDF)', sub: 'The studio overview as a paginated A4 document', icon: '⎙',
+    keywords: ['backup', 'pdf', 'overview', 'print', 'export'],
+    run: () => pressAction('bk-overview', 'settings.html#backup')
+  });
+  c({
+    id: 'cmd:drive', label: 'Google Drive backup', sub: 'Connect Drive, back up now, restore an earlier version', icon: '☁',
+    keywords: ['backup', 'drive', 'google', 'sync', 'cloud'],
+    href: 'settings.html#backup'
+  });
+  c({
+    id: 'cmd:settings', label: 'Open Settings', sub: 'Account, data and backup, appearance', icon: '⚙',
+    keywords: ['preferences', 'options', 'account', 'configure'],
+    href: 'settings.html'
+  });
+  c({
+    id: 'cmd:newproject', label: 'New project', sub: 'Start another film', icon: '+',
+    keywords: ['film', 'create', 'start', 'feature', 'short'],
+    href: 'index.html'
+  });
+  c({
+    id: 'cmd:tour', label: 'Take the tour', sub: 'A short walk through the studio', icon: '➜',
+    keywords: ['help', 'guide', 'walkthrough', 'start', 'learn'],
+    run: () => import('./tour.js').then((m) => m.startTour()).catch((e) => console.warn('[palette] tour', e))
+  });
+  return out;
+}
+
 /* The late half: the film's own contents. Imported on first open
    so none of this is in any page's first paint. */
+/* Pulled on EVERY open, not once: buildIndex() starts from the static
+   half each time, and a film that gained a scene since the last open
+   should find it. The previous pull stays in `late` meanwhile, so rows
+   do not blink out while the new one loads. */
 async function loadContent() {
-  if (loaded) return;
-  loaded = true;
+  if (loading) return;
+  loading = true;
+  try { await pullContent(); } finally { loading = false; }
+}
+
+async function pullContent() {
   const add = [];
   try {
     const { listScenes } = await import('../lib/scenes.js');
-    for (const sc of listScenes()) {
+    listScenes().forEach((sc, ord) => {
       const head = [sc.intExt, sc.location, sc.dayNight].filter(Boolean).join('. ');
       add.push(entry({
         id: 'scene:' + sc.id,
@@ -314,9 +464,11 @@ async function loadContent() {
         hueClass: 'hue-shorts',
         icon: '▦',
         href: 'breakdown.html#scene-' + sc.id,
+        sceneNo: String(sc.number || '').trim().toLowerCase(),   // `#12` matches on this
+        ord,
         keywords: ['scene', 'breakdown', sc.location || '', sc.synopsis || '']
       }));
-    }
+    });
   } catch (e) { /* the model is not in this build */ }
   try {
     const { listContacts } = await import('../lib/contacts.js');
@@ -326,22 +478,106 @@ async function loadContent() {
         id: 'contact:' + c.id,
         label: c.name,
         sub: [c.role, c.department].filter(Boolean).join(' · ') || 'Crew',
-        group: 'Contacts',
+        group: 'People',
         hueClass: 'hue-shoot',
         icon: '☏',
+        person: true,   // `@` lists these
         href: 'contacts.html#c-' + c.id,
         keywords: ['crew', 'cast', 'contact', c.role || '', c.department || '']
       }));
     }
   } catch (e) { /* ditto */ }
-  if (add.length) {
-    items = items.concat(add);
-    if (open) render(input.value);
-  }
+  try {
+    /* Cast: the script's characters, stored or only named by a cue, as
+       characters.js reads them. `@` lists these beside the crew. */
+    const Chars = await import('../lib/characters.js');
+    const { loadScript: readScript } = await import('../lib/script.js');
+    const doc = readScript();
+    const els = doc && Array.isArray(doc.elements) ? doc.elements : [];
+    for (const c of Chars.mergeWithCues(Chars.loadCharacters(), els)) {
+      if (!c.name) continue;
+      add.push(entry({
+        id: 'char:' + c.id,
+        label: c.name,
+        sub: 'Character' + (c.cues ? ' · ' + c.cues + (c.cues === 1 ? ' cue' : ' cues') : ''),
+        group: 'People',
+        hueClass: 'hue-shoot',
+        icon: '☺',
+        person: true,
+        href: 'breakdown.html#script',
+        keywords: ['character', 'cast', 'role'].concat(c.aliases || [])
+      }));
+    }
+  } catch (e) { /* no characters in this build or studio */ }
+  try {
+    const { locationIndex } = await import('../lib/locations.js');
+    for (const row of locationIndex()) {
+      add.push(entry({
+        id: 'place:' + row.key,
+        label: row.name,
+        sub: row.scenes.length + (row.scenes.length === 1 ? ' scene' : ' scenes'),
+        group: 'Places',
+        hueClass: 'hue-plan',
+        icon: '⌖',
+        href: 'plan.html#locations',
+        keywords: ['location', 'place', 'recce', 'set']
+      }));
+    }
+  } catch (e) { /* ditto */ }
+  try {
+    /* Script text is searched on demand (scriptHits), never indexed: a
+       feature is thousands of lines and most queries are not about them. */
+    const { loadScript } = await import('../lib/script.js');
+    const doc = loadScript();
+    scriptLines = (doc && Array.isArray(doc.elements) ? doc.elements : [])
+      .filter((e) => e && e.text && /^(action|dialogue|scene|heading|parenthetical)$/.test(String(e.type)))
+      .map((e, i) => ({ id: e.id, text: String(e.text), type: e.type, i }));
+  } catch (e) { /* no script */ }
+  late = add;
+  items = base.concat(late);
+  if (open && input) render(input.value);
+}
+
+/* AI, through the same pill flow. Every AI pill on THIS page is
+   offered by its own label (which already ends "· Pro" when the plan
+   has no AI), and choosing one clicks that pill — so the lock, the Pro
+   offer, the no-key step and the Desk are the pill's, never a second
+   copy here. Plus one row for the key's one place, Settings. Read off
+   the DOM at open; nothing is stored. */
+function aiItems() {
+  const out = [];
+  const locked = !aiUnlocked();
+  const seen = new Set();
+  document.querySelectorAll('button.ai-pill').forEach((pill) => {
+    if (root && root.contains(pill)) return;
+    const label = (pill.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!label || seen.has(label)) return;
+    seen.add(label);
+    out.push(entry({
+      id: 'ai:' + label,
+      label: 'AI: ' + label,
+      sub: locked ? 'AI tools come with Pro' : 'Opens the AI Desk',
+      group: 'AI',
+      icon: '✦',
+      keywords: ['ai', 'assistant', 'model', 'desk'],
+      run: () => { if (pill.isConnected) pill.click(); }
+    }));
+  });
+  out.push(entry({
+    id: 'ai:settings',
+    label: 'AI key' + (locked ? ' · Pro' : ''),
+    sub: locked ? 'AI tools come with Pro' : 'Add, replace or forget your AI key in Settings',
+    group: 'AI',
+    icon: '✦',
+    keywords: ['ai', 'key', 'api', 'anthropic', 'gemini', 'settings'],
+    href: 'settings.html#ai'
+  }));
+  return out;
 }
 
 function buildIndex() {
-  items = [].concat(navItems(), projectItems(), settingItems());
+  base = [].concat(navItems(), projectItems(), settingItems(), commandItems(), aiItems());
+  items = base.concat(late);
 }
 
 /* ------------------------------------------------------------
@@ -373,30 +609,61 @@ function rowFor(it, i) {
   return li;
 }
 
+function sepRow(text) {
+  return h('li.pal-sep', { role: 'presentation', text });
+}
+
 function render(q) {
+  const { mode, needle } = parseQuery(q);
   shown = rank(q || '');
+  /* An empty field starts with what was chosen this session. They come
+     first under their own label and are not repeated below. */
+  recentCount = 0;
+  if (!mode && !needle) {
+    const back = recent.map((id) => recentEntries.get(id)).filter(Boolean);
+    if (back.length) {
+      const ids = new Set(back.map((r) => r.id));
+      shown = back.concat(shown.filter((it) => !ids.has(it.id)));
+      recentCount = back.length;
+    }
+  }
   if (active >= shown.length) active = Math.max(0, shown.length - 1);
   listEl.textContent = '';
-  shown.forEach((it, i) => listEl.append(rowFor(it, i)));
+  shown.forEach((it, i) => {
+    if (recentCount && i === 0) listEl.append(sepRow('Recent'));
+    if (recentCount && i === recentCount && i < shown.length) listEl.append(sepRow('Everything'));
+    listEl.append(rowFor(it, i));
+  });
   markLocked(listEl);   // PLAN flag on a module the plan does not include
+  /* The hint shows while the field is JUST the prefix; once a word follows,
+     the person has understood it and the row is only in the way. */
+  const lone = !needle && mode && String(q).trim() === mode;
+  hintEl.hidden = !lone;
+  hintEl.textContent = lone ? HINTS[mode] : '';
+  if (lone) input.setAttribute('aria-describedby', 'palHint'); else input.removeAttribute('aria-describedby');
   const n = shown.length;
   emptyEl.hidden = n > 0;
   if (!n) {
-    emptyEl.textContent = q
-      ? 'Nothing matches “' + q.trim() + '”. Try a module, a scene number or a name.'
-      : 'Nothing to show.';
+    emptyEl.textContent = !needle && !mode ? 'Nothing to show.'
+      : mode === '>' ? 'No command matches “' + needle + '”. Clear the > to search everything.'
+      : mode === '#' ? 'No scene numbered “' + needle + '”.'
+      : mode === '@' ? 'Nobody named “' + needle + '” in your contacts or script.'
+      : 'Nothing matches “' + q.trim() + '”. Try a module, a scene number or a name.';
   }
   /* Announced as a whole phrase, not a bare number: "17" on its own
      is not an answer to anything. Polite and atomic, and focus does
      not move — the reader stays in the field they are typing in. */
   countEl.textContent = n
     ? n + (n === 1 ? ' result' : ' results') + (q.trim() ? ' for ' + q.trim() : '')
+      + (recentCount ? ', ' + recentCount + ' recent' : '')
     : 'No results';
   paintActive();
 }
 
 function paintActive() {
-  const rows = listEl.children;
+  /* Only the options: the Recent / Everything labels are rows of the
+     list element too, and are not part of the selection. */
+  const rows = listEl.querySelectorAll('.pal-row');
   for (let i = 0; i < rows.length; i++) {
     rows[i].setAttribute('aria-selected', String(i === active));
     rows[i].classList.toggle('is-active', i === active);
@@ -419,7 +686,7 @@ function move(delta) {
 function choose(i) {
   const it = shown[i];
   if (!it) return;
-  remember(it.id);
+  remember(it);
   closePalette();
   /* The action runs AFTER the overlay is gone. A run() that opens
      the shortcut sheet would otherwise put a second dialog behind a
@@ -449,7 +716,7 @@ function build() {
     autocomplete: 'off',
     autocapitalize: 'off',
     spellcheck: 'false',
-    placeholder: 'Go to a module, a scene, a person, a setting…',
+    placeholder: 'Search scenes, people, places, tools, settings, screenplay lines…',
     'aria-expanded': 'false',   // openPalette/closePalette keep it true only while open
     /* The list is filtered as you type rather than completing the
        value in the field, which is "list" and not "both" or
@@ -477,6 +744,8 @@ function build() {
   field.append(closeBtn);
   box.append(field);
 
+  hintEl = h('p#palHint.pal-hint', { hidden: true });
+  box.append(hintEl);
   listEl = h('ul#palList.pal-list', { role: 'listbox', 'aria-label': 'Results' });
   box.append(listEl);
   emptyEl = h('p.pal-empty', { hidden: true });
@@ -484,7 +753,8 @@ function build() {
 
   const foot = h('div.pal-foot');
   foot.append(h('span', { text: '↑↓ move' }), h('span', { text: '↵ open' }),
-              h('span', { text: 'esc close' }));
+              h('span', { text: 'esc close' }),
+              h('span.pal-foot-keys', { text: '> commands  # scene  @ people' }));
   box.append(foot);
 
   countEl = h('p.pal-count.visually-hidden', { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
@@ -542,19 +812,20 @@ function onKey(e) {
   }
 }
 
-export function openPalette() {
+export function openPalette(seed = '') {
   build();
-  if (open) { input.select(); return; }
+  if (open) { if (seed) { input.value = seed; active = 0; render(seed); } else input.select(); return; }
   open = true;
   opener = document.activeElement;
   buildIndex();
   root.hidden = false;
   input.setAttribute('aria-expanded', 'true');
   document.body.classList.add('pal-open');
-  input.value = '';
+  input.value = seed || '';
   active = 0;
-  render('');
+  render(input.value);
   input.focus();
+  if (seed) { try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* ignore */ } }
   loadContent();
 }
 

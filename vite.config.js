@@ -505,7 +505,7 @@ export default defineConfig({
         contacts:   resolve(__dirname, 'contacts.html'),
         visualize:  resolve(__dirname, 'visualize.html'),
         write:      resolve(__dirname, 'write.html'),
-        script:     resolve(__dirname, 'script.html'),
+        screenplay: resolve(__dirname, 'screenplay.html'),
         plan:       resolve(__dirname, 'plan.html'),
         // Redirect stubs since 6 Oct 2026: the case studies and the
         // dissection are tabs of library.html. src/pages/moved.js keeps
@@ -520,6 +520,8 @@ export default defineConfig({
         edit:         resolve(__dirname, 'edit.html'),
         deliverables: resolve(__dirname, 'deliverables.html'),
         story:      resolve(__dirname, 'story.html'),
+        // Pre-production: the path from a script to a shoot day, one step at a time.
+        preprod:    resolve(__dirname, 'preprod.html'),
         drafts:     resolve(__dirname, 'drafts.html'),
         screening:  resolve(__dirname, 'screening.html'),
         // The doorway to the cloud: where a closed gate sends a sign-in.

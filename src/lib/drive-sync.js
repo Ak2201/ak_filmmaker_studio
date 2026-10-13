@@ -348,6 +348,48 @@ async function _doPull(opts) {
 }
 export function pull(opts) { return queue(() => _doPull(opts)); }
 
+/**
+ * READ the backup a restore would apply, without applying it — the
+ * restore preview's source (settings.js). Same download as _doPull
+ * (the head, or `opts.revisionId`), same "is it ours" test, and then it
+ * STOPS: nothing is written to storage, the revision and syncedAt in
+ * `fms_drive_sync_v1` are untouched, and the status line is not moved,
+ * so a peek can never make this device look level with a remote it has
+ * not restored. Queued like push and pull so it cannot interleave with
+ * a transfer.
+ *
+ * Resolves { ok:true, all, modifiedTime, revisionId } with the parsed
+ * file (the caller summarises it: backup.js summariseBackup), or
+ * { ok:false, reason, message } — never rejects, because the preview is
+ * advisory and a failure to read must not block the confirmation path
+ * from saying so.
+ */
+async function _doPreview(opts) {
+  opts = opts || {};
+  if (!isConnected()) return { ok: false, reason: 'not-connected', message: 'Drive is not connected.' };
+  const st = readState();
+  try {
+    const remote = await Drive.readMeta(st.fileId);
+    const text = opts.revisionId
+      ? await Drive.downloadRevision(st.fileId, opts.revisionId)
+      : await Drive.downloadBackup(st.fileId);
+    let all;
+    try { all = JSON.parse(text); }
+    catch (e) { return { ok: false, reason: 'unreadable', message: 'That file in Drive is not valid JSON.' }; }
+    if (!backupShape(all).looksOurs) {
+      return { ok: false, reason: 'not-a-backup', message: 'That file in Drive is not a Studio backup. Nothing was changed.' };
+    }
+    return {
+      ok: true, all,
+      modifiedTime: (remote && remote.modifiedTime) || null,
+      revisionId: opts.revisionId || (remote && remote.headRevisionId) || null
+    };
+  } catch (e) {
+    return { ok: false, reason: 'error', message: errText(e) };
+  }
+}
+export function previewRemote(opts) { return queue(() => _doPreview(opts)); }
+
 /* THE HOUR, in one sentence, said the same way everywhere it comes up:
    the Drive panel on settings.html prints it up front, and every path
    here that ends in "the token is gone" prints it instead of Google's
@@ -726,12 +768,12 @@ global.StudioDrive = {
   DRIVE_STATE_KEY, DRIVE_STATES,
   onDriveStatus, getDriveStatus, isConnected, ownsSync,
   connect, disconnect, deleteBackupFile, push, pull, reconcile, resolveConflict,
-  listVersions, restoreVersion, readState, localClock
+  listVersions, restoreVersion, previewRemote, readState, localClock
 };
 
 export default {
   DRIVE_STATE_KEY, DRIVE_STATES, HOUR_NOTE,
   onDriveStatus, getDriveStatus, isConnected, ownsSync,
   connect, disconnect, deleteBackupFile, push, pull, reconcile, resolveConflict,
-  listVersions, restoreVersion, readState, localClock
+  listVersions, restoreVersion, previewRemote, readState, localClock
 };

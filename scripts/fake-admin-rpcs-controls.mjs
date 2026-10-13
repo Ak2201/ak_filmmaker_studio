@@ -205,13 +205,7 @@ try {
     await tab.getByRole('button', { name: 'EXPORT AS JSON' }).click();
     const d = await dl;
     ok(!!d && /studio-export-ben-example-com/.test(d.suggestedFilename()), 'export downloads a JSON file named for the person: ' + (d && d.suggestedFilename()));
-    await tab.getByRole('button', { name: /ERASE THIS PERSON/ }).click(); await settle(page, 400);
-    const confirmBtn = page.locator('.dlg-overlay').getByRole('button', { name: 'Erase this person', exact: true });
-    ok(await confirmBtn.isDisabled(), 'erase is disabled until the e-mail is typed');
-    await page.locator('.dlg-field').fill('ben@example.com');
-    await confirmBtn.click(); await settle(page, 800);
-    ok(W.deleted.length === 1, 'admin_delete_user called once');
-    await dlg(page, 'OK').catch(() => {});
+    ok(await tab.getByRole('button', { name: /ERASE/ }).count() === 0, 'Data tools has no erase button: erasing a person is People → Delete totally');
     ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors[0] : ''));
     await ctx.close();
   }

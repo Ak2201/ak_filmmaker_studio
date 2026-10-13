@@ -45,7 +45,8 @@ import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
 import { mountProjectSwitcher } from './project-switcher.js';
-import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry } from '../lib/navmodel.js';
+import { mountBackupMenu } from './topbar-backup.js';
+import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry, stagePageEntry } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked } from '../lib/plan-gate.js';
@@ -217,7 +218,7 @@ function blueprintPart() {
 /* A retired page kept behind ?stay=1 (navmodel STAY_PAGES): named by
    the declared label, under its stage if it has one. Null elsewhere. */
 function stayLocation(hash) {
-  const e = stayEntry(CURRENT, location.search);
+  const e = stayEntry(CURRENT, location.search) || stagePageEntry(CURRENT);
   if (!e) return null;
   const frag = (hash || '').replace(/^#/, '');
   const phase = e.stage ? phases().find((p) => p.id === e.stage) || null : null;
@@ -387,7 +388,16 @@ function renderCrumb(crumb, loc) {
       }));
     }
 
-    if (here) {
+    /* "Studio › Story › Story" said the same word twice: the stage button and
+       then the page, whose label is the stage's own. The page segment is
+       dropped when it only repeats the stage (owner, 12 Oct 2026); the
+       stage button then carries the current page. */
+    const repeatsStage = !!(here && loc.phase && !isGlobalMode()
+      && String(here.label || '').trim().toLowerCase() === String(loc.phase.label || '').trim().toLowerCase());
+    if (here && repeatsStage) {
+      crumb.querySelector('.sh-where-phase')?.setAttribute('aria-current', 'page');
+      if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
+    } else if (here) {
       crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
       crumb.append(crumbStep('span', '.sh-where-here', here, here.label, {
         'aria-current': 'page'
@@ -664,17 +674,28 @@ function buildBar(active) {
       return /mac/i.test(navigator.platform || navigator.userAgent || '');
     } catch (e) { return false; }
   })();
-  const find = h('button.sh-find', {
-    type: 'button',
-    'data-action': 'palette-open',
-    'aria-label': 'Search the studio',
-    'aria-keyshortcuts': 'Meta+K Control+K',
-    title: 'Search the studio  (' + (mac ? '⌘K' : 'Ctrl K') + ')'
+  /* A REAL FIELD (owner, 12 Oct 2026: "a real search box in the top bar").
+     It is a launcher with a field's shape: a click or the first printable
+     key opens the results panel (the palette) carrying what was typed, so
+     the one index, ranking and keyboard handling stay in one place.
+     Deliberately NOT opened on focus: the palette gives focus back to its
+     opener on close, and a field that opens on focus would reopen it. */
+  const kbd = mac ? '⌘K' : 'Ctrl K';
+  const findInput = h('input.sh-find-input', {
+    type: 'text', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off',
+    placeholder: 'Search the studio', 'aria-label': 'Search the studio',
+    'aria-haspopup': 'dialog', 'aria-keyshortcuts': 'Meta+K Control+K'
   });
-  find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }),
-              h('span.sh-find-label', { text: 'Search', 'aria-hidden': 'true' }),
-              h('kbd.sh-find-key', { text: mac ? '⌘K' : 'Ctrl K', 'aria-hidden': 'true' }));
-  if (!isGlobalMode()) bar.append(find);
+  const find = h('div.sh-find', { 'data-action': 'palette-open', title: 'Search the studio  (' + kbd + ')' });
+  find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }), findInput,
+              h('kbd.sh-find-key', { text: kbd, 'aria-hidden': 'true' }));
+  findInput.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'Enter') { e.preventDefault(); openPalette(); }
+    else if (e.key.length === 1) { e.preventDefault(); openPalette(e.key); }
+  });
+  findInput.addEventListener('input', () => { const v = findInput.value; findInput.value = ''; if (v) openPalette(v); });
+  bar.append(find);
   bar.dataset.mode = GLOBAL_MODE;
   return bar;
 }
@@ -751,17 +772,59 @@ function adoptPageTools(bar) {
    here and both files are in the same `studio` chunk, so by the time
    a page calls mountShell() the global exists. */
 function buildStudioTools(bar) {
-  let tools = bar.querySelector(':scope > .sh-tools');
+  /* ONE ZONE ON EVERY PAGE (owner, 12 Oct 2026): project switcher ·
+     Backup · theme · your name, in that order, at the right edge. On the
+     four pages that build a `.toolbar` the zone lives INSIDE it, as its
+     last child, so the existing band layout (the grid column, the
+     stacked second row, the phone row) carries it with no second set of
+     rules; on the rest it is a direct child of the band. */
+  const host = bar.querySelector(':scope > .toolbar') || bar;
+  let tools = bar.querySelector('.sh-tools');
   if (!tools) {
-    tools = h('div.sh-tools', { role: 'group', 'aria-label': 'Account and appearance' });
-    bar.append(tools);
+    tools = h('div.sh-tools', { role: 'group', 'aria-label': 'Project, backup, theme and account' });
+    host.append(tools);
+  }
+  const doorway = CURRENT === 'invite.html';   // the doorway keeps Sign in only
+  if (!doorway) {
+    try { mountProjectSwitcher(tools); } catch (e) { /* a control is not a reason to lose the band */ }
+    try { mountBackupMenu(tools); } catch (e) { /* ditto */ }
   }
   const ui = (typeof window !== 'undefined' && window.StudioUI) || null;
   if (ui) {
-    try { if (ui.mountAppearanceMenu) ui.mountAppearanceMenu(tools); } catch (e) { /* a menu is not a reason to lose the band */ }
+    try { if (ui.mountAppearanceMenu) ui.mountAppearanceMenu(tools); } catch (e) { /* ditto */ }
     try { if (ui.attachSignInPill) ui.attachSignInPill(tools); } catch (e) { /* ditto */ }
   }
+  gatherTools(bar, tools);
+  /* Pages mount their own pill and theme button after this runs (the
+     chrome auto-init, each page's re-init), into a toolbar. They are
+     moved in as they arrive, and the order is re-stated each time. */
+  try {
+    new MutationObserver(() => gatherTools(bar, tools)).observe(bar, { childList: true, subtree: true });
+  } catch (e) { /* no MutationObserver: the first gather is what there is */ }
   return tools;
+}
+
+/* Pull the four controls into the zone, in their order. Moving a node
+   that is already in place is skipped, so this is safe to call from a
+   MutationObserver (the move it makes is the only change it causes,
+   and the second run finds nothing to move). */
+const ZONE_ORDER = ['.ps-btn', '[data-tb-backup]', '[data-theme-toggle]', '#signInPill'];
+function gatherTools(bar, tools) {
+  let moved = false;
+  for (const sel of ZONE_ORDER) {
+    const el = document.querySelector(sel);
+    if (el && el.parentElement !== tools) { tools.append(el); moved = true; }
+  }
+  if (!moved) {
+    // Already gathered: only re-order if something is out of order.
+    const have = ZONE_ORDER.map((sel) => tools.querySelector(sel)).filter(Boolean);
+    const now = [...tools.children].filter((c) => have.includes(c));
+    if (have.every((c, i) => now[i] === c)) return;
+  }
+  for (const sel of ZONE_ORDER) {
+    const el = tools.querySelector(sel);
+    if (el) tools.append(el);
+  }
 }
 
 /* ---- keeping the statement true ----------------------------
@@ -1080,9 +1143,14 @@ function layoutBand(bar) {
      overflows leftwards, over the stages, which neither the scroll
      width nor the right edge can see. */
   const crumb = bar.querySelector('.sh-where');
+  /* With no stage strip (the global pages) the anchor IS the crumb, so
+     "the crumb ends before the anchor starts" can never hold and the band
+     was stacked on every one of them. There the question is whether the
+     crumb ends before the zone starts. */
+  const hasStages = !!bar.querySelector('.sh-phases');
   const c = crumb ? crumb.getBoundingClientRect() : { right: a.left };
   const fits = t.top < a.bottom && t.height <= ctl * 1.5
-    && t.right <= b.right + 1 && t.left >= a.right - 1 && c.right <= a.left + 1
+    && t.right <= b.right + 1 && t.left >= a.right - 1 && c.right <= (hasStages ? a.left : t.left) + 1
     && bar.scrollWidth <= bar.clientWidth + 1
     /* the grid squeezes the stages' column before anything else, and
        the pills then spill out of it rather than shrink */
@@ -1550,9 +1618,8 @@ export function mountShell() {
      controls into their toolbar themselves (chrome.js autoInit and
      each page's re-init), and a second pill would be a second
      #signInPill. */
-  if (!adoptPageTools(bar) && !bar.querySelector(':scope > .toolbar')) buildStudioTools(bar);
-
-  if (!isGlobalMode()) mountProjectSwitcher(bar);   // global pages are not about one film
+  adoptPageTools(bar);
+  buildStudioTools(bar);
   crumbEl = bar.querySelector('#studioWhere');
   document.body.classList.add('has-sh-shell');
   document.documentElement.setAttribute('data-shell-mode', GLOBAL_MODE);

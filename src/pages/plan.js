@@ -38,11 +38,16 @@ import '../styles/plan.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS, MEDIA_KINDS } from '../lib/locations.js';
 import Geo from '../lib/recce-geo.js';
+import Shoot from '../lib/shootday.js';
+import Contacts from '../lib/contacts.js';
+import DPR from '../lib/dpr.js';
+import { recceLight } from '../lib/recce-light.js';
 import { askDanger } from '../ui/dialog.js';
 
 const app = document.getElementById('app');
@@ -83,7 +88,7 @@ function renderHeader(scenes, days, locs, media) {
   const dated = days.filter((d) => d.date).length;
   return h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Plan · dates, places, references' }),
-    h('h1.bd-title', { text: 'Calendar & Locations.' }),
+    h('h1.bd-title', { text: 'Shoot Calendar & Locations.' }),
     h('p.bd-deck', {
       text: 'The schedule already exists — the stripboard made it. This page puts '
           + 'real dates on those shoot days, keeps a recce record for every place '
@@ -110,7 +115,7 @@ const stat = (value, label) =>
 function renderEmpty() {
   return h('div.bd-empty', {}, [
     h('div.bd-empty-mark', { text: '▦', 'aria-hidden': 'true' }),
-    h('h2', { text: 'A calendar needs a schedule first' }),
+    h('h2', { text: 'The Shoot Calendar needs a schedule first' }),
     h('p', {
       text: 'This page does not hold a schedule of its own. A shoot day is a number '
           + 'on a scene, and a location is the place typed on a scene — so both arrive '
@@ -150,7 +155,7 @@ const how = (n, title, body) =>
 function renderCalendar(scenes) {
   const wrap = h('section#calendar.pl-cal');
   wrap.append(
-    h('h2.bd-h2', { text: 'Shooting calendar' }),
+    h('h2.bd-h2', { text: 'Shoot Calendar' }),
     h('p.bd-sub', {
       text: 'One card per shoot day, in order, straight off the board. The date is '
           + 'the only thing this page saves — the scenes, the pages and the cast on '
@@ -382,6 +387,8 @@ function renderLocation(loc) {
       : h('span.pl-none-inline', { text: 'Not on the board yet.' })
   ]));
 
+  card.append(renderLight(loc));
+
   const grid = h('div.pl-recce');
   grid.append(
     labelled('Address', textField('address', loc.recce.address, 'Where the van goes — a pin, a landmark, a street')),
@@ -415,6 +422,85 @@ function renderLocation(loc) {
     })))
   ]));
   return card;
+}
+
+/* ---- the light on a recce card ---------------------------------
+   Sunrise, sunset and golden hour for each of this location's shoot
+   days that has a date, at THIS location's own map pin — and a warning
+   when a day's planned wrap falls after sunset while an exterior
+   daylight scene is still to shoot here (src/lib/recce-light.js, pure).
+   A location with no pin gets no times and no guess: the pin field is
+   a few rows down. The wrap is the one somebody wrote on the day's call
+   sheet or its DPR (the same two the call sheet and the shoot day
+   read); none typed, no warning. Derived on render, stored nowhere. */
+function lightFor(loc) {
+  const all = Scenes.listScenes();
+  const dates = Locations.listDayDates();
+  let sheets = [];
+  try { sheets = Contacts.listCallSheets(); } catch (e) { sheets = []; }
+  const byDay = new Map();
+  loc.scenes.forEach((s) => {
+    const d = Locations.shootDayOf(s);
+    if (!d) return;
+    if (!byDay.has(d)) byDay.set(d, []);
+    byDay.get(d).push(s);
+  });
+  const days = [...byDay.entries()].map(([day, scenes]) => ({ day, date: dates[String(day)] || '', scenes }));
+  const wrapOf = (day) => {
+    const sheet = Shoot.sheetsForDay(day, sheets, all)[0];
+    return DPR.laterWrap(sheet && sheet.wrap, DPR.getDPR(day).wrap);
+  };
+  return { out: recceLight({ recce: loc.recce, days, wrapOf }), days };
+}
+
+function renderLight(loc) {
+  const wrap = h('div.pl-light');
+  const { out, days } = lightFor(loc);
+  if (!days.length) return wrap;
+  const anyDate = days.some((d) => d.date);
+  if (!out.pinned) {
+    if (anyDate) wrap.append(h('p.pl-light-note', { text: 'Add a map pin below to see sunrise and sunset on this location’s shoot days.' }));
+    return wrap;
+  }
+  if (!out.rows.length) {
+    wrap.append(h('p.pl-light-note', { text: 'Give this location’s shoot days a date above, and its sunrise and sunset appear here.' }));
+    return wrap;
+  }
+  wrap.append(h('span.pl-rowlab', { text: 'Daylight' }));
+  const list = h('ul.pl-light-list');
+  out.rows.forEach((r) => {
+    const parts = ['Sunrise ' + (r.light.sunrise || '—'), 'Sunset ' + (r.light.sunset || '—')];
+    if (r.light.goldenPm) parts.push('Golden hour ' + r.light.goldenPm);
+    const li = h('li.pl-light-row', { 'data-light-day': String(r.day) }, [
+      h('strong', { text: 'Day ' + r.day + ' · ' + weekdayOf(r.date).slice(0, 3) + ' ' + prettyDate(r.date) }),
+      h('span.pl-light-times', { text: parts.join(' · ') + ' (' + r.light.zone + ')' })
+    ]);
+    if (r.flag) {
+      li.append(h('p.pl-light-flag', {
+        role: 'note',
+        text: 'Day ' + r.day + ' is planned to wrap at ' + r.flag.wrap + ', after sunset (' + r.flag.sunset + '). '
+          + (r.flag.scenes.length === 1 ? 'Exterior scene ' : 'Exterior scenes ') + r.flag.scenes.join(', ')
+          + ' here need' + (r.flag.scenes.length === 1 ? 's' : '') + ' daylight; place '
+          + (r.flag.scenes.length === 1 ? 'it' : 'them') + ' early in the day or move the wrap.'
+      }));
+    }
+    list.append(li);
+  });
+  wrap.append(list);
+  return wrap;
+}
+
+/* Repaint every card's light block in place: a date or a pin changed
+   somewhere else on the page, and rebuilding the cards would take the
+   caret out of whatever field is being typed in. */
+function patchLight() {
+  const scenes = Scenes.listScenes();
+  const index = new Map(Locations.locationIndex(scenes).map((l) => [l.key, l]));
+  document.querySelectorAll('.pl-loc[data-loc]').forEach((card) => {
+    const loc = index.get(card.dataset.loc);
+    const old = card.querySelector('.pl-light');
+    if (loc && old) old.replaceWith(renderLight(loc));
+  });
 }
 
 function labelled(label, control) {
@@ -480,7 +566,7 @@ function renderOrphanRecces(orphans) {
 function renderMedia(scenes, media) {
   const wrap = h('section#media.pl-media-sec');
   wrap.append(
-    h('h2.bd-h2', { text: 'Reference material' }),
+    h('h2.bd-h2', { text: 'Reference Media' }),
     h('p.bd-sub', {
       text: 'Recce photographs, a lookbook, a location video, the sound reference — '
           + 'wherever they already live, listed in one place and attached to the day '
@@ -622,6 +708,7 @@ function render() {
     renderMedia(scenes, media)
   );
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   // Chrome initialises at import time, when #app is still empty — the
@@ -688,6 +775,7 @@ function commitDate(el, leaving) {
   if (current && (current.date || '') === value) return;
   Locations.setDayDate(day, value);
   patchCalendarDates();
+  patchLight();
 }
 
 function patchCalendarDates() {
@@ -720,6 +808,7 @@ delegate(document, 'click', '[data-action="day-clear"]', (e, el) => {
   if (!day) return;
   Locations.setDayDate(day, '');
   refreshCalendar();
+  patchLight();
 });
 
 delegate(document, 'change', '[data-recce-field]', (e, el) => {
@@ -747,7 +836,7 @@ delegate(document, 'change', '[data-recce-geo]', (e, el) => {
   const name = locNameOf(el);
   if (!name) return;
   const text = el.value.trim();
-  if (!text) { Locations.setRecce(name, { lat: '', lng: '' }); el.removeAttribute('aria-invalid'); return; }
+  if (!text) { Locations.setRecce(name, { lat: '', lng: '' }); el.removeAttribute('aria-invalid'); patchLight(); return; }
   const at = Geo.parseLatLng(text);
   if (!at) {
     el.setAttribute('aria-invalid', 'true');
@@ -759,6 +848,7 @@ delegate(document, 'change', '[data-recce-geo]', (e, el) => {
   el.removeAttribute('aria-invalid'); el.removeAttribute('title');
   Locations.setRecce(name, { lat: String(at.lat), lng: String(at.lng) });
   el.value = at.lat + ', ' + at.lng;
+  patchLight();
 });
 
 saveOnInput('[data-recce-field]', (el) => {

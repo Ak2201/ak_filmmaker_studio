@@ -396,6 +396,12 @@ export function freshDb() {
                    that has not run §32: billing_status() then carries
                    no key at all. */
                 purchase_required: true },
+    /* A features map laid OVER whatever billing_status() computes,
+       and the answer effective_features() gives while it is set. Null
+       (the default) = no override and no effective_features() answer
+       (the client then keeps billing_status()'s map, as it does
+       against a database without §45). Set by aiScenario(). */
+    featureOverrides: null,
     emailGrants: new Map(),   // section 32: email -> grant row
     credits: [],
     // section 27: refunds, customer requests, the switch (off by default), and what the fake Razorpay was asked
@@ -426,6 +432,13 @@ function rpc(name, args, user, route) {
     catch (e) { return pgErr(route, e.code || 'XX000', e.message || 'error', e.status || 400); }
   }
   switch (name) {
+    case 'effective_features': {
+      if (!user || !F.db.featureOverrides) return json(route, 200, []);
+      let st = null;
+      rpc('billing_status', {}, user, { fulfill: (o) => { st = JSON.parse(o.body); } });
+      F.db.calls.pop();
+      return json(route, 200, (st && st.features) || {});
+    }
     case 'billing_status': {
       if (!user) return pgErr(route, '42501', 'Sign in first');
       const pl = userPlan(user.id);
@@ -440,6 +453,10 @@ function rpc(name, args, user, route) {
       if (tOn && t && t.scope === 'full') feat = (F.db.plans.find((p) => p.id === (F.db.settings.trial_plan || 'indie')) || {}).features || {};
       const gOn = grantedNow(user.id);
       if (!purchasesRequired() || gOn) feat = openFeatures();
+      /* The per-scenario features map (aiScenario() below). Null — the
+         default — changes nothing, so every proof written before it
+         reads exactly what it always read. */
+      if (F.db.featureOverrides) feat = { ...feat, ...F.db.featureOverrides };
       return json(route, 200, {
         ...('purchase_required' in F.db.settings ? { purchase_required: purchasesRequired() } : {}),
         plan: pl, plan_name: (F.db.plans.find((p) => p.id === pl) || {}).name, limits: lim,
@@ -1060,6 +1077,40 @@ export async function handle(route) {
   }
   if (url.pathname.startsWith('/auth/v1/user')) return user ? json(route, 200, { id: user.id, email: user.email, aud: 'authenticated' }) : json(route, 401, {});
   return json(route, 200, {});
+}
+
+/* ---- the AI scenarios (src/lib/plan-gate.js aiUnlocked()) ----------
+   AI pills unlock only for a KNOWN plan whose features do not say
+   ai_tools: false. One call puts the fake in the state a proof wants:
+
+     aiScenario('pro', tok)        tok's own account on Pro, a member,
+                                   features { ai_tools: true }
+     aiScenario('no-ai', tok)      tok's own account on Basic, a member,
+                                   features { ai_tools: false }
+     aiScenario('signed-out')      nothing to set up: the proof seeds no
+                                   session, and plan-gate never asks
+
+   Call it after F.reset(). Returns the token to seed with sessionFor()
+   (null for signed-out). `features` merges extra keys over the map. */
+export function aiScenario(kind, tok = 'tok-amy', { features = {} } = {}) {
+  if (kind === 'signed-out') { F.db.featureOverrides = null; return null; }
+  const u = USERS[tok];
+  if (!u) throw new Error('aiScenario: unknown user ' + tok);
+  const plan = kind === 'pro' ? 'pro' : kind === 'no-ai' ? 'starter' : null;
+  if (!plan) throw new Error('aiScenario: unknown scenario ' + kind);
+  const cur = F.db.members.get(u.id);
+  F.db.members.set(u.id, { ...(cur || {}), role: (cur && cur.role) || 'user', disabled_at: null });
+  applyPlan(accountForBuyer(u.id), plan);
+  const ai = kind === 'pro';
+  /* The rows as src/data/plan-matrix.json sells them: ai_tools on Pro
+     only among the paid plans. offerFor(['ai_tools']) reads these rows,
+     so a row left unset (missing = allowed) would name a cheaper plan. */
+  for (const row of F.db.plans) {
+    if (row.id === 'free') continue;
+    row.features = { ...(row.features || {}), ai_tools: row.id === 'pro' };
+  }
+  F.db.featureOverrides = { ai_tools: ai, ...features };
+  return tok;
 }
 
 export function sessionFor(tok) {

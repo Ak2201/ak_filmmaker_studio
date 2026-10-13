@@ -7,6 +7,7 @@ the sections that exist so far. Neither section has been run live.
 | --- | --- | --- | --- |
 | §40 | `schema-40-admin-audit.sql` | §1–§39 | `admin_audit`, `admin_audit_write()`, `admin_list_audit()`, and nineteen admin writers restated with an audit call |
 | §42 | `schema-42-customer-360.sql` | **§40** | `admin_notes`, `admin_add_note()`, `admin_list_notes()`, `admin_customer()` |
+| §47 | `schema-47-delete-anonymise.sql` | **§45** | `admin_delete_user()` restated: the retained invoices lose the buyer's name, e-mail and GSTIN (People → Delete totally) |
 
 (§41, health and launch, is another lane. §42 does not depend on it.)
 

@@ -31,6 +31,7 @@ import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
@@ -112,8 +113,8 @@ function renderHeader(scenes) {
   const eighths = totalEighths(scenes);
   const night = totalEighths(scenes.filter((s) => s.dayNight === 'NIGHT'));
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Reports · from your scenes' }),
-    h('h1.bd-title', { text: 'Reports & Sides.' }),
+    h('p.bd-eyebrow', { text: 'Production Reports · from your scenes' }),
+    h('h1.bd-title', { text: 'Production Reports.' }),
     h('p.bd-deck', {
       text: 'Every number on this page is counted from the scene breakdown the '
           + 'moment you open it. Change a scene there and the reports change here '
@@ -135,7 +136,7 @@ const stat = (value, label) =>
 function renderEmpty() {
   return h('div.bd-empty', {}, [
     h('div.bd-empty-mark', { text: '▤', 'aria-hidden': 'true' }),
-    h('h2', { text: 'Reports need scenes' }),
+    h('h2', { text: 'Production Reports need scenes' }),
     h('p', {
       text: 'A report is arithmetic on the breakdown — it cannot invent what has '
           + 'not been typed. Add the scenes once and every number on this page, '
@@ -1201,6 +1202,7 @@ function render() {
   main.append(renderScreenTime(scenes, numbers), renderCastMatrix(scenes, numbers));
   main.append(renderOneLiner(scenes), renderDPR(scenes), renderKit(scenes));
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   wireActionBar();

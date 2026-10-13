@@ -30,7 +30,6 @@
    ============================================================ */
 import Store from '../lib/store.js';   /* FIRST — invariant 6. */
 import Billing from '../lib/billing.js';
-import { planCards } from '../ui/plan-cards.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -42,7 +41,8 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h } from '../lib/dom.js';
+import { h, commitMain } from '../lib/dom.js';
+import { listPriceBlock } from '../ui/list-prices.js';
 import { trialLength } from '../lib/trial-time.js';
 /* §33's trial_offer(): ANON-callable, one narrow public fact (is the
    trial on, and how long is it). The signed-out half of this page needs
@@ -258,17 +258,17 @@ function render() {
       t.append(legalLine('By continuing you agree to the '));
       body.append(t);
     }
-    /* start.html links to invite.html#buy. A plan is bought by an
-       account, so signed out the cards' way in is signing in. */
-    /* Signed out, the prices are on start.html: fetching the plan rows
-       here would pull the Supabase SDK into this page's first paint,
-       which the budget forbids (CLAUDE.md, "lazy chunks"). */
+    /* Plans are bought on purchase.html only. Signed out, the prices are
+       on start.html and the buy screen is purchase.html, which asks for the
+       sign-in itself. */
     {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'One payment, access for good — no trial first if you already know you want it. Sign in with Google, then choose a plan.');
+        'One payment, access for good — no trial first if you already know you want it.');
+      /* The prices on this page (src/ui/list-prices.js), not a link away. */
+      buy.append(listPriceBlock());
       buy.append(h('div.iv-actions', {}, [
-        h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
-        h('a.btn', { href: 'start.html#pricing', text: 'SEE PLANS AND PRICES' })
+        h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
+        h('a.btn', { href: 'start.html#pricing', text: 'COMPARE EVERY FEATURE' })
       ]));
       body.append(buy);
     }
@@ -288,8 +288,12 @@ function render() {
     const used = lastStatus.trial_used === true;
     const sec = section('through', used ? 'Your trial' : 'The studio', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
       'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for good.');
+    /* The same prices and the same button a new signup gets: this branch
+       used to offer one bare SEE PLANS, one hop more than a stranger.
+       Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
+    sec.append(listPriceBlock());
     sec.append(h('div.iv-actions', {}, [
-      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS' }),
+      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
     ]));
     body.append(sec);
@@ -348,33 +352,29 @@ function render() {
     if (trialOffer) {
       const len = trialLength(trialOffer.minutes);
       const t = section('trial', 'Free trial', 'Start your free trial.',
-        'Open the Dragon sample — a complete Tamil feature, with its script, its breakdown, its schedule and its call sheets — and read it from the inside, for ' + len + '. No card, nothing to fill in.');
+        'Open the Dragon and The Dark Knight samples — two whole films, each with its script, its breakdown, its schedule and its call sheets — and read them from the inside, for ' + len + '. No card, nothing to fill in.');
       t.append(h('div.iv-actions', {}, [
         h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
       ]));
       t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
       body.append(t);
     }
-    /* PAYING GRANTS ENTRY (schema section 16). With a trial on offer
-       this is the alternative; without one it is the whole page. */
-    if (plans) {
+    /* PAYING GRANTS ENTRY (schema section 16). The plans themselves are
+       NOT drawn here any more (owner, 12 Oct 2026: "all purchases only in
+       the Purchase space"). purchase.html is exempt from the site gate, so
+       a signed-in person who is not through yet can reach it, and the one
+       buy screen is the one place prices, promo codes, checkout and
+       upgrade credits live. */
+    {
       const buy = trialOffer
         ? section('buy', 'Or', 'Buy a plan and come straight in.',
             'One payment, access for good — and the only thing that keeps the studio open once a trial has run out.')
         : section('buy', used ? 'Your trial' : 'Plans', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
             'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. One payment, access for good.');
-      /* The status, not null (§33): planCards() disables BUY and says
-         why for a DISABLED account, and with null it could not know —
-         a disabled visitor pressed BUY, waited for Checkout, and was
-         refused by rzp-order. */
-      buy.append(planCards(plans, lastStatus, {
-        onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { onStatus, code }),
-        /* Paying grants entry, so the gate has already flipped and this
-           block is about to disappear: the hub's welcome card (read from
-           ?welcome=plan, then removed) says what unlocked. */
-        onSuccess: () => { location.href = 'index.html?welcome=plan'; },
-        rerender: render
-      }));
+      buy.append(listPriceBlock());
+      buy.append(h('div.iv-actions', {}, [
+        h('a.btn' + (trialOffer ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS AND BUY' })
+      ]));
       body.append(buy);
     }
     const code = inviteSection(section, st);
@@ -413,9 +413,7 @@ function render() {
   }
 
   main.append(body);
-  app.replaceChildren(main);
-  restoreTyped(typed);
-  mountShell();
+  if (!commitMain(app, main, () => { restoreTyped(typed); mountShell(); })) return;
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -446,19 +444,20 @@ async function retryGate(btn) {
   render();
 }
 
-/* ?plan= and #buy must survive the Google hop, which returns to the hub
-   and so loses both. Stashed (sessionStorage) when a sign-in button is
-   pressed, restored below once this page is drawn again. */
+/* A plan chosen on start.html (signed out) is stashed there under this key
+   (start.js writes it) and has to survive the Google hop, which returns to the
+   hub and so loses ?plan=. Plans are bought on purchase.html only, so once
+   this page knows there is a session it forwards the buyer there with the plan
+   named — plan-cards.js marks that card. The stash is spent when it is used. */
 const PLAN_KEY = 'fms_invite_plan';
-document.addEventListener('click', (e) => {
-  const b = e.target.closest && e.target.closest('[data-auth-action="google"]');
-  if (!b) return;
-  let plan = '';
-  try { plan = new URLSearchParams(location.search).get('plan') || ''; } catch (err) { plan = ''; }
-  const buy = !!b.closest('#buy') || location.hash === '#buy' || !!plan;
-  if (!buy) return;
-  try { sessionStorage.setItem(PLAN_KEY, JSON.stringify({ plan: /^[\w-]{1,32}$/.test(plan) ? plan : '', buy: true })); } catch (err) { /* ignore */ }
-}, true);
+function forwardPlan() {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(PLAN_KEY) || 'null');
+    if (!v || !v.buy || !(cloud() && cloud().getSession && cloud().getSession())) return;
+    sessionStorage.removeItem(PLAN_KEY);
+    location.replace('purchase.html' + (v.plan && /^[\w-]{1,32}$/.test(v.plan) ? '?plan=' + encodeURIComponent(v.plan) : ''));
+  } catch (e) { /* the page still offers SEE PLANS AND BUY */ }
+}
 
 /* TWO STEPS, AND THE SECOND IS NOT OPTIONAL. start_trial() inserts the
    studio_members row, which is what the SITE gate reads — so until the
@@ -559,7 +558,8 @@ adoptLinkCode();
 /* Everything this page shows arrives later than the first paint —
    the session, then the gate's answer a round trip after it — so it
    redraws on each, from the one source. */
-let plans = null;
+/* true once billing_status() has been read for this session */
+let statusRead = false;
 /* §30. { minutes } when this account may start a trial, else null.
    Null covers four different "no" answers — section 30 has not run, the
    owner switched trials off, this account has had one, this account has
@@ -586,23 +586,11 @@ if (!(cloud() && cloud().getSession && cloud().getSession())) {
 async function loadPlans() {
   const c = cloud();
   if (!c || !c.isConfigured() || !c.getSession()) return;
-  /* BOTH IN FLIGHT, ONE RENDER. These were sequential for an hour and
-     it was a real bug, not just a slow page: every render() replaces
-     `main`, so a reader who has started typing their note into the
-     request form loses it when the second round trip lands. Awaiting
-     the status AFTER the plans doubled the window in which that
-     happens, and prove:gate caught it as an intermittent "the note and
-     the browser that asked" — the row arrived with the right e-mail
-     and name, attested by auth, and an empty note.
-
-     Parallel restores the single round trip. The note is ALSO preserved
-     across a render now (below), because the window can never be zero:
-     this page redraws on every gate event by design. */
-  const [pl, st] = await Promise.all([
-    Billing.listPlans().catch(() => null),   // section 16 not run: no cards
-    Billing.status().catch(() => null)
-  ]);
-  plans = pl;
+  /* One round trip, one render: every render() replaces `main`, so a reader
+     typing a note into the request form would lose it on a second one. */
+  const st = await Billing.status().catch(() => null);
+  statusRead = true;
+  forwardPlan();
   readTrialOffer(st);
   render();
 }
@@ -648,32 +636,7 @@ function readTrialOffer(st) {
 }
 wireGateUI(render);
 wireRequestUI(render);
-/* ?plan=<id> from a landing-page button: bring the buy section into view. */
-function wantsBuy() {
-  try {
-    if (new URLSearchParams(location.search).get('plan') || location.hash === '#buy') return true;
-    const v = JSON.parse(sessionStorage.getItem(PLAN_KEY) || 'null');
-    return !!(v && v.buy);
-  } catch (e) { return false; }
-}
-if (wantsBuy()) {
-  /* The buy section draws once the plans (or, signed out, the page) have
-     rendered; look for it until it is there, then scroll once. The stash
-     is spent only when signed in: signed out, the visitor has not yet
-     been through Google. */
-  let tries = 0;
-  const seek = () => {
-    const b = document.getElementById('buy');
-    if (b) {
-      b.scrollIntoView({ block: 'start' });
-      if (cloud() && cloud().getSession && cloud().getSession()) { try { sessionStorage.removeItem(PLAN_KEY); } catch (e) { /* ignore */ } }
-      return;
-    }
-    if (++tries < 40) setTimeout(seek, 300);
-  };
-  setTimeout(seek, 600);
-}
-Store.subscribe('gate:changed', () => { if (!plans) loadPlans(); });
+Store.subscribe('gate:changed', () => { if (!statusRead) loadPlans(); });
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(loadPlans, 0));
 loadPlans();
 refreshReturn();

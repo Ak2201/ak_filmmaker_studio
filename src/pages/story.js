@@ -8,9 +8,9 @@
 
      feature  Idea · Logline · Story Bible · Scene order · Step outline ·
               Setups & payoffs · Timeline · Synopsis & treatment ·
-              Lock the outline · To the Screenplay
+              Lock the outline · Open the Screenplay Writer
      short    Seed · Logline · Character · World · Conflict · Scene order ·
-              Step outline · Synopsis · Lock the outline · To the Screenplay
+              Step outline · Synopsis · Lock the outline · Open the Screenplay Writer
 
    so a short film never meets the feature's road with steps missing.
    Beats & Pacing and the Pitch deck follow as ordinary sections, then
@@ -38,7 +38,7 @@
    WHAT THE PAGE HOLDS IN MEMORY AND NOTHING ELSE: the lit path step,
    whether the synopsis is being edited or tagged, which beat card is
    lit, the one-level Undo of a synopsis build, the last send to the
-   Screenplay, AI suggestions not yet added, and the AI job in flight.
+   Screenplay. (AI suggestions and jobs live in the AI Desk, also in memory.)
    None of that is a fact about the film, and `verify` asserts zero idle
    localStorage writes.
 
@@ -75,6 +75,7 @@ import Pitch from '../lib/pitch-deck.js';
 import IO from '../lib/story-io.js';
 import { renderHeat as kitHeat, renderFlags as kitFlags, importSynopsis } from '../ui/story-kit.js';
 import { renderLoglineWorkshop } from '../ui/logline-workshop.js';   // AI logline check + variants
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import { learn } from '../ui/learn.js';
 import { onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-film.js';
 import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/story-bible.js';
@@ -101,10 +102,6 @@ let started = false;      // the start cards were answered this visit
 let undoBuild = null;     // one level: the synopsis before the last build
 let lastSend = null;      // the scene ids the last send created
 let focusStep = '';       // an outline step whose field takes focus next
-let AI = null, Panelm = null, aiJob = null, aiStatus = '', aiError = '';
-let sugg = {};            // beat key → [suggested text]
-let suggJob = null;       // { key, ctrl, status } — one at a time
-let suggFail = null;      // { key, error } — shown on that beat until the next try
 
 /* The story as the page sees it: the framework in force is the writer's
    choice once made, else the format's suggestion — never a toolbar
@@ -192,7 +189,8 @@ function currentStep(s) {
 function renderStepper(s, cur) {
   const nav = h('nav.st-path', { 'aria-label': 'Story path' });
   const ol = h('ol.st-path-list');
-  for (const p of progress(s)) {
+  const rows = progress(s);
+  for (const p of rows) {
     const on = !extra && p.id === cur;
     const b = h('button.st-path-tab' + (on ? '.is-on' : '') + (p.done ? '.is-done' : ''), {
       /* data-step is the step's STABLE NUMBER (story-paths.json `n`): the
@@ -206,12 +204,24 @@ function renderStepper(s, cur) {
     ]);
     ol.append(h('li', {}, [b]));
   }
+  /* Beats & pacing, Pitch deck and the Cover sheet are the LAST STEPS of the
+     strip now, numbered on from the path (they were a second "Then" row that
+     repeated the menu — owner, 12 Oct 2026). They have no done-state of their
+     own, so they say "Open". */
+  EXTRAS.forEach((x, i) => {
+    const on = extra === x.id;
+    ol.append(h('li', {}, [h('button.st-path-tab.st-path-extra' + (on ? '.is-on' : ''), {
+      type: 'button', 'data-stepper-go': x.id, 'aria-current': on ? 'step' : null
+    }, [
+      h('span.st-path-n', { text: String(rows.length + i + 1) }),
+      h('span.st-path-label', { text: x.label }),
+      h('span.st-path-state', { text: 'Open' })
+    ])]));
+  });
   nav.append(ol);
-  nav.append(h('p.st-path-count', { text: 'Step ' + (pathNow().findIndex((p) => p.id === cur) + 1) + ' of ' + pathNow().length }));
-  nav.append(h('div.st-extras', {}, [h('span.st-extras-k', { text: 'Then' }),
-    ...EXTRAS.map((x) => h('button.st-extra' + (extra === x.id ? '.is-on' : ''), {
-      type: 'button', 'data-stepper-go': x.id, 'aria-current': extra === x.id ? 'step' : null
-    }, [h('span.st-path-label', { text: x.label })]))]));
+  const at = extra ? rows.length + EXTRAS.findIndex((x) => x.id === extra) + 1
+    : pathNow().findIndex((p) => p.id === cur) + 1;
+  nav.append(h('p.st-path-count', { text: 'Step ' + at + ' of ' + (rows.length + EXTRAS.length) }));
   return nav;
 }
 
@@ -238,7 +248,7 @@ function refreshStepper() {
 wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
-  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + pathNow().length }),
+  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + (pathNow().length + EXTRAS.length) }),
   h('h2.bd-h2', { text: title }),
   lead ? h('p.bd-sub', { text: lead }) : null,
   learnBox(LEARN_TOPIC[id])
@@ -399,7 +409,7 @@ function renderLogline(s) {
   const bpl = bpLogline();
   if (!s.logline.trim() && bpl) sec.append(offerBlueprint('logline', 'Feature blueprint, step 02', bpl));
   put(sec, exampleBox('logline'),
-    renderLoglineWorkshop(s, { AI, Panelm, getStory: story, rerender: render, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }),
+    renderLoglineWorkshop(s, { getStory: story, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }),
     sub('Drafts, then the final one', 'Write it three ways — a first go, a sharper one, the one you will use — then keep the best as your logline above.'),
     bpSteps('logline'),
     earlierLadder('logline', 'Earlier version of your logline (treatment ladder, rung 1)',
@@ -458,7 +468,7 @@ function miniCurve(fw) {
 function renderStructure(s) {
   const short = fmt() === 'short';
   const sec = h('section#path-structure.st-step.glossary-scope', { 'data-path': 'structure', 'aria-label': 'Scene order' }, stepHead('structure', 'Scene order',
-    'The order your story’s big moments come in — pick a beat sheet to lay them out. You do not have to: the outline and the script work without one.'));
+    'The order your story’s big moments come in — pick a beat sheet to lay them out. You do not have to: the outline and the screenplay work without one.'));
   sec.append(h('p.st-muted', {
     text: 'Every format is here. The suggestion is only a suggestion, and switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new format is listed rather than lost.'
   }));
@@ -544,9 +554,7 @@ function renderOutline(s) {
     h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
     ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} not placed in this format` : '')
   ]));
-  if (!locked) sec.append(renderSuggestGate(s));
   const bp = fw.id === 'save_the_cat' && fmt() === 'feature' ? blueprint() : null;
-  const canSuggest = !!(Panelm && Panelm.hasKey()) && !locked;
   const beatOpts = (sel) => {
     const opts = [h('option', { value: '', text: 'Move to beat…' })];
     fw.beats.forEach((b) => opts.push(h('option', { value: Story.qualifyBeat(fw.id, b.id), text: b.label, selected: Story.qualifyBeat(fw.id, b.id) === sel })));
@@ -574,25 +582,17 @@ function renderOutline(s) {
     }
     const acts = h('div.st-ol-actions');
     if (!locked) acts.append(h('button.btn', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'ADD A STEP' }));
-    if (canSuggest) {
-      const busy = suggJob && suggJob.key === r.key;
-      acts.append(busy
-        ? h('button.btn', { type: 'button', 'data-st': 'sugg-stop', text: 'STOP' })
-        : h('button.btn', { type: 'button', 'data-st': 'sugg-run', 'data-beat': r.key, disabled: !!suggJob, text: 'SUGGEST STEPS FOR THIS BEAT' }));
+    /* AI suggestions for this beat: the AI Desk's 'story-steps' task.
+       The writer ticks the ones to keep and Accept adds them under this
+       beat through commit() — the same save as ADD A STEP. */
+    if (!locked) {
+      const pill = aiPill({
+        label: 'Suggest steps for this beat', tasks: ['story-steps'],
+        ctx: { identity: 'beat:' + r.key, beatKey: r.key, getStory: story, commit, format: projectFormat }
+      });
+      if (pill) acts.append(pill);
     }
     if (acts.children.length) li.append(acts);
-    if (suggJob && suggJob.key === r.key && Panelm) li.append(Panelm.statusLine(suggJob.status || 'Starting…'));
-    if (suggFail && suggFail.key === r.key && Panelm) li.append(Panelm.errorLine(suggFail.error));
-    const got = sugg[r.key];
-    if (got && got.length) {
-      const ul = h('ul.st-sugg', { 'aria-label': 'Suggested steps for ' + r.beat.label });
-      got.forEach((t, i) => ul.append(h('li.st-sugg-item', {}, [
-        h('span.st-sugg-text', { text: t }),
-        h('button.btn', { type: 'button', 'data-st': 'sugg-add', 'data-beat': r.key, 'data-i': i, text: 'ADD' })
-      ])));
-      ul.append(h('li.st-sugg-item', {}, [h('button.btn.st-x', { type: 'button', 'data-st': 'sugg-clear', 'data-beat': r.key, text: 'DISMISS SUGGESTIONS' })]));
-      li.append(ul);
-    }
     list.append(li);
   }
   sec.append(list);
@@ -645,24 +645,6 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false) 
   ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-del', 'data-step': st.id, 'aria-label': 'Remove step ' + st.n, text: 'REMOVE' }));
   li.append(ctl);
   return li;
-}
-
-/* The AI half of the outline, optional and last. With a key: the key
-   bar and what is sent, once, and a button on every beat. Without:
-   the key form inside a closed disclosure, so the outline is not
-   pushed down the page by an obstacle nobody asked to clear. */
-function renderSuggestGate(s) {
-  if (!Panelm) return null;
-  if (Panelm.hasKey()) {
-    const kg = Panelm.keyGate('Suggesting steps');
-    return h('div.st-sugg-gate', {}, [kg, Panelm.keyBar(),
-      Panelm.disclose('Your idea, logline, synopsis, the steps written so far and the names of the ' + Story.frameworkById(s.framework).short + ' beats. Nothing else.')]);
-  }
-  const det = h('details.st-sugg-gate');
-  det.append(h('summary', { text: 'Suggest steps with AI (optional)' }));
-  const kg = Panelm.keyGate('Suggesting steps');
-  if (kg) det.append(kg);
-  return det;
 }
 
 /* ---- 5 · the synopsis ---------------------------------------- */
@@ -722,9 +704,9 @@ function renderSynopsisStep(s) {
 /* ---- 6 · to the Screenplay ----------------------------------- */
 
 function renderScreenplay(s) {
-  const sec = h('section#path-screenplay.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'To the Screenplay' }, stepHead('screenplay', 'To the Screenplay',
-    'One placeholder scene per step, each linked to its beat, so the Script Breakdown’s outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
-  sec.append(h('p.st-muted', { text: 'None of this is required before you write. A scene order, an outline and a lock are all optional: open the Script whenever you like and start on the first page.' }));
+  const sec = h('section#path-screenplay.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'Open the Screenplay Writer' }, stepHead('screenplay', 'Open the Screenplay Writer',
+    'One placeholder scene per step, each linked to its beat, so the Screenplay Analysis’s outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
+  sec.append(h('p.st-muted', { text: 'None of this is required before you write. A scene order, an outline and a lock are all optional: open the Screenplay Writer whenever you like and start on the first page.' }));
   const live = new Set(scenes().map((x) => x.id));
   const written = s.outline.filter((x) => x.text.trim());
   const sent = written.filter((x) => x.sceneId && live.has(x.sceneId)).length;
@@ -734,9 +716,9 @@ function renderScreenplay(s) {
     ` · ${sent} already ha${sent === 1 ? 's' : 've'} a scene · ${written.length} written`
   ]));
   const row = h('div.st-build');
-  row.append(h('button.btn.primary', { type: 'button', 'data-st': 'send', disabled: !todo, text: 'SEND THE OUTLINE TO SCREENPLAY' }));
+  row.append(h('button.btn.primary', { type: 'button', 'data-st': 'send', disabled: !todo, text: 'SEND THE OUTLINE TO THE SCREENPLAY WRITER' }));
   if (lastSend && lastSend.length) row.append(h('button.btn', { type: 'button', 'data-st': 'send-undo', text: 'UNDO THE SEND' }));
-  row.append(h('a.btn', { href: 'script.html', text: 'OPEN THE SCRIPT' }));
+  row.append(h('a.btn', { href: 'screenplay.html', text: 'OPEN THE SCREENPLAY WRITER' }));
   sec.append(row);
   if (!written.length) sec.append(h('p.st-muted', { text: 'Write a step or two in the step outline first.' }));
   return sec;
@@ -853,83 +835,20 @@ function renderAI(s) {
   const sec = h('div.st-ai');
   sec.append(h('h2.bd-h2', { text: 'Map the beats with AI' }));
   sec.append(h('p.bd-sub', { text: 'The model quotes the passage it thinks performs each beat. A quote that is not word for word in your synopsis is dropped and counted, and a passage you already tagged in this framework is never moved.' }));
-  if (!Panelm) { sec.append(h('p.st-muted', { text: 'Checking for a key…' })); return sec; }
-  const kg = Panelm.keyGate('Mapping');
-  if (kg) { sec.append(kg); if (kg.dataset.blocking === 'true') return sec; }
-  sec.append(Panelm.keyBar());
   if (!s.source.trim()) {
-    sec.append(Panelm.gate('No synopsis yet.', 'Write, paste or import one first; the model reads only what is on this page.', null));
+    sec.append(h('p.st-muted', { text: 'No synopsis yet. Write, paste or import one first; the model reads only what is on this page.' }));
     return sec;
   }
-  sec.append(Panelm.disclose('The synopsis on this page and the names of the ' + Story.frameworkById(s.framework).short + ' beats. Nothing else.'));
-  const row = h('div.st-ai-row');
-  if (aiJob) row.append(h('button.btn', { type: 'button', 'data-st': 'ai-stop', text: 'STOP' }));
-  else row.append(h('button.btn.primary', { type: 'button', 'data-st': 'ai-run', text: 'MAP ' + Story.frameworkById(s.framework).short.toUpperCase() + ' BEATS' }));
-  sec.append(row);
-  if (aiStatus) sec.append(Panelm.statusLine(aiStatus));
-  if (aiError) sec.append(Panelm.errorLine(aiError));
-  return sec;
-}
-
-async function primeAI() {
-  try {
-    const [a, p] = await Promise.all([import('../lib/ai.js'), import('../ui/ai-panel.js')]);
-    AI = a; Panelm = p;
-    Panelm.wireAIPanel();
-    Panelm.onAIChange(() => render());
-    render();
-  } catch (e) { console.warn('[story] ai', e); }
-}
-
-async function runAI() {
-  const s = story();
+  /* The AI Desk's 'story-map' task: the same draftBeatMap(), shown as a
+     list of quoted passages to tick; Accept tags them through
+     Story.applyBeatMap() and commit(), and the Desk offers Undo. */
   const fw = Story.frameworkById(s.framework);
-  aiError = ''; aiStatus = 'Starting…';
-  aiJob = new AbortController();
-  render();
-  try {
-    const res = await AI.draftBeatMap({ synopsis: s.source, framework: fw },
-      { signal: aiJob.signal, onStatus: (t) => { aiStatus = t; const el = document.querySelector('.st-ai .ai-status'); if (el) el.textContent = t; } });
-    const fresh = story();
-    const { added, dropped } = Story.applyBeatMap(fresh, fw.id, res.rows);
-    Story.saveStory(fresh);
-    aiStatus = `${added} passage${added === 1 ? '' : 's'} tagged` +
-      (dropped ? `; ${dropped} quote${dropped === 1 ? ' was' : 's were'} not word for word in the synopsis and ${dropped === 1 ? 'was' : 'were'} dropped` : '') +
-      (res.truncated ? '. The reply was cut short, so some beats may be missing.' : '.');
-  } catch (e) {
-    aiStatus = '';
-    aiError = e && e.code === 'aborted' ? 'Stopped. Nothing was changed.' : (e && e.message) || 'The request failed.';
-  } finally {
-    aiJob = null;
-    render();
-  }
-}
-
-/* Suggestions are SHOWN, never written: each is added by its own click,
-   so a model can offer a step but only the writer puts one in. */
-async function runSuggest(key) {
-  if (!AI || suggJob) return;
-  const s = story();
-  const p = Story.resolveBeatKey(key);
-  if (!p) return;
-  suggFail = null;
-  suggJob = { key, ctrl: new AbortController(), status: 'Starting…' };
-  render();
-  try {
-    const res = await AI.draftOutlineSteps({
-      idea: s.idea, logline: s.logline, synopsis: s.source, format: projectFormat(),
-      framework: p.fw, beat: p.beat, steps: Story.stepsInOrder(s).map((x) => ({ beat: x.beat, text: x.text }))
-    }, { signal: suggJob.ctrl.signal, onStatus: (t) => {
-      if (suggJob) suggJob.status = t;
-      const el = document.querySelector(`[data-beat-card="${CSS.escape(key)}"] .ai-status`); if (el) el.textContent = t;
-    } });
-    sugg[key] = res.steps;
-  } catch (e) {
-    suggFail = { key, error: e && e.code === 'aborted' ? 'Stopped. Nothing was suggested.' : (e && e.message) || 'The request failed.' };
-  } finally {
-    suggJob = null;
-    render();
-  }
+  const pill = aiPill({
+    label: 'Map ' + fw.short + ' beats', tasks: ['story-map'],
+    ctx: { identity: 'map:' + fw.id, getStory: story, commit, say: (m) => StudioUI.toast(m, { type: 'info' }) }
+  });
+  if (pill) sec.append(h('div.st-ai-row', {}, [pill]));
+  return sec;
 }
 
 /* ---- the pitch deck (FR-605) --------------------------------
@@ -1138,8 +1057,7 @@ function applyView() {
        sections after it (Beats & pacing, Pitch deck, Cover sheet) are
        the bar's "Then" row and say so rather than taking a number. */
     if (p.id === shown) {
-      const n = pathNow().length;
-      const f = stepFooter(panels, p.id, { countText: (i) => (i < n ? 'Step ' + (i + 1) + ' of ' + n : 'After the path') });
+      const f = stepFooter(panels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + panels.length });
       if (f) p.el.append(f);
     }
   });
@@ -1244,7 +1162,7 @@ async function useSample(id) {
   mode = 'tag'; started = true; litBeat = '';
   pathStep = s.outline.length ? 'outline' : 'synopsis';
   landStep = pathStep;
-  undoBuild = null; lastSend = null; sugg = {};
+  undoBuild = null; lastSend = null;
   history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
   commit(s);
 }
@@ -1280,7 +1198,7 @@ function sendToScreenplay() {
   if (!ids.length) { StudioUI.toast('Every written step already has a scene.'); return; }
   lastSend = ids;
   commit(s);
-  StudioUI.toast(`${ids.length} placeholder scene${ids.length === 1 ? '' : 's'} added to the scene list.`, {
+  StudioUI.toast(`${ids.length} placeholder scene${ids.length === 1 ? '' : 's'} added to the scene list; the pages in the Screenplay Writer start empty.`, {
     action: 'UNDO', onAction: undoSend
   });
 }
@@ -1353,21 +1271,6 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
   } else if (act === 'file-all') {
     const n = Story.fileUnplaced(s, s.framework);
     if (n) { commit(s); StudioUI.toast(`${n} step${n === 1 ? '' : 's'} filed under the nearest ${Story.frameworkById(s.framework).short} beat.`); }
-  } else if (act === 'sugg-run') {
-    runSuggest(el.getAttribute('data-beat'));
-  } else if (act === 'sugg-stop') {
-    if (suggJob && suggJob.ctrl) suggJob.ctrl.abort();
-  } else if (act === 'sugg-add') {
-    const key = el.getAttribute('data-beat');
-    const i = Number(el.getAttribute('data-i'));
-    const text = (sugg[key] || [])[i];
-    if (!text) return;
-    Story.addOutlineStep(s, { beat: key, text });
-    sugg[key] = sugg[key].filter((_, k) => k !== i);
-    commit(s);
-  } else if (act === 'sugg-clear') {
-    delete sugg[el.getAttribute('data-beat')];
-    render();
   } else if (act === 'build') {
     if (s.source.trim() && !await askDanger('Rebuild the synopsis from the outline? The synopsis on this page is replaced; highlights you made by hand are kept where their words still appear. You can undo this once.')) return;
     undoBuild = Story.buildSynopsisFromOutline(s, s.framework);
@@ -1431,10 +1334,6 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     commit(s);
   } else if (act === 'pitch') {
     if (!Pitch.exportPitchPDF()) StudioUI.toast('Nothing to put in a deck yet.', { type: 'error' });
-  } else if (act === 'ai-run') {
-    if (AI) runAI();
-  } else if (act === 'ai-stop') {
-    if (aiJob) aiJob.abort();
   }
 });
 
@@ -1558,7 +1457,6 @@ readHash();
 
 render();
 loadFavStudiesSoon();   // the examples' films, once the page has settled
-primeAI();
 /* ?start=sample is Dragon; ?start=sample-<id> is that sample. */
 const START_SAMPLE = /^sample(?:-([a-z]+))?$/.exec(START || '');
 if (START_SAMPLE && !story().source.trim() && !story().outline.length) useSample(START_SAMPLE[1]);

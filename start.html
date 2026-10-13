@@ -95,7 +95,7 @@
   <div class="st-hero-copy">
     <p class="st-eyebrow">The film studio in your browser</p>
     <h1 class="st-title" id="hero-h">Make your first film. Pay once.</h1>
-    <p class="st-hook">Story &rarr; Script &rarr; Prep &rarr; Shoot &rarr; Post, in one studio that teaches every step as you do it. No subscription &mdash; one payment, yours for good.</p>
+    <p class="st-hook">Story &rarr; Screenplay &rarr; Pre-Production &rarr; Production &rarr; Post-Production, in one studio that teaches every step as you do it. No subscription &mdash; one payment, yours for good.</p>
     <p class="st-cta">
       <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start your free trial</a>
       <a class="st-btn" href="#pricing">See the plans</a>
@@ -132,7 +132,7 @@
 <section data-reveal="fade" class="st-sec st-plans" id="pricing" aria-labelledby="pricing-h">
   <p class="st-eyebrow st-eyebrow-gold">Plans</p>
   <h2 class="st-h2" id="pricing-h">One payment. Yours for good.</h2>
-  <p class="st-lede" data-off-text="Pick the stage you need. Every plan is bought once, never renews and never lapses.">Pick the stage you need. Every plan is bought once, never renews and never lapses &mdash; and every one starts with a free trial of the whole studio.</p>
+  <p class="st-lede" data-off-text="Pick the stage you need. Every plan is bought once, never renews and never lapses.">Pick the stage you need. Every plan is bought once, never renews and never lapses. Not sure yet? A free trial of the whole studio sits under the plans.</p>
 
   <!-- THE LAUNCH PRICE, AND ONLY IF IT IS REAL. Hidden unless
        price_notice() (schema §30) reports a rise the server will
@@ -146,10 +146,10 @@
   </div>
 
   <ul class="st-tiers" data-reveal-group>
-    <li data-trial class="st-trial"><strong>Free trial</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card. Then keep the plan that fits.</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Start the free trial</a></li>
-    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><p class="st-tier-line">{{fms:tier.line.starter}}</p><b class="st-price">{{fms:price.starter}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.starter}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=starter#buy" data-plan="starter">or buy {{fms:plan.starter}} now</a></li>
-    <li data-tier="indie" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.indie}}</strong><p class="st-tier-line">{{fms:tier.line.indie}}</p><b class="st-price">{{fms:price.indie}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.indie}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=indie#buy" data-plan="indie">or buy {{fms:plan.indie}} now</a></li>
-    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><p class="st-tier-line">{{fms:tier.line.pro}}</p><b class="st-price">{{fms:price.pro}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.pro}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=pro#buy" data-plan="pro">or buy {{fms:plan.pro}} now</a></li>
+    <li data-trial class="st-trial"><strong>Not sure yet? Try it free</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card. Then keep the plan that fits.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Start the free trial</a></li>
+    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><p class="st-tier-line">{{fms:tier.line.starter}}</p><b class="st-price">{{fms:price.starter}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.starter}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=starter" data-start-buy="starter" data-plan="starter" data-off-text="Sign in" data-open-text="Buy {{fms:plan.starter}}">Buy {{fms:plan.starter}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
+    <li data-tier="indie" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.indie}}</strong><p class="st-tier-line">{{fms:tier.line.indie}}</p><b class="st-price">{{fms:price.indie}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.indie}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=indie" data-start-buy="indie" data-plan="indie" data-off-text="Sign in" data-open-text="Buy {{fms:plan.indie}}">Buy {{fms:plan.indie}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
+    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><p class="st-tier-line">{{fms:tier.line.pro}}</p><b class="st-price">{{fms:price.pro}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.pro}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=pro" data-start-buy="pro" data-plan="pro" data-off-text="Sign in" data-open-text="Buy {{fms:plan.pro}}">Buy {{fms:plan.pro}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
   </ul>
 
   <details class="st-compare-all">
@@ -171,12 +171,12 @@
 <section data-reveal="fade" class="st-sec" id="features" aria-labelledby="features-h">
   <p class="st-eyebrow">What you get</p>
   <h2 class="st-h2" id="features-h">Everything you write becomes the next thing you need</h2>
-  <p class="st-lede">One film, one model: the script makes the scenes, the scenes make the schedule, the schedule makes the call sheets and the budget. Nothing is typed twice.</p>
+  <p class="st-lede">One film, one model: the screenplay makes the scenes, the scenes make the schedule, the schedule makes the call sheets and the budget. Nothing is typed twice.</p>
   <div class="st-grid st-grid-3" data-reveal-group>
     <article class="st-card"><p class="st-chip">Story</p><h3 class="st-h3">From an idea to a story that holds</h3><p>Logline, character, conflict and beats, one step at a time &mdash; each with the formula, a worked example and a check that it is done.</p></article>
-    <article class="st-card"><p class="st-chip">Script</p><h3 class="st-h3">A screenplay that formats itself</h3><p>Slug lines, action and dialogue as you type, an honest page count, numbered drafts. Import <code>.fountain</code>, <code>.fdx</code> or PDF; export a proper screenplay PDF.</p></article>
-    <article class="st-card"><p class="st-chip">Prep</p><h3 class="st-h3">Breakdown, stripboard and budget</h3><p>Every scene broken into cast, props and locations, laid into shoot days and priced at Chennai rates &mdash; from the one scene list.</p></article>
-    <article class="st-card"><p class="st-chip">Shoot</p><h3 class="st-h3">The day on your phone</h3><p>Call sheets the unit will read on WhatsApp, sunrise and golden hour for each location, and what you actually got: shot, part or dropped.</p></article>
+    <article class="st-card"><p class="st-chip">Screenplay</p><h3 class="st-h3">A screenplay that formats itself</h3><p>Slug lines, action and dialogue as you type, an honest page count, numbered drafts. Import <code>.fountain</code>, <code>.fdx</code> or PDF; export a proper screenplay PDF.</p></article>
+    <article class="st-card"><p class="st-chip">Pre-Production</p><h3 class="st-h3">Breakdown, stripboard and budget</h3><p>Every scene broken into cast, props and locations, laid into shoot days and priced at Chennai rates &mdash; from the one scene list.</p></article>
+    <article class="st-card"><p class="st-chip">Production</p><h3 class="st-h3">The day on your phone</h3><p>Call sheets the unit will read on WhatsApp, sunrise and golden hour for each location, and what you actually got: shot, part or dropped.</p></article>
     <article class="st-card"><p class="st-chip">Post</p><h3 class="st-h3">What is in the can, and what leaves</h3><p>An edit log built from the set&rsquo;s marks and a deliverables checklist for the censor copy, the DCP and the festival and OTT formats.</p></article>
     <article class="st-card"><p class="st-chip">Made here</p><h3 class="st-h3">Built for a first film in Tamil Nadu</h3><p>Tamil or Tanglish dialogue, a FEFSI bata table that feeds the budget, CBFC flags and rupee figures that say when they were last checked.</p></article>
   </div>

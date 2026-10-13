@@ -40,7 +40,6 @@ import './trial-band.js';
    asked for once per session after load. Absent from the DOM otherwise. */
 import './site-banner.js';
 import { registerSW } from '../lib/pwa.js';
-import { actionMenu, wireActionBar } from './actionbar.js';
 import {
   attachSignInPill,
   refreshSignInPill,
@@ -50,7 +49,7 @@ import {
   showConfigBlock,
   saveConfig
 } from './auth.js';
-import { listSkins, currentSkin, applySkin, loadSkin } from '../lib/skin.js';
+import { loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
 import '../styles/motion-app.css';
 import './motion-app.js';
@@ -308,6 +307,11 @@ const CSS_THEME = { ink: 'dark', paper: 'light' };
    themes, so neither dropping a theme nor reordering this needs a
    change there. */
 const THEME_ORDER = ['ink', 'paper'];
+/* What a PERSON reads. The stored ids stay 'ink' / 'paper' (THEME_KEY and
+   CSS_THEME are a contract with saved studios), but nothing a user sees
+   says Ink or Paper: it is Dark and Light (owner, 12 Oct 2026). */
+const THEME_LABEL = { ink: 'Dark', paper: 'Light' };
+const themeLabel = (t) => THEME_LABEL[t] || t;
 
 /* Canonical reader. The root attribute is the source of truth; the body
    classes are a mirror kept for the pages that still read them. */
@@ -365,6 +369,7 @@ function applyTheme(theme) {
   if (darkBtn) {
     darkBtn.textContent = theme === 'ink' ? '☀' : '◐';
   }
+  syncThemeToggles(theme);
 }
 function loadTheme() {
   let t;
@@ -404,119 +409,73 @@ StudioUI.applyTheme = applyTheme;
    keeping its own copy that goes stale the day a theme is added. */
 StudioUI.themeOrder = () => THEME_ORDER.slice();
 StudioUI.currentTheme = currentTheme;
+StudioUI.themeLabel = themeLabel;
 StudioUI.cycleTheme = function () {
   const i = THEME_ORDER.indexOf(currentTheme());
   const next = THEME_ORDER[(i + 1) % THEME_ORDER.length];
   applyTheme(next);
-  StudioUI.toast('Theme: ' + next, { type: 'info', duration: 1400 });
+  StudioUI.toast('Theme: ' + themeLabel(next), { type: 'info', duration: 1400 });
 };
-StudioUI.attachThemePicker = function (host) {
-  if (!host || host.querySelector('.theme-picker')) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'theme-picker';
-  wrap.setAttribute('role', 'radiogroup');
-  wrap.setAttribute('aria-label', 'Theme');
-  /* DERIVED from THEME_ORDER rather than listed beside it. The list
-     this replaced claimed in a comment to match THEME_ORDER and was
-     a second copy of it, so reordering the cycle left the picker in
-     the old order and a dropped theme would have left a button with
-     no [data-theme] block behind it — a control that silently does
-     nothing, the same shape of bug as a --hue class matching no
-     rule. The glyphs stay hand-written because a glyph is not
-     derivable; an unknown theme gets a neutral one rather than
-     nothing. */
-  const GLYPH = { paper: '◐', ink: '☀' };
-  THEME_ORDER.map((theme) => ({
-    theme,
-    label: theme.charAt(0).toUpperCase() + theme.slice(1),
-    icon: GLYPH[theme] || '◐'
-  })).forEach(({ theme, label, icon }) => {
-    const b = document.createElement('button');
-    b.dataset.theme = theme;
-    b.title = label + ' theme';
-    b.setAttribute('aria-label', label + ' theme');
-    b.textContent = icon;
-    b.addEventListener('click', () => applyTheme(theme));
-    wrap.appendChild(b);
-  });
-  host.appendChild(wrap);
-  // mark the active one
-  const cur = currentTheme();
-  wrap.querySelectorAll('button').forEach(b =>
-    b.classList.toggle('active', b.dataset.theme === cur));
-};
-
 // ============================================================
-// APPEARANCE — theme and skin, one menu, four pages
+// THEME — one Dark / Light button in the top bar
 // ------------------------------------------------------------
-// These are the same kind of setting: neither changes the document,
-// both change how it looks, and both are per-device. They used to be
-// a single ◐ button that cycled three themes, which cannot express a
-// second axis at all — three themes times N skins is a grid, not a
-// cycle.
+// It used to be an "Appearance" menu holding a Theme radio row and a
+// Design radio row. With one skin, Design was a control with nothing to
+// choose, and the menu was a second copy of a Settings section. Now it
+// is a single button that shows the theme you are in and flips it. The
+// band's right-hand zone (shell.js buildStudioTools) is the one host;
+// pages that still carry a legacy #darkBtn have it removed here.
 //
-// Built here rather than in each page's toolbar because there is
-// nothing page-specific about it, and because a skin dropped into
-// src/styles/skins/ has to appear on all four pages without four
-// edits. The choices are read live from skin.js, which reads them
-// from the stylesheets.
+// Skins keep working underneath (src/lib/skin.js applies the one that
+// exists); they simply have no UI until there is a second one to pick.
 // ============================================================
-function appearanceMenu() {
-  /* A glyph, not the word: this replaces a 32px icon button, and a
-     110px "Appearance ▾" in its place wrapped the feature toolbar onto
-     a second row — 40px of permanent chrome bought with one label. */
-  return actionMenu('◐', [
-    {
-      label: 'Theme',
-      action: 'set-theme',
-      attr: 'data-theme-choice',
-      value: currentTheme(),
-      choices: THEME_ORDER.map((t) => ({
-        value: t,
-        label: t.charAt(0).toUpperCase() + t.slice(1)
-      }))
-    },
-    {
-      label: 'Design',
-      action: 'set-skin',
-      attr: 'data-skin-choice',
-      value: currentSkin(),
-      choices: listSkins().map((sk) => ({ value: sk.id, label: sk.label }))
-    }
-  ], { align: 'right', compact: true, ariaLabel: 'Appearance — theme and design' });
+function themeToggle() {
+  const cur = currentTheme();
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'btn tb-theme';
+  b.setAttribute('data-theme-toggle', '');
+  b.setAttribute('data-appearance', '');
+  const glyph = document.createElement('span');
+  glyph.className = 'tb-theme-glyph';
+  glyph.setAttribute('aria-hidden', 'true');
+  const word = document.createElement('span');
+  word.className = 'tb-theme-word';
+  b.append(glyph, word);
+  paintThemeToggle(b, cur);
+  return b;
 }
-StudioUI.appearanceMenu = appearanceMenu;
+function paintThemeToggle(b, theme) {
+  const other = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
+  const g = b.querySelector('.tb-theme-glyph');
+  const w = b.querySelector('.tb-theme-word');
+  if (g) g.textContent = theme === 'ink' ? '☾' : '☀';
+  if (w) w.textContent = themeLabel(theme);
+  b.setAttribute('aria-label', themeLabel(theme) + ' theme. Switch to ' + themeLabel(other) + '.');
+  b.setAttribute('title', 'Switch to ' + themeLabel(other));
+}
+function syncThemeToggles(theme) {
+  document.querySelectorAll('[data-theme-toggle]').forEach((b) => paintThemeToggle(b, theme));
+}
+StudioUI.themeToggle = themeToggle;
 
-/* Mount it wherever a page kept the old ◐ button, replacing it. One
-   call site per page would be four call sites; this is one. */
+/* One toggle per document. A legacy ◐ button is removed, and the
+   toggle is placed in the shell's zone when there is one, else where
+   the old button stood (the shell moves it into the zone on mount). */
 function upgradeThemeButton(root) {
   const host = (root || document).querySelector('#darkBtn');
-  if (!host || !host.parentElement) return;
-  if (host.parentElement.querySelector('.tb-menu[data-appearance]')) return;
-  const menu = appearanceMenu();
-  menu.setAttribute('data-appearance', '');
-  host.replaceWith(menu);
+  if (!host) return;
+  if (!document.querySelector('[data-theme-toggle]') && host.parentElement) host.replaceWith(themeToggle());
+  else host.remove();
 }
 StudioUI.upgradeThemeButton = upgradeThemeButton;
 
-/* The same menu on a page that never had a ◐ button to replace. The
-   eighteen pages without a `.toolbar` get a `.sh-tools` zone in the
-   shell band (buildStudioTools in shell.js) and this is what fills its
-   appearance half. Idempotent by the same test upgradeThemeButton
-   uses — one menu per host — so the shell can call it on every mount.
-   Appended at the FRONT of the host, so the zone reads appearance →
-   account the way the four toolbars do. */
+/* The same toggle on a page that never had a ◐ button. Idempotent per
+   document, so the shell can call it on every mount. Appended at the
+   front of the host; the shell orders the zone. */
 function mountAppearanceMenu(host) {
-  if (!host || host.querySelector('.tb-menu[data-appearance]')) return;
-  const menu = appearanceMenu();
-  menu.setAttribute('data-appearance', '');
-  host.insertBefore(menu, host.firstChild);
-  /* The toggle is a delegated listener that wireActionBar() installs,
-     and only the eight pages with menus of their own call it. A menu
-     on the other fourteen would mount and never open — which is what
-     the first run of this showed. Idempotent (a `wired` flag), so the
-     pages that already wire it lose nothing. */
-  wireActionBar();
+  if (!host || document.querySelector('[data-theme-toggle]')) return;
+  host.insertBefore(themeToggle(), host.firstChild);
 }
 StudioUI.mountAppearanceMenu = mountAppearanceMenu;
 
@@ -524,22 +483,9 @@ StudioUI.mountAppearanceMenu = mountAppearanceMenu;
    setting none of them owns. */
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-theme-choice], [data-skin-choice]');
+    const t = e.target.closest('[data-theme-toggle]');
     if (!t) return;
-    if (t.hasAttribute('data-theme-choice')) applyTheme(t.getAttribute('data-theme-choice'));
-    else {
-      const id = t.getAttribute('data-skin-choice');
-      applySkin(id);
-      const label = (listSkins().find((sk) => sk.id === id) || {}).label || id;
-      StudioUI.toast('Design: ' + label, { type: 'info', duration: 1400 });
-    }
-    // Reflect the new state without rebuilding the menu.
-    const grp = t.parentElement;
-    grp.querySelectorAll('.tb-choice').forEach((b) => {
-      const on = b === t;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-checked', String(on));
-    });
+    StudioUI.cycleTheme();
   });
 }
 
@@ -630,7 +576,7 @@ const DEFAULT_SHORTCUTS = [
      after sepia was removed and after the order was reversed — a
      hand-written copy of THEME_ORDER, which is the list it is
      describing. Same reason the step list lives in JSON. */
-  { keys: ['⌘/Ctrl', 'D'],label: `Cycle theme (${THEME_ORDER.join(' → ')})` },
+  { keys: ['⌘/Ctrl', 'D'],label: `Switch theme (${THEME_ORDER.map(themeLabel).join(' ↔ ')})` },
   { keys: ['j'],          label: 'Next step (in any blueprint)' },
   { keys: ['k'],          label: 'Previous step' },
   { keys: ['g g'],        label: 'Jump to top' },
@@ -639,7 +585,7 @@ const DEFAULT_SHORTCUTS = [
      palette's on every page, the hub included; the hub's field moved
      to `/`, so the row was wrong and the two rows are one. */
   { keys: ['/'],          label: 'Focus the search input on this page (the hub, the blueprints)' },
-  { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, settings' }
+  { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, places, script lines. Start with > for commands, # for a scene number, @ for a person' }
 ];
 /* A page may add its own section to the sheet — write.html prints its
    keyboard preset there (src/ui/write-shortcuts.js). One group per
@@ -2145,7 +2091,6 @@ export const {
   toastInfo,
   notify,
   cycleTheme,
-  attachThemePicker,
   markSaving,
   markSaved,
   markError,

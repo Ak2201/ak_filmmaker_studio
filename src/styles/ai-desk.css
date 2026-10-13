@@ -1,0 +1,297 @@
+/* ============================================================
+   THE AI DESK — src/ui/ai-desk.js
+   ------------------------------------------------------------
+   Docked right at ≥1100px, a full-height sheet below that. The
+   page NARROWS beside the docked Desk (`main` takes
+   `margin-inline-end: var(--ai-desk-w)`, measured by ai-desk.js);
+   `main` is never translated, because fragment landings measure it.
+
+   Shapes are --sk-* / --radius-pill, colours are tokens, and no
+   fill is ever a text colour: the diff paints washes BEHIND ink.
+   The primary button is --cta-fill under --brand-on, the measured
+   AA pair in both themes.
+
+   The entrance is @starting-style from a small offset × --motion.
+   The closed Desk is `hidden` (display: none), not parked off
+   canvas — a resting off-canvas position is not a distance, and
+   multiplied by a zero --motion it would sit on the page.
+   ============================================================ */
+
+.ai-desk {
+  position: fixed;
+  z-index: calc(var(--z-overlay) - 1);   /* under dialogs and toasts */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--sk-card-bg, var(--paper-raised));
+  color: var(--ink);
+  box-shadow: var(--shadow-panel);
+  opacity: 1;
+  transform: none;
+  transition: transform var(--speed) var(--ease), opacity var(--speed) var(--ease);
+}
+.ai-desk[hidden] { display: none; }
+
+@starting-style {
+  .ai-desk:not([hidden]) {
+    opacity: 0;
+    transform: translateY(calc(24px * var(--motion)));
+  }
+}
+
+/* Phone and tablet: the sheet, above the bottom bar. */
+.ai-desk {
+  inset: 0 0 var(--mab-h, 0px) 0;
+  width: 100%;
+  max-width: 100vw;
+}
+
+@media (min-width: 1100px) {
+  .ai-desk {
+    inset: var(--sh-chrome-h, 0px) 0 0 auto;
+    width: min(420px, 38vw);
+    border-inline-start: var(--sk-card-line-w, 1px) solid var(--rule);
+  }
+  @starting-style {
+    .ai-desk:not([hidden]) { transform: translateX(calc(32px * var(--motion))); }
+  }
+  html.ai-desk-open main {
+    margin-inline-end: var(--ai-desk-w, 0px);
+  }
+}
+
+.ai-desk:focus { outline: none; }
+
+.ai-desk-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: var(--s4);
+  padding: var(--s4);
+}
+
+/* ---- header -------------------------------------------------- */
+.ai-desk-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-bottom: var(--s3);
+  border-bottom: var(--sk-deco-rule-w, 1px) solid var(--rule);
+}
+.ai-desk-headtext { min-width: 0; }
+.ai-desk-title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  line-height: var(--lh-snug);
+  overflow-wrap: anywhere;
+}
+.ai-desk-model {
+  margin: var(--s1) 0 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ai-desk-close { flex: none; }
+
+/* ---- sections ------------------------------------------------- */
+.ai-desk-sec { display: grid; gap: var(--s3); min-width: 0; }
+.ai-desk-label {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ai-desk-input,
+.ai-desk-chat {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: var(--s2) var(--s3);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  background: var(--paper-sunk);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  resize: vertical;
+}
+.ai-desk-input[readonly] { color: var(--ink-body); }
+.ai-desk-input:focus-visible,
+.ai-desk-chat:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.ai-desk .btn.primary {
+  background: var(--cta-fill);
+  border-color: var(--cta-fill);
+  color: var(--brand-on);
+}
+.ai-desk .btn.primary:hover {
+  background: var(--cta-fill-hover);
+  border-color: var(--cta-fill-hover);
+  color: var(--brand-on);
+}
+.ai-desk .btn[disabled] { opacity: .6; cursor: default; }
+.ai-desk-run, .ai-desk-settings { justify-self: start; }
+
+.ai-desk-lines { display: grid; gap: var(--s2); }
+.ai-desk-lines .ai-status:empty { display: none; }
+.ai-desk-stop { justify-self: start; }
+
+/* ---- the answer ----------------------------------------------- */
+.ai-desk-answerhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+.ai-desk-vers { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.ai-desk-ver,
+.ai-desk-chip {
+  padding: var(--s1) var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.ai-desk-ver[aria-pressed="true"] {
+  background: var(--brand-wash);
+  border-color: var(--brand);
+  color: var(--ink);
+  font-weight: 700;
+}
+.ai-desk-ver:hover,
+.ai-desk-chip:hover { border-color: var(--brand); }
+.ai-desk-chip[disabled] { opacity: .6; cursor: default; }
+
+.ai-desk-note,
+.ai-desk-empty {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+
+.ai-hunk {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s2);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper);
+  min-width: 0;
+}
+.ai-hunk-head,
+.ai-desk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  cursor: pointer;
+  font-size: var(--t-small);
+  color: var(--ink);
+}
+.ai-hunk-head input,
+.ai-desk-item input { flex: none; margin-top: var(--s1); accent-color: var(--brand); }
+.ai-hunk-ctx {
+  margin: 0;
+  font-family: var(--f-script);
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-hunk-del,
+.ai-hunk-add {
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  border-radius: var(--sk-radius, var(--radius));
+  padding: var(--s1) var(--s2);
+}
+.ai-hunk-del {
+  background: var(--danger-wash);
+  border-inline-start: var(--sk-hue-rule-w, 3px) solid var(--danger);
+}
+.ai-hunk-add {
+  background: var(--ok-wash);
+  border-inline-start: var(--sk-hue-rule-w, 3px) solid var(--ok);
+}
+.ai-line { display: flex; gap: var(--s2); min-width: 0; }
+.ai-line-sign { flex: none; color: var(--ink); font-weight: 700; }
+.ai-line-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ai-hunk-del .ai-line-text { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.ai-desk-item {
+  padding: var(--s2);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper);
+}
+.ai-desk-itemtext { min-width: 0; overflow-wrap: anywhere; }
+.ai-desk-itemtext p { margin: var(--s1) 0 0; color: var(--ink-body); }
+
+.ai-desk-read { display: grid; gap: var(--s2); justify-items: start; }
+.ai-desk-readtext {
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- chat ----------------------------------------------------- */
+.ai-desk-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.ai-desk-asked {
+  margin: 0;
+  padding-inline-start: var(--s5);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.ai-desk-send { justify-self: start; }
+
+/* ---- footer --------------------------------------------------- */
+.ai-desk-foothost { flex: none; }
+.ai-desk-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: var(--sk-card-bg, var(--paper-raised));
+  border-top: var(--sk-deco-rule-w, 1px) solid var(--rule);
+}
+
+@media (pointer: coarse) {
+  .ai-desk-ver,
+  .ai-desk-chip,
+  .ai-desk .btn { min-height: 44px; }
+  .ai-hunk-head input,
+  .ai-desk-item input { width: 24px; height: 24px; margin-top: 0; }
+}
+
+@media print {
+  .ai-desk { display: none !important; }
+  html.ai-desk-open main { margin-inline-end: 0; }
+}

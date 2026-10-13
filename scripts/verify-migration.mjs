@@ -202,7 +202,7 @@ const ALL_PAGES = [
   { page: 'write.html',      legacy: null, name: 'write' },
   /* The writing page and its drafts took write.html's jobs (11 Oct 2026);
      both rows arrive with the pages, as the settings note below demands. */
-  { page: 'script.html',     legacy: null, name: 'script' },
+  { page: 'screenplay.html',  legacy: null, name: 'screenplay' },
   { page: 'drafts.html',     legacy: null, name: 'drafts' },
   { page: 'plan.html',       legacy: null, name: 'plan' },
   /* study.html and dissect.html left this list on 6 Oct 2026: they are
@@ -234,6 +234,10 @@ const ALL_PAGES = [
      unchecked from the day it landed. Both rows arrive with the
      re-baseline that regrouped six phases into the PRD's five stages. */
   { page: 'shoot.html',      legacy: null, name: 'shoot' },
+  /* preprod.html (12 Oct 2026): the Pre-production path. In vite.config.js
+     and reached from the Pre-Production stage tab; named here in the same
+     commit, as the note above demands. It needs a baseline capture. */
+  { page: 'preprod.html',    legacy: null, name: 'preprod' },
   { page: 'story.html',      legacy: null, name: 'story' },
   /* Post-Production. Both rows arrive in the same commit as the page
      entries, as the settings note above demands, with the re-baseline
@@ -278,16 +282,16 @@ const ALL_PAGES = [
 const BLUEPRINT_PAGES_ARE_REDIRECTS = true;
 const BLUEPRINT_NAMES = ['feature', 'short'];
 /* write.html is a redirect now (src/lib/write-route.js): its fragments go
-   to script.html, drafts.html and breakdown.html#script. Same treatment
+   to screenplay.html, drafts.html and breakdown.html#script. Same treatment
    as the blueprints, for the same reason: a redirect has nothing to
    measure, its `write` row stays in baseline.json as the key-union
    reference, and the fragment sweep follows by itself because it only
    offers hrefs to pages in PAGES. The Screenplay stage's page (the first
-   module of that phase in navigation.json) is script.html, so the
+   module of that phase in navigation.json) is screenplay.html, so the
    guide probe asks it rather than write.html. Least invasive: no
    ?stay=1 plumbing, and nothing here loads the retired editor. */
 const WRITE_PAGE_IS_REDIRECT = true;
-const STAGE_PAGES = ['story.html', WRITE_PAGE_IS_REDIRECT ? 'script.html' : 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
+const STAGE_PAGES = ['story.html', WRITE_PAGE_IS_REDIRECT ? 'screenplay.html' : 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
 const PAGES = ALL_PAGES.filter((p) => !(BLUEPRINT_PAGES_ARE_REDIRECTS && BLUEPRINT_NAMES.includes(p.name)) && !(WRITE_PAGE_IS_REDIRECT && p.name === 'write'));
 
 /* THE BUILD HAS TO BE THE OPEN ONE. src/lib/sitegate.js makes the
@@ -394,7 +398,32 @@ const EXPECTED = {
   stripboard: {},
   reports: {},
   contacts: {},
-  visualize: {},
+  /* AI Desk (12 Oct 2026): the key lives in Settings only and AI is
+     reached through one AI pill (PLAN.md §4). keyGate() used to draw
+     the provider picker and key form here ("Drafting needs a key…");
+     signed out, verify now sees the locked pill instead. Every word
+     below was that form's copy and nothing else on the page. */
+  visualize: {
+    'account': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'anthropic': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'anthropic’s': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'api': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'below': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'billed': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'cloud': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'device': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'gemini': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'i': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'key': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'project': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'provider': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'put': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'runs': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'synced': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'use': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'uses': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    drafting: 'AI Desk: keyGate(\'Drafting\') heading of the retired key form'
+  },
   write: {},
   plan: {},
   breakdown: {},
@@ -402,8 +431,37 @@ const EXPECTED = {
   short: {},
   library: {},
   budget: {},
+  /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
+     revamp's words (the journey strip folded into the stage cards). */
   dashboard: {},
-  settings: {},
+  /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
+     for the AI pill in the toolbar, whose menu (Coverage report, …) is
+     built only when it is opened. */
+  screenplay: {
+    coverage: 'the "AI coverage report" menu item moved into the AI pill menu',
+    report: 'the "AI coverage report" menu item moved into the AI pill menu'
+  },
+  /* AI Desk (12 Oct 2026): settings.html#ai shows the key section
+     only on a plan with AI tools; locked (verify runs signed out) it
+     is a heading, one note and the locked pill — nobody types a key
+     their plan cannot use. These words were the key section's copy
+     (the key-stays-on-this-device disclosure, the provider picker,
+     the console.anthropic.com link, Forget key). */
+  settings: {
+    'billed': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'com': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'do': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'forget': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'gemini': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'gets': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'goes': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'paste': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'put': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'runs': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'touching': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'us': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+    'usage': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
+  },
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 
@@ -460,10 +518,34 @@ const EXPECTED = {
      FOURTH TIME. The pattern is no longer worth re-deriving: an
      allowance is valid only until the next recapture, and you do not
      control who makes that or when. */
-  story: {},
+  /* AI Desk (12 Oct 2026): the suggest-steps and mapping panels used
+     to draw keyGate()'s key form ("Suggesting steps needs a key…",
+     "Mapping…"); they are AI pills that open the Desk now, and
+     signed out the pill is locked. Every word below was that form's
+     copy. */
+  story: {
+    'account': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'anthropic': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'anthropic’s': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'api': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'attached': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'billed': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'browser': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'cloud': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'device': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'gemini': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'provider': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'put': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'synced': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    'uses': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
+    mapping: 'AI Desk: keyGate(\'Mapping\') heading of the retired key form',
+    suggesting: 'AI Desk: keyGate(\'Suggesting steps\') heading of the retired key form'
+  },
   edit: {},
   deliverables: {},
   screening: {},
+  /* The conversion pass's rows were absorbed by the 12 Oct 2026 recapture
+     that followed the UI revamp and the plan features. */
   invite: {},
   admin: {},
   vault: {},
@@ -2669,7 +2751,11 @@ const exported = await rtPage.evaluate(async () => {
   const origClick = HTMLAnchorElement.prototype.click;
   URL.createObjectURL = function (b2) { blob = b2; return 'blob:verify-stub'; };
   HTMLAnchorElement.prototype.click = function () {};
-  document.querySelector('[data-action="export-all"]').click();
+  /* Backup moved into the band's menu (12 Oct 2026, topbar-backup.js) and its
+     work is a lazy import, so the click returns before the file is made: keep
+     the stubs in place until the blob arrives (or five seconds pass). */
+  document.querySelector('[data-action="bk-export"]').click();
+  for (let i = 0; i < 100 && !blob; i++) await new Promise((r) => setTimeout(r, 50));
   URL.createObjectURL = origCreate;
   HTMLAnchorElement.prototype.click = origClick;
   return { text: blob ? await blob.text() : null };
@@ -2686,7 +2772,9 @@ if (!exported.unavailable && exported.text) {
   await rtPage.evaluate((text) => {
     const S = window.StudioStore;
     S.listProjects().forEach((p) => S.deleteProject(p.id));
-    const input = document.getElementById('importAllFile');
+    /* the band's Backup menu creates its hidden file input on first use */
+    document.querySelector('[data-action="bk-import"]').click();
+    const input = document.querySelector('input[type="file"][aria-label="Import a studio backup"]');
     const dt = new DataTransfer();
     dt.items.add(new File([text], 'backup.json', { type: 'application/json' }));
     input.files = dt.files;

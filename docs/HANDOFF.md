@@ -1,5 +1,41 @@
 # HANDOFF — read this first
 
+> **12 Oct 2026 (UI revamp) — branch `feature/ui-revamp`, merged to `develop` in one
+> change.** One top bar (switcher · Backup · Dark/Light · name) on every page; Settings as
+> a five-tab console; plans bought only on `purchase.html`; People "Delete totally"
+> (schema **§47**, not run live: `docs/ADMIN-CONSOLE.md`); a real search field; Home
+> trimmed; the scene list is a table; **`preprod.html`** is the Pre-production path and
+> its strip sits on every tool page. Full account: `docs/HISTORY.md` item 35.
+> **Owner steps:** run §45, §46 then §47 (checksummed) before relying on Delete totally;
+> the button hides for non-owners and the call fails cleanly until they have run.
+> **Gate:** `verify` needs one baseline recapture (`npm run build:open && npm run baseline`
+> after reading the diff) and the `prove:*` scripts that clicked BUY on `invite.html` or
+> the Controls-tab erase were edited without being run.
+
+> **12 Oct 2026 (pending sweep) — what was fixed, what is left.** The owner asked
+> for the pending items to be taken and fixed. From the container: **G7** and
+> **T2** were already done (their rows were stale); **T3** and **T9** are done
+> as real browser proofs (`prove:tamil`, `prove:walk`, no defect found); the
+> **11 Oct UI calls** were seen in a browser: the Story crumb reads "Story"
+> (not "Story editor"), the Invite page's crumb reads "Studio › Come in", the
+> tour's Story ring lands on `.st-step`, the content, not the heading, and the
+> wall's tail padding is 14rem so SIGN OUT scrolls clear of a toast stack (the
+> toast overlap itself was checked on a synthetic wall, not a real device-lock
+> toast). Owner decision recorded: the three plan-split calls and
+> "Recommended on Intermediate" **stay as they are**. Checks run: the two new
+> proofs against `vite dev`; no local gate (owner's instruction).
+>
+> **Still pending, and not fixable from the container:** set `RESEND_API_KEY`
+> and `MAIL_FROM` (blocks real payments, B14); run schema §40–§46 live (admin
+> console v2, none has a RUN marker); Razorpay live webhook and callback URLs
+> on `filmmakerstudio.in`; Google branding re-submit; GSTIN (P8); two-account
+> live RLS checks (P4); second admin sign-in (P5); `brand.json` `address`;
+> WhatsApp number (P11); a real-phone look at `write.html` (P13); owner calls
+> Q5 (Tamil UI labels) and the near-duplicate comparison-table labels. Features,
+> not fixes: B2 gift licence, B3 edu licence, B7 public links (security review
+> first), B11 second payment rail, Q1 weather, Q4 template pack. And
+> `develop` is far ahead of `main`: release it through `docs/BRANCHING.md`.
+
 > **12 Oct 2026 (later) — WHERE `main` AND `develop` DIFFER, and what the
 > owner decides next.** `main` = `2f910b5`; `develop` = `651410c`, two commits
 > ahead. Check `git log` rather than quoting these.
@@ -529,18 +565,18 @@ cloud container session.
 | G4 | ~~Stripboard banner UI offers travel/holding/note~~ **DONE 8 Oct 2026:** the "+ Banner" menu already offered all four kinds; tests now cover travel/holding/note, `dayLoad` and `oneLiner`. | `stripboard.js` | — | `test:stripboard` |
 | G5 | ~~The "CBFC-format PDF" is just the dialogue-list print; relabel the button honestly~~ **STRUCK 8 Oct 2026 — the premise was false.** No string "CBFC-format PDF" exists anywhere in the code; the button at `src/pages/deliverables.js:462` is already labelled "PRINT OR SAVE AS PDF", and `:468-473` already tells the reader no prescribed dialogue-list template could be found, names the conventional layout it uses, and says to check with the regional office. There is nothing dishonest to fix. If anything is left it is a question for the OWNER — whether a regional office wants a different layout — not a code task. | — | — | — |
 | G6 | ~~Table-read printable + CSV~~ **DONE 8 Oct 2026:** print existed; `tableReadCSV()` and a "Download as CSV" button added on the Characters tab; `test:screenplay`. | `characters.js`, `characters-panel.js` | — | `test:screenplay` |
-| G7 | `deliverables.js` imports `cbfc-rules.json` (~44 KB — it was 32 KB until the 8 Oct source check grew it, which makes this worth MORE than when it was filed) and `lib/pdf.js` at module scope although the PDF is only needed on a click (cheapest first-paint win; recorded in `KNOWN-ISSUES.md`) | `src/pages/deliverables.js` | both become dynamic; the certification section renders after an await; `scripts/budget.json` recaptured lower | `verify` |
+| G7 | ~~`deliverables.js` imports `cbfc-rules.json` and `lib/pdf.js` at module scope~~ **DONE (found already done 12 Oct 2026).** `src/pages/deliverables.js` loads `pdf.js`, `cbfc.js` and `cbfc-rules.json` with dynamic `import()` (lines ~38-44); only this row was stale. | `src/pages/deliverables.js` | — | `verify` |
 
 ### T — Quality gaps (cloud, lane 3). Each verified.
 
 | ID | Gap | Evidence | Fix |
 |---|---|---|---|
 | T1 | **No assertion for the revised-page tint** | `scripts/test-revisions.mjs` has no `tint` | add one (tint class present when chosen, absent otherwise) | **DONE 8 Oct 2026**: `test:revisions` section 5 asserts the tint is on exactly when chosen (tint on: revised sheets carry `wr-pg-tint c-<swatch>`, unrevised do not; tint off: none, revised sheets still marked). 104 passed. |
-| T2 | **`ai.js` is not in the first-paint guard.** The `LAZY_CHUNKS` regex names only `supabase`, `pptxgen`, `sample.dragon.script`. **NOT a one-line change, re-checked 8 Oct 2026:** `vite.config.js` `manualChunks` (352-374) defines no `ai` chunk, so there is no stable name to match; and `ai.js` is statically imported by `src/ui/ai-panel.js:48`, which `src/pages/settings.js:83` imports statically — so adding the pattern would fail settings' first paint until `scripts/budget.json` `knownLazyFetches` (currently `{}`) allows it. Decide the chunk first, then the guard | `scripts/verify-migration.mjs:138`, `vite.config.js:352-374` | `ai` has its own chunk, the guard names it, and `verify` passes on settings | `verify` | **DONE 8 Oct 2026, by content not by name** (no `ai` chunk exists, and vite.config is outside this lane): `scripts/check-ai-lazy.mjs` (`npm run test:ai-lazy`, in `ship` after `build`) reads each budget page's modulepreload graph and fails if one carries ai.js's Anthropic-header marker. 21 pages pass; `settings` is a named EXCEPT with its reason and is itself checked, so the exception must keep being true. Removing the exception needs an `ai` chunk in `vite.config.js` first. |
-| T3 | **Tamil typing is only regex-read, never executed** | `scripts/test-tanglish.mjs` lines 67–70 read the source | a browser proof that typing "vanakkam" in a dialogue line yields Tamil and writes the pref only on toggle |
+| T2 | ~~**`ai.js` is not in the first-paint guard.**~~ **DONE 8 Oct 2026 (the guard is `npm run test:ai-lazy`).** The `LAZY_CHUNKS` regex names only `supabase`, `pptxgen`, `sample.dragon.script`. **NOT a one-line change, re-checked 8 Oct 2026:** `vite.config.js` `manualChunks` (352-374) defines no `ai` chunk, so there is no stable name to match; and `ai.js` is statically imported by `src/ui/ai-panel.js:48`, which `src/pages/settings.js:83` imports statically — so adding the pattern would fail settings' first paint until `scripts/budget.json` `knownLazyFetches` (currently `{}`) allows it. Decide the chunk first, then the guard | `scripts/verify-migration.mjs:138`, `vite.config.js:352-374` | `ai` has its own chunk, the guard names it, and `verify` passes on settings | `verify` | **DONE 8 Oct 2026, by content not by name** (no `ai` chunk exists, and vite.config is outside this lane): `scripts/check-ai-lazy.mjs` (`npm run test:ai-lazy`, in `ship` after `build`) reads each budget page's modulepreload graph and fails if one carries ai.js's Anthropic-header marker. 21 pages pass; `settings` is a named EXCEPT with its reason and is itself checked, so the exception must keep being true. Removing the exception needs an `ai` chunk in `vite.config.js` first. |
+| T3 | ~~Tamil typing is only regex-read, never executed~~ **DONE 12 Oct 2026.** `scripts/prove-tamil.mjs` (`npm run prove:tamil`, 17 checks) types in a real browser: mode off leaves Roman words alone; Alt+T on writes `tamilTyping` once; "vanakkam" is offered in Tamil and Space stores it in the script; Esc keeps "sir" Roman; action lines and cues are never offered; load and reload write no preference. | `scripts/prove-tamil.mjs` | — | `prove:tamil` |
 | T4 | ~~**`scripts/prove-adoption.mjs` has no npm entry**~~ **GREEN AND IN THE GATE, 10 Oct 2026.** The red below was the PROOF faking sign-in by writing `fms_studio_account_v1` directly, which `cloud.js` was right to clear. `signedInContext()` re-establishes identity through `addInitScript` before every document instead, so the signed-in states hold — and fixing it surfaced a real bug the red had been hiding: `hub.js` called `adoptAccountLabel()` in three places without importing it, so every post-adoption message threw. **40/40**, and `prove:adoption` now runs in `ship` (straight after `verify`, while `dist/` still holds the gate-off build it needs) and in CI's `verify` job for the same reason. History: **8 Oct 2026, proof RED**: `prove:adoption` added and it honours `PW_CHROMIUM`. Run result: (a) and (b) pass; (c) fails 7 checks and (d) times out. Cause: `cloud.js` (~line 1905) clears `fms_studio_account_v1` on load when Supabase is configured and there is no session, so the simulated signed-in state never holds. (b) passes vacuously for the same reason. Fixing the proof needs a real session shape, not a raw key. Left OUT of `ship` until green. |
 | T8 | ~~**`npm run ship` runs only `build:open`, `verify`, `build`, `prove:gate`**~~ | `package.json:36` | make `ship` (or a new `gate`) run the full release gate from `docs/BRANCHING.md`; this is also the seed of CI | ~~**DONE 8 Oct 2026 (composition), but `ship` is RED at `verify`**~~ **`ship` IS GREEN, 10 Oct 2026** — `verify`, all 23 `test:*` and every `prove:*` pass together for the first time. `test:all` carries `test:schema`, so `ship` could never complete on this machine until PostgreSQL 16 was installed on 10 Oct; the macOS recipe is in CLAUDE.md's command list. `prove:adoption` is no longer deliberately absent: it runs after `verify`. T10 is done too. History: **8 Oct 2026 (composition), `ship` RED at `verify`**: `verify` fails 6 word-coverage checks (unexplained missing words: `arunak`, `reset`, `curated`, `filmmaker`, `calculator`) on the branch as it stood at `105f9aa`, before this lane; the lane changed no `src/`, no `verify-migration.mjs` and no baseline, and the baseline is not to be recaptured to make it pass. Every step after `verify` was run by hand and passed. `test:all` runs all 22 `test:*` suites (brand first). `ship` = `test:all` → `build:open` → `verify` → `build` → `test:ai-lazy` → `prove:gate` `prove:billing` `prove:storage` `prove:drive` `prove:sw` → `build:extension` `prove:extension` → `build:verify` (new, gate-off `dist-verify`) → `prove:growth` `prove:ai-coverage`. `prove:adoption` is deliberately absent (red, see T4). T10 still needs CI. |
-| T9 | **Browser walk of the revisions, coverage and costs UIs** on the Dragon sample, 390 and 1280, both themes. The `Element.append(null)` fix at `write-revisions.js:175` was never exercised in a browser | — | no console error; revision compare opens; coverage renders; each cost tab loads |
+| T9 | ~~Browser walk of the revisions, coverage and costs UIs~~ **DONE 12 Oct 2026, no defect found.** `scripts/prove-walk.mjs` (`npm run prove:walk`) opens the Dragon sample and walks drafts Compare, the coverage tab and all six cost tabs at 1280 and 390, dark and light: every section renders, Compare produces a result, no page or console error, no horizontal overflow at 390. The `append(null)` fix at `write-revisions.js` is therefore exercised. | `scripts/prove-walk.mjs` | — | `prove:walk` |
 | T10 | ~~**CI does not exist**~~ **DONE — struck 10 Oct 2026.** `.github/workflows/gate.yml`: `tests` (a PostgreSQL 16 service, `test:all`), `verify` (uncapped, uploads `verify.log` on failure, then `prove:adoption`) and `proofs`, in parallel, on PRs into `main`/`develop` and pushes to `develop`. **Branch protection on `main` is still unset and only the owner can set it** — until then the workflow reports and enforces nothing. | repo root | the three checks required on `main` | — |
 
 ### B — Billing and growth (lane 1; owns schema §25 onward; ONE session at a time)
@@ -586,6 +622,8 @@ new RPC so `prove:billing` exercises the real pages.
 | Q3 | ~~Writing-goal history synced across devices~~ | DONE in code as §37 (B16); owner runs the SQL |
 | Q4 | Paid template / sample-pack plumbing + one free ORIGINAL starter | gate by a `plans.features` key; no real people, no reproduced scripts (`CLAUDE.md` item 8) |
 | Q5 | **Owner decision:** Tamil-script UI labels | reverses `lang.js`'s English-labels design — decide before anyone builds |
+| Q6 | ~~AI Desk: one key place, Pro-locked AI pills, a review-and-refine sidebar~~ | **DONE 13 Oct 2026** (PR #9, HISTORY 37–38). Remaining: move synopsis → script stages 2–3 (`draftSceneList`, `draftScenePages`) and the coverage voice check into Desk tasks (`src/lib/ai-tasks.js`); owner to try it once with a real key — no answer has come from a real provider yet |
+| Q7 | §43 re-run live (optional) | the 13 Oct regeneration is a REORDER of the same 42 names; the live CHECK already accepts them, so re-running only changes the console's listing order |
 
 ### R — Sell-ready pass (lane 6): DONE 9 Oct on `feature/sell-ready`, merged to `main`
 
@@ -823,3 +861,13 @@ a promise that it is current — `GOOGLE-AUTH.md` above is the proof. Check a
 status claim against the database, the console or `git log` before acting on
 it, which is this file's own standing instruction and the one it has itself
 broken most often.
+
+## Naming pass (12 Oct 2026)
+
+`script.html` → `screenplay.html` (Screenplay Writer); `/script` and `/script.html` 301 to `/screenplay` in
+`vercel.json` and `netlify.toml`. Features renamed in `navigation.json` (ids and storage keys unchanged):
+Drafts, Import Screenplay, Title Page (moved into Screenplay), Screenplay Analysis, Scene Breakdown, Auto-Tag,
+Reference Media, Shoot Calendar, Cast & Crew, Production Reports. Pre-Production groups: Breakdown · Visualise ·
+Plan & Schedule · Budget & People. §36 was regenerated (labels in comments only; live map is keyed by id).
+Known and not from this change: `prove:sw` fails on 404.html/feature on the untouched tree; the `invite` page's
+"30 minutes" depends on the live trial setting, so verify fails on it in an env with no Supabase.

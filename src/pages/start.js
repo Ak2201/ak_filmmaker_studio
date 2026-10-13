@@ -90,7 +90,7 @@ const GATED = String(import.meta.env.VITE_SITE_GATE || 'invite').toLowerCase() !
    stay that way, because that href is the whole of the no-JS fallback.
    A previous version of this file also rewrote the CTAs through a
    data-gated/data-open pair; that is gone with the buttons it served. */
-const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
+const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening|purchase)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
 function gateAppLinks(root) {
   if (!GATED) return;
   for (const a of root.querySelectorAll('a[href]')) {
@@ -184,10 +184,27 @@ const SIGNED_IN = StartAuth.hasStoredSession();
 if (SIGNED_IN) {
   document.documentElement.dataset.signedin = '1';
   for (const a of document.querySelectorAll('[data-start-auth="google"]')) a.setAttribute('href', '/');
+  /* Signed in, a plan's BUY goes straight to the checkout page with the
+     plan named: plan-cards.js marks that card and opens its payment. A
+     visitor who is not a member yet meets the site gate there, which
+     sends them to invite.html — the stash below carries the plan across. */
+  for (const a of document.querySelectorAll('[data-start-buy]')) a.setAttribute('href', 'purchase.html?plan=' + encodeURIComponent(a.dataset.startBuy));
+}
+
+/* A plan's BUY must survive the Google hop. Google returns to the hub,
+   the gate sends a non-member to invite.html, and the address there has
+   lost ?plan=. invite.js reads this same sessionStorage key (PLAN_KEY
+   there) and puts the plan back into its address, which is what makes
+   the card open its checkout once the buyer is signed in. sessionStorage
+   is per tab and per origin, and the Google round trip stays in both. */
+const PLAN_KEY = 'fms_invite_plan';                 // invite.js PLAN_KEY
+function stashPlan(id) {
+  try { sessionStorage.setItem(PLAN_KEY, JSON.stringify({ plan: /^[\w-]{1,32}$/.test(id) ? id : '', buy: true })); } catch (e) { /* private mode */ }
 }
 document.addEventListener('click', (e) => {
-  const a = e.target.closest && e.target.closest('[data-start-auth="google"]');
+  const a = e.target.closest && e.target.closest('[data-start-auth="google"], [data-start-buy]');
   if (!a || e.defaultPrevented) return;
+  if (a.dataset.startBuy) stashPlan(a.dataset.startBuy);   // bump_event() accepts a fixed list; 'signup' below counts it
   if (SIGNED_IN) return;                        // the href is the studio; let it go
   /* A modified click is the reader asking for a new tab or a saved
      link. Let the href do exactly what they asked for. */
@@ -404,7 +421,13 @@ function swapWords() {
     if (n.dataset.origText === undefined) n.dataset.origText = n.textContent;
     n.textContent = t;
   }
-  if (off) document.querySelectorAll('.st-tiers li[data-trial]').forEach((li) => { li.hidden = true; });
+  if (off) hideTrial();
+}
+/* No trial on offer (purchases off, or trials switched off): the strip
+   under the plans and each card's "or start the free trial" line go,
+   because both would promise what the server will refuse. */
+function hideTrial() {
+  document.querySelectorAll('.st-tiers li[data-trial], [data-trial-link]').forEach((n) => { n.hidden = true; });
 }
 swapWords();
 function showFreeNow() {
@@ -428,10 +451,7 @@ try {
 try {
   trialOffer().then((t) => {
     if (!t) return;
-    if (t.trial_enabled === false) {
-      document.querySelectorAll('.st-tiers li[data-trial]').forEach((li) => { li.hidden = true; });
-      return;
-    }
+    if (t.trial_enabled === false) { hideTrial(); return; }
     const len = trialLength(t.trial_minutes);
     if (len) document.querySelectorAll('[data-trial-length]').forEach((n) => { n.textContent = len; });
   }, () => {});
@@ -460,13 +480,16 @@ try {
   let mq;
   try { mq = matchMedia('(max-width: 720px)'); } catch (e) { return; }
   let heroGone = false;
+  /* Off over the plans as well: there the card's own BUY is the button,
+     and a trial bar laid across the cards argues with it. */
+  let plansOn = false;
 
   const measure = () => {
     document.documentElement.style.setProperty('--st-bar-h', Math.round(bar.getBoundingClientRect().height) + 'px');
   };
 
   function sync() {
-    const on = mq.matches && heroGone;
+    const on = mq.matches && heroGone && !plansOn;
     if (on) {
       if (!bar.hidden) { measure(); return; }
       bar.hidden = false;
@@ -485,6 +508,11 @@ try {
     for (const en of entries) heroGone = !en.isIntersecting;
     sync();
   }, { threshold: 0 }).observe(hero);
+  const plans = byId('pricing');
+  if (plans) new IntersectionObserver((entries) => {
+    for (const en of entries) plansOn = en.isIntersecting;
+    sync();
+  }, { threshold: 0 }).observe(plans);
 
   if (mq.addEventListener) mq.addEventListener('change', sync);
   else if (mq.addListener) mq.addListener(sync);

@@ -21,6 +21,7 @@
   .ma-on main {
     animation: ma-page var(--speed-lazy) var(--ease-out) backwards;
   }
+  .ma-on main.ma-same-page { animation: none; }   /* a re-render is not a new page */
   @keyframes ma-page {
     from { opacity: 0; filter: blur(calc(6px * var(--motion))); }
     to   { opacity: 1; filter: blur(0); }

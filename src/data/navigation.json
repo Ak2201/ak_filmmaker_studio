@@ -133,33 +133,42 @@
       "id": "screenplay",
       "label": "Screenplay",
       "hue": "screenplay",
-      "blurb": "Pages, scenes and their elements",
+      "blurb": "Write it, version it, bring one in",
       "icon": "✎",
       "modules": [
         {
           "id": "screenplay",
-          "label": "Script",
-          "purpose": "Write the script; the formatting is done for you",
+          "label": "Screenplay Writer",
+          "purpose": "Write the screenplay; the formatting is done for you",
           "status": "built",
-          "href": "script.html",
+          "href": "screenplay.html",
           "icon": "☰",
           "sym": "description"
         },
         {
           "id": "revisions",
-          "label": "Drafts & revisions",
-          "purpose": "Numbered drafts of the script: compare, restore, print",
+          "label": "Drafts",
+          "purpose": "Numbered drafts of the screenplay: compare, restore, print",
           "status": "built",
           "href": "drafts.html",
           "icon": "↻",
           "sym": "history"
         },
         {
-          "id": "import-script",
-          "label": "Import a script",
-          "purpose": "Bring in a Fountain, Final Draft, PDF or text script",
+          "id": "docs",
+          "label": "Title Page",
+          "purpose": "Page 1 of every PDF: title, credit, author, draft, date and contact",
           "status": "built",
-          "href": "script.html#import",
+          "href": "drafts.html#title",
+          "icon": "⌸",
+          "sym": "folder"
+        },
+        {
+          "id": "import-script",
+          "label": "Import Screenplay",
+          "purpose": "Bring in a Fountain, Final Draft, PDF or text screenplay",
+          "status": "built",
+          "href": "screenplay.html#import",
           "icon": "⇪",
           "sym": "upload_file"
         }
@@ -168,48 +177,39 @@
       "guide": [
         {
           "label": "Guided questions",
-          "href": "script.html#guide",
+          "href": "screenplay.html#guide",
           "part": "II"
         }
       ],
-      "purpose": "Write the script; the formatting is done for you"
+      "purpose": "Write the screenplay; the formatting is done for you"
     },
     {
       "id": "preprod",
       "label": "Pre-Production",
       "hue": "preprod",
-      "blurb": "See it, cost it, staff it, schedule it",
+      "blurb": "Break it down, see it, plan it, cost it",
+      "home": { "href": "preprod.html", "label": "Pre-production path", "purpose": "The steps from a script to a shoot day, one at a time", "icon": "◷", "sym": "checklist" },
       "icon": "◷",
       "modules": [
         {
           "id": "script-breakdown",
-          "label": "Script Breakdown",
+          "label": "Screenplay Analysis",
           "purpose": "What the script is made of: pages, runtime, scenes, cast, locations, outline and characters",
           "status": "built",
           "href": "breakdown.html#script",
           "icon": "▤",
           "sym": "fact_check",
-          "group": "Break down"
+          "group": "Breakdown"
         },
         {
           "id": "breakdowns",
-          "label": "Scene Breakdowns",
+          "label": "Scene Breakdown",
           "purpose": "Mark what each scene needs: actors, props, costumes, vehicles, effects",
           "status": "built",
           "href": "breakdown.html#breakdown",
           "icon": "⊞",
           "sym": "grid_view",
-          "group": "Break down"
-        },
-        {
-          "id": "elements",
-          "label": "Elements",
-          "purpose": "Everything the film needs, listed once, with the scenes that need it",
-          "status": "built",
-          "href": "breakdown.html#elements",
-          "icon": "✣",
-          "sym": "category",
-          "group": "Break down"
+          "group": "Breakdown"
         },
         {
           "id": "scene-list",
@@ -219,117 +219,27 @@
           "href": "breakdown.html#scenes",
           "icon": "≡",
           "sym": "list",
-          "group": "Break down"
+          "group": "Breakdown"
         },
         {
-          "id": "screen-time",
-          "label": "Screen Time",
-          "purpose": "How many minutes each scene will run on screen, worked out from the pages",
+          "id": "elements",
+          "label": "Elements",
+          "purpose": "Everything the film needs, listed once, with the scenes that need it",
           "status": "built",
-          "href": "reports.html#screentime",
-          "icon": "◔",
-          "sym": "timer",
-          "group": "Break down"
-        },
-        {
-          "id": "docs",
-          "label": "Title page & documents",
-          "purpose": "Treatments, notes and one-page summaries, kept beside the script",
-          "status": "built",
-          "href": "drafts.html#title",
-          "icon": "⌸",
-          "sym": "folder",
-          "group": "Break down"
+          "href": "breakdown.html#elements",
+          "icon": "✣",
+          "sym": "category",
+          "group": "Breakdown"
         },
         {
           "id": "auto-tag",
-          "label": "Auto-Tagging",
+          "label": "Auto-Tag",
           "purpose": "Reads the script and suggests the actors, props, vehicles, stunts and sounds in each scene",
           "status": "built",
           "href": "breakdown.html#suggest",
           "icon": "⌖",
           "sym": "label",
-          "group": "Break down"
-        },
-        {
-          "id": "cast-matrix",
-          "label": "Cast Matrix",
-          "purpose": "Which character is in which scene, and who shares the most scenes",
-          "status": "built",
-          "href": "reports.html#cast-matrix",
-          "icon": "▦",
-          "sym": "groups",
-          "group": "Break down"
-        },
-        {
-          "id": "shot-list",
-          "label": "Shot List",
-          "purpose": "The shots you plan for each scene, with how close the camera is and how it moves",
-          "status": "built",
-          "href": "visualize.html#shot-list",
-          "icon": "▶",
-          "sym": "view_list",
-          "group": "See it"
-        },
-        {
-          "id": "storyboard",
-          "label": "Storyboard",
-          "purpose": "A drawing or picture for each shot you plan",
-          "status": "built",
-          "href": "visualize.html#storyboard",
-          "icon": "⊟",
-          "sym": "dashboard",
-          "group": "See it"
-        },
-        {
-          "id": "lookbook",
-          "label": "Lookbook",
-          "purpose": "Pictures that show the look you want: costume, sets, colour, light",
-          "status": "built",
-          "href": "visualize.html#lookbook",
-          "icon": "▩",
-          "sym": "palette",
-          "group": "See it"
-        },
-        {
-          "id": "media",
-          "label": "Media",
-          "purpose": "Your own files and pictures, kept with the film",
-          "status": "built",
-          "href": "plan.html#media",
-          "icon": "◎",
-          "sym": "perm_media",
-          "group": "See it"
-        },
-        {
-          "id": "budget",
-          "label": "Budget",
-          "purpose": "What the film will cost, line by line, with Chennai rates to start from",
-          "status": "built",
-          "href": "budget.html",
-          "icon": "₹",
-          "sym": "currency_rupee",
-          "group": "Cost & staff it"
-        },
-        {
-          "id": "contacts",
-          "label": "Contacts",
-          "purpose": "Everyone on the film, with phone and e-mail, by department",
-          "status": "built",
-          "href": "contacts.html#contacts",
-          "icon": "☺",
-          "sym": "person",
-          "group": "Cost & staff it"
-        },
-        {
-          "id": "stripboard",
-          "label": "Stripboard",
-          "purpose": "Your scenes in shooting order, grouped into shoot days",
-          "status": "built",
-          "href": "stripboard.html#stripboard",
-          "icon": "☷",
-          "sym": "table_chart",
-          "group": "Schedule it"
+          "group": "Breakdown"
         },
         {
           "id": "songs",
@@ -339,17 +249,67 @@
           "href": "breakdown.html#songs",
           "icon": "♫",
           "sym": "music_note",
-          "group": "Schedule it"
+          "group": "Breakdown"
         },
         {
-          "id": "calendar",
-          "label": "Calendar",
-          "purpose": "The dates: when prep starts, when you shoot, when the edit is due",
+          "id": "screen-time",
+          "label": "Screen Time",
+          "purpose": "How many minutes each scene will run on screen, worked out from the pages",
           "status": "built",
-          "href": "plan.html#calendar",
+          "href": "reports.html#screentime",
+          "icon": "◔",
+          "sym": "timer",
+          "group": "Breakdown"
+        },
+        {
+          "id": "cast-matrix",
+          "label": "Cast Matrix",
+          "purpose": "Which character is in which scene, and who shares the most scenes",
+          "status": "built",
+          "href": "reports.html#cast-matrix",
           "icon": "▦",
-          "sym": "calendar_month",
-          "group": "Schedule it"
+          "sym": "groups",
+          "group": "Breakdown"
+        },
+        {
+          "id": "shot-list",
+          "label": "Shot List",
+          "purpose": "The shots you plan for each scene, with how close the camera is and how it moves",
+          "status": "built",
+          "href": "visualize.html#shot-list",
+          "icon": "▶",
+          "sym": "view_list",
+          "group": "Visualise"
+        },
+        {
+          "id": "storyboard",
+          "label": "Storyboard",
+          "purpose": "A drawing or picture for each shot you plan",
+          "status": "built",
+          "href": "visualize.html#storyboard",
+          "icon": "⊟",
+          "sym": "dashboard",
+          "group": "Visualise"
+        },
+        {
+          "id": "lookbook",
+          "label": "Lookbook",
+          "purpose": "Pictures that show the look you want: costume, sets, colour, light",
+          "status": "built",
+          "href": "visualize.html#lookbook",
+          "icon": "▩",
+          "sym": "palette",
+          "group": "Visualise"
+        },
+        {
+          "id": "media",
+          "label": "Reference Media",
+          "purpose": "Your own files and pictures, kept with the film",
+          "status": "built",
+          "href": "plan.html#media",
+          "icon": "◎",
+          "sym": "perm_media",
+          "group": "Visualise"
         },
         {
           "id": "locations",
@@ -359,7 +319,27 @@
           "href": "plan.html#locations",
           "icon": "⌂",
           "sym": "place",
-          "group": "Schedule it"
+          "group": "Plan & Schedule"
+        },
+        {
+          "id": "calendar",
+          "label": "Shoot Calendar",
+          "purpose": "The dates: when prep starts, when you shoot, when the edit is due",
+          "status": "built",
+          "href": "plan.html#calendar",
+          "icon": "▦",
+          "sym": "calendar_month",
+          "group": "Plan & Schedule"
+        },
+        {
+          "id": "stripboard",
+          "label": "Stripboard",
+          "purpose": "Your scenes in shooting order, grouped into shoot days",
+          "status": "built",
+          "href": "stripboard.html#stripboard",
+          "icon": "☷",
+          "sym": "table_chart",
+          "group": "Plan & Schedule"
         },
         {
           "id": "dood",
@@ -369,7 +349,7 @@
           "href": "stripboard.html#dood",
           "icon": "⁙",
           "sym": "event",
-          "group": "Schedule it"
+          "group": "Plan & Schedule"
         },
         {
           "id": "sides",
@@ -379,17 +359,37 @@
           "href": "reports.html#sides",
           "icon": "▫",
           "sym": "content_copy",
-          "group": "Schedule it"
+          "group": "Plan & Schedule"
+        },
+        {
+          "id": "budget",
+          "label": "Budget",
+          "purpose": "What the film will cost, line by line, with Chennai rates to start from",
+          "status": "built",
+          "href": "budget.html",
+          "icon": "₹",
+          "sym": "currency_rupee",
+          "group": "Budget & People"
+        },
+        {
+          "id": "contacts",
+          "label": "Cast & Crew",
+          "purpose": "Cast and crew, with phone and e-mail, by department",
+          "status": "built",
+          "href": "contacts.html#contacts",
+          "icon": "☺",
+          "sym": "person",
+          "group": "Budget & People"
         },
         {
           "id": "reports",
-          "label": "Reports",
+          "label": "Production Reports",
           "purpose": "Printable lists of what each scene and each shoot day needs",
           "status": "built",
           "href": "reports.html#reports",
           "icon": "⌗",
           "sym": "assessment",
-          "group": "Schedule it"
+          "group": "Budget & People"
         }
       ],
       "sym": "checklist",
@@ -405,7 +405,7 @@
       "id": "production",
       "label": "Production",
       "hue": "production",
-      "blurb": "The day itself",
+      "blurb": "The shoot day",
       "icon": "◉",
       "modules": [
         {
@@ -475,7 +475,7 @@
   "jobs": [
     {
       "id": "write",
-      "label": "Write the script",
+      "label": "Write the screenplay",
       "line": "Start with the idea, find the story’s shape, then write the pages. The studio formats them for you.",
       "stages": [
         "story",

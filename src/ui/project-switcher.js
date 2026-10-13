@@ -150,13 +150,11 @@ function openPop() {
   ];
 }
 
-/** Mount the control in the shell band, before the search handle.
- *  Idempotent. The hub draws its own (#projectSwitcherBtn) and gets none. */
-export function mountProjectSwitcher(bar) {
-  if (!bar || bar.querySelector('.ps-btn')) return null;
-  if (document.getElementById('projectSwitcherBtn')) return null;
-  const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-  if (file === '' || file === 'index.html' || file === 'index') return null;
+/** Mount the control in the shell band's right-hand zone (shell.js
+ *  buildStudioTools hands that zone in), on EVERY page — the hub too, which
+ *  used to draw its own copy. Idempotent. */
+export function mountProjectSwitcher(host) {
+  if (!host || document.querySelector('.ps-btn')) return null;
   btn = h('button.ps-btn', { type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': 'Switch project' });
   btn.append(
     h('span.ps-fmt', { hidden: true }),
@@ -167,8 +165,7 @@ export function mountProjectSwitcher(bar) {
   btn.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' && !pop) { e.preventDefault(); openPop(); }
   });
-  const find = bar.querySelector(':scope > .sh-find');
-  if (find) bar.insertBefore(btn, find); else bar.append(btn);
+  host.prepend(btn);
   label();
   for (const ev of ['projects:changed', 'project:meta', 'current:changed']) Store.subscribe(ev, () => { label(); if (pop) closePop(false); });
   return btn;

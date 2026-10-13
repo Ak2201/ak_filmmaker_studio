@@ -77,11 +77,6 @@ import StudioUI, {
 import '../lib/cloud.js';
 
 import { esc, h, fromHTML, delegate } from '../lib/dom.js';
-/* The provider TABLE only — not src/lib/ai.js, which this page
-   still reaches with import() at a click. The disclosure below has
-   to name the host the key will actually go to, and a restated
-   hostname is a privacy claim that goes stale. */
-import { apiHost } from '../lib/ai-providers.js';
 import {
   renderSteps, mountStepsLang, mountStepsPath, stepIndex, stepFieldKeys,
   stageInfo, partsOf, partLabel, partHeading, stageRow, watchReadouts,
@@ -117,6 +112,7 @@ import { buildSceneRow, buildShotRow, buildCastRow, buildLocRow } from '../ui/bl
 import { mountHandoffs } from '../ui/blueprint-handoffs.js';
 import { mountWraps } from '../ui/blueprint-wrap.js';
 import { ask, askDanger, tell } from '../ui/dialog.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI (the Desk loads at a click)
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -353,7 +349,7 @@ const DRAFT_HTML = `
   <div class="ladder-intro">
     <div class="draft-eyebrow">INTERLUDE · BETWEEN STEPS 12 AND 13</div>
     <h2 class="draft-title">Write <em>the draft.</em></h2>
-    <p class="draft-deck">This is the step the blueprint cannot do for you, and does not try to. The screenplay is written in Write — formatted as you type, paginated the way the PDF will be, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists. Come back for Step 13 when the draft is done.</p>
+    <p class="draft-deck">This is the step the blueprint cannot do for you, and does not try to. The screenplay is written in the Screenplay Writer — formatted as you type, paginated the way the PDF will be, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists. Come back for Step 13 when the draft is done.</p>
     <div class="draft-acts" data-draft-slot></div>
   </div>
 </section>
@@ -2542,10 +2538,10 @@ function escapeHTML(s) {
    on the writing itself — dialogue passes, beat critique — using
    the blueprint as context. Still not a chat box."
 
-   NOT A CHAT BOX. There is no panel bolted to the side of the
-   page and no conversation. There is one quiet line at the foot
-   of each step that says "ask what is weak about this", and what
-   comes back is about THAT step: notes that quote the writer's
+   ONE STEP AT A TIME. There is one quiet AI pill at the foot of
+   each step that says "ask what is weak about this", and it opens
+   the AI Desk on THAT step (any chat there refines that critique
+   and nothing else): notes that quote the writer's
    own answers back at them, with the rest of the blueprint —
    logline, theme, who the protagonist is — handed over as ground
    the model is told not to contradict.
@@ -2574,286 +2570,29 @@ function escapeHTML(s) {
       can never tell a writer they wrote something they did not.
    ============================================================ */
 
-/* Everything lazy: the model call, the panel furniture and the
-   blueprint context together are a few tens of kilobytes of code and
-   step JSON that a reader who never clicks should never download. */
-const aiLib = () => import('../lib/ai.js');
-const aiPanelLib = () => import('../ui/ai-panel.js');
-
-/* Per-step view state, none of it stored. A run in flight that
-   survived a reload would be a lie about a request that is no longer
-   happening — the same argument visualize.js makes. */
-const critiques = new Map();      // stepId → { open, running, abort, status, error, result }
-let critiqueSubscribed = false;
-
-const critiqueState = (id) => {
-  if (!critiques.has(id)) {
-    critiques.set(id, { open: false, running: false, abort: null, status: '', error: '', result: null });
-  }
-  return critiques.get(id);
-};
-
-/** One quiet footer per step that actually has fields. Steps whose
-    content is all prose (the covers' neighbours) get nothing, because
-    there would be nothing to critique. */
+/* THE PILL IS THE WAY IN. Each step's footer holds one AI pill for
+   the Desk's 'beat-critique' task (src/lib/ai-tasks.js), which wraps
+   the same beatCritique() — same blueprint context, same verified
+   quotes — and shows the notes in the AI Desk, not in the step. So the
+   step is still never re-rendered (rule 1), nothing is sent without a
+   click (rule 3), nothing is changed (rule 4) and nothing is stored.
+   The pill greys itself on a plan without AI and sends a device with
+   no key to Settings; this page holds no key form and no model code.
+   `flush` saves the live fields first, so a debounced keystroke is
+   critiqued as the writer means it rather than as last saved. */
 function mountStepCritiques() {
   document.querySelectorAll('.step').forEach((step) => {
     if (!step.querySelector('input[data-key], textarea[data-key], select[data-key]')) return;
     if (step.querySelector('.ai-step')) return;
-    const host = h('div.ai-step');
-    host.append(h('button.ai-trigger', {
-      type: 'button', 'data-action': 'aiCritique',
-      text: '◇  Ask what is weak about this step'
-    }));
-    step.append(host);
-  });
-}
-
-/** Replace ONE step's footer. Never the step. */
-function paintCritique(stepId, AI, Panel) {
-  const step = document.getElementById(stepId);
-  const host = step && step.querySelector('.ai-step');
-  if (!host) return;
-  const st = critiqueState(stepId);
-
-  if (!st.open) {
-    host.replaceChildren(h('button.ai-trigger', {
-      type: 'button', 'data-action': 'aiCritique',
-      text: '◇  Ask what is weak about this step'
-    }));
-    return;
-  }
-
-  const panel = h('div.ai-panel');
-  panel.append(h('div.ai-head', {}, [
-    h('h4.ai-title', { text: 'What is weak about this step' }),
-    h('button.bd-icon', {
-      type: 'button', 'data-action': 'aiCritiqueClose',
-      title: 'Close', 'aria-label': 'Close the critique panel', text: '✕'
-    })
-  ]));
-
-  /* GATE 1 — the key. */
-  const kg = Panel.keyGate('A critique');
-  if (kg) {
-    panel.append(kg);
-    if (kg.dataset.blocking === 'true') { host.replaceChildren(panel); return; }
-  }
-  panel.append(Panel.keyBar());
-
-  /* GATE 2 — the writing. Independent of the key: a key with an empty
-     step is a different problem with a different answer. */
-  const answers = Blueprint.stepAnswers(stepId);
-  if (!answers.length) {
-    panel.append(Panel.gate(
-      'There is nothing written in this step yet.',
-      'A critique reads what you wrote — with an empty step there is nothing to '
-      + 'read, and notes invented from a heading are notes about a film nobody '
-      + 'has written. Fill in an answer above and come back.'
-    ));
-    host.replaceChildren(panel);
-    return;
-  }
-
-  const context = Blueprint.blueprintContext({ skipStepId: stepId });
-  const sum = Blueprint.contextSummary(context);
-  const meta = Blueprint.stepMeta(stepId);
-
-  panel.append(Panel.disclose(
-    'Clicking the button below sends ' + answers.length
-    + (answers.length === 1 ? ' answer' : ' answers') + ' from this step, plus '
-    + (sum.fields
-      ? sum.fields + (sum.fields === 1 ? ' answer' : ' answers') + ' from '
-        + sum.steps + ' other spine ' + (sum.steps === 1 ? 'step' : 'steps') + ' as context, '
-      : 'nothing else — no other step has anything in it yet, ')
-    + 'to ' + apiHost() + ' using the key on this device. Nothing else leaves this '
-    + 'browser, and nothing is sent until you click.'
-  ));
-
-  if (sum.fields) {
-    const list = h('details.ai-peek');
-    list.append(h('summary', { text: 'Show me exactly what would be sent' }));
-    const pre = h('pre.ai-peek-body');
-    pre.textContent = AI.buildCritiquePrompt({ step: meta, answers, context });
-    list.append(pre);
-    panel.append(list);
-  }
-
-  panel.append(h('div.ai-acts', {}, [
-    st.running
-      ? h('button.btn.danger', { type: 'button', 'data-action': 'aiCritiqueStop', text: 'Stop' })
-      : h('button.btn.primary', {
-        type: 'button', 'data-action': 'aiCritiqueRun',
-        text: 'Send this step and ask'
-      }),
-    st.result && !st.running
-      ? h('button.btn', { type: 'button', 'data-action': 'aiCritiqueClear', text: 'Dismiss the notes' })
-      : null
-  ]));
-
-  const status = Panel.statusLine(st.status);
-  if (status) panel.append(status);
-  const err = Panel.errorLine(st.error);
-  if (err) panel.append(err);
-
-  if (st.result) panel.append(renderCritiqueResult(st.result, Panel));
-  host.replaceChildren(panel);
-}
-
-function renderCritiqueResult(res, Panel) {
-  const box = h('div.ai-result');
-  box.append(h('div.ai-result-head', {}, [
-    Panel.aiMark('MODEL NOTES'),
-    h('span.ai-result-meta', {
-      text: 'by ' + res.model + ' · not saved, and gone when you reload'
-        + (res.truncated ? ' · the reply was cut short' : '')
-    })
-  ]));
-  if (res.verdict) box.append(h('p.ai-verdict', { text: res.verdict }));
-
-  const list = h('ol.ai-notes');
-  for (const n of res.notes) {
-    const li = h('li.ai-note');
-    if (n.quote) li.append(h('blockquote.ai-quote', { text: '“' + n.quote + '”' }));
-    li.append(h('p.ai-problem', { text: n.problem }));
-    if (n.tryThis) {
-      li.append(h('p.ai-try', {}, [
-        h('span.ai-try-label', { text: 'TRY' }),
-        h('span', { text: n.tryThis })
-      ]));
-    }
-    list.append(li);
-  }
-  box.append(list);
-
-  if (res.unverified) {
-    box.append(h('p.ai-caveat', {
-      text: res.unverified + (res.unverified === 1 ? ' note' : ' notes')
-        + ' came back with a quotation that is not word for word what you wrote, so '
-        + 'the quotation was dropped rather than shown. The note is still there; the '
-        + 'words attributed to you were not.'
-    }));
-  }
-  box.append(h('p.ai-caveat', {
-    text: 'These are notes, not edits. Nothing above this panel was changed, and '
-        + 'nothing here is saved with your blueprint.'
-  }));
-  return box;
-}
-
-/** Repaint every open panel — after a key or model change, which can
-    happen from any one of them. */
-async function repaintCritiques() {
-  const [AI, Panel] = await Promise.all([aiLib(), aiPanelLib()]);
-  for (const [id, st] of critiques) if (st.open) paintCritique(id, AI, Panel);
-}
-
-const stepIdOf = (el) => { const s = el.closest('.step'); return s ? s.id : ''; };
-
-async function withAI() {
-  const [AI, Panel] = await Promise.all([aiLib(), aiPanelLib()]);
-  Panel.wireAIPanel();
-  if (!critiqueSubscribed) {
-    critiqueSubscribed = true;
-    Panel.onAIChange(() => { repaintCritiques(); });
-  }
-  return [AI, Panel];
-}
-
-async function openCritique(el) {
-  const id = stepIdOf(el);
-  if (!id) return;
-  const st = critiqueState(id);
-  st.open = true;
-  st.error = '';
-  const [AI, Panel] = await withAI();
-  paintCritique(id, AI, Panel);
-}
-
-async function closeCritique(el) {
-  const id = stepIdOf(el);
-  if (!id) return;
-  const st = critiqueState(id);
-  if (st.abort) st.abort.abort();
-  st.open = false;
-  st.running = false;
-  st.abort = null;
-  st.status = '';
-  const [AI, Panel] = await withAI();
-  paintCritique(id, AI, Panel);
-}
-
-async function runCritique(el) {
-  const id = stepIdOf(el);
-  if (!id) return;
-  const st = critiqueState(id);
-  if (st.running) return;
-
-  const [AI, Panel] = await withAI();
-
-  /* Read the answers out of the LIVE fields, not the last save. A
-     debounced keystroke that has not landed yet is still what the
-     writer means by "this step", and critiquing a stale copy of their
-     own paragraph is the sort of wrong nobody would ever diagnose. */
-  saveData();
-  const answers = Blueprint.stepAnswers(id);
-  if (!answers.length) { paintCritique(id, AI, Panel); return; }
-
-  st.running = true;
-  st.error = '';
-  st.result = null;
-  st.status = 'Starting…';
-  st.abort = new AbortController();
-  paintCritique(id, AI, Panel);
-
-  let result = null;
-  try {
-    result = await AI.beatCritique({
-      step: Blueprint.stepMeta(id),
-      answers,
-      context: Blueprint.blueprintContext({ skipStepId: id })
-    }, {
-      signal: st.abort.signal,
-      onStatus: (m) => {
-        st.status = m;
-        /* DOM only. A repaint here would rebuild the panel under the
-           Stop button the user may be about to press. */
-        const node = document.querySelector('#' + id + ' .ai-status');
-        if (node) node.textContent = m;
-      }
+    if (!step.id) return;
+    const pill = aiPill({
+      label: 'Ask what is weak about this step',
+      tasks: ['beat-critique'],
+      ctx: { identity: 'step:' + step.id, stepId: step.id, flush: () => saveData() }
     });
-  } catch (err) {
-    st.running = false;
-    st.abort = null;
-    st.status = '';
-    st.error = (err && err.message) ? err.message : 'Something went wrong and nothing was changed.';
-    paintCritique(id, AI, Panel);
-    return;
-  }
-
-  st.running = false;
-  st.abort = null;
-  st.status = result.notes.length
-    + (result.notes.length === 1 ? ' note' : ' notes') + ' from ' + result.model + '.';
-  st.result = result;
-  paintCritique(id, AI, Panel);
-}
-
-async function stopCritique(el) {
-  const id = stepIdOf(el);
-  const st = id && critiques.get(id);
-  if (st && st.abort) st.abort.abort();
-}
-
-async function clearCritique(el) {
-  const id = stepIdOf(el);
-  if (!id) return;
-  const st = critiqueState(id);
-  st.result = null;
-  st.status = '';
-  st.error = '';
-  const [AI, Panel] = await withAI();
-  paintCritique(id, AI, Panel);
+    if (!pill) return;
+    step.append(h('div.ai-step', {}, [pill]));
+  });
 }
 
 
@@ -2996,11 +2735,6 @@ const ACTIONS = {
 const ELEMENT_ACTIONS = {
   duplicateRow: (el) => duplicateRow(el),
   deleteRow: (el) => deleteRow(el),
-  aiCritique: (el) => openCritique(el),
-  aiCritiqueClose: (el) => closeCritique(el),
-  aiCritiqueRun: (el) => runCritique(el),
-  aiCritiqueStop: (el) => stopCritique(el),
-  aiCritiqueClear: (el) => clearCritique(el),
   toggleCommentPanel: (el) => {
     const ask = el.closest('.ask, .pp-ask');
     if (ask) toggleCommentPanel(el.dataset.noteKey, ask);

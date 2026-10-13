@@ -212,7 +212,7 @@ not evicted by a lapse; they are refused on the next insert.
 | `supabase-schema.sql` §20 | `promo_codes`, `quote_order`, `promo_price`, the code on `payments`, the console RPCs |
 | `src/ui/plan-cards.js` + `src/styles/plans.css` | the four cards, the "Have a code?" box, the usage list |
 | `src/ui/billing-admin.js` | the console: overview, tier editor, promo codes, grant form, ledger |
-| `src/pages/settings.js` #plan · `invite.html` #buy · `admin.html` #billing · `panel.js` | where they are drawn |
+| `src/pages/settings.js` #plan · `purchase.html` #plan (the only buy screen) · `admin.html` #billing · `panel.js` | where they are drawn |
 | `src/lib/cloud.js` `_pushProjectMeta` | the `P0402` handling |
 | `vercel.json`, `netlify.toml` | CSP: `checkout.razorpay.com` (script, connect, frame), `api.razorpay.com` (connect, frame), `lumberjack.razorpay.com` (connect — Checkout's telemetry), `*.razorpay.com` images |
 

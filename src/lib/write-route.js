@@ -13,12 +13,12 @@
 
 /** fragment (no '#') -> destination. Every old write.html anchor. */
 const ROUTES = {
-  screenplay: 'script.html',
-  import: 'script.html#import',
-  'wr-import': 'script.html#import',
-  'wr-import-paste': 'script.html#import',
+  screenplay: 'screenplay.html',
+  import: 'screenplay.html#import',
+  'wr-import': 'screenplay.html#import',
+  'wr-import-paste': 'screenplay.html#import',
   revisions: 'drafts.html',
-  documents: 'drafts.html',
+  documents: 'drafts.html#title',
   outline: 'breakdown.html#script',
   characters: 'breakdown.html#script',
   /* The AI coverage report and synopsis-to-script still live in
@@ -26,13 +26,13 @@ const ROUTES = {
      Script Breakdown and the Script page's ⋯ menu. */
   coverage: 'write.html?stay=1#coverage',
   generate: 'write.html?stay=1#generate',
-  guide: 'script.html#guide'
+  guide: 'screenplay.html#guide'
 };
 
 /** Where an old write.html hash goes; always answers. */
 export function routeForWrite(hash) {
   const frag = String(hash || '').replace(/^#/, '');
-  return ROUTES[frag] || 'script.html';
+  return ROUTES[frag] || 'screenplay.html';
 }
 
 /** Redirect when this is write.html without ?stay=1. True if it navigated. */

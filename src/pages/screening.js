@@ -181,9 +181,15 @@ function renderRoom(pass) {
 }
 
 /* One link out of the room, to the public landing page. The room stays free
-   of the shell and the chrome; this is just an anchor. */
+   of the shell and the chrome; this is just an anchor.
+
+   It is NOT a .made-with: that class IS the branding line (brandLine() in
+   footer.js), and it is what a pass or a view row with branding:false
+   removes. Borrowing it for the look drew the line twice in every room and
+   left a "line" behind on a row that turned branding off. Same look, own
+   class (screening.css). */
 function aboutLink() {
-  return h('p.made-with', {}, [h('a', { href: 'start.html', text: 'About the studio' })]);
+  return h('p.sc-about', {}, [h('a', { href: 'start.html', text: 'About the studio' })]);
 }
 
 function expiryText(ms) {

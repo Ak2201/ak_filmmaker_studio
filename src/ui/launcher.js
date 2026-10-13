@@ -242,13 +242,13 @@ const PROBES = {
                               : s.dissectStarted ? work('started') : empty('not started')),
 
   screenplay: (s) => (s.pages ? work(formatPages(s.pages) + ' pages written') : empty('no pages yet')),
-  revisions:  (s) => (s.script.revisions.length ? work(plural(s.script.revisions.length, 'revision saved', 'revisions saved')) : empty('no revisions yet')),
+  revisions:  (s) => (s.script.revisions.length ? work(plural(s.script.revisions.length, 'draft saved', 'drafts saved')) : empty('no drafts yet')),
   docs:       (s) => (s.script.documents.length ? work(plural(s.script.documents.length, 'document', 'documents')) : empty('no documents yet')),
 
   'scene-list': (s) => (s.scenes.length ? work(plural(s.scenes.length, 'scene', 'scenes')) : empty('no scenes yet')),
   breakdowns:   (s) => (s.tagged ? work(`${s.tagged} of ${s.scenes.length} tagged`)
                        : s.scenes.length ? empty('nothing tagged yet') : empty('needs scenes first')),
-  'auto-tag':   (s) => (s.pages ? work('reads ' + formatPages(s.pages) + ' pages') : empty('needs a script')),
+  'auto-tag':   (s) => (s.pages ? work('reads ' + formatPages(s.pages) + ' pages') : empty('needs a screenplay')),
   'screen-time':(s) => (s.scenes.length ? work(plural(s.scenes.length, 'scene timed', 'scenes timed')) : empty('needs scenes first')),
   'cast-matrix':(s) => (s.cast.size ? work(plural(s.cast.size, 'character', 'characters')) : empty('no cast yet')),
   'pitch-deck': (s) => (String(s.story.source || '').trim() || s.feature ? work('ready to export') : empty('needs a synopsis')),
@@ -267,7 +267,7 @@ const PROBES = {
   },
 
   budget:   (s) => (s.costed ? work(plural(s.costed, 'line costed', 'lines costed')) : empty('nothing costed yet')),
-  contacts: (s) => (s.contacts ? work(plural(s.contacts, 'contact', 'contacts')) : empty('no contacts yet')),
+  contacts: (s) => (s.contacts ? work(plural(s.contacts, 'person', 'people')) : empty('nobody added yet')),
   calendar: (s) => (s.dates ? work(plural(s.dates, 'day dated', 'days dated'))
                    : s.days.size ? empty('no dates set') : empty('needs a schedule')),
   media:    (s) => (s.media ? work(plural(s.media, 'file', 'files')) : empty('no files yet')),

@@ -285,7 +285,15 @@ async function openPage(opts) {
      A person takes a moment to press OK; so does this. The window
      itself is a real finding and is asserted on its own terms in the
      first block ("the stub lands after the write returns"). */
-  page.on('dialog', (d) => { errors.push('native dialog: ' + d.message()); d.dismiss().catch(() => {}); });
+  page.on('dialog', (d) => {
+    /* beforeunload is the one native prompt the platform insists on:
+       the Screenplay Writer's leave prompt (src/ui/leave-prompt.js)
+       fires it while the latest words are not yet in a draft. Leaving
+       is the act under test, so it is accepted — as prove:script and
+       check-dialogs allow — and every other native dialog still fails. */
+    if (d.type() === 'beforeunload') { d.accept().catch(() => {}); return; }
+    errors.push('native dialog: ' + d.message()); d.dismiss().catch(() => {});
+  });
   /* The import's result is told in the app's own dialog now. A person
      takes a moment to press OK; so does this (600 ms), by pressing the
      in-app button. */
@@ -510,9 +518,11 @@ let backupFile = null;
   check('5  the value really is on the big tier before exporting',
     sentinel.length > 0 && sentinel.length < STUB_MAX, true);
 
-  /* The hub's real Export button, through the real delegate()
-     handler, building the real file. */
-  await page.evaluate(() => document.querySelector('[data-action="export-all"]').click());
+  /* The real Export control, through the real delegate() handler,
+     building the real file. Since UI revamp 1 it is the band's Backup
+     menu (src/ui/topbar-backup.js); its handler awaits a lazy import of
+     the backup module, which the waitForFunction below covers. */
+  await page.evaluate(() => document.querySelector('[data-action="bk-export"]').click());
   await page.waitForFunction(() => window.__blobs.length > 0, null, { timeout: 15000 });
 
   const out = await page.evaluate(([id, sent]) => {
@@ -569,7 +579,16 @@ console.log('\n--- …and applyBackup() puts them back ---');
      is the whole reason it is here: it was reporting the state of a
      page that no longer existed a moment later. */
   await page.evaluate(() => { window.__preImport = true; });
-  await page.setInputFiles('#importAllFile', backupFile);
+  /* The band's Backup menu builds its file input on the first
+     [data-action="bk-import"] click and then opens the picker; stub the
+     picker so headless Chromium opens nothing, then feed that input. */
+  await page.evaluate(() => {
+    const pick = HTMLInputElement.prototype.click;
+    HTMLInputElement.prototype.click = function () {};
+    document.querySelector('[data-action="bk-import"]').click();
+    HTMLInputElement.prototype.click = pick;
+  });
+  await page.setInputFiles('input[type="file"][aria-label="Import a studio backup"]', backupFile);
   await page.waitForFunction(
     () => window.__preImport === undefined &&
           window.StudioStore && window.StudioStore.listAllProjects().length === 1,
@@ -913,7 +932,7 @@ console.log('\n--- the screenplay editor: text typed just before leaving the pag
   await page.waitForTimeout(2500);
   let kept = 0;
   for (let i = 0; i < 2; i++) {
-    await page.goto(`http://localhost:${PORT}/write.html?stay=1`);
+    await page.goto(`http://localhost:${PORT}/screenplay.html`);
     await page.waitForSelector('.wr-text[data-el-field="text"]', { timeout: 15000 });
     await page.waitForTimeout(1500);
     const ta = page.locator('.wr-text[data-el-field="text"]').nth(5);
@@ -922,7 +941,7 @@ console.log('\n--- the screenplay editor: text typed just before leaving the pag
     await page.keyboard.type(mark, { delay: 10 });
     await (i ? page.reload() : page.goto(`http://localhost:${PORT}/index.html`));
     await page.waitForTimeout(1200);
-    await page.goto(`http://localhost:${PORT}/write.html?stay=1`);
+    await page.goto(`http://localhost:${PORT}/screenplay.html`);
     await page.waitForSelector('.wr-text[data-el-field="text"]', { timeout: 15000 });
     await page.waitForTimeout(1500);
     if (await page.evaluate((m) => [...document.querySelectorAll('.wr-text[data-el-field="text"]')].some((t) => t.value.includes(m)), mark)) kept++;
@@ -962,9 +981,12 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
   const bBefore = await bKeys();
   const rawJSON = (k) => page.evaluate((key) => { try { return JSON.parse(window.__raw(key) || 'null'); } catch (e) { return null; } }, k);
 
-  await page.goto(`http://localhost:${PORT}/write.html?stay=1`);
-  await page.waitForSelector('[data-action="el-first"]', { timeout: 15000 });
-  await page.click('[data-action="el-first"]');
+  await page.goto(`http://localhost:${PORT}/screenplay.html`);
+  /* screenplay.html gives an empty script one blank scene line in
+     memory (src/pages/screenplay.js), so there is no "Write the first
+     line" button to press; write.html's empty state had one. */
+  await page.waitForSelector('.t-scene .wr-text, [data-action="el-first"]', { timeout: 15000 });
+  if (await page.$('[data-action="el-first"]')) await page.click('[data-action="el-first"]');
   await page.waitForSelector('.t-scene .wr-text', { timeout: 5000 });
   await page.locator('.t-scene .wr-text').first().click();
   await page.keyboard.type('INT. HALL - DAY', { delay: 15 });

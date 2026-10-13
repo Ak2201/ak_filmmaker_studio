@@ -207,6 +207,14 @@ for (const f of ['schema-46-role-matrix.sql', 'schema-46-role-matrix.sql']) {
 console.log('✓ §46 loads (and re-runs cleanly)');
 runChecks('role-matrix.sql');
 /* --- end §46 --- */
+/* --- §47 (total delete anonymises the invoice) --- standalone, on §45. --- */
+for (const f of ['schema-47-delete-anonymise.sql', 'schema-47-delete-anonymise.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §47 loads (and re-runs cleanly)');
+runChecks('delete-anonymise.sql');
+/* --- end §47 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

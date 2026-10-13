@@ -5,26 +5,41 @@
    network: any request to another host fails the run.
 
      · nothing is sent before a click; the cost line is on screen first
+     · the run goes through the AI pill → the AI Desk → Run → Accept
+       (src/lib/ai-tasks.js 'coverage' / 'logline'); nothing is stored
+       as the report until Accept
      · a fabricated quote is stripped and the count is printed
      · the report is stored inside the script blob and a reload reads
        it back WITHOUT a request
      · a run that fails on part 2 keeps part 1, and Resume sends only
        the parts not yet read (it does not bill twice)
      · a voice-check rewrite lands in `alts`, never in `text`
-     · the logline workshop replaces nothing without a confirm, and
-       Undo restores the writer's line
+     · the logline workshop (in the Desk) replaces nothing until a
+       variant is accepted, and Undo restores the writer's line
      · no horizontal overflow at 390 and 1280, in both themes
 
-   Run:  VITE_SITE_GATE=off npx vite build --outDir dist-verify
-         PROVE_DIST=dist-verify node scripts/prove-ai-coverage.mjs
+   Run:  npm run build:verify && npm run prove:ai-coverage
+         (PROVE_DIST=dist to point it at the `npm run build:open` output)
    ============================================================ */
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { anthropicSSE, geminiSSE } from './fake-ai.mjs';
+/* AI tools are LOCKED unless the signed-in plan is known and includes
+   them (plan-gate.js aiUnlocked()), so this proof signs in — Amy, on
+   Pro, against the shared Supabase fake — rather than running signed
+   out as it did before the lock. */
+import { F, SB, REF, USERS, handle, sessionFor, aiScenario } from './fake-supabase.mjs';
+const TOK = 'tok-amy';
 
 const DIST = path.resolve(process.env.PROVE_DIST || 'dist-verify');
+/* Without the build every page is a 404 and the first evaluate dies
+   on `window.StudioStore` being undefined — say what is missing. */
+if (!fs.existsSync(path.join(DIST, 'write.html'))) {
+  console.error('✗ no ' + path.relative(process.cwd(), DIST) + '/write.html — run `npm run build:verify` first (or PROVE_DIST=dist after `npm run build:open`)');
+  process.exit(2);
+}
 const PORT = Number(process.env.PROVE_PORT) || 5863;
 const SHOTS = process.env.PROVE_SHOTS || '';
 const MIME = {
@@ -150,7 +165,9 @@ async function session({ width, theme, provider }) {
      findings: every off-origin request is aborted below (ERR_FAILED),
      and the fake answers the "failed run" with a 529 on purpose. */
   page.on('console', (m) => {
-    if (m.type() === 'error' && !/^Failed to load resource/.test(m.text())) errors.push(m.text());
+    /* Signed in, the client opens Supabase realtime; a WebSocket is
+       not routed by page.route, so it fails to connect here. Not a finding. */
+    if (m.type() === 'error' && !/^Failed to load resource|WebSocket connection to .*\/realtime\//.test(m.text())) errors.push(m.text());
   });
   page.on('response', (r) => {
     const u = r.url();
@@ -163,7 +180,11 @@ async function session({ width, theme, provider }) {
     if (r.url().startsWith(BASE) && !/ERR_ABORTED/.test(why)) errors.push('failed ' + r.url() + ' ' + why);
   });
   await page.route(/^https:\/\/(api\.anthropic\.com|generativelanguage\.googleapis\.com)\//, route);
-  await page.route((u) => !u.href.startsWith(BASE) && !/anthropic\.com|googleapis\.com\/v1beta/.test(u.href), (r) => r.abort());
+  await page.route(SB + '/**', handle);
+  await page.route((u) => !u.href.startsWith(BASE) && !u.href.startsWith(SB) && !/anthropic\.com|googleapis\.com\/v1beta/.test(u.href), (r) => r.abort());
+  await page.addInitScript(([k, v, uid]) => {
+    if (!sessionStorage.getItem('__seeded')) { localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid); sessionStorage.setItem('__seeded', '1'); }
+  }, [`sb-${REF}-auth-token`, sessionFor(TOK), USERS[TOK].id]);
   /* The "run it again?" questions are asked in the app now: press the
      in-app confirm button the way a person would, and fail on a native box. */
   page.on('dialog', (d) => { errors.push('native dialog: ' + d.message()); d.dismiss().catch(() => {}); });
@@ -176,14 +197,41 @@ async function session({ width, theme, provider }) {
 
 const KEY = { anthropic: 'sk-ant-PROVEPROVEPROVEPROVE12', gemini: 'AIzaPROVEPROVEPROVEPROVE12' };
 
+/* ---- the AI Desk ------------------------------------------------- */
+const deskShown = (page) => page.evaluate(() => {
+  const d = document.querySelector('aside.ai-desk');
+  return !!d && !d.hidden && d.getBoundingClientRect().width > 0;
+});
+/** Click a one-task pill and wait for the Desk to show its task. */
+async function openPill(page, sel) {
+  const p = page.locator(sel).first();
+  await p.waitFor({ state: 'visible', timeout: 15000 });
+  await p.scrollIntoViewIfNeeded().catch(() => {});
+  await p.click();
+  await page.waitForFunction(() => {
+    const d = document.querySelector('aside.ai-desk');
+    return d && !d.hidden && d.getBoundingClientRect().width > 0 && d.querySelector('.ai-desk-input');
+  }, null, { timeout: 10000 });
+  await page.waitForTimeout(300);
+}
+const deskSays = async (page, sel) => ((await page.locator('aside.ai-desk ' + sel).first().textContent().catch(() => '')) || '');
+
 for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'paper', 'gemini']]) {
   const tag = '[' + width + ' ' + theme + ' ' + provider + '] ';
   requests.length = 0;
+  F.reset(); aiScenario('pro', TOK);
   const { ctx, page, errors } = await session({ width, theme, provider });
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
-  await page.evaluate(({ els, theme, provider, key }) => {
+  await page.evaluate(({ els, theme, provider, key, keep }) => {
     const S = window.StudioStore;
+    /* Clear the studio but keep the session, the account pointer and
+       this device's lock id — without the first two the next load is
+       signed out and every AI pill is locked; without the third the
+       device lock reads a NEW device and puts up "Active in another
+       window" over the page. */
+    const saved = keep.map((k) => [k, localStorage.getItem(k)]);
     localStorage.clear();
+    for (const [k, v] of saved) if (v != null) localStorage.setItem(k, v);
     const p = S.createProject({ title: 'Ooru', format: 'feature' });
     S.setCurrentProject(p.id);
     localStorage.setItem('fms_script_v1', JSON.stringify({ elements: els, revisions: [], documents: [] }));
@@ -191,32 +239,59 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper
     S.rawSet('fms_ai_provider_v1', provider);
     S.rawSet(provider === 'anthropic' ? 'fms_ai_key_v1' : 'fms_ai_key_gemini_v1', key);
     localStorage.setItem('fms_story_v1', JSON.stringify({ logline: 'A broke son leaves his mother to find work in Chennai.', idea: '', source: '', marks: [], tension: {}, outline: [] }));
-  }, { els: makeScript(40), theme, provider, key: KEY[provider] });
+  }, { els: makeScript(40), theme, provider, key: KEY[provider], keep: [`sb-${REF}-auth-token`, 'fms_studio_account_v1', 'fms_device_session_v1'] });
 
   /* ---- write.html#coverage, before any click ---------------------- */
   await page.goto(BASE + '/write.html?stay=1#coverage', { waitUntil: 'networkidle' });
-  await page.waitForSelector('#coverage .cv-run', { timeout: 15000 });
+  await page.waitForSelector('#coverage .cv-run .ai-pill', { timeout: 15000 });
+  /* The plan has to have ARRIVED before an AI control is unlocked. */
+  for (let i = 0; i < 50 && !F.db.calls.includes('billing_status'); i++) await page.waitForTimeout(100);
+  check(tag + 'signed in: billing_status() was asked', F.db.calls.includes('billing_status'));
+  await page.waitForTimeout(400);
   check(tag + 'the Coverage tab is a tab', await page.locator('.tabs [role="tab"]', { hasText: 'Coverage' }).count() === 1);
   const cost = await page.locator('#coverage .cv-cost').textContent();
   check(tag + 'the cost is on screen before the click: ' + cost.slice(0, 60), /About 4 requests/.test(cost) && /tokens sent/.test(cost), cost);
   check(tag + 'nothing was sent on load', requests.length === 0, requests.length);
 
+  const PILL = '#coverage .cv-run .ai-pill';
+  check(tag + 'the run is an AI pill, unlocked on Pro with a key', await page.locator(PILL).first().evaluate((el) => el.dataset.aiState) === 'ready');
+
   /* ---- a run that fails on part 2, then resumes ------------------- */
   failPart2Once = true;
-  await page.click('[data-action="cv-run"]');
-  await page.waitForSelector('#coverage .cv-run .ai-error', { timeout: 15000 });
+  await openPill(page, PILL);
+  check(tag + 'the pill opens the AI Desk on Coverage', /Coverage/.test(await deskSays(page, '.ai-desk-title')));
+  const what = await page.locator('aside.ai-desk .ai-desk-input').inputValue();
+  check(tag + '"What goes in" states the parts and the first part', /in 3 parts/.test(what) && /The first part sends/.test(what), what.slice(0, 160));
+  check(tag + 'opening the Desk sent nothing', requests.length === 0, requests.length);
+  await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+  await page.waitForSelector('aside.ai-desk .ai-error', { timeout: 15000 });
   check(tag + 'the failed run made two requests (part 1, part 2)', requests.length === 2, requests.length);
   const partial = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_script_v1')).documents.filter((d) => d.coverage).map((d) => [d.coverage.status, d.coverage.checkpoint && d.coverage.checkpoint.parts.length]));
   check(tag + 'the part read is stored as a checkpoint in the script blob', JSON.stringify(partial) === '[["partial",1]]', partial);
-  const resumeBtn = await page.locator('[data-action="cv-run"]').textContent();
-  check(tag + 'the button offers Resume', /Resume — 1 of 3 read/.test(resumeBtn), resumeBtn);
+  await page.click('aside.ai-desk [data-action="ai-desk-skip"]');
+  await page.waitForTimeout(300);
+  check(tag + 'Skip closes the Desk', !(await deskShown(page)));
+  const resumeBtn = await page.locator(PILL).first().textContent();
+  check(tag + 'the pill offers Resume', /Resume coverage — 1 of 3 read/.test(resumeBtn), resumeBtn);
   requests.length = 0;
-  await page.click('[data-action="cv-run"]');
-  await page.waitForSelector('#coverage .cv-report', { timeout: 15000 });
+  await openPill(page, PILL);
+  const what2 = await page.locator('aside.ai-desk .ai-desk-input').inputValue();
+  check(tag + 'the Desk says part 1 is not sent again', /1 of 3 parts are already read/.test(what2), what2.slice(0, 220));
+  await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+  await page.waitForSelector('aside.ai-desk .ai-desk-item input[type="checkbox"]', { timeout: 15000 });
   check(tag + 'Resume sent parts 2 and 3 and the report only — part 1 not billed again',
     requests.length === 3 && !requests.some((r) => /This is part 1 of/.test(r.user)), requests.map((r) => r.user.slice(0, 40)));
   check(tag + 'the key went in a header, never in a URL',
     requests.every((r) => r.key === KEY[provider] && !r.url.includes(KEY[provider]) && !/[?&]key=/.test(r.url)));
+  const nItems = await page.locator('aside.ai-desk .ai-desk-item').count();
+  check(tag + 'the Desk lists the report\'s points, each ticked (' + nItems + ')', nItems >= 4
+    && await page.$$eval('aside.ai-desk .ai-desk-item input[type="checkbox"]', (b) => b.every((x) => x.checked)), nItems);
+  check(tag + 'the Desk notes the verdict before Accept', /Verdict: Consider/.test(await deskSays(page, '.ai-desk-note')));
+  const notYet = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_script_v1')).documents.filter((d) => d.coverage && d.coverage.status === 'done').length);
+  check(tag + 'nothing is stored as the report before Accept', notYet === 0, notYet);
+  await page.click('aside.ai-desk [data-action="ai-desk-accept-all"]');
+  await page.waitForSelector('#coverage .cv-report', { timeout: 15000 });
+  check(tag + 'Accept closes the Desk', !(await deskShown(page)));
   const removed = await page.locator('#coverage .cv-removed').textContent();
   check(tag + 'the stripped quotes are counted: ' + removed.slice(0, 70), /2 quotes removed because they were not in your script/.test(removed) && /3 more/.test(removed), removed);
   const quotes = await page.locator('#coverage .cv-quote').allTextContents();
@@ -235,7 +310,7 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('#coverage .cv-report', { timeout: 15000 });
   check(tag + 'reopening shows the stored report without a request', requests.length === 0, requests.length);
-  check(tag + 'the button now says Run again', /Run coverage again/.test(await page.locator('[data-action="cv-run"]').textContent()));
+  check(tag + 'the pill now says Run again', /Run coverage again/.test(await page.locator(PILL).first().textContent()));
 
   /* ---- the voice check: a rewrite becomes a take, not the line ---- */
   await page.selectOption('select[data-action="cv-voice-pick"]', 'ANBU');
@@ -266,25 +341,31 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper
   check(tag + 'no horizontal overflow on the Coverage tab', ov <= 0, ov);
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'coverage-' + width + '-' + theme + '.png'), fullPage: true });
 
-  /* ---- story.html: the logline workshop --------------------------- */
+  /* ---- story.html: the logline workshop, in the Desk -------------- */
   await page.goto(BASE + '/story.html#path-2', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-action="lw-run"]', { timeout: 15000 });
+  await page.waitForSelector('.st-lw .ai-pill', { timeout: 15000 });
   requests.length = 0;
-  check(tag + 'workshop: nothing sent before the click', requests.length === 0);
-  await page.click('[data-action="lw-run"]');
-  await page.waitForSelector('.st-lw-variants', { timeout: 15000 });
+  await openPill(page, '.st-lw .ai-pill');
+  const lwIn = await page.locator('aside.ai-desk .ai-desk-input').inputValue();
+  check(tag + 'workshop: "What goes in" is the writer\'s logline', lwIn === 'A broke son leaves his mother to find work in Chennai.', lwIn);
+  check(tag + 'workshop: nothing sent before Run', requests.length === 0, requests.length);
+  await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+  await page.waitForSelector('aside.ai-desk .ai-desk-item input[type="checkbox"]', { timeout: 15000 });
   check(tag + 'workshop: one request', requests.length === 1, requests.length);
-  const lrem = await page.locator('.st-lw .cv-removed').textContent();
+  const lrem = await deskSays(page, '.ai-desk-note');
   check(tag + 'workshop: the fabricated span is counted', /1 quote removed because it was not in your logline/.test(lrem), lrem);
-  check(tag + 'workshop: five variants, each with Use this', await page.locator('[data-action="lw-use"]').count() === 5);
+  check(tag + 'workshop: five variants to choose from', await page.locator('aside.ai-desk .ai-desk-item').count() === 5);
   const before = await page.locator('#stLogline').inputValue();
-  check(tag + 'workshop: the logline is untouched until a choice', before === 'A broke son leaves his mother to find work in Chennai.', before);
-  await page.locator('[data-action="lw-use"]').nth(2).click();
-  await page.waitForTimeout(300);
+  check(tag + 'workshop: the logline is untouched until Accept', before === 'A broke son leaves his mother to find work in Chennai.', before);
+  /* Keep ONLY the third variant ticked, then Accept selected. */
+  const ticks = page.locator('aside.ai-desk .ai-desk-item input[type="checkbox"]');
+  for (let k = 0; k < 5; k++) if (k !== 2) await ticks.nth(k).uncheck();
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
+  await page.waitForTimeout(400);
   const now = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_story_v1')).logline);
-  check(tag + 'workshop: Use this (confirmed) replaces the logline', /^Variant 3/.test(now), now);
+  check(tag + 'workshop: Accept takes the ticked variant as the logline', /^Variant 3/.test(now), now);
   await page.locator('.toast-action', { hasText: 'Undo' }).last().click();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
   const back = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_story_v1')).logline);
   check(tag + 'workshop: Undo puts the writer\'s logline back', back === before, back);
   const ov2 = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

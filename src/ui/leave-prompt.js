@@ -2,7 +2,7 @@
    LEAVE PROMPT — "Your script changed since Draft 3."
    ------------------------------------------------------------
    installLeavePrompt({ getDoc, persistNow }) is called once by a page
-   that edits the script (script.html; drafts.html in its own way).
+   that edits the script (screenplay.html; drafts.html in its own way).
 
    WHEN IT ASKS: the writer follows an in-app link (a same-origin <a>
    that is not a '#' jump, the stage bar's links among them) or picks

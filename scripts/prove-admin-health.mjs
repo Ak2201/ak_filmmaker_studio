@@ -203,6 +203,26 @@ try {
     await A.ctx.close();
   }
 
+  console.log('(b2b) a reply the browser cannot read is Deployed; a dead network is Unreachable');
+  await fresh();
+  {
+    const A = await newContext(browser, 'tok-admin');
+    /* what rzp-webhook really does: 401 "bad signature", text/plain, NO CORS headers.
+       A page's cors fetch fails; the no-cors retry resolves. */
+    await A.ctx.route(SB + '/functions/v1/rzp-webhook', (r) => r.fulfill({ status: 401, contentType: 'text/plain', body: 'bad signature', headers: { 'Access-Control-Allow-Origin': 'https://not-this-page.invalid' } }));
+    await A.ctx.route(SB + '/functions/v1/rzp-verify', (r) => r.abort('connectionrefused'));
+    await A.page.goto(BASE + 'admin.html#health');
+    await A.page.waitForFunction(() => /Deployed:/.test(document.querySelector('#health .ad-probe')?.textContent || ''), null, { timeout: 10000 });
+    const probe = await A.page.textContent('#health .ad-probe');
+    ok(/rzp-webhook.*Answers.*Deployed: answered, but sends no CORS headers/.test(probe), 'an unreadable (no-CORS) reply reads Answers / Deployed, not Unreachable');
+    ok(/rzp-verify.*Unreachable/.test(probe), 'a connection that fails both ways still reads Unreachable');
+    const steps = await texts(A.page, '#health .ad-check-i');
+    ok(/rzp-verify: unreachable/.test(steps[2]) && !/rzp-webhook/.test(steps[2]), 'the functions step names only the one that is really down');
+    /* the browser logs its own CORS refusal and the refused connection: expected here, and only these two */
+    allErrors.push(...A.errors.filter((e) => !/functions\/v1\/rzp-webhook.*blocked by CORS policy|ERR_CONNECTION_REFUSED|Failed to load resource/.test(String(e))));
+    await A.ctx.close();
+  }
+
   console.log('(b3) a missing function is Missing');
   await fresh();
   {

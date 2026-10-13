@@ -32,14 +32,14 @@
     },
     {
       "id": "write",
-      "page": "script",
-      "href": "script.html#screenplay",
+      "page": "screenplay",
+      "href": "screenplay.html#screenplay",
       "anchor": [
         "[data-tour=\"write\"]",
         "#screenplay",
         "#main"
       ],
-      "title": "Write: the screenplay",
+      "title": "Screenplay Writer: write the screenplay",
       "body": "It formats as you type — slug lines, action, cues, dialogue — and keeps the page count honest. Every scene heading you write becomes a scene in the breakdown."
     },
     {
@@ -52,7 +52,7 @@
         "#scenes",
         "#main"
       ],
-      "title": "Breakdown: what each scene needs",
+      "title": "Scene Breakdown: what each scene needs",
       "body": "Tag cast, props, vehicles and sound against each scene. The elements list, the schedule, the budget and the call sheets all read these tags, so nothing is typed twice."
     },
     {
@@ -65,7 +65,7 @@
         "#main"
       ],
       "title": "Stripboard: scenes into shoot days",
-      "body": "Drag the strips into days. The day out of days, the calendar and the call sheets follow the board."
+      "body": "Drag the strips into days. The day out of days, the Shoot Calendar and the call sheets follow the board."
     },
     {
       "id": "budget",
@@ -154,11 +154,11 @@
       {
         "id": "script",
         "label": "Start the screenplay",
-        "href": "write.html#screenplay"
+        "href": "screenplay.html#screenplay"
       },
       {
         "id": "scene",
-        "label": "Have a scene in the breakdown",
+        "label": "Have a scene in the Scene List",
         "href": "breakdown.html#scenes"
       },
       {

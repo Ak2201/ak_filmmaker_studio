@@ -15,6 +15,7 @@
        node scripts/test-sun.mjs   (or: npm run test:sun)
    ============================================================ */
 import Sun from '../src/lib/sun.js';
+import { recceLight } from '../src/lib/recce-light.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  ✗ ' + msg); } };
@@ -97,6 +98,34 @@ ok(Sun.needsDaylight({ intExt: 'EXT', dayNight: 'DAY' }), 'EXT DAY');
 ok(Sun.needsDaylight({ intExt: 'INT/EXT', dayNight: 'MORNING' }), 'INT/EXT counts');
 ok(!Sun.needsDaylight({ intExt: 'EXT', dayNight: 'NIGHT' }), 'EXT NIGHT does not');
 ok(!Sun.needsDaylight({ intExt: 'INT', dayNight: 'DAY' }), 'INT does not');
+
+/* ---- the recce card's light (src/lib/recce-light.js) ------------ */
+const pin = { lat: '13.0827', lng: '80.2707' };
+const ext = { number: '4', intExt: 'EXT', dayNight: 'DAY' };
+const extNight = { number: '5', intExt: 'EXT', dayNight: 'NIGHT' };
+const intScene = { number: '6', intExt: 'INT', dayNight: 'DAY' };
+const lightDays = [
+  { day: 2, date: '2026-01-15', scenes: [ext, intScene] },
+  { day: 1, date: '2026-01-14', scenes: [ext] },
+  { day: 3, date: '', scenes: [ext] }
+];
+const wraps = { 2: '19:30', 1: '17:00', 3: '20:00' };
+const lit = recceLight({ recce: pin, days: lightDays, wrapOf: (d) => wraps[d], deviceOffset: () => -330 });
+ok(lit.pinned, 'a pinned recce is pinned');
+eq(lit.rows.map((r) => r.day), [1, 2], 'only dated days get a row, in day order');
+eq(lit.undated, 1, 'the undated day is counted, not guessed');
+eq(lit.rows[0].flag, null, 'wrap 17:00 is before sunset: no flag');
+eq(lit.rows[1].flag && lit.rows[1].flag.scenes, ['4'], 'wrap 19:30 after sunset with an exterior day scene: flagged, scene named');
+eq(lit.rows[1].flag && lit.rows[1].flag.wrap, '19:30', 'the flag carries the wrap');
+ok(lit.rows[1].flag && /^18:0\d$/.test(lit.rows[1].flag.sunset), 'and the sunset it is judged against');
+eq(recceLight({ recce: { lat: '', lng: '' }, days: lightDays, wrapOf: () => '19:30' }), { pinned: false, place: null, rows: [], undated: 0 }, 'no pin: nothing, never a Chennai fallback');
+eq(recceLight({ recce: { lat: 'x', lng: '80' }, days: lightDays }).pinned, false, 'an unreadable pin is no pin');
+const one = (scenes, wrap, date = '2026-01-14') => recceLight({ recce: pin, days: [{ day: 1, date, scenes }], wrapOf: () => wrap, deviceOffset: () => -330 });
+eq(one([ext], '').rows[0].flag, null, 'no wrap typed: no flag');
+eq(one([extNight, intScene], '21:00').rows[0].flag, null, 'late wrap but only night and interior scenes here: no flag');
+eq(one([{ ...ext, shotState: 'shot' }], '21:00').rows[0].flag, null, 'an exterior already shot needs no warning');
+eq(one([ext], '21:00', 'junk').rows, [], 'a junk date gives no row');
+ok(typeof Sun.deviceOffsetOn('2026-01-15') === 'number', 'deviceOffsetOn answers a number');
 
 /* Julian Day sanity: J2000.0 is 2451545.0 at noon, so midnight is .5 earlier */
 eq(Sun.julianDay('2000-01-01'), 2451544.5, 'julianDay of 2000-01-01');

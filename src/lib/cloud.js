@@ -223,12 +223,19 @@ export function gateDetail(reason) {
   }
 }
 
+/* The plan-limit message has to outlive the idle pass: idleSync() runs
+   after every attach, flush and gate check, and used to replace "Not
+   synced — plan limit reached" with "Everything is in your account"
+   while the project was still only on this device. Held until a push
+   to the cloud actually succeeds. */
+let _planLimitHeld = false;
 function idleSync() {
   const q = _readQueue().length;
   if (!session)  return setSync(SYNC_STATES.OFF, isConfigured() ? 'Signed out — local only' : 'Local only');
   if (!syncEnabled()) return setSync(SYNC_STATES.OFF, 'Cloud sync is off on this device');
   if (_gateState === 'closed') return setSync(_gateReason === 'unreachable' ? SYNC_STATES.ERROR : SYNC_STATES.OFF, gateDetail(_gateReason));
   if (_gateState === 'lost')   return setSync(SYNC_STATES.ERROR, 'Paused — this account is active on another device');
+  if (_planLimitHeld) return setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
   if (q)         return setSync(SYNC_STATES.OFFLINE, q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload');
   setSync(SYNC_STATES.SYNCED, 'Everything is in your account');
 }
@@ -1559,13 +1566,17 @@ async function _pushProjectMeta(project) {
       console.info('[push meta] plan limit:', error.message);
       reportSyncError('other', 'P0402');   // project meta has no scope
       bumpUsage('limit_hit');
+      _planLimitHeld = true;
       setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
       planLimitToast(error.message);
       return;
     }
     console.warn('[push meta]', error);
     _enqueue({ kind: 'meta', project });
+    return;
   }
+  /* A new project got in: the cap no longer holds this account. */
+  _planLimitHeld = false;
 }
 
 /* A page that creates a project and then navigates (the hub's setup
@@ -1593,6 +1604,7 @@ function replayPlanLimitNotice() {
   let n = null;
   try { n = JSON.parse(sessionStorage.getItem(PLAN_NOTICE_KEY) || 'null'); sessionStorage.removeItem(PLAN_NOTICE_KEY); } catch (e) { return; }
   if (!n || !n.m || Date.now() - (n.at || 0) > 5 * 60000) return;
+  _planLimitHeld = true;
   setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
   _planToastAt = 0;
   setTimeout(() => planLimitToast(n.m, { carry: false }), 0);

@@ -40,13 +40,10 @@ import '../styles/ai.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
-/* The provider TABLE only — not src/lib/ai.js, which this page
-   still reaches with import() at a click. The disclosure below has
-   to name the host the key will actually go to, and a restated
-   hostname is a privacy claim that goes stale. */
-import { apiHost } from '../lib/ai-providers.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import PDF from '../lib/pdf.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Script from '../lib/script.js';
@@ -112,7 +109,7 @@ function renderHeader(scenes, shots, frames, boards) {
   const covered = new Set(shots.map((s) => s.sceneId).filter((id) => live.has(id))).size;
   const refs = Shots.countEntries(boards);
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Visualize · the film seen before it is shot' }),
+    h('p.bd-eyebrow', { text: 'Visualise · the film seen before it is shot' }),
     h('h1.bd-title', { text: 'Shots & Frames.' }),
     h('p.bd-deck', {
       text: 'A shot list is the scene broken into the pieces the camera actually '
@@ -418,36 +415,22 @@ let aiPicked = null;           // Set<sceneId>, or null until first render
 let aiStatus = '';
 let aiError = '';
 let aiRunning = false;
-let aiAbort = null;
 let aiLastRun = [];            // shot ids from the most recent draft
 
-/** Both modules, imported once. Until they land the panel renders
-    its "checking" state, which lasts one frame. */
-let AIm = null;                // src/lib/ai.js
-let Panelm = null;             // src/ui/ai-panel.js
-async function primeAI() {
-  if (AIm) return true;
-  let mods;
-  try {
-    mods = await Promise.all([
-      import('../lib/ai.js'),
-      import('../ui/ai-panel.js')
-    ]);
-  } catch (e) {
-    console.warn('[visualize] ai', e);
-    return false;
-  }
-  [AIm, Panelm] = mods;
-  Panelm.wireAIPanel();
-  // The module owns the key handlers now, so this is the only
-  // thing that redraws the panel when a key is saved, replaced or
-  // forgotten, or the model changes. Without it the buttons still
-  // work and the page still says the old thing.
-  // Both redraws can land while somebody is typing in a shot — this
-  // one a second after first paint — so they keep that field focused.
-  Panelm.onAIChange(() => preservingFocus(render));
+/* THE AI HALF IS THE AI DESK'S 'shot-draft' TASK (src/lib/ai-tasks.js):
+   the same draftShotDivision() over the ticked scenes, the same
+   matchScenes() pairing, and the same append-only write marked
+   `ai: true`. The pill below is the way in — greyed with the Pro offer
+   on a plan without AI, a link to Settings with no key — so this page
+   loads no model code and holds no key form. `after` hands the ids it
+   wrote back here, so "Undo the last draft" still names them. */
+function shotsDrafted(made) {
+  aiLastRun = made || [];
+  aiError = '';
+  aiStatus = aiLastRun.length
+    ? plural(aiLastRun.length, 'shot', 'shots') + ' drafted by AI. Every one of them is marked and editable.'
+    : '';
   preservingFocus(render);
-  return true;
 }
 
 /* Which script text goes with which scene is matchScenes()'s answer,
@@ -505,13 +488,10 @@ function aiScenePicker(plan) {
    there for the key: with the panel module still loading, or failed,
    the rules still run. */
 const localGate = (lead, body, cta) =>
-  (Panelm ? Panelm.gate(lead, body, cta)
-    : h('div.ai-gate', {}, [h('p', {}, [h('strong', { text: lead + ' ' }), h('span', { text: body })]), cta]));
-const localStatus = (text) =>
-  (Panelm ? Panelm.statusLine(text) : (text ? h('p.ai-status', { role: 'status', text }) : null));
+  h('div.ai-gate', {}, [h('p', {}, [h('strong', { text: lead + ' ' }), h('span', { text: body })]), cta]);
+const localStatus = (text) => (text ? h('p.ai-status', { role: 'status', text }) : null);
 const localError = (text) =>
-  (Panelm ? Panelm.errorLine(text)
-    : (text ? h('p.ai-error', { role: 'alert' }, [h('strong', { text: 'It did not run. ' }), h('span', { text })]) : null));
+  (text ? h('p.ai-error', { role: 'alert' }, [h('strong', { text: 'It did not run. ' }), h('span', { text })]) : null);
 
 function renderAI(scenes, shots) {
   const wrap = h('section.vz-ai', { id: 'draft' });
@@ -524,39 +504,23 @@ function renderAI(scenes, shots) {
     })
   );
 
-  /* GATE 1 — the key. It gates the AI path ONLY. Without a key the
-     basic breakdown (src/lib/shot-rules.js) is the main button and
-     the key form waits under it, so the panel always has something
-     to offer. `keyGate()` is still the panel module's decision —
-     whether a form is owed, and the "replacing a key that already
-     works" case — this page only decides where it goes. */
-  const hasKey = !!(Panelm && Panelm.hasKey());
-  const kg = Panelm ? Panelm.keyGate('Drafting') : null;
-  if (!Panelm) wrap.append(h('p.bd-none', { text: 'Checking this device for a key…' }));
-  if (hasKey) {
-    if (kg) wrap.append(kg);
-    wrap.append(Panelm.keyBar());
-  }
-
   /* GATE 2 — the script. Also independent: a key with no script
      is a different problem with a different answer, and the rules
      have nothing to read without one either. */
   const plan = aiScenePlan(scenes, shots);
   if (!plan.hasScript) {
-    if (!hasKey && kg) wrap.append(kg);
     wrap.append(localGate(
       'There is no script yet.',
       'A shot division is a reading of the scene as written — without the '
         + 'pages there is nothing to read, and a division invented from a slug '
         + 'line is a guess dressed up as a plan.',
-      h('a.btn.primary.bd-cta', { href: 'script.html', text: 'Write the script  →' })
+      h('a.btn.primary.bd-cta', { href: 'screenplay.html', text: 'Write the screenplay  →' })
     ));
     return wrap;
   }
 
   /* The scene list is the shot list's own empty state above. */
   if (!scenes.length) {
-    if (!hasKey && kg) wrap.append(kg);
     wrap.append(h('p.bd-none', {
       text: 'Break the script into scenes first — a shot belongs to a scene, and the '
           + 'breakdown is where scenes are made.'
@@ -570,26 +534,16 @@ function renderAI(scenes, shots) {
     aiPicked = new Set(plan.rows.filter((r) => !r.existing).map((r) => r.scene.id));
   }
 
-  if (hasKey) {
-    wrap.append(Panelm.disclose(
-      'Clicking the button below sends the slug line, the one-line synopsis and '
-      + 'the script text of the ticked scenes to ' + apiHost() + ', using the key '
-      + 'on this device. Nothing else leaves this browser, and nothing is sent '
-      + 'until you click. Your screenplay is your unpublished work — this is the '
-      + 'only place in the studio that puts any of it on the network. '
-      + 'The basic breakdown sends nothing: it reads the pages here, by rule.'
-    ));
-  } else {
-    wrap.append(h('p.vz-note.vz-basic-note', {}, [
-      h('strong', { text: 'No key needed. ' }),
-      h('span', {
-        text: 'The basic breakdown reads the ticked scenes on this device, by rule: a master, '
-            + 'an over-the-shoulder pair for a two-hander, a single for each speaker, the '
-            + 'shot lines you wrote, a move where somebody runs, a POV where somebody looks, '
-            + 'and inserts for the props. Nothing leaves this browser.'
-      })
-    ]));
-  }
+  wrap.append(h('p.vz-note.vz-basic-note', {}, [
+    h('strong', { text: 'No key needed. ' }),
+    h('span', {
+      text: 'The basic breakdown reads the ticked scenes on this device, by rule: a master, '
+          + 'an over-the-shoulder pair for a two-hander, a single for each speaker, the '
+          + 'shot lines you wrote, a move where somebody runs, a POV where somebody looks, '
+          + 'and inserts for the props. Nothing leaves this browser. The AI draft sends the '
+          + 'ticked scenes only, and shows you what it sends before it does.'
+    })
+  ]));
 
   wrap.append(h('div.vz-ai-picks', {}, [
     h('button.btn', { type: 'button', 'data-action': 'vz-ai-all', text: 'Tick all' }),
@@ -604,35 +558,35 @@ function renderAI(scenes, shots) {
   wrap.append(aiScenePicker(plan));
 
   const none = aiPicked.size === 0;
-  const basicBtn = h('button.btn' + (hasKey ? '' : '.primary'), {
+  const basicBtn = h('button.btn.primary', {
     type: 'button', 'data-action': 'vz-basic-run', disabled: none || aiRunning,
-    text: hasKey ? 'Basic breakdown' : 'Basic breakdown (no AI key needed)'
+    text: 'Basic breakdown (no AI key needed)'
+  });
+  /* ctx is computed at the click, so it carries the scenes ticked THEN. */
+  const pill = aiPill({
+    label: 'Draft ' + plural(aiPicked.size, 'scene', 'scenes') + ' with AI',
+    tasks: ['shot-draft'],
+    ctx: () => {
+      const ids = [...(aiPicked || [])];
+      return { identity: 'shots:' + ids.slice().sort().join(','), sceneIds: ids, after: shotsDrafted };
+    }
   });
   wrap.append(h('div.vz-ai-acts', {}, [
-    aiRunning
-      ? h('button.btn.danger', { type: 'button', 'data-action': 'vz-ai-stop', text: 'Stop' })
-      : (hasKey
-        ? h('button.btn.primary', {
-          type: 'button', 'data-action': 'vz-ai-run', disabled: none,
-          text: 'Send ' + plural(aiPicked.size, 'scene', 'scenes') + ' and draft the shots'
-        })
-        : basicBtn),
-    hasKey ? basicBtn : null,
+    basicBtn,
+    pill,
     aiLastRun.length && !aiRunning
       ? h('button.btn', {
         type: 'button', 'data-action': 'vz-ai-undo',
         text: 'Undo the last draft (' + aiLastRun.length + ')'
       })
       : null
-  ]));
+  ].filter(Boolean)));
 
   const status = localStatus(aiStatus);
   if (status) wrap.append(status);
   const error = localError(aiError);
   if (error) wrap.append(error);
 
-  /* No key: the form stays, under the button that needs none. */
-  if (!hasKey && kg) wrap.append(kg);
   return wrap;
 }
 
@@ -940,6 +894,7 @@ function render(focus) {
     renderLookbook(boards)
   );
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   wireActionBar();
@@ -1024,12 +979,10 @@ delegate(document, 'click', '[data-action="vz-csv-scene"]', (e, el) => {
    Every one of these is reached from a click and from nowhere
    else. Nothing below runs on load.
 
-   THE KEY HANDLERS ARE NOT HERE. Save, replace, cancel, forget and
-   the model select are bound once by `wireAIPanel()` in
-   src/ui/ai-panel.js, against `ai-*` data-actions shared with
-   write.html and feature.html, and this page hears about the
-   result through the `onAIChange` subscription in primeAI(). What
-   is below is only the part that is about shots. */
+   THE KEY AND THE MODEL CALL ARE NOT HERE. The key lives in
+   Settings, and the AI draft runs in the AI Desk (the pill in
+   renderAI). What is below is the picker, the basic breakdown and
+   the undo — the parts that are about shots. */
 delegate(document, 'change', 'input[data-action="vz-ai-pick"]', (e, box) => {
   const id = box.dataset.scene;
   if (!id || !aiPicked) return;
@@ -1043,94 +996,6 @@ delegate(document, 'click', '[data-action="vz-ai-all"]', () => {
 delegate(document, 'click', '[data-action="vz-ai-none"]', () => {
   aiPicked = new Set();
   render();
-});
-
-delegate(document, 'click', '[data-action="vz-ai-stop"]', () => {
-  if (aiAbort) aiAbort.abort();
-});
-
-delegate(document, 'click', '[data-action="vz-ai-run"]', async () => {
-  if (aiRunning) return;
-  // The button only exists once primeAI() has resolved, but a second
-  // call is free and it is the one place that must not run on a null.
-  if (!(await primeAI())) {
-    aiError = 'The drafting module could not be loaded. Check the connection and try again.';
-    render();
-    return;
-  }
-  const AI = AIm;
-  const scenes = Scenes.listScenes();
-  const chosen = scenes.filter((s) => aiPicked && aiPicked.has(s.id));
-  if (!chosen.length) { aiError = 'Tick at least one scene.'; render(); return; }
-
-  const plan = aiScenePlan(scenes, []);
-
-  const jobs = chosen.map((scene) => {
-    const slice = (plan.bySceneId.get(scene.id) || {}).slice || null;
-    return {
-      sceneId: scene.id,
-      number: scene.number,
-      slug: slugOf(scene),
-      eighths: scene.eighths,
-      synopsis: scene.synopsis,
-      script: slice ? AI.sceneScriptText(slice) : ''
-    };
-  });
-
-  aiRunning = true;
-  aiError = '';
-  aiStatus = 'Starting…';
-  aiAbort = new AbortController();
-  render();
-
-  let result = null;
-  try {
-    result = await AI.draftShotDivision(jobs, {
-      signal: aiAbort.signal,
-      onStatus: (m) => {
-        aiStatus = m;
-        // DOM only. A re-render here would rebuild the panel under
-        // the Stop button the user may be about to press.
-        const node = document.querySelector('.vz-ai .ai-status');
-        if (node) node.textContent = m;
-      }
-    });
-  } catch (err) {
-    aiRunning = false;
-    aiAbort = null;
-    aiStatus = '';
-    aiError = (err && err.message) ? err.message : 'Something went wrong and nothing was changed.';
-    render();
-    return;
-  }
-
-  aiRunning = false;
-  aiAbort = null;
-
-  /* Write. APPEND ONLY — `addShot` puts a shot at the end of its
-     scene and numbers it after the ones already there, so nothing
-     a person wrote is touched or renumbered. */
-  const made = [];
-  for (const [sceneId, list] of result.byScene) {
-    for (const draft of list) {
-      made.push(Shots.addShot(sceneId, { ...draft, ai: true }).id);
-    }
-  }
-  aiLastRun = made;
-
-  if (!made.length) {
-    aiStatus = '';
-    aiError = 'The model came back with no shots. Nothing was added.';
-    render();
-    return;
-  }
-  aiStatus = plural(made.length, 'shot', 'shots') + ' drafted by ' + result.model
-    + ' across ' + plural(result.byScene.size, 'scene', 'scenes')
-    + (result.truncated ? ' — the reply was cut short, so some scenes may be missing.' : '')
-    + ' Every one of them is marked and editable.';
-  aiError = '';
-  render();
-  say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');
 });
 
 /* The basic breakdown: the same picker, the same append-only write
@@ -1357,8 +1222,3 @@ saveOnInput('[data-board-field]', (el) => Shots.updateBoard(boardIdOf(el), { [el
 saveOnInput('[data-entry-field]', (el) => Shots.updateEntry(boardIdOf(el), entryIdOf(el), { [el.dataset.entryField]: el.value }));
 
 render();
-/* The AI module is loaded after the first paint, not during it, and
-   all it is asked at this point is whether a key exists on this
-   device — nothing is sent and nothing is written. The panel renders
-   its "checking" line for the one frame this takes. */
-primeAI();

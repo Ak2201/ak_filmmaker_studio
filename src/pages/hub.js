@@ -100,11 +100,9 @@ import {
   FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL,
   FORMAT_LABELS, plain, clip, title, parseStorage, relTime, fmtRelDate, $
 } from './hub/util.js';
-import { BRAND } from '../lib/brand.js';   // rule 8: the name lives in brand.json
 import { ALL_KEYS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY } from './hub/all-keys.js';
 import { ask, tell } from '../ui/dialog.js';
 import { createResumeCards } from './hub/resume-cards.js';
-import { createBackupMenu } from './hub/backup-menu.js';
 import { sampleDays, samplePages, welcomeCard } from './hub/first-run.js';
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
@@ -120,14 +118,6 @@ import {
 } from './hub/project-cards.js';
 
 
-/* The theme toggle's tooltip, derived from the list it describes.
-   It read "Theme — paper, sepia, ink" on three pages long after sepia
-   was dropped and the order reversed: three hand-written copies of
-   StudioUI.themeOrder(), which is the thing they were describing. */
-function themeTitle() {
-  const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
-  return order.length ? 'Theme — ' + order.join(', ') : 'Theme';
-}
 /* PROJECT_KEYS and GLOBAL_KEYS used to be declared here. They are the
    BACKUP FORMAT'S schema — the map from a field name in the file to a
    storage key on disk — and the file now has a second reader (Drive
@@ -242,63 +232,30 @@ function toolbarMarkup() {
      this page's own. shell.js lifts them into an "on this page" menu
      on the end of the breadcrumb; see buildPageNav() in shell.js for
      why they are discovered there rather than declared. */
+  /* The project switcher, theme, Backup and the account pill are NOT here any
+     more: the shell band's right-hand zone carries the same four on every
+     page (shell.js buildStudioTools), so the hub is no longer different. */
   return h('div.toolbar', {
     html: `
       <a class="nav-link" href="#projects">Projects</a>
-      <div class="switcher-wrap">
-        <button class="project-switcher empty" id="projectSwitcherBtn"
-                data-action="toggle-switcher" title="Switch project" aria-haspopup="true" aria-expanded="false">
-          <span class="ps-label" id="projectSwitcherLabel">— NO PROJECT —</span>
-          <span class="ps-caret" aria-hidden="true">▾</span>
-        </button>
-        <div class="switcher-dropdown" id="switcherDropdown"></div>
-      </div>
-      <button class="btn icon-btn" data-action="toggle-theme" id="darkBtn" title="${themeTitle()}">◐</button>
       <button class="btn" data-action="install-app" id="installBtn" title="Install the Studio as an app" hidden>⇣ INSTALL</button>
-      <div class="tb-menu align-right" data-tb-backup>
-        <button class="btn tb-menu-btn" type="button" data-action="tb-menu-toggle"
-                title="Backup — export or import the studio"
-                aria-expanded="false" aria-haspopup="true" aria-controls="tbm-backup">
-          <span>Backup</span><span class="tb-caret" aria-hidden="true">▾</span>
-        </button>
-        <div class="tb-menu-panel" id="tbm-backup" hidden role="menu">
-          <button class="tb-item" type="button" data-action="export-all" role="menuitem"
-                  title="Every project, not just the open one">
-            <span class="tb-item-label">Export everything</span><span class="tb-item-hint">.json</span>
-          </button>
-          <button class="tb-item" type="button" data-action="import-all" role="menuitem">
-            <span class="tb-item-label">Import a backup</span>
-          </button>
-          <button class="tb-item" type="button" data-action="pdf-overview" role="menuitem"
-                  title="The studio overview as a paginated A4 document">
-            <span class="tb-item-label">Studio overview</span><span class="tb-item-hint">.pdf</span>
-          </button>
-        </div>
-      </div>
-      <input type="file" id="importAllFile" accept=".json" class="visually-hidden" data-action="import-file" aria-label="Import a studio backup">
       <div class="toolbar-stripe" aria-hidden="true"></div>`
   });
 }
 
 function heroMarkup() {
-  /* THE HERO IS THE PROJECT LIST (owner, 11 Oct 2026). With projects it
+  /* HOME LOST ITS TITLE BLOCK, ITS TOUR INVITE AND ITS CLOSING QUOTE (owner,
+     12 Oct 2026: "remove a section in home"). The tour lives in Settings →
+     Preferences → Help and the first-week checklist below; the name is in
+     the band. The page's h1 is now the projects heading.
+
+     THE HERO IS THE PROJECT LIST (owner, 11 Oct 2026). With projects it
      is the Continue cards and "+ New project"; with none, renderProjects()
      draws the three doors in the same place. Everything about a film —
      where it is, the stages, the modules — lives on its dashboard. */
   return h('section#top.hero', {
     html: `
       <div class="hero-inner">
-        <div class="hero-top">
-          <span class="hero-vol">A working desk for the working filmmaker</span>
-          <span class="hero-edition">EDITION 01 · CHENNAI · MMXXVI</span>
-        </div>
-
-        <h1><span class="light">FilmMaker</span><br>Studio.</h1>
-
-        <p class="hero-deck">Make a <em>feature</em>, make a <em class="s">short</em>, or learn the <em class="g">craft</em> first — all from one desk, with a film you love to explain every step.</p>
-
-        <div id="tourInviteHost"></div>
-
         <div id="heroProjects"></div>
       </div>`
   });
@@ -311,9 +268,8 @@ function projectsMarkup() {
         <div class="projects-head">
           <div>
             <div class="lab">PROJECTS · ONE PER FILM</div>
-            <h2 id="projectsHeading">Continue <em>where you left off.</em></h2>
+            <h1 id="projectsHeading">Continue <em>where you left off.</em></h1>
             <p class="greeting-block" id="hubGreeting">A working desk for the working filmmaker.</p>
-            <p class="deck">Every script, every plan lives under a project. Pick one to continue where you left off, or switch to another film — short or feature — whenever you like.</p>
           </div>
           <button class="btn primary" data-action="new-project">+ NEW PROJECT</button>
         </div>
@@ -322,6 +278,11 @@ function projectsMarkup() {
              taken yet. Empty and hidden in the device namespace, which
              is every state npm run verify can reach. renderAdoptNotice() -->
         <div id="adoptNotice" hidden></div>
+
+        <!-- "Today": the open film's next Pre-production step. Empty and
+             hidden until src/pages/hub/today-line.js arrives after first
+             paint (and for good when there is no open film or no scenes). -->
+        <div class="today-line" id="todayLine" hidden></div>
 
         <div class="projects-toolbar" id="projectsToolbar" hidden>
           <input type="search" class="projects-search" id="projectsSearch"
@@ -354,16 +315,6 @@ function renderJourney() {
   const project = Store.currentProject();
   lastJourney = project ? journey(project) : null;
   return lastJourney;
-}
-
-function finalMarkup() {
-  return h('section.final-page', {
-    html: `
-      <div class="final-inner">
-        <p class="quote">"A studio is not a building. It is the pattern of <span class="feature">attention</span>, <span class="shorts">decisions</span>, and <span class="library">study</span> a working filmmaker keeps."</p>
-        <div class="signature">${esc(BRAND.name.toUpperCase())}</div>
-      </div>`
-  });
 }
 
 function modalMarkup() {
@@ -399,21 +350,8 @@ function render() {
   const hero = heroMarkup();
   // The project list IS the hero: the section nests inside it.
   hero.querySelector('#heroProjects').replaceWith(projectsMarkup());
-  main.append(hero, finalMarkup());
+  main.append(hero);
   app.append(toolbarMarkup(), main, modalMarkup());
-}
-
-// ============================================================
-// THEME
-// ============================================================
-function toggleDark() {
-  StudioUI.cycleTheme();
-}
-function syncThemeIcon() {
-  const darkBtn = document.getElementById('darkBtn');
-  if (!darkBtn) return;
-  const cur = document.body.classList.contains('dark') ? 'ink' : 'paper';
-  darkBtn.textContent = cur === 'ink' ? '☀' : '◐';
 }
 
 // ============================================================
@@ -452,18 +390,32 @@ const { updateStatus, computeFeatureStatus, computeShortStatus, computeLibrarySt
 // ============================================================
 // EXPORT / IMPORT / RESET — src/pages/hub/backup-menu.js
 // ============================================================
-const { exportOverviewPDF, exportAll, importAll, handleImportAll } = createBackupMenu({ allKeys: ALL_KEYS, logActivity });
 
 // ============================================================
 // ACTIVITY LOG
 // ============================================================
 const ACTIVITY_LIMIT = 30;
 
+/* The newest "Exported full studio backup" line is how the Backup menu
+   (src/ui/topbar-backup.js) knows when you last backed up. The log holds
+   thirty lines, so a backup followed by thirty edits would otherwise fall
+   off the end and the menu would claim you had never made one. The newest
+   backup line is kept past the cap; it is one line, and it is a fact. */
+function capLog(arr) {
+  const kept = arr.slice(0, ACTIVITY_LIMIT);
+  const isBackup = (e) => e && /^Exported full studio backup/.test(String(e.what || ''));
+  if (!kept.some(isBackup)) {
+    const old = arr.slice(ACTIVITY_LIMIT).find(isBackup);
+    if (old) kept.push(old);
+  }
+  return kept;
+}
+
 function logActivity(where, what, url) {
   const log = parseStorage(ACTIVITY_KEY);
   const arr = Array.isArray(log.entries) ? log.entries : [];
   arr.unshift({ ts: Date.now(), where, what, url });
-  log.entries = arr.slice(0, ACTIVITY_LIMIT);
+  log.entries = capLog(arr);
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
 }
 
@@ -503,7 +455,7 @@ function detectActivity() {
         url: 'budget.html#estimate' });
     }
   }
-  log.entries = arr.slice(0, ACTIVITY_LIMIT);
+  log.entries = capLog(arr);
   log.lastSnap = now;
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
 }
@@ -944,10 +896,16 @@ function closeProjectSwitcher() {
 
 function openProjectModal(editId, format) {
   if (!editId && !PlanGate.allowed('new_projects')) {
-    StudioUI.toastInfo('Your plan does not add new projects. See plans.', {
-      action: 'See plans',
-      onAction: () => { location.href = 'purchase.html'; }
+    /* Named plan and price (PlanGate.offerFor): "See plans" alone sent
+       the person to work out which card. During a trial there is no
+       "plan" to blame, so the sentence says trial. */
+    const trial = PlanGate.currentPlan().reason === 'trial';
+    const lead = trial ? 'Your free trial is for the sample films.' : 'New projects are not part of your plan.';
+    const say = (o) => StudioUI.toastInfo(lead + (o ? ' ' + PlanGate.offerText(o) + ' adds films of your own — one payment.' : ' A plan adds films of your own.'), {
+      action: o ? 'See ' + o.name : 'See plans',
+      onAction: () => { location.href = o ? o.href : 'purchase.html'; }
     });
+    PlanGate.offerFor(['new_projects']).then(say, () => say(null));
     return;
   }
   closeProjectSwitcher();
@@ -1050,11 +1008,7 @@ async function deleteProjectConfirm(id) {
 // There is not a single inline handler on this page.
 // ============================================================
 const CLICK_ACTIONS = {
-  'toggle-theme':          () => { toggleDark(); syncThemeIcon(); },
   'install-app':           () => promptInstall(),
-  'export-all':            () => exportAll(),
-  'import-all':            () => importAll(),
-  'pdf-overview':          () => exportOverviewPDF(),
   'new-project':           () => openProjectModal(),
   'start-feature':         () => openProjectModal(null, 'feature'),
   'start-short':           () => openProjectModal(null, 'short'),
@@ -1065,7 +1019,6 @@ const CLICK_ACTIONS = {
   'sample-project':        (el) => { openSampleProject(el && el.dataset && el.dataset.sample).catch(sampleFailed); },
   'adopt-device-projects': () => adoptDeviceProjectsNow(),
   'close-project-modal':   () => closeProjectModal(),
-  'toggle-switcher':       () => toggleProjectSwitcher(),
   'switch-project':        (el) => switchToProject(el.dataset.id),
   // The card's "open →": make it the open project, then go to it.
   // setCurrentProject() is a synchronous pointer write, so the page
@@ -1134,7 +1087,6 @@ function wireEvents() {
     setProjectSort(e.target.value);
     renderProjects();
   });
-  delegate(app, 'change', '#importAllFile', (e) => handleImportAll(e));
   delegate(app, 'submit', '#projectForm', (e) => submitProjectModal(e));
   delegate(app, 'click', '#projectModal', (e, el) => {
     if (e.target === el) closeProjectModal();
@@ -1197,10 +1149,6 @@ function init() {
   StudioUI.wireGlossaryPopovers();
   StudioUI.autoAriaLabels();
   StudioUI.polishEmptyStates();
-  syncThemeIcon();
-  // Swaps the ◐ cycle button for the Appearance menu (theme + design).
-  // After this the button is gone, which is why syncThemeIcon() runs first.
-  StudioUI.upgradeThemeButton(toolbar);
 
   renderGreeting();
   renderProjects();
@@ -1214,6 +1162,15 @@ function init() {
     const pj = document.getElementById('projects');
     if (wc && pj && pj.parentNode) pj.before(wc);
   } catch (e) { /* the welcome is a convenience */ }
+
+  /* The "Today" line is a lazy chunk on purpose: the path model reads
+     readiness, contacts, songs and shots, none of which the hub's first
+     paint needs. Idle, so it never competes with the first render; if
+     the import fails the line simply never appears. */
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  idle(() => {
+    import('./hub/today-line.js').then((m) => m.mountTodayLine()).catch((e) => console.warn('[hub] today line', e));
+  });
 
   decorateMotion();
   reveal(document);

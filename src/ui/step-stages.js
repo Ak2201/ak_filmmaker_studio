@@ -235,7 +235,7 @@ const READOUTS = {
 
   draft() {
     const els = loadScript().elements || [];
-    if (!els.length) return { text: 'No pages in Write yet', empty: true, cta: 'screenplay' };
+    if (!els.length) return { text: 'No pages in the Screenplay Writer yet', empty: true, cta: 'screenplay' };
     const scenes = els.filter((e) => e.type === 'scene').length;
     return {
       text: formatPages(pageCount(els)) + ' pages · ' + plural(scenes, 'scene') + ' in the script'

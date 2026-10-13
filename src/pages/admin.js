@@ -79,7 +79,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h } from '../lib/dom.js';
+import { h, commitMain, coalesce } from '../lib/dom.js';
 import { fmtPaise, RAZORPAY_KEY_ID } from '../lib/billing.js';
 import { kpi, pill, emptyState, errorState, skeleton, relTime, stampDensity, syncDrawerFromHash } from '../ui/admin-kit.js';
 import * as kit from '../ui/admin-kit.js';
@@ -165,14 +165,14 @@ let ov = { phase: 'idle', data: null, accounts: [], users: [], error: '', loaded
 async function loadOverview() {
   const g = gate();
   if (!g || ov.phase === 'loading') return;
-  ov = { ...ov, phase: 'loading', error: '' }; render();
+  ov = { ...ov, phase: 'loading', error: '' }; renderSoon();
   try {
     const [data, accounts, users] = await Promise.all([g.admin.overview(), g.admin.listAccounts(), g.admin.listUsers()]);
     ov = { phase: 'ok', data: data || {}, accounts: accounts || [], users: users || [], error: '', loadedAt: Date.now() };
   } catch (e) {
     ov = { ...ov, phase: 'error', error: e.message || 'The console could not load.' };
   }
-  render();
+  renderSoon();
 }
 
 /* ---- the status bar, and what the other tabs are handed --------- */
@@ -224,7 +224,7 @@ function makeCtx(id) {
     purchasesRequired: purchasesRequiredNow(),
     env: razorpayEnv(),                 // 'TEST' | 'LIVE' | null
     kit, charts,
-    rerender: render,
+    rerender: () => renderSoon(),
     refresh: () => { ov = { ...ov, phase: 'idle' }; loadOverview(); },
     go: (tabId, params) => {
       const next = kit.hashFor(tabId, params);
@@ -437,7 +437,7 @@ function purchasesTab(st) {
     purchasesSwitchBlock(),
     billingAdminSection(block, st, { part: 'tiers' }),
     billingAdminSection(block, st, { part: 'payments' }),
-    invoiceAdminSection(block, st, { rerender: render }),
+    invoiceAdminSection(block, st, { rerender: () => renderSoon() }),
     billingAdminSection(block, st, { part: 'promos' }),
     planFeaturesSection(block, st)   // the ~40-row matrix last, so it does not bury the rest
   ]);
@@ -493,15 +493,19 @@ let askedFor = '';
 
 async function refreshStatus() {
   const c = cloud();
-  if (!c || !c.gate || !c.getSession()) { st = null; askedFor = ''; render(); return; }
+  if (!c || !c.gate || !c.getSession()) { st = null; askedFor = ''; renderSoon(); return; }
   const who = c.getUserEmail ? c.getUserEmail() : '';
-  if (askedFor === who && st) { render(); return; }
+  if (askedFor === who && st) { renderSoon(); return; }
   try { st = await c.gate.status(); askedFor = who; } catch (e) { st = null; }
-  render();
+  renderSoon();
 }
 
 function render() {
   const c = cloud();
+  /* The session is restored asynchronously. Drawing before it lands shows a
+     signed-in administrator the Sign-in card, then Checking…, then the
+     console — three pages in a row. Wait for the boot; it renotifies. */
+  if (c && c.isConfigured() && c.isBooted && !c.isBooted()) return;
   const signedIn = !!(c && c.getSession && c.getSession());
   const isAdmin = !!(st && st.deployed && st.role === 'admin');
   const kept = snapshotFields();
@@ -546,16 +550,21 @@ function render() {
 
   if (statusEl) main.append(statusEl);
   main.append(body);
-  app.replaceChildren(main);
-  carryFields(kept);
-  mountShell();
-  if (isAdmin && !drawerSynced) { drawerSynced = true; syncDrawerFromHash(makeCtx('')); }
-  try {
-    StudioUI.autoAriaLabels();
-    StudioUI.wireGlossaryPopovers();
-    StudioUI.polishEmptyStates();
-  } catch (e) { console.warn('[admin] chrome', e); }
+  /* Identical output is not repainted (commitMain); scroll and focus survive. */
+  commitMain(app, main, () => {
+    carryFields(kept);
+    mountShell();
+    if (isAdmin && !drawerSynced) { drawerSynced = true; syncDrawerFromHash(makeCtx('')); }
+    try {
+      StudioUI.autoAriaLabels();
+      StudioUI.wireGlossaryPopovers();
+      StudioUI.polishEmptyStates();
+    } catch (e) { console.warn('[admin] chrome', e); }
+  });
 }
+/* Gate, plan, access, billing, growth, auth and the overview fetch all land
+   within a second of load; one trailing paint instead of one each. */
+const renderSoon = coalesce(render, 60);
 
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-ad-action="reload"]');
@@ -571,11 +580,12 @@ document.addEventListener('click', (e) => {
   makeCtx(a.dataset.adGo).go(a.dataset.adGo, params);
 });
 
-wireGateUI(render);
-wirePlanFeatures(render);
-wireAccessAdmin(render);
-wireBillingAdmin(render);
-wireGrowthAdmin(render);
+wireGateUI(renderSoon);
+wirePlanFeatures(renderSoon);
+wireAccessAdmin(renderSoon);
+wireBillingAdmin(renderSoon);
+wireGrowthAdmin(renderSoon);
 Store.subscribe('gate:changed', refreshStatus);
+Store.subscribe('cloud:booted', refreshStatus);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshStatus, 0));
 refreshStatus();

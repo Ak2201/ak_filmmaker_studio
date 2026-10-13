@@ -190,18 +190,19 @@ function buildTop() {
     'aria-controls': 'beatsPanel', text: 'Beats ◧'
   });
   const menu = actionMenu('⋯', [
-    { label: 'Import Screenplay', action: 'sc-import' },
-    { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy' },
-    '---',
-    { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T' },
-    { label: 'Dictation', action: 'sc-dictate' },
-    { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?' },
-    { label: 'Format check', action: 'sc-check' },
-    { label: 'Notes overview', action: 'sc-notes', hint: 'all notes' },
-    '---',
-    { label: 'Show or hide hints', action: 'sc-hints' },
-    { label: 'Stage guide', action: 'sc-guide', hint: 'questions' },
-    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' }
+    { heading: 'File' },
+    { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
+    { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
+    { heading: 'Tools' },
+    { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
+    { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
+    { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
+    { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
+    { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' },
+    { heading: 'Help' },
+    { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
+    { label: 'Stage guide', action: 'sc-guide', hint: 'questions', icon: 'menu_book' },
+    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
 
   /* ONE AI pill, a menu of the existing tools, each an AI Desk task

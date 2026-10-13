@@ -24,7 +24,8 @@ import '../styles/path-bar.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain, delegate } from '../lib/dom.js';
-import { showOnly, stepFooter, stepBar, wireStepper, landUnder } from '../ui/stepper.js';
+import { showOnly, stepFooter, wireStepper, landUnderMenu, menuBeside } from '../ui/stepper.js';
+import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
 import { pathSteps, nextStep } from '../lib/preprod-path.js';
 import { readiness } from '../lib/readiness.js';
 import Store from '../lib/store.js';
@@ -34,8 +35,45 @@ const STATE_WORD = { done: 'Done', doing: 'In progress', todo: 'Not started' };
 
 let steps = [];
 let cur = '';
+let nav = null;          /* the section menu, kept across renders (updated in place) */
+
+/* One mark per step, all in src/data/section-icons.json. */
+const ICON = {
+  script: 'description', scenes: 'view_list', breakdown: 'label', vision: 'palette', shots: 'format_list_numbered',
+  people: 'groups', places: 'place', songs: 'music_note', budget: 'currency_rupee', schedule: 'calendar_month',
+  sheets: 'content_cut', ready: 'fact_check'
+};
+/* The menu's item ids are the PANELS' element ids (step-<id>), which is
+   what a row's aria-controls has to be; the page's own ids (#<id> in the
+   address bar, the Fix links, the footer's Back/Next) stay bare. */
+const panelId = (id) => 'step-' + id;
+const bareId = (pid) => String(pid).replace(/^step-/, '');
+function menuGroups() {
+  const groups = [];
+  for (const s of steps) {
+    const label = s.group || '';
+    let g = groups[groups.length - 1];
+    if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
+    g.items.push({
+      id: panelId(s.id), label: s.label, icon: ICON[s.id] || '', done: s.state === 'done', doing: s.state === 'doing',
+      hint: STATE_WORD[s.state] + '. ' + s.about
+    });
+  }
+  return groups;
+}
+function scrollRowIntoStrip() {
+  if (!nav || menuBeside(nav)) return;
+  const on = nav.querySelector('[aria-selected="true"]');
+  if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2);
+}
 
 const hashId = () => decodeURIComponent((location.hash || '').replace(/^#/, ''));
+const resolve = () => {
+  const want = hashId().replace(/^step-/, '');
+  const hit = steps.find((s) => s.id === want);
+  const next = nextStep(steps);
+  return hit ? hit.id : (next ? next.id : (steps[0] || {}).id);
+};
 
 function readinessList() {
   const r = readiness();
@@ -65,7 +103,7 @@ function readinessList() {
 }
 
 function stepPanel(s) {
-  const sec = h('section.pp-step', { id: 'step-' + s.id, 'aria-labelledby': 'pp-h-' + s.id, hidden: s.id !== cur });
+  const sec = h('section.pp-step', { id: panelId(s.id), role: 'tabpanel', 'aria-labelledby': 'tab-' + panelId(s.id), hidden: s.id !== cur });
   sec.append(h('div.pp-step-head', {}, [
     h('span.pp-step-n', { text: 'Step ' + s.n }),
     h('h2', { id: 'pp-h-' + s.id, text: s.label }),
@@ -94,38 +132,67 @@ function stepPanel(s) {
   return sec;
 }
 
+function summary(done, next) {
+  const fill = h('span');
+  fill.style.width = Math.round((done / Math.max(1, steps.length)) * 100) + '%';
+  return h('div.pp-sum', {}, [
+    h('span', { text: done + ' of ' + steps.length + ' steps done' + (next && next.id !== 'ready' ? ' · next: ' + next.label : '') }),
+    h('span.pp-meter', { role: 'img', 'aria-label': done + ' of ' + steps.length + ' steps done' }, [fill])
+  ]);
+}
+
+/* Same film, same steps: the state moved (a scene was tagged, a script
+   saved). Patch the menu, the summary and the panels where they stand, so
+   the strip keeps its scroll, the column its pin and the reader their
+   place. Anything structural goes through commitMain below. */
+function patch(project, done, next) {
+  const main = document.getElementById('main');
+  const body = main && main.querySelector(':scope > .pp-body');
+  const sum = main && main.querySelector(':scope > .pp-sum');
+  if (!nav || !nav.isConnected || !body || !sum || main.dataset.film !== project.id) return false;
+  const have = [...body.children].map((e) => e.id).join();
+  if (have !== steps.map((s) => panelId(s.id)).join()) return false;
+  const old = nav.querySelectorAll('[role="tab"]').length;
+  if (old !== steps.length) return false;
+  sum.replaceWith(summary(done, next));
+  const panels = steps.map(stepPanel);
+  if (panels.map((e) => e.outerHTML).join('') !== body.innerHTML) body.replaceChildren(...panels);
+  updateSectionMenu(nav, menuGroups(), panelId(cur));
+  return true;
+}
+
 function render() {
   steps = pathSteps();
-  const want = hashId().replace(/^step-/, '');
-  const hit = steps.find((s) => s.id === want);
   const next = nextStep(steps);
-  cur = hit ? hit.id : (next ? next.id : (steps[0] || {}).id);
+  cur = resolve();
   const project = Store.currentProject();
   const done = steps.filter((s) => s.state === 'done').length;
 
+  if (project && patch(project, done, next)) return;
   const main = h('main#main');
   main.append(h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Studio · Pre-Production' }),
     h('h1.bd-title', { text: 'Pre-Production.' }),
     h('p.bd-deck', { text: 'From the script to the first day of shooting, one step at a time. Each step says what it is for and what is still missing, then opens the tool where it is done.' })
   ]));
-  const page = h('div.pp-page');
+  nav = null;
   if (!project) {
-    page.append(h('p.bd-sub', { text: 'No film is open. Open or create one from Home, and its path appears here.' }));
+    main.append(h('div.pp-page', {}, [h('p.bd-sub', { text: 'No film is open. Open or create one from Home, and its path appears here.' })]));
   } else {
-    page.append(h('div.pp-sum', {}, [
-      h('span', { text: done + ' of ' + steps.length + ' steps done' + (next && next.id !== 'ready' ? ' · next: ' + next.label : '') }),
-      (() => {
-        const fill = h('span');
-        fill.style.width = Math.round((done / Math.max(1, steps.length)) * 100) + '%';
-        return h('span.pp-meter', { role: 'img', 'aria-label': done + ' of ' + steps.length + ' steps done' }, [fill]);
-      })()
-    ]));
-    page.append(stepBar(steps, cur, { label: 'Pre-Production steps', done: (s) => s.state === 'done', title: (s) => s.about }));
-    steps.forEach((s) => page.append(stepPanel(s)));
+    /* main IS the container the shared menu lays out beside (tabs.css
+       .tabs-has-side): header and summary span the width, the column
+       is the menu, .pp-body is the open step. */
+    main.classList.add('tabs-has-side', 'pp-has-menu');
+    main.dataset.film = project.id;
+    main.append(summary(done, next));
+    nav = buildSectionMenu({
+      groups: menuGroups(), active: panelId(cur), ariaLabel: 'Pre-Production steps', sectionsLabel: 'Steps', orientation: 'side',
+      onSelect: (pid) => go(bareId(pid))
+    });
+    main.append(nav);
+    main.append(h('div.pp-body', {}, steps.map(stepPanel)));
   }
-  main.append(page);
-  if (!commitMain(app, main, mountShell)) return;
+  if (!commitMain(app, main, mountShell)) { nav = document.querySelector('#main > .tabs[data-sm-self]') || nav; return; }
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[preprod] chrome', e); }
 }
 
@@ -133,13 +200,11 @@ function go(id) {
   if (!steps.some((s) => s.id === id)) return;
   cur = id;
   showOnly(steps.map((s) => ({ id: s.id, el: document.getElementById('step-' + s.id) })), id);
-  document.querySelectorAll('.stp-tab').forEach((b) => {
-    const on = b.dataset.stepperGo === id;
-    b.classList.toggle('is-on', on);
-    if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-  });
+  if (nav && nav.isConnected) updateSectionMenu(nav, menuGroups(), panelId(id));
+  scrollRowIntoStrip();
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* file:// */ }
-  landUnder(document.getElementById('step-' + id), document.querySelector('.stp-bar'));
+  /* beside the panels (>= 1100px) nothing is pinned above them; below, the strip is */
+  landUnderMenu(document.getElementById(panelId(id)), nav);
 }
 
 wireStepper(document, go);

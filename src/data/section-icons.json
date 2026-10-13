@@ -7,7 +7,9 @@
     "monitor_heart", "movie", "music_note", "palette", "perm_media", "person", "photo_camera", "place",
     "receipt_long", "rule", "share", "shopping_cart", "slideshow", "sort_by_alpha", "storage",
     "support_agent", "table_chart", "timeline", "timer", "toggle_on", "trending_up", "tune", "upload_file",
-    "videocam", "view_list", "visibility", "content_cut"
+    "videocam", "view_list", "visibility", "content_cut",
+    "public", "bolt", "link", "lock",
+    "picture_as_pdf", "translate", "mic", "keyboard", "spellcheck", "sticky_note_2", "auto_awesome"
   ],
   "pages": {
     "breakdown": {

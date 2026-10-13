@@ -39,6 +39,10 @@
                   title tooltip AND an aria-describedby target.
        done,      optional boolean. A tick after the label ("done" is
                   read aloud). For a path.
+       doing,     optional boolean. A half-filled circle after the label
+                  ("in progress" is read aloud): the middle state of a
+                  path, so "started" is not told from "not started" by
+                  colour alone. Ignored when `done`.
        locked }   optional boolean. A PLAN flag (the plan does not
                   include it). The row stays clickable: the panel says why.
    A GROUP is { label, items }. Groups with the same label are merged
@@ -85,7 +89,7 @@ const state = new WeakMap();      // nav -> { groups, active, onSelect, sections
 const hasBadge = (b) => b != null && b !== '' && b !== 0 && b !== '0';
 const asItem = (it) => ({
   id: String(it.id), label: String(it.label == null ? it.id : it.label), icon: it.icon || '',
-  badge: hasBadge(it.badge) ? String(it.badge) : '', hint: it.hint || '', done: !!it.done, locked: !!it.locked
+  badge: hasBadge(it.badge) ? String(it.badge) : '', hint: it.hint || '', done: !!it.done, doing: !!it.doing && !it.done, locked: !!it.locked
 });
 
 /** Normalise and merge: same-label groups collapse into the first. */
@@ -113,7 +117,7 @@ function warnIcon(name) {
   console.warn('[section-menu] icon "' + name + '" is not in src/data/section-icons.json; if navigation.json has no such sym either, the icon font will not carry it');
 }
 
-const rowLabel = (it) => it.label + (it.badge ? ', ' + it.badge + ' waiting' : '') + (it.done ? ', done' : '') + (it.locked ? ', not on your plan' : '');
+const rowLabel = (it) => it.label + (it.badge ? ', ' + it.badge + ' waiting' : '') + (it.done ? ', done' : '') + (it.doing ? ', in progress' : '') + (it.locked ? ', not on your plan' : '');
 
 /* ---- one row -------------------------------------------------- */
 function iconNode(it) {
@@ -136,6 +140,7 @@ function fillRow(btn, it, on) {
     } else if (el) el.remove();
   };
   slot('tabs-done', it.done ? '✓' : '');
+  slot('tabs-doing', it.doing ? '◐' : '');
   slot('tabs-badge', it.badge);
   slot('tabs-flag', it.locked ? 'PLAN' : '');
   btn.setAttribute('aria-label', rowLabel(it));
@@ -322,6 +327,7 @@ export function openSectionsSheet({ groups, active, onSelect, title = 'Sections'
         h('span.sm-row-end', { 'aria-hidden': 'true' }, [
           it.badge ? h('span.sm-badge', { text: it.badge }) : null,
           it.done ? h('span.sm-done', { text: '✓' }) : null,
+          it.doing ? h('span.sm-doing', { text: '◐' }) : null,
           it.locked ? h('span.mn-mod-flag', { text: 'PLAN' }) : null
         ].filter(Boolean))
       ]);

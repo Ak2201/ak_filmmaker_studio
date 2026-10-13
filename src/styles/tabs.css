@@ -169,6 +169,9 @@
 .tabs-tab[aria-selected="true"] .tabs-badge { background: var(--paper-raised); color: var(--ink); }
 .tabs-done { flex: none; margin-left: auto; font-size: var(--t-small); color: var(--ok-deep, var(--ok)); }
 .tabs-tab[aria-selected="true"] .tabs-done { color: currentColor; }
+/* the middle state of a path (preprod, story): a shape, read aloud as "in progress" */
+.tabs-doing { flex: none; margin-left: auto; font-size: var(--t-small); color: var(--warn-deep); }
+.tabs-tab[aria-selected="true"] .tabs-doing { color: currentColor; }
 /* the PLAN flag: this tab's panel says why (plan-gate's tab lock) */
 .tabs-flag {
   flex: none;
@@ -182,7 +185,7 @@
   color: var(--accent-deep);
 }
 .tabs-tab[aria-selected="true"] .tabs-flag { color: currentColor; }
-.tabs-badge + .tabs-flag, .tabs-done + .tabs-flag { margin-left: var(--s1); }
+.tabs-badge + .tabs-flag, .tabs-done + .tabs-flag, .tabs-doing + .tabs-flag { margin-left: var(--s1); }
 
 /* ---- "Sections": the phone's way to the whole list ------------- */
 .tabs-sections {
@@ -240,6 +243,7 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
   text-align: center;
 }
 .sm-done { color: var(--ok-deep, var(--ok)); }
+.sm-doing { color: var(--warn-deep); }
 
 /* ---- the strip is the column's container's business below ----- */
 .st-body > .tabs { margin-inline: 0; }

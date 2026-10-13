@@ -95,14 +95,19 @@ await project('feature', 'Proof Feature');
 await open();
 check('feature: its own path, every step on the page', await pathIds(),
   ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
-check('feature: the stepper lists the same ten', await page.evaluate(() => [...document.querySelectorAll('.st-path-tab:not(.st-path-extra)')].map((b) => b.getAttribute('data-path'))),
+check('feature: the menu lists the same ten', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-tab[data-path]')].map((b) => b.getAttribute('data-path'))),
   ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
-/* Beats & pacing, Pitch deck and the Cover sheet are the strip's LAST
-   steps since 12 Oct 2026 (owner): numbered on from the path, no done
-   state, so they are .st-path-extra with data-stepper-go, not data-path. */
-check('feature: …then the three extras, in order', await page.evaluate(() => [...document.querySelectorAll('.st-path-tab.st-path-extra')].map((b) => b.getAttribute('data-stepper-go'))),
+/* Beats & pacing, Pitch deck and the Cover sheet are the menu's Tools
+   group (the shared section menu, since 13 Oct 2026): no done state and no
+   data-path (the row's id is the panel's element id), so they are the rows
+   without data-path. */
+check('feature: …then the three Tools rows, in order', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-tab:not([data-path])')].map((b) => b.getAttribute('data-tab'))),
   ['pacing', 'pitch', 'guide']);
-check('feature: no tab and no Format drop-down', await page.evaluate(() => [document.querySelectorAll('[role="tab"]').length, !!document.getElementById('stFw')]), [0, false]);
+check('feature: the groups are Idea, Build, Write up, Tools', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-group-h')].map((e) => e.textContent)),
+  ['Idea', 'Build', 'Write up', 'Tools']);
+check('feature: the open row carries the step number the blueprint drawer reads', await page.evaluate(() => { const r = document.querySelector('#main > nav.tabs [aria-selected="true"]'); return [r && r.dataset.step, r && r.dataset.path]; }), ['1', 'idea']);
+/* the path is the menu now, and nothing else on the page is a tab */
+check('feature: no other tab and no Format drop-down', await page.evaluate(() => [document.querySelectorAll('[role="tab"]:not(.tabs-tab)').length, !!document.getElementById('stFw')]), [0, false]);
 check('feature: no favourite-film picker on the page', await page.evaluate(() => document.querySelectorAll('.fav-picker, .fav-switch, .st-fav').length), 0);
 check('feature: Beats & pacing and the Pitch deck are plain sections, then the Guide', await page.evaluate(() =>
   [...document.querySelectorAll('main > section')].map((s) => s.id).filter((i) => ['pacing', 'pitch', 'guide'].includes(i))), ['pacing', 'pitch', 'guide']);
@@ -124,7 +129,7 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('[data-bp="idea"] .sg-steps', { timeout: 15000, state: 'attached' });
 check('feature: the idea survives a reload', await page.inputValue('#stIdea'), 'A dragon who is afraid of fire.');
 check('feature: …and so does the blueprint answer', await page.inputValue('#path-idea [data-key="s1_whatif"]'), 'WHATIF-ONCE');
-check('feature: the Idea step is ticked', await page.evaluate(() => document.querySelector('.st-path-tab[data-path="idea"]').classList.contains('is-done')), true);
+check('feature: the Idea step is ticked', await page.evaluate(() => !!document.querySelector('.tabs-tab[data-path="idea"] .tabs-done')), true);
 
 /* a Bible card writes the blueprint's key too, once */
 await step('bible');
@@ -156,7 +161,7 @@ check('feature: a locked outline is read-only and offers no editing', await page
 ]), [true, 0]);
 check('feature: the Lock step shows it, and the path step is done', await page.evaluate(() => [
   document.querySelector('#path-lock .st-coverage').textContent.startsWith('Locked'),
-  document.querySelector('.st-path-tab[data-path="lock"]').classList.contains('is-done')]), [true, true]);
+  !!document.querySelector('.tabs-tab[data-path="lock"] .tabs-done')]), [true, true]);
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 15000, state: 'attached' });
 check('feature: the lock survives a reload', (await story()).outlineLockedAt, st.outlineLockedAt);
@@ -189,7 +194,7 @@ await project('short', 'Proof Short');
 await open();
 check('short: its own path', await pathIds(), ['idea', 'logline', 'character', 'world', 'conflict', 'structure', 'outline', 'synopsis', 'lock', 'screenplay']);
 check('short: none of the feature’s steps', await page.evaluate(() => ['bible', 'setups', 'timeline'].some((i) => !!document.getElementById('path-' + i))), false);
-check('short: the first step is the Seed', await page.evaluate(() => document.querySelector('.st-path-tab[data-path="idea"] .st-path-label').textContent), 'Seed');
+check('short: the first step is the Seed', await page.evaluate(() => document.querySelector('.tabs-tab[data-path="idea"] .tabs-tab-l').textContent), 'Seed');
 check('short: no data-key appears twice', await dupKeys(), []);
 check('short: no feature-only card, no feature-only key', await page.evaluate(() => {
   const k = [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key'));

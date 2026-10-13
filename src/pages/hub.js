@@ -61,7 +61,7 @@ import '../styles/hub-doors.css';
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
-import { h, esc, delegate } from '../lib/dom.js';
+import { h, esc, delegate, coalesce } from '../lib/dom.js';
 import { reveal, spotlight } from '../lib/motion.js';
 
 import featureData from '../data/steps.feature.json';
@@ -1192,9 +1192,13 @@ function init() {
      AFTER createProject() has switched to it, so without it the card
      re-rendered at 69% while the resume card and the door beside it
      still read the empty project they were drawn for — 0% and "—". */
-  Store.subscribe('projects:changed', () => { renderProjects(); renderProjectSwitcher(); updateStatus(); renderGreeting(); });
-Store.subscribe('plan:changed', () => { renderProjects(); renderProjectSwitcher(); });
-  Store.subscribe('current:changed',  () => { renderProjects(); renderProjectSwitcher(); updateStatus(); renderGreeting(); });
+  /* Three events (and plan:changed a round trip after first paint) often
+     land together: one trailing redraw, not one per event. */
+  const redrawProjects = coalesce(() => { renderProjects(); renderProjectSwitcher(); }, 60);
+  const redrawStatus = coalesce(() => { updateStatus(); renderGreeting(); }, 60);
+  Store.subscribe('projects:changed', () => { redrawProjects(); redrawStatus(); });
+  Store.subscribe('plan:changed', redrawProjects);
+  Store.subscribe('current:changed', () => { redrawProjects(); redrawStatus(); });
 
   window.addEventListener('focus', () => { updateStatus(); detectActivity(); });
   document.addEventListener('visibilitychange', () => {

@@ -155,6 +155,9 @@ function renderAdoptNotice() {
   if (!host) return;
 
   const adoptable = Store.listAdoptableProjects();
+  const asig = adoptable.length ? adoptAccountLabel() + '|' + adoptable.map((p) => p.id + ':' + p.title + ':' + p.format).join('|') : '';
+  if (host.dataset.sig === asig) return;   // unchanged: do not rebuild the panel
+  host.dataset.sig = asig;
   host.textContent = '';
   host.hidden = adoptable.length === 0;
   if (!adoptable.length) return;
@@ -244,34 +247,47 @@ function renderProjects() {
   syncFormatFilters(projects);
   const heading = $('#projectsHeading');
   if (heading) {
-    heading.innerHTML = projects.length ? 'Continue <em>where you left off.</em>' : 'Pick <em>a path.</em>';
+    const want = projects.length ? 'Continue <em>where you left off.</em>' : 'Pick <em>a path.</em>';
+    if (heading.dataset.sig !== want) { heading.dataset.sig = want; heading.innerHTML = want; }
   }
 
-  grid.textContent = '';
   applyPlanToControls();
+  /* Build off-DOM and swap only when the result differs. plan:changed
+     lands a round trip after first paint; re-adding identical cards
+     blinked them and re-ran the motion layer's veil on every one. */
+  const out = document.createElement('div');
+  const commit = () => {
+    const sig = out.innerHTML;
+    if (grid.dataset.sig === sig && grid.firstChild) return;
+    if (grid.dataset.sig !== undefined) grid.dataset.maPainted = '1';   // motion-app: no second entrance
+    grid.dataset.sig = sig;
+    grid.replaceChildren(...Array.from(out.childNodes));
+  };
 
   if (projects.length === 0) {
-    grid.append(sampleOnly ? renderSampleOnly() : renderFirstRun());
+    out.append(sampleOnly ? renderSampleOnly() : renderFirstRun());
+    commit();
     return;
   }
 
   const filtered = applyProjectFilters(projects);
 
   if (filtered.length === 0) {
-    grid.append(h('div.empty-projects-state', {}, [
+    out.append(h('div.empty-projects-state', {}, [
       h('div.eps-title', { text: 'No projects match.' }),
       h('div.eps-deck', { text: 'Try a different filter or clear your search.' }),
       h('button.btn', { 'data-action': 'reset-project-filters', text: 'RESET FILTERS' })
     ]));
+    commit();
     return;
   }
 
   // The open project's journey, once per render, for its card's stage.
   const cur = currentId ? Store.currentProject() : null;
   const openJourney = cur ? journey(cur) : null;
-  filtered.forEach(p => grid.append(projectCard(p, currentId, openJourney)));
+  filtered.forEach(p => out.append(projectCard(p, currentId, openJourney)));
   if (PlanGate.allowed('new_projects')) {
-    grid.append(h('div.project-card.new-card', {
+    out.append(h('div.project-card.new-card', {
       tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'
     }, [
       h('div.pc-plus', { 'aria-hidden': 'true', text: '+' }),
@@ -283,12 +299,13 @@ function renderProjects() {
        the plan rows answer; until then the plain sentence stands. */
     const lead = PlanGate.currentPlan().reason === 'trial' ? 'Your free trial opens the sample films.' : 'Without a plan the studio opens the sample films.';
     const note = h('p.pc-plan-note', { text: lead + ' A plan adds films of your own.' });
-    grid.append(note);
+    out.append(note);
     PlanGate.offerFor(['new_projects']).then((o) => {
       if (!o || !note.isConnected) return;
       note.replaceChildren(lead + ' ', h('a', { href: o.href, text: PlanGate.offerText(o) }), ' adds films of your own — one payment.');
     }).catch(() => { /* the plain sentence stands */ });
   }
+  commit();
 }
 
 /* Every way of making a project, hidden together or shown together:

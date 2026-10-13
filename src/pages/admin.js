@@ -110,20 +110,21 @@ const gate = () => (cloud() && cloud().gate) || null;
    draws it from data-tab-group); the ids of the first five are the old
    ones and every old fragment still resolves inside them. */
 const TAB_DEFS = [
-  { id: 'overview',  label: 'Overview',          group: 'Run' },
-  { id: 'health',    label: 'Launch & health',   group: 'Run' },
-  { id: 'audit',     label: 'Audit log',         group: 'Run' },
-  { id: 'people',    label: 'People',            group: 'People' },
-  { id: 'support',   label: 'Support',           group: 'People' },
-  { id: 'requests',  label: 'Access & sharing',  group: 'People' },
-  { id: 'purchases', label: 'Purchases',         group: 'Money' },
-  { id: 'growth',    label: 'Growth',            group: 'Money' },
-  { id: 'usage',     label: 'Usage',             group: 'Product' },
-  { id: 'sync',      label: 'Sync & storage',    group: 'Product' },
-  { id: 'controls',  label: 'Controls',          group: 'Product' }
+  { id: 'overview',  label: 'Overview',          group: 'Run',     icon: 'dashboard',      hint: 'The numbers, and what needs you today.' },
+  { id: 'health',    label: 'Launch & health',   group: 'Run',     icon: 'monitor_heart',  hint: 'Is everything switched on and working?' },
+  { id: 'audit',     label: 'Audit log',         group: 'Run',     icon: 'history',        hint: 'Who changed what, and when.' },
+  { id: 'people',    label: 'People',            group: 'People',  icon: 'groups',         hint: 'Members, access and organisations.' },
+  { id: 'support',   label: 'Support',           group: 'People',  icon: 'support_agent',  hint: 'Look up an account and help with it.' },
+  { id: 'requests',  label: 'Access & sharing',  group: 'People',  icon: 'share',          hint: 'Invite requests, codes and shared films.' },
+  { id: 'purchases', label: 'Purchases',         group: 'Money',   icon: 'shopping_cart',  hint: 'Payments, invoices, refunds and promo codes.' },
+  { id: 'growth',    label: 'Growth',            group: 'Money',   icon: 'trending_up',    hint: 'Visits, sign-ups and the funnel.' },
+  { id: 'usage',     label: 'Usage',             group: 'Product', icon: 'bar_chart',      hint: 'What people use, and how much.' },
+  { id: 'sync',      label: 'Sync & storage',    group: 'Product', icon: 'storage',        hint: 'Cloud sync, queues and stored work.' },
+  { id: 'controls',  label: 'Controls',          group: 'Product', icon: 'toggle_on',      hint: 'Switches, plans and features.' }
 ];
 const TABS = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.label]));
 const GROUP = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.group]));
+const META = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t]));
 /* THE REGISTRY. A tab that has its own module in ./admin-tabs/. To add
    one: a file there, an import above, a row here and in TAB_DEFS. */
 const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usage: usageTab, sync: syncTab, controls: controlsTab };
@@ -132,7 +133,7 @@ const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usag
 const BLOCK_TITLE = { features: 'Plan features', invoices: 'Invoices' };
 
 function tab(id) {
-  return h('section.ad-tab', { id, 'data-tab-label': TABS[id], 'data-tab-group': GROUP[id] });
+  return h('section.ad-tab', { id, 'data-tab-label': TABS[id], 'data-tab-group': GROUP[id], 'data-tab-icon': META[id].icon, 'data-tab-hint': META[id].hint });
 }
 /** The `section` a module asks for. Eyebrow and deck are not drawn:
  *  the tab names the place and a block carries one meta line at most. */
@@ -206,7 +207,7 @@ function statusBar() {
 function pendingCounts() {
   const b = billingSnapshot();
   return {
-    requests: ov.phase === 'ok' ? Number(ov.data.requests_pending) || 0 : 0,
+    requests: ov.data ? Number(ov.data.requests_pending) || 0 : 0,
     purchases: b ? Number(b.refundRequestsPending) || 0 : 0
   };
 }
@@ -312,7 +313,9 @@ function overviewTab() {
     sec.append(errorState({ title: 'The numbers could not load', why: ov.error, onRetry: () => { ov = { ...ov, phase: 'idle' }; loadOverview(); } }));
     return sec;
   }
-  if (ov.phase !== 'ok') { sec.append(skeleton({ kind: 'kpi' }), skeleton({ kind: 'block', count: 2 })); return sec; }
+  /* Stale-while-refresh: a REFRESH keeps the numbers on screen (the header says
+     Refreshing…); the skeleton is for when there is nothing to show yet. */
+  if (!ov.data) { sec.append(skeleton({ kind: 'kpi' }), skeleton({ kind: 'block', count: 2 })); return sec; }
   const d = ov.data;
   const b = billingSnapshot();
   const g = growthSnapshot();
@@ -425,8 +428,8 @@ function peopleTab(st) {
   return fill(tab('people'), [
     adminSection(block, st, { part: 'members' }),
     accessAdminSection(block, st),
-    ov.phase === 'ok' ? signedInBlock() : null,
-    ov.phase === 'ok' ? organisationsBlock() : null
+    ov.data ? signedInBlock() : null,
+    ov.data ? organisationsBlock() : null
   ]);
 }
 function requestsTab(st) {
@@ -490,12 +493,21 @@ function carryFields({ saved, focus }) {
 let drawerSynced = false;   // the hash's drawer is opened once, on the first admin render
 let st = null;   // the last studio_status(); null until asked
 let askedFor = '';
+let painted = false;      // render() got past the boot wait at least once
+let forceRender = false;  // the fallback below: draw even if cloud:booted never came
 
 async function refreshStatus() {
   const c = cloud();
-  if (!c || !c.gate || !c.getSession()) { st = null; askedFor = ''; renderSoon(); return; }
+  if (!c || !c.gate || !c.getSession()) {
+    const changed = st !== null || askedFor !== '' || ov.data;
+    st = null; askedFor = ''; ov = { phase: 'idle', data: null, accounts: [], users: [], error: '', loadedAt: 0 };   // nobody's numbers outlive their session
+    if (changed || !painted) renderSoon();
+    return;
+  }
   const who = c.getUserEmail ? c.getUserEmail() : '';
-  if (askedFor === who && st) { renderSoon(); return; }
+  /* Nothing new to say (same account, status already held, page already
+     drawn): an auth or gate echo does not repaint. */
+  if (askedFor === who && st) { if (!painted) renderSoon(); return; }
   try { st = await c.gate.status(); askedFor = who; } catch (e) { st = null; }
   renderSoon();
 }
@@ -505,7 +517,8 @@ function render() {
   /* The session is restored asynchronously. Drawing before it lands shows a
      signed-in administrator the Sign-in card, then Checking…, then the
      console — three pages in a row. Wait for the boot; it renotifies. */
-  if (c && c.isConfigured() && c.isBooted && !c.isBooted()) return;
+  if (!forceRender && c && c.isConfigured() && c.isBooted && !c.isBooted()) return;
+  painted = true;
   const signedIn = !!(c && c.getSession && c.getSession());
   const isAdmin = !!(st && st.deployed && st.role === 'admin');
   const kept = snapshotFields();
@@ -589,3 +602,6 @@ Store.subscribe('gate:changed', refreshStatus);
 Store.subscribe('cloud:booted', refreshStatus);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshStatus, 0));
 refreshStatus();
+/* If the boot never announces itself, the page must not stay blank: after 3s
+   draw with what is known (the sign-in or checking state). */
+setTimeout(() => { if (!painted) { forceRender = true; refreshStatus(); renderSoon(); } }, 3000);

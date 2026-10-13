@@ -256,7 +256,10 @@ function resolveModule(hash) {
       const panel = el.closest('[role="tabpanel"]');
       const base = mods.find((x) => x.phase) || mods[0];
       const tab = panel && document.getElementById('tab-' + panel.id);
-      const label = ((tab && tab.textContent) || (panel && panel.dataset.tabLabel) || '').trim();
+      /* the row's LABEL span: its textContent also holds the icon's ligature
+         name ("movie") and a count */
+      const tabText = tab && (tab.querySelector('.tabs-tab-l') || tab).textContent;
+      const label = (tabText || (panel && panel.dataset.tabLabel) || '').trim();
       if (panel && base && label) {
         /* No stage: nothing records which one a non-module tab belongs
            to, and a guess put Reports' DPR under "Screenplay". */

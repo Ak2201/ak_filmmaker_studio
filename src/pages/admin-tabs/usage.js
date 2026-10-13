@@ -72,9 +72,9 @@ function rangePicker() {
     h('span.ad-meta', { text: 'Range' }),
     ...RANGES.map((d) => h('button.ad-chip', { type: 'button', 'data-us-days': String(d), 'aria-pressed': String(S.days === d), text: d + ' days' })),
     h('span.us-spacer'),
-    S.usage.phase === 'loading' ? h('span.ad-meta', { text: 'Counting…' })
+    S.usage.phase === 'loading' || S.usage.refreshing ? h('span.ad-meta', { text: 'Counting…' })
       : S.usage.at ? h('span.ad-meta', { title: absTime(S.usage.at), text: 'Counted ' + relTime(S.usage.at) }) : null,
-    h('button.btn.ad-refresh', { type: 'button', 'data-us-refresh': '', disabled: S.usage.phase === 'loading' ? '' : null, text: 'REFRESH' })
+    h('button.btn.ad-refresh', { type: 'button', 'data-us-refresh': '', disabled: S.usage.phase === 'loading' || S.usage.refreshing ? '' : null, text: 'REFRESH' })
   ]);
 }
 

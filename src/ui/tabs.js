@@ -40,11 +40,22 @@
    than trusting one call at mount. Idempotent: the strip is rebuilt
    only when the set of tabs changes.
 
-   ARIA: role=tablist / tab / tabpanel, arrow keys, Home and End.
+   THE STRIP IS section-menu.js. This file READS the page (the sections,
+   their data-tab-label / -group / -icon / -hint / -badge, plan-gate's
+   data-tab-lock, and src/data/section-icons.json `pages` for module pages
+   that carry none) and hands the list to buildSectionMenu(); it never draws
+   a row itself. Three or more tabs get the side layout: the container
+   gets `.tabs-has-side` and tabs.css lays it out as a column at 1100px
+   and over, the strip plus a Sections sheet below. A change to a count,
+   hint, icon or lock patches the rows in place (updateSectionMenu), so
+   the strip, its scroll and focus survive.
+
+   ARIA: role=tablist (.tabs-list inside the nav) / tab / tabpanel, arrow
+   keys, Home and End.
    ============================================================ */
 import nav from '../data/navigation.json';
 import { stayEntry } from '../lib/navmodel.js';
-import { h } from '../lib/dom.js';
+import { buildSectionMenu, updateSectionMenu, itemsFromSections } from './section-menu.js';
 import '../styles/tabs.css';
 
 const TABBED = new Set(['settings', 'admin', 'library', 'breakdown', 'stripboard', 'reports', 'contacts', 'visualize', 'write', 'plan', 'budget']);
@@ -111,6 +122,11 @@ function findTabs() {
   return { parent: null, sections: [] };
 }
 
+/* The strip tabs.js owns. A menu somebody else built from an explicit
+   list (section-menu.js, onSelect) is marked [data-sm-self] and is none
+   of this file's business: its clicks, keys and aria state are its own. */
+const OWN = '.tabs:not([data-sm-self])';
+
 let signature = '';
 let active = '';
 
@@ -154,7 +170,7 @@ function show(sections, id, { setHash = true, animate = false } = {}) {
     s.setAttribute('aria-labelledby', 'tab-' + s.id);
     if (!s.hasAttribute('tabindex')) s.setAttribute('tabindex', '0');
   }
-  document.querySelectorAll('.tabs [role="tab"]').forEach((t) => {
+  document.querySelectorAll(OWN + ' [role="tab"]').forEach((t) => {
     const on = t.dataset.tab === id;
     t.setAttribute('aria-selected', String(on));
     t.tabIndex = on ? 0 : -1;
@@ -179,7 +195,11 @@ function intoStrip(tab) {
   if (!strip || strip.scrollWidth <= strip.clientWidth + 1) return;
   const s = strip.getBoundingClientRect();
   const t = tab.getBoundingClientRect();
-  if (t.left < s.left) strip.scrollLeft -= s.left - t.left + 16;
+  /* the Sections button is pinned over the strip's left end: a tab
+     scrolled in under it is not in */
+  const lead = strip.querySelector('.tabs-sections');
+  const edge = s.left + (lead && lead.offsetParent ? lead.offsetWidth : 0);
+  if (t.left < edge) strip.scrollLeft -= edge - t.left + 16;
   else if (t.right > s.right) strip.scrollLeft += t.right - s.right + 16;
 }
 
@@ -206,38 +226,26 @@ export function revealTarget(id) {
   return true;
 }
 
-/* A section may carry `data-tab-group="Run"` (the admin console does):
-   the strip then draws each run of same-group tabs under that heading.
-   Below 1100px the headings fold away and it is the same single row; at
-   1100px and over a page that wants it (admin.css) lays the strip out
-   as a vertical list. `data-tab-badge="3"` puts a count on the tab. */
-function tabButton(s) {
-  const badge = s.dataset.tabBadge;
-  const btn = h('button.tabs-tab', { type: 'button', role: 'tab', id: 'tab-' + s.id, 'data-tab': s.id, 'aria-controls': s.id, 'aria-selected': 'false' }, [
-    h('span.tabs-tab-l', { text: labelFor(s) })
-  ]);
-  if (badge && badge !== '0') {
-    btn.append(h('span.tabs-badge', { 'aria-hidden': 'true', text: badge }));
-    btn.setAttribute('aria-label', labelFor(s) + ', ' + badge + ' waiting');
-  }
-  return btn;
-}
-function buildStrip(sections) {
-  const grouped = sections.some((s) => s.dataset.tabGroup);
-  const strip = h('nav.tabs' + (grouped ? '.tabs-grouped' : ''), { role: 'tablist', 'aria-label': 'Sections', 'aria-orientation': grouped ? 'vertical' : null });
-  let group = null, name = null;
-  for (const s of sections) {
-    if (!grouped) { strip.append(tabButton(s)); continue; }
-    const g = s.dataset.tabGroup || '';
-    if (!group || g !== name) {
-      name = g;
-      group = h('div.tabs-group', { role: 'presentation' }, [g ? h('span.tabs-group-h', { 'aria-hidden': 'true', text: g }) : null]);
-      strip.append(group);
-    }
-    group.append(tabButton(s));
-  }
+/* THE STRIP IS section-menu.js. A section may carry `data-tab-group`
+   (the heading its tab sits under), `data-tab-icon` (a Material Symbols
+   name from src/data/section-icons.json), `data-tab-hint` (one line: the
+   tooltip and the aria description) and `data-tab-badge` ("3": a count);
+   plan-gate stamps `data-tab-lock`. Three or more tabs get the side menu
+   (a column at 1100px and over, the scrolling strip plus a Sections
+   sheet below); fewer stay the plain strip. */
+const isSide = (sections) => sections.length >= 3;
+function buildStrip(sections, activeId) {
+  const strip = buildSectionMenu({
+    groups: itemsFromSections(sections, labelFor, page()), active: activeId,
+    ariaLabel: 'Sections', orientation: isSide(sections) ? 'side' : 'strip'
+  });
   watchHeight(strip);
   return strip;
+}
+/* A vertical sub-nav (the side menu, wide) pins beside the panel, not
+   above it, so it takes no height there. */
+function besideNow(strip) {
+  return strip.classList.contains('tabs-side') && !!strip.parentElement && strip.offsetWidth < strip.parentElement.clientWidth / 2;
 }
 
 /* The strip's pinned height, MEASURED, as --tabs-h on <html> (outside
@@ -248,8 +256,7 @@ function buildStrip(sections) {
 let stripRO = null;
 function watchHeight(strip) {
   const publish = () => {
-    /* A vertical sub-nav (tabs-grouped, wide) pins beside the panel, not above it. */
-    const side = strip.classList.contains('tabs-grouped') && strip.parentElement && strip.offsetWidth < strip.parentElement.clientWidth / 2;
+    const side = besideNow(strip);
     const pinned = strip.isConnected && !side && getComputedStyle(strip).position === 'sticky';
     const px = (pinned ? Math.round(strip.getBoundingClientRect().height) : 0) + 'px';
     const de = document.documentElement;
@@ -263,22 +270,32 @@ function watchHeight(strip) {
 export function apply() {
   if (typeof document === 'undefined' || !TABBED.has(page())) return;
   const { parent, sections } = findTabs();
-  const old = document.querySelector('.tabs');
-  if (!parent) { if (old) old.remove(); signature = ''; return; }
-  const sig = sections.map((s) => s.id + '=' + labelFor(s) + '/' + (s.dataset.tabGroup || '') + '/' + (s.dataset.tabBadge || '')).join('|');
-  if (sig !== signature || !old || old.parentElement !== parent) {
-    if (old) old.remove();
-    parent.insertBefore(buildStrip(sections), sections[0]);
-    signature = sig;
-  }
-  dedupeHeads(sections);
+  const old = document.querySelector(OWN);
+  if (!parent) { if (old) old.remove(); signature = ''; document.querySelectorAll('.tabs-has-side').forEach((p) => p.classList.remove('tabs-has-side')); return; }
+  const groups = itemsFromSections(sections, labelFor, page());
+  const sig = JSON.stringify(groups);
   const fromHash = currentFromHash(sections);
   const keep = sections.some((s) => s.id === active) ? active : '';
-  show(sections, fromHash || keep || sections[0].id, { setHash: false });
+  const want = fromHash || keep || sections[0].id;
+  const side = isSide(sections);
+  if (!old || old.parentElement !== parent || old.classList.contains('tabs-side') !== side) {
+    if (old) old.remove();
+    parent.insertBefore(buildStrip(sections, want), sections[0]);
+    signature = sig;
+  } else if (sig !== signature) {
+    /* a count, a lock or a label moved: patch the rows, keep the strip
+       (its scroll, its focus, the sheet's opener) */
+    updateSectionMenu(old, groups, want);
+    signature = sig;
+  }
+  document.querySelectorAll('.tabs-has-side').forEach((p) => { if (p !== parent || !side) p.classList.remove('tabs-has-side'); });
+  parent.classList.toggle('tabs-has-side', side);
+  dedupeHeads(sections);
+  show(sections, want, { setHash: false });
 }
 
 function onTabClick(e) {
-  const t = e.target.closest('.tabs [role="tab"]');
+  const t = e.target.closest(OWN + ' [role="tab"]');
   if (!t) return;
   const { sections } = findTabs();
   const strip = t.closest('.tabs');
@@ -305,16 +322,16 @@ function onTabClick(e) {
 function revealPanel(strip, panel, y0, stuckAt) {
   if (!strip || !panel) return;
   const gap = parseFloat(getComputedStyle(strip).marginBottom) || 0;
-  let h = strip.getBoundingClientRect().height;
-  /* A vertical sub-nav beside the panel (the admin console at 1100px
-     and over) does not stack above it, so it takes no height. */
-  if (strip.classList.contains('tabs-grouped') && strip.parentElement && strip.getBoundingClientRect().width < strip.parentElement.clientWidth / 2) h = 0;
+  let hgt = strip.getBoundingClientRect().height;
+  /* A side menu beside the panel (1100px and over) does not stack
+     above it, so it takes no height. */
+  if (besideNow(strip)) hgt = 0;
   /* Document positions, so the resolver's half-finished scroll does
      not matter. */
   const panelDocTop = panel.getBoundingClientRect().top + window.scrollY;
-  const stripDocBottom = y0 + stuckAt + h;
+  const stripDocBottom = y0 + stuckAt + hgt;
   const target = panelDocTop < stripDocBottom + gap - 1
-    ? Math.max(0, panelDocTop - stuckAt - h - gap)
+    ? Math.max(0, panelDocTop - stuckAt - hgt - gap)
     : y0;
   window.scrollTo({ top: target, behavior: 'instant' });
   /* And once more after the next frame: Chromium re-positions the
@@ -327,7 +344,7 @@ function revealPanel(strip, panel, y0, stuckAt) {
 }
 
 function onTabKey(e) {
-  const t = e.target.closest('.tabs [role="tab"]');
+  const t = e.target.closest(OWN + ' [role="tab"]');
   if (!t) return;
   const tabs = [...t.closest('.tabs').querySelectorAll('[role="tab"]')];
   const i = tabs.indexOf(t);
@@ -379,6 +396,16 @@ export function installTabs() {
     if (!hit) return;
     raf = requestAnimationFrame(() => { raf = 0; apply(); });
   }).observe(app, { childList: true, subtree: true });
+  /* A count, a hint, an icon or a plan lock changing on a section (the
+     console's pending counts, plan-gate's tab lock) does not add or
+     remove a node, so the observer above never sees it. These attributes
+     are on the sections, never on the strip, so patching the strip does
+     not feed this observer. */
+  let araf = 0;
+  new MutationObserver(() => {
+    if (araf) return;
+    araf = requestAnimationFrame(() => { araf = 0; apply(); });
+  }).observe(app, { attributes: true, subtree: true, attributeFilter: ['data-tab-badge', 'data-tab-lock', 'data-tab-hint', 'data-tab-icon', 'data-tab-label', 'data-tab-group'] });
 }
 
 export default { installTabs, apply, revealTarget, TABBED };

@@ -66,27 +66,30 @@ const num = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 
 /* ---- loading ------------------------------------------------------ */
 
+/* A reload over data already on screen keeps drawing it (phase stays 'ok',
+   `busy` says it is refreshing); skeletons are for when there is nothing yet. */
 async function loadHealth() {
-  H.phase = 'loading';
+  if (H.phase !== 'ok') H.phase = 'loading'; H.busy = true;
   try { H.data = await callRpc(cloud(), 'admin_health'); H.phase = 'ok'; H.error = ''; H.at = Date.now(); }
   catch (e) { H.phase = 'error'; H.error = e.message || 'The server did not say why.'; }
+  H.busy = false;
   again();
 }
 async function loadPreview() {
-  W.phase = 'loading';
+  if (W.phase !== 'ok') W.phase = 'loading';
   try { W.data = await callRpc(cloud(), 'admin_launch_preview'); W.phase = 'ok'; W.error = ''; }
   catch (e) { W.phase = 'error'; W.error = e.message || 'The server did not say why.'; }
   again();
 }
 async function loadInvoices() {
-  I.phase = 'loading';
+  if (I.phase !== 'ok') I.phase = 'loading';
   try { I.rows = (await callRpc(cloud(), 'admin_list_invoices')) || []; I.phase = 'ok'; I.error = ''; }
   catch (e) { I.phase = 'error'; I.error = e.message || 'The server did not say why.'; }
   again();
 }
 /** The newest audit row that turned purchase_required ON or OFF decides what the log says. */
 async function loadThrow() {
-  T.phase = 'loading';
+  if (T.phase !== 'ok') T.phase = 'loading';
   try {
     const out = await callRpc(cloud(), 'admin_list_audit', { p_action: 'set_billing_settings', p_target: 'billing_settings:global', p_limit: 50 });
     const rows = Array.isArray(out && out.rows) ? out.rows : [];
@@ -430,8 +433,8 @@ export function render(ctx) {
 
   const root = h('div.ad-health', {});
   root.append(h('div.ad-hbar', {}, [
-    h('span.ad-meta', {}, H.phase === 'ok' ? ['Read ', h('time', { datetime: new Date(H.at).toISOString(), title: absTime(H.at), text: relTime(H.at) }), ' from the live project.'] : [H.phase === 'loading' ? 'Reading the live project…' : '']),
-    h('button.btn', { type: 'button', 'data-action': 'health-refresh', disabled: H.phase === 'loading' ? '' : null, text: 'REFRESH' })
+    h('span.ad-meta', {}, H.phase === 'ok' && !H.busy ? ['Read ', h('time', { datetime: new Date(H.at).toISOString(), title: absTime(H.at), text: relTime(H.at) }), ' from the live project.'] : [H.phase === 'loading' || H.busy ? 'Reading the live project…' : '']),
+    h('button.btn', { type: 'button', 'data-action': 'health-refresh', disabled: H.phase === 'loading' || H.busy ? '' : null, text: 'REFRESH' })
   ]));
 
   if (H.phase === 'idle' || H.phase === 'loading') { root.append(skeleton({ kind: 'kpi', count: 3 }), skeleton({ kind: 'block', count: 2 })); }

@@ -82,7 +82,8 @@ import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/s
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
-import { showOnly, stepFooter, wireStepper, landUnder } from '../ui/stepper.js';
+import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
+import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
 
 const app = document.getElementById('app');
 
@@ -183,45 +184,61 @@ function currentStep(s) {
   return pathStep || Story.defaultPathStep(s, { scenes: scenes(), format: fmt() });
 }
 
-/* The row of links above the steps. Every step is on the page below;
-   a link scrolls to its step. The lit one is where you last went (or
-   where the story is up to). */
-function renderStepper(s, cur) {
-  const nav = h('nav.st-path', { 'aria-label': 'Story path' });
-  const ol = h('ol.st-path-list');
-  const rows = progress(s);
-  for (const p of rows) {
-    const on = !extra && p.id === cur;
-    const b = h('button.st-path-tab' + (on ? '.is-on' : '') + (p.done ? '.is-done' : ''), {
-      /* data-step is the step's STABLE NUMBER (story-paths.json `n`): the
-         blueprint drawer reads it from the current tab to know which
-         blueprint steps this path step answers. data-path is the id. */
-      type: 'button', 'data-st': 'path', 'data-path': p.id, 'data-step': p.n, 'aria-current': on ? 'step' : null
-    }, [
-      h('span.st-path-n', { text: String(p.pos) }),
-      h('span.st-path-label', { text: p.label }),
-      h('span.st-path-state', { text: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do' })
-    ]);
-    ol.append(h('li', {}, [b]));
+/* THE STEPS ARE THE SHARED SECTION MENU (src/ui/section-menu.js), the
+   same control as the admin console's: a grouped column beside the step at
+   1100px and over, a strip with a Steps sheet below. Every step is on the
+   page below; a row opens its step (goView). Items are the path's
+   (progress() ticks them) and then the three sections after it, under
+   Tools — which have no done-state, so they carry no tick.
+
+   An item's id is the PANEL's element id (path-<id>, or pacing / pitch /
+   guide), which is what a row's aria-controls must be; goView takes the
+   bare id. data-step stays on the rows as the step's STABLE NUMBER
+   (story-paths.json `n`): the blueprint drawer reads it from the open
+   row to know which blueprint steps this path step answers. */
+const STEP_ICON = {
+  idea: 'lightbulb', logline: 'edit_note', bible: 'menu_book', character: 'person', world: 'public', conflict: 'bolt',
+  structure: 'format_list_numbered', outline: 'list', setups: 'link', timeline: 'timeline', synopsis: 'description',
+  lock: 'lock', screenplay: 'movie'
+};
+const EXTRA_META = {
+  pacing: { icon: 'trending_up', hint: 'Where the tension sags and where it peaks, against the beat sheet.' },
+  pitch: { icon: 'slideshow', hint: 'A pitch deck built from the story so far.' },
+  guide: { icon: 'local_library', hint: 'The cover sheet: what the path above leaves out.' }
+};
+const bareOf = (pid) => String(pid).replace(/^path-/, '');
+const activeId = (s) => (extra ? extra : 'path-' + currentStep(s));
+function menuGroups(s) {
+  const groups = [];
+  for (const p of progress(s)) {
+    const label = p.group || '';
+    let g = groups[groups.length - 1];
+    if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
+    g.items.push({
+      id: 'path-' + p.id, label: p.label, icon: STEP_ICON[p.id] || '', done: !!p.done,
+      hint: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do', n: p.n
+    });
   }
-  /* Beats & pacing, Pitch deck and the Cover sheet are the LAST STEPS of the
-     strip now, numbered on from the path (they were a second "Then" row that
-     repeated the menu — owner, 12 Oct 2026). They have no done-state of their
-     own, so they say "Open". */
-  EXTRAS.forEach((x, i) => {
-    const on = extra === x.id;
-    ol.append(h('li', {}, [h('button.st-path-tab.st-path-extra' + (on ? '.is-on' : ''), {
-      type: 'button', 'data-stepper-go': x.id, 'aria-current': on ? 'step' : null
-    }, [
-      h('span.st-path-n', { text: String(rows.length + i + 1) }),
-      h('span.st-path-label', { text: x.label }),
-      h('span.st-path-state', { text: 'Open' })
-    ])]));
+  groups.push({ label: 'Tools', items: EXTRAS.map((x) => ({ id: x.id, label: x.label, icon: EXTRA_META[x.id].icon, hint: EXTRA_META[x.id].hint })) });
+  return groups;
+}
+/* data-step / data-path on each path row: the numbers the drawer reads. A
+   structural rebuild inside the same nav drops them, so every build and
+   every update stamps again. */
+function stamp(nav, s) {
+  const n = new Map(progress(s).map((p) => [p.id, p.n]));
+  for (const b of nav.querySelectorAll('[role="tab"]')) {
+    const id = bareOf(b.dataset.tab);
+    if (b.dataset.tab.startsWith('path-') && n.has(id)) { b.dataset.step = String(n.get(id)); b.dataset.path = id; }
+  }
+}
+const storyNav = () => document.querySelector('#main > nav.tabs[data-sm-self]');
+function renderStepper(s) {
+  const nav = buildSectionMenu({
+    groups: menuGroups(s), active: activeId(s), ariaLabel: 'Story path', sectionsLabel: 'Steps', orientation: 'side',
+    onSelect: (pid) => goView(bareOf(pid))
   });
-  nav.append(ol);
-  const at = extra ? rows.length + EXTRAS.findIndex((x) => x.id === extra) + 1
-    : pathNow().findIndex((p) => p.id === cur) + 1;
-  nav.append(h('p.st-path-count', { text: 'Step ' + at + ' of ' + (rows.length + EXTRAS.length) }));
+  stamp(nav, s);
   return nav;
 }
 
@@ -236,12 +253,14 @@ const learnBox = (topic) => {
 };
 /* A Bible or blueprint write changes which steps have something in
    them, and the page is not redrawn for a field (that would cost the
-   caret): the stepper's ticks are replaced in place instead. */
+   caret): the menu's ticks are patched in place instead (the strip keeps
+   its scroll and the Steps button its focus). */
 function refreshStepper() {
-  const old = document.querySelector('nav.st-path');
-  if (!old) return;
+  const nav = storyNav();
+  if (!nav) return;
   const s = story();
-  old.replaceWith(renderStepper(s, currentStep(s)));
+  updateSectionMenu(nav, menuGroups(s), activeId(s));
+  stamp(nav, s);
 }
 /* A Bible write changes what the blueprint's derived views (the relationship
    map) and the stepper's ticks read: refresh both, in place. */
@@ -330,22 +349,28 @@ const sub = (title, lead) => [h('h3.st-sub', { text: title }), lead ? h('p.st-mu
 const put = (el, ...kids) => { el.append(...kids.flat().filter(Boolean)); return el; };
 
 let bpSaveTimer = 0;
+let bpBodyMod = null;   // stage-guide-body.js once loaded: later renders paint in the same tick
+function paintBlueprintHosts(m, todo) {
+  for (const r of todo) {
+    try {
+      const inst = m.renderGuide(r.el, { stage: 'story', format: fmt(), items: r.items, fields: [] });
+      r.inst = inst;
+    } catch (e) { console.warn('[story] blueprint step failed', r.items, e); }
+  }
+  rewireNotes();      // the Bible's pencils point at the whole document again
+  refreshStepper();   // the answers read from the blueprint tick their steps
+  if (reland) {       // a link landed above blocks that were still loading: land again, unless the reader has moved
+    landStepView(document.getElementById('path-' + reland));
+  }
+}
 function startBlueprintHosts() {
   const todo = [...bpHosts.values()].filter((r) => !r.started);
   if (!todo.length) return;
   todo.forEach((r) => { r.started = true; });
+  if (bpBodyMod) { paintBlueprintHosts(bpBodyMod, todo); return; }
   import('../ui/stage-guide-body.js').then((m) => {
-    for (const r of todo) {
-      try {
-        const inst = m.renderGuide(r.el, { stage: 'story', format: fmt(), items: r.items, fields: [] });
-        r.inst = inst;
-      } catch (e) { console.warn('[story] blueprint step failed', r.items, e); }
-    }
-    rewireNotes();      // the Bible's pencils point at the whole document again
-    refreshStepper();   // the answers read from the blueprint tick their steps
-    if (reland) {       // a link landed above blocks that were still loading: land again, unless the reader has moved
-      landStepView(document.getElementById('path-' + reland));
-    }
+    bpBodyMod = m;
+    paintBlueprintHosts(m, todo);
   }).catch((e) => {
     todo.forEach((r) => { r.started = false; });
     console.warn('[story] the blueprint questions could not load', e);
@@ -948,8 +973,9 @@ function draw() {
   }
   main.append(bar);
 
-  const bar0 = renderStepper(s, cur);
+  const bar0 = renderStepper(s);
   if (cards) bar0.hidden = true;
+  else main.classList.add('tabs-has-side');   // the column beside the step (tabs.css); never over the start cards
   main.append(bar0);
   /* EVERY STEP IS ON THE PAGE, in the project's own path. */
   const panels = {
@@ -997,9 +1023,10 @@ function after() {
 }
 
 
-/* Landing on a step: src/ui/stepper.js landUnder(), with Story's own bar. */
+/* Landing on a step: src/ui/stepper.js landUnderMenu(), with Story's menu
+   (a column beside the step wide, a sticky strip narrow). */
 function landStepView(el, { exact = false } = {}) {
-  landUnder(el, document.querySelector('#main nav.st-path:not([hidden])'), { exact });
+  landUnderMenu(el, storyNav(), { exact });
 }
 
 /* A path step id, from an id or (for any caller that still holds one)
@@ -1061,12 +1088,13 @@ function applyView() {
       if (f) p.el.append(f);
     }
   });
-  const bar = main.querySelector('nav.st-path');
+  const bar = storyNav();
   if (bar) {
     bar.hidden = cards;
-    const ol = bar.querySelector('.st-path-list');
-    const on = ol && ol.querySelector('.is-on');
-    if (ol && on && ol.scrollWidth > ol.clientWidth) ol.scrollLeft = Math.max(0, on.offsetLeft - ol.offsetLeft - 12);
+    main.classList.toggle('tabs-has-side', !cards);
+    const on = bar.querySelector('[aria-selected="true"]');
+    /* the strip (narrow) keeps the open row in view; a column has nothing to scroll */
+    if (!cards && on && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = Math.max(0, on.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2);
   }
 }
 

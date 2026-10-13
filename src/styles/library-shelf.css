@@ -24,6 +24,10 @@
    and cut "Craft Glossary" off at 1280 with room to spare. Here the
    strip takes the heads' inset instead. */
 main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
+/* With the side menu (tabs.css) the library takes the full width rather
+   than the module pages' centred measure: its sections are bands with
+   their own gutter, and the in-tab rail below needs the room. */
+main:has(> .lib-sec).tabs-has-side { --side-pad: var(--s4); } /* not --gutter: heads and bodies carry their own, and a second one outside left 596px of cards at 1100px (measured); this leaves 652 */
 
 /* ---- the craft glossary: every film's example, under the term ---- */
 .lib-gloss-ex {
@@ -171,39 +175,76 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 .lib-contents-card li a { display: block; padding: 2px 0; font-size: var(--t-small); color: var(--ink-body); text-decoration: none; overflow-wrap: anywhere; }
 .lib-contents-card li a:hover { color: var(--accent-deep); text-decoration: underline; }
 
-/* ---- the sticky index beside a long tab (≥1100px) ------------- */
+/* ---- the index inside a long tab ------------------------------
+   Films, directors, rate tables, watch-list steps and the five stages
+   of Film terminology are long; a list of what is in the tab sits with
+   them. THREE WIDTHS, decided by the PANEL's width (a container query on
+   .lib-sec), because the page now has its own side menu in front of it
+   and the old rule (a second 216px column from 1100px of VIEWPORT) left
+   the cards 520px wide at 1100 and 540px at 1280, measured:
+     - under 1100px of viewport: no index (as before);
+     - from 1100px, panel narrower than 62rem: a compact jump list, one
+       row that scrolls sideways, above the content;
+     - panel 62rem or wider (about a 1440px window): the sticky column
+       beside the content, which keeps >= 640px (measured 656 at 1440).
+   An old `.lib-split` inside a hidden tab costs nothing: display:none. */
+.lib-sec { container: libsec / inline-size; }
 .lib-split { display: block; padding-inline: var(--gutter); }
 .lib-split > .section-body { padding-inline: 0; border-bottom: 0; }
 .lib-rail { display: none; }
 @media (min-width: 1100px) {
-  .lib-split {
-    display: grid;
-    grid-template-columns: 13.5rem minmax(0, 1fr);
-    gap: var(--s6);
-    align-items: start;
-  }
   .lib-rail {
-    display: grid;
-    align-content: start;
-    gap: 2px;
-    position: sticky;
-    top: calc(var(--sh-chrome-h, 0px) + 4.5rem);
-    max-height: calc(100vh - var(--sh-chrome-h, 0px) - 6rem);
-    overflow: auto;
-    padding: var(--s4) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    overflow-x: auto;
+    padding: var(--s3) 0 var(--s4);
   }
-  .lib-rail-label { margin-bottom: var(--s2); }
+  .lib-rail-label { flex: none; margin-right: var(--s2); white-space: nowrap; }
   .lib-rail a {
+    flex: none;
     padding: var(--s1) var(--s3);
-    border-left: 2px solid var(--rule-hair, var(--rule));
+    border: var(--sk-card-line-w, 1px) solid var(--sk-card-line);
+    border-radius: var(--radius-pill);
     font-size: var(--t-small);
     line-height: var(--lh-snug, 1.35);
     color: var(--ink-body);
     text-decoration: none;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
   }
   .lib-rail a:hover,
-  .lib-rail a:focus-visible { color: var(--accent-deep); border-left-color: var(--accent-deep); }
+  .lib-rail a:focus-visible { color: var(--accent-deep); border-color: var(--accent-deep); }
+}
+@container libsec (min-width: 62rem) {
+  @media (min-width: 1100px) {
+    .lib-split {
+      display: grid;
+      grid-template-columns: 13.5rem minmax(0, 1fr);
+      gap: var(--s6);
+      align-items: start;
+    }
+    .lib-rail {
+      display: grid;
+      align-content: start;
+      gap: 2px;
+      position: sticky;
+      top: calc(var(--sh-chrome-h, 0px) + 4.5rem);
+      max-height: calc(100vh - var(--sh-chrome-h, 0px) - 6rem);
+      overflow: auto;
+      padding: var(--s4) 0;
+    }
+    .lib-rail-label { margin: 0 0 var(--s2); }
+    .lib-rail a {
+      padding: var(--s1) var(--s3);
+      border: 0;
+      border-left: 2px solid var(--rule-hair, var(--rule));
+      border-radius: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .lib-rail a:hover,
+    .lib-rail a:focus-visible { border-left-color: var(--accent-deep); }
+  }
 }
 
 /* ---- film terminology ----------------------------------------- */

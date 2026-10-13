@@ -170,6 +170,7 @@ function syncFootBrand() {
   const old = foot.querySelector('.site-foot-made');
   if (!brandingOn()) { if (old) old.remove(); return; }
   const fresh = brandLine({ className: 'made-with site-foot-made' });
+  if (old && old.outerHTML === fresh.outerHTML) return;   // plan:changed echoes: no swap when nothing differs
   if (old) old.replaceWith(fresh); else foot.append(fresh);
 }
 

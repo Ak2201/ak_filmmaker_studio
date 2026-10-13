@@ -103,4 +103,19 @@ export function landUnder(el, bar, { exact = false } = {}) {
   setTimeout(() => { if (landLive === mine) go(); }, 450);
 }
 
-export default { showOnly, stepFooter, stepBar, wireStepper, scrollToTop, landUnder };
+/* A step landing for a page whose steps are the shared section menu
+   (src/ui/section-menu.js). At 1100px and over the menu is a column BESIDE
+   the panels: it pins nothing above them, so the step lands under the
+   shell's band alone (a null bar, and --stp-bar-h 0). Below that the menu
+   is a sticky strip and the step lands under it. */
+export function menuBeside(nav) {
+  return !!nav && nav.isConnected && nav.classList.contains('tabs-side') && !!nav.parentElement
+    && nav.offsetWidth < nav.parentElement.clientWidth / 2;
+}
+export function landUnderMenu(el, nav, opts) {
+  const strip = nav && nav.isConnected && !nav.hidden && !menuBeside(nav) ? nav : null;
+  document.documentElement.style.setProperty('--stp-bar-h', strip ? Math.round(strip.getBoundingClientRect().height) + 'px' : '0px');
+  landUnder(el, strip, opts);
+}
+
+export default { showOnly, stepFooter, stepBar, wireStepper, scrollToTop, landUnder, landUnderMenu, menuBeside };

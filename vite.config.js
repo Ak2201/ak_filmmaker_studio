@@ -55,9 +55,14 @@ function materialSymbols() {
   const nav = JSON.parse(readFileSync(resolve(__dirname, 'src/data/navigation.json'), 'utf8'));
   const names = new Set();
   JSON.stringify(nav, (k, v) => { if (k === 'sym' && typeof v === 'string' && v) names.add(v); return v; });
+  /* the section menu's own marks (src/ui/section-menu.js) are listed in
+     section-icons.json, which this reads the way it reads the nav */
+  const sec = JSON.parse(readFileSync(resolve(__dirname, 'src/data/section-icons.json'), 'utf8'));
+  for (const n of sec.icons || []) names.add(n);
+  JSON.stringify(sec.pages || {}, (k, v) => { if (k === 'icon' && typeof v === 'string' && v) names.add(v); return v; });
   const list = [...names].sort();
   const bad = list.filter((n) => !/^[a-z0-9_]+$/.test(n));
-  if (bad.length) throw new Error('navigation.json: not a Material Symbols name: ' + bad.join(', '));
+  if (bad.length) throw new Error('navigation.json / section-icons.json: not a Material Symbols name: ' + bad.join(', '));
   const href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0'
              + '&icon_names=' + list.join(',') + '&display=block';
   return {
@@ -640,8 +645,8 @@ export default defineConfig({
              page and in the app, and it is pure for the same reason. */
           if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
-          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog|site-banner)\.js$/;
-          const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|section-menu|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog|site-banner)\.js$/;
+          const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages|section-icons)\.json$/;
           if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
           // billing.js's Razorpay helper, shared with the edge functions.
           if (id.includes('/supabase/functions/_shared/')) return 'studio';

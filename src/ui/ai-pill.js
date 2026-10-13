@@ -75,6 +75,9 @@ function paint(el) {
   const o = opts.get(el);
   if (!o) return;
   const state = pillState();
+  const sig = state + '|' + o.label + '|' + (o.tasks.length > 1);
+  if (el.dataset.aiSig === sig && el.firstChild) return;   // plan:changed echoes: nothing to redraw
+  el.dataset.aiSig = sig;
   el.dataset.aiState = state;
   const locked = state === 'locked';
   el.classList.toggle('is-locked', locked);

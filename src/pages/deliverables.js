@@ -31,6 +31,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
+import { LINK_KINDS, guessKind, linkText } from '../lib/links.js';
 import { listScenes } from '../lib/scenes.js';
 import { isIndia } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
@@ -105,6 +106,42 @@ function stateSelect(item) {
   return sel;
 }
 
+/* Where this item's files live — addresses only, the studio stores no
+   media. Anchors open in a new tab without handing over window.opener. */
+function linksBlock(item) {
+  const box = h('div.dv-links');
+  const links = item.links || [];
+  if (links.length) {
+    const ul = h('ul.dv-link-list');
+    links.forEach((l) => {
+      ul.append(h('li.dv-link', {}, [
+        h('a.dv-link-a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: linkText(l), title: l.url }),
+        h('button.bd-icon.dv-link-x', {
+          type: 'button', 'data-dv-action': 'link-del', 'data-item': item.id, 'data-link': l.id,
+          'aria-label': 'Remove link ' + linkText(l) + ' from ' + item.label, text: '×'
+        })
+      ]));
+    });
+    box.append(ul);
+  }
+  const form = h('form.dv-link-form', { 'data-dv-form': 'link', 'data-item': item.id, novalidate: '' });
+  const kind = h('select.bd-sel', { name: 'kind', 'aria-label': 'Where it is kept: ' + item.label });
+  LINK_KINDS.forEach((k) => kind.append(h('option', { value: k.id, text: k.label })));
+  kind.value = 'other';
+  form.append(
+    h('input.dv-link-url', { type: 'url', name: 'url', placeholder: 'https://…', autocomplete: 'off', 'aria-label': 'Link address: ' + item.label, 'data-dv-linkurl': '' }),
+    kind,
+    h('input.dv-link-label', { type: 'text', name: 'label', maxlength: '80', placeholder: 'Label (optional)', 'aria-label': 'Link label: ' + item.label }),
+    h('button.btn.dv-link-go', { type: 'submit', text: 'Add' }),
+    h('p.dv-link-why', { role: 'alert', hidden: '' })
+  );
+  box.append(h('details.dv-link-add', {}, [
+    h('summary', { 'data-item': item.id, text: 'Add link' }),
+    form
+  ]));
+  return box;
+}
+
 function itemRow(item, asked) {
   const row = h('article.dv-item.is-' + item.state, { 'data-item': item.id });
 
@@ -145,6 +182,7 @@ function itemRow(item, asked) {
   note.value = item.note || '';
   ctl.append(note);
   row.append(ctl);
+  row.append(linksBlock(item));
   return row;
 }
 
@@ -301,7 +339,8 @@ function streamerBlock() {
       h('label', { for: id }, [
         h('span.dv-ott-name', { text: g.label.replace(/ — delivery template$/, '') }),
         h('span.dv-ott-kind' + (g.published ? '' : '.is-template'), {
-          text: g.published ? 'published spec · checked ' + fmtChecked(g.checked) : 'no published spec — template'
+          text: g.kind === 'workflow' ? 'our own checklist · checked ' + fmtChecked(g.checked)
+            : g.published ? 'published spec · checked ' + fmtChecked(g.checked) : 'no published spec — template'
         })
       ])
     ]));
@@ -700,6 +739,20 @@ delegate(document, 'click', '[data-dv-action]', (e, el) => {
     render('[data-dv-action="show"][data-show="' + show + '"]');
     return;
   }
+  if (act === 'link-del') {
+    const id = el.getAttribute('data-item');
+    const before = Deliverables.itemState(id).links;
+    const r = Deliverables.removeItemLink(id, el.getAttribute('data-link'));
+    if (!r.removed) return;
+    render('summary[data-item="' + CSS.escape(id) + '"]');
+    if (StudioUI.toast) {
+      StudioUI.toast('Link removed', {
+        action: 'Undo',
+        onAction: () => { Deliverables.setItemState(id, { links: before }); render(); }
+      });
+    }
+    return;
+  }
   if (act === 'custom-del') {
     /* Your own line, with its status and note: an Undo puts back all
        three, at the place it held (UX audit L16). */
@@ -754,6 +807,34 @@ delegate(document, 'change', '[data-dv-field]', (e, el) => {
    The store write only; the re-render stays on `change`. */
 saveOnInput('[data-dv-field]', (el) => {
   Deliverables.setItemState(el.getAttribute('data-item'), { [el.getAttribute('data-dv-field')]: el.value });
+});
+
+/* The kind follows the address until the person picks one themselves. */
+delegate(document, 'input', '[data-dv-linkurl]', (e, el) => {
+  const sel = el.form && el.form.querySelector('select[name="kind"]');
+  if (sel && !sel.dataset.touched) sel.value = guessKind(el.value.trim());
+});
+delegate(document, 'change', '.dv-link-form select[name="kind"]', (e, el) => { el.dataset.touched = '1'; });
+
+delegate(document, 'submit', '[data-dv-form="link"]', (e, form) => {
+  e.preventDefault();
+  const id = form.getAttribute('data-item');
+  const why = form.querySelector('.dv-link-why');
+  const r = Deliverables.addItemLink(id, {
+    url: form.querySelector('[name="url"]').value,
+    kind: form.querySelector('[name="kind"]').value,
+    label: form.querySelector('[name="label"]').value
+  });
+  const urlField = form.querySelector('[name="url"]');
+  if (r.why) {
+    why.textContent = r.why;
+    why.hidden = false;
+    urlField.setAttribute('aria-invalid', 'true');
+    urlField.focus();
+    return;
+  }
+  render('summary[data-item="' + CSS.escape(id) + '"]');
+  if (StudioUI.toastSuccess) StudioUI.toastSuccess('Link added');
 });
 
 delegate(document, 'submit', '[data-dv-form="custom"]', (e, form) => {

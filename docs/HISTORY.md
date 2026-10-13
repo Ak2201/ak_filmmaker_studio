@@ -2022,3 +2022,25 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     the day count here; a line priced on that count is marked by hand.
     `test:impact` (new), `test:costs` extended. Known wrinkle: the lock button
     shows the estimate WITH contingency, the comparison is without it.
+
+44. **Script-to-screen lesson, Phase 5 (13 Oct 2026).** Cloud post-production
+    within the local-first limit: the studio keeps ADDRESSES, never media.
+    `src/lib/links.js` (pure) keeps only http(s) URLs, caps a row at six,
+    dedupes, and guesses the service (Drive, Frame.io, LucidLink, Dropbox) by
+    host — `drive.google.com.evil.example` guesses `other`. Links ride inside
+    records the studio already owns: a deliverable's state (custom lines too,
+    so the undo snapshot carries them), a scene's edit note, a shoot day
+    (`dayLinks`) and a cut. New optional deliverables group `cloud_workflow`
+    (8 items, ids `cw_*`, off by default, labelled the studio's own checklist,
+    not a platform spec). Edit log: `cuts` (name, date, links, timecoded
+    notes; sorted by time) inside `fms_edit_v1`; `parseTimecode` accepts
+    `S`, `M:SS`, `H:MM:SS`, `HH:MM:SS:FF` and DROPS the frames on purpose;
+    `cutNotesText` for pasting into an email. Notes that name a scene ride
+    its bin entry. `readAll`/`EMPTY` in `editlog.js` list the new
+    collections or every pick-up save would drop them (tested). `test:links`
+    (new), `test:delivery` and `test:post` extended. Browser pass found six
+    minor items; three fixed (undo restores a link's position, the bin list
+    names blocking diagrams and cut notes, `aria-invalid` on a refused link
+    URL). Open: after a LIVE theme toggle without reload, `.btn` text colour
+    can stay on the old theme's value (seen on deliverables.html; probably
+    older than this work, not confirmed).

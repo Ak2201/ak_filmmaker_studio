@@ -91,7 +91,9 @@ export function listBin() {
 export function entryCounts(entry) {
   const e = entry || {};
   const row = (e.scene && e.scene.row) || {};
+  const cutNotes = ((e.edit && e.edit.notes) || []).length;
   return {
+    ...(cutNotes ? { cutNotes } : {}),
     shots: (e.shots || []).length,
     frames: (e.frames || []).length,
     blocks: (e.blocks || []).length,
@@ -115,6 +117,7 @@ export function describeEntry(entry) {
   if (c.day) bits.push('Day ' + c.day);
   n(c.sheets, 'call sheet');
   n(c.pickups, 'pick-up');
+  n(c.cutNotes || 0, 'cut note');
   if (c.edit) bits.push('an edit note');
   return bits.length ? name + ': ' + bits.join(', ') : name;
 }
@@ -234,7 +237,7 @@ export function unaddScenes(ids) {
     if (!e) continue;
     n++;
     const c = entryCounts(e);
-    if (!c.shots && !c.frames && !c.blocks && !c.sheets && !c.pickups && !c.edit) deleteBinEntry(e.id);
+    if (!c.shots && !c.frames && !c.blocks && !c.sheets && !c.pickups && !c.edit && !c.cutNotes) deleteBinEntry(e.id);
   }
   return n;
 }

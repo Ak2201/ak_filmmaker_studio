@@ -814,6 +814,8 @@ function renderBin() {
     const bits = [];
     if (c.shots) bits.push(`${c.shots} shot${c.shots === 1 ? '' : 's'}`);
     if (c.frames) bits.push(`${c.frames} frame${c.frames === 1 ? '' : 's'}`);
+    if (c.blocks) bits.push(`${c.blocks} blocking diagram${c.blocks === 1 ? '' : 's'}`);
+    if (c.cutNotes) bits.push(`${c.cutNotes} cut note${c.cutNotes === 1 ? '' : 's'}`);
     if (c.day) bits.push(`Day ${c.day}`);
     if (c.sheets) bits.push(`${c.sheets} call sheet${c.sheets === 1 ? '' : 's'}`);
     if (!bits.length) bits.push('nothing attached');

@@ -33,7 +33,8 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
-import Edit, { CUT_STATES } from '../lib/editlog.js';
+import Edit, { CUT_STATES, formatTimecode } from '../lib/editlog.js';
+import { linkText } from '../lib/links.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 
 const app = document.getElementById('app');
@@ -142,6 +143,9 @@ function sceneRow(row) {
   note.value = row.edit.note || '';
   art.append(note);
 
+  /* Where this scene's dailies / review live — addresses only. */
+  art.append(linksBlock(row.edit.links, { scope: 'scene', id: s.id, name: 'dailies for scene ' + (s.number || ''), head: 'Dailies' }));
+
   /* Pick-ups owed on this scene, and a line to add one. */
   const mine = row.pickups;
   if (mine.length) {
@@ -185,6 +189,130 @@ function pickupItem(p) {
     'aria-label': 'Remove pick-up: ' + p.what, text: '×'
   }));
   return li;
+}
+
+/* ---- links: addresses to files that live elsewhere ------------ */
+
+/** A list of anchors with a remove each, and a form to add one. Used on a
+    scene row, a shoot day and a cut; `scope`/`id` say which. */
+function linksBlock(links, { scope, id, name, head }) {
+  const box = h('div.el-links', { 'data-link-scope': scope, 'data-link-id': id });
+  if (head) box.append(h('span.el-links-h', { text: head }));
+  if (links.length) {
+    const ul = h('ul.el-link-list');
+    links.forEach((l) => {
+      ul.append(h('li.el-link', {}, [
+        h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: linkText(l) }),
+        h('button.bd-icon', {
+          type: 'button', 'data-edit-action': 'link-del', 'data-link': l.id,
+          'aria-label': 'Remove link: ' + linkText(l), text: '×'
+        })
+      ]));
+    });
+    box.append(ul);
+  }
+  const f = h('form.el-link-add', { 'data-edit-form': 'link', 'data-link-scope': scope, 'data-link-id': id });
+  f.append(h('input', { type: 'url', name: 'url', placeholder: 'Paste a link (Drive, Frame.io…)', 'aria-label': 'Link to ' + name }));
+  f.append(h('input', { type: 'text', name: 'label', placeholder: 'Label (optional)', 'aria-label': 'Label for the link to ' + name }));
+  f.append(h('button.mini-btn', { type: 'submit', text: 'ADD LINK' }));
+  box.append(f);
+  return box;
+}
+
+const sceneLabelOf = (scenes) => {
+  const by = new Map(scenes.map((s) => [s.id, s]));
+  return (id) => { const s = by.get(id); return s ? 'Sc ' + (s.number || '—') : ''; };
+};
+
+function noteItem(cut, n, label) {
+  const li = h('li.el-cutnote' + (n.done ? '.is-done' : ''));
+  const cb = h('input', {
+    type: 'checkbox', 'data-cutnote-done': n.id, 'data-cut': cut.id,
+    'aria-label': 'Done: ' + formatTimecode(n.tc) + ' ' + n.text
+  });
+  cb.checked = !!n.done;
+  const lab = n.sceneId ? label(n.sceneId) : '';
+  li.append(h('label.el-pickup-lab', {}, [
+    cb,
+    h('span.el-tc', { text: formatTimecode(n.tc) }),
+    h('span', { text: (lab ? lab + ' — ' : '') + n.text })
+  ]));
+  li.append(h('button.bd-icon', {
+    type: 'button', 'data-edit-action': 'note-del', 'data-cut': cut.id, 'data-note': n.id,
+    'aria-label': 'Remove note at ' + formatTimecode(n.tc) + ': ' + n.text, text: '×'
+  }));
+  return li;
+}
+
+function cutCard(cut, scenes, label) {
+  const art = h('article.el-cut', { 'data-cut': cut.id });
+  art.append(h('div.el-head', {}, [
+    h('h3.el-slug', { text: cut.name }),
+    h('span.el-pages', { text: cut.date || '' }),
+    h('button.bd-icon', {
+      type: 'button', 'data-edit-action': 'cut-del', 'data-cut': cut.id,
+      'aria-label': 'Remove cut ' + cut.name, text: '×'
+    })
+  ]));
+  art.append(linksBlock(cut.links, { scope: 'cut', id: cut.id, name: cut.name, head: 'Where this cut lives' }));
+
+  if (cut.notes.length) {
+    const ul = h('ul.el-pickups');
+    /* Open notes first, each group in time order — the order the
+       copied text uses. */
+    cut.notes.filter((n) => !n.done).concat(cut.notes.filter((n) => n.done))
+      .forEach((n) => ul.append(noteItem(cut, n, label)));
+    art.append(ul);
+  } else {
+    art.append(h('p.bd-sub', { text: 'No notes on this cut yet.' }));
+  }
+
+  const f = h('form.el-note-add', { 'data-edit-form': 'cutnote', 'data-cut': cut.id });
+  f.append(h('input.el-tc-in', {
+    type: 'text', name: 'tc', inputmode: 'numeric', autocomplete: 'off', placeholder: '0:42',
+    'aria-label': 'Timecode in ' + cut.name + ' (seconds, M:SS or H:MM:SS)'
+  }));
+  const sel = h('select.bd-sel', { name: 'sceneId', 'aria-label': 'Scene this note is about (optional)' });
+  sel.append(h('option', { value: '', text: 'Any scene' }));
+  scenes.forEach((s) => sel.append(h('option', { value: s.id, text: 'Sc ' + (s.number || '—') + ' · ' + (s.location || 'No location') })));
+  f.append(sel);
+  f.append(h('input', { type: 'text', name: 'text', placeholder: 'Note — trim the pause, swap the take', 'aria-label': 'Note for ' + cut.name }));
+  f.append(h('button.mini-btn', { type: 'submit', text: 'ADD NOTE' }));
+  art.append(f);
+  art.append(h('button.btn', {
+    type: 'button', 'data-edit-action': 'cut-copy', 'data-cut': cut.id,
+    text: 'COPY NOTES', title: 'This cut’s notes as plain text for an email'
+  }));
+  return art;
+}
+
+/** Cut versions, and dailies by shoot day. Both read at render; nothing
+    is written until somebody presses ADD. */
+function cutsSection(data, scenes) {
+  const sec = h('section.el-cuts', { id: 'cuts', 'aria-label': 'Cut versions' });
+  sec.append(h('h2.el-h2', { text: 'Cut versions' }));
+  sec.append(h('p.bd-sub', { text: 'Assembly, rough cut, fine cut. Each keeps its own notes pinned to a time, and the address of the file — the studio stores links, never footage.' }));
+  const label = sceneLabelOf(scenes);
+  data.cuts.forEach((c) => sec.append(cutCard(c, scenes, label)));
+  const f = h('form.el-cut-add', { 'data-edit-form': 'cut' });
+  f.append(h('input', { type: 'text', name: 'name', placeholder: 'New cut — Assembly, Rough cut v1', 'aria-label': 'Name of the new cut' }));
+  f.append(h('input', { type: 'date', name: 'date', value: new Date().toISOString().slice(0, 10), 'aria-label': 'Date of the new cut' }));
+  f.append(h('button.mini-btn', { type: 'submit', text: 'ADD CUT' }));
+  sec.append(f);
+
+  const days = [...new Set(scenes.map((s) => Number(s.shootDay) || 0).filter((n) => n > 0))].sort((a, b) => a - b);
+  if (days.length) {
+    const box = h('div.el-days', { id: 'dailies' });
+    box.append(h('h2.el-h2', { text: 'Dailies by shoot day' }));
+    days.forEach((day) => {
+      box.append(h('div.el-day', {}, [
+        h('h3.el-day-h', { text: 'Day ' + day }),
+        linksBlock(Edit.dayLinks(day, data), { scope: 'day', id: String(day), name: 'day ' + day + ' dailies', head: '' })
+      ]));
+    });
+    sec.append(box);
+  }
+  return sec;
 }
 
 /* ---- the page ------------------------------------------------ */
@@ -311,6 +439,7 @@ function render(focus) {
     shown.forEach((r) => list.append(sceneRow(r)));
   }
   main.append(list);
+  main.append(cutsSection(data, scenes));
   main.append(h('p.bd-onward', {}, [
     h('a.btn', { href: 'deliverables.html#checklist', text: 'Next: Deliverables →' })
   ]));
@@ -403,6 +532,129 @@ delegate(document, 'submit', '[data-edit-form="pickup"]', (e, form) => {
      typed without reaching for the mouse between them. */
   if (Edit.addPickup(id, input.value)) render('[data-edit-form="pickup"][data-scene="' + CSS.escape(id) + '"] input');
   else input.focus();
+});
+
+/* ---- links and cut versions ---------------------------------- */
+
+const linkApi = {
+  scene: { add: (id, l) => Edit.addSceneLink(id, l), del: (id, lid) => Edit.removeSceneLink(id, lid) },
+  day:   { add: (id, l) => Edit.addDayLink(id, l),   del: (id, lid) => Edit.removeDayLink(id, lid) },
+  cut:   { add: (id, l) => Edit.addCutLink(id, l),   del: (id, lid) => Edit.removeCutLink(id, lid) }
+};
+const linkSel = (scope, id) => '[data-edit-form="link"][data-link-scope="' + scope + '"][data-link-id="' + CSS.escape(id) + '"] input';
+const storedLinks = (scope, id) => (scope === 'scene' ? Edit.sceneEdit(id).links
+  : scope === 'day' ? Edit.dayLinks(id)
+  : ((Edit.listCuts().find((c) => c.id === id) || {}).links || []));
+
+delegate(document, 'submit', '[data-edit-form="link"]', (e, form) => {
+  e.preventDefault();
+  const scope = form.getAttribute('data-link-scope');
+  const id = form.getAttribute('data-link-id');
+  const r = linkApi[scope].add(id, {
+    url: form.querySelector('[name="url"]').value,
+    label: form.querySelector('[name="label"]').value
+  });
+  if (!r.added) {
+    if (StudioUI.toastError) StudioUI.toastError(r.why);
+    form.querySelector('[name="url"]').focus();
+    return;
+  }
+  render(linkSel(scope, id));
+});
+
+delegate(document, 'click', '[data-edit-action="link-del"]', (e, el) => {
+  const box = el.closest('[data-link-scope]');
+  const scope = box.getAttribute('data-link-scope');
+  const id = box.getAttribute('data-link-id');
+  const lid = el.getAttribute('data-link');
+  const before = storedLinks(scope, id).slice();
+  const at = before.findIndex((l) => l.id === lid);
+  const gone = before[at];
+  linkApi[scope].del(id, lid);
+  render(linkSel(scope, id));
+  if (gone && StudioUI.toast) {
+    StudioUI.toast('Link removed: ' + linkText(gone), {
+      action: 'Undo',
+      onAction: () => {
+        /* Back at its old position: the links that sat after it come off
+           and go back on behind it, in their order. */
+        const after = before.slice(at + 1);
+        after.forEach((l) => linkApi[scope].del(id, l.id));
+        [gone, ...after].forEach((l) => linkApi[scope].add(id, l));
+        render();
+      }
+    });
+  }
+});
+
+delegate(document, 'submit', '[data-edit-form="cut"]', (e, form) => {
+  e.preventDefault();
+  const c = Edit.addCut({ name: form.querySelector('[name="name"]').value, date: form.querySelector('[name="date"]').value });
+  if (!c) { form.querySelector('[name="name"]').focus(); return; }
+  render('[data-cut="' + CSS.escape(c.id) + '"] input[name="tc"]');
+});
+
+delegate(document, 'submit', '[data-edit-form="cutnote"]', (e, form) => {
+  e.preventDefault();
+  const cutId = form.getAttribute('data-cut');
+  const tc = form.querySelector('[name="tc"]');
+  const text = form.querySelector('[name="text"]');
+  if (Edit.parseTimecode(tc.value) == null) {
+    tc.setAttribute('aria-invalid', 'true');
+    if (StudioUI.toastError) StudioUI.toastError('That is not a timecode. Use seconds (42), 0:42 or 1:02:05.');
+    tc.focus();
+    return;
+  }
+  if (!text.value.trim()) { text.focus(); return; }
+  Edit.addCutNote(cutId, { tc: tc.value, sceneId: form.querySelector('[name="sceneId"]').value, text: text.value });
+  render('[data-edit-form="cutnote"][data-cut="' + CSS.escape(cutId) + '"] input[name="tc"]');
+});
+
+delegate(document, 'change', '[data-cutnote-done]', (e, el) => {
+  const cutId = el.getAttribute('data-cut');
+  Edit.updateCutNote(cutId, el.getAttribute('data-cutnote-done'), { done: !!el.checked });
+  render('[data-cutnote-done="' + CSS.escape(el.getAttribute('data-cutnote-done')) + '"]');
+});
+
+delegate(document, 'click', '[data-edit-action="note-del"]', (e, el) => {
+  const cutId = el.getAttribute('data-cut');
+  const noteId = el.getAttribute('data-note');
+  const cut = Edit.listCuts().find((c) => c.id === cutId);
+  const at = cut ? cut.notes.findIndex((n) => n.id === noteId) : -1;
+  const gone = at >= 0 ? cut.notes[at] : null;
+  Edit.removeCutNote(cutId, noteId);
+  render('[data-edit-form="cutnote"][data-cut="' + CSS.escape(cutId) + '"] input[name="tc"]');
+  if (gone && StudioUI.toast) {
+    StudioUI.toast('Note removed: ' + gone.text, {
+      action: 'Undo',
+      onAction: () => { Edit.restoreCutNote(cutId, gone, at); render(); }
+    });
+  }
+});
+
+delegate(document, 'click', '[data-edit-action="cut-del"]', (e, el) => {
+  const cutId = el.getAttribute('data-cut');
+  const all = Edit.listCuts();
+  const at = all.findIndex((c) => c.id === cutId);
+  const gone = all[at];
+  Edit.removeCut(cutId);
+  render('[data-edit-form="cut"] input');
+  if (gone && StudioUI.toast) {
+    StudioUI.toast('Cut removed: ' + gone.name, {
+      action: 'Undo',
+      onAction: () => { Edit.restoreCut(gone, at); render(); }
+    });
+  }
+});
+
+delegate(document, 'click', '[data-edit-action="cut-copy"]', (e, el) => {
+  const cut = Edit.listCuts().find((c) => c.id === el.getAttribute('data-cut'));
+  if (!cut) return;
+  const text = Edit.cutNotesText(cut, sceneLabelOf(Scenes.listScenes()));
+  const done = () => StudioUI.toastSuccess && StudioUI.toastSuccess('Notes copied');
+  const fail = () => StudioUI.toastError && StudioUI.toastError('Could not copy — select the text on the page instead');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fail);
+  else fail();
 });
 
 render();

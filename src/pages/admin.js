@@ -524,12 +524,6 @@ function render() {
   const kept = snapshotFields();
 
   const main = h('main#main');
-  main.append(h('header.bd-head.ad-head', {}, [
-    h('p.bd-eyebrow', { text: 'Administration' }),
-    h('h1.bd-title', { text: 'Console' }),
-    isAdmin ? h('p.ad-meta', { text: 'Signed in as ' + (c.getUserEmail() || 'an administrator') }) : null
-  ].filter(Boolean)));
-
   let body;
   let statusEl = null;
   if (!c || !c.isConfigured()) {
@@ -561,7 +555,17 @@ function render() {
     body = stampDensity(h('div.ad-body.ad-console.ad-grouped', {}, ordered));
   }
 
-  if (statusEl) main.append(statusEl);
+  /* The header is drawn after the body is chosen so the status chips can sit
+     on the title's own row (the design's console header); statusBar() reads
+     the overview phase loadOverview() just set. */
+  main.append(h('header.bd-head.ad-head', {}, [
+    h('div.ad-head-t', {}, [
+      h('p.bd-eyebrow', { text: 'Administration' }),
+      h('h1.bd-title', { text: 'Console' }),
+      isAdmin ? h('p.ad-meta', { text: 'Signed in as ' + (c.getUserEmail() || 'an administrator') }) : null
+    ].filter(Boolean)),
+    statusEl
+  ].filter(Boolean)));
   main.append(body);
   /* Identical output is not repainted (commitMain); scroll and focus survive. */
   commitMain(app, main, () => {

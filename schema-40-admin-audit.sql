@@ -1,5 +1,5 @@
 -- ============================================================
--- 40. THE ADMIN AUDIT LOG   NOT RUN LIVE
+-- 40. THE ADMIN AUDIT LOG   RUN LIVE 13 Oct 2026
 -- ------------------------------------------------------------
 -- Admin console v2, docs/ADMIN-CONSOLE-PLAN.md §3.1. Every admin WRITE
 -- leaves a row, in the SAME TRANSACTION as the thing it records: an

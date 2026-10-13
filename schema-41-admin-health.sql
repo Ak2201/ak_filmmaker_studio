@@ -1,7 +1,7 @@
 -- ============================================================
 -- 41. LAUNCH AND HEALTH — what the live database says about itself
 --     (Admin console v2, docs/ADMIN-CONSOLE-PLAN.md §3.2)
---     NOT RUN LIVE. Standalone file; supabase-schema.sql is not edited.
+--     RUN LIVE 13 Oct 2026. Standalone file; supabase-schema.sql is not edited.
 -- ------------------------------------------------------------
 -- The console's "Launch & health" tab needs one read that is made of
 -- LIVE state and not of what the repository says should be live. The

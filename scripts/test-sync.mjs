@@ -248,5 +248,20 @@ if (rowsD.length) {
   ok(false, 'the Dragon sample has scene rows to link');
 }
 
+/* ---- measureEighths: the script's length, again ----------------- */
+reset();
+{
+  const els = [el('scene', 'INT. HALL - DAY', 'h1'), el('action', 'A long room. ' + 'Dust settles on the floor. '.repeat(30), 'a1'), el('scene', 'EXT. ROAD - NIGHT', 'h2'), el('action', 'Rain.', 'a2')];
+  Scenes.saveScenes([
+    Scenes.blankScene({ number: '1', intExt: 'INT', location: 'HALL', dayNight: 'DAY', eighths: 1 }),
+    Scenes.blankScene({ number: '2', intExt: 'EXT', location: 'ROAD', dayNight: 'NIGHT', eighths: 1 })
+  ]);
+  const ch = Sync.measureEighths(els, Scenes.listScenes());
+  eq(ch.length, 1, 'only the scene whose length moved is reported');
+  ok(ch[0] && ch[0].to > ch[0].from && ch[0].from === 1, 'the long scene grows past its stale 1/8');
+  eq(Sync.measureEighths(els, Scenes.listScenes().map((r) => ({ ...r, eighths: ch[0] ? (r.id === ch[0].sceneId ? ch[0].to : r.eighths) : r.eighths }))), [], 'once applied, nothing is left to measure');
+  eq(Sync.measureEighths([], Scenes.listScenes()), [], 'an empty script measures nothing');
+}
+
 console.log(`test:sync — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

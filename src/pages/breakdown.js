@@ -38,7 +38,8 @@ import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
-import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
+import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
+import { measureEighths } from '../lib/scene-sync.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
 const app = document.getElementById('app');
@@ -61,7 +62,13 @@ function renderHeader(scenes) {
       stat(String(Scenes.elementIndex().length), 'elements'),
       stat(String(new Set(scenes.map((s) => s.location).filter(Boolean)).size), 'locations'),
       stat(String(Songs.listSongs().length), 'songs')
-    ])
+    ]),
+    scenes.length ? h('p.bd-measure', {}, [
+      h('button.btn', {
+        type: 'button', 'data-action': 'eighths-measure', text: 'RE-MEASURE PAGES FROM THE SCRIPT',
+        title: 'Recount each scene\u2019s length in eighths from the script as it stands now'
+      })
+    ]) : null
   ]);
 }
 const stat = (value, label) =>
@@ -678,7 +685,10 @@ function renderElements() {
    carrying the line it was read off, and nothing lands on a scene until
    somebody presses it. A breakdown is a 1st AD's judgement; this saves
    the typing, not the judgement. */
-const SUGGEST_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
+const SUGGEST_CATS = SUGGEST_CATEGORIES;
+/* ADD ALL takes only the five categories whose lists are tight. The
+   looser ones (furniture, clothing, crowds) are one chip at a time. */
+const BULK_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
 function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
   wrap.append(h('h2.bd-h2', { text: 'Auto-Tag' }),
@@ -743,8 +753,9 @@ function applySuggestions(sceneIds) {
   const scenes = Scenes.listScenes();
   const rows = suggestAll(scenes, loadScript().elements)
     .filter((r) => (sceneIds ? sceneIds.includes(r.scene.id) : isConfident(r.how)));
+  const cats = sceneIds ? SUGGEST_CATS : BULK_CATS;
   const tags = [];
-  for (const r of rows) for (const cat of SUGGEST_CATS) for (const sug of r.suggestions[cat]) {
+  for (const r of rows) for (const cat of cats) for (const sug of r.suggestions[cat]) {
     tags.push({ sceneId: r.scene.id, category: cat, name: sug.name });
   }
   return Scenes.tagMany(tags);
@@ -1239,6 +1250,19 @@ delegate(document, 'click', '[data-action="sug-scene"]', (e, el) => {
   const added = applySuggestions([sceneIdOf(el)]);
   render();
   toastTagged(added, false);
+});
+delegate(document, 'click', '[data-action="eighths-measure"]', () => {
+  const changes = measureEighths(loadScript().elements, Scenes.listScenes());
+  if (!changes.length) { StudioUI.toast('Every matched scene\u2019s length already agrees with the script.'); return; }
+  const to = new Map(changes.map((c) => [c.sceneId, c.to]));
+  const from = new Map(changes.map((c) => [c.sceneId, c.from]));
+  const set = (m) => Scenes.saveScenes(Scenes.listScenes().map((s) => (m.has(s.id) ? { ...s, eighths: m.get(s.id) } : s)));
+  set(to);
+  render();
+  StudioUI.toast(`Re-measured ${changes.length} scene${changes.length === 1 ? '' : 's'} from the script.`, {
+    action: 'Undo',
+    onAction: () => { set(from); render(); StudioUI.toast('Put the earlier lengths back.'); }
+  });
 });
 delegate(document, 'click', '[data-action="sug-all"]', () => {
   const added = applySuggestions(null);

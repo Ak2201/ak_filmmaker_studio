@@ -189,6 +189,7 @@
   padding-block: 0;
   border: 0;
 }
+.bd-measure { margin: var(--s3) 0 0; }
 .bd-stat,
 .hero-stat,
 .hub-stat-strip .hss-item {

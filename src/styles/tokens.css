@@ -144,6 +144,21 @@
   --el-sound:       #4ade80;
   --el-sound-deep:  #86efac;
   --el-sound-wash:  #12301d;
+  --el-stunts:        #fb923c;
+  --el-stunts-deep:   #fdba74;
+  --el-stunts-wash:   #331a0a;
+  --el-vfx:        #818cf8;
+  --el-vfx-deep:   #a5b4fc;
+  --el-vfx-wash:   #1a1c3d;
+  --el-animals:        #d6a77a;
+  --el-animals-deep:   #e7c4a0;
+  --el-animals-wash:   #2e2218;
+  --el-sfx:        #22d3ee;
+  --el-sfx-deep:   #67e8f9;
+  --el-sfx-wash:   #0a2a30;
+  --el-dressing:        #94a3b8;
+  --el-dressing-deep:   #cbd5e1;
+  --el-dressing-wash:   #1e2733;
 
   /* ---- lifted volume hues ---------------------------------
      The editorial panels (.formula-box, .step-check, .example,
@@ -160,6 +175,11 @@
   --el-props-lift:    #7dd3fc;
   --el-vehicles-lift: #fde68a;
   --el-sound-lift:    #86efac;
+  --el-stunts-lift:    #fdba74;
+  --el-vfx-lift:    #a5b4fc;
+  --el-animals-lift:    #e7c4a0;
+  --el-sfx-lift:    #67e8f9;
+  --el-dressing-lift:    #cbd5e1;
   --ok-lift:      #6ee7b7;
   --danger-lift:  #fca5a5;
 
@@ -246,6 +266,11 @@
   --el-cast-on:   var(--on-fill);
   --el-props-on:  var(--on-fill);
   --el-sound-on:  var(--on-fill);
+  --el-stunts-on:  var(--on-fill);
+  --el-vfx-on:  var(--on-fill);
+  --el-animals-on:  var(--on-fill);
+  --el-sfx-on:  var(--on-fill);
+  --el-dressing-on:  var(--on-fill);
   /* Text ON a --danger fill. Tracks --accent-on deliberately: both it
      and --danger invert per theme, so the pair stays legible in paper,
      sepia and ink without a second set of values to keep in step. */
@@ -551,6 +576,21 @@
     --el-sound:       #15803d;
     --el-sound-deep:  #166534;
     --el-sound-wash:  #dcfce7;
+    --el-stunts:        #c2410c;
+    --el-stunts-deep:   #9a3412;
+    --el-stunts-wash:   #ffedd5;
+    --el-vfx:        #4338ca;
+    --el-vfx-deep:   #3730a3;
+    --el-vfx-wash:   #e0e7ff;
+    --el-animals:        #92400e;
+    --el-animals-deep:   #78350f;
+    --el-animals-wash:   #fef3c7;
+    --el-sfx:        #0e7490;
+    --el-sfx-deep:   #155e75;
+    --el-sfx-wash:   #cffafe;
+    --el-dressing:        #475569;
+    --el-dressing-deep:   #334155;
+    --el-dressing-wash:   #e2e8f0;
     --ok:           #15803d;
     --ok-deep:      #166534;
     --ok-wash:      #dcf5e4;
@@ -662,6 +702,21 @@
   --el-sound:       #4ade80;
   --el-sound-deep:  #86efac;
   --el-sound-wash:  #12301d;
+  --el-stunts:        #fb923c;
+  --el-stunts-deep:   #fdba74;
+  --el-stunts-wash:   #331a0a;
+  --el-vfx:        #818cf8;
+  --el-vfx-deep:   #a5b4fc;
+  --el-vfx-wash:   #1a1c3d;
+  --el-animals:        #d6a77a;
+  --el-animals-deep:   #e7c4a0;
+  --el-animals-wash:   #2e2218;
+  --el-sfx:        #22d3ee;
+  --el-sfx-deep:   #67e8f9;
+  --el-sfx-wash:   #0a2a30;
+  --el-dressing:        #94a3b8;
+  --el-dressing-deep:   #cbd5e1;
+  --el-dressing-wash:   #1e2733;
 
   /* "Deep" means the emphatic version of a hue AGAINST THE GROUND, and
      on ink the ground is dark — so deep has to go lighter, not darker.
@@ -805,6 +860,21 @@
   --el-sound:       #15803d;
   --el-sound-deep:  #166534;
   --el-sound-wash:  #dcfce7;
+  --el-stunts:        #c2410c;
+  --el-stunts-deep:   #9a3412;
+  --el-stunts-wash:   #ffedd5;
+  --el-vfx:        #4338ca;
+  --el-vfx-deep:   #3730a3;
+  --el-vfx-wash:   #e0e7ff;
+  --el-animals:        #92400e;
+  --el-animals-deep:   #78350f;
+  --el-animals-wash:   #fef3c7;
+  --el-sfx:        #0e7490;
+  --el-sfx-deep:   #155e75;
+  --el-sfx-wash:   #cffafe;
+  --el-dressing:        #475569;
+  --el-dressing-deep:   #334155;
+  --el-dressing-wash:   #e2e8f0;
   --ok:           #15803d;
   --ok-deep:      #166534;
   --ok-wash:      #dcf5e4;
@@ -937,6 +1007,11 @@
 .hue-el-props    { --hue: var(--el-props);    --hue-on: var(--el-props-on);    --hue-deep: var(--el-props-deep);    --hue-lift: var(--el-props-lift); }
 .hue-el-vehicles { --hue: var(--el-vehicles); --hue-on: var(--el-vehicles-on); --hue-deep: var(--el-vehicles-deep); --hue-lift: var(--el-vehicles-lift); }
 .hue-el-sound    { --hue: var(--el-sound);    --hue-on: var(--el-sound-on);    --hue-deep: var(--el-sound-deep);    --hue-lift: var(--el-sound-lift); }
+.hue-el-stunts   { --hue: var(--el-stunts); --hue-on: var(--el-stunts-on); --hue-deep: var(--el-stunts-deep); --hue-lift: var(--el-stunts-lift); }
+.hue-el-vfx      { --hue: var(--el-vfx); --hue-on: var(--el-vfx-on); --hue-deep: var(--el-vfx-deep); --hue-lift: var(--el-vfx-lift); }
+.hue-el-animals  { --hue: var(--el-animals); --hue-on: var(--el-animals-on); --hue-deep: var(--el-animals-deep); --hue-lift: var(--el-animals-lift); }
+.hue-el-sfx      { --hue: var(--el-sfx); --hue-on: var(--el-sfx-on); --hue-deep: var(--el-sfx-deep); --hue-lift: var(--el-sfx-lift); }
+.hue-el-dressing { --hue: var(--el-dressing); --hue-on: var(--el-dressing-on); --hue-deep: var(--el-dressing-deep); --hue-lift: var(--el-dressing-lift); }
 
 [data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
 [data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); }

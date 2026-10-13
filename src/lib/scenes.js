@@ -51,13 +51,15 @@ export const ELEMENT_CATEGORIES = [
   { id: 'cast',      label: 'Cast',            hue: 'el-cast' },
   { id: 'extras',    label: 'Background',      hue: 'shorts' },
   { id: 'props',     label: 'Props',           hue: 'el-props' },
+  { id: 'setdressing', label: 'Set Dressing',  hue: 'el-dressing' },
   { id: 'wardrobe',  label: 'Wardrobe',        hue: 'visualize' },
   { id: 'makeup',    label: 'Hair & Makeup',   hue: 'plan' },
   { id: 'vehicles',  label: 'Vehicles',        hue: 'el-vehicles' },
-  { id: 'stunts',    label: 'Stunts',          hue: 'el-vehicles' },
-  { id: 'vfx',       label: 'VFX',             hue: 'visualize' },
+  { id: 'stunts',    label: 'Stunts',          hue: 'el-stunts' },
+  { id: 'sfx',       label: 'SFX',             hue: 'el-sfx' },
+  { id: 'vfx',       label: 'VFX',             hue: 'el-vfx' },
   { id: 'sound',     label: 'Sound',           hue: 'el-sound' },
-  { id: 'animals',   label: 'Animals',         hue: 'plan' },
+  { id: 'animals',   label: 'Animals',         hue: 'el-animals' },
   { id: 'special',   label: 'Special Equipment', hue: 'shoot' }
 ];
 

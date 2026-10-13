@@ -14,10 +14,12 @@
                  start that opens the whole grouped list as a sheet.
      Fewer than three tabs never get the column: just the strip.
 
-   ONE SELECTED STYLE, everywhere: the accent fill (--accent, text
-   --accent-on) with a leading bar. Never colour alone: aria-selected
-   carries it too. Hover is a quiet tint (--accent-wash), never an
-   outline, and nothing here is ever underlined.
+   ONE SELECTED STYLE, everywhere: a filled PILL (--accent, text
+   --accent-on, the primary button's glow) with a small dot at its end
+   when the row has no count or tick of its own. Never colour alone:
+   aria-selected carries it too. Hover is a soft violet tint
+   (--accent-wash), never an outline, and nothing here is ever
+   underlined. Group headings are tiny muted mono caps.
 
    THE .tabs-ink TRAP. motion-app.js used to append a sliding 2px
    underline (span.tabs-ink) to every .tabs and position it with
@@ -87,7 +89,7 @@
   align-items: center;
   gap: var(--s2);
   min-height: 2.25rem;
-  padding: var(--s1) var(--s3) var(--s1) var(--s4);
+  padding: var(--s1) var(--s3) var(--s1) var(--s3);
   appearance: none;
   font: inherit;
   font-family: var(--f-body);
@@ -101,25 +103,26 @@
   color: var(--ink-body);
   background: transparent;
   border: 0;
-  border-radius: var(--sk-radius, var(--radius));
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
-/* the leading bar: shown on the selected row only (opacity, not a
-   transform, so there is no distance for --motion to multiply) */
-.tabs-tab::before {
+/* the selected row's own dot, at the end: only when nothing else
+   (count, tick, PLAN flag) sits there. A shape, not a distance. */
+.tabs-tab[aria-selected="true"]:not(:has(.tabs-badge, .tabs-done, .tabs-doing, .tabs-flag))::after {
   content: '';
-  position: absolute;
-  left: var(--s2);
-  top: 50%;
-  width: 3px;
-  height: 1.1em;
-  margin-top: -0.55em;
-  border-radius: var(--radius-pill);
+  flex: none;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  margin-left: auto;
+  border-radius: 50%;
   background: currentColor;
-  opacity: 0;
 }
-.tabs-tab[aria-selected="true"] { color: var(--accent-on); background: var(--accent); font-weight: 600; }
-.tabs-tab[aria-selected="true"]::before { opacity: 0.9; }
+.tabs-tab[aria-selected="true"] {
+  color: var(--accent-on);
+  background: var(--accent);
+  font-weight: 600;
+  box-shadow: var(--shadow-cta, none);
+}
 @media (hover: hover) {
   .tabs-tab:not([aria-selected="true"]):hover { color: var(--ink); background: var(--accent-wash); }
 }
@@ -311,17 +314,16 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
   .tabs-has-side > .tabs.tabs-side:has(+ :not([role="tabpanel"]):not(.tabs)) { grid-row: auto / span 2; }
 
   .tabs-side .tabs-sections { display: none; }
-  .tabs-side .tabs-list { display: grid; gap: var(--s3); align-content: start; }
-  .tabs-side .tabs-group { display: grid; gap: 2px; align-content: start; }
-  .tabs-side .tabs-group + .tabs-group { padding-top: var(--s3); border-top: var(--sk-card-line-w) solid var(--sk-card-line); }
+  .tabs-side .tabs-list { display: grid; gap: var(--s5); align-content: start; }
+  .tabs-side .tabs-group { display: grid; gap: var(--s1); align-content: start; }
   .tabs-side .tabs-group-h {
     display: block;
-    padding: var(--s1) var(--s3) var(--s1) var(--s4);
-    font-family: var(--sk-eyebrow-face, var(--f-body));
-    font-size: var(--sk-eyebrow-size, var(--t-small));
-    font-weight: 600;
-    letter-spacing: var(--sk-eyebrow-track, normal);
-    text-transform: var(--sk-eyebrow-transform, none);
+    padding: 0 var(--s3) var(--s1);
+    font-family: var(--f-mono);
+    font-size: var(--t-micro);
+    font-weight: 500;
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
     color: var(--ink-muted);
   }
   .tabs-side .tabs-tab {

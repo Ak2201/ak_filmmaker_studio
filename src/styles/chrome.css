@@ -3951,7 +3951,7 @@ html {
 .sh-rail-item {
   position: relative;
   min-height: 56px;
-  padding: 10px var(--s1) 8px;
+  padding: 10px 0 8px;
   gap: 4px;
   border: 1px solid transparent;
   border-radius: 12px;
@@ -3962,13 +3962,17 @@ html {
   line-height: 1.2;
 }
 .sh-rail-icon { font-size: 1.5rem; }
+/* Every rail label is one word; a break inside it is never right. */
+.sh-rail-item .sh-rail-label { white-space: nowrap; overflow-wrap: normal; }
 .sh-rail-item:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
 /* "You are here": a violet-filled tile with a tick on its leading edge. */
 .sh-rail-item.is-active {
   background: var(--chrome-fill-strong);
   border-color: var(--chrome-hair-strong);
   color: var(--chrome-ink);
-  font-weight: 600;
+  /* No weight bump: semibold "Dashboard" broke as DASHBOA/RD in an 80px
+     rail. The filled tile and the tick already say "you are here". */
+  letter-spacing: -.01em;
 }
 .sh-rail-item.is-active .sh-rail-icon { color: var(--chrome-accent); }
 .sh-rail-item.is-active::before {

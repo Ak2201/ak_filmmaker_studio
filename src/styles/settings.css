@@ -638,6 +638,18 @@
   #you .am-inline .am-item.danger:hover { background: none; color: var(--danger); }
 }
 #you .am-inline .am-item.danger { margin-top: var(--s4); padding-top: var(--s5); border-top: var(--sk-card-line-w) solid var(--sk-card-line); width: 100%; border-radius: 0; }
+/* Signed out: the one control is a button, not a text row. */
+#you .am-inline .am-acct-note + .am-item {
+  margin: var(--s2) var(--s3) var(--s3);
+  width: auto;
+  justify-self: start;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--radius-pill);
+  background: var(--cta-fill);
+  color: var(--brand-on);
+  font-weight: 700;
+}
+#you .am-inline .am-acct-note + .am-item:hover { background: var(--cta-fill-hover); color: var(--brand-on); }
 #you .am-inline .am-foot { padding: 0; border-top: 0; margin: 0; font-size: var(--t-small); }
 
 /* the plan card */

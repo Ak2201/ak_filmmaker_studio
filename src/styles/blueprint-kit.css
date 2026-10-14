@@ -100,6 +100,9 @@
   color: var(--ink-body);
 }
 :root .step .example.alt .ex-label { color: var(--brand-deep); }
+/* worked examples keep their colour coding: a 3px left rule, the alternate in the library hue (verify's hue check reads it) */
+:root .step .example { border-left: 3px solid var(--feature); }
+:root .step .example.alt { border-left-color: var(--library); }
 :root .step :is(.example, .ex-card) :is(h4, h5) { font-family: var(--f-display); font-size: var(--t-base); font-style: normal; font-weight: 600; color: var(--ink); }
 :root .step .hint { font-size: var(--t-small); color: var(--ink-muted); }
 

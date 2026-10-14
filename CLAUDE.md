@@ -776,11 +776,17 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   you are* and kept the one that says *what you can do here* — the navigation
   layer existed only at the very top of the longest pages in the app. The shell
   is sticky at ≥1100px now and publishes its measured height for the page to
-  sit under. Below 1100px it still scrolls away on purpose, because chrome above
-  a text field on a phone is worse than losing the nav — measured at its worst,
-  a stuck toolbar wrapped to four rows was 391px, 46% of an 844px phone,
-  permanently. What you need while typing is the fixed bottom action bar and the
-  save indicator; the nav is one flick up.
+  sit under. Between 720 and 1099px it still scrolls away, because a band that
+  wraps is worse than losing the nav — measured at its worst, a stuck toolbar
+  wrapped to four rows was 391px, 46% of an 844px phone, permanently.
+
+  **BELOW 720px THE BAND IS PINNED (owner, 14 Oct 2026)**: one sticky 56px
+  row (`html.mn-on .sh-bar` in `mobile-nav.css`) that cannot wrap — the crumb
+  is what gives, the rest of the zone is reached through Tools. That is what
+  retired the 391px argument on a phone: one row cannot become four. A
+  page's OWN top bar (the screenplay's `.sc-top`, say) may still scroll away
+  below 720px; the band may not. `measureChrome()` reads the pin rather than
+  a breakpoint, so fragments and the tab strip park under it.
 
   **THERE IS ONE BAR NOW, so the stacking half of this is history.** The four
   original pages each built their own `.toolbar` under the shell's bar;

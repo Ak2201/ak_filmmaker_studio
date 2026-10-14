@@ -36,7 +36,8 @@ import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
 import Analysis, { formatDuration } from '../lib/screenplay-analysis.js';
 import { loadScript } from '../lib/script.js';
-import { listSongs, durationSeconds, getTargetMinutes, setTargetMinutes } from '../lib/songs.js';
+import { listSongs, durationSeconds, setTargetMinutes } from '../lib/songs.js';
+import { targetRuntime } from '../lib/target-runtime.js';
 import { shootDayOf } from '../lib/locations.js';
 import Store from '../lib/store.js';
 import { linkText } from '../lib/links.js';
@@ -497,7 +498,7 @@ function render(focus) {
   /* ONE target, and it is Reports' (songs.js `targetMinutes`). A value this
      log stored before that stays readable here as the fallback and is never
      dropped; the first time the field is set, it is the shared one that moves. */
-  const target = getTargetMinutes() || Edit.getTargetMin(data);
+  const target = targetRuntime().minutes;   // the same helper the screenplay's beats panel reads
   main.append(runPanel(run, target, cov));
 
   /* Conflicts first, because each one is two departments disagreeing

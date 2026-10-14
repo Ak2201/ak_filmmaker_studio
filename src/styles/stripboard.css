@@ -495,7 +495,7 @@ body.pdf-print .sb-lock-host { display: none !important; }
    ------------------------------------------------------------
    The cards and the switch are the phone's (section 6 turns them
    on); a desk shows the full grid, which carries every figure the
-   cards do. The calendar is a tab at every width.
+   cards do. The shoot calendar is the Plan's (plan.html#calendar).
    ------------------------------------------------------------ */
 .sb-dood-cards,
 .sb-dood-switch { display: none; }
@@ -567,28 +567,6 @@ body.pdf-print .sb-lock-host { display: none !important; }
 .sb-dc-day.is-today { border-color: var(--accent-primary); background: var(--brand-wash); }
 .sb-dc-dnum { font-family: var(--f-mono); font-size: var(--t-nano); letter-spacing: var(--track-label); color: var(--ink-muted); }
 
-/* The calendar tab. */
-.sb-cal { max-width: var(--measure-wide); margin-inline: auto; padding: var(--s6) var(--s5) var(--s8); }
-.sb-cal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
-.sb-cal-day {
-  display: grid;
-  grid-template-columns: minmax(9rem, 14rem) 1fr;
-  align-items: center;
-  gap: var(--s2) var(--s4);
-  padding: var(--sk-card-pad);
-  background: var(--sk-card-bg);
-  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--border-hair));
-  border-left: var(--sk-hue-rule-w, 3px) solid var(--border-strong);
-  border-radius: var(--sk-radius);
-}
-.sb-cal-day.is-today { border-left-color: var(--accent-primary); background: var(--brand-wash); }
-.sb-cal-when { display: grid; gap: var(--s-half); min-width: 0; }
-.sb-cal-dnum { font-family: var(--f-display); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
-.sb-cal-date { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); color: var(--ink-body); }
-.sb-cal-day.is-undated .sb-cal-date { color: var(--ink-muted); }
-.sb-cal-what { display: grid; gap: var(--s1h); min-width: 0; }
-.sb-cal-facts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1h); }
-
 /* The day's call, the strip's estimate, the draft name. */
 .sb-call .sym { font-size: 14px; }
 .sb-est {
@@ -604,12 +582,11 @@ body.pdf-print .sb-lock-host { display: none !important; }
 .sb-draft.k-badge { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--brand-deep); border-color: var(--accent-primary); }
 
 @media print {
-  .sb-dood-cards, .sb-dood-switch, .sb-cal { display: none !important; }
+  .sb-dood-cards, .sb-dood-switch { display: none !important; }
   .sb-dood .sb-dood-scroll { display: block !important; }
 }
 body.pdf-print .sb-dood-cards,
-body.pdf-print .sb-dood-switch,
-body.pdf-print #calendar { display: none !important; }
+body.pdf-print .sb-dood-switch { display: none !important; }
 body.pdf-print .sb-dood .sb-dood-scroll { display: block !important; }
 
 /* ------------------------------------------------------------

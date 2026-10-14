@@ -234,18 +234,11 @@ export function openTools() {
 
 /* ---- the bottom bar's items, for chrome.js -------------------- */
 export function barItems() {
-  /* A global page (library, settings, admin, purchase, home) carries no
-     project chrome, so its bar has no studio-wide Search either: the
-     library has its own scoped search, and the rest have nothing to
-     search. Settings takes the slot. The mode is shell.js's, derived once. */
-  if (isGlobalMode()) {
-    return [
-      { icon: '⌂', sym: 'home', label: 'Home', href: 'index.html', id: 'home' },
-      { icon: '☰', sym: 'menu', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },
-      { icon: '⚙', sym: 'settings', label: 'Settings', href: 'settings.html', id: 'settings' },
-      { icon: '⋯', sym: 'more_horiz', label: 'Tools', onClick: () => openTools(), id: 'tools', controls: true }
-    ];
-  }
+  /* The same four cells on EVERY page, global pages included (owner,
+     14 Oct 2026): Home / Go to / Search / Tools. A global page used to
+     swap Search for Settings; Settings is reached from Go to and from
+     the band like any other global destination, and the palette is
+     wired on every page by chrome.js, so Search works here too. */
   return [
     { icon: '⌂', sym: 'home', label: 'Home', href: 'index.html', id: 'home' },
     { icon: '☰', sym: 'menu', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },

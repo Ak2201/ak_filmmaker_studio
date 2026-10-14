@@ -697,6 +697,9 @@ export function closeDesk() {
   const back = opener;
   opener = null;
   if (back && back.isConnected && typeof back.focus === 'function') back.focus();
+  // a chain of reviews (breakdown-flow.js) waits for this to say its
+  // own result once the last review has gone, not over the top of it
+  window.dispatchEvent(new Event('ai-desk:closed'));
 }
 
 export default { registerTask, getTask, listTasks, openDesk, closeDesk };

@@ -32,7 +32,10 @@
      aiBreakdownCtx(opts)     the ctx function for the AI pill
      breakdownWithAI(opts)    the same chain opened without a pill
    opts { run?() → runBreakdown's result (default: runBreakdown()),
-          onRun?(result)  the page's toast and render,
+          onRun?(result)  the page's render, straight after the run,
+          announce?(result)  the page's toast, once the reviews END —
+                          not over the existing-shots question or the
+                          Desk, which on a phone sit where toasts do,
           refresh?(madeIds)  repaint after an Accept or an Undo }
 
    No storage key, nothing on first paint beyond this file: the models
@@ -60,6 +63,29 @@ function models() {
 const desk = () => import('./ai-desk.js');
 const later = (fn) => setTimeout(fn, 0);   // after the Desk has closed on Accept
 
+/* The run's own announcement waits for the chain of reviews to end
+   (owner follow-up, 14 Oct 2026): on a phone the "Broke down …" toast
+   sat over the existing-shots question and the Desk's sheet. One
+   chain at a time; `next` is set while a hand-over to the story
+   review is on its way, so the shots review closing does not count. */
+let chain = null;
+function startChain(opts, res) {
+  if (chain) chain.done();
+  const c = { next: false, said: false };
+  const onClose = () => setTimeout(() => { if (chain === c && !c.next) c.done(); }, 0);
+  c.done = () => {
+    window.removeEventListener('ai-desk:closed', onClose);
+    if (chain === c) chain = null;
+    if (c.said) return;
+    c.said = true;
+    call(opts && opts.announce, res);
+  };
+  window.addEventListener('ai-desk:closed', onClose);
+  chain = c;
+  return c;
+}
+const endChain = () => { if (chain) chain.done(); };
+
 /** Run the breakdown and hand the result to the page. null when it
  *  could not run or the script has no headings (the page has said so). */
 function runStep(opts) {
@@ -71,7 +97,8 @@ function runStep(opts) {
     return null;
   }
   call(opts && opts.onRun, res);
-  if (!res || (res.applied && res.applied.empty)) return null;
+  const c = startChain(opts, res);
+  if (!res || (res.applied && res.applied.empty)) { c.done(); return null; }
   return res;
 }
 
@@ -110,10 +137,13 @@ async function storyCtx(opts) {
 }
 
 async function openStory(taskId, opts) {
-  const c = await storyCtx(opts);
-  if (!c) return;
+  let c = null;
+  try { c = await storyCtx(opts); }
+  finally { if (chain) chain.next = false; }
+  if (!c) { endChain(); return; }
   const D = await desk();
-  D.openDesk(taskId, c);
+  await D.openDesk(taskId, c);
+  if (!document.documentElement.classList.contains('ai-desk-open')) endChain();   // it did not open
 }
 
 /** The shots review's ctx for `storyTask`, a hand-over straight to the
@@ -130,7 +160,10 @@ async function shotsCtx(storyTask, opts) {
     sceneIds: list.map((s) => s.id),
     after: (made) => {
       call(opts && opts.refresh, made);
-      if (made && made.length) later(() => openStory(storyTask, opts));   // Undo hands [] and opens nothing
+      if (made && made.length) {
+        if (chain) chain.next = true;   // the story review follows; this close is not the end
+        later(() => openStory(storyTask, opts));   // Undo hands [] and opens nothing
+      }
     }
   };
 }
@@ -142,10 +175,11 @@ export async function manualBreakdown(opts = {}) {
   if (!res) return null;
   let c;
   try { c = await shotsCtx('story-basic', opts); }
-  catch (e) { console.warn('[breakdown-flow] manual', e); StudioUI.toast('The shot and story proposals could not load. Reload the page and try again.', { type: 'error' }); return res; }
-  if (!c) return res;
+  catch (e) { endChain(); console.warn('[breakdown-flow] manual', e); StudioUI.toast('The shot and story proposals could not load. Reload the page and try again.', { type: 'error' }); return res; }
+  if (!c) { endChain(); return res; }
   const D = await desk();
   await D.openDesk(c.task || 'shot-basic', c);
+  if (!document.documentElement.classList.contains('ai-desk-open')) endChain();   // it did not open
   return res;
 }
 
@@ -162,8 +196,13 @@ export function aiBreakdownCtx(opts = {}) {
     if (!res) return { cancel: true };
     try {
       const c = await shotsCtx('scene-story', opts);
+      if (!c) endChain();
+      /* the Desk opens on this ctx; if it never does (a hand-over the
+         plan refuses), nothing closes, so say the run after a beat */
+      else setTimeout(() => { if (!document.documentElement.classList.contains('ai-desk-open')) endChain(); }, 0);
       return c || { cancel: true };
     } catch (e) {
+      endChain();
       console.warn('[breakdown-flow] ai', e);
       StudioUI.toast('The AI review could not load. Reload the page and try again.', { type: 'error' });
       return { cancel: true };

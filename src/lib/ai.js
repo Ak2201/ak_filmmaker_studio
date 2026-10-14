@@ -65,7 +65,7 @@ import Providers, {
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
   getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
-  models, defaultModel, getModel, setModel
+  models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 } from './ai-providers.js';
 
 /* Re-exported so a caller that only wants "is there a key" or
@@ -77,7 +77,7 @@ export {
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
   getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
-  models, defaultModel, getModel, setModel
+  models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 };
 
 /* The AI Desk's chat refinement: a pure block a task appends to its
@@ -467,20 +467,11 @@ const WIRE = {
    the quotation check — is written against this one function and
    none of it knows which API it is talking to.
    ------------------------------------------------------------ */
-async function callModel({
-  system, user, schema, maxTokens = 32000, effort = 'medium',
-  onStatus, signal, progress
-}) {
-  const prov = provider();
-  const key = getKey();
-  if (!key) throw new AIError('No API key saved on this device.', 'nokey');
-
-  const model = getModel();
-  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
-
-  const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
-  const req = wire.request(prov, { model, system, user, schema, maxTokens, effort });
-
+/* ---- the one fetch -------------------------------------------
+   Shared by callModel() (text, streamed) and generateImage() (one
+   picture, not streamed): one place where the key meets a header,
+   one network-error sentence, one status map. */
+async function send(prov, req, key, signal) {
   let res;
   try {
     res = await fetch(req.url, {
@@ -512,6 +503,24 @@ async function callModel({
     try { body = await res.json(); } catch (e) { /* not every error is JSON */ }
     throw errorForStatus(res.status, body, prov);
   }
+  return res;
+}
+
+async function callModel({
+  system, user, schema, maxTokens = 32000, effort = 'medium',
+  onStatus, signal, progress
+}) {
+  const prov = provider();
+  const key = getKey();
+  if (!key) throw new AIError('No API key saved on this device.', 'nokey');
+
+  const model = getModel();
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+
+  const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
+  const req = wire.request(prov, { model, system, user, schema, maxTokens, effort });
+
+  const res = await send(prov, req, key, signal);
   if (!res.body) throw new AIError('The API returned an empty response.', 'empty');
 
   let text, stop;
@@ -541,6 +550,76 @@ async function callModel({
   }
   bumpUsage('ai_call');   // a model answered; the count carries no prompt (src/lib/usage.js)
   return { parsed, truncated: stop === 'max_tokens', model };
+}
+
+/* ---- one picture -----------------------------------------------
+   The storyboard's "Draw frames" task (src/lib/board-frames.js).
+   Gemini only: it is the one provider in the table with an image
+   model (`imageModels`, ai-providers.js), so this reads the GEMINI
+   key whichever provider the text tools are set to. Same send(), so
+   the key is in `x-goog-api-key` exactly as for text — never
+   `?key=` — and the same status map turns a 400 API_KEY_INVALID
+   into "that key was rejected".
+
+   Not streamed: the answer is one inline image part, base64, which
+   is turned into a Blob HERE and never into a string anybody keeps.
+   Nothing is stored by this function. */
+export function geminiImageRequest(prov, { model, prompt, aspectRatio }) {
+  return {
+    url: prov.origin + '/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+    authHeader: 'x-goog-api-key',
+    headers: { 'content-type': 'application/json' },
+    body: {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ['IMAGE'],
+        imageConfig: { aspectRatio: aspectRatio || '16:9' }
+      }
+    }
+  };
+}
+
+/** The first image part of a generateContent answer, or an AIError. */
+export function imageFromResponse(json) {
+  const blocked = json && json.promptFeedback && json.promptFeedback.blockReason;
+  if (blocked) throw new AIError('The model declined to draw this (' + blocked + '). Nothing was changed.', 'refusal');
+  const cand = json && Array.isArray(json.candidates) ? json.candidates[0] : null;
+  const parts = (cand && cand.content && Array.isArray(cand.content.parts)) ? cand.content.parts : [];
+  for (const p of parts) {
+    const d = p && (p.inlineData || p.inline_data);
+    if (d && typeof d.data === 'string' && d.data) {
+      const mime = String(d.mimeType || d.mime_type || 'image/png');
+      if (!/^image\/(png|jpeg|webp)$/.test(mime)) continue;
+      const bin = atob(d.data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+  }
+  const why = cand && cand.finishReason ? GEMINI_STOP[cand.finishReason] || String(cand.finishReason) : '';
+  if (why === 'refusal') throw new AIError('The model declined to draw this. Nothing was changed.', 'refusal');
+  throw new AIError('The reply carried no picture, so nothing was changed.', 'malformed');
+}
+
+/**
+ * Draw one picture. Resolves to { blob, model }; writes nothing.
+ * Throws AIError 'nokey' when no Gemini key is saved on this device.
+ */
+export async function generateImage({ prompt, aspectRatio = '16:9', signal } = {}) {
+  const prov = provider('gemini');
+  const key = getKey('gemini');
+  if (!key) throw new AIError('No Gemini key saved on this device.', 'nokey');
+  const model = imageModel('gemini');
+  const req = geminiImageRequest(prov, { model, prompt: String(prompt || ''), aspectRatio });
+  const res = await send(prov, req, key, signal);
+  let json = null;
+  try { json = await res.json(); } catch (e) {
+    if (e && e.name === 'AbortError') throw new AIError('Stopped. Nothing was changed.', 'aborted');
+    throw new AIError('The reply was not the shape we asked for, so nothing was changed.', 'malformed');
+  }
+  const blob = imageFromResponse(json);
+  bumpUsage('ai_call');
+  return { blob, model };
 }
 
 /** Trim, cap and refuse anything that is not a string. Every field

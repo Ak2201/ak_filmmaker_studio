@@ -1,0 +1,199 @@
+/* ============================================================
+   BOARD FRAMES — drawn storyboard frames, the pure half
+   ------------------------------------------------------------
+   NEXT-UI-REVAMP-PLAN-2026-10-14 phase 4. The AI Desk task
+   `board-frames` (src/lib/ai-tasks.js) draws a picture per shot with
+   Gemini's image model and, on Accept, saves each ticked picture as a
+   FILE IN THE WRITER'S OWN GOOGLE DRIVE. The frame record keeps the
+   reference and nothing else: `ref` = `drive:<fileId>` (drive.js
+   driveRef), on an existing field of an existing record
+   (shots.js blankFrame). No new storage key, no bytes in
+   localStorage, and so no bytes in a backup file — a backup carries
+   the reference, the image stays in Drive. The UI says so.
+
+   This module is PURE — no imports, no DOM, no storage — so every
+   rule here is tested in Node (scripts/test-board-frames.mjs):
+
+     STYLES          the looks the writer picks per run
+     boardGate()     may generation run? signed in, Drive reachable,
+                     Drive connected, a live Drive token; else WHY
+     boardJobs()     the shots to draw (those without a drawn frame)
+     boardInput()    the text the Desk shows and sends (editable)
+     parseBoardInput() that text back: style + the lines kept
+     framePrompt()   one shot as an image prompt
+     styleFromRefine() the style a chat chip asked for
+     frameFileName() the Drive file name
+   ============================================================ */
+
+/** At most this many pictures per run: each is a separate paid call. */
+export const MAX_FRAMES = 8;
+
+export const STYLES = [
+  { id: 'pencil', label: 'Pencil sketch', prompt: 'a rough black-and-white pencil storyboard sketch, loose lines, light hatching, no colour' },
+  { id: 'ink',    label: 'Ink and wash',  prompt: 'a black ink storyboard drawing with grey wash shading, clean outlines' },
+  { id: 'marker', label: 'Marker',        prompt: 'a storyboard drawing in grey markers with bold outlines, the way a storyboard artist works on set' },
+  { id: 'colour', label: 'Colour',        prompt: 'a colour storyboard illustration, painterly, with the lighting and palette of the scene' }
+];
+export const DEFAULT_STYLE = STYLES[0].id;
+const styleById = Object.fromEntries(STYLES.map((s) => [s.id, s]));
+export const styleOf = (id) => styleById[id] || styleById[DEFAULT_STYLE];
+
+/** A style id from free text: a label, an id, or a word of either. */
+export function matchStyle(text) {
+  const t = String(text || '').trim().toLowerCase();
+  if (!t) return '';
+  for (const s of STYLES) if (t === s.id || t === s.label.toLowerCase()) return s.id;
+  for (const s of STYLES) if (t.includes(s.label.toLowerCase()) || t.includes(s.id)) return s.id;
+  if (/\bcolor\b/.test(t)) return 'colour';
+  return '';
+}
+
+/* ---- the gate --------------------------------------------------
+   facts: { configured, signedIn, connected, token }
+     configured  this build has a Google client id (drive.js)
+     signedIn    a Supabase session (Google sign-in) on this page
+     connected   Drive is connected on this device (drive-sync.js)
+     token       a live Drive token is held right now
+   Returns { ok: true } or { ok: false, state, text, href?, hrefLabel?,
+   reconnect? }. The ORDER is the order the writer has to fix them in. */
+export function boardGate(facts = {}) {
+  if (!facts.configured) {
+    return { ok: false, state: 'nodrive',
+      text: 'Drawn frames are saved only to Google Drive, and this build of the studio cannot reach Drive.' };
+  }
+  if (!facts.signedIn) {
+    return { ok: false, state: 'signedout',
+      text: 'Sign in with Google first. Drawn frames are saved to your own Google Drive, never in this browser.',
+      href: 'settings.html#account', hrefLabel: 'Sign in' };
+  }
+  if (!facts.connected) {
+    return { ok: false, state: 'noconnect',
+      text: 'Connect Google Drive first. Drawn frames are saved there, never in this browser.',
+      href: 'settings.html#drive', hrefLabel: 'Connect Drive in Settings' };
+  }
+  if (!facts.token) {
+    return { ok: false, state: 'reconnect', reconnect: true,
+      text: 'Google lets Drive stay connected for about an hour at a time. Reconnect to draw frames and to show the ones you have.' };
+  }
+  return { ok: true, state: 'ok', text: '' };
+}
+
+/* ---- what to draw ------------------------------------------------ */
+const slug = (scene) => scene
+  ? (scene.intExt || 'INT') + '. ' + (scene.location || 'Location TBC') + ' — ' + (scene.dayNight || 'DAY')
+  : 'Scene deleted';
+
+/** The label a line is matched back by: scene number . shot number. */
+export function shotLabel(shot, scene) {
+  const sn = String((scene && scene.number) || '?').replace(/\s+/g, '');
+  const n = String((shot && shot.number) || '?').replace(/\s+/g, '');
+  return sn + '.' + n;
+}
+
+/** Is this ref a drawn (Drive-held) image? */
+export const isDrawnRef = (ref) => /^drive:[A-Za-z0-9_-]{8,}$/.test(String(ref || '').trim());
+
+/**
+ * The shots to draw, in shot-list order: every shot (or those in
+ * `onlyShotIds`) that has no frame with a drawn image yet.
+ * Returns { jobs: [{ shotId, label, shot, scene }], more } — `more`
+ * is how many were left out by MAX_FRAMES.
+ */
+export function boardJobs({ shots = [], scenes = [], frames = [], onlyShotIds = null, max = MAX_FRAMES } = {}) {
+  const sceneById = new Map(scenes.map((s) => [s.id, s]));
+  const drawn = new Set(frames.filter((f) => f && isDrawnRef(f.ref)).map((f) => f.shotId));
+  const only = onlyShotIds ? new Set([].concat(onlyShotIds).map(String)) : null;
+  const want = shots.filter((s) => s && (!only || only.has(String(s.id))) && !drawn.has(s.id));
+  const jobs = want.slice(0, max).map((shot) => {
+    const scene = sceneById.get(shot.sceneId) || null;
+    return { shotId: shot.id, label: shotLabel(shot, scene), shot, scene };
+  });
+  return { jobs, more: Math.max(0, want.length - jobs.length) };
+}
+
+const oneLine = (v, max = 220) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+
+/** One line of the input: label | camera | slug | what we see. */
+export function jobLine(job) {
+  const s = job.shot || {};
+  const cam = [s.size, s.angle, s.lens, s.movement].filter(Boolean).join(' · ');
+  return job.label + ' | ' + cam + ' | ' + slug(job.scene) + ' | ' + (oneLine(s.description) || oneLine(job.scene && job.scene.synopsis) || 'no description');
+}
+
+/** The Desk's "what goes in" text. Editable: delete a line to skip it. */
+export function boardInput({ jobs, more = 0 }, style = DEFAULT_STYLE) {
+  const lines = [
+    'Style: ' + styleOf(style).label,
+    'Aspect: 16:9',
+    ''
+  ].concat(jobs.map(jobLine));
+  if (more) lines.push('', '(' + more + ' more shot' + (more === 1 ? '' : 's') + ' without a drawing — run again after this one.)');
+  return lines.join('\n');
+}
+
+/**
+ * The input text back: { style, labels: [label…] } — the labels kept,
+ * in the order they appear. A line is a shot line when it starts with
+ * a label and a '|'. Lines the writer edited keep their label, and the
+ * prompt is rebuilt from the shot itself, so what is drawn is always
+ * the shot as the shot list holds it.
+ */
+export function parseBoardInput(text) {
+  let style = DEFAULT_STYLE;
+  const labels = [];
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    const m = /^style\s*:\s*(.+)$/i.exec(line);
+    if (m) { style = matchStyle(m[1]) || style; continue; }
+    const l = /^([^\s|]+)\s*\|/.exec(line);
+    if (l && !labels.includes(l[1])) labels.push(l[1]);
+  }
+  return { style, labels };
+}
+
+/** The style the newest chat request names, else the current one, and
+    the free-text notes (anything that is not a style) to add. */
+export function styleFromRefine(instructions, current = DEFAULT_STYLE) {
+  let style = current;
+  const notes = [];
+  for (const t of [].concat(instructions || [])) {
+    const s = matchStyle(t);
+    if (s) style = s;
+    else if (String(t || '').trim()) notes.push(oneLine(t, 300));
+  }
+  return { style, notes };
+}
+
+/** One shot as an image prompt. No names of real people; the cast are
+    the characters the scene lists. */
+export function framePrompt(job, style = DEFAULT_STYLE, notes = []) {
+  const s = job.shot || {};
+  const sc = job.scene || {};
+  const castList = sc.elements && Array.isArray(sc.elements.cast) ? sc.elements.cast : [];
+  const cast = castList.map((c) => oneLine(c, 40)).filter(Boolean).slice(0, 8);
+  const parts = [
+    'Draw one film storyboard frame as ' + styleOf(style).prompt + '.',
+    'Shot: ' + [s.size && ('size ' + s.size), s.angle && ('angle ' + s.angle), s.lens && ('lens ' + s.lens), s.movement && ('movement ' + s.movement)].filter(Boolean).join(', ') + '.',
+    'Setting: ' + slug(job.scene) + '.',
+    s.description ? 'What we see: ' + oneLine(s.description, 600) + '.' : '',
+    sc.synopsis ? 'The scene: ' + oneLine(sc.synopsis, 400) + '.' : '',
+    cast.length ? 'Characters in the scene: ' + cast.join(', ') + '.' : '',
+    s.rig ? 'Lighting and rig: ' + oneLine(s.rig, 200) + '.' : '',
+    'Frame it as the camera sees it, 16:9. No text, captions, labels, panel borders or watermarks in the image.'
+  ];
+  for (const n of [].concat(notes || [])) if (n) parts.push('The writer also asks: ' + oneLine(n, 300) + '.');
+  return parts.filter(Boolean).join(' ');
+}
+
+/** The Drive file name: a human scrolling their Drive can tell what it is. */
+export function frameFileName(job, mime = 'image/png', at = new Date()) {
+  const ext = /jpe?g/.test(mime) ? 'jpg' : /webp/.test(mime) ? 'webp' : 'png';
+  const stamp = at.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const label = String(job.label || 'shot').replace(/[^A-Za-z0-9.-]+/g, '_');
+  return 'filmmakers-studio-frame-' + label + '-' + stamp + '.' + ext;
+}
+
+export default {
+  MAX_FRAMES, STYLES, DEFAULT_STYLE, styleOf, matchStyle, boardGate, shotLabel, isDrawnRef,
+  boardJobs, jobLine, boardInput, parseBoardInput, styleFromRefine, framePrompt, frameFileName
+};

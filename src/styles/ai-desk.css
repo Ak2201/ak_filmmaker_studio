@@ -276,6 +276,21 @@ html.ai-desk-open.ai-desk-open .toast-host {
 }
 .ai-desk-itemtext { min-width: 0; overflow-wrap: anywhere; }
 .ai-desk-itemtext p { margin: var(--s1) 0 0; color: var(--ink-body); }
+/* A drawn frame to judge before it is kept (board-frames). */
+.ai-desk-itemtext:has(.ai-desk-pic) { flex: 1 1 auto; }
+.ai-desk-pic {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin-bottom: var(--s2);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+}
+/* Why a task cannot run yet, and the one control that fixes it. */
+.ai-desk-blocked { display: grid; gap: var(--s3); justify-items: start; }
+.ai-desk-why { margin: 0; color: var(--ink-body); }
 
 .ai-desk-read { display: grid; gap: var(--s2); justify-items: start; }
 .ai-desk-readtext {

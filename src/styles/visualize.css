@@ -248,6 +248,46 @@
 }
 .vz-frame-acts { display: flex; justify-content: flex-end; margin-top: var(--s1); }
 
+/* A drawn frame: the picture fills the slate, the shot's marks sit on
+   top of it. The picture comes from the writer's Drive (drive-image.js);
+   until it does, or with no Drive token, the slate holds words and a
+   Reconnect control — never a broken image. */
+.vz-frame-slate:has(.vz-frame-pic.is-loaded) { padding: 0; border-style: solid; border-color: var(--border-hair); }
+.vz-frame-slate:has(.vz-frame-pic) > .k-mono { z-index: 1; }
+.drv-img { display: grid; gap: var(--s2); justify-items: center; }
+.drv-img.is-loaded { position: absolute; inset: 0; display: block; }
+.drv-img-pic { display: block; width: 100%; height: 100%; object-fit: cover; }
+.drv-img-note {
+  margin: 0;
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* Draw frames with AI: the pill (or why it cannot run), a real count,
+   and what happens to the pictures. One block on every width. */
+.vz-draw {
+  display: grid;
+  gap: var(--s2);
+  margin: 0 0 var(--s5);
+  padding: var(--s3) var(--s4);
+}
+.vz-draw-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.vz-draw-count {
+  margin-inline-start: auto;
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.vz-draw-why { color: var(--ink-body); font-size: var(--t-small); }
+.vz-draw-note { margin: 0; font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-muted); }
+@media (max-width: 719px) {
+  .vz-draw { padding: var(--s3); }
+  .vz-draw-count { margin-inline-start: 0; flex-basis: 100%; }
+  .vz-draw-acts .k-btn, .vz-draw-acts .ai-pill { min-height: 44px; }
+}
+
 /* ------------------------------------------------------------
    3. THE LOOKBOOK — named boards of references
    ------------------------------------------------------------ */

@@ -220,15 +220,26 @@ let sess = null;
 let running = null;     // AbortController while a request is out
 let statusText = '';
 let errorText = '';
-let mode = 'task';      // 'task' | 'nokey' | 'missing'
+let mode = 'task';      // 'task' | 'nokey' | 'missing' | 'blocked'
+let blockedWhy = null;  // a task's blocked(ctx) answer while mode is 'blocked'
 let missingText = '';   // why a local task could not open
 let held = false;
 
 const WIDE = '(min-width: 1100px)';
 const isWide = () => window.matchMedia(WIDE).matches;
 
+/* A task may name the provider it needs (`provider: 'gemini'` — the
+   storyboard's drawn frames, the one image model in the table) and its
+   own model line (`modelLabel()`); every other task uses the active one. */
+const provOf = (t) => (t && t.provider) || undefined;
+
 function modelText() {
   if (isLocal(task)) return 'On this device · no AI';
+  if (task && task.provider) {
+    let m = '';
+    try { m = typeof task.modelLabel === 'function' ? String(task.modelLabel() || '') : ''; } catch (e) { m = ''; }
+    return providerLabel(task.provider) + (m ? ' · ' + m : '');
+  }
   const id = getModel();
   const m = (models() || []).find((x) => x.id === id);
   return providerLabel() + ' · ' + (m ? m.label : id);
@@ -310,6 +321,11 @@ function answerList(v) {
     h('label.ai-desk-item', {}, [
       h('input', { type: 'checkbox', 'data-tick': 'item', 'data-id': v.itemIds[i], checked: !v.unticked.has(v.itemIds[i]) }),
       h('div.ai-desk-itemtext', {}, [
+        /* A picture to judge before it is kept (board-frames): an object
+           URL for a Blob held in this session only. */
+        typeof it.image === 'string' && /^blob:/.test(it.image)
+          ? h('img.ai-desk-pic', { src: it.image, alt: String(it.alt || it.text || 'Generated picture') })
+          : null,
         h('strong', { text: String(it.text ?? '') }),
         it.detail ? h('p', { text: String(it.detail) }) : null
       ])
@@ -339,8 +355,26 @@ function render() {
   foot.replaceChildren();
   if (mode === 'nokey') {
     body.replaceChildren(header(), h('section.ai-desk-sec', {}, [
-      h('p', { text: 'AI tools run on your own key, and this device does not have one yet.' }),
+      h('p', { text: task && task.provider
+        ? 'This tool runs on ' + apiName(task.provider) + ' with your own ' + providerLabel(task.provider)
+          + ' key, and this device does not have one yet.'
+        : 'AI tools run on your own key, and this device does not have one yet.' }),
       h('a.btn.primary.ai-desk-settings', { href: 'settings.html#ai', text: 'Add your AI key in Settings →' })
+    ]));
+    return;
+  }
+  if (mode === 'blocked') {
+    /* A task that cannot run here yet says why before anything is sent
+       (board-frames: signed out, Drive not connected, Drive token
+       lapsed). `href` goes to the fix; `reconnect` asks the task to fix
+       it on this click (task.unblock), then the Desk re-opens. */
+    const why = blockedWhy || {};
+    body.replaceChildren(header(), h('section.ai-desk-sec.ai-desk-blocked', {}, [
+      h('p.ai-desk-why', { role: 'status', text: why.text || 'This tool cannot run here yet.' }),
+      why.reconnect ? h('button.btn.primary.ai-desk-unblock', {
+        type: 'button', 'data-action': 'ai-desk-unblock', text: why.reconnectLabel || 'Reconnect Drive'
+      }) : null,
+      why.href ? h('a.btn.primary.ai-desk-fix', { href: why.href, text: (why.hrefLabel || 'Fix this') + ' →' }) : null
     ]));
     return;
   }
@@ -366,7 +400,7 @@ function render() {
     }),
     isLocal(task)
       ? h('p.ai-desk-note', { text: 'Built on this device from your script and scene list. Nothing is sent anywhere, and nothing is kept until you accept.' })
-      : disclose('When you press Run, the text above is sent to ' + apiName() + ' at ' + apiHost()
+      : disclose('When you press Run, the text above is sent to ' + apiName(provOf(task)) + ' at ' + apiHost(provOf(task))
         + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
     sess.versions.length ? null : h('button.btn.primary.ai-desk-run', {
       type: 'button', 'data-action': 'ai-desk-run', disabled: busy ? true : null, text: busy ? 'Running…' : 'Run'
@@ -390,7 +424,7 @@ function render() {
 
     if (!isLocal(task)) kids.push(h('section.ai-desk-sec.ai-desk-talk', {}, [
       h('h3.ai-desk-label', { text: 'Ask for changes' }),
-      h('div.ai-desk-chips', {}, ['Shorter', 'Keep my wording', 'More tension', 'In Tanglish'].map((c) =>
+      h('div.ai-desk-chips', {}, (Array.isArray(task.chips) && task.chips.length ? task.chips : ['Shorter', 'Keep my wording', 'More tension', 'In Tanglish']).map((c) =>
         h('button.ai-desk-chip', { type: 'button', 'data-action': 'ai-desk-chip', 'data-say': c, disabled: busy ? true : null, text: c }))),
       sess.chat.length ? h('ol.ai-desk-asked', {}, sess.chat.map((m) => h('li', { text: m }))) : null,
       h('textarea.ai-desk-chat', { rows: '2', 'aria-label': 'Ask for a change', placeholder: 'e.g. keep the second line as it was' }),
@@ -529,6 +563,19 @@ function wire() {
   delegate(desk, 'click', '[data-action="ai-desk-close"]', () => closeDesk());
   delegate(desk, 'click', '[data-action="ai-desk-skip"]', () => closeDesk());
   delegate(desk, 'click', '[data-action="ai-desk-run"]', () => run());
+  delegate(desk, 'click', '[data-action="ai-desk-unblock"]', (e, el) => {
+    if (!task || typeof task.unblock !== 'function') return;
+    el.disabled = true;
+    const id = task.id;
+    const again = ctx;
+    Promise.resolve().then(() => task.unblock())
+      .then(() => openDesk(id, again))
+      .catch((err) => {
+        el.disabled = false;
+        const why = desk.querySelector('.ai-desk-why');
+        if (why) why.textContent = 'It did not reconnect (' + String((err && err.message) || 'dismissed').slice(0, 120) + '). Try again.';
+      });
+  });
   delegate(desk, 'click', '[data-action="ai-desk-stop"]', () => {
     if (running) { running.abort(); setStatus('Stopping…'); }
   });
@@ -602,9 +649,15 @@ export async function openDesk(taskId, ctxArg = {}) {
     // Rebuilt from the data as it is now, at every open.
     for (const k of [...sessions.keys()]) if (k.startsWith(task.id + '|')) sessions.delete(k);
     sess = sessionFor(task, ctx);
-  } else if (!hasKey()) {
+  } else if (!hasKey(provOf(getTask(taskId)))) {
     mode = 'nokey';
     task = getTask(taskId);
+    sess = null;
+  } else if (getTask(taskId) && typeof getTask(taskId).blocked === 'function'
+    && (blockedWhy = (() => { try { return getTask(taskId).blocked(c); } catch (e) { return { text: (e && e.message) || 'This tool cannot run here yet.' }; } })())) {
+    mode = 'blocked';
+    task = getTask(taskId);
+    ctx = c;
     sess = null;
   } else {
     task = getTask(taskId);
@@ -626,7 +679,8 @@ export async function openDesk(taskId, ctxArg = {}) {
   publishWidth();
   const first = desk.querySelector(mode === 'task'
     ? (sess && sess.versions.length ? '.ai-desk-ver[aria-pressed="true"]' : '.ai-desk-input')
-    : (mode === 'nokey' ? 'a[href="settings.html#ai"]' : '[data-action="ai-desk-close"]'));
+    : (mode === 'nokey' ? 'a[href="settings.html#ai"]'
+      : mode === 'blocked' ? '.ai-desk-unblock, .ai-desk-fix, [data-action="ai-desk-close"]' : '[data-action="ai-desk-close"]'));
   (first || desk).focus();
   if (local && mode === 'task' && sess && !sess.versions.length) run();   // nothing to spend: build the list now
 }

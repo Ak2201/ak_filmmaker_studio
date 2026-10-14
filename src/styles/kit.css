@@ -1252,3 +1252,67 @@ details.k-panel--collapsible > summary.k-panel-head .k-panel-meta { margin-left:
   }
   .dlg.dlg.k-modal .modal-actions .mbtn.k-btn { flex: 1 1 auto; min-height: var(--tap-min); }
 }
+
+/* ============================================================
+   PHONE TAP FLOOR (below 720px) -- the 44px minimum by WIDTH, not by
+   pointer. base.css floors controls under (pointer: coarse), which a
+   narrow desktop window, a fine-pointer emulation and the gate never
+   match; the sweep of 14 Oct found text links 17-35px tall. Height
+   only: an inline link keeps its width, so no row reflows sideways.
+   ============================================================ */
+@media (max-width: 719px) {
+  :root :is(.db-fix-go, .pc-open, .hub-shelves-all, .ct-gl-link, .lib-contents-head,
+            .sh-where-group, .st-tier-alt, .st-brand, .legal-back, .site-foot a,
+            .db-link, .rd-go, .tw-link,
+            .skip-link, .skip-to-content, .btn) {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min, 44px);
+  }
+  :root .lib-contents-head { display: grid; align-content: center; }
+  :root .sh-where-group { min-width: var(--tap-min, 44px); justify-content: center; }
+}
+
+/* ---- PHONE TAP FLOOR · CHECKBOXES (15 Oct 2026) ------------------------
+   The checkbox INPUT is the target a thumb hits, so it is 44 x 44 itself;
+   the visible box stays a small square drawn by ::before, with the tick
+   in ::after, centred in that hit area. A native 16px box under a
+   min-height reached only height. Scoped to the rows that carry one in a
+   phone list (the kit's check, a call-sheet pick row, a streamer row) so
+   no inline checkbox elsewhere changes layout. */
+@media (max-width: 719px) {
+  :root:root :is(.k-check, .ct-pick-row, .ct-call-who, .dv-ott-row) > input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    position: relative;
+    flex: 0 0 var(--tap-min);
+    width: var(--tap-min); height: var(--tap-min); min-width: var(--tap-min);
+    margin: 0; padding: 0;
+    border: 0; border-radius: 0; background: none;
+    display: inline-block;
+  }
+  :root:root :is(.k-check, .ct-pick-row, .ct-call-who, .dv-ott-row) > input[type="checkbox"]::before {
+    content: '';
+    position: absolute; top: 50%; left: 50%;
+    width: 20px; height: 20px; margin: -10px 0 0 -10px;
+    box-sizing: border-box;
+    border: 1px solid var(--border-grip); border-radius: 4px;
+    background: var(--surface-rail);
+  }
+  :root:root :is(.k-check, .ct-pick-row, .ct-call-who, .dv-ott-row) > input[type="checkbox"]:checked::before {
+    background: var(--accent-primary); border-color: var(--accent-primary);
+  }
+  :root:root :is(.k-check, .ct-pick-row, .ct-call-who, .dv-ott-row) > input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute; top: 50%; left: 50%;
+    width: 10px; height: 5px; margin: -4px 0 0 -5px;
+    border-left: 1.5px solid var(--brand-on); border-bottom: 1.5px solid var(--brand-on);
+    background: none;
+    transform: rotate(-45deg);
+  }
+  :root:root :is(.k-check, .ct-pick-row, .ct-call-who, .dv-ott-row) > input[type="checkbox"]:checked {
+    background: none; border: 0;
+  }
+  :root:root :is(.k-check, .ct-pick-row, .ct-call-who, .dv-ott-row) > input[type="checkbox"]:focus-visible {
+    outline: var(--focus); outline-offset: -2px;
+  }
+}

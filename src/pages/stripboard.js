@@ -142,7 +142,12 @@ function renderHeader(scenes, rows) {
        + 'you will shoot them — everything in one location together, every night '
        + 'exterior together — then hand each group a shoot day. The day out of '
        + 'days below builds itself from that.',
-    actions: [h('div.sb-lock-host', {}, [lockButton()])]
+    /* The shoot calendar lives on the Plan (owner, 14 Oct 2026): this
+       page links to it rather than drawing a second, read-only copy. */
+    actions: [
+      button({ label: 'Shoot calendar', icon: 'calendar_month', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', href: 'plan.html#calendar', class: 'sb-cal-plan' }),
+      h('div.sb-lock-host', {}, [lockButton()])
+    ]
   });
   const strips = statCard({
     label: 'Strips', value: scenes.length ? String(scenes.length) : '—',
@@ -208,16 +213,15 @@ function renderHeader(scenes, rows) {
 function fillRuntime(strip) {
   Promise.all([
     import('../lib/screenplay-analysis.js'), import('../lib/script.js'),
-    import('../lib/songs.js'), import('../lib/editlog.js')
-  ]).then(([A, S, Sg, E]) => {
+    import('../lib/songs.js'), import('../lib/target-runtime.js')
+  ]).then(([A, S, Sg, T]) => {
     if (!strip.isConnected) return;
     const scenes = Scenes.listScenes();
     const st = A.default.screenTime(scenes, S.loadScript().elements);
     if (!st || !st.fromScript) return;
     const songs = Sg.listSongs().map((x) => ({ id: x.id, seconds: Sg.durationSeconds(x) }));
-    let editMin = 0;
-    try { editMin = E.getTargetMin(); } catch (e) { /* no edit log */ }
-    const target = Board.targetMinutes(Sg.getTargetMinutes(), editMin);
+    // the ONE target: the helper the screenplay and the Edit Log read
+    const target = T.targetRuntime().minutes;
     const est = A.default.runtimeEstimate(st, songs, { targetSeconds: target * 60 });
     if (!est.total) return;
     const mins = Math.max(1, Math.round(est.total / 60));
@@ -1017,71 +1021,6 @@ function doodCards(rows, days, dateOf, today) {
   return list;
 }
 
-/* ---- calendar --------------------------------------------------
-   The shoot days in date order (mobile prototypes 1 and 3), read-only:
-   calendarDays() is what the Plan calendar, the shoot day and the call
-   sheet already read, so this tab adds no data, only a view. Dates are
-   set on the Plan; the link says so. */
-function renderCalendar(scenes) {
-  const wrap = h('section.sb-cal', { id: 'calendar', 'data-tab-label': 'Calendar' });
-  wrap.append(h('div.sb-dood-head', {}, [
-    h('div', {}, [
-      eyebrow(['Calendar', 'Shoot days']),
-      h('h2.bd-h2', { text: 'Shoot calendar' }),
-      h('p.bd-sub', {
-        text: 'Every shoot day in date order, with its pages, its locations and its call. '
-            + 'The dates come from the Plan, so this tab has nothing to fill in.'
-      })
-    ]),
-    button({ label: 'Set dates on the Plan', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', href: 'plan.html#calendar', class: 'sb-cal-plan' })
-  ]));
-  const days = scenes.length ? Locations.calendarDays(scenes) : [];
-  if (!days.length) {
-    wrap.append(h('p.bd-none', {
-      text: 'No shoot days yet. Give a strip a day on the board and it appears here; '
-          + 'date the day on the Plan and it takes its place in the calendar.'
-    }));
-    return wrap;
-  }
-  const iso = (d) => String(d.date || '').slice(0, 10);
-  const sorted = [...days].sort((a, b) => {
-    const x = iso(a), y = iso(b);
-    if (x && y) return x.localeCompare(y) || a.day - b.day;
-    if (x || y) return x ? -1 : 1;
-    return a.day - b.day;
-  });
-  const today = todayISO();
-  const sheets = Contacts.listCallSheets();
-  const list = h('ol.sb-cal-list');
-  for (const d of sorted) {
-    const dated = localDate(d.date);
-    const call = dayCallFor(d.day, scenes, sheets);
-    const isToday = iso(d) && iso(d) === today;
-    const facts = h('div.sb-cal-facts', {}, [
-      h('span.sb-group-meta.k-badge', {
-        text: `${d.scenes.length} ${d.scenes.length === 1 ? 'scene' : 'scenes'} · ${formatEighths(d.eighths)} ${d.eighths === 8 ? 'page' : 'pages'}`
-      }),
-      call ? badge({ label: 'Call ' + call, icon: 'schedule', tag: true, class: 'sb-call' }) : null,
-      d.cast.length ? badge({ label: `${d.cast.length} cast`, icon: 'group', tag: true }) : null,
-      isToday ? badge({ label: 'Today', tone: 'info', dot: true }) : null
-    ].filter(Boolean));
-    list.append(h('li.sb-cal-day' + (isToday ? '.is-today' : '') + (dated ? '' : '.is-undated'), {}, [
-      h('div.sb-cal-when', {}, [
-        h('span.sb-cal-dnum', { text: 'Day ' + d.day }),
-        h('span.sb-cal-date', { text: dated || 'No date yet' })
-      ]),
-      h('div.sb-cal-what', {}, [
-        facts,
-        d.locations.length
-          ? h('span.sb-group-locs', {}, [sym('place'), h('span', { text: d.locations.join(', ') })])
-          : null
-      ].filter(Boolean))
-    ]));
-  }
-  wrap.append(list);
-  return wrap;
-}
-
 /* ---- render --------------------------------------------------- */
 function render() {
   // Dropped every render, not every page load. A cache that outlives
@@ -1108,11 +1047,10 @@ function render() {
               + 'tags and the shoot days on the breakdown, so there is nothing to '
               + 'fill in here and nothing to show until there are scenes.'
         })
-      ]),
-      renderCalendar(scenes)
+      ])
     );
   } else {
-    main.append(renderBoard(scenes), renderDood(scenes), renderCalendar(scenes));
+    main.append(renderBoard(scenes), renderDood(scenes));
   }
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it

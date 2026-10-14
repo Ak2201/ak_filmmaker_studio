@@ -952,10 +952,21 @@ function renderFrame(frame, shot, i, total, cams) {
   ].filter(Boolean));
   card.append(slate);
 
-  card.append(kitField({
-    label: 'Reference', value: frame.ref, placeholder: 'https://… or describe the frame in words',
-    class: 'vz-fieldset', attrs: { 'data-frame-field': 'ref', 'aria-label': 'Frame reference' }
-  }));
+  /* A drawn frame's reference is the Drive file it lives in. The stored
+     `drive:<fileId>` is a pointer, not something to read or retype, so
+     the field says where the picture is and is read-only, with no
+     data-frame-field: nothing typed here can overwrite the pointer.
+     The stored ref is unchanged. */
+  card.append(driveFileIdOf(String(frame.ref || '').trim())
+    ? kitField({
+      label: 'Reference', value: 'In your Google Drive',
+      hint: 'The picture lives in your Drive; the frame keeps only the link.',
+      class: 'vz-fieldset vz-ref-drive', attrs: { readonly: '', 'aria-label': 'Frame reference', 'aria-readonly': 'true' }
+    })
+    : kitField({
+      label: 'Reference', value: frame.ref, placeholder: 'https://… or describe the frame in words',
+      class: 'vz-fieldset', attrs: { 'data-frame-field': 'ref', 'aria-label': 'Frame reference' }
+    }));
   card.append(kitField({
     label: 'Caption', value: frame.caption, placeholder: 'What changes by the end of the shot',
     class: 'vz-fieldset', attrs: { 'data-frame-field': 'caption', 'aria-label': 'Frame caption' }

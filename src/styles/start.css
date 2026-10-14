@@ -938,7 +938,12 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
    plans are the point of this page, and the proof section carries the
    tour. */
 @media (max-width: 719px) {
-  .st-hero .st-shot-hero { display: none; }
+  /* "See it working" and the Demo links target this figure, so it is
+     never hidden: a hidden target is a dead button. On a phone it shows
+     the screenplay page and its breakdown, which is the demonstration;
+     the scene list and the caption stay a desk-width detail. */
+  .st-hero .st-shot-hero .sn-col-list { display: none; }
+  .st-hero .st-shot-hero { scroll-margin-top: calc(var(--s9) + var(--s2)); }
 }
 
 /* The comparison fits the column at every width rather than scrolling
@@ -966,3 +971,43 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
 .st-everything-sub { margin-top: var(--s7); }
 .st-everything-sub + .st-grid { margin-top: var(--s3); }
 .st-everything-cta { margin-top: var(--s6); }
+
+/* Phone tap floor: 44px tall by width (this page loads no kit.css). */
+@media (max-width: 719px) {
+  .st .st-tier-alt, .st-brand, .legal-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* Phone tap floor: the footer links are 44px tall by width. */
+@media (max-width: 719px) {
+  .st-foot-links a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* Phone tap floor: nav and footer links 44px wide as well as tall, and the
+   lead form's consent checkbox a 44px hit area around the same small box. */
+@media (max-width: 719px) {
+  .st-nav a, .st-foot-links a { min-width: 44px; justify-content: center; }
+  .st-nav a { display: inline-flex; align-items: center; min-height: 44px; }
+  .st-lead-consent input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    position: relative;
+    margin: 0; width: 44px; height: 44px; min-width: 44px;
+    border: 0; background: none;
+  }
+  .st-lead-consent input[type="checkbox"]::before {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 20px; height: 20px; margin: -10px 0 0 -10px; box-sizing: border-box;
+    border: 1px solid var(--ink-muted); border-radius: 4px; background: var(--paper);
+  }
+  .st-lead-consent input[type="checkbox"]:checked::before { background: var(--accent-gold); border-color: var(--accent-gold); }
+  .st-lead-consent input[type="checkbox"]:checked::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 10px; height: 5px; margin: -4px 0 0 -5px;
+    border-left: 2px solid var(--paper); border-bottom: 2px solid var(--paper);
+    transform: rotate(-45deg);
+  }
+  .st-lead-consent input[type="checkbox"]:focus-visible { outline: var(--focus); outline-offset: -2px; }
+}

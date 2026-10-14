@@ -24,7 +24,7 @@ import '../styles/path-bar.css';
 
 /* production serves clean URLs (/breakdown), the dev server .html */
 const file = () => { const p = location.pathname.split('/').pop() || 'index'; return /\.html$/.test(p) ? p : p + '.html'; };
-const hrefOf = (s) => (s.id === 'ready' ? 'preprod.html#ready' : s.tool.href);
+const hrefOf = (s) => (s.id === 'ready' ? 'preprod.html#step-ready' : s.tool.href);
 
 export function mountPathBar(main) {
   if (!main || !Store.currentProject()) return null;

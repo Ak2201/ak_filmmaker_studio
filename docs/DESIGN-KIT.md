@@ -229,8 +229,8 @@ decision.
   switcher rows); Backup and the theme button stay in the zone and are
   reached through **Tools**, which borrows the whole zone. measureChrome()
   reads the pin, so fragments and the tab strip park under it.
-- **Bottom bar** stays **Home · Go to · Search · Tools** (Settings in
-  Search's slot on a global page): four equal cells, icon over label, the
+- **Bottom bar** stays **Home · Go to · Search · Tools** on EVERY page,
+  global pages included (owner, 14 Oct 2026): four equal cells, icon over label, the
   current one on the active fill with a violet icon.
 - **Status dock**: the same one-line real-data bar as the desk (version,
   sync, storage), on the canvas, above the bottom bar.

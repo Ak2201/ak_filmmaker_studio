@@ -880,10 +880,11 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 }
 
 @media (max-width: 719px) {
-  /* Not pinned on a phone: three rows of chrome held over the page
-     took a third of an 844px screen above the line being typed
-     (CLAUDE.md, "Sticky the navigation" — below 1100px chrome scrolls
-     away on purpose). The chips stay docked at the foot. */
+  /* The page's own bar is not pinned on a phone: under the pinned 56px
+     band (owner, 14 Oct 2026 — the band stays) a second pinned bar of
+     three rows took a third of an 844px screen above the line being
+     typed. The band stays put; this bar scrolls. The chips stay docked
+     at the foot. */
   .sc-top { position: relative; top: auto; }
   /* The meta strip: crumb, then the counts. */
   .sc-meta { gap: var(--s1) var(--s3); padding-block: var(--s2); }

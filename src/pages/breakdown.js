@@ -1661,15 +1661,18 @@ delegate(document, 'change', '[data-song-field]', (e, el) => {
 });
 
 /* ---- the whole-script breakdown ------------------------------ */
-function toastRun(res) {
+function runSaid(res) {
   const a = res.applied, t = res.totals;
-  const said = a.empty
+  return a.empty
     ? 'The script has no scene headings yet, so there was nothing to break down.'
     : 'Broke down ' + t.scenes + (t.scenes === 1 ? ' scene' : ' scenes') + ', '
       + res.characters.length + (res.characters.length === 1 ? ' character' : ' characters') + ' and '
       + t.locations + (t.locations === 1 ? ' location' : ' locations') + '.'
       + (a.castTagged ? ' Tagged ' + a.castTagged + ' cast from the dialogue cues.' : '');
-  STATUS = said;
+}
+function toastRun(res) {
+  const a = res.applied;
+  const said = runSaid(res);
   if (a.castTagged) {
     StudioUI.toast(said, {
       action: 'Undo cast tagging',
@@ -1691,9 +1694,12 @@ const flowHooks = (tab) => ({
     if (!res) return;
     flushStorage().catch(() => {});
     scriptDoc = null;
-    toastRun(res);
+    STATUS = runSaid(res);
     render(tab);
   },
+  /* the run's toast waits for the reviews to end: on a phone it sat
+     over the existing-shots question and the Desk's sheet */
+  announce: (res) => { if (res) toastRun(res); },
   refresh: () => { scriptDoc = null; render(tab); }
 });
 setFlowHooks(flowHooks);
@@ -1733,6 +1739,7 @@ delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) =>
   let res;
   try { res = runBreakdown(); } catch (err) { console.warn('[breakdown] run', err); StudioUI.toast('The script was imported, but the breakdown could not run.', { type: 'error' }); render(); return; }
   await flushStorage().catch(() => {});
+  STATUS = runSaid(res);
   toastRun(res);
   render('#overview');
 });

@@ -342,6 +342,13 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
 @media (pointer: coarse) {
   .tabs-tab, .tabs-sections { min-height: 44px; }
 }
+/* A phone's tab strip is a thumb target whatever the pointer reports
+   (a 390px browser window with a mouse is still the phone layout, and
+   verify's resize is one): 44px below 720px. Doubled classes, so no
+   later strip rule can order it out. */
+@media (max-width: 719px) {
+  .tabs-tab.tabs-tab, .tabs-sections.tabs-sections { min-height: 44px; }
+}
 
 /* ENTER. The panel that a user's switch makes visible rises a few
    pixels and fades in. tabs.js adds `.tabs-enter` only on a switch the

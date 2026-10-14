@@ -1,216 +1,149 @@
 /* ============================================================
-   VISUALIZE — shot list, storyboard, lookbook
+   VISUALIZE — shot list, storyboard, blocking, lookbook
    ------------------------------------------------------------
-   Only what is genuinely this page's own. The hierarchy (eyebrow →
-   title → deck), the stats strip, the teaching empty states, the
-   `.btn` controls and the `.scene-table` data table are the studio
-   language from modules.css, chrome.css and widgets.css, reused as
-   they are — a "new design language" that only one page speaks is
-   not a language.
+   The components are the kit's (src/styles/kit.css: .k-panel,
+   .k-table, .k-control, .k-badge, .k-btn, .k-notice, .k-stat). What
+   is left here is LAYOUT — which piece sits beside which — and the
+   few marks only this page draws (the frame slate, the overhead map).
+   Every colour is a token and every shape a --sk-* variable or a
+   radius token; a value this page needs and the kit lacks is added to
+   the kit, not typed here.
 
-   Every colour here is a token and every shape is a --sk-* skin
-   variable, so the page is correct in all five skins and all four
-   themes without knowing which one is on. The phase hue is set once,
-   at the top of each section, and everything below speaks in --hue.
-
-   THE TABLES SCROLL, THE PAGE DOES NOT. `.scene-table` is
-   `display:block; overflow-x:auto`, so its inner rows can be wider
-   than the column it sits in without pushing horizontal scroll onto
-   the document — which is why the column widths below are set on the
-   CELLS and never as a min-width on the table itself. A min-width on
-   the block would be exactly the 390px overflow bug the check looks
-   for. A shot list with seven columns genuinely cannot reflow, so it
-   scrolls, and the rest of the page stays inside the viewport.
+   THE TABLES SCROLL, THE PAGE DOES NOT. Each coverage table sits in a
+   .k-table-wrap (overflow:auto), so its rows can be wider than the
+   column without pushing horizontal scroll onto the document. Column
+   widths are set on the CELLS, never as a min-width on the wrapper —
+   that would be the 390px overflow the gate checks for.
    ============================================================ */
 
 .vz-shots,
 .vz-board,
 .vz-look,
 .vz-blocking,
-.vz-sceneboard {
+.vz-sceneboard,
+.vz-ai {
   --hue: var(--visualize);
   --hue-on: var(--visualize-on);
-  max-width: var(--measure-wide);
-  margin-inline: auto;
+  min-width: 0;
   padding-inline: var(--s5);
+  padding-block: var(--s6);
 }
-.vz-shots { padding-block: var(--s6); }
-.vz-board { padding-block: var(--s6); }
-.vz-look  { padding-block: var(--s6) var(--s9); }
-.vz-blocking, .vz-sceneboard { padding-block: var(--s6); }
+.vz-look { padding-bottom: var(--s9); }
+
+.vz-head .vz-stats { grid-column: 1 / -1; margin-top: var(--s4); }
 
 .vz-add,
-.vz-add-frame { justify-self: start; margin-top: var(--s3); font-size: var(--t-small); }
+.vz-add-frame { justify-self: start; }
 
-/* The local-first disclosure. It is a statement of how the app works,
-   not a warning, so it reads as a note and not as an error. */
-.vz-note {
-  margin: 0 0 var(--s5);
-  padding: var(--s3) var(--s4);
-  background: var(--accent-wash);
-  border-left: var(--sk-hue-rule-w) solid var(--hue);
-  border-radius: var(--sk-radius);
-  color: var(--ink-body);
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
+/* The local-first disclosure is a kit notice; only its spacing is ours. */
+.vz-note { margin: 0 0 var(--s5); }
+
+.vz-fieldset { margin-top: var(--s2); }
+
+/* ------------------------------------------------------------
+   1. THE SHOT LIST — a coverage panel per covered scene, and a
+   compact row per scene still to cover
+   ------------------------------------------------------------ */
+
+.vz-scene.k-panel { margin-bottom: var(--s5); }
+
+.vz-scene-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
 }
-.vz-note strong { color: var(--ink); }
-
-.vz-fieldset { display: grid; gap: var(--s1); min-width: 0; margin-top: var(--s2); }
-.vz-flabel {
+.vz-scene-head.k-panel-head { padding-block: var(--s3); }
+.vz-scene-slug {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.vz-scene-badges { display: inline-flex; gap: var(--s1); }
+.vz-scene-count {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-/* ------------------------------------------------------------
-   1. THE SHOT LIST — one block per scene
-   ------------------------------------------------------------ */
-
-.vz-scene { display: grid; margin-bottom: var(--s6); min-width: 0; }
-
-.vz-scene-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s3);
-  padding-bottom: var(--s2);
-  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
-}
-.vz-scene-no {
-  padding: 0 var(--s2);
-  background: var(--hue);
-  color: var(--hue-on);
+/* Scenes with no shots yet: one hairline-ruled list, a row each. */
+.vz-uncovered {
+  display: grid;
+  margin-bottom: var(--s5);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line);
   border-radius: var(--sk-radius);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
-.vz-scene-slug {
-  flex: 1 1 12rem;
-  min-width: 0;
-  font-family: var(--f-display);
-  font-size: var(--t-small);
-  font-weight: 700;
-  letter-spacing: var(--track-tight);
-  color: var(--ink);
-}
-.vz-scene-count {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-}
+.vz-scene.is-empty .vz-scene-head { padding: var(--s2) var(--s4); }
+.vz-scene.is-empty + .vz-scene.is-empty { border-top: 1px solid var(--border-hair); }
+.vz-scene.is-empty .vz-scene-slug { font-weight: 500; color: var(--ink-body); }
 
 /* A scene deleted in the breakdown leaves its shots behind. They are
    shown, marked, and removable on purpose — never hidden. */
-.vz-scene-head.is-orphan { border-bottom-color: var(--warn); }
-.vz-scene-head.is-orphan .vz-scene-no { background: var(--warn); color: var(--ink); }
-.vz-orphan-note {
-  margin: var(--s2) 0 0;
-  color: var(--ink-muted);
-  font-size: var(--t-tiny);
-  line-height: var(--lh-snug);
-  max-width: var(--measure);
-}
+.vz-scene.is-orphan { border-color: var(--warn-line); }
+.vz-orphan-note { margin: var(--s3) var(--s4) 0; }
 
-/* Column sizing lives on the cells, for the reason in the header. */
-.vz-table { margin-top: var(--s3); }
+/* The coverage table sits flush inside its panel. */
+.vz-scene .vz-table-wrap { border: 0; border-radius: 0; }
 
-/* The sideways cue for the shot table (UX audit L30). Hidden where
-   the seven columns fit; under 940px the table scrolls inside itself,
-   so the cue says so, and the table's scrollbar is kept visible on
-   engines that would otherwise overlay it out of sight. */
+/* The sideways cue (UX audit L30), only where the table overflows. */
 .vz-scroll-hint { display: none; }
 @media (max-width: 939px) {
   .vz-scroll-hint {
     display: block;
-    margin: var(--s3) 0 0;
+    margin: var(--s2) var(--s4) var(--s1);
     font-family: var(--f-mono);
     font-size: var(--t-micro);
     letter-spacing: var(--track-label);
     text-transform: uppercase;
     color: var(--ink-muted);
   }
-  .vz-scroll-hint + .vz-table { margin-top: var(--s1); scrollbar-width: thin; scrollbar-color: var(--ink-faint) transparent; }
 }
-.vz-table th { white-space: nowrap; }
-/* Sized to FIT the wide measure (887px) — at the old widths the table
-   needed 1016px, so even at 1280 it scrolled with no cue and the row
-   controls sat out of sight past the right edge. Tighter cell padding
-   and slightly narrower pickers buy the 130px.
-   Doubled class: widgets.css's `.scene-table td` ties and loads later. */
-.vz-table.scene-table th,
-.vz-table.scene-table td { padding-inline: var(--s2); }
-.vz-table .vz-c-no   { width: 4rem; min-width: 4rem; }
-.vz-table .vz-c-lens { min-width: 5rem; }
-.vz-table .vz-c-desc { min-width: 14rem; }
-.vz-table .vz-c-done { min-width: 5.5rem; }
-.vz-table .vz-c-ctrl { width: 5.5rem; min-width: 5.5rem; }
+
 .vz-table td { vertical-align: top; }
+.vz-table th, .vz-table td { padding-inline: var(--s2); }
+.vz-table .vz-c-no   { width: 4.5rem; min-width: 4.5rem; }
+.vz-table .vz-c-size { width: 8.5rem; min-width: 8.5rem; }
+.vz-table .vz-c-size .k-control + .k-control { margin-top: var(--s1); }
+.vz-table .vz-c-move { width: 7rem; min-width: 7rem; }
+.vz-table .vz-c-lens { width: 7.5rem; min-width: 7.5rem; }
+.vz-table .vz-c-lens .k-control + .k-control { margin-top: var(--s1); }
+.vz-table .vz-c-desc { min-width: 9.5rem; }
+.vz-table .vz-c-done { width: 7rem; min-width: 7rem; }
+.vz-done-stack { display: grid; gap: var(--s1h); justify-items: start; }
+.vz-table .vz-c-ctrl { width: 4rem; }
+.vz-done-stack .vz-c-ctrl { width: auto; }
+.vz-table .vz-c-ref  { min-width: 13rem; }
+.vz-cov .vz-no { color: var(--brand-deep); }
+.vz-ai-tag { margin-top: var(--s1); }
+.vz-rules-tag { border-style: dashed; }
 
-/* Selects are not covered by the shared in-table field rule, which
-   only names .pp-table — so they get the same flush treatment here
-   instead of the full-bleed form control from base.css. */
-.vz-table select {
-  width: 100%;
-  min-width: 6rem;
-  padding: var(--s2);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--sk-radius);
-  font-size: var(--t-small);
-  color: var(--ink);
-  cursor: pointer;
-}
-.vz-table select:hover { border-color: var(--rule); }
-.vz-table select:focus-visible { border-color: var(--accent); outline: none; background: var(--paper); }
-.vz-table .vz-no {
-  font-family: var(--f-mono);
-  font-size: var(--t-tiny);
-  font-variant-numeric: tabular-nums;
-  color: var(--accent-deep);
-}
-
-/* A checkbox is the one control that must not be 100% wide. */
-.vz-check { display: inline-flex; align-items: center; gap: var(--s2); cursor: pointer; }
-.vz-check input[type="checkbox"] {
-  width: auto;
-  min-width: 0;
-  flex: none;
-  margin: 0;
-  padding: 0;
-  accent-color: var(--ok);
-}
-.vz-check-lab {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  color: var(--ink-muted);
-}
 .vz-row.is-done .vz-desc,
-.vz-row.is-done .vz-no { opacity: .55; }
-.vz-row.is-done .vz-check-lab { color: var(--ok-deep); }
+.vz-row.is-done .vz-no { color: var(--ink-muted); }
 
 .vz-table .row-ctrl { white-space: nowrap; }
 
+.vz-scene-acts.k-panel-foot { justify-content: flex-start; align-items: center; }
+
 /* ------------------------------------------------------------
-   2. THE STORYBOARD — a column per shot, grouped by scene
+   2. THE STORYBOARD — a card per shot, grouped by scene
    ------------------------------------------------------------ */
 
-.vz-bd-scene { margin-bottom: var(--s6); min-width: 0; }
+.vz-bd-scene.k-panel { margin-bottom: var(--s5); }
 
 .vz-strip {
   display: grid;
-  /* min() keeps the track from demanding 260px inside a 358px column
-     minus its padding — the narrow-viewport overflow this page is
-     checked for. */
+  /* min() keeps the track from demanding 260px inside a narrow column. */
   grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
-  gap: var(--sk-grid-gap);
-  margin-top: var(--s3);
+  gap: var(--sk-grid-gap, var(--s3));
+  align-items: start;
 }
 
 .vz-shotcol {
@@ -218,22 +151,12 @@
   align-content: start;
   gap: var(--s2);
   min-width: 0;
-  padding: var(--sk-card-pad);
-  background: var(--sk-card-bg);
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-top: var(--sk-hue-rule-w) solid var(--hue);
+  padding: var(--s3);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
   border-radius: var(--sk-radius);
-  box-shadow: var(--sk-card-shadow);
-  color: var(--sk-card-ink);
 }
-.vz-shotcol-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
-.vz-shotcol-no {
-  font-family: var(--f-mono);
-  font-size: var(--t-small);
-  font-weight: 700;
-  color: var(--hue-deep);
-  font-variant-numeric: tabular-nums;
-}
+.vz-shotcol-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .vz-shotcol-spec {
   flex: 1 1 auto;
   min-width: 0;
@@ -241,7 +164,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--ink-body);
 }
 .vz-shotcol-count {
   font-family: var(--f-mono);
@@ -260,15 +183,14 @@
   display: grid;
   gap: var(--s1);
   min-width: 0;
-  padding: var(--s3);
-  background: var(--paper);
-  border: 1px solid var(--rule-hair);
+  padding: var(--s2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
   border-radius: var(--sk-radius);
 }
 
-/* The slate stands in for the drawing. It is a frame-shaped space
-   holding the reference, because this app stores no images — see the
-   note the page prints above the board. */
+/* The slate stands in for the drawing: a 16:9 frame holding the
+   reference, labelled from the shot (id, size, lens, move). */
 .vz-frame-slate {
   position: relative;
   display: grid;
@@ -276,28 +198,38 @@
   gap: var(--s2);
   min-height: 6rem;
   aspect-ratio: 16 / 9;
-  padding: var(--s4) var(--s3) var(--s3);
-  background: var(--paper-sunk);
-  border: 1px dashed var(--rule);
-  border-radius: var(--sk-radius);
+  padding: var(--s5) var(--s3);
+  background: var(--surface-canvas);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
   text-align: center;
   overflow: hidden;
 }
-.vz-frame-badge {
+.vz-frame-badge,
+.vz-frame-lens,
+.vz-frame-rig,
+.vz-frame-move {
   position: absolute;
-  top: var(--s1);
-  left: var(--s2);
-  font-family: var(--f-mono);
+  padding: var(--s-half) var(--s1h);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--ink-muted);
+  text-transform: uppercase;
+  color: var(--ink-body);
+  white-space: pre;
 }
+.vz-frame-badge { top: var(--s1h); left: var(--s1h); color: var(--ink); }
+.vz-frame-lens  { top: var(--s1h); right: var(--s1h); color: var(--brand-deep); }
+.vz-frame-move  { bottom: var(--s1h); left: var(--s1h); }
+.vz-frame-rig   { bottom: var(--s1h); right: var(--s1h); max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
 .vz-frame-view { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .vz-frame-link {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--accent-deep);
+  color: var(--brand-deep);
 }
 .vz-frame-desc {
   font-size: var(--t-tiny);
@@ -309,97 +241,54 @@
   line-height: var(--lh-snug);
   color: var(--ink-muted);
 }
-
-.vz-frame input {
-  padding: var(--s2);
-  font-size: var(--t-tiny);
-  border-radius: var(--sk-radius);
-}
-.vz-frame-acts { display: flex; gap: var(--s1); justify-content: flex-end; margin-top: var(--s1); }
+.vz-frame-acts { display: flex; justify-content: flex-end; margin-top: var(--s1); }
 
 /* ------------------------------------------------------------
    3. THE LOOKBOOK — named boards of references
    ------------------------------------------------------------ */
 
-.vz-boardcard {
-  display: grid;
-  gap: var(--s2);
-  min-width: 0;
-  margin-bottom: var(--s5);
-  padding: var(--sk-card-pad);
-  background: var(--sk-card-bg);
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-left: var(--sk-hue-rule-w) solid var(--hue);
-  border-radius: var(--sk-radius);
-  box-shadow: var(--sk-card-shadow);
-  color: var(--sk-card-ink);
-}
-.vz-board-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.vz-board-name {
-  flex: 1 1 12rem;
-  min-width: 0;
-  padding: var(--s2) var(--s3);
-  background: var(--paper);
-  border: 1px solid var(--rule-hair);
-  border-radius: var(--sk-radius);
-  font-family: var(--f-display);
-  font-size: var(--t-lg);
-  font-weight: 700;
-  letter-spacing: var(--track-tight);
-  color: var(--ink);
-}
+.vz-boards { display: grid; gap: var(--s5); margin-bottom: var(--s4); }
+.vz-board-head.k-panel-head { flex-wrap: wrap; padding-block: var(--s3); }
+.vz-board-namebox { flex: 1 1 12rem; }
+.vz-board-name.k-input { font-family: var(--f-display); font-size: var(--t-base); font-weight: 600; }
 .vz-board-count {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
-.vz-board-acts { display: flex; gap: var(--s1); margin-left: auto; }
+.vz-board-acts { display: flex; }
+.vz-board-body { display: grid; gap: var(--s3); }
+.vz-board-body .vz-fieldset { margin-top: 0; }
 .vz-board-none {
   margin: 0;
   color: var(--ink-muted);
   font-size: var(--t-small);
   line-height: var(--lh-snug);
 }
-
-.vz-boardcard .vz-fieldset input {
-  padding: var(--s2) var(--s3);
-  font-size: var(--t-small);
-  border-radius: var(--sk-radius);
-}
-
-.vz-table .vz-c-ref { min-width: 13rem; }
-/* Where both tables fit (the scroll-hint breakpoint), let them span
-   the column. As a display:block scroll box the table shrink-wraps its
-   content, so the lookbook's rows stopped 50px short of their own
-   border and header band. */
-@media (min-width: 940px) {
-  .vz-table.scene-table { display: table; width: 100%; }
-}
+.vz-board-foot.k-panel-foot { justify-content: flex-start; }
 .vz-entry-link {
   display: inline-block;
   margin-top: var(--s1);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--accent-deep);
+  color: var(--brand-deep);
 }
 
 /* ------------------------------------------------------------
    4. NARROW — 390px is the width this page is checked at.
-   Nothing here changes what is on screen, only how much air it
-   gets; the tables keep their own scroll and the frame grid
-   collapses to one column on its own.
    ------------------------------------------------------------ */
 @media (max-width: 719px) {
-  .vz-shots, .vz-board, .vz-look, .vz-blocking, .vz-sceneboard { padding-inline: var(--s4); }
-  .vz-board-acts { margin-left: 0; }
+  .vz-shots, .vz-board, .vz-look, .vz-blocking, .vz-sceneboard, .vz-ai { padding-inline: var(--s4); }
   .vz-scene-slug { flex-basis: 100%; }
+  .vz-scene.is-empty .vz-scene-head .vz-add { margin-left: auto; }
 }
 
 /* ------------------------------------------------------------
-   5. PRINT — the shot list and the lookbook are handed to people
-   on paper. What goes on paper is the writing, not the controls.
+   5. PRINT — what goes on paper is the writing, not the controls.
    ------------------------------------------------------------ */
 @media print {
   .vz-scroll-hint,
@@ -409,9 +298,10 @@
   .row-ctrl,
   .vz-c-ctrl,
   .vz-frame-acts,
-  .vz-board-acts { display: none !important; }
+  .vz-board-acts,
+  .vz-uncovered { display: none !important; }
 
-  .vz-table { overflow: visible; }
+  .vz-table-wrap { overflow: visible; }
   .vz-shotcol,
   .vz-boardcard,
   .vz-bd-scene { break-inside: avoid; }
@@ -419,100 +309,42 @@
 }
 
 /* ============================================================
-   6. THE EXPORT AFFORDANCES
-   ------------------------------------------------------------
-   One row above the scene blocks for the whole script, and one
-   beside "Add shot" for a single scene. Same menu component as
-   the reports page, so there is one thing to learn.
+   6. THE EXPORT AFFORDANCES — one row above the scene panels for
+   the whole script, and one in each panel's foot for that scene.
    ============================================================ */
 .vz-tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s3);
-  margin-bottom: var(--s5);
-  padding-block: var(--s3);
-  border-top: 1px solid var(--rule-hair);
-  border-bottom: 1px solid var(--rule-hair);
+  margin-bottom: var(--s4);
+  padding: var(--s2) var(--s4);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius);
 }
 .vz-tools-lab {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--ink-body);
 }
 .vz-tools-gap { flex: 1 1 auto; }
-.vz-scene-acts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s3);
-  margin-top: var(--s3);
-}
-
-/* A shot a machine drafted. It sits next to the shot number, so
-   it is read at the same moment as the shot it belongs to. */
-.vz-ai-tag {
-  display: inline-block;
-  margin-top: var(--s1);
-  padding: 0 var(--s1);
-  background: var(--accent-wash);
-  border: 1px solid var(--accent);
-  border-radius: var(--sk-radius);
-  /* --accent-deep, not --accent: an accent is a fill, and as text
-     on a light wash it runs under 4.5:1 in the brighter themes. */
-  color: var(--accent-deep);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  white-space: nowrap;
-}
-.vz-row.is-ai .vz-c-no { vertical-align: top; }
 
 /* ============================================================
    7. THE DRAFTING PANEL
    ------------------------------------------------------------
-   The only part of the studio that can open a network
-   connection, so it looks like a decision rather than a widget:
-   its own band, its own rule, and the disclosure above the
-   button rather than under it.
-
-   THE KEY FORM, THE KEY BAR, THE GATES, THE DISCLOSURE, THE
-   STATUS AND THE ERROR LINE ARE NOT STYLED HERE. They are
-   `.ai-*` from src/styles/ai.css, because they are the same
-   objects write.html and feature.html draw and the markup now
-   comes from the same src/ui/ai-panel.js. A dozen `.vz-ai-*`
-   rules used to restate them here, and a second copy of a
-   stylesheet goes stale exactly the way a second copy of a
-   parser does. What is left below is the band, and the scene
-   picker, which is the only part of this panel that is about
-   shots.
-
-   The three rules that follow the band are composition, not a
-   restatement: on write.html the panel sits INSIDE a card, so
-   the key form needs no frame of its own; here the panel IS the
-   band, so it does.
+   The key form, the key bar, the gates, the disclosure, the status
+   and the error line are `.ai-*` from src/styles/ai.css (the same
+   objects write.html and feature.html draw). What is left here is
+   the scene picker, the only part of this panel about shots.
    ============================================================ */
-.vz-ai {
-  --hue: var(--visualize);
-  --hue-on: var(--visualize-on);
-  max-width: var(--measure-wide);
-  margin-inline: auto;
-  padding-inline: var(--s5);
-  padding-block: var(--s6);
-  border-top: 1px solid var(--rule-hair);
-}
-/* The band's own spacing for the shared objects. Every one of
-   these is margin — no colour, no shape, nothing ai.css already
-   decides. */
+.vz-ai { border-top: 1px solid var(--border-hair); }
 .vz-ai > .ai-keygate,
 .vz-ai > .ai-gate,
 .vz-ai > .ai-bar,
 .vz-ai > .ai-disclose { margin-bottom: var(--s4); }
-
-/* The key form takes the card here because nothing else does:
-   write.html's `.ai-panel` is the card on that page. */
 .vz-ai .ai-key {
   max-width: 34rem;
   padding: var(--sk-card-pad);
@@ -520,17 +352,9 @@
   border: var(--sk-card-line-w) solid var(--sk-card-line);
   border-radius: var(--sk-radius);
 }
-
 .vz-ai-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-
-/* No key: the basic breakdown leads, and the key form follows the
-   buttons rather than standing in front of them. */
 .vz-ai > .vz-basic-note { margin-bottom: var(--s4); }
 .vz-ai-acts ~ .ai-keygate { margin-top: var(--s5); }
-
-/* A shot the basic breakdown drafted: the AI tag's shape, with a
-   dashed line so the two provenances read apart at a glance. */
-.vz-rules-tag { border-style: dashed; }
 
 .vz-ai-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
 .vz-ai-count {
@@ -542,39 +366,35 @@
 }
 .vz-ai-scenes {
   display: grid;
-  gap: var(--s1);
   margin-bottom: var(--s4);
   max-height: 22rem;
   overflow-y: auto;
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
 }
-.vz-ai-pickrow {
+.vz-ai-pickrow.k-check {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: var(--s2) var(--s3);
   min-width: 0;
-  padding: var(--s2) var(--s3);
-  background: var(--sk-card-bg);
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-radius: var(--sk-radius);
-  cursor: pointer;
+  padding: var(--s2) var(--s4);
 }
-.vz-ai-pickrow.has-shots { background: var(--paper-sunk); }
-.vz-ai-pickslug { flex: 1 1 12rem; min-width: 0; color: var(--ink); font-size: var(--t-small); }
+.vz-ai-pickrow + .vz-ai-pickrow { border-top: 1px solid var(--border-hair); }
+.vz-ai-pickrow:hover { background: var(--surface-hover); }
+.vz-ai-pickrow.has-shots { background: var(--surface-rail); }
+.vz-ai-pickslug { flex: 1 1 12rem; min-width: 0; color: var(--ink); font-size: var(--t-ui); }
 .vz-ai-pickmeta {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   color: var(--ink-muted);
 }
-/* Status and error are `.ai-status` / `.ai-error` from ai.css.
-   Only the gap above them is this page's business — on write.html
-   the panel's own grid supplies it. */
 .vz-ai > .ai-status,
 .vz-ai > .ai-error { margin-top: var(--s3); }
 
 @media (max-width: 719px) {
-  .vz-ai { padding-inline: var(--s4); }
   .vz-ai-scenes { max-height: none; }
 }
 
@@ -659,7 +479,7 @@
   }
   .vz-pr-c-no   { width: 7%; font-weight: 700; }
   .vz-pr-c-spec { width: 9%; }
-  .vz-pr-c-desc { width: 48%; }
+  .vz-pr-c-desc { width: 39%; }
   .vz-pr-c-done { width: 5%; text-align: center; }
 
   .vz-pr-total {
@@ -681,53 +501,123 @@
 /* ============================================================
    BLOCKING AND THE SCENE BOARD (src/ui/blocking.js)
    ------------------------------------------------------------
-   Marks are filled with the category hues and carry their label as
-   text in --ink, because identity is never colour alone and a fill is
-   never a text colour. Every shape reads a --sk-* variable or a token.
+   A setup is a kit panel: the map and its tools on the left, the
+   inspector (floor width, the selected mark, the crew note) on the
+   right from 1100px, below it otherwise. Marks are filled with
+   category hues and carry their label as text in --ink, because
+   identity is never colour alone and a fill is never a text colour;
+   the key under the map prints each kind by name and count.
    ============================================================ */
-.vz-blk-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-block: var(--s4); }
-.vz-blk { margin-block: var(--s5); padding: var(--s4); border: 1px solid var(--rule-hair); border-radius: var(--sk-radius, var(--radius)); background: var(--paper-raised); }
-.vz-blk-head, .vz-blk-tools, .vz-blk-sel { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
-.vz-blk-name { flex: 1 1 14rem; font-weight: 600; }
-.vz-blk-label { flex: 1 1 10rem; }
-.vz-blk-note { width: 100%; margin-top: var(--s3); }
-.vz-blk-hint { color: var(--ink-muted); margin: var(--s2) 0 0; }
+.vz-blk-pick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s3); margin-block: var(--s4); }
+.vz-blk-scenefield { flex: 0 1 28rem; min-width: 0; }
+.vz-blk.k-panel { margin-block: var(--s5); }
+.vz-blk-head.k-panel-head { flex-wrap: wrap; padding-block: var(--s3); }
+.vz-blk-namebox { flex: 1 1 14rem; }
+.vz-blk-name.k-input { font-family: var(--f-display); font-weight: 600; }
+.vz-blk-body { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) {
+  .vz-blk-body { grid-template-columns: minmax(0, 1fr) minmax(15rem, 18rem); align-items: start; }
+}
+.vz-blk-stage { display: grid; gap: var(--s3); min-width: 0; }
+.vz-blk-tools { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.vz-blk-side { display: grid; gap: var(--s4); align-content: start; min-width: 0; }
+.vz-blk-sel {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--brand-wash);
+  border: 1px solid var(--info-line);
+  border-radius: var(--sk-radius);
+}
+.vz-blk-selacts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.vz-blk-hint { margin: 0; color: var(--ink-muted); font-size: var(--t-tiny); line-height: var(--lh-snug); }
 
-.vz-map { display: block; width: 100%; max-width: 44rem; height: auto; border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); touch-action: pan-y; }
+.vz-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  touch-action: pan-y;
+}
 .vz-map.is-editable [data-mark], .vz-map.is-editable [data-handle] { touch-action: none; }
-.vz-map-ground { fill: var(--paper-sunk); }
-.vz-map-grid { fill: none; stroke: var(--rule-hair); stroke-width: 0.25; }
+.vz-map-ground { fill: var(--surface-canvas); }
+.vz-map-grid { fill: none; stroke: var(--border-hair); stroke-width: 0.25; }
 .vz-map-arrowhead { fill: var(--ink-muted); }
-.vz-mk-shape { stroke: var(--ink); stroke-width: 0.5; }
-.vz-mk-actor .vz-mk-shape { fill: var(--el-cast); }
-.vz-mk-camera .vz-mk-shape { fill: var(--el-props); }
-.vz-mk-mark .vz-mk-shape { fill: var(--el-vehicles); }
+.vz-mk-shape { stroke: var(--surface-canvas); stroke-width: 0.5; }
+.vz-mk-actor .vz-mk-shape  { fill: var(--el-cast); }
+.vz-mk-camera .vz-mk-shape { fill: var(--accent-primary); }
+.vz-mk-light .vz-mk-shape  { fill: var(--strip-day); }
+.vz-mk-mark .vz-mk-shape   { fill: var(--el-vehicles); }
+.vz-mk-track .vz-mk-shape  { fill: var(--accent-primary); }
 .vz-mk-face, .vz-mk-fov { stroke: var(--ink); stroke-width: 0.5; fill: none; }
-.vz-mk-fov { stroke-dasharray: 1.2 1; }
+.vz-mk-fov { stroke: var(--accent-primary); stroke-dasharray: 1.2 1; }
+.vz-mk-cone { fill: var(--accent-glow); stroke: none; }
+.vz-mk-beam { fill: var(--strip-day-bg); stroke: var(--strip-day); stroke-width: 0.3; stroke-dasharray: 1 1; }
+.vz-mk-ray { stroke: var(--strip-day); stroke-width: 0.5; }
+.vz-mk-rail { stroke: var(--accent-primary); stroke-width: 0.45; }
+.vz-mk-sleeper { stroke: var(--border-strong); stroke-width: 0.5; }
 .vz-mk-move { stroke: var(--ink-muted); stroke-width: 0.6; stroke-dasharray: 2 1.4; }
-.vz-mk-label { fill: var(--ink); font-size: 3.4px; font-family: var(--f-mono); paint-order: stroke; stroke: var(--paper-sunk); stroke-width: 0.8px; }
+.vz-map-reach { stroke: var(--ink-muted); stroke-width: 0.3; stroke-dasharray: 0.8 1.2; }
+.vz-mk-label,
+.vz-map-callout {
+  fill: var(--ink);
+  font-size: 2.9px;
+  font-family: var(--f-mono);
+  paint-order: stroke;
+  stroke: var(--surface-canvas);
+  stroke-width: 0.9px;
+}
+.vz-map-callout { fill: var(--ink-body); font-size: 2.5px; }
 .vz-map.is-editable .vz-mk, .vz-map.is-editable .vz-mk-handle { cursor: grab; }
 .vz-mk:focus-visible, .vz-mk-handle:focus-visible { outline: none; }
-.vz-mk:focus-visible .vz-mk-shape, .vz-mk.is-selected .vz-mk-shape, .vz-mk-handle:focus-visible { stroke: var(--focus-ring, var(--accent-deep)); stroke-width: 1.1; }
-.vz-mk-handle { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 0.6; }
+.vz-mk-camera.is-linked .vz-mk-shape { stroke: var(--ink); stroke-width: 1.1; }
+.vz-mk-camera.is-linked .vz-mk-cone { fill: var(--accent-primary); fill-opacity: 0.35; }
+.vz-mk:focus-visible .vz-mk-shape, .vz-mk.is-selected .vz-mk-shape, .vz-mk-handle:focus-visible { stroke: var(--ink); stroke-width: 1.1; }
+.vz-mk-handle { fill: var(--surface-elevated); stroke: var(--accent-primary); stroke-width: 0.6; }
 
-.vz-sb { display: grid; gap: var(--s4) var(--s5); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); margin-top: var(--s4); }
+/* The key: each kind on the map, by name and count. */
+.vz-map-key { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: 0; list-style: none; }
+.vz-map-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+.vz-key-swatch { width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--ink-muted); }
+.vz-key-actor .vz-key-swatch  { background: var(--el-cast); }
+.vz-key-camera .vz-key-swatch { background: var(--accent-primary); }
+.vz-key-light .vz-key-swatch  { background: var(--strip-day); }
+.vz-key-mark .vz-key-swatch   { background: var(--el-vehicles); }
+.vz-key-track .vz-key-swatch  { border-radius: var(--radius-sm); background: var(--accent-primary); }
+
+/* The scene board */
+.vz-sb { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); margin-top: var(--s4); }
 .vz-sb-head, .vz-sb-syn, .vz-sb-maps { grid-column: 1 / -1; }
-.vz-sb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s3); }
-.vz-sb-h { font-family: var(--f-mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-deep); margin: 0 0 var(--s2); }
-.vz-sb-script { max-height: 26rem; overflow: auto; padding-right: var(--s2); font-family: var(--f-script, var(--f-mono)); font-size: 0.9rem; }
+.vz-sb-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.vz-sb-head .vz-scene-slug { font-size: var(--t-lg); }
+.vz-sb-syn { margin: 0; color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-body); max-width: var(--measure); }
+.vz-sb-h.k-panel-title { font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--brand-deep); }
+.vz-sb-col .bd-none { margin: 0; }
+.vz-sb-script { max-height: 26rem; overflow: auto; padding-right: var(--s2); font-family: var(--f-script); font-size: var(--t-small); color: var(--ink-body); }
 .vz-sb-el { margin: 0 0 var(--s2); }
-.vz-sb-character { margin-left: 12rem; margin-bottom: 0; text-transform: uppercase; }
+.vz-sb-character { margin-left: 12rem; margin-bottom: 0; text-transform: uppercase; color: var(--ink); }
 .vz-sb-dialogue { margin-left: 6rem; max-width: 24rem; }
 .vz-sb-paren { margin-left: 9rem; }
-.vz-sb-table { width: 100%; }
-.vz-sb-table td, .vz-sb-table th { padding: var(--s1) var(--s2); text-align: left; vertical-align: top; }
+.vz-sb-scene { color: var(--ink); font-weight: 700; text-transform: uppercase; }
+.vz-sb-shots .k-panel-body { padding: 0; }
+.vz-sb-shots .k-table-wrap { border: 0; border-radius: 0; }
 .vz-sb-table tr.is-done td { color: var(--ink-muted); }
-.vz-sb-frames { padding-left: 1.2rem; margin: 0; }
-.vz-sb-maps { display: flex; flex-wrap: wrap; gap: var(--s4); }
-.vz-sb-maps .vz-sb-h { flex-basis: 100%; margin-bottom: 0; }
-.vz-sb-map { margin: 0; flex: 1 1 22rem; max-width: 30rem; }
-.vz-sb-map figcaption { color: var(--ink-muted); font-size: 0.85rem; margin-top: var(--s1); }
+.vz-sb-frames { padding-left: 1.2rem; margin: 0; color: var(--ink-body); font-size: var(--t-small); }
+.vz-sb-frames strong { color: var(--ink); }
+.vz-sb-mapgrid { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
+.vz-sb-map { margin: 0; }
+.vz-sb-map figcaption { color: var(--ink-muted); font-size: var(--t-tiny); margin-top: var(--s1); }
 
 @media (max-width: 720px) {
   .vz-sb-character, .vz-sb-dialogue, .vz-sb-paren { margin-left: var(--s4); }

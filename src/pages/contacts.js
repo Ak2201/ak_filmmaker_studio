@@ -34,13 +34,14 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
 import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
-import Scenes, { formatEighths } from '../lib/scenes.js';
+import Scenes, { formatEighths, ELEMENT_CATEGORIES } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
 import Sun from '../lib/sun.js';
 import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
 import WA from '../lib/callsheet-text.js';
 import { askDanger } from '../ui/dialog.js';
+import { pageHeader, statStrip, button, badge, panel } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
@@ -78,32 +79,26 @@ const slugOf = (scene) =>
 function renderHeader(contacts, sheets) {
   const cast = contacts.filter((c) => c.department === 'Cast').length;
   const depts = new Set(contacts.map((c) => c.department).filter(Boolean)).size;
-  return h('header.bd-head', {}, [
-    h('div.ct-head-row', {}, [
-      h('div.ct-head-copy', {}, [
-        h('p.bd-eyebrow', { text: 'Cast & Crew · call sheets & unit directory' }),
-        h('h1.bd-title', { text: 'Call Sheets & Dispatch.' }),
-        h('p.bd-deck', {
-          text: 'Everybody on the film, once, with a department and a number. '
-              + 'One call sheet per shoot day, built from this list and from the scenes '
-              + 'in the breakdown — call times, the light, the route to the nearest hospital, '
-              + 'and a WhatsApp message for each person called. A name is typed here and nowhere else.'
-        })
-      ]),
-      contacts.length
-        ? h('button.btn.primary', { type: 'button', 'data-action': 'sheet-add', text: 'New shoot day' })
-        : null
-    ]),
-    h('div.bd-stats.ct-kpis', {}, [
-      kpi('Unit roster', String(contacts.length), contacts.length === 1 ? 'person on the unit' : 'people on the unit'),
-      kpi('Talent registry', String(cast), 'in the cast'),
-      kpi('Production base', String(depts), depts === 1 ? 'department' : 'departments'),
-      kpi('Production slates', String(sheets.length), sheets.length === 1 ? 'call sheet built' : 'call sheets built')
-    ])
-  ]);
+  const wrap = h('header.ct-head');
+  wrap.append(pageHeader({
+    eyebrow: ['Cast & Crew', 'Call sheets & unit directory'],
+    title: 'Call Sheets & Dispatch.',
+    sub: 'Everybody on the film, once, with a department and a number. '
+       + 'One call sheet per shoot day, built from this list and from the scenes '
+       + 'in the breakdown — call times, the light, the route to the nearest hospital, '
+       + 'and a WhatsApp message for each person called. A name is typed here and nowhere else.',
+    actions: contacts.length
+      ? [button({ label: 'New shoot day', icon: 'add', variant: 'primary', pill: true, action: 'sheet-add' })]
+      : []
+  }));
+  wrap.append(statStrip([
+    { label: 'Unit roster', value: contacts.length, note: contacts.length === 1 ? 'person on the unit' : 'people on the unit' },
+    { label: 'Talent registry', value: cast, note: 'in the cast' },
+    { label: 'Production base', value: depts, note: depts === 1 ? 'department' : 'departments' },
+    { label: 'Production slates', value: sheets.length, note: sheets.length === 1 ? 'call sheet built' : 'call sheets built' }
+  ], { class: 'ct-kpis', label: 'Unit figures' }));
+  return wrap;
 }
-const kpi = (label, value, sub) =>
-  h('div.bd-stat.ct-kpi', {}, [h('span.ct-kpi-l', { text: label }), h('strong', { text: value }), h('span.ct-kpi-s', { text: sub })]);
 
 /* ---- the teaching empty state ------------------------------
    An empty module explains itself instead of showing a blank grid,
@@ -478,7 +473,8 @@ function renderSheetEdit(sheet, contacts, scenes) {
     h('div.ct-sheet-acts.pdf-menu-host', {}, [
       actionMenu('Export', [
         { label: 'Print this sheet', action: 'sheet-print' },
-        { label: 'Save as PDF',      action: 'sheet-pdf', hint: 'this sheet only' }
+        { label: 'Save as PDF',      action: 'sheet-pdf', hint: 'this sheet only' },
+        { label: 'Download sides packet', action: 'sheet-sides', hint: 'the day\'s scenes' }
       ], { align: 'right' }),
       iconBtn('✕', 'sheet-del', 'Delete this call sheet', false, true)
     ])
@@ -910,6 +906,7 @@ function factsOf(sheet, scenes) {
        Location line gives, or the crew is sent to the wrong set. */
     mapPlace: first && !sheet.location && places[0] && first.name !== places[0].name ? first.name : '',
     light: lit ? { ...lit.light, fallback: lit.place.fallback } : null,
+    safety: places.map((p) => ({ place: p.name, hospital: p.recce.hospital, police: p.recce.police })),
     scenes: onSheet.map((s) => ({ number: s.number, slug: slugOf(s), pages: formatEighths(s.eighths) })),
     pagesTotal: formatEighths(eighths),
     notes: sheet.notes
@@ -921,60 +918,78 @@ const personOf = (sheet, c) =>
 
 const canShare = () => typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
+/** WhatsApp-markdown to DOM: *bold* runs become <strong>, everything
+    else stays text (textContent only — never HTML from stored words). */
+function waPreview(text) {
+  const box = h('pre.ct-wa-preview', { 'aria-label': 'Message preview', tabindex: '0' });
+  String(text).split('\n').forEach((line, i, all) => {
+    line.split(/(\*[^*\n]+\*)/).forEach((part) => {
+      if (/^\*[^*\n]+\*$/.test(part)) box.append(h('strong', { text: part.slice(1, -1) }));
+      else if (part) box.append(document.createTextNode(part));
+    });
+    if (i < all.length - 1) box.append(document.createTextNode('\n'));
+  });
+  return box;
+}
+
 function renderSend(sheet, contacts, scenes) {
-  const wrap = h('div.ct-pick.ct-send');
-  wrap.append(h('h3.ct-pick-head', { text: 'Send this sheet' }));
   const facts = factsOf(sheet, scenes);
   const unit = WA.unitMessage(facts);
+  const called = calledOf(sheet, contacts);
+
   const acts = h('div.ct-send-acts');
-  acts.append(h('a.btn.primary.ct-send-wa', {
-    href: WA.waLink('', unit), target: '_blank', rel: 'noopener noreferrer',
-    text: 'Send to WhatsApp'
-  }));
-  if (canShare()) {
-    acts.append(h('button.btn', { type: 'button', 'data-action': 'sheet-share', text: 'Share…' }));
-  }
-  acts.append(h('button.btn', { type: 'button', 'data-action': 'sheet-copy', text: 'Copy text' }));
-  wrap.append(acts);
-  wrap.append(h('p.ct-pick-none', {
-    text: 'One message for the whole unit — WhatsApp asks which chat or group. '
+  acts.append(h('a.k-btn.k-btn--primary.k-btn--pill.ct-send-wa', {
+    href: WA.waLink('', unit), target: '_blank', rel: 'noopener noreferrer'
+  }, [h('span', { text: 'Send to WhatsApp' })]));
+  if (canShare()) acts.append(button({ label: 'Share…', icon: 'share', action: 'sheet-share' }));
+  acts.append(button({ label: 'Copy text', icon: 'content_copy', action: 'sheet-copy' }));
+
+  const body = h('div.ct-send-body');
+  body.append(h('p.ct-pick-none', {
+    text: 'The message below is built from this sheet right now. WhatsApp asks which chat or group it goes to; nothing is sent from here. '
         + unit.length + ' characters.'
   }));
+  body.append(waPreview(unit));
+  body.append(acts);
 
-  const called = calledOf(sheet, contacts);
   if (!called.length) {
-    wrap.append(h('p.ct-pick-none', { text: 'Call somebody above and each person gets their own message, with their own call time first.' }));
-    return wrap;
+    body.append(h('p.ct-pick-none', { text: 'Call somebody above and each person gets their own message, with their own call time first.' }));
+  } else {
+    const list = h('ul.ct-send-list');
+    called.forEach((c) => {
+      const digits = WA.waDigits(c.phone);
+      const li = h('li.ct-send-row', { 'data-contact': c.id });
+      li.append(h('span.ct-send-who', {}, [
+        h('span.ct-pick-name', { text: c.name || 'Unnamed' }),
+        h('span.ct-pick-role', { text: [c.department, c.role].filter(Boolean).join(' · ') })
+      ]));
+      li.append(h('span.ct-send-call', {
+        text: sheet.calls[c.id] || (sheet.generalCall ? sheet.generalCall + ' (general)' : 'General call')
+      }));
+      if (digits) {
+        li.append(h('a.k-btn.k-btn--sm.ct-send-btn', {
+          href: WA.waLink(digits, WA.personMessage(facts, personOf(sheet, c))),
+          target: '_blank', rel: 'noopener noreferrer',
+          'aria-label': 'WhatsApp ' + (c.name || 'this person') + ' their call'
+        }, [h('span', { text: 'WhatsApp' })]));
+      } else {
+        li.append(h('button.k-btn.k-btn--sm.ct-send-btn', {
+          type: 'button', 'data-action': 'sheet-copy-person',
+          'aria-label': 'Copy the message for ' + (c.name || 'this person') + ' — no phone number on the unit list'
+        }, [h('span', { text: 'Copy text' })]));
+      }
+      list.append(li);
+    });
+    body.append(list);
   }
-  const list = h('ul.ct-send-list');
-  called.forEach((c) => {
-    const digits = WA.waDigits(c.phone);
-    const li = h('li.ct-send-row', { 'data-contact': c.id });
-    li.append(h('span.ct-send-who', {}, [
-      h('span.ct-pick-name', { text: c.name || 'Unnamed' }),
-      h('span.ct-pick-role', { text: [c.department, c.role].filter(Boolean).join(' · ') })
-    ]));
-    li.append(h('span.ct-send-call', {
-      text: sheet.calls[c.id] || (sheet.generalCall ? sheet.generalCall + ' (general)' : 'General call')
-    }));
-    if (digits) {
-      li.append(h('a.btn.ct-send-btn', {
-        href: WA.waLink(digits, WA.personMessage(facts, personOf(sheet, c))),
-        target: '_blank', rel: 'noopener noreferrer',
-        'aria-label': 'WhatsApp ' + (c.name || 'this person') + ' their call',
-        text: 'WhatsApp'
-      }));
-    } else {
-      li.append(h('button.btn.ct-send-btn', {
-        type: 'button', 'data-action': 'sheet-copy-person',
-        'aria-label': 'Copy the message for ' + (c.name || 'this person') + ' — no phone number on the unit list',
-        text: 'Copy text'
-      }));
-    }
-    list.append(li);
+  const el = panel({
+    eyebrow: 'Dispatch',
+    title: 'Send this sheet',
+    meta: badge({ label: called.length + (called.length === 1 ? ' person called' : ' people called'), tone: called.length ? 'ok' : 'info', dot: true }),
+    body
   });
-  wrap.append(list);
-  return wrap;
+  el.classList.add('ct-send');
+  return el;
 }
 
 /* ---- render -------------------------------------------------- */
@@ -1230,6 +1245,57 @@ delegate(document, 'click', '[data-action="sheet-pdf"]', (e, el) => {
     classes: ['ct-printing'],
     before: () => markOnlySheet(card),
     after: () => card.classList.remove('is-printing')
+  });
+});
+
+/* ---- the sides packet --------------------------------------------
+   The day's scenes as pages: slug line, length, what happens and every
+   element tagged to the scene, one block each, never split across a
+   page. The same content as reports.html#sides, drawn into a throwaway
+   host for the length of the print, so nothing is stored and a scene
+   edited a second ago is what prints. */
+function sidesPacket(sheet, scenes) {
+  const onSheet = sheetScenes(sheet, scenes);
+  const host = h('div.ct-sides-packet', { id: 'ct-sides-packet' });
+  host.append(h('div.ct-sp-head', {}, [
+    h('span.ct-sp-title', { text: 'Sides' }),
+    h('span.ct-sp-meta', { text: onSheet.length + (onSheet.length === 1 ? ' scene' : ' scenes') + ' · '
+      + formatEighths(onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0)) + ' pages' })
+  ]));
+  onSheet.forEach((s) => {
+    const no = String(s.number || scenes.indexOf(s) + 1);
+    const block = h('article.ct-sp-scene', {}, [
+      h('div.ct-sp-bar', {}, [
+        h('span.ct-sp-no', { text: no }),
+        h('span.ct-sp-slug', { text: slugOf(s) }),
+        h('span.ct-sp-pp', { text: formatEighths(s.eighths) + ' pp' })
+      ]),
+      h('p.ct-sp-syn', { text: String(s.synopsis || '').trim() || 'No synopsis written for this scene yet.' })
+    ]);
+    ELEMENT_CATEGORIES.forEach((cat) => {
+      const names = (s.elements && s.elements[cat.id]) || [];
+      if (names.length) block.append(h('p.ct-sp-el', {}, [h('strong', { text: cat.label + ' ' }), names.join(', ')]));
+    });
+    host.append(block);
+  });
+  return host;
+}
+
+delegate(document, 'click', '[data-action="sheet-sides"]', (e, el) => {
+  const card = el.closest('.ct-sheet');
+  const sheet = card && Contacts.listCallSheets().find((s) => s.id === card.dataset.sheet);
+  if (!sheet) return;
+  const scenes = Scenes.listScenes();
+  if (!sheetScenes(sheet, scenes).length) { StudioUI.toast('Tick a scene on this sheet first.'); return; }
+  const project = PDF.projectTitle();
+  const day = dayName(sheet.title, project);
+  PDF.exportPDF({
+    scope: 'sides',
+    title: project + ' — Sides — ' + day,
+    subtitle: [day, prettyDate(sheet.date)].filter(Boolean).join(' · '),
+    classes: ['ct-sides-printing'],
+    before: () => (document.getElementById('main') || document.body).append(sidesPacket(sheet, scenes)),
+    after: () => document.getElementById('ct-sides-packet')?.remove()
   });
 });
 

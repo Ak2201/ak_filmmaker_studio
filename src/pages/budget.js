@@ -10,6 +10,11 @@
    and this file frames it. The rate tables stay in the library,
    which is where reference material belongs; a link goes each way so
    neither is a dead end.
+
+   THE LOOK is the Swiss kit (src/ui/kit/, docs/DESIGN-KIT.md): a
+   kit page header, a stat strip of real figures, kit panels. Nothing
+   on this page is a sample figure; a number that cannot be measured
+   is not drawn.
    ============================================================ */
 import '../lib/store.js';
 import '../styles/base.css';
@@ -26,7 +31,8 @@ import { mountPathBar } from '../ui/path-bar.js';
 import { h } from '../lib/dom.js';
 import C from '../lib/costs.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
-import { costSections, costKpis, initCosts } from '../ui/budget-costs.js';
+import { costSections, costKpis, costAside, initCosts } from '../ui/budget-costs.js';
+import { pageHeader, button, notice } from '../ui/kit/index.js';
 import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 
@@ -63,37 +69,33 @@ function rateProvenance() {
 function render() {
   const main = h('main#main.hue-plan');
 
-  /* THE PAGE COLUMN. Every module page puts its head in `header.bd-head`
-     and its body in a column from the same family (modules.css) —
-     max-width, auto margins, side padding. This page put the head and
-     the two calculator blocks straight into <main>, so they ran from the
-     rail to the window edge with no gutter and the estimator's subtotal
-     column sat against (and under) the scrollbar. The same classes the
-     other pages use, rather than a budget stylesheet of its own; the
-     blueprint pill finds its host by `header.bd-head` too. */
-  /* The head carries the page's standing actions. Export CSV is the
-     budget file (the same builder as the Export tab's button); the
-     versions link counts what costs.js holds. New cost line reaches the
-     estimator's own add-row action, so there is one way to add a line. */
+  /* THE HEAD is the kit's page header (eyebrow, Space Grotesk title,
+     deck, standing actions on the right) wearing `bd-head` as well:
+     that class is the module column every page shares AND the host the
+     blueprint pill looks for (blueprint-drawer.js), which lands after
+     the `.bd-eyebrow` it finds. Export CSV is the budget file (the same
+     builder as the Export tab's button); the versions link counts what
+     costs.js holds. New cost line reaches the estimator's own add-row
+     action, so there is one way to add a line. */
   let versions = 0;
   try { versions = C.listVersions().length; } catch (e) { /* none */ }
-  main.append(h('header.bd-head.bd-head-split', {}, [
-    h('div.bd-head-copy', {}, [
-      h('p.bd-eyebrow', { text: 'Budget & People · what it costs' }),
-      h('h1.bd-title', { text: 'Production Budget.' }),
-      h('p.bd-deck', {
-        text: 'A line-item estimate that reads your schedule. Days come from the '
-            + 'stripboard if you have built one, rates from the Chennai tables if '
-            + 'you want them, and every figure stays editable. Then, once you are '
-            + 'shooting: petty cash, crew payments and the cost report against it.'
-      })
-    ]),
-    h('div.bd-head-actions', {}, [
-      h('a.btn', { href: '#versions', text: versions ? 'Versions (' + versions + ')' : 'Versions' }),
-      h('button.btn', { type: 'button', 'data-cx': 'csv-budget', text: 'Export CSV' }),
-      h('button.btn.primary', { type: 'button', 'data-action': 'add-row', text: 'New cost line' })
-    ])
-  ]));
+  const head = pageHeader({
+    class: 'bd-head bd-head-split',
+    eyebrow: 'Budget & People · what it costs',
+    title: 'Production Budget.',
+    sub: 'A line-item estimate that reads your schedule. Days come from the '
+       + 'stripboard if you have built one, rates from the Chennai tables if '
+       + 'you want them, and every figure stays editable. Then, once you are '
+       + 'shooting: petty cash, crew payments and the cost report against it.',
+    actions: [
+      button({ label: versions ? 'Versions (' + versions + ')' : 'Versions', icon: 'history', href: '#versions' }),
+      button({ label: 'Export CSV', icon: 'download', attrs: { 'data-cx': 'csv-budget' } }),
+      button({ label: 'New cost line', icon: 'add', variant: 'primary', pill: true, action: 'add-row' })
+    ]
+  });
+  const eb = head.querySelector('.k-eyebrow');
+  if (eb) eb.classList.add('bd-eyebrow');
+  main.append(head);
   main.append(costKpis());
 
   /* TABS (src/ui/tabs.js, budget is on its list). The estimator and
@@ -103,27 +105,47 @@ function render() {
      every word in it. */
   const body = h('div.bd-list');
   const estimate = h('section#estimate.cx-sec', { 'data-tab-label': 'Estimate' });
-  estimate.append(renderBudget());
 
   /* The rate tables did not move. Saying so, with a route, is the
      difference between "this page is thin" and "the reference is
-     one click away". Not `.bd-how`: that is the empty states' grid of
-     numbered steps, and it laid these three blocks out as three
-     columns. */
-  estimate.append(h('div.bd-notes', {}, [
-    h('h3', { text: 'Where the numbers come from' }),
-    h('p', { text: rateProvenance() }),
-    h('p', {}, [
-      'The full rate tables — camera, crew, post, equipment — are in the ',
-      h('a', { href: 'library.html#equipment', text: 'craft library' }),
-      '. Shoot days come from the ',
-      h('a', { href: 'stripboard.html#stripboard', text: 'stripboard' }),
-      ', which reads the scenes you broke down in the ',
-      h('a', { href: 'breakdown.html#scenes', text: 'breakdown' }),
-      '.'
+     one click away". A kit notice; `.bd-notes` kept as its name. */
+  const notes = notice({
+    tone: 'info',
+    class: 'bd-notes',
+    title: 'Where the numbers come from',
+    body: h('div', {}, [
+      h('p', { text: rateProvenance() }),
+      h('p', {}, [
+        'The full rate tables — camera, crew, post, equipment — are in the ',
+        h('a', { href: 'library.html#equipment', text: 'craft library' }),
+        '. Shoot days come from the ',
+        h('a', { href: 'stripboard.html#stripboard', text: 'stripboard' }),
+        ', which reads the scenes you broke down in the ',
+        h('a', { href: 'breakdown.html#scenes', text: 'breakdown' }),
+        '.'
+      ])
     ])
+  });
+
+  /* The estimate's own layout: the schedule connector and the
+     estimator in the main column, the petty-cash aside beside them
+     once the tab is wide enough (a container query in budget.css),
+     under them otherwise. The learn boxes are prepended to the
+     SECTION, so they sit above this grid. */
+  estimate.append(h('div.bud-est-grid', {}, [
+    h('div.bud-est-main', {}, [renderBudget(), notes]),
+    costAside()
   ]));
-  body.append(estimate, ...costSections());
+
+  /* Two tabs the section-icons.json map does not describe; an
+     attribute on the section wins over the map (tabs.js). */
+  const extra = { schedule: { group: 'Plan', icon: 'timeline' }, versions: { group: 'Plan', icon: 'history' } };
+  const sections = costSections();
+  for (const s of sections) {
+    const x = extra[s.id];
+    if (x) { s.dataset.tabGroup = x.group; s.dataset.tabIcon = x.icon; }
+  }
+  body.append(estimate, ...sections);
   main.append(body);
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it

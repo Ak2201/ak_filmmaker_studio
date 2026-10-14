@@ -15,6 +15,7 @@
    ============================================================ */
 import '../styles/script-notes.css';
 import { h, delegate } from '../lib/dom.js';
+import { button, sym } from './kit/index.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import * as Notes from '../lib/script-notes.js';
 
@@ -51,9 +52,11 @@ export async function openScriptNotes(opts) {
   const all = rows();
   const fx = Notes.facets(all);
 
-  const sel = (name, label, options) => h('label.sn-f', {}, [
-    h('span', { text: label }),
-    h('select', { 'data-sn': name }, options.map(([v, t]) => h('option', { value: v, text: t })))
+  const sel = (name, label, options) => h('label.sn-f.k-field', {}, [
+    h('span.k-field-label', { text: label }),
+    h('span.k-control.k-select', {}, [
+      h('select', { 'data-sn': name }, options.map(([v, t]) => h('option', { value: v, text: t })))
+    ])
   ]);
   const list = h('div.sn-list', { 'aria-live': 'polite' });
   const count = h('p.sn-count', { role: 'status' });
@@ -78,7 +81,7 @@ export async function openScriptNotes(opts) {
         h('p.sn-body', { text: r.body }),
         ...r.replies.map((p) => h('p.sn-reply', { text: '↳ ' + p.author + ': ' + p.body })),
         r.sceneId || r.scene !== 'Deleted line'
-          ? h('button.btn.sn-go', { type: 'button', 'data-sn-go': r.elementId, text: 'Go to line' }) : null
+          ? button({ label: 'Go to line', size: 'sm', class: 'sn-go', attrs: { 'data-sn-go': r.elementId } }) : null
       ].filter(Boolean)))
     ])));
   }
@@ -90,8 +93,9 @@ export async function openScriptNotes(opts) {
   dlg = h('div.sn', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Script notes' }, [
     h('div.sn-card', {}, [
       h('div.sn-head', {}, [
+        h('span.sn-icon', {}, [sym('sticky_note_2')]),
         h('h2', { text: 'Script notes' }),
-        h('button.bd-icon', { type: 'button', 'data-sn-close': '', 'aria-label': 'Close', text: '✕' })
+        button({ label: 'Close', icon: 'close', iconOnly: true, variant: 'ghost', size: 'sm', class: 'sn-x', attrs: { 'data-sn-close': '' } })
       ]),
       cloudState === 'local'
         ? h('p.sn-hint', { text: 'Showing the private notes on this device. Sign in to include shared threads.' }) : null,
@@ -103,8 +107,8 @@ export async function openScriptNotes(opts) {
       ]),
       count, list,
       h('div.sn-foot', {}, [
-        h('button.btn', { type: 'button', 'data-sn-export': 'txt', text: 'Download text' }),
-        h('button.btn', { type: 'button', 'data-sn-export': 'csv', text: 'Download CSV' })
+        button({ label: 'Download text', size: 'sm', attrs: { 'data-sn-export': 'txt' } }),
+        button({ label: 'Download CSV', size: 'sm', attrs: { 'data-sn-export': 'csv' } })
       ])
     ].filter(Boolean))
   ]);

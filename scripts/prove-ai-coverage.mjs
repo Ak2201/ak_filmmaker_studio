@@ -216,7 +216,7 @@ async function openPill(page, sel) {
 }
 const deskSays = async (page, sel) => ((await page.locator('aside.ai-desk ' + sel).first().textContent().catch(() => '')) || '');
 
-for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'paper', 'gemini']]) {
+for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'ink', 'gemini']]   /* one theme since 14 Oct 2026 */) {
   const tag = '[' + width + ' ' + theme + ' ' + provider + '] ';
   requests.length = 0;
   F.reset(); aiScenario('pro', TOK);

@@ -56,6 +56,7 @@ import '../styles/pdf.css';
 import '../styles/steps-path.css';
 import '../styles/ai.css';
 import '../styles/steps-stages.css';
+import '../styles/blueprint-kit.css';   /* LAST: the Swiss kit's values for every step block */
 
 /* ---- store FIRST ------------------------------------------
    store.js monkey-patches Storage.prototype at module

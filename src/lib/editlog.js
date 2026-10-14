@@ -62,9 +62,11 @@ let seq = 0;
 const uid = () => 'pk' + Date.now().toString(36) + (seq++).toString(36);
 
 export function blankSceneEdit(patch = {}) {
-  const e = { cut: '', note: '', ...patch };
+  const e = { cut: '', note: '', sync: false, ...patch };
   if (!cutIds.includes(e.cut)) e.cut = '';
   e.note = String(e.note || '');
+  /* Audio synced to picture: one flag on the scene's own edit row. */
+  e.sync = e.sync === true;
   /* Where the dailies / the scene's cut review live (links.js). An
      older row with no `links` reads back []. */
   e.links = cleanLinks(e.links);
@@ -125,8 +127,14 @@ export function blankPickup(patch = {}) {
    project. Shape-checked on the way in: `scenes` must be a plain
    object and `pickups` an array, and anything else reads as empty
    rather than throwing at render. */
+/* The cut's target length, whole minutes; 0 = none set. */
+function cleanTarget(v) {
+  const n = Math.round(Number(v) || 0);
+  return n > 0 && n <= 600 ? n : 0;
+}
+
 function readAll() {
-  const empty = () => ({ scenes: {}, pickups: [], cuts: [], dayLinks: {} });
+  const empty = () => ({ scenes: {}, pickups: [], cuts: [], dayLinks: {}, targetMin: 0 });
   let raw = null;
   try { raw = localStorage.getItem(EDIT_KEY); } catch (e) { /* private mode */ }
   if (!raw) return empty();
@@ -137,7 +145,8 @@ function readAll() {
       scenes: plain(p && p.scenes) ? p.scenes : {},
       pickups: Array.isArray(p && p.pickups) ? p.pickups : [],
       cuts: Array.isArray(p && p.cuts) ? p.cuts : [],
-      dayLinks: plain(p && p.dayLinks) ? p.dayLinks : {}
+      dayLinks: plain(p && p.dayLinks) ? p.dayLinks : {},
+      targetMin: cleanTarget(p && p.targetMin)
     };
   } catch (e) {
     return empty();
@@ -154,6 +163,10 @@ function writeAll(data) {
   const out = { scenes: data.scenes, pickups: data.pickups };
   if (data.cuts && data.cuts.length) out.cuts = data.cuts;
   if (data.dayLinks && Object.keys(data.dayLinks).length) out.dayLinks = data.dayLinks;
+  /* The target is a member of the blob like any other: a writer that
+     does not mention it keeps what is stored. */
+  const target = data.targetMin === undefined ? readAll().targetMin : cleanTarget(data.targetMin);
+  if (target) out.targetMin = target;
   try { localStorage.setItem(EDIT_KEY, JSON.stringify(out)); return true; }
   catch (e) { return false; }
 }
@@ -206,8 +219,18 @@ export function loadEdit() {
     scenes,
     pickups: d.pickups.map((p) => blankPickup(p)),
     cuts: d.cuts.filter((c) => c && typeof c === 'object').map((c) => blankCut(c)),
-    dayLinks: cleanDayLinks(d.dayLinks)
+    dayLinks: cleanDayLinks(d.dayLinks),
+    ...(d.targetMin ? { targetMin: d.targetMin } : {})
   };
+}
+
+/** The cut's target length in minutes (0 = not set). */
+export function getTargetMin(data) { return (data || loadEdit()).targetMin || 0; }
+export function setTargetMin(minutes) {
+  const d = loadEdit();
+  d.targetMin = cleanTarget(minutes);
+  writeAll(d);
+  return d.targetMin;
 }
 
 export function sceneEdit(sceneId, data) {
@@ -222,7 +245,7 @@ export function setSceneEdit(sceneId, patch) {
   const next = blankSceneEdit({ ...(d.scenes[sceneId] || {}), ...patch });
   /* A scene with nothing said about it is not stored at all, so the
      blob does not grow a row per scene the editor never touched. */
-  if (!next.cut && !next.note && !next.links.length) delete d.scenes[sceneId];
+  if (!next.cut && !next.note && !next.links.length && !next.sync) delete d.scenes[sceneId];
   else d.scenes[sceneId] = next;
   writeAll(d);
   return next;
@@ -665,7 +688,67 @@ export function putSceneBack(sceneId, snap) {
   return n;
 }
 
+/**
+ * The running time of the cut as it stands: the scenes the editor has
+ * marked In the cut or Locked, at the screen-time ESTIMATE the script
+ * gives each (`secondsOf`: scene id -> seconds). A song with a length
+ * REPLACES the estimate of the scenes linked to it, counted once; a song
+ * with none adds nothing and is counted in `songsUntimed`. Nothing here
+ * is stored.
+ *   songs  [{ id, seconds }]
+ */
+export function cutRunTime(cov, secondsOf, songs) {
+  const rows = ((cov && cov.rows) || []).filter((r) => r.edit.cut === 'in' || r.edit.cut === 'locked');
+  const timed = new Map((songs || []).filter((x) => Number(x.seconds) > 0).map((x) => [x.id, Math.round(Number(x.seconds))]));
+  const linked = new Set();
+  const untimed = new Set();
+  let sceneSeconds = 0;
+  for (const r of rows) {
+    const sid = r.scene.songId;
+    if (sid && timed.has(sid)) { linked.add(sid); continue; }
+    if (sid) untimed.add(sid);
+    sceneSeconds += Number(secondsOf && secondsOf[r.scene.id]) || 0;
+  }
+  let songSeconds = 0;
+  linked.forEach((id) => { songSeconds += timed.get(id); });
+  return { seconds: sceneSeconds + songSeconds, sceneSeconds, songSeconds, scenes: rows.length, songsUntimed: untimed.size };
+}
+
+/* ---- CSV ------------------------------------------------------
+   One row per scene, script order. A cell that opens with = + - @ is
+   prefixed with an apostrophe so a note typed as a formula opens in a
+   spreadsheet as text. */
+const csvCell = (v) => {
+  let t = String(v == null ? '' : v);
+  if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+  return '"' + t.replace(/"/g, '""') + '"';
+};
+export const CSV_HEADER = ['Scene', 'Slug', 'Pages', 'Set got', 'Cut status', 'Audio synced',
+  'Estimated seconds', 'Setups done', 'Setups planned', 'Editor note', 'Open pick-ups'];
+export function toCSV(cov, secondsOf = {}) {
+  const got = { full: 'Shot', part: 'Part shot', none: 'Not shot' };
+  const rows = [CSV_HEADER];
+  for (const r of cov.rows) {
+    const s = r.scene;
+    const mine = cov.openPickups.filter((p) => p.sceneId === s.id);
+    rows.push([
+      s.number || '',
+      [s.intExt, s.location || 'Location TBC', s.dayNight].filter(Boolean).join(' · '),
+      formatEighths(s.eighths || 0),
+      s.shotState === 'dropped' ? 'Dropped' : got[r.got],
+      cutLabel(r.edit.cut),
+      r.edit.sync ? 'Yes' : 'No',
+      secondsOf[s.id] != null ? secondsOf[s.id] : '',
+      r.done, r.planned,
+      r.edit.note,
+      mine.map((p) => p.what || '').filter(Boolean).join(' | ')
+    ]);
+  }
+  return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+
 export default {
+  getTargetMin, setTargetMin, cutRunTime, toCSV,
   EDIT_KEY, CUT_STATES, cutLabel, takeSceneOut, putSceneBack,
   blankSceneEdit, blankPickup, loadEdit, sceneEdit, setSceneEdit,
   listPickups, addPickup, updatePickup, removePickup, restorePickup,

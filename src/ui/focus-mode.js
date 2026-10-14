@@ -51,6 +51,7 @@
    ============================================================ */
 import { subscribe } from '../lib/store.js';
 import { h, delegate } from '../lib/dom.js';
+import { button, sym, segmented, selectSegment } from './kit/index.js';
 import { revealTarget } from './tabs.js';
 import { isPaletteOpen } from './palette.js';
 import Goals, { GOAL_KINDS } from '../lib/write-goals.js';
@@ -105,13 +106,10 @@ function savePrefs() {
 
 /* ---- the entry button --------------------------------------- */
 function focusButton() {
-  return h('button.btn.fm-enter', {
-    type: 'button',
-    id: 'fm-enter',
-    'data-action': 'fm-enter',
-    'aria-keyshortcuts': 'Control+Shift+F Meta+Shift+F',
+  return button({
+    label: 'Focus', icon: 'center_focus_strong', size: 'sm', action: 'fm-enter', class: 'fm-enter',
     title: 'Focus mode — only the page (Ctrl/⌘ + Shift + F)',
-    text: 'Focus'
+    attrs: { id: 'fm-enter', 'aria-keyshortcuts': 'Control+Shift+F Meta+Shift+F' }
   });
 }
 /** A stable host inside whatever write.js last rendered: beside the
@@ -145,57 +143,69 @@ function buildHud() {
 
   const kindSel = h('select.fm-goal-kind', { id: 'fm-goal-kind', 'data-fm': 'goal-kind', 'aria-label': 'Goal measured in' });
   GOAL_KINDS.forEach((k) => kindSel.append(h('option', { value: k.id, text: k.label })));
-  const target = h('input.fm-goal-target', {
+  const target = h('input.fm-goal-target.k-input', {
     id: 'fm-goal-target', type: 'number', min: '0', inputmode: 'decimal',
     'data-fm': 'goal-target', 'aria-label': 'Session goal'
   });
-  const marker = h('select.fm-marker', { id: 'fm-marker', 'data-fm': 'marker', 'aria-label': 'Typewriter marker' });
-  MARKERS.forEach((m) => marker.append(h('option', { value: m.id, text: m.label })));
-  const check = (id, key, label) => h('label.fm-check', {}, [
-    h('input', { type: 'checkbox', id, 'data-fm': key }), h('span', { text: label })
+  /* The marker is a segmented choice (kit), not a select: three short
+     words read better as buttons, and the choice is one click. */
+  const marker = segmented({
+    name: 'fm-marker', label: 'Typewriter marker', value: prefs.marker, action: 'fm-marker',
+    options: MARKERS.map((m) => ({ value: m.id, label: m.label }))
+  });
+  marker.id = 'fm-marker';
+  const check = (id, key, label, icon) => h('label.fm-check.k-check', {}, [
+    sym(icon, 'k-sym fm-check-i'), h('span', { text: label }), h('input', { type: 'checkbox', id, 'data-fm': key })
   ]);
+  const sec = (label, forId) => h(forId ? 'label.fm-sec' : 'span.fm-sec', forId ? { for: forId } : {}, [label]);
 
   nodes.kindSel = kindSel;
   nodes.target = target;
   nodes.marker = marker;
   nodes.hist = h('ol.fm-hist', { 'aria-label': 'Written per day, last seven days' });
   nodes.opts = h('div.fm-opts', { id: 'fm-opts', hidden: true, role: 'group', 'aria-label': 'Focus options' }, [
-    h('div.fm-opt-row', {}, [
-      h('label.fm-field', { for: 'fm-goal-target' }, [h('span', { text: 'Goal' })]),
-      target, kindSel
+    h('div.fm-opts-head', {}, [
+      h('span.fm-opts-title', {}, [sym('bolt'), h('span', { text: 'Focus options' })]),
+      h('p.fm-today', {}, [nodes.todayText])
     ]),
-    h('div.fm-opt-row', {}, [
-      h('label.fm-field', { for: 'fm-marker' }, [h('span', { text: 'Marker' })]),
-      marker
+    h('div.fm-opts-grid', {}, [
+      h('div.fm-opts-col', {}, [
+        sec('Goal', 'fm-goal-target'),
+        h('div.fm-goal-ctl.k-control', {}, [target, h('span.k-select.fm-kind', {}, [kindSel])]),
+        sec('Marker'),
+        marker
+      ]),
+      h('div.fm-opts-col', {}, [
+        sec('Page'),
+        check('fm-dim', 'dim', 'Dim the rest', 'water_drop'),
+        check('fm-night', 'night', 'Night', 'dark_mode'),
+        button({ label: 'Full screen', icon: 'fullscreen', block: true, action: 'fm-fullscreen', class: 'fm-btn' })
+      ])
     ]),
-    h('div.fm-opt-row', {}, [
-      check('fm-dim', 'dim', 'Dim the rest'),
-      check('fm-night', 'night', 'Night')
-    ]),
-    h('div.fm-opt-row', {}, [
-      h('button.btn.fm-btn', { type: 'button', 'data-action': 'fm-fullscreen', text: 'Full screen' })
-    ]),
-    h('p.fm-today', {}, [nodes.todayText]),
-    nodes.hist
+    h('div.fm-hist-wrap', {}, [sec('Last seven days'), nodes.hist])
   ]);
 
-  nodes.optsBtn = h('button.btn.fm-btn', {
-    type: 'button', 'data-action': 'fm-opts',
-    'aria-expanded': 'false', 'aria-controls': 'fm-opts', text: 'Options'
+  nodes.optsBtn = button({
+    label: 'Options', icon: 'tune', variant: 'primary', pill: true, size: 'sm', action: 'fm-opts', class: 'fm-btn fm-opts-btn',
+    attrs: { 'aria-expanded': 'false', 'aria-controls': 'fm-opts' }
   });
-  nodes.sprintBtn = h('button.btn.fm-btn', { type: 'button', 'data-action': 'fm-sprint', text: 'Start sprint' });
+  nodes.sprintBtn = button({ label: 'Start sprint', size: 'sm', action: 'fm-sprint', class: 'fm-btn' });
+  nodes.sprintLabel = nodes.sprintBtn.querySelector('span');
 
   hud = h('div.fm-hud', { id: 'fm-hud', role: 'region', 'aria-label': 'Focus mode', hidden: true }, [
     nodes.opts,
     h('div.fm-hud-row', {}, [
-      h('button.btn.fm-btn.fm-exit', {
-        type: 'button', 'data-action': 'fm-exit',
-        'aria-keyshortcuts': 'Escape', title: 'Leave focus mode (Esc)', text: 'Exit focus'
+      button({
+        label: 'Exit focus', icon: 'close', variant: 'ghost', size: 'sm', action: 'fm-exit', class: 'fm-btn fm-exit',
+        title: 'Leave focus mode (Esc)', attrs: { 'aria-keyshortcuts': 'Escape' }
       }),
-      h('span.fm-goal', {}, [nodes.goalText]),
-      h('span.fm-sprint', { 'aria-label': 'Sprint time' }, [nodes.sprintText]),
+      h('kbd.fm-kbd', { 'aria-hidden': 'true', text: 'Esc' }),
+      h('span.fm-div', { 'aria-hidden': 'true' }),
+      h('span.fm-goal', {}, [sym('edit_note'), h('span', {}, [nodes.goalText])]),
+      h('span.fm-div', { 'aria-hidden': 'true' }),
+      h('span.fm-sprint', {}, [sym('timer'), h('span', { 'aria-label': 'Sprint time' }, [nodes.sprintText])]),
       nodes.sprintBtn,
-      h('button.btn.fm-btn', { type: 'button', 'data-action': 'fm-sprint-reset', text: 'Reset' }),
+      button({ label: 'Reset', variant: 'ghost', size: 'sm', action: 'fm-sprint-reset', class: 'fm-btn' }),
       nodes.optsBtn
     ])
   ]);
@@ -207,7 +217,7 @@ function syncControls() {
   nodes.target.value = String(tracker.state.goal.target);
   const k = GOAL_KINDS.find((x) => x.id === tracker.state.goal.kind);
   nodes.target.step = String(k ? k.step : 1);
-  nodes.marker.value = prefs.marker;
+  selectSegment(nodes.marker, prefs.marker);
   document.getElementById('fm-dim').checked = prefs.dim;
   document.getElementById('fm-night').checked = prefs.night;
 }
@@ -236,7 +246,7 @@ function paintHistory() {
   nodes.todayText.data = 'Today: ' + signed(today.words) + ' words, '
     + signed(Math.round(today.pages * 10) / 10, 1) + ' pages';
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  nodes.hist.replaceChildren(...rows.map((r) => h('li', {}, [
+  nodes.hist.replaceChildren(...rows.map((r, i) => h('li' + (i === rows.length - 1 ? '.is-today' : '') + (r.words > 0 ? '.has-words' : ''), {}, [
     h('span.fm-hist-day', { text: DAYS[r.date.getDay()] }),
     h('span.fm-hist-num', { text: signed(r.words) + ' w' })
   ])));
@@ -263,13 +273,14 @@ function sprintToggle() {
     sprintFrom = Date.now();
     sprintTick = setInterval(paintSprint, 1000);   // DOM only, never storage
   }
-  nodes.sprintBtn.textContent = sprintFrom ? 'Pause' : (sprintAcc ? 'Resume' : 'Start sprint');
+  nodes.sprintLabel.textContent = sprintFrom ? 'Pause' : (sprintAcc ? 'Resume' : 'Start sprint');
+  hud.classList.toggle('is-running', !!sprintFrom);
   paintSprint();
 }
 function sprintReset() {
   sprintAcc = 0;
   if (sprintFrom) sprintFrom = Date.now();
-  nodes.sprintBtn.textContent = sprintFrom ? 'Pause' : 'Start sprint';
+  nodes.sprintLabel.textContent = sprintFrom ? 'Pause' : 'Start sprint';
   paintSprint();
 }
 
@@ -415,6 +426,10 @@ function publishLine() {
 /* ---- enter / exit -------------------------------------------- */
 function applyPrefs() {
   root.classList.toggle('fm-dim', prefs.dim);
+  /* NIGHT: the studio is dark only, so the theme stamp below changes
+     nothing any more; the paper page is what goes dark (focus-mode.css
+     keys off `fm-night`, and only while focus is on). */
+  root.classList.toggle('fm-night', on && prefs.night);
   root.classList.remove('fm-mk-frame', 'fm-mk-line', 'fm-mk-none');
   root.classList.add('fm-mk-' + prefs.marker);
   if (!on) return;
@@ -475,7 +490,7 @@ export function exitFocus() {
   if (!on) return;
   on = false;
   if (tracker) tracker.flush();
-  root.classList.remove('fm-on');
+  root.classList.remove('fm-on', 'fm-night');
   restoreTheme();
   clearScene();
   hud.hidden = true;
@@ -560,6 +575,12 @@ function wire() {
       paintHistory();
     } else closeOpts(false);
   });
+  delegate(document, 'click', '[data-action="fm-marker"]', (e, b) => {
+    if (!MARKERS.some((m) => m.id === b.dataset.value) || prefs.marker === b.dataset.value) return;
+    prefs.marker = b.dataset.value;
+    selectSegment(nodes.marker, prefs.marker);
+    savePrefs(); applyPrefs();
+  });
   delegate(document, 'click', '[data-action="fm-fullscreen"]', () => {
     if (document.fullscreenElement) {
       try { document.exitFullscreen().catch(() => {}); } catch (e) { /* ignore */ }
@@ -584,8 +605,6 @@ function wire() {
     } else if (k === 'goal-target') {
       tracker.setGoal(tracker.state.goal.kind, e.target.value);
       syncControls(); paintGoal();
-    } else if (k === 'marker') {
-      prefs.marker = e.target.value; savePrefs(); applyPrefs();
     } else if (k === 'dim') {
       prefs.dim = e.target.checked; savePrefs(); applyPrefs();
     } else if (k === 'night') {

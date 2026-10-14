@@ -1,6 +1,13 @@
 /* ============================================================
    THE SHELL — a vertical app rail and one phase bar
    ------------------------------------------------------------
+   SWISS PRECISION (14 Oct 2026): the rail is a 64px icon column whose
+   five stage cells open flyouts of their modules (buildRailStages),
+   and the band is one 56px row — crumb, search, the page's tools, the
+   studio's zone. The stage strip that used to sit in the band is gone;
+   what follows below is the history of how the shell got here, kept
+   because the measuring and "where am I" reasoning still holds.
+
    Everything here is rendered from src/data/navigation.json. Adding a
    module is a JSON edit; nothing in this file names one.
 
@@ -51,6 +58,7 @@ import { renderTrialBand } from './trial-band.js';
 import { mountStatusBar } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked } from '../lib/plan-gate.js';
+import { BRAND } from '../lib/brand.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -87,17 +95,6 @@ const EXTRA_GLOBAL_ENTRIES = {
 };
 const GLOBAL_MODE = shellMode();
 export const isGlobalMode = () => GLOBAL_MODE === 'global';
-
-/* The stage strip animates in when you arrive from the dashboard (a
-   stage card was clicked): the referrer is the only signal, because
-   the dashboard lane owns its own code. */
-function cameFromDashboard() {
-  try {
-    if (!document.referrer) return false;
-    const u = new URL(document.referrer);
-    return u.origin === location.origin && /(^|\/)dashboard(\.html)?$/i.test(u.pathname);
-  } catch (e) { return false; }
-}
 
 /* ---- WHERE AM I -------------------------------------------
    The complaint this answers is literally "I don't know where I
@@ -315,27 +312,6 @@ function phaseHref(phase) {
   return first ? first.href : null;
 }
 
-function phaseTab(phase, active) {
-  const wrap = h(`div.sh-phase.sh-ph-${phase.hue}` + (active ? '.is-active' : ''), {
-    'data-phase': phase.id
-  });
-  const href = phaseHref(phase);
-  const btn = h(href ? 'a.sh-phase-btn' : 'span.sh-phase-btn', Object.assign(
-    { 'data-phase': phase.id, title: phase.blurb || phase.label },
-    href ? { href } : {}
-  ));
-  if (active) btn.setAttribute('aria-current', 'page');
-  /* plan-gate.js markLocked() flags a link by the module it opens: the
-     stage's first one is where the tab lands. */
-  const lead = firstModuleOf(phase);
-  if (href && lead) btn.dataset.moduleId = lead.id;
-  btn.append(h('span.sh-phase-dot', { 'aria-hidden': 'true' }),
-             h('span.sh-phase-label', { text: phase.label }));
-  wrap.append(btn);
-  markLocked(wrap);   // a stage whose first module is not on the plan reads PLAN
-  return wrap;
-}
-
 /* ---- the breadcrumb ----------------------------------------
    Studio › Phase › Module, with the module's own purpose after it
    where there is room. Rebuilt wholesale on every update rather
@@ -507,80 +483,208 @@ function buildPageNav(toolbar) {
 
 /* ---- the two pieces ---------------------------------------- */
 
+/* ---- THE RAIL (Swiss Precision, 14 Oct 2026) ------------------
+   A 64px icon column, the owner's Stitch shell: the monogram, the
+   app-scope destinations, the five STAGES (project pages only) each
+   with a flyout of its modules, and a foot with the trial clock, help
+   and the account. Every entry is read from navigation.json through
+   navmodel.js; nothing here names a page, a stage or a module.
+
+   The label of each icon is a real element (`.sh-rail-label`), shown
+   as a tooltip on hover and focus and kept in the DOM at all times:
+   it is the link's accessible name, and the gate reads innerHTML, so
+   the words are still on the page while the column is icons only. */
+
+/** "FS" — the first and last capitals of the product name (brand.json),
+    never typed, so a rename re-letters the tile. */
+function monogram() {
+  const caps = String(BRAND.name || '').match(/\p{Lu}/gu) || [];
+  if (!caps.length) return String(BRAND.name || 'S').slice(0, 1).toUpperCase();
+  return caps.length === 1 ? caps[0] : caps[0] + caps[caps.length - 1];
+}
+
+function railGlobal(g) {
+  /* A shelf is "here" on its own page and on the pages of its
+     modules: the Blueprints entry lands on the hub's blueprint
+     section, and is lit on feature.html and short.html. */
+  const on = g.href.toLowerCase() === CURRENT
+    || (Array.isArray(g.modules) && g.id !== 'home' && g.modules.some((m) =>
+      !String(m.href || '').includes('#') && String(m.href || '').toLowerCase() === CURRENT));
+  const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose });
+  a.dataset.railId = g.id;
+  a.append(iconSpan('sh-rail-icon', g),
+           h('span.sh-rail-label', { text: g.label }));
+  if (on) a.setAttribute('aria-current', 'page');
+  /* ADMIN-ONLY ENTRIES (the console). navigation.json is static and
+     the rail is drawn for everyone, so the entry is in the DOM for
+     all and HIDDEN until the gate reports this account an admin —
+     the same server-reported role admin.html itself checks, so the
+     rail can never show a door the page would not open. Hidden, not
+     absent: the shell is built once at load, and the role arrives a
+     round trip later. */
+  if (g.adminOnly) {
+    a.classList.add('is-admin-only');
+    a.hidden = !isAdminNow();
+  }
+  return a;
+}
+
 function buildRail() {
   const rail = h('nav#studioRail.sh-rail', { 'aria-label': 'Studio' });
-  /* The brand tile that heads the rail (Obsidian Cinema). Decorative: the
-     Home item below it is the real way home, so this one is out of the
-     Tab order and the accessibility tree rather than a duplicate stop. */
+  /* The monogram that heads the rail. Decorative: the Home item below it
+     is the real way home, so this one is out of the Tab order and the
+     accessibility tree rather than a duplicate stop. */
   const homeG = globals().find((g) => g.id === 'home');
   rail.append(h('a.sh-rail-logo', {
     href: (homeG && homeG.href) || 'index.html', tabindex: '-1', 'aria-hidden': 'true',
-    html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/></svg>'
+    text: monogram()
   }));
-  globals().forEach((g) => {
-    /* No project items in the global shell. */
-    if (isGlobalMode() && g.id === 'dashboard') return;
-    /* A shelf is "here" on its own page and on the pages of its
-       modules: the Blueprints entry lands on the hub's blueprint
-       section, and is lit on feature.html and short.html. */
-    const on = g.href.toLowerCase() === CURRENT
-      || (Array.isArray(g.modules) && g.id !== 'home' && g.modules.some((m) =>
-        !String(m.href || '').includes('#') && String(m.href || '').toLowerCase() === CURRENT));
-    const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose });
-    a.append(iconSpan('sh-rail-icon', g),
-             h('span.sh-rail-label', { text: g.label }));
-    if (on) a.setAttribute('aria-current', 'page');
-    /* ADMIN-ONLY ENTRIES (the console). navigation.json is static and
-       the rail is drawn for everyone, so the entry is in the DOM for
-       all and HIDDEN until the gate reports this account an admin —
-       the same server-reported role admin.html itself checks, so the
-       rail can never show a door the page would not open. Hidden, not
-       absent: the shell is built once at load, and the role arrives a
-       round trip later. */
-    if (g.adminOnly) {
-      a.classList.add('is-admin-only');
-      a.hidden = !isAdminNow();
-    }
-    rail.append(a);
-  });
-  if (!isGlobalMode()) rail.append(buildRailStages());
+  const gl = globals().filter((g) => !(isGlobalMode() && g.id === 'dashboard'));   // no project items in the global shell
+  /* Home and Dashboard lead; the stages follow them; the rest of the
+     app-scope entries (Library, Settings, Purchase, Console) close the
+     column. The split is by position in navigation.json, not by name:
+     everything up to and including the dashboard entry leads. */
+  const dashAt = gl.findIndex((g) => g.id === 'dashboard');
+  const lead = dashAt >= 0 ? gl.slice(0, dashAt + 1) : gl.slice(0, 1);
+  const rest = gl.slice(lead.length);
+  const main = h('div.sh-rail-main');
+  lead.forEach((g) => main.append(railGlobal(g)));
+  if (!isGlobalMode()) main.append(buildRailStages());
+  if (rest.length) {
+    const tail = h('div.sh-rail-group', { role: 'group', 'aria-label': 'Studio-wide' });
+    rest.forEach((g) => tail.append(railGlobal(g)));
+    main.append(tail);
+  }
+  rail.append(main);
+
+  const foot = h('div.sh-rail-foot');
   /* The live trial clock, at the foot of the rail. Built HIDDEN and
      empty; trial-band.js fills and shows it only while a trial runs. */
-  rail.append(h('div.sh-rail-trial', { hidden: true }));
+  foot.append(h('div.sh-rail-trial', { hidden: true }));
+  const help = h('button.sh-rail-item.sh-rail-util', {
+    type: 'button', 'data-action': 'rail-help', title: 'Keyboard shortcuts and help (?)'
+  });
+  help.append(iconSpan('sh-rail-icon', { sym: 'help', icon: '?' }), h('span.sh-rail-label', { text: 'Help' }));
+  /* The account: initials when signed in (copied from the band's account
+     pill, which auth.js keeps), a person glyph otherwise. A link to the
+     account block in Settings, the same place the pill goes. */
+  const acct = h('a.sh-rail-item.sh-rail-util.sh-rail-account', { href: 'settings.html#account', title: 'Your account' });
+  acct.append(h('span.sh-rail-avatar', { 'aria-hidden': 'true', hidden: true }),
+              iconSpan('sh-rail-icon.sh-rail-person', { sym: 'person', icon: '◉' }),
+              h('span.sh-rail-label', { text: 'Account' }));
+  foot.append(help, acct);
+  rail.append(foot);
   return rail;
 }
 
-/* THE STAGES, IN THE DRAWER, ON A PHONE ONLY. Below 720px the stage
-   strip is one sideways-scrolling line under the crumb and at 390px
-   Production and Post-Production start off-screen; the drawer — the
-   one menu a phone user opens to go somewhere — listed the six global
-   entries and none of the five stages, so neither route reached them
-   at a glance (UX audit M22). Each stage is a link to its first page,
-   the same row the stage's own menu opens with. Hidden at 720px and
-   up (chrome.css), where every stage is on screen in the band. */
+/* THE STAGES, each a link to its main page with a FLYOUT of its
+   modules. The flyout opens on hover and on keyboard focus, and it is
+   a plain list of links, not a `role="menu"` (L17: nothing here
+   implements a menu's arrow keys). It is `position: fixed` beside the
+   rail, placed by placeFly() from the stage's own rect, because the
+   rail scrolls and would otherwise clip it. */
 function buildRailStages() {
   const wrap = h('div.sh-rail-stages', { role: 'group', 'aria-label': 'Stages' });
   phases().forEach((p) => {
-    const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href);
-    if (!first) return;
-    /* The drawer is 72px wide, so a stage's blurb and its modules'
-       plain-English purposes (navigation.json) cannot be printed beside
-       the label. They ride on the link instead: `title` for a pointer,
-       and a description for a screen reader, read from a `hidden` span
-       (aria-describedby may name a hidden element; being hidden keeps
-       it out of the text, AA and overflow checks). Derived, never typed. */
+    const first = firstModuleOf(p);
+    if (!first || !first.href) return;
+    /* The rail is 64px wide, so a stage's blurb and its modules'
+       plain-English purposes (navigation.json) ride on the link too:
+       `title` for a pointer, and a description for a screen reader,
+       read from a `hidden` span. Derived, never typed. */
     const desc = stageDescription(p);
     const descId = 'shRailStageDesc-' + p.id;
-    const a = h(`a.sh-rail-item.sh-rail-stage.sh-ph-${p.hue}`, { href: first.href, title: desc, 'aria-describedby': descId });
+    const cell = h(`div.sh-rail-stagecell.sh-ph-${p.hue}`, { 'data-phase': p.id });
+    const a = h(`a.sh-rail-item.sh-rail-stage.sh-ph-${p.hue}`, {
+      href: first.href, title: desc, 'aria-describedby': descId
+    });
     a.dataset.phase = p.id;
     a.dataset.moduleId = first.id;   // plan-gate.js markLocked(): the module this link opens
-    a.append(iconSpan('sh-rail-icon', p), h('span.sh-rail-label', { text: p.label }));
+    a.append(h('span.sh-rail-dot', { 'aria-hidden': 'true' }),
+             iconSpan('sh-rail-icon', p), h('span.sh-rail-label', { text: p.label }));
     const d = h('span', { id: descId, text: desc });
     d.hidden = true;
-    wrap.append(a, d);
+    cell.append(a, d, buildFly(p));
+    wrap.append(cell);
   });
   markLocked(wrap);
   return wrap;
+}
+
+function buildFly(p) {
+  const fly = h(`div.sh-fly.sh-ph-${p.hue}`, { 'data-phase': p.id, hidden: true });
+  const head = h('div.sh-fly-head');
+  head.append(h('span.sh-fly-dot', { 'aria-hidden': 'true' }),
+              h('span.sh-fly-title', { text: p.label }));
+  fly.append(head);
+  if (p.blurb) fly.append(h('p.sh-fly-blurb', { text: p.blurb }));
+  const list = h('div.sh-fly-list');
+  /* A stage with a landing page of its own (Pre-Production's path) lists
+     it first: it is where the stage link goes. */
+  if (p.home && p.home.href) list.append(flyRow({ id: p.id + '-home', status: 'built', ...p.home }));
+  let sub = null;
+  for (const m of p.modules || []) {
+    if (m.group && m.group !== sub) list.append(h('p.sh-fly-sub', { text: m.group }));
+    sub = m.group || null;
+    list.append(flyRow(m));
+  }
+  fly.append(list);
+  return fly;
+}
+
+function flyRow(m) {
+  const planned = m.status === 'planned' || !m.href;
+  const row = planned
+    ? h('button.sh-fly-mod.is-planned', { type: 'button', 'data-action': 'module-planned', 'data-module': m.id })
+    : h('a.sh-fly-mod', { href: m.href });
+  row.dataset.moduleId = m.id;   // markLocked(): PLAN on a module the plan does not include
+  row.append(...[
+    iconSpan('sh-fly-icon', m),
+    h('span.sh-fly-label', { text: m.label }),
+    planned ? h('span.sh-fly-flag', { text: 'SOON' }) : null
+  ].filter(Boolean));
+  if (m.purpose) row.title = m.purpose;
+  return row;
+}
+
+/* ---- opening a flyout ------------------------------------------ */
+let flyOpen = null;      // the open .sh-fly
+let flyTimer = 0;
+let flyQuiet = null;     // the cell Escape is returning focus to
+function placeFly(cell, fly) {
+  const r = cell.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const bottomGap = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ssb-h')) || 0)
+    + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mab-h')) || 0) + 8;
+  const h0 = fly.offsetHeight;
+  let top = Math.round(r.top);
+  if (top + h0 > vh - bottomGap) top = Math.max(8, Math.round(vh - bottomGap - h0));
+  fly.style.setProperty('--sh-fly-top', top + 'px');
+}
+function showFly(cell) {
+  clearTimeout(flyTimer);
+  const fly = cell && cell.querySelector(':scope > .sh-fly');
+  if (!fly) return;
+  if (flyOpen && flyOpen !== fly) hideFly(true);
+  if (!fly.hidden) return;
+  fly.hidden = false;
+  cell.classList.add('is-fly');
+  placeFly(cell, fly);
+  flyOpen = fly;
+}
+function hideFly(now) {
+  clearTimeout(flyTimer);
+  const go = () => {
+    const f = flyOpen;
+    if (!f) return;
+    /* never shut the flyout the keyboard is inside */
+    if (!now && f.parentElement.contains(document.activeElement) && document.activeElement !== document.body
+        && f.parentElement.matches(':focus-within')) return;
+    f.hidden = true;
+    f.parentElement.classList.remove('is-fly');
+    flyOpen = null;
+  };
+  if (now) go(); else flyTimer = setTimeout(go, 160);
 }
 
 /* "Idea, logline, beats. Beats & Pacing: write the story and…; …" —
@@ -615,6 +719,28 @@ function isAdminNow() {
 function syncAdminOnly() {
   const show = isAdminNow();
   document.querySelectorAll('.sh-rail-item.is-admin-only').forEach((a) => { a.hidden = !show; });
+  syncRailAccount();
+}
+
+/* The rail's account cell mirrors the band's account pill (auth.js owns
+   what it says): the pill's initials disc when signed in, the person
+   glyph otherwise, and the pill's own title. Read-only, and it only
+   touches a node whose value changed, so it can be called from the
+   band's MutationObserver without feeding it (the rail is not in the
+   observed subtree either way). */
+function syncRailAccount() {
+  const cell = document.querySelector('#studioRail .sh-rail-account');
+  if (!cell) return;
+  const pill = document.getElementById('signInPill');
+  const av = pill && pill.querySelector('.sip-avatar');
+  const text = av && !av.hidden ? (av.textContent || '').trim() : '';
+  const disc = cell.querySelector('.sh-rail-avatar');
+  const person = cell.querySelector('.sh-rail-person');
+  if (disc && disc.textContent !== text) disc.textContent = text;
+  if (disc && disc.hidden !== !text) disc.hidden = !text;
+  if (person && person.hidden !== !!text) person.hidden = !!text;
+  const title = (pill && pill.title) || 'Your account';
+  if (cell.title !== title) cell.title = title;
 }
 if (typeof document !== 'undefined') {
   Store.subscribe('gate:changed', syncAdminOnly);
@@ -651,15 +777,11 @@ function buildBar(active) {
   renderCrumb(crumb, active);
   bar.append(crumb);
 
-  if (!isGlobalMode()) {
-    const tabs = h('div.sh-phases');
-    phases().forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
-    /* Arriving from a dashboard stage card: the strip fades up into
-       place. @starting-style (chrome.css) animates from the first
-       style resolution, so no JS timing is involved. */
-    if (cameFromDashboard()) tabs.classList.add('is-arrive');
-    bar.append(tabs);
-  }
+  /* THE STAGE STRIP LEFT THE BAND (Swiss shell, 14 Oct 2026): the five
+     stages are in the rail now, each with a flyout of its modules, and
+     the crumb's stage segment still names the one you are in. The band
+     is one 56px row: where you are, search, the page's tools, the
+     studio's zone. */
 
   /* The palette's handle. ⌘K is the fast way in and it is also
      invisible: a shortcut nobody has been told about is a feature
@@ -699,7 +821,7 @@ function buildBar(active) {
     'aria-haspopup': 'dialog', 'aria-keyshortcuts': 'Meta+K Control+K'
   });
   const find = h('div.sh-find', { 'data-action': 'palette-open', title: 'Search the studio  (' + kbd + ')' });
-  find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }), findInput,
+  find.append(iconSpan('sh-find-icon', { sym: 'search', icon: '⌕' }), findInput,
               h('kbd.sh-find-key', { text: kbd, 'aria-hidden': 'true' }));
   findInput.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -889,7 +1011,18 @@ function paintLocation(loc) {
   if (loc.module && loc.module.id) document.documentElement.setAttribute('data-sh-module', loc.module.id);
   else document.documentElement.removeAttribute('data-sh-module');
   document.querySelectorAll('.sh-rail-stage').forEach((a) => {
-    a.classList.toggle('is-active', !!loc.phase && a.dataset.phase === loc.phase.id);
+    const on = !!loc.phase && a.dataset.phase === loc.phase.id;
+    a.classList.toggle('is-active', on);
+    /* The stage is "where you are" in the rail as the global entries
+       are; aria-current only when no global entry already claims it. */
+    if (on && !document.querySelector('.sh-rail-item[data-rail-id][aria-current]')) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+  /* …and the module, in its flyout. */
+  document.querySelectorAll('.sh-fly-mod').forEach((m) => {
+    const here = !!(loc.module && m.dataset.moduleId === loc.module.id);
+    m.classList.toggle('is-here', here);
+    if (here) m.setAttribute('aria-current', 'page'); else m.removeAttribute('aria-current');
   });
   /* On a phone the stages are one sideways-scrolling line (chrome.css),
      so the one you are in may start off-screen. Bring it in. Only the
@@ -1376,9 +1509,9 @@ function setRail(open) {
   // Only the wide-screen preference is worth keeping. Restoring "open"
   // on a phone would put a fifth of the screen of navigation over the
   // page on arrival.
-  if (!isNarrow()) {
-    try { localStorage.setItem(RAIL_KEY, open ? '1' : '0'); } catch (e) {}
-  }
+  /* (14 Oct 2026) On a desk the rail is fixed and has no open/closed
+     choice any more, so nothing is written. RAIL_KEY stays declared and
+     readable: an old stored '0' is simply ignored. */
   /* Below the breakpoint the rail is a drawer over the page, so it
      behaves like one: focus moves into it on open and back to the
      control that opened it on close. Without this, tabbing from an
@@ -1424,10 +1557,8 @@ function trapRailFocus(e) {
 }
 
 function initialRail() {
-  if (isNarrow()) return false;
-  let v = null;
-  try { v = localStorage.getItem(RAIL_KEY); } catch (e) {}
-  return v !== '0';
+  /* Desk: always shown (a fixed 64px icon rail). Phone: a drawer, closed. */
+  return !isNarrow();
 }
 
 function closeAllMenus(except) {
@@ -1503,14 +1634,59 @@ function wire() {
     window.addEventListener('resize', () => flagPhaseOverflow(phases), { passive: true });
   }
 
+  /* THE STAGE FLYOUTS. Hover opens one (a short delay on the way out,
+     so the pointer can cross from the icon to the panel); keyboard focus
+     opens it too, and Tab walks on into its links. Escape and a click
+     elsewhere put it away; following a link does too. */
+  const rail = document.getElementById('studioRail');
+  if (rail) {
+    /* The icon's label is a tooltip beside the rail. It is fixed, not
+       absolute, because the rail scrolls and would clip it; its height is
+       placed from the item's own rect, read when the item is reached. */
+    const tip = (e) => {
+      const it = e.target.closest && e.target.closest('.sh-rail-item');
+      if (!it) return;
+      const r = it.getBoundingClientRect();
+      it.style.setProperty('--sh-tip-y', Math.round(r.top + r.height / 2) + 'px');
+      it.style.setProperty('--sh-tip-x', Math.round(r.right) + 'px');
+    };
+    rail.addEventListener('pointerover', tip);
+    rail.addEventListener('focusin', tip);
+    rail.addEventListener('pointerover', (e) => {
+      if (e.pointerType === 'touch') return;
+      const cell = e.target.closest && e.target.closest('.sh-rail-stagecell');
+      if (cell) showFly(cell); else if (!e.target.closest('.sh-fly')) hideFly();
+    });
+    rail.addEventListener('pointerleave', () => hideFly());
+    rail.addEventListener('focusin', (e) => {
+      const cell = e.target.closest && e.target.closest('.sh-rail-stagecell');
+      if (cell && cell === flyQuiet) return;   // Escape handing focus back: stay shut
+      if (cell) showFly(cell); else hideFly(true);
+    });
+    rail.addEventListener('focusout', (e) => {
+      const to = e.relatedTarget;
+      if (!to || !(to.closest && to.closest('.sh-rail-stagecell.is-fly'))) hideFly(true);
+    });
+    rail.addEventListener('scroll', () => hideFly(true), { passive: true });
+  }
+  delegate(document, 'click', '.sh-fly a', () => hideFly(true));
+
+  /* Help in the rail's foot: the shortcut sheet, which already lists the
+     keys and the page's own help. */
+  delegate(document, 'click', '[data-action="rail-help"]', () => {
+    const ui = window.StudioUI;
+    if (ui && ui.openShortcutSheet) ui.openShortcutSheet();
+  });
+
   delegate(document, 'click', '[data-action="rail-toggle"]', () => {
+    if (!isNarrow()) return;   // no toggle on a desk
     setRail(!document.body.classList.contains('rail-shown'));
   });
 
   // Tapping the dimmed page puts the drawer away — the gesture every
   // drawer has, and the reason the scrim is a real element rather
   // than a ::before nobody can click.
-  delegate(document, 'click', '[data-action="rail-close"]', () => setRail(false));
+  delegate(document, 'click', '[data-action="rail-close"]', () => { if (isNarrow()) setRail(false); });
 
   // The breadcrumb's stage segment goes to the stage's main page (on a
   // phone mobile-nav.js intercepts it first and opens the Go-to sheet).
@@ -1541,6 +1717,7 @@ function wire() {
     // treated as a click "outside" — the generic close below runs
     // after the delegate above and would shut what it just opened.
     if (!e.target.closest('.sh-phase, .sh-where-phase, .sh-pagenav')) closeAllMenus();
+    if (flyOpen && !e.target.closest('.sh-rail-stagecell')) hideFly(true);
     // Narrow: the rail is a temporary overlay, so following a link or
     // tapping the page puts it away again.
     if (!isNarrow()) return;
@@ -1550,6 +1727,12 @@ function wire() {
   document.addEventListener('keydown', (e) => {
     trapRailFocus(e);
     if (e.key !== 'Escape') return;
+    if (flyOpen) {
+      const cell = flyOpen.parentElement;
+      const inside = cell && cell.contains(document.activeElement);
+      hideFly(true);
+      if (inside) { const a = cell.querySelector('.sh-rail-stage'); flyQuiet = cell; if (a) a.focus(); flyQuiet = null; }
+    }
     closeAllMenus();
     if (isNarrow()) setRail(false);
   });
@@ -1574,7 +1757,7 @@ function wire() {
   let raf = 0;
   window.addEventListener('resize', () => {
     if (raf) return;
-    raf = requestAnimationFrame(() => { raf = 0; measureBar(); runSpy(); fitOpenMenus(); });
+    raf = requestAnimationFrame(() => { raf = 0; measureBar(); runSpy(); fitOpenMenus(); if (flyOpen) hideFly(true); });
   });
 
   /* Scrolling is the other thing that moves you without a page load,
@@ -1641,6 +1824,7 @@ export function mountShell() {
   wire();
   setRail(initialRail());
   paintLocation(active);
+  syncRailAccount();
   /* Two frames: one for layout, one for the web fonts to land. The
      bar is measured, and measuring it before the brand face (Catamaran) and
      JetBrains Mono arrive records the fallback's height. The spy runs on the
@@ -1712,7 +1896,7 @@ export function mountShell() {
     let mraf = 0;
     new MutationObserver(() => {
       if (mraf) return;
-      mraf = requestAnimationFrame(() => { mraf = 0; measureBar(); });
+      mraf = requestAnimationFrame(() => { mraf = 0; measureBar(); syncRailAccount(); });
     }).observe(bar, { childList: true, subtree: true });
   }
   /* A guess about which module you are in (no hash, no spy) is only as

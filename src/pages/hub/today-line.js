@@ -16,6 +16,7 @@
 import Store from '../../lib/store.js';
 import Scenes from '../../lib/scenes.js';
 import { pathSteps, nextStep } from '../../lib/preprod-path.js';
+import { button } from '../../ui/kit/index.js';
 import { h } from '../../lib/dom.js';
 import '../../styles/today-line.css';
 
@@ -51,10 +52,9 @@ function draw() {
       h('span.tl-where', { text: parts[1] }), sep(),
       h('span', {}, all ? [h('strong', { text: 'ready to shoot' })] : ['next: ', h('strong', { text: next.label })])
     ]),
-    h('a.btn.primary.tl-go', {
-      href: next.tool.href,
-      'aria-label': (all ? 'See the Ready to shoot check' : 'Open ' + next.label) + ' — ' + (title || 'this film'),
-      text: 'Open →'
+    button({
+      label: 'Open', variant: 'primary', iconAfter: 'arrow_forward', href: next.tool.href, class: 'tl-go',
+      attrs: { 'aria-label': (all ? 'See the Ready to shoot check' : 'Open ' + next.label) + ' — ' + (title || 'this film') }
     })
   );
   host.hidden = false;

@@ -16,6 +16,7 @@
    not depend on data existing (CLAUDE.md). Empty state inside.
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { button } from './kit/index.js';
 import { loadScript, pageCount, formatPages, formatRuntime, elementLines } from '../lib/script.js';
 import {
   sliceScript, headingParts, castMatrix, cueName, formatDuration, titleCase,
@@ -138,9 +139,9 @@ export function renderScriptOverview(scenes, opts = {}) {
     h('h2.bd-h2', { text: 'Screenplay Analysis' }),
     h('p.bd-sub', { text: 'What the script is made of, worked out from its pages. Nothing here is typed twice: change the script and this follows.' }),
     h('p.bdo-onward', {}, [
-      hasScript ? h('button.btn.primary.bd-cta', { type: 'button', 'data-action': 'run-breakdown-script', text: scenes.length ? 'Run breakdown again' : 'Run breakdown' }) : null,
-      h('a.btn', { href: 'screenplay.html', text: 'Back to the Screenplay Writer' }),
-      hasScript ? h('a.btn', { href: 'write.html?stay=1#coverage', text: 'AI coverage report' }) : null
+      hasScript ? button({ variant: 'primary', pill: true, action: 'run-breakdown-script', class: 'bd-cta', label: scenes.length ? 'Run breakdown again' : 'Run breakdown' }) : null,
+      button({ href: 'screenplay.html', label: 'Back to the Screenplay Writer' }),
+      hasScript ? button({ href: 'write.html?stay=1#coverage', label: 'AI coverage report' }) : null
     ].filter(Boolean)),
     h('p.bdo-status', { role: 'status', 'aria-live': 'polite', 'data-so-status': '', text: '' })
   );

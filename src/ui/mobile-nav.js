@@ -239,17 +239,17 @@ export function barItems() {
      search. Settings takes the slot. The mode is shell.js's, derived once. */
   if (isGlobalMode()) {
     return [
-      { icon: '⌂', label: 'Home', href: 'index.html', id: 'home' },
-      { icon: '☰', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },
-      { icon: '⚙', label: 'Settings', href: 'settings.html', id: 'settings' },
-      { icon: '⋯', label: 'Tools', onClick: () => openTools(), id: 'tools', controls: true }
+      { icon: '⌂', sym: 'home', label: 'Home', href: 'index.html', id: 'home' },
+      { icon: '☰', sym: 'menu', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },
+      { icon: '⚙', sym: 'settings', label: 'Settings', href: 'settings.html', id: 'settings' },
+      { icon: '⋯', sym: 'more_horiz', label: 'Tools', onClick: () => openTools(), id: 'tools', controls: true }
     ];
   }
   return [
-    { icon: '⌂', label: 'Home', href: 'index.html', id: 'home' },
-    { icon: '☰', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },
-    { icon: '⌕', label: 'Search', id: 'search' },     // chrome.js wires the palette
-    { icon: '⋯', label: 'Tools', onClick: () => openTools(), id: 'tools', controls: true }
+    { icon: '⌂', sym: 'home', label: 'Home', href: 'index.html', id: 'home' },
+    { icon: '☰', sym: 'menu', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },
+    { icon: '⌕', sym: 'search', label: 'Search', id: 'search' },     // chrome.js wires the palette
+    { icon: '⋯', sym: 'more_horiz', label: 'Tools', onClick: () => openTools(), id: 'tools', controls: true }
   ];
 }
 

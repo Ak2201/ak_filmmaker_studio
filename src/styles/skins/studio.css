@@ -1,176 +1,109 @@
 /* ============================================================
    SKIN: STUDIO — the default, and the defaults.
    ------------------------------------------------------------
-   The product look: white cards on a lavender ground, 16px
-   corners, pill actions, one geometric sans at two weights, and
-   air instead of rules. This is the language described at the top
-   of modules.css, expressed as the contract in _contract.css.
+   SWISS PRECISION (owner, 14 Oct 2026): tight radii (4 / 6 / 8),
+   hairline-bordered cards on an obsidian ground, Space Grotesk display
+   over an Inter interface, mono caps eyebrows, compact padding. Pills
+   only for status badges and the one primary CTA (.btn-pill in
+   kit.css), never for every button.
 
-   The bare `:root` block is load-bearing, not a convenience. It is
-   the same trap the theme fell into: the stylesheets key off
-   `:root[data-skin]`, so a page that has not run skin.js yet — or a
-   browser where localStorage throws — would render with every
-   --sk-* unset and every card would lose its border and its
+   The bare `:root` block is load-bearing, not a convenience: the
+   stylesheets key off `:root[data-skin]`, so a page that has not run
+   skin.js yet — or a browser where localStorage throws — would render
+   with every --sk-* unset and every card would lose its border and its
    padding. Declaring the defaults on bare :root means the app is
-   correct before any JavaScript runs, and the skin attribute only
-   ever *changes* the look, never supplies it.
+   correct before any JavaScript runs.
+
+   ONE LOOK. The variables stay because modules.css is written against
+   them; a hard-coded shape is a shape nothing can ever override.
+   Colours here are always var(--token) — never a literal.
    ============================================================ */
-
-/* ONE LOOK NOW. press, binder, console, mission and the short-lived
-   gate.css are gone: five swappable looks meant five sets of every
-   shape decision to keep correct across every theme, and the brief
-   was one identity rather than a menu of them. The variables stay,
-   because modules.css is written against them and a hard-coded
-   shape is a shape nothing can ever override — the contract is now
-   the single source of this design rather than a switchboard.
-
-   Declared on BARE :root as well as the attribute, which is the
-   documented trap: without it every card loses its border and its
-   padding for the length of one paint before skin.js runs, and all
-   of it if localStorage throws. */
 :root,
 :root[data-skin="studio"] {
   --sk-name: "Studio";
 
-  /* ---- geometry ------------------------------------------- */
-  /* Rounded, and deliberately so. CLAUDE.md used to list `radius:
-     2px — the studio is printed matter, not iOS` under things that
-     are deliberate rather than oversights, and that was true of the
-     design it described. This design is a working product surface:
-     the card is a panel you act inside, not a plate on a page, and a
-     2px corner on a 1px hairline reads as a rendering artefact
-     rather than as a decision. The note has been corrected rather
-     than quietly contradicted.
-
-     Two radii, because a pill button beside a square-ish card is a
-     real combination and one value cannot express it. */
-  --sk-radius:          16px;
-  --sk-btn-radius:      var(--radius-pill);
-  --sk-card-pad:        var(--s5) var(--s5);
-  --sk-band-pad:        var(--s9) var(--s5);
-  --sk-grid-gap:        var(--s5);
-  --sk-cover-pad:       var(--s8) 0 var(--s7);
+  /* ---- geometry --------------------------------------------- */
+  /* Cards and panels 8px, fields 6px, buttons 6px (the spec's control
+     radius). Was 16px / pill. */
+  --sk-radius:          var(--radius-lg);
+  --sk-btn-radius:      var(--radius);
+  --sk-field-radius:    var(--radius);
+  /* Top-level dialogs (kit.css .dlg.k-modal): one step rounder than a card. */
+  --sk-modal-radius:    var(--radius-xl);
+  --sk-card-pad:        var(--s3) var(--s4);
+  --sk-band-pad:        var(--s7) var(--s4);
+  --sk-grid-gap:        var(--s3);
+  --sk-cover-pad:       var(--s6) 0 var(--s5);
   --sk-cover-min:       0;
 
-  /* ---- surfaces: a white card that admits it is a card ----
-     The previous look drew depth by luminance alone — a sunk card,
-     no border, no shadow — which works on a dark ground and
-     disappears on a light one. Here the ground is tinted and the
-     card is plain white, so it is already lighter than the page; the
-     hairline and the 1px shadow are what give it an edge rather than
-     what give it its shape. */
-  --sk-card-bg:         var(--paper-raised);
+  /* ---- surfaces: level-2 card on the level-0 canvas ----------
+     Depth by luminance and a hairline; no shadow at rest. */
+  --sk-card-bg:         var(--surface-card);
   --sk-card-ink:        var(--ink-body);
-  /* DESIGN.md: a card is outlined in a violet hairline (dark: violet at 15%
-     via --rule-hair); light keeps its lavender one. */
-  --sk-card-line:       var(--rule-hair);
+  --sk-card-line:       var(--border-hair);
   --sk-card-line-w:     1px;
-  --sk-card-shadow:     var(--shadow-sm);
-  --sk-deco-bg:         var(--paper-raised);
+  --sk-card-shadow:     none;
+  --sk-deco-bg:         var(--surface-card);
   --sk-deco-ink:        var(--ink-body);
 
-  /* ---- interaction, from the merged contract ---------------
-     These five came in with the interface revamp and they are a
-     capability rather than a look: the variables exist so a skin can
-     have a lift without needing a selector of its own. The values
-     here are this design's answers.
-
-     The note they arrived with said "Studio is printed matter: a page
-     does not lift off the desk when you look at it", and set them to
-     zero. That was right for a flat, shadowless card. This card
-     already carries a 1px shadow, so a hover that does nothing is
-     the odd one out — --shadow-md and 1px of travel, which is the
-     smallest move that reads as a response. */
-  --sk-card-shadow-hover: var(--shadow-md);
-  --sk-lift:            1px;
-  --sk-press:           0.985;
-  --sk-field-radius:    var(--radius);
+  /* ---- interaction ------------------------------------------
+     A hover brightens the hairline (done in the rules) and lifts by
+     nothing: a workstation panel does not float toward you. Press is a
+     barely-there scale so a click still registers. */
+  --sk-card-shadow-hover: none;
+  --sk-lift:            0px;
+  --sk-press:           0.99;
   --sk-focus-w:         2px;
 
-  /* ---- rules: colour only where colour is data ------------
-     The data-carrying rule stays at 4px, which is above the 3px the
-     gate asserts for hue-coded variants and is the whole of the
-     colour coding on a card now that nothing else is tinted. The
-     DECORATIVE rule is a hairline — not 0. The card rules in
-     modules.css set `border` and then `border-left` separately, so a
-     width of 0 here does not quieten the left edge, it deletes it
-     and leaves three sides of a box. */
-  --sk-hue-rule-w:      4px;
+  /* ---- rules: colour only where colour is data ---------------
+     The data-carrying stripe is 3px (the gate asserts >= 3px for
+     hue-coded variants; the stripboard's telemetry stripe is 3px in the
+     spec). The decorative rule is a hairline, not 0 — 0 would delete a
+     side and leave three sides of a box. */
+  --sk-hue-rule-w:      3px;
   --sk-deco-rule-w:     1px;
-  --sk-deco-rule-c:     var(--rule-hair);
+  --sk-deco-rule-c:     var(--border-hair);
 
-  /* ---- type: a serif display over a geometric sans ----------
-     Playfair Display for the display face, Plus Jakarta Sans for body
-     (Catamaran behind both, for Tamil). A display/text pairing and an
-     all-sans design are different designs, and this is the sort of
-     thing a skin exists to decide. The hero is set at
-     800 with tight tracking; everything else leans on size and
-     weight rather than on a second face.
-
-     --sk-title-lh is 1.0 rather than the 0.92 the serif display
-     wanted: a geometric sans has a tall x-height and short
-     descenders, so 0.92 collides the lines of a two-line hero. */
+  /* ---- type -------------------------------------------------- */
+  /* Space Grotesk for display and headings, Inter for the interface.
+     Page titles are UPRIGHT: the serif italic belongs to the project
+     title / cover and the landing tagline only (--face-editorial). */
   --sk-display:         var(--face-display);
-  --sk-body:            var(--face-serif);
-  /* --sk-font-url stays `none`: the face is in every page's own
-     <link>, so skin.js has no second stylesheet to fetch. A skin that
-     brings its own face is what that variable is for. */
-  --sk-body-size:       var(--t-base);
+  --sk-body:            var(--face-sans);
+  /* The faces are self-hosted in fonts.css; no stylesheet to fetch. */
   --sk-font-url:        none;
-  --sk-title-size:      clamp(2.5rem, 6.4vw, 4.75rem);
-  --sk-title-lh:        1.04;
+  --sk-body-size:       var(--t-small);
+  --sk-title-size:      clamp(1.75rem, 3.2vw, 2.25rem);
+  --sk-title-lh:        1.12;
   --sk-title-style:     normal;
   --sk-title-transform: none;
-  --sk-h2-size:         var(--t-3xl);
+  --sk-h2-size:         var(--t-xl);
   --sk-h2-style:        normal;
-  --sk-card-h-size:     var(--t-lg);
+  --sk-card-h-size:     var(--t-small);
   --sk-card-h-style:    normal;
-  --sk-deck-size:       var(--t-lg);
+  --sk-deck-size:       var(--t-small);
   --sk-deck-style:      normal;
-  --sk-deck-measure:    56ch;
-  /* THE EYEBROW IS JETBRAINS MONO CAPS AGAIN (Obsidian Cinema, 13 Oct
-     2026): DESIGN.md's label-md is 11px / 500-600 / .1em tracking /
-     uppercase, and every eyebrow in the app follows these four
-     variables, so this is the one place it is decided. Colour stays
-     --accent-deep in the rule that draws it (a fill is not a text
-     colour). --f-mono falls through to Catamaran per glyph for Tamil. */
+  --sk-deck-measure:    72ch;
+  /* The eyebrow: JetBrains Mono caps, 11px, .08em. Colour stays
+     --accent-deep in the rule that draws it. */
   --sk-eyebrow-face:    var(--f-mono);
-  --sk-eyebrow-track:   0.1em;
+  --sk-eyebrow-track:   var(--track-label);
   --sk-eyebrow-transform: uppercase;
-  --sk-eyebrow-size:    0.6875rem;
-  --sk-stepnum-size:    var(--t-3xl);
+  --sk-eyebrow-size:    var(--t-micro);
+  --sk-stepnum-size:    var(--t-2xl);
 
-  /* ---- the slab: all six, or none -------------------------
-     THE SLAB FOLLOWS THE THEME. It used to be --panel, which is dark
-     in every theme — a near-black band every few screens through a
-     light design, which is the one thing this look does not have. It
-     is a brand-washed tint now: lavender on the light theme, deep
-     violet on the dark one, both arrived at through ordinary page
-     tokens rather than a second palette.
-
-     That is why the inks below are --ink / --ink-muted / --accent-deep
-     and not the *-lift family. A lift is a hue mixed to sit on a
-     ground that is dark IN EVERY THEME, and the slab is no longer
-     one; --accent-deep already resolves to the lifted value inside
-     [data-theme="dark"], so one token is correct on both.
-
-     All six move together, which _contract.css spells out as the rule
-     that bites: --sk-slab-accent-on is the one that fails loudest,
-     because near-black on a deep violet fill is 1.74:1. Here the
-     accent is --accent-deep and its on-colour is --accent-on, and
-     both invert with the theme, so the pair stays right in both.
-
-     --panel keeps the overlays — toast, tooltip, popover, phase menu,
-     focus timer — and that is deliberate rather than left over: a
-     dark floating surface over a light page is how a tooltip reads
-     as temporary. */
+  /* ---- the slab: all six, or none ----------------------------
+     An in-page emphasis band: the accent's wash, page inks. All six
+     move together (_contract.css rule 2). */
   --sk-slab-bg:         var(--accent-wash);
   --sk-slab-ink:        var(--ink);
   --sk-slab-muted:      var(--ink-muted);
   --sk-slab-accent:     var(--accent-deep);
-  --sk-slab-accent-on:  var(--accent-on);
-  --sk-slab-fill:       var(--paper-raised);
-  --sk-slab-hair:       var(--rule);
+  /* near-black: the slab accent is a -deep (light) hue on every page,
+     studio included, where --accent-on is white for the brand fill. */
+  --sk-slab-accent-on:  var(--on-fill);
+  --sk-slab-fill:       var(--surface-rail);
+  --sk-slab-hair:       var(--border-strong);
   --sk-slab-rule-w:     0;
   --sk-slab-rule-c:     var(--accent-deep);
 }

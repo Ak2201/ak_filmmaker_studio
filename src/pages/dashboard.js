@@ -58,6 +58,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
+import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel } from '../ui/kit/index.js';
 
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
@@ -247,12 +248,12 @@ function snapshot(project) {
 /* ============================================================
    PIECES
    ============================================================ */
-const stat = (value, label) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+/* A figure for the KPI strip: the kit's stat card (JetBrains Mono value). */
+const stat = (value, unit, label) => ({ label, value, unit: value === '\u2014' ? '' : unit });
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.db-sec', { id, 'data-reveal': '' });
-  sec.append(h('p.bd-eyebrow', { text: eyebrow }), h('h2.bd-h2', { text: title }));
+  sec.append(kEyebrow(eyebrow), h('h2.bd-h2', { text: title }));
   if (deck) sec.append(h('p.bd-sub', { text: deck }));
   return sec;
 }
@@ -376,11 +377,15 @@ function when(n) {
   return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 0 ? 'in ' + n + ' days' : Math.abs(n) + ' days ago';
 }
 
+/* A desk tile is the kit's panel: eyebrow in the header, the title
+   (an h2, so the heading order holds) opening the body. Callers append
+   to tb(tile), the panel's body. */
 function tile(id, eyebrow, title) {
-  const t = h('section.db-tile', { 'aria-labelledby': 'dbt-' + id });
-  t.append(h('p.db-tile-eyebrow', { text: eyebrow }), h('h2.db-tile-h', { id: 'dbt-' + id, text: title }));
+  const t = kPanel({ eyebrow, class: 'db-tile', attrs: { 'aria-labelledby': 'dbt-' + id } });
+  tb(t).append(h('h2.db-tile-h', { id: 'dbt-' + id, text: title }));
   return t;
 }
+const tb = (t) => t.querySelector('.k-panel-body');
 
 function continueTarget(snap) {
   const log = recentActivity(1)[0];
@@ -414,9 +419,9 @@ function renderContinue(snap) {
   const tl = tile('continue', 'Continue', 'Pick up where you left off');
   tl.classList.add('db-up');
   const t = continueTarget(snap);
-  tl.append(
+  tb(tl).append(
     h('p.db-tile-line', { id: 'resume', text: t.what + (t.ts ? ' · edited ' + relTime(t.ts) : '') }),
-    h('a.btn.primary.db-big', { href: t.href, 'aria-label': 'Continue: ' + t.what, text: 'Continue  →' })
+    button({ label: 'Continue', variant: 'primary', size: 'lg', iconAfter: 'arrow_forward', href: t.href, class: 'db-big', attrs: { 'aria-label': 'Continue: ' + t.what } })
   );
 
   const sug = snap.suggest;
@@ -432,7 +437,7 @@ function renderContinue(snap) {
       h('p.db-tile-line', { text: WHY[sug.why] || WHY.continue })
     );
     const acts = h('div.db-up-acts');
-    acts.append(h('a.btn', { href: sugState.href, 'aria-label': 'Go to ' + sugState.label, text: 'Go to ' + sugState.label + '  →' }));
+    acts.append(button({ label: 'Go to ' + sugState.label, href: sugState.href, iconAfter: 'arrow_forward', attrs: { 'aria-label': 'Go to ' + sugState.label } }));
     const nx = snap.journey && snap.journey.next;
     if (nx && nx.href && nx.label) {
       acts.append(h('a.db-gap-link', { href: nx.href, text: 'Next step: ' + nx.label }));
@@ -441,7 +446,7 @@ function renderContinue(snap) {
   } else {
     box.append(h('p.db-none', { text: 'Every stage is done. Open any card to review it.' }));
   }
-  tl.append(box);
+  tb(tl).append(box);
   return tl;
 }
 
@@ -450,7 +455,7 @@ function renderReadyTile() {
   tl.classList.add('db-ready');
   const r = readiness();
   if (!r.hasFilm) {
-    tl.append(
+    tb(tl).append(
       h('p.db-tile-line', { text: 'No scenes yet, so nothing to check.' }),
       h('ul.db-acts', {}, [h('li', {}, [
         h('a.db-gap-link', { href: 'breakdown.html', text: 'Add the scenes' }),
@@ -473,7 +478,7 @@ function renderReadyTile() {
     + r.blockers + ' blocker' + (r.blockers === 1 ? '' : 's') + ', ' + r.gaps + ' gap' + (r.gaps === 1 ? '' : 's');
   const seg = h('div.db-seg', { role: 'img', 'aria-label': label });
   sorted.forEach((c) => seg.append(h('span.db-seg-i.' + (c.passed ? 'is-pass' : c.severity === 'blocker' ? 'is-blocker' : 'is-gap'))));
-  tl.append(
+  tb(tl).append(
     h('p.db-score', {}, [h('strong', { text: pass + '/' + total }), h('span', { text: 'checks pass' })]),
     seg,
     h('p.db-tile-line', { text: 'Readiness: ' + label })
@@ -494,7 +499,7 @@ function renderReadyTile() {
       h('a.db-fix-go', { href: c.where || 'dashboard.html#readiness', 'aria-label': 'Fix it: ' + c.label, text: 'Fix it \u2192' })
     ])));
   }
-  tl.append(ul, h('a.db-link.db-tile-more', { href: '#readiness', text: 'See every check ↓' }));
+  tb(tl).append(ul, h('a.db-link.db-tile-more', { href: '#readiness', text: 'See every check ↓' }));
   return tl;
 }
 
@@ -516,14 +521,14 @@ function nextShootLine(snap) {
 
 function renderWeek(snap) {
   const tl = tile('week', 'This week', 'Shoot days and call sheets');
-  tl.append(h('p.db-tile-line.db-strong', { text: nextShootLine(snap) }));
+  tb(tl).append(h('p.db-tile-line.db-strong', { text: nextShootLine(snap) }));
   const covered = new Set();
   snap.sheets.forEach((cs) => (cs.sceneIds || []).forEach((id) => covered.add(id)));
   const rows = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
     .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= -1 && x.n <= 7)
     .sort((a, b) => a.n - b.n);
   if (!rows.length) {
-    tl.append(h('p.db-tile-line', { text: snap.datedDays
+    tb(tl).append(h('p.db-tile-line', { text: snap.datedDays
       ? 'No shoot day falls in the next seven days.' : 'No shoot day has a date yet.' }),
       h('a.db-gap-link', { href: 'plan.html#calendar', text: 'Open the Shoot Calendar' }));
     return tl;
@@ -543,7 +548,7 @@ function renderWeek(snap) {
         + ' · ' + (sheet ? 'call sheet made' : 'no call sheet') + dpr })
     ]));
   }
-  tl.append(ul);
+  tb(tl).append(ul);
   return tl;
 }
 
@@ -559,10 +564,9 @@ function renderPlanTile() {
     : cp.reason === 'trial' ? 'Free trial'
     : cp.reason === 'free' ? 'Free to use right now'
     : 'No plan yet';
-  tl.append(
+  tb(tl).append(
     h('p.db-tile-line', { text: line }),
-    h('a.btn.db-tile-go', { href: 'purchase.html', 'aria-label': 'Plans and upgrade',
-      text: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans' })
+    button({ label: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans', href: 'purchase.html', class: 'db-tile-go', attrs: { 'aria-label': 'Plans and upgrade' } })
   );
   return tl;
 }
@@ -572,15 +576,15 @@ function renderBackupTile() {
   let st = null;
   try { st = getDriveStatus(); } catch (e) { /* a status is not a transfer */ }
   const on = !!(st && st.connected);
-  tl.append(h('p.db-tile-line.db-state' + (on ? '.is-on' : '.is-off'), {}, [
+  tb(tl).append(h('p.db-tile-line.db-state' + (on ? '.is-on' : '.is-off'), {}, [
     h('span.db-dot', { 'aria-hidden': 'true' }),
     txt(on
       ? 'Google Drive: connected' + (st.syncedAt ? ', last synced ' + relTime(st.syncedAt) : ', not yet synced') + '.'
       : 'Google Drive: not connected.')
   ]));
-  tl.append(h('p.db-tile-line', { text: 'Everything lives in this browser. A backup file is the only other copy unless Drive is on; '
+  tb(tl).append(h('p.db-tile-line', { text: 'Everything lives in this browser. A backup file is the only other copy unless Drive is on; '
     + 'this page cannot see when you last exported one.' }));
-  tl.append(h('a.btn.db-tile-go', { href: 'index.html', 'aria-label': 'Export a backup, from the studio home page', text: 'Export a backup' }));
+  tb(tl).append(button({ label: 'Export a backup', href: 'index.html', class: 'db-tile-go', attrs: { 'aria-label': 'Export a backup, from the studio home page' } }));
   return tl;
 }
 
@@ -613,12 +617,12 @@ function renderHead(snap) {
   const head = h('header.bd-head.db-head');
   const j = snap.journey;
   head.append(
-    h('p.bd-eyebrow.db-chips', {}, [
-      h('span.db-chip.is-format', { text: FORMAT_LABEL[p.format] || 'Project' }),
-      h('span.db-chip', { text: 'Project dashboard' }),
-      j ? h('span.db-chip.is-stage', { text: 'Stage: ' + j.currentLabel }) : null
+    h('div.db-chips', {}, [
+      badge({ label: FORMAT_LABEL[p.format] || 'Project', tag: true, tone: 'info' }),
+      badge({ label: 'Project dashboard', tag: true }),
+      j ? badge({ label: 'Stage: ' + j.currentLabel, tag: true }) : null
     ]),
-    h('h1.bd-title', { text: p.title }),
+    h('h1.bd-title.k-project-title', { text: p.title }),
     h('p.bd-deck', {
       text: 'Five stages, in any order, each read from what you have already made. '
           + 'Nothing is mandatory: with a screenplay in hand, start straight in Pre-Production.'
@@ -634,14 +638,15 @@ function renderHead(snap) {
   }
   head.append(favLine);
   if (!snap.isEmpty) {
-    head.append(h('div.bd-stats.db-stats', {}, [
-      stat(String(snap.scenes.length), snap.scenes.length === 1 ? 'scene' : 'scenes'),
-      stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages'),
-      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'shoot day' : 'shoot days'),
-      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'crew & cast'),
-      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'boarded shots'),
-      stat(snap.budget.lines ? snap.budget.short : '\u2014', 'locked budget')
-    ]));
+    const sc = snap.scenes.length;
+    head.append(statStrip([
+      stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes'),
+      stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count'),
+      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'day' : 'days', 'Shoot days'),
+      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast'),
+      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots'),
+      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Locked budget')
+    ], { class: 'db-stats', label: 'This film in numbers' }));
   }
   return head;
 }
@@ -658,13 +663,13 @@ function renderHead(snap) {
 const STATUS_GLYPH = { none: '○', doing: '◐', done: '●' };
 const GO = { none: 'Start', doing: 'Continue', done: 'Open' };
 
-function stageMeter(label, pct, value) {
-  const v = Math.max(0, Math.min(100, pct || 0));
-  return h('div.st-meter', {}, [
-    h('span.st-meter-lab', { text: label }),
-    h('span.db-bar', { 'aria-hidden': 'true' }, [h('span.db-bar-fill', { style: 'width:' + v + '%' })]),
-    h('span.st-meter-val', { text: value })
-  ]);
+/* The kit's meter, in the stage's own hue (the li carries the hue class). */
+function stageMeter(label, pct, value, hasTotal) {
+  const m = meter({ label, value: Math.max(0, Math.min(100, pct || 0)), max: 100, hue: 'st-hue', show: false });
+  m.classList.add('st-meter');
+  const read = h('b.k-meter-read', { text: value });
+  m.querySelector('.k-meter-row').append(read);
+  return m;
 }
 
 function stageCard(s, suggested, js, current) {
@@ -672,8 +677,8 @@ function stageCard(s, suggested, js, current) {
     { id: 'stage-' + s.id });
   li.append(h('div.st-head', {}, [
     h('span.st-part', { text: 'Part ' + s.part }),
-    s.status.id === 'done' ? h('span.st-pill.is-done', { text: 'Done' })
-      : s.status.id === 'doing' ? h('span.st-pill.is-doing', { text: 'In progress' }) : null,
+    s.status.id === 'done' ? badge({ label: 'Done', tone: 'ok', dot: true })
+      : s.status.id === 'doing' ? badge({ label: 'In progress', tone: 'info', dot: true }) : null,
     suggested ? h('span.st-sug', { text: 'Suggested next' })
       : current ? h('span.st-sug', { text: 'You are here' }) : null
   ]));
@@ -692,10 +697,10 @@ function stageCard(s, suggested, js, current) {
   s.facts.forEach((f) => facts.append(h('li', { text: f })));
   li.append(facts);
   const acts = h('div.st-acts');
-  acts.append(h('a.btn' + (suggested ? '.primary' : '') + '.st-go', {
-    href: s.href,
-    'aria-label': GO[s.status.id] + ' ' + s.label + ' — ' + s.status.label,
-    text: GO[s.status.id] + '  →'
+  acts.append(button({
+    label: GO[s.status.id], variant: suggested ? 'primary' : 'secondary', iconAfter: 'arrow_forward',
+    href: s.href, class: 'st-go',
+    attrs: { 'aria-label': GO[s.status.id] + ' ' + s.label + ' — ' + s.status.label }
   }));
   if (s.start && s.status.id === 'none') {
     acts.append(h('a.db-link.st-alt', { href: s.start.href, text: s.start.label }));

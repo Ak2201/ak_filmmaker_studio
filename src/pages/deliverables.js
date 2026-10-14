@@ -36,6 +36,7 @@ import { listScenes } from '../lib/scenes.js';
 import { isIndia } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
 import { guideHref } from '../lib/blueprint-route.js';
+import { pageHeader, statCard, statStrip } from '../ui/kit/index.js';
 /* pdf.js, cbfc.js and cbfc-rules.json are only needed by the certification
    and dialogue tabs, so they load on demand, not in first paint. */
 let PDF = null, Cbfc = null, CBFC_RULES = null, lazyP = null;
@@ -90,8 +91,9 @@ function projectFormat() {
 /* ---- pieces -------------------------------------------------- */
 
 function stat(num, label) {
-  return h('div.bd-stat', {}, [h('strong', { text: num }), h('span', { text: label })]);
+  return statCard({ label, value: num });
 }
+const statRow = (items, label) => statStrip(items, { class: 'dv-stats', label });
 
 function stateSelect(item) {
   const sel = h('select.bd-sel.dv-state', {
@@ -132,7 +134,7 @@ function linksBlock(item) {
     h('input.dv-link-url', { type: 'url', name: 'url', placeholder: 'https://…', autocomplete: 'off', 'aria-label': 'Link address: ' + item.label, 'data-dv-linkurl': '' }),
     kind,
     h('input.dv-link-label', { type: 'text', name: 'label', maxlength: '80', placeholder: 'Label (optional)', 'aria-label': 'Link label: ' + item.label }),
-    h('button.btn.dv-link-go', { type: 'submit', text: 'Add' }),
+    h('button.k-btn.k-btn--sm.dv-link-go', { type: 'submit', text: 'Add' }),
     h('p.dv-link-why', { role: 'alert', hidden: '' })
   );
   box.append(h('details.dv-link-add', {}, [
@@ -428,11 +430,11 @@ function certificationPanel(build) {
   hint.append(sourceLine(CBFC_RULES.ratingsSource.source, CBFC_RULES.ratingsSource.sourceUrls, CBFC_RULES.ratingsSource.checked));
   sec.append(hint);
 
-  sec.append(h('div.bd-stats.dv-stats', {}, [
+  sec.append(statRow([
     stat(rep.flagged + ' / ' + rep.scanned.scenes, 'scenes flagged'),
     stat(String(rep.byRule.filter((b) => b.kind === 'requirement').length), 'requirements to act on'),
     stat(rep.scanned.fromScript + ' / ' + rep.scanned.scenes, 'read from the script')
-  ]));
+  ], 'Content check figures'));
 
   /* What to do, rule by rule — the rules that fired first, then the
      ones that found nothing, rendered rather than dropped (a list of
@@ -526,16 +528,16 @@ function dialoguePanel(build) {
     sec.append(h('p.bd-none', { text: 'No dialogue in the script yet. Write or import the script, and every line is listed here.' }));
     return sec;
   }
-  sec.append(h('div.bd-stats.dv-stats', {}, [
+  sec.append(statRow([
     stat(String(dl.rows.length), dl.rows.length === 1 ? 'line' : 'lines'),
     stat(String(dl.scenes), dl.scenes === 1 ? 'scene with dialogue' : 'scenes with dialogue'),
     stat(String(dl.speakers), dl.speakers === 1 ? 'speaking part' : 'speaking parts'),
     stat(String(dl.reels), 'reels, estimated')
-  ]));
+  ], 'Dialogue list figures'));
   sec.append(h('div.dv-dl-actions', {}, [
-    h('button.btn', { type: 'button', 'data-dv-action': 'dl-csv', text: 'DOWNLOAD CSV' }),
-    h('button.btn', { type: 'button', 'data-dv-action': 'dl-srt', text: 'DOWNLOAD SRT SKELETON' }),
-    h('button.btn', { type: 'button', 'data-dv-action': 'dl-print', text: 'PRINT OR SAVE AS PDF' })
+    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-csv', text: 'DOWNLOAD CSV' }),
+    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-srt', text: 'DOWNLOAD SRT SKELETON' }),
+    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-print', text: 'PRINT OR SAVE AS PDF' })
   ]));
   const notes = h('ul.dv-dl-notes');
   notes.append(h('li', { text: 'The CSV opens in Excel or Google Sheets with Tamil script intact (UTF-8). The English column is empty, for the translator.' }));
@@ -621,22 +623,20 @@ function renderNow(focus) {
 
   const main = h('main#main.dv-main');
 
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Post · deliverables' }),
-    h('h1.bd-title', { text: prog.complete ? 'Ready to deliver.' : 'Deliverables.' }),
-    h('p.bd-deck', {
-      text: 'The censor certificate, the subtitles, the DCP, the stills and the paper behind them, '
-          + 'as one list. Tick what is done, mark what this film does not need, and the festival '
-          + 'formats come from the tracker rather than from memory.'
-    })
-  ]));
+  main.append(pageHeader({
+    eyebrow: ['Post', 'Deliverables'],
+    title: prog.complete ? 'Ready to deliver.' : 'Deliverables.',
+    sub: 'The censor certificate, the subtitles, the DCP, the stills and the paper behind them, '
+       + 'as one list. Tick what is done, mark what this film does not need, and the festival '
+       + 'formats come from the tracker rather than from memory.'
+  }));
 
-  const stats = h('div.bd-stats.dv-stats');
-  stats.append(stat(prog.done + ' / ' + prog.total, 'delivered'));
-  stats.append(stat(String(prog.doing), 'in progress'));
-  stats.append(stat(String(prog.skipped), 'not needed'));
-  stats.append(stat(String(reqs.length), reqs.length === 1 ? 'festival tracked' : 'festivals tracked'));
-  main.append(stats);
+  main.append(statRow([
+    stat(prog.done + ' / ' + prog.total, 'delivered'),
+    stat(String(prog.doing), 'in progress'),
+    stat(String(prog.skipped), 'not needed'),
+    stat(String(reqs.length), reqs.length === 1 ? 'festival tracked' : 'festivals tracked')
+  ], 'Deliverables figures'));
 
   main.append(tabStrip());
 
@@ -656,7 +656,7 @@ function renderNow(focus) {
   const tools = h('div.dv-tools');
   const grp = h('div.dv-filters', { role: 'group', 'aria-label': 'Show items needed for' });
   [{ id: 'all', label: 'Everything' }].concat(WHEN).forEach((w) => {
-    grp.append(h('button.btn.dv-filter' + (show === w.id ? '.is-on' : ''), {
+    grp.append(h('button.k-btn.k-btn--sm.dv-filter' + (show === w.id ? '.is-on' : ''), {
       type: 'button', 'data-dv-action': 'show', 'data-show': w.id,
       'aria-pressed': String(show === w.id), text: w.label
     }));
@@ -679,7 +679,7 @@ function renderNow(focus) {
   const whenSel = h('select.bd-sel', { name: 'when', 'aria-label': 'Who asks for it' });
   WHEN.forEach((w) => whenSel.append(h('option', { value: w.id, text: w.label })));
   add.append(whenSel);
-  add.append(h('button.btn', { type: 'submit', text: 'ADD' }));
+  add.append(h('button.k-btn.k-btn--sm', { type: 'submit', text: 'Add' }));
   panel.append(add);
   main.append(panel);
 

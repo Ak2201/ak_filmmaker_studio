@@ -19,6 +19,7 @@
    Returns { refresh(), setCurrent(id), open(), close(), destroy() }.
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { sym, meter } from './kit/index.js';
 import { loadStory, frameworkById, matrix, qualifyBeat } from '../lib/story.js';
 import Scenes from '../lib/scenes.js';
 import { elementLines, LINES_PER_PAGE } from '../lib/script.js';
@@ -81,6 +82,14 @@ export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneR
   return { fw, rows, curPage, written, span, linked, total: rows.length, percent: rows.length ? Math.round((linked / rows.length) * 100) : 0 };
 }
 
+/* The kit meter without its label row; the line above it is the label. */
+function progressMeter(d) {
+  const m = meter({ value: d.linked, max: d.total || 1, show: false, tone: d.total && d.linked === d.total ? 'ok' : '' });
+  const t = m.querySelector('.k-meter-track');
+  if (t) t.setAttribute('aria-label', 'Beats linked');
+  return m;
+}
+
 export function mountBeats(host, opts = {}) {
   const { getElements, scrollToEl, onJump, getTargetPages } = opts;
   const mq = typeof matchMedia === 'function' ? matchMedia(PHONE) : null;
@@ -136,7 +145,7 @@ export function mountBeats(host, opts = {}) {
     });
     rowsNow = d.rows;
     toggle.textContent = '';
-    toggle.append(h('span.bp-title', { text: 'Beats' }), h('span.bp-fw', { text: d.fw.name || d.fw.label || '' }),
+    toggle.append(h('span.bp-icon', {}, [sym('auto_stories')]), h('span.bp-title', { text: 'Beats' }), h('span.bp-fw', { text: d.fw.name || d.fw.label || '' }),
       h('span.bp-caret', { 'aria-hidden': 'true', text: isOpen ? '▾' : '▸' }));
     toggle.setAttribute('aria-expanded', String(isOpen));
     root.classList.toggle('is-open', isOpen);
@@ -147,9 +156,12 @@ export function mountBeats(host, opts = {}) {
     const sc0 = scroller();
     const keep = sc0 ? sc0.scrollTop : 0;
     body.textContent = '';
-    body.append(h('p.bp-progress', {}, [
-      h('span', { text: 'Framework progress' }),
-      h('strong', { text: d.linked + ' / ' + d.total + ' linked (' + d.percent + '%)' })
+    body.append(h('div.bp-head', {}, [
+      h('p.bp-progress', {}, [
+        h('span', { text: 'Framework progress' }),
+        h('strong', { text: d.linked + ' / ' + d.total + ' linked (' + d.percent + '%)' })
+      ]),
+      progressMeter(d)
     ]));
     const ol = h('ol.bp-list');
     d.rows.forEach((r, i) => {

@@ -120,10 +120,23 @@ export function mountStatusBar() {
   const payText = mk('ssb-pay-text');
   pay.append(payLed, payText);
   const store = mk('ssb-store', true);
+  /* "Storage 6.5 MB / 994 MB": the word is a label and drops on a phone,
+     the figures are the fact. */
+  const storeK = mk('ssb-k'); storeK.textContent = 'Storage';
+  const storeV = mk('ssb-v');
+  store.append(storeK, storeV);
+  /* The storage figure is a measurement of THIS browser (and the Drive
+     age a clock): verify's word-set oracle must not hold it, or every
+     run fails on a different number. See [data-verify-varies] in
+     scripts/verify-migration.mjs. */
+  store.setAttribute('data-verify-varies', '');
+  drive.setAttribute('data-verify-varies', '');
   right.append(pay, store);
   bar.append(left, right);
 
-  set(ver, BRAND.name + (VERSION ? ' v' + VERSION : ''));
+  const verName = mk('ssb-ver-name'); verName.textContent = BRAND.name;
+  ver.append(verName);
+  if (VERSION) { const v = mk('ssb-ver-num'); v.textContent = 'v' + VERSION; ver.append(v); }
 
   let tone = '';
   const paintSync = (st) => {
@@ -144,7 +157,9 @@ export function mountStatusBar() {
       const used = formatBytes(e && e.usage);
       if (!used) return;
       const quota = e.quota ? formatBytes(e.quota) : '';
-      set(store, 'Storage: ' + used + ' used' + (quota ? ' of ' + quota : ''));
+      set(storeV, used + (quota ? ' / ' + quota : ''));
+      const t = 'Browser storage this studio uses: ' + used + (quota ? ' of ' + quota + ' this browser allows' : '');
+      if (store.title !== t) store.title = t;
       flip(store, false);
     }).catch(() => {});
   };

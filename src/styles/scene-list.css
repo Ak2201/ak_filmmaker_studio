@@ -11,7 +11,18 @@
 /* A table needs more than the reading measure the other sections use. */
 section#scenes.bd-list { max-width: min(1180px, 100%); }
 section#scenes .bd-breakdown { gap: 0; }
-.bd-breakdown { --sl-grip-w: 24px; --sl-cols: var(--sl-grip-w) 28px 56px minmax(0, 2.4fr) 84px 112px 100px minmax(0, 1fr) 92px 36px; }
+.bd-breakdown {
+  /* A container, not a viewport: the list sits beside a 250px section menu
+     at desk widths, so the room a row has is the column's, not the window's.
+     Three tiers below: full grid, grid with the cast on the second line,
+     and the phone card. */
+  container: sl / inline-size;
+  --sl-grip-w: 24px;
+  --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 1fr) 76px 100px 92px 92px 36px;
+}
+@container sl (min-width: 62rem) {
+  .bd-breakdown { --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 2.4fr) 80px 104px 96px minmax(0, 1fr) 96px 36px; }
+}
 
 /* ---- toolbar -------------------------------------------------- */
 .bd-sl-tools { display: grid; gap: var(--s3); margin-bottom: var(--s4); }
@@ -31,8 +42,9 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-sl-bulk-n { margin-right: auto; color: var(--accent-deep); font-size: var(--t-small); }
 .bd-sl-search,
 .bd-sl-filter {
-  padding: var(--s2) var(--s3);
-  background: var(--paper);
+  min-height: var(--h-field);
+  padding: var(--s1) var(--s3);
+  background: var(--surface-rail);
   color: var(--ink);
   border: 1px solid var(--rule-hair);
   border-radius: var(--sk-radius, var(--radius));
@@ -76,6 +88,20 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-scene.bd-sl:focus-within { border-color: var(--rule); }
 .bd-sl-main { padding: var(--s2) var(--s3); min-height: 52px; }
 .bd-sl-pick { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+/* line two of a row: the per-category counts, under the location. */
+.bd-sl-main > .bd-sl-counts { grid-column: 4 / -1; grid-row: 2; margin: 0; }
+.bd-sl-main > .bd-sl-counts:empty { display: none; }
+.bd-sl-main > .bd-sl-cast { grid-column: 8; }
+.bd-sl-main > .bd-sl-status { grid-column: 9; }
+.bd-sl-main > .bd-sl-toggle { grid-column: 10; }
+@container sl (max-width: 61.99rem) {
+  /* no Cast column: the cast reads on line two, in front of the counts */
+  .bd-sl-main > .bd-sl-cast { grid-column: 4; grid-row: 2; align-self: start; }
+  .bd-sl-main > .bd-sl-counts { grid-column: 5 / -1; }
+  .bd-sl-main > .bd-sl-status { grid-column: 8; }
+  .bd-sl-main > .bd-sl-toggle { grid-column: 9; }
+  .bd-sl-head > span:nth-child(8) { display: none; }
+}
 
 /* the controls in a row are quiet until you reach for them. Tripled
    specificity: `.bd-scene input` in modules.css gives them a field look
@@ -104,24 +130,8 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-sl-cast { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-small); color: var(--ink-body); }
 .bd-sl-cast.is-none { color: var(--ink-muted); }
 
-/* where a scene stands — a text label on a wash, never a fill as text */
-.bd-sl-status {
-  justify-self: start;
-  padding: 2px var(--s2);
-  border-radius: var(--radius-pill, 999px);
-  border: 1px solid var(--rule-hair);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--ink-muted);
-}
-.bd-sl-status.is-tagged { color: var(--accent-deep); background: var(--accent-wash); border-color: transparent; }
-.bd-sl-status.is-scheduled { color: var(--accent-deep); background: var(--accent-wash); border-color: var(--accent); }
-.bd-sl-status.is-shot { color: var(--ok-deep); background: var(--ok-wash); border-color: transparent; }
-.bd-sl-status.is-part { color: var(--warn-deep); background: var(--warn-wash); border-color: transparent; }
-.bd-sl-status.is-dropped { color: var(--danger); background: var(--danger-wash); border-color: transparent; }
+/* where a scene stands is a kit badge (tone from the derived state) */
+.bd-sl-status { justify-self: start; white-space: nowrap; }
 .bd-sl-toggle { min-width: 36px; min-height: 36px; }
 
 /* ---- the open scene -------------------------------------------- */
@@ -136,7 +146,7 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-sl-none[hidden] { display: none; }
 
 /* ---- a phone: each row becomes a small card -------------------- */
-@media (max-width: 899px) {
+@container sl (max-width: 39.99rem) {
   .bd-sl-head { display: none; }
   .bd-sl-main {
     grid-template-columns: var(--sl-grip-w) 28px 64px minmax(0, 1fr) minmax(0, 1fr) 40px;
@@ -144,10 +154,12 @@ section#scenes .bd-breakdown { gap: 0; }
       "grip pick no   where where tog"
       ".    ie   ie   ie    dn    dn"
       ".    len  len  len   cast  cast"
-      ".    st   st   st    st    st";
+      ".    st   st   st    st    st"
+      ".    cnt  cnt  cnt   cnt   cnt";
     row-gap: var(--s2);
     padding: var(--s3);
   }
+  .bd-sl-main > * { grid-column: auto; grid-row: auto; }
   .bd-sl-grip { grid-area: grip; }
   .bd-sl-pick { grid-area: pick; }
   .bd-sl-main > .bd-scene-no { grid-area: no; }
@@ -155,9 +167,10 @@ section#scenes .bd-breakdown { gap: 0; }
   .bd-sl-main > select[data-scene-field="intExt"] { grid-area: ie; }
   .bd-sl-main > select[data-scene-field="dayNight"] { grid-area: dn; }
   .bd-sl-len { grid-area: len; }
-  .bd-sl-cast { grid-area: cast; }
-  .bd-sl-status { grid-area: st; }
-  .bd-sl-toggle { grid-area: tog; }
+  .bd-sl-main > .bd-sl-cast { grid-area: cast; }
+  .bd-sl-main > .bd-sl-status { grid-area: st; }
+  .bd-sl-main > .bd-sl-toggle { grid-area: tog; }
+  .bd-sl-main > .bd-sl-counts { grid-area: cnt; }
   .bd-sl-syn { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .bd-sl-detail { padding-left: var(--s3); }
 }
@@ -175,9 +188,9 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-sl-save { padding-block: var(--s1); font-size: var(--t-micro); }
 .bd-sl-preset {
   display: inline-flex; align-items: stretch;
-  border: 1px solid var(--rule-hair);
-  border-radius: var(--radius-pill, 999px);
-  background: var(--paper);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius);
+  background: var(--surface-card);
   overflow: hidden;
 }
 .bd-sl-preset.is-on { border-color: var(--accent); background: var(--accent-wash); }
@@ -240,7 +253,8 @@ body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
 }
 
 /* ---- Stitch round 2: KPI notes, per-row counts, cue strip ---- */
-.bd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+.bd-head > .k-stat-strip { grid-column: 1 / -1; margin-top: var(--s3); }
+.bd-kpis { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
 .bd-stat-note {
   font-style: normal;
   font-family: var(--f-mono);
@@ -249,14 +263,7 @@ body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
   overflow-wrap: anywhere;
 }
 .bd-sl-counts { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: 2px; }
-.bd-count {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  padding: 0 var(--s2);
-  border: 1px solid var(--hue, var(--rule));
-  border-radius: var(--radius-pill);
-  color: var(--ink);
-}
+.bd-count { cursor: default; }
 .bd-detail-lab {
   margin: var(--s2) 0 var(--s1);
   font-family: var(--f-mono);
@@ -277,3 +284,22 @@ body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
 }
 .bd-cue-dur { margin-left: auto; font-family: var(--f-mono); font-size: var(--t-micro); }
 .bd-attach { flex: 0 0 auto; }
+
+/* ---- element chips: the kit chip + a 3px category rule ---------
+   verify's hue check reads `.bd-chip`'s left border (>= 3px, one colour per
+   category), so the rule replaces the kit chip's leading dot. */
+.k-chip.bd-chip {
+  height: auto; min-height: 24px; padding-block: var(--s-half);
+  border-left-width: 3px;
+  border-color: color-mix(in srgb, var(--hue) 38%, transparent);
+  border-left-color: var(--hue);
+  border-radius: var(--radius-sm);
+  background: var(--hue-wash);
+}
+.k-chip.bd-chip .k-chip-dot { display: none; }
+.k-chip.bd-chip .bd-chip-name { color: var(--ink); }
+button.k-chip.bd-sug { font: inherit; font-size: var(--t-tiny); cursor: pointer; }
+button.k-chip.bd-sug:hover { background: var(--surface-hover); }
+button.k-chip.bd-sug:focus-visible { outline: var(--focus); outline-offset: 1px; }
+.k-chip.bd-count { height: auto; min-height: 20px; padding-block: 0; }
+.bd-sl-counts .k-chip-count { color: var(--hue-deep); }

@@ -1,82 +1,171 @@
-/* THE BEATS PANEL — src/ui/beats-panel.js. Tokens for colour, --sk-* for
-   shape. Text takes --ink / --ink-muted / --accent-deep, never a fill.
-   Wide: a column. Under 720px: a drawer pinned above the bottom bar. */
+/* THE BEATS PANEL — src/ui/beats-panel.js. Swiss Precision: obsidian
+   surfaces and hairlines, violet as a MARK (selection rule, meter),
+   mono for the numbers. Tokens for colour, --sk-* / radius tokens for
+   shape. Text takes --ink / --ink-body / --ink-muted / --brand-deep /
+   --ok-deep, never a fill. Wide: a column. Under 720px: a drawer
+   pinned above the bottom bar.
+
+   A beat's state is said three ways — a glyph, a word, a colour —
+   never colour alone. Read-only: nothing here links, edits or stores. */
 .bp {
-  background: var(--surface, var(--paper));
-  border: 1px solid var(--line, var(--hairline));
-  border-radius: var(--sk-radius, var(--radius));
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius-lg));
   color: var(--ink);
   font: inherit;
   max-width: 100%;
 }
 .bp-toggle {
-  display: flex; align-items: center; gap: 8px; width: 100%;
-  min-height: 44px; padding: 8px 12px;
-  background: none; border: 0; color: var(--ink); font: inherit; font-weight: 600;
-  cursor: pointer; text-align: left;
-}
-.bp-fw { color: var(--ink-muted); font-weight: 400; font-size: .85em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bp-caret { color: var(--ink-muted); }
-.bp-body { max-height: 60vh; overflow: auto; padding: 0 6px 8px; }
-.bp-list { list-style: none; margin: 0; padding: 0; }
-.bp-beat {
-  display: flex; align-items: baseline; gap: 8px; width: 100%;
-  min-height: 36px; padding: 6px 8px;
-  background: none; border: 0; border-left: 3px solid transparent;
-  border-radius: var(--sk-radius, var(--radius));
-  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
-}
-.bp-beat:hover { background: var(--sk-slab-fill, var(--surface-2, transparent)); }
-.bp-beat:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
-.is-current > .bp-beat { border-left-color: var(--brand); background: var(--sk-slab-fill, transparent); font-weight: 600; color: var(--accent-deep); }
-.bp-name { flex: 1; min-width: 0; }
-.bp-marks { color: var(--ink-muted); font-size: .8em; }
-.bp-page { color: var(--ink-muted); font-size: .85em; font-variant-numeric: tabular-nums; }
-.bp-hint { margin: 0; padding: 0 12px 8px; color: var(--ink-muted); font-size: .85em; }
-.bp-hint:empty { display: none; }
-
-@media (max-width: 719.98px) {
-  .bp.is-open {
-    position: fixed; left: 8px; right: 8px;
-    bottom: calc(var(--mab-h, 0px) + 8px);
-    z-index: 40;
-    box-shadow: var(--shadow-cta);
-  }
-  .bp-body { max-height: 50vh; }
-}
-@media print { .bp { display: none; } }
-
-/* ---- Stitch "Obsidian Cinema" beat cards ---------------------------
-   Progress line, then one bordered card per beat: a state mark, the
-   name and target page, and a mono state line ("Linked · Scene 3",
-   "Pending") with Jump. Linked reads green (the semantic --ok), the beat
-   being written reads brand; each also carries a glyph and a word, never
-   colour alone. Read-only: nothing here links, edits or stores. */
-.bp-progress {
-  display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s3);
-  margin: 0; padding: var(--s2) var(--s3);
-  font-family: var(--f-mono); font-size: var(--t-micro);
-  letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted);
-}
-.bp-progress strong { color: var(--ink); font-weight: 600; }
-.bp-list { display: grid; gap: var(--s2); padding: var(--s1) 0; }
-.bp-beat {
-  align-items: flex-start; min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 52px;
   padding: var(--s2) var(--s3);
-  border: 1px solid var(--rule);
-  border-left-width: 1px;
-  background: var(--paper-raised);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border-hair);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
 }
-.bp-beat.is-linked { border-color: var(--ok); }
-.is-current > .bp-beat { border-color: var(--brand); background: var(--brand-wash); font-weight: 400; color: var(--ink); }
-.bp-mark { flex: none; width: 1.25em; font-size: var(--t-base); line-height: 1.3; color: var(--ink-muted); }
+.bp-toggle:hover { background: var(--surface-hover); }
+.bp-toggle:focus-visible { outline: var(--focus); outline-offset: -2px; }
+.bp-icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px; height: 28px;
+  border: 1px solid var(--info-line);
+  border-radius: var(--radius);
+  background: var(--brand-wash);
+  color: var(--brand-deep);
+  font-size: 16px;
+}
+.bp-title {
+  font-family: var(--f-display);
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.bp-fw {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bp-caret { color: var(--ink-muted); font-size: var(--t-micro); }
+.bp-body { max-height: 60vh; overflow: auto; padding: 0 var(--s3) var(--s3); }
+
+.bp-head {
+  display: grid;
+  gap: var(--s1h);
+  margin: 0 calc(-1 * var(--s3)) var(--s2);
+  padding: var(--s2) var(--s3) var(--s3);
+  border-bottom: 1px solid var(--border-hair);
+  background: var(--surface-canvas);
+}
+.bp-progress {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s1) var(--s3);
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bp-progress strong { color: var(--brand-deep); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.bp-list { list-style: none; margin: 0; padding: var(--s1) 0; display: grid; gap: var(--s1h); }
+.bp-beat {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
+}
+.bp-beat:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+.bp-beat:focus-visible { outline: var(--focus); outline-offset: 1px; }
+.bp-beat.is-linked { border-color: var(--ok-line); }
+.is-current > .bp-beat {
+  background: var(--brand-wash);
+  border-color: var(--border-focus);
+  color: var(--ink);
+}
+/* The selection rule: the kit's leading bar, inside the card. */
+.is-current > .bp-beat::before {
+  content: '';
+  position: absolute;
+  left: -1px; top: var(--s2); bottom: var(--s2);
+  width: 3px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-primary);
+}
+.bp-mark { flex: none; width: 1.25em; font-size: var(--t-small); line-height: 1.4; color: var(--ink-muted); }
 .bp-beat.is-linked .bp-mark { color: var(--ok-deep); }
 .is-current > .bp-beat .bp-mark { color: var(--brand-deep); }
 .bp-main { flex: 1; min-width: 0; display: grid; gap: var(--s1); }
 .bp-line { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); min-width: 0; }
-.bp-name { font-weight: 600; font-size: var(--t-small); color: var(--ink); }
-.bp-sub { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; }
+.bp-name { flex: 1; min-width: 0; font-weight: 600; font-size: var(--t-ui); color: var(--ink); }
+.bp-marks { color: var(--ink-muted); font-size: .8em; }
+.bp-page {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+.is-current > .bp-beat .bp-page { color: var(--brand-deep); }
+.bp-sub {
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
 .bp-state { color: var(--ink-muted); }
 .bp-beat.is-linked .bp-state { color: var(--ok-deep); }
 .is-current > .bp-beat .bp-state { color: var(--brand-deep); }
 .bp-go { color: var(--ink-muted); white-space: nowrap; }
+.bp-hint {
+  margin: 0;
+  padding: var(--s2) var(--s3) var(--s3);
+  border-top: 1px solid var(--border-hair);
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+}
+.bp-hint:empty { display: none; }
+
+@media (max-width: 719.98px) {
+  .bp.is-open {
+    position: fixed;
+    left: var(--s2); right: var(--s2);
+    bottom: calc(var(--mab-h, 0px) + var(--s2));
+    z-index: 40;
+    background: var(--surface-elevated);
+    border-color: var(--panel-hair);
+    box-shadow: var(--shadow-panel);
+  }
+  .bp-body { max-height: 50vh; }
+}
+@media print { .bp { display: none; } }

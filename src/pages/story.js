@@ -84,6 +84,9 @@ import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
+import { pageHeader, button } from '../ui/kit/index.js';
+import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
+import { loadScript } from '../lib/script.js';
 
 const app = document.getElementById('app');
 
@@ -904,8 +907,26 @@ function renderPitch() {
 function renderPacing(s) {
   const sec = h('section#pacing.st-section.st-pacing', { 'aria-label': 'Beats and pacing' });
   sec.append(h('h2.bd-h2', { text: 'Beats & pacing' }));
-  if (s.source.trim()) { const heat = renderHeat(s); if (heat) sec.append(heat); sec.append(renderFlags(s)); }
-  else sec.append(h('p.st-muted', { text: 'The tension curve draws once there is a synopsis — build one from the outline, or write your own.' }));
+  const stack = h('div.pc-stack');
+  if (s.source.trim()) {
+    stack.append(PacingView.renderCurve(s));
+    const inten = PacingView.renderIntensity(s);
+    if (inten) stack.append(inten);
+    stack.append(renderFlags(s));
+    /* The slice-by-slice heatmap the blueprints share, with its table
+       view: the same data as the intensity strip above, kept one click
+       away rather than drawn twice. */
+    const heat = renderHeat(s);
+    if (heat) stack.append(h('details.pc-more', {}, [h('summary', { text: 'Slice by slice — the detailed heatmap' }), heat]));
+  } else stack.append(h('p.st-muted', { text: 'The tension curve draws once there is a synopsis — build one from the outline, or write your own.' }));
+  /* The beat deck draws from the framework even before a synopsis:
+     every beat, its act, its conventional place and the tension it
+     carries, filled in as passages are tagged and scenes linked. */
+  let scenesNow = [], elementsNow = [];
+  try { scenesNow = Scenes.listScenes(); } catch (e) { scenesNow = []; }
+  try { elementsNow = loadScript().elements || []; } catch (e) { elementsNow = []; }
+  stack.append(PacingView.renderDeck(s, { scenes: scenesNow, elements: elementsNow }));
+  sec.append(stack);
   sec.append(h('div#ai-map.st-ai-panel', {}, [renderAI(s)]));
   return sec;
 }
@@ -948,30 +969,31 @@ function draw() {
   const cur = currentStep(s);
   const cards = isEmpty(s) && !started;
   const main = h('main#main.st-main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Story · beats & pacing' }),
-    h('h1.bd-title', { text: 'Story.' }),
-    h('p.bd-deck', { text: fmt() === 'short'
-      ? 'From a seed to a step outline to a synopsis. Everything a short film needs is on this page: the character, the world, the conflict, the order of the beats.'
-      : 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Everything is on this page, in order; tag the passages that turn the story and watch where the tension sags.' })
-  ]));
-
   if (cards) main.append(renderModes());
 
+  /* The header's actions: import, the two exports, start over. One
+     import control on screen at a time: the card's, while it shows. */
   const bar = h('div.st-bar');
-  // One import control on screen at a time: the card's, while it shows.
   if (!cards) {
-    bar.append(h('label.btn.st-import', {}, [
-      h('span', { text: 'IMPORT' }),
+    bar.append(h('label.k-btn.k-btn--secondary.st-import', {}, [
+      h('span', { text: 'Import' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis file' })
     ]));
   }
-  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-txt', disabled: !IO.canExportSynopsis(s), text: 'SYNOPSIS .TXT' }));
-  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-md', disabled: !IO.canExportOutline(s), text: 'OUTLINE .MD' }));
+  bar.append(button({ label: 'Synopsis .txt', disabled: !IO.canExportSynopsis(s), attrs: { 'data-st': 'export-txt' } }));
+  bar.append(button({ label: 'Outline .md', disabled: !IO.canExportOutline(s), attrs: { 'data-st': 'export-md' } }));
   if (s.source.trim() || s.marks.length) {
-    bar.append(h('button.btn.danger', { type: 'button', 'data-st': 'clear', text: 'START OVER' }));
+    bar.append(button({ label: 'Start over', variant: 'danger', attrs: { 'data-st': 'clear' } }));
   }
-  main.append(bar);
+  main.insertBefore(pageHeader({
+    class: 'bd-head',
+    eyebrow: ['Story', 'Beats & pacing'],
+    title: 'Story.',
+    sub: fmt() === 'short'
+      ? 'From a seed to a step outline to a synopsis. Everything a short film needs is on this page: the character, the world, the conflict, the order of the beats.'
+      : 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Everything is on this page, in order; tag the passages that turn the story and watch where the tension sags.',
+    actions: [bar]
+  }), main.firstChild);
 
   const bar0 = renderStepper(s);
   if (cards) bar0.hidden = true;
@@ -1346,6 +1368,16 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     flashMark = el.getAttribute('data-mark');
     if (mode !== 'tag') mode = 'tag';
     render();
+  } else if (act === 'pc-beat') {
+    /* A dot on the tension curve: its card in the deck. Nothing is
+       redrawn and nothing is written; the card takes the focus. */
+    const card = document.getElementById('pc-beat-' + el.getAttribute('data-beat'));
+    if (card) {
+      document.querySelectorAll('.pc-card.is-lit').forEach((c) => c.classList.remove('is-lit'));
+      card.classList.add('is-lit');
+      card.scrollIntoView({ block: 'center', behavior: 'instant' });
+      card.focus({ preventScroll: true });
+    }
   } else if (act === 'goto' || act === 'heat') {
     const from = Number(el.getAttribute('data-from'));
     if (mode !== 'tag') mode = 'tag';

@@ -104,5 +104,83 @@ S.addShot('s2', { description: 'x' });
 S.addBoard({ name: 'B' });
 eq(S.listBlocks().length, 1, 'adding a shot and a board keeps blocks');
 
+/* ---- tracks, lights, the floor's scale (14 Oct 2026) ----------- */
+reset();
+{
+  const b = S.addBlock('sc9');
+  eq(S.listBlocks()[0].widthM, '', 'a new block has no floor width');
+  const t1 = S.addMark(b.id, 'track');
+  const l1 = S.addMark(b.id, 'light');
+  const l2 = S.addMark(b.id, 'light');
+  eq([t1.kind, t1.label, l1.label, l2.label], ['track', 'Track 1', 'Light 1', 'Light 2'], 'track and light are kinds with their own labels');
+  ok(t1.toX != null && t1.toY != null, 'a track is born with two ends');
+  eq(S.updateMark(b.id, t1.id, { toX: null, toY: null }).toX != null, true, 'a track cannot lose its far end');
+  eq(S.listBlocks()[0].marks.find((m) => m.id === l1.id).toX, null, 'a light has no move until given one');
+
+  // old data: a block written before widthM existed reads back with it blank
+  mem.set('fms_shots_v1', JSON.stringify({ shots: [], frames: [], boards: [], blocks: [
+    { id: 'old', sceneId: 's', name: 'n', note: '', marks: [{ id: 'q', kind: 'track', x: 90, y: 10 }] }
+  ] }));
+  const old = S.listBlocks()[0];
+  eq(old.widthM, '', 'an old block reads back with widthM blank');
+  eq([old.marks[0].toX, old.marks[0].toY], [100, 10], 'an old track with no end gets one, clamped to the map');
+
+  // scale and callouts
+  eq(S.blockScale({ widthM: '' }), null, 'no width, no scale');
+  eq(S.blockScale({ widthM: '0' }), null, 'zero width, no scale');
+  eq(S.blockScale({ widthM: '-4' }), null, 'negative width, no scale');
+  eq(S.blockScale({ widthM: 'wide' }), null, 'words, no scale');
+  eq(S.blockScale({ widthM: '10' }), 0.1, '10 m across 100 units is 0.1 m a unit');
+  eq(S.blockScale({ widthM: '12,5' }), 0.125, 'a decimal comma is read');
+  const blk = { widthM: '', marks: [
+    { id: 'c', kind: 'camera', x: 0, y: 0 }, { id: 'a', kind: 'actor', x: 30, y: 40 },
+    { id: 'z', kind: 'actor', x: 0, y: 10 }, { id: 'k', kind: 'mark', x: 5, y: 5 },
+    { id: 't', kind: 'track', x: 10, y: 60, toX: 40, toY: 60 }, { id: 'l', kind: 'light', x: 90, y: 5 }
+  ] };
+  eq(S.blockCallouts(blk), [], 'no callouts without a floor width');
+  const co = S.blockCallouts({ ...blk, widthM: '20' });
+  eq(co.map((c) => c.kind + ':' + c.from + '>' + c.to + '=' + c.metres), ['reach:c>a=10', 'reach:c>z=2', 'track:t>t=6'],
+    'camera→actor reach and track length, in metres; marks and lights are not measured');
+  eq([co[0].x, co[0].y], [15, 20], 'a callout sits at the midpoint');
+  eq(S.formatMetres(3.456), '3.5 m', 'metres print to a tenth');
+  eq(S.formatMetres(NaN), '', 'a non-number prints nothing');
+  eq(S.updateBlock('old', { widthM: '8' }).widthM, '8', 'widthM is an ordinary block field');
+}
+
+/* ---- shot status and coverage ----------------------------------- */
+eq(S.shotStatus({ done: true }).id, 'can', 'done is in the can');
+eq(S.shotStatus({ done: false }).label, 'To shoot', 'not done is to shoot');
+eq(S.coverageOf([{ done: true, lens: '35mm' }, { done: false, lens: ' 35mm ' }, { done: false, lens: '' }]),
+  { setups: 3, done: 1, open: 2, lenses: ['35mm'] }, 'coverageOf counts setups, done, open and distinct lenses');
+eq(S.coverageOf([]), { setups: 0, done: 0, open: 0, lenses: [] }, 'an empty scene covers nothing');
+
+/* ---- rig and camera link ---------------------------------------- */
+reset();
+eq([S.blankShot().rig, S.blankShot().cam], ['', ''], 'a blank shot has no rig and no camera');
+{
+  const bl = S.addBlock('scx');
+  const camA = S.addMark(bl.id, 'camera'), camB = S.addMark(bl.id, 'camera');
+  S.addMark(bl.id, 'actor');
+  eq(S.sceneCameras('scx').map((c) => c.name), ['Cam A', 'Cam B'], 'cameras of a scene, labelled off the map');
+  eq(S.sceneCameras('none'), [], 'no cameras for an unmapped scene');
+  const bl2 = S.addBlock('scx'); S.addMark(bl2.id, 'camera');
+  eq(S.sceneCameras('scx').map((c) => c.name), ['Setup 1 · Cam A', 'Setup 1 · Cam B', 'Setup 2 · Cam A'], 'two setups with cameras prefix the setup name');
+  const s1 = S.addShot('scx', { rig: 'Gimbal', cam: camA.id });
+  const s2 = S.addShot('scx', { cam: camA.id });
+  S.addShot('scx');
+  const list = S.listShots();
+  eq(S.camOf(list[0])?.id, camA.id, 'camOf resolves the linked mark');
+  eq(S.camOf(list[2]), null, 'an unlinked shot has no camera');
+  eq(S.shotsOfCamera(camA.id, list).map((x) => x.id), [s1.id, s2.id], 'shotsOfCamera is the reverse link');
+  eq(S.shotsOfCamera(camB.id, list), [], 'a camera nobody points at has no shots');
+  eq(S.shotsOfCamera('', list), [], 'an empty id matches nothing');
+  S.removeMark(bl.id, camA.id);
+  eq(S.camOf(S.listShots()[0]), null, 'a deleted camera mark reads as no camera, not a stale label');
+  eq(S.listShots()[0].rig, 'Gimbal', '…and the rig survives');
+  // a shot stored before the fields existed
+  mem.set('fms_shots_v1', JSON.stringify({ shots: [{ id: 'old', sceneId: 'scx', size: 'MS' }] }));
+  eq([S.listShots()[0].rig, S.listShots()[0].cam], ['', ''], 'an older stored shot reads back with empty rig and cam');
+}
+
 console.log(`test:blocking — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

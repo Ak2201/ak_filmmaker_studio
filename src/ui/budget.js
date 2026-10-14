@@ -29,6 +29,7 @@ import * as Songs from '../lib/songs.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 import { norm, rowKey } from '../lib/costs.js';
 import { askDanger } from './dialog.js';
+import { button, badge, sym } from './kit/index.js';
 
 /* ============================================================
    THE CALCULATOR
@@ -224,30 +225,39 @@ function buildCalcRow(idx) {
     ...PRESET_ITEMS.map((i) => h('option', { value: i, text: i }))
   ]);
 
+  /* Each native control sits in the kit's `.k-control` frame (the
+     border, the focus ring, the select chevron); the control itself
+     and its data-key are exactly what they were. Days and rate are
+     figures, so their frames are the mono variant. */
+  const frame = (el, mono) => {
+    if (el.tagName !== 'SELECT') el.classList.add('k-input');
+    return h('div.k-control' + (el.tagName === 'SELECT' ? '.k-select' : '') + (mono ? '.k-control--mono' : ''), {}, [el]);
+  };
+
   const itemCell = h('div.calc-cell', {}, [
     h('label.calc-label', { for: ids.item, text: 'Item' }),
-    select,
+    frame(select),
     h('label.calc-label', { for: ids.custom, text: 'Custom item name' }),
-    h('input', {
+    frame(h('input', {
       id: ids.custom, type: 'text', 'data-key': ids.custom,
       placeholder: 'or type your own…', autocomplete: 'off'
-    })
+    }))
   ]);
 
   const daysCell = h('div.calc-cell', {}, [
     h('label.calc-label', { for: ids.days, text: 'Days' }),
-    h('input', {
+    frame(h('input', {
       id: ids.days, type: 'text', inputmode: 'decimal',
       'data-key': ids.days, placeholder: 'Days', autocomplete: 'off'
-    })
+    }), true)
   ]);
 
   const rateCell = h('div.calc-cell', {}, [
     h('label.calc-label', { for: ids.rate, text: 'Rate (₹ per day)' }),
-    h('input', {
+    frame(h('input', {
       id: ids.rate, type: 'text', inputmode: 'decimal',
       'data-key': ids.rate, placeholder: '₹/day', autocomplete: 'off'
-    }),
+    }), true),
     h('span.calc-note', { 'data-role': 'card-rate' })
   ]);
 
@@ -256,7 +266,7 @@ function buildCalcRow(idx) {
   // the others, so the phone layout never shows a bare number box.
   const totalCell = h('div.calc-cell', {}, [
     h('span.calc-label', { text: 'Subtotal' }),
-    h('span.total-cell', { id: `ci_${idx}_subtotal`, text: '₹ 0' })
+    h('span.total-cell.k-mono', { id: `ci_${idx}_subtotal`, text: '₹ 0' })
   ]);
 
   return h('div.calc-row', { 'data-row': String(idx) }, [
@@ -324,6 +334,10 @@ function updateCalc() {
     if (sub > 0) count++;
     total += sub;
   });
+
+  // The panel head's count: priced lines, counted, not rows on screen.
+  const badgeEl = document.getElementById('calcLines');
+  if (badgeEl) badgeEl.lastChild.textContent = count + (count === 1 ? ' priced line' : ' priced lines');
 
   const out = document.getElementById('calcTotal');
   if (!out) return;
@@ -467,49 +481,66 @@ function scheduleFacts() {
   };
 }
 
+/* THE PIPELINE CONNECTOR — the stripboard's facts as one band: a kit
+   panel with an accent rule, the four counts as mono facts, and the
+   one action. `calc-block` stays on it because print.css lays the
+   estimate out for paper by that name. */
+function connector(body) {
+  return h('div.calc-block.calc-schedule.k-panel.bud-link', {}, [
+    h('span.bud-link-icon', { 'aria-hidden': 'true' }, [sym('calendar_month')]),
+    h('div.bud-link-copy', {}, [
+      h('p.k-eyebrow', { text: 'Live from the stripboard' }),
+      h('h3.bud-link-title', { text: 'From your schedule' })
+    ]),
+    ...body
+  ]);
+}
+const fact = (value, label) => h('div.bud-fact', {}, [h('dt', { text: label }), h('dd.k-mono', { text: value })]);
+
 function renderScheduleLink() {
   const f = scheduleFacts();
-  const box = h('div.calc-block.calc-schedule');
-  box.append(h('h3', { text: 'From your schedule' }));
 
   if (!f.totalScenes) {
-    box.append(h('p.hint', {
-      text: 'No scenes yet. Break the script down first and this fills itself in — '
-          + 'the estimator can then use your real shoot-day count instead of a guess.'
-    }));
-    box.append(h('a.mini-btn', { href: './breakdown.html#scenes', text: 'GO TO THE BREAKDOWN' }));
-    return box;
+    return connector([
+      h('p.hint', {
+        text: 'No scenes yet. Break the script down first and this fills itself in — '
+            + 'the estimator can then use your real shoot-day count instead of a guess.'
+      }),
+      h('div.calc-actions', {}, [button({ label: 'Go to the breakdown', icon: 'arrow_forward', href: './breakdown.html#scenes', size: 'sm' })])
+    ]);
   }
 
-  box.append(h('div.bd-stats', {}, [
-    h('div.bd-stat', {}, [h('strong', { text: String(f.days) }), h('span', { text: 'shoot days' })]),
-    h('div.bd-stat', {}, [h('strong', { text: String(f.totalScenes) }), h('span', { text: 'scenes' })]),
-    h('div.bd-stat', {}, [h('strong', { text: f.pages }), h('span', { text: 'pages' })]),
-    h('div.bd-stat', {}, [h('strong', { text: String(f.locations) }), h('span', { text: 'locations' })])
-  ]));
+  const facts = h('dl.bud-facts', {}, [
+    fact(String(f.days), 'shoot days'),
+    fact(String(f.totalScenes), 'scenes'),
+    fact(f.pages, 'pages'),
+    fact(String(f.locations), 'locations')
+  ]);
 
   if (!f.days) {
-    box.append(h('p.hint', {
-      text: 'None of these scenes has a shoot day yet. Assign days on the stripboard '
-          + 'and the estimator can use the real count.'
-    }));
-    box.append(h('a.mini-btn', { href: './stripboard.html#stripboard', text: 'SCHEDULE ON THE STRIPBOARD' }));
-    return box;
+    return connector([
+      facts,
+      h('p.hint', {
+        text: 'None of these scenes has a shoot day yet. Assign days on the stripboard '
+            + 'and the estimator can use the real count.'
+      }),
+      h('div.calc-actions', {}, [button({ label: 'Schedule on the stripboard', icon: 'arrow_forward', href: './stripboard.html#stripboard', size: 'sm' })])
+    ]);
   }
 
-  box.append(h('p.hint', {
+  const hints = [h('p.hint', {
     text: f.unscheduled
       ? f.days + ' scheduled day' + (f.days === 1 ? '' : 's') + ', with ' + f.unscheduled
         + ' scene' + (f.unscheduled === 1 ? '' : 's') + ' still unscheduled — so this is a floor, not the final count.'
       : 'Every scene has a day. This is your shoot length.'
-  }));
+  })];
 
   /* Song days are listed separately rather than folded in silently,
      because the number they change is the one the whole estimate
      scales on, and a day count that grew without saying why is a day
      count nobody trusts. */
   if (f.songDaysUncounted) {
-    box.append(h('p.hint', {
+    hints.push(h('p.hint', {
       text: 'Plus ' + f.songDaysUncounted
         + (f.songDaysUncounted === 1 ? ' day' : ' days') + ' for '
         + f.songsUncounted + (f.songsUncounted === 1 ? ' song' : ' songs')
@@ -518,41 +549,51 @@ function renderScheduleLink() {
         + f.totalDays + ' is the figure to budget.'
     }));
   }
-  box.append(h('div.calc-actions', {}, [
-    h('button.mini-btn', {
-      type: 'button', 'data-action': 'use-shoot-days', 'data-days': String(f.totalDays),
-      text: 'USE ' + f.totalDays + ' DAYS IN THE ESTIMATE'
-    })
-  ]));
-  return box;
+  return connector([
+    facts,
+    h('div.calc-actions', {}, [
+      button({
+        label: 'Use ' + f.totalDays + ' days in the estimate', icon: 'sync_alt', size: 'sm',
+        action: 'use-shoot-days', attrs: { 'data-days': String(f.totalDays) }
+      })
+    ]),
+    ...hints
+  ]);
 }
 
 function renderCalculator() {
-  return h('div.calc-block', {}, [
-    h('h3', { text: 'Quick Cost Estimator' }),
-    h('p.hint', {
-      text: 'Add line items, set days × daily rate, get a running total. ' +
-            'Saves to your browser only. Click PRINT to keep a hard copy.'
-      /* The copy has said "Click PRINT" since the legacy page, and the
-         page had no PRINT button — the legacy one lived on the library
-         toolbar and did not move with the estimator. print.css already
-         lays the calculator out for paper, so the button is the fix. */
-    }),
-    // Column captions for the desk layout. Each field carries its
-    // own <label> too, so this strip is decoration to a screen
-    // reader and is hidden from it rather than read twice.
-    h('div.calc-row.head', { 'aria-hidden': 'true' }, [
-      h('span', { text: 'Item' }),
-      h('span', { text: 'Days' }),
-      h('span', { text: 'Rate (₹/day)' }),
-      h('span', { text: 'Subtotal' })
-    ]),
-    h('div#calcRows'),
-    h('div.calc-actions', {}, [
-      h('button.mini-btn', { type: 'button', 'data-action': 'add-row', text: '+ ADD ITEM' }),
-      h('button.mini-btn', { type: 'button', 'data-action': 'add-5', text: '+ ADD 5' }),
-      h('button.mini-btn', { type: 'button', 'data-action': 'print', text: 'PRINT' }),
-      h('button.mini-btn.danger', { type: 'button', 'data-action': 'reset', text: 'RESET' })
+  const head = h('div.k-panel-head', {}, [
+    h('h3.k-panel-title', { text: 'Quick Cost Estimator' }),
+    h('div.k-panel-meta', {}, [badge({ label: '0 priced lines', tag: true, attrs: { id: 'calcLines' } })])
+  ]);
+  return h('div.calc-block.k-panel.bud-est', {}, [
+    head,
+    h('div.k-panel-body.bud-est-body', {}, [
+      h('p.hint', {
+        text: 'Add line items, set days × daily rate, get a running total. ' +
+              'Saves to your browser only. Click PRINT to keep a hard copy.'
+        /* The copy has said "Click PRINT" since the legacy page, and the
+           page had no PRINT button — the legacy one lived on the library
+           toolbar and did not move with the estimator. print.css already
+           lays the calculator out for paper, so the button is the fix. */
+      }),
+      // Column captions for the desk layout. Each field carries its
+      // own <label> too, so this strip is decoration to a screen
+      // reader and is hidden from it rather than read twice.
+      h('div.calc-row.head', { 'aria-hidden': 'true' }, [
+        h('span', { text: 'Item' }),
+        h('span', { text: 'Days' }),
+        h('span', { text: 'Rate (₹/day)' }),
+        h('span', { text: 'Subtotal' })
+      ]),
+      h('div#calcRows'),
+      h('div.calc-actions', {}, [
+        button({ label: 'Add item', icon: 'add', size: 'sm', action: 'add-row' }),
+        button({ label: 'Add 5', icon: 'add', size: 'sm', action: 'add-5' }),
+        h('span.bud-spacer', { 'aria-hidden': 'true' }),
+        button({ label: 'Print', icon: 'print', size: 'sm', variant: 'ghost', action: 'print' }),
+        button({ label: 'Reset', icon: 'restart_alt', size: 'sm', variant: 'danger', action: 'reset' })
+      ])
     ]),
     h('div.calc-grand', {}, [
       h('span.lab', { text: 'GRAND TOTAL' }),

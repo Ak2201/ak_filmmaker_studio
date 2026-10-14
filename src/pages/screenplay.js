@@ -34,6 +34,7 @@ import { mountFocusMode } from '../ui/focus-mode.js';
 import '../ui/read-as.js';        // dictation lives in its bar (hidden; the menu drives it)
 import { mountTamilType, setTamilTyping, isTamilTyping } from '../ui/tamil-type.js';
 import { h, delegate } from '../lib/dom.js';
+import { button, sym } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
 import { commitImportedScript } from '../lib/script-commit.js';
 import { sceneSyncLater, mountHandoff } from '../ui/handoff.js';
@@ -204,9 +205,9 @@ function buildTop() {
   ]);
   const meta = h('div.sc-meta', {}, [crumb, stats]);
 
-  const beatsBtn = h('button.btn.sc-beats-btn', {
-    type: 'button', 'data-action': 'sc-beats', 'aria-expanded': 'false',
-    'aria-controls': 'beatsPanel', text: 'Beats ◧'
+  const beatsBtn = button({
+    label: 'Beats ◧', icon: 'view_sidebar', size: 'sm', action: 'sc-beats', class: 'sc-beats-btn',
+    attrs: { 'aria-expanded': 'false', 'aria-controls': 'beatsPanel' }
   });
   const fileMenu = actionMenu('File', [
     { heading: 'File actions' },
@@ -225,6 +226,12 @@ function buildTop() {
     { label: 'Stage guide', action: 'sc-guide', hint: 'questions', icon: 'menu_book' },
     { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
+  /* actionbar.js builds its toggles as the chrome's `.btn`; on this
+     page they wear the kit's button, like everything else in the bar. */
+  [fileMenu, menu].forEach((m) => {
+    const b = m.querySelector('.tb-menu-btn');
+    if (b) { b.classList.remove('btn'); b.classList.add('k-btn', 'k-btn--secondary', 'k-btn--sm'); }
+  });
 
   /* ONE AI pill, a menu of the existing tools, each an AI Desk task
      (src/lib/ai-tasks.js). The ctx is computed at the click: the
@@ -256,7 +263,7 @@ function buildTop() {
   return h('div#scTop.sc-top', {}, [
     meta,
     h('div.sc-tools', {}, [
-      h('div.sc-tools-l', {}, [typePill, beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot')]),
+      h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot')]),
       h('div.sc-tools-r', {}, [fileMenu, menu])
     ]),
     tipNode
@@ -542,10 +549,12 @@ const lineBtn = h('button.sc-line-more', {
    only on a character cue, where the editor supports them. */
 lineBar = h('div.sc-linebar', { role: 'toolbar', 'aria-label': 'Line actions' }, [
   ['sc-dual', 'Dual dialogue', 'is-cue'], ['sc-contd', "Add CONT'D", 'is-cue'],
-  ['sc-up', 'Move up', 'is-ico', '↑'], ['sc-down', 'Move down', 'is-ico', '↓'], ['sc-del', 'Delete line', 'is-ico.is-danger', '✕']
-].map(([a, label, cls, glyph]) => h('button.sc-lb.' + cls, {
-  type: 'button', 'data-action': a, title: label, 'aria-label': label, text: glyph || label
-})));
+  ['sc-up', 'Move up', 'is-ico', 'arrow_upward'], ['sc-down', 'Move down', 'is-ico', 'arrow_downward'], ['sc-del', 'Delete line', 'is-ico.is-danger', 'delete']
+].map(([a, label, cls, icon]) => {
+  const b = h('button.sc-lb.' + cls, { type: 'button', 'data-action': a, title: label, 'aria-label': label });
+  b.append(icon ? sym(icon) : document.createTextNode(label));
+  return b;
+}));
 lineBar.addEventListener('mousedown', (e) => e.preventDefault());
 function placeLineButton(row) {
   if (lineBar.parentElement !== row) row.append(lineBar);
@@ -554,11 +563,11 @@ function placeLineButton(row) {
 lineBtn.addEventListener('mousedown', (e) => e.preventDefault());
 
 const lineMenu = h('div#scLineMenu.sc-line-menu', { role: 'menu', hidden: true }, [
-  ['sc-dual', 'Dual dialogue'], ['sc-contd', "Add CONT'D"], ['sc-up', 'Move up'],
-  ['sc-down', 'Move down'], ['sc-del', 'Delete']
-].map(([a, label]) => h('button.sc-line-item' + (a === 'sc-del' ? '.is-danger' : ''), {
-  type: 'button', role: 'menuitem', 'data-action': a, text: label
-})));
+  ['sc-dual', 'Dual dialogue', 'swap_horiz'], ['sc-contd', "Add CONT'D", 'add'], ['sc-up', 'Move up', 'arrow_upward'],
+  ['sc-down', 'Move down', 'arrow_downward'], ['sc-del', 'Delete', 'delete']
+].map(([a, label, icon]) => h('button.sc-line-item' + (a === 'sc-del' ? '.is-danger' : ''), {
+  type: 'button', role: 'menuitem', 'data-action': a
+}, [sym(icon), h('span', { text: label })])));
 document.body.append(lineMenu);
 
 function openLineMenu(x, y) {
@@ -719,12 +728,14 @@ function drawImport() {
       accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf', 'data-action': 'sc-imp-file' });
     body.append(
       h('p', { text: 'Choose a PDF, Fountain, plain-text or Final Draft file, or paste the text. It is read in this browser; nothing is uploaded.' }),
-      h('div.sc-imp-row', {}, [h('label.btn.primary', { for: 'scImpFile', text: 'Choose a file…' }), file]),
-      h('label.sc-imp-paste-l', {}, [
-        h('span', { text: 'Or paste the screenplay' }),
-        h('textarea#scImpPaste.sc-imp-paste', { rows: '6', spellcheck: 'false', placeholder: 'INT. HOSTEL ROOM - NIGHT\n\nArun stares at the board.' })
+      h('div.sc-imp-row', {}, [h('label.k-btn.k-btn--primary.k-btn--pill', { for: 'scImpFile' }, [sym('upload_file'), h('span', { text: 'Choose a file…' })]), file]),
+      h('label.sc-imp-paste-l.k-field', {}, [
+        h('span.k-field-label', { text: 'Or paste the screenplay' }),
+        h('span.k-control.k-control--textarea', {}, [
+          h('textarea#scImpPaste.sc-imp-paste.k-textarea', { rows: '6', spellcheck: 'false', placeholder: 'INT. HOSTEL ROOM - NIGHT\n\nArun stares at the board.' })
+        ])
       ]),
-      h('button.btn', { type: 'button', 'data-action': 'sc-imp-paste', text: 'Read the pasted text' })
+      button({ label: 'Read the pasted text', action: 'sc-imp-paste' })
     );
   } else {
     const p = imp.plan;
@@ -734,16 +745,16 @@ function drawImport() {
         + p.scenes.length + (p.scenes.length === 1 ? ' scene.' : ' scenes.') })
     );
     if (!isBlankDoc()) {
-      body.append(h('div.sc-imp-modes', { role: 'radiogroup', 'aria-label': 'Where it goes' }, [
+      body.append(h('div.sc-imp-modes.k-seg', { role: 'radiogroup', 'aria-label': 'Where it goes' }, [
         ['append', 'Add after what is written'], ['replace', 'Replace the screenplay (a draft is saved first)']
-      ].map(([m, label]) => h('button.btn' + ((imp.replace ? 'replace' : 'append') === m ? '.is-on' : ''), {
+      ].map(([m, label]) => h('button.k-seg-btn' + ((imp.replace ? 'replace' : 'append') === m ? '.is-on' : ''), {
         type: 'button', role: 'radio', 'aria-checked': String((imp.replace ? 'replace' : 'append') === m),
         'data-action': 'sc-imp-mode', 'data-mode': m, text: label
       }))));
     }
     body.append(h('div.sc-imp-row', {}, [
-      h('button.btn.primary', { type: 'button', 'data-action': 'sc-imp-commit', text: 'Import' }),
-      h('button.btn', { type: 'button', 'data-action': 'sc-imp-back', text: 'Back' })
+      button({ label: 'Import', variant: 'primary', pill: true, action: 'sc-imp-commit' }),
+      button({ label: 'Back', variant: 'ghost', action: 'sc-imp-back' })
     ]));
   }
   const dlg = h(impInline ? 'section#import.sc-imp.is-inline' : 'div#scImport.sc-imp', impInline
@@ -751,8 +762,9 @@ function drawImport() {
     : { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import Screenplay' }, [
     h('div.sc-imp-card', {}, [
       h('div.sc-imp-head', {}, [
+        h('span.sc-imp-icon', {}, [sym('upload_file')]),
         h('h2', { text: 'Import Screenplay' }),
-        h('button.bd-icon', { type: 'button', 'data-action': 'sc-imp-close', 'aria-label': 'Close', text: '✕' })
+        button({ label: 'Close', icon: 'close', iconOnly: true, variant: 'ghost', size: 'sm', action: 'sc-imp-close', class: 'sc-imp-x' })
       ]),
       body
     ])
@@ -761,7 +773,7 @@ function drawImport() {
   else if (impInline) { const m = document.getElementById('main'); const sh = document.getElementById('screenplay'); if (m && sh) m.insertBefore(dlg, sh); else document.body.append(dlg); }
   else document.body.append(dlg);
   impDialog = dlg;
-  (dlg.querySelector('textarea, button.primary') || dlg).focus?.();
+  (dlg.querySelector('textarea, button.k-btn--primary') || dlg).focus?.();
 }
 function openImport(inline = false) { if (!PlanGate.guard('script_import')) return; if (!impDialog) { imp = null; impInline = inline; drawImport(); } }
 

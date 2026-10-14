@@ -82,17 +82,19 @@
    in chrome.css is 0,2,0 and declared later. */
 .sd-day.sd-day.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .sd-day.sd-day.is-on:hover,
-.sd-day.sd-day.is-on:focus-visible { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-on); }
+.sd-day.sd-day.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
 .sd-day.is-done { border-color: var(--ok); color: var(--ink-muted); }
 
 /* ---- a scene ------------------------------------------------ */
 .sd-list { display: grid; gap: var(--s3); }
+@media (min-width: 1000px) { .sd-list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+.sd-live { display: inline-flex; align-items: center; gap: var(--s2); font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ok-deep); }
 
 .sd-card {
   padding: var(--s4);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-left: 4px solid var(--rule);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
 }
 .sd-card.is-shot    { border-left-color: var(--ok); }
@@ -295,7 +297,6 @@
   letter-spacing: -0.02em;
   color: var(--ink);
 }
-.sd-title-b { color: var(--brand-deep); font-style: italic; font-weight: 400; }
 .sd-deck {
   margin: var(--s3) 0 0;
   max-width: var(--measure);
@@ -435,7 +436,7 @@
   color: var(--ink-body);
   background: var(--paper-sunk);
   border: 1px solid var(--rule);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius);
   cursor: pointer;
 }
 .sd-take.is-circled { color: var(--brand-deep); background: var(--brand-wash); border-color: var(--brand); font-weight: 700; }

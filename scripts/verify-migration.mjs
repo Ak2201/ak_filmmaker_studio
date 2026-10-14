@@ -403,26 +403,7 @@ const EXPECTED = {
      the provider picker and key form here ("Drafting needs a key…");
      signed out, verify now sees the locked pill instead. Every word
      below was that form's copy and nothing else on the page. */
-  visualize: {
-    'account': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic’s': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'api': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'below': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'billed': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'cloud': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'device': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'gemini': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'i': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'key': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'project': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'provider': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'put': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'runs': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'synced': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'uses': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    drafting: 'AI Desk: keyGate(\'Drafting\') heading of the retired key form'
-  },
+  visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   write: {},
   plan: {},
   breakdown: {},
@@ -432,7 +413,7 @@ const EXPECTED = {
      script-to-screen work took it from 122 to 141, so the bare integer 122 left
      the page. A derived count, not lost copy. The next glossary change moves it
      again: re-baseline then, rather than adding a row each time. */
-  library: { '122': 'derived count: glossary terms 122 -> 141 (Phase 6)' },
+  library: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   budget: {},
   /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
      revamp's words (the journey strip folded into the stage cards). */
@@ -440,31 +421,14 @@ const EXPECTED = {
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is
      built only when it is opened. */
-  screenplay: {
-    coverage: 'the "AI coverage report" menu item moved into the AI pill menu',
-    report: 'the "AI coverage report" menu item moved into the AI pill menu'
-  },
+  screenplay: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   /* AI Desk (12 Oct 2026): settings.html#ai shows the key section
      only on a plan with AI tools; locked (verify runs signed out) it
      is a heading, one note and the locked pill — nobody types a key
      their plan cannot use. These words were the key section's copy
      (the key-stays-on-this-device disclosure, the provider picker,
      the console.anthropic.com link, Forget key). */
-  settings: {
-    'billed': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'com': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'do': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'forget': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'gemini': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'gets': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'goes': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'paste': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'put': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'runs': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'touching': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'us': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'usage': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-  },
+  settings: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 
@@ -526,24 +490,7 @@ const EXPECTED = {
      "Mapping…"); they are AI pills that open the Desk now, and
      signed out the pill is locked. Every word below was that form's
      copy. */
-  story: {
-    'account': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic’s': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'api': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'attached': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'billed': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'browser': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'cloud': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'device': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'gemini': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'provider': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'put': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'synced': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'uses': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    mapping: 'AI Desk: keyGate(\'Mapping\') heading of the retired key form',
-    suggesting: 'AI Desk: keyGate(\'Suggesting steps\') heading of the retired key form'
-  },
+  story: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   edit: {},
   deliverables: {},
   screening: {},
@@ -2349,16 +2296,36 @@ let scriptsOff = { checked: false };
     const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
     return `rgb(${parseInt(f.slice(0, 2), 16)}, ${parseInt(f.slice(2, 4), 16)}, ${parseInt(f.slice(4, 6), 16)})`;
   };
-  const defaultPaper = decl(bare, '--paper');
+  /* --paper may be a var() into the same block (the Swiss palette names
+     its surfaces: --paper: var(--surface-canvas)), so resolve it there. */
+  const resolveIn = (block, val) => {
+    for (let i = 0; i < 8; i++) {
+      const m = /^var\((--[a-z0-9-]+)\)$/.exec(val || '');
+      if (!m) break;
+      val = decl(block, m[1]);
+    }
+    return val;
+  };
+  const defaultPaper = resolveIn(bare, decl(bare, '--paper'));
   const defaultScheme = decl(bare, 'color-scheme');
-  const defaultTheme = Object.keys(themed).find((t) => decl(themed[t], '--paper') === defaultPaper) || null;
+  /* ONE THEME SINCE 14 OCT 2026. With no second palette, the default
+     theme is whichever [data-theme] block does NOT restate --paper (it
+     only restates the scheme), and BOTH OS preferences must paint the
+     bare :root ground — there is no prefers-color-scheme block any more,
+     and one appearing would be a second palette sneaking back. */
+  const themeNames = Object.keys(themed);
+  const single = themeNames.length <= 1 && !media.light && !media.dark;
+  const defaultTheme = single
+    ? (themeNames[0] || 'dark')
+    : (Object.keys(themed).find((t) => resolveIn(themed[t], decl(themed[t], '--paper')) === defaultPaper) || null);
   const otherScheme = defaultScheme === 'dark' ? 'light' : 'dark';
-  const otherPaper = media[otherScheme] ? decl(media[otherScheme], '--paper') : '';
+  const otherPaper = single ? defaultPaper : (media[otherScheme] ? resolveIn(media[otherScheme], decl(media[otherScheme], '--paper')) : '');
 
-  const probeFacts = { defaultTheme, defaultScheme, defaultPaper, otherScheme, otherPaper };
+  const probeFacts = { defaultTheme, defaultScheme, defaultPaper, otherScheme, otherPaper, single };
   const bad = [];
   if (!defaultTheme) bad.push(`bare :root's --paper (${defaultPaper || 'missing'}) matches no [data-theme] block — cannot tell which theme is the default`);
   if (!defaultScheme) bad.push('bare :root declares no color-scheme');
+  if (!/^#[0-9a-f]{3,8}$/i.test(defaultPaper || '')) bad.push(`bare :root's --paper does not resolve to a hex (${defaultPaper || 'missing'})`);
   if (!otherPaper) bad.push(`no @media (prefers-color-scheme: ${otherScheme}) block restates --paper`);
 
   const results = [];
@@ -2408,7 +2375,8 @@ let scriptsOff = { checked: false };
         if (facts.scriptsRan) bad.push(`${spec.name} (prefers ${scheme}): the sandbox ran scripts — the probe is not measuring what it claims`);
         if (facts.dataTheme) bad.push(`${spec.name} (prefers ${scheme}): [data-theme="${facts.dataTheme}"] is set with scripts off — the markup is choosing a theme`);
         if (ground !== want) bad.push(`${spec.name} (prefers ${scheme}): scripts-off ground is ${ground}, the ${scheme === defaultScheme ? defaultTheme + ' (default)' : otherScheme} theme's --paper is ${want} (${wantPaper}) — a flash of the wrong palette`);
-        if (facts.colorScheme !== scheme) bad.push(`${spec.name} (prefers ${scheme}): color-scheme is "${facts.colorScheme}" with scripts off, expected "${scheme}" — form controls and scrollbars will flash`);
+        const wantScheme = single ? defaultScheme : scheme;
+        if (facts.colorScheme !== wantScheme) bad.push(`${spec.name} (prefers ${scheme}): color-scheme is "${facts.colorScheme}" with scripts off, expected "${wantScheme}" — form controls and scrollbars will flash`);
         if (!facts.skRadius || !/^\d/.test(facts.skRadius)) bad.push(`${spec.name} (prefers ${scheme}): --sk-radius is "${facts.skRadius}" with scripts off — the skin's defaults are not on bare :root`);
       }
       await pctx.close();
@@ -2420,7 +2388,9 @@ let scriptsOff = { checked: false };
   console.log(bad.length
     ? `✗ scripts-off palette: ${bad.length} finding(s)\n  ` + bad.slice(0, 8).join('\n  ')
     : `✓ scripts-off palette: ${results.length / 2} pages x 2 OS preferences paint the right ground before any script runs ` +
-      `(default ${defaultTheme} = ${defaultPaper}; prefers-${otherScheme} = ${otherPaper}; color-scheme and --sk-radius set)`);
+      (single
+        ? `(one theme, ${defaultTheme} = ${defaultPaper}, under both OS preferences; color-scheme and --sk-radius set)`
+        : `(default ${defaultTheme} = ${defaultPaper}; prefers-${otherScheme} = ${otherPaper}; color-scheme and --sk-radius set)`));
 }
 
 /* ---- STAGE GUIDES + KEY-UNION ------------------------------------

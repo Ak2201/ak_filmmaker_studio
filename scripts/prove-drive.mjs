@@ -530,7 +530,8 @@ console.log('\n--- disconnect ---');
 }
 
 console.log('\n--- the settings page, both themes, both widths ---');
-for (const theme of ['paper', 'ink']) {
+/* ONE theme since 14 Oct 2026 (dark); a stored 'paper' renders dark. */
+for (const theme of ['ink']) {
   for (const width of [1280, 390]) {
     const seed = () => {
       localStorage.setItem('fms_drive_sync_v1', JSON.stringify({

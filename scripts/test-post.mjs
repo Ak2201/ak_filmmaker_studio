@@ -308,6 +308,31 @@ const asked = D.askedBy(reqs);
 ok(Array.isArray(asked.dcp) && asked.dcp[0] === dcpFest.name, 'askedBy names the festival behind the DCP');
 eq(D.requirements([]).length, 0, 'no submissions, no requirements');
 
+/* ---- edit log: sync flag, target, running time, CSV --------- */
+mem.clear();
+E.setTargetMin(95);
+eq(E.getTargetMin(), 95, 'the target length reads back');
+E.setSceneEdit('s1', { cut: 'in', note: '=SUM(1)', sync: true });
+eq(E.getTargetMin(), 95, 'a scene write keeps the target');
+ok(E.sceneEdit('s1').sync === true, 'the sync flag is stored on the scene row');
+E.setSceneEdit('s1', { sync: false, cut: '', note: '' });
+ok(!('s1' in JSON.parse(mem.get('fms_edit_v1')).scenes), 'a row with nothing left is not stored');
+eq(E.setTargetMin(0), 0, 'a zero target clears');
+ok(!('targetMin' in JSON.parse(mem.get('fms_edit_v1') || '{}')), 'no target stores no field');
+E.setSceneEdit('s1', { cut: 'in', note: '=SUM(1)', sync: true });
+E.setSceneEdit('s2', { cut: 'locked' });
+const rtScenes = [scene('s1', { shotState: 'shot', songId: 'g1' }), scene('s2', { shotState: 'part' }), scene('s3')];
+const rtCov = E.coverage(rtScenes, [], E.loadEdit());
+const secs = { s1: 100, s2: 60, s3: 500 };
+eq(E.cutRunTime(rtCov, secs, []).seconds, 160, 'only In-the-cut and Locked scenes add up');
+eq(E.cutRunTime(rtCov, secs, [{ id: 'g1', seconds: 240 }]).seconds, 300, 'a timed song replaces its scene, once');
+eq(E.cutRunTime(rtCov, secs, [{ id: 'g1', seconds: 0 }]).songsUntimed, 1, 'an untimed song is counted and keeps the estimate');
+const csv = E.toCSV(rtCov, secs);
+ok(csv.split('\r\n')[0] === E.CSV_HEADER.map((c) => '"' + c + '"').join(','), 'the CSV opens with its header');
+ok(csv.includes('"\'=SUM(1)"'), 'a formula-looking note is neutralised');
+eq(csv.trim().split('\r\n').length, 4, 'one row per scene plus the header');
+mem.clear();
+
 /* ---- deliverables: the optional streamer groups ------------- */
 mem.clear();
 const CAT = (await import('../src/data/deliverables.json')).default;

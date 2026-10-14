@@ -57,6 +57,15 @@
      - No key on this device → openDesk shows a single step linking
        to settings.html#ai. No key form exists in the Desk.
      - A locked plan never reaches openDesk: the pill stops it.
+     - A task with `local: true` (src/lib/local-tasks.js — the Manual
+       breakdown's shot and story proposals) is not AI at all: no key
+       step, no Pro gate, no provider disclosure, no chat refinement;
+       it runs the moment the Desk opens, and is rebuilt from the
+       current data at every open. Same tick list, same Accept/Undo.
+     - A ctx (or the ctx a ctx function resolves to) may carry
+       `task: '<id>'` to hand the open over to another task — how the
+       "Breakdown with AI" chain goes straight to the story review when
+       every scene already has its shots (src/ui/breakdown-flow.js).
    ============================================================ */
 
 
@@ -104,10 +113,12 @@ import { diffLines, mergeHunks } from '../lib/ai-diff.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import StudioUI from './chrome.js';
 import { disclose, aiMark } from './ai-panel.js';
+import { LOCAL_TASKS, ready as localReady } from '../lib/local-tasks.js';
 import '../styles/ai.css';
 import '../styles/ai-desk.css';
 
 const tasks = new Map();
+const isLocal = (t) => !!(t && t.local);
 
 export function registerTask(task) {
   if (!task || !task.id) throw new Error('[ai-desk] a task needs an id');
@@ -122,6 +133,9 @@ export function getTask(id) {
 export function listTasks() {
   return [...tasks.values()];
 }
+
+// The non-AI tasks are part of the Desk itself: registered at load.
+for (const t of LOCAL_TASKS) registerTask(t);
 
 /* ---- the tasks module, loaded once at the first open ---------- */
 let tasksReady = null;
@@ -207,12 +221,14 @@ let running = null;     // AbortController while a request is out
 let statusText = '';
 let errorText = '';
 let mode = 'task';      // 'task' | 'nokey' | 'missing'
+let missingText = '';   // why a local task could not open
 let held = false;
 
 const WIDE = '(min-width: 1100px)';
 const isWide = () => window.matchMedia(WIDE).matches;
 
 function modelText() {
+  if (isLocal(task)) return 'On this device · no AI';
   const id = getModel();
   const m = (models() || []).find((x) => x.id === id);
   return providerLabel() + ' · ' + (m ? m.label : id);
@@ -236,6 +252,12 @@ function publishWidth() {
   const root = document.documentElement;
   if (open && desk && isWide()) root.style.setProperty('--ai-desk-w', desk.offsetWidth + 'px');
   else root.style.removeProperty('--ai-desk-w');
+  /* The footer's height, so a toast (an Undo from the last Accept never
+     times out) is lifted clear of Accept / Skip on a phone instead of
+     sitting over them — the chain in breakdown-flow.js opens one review
+     straight after another. Measured, never assumed: it wraps. */
+  if (open && foot) root.style.setProperty('--ai-desk-foot-h', foot.offsetHeight + 'px');
+  else root.style.removeProperty('--ai-desk-foot-h');
   // Below 1100 the sheet covers the page, so Tab stays inside it.
   const want = open && !isWide();
   if (want && !held) { holdFocus(desk); held = true; }
@@ -326,7 +348,7 @@ function render() {
     body.replaceChildren(header(), h('section.ai-desk-sec', {}, [
       h('p.ai-error', { role: 'alert' }, [
         h('strong', { text: 'Not available. ' }),
-        h('span', { text: tasksError || 'This AI tool is not available on this page.' })
+        h('span', { text: missingText || tasksError || 'This AI tool is not available on this page.' })
       ])
     ]));
     return;
@@ -337,13 +359,15 @@ function render() {
   const kids = [header()];
 
   kids.push(h('section.ai-desk-sec.ai-desk-in', {}, [
-    h('h3.ai-desk-label', { text: 'What goes in' }),
+    h('h3.ai-desk-label', { text: isLocal(task) ? 'What it reads' : 'What goes in' }),
     h('textarea.ai-desk-input', {
-      rows: '8', 'aria-label': 'What goes in', spellcheck: 'false',
+      rows: isLocal(task) ? '4' : '8', 'aria-label': isLocal(task) ? 'What it reads' : 'What goes in', spellcheck: 'false',
       readonly: task.editable === false || sess.versions.length > 0 || busy ? true : null
     }),
-    disclose('When you press Run, the text above is sent to ' + apiName() + ' at ' + apiHost()
-      + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
+    isLocal(task)
+      ? h('p.ai-desk-note', { text: 'Built on this device from your script and scene list. Nothing is sent anywhere, and nothing is kept until you accept.' })
+      : disclose('When you press Run, the text above is sent to ' + apiName() + ' at ' + apiHost()
+        + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
     sess.versions.length ? null : h('button.btn.primary.ai-desk-run', {
       type: 'button', 'data-action': 'ai-desk-run', disabled: busy ? true : null, text: busy ? 'Running…' : 'Run'
     })
@@ -364,7 +388,7 @@ function render() {
       ...answer
     ]));
 
-    kids.push(h('section.ai-desk-sec.ai-desk-talk', {}, [
+    if (!isLocal(task)) kids.push(h('section.ai-desk-sec.ai-desk-talk', {}, [
       h('h3.ai-desk-label', { text: 'Ask for changes' }),
       h('div.ai-desk-chips', {}, ['Shorter', 'Keep my wording', 'More tension', 'In Tanglish'].map((c) =>
         h('button.ai-desk-chip', { type: 'button', 'data-action': 'ai-desk-chip', 'data-say': c, disabled: busy ? true : null, text: c }))),
@@ -438,7 +462,7 @@ async function run(refineWith) {
 
 function send(text) {
   const msg = String(text || '').trim();
-  if (!msg || !sess || !sess.versions.length) return;
+  if (!msg || !sess || !sess.versions.length || isLocal(task)) return;
   run([...sess.chat, msg]);
 }
 
@@ -540,21 +564,45 @@ function wire() {
 }
 
 export async function openDesk(taskId, ctxArg = {}) {
-  if (!PlanGate.aiUnlocked()) return;      // the pill asks the Pro question
+  // The pill asks the Pro question; a local (non-AI) task needs no plan.
+  if (!isLocal(getTask(taskId)) && !PlanGate.aiUnlocked()) return;
   const from = document.activeElement;
   let c = ctxArg;
   if (typeof c === 'function') {
     try { c = await c(); } catch (e) { console.warn('[ai-desk] ctx() threw', e); c = {}; }
   }
   c = c || {};
+  if (c.cancel) return;                    // the ctx factory decided not to open
+  if (c.task && c.task !== taskId) {       // a hand-over to another task
+    taskId = String(c.task);
+    if (!isLocal(getTask(taskId)) && !PlanGate.aiUnlocked()) return;
+  }
 
   ensureDesk();
   if (running) { running.abort(); running = null; }
   statusText = '';
   errorText = '';
+  missingText = '';
 
-  await loadTasks();
-  if (!hasKey()) {
+  const local = isLocal(getTask(taskId));
+  let localFail = '';
+  if (local) {
+    try { await localReady(); }
+    catch (e) { localFail = 'The breakdown tools did not load (' + ((e && e.message) || 'unknown error') + '). Reload the page and try again.'; }
+  } else await loadTasks();
+  if (local && localFail) {
+    mode = 'missing';
+    missingText = localFail;
+    task = getTask(taskId);
+    sess = null;
+  } else if (local) {
+    mode = 'task';
+    task = getTask(taskId);
+    ctx = c;
+    // Rebuilt from the data as it is now, at every open.
+    for (const k of [...sessions.keys()]) if (k.startsWith(task.id + '|')) sessions.delete(k);
+    sess = sessionFor(task, ctx);
+  } else if (!hasKey()) {
     mode = 'nokey';
     task = getTask(taskId);
     sess = null;
@@ -580,6 +628,7 @@ export async function openDesk(taskId, ctxArg = {}) {
     ? (sess && sess.versions.length ? '.ai-desk-ver[aria-pressed="true"]' : '.ai-desk-input')
     : (mode === 'nokey' ? 'a[href="settings.html#ai"]' : '[data-action="ai-desk-close"]'));
   (first || desk).focus();
+  if (local && mode === 'task' && sess && !sess.versions.length) run();   // nothing to spend: build the list now
 }
 
 export function closeDesk() {
@@ -590,6 +639,7 @@ export function closeDesk() {
   desk.hidden = true;
   document.documentElement.classList.remove('ai-desk-open');
   document.documentElement.style.removeProperty('--ai-desk-w');
+  document.documentElement.style.removeProperty('--ai-desk-foot-h');
   const back = opener;
   opener = null;
   if (back && back.isConnected && typeof back.focus === 'function') back.focus();

@@ -38,6 +38,7 @@ import STAGES from '../data/steps.stages.json';
 import PATHS from '../data/story-paths.json';
 import { h } from '../lib/dom.js';
 import '../styles/stage-guide.css';
+import '../styles/blueprint-kit.css';
 
 export const STAGE_IDS = ['story', 'screenplay', 'preprod', 'production', 'post'];
 

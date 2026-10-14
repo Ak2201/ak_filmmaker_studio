@@ -329,5 +329,13 @@ eq(B.dayCall(null, []), '', 'call: neither, nothing shown');
 eq([B.formatHours(null), B.formatHours(0.1), B.formatHours(1.5), B.formatHours(3.26)], ['', '≈ 15m', '≈ 1h 30m', '≈ 3h 15m'], 'hours: quarter-hour estimates');
 eq([B.targetMinutes(110, 95), B.targetMinutes(0, 95), B.targetMinutes(0, 0)], [110, 95, 0], 'target: Reports first, the Edit Log fallback, else none');
 
+/* ---- readiness: an undated day points where dates are set ---- */
+{
+  const R = (await import('../src/lib/readiness.js')).default;
+  seed();
+  const dd = R.readiness().checks.find((c) => c.id === 'day-date');
+  eq(dd && [dd.count, dd.where], [2, 'plan.html#calendar'], 'readiness: undated days link to the Plan’s calendar, the only page that sets a date');
+}
+
 console.log(`test:stripboard — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -104,6 +104,9 @@ eq(S.sceneNeeds({ id: 'q' }, [], []).tags, [], 'nothing tagged, nothing listed')
 eq(S.phoneIn('Govt. General, casualty 044 2530 5000'), '04425305000', 'a phone number is found in the text');
 eq(S.phoneIn('+91 98400-12345 (duty)'), '+919840012345', 'an international number keeps its plus');
 eq(S.phoneIn('E-2 station, 2 km'), '', 'no number, no tel link');
+eq(S.phoneIn('Apollo, 21 Greams Lane, Chennai 600 006. Ph 044-2829 3333'), '04428293333', 'a PIN code ahead of the number is not dialled');
+eq(S.phoneIn('Apollo 1.5 - 2 km, 044 2829 3333'), '04428293333', 'a distance ahead of the number does not hide it');
+eq(S.phoneIn('Chennai 600 006'), '', 'a PIN code alone is not a phone number');
 eq(S.nearestHelp([{ name: 'A', recce: { hospital: 'GH 044 2530 5000', police: '' } }, { name: 'B', recce: {} }]),
   [{ name: 'A', rows: [{ kind: 'hospital', text: 'GH 044 2530 5000', tel: '04425305000' }] }], 'nearestHelp keeps only noted places and rows');
 

@@ -749,7 +749,8 @@ function renderElements() {
   if (EX.cat && !totals.some((c) => c.id === EX.cat && c.tags)) EX.cat = '';
   const rows = indexRows(scenes, ELEMENT_CATEGORIES, EX.cat);
 
-  const side = h('aside.bdx-side' + (EX.sheet ? '.is-open' : ''), { 'aria-label': 'Element index', id: 'bdxSide', tabindex: '-1' });
+  const side = h('aside.bdx-side' + (EX.sheet ? '.is-open' : ''), { 'aria-label': 'Element index', id: 'bdxSide', tabindex: '-1',
+    ...(EX.sheet ? { role: 'dialog', 'aria-modal': 'true' } : {}) });
   const cats = h('ul.bdx-cats');
   cats.append(h('li', {}, [h('button.bdx-cat.bdx-cat-all', { type: 'button', 'data-action': 'ex-cat', 'data-cat': '', 'aria-pressed': String(!EX.cat) }, [
     h('span.bdx-cat-name', { text: 'All categories' }),
@@ -1447,7 +1448,12 @@ delegate(document, 'click', '[data-action="sug-all"]', () => {
 /* ---- element index: filter, batch tag, export ---------------- */
 delegate(document, 'click', '[data-action="ex-cat"]', (e, el) => {
   EX.cat = el.dataset.cat || '';
-  render(EX.cat ? '[data-action="ex-cat"][data-cat="' + CSS.escape(EX.cat) + '"]' : '[data-action="ex-cat"][data-cat=""]');
+  /* The same filter exists twice — the phone's chip row (first in the
+     DOM) and the side panel — so focus goes back to the copy that was
+     pressed, or a desktop click lands on a hidden chip (body) and a
+     click in the open sheet leaves the sheet. */
+  const scope = el.closest('.bdx-side') ? '#bdxSide ' : '.bdx-pchips ';
+  render(scope + '[data-action="ex-cat"][data-cat="' + CSS.escape(EX.cat) + '"]');
 });
 /* The sheet is the same panel, so it opens and closes in place (no
    re-render, so a half-typed element name survives) and the state is

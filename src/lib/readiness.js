@@ -100,7 +100,7 @@ export function readiness() {
     'Shoot days with no date',
     days.filter((d) => !String(d.date || '').trim()).map((d) => 'Day ' + d.day),
     'Without a date a day cannot be checked against anybody’s availability, or put on a call sheet.',
-    'stripboard.html#dood'
+    'plan.html#calendar'   // dates are set on the Plan (setDayDate); the stripboard has no date field
   ));
 
   /* A call sheet claims a day by listing that day's scenes, so the

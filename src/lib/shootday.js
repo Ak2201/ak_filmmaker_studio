@@ -244,10 +244,18 @@ export function sceneNeeds(scene, shots, cameras) {
    day's locations, with a dialable number when the text holds one.
    The distance the prototypes print is not stored, so it is not shown. */
 export function phoneIn(text) {
-  const m = /(\+?\d[\d\s().-]{5,}\d)/.exec(String(text || ''));
-  if (!m) return '';
-  const digits = m[1].replace(/[^\d+]/g, '');
-  return digits.replace(/\D/g, '').length >= 6 ? digits : '';
+  /* EVERY digit run is a candidate, not only the first: a distance
+     ("1.5 - 2 km") ahead of the number must not hide it. Exactly six
+     digits is an Indian PIN code ("Chennai 600 006"), and a Call button
+     that dials the postcode on an emergency panel is worse than none. */
+  const re = /\+?\d[\d\s().-]{5,}\d/g;
+  let m;
+  while ((m = re.exec(String(text || '')))) {
+    const digits = m[0].replace(/[^\d+]/g, '');
+    const n = digits.replace(/\D/g, '').length;
+    if (n >= 7) return digits;
+  }
+  return '';
 }
 
 export function nearestHelp(places) {

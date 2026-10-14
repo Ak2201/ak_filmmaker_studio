@@ -462,7 +462,12 @@ function render(focus) {
      the budget already count in — a scene count hides a one-line
      insert next to an eight-page set piece. Every figure is derived. */
   const withBar = (card, value, max, label) => {
-    card.append(meter({ value, max, show: false, label, class: 'el-stat-bar' }));
+    /* No `label` to meter(): it would print a second, visible copy of
+       the card's own label above the bar. The bar is named for a
+       screen reader on its progressbar instead. */
+    const bar = meter({ value, max, show: false, class: 'el-stat-bar' });
+    bar.querySelector('.k-meter-track')?.setAttribute('aria-label', label);
+    card.append(bar);
     return card;
   };
   /* The open pick-ups by scene, so the figure says where, not only how many. */
@@ -676,6 +681,10 @@ saveOnInput('[data-edit-field]', (el) => {
 
 delegate(document, 'change', '[data-edit-target]', (e, el) => {
   setTargetMinutes(el.value);
+  /* The person has now set the shared target, so the Edit Log's legacy
+     value is retired: left in place, it was the fallback a cleared field
+     snapped back to, and nothing else could ever remove it. */
+  if (Edit.getTargetMin()) Edit.setTargetMin(0);
   render('[data-edit-target]');
 });
 

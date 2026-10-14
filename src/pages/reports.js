@@ -34,6 +34,7 @@ import { mountShell } from '../ui/shell.js';
 import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import { pageHeader, statStrip, statCard, button } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
@@ -112,25 +113,24 @@ function slugOf(scene) {
 function renderHeader(scenes) {
   const eighths = totalEighths(scenes);
   const night = totalEighths(scenes.filter((s) => s.dayNight === 'NIGHT'));
-  return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Production Reports · from your scenes' }),
-    h('h1.bd-title', { text: 'Production Reports.' }),
-    h('p.bd-deck', {
-      text: 'Every number on this page is counted from the scene breakdown the '
-          + 'moment you open it. Change a scene there and the reports change here '
-          + '— there is nothing to regenerate, and nothing to keep in step.'
-    }),
-    h('div.bd-stats', {}, [
-      stat(String(scenes.length), scenes.length === 1 ? 'scene' : 'scenes'),
-      stat(formatEighths(eighths), 'pages'),
-      stat(formatEighths(night), 'night pages'),
-      stat(String(new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size), 'locations'),
-      stat(String(Scenes.elementIndex().length), 'elements')
-    ])
-  ]);
+  const head = pageHeader({
+    class: 'bd-head',
+    eyebrow: 'Production Reports \u00b7 from your scenes',
+    title: 'Production Reports.',
+    sub: 'Every number on this page is counted from the scene breakdown the '
+       + 'moment you open it. Change a scene there and the reports change here '
+       + '\u2014 there is nothing to regenerate, and nothing to keep in step.'
+  });
+  head.append(statStrip([
+    stat(String(scenes.length), scenes.length === 1 ? 'scene' : 'scenes'),
+    stat(formatEighths(eighths), 'pages'),
+    stat(formatEighths(night), 'night pages'),
+    stat(String(new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size), 'locations'),
+    stat(String(Scenes.elementIndex().length), 'elements')
+  ], { label: 'The reports in figures' }));
+  return head;
 }
-const stat = (value, label) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+const stat = (value, label) => statCard({ value, label });
 
 /* ---- the teaching empty state ------------------------------- */
 function renderEmpty() {
@@ -156,7 +156,7 @@ function renderEmpty() {
             + 'worth answering twice by hand.'
       })
     ]),
-    h('a.btn.primary.bd-cta', { href: './breakdown.html', text: 'Go to the breakdown  →' })
+    button({ label: 'Go to the breakdown  →', variant: 'primary', href: './breakdown.html', class: 'bd-cta' })
   ]);
 }
 const how = (n, title, body) =>
@@ -367,8 +367,8 @@ function renderSides(scenes, numbers) {
           + 'scene, never split across a page.'
     }),
     h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
-      h('button.btn', { type: 'button', 'data-action': 'sides-all', text: 'Select all' }),
-      h('button.btn', { type: 'button', 'data-action': 'sides-none', text: 'Clear' }),
+      button({ label: 'Select all', action: 'sides-all' }),
+      button({ label: 'Clear', action: 'sides-none' }),
       h('span.rp-count', { id: 'rp-sides-count', text: selectionLabel(scenes) }),
       h('span.rp-spacer'),
       actionMenu('Export', [
@@ -468,7 +468,7 @@ function renderScreenTime(scenes, numbers) {
     return sec;
   }
   const st = Analysis.screenTime(scenes, loadScript().elements);
-  sec.append(h('div.bd-stats.rp-stats', {}, [
+  sec.append(h('div.k-stat-strip.rp-stats', {}, [
     stat(formatDuration(st.total), 'estimated running time'),
     stat(formatDuration(st.byPage), 'by page count'),
     stat(st.fromScript + ' / ' + scenes.length, 'scenes read from the script')
@@ -570,7 +570,7 @@ function renderRuntime(st, scenes, numbers) {
   field.append(input);
   box.append(field);
 
-  box.append(h('div.bd-stats.rp-stats', {}, [
+  box.append(h('div.k-stat-strip.rp-stats', {}, [
     stat(formatDuration(est.total), 'estimated, songs included'),
     stat(targetMin ? formatDuration(est.target) : '—', targetMin ? 'target' : 'no target set'),
     stat(targetMin ? fmtDelta(est.delta) : '—', targetMin ? (est.delta > 0 ? 'over the target' : est.delta < 0 ? 'under the target' : 'difference') : 'difference')
@@ -895,7 +895,7 @@ function fillDPR(sec, scenes) {
 
   out.push(h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
     dayPicker('rp-dpr-day', days, d.day),
-    h('a.btn', { href: 'shoot.html', text: 'Mark scenes on the shoot day' }),
+    button({ label: 'Mark scenes on the shoot day', href: 'shoot.html' }),
     h('span.rp-spacer'),
     actionMenu('Export', [
       { label: 'Print the DPR', action: 'print-dpr' },
@@ -908,7 +908,7 @@ function fillDPR(sec, scenes) {
     text: `Day ${d.day} of ${days.length}` + (d.date ? ' · ' + shortDate(d.date, true) : ' · no date set')
         + (d.locations.length ? ' · ' + d.locations.join(', ') : '')
   }));
-  sheet.append(h('div.bd-stats.rp-stats', { id: 'rp-dpr-derived' }, dprStats(sum)));
+  sheet.append(h('div.k-stat-strip.rp-stats', { id: 'rp-dpr-derived' }, dprStats(sum)));
 
   /* Times. `type="time"` gives a phone its wheel and stores "07:30". */
   const times = h('div.rp-dpr-times');
@@ -965,9 +965,9 @@ function fillDPR(sec, scenes) {
     const note = h('input.rp-in', { type: 'text', 'data-dpr-delay': x.id, 'data-field': 'note', 'aria-label': 'Delay ' + (i + 1) + ' note', placeholder: 'What happened' });
     note.value = x.note;
     dl.append(h('div.rp-row', {}, [reason, mins, note,
-      h('button.btn.rp-x', { type: 'button', 'data-action': 'dpr-delay-remove', 'data-id': x.id, 'aria-label': 'Remove delay ' + (i + 1), text: 'Remove' })]));
+      button({ label: 'Remove', action: 'dpr-delay-remove', class: 'rp-x', attrs: { 'data-id': x.id, 'aria-label': 'Remove delay ' + (i + 1) } })]));
   });
-  dl.append(h('button.btn.rp-noprint', { type: 'button', 'data-action': 'dpr-delay-add', text: '+ Add a delay' }));
+  dl.append(button({ label: '+ Add a delay', action: 'dpr-delay-add', class: 'rp-noprint' }));
   sheet.append(dl);
 
   /* Injuries and incidents. */
@@ -980,9 +980,9 @@ function fillDPR(sec, scenes) {
     const act = h('input.rp-in', { type: 'text', 'data-dpr-incident': x.id, 'data-field': 'action', 'aria-label': 'Incident ' + (i + 1) + ' action taken', placeholder: 'Action taken' });
     act.value = x.action;
     inc.append(h('div.rp-row.is-two', {}, [what, act,
-      h('button.btn.rp-x', { type: 'button', 'data-action': 'dpr-incident-remove', 'data-id': x.id, 'aria-label': 'Remove incident ' + (i + 1), text: 'Remove' })]));
+      button({ label: 'Remove', action: 'dpr-incident-remove', class: 'rp-x', attrs: { 'data-id': x.id, 'aria-label': 'Remove incident ' + (i + 1) } })]));
   });
-  inc.append(h('button.btn.rp-noprint', { type: 'button', 'data-action': 'dpr-incident-add', text: '+ Add an incident' }));
+  inc.append(button({ label: '+ Add an incident', action: 'dpr-incident-add', class: 'rp-noprint' }));
   sheet.append(inc);
 
   const notes = h('textarea.rp-in.rp-notes', { id: 'dpr-notes', rows: '4', 'data-dpr-field': 'notes', placeholder: 'Anything the producer should read tonight' });
@@ -1039,7 +1039,7 @@ function offlineBlock() {
           + 'browser so they open with no network. The scenes and reports are already stored on this device; '
           + 'it is the pages themselves that need keeping.'
     }),
-    h('button.btn.primary', { type: 'button', 'data-action': 'rp-offline', text: 'Make today available offline' }),
+    button({ label: 'Make today available offline', variant: 'primary', action: 'rp-offline' }),
     h('ul.rp-offline-list', { id: 'rp-offline-list', 'aria-live': 'polite' })
   ]);
 }
@@ -1091,11 +1091,11 @@ function fillKit(sec, scenes) {
 
   const tools = h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [dayPicker('rp-kit-day', days, day)]);
   if (lines.length) {
-    tools.append(h('button.btn', { type: 'button', 'data-action': 'kit-seed', text: `Fill from the budget (${lines.length})` }));
+    tools.append(button({ label: `Fill from the budget (${lines.length})`, action: 'kit-seed' }));
   } else {
-    tools.append(h('a.btn', { href: 'budget.html', text: 'No kit lines in the budget yet' }));
+    tools.append(button({ label: 'No kit lines in the budget yet', href: 'budget.html' }));
   }
-  if (prev) tools.append(h('button.btn', { type: 'button', 'data-action': 'kit-copy', 'data-from': String(prev.day), text: `Copy from Day ${prev.day}` }));
+  if (prev) tools.append(button({ label: `Copy from Day ${prev.day}`, action: 'kit-copy', attrs: { 'data-from': String(prev.day) } }));
   tools.append(h('span.rp-spacer'), actionMenu('Export', [
     { label: 'Print the kit list', action: 'print-kit' },
     { label: 'Save as PDF',        action: 'pdf-kit', hint: 'A4' }
@@ -1130,7 +1130,7 @@ function fillKit(sec, scenes) {
           cell('vendor', 'Vendor', x.vendor, { placeholder: 'Vendor' }),
           tick('pickup', 'Picked up'),
           tick('returned', 'Returned'),
-          h('td', {}, [h('button.btn.rp-x', { type: 'button', 'data-action': 'kit-remove', 'data-id': x.id, 'aria-label': 'Remove ' + name, text: '×' })])
+          h('td', {}, [button({ label: '×', action: 'kit-remove', class: 'rp-x', attrs: { 'data-id': x.id, 'aria-label': 'Remove ' + name } })])
         ]));
       }
       t.append(tb);
@@ -1141,7 +1141,7 @@ function fillKit(sec, scenes) {
     const addId = 'kit-add-' + dept.id;
     card.append(h('div.rp-kit-add.rp-noprint', {}, [
       h('input.rp-in', { id: addId, type: 'text', placeholder: 'Add to ' + dept.label.toLowerCase() + '…', 'data-kit-new': dept.id, 'aria-label': 'New ' + dept.label.toLowerCase() + ' item' }),
-      h('button.btn', { type: 'button', 'data-action': 'kit-add', 'data-dept': dept.id, text: 'Add' })
+      button({ label: 'Add', action: 'kit-add', attrs: { 'data-dept': dept.id } })
     ]));
     grid.append(card);
   }

@@ -39,6 +39,7 @@ import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/bre
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
 import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
+import { pageHeader, statStrip, statCard, button, chip, badge } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { measureEighths } from '../lib/scene-sync.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
@@ -49,37 +50,36 @@ const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
 /* ---- header ------------------------------------------------ */
 function renderHeader(scenes) {
   const eighths = totalEighths(scenes);
-  return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Breakdown · one scene model, every view' }),
-    h('h1.bd-title', { text: 'Breakdown.' }),
-    h('p.bd-deck', {
-      text: 'Every scene once — INT/EXT, time, location, length. The stripboard, '
-          + 'the sides, the shot list and the call sheet all read from this, so it '
-          + 'is the only place any of it gets typed.'
-    }),
-    h('div.bd-stats.bd-kpis', {}, kpis(scenes, eighths)),
-    scenes.length ? h('p.bd-measure', {}, [
+  /* The kit's page header; `.bd-head` stays on it for the layout the
+     other module pages share (measure, gutters, the stage-guide pill). */
+  const head = pageHeader({
+    class: 'bd-head',
+    eyebrow: 'Breakdown · one scene model, every view',
+    title: 'Breakdown.',
+    sub: 'Every scene once — INT/EXT, time, location, length. The stripboard, '
+       + 'the sides, the shot list and the call sheet all read from this, so it '
+       + 'is the only place any of it gets typed.',
+    actions: scenes.length ? [
       aiPill({
         label: 'AI Desk',
         tasks: [{ id: 'scene-notes', label: 'Scene notes' }, { id: 'breakdown-tags', label: 'Breakdown tags' },
                 { id: 'genre-comps', label: 'Genre and comparables' }],
         ctx: { elements: () => loadScript().elements, after: () => render() }
       }),
-      h('button.btn', {
-        type: 'button', 'data-action': 'eighths-measure', text: 'RE-MEASURE PAGES FROM THE SCRIPT',
-        title: 'Recount each scene\u2019s length in eighths from the script as it stands now'
+      button({
+        label: 'RE-MEASURE PAGES FROM THE SCRIPT', action: 'eighths-measure',
+        title: 'Recount each scene’s length in eighths from the script as it stands now'
       })
-    ]) : null
-  ]);
+    ] : null
+  });
+  head.append(statStrip(kpis(scenes, eighths), { class: 'bd-kpis', label: 'The breakdown in figures' }));
+  return head;
 }
-const stat = (value, label, note) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label }),
-    note ? h('em.bd-stat-note', { text: note }) : null]);
 
 /* Six figures, all derived from the scene model on render. A figure with
    nothing behind it prints a dash rather than a zero that reads as a fact. */
 function kpis(scenes, eighths) {
-  const dash = (n, f) => (n ? f(n) : '\u2014');
+  const dash = (n, f) => (n ? f(n) : '—');
   const idx = Scenes.elementIndex();
   const cats = new Set(idx.map((e) => e.category)).size;
   const locs = new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size;
@@ -87,14 +87,36 @@ function kpis(scenes, eighths) {
   const exts = scenes.filter((s) => s.intExt === 'EXT').length;
   const songs = Songs.listSongs().length;
   const cast = idx.filter((e) => e.category === 'cast').length;
+  const card = (value, label, note) => statCard({ value, label, note: note || '' });
   return [
-    stat(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : ''),
-    stat(dash(scenes.length, () => formatEighths(eighths)), eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : ''),
-    stat(dash(idx.length, String), 'elements', idx.length ? cats + (cats === 1 ? ' category' : ' categories') : ''),
-    stat(dash(locs, String), 'locations', locs ? ints + ' INT / ' + exts + ' EXT scenes' : ''),
-    stat(dash(songs, String), 'songs', songs ? 'musical' : ''),
-    stat(dash(cast, String), 'cast', cast ? 'tagged' : '')
+    card(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : ''),
+    card(dash(scenes.length, () => formatEighths(eighths)), eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : ''),
+    card(dash(idx.length, String), 'elements', idx.length ? cats + (cats === 1 ? ' category' : ' categories') : ''),
+    card(dash(locs, String), 'locations', locs ? ints + ' INT / ' + exts + ' EXT scenes' : ''),
+    card(dash(songs, String), 'songs', songs ? 'musical' : ''),
+    card(dash(cast, String), 'cast', cast ? 'tagged' : '')
   ];
+}
+
+/* One element chip: the kit chip, in its category's hue. The category word
+   is printed (identity is never colour alone) and `.bd-chip` stays on it,
+   because verify's hue check reads the 3px left rule it draws. `tag:
+   'button'` makes the Auto-Tag suggestion, which is the same chip, pressable. */
+function elChip(cat, name, o = {}) {
+  const base = chip({ label: name, class: 'bd-chip hue-' + cat.hue });
+  let el = base;
+  if (o.tag === 'button') {
+    el = h('button.k-chip');
+    el.className = base.className;
+    while (base.firstChild) el.append(base.firstChild);
+  }
+  if (o.class) el.classList.add(o.class);
+  el.title = cat.label;
+  const lab = el.querySelector('.k-chip-label');
+  lab.classList.add('bd-chip-name');
+  lab.before(h('span.k-chip-cat.bd-chip-cat', { text: cat.label }));
+  for (const [k, v] of Object.entries(o.attrs || {})) el.setAttribute(k, v);
+  return el;
 }
 
 /* ---- the teaching empty state ------------------------------
@@ -127,7 +149,7 @@ function renderEmpty() {
       h('a', { href: '#overview', text: 'Upload it or break it down on the Whole script tab' }),
       ' and every scene, character and location is filled in for you.'
     ]),
-    h('button.btn.bd-cta', { type: 'button', 'data-action': 'scene-add', text: '+  Add a scene by hand' })
+    button({ label: '+  Add a scene by hand', variant: 'primary', pill: true, action: 'scene-add', class: 'bd-cta' })
   ]);
 }
 const how = (n, title, body) =>
@@ -244,6 +266,8 @@ function sceneStatus(scene) {
   if (tags) return { id: 'tagged', label: 'Tagged' };
   return { id: 'untagged', label: 'Untagged' };
 }
+/* Where a scene stands, as a kit badge tone. Derived, nothing stored. */
+const STATUS_TONE = { shot: 'ok', part: 'warn', dropped: 'danger', scheduled: 'info', tagged: 'info', untagged: null };
 function castSummary(scene) {
   const names = scene.elements.cast || [];
   if (!names.length) return '';
@@ -257,7 +281,7 @@ function rowCounts(scene) {
   const wrap = h('span.bd-sl-counts');
   for (const cat of ELEMENT_CATEGORIES) {
     const n = (scene.elements[cat.id] || []).length;
-    if (n) wrap.append(h('span.bd-count.hue-' + cat.hue, { text: n + ' ' + cat.label }));
+    if (n) wrap.append(chip({ label: cat.label, count: n, class: 'bd-count hue-' + cat.hue }));
   }
   return wrap.childNodes.length ? wrap : null;
 }
@@ -300,8 +324,7 @@ function renderScene(scene, i, total) {
         type: 'text', value: scene.location, placeholder: 'Location — where are we?',
         'data-scene-field': 'location', 'aria-label': 'Scene location'
       }),
-      h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' }),
-      rowCounts(scene)
+      h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' })
     ]),
     select(INT_EXT, scene.intExt, 'intExt', 'Interior or exterior'),
     select(DAY_NIGHT, scene.dayNight, 'dayNight', 'Time of day'),
@@ -313,12 +336,13 @@ function renderScene(scene, i, total) {
       h('span.bd-pages', { text: formatEighths(scene.eighths), title: 'Length in pages (eighths in the box)' })
     ]),
     h('span.bd-sl-cast' + (cast ? '' : '.is-none'), { text: cast || '—', title: (scene.elements.cast || []).join(', ') || 'No cast tagged yet' }),
-    h('span.bd-sl-status.is-' + status.id, { text: status.label }),
+    badge({ label: status.label, tone: STATUS_TONE[status.id], dot: true, class: 'bd-sl-status is-' + status.id }),
     h('button.bd-icon.bd-sl-toggle', {
       type: 'button', 'data-action': 'sl-toggle', 'aria-expanded': String(open), 'aria-controls': detailId,
       title: open ? 'Close the scene' : 'Open the scene to edit its synopsis and tags',
       'aria-label': (open ? 'Close' : 'Open') + ' scene ' + (scene.number || i + 1), text: open ? '▾' : '▸'
-    })
+    }),
+    rowCounts(scene)
   ]));
 
   const detail = h('div.bd-sl-detail', { id: detailId, hidden: !open });
@@ -374,17 +398,13 @@ function renderScene(scene, i, total) {
     const names = scene.elements[cat.id] || [];
     if (!names.length) continue;
     for (const name of names) {
-      const chip = h(`span.bd-chip.hue-${cat.hue}`, { title: cat.label });
-      chip.append(
-        h('span.bd-chip-cat', { text: cat.label }),
-        h('span.bd-chip-name', { text: name }),
-        h('button.bd-chip-x', {
-          type: 'button', 'data-action': 'el-remove',
-          'data-cat': cat.id, 'data-name': name,
-          'aria-label': `Remove ${name} from ${cat.label}`, text: '✕'
-        })
-      );
-      tags.append(chip);
+      const el = elChip(cat, name);
+      el.append(h('button.k-chip-x.bd-chip-x', {
+        type: 'button', 'data-action': 'el-remove',
+        'data-cat': cat.id, 'data-name': name,
+        'aria-label': `Remove ${name} from ${cat.label}`, text: '×'
+      }));
+      tags.append(el);
     }
   }
   const adder = h('div.bd-add-el');
@@ -393,7 +413,7 @@ function renderScene(scene, i, total) {
   adder.append(sel, h('input.bd-add-name', {
     type: 'text', placeholder: 'Tag an element — name it, press Enter',
     'data-action-key': 'el-add', 'aria-label': 'Element name', list: 'bdElementNames', autocomplete: 'off'
-  }), h('button.btn.primary.bd-attach', { type: 'button', 'data-action': 'el-attach', text: 'Attach Element' }));
+  }), button({ label: 'Attach Element', variant: 'primary', icon: 'add', action: 'el-attach', class: 'bd-attach' }));
   tags.append(adder);
   detail.append(tags);
   detail.append(h('div.bd-scene-acts', {}, [
@@ -420,7 +440,7 @@ function renderSceneBar(scenes) {
       [opt('', 'Any time', SL.dn)].concat(DAY_NIGHT.map((v) => opt(v, v, SL.dn)))),
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'st', 'aria-label': 'Filter by where the scene stands' },
       [['', 'Any status'], ['untagged', 'Untagged'], ['tagged', 'Tagged'], ['scheduled', 'Scheduled'], ['shot', 'Shot'], ['part', 'Part shot'], ['dropped', 'Dropped']].map(([v, l]) => opt(v, l, SL.st))),
-    h('button.btn.bd-sl-expand', { type: 'button', 'data-action': 'sl-expand', text: SL.open.size ? 'COLLAPSE ALL' : 'EXPAND ALL' }),
+    button({ label: SL.open.size ? 'COLLAPSE ALL' : 'EXPAND ALL', action: 'sl-expand', class: 'bd-sl-expand' }),
     h('span.bd-sl-count', { role: 'status', 'aria-live': 'polite', title: KEYS_HINT, text: scenes.length + ' scenes' })
   ]);
   const bulk = h('div.bd-sl-bulk', { hidden: !SL.sel.size, role: 'group', 'aria-label': 'Selected scenes' }, [
@@ -429,8 +449,8 @@ function renderSceneBar(scenes) {
       [h('option', { value: '', text: 'Set INT / EXT…' })].concat(INT_EXT.map((v) => h('option', { value: v, text: v })))),
     h('select.bd-sel', { 'data-sl-bulk': 'dayNight', 'aria-label': 'Set time of day on the selected scenes' },
       [h('option', { value: '', text: 'Set time…' })].concat(DAY_NIGHT.map((v) => h('option', { value: v, text: v })))),
-    h('button.btn.danger', { type: 'button', 'data-action': 'sl-bulk-bin', text: 'MOVE TO BIN' }),
-    h('button.btn', { type: 'button', 'data-action': 'sl-clear', text: 'CLEAR SELECTION' })
+    button({ label: 'MOVE TO BIN', variant: 'danger', action: 'sl-bulk-bin' }),
+    button({ label: 'CLEAR SELECTION', action: 'sl-clear' })
   ]);
   const names = h('datalist#bdElementNames');
   for (const el of Scenes.elementIndex()) names.append(h('option', { value: el.name }));
@@ -452,8 +472,8 @@ const presetOn = (p) => PRESET_KEYS.every((k) => String(p[k] || '').trim().toLow
 function renderPresets() {
   const on = filterActive();
   return h('div.bd-sl-presets', { role: 'group', 'aria-label': 'Saved filters (kept until you reload this page)' }, [
-    h('button.btn.bd-sl-save', {
-      type: 'button', 'data-action': 'sl-save', disabled: !on, text: 'SAVE THIS FILTER',
+    button({
+      label: 'SAVE THIS FILTER', size: 'sm', action: 'sl-save', disabled: !on, class: 'bd-sl-save',
       title: on ? 'Name the current search and filters and keep them as a button (until you reload this page)' : 'Set a search or a filter first, then save it'
     })
   ].concat(SL.presets.map((p) => {
@@ -677,11 +697,11 @@ function renderSongs(scenes) {
   );
 
   if (songs.length) {
-    wrap.append(h('div.bd-stats', {}, [
-      stat(String(t.count), t.count === 1 ? 'song' : 'songs'),
-      stat(String(t.days), t.days === 1 ? 'shoot day' : 'shoot days'),
-      stat(String(t.linkedScenes), 'linked scenes'),
-      stat(String(t.peakDancers || '—'), 'peak dancers')
+    wrap.append(statStrip([
+      { value: String(t.count), label: t.count === 1 ? 'song' : 'songs' },
+      { value: String(t.days), label: t.days === 1 ? 'shoot day' : 'shoot days' },
+      { value: String(t.linkedScenes), label: 'linked scenes' },
+      { value: String(t.peakDancers || '—'), label: 'peak dancers' }
     ]));
     if (t.blocked) {
       wrap.append(h('p.bd-song-warn', {
@@ -698,9 +718,7 @@ function renderSongs(scenes) {
     }));
   }
 
-  wrap.append(h('button.btn.bd-add', {
-    type: 'button', 'data-action': 'song-add', text: '+  Add song'
-  }));
+  wrap.append(button({ label: '+  Add song', action: 'song-add', class: 'bd-add' }));
   return wrap;
 }
 
@@ -767,7 +785,7 @@ function renderSuggestions(scenes) {
     h('span.bd-sug-count', { text: `${total} suggestion${total === 1 ? '' : 's'} across ${rows.length} scene${rows.length === 1 ? '' : 's'}`
       + (guessed.length ? ` \u00b7 ADD ALL leaves out the ${guessed.length} paired by position only` : '') }),
     rows.length > guessed.length
-      ? h('button.btn', { type: 'button', 'data-action': 'sug-all', text: 'ADD ALL' })
+      ? button({ label: 'ADD ALL', action: 'sug-all' })
       : null
   ]));
   const list = h('ol.bd-sug-list');
@@ -777,16 +795,17 @@ function renderSuggestions(scenes) {
       h('strong', { text: `Scene ${r.scene.number || '\u2014'}` }),
       h('span.bd-sug-slug', { text: r.heading }),
       isConfident(r.how) ? null : h('span.bd-sug-guess', { text: 'paired by position, check the heading' }),
-      h('button.btn.bd-sug-scene-all', { type: 'button', 'data-action': 'sug-scene', text: 'ADD THESE' })
+      button({ label: 'ADD THESE', size: 'sm', action: 'sug-scene', class: 'bd-sug-scene-all' })
     ]));
     const tags = h('div.bd-tags');
     for (const cat of SUGGEST_CATS) {
       const c = catById[cat];
       for (const sug of r.suggestions[cat]) {
-        tags.append(h(`button.bd-chip.bd-sug.hue-${c.hue}`, {
-          type: 'button', 'data-action': 'sug-add', 'data-cat': cat, 'data-name': sug.name,
-          title: 'From: ' + sug.from, 'aria-label': `Tag ${sug.name} as ${c.label} — from: ${sug.from}`
-        }, [h('span.bd-chip-cat', { text: c.label }), h('span.bd-chip-name', { text: '+ ' + sug.name })]));
+        tags.append(elChip(c, '+ ' + sug.name, {
+          tag: 'button', class: 'bd-sug',
+          attrs: { type: 'button', 'data-action': 'sug-add', 'data-cat': cat, 'data-name': sug.name,
+            title: 'From: ' + sug.from, 'aria-label': `Tag ${sug.name} as ${c.label} — from: ${sug.from}` }
+        }));
       }
     }
     li.append(tags);
@@ -864,13 +883,13 @@ function renderBin() {
         h('span.bd-bin-meta', { text: bits.join(' · ') + (e.reason === 'hand' ? ' · deleted here' : ' · heading removed from the script') })
       ]),
       h('div.bd-bin-acts', {}, [
-        h('button.btn', { type: 'button', 'data-action': 'bin-restore', text: 'Restore' }),
-        h('button.btn.danger.bd-bin-del', { type: 'button', 'data-action': 'bin-delete', text: 'Delete for good' })
+        button({ label: 'Restore', size: 'sm', action: 'bin-restore' }),
+        button({ label: 'Delete for good', size: 'sm', variant: 'danger', action: 'bin-delete', class: 'bd-bin-del' })
       ])
     ]));
   }
   wrap.append(list);
-  wrap.append(h('button.btn.bd-bin-empty', { type: 'button', 'data-action': 'bin-empty', text: 'Empty bin' }));
+  wrap.append(button({ label: 'Empty bin', action: 'bin-empty', class: 'bd-bin-empty' }));
   return wrap;
 }
 
@@ -933,7 +952,7 @@ function render(focus) {
     ]));
     scenes.forEach((s, i) => tagging.append(renderScene(s, i, scenes.length)));
     tagging.append(h('p.bd-sl-none', { hidden: true, text: 'No scene matches. Clear the search or a filter above.' }));
-    tagging.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
+    tagging.append(button({ label: '+  Add scene', action: 'scene-add', class: 'bd-add' }));
   }
   list.append(tagging);
   // The bin, inside the Scenes tab, only when it holds something.

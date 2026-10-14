@@ -1236,6 +1236,16 @@ try {
     await G.page.waitForSelector('.pu-granted', { timeout: 10000 }).catch(() => {});
     const pu = await G.page.textContent('#plan').catch(() => '');
     ok(/Access given by the studio/.test(pu) && !/free trial/i.test(pu), 'purchase.html says "Access given by the studio" and no trial wording');
+    /* Settings said the same state was on the FREE plan: 'granted' is only
+       computed with plan 'free', so its planName is the free plan's name. */
+    await G.page.goto(BASE + 'settings.html#account');
+    await G.page.waitForSelector('.st-facts', { timeout: 10000 }).catch(() => {});
+    // The plan resolves after the first paint; wait for it to say granted.
+    await G.page.waitForFunction(() => /Access given/.test((document.querySelector('.st-plan-line') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
+    const facts = await G.page.textContent('.st-facts').catch(() => '');
+    const planLine = await G.page.textContent('.st-plan-line').catch(() => '');
+    ok(/Access given by the studio/.test(facts) && !/\bFree\b/.test(facts), 'settings identity card reads "Access given by the studio", not the Free plan: ' + facts);
+    ok(/Access given to you by the studio\.$/.test(planLine.trim()), 'settings plan card names no plan for granted access: ' + planLine);
     /* Revoked: the ordinary state — never had a trial, so the wall offers one. */
     F.db.emailGrants.clear();
     await G.page.goto(BASE + 'index.html');

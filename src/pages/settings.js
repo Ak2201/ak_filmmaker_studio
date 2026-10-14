@@ -885,6 +885,18 @@ function wantFacts() {
     .catch(() => { factsSeen = { uid, data: null }; })
     .finally(() => { factsFetching = false; if (sessionUid() === uid && !busy) render(); });
 }
+/* The Team panel re-reads the account after every create / invite /
+   revoke (and on each render). Adopt its answer, and redraw only when the
+   seat count actually moved, so its refresh-on-render cannot loop. */
+const seatsKey = (d) => (d && d.seats ? d.seats.used + '/' + d.seats.limit : '');
+document.addEventListener('fms:account-loaded', (e) => {
+  const uid = sessionUid();
+  if (!uid) return;
+  const d = e.detail || null;
+  const was = factsSeen && factsSeen.uid === uid ? seatsKey(factsSeen.data) : null;
+  factsSeen = { uid, data: d };
+  if (was !== seatsKey(d) && !busy) render();
+});
 function renderIdentityFacts() {
   wantFacts();
   const c = window.StudioCloud;
@@ -892,7 +904,9 @@ function renderIdentityFacts() {
   const gate = (c && c.getGateState && c.getGateState()) || {};
   const cells = [];
   const role = gate.role === 'admin' ? 'Studio admin' : 'Member';
-  const plan = cp.reason === 'paid' || cp.reason === 'granted' ? cp.planName : cp.reason === 'trial' ? 'Free trial' : '';
+  /* 'granted' is only ever computed with plan 'free' (plan-gate.js), so its
+     planName is the FREE plan's: say what it is, as purchase.js does. */
+  const plan = cp.reason === 'paid' ? cp.planName : cp.reason === 'granted' ? 'Access given by the studio' : cp.reason === 'trial' ? 'Free trial' : '';
   cells.push(['Role', role + (plan ? ' \u00b7 ' + plan : '')]);
   const d = factsSeen && factsSeen.uid === sessionUid() ? factsSeen.data : null;
   if (d && d.seats && d.seats.limit) {
@@ -972,7 +986,7 @@ function renderPlanCard() {
     const end = PlanGate.trialEndsAt();
     line = 'Free trial' + (end ? ' \u00b7 ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
   } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + ' \u00b7 yours for good.';
-  else if (cp.reason === 'granted') line = 'Access given to you by the studio' + (cp.planName ? ' \u00b7 ' + cp.planName : '') + '.';
+  else if (cp.reason === 'granted') line = 'Access given to you by the studio.';   // its planName is the free plan's
   else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
   /* Where the plan stands, as one LED pill: read from the same facts as the

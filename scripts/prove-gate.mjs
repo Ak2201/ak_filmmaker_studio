@@ -553,10 +553,10 @@ try {
     /* A malformed percent-escape in the fragment threw URIError at
        module load and left the doorway an empty page. */
     ok(codeFromLocation({ hash: '#code=AB%ZZ' }) === '', 'codeFromLocation() reads a bad percent-escape as no code, not a throw');
-    const before = errs.length;
+    const errsAt = errs.length;
     await page.goto(BASE + 'invite.html#code=AB%ZZ');
     await page.waitForSelector('main', { timeout: 10000 }).catch(() => {});
-    ok(!!(await page.$('main')) && errs.slice(before).every((m) => !/URI malformed/i.test(m)), 'invite.html#code=AB%ZZ still renders the doorway: ' + errs.slice(before).join(' | '));
+    ok(!!(await page.$('main')) && errs.slice(errsAt).every((m) => !/URI malformed/i.test(m)), 'invite.html#code=AB%ZZ still renders the doorway: ' + errs.slice(errsAt).join(' | '));
     await ctx.close();
     /* REVOKED: the door is shut to it and the browser forgets it. This
        is the half of the old assertion that still bites — a revoked code

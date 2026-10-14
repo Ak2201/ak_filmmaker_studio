@@ -89,7 +89,11 @@
     "fullscreen",
     "rotate_left",
     "rotate_right",
-    "local_shipping"
+    "local_shipping",
+    "download",
+    "print",
+    "restart_alt",
+    "sync_alt"
   ],
   "pages": {
     "breakdown": {

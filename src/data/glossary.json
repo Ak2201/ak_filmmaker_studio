@@ -3947,6 +3947,670 @@
         "sound mix"
       ],
       "notag": true
+    },
+    {
+      "term": "page eighths",
+      "stage": "preprod",
+      "aliases": [
+        "eighths",
+        "page eighth",
+        "eighths of a page"
+      ],
+      "notag": false,
+      "def": "A scene's length, counted in eighths of a page. A page is eight eighths, so a half-page scene is 4/8 and a scene that fills a page and a quarter is 10/8. Because one page of screenplay runs about a minute of screen time, eighths are how a schedule guesses how much of a day a scene will eat.",
+      "tanglish": "Oru page = 8 eighths. Paadhi page scene na 4/8. Scene evvalavu neelam-nu ethukku solra measure; adha vechchu thaan oru naal-la evvalavu scene edukka mudiyum-nu kanakku.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A short comic exchange in a hallway may be 2/8 and a long confrontation in the dean's office may run over a page; the board uses those numbers to guess how many scenes make a realistic day."
+        },
+        {
+          "film": "96",
+          "note": "A quiet night scene of two people talking could be 6/8 of a page, small on paper, but it still needs a whole night's patience, so eighths measure the script, not the effort."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A procedural scene that is only a few lines of dialogue can be 1/8, and it might still need a locked location and an evidence prop. Eighths count length, not difficulty."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A long interrogation scene might run several pages, so its eighths are large and the day it lands on needs fewer other scenes beside it."
+        }
+      ],
+      "seeAlso": [
+        "script breakdown",
+        "stripboard",
+        "shooting schedule"
+      ]
+    },
+    {
+      "term": "scene number",
+      "stage": "screenplay",
+      "aliases": [
+        "scene numbers",
+        "scene numbering",
+        "scene numbered"
+      ],
+      "notag": true,
+      "def": "The running number a scene carries so everyone can refer to it. A new scene begins whenever the place or the time changes, which is exactly what a slugline announces. Numbers are usually frozen once the script is shared, so later additions get a letter (12A) instead of renumbering everything.",
+      "tanglish": "Ovvoru scene-kum oru number, ellarum adhaiye solluvaanga. Idam illa neram maarina pudhu scene. Script share panna piragu number maathaama, pudhusa vandhaa 12A maadhiri.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A cut from the college hall to the same students outside in the corridor is a new scene because the place changed, so it gets its own number and its own row in the breakdown."
+        },
+        {
+          "film": "96",
+          "note": "The same two people talking as the night moves on can be one scene or two: if the place and the unbroken time hold, it is one; if the story jumps ahead, it is two."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Returning to the same room the next morning is a new scene even though the set is the same, because the time moved, and the call sheet will name it by number."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A scene told again from another character's view is a new scene in the script, so it is numbered separately even if it shares a room with the one before."
+        }
+      ],
+      "seeAlso": [
+        "slugline",
+        "scene",
+        "script breakdown"
+      ]
+    },
+    {
+      "term": "breakdown category",
+      "stage": "preprod",
+      "def": "A heading under which a breakdown files one kind of need: cast, background actors, props, set dressing, wardrobe, hair and makeup, vehicles, animals, stunts, special effects, visual effects, special equipment. Every department reads only its own categories, so the list is the way the script becomes a set of separate shopping and planning lists.",
+      "tanglish": "Breakdown-la ovvoru thevaikkum oru category: cast, props, wardrobe, vehicles nu. Ovvoru department-um thanakku vendiyadha mattum paarthukkum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The corporate scenes would fill wardrobe and background rows while the campus scenes might lean on cast and crowd, so each department sees a different slice of the same script."
+        },
+        {
+          "film": "96",
+          "note": "With very few extras and a handful of places, most of its weight falls on cast, wardrobe and the props of one evening."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Evidence, weapons and vehicles are separate categories, so the person who sources props is not wading through the stunt list."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Interrogation scenes load cast and props; chase or fight scenes load vehicles, stunts and special effects. The categories show which kind of day each scene is."
+        }
+      ],
+      "seeAlso": [
+        "script breakdown",
+        "props",
+        "set dressing"
+      ],
+      "aliases": []
+    },
+    {
+      "term": "background actors",
+      "stage": "preprod",
+      "aliases": [
+        "background",
+        "extras",
+        "extra",
+        "crowd artists",
+        "junior artists"
+      ],
+      "notag": true,
+      "def": "The people who fill a scene without speaking lines: students in a corridor, customers in a shop, a crowd on a street. Also called extras. They are counted and costed apart from the cast, and a large crowd changes how long a scene takes.",
+      "tanglish": "Dialogue illaama scene-a nirappura aalunga: corridor-la students, kadai-la customers. Cast-ukku veru, kanakkum veru.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A campus corridor or an office floor needs a dozen people who never speak, yet they are what makes those places look lived in, and they must be booked."
+        },
+        {
+          "film": "96",
+          "note": "Two people in a mostly empty place need almost no background, which is a quiet saving the breakdown makes visible."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A busy station or street behind a conversation means background actors, a few more people to feed and to direct on the day."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A crowded public place changes the plan: the more background, the longer the setup, so the schedule gives such a scene extra time."
+        }
+      ],
+      "seeAlso": [
+        "script breakdown",
+        "breakdown category",
+        "call sheet"
+      ]
+    },
+    {
+      "term": "props",
+      "stage": "preprod",
+      "aliases": [
+        "prop",
+        "hand props",
+        "hand prop"
+      ],
+      "notag": true,
+      "def": "Objects an actor handles or uses: a phone, a letter, a file, a weapon. If a person picks it up or uses it on screen, it is a prop. What merely sits in the room and is never touched is set dressing, and the two are budgeted and sourced by different people.",
+      "tanglish": "Actor kaiyila edukkura, use pannura, kadhaiyoda mukkiyamaana porul prop. Room-la summa irukkura porul set dressing.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A certificate or mark sheet that changes hands is a prop, because the story depends on it being picked up and read."
+        },
+        {
+          "film": "96",
+          "note": "An old photograph or a keepsake passed from one hand to another is a prop that must match from shot to shot."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A case file or piece of evidence held up to the camera is a prop; the shelves of files behind the desk are set dressing."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A gun on a table that someone reaches for is a prop; the other things on that table which nobody touches are dressing."
+        }
+      ],
+      "seeAlso": [
+        "set dressing",
+        "breakdown category",
+        "continuity"
+      ]
+    },
+    {
+      "term": "set dressing",
+      "stage": "preprod",
+      "aliases": [
+        "dressing",
+        "set dresser",
+        "set dressers"
+      ],
+      "notag": true,
+      "def": "The furniture, posters, curtains, clutter and other things that make a location look like somebody's place, which actors do not handle. Props are handled; set dressing is lived among. It belongs to production design, and a breakdown lists it separately so it is neither forgotten nor priced as a prop.",
+      "tanglish": "Location-a oru veedu maadhiri, office maadhiri kaattura furniture, poster, curtain. Actor thodaadhadhu. Production design paakkum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "An office dressed with a heavy desk and framed photographs is set dressing, and it can say who holds power without an actor touching any of it."
+        },
+        {
+          "film": "96",
+          "note": "A rented room made to feel like a place from twenty years ago is a job of dressing: the calendar, the bedspread, the cups on the shelf."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The cluttered walls of a station or a case room are dressing; the one item the officer lifts from the wall is a prop."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A bar or a room is dressed to match its character before the actors enter; the dressing sets the tone of the scene."
+        }
+      ],
+      "seeAlso": [
+        "props",
+        "production design",
+        "breakdown category"
+      ]
+    },
+    {
+      "term": "special effects",
+      "stage": "production",
+      "aliases": [
+        "SFX",
+        "practical effects",
+        "practical effect",
+        "physical effects"
+      ],
+      "notag": false,
+      "def": "Effects made physically on the set, in front of the camera: rain, smoke, a breakaway window, a controlled flame, a prop that explodes. Often abbreviated SFX. They happen on the day, need safety planning, and are not to be confused with visual effects, which are added digitally afterwards.",
+      "tanglish": "Set-la, camera munnaadiye nijamaa panra effects: mazhai, pugai, odayira kannaadi. Safety-um vendum. Post-la computer-la serkkardhu VFX, idhu SFX.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A comic scene that needs rain or a smashed prop is SFX: it happens in front of the lens and must be rehearsed and made safe."
+        },
+        {
+          "film": "96",
+          "note": "Rain on a window made with a sprinkler on the set is SFX; it is part of the shooting day, not something added later."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A smoke-filled room or a breakaway door in a raid scene is SFX, and the stunt team and the effects team plan it together."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A crash, a shattered window or a controlled spark in an action scene is done on the day, so it counts as SFX and needs time and safety."
+        }
+      ],
+      "seeAlso": [
+        "visual effects",
+        "breakdown category",
+        "special equipment"
+      ]
+    },
+    {
+      "term": "visual effects",
+      "stage": "post",
+      "aliases": [
+        "VFX",
+        "CGI",
+        "digital effects",
+        "compositing"
+      ],
+      "notag": false,
+      "def": "Effects created or altered digitally after the shoot, then composited into the picture: removing a wire, replacing a sky, adding a crowd, building a place that does not exist. Often abbreviated VFX. The difference from special effects is where it is made: on the set means SFX, on a computer after the shoot means VFX.",
+      "tanglish": "Shoot mudinjadhukku piragu computer-la serkkardhu: wire-a azhikkardhu, sky maathardhu. Idhu VFX. Set-la panna SFX.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Extending a campus with a digital crowd or tidying a modern street of signs that do not belong would be VFX, planned in the breakdown but made in post."
+        },
+        {
+          "film": "96",
+          "note": "Cleaning an unwanted modern object out of a period frame is VFX, and it is far cheaper if the shoot flags it on the day."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Removing a wire or hiding a rig after the fight is VFX; the shot is designed on set so that it can be cleaned later."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Painting out a safety wire or adding to a skyline after the shoot is VFX, and the effects supervisor has to be there on the day."
+        }
+      ],
+      "seeAlso": [
+        "special effects",
+        "breakdown category",
+        "conform"
+      ]
+    },
+    {
+      "term": "special equipment",
+      "stage": "preprod",
+      "aliases": [
+        "camera rig",
+        "camera car"
+      ],
+      "notag": true,
+      "def": "Gear a scene needs beyond the ordinary kit: a crane, a drone, an underwater housing, a camera car, a rig for a long moving shot. A breakdown flags it so it is booked, paid for and given time, because it often adds a person or a permit as well.",
+      "tanglish": "Saadharana kit-ukku mela scene-ukku thevai: crane, drone, camera car. Munnaadiye book panna thaan mudiyum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A single big opening movement across a campus would flag a crane or a rig, and that scene needs setup time in the plan."
+        },
+        {
+          "film": "96",
+          "note": "A restrained film may flag almost nothing, which is itself useful: the breakdown shows the equipment line stays short."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A moving shot through a building or along a street flags the rig that makes it possible, so it is booked before the day."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A camera car or a rig for a chase shot is special equipment, with a driver, a permit and extra time."
+        }
+      ],
+      "seeAlso": [
+        "breakdown category",
+        "special effects",
+        "blocking"
+      ]
+    },
+    {
+      "term": "blocking diagram",
+      "stage": "preprod",
+      "aliases": [
+        "blocking diagrams",
+        "floor plan",
+        "overhead diagram",
+        "overhead map"
+      ],
+      "notag": true,
+      "def": "An overhead map of a scene: the room as a plan, marks for where each actor stands and moves, and the camera positions and their moves drawn on it. It answers questions a shot list cannot, such as who crosses whom and where the lights and the crew can stand. With a storyboard and a shot list, it makes the plan for a scene.",
+      "tanglish": "Scene-a mela irundhu paarthaa maadhiri map: actor enga nikkaraanga, nagarraanga, camera enga. Storyboard-um shot list-um sernthu thaan oru scene plan.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A two-person confrontation in an office is easier to plan from above: the desk, the door, the dean's chair and the protagonist's path across the floor."
+        },
+        {
+          "film": "96",
+          "note": "The distance between two people on a bench or across a table, drawn from above, lets the crew see how far the camera may stand back."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A diagram of a room with several people shows who stands behind whom, and where the camera can go without a reflection or a shadow."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A table with two chairs and a door shows who can leave first, and tells the camera crew where they can stand."
+        }
+      ],
+      "seeAlso": [
+        "blocking",
+        "shot list",
+        "storyboard"
+      ]
+    },
+    {
+      "term": "above the line",
+      "stage": "preprod",
+      "aliases": [
+        "ATL",
+        "above-the-line"
+      ],
+      "notag": true,
+      "def": "The creative and financial decision-makers whose deals are fixed before shooting: the writer, director, producers and principal cast. Their costs are largely agreed in advance and do not grow with the length of the shoot. The crew and equipment that follow are below the line.",
+      "tanglish": "Padam eduppadharkku munnaadiye deal mudikkura creative aalunga: writer, director, producer, mukkiya cast. Avanga selavu shoot neelatha poruthu maaradhu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The writer, director and lead cast form the fixed top of the budget; adding shoot days does not change what they were paid."
+        },
+        {
+          "film": "96",
+          "note": "A film with two leads and a small crew keeps its above-the-line list short and its below-the-line list shorter still."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The writer-director and the lead actors are agreed upon first; the shoot days that follow are budgeted separately."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The leads and the director are on the top lines, agreed before cameras roll; the crew and the locations change with the schedule."
+        }
+      ],
+      "seeAlso": [
+        "below the line",
+        "producer",
+        "line producer"
+      ]
+    },
+    {
+      "term": "below the line",
+      "stage": "preprod",
+      "aliases": [
+        "BTL",
+        "below-the-line"
+      ],
+      "notag": false,
+      "def": "Everything that is spent to make the film once the deals are fixed: crew, equipment, locations, sets, wardrobe, transport, food, insurance. Unlike the above-the-line costs, these tend to follow the shoot days, so a longer schedule usually means a larger below-the-line total.",
+      "tanglish": "Padam edukka selavaagura ellaam: crew, equipment, location, transport, saapaadu. Shoot naal koodinaa idhuvum koodum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Crew, campus locations, sets and transport rise with every extra shoot day; this is where a schedule overrun costs money."
+        },
+        {
+          "film": "96",
+          "note": "A few locations and a small crew keep this part of the budget in check, and the days still set the total."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Crew, vehicles and locations for the case scenes go on these lines, and each added night adds to them."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Locations, permissions and crew for action scenes are billed by the day, so a rearranged schedule changes this total directly."
+        }
+      ],
+      "seeAlso": [
+        "above the line",
+        "shooting schedule",
+        "contingency"
+      ]
+    },
+    {
+      "term": "producer",
+      "stage": "preprod",
+      "aliases": [
+        "producers",
+        "executive producer"
+      ],
+      "notag": true,
+      "def": "The person who gets the film made: finds the money, hires the key people, protects the deal and the delivery. A producer decides whether the film goes ahead, what it may cost and when it must be done, and then leaves the day-to-day running of the set to others.",
+      "tanglish": "Padam nadakka paakkaravar: panam, key aalunga, deal, delivery. Set-a day-to-day paakkardhu veru aalunga.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A film whose hero needs a corporate world and a campus depends on a producer who commits the funds for both before anyone books a location."
+        },
+        {
+          "film": "96",
+          "note": "On a small film the producer may also be the person calling the cast and hiring the hall, which is why it is the title that gets doubled up."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A film built on locations and evidence needs a producer who has secured the permissions, so the shoot can start on time."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Large action days need a producer who has agreed the budget with the director, so that the schedule is the plan both of them accept."
+        }
+      ],
+      "seeAlso": [
+        "line producer",
+        "above the line",
+        "assistant director"
+      ]
+    },
+    {
+      "term": "line producer",
+      "stage": "preprod",
+      "aliases": [
+        "UPM",
+        "unit production manager",
+        "production manager"
+      ],
+      "notag": true,
+      "def": "The person who turns the budget into a working plan and keeps spending to it: crew deals, schedule checks, daily costs. In many industries the unit production manager does a similar job. The line producer answers to the producer and works closely with the first assistant director, who owns the day's schedule on set.",
+      "tanglish": "Budget-a plan-aa maathi selavu paakkaravar. Producer-ukku answer pannuvaar, 1st AD-oda sernthu velai. Set-la naal schedule AD-udaiyadhu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A schedule with a big crowd day and a small drama day is checked by the line producer against the money, before it goes to the AD."
+        },
+        {
+          "film": "96",
+          "note": "A film shot in a few nights has a light line-producing job: a small crew list, a short call sheet and the daily cost."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A film with many locations needs a line producer who sees that the schedule does not hop across the city and burn travel time."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "When an action day overruns, it is the line producer who counts what the extra hours cost and what can move."
+        }
+      ],
+      "seeAlso": [
+        "producer",
+        "assistant director",
+        "below the line"
+      ]
+    },
+    {
+      "term": "shoot day",
+      "stage": "preprod",
+      "aliases": [
+        "shoot days",
+        "shooting day",
+        "shooting days"
+      ],
+      "notag": true,
+      "def": "One day of shooting, and the unit in which a schedule and a budget meet. Crew, locations, equipment and food are mostly paid by the day, so a script change saves money only if it removes a whole day. Shortening a scene by a few lines usually saves nothing; moving or removing the last scene on a day can save the day.",
+      "tanglish": "Shoot-oda oru naal; schedule-um budget-um sandhikkura alavu. Oru scene-a kuraichaalum, mulu naal midhikkaadha varai selavu kuraiyaadhu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Cutting a short comic scene from a crowded day saves little; cutting the only scene that needs the campus on a separate day saves the whole day."
+        },
+        {
+          "film": "96",
+          "note": "With a handful of nights, each night is a large share of the money, so removing one scene helps only if it frees the whole night."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A day of three procedural scenes in one room costs the same whether one of them is shortened or not; removing all three frees the day."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Because the schedule groups scenes by location, dropping one of several scenes that need the same set may free nothing."
+        }
+      ],
+      "seeAlso": [
+        "shooting schedule",
+        "below the line",
+        "page eighths"
+      ]
+    },
+    {
+      "term": "camera to cloud",
+      "stage": "post",
+      "aliases": [
+        "camera-to-cloud",
+        "C2C",
+        "cloud workflow",
+        "cloud post"
+      ],
+      "notag": false,
+      "def": "Sending camera footage to a shared online store while the shoot is still going on, usually as small copies, so that editors, the director and others can start work the same day. It does not replace safely copying the original files on set; it is an early, light copy.",
+      "tanglish": "Shoot nadakkumbodhe footage-a online-la anuppardhu, sinna copies-a, edit pannuravanga appove aarambikka. Original file copy set-la thaan irukkanum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A comic scene shot in the morning can reach the editor by evening, so he can see whether the timing works while the set is still standing."
+        },
+        {
+          "film": "96",
+          "note": "A night shoot gets its footage to the editor before the sun is up, which means a weak take is noticed in time for a pick-up."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Procedural footage reaching the editor the same day shows if all the information made it into frame, while reshoots are still easy."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Fight and chase footage can be checked for continuity on the same day, while the stunt team is still on the schedule."
+        }
+      ],
+      "seeAlso": [
+        "proxy",
+        "dailies",
+        "3-2-1 backup"
+      ]
+    },
+    {
+      "term": "proxy",
+      "stage": "post",
+      "aliases": [
+        "proxies",
+        "proxy file",
+        "proxy files",
+        "relink"
+      ],
+      "notag": false,
+      "def": "A small, light copy of a camera file made so that it can be edited on an ordinary computer or sent online quickly. The edit is made on proxies; at the end the project is pointed back at the full-resolution originals for finishing. The proxy is only a stand-in, never the master.",
+      "tanglish": "Camera file-oda sinna, light copy, normal computer-la edit pannalaam. Mudivula original file-ukku thirumba point pannuvom.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The editor can work on a laptop with small copies of the comic scenes, then relink to the original files when the cut is locked."
+        },
+        {
+          "film": "96",
+          "note": "Soft night footage is cut from small copies, and the grade is made on the originals so that the dark detail is not lost."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Long procedural takes cut easily from proxies, and the original files wait safely on the backup drives."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Action shots cut from proxies play smoothly on a laptop, and the conform later restores the full quality."
+        }
+      ],
+      "seeAlso": [
+        "conform",
+        "camera to cloud",
+        "dailies"
+      ]
+    },
+    {
+      "term": "3-2-1 backup",
+      "stage": "post",
+      "aliases": [
+        "3-2-1",
+        "three-two-one backup",
+        "backup rule"
+      ],
+      "notag": false,
+      "def": "A rule for keeping footage safe: three copies of the data, on two different kinds of storage, with one copy kept in a different place. Footage from a shoot day cannot be reshot cheaply, so no card is wiped until every copy has been checked.",
+      "tanglish": "Moonu copy, rendu vagai storage, onnu veru idathula. Camera card-a copy check pannaama azhikka koodaadhu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Even a comic scene with a big crowd cannot be reshot on a whim, so the day's cards are copied three times before anyone formats them."
+        },
+        {
+          "film": "96",
+          "note": "The night's footage is the only record of a night that will not come again; it goes to three places before the cards are cleared."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Case-scene footage is copied to a hard drive and to a second kind of storage on set, and a third copy goes to another place before the unit leaves."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A day of action cannot be restaged cheaply; each card is copied, checked and stored in three places before it is reused."
+        }
+      ],
+      "seeAlso": [
+        "checksum",
+        "dailies",
+        "DIT"
+      ]
+    },
+    {
+      "term": "checksum",
+      "stage": "post",
+      "aliases": [
+        "checksums",
+        "hash",
+        "file hash",
+        "verified copy"
+      ],
+      "notag": false,
+      "def": "A short fingerprint calculated from a file's contents. Calculate it before and after a copy; if the two match, the copy is identical, bit for bit, and if they differ the copy is damaged. It is how a data person proves a card was copied correctly before the card is cleared.",
+      "tanglish": "File-oda fingerprint maadhiri oru short code. Copy-ukku munnaadiyum pinnaadiyum ondrunaa copy sari; maaritchuna copy kedu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "After copying the crowd day, the DIT compares the fingerprints to know every file arrived whole before the cards are reused."
+        },
+        {
+          "film": "96",
+          "note": "A single corrupted file from the night's card would be noticed at once, because its fingerprint would not match."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The DIT checks that each case-scene file copied exactly, so nothing is missing when the editor opens the folder."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Large action files are the likeliest to fail in a copy, so each one is matched against its fingerprint before it is trusted."
+        }
+      ],
+      "seeAlso": [
+        "3-2-1 backup",
+        "DIT",
+        "dailies"
+      ]
     }
   ]
 }

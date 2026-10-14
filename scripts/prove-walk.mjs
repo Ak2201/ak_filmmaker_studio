@@ -61,7 +61,8 @@ const COSTS = [['expenses', 'Petty cash'], ['actuals', 'Cost report'], ['crew', 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 
 for (const width of [1280, 390]) {
-  for (const theme of ['dark', 'light']) {
+  /* ONE theme since 14 Oct 2026. */
+  for (const theme of ['dark']) {
     const tag = `${width}px ${theme}`;
     const ctx = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 } });
     const page = await ctx.newPage();

@@ -402,3 +402,120 @@ html.fm-on .sc-line-more { display: none; }
   position: absolute; width: 1px; height: 1px; margin: 0; padding: 0;
   overflow: hidden; clip-path: inset(50%); border: 0; white-space: nowrap;
 }
+
+/* ============================================================
+   Stitch "Obsidian Cinema" writer chrome
+   ------------------------------------------------------------
+   Two rows in the top bar: a mono meta strip (where you are, then the
+   script's words, pages and running time) and the tool row (line-type
+   pill, Beats, AI, Focus on the left; File and more on the right). The
+   focused line carries its own small toolbar, and the line-type chips
+   float at the foot on a wide screen as they dock on a phone. Colours
+   are tokens; the floating pieces take the --panel family, which is
+   dark in both themes by design.
+   ============================================================ */
+.sc-top { gap: 0; padding: 0; }
+.sc-meta {
+  flex: 1 1 100%;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--s1) var(--s4);
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--rule-hair);
+  font-family: var(--f-mono); font-size: var(--t-micro);
+  letter-spacing: var(--track-label); text-transform: uppercase;
+}
+.sc-meta .sc-crumb { flex: 1 1 14rem; font-size: inherit; letter-spacing: inherit; }
+.sc-meta .sc-title { color: var(--brand-deep); }
+.sc-status { color: var(--ok-deep); }
+.sc-stats { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: 0; color: var(--ink-muted); }
+.sc-stats strong { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.sc-tools {
+  flex: 1 1 100%;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s4);
+}
+.sc-tools-l, .sc-tools-r { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-width: 0; }
+.sc-tip { margin: 0 var(--s4); padding: var(--s2) 0; flex-basis: calc(100% - 2 * var(--s4)); font-family: var(--f-mono); font-size: var(--t-micro); }
+.sc-tip-type { letter-spacing: var(--track-label); text-transform: uppercase; }
+
+.sc-typepill {
+  position: relative;
+  display: inline-flex; align-items: center; gap: var(--s2);
+  min-height: 32px; padding: 0 var(--s3);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase;
+  color: var(--ink);
+}
+.sc-typepill:has(.sc-type:focus-visible) { outline: var(--focus); outline-offset: var(--focus-offset); }
+.sc-typedot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex: none; }
+.sc-typename { font-weight: 600; color: var(--brand-deep); }
+.sc-typekey { color: var(--ink-muted); }
+.sc-caret { color: var(--ink-muted); }
+.sc-typepill .sc-type {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; padding: 0; border: 0; font-size: var(--t-base);
+}
+.sc-tools .btn, .sc-tools .tb-menu-btn {
+  min-height: 32px;
+  font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase;
+}
+
+/* The focused line's toolbar. */
+.sc-linebar { display: none; }
+@media (min-width: 720px) and (hover: hover) {
+  .sc-sheet .wr-el:focus-within > .sc-linebar {
+    position: absolute; z-index: 4;
+    bottom: calc(100% + 0.4rem); left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: var(--s1);
+    padding: var(--s1) var(--s2);
+    background: var(--panel); color: var(--panel-ink);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-panel);
+    font-size: 1rem; line-height: 1.2; white-space: nowrap;
+  }
+  .sc-linebar[data-type]:not([data-type="character"]) .sc-lb.is-cue { display: none; }
+  .sc-lb {
+    min-height: 0; min-width: 0; padding: var(--s1) var(--s2);
+    background: transparent; color: inherit; border: 0; border-radius: var(--radius-pill);
+    font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase;
+    cursor: pointer;
+  }
+  .sc-lb.is-ico { font-size: var(--t-small); letter-spacing: 0; }
+  .sc-lb:hover, .sc-lb:focus-visible { background: color-mix(in srgb, var(--panel-ink) 14%, transparent); outline: none; }
+  .sc-lb.is-danger { color: var(--panel-gilt); }
+  .sc-lb.is-cue + .sc-lb.is-cue,
+  .sc-lb.is-cue + .sc-lb.is-ico { margin-left: 0; }
+}
+.sc-line-more { display: none; }
+
+/* The line-type chips float on a wide screen. */
+@media (min-width: 720px) {
+  .sc-main > #scChips {
+    position: sticky; z-index: 6;
+    bottom: calc(var(--ssb-h, 0px) + var(--s3));
+    justify-self: center;
+    display: flex; gap: var(--s1);
+    width: max-content; max-width: calc(100% - 2 * var(--s4));
+    margin-block: 0 var(--s3);
+    padding: var(--s1);
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-panel);
+  }
+  .sc-chips .sc-chip {
+    min-height: 0; padding: var(--s1) var(--s3);
+    font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase;
+    color: var(--panel-muted); background: transparent; border: 0; border-radius: var(--radius-pill); cursor: pointer;
+  }
+  .sc-chips .sc-chip:hover { color: var(--panel-ink); }
+  .sc-chips .sc-chip.is-on { background: var(--panel-gilt); color: var(--panel); font-weight: 600; }
+}
+@media print { .sc-linebar, .sc-chips { display: none; } }
+
+/* The AI pill and Focus sit in the same mono row as the rest. */
+.sc-tools .ai-pill { min-height: 32px; text-transform: uppercase; font-size: var(--t-tiny); }
+.sc-tools .ai-pill:not(.is-locked) { background: var(--brand-wash); color: var(--brand-deep); border-color: var(--brand); }
+.sc-tools .ai-pill:not(.is-locked):hover { background: var(--brand); color: var(--brand-on); }

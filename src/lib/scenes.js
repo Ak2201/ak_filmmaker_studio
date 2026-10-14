@@ -51,13 +51,15 @@ export const ELEMENT_CATEGORIES = [
   { id: 'cast',      label: 'Cast',            hue: 'el-cast' },
   { id: 'extras',    label: 'Background',      hue: 'shorts' },
   { id: 'props',     label: 'Props',           hue: 'el-props' },
+  { id: 'setdressing', label: 'Set Dressing',  hue: 'el-dressing' },
   { id: 'wardrobe',  label: 'Wardrobe',        hue: 'visualize' },
   { id: 'makeup',    label: 'Hair & Makeup',   hue: 'plan' },
   { id: 'vehicles',  label: 'Vehicles',        hue: 'el-vehicles' },
-  { id: 'stunts',    label: 'Stunts',          hue: 'el-vehicles' },
-  { id: 'vfx',       label: 'VFX',             hue: 'visualize' },
+  { id: 'stunts',    label: 'Stunts',          hue: 'el-stunts' },
+  { id: 'sfx',       label: 'SFX',             hue: 'el-sfx' },
+  { id: 'vfx',       label: 'VFX',             hue: 'el-vfx' },
   { id: 'sound',     label: 'Sound',           hue: 'el-sound' },
-  { id: 'animals',   label: 'Animals',         hue: 'plan' },
+  { id: 'animals',   label: 'Animals',         hue: 'el-animals' },
   { id: 'special',   label: 'Special Equipment', hue: 'shoot' }
 ];
 
@@ -91,6 +93,12 @@ export function blankScene(patch = {}) {
        'part' = pick-ups owed, 'dropped' = cut from the film. */
     shotState: '',
     shotAt: '',          // ISO, when it was last marked
+    /* THE TAKES LOGGED ON THE DAY, for shoot.html's roster: a list of
+       { n, circled, note, at }, appended by src/lib/shootday.js
+       (logTake / circleTake / undoTake). A FIELD spread under every
+       stored row, like shotState: older rows read back [] and no
+       migration or new key exists. */
+    takes: [],
     /* WHICH STORY BEAT THIS SCENE SERVES, for the write page's Outline
        tab (src/lib/beat-outline.js). Framework-qualified —
        'save_the_cat:midpoint', never a bare 'midpoint' — so switching
@@ -110,6 +118,12 @@ export function blankScene(patch = {}) {
        songId and beatId: spread under every stored row, so older rows
        read back '' and no migration exists. */
     scriptElId: '',
+    /* A script reader's one-line note on this scene, and whether the
+       story loses nothing without it. Written only when somebody accepts
+       the Desk's scene-notes task; the note rests on a verified quote.
+       Fields spread under older rows, so no migration. */
+    readerNote: '',
+    cutCandidate: false,
     ...patch
   };
 }

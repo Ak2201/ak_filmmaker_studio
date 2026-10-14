@@ -77,14 +77,28 @@ function close() {
     else b.parent.append(b.node);
   }
   releaseFocus(s.overlay);
+  /* the opener named at open() wins over "whatever had focus": a button
+     tapped in Safari is never focused, so the focus the trap remembered
+     is <body> and would be dropped */
+  if (s.returnTo && s.returnTo.isConnected && typeof s.returnTo.focus === 'function') s.returnTo.focus({ preventScroll: true });
   s.overlay.remove();
   document.documentElement.classList.remove('mn-locked');
   syncBar();
   // the band's contents moved back: let the shell re-measure it
   window.dispatchEvent(new Event('resize'));
+  if (typeof s.onClose === 'function') { try { s.onClose(); } catch (e) { console.warn('[mobile-nav] onClose', e); } }
 }
 
-function open(kind, title, body, { focus } = {}) {
+/* THE ONE SHEET FRAME, exported for the section menu's phone list
+   (src/ui/section-menu.js openSectionsSheet) as well as this file's own
+   Go to and Tools: overlay, header with a close button, focus trap,
+   Escape and backdrop (wired below), scroll lock.
+     kind     'goto' | 'tools' | any other word (a data attribute only)
+     body     the element placed under the header
+     focus    () => element to focus first (default: the close button)
+     returnTo element that gets focus back on close
+     onClose  called once, after the sheet is gone */
+function open(kind, title, body, { focus, returnTo, onClose } = {}) {
   close();
   const id = 'mnSheetTitle';
   const overlay = h('div.mn-overlay', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': id, 'data-mn-sheet': kind });
@@ -99,7 +113,7 @@ function open(kind, title, body, { focus } = {}) {
   overlay.append(panel);
   document.body.append(overlay);
   document.documentElement.classList.add('mn-locked');
-  sheet = { overlay, kind, borrowed: [] };
+  sheet = { overlay, kind, borrowed: [], returnTo: returnTo || null, onClose: onClose || null };
   holdFocus(overlay);
   // preventScroll: the sheet places its own scroll (openGoTo), and a
   // focus() that scrolls puts the row under the sticky header
@@ -292,4 +306,5 @@ if (typeof document !== 'undefined') {
   }, true);
 }
 
-export default { openGoTo, openTools, barItems, onBar, syncBar };
+export { open as openSheet, close as closeSheet };
+export default { openGoTo, openTools, barItems, onBar, syncBar, openSheet: open, closeSheet: close };

@@ -1,242 +1,288 @@
 /* ============================================================
    THE FILMMAKER'S STUDIO — DESIGN TOKENS
    ------------------------------------------------------------
-   One source of truth for colour, type, space and elevation.
-   Previously each of the four pages declared its own :root and
-   its own body.dark override list — roughly 2,400 lines of
-   near-identical CSS that drifted apart page by page.
+   One source of truth for colour, type, space and elevation. To change
+   the look, edit THIS FILE (and the one skin file); no component reads
+   a raw hex. If a value is missing here, add it here.
 
-   TWO themes, and DARK is the default one. The bare :root carries
-   the COMPLETE dark palette and [data-theme] wins over it, which
-   means the bare block and the [data-theme="dark"] block hold the
-   same values on purpose: one is what the app renders before anyone
-   has chosen, the other is what an explicit choice of dark has to
-   beat a prefers-color-scheme-light OS with. Light restates every
-   value it changes rather than inheriting — and that list is now
-   FOUR LONGER than it used to be, because --brand, --brand-deep,
-   --brand-wash and --brand-lift used to live only on bare :root and
-   be inherited by light. With dark on bare :root, inheriting them
-   would have handed the light theme a violet lift as its link and
-   eyebrow colour on white. Same trap the chrome family records one
-   block down, pointed the other way.
+   SWISS PRECISION, DARK ONLY (owner, 14 Oct 2026). A layered obsidian
+   ground, hairline borders instead of shadows, one violet accent, and
+   colour only where colour is data (strip hues, DOOD codes, element
+   categories, status). Space Grotesk for display, Inter for the
+   interface, JetBrains Mono for figures. See docs/DESIGN-KIT.md.
 
-   The palette is a violet one. By default the ground is near-black
-   with a violet cast and the hues sit high in lightness; the light
-   theme is a lavender-tinted white with plain white surfaces. The
-   product's own colour is --brand, a seventh hue alongside the six
-   that mean a phase.
+   THERE IS ONE THEME. The light theme (paper) and its toggle are gone.
+   Bare :root carries the whole palette and nothing overrides it, so the
+   first paint is right before any script runs and there is no second
+   palette to drift. chrome.js still stamps [data-theme="dark"] (the
+   stored key `fms_studio_theme_v1` is read, never deleted), and the
+   [data-theme="dark"] block below exists only so that stamp and the
+   scripts-off probe agree; it restates color-scheme and nothing else.
 
-   Components must never read a raw hex. If a value is missing
-   here, add it here.
+   Light surfaces survive in exactly three places, each with its own
+   token family rather than a theme: print / PDF (--print-*), the legal
+   documents ([data-surface="paper"], below) and the screenplay's paper
+   page (--paper-page*).
+
+   Token NAMES are a contract with ~90 stylesheets: every name the
+   previous palettes declared is still declared, re-pointed. The old
+   names (--paper, --ink, --feature, --chrome, --panel, the revamp's
+   --bg-* / --accent-gold* aliases) keep working; the Swiss role names
+   (--surface-*, --border-*, --strip-*, --dood-*, --status-*) are new.
    ============================================================ */
 
 :root {
-  /* The default is DARK, so the bare block has to declare it. Without
-     this line a form control, a scrollbar and a native date picker
-     render their light-mode chrome on a near-black page until
-     applyTheme() stamps [data-theme="dark"] — which is the same class
-     of bug as the palette itself flashing, one layer down in the UA
-     stylesheet. [data-theme="light"] and the prefers-light block below
-     both restate it as `light` for the same reason. */
+  /* Dark in every state. Without it a form control, a scrollbar and a
+     native date picker paint their light UA chrome on a near-black
+     page — the one flash no palette fix can cover. */
   color-scheme: dark;
 
-  /* ---- ink & paper -------------------------------------- */
-  /* A near-black violet-cast page with lifted surfaces on top of it.
-     Depth still comes from luminance rather than a heavy border:
-     --paper-raised is LIGHTER than --paper here too, so a card reads
-     as a card with nothing but a hairline around it. The light theme
-     runs the same idea the other way up — a lavender-tinted white
-     page with plain white surfaces. */
-  --paper:        #120f1c;
-  --paper-raised: #1b1727;
-  --paper-sunk:   #0d0b15;
-  --paper-edge:   #2a2440;
+  /* ---- surfaces: the obsidian stack ------------------------- */
+  /* Depth comes from luminance in four steps plus a hairline, never
+     from a soft shadow:
+       0 canvas    the page, timeline tracks, dead gutters
+       1 rail      persistent chrome, toolbars, inset fields, headers
+       2 card      panels, strips, breakdown cards
+       3 elevated  modals, menus, popovers
+     and two interaction fills for hover and active. */
+  --surface-canvas:   #0d0e13;
+  --surface-rail:     #121318;
+  --surface-card:     #1a1b21;
+  --surface-elevated: #22232b;
+  --surface-hover:    #2a2b35;
+  --surface-active:   #343542;
 
-  --ink:          #ece9f6;
-  --ink-body:     #c9c4db;
-  --ink-muted:    #9a94b0;
-  /* --ink-faint IS NOT A TEXT COLOUR. Read this before reaching for it.
+  /* Hairlines. 8% at rest, 16% on hover / focus / seams. */
+  --border-hair:    rgba(255, 255, 255, .08);
+  --border-default: rgba(255, 255, 255, .10);
+  --border-strong:  rgba(255, 255, 255, .16);
+  --border-grip:    rgba(255, 255, 255, .20);   /* drag handles, checkbox edges */
 
-     It was one, in 41 rules across thirteen stylesheets, and it clears
-     4.5:1 against NO GROUND IN ANY THEME. Best case 4.13:1, on ink's
-     sunk card; worst 2.34:1, on Desk's. It is not mistuned — raising it
-     far enough to clear AA on Desk's sunk card lands it within a
-     hair of --ink-muted, which is to say it deletes itself. The token
-     was MISNAMED: "faint" described how it looked, and what it actually
-     encoded was "below the legibility floor".
+  /* ---- ink & paper (the original names, re-pointed) --------- */
+  --paper:        var(--surface-canvas);
+  --paper-raised: var(--surface-card);
+  --paper-sunk:   var(--surface-rail);
+  --paper-edge:   var(--surface-hover);
 
-     So the third ink is gone as a text colour. Every one of those 41
-     rules now takes --ink-muted, which clears 4.5:1 on every ground in
-     every theme (its own worst case is 4.54:1, paper on the sunk card),
-     and verify greps the source for `color: var(--ink-faint)` and fails
-     the run. Six files had already worked around this one at a time,
-     each with its own comment saying the same thing; those comments can
-     stay as history but nobody needs to write a seventh.
+  --ink:          #ededf2;
+  --ink-body:     #c7c4d7;
+  --ink-muted:    #94a3b8;   /* 4.72:1 on the active fill, 6.7:1 on a card */
+  /* --ink-faint IS NOT A TEXT COLOUR. It clears 4.5:1 on no ground and
+     verify greps for `color: var(--ink-faint)`. A line, a swatch, a
+     hover border — never `color` or an SVG text `fill`. The text
+     hierarchy is THREE inks: --ink, --ink-body, --ink-muted. */
+  --ink-faint:    #64748b;
 
-     It survives for what it is genuinely good at — a line, a swatch, a
-     hover border — because a 3:1 hairline is a correct hairline. Use it
-     for `border-color`, `background`, `stroke`. Never for `color` or an
-     SVG `fill` on text.
+  /* Also not text colours: hairlines. */
+  --rule:         var(--border-strong);
+  --rule-hair:    var(--border-hair);
 
-     THE HIERARCHY IS NOW THREE INKS, NOT FOUR: --ink for the thing
-     itself, --ink-body for running prose, --ink-muted for everything
-     secondary. If two kinds of secondary text need to be told apart,
-     that is a job for size, weight or case — not for a fourth grey
-     nobody can read. */
-  --ink-faint:    #6d6785;
+  /* ---- the accent: violet ----------------------------------
+     --accent-primary is THE violet (#8B5CF6), and it is a MARK: focus
+     rings, the selected row's bar, active outlines, glows, dots,
+     progress. As a FILL UNDER WHITE TEXT it measures 4.23:1, which is
+     under the 4.5 the gate holds — so a fill that carries words
+     (primary button, avatar, selected segment) takes --brand, one step
+     deeper (#7C3AED, 5.70:1 under white), and hovers deeper still. */
+  --accent-primary:       #8b5cf6;
+  --accent-primary-hover: #7c3aed;
+  --accent-glow:          rgba(139, 92, 246, .25);
+  --border-focus:         var(--accent-primary);
 
-  /* Also not text colours, for the same reason and with worse numbers:
-     1.22-1.82:1 across the four themes. A hairline is a hairline. */
-  --rule:         #322c48;
-  --rule-hair:    #241f35;
+  /* ---- the brand hue -----------------------------------------
+     The product's own colour, beside the phase hues: the nav's primary
+     action, the hub, every eyebrow on a page that belongs to no phase.
+       --brand        the FILL that carries text (white on it: 5.70:1)
+       --brand-deep   the brand as TEXT on any dark surface (5.0:1 on
+                      the active fill, 7.1:1 on a card)
+       --brand-lift   a paler text variant for small type on --panel
+       --brand-wash   a tinted ground for a selected row or a slab */
+  --brand:            #7c3aed;
+  --brand-hover:      #6d28d9;
+  --brand-deep:       #b197fc;
+  --brand-wash:       #1d1832;
+  --brand-lift:       #c4b5fd;
+  --brand-on:         #ffffff;
+  --cta-fill:         var(--brand);
+  --cta-fill-hover:   var(--brand-hover);
+  --cta-glow:         var(--accent-glow);
+  --glow-soft:        rgba(139, 92, 246, .12);
+  /* The announcement strip: a brand plate, constant ink. */
+  --brand-bar:        #2e1065;
+  --brand-bar-2:      #4c1d95;
+  --brand-bar-ink:    #f4f0fe;
+  --brand-bar-accent: #f6c26b;
 
-  /* ---- the three volumes -------------------------------- */
-  /* Each blueprint owns a hue. Used for the spine stripe, step
-     numbers, progress fills and the hub's door cards. */
-  --feature:      #9575f8;
-  --feature-deep: #b69bfb;
-  --feature-wash: #241a3d;
+  /* ---- the volume / phase hues ------------------------------
+     Each blueprint and each stage owns a hue (the spine stripe, step
+     numbers, progress fills, door cards). Four variables per hue:
+       --x        the FILL
+       --x-deep   the hue as TEXT (the ground is dark, so "deep" is
+                  LIGHTER — the emphatic version against near-black)
+       --x-lift   text on --panel (identical here; kept as a name)
+       --x-wash   a tinted ground
+     A fill is not a text colour. Phase hues never mean a status. */
+  --feature:      #8b5cf6;
+  --feature-deep: #c4b5fd;
+  --feature-wash: #1d1832;
 
   --shorts:       #60a5fa;
   --shorts-deep:  #93c5fd;
-  --shorts-wash:  #16233c;
+  --shorts-wash:  #121d30;
 
   --library:      #d6a44a;
   --library-deep: #e8c384;
-  --library-wash: #2e2415;
+  --library-wash: #241c0e;
 
-  /* ---- three more, for the six-phase spine ----------------
-     develop / write / breakdown reuse the volume hues that
-     already exist; visualize / plan / shoot are new. Chosen to
-     stay clear of --ok (green) and --warn (amber), because a
-     phase colour must never read as a status. */
   --visualize:    #e879f9;
   --visualize-deep: #f0abfc;
-  --visualize-wash: #2e1030;
+  --visualize-wash: #2a1230;
 
   --plan:         #2dd4bf;
   --plan-deep:    #7fe8da;
-  --plan-wash:    #11302c;
+  --plan-wash:    #0f2724;
 
   --shoot:        #f472b6;
   --shoot-deep:   #f9a8d4;
-  --shoot-wash:   #33182a;
+  --shoot-wash:   #2d1624;
 
-  /* ---- breakdown category hues (PRD 2.0 FR-603) -----------
-     Cast red, props blue, vehicles & stunts yellow, sound green: the
-     colour coding the PRD asks for on the stripboard and the breakdown.
-     These are CATEGORY colours, reached only through .hue-el-* — never
-     a phase and never a status. Sound's green sits close to --ok and
-     cast's red close to --danger, which is why every chip carries its
-     category's NAME as well as its colour: identity is never colour
-     alone. Yellow is too light for white or near-white text in either
-     theme, so it is the one hue here with its own on-colour. */
+  /* ---- breakdown category hues (PRD 2.0 FR-603) -------------
+     CATEGORY colours, reached only through .hue-el-* — never a phase,
+     never a status. Every chip carries its category's NAME as well as
+     its colour: identity is never colour alone. */
   --el-cast:        #fb7185;
   --el-cast-deep:   #fda4af;
-  --el-cast-wash:   #3a1520;
+  --el-cast-wash:   #31141c;
   --el-props:       #38bdf8;
   --el-props-deep:  #7dd3fc;
-  --el-props-wash:  #0f2a3a;
+  --el-props-wash:  #0e2433;
   --el-vehicles:      #facc15;
   --el-vehicles-deep: #fde68a;
-  --el-vehicles-wash: #332b0a;
+  --el-vehicles-wash: #2b250c;
   --el-vehicles-on:   var(--on-fill);
   --el-sound:       #4ade80;
   --el-sound-deep:  #86efac;
-  --el-sound-wash:  #12301d;
+  --el-sound-wash:  #10291a;
+  --el-stunts:        #fb923c;
+  --el-stunts-deep:   #fdba74;
+  --el-stunts-wash:   #2c180b;
+  --el-vfx:        #818cf8;
+  --el-vfx-deep:   #a5b4fc;
+  --el-vfx-wash:   #181a35;
+  --el-animals:        #d6a77a;
+  --el-animals-deep:   #e7c4a0;
+  --el-animals-wash:   #281f17;
+  --el-sfx:        #22d3ee;
+  --el-sfx-deep:   #67e8f9;
+  --el-sfx-wash:   #0b252b;
+  --el-dressing:        #94a3b8;
+  --el-dressing-deep:   #cbd5e1;
+  --el-dressing-wash:   #1c222c;
 
-  /* ---- lifted volume hues ---------------------------------
-     The editorial panels (.formula-box, .step-check, .example,
-     .final-page, pitch slides …) are dark in EVERY theme, so the
-     volume hues need a version that stays legible on near-black.
-     These are constant across themes for exactly that reason. */
-  --feature-lift: #b69bfb;
-  --shorts-lift:  #93c5fd;
-  --library-lift: #e8c384;
-  --visualize-lift: #f0abfc;
-  --plan-lift:    #7fe8da;
-  --shoot-lift:   #f9a8d4;
-  --el-cast-lift:     #fda4af;
-  --el-props-lift:    #7dd3fc;
-  --el-vehicles-lift: #fde68a;
-  --el-sound-lift:    #86efac;
+  /* Lifted: text on --panel. Identical to -deep in a dark-only palette;
+     the names stay because rules read them. */
+  --feature-lift: var(--feature-deep);
+  --shorts-lift:  var(--shorts-deep);
+  --library-lift: var(--library-deep);
+  --visualize-lift: var(--visualize-deep);
+  --plan-lift:    var(--plan-deep);
+  --shoot-lift:   var(--shoot-deep);
+  --el-cast-lift:     var(--el-cast-deep);
+  --el-props-lift:    var(--el-props-deep);
+  --el-vehicles-lift: var(--el-vehicles-deep);
+  --el-sound-lift:    var(--el-sound-deep);
+  --el-stunts-lift:   var(--el-stunts-deep);
+  --el-vfx-lift:      var(--el-vfx-deep);
+  --el-animals-lift:  var(--el-animals-deep);
+  --el-sfx-lift:      var(--el-sfx-deep);
+  --el-dressing-lift: var(--el-dressing-deep);
   --ok-lift:      #6ee7b7;
   --danger-lift:  #fca5a5;
 
-  /* ---- semantic (never the same hue as a volume) --------- */
+  /* ---- semantic: emerald / amber / crimson ------------------
+     The --status-* values are the spec's FILLS (dots, bars, solid
+     badges). --ok / --warn / --danger are what the rules read, and
+     each is chosen to work as TEXT on every surface too, which the
+     500-weight fills do not (crimson #EF4444 is 4.15:1 on elevated). */
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger:  #ef4444;
   --ok:           #34d399;
-  --ok-deep:      #6ee7b7;   /* the TEXT variant; --ok is a fill */
-  --ok-wash:      #102b22;
-  --warn:         #d6a44a;
-  --warn-deep:    #e8c384;   /* --warn as text was 3.52:1 in desk */
-  --warn-wash:    #2e2415;
+  --ok-deep:      #6ee7b7;
+  --ok-wash:      #0f291e;
+  --warn:         #f59e0b;
+  --warn-deep:    #fbbf24;
+  --warn-wash:    #2a1d08;
   --danger:       #f87171;
-  --danger-wash:  #341a1c;
+  --danger-deep:  #fca5a5;
+  --danger-wash:  #2d1517;
+  /* Status badge parts (spec 3.5): a dark wash, a 30% hairline, a
+     light ink. */
+  --ok-line:      rgba(16, 185, 129, .30);
+  --warn-line:    rgba(245, 158, 11, .30);
+  --danger-line:  rgba(239, 68, 68, .30);
+  --info-line:    rgba(139, 92, 246, .30);
 
-  /* ---- the brand hue -------------------------------------
-     The six hues above each mean a PHASE, and the gate holds them
-     apart for that reason. This one means the PRODUCT: the nav's
-     primary action, the hub, the announcement strip, and every eyebrow
-     on a page that belongs to no single phase. A seventh hue rather
-     than a reuse of --visualize, because the day visualize shifts to
-     tell itself apart from plan is not the day the primary button
-     should change colour.
+  /* ---- strip hues: time of day ------------------------------
+     The stripboard's left telemetry stripe, the DAY / NIGHT badges,
+     the shoot day's sun line. -bg is the 12% wash a badge sits on;
+     -ink the badge's text (AA on the wash). */
+  --strip-day:      #d6a44a;
+  --strip-day-bg:   rgba(214, 164, 74, .12);
+  --strip-day-ink:  #e8c384;
+  --strip-night:    #60a5fa;
+  --strip-night-bg: rgba(96, 165, 250, .12);
+  --strip-night-ink: #93c5fd;
+  --strip-dusk:     #f472b6;
+  --strip-dusk-bg:  rgba(244, 114, 182, .12);
+  --strip-dusk-ink: #f9a8d4;
+  --strip-dawn:     #a78bfa;
+  --strip-dawn-bg:  rgba(167, 139, 250, .12);
+  --strip-dawn-ink: #c4b5fd;
+  /* The company-move / end-of-day banner on a stripboard. */
+  --strip-move:     #f59e0b;
+  --strip-move-bg:  rgba(245, 158, 11, .10);
+  --strip-move-ink: #fcd34d;
 
-     --brand-bar is the one surface that is purple in EVERY theme, for
-     the same reason --panel is dark in every theme: it is a brand
-     plate, not a page ground. Its ink is therefore constant too, and
-     deliberately NOT routed through --on-fill, which inverts. */
-  --brand:            #9575f8;
-  --brand-deep:       #b69bfb;
-  --brand-wash:       #241a3d;
-  --brand-lift:       #b69bfb;
-  /* BUY SURFACES (10 Oct 2026). The call-to-action fill, its hover and
-     its glows are stated in EVERY theme block: dark gets a deeper,
-     quieter violet and a faint glow (the page is near-black, so the
-     full-strength brand fill glowed like a lamp); light keeps the
-     brand. --brand-on on the dark fill measures 4.59:1, hover 5.2:1. */
-  --cta-fill:        #8467e8;
-  --cta-fill-hover:  #9170f0;
-  --cta-glow:        color-mix(in srgb, var(--brand) 10%, transparent);
-  --glow-soft:       color-mix(in srgb, var(--brand) 9%, transparent);
-  /* Routed through --on-fill like the six hues, NOT stated as white.
-     White is right on the light theme's fill and wrong on the dark
-     theme's, which is lighter — the gate measured the dark fill at
-     4.23:1 with white on it and 4.46:1 with near-black, which is to
-     say it was the fill that was wrong rather than the text. */
-  --brand-on:         var(--on-fill);
-  --brand-bar:        #4c1d95;
-  --brand-bar-2:      #6d28d9;
-  --brand-bar-ink:    #f4f0fe;
-  --brand-bar-accent: #fbbf24;
+  /* ---- DOOD codes (day out of days) -------------------------
+     SW start-work, W work, H hold, WF work-finish, plus D drop and
+     the empty cell. Each code also carries its LETTERS, so the colour
+     is never the only signal. */
+  --dood-sw:      #10b981;
+  --dood-sw-bg:   rgba(16, 185, 129, .14);
+  --dood-sw-ink:  #6ee7b7;
+  --dood-w:       #8b5cf6;
+  --dood-w-bg:    rgba(139, 92, 246, .18);
+  --dood-w-ink:   #c4b5fd;
+  --dood-h:       #f59e0b;
+  --dood-h-bg:    rgba(245, 158, 11, .16);
+  --dood-h-ink:   #fcd34d;
+  --dood-wf:      #ef4444;
+  --dood-wf-bg:   rgba(239, 68, 68, .16);
+  --dood-wf-ink:  #fca5a5;
+  --dood-d-ink:   var(--ink-muted);
+  --dood-empty:   var(--ink-muted);   /* the "·" is text: never --ink-faint */
 
-  /* ---- per-page accent ----------------------------------
-     Each page sets --accent once, on <html data-volume="...">.
+  /* ---- per-page accent ---------------------------------------
+     Each page sets --accent once, on <html data-volume|data-phase>.
      Everything else refers to --accent. */
   --accent:       var(--feature);
   --accent-deep:  var(--feature-deep);
   --accent-wash:  var(--feature-wash);
   --accent-lift:  var(--feature-lift); /* accent ON a dark panel */
-  /* Text on any saturated fill. ONE base value that --accent-on and
-     all six --*-on tokens point at.
-
-     They used to point at --accent-on directly, while the
-     [data-phase] blocks point --accent-on back at --feature-on — a
-     cycle. CSS treats a cyclic var() as invalid at computed-value
-     time, so the colour silently fell back to the inherited one and
-     landed on its own background: a door numeral at exactly 1:1. A
-     cycle does not warn; it just makes text disappear. */
-  --on-fill:      #120f1c;
-  --accent-on:    var(--on-fill);   /* text ON an accent fill */
-
-  /* Text ON each hue used as a FILL. All six route to --accent-on
-     here, and that is a property of this palette rather than a law:
-     every fill was chosen so white clears 4.5:1 on it, which is why
-     --library is #8f5a07 and not the brighter amber a swatch would
-     prefer. The indirection stays because the moment one hue is
-     brightened for looks, that hue needs its own on-colour and this
-     is where it says so — "the accent's on-colour" is an assumption
-     that holds only until somebody picks a yellow. */
+  /* The accent fill's HOVER, carrying --accent-on. On a phase page the
+     -deep hue (near-black on it); on a studio page the deeper brand
+     (white on it) — because --accent-on differs between the two and a
+     hover must keep its text legible. */
+  --accent-hover: var(--accent-deep);
+  /* Text on any saturated hue FILL. One base value that --accent-on and
+     every --*-on token point at — never at each other: a var() cycle is
+     invalid at computed-value time and makes text land on its own
+     background (a door numeral measured 1:1). Near-black, because every
+     hue fill here is light enough to carry it (4.55:1 on the violet,
+     more on the rest). */
+  --on-fill:      #0d0e13;
+  --accent-on:    var(--on-fill);
   --feature-on:   var(--on-fill);
   --shorts-on:    var(--on-fill);
   --library-on:   var(--on-fill);
@@ -246,227 +292,172 @@
   --el-cast-on:   var(--on-fill);
   --el-props-on:  var(--on-fill);
   --el-sound-on:  var(--on-fill);
-  /* Text ON a --danger fill. Tracks --accent-on deliberately: both it
-     and --danger invert per theme, so the pair stays legible in paper,
-     sepia and ink without a second set of values to keep in step. */
+  --el-stunts-on:  var(--on-fill);
+  --el-vfx-on:  var(--on-fill);
+  --el-animals-on:  var(--on-fill);
+  --el-sfx-on:  var(--on-fill);
+  --el-dressing-on:  var(--on-fill);
   --danger-on:    var(--accent-on);
 
-  /* ---- chrome -------------------------------------------
-     The toolbar, rail toggle and mobile bar are one surface, and it
-     is NOT constant: near-black on the dark default, white in the
-     light theme. All seven are therefore stated in all three
-     palette blocks — here, [data-theme="dark"] and
-     [data-theme="light"] — so no component ever re-states a colour
-     for a theme and no theme inherits the other's band. */
-  --chrome:       #16121f;
-  --chrome-ink:   #f3f0fb;
-  --chrome-muted: #a49dbb;
-  --chrome-hair:  rgba(243, 240, 251, .12);
-  --chrome-hair-strong: rgba(243, 240, 251, .28);
-  --chrome-fill:  rgba(243, 240, 251, .08);
-  --chrome-fill-strong: rgba(243, 240, 251, .16);
-  /* THE ACCENT ON THE CHROME SURFACE, and it has to be its own token
-     rather than --brand-deep, because the band is white in the light
-     theme and near-black in the dark one. Eight rules in chrome.css
-     used --panel-gilt for this — the toolbar's brand, the search
-     count, the empty project switcher, the mobile bar's icons. That
-     was correct for exactly as long as the chrome and the panel were
-     both dark surfaces; the day the band went white, --panel-gilt on
-     it measured 1.5:1. Same shape of bug as the slab widgets in
-     _contract.css: a widget reaching past its surface's own token for
-     one that happens to agree with it. */
-  --chrome-accent:      var(--brand-lift);
+  /* ---- chrome: the rail, the band, the dock (level 1) -------- */
+  --chrome:       var(--surface-rail);
+  --chrome-ink:   #ededf2;
+  --chrome-muted: #94a3b8;
+  --chrome-hair:  var(--border-hair);
+  --chrome-hair-strong: var(--border-strong);
+  --chrome-fill:  rgba(255, 255, 255, .05);
+  --chrome-fill-strong: rgba(139, 92, 246, .18);
+  --chrome-accent:      var(--brand-deep);
 
-  /* ---- dark editorial panel ------------------------------
-     Ink-on-paper contrast blocks. Dark in every theme. */
-  --panel:        #1a1430;
-  --panel-raised: #251d42;
-  --panel-ink:    #f1eefb;
-  --panel-muted:  #a79fc4;
-  --panel-hair:   rgba(241, 238, 251, .14);
-  --panel-hair-soft: rgba(241, 238, 251, .07);
-  /* Violet, not gold: --panel is the floating-surface family now — the
-     toast, the tooltip, the popover, the phase menu — and its accent
-     is the BRAND's, which is violet in both themes. Pointed at
-     --brand-lift rather than --visualize-lift, which is where it
-     briefly sat: visualize is fuchsia, so that would have given every
-     tooltip in the app a phase's colour for no reason. 10.0:1 on
-     --panel. */
-  --panel-gilt:       var(--brand-lift);
+  /* ---- the floating family (level 3) -------------------------
+     Toast, tooltip, popover, phase menu, focus timer, modal. */
+  --panel:        var(--surface-elevated);
+  --panel-raised: var(--surface-hover);
+  --panel-ink:    #ededf2;
+  --panel-muted:  #a1a8b8;
+  --panel-hair:   rgba(255, 255, 255, .12);
+  --panel-hair-soft: rgba(255, 255, 255, .07);
+  --panel-gilt:   var(--brand-lift);
 
-  --scrim:        rgba(9, 7, 16, .72);
+  --scrim:        rgba(0, 0, 0, .75);
 
-  /* ---- type --------------------------------------------- */
-  /* The raw stacks, and then the two SEMANTIC faces that point at
-     them through the skin.
+  /* ---- type -------------------------------------------------- */
+  /* Catamaran follows every UI face for TAMIL only (fonts.css ships just
+     its tamil subset): none of Space Grotesk, Inter or JetBrains Mono
+     has a Tamil glyph, and CSS falls back per glyph. */
+  --face-display:   'Space Grotesk', 'Catamaran', ui-sans-serif, system-ui, sans-serif;
+  --face-sans:      'Inter', 'Catamaran', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* The serif, ITALIC, for exactly three things: the project title, the
+     cover preview, and the landing hero's tagline. Never a page title.
+     fonts.css ships only its italic. */
+  --face-editorial: 'Playfair Display', 'Catamaran', Georgia, 'Times New Roman', serif;
+  /* --face-serif keeps its NAME (eleven stylesheets read it); it has
+     named the body sans since the first redesign. */
+  --face-serif:     var(--face-sans);
+  /* The accent half of a headline ("…where you left off."). Was the
+     italic serif; a page title is never serif now, so it is the
+     display face, upright. */
+  --face-accent:    var(--face-display);
+  --face-accent-style: normal;
 
-     Every stylesheet in the app already says var(--f-display); routing
-     that through --sk-display here means a skin changes the face
-     everywhere at once, instead of each of the ~90 rules that name a
-     face having to be found and rewritten. The fallback is the stack,
-     not --f-display, because --sk-display defaulting back to
-     --f-display would be a cycle and resolve to nothing. */
-  /* The type was replaced with the palette. Fraunces is gone: a
-     high-contrast serif display on a warm ground is the single
-     commonest tell of generated design, and it was also the reason
-     the old look could not be told apart from a template.
-     --face-serif keeps its NAME on purpose — it is referenced in
-     eleven stylesheets and renaming it buys nothing — but it now
-     names the body sans. No Tamil webfont: Tanglish in this
-     codebase is romanised Tamil in the Latin alphabet, so the Latin
-     faces already cover it. */
-  /* Catamaran (owner, 10 Oct 2026: Puvi was asked for; it is Zoho's own
-     typeface with no open licence, so an open one in its spirit). SIL
-     OFL, on Google Fonts, Tamil AND Latin in one family, 100-900. The
-     screenplay keeps Courier (the script stack below — page counts are arithmetic on
-     a fixed-width grid) and code keeps JetBrains Mono. */
-  --face-serif:   'Catamaran', ui-sans-serif, system-ui, sans-serif;
-  --face-display: 'Catamaran', ui-sans-serif, system-ui, sans-serif;
-
-  --f-display: var(--sk-display, var(--face-serif));
-  --f-body:    var(--sk-body, var(--face-serif));
-  /* --f-mono IS NOT A MONOSPACE ANY MORE, and the name is kept on
-     purpose: 321 rules across twenty stylesheets name it, and renaming
-     a token referenced that widely buys a diff and nothing else. What
-     it means now is "the LABEL face" — the eyebrow, the chip, the stat
-     caption, the table header, the breadcrumb, the tag.
-
-     Swapping the display and body faces changed about a third of the
-     app's text and left the other two thirds in JetBrains Mono, which
-     is why the redesign looked half-applied: tracked-out mono caps on
-     every label is the single most recognisable piece of the look it
-     replaced. One token moves all of it.
-
-     A font-family token cannot carry `font-variant-numeric`, so the
-     column alignment mono used to give for free is restored where it
-     is actually load-bearing: one rule in modules.css puts
-     tabular-nums on every data table's cells, joining the 54 rules
-     that already ask for it on individual figures. A proportional 1 in
-     a budget column is the reason mono was chosen for those.
-
-     Genuine code keeps a real monospace — see --f-code. */
-  --f-mono:    'Catamaran', ui-sans-serif, system-ui, sans-serif;
-
-  /* CODE, and only code: the sync panel's snippets, a kbd cap, an
-     equation chip. These are the places where character-for-character
-     fidelity is the point rather than a texture. */
-  --f-code:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  /* 'Noto Sans Tamil' LAST, which the gate asserts in source. It is
-     there for Tamil glyphs the Courier faces do not have, and it has
-     to come after them: CSS falls back per GLYPH, so a family listed
-     earlier claims every Latin character it can draw too, and on the
-     eleven module pages that never request Courier Prime it would
-     quietly replace the fixed-width grid pageCount() is arithmetic
-     on. Kept through the redesign — the display and body faces
-     changed, this one did not. */
+  --f-display:   var(--sk-display, var(--face-display));
+  --f-body:      var(--sk-body, var(--face-sans));
+  --f-sans:      var(--f-body);
+  --f-editorial: var(--face-editorial);
+  /* --f-mono is the LABEL and DATA face: eyebrows, chips, table heads,
+     eighths, timecodes, DOOD codes. JetBrains Mono, so the 643 rules
+     that name it now ARE monospace again. Tabular figures are asked
+     for where columns must align (modules.css puts tabular-nums on
+     every data table; .mono-num in kit.css). */
+  --f-mono:    'JetBrains Mono', 'Catamaran', ui-monospace, 'SF Mono', Menlo, monospace;
+  --f-code:    'JetBrains Mono', 'Catamaran', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* 'Noto Sans Tamil' LAST, which the gate asserts in source: a family
+     listed earlier would claim every Latin glyph it can draw and break
+     the fixed-width grid pageCount() is arithmetic on. (fonts.css ships
+     it with the tamil subset only, so it cannot — the order is kept
+     anyway.) */
   --f-script:  'Courier Prime', 'Courier New', Courier, 'Noto Sans Tamil', monospace;
 
-  /* A real scale (1.25), replacing the ad-hoc 10/11/13/14/16/18
-     px values scattered through the old files. */
+  /* The scale (unchanged steps; the skin decides which a title takes). */
+  --t-nano:  0.5625rem;  /* 9px — telemetry-xs */
   --t-micro: 0.688rem;   /* 11px — mono labels, meta */
   --t-tiny:  0.75rem;    /* 12px */
+  --t-ui:    0.8125rem;  /* 13px — Swiss body-md */
   --t-small: 0.875rem;   /* 14px */
   --t-base:  1rem;       /* 16px */
-  --t-lg:    1.125rem;   /* 18px — step deck */
-  --t-xl:    1.375rem;   /* 22px */
-  --t-2xl:   1.75rem;    /* 28px — step title */
-  --t-3xl:   2.25rem;    /* 36px — section head */
+  --t-lg:    1.125rem;   /* 18px */
+  --t-xl:    1.375rem;   /* 22px — headline-lg */
+  --t-2xl:   1.75rem;    /* 28px — display-sm */
+  --t-3xl:   2.25rem;    /* 36px — display-lg */
   --t-4xl:   3rem;       /* 48px */
   --t-5xl:   4.25rem;    /* 68px — cover */
   --t-6xl:   6.5rem;     /* 104px — master cover ceiling */
 
-  --lh-display: 0.92;    /* cover / hero display setting */
-  --lh-tight: 1.08;
+  --lh-display: 1.0;
+  --lh-tight: 1.15;
   --lh-snug:  1.32;
-  --lh-body:  1.62;
+  --lh-body:  1.55;
 
-  --track-label: 0.15em;   /* uppercase mono labels */
-  --track-wide:  0.32em;   /* cover stamps, phase eyebrows */
-  --track-tight:  -0.03em; /* display headings */
+  --track-label: 0.08em;    /* mono caps labels */
+  --track-wide:  0.16em;    /* stamps, phase eyebrows */
+  --track-tight: -0.02em;   /* Space Grotesk headings (-0.015 to -0.03) */
+  --track-display: -0.03em;
 
-  /* ---- space (4px base) --------------------------------- */
+  /* ---- space (4px base) --------------------------------------- */
   --s1: 4px;   --s2: 8px;   --s3: 12px;  --s4: 16px;
   --s5: 24px;  --s6: 32px;  --s7: 48px;  --s8: 64px;
   --s9: 96px;  --s10: 128px;
+  --s-half: 2px;  --s1h: 6px;   /* Swiss space-sm */
 
-  /* ---- edges & elevation -------------------------------- */
-  --radius:       10px;      /* the studio is printed matter, not iOS */
-  --radius-lg:    18px;
-  --radius-pill: 999px;
-  --shadow-sm:    0 1px 2px rgba(0, 0, 0, .40);
-  --shadow-md:    0 4px 16px rgba(0, 0, 0, .46);
-  --shadow-lg:    0 18px 48px rgba(0, 0, 0, .54);
-  /* Panels and overlays are dark in every theme, so their shadow
-     is constant too — a themed shadow under a constant surface
-     was one of the drifts in the old files. */
-  --shadow-panel: 0 18px 48px rgba(16, 10, 34, .30);
-  --shadow-modal: 0 36px 90px rgba(16, 10, 34, .34);
-  --blur-chrome:  saturate(180%) blur(20px);
+  /* ---- control heights ---------------------------------------- */
+  --h-compact: 28px;
+  --h-control: 32px;
+  --h-field:   36px;
+  --h-badge:   18px;
 
-  --measure:       68ch;   /* max line length for running text */
-  --measure-wide:  92ch;   /* card grids, tables, editor columns */
-  --content-max:   1280px; /* hub sections */
-  --rail-w:        220px;  /* sticky step rail */
-  --viz-min:       560px;  /* charts and wide tables before they scroll */
+  /* ---- edges ---------------------------------------------------
+     4 inner micro-controls, 6 fields and buttons, 8 cards and panels,
+     12 modals. A pill is a STATUS badge or the one primary CTA. */
+  --radius-sm:   4px;
+  --radius:      6px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-pill: 9999px;
+
+  /* ---- elevation: almost none ----------------------------------
+     No soft Gaussian shadows on in-page surfaces; a FLOATING surface
+     gets one sharp clipped shadow (spec: 0 4px 16px / 60%). */
+  --shadow-sm:    0 0 0 0 transparent;
+  --shadow-md:    0 4px 16px rgba(0, 0, 0, .60);
+  --shadow-lg:    0 4px 16px rgba(0, 0, 0, .60), 0 0 0 1px var(--border-strong);
+  --shadow-panel: 0 4px 16px rgba(0, 0, 0, .60), 0 0 0 1px var(--panel-hair);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, .70), 0 0 0 1px var(--panel-hair);
+  --blur-chrome:  saturate(140%) blur(12px);
+
+  --measure:       68ch;
+  --measure-wide:  92ch;
+  --content-max:   1280px;
+  --rail-w:        220px;
+  --viz-min:       560px;
   --modal-w:       480px;
+  --modal-w-lg:    560px;
   --popover-w:     320px;
-  --gutter:  clamp(16px, 4vw, 50px);
+  --gutter:  clamp(16px, 3vw, 40px);
 
-  --focus: 2px solid var(--accent);
+  --focus: 2px solid var(--border-focus);
   --focus-offset: 2px;
 
-  /* ---- motion ---------------------------------------------
-     Kept from the interface revamp, because it is a capability
-     rather than a look. --motion is the DISTANCE half of the
-     reduced-motion switch: a 0.01ms transition still ends with the
-     element six pixels from where it started, and for a reader with
-     vestibular sensitivity the jump is the problem, not the glide.
-     Every translate and scale is written
-     `calc(<distance> * var(--motion))`, so the media query at the
-     foot of this file flattens the move to zero and the element
-     simply arrives. One switch, both halves.
-
-     Exit is shorter than enter on purpose (~65%): a thing leaving
-     should get out of the way faster than it asked to come in. */
+  /* ---- motion --------------------------------------------------
+     --motion is the DISTANCE half of the reduced-motion switch: every
+     translate and scale is `calc(<distance> * var(--motion))`, and the
+     media query at the foot sets it to 0. Exit is ~65% of enter. */
   --motion:       1;
   --speed-tap:  0.08s;
-  --speed:      0.15s;
-  --speed-slow: 0.26s;
-  --speed-lazy: 0.4s;
-  --speed-exit: 0.17s;
+  --speed:      0.12s;
+  --speed-slow: 0.22s;
+  --speed-lazy: 0.36s;
+  --speed-exit: 0.14s;
   --ease:     cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in:  cubic-bezier(0.55, 0, 1, 0.45);
-  /* A spring with a real overshoot, for things that appear under a
-     deliberate command (the palette, a sheet). Never for data rows:
-     an overshoot on a table reads as sloppy, not alive. */
   --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
 
-
-  /* ---- stacking ----------------------------------------- */
+  /* ---- stacking ------------------------------------------------ */
   --z-rail:    50;
   --z-toolbar: 100;
-  --z-float:   150;   /* dropdowns, focus timer, save indicator */
-  --z-overlay: 1100;  /* modals, sheets, popovers */
+  --z-float:   150;
+  --z-overlay: 1100;
   --z-toast:   1500;
 
-  /* ---- print --------------------------------------------
-     Paper is paper; ink is ink. No theme applies. */
+  /* ---- print: paper is paper, ink is ink ------------------------ */
   --print-paper: #ffffff;
   --print-ink:   #000000;
   --print-rule:  #888888;
-  /* The print family's SECONDARY INK, and it exists because --print-rule
-     was doing that job: the screenplay preview painted its page-break
-     slugs and its empty state --print-rule, which is 3.54:1 on white.
-     A rule colour is a hairline colour; text on the print page takes
-     this (5.74:1) and the hairlines keep --print-rule. */
+  /* Secondary ink on the page (5.74:1); --print-rule is a hairline. */
   --print-muted: #666666;
   --print-wash:  #f0f0f0;
-  /* Revised-page stock, for the optional page tint on a revised-pages
-     PDF (write.css, .wr-pg-tint). Pale enough that --print-ink stays far
-     above AA on every one of them; the colour NAME in the page header is
-     what carries the meaning, the tint only echoes the paper a
-     production office would print it on. */
+  /* Revised-page stock for the optional page tint on a revised PDF. */
   --print-rev-white:     #ffffff;
   --print-rev-blue:      #dde9fb;
   --print-rev-pink:      #fbe1ea;
@@ -476,488 +467,147 @@
   --print-rev-buff:      #f3e8d3;
   --print-rev-salmon:    #fadccf;
   --print-rev-cherry:    #f6cfd6;
+
+  /* ---- the screenplay's paper page ------------------------------
+     The one light surface inside the app: a script reads as a page.
+     Ink and muted both clear AA on it (16.9:1 / 6.4:1). */
+  --paper-page:       #f7f6f1;
+  --paper-page-ink:   #17171c;
+  --paper-page-muted: #5b5b66;
+  --paper-page-rule:  #d9d7ce;
+  --paper-page-shadow: 0 1px 0 rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .45);
 }
 
-
-
-/* ============================================================
-   THE UN-CHOSEN STATE — kept from upstream, and it is a fix rather
-   than a preference. The bare :root above carries the DARK palette,
-   which is the default; this says what to do when the reader has
-   expressed no choice and their OS has.
-
-   SO THE QUERY IS `light` NOW, not `dark`. The mechanism did not
-   change when the default moved — it inverted, and inverting it is
-   the whole of the work. A block that still asked for
-   `prefers-color-scheme: dark` would be restating the default to a
-   reader who already has it and saying nothing at all to the reader
-   on a light OS, which is the only reader it exists for.
-
-   `:root:not([data-theme])` is the whole trick, and it is unchanged.
-   applyTheme() always stamps the attribute, so an explicit choice
-   wins on any OS, and a theme added later cannot get this wrong
-   because there is nothing here to update.
-
-   THE VALUES ARE THE LIGHT BLOCK'S, and they are duplicated because
-   CSS has no way to share one declaration list between a selector
-   and a media query. Same hazard as the [data-theme="dark"] block
-   repeating bare :root: change a light value in one place and not
-   the other and you get a page that is correct until the reader
-   touches the picker. They are copied from the [data-theme="light"]
-   block below, declaration for declaration; keep them in step by
-   hand.
-   ============================================================ */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    color-scheme: light;
-    --paper:        #f7f5fc;
-    --paper-raised: #ffffff;
-    --paper-sunk:   #f1eefa;
-    --paper-edge:   #e4dff3;
-    --ink:          #171233;
-    --ink-body:     #3f3960;
-    --ink-muted:    #615a7d;
-    --ink-faint:    #9a93b0;
-    --rule:         #ded8ef;
-    --rule-hair:    #ebe7f7;
-    --feature:      #6d28d9;
-    --feature-deep: #5b21b6;
-    --feature-wash: #ede9fe;
-    --shorts:       #2563eb;
-    --shorts-deep:  #1d4ed8;
-    --shorts-wash:  #e3ebfe;
-    --library:      #8f5a07;
-    --library-deep: #6f4506;
-    --library-wash: #fdf1d6;
-    --visualize:    #b21ec4;
-    --visualize-deep: #951aa4;
-    --visualize-wash: #fae8ff;
-    --plan:         #0f766e;
-    --plan-deep:    #0d5f58;
-    --plan-wash:    #d7f1ee;
-    --shoot:        #c71e66;
-    --shoot-deep:   #a81854;
-    --shoot-wash:   #fde3ee;
-    --el-cast:        #be123c;
-    --el-cast-deep:   #9f1239;
-    --el-cast-wash:   #ffe4e6;
-    --el-props:       #0369a1;
-    --el-props-deep:  #075985;
-    --el-props-wash:  #e0f2fe;
-    --el-vehicles:      #eab308;
-    --el-vehicles-deep: #854d0e;
-    --el-vehicles-wash: #fef9c3;
-    --el-vehicles-on:   var(--ink);
-    --el-sound:       #15803d;
-    --el-sound-deep:  #166534;
-    --el-sound-wash:  #dcfce7;
-    --ok:           #15803d;
-    --ok-deep:      #166534;
-    --ok-wash:      #dcf5e4;
-    --warn:         #a04c08;
-    --warn-deep:    #7f3c06;
-    --warn-wash:    #fdf0d9;
-    --danger:       #c62828;
-    --danger-wash:  #fde4e2;
-    --on-fill:      #ffffff;
-
-    /* THE BRAND, RESTATED FOR THE LIGHT GROUND. These four are new to
-       this block and they are the whole cost of moving the default:
-       they used to sit on bare :root only, with the light values, and
-       light inherited them for free. Bare :root is dark now, so without
-       these the light theme would take --brand-deep #b69bfb — a violet
-       LIFT, chosen for near-black — as its link, eyebrow and
-       --chrome-accent colour on white, which measures about 2:1.
-       --brand-lift is the same value in both themes and is restated
-       anyway, so the two blocks can be diffed line for line. */
-    --brand:        #6d28d9;
-    --brand-deep:   #5b21b6;
-    --brand-wash:   #ede9fe;
-    --brand-lift:   #b69bfb;
-  --cta-fill:        var(--brand);
-  --cta-fill-hover:  var(--brand-deep);
-  --cta-glow:        color-mix(in srgb, var(--brand) 22%, transparent);
-  --glow-soft:       color-mix(in srgb, var(--brand) 22%, transparent);
-
-    --chrome:             #ffffff;
-    --chrome-ink:         #171233;
-    --chrome-muted:       #615a7d;
-    --chrome-hair:        rgba(23, 18, 51, .10);
-    --chrome-hair-strong: rgba(23, 18, 51, .22);
-    --chrome-fill:        rgba(109, 40, 217, .08);
-    --chrome-fill-strong: rgba(109, 40, 217, .15);
-    --chrome-accent:      var(--brand-deep);
-    --scrim:        rgba(23, 18, 51, .55);
-    --shadow-sm:    0 1px 2px rgba(23, 18, 51, .06);
-    --shadow-md:    0 4px 16px rgba(23, 18, 51, .08);
-    --shadow-lg:    0 18px 48px rgba(23, 18, 51, .12);
-  }
-}
-
-/* ============================================================
-   DARK — the default, restated. Identical to the bare :root above,
-   and the duplication is the point: bare :root is what renders
-   before anyone chooses, and this block is what an explicit choice
-   of dark needs in order to beat a light OS. Keep the two in step —
-   a value changed in one and not the other produces a page that is
-   correct until the viewer touches the theme picker.
-
-   Not an inversion of the light palette: the ground keeps the violet
-   cast but the hues go UP in lightness, because a hue that reads as
-   deep on white reads as a hole on near-black. The comments below
-   still describe these values as the ones dark "changes"; read that
-   as the direction of the design rather than of the cascade, which
-   now runs the other way.
-   ============================================================ */
-
+/* The stamp chrome.js writes. Restates the scheme only — there is no
+   second palette for it to choose. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper:        #120f1c;
-  --paper-raised: #1b1727;
-  --paper-sunk:   #0d0b15;
-  --paper-edge:   #2a2440;
-
-  --ink:          #ece9f6;
-  --ink-body:     #c9c4db;
-  --ink-muted:    #9a94b0;
-  --ink-faint:    #6d6785;
-
-  --rule:         #322c48;
-  --rule-hair:    #241f35;
-
-  /* #9575f8 rather than #8b5cf6: --feature-on is --on-fill, which is
-     near-black here, and on #8b5cf6 that measured 4.46:1. A fill is
-     chosen to carry its own on-colour, so the fill moved. */
-  --feature:      #9575f8;
-  --feature-wash: #241a3d;
-
-  --shorts:       #60a5fa;
-  --shorts-wash:  #16233c;
-
-  --library:      #d6a44a;
-  --visualize:    #e879f9;
-  --plan:         #2dd4bf;
-  --shoot:        #f472b6;
-  --library-wash: #2e2415;
-  /* The other three washes were never given dark values, so on ink they
-     stayed at their :root light tints — a pale block behind light text
-     on any page whose accent is visualize, plan or shoot. Three hues
-     had a dark wash and three did not, which is the kind of gap a
-     palette only reveals on the page that happens to use it. */
-  --visualize-wash: #2e1030;
-  --plan-wash:    #11302c;
-  --shoot-wash:   #33182a;
-
-  /* breakdown category hues — see the bare :root block */
-  --el-cast:        #fb7185;
-  --el-cast-deep:   #fda4af;
-  --el-cast-wash:   #3a1520;
-  --el-props:       #38bdf8;
-  --el-props-deep:  #7dd3fc;
-  --el-props-wash:  #0f2a3a;
-  --el-vehicles:      #facc15;
-  --el-vehicles-deep: #fde68a;
-  --el-vehicles-wash: #332b0a;
-  --el-vehicles-on:   var(--on-fill);
-  --el-sound:       #4ade80;
-  --el-sound-deep:  #86efac;
-  --el-sound-wash:  #12301d;
-
-  /* "Deep" means the emphatic version of a hue AGAINST THE GROUND, and
-     on ink the ground is dark — so deep has to go lighter, not darker.
-     These used to hold the paper theme's base hues, which are darker
-     than the ink page: .por-thozil's trade line and every Tanglish
-     gloss rendered dark-on-dark. --accent-deep resolves from these
-     through [data-volume] and [data-phase], so this is the one place
-     the whole family is fixed. */
-  --feature-deep: #b69bfb;
-  --shorts-deep:  #93c5fd;
-  --library-deep: #e8c384;
-  --visualize-deep: #f0abfc;
-  --plan-deep:    #7fe8da;
-  --shoot-deep:   #f9a8d4;
-
-  --ok:           #34d399;
-  --ok-deep:      #6ee7b7;
-  --ok-wash:      #102b22;
-  --warn:         #d6a44a;
-  --warn-deep:    #e8c384;
-  --warn-wash:    #2e2415;
-  --danger:       #f87171;
-  --danger-wash:  #341a1c;
-
-  --on-fill:      #120f1c;
-
-  /* THE BRAND, RESTATED FOR THE DARK GROUND. The four live on bare
-     :root now too, so this block is the duplicate rather than the
-     rescue — but the trap they were written for has simply moved to
-     the light block, where they are new, and the history is worth
-     keeping either way.
-
-     --brand-deep is the brand as TEXT. When these four existed only
-     on bare :root carrying the LIGHT values, every dark page took
-     #5b21b6 for them: measured 1.95-2.1:1 on three of them, the
-     shortcut sheet's heading, the budget's eyebrow and the
-     dashboard's inline link. They reached all of those through one
-     hop, because [data-volume] is declared after [data-phase] in this
-     file, so `studio` wins and --accent-deep IS --brand-deep on
-     thirteen pages. Flip the default and the identical failure is
-     waiting for light; see the light block for the four lines that
-     stop it.
-
-     Same trap as the chrome family below, one hue further in: a token
-     declared once on bare :root has only the default theme's value,
-     and which theme that is, is not a fixed fact. */
-  --brand:        #9575f8;
-  --brand-deep:   #b69bfb;
-  --brand-wash:   #241a3d;
-  --brand-lift:   #b69bfb;
-  /* BUY SURFACES (10 Oct 2026). The call-to-action fill, its hover and
-     its glows are stated in EVERY theme block: dark gets a deeper,
-     quieter violet and a faint glow (the page is near-black, so the
-     full-strength brand fill glowed like a lamp); light keeps the
-     brand. --brand-on on the dark fill measures 4.59:1, hover 5.2:1. */
-  --cta-fill:        #8467e8;
-  --cta-fill-hover:  #9170f0;
-  --cta-glow:        color-mix(in srgb, var(--brand) 10%, transparent);
-  --glow-soft:       color-mix(in srgb, var(--brand) 9%, transparent);
-
-  /* THE NAV BAND DIFFERS PER THEME, SO BOTH BLOCKS HAVE TO SAY SO.
-     The chrome family used to be declared once, on bare :root, and
-     inherited by both themes, because the band was dark in all of
-     them. It is white in the light theme — so all seven are stated in
-     both blocks, not just the three that used to differ. Inheriting
-     the other four is how one theme ends up with a white band
-     carrying white text; which theme that would be depends on which
-     palette bare :root happens to carry, which is exactly why neither
-     block leaves it to inheritance. */
-  --chrome:             #16121f;
-  --chrome-ink:         #f3f0fb;
-  --chrome-muted:       #a49dbb;
-  --chrome-hair:        rgba(243, 240, 251, .12);
-  --chrome-hair-strong: rgba(243, 240, 251, .28);
-  --chrome-fill:        rgba(243, 240, 251, .08);
-  --chrome-fill-strong: rgba(243, 240, 251, .16);
-  --chrome-accent:      var(--brand-lift);
-  --scrim:        rgba(9, 7, 16, .72);
-
-  --shadow-sm:    0 1px 2px rgba(0, 0, 0, .40);
-  --shadow-md:    0 4px 16px rgba(0, 0, 0, .46);
-  --shadow-lg:    0 18px 48px rgba(0, 0, 0, .54);
 }
 
 /* ============================================================
-   LIGHT — the alternate. Not an inversion of the dark default: the
-   ground keeps the violet cast but goes to a lavender-tinted white
-   with plain white surfaces, and the hues go DOWN in lightness,
-   because a hue that reads as lifted on near-black reads as a glare
-   on white. Every value the dark default sets and light changes is
-   restated below, including the whole brand and chrome families.
-
-   This block is also what an explicit choice of light has to beat a
-   prefers-color-scheme-light OS with — which is to say it duplicates
-   the media-query block above, exactly as the dark block duplicates
-   bare :root. Four declaration lists, two palettes; CSS has no way to
-   share one list between a selector and a media query. Change a value
-   in one and not its twin and you get a page that is correct until
-   the reader touches the picker.
+   [data-surface="paper"] — the light DOCUMENT surface
+   ------------------------------------------------------------
+   For the legal pages (privacy / terms / refund carry it on <html> in
+   their markup, so it holds with scripts off) and for any element that
+   must read as printed paper. Not a theme: nothing toggles it. It
+   restates the tokens those surfaces read.
    ============================================================ */
-:root[data-theme="light"] {
+[data-surface="paper"] {
   color-scheme: light;
-  --paper:        #f7f5fc;
+  --paper:        #f7f6f3;
   --paper-raised: #ffffff;
-  --paper-sunk:   #f1eefa;
-  --paper-edge:   #e4dff3;
-  --ink:          #171233;
-  --ink-body:     #3f3960;
-  --ink-muted:    #615a7d;
-  --ink-faint:    #9a93b0;
-  --rule:         #ded8ef;
-  --rule-hair:    #ebe7f7;
-  --feature:      #6d28d9;
-  --feature-deep: #5b21b6;
-  --feature-wash: #ede9fe;
-  --shorts:       #2563eb;
-  --shorts-deep:  #1d4ed8;
-  --shorts-wash:  #e3ebfe;
-  --library:      #8f5a07;
-  --library-deep: #6f4506;
-  --library-wash: #fdf1d6;
-  --visualize:    #b21ec4;
-  --visualize-deep: #951aa4;
-  --visualize-wash: #fae8ff;
-  --plan:         #0f766e;
-  --plan-deep:    #0d5f58;
-  --plan-wash:    #d7f1ee;
-  --shoot:        #c71e66;
-  --shoot-deep:   #a81854;
-  --shoot-wash:   #fde3ee;
-  --el-cast:        #be123c;
-  --el-cast-deep:   #9f1239;
-  --el-cast-wash:   #ffe4e6;
-  --el-props:       #0369a1;
-  --el-props-deep:  #075985;
-  --el-props-wash:  #e0f2fe;
-  --el-vehicles:      #eab308;
-  --el-vehicles-deep: #854d0e;
-  --el-vehicles-wash: #fef9c3;
-  --el-vehicles-on:   var(--ink);
-  --el-sound:       #15803d;
-  --el-sound-deep:  #166534;
-  --el-sound-wash:  #dcfce7;
-  --ok:           #15803d;
-  --ok-deep:      #166534;
-  --ok-wash:      #dcf5e4;
-  --warn:         #a04c08;
-  --warn-deep:    #7f3c06;
-  --warn-wash:    #fdf0d9;
-  --danger:       #c62828;
-  --danger-wash:  #fde4e2;
-  --on-fill:      #ffffff;
-
-  /* THE BRAND, RESTATED FOR THE LIGHT GROUND. These four are new to
-     this block and they are the whole cost of moving the default:
-     they used to sit on bare :root only, with the light values, and
-     light inherited them for free. Bare :root is dark now, so without
-     these the light theme would take --brand-deep #b69bfb — a violet
-     LIFT, chosen for near-black — as its link, eyebrow and
-     --chrome-accent colour on white, which measures about 2:1.
-     --brand-lift is the same value in both themes and is restated
-     anyway, so the two blocks can be diffed line for line. */
+  --paper-sunk:   #efeee9;
+  --paper-edge:   #e2e0d8;
+  --ink:          #15151a;
+  --ink-body:     #3a3a44;
+  --ink-muted:    #5e5e6a;
+  --ink-faint:    #a0a0aa;
+  --rule:         #d6d4cc;
+  --rule-hair:    #e6e4dd;
   --brand:        #6d28d9;
   --brand-deep:   #5b21b6;
-  --brand-wash:   #ede9fe;
-  --brand-lift:   #b69bfb;
-  --cta-fill:        var(--brand);
-  --cta-fill-hover:  var(--brand-deep);
-  --cta-glow:        color-mix(in srgb, var(--brand) 22%, transparent);
-  --glow-soft:       color-mix(in srgb, var(--brand) 22%, transparent);
-
-  --chrome:             #ffffff;
-  --chrome-ink:         #171233;
-  --chrome-muted:       #615a7d;
-  --chrome-hair:        rgba(23, 18, 51, .10);
-  --chrome-hair-strong: rgba(23, 18, 51, .22);
-  --chrome-fill:        rgba(109, 40, 217, .08);
-  --chrome-fill-strong: rgba(109, 40, 217, .15);
-  --chrome-accent:      var(--brand-deep);
-  --scrim:        rgba(23, 18, 51, .55);
-  --shadow-sm:    0 1px 2px rgba(23, 18, 51, .06);
-  --shadow-md:    0 4px 16px rgba(23, 18, 51, .08);
-  --shadow-lg:    0 18px 48px rgba(23, 18, 51, .12);
+  --brand-wash:   #efe9fd;
+  --brand-lift:   #5b21b6;
+  --accent:       var(--brand);
+  --accent-deep:  var(--brand-deep);
+  --accent-wash:  var(--brand-wash);
+  --warn-deep:    #7f3c06;
+  --warn-wash:    #fdf0d9;
+  --ok-deep:      #166534;
+  --danger:       #c62828;
+  --danger-wash:  #fde4e2;
 }
 
 /* ============================================================
-   COMPONENT ROLE NAMES (since 9 Oct 2026)
+   COMPONENT ROLE NAMES — aliases, kept for the rules that read them
    ------------------------------------------------------------
-   The 8 Oct cinematic revamp introduced these names for the
-   component styling it added — glass nav band, outlined secondary
-   buttons, card borders, the primary button's glow — and the owner
-   kept that styling while reverting its obsidian/gold/teal COLOURS and
-   restoring the light theme. So the names stay, and every one of them
-   is an alias of the violet palette above: theme-aware because each
-   points at a token the [data-theme] blocks restate. "gold" and
-   "teal" are historical names now; both mean the brand.
+   The 8 Oct revamp's names (glass band, outlined buttons, card
+   borders, the CTA glow) and the 13 Oct Obsidian names. Every one is
+   an alias of the palette above. "gold" and "teal" are historical
+   names; both mean the brand.
    ============================================================ */
 :root {
   --bg-primary:         var(--paper);
   --bg-secondary:       var(--paper-raised);
   --bg-tertiary:        var(--paper-sunk);
-  /* 92%, not 82%: under 82% the page text scrolling beneath was
-     plainly readable behind the breadcrumb at both widths. Still glass. */
+  --bg-elevated:        var(--surface-elevated);
   --bg-glass:           color-mix(in srgb, var(--chrome) 92%, transparent);
   --text-primary:       var(--ink);
   --text-secondary:     var(--ink-body);
   --text-muted:         var(--ink-faint);     /* NOT a text colour */
   --text-muted-aa:      var(--ink-muted);
-  --border-subtle:      var(--rule-hair);
-  --border-accent:      color-mix(in srgb, var(--brand) 35%, transparent);
+  --border-subtle:      var(--border-hair);
+  --border-accent:      rgba(139, 92, 246, .35);
   --accent-gold:        var(--brand);
-  --accent-gold-hover:  var(--brand-deep);
-  --accent-gold-glow:   color-mix(in srgb, var(--brand) 22%, transparent);
+  --accent-gold-hover:  var(--brand-hover);
+  --accent-gold-glow:   var(--accent-glow);
   --accent-teal:        var(--brand-deep);
   --accent-teal-subtle: var(--brand-wash);
-  --shadow-cta:         0 4px 20px var(--cta-glow);
-  --hero-glow:          radial-gradient(ellipse at top, color-mix(in srgb, var(--brand) 6%, transparent), transparent 70%);
+  --shadow-cta:         0 0 0 1px rgba(139, 92, 246, .45), 0 2px 8px var(--accent-glow);
+  --hero-glow:          radial-gradient(ellipse at top, rgba(139, 92, 246, .06), transparent 70%);
   --blur-glass:         blur(12px);
+  /* The 1px line under the nav band: the violet easing to nothing. */
+  --band-line:          linear-gradient(90deg, var(--accent-primary) 0%, rgba(139, 92, 246, .35) 40%, transparent 100%);
 }
 
 /* ============================================================
-   VOLUME ACCENT — set once per page on <html data-volume>.
-   ============================================================ */
-/* ---- phase accents --------------------------------------
+   PHASE ACCENTS — set once per page on <html data-phase>
+   ------------------------------------------------------------
    The five-stage spine (Story → Screenplay → Pre-Production →
-   Production → Post-Production, PRD 2.0 §4.4). Same mechanism as
-   [data-volume]: set the attribute once on <html> and every --accent
-   reference follows. Story and Screenplay reuse the feature and
-   library hues their pages always wore, so regrouping six phases into
-   five changed no existing page's colour except where a module moved
-   stage. The shorts hue is no longer a phase; it is still the short
-   film's volume colour and still a category hue (.hue-shorts). */
+   Production → Post-Production). Every --accent reference follows.
+   ============================================================ */
 [data-phase="story"]      { --accent: var(--feature);   --accent-deep: var(--feature-deep);   --accent-wash: var(--feature-wash);   --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
 [data-phase="screenplay"] { --accent: var(--library);   --accent-deep: var(--library-deep);   --accent-wash: var(--library-wash);   --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
 [data-phase="preprod"]    { --accent: var(--plan);      --accent-deep: var(--plan-deep);      --accent-wash: var(--plan-wash);      --accent-lift: var(--plan-lift); --accent-on: var(--plan-on); }
 [data-phase="production"] { --accent: var(--shoot);     --accent-deep: var(--shoot-deep);     --accent-wash: var(--shoot-wash);     --accent-lift: var(--shoot-lift); --accent-on: var(--shoot-on); }
 [data-phase="post"]       { --accent: var(--visualize); --accent-deep: var(--visualize-deep); --accent-wash: var(--visualize-wash); --accent-lift: var(--visualize-lift); --accent-on: var(--visualize-on); }
 
-/* One swatch variable, --hue, set by two families of class.
-
-   .sh-ph-* maps a PHASE to its hue, for the nav itself — independent of
-   --accent so a phase pill keeps its own colour on a page belonging to
-   another phase.
-
-   .hue-* names the hue directly, for things whose colour is a category
-   rather than a phase: the breakdown's element chips, where Cast and
-   Props are not phases and never were. breakdown.js used to write
-   `.sh-ph-feature` and `.sh-ph-library`, which match nothing here — so
-   every chip and every element card fell back to currentColor and the
-   page's whole "colour = the category" idea rendered in grey. Named
-   classes rather than a lookup in JS, because the values belong to
-   tokens.css and nowhere else. */
-/* Four variables per hue, because a hue is used four ways and only one
-   of them is "paint a block with it":
-
+/* One swatch variable, --hue, set by two families of class:
+   .sh-ph-* maps a PHASE to its hue (the nav); .hue-* names the hue
+   directly, for a CATEGORY (the breakdown's element chips). A class
+   that is in neither family defines nothing and fails silently — add
+   a hue HERE and nowhere else.
      --hue       the FILL
      --hue-on    text ON that fill
-     --hue-deep  the hue as TEXT on a light ground
-     --hue-lift  the hue as TEXT on a dark ground
-
-   Collapsing these is what produced four separate bugs found in one
-   run: a PARTIAL chip in --hue on the dark chrome (2.35:1, on every
-   page in the app), the launcher's flag and the breakdown's category
-   chips in --hue on white (2.33:1 in Desk, where amber is bright). A
-   fill colour is almost never a text colour. */
-.sh-ph-story,      .hue-feature   { --hue: var(--feature);   --hue-on: var(--feature-on);   --hue-deep: var(--feature-deep);   --hue-lift: var(--feature-lift); }
-.sh-ph-screenplay, .hue-library   { --hue: var(--library);   --hue-on: var(--library-on);   --hue-deep: var(--library-deep);   --hue-lift: var(--library-lift); }
-.hue-shorts                       { --hue: var(--shorts);    --hue-on: var(--shorts-on);    --hue-deep: var(--shorts-deep);    --hue-lift: var(--shorts-lift); }
-.sh-ph-post,       .hue-visualize { --hue: var(--visualize); --hue-on: var(--visualize-on); --hue-deep: var(--visualize-deep); --hue-lift: var(--visualize-lift); }
-.sh-ph-preprod,    .hue-plan      { --hue: var(--plan);      --hue-on: var(--plan-on);      --hue-deep: var(--plan-deep);      --hue-lift: var(--plan-lift); }
-.sh-ph-production, .hue-shoot     { --hue: var(--shoot);     --hue-on: var(--shoot-on);     --hue-deep: var(--shoot-deep);     --hue-lift: var(--shoot-lift); }
-.hue-el-cast     { --hue: var(--el-cast);     --hue-on: var(--el-cast-on);     --hue-deep: var(--el-cast-deep);     --hue-lift: var(--el-cast-lift); }
-.hue-el-props    { --hue: var(--el-props);    --hue-on: var(--el-props-on);    --hue-deep: var(--el-props-deep);    --hue-lift: var(--el-props-lift); }
-.hue-el-vehicles { --hue: var(--el-vehicles); --hue-on: var(--el-vehicles-on); --hue-deep: var(--el-vehicles-deep); --hue-lift: var(--el-vehicles-lift); }
-.hue-el-sound    { --hue: var(--el-sound);    --hue-on: var(--el-sound-on);    --hue-deep: var(--el-sound-deep);    --hue-lift: var(--el-sound-lift); }
+     --hue-deep  the hue as TEXT
+     --hue-lift  the hue as TEXT on --panel
+     --hue-wash  a tinted ground */
+.sh-ph-story,      .hue-feature   { --hue: var(--feature);   --hue-on: var(--feature-on);   --hue-deep: var(--feature-deep);   --hue-lift: var(--feature-lift); --hue-wash: var(--feature-wash); }
+.sh-ph-screenplay, .hue-library   { --hue: var(--library);   --hue-on: var(--library-on);   --hue-deep: var(--library-deep);   --hue-lift: var(--library-lift); --hue-wash: var(--library-wash); }
+.hue-shorts                       { --hue: var(--shorts);    --hue-on: var(--shorts-on);    --hue-deep: var(--shorts-deep);    --hue-lift: var(--shorts-lift); --hue-wash: var(--shorts-wash); }
+.sh-ph-post,       .hue-visualize { --hue: var(--visualize); --hue-on: var(--visualize-on); --hue-deep: var(--visualize-deep); --hue-lift: var(--visualize-lift); --hue-wash: var(--visualize-wash); }
+.sh-ph-preprod,    .hue-plan      { --hue: var(--plan);      --hue-on: var(--plan-on);      --hue-deep: var(--plan-deep);      --hue-lift: var(--plan-lift); --hue-wash: var(--plan-wash); }
+.sh-ph-production, .hue-shoot     { --hue: var(--shoot);     --hue-on: var(--shoot-on);     --hue-deep: var(--shoot-deep);     --hue-lift: var(--shoot-lift); --hue-wash: var(--shoot-wash); }
+.hue-el-cast     { --hue: var(--el-cast);     --hue-on: var(--el-cast-on);     --hue-deep: var(--el-cast-deep);     --hue-lift: var(--el-cast-lift);     --hue-wash: var(--el-cast-wash); }
+.hue-el-props    { --hue: var(--el-props);    --hue-on: var(--el-props-on);    --hue-deep: var(--el-props-deep);    --hue-lift: var(--el-props-lift);    --hue-wash: var(--el-props-wash); }
+.hue-el-vehicles { --hue: var(--el-vehicles); --hue-on: var(--el-vehicles-on); --hue-deep: var(--el-vehicles-deep); --hue-lift: var(--el-vehicles-lift); --hue-wash: var(--el-vehicles-wash); }
+.hue-el-sound    { --hue: var(--el-sound);    --hue-on: var(--el-sound-on);    --hue-deep: var(--el-sound-deep);    --hue-lift: var(--el-sound-lift);    --hue-wash: var(--el-sound-wash); }
+.hue-el-stunts   { --hue: var(--el-stunts);   --hue-on: var(--el-stunts-on);   --hue-deep: var(--el-stunts-deep);   --hue-lift: var(--el-stunts-lift);   --hue-wash: var(--el-stunts-wash); }
+.hue-el-vfx      { --hue: var(--el-vfx);      --hue-on: var(--el-vfx-on);      --hue-deep: var(--el-vfx-deep);      --hue-lift: var(--el-vfx-lift);      --hue-wash: var(--el-vfx-wash); }
+.hue-el-animals  { --hue: var(--el-animals);  --hue-on: var(--el-animals-on);  --hue-deep: var(--el-animals-deep);  --hue-lift: var(--el-animals-lift);  --hue-wash: var(--el-animals-wash); }
+.hue-el-sfx      { --hue: var(--el-sfx);      --hue-on: var(--el-sfx-on);      --hue-deep: var(--el-sfx-deep);      --hue-lift: var(--el-sfx-lift);      --hue-wash: var(--el-sfx-wash); }
+.hue-el-dressing { --hue: var(--el-dressing); --hue-on: var(--el-dressing-on); --hue-deep: var(--el-dressing-deep); --hue-lift: var(--el-dressing-lift); --hue-wash: var(--el-dressing-wash); }
+/* Time of day, for the kit's strip and badge (same four-way shape). */
+.hue-day   { --hue: var(--strip-day);   --hue-on: var(--on-fill); --hue-deep: var(--strip-day-ink);   --hue-lift: var(--strip-day-ink);   --hue-wash: var(--strip-day-bg); }
+.hue-night { --hue: var(--strip-night); --hue-on: var(--on-fill); --hue-deep: var(--strip-night-ink); --hue-lift: var(--strip-night-ink); --hue-wash: var(--strip-night-bg); }
+.hue-dusk  { --hue: var(--strip-dusk);  --hue-on: var(--on-fill); --hue-deep: var(--strip-dusk-ink);  --hue-lift: var(--strip-dusk-ink);  --hue-wash: var(--strip-dusk-bg); }
+.hue-dawn  { --hue: var(--strip-dawn);  --hue-on: var(--on-fill); --hue-deep: var(--strip-dawn-ink);  --hue-lift: var(--strip-dawn-ink);  --hue-wash: var(--strip-dawn-bg); }
 
 [data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
 [data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); }
 [data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
-/* The studio itself is not one of the six phases, so it takes the brand
-   hue rather than borrowing the library's amber. This one line is what
-   paints the hub. */
-[data-volume="studio"]  { --accent: var(--brand); --accent-deep: var(--brand-deep); --accent-wash: var(--brand-wash); --accent-lift: var(--brand-lift); --accent-on: var(--brand-on); }
+/* The studio itself is no phase: it takes the brand. This one line
+   paints the hub (and, being declared after [data-phase], wins there:
+   --accent-deep IS --brand-deep on every studio page). */
+[data-volume="studio"]  { --accent: var(--brand); --accent-deep: var(--brand-deep); --accent-wash: var(--brand-wash); --accent-lift: var(--brand-lift); --accent-on: var(--brand-on); --accent-hover: var(--brand-hover); }
 
-/* Volume II of the feature blueprint (production) switches accent
-   mid-document. It is the one in-page accent change in the studio,
-   and it rides the same token as everything else. */
+/* Volume II of the feature blueprint switches accent mid-document. */
 .vol-2 { --accent: var(--shorts); --accent-deep: var(--shorts-deep); --accent-wash: var(--shorts-wash); --accent-lift: var(--shorts-lift); }
 
 
 /* ============================================================
    REDUCED MOTION — the distance half of the switch.
-   ------------------------------------------------------------
-   base.css clamps DURATION; this clamps DISTANCE. Both are needed:
-   a 0.01ms transition still ends with the element six pixels from
-   where it started.
+   base.css clamps DURATION; this clamps DISTANCE.
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   :root { --motion: 0; }

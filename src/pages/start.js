@@ -45,6 +45,7 @@
    ============================================================ */
 import '../styles/base.css';
 import '../styles/start.css';
+import '../styles/start-obsidian.css';
 import '../styles/motion.css';
 import '../styles/motion-landing.css';
 import { reveal, splitWords, countUp, spotlight, magnetic, tilt, prefersReducedMotion } from '../lib/motion.js';
@@ -58,23 +59,9 @@ import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
 const $ = (sel) => document.querySelector(sel);
 const byId = (id) => document.getElementById(id);
 
-/* ---- 1. the chosen theme ------------------------------------------
-   NOT dark-only any more. This page hard-set data-theme="dark" while
-   the studio had one palette; the palette went back to two on 9 Oct
-   (owner's call) and 'dark' is not even a theme name — chrome.js's
-   CSS_THEME maps ink->dark and paper->light, so the literal would have
-   matched no [data-theme] block at all and the page would have fallen
-   through to bare :root by luck rather than by decision.
-
-   It reads the theme the reader CHOSE elsewhere in the studio, raw:
-   there is no store.js here and the theme key is device-wide, never
-   scoped. Read only. With scripts off the OS setting still applies. */
-const THEME_KEY = 'fms_studio_theme_v1';           // chrome.js THEME_KEY
-const CSS_THEME = { ink: 'dark', paper: 'light' };  // chrome.js CSS_THEME
-try {
-  const t = CSS_THEME[localStorage.getItem(THEME_KEY)];
-  if (t) document.documentElement.setAttribute('data-theme', t);
-} catch (e) { /* storage blocked: the OS setting stands */ }
+/* ---- 1. the theme ---------------------------------------------------
+   There is one: dark (14 Oct 2026). Bare :root in tokens.css carries it,
+   so this page sets nothing and reads nothing. */
 
 /* ---- 2. where the app links go ------------------------------------- */
 /* Named directly so Vite inlines the one string; reading it off the

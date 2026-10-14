@@ -393,7 +393,8 @@ try {
     ok(/1 organisation\b/.test(flat) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is counted, and listed with its owner, seats and films');
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
-    const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
+    const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.querySelector('.tabs-tab-l').textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
+    /* the row's label span: a row's textContent now also holds its icon's name and its count */
     ok(tabs.join(',') === 'Overview*,Launch & health,Audit log,People,Support,Access & sharing,Purchases,Growth,Usage,Sync & storage,Controls', 'the console is eleven tabs in four groups, Overview selected: ' + tabs.join(', '));
     ok(!!(await A.page.$('#purchases #billing')) && !!(await A.page.$('#purchases #promos')) && !!(await A.page.$('#people #giveAccess')) && !!(await A.page.$('#requests #admin-console')), 'each block sits in its tab (payments and promos under Purchases, Give access under People, the queue under Requests)');
     ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');

@@ -487,12 +487,10 @@ export function castMatrix(scenes, elements) {
 
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const phraseRe = (list) => new RegExp('\\b(' + [...list].sort((a, b) => b.length - a.length).map(escRe).join('|') + ')\\b', 'gi');
-const RE = {
-  props: phraseRe(lexicon.props),
-  vehicles: phraseRe(lexicon.vehicles),
-  stunts: phraseRe(lexicon.stunts),
-  sound: phraseRe(lexicon.sound)
-};
+/* Every lexicon list is a category; `cast` and `soundCaps` are not lists of words. */
+const LEX_CATS = Object.keys(lexicon).filter((k) => Array.isArray(lexicon[k]));
+export const SUGGEST_CATEGORIES = ['cast', ...LEX_CATS];
+const RE = Object.fromEntries(LEX_CATS.map((k) => [k, phraseRe(lexicon[k])]));
 const CAPS_SOUND = new RegExp('\\b(' + lexicon.soundCaps.words.map(escRe).join('|') + ')\\b', 'g');
 
 /* A capital after a space, a hyphen, a slash or an opening bracket —
@@ -507,13 +505,13 @@ export const titleCase = (s) => String(s)
  *  minus what is already tagged. Each suggestion carries `from`, the
  *  line it was read off, so the user decides with the evidence. */
 export function suggestElements(scene, slice) {
-  const out = { cast: [], props: [], vehicles: [], stunts: [], sound: [] };
+  const out = Object.fromEntries(SUGGEST_CATEGORIES.map((c) => [c, []]));
   if (!slice) return out;
   const have = {};
   for (const cat of Object.keys(out)) {
     have[cat] = new Set(((scene.elements && scene.elements[cat]) || []).map((n) => String(n).trim().toLowerCase()));
   }
-  const seen = { cast: new Set(), props: new Set(), vehicles: new Set(), stunts: new Set(), sound: new Set() };
+  const seen = Object.fromEntries(SUGGEST_CATEGORIES.map((c) => [c, new Set()]));
   const add = (cat, name, from) => {
     const k = name.trim().toLowerCase();
     if (!k || have[cat].has(k) || seen[cat].has(k)) return;
@@ -527,7 +525,7 @@ export function suggestElements(scene, slice) {
     if (el.type === 'character') { const n = cueName(t); if (n) add('cast', titleCase(n.toLowerCase()), t); continue; }
     if (el.type !== 'action') continue;
     for (const n of capsIntros(t)) add('cast', titleCase(n.toLowerCase()), t);
-    for (const cat of ['props', 'vehicles', 'stunts', 'sound']) {
+    for (const cat of LEX_CATS) {
       RE[cat].lastIndex = 0;
       let m;
       while ((m = RE[cat].exec(t))) {

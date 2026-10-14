@@ -51,6 +51,7 @@ const app = document.getElementById('app');
    localStorage writes — a page that persisted its own scroll
    position would trip it, correctly. */
 let openDay = null;
+let rosterFilter = 'all';   // 'all' | 'incomplete' — the roster's view, never stored
 
 /* ---- pieces -------------------------------------------------- */
 
@@ -67,19 +68,53 @@ function castChips(scene) {
   return wrap;
 }
 
-function sceneCard(scene, late) {
+const STATE_WORD = { shot: 'Shot', part: 'Part-shot', dropped: 'Dropped' };
+
+/* The takes line and its controls. Every number is read off the
+   scene's own `takes` field (src/lib/shootday.js); a scene with none
+   logged says so. A circled take is a marked chip AND a word, never
+   colour alone. */
+function takesBlock(scene) {
+  const takes = Shoot.takesOf(scene);
+  const box = h('div.sd-takes');
+  box.append(h('p.sd-takes-line', {}, [
+    h('span.sd-k', { text: 'Takes logged' }),
+    h('strong', { text: Shoot.takesLine(scene) || 'none yet' })
+  ]));
+  const row = h('div.sd-take-row', { role: 'group', 'aria-label': 'Takes for scene ' + (scene.number || '') });
+  takes.forEach((t) => row.append(h('button.sd-take' + (t.circled ? '.is-circled' : ''), {
+    type: 'button', 'data-shoot-action': 'circle', 'data-scene': scene.id, 'data-take': String(t.n),
+    'aria-pressed': String(t.circled),
+    title: t.circled ? 'Take ' + t.n + ' is circled. Press to un-circle.' : 'Circle take ' + t.n,
+    text: 'T' + t.n + (t.circled ? ' ●' : '')
+  })));
+  row.append(h('button.btn.sd-take-add', {
+    type: 'button', 'data-shoot-action': 'take', 'data-scene': scene.id, text: '+ Take'
+  }));
+  if (takes.length) {
+    row.append(h('button.btn.sd-take-undo', {
+      type: 'button', 'data-shoot-action': 'untake', 'data-scene': scene.id,
+      'aria-label': 'Remove take ' + takes[takes.length - 1].n, text: 'Undo'
+    }));
+  }
+  box.append(row);
+  return box;
+}
+
+function sceneCard(scene, late, next) {
   const state = scene.shotState || '';
-  const card = h('article.sd-card' + (state ? '.is-' + state : ''));
+  const card = h('article.sd-card' + (state ? '.is-' + state : '') + (next ? '.is-next' : ''), { 'data-scene': scene.id });
 
   const head = h('div.sd-head');
-  head.append(h('span.sd-num', { text: scene.number || '—' }));
+  head.append(h('span.sd-num', { text: 'Scene ' + (scene.number || '—') }));
   head.append(h('h3.sd-slug', { text: slug(scene) }));
+  const right = h('div.sd-head-r');
+  right.append(h('span.sd-pgs', { text: formatEighths(scene.eighths || 0) + ' pgs' }));
+  right.append(h('span.sd-pill' + (state ? '.is-' + state : next ? '.is-next' : '.is-up'), {
+    text: state ? STATE_WORD[state] : next ? 'Next up' : 'Upcoming'
+  }));
+  head.append(right);
   card.append(head);
-
-  const meta = h('p.sd-meta');
-  meta.append(h('span', { text: formatEighths(scene.eighths || 0) + ' pages' }));
-  if (state) meta.append(h('span.sd-state', { text: Scenes.shotLabel(state) }));
-  card.append(meta);
 
   if (String(scene.synopsis || '').trim()) {
     card.append(h('p.sd-syn', { text: scene.synopsis }));
@@ -90,20 +125,21 @@ function sceneCard(scene, late) {
   if (late && late.has(scene.id)) {
     card.append(h('p.sd-flag', { text: 'Exterior · needs the light — shoot before sunset' }));
   }
+  card.append(takesBlock(scene));
 
   /* One row of big targets. `aria-pressed` rather than a disabled
      button for the active one, because the state IS the control:
      tapping the live state again clears it, which is how somebody
      undoes a mis-tap without hunting for a reset. */
   const row = h('div.sd-actions', { role: 'group', 'aria-label': 'Mark scene ' + (scene.number || '') });
-  SHOT_STATES.forEach((s) => {
-    row.append(h('button.btn.sd-btn.sd-' + s.id + (state === s.id ? '.is-on' : ''), {
+  SHOT_STATES.forEach((st) => {
+    row.append(h('button.btn.sd-btn.sd-' + st.id + (state === st.id ? '.is-on' : ''), {
       type: 'button',
       'data-shoot-action': 'mark',
       'data-scene': scene.id,
-      'data-state': state === s.id ? '' : s.id,
-      'aria-pressed': String(state === s.id),
-      text: s.label
+      'data-state': state === st.id ? '' : st.id,
+      'aria-pressed': String(state === st.id),
+      text: st.label
     }));
   });
   card.append(row);
@@ -172,58 +208,93 @@ function render(focus) {
      with work left, and an eyebrow calling a February date "today"
      in October is the page lying about the one thing it is for. */
   const isToday = String(day.date || '').slice(0, 10) === Shoot.toISODate(new Date());
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: isToday ? 'Shoot · today' : 'Shoot · day ' + day.day + ' of ' + all.length }),
-    h('h1.bd-title', { text: 'Day ' + day.day + '.' }),
-    h('p.bd-deck', {
+  const currentDay = Shoot.pickDay(scenes);
+  const sheet = Shoot.sheetsForDay(day.day, Contacts.listCallSheets(), scenes)[0];
+  const rec = DPR.getDPR(day.day);
+  const crewCall = rec.crewCall || (sheet && sheet.generalCall) || '';
+  const plannedWrap = DPR.laterWrap(sheet && sheet.wrap, rec.wrap);
+  const wrap = Shoot.wrapEstimate({
+    plannedWrap, crewCall, eighths: day.eighthsTotal,
+    target: DPR.pageTarget(), dayHours: DPR.DAY_HOURS
+  });
+  const lit = lightFor(day);
+
+  const hero = h('section.sd-hero', { 'aria-label': 'Today' });
+  const titleBox = h('div.sd-hero-t', {}, [
+    h('p.sd-eyebrow', {}, [
+      h('span.sd-dot' + (isToday ? '.is-live' : ''), { 'aria-hidden': 'true' }),
+      h('span', { text: isToday ? "Production · today's call" : 'Production · day ' + day.day + ' of ' + all.length })
+    ]),
+    h('h1.sd-title', {}, [
+      h('span', { text: 'Day ' + day.day }),
+      h('span.sd-title-b', { text: ' · On Set.' })
+    ]),
+    h('p.sd-deck', {
       text: day.date
-        ? niceDate(day.date)
+        ? [niceDate(day.date), day.locations.join(' & ')].filter(Boolean).join(' · ')
         : 'This day has no date yet — set one in the stripboard and the page can find it on the morning.'
     })
-  ]));
-
-  /* The two numbers somebody actually wants: how much of today is
-     done, and how much of the film is. Pages rather than scene
-     counts, because a schedule is built in eighths. */
-  const stats = h('div.sd-stats');
-  stats.append(h('div.sd-stat', {}, [
-    h('strong', { text: day.done + ' / ' + day.scenes.length }),
-    h('span', { text: 'scenes today' })
-  ]));
-  stats.append(h('div.sd-stat', {}, [
-    h('strong', { text: day.pagesDone + ' / ' + day.pagesTotal }),
-    h('span', { text: 'pages today' })
-  ]));
-  stats.append(h('div.sd-stat', {}, [
-    h('strong', { text: overall.done + ' / ' + overall.scenes }),
-    h('span', { text: 'scenes in the film' })
-  ]));
-  main.append(stats);
-
-  if (day.locations.length) {
-    main.append(h('p.sd-where', { text: day.locations.join(' · ') }));
-  }
-
-  const sun = renderSun(day, scenes);
-  main.append(sun.node);
+  ]);
+  const kpi = (label, value, of, fill, sub) => h('div.sd-kpi', {}, [
+    h('span.sd-k', { text: label }),
+    h('p.sd-kpi-v', {}, [h('strong', { text: value }), of ? h('span', { text: of }) : null].filter(Boolean)),
+    fill === null ? null : h('div.sd-bar', { 'aria-hidden': 'true' }, [h('i', { style: 'width:' + Math.round(fill * 100) + '%' })]),
+    sub ? h('span.sd-kpi-sub', { text: sub }) : null
+  ].filter(Boolean));
+  const total = day.scenes.length;
+  const kpis = h('div.sd-kpis', {}, [
+    kpi('Scenes shot', String(day.done), '/ ' + total, total ? day.done / total : 0),
+    kpi('Pages shot', day.pagesDone, '/ ' + day.pagesTotal, day.eighthsTotal ? day.eighthsDone / day.eighthsTotal : 0),
+    kpi('Scenes left', String(day.remaining), 'remaining', total ? day.remaining / total : 0),
+    kpi('Wrap estimate', wrap.time || '—', wrap.time && lit ? lit.light.zone : '', null,
+      wrap.kind === 'planned' ? 'planned wrap' : wrap.kind === 'estimate' ? 'estimated from call and pages' : 'no call or wrap set yet')
+  ]);
+  hero.append(titleBox, kpis);
+  main.append(hero);
 
   /* Day switcher. Every day, not a prev/next pair: an AD jumping to
      Friday should not tap through Wednesday. */
   const nav = h('nav.sd-days', { 'aria-label': 'Shoot days' });
+  nav.append(h('span.sd-k', { text: 'Shooting days' }));
   all.forEach((d) => {
+    const cur = d.day === currentDay;
     nav.append(h('button.btn.sd-day' + (d.day === day.day ? '.is-on' : '')
-                 + (d.complete ? '.is-done' : ''), {
+                 + (d.complete ? '.is-done' : '') + (cur ? '.is-current' : ''), {
       type: 'button',
       'data-shoot-action': 'day',
       'data-day': String(d.day),
       'aria-current': d.day === day.day ? 'true' : 'false',
-      text: 'D' + d.day
-    }));
+      title: d.complete ? 'Day ' + d.day + ' is wrapped' : cur ? 'Day ' + d.day + ' — the day the page opens on' : 'Day ' + d.day
+    }, [
+      h('span', { text: 'D' + d.day }),
+      d.complete ? h('span.sd-day-m', { 'aria-label': 'wrapped', text: '✓' }) : null,
+      cur && !d.complete ? h('span.sd-day-m.is-cur', { text: 'current' }) : null
+    ].filter(Boolean)));
   });
   main.append(nav);
 
-  const list = h('div.sd-list');
-  day.scenes.forEach((s) => list.append(sceneCard(s, sun.late)));
+  const sun = renderSun(day, scenes, { lit, crewCall, rec, plannedWrap, wrap, isToday });
+  main.append(sun.node);
+
+  const list = h('section.sd-roster', { 'aria-label': 'Scene strike roster' });
+  const incomplete = day.scenes.filter((x) => x.shotState !== 'shot' && x.shotState !== 'dropped');
+  if (rosterFilter === 'incomplete' && !incomplete.length) rosterFilter = 'all';
+  const shown = rosterFilter === 'incomplete' ? incomplete : day.scenes;
+  const nextId = incomplete.length ? incomplete[0].id : '';
+  list.append(h('div.sd-roster-h', {}, [
+    h('h2.sd-roster-t', { text: 'Live scene strike roster' }),
+    h('div.sd-filter', { role: 'group', 'aria-label': 'Filter scenes' }, [
+      h('span.sd-k', { text: 'Filter' }),
+      ...[['all', 'All (' + day.scenes.length + ')'], ['incomplete', 'Incomplete (' + incomplete.length + ')']].map(([id, label]) =>
+        h('button.btn.sd-fbtn' + (rosterFilter === id ? '.is-on' : ''), {
+          type: 'button', 'data-shoot-action': 'filter', 'data-filter': id,
+          'aria-pressed': String(rosterFilter === id), text: label
+        }))
+    ])
+  ]));
+  const cards = h('div.sd-list');
+  shown.forEach((x) => cards.append(sceneCard(x, sun.late, x.id === nextId)));
+  list.append(cards);
   main.append(list);
 
   /* The day answers the plan here; the report on it is written on
@@ -237,65 +308,158 @@ function render(focus) {
   after(focus);
 }
 
-/* ---- the light ------------------------------------------------
-   Sunrise, sunset and golden hour for the day's date at its first
-   pinned location (src/lib/sun.js, offline). Chennai stands in, and
-   says so, for a location with no pin. The sunset flag reads the
-   planned wrap off the day's call sheet — a time somebody wrote down —
-   and never guesses one. */
 function deviceOffsetOn(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   return m ? new Date(+m[1], +m[2] - 1, +m[3], 12).getTimezoneOffset() : new Date().getTimezoneOffset();
 }
 
-function renderSun(day, scenes) {
-  const node = h('section.sd-sun', { 'aria-label': 'Daylight' });
-  const late = new Set();
-  if (!day.date) {
-    node.append(h('p.sd-sun-note', { text: 'Sunrise and sunset appear once this day has a date.' }));
-    return { node, late };
-  }
+/** The day's light and the place it is for; null when the day has no date. */
+function lightFor(day) {
+  if (!day.date) return null;
   const places = day.locations.map((name) => ({ name, recce: Locations.getRecce(name) }));
   const place = Geo.placeFor(places);
   const light = Sun.daylight(day.date, place, { deviceOffset: deviceOffsetOn(day.date) });
-  if (!light) return { node, late };
+  return light ? { light, place } : null;
+}
 
-  const cell = (label, value) => h('div.sd-sun-cell', {}, [h('dt', { text: label }), h('dd', { text: value || '—' })]);
-  node.append(h('dl.sd-sun-row', {}, [
-    cell('Sunrise', light.sunrise),
-    cell('Sunset', light.sunset),
-    cell('Golden · am', light.goldenAm),
-    cell('Golden · pm', light.goldenPm)
-  ]));
+const mins = (t) => Sun.minutesOf(String(t || '').slice(0, 5));
+const rangeOf = (span) => {
+  const m = /^(\d{2}:\d{2})–(\d{2}:\d{2})$/.exec(span || '');
+  return m ? [mins(m[1]), mins(m[2])] : null;
+};
+const pct = (v) => (Math.round(v * 1000) / 10) + '%';
 
+/* The solar timeline: the day's bar, drawn from sunrise, sunset and the
+   two golden-hour spans of src/lib/sun.js, with the crew call and the
+   wrap placed on it when somebody has written them down. Nothing on it
+   is invented: an absent time is an absent tick. The window is the call
+   (or an hour before sunrise) to the wrap (or two hours after sunset),
+   widened to whole hours. */
+function timeline(light, ctx) {
+  const rise = light.sunriseMinutes, set = light.sunsetMinutes;
+  const call = mins(ctx.crewCall), wrapM = mins(ctx.wrap.time);
+  const from = Math.floor(Math.min(call == null ? rise - 60 : call, rise - 60) / 60) * 60;
+  const to = Math.ceil(Math.max(wrapM == null ? set + 120 : wrapM, set + 60) / 60) * 60;
+  const span = to - from;
+  const at = (m) => (m - from) / span;
+  const gAm = rangeOf(light.goldenAm), gPm = rangeOf(light.goldenPm);
+  const cuts = [from, rise];
+  if (gAm) cuts.push(Math.min(gAm[1], set));
+  if (gPm) cuts.push(gPm[0]);
+  if (gPm) cuts.push(gPm[1]);
+  cuts.push(set, to);
+  const segs = [];
+  const seg = (a, b, cls, label) => { if (b > a) segs.push({ a, b, cls, label }); };
+  seg(from, rise, 'is-dark', 'Before sunrise');
+  if (gAm) { seg(rise, gAm[1], 'is-gold', 'Golden hour, morning'); seg(gAm[1], gPm ? gPm[0] : set, 'is-day', 'Daylight'); }
+  else seg(rise, gPm ? gPm[0] : set, 'is-day', 'Daylight');
+  if (gPm) { seg(gPm[0], Math.min(gPm[1], to), 'is-gold', 'Golden hour, evening'); seg(Math.min(gPm[1], to), set, 'is-day', 'Daylight'); }
+  seg(set, to, 'is-dark', 'After sunset');
+  const bar = h('div.sd-tl', { role: 'img', 'aria-label':
+    'Daylight from ' + clockOf(from) + ' to ' + clockOf(to % 1440) + ': sunrise ' + light.sunrise + ', sunset ' + light.sunset }, segs.map((s) =>
+    h('div.sd-tl-seg.' + s.cls, { style: 'width:' + pct((s.b - s.a) / span), title: s.label })));
+  const ticks = h('div.sd-tl-ticks');
+  const tick = (m, text, cls) => {
+    if (m == null) return;
+    const t = at(m);
+    if (t < 0 || t > 1) return;
+    ticks.append(h('span.sd-tl-tick' + (cls ? '.' + cls : '') + (t > 0.82 ? '.is-r' : t < 0.18 ? '.is-l' : ''),
+      { style: 'left:' + pct(t), text }));
+  };
+  tick(call, clockOf(call) + ' call', 'is-call');
+  tick(wrapM, clockOf(wrapM) + ' wrap', 'is-wrap');
+  if (ctx.isToday) {
+    const d = new Date();
+    const now = d.getHours() * 60 + d.getMinutes();
+    if (now >= from && now <= to) tick(now, '▲ now ' + clockOf(now), 'is-now');
+  }
+  return h('div.sd-tl-wrap', {}, [bar, ticks]);
+}
+const clockOf = (m) => Sun.clock(m);
+
+/* ---- the light ------------------------------------------------
+   Sunrise, sunset and golden hour for the day's date at its first
+   pinned location (src/lib/sun.js, offline). Chennai stands in, and
+   says so, for a location with no pin. The sunset flag reads the
+   planned wrap off the day's call sheet or DPR — a time somebody wrote
+   down — and never guesses one. */
+function renderSun(day, scenes, ctx) {
+  const node = h('section.sd-sun', { 'aria-label': 'Daylight and the day\'s times' });
+  const late = new Set();
+  const lit = ctx.lit;
+  if (!lit) {
+    node.append(h('p.sd-sun-note', { text: day.date ? 'The light for this date could not be worked out.' : 'Sunrise and sunset appear once this day has a date.' }));
+    node.append(timesRow(day, ctx));
+    return { node, late };
+  }
+  const { light, place } = lit;
   const first = day.locations[0];
-  node.append(h('p.sd-sun-note', {
-    text: place.fallback
-      ? 'For Chennai (' + light.zone + ')' + (first ? ' — ' + first + ' has no map pin yet.' : '.')
-      : 'At ' + place.name + ', ' + light.zone + '.'
-  }));
+
+  const panel = h('div.sd-solar');
+  panel.append(h('div.sd-solar-h', {}, [
+    h('span.sd-panel-t', { text: 'Solar engine & daylight horizon' }),
+    h('span.sd-solar-loc', {
+      text: place.fallback
+        ? 'Chennai default (' + light.zone + ')' + (first ? ' — ' + first + ' has no map pin yet' : '')
+        : place.name + ' · ' + place.lat.toFixed(4) + '°, ' + place.lng.toFixed(4) + '° · ' + light.zone
+    })
+  ]));
+  const cell = (label, value, cls) => h('div.sd-sun-cell' + (cls ? '.' + cls : ''), {}, [h('dt', { text: label }), h('dd', { text: value || '—' })]);
+  panel.append(h('dl.sd-sun-row', {}, [
+    cell('Sunrise', light.sunrise),
+    cell('Golden · am', light.goldenAm, 'is-gold'),
+    cell('Golden · pm', light.goldenPm, 'is-gold'),
+    cell('Sunset', light.sunset)
+  ]));
+  panel.append(timeline(light, ctx));
   if (place.fallback && first && 'geolocation' in navigator) {
-    node.append(h('button.btn.sd-sun-btn', {
+    panel.append(h('button.btn.sd-sun-btn', {
       type: 'button', 'data-shoot-action': 'locate', 'data-loc': first,
       text: 'Pin ' + first + ' where this phone is'
     }));
   }
+  node.append(panel, timesRow(day, ctx));
 
-  const sheet = Shoot.sheetsForDay(day.day, Contacts.listCallSheets(), scenes)[0];
-  const wrapAt = DPR.laterWrap(sheet && sheet.wrap, DPR.getDPR(day.day).wrap);
-  if (wrapAt && Sun.isPastSunset(wrapAt, light)) {
+  if (ctx.plannedWrap && Sun.isPastSunset(ctx.plannedWrap, light)) {
     const ext = day.scenes.filter((s) => Sun.needsDaylight(s) && s.shotState !== 'shot' && s.shotState !== 'dropped');
     ext.forEach((s) => late.add(s.id));
-    node.append(h('p.sd-flag', {
-      role: 'note',
-      text: 'Wrap ' + wrapAt + ' is after sunset (' + light.sunset + ').'
+    node.append(h('p.sd-flag', { role: 'note' }, [
+      h('strong', { text: 'Post-sunset wrap. ' }),
+      h('span', { text: 'Wrap ' + ctx.plannedWrap + ' is after sunset (' + light.sunset + ').'
         + (ext.length
           ? ' ' + ext.length + (ext.length === 1 ? ' exterior scene needs' : ' exterior scenes need')
             + ' the light: ' + ext.map((s) => s.number || '—').join(', ') + '.'
-          : ' No exterior left to shoot today.')
-    }));
+          : ' No exterior left to shoot today.') })
+    ]));
   }
   return { node, late };
+}
+
+/* Crew call, first shot, lunch and wrap, read off the day's DPR
+   (src/lib/dpr.js) with the call sheet's general call and planned wrap
+   standing in for a DPR not yet filled. A time nobody has written is
+   an em dash and a link to where it is written. */
+function timesRow(day, ctx) {
+  const { rec, crewCall, plannedWrap } = ctx;
+  const lunch = rec.lunchIn && rec.lunchOut ? rec.lunchIn + '–' + rec.lunchOut : rec.lunchIn || rec.lunchOut || '';
+  const cells = [
+    ['Crew call', crewCall],
+    ['First shot', rec.firstShot],
+    ['Lunch break', lunch],
+    ['Wrap', plannedWrap || rec.cameraWrap]
+  ];
+  const row = h('dl.sd-times');
+  cells.forEach(([k, v]) => row.append(h('div.sd-time', {}, [
+    h('dt', { text: k }), h('dd' + (v ? '' : '.is-none'), { text: v || '—' })
+  ])));
+  const any = cells.some(([, v]) => v);
+  return h('div.sd-times-wrap', {}, [
+    row,
+    any ? null : h('p.sd-sun-note', {}, [
+      h('span', { text: 'Times come from the DPR and the call sheet. ' }),
+      h('a', { href: 'reports.html?day=' + day.day + '#dpr', text: 'Set them on the DPR →' })
+    ])
+  ].filter(Boolean));
 }
 
 function after(focus) {
@@ -322,6 +486,22 @@ delegate(document, 'click', '[data-shoot-action]', (e, el) => {
   if (act === 'day') {
     openDay = parseInt(el.getAttribute('data-day'), 10);
     render('[data-shoot-action="day"][data-day="' + openDay + '"]');
+    return;
+  }
+  if (act === 'filter') {
+    rosterFilter = el.getAttribute('data-filter') === 'incomplete' ? 'incomplete' : 'all';
+    render('[data-shoot-action="filter"][data-filter="' + rosterFilter + '"]');
+    return;
+  }
+  if (act === 'take' || act === 'untake' || act === 'circle') {
+    const id = el.getAttribute('data-scene');
+    if (act === 'take') Shoot.logTake(id);
+    else if (act === 'untake') Shoot.undoTake(id);
+    else Shoot.circleTake(id, el.getAttribute('data-take'));
+    /* The same button on the same scene: an undo with one take left is gone, so fall back to + Take. */
+    const sel = (a, extra) => '[data-shoot-action="' + a + '"][data-scene="' + CSS.escape(id) + '"]' + (extra || '');
+    render(act === 'circle' ? sel('circle', '[data-take="' + el.getAttribute('data-take') + '"]')
+      : act === 'untake' ? sel('untake') + ',' + sel('take') : sel('take'));
     return;
   }
   if (act === 'locate') {

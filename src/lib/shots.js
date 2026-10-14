@@ -22,7 +22,8 @@
    list is absent from the file that calls itself a full studio
    backup; that bug has already happened here once.
 
-   ONE KEY, THREE COLLECTIONS. Frames and lookbook boards live under
+   ONE KEY, FOUR COLLECTIONS (shots, frames, boards, and blocking
+   diagrams). Frames and lookbook boards live under
    this same key. A frame is a drawing of a shot and has no life
    without one; a lookbook is the same act of seeing the film before
    it exists. Each collection is read and written through a
@@ -61,6 +62,12 @@ export const SHOT_SIZES = [
 ];
 
 export const SHOT_ANGLES = ['eye level', 'high', 'low', 'overhead', 'dutch'];
+
+/* Common focal lengths, offered as suggestions on the free-text lens
+   field (a <datalist>), never enforced: "35mm", "24-70 @ 50" and
+   "anamorphic 40" all stay valid, because the lens a crew writes is
+   whatever their kit is called. */
+export const SHOT_LENSES = ['14mm', '18mm', '24mm', '28mm', '35mm', '50mm', '85mm', '100mm', '135mm', '200mm', 'zoom'];
 
 export const SHOT_MOVEMENTS = [
   'static', 'pan', 'tilt', 'dolly', 'track', 'handheld', 'crane', 'drone'
@@ -106,6 +113,67 @@ export function blankShot(patch = {}) {
   };
 }
 
+/* ---- blocking: an overhead diagram ---------------------------
+   A block is one top-down map of a scene: where the actors stand,
+   where the camera sits and what it faces, and where either moves to.
+   Vector data only (a few numbers per mark), so unlike a drawing it
+   costs nothing against the quota. The map is 100 wide and 70 deep in
+   its own units; the page scales it.
+
+   A block belongs to a SCENE and holds only that scene's id, the way
+   a shot does — never the slug. It rides in the scene's bin entry. */
+export const BLOCK_W = 100;
+export const BLOCK_H = 70;
+export const BLOCK_KINDS = [
+  { id: 'actor',  label: 'Actor' },
+  { id: 'camera', label: 'Camera' },
+  { id: 'mark',   label: 'Mark' }
+];
+
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+/** A point kept inside the map, as numbers rounded to a tenth. */
+export function clampPoint(x, y) {
+  const nx = Number(x), ny = Number(y);
+  return {
+    x: Math.round(clamp(Number.isFinite(nx) ? nx : BLOCK_W / 2, 0, BLOCK_W) * 10) / 10,
+    y: Math.round(clamp(Number.isFinite(ny) ? ny : BLOCK_H / 2, 0, BLOCK_H) * 10) / 10
+  };
+}
+
+/** One mark on the map. `toX`/`toY` are null until it has a move. */
+export function blankMark(patch = {}) {
+  return {
+    id: uid('mk'),
+    kind: 'actor',
+    label: '',
+    x: BLOCK_W / 2,
+    y: BLOCK_H / 2,
+    rot: 0,          // degrees, 0 = facing up the map
+    toX: null,
+    toY: null,
+    ...patch
+  };
+}
+
+export function blankBlock(patch = {}) {
+  return { id: uid('bk'), sceneId: '', name: '', note: '', marks: [], ...patch };
+}
+
+function cleanMark(m) {
+  const base = blankMark();
+  const out = { ...base, ...m };
+  out.kind = BLOCK_KINDS.some((k) => k.id === out.kind) ? out.kind : 'actor';
+  Object.assign(out, clampPoint(out.x, out.y));
+  out.rot = ((Math.round(Number(out.rot) || 0) % 360) + 360) % 360;
+  if (out.toX == null || out.toY == null || !Number.isFinite(Number(out.toX)) || !Number.isFinite(Number(out.toY))) {
+    out.toX = null; out.toY = null;
+  } else {
+    const t = clampPoint(out.toX, out.toY); out.toX = t.x; out.toY = t.y;
+  }
+  out.label = String(out.label ?? '');
+  return out;
+}
+
 /** A storyboard frame. `ref` is a URL or a description — never bytes. */
 export function blankFrame(patch = {}) {
   return {
@@ -144,7 +212,7 @@ export function blankEntry(patch = {}) {
 function readAll() {
   let raw = null;
   try { raw = localStorage.getItem(SHOTS_KEY); } catch (e) { /* private mode */ }
-  if (!raw) return { shots: [], frames: [], boards: [] };
+  if (!raw) return { shots: [], frames: [], boards: [], blocks: [] };
   try {
     const parsed = JSON.parse(raw) || {};
     // An empty array is truthy — the trap that once gave returning users
@@ -152,10 +220,11 @@ function readAll() {
     return {
       shots:  Array.isArray(parsed.shots)  ? parsed.shots  : [],
       frames: Array.isArray(parsed.frames) ? parsed.frames : [],
-      boards: Array.isArray(parsed.boards) ? parsed.boards : []
+      boards: Array.isArray(parsed.boards) ? parsed.boards : [],
+      blocks: Array.isArray(parsed.blocks) ? parsed.blocks : []
     };
   } catch (e) {
-    return { shots: [], frames: [], boards: [] };
+    return { shots: [], frames: [], boards: [], blocks: [] };
   }
 }
 
@@ -263,8 +332,8 @@ export function shotsByScene(scenes) {
    bytes it was. Lookbook boards belong to no scene and stay. */
 export function takeSceneOut(sceneId) {
   const all = readAll();
-  const shots = [], frames = [];
-  const keepShots = [], keepFrames = [];
+  const shots = [], frames = [], blocks = [];
+  const keepShots = [], keepFrames = [], keepBlocks = [];
   all.shots.forEach((s, index) => {
     if (s && s.sceneId === sceneId) shots.push({ index, row: s });
     else keepShots.push(s);
@@ -274,8 +343,14 @@ export function takeSceneOut(sceneId) {
     if (f && gone.has(f.shotId)) frames.push({ index, row: f });
     else keepFrames.push(f);
   });
-  if (shots.length || frames.length) writeAll({ ...all, shots: keepShots, frames: keepFrames });
-  return { shots, frames };
+  all.blocks.forEach((b, index) => {
+    if (b && b.sceneId === sceneId) blocks.push({ index, row: b });
+    else keepBlocks.push(b);
+  });
+  if (shots.length || frames.length || blocks.length) {
+    writeAll({ ...all, shots: keepShots, frames: keepFrames, blocks: keepBlocks });
+  }
+  return { shots, frames, blocks };
 }
 
 /** Put back what takeSceneOut() took, at its old positions (clamped
@@ -283,7 +358,8 @@ export function takeSceneOut(sceneId) {
     is not put back twice. */
 export function putSceneBack(snap) {
   const all = readAll();
-  const shots = all.shots.slice(), frames = all.frames.slice();
+  const shots = all.shots.slice(), frames = all.frames.slice(), blocks = all.blocks.slice();
+  const haveB = new Set(blocks.map((b) => b && b.id));
   const haveS = new Set(shots.map((s) => s && s.id));
   const haveF = new Set(frames.map((f) => f && f.id));
   let n = 0;
@@ -295,7 +371,11 @@ export function putSceneBack(snap) {
     if (!row || haveF.has(row.id)) continue;
     frames.splice(Math.min(index, frames.length), 0, row); n++;
   }
-  if (n) writeAll({ ...all, shots, frames });
+  for (const { index, row } of (snap && snap.blocks) || []) {
+    if (!row || haveB.has(row.id)) continue;
+    blocks.splice(Math.min(index, blocks.length), 0, row); n++;
+  }
+  if (n) writeAll({ ...all, shots, frames, blocks });
   return n;
 }
 
@@ -354,6 +434,83 @@ export function framesByShot() {
     map.get(frame.shotId).push(frame);
   }
   return map;
+}
+
+/* ---- blocking diagrams ------------------------------------------ */
+
+export function listBlocks() {
+  return readAll().blocks.map((b) => {
+    const row = { ...blankBlock(), ...b };
+    row.marks = (Array.isArray(b && b.marks) ? b.marks : []).map(cleanMark);
+    return row;
+  });
+}
+
+export function saveBlocks(blocks) {
+  return writeAll({ ...readAll(), blocks });
+}
+
+export function blocksOfScene(sceneId) {
+  return listBlocks().filter((b) => b.sceneId === sceneId);
+}
+
+export function addBlock(sceneId, patch = {}) {
+  const blocks = listBlocks();
+  const n = blocks.filter((b) => b.sceneId === sceneId).length;
+  const block = blankBlock({ sceneId, name: 'Setup ' + (n + 1), ...patch });
+  blocks.push(block);
+  saveBlocks(blocks);
+  return block;
+}
+
+export function updateBlock(id, patch) {
+  const blocks = listBlocks();
+  const i = blocks.findIndex((b) => b.id === id);
+  if (i < 0) return null;
+  blocks[i] = { ...blocks[i], ...patch, id, marks: blocks[i].marks };   // marks go through the mark calls
+  saveBlocks(blocks);
+  return blocks[i];
+}
+
+export function removeBlock(id) {
+  const blocks = listBlocks().filter((b) => b.id !== id);
+  saveBlocks(blocks);
+  return blocks;
+}
+
+export function addMark(blockId, kind, patch = {}) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return null;
+  const same = block.marks.filter((m) => m.kind === kind).length;
+  const label = kind === 'camera' ? (same ? 'Cam ' + String.fromCharCode(65 + same) : 'Cam A')
+    : kind === 'actor' ? 'Actor ' + (same + 1) : 'Mark ' + (same + 1);
+  // New marks land staggered near the middle so each is easy to grab.
+  const at = clampPoint(22 + (block.marks.length % 5) * 14, 18 + (block.marks.length % 3) * 16);
+  const mark = cleanMark({ ...blankMark({ kind, label, ...at }), ...patch });
+  block.marks.push(mark);
+  saveBlocks(blocks);
+  return mark;
+}
+
+export function updateMark(blockId, markId, patch) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return null;
+  const i = block.marks.findIndex((m) => m.id === markId);
+  if (i < 0) return null;
+  block.marks[i] = cleanMark({ ...block.marks[i], ...patch, id: markId });
+  saveBlocks(blocks);
+  return block.marks[i];
+}
+
+export function removeMark(blockId, markId) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return null;
+  block.marks = block.marks.filter((m) => m.id !== markId);
+  saveBlocks(blocks);
+  return block;
 }
 
 /* ---- lookbook boards ------------------------------------------ */
@@ -454,7 +611,9 @@ export function isLinkable(ref) {
 }
 
 export default {
-  SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, BOARD_SUGGESTIONS,
+  SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, BOARD_SUGGESTIONS,
+  BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
+  addBlock, updateBlock, removeBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   shotsByScene, takeSceneOut, putSceneBack,
   blankFrame, listFrames, saveFrames, addFrame, updateFrame, removeFrame,

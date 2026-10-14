@@ -84,8 +84,8 @@
    primary button says on hover. */
 .st-choice.st-choice.is-on:hover,
 .st-choice.st-choice.is-on:focus-visible {
-  background: var(--accent-deep);
-  border-color: var(--accent-deep);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
   color: var(--accent-on);
 }
 

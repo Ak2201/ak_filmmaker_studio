@@ -35,13 +35,13 @@
   letter-spacing: var(--track-tight);
   color: var(--ink);
 }
-/* "where you left off." / "a path." — the accent half, italic serif.
-   --face-accent is for the display serif; until it is declared the
-   named face and then a system serif carry it. */
+/* "where you left off." / "a path." — the accent half. A page title is
+   never serif (14 Oct 2026): --face-accent is the display face and
+   --face-accent-style upright; the colour carries the accent. */
 .projects-section .projects-head h1 em {
-  font-family: var(--face-accent, 'Playfair Display', Georgia, 'Times New Roman', serif);
-  font-style: italic;
-  font-weight: 400;
+  font-family: var(--face-accent);
+  font-style: var(--face-accent-style);
+  font-weight: 500;
   letter-spacing: 0;
   color: var(--accent-deep);
 }

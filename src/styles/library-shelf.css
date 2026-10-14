@@ -372,7 +372,7 @@ main:has(> .lib-sec).tabs-has-side { --side-pad: var(--s4); } /* not --gutter: h
   letter-spacing: -0.02em;
   margin-bottom: var(--s4);
 }
-.cover .cover-title .light { font-style: italic; font-weight: 700; color: var(--library-deep); }
+.cover .cover-title .light { font-style: var(--face-accent-style); font-weight: 700; color: var(--library-deep); }
 .cover-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4) var(--s6); max-width: none; margin-bottom: var(--s6); padding-bottom: var(--s5); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); }
 .cover-row .cover-sub { flex: 1 1 28rem; max-width: 46rem; margin: 0; }
 .cover-pills { margin: 0; display: flex; gap: var(--s2); }

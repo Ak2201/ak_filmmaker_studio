@@ -82,7 +82,7 @@
    in chrome.css is 0,2,0 and declared later. */
 .sd-day.sd-day.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .sd-day.sd-day.is-on:hover,
-.sd-day.sd-day.is-on:focus-visible { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-on); }
+.sd-day.sd-day.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
 .sd-day.is-done { border-color: var(--ok); color: var(--ink-muted); }
 
 /* ---- a scene ------------------------------------------------ */

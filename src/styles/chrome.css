@@ -201,7 +201,7 @@ a:focus-visible { outline-offset: 3px; }
   border-color: var(--accent);
   color: var(--accent-on);
 }
-.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 /* Destructive actions must not read as the page's primary call to
    action. RESET shipped as .btn.primary — a filled accent button, the
@@ -988,7 +988,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border-color: var(--accent);
 }
 .modal-actions .mbtn.primary:hover,
-.cm-btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+.cm-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .cm-btn { width: 100%; margin-top: var(--s3); }
 .cm-actions .cm-btn { width: auto; flex: 1; margin-top: 0; }
 .cm-btn.google {
@@ -1180,7 +1180,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   cursor: pointer;
   transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.sign-in-pill:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
+.sign-in-pill:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
 .sign-in-pill .sip-dot {
   width: 6px;
   height: 6px;

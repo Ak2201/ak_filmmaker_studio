@@ -56,7 +56,7 @@
    in chrome.css is 0,2,0 and declared later. */
 .el-filter.el-filter.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .el-filter.el-filter.is-on:hover,
-.el-filter.el-filter.is-on:focus-visible { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-on); }
+.el-filter.el-filter.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
 
 /* ---- a row ----------------------------------------------------- */
 .el-list { display: grid; gap: var(--s3); }

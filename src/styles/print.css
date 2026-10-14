@@ -30,13 +30,12 @@
      html/body was not enough: every rule that reads --ink, a
      -deep hue or a -wash still resolved to the ink theme's
      values, so call-sheet titles and report tables printed
-     near-white on white paper. Under any theme but an explicit
-     light one (bare :root IS the dark palette) the page tokens
-     are pointed at the print family; the light theme already
-     prints correctly and keeps its colour. `html:root` outranks
-     :root[data-theme="dark"] so import order cannot undo it.
+     near-white on white paper. The app is dark-only, so the page
+     tokens are ALWAYS pointed at the print family here.
+     `html:root` outranks :root[data-theme="dark"] so import order
+     cannot undo it.
      ---------------------------------------------------------- */
-  html:root:not([data-theme="light"]) {
+  html:root {
     color-scheme: light;
     --paper:        var(--print-paper);
     --paper-raised: var(--print-paper);

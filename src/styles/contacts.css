@@ -640,7 +640,7 @@
   padding: 2px var(--s3);
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: var(--brand-on);
+  color: var(--accent-on);   /* the on-colour of the fill it sits on */
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);

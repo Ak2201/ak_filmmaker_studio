@@ -462,7 +462,12 @@ function render(focus) {
      the budget already count in — a scene count hides a one-line
      insert next to an eight-page set piece. Every figure is derived. */
   const withBar = (card, value, max, label) => {
-    card.append(meter({ value, max, show: false, label, class: 'el-stat-bar' }));
+    /* No `label` to meter(): it would print a second, visible copy of
+       the card's own label above the bar. The bar is named for a
+       screen reader on its progressbar instead. */
+    const bar = meter({ value, max, show: false, class: 'el-stat-bar' });
+    bar.querySelector('.k-meter-track')?.setAttribute('aria-label', label);
+    card.append(bar);
     return card;
   };
   /* The open pick-ups by scene, so the figure says where, not only how many. */

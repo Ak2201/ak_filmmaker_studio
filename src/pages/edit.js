@@ -676,6 +676,10 @@ saveOnInput('[data-edit-field]', (el) => {
 
 delegate(document, 'change', '[data-edit-target]', (e, el) => {
   setTargetMinutes(el.value);
+  /* The person has now set the shared target, so the Edit Log's legacy
+     value is retired: left in place, it was the fallback a cleared field
+     snapped back to, and nothing else could ever remove it. */
+  if (Edit.getTargetMin()) Edit.setTargetMin(0);
   render('[data-edit-target]');
 });
 

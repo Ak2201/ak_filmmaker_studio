@@ -135,6 +135,16 @@ ok(app.shots.filter((s) => app.made.includes(s.id)).every((s) => s.rules === tru
 eq(X.appendShots([], [{ sceneId: '', draft: {} }, null]).made, [], 'nothing without a scene or a draft');
 eq(X.appendShots([{ sceneId: 's1', number: '1' }, { sceneId: 's1', number: '3' }], [{ sceneId: 's1', draft: { size: 'WS', description: 'x' } }]).shots.map((s) => s.number),
   ['1', '3', '4'], 'after a deleted shot, the next number is past the highest, not a repeat');
+// After a delete (shot 1 gone, 2 and 3 left) the next number is one past
+// the top, not count + 1 — count + 1 handed out a second shot 3.
+const gapped = [Shots.blankShot({ sceneId: scenes[0].id, number: '2' }), Shots.blankShot({ sceneId: scenes[0].id, number: '3' })];
+eq(X.appendShots(gapped, picked.slice(0, 2)).shots.map((s) => s.number), ['2', '3', '4', '5'], 'numbered past the top after a delete, no duplicate');
+const nShots0 = Shots.listShots().length;
+const a1 = Shots.addShot('gap-scene'); const a2 = Shots.addShot('gap-scene');
+Shots.removeShot(a1.id);
+eq(Shots.addShot('gap-scene').number, String(Number(a2.number) + 1), 'addShot: one past the top after a delete');
+Shots.saveShots(Shots.listShots().filter((s) => s.sceneId !== 'gap-scene'));
+eq(Shots.listShots().length, nShots0, 'probe shots cleaned up');
 
 /* ---- story ---------------------------------------------------- */
 eq(storyP.items.length, 4, 'one step per scene');

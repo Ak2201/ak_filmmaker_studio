@@ -1038,7 +1038,22 @@ let syncing = false;
 delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {
   if (syncing) return;
   syncing = true; el.disabled = true;
-  try { await drivePush(); StudioUI.toast('Synced to Google Drive.'); }
+  try {
+    /* push() never rejects: a stale token, a moved remote or a plan
+       refusal RESOLVE with ok:false and nothing uploaded. Read it. */
+    const r = await drivePush();
+    if (r && r.ok) StudioUI.toast('Synced to Google Drive.');
+    else {
+      const why = {
+        conflict: 'Drive has a newer copy, so nothing was uploaded. Open Settings to choose which one to keep.',
+        plan: 'Drive backup is not in this plan, so nothing was uploaded.',
+        'not-connected': 'Drive is not connected, so nothing was uploaded.'
+      }[r && r.reason];
+      let detail = '';
+      try { detail = getDriveStatus().detail || ''; } catch (e) { /* the status is only wording */ }
+      StudioUI.toastError(why || ('Nothing was uploaded. ' + (detail || 'Drive did not answer.')), { duration: 6000 });
+    }
+  }
   catch (err) { StudioUI.toastError((err && err.message) || 'Drive did not answer.', { duration: 6000 }); }
   finally { syncing = false; render(); }
 });

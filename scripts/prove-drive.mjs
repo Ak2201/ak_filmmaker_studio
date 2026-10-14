@@ -415,6 +415,74 @@ console.log('\n--- take theirs, and RESTORE vs MERGE ---');
   await ctx.close();
 }
 
+console.log('\n--- a restore the browser refused ---');
+{
+  /* Storage full AND IndexedDB unavailable — the one state in which
+     the tiered write genuinely refuses (store.js _writeTiered: a full
+     small tier is otherwise rescued by the big one). A restore that
+     lands part-way must not be recorded as level with Drive, or the
+     next save pushes the incomplete studio over the complete head. */
+  const { ctx, page } = await openPage({ seed: () => {
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true, get() { throw new Error('IndexedDB blocked by the harness'); }
+    });
+  } });
+  await seedTwo(page);
+  await page.evaluate(() => window.StudioDrive.connect());
+  const head0 = await page.evaluate(() => Object.values(window.__drive.files)[0].headRevisionId);
+  check('connected and level with the head',
+    await page.evaluate(() => JSON.parse(window.StudioStore.rawGet('fms_drive_sync_v1')).revisionId), head0);
+  /* The head revision carries more than this device has, so applying
+     it needs NEW space (an equal-sized overwrite would always fit). */
+  await page.evaluate((rev) => {
+    const f = Object.values(window.__drive.files)[0];
+    const row = window.__drive.revisions[f.id].find((r) => r.id === rev);
+    const all = JSON.parse(row.body);
+    Object.values(all.data).forEach((b) => { b.scenes = { logline: 'LONGER-THAN-HERE-'.repeat(2000) }; });
+    row.body = JSON.stringify(all);
+  }, head0);
+  await page.evaluate(() => {
+    /* Fill this page's own localStorage with the NATIVE setItem, taken
+       from a blank same-origin frame where store.js's patch never ran
+       (the patched one rescues a full small tier, by design). */
+    window.__junk = [];
+    const fr = document.body.appendChild(document.createElement('iframe'));
+    const P = fr.contentWindow.Storage.prototype;
+    const raw = window.__rawLS = {
+      setItem: (k, v) => P.setItem.call(localStorage, k, v),
+      removeItem: (k) => P.removeItem.call(localStorage, k)
+    };
+    const fits = (k, n) => { try { raw.setItem(k, 'x'.repeat(n)); return true; } catch (e) { return false; } };
+    for (let i = 0; i < 4; i++) {
+      const k = 'zz_junk_' + i;
+      let lo = 0, hi = 1 << 24;
+      while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (fits(k, mid)) lo = mid; else hi = mid - 1; }
+      if (lo) { fits(k, lo); window.__junk.push(k); } else raw.removeItem(k);
+    }
+  });
+  /* Restoring the head's own revision: the remote does not move, so
+     only this device's record of the restore can stop the push. */
+  /* The big tier is COLD until a write asks it to open; the first
+     refusal is what tells store.js it is unavailable. Warm it with one
+     throwaway write so the restore meets the steady state. */
+  await page.evaluate(async () => {
+    window.StudioStore.rawSet('zz_warm', 'w'.repeat(34000));
+    await window.StudioStore.flushStorage().catch(() => {});
+    window.StudioStore.rawRemove('zz_warm');
+  });
+  const short = await page.evaluate((rev) => window.StudioDrive.restoreVersion(rev), head0);
+  await page.evaluate(() => { window.__junk.forEach((k) => window.__rawLS.removeItem(k)); });
+  check('a restore the browser refused is NOT reported ok', [short.ok, short.reason], [false, 'incomplete']);
+  check('…its message says the copy here is incomplete',
+    /incomplete/.test((short.result && short.result.message) || ''), true);
+  const after = await page.evaluate(() => window.StudioDrive.push());
+  check('…so the next push does not upload it', after.ok, false);
+  check('the Drive head is untouched', await page.evaluate(() => Object.values(window.__drive.files)[0].headRevisionId), head0);
+  check('…and the record no longer claims to be level',
+    await page.evaluate(() => JSON.parse(window.StudioStore.rawGet('fms_drive_sync_v1')).revisionId), null);
+  await ctx.close();
+}
+
 console.log('\n--- revisions, and restoring one ---');
 {
   const { ctx, page } = await openPage();

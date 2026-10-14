@@ -314,8 +314,11 @@ export function saveShots(shots) {
     "4A" and "12B" stay possible. */
 export function addShot(sceneId, patch = {}) {
   const shots = listShots();
-  const inScene = shots.filter((s) => s.sceneId === sceneId).length;
-  const shot = blankShot({ sceneId, number: String(inScene + 1), ...patch });
+  /* One past the highest number in the scene, not count + 1 — after a
+     delete the count hands out a number already in use (audit M26). */
+  const top = shots.filter((s) => s.sceneId === sceneId)
+    .reduce((n, s) => Math.max(n, parseInt(s && s.number, 10) || 0), 0);
+  const shot = blankShot({ sceneId, number: String(top + 1), ...patch });
   shots.push(shot);
   saveShots(shots);
   return shot;

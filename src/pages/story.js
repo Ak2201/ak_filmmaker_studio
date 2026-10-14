@@ -85,6 +85,8 @@ import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
 import { pageHeader, button } from '../ui/kit/index.js';
+import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
+import { loadScript } from '../lib/script.js';
 
 const app = document.getElementById('app');
 
@@ -905,8 +907,26 @@ function renderPitch() {
 function renderPacing(s) {
   const sec = h('section#pacing.st-section.st-pacing', { 'aria-label': 'Beats and pacing' });
   sec.append(h('h2.bd-h2', { text: 'Beats & pacing' }));
-  if (s.source.trim()) { const heat = renderHeat(s); if (heat) sec.append(heat); sec.append(renderFlags(s)); }
-  else sec.append(h('p.st-muted', { text: 'The tension curve draws once there is a synopsis — build one from the outline, or write your own.' }));
+  const stack = h('div.pc-stack');
+  if (s.source.trim()) {
+    stack.append(PacingView.renderCurve(s));
+    const inten = PacingView.renderIntensity(s);
+    if (inten) stack.append(inten);
+    stack.append(renderFlags(s));
+    /* The slice-by-slice heatmap the blueprints share, with its table
+       view: the same data as the intensity strip above, kept one click
+       away rather than drawn twice. */
+    const heat = renderHeat(s);
+    if (heat) stack.append(h('details.pc-more', {}, [h('summary', { text: 'Slice by slice — the detailed heatmap' }), heat]));
+  } else stack.append(h('p.st-muted', { text: 'The tension curve draws once there is a synopsis — build one from the outline, or write your own.' }));
+  /* The beat deck draws from the framework even before a synopsis:
+     every beat, its act, its conventional place and the tension it
+     carries, filled in as passages are tagged and scenes linked. */
+  let scenesNow = [], elementsNow = [];
+  try { scenesNow = Scenes.listScenes(); } catch (e) { scenesNow = []; }
+  try { elementsNow = loadScript().elements || []; } catch (e) { elementsNow = []; }
+  stack.append(PacingView.renderDeck(s, { scenes: scenesNow, elements: elementsNow }));
+  sec.append(stack);
   sec.append(h('div#ai-map.st-ai-panel', {}, [renderAI(s)]));
   return sec;
 }
@@ -1348,6 +1368,16 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     flashMark = el.getAttribute('data-mark');
     if (mode !== 'tag') mode = 'tag';
     render();
+  } else if (act === 'pc-beat') {
+    /* A dot on the tension curve: its card in the deck. Nothing is
+       redrawn and nothing is written; the card takes the focus. */
+    const card = document.getElementById('pc-beat-' + el.getAttribute('data-beat'));
+    if (card) {
+      document.querySelectorAll('.pc-card.is-lit').forEach((c) => c.classList.remove('is-lit'));
+      card.classList.add('is-lit');
+      card.scrollIntoView({ block: 'center', behavior: 'instant' });
+      card.focus({ preventScroll: true });
+    }
   } else if (act === 'goto' || act === 'heat') {
     const from = Number(el.getAttribute('data-from'));
     if (mode !== 'tag') mode = 'tag';

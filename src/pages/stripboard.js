@@ -73,6 +73,9 @@ import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/
 import Locations from '../lib/locations.js';
 import * as Songs from '../lib/songs.js';
 import DPR from '../lib/dpr.js';
+import Contacts from '../lib/contacts.js';
+import { sheetsForDay } from '../lib/shootday.js';
+import Board from '../lib/board-stats.js';
 import {
   pageHeader, statStrip, statCard, meter, button, badge, chip, todBadge, todKey, doodCode,
   segmented, panel, stripBanner, emptyState, eyebrow, sym, ask, askDanger, tell
@@ -83,7 +86,7 @@ const CAST = 'cast';
 const castCat = ELEMENT_CATEGORIES.find((c) => c.id === CAST) || { id: CAST, label: 'Cast', hue: 'feature' };
 
 /* View state. Not persisted — see the header. */
-const view = { group: 'script' };
+const view = { group: 'script', matrix: false };
 
 const GROUPINGS = [
   { id: 'script',   label: 'Script order' },
@@ -118,11 +121,19 @@ function shootDays(scenes) {
    and pdf.css hides it from both exports. Four figures, every one
    counted from the scene model on render; a figure with nothing behind
    it prints a dash rather than a zero that reads as a fact. */
-function renderHeader(scenes) {
+function renderHeader(scenes, rows) {
   const days = shootDays(scenes);
   const unscheduled = scenes.filter((s) => !shootDayOf(s)).length;
   const placed = scenes.length - unscheduled;
   const eighths = totalEighths(scenes);
+  /* The parity pass's derived notes (14 Oct 2026): the average a day,
+     the calendar the dated days span, who works today. Each is counted
+     from the model on render (src/lib/board-stats.js) and drops out
+     when there is nothing behind it. */
+  const pace = Board.pace(scenes);
+  const cal = scenes.length ? Locations.calendarDays(scenes) : [];
+  const span = Board.calendarSpan(cal);
+  const today = Board.dayOnDate(cal, todayISO());
   const head = pageHeader({
     class: 'bd-head sb-head',
     eyebrow: ['Stripboard', 'The schedule'],
@@ -144,17 +155,25 @@ function renderHeader(scenes) {
       tone: placed === scenes.length ? 'ok' : null
     }));
   }
-  head.append(statStrip([
+  let daysNote = '';
+  if (days.length) {
+    daysNote = span
+      ? `${span.dated < span.total ? span.dated + ' dated · ' : ''}${span.spanDays} calendar ${span.spanDays === 1 ? 'day' : 'days'} · ${span.weeks} ${span.weeks === 1 ? 'week' : 'weeks'}`
+      : 'scheduled · no dates yet';
+  }
+  const cards = [
     strips,
     statCard({
       label: 'Script pages', value: scenes.length ? formatEighths(eighths) : '—',
       unit: scenes.length ? (eighths === 8 ? 'page' : 'pages') : '',
-      note: scenes.length ? eighths + ' eighths' : ''
+      note: pace ? `avg ${formatEighths(pace.avg)} pp / shoot day` : (scenes.length ? eighths + ' eighths' : ''),
+      class: 'sb-kpi-pages'
     }),
     statCard({
       label: 'Shoot days', value: days.length ? String(days.length) : '—',
       unit: days.length ? (days.length === 1 ? 'day' : 'days') : '',
-      note: days.length ? 'scheduled' : ''
+      note: daysNote,
+      class: 'sb-kpi-days'
     }),
     statCard({
       label: 'Unscheduled', value: String(unscheduled),
@@ -162,8 +181,59 @@ function renderHeader(scenes) {
       note: unscheduled ? 'still to place' : 'all placed',
       noteTone: scenes.length ? (unscheduled ? 'warn' : 'ok') : null
     })
-  ], { class: 'sb-kpis', label: 'The board in figures' }));
+  ];
+  if (rows && rows.length) {
+    const working = today ? today.cast.length : 0;
+    cards.push(statCard({
+      label: 'Cast on DOOD', value: String(rows.length),
+      unit: rows.length === 1 ? 'performer' : 'performers',
+      note: today ? `${working} working today · Day ${today.day}` : 'from the cast tags',
+      noteTone: today && working ? 'ok' : null,
+      class: 'sb-kpi-cast'
+    }));
+  }
+  const strip = statStrip(cards, { class: 'sb-kpis', label: 'The board in figures' });
+  head.append(strip);
+  if (scenes.length) fillRuntime(strip);
   return head;
+}
+
+/* Est. runtime — the script's screen time plus the songs' lengths,
+   the same estimate Reports draws (screenplay-analysis.js). Appended
+   only when the script can be measured: a board with no screenplay
+   has no runtime to show, and a zero would read as a fact. The target
+   is Reports' target runtime, the one shared field (owner, 14 Oct
+   2026), with the Edit Log's own older value as the fallback. All
+   dynamic imports, so none of it is in the first paint. */
+function fillRuntime(strip) {
+  Promise.all([
+    import('../lib/screenplay-analysis.js'), import('../lib/script.js'),
+    import('../lib/songs.js'), import('../lib/editlog.js')
+  ]).then(([A, S, Sg, E]) => {
+    if (!strip.isConnected) return;
+    const scenes = Scenes.listScenes();
+    const st = A.default.screenTime(scenes, S.loadScript().elements);
+    if (!st || !st.fromScript) return;
+    const songs = Sg.listSongs().map((x) => ({ id: x.id, seconds: Sg.durationSeconds(x) }));
+    let editMin = 0;
+    try { editMin = E.getTargetMin(); } catch (e) { /* no edit log */ }
+    const target = Board.targetMinutes(Sg.getTargetMinutes(), editMin);
+    const est = A.default.runtimeEstimate(st, songs, { targetSeconds: target * 60 });
+    if (!est.total) return;
+    const mins = Math.max(1, Math.round(est.total / 60));
+    let note = 'estimated from the script';
+    let tone = null;
+    if (target) {
+      const d = mins - target;
+      note = `target ${target} min · ${d === 0 ? 'on target' : (d > 0 ? d + ' over' : -d + ' under')}`;
+      tone = d > 0 ? 'warn' : 'ok';
+    }
+    strip.append(statCard({
+      label: 'Est. runtime', value: String(mins), unit: 'min', note, noteTone: tone,
+      class: 'sb-kpi-runtime',
+      attrs: { title: 'Screen time read off the screenplay, plus the songs’ recorded lengths. An estimate; the target is set in Reports.' }
+    }));
+  }).catch((e) => console.warn('[stripboard] runtime', e));
 }
 
 /* ---- the teaching empty state -------------------------------
@@ -319,6 +389,8 @@ function renderStrip(scene, maxDay, movable) {
     row.append(h('span.sb-cast-lab', { text: castCat.label }));
     cast.forEach((name) => row.append(chip({ label: name, category: CAST, class: 'sb-cast-chip' })));
   }
+  /* Filled by fillHours() when the script measures this scene. */
+  row.append(h('span.sb-est', { 'data-hours-scene': scene.id }));
   strip.append(row);
   return strip;
 }
@@ -459,6 +531,7 @@ function renderBoard(scenes) {
   const target = DPR.pageTarget();
   const banners = byDay ? DPR.allBanners() : {};
   const calDays = new Map(byDay ? Locations.calendarDays(scenes).map((d) => [d.day, d]) : []);
+  const sheets = byDay ? Contacts.listCallSheets() : [];
   let hasUnscheduled = false;
   for (const group of groupScenes(scenes, view.group)) {
     const eighths = totalEighths(group.scenes);
@@ -479,6 +552,15 @@ function renderBoard(scenes) {
         const nb = todBadge('NIGHT', { label: 'Night shoot' });
         nb.classList.add('sb-night-badge');
         facts.append(nb);
+      }
+      /* The day's call, where one is written down: the DPR's crew call,
+         else the day's call sheet. Nothing is shown when neither has one. */
+      const call = dayCallFor(group.key, scenes, sheets);
+      if (call) {
+        facts.append(badge({
+          label: 'Call ' + call, icon: 'schedule', tag: true, class: 'sb-call',
+          title: 'Crew call for Day ' + group.key + ', from the production report or the call sheet'
+        }));
       }
       facts.append(...dayLoadBits(group.key, eighths, target));
       const tail = h('div.sb-group-tail');
@@ -523,7 +605,7 @@ function renderBoard(scenes) {
     section.append(rack);
     wrap.append(section);
   }
-  if (byDay) fillHours();
+  fillHours();
 
   if (byDay) {
     /* Two targets that exist before anything is on them — a new day,
@@ -587,35 +669,56 @@ function loadTargetControl() {
    not in this page's first paint, and a board without a script never
    needs them. Filled in place, so no render is triggered by it. */
 let _hours = null;
+const EST_TITLE = () => 'Estimated from the script’s screen time at your page target, '
+  + `assuming a ${DPR.DAY_HOURS}-hour day. An estimate built on an estimate.`;
 function fillHours() {
-  const paint = (secsByDay) => {
+  const paint = ({ byDay, byScene }) => {
     document.querySelectorAll('[data-hours-day]').forEach((el) => {
-      const sec = secsByDay.get(Number(el.dataset.hoursDay));
+      const sec = byDay.get(Number(el.dataset.hoursDay));
       const hrs = DPR.estimateHours(sec, DPR.pageTarget());
       el.textContent = hrs == null ? '' : `≈ ${hrs.toFixed(1)} h to shoot`;
       el.classList.toggle('is-over', hrs != null && hrs > DPR.DAY_HOURS);
-      el.title = hrs == null ? '' : 'Estimated from the script’s screen time at your page target, '
-        + `assuming a ${DPR.DAY_HOURS}-hour day. An estimate built on an estimate.`;
+      el.title = hrs == null ? '' : EST_TITLE();
+    });
+    /* The same estimate per strip (the mobile prototype's "Est: 3h
+       15m"), only for a scene the script actually measures, and
+       always labelled as an estimate. */
+    document.querySelectorAll('[data-hours-scene]').forEach((el) => {
+      const hrs = DPR.estimateHours(byScene.get(el.dataset.hoursScene), DPR.pageTarget());
+      const said = Board.formatHours(hrs);
+      el.textContent = said ? said + ' est.' : '';
+      el.title = said ? 'Shoot time for this scene. ' + EST_TITLE() : '';
     });
   };
-  if (_hours) { paint(_hours()); return; }
+  /* A microtask, not now: fillHours() runs inside renderBoard(), before
+     render() has put the new board in the document, so a synchronous
+     paint from the cache found nothing and every re-render (a group
+     change, a move) lost its hours. */
+  if (_hours) { Promise.resolve().then(() => paint(_hours())); return; }
   Promise.all([import('../lib/screenplay-analysis.js'), import('../lib/script.js')])
     .then(([A, S]) => {
       _hours = () => {
         const scenes = Scenes.listScenes();
         const st = A.default.screenTime(scenes, S.loadScript().elements);
-        const out = new Map();
-        if (!st || !st.fromScript) return out;
+        const byDay = new Map(), byScene = new Map();
+        if (!st || !st.fromScript) return { byDay, byScene };
         for (const r of st.rows) {
           if (r.method !== 'script') continue;
+          const sec = Number(r.seconds) || 0;
+          byScene.set(r.scene.id, sec);
           const d = shootDayOf(r.scene);
-          if (d) out.set(d, (out.get(d) || 0) + (Number(r.seconds) || 0));
+          if (d) byDay.set(d, (byDay.get(d) || 0) + sec);
         }
-        return out;
+        return { byDay, byScene };
       };
       paint(_hours());
     })
     .catch((e) => console.warn('[stripboard] screen time', e));
+}
+
+/* The day's call, through the one rule shoot.html reads it by. */
+function dayCallFor(day, scenes, sheets) {
+  return Board.dayCall(DPR.getDPR(day), sheetsForDay(day, sheets, scenes));
 }
 
 function bannerMenu(day) {
@@ -849,6 +952,23 @@ function renderDood(scenes) {
   }
   table.append(thead, tbody);
   scroll.append(table);
+  /* Below 720px the grid is a sideways scroll a thumb cannot read, so
+     the phone leads with one card per performer (the same rows, the
+     same cells) and keeps the full grid one tap away. Both are in the
+     DOM at every width; the stylesheet picks, and view.matrix (memory
+     only, like the grouping) says which one a phone is showing. */
+  wrap.classList.toggle('is-matrix', !!view.matrix);
+  wrap.append(
+    h('div.sb-dood-switch', {}, [
+      button({
+        label: view.matrix ? 'Show cast cards' : 'Show full matrix',
+        icon: view.matrix ? 'view_agenda' : 'grid_on', variant: 'secondary', size: 'sm',
+        action: 'sb-dood-matrix', class: 'sb-dood-toggle',
+        attrs: { 'aria-pressed': view.matrix ? 'true' : 'false' }
+      })
+    ]),
+    doodCards(rows, days, dateOf, today)
+  );
   wrap.append(scroll, h('p.sb-note', {
     text: 'SW starts work · W works · H is held between two working days · WF finishes · '
         + 'SWF is a single-day part. Scenes with no shoot day are not counted.'
@@ -860,6 +980,108 @@ const LONG = {
   only: 'starts, works and finishes', off: 'not needed'
 };
 
+/* One card per performer — doodRows() again, nothing recounted: the
+   number is the row's place (most working days first, the order the
+   grid prints), the W / H figures and the span are the grid's totals,
+   and the cells are the grid's cells. */
+function doodCards(rows, days, dateOf, today) {
+  const list = h('ol.sb-dood-cards', { 'aria-label': 'Day out of days, one card per performer' });
+  rows.forEach((row, i) => {
+    const cells = h('div.sb-dc-days', { role: 'list', 'aria-label': `${row.name}, day by day` });
+    row.cells.forEach((c) => {
+      const iso = String(dateOf.get(c.day) || '').slice(0, 10);
+      const said = c.mark ? `Day ${c.day} · ${LONG[c.kind]}` : `Day ${c.day} · not needed`;
+      cells.append(h('span.sb-dc-day.is-' + c.kind + (iso && iso === today ? '.is-today' : ''), { role: 'listitem', title: said }, [
+        h('span.sb-dc-dnum', { text: 'D' + c.day, 'aria-hidden': 'true' }),
+        doodCode(c.mark, { title: said })
+      ]));
+    });
+    list.append(h('li.sb-dc', {}, [
+      h('div.sb-dc-head', {}, [
+        h('span.sb-dc-idx.k-mono', { text: String(i + 1).padStart(2, '0'), 'aria-hidden': 'true' }),
+        h('div.sb-dc-who', {}, [
+          h('strong.sb-dc-name', { text: row.name }),
+          h('span.sb-dc-sub', { text: `${row.scenes} ${row.scenes === 1 ? 'scene' : 'scenes'}` })
+        ]),
+        h('div.sb-dc-tot', {}, [
+          h('span.sb-dc-wh.k-num', {}, [
+            h('span', { text: `${row.work} W` }), h('span', { text: ' · ', 'aria-hidden': 'true' }),
+            h('span.sb-dc-h', { text: `${row.hold} H` })
+          ]),
+          h('span.sb-dc-span', { text: row.span ? `${row.span} ${row.span === 1 ? 'day' : 'days'} span` : 'not on a shoot day' })
+        ])
+      ]),
+      cells
+    ]));
+  });
+  return list;
+}
+
+/* ---- calendar --------------------------------------------------
+   The shoot days in date order (mobile prototypes 1 and 3), read-only:
+   calendarDays() is what the Plan calendar, the shoot day and the call
+   sheet already read, so this tab adds no data, only a view. Dates are
+   set on the Plan; the link says so. */
+function renderCalendar(scenes) {
+  const wrap = h('section.sb-cal', { id: 'calendar', 'data-tab-label': 'Calendar' });
+  wrap.append(h('div.sb-dood-head', {}, [
+    h('div', {}, [
+      eyebrow(['Calendar', 'Shoot days']),
+      h('h2.bd-h2', { text: 'Shoot calendar' }),
+      h('p.bd-sub', {
+        text: 'Every shoot day in date order, with its pages, its locations and its call. '
+            + 'The dates come from the Plan, so this tab has nothing to fill in.'
+      })
+    ]),
+    button({ label: 'Set dates on the Plan', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', href: 'plan.html#calendar', class: 'sb-cal-plan' })
+  ]));
+  const days = scenes.length ? Locations.calendarDays(scenes) : [];
+  if (!days.length) {
+    wrap.append(h('p.bd-none', {
+      text: 'No shoot days yet. Give a strip a day on the board and it appears here; '
+          + 'date the day on the Plan and it takes its place in the calendar.'
+    }));
+    return wrap;
+  }
+  const iso = (d) => String(d.date || '').slice(0, 10);
+  const sorted = [...days].sort((a, b) => {
+    const x = iso(a), y = iso(b);
+    if (x && y) return x.localeCompare(y) || a.day - b.day;
+    if (x || y) return x ? -1 : 1;
+    return a.day - b.day;
+  });
+  const today = todayISO();
+  const sheets = Contacts.listCallSheets();
+  const list = h('ol.sb-cal-list');
+  for (const d of sorted) {
+    const dated = localDate(d.date);
+    const call = dayCallFor(d.day, scenes, sheets);
+    const isToday = iso(d) && iso(d) === today;
+    const facts = h('div.sb-cal-facts', {}, [
+      h('span.sb-group-meta.k-badge', {
+        text: `${d.scenes.length} ${d.scenes.length === 1 ? 'scene' : 'scenes'} · ${formatEighths(d.eighths)} ${d.eighths === 8 ? 'page' : 'pages'}`
+      }),
+      call ? badge({ label: 'Call ' + call, icon: 'schedule', tag: true, class: 'sb-call' }) : null,
+      d.cast.length ? badge({ label: `${d.cast.length} cast`, icon: 'group', tag: true }) : null,
+      isToday ? badge({ label: 'Today', tone: 'info', dot: true }) : null
+    ].filter(Boolean));
+    list.append(h('li.sb-cal-day' + (isToday ? '.is-today' : '') + (dated ? '' : '.is-undated'), {}, [
+      h('div.sb-cal-when', {}, [
+        h('span.sb-cal-dnum', { text: 'Day ' + d.day }),
+        h('span.sb-cal-date', { text: dated || 'No date yet' })
+      ]),
+      h('div.sb-cal-what', {}, [
+        facts,
+        d.locations.length
+          ? h('span.sb-group-locs', {}, [sym('place'), h('span', { text: d.locations.join(', ') })])
+          : null
+      ].filter(Boolean))
+    ]));
+  }
+  wrap.append(list);
+  return wrap;
+}
+
 /* ---- render --------------------------------------------------- */
 function render() {
   // Dropped every render, not every page load. A cache that outlives
@@ -869,7 +1091,8 @@ function render() {
   _songCache = null;
   const scenes = Scenes.listScenes();
   const main = h('main', { id: 'main' });
-  main.append(renderHeader(scenes));
+  const castRows = scenes.length ? doodRows(scenes, shootDays(scenes)) : [];
+  main.append(renderHeader(scenes, castRows));
 
   /* #stripboard and #dood are nav destinations (navigation.json), so
      they have to exist before any scene does — otherwise the phase
@@ -885,10 +1108,11 @@ function render() {
               + 'tags and the shoot days on the breakdown, so there is nothing to '
               + 'fill in here and nothing to show until there are scenes.'
         })
-      ])
+      ]),
+      renderCalendar(scenes)
     );
   } else {
-    main.append(renderBoard(scenes), renderDood(scenes));
+    main.append(renderBoard(scenes), renderDood(scenes), renderCalendar(scenes));
   }
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
@@ -916,9 +1140,16 @@ function render() {
    OMITTED and a moved one keeps its number, so the strips, the sides
    and the call sheets keep pointing at the same scene.
 
-   Unlocking is deliberately not offered here: it renumbers every
-   scene, which is a writer's decision, and it stays with the revision
-   tools (write.html?stay=1#revisions), which the locked state links.
+   UNLOCK DRAFT sits beside it (owner, hand-off Q3, 14 Oct 2026). It is
+   the revision tools' own unlock — `numbering` deleted from the script
+   blob, the Breakdown's rows renumbered by position through
+   applyNumbers(doc.elements, null) — and, because it renumbers every
+   scene, it asks first through dialog.js's askDanger. The revision
+   tools (write.html?stay=1#revisions) keep their copy and stay linked.
+
+   The DRAFT badge names the latest numbered draft — the newest entry
+   in the script blob's `revisions`, which is what drafts.html lists —
+   and is absent when there is none: nothing is named that was not.
 
    script.js and scene-sync.js are dynamic imports: neither is in this
    page's first paint (fillHours() loads script.js the same way). */
@@ -940,17 +1171,78 @@ function fillLock() {
     const host = document.querySelector('.sb-lock-host');
     if (!host) return;
     const doc = S.loadScript();
-    if (!S.isNumberingLocked(doc.numbering)) return;
+    const revs = Array.isArray(doc.revisions) ? doc.revisions : [];
+    const latest = revs.length ? revs[revs.length - 1] : null;
+    const draft = latest && String(latest.name || '').trim()
+      ? badge({
+          label: 'Draft · ' + String(latest.name).trim(), tag: true, class: 'sb-draft',
+          title: `The latest numbered draft (${revs.length} in all), from Drafts`
+        })
+      : null;
+    if (!S.isNumberingLocked(doc.numbering)) {
+      if (draft) host.replaceChildren(draft, lockButton());
+      return;
+    }
     const stamp = String(doc.numbering.at || '').slice(0, 10);
-    host.replaceChildren(
+    host.replaceChildren(...[
+      draft,
       badge({
         label: 'Draft locked' + (stamp ? ' · ' + stamp : ''), tone: 'ok', icon: 'lock', class: 'sb-lock-state',
         title: 'Scene numbers are frozen: inserts take letters (12A), deletions stay as OMITTED.'
       }),
+      button({
+        label: 'Unlock draft', icon: 'lock_open', variant: 'secondary', size: 'sm', action: 'sb-unlock', class: 'sb-unlock-btn',
+        title: 'Unfreeze the scene numbers. Every scene is renumbered by position.'
+      }),
       button({ label: 'Manage numbering', href: 'write.html?stay=1#revisions', variant: 'ghost', size: 'sm', class: 'sb-lock-manage' })
-    );
+    ].filter(Boolean));
   }).catch((e) => console.warn('[stripboard] lock state', e));
 }
+
+delegate(document, 'click', '[data-action="sb-unlock"]', async () => {
+  let S, Sync;
+  try { [S, Sync] = await scriptLib(); } catch (e) {
+    toast('The script tools could not be loaded. Check the connection and try again.', { type: 'error' });
+    return;
+  }
+  const before = S.loadScript();
+  if (!S.isNumberingLocked(before.numbering)) { render(); return; }
+  const res = S.sceneNumbers(before.elements, before.numbering);
+  const omitted = res.omitted.length;
+  const ok = await askDanger({
+    eyebrow: 'Production draft', icon: 'lock_open',
+    title: 'Unlock the production draft',
+    body: `Every scene is renumbered by its position, 1 to ${res.byId.size} — lettered inserts `
+        + 'like 12A become whole numbers'
+        + (omitted ? `, and the ${omitted} OMITTED ${omitted === 1 ? 'placeholder goes' : 'placeholders go'}` : '')
+        + '. The Breakdown, the strips and the call sheets follow.\n\n'
+        + 'Pages already handed out will no longer match. Cancel keeps the numbers locked.',
+    confirm: 'Unlock and renumber'
+  });
+  if (!ok) return;
+  /* Re-read after the dialog, as the lock does. */
+  const doc = S.loadScript();
+  if (!S.isNumberingLocked(doc.numbering)) { render(); return; }
+  delete doc.numbering;
+  if (!S.saveScript(doc)) {
+    toast('The unlock could not be saved: the browser refused the write. Nothing changed.', { type: 'error' });
+    return;
+  }
+  let moved = 0;
+  try { moved = Sync.applyNumbers(doc.elements, null); } catch (e) { console.warn('[stripboard] numbers', e); }
+  render();
+  const said = 'Production draft unlocked: scenes renumbered by position.'
+    + (moved ? ` ${moved} ${moved === 1 ? 'strip' : 'strips'} renumbered.` : '');
+  announce(said);
+  toast(said, { type: 'success' });
+  document.querySelector('.sb-lock-btn')?.focus();
+});
+
+delegate(document, 'click', '[data-action="sb-dood-matrix"]', () => {
+  view.matrix = !view.matrix;
+  render();
+  document.querySelector('.sb-dood-toggle')?.focus({ preventScroll: true });
+});
 
 const sceneHeadings = (doc) => (doc.elements || []).filter((e) => e && e.type === 'scene' && String(e.text ?? '').trim()).length;
 

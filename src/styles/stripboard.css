@@ -40,6 +40,10 @@
    header; give it the whole first row of the kit's header grid. */
 .sb-head > .bpd-pill { grid-column: 1 / -1; }
 .sb-head .k-stat-strip { grid-column: 1 / -1; margin-top: var(--s2); }
+/* kit.css starts every extra header child (`justify-self: start`),
+   which shrink-wraps an auto-fit grid to ONE column: the figures stood
+   in a 190px stack on a desk. The strip takes the full row. */
+.sb-head.bd-head.k-page-head > .k-stat-strip.sb-kpis { justify-self: stretch; width: 100%; }
 .sb-head .k-stat .k-meter { margin-top: var(--s2); }
 .sb-lock-host { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s2); }
 
@@ -51,7 +55,12 @@
    1. CONTROLS — one kit panel: group-by and actions, then the key.
    ------------------------------------------------------------ */
 .sb-controls-panel { margin: var(--s4) 0 var(--s5); }
-.sb-controls-panel .k-panel-body { display: grid; gap: var(--s3); }
+/* minmax(0, 1fr): an `auto` track sizes to the scrolling segmented
+   control's whole min-content width, which on a phone pushed the
+   actions, the key and the target select out past the panel's edge. */
+.sb-controls-panel .k-panel-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+.sb-seg { flex: 1 1 auto; }
+.sb-seg .k-seg { min-width: 0; max-width: 100%; }
 .sb-controls {
   display: flex;
   flex-wrap: wrap;
@@ -482,29 +491,165 @@ body.pdf-print .sb-lock-host { display: none !important; }
 }
 
 /* ------------------------------------------------------------
+   5b. DOOD CARDS, THE MATRIX SWITCH, THE CALENDAR (14 Oct 2026)
+   ------------------------------------------------------------
+   The cards and the switch are the phone's (section 6 turns them
+   on); a desk shows the full grid, which carries every figure the
+   cards do. The calendar is a tab at every width.
+   ------------------------------------------------------------ */
+.sb-dood-cards,
+.sb-dood-switch { display: none; }
+
+.sb-dood-cards { list-style: none; margin: 0 0 var(--s3); padding: 0; gap: var(--s2); }
+.sb-dc {
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--border-hair));
+  border-radius: var(--sk-radius);
+}
+.sb-dc-head { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.sb-dc-idx {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink);
+}
+.sb-dc-who { display: grid; min-width: 0; flex: 1 1 auto; }
+.sb-dc-name {
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.sb-dc-sub,
+.sb-dc-span {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.sb-dc-tot { display: grid; justify-items: end; flex: 0 0 auto; text-align: right; }
+.sb-dc-wh { font-family: var(--f-mono); font-size: var(--t-small); font-weight: 700; color: var(--dood-w-ink); white-space: nowrap; }
+.sb-dc-h { color: var(--warn-deep); }
+/* The day row: one line that scrolls inside the card, never the page. */
+.sb-dc-days {
+  display: flex;
+  gap: var(--s1);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--s-half);
+  overscroll-behavior-x: contain;
+}
+.sb-dc-day {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-half);
+  flex: 0 0 auto;
+  min-width: 2.75rem;
+  padding: var(--s1) var(--s1h);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+  scroll-snap-align: start;
+}
+.sb-dc-day.is-off { opacity: 0.7; }
+.sb-dc-day.is-today { border-color: var(--accent-primary); background: var(--brand-wash); }
+.sb-dc-dnum { font-family: var(--f-mono); font-size: var(--t-nano); letter-spacing: var(--track-label); color: var(--ink-muted); }
+
+/* The calendar tab. */
+.sb-cal { max-width: var(--measure-wide); margin-inline: auto; padding: var(--s6) var(--s5) var(--s8); }
+.sb-cal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.sb-cal-day {
+  display: grid;
+  grid-template-columns: minmax(9rem, 14rem) 1fr;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--border-hair));
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--border-strong);
+  border-radius: var(--sk-radius);
+}
+.sb-cal-day.is-today { border-left-color: var(--accent-primary); background: var(--brand-wash); }
+.sb-cal-when { display: grid; gap: var(--s-half); min-width: 0; }
+.sb-cal-dnum { font-family: var(--f-display); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
+.sb-cal-date { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); color: var(--ink-body); }
+.sb-cal-day.is-undated .sb-cal-date { color: var(--ink-muted); }
+.sb-cal-what { display: grid; gap: var(--s1h); min-width: 0; }
+.sb-cal-facts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1h); }
+
+/* The day's call, the strip's estimate, the draft name. */
+.sb-call .sym { font-size: 14px; }
+.sb-est {
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.sb-est:empty { display: none; }
+.sb-draft.k-badge { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--brand-deep); border-color: var(--accent-primary); }
+
+@media print {
+  .sb-dood-cards, .sb-dood-switch, .sb-cal { display: none !important; }
+  .sb-dood .sb-dood-scroll { display: block !important; }
+}
+body.pdf-print .sb-dood-cards,
+body.pdf-print .sb-dood-switch,
+body.pdf-print #calendar { display: none !important; }
+body.pdf-print .sb-dood .sb-dood-scroll { display: block !important; }
+
+/* ------------------------------------------------------------
    6. NARROW — the strip folds rather than scrolls sideways.
    ------------------------------------------------------------
    Horizontal overflow at 390px fails the verify run, and a strip is
-   six things in a row by nature, so on a phone it becomes rows of that
-   same reading order: [grip] number tag slug / time pages / picker.
+   six things in a row by nature, so on a phone it becomes the mobile
+   prototype's compact card (Stripboard mobile 1): [grip] number tag
+   time … pages, then the slug, then cast and the estimate, then the
+   shoot-day picker. The one phone breakpoint is 720px (DESIGN-KIT).
    ------------------------------------------------------------ */
-@media (max-width: 719px) {
-  .sb-board, .sb-dood { padding-inline: var(--s4); }
+@media (max-width: 720px) {
+  .sb-head.bd-head, .sb-board, .sb-dood, .sb-cal { padding-inline: var(--phone-gutter, var(--s4)); }
+  .sb-lock-host { justify-content: flex-start; }
   .sb-controls { justify-content: flex-start; }
   .sb-legend-target { margin-left: 0; }
   .sb-group-head { padding: var(--s3); }
   .sb-group-tail { margin-left: 0; }
-  .sb-rack { padding: var(--s1); }
-  /* A phone strip is a wrapping row: [grip] number tag time … pages,
-     then the slug, the picker and the cast each on a full row. */
+  .sb-rack { padding: var(--s1); gap: var(--s1); }
   .sb-strip,
-  .sb-strip.has-grip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-  .sb-pages { margin-left: auto; min-width: 0; }
+  .sb-strip.has-grip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s3); }
+  .sb-pages { margin-left: auto; min-width: 0; font-size: var(--t-small); color: var(--strip-day-ink); }
+  .sb-strip.hue-night .sb-pages { color: var(--strip-night-ink); }
+  .sb-strip.hue-dusk .sb-pages { color: var(--strip-dusk-ink); }
+  .sb-strip.hue-dawn .sb-pages { color: var(--strip-dawn-ink); }
+  .sb-strip.is-neutral .sb-pages { color: var(--ink); }
   .sb-slug { order: 5; flex: 1 0 100%; flex-wrap: wrap; }
-  .sb-loc { white-space: normal; }
-  .sb-synopsis { flex-basis: 100%; white-space: normal; }
-  .sb-day { order: 6; flex: 1 0 100%; }
+  .sb-loc { white-space: normal; font-size: var(--t-base); }
+  .sb-synopsis { flex-basis: 100%; white-space: normal; font-size: var(--t-small); }
+  .sb-cast { order: 6; flex: 1 0 100%; padding-top: var(--s2); border-top: 1px solid var(--border-hair); }
+  .sb-day { order: 7; flex: 1 0 100%; }
   .sb-day-ctl { flex: 1 1 auto; width: auto; }
-  .sb-cast { order: 7; flex: 1 0 100%; }
   .sb-strip.has-grip .sb-cast { padding-left: 0; }
+  .sb-strip .sb-grip-btn { min-width: var(--tap-min, 44px); min-height: var(--tap-min, 44px); }
+
+  /* The day out of days leads with cards; the full grid is one tap. */
+  .sb-dood-switch { display: flex; justify-content: flex-end; margin-bottom: var(--s3); }
+  .sb-dood-switch .k-btn { flex: 1 1 auto; }
+  .sb-dood:not(.is-matrix) .sb-dood-cards { display: grid; }
+  .sb-dood:not(.is-matrix) .sb-dood-scroll { display: none; }
+
+  .sb-cal-day { grid-template-columns: 1fr; }
 }

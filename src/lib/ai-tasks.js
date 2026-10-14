@@ -97,6 +97,18 @@ const call = (fn, ...args) => (typeof fn === 'function' ? fn(...args) : undefine
 const fail = (msg) => { const e = new Error(msg); e.kind = 'nocontent'; throw e; };
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const last = new Map();   // taskId → what apply() needs from the last run
+/* The same memory, pinned to the result it belongs to. The Desk keeps
+   a version per run (and a session per speech), and Accept can be
+   pressed on any of them, so apply() must read the memory of the
+   version shown — the third argument the Desk passes — and fall back
+   to `last` only for a caller that passes none. Non-enumerable, so a
+   refinement's `previous` never carries it. */
+function remember(id, result, mem) {
+  last.set(id, mem);
+  if (result && typeof result === 'object') Object.defineProperty(result, 'memo', { value: mem, enumerable: false });
+  return result;
+}
+const recall = (id, result) => (result && result.memo) || last.get(id);
 
 /** The refine block, as ai.js writes it, or ''. */
 function refineText(refine) {
@@ -355,15 +367,15 @@ const dialogueTask = {
     const job = passJob(els, i);
     const ask = [c.ask, refineText(refine)].filter(Boolean).join('\n\n');
     const res = await AI.dialoguePass({ ...job, speech, ask, context: BP.blueprintContext() }, { onStatus, signal });
-    last.set('dialogue-pass', { elId: els[i].id, model: res.model });
     const others = res.options.slice(1).map((o, n) => 'Version ' + (n + 2) + ': ' + o.text + (o.note ? ' (' + o.note + ')' : ''));
     const note = [res.keep ? 'What already works: ' + res.keep : '', res.options[0].note || '', ...others,
       res.truncated ? 'The reply was cut short.' : ''].filter(Boolean).join('\n');
-    return { original: String(els[i].text ?? ''), proposed: res.options[0].text, note };
+    return remember('dialogue-pass', { original: String(els[i].text ?? ''), proposed: res.options[0].text, note },
+      { elId: els[i].id, model: res.model });
   },
-  apply(text, ctx) {
+  apply(text, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('dialogue-pass') || {};
+    const mem = recall('dialogue-pass', result) || {};
     const d = call(c.getDoc);
     const els = d && Array.isArray(d.elements) ? d.elements : null;
     const el = els && els.find((e) => String(e.id) === String(mem.elId));
@@ -796,16 +808,16 @@ const synopsisTask = {
        goes in front so it is never the part that is cut. */
     const sent = extra ? 'WRITER’S NOTES FOR THIS DRAFT:\n' + extra + '\n\nTHE SYNOPSIS ITSELF:\n' + synopsis : synopsis;
     const res = await AI.draftBeatSheet({ synopsis: sent, format: job.format, lang: job.lang, beats: vocab }, { onStatus, signal });
-    last.set('synopsis-script', { synopsis, logline: res.logline, model: res.model, vocab });
     const items = vocab.filter((b) => res.byBeat.get(b.id)).map((b) => ({
       id: b.id, text: res.byBeat.get(b.id), detail: b.label + (b.pages ? ' · pages ' + b.pages : '')
     }));
     if (!items.length) fail('The reply held no beats, so nothing changed.');
-    return { items, note: res.logline ? 'Logline: ' + res.logline : '' };
+    return remember('synopsis-script', { items, note: res.logline ? 'Logline: ' + res.logline : '' },
+      { synopsis, logline: res.logline, model: res.model, vocab });
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('synopsis-script');
+    const mem = recall('synopsis-script', result);
     if (!mem) fail('There is no beat sheet to keep. Run it first.');
     const keep = new Map((selected || []).map((it) => [String(it.id), it.text]));
     if (!keep.size) return null;
@@ -1179,7 +1191,6 @@ const genreTask = {
       scenes: sample.scenes, title, logline: s.logline, audience: s.audience,
       context: withRefineContext(BP.blueprintContext(), refine)
     }, { onStatus, signal });
-    last.set('genre-comps', { res });
     const out = [
       'Genre: ' + res.genre + (res.subgenres.length ? ' (' + res.subgenres.join(', ') + ')' : '') + (res.tone ? ' · tone: ' + res.tone : ''),
       res.budgetTier ? 'Budget tier the page asks for: ' + TIER_LABEL[res.budgetTier] + (res.budgetWhy ? ' — ' + res.budgetWhy : '') : '',
@@ -1190,15 +1201,15 @@ const genreTask = {
       sample.sampled ? 'A long script is sampled for this, so the evidence comes from the opening of each scene.' : '',
       'Read by ' + res.model + '. Accepting saves the genre, budget tier and audience above and the comparables you tick.'
     ].filter(Boolean);
-    return {
+    return remember('genre-comps', {
       items: res.comps.map((cp, i) => ({ id: 'c' + i, title: cp.title, year: cp.year, why: cp.why,
         text: cp.title + (cp.year ? ' (' + cp.year + ')' : ''), detail: cp.why })),
       note: out.join('\n\n')
-    };
+    }, { res });
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('genre-comps');
+    const mem = recall('genre-comps', result);
     if (!mem || !mem.res) fail('There is nothing to keep. Run it first.');
     const r = mem.res;
     const before = JSON.parse(JSON.stringify(storyOf(c)));

@@ -27,18 +27,27 @@
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { sym, meter, segmented, selectSegment } from './kit/index.js';
-import { loadStory, frameworkById, matrix, qualifyBeat } from '../lib/story.js';
+import { loadStory, frameworkById, effectiveFramework, matrix, qualifyBeat } from '../lib/story.js';
+import Store from '../lib/store.js';
 import Scenes from '../lib/scenes.js';
 import { elementLines, LINES_PER_PAGE } from '../lib/script.js';
 import '../styles/beats-panel.css';
 
 const PHONE = '(max-width: 719.98px)';
+const projectFormat = () => {
+  try { const p = Store && Store.currentProject && Store.currentProject(); return p && p.format === 'short' ? 'short' : 'feature'; }
+  catch (e) { return 'feature'; }
+};
 
 /** Pure: the rows the panel draws and where each one jumps. */
-export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneRows } = {}) {
+export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneRows, format } = {}) {
   const list = els || [];
   const st = story || loadStory();
-  const fw = frameworkById(st.framework);
+  /* The framework IN FORCE — the writer's choice once made, else the
+     format's suggestion — as the Story stage, the deck and the outline
+     tasks read it; the stored `framework` alone is three_act on every
+     project nobody chose one for. */
+  const fw = frameworkById(effectiveFramework(st, format || projectFormat()));
   let total = 0;
   const startLine = [];
   for (const e of list) { startLine.push(total); total += elementLines(e); }

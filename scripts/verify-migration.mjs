@@ -403,26 +403,7 @@ const EXPECTED = {
      the provider picker and key form here ("Drafting needs a key…");
      signed out, verify now sees the locked pill instead. Every word
      below was that form's copy and nothing else on the page. */
-  visualize: {
-    'account': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic’s': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'api': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'below': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'billed': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'cloud': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'device': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'gemini': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'i': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'key': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'project': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'provider': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'put': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'runs': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'synced': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'uses': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    drafting: 'AI Desk: keyGate(\'Drafting\') heading of the retired key form'
-  },
+  visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   write: {},
   plan: {},
   breakdown: {},
@@ -432,7 +413,7 @@ const EXPECTED = {
      script-to-screen work took it from 122 to 141, so the bare integer 122 left
      the page. A derived count, not lost copy. The next glossary change moves it
      again: re-baseline then, rather than adding a row each time. */
-  library: { '122': 'derived count: glossary terms 122 -> 141 (Phase 6)' },
+  library: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   budget: {},
   /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
      revamp's words (the journey strip folded into the stage cards). */
@@ -440,31 +421,14 @@ const EXPECTED = {
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is
      built only when it is opened. */
-  screenplay: {
-    coverage: 'the "AI coverage report" menu item moved into the AI pill menu',
-    report: 'the "AI coverage report" menu item moved into the AI pill menu'
-  },
+  screenplay: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   /* AI Desk (12 Oct 2026): settings.html#ai shows the key section
      only on a plan with AI tools; locked (verify runs signed out) it
      is a heading, one note and the locked pill — nobody types a key
      their plan cannot use. These words were the key section's copy
      (the key-stays-on-this-device disclosure, the provider picker,
      the console.anthropic.com link, Forget key). */
-  settings: {
-    'billed': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'com': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'do': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'forget': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'gemini': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'gets': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'goes': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'paste': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'put': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'runs': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'touching': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'us': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-    'usage': 'AI Desk: the key section is drawn only when AI is unlocked; signed out it is the locked pill',
-  },
+  settings: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 
@@ -526,24 +490,7 @@ const EXPECTED = {
      "Mapping…"); they are AI pills that open the Desk now, and
      signed out the pill is locked. Every word below was that form's
      copy. */
-  story: {
-    'account': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'anthropic’s': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'api': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'attached': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'billed': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'browser': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'cloud': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'device': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'gemini': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'provider': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'put': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'synced': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'uses': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    mapping: 'AI Desk: keyGate(\'Mapping\') heading of the retired key form',
-    suggesting: 'AI Desk: keyGate(\'Suggesting steps\') heading of the retired key form'
-  },
+  story: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   edit: {},
   deliverables: {},
   screening: {},

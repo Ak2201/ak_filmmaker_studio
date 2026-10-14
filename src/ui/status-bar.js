@@ -120,6 +120,12 @@ export function mountStatusBar() {
   const payText = mk('ssb-pay-text');
   pay.append(payLed, payText);
   const store = mk('ssb-store', true);
+  /* The storage figure is a measurement of THIS browser (and the Drive
+     age a clock): verify's word-set oracle must not hold it, or every
+     run fails on a different number. See [data-verify-varies] in
+     scripts/verify-migration.mjs. */
+  store.setAttribute('data-verify-varies', '');
+  drive.setAttribute('data-verify-varies', '');
   right.append(pay, store);
   bar.append(left, right);
 

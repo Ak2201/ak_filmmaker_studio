@@ -1,336 +1,314 @@
 /* ============================================================
-   STRIPBOARD + DAY OUT OF DAYS
+   STRIPBOARD + DAY OUT OF DAYS — on the Swiss kit (14 Oct 2026)
    ------------------------------------------------------------
-   The page's own layer. Everything structural is borrowed from
-   modules.css — .bd-head, .bd-title, .bd-deck, .bd-stats, .bd-h2,
-   .bd-sub, .bd-empty and the whole teaching empty state are the
-   studio language, not copies of it. What is here is the two things
-   the language did not already have: a rack of strips, and a grid.
+   The components are the kit's (src/styles/kit.css): the page
+   header, the stat strip, the panel that holds the controls, the
+   segmented group-by, buttons, badges (INT/EXT tags, time of day,
+   over-target), chips for the cast, the strip banner for an implied
+   company move, the DOOD codes and the table classes of the grid.
+   What is here is LAYOUT — the rack, the strip's grid, the day card —
+   and every colour, radius and line width is a token or a --sk-*
+   variable. No literal colour, no literal radius.
 
    COLOUR IS DATA, AND IT IS ONE CHANNEL PER DIMENSION.
-   A strip carries two facts that a 1st AD reads at a glance: when it
-   happens, and whether it is inside or outside. Time of day owns the
-   colour (a wash plus the left rule, from the phase hues); INT/EXT
-   owns the badge (outlined inside, filled outside). Trying to encode
-   both in the background — the way a paper board does with white,
-   yellow, blue and green — would need green and amber, and in this
-   palette those are --ok and --warn. A strip that reads as a status
-   is worse than a strip that reads as nothing.
-
-   Every filled hue states its own on-colour via --strip-on. The Desk
-   theme's amber is bright enough that near-white on it is 2.4:1,
-   which is the reason tokens.css carries --library-on at all.
-
-   NO SHAPE IS HARD-CODED. Radii, padding, borders and the two rule
-   widths are --sk-* variables, so the page follows the skin.
+   Time of day owns the colour: the strip carries .hue-day / -night /
+   -dusk / -dawn (tokens.css), which set --hue / --hue-deep /
+   --hue-wash, and the strip's 3px rule, its faint wash and its time
+   badge all read them. INT/EXT owns the tag — outlined inside, filled
+   outside. A strip with no time of day (CONTINUOUS) stays neutral and
+   says so in words. Green and amber are status here, so a strip never
+   reads as one.
    ============================================================ */
 
 /* ------------------------------------------------------------
    Page rhythm — the same column the breakdown uses.
    ------------------------------------------------------------ */
+.sb-head.bd-head,
 .sb-board,
 .sb-dood {
+  /* The module column, so the board lines up with the tab strip and
+     the path bar the shell draws above it. */
   max-width: var(--measure-wide);
   margin-inline: auto;
   padding-inline: var(--s5);
 }
-.sb-board { padding-block: var(--s6) var(--s5); }
+.sb-board { padding-block: var(--s5) var(--s5); }
 .sb-dood  { padding-block: var(--s6) var(--s8); }
 
+.sb-head .k-page-actions { align-self: center; }
+/* The stage guide's pill (blueprint-drawer.js) is prepended to the
+   header; give it the whole first row of the kit's header grid. */
+.sb-head > .bpd-pill { grid-column: 1 / -1; }
+.sb-head .k-stat-strip { grid-column: 1 / -1; margin-top: var(--s2); }
+.sb-head .k-stat .k-meter { margin-top: var(--s2); }
+.sb-lock-host { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s2); }
+
+/* The empty state: the kit's, with the three teaching steps under it. */
+.sb-empty { display: grid; gap: var(--s4); padding-block: var(--s4); }
+.sb-empty-cta { display: flex; justify-content: center; }
+
 /* ------------------------------------------------------------
-   1. CONTROLS — grouping is a view, so it is a toggle, not a form.
+   1. CONTROLS — one kit panel: group-by and actions, then the key.
    ------------------------------------------------------------ */
+.sb-controls-panel { margin: var(--s4) 0 var(--s5); }
+.sb-controls-panel .k-panel-body { display: grid; gap: var(--s3); }
 .sb-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s4);
-  margin-bottom: var(--s4);
+  gap: var(--s3);
 }
 .sb-seg,
-.sb-acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-
-.sb-seg-lab {
-  margin-right: var(--s1);
+.sb-acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-width: 0; max-width: 100%; }
+.sb-seg-lab,
+.sb-legend-lab,
+.sb-day-lab {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
+  font-weight: 500;
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-muted);
+  white-space: nowrap;
 }
-
-.sb-seg-btn,
-.sb-btn {
-  padding: var(--s1) var(--s3);
-  min-height: 28px;
-  background: none;
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-radius: var(--sk-btn-radius);
-  color: var(--ink-muted);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background var(--speed) var(--ease),
-              border-color var(--speed) var(--ease),
-              color var(--speed) var(--ease);
-}
-.sb-seg-btn:hover,
-.sb-btn:hover { border-color: var(--accent); color: var(--accent-deep); }
-
-/* The one control on this page that is "on" rather than "pressed
-   once": which way the board is sorted right now. */
-.sb-seg-btn.is-on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-on);
-}
-
-/* Destructive is outlined until the pointer is on it — the same rule
-   the breakdown's delete and the toolbar's RESET follow. */
-.sb-btn.is-danger { color: var(--danger); border-color: var(--danger); }
-.sb-btn.is-danger:hover { background: var(--danger); border-color: var(--danger); color: var(--danger-on); }
-
-/* ------------------------------------------------------------
-   2. THE COLOUR KEY — five hues, stated once.
-   ------------------------------------------------------------
-   The five classes below are the only place time of day becomes a
-   colour. The strip, the legend swatch and the INT/EXT badge all read
-   --strip-wash / --strip-hue / --strip-on from whichever one is on
-   their ancestor, so adding a sixth time of day is one rule here.
-
-   ONLY THREE OF THE SIX WASHES ARE THEME-COMPLETE. tokens.css gives
-   --feature-wash, --shorts-wash and --library-wash a dark value in
-   both the ink theme and the prefers-color-scheme block; --plan-wash,
-   --shoot-wash and --visualize-wash are declared once, light, and
-   never re-stated. A strip filled with one of those three on the ink
-   theme is a pale block carrying light ink — the scene slug simply
-   vanishes, and the page renders happily while it does.
-
-   So dusk and continuous take a NEUTRAL ground and carry their hue in
-   the rule, the badge and the word itself, which are foreground
-   colours and are theme-correct for all six hues. Fixing the three
-   missing wash tokens belongs in tokens.css, not in a workaround
-   here; when they exist, these two lines become like the other three.
-   ------------------------------------------------------------ */
-/* FOUR VARIABLES, NOT THREE. --strip-hue is the FILL — the rule down
-   the strip, the badge outline, the filled EXT chip. It is not a text
-   colour, and it was being used as one: the INT badge and the time-of-
-   day word both said `color: var(--strip-hue)` and measured 2.27:1 in
-   Desk, where --library is a bright amber on its own pale wash.
-
-   This is the rule CLAUDE.md states — a fill is never a text colour —
-   reaching the stripboard late, because the local alias hid it. The
-   source check in verify greps for `color: var(--library)` and friends
-   by name, and `--strip-hue` is none of those names. An alias defeats
-   a grep; it does not change the fault.
-
-   --strip-text is the hue as TEXT, and it takes the -deep variant,
-   which is already the token that flips the right way per theme
-   (darker than the ground on paper, lighter than it on ink). Range
-   across the four themes: 4.91 (Desk day) to 10.47. */
-.tod-day   { --strip-wash: var(--library-wash); --strip-hue: var(--library);   --strip-on: var(--library-on);   --strip-text: var(--library-deep); }
-.tod-dawn  { --strip-wash: var(--feature-wash); --strip-hue: var(--feature);   --strip-on: var(--feature-on);   --strip-text: var(--feature-deep); }
-.tod-night { --strip-wash: var(--shorts-wash);  --strip-hue: var(--shorts);    --strip-on: var(--shorts-on);    --strip-text: var(--shorts-deep); }
-.tod-dusk  { --strip-wash: var(--paper-sunk);   --strip-hue: var(--shoot);     --strip-on: var(--shoot-on);     --strip-text: var(--shoot-deep); }
-.tod-cont  { --strip-wash: var(--paper-raised); --strip-hue: var(--visualize); --strip-on: var(--visualize-on); --strip-text: var(--visualize-deep); }
 
 .sb-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s2) var(--s5);
-  margin-bottom: var(--s5);
-  padding-block: var(--s3);
-  border-top: 1px solid var(--rule-hair);
-  border-bottom: 1px solid var(--rule-hair);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  color: var(--ink-muted);
+  gap: var(--s2) var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-hair);
 }
-.sb-legend-lab { text-transform: uppercase; color: var(--ink-muted); }
-.sb-legend-item { display: inline-flex; align-items: center; gap: var(--s2); }
-.sb-legend-chip {
-  width: 26px;
-  height: 13px;
-  background: var(--strip-wash);
-  border: 1px solid var(--sk-card-line);
-  border-left: var(--sk-hue-rule-w) solid var(--strip-hue);
-  border-radius: var(--sk-radius);
+.sb-legend-ie { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--t-tiny); color: var(--ink-muted); }
+.sb-legend-target { display: inline-flex; align-items: center; gap: var(--s2); margin-left: auto; }
+
+/* Kit selects at the board's density. */
+.sb-target-ctl,
+.sb-day-ctl,
+.sb-banner-pos { height: var(--h-compact); }
+.sb-day-sel.k-input { font-family: var(--f-mono); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------
+   2. THE INT / EXT TAG — outline inside, filled outside, in the
+   strip's hue (neutral without one). The text takes --hue-deep on
+   the outline and --hue-on on the fill: a fill is never a text colour.
+   ------------------------------------------------------------ */
+.sb-ie.k-badge {
+  min-width: 34px;
+  justify-content: center;
+  background: transparent;
+  border-color: var(--hue, var(--border-strong));
+  color: var(--hue-deep, var(--ink-body));
+}
+.sb-ie.k-badge.is-ext {
+  background: var(--hue, var(--surface-active));
+  border-color: var(--hue, var(--border-strong));
+  color: var(--hue-on, var(--ink));
 }
 
 /* ------------------------------------------------------------
-   3. THE RACK — strips abut, the way they do on the board.
+   3. THE DAY CARD AND THE RACK
    ------------------------------------------------------------ */
-.sb-group { margin-bottom: var(--s6); }
+.sb-group {
+  margin-bottom: var(--s4);
+  background: var(--surface-rail);
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  border-radius: var(--sk-radius);
+  overflow: hidden;
+}
 .sb-group-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s3);
-  padding-bottom: var(--s2);
-  margin-bottom: var(--s3);
-  border-bottom: 1px solid var(--rule);
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border-hair);
 }
+.sb-group-title { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); min-width: 0; }
 .sb-group-name {
   margin: 0;
   font-family: var(--f-display);
-  font-size: var(--sk-card-h-size);
-  font-style: var(--sk-card-h-style);
-  font-weight: 800;
-  letter-spacing: var(--track-tight);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
-.sb-group-meta {
+.sb-group-date { font-family: var(--f-display); font-size: var(--t-base); font-weight: 500; color: var(--ink-body); }
+.sb-group-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.sb-group-meta.k-badge { border-radius: var(--radius-sm); }
+.sb-group-hours {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink-muted);
 }
+.sb-group-hours.is-over { color: var(--warn-deep); font-weight: 700; }
+.sb-group-hours:empty { display: none; }
+.sb-group-tail { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-left: auto; min-width: 0; }
+.sb-group-locs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+}
+.sb-group-locs span:last-child { overflow-wrap: anywhere; }
+.sb-group-locs .sym { color: var(--strip-day-ink); font-size: 16px; }
 
-/* 2px, not a gap token: a stripboard is a stack of cardboard strips
-   pressed together, and air between them makes it a list of cards. */
-.sb-rack { display: grid; gap: 2px; }
+/* 2px between strips: a stripboard is a stack of strips pressed
+   together, and air between them makes it a list of cards. */
+.sb-rack { display: grid; gap: var(--s-half); padding: var(--s2); }
 
+/* ------------------------------------------------------------
+   4. ONE STRIP
+   ------------------------------------------------------------ */
 .sb-strip {
   display: grid;
-  grid-template-columns: 2.6rem auto minmax(6rem, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(6rem, 1fr) auto auto auto;
   align-items: center;
   column-gap: var(--s3);
-  row-gap: var(--s2);
-  padding: var(--s3) var(--s4);
-  background: var(--strip-wash);
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-left: var(--sk-hue-rule-w) solid var(--strip-hue);
-  border-radius: var(--sk-radius);
-  color: var(--ink);
+  row-gap: var(--s1h);
+  padding: var(--s2) var(--s3);
+  background: linear-gradient(90deg, var(--hue-wash, transparent), transparent 55%), var(--sk-card-bg);
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--hue, var(--border-strong));
+  border-radius: var(--radius);
+  color: var(--ink-body);
 }
-.sb-strip:focus-within { border-color: var(--accent); border-left-color: var(--strip-hue); }
+.sb-strip:hover { border-color: var(--border-strong); border-left-color: var(--hue, var(--border-strong)); }
+.sb-strip:focus-within { border-color: var(--border-focus); border-left-color: var(--hue, var(--border-focus)); }
 
 .sb-no {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.75rem;
+  height: var(--h-compact);
+  padding-inline: var(--s2);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
   font-family: var(--f-mono);
-  font-size: var(--t-small);
+  font-size: var(--t-ui);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
-}
-.sb-ie {
-  display: inline-grid;
-  place-items: center;
-  min-height: 20px;
-  padding-inline: var(--s2);
-  border: 1px solid var(--strip-hue);
-  border-radius: var(--sk-radius);
-  /* the fill outlines it; the TEXT takes --strip-text */
-  color: var(--strip-text, var(--ink-muted));
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
   white-space: nowrap;
 }
-.sb-ie.is-ext { background: var(--strip-hue); color: var(--strip-on); }
-
 .sb-slug {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+  overflow: hidden;
+}
+.sb-loc {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--f-display);
-  font-size: var(--t-base);
-  font-weight: 700;
-}
-.sb-tod,
-.sb-pages {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-/* The word carries the hue as well as the strip does. This is the
-   channel that keeps dusk and continuous distinguishable while their
-   wash tokens are missing a dark value. */
-.sb-tod { color: var(--strip-text, var(--ink-muted)); font-weight: 700; }
-
-.sb-day { display: inline-flex; align-items: center; gap: var(--s2); }
-.sb-day-lab {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-.sb-day-sel {
-  padding: var(--s1) var(--s2);
-  background: var(--paper);
+  font-size: var(--t-small);
+  font-weight: 600;
   color: var(--ink);
-  border: 1px solid var(--rule-hair);
-  border-radius: var(--sk-radius);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
 }
-.sb-day-sel:focus-visible { border-color: var(--accent); outline: none; }
+.sb-synopsis {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+}
+.sb-pages {
+  min-width: 4.5rem;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  text-align: right;
+}
+.sb-day { display: inline-flex; align-items: center; gap: var(--s2); }
+.sb-day-ctl { width: 7.5rem; }
 
-/* Cast on its own line: it is the payload of the strip, and it is the
-   only thing on it the day out of days reads. */
+/* Row two: what the floor said, and the cast. */
 .sb-cast {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s2);
+  gap: var(--s1h);
+  min-width: 0;
 }
-.sb-shot {
+.sb-strip.has-grip .sb-cast { padding-left: calc(28px + var(--s3)); }
+.sb-shot.k-badge { text-decoration: none; }
+.sb-shot.is-dropped { border-style: dashed; }
+.sb-cast-lab { margin-right: var(--s1); }
+.sb-cast-lab,
+.sb-cast-none { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.sb-cast-none { text-transform: none; letter-spacing: 0; font-family: var(--f-sans); font-size: var(--t-tiny); }
+
+/* ------------------------------------------------------------
+   4b. BANNERS — the AD's (editable) and the implied move (derived)
+   ------------------------------------------------------------
+   A banner is not a scene, so it does not borrow a time-of-day hue.
+   The AD's company move takes the kit's move colours; travel,
+   holding and note are neutral. The kind is carried by its WORD too,
+   so nothing here depends on colour.
+   ------------------------------------------------------------ */
+.sb-implied.k-strip-banner { margin: var(--s1) var(--s2); }
+.sb-implied .k-strip-banner-pill { text-transform: none; letter-spacing: .02em; font-size: var(--t-micro); }
+
+.sb-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+.sb-banner.is-move {
+  background: var(--strip-move-bg);
+  border-color: color-mix(in srgb, var(--strip-move) 45%, transparent);
+  border-left-color: var(--strip-move);
+}
+.sb-banner:focus-within { border-color: var(--border-focus); }
+.sb-banner-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  text-decoration: none;
   color: var(--ink);
-  padding: 0 var(--s2);
-  border: 1px solid var(--ink-faint);
-  border-left-width: 3px;
-  border-radius: var(--sk-radius);
+  white-space: nowrap;
 }
-.sb-shot.is-shot { border-color: var(--ok); }
-.sb-shot.is-part { border-color: var(--warn); }
-.sb-shot.is-dropped { border-style: dashed; }
-.sb-cast-lab {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-.sb-cast-chip {
-  padding: 0 var(--s2);
-  background: var(--paper);
-  border: 1px solid var(--rule-hair);
-  border-radius: var(--sk-radius);
-  font-size: var(--t-tiny);
-  color: var(--ink-body);
-}
-.sb-cast-none { font-size: var(--t-tiny); color: var(--ink-muted); }
-
-.sb-synopsis {
-  grid-column: 1 / -1;
-  margin: 0;
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
-  color: var(--ink-body);
-}
+.sb-banner.is-move .sb-banner-kind { color: var(--strip-move-ink); }
+.sb-banner-kind .sym { font-size: 16px; }
+.sb-banner-route { display: inline-flex; align-items: center; gap: var(--s2); flex-wrap: wrap; min-width: 0; }
+.sb-banner-ctl { height: var(--h-compact); flex: 1 1 10rem; min-width: 0; max-width: 100%; }
+.sb-banner-route .sb-banner-ctl { flex: 0 1 9rem; }
+.sb-banner .sb-banner-pos { flex: 0 0 auto; max-width: 100%; }
+.sb-banner .sb-btn { flex: 0 0 auto; }
 
 /* ------------------------------------------------------------
-   3b. MOVING A STRIP — the handle, the drag, the targets.
+   4c. MOVING A STRIP — the handle, the drag, the targets.
    ------------------------------------------------------------
    Only the Shoot day grouping has these (the strip carries .has-grip
    and the rack a data-day). Every distance a drag moves something is
@@ -338,7 +316,7 @@
    dims and the line appears but nothing travels or shrinks.
    ------------------------------------------------------------ */
 .sb-strip.has-grip {
-  grid-template-columns: auto 2.6rem auto minmax(6rem, 1fr) auto auto auto;
+  grid-template-columns: auto auto auto minmax(6rem, 1fr) auto auto auto;
 }
 .sb-grip { display: inline-grid; }
 .sb-strip .sb-grip-btn {
@@ -346,7 +324,7 @@
   min-height: 28px;
   padding: 0 var(--s1);
   background: none;
-  border: var(--sk-card-line-w) solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--sk-btn-radius);
   color: var(--ink-muted);
   font-size: var(--t-base);
@@ -356,8 +334,8 @@
   user-select: none;
   -webkit-user-select: none;
 }
-.sb-strip .sb-grip-btn:hover { border-color: var(--sk-card-line); color: var(--ink); }
-.sb-strip .sb-grip-btn:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
+.sb-strip .sb-grip-btn:hover { border-color: var(--border-strong); background: var(--surface-hover); color: var(--ink); }
+.sb-strip .sb-grip-btn:focus-visible { outline: var(--focus); outline-offset: 1px; }
 .sb-strip .sb-grip-btn .tb-caret { display: none; }
 /* The compact menu has no words of its own; the ⠿ is the handle. */
 .sb-strip .tb-menu-panel { min-width: 14rem; }
@@ -372,21 +350,19 @@ body.sb-is-dragging .sb-strip .sb-grip-btn { cursor: grabbing; }
   transition: transform var(--speed) var(--ease), opacity var(--speed) var(--ease);
 }
 
-/* Where it would land. A rule the width of the rack, in the accent
-   so it reads as an instruction and not as a strip. 3px, not a
-   hairline: a 1px line between two 2px-gapped strips is invisible
-   while your hand is moving. */
+/* Where it would land: a rule the width of the rack, in the accent
+   mark colour so it reads as an instruction and not as a strip. */
 .sb-drop-line {
   height: 3px;
   margin-block: -1px;
-  background: var(--accent);
-  border-radius: var(--sk-radius);
+  background: var(--accent-primary);
+  border-radius: var(--radius-pill);
   pointer-events: none;
-  box-shadow: 0 0 0 calc(1px * var(--motion)) var(--accent-wash);
+  box-shadow: 0 0 0 calc(1px * var(--motion)) var(--accent-glow);
 }
 
 /* The rack or zone under the pointer. */
-.sb-rack.is-over { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: var(--sk-radius); }
+.sb-rack.is-over { outline: 2px dashed var(--accent-primary); outline-offset: -2px; }
 
 .sb-dropzone {
   display: grid;
@@ -394,7 +370,7 @@ body.sb-is-dragging .sb-strip .sb-grip-btn { cursor: grabbing; }
   min-height: 44px;
   margin-bottom: var(--s4);
   padding: var(--s3) var(--s4);
-  border: 2px dashed var(--rule);
+  border: 1px dashed var(--border-strong);
   border-radius: var(--sk-radius);
   color: var(--ink-muted);
   font-family: var(--f-mono);
@@ -404,22 +380,21 @@ body.sb-is-dragging .sb-strip .sb-grip-btn { cursor: grabbing; }
   text-align: center;
   transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease);
 }
-/* Dormant until a drag is live: a dashed box that asks for a drop
-   when nothing is being dragged is a box that explains itself twice. */
-body:not(.sb-is-dragging) .sb-dropzone { opacity: 0.7; }
-.sb-dropzone.is-over { border-color: var(--accent); background: var(--accent-wash); color: var(--accent-deep); }
+/* Dormant until a drag is live. */
+body:not(.sb-is-dragging) .sb-dropzone { opacity: 0.75; }
+.sb-dropzone.is-over { border-color: var(--accent-primary); background: var(--brand-wash); color: var(--brand-deep); }
 
-/* The tag that follows the pointer. position: fixed at --z-float
-   like the other floats; it is positioned by left/top rather than a
-   transform so --motion does not apply to a thing that IS the
+/* The tag that follows the pointer. Positioned by left/top rather
+   than a transform so --motion does not apply to a thing that IS the
    pointer. */
 .sb-drag-tag {
   position: fixed;
   z-index: var(--z-float);
   transform: translate(12px, 12px);
   padding: var(--s1) var(--s3);
-  background: var(--panel);
-  color: var(--panel-ink);
+  background: var(--surface-elevated);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
   border-radius: var(--sk-btn-radius);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -433,113 +408,69 @@ body:not(.sb-is-dragging) .sb-dropzone { opacity: 0.7; }
 .sb-hint {
   margin: 0 0 var(--s4);
   max-width: var(--measure, 70ch);
-  font-size: var(--t-small);
+  font-size: var(--t-tiny);
   line-height: var(--lh-snug);
   color: var(--ink-muted);
 }
 
 /* Paper has no pointer. */
 @media print {
-  .sb-grip, .sb-dropzone, .sb-hint, .sb-drop-line, .sb-drag-tag { display: none !important; }
-  .sb-strip.has-grip { grid-template-columns: 2.6rem auto minmax(6rem, 1fr) auto auto auto; }
+  .sb-grip, .sb-dropzone, .sb-hint, .sb-drop-line, .sb-drag-tag, .sb-implied { display: none !important; }
+  .sb-strip.has-grip { grid-template-columns: auto auto minmax(6rem, 1fr) auto auto auto; }
+  .sb-strip.has-grip .sb-cast { padding-left: 0; }
 }
 body.pdf-print .sb-grip,
 body.pdf-print .sb-dropzone,
-body.pdf-print .sb-hint { display: none !important; }
+body.pdf-print .sb-hint,
+body.pdf-print .sb-lock-host { display: none !important; }
 
 /* ------------------------------------------------------------
-   4. DAY OUT OF DAYS — the grid.
+   5. DAY OUT OF DAYS — the kit's table, the kit's codes.
    ------------------------------------------------------------
    A real table, because it is one: cast are row headers, days are
-   column headers, and a screen reader should be able to say "ARJUN,
-   day 4, W" without the markup lying about it.
+   column headers, and a screen reader can say "ARJUN, day 4, W"
+   without the markup lying about it.
    ------------------------------------------------------------ */
-.sb-dood-scroll {
-  overflow-x: auto;
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-radius: var(--sk-radius);
-  background: var(--sk-card-bg);
+.sb-dood-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
 }
-.sb-grid {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--t-small);
-}
-.sb-grid th,
-.sb-grid td {
+.sb-dood-head .k-eyebrow { margin: 0 0 var(--s1); }
+.sb-dood-key {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
   padding: var(--s2) var(--s3);
-  text-align: center;
-  border-bottom: 1px solid var(--rule-hair);
-  border-left: 1px solid var(--rule-hair);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius);
 }
-.sb-grid th:first-child,
-.sb-grid td:first-child { border-left: 0; }
-.sb-grid tbody tr:last-child th,
-.sb-grid tbody tr:last-child td { border-bottom: 0; }
+.sb-dood-key-item { display: inline-flex; align-items: center; gap: var(--s1h); font-size: var(--t-tiny); color: var(--ink-body); }
 
-/* The name column stays put while the days scroll — a grid you have
-   to scroll back to read the row label for is a grid nobody reads.
-   Its ground is --paper and NOT --sk-card-bg: the Mission skin sets
-   the card ground to `transparent` on purpose, and a transparent
-   sticky column has the day cells sliding visibly underneath it. A
-   sticky element is one of the few places that genuinely needs an
-   opaque fill, so it names one. */
-.sb-grid-name {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  min-width: 9rem;
-  text-align: left;
-  background: var(--paper);
-  border-right: 1px solid var(--rule);
-}
-.sb-grid-name strong { display: block; font-family: var(--f-display); font-size: var(--t-small); }
+.sb-dood-scroll { max-width: 100%; }
+.sb-grid { width: 100%; }
+.sb-grid .sb-grid-name { min-width: 10rem; text-align: left; }
+.sb-grid tbody .sb-grid-name strong { display: block; font-family: var(--f-display); font-size: var(--t-small); font-weight: 600; color: var(--ink); }
 .sb-grid-sub {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   color: var(--ink-muted);
 }
-.sb-grid thead th {
-  background: var(--paper-sunk);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-.sb-grid thead .sb-grid-name { background: var(--paper-sunk); }
 .sb-grid-day,
-.sb-grid-tot {
-  min-width: 2.6rem;
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-muted);
-  /* A day number is one token. Squeezed by `width: 100%` with the
-     label tracking on, "10" broke into a "1" over a "0" on every
-     two-digit day; the scroll wrapper is what absorbs the width. */
-  white-space: nowrap;
-}
-
-.sb-cell {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
-  white-space: nowrap;
-}
-/* Start and finish are the days that cost money to move, so they are
-   the only filled cells. Work is the wash of the same hue; hold is
-   --warn because a held day genuinely is a warning — the performer is
-   paid and not used, which is the whole reason this report exists. */
-.sb-cell.is-start,
-.sb-cell.is-finish,
-.sb-cell.is-only { background: var(--accent); color: var(--accent-on); }
-.sb-cell.is-work { background: var(--accent-wash); color: var(--accent-deep); }
-.sb-cell.is-hold { background: var(--warn-wash); color: var(--warn-deep); }
-.sb-cell.is-off  { color: var(--ink-muted); }
+.sb-grid-tot { min-width: 2.75rem; white-space: nowrap; }
+.sb-grid-dnum,
+.sb-grid-ddate { display: block; }
+.sb-grid-ddate { font-size: var(--t-nano); font-weight: 500; color: var(--ink-muted); }
+.sb-grid thead th.is-col-today .sb-grid-ddate { color: var(--brand-deep); }
+.sb-grid td.sb-cell { padding-inline: var(--s1); }
+.sb-grid .sb-grid-tot { font-weight: 600; color: var(--ink); }
+.sb-grid .sb-grid-hold { color: var(--warn-deep); }
 
 .sb-note {
   margin: var(--s3) 0 0;
@@ -551,139 +482,29 @@ body.pdf-print .sb-hint { display: none !important; }
 }
 
 /* ------------------------------------------------------------
-   5. NARROW — the strip folds rather than scrolls sideways.
+   6. NARROW — the strip folds rather than scrolls sideways.
    ------------------------------------------------------------
    Horizontal overflow at 390px fails the verify run, and a strip is
-   six things in a row by nature, so on a phone it becomes three rows
-   of that same reading order. The grid below is the only place the
-   column count is stated twice.
+   six things in a row by nature, so on a phone it becomes rows of that
+   same reading order: [grip] number tag slug / time pages / picker.
    ------------------------------------------------------------ */
 @media (max-width: 719px) {
   .sb-board, .sb-dood { padding-inline: var(--s4); }
   .sb-controls { justify-content: flex-start; }
-  .sb-strip { grid-template-columns: 2.6rem auto minmax(0, 1fr); }
-  .sb-slug { grid-column: 3; }
-  .sb-strip.has-grip { grid-template-columns: auto 2.6rem auto minmax(0, 1fr); }
-  .sb-strip.has-grip .sb-slug { grid-column: 4; }
-  .sb-day  { grid-column: 1 / -1; }
-  .sb-group-head { border-bottom-color: var(--rule-hair); }
+  .sb-legend-target { margin-left: 0; }
+  .sb-group-head { padding: var(--s3); }
+  .sb-group-tail { margin-left: 0; }
+  .sb-rack { padding: var(--s1); }
+  /* A phone strip is a wrapping row: [grip] number tag time … pages,
+     then the slug, the picker and the cast each on a full row. */
+  .sb-strip,
+  .sb-strip.has-grip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+  .sb-pages { margin-left: auto; min-width: 0; }
+  .sb-slug { order: 5; flex: 1 0 100%; flex-wrap: wrap; }
+  .sb-loc { white-space: normal; }
+  .sb-synopsis { flex-basis: 100%; white-space: normal; }
+  .sb-day { order: 6; flex: 1 0 100%; }
+  .sb-day-ctl { flex: 1 1 auto; width: auto; }
+  .sb-cast { order: 7; flex: 1 0 100%; }
+  .sb-strip.has-grip .sb-cast { padding-left: 0; }
 }
-
-/* ------------------------------------------------------------
-   6. BANNERS AND THE DAY'S LOAD (shoot-day grouping only)
-   ------------------------------------------------------------
-   A banner is not a scene, so it does not borrow the strip's
-   time-of-day hue: it is a neutral band with a heavy ink rule, the
-   way a paper board's header strips are black. The kind is carried
-   by its WORD, and a company move also by a dashed rule, so nothing
-   here depends on colour. The over-target chip is --warn because a
-   too-heavy day genuinely is a warning.
-   ------------------------------------------------------------ */
-.sb-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2) var(--s3);
-  padding: var(--s2) var(--s4);
-  background: var(--paper-sunk);
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-left: var(--sk-hue-rule-w) solid var(--ink);
-  border-radius: var(--sk-radius);
-  color: var(--ink);
-}
-.sb-banner.is-move { border-left-style: dashed; }
-.sb-banner.is-holiday,
-.sb-banner.is-travel { background: var(--paper-raised); }
-.sb-banner:focus-within { border-color: var(--accent); border-left-color: var(--ink); }
-.sb-banner-kind {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink);
-  white-space: nowrap;
-}
-.sb-banner-route { display: inline-flex; align-items: center; gap: var(--s2); flex-wrap: wrap; min-width: 0; }
-.sb-banner-in {
-  flex: 1 1 10rem;
-  min-width: 0;
-  max-width: 100%;
-  padding: var(--s1) var(--s2);
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--rule-hair);
-  border-radius: var(--sk-field-radius, var(--sk-radius));
-  font: inherit;
-  font-size: var(--t-small);
-}
-.sb-banner-route .sb-banner-in { flex: 0 1 9rem; }
-.sb-banner .sb-day-sel { flex: 0 0 auto; width: auto; max-width: 100%; }
-.sb-banner .sb-btn { flex: 0 0 auto; }
-.sb-group-hours.is-over { color: var(--warn-deep); font-weight: 700; }
-.sb-banner-in::placeholder { color: var(--ink-muted); }
-.sb-banner-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
-
-.sb-target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
-.sb-load,
-.sb-group-hours {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.sb-load.is-over {
-  padding: 0 var(--s2);
-  background: var(--warn-wash);
-  color: var(--warn-deep);
-  border: 1px solid var(--warn);
-  border-radius: var(--sk-radius);
-  font-weight: 700;
-}
-.sb-group-hours { color: var(--ink-muted); }
-.sb-group-hours:empty { display: none; }
-.sb-banner-menu .tb-menu-btn { min-height: 28px; }
-
-@media print {
-  .sb-banner-menu, .sb-target, .sb-banner .sb-btn { display: none !important; }
-  .sb-banner { background: var(--print-wash) !important; color: var(--print-ink) !important; border-left-color: var(--print-ink) !important; }
-  .sb-banner-in, .sb-banner .sb-day-sel { border: 0 !important; background: none !important; color: var(--print-ink) !important; }
-}
-body.pdf-print .sb-banner-menu,
-body.pdf-print .sb-target,
-body.pdf-print .sb-banner .sb-btn { display: none !important; }
-
-/* ---- Stitch round 2: KPI notes, threshold in the legend, day header ---- */
-.sb-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
-.bd-stat-note {
-  font-style: normal;
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  color: var(--ink-muted);
-}
-.sb-legend-target { margin: 0 0 0 auto; }
-.sb-group-date { font-weight: 600; color: var(--ink); }
-.sb-night-badge {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  padding: 1px var(--s2);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
-  color: var(--accent-deep);
-}
-.sb-group-locs {
-  font-size: var(--t-small);
-  color: var(--ink-muted);
-  padding: 1px var(--s3);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-pill);
-  overflow-wrap: anywhere;
-}
-.sb-banner.is-move { border-color: var(--warn); }
-.sb-banner.is-move .sb-banner-kind { color: var(--warn-deep); }
-.sb-legend-target { flex-wrap: nowrap; }
-.sb-legend-target .sb-day-sel { width: auto; }

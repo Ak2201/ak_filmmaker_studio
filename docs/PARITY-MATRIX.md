@@ -451,3 +451,32 @@ The stage-1 rule is: stop, show the owner this list, and get a yes/no per item b
 54. **settings** — Footer strip 'macOS Node Build 2.4.19 Standalone Client' + ticker 'IndexedDB Cache: Synced - Gateway Operational - Telemetry 14.2 GB / 50 GB' — decision: ______
 55. **admin** — Storage & Engine Nodes card (IOPS 4,820, latency 14ms, cluster ap-south-1, asset store 14.2 / 50 GB bar, IndexedDB healthy, auto-purge proxies) — decision: ______
 
+
+## Owner decisions — 14 Oct 2026 (bin c)
+
+Recorded from the owner's answers after the stage-1 audit. Numbers refer to the bin-c list returned by the audit
+(56 items), grouped as presented.
+
+- **A — fabricated / unmeasurable: DROP.** Gateway, IndexedDB-ms, "14.2 GB / 50 GB" telemetry in every status
+  bar and footer; cloud-storage / cache meters; "Camera test in 48h" and "Updated 14m ago"; sound-roll checksum,
+  battery, FLOOR LIVE badge; FEFSI rates-lock card; "Sync changed 2h ago"; WhatsApp target group and "E2E
+  Encrypted"; "Node Secure"; "AES-256 client-side".
+- **B — derivable from current data: BUILD on web AND phone.** "Setup x of y completed" from `shot.done`; shot
+  count (+ movement) under a scene in the writer, no time estimate; "Day N of M" on call sheets; "Pending pickup"
+  chip from `row.pickups`; "In the cut" (no version); a Case Studies link card in the Library; a derived
+  sync-state pill in the band; the build version (from package.json) in Settings; reword part-shot "Resume".
+- **C — one field on an existing record: BUILD ONLY these three.**
+  - **#13 / hand-off Q1: ONE target-runtime field.** Reports' existing target runtime is the field; Edit Log
+    and the screenplay's beats panel read it (no second field; read any value Edit Log already stored as a
+    fallback, never drop it, no new `fms_` key).
+  - **#29** a floor note per scene on the shoot day (one field on the scene record, like `shotState`).
+  - **#2** a project subtitle (one field on the project entry). No short id.
+  - Everything else in C is LEFT OUT (budget ceiling, zoom, aspect ratio, lookbook swatches, voucher/verified,
+    target deliverable spec, scene timecode, library view toggle, pacing presets, "on pace").
+- **D — large new features: NONE this round** (bell, custom beats, AI beat refine, synopsis focus, framework
+  picker / link scene / AI+tune in the beats panel, scene gutters, strip dept tags, route & ETA, Auto-Balance
+  Pages, crew check-in, supervisor pad, roll slate / call cast, call-sheet archive / lock, cut diff, pickup onto
+  call sheet, DCI manifest, shift-click export).
+- **#21 storyboard images** — already approved as P3c of the revamp plan.
+- **Hand-off Q3: unlocking a locked production draft gets a home on the Stripboard** — an "Unlock draft" action
+  beside "Lock production draft", confirmed through `dialog.js`.

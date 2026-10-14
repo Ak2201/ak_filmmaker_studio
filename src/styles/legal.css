@@ -144,3 +144,12 @@
   color: var(--ink-muted);
   font-size: var(--t-small);
 }
+
+/* Phone tap floor: 44px tall by width (this page loads no kit.css). */
+@media (max-width: 719px) {
+  .st .st-tier-alt, .st-brand, .legal-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

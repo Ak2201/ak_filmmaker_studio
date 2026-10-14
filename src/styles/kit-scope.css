@@ -153,3 +153,9 @@
   color: var(--ink);
 }
 :root .k-scope .bd-sub { font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-muted); max-width: var(--sk-deck-measure, 72ch); }
+
+/* Phone tap floor: --h-control (32px) is a desk height; below 720px the
+   scoped buttons are the 44px minimum by width, not by pointer. */
+@media (max-width: 719px) {
+  :root .k-scope :is(.btn, .mbtn, .tb-link) { height: auto; min-height: var(--tap-min, 44px); }
+}

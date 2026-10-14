@@ -433,7 +433,7 @@ html.mn-on .sh-bar > .sh-where .sh-where-phase .sh-where-text {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-html.mn-on .sh-bar > .sh-where .sh-where-phase { min-width: 28px; justify-content: center; }
+html.mn-on .sh-bar > .sh-where .sh-where-phase { min-width: var(--tap-min, 44px); justify-content: center; }
 
 /* The four toolbar pages keep their zone INSIDE .toolbar: the toolbar
    stays in the band for the zone's sake, and its own controls go to
@@ -481,7 +481,7 @@ html.mn-on .sh-bar .sh-tools .ps-btn .ps-title { max-width: 12ch; overflow: hidd
 html.mn-on .sh-bar .sh-tools .ps-btn .ps-fmt { display: none; }
 
 /* The sync pill: the dot and the cloud (status-bar.css styles it). */
-html.mn-on .sh-bar .sh-sync { height: 36px; padding: 0 var(--s1h); }
+html.mn-on .sh-bar .sh-sync { height: var(--tap-min, 44px); min-width: var(--tap-min, 44px); justify-content: center; padding: 0 var(--s1h); }
 
 /* The account: the initials disc signed in, a compact Sign in out. */
 html.mn-on .sh-bar .sh-tools .sign-in-pill { height: 36px; min-height: 36px; padding: 0 var(--s3); }

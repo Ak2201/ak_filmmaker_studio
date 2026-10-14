@@ -1252,3 +1252,22 @@ details.k-panel--collapsible > summary.k-panel-head .k-panel-meta { margin-left:
   }
   .dlg.dlg.k-modal .modal-actions .mbtn.k-btn { flex: 1 1 auto; min-height: var(--tap-min); }
 }
+
+/* ============================================================
+   PHONE TAP FLOOR (below 720px) -- the 44px minimum by WIDTH, not by
+   pointer. base.css floors controls under (pointer: coarse), which a
+   narrow desktop window, a fine-pointer emulation and the gate never
+   match; the sweep of 14 Oct found text links 17-35px tall. Height
+   only: an inline link keeps its width, so no row reflows sideways.
+   ============================================================ */
+@media (max-width: 719px) {
+  :root :is(.db-fix-go, .pc-open, .hub-shelves-all, .ct-gl-link, .lib-contents-head,
+            .sh-where-group, .st-tier-alt, .st-brand, .legal-back, .site-foot a,
+            .skip-link, .skip-to-content, .btn) {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min, 44px);
+  }
+  :root .lib-contents-head { display: grid; align-content: center; }
+  :root .sh-where-group { min-width: var(--tap-min, 44px); justify-content: center; }
+}

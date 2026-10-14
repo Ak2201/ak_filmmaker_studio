@@ -26,12 +26,18 @@ if (meta) {
   const [file, frag] = String(meta.content || 'library.html').split('#');
   const prefix = meta.getAttribute('data-prefix') || '';
   const want = decodeURIComponent((location.hash || '').replace(/^#/, ''));
-  const target = want && /^[\w-]+$/.test(want) ? prefix + want : frag;
+  /* An id that was always a LIBRARY id (a tab, or a film card) is not
+     one of the study's old section ids, so it takes no prefix:
+     study.html#films is the Films tab, not library.html#cs-films, which
+     matches nothing and fell back to the Case Studies tab. */
+  const LIBRARY = /^(films|directors|rules|equipment|watch|case-studies|dissection|glossary|film-[\w-]+|terms-[\w-]+)$/;
+  const own = want && LIBRARY.test(want);
+  const target = want && /^[\w-]+$/.test(want) ? (own ? '' : prefix) + want : frag;
   /* An old fragment this stub cannot vouch for — dissect.html#anything
      that was never an id — used to land on the Library's FIRST tab,
      Films, because tabs.js falls back to it for a hash that matches
      nothing. `?tab=` names the tab this page became, and tabs.js uses
      it only in that case: a fragment that resolves still wins. */
-  const tab = target && target !== frag && frag ? '?tab=' + encodeURIComponent(frag) : '';
+  const tab = target && !own && target !== frag && frag ? '?tab=' + encodeURIComponent(frag) : '';
   location.replace('./' + file + tab + (target ? '#' + target : ''));
 }

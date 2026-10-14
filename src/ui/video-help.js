@@ -39,7 +39,7 @@ function open(videos) {
 }
 
 export function mountHelp(bar, moduleIds) {
-  if (!bar || bar.querySelector('.vid-help-btn')) return;
+  if (!bar || document.querySelector('.vid-help-btn')) return;
   const seen = new Set();
   const videos = [];
   const mods = allModules();
@@ -49,7 +49,11 @@ export function mountHelp(bar, moduleIds) {
     if (!seen.has(v.id)) { seen.add(v.id); videos.push(v); }
   }
   if (!videos.length) return;
-  const host = bar.querySelector(':scope > .toolbar, :scope > .sh-tools') || bar;
+  /* On a phone the Tools sheet may have BORROWED the tools zone out of the
+     band by the time this lazy import lands (the first tap was Tools);
+     mount into it where it is, and it goes back with it on close. */
+  const host = bar.querySelector(':scope > .toolbar, :scope > .sh-tools')
+    || document.querySelector('.mn-tools-group > .toolbar, .mn-tools-group > .sh-tools') || bar;
   host.prepend(h('button.btn.vid-help-btn', {
     type: 'button', 'data-action': 'video-help-open'
   }, [h('span', { 'aria-hidden': 'true', text: '▶ ' }), 'How this works']));

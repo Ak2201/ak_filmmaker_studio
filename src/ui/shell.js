@@ -1673,10 +1673,10 @@ function wire() {
   delegate(document, 'click', '.sh-pagenav-menu .sh-mod', () => closeAllMenus());
 
   // The stage strip's edge fades follow its own scroll and the width.
-  const phases = document.querySelector('.sh-phases');
-  if (phases) {
-    phases.addEventListener('scroll', () => flagPhaseOverflow(phases), { passive: true });
-    window.addEventListener('resize', () => flagPhaseOverflow(phases), { passive: true });
+  const phaseStrip = document.querySelector('.sh-phases');
+  if (phaseStrip) {
+    phaseStrip.addEventListener('scroll', () => flagPhaseOverflow(phaseStrip), { passive: true });
+    window.addEventListener('resize', () => flagPhaseOverflow(phaseStrip), { passive: true });
   }
 
   /* THE STAGE FLYOUTS. Hover opens one (a short delay on the way out,

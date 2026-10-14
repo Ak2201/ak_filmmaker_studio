@@ -24,8 +24,9 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { mountPathBar } from '../ui/path-bar.js';
 import { h } from '../lib/dom.js';
+import C from '../lib/costs.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
-import { costSections, initCosts } from '../ui/budget-costs.js';
+import { costSections, costKpis, initCosts } from '../ui/budget-costs.js';
 import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 
@@ -70,16 +71,30 @@ function render() {
      column sat against (and under) the scrollbar. The same classes the
      other pages use, rather than a budget stylesheet of its own; the
      blueprint pill finds its host by `header.bd-head` too. */
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Budget & People · what it costs' }),
-    h('h1.bd-title', { text: 'Budget.' }),
-    h('p.bd-deck', {
-      text: 'A line-item estimate that reads your schedule. Days come from the '
-          + 'stripboard if you have built one, rates from the Chennai tables if '
-          + 'you want them, and every figure stays editable. Then, once you are '
-          + 'shooting: petty cash, crew payments and the cost report against it.'
-    })
+  /* The head carries the page's standing actions. Export CSV is the
+     budget file (the same builder as the Export tab's button); the
+     versions link counts what costs.js holds. New cost line reaches the
+     estimator's own add-row action, so there is one way to add a line. */
+  let versions = 0;
+  try { versions = C.listVersions().length; } catch (e) { /* none */ }
+  main.append(h('header.bd-head.bd-head-split', {}, [
+    h('div.bd-head-copy', {}, [
+      h('p.bd-eyebrow', { text: 'Budget & People · what it costs' }),
+      h('h1.bd-title', { text: 'Production Budget.' }),
+      h('p.bd-deck', {
+        text: 'A line-item estimate that reads your schedule. Days come from the '
+            + 'stripboard if you have built one, rates from the Chennai tables if '
+            + 'you want them, and every figure stays editable. Then, once you are '
+            + 'shooting: petty cash, crew payments and the cost report against it.'
+      })
+    ]),
+    h('div.bd-head-actions', {}, [
+      h('a.btn', { href: '#versions', text: versions ? 'Versions (' + versions + ')' : 'Versions' }),
+      h('button.btn', { type: 'button', 'data-cx': 'csv-budget', text: 'Export CSV' }),
+      h('button.btn.primary', { type: 'button', 'data-action': 'add-row', text: 'New cost line' })
+    ])
   ]));
+  main.append(costKpis());
 
   /* TABS (src/ui/tabs.js, budget is on its list). The estimator and
      its notes are the first tab, `#estimate`; the cost tabs after it

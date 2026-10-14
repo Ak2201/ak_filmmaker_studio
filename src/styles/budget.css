@@ -414,3 +414,52 @@ tr.is-over .cx-bar > span { background: var(--danger); }
 .cx-v-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
 .cx-v-total { margin-left: auto; font-family: var(--f-mono); }
 .cx-v-cmp { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--rule-hair); }
+
+/* ---- the header: title and actions side by side, then the five figures ---- */
+.bd-head-split { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4); }
+.bd-head-copy { flex: 1 1 28rem; min-width: 0; }
+.bd-head-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+.bd-kpis {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+}
+@media (max-width: 720px) { .bd-kpis { padding-inline: var(--s4); } }
+.bd-kpi {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s4);
+  min-width: 0;
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.bd-kpi-l, .bd-kpi-s {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bd-kpi-v {
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.bd-kpi.over { background: var(--danger-wash); }
+
+/* ---- the pipeline connector: the stripboard's facts as one band ---- */
+.calc-schedule { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); }
+.calc-schedule > h3 { flex: 0 0 auto; margin: 0; }
+.calc-schedule > .bd-stats { flex: 1 1 22rem; }
+.calc-schedule > .hint { flex: 1 0 100%; margin: 0; }
+.calc-schedule > .calc-actions { margin: 0; }

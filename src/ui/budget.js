@@ -266,7 +266,12 @@ function buildCalcRow(idx) {
   // the others, so the phone layout never shows a bare number box.
   const totalCell = h('div.calc-cell', {}, [
     h('span.calc-label', { text: 'Subtotal' }),
-    h('span.total-cell.k-mono', { id: `ci_${idx}_subtotal`, text: '₹ 0' })
+    h('span.total-cell.k-mono', { id: `ci_${idx}_subtotal`, text: '₹ 0' }),
+    /* days × rate, spelled out: the phone's card drops the column
+       captions, so the sum behind the figure is said once, here.
+       Derived from the two fields every update; hidden when empty and
+       at desk widths, where the columns already show both. */
+    h('span.calc-eq.k-mono', { 'data-role': 'calc-eq', 'aria-hidden': 'true' })
   ]);
 
   return h('div.calc-row', { 'data-row': String(idx) }, [
@@ -327,6 +332,9 @@ function updateCalc() {
     row.dataset.item = name;
     subEl.setAttribute('aria-label',
       name ? `Subtotal for ${name}: ${fmtINRExact(sub)}` : `Subtotal: ${fmtINRExact(sub)}`);
+
+    const eqEl = row.querySelector('[data-role="calc-eq"]');
+    if (eqEl) eqEl.textContent = days > 0 && rate > 0 ? `${INR.format(days)} d × ${fmtINRExact(rate)}` : '';
 
     const noteEl = row.querySelector('[data-role="card-rate"]');
     noteEl.textContent = rateHint(name);

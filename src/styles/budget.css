@@ -225,6 +225,37 @@
   .bud-est .calc-row .calc-note { grid-column: 1 / -1; grid-row: 2; }
 }
 
+/* Narrow: each line is a CARD (the phone prototype's line-item card):
+   a hairline box with an accent rule, the item and its fields, and the
+   subtotal as the card's figure with `days x rate` spelled under its
+   caption. Below the wide container query only, so a desk table is
+   untouched. */
+.bud-est .calc-row .calc-eq { display: none; font-size: var(--t-micro); color: var(--ink-muted); }
+@container bud-est (max-width: 33.99rem) {
+  .bud-est-body > .hint { padding-bottom: 0; }
+  #calcRows { display: grid; gap: var(--s3); padding: var(--s3); }
+  .bud-est .calc-row:not(.head) {
+    border: 1px solid var(--border-hair);
+    border-left: 3px solid var(--brand);
+    border-radius: var(--sk-radius, var(--radius));
+    background: var(--surface-rail);
+    padding: var(--s3);
+  }
+  .bud-est .calc-row:not(.head) > .calc-cell:nth-child(4) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "cap fig" "eq fig";
+    align-items: center;
+    column-gap: var(--s3);
+    padding-top: var(--s2);
+    border-top: 1px solid var(--border-hair);
+  }
+  .bud-est .calc-row .calc-cell:nth-child(4) .calc-label { grid-area: cap; }
+  .bud-est .calc-row .calc-cell:nth-child(4) .calc-eq { grid-area: eq; display: block; }
+  .bud-est .calc-row .calc-cell:nth-child(4) .calc-eq:empty { display: none; }
+  .bud-est .calc-row .total-cell { grid-area: fig; font-size: var(--t-lg); text-align: right; }
+}
+
 /* ---- the grand total ------------------------------------------------ */
 .bud-est .calc-grand {
   display: flex;

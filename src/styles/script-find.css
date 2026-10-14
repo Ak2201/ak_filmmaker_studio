@@ -1,8 +1,8 @@
 /* ============================================================
    SEARCH LANDS ON THE LINE — the highlight (src/ui/script-find.js)
    ------------------------------------------------------------
-   The page is white print paper in both themes, so the highlight is the
-   print family's own pale yellow: --print-ink stays far above AA on it,
+   The page is the light paper page (--paper-page*), so the highlight is
+   the print family's own pale yellow: the page ink stays far above AA on it,
    and it reads as a highlighter pen rather than as the grey of a
    focused line. The class is on the row and removed after 1.5s by the
    script; the fade is a colour change, so it moves nothing. Under
@@ -14,6 +14,9 @@
 .sc-sheet .wr-el.sc-found .wr-text:focus {
   background: var(--print-rev-yellow);
 }
+/* Focus mode's Night turns the page dark: the highlight follows it. */
+html.fm-on.fm-night .sc-sheet .wr-el.sc-found .wr-text,
+html.fm-on.fm-night .sc-sheet .wr-el.sc-found .wr-text:focus { background: var(--warn-wash); }
 @media print {
   .sc-sheet .wr-el.sc-found .wr-text { background: transparent; }
 }

@@ -12,7 +12,8 @@
     "picture_as_pdf", "translate", "mic", "keyboard", "spellcheck", "sticky_note_2", "auto_awesome",
     "warning", "info", "check_circle", "error", "close", "drag_indicator", "more_vert",
     "light_mode", "dark_mode", "wb_twilight", "inbox", "add", "arrow_forward", "content_copy", "delete",
-    "search", "help", "more_horiz"
+    "search", "help", "more_horiz",
+    "view_sidebar", "center_focus_strong", "arrow_upward", "arrow_downward", "swap_horiz", "water_drop", "fullscreen"
   ],
   "pages": {
     "breakdown": {

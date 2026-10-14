@@ -174,13 +174,14 @@ export function openGoTo(phaseId) {
   body.append(top);
   /* the open project first, and every other one to switch to */
   const { list, current } = projectList();
-  const proj = h('section.mn-group.mn-project', { 'aria-labelledby': 'mn-g-project' });
+  const proj = h('section.mn-group.mn-project', { 'data-mn-phase': 'project', 'aria-labelledby': 'mn-g-project' });
   proj.append(h('h3.mn-group-h', { id: 'mn-g-project' }, [
     h('span', { text: 'Project: ' + (current ? (current.title || 'Untitled') + ' · ' + formatLabel(current.format) : 'none open') + ' · Switch' })
   ]));
   if (list.length) proj.append(...projectRows());
   proj.append(h('a.ps-link', { href: 'index.html', text: list.length ? '+ New project' : 'No project — start one' }));
-  if (!globalPage) body.append(proj);
+  /* the band's project pill opens the sheet HERE, on a global page too */
+  if (!globalPage || phaseId === 'project') body.append(proj);
   if (!globalPage) for (const p of phases()) body.append(group(p, here, '.sh-ph-' + p.hue));
   // shelves carry CATEGORY hues (.hue-*), never a phase class — the hue-class trap
   for (const s of shelves()) body.append(group(s, here, s.hue ? '.hue-' + s.hue : ''));
@@ -255,7 +256,16 @@ export function barItems() {
 
 /** The bar's state follows the sheets: aria-expanded on Go to / Tools,
  *  and aria-current on Home when this IS the hub. */
+function syncBurger(open) {
+  const b = document.getElementById('railToggle');
+  if (b && b.hasAttribute('aria-haspopup')) b.setAttribute('aria-expanded', String(!!open));
+}
+
 export function syncBar() {
+  /* the band may be built after the bar attached: state it every time
+     (both directions are idempotent) */
+  burgerFor(document.documentElement.classList.contains('mn-on'));
+  syncBurger(!!sheet && sheet.kind === 'goto');
   const bar = document.getElementById('mobileActionbar');
   if (!bar) return;
   for (const el of bar.querySelectorAll('[data-mn-item]')) {
@@ -265,9 +275,31 @@ export function syncBar() {
   }
 }
 
+/* THE BAND'S BURGER on a phone opens Go to, not the desk's rail drawer
+   (the rail is a 64px icon column with hover flyouts; the sheet is the
+   phone's map). Its ARIA follows what it opens, and is put back when
+   the bar detaches. */
+function burgerFor(attached) {
+  const b = document.getElementById('railToggle');
+  if (!b) return;
+  if (attached) {
+    if (b.dataset.mnControls !== undefined) return;   // already the phone's
+    b.dataset.mnControls = b.getAttribute('aria-controls') || '';
+    b.removeAttribute('aria-controls');
+    b.setAttribute('aria-haspopup', 'dialog');
+    b.setAttribute('aria-label', 'Go to');
+  } else if (b.dataset.mnControls !== undefined) {
+    if (b.dataset.mnControls) b.setAttribute('aria-controls', b.dataset.mnControls);
+    b.removeAttribute('aria-haspopup');
+    b.setAttribute('aria-label', 'Studio menu');
+    delete b.dataset.mnControls;
+  }
+}
+
 /** chrome.js calls these as the bar attaches and detaches. */
 export function onBar(attached) {
   document.documentElement.classList.toggle('mn-on', !!attached);
+  burgerFor(!!attached);
   if (!attached) close();
   syncBar();
   window.dispatchEvent(new Event('resize'));
@@ -291,18 +323,27 @@ if (typeof document !== 'undefined') {
        stopPropagation does not stop a later listener on the same node.
        One Escape used to cancel the dialog AND drop the sheet under it,
        sending focus to a button that was display:none by then. */
-    if (document.querySelector('.modal-overlay, #studioPalette:not([hidden]), body.pal-open, .tb-menu-panel:not([hidden]), .switcher-dropdown:not([hidden])')) return;
+    if (document.querySelector('.modal-overlay.show, #studioPalette:not([hidden]), body.pal-open, .tb-menu-panel:not([hidden]), .switcher-dropdown:not([hidden])')) return;
     e.stopPropagation(); close();
   }, true);
   /* The crumb's stage segment opens that stage's menu on a desktop.
      On a phone the menu is the Go-to sheet, opened at that stage.
      Capture phase, so shell.js's own handler never runs here. */
+  /* The same for the phone's top bar (Swiss, 14 Oct 2026): the burger
+     opens Go to, and the project pill opens it at the project, whose
+     rows are the switcher's own (projectRows) — one list, two doors.
+     Only IN THE BAND: the same pill borrowed into the Tools sheet keeps
+     its own dropdown. */
   document.addEventListener('click', (e) => {
     if (!document.documentElement.classList.contains('mn-on')) return;
-    const btn = e.target.closest && e.target.closest('[data-action="crumb-phase"]');
-    if (!btn) return;
-    e.preventDefault(); e.stopImmediatePropagation();
-    openGoTo(btn.dataset.phase);
+    const t = e.target;
+    if (!t.closest) return;
+    const btn = t.closest('[data-action="crumb-phase"]');
+    if (btn) { e.preventDefault(); e.stopImmediatePropagation(); openGoTo(btn.dataset.phase); return; }
+    const burger = t.closest('.sh-bar [data-action="rail-toggle"]');
+    if (burger) { e.preventDefault(); e.stopImmediatePropagation(); openGoTo(); return; }
+    const ps = t.closest('.sh-bar .ps-btn');
+    if (ps) { e.preventDefault(); e.stopImmediatePropagation(); openGoTo('project'); }
   }, true);
 }
 

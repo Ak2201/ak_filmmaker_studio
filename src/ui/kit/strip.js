@@ -11,6 +11,8 @@
      action   data-action on the row (select / open); the row is a
               focusable group, not a button, so it can hold buttons
      menuAction  data-action of the trailing ⋮ button (omit for none)
+     compact  the two-line rack (tag · scene · slug / meta), the phone's
+              stripboard and a dense desk list; same content
    stripBanner({ label, icon }) — END OF SHOOT DAY 04 — 08H 15M
    stripList(strips) — the vertical rack. */
 import { h, sym, cx, kids, attrs } from './util.js';
@@ -21,7 +23,7 @@ const TOD_LETTER = { day: 'D', night: 'N', dusk: 'DUSK', dawn: 'DAWN' };
 
 export function strip(o = {}) {
   const key = todKey(o.tod);
-  const el = h('div', { class: cx('k-strip', key && 'hue-' + key, o.selected && 'is-selected', o.class), role: 'group' });
+  const el = h('div', { class: cx('k-strip', key && 'hue-' + key, o.selected && 'is-selected', o.compact && 'k-strip--compact', o.class), role: 'group' });
   if (o.id) el.id = o.id;
   if (o.action) { el.dataset.action = o.action; el.tabIndex = 0; }
   const ie = String(o.intExt || '').trim().toUpperCase().replace(/\.$/, '');

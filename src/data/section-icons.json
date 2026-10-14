@@ -93,7 +93,12 @@
     "download",
     "print",
     "restart_alt",
-    "sync_alt"
+    "sync_alt",
+    "cloud_done",
+    "cloud_sync",
+    "cloud_upload",
+    "sync_problem",
+    "cloud_off"
   ],
   "pages": {
     "breakdown": {

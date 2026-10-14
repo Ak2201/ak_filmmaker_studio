@@ -55,7 +55,7 @@ import { mountProjectSwitcher } from './project-switcher.js';
 import { mountBackupMenu } from './topbar-backup.js';
 import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry, stagePageEntry } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
-import { mountStatusBar } from './status-bar.js';
+import { mountStatusBar, syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked } from '../lib/plan-gate.js';
 import { BRAND } from '../lib/brand.js';
@@ -923,6 +923,9 @@ function buildStudioTools(bar) {
     try { mountProjectSwitcher(tools); } catch (e) { /* a control is not a reason to lose the band */ }
     try { mountBackupMenu(tools); } catch (e) { /* ditto */ }
   }
+  if (!doorway && !document.querySelector('.sh-sync')) {
+    try { tools.append(buildSyncPill()); } catch (e) { /* ditto */ }
+  }
   const ui = (typeof window !== 'undefined' && window.StudioUI) || null;
   if (ui) {
     try { if (ui.mountAppearanceMenu) ui.mountAppearanceMenu(tools); } catch (e) { /* ditto */ }
@@ -942,7 +945,49 @@ function buildStudioTools(bar) {
    that is already in place is skipped, so this is safe to call from a
    MutationObserver (the move it makes is the only change it causes,
    and the second run finds nothing to move). */
-const ZONE_ORDER = ['.ps-btn', '[data-tb-backup]', '[data-theme-toggle]', '#signInPill'];
+const ZONE_ORDER = ['.ps-btn', '[data-tb-backup]', '[data-theme-toggle]', '.sh-sync', '#signInPill'];
+
+/* ---- THE SYNC PILL (parity matrix group B, 14 Oct 2026) --------
+   Where the work is safe, said in the band on every page and at every
+   width: a dot, a cloud and the status bar's own words (syncLine()),
+   so the band and the dock can never disagree. DERIVED, never stored:
+   it reads getSyncStatus() on the `cloud:status` bus event and writes
+   nothing. Signed out it says "Local only", which is the truth, not a
+   failure. A link to Settings › Account, where Sync now and the cloud
+   switch live. On a phone the words go (the dot and the cloud stay,
+   the words are its accessible name); the dock repeats them. */
+const SYNC_ICON = { ok: 'cloud_done', busy: 'cloud_sync', warn: 'cloud_upload', err: 'sync_problem', off: 'cloud_off' };
+function buildSyncPill() {
+  const led = h('span.sh-sync-led', { 'aria-hidden': 'true' });
+  const icon = iconSpan('sh-sync-icon', { sym: SYNC_ICON.off });
+  const text = h('span.sh-sync-text');
+  const pill = h('a.sh-sync', { href: 'settings.html#account' }, [led, icon, text]);
+  const paint = (st) => {
+    const l = syncLine(st);
+    if (text.textContent !== l.text) text.textContent = l.text;
+    if (pill.dataset.tone !== l.tone) {
+      pill.dataset.tone = l.tone;
+      icon.textContent = SYNC_ICON[l.tone] || SYNC_ICON.off;
+    }
+    const name = 'Sync: ' + l.text + '. Open account settings';
+    if (pill.getAttribute('aria-label') !== name) { pill.setAttribute('aria-label', name); pill.title = name; }
+  };
+  const cloud = () => (typeof window !== 'undefined' && window.StudioCloud) || null;
+  const refresh = () => { const c = cloud(); paint(c && c.getSyncStatus ? c.getSyncStatus() : null); };
+  refresh();
+  Store.subscribe('cloud:status', paint);
+  /* StudioCloud arrives after the first paint on some pages (the status
+     bar waits the same way, and stops). */
+  const hook = setInterval(() => {
+    const c = cloud();
+    if (!c) return;
+    clearInterval(hook);
+    if (c.onAuth) c.onAuth(() => setTimeout(refresh, 0));
+    refresh();
+  }, 50);
+  setTimeout(() => clearInterval(hook), 20000);
+  return pill;
+}
 function gatherTools(bar, tools) {
   let moved = false;
   for (const sel of ZONE_ORDER) {

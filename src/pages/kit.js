@@ -167,6 +167,38 @@ main.append(sec(7, 'Notices, empty states & toasts', null,
   )
 ));
 
+/* 8 — the phone variants (resize below 720px to see them change) */
+const SHOTS = [
+  { shot: '1A', size: 'WS', lens: '24mm', move: 'Static', state: 'Done' },
+  { shot: '1B', size: 'MCU', lens: '50mm', move: 'Dolly in', state: 'To shoot' },
+  { shot: '1C', size: 'CU', lens: '85mm', move: '', state: 'To shoot' }
+];
+main.append(sec(8, 'Phone variants', 'below 720px',
+  K.segmented({ name: 'kit-view', value: 'strips', sticky: true, label: 'View', options: [
+    { value: 'strips', label: 'Stripboard' }, { value: 'dood', label: 'Day out of days' }, { value: 'list', label: 'Scene list' }] }),
+  h('div.k-chip-row', {}, ['cast', 'props', 'vehicles', 'sound', 'stunts', 'vfx', 'animals', 'sfx', 'dressing']
+    .map((c) => K.chip({ label: c[0].toUpperCase() + c.slice(1), category: c, count: 3 }))),
+  K.table({
+    label: 'Shot list', responsive: 'stack',
+    columns: [{ key: 'shot', label: 'Shot' }, { key: 'size', label: 'Size' }, { key: 'lens', label: 'Lens', num: true },
+      { key: 'move', label: 'Movement' }, { key: 'state', label: 'Status', render: (r) => K.badge({ label: r.state, tone: r.state === 'Done' ? 'ok' : 'warn', dot: true }) }],
+    rows: SHOTS
+  }),
+  K.stripList([
+    K.strip({ compact: true, tod: 'DAWN', intExt: 'EXT', scene: '42A', slug: 'EXT. BLACK SEA CLIFFS - DAWN', pages: 11, cast: '1, 4, 7', day: 'DAY 4' }),
+    K.strip({ compact: true, tod: 'NIGHT', intExt: 'INT', scene: '43', slug: 'INT. BUNKER - NIGHT', pages: 20, cast: '1, 2', day: 'DAY 4', menuAction: 'kit-strip-menu' })
+  ], { label: 'Compact strips' }),
+  h('div.kit-stack', {}, [
+    K.stageCard({ stacked: true, num: 1, phase: 'story', title: 'Story', body: '4 modules · 8 beats tagged', status: { label: 'Done', tone: 'ok' } }),
+    K.stageCard({ stacked: true, num: 3, phase: 'preprod', title: 'Pre-Production', body: '6 modules · 18 days set', status: { label: 'In progress', tone: 'warn' }, progress: { value: 62 }, next: 'Open Pre-Production', href: '#s8', current: true })
+  ]),
+  K.panel({ collapsible: true, eyebrow: 'Collapsible panel', meta: '3 items', actions: [K.button({ label: 'Add', size: 'sm', icon: 'add' })],
+    body: h('p.k-page-sub', { text: 'A native details element: the head is the summary, so it folds by tap or keyboard with no script.' }) }),
+  K.panel({ collapsible: true, open: false, eyebrow: 'Closed by default', body: h('p.k-page-sub', { text: 'Still in the DOM while closed.' }) }),
+  row(K.button({ label: 'Open a bottom sheet', action: 'kit-sheet' }), K.button({ label: 'Dialog (a sheet on a phone)', action: 'kit-tell' })),
+  h('div.k-sticky-foot', {}, [K.button({ label: 'Cancel' }), K.button({ label: 'Save', variant: 'primary' })])
+));
+
 app.append(main);
 K.wireSegmented(app);
 
@@ -182,7 +214,9 @@ const ACT = {
   'kit-lock': lock,
   'kit-danger': () => K.askDanger({ title: 'Delete project “Dragon”?', body: 'Every scene, schedule and budget line in it goes. Backups are not touched.', confirm: 'Delete' }),
   'kit-tell': () => K.tell({ title: 'Backup written', body: 'The file is in your downloads.' }),
-  'kit-text': () => K.askText({ title: 'Rename the project', value: 'Dragon', confirm: 'Rename' })
+  'kit-text': () => K.askText({ title: 'Rename the project', value: 'Dragon', confirm: 'Rename' }),
+  'kit-sheet': () => K.sheet({ title: 'Scene 42A', body: h('div.kit-stack', {}, [
+    K.notice({ title: 'The phone sheet', body: 'Go to and Tools use this frame; a page reaches it through the kit.' })]) })
 };
 delegate(app, 'click', '[data-action]', (e, el) => { const f = ACT[el.dataset.action]; if (f) f(); });
 

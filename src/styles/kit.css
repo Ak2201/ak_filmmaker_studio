@@ -916,3 +916,339 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
 .k-seg--radio .k-seg-btn:has(> input:focus-visible) { outline: var(--focus); outline-offset: 1px; }
 .k-seg--wrap { flex-wrap: wrap; overflow: visible; }
 .k-seg--wrap .k-seg-btn { flex: 0 1 auto; }
+
+/* ============================================================
+   THE PHONE LAYER (14 Oct 2026) — the kit below 720px
+   ------------------------------------------------------------
+   One codebase per page; only the placement changes. Everything here
+   is either a rule under the ONE phone query, (max-width: 720px) —
+   the number chrome.js attaches the bottom bar at, so the kit, the
+   shell and the bar can never disagree about what a phone is — or a
+   VARIANT class a builder sets (k-table--stack, k-strip--compact,
+   k-stage--stacked, details.k-panel--collapsible, k-seg--sticky,
+   k-chip-row), which reads the same at every width unless it says
+   otherwise. Tokens and --sk-* only. docs/DESIGN-KIT.md "Phone".
+
+   A media query cannot read a custom property, so --bp-* are the
+   NAMES of the breakpoints, written down once beside the queries
+   that use them; a query that uses another number is a bug.
+   ============================================================ */
+:root {
+  --bp-phone: 720px;      /* the bottom bar, the kit's phone rules, html.mn-on */
+  --bp-desk: 1100px;      /* the rail is furniture, the band pins */
+  --tap-min: 44px;        /* a touch target (WCAG 2.5.5 / HIG) */
+  --phone-gutter: var(--s4);   /* 16px: the side gutter of every phone page */
+  --phone-bar-h: 56px;    /* the phone's top band, one row */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  /* What the fixed chrome at the foot covers: the bottom bar (measured,
+     --mab-h, already includes the safe area) plus the status dock
+     (--ssb-h). Zero on a desk, where neither is fixed over content. */
+  --k-foot-clear: calc(var(--mab-h, 0px) + var(--ssb-h, 0px));
+}
+
+/* ---- utilities, every width ---------------------------------- */
+/* Side gutters that also clear a notch in landscape. */
+.k-safe-x {
+  padding-left: max(var(--phone-gutter), var(--safe-left));
+  padding-right: max(var(--phone-gutter), var(--safe-right));
+}
+/* A page's own action row that stays reachable at the foot of a long
+   view: pinned ABOVE the bottom bar and the dock, never under them. */
+.k-sticky-foot {
+  position: sticky;
+  bottom: calc(var(--k-foot-clear) + var(--s2));
+  z-index: var(--z-float);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s2);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--shadow-md);
+  justify-content: flex-end;
+}
+
+/* SCROLLING CHIP ROW — a row of chips (or badges, or small buttons)
+   that wraps on a desk and scrolls sideways on a phone, where a
+   wrapped row of twelve elements is four lines of chrome. */
+.k-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1h);
+  min-width: 0;
+}
+
+/* VARIANT · RESPONSIVE TABLE (table({ responsive: 'stack' })): a table
+   on a desk; below 720px (rules in the phone block) every row is a card
+   and every cell a "label · value" line, the label read from the column
+   head (data-label, set by table.js — the same words, so nothing is
+   invented). The row header is the card's title; nothing leaves the DOM. */
+
+/* ---- VARIANT · COMPACT STRIP (strip({ compact: true })) ----------
+   Two lines on any width: tag · scene · slug · end, then the meta.
+   The stripboard's phone rack, and a dense desk list. Nothing is
+   hidden but the drag grip (the row's menu still moves it). */
+.k-strip--compact {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "tag sc slug end" "tag meta meta end";
+  row-gap: var(--s-half);
+  column-gap: var(--s2);
+  min-height: var(--tap-min);
+  padding: var(--s1h) var(--s2) var(--s1h) var(--s2);
+}
+.k-strip--compact .k-strip-grip { display: none; }
+.k-strip--compact .k-strip-tag { grid-area: tag; align-self: center; min-width: 44px; }
+.k-strip--compact .k-strip-sc { display: inline; grid-area: sc; }
+.k-strip--compact .k-strip-slug { grid-area: slug; font-size: var(--t-tiny); }
+.k-strip--compact .k-strip-meta { grid-area: meta; gap: var(--s3); font-size: var(--t-nano); }
+.k-strip--compact .k-strip-end { grid-area: end; }
+
+/* ---- VARIANT · STACKED STAGE CARD (stageCard({ stacked: true })) --
+   One row per stage, the mobile dashboard's lifecycle list: the
+   number in a square, title and line, the status at the right; the
+   meter and the next link under them. The hue moves to the left
+   edge, because the row is wider than it is tall. */
+.k-stage--stacked {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "num title status" "num body status" "meter meter meter" "next next next";
+  column-gap: var(--s3);
+  row-gap: var(--s1);
+  align-items: center;
+  border-top: 1px solid var(--border-hair);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--hue, var(--accent-primary));
+}
+a.k-stage--stacked:hover { border-top-color: var(--border-strong); border-left-color: var(--hue, var(--accent-primary)); }
+.k-stage--stacked .k-stage-top { display: contents; }
+.k-stage--stacked .k-stage-num {
+  grid-area: num;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-rail);
+}
+.k-stage--stacked .k-stage-top .k-badge { grid-area: status; margin-left: 0; justify-self: end; }
+.k-stage--stacked .k-stage-title { grid-area: title; font-size: var(--t-small); }
+.k-stage--stacked .k-stage-body { grid-area: body; }
+.k-stage--stacked .k-meter { grid-area: meter; margin-top: var(--s1); }
+.k-stage--stacked .k-stage-next { grid-area: next; }
+.k-stage--stacked.is-current { background: var(--brand-wash); }
+
+/* ---- VARIANT · COLLAPSIBLE PANEL (panel({ collapsible: true })) ---
+   A native <details>: the head is the <summary>, so it opens with a
+   tap, Enter or Space and needs no script. Open by default; a closed
+   panel's body is still in the DOM. */
+details.k-panel--collapsible > summary.k-panel-head {
+  cursor: pointer;
+  list-style: none;
+  min-height: var(--tap-min);
+}
+details.k-panel--collapsible > summary.k-panel-head::-webkit-details-marker { display: none; }
+details.k-panel--collapsible > summary.k-panel-head::after {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-left: var(--s2);
+  border-right: 1.5px solid var(--ink-muted);
+  border-bottom: 1.5px solid var(--ink-muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--speed) var(--ease);
+}
+details.k-panel--collapsible:not([open]) > summary.k-panel-head { border-bottom: 0; }
+details.k-panel--collapsible:not([open]) > summary.k-panel-head::after { transform: rotate(-45deg); }
+details.k-panel--collapsible > summary.k-panel-head:focus-visible { outline: var(--focus); outline-offset: -2px; }
+details.k-panel--collapsible > summary.k-panel-head .k-panel-meta { margin-left: auto; }
+.k-panel-tools { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s3); }
+
+/* ---- VARIANT · STICKY SEGMENTED STRIP (segmented({ sticky: true })) --
+   A view switcher that stays under the pinned band while the view
+   scrolls. It parks on --sh-chrome-h, the band height measureChrome()
+   publishes, so it is under whatever is really pinned at this width. */
+.k-seg--sticky {
+  position: sticky;
+  top: var(--sh-chrome-h, 0px);
+  z-index: calc(var(--z-toolbar) - 1);
+}
+
+/* ============================================================
+   BELOW 720px
+   ============================================================ */
+@media (max-width: 720px) {
+  /* TARGETS: every kit control is at least 44px tall on a phone,
+     whatever the pointer says (base.css raises them only under
+     pointer: coarse, which no check here can see). Icon buttons are
+     44 wide too. */
+  .k-btn,
+  .k-btn--sm,
+  .k-btn--lg,
+  .k-seg-btn,
+  .k-check { min-height: var(--tap-min); }
+  .k-btn { height: auto; }
+  .k-control:not(.k-control--textarea) { height: var(--tap-min); }
+  .k-btn--icon,
+  .k-btn--sm.k-btn--icon,
+  .k-btn--lg.k-btn--icon { width: auto; min-width: var(--tap-min); }
+  .k-btn { font-size: var(--t-ui); }
+  .k-btn--sm { font-size: var(--t-tiny); }
+  /* The chip's ×: a 16px glyph in a 32px square. */
+  .k-chip { min-height: 32px; height: auto; }
+  .k-chip-x { width: 32px; height: 32px; margin-right: calc(-1 * var(--s2)); }
+  /* A cell control inside a table that did NOT stack keeps the row
+     dense; the table scrolls sideways under the thumb instead. */
+  .k-control--cell:not(.k-control--textarea) { height: var(--h-control); }
+
+  /* STAT GRID: two columns, never six squeezed tiles or one long list. */
+  .k-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+  .k-stat { padding: var(--s3); }
+  .k-stat-value { font-size: var(--t-lg); }
+
+  /* PAGE HEAD and PANELS fit the gutter. */
+  .k-page-title { font-size: var(--t-2xl); }
+  .k-page-actions > .k-btn { flex: 1 1 auto; }
+  .k-panel-head { flex-wrap: wrap; padding: var(--s2) var(--s3); }
+  .k-panel-body { padding: var(--s3); }
+  .k-panel-foot { flex-wrap: wrap; padding: var(--s2) var(--s3); }
+  .k-panel-foot > .k-btn { flex: 1 1 auto; }
+
+  /* SEGMENTED: scrolls sideways rather than wrapping, snapping to a
+     segment; the sticky strip goes full width as a band of its own. */
+  .k-seg { scroll-snap-type: x proximity; scrollbar-width: none; }
+  .k-seg::-webkit-scrollbar { display: none; }
+  .k-seg-btn { scroll-snap-align: start; padding: 0 var(--s3); }
+  .k-seg--sticky {
+    display: flex;
+    width: 100%;
+    border-radius: 0;
+    border-inline: 0;
+    background: var(--surface-rail);
+  }
+  .k-seg--wrap { overflow: visible; }
+
+  .k-sticky-foot > .k-btn { flex: 1 1 auto; }
+
+  /* CHIP ROW: one line that scrolls. */
+  .k-chip-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    padding-bottom: var(--s-half);
+  }
+  .k-chip-row::-webkit-scrollbar { display: none; }
+  .k-chip-row > * { flex: none; scroll-snap-align: start; }
+
+  /* RESPONSIVE TABLE → STACKED CARDS */
+  .k-table-wrap:has(> .k-table--stack) {
+    overflow: visible;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .k-table-wrap[data-max-h]:has(> .k-table--stack) { max-height: none; }
+  .k-table--stack,
+  .k-table--stack tbody { display: block; width: 100%; }
+  .k-table--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .k-table--stack tbody { display: grid; gap: var(--s2); }
+  .k-table--stack tr {
+    display: grid;
+    gap: var(--s1);
+    padding: var(--s3);
+    background: var(--sk-card-bg);
+    border: var(--sk-card-line-w, 1px) solid var(--sk-card-line);
+    border-radius: var(--sk-radius);
+  }
+  .k-table--stack th,
+  .k-table--stack td {
+    display: grid;
+    grid-template-columns: minmax(88px, 38%) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--s2);
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    white-space: normal;
+    position: static;
+  }
+  .k-table--stack td > *,
+  .k-table--stack th > * { justify-self: start; }
+  .k-table--stack td.k-num,
+  .k-table--stack th.k-num { text-align: left; }
+  .k-table--stack tbody tr:hover td { background: none; }
+  .k-table--stack td[data-label]::before,
+  .k-table--stack th[data-label]::before {
+    content: attr(data-label);
+    font-family: var(--f-mono);
+    font-size: var(--t-micro);
+    font-weight: 500;
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  /* The row header is the card's title: full width, no label. */
+  .k-table--stack tbody > tr > th:first-child {
+    display: block;
+    padding-bottom: var(--s1);
+    margin-bottom: var(--s1);
+    border-bottom: 1px solid var(--border-hair);
+    font-family: var(--f-display);
+    font-size: var(--t-small);
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .k-table--stack tbody > tr > th:first-child::before { content: none; }
+  /* An empty cell says nothing on a card: no label, no line. */
+  .k-table--stack td:empty { display: none; }
+  .k-table--stack .k-table-empty { display: block; }
+  .k-table--stack .k-table-empty::before { content: none; }
+
+  /* STRIPS keep a thumb-high row (the default strip already reflows
+     to two lines above; the compact variant is the denser rack). */
+  .k-strip { min-height: var(--tap-min); }
+  .k-strip--compact .k-strip-sc { display: inline; }
+
+  /* STAGE CARDS stack in a single column (the caller's grid decides
+     columns on a desk); the stacked variant needs nothing more. */
+  .k-stage-title { font-size: var(--t-small); }
+
+  /* THE DIALOG IS A BOTTOM SHEET on a phone (dialog.js builds it; the
+     takeover above styles it): pinned to the foot, the full width, a
+     rounded top edge, the safe area under its actions, buttons a
+     thumb wide. The same element, the same focus trap, the same
+     classes the proofs read. */
+  .modal-overlay.dlg-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .dlg.dlg.k-modal {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - var(--s7));
+    overflow: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+    border-bottom: 0;
+    border-radius: var(--sk-modal-radius, var(--radius-xl)) var(--sk-modal-radius, var(--radius-xl)) 0 0;
+  }
+  .dlg.dlg.k-modal .modal-actions.k-modal-actions {
+    flex-wrap: wrap-reverse;
+    padding-bottom: calc(var(--s3) + var(--safe-bottom));
+  }
+  .dlg.dlg.k-modal .modal-actions .mbtn.k-btn { flex: 1 1 auto; min-height: var(--tap-min); }
+}

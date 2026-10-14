@@ -142,6 +142,11 @@ const EXPIRY_SLACK_MS = 60 * 1000;
    re-prompt, which defeats the whole point of the silent path. */
 let _pending = null;
 let _pendingErr = null;
+/* One interactive request at a time. Two overlapping clicks (several
+   Reconnect buttons on one page) each parked their resolver in the one
+   slot above, so the first promise was overwritten and never settled.
+   The second click now joins the request already open. */
+let _interactiveP = null;
 
 function loadGIS() {
   if (_gisPromise) return _gisPromise;
@@ -214,7 +219,8 @@ export function getToken(opts) {
     ));
   }
 
-  return loadGIS().then((google) => new Promise((resolve, reject) => {
+  if (_interactiveP) return _interactiveP;
+  _interactiveP = loadGIS().then((google) => new Promise((resolve, reject) => {
     const done = (resp) => {
       if (!resp || !resp.access_token) {
         return reject(new Error(
@@ -244,7 +250,8 @@ export function getToken(opts) {
        'consent' is the first time, and the only time anything is
        shown. Google's own window, never a field in this app. */
     _tokenClient.requestAccessToken({ prompt: opts.interactive ? 'consent' : '' });
-  }));
+  })).finally(() => { _interactiveP = null; });
+  return _interactiveP;
 }
 
 /* ------------------------------------------------------------

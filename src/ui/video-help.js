@@ -6,6 +6,7 @@ import { approvedFor } from '../lib/videos.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import { facade } from './video.js';
 import { allModules } from '../lib/navmodel.js';
+import { actionMenu } from './actionbar.js';
 
 let overlay = null;
 let opener = null;
@@ -52,7 +53,17 @@ export function mountHelp(bar, moduleIds) {
   host.prepend(h('button.btn.vid-help-btn', {
     type: 'button', 'data-action': 'video-help-open'
   }, [h('span', { 'aria-hidden': 'true', text: '▶ ' }), 'How this works']));
-  delegate(document, 'click', '[data-action="video-help-open"]', (e, el) => { opener = el; open(videos); });
+  /* Between 720 and 1099px the band has no room for the button AND the
+     tools zone on one row, so there it moves into a "⋯" overflow menu
+     (video.css swaps which of the two is shown). Same action either way. */
+  const more = actionMenu('⋯', [{ label: 'How this works', action: 'video-help-open' }],
+    { compact: true, align: 'right', ariaLabel: 'More tools' });
+  more.classList.add('vid-help-more');
+  host.prepend(more);
+  delegate(document, 'click', '[data-action="video-help-open"]', (e, el) => {
+    opener = (el.closest('.vid-help-more') && el.closest('.vid-help-more').querySelector('.tb-menu-btn')) || el;
+    open(videos);
+  });
 }
 
 delegate(document, 'click', '[data-action="video-help-close"]', close);

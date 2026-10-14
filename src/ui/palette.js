@@ -13,7 +13,7 @@
    front of it, and three rules:
 
    1. IT IS DERIVED, NEVER LISTED. Modules come from
-      navigation.json, themes from StudioUI.themeOrder(), projects from
+      navigation.json, projects from
       listProjects(), scenes and contacts from their own models.
       A hand-written list of what the app contains is a list that
       is wrong by the second change — the same rule that keeps the
@@ -328,24 +328,10 @@ function settingItems() {
   const out = [];
   const UI = typeof window !== 'undefined' ? window.StudioUI : null;
 
-  /* The themes are asked for, not listed: THEME_ORDER lives in chrome.js.
-     They read Dark and Light (StudioUI.themeLabel), never the internal
-     ids. There is no "Design" row: one skin ships, so it is not a choice. */
-  if (UI && UI.themeOrder) {
-    for (const t of UI.themeOrder()) {
-      const name = (UI.themeLabel && UI.themeLabel(t)) || t;
-      out.push(entry({
-        id: 'theme:' + t,
-        label: 'Theme: ' + name,
-        sub: 'Switch the whole studio to ' + String(name).toLowerCase(),
-        group: 'Appearance',
-        icon: t === 'ink' ? '☾' : '☀',
-        cmd: true,
-        keywords: ['theme', 'colour', 'color', 'dark', 'light', 'mode', 'appearance', 'switch'],
-        run: () => UI.applyTheme(t)
-      }));
-    }
-  }
+  /* No theme rows: the studio has one theme (dark, 14 Oct 2026), so
+     there is nothing to switch to. A second theme in chrome.js's
+     THEME_ORDER would be the place to bring them back, derived. */
+  void UI;
   out.push(entry({
     id: 'cmd:shortcuts',
     label: 'Keyboard shortcuts',
@@ -709,7 +695,7 @@ function build() {
   });
   const box = h('div.pal-box');
   const field = h('div.pal-field');
-  field.append(h('span.pal-field-icon', { text: '⌕', 'aria-hidden': 'true' }));
+  field.append(iconSpan('pal-field-icon', { sym: 'search', icon: '⌕' }));
   input = h('input#palInput.pal-input', {
     type: 'text',
     role: 'combobox',

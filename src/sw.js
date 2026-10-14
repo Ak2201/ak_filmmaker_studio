@@ -58,7 +58,10 @@ function digest(s) {
    bytes, so every client installs a fresh worker that re-reads the header,
    and it rotates the cache names, so activate() sweeps whatever the old
    policy managed to cache. Bump it whenever the CSP changes. */
-const CSP_EPOCH = '2026-10-01-fonts';
+/* 2026-10-14: the fonts are self-hosted and the CSP dropped both
+   Google Fonts hosts, so the epoch moves again — a worker still carrying
+   the old policy would keep a runtime cache of Google font files. */
+const CSP_EPOCH = '2026-10-14-self-hosted-fonts';
 
 const BUILD    = digest(CSP_EPOCH + JSON.stringify(MANIFEST));
 const PRECACHE = `studio-precache-${BUILD}`;
@@ -92,10 +95,9 @@ function isNeverCached(url) {
   return /(^|\.)supabase\.(co|in|com|net)$/i.test(url.hostname);
 }
 
-/** Google Fonts: the stylesheet and the woff2 files it points at. */
-function isFontHost(url) {
-  return url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
-}
+/* No font host any more (14 Oct 2026): every face is a hashed asset on
+   this origin, precached with the rest, so there is no third-party
+   host this worker has to treat as static. */
 
 /* ------------------------------------------------------------
    A response with the redirect taint removed.
@@ -212,8 +214,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Static assets — cache-first (same-origin, plus the fonts).
-  if (sameOrigin || isFontHost(url)) {
+  // 2. Static assets — cache-first (same-origin; the fonts are too).
+  if (sameOrigin) {
     event.respondWith(cacheFirst(request));
   }
 });

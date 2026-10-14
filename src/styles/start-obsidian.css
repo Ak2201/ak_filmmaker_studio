@@ -45,7 +45,9 @@
   letter-spacing: -0.02em;
   margin-bottom: var(--s4);
 }
-.sn-accent { display: block; font-style: italic; color: var(--brand-deep); font-weight: 400; }
+/* The landing tagline: one of the three places the editorial serif
+   italic is allowed (tokens.css --face-editorial). */
+.sn-accent { display: block; font-family: var(--face-editorial); font-style: italic; color: var(--brand-deep); font-weight: 400; }
 .sn-hero .st-hook {
   margin-inline: auto;
   font-family: var(--sk-body);

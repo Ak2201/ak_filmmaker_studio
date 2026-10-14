@@ -185,5 +185,17 @@ eq([rc.lat, rc.lng, rc.hospital, rc.police], ['', '', '', ''], 'recce carries al
 L.setRecce('Test Place', { lat: '13.1', lng: '80.2', hospital: 'GH', police: 'T4' });
 eq([L.getRecce('Test Place').hospital, L.getRecce('Test Place').lat], ['GH', '13.1'], 'a Plan write is what the call sheet reads');
 
+/* ---- the nearest hospital and police are in the message -------- */
+{
+  const f = { film: 'Dragon', title: 'Day 1', generalCall: '06:00', scenes: [],
+    safety: [{ place: 'Fort', hospital: 'GH, 2 km, 044 1111', police: 'T1 station' }] };
+  const m = WA.unitMessage(f);
+  ok(m.includes('Nearest hospital: GH, 2 km, 044 1111') && m.includes('Nearest police: T1 station'), 'one place: hospital and police lines');
+  const two = WA.unitMessage({ ...f, safety: [...f.safety, { place: 'Beach', hospital: 'Clinic', police: '' }] });
+  ok(two.includes('Nearest hospital (Fort):') && two.includes('Nearest hospital (Beach): Clinic') && !two.includes('police (Beach)'), 'several places name the place, blank fields are skipped');
+  ok(!WA.unitMessage({ ...f, safety: [{ place: 'x', hospital: '', police: '' }] }).includes('Nearest'), 'nothing noted, nothing printed');
+  ok(WA.personMessage(f, { name: 'Ravi', call: '05:00' }).includes('Nearest hospital'), 'a person message carries it too');
+}
+
 console.log(`\n  callsheet: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

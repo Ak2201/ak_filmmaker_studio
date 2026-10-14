@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en" data-volume="studio">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Kit · {{brand:name}}</title>
+<meta name="robots" content="noindex, nofollow">
+<!-- DEV ONLY. The component kit's showcase: every component in every
+     state, for eyeballing against the Swiss Precision showcase. It is
+     NOT a build input in vite.config.js, so it is never built, never
+     precached and in no navigation; `npm run dev` serves it at
+     /kit.html because the dev server serves any page in the root. -->
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="/src/pages/kit.js"></script>
+</body>
+</html>

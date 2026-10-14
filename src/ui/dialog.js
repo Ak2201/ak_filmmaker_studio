@@ -24,16 +24,34 @@
    `checkbox: { label, checked }` adds one tick-box (e.g. "Also delete
    the Google Drive backup") and makes ask() resolve
    { ok, checked } instead of a boolean.
+   SWISS MODAL (14 Oct 2026). The card is built as the kit's modal
+   (kit.css, .dlg.k-modal): a head with an optional icon tile, a mono
+   EYEBROW and the H3; a body; an optional kit notice; for
+   typeToConfirm, a "Type WORD to confirm · CASE-SENSITIVE" row whose
+   field shows VERIFIED once it matches; and an actions bar. Every
+   option below is optional and every old call reads as before:
+     eyebrow   the mono line above the title (default per kind)
+     icon      a Material Symbols name for the icon tile (listed in
+               src/data/section-icons.json `icons`)
+     tone      'danger' | 'warn' | 'info' (danger: true implies danger)
+     notice    { tone, title, body } — a kit notice inside the body
+   The class names the proofs and older styles read are kept: .dlg,
+   .dlg-overlay, .modal, .modal-actions, .mbtn(.primary)(.danger),
+   .dlg-field, .dlg-hint, .dlg-check, and the title is still `.dlg h3`.
+   The × close button is deliberately NOT an .mbtn.
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import { notice as kitNotice } from './kit/notice.js';
 
 let queue = Promise.resolve();
+
+const symSpan = (name, cls) => h('span.' + cls + '.sym', { text: name, 'aria-hidden': 'true', translate: 'no' });
 
 function open(build) {
   const run = () => new Promise((resolve) => {
     const overlay = h('div.modal-overlay.dlg-overlay', { role: 'presentation' });
-    const card = h('div.modal.dlg', { role: 'dialog', 'aria-modal': 'true' });
+    const card = h('div.modal.dlg.k-modal', { role: 'dialog', 'aria-modal': 'true' });
     overlay.append(card);
     let done = false;
     const finish = (v) => {
@@ -49,6 +67,8 @@ function open(build) {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(parts.cancelValue); }
     };
     overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) finish(parts.cancelValue); });
+    const x = card.querySelector('.k-modal-close');
+    if (x) x.addEventListener('click', () => finish(parts.cancelValue));
     document.addEventListener('keydown', onKey, true);
     document.body.append(overlay);
     // .show on the next frame so the existing @starting-style fade runs
@@ -62,21 +82,57 @@ function open(build) {
   return p;
 }
 
-function head(card, title, body) {
+/* The head and the body. Returns the body, which the caller fills. */
+function head(card, opts, defaults) {
   const id = 'dlg-t-' + Math.random().toString(36).slice(2, 8);
   card.setAttribute('aria-labelledby', id);
-  card.append(h('h3', { id, text: title || 'Are you sure?' }));
-  if (body) {
-    const paras = Array.isArray(body) ? body : String(body).split(/\n{2,}/);
-    for (const t of paras) if (t) card.append(h('p.deck', { text: t }));
+  const tone = opts.tone || (opts.danger ? 'danger' : defaults.tone || '');
+  if (tone === 'danger') card.classList.add('is-danger');
+  if (tone === 'warn') card.classList.add('is-warn');
+  const icon = opts.icon === false ? null : (opts.icon || defaults.icon || null);
+  const top = h('div.k-modal-head' + (icon ? '' : '.no-icon'));
+  if (icon) top.append(symSpan(icon, 'k-modal-icon'));
+  const titles = h('div.k-modal-titles');
+  const eyebrow = opts.eyebrow === false ? null : (opts.eyebrow || defaults.eyebrow || null);
+  if (eyebrow) titles.append(h('p.k-eyebrow', { text: eyebrow }));
+  titles.append(h('h3', { id, text: opts.title || 'Are you sure?' }));
+  top.append(titles);
+  top.append(h('button.k-btn.k-btn--ghost.k-btn--icon.k-modal-close', { type: 'button', 'aria-label': 'Close' }, [symSpan('close', 'k-sym')]));
+  card.append(top);
+  const body = h('div.k-modal-body');
+  const text = opts.body;
+  if (text) {
+    const paras = Array.isArray(text) ? text : String(text).split(/\n{2,}/);
+    for (const t of paras) if (t) body.append(h('p.deck', { text: t }));
   }
+  if (opts.notice) {
+    const n = typeof opts.notice === 'string' ? { body: opts.notice } : opts.notice;
+    body.append(kitNotice({ tone: n.tone || (tone === 'danger' ? 'danger' : 'warn'), title: n.title, body: n.body }));
+  }
+  card.append(body);
+  return body;
 }
 
 function actions(card, list) {
-  const row = h('div.modal-actions');
+  const row = h('div.modal-actions.k-modal-actions');
   for (const b of list) row.append(b);
   card.append(row);
   return row;
+}
+
+/* The typed confirmation: "Type WORD to confirm" over a mono field that
+   says VERIFIED once it matches, exactly and case-sensitively. */
+function typedConfirm(body, want) {
+  const block = h('div.k-confirm');
+  const label = h('p.dlg-hint.k-confirm-label');
+  label.append(h('span', {}, ['Type ', h('span.k-confirm-word', { text: want }), ' to confirm']),
+    h('span.k-confirm-case', { text: 'Case-sensitive' }));
+  const field = h('input.dlg-field', { type: 'text', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Type ' + want + ' to confirm', placeholder: want });
+  const ok = h('span.k-trail.k-confirm-ok', { 'aria-hidden': 'true' }, [symSpan('check_circle', 'k-sym'), h('span', { text: 'Verified' })]);
+  const ctl = h('div.k-control.k-control--mono', {}, [field, ok]);
+  block.append(label, ctl);
+  body.append(block);
+  return { field, block };
 }
 
 /* A native-style message → {title, body}. The first paragraph (or, for a
@@ -99,23 +155,29 @@ function fromMessage(msg) {
 export function ask(opts = {}, extra) {
   if (typeof opts === 'string') opts = { ...fromMessage(opts), ...(extra || {}) };
   return open((card, finish) => {
-    head(card, opts.title, opts.body);
+    const body = head(card, opts, opts.danger
+      ? { eyebrow: 'Destructive action', icon: 'warning', tone: 'danger' }
+      : { eyebrow: 'Confirm', icon: 'info' });
     let box = null;
     if (opts.checkbox) {
       box = h('input', { type: 'checkbox', id: 'dlgCheck' });
       box.checked = !!opts.checkbox.checked;
-      card.append(h('label.dlg-check', { for: 'dlgCheck' }, [box, h('span', { text: opts.checkbox.label })]));
+      body.append(h('label.dlg-check.k-check', { for: 'dlgCheck' }, [box, h('span', { text: opts.checkbox.label })]));
     }
-    const yes = h('button.mbtn.primary' + (opts.danger ? '.danger' : ''), { type: 'button', text: opts.confirm || 'OK' });
-    const no = h('button.mbtn', { type: 'button', text: opts.cancel || 'Cancel' });
+    const yes = h('button.mbtn.primary.k-btn' + (opts.danger ? '.danger.k-btn--danger' : '.k-btn--primary'), { type: 'button', text: opts.confirm || 'OK' });
+    const no = h('button.mbtn.k-btn', { type: 'button', text: opts.cancel || 'Cancel' });
     const result = (ok) => (box ? { ok, checked: ok && box.checked } : ok);
     let field = null;
     if (opts.typeToConfirm) {
       const want = String(opts.typeToConfirm);
-      field = h('input.dlg-field', { type: 'text', autocomplete: 'off', 'aria-label': 'Type ' + want + ' to confirm', placeholder: want });
-      card.append(h('p.dlg-hint', { text: 'Type ' + want + ' to confirm.' }), field);
+      const tc = typedConfirm(body, want);
+      field = tc.field;
       yes.disabled = true;
-      field.addEventListener('input', () => { yes.disabled = field.value.trim() !== want; });
+      field.addEventListener('input', () => {
+        const match = field.value.trim() === want;
+        yes.disabled = !match;
+        tc.block.classList.toggle('is-verified', match);
+      });
       field.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !yes.disabled) { e.preventDefault(); finish(result(true)); } });
     }
     yes.addEventListener('click', () => finish(result(true)));
@@ -134,8 +196,8 @@ export function askDanger(opts = {}, extra) {
 export function tell(opts = {}) {
   if (typeof opts === 'string') opts = { body: opts };
   return open((card, finish) => {
-    head(card, opts.title || 'Note', opts.body);
-    const ok = h('button.mbtn.primary', { type: 'button', text: opts.ok || 'OK' });
+    head(card, { ...opts, title: opts.title || 'Note' }, { eyebrow: 'Notice', icon: 'info' });
+    const ok = h('button.mbtn.primary.k-btn.k-btn--primary', { type: 'button', text: opts.ok || 'OK' });
     ok.addEventListener('click', () => finish(undefined));
     actions(card, [ok]);
     return { cancelValue: undefined, focus: ok };
@@ -146,12 +208,12 @@ export function tell(opts = {}) {
 export function askText(opts = {}, extra) {
   if (typeof opts === 'string') opts = { ...fromMessage(opts), ...(extra || {}) };
   return open((card, finish) => {
-    head(card, opts.title, opts.body);
+    const body = head(card, opts, { eyebrow: 'Input', icon: 'edit_note' });
     const field = h('input.dlg-field', { type: 'text', autocomplete: 'off', placeholder: opts.placeholder || '', 'aria-label': opts.title || 'Answer' });
     field.value = opts.value || '';
-    card.append(field);
-    const yes = h('button.mbtn.primary', { type: 'button', text: opts.confirm || 'OK' });
-    const no = h('button.mbtn', { type: 'button', text: opts.cancel || 'Cancel' });
+    body.append(h('div.k-control', {}, [field]));
+    const yes = h('button.mbtn.primary.k-btn.k-btn--primary', { type: 'button', text: opts.confirm || 'OK' });
+    const no = h('button.mbtn.k-btn', { type: 'button', text: opts.cancel || 'Cancel' });
     yes.addEventListener('click', () => finish(field.value.trim()));
     no.addEventListener('click', () => finish(null));
     field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); finish(field.value.trim()); } });

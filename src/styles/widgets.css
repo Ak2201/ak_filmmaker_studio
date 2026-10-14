@@ -1240,7 +1240,7 @@
   transition: background var(--speed) var(--ease);
 }
 .scene-block .add-dialogue-btn:hover,
-.script-editor .add-scene-btn:hover { background: var(--accent-deep); }
+.script-editor .add-scene-btn:hover { background: var(--accent-hover); }
 /* The fill was changed to --library here without moving the text
    colour with it, so the label kept --accent-on from the rule above
    and rendered at 2.44:1 on the gold. An `on` colour belongs to the

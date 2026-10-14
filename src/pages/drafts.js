@@ -36,6 +36,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import * as Script from '../lib/script.js';
 import * as Drafts from '../lib/drafts.js';
+import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
 import { mountRevisionTools, renderCompareTool, presetCompare } from '../ui/write-revisions.js';
 
@@ -123,16 +124,16 @@ function row(d, isLatest) {
     h('div.dr-main', {}, [
       h('div.dr-name', {}, [
         h('strong', { text: d.label }),
-        isLatest ? h('span.dr-tag', { text: 'current' }) : null,
+        isLatest ? badge({ label: 'Current', tone: 'info', dot: true, class: 'dr-tag' }) : null,
         h('span.dr-colour', { text: d.colour.name })
       ]),
       h('div.dr-meta', { text: [stamp(d.savedAt, true), plural(d.pages, 'page'), plural(d.lines, 'line')].join(' · ') }),
       d.note ? h('div.dr-note', { text: d.note }) : null
     ]),
     h('div.dr-acts', {}, [
-      h('button.btn', { type: 'button', 'data-dr': 'pdf', 'data-id': d.id, text: 'Download PDF' }),
-      h('button.btn', { type: 'button', 'data-dr': 'compare', 'data-id': d.id, text: 'Compare with…' }),
-      h('button.btn', { type: 'button', 'data-dr': 'restore', 'data-id': d.id, text: 'Restore as working copy' })
+      button({ label: 'Download PDF', size: 'sm', icon: 'picture_as_pdf', attrs: { 'data-dr': 'pdf', 'data-id': d.id } }),
+      button({ label: 'Compare with…', size: 'sm', icon: 'rule', attrs: { 'data-dr': 'compare', 'data-id': d.id } }),
+      button({ label: 'Restore as working copy', size: 'sm', icon: 'history', attrs: { 'data-dr': 'restore', 'data-id': d.id } })
     ])
   );
   return li;
@@ -160,14 +161,13 @@ function refreshState() {
 function render() {
   const main = h('main#main.dr-main');
   const hasProject = !!(Store.currentProject && Store.currentProject());
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Screenplay · drafts' }),
-    h('h1.bd-title', { text: 'Drafts.' }),
-    h('p.bd-deck', {
-      text: 'A draft is a copy of the script as it stood, with its title page. Save one when a pass is done; '
-          + 'print it, compare it with the next, or go back to it. Your working copy is always kept as you type.'
-    })
-  ]));
+  main.append(pageHeader({
+    class: 'bd-head',
+    eyebrow: ['Screenplay', 'Drafts'],
+    title: 'Drafts.',
+    sub: 'A draft is a copy of the script as it stood, with its title page. Save one when a pass is done; '
+       + 'print it, compare it with the next, or go back to it. Your working copy is always kept as you type.'
+  }));
   if (!hasProject) {
     /* #title is a nav target: it renders in every state (CLAUDE.md,
        "a nav target must not depend on data existing"). */
@@ -183,16 +183,16 @@ function render() {
   const next = 'Draft ' + Drafts.nextDraftNumber(doc);
 
   main.append(h('div.dr-bar', {}, [
-    h('a.btn.dr-back', { href: 'screenplay.html', text: '← Back to the Screenplay Writer' }),
+    button({ label: 'Back to the Screenplay Writer', href: 'screenplay.html', class: 'dr-back', variant: 'ghost' }),
     h('span.dr-state', { 'data-dr-state': '', 'aria-live': 'polite', text: stateText() }),
     h('span.dr-spacer'),
-    h('button.btn.primary', { type: 'button', 'data-dr': 'new', text: 'Save as new draft' }),
-    h('button.btn', { type: 'button', 'data-dr': 'update', disabled: !last, text: last ? 'Update ' + last.label : 'Update current draft' })
+    button({ label: 'Save as new draft', variant: 'primary', icon: 'add', attrs: { 'data-dr': 'new' } }),
+    button({ label: last ? 'Update ' + last.label : 'Update current draft', disabled: !last, attrs: { 'data-dr': 'update' } })
   ]));
   if (last) refreshStateClass(main);
 
   if (!drafts.length) {
-    main.append(h('p.dr-empty', { text: 'No drafts yet. “Save as new draft” makes ' + next + ' from the script as it is now.' }));
+    main.append(emptyState({ icon: 'history', class: 'dr-empty', title: 'No drafts yet.', body: '“Save as new draft” makes ' + next + ' from the script as it is now.' }));
   } else {
     main.append(h('ol.dr-list', { 'aria-label': 'Drafts, newest first' }, drafts.map((d, i) => row(d, i === 0))));
   }

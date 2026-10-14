@@ -76,6 +76,25 @@
 .ps-item-title { font-weight: 600; overflow-wrap: anywhere; }
 .ps-item-meta { color: var(--chrome-muted); font-size: var(--t-micro); }
 
+/* ---- Swiss Precision (14 Oct 2026): the popover is the elevated
+   surface every floating thing uses; the open project is the violet
+   wash with the accent edge. The band's button itself is restyled with
+   the rest of the band's controls at the end of chrome.css. ---- */
+.ps-pop {
+  background: var(--surface-elevated);
+  color: var(--ink);
+  border-color: var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+.ps-head { color: var(--ink-muted); }
+.ps-item, .ps-link { border-radius: var(--radius); color: var(--ink); font-family: var(--f-body); font-size: var(--t-ui); }
+.ps-link { color: var(--brand-deep); }
+.ps-item:hover, .ps-link:hover { background: var(--surface-hover); }
+.ps-item.is-current { background: var(--brand-wash); border-color: var(--accent-primary); }
+.ps-item-meta { color: var(--ink-muted); font-family: var(--f-mono); font-size: var(--t-nano); letter-spacing: 0.02em; }
+.ps-btn:focus-visible, .ps-item:focus-visible, .ps-link:focus-visible { outline: var(--focus); outline-offset: 2px; }
+
 /* phone: the Go-to sheet carries the switcher instead */
 @media (max-width: 720px) { .ps-btn, .ps-pop { display: none; } }
 @media print { .ps-btn, .ps-pop { display: none !important; } }

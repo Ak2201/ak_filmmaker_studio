@@ -57,7 +57,7 @@
   padding: var(--s1) var(--s3);
   background: transparent;
   border: 1px solid var(--rule);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius);
   color: var(--ink-muted);
   font: inherit;
   font-size: var(--t-micro);

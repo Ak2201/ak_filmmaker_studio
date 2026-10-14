@@ -68,6 +68,14 @@ function factLines(f) {
   if (clean(f.wrap)) lines.push('Planned wrap: ' + clean(f.wrap));
   if (clean(f.location)) lines.push('Location: ' + clean(f.location));
   if (f.mapUrl) lines.push('Map' + (clean(f.mapPlace) ? ' (' + clean(f.mapPlace) + ')' : '') + ': ' + f.mapUrl);
+  /* Where help is: the recce's hospital and police fields, filed against
+     the location. Named by place only when the day spans several. */
+  const safety = (f.safety || []).filter((x) => x && (clean(x.hospital) || clean(x.police)));
+  safety.forEach((x) => {
+    const at = safety.length > 1 && clean(x.place) ? ' (' + clean(x.place) + ')' : '';
+    if (clean(x.hospital)) lines.push('Nearest hospital' + at + ': ' + clean(x.hospital));
+    if (clean(x.police)) lines.push('Nearest police' + at + ': ' + clean(x.police));
+  });
   if (f.light && f.light.sunrise) {
     lines.push('Sunrise ' + f.light.sunrise + ' · Sunset ' + f.light.sunset
       + (f.light.zone ? ' (' + f.light.zone + ')' : '')
@@ -115,6 +123,7 @@ function fit(top, f, limit) {
  *
  *   facts = { film, title, dayNumber, date, generalCall, wrap, location,
  *             mapUrl, light: { sunrise, sunset, zone, fallback } | null,
+ *             safety: [{ place, hospital, police }],
  *             scenes: [{ number, slug, pages }], pagesTotal, notes }
  */
 export function unitMessage(facts, limit = WA_LIMIT) {

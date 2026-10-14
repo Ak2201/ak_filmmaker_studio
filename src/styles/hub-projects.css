@@ -12,19 +12,11 @@
    ============================================================ */
 
 /* ---- (1) hero -------------------------------------------------- */
-.projects-section .projects-head {
-  align-items: flex-end;
-  gap: var(--s5) var(--s6);
+.projects-section .projects-head.k-page-head {
+  align-items: end;
   margin-bottom: var(--s5);
   padding-bottom: 0;
   border-bottom: 0;
-}
-.projects-section .projects-head > div { min-width: 0; flex: 1 1 24rem; }
-.projects-section .projects-head .lab {
-  margin-bottom: var(--s4);
-  font-weight: 600;
-  letter-spacing: var(--track-wide);
-  color: var(--accent-deep);
 }
 .projects-section .projects-head h1 {
   margin: 0;
@@ -35,13 +27,13 @@
   letter-spacing: var(--track-tight);
   color: var(--ink);
 }
-/* "where you left off." / "a path." — the accent half, italic serif.
-   --face-accent is for the display serif; until it is declared the
-   named face and then a system serif carry it. */
+/* "where you left off." / "a path." — the accent half. A page title is
+   never serif (14 Oct 2026): --face-accent is the display face and
+   --face-accent-style upright; the colour carries the accent. */
 .projects-section .projects-head h1 em {
-  font-family: var(--face-accent, 'Playfair Display', Georgia, 'Times New Roman', serif);
-  font-style: italic;
-  font-weight: 400;
+  font-family: var(--face-accent);
+  font-style: var(--face-accent-style);
+  font-weight: 500;
   letter-spacing: 0;
   color: var(--accent-deep);
 }
@@ -53,41 +45,8 @@
 }
 .projects-section .greeting-block strong { color: var(--ink); font-weight: 700; }
 
-.projects-section .projects-head > .btn.primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s2);
-  padding: var(--s3) var(--s5);
-  border: 0;
-  border-radius: var(--radius-pill, 999px);
-  /* a solid colour under the gradient: the AA walk resolves a surface from
-     background-color, and a gradient alone reads as transparent */
-  background-color: var(--accent);
-  background-image: linear-gradient(90deg, var(--accent), var(--accent-deep));
-  color: var(--accent-on);
-  font-family: var(--f-mono);
-  font-size: var(--t-small);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  box-shadow: 0 8px 24px var(--cta-glow, transparent);
-  transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease),
-              filter var(--speed) var(--ease);
-}
-.projects-section .projects-head > .btn.primary:hover {
-  background-color: var(--accent);
-  background-image: linear-gradient(90deg, var(--accent), var(--accent-deep));
-  color: var(--accent-on);
-  filter: brightness(1.06);
-  transform: translateY(calc(-1px * var(--motion)));
-  box-shadow: 0 10px 30px var(--cta-glow, transparent);
-}
-.projects-section .projects-head > .btn.primary:active { transform: scale(.98); }
-.projects-section .projects-head > .btn.primary[hidden] { display: none; }
-.projects-section .projects-head > .btn.primary svg { width: 1em; height: 1em; flex: none; }
 @media (max-width: 720px) {
-  .projects-section .projects-head > .btn.primary { flex: 1 1 100%; min-height: 48px; }
+  .projects-section .projects-head .k-page-actions .k-btn { flex: 1 1 100%; min-height: 48px; justify-content: center; }
 }
 
 /* ---- (2) the Today banner ------------------------------------- */
@@ -406,3 +365,16 @@
   color: var(--library-deep);
 }
 .hub-shelf-count span[aria-hidden] { margin-right: var(--s1); font-size: .8em; }
+
+/* ---- kit pass (14 Oct 2026) ------------------------------------------
+   The project's own name is the one heading that takes the editorial
+   italic; the card, like the dashboard's title, is the cover preview. */
+.projects-section .project-card .pc-title {
+  font-family: var(--f-editorial);
+  font-style: italic;
+  font-weight: 400;
+  font-size: var(--t-xl);
+  letter-spacing: 0;
+}
+.projects-section .project-card { background: var(--surface-card); border-color: var(--border-hair); }
+.projects-section .project-card.active { border-color: var(--border-focus); }

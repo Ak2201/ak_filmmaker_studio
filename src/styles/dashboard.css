@@ -967,3 +967,34 @@
 .st-pill.is-doing { border-color: var(--accent); }
 .db-stats .bd-stat span { overflow-wrap: anywhere; }
 .db-stats .bd-stat { padding: var(--s3); }
+
+/* ---- Swiss Precision kit pass (14 Oct 2026) -------------------------
+   The head, the KPI strip, the desk tiles and the stage cards now come
+   from the kit (kit.css); this block only arranges them on the page. */
+.db-head .bd-title.k-project-title.k-project-title {
+  font-family: var(--f-editorial);
+  font-style: italic;
+  font-weight: 400;
+  font-size: var(--t-3xl);
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.db-chips { margin-bottom: var(--s3); }
+.db-head .bd-title { margin-bottom: var(--s2); }
+.db-stats { margin-top: var(--s4); }
+.db-tile .k-panel-body { display: grid; gap: var(--s3); align-content: start; }
+.db-tile > .k-panel-head { background: transparent; }
+.db-tile-h { font-size: var(--t-lg); font-weight: 600; }
+.db-ready .db-score { top: var(--s2); right: var(--s4); }
+.db-ready .db-tile-h { padding-right: 0; }
+.db-seg { margin-block: var(--s1); }
+.db-main .st-list { grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); }
+.st-card { background: var(--surface-card); border-color: var(--border-hair); }
+.st-card.is-suggested { background: var(--surface-elevated); border-color: var(--hue, var(--accent-primary)); }
+.st-name { font-family: var(--f-display); font-size: var(--t-base); font-weight: 600; }
+.st-meter { display: grid; gap: var(--s1); }
+.st-card .k-meter-read { font-family: var(--f-mono); }
+.st-go { justify-content: center; width: 100%; }
+.db-fix, .rd-row { border-radius: var(--sk-radius); }
+.db-main .st-meter { grid-template-columns: minmax(0, 1fr); gap: var(--s1); }
+.db-focus { align-items: start; }

@@ -18,6 +18,7 @@
 import { h } from '../lib/dom.js';
 import { pathSteps, stepForPage, nextStep } from '../lib/preprod-path.js';
 import Store from '../lib/store.js';
+import { button } from './kit/index.js';
 import '../styles/stepper.css';
 import '../styles/path-bar.css';
 
@@ -54,9 +55,9 @@ export function mountPathBar(main) {
     });
     const prev = steps[i - 1], next = steps[i + 1];
     foot.replaceChildren(...[
-      prev ? h('a.btn', { href: hrefOf(prev), text: '← BACK: ' + prev.label.toUpperCase() }) : null,
+      prev ? button({ href: hrefOf(prev), label: '← BACK: ' + prev.label.toUpperCase() }) : null,
       h('span.stp-count', { text: 'Step ' + (i + 1) + ' of ' + steps.length + (cur.state === 'done' ? ' · done' : '') }),
-      next ? h('a.btn.primary', { href: hrefOf(next), text: 'NEXT: ' + next.label.toUpperCase() + ' →' }) : null
+      next ? button({ href: hrefOf(next), variant: 'primary', label: 'NEXT: ' + next.label.toUpperCase() + ' →' }) : null
     ].filter(Boolean));
     /* the lit step stays in view in a scrolling strip */
     const on = list.querySelector('.is-on');

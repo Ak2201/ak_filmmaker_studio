@@ -40,12 +40,18 @@
    Every move is announced in a live region and offers UNDO in a toast.
 
    COLOUR. The paper board codes a strip by time of day, and this one
-   does too, from the phase tokens. It does NOT reach for green and
-   yellow the way a printed board does: green is --ok and amber is
-   --warn in this palette, and a strip that reads as a status is worse
-   than a strip that reads as nothing. INT vs EXT is carried by a badge
-   instead — filled for exterior, outlined for interior — which is one
-   dimension per channel and legible in all four themes.
+   does too, from the kit's time-of-day tokens (.hue-day / -night /
+   -dusk / -dawn → --strip-*). INT vs EXT is carried by a tag instead —
+   filled for exterior, outlined for interior — one dimension per
+   channel. Green and amber are status in this palette, and the board
+   only uses them for status: the over-target badge, the shot mark.
+
+   THE KIT (14 Oct 2026). Header, stat strip, controls panel,
+   segmented group-by, buttons, badges, cast chips, the implied
+   company-move banner, the DOOD codes and the grid's table classes
+   are src/ui/kit components; stripboard.css is layout only. The
+   "Lock production draft" action at the top is the screenplay's own
+   scene-number lock — see the section above the events.
    ============================================================ */
 import '../lib/store.js';
 import '../styles/base.css';
@@ -67,7 +73,10 @@ import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/
 import Locations from '../lib/locations.js';
 import * as Songs from '../lib/songs.js';
 import DPR from '../lib/dpr.js';
-import { ask, askDanger } from '../ui/dialog.js';
+import {
+  pageHeader, statStrip, statCard, meter, button, badge, chip, todBadge, todKey, doodCode,
+  segmented, panel, stripBanner, emptyState, eyebrow, sym, ask, askDanger, tell
+} from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 const CAST = 'cast';
@@ -86,15 +95,6 @@ const GROUPINGS = [
   { id: 'song',     label: 'Song' }
 ];
 
-/* Time of day → a phase hue. The class sets --strip-hue in the
-   stylesheet; the value itself never appears in JavaScript. */
-const TIME_CLASS = {
-  DAY: 'tod-day',
-  NIGHT: 'tod-night',
-  DAWN: 'tod-dawn',
-  DUSK: 'tod-dusk',
-  CONTINUOUS: 'tod-cont'
-};
 const TIME_ORDER = ['DAY', 'DAWN', 'DUSK', 'NIGHT', 'CONTINUOUS'];
 
 /* ---- small readers ------------------------------------------
@@ -113,42 +113,69 @@ function shootDays(scenes) {
   return [...new Set(scenes.map(shootDayOf).filter(Boolean))].sort((a, b) => a - b);
 }
 
-/* ---- header -------------------------------------------------- */
+/* ---- header --------------------------------------------------
+   The kit's page header. `.bd-head` stays on it: the module column,
+   and pdf.css hides it from both exports. Four figures, every one
+   counted from the scene model on render; a figure with nothing behind
+   it prints a dash rather than a zero that reads as a fact. */
 function renderHeader(scenes) {
   const days = shootDays(scenes);
   const unscheduled = scenes.filter((s) => !shootDayOf(s)).length;
+  const placed = scenes.length - unscheduled;
   const eighths = totalEighths(scenes);
-  return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Stripboard · the schedule' }),
-    h('h1.bd-title', { text: 'The Board.' }),
-    h('p.bd-deck', {
-      text: 'One strip per scene, straight from the breakdown. Group them the way '
-          + 'you will shoot them — everything in one location together, every night '
-          + 'exterior together — then hand each group a shoot day. The day out of '
-          + 'days below builds itself from that.'
+  const head = pageHeader({
+    class: 'bd-head sb-head',
+    eyebrow: ['Stripboard', 'The schedule'],
+    title: 'The Board.',
+    sub: 'One strip per scene, straight from the breakdown. Group them the way '
+       + 'you will shoot them — everything in one location together, every night '
+       + 'exterior together — then hand each group a shoot day. The day out of '
+       + 'days below builds itself from that.',
+    actions: [h('div.sb-lock-host', {}, [lockButton()])]
+  });
+  const strips = statCard({
+    label: 'Strips', value: scenes.length ? String(scenes.length) : '—',
+    unit: scenes.length ? (scenes.length === 1 ? 'strip' : 'strips') : '',
+    note: 'one per scene'
+  });
+  if (scenes.length) {
+    strips.append(meter({
+      label: 'Scheduled', value: placed, max: scenes.length, show: 'ratio',
+      tone: placed === scenes.length ? 'ok' : null
+    }));
+  }
+  head.append(statStrip([
+    strips,
+    statCard({
+      label: 'Script pages', value: scenes.length ? formatEighths(eighths) : '—',
+      unit: scenes.length ? (eighths === 8 ? 'page' : 'pages') : '',
+      note: scenes.length ? eighths + ' eighths' : ''
     }),
-    h('div.bd-stats.sb-kpis', {}, [
-      stat(scenes.length ? String(scenes.length) : '\u2014', scenes.length === 1 ? 'strip' : 'strips', 'one per scene'),
-      stat(scenes.length ? formatEighths(eighths) : '\u2014', eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : ''),
-      stat(days.length ? String(days.length) : '\u2014', days.length === 1 ? 'shoot day' : 'shoot days', days.length ? 'scheduled' : ''),
-      stat(String(unscheduled), 'unscheduled', unscheduled ? 'still to place' : 'all placed')
-    ])
-  ]);
+    statCard({
+      label: 'Shoot days', value: days.length ? String(days.length) : '—',
+      unit: days.length ? (days.length === 1 ? 'day' : 'days') : '',
+      note: days.length ? 'scheduled' : ''
+    }),
+    statCard({
+      label: 'Unscheduled', value: String(unscheduled),
+      unit: unscheduled === 1 ? 'strip' : 'strips',
+      note: unscheduled ? 'still to place' : 'all placed',
+      noteTone: scenes.length ? (unscheduled ? 'warn' : 'ok') : null
+    })
+  ], { class: 'sb-kpis', label: 'The board in figures' }));
+  return head;
 }
-const stat = (value, label, note) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label }),
-    note ? h('em.bd-stat-note', { text: note }) : null]);
 
 /* ---- the teaching empty state -------------------------------
    Same shape as the breakdown's: an empty module explains what it is
    for rather than showing a blank rack. It cannot offer "add a strip",
    because a strip is not a thing you add here — it is a scene. */
 function renderEmpty() {
-  return h('div.bd-empty', {}, [
-    h('div.bd-empty-mark', { text: '▤', 'aria-hidden': 'true' }),
-    h('h2', { text: 'The board needs scenes first' }),
-    h('p', {
-      text: 'A stripboard is not a second document — it is the scene list stood on '
+  return h('div.bd-empty.sb-empty', {}, [
+    emptyState({
+      icon: 'timeline',
+      title: 'The board needs scenes first',
+      body: 'A stripboard is not a second document — it is the scene list stood on '
           + 'its side. Every strip here is one scene from the breakdown, so there is '
           + 'nothing to type on this page that you have not already typed once.'
     }),
@@ -165,7 +192,9 @@ function renderEmpty() {
             + 'back to a scene is the day you shoot it.'
       })
     ]),
-    h('a.btn.primary.bd-cta', { href: 'breakdown.html#scenes', text: 'Go to the breakdown  →' })
+    h('div.sb-empty-cta', {}, [
+      button({ label: 'Go to the breakdown', iconAfter: 'arrow_forward', variant: 'primary', href: 'breakdown.html#scenes', class: 'bd-cta' })
+    ])
   ]);
 }
 const how = (n, title, body) =>
@@ -244,19 +273,27 @@ function groupScenes(scenes, mode) {
   return groups;
 }
 
-/* ---- one strip ----------------------------------------------- */
+/* ---- one strip -----------------------------------------------
+   The kit's strip language: a card with the time-of-day hue as its
+   3px left rule and a faint wash, the hue class (.hue-day / -night /
+   -dusk / -dawn) set on the strip so every badge inside reads the same
+   --hue. CONTINUOUS (or anything that is not a time of day) has no
+   hue and keeps the neutral rule — the word still says what it is. */
 function renderStrip(scene, maxDay, movable) {
-  const tod = TIME_CLASS[scene.dayNight] || 'tod-day';
-  const strip = h(`article.sb-strip.${tod}` + (movable ? '.has-grip' : ''), { 'data-scene': scene.id });
+  const tod = todKey(scene.dayNight);
+  const strip = h('article.sb-strip' + (tod ? '.hue-' + tod : '.is-neutral') + (movable ? '.has-grip' : ''), { 'data-scene': scene.id });
 
   if (movable) strip.append(moveHandle(scene));
+  const ie = String(scene.intExt || '').toUpperCase();
+  const slug = h('span.sb-slug', {}, [h('span.sb-loc', { text: locationOf(scene) || 'Location not set' })]);
+  if (scene.synopsis) slug.append(h('span.sb-synopsis', { text: scene.synopsis, title: scene.synopsis }));
   strip.append(
     h('span.sb-no', { text: scene.number || '—' }),
-    h('span.sb-ie' + (scene.intExt === 'INT' ? '' : '.is-ext'), { text: scene.intExt }),
-    h('span.sb-slug', { text: locationOf(scene) || 'Location not set' }),
-    h('span.sb-tod', { text: scene.dayNight }),
+    h('span.sb-ie.k-badge.k-badge--tag' + (ie === 'INT' ? '' : '.is-ext'), { text: scene.intExt }),
+    slug,
+    todTag(scene.dayNight),
     h('span.sb-pages', {
-      text: formatEighths(scene.eighths),
+      text: formatEighths(scene.eighths) + ' pp',
       title: `${scene.eighths} eighths of a page`
     }),
     dayPicker(scene, maxDay)
@@ -270,7 +307,8 @@ function renderStrip(scene, maxDay, movable) {
      L15). Read only; the mark is written on the shoot day. */
   const st = scene.shotState || '';
   if (st) {
-    row.append(h('a.sb-shot.is-' + st, {
+    const tone = st === 'shot' ? 'ok' : st === 'part' ? 'warn' : null;
+    row.append(h('a.sb-shot.is-' + st + '.k-badge' + (tone ? '.k-badge--' + tone : ''), {
       href: 'shoot.html', title: 'Marked on the shoot day — change it there',
       text: st === 'part' ? 'Part shot' : Scenes.shotLabel(st)
     }));
@@ -279,12 +317,19 @@ function renderStrip(scene, maxDay, movable) {
     row.append(h('span.sb-cast-none', { text: 'No cast tagged — this scene is invisible to the day out of days.' }));
   } else {
     row.append(h('span.sb-cast-lab', { text: castCat.label }));
-    cast.forEach((name) => row.append(h('span.sb-cast-chip', { text: name })));
+    cast.forEach((name) => row.append(chip({ label: name, category: CAST, class: 'sb-cast-chip' })));
   }
   strip.append(row);
-
-  if (scene.synopsis) strip.append(h('p.sb-synopsis', { text: scene.synopsis }));
   return strip;
+}
+
+/* The time of day as a kit badge, with the class print and the
+   legend read. Not a hue for CONTINUOUS: todBadge() makes that a
+   neutral tag. */
+function todTag(tod) {
+  const el = todBadge(tod, { label: String(tod || '').toUpperCase() || '—', icon: false });
+  el.classList.add('sb-tod');
+  return el;
 }
 
 /* The handle. One control, two routes: drag it (pointer events, see
@@ -317,14 +362,14 @@ function moveHandle(scene) {
 
 /** Scheduling control. Writes the day — through placeScene(), so the
     strip lands at the end of the day it moves to and leaves the list
-    of the day it came from. */
+    of the day it came from. A kit select (.k-control.k-select). */
 function dayPicker(scene, maxDay) {
   const current = shootDayOf(scene);
   const wrap = h('label.sb-day');
   // "Shoot day", not "Day": the strip already carries a DAY/NIGHT, and
   // two labels reading DAY on one strip meant two different things.
-  wrap.append(h('span.sb-day-lab', { text: 'Shoot day' }));
-  const sel = h('select.sb-day-sel', {
+  wrap.append(h('span.sb-day-lab.visually-hidden', { text: 'Shoot day' }));
+  const sel = h('select.sb-day-sel.k-input', {
     'data-strip-field': 'shootDay',
     'aria-label': `Shoot day for scene ${scene.number || ''}`.trim()
   });
@@ -335,11 +380,11 @@ function dayPicker(scene, maxDay) {
   // new day without a separate "add a day" control that would need its
   // own empty state.
   for (let d = 1; d <= Math.max(maxDay + 1, current + 1); d += 1) {
-    const opt = h('option', { value: String(d), text: d > maxDay ? `${d} · new` : String(d) });
+    const opt = h('option', { value: String(d), text: d > maxDay ? `Day ${d} · new` : `Day ${d}` });
     if (d === current) opt.selected = true;
     sel.append(opt);
   }
-  wrap.append(sel);
+  wrap.append(h('span.k-control.k-select.sb-day-ctl', {}, [sel]));
   return wrap;
 }
 
@@ -353,6 +398,41 @@ function localDate(str) {
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
   return WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
 }
+
+/* The controls: one kit panel. Grouping is a view, so it is a
+   segmented toggle, not a form; the scheduling actions and the export
+   sit at its right; the colour key and the page target under it. */
+function renderControls() {
+  const seg = segmented({
+    label: 'Group strips by', name: 'sb-group', value: view.group, action: 'sb-group',
+    options: GROUPINGS.map((g) => ({ value: g.id, label: g.label }))
+  });
+  seg.querySelectorAll('.k-seg-btn').forEach((b) => {
+    b.dataset.group = b.dataset.value;
+    b.classList.add('sb-seg-btn');
+  });
+  /* The board and the day out of days are two documents, and both
+     are wider than they are tall — so both go out landscape. The
+     export sits in a named menu beside the two scheduling actions
+     rather than as two more buttons on the row. */
+  const exportMenu = actionMenu('Export', [
+    { label: 'Stripboard as PDF',      action: 'pdf-board', hint: 'landscape' },
+    { label: 'Day Out of Days as PDF', action: 'pdf-dood',  hint: 'landscape' },
+    '---',
+    { label: 'Print this page',        action: 'sb-print' }
+  ], { align: 'right' });
+  exportMenu.querySelector('.tb-menu-btn').classList.add('k-btn', 'k-btn--secondary');
+  const controls = h('div.sb-controls', {}, [
+    h('div.sb-seg', {}, [h('span.sb-seg-lab', { text: 'Group by', 'aria-hidden': 'true' }), seg]),
+    h('div.sb-acts.pdf-menu-host', {}, [
+      button({ label: 'Schedule by location', icon: 'auto_awesome', action: 'sb-auto', class: 'sb-btn' }),
+      button({ label: 'Clear days', variant: 'danger', action: 'sb-clear', class: 'sb-btn is-danger' }),
+      exportMenu
+    ])
+  ]);
+  return panel({ class: 'sb-controls-panel', body: [controls, legend()] });
+}
+
 function renderBoard(scenes) {
   const wrap = h('section.sb-board', { id: 'stripboard' });
   wrap.append(
@@ -360,34 +440,9 @@ function renderBoard(scenes) {
     h('p.bd-sub', {
       text: 'Grouping is how you are looking at the board, not how the script reads — '
           + 'the scene order in the breakdown never moves.'
-    })
+    }),
+    renderControls()
   );
-
-  const controls = h('div.sb-controls');
-  const seg = h('div.sb-seg', { role: 'group', 'aria-label': 'Group strips by' });
-  seg.append(h('span.sb-seg-lab', { text: 'Group by' }));
-  GROUPINGS.forEach((g) => {
-    const on = view.group === g.id;
-    seg.append(h('button.sb-seg-btn' + (on ? '.is-on' : ''), {
-      type: 'button', 'data-action': 'sb-group', 'data-group': g.id,
-      'aria-pressed': String(on), text: g.label
-    }));
-  });
-  /* The board and the day out of days are two documents, and both
-     are wider than they are tall — so both go out landscape. The
-     export sits in a named menu beside the two scheduling actions
-     rather than as two more buttons on the row. */
-  controls.append(seg, h('div.sb-acts.pdf-menu-host', {}, [
-    h('button.sb-btn', { type: 'button', 'data-action': 'sb-auto', text: 'Schedule by location' }),
-    h('button.sb-btn.is-danger', { type: 'button', 'data-action': 'sb-clear', text: 'Clear days' }),
-    actionMenu('Export', [
-      { label: 'Stripboard as PDF',      action: 'pdf-board', hint: 'landscape' },
-      { label: 'Day Out of Days as PDF', action: 'pdf-dood',  hint: 'landscape' },
-      '---',
-      { label: 'Print this page',        action: 'sb-print' }
-    ], { align: 'right' })
-  ]));
-  wrap.append(controls, legend());
 
   const byDay = view.group === 'day';
   if (byDay) {
@@ -409,24 +464,31 @@ function renderBoard(scenes) {
     const eighths = totalEighths(group.scenes);
     const section = h('div.sb-group');
     const isDay = byDay && group.key !== Infinity;
-    const head = h('div.sb-group-head', {}, [
-      h('h3.sb-group-name', { text: group.label }),
-      h('span.sb-group-meta', {
+    const title = h('div.sb-group-title', {}, [h('h3.sb-group-name', { text: group.label })]);
+    const facts = h('div.sb-group-facts', {}, [
+      h('span.sb-group-meta.k-badge', {
         text: `${group.scenes.length} ${group.scenes.length === 1 ? 'scene' : 'scenes'} · ${formatEighths(eighths)} ${eighths === 8 ? 'page' : 'pages'}`
       })
     ]);
+    const head = h('div.sb-group-head', {}, [title, facts]);
     if (isDay) {
       const cal = calDays.get(group.key);
       const dated = cal && localDate(cal.date);
-      if (dated) head.querySelector('.sb-group-name').after(h('span.sb-group-date', { text: dated }));
+      if (dated) title.append(h('span.sb-group-date', { text: dated }));
       if (group.scenes.length && group.scenes.every((sc) => sc.dayNight === 'NIGHT')) {
-        head.append(h('span.sb-night-badge', { text: 'Night shoot' }));
+        const nb = todBadge('NIGHT', { label: 'Night shoot' });
+        nb.classList.add('sb-night-badge');
+        facts.append(nb);
       }
-      head.append(...dayLoadBits(group.key, eighths, target));
+      facts.append(...dayLoadBits(group.key, eighths, target));
+      const tail = h('div.sb-group-tail');
       if (cal && cal.locations && cal.locations.length) {
-        head.append(h('span.sb-group-locs', { text: 'Locations: ' + cal.locations.join(', ') }));
+        tail.append(h('span.sb-group-locs', { title: 'Locations: ' + cal.locations.join(', ') }, [
+          sym('place'), h('span', { text: 'Locations: ' + cal.locations.join(', ') })
+        ]));
       }
-      head.append(bannerMenu(group.key));
+      tail.append(bannerMenu(group.key));
+      head.append(tail);
     }
     section.append(head);
     /* In the day grouping every rack names its day, so a drop knows
@@ -435,12 +497,25 @@ function renderBoard(scenes) {
     const rack = h('div.sb-rack', byDay ? { 'data-day': String(group.key === Infinity ? 0 : group.key) } : {});
     if (byDay && group.key === Infinity) hasUnscheduled = true;
     if (isDay) {
+      const dayBanners = banners[String(group.key)] || [];
+      /* The company moves the day IMPLIES — a change of location
+         between two consecutive strips — drawn as the kit's move
+         banner wherever the AD has not written one. Derived on render
+         and stored nowhere; "+ Banner → Company move" writes the real
+         one (pre-filled with this same From → To). */
+      const covered = new Set(dayBanners.filter((b) => b.kind === 'move').map((b) => b.after));
+      const implied = new Map(DPR.impliedMoves(group.scenes)
+        .filter((m) => !covered.has(m.after)).map((m) => [m.after, m]));
       /* Banners sit between the strips they were written between —
          anchored to a scene, so dragging strips about keeps them. */
-      for (const it of DPR.layoutDay(group.scenes, banners[String(group.key)] || [])) {
-        rack.append(it.type === 'scene'
-          ? renderStrip(it.scene, maxDay, byDay)
-          : renderBanner(it.banner, group.key, group.scenes));
+      for (const it of DPR.layoutDay(group.scenes, dayBanners)) {
+        if (it.type === 'scene') {
+          rack.append(renderStrip(it.scene, maxDay, byDay));
+          const m = implied.get(it.scene.id);
+          if (m) rack.append(impliedMove(m));
+        } else {
+          rack.append(renderBanner(it.banner, group.key, group.scenes));
+        }
       }
     } else {
       group.scenes.forEach((s) => rack.append(renderStrip(s, maxDay, byDay)));
@@ -461,6 +536,14 @@ function renderBoard(scenes) {
   return wrap;
 }
 
+function impliedMove(m) {
+  const el = stripBanner({ label: `Company move · ${m.from} → ${m.to}`, icon: 'local_shipping' });
+  el.classList.add('sb-implied');
+  el.dataset.after = m.after;
+  el.title = 'The location changes here. Add a Company move banner to the day to note how long it takes and what travels.';
+  return el;
+}
+
 /* ---- banners and the day's load ----------------------------------
    Day-level strips — a company move, a travel or holding day, a note —
    stored in fms_locations_v1 (src/lib/dpr.js); none of them is a scene
@@ -472,9 +555,10 @@ function dayLoadBits(day, eighths, target) {
   const load = DPR.dayLoad(eighths, target);
   const out = [];
   if (load.over) {
-    out.push(h('span.sb-load.is-over', {
-      title: `The day carries ${formatEighths(eighths)} pages against a target of ${formatEighths(target)}.`,
-      text: `Over target · ${formatEighths(eighths)} / ${formatEighths(target)} pp`
+    out.push(badge({
+      label: `Over target · ${formatEighths(eighths)} / ${formatEighths(target)} pp`,
+      tone: 'danger', icon: 'warning', class: 'sb-load is-over',
+      title: `The day carries ${formatEighths(eighths)} pages against a target of ${formatEighths(target)}.`
     }));
   }
   out.push(h('span.sb-group-hours', { 'data-hours-day': String(day) }));
@@ -483,23 +567,22 @@ function dayLoadBits(day, eighths, target) {
 
 function loadTargetControl() {
   const target = DPR.pageTarget();
-  const sel = h('select.sb-day-sel', { 'data-action': 'sb-target', id: 'sb-target' });
+  const sel = h('select.sb-day-sel.k-input', { 'data-action': 'sb-target', id: 'sb-target' });
   for (let e = 16; e <= 64; e += 1) {
-    const opt = h('option', { value: String(e), text: formatEighths(e) + (e === DPR.DEFAULT_PAGE_TARGET ? ' · default' : '') });
+    const opt = h('option', { value: String(e), text: formatEighths(e) + ' pp' + (e === DPR.DEFAULT_PAGE_TARGET ? ' · default' : '') });
     if (e === target) opt.selected = true;
     sel.append(opt);
   }
   if (target < 16 || target > 64) {
-    const opt = h('option', { value: String(target), text: formatEighths(target) });
+    const opt = h('option', { value: String(target), text: formatEighths(target) + ' pp' });
     opt.selected = true;
     sel.append(opt);
   }
   return h('div.sb-target', {}, [
     h('label.sb-day-lab', { for: 'sb-target', text: 'Pages per day warning' }),
-    sel
+    h('span.k-control.k-select.sb-target-ctl', {}, [sel])
   ]);
 }
-
 /* Screen time is a dynamic import: the model and the script reader are
    not in this page's first paint, and a board without a script never
    needs them. Filled in place, so no render is triggered by it. */
@@ -540,6 +623,7 @@ function bannerMenu(day) {
     align: 'right', ariaLabel: `Add a banner to Day ${day}: a company move, travel day, holding day or note`
   });
   menu.classList.add('sb-banner-menu');
+  menu.querySelector('.tb-menu-btn').classList.add('k-btn', 'k-btn--secondary', 'k-btn--sm');
   menu.querySelectorAll('[data-action="sb-banner-add"]').forEach((b, i) => {
     b.setAttribute('data-kind', DPR.BANNER_KINDS[i].id);
     b.setAttribute('data-day', String(day));
@@ -553,14 +637,15 @@ const BANNER_HINT = {
   holiday: 'Why: Sunday, festival, holding for weather',
   note: 'Anything the unit should know'
 };
+const BANNER_ICON = { move: 'local_shipping', travel: 'local_shipping', holiday: 'event', note: 'info' };
 
 function renderBanner(b, day, dayScenes) {
   const el = h('div.sb-banner.is-' + b.kind, { 'data-banner': b.id, 'data-day': String(day), role: 'group', 'aria-label': DPR.bannerText(b) });
-  el.append(h('span.sb-banner-kind', { text: DPR.bannerLabel(b.kind) }));
+  el.append(h('span.sb-banner-kind', {}, [sym(BANNER_ICON[b.kind] || 'info'), h('span', { text: DPR.bannerLabel(b.kind) })]));
   const field = (name, label, value, ph) => {
-    const input = h('input.sb-banner-in', { type: 'text', placeholder: ph || '', 'data-banner-field': name, 'aria-label': label });
+    const input = h('input.sb-banner-in.k-input', { type: 'text', placeholder: ph || '', 'data-banner-field': name, 'aria-label': label });
     input.value = value || '';
-    return input;
+    return h('span.k-control.sb-banner-ctl.is-' + name, {}, [input]);
   };
   if (b.kind === 'move') {
     el.append(h('span.sb-banner-route', {}, [
@@ -570,7 +655,7 @@ function renderBanner(b, day, dayScenes) {
     ]));
   }
   el.append(field('text', DPR.bannerLabel(b.kind) + ' note', b.text, BANNER_HINT[b.kind]));
-  const pos = h('select.sb-day-sel', { 'data-banner-field': 'after', 'aria-label': 'Where this banner sits in the day' });
+  const pos = h('select.sb-day-sel.k-input', { 'data-banner-field': 'after', 'aria-label': 'Where this banner sits in the day' });
   const opts = [['', 'Top of the day']]
     .concat(dayScenes.map((s) => [s.id, `After scene ${s.number || '—'}`]))
     .concat([[DPR.AFTER_DAY, 'After the day']]);
@@ -580,8 +665,9 @@ function renderBanner(b, day, dayScenes) {
     if (v === b.after || (!known && v === DPR.AFTER_DAY)) o.selected = true;
     pos.append(o);
   }
-  el.append(pos, h('button.sb-btn.is-danger', {
-    type: 'button', 'data-action': 'sb-banner-remove', 'aria-label': 'Remove this banner', text: 'Remove'
+  el.append(h('span.k-control.k-select.sb-banner-pos', {}, [pos]), button({
+    label: 'Remove', variant: 'danger', size: 'sm', action: 'sb-banner-remove', class: 'sb-btn is-danger',
+    attrs: { 'aria-label': 'Remove this banner' }
   }));
   return el;
 }
@@ -589,23 +675,26 @@ function renderBanner(b, day, dayScenes) {
 const dropZone = (day, label) =>
   h('div.sb-dropzone', { 'data-day': String(day), text: label });
 
+/* The colour key, in kit badges: the four times of day that carry a
+   hue, CONTINUOUS as the neutral tag it renders as, and the two
+   INT/EXT tags. The pacing threshold sits at its right in every
+   grouping; the warning it drives is drawn on the day headers. */
 function legend() {
-  const l = h('div.sb-legend', { 'aria-label': 'Strip colour key' });
+  const l = h('div.sb-legend', { role: 'group', 'aria-label': 'Strip colour key' });
   l.append(h('span.sb-legend-lab', { text: 'Time legend' }));
-  [['DAY', 'tod-day'], ['DAWN', 'tod-dawn'], ['DUSK', 'tod-dusk'], ['NIGHT', 'tod-night'], ['CONTINUOUS', 'tod-cont']]
-    .forEach(([label, cls]) => {
-      l.append(h(`span.sb-legend-item.${cls}`, {}, [h('span.sb-legend-chip'), h('span', { text: label })]));
-    });
-  l.append(h('span.sb-legend-item', {}, [
-    h('span.sb-ie.is-ext', { text: 'EXT' }),
+  ['DAY', 'DAWN', 'DUSK', 'NIGHT', 'CONTINUOUS'].forEach((t) => {
+    const b = todBadge(t, { label: t });
+    b.classList.add('sb-legend-item');
+    l.append(b);
+  });
+  l.append(h('span.sb-legend-item.sb-legend-ie', {}, [
+    h('span.sb-ie.k-badge.k-badge--tag.is-ext', { text: 'EXT' }),
     h('span', { text: 'filled badge is exterior' })
   ]));
-  l.append(h('span.sb-legend-item', {}, [
-    h('span.sb-ie', { text: 'INT' }),
+  l.append(h('span.sb-legend-item.sb-legend-ie', {}, [
+    h('span.sb-ie.k-badge.k-badge--tag', { text: 'INT' }),
     h('span', { text: 'outline badge is interior' })
   ]));
-  /* The pacing threshold sits in the legend row in every grouping; the
-     warning it drives is drawn on the day grouping's headers. */
   const t = loadTargetControl();
   t.classList.add('sb-legend-target');
   l.append(t);
@@ -658,18 +747,37 @@ function doodRows(scenes, days) {
     .sort((a, b) => b.work - a.work || a.name.localeCompare(b.name));
 }
 
+/* The DOOD key, as the kit's own codes, so the legend and the cells
+   cannot drift apart. */
+function doodKey() {
+  const k = h('div.sb-dood-key', { role: 'group', 'aria-label': 'Day out of days key' });
+  k.append(h('span.sb-legend-lab', { text: 'Key' }));
+  [['SW', 'Start work'], ['W', 'Work'], ['H', 'Hold'], ['WF', 'Work finish']].forEach(([c, t]) => {
+    k.append(h('span.sb-dood-key-item', {}, [doodCode(c), h('span', { text: t })]));
+  });
+  return k;
+}
+
+const todayISO = () => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
+
 function renderDood(scenes) {
   const wrap = h('section.sb-dood', { id: 'dood' });
-  wrap.append(
-    h('h2.bd-h2', { text: 'Day Out of Days' }),
-    h('p.bd-sub', {
-      text: 'Who is needed, and on which day. Built from the cast tags and the days '
-          + 'assigned above — there is nothing to fill in here.'
-    })
-  );
-
   const days = shootDays(scenes);
   const rows = doodRows(scenes, days);
+  wrap.append(h('div.sb-dood-head', {}, [
+    h('div', {}, [
+      eyebrow(['Day out of days', castCat.label]),
+      h('h2.bd-h2', { text: 'Day Out of Days' }),
+      h('p.bd-sub', {
+        text: 'Who is needed, and on which day. Built from the cast tags and the days '
+            + 'assigned above — there is nothing to fill in here.'
+      })
+    ]),
+    rows.length && days.length ? doodKey() : null
+  ].filter(Boolean)));
 
   if (!rows.length) {
     wrap.append(h('p.bd-none', {
@@ -686,12 +794,30 @@ function renderDood(scenes) {
     return wrap;
   }
 
-  const scroll = h('div.sb-dood-scroll');
-  const table = h('table.sb-grid');
+  /* The day's calendar date, where the Plan has one — the column
+     header carries it, and the column for TODAY is tinted. Read from
+     calendarDays(); nothing is dated that the AD did not date. */
+  const dateOf = new Map(Locations.calendarDays(scenes).map((d) => [d.day, d.date]));
+  const today = todayISO();
+
+  /* A real table, in the kit's table classes (k-table, sticky first
+     column, centred figures). Built by hand rather than through
+     table(), because each cell's class is its own DOOD state — the
+     print sheet reads .sb-cell.is-hold. */
+  const scroll = h('div.k-table-wrap.sb-dood-scroll', { role: 'region', 'aria-label': 'Day out of days grid', tabindex: '0' });
+  const table = h('table.k-table.k-table--sticky-first.k-table--center.sb-grid');
   const thead = h('thead');
   const hr = h('tr');
   hr.append(h('th.sb-grid-name', { scope: 'col', text: castCat.label }));
-  days.forEach((d) => hr.append(h('th.sb-grid-day', { scope: 'col', text: String(d) })));
+  days.forEach((d) => {
+    const iso = String(dateOf.get(d) || '').slice(0, 10);
+    const dated = localDate(iso);
+    const th = h('th.sb-grid-day' + (iso && iso === today ? '.is-col-today' : ''), { scope: 'col', title: dated ? `Day ${d} · ${dated}` : `Day ${d}` }, [
+      h('span.sb-grid-dnum', { text: 'D' + d })
+    ]);
+    if (dated) th.append(h('span.sb-grid-ddate', { text: dated.split(' ').slice(0, 2).join(' ') }));
+    hr.append(th);
+  });
   hr.append(
     h('th.sb-grid-tot', { scope: 'col', title: 'Days worked', text: 'W' }),
     h('th.sb-grid-tot', { scope: 'col', title: 'Days on hold', text: 'H' }),
@@ -699,6 +825,7 @@ function renderDood(scenes) {
   );
   thead.append(hr);
 
+  const todayIdx = days.findIndex((d) => String(dateOf.get(d) || '').slice(0, 10) === today);
   const tbody = h('tbody');
   for (const row of rows) {
     const tr = h('tr');
@@ -706,14 +833,17 @@ function renderDood(scenes) {
       h('strong', { text: row.name }),
       h('span.sb-grid-sub', { text: `${row.scenes} ${row.scenes === 1 ? 'scene' : 'scenes'}` })
     ]));
-    row.cells.forEach((c) => tr.append(h(`td.sb-cell.is-${c.kind}`, {
-      text: c.mark,
-      title: c.mark ? `Day ${c.day} · ${LONG[c.kind]}` : `Day ${c.day} · not needed`
-    })));
+    row.cells.forEach((c, i) => {
+      const td = h(`td.sb-cell.is-${c.kind}` + (i === todayIdx ? '.is-col-today' : ''), {
+        title: c.mark ? `Day ${c.day} · ${LONG[c.kind]}` : `Day ${c.day} · not needed`
+      });
+      td.append(doodCode(c.mark, { title: td.title }));
+      tr.append(td);
+    });
     tr.append(
-      h('td.sb-grid-tot', { text: String(row.work) }),
-      h('td.sb-grid-tot', { text: String(row.hold) }),
-      h('td.sb-grid-tot', { text: String(row.span) })
+      h('td.sb-grid-tot.k-num', { text: String(row.work) }),
+      h('td.sb-grid-tot.k-num.sb-grid-hold', { text: String(row.hold) }),
+      h('td.sb-grid-tot.k-num', { text: String(row.span) })
     );
     tbody.append(tr);
   }
@@ -765,6 +895,7 @@ function render() {
   app.replaceChildren(main);
   mountShell();
   wireActionBar();
+  fillLock();
   // Chrome initialises at import time, when #app is still empty — the
   // trap short.js fell into. Re-init after every render.
   try {
@@ -773,6 +904,112 @@ function render() {
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[stripboard] chrome', e); }
 }
+
+/* ---- Lock production draft -------------------------------------
+   The owner's TYPE-TO-CONFIRM lock (14 Oct 2026). It is NOT a second
+   mechanism: it is the screenplay's existing scene-number lock —
+   `numbering` inside the script blob (src/lib/script.js,
+   lockNumbering / saveScript), with the Breakdown's rows renumbered
+   to match through scene-sync's applyNumbers() — exactly what the
+   "Lock scene numbers" button in the revision tools does. No new key.
+   From the lock on, an inserted scene is 12A, a deleted one stays as
+   OMITTED and a moved one keeps its number, so the strips, the sides
+   and the call sheets keep pointing at the same scene.
+
+   Unlocking is deliberately not offered here: it renumbers every
+   scene, which is a writer's decision, and it stays with the revision
+   tools (write.html?stay=1#revisions), which the locked state links.
+
+   script.js and scene-sync.js are dynamic imports: neither is in this
+   page's first paint (fillHours() loads script.js the same way). */
+const scriptLib = () => Promise.all([import('../lib/script.js'), import('../lib/scene-sync.js')]);
+
+function lockButton() {
+  return button({
+    label: 'Lock production draft', variant: 'primary', pill: true, icon: 'lock',
+    action: 'sb-lock', class: 'sb-lock-btn',
+    title: 'Freeze the scene numbers, so every strip, side and call sheet keeps pointing at the same scene'
+  });
+}
+
+/* After a render: when the numbers are already locked, the header
+   says so instead of offering the lock. Filled in place; no storage
+   is written here. */
+function fillLock() {
+  scriptLib().then(([S]) => {
+    const host = document.querySelector('.sb-lock-host');
+    if (!host) return;
+    const doc = S.loadScript();
+    if (!S.isNumberingLocked(doc.numbering)) return;
+    const stamp = String(doc.numbering.at || '').slice(0, 10);
+    host.replaceChildren(
+      badge({
+        label: 'Draft locked' + (stamp ? ' · ' + stamp : ''), tone: 'ok', icon: 'lock', class: 'sb-lock-state',
+        title: 'Scene numbers are frozen: inserts take letters (12A), deletions stay as OMITTED.'
+      }),
+      button({ label: 'Manage numbering', href: 'write.html?stay=1#revisions', variant: 'ghost', size: 'sm', class: 'sb-lock-manage' })
+    );
+  }).catch((e) => console.warn('[stripboard] lock state', e));
+}
+
+const sceneHeadings = (doc) => (doc.elements || []).filter((e) => e && e.type === 'scene' && String(e.text ?? '').trim()).length;
+
+delegate(document, 'click', '[data-action="sb-lock"]', async () => {
+  let S, Sync;
+  try { [S, Sync] = await scriptLib(); } catch (e) {
+    toast('The script tools could not be loaded. Check the connection and try again.', { type: 'error' });
+    return;
+  }
+  const before = S.loadScript();
+  if (S.isNumberingLocked(before.numbering)) { fillLock(); return; }
+  const heads = sceneHeadings(before);
+  if (!heads) {
+    await tell({
+      eyebrow: 'Production draft', icon: 'lock', title: 'Nothing to lock yet',
+      body: 'Scene numbers lock on the screenplay’s scene headings, and this project’s '
+          + 'screenplay has none yet. Write or import it first; the strips then carry '
+          + 'the locked numbers.'
+    });
+    return;
+  }
+  const ok = await ask({
+    eyebrow: 'Production draft', icon: 'lock', tone: 'warn',
+    title: 'Lock the production draft',
+    body: `This freezes the numbers of all ${heads} ${heads === 1 ? 'scene' : 'scenes'} as they read now.\n\n`
+        + 'From then on a scene inserted after 12 is 12A, a deleted scene stays on the page as '
+        + 'OMITTED, and a moved scene keeps its number — so the strips, the sides and the call '
+        + 'sheets keep pointing at the same scene.',
+    notice: { tone: 'info', title: 'Unlocking renumbers', body: 'It can be unlocked later from the revision tools, and unlocking renumbers every scene by position.' },
+    confirm: 'Lock numbering',
+    typeToConfirm: 'LOCK'
+  });
+  if (!ok) return;
+  /* Re-read after the dialog: the script may have been saved in
+     another tab while it was open. */
+  const doc = S.loadScript();
+  if (S.isNumberingLocked(doc.numbering)) { render(); return; }
+  /* An imported shooting script's numbers live on the Breakdown's
+     rows (the importer never puts them in the element text). When
+     every heading's row carries one, they are what is locked — the
+     same preset the revision tools build. */
+  const preset = new Map();
+  try {
+    for (const s of Scenes.listScenes()) if (s.scriptElId && s.number) preset.set(s.scriptElId, String(s.number));
+  } catch (e) { /* no scenes */ }
+  doc.numbering = S.lockNumbering(doc.elements, preset);
+  if (!S.saveScript(doc)) {
+    toast('The lock could not be saved: the browser refused the write. Nothing changed.', { type: 'error' });
+    return;
+  }
+  let moved = 0;
+  try { moved = Sync.applyNumbers(doc.elements, doc.numbering); } catch (e) { console.warn('[stripboard] numbers', e); }
+  render();
+  const n = Object.keys(doc.numbering.ids).length;
+  const said = `Production draft locked: ${n} ${n === 1 ? 'scene number' : 'scene numbers'} frozen.`
+    + (moved ? ` ${moved} ${moved === 1 ? 'strip' : 'strips'} renumbered to match.` : '');
+  announce(said);
+  toast(said, { type: 'success' });
+});
 
 /* ---- events — delegated, no inline handlers ------------------- */
 const sceneIdOf = (el) => el.closest('[data-scene]')?.dataset.scene;

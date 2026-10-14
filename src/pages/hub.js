@@ -103,6 +103,7 @@ import {
 } from './hub/util.js';
 import { ALL_KEYS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY } from './hub/all-keys.js';
 import { ask, tell } from '../ui/dialog.js';
+import { pageHeader, button } from '../ui/kit/index.js';
 import { createResumeCards } from './hub/resume-cards.js';
 import { shelvesMarkup } from './hub/shelves.js';
 import { sampleDays, samplePages, welcomeCard } from './hub/first-run.js';
@@ -267,14 +268,7 @@ function projectsMarkup() {
   const sec = h('section#projects.projects-section', {
     html: `
       <div class="projects-inner">
-        <div class="projects-head">
-          <div>
-            <div class="lab">PROJECTS · ONE PER FILM</div>
-            <h1 id="projectsHeading">Continue <em>where you left off.</em></h1>
-            <p class="greeting-block" id="hubGreeting">A working desk for the working filmmaker.</p>
-          </div>
-          <button class="btn primary" data-action="new-project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg><span>NEW PROJECT</span></button>
-        </div>
+        <div id="projectsHeadSlot"></div>
 
         <!-- Standing control for device projects an account has not
              taken yet. Empty and hidden in the device namespace, which
@@ -308,6 +302,21 @@ function projectsMarkup() {
         <div class="projects-grid" id="projectsGrid"></div>
       </div>`
   });
+  /* The page header is the kit's. The ids the greeting and the proofs read
+     (#projectsHeading, #hubGreeting) and the new-project action survive. */
+  const head = pageHeader({
+    class: 'projects-head',
+    eyebrow: 'Projects · one per film',
+    title: '',
+    sub: 'A working desk for the working filmmaker.',
+    actions: [button({ label: 'New project', variant: 'primary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
+  });
+  const hh = head.querySelector('.k-page-title');
+  hh.id = 'projectsHeading';
+  hh.append('Continue ', h('em', { text: 'where you left off.' }));
+  head.querySelector('.k-page-sub').id = 'hubGreeting';
+  head.querySelector('.k-page-sub').classList.add('greeting-block');
+  sec.querySelector('#projectsHeadSlot').replaceWith(head);
   sec.querySelector('.projects-inner').append(shelvesMarkup());
   return sec;
 }

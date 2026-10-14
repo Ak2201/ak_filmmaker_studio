@@ -1,0 +1,155 @@
+/* ============================================================
+   KIT SCOPE — the Swiss look for what a page still draws the old way
+   ------------------------------------------------------------
+   Settings and the console are assembled from many modules (the
+   account panel, the invite block, the AI key form, plan cards, each
+   admin tab) and those draw `.btn`, bare inputs and `.gt-table` — not
+   kit components. Rewriting every one of them in a single pass would
+   put a hundred proof selectors at risk for no gain, so a surface that
+   wants the kit's look wraps itself in `.k-scope` and this sheet gives
+   those legacy objects the kit's values:
+
+     .btn / .btn.primary / .btn.danger  → k-btn / --primary / --danger
+     text inputs, selects, textareas    → k-control
+     .gt-table                          → k-table
+     .bd-eyebrow / .bd-h2 / .bd-sub     → the panel's eyebrow, title, deck
+
+   Same tokens and --sk-* variables as kit.css, so the two cannot drift
+   in value; only the selectors differ. Every selector is led by `:root`
+   so it out-ranks chrome.css's `:root .btn` revamp without !important
+   (the ordering trap in CLAUDE.md). A module that is rewritten onto the
+   kit proper simply stops matching these rules.
+   ============================================================ */
+
+/* ---- buttons ------------------------------------------------ */
+:root .k-scope :is(.btn, .mbtn, .tb-link) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1h);
+  height: var(--h-control);
+  min-height: 0;
+  padding: 0 var(--s3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  background: var(--surface-card);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+:root .k-scope :is(.btn, .mbtn, .tb-link):hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+:root .k-scope :is(.btn, .mbtn, .tb-link):focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+:root .k-scope :is(.btn, .mbtn):disabled,
+:root .k-scope .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+:root .k-scope .btn.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
+  font-weight: 600;
+  box-shadow: var(--shadow-cta);
+}
+:root .k-scope .btn.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--brand-on); }
+:root .k-scope .btn.danger {
+  background: var(--danger-wash);
+  border-color: var(--danger-line);
+  color: var(--danger);
+}
+:root .k-scope .btn.danger:hover { border-color: var(--danger); color: var(--danger-deep); }
+/* A toggle that is ON (a radio-style choice): the accent fill. */
+:root .k-scope .btn.is-on,
+:root .k-scope .btn[aria-pressed="true"],
+:root .k-scope .btn[aria-checked="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
+}
+
+/* ---- fields ------------------------------------------------- */
+:root .k-scope :is(input:not([type]), input[type="text"], input[type="email"], input[type="number"],
+  input[type="url"], input[type="password"], input[type="search"], input[type="date"], input[type="time"], select) {
+  height: var(--h-field);
+  padding: 0 var(--s3);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-field-radius, var(--radius));
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-ui);
+  box-sizing: border-box;
+}
+:root .k-scope textarea {
+  padding: var(--s2) var(--s3);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-field-radius, var(--radius));
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-ui);
+  line-height: var(--lh-body);
+  box-sizing: border-box;
+}
+:root .k-scope :is(input, select, textarea):hover { border-color: var(--border-strong); }
+:root .k-scope :is(input, select, textarea):focus,
+:root .k-scope :is(input, select, textarea):focus-visible {
+  outline: 0;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 1px var(--border-focus);
+}
+:root .k-scope :is(input, textarea)::placeholder { color: var(--ink-muted); }
+:root .k-scope select option { background: var(--surface-elevated); color: var(--ink); }
+
+/* ---- tables ------------------------------------------------- */
+:root .k-scope .gt-table { border-collapse: collapse; font-size: var(--t-small); }
+:root .k-scope .gt-table :is(th, td) {
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--border-hair);
+  text-align: left;
+  vertical-align: middle;
+}
+:root .k-scope .gt-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-rail);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--border-default);
+}
+:root .k-scope .gt-table tbody tr:hover > td { background: var(--chrome-fill); }
+:root .k-scope .gt-table td strong { color: var(--ink); font-weight: 500; }
+
+/* ---- section heads ------------------------------------------ */
+:root .k-scope .bd-eyebrow {
+  font-family: var(--sk-eyebrow-face, var(--f-mono));
+  font-size: var(--sk-eyebrow-size, var(--t-micro));
+  font-weight: 600;
+  letter-spacing: var(--sk-eyebrow-track, var(--track-label));
+  text-transform: var(--sk-eyebrow-transform, uppercase);
+  color: var(--ink-body);
+}
+:root .k-scope .bd-h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: var(--track-tight);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+:root .k-scope .bd-sub { font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-muted); max-width: var(--sk-deck-measure, 72ch); }

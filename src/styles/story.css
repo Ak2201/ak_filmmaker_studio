@@ -346,3 +346,9 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
    The panels not shown carry `hidden`; this keeps a display rule from
    beating the attribute. Back / Next sit at the foot of the step. */
 .st-step[hidden], .st-section[hidden], #guide[hidden] { display: none; }
+
+/* ---- kit pass (14 Oct 2026): the header carries the file actions ---- */
+.st-main .k-page-actions .st-bar { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: flex-end; }
+.st-import { cursor: pointer; position: relative; }
+.st-import:focus-within { outline: var(--focus); outline-offset: var(--focus-offset); }
+.st-main > .bd-head { padding-block-end: var(--s4); }

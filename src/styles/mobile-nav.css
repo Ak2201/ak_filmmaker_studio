@@ -246,4 +246,125 @@ html.mn-locked body { overflow: hidden; }
 }
 .mn-empty { color: var(--chrome-muted); }
 
+/* ============================================================
+   SWISS PRECISION (14 Oct 2026) — the bottom bar and the sheets
+   ------------------------------------------------------------
+   The rail's language on a phone: the obsidian rail surface, hairline
+   edges, Material Symbols over Inter labels, 8px cells, the violet
+   only on what is current. Declared after the rules above, and one
+   step more specific than chrome.css's bar rules, so order cannot
+   undo it. Tokens only.
+   ============================================================ */
+html .mobile-actionbar {
+  gap: var(--s1);
+  padding: var(--s1h) var(--s2) calc(var(--s1h) + env(safe-area-inset-bottom, 0px));
+  background: var(--surface-rail);
+  border-top: 1px solid var(--border-hair);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html .mobile-actionbar button,
+html .mobile-actionbar a {
+  gap: 2px;
+  min-height: 48px;
+  padding: var(--s1h) var(--s1);
+  border-radius: var(--radius-lg);
+  color: var(--ink-muted);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+html .mobile-actionbar .mab-icon { font-size: 22px; line-height: 1; color: inherit; }
+@media (hover: hover) {
+  html .mobile-actionbar button:hover,
+  html .mobile-actionbar a:hover { background: var(--surface-hover); color: var(--ink); }
+}
+html.mn-on .mobile-actionbar [aria-expanded="true"],
+html.mn-on .mobile-actionbar [aria-current="page"] {
+  background: var(--surface-active);
+  color: var(--brand-deep);
+}
+html .mobile-actionbar :focus-visible { outline: var(--focus); outline-offset: -2px; }
+
+/* the sheets: the elevated surface, a 12px top edge, hairlines */
+html .mn-sheet {
+  background: var(--surface-elevated);
+  color: var(--ink);
+  border-top: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+html .mn-head {
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border-hair);
+}
+html .mn-title {
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  color: var(--ink);
+}
+html .mn-close {
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+html .mn-close:hover { background: var(--surface-hover); }
+html .mn-close:focus-visible,
+html .mn-global:focus-visible,
+html .mn-mod:focus-visible { outline: var(--focus); outline-offset: 2px; }
+
+html .mn-global {
+  min-height: 64px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-lg);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-ui);
+}
+html .mn-global-icon { color: var(--ink-muted); font-size: 20px; }
+html .mn-global.is-here {
+  background: var(--brand-wash);
+  border-color: var(--accent-primary);
+  font-weight: 600;
+}
+html .mn-global.is-here .mn-global-icon { color: var(--brand-deep); }
+
+html .mn-group-h,
+html .mn-sub {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+html .mn-mod {
+  border-radius: var(--radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+}
+@media (hover: hover) { html .mn-mod:hover { background: var(--surface-hover); color: var(--ink); } }
+html .mn-mod-icon { color: var(--hue-deep, var(--ink-muted)); }
+html .mn-mod-label { color: var(--ink); font-weight: 500; }
+html .mn-mod-purpose { color: var(--ink-muted); }
+html .mn-mod.is-here {
+  background: var(--brand-wash);
+  box-shadow: inset 2px 0 0 var(--hue, var(--accent-primary));
+}
+html .mn-mod.is-here .mn-mod-label { font-weight: 600; }
+html .mn-mod-flag {
+  border-color: var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-muted);
+  font-size: var(--t-nano);
+}
+html .mn-sheet .ps-item.is-current { background: var(--brand-wash); border-color: var(--accent-primary); }
+html .mn-sheet .ps-item,
+html .mn-sheet .ps-link { border-radius: var(--radius); }
+html .mn-sheet .ps-link { color: var(--brand-deep); }
+
 @media print { .mn-overlay { display: none !important; } }

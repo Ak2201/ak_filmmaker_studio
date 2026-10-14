@@ -291,3 +291,47 @@ body.pal-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .pal-overlay, .pal-box { animation: none; }
 }
+
+/* ============================================================
+   SWISS PRECISION (14 Oct 2026). The palette is a modal-weight
+   floating surface: the elevated ground, a strong hairline, the
+   kit's 12px modal radius; Inter in the field and the rows, mono for
+   the group tags; the active row is the violet wash with the hue's
+   edge. Appended so it wins the ties above. Tokens only.
+   ============================================================ */
+.pal-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.pal-box {
+  background: var(--surface-elevated);
+  border-color: var(--border-strong);
+  border-radius: var(--sk-modal-radius, var(--radius-xl));
+  box-shadow: var(--shadow-modal);
+}
+.pal-field { background: var(--surface-elevated); border-bottom-color: var(--border-hair); padding: var(--s2) var(--s4); }
+.pal-box:focus-within .pal-field { border-bottom-color: var(--border-focus); }
+.pal-field-icon { font-size: 20px; color: var(--ink-muted); }
+:root .pal-box .pal-input,
+:root .pal-box .pal-input:focus {
+  height: auto;
+  padding: var(--s2) 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  font-family: var(--f-body);
+  font-size: var(--t-base);
+}
+.pal-close { border-color: var(--border-strong); border-radius: var(--radius); font-size: var(--t-nano); }
+.pal-close:hover { background: var(--surface-hover); border-color: var(--border-grip); }
+.pal-hint { border-bottom-color: var(--border-hair); font-size: var(--t-ui); }
+.pal-sep { font-size: var(--t-nano); }
+.pal-row { border-radius: var(--radius); }
+.pal-row:hover { background: var(--surface-hover); }
+.pal-row.is-active { background: var(--brand-wash); }
+.pal-row-label { font-family: var(--f-body); font-size: var(--t-small); font-weight: 500; }
+.pal-row-sub { font-size: var(--t-tiny); }
+.pal-row-group { font-size: var(--t-nano); }
+.pal-foot { border-top-color: var(--border-hair); background: var(--surface-rail); }
+@media (max-width: 560px) {
+  .pal-box { border: 0; border-radius: 0; }
+}

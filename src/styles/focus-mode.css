@@ -1,5 +1,5 @@
 /* ============================================================
-   FOCUS MODE — write.html (src/ui/focus-mode.js)
+   FOCUS MODE — screenplay.html and write.html (src/ui/focus-mode.js)
    ------------------------------------------------------------
    Everything keys off ONE class on <html>, `fm-on`. With it absent
    every rule below is inert except the HUD's own (which is `hidden`),
@@ -7,13 +7,14 @@
    is what the verify gate's AA walk, overflow check and word capture
    all measure.
 
-   Tokens and --sk-* only. NIGHT is not a palette here: focus-mode.js
-   sets the existing `data-theme="dark"` for the length of a session,
-   so --paper / --ink below already ARE the ink theme's.
+   Tokens and --sk-* only. NIGHT: the studio is dark only, so Night no
+   longer changes the theme — it turns the PAPER PAGE dark for the
+   length of a session (`fm-night`, set by focus-mode.js only while
+   focus is on), by re-pointing the role names the page reads.
 
    DIM THE REST takes --ink-muted, the hierarchy's third ink, which
-   clears 4.5:1 on every ground in both themes (CLAUDE.md, open item
-   6) — reduced emphasis that is still body-legible, not a fourth grey
+   clears 4.5:1 on every ground (the paper page's own muted included)
+   — reduced emphasis that is still body-legible, not a fourth grey
    below the floor. The current scene keeps --ink.
 
    --motion multiplies every distance; the typewriter's own scroll is
@@ -25,6 +26,7 @@ html.fm-on #app > :not(main),
 html.fm-on main > :not(#screenplay),
 html.fm-on #screenplay > :not(#wr-page):not(.bd-empty),
 html.fm-on .site-foot,
+html.fm-on .ssb,
 html.fm-on .mobile-actionbar,
 html.fm-on #stepRail,
 html.fm-on .step-rail-toggle,
@@ -43,7 +45,8 @@ html.fm-on body.has-mobile-actionbar {
   padding-left: 0;
   padding-bottom: 0;
 }
-html.fm-on body { background: var(--paper); }
+html.fm-on body,
+html.fm-on main { background: var(--surface-canvas); }
 
 /* ---- the page, centred ---------------------------------------- */
 html.fm-on #screenplay {
@@ -63,6 +66,23 @@ html.fm-on #wr-page [data-el]:not(:focus-within):not(:hover) .wr-el-acts {
   visibility: hidden;
 }
 
+/* ---- night: the page goes dark --------------------------------
+   The --text-* aliases are declared on :root as var(--ink) …, so they
+   hold the obsidian values even inside a page that re-points --ink. */
+html.fm-on.fm-night #wr-page.is-pageview.is-pageview {
+  --ink: var(--text-primary);
+  --ink-body: var(--text-secondary);
+  --ink-muted: var(--text-muted-aa);
+  --paper: var(--surface-canvas);
+  --paper-raised: var(--surface-canvas);
+  --rule: var(--border-strong);
+  --rule-hair: var(--border-hair);
+  --accent-wash: var(--brand-wash);
+  --sc-line-wash: var(--brand-wash);
+  background: var(--surface-canvas);
+  color: var(--text-primary);
+}
+
 /* ---- dim the rest --------------------------------------------- */
 html.fm-on.fm-dim #wr-page [data-el]:not([data-fm-cur]) .wr-text {
   color: var(--ink-muted);
@@ -71,9 +91,12 @@ html.fm-on.fm-dim #wr-page [data-el][data-fm-cur] .wr-text { color: var(--ink); 
 html.fm-on.fm-dim #wr-page [data-el][data-fm-cur].t-paren .wr-text { color: var(--ink-body); }
 
 /* ---- typewriter markers --------------------------------------- */
+/* Frame: a hairline violet frame a little off the line. An outline,
+   so nothing reflows when the caret moves into a row. */
 html.fm-on.fm-mk-frame #wr-page .wr-text:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 var(--sk-focus-w, 2px) var(--accent-wash);
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 3px;
+  box-shadow: none;
 }
 /* A fixed band where the caret's line is held. A pseudo-element, so no
    measurer that walks `body > *` for sticky chrome can count it. */
@@ -84,8 +107,8 @@ html.fm-on.fm-mk-line body::after {
   right: 0;
   top: calc(var(--fm-type-y, 33vh) - var(--fm-line-h, 24px) / 2);
   height: var(--fm-line-h, 24px);
-  background: var(--accent-wash);
-  border-block: 1px solid var(--rule-hair);
+  background: var(--brand-wash);
+  border-block: 1px solid var(--info-line);
   pointer-events: none;
   z-index: 0;
 }
@@ -99,7 +122,7 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--rule-hair);
+  background: var(--surface-hover);
   z-index: var(--z-float);
   pointer-events: none;
 }
@@ -107,86 +130,200 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
 .fm-bar-fill {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-primary);
   width: 0;
   transition: width var(--speed-slow) var(--ease-out);
 }
-.fm-bar.is-done .fm-bar-fill { background: var(--ok); }
+.fm-bar.is-done .fm-bar-fill { background: var(--status-success); }
 
-/* ---- the HUD -------------------------------------------------- */
+/* ---- the HUD: a control dock, options above it ---------------- */
 .fm-hud {
   position: fixed;
   left: 0;
   right: 0;
   margin-inline: auto;
-  bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--s4) + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-float);
   width: max-content;
   max-width: calc(100vw - 2 * var(--s4));
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  padding: var(--s2) var(--s3);
-  background: var(--paper-raised);
   color: var(--ink);
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-radius: var(--sk-radius, var(--radius));
-  box-shadow: var(--shadow-md);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
 }
 .fm-hud[hidden] { display: none; }
-.fm-hud-row,
-.fm-opt-row {
+.fm-hud-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: var(--s2);
+  align-self: center;
+  padding: var(--s1h) var(--s2);
+  background: var(--surface-elevated);
+  border: 1px solid var(--panel-hair);
+  border-radius: var(--sk-radius, var(--radius-lg));
+  box-shadow: var(--shadow-panel);
 }
-.fm-hud .fm-btn { padding: var(--s1) var(--s3); }
+.fm-hud .fm-exit { padding-right: var(--s1); }
+.fm-kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-left: calc(-1 * var(--s1));
+  padding: 0 var(--s1h);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-rail);
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  color: var(--ink-muted);
+}
+.fm-div { width: 1px; height: var(--s4); background: var(--border-hair); flex: none; }
 .fm-goal,
 .fm-sprint {
-  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
-  letter-spacing: var(--track-label);
   white-space: nowrap;
+  color: var(--ink);
 }
-.fm-sprint { color: var(--ink-muted); }
+.fm-goal .sym,
+.fm-sprint .sym { font-size: 16px; color: var(--ink-muted); }
+.fm-sprint { min-width: 4.5rem; }
+.fm-hud.is-running .fm-sprint,
+.fm-hud.is-running .fm-sprint .sym { color: var(--warn-deep); }
+
+/* Options: a panel above the dock, two columns and a seven-day strip. */
 .fm-opts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  padding-bottom: var(--s2);
-  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
+  box-sizing: border-box;
+  width: min(40rem, calc(100vw - 2 * var(--s4)));
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s4);
+  background: var(--surface-elevated);
+  border: 1px solid var(--panel-hair);
+  border-radius: var(--sk-modal-radius, var(--radius-xl));
+  box-shadow: var(--shadow-modal);
 }
 .fm-opts[hidden] { display: none; }
-.fm-field span { color: var(--ink-muted); text-transform: uppercase; }
-.fm-hud select,
-.fm-hud input[type="number"] {
-  width: auto;
-  min-width: 0;
-  max-width: 100%;
-  padding: var(--s1) var(--s2);
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--rule);
-  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
-  font: inherit;
-}
-.fm-hud input.fm-goal-target { width: 6rem; }
-.fm-check { display: inline-flex; align-items: center; gap: var(--s1); color: var(--ink); }
-.fm-today { margin: 0; color: var(--ink); }
-.fm-hist {
+.fm-opts-head {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s1) var(--s3);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s3);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border-hair);
+}
+.fm-opts-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.fm-opts-title .sym { color: var(--brand-deep); font-size: 18px; }
+.fm-today {
+  margin: 0;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--warn-line);
+  border-radius: var(--radius-sm);
+  background: var(--warn-wash);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--warn-deep);
+}
+.fm-opts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s4);
+}
+.fm-opts-col { display: grid; gap: var(--s2); align-content: start; min-width: 0; }
+.fm-sec {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+.fm-opts-col .fm-sec + .fm-sec,
+.fm-opts-col > * + .fm-sec { margin-top: var(--s2); }
+.fm-goal-ctl { padding-left: 0; }
+.fm-goal-ctl .fm-goal-target {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.fm-goal-ctl .fm-kind {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  border-left: 1px solid var(--border-hair);
+}
+.fm-goal-ctl .fm-kind select {
+  height: 100%;
+  min-width: 7rem;
+  padding-left: var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+}
+.fm-hud .fm-goal-ctl input,
+.fm-hud .fm-goal-ctl select { border: 0; background: transparent; }
+.fm-opts .k-seg { display: flex; }
+.fm-opts .k-seg-btn { flex: 1 1 0; }
+.fm-check.k-check {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--h-field);
+  padding: 0 var(--s3);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-field-radius, var(--radius));
+  color: var(--ink);
+}
+.fm-check.k-check:hover { border-color: var(--border-strong); }
+.fm-check > span:not(.sym) { flex: 1; }
+.fm-check-i { color: var(--brand-deep); font-size: 16px; }
+.fm-hist-wrap { display: grid; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--border-hair); }
+.fm-hist {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--s1h);
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.fm-hist li { display: inline-flex; gap: var(--s1); }
-.fm-hist-day { color: var(--ink-muted); }
-.fm-hist-num { color: var(--ink); font-variant-numeric: tabular-nums; }
+.fm-hist li {
+  display: grid;
+  justify-items: center;
+  gap: var(--s1);
+  padding: var(--s2) var(--s1);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.fm-hist li.is-today { background: var(--brand-wash); border-color: var(--border-focus); }
+.fm-hist-day { font-size: var(--t-nano); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.fm-hist-num { font-size: var(--t-micro); color: var(--ink-muted); }
+.fm-hist li.has-words .fm-hist-num,
+.fm-hist li.is-today .fm-hist-num { color: var(--ink); }
+.fm-hist li.is-today .fm-hist-day { color: var(--brand-deep); }
 
 @media (max-width: 719px) {
   html.fm-on #screenplay { padding-inline: var(--s2); padding-bottom: 70vh; }
@@ -196,5 +333,10 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
      row either way, so taking them out reflows nothing. */
   html.fm-on #wr-page [data-el]:not(:focus-within) .wr-type,
   html.fm-on #wr-page [data-el]:not(:focus-within) .wr-el-acts { display: none; }
-  .fm-hud { left: var(--s4); right: var(--s4); width: auto; }
+  .fm-hud { left: var(--s3); right: var(--s3); width: auto; max-width: none; }
+  .fm-hud-row { align-self: stretch; }
+  .fm-kbd, .fm-div { display: none; }
+  .fm-opts { width: auto; max-height: 60vh; overflow: auto; }
+  .fm-opts-grid { grid-template-columns: minmax(0, 1fr); }
 }
+@media print { .fm-hud, .fm-bar { display: none; } }

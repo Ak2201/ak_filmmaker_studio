@@ -2349,16 +2349,36 @@ let scriptsOff = { checked: false };
     const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
     return `rgb(${parseInt(f.slice(0, 2), 16)}, ${parseInt(f.slice(2, 4), 16)}, ${parseInt(f.slice(4, 6), 16)})`;
   };
-  const defaultPaper = decl(bare, '--paper');
+  /* --paper may be a var() into the same block (the Swiss palette names
+     its surfaces: --paper: var(--surface-canvas)), so resolve it there. */
+  const resolveIn = (block, val) => {
+    for (let i = 0; i < 8; i++) {
+      const m = /^var\((--[a-z0-9-]+)\)$/.exec(val || '');
+      if (!m) break;
+      val = decl(block, m[1]);
+    }
+    return val;
+  };
+  const defaultPaper = resolveIn(bare, decl(bare, '--paper'));
   const defaultScheme = decl(bare, 'color-scheme');
-  const defaultTheme = Object.keys(themed).find((t) => decl(themed[t], '--paper') === defaultPaper) || null;
+  /* ONE THEME SINCE 14 OCT 2026. With no second palette, the default
+     theme is whichever [data-theme] block does NOT restate --paper (it
+     only restates the scheme), and BOTH OS preferences must paint the
+     bare :root ground — there is no prefers-color-scheme block any more,
+     and one appearing would be a second palette sneaking back. */
+  const themeNames = Object.keys(themed);
+  const single = themeNames.length <= 1 && !media.light && !media.dark;
+  const defaultTheme = single
+    ? (themeNames[0] || 'dark')
+    : (Object.keys(themed).find((t) => resolveIn(themed[t], decl(themed[t], '--paper')) === defaultPaper) || null);
   const otherScheme = defaultScheme === 'dark' ? 'light' : 'dark';
-  const otherPaper = media[otherScheme] ? decl(media[otherScheme], '--paper') : '';
+  const otherPaper = single ? defaultPaper : (media[otherScheme] ? resolveIn(media[otherScheme], decl(media[otherScheme], '--paper')) : '');
 
-  const probeFacts = { defaultTheme, defaultScheme, defaultPaper, otherScheme, otherPaper };
+  const probeFacts = { defaultTheme, defaultScheme, defaultPaper, otherScheme, otherPaper, single };
   const bad = [];
   if (!defaultTheme) bad.push(`bare :root's --paper (${defaultPaper || 'missing'}) matches no [data-theme] block — cannot tell which theme is the default`);
   if (!defaultScheme) bad.push('bare :root declares no color-scheme');
+  if (!/^#[0-9a-f]{3,8}$/i.test(defaultPaper || '')) bad.push(`bare :root's --paper does not resolve to a hex (${defaultPaper || 'missing'})`);
   if (!otherPaper) bad.push(`no @media (prefers-color-scheme: ${otherScheme}) block restates --paper`);
 
   const results = [];
@@ -2408,7 +2428,8 @@ let scriptsOff = { checked: false };
         if (facts.scriptsRan) bad.push(`${spec.name} (prefers ${scheme}): the sandbox ran scripts — the probe is not measuring what it claims`);
         if (facts.dataTheme) bad.push(`${spec.name} (prefers ${scheme}): [data-theme="${facts.dataTheme}"] is set with scripts off — the markup is choosing a theme`);
         if (ground !== want) bad.push(`${spec.name} (prefers ${scheme}): scripts-off ground is ${ground}, the ${scheme === defaultScheme ? defaultTheme + ' (default)' : otherScheme} theme's --paper is ${want} (${wantPaper}) — a flash of the wrong palette`);
-        if (facts.colorScheme !== scheme) bad.push(`${spec.name} (prefers ${scheme}): color-scheme is "${facts.colorScheme}" with scripts off, expected "${scheme}" — form controls and scrollbars will flash`);
+        const wantScheme = single ? defaultScheme : scheme;
+        if (facts.colorScheme !== wantScheme) bad.push(`${spec.name} (prefers ${scheme}): color-scheme is "${facts.colorScheme}" with scripts off, expected "${wantScheme}" — form controls and scrollbars will flash`);
         if (!facts.skRadius || !/^\d/.test(facts.skRadius)) bad.push(`${spec.name} (prefers ${scheme}): --sk-radius is "${facts.skRadius}" with scripts off — the skin's defaults are not on bare :root`);
       }
       await pctx.close();
@@ -2420,7 +2441,9 @@ let scriptsOff = { checked: false };
   console.log(bad.length
     ? `✗ scripts-off palette: ${bad.length} finding(s)\n  ` + bad.slice(0, 8).join('\n  ')
     : `✓ scripts-off palette: ${results.length / 2} pages x 2 OS preferences paint the right ground before any script runs ` +
-      `(default ${defaultTheme} = ${defaultPaper}; prefers-${otherScheme} = ${otherPaper}; color-scheme and --sk-radius set)`);
+      (single
+        ? `(one theme, ${defaultTheme} = ${defaultPaper}, under both OS preferences; color-scheme and --sk-radius set)`
+        : `(default ${defaultTheme} = ${defaultPaper}; prefers-${otherScheme} = ${otherPaper}; color-scheme and --sk-radius set)`));
 }
 
 /* ---- STAGE GUIDES + KEY-UNION ------------------------------------

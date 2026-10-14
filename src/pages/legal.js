@@ -22,25 +22,12 @@
 
    THAT IS ALSO WHY NO SKIN IS LOADED. skin.js globs
    src/styles/skins/ and sets the --sk-* family; none of it runs
-   here, so legal.css reads the fixed tokens instead. Light and
-   dark still work, because tokens.css answers
-   prefers-color-scheme on bare :root with no JavaScript at all.
+   here, so legal.css reads the fixed tokens instead.
 
-   THE ONE THING IT DOES BESIDES (UX audit L20): honour the theme the
-   reader CHOSE elsewhere in the studio, which the OS query alone
-   cannot know. It reads the same key chrome.js writes, RAW — there is
-   no store.js here, and the theme key is device-wide, never scoped —
-   and maps the stored name to the CSS one the way chrome.js's
-   CSS_THEME does. It only reads. A module script runs before
-   DOMContentLoaded, so this lands before the first full paint on an
-   ordinary load; with scripts off the OS setting still applies.
+   THESE ARE THE STUDIO'S LIGHT DOCUMENTS. The app is dark-only since
+   14 Oct 2026; these three carry data-surface="paper" on <html> in the
+   markup, so tokens.css gives them the paper document palette with
+   scripts off and with no theme to read. Nothing here reads storage.
    ============================================================ */
 import '../styles/base.css';
 import '../styles/legal.css';
-
-const THEME_KEY = 'fms_studio_theme_v1';           // chrome.js THEME_KEY
-const CSS_THEME = { ink: 'dark', paper: 'light' };  // chrome.js CSS_THEME
-try {
-  const t = CSS_THEME[localStorage.getItem(THEME_KEY)];
-  if (t) document.documentElement.setAttribute('data-theme', t);
-} catch (e) { /* storage blocked: the OS setting stands */ }

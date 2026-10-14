@@ -800,7 +800,7 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
   margin-inline-end: var(--s2);
   padding: 0.35em 1em;
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--sk-card-bg);
   color: var(--ink-body);
   font-size: var(--t-small);

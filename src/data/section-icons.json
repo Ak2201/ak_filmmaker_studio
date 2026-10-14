@@ -98,7 +98,13 @@
     "cloud_sync",
     "cloud_upload",
     "sync_problem",
-    "cloud_off"
+    "cloud_off",
+    "density_small",
+    "zoom_in",
+    "zoom_out",
+    "fit_screen",
+    "unfold_more",
+    "unfold_less"
   ],
   "pages": {
     "breakdown": {

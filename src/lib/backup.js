@@ -535,7 +535,8 @@ function applyV2(all, shape, opts) {
       Store.updateProject(meta.id, {
         title:  meta.title || undefined,
         format: meta.format || undefined,
-        fav:    meta.fav || undefined
+        fav:    meta.fav || undefined,
+        subtitle: meta.subtitle || undefined
       });
       writeBucket(meta.id, bucket);
       replaced++;
@@ -545,7 +546,8 @@ function applyV2(all, shape, opts) {
       id:     clash ? undefined : meta.id,
       title:  (meta.title || 'Imported Project') + (clash ? ' (imported)' : ''),
       format: meta.format,
-      fav:    meta.fav
+      fav:    meta.fav,
+      subtitle: meta.subtitle
     });
     writeBucket(created.id, bucket);
     taken.push(created.id);

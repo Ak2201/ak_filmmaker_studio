@@ -113,8 +113,9 @@
 .vz-table .vz-c-size { width: 8.5rem; min-width: 8.5rem; }
 .vz-table .vz-c-size .k-control + .k-control { margin-top: var(--s1); }
 .vz-table .vz-c-move { width: 7rem; min-width: 7rem; }
-.vz-table .vz-c-lens { width: 5.5rem; min-width: 5.5rem; }
-.vz-table .vz-c-desc { min-width: 11rem; }
+.vz-table .vz-c-lens { width: 7.5rem; min-width: 7.5rem; }
+.vz-table .vz-c-lens .k-control + .k-control { margin-top: var(--s1); }
+.vz-table .vz-c-desc { min-width: 9.5rem; }
 .vz-table .vz-c-done { width: 7rem; min-width: 7rem; }
 .vz-done-stack { display: grid; gap: var(--s1h); justify-items: start; }
 .vz-table .vz-c-ctrl { width: 4rem; }
@@ -206,6 +207,7 @@
 }
 .vz-frame-badge,
 .vz-frame-lens,
+.vz-frame-rig,
 .vz-frame-move {
   position: absolute;
   padding: var(--s-half) var(--s1h);
@@ -221,6 +223,7 @@
 .vz-frame-badge { top: var(--s1h); left: var(--s1h); color: var(--ink); }
 .vz-frame-lens  { top: var(--s1h); right: var(--s1h); color: var(--brand-deep); }
 .vz-frame-move  { bottom: var(--s1h); left: var(--s1h); }
+.vz-frame-rig   { bottom: var(--s1h); right: var(--s1h); max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
 .vz-frame-view { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .vz-frame-link {
   font-family: var(--f-mono);
@@ -476,7 +479,7 @@
   }
   .vz-pr-c-no   { width: 7%; font-weight: 700; }
   .vz-pr-c-spec { width: 9%; }
-  .vz-pr-c-desc { width: 48%; }
+  .vz-pr-c-desc { width: 39%; }
   .vz-pr-c-done { width: 5%; text-align: center; }
 
   .vz-pr-total {
@@ -569,6 +572,8 @@
 .vz-map-callout { fill: var(--ink-body); font-size: 2.5px; }
 .vz-map.is-editable .vz-mk, .vz-map.is-editable .vz-mk-handle { cursor: grab; }
 .vz-mk:focus-visible, .vz-mk-handle:focus-visible { outline: none; }
+.vz-mk-camera.is-linked .vz-mk-shape { stroke: var(--ink); stroke-width: 1.1; }
+.vz-mk-camera.is-linked .vz-mk-cone { fill: var(--accent-primary); fill-opacity: 0.35; }
 .vz-mk:focus-visible .vz-mk-shape, .vz-mk.is-selected .vz-mk-shape, .vz-mk-handle:focus-visible { stroke: var(--ink); stroke-width: 1.1; }
 .vz-mk-handle { fill: var(--surface-elevated); stroke: var(--accent-primary); stroke-width: 0.6; }
 

@@ -101,9 +101,17 @@ const COLUMNS = [
   ['Angle', 'vz-pr-c-spec'],
   ['Move', 'vz-pr-c-spec'],
   ['Lens', 'vz-pr-c-spec'],
+  ['Light / rig', 'vz-pr-c-spec'],
   ['What we see', 'vz-pr-c-desc'],
   ['✓', 'vz-pr-c-done']
 ];
+
+/** Rig and camera in one cell: "Gimbal · Cam A". Both read off the shot
+    and the map; a camera deleted from the map prints nothing. */
+function rigText(shot, cams) {
+  const cam = Shots.camOf(shot, cams);
+  return [String(shot.rig || '').trim(), cam ? cam.name : ''].filter(Boolean).join(' · ');
+}
 
 function sceneBlock(group) {
   const scene = group.scene;
@@ -135,6 +143,7 @@ function sceneBlock(group) {
   table.append(h('thead', {}, [head]));
 
   const body = h('tbody');
+  const cams = scene ? Shots.sceneCameras(scene.id) : [];
   group.shots.forEach((shot, i) => {
     const row = h('tr');
     row.append(h('td.vz-pr-c-no', { text: shot.number || String(i + 1) }));
@@ -142,6 +151,7 @@ function sceneBlock(group) {
     row.append(h('td.vz-pr-c-spec', { text: shot.angle }));
     row.append(h('td.vz-pr-c-spec', { text: shot.movement }));
     row.append(h('td.vz-pr-c-spec', { text: shot.lens || '—' }));
+    row.append(h('td.vz-pr-c-spec', { text: rigText(shot, cams) || '—' }));
     row.append(h('td.vz-pr-c-desc', { text: shot.description || '—' }));
     row.append(h('td.vz-pr-c-done', { text: shot.done ? '✓' : '☐' }));
     body.append(row);
@@ -202,13 +212,14 @@ const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
 
 export const CSV_HEADER = [
   'Scene', 'Slug', 'Int/Ext', 'Time', 'Location', 'Scene pages',
-  'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'What we see', 'Status', 'Drafted by'
+  'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'Lighting / rig', 'Camera', 'What we see', 'Status', 'Drafted by'
 ];
 
 export function toCSV(scope) {
   const rows = [CSV_HEADER];
   for (const group of groups(scope)) {
     const scene = group.scene;
+    const cams = scene ? Shots.sceneCameras(scene.id) : [];
     for (const [i, shot] of group.shots.entries()) {
       rows.push([
         scene ? (scene.number || '') : 'orphan',
@@ -222,6 +233,8 @@ export function toCSV(scope) {
         shot.angle,
         shot.movement,
         shot.lens,
+        shot.rig,
+        (Shots.camOf(shot, cams) || {}).name || '',
         shot.description,
         shot.done ? 'in the can' : 'to shoot',
         shot.ai ? 'AI draft' : 'you'

@@ -154,5 +154,33 @@ eq(S.coverageOf([{ done: true, lens: '35mm' }, { done: false, lens: ' 35mm ' }, 
   { setups: 3, done: 1, open: 2, lenses: ['35mm'] }, 'coverageOf counts setups, done, open and distinct lenses');
 eq(S.coverageOf([]), { setups: 0, done: 0, open: 0, lenses: [] }, 'an empty scene covers nothing');
 
+/* ---- rig and camera link ---------------------------------------- */
+reset();
+eq([S.blankShot().rig, S.blankShot().cam], ['', ''], 'a blank shot has no rig and no camera');
+{
+  const bl = S.addBlock('scx');
+  const camA = S.addMark(bl.id, 'camera'), camB = S.addMark(bl.id, 'camera');
+  S.addMark(bl.id, 'actor');
+  eq(S.sceneCameras('scx').map((c) => c.name), ['Cam A', 'Cam B'], 'cameras of a scene, labelled off the map');
+  eq(S.sceneCameras('none'), [], 'no cameras for an unmapped scene');
+  const bl2 = S.addBlock('scx'); S.addMark(bl2.id, 'camera');
+  eq(S.sceneCameras('scx').map((c) => c.name), ['Setup 1 · Cam A', 'Setup 1 · Cam B', 'Setup 2 · Cam A'], 'two setups with cameras prefix the setup name');
+  const s1 = S.addShot('scx', { rig: 'Gimbal', cam: camA.id });
+  const s2 = S.addShot('scx', { cam: camA.id });
+  S.addShot('scx');
+  const list = S.listShots();
+  eq(S.camOf(list[0])?.id, camA.id, 'camOf resolves the linked mark');
+  eq(S.camOf(list[2]), null, 'an unlinked shot has no camera');
+  eq(S.shotsOfCamera(camA.id, list).map((x) => x.id), [s1.id, s2.id], 'shotsOfCamera is the reverse link');
+  eq(S.shotsOfCamera(camB.id, list), [], 'a camera nobody points at has no shots');
+  eq(S.shotsOfCamera('', list), [], 'an empty id matches nothing');
+  S.removeMark(bl.id, camA.id);
+  eq(S.camOf(S.listShots()[0]), null, 'a deleted camera mark reads as no camera, not a stale label');
+  eq(S.listShots()[0].rig, 'Gimbal', '…and the rig survives');
+  // a shot stored before the fields existed
+  mem.set('fms_shots_v1', JSON.stringify({ shots: [{ id: 'old', sceneId: 'scx', size: 'MS' }] }));
+  eq([S.listShots()[0].rig, S.listShots()[0].cam], ['', ''], 'an older stored shot reads back with empty rig and cam');
+}
+
 console.log(`test:blocking — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

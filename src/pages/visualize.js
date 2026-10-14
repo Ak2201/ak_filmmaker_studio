@@ -49,9 +49,9 @@ import Scenes, { formatEighths } from '../lib/scenes.js';
 import Script from '../lib/script.js';
 import { matchScenes, describeMatch } from '../lib/screenplay-analysis.js';
 import Shots, {
-  SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, isLinkable
+  SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, isLinkable
 } from '../lib/shots.js';
-import { renderBlocking, renderSceneBoard } from '../ui/blocking.js';
+import { renderBlocking, renderSceneBoard, highlightCamera } from '../ui/blocking.js';
 import { basicShotDivision, jobFor } from '../lib/shot-rules.js';
 import {
   button, buttonGroup, badge, intExtBadge, todBadge, pageHeader, statStrip, notice, field as kitField
@@ -363,7 +363,7 @@ function renderShotTable(shots, scene) {
     text: 'Coverage' + (scene ? ' for scene ' + (scene.number || '') : '')
   }));
   const head = h('tr');
-  [['Setup', 'vz-c-no'], ['Size & angle', 'vz-c-size'], ['Move', 'vz-c-move'], ['Lens', 'vz-c-lens'],
+  [['Setup', 'vz-c-no'], ['Size & angle', 'vz-c-size'], ['Move', 'vz-c-move'], ['Lens, light & camera', 'vz-c-lens'],
     ['What we see', 'vz-c-desc'], ['Status', 'vz-c-done']]
     .forEach(([label, cls]) => head.append(
       h('th' + (cls ? '.' + cls : ''), { scope: 'col', text: label })
@@ -371,7 +371,8 @@ function renderShotTable(shots, scene) {
   table.append(h('thead', {}, [head]));
 
   const body = h('tbody');
-  shots.forEach((shot, i) => body.append(renderShotRow(shot, i, shots.length)));
+  const cams = scene ? Shots.sceneCameras(scene.id) : [];
+  shots.forEach((shot, i) => body.append(renderShotRow(shot, i, shots.length, cams)));
   table.append(body);
   return h('div.k-table-wrap.vz-table-wrap', {
     role: 'region', tabindex: '0',
@@ -393,7 +394,7 @@ function statusPill(shot, i) {
   }, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), h('span', { text: st.label })]);
 }
 
-function renderShotRow(shot, i, total) {
+function renderShotRow(shot, i, total, cams = []) {
   const row = h('tr.vz-row' + (shot.done ? '.is-done' : '') + (shot.ai || shot.rules ? '.is-ai' : ''), {
     'data-shot': shot.id
   });
@@ -423,12 +424,25 @@ function renderShotRow(shot, i, total) {
     picker(SHOT_ANGLES, shot.angle, 'data-shot-field', 'angle', 'Camera angle')
   ]));
   row.append(h('td.vz-c-move', {}, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
-  row.append(h('td.vz-c-lens', {}, [
+  /* Lighting / rig is free text; the camera is a pick from the marks on
+     this scene's blocking maps. No camera marks, no picker: the map is
+     where a camera is made, so there is nothing to offer instead of an
+     empty list. */
+  const cell = h('td.vz-c-lens', {}, [
     cellInput(field('input.vz-lens', {
       type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off',
       'data-shot-field': 'lens', 'aria-label': 'Lens'
-    }, shot.lens), true)
-  ]));
+    }, shot.lens), true),
+    cellInput(field('input.vz-rig', {
+      type: 'text', placeholder: 'Key from window', list: 'vzRigs', autocomplete: 'off',
+      'data-shot-field': 'rig', 'aria-label': 'Lighting or rig'
+    }, shot.rig), true)
+  ]);
+  if (cams.length) {
+    cell.append(picker([{ id: '', label: 'No camera' }, ...cams.map((c) => ({ id: c.id, label: c.name }))],
+      Shots.camOf(shot, cams) ? shot.cam : '', 'data-shot-field', 'cam', 'Camera on the blocking map'));
+  }
+  row.append(cell);
   row.append(h('td.vz-c-desc', {}, [
     cellInput(field('textarea.vz-desc', {
       rows: '2', placeholder: 'One line of what the audience sees',
@@ -764,7 +778,7 @@ function renderShotColumn(shot, frames) {
   return col;
 }
 
-function renderFrame(frame, shot, i, total) {
+function renderFrame(frame, shot, i, total, cams) {
   const card = h('div.vz-frame', { 'data-frame': frame.id });
 
   /* The slate: a frame-shaped space for the reference, labelled the way
@@ -772,11 +786,14 @@ function renderFrame(frame, shot, i, total) {
      right when the shot names one, the move bottom left. Every mark is
      read off the shot; none is invented for the picture. */
   const slate = h('div.vz-frame-slate');
+  const cam = Shots.camOf(shot, cams || Shots.sceneCameras(shot.sceneId));
+  const rigLabel = [String(shot.rig || '').trim(), cam ? cam.name : ''].filter(Boolean).join(' · ');
   slate.append(
     h('span.vz-frame-badge.k-mono', { text: (shot.number || '—') + String.fromCharCode(97 + i) + '  ' + sizeLabel(shot.size) }),
     shot.lens ? h('span.vz-frame-lens.k-mono', { text: shot.lens }) : null,
     refView(frame.ref),
-    h('span.vz-frame-move.k-mono', { text: shot.movement })
+    h('span.vz-frame-move.k-mono', { text: shot.movement }),
+    rigLabel ? h('span.vz-frame-rig.k-mono', { text: rigLabel }) : null
   );
   card.append(slate);
 
@@ -979,7 +996,8 @@ function render(focus) {
     renderBlocking(scenes, render),
     renderSceneBoard(scenes, shots, frames, null, sceneBoardPairs(scenes), render),
     renderLookbook(boards),
-    h('datalist#vzLenses', {}, SHOT_LENSES.map((l) => h('option', { value: l })))
+    h('datalist#vzLenses', {}, SHOT_LENSES.map((l) => h('option', { value: l }))),
+    h('datalist#vzRigs', {}, SHOT_RIGS.map((l) => h('option', { value: l })))
   );
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
@@ -1213,6 +1231,14 @@ delegate(document, 'change', '[data-shot-field]', (e, el) => {
     const line = col && col.querySelector('.vz-shotcol-desc');
     if (line) line.textContent = value;
   }
+});
+
+/* The map's half of the link: a focused shot row lights its camera on every
+   map (in memory; the Blocking tab draws it too when opened). */
+delegate(document, 'focusin', 'tr.vz-row', (e, row) => {
+  const shot = Shots.listShots().find((x) => x.id === row.dataset.shot);
+  const cam = shot && Shots.camOf(shot);
+  highlightCamera(cam ? cam.id : '');
 });
 
 /* frames */

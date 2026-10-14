@@ -633,7 +633,6 @@
   #you .am-inline .am-item:hover { background: none; color: var(--brand-deep); }
   #you .am-inline .am-item.danger:hover { background: none; color: var(--danger-deep); }
 }
-#you .am-inline .am-item.danger { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--border-hair); width: 100%; }
 /* Signed out: the one control is the view's primary CTA, a pill. */
 #you .am-inline .am-acct-note + .am-item {
   text-transform: none;
@@ -694,3 +693,80 @@
   .st-head { padding-inline: var(--s4); }
   #you .account-menu.am-inline, .st-plan-card { padding: var(--s3); }
 }
+
+/* ---- identity card: facts, and the three actions as one row (14 Oct 2026) */
+.st-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--s3);
+  margin: var(--s3) 0 0;
+  padding: var(--s3);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius);
+}
+.st-fact { min-width: 0; display: grid; gap: var(--s-half); }
+.st-fact dt {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-fact dd { margin: 0; font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }
+#you .am-inline .am-actions { display: flex; flex-wrap: wrap; gap: var(--s2); padding-top: var(--s3); }
+#you .am-inline .am-actions .am-item {
+  justify-self: auto;
+  flex: 0 0 auto;
+  min-height: var(--h-control);
+  padding: 0 var(--s4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--sk-btn-radius);
+  background: var(--surface-card);
+}
+#you .am-inline .am-actions .am-item:first-child { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
+#you .am-inline .am-actions .am-item.danger { margin: 0; padding-top: 0; width: auto; color: var(--danger); border-color: var(--danger-line); }
+@media (max-width: 720px) {
+  #you .am-inline .am-actions .am-item { flex: 1 1 100%; min-height: var(--tap-min); }
+}
+/* the AI key: the eye, and the verified mark */
+.ai-key-row { display: flex; gap: var(--s2); align-items: stretch; }
+.ai-key-row .ai-key-input { flex: 1 1 auto; }
+.ai-eye {
+  flex: 0 0 auto;
+  min-width: var(--h-field);
+  display: inline-grid;
+  place-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--sk-field-radius);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.ai-eye[aria-pressed="true"] { color: var(--brand-deep); border-color: var(--border-focus); }
+.ai-eye:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+@media (max-width: 720px) { .ai-eye { min-width: var(--tap-min); min-height: var(--tap-min); } }
+.ai-verified {
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-badge);
+  padding: 0 var(--s2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--ok-line);
+  background: var(--ok-wash);
+  color: var(--ok-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+@media (hover: hover) {
+  #you .am-inline .am-actions .am-item:first-child:hover { background: var(--brand-hover); color: var(--brand-on); }
+  #you .am-inline .am-actions .am-item:hover { background: var(--surface-hover); color: var(--ink); }
+  #you .am-inline .am-actions .am-item.danger:hover { background: var(--danger-wash); color: var(--danger); }
+}
+.st-build { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-rate { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: baseline; margin: var(--s3) 0 0; padding: var(--s2) var(--s3); background: var(--surface-canvas); border: 1px solid var(--border-hair); border-radius: var(--sk-radius); }
+.st-rate-k { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-rate-v { font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); }

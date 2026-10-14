@@ -795,3 +795,17 @@ a.k-stat.ad-stat:focus-visible { outline: var(--focus); outline-offset: var(--fo
 .ad-tl-a { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: .04em; }
 .ad-meter-bar { background: var(--surface-rail); border-radius: var(--radius-pill); }
 @media (max-width: 719px) { .ad-head, .ad-status { padding-inline: var(--s4); } }
+
+/* severity tag on a "Needs attention" row (CRIT / HIGH / LOW), text variants only */
+.ad-sev {
+  flex: 0 0 auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.ad-sev.is-danger { color: var(--danger); }
+.ad-sev.is-warn { color: var(--warn-deep); }
+.ad-card-h { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.ad-card-f .ad-chip { margin-inline-start: var(--s1); }

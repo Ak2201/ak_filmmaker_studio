@@ -55,6 +55,7 @@ import { button, sym, segmented, selectSegment } from './kit/index.js';
 import { revealTarget } from './tabs.js';
 import { isPaletteOpen } from './palette.js';
 import Goals, { GOAL_KINDS } from '../lib/write-goals.js';
+import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
 import '../styles/focus-mode.css';
 
 const PREFS_KEY = 'fms_write_prefs_v1';
@@ -69,6 +70,10 @@ const TYPE_AT = 1 / 3;
 
 const root = document.documentElement;
 let getDoc = () => ({ elements: [] });
+/* The host page's own words for the top strip — project, draft and
+   save state — as it already shows them; optional (write.js passes
+   none, and the strip then says where the caret is and nothing else). */
+let getMeta = () => null;
 let tracker = null;
 
 let on = false;
@@ -163,6 +168,7 @@ function buildHud() {
   nodes.target = target;
   nodes.marker = marker;
   nodes.hist = h('ol.fm-hist', { 'aria-label': 'Written per day, last seven days' });
+  nodes.week = h('span.fm-week');
   nodes.opts = h('div.fm-opts', { id: 'fm-opts', hidden: true, role: 'group', 'aria-label': 'Focus options' }, [
     h('div.fm-opts-head', {}, [
       h('span.fm-opts-title', {}, [sym('bolt'), h('span', { text: 'Focus options' })]),
@@ -182,7 +188,7 @@ function buildHud() {
         button({ label: 'Full screen', icon: 'fullscreen', block: true, action: 'fm-fullscreen', class: 'fm-btn' })
       ])
     ]),
-    h('div.fm-hist-wrap', {}, [sec('Last seven days'), nodes.hist])
+    h('div.fm-hist-wrap', {}, [h('div.fm-hist-head', {}, [sec('Last seven days'), nodes.week]), nodes.hist])
   ]);
 
   nodes.optsBtn = button({
@@ -209,7 +215,40 @@ function buildHud() {
       nodes.optsBtn
     ])
   ]);
-  document.body.append(bar, hud);
+  /* THE TOP STRIP: project · scene n of m · draft · save state, and the
+     caret's page and line on the right. All of it derived (the page's
+     own labels, src/lib/caret-position.js); repainted on a frame after
+     the caret moves, DOM only. */
+  nodes.where = h('span.fm-where');
+  nodes.caret = h('span.fm-caret');
+  strip = h('div.fm-strip', { role: 'status', 'aria-live': 'off', 'aria-label': 'Where you are', hidden: true }, [nodes.where, nodes.caret]);
+  document.body.append(bar, strip, hud);
+}
+
+let strip = null;
+let stripFrame = 0;
+function paintStripSoon() {
+  if (!on || stripFrame) return;
+  stripFrame = requestAnimationFrame(() => { stripFrame = 0; paintStrip(); });
+}
+function paintStrip() {
+  if (!strip || !on) return;
+  const els = (getDoc() || {}).elements || [];
+  const row = lastTa && lastTa.isConnected ? lastTa.closest('[data-el]') : null;
+  const pos = row ? caretPosition(els, row.dataset.el) : null;
+  let meta = null;
+  try { meta = getMeta(); } catch (e) { meta = null; }
+  const total = pos ? pos.sceneCount : sceneTotal(els);
+  const bits = [
+    meta && meta.title,
+    pos && pos.scene ? 'Scene ' + pos.scene + ' of ' + total : (total ? total + (total === 1 ? ' scene' : ' scenes') : ''),
+    meta && meta.draft,
+    meta && meta.status
+  ].filter(Boolean);
+  const where = bits.join(' · ');
+  if (nodes.where.textContent !== where) nodes.where.textContent = where;
+  const caret = pos ? formatCaretPage(pos) + ' · line ' + pos.line : '';
+  if (nodes.caret.textContent !== caret) nodes.caret.textContent = caret;
 }
 
 function syncControls() {
@@ -245,6 +284,9 @@ function paintHistory() {
   const today = rows[rows.length - 1];
   nodes.todayText.data = 'Today: ' + signed(today.words) + ' words, '
     + signed(Math.round(today.pages * 10) / 10, 1) + ' pages';
+  const week = rows.reduce((n, r) => n + Math.max(0, r.words), 0);
+  const wt = 'Week total: ' + week.toLocaleString() + ' words';
+  if (nodes.week.textContent !== wt) nodes.week.textContent = wt;
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   nodes.hist.replaceChildren(...rows.map((r, i) => h('li' + (i === rows.length - 1 ? '.is-today' : '') + (r.words > 0 ? '.has-words' : ''), {}, [
     h('span.fm-hist-day', { text: DAYS[r.date.getDay()] }),
@@ -453,6 +495,7 @@ function restoreTheme() {
 function rememberCaret(ta) {
   lastTa = ta;
   try { lastSel = [ta.selectionStart, ta.selectionEnd]; } catch (e) { lastSel = [0, 0]; }
+  paintStripSoon();
 }
 
 export function enterFocus({ fullscreen = false } = {}) {
@@ -467,9 +510,11 @@ export function enterFocus({ fullscreen = false } = {}) {
   syncControls();
   hud.hidden = false;
   bar.hidden = false;
+  strip.hidden = false;
   paintGoal();
   paintHistory();
   publishLine();
+  paintStripSoon();
   if (fullscreen && root.requestFullscreen && !document.fullscreenElement) {
     root.requestFullscreen().then(() => { fullscreenOurs = true; }, () => { /* CSS-only, fine */ });
   }
@@ -480,6 +525,7 @@ export function enterFocus({ fullscreen = false } = {}) {
     try { ta.setSelectionRange(lastSel[0], lastSel[1]); } catch (e) { /* select */ }
     markScene(ta.closest('[data-el]'));
     typewriterSoon(false);
+    rememberCaret(ta);
   } else {
     const cta = document.querySelector('#screenplay .bd-empty button');
     if (cta) cta.focus({ preventScroll: true });
@@ -490,11 +536,12 @@ export function exitFocus() {
   if (!on) return;
   on = false;
   if (tracker) tracker.flush();
-  root.classList.remove('fm-on', 'fm-night');
+  root.classList.remove('fm-on', 'fm-night', 'fm-opts-on');
   restoreTheme();
   clearScene();
   hud.hidden = true;
   bar.hidden = true;
+  strip.hidden = true;
   nodes.opts.hidden = true;
   nodes.optsBtn.setAttribute('aria-expanded', 'false');
   if (document.fullscreenElement && fullscreenOurs) {
@@ -572,6 +619,7 @@ function wire() {
     if (nodes.opts.hidden) {
       nodes.opts.hidden = false;
       nodes.optsBtn.setAttribute('aria-expanded', 'true');
+      root.classList.add('fm-opts-on');
       paintHistory();
     } else closeOpts(false);
   });
@@ -667,7 +715,7 @@ function wire() {
     idle(() => {
       pending = false;
       tracker.onSaved();
-      if (on) { paintGoal(); if (!nodes.opts.hidden) paintHistory(); }
+      if (on) { paintGoal(); paintStripSoon(); if (!nodes.opts.hidden) paintHistory(); }
     });
   });
   const flush = () => { if (tracker) tracker.flush(); };
@@ -684,13 +732,17 @@ function otherLayerOpenBesidesOpts() {
 }
 function closeOpts(refocus) {
   nodes.opts.hidden = true;
+  root.classList.remove('fm-opts-on');
   nodes.optsBtn.setAttribute('aria-expanded', 'false');
   if (refocus) nodes.optsBtn.focus({ preventScroll: true });
 }
 
-/** Called once by write.js with a reader of its in-memory model. */
-export function mountFocusMode(readDoc) {
+/** Called once by the page with a reader of its in-memory model, and
+    optionally { getMeta: () => ({ title, draft, status }) } for the
+    top strip. */
+export function mountFocusMode(readDoc, opts = {}) {
   if (typeof readDoc === 'function') getDoc = readDoc;
+  if (opts && typeof opts.getMeta === 'function') getMeta = opts.getMeta;
   loadPrefs();
   tracker = Goals.createTracker({ getElements: () => (getDoc() || {}).elements || [] });
   wire();

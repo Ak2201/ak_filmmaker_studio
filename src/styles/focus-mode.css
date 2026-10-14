@@ -340,3 +340,93 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
   .fm-opts-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media print { .fm-hud, .fm-bar { display: none; } }
+
+/* ============================================================
+   PARITY PASS (14 Oct 2026) — the top strip, the week total, and
+   the phone: a page at full width and options as a bottom sheet
+   ============================================================ */
+/* The page fills its column. #screenplay is a size container
+   (screenplay.css), so it has NO intrinsic width: with auto margins
+   in a grid it shrank to its own padding — on a phone the script
+   became a 16px sliver between two rules. */
+html.fm-on #screenplay { width: 100%; box-sizing: border-box; }
+
+/* Where you are, under the goal bar: mono, muted, one line. */
+.fm-strip {
+  position: fixed;
+  top: 3px;
+  left: 0;
+  right: 0;
+  z-index: var(--z-float);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+  padding-top: calc(var(--s2) + env(safe-area-inset-top, 0px));
+  background: color-mix(in srgb, var(--surface-canvas) 88%, transparent);
+  border-bottom: 1px solid var(--border-hair);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  pointer-events: none;
+}
+.fm-strip[hidden] { display: none; }
+.fm-where { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-caret { flex: none; color: var(--brand-deep); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fm-caret:empty, .fm-where:empty { display: none; }
+
+.fm-hist-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s1) var(--s3); }
+.fm-week {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--warn-deep);
+}
+
+@media (max-width: 719px) {
+  /* two lines: where you are, then the page and line */
+  .fm-strip { flex-wrap: wrap; row-gap: var(--s1); padding-inline: var(--s3); }
+  .fm-where { flex: 1 1 100%; }
+  /* The dock and its options are ONE bottom sheet: the dock is its
+     foot, full width, and the options open above it inside the same
+     surface, with a grab handle, scrolling on their own. */
+  .fm-hud {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    gap: 0;
+  }
+  .fm-hud-row {
+    border-radius: 0;
+    border-inline: 0;
+    border-bottom: 0;
+    padding: var(--s2) var(--s3) calc(var(--s2) + env(safe-area-inset-bottom, 0px));
+  }
+  html.fm-on .fm-hud { bottom: 0; }
+  .fm-opts {
+    position: relative;
+    max-height: 62vh;
+    padding-top: var(--s5);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-inline: 0;
+    border-bottom: 1px solid var(--border-hair);
+    box-shadow: var(--shadow-modal);
+  }
+  .fm-opts::before {
+    content: '';
+    position: absolute;
+    top: var(--s2);
+    left: calc(50% - 20px);
+    width: 40px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--border-strong);
+  }
+  html.fm-opts-on .fm-hud-row { border-top-color: transparent; box-shadow: none; }
+  .fm-hist { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--s-half); }
+  .fm-hist li { padding-inline: 0; }
+}
+@media print { .fm-strip { display: none; } }

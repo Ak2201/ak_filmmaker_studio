@@ -156,6 +156,50 @@
 }
 .bp-hint:empty { display: none; }
 
+/* The film's one target running time (Reports'), and how the
+   script's estimate sits against it. Over is said in words AND tone. */
+.bp-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s2);
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bp-target strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bp-target-est { font-variant-numeric: tabular-nums; color: var(--ok-deep); }
+.bp-target.is-over .bp-target-est { color: var(--warn-deep); }
+/* All / Linked / Pending: a view, full width, three equal cells. */
+.bp-filter.k-seg { display: flex; margin-top: var(--s1); }
+.bp-filter .k-seg-btn { flex: 1 1 0; min-width: 0; }
+.bp-list > li[hidden] { display: none; }
+/* A tension somebody set in the Story stage: words first, then a bar. */
+.bp-tension {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bp-tension-l { flex: none; font-variant-numeric: tabular-nums; }
+.bp-tension-track {
+  flex: 1 1 auto;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--border-hair);
+  overflow: hidden;
+}
+.bp-tension-fill { display: block; height: 100%; background: var(--ink-muted); }
+.is-current > .bp-beat .bp-tension-l { color: var(--brand-deep); }
+.is-current > .bp-beat .bp-tension-fill { background: var(--accent-primary); }
+
 @media (max-width: 719.98px) {
   .bp.is-open {
     position: fixed;

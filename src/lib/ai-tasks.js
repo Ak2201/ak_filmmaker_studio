@@ -34,6 +34,8 @@
                       row's own Undo also still works, page save
      story-steps/map  story.js models, saved by the page's commit()
      shot-draft       shots.js addShot (append only)
+     scene-story      story.js outline steps, one per scene, linked by
+                      sceneId (breakdown-extras.js appendSteps)
      synopsis-script  scriptgen.js's job (stage 1 → the beat sheet)
      gen-scenes       scriptgen.js applyScenes (stage 2 → scenes.js)
      gen-batch        scriptgen.js applyBatch (stage 3, one batch →
@@ -48,6 +50,7 @@
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
    ============================================================ */
+import Store from './store.js';   // the open project's format (scene-story)
 import { registerTask as deskRegister } from '../ui/ai-desk.js';
 
 /* ---- the modules, loaded once ------------------------------- */
@@ -60,6 +63,7 @@ let ShotsM = null;        // ./shots.js
 let Analysis = null;      // ./screenplay-analysis.js
 let Gen = null;           // ./scriptgen.js
 let Cov = null;           // ../ui/coverage.js (its coverageStore)
+let Extras = null;        // ./breakdown-extras.js
 let readyP = null;
 
 function loadAll() {
@@ -67,9 +71,10 @@ function loadAll() {
     readyP = Promise.all([
       import('./ai.js'), import('./blueprint-context.js'), import('./story.js'),
       import('./scenes.js'), import('./script.js'), import('./shots.js'),
-      import('./screenplay-analysis.js'), import('./scriptgen.js'), import('../ui/coverage.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv]) => {
-      AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv;
+      import('./screenplay-analysis.js'), import('./scriptgen.js'), import('../ui/coverage.js'),
+      import('./breakdown-extras.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx]) => {
+      AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -642,6 +647,111 @@ const shotTask = {
     return () => {
       const ids = new Set(made);
       ShotsM.saveShots(ShotsM.listShots().filter((s) => !ids.has(s.id)));
+      call(c.after, []);
+    };
+  }
+};
+
+/* ============================================================
+   SCENE → STORY — list. ctx { sceneIds: [id…], format?, after?(madeIds) }
+   ------------------------------------------------------------
+   draftSceneStory() over the named scenes: one outline step per
+   scene, the beat the model chose (checked against the framework in
+   force — the writer's choice once made, else the format's
+   suggestion), else the beat the scene sits nearest. Sent in batches
+   of SCENE_STORY_BATCH scenes, one request each, so a feature's sixty
+   scenes are not one reply cut off at the ceiling.
+   Accept files the ticked steps under their beats in story.outline,
+   each linked by `sceneId` (breakdown-extras.js appendSteps, the same
+   write the non-AI 'story-basic' makes); Undo removes exactly those.
+   ============================================================ */
+const SCENE_STORY_BATCH = 25;
+
+const projectFormat = (c) => {
+  const f = String(call(c.format) ?? c.format ?? '');
+  if (f) return f === 'short' ? 'short' : 'feature';
+  try { const p = Store.currentProject && Store.currentProject(); return p && p.format === 'short' ? 'short' : 'feature'; }
+  catch (e) { return 'feature'; }
+};
+
+function sceneStoryJobs(c) {
+  const want = new Set([].concat(c.sceneIds || []).map(String));
+  const all = ScenesM.listScenes();
+  const scenes = all.filter((s) => want.has(String(s.id)));
+  if (!scenes.length) fail('Tick at least one scene.');
+  const s = StoryM.loadStory();
+  const fw = StoryM.frameworkById(StoryM.effectiveFramework(s, projectFormat(c)));
+  const script = ScriptM.loadScript();
+  const bySlice = new Map(Analysis.matchScenes(all, script.elements).pairs.map((p) => [p.scene.id, p.slice]));
+  const pos = Extras.scenePositions(all);
+  const jobs = scenes.map((scene) => {
+    const slice = bySlice.get(scene.id) || null;
+    return {
+      sceneId: String(scene.id), number: scene.number, slug: Extras.sceneSlug(scene),
+      synopsis: scene.synopsis, script: slice ? AI.sceneScriptText(slice) : '',
+      beat: Extras.beatForScene(scene, pos.get(String(scene.id)), fw.id)
+    };
+  });
+  return { fw, story: s, jobs };
+}
+
+const sceneStoryTask = {
+  id: 'scene-story',
+  label: 'Draft the story from the scenes',
+  kind: 'list',
+  editable: false,
+  input(ctx) {
+    let j;
+    try { j = sceneStoryJobs(resolve(ctx)); } catch (e) { return (e && e.message) || ''; }
+    const parts = Math.ceil(j.jobs.length / SCENE_STORY_BATCH);
+    const first = AI.buildSceneStoryPrompt({
+      framework: j.fw, scenes: j.jobs.slice(0, SCENE_STORY_BATCH), idea: j.story.idea, logline: j.story.logline
+    });
+    return plural(j.jobs.length, 'scene', 'scenes') + ', ' + plural(parts, 'request', 'requests')
+      + ', against the ' + j.fw.label + ' beats.' + (parts > 1 ? ' The first request sends:' : ' It sends:')
+      + '\n\n' + (first.length > 8000 ? first.slice(0, 8000) + '\n…' : first);
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const { fw, story, jobs } = sceneStoryJobs(c);
+    const ask = refineText(refine);
+    const steps = [];
+    let truncated = false;
+    for (let i = 0; i < jobs.length; i += SCENE_STORY_BATCH) {
+      const part = jobs.slice(i, i + SCENE_STORY_BATCH);
+      const n = Math.floor(i / SCENE_STORY_BATCH) + 1, of = Math.ceil(jobs.length / SCENE_STORY_BATCH);
+      const res = await AI.draftSceneStory({
+        framework: fw, scenes: part, idea: story.idea, logline: story.logline, ask,
+        context: BP.blueprintContext()
+      }, { signal, onStatus: (m) => call(onStatus, of > 1 ? 'Part ' + n + ' of ' + of + ' · ' + m : m) });
+      steps.push(...res.steps);
+      truncated = truncated || res.truncated;
+    }
+    const numOf = new Map(jobs.map((j) => [j.sceneId, j.number || '—']));
+    const labelOf = new Map(fw.beats.map((b) => [fw.id + ':' + b.id, b.label]));
+    const items = steps.map((st) => ({
+      id: 'st:' + st.sceneId, sceneId: st.sceneId, beat: st.beat, text: st.text,
+      detail: 'Sc ' + numOf.get(st.sceneId) + ' · under ' + (labelOf.get(st.beat) || st.beat)
+    }));
+    const missing = jobs.length - items.length;
+    const note = [
+      missing ? plural(missing, 'scene', 'scenes') + ' came back with no step.' : '',
+      truncated ? 'The reply was cut short, so some scenes may be missing.' : ''
+    ].filter(Boolean).join(' ');
+    return { items, note };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const s = StoryM.loadStory();
+    const made = Extras.appendSteps(s, selected);
+    if (!made.length) return null;
+    StoryM.saveStory(s);
+    call(c.after, made);
+    return () => {
+      const back = StoryM.loadStory();
+      Extras.removeSteps(back, made);
+      StoryM.saveStory(back);
       call(c.after, []);
     };
   }
@@ -1241,7 +1351,7 @@ const tagsTask = {
 };
 
 /* ---- registration ------------------------------------------- */
-const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, synopsisTask,
+const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
   genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask];
 let registered = false;
 

@@ -20,6 +20,7 @@
    danger, so RESET can never again be the most prominent control.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { iconSpan } from './icon.js';
 
 let seq = 0;
 
@@ -29,7 +30,16 @@ let seq = 0;
  *   { label, action?, href?, title?, danger?, hint?, id? }   a command
  * | { label, choices: [{ value, label }], action, attr, value }  a choice group
  * | '---'                                                    a separator
+ * | { heading: 'File' }                                      a group heading
  * ]
+ *
+ * A command may carry `icon` (a Material Symbols name from
+ * src/data/section-icons.json): the row then reads like the section
+ * menu's (src/ui/section-menu.js). A `heading` item opens a group,
+ * labelled for assistive tech (role=group) and drawn as the section
+ * menu's heading with a hairline above every group but the first; the
+ * commands after it belong to it until a '---' or the next heading.
+ * A menu with neither is exactly what it always was.
  *
  * A choice group is a radio row inside the menu — one label, N buttons,
  * exactly one checked. Theme and skin are both this shape, and neither
@@ -58,9 +68,17 @@ export function actionMenu(label, items, opts = {}) {
   if (!opts.compact) btn.append(h('span.tb-caret', { text: '▾', 'aria-hidden': 'true' }));
 
   const panel = h('div.tb-menu-panel', { id, hidden: true, role: 'menu' });
+  let into = panel;   // where a command goes: the panel, or the open group
+  let groups = 0;
   for (const item of items) {
-    if (item === '---') { panel.append(h('div.tb-sep', { role: 'separator' })); continue; }
-    if (item.choices) { panel.append(choiceGroup(item)); continue; }
+    if (item === '---') { into = panel; panel.append(h('div.tb-sep', { role: 'separator' })); continue; }
+    if (item.heading) {
+      const hid = id + '-g' + (++groups);
+      into = h('div.tb-mgroup', { role: 'group', 'aria-labelledby': hid }, [h('span.tb-mgroup-h', { id: hid, text: item.heading })]);
+      panel.append(into);
+      continue;
+    }
+    if (item.choices) { into.append(choiceGroup(item)); continue; }
     const props = { role: 'menuitem', title: item.title || '' };
     if (item.id) props.id = item.id;
     let el;
@@ -72,9 +90,10 @@ export function actionMenu(label, items, opts = {}) {
         ...(item.args ? { 'data-args': JSON.stringify(item.args) } : {})
       });
     }
+    if (item.icon) el.append(iconSpan('tb-item-i', { sym: item.icon }));
     el.append(h('span.tb-item-label', { text: item.label }));
     if (item.hint) el.append(h('span.tb-item-hint', { text: item.hint }));
-    panel.append(el);
+    into.append(el);
   }
   wrap.append(btn, panel);
   return wrap;

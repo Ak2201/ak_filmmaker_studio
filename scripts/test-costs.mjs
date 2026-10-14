@@ -40,7 +40,7 @@ const reset = () => { mem.delete(KEY); mem.delete('fms_library_calc_v1'); };
 
 /* ---- storage ------------------------------------------------- */
 reset();
-eq(C.readAll(), { expenses: [], floats: [], crew: {}, payments: [], lines: {}, settings: {}, wageOverrides: {} }, 'empty key reads as seven empty collections');
+eq(C.readAll(), { expenses: [], floats: [], crew: {}, payments: [], lines: {}, settings: {}, wageOverrides: {}, versions: [] }, 'empty key reads as eight empty collections');
 ok(!mem.has(KEY), 'reading wrote nothing');
 mem.set(KEY, '{not json');
 eq(C.listExpenses(), [], 'corrupt blob reads as empty');
@@ -204,6 +204,66 @@ ok(/,-\d/.test(act), 'negative variance stays a bare number');
 eq(C.toCSV([['=SUM(A1)', 'a,b', 'say "hi"']]), '"\'=SUM(A1)","a,b","say ""hi"""\r\n', 'formula defused, commas and quotes escaped');
 const ex = C.expensesCSV([{ date: '2026-11-02', shootDay: 1, line: 'ci_7', category: 'food', amount: 1180, gstPct: 18, vendor: 'Saravana', gstin: '', paidBy: 'c-ravi', method: 'upi', note: '', receipt: '' }], () => 'Unit food', (id) => names[id]);
 ok(ex.includes('2026-11-02,1,Unit food,Food,1180,18,180,Saravana,,Ravi,UPI'), 'expense CSV row');
+
+/* ---- locked versions, scales ----------------------------------- */
+reset();
+mem.set(KEY, JSON.stringify({ expenses: [], crew: {} }));
+eq(C.listVersions(), [], 'an old blob without versions reads back []');
+const vcalc = { ci_1_custom: 'Camera kit', ci_1_days: '10', ci_1_rate: '1000', ci_2_custom: 'Unit food', ci_2_days: '5', ci_2_rate: '200', ci_3_custom: 'Gone line', ci_3_days: '1', ci_3_rate: '500' };
+const vlines = C.estimateLines(vcalc);
+const vrep = C.costReport({ lines: vlines, contingencyPct: 10 });
+const snap = C.snapshotBudget({ lines: vlines, report: vrep, days: 12 });
+eq([snap.estimate, snap.contingency, snap.grand, snap.days, snap.atl + snap.btl], [11500, 1150, 12650, 12, 11500], 'snapshotBudget totals from the report and top sheet');
+eq(Object.keys(snap.lines[0]), ['id', 'name', 'dept', 'days', 'rate', 'estimate'], 'snapshot line shape');
+const v1 = C.lockVersion({ note: 'first', snapshot: snap });
+eq(v1.name, 'Budget v1', 'default name');
+ok(!Number.isNaN(Date.parse(v1.lockedAt)), 'lockedAt is an ISO date');
+snap.lines[0].estimate = 1; snap.lines.push({ id: 'zz' }); snap.estimate = 0;
+eq([C.listVersions()[0].lines[0].estimate, C.listVersions()[0].lines.length, C.listVersions()[0].estimate], [10000, 3, 11500], 'snapshot not aliased: mutating the source after locking changes nothing');
+const v2 = C.lockVersion({ name: 'Locked 2', snapshot: C.snapshotBudget({ lines: vlines, report: vrep, days: 0 }) });
+eq(C.listVersions().map((v) => v.name), ['Budget v1', 'Locked 2'], 'listed oldest first');
+C.addExpense({ amount: 100 });
+eq(C.listVersions().length, 2, 'THE TRAP: saving an expense does not drop versions');
+C.setLineDept('ci_1', 'cast'); C.setSettings({ contingencyPct: 5 }); C.addFloat({ amount: 5 });
+eq(C.listVersions().length, 2, 'other writes keep versions too');
+const gone = C.removeVersion(v1.id);
+eq(C.listVersions().map((v) => v.id), [v2.id], 'removed');
+C.restoreVersion(gone, 0); C.restoreVersion(gone, 0);
+eq(C.listVersions().map((v) => v.id), [v1.id, v2.id], 'restored at the same index, idempotent on id');
+eq(typeof C.updateVersion, 'undefined', 'no update function: locked means immutable');
+const nowLines = [
+  { id: 'ci_1', name: 'Camera kit', dept: 'camera', days: 12, rate: 1000 },   // changed +2000
+  { id: 'ci_2', name: 'Unit food', dept: 'food', days: 5, rate: 200 },        // same
+  { id: 'ci_4', name: 'New line', dept: 'cast', days: 1, rate: 300 }           // added; ci_3 removed
+];
+const frozen = JSON.stringify([C.listVersions()[0], nowLines]);
+const cmp = C.compareVersion(C.listVersions()[0], nowLines);
+eq(JSON.stringify([C.listVersions()[0], nowLines]), frozen, 'compareVersion mutates nothing');
+eq(cmp.total, { then: 11500, now: 13300, delta: 1800 }, 'compare total');
+eq(cmp.lines.added.map((l) => l.id), ['ci_4'], 'added');
+eq(cmp.lines.removed.map((l) => l.id), ['ci_3'], 'removed');
+eq(cmp.lines.changed, [{ id: 'ci_1', name: 'Camera kit', then: 10000, now: 12000, delta: 2000 }], 'changed');
+eq(cmp.depts.map((d) => [d.id, d.then, d.now, d.delta]), [['cast', 0, 300, 300], ['camera', 10000, 12000, 2000], ['food', 1000, 1000, 0], ['other', 500, 0, -500]], 'dept deltas, labelled, only non-zero depts');
+ok(cmp.depts.every((d) => d.label), 'depts carry DEPTS labels');
+reset();
+C.setLineScales('ci_1', true);
+eq(C.readAll().lines, { ci_1: { scales: true } }, 'scales alone is stored');
+C.setLineDept('ci_1', 'camera');
+eq(C.readAll().lines, { ci_1: { scales: true, dept: 'camera' } }, 'setting dept keeps scales');
+C.setLineScales('ci_1', false);
+eq(C.readAll().lines.ci_1, { scales: false, dept: 'camera' }, 'false is a value, and keeps dept');
+C.setLineDept('ci_1', '');
+eq(C.readAll().lines, { ci_1: { scales: false } }, 'clearing dept keeps scales');
+C.setLineDept('ci_2', 'cast'); C.setLineScales('ci_2', true);
+eq(C.readAll().lines.ci_2, { dept: 'cast', scales: true }, 'dept first then scales keeps both');
+C.setLineScales('ci_2', null);
+eq(C.readAll().lines.ci_2, { dept: 'cast' }, 'null clears scales only');
+C.setLineScales('ci_1', null);
+eq(C.readAll().lines, { ci_2: { dept: 'cast' } }, 'an entry with nothing left is removed');
+const sl = C.estimateLines(vcalc, { ci_1: { scales: true }, ci_2: { scales: false, dept: 'food' } });
+eq(sl.map((l) => l.scales), [true, false, null], 'estimateLines carries scales (null when unset)');
+const srep = C.costReport({ lines: sl });
+eq(srep.depts.flatMap((d) => d.lines).filter((l) => !l.unbudgeted).map((l) => l.scales).sort(), [false, null, true].sort(), 'report lines pass scales through');
 
 reset();
 console.log(`test:costs — ${pass} passed, ${fail} failed`);

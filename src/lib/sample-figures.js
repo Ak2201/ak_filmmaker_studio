@@ -29,6 +29,20 @@ export function formatEighths(e) {
   return `${pages} ${rem}/8`;
 }
 
+/** The inverse of formatEighths: '2 4/8' -> 20, '3/8' -> 3, '2' -> 16,
+    '1.5' -> 12 (a decimal page count, rounded to the nearest eighth).
+    null for anything else, so a typed field can say it is not a length. */
+export function parseEighths(str) {
+  const s = String(str == null ? '' : str).trim().replace(/\s*(pp?|pages?)\.?$/i, '');
+  if (!s) return null;
+  let m = /^(\d+)\s+(\d)\/8$/.exec(s);
+  if (m) return Number(m[2]) < 8 ? Number(m[1]) * 8 + Number(m[2]) : null;
+  m = /^(\d)\/8$/.exec(s);
+  if (m) return Number(m[1]) < 8 ? Number(m[1]) : null;
+  if (/^\d+(\.\d+)?$/.test(s)) return Math.round(Number(s) * 8);
+  return null;
+}
+
 /** The key a recce record is filed under. Case and stray spaces must
     not make two records for one place, so the key is normalised and
     the DISPLAY name always comes back off the scene. */

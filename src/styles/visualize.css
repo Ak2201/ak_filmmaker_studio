@@ -25,7 +25,9 @@
 
 .vz-shots,
 .vz-board,
-.vz-look {
+.vz-look,
+.vz-blocking,
+.vz-sceneboard {
   --hue: var(--visualize);
   --hue-on: var(--visualize-on);
   max-width: var(--measure-wide);
@@ -35,6 +37,7 @@
 .vz-shots { padding-block: var(--s6); }
 .vz-board { padding-block: var(--s6); }
 .vz-look  { padding-block: var(--s6) var(--s9); }
+.vz-blocking, .vz-sceneboard { padding-block: var(--s6); }
 
 .vz-add,
 .vz-add-frame { justify-self: start; margin-top: var(--s3); font-size: var(--t-small); }
@@ -389,7 +392,7 @@
    collapses to one column on its own.
    ------------------------------------------------------------ */
 @media (max-width: 719px) {
-  .vz-shots, .vz-board, .vz-look { padding-inline: var(--s4); }
+  .vz-shots, .vz-board, .vz-look, .vz-blocking, .vz-sceneboard { padding-inline: var(--s4); }
   .vz-board-acts { margin-left: 0; }
   .vz-scene-slug { flex-basis: 100%; }
 }
@@ -673,4 +676,65 @@
     color: var(--print-ink);
     break-inside: avoid;
   }
+}
+
+/* ============================================================
+   BLOCKING AND THE SCENE BOARD (src/ui/blocking.js)
+   ------------------------------------------------------------
+   Marks are filled with the category hues and carry their label as
+   text in --ink, because identity is never colour alone and a fill is
+   never a text colour. Every shape reads a --sk-* variable or a token.
+   ============================================================ */
+.vz-blk-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-block: var(--s4); }
+.vz-blk { margin-block: var(--s5); padding: var(--s4); border: 1px solid var(--rule-hair); border-radius: var(--sk-radius, var(--radius)); background: var(--paper-raised); }
+.vz-blk-head, .vz-blk-tools, .vz-blk-sel { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.vz-blk-name { flex: 1 1 14rem; font-weight: 600; }
+.vz-blk-label { flex: 1 1 10rem; }
+.vz-blk-note { width: 100%; margin-top: var(--s3); }
+.vz-blk-hint { color: var(--ink-muted); margin: var(--s2) 0 0; }
+
+.vz-map { display: block; width: 100%; max-width: 44rem; height: auto; border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); touch-action: pan-y; }
+.vz-map.is-editable [data-mark], .vz-map.is-editable [data-handle] { touch-action: none; }
+.vz-map-ground { fill: var(--paper-sunk); }
+.vz-map-grid { fill: none; stroke: var(--rule-hair); stroke-width: 0.25; }
+.vz-map-arrowhead { fill: var(--ink-muted); }
+.vz-mk-shape { stroke: var(--ink); stroke-width: 0.5; }
+.vz-mk-actor .vz-mk-shape { fill: var(--el-cast); }
+.vz-mk-camera .vz-mk-shape { fill: var(--el-props); }
+.vz-mk-mark .vz-mk-shape { fill: var(--el-vehicles); }
+.vz-mk-face, .vz-mk-fov { stroke: var(--ink); stroke-width: 0.5; fill: none; }
+.vz-mk-fov { stroke-dasharray: 1.2 1; }
+.vz-mk-move { stroke: var(--ink-muted); stroke-width: 0.6; stroke-dasharray: 2 1.4; }
+.vz-mk-label { fill: var(--ink); font-size: 3.4px; font-family: var(--f-mono); paint-order: stroke; stroke: var(--paper-sunk); stroke-width: 0.8px; }
+.vz-map.is-editable .vz-mk, .vz-map.is-editable .vz-mk-handle { cursor: grab; }
+.vz-mk:focus-visible, .vz-mk-handle:focus-visible { outline: none; }
+.vz-mk:focus-visible .vz-mk-shape, .vz-mk.is-selected .vz-mk-shape, .vz-mk-handle:focus-visible { stroke: var(--focus-ring, var(--accent-deep)); stroke-width: 1.1; }
+.vz-mk-handle { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 0.6; }
+
+.vz-sb { display: grid; gap: var(--s4) var(--s5); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); margin-top: var(--s4); }
+.vz-sb-head, .vz-sb-syn, .vz-sb-maps { grid-column: 1 / -1; }
+.vz-sb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s3); }
+.vz-sb-h { font-family: var(--f-mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-deep); margin: 0 0 var(--s2); }
+.vz-sb-script { max-height: 26rem; overflow: auto; padding-right: var(--s2); font-family: var(--f-script, var(--f-mono)); font-size: 0.9rem; }
+.vz-sb-el { margin: 0 0 var(--s2); }
+.vz-sb-character { margin-left: 12rem; margin-bottom: 0; text-transform: uppercase; }
+.vz-sb-dialogue { margin-left: 6rem; max-width: 24rem; }
+.vz-sb-paren { margin-left: 9rem; }
+.vz-sb-table { width: 100%; }
+.vz-sb-table td, .vz-sb-table th { padding: var(--s1) var(--s2); text-align: left; vertical-align: top; }
+.vz-sb-table tr.is-done td { color: var(--ink-muted); }
+.vz-sb-frames { padding-left: 1.2rem; margin: 0; }
+.vz-sb-maps { display: flex; flex-wrap: wrap; gap: var(--s4); }
+.vz-sb-maps .vz-sb-h { flex-basis: 100%; margin-bottom: 0; }
+.vz-sb-map { margin: 0; flex: 1 1 22rem; max-width: 30rem; }
+.vz-sb-map figcaption { color: var(--ink-muted); font-size: 0.85rem; margin-top: var(--s1); }
+
+@media (max-width: 720px) {
+  .vz-sb-character, .vz-sb-dialogue, .vz-sb-paren { margin-left: var(--s4); }
+}
+@media print {
+  .vz-blk-pick, .vz-blk-tools, .vz-blk-sel { display: none; }
+  .vz-sb { display: block; }
+  .vz-sb-col { break-inside: avoid; margin-bottom: var(--s4); }
+  .vz-sb-map { break-inside: avoid; }
 }

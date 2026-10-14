@@ -69,7 +69,12 @@ export function blankStory() {
               only means "finalised": nothing downstream reads it, and
               Unlock clears it. ISO time. A story written before it
               existed reads back ''. */
-           outlineLockedAt: '' };
+           outlineLockedAt: '',
+           /* Where the film sits in the market. Written by the Desk's genre
+              task on Accept, or typed; `audience` also steers coverage's
+              marketability section ('' = its long-standing default).
+              Fields spread under older rows, so no migration. */
+           genre: '', audience: '', budgetTier: '', comps: [] };
 }
 
 /** A framework's own act split (frameworks.json `pacing.regions`), else
@@ -109,6 +114,11 @@ export function loadStory() {
   out.conflicts = Array.isArray(s.conflicts) ? [...new Set(s.conflicts.filter((x) => typeof x === 'string'))] : [];
   out.conflictLine = typeof s.conflictLine === 'string' ? s.conflictLine : '';
   out.outlineLockedAt = typeof s.outlineLockedAt === 'string' ? s.outlineLockedAt : '';
+  for (const k of ['genre', 'audience', 'budgetTier']) out[k] = typeof s[k] === 'string' ? s[k] : '';
+  out.comps = Array.isArray(s.comps)
+    ? s.comps.filter((x) => x && typeof x.title === 'string' && x.title.trim())
+        .map((x) => ({ title: x.title, year: typeof x.year === 'string' ? x.year : '', why: typeof x.why === 'string' ? x.why : '' }))
+    : [];
   /* A story written before the choice was recorded: a format that is not
      the default, or any step or tag laid out under it, was chosen. */
   out.frameworkChosen = typeof s.frameworkChosen === 'boolean'

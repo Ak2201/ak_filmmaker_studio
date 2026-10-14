@@ -217,6 +217,20 @@ function renderCheck(c) {
    SECTIONS — one list drives the toolbar nav, the cover TOC and
    the five section heads. Three copies became one.
    ============================================================ */
+/* The section menu's grouping, icon and hint per tab (src/ui/section-menu.js).
+   Groups are merged by name, so Craft is one heading although its two
+   tabs are not neighbours in this order. */
+const MENU = {
+  'films': { group: 'The shelf', icon: 'movie', hint: 'Tamil films and the craft lesson in each.' },
+  'directors': { group: 'The shelf', icon: 'videocam', hint: 'Director archetypes to study.' },
+  'rules': { group: 'Craft', icon: 'rule', hint: 'Rules of thumb, attributed.' },
+  'glossary': { group: 'Craft', icon: 'sort_by_alpha', hint: 'Every film term, with examples.' },
+  'equipment': { group: 'Practice', icon: 'photo_camera', hint: 'Rate tables for kit and crew.' },
+  'watch': { group: 'Practice', icon: 'visibility', hint: 'Films to watch for each blueprint step.' },
+  'case-studies': { group: 'Study', icon: 'menu_book', hint: 'Films read beat by beat.' },
+  'dissection': { group: 'Study', icon: 'category', hint: 'A finished film taken apart.' }
+};
+
 const SECTIONS = [
   {
     id: 'films',
@@ -394,14 +408,22 @@ function renderCover() {
     h('div', {}, [
       h('div.cover-mark', { text: 'A reference companion to every stage of the studio' }),
       h('h1.cover-title', {}, [
-        'The ', h('span.light', { text: 'Filmmaker\'s' }), h('br'), 'Library.'
+        'The ', h('span.light', { text: 'Filmmaker\'s' }), ' Library.'
       ]),
-      h('p.cover-sub', { text: blurb }),
+      h('div.cover-row', {}, [
+        h('p.cover-sub', { text: blurb }),
+        /* the count is the real number of shelves below */
+        h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${SECTIONS.length} SHELVES`])])
+      ]),
       h('nav.cover-toc', { 'aria-label': 'Contents' },
         SECTIONS.map((s, i) => h('a.toc-item', { href: `#${s.id}` }, [
-          h('span.num', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
+          h('span.toc-head', {}, [
+            h('span.num', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
+            h('span.toc-go', { 'aria-hidden': 'true', text: '\u2197' })
+          ]),
           h('span.title', { text: s.tocTitle }),
-          h('span.desc', { text: s.tocDesc })
+          h('span.desc', { text: s.tocDesc }),
+          h('span.toc-foot', {}, [h('span.toc-count', { text: '\u25B6 ' + s.count.toLowerCase() })])
         ])))
     ])
   ]);
@@ -413,7 +435,10 @@ function renderSection(section, i) {
      the module label only names the shelf tabs with no label of their own. */
   const sec = h('section.lib-sec', {
     id: section.id,
-    'data-tab-label': section.tab || shelfLabel(section.id) || section.nav
+    'data-tab-label': section.tab || shelfLabel(section.id) || section.nav,
+    'data-tab-group': (MENU[section.id] || {}).group,
+    'data-tab-icon': (MENU[section.id] || {}).icon,
+    'data-tab-hint': (MENU[section.id] || {}).hint
   });
   const body = section.body();
   const rail = railFor(section);

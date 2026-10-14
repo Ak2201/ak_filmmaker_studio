@@ -225,6 +225,8 @@ function snapshot(project) {
     docs: (script.documents || []).length,
     revisions: (script.revisions || []).length,
     boards: Shots.listBoards().length,
+    /* A shot is boarded when a storyboard frame hangs off it. */
+    boardedShots: new Set(Shots.listFrames().map((f) => f && f.shotId).filter(Boolean)).size,
     /* Derived like everything else here — journey.js stores nothing. */
     journey: journey(project),
     states: stageStates(project)
@@ -482,9 +484,14 @@ function renderReadyTile() {
   if (!todo.length) {
     ul.append(h('li', {}, [h('span.db-gap-why', { text: 'Every readiness check passes.' })]));
   } else {
-    todo.forEach((c) => ul.append(h('li.' + (c.severity === 'blocker' ? 'is-blocker' : 'is-gap'), {}, [
-      h('a.db-gap-link', { href: c.where || 'dashboard.html#readiness', text: c.label + ' — ' + c.count }),
-      h('span.db-gap-why', { text: c.hint })
+    todo.forEach((c) => ul.append(h('li.db-fix.' + (c.severity === 'blocker' ? 'is-blocker' : 'is-gap'), {}, [
+      h('span.db-fix-dot', { 'aria-hidden': 'true' }),
+      h('span.db-fix-body', {}, [
+        h('span.db-fix-label', { text: c.label }),
+        h('span.db-gap-why', { text: c.hint })
+      ]),
+      h('span.db-fix-n', { text: String(c.count), 'aria-label': c.count + ' affected' }),
+      h('a.db-fix-go', { href: c.where || 'dashboard.html#readiness', 'aria-label': 'Fix it: ' + c.label, text: 'Fix it \u2192' })
     ])));
   }
   tl.append(ul, h('a.db-link.db-tile-more', { href: '#readiness', text: 'See every check ↓' }));
@@ -606,8 +613,11 @@ function renderHead(snap) {
   const head = h('header.bd-head.db-head');
   const j = snap.journey;
   head.append(
-    h('p.bd-eyebrow', { text: (FORMAT_LABEL[p.format] || 'Project') + ' · Project dashboard'
-      + (j ? ' · Stage: ' + j.currentLabel : '') }),
+    h('p.bd-eyebrow.db-chips', {}, [
+      h('span.db-chip.is-format', { text: FORMAT_LABEL[p.format] || 'Project' }),
+      h('span.db-chip', { text: 'Project dashboard' }),
+      j ? h('span.db-chip.is-stage', { text: 'Stage: ' + j.currentLabel }) : null
+    ]),
     h('h1.bd-title', { text: p.title }),
     h('p.bd-deck', {
       text: 'Five stages, in any order, each read from what you have already made. '
@@ -627,10 +637,10 @@ function renderHead(snap) {
     head.append(h('div.bd-stats.db-stats', {}, [
       stat(String(snap.scenes.length), snap.scenes.length === 1 ? 'scene' : 'scenes'),
       stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages'),
-      stat(String(snap.days.length), snap.days.length === 1 ? 'shoot day' : 'shoot days'),
-      stat(String(snap.contacts.length), 'people'),
-      stat(String(snap.shots.length), snap.shots.length === 1 ? 'shot' : 'shots'),
-      stat(snap.budget.short, 'budget')
+      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'shoot day' : 'shoot days'),
+      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'crew & cast'),
+      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'boarded shots'),
+      stat(snap.budget.lines ? snap.budget.short : '\u2014', 'locked budget')
     ]));
   }
   return head;
@@ -662,6 +672,8 @@ function stageCard(s, suggested, js, current) {
     { id: 'stage-' + s.id });
   li.append(h('div.st-head', {}, [
     h('span.st-part', { text: 'Part ' + s.part }),
+    s.status.id === 'done' ? h('span.st-pill.is-done', { text: 'Done' })
+      : s.status.id === 'doing' ? h('span.st-pill.is-doing', { text: 'In progress' }) : null,
     suggested ? h('span.st-sug', { text: 'Suggested next' })
       : current ? h('span.st-sug', { text: 'You are here' }) : null
   ]));

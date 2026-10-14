@@ -55,20 +55,7 @@
   }
   @keyframes ma-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-  /* ---- tab strip: one underline that slides --------------------- */
-  .tabs .tabs-ink {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    width: 1px;
-    height: 2px;
-    background: var(--brand-lift);
-    border-radius: var(--radius-pill);
-    pointer-events: none;
-    transform-origin: left center;
-    transform: translateX(var(--ink-x, 0px)) scaleX(var(--ink-w, 0));
-  }
-  .tabs.ma-ink-ready .tabs-ink { transition: transform var(--speed-lazy) var(--ease-spring); }
+  /* ---- tab strip: rows ease their fill (the underline that slid is gone) --- */
   .tabs .tabs-tab.tabs-tab {
     transition: color var(--speed) var(--ease), background-color var(--speed-slow) var(--ease),
                 border-color var(--speed) var(--ease), transform var(--speed-tap) var(--ease);
@@ -157,12 +144,6 @@
     animation: ma-shine 0.8s var(--ease) 1;
   }
   @keyframes ma-shine { from { background-position: 130% 0; } to { background-position: -30% 0; } }
-}
-
-/* under reduced motion nothing above applies; this keeps the one
-   persistent element (the underline) in place without a transition */
-@media (prefers-reduced-motion: reduce) {
-  .tabs .tabs-ink { transition: none; }
 }
 
 /* Paper shows everything: a card, row or bar never scrolled to is still

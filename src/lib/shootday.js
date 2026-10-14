@@ -137,4 +137,96 @@ export function sheetsForDay(day, sheets, scenes) {
   }).sort((a, b) => (b.wrap ? 1 : 0) - (a.wrap ? 1 : 0));
 }
 
-export default { days, pickDay, detail, mark, overall, toISODate, sheetsForDay };
+/* ---- the takes log ---------------------------------------------
+   One optional field on the scene record (`takes`, see blankScene):
+   a list of { n, circled, note, at }. Appended on the floor, never on
+   load; a scene with no log reads back []. The three writers go through
+   updateScene() like mark() does, so the save event and every
+   subscriber behave as for any scene edit. */
+
+/** Shape-guaranteed: a hand-edited or damaged blob reads as what it can. */
+export function cleanTakes(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  raw.forEach((t) => {
+    if (!t || typeof t !== 'object') return;
+    const n = parseInt(t.n, 10);
+    if (!Number.isFinite(n) || n < 1 || out.some((x) => x.n === n)) return;
+    out.push({ n, circled: !!t.circled, note: String(t.note || ''), at: String(t.at || '') });
+  });
+  return out.sort((a, b) => a.n - b.n);
+}
+
+export const takesOf = (scene) => cleanTakes(scene && scene.takes);
+
+/** "4 takes", "4 takes (Take 3 circled)", "4 takes (Takes 2, 3 circled)"; '' with none. */
+export function takesLine(scene) {
+  const t = takesOf(scene);
+  if (!t.length) return '';
+  const c = t.filter((x) => x.circled).map((x) => x.n);
+  const head = t.length + (t.length === 1 ? ' take' : ' takes');
+  if (!c.length) return head;
+  return head + ' (' + (c.length === 1 ? 'Take ' : 'Takes ') + c.join(', ') + ' circled)';
+}
+
+function writeTakes(sceneId, fn) {
+  const scene = Scenes.listScenes().find((s) => s.id === sceneId);
+  if (!scene) return null;
+  return Scenes.updateScene(sceneId, { takes: fn(takesOf(scene)) });
+}
+
+/** The next take: one past the highest number logged. */
+export function logTake(sceneId, { circled = false, note = '' } = {}) {
+  return writeTakes(sceneId, (t) => t.concat({
+    n: t.reduce((m, x) => Math.max(m, x.n), 0) + 1,
+    circled: !!circled, note: String(note || ''), at: new Date().toISOString()
+  }));
+}
+
+/** Circle or un-circle one take. */
+export function circleTake(sceneId, n) {
+  return writeTakes(sceneId, (t) => t.map((x) => (x.n === Number(n) ? { ...x, circled: !x.circled } : x)));
+}
+
+/** Take the last take back off: the undo for a mis-tap. */
+export function undoTake(sceneId) {
+  return writeTakes(sceneId, (t) => t.slice(0, -1));
+}
+
+/* ---- the floor monitor's numbers (all PURE) -------------------- */
+
+/** Scenes not yet done: the work that is left. 'part' stays on the list. */
+export function scenesLeft(dayRow) {
+  return dayRow ? dayRow.remaining : 0;
+}
+
+/**
+ * The wrap to show. A PLANNED wrap (the call sheet's or the DPR's, a
+ * time somebody wrote down) wins and says so. Without one, a wrap is
+ * ESTIMATED only when the crew call is known: the call plus a working
+ * day scaled by this day's pages over the page target. Nothing known,
+ * nothing shown. `now`-free: it never reads a clock.
+ */
+export function wrapEstimate({ plannedWrap, crewCall, eighths, target, dayHours } = {}) {
+  const hm = (m) => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  const mins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '').trim()); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
+  if (mins(plannedWrap) !== null) return { time: String(plannedWrap).trim().slice(0, 5), kind: 'planned' };
+  const call = mins(crewCall);
+  const e = Number(eighths) || 0, t = Number(target) || 0, hrs = Number(dayHours) || 0;
+  if (call === null || !e || !t || !hrs) return { time: '', kind: '' };
+  return { time: hm(call + Math.round((e / t) * hrs * 60)), kind: 'estimate' };
+}
+
+/**
+ * Where the day's marks fall on a 0..1 line from `from` to `to` minutes
+ * (clamped), for the solar timeline. Anything not a time is null.
+ */
+export function timelineAt(hhmm, from, to) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || '').trim());
+  if (!m || to <= from) return null;
+  const v = (+m[1] * 60 + +m[2] - from) / (to - from);
+  return Math.max(0, Math.min(1, v));
+}
+
+export default { days, pickDay, detail, mark, overall, toISODate, sheetsForDay,
+  cleanTakes, takesOf, takesLine, logTake, circleTake, undoTake, scenesLeft, wrapEstimate, timelineAt };

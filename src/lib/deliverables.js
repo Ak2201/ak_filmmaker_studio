@@ -33,6 +33,7 @@
 import './store.js';   // must evaluate before anything reads localStorage
 import catalogue from '../data/deliverables.json';
 import { listSubmissions, catalogueEntry, statusMeta } from './festivals.js';
+import { cleanLinks, withLink, withoutLink } from './links.js';
 
 export const DELIVERABLES_KEY = 'fms_deliverables_v1';
 
@@ -59,6 +60,9 @@ export function blankItemState(patch = {}) {
   const s = { state: 'todo', note: '', ...patch };
   if (!stateIds.includes(s.state)) s.state = 'todo';
   s.note = String(s.note || '');
+  /* Where the file lives, never the file (links.js). An older record
+     has no `links`; cleanLinks reads that as []. */
+  s.links = cleanLinks(s.links);
   return s;
 }
 
@@ -143,10 +147,40 @@ export function setItemState(id, patch) {
   const next = blankItemState({ ...(d.items[id] || {}), ...patch });
   /* The default state is not stored, so a project that never touched
      the list has an empty blob rather than forty rows of 'todo'. */
-  if (next.state === 'todo' && !next.note) delete d.items[id];
-  else d.items[id] = next;
+  if (next.state === 'todo' && !next.note && !next.links.length) delete d.items[id];
+  else {
+    /* An empty `links` is not stored, so a record that never had one
+       keeps the shape it always had. */
+    const rec = { ...next };
+    if (!rec.links.length) delete rec.links;
+    d.items[id] = rec;
+  }
   writeAll(d);
   return next;
+}
+
+/* ---- links: where the item's file lives ----------------------
+   One list per item, kept in the item's own state record — for a
+   custom line too — so it rides setItemState (a state change keeps
+   it, a link change keeps the state and note) and rides the
+   takeCustom/putCustomBack snapshot, which already carries the state. */
+
+/** Returns { links, added, why }: `why` is a refusal reason, '' when added. */
+export function addItemLink(id, { url, kind, label } = {}) {
+  const cur = itemState(id).links;
+  const r = withLink(cur, { url, kind, label });
+  if (r.added) setItemState(id, { links: r.links });
+  return r;
+}
+
+/** Returns { links, removed } — `removed` is the link taken off (for Undo), or null. */
+export function removeItemLink(id, linkId) {
+  const cur = itemState(id).links;
+  const removed = cur.find((l) => l.id === linkId) || null;
+  if (!removed) return { links: cur, removed: null };
+  const links = withoutLink(cur, linkId);
+  setItemState(id, { links });
+  return { links, removed };
 }
 
 export function addCustom(label, when) {
@@ -220,7 +254,7 @@ export function groups() {
   return (catalogue.groups || []).map((g) => ({
     id: g.id, label: g.label, blurb: g.blurb || '',
     optional: !!g.optional, source: g.source || '', sourceUrls: g.sourceUrls || [],
-    checked: g.checked || '', published: g.published !== false
+    checked: g.checked || '', published: g.published !== false, kind: g.kind || ''
   }));
 }
 
@@ -298,6 +332,6 @@ export function askedBy(reqs) {
 export default {
   DELIVERABLES_KEY, STATES, stateMeta, WHEN, whenLabel,
   blankItemState, blankCustom, loadDeliverables, itemState, setItemState,
-  addCustom, removeCustom, takeCustom, putCustomBack, listItems, groups, optionalGroups, groupsOn, setGroupOn,
+  addItemLink, removeItemLink, addCustom, removeCustom, takeCustom, putCustomBack, listItems, groups, optionalGroups, groupsOn, setGroupOn,
   progress, requirements, askedBy
 };

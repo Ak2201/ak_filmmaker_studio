@@ -208,5 +208,23 @@ const ce = B.coverage(oe);
 eq([ce.beatsCovered, ce.beatsTotal], [3, 7], '3 of 7 beats covered');
 eq(B.firstScenes(oe).map((f) => f.headingId), ['n1_0', 'n3_0', 'n2_0'], 'markers on setup\'s first, midpoint, climax');
 
+/* The panel's read-only mapping of beats to scenes (src/ui/beats-panel.js). */
+{
+  const { deriveBeats } = await import('../src/ui/beats-panel.js');
+  const st = { framework: 'three_act', marks: [], outline: [], tension: {} };
+  const fwBeats = (await import('../src/lib/story.js')).frameworkById('three_act').beats;
+  const b0 = fwBeats[0].id, b1 = fwBeats[1].id;
+  const d = deriveBeats([], null, { story: st, scenes: [
+    { number: '10', beatId: 'three_act:' + b0 }, { number: '2', beatId: 'three_act:' + b0 },
+    { number: '5', beatId: 'other_fw:' + b1 }, { number: '', beatId: 'three_act:' + b1 }, { number: '7' }
+  ] });
+  const row = (id) => d.rows.find((r) => r.beat.id === id);
+  eq(row(b0).scenes, ['2', '10'], 'a beat lists its scenes by number, counted as numbers');
+  eq(row(b0).linked, true, 'a beat with scenes is linked');
+  eq(row(b1).linked, false, "another framework's link and an unnumbered scene link nothing");
+  eq([d.linked, d.total], [1, fwBeats.length], 'progress counts linked beats');
+  eq(d.percent, Math.round(100 / fwBeats.length), 'progress percent');
+}
+
 console.log(`test:beats — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -84,9 +84,11 @@ import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
-import { pageHeader, button } from '../ui/kit/index.js';
+import { pageHeader, button, statStrip } from '../ui/kit/index.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
 import { loadScript } from '../lib/script.js';
+import { loadCharacters } from '../lib/characters.js';
+import { screenTime, formatDuration } from '../lib/screenplay-analysis.js';
 
 const app = document.getElementById('app');
 
@@ -221,6 +223,10 @@ function menuGroups(s) {
       id: 'path-' + p.id, label: p.label, icon: STEP_ICON[p.id] || '', done: !!p.done,
       hint: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do', n: p.n
     });
+  }
+  /* How many of a group's steps are done, beside its name. */
+  for (const g of groups) {
+    if (g.label && g.items.length) g.label += ' · ' + g.items.filter((i) => i.done).length + '/' + g.items.length;
   }
   groups.push({ label: 'Tools', items: EXTRAS.map((x) => ({ id: x.id, label: x.label, icon: EXTRA_META[x.id].icon, hint: EXTRA_META[x.id].hint })) });
   return groups;
@@ -709,6 +715,25 @@ function renderLock(s) {
   return sec;
 }
 
+/* Four figures under the synopsis, each measured: the words on the page, the
+   passages tagged, the scenes in the list and the screen time those scenes
+   work out to (the Screenplay Analysis's own estimate). Nothing is stored. */
+function synopsisFigures(s) {
+  const words = s.source.trim().split(/\s+/).filter(Boolean).length;
+  const ctx = deckContext();
+  const cards = [
+    { label: 'Words', value: String(words) },
+    { label: 'Passages tagged', value: String(s.marks.length), note: s.marks.length ? '' : 'none yet' }
+  ];
+  if (ctx.scenes.length) {
+    cards.push({ label: 'Scenes in the list', value: String(ctx.scenes.length) });
+    let sec = 0;
+    try { sec = screenTime(ctx.scenes, ctx.elements).total; } catch (e) { sec = 0; }
+    if (sec) cards.push({ label: 'Est. screen time', value: formatDuration(sec), note: 'from the script and scene list' });
+  }
+  return statStrip(cards, { class: 'st-stats st-figures', label: 'The synopsis in numbers' });
+}
+
 function renderSynopsisStep(s) {
   const short = fmt() === 'short';
   const sec = h('section#path-synopsis.st-step.glossary-scope', { 'data-path': 'synopsis', 'aria-label': 'Synopsis' }, stepHead('synopsis', short ? 'Synopsis' : 'Synopsis & treatment',
@@ -724,6 +749,7 @@ function renderSynopsisStep(s) {
   sec.append(h('p#stWhere.st-where', { 'aria-live': 'polite', text: s.source.trim()
     ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
     : '' }));
+  if (s.source.trim()) sec.append(synopsisFigures(s));
   sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
   put(sec, earlierLadder('synopsis', 'From synopsis to treatment', [], { open: true }), nextBtn(s, 'synopsis'));
   return sec;
@@ -904,6 +930,21 @@ function renderPitch() {
    sits inside it: it tags the synopsis against the beats, which is what
    the curve above it reads. The Idea Vault is not on this page any more
    (vault.html). */
+/* The deck's view: which act is shown and which cards are folded. In memory
+   only (nothing is stored for a view), and a redraw keeps them. */
+let deckAct = '';
+const deckClosed = new Set();
+function deckContext() {
+  let scenesNow = [], elementsNow = [];
+  try { scenesNow = Scenes.listScenes(); } catch (e) { scenesNow = []; }
+  try { elementsNow = loadScript().elements || []; } catch (e) { elementsNow = []; }
+  return { scenes: scenesNow, elements: elementsNow };
+}
+function renderStats(s) {
+  let characters = 0;
+  try { characters = loadCharacters().length; } catch (e) { characters = 0; }
+  return PacingView.renderStats(s, { ...deckContext(), characters });
+}
 function renderPacing(s) {
   const sec = h('section#pacing.st-section.st-pacing', { 'aria-label': 'Beats and pacing' });
   sec.append(h('h2.bd-h2', { text: 'Beats & pacing' }));
@@ -922,10 +963,7 @@ function renderPacing(s) {
   /* The beat deck draws from the framework even before a synopsis:
      every beat, its act, its conventional place and the tension it
      carries, filled in as passages are tagged and scenes linked. */
-  let scenesNow = [], elementsNow = [];
-  try { scenesNow = Scenes.listScenes(); } catch (e) { scenesNow = []; }
-  try { elementsNow = loadScript().elements || []; } catch (e) { elementsNow = []; }
-  stack.append(PacingView.renderDeck(s, { scenes: scenesNow, elements: elementsNow }));
+  stack.append(PacingView.renderDeck(s, { ...deckContext(), act: deckAct, closed: deckClosed }));
   sec.append(stack);
   sec.append(h('div#ai-map.st-ai-panel', {}, [renderAI(s)]));
   return sec;
@@ -995,6 +1033,7 @@ function draw() {
     actions: [bar]
   }), main.firstChild);
 
+  if (!cards) main.insertBefore(renderStats(s), main.children[1] || null);
   const bar0 = renderStepper(s);
   if (cards) bar0.hidden = true;
   else main.classList.add('tabs-has-side');   // the column beside the step (tabs.css); never over the start cards
@@ -1375,9 +1414,28 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     if (card) {
       document.querySelectorAll('.pc-card.is-lit').forEach((c) => c.classList.remove('is-lit'));
       card.classList.add('is-lit');
-      card.scrollIntoView({ block: 'center', behavior: 'instant' });
+      card.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
       card.focus({ preventScroll: true });
     }
+  } else if (act === 'pc-act') {
+    deckAct = el.getAttribute('data-act') || '';
+    render();
+  } else if (act === 'pc-toggle') {
+    const id = el.getAttribute('data-beat');
+    if (deckClosed.has(id)) deckClosed.delete(id); else deckClosed.add(id);
+    keepDeckPlace(el, () => render(), '[data-st="pc-toggle"][data-beat="' + id + '"]');
+  } else if (act === 'pc-all') {
+    const close = el.getAttribute('data-mode') === 'close';
+    document.querySelectorAll('.pc-card').forEach((c) => {
+      const id = c.id.replace(/^pc-beat-/, '');
+      if (close) deckClosed.add(id); else deckClosed.delete(id);
+    });
+    keepDeckPlace(el, () => render(), '[data-st="pc-all"]');
+  } else if (act === 'pc-tension') {
+    const beat = el.getAttribute('data-beat');
+    const next = Number(el.getAttribute('data-value')) + Number(el.getAttribute('data-delta'));
+    Story.setTension(s, s.framework, beat, next);
+    keepDeckPlace(el, () => commit(s), '[data-st="pc-tension"][data-beat="' + beat + '"][data-delta="' + el.getAttribute('data-delta') + '"]');
   } else if (act === 'goto' || act === 'heat') {
     const from = Number(el.getAttribute('data-from'));
     if (mode !== 'tag') mode = 'tag';
@@ -1396,6 +1454,21 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     if (!Pitch.exportPitchPDF()) StudioUI.toast('Nothing to put in a deck yet.', { type: 'error' });
   }
 });
+
+/* A redraw replaces the card under the pointer. Keep it where it was on the
+   screen and give the same control the focus back, so a stepper can be pressed
+   again and a keyboard reader is not thrown to the top of the page. */
+function keepDeckPlace(el, redraw, sel) {
+  const card = el.closest('.pc-card');
+  const key = card ? '#' + card.id + ' ' : '';
+  const top0 = el.getBoundingClientRect().top;
+  redraw();
+  const next = document.querySelector(key + sel) || document.querySelector(sel);
+  if (!next) return;
+  const dy = next.getBoundingClientRect().top - top0;
+  if (dy) window.scrollBy({ top: dy, behavior: 'instant' });
+  if (!next.disabled) next.focus({ preventScroll: true });
+}
 
 // (the tabs under the editor are gone: every section is on the page)
 function scrollToOffset(from) {

@@ -242,6 +242,9 @@ export async function refresh() {
     const d = await Account.loadAccount();
     if (d) { try { d.projects = await Account.listProjects(); } catch (e) { d.projects = []; } }
     setState({ phase: d ? 'ready' : 'none', data: d, busy: '' });
+    /* Settings' identity card prints the seat count from the same read;
+       tell it, so a create / invite / revoke here is not left stale there. */
+    try { document.dispatchEvent(new CustomEvent('fms:account-loaded', { detail: d || null })); } catch (e) { /* ignore */ }
   } catch (e) {
     setState({ phase: 'none', data: null, error: Account.explain(e), busy: '' });
   }

@@ -167,9 +167,11 @@ src/
                        prompt; a native one fails test:dialogs
              idea-vault.js ← the Idea Vault (vault.html)
              activity-log.js ← Settings → Activity
-             tabs.js ← a page's sibling sections as tabs, on the twelve
+             tabs.js ← a page's sibling sections as tabs, on the eleven
                        pages it names; hash picks the tab, nothing is
                        removed from the DOM (the gate reads innerHTML)
+             section-menu.js ← the ONE navigation control (side menu,
+                       strip, phone Sections sheet); tabs.js builds on it
              mobile-nav.js ← the phone's bottom bar + Go-to / Tools sheets
              learn.js ← learn(): the topic panel, built on first open
              story-bible.js ← the Story Bible: characters, conflict, stakes, theme, world
@@ -181,9 +183,14 @@ src/
                        invite.html and the extension panel both draw
   styles/    tokens.css base.css chrome.css editorial.css widgets.css
              modules.css ← the design language, read by every page
+             fonts.css ← the self-hosted faces (@fontsource), via base.css
+             kit.css ← the component kit's styles, imported once by chrome.js
              palette.css ← the command palette's own sheet
              skins/      ← _contract.css + one file per swappable look
              print.css + one stylesheet per module page
+  ui/kit/    the Swiss component kit: pure builders over h(), one import
+             path index.js; docs/DESIGN-KIT.md. kit.html (root) is its
+             DEV-ONLY showcase — not a build input, never shipped
   pages/     hub.js feature.js short.js library.js breakdown.js
              stripboard.js reports.js contacts.js visualize.js
              write.js plan.js start.js
@@ -302,49 +309,45 @@ compared like for like. Every one of those edits is inside a `<script>` block,
 which the extractor strips, so they never affected verification.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
-Every colour is a token. **The palette is violet, and the default is INK** —
-a near-black ground with a violet cast. The light theme (`paper`) is the
-alternate and is described below as the ground most of this section's worked
-examples were measured against: a lavender-tinted page,
-plain white surfaces, and `--brand` — a seventh hue beside the six that mean a
-phase — for the product's own voice. `[data-volume="studio"]` points `--accent`
-at it, which is the one line that paints the hub.
+Every colour is a token. **SWISS PRECISION, DARK ONLY (owner, 14 Oct 2026).**
+One palette on bare `:root`: a layered obsidian ground (`--surface-canvas`
+`#0D0E13` → rail `#121318` → card `#1A1B21` → elevated `#22232B`), white
+hairlines at 8% / 16%, and ONE violet accent. The light theme (`paper`) and
+its toggle are gone; `docs/DESIGN-KIT.md` is the token table and the kit
+reference, and **to change the look you edit `tokens.css` (and, for shapes,
+`skins/studio.css`) and nothing else.** Every older token NAME is still
+declared and re-pointed, so the page sheets did not change.
 
-Two tokens exist because the surfaces under them moved, and both are worth
-knowing before you reach for a near neighbour:
+Three things worth knowing before you pick a colour:
 
-- **`--brand` is not `--visualize`.** The six hues are held apart by the gate
-  because each means a phase. The brand means the product, so the day visualize
-  shifts to tell itself apart from plan is not the day the primary button
-  changes colour.
-- **`--chrome-accent` is not `--panel-gilt`.** The nav band is **white in the
-  light theme** and near-black in the dark one, so the accent on it cannot be
-  the dark slab's. Eight rules in `chrome.css` used `--panel-gilt` for this and
-  were correct for exactly as long as chrome and panel were both dark; the day
-  the band went white it measured 1.5:1.
+- **`#8B5CF6` is a MARK, `--brand` (`#7C3AED`) is the FILL that carries
+  text.** White on `#8B5CF6` is 4.23:1, under the gate's 4.5, so a filled
+  button, avatar or selected segment takes `--brand` (5.7:1 under
+  `--brand-on`, white) and hovers to `--brand-hover`. `--accent-primary` is
+  the violet for focus rings, selection bars, glows, dots and meters.
+  `--accent-hover` is an accent fill's hover (on a studio page the deeper
+  brand, on a phase page the `-deep` hue) because `--accent-on` differs
+  between the two.
+- **`--brand` is not `--visualize`.** The six phase hues are held apart by
+  the gate because each means a phase; the brand means the product.
+- **Light survives in three places only, each its own token family, never a
+  theme:** `--print-*` (print / PDF), `[data-surface="paper"]` (the legal
+  pages carry it on `<html>` in their markup) and `--paper-page*` (the
+  screenplay's paper page).
 
 **`--panel` and the slab are now two different things.** They used to be one,
 which is why `_contract.css` has a long warning about widgets on the slab
 reaching past `--sk-slab-*` for `--panel-ink`: the two agreed, so the mistake
 was invisible. They no longer agree.
 
-- **`--panel` is the FLOATING family** — toast, tooltip, glossary popover,
-  phase menu, focus timer, the sync instructions' code block. Dark in both
-  themes, deliberately: a dark surface over a light page is how a temporary
-  thing reads as temporary. `--panel-gilt` is its accent and points at
+- **`--panel` is the FLOATING family** — toast, tooltip, popover, phase menu,
+  focus timer, modal: `--surface-elevated`. `--panel-gilt` points at
   `--brand-lift`, so an overlay never wears a phase's colour.
-- **`--sk-slab-*` is the IN-PAGE family** and it follows the theme. The phase
-  bands, the formula boxes, the step checks, the resume and data cards, the
-  budget summary, the pitch slide, the final page, the library's contents
-  cards. A brand-washed tint: lavender in light, deep violet in dark, reached
-  through ordinary page tokens rather than a second palette.
+- **`--sk-slab-*` is the IN-PAGE family** — the accent's wash with page inks.
 
-That is why nothing in a slab takes a `*-lift` colour any more. A lift is a hue
-mixed for a ground that is dark *in every theme*, and the slab is not one —
-`--accent-deep` already resolves to the lifted value inside
-`[data-theme="dark"]`, so one token is right on both. If you add a slab widget,
-colour it from `--sk-slab-*` or from `--ink` / `--ink-muted` / `--accent-deep`,
-never from `--panel-*`.
+If you add a slab widget, colour it from `--sk-slab-*` or from `--ink` /
+`--ink-muted` / `--accent-deep`, never from `--panel-*`. (`-lift` and `-deep`
+hold the same values in a dark-only palette; both names stay.)
 
 This rule previously claimed there were zero raw colours outside `tokens.css`;
 there were nine, and a claim nobody can verify stops being enforceable. There
@@ -386,13 +389,11 @@ Anything else is a bug. To check:
 grep -rnE '#[0-9a-fA-F]{3,8}\b|rgba?\([0-9]' src --include=*.css --include=*.js | grep -v tokens.css
 ```
 
-No `body.dark` rules: paper / sepia / ink are token swaps, and a rule that only
-exists to restate a colour for dark mode is a bug. Tokens are declared in bare
-`:root` first (the DARK palette, since ink is the default), then overridden
-under `@media (prefers-color-scheme: light)` for the un-chosen state and under
-`[data-theme]` for an explicit choice —
-and the JS half has to hold up its end, which it did not for a while. See the
-theme trap below.
+No `body.dark` rules and no `prefers-color-scheme` block: there is one
+palette, on bare `:root`, so the first paint is right with scripts off.
+`:root[data-theme="dark"]` (stamped by chrome.js) restates `color-scheme`
+only. A second palette appearing in `tokens.css` would be a regression; the
+scripts-off probe in verify asserts both OS preferences paint the same ground.
 
 **7. Shapes come from the skin, not from the rule that draws them.**
 `src/styles/modules.css` is the design language every page reads. Nothing in it
@@ -472,33 +473,20 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
 - zero `localStorage` writes during four seconds of idle (see the save loop below)
 - zero horizontal overflow at 390px
 - zero console errors
-- every theme produces a distinct background. The assertion counts themes
-  rather than naming three of them, and reads the list from `themeOrder()` in
-  the app, so dropping one or reordering them needs no change here. There are
-  **two now, and `ink` is the default** — which is FOUR places in
-  `chrome.js` — `THEME_ORDER`'s first entry, `currentTheme()`'s fallback,
-  `loadTheme()`'s fallback branch, and `applyTheme()`'s
-  `CSS_THEME[theme] || …`. This list said THREE until the flip back to ink
-  found the fourth, which is the easy one to leave behind because it only
-  fires for a theme name absent from `CSS_THEME` altogether. All four have to
-  agree with whichever palette the bare `:root` in `tokens.css` carries. They
-  have now disagreed in both directions; each time the picker said one thing
-  and the page rendered another.
+- every theme produces a distinct background — the count is read from
+  `themeOrder()` in the app, and since 14 Oct 2026 it is **one** (dark). The
+  old "four places" rule in `chrome.js` (THEME_ORDER, currentTheme(),
+  loadTheme(), applyTheme()) has collapsed to one value, which must still
+  name the palette bare `:root` carries. `fms_studio_theme_v1` is still READ
+  (a contract with saved studios) and never written or deleted; a stored
+  'paper' simply renders dark.
 
-  **AND THE GATE CANNOT SEE HALF OF IT.** verify's Chromium runs the page's
-  scripts, so all four fallbacks could be flipped back and the run would stay
-  green as long as they agreed with each other — the bare `:root` half is
-  invisible to it. The check that sees it is a scripts-off probe: load the
-  built page in an iframe with `sandbox="allow-same-origin"`, assert no
-  `[data-theme]` is set and the ground is already the default theme's. That is
-  about fifteen lines and is not in the gate; it was run by hand for the flip
-  to ink, and it is how "no flash of the wrong palette" is actually
-  established.
-
-  The check exists because the stylesheets key off `:root[data-theme]`: when
-  `applyTheme()` only set body classes every theme rendered identically and
-  nothing above noticed, because the text, the keys and the handlers are all
-  still correct on a page with the wrong palette.
+  **The scripts-off probe** (in the gate) loads each built page in an iframe
+  with `sandbox="allow-same-origin"` and asserts no `[data-theme]` is set and
+  the ground is already `--surface-canvas` under BOTH OS colour-scheme
+  preferences, with `color-scheme: dark` and `--sk-radius` set. That is how
+  "no flash of the wrong palette" is established; the JS-side check above
+  cannot see the bare `:root` half.
 - the skins: every file in `src/styles/skins/` reached the page, each produces a
   distinct set of `--sk-*` values, and none overflows at 390px. Three
   assertions rather than one because they fail differently — a skin that stops
@@ -507,8 +495,8 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
   catches it.
 - **text meets WCAG AA (4.5:1)** on every surface a skin controls, across
   every theme crossed with every skin, with the modals open. The run counts
-  what exists rather than naming a number of each, which is why dropping two
-  themes and six skins needed no change here — it is two and one now. The floor
+  what exists rather than naming a number of each, which is why dropping
+  themes and skins needed no change here — it is one and one now. The floor
   was 3.0 while the invisible cases were being cleared; it is 4.5 now, which is
   the real bar. Two rules came out of getting there and are worth knowing
   before you pick a colour:
@@ -526,9 +514,11 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
 
 - **`--f-script` keeps its Tamil face LAST.** The screenplay stack names
   Noto Sans Tamil because Courier Prime ships `latin`/`latin-ext` only and
-  no monospaced Tamil font exists. Google serves that family as three
-  `@font-face` blocks — tamil, latin-ext, latin — so the family claims
-  Latin too: put it before `'Courier New'` and it becomes the first
+  no monospaced Tamil font exists. Google served that family as three
+  `@font-face` blocks — tamil, latin-ext, latin — so the family claimed
+  Latin too (the self-hosted `fonts.css` now ships only its tamil subset,
+  which closes the hole, and the order is kept anyway): put it before
+  `'Courier New'` and it becomes the first
   *available* font on every page that never loaded Courier Prime, and
   takes every glyph. Measured, a slug line went from 600px of Courier New
   to 534px of proportional sans. Nothing errors and nothing overflows —
@@ -1297,8 +1287,9 @@ add must be a variable, or you have quietly made it unskinnable.
 **Tabs, not scrolling (owner, 6 Oct 2026).** `src/ui/tabs.js` turns the
 top-level `section[id]` siblings of a page into tabs — a strip pinned under
 the shell, one section shown, the rest `hidden` — on an explicit list of
-twelve pages: settings, admin, library, study, dissect, breakdown,
-stripboard, reports, contacts, visualize, write, plan. The list is a UI
+eleven pages: settings, admin, library, breakdown, stripboard, reports,
+contacts, visualize, write, plan, budget (study and dissect are redirect
+stubs now, not tabbed pages). The list is a UI
 decision, not a derivation: the two blueprints are a reading flow with a
 step rail, the hub is the landing page the gate drives, invite.html is two
 routes meant to be read together, story.html is its editor. The hash picks
@@ -1311,6 +1302,41 @@ a MutationObserver because settings and admin replace `main` on every
 render. **A proof that targets a section inside a hidden tab reaches it by
 hash** (`admin.html#billing`), not by scrolling — three proofs were edited
 for exactly that.
+
+**ONE section menu (owner, 13 Oct 2026).** The strip tabs.js draws, Settings'
+and the console's side menus and the Library's are one control,
+`src/ui/section-menu.js`, and Story's path should be a fourth user, not a
+fourth copy. Each row is icon + sentence-case label + optional count, with
+one selected style (accent fill and a leading bar; hover is a tint, never an
+outline; nothing is underlined). Three or more tabs get the SIDE layout: at
+1100px and over `tabs.js` puts `.tabs-has-side` on the container and
+`tabs.css` makes it a grid (pad | menu | gap | panel | pad) with the page's
+header, path bar and footer spanning it; below 1100px it is the scrolling
+strip with a "Sections" button that opens the same grouped list as a
+`mobile-nav` sheet. A container that is already the page's column sets
+`--side-pad: 0px` (settings, the console, the budget's list). A section says
+what its row looks like with `data-tab-group`, `data-tab-icon`,
+`data-tab-hint`, `data-tab-badge` (and plan-gate's `data-tab-lock` draws the
+PLAN flag); module pages that were not edited are described in
+`src/data/section-icons.json` `pages` instead. THE ICON FONT IS A SUBSET
+built from `navigation.json` plus that file: an icon name used anywhere must
+be listed there or it prints as a word, and a misspelt one makes Google
+serve the whole 1.2MB face (check the size). API for a menu built from an
+explicit list (not from `section[id]`): `buildSectionMenu({groups:[{label,
+items:[{id,label,icon,badge,hint,done,locked}]}], active, ariaLabel,
+orientation, onSelect})`, `updateSectionMenu(el, groups, active)` (patches
+in place), `openSectionsSheet({groups, active, onSelect, title, returnTo})`.
+Passing `onSelect` makes the menu self-managed (`[data-sm-self]`, which
+tabs.js's delegated click/arrow-key handlers ignore). **THE `.tabs-ink`
+TRAP:** motion-app.js used to append a sliding underline to every `.tabs`,
+placed with `bottom: 0`; in a column that is under the LAST row ("ADMIN"
+underlined in the owner's screenshot). It is not created any more, and an
+indicator positioned from a strip's bottom edge must never go on a control
+that can turn vertical. Under webdriver motion-app.js is inert, so no browser
+check can see a regression there; `test:undef` can. The Library's in-tab index
+is a jump list until its panel is 62rem wide (a container query on
+`.lib-sec`), then the sticky column: measured, the cards stay >= 652px at
+1100px and the column appears (658px of cards) at about a 1350px window.
 
 **Add something to the command palette** → usually nothing. `src/ui/palette.js`
 derives its index: modules and global entries from `navigation.json`, skins
@@ -1388,6 +1414,7 @@ numbered as they are in the history.
 | 32 | UI revamp: band, Settings, purchases, scene table, Pre-production path (12 Oct 2026) | Done; **§47 run live 13 Oct 2026**; gate needs a baseline recapture | HISTORY item 35. One `.sh-tools` zone on every page (switcher · Backup · Dark/Light · name); Settings is five console tabs; plans are bought ONLY on `purchase.html` (exempt from the site gate); People has DELETE TOTALLY (`admin_delete_user`, §47 anonymises the kept invoices); scene list is a table with undo-not-confirm; `preprod.html` + `path-bar.js` derive the path from `readiness.js` and store nothing; a stage landing page is a phase `home` + `STAGE_PAGES`, never a nav module (plan-matrix/§36/§43 would follow). The path bar must stay unpinned (`measureChrome`). `ownsSync()` deliberately unchanged. |
 | 33 | Dashboard revamp (12 Oct 2026) | Done | HISTORY item 36. One focus row (Continue + Readiness), Guide/Tools meters inside the five stage cards (the journey strip is gone; `#journey`, `#suggested`, `#resume`, `#readiness` all still resolve), detail beside a sticky side column. Stores nothing. |
 | 34 | AI Desk: one key place, Pro-locked pills, review-and-refine sidebar (12–13 Oct 2026) | Done, every AI tool included; **never run against a real provider** | HISTORY items 37–39. Scriptgen is draft/apply (`draftScenes`/`applyScenes`, `draftBatch`/`applyBatch`); the bulk run is the two halves in a row, so nothing a Desk task drafts is written before Accept. `aiUnlocked()` fails CLOSED (unknown plan = locked), the opposite of `allowed()`. The key form exists only in Settings (`keySection`); everywhere else is `aiPill()` from `src/ui/ai-pill.js`, which imports no AI code. A Desk task is `{id, kind, input, run, apply, identity?, editable?}` in `src/lib/ai-tasks.js`; refine re-sends the SAME schema (`refineBlock`), never a new wire format; the Desk stores nothing. `screenplay.js` must call `mountHandoff()` or headings never reach the Breakdown. Locked pills are `aria-disabled`, so proofs click them with `force`. |
+| 35 | Swiss Precision foundation (14 Oct 2026) | Done (tokens, skin, dark-only, fonts, kit); pages and shell NOT yet migrated | `docs/DESIGN-KIT.md`. Edit `tokens.css` to change the look. Violet `#8B5CF6` is a mark, `--brand` `#7C3AED` the text-bearing fill. One theme: `fms_studio_theme_v1` is read, never written. Fonts self-hosted; a kit icon must be in `section-icons.json` `icons`. `dialog.js` builds the kit modal and keeps every class the proofs read. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on
@@ -1537,14 +1564,21 @@ argument for asking.
 
 ## Things that are deliberate, not oversights
 
-- ~~`radius: 2px`. The studio is printed matter, not iOS.~~ **Corrected, not
-  contradicted.** The radius is `--sk-radius: 16px` and buttons are pills. That
-  note was true of the design it described — a plate on a page. This design is a
-  working product surface: a card is a panel you act inside, and a 2px corner on
-  a 1px hairline reads as a rendering artefact rather than as a decision. It is
-  one line in one skin file either way, which is the point of the contract.
-- ~~Sepia is a real third theme.~~ Gone, along with desk. Two themes, light
-  (`paper`) and dark (`ink`), and **ink is the default**.
+- **Radii are 4 / 6 / 8 / 12, and pills mean something** (Swiss, 14 Oct
+  2026). Cards 8px (`--sk-radius`), fields and buttons 6px, micro-controls
+  4px, modals 12px (`--sk-modal-radius`). A pill (`--radius-pill`) is a STATUS
+  badge or the one primary CTA of a view (`.k-btn--pill`) — never every
+  button. (It was 2px "printed matter", then 16px and pills; each was one line
+  in one skin file, which is the point of the contract.)
+- **One theme, dark.** Sepia and desk went first, then paper (14 Oct 2026).
+- **Serif only in three places.** Playfair Display *italic*
+  (`--f-editorial`) is the project title / cover preview and the landing
+  tagline; Courier Prime is screenplay text. A page title is Space Grotesk,
+  upright — `--face-accent` is the display face now.
+- **Fonts are self-hosted** (`src/styles/fonts.css`, `@fontsource`); no page,
+  CSP or worker names a Google Fonts host. The Material Symbols subset is cut
+  at build time by `scripts/lib/icon-font.mjs` and FAILS THE BUILD on a name
+  that is not a symbol (Google's API silently served the whole 1.2MB face).
 - The brand plate at the top of every page **does not rotate on a timer**, and
   that is not a styling preference. Visible text that changes by itself is a
   clock in the one element that appears on every page, and the gate compares

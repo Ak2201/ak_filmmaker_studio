@@ -34,6 +34,7 @@ import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
+import { linkText } from '../lib/links.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 
 const app = document.getElementById('app');
@@ -142,6 +143,9 @@ function sceneRow(row) {
   note.value = row.edit.note || '';
   art.append(note);
 
+  /* Where this scene's dailies / review live — addresses only. */
+  art.append(linksBlock(row.edit.links, { scope: 'scene', id: s.id, name: 'dailies for scene ' + (s.number || ''), head: 'Dailies' }));
+
   /* Pick-ups owed on this scene, and a line to add one. */
   const mine = row.pickups;
   if (mine.length) {
@@ -185,6 +189,56 @@ function pickupItem(p) {
     'aria-label': 'Remove pick-up: ' + p.what, text: '×'
   }));
   return li;
+}
+
+/* ---- links: addresses to files that live elsewhere ------------ */
+
+/** A list of anchors with a remove each, and a form to add one. Used on a
+    scene row, a shoot day and a cut; `scope`/`id` say which. */
+function linksBlock(links, { scope, id, name, head }) {
+  const box = h('div.el-links', { 'data-link-scope': scope, 'data-link-id': id });
+  if (head) box.append(h('span.el-links-h', { text: head }));
+  if (links.length) {
+    const ul = h('ul.el-link-list');
+    links.forEach((l) => {
+      ul.append(h('li.el-link', {}, [
+        h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: linkText(l) }),
+        h('button.bd-icon', {
+          type: 'button', 'data-edit-action': 'link-del', 'data-link': l.id,
+          'aria-label': 'Remove link: ' + linkText(l), text: '×'
+        })
+      ]));
+    });
+    box.append(ul);
+  }
+  const f = h('form.el-link-add', { 'data-edit-form': 'link', 'data-link-scope': scope, 'data-link-id': id });
+  f.append(h('input', { type: 'url', name: 'url', placeholder: 'Paste a link (Drive, Frame.io…)', 'aria-label': 'Link to ' + name }));
+  f.append(h('input', { type: 'text', name: 'label', placeholder: 'Label (optional)', 'aria-label': 'Label for the link to ' + name }));
+  f.append(h('button.mini-btn', { type: 'submit', text: 'ADD LINK' }));
+  box.append(f);
+  return box;
+}
+
+/* CUT VERSIONS LOAD WHEN THEY ARE NEAR. The section's own code (cards,
+   notes, timecodes, the copy button) is src/ui/edit-cuts.js, a separate
+   chunk, so the page's first paint does not carry it. The section itself
+   is always here, heading and all, because #cuts is a fragment target and
+   must resolve before any data or script arrives (CLAUDE.md, "A nav
+   target must not depend on data existing"). */
+let cutsMod = null;
+function cutsShell(data, scenes) {
+  const sec = h('section.el-cuts', { id: 'cuts', 'aria-label': 'Cut versions' });
+  sec.append(h('h2.el-h2', { text: 'Cut versions' }));
+  const fill = (m) => { cutsMod = m; m.fillCuts(sec, data, scenes, { render, linksBlock }); };
+  if (cutsMod) { fill(cutsMod); return sec; }
+  const load = () => import('../ui/edit-cuts.js').then(fill).catch(() => { /* a section, never the page */ });
+  if (typeof IntersectionObserver === 'function') {
+    const io = new IntersectionObserver((hits) => {
+      if (hits.some((x) => x.isIntersecting)) { io.disconnect(); load(); }
+    }, { rootMargin: '600px 0px' });
+    io.observe(sec);
+  } else load();
+  return sec;
 }
 
 /* ---- the page ------------------------------------------------ */
@@ -311,6 +365,7 @@ function render(focus) {
     shown.forEach((r) => list.append(sceneRow(r)));
   }
   main.append(list);
+  main.append(cutsShell(data, scenes));
   main.append(h('p.bd-onward', {}, [
     h('a.btn', { href: 'deliverables.html#checklist', text: 'Next: Deliverables →' })
   ]));
@@ -326,6 +381,14 @@ function after(focus) {
   }
   /* The blueprint's post-production questions, answered here (src/ui/stage-guide.js). */
   mountStageGuide(document.getElementById('main'), { stage: 'post' });
+  /* Learn-in-place (src/ui/learn.js, loaded on demand so it stays out of first paint).
+     It writes nothing; an unknown topic id returns null and is filtered. */
+  import('../ui/learn.js').then((m) => {
+    const at = document.getElementById("main");
+    if (!at) return;
+    const boxes = ["camera-to-cloud","proxy","backup-321","checksum"].map((id) => m.learn(id)).filter(Boolean);
+    if (boxes.length) at.append(...boxes);
+  }).catch(() => { /* a nicety, never the page */ });
   mountShell();
   try {
     StudioUI.autoAriaLabels();
@@ -403,6 +466,59 @@ delegate(document, 'submit', '[data-edit-form="pickup"]', (e, form) => {
      typed without reaching for the mouse between them. */
   if (Edit.addPickup(id, input.value)) render('[data-edit-form="pickup"][data-scene="' + CSS.escape(id) + '"] input');
   else input.focus();
+});
+
+/* ---- links and cut versions ---------------------------------- */
+
+const linkApi = {
+  scene: { add: (id, l) => Edit.addSceneLink(id, l), del: (id, lid) => Edit.removeSceneLink(id, lid) },
+  day:   { add: (id, l) => Edit.addDayLink(id, l),   del: (id, lid) => Edit.removeDayLink(id, lid) },
+  cut:   { add: (id, l) => Edit.addCutLink(id, l),   del: (id, lid) => Edit.removeCutLink(id, lid) }
+};
+const linkSel = (scope, id) => '[data-edit-form="link"][data-link-scope="' + scope + '"][data-link-id="' + CSS.escape(id) + '"] input';
+const storedLinks = (scope, id) => (scope === 'scene' ? Edit.sceneEdit(id).links
+  : scope === 'day' ? Edit.dayLinks(id)
+  : ((Edit.listCuts().find((c) => c.id === id) || {}).links || []));
+
+delegate(document, 'submit', '[data-edit-form="link"]', (e, form) => {
+  e.preventDefault();
+  const scope = form.getAttribute('data-link-scope');
+  const id = form.getAttribute('data-link-id');
+  const r = linkApi[scope].add(id, {
+    url: form.querySelector('[name="url"]').value,
+    label: form.querySelector('[name="label"]').value
+  });
+  if (!r.added) {
+    if (StudioUI.toastError) StudioUI.toastError(r.why);
+    form.querySelector('[name="url"]').focus();
+    return;
+  }
+  render(linkSel(scope, id));
+});
+
+delegate(document, 'click', '[data-edit-action="link-del"]', (e, el) => {
+  const box = el.closest('[data-link-scope]');
+  const scope = box.getAttribute('data-link-scope');
+  const id = box.getAttribute('data-link-id');
+  const lid = el.getAttribute('data-link');
+  const before = storedLinks(scope, id).slice();
+  const at = before.findIndex((l) => l.id === lid);
+  const gone = before[at];
+  linkApi[scope].del(id, lid);
+  render(linkSel(scope, id));
+  if (gone && StudioUI.toast) {
+    StudioUI.toast('Link removed: ' + linkText(gone), {
+      action: 'Undo',
+      onAction: () => {
+        /* Back at its old position: the links that sat after it come off
+           and go back on behind it, in their order. */
+        const after = before.slice(at + 1);
+        after.forEach((l) => linkApi[scope].del(id, l.id));
+        [gone, ...after].forEach((l) => linkApi[scope].add(id, l));
+        render();
+      }
+    });
+  }
 });
 
 render();

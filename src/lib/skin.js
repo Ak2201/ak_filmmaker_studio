@@ -60,7 +60,10 @@ function unquote(v) {
    names; anything else would be refused by the browser anyway,
    and failing here says why instead of leaving a console error.
    ------------------------------------------------------------ */
-const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+/* SAME ORIGIN ONLY since 14 Oct 2026: the faces are self-hosted and the
+   CSP names no font host, so a skin may only point at a stylesheet that
+   ships in this build. */
+const FONT_HOSTS = [];
 const FONT_LINK_ID = 'skin-font';
 
 function applySkinFont(url) {
@@ -71,7 +74,7 @@ function applySkinFont(url) {
   let href = '';
   try {
     const parsed = new URL(url, location.href);
-    if (parsed.protocol === 'https:' && FONT_HOSTS.indexOf(parsed.hostname) >= 0) {
+    if (parsed.origin === location.origin || (parsed.protocol === 'https:' && FONT_HOSTS.indexOf(parsed.hostname) >= 0)) {
       href = parsed.href;
     }
   } catch (e) { /* not a URL */ }

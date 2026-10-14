@@ -1,0 +1,68 @@
+{
+  "_": "The section menu's marks and its per-page grouping (src/ui/section-menu.js, src/ui/tabs.js). `icons` lists every Material Symbols name the menu may draw that a page sets by ATTRIBUTE (data-tab-icon on settings, the admin console, the library); `pages` is the same information for module pages that are not edited for it, keyed page -> section id -> { group, icon, hint }; a data-tab-* attribute on the section always wins. vite.config.js adds every name here to the icon font's icon_names= subset beside navigation.json's own, so a name used anywhere MUST be listed (in `icons` or in a `pages` entry) or it prints as a word. A legal-looking name that is not a real symbol makes Google serve the WHOLE 1.2MB face with a 200: check the font's size after adding one (it is ~15KB for ~60 names). The component kit (src/ui/kit/) draws its marks from `icons` too, so a kit icon must be listed there or it prints as a word.",
+  "icons": [
+    "admin_panel_settings", "assessment", "backup", "bar_chart", "calculate", "calendar_month", "category",
+    "currency_rupee", "dashboard", "description", "edit_note", "event", "fact_check", "format_list_numbered",
+    "grid_view", "groups", "history", "label", "lightbulb", "list", "local_library", "menu", "menu_book",
+    "monitor_heart", "movie", "music_note", "palette", "perm_media", "person", "photo_camera", "place",
+    "receipt_long", "rule", "share", "shopping_cart", "slideshow", "sort_by_alpha", "storage",
+    "support_agent", "table_chart", "timeline", "timer", "toggle_on", "trending_up", "tune", "upload_file",
+    "videocam", "view_list", "visibility", "content_cut",
+    "public", "bolt", "link", "lock",
+    "picture_as_pdf", "translate", "mic", "keyboard", "spellcheck", "sticky_note_2", "auto_awesome",
+    "warning", "info", "check_circle", "error", "close", "drag_indicator", "more_vert",
+    "light_mode", "dark_mode", "wb_twilight", "inbox", "add", "arrow_forward", "content_copy", "delete"
+  ],
+  "pages": {
+    "breakdown": {
+      "script":   { "icon": "assessment",  "hint": "Screen time, cast and a read of the whole screenplay." },
+      "overview": { "icon": "description", "hint": "The script at a glance." },
+      "scenes":   { "icon": "view_list",   "hint": "Every scene, tagged with what it needs." },
+      "suggest":  { "icon": "label",       "hint": "Suggested tags for you to accept or ignore." },
+      "songs":    { "icon": "music_note",  "hint": "Songs and the scenes they sit in." },
+      "elements": { "icon": "category",    "hint": "Cast, props, locations and the rest, across scenes." },
+      "guide":    { "icon": "lightbulb",   "hint": "The blueprint steps for this stage." }
+    },
+    "reports": {
+      "reports":    { "group": "Daily",    "icon": "assessment",  "hint": "The day's production reports." },
+      "sides":      { "group": "Daily",    "icon": "content_cut", "hint": "The pages being shot, cut out for the set." },
+      "dpr":        { "group": "Daily",    "icon": "fact_check",  "hint": "The daily progress report." },
+      "screentime": { "group": "Analysis", "icon": "timer",       "hint": "How long each character is on screen." },
+      "cast-matrix":{ "group": "Analysis", "icon": "grid_view",   "hint": "Who is in which scene." },
+      "oneliner":   { "group": "Analysis", "icon": "list",        "hint": "One line per scene." },
+      "kit":        { "group": "Kit",      "icon": "photo_camera","hint": "Equipment lists by department." }
+    },
+    "budget": {
+      "estimate": { "group": "Plan",    "icon": "calculate",     "hint": "The estimate, built from your scenes and the rate tables." },
+      "expenses": { "group": "Spend",   "icon": "receipt_long",  "hint": "Petty cash, as it is spent." },
+      "crew":     { "group": "Spend",   "icon": "groups",        "hint": "What each crew member has been paid." },
+      "actuals":  { "group": "Reports", "icon": "fact_check",    "hint": "Estimate against what was spent." },
+      "topsheet": { "group": "Reports", "icon": "table_chart",   "hint": "The budget on one page." },
+      "wages":    { "group": "Reports", "icon": "currency_rupee","hint": "Wages by role and day." },
+      "export":   { "group": "Reports", "icon": "upload_file",   "hint": "Take the budget out as a file." }
+    },
+    "visualize": {
+      "shot-list":  { "icon": "format_list_numbered", "hint": "Every shot, scene by scene." },
+      "draft":      { "icon": "edit_note",            "hint": "Have a shot division drafted for you." },
+      "storyboard": { "icon": "slideshow",            "hint": "The shots as pictures." },
+      "lookbook":   { "icon": "palette",              "hint": "References for the look of the film." }
+    },
+    "plan": {
+      "calendar":  { "icon": "calendar_month", "hint": "Shoot days on a calendar." },
+      "locations": { "icon": "place",          "hint": "Locations and what shoots at each." },
+      "media":     { "icon": "perm_media",     "hint": "Reference pictures and clips." }
+    },
+    "contacts": {
+      "contacts":    { "icon": "groups", "hint": "Cast and crew." },
+      "call-sheets": { "icon": "event",  "hint": "The call sheet for each shoot day." }
+    },
+    "stripboard": {
+      "stripboard": { "icon": "timeline",  "hint": "Scenes as strips, laid out by day." },
+      "dood":       { "icon": "grid_view", "hint": "Which days each person works." }
+    },
+    "write": {
+      "generate": { "icon": "edit_note",  "hint": "Draft a script from a synopsis." },
+      "coverage": { "icon": "fact_check", "hint": "An AI read of the script." }
+    }
+  }
+}

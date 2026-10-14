@@ -189,6 +189,7 @@
   padding-block: 0;
   border: 0;
 }
+.bd-measure { margin: var(--s3) 0 0; }
 .bd-stat,
 .hero-stat,
 .hub-stat-strip .hss-item {
@@ -815,6 +816,8 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   text-transform: uppercase;
   letter-spacing: var(--track-label);
 }
+.bd-reader-note { margin: var(--s2) 0 0; font-size: var(--fs-sm, 0.9rem); color: var(--ink); }
+.bd-reader-lab { font-family: var(--f-mono); font-size: 0.75em; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-deep); }
 .bd-scene-songlink select { text-transform: none; letter-spacing: normal; }
 /* min-width: 0 because the card is a grid item of .bd-list, and a grid
    item's floor is its min-content: once the bar's controls stopped

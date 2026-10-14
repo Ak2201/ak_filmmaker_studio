@@ -51,6 +51,9 @@ import {
 } from './auth.js';
 import { loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
+/* THE KIT's stylesheet, imported ONCE, here in CORE (src/ui/kit/,
+   docs/DESIGN-KIT.md). No page imports it again. */
+import '../styles/kit.css';
 import '../styles/motion-app.css';
 import './motion-app.js';
 /* glossary.json is NOT imported statically here. It is read through
@@ -273,221 +276,71 @@ StudioUI.toastInfo    = (m, o) => StudioUI.toast(m, Object.assign({ type: 'info'
 StudioUI.notify = StudioUI.toastInfo;
 
 // ============================================================
-// THEME — paper / ink / sepia (3-state pill)
+// THEME — ONE, dark (owner, 14 Oct 2026)
 // ============================================================
+/* The studio is DARK-ONLY. paper (light) and the Dark/Light toggle are
+   gone; bare :root in tokens.css carries the one palette.
+
+   THE STORAGE KEY STAYS READABLE AND IS NEVER DELETED OR WRITTEN.
+   `fms_studio_theme_v1` is part of the storage contract and lives in
+   people's browsers and backups; a stored 'paper' simply renders dark
+   now. Nothing here writes it any more, so the verify idle-write check
+   has one less writer to think about.
+
+   The "four places" rule (THEME_ORDER's first entry, currentTheme()'s
+   fallback, loadTheme()'s fallback, applyTheme()'s `|| 'dark'`) has
+   collapsed to one value, and it still has to name the palette bare
+   :root carries. The API keeps its shape (themeOrder, currentTheme,
+   applyTheme, cycleTheme) so verify, the palette and the four legacy
+   pages keep working; with one theme, cycling is a no-op. */
 const THEME_KEY = 'fms_studio_theme_v1';
+const THEME_ORDER = ['ink'];
+const THEME_LABEL = { ink: 'Dark' };
+const themeLabel = (t) => THEME_LABEL[t] || 'Dark';
 
-/* The stylesheets match `:root[data-theme]` with the CSS-side names
-   light / sepia / dark (see tokens.css). The app's own names are
-   paper / sepia / ink and the STORED value keeps those — THEME_KEY is
-   part of the storage contract. Map between the two here, once. */
-const CSS_THEME = { ink: 'dark', paper: 'light' };
-/* TWO themes, and INK is the default.
+function currentTheme() { return 'ink'; }
 
-   sepia and desk are gone. Four palettes meant four sets of every
-   colour decision to keep at 4.5:1 across every skin, and the two
-   that were removed were variations on paper rather than choices
-   anybody needed.
-
-   THE DEFAULT HAS MOVED IN BOTH DIRECTIONS NOW, and each time it was
-   the same four places rather than one: THEME_ORDER's first entry,
-   currentTheme()'s fallback, loadTheme()'s, and applyTheme()'s
-   `CSS_THEME[theme] || …`. All four are in this file, and all four
-   have to agree with WHICH PALETTE THE BARE `:root` IN tokens.css
-   CARRIES. That is the actual invariant; "the default is ink" is
-   just today's value of it. Disagree and the picker says one thing
-   while the page renders another — which has happened once in each
-   direction, and looks like a CSS bug from every angle except this
-   one.
-
-   ink is FIRST deliberately: this list is the ⌃⇧D cycle order, the
-   picker order, and what `themeOrder()` hands the verify gate, which
-   reads the list from the app rather than repeating it. The gate
-   asserts that the number of distinct backgrounds equals the number of
-   themes, so neither dropping a theme nor reordering this needs a
-   change there. */
-const THEME_ORDER = ['ink', 'paper'];
-/* What a PERSON reads. The stored ids stay 'ink' / 'paper' (THEME_KEY and
-   CSS_THEME are a contract with saved studios), but nothing a user sees
-   says Ink or Paper: it is Dark and Light (owner, 12 Oct 2026). */
-const THEME_LABEL = { ink: 'Dark', paper: 'Light' };
-const themeLabel = (t) => THEME_LABEL[t] || t;
-
-/* Canonical reader. The root attribute is the source of truth; the body
-   classes are a mirror kept for the pages that still read them. */
-function currentTheme() {
-  switch (document.documentElement.getAttribute('data-theme')) {
-    case 'dark':  return 'ink';
-    case 'light': return 'paper';
-  }
-  if (document.body && document.body.classList.contains('dark')) return 'ink';
-  /* Falls back to INK. The bare :root in tokens.css carries the
-     dark palette, so ink is what an unstamped document actually
-     renders — returning 'paper' here would have the picker disagree
-     with the page on first load, which is the bug this comment has
-     now recorded in both directions. */
-  return 'ink';
-}
-
-function applyTheme(theme) {
-  // Stamp the root FIRST. This is the line the stylesheets actually key
-  // off, and documentElement exists long before body does, so setting it
-  // ahead of the body guard also avoids a flash of the wrong palette.
-  //
-  // Without it the picker is a no-op: nothing sets [data-theme="dark"],
-  // so `@media (prefers-color-scheme: light)` wins and a user who chose
-  // ink gets paper on a light-mode OS.
-  //
-  // The `|| 'dark'` is the fourth place the default is written down
-  // (THEME_ORDER, currentTheme(), loadTheme() are the others) and it
-  // is the one that is easy to leave behind, because it only fires
-  // for a theme name that is not in CSS_THEME at all. It must name
-  // the same palette bare :root carries.
-  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'dark');
-
+function applyTheme() {
+  // Stamp the root FIRST; documentElement exists before <body>.
+  document.documentElement.setAttribute('data-theme', 'dark');
   if (!document.body) {
-    // Document not parsed yet — defer the body half until ready
-    document.addEventListener('DOMContentLoaded', () => applyTheme(theme));
+    document.addEventListener('DOMContentLoaded', () => applyTheme());
     return;
   }
-  // These classes match no CSS rule any more, but hub.js, library.js,
-  // feature.js and short.js still read them as state. Set them in the
-  // same call as the attribute so the two can never disagree.
-  /* 'sepia' is still REMOVED here although no theme sets it: anyone
-     carrying the class from a session before the theme was dropped has
-     to have it taken off, and a stored 'sepia' now falls through
-     loadTheme()'s unknown-theme branch to paper. */
-  document.body.classList.remove('dark', 'sepia');
-  if (theme === 'ink') document.body.classList.add('dark');
-  try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
-  // Update any picker UIs
-  document.querySelectorAll('.theme-picker button').forEach(b => {
-    b.classList.toggle('active', b.dataset.theme === theme);
-  });
-  // Existing hub dark button keeps working — sync icon
+  /* hub.js, library.js, feature.js and short.js still read body.dark as
+     state; it is always set now. 'sepia' is removed for anyone carrying
+     it from a long-gone session. */
+  document.body.classList.remove('sepia');
+  document.body.classList.add('dark');
+  // A legacy #darkBtn has nothing to switch to: remove it.
   const darkBtn = document.getElementById('darkBtn');
-  if (darkBtn) {
-    darkBtn.textContent = theme === 'ink' ? '☀' : '◐';
-  }
-  syncThemeToggles(theme);
+  if (darkBtn) darkBtn.remove();
 }
 function loadTheme() {
-  let t;
-  try { t = localStorage.getItem(THEME_KEY); } catch (e) {}
-  if (THEME_ORDER.indexOf(t) >= 0) {
-    applyTheme(t);
-  } else {
-    /* INK IS THE DEFAULT, and every fallback here has to say so.
-
-       This branch runs for anyone with no stored choice, and also for
-       anyone whose stored choice is a theme that no longer exists —
-       sepia and desk are not in THEME_ORDER and fall through to here.
-
-       THE LEGACY TEST FLIPS WITH THE DEFAULT, and it flips to
-       `=== false` rather than to `!== false`. The point of the old
-       `=== true` was never "true means ink"; it was "only an
-       EXPLICIT setting may override the default, and absent is not
-       explicit". `fms_studio_prefs_v1.dark` is a dark-mode toggle, so
-       `false` is a reader who deliberately turned dark off — that is
-       a choice of paper and is honoured. Missing, or any non-boolean,
-       is not evidence of anything and gets the default, exactly as a
-       missing key did before.
-
-       Written as `!== false` it would read the same for the two
-       values that exist and silently hand paper to `undefined` the
-       day someone stores a string; the strict test keeps "absent and
-       false behave the same" from being accidentally true rather
-       than deliberately so. */
-    try {
-      const old = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}');
-      applyTheme(old.dark === false ? 'paper' : 'ink');
-    } catch (e) { applyTheme('ink'); }
-  }
+  /* Read, for the contract's sake: a stored value is honoured by being
+     left alone, whatever it says. */
+  try { void localStorage.getItem(THEME_KEY); } catch (e) {}
+  applyTheme();
 }
 StudioUI.applyTheme = applyTheme;
-/* Exposed so scripts/verify can iterate the real list instead of
-   keeping its own copy that goes stale the day a theme is added. */
+/* Exposed so scripts/verify iterates the real list (one entry now). */
 StudioUI.themeOrder = () => THEME_ORDER.slice();
 StudioUI.currentTheme = currentTheme;
 StudioUI.themeLabel = themeLabel;
-StudioUI.cycleTheme = function () {
-  const i = THEME_ORDER.indexOf(currentTheme());
-  const next = THEME_ORDER[(i + 1) % THEME_ORDER.length];
-  applyTheme(next);
-  StudioUI.toast('Theme: ' + themeLabel(next), { type: 'info', duration: 1400 });
-};
-// ============================================================
-// THEME — one Dark / Light button in the top bar
-// ------------------------------------------------------------
-// It used to be an "Appearance" menu holding a Theme radio row and a
-// Design radio row. With one skin, Design was a control with nothing to
-// choose, and the menu was a second copy of a Settings section. Now it
-// is a single button that shows the theme you are in and flips it. The
-// band's right-hand zone (shell.js buildStudioTools) is the one host;
-// pages that still carry a legacy #darkBtn have it removed here.
-//
-// Skins keep working underneath (src/lib/skin.js applies the one that
-// exists); they simply have no UI until there is a second one to pick.
-// ============================================================
-function themeToggle() {
-  const cur = currentTheme();
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'btn tb-theme';
-  b.setAttribute('data-theme-toggle', '');
-  b.setAttribute('data-appearance', '');
-  const glyph = document.createElement('span');
-  glyph.className = 'tb-theme-glyph';
-  glyph.setAttribute('aria-hidden', 'true');
-  const word = document.createElement('span');
-  word.className = 'tb-theme-word';
-  b.append(glyph, word);
-  paintThemeToggle(b, cur);
-  return b;
-}
-function paintThemeToggle(b, theme) {
-  const other = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
-  const g = b.querySelector('.tb-theme-glyph');
-  const w = b.querySelector('.tb-theme-word');
-  if (g) g.textContent = theme === 'ink' ? '☾' : '☀';
-  if (w) w.textContent = themeLabel(theme);
-  b.setAttribute('aria-label', themeLabel(theme) + ' theme. Switch to ' + themeLabel(other) + '.');
-  b.setAttribute('title', 'Switch to ' + themeLabel(other));
-}
-function syncThemeToggles(theme) {
-  document.querySelectorAll('[data-theme-toggle]').forEach((b) => paintThemeToggle(b, theme));
-}
-StudioUI.themeToggle = themeToggle;
+StudioUI.cycleTheme = function () { applyTheme(); };
 
-/* One toggle per document. A legacy ◐ button is removed, and the
-   toggle is placed in the shell's zone when there is one, else where
-   the old button stood (the shell moves it into the zone on mount). */
+/* No toggle exists. These stay as no-ops so a page that still calls
+   them (the four legacy pages, the shell) needs no edit, and a legacy
+   ◐ #darkBtn is removed where it stood. */
+function themeToggle() { return null; }
+StudioUI.themeToggle = themeToggle;
 function upgradeThemeButton(root) {
   const host = (root || document).querySelector('#darkBtn');
-  if (!host) return;
-  if (!document.querySelector('[data-theme-toggle]') && host.parentElement) host.replaceWith(themeToggle());
-  else host.remove();
+  if (host) host.remove();
 }
 StudioUI.upgradeThemeButton = upgradeThemeButton;
-
-/* The same toggle on a page that never had a ◐ button. Idempotent per
-   document, so the shell can call it on every mount. Appended at the
-   front of the host; the shell orders the zone. */
-function mountAppearanceMenu(host) {
-  if (!host || document.querySelector('[data-theme-toggle]')) return;
-  host.insertBefore(themeToggle(), host.firstChild);
-}
+function mountAppearanceMenu() { /* one theme: nothing to mount */ }
 StudioUI.mountAppearanceMenu = mountAppearanceMenu;
-
-/* Self-wired, so no page has to add an entry to its ACTIONS map for a
-   setting none of them owns. */
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-theme-toggle]');
-    if (!t) return;
-    StudioUI.cycleTheme();
-  });
-}
 
 // ============================================================
 // READING PROGRESS BAR
@@ -572,11 +425,8 @@ const DEFAULT_SHORTCUTS = [
   { keys: ['?'],          label: 'Open this shortcut sheet' },
   { keys: ['Esc'],        label: 'Close any open dialog / dropdown' },
   { keys: ['⌘/Ctrl', 'S'],label: 'Save current blueprint' },
-  /* Derived, not spelled. This label said "paper → sepia → ink" long
-     after sepia was removed and after the order was reversed — a
-     hand-written copy of THEME_ORDER, which is the list it is
-     describing. Same reason the step list lives in JSON. */
-  { keys: ['⌘/Ctrl', 'D'],label: `Switch theme (${THEME_ORDER.map(themeLabel).join(' ↔ ')})` },
+  /* ⌘/Ctrl D (switch theme) is gone with the second theme
+     (14 Oct 2026); the key is the browser's again. */
   { keys: ['j'],          label: 'Next step (in any blueprint)' },
   { keys: ['k'],          label: 'Previous step' },
   { keys: ['g g'],        label: 'Jump to top' },
@@ -687,12 +537,6 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '?' && !isTextInput(e.target)) {
     e.preventDefault();
     openShortcutSheet();
-    return;
-  }
-  if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
-    // Cycle theme — hub already binds toggleDark; we override by cycling
-    e.preventDefault();
-    StudioUI.cycleTheme();
     return;
   }
   if (!isTextInput(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey) {

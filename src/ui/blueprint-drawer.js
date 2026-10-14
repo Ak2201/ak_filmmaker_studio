@@ -176,7 +176,9 @@ function openPathStep(spec) {
     const n = parseInt(hash.slice(spec.hash.length), 10);
     if (n > 0) return n;
   }
-  const cur = document.querySelector('[aria-current="step"][data-step]');
+  /* a page whose steps are the shared section menu (Story) marks the open
+     one aria-selected instead */
+  const cur = document.querySelector('[aria-current="step"][data-step], .tabs[data-sm-self] [role="tab"][aria-selected="true"][data-step]');
   const n = cur ? parseInt(cur.getAttribute('data-step'), 10) : 0;
   return n > 0 ? n : 0;
 }

@@ -58,13 +58,7 @@ const PUBLIC_VIEW = String(import.meta.env.VITE_PUBLIC_VIEW || '').toLowerCase()
 
 const app = document.getElementById('app');
 
-/* Theme: follow the OS, write nothing. The stylesheets key off
-   :root[data-theme]; without it the bare :root (ink) applies. */
-try {
-  if (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
-} catch (e) { /* no matchMedia */ }
+/* Theme: there is one (dark), carried by bare :root. Nothing to set. */
 
 let client = null;
 async function getClient() {

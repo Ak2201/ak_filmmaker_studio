@@ -139,6 +139,27 @@ function sliceEighths(elements, at) {
 }
 
 /**
+ * Page eighths, measured again from the script as it stands now.
+ * The importer sets a scene's length once; a script edited since then
+ * leaves the number behind. Returns [{ sceneId, from, to }] for the scenes
+ * whose measured length differs, over pairs matched by CONTENT only, so a
+ * row paired by position (a guess) is never re-measured. Pure: it writes
+ * nothing, the caller applies and offers the undo.
+ */
+export function measureEighths(elements, scenes) {
+  const heads = headingsOf(elements);
+  const out = [];
+  for (const { scene, slice, how } of matchScenes(scenes, elements).pairs) {
+    if (!slice || !isConfident(how)) continue;
+    const head = heads[slice.index];
+    if (!head) continue;
+    const to = sliceEighths(elements, head.at);
+    if (Number(scene.eighths) !== to) out.push({ sceneId: scene.id, from: Number(scene.eighths) || 0, to });
+  }
+  return out;
+}
+
+/**
  * The plan. Pure.
  *   elements     the script's elements
  *   scenes       the scene rows (listScenes())
@@ -410,4 +431,4 @@ export function syncScript(elements, opts = {}) {
   return { plan, result: applySync(plan) };
 }
 
-export default { headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript, numberPatches, applyNumbers };
+export default { measureEighths, headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript, numberPatches, applyNumbers };

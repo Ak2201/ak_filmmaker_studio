@@ -99,7 +99,7 @@
    in chrome.css is 0,2,0 and declared later. */
 .dv-filter.dv-filter.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .dv-filter.dv-filter.is-on:hover,
-.dv-filter.dv-filter.is-on:focus-visible { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-on); }
+.dv-filter.dv-filter.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
 
 /* ---- a group ------------------------------------------------ */
 .dv-group { margin: 0 0 var(--s6); }
@@ -192,3 +192,19 @@
   .dv-list { grid-template-columns: 1fr 1fr; }
   .dv-fest-fmt { flex: 1 1 auto; text-align: right; }
 }
+
+/* ---- links: where the files live ------------------------------ */
+.dv-links { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.dv-link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2); }
+.dv-link {
+  display: inline-flex; align-items: center; gap: var(--s1); min-width: 0; max-width: 100%;
+  border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius));
+  padding: 0 var(--s1) 0 var(--s2); font-size: var(--t-small);
+}
+.dv-link-a { color: var(--accent-deep); overflow-wrap: anywhere; min-width: 0; }
+.dv-link-add > summary { cursor: pointer; font-size: var(--t-small); color: var(--accent-deep); width: fit-content; }
+.dv-link-form { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: stretch; margin-top: var(--s2); }
+.dv-link-url { flex: 2 1 14rem; min-width: 0; font-size: var(--t-small); }
+.dv-link-label { flex: 1 1 9rem; min-width: 0; font-size: var(--t-small); }
+.dv-link-why { flex: 1 1 100%; margin: 0; font-size: var(--t-small); color: var(--danger); }
+.dv-link-why[hidden] { display: none; }

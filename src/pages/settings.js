@@ -888,6 +888,7 @@ function renderPlanCard() {
   const signedIn = !!(c && c.getSession && c.getSession());
   const sec = section('plan-summary', 'Your plan', 'Plan.',
     'What you have, and when it ends. Everything about buying, invoices and refunds is on the Purchase page.');
+  const card = h('div.st-plan-card');
   const off = PlanGate.purchasesOff();
   let line;
   if (off) line = 'The studio is free to use right now. Nothing needs buying.';
@@ -898,7 +899,12 @@ function renderPlanCard() {
   else if (cp.reason === 'granted') line = 'Access given to you by the studio' + (cp.planName ? ' \u00b7 ' + cp.planName : '') + '.';
   else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
-  sec.append(h('p.st-plan-line', { text: line }));
+  /* Where the plan stands, as one LED pill: read from the same facts as the
+     line below it, so it can never say something the line does not. */
+  const led = off ? ['Open', 'ok'] : cp.reason === 'trial' ? ['Trial', 'warn'] : cp.reason === 'paid' ? ['Active', 'ok']
+    : cp.reason === 'granted' ? ['Granted', 'ok'] : cp.reason === 'expired' ? ['Ended', 'bad'] : null;
+  if (led) card.append(h('p.st-plan-pills', {}, [h('span.st-led.is-' + led[1], {}, [h('span.st-dot.is-' + led[1], { 'aria-hidden': 'true' }), led[0]])]));
+  card.append(h('p.st-plan-line', { text: line }));
 
   /* The second line: what the plan means for what you can keep and share. */
   let usageNote = '';
@@ -907,24 +913,25 @@ function renderPlanCard() {
   else if (cp.reason === 'granted') usageNote = 'Nothing is capped while this access stands.';
   else if (cp.reason === 'trial') usageNote = 'Plan limits on synced films and shares apply once you choose a plan.';
   else if (cp.reason === 'expired') usageNote = 'Everything you wrote is still saved on this device.';
-  if (usageNote) sec.append(h('p.st-plan-note', { text: usageNote }));
+  if (usageNote) card.append(h('p.st-plan-note', { text: usageNote }));
 
   const bought = signedIn && !off && cp.reason === 'paid';
   if (bought) {
     wantUsage();
     const seen = usageSeen;
     if (seen && seen.st && seen.st.plan && seen.st.plan !== 'free') {
-      sec.append(h('h3.st-plan-sub', { text: 'Your usage' }), seen.usageList(seen.st));
+      card.append(h('h3.st-plan-sub', { text: 'Your usage' }), seen.usageList(seen.st));
     } else if (!seen || !seen.failed) {
-      sec.append(h('p.st-plan-note', { text: 'Counting your usage\u2026' }));
+      card.append(h('p.st-plan-note', { text: 'Counting your usage\u2026' }));
     } else {
-      sec.append(h('p.st-plan-note', { text: 'Your usage could not be loaded just now. The Purchase page shows it too.' }));
+      card.append(h('p.st-plan-note', { text: 'Your usage could not be loaded just now. The Purchase page shows it too.' }));
     }
   }
-  sec.append(h('p.st-plan-link', {}, [h('a.btn.primary', {
+  card.append(h('p.st-plan-link', {}, [h('a.btn.primary', {
     href: 'purchase.html',
     text: bought ? 'Manage plan \u2192' : 'Plan & purchases \u2192'
   })]));
+  sec.append(card);
   return sec;
 }
 
@@ -1040,10 +1047,11 @@ delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
 /* A tab panel: the thing tabs.js turns into a tab. Cards are filtered for
    null first (Element.append(null) inserts the text "null"); a panel with no
    cards is not drawn at all (Team before sign-in, Admin for everyone else). */
-function tabPane(id, label, group, cards) {
+function tabPane(id, label, group, cards, menu = {}) {
   const kept = cards.filter(Boolean);
   if (!kept.length) return null;
-  return h('section.st-tab', { id, 'data-tab-label': label, 'data-tab-group': group }, kept);
+  /* menu: { icon, hint } for the shared side menu (src/ui/section-menu.js) */
+  return h('section.st-tab', { id, 'data-tab-label': label, 'data-tab-group': group, 'data-tab-icon': menu.icon, 'data-tab-hint': menu.hint }, kept);
 }
 
 function render() {
@@ -1059,11 +1067,11 @@ function render() {
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [
-    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus)]),
-    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()]),
-    tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()]),
-    tabPane('team', 'Team', 'Together', [team]),
-    tabPane('admin', 'Admin', 'Admin', [consolePointer(), renderAdmin()])
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus)], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
+    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
+    tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
+    tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),
+    tabPane('admin', 'Admin', 'Admin', [consolePointer(), renderAdmin()], { icon: 'admin_panel_settings', hint: 'Studio-wide settings for administrators.' })
   ].filter(Boolean);
 
   const body = h('div.st-body.st-console', {}, panes);

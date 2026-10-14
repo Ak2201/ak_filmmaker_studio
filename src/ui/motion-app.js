@@ -153,26 +153,9 @@ function scan(root) {
   });
 }
 
-/* ---- the moving tab indicator (TransitionPanel's underline) ---- */
-function placeInk(strip) {
-  const sel = strip.querySelector('[role="tab"][aria-selected="true"]');
-  if (!sel) return;
-  strip.style.setProperty('--ink-x', sel.offsetLeft + 'px');
-  strip.style.setProperty('--ink-w', String(sel.offsetWidth));
-}
-function wireTabs() {
-  document.querySelectorAll('.tabs:not([data-ma-ink])').forEach((strip) => {
-    strip.dataset.maInk = '1';
-    const ink = document.createElement('span');
-    ink.className = 'tabs-ink';
-    ink.setAttribute('aria-hidden', 'true');
-    strip.append(ink);
-    placeInk(strip);
-    requestAnimationFrame(() => requestAnimationFrame(() => strip.classList.add('ma-ink-ready')));
-    new MutationObserver(() => placeInk(strip)).observe(strip, { attributes: true, subtree: true, attributeFilter: ['aria-selected'] });
-  });
-}
-function replaceInk() { document.querySelectorAll('.tabs[data-ma-ink]').forEach(placeInk); }
+/* The sliding tab underline (span.tabs-ink) is gone: the selected row's
+   own fill is the marker, and in the side menu `bottom: 0` put the line
+   under the last row. See tabs.css. */
 
 /* ---- the shell band slides down once ----------------------------- */
 let bandDone = false;
@@ -205,9 +188,6 @@ function wireEvents() {
     }
     wasOpen = open;
   }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  addEventListener('resize', replaceInk, { passive: true });
-  addEventListener('hashchange', () => requestAnimationFrame(replaceInk));
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(replaceInk);
 }
 
 /* Infinite animations only run while their element is on screen. */
@@ -236,7 +216,7 @@ function boot() {
     else for (const n of added) if (n.isConnected) scan(n);
     if (fresh()) pauseOffscreen(document.body); else for (const n of added) if (n.isConnected && n.querySelectorAll) pauseOffscreen(n);
     added = new Set();
-    wireTabs(); band();
+    band();
   };
   tick();
   new MutationObserver((records) => {

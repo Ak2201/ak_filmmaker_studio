@@ -148,7 +148,7 @@ try {
     await page.waitForSelector('#usage .us-root .adc-heat', { timeout: 15000 });
     S.clientScopes = await page.evaluate(() => Object.keys(window.StudioCloud.KEY_BY_SCOPE));
     const th = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
-    ok(th === (scheme === 'dark' ? 'dark' : 'light'), 'theme ' + th);
+    ok(th === 'dark', 'theme ' + th + ' (one theme since 14 Oct 2026, whatever the OS prefers)');
     const txt = await page.textContent('#usage');
     ok(/weekly active figure is not available, by design/i.test(txt) && /floor/.test(txt), 'usage: says weekly actives are unavailable and figures are a floor');
     ok(/Unused for 14 days \(2 of 10\)/.test(txt) && /opted|turned counting off/.test(txt), 'usage: unused list with the opted-in note');

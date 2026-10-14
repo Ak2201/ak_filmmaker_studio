@@ -51,8 +51,10 @@ import { mountStageGuide } from '../ui/stage-guide.js';
 import { learn } from '../ui/learn.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
-  pageCount, formatPages
+  pageCount, formatPages, formatRuntime, wordCount
 } from '../lib/script.js';
+
+const analysis = () => import('../lib/screenplay-analysis.js');
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
 const typesetter = () => import('../lib/screenplay-export.js');
@@ -167,6 +169,9 @@ let typeSel = null;
 let hintNode = null;
 let tipNode = null;
 let tipKey = '';
+let typeName_ = null;
+let typeKey_ = null;
+let lineBar = null;
 let sheet = null;
 let beatsOpen = false;
 
@@ -174,6 +179,19 @@ function buildTop() {
   statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Saved ✓' });
   typeSel = h('select.sc-type', { id: 'scType', 'aria-label': 'Current line type' });
   ELEMENT_TYPES.forEach((t) => typeSel.append(h('option', { value: t.id, text: t.label })));
+  /* The pill SHOWS the type and its Alt+digit; the real <select> sits
+     over it, transparent, so it is still the control (keyboard, screen
+     reader, the proofs) and the platform's own picker still opens. */
+  typeName_ = h('span.sc-typename', { 'aria-hidden': 'true', text: ELEMENT_TYPES[0].label });
+  typeKey_ = h('span.sc-typekey', { 'aria-hidden': 'true' });
+  const typePill = h('span.sc-typepill', {}, [
+    h('span.sc-typedot', { 'aria-hidden': 'true' }), typeName_, typeKey_,
+    h('span.sc-caret', { 'aria-hidden': 'true', text: '▾' }), typeSel
+  ]);
+  const stat = (label, key) => h('span.sc-stat', {}, [label + ': ', h('strong', { 'data-sc-stat': key, text: '…' })]);
+  const stats = h('p.sc-stats', { 'aria-label': 'Script length' }, [
+    stat('Words', 'words'), stat('Pages', 'pages'), stat('Est. runtime', 'runtime')
+  ]);
 
   const crumb = h('p.sc-crumb', {}, [
     h('strong', { text: 'Screenplay Writer' }),
@@ -184,24 +202,28 @@ function buildTop() {
     h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
     statusNode
   ]);
+  const meta = h('div.sc-meta', {}, [crumb, stats]);
 
   const beatsBtn = h('button.btn.sc-beats-btn', {
     type: 'button', 'data-action': 'sc-beats', 'aria-expanded': 'false',
     'aria-controls': 'beatsPanel', text: 'Beats ◧'
   });
+  const fileMenu = actionMenu('File', [
+    { heading: 'File actions' },
+    { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
+    { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' }
+  ], { align: 'right', ariaLabel: 'File actions' });
   const menu = actionMenu('⋯', [
-    { label: 'Import Screenplay', action: 'sc-import' },
-    { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy' },
-    '---',
-    { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T' },
-    { label: 'Dictation', action: 'sc-dictate' },
-    { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?' },
-    { label: 'Format check', action: 'sc-check' },
-    { label: 'Notes overview', action: 'sc-notes', hint: 'all notes' },
-    '---',
-    { label: 'Show or hide hints', action: 'sc-hints' },
-    { label: 'Stage guide', action: 'sc-guide', hint: 'questions' },
-    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' }
+    { heading: 'Tools' },
+    { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
+    { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
+    { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
+    { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
+    { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' },
+    { heading: 'Help' },
+    { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
+    { label: 'Stage guide', action: 'sc-guide', hint: 'questions', icon: 'menu_book' },
+    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
 
   /* ONE AI pill, a menu of the existing tools, each an AI Desk task
@@ -232,8 +254,11 @@ function buildTop() {
      injected it (see mountFocus). */
   tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() });
   return h('div#scTop.sc-top', {}, [
-    crumb,
-    h('div.sc-tools', {}, [typeSel, beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot'), menu].filter(Boolean)),
+    meta,
+    h('div.sc-tools', {}, [
+      h('div.sc-tools-l', {}, [typePill, beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot')]),
+      h('div.sc-tools-r', {}, [fileMenu, menu])
+    ]),
     tipNode
   ]);
 }
@@ -279,6 +304,7 @@ function render() {
   wireActionBar();
   try { StudioUI.autoAriaLabels(); } catch (e) { console.warn('[script] chrome', e); }
   refreshDerivedUi();
+  refreshStats();
   editor.autosizeAll();
   requestAnimationFrame(editor.autosizeAll);
   applyBreaksSoon();
@@ -293,6 +319,7 @@ function renderPage(focus) {
   editor.autosizeAll();
   requestAnimationFrame(editor.autosizeAll);
   refreshDerivedUi();
+  refreshStats();
   if (focus) editor.applyFocus(focus);
   applyBreaksSoon();
   sceneSyncLater();
@@ -307,6 +334,16 @@ function refreshDerivedUi() {
   const i = currentIndex();
   const el = i >= 0 ? doc.elements[i] : null;
   if (typeSel && el && typeSel.value !== el.type) typeSel.value = el.type;
+  if (typeName_) {
+    const t = el ? el.type : typeSel.value;
+    const label = typeLabel(t);
+    if (typeName_.textContent !== label) typeName_.textContent = label;
+    const dm = Keys.digitMap(keyPrefs.preset, knownTypes());
+    const digit = Object.keys(dm).find((d) => dm[d] === t);
+    const hint = digit ? '[Alt+' + digit + ']' : '';
+    if (typeKey_.textContent !== hint) typeKey_.textContent = hint;
+  }
+  if (lineBar && el && lineBar.dataset.type !== el.type) lineBar.dataset.type = el.type;
   document.querySelectorAll('.sc-chip').forEach((c) => {
     const on = !!el && c.dataset.type === el.type;
     if (c.classList.contains('is-on') !== on) c.classList.toggle('is-on', on);
@@ -427,7 +464,33 @@ function scheduleDerived() {
     derivedTimer = 0;
     editor.refreshCueOffers();
     applyBreaks();
+    refreshStats();
   }, 400);
+}
+
+/* ---- the status strip: words, pages, estimated running time ----
+   DOM only, recomputed at idle and after a render. The running time is
+   src/lib/screenplay-analysis.js's per-scene estimate (dialogue and
+   action at speaking pace), loaded when first needed; until then the
+   page-a-minute figure stands in. Stores nothing. */
+let Analysis = null;
+function refreshStats() {
+  const put = (k, v) => {
+    const n = document.querySelector('[data-sc-stat="' + k + '"]');
+    if (n && n.textContent !== v) n.textContent = v;
+  };
+  const els = doc.elements;
+  const written = els.some((e) => String(e.text || '').trim());
+  const pages = pageCount(els);
+  put('words', els.reduce((n, e) => n + wordCount(e.text), 0).toLocaleString());
+  put('pages', formatPages(pages));
+  if (!written) { put('runtime', '—'); return; }
+  const estimate = () => {
+    const sec = Analysis.sliceScript(els).reduce((n, sl) => n + Analysis.estimateSlice(sl).seconds, 0);
+    put('runtime', sec ? formatRuntime(sec / 60) : formatRuntime(pages));
+  };
+  if (Analysis) estimate();
+  else { put('runtime', formatRuntime(pages)); analysis().then((m) => { Analysis = m; estimate(); }, () => {}); }
 }
 async function applyBreaksSoon() {
   if (!Typeset) {
@@ -473,7 +536,19 @@ const lineBtn = h('button.sc-line-more', {
   type: 'button', 'data-action': 'sc-line-menu', 'aria-label': 'Line actions',
   'aria-haspopup': 'menu', title: 'Line actions', text: '⋯'
 });
+/* On a wide screen the focused line carries a small toolbar above it:
+   the same five actions as the line menu (right-click still opens that),
+   through the same handlers below. Dual dialogue and CONT'D are shown
+   only on a character cue, where the editor supports them. */
+lineBar = h('div.sc-linebar', { role: 'toolbar', 'aria-label': 'Line actions' }, [
+  ['sc-dual', 'Dual dialogue', 'is-cue'], ['sc-contd', "Add CONT'D", 'is-cue'],
+  ['sc-up', 'Move up', 'is-ico', '↑'], ['sc-down', 'Move down', 'is-ico', '↓'], ['sc-del', 'Delete line', 'is-ico.is-danger', '✕']
+].map(([a, label, cls, glyph]) => h('button.sc-lb.' + cls, {
+  type: 'button', 'data-action': a, title: label, 'aria-label': label, text: glyph || label
+})));
+lineBar.addEventListener('mousedown', (e) => e.preventDefault());
 function placeLineButton(row) {
+  if (lineBar.parentElement !== row) row.append(lineBar);
   if (lineBtn.parentElement !== row) row.append(lineBtn);
 }
 lineBtn.addEventListener('mousedown', (e) => e.preventDefault());

@@ -40,6 +40,9 @@
                       the script blob, cursor advanced)
      voice-check      coverage.js addTake (a line's alternates)
      logline          the page's setLogline()
+     genre-comps      story.js fields genre/audience/budgetTier/comps, via commit
+     scene-notes      scenes.js readerNote + cutCandidate on content-matched rows
+     breakdown-tags   scenes.js tagMany (adds only), undo = untagMany
    beat-critique is a read: it writes nothing.
 
    NO STORAGE KEY. The only memory here is the last run per task (what
@@ -228,7 +231,8 @@ const coverageTask = {
     let title = c.title;
     if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
     const res = await AI.runCoverage({
-      elements: els, title, context: withRefineContext(BP.blueprintContext(), refine), prior
+      elements: els, title, context: withRefineContext(BP.blueprintContext(), refine), prior,
+      audience: (StoryM.loadStory() || {}).audience || ''
     }, {
       signal, onStatus,
       /* `progress` lets the page that owns the report repaint (the
@@ -1017,9 +1021,228 @@ const loglineTask = {
   }
 };
 
+
+/* ============================================================
+   GENRE AND COMPARABLES — list. ctx { getStory(), commit(story)?,
+                                       elements?, getDoc?, title? }
+   ------------------------------------------------------------
+   genreComps(): the genre, tone, budget tier and audience the PAGE
+   shows, with verbatim evidence (verified), and 3-5 comparable films.
+   The comparables are the model's memory and cannot be checked here,
+   so the note says so. The items are the comparables; Accept saves
+   genre, tone-as-budget tier, audience and the ticked comparables on
+   the story (additive fields), and Undo restores the story as it was.
+   ============================================================ */
+const TIER_LABEL = { micro: 'Micro', low: 'Low', mid: 'Mid', high: 'High' };
+
+const genreTask = {
+  id: 'genre-comps',
+  label: 'Genre and comparables',
+  kind: 'list',
+  editable: false,
+  identity(ctx) { try { return 'genre:' + AI.scriptSignature(scriptElements(resolve(ctx))); } catch (e) { return 'genre'; } },
+  input(ctx) {
+    const c = resolve(ctx);
+    const els = scriptElements(c);
+    const sample = AI.genreSample(els);
+    if (!sample.scenes.length) return 'This script has no scene headings yet, so there is nothing to place.';
+    const s = storyOf(c) || {};
+    return 'The screenplay — ' + plural(sample.scenes.length, 'scene', 'scenes')
+      + (sample.sampled ? ', the opening of each scene (a long script is sampled, not sent whole)' : ', in full')
+      + ' — in one request.' + (s.audience ? '\n\nThe audience you named: ' + s.audience : '\n\nNo audience is named on the story, so the model is asked who it plays to.')
+      + '\n\nIt returns a genre, a tone, the budget tier the page asks for, and three to five comparable films.';
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const els = scriptElements(c).map((e) => ({ ...e }));
+    const sample = AI.genreSample(els);
+    const s = storyOf(c) || {};
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    const res = await AI.genreComps({
+      scenes: sample.scenes, title, logline: s.logline, audience: s.audience,
+      context: withRefineContext(BP.blueprintContext(), refine)
+    }, { onStatus, signal });
+    last.set('genre-comps', { res });
+    const out = [
+      'Genre: ' + res.genre + (res.subgenres.length ? ' (' + res.subgenres.join(', ') + ')' : '') + (res.tone ? ' · tone: ' + res.tone : ''),
+      res.budgetTier ? 'Budget tier the page asks for: ' + TIER_LABEL[res.budgetTier] + (res.budgetWhy ? ' — ' + res.budgetWhy : '') : '',
+      res.audience ? 'Plays to: ' + res.audience : '',
+      res.evidence.length ? 'Why, in your words:\n' + res.evidence.map((e) => 'Sc ' + e.scene + ': “' + e.quote + '” — ' + e.note).join('\n') : '',
+      'The comparables are the model’s memory of films, not something this tool can check. Look each one up before it goes in a pitch.',
+      res.removed ? plural(res.removed, 'quote', 'quotes') + ' removed because ' + (res.removed === 1 ? 'it was' : 'they were') + ' not word for word in your script.' : '',
+      sample.sampled ? 'A long script is sampled for this, so the evidence comes from the opening of each scene.' : '',
+      'Read by ' + res.model + '. Accepting saves the genre, budget tier and audience above and the comparables you tick.'
+    ].filter(Boolean);
+    return {
+      items: res.comps.map((cp, i) => ({ id: 'c' + i, title: cp.title, year: cp.year, why: cp.why,
+        text: cp.title + (cp.year ? ' (' + cp.year + ')' : ''), detail: cp.why })),
+      note: out.join('\n\n')
+    };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const mem = last.get('genre-comps');
+    if (!mem || !mem.res) fail('There is nothing to keep. Run it first.');
+    const r = mem.res;
+    const before = JSON.parse(JSON.stringify(storyOf(c)));
+    const s = storyOf(c);
+    s.genre = r.genre + (r.subgenres.length ? ' / ' + r.subgenres.join(' / ') : '');
+    if (r.budgetTier) s.budgetTier = r.budgetTier;
+    if (r.audience && !String(s.audience || '').trim()) s.audience = r.audience;
+    const have = new Set((s.comps || []).map((x) => x.title.toLowerCase()));
+    const comps = (s.comps || []).slice();
+    for (const it of selected || []) {
+      if (!it || !it.title || have.has(it.title.toLowerCase())) continue;
+      have.add(it.title.toLowerCase());
+      comps.push({ title: it.title, year: it.year || '', why: it.why || '' });
+    }
+    s.comps = comps;
+    commitStory(c, s);
+    return () => commitStory(c, before);
+  }
+};
+
+/* ============================================================
+   SCENE NOTES — list. ctx { elements?, getDoc?, title?, after?() }
+   ------------------------------------------------------------
+   One note per scene, each resting on a quote verified against that
+   scene, plus a cut-candidate flag that needs the quote to stand. The
+   items are the notes; Accept writes `readerNote` and `cutCandidate`
+   on the scene rows the ticked notes belong to. A row is found by the
+   same content match the breakdown uses; a pair made only by position
+   is a guess and is left out, and the note says how many.
+   ============================================================ */
+function rowFor(pairs, sliceIndex) {
+  const p = pairs.find((x) => x.slice && x.slice.index === sliceIndex && Analysis.isConfident(x.how));
+  return p ? p.scene : null;
+}
+
+const sceneNotesTask = {
+  id: 'scene-notes',
+  label: 'Scene notes',
+  kind: 'list',
+  editable: false,
+  identity(ctx) { try { return 'scene-notes:' + AI.scriptSignature(scriptElements(resolve(ctx))); } catch (e) { return 'scene-notes'; } },
+  input(ctx) {
+    const plan = AI.planSceneRead(scriptElements(resolve(ctx)));
+    if (!plan.batches.length) return 'This script has no scene headings yet, so there is nothing to read.';
+    return 'The whole screenplay — ' + plural(plan.scenes.length, 'scene', 'scenes') + ', '
+      + plan.chars.toLocaleString('en-IN') + ' characters — in ' + plural(plan.requests, 'request', 'requests')
+      + ', roughly ' + plan.tokensIn.toLocaleString('en-IN') + ' tokens. One note per scene; nothing is written until you accept.';
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const els = scriptElements(c).map((e) => ({ ...e }));
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    const context = withRefineContext(BP.blueprintContext(), refine);
+    const run = await AI.runSceneBatches(els, (scenes, part, parts) =>
+      AI.sceneNotesBatch({ scenes, part, parts, title, context }, { onStatus, signal }), { onStatus, signal });
+    const heading = new Map(run.scenes.map((sc, i) => [sc.n, { i, heading: sc.heading }]));
+    const notes = run.parts.flatMap((p) => p.notes);
+    const removed = run.parts.reduce((n, p) => n + p.removed, 0);
+    last.set('scene-notes', { notes: notes.map((n) => ({ ...n, i: (heading.get(n.scene) || {}).i })) });
+    const cuts = notes.filter((n) => n.cut).length;
+    return {
+      items: notes.map((n) => ({ id: 's' + n.scene, scene: n.scene, i: (heading.get(n.scene) || {}).i, note: n.note, cut: n.cut,
+        text: n.note + (n.cut ? '  — CUT CANDIDATE' : ''),
+        detail: 'Sc ' + n.scene + ' · ' + ((heading.get(n.scene) || {}).heading || '') + (n.quote ? ' · “' + n.quote + '”' : ' · no quote — the one given was not in the scene') })),
+      note: plural(notes.length, 'scene note', 'scene notes') + ' from ' + plural(run.scenes.length, 'scene', 'scenes') + ' read; '
+        + plural(cuts, 'scene', 'scenes') + ' flagged as cut candidates (a flag needs a quote that is in the scene).'
+        + (removed ? ' ' + plural(removed, 'quote', 'quotes') + ' removed because not word for word in the script; those notes keep their words and cannot be cut candidates.' : '')
+    };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const els = scriptElements(c);
+    const rows = ScenesM.listScenes();
+    const pairs = Analysis.matchScenes(rows, els).pairs;
+    const before = new Map();
+    const patch = new Map();
+    let skipped = 0;
+    for (const it of selected || []) {
+      const row = rowFor(pairs, it.i);
+      if (!row) { skipped++; continue; }
+      before.set(row.id, { readerNote: row.readerNote || '', cutCandidate: !!row.cutCandidate });
+      patch.set(row.id, { readerNote: it.note, cutCandidate: !!it.cut });
+    }
+    if (!patch.size) fail('None of those scenes is matched to a scene on the breakdown by content, so nothing was written.' + (skipped ? ' (' + skipped + ' matched by position only.)' : ''));
+    const write = (m) => ScenesM.saveScenes(ScenesM.listScenes().map((s) => (m.has(s.id) ? { ...s, ...m.get(s.id) } : s)));
+    write(patch);
+    call(c.after);
+    return () => { write(before); call(c.after); };
+  }
+};
+
+/* ============================================================
+   BREAKDOWN TAGS — list. ctx { elements?, getDoc?, title?, after?() }
+   ------------------------------------------------------------
+   Every element the page calls for, in every breakdown category, each
+   with the words that call for it, verified against the scene (an
+   element with no words behind it is removed). Accept adds the ticked
+   ones through scenes.js tagMany(), which only ADDS and skips what is
+   already tagged; Undo removes exactly what this call wrote.
+   ============================================================ */
+const tagsTask = {
+  id: 'breakdown-tags',
+  label: 'Breakdown tags',
+  kind: 'list',
+  editable: false,
+  identity(ctx) { try { return 'breakdown-tags:' + AI.scriptSignature(scriptElements(resolve(ctx))); } catch (e) { return 'breakdown-tags'; } },
+  input(ctx) {
+    const plan = AI.planSceneRead(scriptElements(resolve(ctx)));
+    if (!plan.batches.length) return 'This script has no scene headings yet, so there is nothing to break down.';
+    return 'The whole screenplay — ' + plural(plan.scenes.length, 'scene', 'scenes') + ' — in ' + plural(plan.requests, 'request', 'requests')
+      + ', roughly ' + plan.tokensIn.toLocaleString('en-IN') + ' tokens. Every element the page calls for, in all '
+      + ScenesM.ELEMENT_CATEGORIES.length + ' categories, each with the words that call for it.\n\nNothing is tagged until you accept, and only what you tick.';
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const els = scriptElements(c).map((e) => ({ ...e }));
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    const context = withRefineContext(BP.blueprintContext(), refine);
+    const categories = ScenesM.ELEMENT_CATEGORIES.map((k) => ({ id: k.id, label: k.label }));
+    const run = await AI.runSceneBatches(els, (scenes, part, parts) =>
+      AI.breakdownTagsBatch({ scenes, part, parts, title, context, categories }, { onStatus, signal }), { onStatus, signal });
+    const at = new Map(run.scenes.map((sc, i) => [sc.n, { i, heading: sc.heading }]));
+    const label = Object.fromEntries(categories.map((k) => [k.id, k.label]));
+    const found = run.parts.flatMap((p) => p.elements);
+    const removed = run.parts.reduce((n, p) => n + p.removed, 0);
+    return {
+      items: found.map((e, k) => ({ id: 't' + k, scene: e.scene, i: (at.get(e.scene) || {}).i, category: e.category, name: e.name,
+        text: 'Sc ' + e.scene + ' · ' + label[e.category] + ': ' + e.name,
+        detail: '“' + e.quote + '”' })),
+      note: plural(found.length, 'element', 'elements') + ' across ' + plural(new Set(found.map((e) => e.scene)).size, 'scene', 'scenes') + '.'
+        + (removed ? ' ' + plural(removed, 'element', 'elements') + ' removed because the words they cited are not in the scene.' : '')
+        + ' Elements already tagged on a scene are skipped, not duplicated.'
+    };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const els = scriptElements(c);
+    const pairs = Analysis.matchScenes(ScenesM.listScenes(), els).pairs;
+    const tags = [];
+    let skipped = 0;
+    for (const it of selected || []) {
+      const row = rowFor(pairs, it.i);
+      if (!row) { skipped++; continue; }
+      tags.push({ sceneId: row.id, category: it.category, name: it.name });
+    }
+    const added = ScenesM.tagMany(tags);
+    if (!added.length) fail(skipped ? 'Those scenes are matched to the breakdown by position only, so nothing was tagged.' : 'Every ticked element is already tagged.');
+    call(c.after);
+    return () => { ScenesM.untagMany(added); call(c.after); };
+  }
+};
+
 /* ---- registration ------------------------------------------- */
 const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, synopsisTask,
-  genScenesTask, genBatchTask, voiceTask, loglineTask];
+  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once

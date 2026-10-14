@@ -34,9 +34,12 @@ import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
+import Analysis, { formatDuration } from '../lib/screenplay-analysis.js';
+import { loadScript } from '../lib/script.js';
+import { listSongs, durationSeconds, getTargetMinutes } from '../lib/songs.js';
 import { linkText } from '../lib/links.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
-import { pageHeader, statStrip, notice, button } from '../ui/kit/index.js';
+import { pageHeader, statStrip, notice, button, check, field } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
@@ -121,6 +124,10 @@ function sceneRow(row) {
   const facts = h('div.el-facts');
   facts.append(gotBadge(row));
   facts.append(setupsLine(row));
+  facts.append(check({
+    label: 'Audio synced', checked: row.edit.sync, class: 'el-sync',
+    attrs: { 'data-edit-field': 'sync', 'data-scene': s.id, 'aria-label': 'Audio synced for scene ' + (s.number || '') }
+  }));
   facts.append(cutSelect(row));
   art.append(facts);
 
@@ -275,6 +282,60 @@ function orphanBox(list) {
 /* `focus` is a selector for the control to hand focus back to after
    the full render, which replaces it — the pattern visualize.js's
    render() set. Without it focus falls to <body> (UX audit M1). */
+/* Estimated seconds per scene, from the script's own words. Empty when
+   there is no script to read, so nothing is drawn rather than guessed. */
+function secondsByScene(scenes) {
+  try {
+    const els = loadScript().elements || [];
+    if (!els) return {};
+    const out = {};
+    Analysis.screenTime(scenes, els).rows.forEach((r) => { out[r.scene.id] = r.seconds; });
+    return out;
+  } catch (e) { return {}; }
+}
+
+function runPanel(run, target, fallbackTarget, cov) {
+  const box = h('section.el-run', { 'aria-label': 'Running time' });
+  const shown = target || fallbackTarget;
+  const head = h('div.el-run-fig');
+  if (run && run.scenes) {
+    head.append(h('span.el-run-label', { text: 'Running time of the cut' }));
+    head.append(h('strong.el-run-val.k-num', { text: formatDuration(run.seconds) }));
+    const bits = ['estimate from the script and page lengths · ' + run.scenes + (run.scenes === 1 ? ' scene' : ' scenes') + ' in the cut'];
+    if (run.songsUntimed) bits.push(run.songsUntimed + (run.songsUntimed === 1 ? ' song has' : ' songs have') + ' no length yet');
+    if (shown) {
+      const diff = run.seconds - shown * 60;
+      bits.push(diff === 0 ? 'on target' : formatDuration(Math.abs(diff)) + (diff > 0 ? ' over' : ' under') + ' the ' + shown + ' min target');
+    }
+    head.append(h('span.el-run-note', { text: bits.join(' · ') }));
+  } else {
+    head.append(h('span.el-run-label', { text: 'Running time of the cut' }));
+    head.append(h('span.el-run-note', { text: cov.counts.inCut
+      ? 'Not measurable: the scenes carry no page length.'
+      : 'Mark scenes In the cut and their estimated length adds up here.' }));
+  }
+  box.append(head);
+  box.append(field({
+    kind: 'number', label: 'Target length', addon: 'min',
+    value: target || '', hint: !target && fallbackTarget ? 'Using ' + fallbackTarget + ' min from Reports until you set one' : '',
+    attrs: { 'data-edit-target': '', min: '0', max: '600', step: '1', 'aria-label': 'Target length in minutes' }
+  }));
+  return box;
+}
+
+function csvDownload() {
+  const scenes = Scenes.listScenes();
+  const cov = Edit.coverage(scenes, listShots(), Edit.loadEdit());
+  const text = Edit.toCSV(cov, secondsByScene(scenes));
+  const blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: 'edit-log.csv' });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function render(focus) {
   const scenes = Scenes.listScenes();
   if (!scenes.length) {
@@ -318,6 +379,17 @@ function render(focus) {
     { label: cov.counts.pickups === 1 ? 'Pick-up open' : 'Pick-ups open', value: cov.counts.pickups,
       note: cov.counts.pickups ? 'owed by the editor' : '', noteTone: cov.counts.pickups ? 'warn' : '' }
   ], { class: 'el-stats', label: 'Edit log figures' }));
+
+  /* The running time of the cut: an ESTIMATE read off the script (and
+     the song list), for the scenes marked In the cut or Locked. Not drawn
+     when nothing is in the cut or the script cannot be measured. */
+  const secondsOf = secondsByScene(scenes);
+  const run = Object.keys(secondsOf).length
+    ? Edit.cutRunTime(cov, secondsOf, listSongs().map((x) => ({ id: x.id, seconds: durationSeconds(x) })))
+    : null;
+  const target = Edit.getTargetMin(data);
+  const fallbackTarget = target ? 0 : getTargetMinutes();
+  main.append(runPanel(run, target, fallbackTarget, cov));
 
   /* Conflicts first, because each one is two departments disagreeing
      about a scene, and that is the thing this page exists to show. */
@@ -364,6 +436,11 @@ function render(focus) {
     label: 'Copy pick-up list', icon: 'content_copy',
     title: 'The unshot scenes, the part-shot scenes and every open pick-up, as text',
     attrs: { 'data-edit-action': 'copy-pickups' }
+  }));
+  tools.append(button({
+    label: 'Export CSV', icon: 'download',
+    title: 'Every scene with the set’s word, the cut status, audio sync and the editor’s note',
+    attrs: { 'data-edit-action': 'export-csv' }
   }));
   main.append(tools);
 
@@ -455,6 +532,7 @@ delegate(document, 'click', '[data-edit-action]', (e, el) => {
     }
     return;
   }
+  if (act === 'export-csv') { csvDownload(); return; }
   if (act === 'copy-pickups') {
     const text = Edit.pickupText() || 'Nothing owed — every scene the cut needs is in the can.';
     const done = () => StudioUI.toastSuccess && StudioUI.toastSuccess('Pick-up list copied');
@@ -468,7 +546,7 @@ delegate(document, 'click', '[data-edit-action]', (e, el) => {
 delegate(document, 'change', '[data-edit-field]', (e, el) => {
   const id = el.getAttribute('data-scene');
   const key = el.getAttribute('data-edit-field');
-  Edit.setSceneEdit(id, { [key]: el.value });
+  Edit.setSceneEdit(id, { [key]: el.type === 'checkbox' ? el.checked : el.value });
   /* The cut state changes the verdict, the counts and the filter
      membership; a note changes nothing the page derives. Focus goes
      back to this scene's select — if the filter still shows it. */
@@ -479,7 +557,12 @@ delegate(document, 'change', '[data-edit-field]', (e, el) => {
    closed tab took everything since the field was entered (UX audit
    H10). The store write only; the re-render stays on `change`. */
 saveOnInput('[data-edit-field]', (el) => {
-  Edit.setSceneEdit(el.getAttribute('data-scene'), { [el.getAttribute('data-edit-field')]: el.value });
+  Edit.setSceneEdit(el.getAttribute('data-scene'), { [el.getAttribute('data-edit-field')]: el.type === 'checkbox' ? el.checked : el.value });
+});
+
+delegate(document, 'change', '[data-edit-target]', (e, el) => {
+  Edit.setTargetMin(el.value);
+  render('[data-edit-target]');
 });
 
 delegate(document, 'change', '[data-pickup-done]', (e, el) => {

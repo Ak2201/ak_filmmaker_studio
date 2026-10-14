@@ -34,7 +34,7 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
 import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
-import Scenes, { formatEighths } from '../lib/scenes.js';
+import Scenes, { formatEighths, ELEMENT_CATEGORIES } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
 import Sun from '../lib/sun.js';
 import DPR from '../lib/dpr.js';
@@ -473,7 +473,8 @@ function renderSheetEdit(sheet, contacts, scenes) {
     h('div.ct-sheet-acts.pdf-menu-host', {}, [
       actionMenu('Export', [
         { label: 'Print this sheet', action: 'sheet-print' },
-        { label: 'Save as PDF',      action: 'sheet-pdf', hint: 'this sheet only' }
+        { label: 'Save as PDF',      action: 'sheet-pdf', hint: 'this sheet only' },
+        { label: 'Download sides packet', action: 'sheet-sides', hint: 'the day\'s scenes' }
       ], { align: 'right' }),
       iconBtn('✕', 'sheet-del', 'Delete this call sheet', false, true)
     ])
@@ -905,6 +906,7 @@ function factsOf(sheet, scenes) {
        Location line gives, or the crew is sent to the wrong set. */
     mapPlace: first && !sheet.location && places[0] && first.name !== places[0].name ? first.name : '',
     light: lit ? { ...lit.light, fallback: lit.place.fallback } : null,
+    safety: places.map((p) => ({ place: p.name, hospital: p.recce.hospital, police: p.recce.police })),
     scenes: onSheet.map((s) => ({ number: s.number, slug: slugOf(s), pages: formatEighths(s.eighths) })),
     pagesTotal: formatEighths(eighths),
     notes: sheet.notes
@@ -1243,6 +1245,57 @@ delegate(document, 'click', '[data-action="sheet-pdf"]', (e, el) => {
     classes: ['ct-printing'],
     before: () => markOnlySheet(card),
     after: () => card.classList.remove('is-printing')
+  });
+});
+
+/* ---- the sides packet --------------------------------------------
+   The day's scenes as pages: slug line, length, what happens and every
+   element tagged to the scene, one block each, never split across a
+   page. The same content as reports.html#sides, drawn into a throwaway
+   host for the length of the print, so nothing is stored and a scene
+   edited a second ago is what prints. */
+function sidesPacket(sheet, scenes) {
+  const onSheet = sheetScenes(sheet, scenes);
+  const host = h('div.ct-sides-packet', { id: 'ct-sides-packet' });
+  host.append(h('div.ct-sp-head', {}, [
+    h('span.ct-sp-title', { text: 'Sides' }),
+    h('span.ct-sp-meta', { text: onSheet.length + (onSheet.length === 1 ? ' scene' : ' scenes') + ' · '
+      + formatEighths(onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0)) + ' pages' })
+  ]));
+  onSheet.forEach((s) => {
+    const no = String(s.number || scenes.indexOf(s) + 1);
+    const block = h('article.ct-sp-scene', {}, [
+      h('div.ct-sp-bar', {}, [
+        h('span.ct-sp-no', { text: no }),
+        h('span.ct-sp-slug', { text: slugOf(s) }),
+        h('span.ct-sp-pp', { text: formatEighths(s.eighths) + ' pp' })
+      ]),
+      h('p.ct-sp-syn', { text: String(s.synopsis || '').trim() || 'No synopsis written for this scene yet.' })
+    ]);
+    ELEMENT_CATEGORIES.forEach((cat) => {
+      const names = (s.elements && s.elements[cat.id]) || [];
+      if (names.length) block.append(h('p.ct-sp-el', {}, [h('strong', { text: cat.label + ' ' }), names.join(', ')]));
+    });
+    host.append(block);
+  });
+  return host;
+}
+
+delegate(document, 'click', '[data-action="sheet-sides"]', (e, el) => {
+  const card = el.closest('.ct-sheet');
+  const sheet = card && Contacts.listCallSheets().find((s) => s.id === card.dataset.sheet);
+  if (!sheet) return;
+  const scenes = Scenes.listScenes();
+  if (!sheetScenes(sheet, scenes).length) { StudioUI.toast('Tick a scene on this sheet first.'); return; }
+  const project = PDF.projectTitle();
+  const day = dayName(sheet.title, project);
+  PDF.exportPDF({
+    scope: 'sides',
+    title: project + ' — Sides — ' + day,
+    subtitle: [day, prettyDate(sheet.date)].filter(Boolean).join(' · '),
+    classes: ['ct-sides-printing'],
+    before: () => (document.getElementById('main') || document.body).append(sidesPacket(sheet, scenes)),
+    after: () => document.getElementById('ct-sides-packet')?.remove()
   });
 });
 

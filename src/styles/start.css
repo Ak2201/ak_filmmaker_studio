@@ -975,3 +975,8 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
     min-height: 44px;
   }
 }
+
+/* Phone tap floor: the footer links are 44px tall by width. */
+@media (max-width: 719px) {
+  .st-foot-links a { display: inline-flex; align-items: center; min-height: 44px; }
+}

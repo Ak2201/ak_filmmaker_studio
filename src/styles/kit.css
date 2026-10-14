@@ -1263,6 +1263,7 @@ details.k-panel--collapsible > summary.k-panel-head .k-panel-meta { margin-left:
 @media (max-width: 719px) {
   :root :is(.db-fix-go, .pc-open, .hub-shelves-all, .ct-gl-link, .lib-contents-head,
             .sh-where-group, .st-tier-alt, .st-brand, .legal-back, .site-foot a,
+            .db-link, .rd-go, .tw-link,
             .skip-link, .skip-to-content, .btn) {
     display: inline-flex;
     align-items: center;

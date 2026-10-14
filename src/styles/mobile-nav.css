@@ -435,6 +435,39 @@ html.mn-on .sh-bar > .sh-where .sh-where-phase .sh-where-text {
 }
 html.mn-on .sh-bar > .sh-where .sh-where-phase { min-width: var(--tap-min, 44px); justify-content: center; }
 
+/* SECTIONS on the crumb. A page with a tab strip already has the
+   strip's own pinned Sections button (and the sheet it opens), so the
+   band's copy is the same list twice and was drawn clipped over the
+   zone beside it. A page WITHOUT a strip (the hub) keeps it, as the
+   icon alone: 44px square, the words stay its accessible name. */
+html.mn-on:has(.tabs-sections) .sh-bar .sh-pagenav { display: none; }
+html.mn-on .sh-bar .sh-pagenav { flex: none; }
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn {
+  width: var(--tap-min, 44px);
+  min-width: var(--tap-min, 44px);
+  padding: 0;
+  justify-content: center;
+}
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn .sh-pagenav-label,
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn .sh-pagenav-caret {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn::before {
+  content: "list";
+  font-family: 'Material Symbols Rounded';
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  font-feature-settings: 'liga';
+}
+
 /* The four toolbar pages keep their zone INSIDE .toolbar: the toolbar
    stays in the band for the zone's sake, and its own controls go to
    Tools (borrowed, with the zone, as one element). */

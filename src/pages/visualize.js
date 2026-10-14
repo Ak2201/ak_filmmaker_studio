@@ -54,8 +54,10 @@ import Shots, {
 import { renderBlocking, renderSceneBoard, highlightCamera } from '../ui/blocking.js';
 import { basicShotDivision, jobFor } from '../lib/shot-rules.js';
 import {
-  button, buttonGroup, badge, intExtBadge, todBadge, pageHeader, statStrip, notice, field as kitField
+  button, buttonGroup, badge, intExtBadge, todBadge, pageHeader, statStrip, notice, field as kitField,
+  segmented, meter
 } from '../ui/kit/index.js';
+import { shootDayOf } from '../lib/locations.js';
 
 /* A lazy chunk, for the reason CLAUDE.md gives for Supabase and
    pptxgenjs: it is not needed to look at a shot list. The
@@ -71,6 +73,20 @@ const slugOf = (scene) =>
   scene.intExt + '. ' + (scene.location || 'Location TBC') + ' — ' + scene.dayNight;
 
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+
+/* VIEW STATE for the coverage table and the board. None of it is
+   stored: a filter, a density and an expanded strip are how you are
+   looking at the work, not the work — and the idle-write assertion in
+   `verify` would catch a view that saved itself. */
+let covFilter = 'all';            // 'all' | 'todo' | 'done'
+let covCompact = false;
+const boardOpen = new Set();      // scene ids whose phone strip shows every shot
+const COV_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'todo', label: 'To shoot' },
+  { value: 'done', label: 'In the can' }
+];
+const keepShot = (shot) => covFilter === 'all' || (covFilter === 'done' ? !!shot.done : !shot.done);
 
 /* ---- small builders -----------------------------------------
    The kit (src/ui/kit/) draws every control on this page. These are
@@ -234,7 +250,10 @@ function renderNoShots(firstSceneId) {
 
 /* ---- section 1: the shot list -------------------------------- */
 function renderShotList(scenes, shots) {
-  const wrap = h('section.vz-shots', { id: 'shot-list' });
+  const wrap = h('section.vz-shots' + (covCompact ? '.is-compact' : ''), { id: 'shot-list' });
+  /* The tab's count: the shots on the list, counted. No badge at zero —
+     a "0" pill reads as a notification, not a number. */
+  if (shots.length) wrap.dataset.tabBadge = String(shots.length);
   wrap.append(
     h('h2.bd-h2', { text: 'Shot list' }),
     h('p.bd-sub', {
@@ -255,6 +274,18 @@ function renderShotList(scenes, shots) {
             + ' scenes'
       }),
       h('span.vz-tools-gap'),
+      /* Filter and density: view state over the shot rows, in memory.
+         The same controls at every width; on a phone they wrap above
+         the cards. */
+      segmented({
+        label: 'Show shots', name: 'vz-filter', value: covFilter, quiet: true,
+        action: 'vz-cov-filter', options: COV_FILTERS, class: 'vz-cov-filter'
+      }),
+      button({
+        label: 'Compact', icon: 'density_small', size: 'sm', action: 'vz-cov-compact',
+        class: 'vz-cov-compact', attrs: { 'aria-pressed': covCompact ? 'true' : 'false' },
+        title: covCompact ? 'Show every field of each shot' : 'Show only the setup, size, move, lens and status'
+      }),
       actionMenu('Export the shot division', [
         { label: 'Whole script — PDF', action: 'vz-pdf-all', hint: 'A4' },
         { label: 'Whole script — CSV', action: 'vz-csv-all', hint: 'spreadsheet' }
@@ -278,6 +309,8 @@ function renderShotList(scenes, shots) {
   let run = null;
   for (const group of Shots.shotsByScene(scenes)) {
     if (group.scene && !group.shots.length) {
+      // "In the can" is a list of shots; a scene with none has none to show.
+      if (covFilter === 'done') continue;
       if (!run) {
         run = h('div.vz-uncovered', { role: 'list', 'aria-label': 'Scenes with no shots yet' });
         wrap.append(run);
@@ -308,13 +341,32 @@ function renderSceneBlock(group) {
   const block = h('div.vz-scene.k-panel' + (scene ? '' : '.is-orphan'), { 'data-scene': scene ? scene.id : '' });
 
   if (scene) {
+    /* The current-scene card: identity, length, where the stripboard
+       put it, and how far the coverage has got. Every figure is read
+       off the scene and its shots; the stripboard day is the scene's
+       own `shootDay`, and a scene without one says so rather than
+       guessing. No call time: nothing stores one per scene. */
+    const day = shootDayOf(scene);
     block.append(h('div.vz-scene-head.k-panel-head', {}, [
       ...sceneIdent(scene),
       h('span.vz-scene-count', {
         text: [formatEighths(Number(scene.eighths) || 0) + ' pgs',
           plural(cov.setups, 'shot', 'shots'), cov.done + ' in the can'].join(' · ')
-      })
+      }),
+      h('span.vz-scene-day', {}, [
+        day ? h('a', { href: 'stripboard.html#stripboard', text: 'Day ' + day + ' on the stripboard' })
+          : h('span', { text: 'Not on the stripboard yet' })
+      ])
     ]));
+    if (cov.setups) {
+      block.append(h('div.vz-scene-progress', {}, [
+        meter({
+          label: cov.done + ' of ' + plural(cov.setups, 'setup', 'setups') + ' completed',
+          value: cov.done, max: cov.setups, show: false,
+          tone: cov.done === cov.setups ? 'ok' : null, class: 'vz-scene-meter'
+        })
+      ]));
+    }
   } else {
     block.append(h('div.vz-scene-head.k-panel-head.is-orphan', {}, [
       badge({ label: '!', tag: true, tone: 'warn', class: 'vz-scene-no' }),
@@ -330,11 +382,19 @@ function renderSceneBlock(group) {
   }
 
   if (group.shots.length) {
-    /* Seven columns cannot reflow, so on a phone the table scrolls
-       inside itself, with nothing to say there is more (UX audit L30).
-       The hint shows only at widths where the table overflows. */
-    block.append(h('p.vz-scroll-hint', { 'aria-hidden': 'true', text: 'Swipe the table sideways for every column →' }));
-    block.append(renderShotTable(group.shots, scene));
+    /* Between a phone and a desk the seven columns do not fit, so the
+       table scrolls inside itself and says so (UX audit L30). Below
+       720px each row becomes a card instead (visualize.css §1b) and
+       the hint is hidden: there is nothing sideways left to find. */
+    const shown = group.shots.filter(keepShot);
+    if (shown.length) {
+      block.append(h('p.vz-scroll-hint', { 'aria-hidden': 'true', text: 'Swipe the table sideways for every column →' }));
+      block.append(renderShotTable(group.shots, scene, shown));
+    } else {
+      block.append(h('p.vz-filter-none', {
+        text: covFilter === 'done' ? 'Nothing in this scene is in the can yet.' : 'Every shot in this scene is in the can.'
+      }));
+    }
   }
 
   if (scene) {
@@ -357,28 +417,35 @@ function renderSceneBlock(group) {
    movement, lens, what we see, and the status pill. Every cell is a
    field of the one shot record in src/lib/shots.js; the pill is the
    shot's `done`, printed in words. */
-function renderShotTable(shots, scene) {
+function renderShotTable(shots, scene, shown = shots) {
   const table = h('table.k-table.vz-table.vz-cov');
   table.append(h('caption.visually-hidden', {
     text: 'Coverage' + (scene ? ' for scene ' + (scene.number || '') : '')
   }));
   const head = h('tr');
-  [['Setup', 'vz-c-no'], ['Size & angle', 'vz-c-size'], ['Move', 'vz-c-move'], ['Lens, light & camera', 'vz-c-lens'],
-    ['What we see', 'vz-c-desc'], ['Status', 'vz-c-done']]
-    .forEach(([label, cls]) => head.append(
-      h('th' + (cls ? '.' + cls : ''), { scope: 'col', text: label })
-    ));
+  COV_COLS.forEach(([label, cls]) => head.append(
+    h('th' + (cls ? '.' + cls : ''), { scope: 'col', text: label })
+  ));
   table.append(h('thead', {}, [head]));
 
   const body = h('tbody');
   const cams = scene ? Shots.sceneCameras(scene.id) : [];
-  shots.forEach((shot, i) => body.append(renderShotRow(shot, i, shots.length, cams)));
+  /* Filtered rows keep their place in the FULL list, so the number
+     placeholder and the up / down grips still mean the scene's order. */
+  shots.forEach((shot, i) => { if (shown.includes(shot)) body.append(renderShotRow(shot, i, shots.length, cams)); });
   table.append(body);
   return h('div.k-table-wrap.vz-table-wrap', {
     role: 'region', tabindex: '0',
     'aria-label': 'Coverage table' + (scene ? ', scene ' + (scene.number || '') : '')
   }, [table]);
 }
+
+/* The coverage columns, once: the head prints them and each cell
+   carries its column's words as data-label, which the phone card
+   prints over the field (visualize.css §1b). */
+const COV_COLS = [['Setup', 'vz-c-no'], ['Size & angle', 'vz-c-size'], ['Move', 'vz-c-move'],
+  ['Lens, light & camera', 'vz-c-lens'], ['What we see', 'vz-c-desc'], ['Status', 'vz-c-done']];
+const covLabel = (cls) => (COV_COLS.find((c) => c[1] === cls) || [''])[0];
 
 /** The status pill: the shot's `done`, in words, and the control that
     flips it. A button with aria-pressed, so it is one Tab stop and
@@ -399,7 +466,7 @@ function renderShotRow(shot, i, total, cams = []) {
     'data-shot': shot.id
   });
 
-  const no = h('td.vz-c-no', {}, [
+  const no = h('td.vz-c-no', { 'data-label': covLabel('vz-c-no') }, [
     cellInput(field('input.vz-no', {
       type: 'text', placeholder: String(i + 1),
       'data-shot-field': 'number', 'aria-label': 'Shot number'
@@ -419,16 +486,16 @@ function renderShotRow(shot, i, total, cams = []) {
       title: 'Drafted by the basic breakdown from the script — edit or delete it like any other shot' }));
   }
   row.append(no);
-  row.append(h('td.vz-c-size', {}, [
+  row.append(h('td.vz-c-size', { 'data-label': covLabel('vz-c-size') }, [
     picker(SHOT_SIZES, shot.size, 'data-shot-field', 'size', 'Shot size'),
     picker(SHOT_ANGLES, shot.angle, 'data-shot-field', 'angle', 'Camera angle')
   ]));
-  row.append(h('td.vz-c-move', {}, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
+  row.append(h('td.vz-c-move', { 'data-label': covLabel('vz-c-move') }, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
   /* Lighting / rig is free text; the camera is a pick from the marks on
      this scene's blocking maps. No camera marks, no picker: the map is
      where a camera is made, so there is nothing to offer instead of an
      empty list. */
-  const cell = h('td.vz-c-lens', {}, [
+  const cell = h('td.vz-c-lens', { 'data-label': covLabel('vz-c-lens') }, [
     cellInput(field('input.vz-lens', {
       type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off',
       'data-shot-field': 'lens', 'aria-label': 'Lens'
@@ -443,7 +510,7 @@ function renderShotRow(shot, i, total, cams = []) {
       Shots.camOf(shot, cams) ? shot.cam : '', 'data-shot-field', 'cam', 'Camera on the blocking map'));
   }
   row.append(cell);
-  row.append(h('td.vz-c-desc', {}, [
+  row.append(h('td.vz-c-desc', { 'data-label': covLabel('vz-c-desc') }, [
     cellInput(field('textarea.vz-desc', {
       rows: '2', placeholder: 'One line of what the audience sees',
       'data-shot-field': 'description', 'aria-label': 'What we see'
@@ -716,15 +783,29 @@ function renderStoryboard(scenes, shots, frames) {
   const byShot = Shots.framesByShot();
   for (const group of Shots.shotsByScene(scenes)) {
     if (!group.shots.length) continue;
+    const sid = group.scene ? group.scene.id : '';
+    const open = boardOpen.has(sid);
+    const nFrames = group.shots.reduce((n, s) => n + (byShot.get(s.id) || []).length, 0);
     const block = h('div.vz-bd-scene.k-panel');
     block.append(h('div.vz-scene-head.k-panel-head' + (group.scene ? '' : '.is-orphan'), {}, [
       ...(group.scene
         ? sceneIdent(group.scene)
         : [badge({ label: '!', tag: true, tone: 'warn', class: 'vz-scene-no' }),
           h('span.vz-scene-slug', { text: 'Scene deleted in the breakdown' })]),
-      h('span.vz-scene-count', { text: plural(group.shots.length, 'shot', 'shots') })
+      h('span.vz-scene-count', { text: plural(group.shots.length, 'shot', 'shots') + ' · ' + plural(nFrames, 'frame', 'frames') }),
+      /* On a phone the scene's shots are one sideways row of cards, so
+         the head offers the whole set as a stack. A desk grid already
+         shows every card, and the button is hidden there. */
+      group.shots.length > 1 ? button({
+        label: open ? 'Show as a row' : 'View all (' + group.shots.length + ')',
+        icon: open ? 'unfold_less' : 'unfold_more', size: 'sm', variant: 'ghost',
+        action: 'vz-board-all', class: 'vz-board-all',
+        attrs: { 'data-scene': sid, 'aria-expanded': open ? 'true' : 'false' }
+      }) : null
     ]));
-    const strip = h('div.vz-strip.k-panel-body');
+    const strip = h('div.vz-strip.k-panel-body' + (open ? '.is-open' : ''), {
+      role: 'list', 'aria-label': 'Shots and frames' + (group.scene ? ', scene ' + (group.scene.number || '') : '')
+    });
     group.shots.forEach((shot) => strip.append(renderShotColumn(shot, byShot.get(shot.id) || [])));
     block.append(strip);
     wrap.append(block);
@@ -760,10 +841,13 @@ function renderNoFrames(firstShotId) {
 }
 
 function renderShotColumn(shot, frames) {
-  const col = h('article.vz-shotcol', { 'data-shot': shot.id });
+  const col = h('article.vz-shotcol', { 'data-shot': shot.id, role: 'listitem' });
+  /* The card's head is the parent shot, read off it: number, size,
+     lens and the move as a chip. Nothing is typed twice. */
   col.append(h('div.vz-shotcol-head', {}, [
     badge({ label: shot.number || '—', tag: true, class: 'vz-shotcol-no' }),
-    h('span.vz-shotcol-spec', { text: sizeLabel(shot.size) + ' · ' + shot.movement }),
+    h('span.vz-shotcol-spec', { text: [sizeLabel(shot.size), String(shot.lens || '').trim()].filter(Boolean).join(' · ') }),
+    shot.movement ? h('span.vz-shotcol-move.k-mono', { text: shot.movement }) : null,
     h('span.vz-shotcol-count', { text: plural(frames.length, 'frame', 'frames') })
   ]));
   // Always present, even when empty (CSS hides it): the shot-list's
@@ -788,13 +872,14 @@ function renderFrame(frame, shot, i, total, cams) {
   const slate = h('div.vz-frame-slate');
   const cam = Shots.camOf(shot, cams || Shots.sceneCameras(shot.sceneId));
   const rigLabel = [String(shot.rig || '').trim(), cam ? cam.name : ''].filter(Boolean).join(' · ');
-  slate.append(
+  // Element.append(null) prints "null" (CLAUDE.md row 22): filter first.
+  slate.append(...[
     h('span.vz-frame-badge.k-mono', { text: (shot.number || '—') + String.fromCharCode(97 + i) + '  ' + sizeLabel(shot.size) }),
     shot.lens ? h('span.vz-frame-lens.k-mono', { text: shot.lens }) : null,
     refView(frame.ref),
     h('span.vz-frame-move.k-mono', { text: shot.movement }),
     rigLabel ? h('span.vz-frame-rig.k-mono', { text: rigLabel }) : null
-  );
+  ].filter(Boolean));
   card.append(slate);
 
   card.append(kitField({
@@ -1197,6 +1282,26 @@ delegate(document, 'click', '[data-action="vz-shot-status"]', (e, el) => {
   Shots.updateShot(id, { done: !shot.done });
   render('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-status"]');
 });
+/* The coverage view: filter and density. Both are module state (see
+   VIEW STATE above) and repaint the page with focus kept on the control. */
+delegate(document, 'click', '[data-action="vz-cov-filter"]', (e, el) => {
+  const v = el.dataset.value;
+  if (!COV_FILTERS.some((f) => f.value === v) || v === covFilter) return;
+  covFilter = v;
+  render('[data-action="vz-cov-filter"][data-value="' + CSS.escape(v) + '"]');
+});
+delegate(document, 'click', '[data-action="vz-cov-compact"]', () => {
+  covCompact = !covCompact;
+  render('[data-action="vz-cov-compact"]');
+});
+/* The phone board's "View all": one scene's strip from a sideways row
+   to a stack. A desk shows every shot already; the button is not drawn
+   there (visualize.css), so this is placement, not a second feature. */
+delegate(document, 'click', '[data-action="vz-board-all"]', (e, el) => {
+  const id = el.dataset.scene || '';
+  if (boardOpen.has(id)) boardOpen.delete(id); else boardOpen.add(id);
+  render('[data-action="vz-board-all"][data-scene="' + CSS.escape(id) + '"]');
+});
 delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => { Shots.moveShot(shotIdOf(el), -1); render(); });
 delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => { Shots.moveShot(shotIdOf(el),  1); render(); });
 delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
@@ -1230,6 +1335,12 @@ delegate(document, 'change', '[data-shot-field]', (e, el) => {
     const col = document.querySelector('.vz-shotcol[data-shot="' + id + '"]');
     const line = col && col.querySelector('.vz-shotcol-desc');
     if (line) line.textContent = value;
+  }
+  if (key === 'lens') {
+    // The board card's head names the lens; patched for the same reason.
+    const shot = Shots.listShots().find((s) => s.id === id);
+    const spec = document.querySelector('.vz-shotcol[data-shot="' + id + '"] .vz-shotcol-spec');
+    if (shot && spec) spec.textContent = [sizeLabel(shot.size), String(shot.lens || '').trim()].filter(Boolean).join(' · ');
   }
 });
 

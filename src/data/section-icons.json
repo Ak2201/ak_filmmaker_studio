@@ -106,7 +106,13 @@
     "group",
     "local_hospital",
     "local_police",
-    "call"
+    "call",
+    "density_small",
+    "zoom_in",
+    "zoom_out",
+    "fit_screen",
+    "unfold_more",
+    "unfold_less"
   ],
   "pages": {
     "breakdown": {

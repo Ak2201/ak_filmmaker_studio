@@ -871,3 +871,23 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
 .dlg.dlg.k-modal .k-control .dlg-field:focus-visible { outline: 0; }
 .k-table tbody th { font-weight: 500; color: var(--ink); white-space: nowrap; }
 .k-table .k-table-empty { color: var(--ink-muted); text-align: left; }
+
+/* SEGMENTED · RADIO — the segmented look over NATIVE radios, for a form
+   whose FormData reads the choice (budget's category and payment
+   chips). <label class="k-seg-btn"><input type="radio">…</label> inside
+   .k-seg.k-seg--radio; the checked one takes the selected fill.
+   --wrap lets a long set wrap instead of scrolling. Additive. */
+.k-seg--radio .k-seg-btn { position: relative; }
+.k-seg--radio .k-seg-btn > input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; opacity: 0; cursor: pointer;
+}
+.k-seg--radio .k-seg-btn:has(> input:checked) {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
+  font-weight: 600;
+}
+.k-seg--radio .k-seg-btn:has(> input:focus-visible) { outline: var(--focus); outline-offset: 1px; }
+.k-seg--wrap { flex-wrap: wrap; overflow: visible; }
+.k-seg--wrap .k-seg-btn { flex: 0 1 auto; }

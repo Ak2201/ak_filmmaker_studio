@@ -17,6 +17,7 @@
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { button } from './kit/index.js';
+import { breakdownAiPill } from './breakdown-overview.js';
 import { loadScript, pageCount, formatPages, formatRuntime, elementLines } from '../lib/script.js';
 import {
   sliceScript, headingParts, castMatrix, cueName, formatDuration, titleCase,
@@ -139,7 +140,8 @@ export function renderScriptOverview(scenes, opts = {}) {
     h('h2.bd-h2', { text: 'Screenplay Analysis' }),
     h('p.bd-sub', { text: 'What the script is made of, worked out from its pages. Nothing here is typed twice: change the script and this follows.' }),
     h('p.bdo-onward', {}, [
-      hasScript ? button({ variant: 'primary', pill: true, action: 'run-breakdown-script', class: 'bd-cta', label: scenes.length ? 'Run breakdown again' : 'Run breakdown' }) : null,
+      hasScript ? button({ variant: 'primary', pill: true, action: 'run-breakdown-script', class: 'bd-cta', label: 'Manual breakdown', title: scenes.length ? 'Run the breakdown again' : 'Run the breakdown' }) : null,
+      hasScript ? breakdownAiPill('#script') : null,
       button({ href: 'screenplay.html', label: 'Back to the Screenplay Writer' }),
       hasScript ? button({ href: 'write.html?stay=1#coverage', label: 'AI coverage report' }) : null
     ].filter(Boolean)),

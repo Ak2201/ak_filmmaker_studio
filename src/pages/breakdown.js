@@ -39,7 +39,7 @@ import '../styles/breakdown-run.css';
 import { flushStorage } from '../lib/store.js';
 import { runBreakdown } from '../lib/breakdown-run.js';
 import { commitImportedScript } from '../lib/script-commit.js';
-import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
+import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
 import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
@@ -1637,13 +1637,26 @@ function toastRun(res) {
     });
   } else StudioUI.toast(said);
 }
-delegate(document, 'click', '[data-action=run-breakdown]', async () => {
-  let res;
-  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
-  await flushStorage().catch(() => {});
-  toastRun(res);
-  render('#overview');
+/* Manual breakdown and Breakdown with AI share one chain
+   (src/ui/breakdown-flow.js): the run (this toast), then shots and story
+   as reviews in the Desk. The module loads at the click, so first paint
+   carries none of it. `tab` is where the page repaints afterwards. */
+const flowHooks = (tab) => ({
+  onRun: (res) => {
+    if (!res) return;
+    flushStorage().catch(() => {});
+    scriptDoc = null;
+    toastRun(res);
+    render(tab);
+  },
+  refresh: () => { scriptDoc = null; render(tab); }
 });
+setFlowHooks(flowHooks);
+async function manualFlow(tab) {
+  try { await (await import('../ui/breakdown-flow.js')).manualBreakdown(flowHooks(tab)); }
+  catch (e) { console.warn('[breakdown] manual', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); }
+}
+delegate(document, 'click', '[data-action=run-breakdown]', () => manualFlow('#overview'));
 delegate(document, 'click', '[data-action=sum-view]', (e, btn) => {
   setView(btn.dataset.view);
   render('#' + btn.id);
@@ -1696,13 +1709,6 @@ function wireScriptParts(bb, ch) {
     blankElement
   });
 }
-delegate(document, 'click', '[data-action=run-breakdown-script]', async () => {
-  let res;
-  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
-  await flushStorage().catch(() => {});
-  scriptDoc = null;
-  toastRun(res);
-  render('#script');
-});
+delegate(document, 'click', '[data-action=run-breakdown-script]', () => manualFlow('#script'));
 
 render();

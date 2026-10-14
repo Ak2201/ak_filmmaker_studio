@@ -16,19 +16,12 @@
   margin: 0 auto;
   padding: var(--s5) var(--gutter) var(--s9);
 }
-.el-main .bd-head { padding-inline: 0; }
 
 .el-stats { margin: var(--s4) 0 var(--s5); }
 
 /* ---- conflicts ---------------------------------------------- */
-.el-conflicts {
-  margin: 0 0 var(--s5);
-  padding: var(--s4);
-  background: var(--danger-wash);
-  border: 1px solid var(--danger);
-  border-left-width: 4px;
-  border-radius: var(--sk-radius, var(--radius));
-}
+.el-conflicts { margin: 0 0 var(--s5); display: grid; gap: var(--s2); }
+.el-conflicts > .el-h2 { margin-bottom: var(--s1); }
 .el-conflicts ul { margin: var(--s2) 0; padding-left: 1.2em; color: var(--ink-body); }
 .el-conflicts p { margin: var(--s2) 0 0; color: var(--ink-body); font-size: var(--t-small); }
 

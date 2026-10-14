@@ -698,3 +698,20 @@
   .ct-gl-scene { grid-template-columns: minmax(0, 1fr) auto; }
   .ct-gl-no { grid-column: 1 / -1; }
 }
+
+/* ------------------------------------------------------------
+   6. THE SIDES PACKET — built for the print and removed after it.
+   Never on screen; under body.ct-sides-printing it is the only thing
+   on the paper.
+   ------------------------------------------------------------ */
+.ct-sides-packet { display: none; }
+@media print {
+  body.ct-sides-printing .ct-sides-packet { display: block; color: var(--print-ink); }
+  body.ct-sides-printing #main > *:not(.ct-sides-packet):not(#pdf-masthead) { display: none !important; }
+  .ct-sp-head { display: flex; justify-content: space-between; border-bottom: 2px solid var(--print-ink); padding-bottom: var(--s2); margin-bottom: var(--s3); }
+  .ct-sp-title { font-weight: 700; }
+  .ct-sp-scene { break-inside: avoid; page-break-inside: avoid; border-bottom: 1px solid var(--print-rule); padding: var(--s3) 0; }
+  .ct-sp-bar { display: flex; gap: var(--s3); font-weight: 700; }
+  .ct-sp-slug { flex: 1; }
+  .ct-sp-syn, .ct-sp-el { margin: var(--s1) 0 0; }
+}

@@ -1,50 +1,40 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sampleFigures } from './src/lib/sample-figures.js';
 import { PLAN_ORDER, planName, LIST_PRICE, inr } from './src/lib/plans.js';
 import { loadMatrixModule } from './scripts/make-plan-features-sql.mjs';
 
 /* ============================================================
-   THE ICON FONT, DERIVED — one <link> for every page, from the data
+   THE ICON FONT, DERIVED AND SELF-HOSTED — one subset for every page
    ------------------------------------------------------------
    Every map in the app (the launcher, the shell's rail, phase menu
    and breadcrumb, the command palette) draws its marks through
    iconSpan() in src/ui/icon.js as Material Symbols LIGATURES: the
    span's text is the symbol's name and the font turns it into a
    glyph. So a page that does not load the font prints the names —
-   "home", "auto_stories", "format_list_numbered" — as words, over
-   the labels beside them. story.html and screening.html shipped
-   exactly that, because the <link> was hand-pasted into seventeen
-   HTML files and those two were written after the paste.
+   "home", "auto_stories" — as words (base.css hides them until
+   chrome.js sees the face load; see `sym-ready`).
 
-   A hand-kept list in seventeen places is the bug CLAUDE.md names
-   about the steps living in three. So the tag is injected here, at
-   build and in dev, into every page that renders the app (#app) and
-   already uses Google Fonts, and the `icon_names=` subset is read off
-   navigation.json — the same file the marks come from. Add a module
-   with a new `sym` and the font gains it with no other edit.
+   The face is injected here, at build and in dev, into every page
+   that renders the app (#app), and the subset is read off
+   navigation.json and section-icons.json — the same files the marks
+   come from. Add a module with a new `sym` and the font gains it with
+   no other edit.
 
-   Two things in the URL are load-bearing and both look like noise:
+   SELF-HOSTED SINCE 14 OCT 2026 (owner: no Google Fonts host). The
+   cut is scripts/lib/icon-font.mjs — HarfBuzz, from the fontsource
+   package — and it is STRICTER than the API it replaces: Google
+   answered a misspelt name with 200 and the whole 1.2MB face, so the
+   only tell was the size; here a name that does not shape to one
+   glyph FAILS THE BUILD and names the word. ~11KB, emitted as one
+   hashed asset, preloaded, declared in an inline @font-face.
 
-   `icon_names=` makes Google return a font containing only those
-   symbols: ~14KB against 1.2MB for the full face, measured, on a file
-   that sits in first paint. AND A MISSPELT NAME DOES NOT FAIL — the
-   API answers 200 and serves the WHOLE face, so neither the status
-   nor the page tells you; the only tell is the size. The shape check
-   below catches a typo that is not a legal name at all; a legal name
-   that is not a real symbol still has to be verified against the API
-   before it ships.
-
-   `display=block` rather than `swap`: under swap a slow network
-   paints the words across the map before the font arrives. Block
-   renders nothing for up to three seconds instead, which is the
-   right trade for a mark that is decorative — every icon is
-   aria-hidden and sits beside its own text label.
-
-   Needs no CSP change: style-src already allows fonts.googleapis.com
-   and font-src already allows fonts.gstatic.com.
+   `font-display: block`, as before: a mark is decorative (aria-hidden
+   beside its own label), and painting its NAME for a frame is worse
+   than painting nothing.
    ============================================================ */
 function materialSymbols() {
   /* The site gate's build flag, stamped into every app page so the two
@@ -63,18 +53,82 @@ function materialSymbols() {
   const list = [...names].sort();
   const bad = list.filter((n) => !/^[a-z0-9_]+$/.test(n));
   if (bad.length) throw new Error('navigation.json / section-icons.json: not a Material Symbols name: ' + bad.join(', '));
-  const href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0'
-             + '&icon_names=' + list.join(',') + '&display=block';
+  let font = null;   // { file, bytes }
+  let command = 'build';
+  const ready = (async () => {
+    const { buildIconFont } = await import('./scripts/lib/icon-font.mjs');
+    const { woff } = await buildIconFont(list);
+    const hash = createHash('sha256').update(woff).digest('hex').slice(0, 10);
+    font = { file: 'assets/material-symbols-' + hash + '.woff', bytes: Buffer.from(woff) };
+    return font;
+  })();
+  /* The app pages only: the legal documents and the redirect stubs draw
+     no marks, and the extension panel never had the font. */
+  const isAppPage = (html) => html.includes('id="app"') && !html.includes('/src/pages/panel.js');
   return {
     name: 'fms-material-symbols',
-    transformIndexHtml(html) {
-      // The app pages only: the legal documents and the redirect stubs
-      // draw no marks, and the extension panel loads no remote font.
-      if (!html.includes('id="app"') || !html.includes('fonts.googleapis.com')) return;
+    configResolved(c) { command = c.command; },
+    async buildStart() {
+      await ready;
+      if (command !== 'build') return;
+      this.emitFile({ type: 'asset', fileName: font.file, source: font.bytes });
+    },
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const f = await ready;
+        if (!req.url || !req.url.endsWith('/' + f.file)) return next();
+        res.setHeader('Content-Type', 'font/woff');
+        res.end(f.bytes);
+      });
+    },
+    async transformIndexHtml(html) {
+      if (!isAppPage(html)) return;
+      const f = await ready;
       return [
         { tag: 'meta', attrs: { name: 'fms-site-gate', content: siteGate }, injectTo: 'head' },
-        { tag: 'link', attrs: { rel: 'stylesheet', href }, injectTo: 'head' }
+        { tag: 'link', attrs: { rel: 'preload', href: f.file, as: 'font', type: 'font/woff', crossorigin: '' }, injectTo: 'head' },
+        { tag: 'style', attrs: { 'data-fms-icons': '' }, injectTo: 'head',
+          children: "@font-face{font-family:'Material Symbols Rounded';font-style:normal;font-weight:400;font-display:block;src:url(" + f.file + ") format('woff')}" }
       ];
+    }
+  };
+}
+
+/* ============================================================
+   FONT PRELOADS — the three faces every page paints above the fold
+   ------------------------------------------------------------
+   src/styles/fonts.css declares the faces; a declared face is only
+   fetched once layout finds text in it, which is AFTER the CSS has
+   downloaded and parsed. For the three that every page paints at once —
+   Inter (body), Space Grotesk (headings), JetBrains Mono (labels and
+   figures), latin subset — that is a visible swap on every load, so
+   they are preloaded. Nothing else is: Courier Prime, Playfair italic
+   and the Tamil subsets stay on demand.
+
+   The URLs are hashed, so this reads them out of the bundle at the end
+   of the build rather than naming them. Dev serves the CSS unhashed
+   and gets no preload, which is fine.
+   ============================================================ */
+const PRELOAD_FACES = ['inter-latin-wght-normal', 'space-grotesk-latin-wght-normal', 'jetbrains-mono-latin-wght-normal'];
+function fontPreloads() {
+  return {
+    name: 'fms-font-preloads',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx || !ctx.bundle) return;
+        const where = String(ctx.path || ctx.filename || '');
+        if (/panel\.html$/.test(where)) return;
+        if (!html.includes('id="app"') && !/(^|\/)start\.html$/.test(where)) return;
+        const tags = [];
+        for (const face of PRELOAD_FACES) {
+          const a = Object.values(ctx.bundle).find((f) => f.type === 'asset' && /\.woff2$/.test(f.fileName)
+            && [...(f.originalFileNames || []), f.name || ''].some((n) => n.includes(face)));
+          if (!a) throw new Error('fms-font-preloads: no bundled asset for ' + face + ' — did fonts.css stop declaring it?');
+          tags.push({ tag: 'link', attrs: { rel: 'preload', href: a.fileName, as: 'font', type: 'font/woff2', crossorigin: '' }, injectTo: 'head' });
+        }
+        return tags;
+      }
     }
   };
 }
@@ -471,6 +525,7 @@ export default defineConfig({
      ------------------------------------------------------------ */
   plugins: [
     materialSymbols(),
+    fontPreloads(),
     stepIndex(),
     brandPlugin(),
     studySlicePlugin(),
@@ -484,7 +539,7 @@ export default defineConfig({
       devOptions: { enabled: false },   // no worker under `vite dev`
       injectManifest: {
         // The app shell, all four pages, the manifest and the icons.
-        globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest,woff2}'],
+        globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest,woff,woff2}'],
         // Recorded media (public/media/**) is fetched on demand, never precached.
         globIgnores: ['media/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024

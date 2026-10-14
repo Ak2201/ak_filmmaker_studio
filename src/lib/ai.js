@@ -1764,6 +1764,12 @@ export function planCoverage(elements, { batchChars = COVERAGE_BATCH_CHARS } = {
   };
 }
 
+/* WHO THE FILM IS FOR. A project's own audience (story.audience) when the
+   writer has named one; otherwise the wording coverage has always used,
+   so a studio that never sets it sees no change. */
+const DEFAULT_AUDIENCE = 'a Tamil theatrical and OTT audience';
+const audienceOf = (job) => str(job && job.audience, 200) || DEFAULT_AUDIENCE;
+
 const ASPECTS = ['premise', 'structure', 'character', 'dialogue', 'pacing', 'marketability'];
 export const COVERAGE_ASPECTS = ASPECTS.slice();
 export const VERDICTS = ['pass', 'consider', 'recommend'];
@@ -1831,8 +1837,8 @@ export function buildCoverageBatchPrompt(job) {
   parts.push('For EVERY scene below, write a one- or two-sentence summary keyed by its scene number.');
   parts.push('Then list up to twelve pieces of evidence a reader would put in coverage —');
   parts.push('premise, structure (an act break, a midpoint, a turn), character (what the');
-  parts.push('protagonist wants and needs), dialogue, pacing, and how it would play to a');
-  parts.push('Tamil theatrical or OTT audience. Each one quotes the scene it cites.');
+  parts.push('protagonist wants and needs), dialogue, pacing, and how it would play to');
+  parts.push(audienceOf(job) + '. Each one quotes the scene it cites.');
   parts.push('');
   for (const s of job.scenes) {
     parts.push('--- SCENE ' + s.n + ' ---');
@@ -1924,7 +1930,7 @@ function pointsSchema(desc) {
   };
 }
 
-function coverageSynthSchema() {
+function coverageSynthSchema(audience = DEFAULT_AUDIENCE) {
   const section = (desc) => ({
     type: 'object',
     additionalProperties: false,
@@ -1979,7 +1985,7 @@ function coverageSynthSchema() {
       },
       dialogue: section('two or three sentences on the dialogue'),
       pacing: section('two or three sentences on the pacing'),
-      marketability: section('two or three sentences on how it plays to a Tamil theatrical and OTT audience'),
+      marketability: section('two or three sentences on how it plays to ' + audience),
       verdict: { type: 'string', enum: VERDICTS.slice() },
       verdictWhy: { type: 'string', description: 'one or two sentences' }
     }
@@ -2045,7 +2051,7 @@ export async function coverageSynthesis(job, { onStatus, signal } = {}) {
   const { parsed, truncated, model } = await callModel({
     system: COVERAGE_SYSTEM.replace('this call is one part.', 'this call is the report.'),
     user: buildCoverageSynthPrompt(job),
-    schema: coverageSynthSchema(),
+    schema: coverageSynthSchema(audienceOf(job)),
     maxTokens: 12000,
     effort: 'high',
     onStatus, signal,
@@ -2125,7 +2131,7 @@ export async function runCoverage(job, { onStatus, onCheckpoint, signal, batchCh
     let r;
     try {
       r = await coverageBatch({ scenes, part: b + 1, parts: plan.batches.length,
-        title: job.title, context: job.context }, { onStatus, signal });
+        title: job.title, context: job.context, audience: job.audience }, { onStatus, signal });
     } catch (e) {
       if (e && e.kind === 'aborted') throw stopped();
       throw e;
@@ -2145,7 +2151,7 @@ export async function runCoverage(job, { onStatus, onCheckpoint, signal, batchCh
   let syn;
   try {
     syn = await coverageSynthesis({ summaries, evidence, parts: plan.batches.length,
-      title: job.title, context: job.context, scenes: plan.scenes }, { onStatus, signal });
+      title: job.title, context: job.context, audience: job.audience, scenes: plan.scenes }, { onStatus, signal });
   } catch (e) {
     if (e && e.kind === 'aborted') throw stopped();
     throw e;
@@ -2508,4 +2514,327 @@ export async function voiceCheck(job, { onStatus, signal, batchChars } = {}) {
   }
   return { character, voice, breaks, removed, remapped, lines: lines.length,
     requests: plan.batches.length, truncated, model };
+}
+
+
+/* ------------------------------------------------------------
+   PHASE 2 JOBS — genre and comparables, scene notes, breakdown tags
+   ------------------------------------------------------------
+   All three read the script the way coverage does (the same numbered
+   scenes, the same batches) and are held to the same rule: a claim
+   about the script must quote it, and a quote that is not in the scene
+   it names is removed and counted. WHAT THEY CANNOT CHECK is said in
+   the result: comparables are the model's memory of films, so the page
+   tells the writer to check each title before it goes in a pitch.
+   Nothing here writes; ai-tasks.js applies what is accepted.
+   ------------------------------------------------------------ */
+export const BUDGET_TIERS = ['micro', 'low', 'mid', 'high'];
+
+/** A spread of the script to read for genre: every heading, and as much
+    scene text as the budget allows, taken evenly so the end is not lost. */
+export function genreSample(elements, { maxChars = 24000 } = {}) {
+  const scenes = coverageScenes(elements);
+  const total = scenes.reduce((n, sc) => n + sc.text.length, 0);
+  if (total <= maxChars) return { scenes, sampled: false };
+  const each = Math.max(240, Math.floor(maxChars / Math.max(1, scenes.length)));
+  return { scenes: scenes.map((sc) => ({ ...sc, text: sc.text.slice(0, each) })), sampled: true };
+}
+
+function genreSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['genre', 'subgenres', 'tone', 'budgetTier', 'budgetWhy', 'audience', 'comps', 'evidence'],
+    properties: {
+      genre: { type: 'string', description: 'the one primary genre, plain words' },
+      subgenres: { type: 'array', items: { type: 'string' }, description: 'up to three' },
+      tone: { type: 'string', description: 'a few words' },
+      budgetTier: { type: 'string', enum: BUDGET_TIERS.slice(), description: 'what the PAGE asks for: micro, low, mid or high' },
+      budgetWhy: { type: 'string', description: 'one sentence naming the locations, crowds, effects or stunts that set the tier' },
+      audience: { type: 'string', description: 'who this plays to, in one short phrase' },
+      comps: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['title', 'year', 'why'],
+          properties: {
+            title: { type: 'string' },
+            year: { type: 'string', description: 'release year, or empty if unsure' },
+            why: { type: 'string', description: 'one sentence: what it shares with this script' }
+          }
+        }
+      },
+      evidence: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['scene', 'quote', 'note'],
+          properties: {
+            scene: { type: 'string', description: 'the scene number given' },
+            quote: { type: 'string', description: 'a short span copied VERBATIM from that scene' },
+            note: { type: 'string', description: 'one sentence: what in it signals the genre or tone' }
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildGenrePrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+  parts.push('Place the screenplay' + (job.title ? ' "' + job.title + '"' : '') + ' in the market.');
+  if (job.logline) parts.push('LOGLINE: ' + job.logline);
+  if (job.audience) parts.push('THE WRITER SAYS IT IS FOR: ' + job.audience);
+  parts.push('');
+  parts.push('Give: the primary genre and up to three subgenres, the tone, the budget tier the PAGE asks');
+  parts.push('for (micro, low, mid or high — from what is written, not from what you hope), who it plays to,');
+  parts.push('and three to five comparable films.');
+  parts.push('');
+  parts.push('COMPARABLES: name only films you are certain exist, with the year only if you are sure of it.');
+  parts.push('Fewer is better than a guess. The writer will check every title.');
+  parts.push('EVIDENCE: up to four short quotes copied VERBATIM from the scenes below, each with the scene');
+  parts.push('number, showing why you chose that genre and tone.');
+  parts.push('');
+  for (const sc of job.scenes) { parts.push('--- SCENE ' + sc.n + ' ---'); parts.push(sc.text); parts.push(''); }
+  return parts.join('\n');
+}
+
+/**
+ * job { scenes:[{n, heading, text}], title, logline, audience, context }
+ * Resolves to { genre, subgenres, tone, budgetTier, budgetWhy, audience,
+ * comps:[{title, year, why}], evidence:[{scene, quote, note}], removed,
+ * truncated, model }. WRITES NOTHING.
+ */
+export async function genreComps(job, { onStatus, signal } = {}) {
+  const scenes = (job && Array.isArray(job.scenes) ? job.scenes : []).filter((sc) => sc && sc.text);
+  if (!scenes.length) throw new AIError('There are no scenes in the script yet, so there is nothing to place.', 'noscenes');
+  const checkers = new Map(scenes.map((sc) => [String(sc.n), quoteChecker(sc.text)]));
+  const order = scenes.map((sc) => String(sc.n));
+  const { parsed, truncated, model } = await callModel({
+    system: 'You are a development executive placing a screenplay in the market. You say what the page shows, you quote it, and you name only films you are certain of.',
+    user: buildGenrePrompt({ ...job, scenes }),
+    schema: genreSchema(),
+    maxTokens: 4000,
+    effort: 'medium',
+    onStatus, signal,
+    progress: () => 'Placing the script…'
+  });
+  let removed = 0;
+  const evidence = [];
+  for (const e of Array.isArray(parsed.evidence) ? parsed.evidence : []) {
+    if (!e || typeof e !== 'object') continue;
+    const note = str(e.note, 300);
+    const at = placeQuote(str(e.quote, 400), String(e.scene ?? '').trim(), checkers, order);
+    if (!note || !at) { removed++; continue; }
+    evidence.push({ scene: at.scene, quote: at.quote, note });
+  }
+  const seen = new Set();
+  const comps = [];
+  for (const c of Array.isArray(parsed.comps) ? parsed.comps : []) {
+    if (!c || typeof c !== 'object') continue;
+    const title = str(c.title, 120);
+    if (!title || seen.has(title.toLowerCase())) continue;
+    seen.add(title.toLowerCase());
+    const year = /^\d{4}$/.test(str(c.year, 8)) ? str(c.year, 8) : '';
+    comps.push({ title, year, why: str(c.why, 240) });
+    if (comps.length === 5) break;
+  }
+  const genre = str(parsed.genre, 80);
+  if (!genre) throw new AIError('The reply named no genre, so nothing is shown.', 'empty-result');
+  return {
+    genre,
+    subgenres: (Array.isArray(parsed.subgenres) ? parsed.subgenres : []).map((x) => str(x, 60)).filter(Boolean).slice(0, 3),
+    tone: str(parsed.tone, 120),
+    budgetTier: BUDGET_TIERS.includes(parsed.budgetTier) ? parsed.budgetTier : '',
+    budgetWhy: str(parsed.budgetWhy, 300),
+    audience: str(parsed.audience, 160),
+    comps, evidence, removed, truncated, model
+  };
+}
+
+/* ---- scene notes and breakdown tags: one scene-batched read ---- */
+
+const SCENE_READ_OVERHEAD = 1800;
+
+/** The cost of reading the whole script in coverage-sized batches, for
+    the Desk's input panel: no summary pass, so one request per batch. */
+export function planSceneRead(elements, opts) {
+  const plan = planCoverage(elements, opts);
+  const inChars = plan.chars + plan.batches.length * SCENE_READ_OVERHEAD;
+  return { ...plan, requests: plan.batches.length, tokensIn: Math.ceil(inChars / 4) };
+}
+
+function sceneNotesSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['notes'],
+    properties: {
+      notes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['scene', 'note', 'cut', 'quote'],
+          properties: {
+            scene: { type: 'string', description: 'the scene number given, copied exactly' },
+            note: { type: 'string', description: 'one sentence a script reader would write: what the scene does, or what is weak in it' },
+            cut: { type: 'boolean', description: 'true only if the story loses nothing without this scene' },
+            quote: { type: 'string', description: 'a short span copied VERBATIM from that scene that the note rests on' }
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildSceneNotesPrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+  parts.push('Part ' + job.part + ' of ' + job.parts + ' of the screenplay' + (job.title ? ' "' + job.title + '"' : '') + '.');
+  parts.push('Write ONE note for EVERY scene below, keyed by its scene number. Each note is a single sentence');
+  parts.push('and rests on a short quote copied VERBATIM from that scene. Set `cut` to true only when the story');
+  parts.push('genuinely loses nothing without the scene; most scenes are false. Be specific and fair.');
+  parts.push('');
+  for (const sc of job.scenes) { parts.push('--- SCENE ' + sc.n + ' ---'); parts.push(sc.text); parts.push(''); }
+  return parts.join('\n');
+}
+
+/**
+ * One batch. job { scenes:[{n, heading, text}], part, parts, title, context }
+ * Resolves to { notes:[{scene, note, cut, quote}], removed, truncated, model }.
+ * A note whose quote is not in its scene keeps its words but loses the
+ * quote and cannot set `cut`: a cut recommendation needs evidence.
+ */
+export async function sceneNotesBatch(job, { onStatus, signal } = {}) {
+  const scenes = (job && Array.isArray(job.scenes) ? job.scenes : []).filter((sc) => sc && sc.text);
+  if (!scenes.length) throw new AIError('There are no scenes in this part to read.', 'noscenes');
+  const checkers = new Map(scenes.map((sc) => [String(sc.n), quoteChecker(sc.text)]));
+  const known = new Set(checkers.keys());
+  const { parsed, truncated, model } = await callModel({
+    system: 'You are a script reader writing one note per scene. Every note rests on a quote copied character for character from that scene; you do not invent plot.',
+    user: buildSceneNotesPrompt({ ...job, scenes }),
+    schema: sceneNotesSchema(),
+    maxTokens: 8000,
+    effort: 'medium',
+    onStatus, signal,
+    progress: (sofar) => 'Reading part ' + job.part + ' of ' + job.parts + ' — ' + (sofar.match(/"note"/g) || []).length + ' of ' + scenes.length + ' scenes'
+  });
+  let removed = 0;
+  const seen = new Set();
+  const notes = [];
+  for (const n of Array.isArray(parsed.notes) ? parsed.notes : []) {
+    if (!n || typeof n !== 'object') continue;
+    const scene = String(n.scene ?? '').trim();
+    const note = str(n.note, 300);
+    if (!known.has(scene) || !note || seen.has(scene)) continue;
+    seen.add(scene);
+    let quote = unwrapQuote(str(n.quote, 300));
+    const grounded = !!quote && checkers.get(scene)(quote);
+    if (!grounded) { removed++; quote = ''; }
+    notes.push({ scene, note, cut: n.cut === true && grounded, quote });
+  }
+  return { notes, removed, truncated, model };
+}
+
+function breakdownTagsSchema(categoryIds) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['elements'],
+    properties: {
+      elements: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['scene', 'category', 'name', 'quote'],
+          properties: {
+            scene: { type: 'string', description: 'the scene number given, copied exactly' },
+            category: { type: 'string', enum: categoryIds.slice() },
+            name: { type: 'string', description: 'the element, as a production would list it: "kettle", "red saree", "auto-rickshaw"' },
+            quote: { type: 'string', description: 'the words in that scene that call for it, copied VERBATIM' }
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildBreakdownTagsPrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+  parts.push('Part ' + job.part + ' of ' + job.parts + ' of the screenplay' + (job.title ? ' "' + job.title + '"' : '') + '.');
+  parts.push('Break each scene down as a first assistant director would. List every element the scene');
+  parts.push('CALLS FOR in these categories:');
+  for (const c of job.categories) parts.push('· ' + c.id + ' — ' + c.label);
+  parts.push('');
+  parts.push('Each element gives its scene number, its category, a short name, and the words in the scene');
+  parts.push('that call for it, copied VERBATIM. An element with no words on the page behind it is invented');
+  parts.push('and will be removed. Do not list the same element twice for one scene. `cast` is a speaking or');
+  parts.push('named character; `extras` is background people by group ("crowd at the bus stop").');
+  parts.push('');
+  for (const sc of job.scenes) { parts.push('--- SCENE ' + sc.n + ' ---'); parts.push(sc.text); parts.push(''); }
+  return parts.join('\n');
+}
+
+/**
+ * One batch. job { scenes, part, parts, title, context, categories:[{id,label}] }
+ * Resolves to { elements:[{scene, category, name, quote}], removed, truncated, model }.
+ */
+export async function breakdownTagsBatch(job, { onStatus, signal } = {}) {
+  const scenes = (job && Array.isArray(job.scenes) ? job.scenes : []).filter((sc) => sc && sc.text);
+  const cats = (job && Array.isArray(job.categories) ? job.categories : []).filter((c) => c && c.id);
+  if (!scenes.length) throw new AIError('There are no scenes in this part to read.', 'noscenes');
+  if (!cats.length) throw new AIError('No breakdown categories were given.', 'nocontent');
+  const checkers = new Map(scenes.map((sc) => [String(sc.n), quoteChecker(sc.text)]));
+  const ids = new Set(cats.map((c) => c.id));
+  const { parsed, truncated, model } = await callModel({
+    system: 'You are a first assistant director doing a script breakdown. You list what the page calls for, each with the words that call for it, and nothing else.',
+    user: buildBreakdownTagsPrompt({ ...job, scenes, categories: cats }),
+    schema: breakdownTagsSchema([...ids]),
+    maxTokens: 12000,
+    effort: 'medium',
+    onStatus, signal,
+    progress: (sofar) => 'Reading part ' + job.part + ' of ' + job.parts + ' — ' + (sofar.match(/"name"/g) || []).length + ' elements'
+  });
+  let removed = 0;
+  const seen = new Set();
+  const elements = [];
+  for (const e of Array.isArray(parsed.elements) ? parsed.elements : []) {
+    if (!e || typeof e !== 'object') continue;
+    const scene = String(e.scene ?? '').trim();
+    const name = str(e.name, 80);
+    const check = checkers.get(scene);
+    if (!check || !ids.has(e.category) || !name) continue;
+    const quote = unwrapQuote(str(e.quote, 300));
+    if (!quote || !check(quote)) { removed++; continue; }
+    const key = scene + '|' + e.category + '|' + name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    elements.push({ scene, category: e.category, name, quote });
+  }
+  return { elements, removed, truncated, model };
+}
+
+/** Run a scene-batched job across the whole script, sequentially, and
+    stop cleanly on abort. `step(scenes, part, parts)` does one batch. */
+export async function runSceneBatches(elements, step, { onStatus, signal, batchChars } = {}) {
+  const plan = planSceneRead(elements, { batchChars });
+  if (!plan.batches.length) {
+    throw new AIError('There are no scene headings in the script yet, so there is nothing to read.', 'noscenes');
+  }
+  const out = [];
+  for (let b = 0; b < plan.batches.length; b++) {
+    if (signal && signal.aborted) throw new AIError('Stopped. Nothing was changed.', 'aborted');
+    if (onStatus) { try { onStatus('Reading part ' + (b + 1) + ' of ' + plan.batches.length + '…'); } catch (e) { /* UI */ } }
+    out.push(await step(plan.batches[b].map((i) => plan.scenes[i]), b + 1, plan.batches.length));
+  }
+  return { parts: out, scenes: plan.scenes, requests: plan.batches.length };
 }

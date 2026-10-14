@@ -110,20 +110,21 @@ const gate = () => (cloud() && cloud().gate) || null;
    draws it from data-tab-group); the ids of the first five are the old
    ones and every old fragment still resolves inside them. */
 const TAB_DEFS = [
-  { id: 'overview',  label: 'Overview',          group: 'Run' },
-  { id: 'health',    label: 'Launch & health',   group: 'Run' },
-  { id: 'audit',     label: 'Audit log',         group: 'Run' },
-  { id: 'people',    label: 'People',            group: 'People' },
-  { id: 'support',   label: 'Support',           group: 'People' },
-  { id: 'requests',  label: 'Access & sharing',  group: 'People' },
-  { id: 'purchases', label: 'Purchases',         group: 'Money' },
-  { id: 'growth',    label: 'Growth',            group: 'Money' },
-  { id: 'usage',     label: 'Usage',             group: 'Product' },
-  { id: 'sync',      label: 'Sync & storage',    group: 'Product' },
-  { id: 'controls',  label: 'Controls',          group: 'Product' }
+  { id: 'overview',  label: 'Overview',          group: 'Run',     icon: 'dashboard',      hint: 'The numbers, and what needs you today.' },
+  { id: 'health',    label: 'Launch & health',   group: 'Run',     icon: 'monitor_heart',  hint: 'Is everything switched on and working?' },
+  { id: 'audit',     label: 'Audit log',         group: 'Run',     icon: 'history',        hint: 'Who changed what, and when.' },
+  { id: 'people',    label: 'People',            group: 'People',  icon: 'groups',         hint: 'Members, access and organisations.' },
+  { id: 'support',   label: 'Support',           group: 'People',  icon: 'support_agent',  hint: 'Look up an account and help with it.' },
+  { id: 'requests',  label: 'Access & sharing',  group: 'People',  icon: 'share',          hint: 'Invite requests, codes and shared films.' },
+  { id: 'purchases', label: 'Purchases',         group: 'Money',   icon: 'shopping_cart',  hint: 'Payments, invoices, refunds and promo codes.' },
+  { id: 'growth',    label: 'Growth',            group: 'Money',   icon: 'trending_up',    hint: 'Visits, sign-ups and the funnel.' },
+  { id: 'usage',     label: 'Usage',             group: 'Product', icon: 'bar_chart',      hint: 'What people use, and how much.' },
+  { id: 'sync',      label: 'Sync & storage',    group: 'Product', icon: 'storage',        hint: 'Cloud sync, queues and stored work.' },
+  { id: 'controls',  label: 'Controls',          group: 'Product', icon: 'toggle_on',      hint: 'Switches, plans and features.' }
 ];
 const TABS = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.label]));
 const GROUP = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.group]));
+const META = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t]));
 /* THE REGISTRY. A tab that has its own module in ./admin-tabs/. To add
    one: a file there, an import above, a row here and in TAB_DEFS. */
 const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usage: usageTab, sync: syncTab, controls: controlsTab };
@@ -132,7 +133,7 @@ const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usag
 const BLOCK_TITLE = { features: 'Plan features', invoices: 'Invoices' };
 
 function tab(id) {
-  return h('section.ad-tab', { id, 'data-tab-label': TABS[id], 'data-tab-group': GROUP[id] });
+  return h('section.ad-tab', { id, 'data-tab-label': TABS[id], 'data-tab-group': GROUP[id], 'data-tab-icon': META[id].icon, 'data-tab-hint': META[id].hint });
 }
 /** The `section` a module asks for. Eyebrow and deck are not drawn:
  *  the tab names the place and a block carries one meta line at most. */
@@ -523,12 +524,6 @@ function render() {
   const kept = snapshotFields();
 
   const main = h('main#main');
-  main.append(h('header.bd-head.ad-head', {}, [
-    h('p.bd-eyebrow', { text: 'Administration' }),
-    h('h1.bd-title', { text: 'Console' }),
-    isAdmin ? h('p.ad-meta', { text: 'Signed in as ' + (c.getUserEmail() || 'an administrator') }) : null
-  ].filter(Boolean)));
-
   let body;
   let statusEl = null;
   if (!c || !c.isConfigured()) {
@@ -560,7 +555,17 @@ function render() {
     body = stampDensity(h('div.ad-body.ad-console.ad-grouped', {}, ordered));
   }
 
-  if (statusEl) main.append(statusEl);
+  /* The header is drawn after the body is chosen so the status chips can sit
+     on the title's own row (the design's console header); statusBar() reads
+     the overview phase loadOverview() just set. */
+  main.append(h('header.bd-head.ad-head', {}, [
+    h('div.ad-head-t', {}, [
+      h('p.bd-eyebrow', { text: 'Administration' }),
+      h('h1.bd-title', { text: 'Console' }),
+      isAdmin ? h('p.ad-meta', { text: 'Signed in as ' + (c.getUserEmail() || 'an administrator') }) : null
+    ].filter(Boolean)),
+    statusEl
+  ].filter(Boolean)));
   main.append(body);
   /* Identical output is not repainted (commitMain); scroll and focus survive. */
   commitMain(app, main, () => {

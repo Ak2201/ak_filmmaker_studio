@@ -270,7 +270,13 @@
   color: var(--ink-muted);
 }
 .account-menu .am-acct-note.is-bad { color: var(--danger); }
-
+/* The inline card (Settings → Account) is a page block, not a dropdown row:
+   body size, and the sign-in control lines up with the sentence above it. */
+.account-menu.am-inline .am-acct-note {
+  padding-inline: var(--s3);
+  font-size: var(--t-base);
+  color: var(--ink);
+}
 /* ------------------------------------------------------------
    PHONE
    ------------------------------------------------------------

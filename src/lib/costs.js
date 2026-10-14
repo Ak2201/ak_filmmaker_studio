@@ -24,6 +24,12 @@
      lines          { <ci_n>: { dept } }   a line's department, when
                                            the person moved it
      settings       { contingencyPct }
+     versions       [{ id, name, note, lockedAt, estimate, atl, btl,
+                       contingency, grand, days, lines:[{id,name,dept,
+                       days,rate,estimate}] }]   LOCKED budget snapshots:
+                       immutable (no update function), removable only.
+                       `lines[id]` may also carry `scales` (true/false):
+                       whether the line grows with shoot days.
      wageOverrides  { <wage row id>: { bata, callHours, otRule } }
 
    WHAT IS NOT STORED, and must never be: every total, balance,
@@ -181,7 +187,7 @@ function cleanCrew(x) {
 
 /* ---- storage ------------------------------------------------- */
 
-const EMPTY = () => ({ expenses: [], floats: [], crew: {}, payments: [], lines: {}, settings: {}, wageOverrides: {} });
+const EMPTY = () => ({ expenses: [], floats: [], crew: {}, payments: [], lines: {}, settings: {}, wageOverrides: {}, versions: [] });
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /** Everything under the key, shape-guaranteed. Reading never writes. */
@@ -199,7 +205,8 @@ export function readAll() {
       payments: Array.isArray(p.payments) ? p.payments : [],
       lines: isObj(p.lines) ? p.lines : {},
       settings: isObj(p.settings) ? p.settings : {},
-      wageOverrides: isObj(p.wageOverrides) ? p.wageOverrides : {}
+      wageOverrides: isObj(p.wageOverrides) ? p.wageOverrides : {},
+      versions: Array.isArray(p.versions) ? p.versions : []
     };
   } catch (e) {
     return EMPTY();
@@ -243,6 +250,94 @@ export function restoreExpense(row, index) {
   const list = readAll().expenses.filter((x) => x && x.id !== row.id);
   list.splice(Math.min(Math.max(0, index | 0), list.length), 0, row);
   writePart('expenses', list);
+}
+
+/* ---- locked budget versions ---------------------------------- */
+const cleanVersionLine = (l) => {
+  const x = isObj(l) ? l : {};
+  return { id: String(x.id ?? ''), name: String(x.name ?? ''), dept: String(x.dept ?? 'other'),
+    days: num(x.days), rate: num(x.rate), estimate: num(x.estimate) };
+};
+function cleanVersion(v) {
+  const x = isObj(v) ? v : {};
+  return {
+    id: String(x.id ?? ''), name: String(x.name ?? ''), note: String(x.note ?? ''),
+    lockedAt: String(x.lockedAt ?? ''),
+    estimate: num(x.estimate), atl: num(x.atl), btl: num(x.btl),
+    contingency: num(x.contingency), grand: num(x.grand), days: num(x.days),
+    lines: (Array.isArray(x.lines) ? x.lines : []).map(cleanVersionLine)
+  };
+}
+/** The numbers worth freezing, from what the report already derived. PURE. */
+export function snapshotBudget({ lines = [], report, days = 0 } = {}) {
+  const rep = report || costReport({ lines: [] });
+  const top = topSheet(rep);
+  const d = Number(days);
+  return {
+    estimate: num(rep.totals && rep.totals.estimate), atl: top.atl, btl: top.btl,
+    contingency: top.contingency, grand: top.grand,
+    days: Number.isFinite(d) && d > 0 ? d : 0,
+    lines: (Array.isArray(lines) ? lines : []).map((l) => ({
+      id: l.id, name: l.name, dept: l.dept, days: num(l.days), rate: num(l.rate), estimate: num(l.estimate)
+    }))
+  };
+}
+export const listVersions = () => readAll().versions.map(cleanVersion);
+/** Lock a snapshot. Immutable by construction: there is no update. */
+export function lockVersion({ name, note, snapshot } = {}) {
+  const list = readAll().versions;
+  const v = {
+    ...cleanVersion(snapshot || {}),                  // a copy, never an alias
+    id: uid('v'),
+    name: String(name || '').trim() || 'Budget v' + (list.length + 1),
+    note: String(note || ''),
+    lockedAt: new Date().toISOString()
+  };
+  writePart('versions', [...list, v]);
+  return cleanVersion(v);
+}
+export function removeVersion(id) {
+  const list = readAll().versions;
+  const gone = list.find((x) => x && x.id === id) || null;
+  writePart('versions', list.filter((x) => x && x.id !== id));
+  return gone ? cleanVersion(gone) : null;
+}
+/** Undo of a removal: back at its position, idempotent on id. */
+export function restoreVersion(row, index) {
+  if (!row || !row.id) return;
+  const list = readAll().versions.filter((x) => x && x.id !== row.id);
+  list.splice(Math.min(Math.max(0, index | 0), list.length), 0, cleanVersion(row));
+  writePart('versions', list);
+}
+/** A locked version against the budget as it stands. PURE, mutates nothing. */
+export function compareVersion(version, lines = []) {
+  const v = cleanVersion(version);
+  const now = (Array.isArray(lines) ? lines : []).map(cleanVersionLine).map((l) => ({ ...l, estimate: round2(l.days * l.rate) }));
+  const nowIds = new Map(now.map((l) => [l.id, l]));
+  const thenIds = new Map(v.lines.map((l) => [l.id, l]));
+  const sumBy = (list) => { const m = new Map(); for (const l of list) m.set(l.dept, (m.get(l.dept) || 0) + l.estimate); return m; };
+  const dThen = sumBy(v.lines), dNow = sumBy(now);
+  const depts = [];
+  for (const d of DEPTS) {
+    const then = round2(dThen.get(d.id) || 0), nw = round2(dNow.get(d.id) || 0);
+    if (then || nw) depts.push({ id: d.id, label: d.label, then, now: nw, delta: round2(nw - then) });
+  }
+  const changed = [];
+  for (const l of now) {
+    const o = thenIds.get(l.id);
+    if (o && round2(o.estimate) !== l.estimate) changed.push({ id: l.id, name: l.name, then: round2(o.estimate), now: l.estimate, delta: round2(l.estimate - o.estimate) });
+  }
+  const tThen = round2(v.lines.reduce((s, l) => s + l.estimate, 0));
+  const tNow = round2(now.reduce((s, l) => s + l.estimate, 0));
+  return {
+    total: { then: tThen, now: tNow, delta: round2(tNow - tThen) },
+    depts,
+    lines: {
+      added: now.filter((l) => !thenIds.has(l.id)),
+      removed: v.lines.filter((l) => !nowIds.has(l.id)),
+      changed
+    }
+  };
 }
 
 /* ---- floats -------------------------------------------------- */
@@ -290,11 +385,23 @@ export function removePayment(id) {
 }
 
 /* ---- line departments, settings, wage overrides --------------- */
-export function setLineDept(lineId, dept) {
+/* A line's meta is { dept?, scales? }: either field alone is enough to
+   keep the entry; with neither, the entry goes (back to derived). */
+function writeLineMeta(lineId, patch) {
   const lines = { ...readAll().lines };
-  if (!dept || !DEPT.has(dept)) delete lines[lineId];   // back to the derived default
-  else lines[lineId] = { dept };
+  const m = { ...(isObj(lines[lineId]) ? lines[lineId] : {}), ...patch };
+  if (!m.dept || !DEPT.has(m.dept)) delete m.dept;      // back to the derived default
+  if (typeof m.scales !== 'boolean') delete m.scales;
+  if (Object.keys(m).length) lines[lineId] = m; else delete lines[lineId];
   writePart('lines', lines);
+}
+export function setLineDept(lineId, dept) {
+  writeLineMeta(lineId, { dept: dept && DEPT.has(dept) ? dept : undefined });
+}
+/** true / false = the person's word on whether the line scales with
+    shoot days; null clears it (undecided). */
+export function setLineScales(lineId, value) {
+  writeLineMeta(lineId, { scales: typeof value === 'boolean' ? value : undefined });
 }
 export function getSettings() {
   const s = readAll().settings;
@@ -431,7 +538,8 @@ export function estimateLines(calc, lineMeta = {}) {
     const id = 'ci_' + n;
     const meta = lineMeta[id] || {};
     const dept = DEPT.has(meta.dept) ? meta.dept : defaultDept(name);
-    out.push({ id, n, name: name || 'Line ' + n, days, rate, estimate: days * rate, dept, deptSet: DEPT.has(meta.dept) });
+    out.push({ id, n, name: name || 'Line ' + n, days, rate, estimate: days * rate, dept, deptSet: DEPT.has(meta.dept),
+      scales: typeof meta.scales === 'boolean' ? meta.scales : null });
   }
   return out;
 }
@@ -618,6 +726,27 @@ export function costReport({ lines = [], expenses = [], crew = {}, payments = []
   };
 }
 
+/** THE HEADER FIGURES: four numbers read off the cost report, nothing stored.
+ *  approved     estimate plus contingency (the ceiling spend is judged against)
+ *  actual       everything logged so far, GST-inclusive, crew at cost
+ *  remaining    approved minus actual; negative means over, `over` says so
+ *  contingency  the pool, how much of it overspend beyond the base estimate
+ *               has eaten, and what is left */
+export function budgetKpis(report) {
+  const t = (report && report.totals) || {};
+  const approved = round2(t.estimateWithContingency || 0);
+  const actual = round2(t.actual || 0);
+  const pool = round2(t.contingency || 0);
+  const used = Math.min(pool, round2(t.contingencyUsed || 0));
+  return {
+    approved, actual,
+    pctUsed: approved > 0 ? Math.round((actual / approved) * 100) : 0,
+    remaining: round2(approved - actual),
+    over: actual > approved + 0.005,
+    contingency: { pct: t.contingencyPct || 0, pool, used, left: round2(pool - used) }
+  };
+}
+
 /** THE TOP SHEET: the cost report folded to departments and groups. */
 export function topSheet(report) {
   const groups = GROUPS.map((g) => {
@@ -720,8 +849,8 @@ export default {
   COSTS_KEY, CATEGORIES, METHODS, GST_RATES, TDS_RATES, DEPTS, GROUPS,
   readAll, listExpenses, addExpense, updateExpense, removeExpense, restoreExpense,
   listFloats, addFloat, removeFloat, listCrew, getCrew, setCrew, removeCrew,
-  listPayments, addPayment, removePayment, setLineDept, getSettings, setSettings, setWageOverride,
+  listPayments, addPayment, removePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,
   estimateLines, readCalc, gstSplit, paymentCost, floatBalances, derivedDays, crewAccount,
-  costReport, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,
+  costReport, budgetKpis, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,
   deptOf, defaultDept, sectionOf, deptForContact, deptForCategory, castNames, toCSV
 };

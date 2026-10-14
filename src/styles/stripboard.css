@@ -654,3 +654,36 @@ body.pdf-print .sb-hint { display: none !important; }
 body.pdf-print .sb-banner-menu,
 body.pdf-print .sb-target,
 body.pdf-print .sb-banner .sb-btn { display: none !important; }
+
+/* ---- Stitch round 2: KPI notes, threshold in the legend, day header ---- */
+.sb-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
+.bd-stat-note {
+  font-style: normal;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+}
+.sb-legend-target { margin: 0 0 0 auto; }
+.sb-group-date { font-weight: 600; color: var(--ink); }
+.sb-night-badge {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 1px var(--s2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  color: var(--accent-deep);
+}
+.sb-group-locs {
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  padding: 1px var(--s3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  overflow-wrap: anywhere;
+}
+.sb-banner.is-move { border-color: var(--warn); }
+.sb-banner.is-move .sb-banner-kind { color: var(--warn-deep); }
+.sb-legend-target { flex-wrap: nowrap; }
+.sb-legend-target .sb-day-sel { width: auto; }

@@ -1,122 +1,122 @@
 {
   "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says.",
-  "capturedAt": "2026-10-12T22:21:31.382Z",
-  "capturedDay": "2026-10-12",
+  "capturedAt": "2026-10-14T08:36:55.179Z",
+  "capturedDay": "2026-10-14",
   "knownLazyFetches": {},
   "pages": {
     "hub": {
-      "bytes": 1243136,
-      "measured": 1129900,
-      "files": 41
+      "bytes": 1344512,
+      "measured": 1222127,
+      "files": 42
     },
     "library": {
-      "bytes": 1214464,
-      "measured": 1103921,
-      "files": 28
+      "bytes": 1288192,
+      "measured": 1170727,
+      "files": 24
     },
     "breakdown": {
-      "bytes": 852992,
-      "measured": 775289,
-      "files": 35
+      "bytes": 951296,
+      "measured": 864692,
+      "files": 38
     },
     "stripboard": {
-      "bytes": 789504,
-      "measured": 717158,
-      "files": 27
+      "bytes": 874496,
+      "measured": 794599,
+      "files": 28
     },
     "reports": {
-      "bytes": 905216,
-      "measured": 822239,
-      "files": 33
+      "bytes": 991232,
+      "measured": 900774,
+      "files": 34
     },
     "contacts": {
-      "bytes": 800768,
-      "measured": 727807,
-      "files": 29
+      "bytes": 890880,
+      "measured": 809313,
+      "files": 30
     },
     "visualize": {
-      "bytes": 893952,
-      "measured": 812634,
+      "bytes": 943104,
+      "measured": 856854,
       "files": 36
     },
     "screenplay": {
-      "bytes": 1047552,
-      "measured": 951995,
-      "files": 40
+      "bytes": 1153024,
+      "measured": 1048071,
+      "files": 43
     },
     "drafts": {
-      "bytes": 812032,
-      "measured": 737309,
-      "files": 28
+      "bytes": 896000,
+      "measured": 814127,
+      "files": 29
     },
     "plan": {
-      "bytes": 758784,
-      "measured": 689332,
-      "files": 27
+      "bytes": 841728,
+      "measured": 764578,
+      "files": 28
     },
     "dashboard": {
-      "bytes": 1039360,
-      "measured": 944776,
-      "files": 33
+      "bytes": 1129472,
+      "measured": 1026032,
+      "files": 34
     },
     "budget": {
-      "bytes": 807936,
-      "measured": 734267,
-      "files": 27
+      "bytes": 926720,
+      "measured": 841733,
+      "files": 31
     },
     "settings": {
-      "bytes": 848896,
-      "measured": 770977,
-      "files": 27
+      "bytes": 953344,
+      "measured": 866667,
+      "files": 29
     },
     "shoot": {
-      "bytes": 678912,
-      "measured": 616838,
-      "files": 20
+      "bytes": 775168,
+      "measured": 704310,
+      "files": 21
     },
     "preprod": {
-      "bytes": 687104,
-      "measured": 624562,
-      "files": 19
+      "bytes": 770048,
+      "measured": 699692,
+      "files": 20
     },
     "story": {
-      "bytes": 1392640,
-      "measured": 1265615,
-      "files": 62
+      "bytes": 1427456,
+      "measured": 1296822,
+      "files": 59
     },
     "edit": {
-      "bytes": 655360,
-      "measured": 595042,
-      "files": 17
+      "bytes": 757760,
+      "measured": 688421,
+      "files": 21
     },
     "deliverables": {
-      "bytes": 786432,
-      "measured": 714051,
-      "files": 26
+      "bytes": 876544,
+      "measured": 796796,
+      "files": 27
     },
     "screening": {
-      "bytes": 668672,
-      "measured": 607227,
-      "files": 19
+      "bytes": 750592,
+      "measured": 681828,
+      "files": 20
     },
     "invite": {
-      "bytes": 637952,
-      "measured": 579495,
+      "bytes": 705536,
+      "measured": 640861,
       "files": 15
     },
     "admin": {
-      "bytes": 860160,
-      "measured": 781450,
+      "bytes": 929792,
+      "measured": 844819,
       "files": 19
     },
     "vault": {
-      "bytes": 760832,
-      "measured": 691127,
-      "files": 24
+      "bytes": 840704,
+      "measured": 763845,
+      "files": 25
     },
     "purchase": {
-      "bytes": 646144,
-      "measured": 586521,
+      "bytes": 712704,
+      "measured": 647887,
       "files": 20
     }
   }

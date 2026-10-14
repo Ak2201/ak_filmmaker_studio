@@ -198,6 +198,66 @@
       ]
     },
     {
+      "id": "cloud_workflow",
+      "label": "Cloud workflow",
+      "optional": true,
+      "kind": "workflow",
+      "blurb": "For a film whose footage, proxies and cuts travel through a cloud service (Drive, Frame.io, LucidLink, Dropbox). The studio stores no media: use Add link on a row to keep the address of the folder or file where it lives. Switch this on only if your picture and sound move that way.",
+      "source": "This studio's own working checklist, drawn from common offload, backup and conform practice. It is not a platform specification, and a lab or post house may ask for something different.",
+      "sourceUrls": [],
+      "checked": "2026-10-13",
+      "items": [
+        {
+          "id": "cw_offload",
+          "label": "Camera originals offloaded and checksum-verified on set",
+          "why": "Copy every card with software that compares a checksum of the copy against the card, and only reformat a card after a second person has seen the verified report. A file that copied badly is found on the day, not in the edit.",
+          "when": "always"
+        },
+        {
+          "id": "cw_backup321",
+          "label": "3-2-1 backup of the camera originals",
+          "why": "Three copies, on two kinds of storage, one of them somewhere else. The originals are the one thing on the film that cannot be made again.",
+          "when": "always"
+        },
+        {
+          "id": "cw_structure",
+          "label": "Project and media folder structure agreed",
+          "why": "One naming and folder scheme for cards, proxies, audio, graphics and exports, written down before the first shoot day, so the editor, the colourist and the sound house all look in the same place.",
+          "when": "always"
+        },
+        {
+          "id": "cw_upload",
+          "label": "Camera-to-cloud or same-day upload set up",
+          "why": "Decide who uploads, from where, and how long it may take on the connection you will really have. A schedule that assumes a fast line on a location with no signal fails on day one.",
+          "when": "always"
+        },
+        {
+          "id": "cw_proxies",
+          "label": "Proxies generated for editorial",
+          "why": "Light, matching copies the editor can cut with on an ordinary laptop. Keep the file names and timecode identical to the originals, or the relink at conform has nothing to match.",
+          "when": "always"
+        },
+        {
+          "id": "cw_dailies",
+          "label": "Dailies shared for review",
+          "why": "Each day's takes in a place the director and the department heads can watch, with access limited to the people who should see unreleased footage.",
+          "when": "always"
+        },
+        {
+          "id": "cw_relink",
+          "label": "Editorial relinked to full-resolution media at conform",
+          "why": "Once the cut is locked, point the project back at the original files and check that every shot matches its proxy. A relink checked by eye on a few shots hides the ones that did not.",
+          "when": "always"
+        },
+        {
+          "id": "cw_archive",
+          "label": "Final masters archived with checksums",
+          "why": "The graded master, the mixes and the project files stored with a checksum for each, in two places. A master that cannot be proved intact in three years is a master you may have to make again.",
+          "when": "always"
+        }
+      ]
+    },
+    {
       "id": "ott_netflix",
       "label": "Netflix",
       "optional": true,

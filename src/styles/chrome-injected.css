@@ -103,11 +103,17 @@
      390, hiding the drawer's first entry. */
   padding: var(--s2) var(--s4);
   text-align: center;
-  background: var(--danger);
-  color: var(--danger-on);
+  /* A wash with a danger hairline, not a solid fill: it is a notice, and a
+     full-width coral bar was the loudest thing on the page. Ink text on the
+     wash keeps AA in both themes (danger as TEXT fails on a light ground). */
+  background: var(--danger-wash);
+  color: var(--ink);
+  border-bottom: 1px solid var(--danger);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 600;
   letter-spacing: var(--track-label);
+  line-height: var(--lh-snug);
+  text-wrap: balance;
 }
 .studio-no-project-banner a { color: inherit; text-decoration: underline; }

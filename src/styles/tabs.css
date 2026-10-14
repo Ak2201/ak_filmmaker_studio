@@ -1,20 +1,47 @@
 /* ============================================================
-   TABS — the section strip (src/ui/tabs.js)
+   TABS — the section menu (src/ui/section-menu.js, src/ui/tabs.js)
    ------------------------------------------------------------
+   ONE control for "the parts of this page", used by Settings, the
+   admin console, the Library and every tabbed module page. Two
+   layouts of the same markup:
+
+     >= 1100px   a vertical SIDE MENU in the container's left column
+                 (.tabs-has-side on the container, .tabs-side on the
+                 nav), headings above each group, pinned under the
+                 shell's band.
+     <  1100px   the strip: ONE row that scrolls sideways, headings
+                 folded away, and a "Sections" button pinned at its
+                 start that opens the whole grouped list as a sheet.
+     Fewer than three tabs never get the column: just the strip.
+
+   ONE SELECTED STYLE, everywhere: a filled PILL (--accent, text
+   --accent-on, the primary button's glow) with a small dot at its end
+   when the row has no count or tick of its own. Never colour alone:
+   aria-selected carries it too. Hover is a soft violet tint
+   (--accent-wash), never an outline, and nothing here is ever
+   underlined. Group headings are tiny muted mono caps.
+
+   THE .tabs-ink TRAP. motion-app.js used to append a sliding 2px
+   underline (span.tabs-ink) to every .tabs and position it with
+   `bottom: 0` and translateX/scaleX: right for a row of tabs, wrong in
+   a column, where it drew a line under the LAST row ("ADMIN" in the
+   owner's screenshot). It is not created any more: the selected row's
+   own fill is the marker. Do not add an indicator that is placed
+   relative to the strip's bottom edge to a control that can be vertical.
+
    Pinned under the shell's band: --sh-chrome-h is the measured height
    of whatever is sticky above, published by shell.js. Tokens and
-   --sk-* only; the active tab is marked by fill AND aria-selected,
-   never by colour alone (the fill carries --accent-on text).
+   --sk-* only.
 
-   THE COLUMN. On settings.html the strip sits inside .st-body, which
-   is already the page's measure, so it lines up for free. On the
-   module pages it is a direct child of <main>, beside sections that
-   each carry `max-width: var(--measure-wide); margin-inline: auto;
-   padding-inline: var(--s5)` (the .bd-head family in modules.css).
-   The strip takes the same column by MARGIN rather than by padding,
-   so its hairline and its ground stop where the content does instead
-   of running from the rail to the window edge. Inside a container
-   that is already the column the margin goes back to zero.
+   THE COLUMN (strip layout). On settings.html the strip sits inside
+   .st-body, which is already the page's measure, so it lines up for
+   free. On the module pages it is a direct child of <main>, beside
+   sections that each carry `max-width: var(--measure-wide);
+   margin-inline: auto; padding-inline: var(--s5)` (the .bd-head family
+   in modules.css). The strip takes the same column by MARGIN rather than
+   by padding, so its hairline and its ground stop where the content does
+   instead of running from the rail to the window edge. Inside a
+   container that is already the column the margin goes back to zero.
 
    THE STACK. One below the shell's band, never level with it: the
    band (z-toolbar) is the stacking context the phase menus live in,
@@ -30,6 +57,7 @@
   --tabs-gutter: var(--s5);
   margin-inline: max(var(--tabs-gutter), calc((100% - var(--measure-wide)) / 2 + var(--tabs-gutter)));
   display: flex;
+  align-items: center;
   /* ONE ROW, SCROLLING SIDEWAYS. It wrapped, and the Library's eight
      tabs at 390px made four sticky rows — 205px of strip pinned over
      a 844px phone, on top of the band. One line that scrolls inside
@@ -42,34 +70,278 @@
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
   gap: var(--s1);
-  padding: var(--s2) 0;
+  padding: var(--s2) var(--s1);
   margin-block: 0 var(--s4);
   background: var(--paper);
   border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
 }
+/* In the strip the list and its groups are transparent wrappers: the
+   rows are the strip's own flex items. (A role=tablist div with
+   display:contents keeps its role in current engines.) */
+.tabs-list, .tabs-group { display: contents; }
+.tabs-group-h { display: none; }
+
+/* ---- a row ---------------------------------------------------- */
 .tabs-tab {
+  position: relative;
   flex: 0 0 auto;
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 2.25rem;
+  padding: var(--s1) var(--s3) var(--s1) var(--s3);
   appearance: none;
   font: inherit;
-  font-family: var(--f-mono);
-  font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink-muted);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--ink-body);
   background: transparent;
-  padding: var(--s1) var(--s3);
-  border: var(--sk-card-line-w) solid transparent;
+  border: 0;
   border-radius: var(--radius-pill);
   cursor: pointer;
 }
-.tabs-tab:hover { color: var(--ink); border-color: var(--sk-card-line); }
-.tabs-tab[aria-selected="true"] { color: var(--accent-on); background: var(--accent); border-color: var(--accent); }
-.tabs-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+/* the selected row's own dot, at the end: only when nothing else
+   (count, tick, PLAN flag) sits there. A shape, not a distance. */
+.tabs-tab[aria-selected="true"]:not(:has(.tabs-badge, .tabs-done, .tabs-doing, .tabs-flag))::after {
+  content: '';
+  flex: none;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  margin-left: auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tabs-tab[aria-selected="true"] {
+  color: var(--accent-on);
+  background: var(--accent);
+  font-weight: 600;
+  box-shadow: var(--shadow-cta, none);
+}
+@media (hover: hover) {
+  .tabs-tab:not([aria-selected="true"]):hover { color: var(--ink); background: var(--accent-wash); }
+}
+.tabs-tab:focus-visible,
+.tabs-sections:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.tabs-tab > *, .tabs-sections > * { pointer-events: none; }
+
+.tabs-tab-i.tabs-tab-i {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  text-align: center;
+  color: var(--ink-muted);
+}
+.tabs-tab[aria-selected="true"] .tabs-tab-i { color: currentColor; }
+/* a row with no icon: a dot, so the labels still line up */
+.tabs-dot::before {
+  content: '';
+  display: block;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin: 0.4375rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+.tabs-tab-l { min-width: 0; }
+
+/* the count: legible on the paper and, selected, on the accent fill */
+.tabs-badge {
+  flex: none;
+  min-width: 1.25rem;
+  margin-left: auto;
+  padding: 0 var(--s1);
+  border-radius: var(--radius-pill);
+  background: var(--warn-wash);
+  color: var(--warn-deep);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
+  letter-spacing: 0;
+}
+.tabs-tab[aria-selected="true"] .tabs-badge { background: var(--paper-raised); color: var(--ink); }
+.tabs-done { flex: none; margin-left: auto; font-size: var(--t-small); color: var(--ok-deep, var(--ok)); }
+.tabs-tab[aria-selected="true"] .tabs-done { color: currentColor; }
+/* the middle state of a path (preprod, story): a shape, read aloud as "in progress" */
+.tabs-doing { flex: none; margin-left: auto; font-size: var(--t-small); color: var(--warn-deep); }
+.tabs-tab[aria-selected="true"] .tabs-doing { color: currentColor; }
+/* the PLAN flag: this tab's panel says why (plan-gate's tab lock) */
+.tabs-flag {
+  flex: none;
+  margin-left: auto;
+  padding: 0 var(--s1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--accent-deep);
+}
+.tabs-tab[aria-selected="true"] .tabs-flag { color: currentColor; }
+.tabs-badge + .tabs-flag, .tabs-done + .tabs-flag, .tabs-doing + .tabs-flag { margin-left: var(--s1); }
+
+/* ---- "Sections": the phone's way to the whole list ------------- */
+.tabs-sections {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 2.25rem;
+  margin-right: var(--s1);
+  padding: var(--s1) var(--s3);
+  appearance: none;
+  font: inherit;
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  /* a soft edge in the ground colour, so tabs scroll under it, not through it */
+  box-shadow: var(--s2) 0 var(--s2) 0 var(--paper);
+  cursor: pointer;
+}
+.tabs-sections-i.tabs-sections-i { font-size: 1.25rem; width: 1.25rem; height: 1.25rem; color: var(--ink-muted); }
+@media (hover: hover) { .tabs-sections:hover { background: var(--accent-wash); } }
+
+/* ---- the same list as a sheet (section-menu.js openSectionsSheet) ----
+   The frame and the rows are mobile-nav.css's (.mn-sheet, .mn-mod);
+   a row here is a <button>, so it takes the button reset a link does
+   not need. The badge, tick and PLAN flag sit at the row's end. */
+button.mn-mod.sm-row {
+  width: 100%;
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
+.sm-row .mn-mod-icon { font-size: 1.25rem; }
+.sm-row-end { display: inline-flex; align-items: center; gap: var(--s2); }
+.sm-badge {
+  min-width: 1.25rem;
+  padding: 0 var(--s1);
+  border-radius: var(--radius-pill);
+  background: var(--warn-wash);
+  color: var(--warn-deep);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
+}
+.sm-done { color: var(--ok-deep, var(--ok)); }
+.sm-doing { color: var(--warn-deep); }
+
+/* ---- the strip is the column's container's business below ----- */
 .st-body > .tabs { margin-inline: 0; }
 @media (max-width: 719px) { .tabs { --tabs-gutter: var(--s4); } }
 [role="tabpanel"][hidden] { display: none; }
 @media print { .tabs { display: none; } [role="tabpanel"][hidden] { display: block; } }
+
+/* ============================================================
+   THE SIDE MENU — one layout for every container that has one
+   ------------------------------------------------------------
+   tabs.js puts .tabs-has-side on the container that holds the
+   sections. At 1100px and over it becomes a grid whose columns are
+   [pad | menu | gap | panel | pad]; the menu takes column 2, the open
+   panel column 4, and EVERYTHING ELSE in the container (the page's
+   header above, a path bar, a footer below) spans the whole width as
+   it did before. The pad tracks keep the menu and the panel on the
+   same centred column the page's header already sits in, so nothing
+   needs a per-page rule: a container that is already the column
+   (settings, the console, the budget's list) sets --side-pad to 0.
+   `grid-column` is explicit, so source order does not matter; the
+   strip spans the rows of the panel (and of a path bar between them)
+   so that it stays pinned for the length of the panel.
+
+   Block children that centre themselves with `margin-inline: auto` and
+   a max-width shrink to their content as grid items, so they are given
+   `width: 100%`, which gives the same box a block layout gave them.
+   ============================================================ */
+@media (min-width: 1100px) {
+  .tabs-has-side {
+    --side-w: 13.75rem;
+    --side-gap: var(--s6);
+    --side-total: calc(var(--measure-wide) + var(--side-w) + var(--side-gap));
+    --side-pad: calc(max(0px, (100% - var(--side-total)) / 2) + var(--s5));
+    display: grid;
+    grid-template-columns: [full-start] minmax(0, var(--side-pad)) [menu-start] var(--side-w) [menu-end] var(--side-gap) [panel-start] minmax(0, 1fr) [panel-end] minmax(0, var(--side-pad)) [full-end];
+    column-gap: 0;
+    align-items: start;
+  }
+  .tabs-has-side > * { grid-column: full-start / full-end; min-width: 0; }
+  .tabs-has-side > :not(.tabs):not([role="tabpanel"]) { width: 100%; }
+  .tabs-has-side > header, .tabs-has-side > .bd-head { max-width: var(--side-total); }
+  .tabs-has-side > [role="tabpanel"] {
+    grid-column: panel-start / panel-end;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .tabs-has-side > .tabs-side + :not([role="tabpanel"]):not(.tabs) { grid-column: panel-start / panel-end; }
+  /* .tabs.tabs-side: a page's own `> .tabs` margin rule (the library's, the
+     budget's) is more specific than one class, and must not move the column */
+  .tabs-has-side > .tabs.tabs-side {
+    grid-column: menu-start / menu-end;
+    grid-row: auto / span 1;
+    align-self: start;
+    top: calc(var(--sh-chrome-h, 0px) + var(--s3));
+    display: block;
+    max-height: calc(100vh - var(--sh-chrome-h, 0px) - var(--s5));
+    overflow: hidden auto;
+    margin: 0;
+    padding: var(--s1);
+    background: transparent;
+    border-bottom: 0;
+  }
+  .tabs-has-side > .tabs.tabs-side:has(+ :not([role="tabpanel"]):not(.tabs)) { grid-row: auto / span 2; }
+
+  .tabs-side .tabs-sections { display: none; }
+  .tabs-side .tabs-list { display: grid; gap: var(--s5); align-content: start; }
+  .tabs-side .tabs-group { display: grid; gap: var(--s1); align-content: start; }
+  .tabs-side .tabs-group-h {
+    display: block;
+    padding: 0 var(--s3) var(--s1);
+    font-family: var(--f-mono);
+    font-size: var(--t-micro);
+    font-weight: 500;
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .tabs-side .tabs-tab {
+    display: flex;
+    width: 100%;
+    white-space: normal;
+  }
+  .tabs-side .tabs-tab-l { flex: 1 1 auto; }
+}
+/* a container that is already the page's column */
+.st-console, .ad-console, .bd-list { --side-pad: 0px; }
+/* ...and one that caps its own width (the budget's list is the measure)
+   is widened by the menu's column, or the panel is the measure MINUS the
+   menu: 572px at 1100px, measured. */
+.bd-list.tabs-has-side { max-width: calc(var(--measure-wide) + 13.75rem + var(--s6) + 2 * var(--s5)); }
+@media (pointer: coarse) {
+  .tabs-tab, .tabs-sections { min-height: 44px; }
+}
 
 /* ENTER. The panel that a user's switch makes visible rises a few
    pixels and fades in. tabs.js adds `.tabs-enter` only on a switch the

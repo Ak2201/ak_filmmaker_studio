@@ -98,7 +98,12 @@
     "cloud_sync",
     "cloud_upload",
     "sync_problem",
-    "cloud_off"
+    "cloud_off",
+    "grid_on",
+    "view_agenda",
+    "schedule",
+    "lock_open",
+    "group"
   ],
   "pages": {
     "breakdown": {

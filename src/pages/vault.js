@@ -25,17 +25,19 @@ import { h, delegate } from '../lib/dom.js';
 import * as Story from '../lib/story.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import { renderVault } from '../ui/idea-vault.js';
+import { pageHeader } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
 function render() {
   const s = Story.loadStory();
   const main = h('main#main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Story' }),
-    h('h1.bd-title', { text: 'Idea Vault.' }),
-    h('p.bd-deck', { text: 'Everything you collect for this film, in one place. Pin a clipping to a beat, or add it to the synopsis when it earns its place.' })
-  ]));
+  main.append(pageHeader({
+    class: 'bd-head vault-head',
+    eyebrow: ['Story', 'Idea Vault'],
+    title: 'Idea Vault.',
+    sub: 'Everything you collect for this film, in one place. Pin a clipping to a beat, or add it to the synopsis when it earns its place.'
+  }));
   const sec = h('section.st-sec', { id: 'vault', 'data-tab-label': 'Idea Vault' });
   sec.append(renderVault(s));
   main.append(sec);

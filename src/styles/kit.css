@@ -871,3 +871,11 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
 .dlg.dlg.k-modal .k-control .dlg-field:focus-visible { outline: 0; }
 .k-table tbody th { font-weight: 500; color: var(--ink); white-space: nowrap; }
 .k-table .k-table-empty { color: var(--ink-muted); text-align: left; }
+
+/* ---- page header on a shell page (additive, 14 Oct 2026) ------------
+   A page built from pageHeader() that also carries `.bd-head` receives the
+   shell's blueprint-step chip as an extra first child. It spans the whole
+   row above the title, as it did when the header was a block, instead of
+   becoming a grid cell of its own. */
+.bd-head.k-page-head > :not(.k-page-head-main):not(.k-page-actions) { grid-column: 1 / -1; justify-self: start; }
+.bd-head.k-page-head { padding-block: var(--s6) var(--s4); }

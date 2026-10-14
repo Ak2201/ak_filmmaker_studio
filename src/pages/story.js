@@ -84,6 +84,7 @@ import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
+import { pageHeader, button } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
@@ -948,30 +949,31 @@ function draw() {
   const cur = currentStep(s);
   const cards = isEmpty(s) && !started;
   const main = h('main#main.st-main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Story · beats & pacing' }),
-    h('h1.bd-title', { text: 'Story.' }),
-    h('p.bd-deck', { text: fmt() === 'short'
-      ? 'From a seed to a step outline to a synopsis. Everything a short film needs is on this page: the character, the world, the conflict, the order of the beats.'
-      : 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Everything is on this page, in order; tag the passages that turn the story and watch where the tension sags.' })
-  ]));
-
   if (cards) main.append(renderModes());
 
+  /* The header's actions: import, the two exports, start over. One
+     import control on screen at a time: the card's, while it shows. */
   const bar = h('div.st-bar');
-  // One import control on screen at a time: the card's, while it shows.
   if (!cards) {
-    bar.append(h('label.btn.st-import', {}, [
-      h('span', { text: 'IMPORT' }),
+    bar.append(h('label.k-btn.k-btn--secondary.st-import', {}, [
+      h('span', { text: 'Import' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis file' })
     ]));
   }
-  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-txt', disabled: !IO.canExportSynopsis(s), text: 'SYNOPSIS .TXT' }));
-  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-md', disabled: !IO.canExportOutline(s), text: 'OUTLINE .MD' }));
+  bar.append(button({ label: 'Synopsis .txt', disabled: !IO.canExportSynopsis(s), attrs: { 'data-st': 'export-txt' } }));
+  bar.append(button({ label: 'Outline .md', disabled: !IO.canExportOutline(s), attrs: { 'data-st': 'export-md' } }));
   if (s.source.trim() || s.marks.length) {
-    bar.append(h('button.btn.danger', { type: 'button', 'data-st': 'clear', text: 'START OVER' }));
+    bar.append(button({ label: 'Start over', variant: 'danger', attrs: { 'data-st': 'clear' } }));
   }
-  main.append(bar);
+  main.insertBefore(pageHeader({
+    class: 'bd-head',
+    eyebrow: ['Story', 'Beats & pacing'],
+    title: 'Story.',
+    sub: fmt() === 'short'
+      ? 'From a seed to a step outline to a synopsis. Everything a short film needs is on this page: the character, the world, the conflict, the order of the beats.'
+      : 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Everything is on this page, in order; tag the passages that turn the story and watch where the tension sags.',
+    actions: [bar]
+  }), main.firstChild);
 
   const bar0 = renderStepper(s);
   if (cards) bar0.hidden = true;

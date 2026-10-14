@@ -435,6 +435,7 @@
      the page header, stands down. */
   body.ct-printing .ct-people,
   body.ct-printing .bd-head,
+  body.ct-printing .ct-head,
   body.ct-printing .ct-sheets > .bd-h2,
   body.ct-printing .ct-sheets > .bd-sub,
   body.ct-printing .ct-sheets > .bd-none,
@@ -617,13 +618,29 @@
 }
 
 /* ---- header: title and the New shoot day action, then four figures ---- */
-.ct-head-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4); }
-.ct-head-copy { flex: 1 1 28rem; min-width: 0; }
-.ct-kpis { margin-top: var(--s5); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
-.ct-kpi { flex-direction: column; }
-.ct-kpi strong { order: 2; }
-.ct-kpi-l { order: 1; }
-.ct-kpi-s { order: 3; text-transform: none; letter-spacing: 0; font-family: var(--f-body, inherit); font-size: var(--t-small); }
+.ct-head { margin-bottom: var(--s5); }
+.ct-kpis { margin-top: var(--s5); }
+
+/* Dispatch: the live WhatsApp-markdown preview. Monospace, because the
+   message is plain text and its line breaks are the layout. */
+.ct-send { margin-top: var(--s4); }
+.ct-send-body { display: grid; gap: var(--s3); }
+.ct-wa-preview {
+  margin: 0;
+  max-height: 22rem;
+  overflow: auto;
+  padding: var(--s3) var(--s4);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-field-radius, var(--radius));
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ct-wa-preview strong { color: var(--ink); font-weight: 700; }
 
 /* ---- the day at a glance (screen only: it lives inside .ct-edit) ---- */
 .ct-glance {

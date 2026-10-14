@@ -36,6 +36,7 @@ import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
 import { linkText } from '../lib/links.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
+import { pageHeader, statStrip, notice, button } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
@@ -68,10 +69,6 @@ function passes(row, which = filter) {
 }
 
 /* ---- pieces -------------------------------------------------- */
-
-function stat(num, label) {
-  return h('div.bd-stat', {}, [h('strong', { text: num }), h('span', { text: label })]);
-}
 
 /** The set's word on a scene. Read-only; the link goes where it is written. */
 function gotBadge(row) {
@@ -299,28 +296,28 @@ function render(focus) {
 
   const main = h('main#main.el-main');
 
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Post · edit log' }),
-    h('h1.bd-title', { text: cov.ready ? 'Ready to lock.' : 'Edit log.' }),
-    h('p.bd-deck', {
-      text: cov.ready
-        ? 'Everything the cut needs is in the can and nothing it claims was dropped. '
-          + 'Nothing here is stored — it is read from the shoot day’s marks and the shot list.'
-        : 'What the set got, against what the cut needs. The marks come from the shoot day, '
-          + 'the setups from the shot list; only the cut column and the notes are written here.'
-    })
-  ]));
+  main.append(pageHeader({
+    eyebrow: ['Post', 'Edit log'],
+    title: cov.ready ? 'Ready to lock.' : 'Edit log.',
+    sub: cov.ready
+      ? 'Everything the cut needs is in the can and nothing it claims was dropped. '
+        + 'Nothing here is stored — it is read from the shoot day’s marks and the shot list.'
+      : 'What the set got, against what the cut needs. The marks come from the shoot day, '
+        + 'the setups from the shot list; only the cut column and the notes are written here.'
+  }));
 
   /* The numbers. Pages, because that is the unit the schedule and
      the budget already count in — a scene count hides a one-line
-     insert next to an eight-page set piece. */
-  const stats = h('div.bd-stats.el-stats');
-  stats.append(stat(cov.pages.inCan + ' / ' + cov.pages.need, 'pages in the can'));
-  stats.append(stat(String(cov.counts.owed), cov.counts.owed === 1 ? 'scene still owed' : 'scenes still owed'));
-  stats.append(stat(String(cov.counts.inCut), 'in the cut'));
-  stats.append(stat(String(cov.counts.locked), 'locked'));
-  stats.append(stat(String(cov.counts.pickups), cov.counts.pickups === 1 ? 'pick-up open' : 'pick-ups open'));
-  main.append(stats);
+     insert next to an eight-page set piece. Every figure is derived. */
+  main.append(statStrip([
+    { label: 'Pages in the can', value: cov.pages.inCan + ' / ' + cov.pages.need },
+    { label: cov.counts.owed === 1 ? 'Scene still owed' : 'Scenes still owed', value: cov.counts.owed,
+      note: cov.counts.owed ? 'before the cut can lock' : '', noteTone: cov.counts.owed ? 'warn' : '' },
+    { label: 'In the cut', value: cov.counts.inCut },
+    { label: 'Locked', value: cov.counts.locked },
+    { label: cov.counts.pickups === 1 ? 'Pick-up open' : 'Pick-ups open', value: cov.counts.pickups,
+      note: cov.counts.pickups ? 'owed by the editor' : '', noteTone: cov.counts.pickups ? 'warn' : '' }
+  ], { class: 'el-stats', label: 'Edit log figures' }));
 
   /* Conflicts first, because each one is two departments disagreeing
      about a scene, and that is the thing this page exists to show. */
@@ -329,10 +326,23 @@ function render(focus) {
     box.append(h('h2.el-h2', { text: cov.conflicts.length === 1
       ? 'One scene the set dropped and the cut still wants'
       : cov.conflicts.length + ' scenes the set dropped and the cut still wants' }));
-    const ul = h('ul');
-    cov.conflicts.forEach((r) => ul.append(h('li', { text: 'Sc ' + (r.scene.number || '—') + ' · ' + slug(r.scene) })));
-    box.append(ul);
-    box.append(h('p', { text: 'Either the day out of days gets a pick-up day, or the cut lets the scene go. Decide it here, not in the grade.' }));
+    cov.conflicts.forEach((r) => {
+      const pk = r.pickups.length;
+      box.append(notice({
+        tone: 'danger', banner: true, live: true,
+        title: 'Conflict · Sc ' + (r.scene.number || '—') + ' · ' + slug(r.scene),
+        body: 'Marked dropped on the shoot day, but the cut still has it'
+          + (r.edit.cut === 'locked' ? ' (locked)' : '') + '. One of those two is wrong. '
+          + 'Either the cut lets the scene go, or the day out of days gets a pick-up day — decide it here, not in the grade.',
+        action: [
+          button({ label: 'Mark cut out', icon: 'content_cut', size: 'sm', variant: 'danger',
+            attrs: { 'data-edit-action': 'conflict-cut-out', 'data-scene': r.scene.id } }),
+          button({ label: pk ? 'Pick-up noted' : 'Schedule pick-up', icon: 'event', size: 'sm', disabled: !!pk,
+            title: pk ? 'A pick-up is already on this scene' : 'Adds an open pick-up to this scene',
+            attrs: { 'data-edit-action': 'conflict-pickup', 'data-scene': r.scene.id } })
+        ]
+      }));
+    });
     main.append(box);
   }
 
@@ -343,17 +353,17 @@ function render(focus) {
   const nav = h('div.el-filters', { role: 'group', 'aria-label': 'Show' });
   FILTERS.forEach((f) => {
     const n = cov.rows.filter((r) => passes(r, f.id)).length;
-    nav.append(h('button.btn.el-filter' + (filter === f.id ? '.is-on' : ''), {
+    nav.append(h('button.k-btn.k-btn--sm.el-filter' + (filter === f.id ? '.is-on' : ''), {
       type: 'button', 'data-edit-action': 'filter', 'data-filter': f.id,
       'aria-pressed': String(filter === f.id),
       text: f.label + ' · ' + n
     }));
   });
   tools.append(nav);
-  tools.append(h('button.btn', {
-    type: 'button', 'data-edit-action': 'copy-pickups',
-    text: 'COPY PICK-UP LIST',
-    title: 'The unshot scenes, the part-shot scenes and every open pick-up, as text'
+  tools.append(button({
+    label: 'Copy pick-up list', icon: 'content_copy',
+    title: 'The unshot scenes, the part-shot scenes and every open pick-up, as text',
+    attrs: { 'data-edit-action': 'copy-pickups' }
   }));
   main.append(tools);
 
@@ -404,6 +414,26 @@ delegate(document, 'click', '[data-edit-action]', (e, el) => {
   if (act === 'filter') {
     filter = el.getAttribute('data-filter') || 'all';
     render('[data-edit-action="filter"][data-filter="' + filter + '"]');
+    return;
+  }
+  if (act === 'conflict-cut-out') {
+    /* The editor's own column is the one thing this page writes. */
+    const id = el.getAttribute('data-scene');
+    const prev = Edit.sceneEdit(id).cut;
+    Edit.setSceneEdit(id, { cut: 'out' });
+    render();
+    if (StudioUI.toast) StudioUI.toast('Scene marked cut out', {
+      action: 'Undo', onAction: () => { Edit.setSceneEdit(id, { cut: prev }); render(); }
+    });
+    return;
+  }
+  if (act === 'conflict-pickup') {
+    const id = el.getAttribute('data-scene');
+    const sc = Scenes.listScenes().find((x) => x.id === id);
+    if (Edit.addPickup(id, 'Pick-up: scene ' + ((sc && sc.number) || '') + ' was dropped on the day')) {
+      render();
+      if (StudioUI.toast) StudioUI.toast('Pick-up added to the scene');
+    }
     return;
   }
   if (act === 'pickup-del') {

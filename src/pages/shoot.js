@@ -43,6 +43,7 @@ import Sun from '../lib/sun.js';
 import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
+import { pageHeader, statCard, statStrip, meter, button } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
@@ -88,11 +89,11 @@ function takesBlock(scene) {
     title: t.circled ? 'Take ' + t.n + ' is circled. Press to un-circle.' : 'Circle take ' + t.n,
     text: 'T' + t.n + (t.circled ? ' ●' : '')
   })));
-  row.append(h('button.btn.sd-take-add', {
+  row.append(h('button.k-btn.k-btn--sm.sd-take-add', {
     type: 'button', 'data-shoot-action': 'take', 'data-scene': scene.id, text: '+ Take'
   }));
   if (takes.length) {
-    row.append(h('button.btn.sd-take-undo', {
+    row.append(h('button.k-btn.k-btn--ghost.k-btn--sm.sd-take-undo', {
       type: 'button', 'data-shoot-action': 'untake', 'data-scene': scene.id,
       'aria-label': 'Remove take ' + takes[takes.length - 1].n, text: 'Undo'
     }));
@@ -133,7 +134,7 @@ function sceneCard(scene, late, next) {
      undoes a mis-tap without hunting for a reset. */
   const row = h('div.sd-actions', { role: 'group', 'aria-label': 'Mark scene ' + (scene.number || '') });
   SHOT_STATES.forEach((st) => {
-    row.append(h('button.btn.sd-btn.sd-' + st.id + (state === st.id ? '.is-on' : ''), {
+    row.append(h('button.k-btn.k-btn--lg.sd-btn.sd-' + st.id + (state === st.id ? '.is-on' : ''), {
       type: 'button',
       'data-shoot-action': 'mark',
       'data-scene': scene.id,
@@ -153,12 +154,10 @@ function sceneCard(scene, late, next) {
    dead end on a phone, where the band has scrolled away. */
 function renderEmpty(reason, link) {
   const main = h('main#main.sd-main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Shoot · today' }),
-    h('h1.bd-title', { text: 'Shoot day.' }),
-    h('p.bd-deck', { text: reason }),
-    link ? h('p', {}, [h('a.btn', { href: link.href, text: link.label })]) : null
-  ]));
+  main.append(pageHeader({
+    eyebrow: ['Shoot', 'Today'], title: 'Shoot day.', sub: reason,
+    actions: link ? [button({ label: link.label, href: link.href })] : []
+  }));
   return main;
 }
 
@@ -220,35 +219,28 @@ function render(focus) {
   const lit = lightFor(day);
 
   const hero = h('section.sd-hero', { 'aria-label': 'Today' });
-  const titleBox = h('div.sd-hero-t', {}, [
-    h('p.sd-eyebrow', {}, [
-      h('span.sd-dot' + (isToday ? '.is-live' : ''), { 'aria-hidden': 'true' }),
-      h('span', { text: isToday ? "Production · today's call" : 'Production · day ' + day.day + ' of ' + all.length })
-    ]),
-    h('h1.sd-title', {}, [
-      h('span', { text: 'Day ' + day.day }),
-      h('span.sd-title-b', { text: ' · On Set.' })
-    ]),
-    h('p.sd-deck', {
-      text: day.date
-        ? [niceDate(day.date), day.locations.join(' & ')].filter(Boolean).join(' · ')
-        : 'This day has no date yet — set one in the stripboard and the page can find it on the morning.'
-    })
-  ]);
-  const kpi = (label, value, of, fill, sub) => h('div.sd-kpi', {}, [
-    h('span.sd-k', { text: label }),
-    h('p.sd-kpi-v', {}, [h('strong', { text: value }), of ? h('span', { text: of }) : null].filter(Boolean)),
-    fill === null ? null : h('div.sd-bar', { 'aria-hidden': 'true' }, [h('i', { style: 'width:' + Math.round(fill * 100) + '%' })]),
-    sub ? h('span.sd-kpi-sub', { text: sub }) : null
-  ].filter(Boolean));
+  const titleBox = pageHeader({
+    class: 'sd-hero-t',
+    eyebrow: [isToday ? "Production · today's call" : 'Production · day ' + day.day + ' of ' + all.length],
+    title: 'Day ' + day.day + ' · On Set.',
+    sub: day.date
+      ? [niceDate(day.date), day.locations.join(' & ')].filter(Boolean).join(' · ')
+      : 'This day has no date yet — set one in the stripboard and the page can find it on the morning.',
+    meta: isToday ? [h('span.sd-live', {}, [h('span.sd-dot.is-live', { 'aria-hidden': 'true' }), h('span', { text: 'Today' })])] : []
+  });
+  const kpi = (label, value, of, fill, sub) => {
+    const c = statCard({ label, value, unit: of || '', note: sub || '' });
+    if (fill !== null) c.append(meter({ label: '', value: Math.round(fill * 100), max: 100, show: false, attrs: { 'aria-label': label } }));
+    return c;
+  };
   const total = day.scenes.length;
-  const kpis = h('div.sd-kpis', {}, [
+  const kpis = statStrip([
     kpi('Scenes shot', String(day.done), '/ ' + total, total ? day.done / total : 0),
     kpi('Pages shot', day.pagesDone, '/ ' + day.pagesTotal, day.eighthsTotal ? day.eighthsDone / day.eighthsTotal : 0),
     kpi('Scenes left', String(day.remaining), 'remaining', total ? day.remaining / total : 0),
     kpi('Wrap estimate', wrap.time || '—', wrap.time && lit ? lit.light.zone : '', null,
       wrap.kind === 'planned' ? 'planned wrap' : wrap.kind === 'estimate' ? 'estimated from call and pages' : 'no call or wrap set yet')
-  ]);
+  ], { class: 'sd-kpis', label: 'Day figures' });
   hero.append(titleBox, kpis);
   main.append(hero);
 
@@ -258,7 +250,7 @@ function render(focus) {
   nav.append(h('span.sd-k', { text: 'Shooting days' }));
   all.forEach((d) => {
     const cur = d.day === currentDay;
-    nav.append(h('button.btn.sd-day' + (d.day === day.day ? '.is-on' : '')
+    nav.append(h('button.k-btn.k-btn--sm.sd-day' + (d.day === day.day ? '.is-on' : '')
                  + (d.complete ? '.is-done' : '') + (cur ? '.is-current' : ''), {
       type: 'button',
       'data-shoot-action': 'day',
@@ -286,7 +278,7 @@ function render(focus) {
     h('div.sd-filter', { role: 'group', 'aria-label': 'Filter scenes' }, [
       h('span.sd-k', { text: 'Filter' }),
       ...[['all', 'All (' + day.scenes.length + ')'], ['incomplete', 'Incomplete (' + incomplete.length + ')']].map(([id, label]) =>
-        h('button.btn.sd-fbtn' + (rosterFilter === id ? '.is-on' : ''), {
+        h('button.k-btn.k-btn--sm.sd-fbtn' + (rosterFilter === id ? '.is-on' : ''), {
           type: 'button', 'data-shoot-action': 'filter', 'data-filter': id,
           'aria-pressed': String(rosterFilter === id), text: label
         }))
@@ -300,8 +292,8 @@ function render(focus) {
   /* The day answers the plan here; the report on it is written on
      reports.html (src/lib/dpr.js), which reads these marks back. */
   main.append(h('p.sd-dpr', {}, [
-    h('a.btn', { href: 'reports.html?day=' + day.day + '#dpr', text: 'End of day → DPR' }),
-    h('a.btn', { href: 'edit.html#log', text: 'Next: Edit Log →' })
+    button({ label: 'End of day → DPR', variant: 'primary', pill: true, href: 'reports.html?day=' + day.day + '#dpr' }),
+    button({ label: 'Next: Edit Log →', href: 'edit.html#log' })
   ]));
 
   app.replaceChildren(main);

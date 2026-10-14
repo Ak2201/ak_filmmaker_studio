@@ -251,8 +251,13 @@ function moduleTab(id) {
 /* ---- the command centre ------------------------------------------ */
 
 /** One row of "Needs attention": a pill, a sentence, and a link into the right tab. */
+/* Severity is the item's own tone, named: danger CRIT, warn HIGH, neutral
+   LOW. MED is unused because the list has only three tones; nothing is
+   graded that the code did not already grade. */
+const SEVERITY = { danger: 'CRIT', warn: 'HIGH', neutral: 'LOW' };
 function attentionItem({ label, tone = 'warn', text, tab: to, params }) {
-  return h('li', {}, [h('a.ad-att', { href: kit.hashFor(to, params), 'data-ad-go': to, 'data-ad-params': params ? JSON.stringify(params) : null }, [
+  return h('li', { 'data-sev': tone }, [h('a.ad-att', { href: kit.hashFor(to, params), 'data-ad-go': to, 'data-ad-params': params ? JSON.stringify(params) : null }, [
+    h('span.ad-sev.is-' + tone, { text: SEVERITY[tone] || 'LOW' }),
     pill(String(label), tone),
     h('span.ad-att-t', { text }),
     h('span.ad-att-go', { 'aria-hidden': 'true', text: '→' })
@@ -301,7 +306,12 @@ function activityCard(ctx) {
       sub: h('p.ad-tl-s', {}, [h('code', { text: auditTab.rowTarget(r) })]),
       target: { href: kit.hashFor('audit', { target: r.target_id }), label: 'Everything about this target' }
     }))));
-    card.append(h('p.ad-meta.ad-card-f', {}, [h('a', { href: '#audit', 'data-ad-go': 'audit', text: 'Open the audit log →' })]));
+    card.append(h('p.ad-meta.ad-card-f', {}, [
+      `Showing the latest ${rc.rows.length} \u00b7 `,
+      h('a', { href: '#audit', 'data-ad-go': 'audit', text: 'Open the audit log →' }),
+      ' \u00b7 ',
+      h('button.ad-chip', { type: 'button', 'data-action': 'audit-export-recent', title: 'Download these rows as CSV', text: 'Export CSV' })
+    ]));
   }
   return card;
 }
@@ -354,7 +364,8 @@ function overviewTab() {
   ]));
 
   const items = attentionList(d, hs);
-  const attention = h('div.k-panel.ad-card', {}, [h('h3.ad-card-h', { text: 'Needs attention' })]);
+  const crit = items.filter((li) => li.getAttribute('data-sev') === 'danger').length;
+  const attention = h('div.k-panel.ad-card', {}, [h('h3.ad-card-h', {}, ['Needs attention', crit ? pill(crit + ' critical', 'danger') : null])]);
   if (items.length) attention.append(h('ul.ad-att-list', {}, items));
   else if (hs.phase === 'ok') attention.append(emptyState({ title: 'Nothing needs you', body: 'The health checks pass, and no receipt, refund, invite or payment is waiting.', stamp: true, icon: '✓' }));
   else if (hs.phase === 'loading' || hs.phase === 'idle') attention.append(skeleton({ kind: 'rows', count: 3 }));

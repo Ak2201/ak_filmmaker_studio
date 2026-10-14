@@ -55,7 +55,7 @@ export function formatBytes(n) {
   return (v >= 100 || i === 0 ? Math.round(v) : v.toFixed(1)) + ' ' + u[i];
 }
 
-function ago(ms) {
+export function ago(ms) {
   const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
   if (m < 1) return 'just now';
   if (m < 60) return m + ' min ago';

@@ -215,10 +215,10 @@ function clearAll() {
   writeFilters();
 }
 
-function exportCsv() {
-  if (!S.rows.length) return;
+function exportCsv(rows = S.rows) {
+  if (!rows.length) return;
   const cols = ['at', 'actor', 'actor_email', 'action', 'target_kind', 'target_id', 'note', 'before', 'after'];
-  const lines = [cols.join(',')].concat(S.rows.map((r) => cols.map((c) => csvCell(r[c])).join(',')));
+  const lines = [cols.join(',')].concat(rows.map((r) => cols.map((c) => csvCell(r[c])).join(',')));
   const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = h('a', { href: url, download: 'audit-log-' + new Date().toISOString().slice(0, 10) + '.csv' });
@@ -239,7 +239,9 @@ delegate(document, 'submit', 'form[data-audit-form]', (e, form) => {
 });
 delegate(document, 'click', '[data-action="audit-clear"]', clearAll);
 delegate(document, 'click', '[data-action="audit-more"]', () => load({ more: true }));
-delegate(document, 'click', '[data-action="audit-export"]', exportCsv);
+delegate(document, 'click', '[data-action="audit-export"]', () => exportCsv());
+/* The Overview's Activity card exports the rows it shows (the latest 15). */
+delegate(document, 'click', '[data-action="audit-export-recent"]', () => exportCsv(R.rows));
 delegate(document, 'click', '[data-action="audit-view"]', (e, el) => { S.view = el.dataset.view === 'table' ? 'table' : 'timeline'; again(); });
 delegate(document, 'click', '[data-action="audit-target"]', (e, el) => {
   const t = el.dataset.target;

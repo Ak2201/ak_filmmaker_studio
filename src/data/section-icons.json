@@ -1,5 +1,5 @@
 {
-  "_": "The section menu's marks and its per-page grouping (src/ui/section-menu.js, src/ui/tabs.js). `icons` lists every Material Symbols name the menu may draw that a page sets by ATTRIBUTE (data-tab-icon on settings, the admin console, the library); `pages` is the same information for module pages that are not edited for it, keyed page -> section id -> { group, icon, hint }; a data-tab-* attribute on the section always wins. vite.config.js adds every name here to the icon font's icon_names= subset beside navigation.json's own, so a name used anywhere MUST be listed (in `icons` or in a `pages` entry) or it prints as a word. A legal-looking name that is not a real symbol makes Google serve the WHOLE 1.2MB face with a 200: check the font's size after adding one (it is ~15KB for ~60 names).",
+  "_": "The section menu's marks and its per-page grouping (src/ui/section-menu.js, src/ui/tabs.js). `icons` lists every Material Symbols name the menu may draw that a page sets by ATTRIBUTE (data-tab-icon on settings, the admin console, the library); `pages` is the same information for module pages that are not edited for it, keyed page -> section id -> { group, icon, hint }; a data-tab-* attribute on the section always wins. vite.config.js adds every name here to the icon font's icon_names= subset beside navigation.json's own, so a name used anywhere MUST be listed (in `icons` or in a `pages` entry) or it prints as a word. A legal-looking name that is not a real symbol makes Google serve the WHOLE 1.2MB face with a 200: check the font's size after adding one (it is ~15KB for ~60 names). The component kit (src/ui/kit/) draws its marks from `icons` too, so a kit icon must be listed there or it prints as a word.",
   "icons": [
     "admin_panel_settings", "assessment", "backup", "bar_chart", "calculate", "calendar_month", "category",
     "currency_rupee", "dashboard", "description", "edit_note", "event", "fact_check", "format_list_numbered",
@@ -9,7 +9,9 @@
     "support_agent", "table_chart", "timeline", "timer", "toggle_on", "trending_up", "tune", "upload_file",
     "videocam", "view_list", "visibility", "content_cut",
     "public", "bolt", "link", "lock",
-    "picture_as_pdf", "translate", "mic", "keyboard", "spellcheck", "sticky_note_2", "auto_awesome"
+    "picture_as_pdf", "translate", "mic", "keyboard", "spellcheck", "sticky_note_2", "auto_awesome",
+    "warning", "info", "check_circle", "error", "close", "drag_indicator", "more_vert",
+    "light_mode", "dark_mode", "wb_twilight", "inbox", "add", "arrow_forward", "content_copy", "delete"
   ],
   "pages": {
     "breakdown": {

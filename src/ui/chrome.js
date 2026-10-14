@@ -51,6 +51,9 @@ import {
 } from './auth.js';
 import { loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
+/* THE KIT's stylesheet, imported ONCE, here in CORE (src/ui/kit/,
+   docs/DESIGN-KIT.md). No page imports it again. */
+import '../styles/kit.css';
 import '../styles/motion-app.css';
 import './motion-app.js';
 /* glossary.json is NOT imported statically here. It is read through

@@ -705,7 +705,9 @@ export default defineConfig({
              page and in the app, and it is pure for the same reason. */
           if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
-          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|section-menu|palette|fragments|footer|status-bar|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog|site-banner)\.js$/;
+          /* kit/ (14 Oct 2026): the component builders are pure and small, and
+             dialog.js (CORE) already draws with them — one shared copy. */
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|section-menu|palette|fragments|footer|status-bar|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog|site-banner|kit\/[a-z-]+)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages|section-icons)\.json$/;
           if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
           // billing.js's Razorpay helper, shared with the edge functions.

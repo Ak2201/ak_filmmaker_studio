@@ -839,3 +839,79 @@ figure.adc { position: relative; overflow: clip; overflow-clip-margin: 4px; }
 @media (max-width: 719px) {
   .ctl-row-a { flex-wrap: wrap; }
 }
+
+/* ============================================================
+   CONSOLE, OBSIDIAN LOOK (13 Oct 2026) — header row, LED pills,
+   big-numeral tiles, rounded attention / activity cards.
+   Restyles the objects above; no markup the proofs read changed
+   (the status chips moved INTO the header so they share the
+   title's row). Tokens and --sk-* only.
+   ============================================================ */
+.ad-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s3) var(--s5);
+  padding-block: var(--s6) var(--s4);
+}
+.ad-head-t { min-width: 0; }
+.ad-head .bd-eyebrow {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  color: var(--brand-deep);
+  margin-bottom: var(--s2);
+}
+.ad-head .bd-title { font-family: var(--face-display); font-weight: 700; font-size: var(--t-3xl); letter-spacing: -0.02em; }
+.ad-head > .ad-status {
+  flex: 1 1 22rem;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 var(--s1);
+  justify-content: flex-start;
+}
+.ad-head > .ad-status .ad-meta { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); }
+
+/* the LED pills: a mono line, a 6px lit dot, the status colour as text on its own wash */
+.ad-pill {
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+.ad-pill-dot { box-shadow: 0 0 6px 0 currentColor; }
+
+/* tiles: a big serif numeral, then the mono caption, then a quiet line */
+.ad-console .ad-stat { padding: var(--s4); gap: var(--s2); border-radius: var(--sk-radius, var(--radius)); }
+.ad-console .ad-stat-n { font-family: var(--face-display); font-size: var(--t-2xl); font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; }
+.ad-console .ad-stat-l { margin-top: var(--s1); }
+.ad-console .ad-stat.is-attention {
+  border-color: var(--accent);
+  background: var(--brand-wash);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow-cta, none);
+}
+.ad-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--s3); }
+
+/* cards: 16px, a hairline, more air; headings are plain and large */
+.ad-card { padding: var(--s5); gap: var(--s4); border-radius: var(--sk-radius, var(--radius)); }
+.ad-card-h { font-size: var(--t-xl); letter-spacing: -0.01em; }
+.ad-cols { gap: var(--s5); }
+
+/* Needs attention: each item is its own rounded row */
+.ad-att-list { gap: var(--s2); }
+.ad-att {
+  padding: var(--s3) var(--s4);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-sunk);
+}
+@media (hover: hover) { .ad-att:hover { background: var(--brand-wash); border-color: var(--accent); } }
+
+/* Activity: a violet / amber dot per row, mono sub-lines */
+.ad-tl-s { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+.ad-tl-a { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: 0.04em; }

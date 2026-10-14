@@ -178,3 +178,35 @@
 @media (pointer: coarse) {
   .el-got, .el-setups { display: inline-flex; align-items: center; min-height: 44px; }
 }
+
+/* ---- links, cut versions, dailies ----------------------------- */
+.el-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.el-links-h { font-size: var(--t-small); color: var(--ink-muted); }
+.el-link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2); }
+.el-link { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-small); max-width: 100%; }
+.el-link a { color: var(--accent-deep); overflow-wrap: anywhere; }
+.el-link-add { display: flex; flex-wrap: wrap; gap: var(--s2); flex: 1 1 100%; }
+.el-link-add input { flex: 1 1 140px; min-width: 0; font-size: var(--t-small); }
+
+.el-cuts { display: grid; gap: var(--s3); margin-top: var(--s4); }
+.el-cut {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-raised);
+}
+.el-cut .el-head { display: flex; align-items: baseline; gap: var(--s2); }
+.el-cut .el-slug { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.el-tc { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.el-cutnote { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-small); color: var(--ink-body); }
+.el-cutnote.is-done span { text-decoration: line-through; color: var(--ink-muted); }
+.el-note-add, .el-cut-add { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: stretch; }
+.el-note-add input, .el-note-add select, .el-cut-add input { min-width: 0; font-size: var(--t-small); }
+.el-note-add .el-tc-in { flex: 0 1 90px; }
+.el-note-add select { flex: 1 1 140px; }
+.el-note-add input[name="text"], .el-cut-add input[name="name"] { flex: 2 1 200px; }
+.el-days { display: grid; gap: var(--s2); }
+.el-day { display: grid; gap: var(--s1); }
+.el-day-h { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }

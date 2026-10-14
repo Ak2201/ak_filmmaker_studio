@@ -615,3 +615,69 @@
   /* A printed link should say where it goes: the coordinates are
      printed beside it already, so the URL itself is left off. */
 }
+
+/* ---- header: title and the New shoot day action, then four figures ---- */
+.ct-head-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4); }
+.ct-head-copy { flex: 1 1 28rem; min-width: 0; }
+.ct-kpis { margin-top: var(--s5); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+.ct-kpi { flex-direction: column; }
+.ct-kpi strong { order: 2; }
+.ct-kpi-l { order: 1; }
+.ct-kpi-s { order: 3; text-transform: none; letter-spacing: 0; font-family: var(--f-body, inherit); font-size: var(--t-small); }
+
+/* ---- the day at a glance (screen only: it lives inside .ct-edit) ---- */
+.ct-glance {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s4);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+}
+.ct-gl-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.ct-gl-title { margin: 0; font-family: var(--f-display); font-size: var(--t-xl); font-weight: 800; color: var(--ink); }
+.ct-gl-badge {
+  padding: 2px var(--s3);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--brand-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.ct-gl-times, .ct-gl-cols { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+.ct-gl-fact, .ct-gl-col { display: grid; gap: var(--s1); align-content: start; min-width: 0; }
+.ct-gl-fact strong { font-family: var(--f-display); font-size: var(--t-lg); color: var(--ink); }
+.ct-gl-l, .ct-gl-h {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ct-gl-p { margin: 0; color: var(--ink); }
+.ct-gl-small { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
+.ct-gl-pin { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+.ct-gl-link { font-size: var(--t-small); color: var(--accent-deep); }
+.ct-gl-safe { display: grid; gap: var(--s1); padding: var(--s3); border-radius: var(--sk-radius); background: var(--paper-sunk, var(--paper)); }
+.ct-gl-scenes { display: grid; gap: var(--s2); }
+.ct-gl-scene {
+  display: grid;
+  gap: var(--s1) var(--s3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--s3);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+}
+.ct-gl-no { font-family: var(--f-mono); font-size: var(--t-micro); text-transform: uppercase; color: var(--accent-deep); }
+.ct-gl-slug { font-weight: 600; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+.ct-gl-pg { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); white-space: nowrap; }
+.ct-gl-syn { grid-column: 1 / -1; font-size: var(--t-small); color: var(--ink-body); }
+
+@media (max-width: 720px) {
+  .ct-gl-scene { grid-template-columns: minmax(0, 1fr) auto; }
+  .ct-gl-no { grid-column: 1 / -1; }
+}

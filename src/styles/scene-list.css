@@ -238,3 +238,42 @@ body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
   letter-spacing: var(--track-label); text-transform: uppercase; white-space: nowrap;
   pointer-events: none;
 }
+
+/* ---- Stitch round 2: KPI notes, per-row counts, cue strip ---- */
+.bd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+.bd-stat-note {
+  font-style: normal;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.bd-sl-counts { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: 2px; }
+.bd-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  padding: 0 var(--s2);
+  border: 1px solid var(--hue, var(--rule));
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+}
+.bd-detail-lab {
+  margin: var(--s2) 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bd-cue {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2);
+  margin: var(--s2) 0;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--warn);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--warn-wash);
+  color: var(--warn-deep);
+  font-size: var(--t-small);
+}
+.bd-cue-dur { margin-left: auto; font-family: var(--f-mono); font-size: var(--t-micro); }
+.bd-attach { flex: 0 0 auto; }

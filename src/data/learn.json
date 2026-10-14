@@ -421,6 +421,120 @@
       "glossary": "edit decision list",
       "steps": [],
       "videos": []
+    },
+    {
+      "id": "page-eighths",
+      "term": "page eighths",
+      "glossary": "page eighths",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [],
+      "question": "What are page eighths?"
+    },
+    {
+      "id": "scene-number",
+      "term": "scene number",
+      "glossary": "scene number",
+      "steps": [],
+      "videos": [],
+      "question": "What starts a new scene, and how are scenes numbered?"
+    },
+    {
+      "id": "breakdown-categories",
+      "term": "breakdown category",
+      "glossary": "breakdown category",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [],
+      "question": "What are the breakdown categories?"
+    },
+    {
+      "id": "props-dressing",
+      "term": "prop",
+      "glossary": "props",
+      "steps": [
+        "feature/step-18"
+      ],
+      "videos": [],
+      "question": "Props or set dressing: what is the difference?"
+    },
+    {
+      "id": "sfx-vfx",
+      "term": "special effects",
+      "glossary": "special effects",
+      "steps": [],
+      "videos": [],
+      "question": "Special effects or visual effects: what is the difference?"
+    },
+    {
+      "id": "blocking-diagram",
+      "term": "blocking diagram",
+      "glossary": "blocking diagram",
+      "steps": [
+        "feature/step-16"
+      ],
+      "videos": [],
+      "question": "What is a blocking diagram?"
+    },
+    {
+      "id": "atl-btl",
+      "term": "above the line",
+      "glossary": "above the line",
+      "steps": [],
+      "videos": [],
+      "question": "What is above the line and below the line?"
+    },
+    {
+      "id": "who-owns-what",
+      "term": "line producer",
+      "glossary": "line producer",
+      "steps": [],
+      "videos": [],
+      "question": "Who owns what: producer, line producer, first AD?"
+    },
+    {
+      "id": "schedule-budget",
+      "term": "shoot day",
+      "glossary": "shoot day",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [],
+      "question": "Why do schedule and budget move together?"
+    },
+    {
+      "id": "camera-to-cloud",
+      "term": "camera to cloud",
+      "glossary": "camera to cloud",
+      "steps": [],
+      "videos": [],
+      "question": "What is camera to cloud?"
+    },
+    {
+      "id": "proxy",
+      "term": "proxy",
+      "glossary": "proxy",
+      "steps": [],
+      "videos": [],
+      "question": "What is a proxy, and when do the originals come back?"
+    },
+    {
+      "id": "backup-321",
+      "term": "3-2-1 backup",
+      "glossary": "3-2-1 backup",
+      "steps": [],
+      "videos": [],
+      "question": "What is a 3-2-1 backup?"
+    },
+    {
+      "id": "checksum",
+      "term": "checksum",
+      "glossary": "checksum",
+      "steps": [],
+      "videos": [],
+      "question": "What is a checksum?"
     }
   ]
 }

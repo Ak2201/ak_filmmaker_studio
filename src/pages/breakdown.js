@@ -38,7 +38,9 @@ import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
-import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
+import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
+import { measureEighths } from '../lib/scene-sync.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
 const app = document.getElementById('app');
@@ -55,17 +57,45 @@ function renderHeader(scenes) {
           + 'the sides, the shot list and the call sheet all read from this, so it '
           + 'is the only place any of it gets typed.'
     }),
-    h('div.bd-stats', {}, [
-      stat(String(scenes.length), scenes.length === 1 ? 'scene' : 'scenes'),
-      stat(formatEighths(eighths), eighths === 8 ? 'page' : 'pages'),
-      stat(String(Scenes.elementIndex().length), 'elements'),
-      stat(String(new Set(scenes.map((s) => s.location).filter(Boolean)).size), 'locations'),
-      stat(String(Songs.listSongs().length), 'songs')
-    ])
+    h('div.bd-stats.bd-kpis', {}, kpis(scenes, eighths)),
+    scenes.length ? h('p.bd-measure', {}, [
+      aiPill({
+        label: 'AI Desk',
+        tasks: [{ id: 'scene-notes', label: 'Scene notes' }, { id: 'breakdown-tags', label: 'Breakdown tags' },
+                { id: 'genre-comps', label: 'Genre and comparables' }],
+        ctx: { elements: () => loadScript().elements, after: () => render() }
+      }),
+      h('button.btn', {
+        type: 'button', 'data-action': 'eighths-measure', text: 'RE-MEASURE PAGES FROM THE SCRIPT',
+        title: 'Recount each scene\u2019s length in eighths from the script as it stands now'
+      })
+    ]) : null
   ]);
 }
-const stat = (value, label) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+const stat = (value, label, note) =>
+  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label }),
+    note ? h('em.bd-stat-note', { text: note }) : null]);
+
+/* Six figures, all derived from the scene model on render. A figure with
+   nothing behind it prints a dash rather than a zero that reads as a fact. */
+function kpis(scenes, eighths) {
+  const dash = (n, f) => (n ? f(n) : '\u2014');
+  const idx = Scenes.elementIndex();
+  const cats = new Set(idx.map((e) => e.category)).size;
+  const locs = new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size;
+  const ints = scenes.filter((s) => s.intExt === 'INT').length;
+  const exts = scenes.filter((s) => s.intExt === 'EXT').length;
+  const songs = Songs.listSongs().length;
+  const cast = idx.filter((e) => e.category === 'cast').length;
+  return [
+    stat(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : ''),
+    stat(dash(scenes.length, () => formatEighths(eighths)), eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : ''),
+    stat(dash(idx.length, String), 'elements', idx.length ? cats + (cats === 1 ? ' category' : ' categories') : ''),
+    stat(dash(locs, String), 'locations', locs ? ints + ' INT / ' + exts + ' EXT scenes' : ''),
+    stat(dash(songs, String), 'songs', songs ? 'musical' : ''),
+    stat(dash(cast, String), 'cast', cast ? 'tagged' : '')
+  ];
+}
 
 /* ---- the teaching empty state ------------------------------
    StudioBinder's best idea: an empty module explains itself instead of
@@ -222,6 +252,15 @@ function castSummary(scene) {
 const searchText = (scene) => [scene.number, scene.location, scene.synopsis, scene.intExt, scene.dayNight]
   .concat(...ELEMENT_CATEGORIES.map((c) => scene.elements[c.id] || [])).join(' ').toLowerCase();
 
+/** "2 Cast  3 Props": a per-category count, in the category's own hue. */
+function rowCounts(scene) {
+  const wrap = h('span.bd-sl-counts');
+  for (const cat of ELEMENT_CATEGORIES) {
+    const n = (scene.elements[cat.id] || []).length;
+    if (n) wrap.append(h('span.bd-count.hue-' + cat.hue, { text: n + ' ' + cat.label }));
+  }
+  return wrap.childNodes.length ? wrap : null;
+}
 function renderScene(scene, i, total) {
   /* The id is the command palette's target (breakdown.html#scene-…):
      tabs.js picks the tab that holds it and the fragment resolver
@@ -261,7 +300,8 @@ function renderScene(scene, i, total) {
         type: 'text', value: scene.location, placeholder: 'Location — where are we?',
         'data-scene-field': 'location', 'aria-label': 'Scene location'
       }),
-      h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' })
+      h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' }),
+      rowCounts(scene)
     ]),
     select(INT_EXT, scene.intExt, 'intExt', 'Interior or exterior'),
     select(DAY_NIGHT, scene.dayNight, 'dayNight', 'Time of day'),
@@ -282,6 +322,7 @@ function renderScene(scene, i, total) {
   ]));
 
   const detail = h('div.bd-sl-detail', { id: detailId, hidden: !open });
+  detail.append(h('p.bd-detail-lab', { text: 'Synopsis' }));
   detail.append(field('textarea.bd-synopsis', {
     rows: '2', placeholder: 'What happens in this scene?',
     'data-scene-field': 'synopsis', 'aria-label': 'Scene synopsis'
@@ -309,6 +350,25 @@ function renderScene(scene, i, total) {
     detail.append(h('label.bd-scene-songlink', {}, [h('span', { text: 'song' }), sel]));
   }
 
+  /* The Desk's scene note, when one was accepted: a reader's sentence
+     that rests on a verified quote, and the cut flag it earned. */
+  if (scene.readerNote) {
+    detail.append(h('p.bd-reader-note', {}, [
+      h('span.bd-reader-lab', { text: scene.cutCandidate ? 'Reader note · cut candidate' : 'Reader note' }),
+      h('span', { text: ' ' + scene.readerNote })
+    ]));
+  }
+
+  const song = scene.songId && songs.find((sg) => sg.id === scene.songId);
+  if (song) {
+    detail.append(h('p.bd-cue', {}, [
+      h('strong', { text: 'Musical cue: ' }),
+      h('span', { text: (song.number ? 'Song ' + song.number + ' \u2013 ' : '') + (song.title || Songs.kindLabel(song.kind)) }),
+      song.duration ? h('span.bd-cue-dur', { text: song.duration }) : null
+    ]));
+  }
+  const usedCats = ELEMENT_CATEGORIES.filter((c) => (scene.elements[c.id] || []).length).length;
+  detail.append(h('p.bd-detail-lab', { text: 'Tagged elements (' + usedCats + (usedCats === 1 ? ' category' : ' categories') + ')' }));
   const tags = h('div.bd-tags');
   for (const cat of ELEMENT_CATEGORIES) {
     const names = scene.elements[cat.id] || [];
@@ -333,7 +393,7 @@ function renderScene(scene, i, total) {
   adder.append(sel, h('input.bd-add-name', {
     type: 'text', placeholder: 'Tag an element — name it, press Enter',
     'data-action-key': 'el-add', 'aria-label': 'Element name', list: 'bdElementNames', autocomplete: 'off'
-  }));
+  }), h('button.btn.primary.bd-attach', { type: 'button', 'data-action': 'el-attach', text: 'Attach Element' }));
   tags.append(adder);
   detail.append(tags);
   detail.append(h('div.bd-scene-acts', {}, [
@@ -678,7 +738,10 @@ function renderElements() {
    carrying the line it was read off, and nothing lands on a scene until
    somebody presses it. A breakdown is a 1st AD's judgement; this saves
    the typing, not the judgement. */
-const SUGGEST_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
+const SUGGEST_CATS = SUGGEST_CATEGORIES;
+/* ADD ALL takes only the five categories whose lists are tight. The
+   looser ones (furniture, clothing, crowds) are one chip at a time. */
+const BULK_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
 function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
   wrap.append(h('h2.bd-h2', { text: 'Auto-Tag' }),
@@ -743,8 +806,9 @@ function applySuggestions(sceneIds) {
   const scenes = Scenes.listScenes();
   const rows = suggestAll(scenes, loadScript().elements)
     .filter((r) => (sceneIds ? sceneIds.includes(r.scene.id) : isConfident(r.how)));
+  const cats = sceneIds ? SUGGEST_CATS : BULK_CATS;
   const tags = [];
-  for (const r of rows) for (const cat of SUGGEST_CATS) for (const sug of r.suggestions[cat]) {
+  for (const r of rows) for (const cat of cats) for (const sug of r.suggestions[cat]) {
     tags.push({ sceneId: r.scene.id, category: cat, name: sug.name });
   }
   return Scenes.tagMany(tags);
@@ -787,6 +851,8 @@ function renderBin() {
     const bits = [];
     if (c.shots) bits.push(`${c.shots} shot${c.shots === 1 ? '' : 's'}`);
     if (c.frames) bits.push(`${c.frames} frame${c.frames === 1 ? '' : 's'}`);
+    if (c.blocks) bits.push(`${c.blocks} blocking diagram${c.blocks === 1 ? '' : 's'}`);
+    if (c.cutNotes) bits.push(`${c.cutNotes} cut note${c.cutNotes === 1 ? '' : 's'}`);
     if (c.day) bits.push(`Day ${c.day}`);
     if (c.sheets) bits.push(`${c.sheets} call sheet${c.sheets === 1 ? '' : 's'}`);
     if (!bits.length) bits.push('nothing attached');
@@ -892,6 +958,13 @@ function render(focus) {
   }
   mountStageGuide(document.getElementById('main'), { stage: 'preprod' });   // the blueprint's questions for this stage
   mountShell();
+  /* Learn-in-place slots for the craft ideas this page uses (src/data/learn.json).
+     mountLearn() fills them; an unknown id leaves the slot empty. */
+  const learnSlots = (ids) => ids.map((id) => h('div.bdo-learn', { 'data-learn': id }));
+  const scenesBox = main.querySelector('#scenes');
+  if (scenesBox) scenesBox.prepend(...learnSlots(['page-eighths', 'scene-number']));
+  const elementsBox = main.querySelector('#elements .bd-sub');
+  if (elementsBox) elementsBox.after(...learnSlots(['breakdown-categories', 'props-dressing', 'sfx-vfx']));
   mountLearn(main);
   try {
     StudioUI.autoAriaLabels();
@@ -1240,6 +1313,19 @@ delegate(document, 'click', '[data-action="sug-scene"]', (e, el) => {
   render();
   toastTagged(added, false);
 });
+delegate(document, 'click', '[data-action="eighths-measure"]', () => {
+  const changes = measureEighths(loadScript().elements, Scenes.listScenes());
+  if (!changes.length) { StudioUI.toast('Every matched scene\u2019s length already agrees with the script.'); return; }
+  const to = new Map(changes.map((c) => [c.sceneId, c.to]));
+  const from = new Map(changes.map((c) => [c.sceneId, c.from]));
+  const set = (m) => Scenes.saveScenes(Scenes.listScenes().map((s) => (m.has(s.id) ? { ...s, eighths: m.get(s.id) } : s)));
+  set(to);
+  render();
+  StudioUI.toast(`Re-measured ${changes.length} scene${changes.length === 1 ? '' : 's'} from the script.`, {
+    action: 'Undo',
+    onAction: () => { set(from); render(); StudioUI.toast('Put the earlier lengths back.'); }
+  });
+});
 delegate(document, 'click', '[data-action="sug-all"]', () => {
   const added = applySuggestions(null);
   render();
@@ -1312,16 +1398,21 @@ delegate(document, 'change', '[data-scene-field]', (e, el) => {
     }
   }
 });
+function attachElement(el) {
+  const adder = el.closest('.bd-add-el');
+  const name = adder.querySelector('.bd-add-name');
+  if (!name.value.trim()) return;
+  const id = sceneIdOf(el);
+  Scenes.tagElement(id, adder.querySelector('.bd-add-cat').value, name.value);
+  // Back into the same scene's field, for the next element.
+  render(inScene(id, '[data-action-key="el-add"]'));
+}
 delegate(document, 'keydown', '[data-action-key="el-add"]', (e, el) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
-  const cat = el.previousElementSibling.value;
-  if (!el.value.trim()) return;
-  const id = sceneIdOf(el);
-  Scenes.tagElement(id, cat, el.value);
-  // Back into the same scene's field, for the next element.
-  render(inScene(id, '[data-action-key="el-add"]'));
+  attachElement(el);
 });
+delegate(document, 'click', '[data-action="el-attach"]', (e, el) => attachElement(el));
 
 /* ---- songs — events ----------------------------------------- */
 const songIdOf = (el) => el.closest('[data-song]')?.dataset.song;

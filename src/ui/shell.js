@@ -48,6 +48,7 @@ import { mountProjectSwitcher } from './project-switcher.js';
 import { mountBackupMenu } from './topbar-backup.js';
 import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry, stagePageEntry } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
+import { mountStatusBar } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked } from '../lib/plan-gate.js';
 
@@ -508,6 +509,14 @@ function buildPageNav(toolbar) {
 
 function buildRail() {
   const rail = h('nav#studioRail.sh-rail', { 'aria-label': 'Studio' });
+  /* The brand tile that heads the rail (Obsidian Cinema). Decorative: the
+     Home item below it is the real way home, so this one is out of the
+     Tab order and the accessibility tree rather than a duplicate stop. */
+  const homeG = globals().find((g) => g.id === 'home');
+  rail.append(h('a.sh-rail-logo', {
+    href: (homeG && homeG.href) || 'index.html', tabindex: '-1', 'aria-hidden': 'true',
+    html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/></svg>'
+  }));
   globals().forEach((g) => {
     /* No project items in the global shell. */
     if (isGlobalMode() && g.id === 'dashboard') return;
@@ -1627,6 +1636,8 @@ export function mountShell() {
   document.body.classList.add('has-sh-shell');
   document.documentElement.setAttribute('data-shell-mode', GLOBAL_MODE);
   renderTrialBand();   // the strip exists only while a trial runs
+  /* The status line at the foot of the window: real facts only (src/ui/status-bar.js). */
+  try { mountStatusBar(); } catch (e) { /* a status line is not a reason to lose the shell */ }
   wire();
   setRail(initialRail());
   paintLocation(active);

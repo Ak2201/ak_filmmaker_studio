@@ -33,6 +33,7 @@ import { listContacts, listCallSheets, DEPARTMENTS } from '../lib/contacts.js';
 import { calendarDays } from '../lib/locations.js';
 import wages from '../data/wages.fefsi.json';
 import { askDanger } from './dialog.js';
+import { renderSchedule, renderVersions, impactActions, impactForms, bindImpact } from './budget-impact.js';
 
 const rs = (n) => (n < 0 ? '−₹\u00a0' : '₹\u00a0') + INR.format(Math.round(Math.abs(n || 0)));
 const pct = (n) => (n === null || n === undefined ? '—' : n + '%');
@@ -567,6 +568,37 @@ function renderExport(ctx) {
 }
 
 /* ============================================================
+   THE HEADER FIGURES: above the tabs, always visible
+   ------------------------------------------------------------
+   Five cards read off the same context every tab reads: the
+   schedule's day count, then budgetKpis() for the other four.
+   ============================================================ */
+function kpi(label, value, sub, mod) {
+  return h('div.bd-kpi' + (mod ? '.' + mod : ''), {}, [
+    h('span.bd-kpi-l', { text: label }),
+    h('strong.bd-kpi-v', { text: value }),
+    h('span.bd-kpi-s', { text: sub })
+  ]);
+}
+function renderKpis(ctx) {
+  const k = C.budgetKpis(ctx.report);
+  const days = ctx.days.length;
+  const scenes = ctx.days.reduce((n, d) => n + d.scenes.length, 0);
+  return [
+    kpi('Stripboard', days + (days === 1 ? ' day' : ' days'), days ? scenes + ' scenes scheduled' : 'Nothing scheduled yet'),
+    kpi('Total budget', fmtINR(k.approved), k.contingency.pct ? 'Estimate + ' + k.contingency.pct + '% contingency' : 'Estimate, no contingency'),
+    kpi('Actual spent', fmtINR(k.actual), k.approved ? k.pctUsed + '% of the budget used' : 'Nothing to measure against'),
+    kpi(k.over ? 'Over budget' : 'Remaining', (k.over ? '−' : '') + fmtINR(Math.abs(k.remaining)), k.over ? 'Spent beyond the budget' : 'Left to spend', k.over ? 'over' : ''),
+    kpi('Contingency', k.contingency.pct + '%', k.contingency.pool ? fmtINR(k.contingency.pool) + ' pool, ' + fmtINR(k.contingency.left) + ' left' : 'Set it on the top sheet')
+  ];
+}
+
+/** The header strip's shell, for the page to put above the tabs. */
+export function costKpis() {
+  return h('div#bdKpis.bd-kpis', { role: 'group', 'aria-label': 'Budget at a glance' });
+}
+
+/* ============================================================
    MOUNT, REFRESH, EVENTS
    ============================================================ */
 const SECTIONS = [
@@ -574,6 +606,8 @@ const SECTIONS = [
   { id: 'actuals', label: 'Cost report', render: renderActuals },
   { id: 'crew', label: 'Crew payments', render: renderCrew },
   { id: 'topsheet', label: 'Top sheet', render: renderTopSheet },
+  { id: 'schedule', label: 'Schedule impact', render: renderSchedule },
+  { id: 'versions', label: 'Versions', render: renderVersions },
   { id: 'wages', label: 'Wage table', render: renderWages },
   { id: 'export', label: 'Export', render: renderExport }
 ];
@@ -589,6 +623,8 @@ function refresh() {
   const sel = active && typeof active.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd] : null;
   const open = new Set([...document.querySelectorAll('.cx-sec details[open]:not(.cx-crew)')].map((d) => d.closest('.cx-sec').id + ':' + [...d.parentElement.children].indexOf(d)));
   const ctx = context();
+  const kp = document.getElementById('bdKpis');
+  if (kp) kp.replaceChildren(...renderKpis(ctx));
   for (const s of SECTIONS) {
     const el = document.getElementById(s.id);
     if (el) el.replaceChildren(...s.render(ctx));
@@ -640,6 +676,7 @@ function printDoc(doc) {
 }
 
 const ACTIONS = {
+  ...impactActions,
   'del-expense': (el) => {
     const list = C.listExpenses();
     const index = list.findIndex((x) => x.id === el.dataset.id);
@@ -659,6 +696,7 @@ const ACTIONS = {
 };
 
 const FORMS = {
+  version(form) { impactForms.version(form, context()); },
   expense(form) {
     const f = new FormData(form);
     const amount = parseNum(f.get('amount'));
@@ -699,6 +737,7 @@ function commitField(el) {
   const kind = el.dataset.cxField;
   if (kind === 'contingency') C.setSettings({ contingencyPct: el.value });
   else if (kind === 'line-dept') C.setLineDept(el.dataset.id, el.value);
+  else if (kind === 'line-scales') C.setLineScales(el.dataset.id, el.value === 'scales' ? true : el.value === 'fixed' ? false : null);
   else if (kind === 'crew') { C.setCrew(el.dataset.id, { [el.dataset.k]: el.value }); openCrew.add(el.dataset.id); }
   else if (kind === 'wage') C.setWageOverride(el.dataset.id, { [el.dataset.k]: el.value });
   else return;
@@ -710,6 +749,7 @@ function commitField(el) {
 
 /** Fill the shells and wire them. Call after the page is in the DOM. */
 export function initCosts(root) {
+  bindImpact({ refresh, toast });
   refresh();
   delegate(root, 'click', '[data-cx]', (e, el) => {
     const fn = ACTIONS[el.dataset.cx];
@@ -733,4 +773,4 @@ export function initCosts(root) {
   delegate(root, 'click', '[data-action]', later);
 }
 
-export default { costSections, initCosts };
+export default { costSections, costKpis, initCosts };

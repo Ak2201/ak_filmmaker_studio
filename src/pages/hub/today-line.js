@@ -39,15 +39,17 @@ function draw() {
   const where = all
     ? 'Pre-production · every step done'
     : 'Pre-production · step ' + next.n + ' of ' + total;
+  const parts = all ? ['Pre-production', 'every step done'] : ['Pre-production', 'step ' + next.n + ' of ' + total];
+  const sep = () => h('span.tl-sep', { 'aria-hidden': 'true', text: '•' });
   const sig = [where, next.label, next.tool.href, title, all].join('|');
   if (host.dataset.sig === sig) return;
   host.dataset.sig = sig;
   host.replaceChildren(
     h('span.tl-lab', { text: 'Today' }),
     h('p.tl-text', {}, [
-      h('span.tl-where', { text: where }),
-      ' · ',
-      ...(all ? [h('strong', { text: 'ready to shoot' })] : ['next: ', h('strong', { text: next.label })])
+      h('span.tl-where', { text: parts[0] }), sep(),
+      h('span.tl-where', { text: parts[1] }), sep(),
+      h('span', {}, all ? [h('strong', { text: 'ready to shoot' })] : ['next: ', h('strong', { text: next.label })])
     ]),
     h('a.btn.primary.tl-go', {
       href: next.tool.href,

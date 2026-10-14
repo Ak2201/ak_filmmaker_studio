@@ -61,6 +61,8 @@
      what give it its shape. */
   --sk-card-bg:         var(--paper-raised);
   --sk-card-ink:        var(--ink-body);
+  /* DESIGN.md: a card is outlined in a violet hairline (dark: violet at 15%
+     via --rule-hair); light keeps its lavender one. */
   --sk-card-line:       var(--rule-hair);
   --sk-card-line-w:     1px;
   --sk-card-shadow:     var(--shadow-sm);
@@ -97,10 +99,11 @@
   --sk-deco-rule-w:     1px;
   --sk-deco-rule-c:     var(--rule-hair);
 
-  /* ---- type: one face, two weights ------------------------
-     Catamaran (was Plus Jakarta Sans) for display and for body. An all-sans design
-     and a display/text pairing are different designs, and this is
-     the sort of thing a skin exists to decide. The hero is set at
+  /* ---- type: a serif display over a geometric sans ----------
+     Playfair Display for the display face, Plus Jakarta Sans for body
+     (Catamaran behind both, for Tamil). A display/text pairing and an
+     all-sans design are different designs, and this is the sort of
+     thing a skin exists to decide. The hero is set at
      800 with tight tracking; everything else leans on size and
      weight rather than on a second face.
 
@@ -115,7 +118,7 @@
   --sk-body-size:       var(--t-base);
   --sk-font-url:        none;
   --sk-title-size:      clamp(2.5rem, 6.4vw, 4.75rem);
-  --sk-title-lh:        1.0;
+  --sk-title-lh:        1.04;
   --sk-title-style:     normal;
   --sk-title-transform: none;
   --sk-h2-size:         var(--t-3xl);
@@ -125,15 +128,16 @@
   --sk-deck-size:       var(--t-lg);
   --sk-deck-style:      normal;
   --sk-deck-measure:    56ch;
-  /* The eyebrow is the body sans now, not mono — see
-     --sk-eyebrow-face in _contract.css for why that had to become a
-     variable rather than an edit to the rule that draws it. Sentence
-     case, so the tracking goes to normal; a tracked-out label only
-     makes sense in caps. */
-  --sk-eyebrow-face:    var(--sk-body);
-  --sk-eyebrow-track:   normal;
-  --sk-eyebrow-transform: none;
-  --sk-eyebrow-size:    var(--t-small);
+  /* THE EYEBROW IS JETBRAINS MONO CAPS AGAIN (Obsidian Cinema, 13 Oct
+     2026): DESIGN.md's label-md is 11px / 500-600 / .1em tracking /
+     uppercase, and every eyebrow in the app follows these four
+     variables, so this is the one place it is decided. Colour stays
+     --accent-deep in the rule that draws it (a fill is not a text
+     colour). --f-mono falls through to Catamaran per glyph for Tamil. */
+  --sk-eyebrow-face:    var(--f-mono);
+  --sk-eyebrow-track:   0.1em;
+  --sk-eyebrow-transform: uppercase;
+  --sk-eyebrow-size:    0.6875rem;
   --sk-stepnum-size:    var(--t-3xl);
 
   /* ---- the slab: all six, or none -------------------------

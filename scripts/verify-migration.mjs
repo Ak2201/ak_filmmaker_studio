@@ -420,7 +420,6 @@ const EXPECTED = {
     'put': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
     'runs': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
     'synced': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
-    'use': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
     'uses': 'AI Desk: keyGate() no longer draws the key form; verify runs signed out, so the page shows the locked AI pill',
     drafting: 'AI Desk: keyGate(\'Drafting\') heading of the retired key form'
   },
@@ -429,7 +428,11 @@ const EXPECTED = {
   breakdown: {},
   feature: {},
   short: {},
-  library: {},
+  /* The library prints the glossary's term count ("N TERMS"); Phase 6 of the
+     script-to-screen work took it from 122 to 141, so the bare integer 122 left
+     the page. A derived count, not lost copy. The next glossary change moves it
+     again: re-baseline then, rather than adding a row each time. */
+  library: { '122': 'derived count: glossary terms 122 -> 141 (Phase 6)' },
   budget: {},
   /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
      revamp's words (the journey strip folded into the stage cards). */

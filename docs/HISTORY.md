@@ -1963,3 +1963,139 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - **Checks.** Local `verify` all pages pass (`dist-verify`, gate off);
       CI Gate green on `3039bb6`. The full release-gate list (every `test:*`,
       `prove:*`, the gated build, the budget) was not run by hand.
+
+41. **Script-to-screen lesson, Phases 1–2 (13 Oct 2026).** A survey of the
+    studio against a pipeline lesson (AI analysis, breakdown, visual
+    planning, schedule/budget, cloud post) found most of it already built;
+    the plan is in the session plan file and only the gaps are done.
+    - **Phase 1 (`4e4a1b8`).** `setdressing` and `sfx` join
+      `ELEMENT_CATEGORIES` (additive ids). Stunts, VFX and Animals stopped
+      sharing a hue with another category: five `--el-*` families in all four
+      palette blocks plus print. Auto-tag reads every lexicon list, not five;
+      ADD ALL still takes only the original five (the new lists are loose),
+      one chip or ADD THESE takes the rest. `measureEighths()` in
+      `scene-sync.js` + a "re-measure pages" button, content-matched pairs
+      only, Undo. NOT done: an INT/EXT × day/night strip-colour mode (it needs
+      a remembered preference, i.e. a storage key).
+    - **Phase 2.** Three Desk tasks, each a draft/apply over verified quotes:
+      `genre-comps` (one call; comparables are the model's memory and the note
+      says so), `scene-notes` (a cut flag needs a quote that is in the scene),
+      `breakdown-tags` (an element with no words behind it is dropped; apply is
+      `tagMany`, undo `untagMany`). Scene-batched through `runSceneBatches`.
+      New additive fields: story `genre/audience/budgetTier/comps`, scene
+      `readerNote/cutCandidate`. `story.audience` steers coverage's
+      marketability wording; blank keeps the old Tamil-theatrical-and-OTT
+      default, so nothing changes until a writer sets it. The Coverage tab's
+      heading still reads "Marketability — Tamil theatrical & OTT" whatever the
+      audience is. `test:ai-phase2`. Never run against a real provider.
+
+42. **Script-to-screen lesson, Phase 3 (13 Oct 2026).** Visual planning on one
+    surface. `src/ui/blocking.js` adds two Visualize tabs: **Blocking** (an
+    overhead SVG map per setup: actor / camera / mark, draggable, arrow keys
+    move and `[` `]` turn, optional move to a second point) and **Scene
+    board** (script, shots, frames and maps for one scene, read from their own
+    models, printable). Blocking is a fourth collection in `fms_shots_v1`
+    (`blocks`, scene-keyed, vector data only) — `readAll()` in `shots.js` MUST
+    list it or every shot save drops it, and it rides in the scene's bin entry
+    (`takeSceneOut`/`putSceneBack`, `entryCounts().blocks`). A drag writes once,
+    on pointerup. The lens field gains a `<datalist>` of focal lengths, still
+    free text. `test:blocking` (new), `test:sync` extended. NOT done: the
+    shot-list share link, which waits on B7's security review and a schema
+    section. Verify needed one allowlist row removed (`use` came back on the
+    page, so its row went stale); no re-baseline.
+
+43. **Script-to-screen lesson, Phase 4 (13 Oct 2026).** The schedule and the
+    budget, linked without a second copy. Two budget tabs
+    (`src/ui/budget-impact.js`): **Schedule impact** — what a shoot day costs
+    (`perDayCost`: the estimator lines that scale with the shoot, automatic when
+    a line is priced at exactly the shoot length, overridable per line), the
+    shoot-day table, and an "if we cut…" what-if where a day is saved ONLY when
+    every scene on it is ticked (a partial cut shows a labelled share, never a
+    saving). **Versions** — lock the budget (`snapshotBudget`/`lockVersion`),
+    compare any later state to it (`compareVersion`); locked means immutable,
+    only delete (with Undo). `src/lib/schedule-impact.js` is pure and stores
+    nothing; the only writes are `versions` and the per-line `scales` flag,
+    both INSIDE `fms_costs_v1` (no new key; `readAll()`/`EMPTY()` list
+    `versions`, or every expense save drops it). Producer / line producer /
+    1st AD are shortcuts to Top sheet / Cost report / Schedule impact, not
+    permissions. Song days the estimator folds into its own count are not in
+    the day count here; a line priced on that count is marked by hand.
+    `test:impact` (new), `test:costs` extended. Known wrinkle: the lock button
+    shows the estimate WITH contingency, the comparison is without it.
+
+44. **Script-to-screen lesson, Phase 5 (13 Oct 2026).** Cloud post-production
+    within the local-first limit: the studio keeps ADDRESSES, never media.
+    `src/lib/links.js` (pure) keeps only http(s) URLs, caps a row at six,
+    dedupes, and guesses the service (Drive, Frame.io, LucidLink, Dropbox) by
+    host — `drive.google.com.evil.example` guesses `other`. Links ride inside
+    records the studio already owns: a deliverable's state (custom lines too,
+    so the undo snapshot carries them), a scene's edit note, a shoot day
+    (`dayLinks`) and a cut. New optional deliverables group `cloud_workflow`
+    (8 items, ids `cw_*`, off by default, labelled the studio's own checklist,
+    not a platform spec). Edit log: `cuts` (name, date, links, timecoded
+    notes; sorted by time) inside `fms_edit_v1`; `parseTimecode` accepts
+    `S`, `M:SS`, `H:MM:SS`, `HH:MM:SS:FF` and DROPS the frames on purpose;
+    `cutNotesText` for pasting into an email. Notes that name a scene ride
+    its bin entry. `readAll`/`EMPTY` in `editlog.js` list the new
+    collections or every pick-up save would drop them (tested). `test:links`
+    (new), `test:delivery` and `test:post` extended. Browser pass found six
+    minor items; three fixed (undo restores a link's position, the bin list
+    names blocking diagrams and cut notes, `aria-invalid` on a refused link
+    URL). Open: after a LIVE theme toggle without reload, `.btn` text colour
+    can stay on the old theme's value (seen on deliverables.html; probably
+    older than this work, not confirmed).
+
+45. **Script-to-screen lesson, Phase 6 (14 Oct 2026).** The lesson's concepts
+    as original learn content, and the start page told the truth about what was
+    built. `glossary.json` +19 terms (122 → 141): page eighths, scene number,
+    breakdown category, background actors, props, set dressing, SFX, VFX,
+    special equipment, blocking diagram, above/below the line, producer, line
+    producer, shoot day, camera to cloud, proxy, 3-2-1 backup, checksum — each
+    with a Tanglish line and an example in all four films. `learn.json` +13
+    topics as pointers, mounted where the reader meets the tool (breakdown
+    #scenes/#elements; visualize #blocking; budget #estimate; edit, appended).
+    None of the lesson's product names, prices or accuracy/speed figures is in
+    any data file: they were unverified marketing numbers. `start.html`
+    `#everything`: Auto-Tag and Breakdown lines corrected, Blocking, Scene
+    Board, Schedule Impact, Budget Versions, Cut Versions and Cloud Workflow
+    added, the AI Desk card names the three new tasks. A browser read-through
+    found real content errors, fixed before commit: a "breath in cold air" SFX
+    example (not an effect), a 3-2-1 example that showed one media type, a props
+    definition that blurred props and dressing, "above the line" tagging a
+    tension chart in prose (now `notag`), off-topic videos on five topics
+    (their `steps` pointers removed), and "sound, SFX" reading as sound effects
+    on the start page. `verify` needed one EXPECTED row, `library: '122'` (the
+    library prints the glossary's term count). Open: the four cloud learn boxes
+    sit at the foot of edit.html, away from the Cloud workflow checklist on
+    deliverables.html; `props`/`above the line` are `notag`, so they never
+    pop over in prose.
+
+46. **Edit page trimmed to its budget (14 Oct 2026).** Merging the section-menu
+    work from `origin/develop` pushed the edit page's first paint to 658,539
+    bytes against a 655,360 cap. Rather than raise the row in
+    `scripts/budget.json`, the cut-versions UI (cards, timecoded notes, the
+    add forms, the copy button and their events) moved to `src/ui/edit-cuts.js`,
+    a 5.5 KB chunk. `edit.js` always renders the `#cuts` section's heading (a
+    fragment target must resolve before any script arrives) and loads the
+    chunk when the section comes within 600px of the viewport; the scene
+    rows' dailies links stay in `edit.js`. Edit first paint is now 638.4 KB of
+    640. Known and NOT this change: `stripboard.html#dood` lands 34px behind
+    the chrome in verify's fragment check, on `origin/develop` alone as well,
+    from the section-menu work.
+
+47. **The `#dood` landing, fixed (14 Oct 2026).** `stripboard.html#dood` failed
+    verify's fragment sweep on `origin/develop` (landed at 117px under a 151px
+    band). Two causes, both in `src/ui/fragments.js`. (1) The browser's own
+    scroll to a fragment can finish AFTER the resolver has landed and declared
+    itself settled, and nothing mutates to wake the resolver; a landing is now
+    guarded for 2.5s (`guardLanding`): it re-lands on scroll events, once per
+    frame, and stands down on any wheel, touch, key or press. It is armed when
+    a resolve starts, not only once it settles. (2) The check for "arrived"
+    compared the target to `scroll-padding-top` alone, but
+    `path-bar.css` gives each tab section `scroll-margin-top` = the path bar's
+    height, so the true resting place is padding + margin (163 + 64 = 227
+    here); `restTop(el)` now adds the margin in both the settle test and the
+    guard, which also lets the resolver settle on such targets instead of
+    re-landing until its timeout. Found by logging every scroll call with its
+    stack: the explicit calls landed at different `y` each time because each
+    aligned to a different effective padding.

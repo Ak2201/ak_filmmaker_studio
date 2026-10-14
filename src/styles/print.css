@@ -59,6 +59,11 @@
     --el-props-deep: var(--print-ink);  --el-props-wash: var(--print-wash);
     --el-vehicles-deep: var(--print-ink); --el-vehicles-wash: var(--print-wash);
     --el-sound-deep: var(--print-ink);  --el-sound-wash: var(--print-wash);
+    --el-stunts-deep: var(--print-ink);  --el-stunts-wash: var(--print-wash);
+    --el-vfx-deep: var(--print-ink);  --el-vfx-wash: var(--print-wash);
+    --el-animals-deep: var(--print-ink);  --el-animals-wash: var(--print-wash);
+    --el-sfx-deep: var(--print-ink);  --el-sfx-wash: var(--print-wash);
+    --el-dressing-deep: var(--print-ink);  --el-dressing-wash: var(--print-wash);
     --ok-deep:      var(--print-ink);   --ok-wash:      var(--print-wash);
     --warn-deep:    var(--print-ink);   --warn-wash:    var(--print-wash);
     --danger-wash:  var(--print-wash);

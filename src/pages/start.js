@@ -45,6 +45,7 @@
    ============================================================ */
 import '../styles/base.css';
 import '../styles/start.css';
+import '../styles/start-obsidian.css';
 import '../styles/motion.css';
 import '../styles/motion-landing.css';
 import { reveal, splitWords, countUp, spotlight, magnetic, tilt, prefersReducedMotion } from '../lib/motion.js';

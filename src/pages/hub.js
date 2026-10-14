@@ -57,6 +57,7 @@ import '../styles/print.css';
 import '../styles/pdf.css';
 import '../styles/motion.css';
 import '../styles/hub-doors.css';
+import '../styles/hub-projects.css';
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
@@ -103,6 +104,7 @@ import {
 import { ALL_KEYS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY } from './hub/all-keys.js';
 import { ask, tell } from '../ui/dialog.js';
 import { createResumeCards } from './hub/resume-cards.js';
+import { shelvesMarkup } from './hub/shelves.js';
 import { sampleDays, samplePages, welcomeCard } from './hub/first-run.js';
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
@@ -271,7 +273,7 @@ function projectsMarkup() {
             <h1 id="projectsHeading">Continue <em>where you left off.</em></h1>
             <p class="greeting-block" id="hubGreeting">A working desk for the working filmmaker.</p>
           </div>
-          <button class="btn primary" data-action="new-project">+ NEW PROJECT</button>
+          <button class="btn primary" data-action="new-project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg><span>NEW PROJECT</span></button>
         </div>
 
         <!-- Standing control for device projects an account has not
@@ -294,16 +296,19 @@ function projectsMarkup() {
             <button data-fmt="short" data-action="set-filter">SHORT</button>
             <!-- DOC / MV / AD buttons are added by renderProjects() only when such projects exist. -->
           </div>
-          <select class="projects-sort" id="projectsSort" data-action="sort-projects" aria-label="Sort projects by">
-            <option value="recent">↻ RECENT</option>
-            <option value="alpha">A → Z</option>
-            <option value="oldest">OLDEST</option>
-          </select>
+          <div class="projects-sort-wrap">
+            <select class="projects-sort" id="projectsSort" data-action="sort-projects" aria-label="Sort projects by">
+              <option value="recent">↻ RECENT</option>
+              <option value="alpha">A → Z</option>
+              <option value="oldest">OLDEST</option>
+            </select>
+          </div>
         </div>
 
         <div class="projects-grid" id="projectsGrid"></div>
       </div>`
   });
+  sec.querySelector('.projects-inner').append(shelvesMarkup());
   return sec;
 }
 

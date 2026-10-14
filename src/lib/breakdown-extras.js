@@ -121,14 +121,21 @@ export function proposeShots({ scenes, elements, only = null } = {}) {
 
 /**
  * The shot list after appending the chosen drafts. Each new shot is
- * numbered after the shots its scene already has, as addShot() numbers
- * one, so a second run never renumbers anything. Pure: returns
+ * numbered one past the highest number its scene already uses, so a
+ * second run never renumbers anything and never repeats a number. Pure: returns
  * { shots: the whole new list, made: [new ids] }.
  */
 export function appendShots(existing, chosen) {
   const shots = (existing || []).slice();
+  /* One past the highest number in use (or the count, if that is
+     higher): after a deletion leaves #1 and #3, the next is #4, not a
+     second #3. A suffixed number ("2A") counts by its leading digits. */
   const count = new Map();
-  for (const s of shots) count.set(String(s.sceneId), (count.get(String(s.sceneId)) || 0) + 1);
+  for (const s of shots) {
+    const k = String(s.sceneId);
+    const n = parseInt(String(s.number || ''), 10);
+    count.set(k, Math.max((count.get(k) || 0) + 1, Number.isFinite(n) ? n : 0));
+  }
   const made = [];
   for (const it of chosen || []) {
     if (!it || !it.sceneId || !it.draft) continue;

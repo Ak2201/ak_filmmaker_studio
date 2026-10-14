@@ -133,6 +133,8 @@ eq(app.shots.filter((s) => s.sceneId === scenes[0].id).map((s) => s.number), ['1
 eq(app.shots.find((s) => s.sceneId === scenes[1].id).number, '1', 'a scene with none starts at 1');
 ok(app.shots.filter((s) => app.made.includes(s.id)).every((s) => s.rules === true), 'the made shots keep rules: true');
 eq(X.appendShots([], [{ sceneId: '', draft: {} }, null]).made, [], 'nothing without a scene or a draft');
+eq(X.appendShots([{ sceneId: 's1', number: '1' }, { sceneId: 's1', number: '3' }], [{ sceneId: 's1', draft: { size: 'WS', description: 'x' } }]).shots.map((s) => s.number),
+  ['1', '3', '4'], 'after a deleted shot, the next number is past the highest, not a repeat');
 
 /* ---- story ---------------------------------------------------- */
 eq(storyP.items.length, 4, 'one step per scene');

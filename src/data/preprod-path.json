@@ -24,6 +24,6 @@
     { "id": "sheets", "group": "Plan", "label": "Sides & call sheets", "about": "The pages the unit actually reads: each day's sides and its call sheet.",
       "tool": { "label": "Open sides", "href": "reports.html#sides" }, "pages": ["reports.html#sides", "reports.html#reports", "reports.html", "contacts.html#call-sheets"] },
     { "id": "ready", "group": "Check", "label": "Ready to shoot", "about": "Everything above, checked together: what still stops a day, and what you will regret.",
-      "tool": { "label": "See what is left", "href": "preprod.html#ready" }, "pages": ["preprod.html#ready"] }
+      "tool": { "label": "See what is left", "href": "preprod.html#step-ready" }, "pages": ["preprod.html#ready"] }
   ]
 }

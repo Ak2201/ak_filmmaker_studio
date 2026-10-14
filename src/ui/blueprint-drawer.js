@@ -236,7 +236,7 @@ function pillLabel(here) {
 function pillHost() {
   const main = document.querySelector('main') || document.getElementById('app');
   if (!main) return null;
-  const head = main.querySelector('header.bd-head');
+  const head = main.querySelector('header.bd-head, header.ct-head');
   return head || main;
 }
 

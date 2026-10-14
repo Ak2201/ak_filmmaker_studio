@@ -65,13 +65,15 @@ Runs alongside Phase 2, same parity rule, UI from the kit only. The plan file's 
 - Invariants in `CLAUDE.md` (storage keys, no inline handlers, tokens-only colours, `--sk-*` shapes, `dialog.js` instead of native dialogs) all apply.
 
 ## 6. The Stitch source files
-Committed once on branch `claude/improvement-ideas-0gwjyx` in the hand-off commit under `docs/stitch-source/` so they can be picked up,
-then **removed from git again** in the follow-up commit (the blobs stay in that branch's history). The canonical, private copy lives in
-the repo **`Ak2201/newmobile-UI`**: `desktop/`, `mobile-1/`, `mobile-2/` (each the original zip plus the unzipped screens).
+The zips live on the source-only branch **`stitch-source`** of this repo (no app code; `desktop/`, `mobile-1/`, `mobile-2/`, each one zip,
+plus a README). They were committed once under `docs/stitch-source/` on `claude/improvement-ideas-0gwjyx` (commit `43e5e55`) and removed
+again right after; the blobs stay in that branch's history. Get them with `git fetch origin stitch-source && git checkout origin/stitch-source -- .`
+into a scratch directory, or download from GitHub. Unzip each into its own empty directory.
 - desktop: 19 screens + 3 design systems (Obsidian Cinema, Swiss Precision, Cinematic Precision) + prompt pack. Swiss was chosen.
 - mobile-1: 17 screens. mobile-2: 3 screens (call sheets, budget, visualize).
 - The mobile bottom bars in those screens disagree with each other; the owner chose to keep the app's own bar.
 - `shoot_day_floor_monitor_1` desktop `screen.png` is an error file, not an image.
+- A separate private repo `newmobile-UI` was requested first; the integration cannot create repos (403), so the owner chose a branch instead.
 
 ## 7. Open questions for the owner
 1. Edit Log's new target length vs Reports' existing target runtime: one field or both?

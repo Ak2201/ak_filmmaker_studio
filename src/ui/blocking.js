@@ -73,9 +73,20 @@ function scenePicker(scenes, name) {
    a diamond (a tape mark on the floor). A DOLLY TRACK is a rail from
    (x,y) to (toX,toY) — the same two points a move uses — drawn as two
    rails with sleepers so it never reads as a move arrow. */
-function drawMark(m, { editable, selected }) {
+/* The camera a focused shot row names. Held here as well as painted, so a
+   map drawn after the focus (the Blocking tab re-renders when opened) still
+   shows it. In memory only; nothing is stored. */
+let linkedCam = '';
+export function highlightCamera(id) {
+  linkedCam = id || '';
+  document.querySelectorAll('.vz-mk-camera[data-mark]').forEach((el) => {
+    el.classList.toggle('is-linked', !!linkedCam && el.getAttribute('data-mark') === linkedCam);
+  });
+}
+
+function drawMark(m, { editable, selected, shotNos = [] }) {
   const g = svg('g', {
-    class: 'vz-mk vz-mk-' + m.kind + (selected ? ' is-selected' : ''),
+    class: 'vz-mk vz-mk-' + m.kind + (selected ? ' is-selected' : '') + (m.kind === 'camera' && m.id === linkedCam ? ' is-linked' : ''),
     'data-mark': m.id,
     transform: `translate(${m.x} ${m.y})`
   });
@@ -124,7 +135,9 @@ function drawMark(m, { editable, selected }) {
     g.append(body);
   }
   g.append(svg('text', { class: 'vz-mk-label', y: 6.4, 'text-anchor': 'middle' }));
-  g.lastChild.textContent = m.label || '';
+  // A camera that shots point at says which: "Cam A · 1, 3". Read off the
+  // shot records on every draw; the mark stores none of it.
+  g.lastChild.textContent = (m.label || '') + (shotNos.length ? ' · ' + shotNos.join(', ') : '');
   return g;
 }
 
@@ -166,8 +179,10 @@ export function drawBlock(block, { editable = false } = {}) {
   }
   // Tracks under the people and the cameras that ride them.
   const order = (k) => (k === 'track' ? 0 : k === 'light' ? 1 : 2);
+  const linked = Shots.listShots().filter((x) => x.cam);
   for (const m of block.marks.slice().sort((a, b) => order(a.kind) - order(b.kind))) {
-    root.append(drawMark(m, { editable, selected: editable && sel.markId === m.id && sel.blockId === block.id }));
+    const shotNos = m.kind === 'camera' ? Shots.shotsOfCamera(m.id, linked).map((x) => x.number || '?') : [];
+    root.append(drawMark(m, { shotNos, editable, selected: editable && sel.markId === m.id && sel.blockId === block.id }));
   }
   for (const c of callouts) {
     const t = svg('text', { class: 'vz-map-callout', x: c.x, y: c.kind === 'track' ? c.y - 2.4 : c.y - 1, 'text-anchor': 'middle' });

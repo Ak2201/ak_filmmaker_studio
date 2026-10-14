@@ -95,6 +95,15 @@ export function blankShot(patch = {}) {
     angle: SHOT_ANGLES[0],
     movement: SHOT_MOVEMENTS[0],
     lens: '',
+    // Lighting / rig, one line in the cinematographer's words ("Key from
+    // window, handheld"). Additive: a shot stored before it existed reads
+    // back '' through listShots()'s spread, so nothing migrates.
+    rig: '',
+    // The id of a camera MARK on this scene's blocking map, or ''. Only the
+    // id is stored; the label (Cam A) and the setup are read off the map, so
+    // a renamed camera is renamed here. A deleted camera leaves a dead id,
+    // which camOf() reads as "no camera" rather than inventing one.
+    cam: '',
     description: '',
     done: false,
     // Drafted by the AI panel rather than typed by a person. Declared
@@ -359,6 +368,37 @@ export function shotStatus(shot) {
   return shot && shot.done
     ? { id: 'can', label: 'In the can', tone: 'ok' }
     : { id: 'shoot', label: 'To shoot', tone: 'warn' };
+}
+
+/** Lighting / rig suggestions for the datalist. Suggestions only. */
+export const SHOT_RIGS = ['Tripod', 'Handheld', 'Gimbal', 'Steadicam', 'Dolly', 'Slider', 'Crane', 'Drone'];
+
+/** The camera marks on a scene's blocking maps, in map order. Derived on
+    every call; `blocks` may be passed to avoid a second read. `name` is what
+    the picker prints: the bare label while the scene has one setup with
+    cameras, "Setup 2 · Cam A" once two setups each have one. */
+export function sceneCameras(sceneId, blocks = blocksOfScene(sceneId)) {
+  const out = [];
+  for (const b of blocks) {
+    for (const m of b.marks || []) {
+      if (m.kind === 'camera') out.push({ id: m.id, label: m.label || 'Camera', blockId: b.id, blockName: b.name || '' });
+    }
+  }
+  const multi = new Set(out.map((c) => c.blockId)).size > 1;
+  return out.map((c) => ({ ...c, name: multi && c.blockName ? c.blockName + ' · ' + c.label : c.label }));
+}
+
+/** The camera a shot is linked to, or null when none is set or the mark
+    has since been deleted. */
+export function camOf(shot, cameras) {
+  if (!shot || !shot.cam) return null;
+  return (cameras || sceneCameras(shot.sceneId)).find((c) => c.id === shot.cam) || null;
+}
+
+/** The shots that name this camera mark. The reverse of camOf(). */
+export function shotsOfCamera(camId, shots) {
+  if (!camId) return [];
+  return (shots || listShots()).filter((s) => s.cam === camId);
 }
 
 /** Counts for one scene's coverage head. Derived on every call. */
@@ -680,7 +720,8 @@ export function isLinkable(ref) {
 }
 
 export default {
-  SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, BOARD_SUGGESTIONS,
+  SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, BOARD_SUGGESTIONS,
+  sceneCameras, camOf, shotsOfCamera,
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
   addBlock, updateBlock, removeBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,

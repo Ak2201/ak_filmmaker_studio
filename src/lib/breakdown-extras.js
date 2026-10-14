@@ -127,14 +127,20 @@ export function proposeShots({ scenes, elements, only = null } = {}) {
  */
 export function appendShots(existing, chosen) {
   const shots = (existing || []).slice();
-  const count = new Map();
-  for (const s of shots) count.set(String(s.sceneId), (count.get(String(s.sceneId)) || 0) + 1);
+  /* One past the highest number in the scene, not count + 1: after a
+     delete the count falls below the top number and count + 1 handed
+     out a number a shot already had (scenes.js addScene, audit M26). */
+  const top = new Map();
+  for (const s of shots) {
+    const k = String(s.sceneId);
+    top.set(k, Math.max(top.get(k) || 0, parseInt(s && s.number, 10) || 0));
+  }
   const made = [];
   for (const it of chosen || []) {
     if (!it || !it.sceneId || !it.draft) continue;
     const k = String(it.sceneId);
-    const n = (count.get(k) || 0) + 1;
-    count.set(k, n);
+    const n = (top.get(k) || 0) + 1;
+    top.set(k, n);
     const shot = blankShot({ sceneId: k, number: String(n), ...it.draft });
     shots.push(shot);
     made.push(shot.id);

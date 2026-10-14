@@ -40,6 +40,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { mountPathBar } from '../ui/path-bar.js';
 import { h, delegate } from '../lib/dom.js';
+import { pageHeader, statStrip, button } from '../ui/kit/index.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS, MEDIA_KINDS } from '../lib/locations.js';
@@ -86,25 +87,23 @@ const slugOf = (scene) => scene.intExt + '. ' + (Locations.locationName(scene) |
 /* ---- header -------------------------------------------------- */
 function renderHeader(scenes, days, locs, media) {
   const dated = days.filter((d) => d.date).length;
-  return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Plan · dates, places, references' }),
-    h('h1.bd-title', { text: 'Shoot Calendar & Locations.' }),
-    h('p.bd-deck', {
-      text: 'The schedule already exists — the stripboard made it. This page puts '
-          + 'real dates on those shoot days, keeps a recce record for every place '
-          + 'the script names, and indexes the reference material you have '
-          + 'gathered. Not one scene is typed again here.'
-    }),
-    h('div.bd-stats', {}, [
-      stat(String(days.length), days.length === 1 ? 'shoot day' : 'shoot days'),
-      stat(String(dated), dated === 1 ? 'date set' : 'dates set'),
-      stat(String(locs.length), locs.length === 1 ? 'location' : 'locations'),
-      stat(String(media.length), media.length === 1 ? 'reference' : 'references')
-    ])
-  ]);
+  const head = pageHeader({
+    class: 'bd-head',
+    eyebrow: 'Plan \u00b7 dates, places, references',
+    title: 'Shoot Calendar & Locations.',
+    sub: 'The schedule already exists \u2014 the stripboard made it. This page puts '
+       + 'real dates on those shoot days, keeps a recce record for every place '
+       + 'the script names, and indexes the reference material you have '
+       + 'gathered. Not one scene is typed again here.'
+  });
+  head.append(statStrip([
+    { value: String(days.length), label: days.length === 1 ? 'shoot day' : 'shoot days' },
+    { value: String(dated), label: dated === 1 ? 'date set' : 'dates set', attrs: { 'data-pl-dated': '' } },
+    { value: String(locs.length), label: locs.length === 1 ? 'location' : 'locations' },
+    { value: String(media.length), label: media.length === 1 ? 'reference' : 'references' }
+  ], { label: 'The plan in figures' }));
+  return head;
 }
-const stat = (value, label) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
 
 /* ---- the teaching empty state -------------------------------
    The same shape as breakdown.js and stripboard.js: an empty module
@@ -136,8 +135,8 @@ function renderEmpty() {
       })
     ]),
     h('div.pl-empty-acts', {}, [
-      h('a.btn.primary.bd-cta', { href: 'breakdown.html#scenes', text: 'Add the scenes  →' }),
-      h('a.btn.pl-alt.bd-cta', { href: 'stripboard.html#stripboard', text: 'Schedule them  →' })
+      button({ href: 'breakdown.html#scenes', label: 'Add the scenes  →', variant: 'primary', pill: true, class: 'bd-cta' }),
+      button({ href: 'stripboard.html#stripboard', label: 'Schedule them  →', class: 'bd-cta' })
     ])
   ]);
 }
@@ -176,7 +175,7 @@ function renderCalendar(scenes) {
       text: 'None of the ' + plural(scenes.length, 'scene', 'scenes') + ' has a shoot day yet. '
           + 'Give a strip a day on the stripboard — or use "Schedule by location" there — '
           + 'and the calendar fills itself in.'
-    }), h('a.btn.pl-jump', { href: 'stripboard.html#stripboard', text: 'Go to the stripboard  →' }));
+    }), button({ href: 'stripboard.html#stripboard', label: 'Go to the stripboard  →', class: 'pl-jump' }));
   } else {
     // A date used by two shoot days is almost always a slip, and the
     // only place it is visible is here. Counted once, read per card.
@@ -198,7 +197,7 @@ function renderCalendar(scenes) {
       h('div.pl-chips', {}, loose.map((s) => h('span.pl-chip', {
         text: 'Sc ' + (s.number || '—'), title: slugOf(s)
       }))),
-      h('a.btn.pl-jump', { href: 'stripboard.html#stripboard', text: 'Schedule them  →' })
+      button({ href: 'stripboard.html#stripboard', label: 'Schedule them  →', class: 'pl-jump' })
     ]));
   }
   return wrap;
@@ -323,7 +322,7 @@ function renderLocations(scenes) {
     wrap.append(h('p.bd-none', {
       text: 'No scenes yet, so no locations. Type a place on a scene in the breakdown '
           + 'and a recce card appears here with the scenes already attached.'
-    }), h('a.btn.pl-jump', { href: 'breakdown.html#scenes', text: 'Go to the breakdown  →' }));
+    }), button({ href: 'breakdown.html#scenes', label: 'Go to the breakdown  →', class: 'pl-jump' }));
     return wrap;
   }
 
@@ -350,7 +349,7 @@ function renderLocations(scenes) {
         text: 'Sc ' + (s.number || '—'),
         title: s.synopsis || slugOf(s)
       }))),
-      h('a.btn.pl-jump', { href: 'breakdown.html#scenes', text: 'Go to the breakdown  →' })
+      button({ href: 'breakdown.html#scenes', label: 'Go to the breakdown  →', class: 'pl-jump' })
     ]));
   }
 
@@ -585,9 +584,7 @@ function renderMedia(scenes, media) {
     media.forEach((item) => wrap.append(renderMediaItem(item, scenes)));
   }
 
-  wrap.append(h('button.btn.pl-add', {
-    type: 'button', 'data-action': 'media-add', text: '+  Add a reference'
-  }));
+  wrap.append(button({ label: '+  Add a reference', action: 'media-add', class: 'pl-add' }));
   return wrap;
 }
 
@@ -787,11 +784,9 @@ function patchCalendarDates() {
     if (when) when.textContent = dayWhen(d, clashes);
   });
   const dated = days.filter((d) => d.date).length;
-  document.querySelectorAll('.bd-head .bd-stat').forEach((st) => {
-    const label = st.querySelector('span');
-    if (!label || !/^dates? set$/.test(label.textContent)) return;
-    st.querySelector('strong').textContent = String(dated);
-    label.textContent = dated === 1 ? 'date set' : 'dates set';
+  document.querySelectorAll('.bd-head [data-pl-dated]').forEach((st) => {
+    st.querySelector('.k-stat-value').textContent = String(dated);
+    st.querySelector('.k-stat-label').textContent = dated === 1 ? 'date set' : 'dates set';
   });
 }
 

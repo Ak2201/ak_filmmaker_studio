@@ -14,6 +14,7 @@
    a nav target must not depend on data existing.
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { button } from './kit/index.js';
 import { formatEighths } from '../lib/scenes.js';
 import { loadScript, pageCount, formatPages } from '../lib/script.js';
 import { headingsOf } from '../lib/scene-sync.js';
@@ -121,13 +122,13 @@ function totalsView(sum) {
 function startBlock({ scriptPages, hasScript, hasScenes }) {
   const row = h('div.bdo-start');
   if (hasScript) {
-    row.append(h('button.btn.primary.bd-cta', {
-      type: 'button', 'data-action': 'run-breakdown',
-      text: hasScenes ? 'Break down the whole script' : `Break down my script (${formatPages(scriptPages)} pages)`
+    row.append(button({
+      variant: 'primary', pill: true, action: 'run-breakdown', class: 'bd-cta',
+      label: hasScenes ? 'Break down the whole script' : `Break down my script (${formatPages(scriptPages)} pages)`
     }));
   }
   if (!hasScenes || !hasScript) {
-    row.append(h('label' + (hasScript ? '.btn' : '.btn.primary.bd-cta') + '.bdo-upload', {}, [
+    row.append(h('label' + (hasScript ? '.k-btn' : '.k-btn.k-btn--primary.k-btn--pill.bd-cta') + '.bdo-upload', {}, [
       h('span', { text: 'Upload a script' }),
       h('input.bdo-file', {
         type: 'file', 'data-action': 'bd-upload', 'aria-label': 'Upload a script file',

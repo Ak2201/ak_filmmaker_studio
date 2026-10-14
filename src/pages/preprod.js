@@ -29,9 +29,11 @@ import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
 import { pathSteps, nextStep } from '../lib/preprod-path.js';
 import { readiness } from '../lib/readiness.js';
 import Store from '../lib/store.js';
+import { pageHeader, button, badge, meter } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 const STATE_WORD = { done: 'Done', doing: 'In progress', todo: 'Not started' };
+const STATE_TONE = { done: 'ok', doing: 'warn', todo: null };
 
 let steps = [];
 let cur = '';
@@ -96,7 +98,7 @@ function readinessList() {
   /* One A4 page for the producer. The code that draws it is fetched on
      the press, not with the page (src/lib/ready-pdf.js). */
   wrap.append(h('div.pp-act.pp-ready-act', {}, [
-    h('button.btn.pp-pdf', { type: 'button', 'data-action': 'ready-pdf', text: 'DOWNLOAD ONE-PAGE PDF' }),
+    button({ label: 'DOWNLOAD ONE-PAGE PDF', icon: 'picture_as_pdf', action: 'ready-pdf', class: 'pp-pdf' }),
     h('span.pp-check-hint', { text: 'Checks, shoot days, budget and open permissions, on one A4 page.' })
   ]));
   return wrap;
@@ -107,15 +109,15 @@ function stepPanel(s) {
   sec.append(h('div.pp-step-head', {}, [
     h('span.pp-step-n', { text: 'Step ' + s.n }),
     h('h2', { id: 'pp-h-' + s.id, text: s.label }),
-    h('span.pp-state.is-' + s.state, { text: STATE_WORD[s.state] })
+    badge({ label: STATE_WORD[s.state], tone: STATE_TONE[s.state], dot: true, class: 'pp-state is-' + s.state })
   ]));
   sec.append(h('p.pp-about', { text: s.about }));
   if (s.facts.length) sec.append(h('p.pp-facts', { text: s.facts.join(' · ') }));
   if (s.id === 'ready') {
     sec.append(readinessList());
     sec.append(h('div.pp-act', {}, [
-      h('a.btn.primary', { href: 'contacts.html#call-sheets', text: 'MAKE THE CALL SHEET →' }),
-      h('a.btn', { href: 'shoot.html', text: 'OPEN THE SHOOT DAY →' })
+      button({ href: 'contacts.html#call-sheets', label: 'MAKE THE CALL SHEET →', variant: 'primary' }),
+      button({ href: 'shoot.html', label: 'OPEN THE SHOOT DAY →' })
     ]));
   }
   else if (s.missing.length) {
@@ -125,7 +127,7 @@ function stepPanel(s) {
     sec.append(h('p.pp-facts', { text: 'Nothing left in this step.' }));
   }
   if (s.id !== 'ready') {
-    sec.append(h('div.pp-act', {}, [h('a.btn' + (s.state === 'done' ? '' : '.primary'), { href: s.tool.href, text: s.tool.label.toUpperCase() + ' →' })]));
+    sec.append(h('div.pp-act', {}, [button({ href: s.tool.href, label: s.tool.label.toUpperCase() + ' →', variant: s.state === 'done' ? 'secondary' : 'primary' })]));
   }
   const foot = stepFooter(steps, s.id);
   if (foot) sec.append(foot);
@@ -133,11 +135,9 @@ function stepPanel(s) {
 }
 
 function summary(done, next) {
-  const fill = h('span');
-  fill.style.width = Math.round((done / Math.max(1, steps.length)) * 100) + '%';
   return h('div.pp-sum', {}, [
-    h('span', { text: done + ' of ' + steps.length + ' steps done' + (next && next.id !== 'ready' ? ' · next: ' + next.label : '') }),
-    h('span.pp-meter', { role: 'img', 'aria-label': done + ' of ' + steps.length + ' steps done' }, [fill])
+    h('span', { text: done + ' of ' + steps.length + ' steps done' + (next && next.id !== 'ready' ? ' \u00b7 next: ' + next.label : '') }),
+    meter({ value: done, max: steps.length, show: false, class: 'pp-meter', attrs: { role: 'img', 'aria-label': done + ' of ' + steps.length + ' steps done' } })
   ]);
 }
 
@@ -170,11 +170,12 @@ function render() {
 
   if (project && patch(project, done, next)) return;
   const main = h('main#main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Studio · Pre-Production' }),
-    h('h1.bd-title', { text: 'Pre-Production.' }),
-    h('p.bd-deck', { text: 'From the script to the first day of shooting, one step at a time. Each step says what it is for and what is still missing, then opens the tool where it is done.' })
-  ]));
+  main.append(pageHeader({
+    class: 'bd-head',
+    eyebrow: 'Studio \u00b7 Pre-Production',
+    title: 'Pre-Production.',
+    sub: 'From the script to the first day of shooting, one step at a time. Each step says what it is for and what is still missing, then opens the tool where it is done.'
+  }));
   nav = null;
   if (!project) {
     main.append(h('div.pp-page', {}, [h('p.bd-sub', { text: 'No film is open. Open or create one from Home, and its path appears here.' })]));

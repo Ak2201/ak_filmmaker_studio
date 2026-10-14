@@ -54,24 +54,8 @@
    body; a secondary action needs the palette stated, and stating it
    once here is cheaper than a second button component. */
 .pl-jump,
-.pl-add,
-.pl-alt {
-  color: var(--ink);
-  border-color: var(--rule);
-  background: var(--paper);
-}
-.pl-jump:hover,
-.pl-add:hover,
-.pl-alt:hover,
-.pl-jump:focus-visible,
-.pl-add:focus-visible,
-.pl-alt:focus-visible {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
-}
-.pl-jump,
-.pl-add { justify-self: start; display: inline-block; margin-top: var(--s4); }
+.pl-add { justify-self: start; margin-top: var(--s4); }
+.bd-head > .k-stat-strip { grid-column: 1 / -1; margin-top: var(--s3); }
 
 .pl-empty-acts {
   display: flex;

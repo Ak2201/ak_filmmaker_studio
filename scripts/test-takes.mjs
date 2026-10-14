@@ -71,5 +71,41 @@ eq(S.timelineAt('12:00', 0, 1440), 0.5, 'timelineAt midpoint');
 eq(S.timelineAt('05:00', 360, 1200), 0, 'timelineAt clamps low');
 eq(S.timelineAt('xx', 0, 10), null, 'timelineAt rejects a non-time');
 
+/* ---- the floor note: one field on the scene record (owner #29) ---- */
+mem.clear();
+eq(Scenes.blankScene().floorNote, '', 'blankScene has floorNote: ""');
+mem.set('fms_scenes_v1', JSON.stringify({ scenes: [{ id: 'old', number: '9' }] }));
+eq(Scenes.listScenes()[0].floorNote, '', 'a row stored without a note reads back ""');
+mem.clear();
+Scenes.addScene({ id: 'n', number: '4', shootDay: 1, shotState: 'part', takes: [{ n: 1 }] });
+Scenes.addScene({ id: 'm', number: '5', shootDay: 1 });
+S.setFloorNote('n', '  insert on the gate owed\r\nwild track taken  ');
+let n = Scenes.listScenes().find((s) => s.id === 'n');
+eq(n.floorNote, 'insert on the gate owed\nwild track taken', 'a note is trimmed and its line ends normalised');
+eq([n.shotState, n.takes.length], ['part', 1], 'a note never touches shotState or takes');
+eq(Scenes.listScenes().find((s) => s.id === 'm').floorNote, '', 'another scene is untouched');
+const before = mem.get('fms_scenes_v1');
+S.setFloorNote('n', 'insert on the gate owed\nwild track taken');
+ok(mem.get('fms_scenes_v1') === before, 'saving the same note writes nothing');
+S.setFloorNote('n', '   ');
+eq(Scenes.listScenes().find((s) => s.id === 'n').floorNote, '', 'a blank note clears the field');
+eq(S.cleanNote('x'.repeat(S.FLOOR_NOTE_MAX + 50)).length, S.FLOOR_NOTE_MAX, 'a note is capped');
+ok(S.setFloorNote('missing', 'x') === null, 'an unknown scene takes no note');
+eq([...mem.keys()], ['fms_scenes_v1'], 'the note wrote only the scenes key');
+
+/* ---- what a scene needs, and the nearest help (pure) ---- */
+const need = S.sceneNeeds(
+  { id: 'n', elements: { cast: ['Ragavan'], props: ['Lanyards', ' '], wardrobe: ['Uniform'], bogus: ['x'] } },
+  [{ sceneId: 'n', done: true, lens: '24mm', rig: 'Handheld' }, { sceneId: 'n', done: false, lens: '24mm ', rig: '' }, { sceneId: 'z', done: true, lens: '85mm' }],
+  [{ name: 'Cam A' }, { label: 'Cam B' }]);
+eq(need.tags.map((t) => t.cat + ':' + t.name), ['props:Lanyards', 'wardrobe:Uniform'], 'needs: tagged non-cast elements in category order, blanks and unknown ids dropped');
+eq([need.setups, need.setupsDone, need.lenses, need.rigs, need.cameras], [2, 1, ['24mm'], ['Handheld'], ['Cam A', 'Cam B']], 'needs: this scene\'s coverage only');
+eq(S.sceneNeeds({ id: 'q' }, [], []).tags, [], 'nothing tagged, nothing listed');
+eq(S.phoneIn('Govt. General, casualty 044 2530 5000'), '04425305000', 'a phone number is found in the text');
+eq(S.phoneIn('+91 98400-12345 (duty)'), '+919840012345', 'an international number keeps its plus');
+eq(S.phoneIn('E-2 station, 2 km'), '', 'no number, no tel link');
+eq(S.nearestHelp([{ name: 'A', recce: { hospital: 'GH 044 2530 5000', police: '' } }, { name: 'B', recce: {} }]),
+  [{ name: 'A', rows: [{ kind: 'hospital', text: 'GH 044 2530 5000', tel: '04425305000' }] }], 'nearestHelp keeps only noted places and rows');
+
 console.log(fail ? `\n✗ ${fail} failed, ${pass} passed` : `✓ takes: ${pass} checks`);
 process.exit(fail ? 1 : 0);

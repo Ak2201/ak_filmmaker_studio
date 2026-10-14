@@ -103,7 +103,10 @@
     "view_agenda",
     "schedule",
     "lock_open",
-    "group"
+    "group",
+    "local_hospital",
+    "local_police",
+    "call"
   ],
   "pages": {
     "breakdown": {

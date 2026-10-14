@@ -26,7 +26,7 @@
    order the stripboard put them, because that IS the shooting
    order and re-sorting would quietly discard the AD's work.
    ============================================================ */
-import Scenes, { totalEighths, formatEighths } from './scenes.js';
+import Scenes, { totalEighths, formatEighths, ELEMENT_CATEGORIES } from './scenes.js';
 import Locations from './locations.js';
 
 /** Done enough to not shoot again. 'part' is NOT done. */
@@ -193,6 +193,73 @@ export function undoTake(sceneId) {
   return writeTakes(sceneId, (t) => t.slice(0, -1));
 }
 
+/* ---- the floor note ---------------------------------------------
+   One free-text field on the scene record (`floorNote`, see
+   blankScene). Written only here, on a press of Save, never on load;
+   an empty note clears the field rather than storing whitespace. */
+export const FLOOR_NOTE_MAX = 2000;
+
+export function cleanNote(raw) {
+  return String(raw == null ? '' : raw).replace(/\r\n?/g, '\n').trim().slice(0, FLOOR_NOTE_MAX);
+}
+
+export const floorNoteOf = (scene) => cleanNote(scene && scene.floorNote);
+
+export function setFloorNote(sceneId, text) {
+  const scene = Scenes.listScenes().find((s) => s.id === sceneId);
+  if (!scene) return null;
+  const next = cleanNote(text);
+  if (next === floorNoteOf(scene)) return scene;   // nothing changed, nothing written
+  return Scenes.updateScene(sceneId, { floorNote: next });
+}
+
+/* ---- what the scene needs on the floor (PURE, derived) ---------
+   The breakdown's tagged elements other than cast (the card prints
+   cast on its own line), in ELEMENT_CATEGORIES order, and the shot
+   list's coverage for the scene: setups ticked, lenses, rigs and the
+   blocking map's cameras. Only what somebody tagged or typed; an
+   untagged category is absent, never "none". */
+export function sceneNeeds(scene, shots, cameras) {
+  const els = (scene && scene.elements) || {};
+  const tags = [];
+  ELEMENT_CATEGORIES.forEach((c) => {
+    if (c.id === 'cast') return;
+    const list = Array.isArray(els[c.id]) ? els[c.id].map((x) => String(x || '').trim()).filter(Boolean) : [];
+    list.forEach((name) => tags.push({ cat: c.id, label: c.label, name }));
+  });
+  const mine = (shots || []).filter((s) => s.sceneId === (scene && scene.id));
+  const uniq = (xs) => [...new Set(xs.map((x) => String(x || '').trim()).filter(Boolean))];
+  return {
+    tags,
+    setups: mine.length,
+    setupsDone: mine.filter((s) => s.done).length,
+    lenses: uniq(mine.map((s) => s.lens)),
+    rigs: uniq(mine.map((s) => s.rig)),
+    cameras: uniq((cameras || []).map((c) => c.name || c.label))
+  };
+}
+
+/* ---- the nearest help (PURE) -----------------------------------
+   The recce's free-text hospital and police lines for each of the
+   day's locations, with a dialable number when the text holds one.
+   The distance the prototypes print is not stored, so it is not shown. */
+export function phoneIn(text) {
+  const m = /(\+?\d[\d\s().-]{5,}\d)/.exec(String(text || ''));
+  if (!m) return '';
+  const digits = m[1].replace(/[^\d+]/g, '');
+  return digits.replace(/\D/g, '').length >= 6 ? digits : '';
+}
+
+export function nearestHelp(places) {
+  return (places || []).map(({ name, recce }) => {
+    const r = recce || {};
+    const rows = [];
+    if (String(r.hospital || '').trim()) rows.push({ kind: 'hospital', text: String(r.hospital).trim(), tel: phoneIn(r.hospital) });
+    if (String(r.police || '').trim()) rows.push({ kind: 'police', text: String(r.police).trim(), tel: phoneIn(r.police) });
+    return { name, rows };
+  }).filter((p) => p.rows.length);
+}
+
 /* ---- the floor monitor's numbers (all PURE) -------------------- */
 
 /** Scenes not yet done: the work that is left. 'part' stays on the list. */
@@ -229,4 +296,5 @@ export function timelineAt(hhmm, from, to) {
 }
 
 export default { days, pickDay, detail, mark, overall, toISODate, sheetsForDay,
-  cleanTakes, takesOf, takesLine, logTake, circleTake, undoTake, scenesLeft, wrapEstimate, timelineAt };
+  cleanTakes, takesOf, takesLine, logTake, circleTake, undoTake, scenesLeft, wrapEstimate, timelineAt,
+  cleanNote, floorNoteOf, setFloorNote, sceneNeeds, phoneIn, nearestHelp };

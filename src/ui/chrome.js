@@ -1277,7 +1277,11 @@ StudioUI.attachMobileActionBar = function (config) {
     const icon = document.createElement('span');
     icon.className = 'mab-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = it.icon;
+    /* A Material Symbols ligature where the item names one (the Swiss
+       shell's icon set, cut into the subset by section-icons.json), the
+       typographic glyph otherwise. */
+    if (it.sym) { icon.classList.add('sym'); icon.setAttribute('translate', 'no'); icon.textContent = it.sym; }
+    else icon.textContent = it.icon;
     const text = document.createElement('span');
     text.textContent = it.label;
     el.append(icon, text);

@@ -695,7 +695,7 @@ function build() {
   });
   const box = h('div.pal-box');
   const field = h('div.pal-field');
-  field.append(h('span.pal-field-icon', { text: '⌕', 'aria-hidden': 'true' }));
+  field.append(iconSpan('pal-field-icon', { sym: 'search', icon: '⌕' }));
   input = h('input#palInput.pal-input', {
     type: 'text',
     role: 'combobox',

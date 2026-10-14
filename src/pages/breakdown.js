@@ -27,6 +27,10 @@ import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
 import * as Songs from '../lib/songs.js';
+import { categoryTotals, indexTotals, indexRows, toCSV as elementsCSV, planBatch } from '../lib/element-index.js';
+import { exportPDF } from '../lib/pdf.js';
+import { download as saveFile, slug as fileSlug } from '../lib/story-io.js';
+import '../styles/breakdown-elements.css';
 import * as Bin from '../lib/scene-bin.js';
 import '../styles/scene-bin.css';
 import '../styles/scene-list.css';
@@ -722,31 +726,104 @@ function renderSongs(scenes) {
   return wrap;
 }
 
-/* ---- element index ------------------------------------------ */
+/* ---- element index ------------------------------------------
+   The index is DERIVED (src/lib/element-index.js) from the tags on the
+   scenes; nothing here is stored. Which category is filtered and which
+   scenes are picked for a batch tag live in memory for this page view
+   (EX, and SL.sel which the scene list already shares). Batch tagging
+   writes through Scenes.tagMany(), the one writer, and Undo takes back
+   exactly what it added through untagMany(). */
+const EX = { cat: '' };
 function renderElements() {
-  const index = Scenes.elementIndex();
-  const wrap = h('section.bd-elements', { id: 'elements' });
+  const scenes = Scenes.listScenes();
+  const totals = categoryTotals(scenes, ELEMENT_CATEGORIES);
+  const grand = indexTotals(totals);
+  const usedCats = totals.filter((c) => c.tags).length;
+  const wrap = h('section.bd-elements.bdx', { id: 'elements' });
   wrap.append(h('h2.bd-h2', { text: 'Elements' }),
               h('p.bd-sub', { text: 'Derived from the tags above. Nothing here is typed twice.' }));
-  if (!index.length) {
+  if (!grand.tags) {
     wrap.append(h('p.bd-none', { text: 'No elements tagged yet. Tag one on any scene and it appears here, with every scene it touches.' }));
     return wrap;
   }
+  if (EX.cat && !totals.some((c) => c.id === EX.cat && c.tags)) EX.cat = '';
+  const rows = indexRows(scenes, ELEMENT_CATEGORIES, EX.cat);
+
+  const side = h('aside.bdx-side', { 'aria-label': 'Element index' });
+  const cats = h('ul.bdx-cats');
+  cats.append(h('li', {}, [h('button.bdx-cat.bdx-cat-all', { type: 'button', 'data-action': 'ex-cat', 'data-cat': '', 'aria-pressed': String(!EX.cat) }, [
+    h('span.bdx-cat-name', { text: 'All categories' }),
+    h('span.bdx-cat-n', { text: String(grand.tags) })
+  ])]));
+  for (const c of totals) {
+    cats.append(h('li', {}, [h(`button.bdx-cat.hue-${c.hue}`, {
+      type: 'button', 'data-action': 'ex-cat', 'data-cat': c.id, 'aria-pressed': String(EX.cat === c.id),
+      disabled: !c.tags,
+      title: c.tags ? c.elements + (c.elements === 1 ? ' element, ' : ' elements, ') + c.tags + (c.tags === 1 ? ' tag' : ' tags') : 'Nothing tagged in this category'
+    }, [
+      h('span.bdx-cat-dot', { 'aria-hidden': 'true' }),
+      h('span.bdx-cat-name', { text: c.label }),
+      h('span.bdx-cat-n', { text: String(c.tags) })
+    ])]));
+  }
+  side.append(
+    h('div.bdx-side-head', {}, [
+      h('h3.bdx-side-title', { text: 'Element index' }),
+      h('p.bdx-side-meta', { text: usedCats + ' of ' + totals.length + ' categories · ' + grand.tags + (grand.tags === 1 ? ' tag' : ' tags') + ' · ' + grand.elements + (grand.elements === 1 ? ' element' : ' elements') })
+    ]),
+    cats,
+    batchPanel(scenes),
+    h('div.bdx-export', {}, [
+      button({ label: 'Export CSV', icon: 'table_chart', action: 'ex-csv', block: true }),
+      button({ label: 'Export PDF', icon: 'picture_as_pdf', action: 'ex-pdf', block: true })
+    ])
+  );
+
+  const list = h('div.bdx-list');
+  list.append(h('p.bdx-list-meta', { role: 'status', text: rows.length + (rows.length === 1 ? ' element' : ' elements')
+    + (EX.cat ? ' in ' + catById[EX.cat].label : '') }));
   const grid = h('div.bd-el-grid');
-  for (const item of index) {
-    const cat = catById[item.category] || { label: item.category, hue: 'feature' };
+  for (const item of rows) {
+    const cat = catById[item.category];
+    const nums = item.scenes.map((s) => s.number);
     grid.append(h(`div.bd-el.hue-${cat.hue}`, {}, [
       h('span.bd-el-cat', { text: cat.label }),
       h('strong.bd-el-name', { text: item.name }),
-      h('span.bd-el-scenes', {
-        text: item.scenes.length === 1
-          ? `scene ${item.scenes[0].number}`
-          : `${item.scenes.length} scenes · ${item.scenes.map((s) => s.number).join(', ')}`
-      })
+      h('span.bd-el-scenes', {}, [
+        h('span.bd-el-count', { text: nums.length + (nums.length === 1 ? ' scene' : ' scenes') }),
+        ' · ' + (nums.length > 12 ? nums.slice(0, 12).join(', ') + ' +' + (nums.length - 12) : nums.join(', '))
+      ])
     ]));
   }
-  wrap.append(grid);
+  list.append(grid);
+  wrap.append(h('div.bdx-layout', {}, [list, side]));
   return wrap;
+}
+
+/* Batch tag: the picked scenes are SL.sel, the same selection the scene
+   list's checkboxes use, so picking in either place is one act. */
+function batchPanel(scenes) {
+  const box = h('div.bdx-batch', { role: 'group', 'aria-label': 'Batch tag' });
+  box.append(h('h4.bdx-batch-title', { text: 'Batch tag' }));
+  const list = h('ul.bdx-batch-scenes');
+  scenes.forEach((s, i) => list.append(h('li', {}, [h('label.bdx-batch-pick', {}, [
+    h('input', { type: 'checkbox', 'data-action': 'ex-pick', 'data-scene-id': s.id, checked: SL.sel.has(s.id) }),
+    h('span.bdx-batch-num', { text: s.number || String(i + 1) }),
+    h('span.bdx-batch-slug', { text: s.location || 'Untitled scene' })
+  ])])));
+  box.append(
+    h('div.bdx-batch-all', {}, [
+      h('span.bdx-batch-n', { role: 'status', text: SL.sel.size + ' of ' + scenes.length + ' scenes selected' }),
+      button({ label: 'All', size: 'sm', variant: 'ghost', action: 'ex-pick-all' }),
+      button({ label: 'None', size: 'sm', variant: 'ghost', action: 'ex-pick-none' })
+    ]),
+    list,
+    h('select.bd-sel.bdx-batch-cat', { 'aria-label': 'Category to tag', 'data-ex': 'cat' },
+      ELEMENT_CATEGORIES.map((c) => h('option', { value: c.id, text: c.label }))),
+    h('input.bdx-batch-name', { type: 'text', 'data-ex': 'name', placeholder: 'Element name', 'aria-label': 'Element name to tag', autocomplete: 'off', list: 'bdElementNames' }),
+    button({ label: 'Tag selected scenes', variant: 'primary', action: 'ex-batch', block: true, disabled: !SL.sel.size })
+  );
+  return box;
 }
 
 /* ---- suggested from the script (PRD 2.0 FR-603) --------------
@@ -1349,6 +1426,61 @@ delegate(document, 'click', '[data-action="sug-all"]', () => {
   const added = applySuggestions(null);
   render();
   toastTagged(added, true);
+});
+/* ---- element index: filter, batch tag, export ---------------- */
+delegate(document, 'click', '[data-action="ex-cat"]', (e, el) => {
+  EX.cat = el.dataset.cat || '';
+  render(EX.cat ? '[data-action="ex-cat"][data-cat="' + CSS.escape(EX.cat) + '"]' : '[data-action="ex-cat"][data-cat=""]');
+});
+const exSync = () => {
+  const n = SL.sel.size;
+  const tot = document.querySelectorAll('.bdx-batch-scenes input').length;
+  const status = document.querySelector('.bdx-batch-n');
+  if (status) status.textContent = n + ' of ' + tot + ' scenes selected';
+  const go = document.querySelector('[data-action="ex-batch"]');
+  if (go) go.disabled = !n;
+  const bulk = document.querySelector('.bd-sl-bulk');
+  if (bulk) { bulk.hidden = !n; const c = bulk.querySelector('.bd-sl-bulk-n'); if (c) c.textContent = n + ' selected'; }
+};
+delegate(document, 'change', '[data-action="ex-pick"]', (e, el) => {
+  if (el.checked) SL.sel.add(el.dataset.sceneId); else SL.sel.delete(el.dataset.sceneId);
+  exSync();
+});
+const exPickAll = (on) => {
+  document.querySelectorAll('.bdx-batch-scenes input').forEach((i) => {
+    i.checked = on;
+    if (on) SL.sel.add(i.dataset.sceneId); else SL.sel.delete(i.dataset.sceneId);
+  });
+  exSync();
+};
+delegate(document, 'click', '[data-action="ex-pick-all"]', () => exPickAll(true));
+delegate(document, 'click', '[data-action="ex-pick-none"]', () => exPickAll(false));
+delegate(document, 'click', '[data-action="ex-batch"]', () => {
+  const cat = document.querySelector('[data-ex="cat"]')?.value;
+  const nameEl = document.querySelector('[data-ex="name"]');
+  const name = (nameEl?.value || '').trim();
+  if (!name) { StudioUI.toast('Type the element’s name first.', { type: 'error' }); nameEl?.focus(); return; }
+  const plan = planBatch(Scenes.listScenes(), [...SL.sel], cat, name);
+  if (!plan.tags.length) {
+    StudioUI.toast('Every selected scene already carries “' + name + '”.', { type: 'info' });
+    return;
+  }
+  const added = Scenes.tagMany(plan.tags);
+  render('[data-action="ex-batch"]');
+  StudioUI.toast('Tagged “' + name + '” (' + catById[cat].label + ') on ' + added.length + (added.length === 1 ? ' scene' : ' scenes')
+    + (plan.already ? '; ' + plan.already + ' already had it' : '') + '.', {
+    type: 'success', action: 'Undo',
+    onAction: () => { Scenes.untagMany(added); render(); }
+  });
+});
+delegate(document, 'click', '[data-action="ex-csv"]', () => {
+  const rows = indexRows(Scenes.listScenes(), ELEMENT_CATEGORIES, EX.cat);
+  if (!rows.length) { StudioUI.toast('Nothing to export yet.', { type: 'info' }); return; }
+  saveFile(fileSlug() + '-element-index.csv', '﻿' + elementsCSV(rows), 'text/csv;charset=utf-8');
+});
+delegate(document, 'click', '[data-action="ex-pdf"]', () => {
+  if (!Scenes.elementIndex().length) { StudioUI.toast('Nothing to export yet.', { type: 'info' }); return; }
+  exportPDF({ scope: 'elements', setup: 'a4', label: 'Element index' });
 });
 delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
   Scenes.untagElement(sceneIdOf(el), el.dataset.cat, el.dataset.name);

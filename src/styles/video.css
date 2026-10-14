@@ -92,3 +92,13 @@
 .vid:has(.vid-poster) .vid-play  { color: var(--panel-ink); }
 .vid:has(.vid-poster) .vid-title { color: var(--panel-ink); }
 .vid:has(.vid-poster) .vid-sub   { color: var(--panel-muted); }
+
+/* "How this works" below 1100px lives in the "⋯" overflow menu, so the
+   band's tools zone fits one row (14 Oct 2026). The overflow menu is not
+   drawn on a desk, and not in the phone Tools sheet, which borrows the
+   real button. */
+.vid-help-more { display: none; }
+@media (max-width: 1099px) {
+  .sh-bar .vid-help-btn { display: none; }
+  .sh-bar .vid-help-more { display: inline-block; }
+}

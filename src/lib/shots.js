@@ -127,8 +127,54 @@ export const BLOCK_H = 70;
 export const BLOCK_KINDS = [
   { id: 'actor',  label: 'Actor' },
   { id: 'camera', label: 'Camera' },
+  { id: 'track',  label: 'Dolly track' },
+  { id: 'light',  label: 'Light' },
   { id: 'mark',   label: 'Mark' }
 ];
+/* `track` and `light` came later (14 Oct 2026) and are ONE more value of
+   the existing `kind` field, not a new record: a stored block written
+   before they existed reads back unchanged, and an unknown kind still
+   falls back to an actor in cleanMark(). A track is a rail from (x,y) to
+   (toX,toY) — the same two points a move uses, so it ALWAYS has an end.
+   A light is a head at (x,y) facing `rot`, like a camera. */
+const TRACK_DEFAULT_LEN = 24;
+
+/* Distances need a real scale, and the map has none until somebody says
+   how wide the floor is. `widthM` is ONE field on the existing block
+   record (blankBlock() spreads under every stored row, the songId
+   pattern), '' until it is typed. With no width, no distance is printed:
+   a callout in invented metres is a figure nobody measured. */
+export function blockScale(block) {
+  const w = Number(String((block && block.widthM) ?? '').replace(',', '.'));
+  return Number.isFinite(w) && w > 0 ? w / BLOCK_W : null;   // metres per map unit
+}
+
+/** The derived distance callouts of a block: every camera to every actor,
+    and the length of every dolly track. Metres, to a tenth, with the
+    midpoint to print them at. Empty when the floor has no width — see
+    blockScale(). Pure and never stored. */
+export function blockCallouts(block) {
+  const k = blockScale(block);
+  if (!k || !block || !Array.isArray(block.marks)) return [];
+  const out = [];
+  const dist = (ax, ay, bx, by) => Math.round(Math.hypot(bx - ax, by - ay) * k * 10) / 10;
+  const cams = block.marks.filter((m) => m.kind === 'camera');
+  const actors = block.marks.filter((m) => m.kind === 'actor');
+  for (const c of cams) {
+    for (const a of actors) {
+      out.push({ kind: 'reach', from: c.id, to: a.id, x1: c.x, y1: c.y, x2: a.x, y2: a.y,
+        x: (c.x + a.x) / 2, y: (c.y + a.y) / 2, metres: dist(c.x, c.y, a.x, a.y) });
+    }
+  }
+  for (const t of block.marks.filter((m) => m.kind === 'track' && m.toX != null)) {
+    out.push({ kind: 'track', from: t.id, to: t.id, x1: t.x, y1: t.y, x2: t.toX, y2: t.toY,
+      x: (t.x + t.toX) / 2, y: (t.y + t.toY) / 2, metres: dist(t.x, t.y, t.toX, t.toY) });
+  }
+  return out;
+}
+
+/** "3.4 m" — one decimal, a comma never; the unit is always printed. */
+export const formatMetres = (m) => (Number.isFinite(m) ? (Math.round(m * 10) / 10).toFixed(1) + ' m' : '');
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 /** A point kept inside the map, as numbers rounded to a tenth. */
@@ -156,7 +202,7 @@ export function blankMark(patch = {}) {
 }
 
 export function blankBlock(patch = {}) {
-  return { id: uid('bk'), sceneId: '', name: '', note: '', marks: [], ...patch };
+  return { id: uid('bk'), sceneId: '', name: '', note: '', widthM: '', marks: [], ...patch };
 }
 
 function cleanMark(m) {
@@ -167,6 +213,9 @@ function cleanMark(m) {
   out.rot = ((Math.round(Number(out.rot) || 0) % 360) + 360) % 360;
   if (out.toX == null || out.toY == null || !Number.isFinite(Number(out.toX)) || !Number.isFinite(Number(out.toY))) {
     out.toX = null; out.toY = null;
+    if (out.kind === 'track') {          // a rail always has two ends
+      const t = clampPoint(out.x + TRACK_DEFAULT_LEN, out.y); out.toX = t.x; out.toY = t.y;
+    }
   } else {
     const t = clampPoint(out.toX, out.toY); out.toX = t.x; out.toY = t.y;
   }
@@ -300,6 +349,24 @@ export function moveShot(id, delta) {
   [shots[i], shots[j]] = [shots[j], shots[i]];
   saveShots(shots);
   return shots;
+}
+
+/** A shot's status as the coverage table prints it. Derived from the one
+    stored boolean (`done`), never a second field: "in the can" is what the
+    camera department ticks, and shoot.html's per-SCENE word lives on the
+    scene record and is not this. */
+export function shotStatus(shot) {
+  return shot && shot.done
+    ? { id: 'can', label: 'In the can', tone: 'ok' }
+    : { id: 'shoot', label: 'To shoot', tone: 'warn' };
+}
+
+/** Counts for one scene's coverage head. Derived on every call. */
+export function coverageOf(shots) {
+  const list = shots || [];
+  const done = list.filter((s) => s.done).length;
+  const lenses = [...new Set(list.map((s) => String(s.lens || '').trim()).filter(Boolean))];
+  return { setups: list.length, done, open: list.length - done, lenses };
 }
 
 /** The shot list as the page reads it: one group per scene, in the
@@ -484,7 +551,9 @@ export function addMark(blockId, kind, patch = {}) {
   if (!block) return null;
   const same = block.marks.filter((m) => m.kind === kind).length;
   const label = kind === 'camera' ? (same ? 'Cam ' + String.fromCharCode(65 + same) : 'Cam A')
-    : kind === 'actor' ? 'Actor ' + (same + 1) : 'Mark ' + (same + 1);
+    : kind === 'actor' ? 'Actor ' + (same + 1)
+    : kind === 'light' ? 'Light ' + (same + 1)
+    : kind === 'track' ? 'Track ' + (same + 1) : 'Mark ' + (same + 1);
   // New marks land staggered near the middle so each is easy to grab.
   const at = clampPoint(22 + (block.marks.length % 5) * 14, 18 + (block.marks.length % 3) * 16);
   const mark = cleanMark({ ...blankMark({ kind, label, ...at }), ...patch });
@@ -612,7 +681,7 @@ export function isLinkable(ref) {
 
 export default {
   SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, BOARD_SUGGESTIONS,
-  BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
+  BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
   addBlock, updateBlock, removeBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   shotsByScene, takeSceneOut, putSceneBack,

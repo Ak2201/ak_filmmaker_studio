@@ -11,7 +11,8 @@
     "public", "bolt", "link", "lock",
     "picture_as_pdf", "translate", "mic", "keyboard", "spellcheck", "sticky_note_2", "auto_awesome",
     "warning", "info", "check_circle", "error", "close", "drag_indicator", "more_vert",
-    "light_mode", "dark_mode", "wb_twilight", "inbox", "add", "arrow_forward", "content_copy", "delete"
+    "light_mode", "dark_mode", "wb_twilight", "inbox", "add", "arrow_forward", "content_copy", "delete",
+    "arrow_upward", "arrow_downward", "rotate_left", "rotate_right"
   ],
   "pages": {
     "breakdown": {

@@ -53,6 +53,9 @@ import Shots, {
 } from '../lib/shots.js';
 import { renderBlocking, renderSceneBoard } from '../ui/blocking.js';
 import { basicShotDivision, jobFor } from '../lib/shot-rules.js';
+import {
+  button, buttonGroup, badge, intExtBadge, todBadge, pageHeader, statStrip, notice, field as kitField
+} from '../ui/kit/index.js';
 
 /* A lazy chunk, for the reason CLAUDE.md gives for Supabase and
    pptxgenjs: it is not needed to look at a shot list. The
@@ -69,14 +72,19 @@ const slugOf = (scene) =>
 
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 
-/* ---- small builders ----------------------------------------- */
+/* ---- small builders -----------------------------------------
+   The kit (src/ui/kit/) draws every control on this page. These are
+   only the in-table forms of a kit field: a bare control inside the
+   kit's `.k-control` frame, because a table cell has no room for a
+   label row and the column head already says what the cell is. */
 function field(spec, props, value) {
   const el = h(spec, props);
   if (value !== undefined) el.value = value;
   return el;
 }
+/** A kit select frame around a native select (the cell variant). */
 function picker(options, value, attr, name, label) {
-  const s = h('select.vz-sel', { [attr]: name, 'aria-label': label });
+  const s = h('select', { [attr]: name, 'aria-label': label });
   options.forEach((o) => {
     const id = typeof o === 'string' ? o : o.id;
     const text = typeof o === 'string' ? o : o.label;
@@ -84,22 +92,54 @@ function picker(options, value, attr, name, label) {
     if (id === value) opt.selected = true;
     s.append(opt);
   });
-  return s;
+  return h('div.k-control.k-select.k-control--cell', {}, [s]);
 }
+/** A kit input frame around an input or textarea (the cell variant). */
+function cellInput(el, mono) {
+  if (el.tagName === 'TEXTAREA') el.classList.add('k-textarea');
+  else el.classList.add('k-input');
+  return h('div.k-control.k-control--cell'
+    + (mono ? '.k-control--mono' : '') + (el.tagName === 'TEXTAREA' ? '.k-control--textarea' : ''), {}, [el]);
+}
+/** The row grips: icon buttons in the kit's tray. */
+const ICON = { '↑': 'arrow_upward', '↓': 'arrow_downward', '✕': 'delete' };
 function ctrlBtn(glyph, action, label, disabled, danger) {
-  return h('button.row-ctrl-btn' + (danger ? '.del' : ''), {
-    type: 'button', 'data-action': action, title: label,
-    'aria-label': label, text: glyph, disabled: disabled || false
+  return button({
+    label, icon: ICON[glyph] || glyph, iconOnly: true, size: 'sm', action,
+    variant: danger ? 'danger' : 'ghost', disabled: disabled || false, title: label,
+    class: 'row-ctrl-btn' + (danger ? ' del' : '')
   });
 }
-const stat = (value, label) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+const ctrlTray = (btns, label) => buttonGroup(btns, { label });
 const how = (n, title, body) =>
   h('div.bd-how-step', {}, [
     h('span.bd-how-num', { text: n }),
     h('strong', { text: title }),
     h('p', { text: body })
   ]);
+
+/** The scene's identity, the same three marks everywhere on the page:
+    the number as a tag, the slug, and INT/EXT + time of day as badges
+    whose letters are printed (colour is never the only signal). */
+function sceneIdent(scene) {
+  return [
+    badge({ label: scene.number || '—', tag: true, class: 'vz-scene-no' }),
+    h('span.vz-scene-slug', { text: slugOf(scene) }),
+    h('span.vz-scene-badges', {}, [intExtBadge(scene.intExt), todBadge(scene.dayNight)])
+  ];
+}
+
+/** The most used lens across the shots that name one, or null. Derived. */
+function primaryLens(shots) {
+  const n = new Map();
+  for (const s of shots) {
+    const l = String(s.lens || '').trim();
+    if (l) n.set(l, (n.get(l) || 0) + 1);
+  }
+  let best = '', most = 0;
+  for (const [l, c] of n) if (c > most) { best = l; most = c; }
+  return best ? { lens: best, count: most } : null;
+}
 
 /* ---- header -------------------------------------------------- */
 function renderHeader(scenes, shots, frames, boards) {
@@ -109,22 +149,30 @@ function renderHeader(scenes, shots, frames, boards) {
   const live = new Set(scenes.map((s) => s.id));
   const covered = new Set(shots.map((s) => s.sceneId).filter((id) => live.has(id))).size;
   const refs = Shots.countEntries(boards);
-  return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Visualise · the film seen before it is shot' }),
-    h('h1.bd-title', { text: 'Shots & Frames.' }),
-    h('p.bd-deck', {
-      text: 'A shot list is the scene broken into the pieces the camera actually '
-          + 'records. The storyboard draws those pieces and the lookbook says what '
-          + 'they should feel like — all three hang off the scenes you have already '
-          + 'broken down, so nothing is described twice.'
-    }),
-    h('div.bd-stats', {}, [
-      stat(String(shots.length), shots.length === 1 ? 'shot' : 'shots'),
-      stat(covered + ' / ' + scenes.length, 'scenes covered'),
-      stat(String(frames.length), frames.length === 1 ? 'frame' : 'frames'),
-      stat(String(refs), refs === 1 ? 'reference' : 'references')
-    ])
-  ]);
+  const done = shots.filter((s) => s.done).length;
+  const lens = primaryLens(shots);
+  const head = pageHeader({
+    class: 'bd-head vz-head',
+    eyebrow: ['Visualise', 'the film seen before it is shot'],
+    title: 'Shots & Frames.',
+    sub: 'A shot list is the scene broken into the pieces the camera actually '
+       + 'records. The storyboard draws those pieces and the lookbook says what '
+       + 'they should feel like — all three hang off the scenes you have already '
+       + 'broken down, so nothing is described twice.'
+  });
+  /* Every figure is counted from the model at render time. A stat that
+     cannot be measured (no lens typed anywhere) is not shown at all —
+     never a placeholder number. */
+  const stats = statStrip([
+    { label: shots.length === 1 ? 'shot' : 'shots', value: shots.length,
+      note: shots.length ? done + ' in the can' : null, noteTone: shots.length && done === shots.length ? 'ok' : null },
+    { label: 'scenes covered', value: covered + ' / ' + scenes.length },
+    { label: frames.length === 1 ? 'frame' : 'frames', value: frames.length },
+    { label: refs === 1 ? 'reference' : 'references', value: refs },
+    lens ? { label: 'Primary lens', value: lens.lens, note: plural(lens.count, 'setup', 'setups') } : null
+  ].filter(Boolean), { class: 'vz-stats', label: 'Visualise in numbers' });
+  head.append(stats);
+  return head;
 }
 
 /* ---- the teaching empty states ------------------------------
@@ -153,7 +201,7 @@ function renderNoScenes() {
             + 'lenses to hire — the same shots, suddenly useful.'
       })
     ]),
-    h('a.btn.primary.bd-cta', { href: 'breakdown.html#scenes', text: 'Go to the breakdown  →' })
+    button({ label: 'Go to the breakdown', href: 'breakdown.html#scenes', variant: 'primary', pill: true, iconAfter: 'arrow_forward', class: 'bd-cta' })
   ]);
 }
 
@@ -179,10 +227,8 @@ function renderNoShots(firstSceneId) {
             + 'stops being a feeling and starts being a number of setups.'
       })
     ]),
-    h('button.btn.primary.bd-cta', {
-      type: 'button', 'data-action': 'vz-shot-add', 'data-scene': firstSceneId,
-      text: '+  Add the first shot'
-    })
+    button({ label: 'Add the first shot', icon: 'add', variant: 'primary', pill: true, action: 'vz-shot-add',
+      class: 'bd-cta', attrs: { 'data-scene': firstSceneId } })
   ]);
 }
 
@@ -225,34 +271,59 @@ function renderShotList(scenes, shots) {
     return wrap;
   }
 
+  /* Covered scenes get the full coverage table. Scenes with no shots
+     yet are still every one of them here — a scene hidden is a scene
+     nobody covers — but as one compact row each, in script order, so
+     the tables are not lost between thirty empty headers. */
+  let run = null;
   for (const group of Shots.shotsByScene(scenes)) {
+    if (group.scene && !group.shots.length) {
+      if (!run) {
+        run = h('div.vz-uncovered', { role: 'list', 'aria-label': 'Scenes with no shots yet' });
+        wrap.append(run);
+      }
+      run.append(renderUncovered(group.scene));
+      continue;
+    }
+    run = null;
     wrap.append(renderSceneBlock(group));
   }
   return wrap;
 }
 
+/** One uncovered scene: its identity and the way to start covering it. */
+function renderUncovered(scene) {
+  return h('div.vz-scene.is-empty', { 'data-scene': scene.id, role: 'listitem' }, [
+    h('div.vz-scene-head', {}, [
+      ...sceneIdent(scene),
+      h('span.vz-scene-count', { text: 'no shots yet' }),
+      button({ label: 'Add shot', icon: 'add', size: 'sm', action: 'vz-shot-add', class: 'vz-add' })
+    ])
+  ]);
+}
+
 function renderSceneBlock(group) {
   const scene = group.scene;
-  const block = h('div.vz-scene', { 'data-scene': scene ? scene.id : '' });
+  const cov = Shots.coverageOf(group.shots);
+  const block = h('div.vz-scene.k-panel' + (scene ? '' : '.is-orphan'), { 'data-scene': scene ? scene.id : '' });
 
   if (scene) {
-    block.append(h('div.vz-scene-head', {}, [
-      h('span.vz-scene-no', { text: scene.number || '—' }),
-      h('span.vz-scene-slug', { text: slugOf(scene) }),
+    block.append(h('div.vz-scene-head.k-panel-head', {}, [
+      ...sceneIdent(scene),
       h('span.vz-scene-count', {
-        text: group.shots.length
-          ? plural(group.shots.length, 'shot', 'shots')
-          : 'no shots yet'
+        text: [formatEighths(Number(scene.eighths) || 0) + ' pgs',
+          plural(cov.setups, 'shot', 'shots'), cov.done + ' in the can'].join(' · ')
       })
     ]));
   } else {
-    block.append(h('div.vz-scene-head.is-orphan', {}, [
-      h('span.vz-scene-no', { text: '!' }),
+    block.append(h('div.vz-scene-head.k-panel-head.is-orphan', {}, [
+      badge({ label: '!', tag: true, tone: 'warn', class: 'vz-scene-no' }),
       h('span.vz-scene-slug', { text: 'Scene deleted in the breakdown' }),
       h('span.vz-scene-count', { text: plural(group.shots.length, 'orphaned shot', 'orphaned shots') })
     ]),
-    h('p.vz-orphan-note', {
-      text: 'These shots point at a scene that no longer exists. They are shown so '
+    notice({
+      tone: 'warn', class: 'vz-orphan-note',
+      body: 'These shots point at a scene that no longer exists. They are shown so '
           + 'you can move the writing somewhere else or delete them on purpose — '
           + 'nothing here is thrown away quietly.'
     }));
@@ -260,18 +331,15 @@ function renderSceneBlock(group) {
 
   if (group.shots.length) {
     /* Seven columns cannot reflow, so on a phone the table scrolls
-       inside itself — about a thousand pixels of it in a 390px column,
-       with nothing to say there is more (UX audit L30). The hint shows
-       only at widths where the table overflows; see visualize.css. */
+       inside itself, with nothing to say there is more (UX audit L30).
+       The hint shows only at widths where the table overflows. */
     block.append(h('p.vz-scroll-hint', { 'aria-hidden': 'true', text: 'Swipe the table sideways for every column →' }));
-    block.append(renderShotTable(group.shots));
+    block.append(renderShotTable(group.shots, scene));
   }
 
   if (scene) {
-    const row = h('div.vz-scene-acts.pdf-menu-host', {}, [
-      h('button.btn.vz-add', {
-        type: 'button', 'data-action': 'vz-shot-add', text: '+  Add shot'
-      })
+    const row = h('div.vz-scene-acts.k-panel-foot.pdf-menu-host', {}, [
+      button({ label: 'Add shot', icon: 'add', size: 'sm', action: 'vz-shot-add', class: 'vz-add' })
     ]);
     // Only offered once there is something to put on the sheet.
     if (group.shots.length) {
@@ -285,11 +353,18 @@ function renderSceneBlock(group) {
   return block;
 }
 
-function renderShotTable(shots) {
-  const table = h('table.scene-table.vz-table');
+/* THE COVERAGE TABLE. One row per setup: number, size over angle,
+   movement, lens, what we see, and the status pill. Every cell is a
+   field of the one shot record in src/lib/shots.js; the pill is the
+   shot's `done`, printed in words. */
+function renderShotTable(shots, scene) {
+  const table = h('table.k-table.vz-table.vz-cov');
+  table.append(h('caption.visually-hidden', {
+    text: 'Coverage' + (scene ? ' for scene ' + (scene.number || '') : '')
+  }));
   const head = h('tr');
-  [['Shot', 'vz-c-no'], ['Size', ''], ['Angle', ''], ['Move', ''], ['Lens', 'vz-c-lens'],
-    ['What we see', 'vz-c-desc'], ['Got it', 'vz-c-done'], ['', 'vz-c-ctrl']]
+  [['Setup', 'vz-c-no'], ['Size & angle', 'vz-c-size'], ['Move', 'vz-c-move'], ['Lens', 'vz-c-lens'],
+    ['What we see', 'vz-c-desc'], ['Status', 'vz-c-done']]
     .forEach(([label, cls]) => head.append(
       h('th' + (cls ? '.' + cls : ''), { scope: 'col', text: label })
     ));
@@ -298,7 +373,24 @@ function renderShotTable(shots) {
   const body = h('tbody');
   shots.forEach((shot, i) => body.append(renderShotRow(shot, i, shots.length)));
   table.append(body);
-  return table;
+  return h('div.k-table-wrap.vz-table-wrap', {
+    role: 'region', tabindex: '0',
+    'aria-label': 'Coverage table' + (scene ? ', scene ' + (scene.number || '') : '')
+  }, [table]);
+}
+
+/** The status pill: the shot's `done`, in words, and the control that
+    flips it. A button with aria-pressed, so it is one Tab stop and
+    Space or Enter marks a setup in the can. */
+function statusPill(shot, i) {
+  const st = Shots.shotStatus(shot);
+  const n = shot.number || String(i + 1);
+  return h('button.k-badge.k-badge--button.k-badge--' + st.tone + '.vz-status', {
+    type: 'button', 'data-action': 'vz-shot-status',
+    'aria-pressed': shot.done ? 'true' : 'false',
+    'aria-label': 'Shot ' + n + ' is in the can',
+    title: shot.done ? 'In the can — press to mark it still to shoot' : 'To shoot — press when it is in the can'
+  }, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), h('span', { text: st.label })]);
 }
 
 function renderShotRow(shot, i, total) {
@@ -307,59 +399,50 @@ function renderShotRow(shot, i, total) {
   });
 
   const no = h('td.vz-c-no', {}, [
-    field('input.vz-no', {
+    cellInput(field('input.vz-no', {
       type: 'text', placeholder: String(i + 1),
       'data-shot-field': 'number', 'aria-label': 'Shot number'
-    }, shot.number)
+    }, shot.number), true)
   ]);
   /* A shot a machine drafted is marked, permanently and visibly,
      so a person can always tell what they wrote from what was
      written for them. It is an ordinary shot in every other
      respect — editable, movable, deletable, exported. */
   if (shot.ai) {
-    no.append(h('span.vz-ai-tag', {
-      title: 'Drafted by AI — edit or delete it like any other shot',
-      text: 'AI draft'
-    }));
+    no.append(badge({ label: 'AI draft', tone: 'info', tag: true, class: 'vz-ai-tag',
+      title: 'Drafted by AI — edit or delete it like any other shot' }));
   } else if (shot.rules) {
     // The basic breakdown (src/lib/shot-rules.js) — rules, not a model,
     // and marked just as plainly.
-    no.append(h('span.vz-ai-tag.vz-rules-tag', {
-      title: 'Drafted by the basic breakdown from the script — edit or delete it like any other shot',
-      text: 'Basic'
-    }));
+    no.append(badge({ label: 'Basic', tag: true, class: 'vz-ai-tag vz-rules-tag',
+      title: 'Drafted by the basic breakdown from the script — edit or delete it like any other shot' }));
   }
   row.append(no);
-  row.append(h('td', {}, [picker(SHOT_SIZES, shot.size, 'data-shot-field', 'size', 'Shot size')]));
-  row.append(h('td', {}, [picker(SHOT_ANGLES, shot.angle, 'data-shot-field', 'angle', 'Camera angle')]));
-  row.append(h('td', {}, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
+  row.append(h('td.vz-c-size', {}, [
+    picker(SHOT_SIZES, shot.size, 'data-shot-field', 'size', 'Shot size'),
+    picker(SHOT_ANGLES, shot.angle, 'data-shot-field', 'angle', 'Camera angle')
+  ]));
+  row.append(h('td.vz-c-move', {}, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
   row.append(h('td.vz-c-lens', {}, [
-    field('input.vz-lens', {
+    cellInput(field('input.vz-lens', {
       type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off',
       'data-shot-field': 'lens', 'aria-label': 'Lens'
-    }, shot.lens)
+    }, shot.lens), true)
   ]));
   row.append(h('td.vz-c-desc', {}, [
-    field('textarea.vz-desc', {
+    cellInput(field('textarea.vz-desc', {
       rows: '2', placeholder: 'One line of what the audience sees',
       'data-shot-field': 'description', 'aria-label': 'What we see'
-    }, shot.description)
+    }, shot.description))
   ]));
-  row.append(h('td.vz-c-done', {}, [
-    h('label.vz-check', {}, [
-      h('input', {
-        type: 'checkbox', 'data-shot-field': 'done',
-        checked: shot.done ? true : null,
-        'aria-label': 'Shot ' + (shot.number || String(i + 1)) + ' is in the can'
-      }),
-      h('span.vz-check-lab', { text: shot.done ? 'in the can' : 'to shoot' })
-    ])
-  ]));
-  row.append(h('td.row-ctrl.vz-c-ctrl', {}, [
+  /* Status and the row grips share the last cell: the pill on top, the
+     tray under it — a seventh column would push the table past the
+     panel at 1280. */
+  row.append(h('td.vz-c-done', {}, [h('div.vz-done-stack', {}, [statusPill(shot, i), h('div.row-ctrl.vz-c-ctrl', {}, [ctrlTray([
     ctrlBtn('↑', 'vz-shot-up', 'Move this shot earlier', i === 0),
     ctrlBtn('↓', 'vz-shot-down', 'Move this shot later', i === total - 1),
     ctrlBtn('✕', 'vz-shot-del', 'Delete this shot', false, true)
-  ]));
+  ], 'Shot ' + (shot.number || String(i + 1)))])])]));
   return row;
 }
 
@@ -469,9 +552,9 @@ function aiScenePicker(plan) {
       'aria-label': 'Draft shots for scene ' + (row.scene.number || '—')
     });
     box.checked = aiPicked.has(id);
-    const label = h('label.vz-ai-pickrow' + (row.existing ? '.has-shots' : ''), {}, [
+    const label = h('label.k-check.vz-ai-pickrow' + (row.existing ? '.has-shots' : ''), {}, [
       box,
-      h('span.vz-scene-no', { text: row.scene.number || '—' }),
+      badge({ label: row.scene.number || '—', tag: true, class: 'vz-scene-no' }),
       h('span.vz-ai-pickslug', { text: slugOf(row.scene) }),
       h('span.vz-ai-pickmeta', {
         text: (!row.slice ? 'synopsis only'
@@ -515,7 +598,7 @@ function renderAI(scenes, shots) {
       'A shot division is a reading of the scene as written — without the '
         + 'pages there is nothing to read, and a division invented from a slug '
         + 'line is a guess dressed up as a plan.',
-      h('a.btn.primary.bd-cta', { href: 'screenplay.html', text: 'Write the screenplay  →' })
+      button({ label: 'Write the screenplay', href: 'screenplay.html', variant: 'primary', pill: true, iconAfter: 'arrow_forward', class: 'bd-cta' })
     ));
     return wrap;
   }
@@ -535,20 +618,18 @@ function renderAI(scenes, shots) {
     aiPicked = new Set(plan.rows.filter((r) => !r.existing).map((r) => r.scene.id));
   }
 
-  wrap.append(h('p.vz-note.vz-basic-note', {}, [
-    h('strong', { text: 'No key needed. ' }),
-    h('span', {
-      text: 'The basic breakdown reads the ticked scenes on this device, by rule: a master, '
-          + 'an over-the-shoulder pair for a two-hander, a single for each speaker, the '
-          + 'shot lines you wrote, a move where somebody runs, a POV where somebody looks, '
-          + 'and inserts for the props. Nothing leaves this browser. The AI draft sends the '
-          + 'ticked scenes only, and shows you what it sends before it does.'
-    })
-  ]));
+  wrap.append(notice({
+    class: 'vz-note vz-basic-note', title: 'No key needed.', icon: 'rule',
+    body: 'The basic breakdown reads the ticked scenes on this device, by rule: a master, '
+        + 'an over-the-shoulder pair for a two-hander, a single for each speaker, the '
+        + 'shot lines you wrote, a move where somebody runs, a POV where somebody looks, '
+        + 'and inserts for the props. Nothing leaves this browser. The AI draft sends the '
+        + 'ticked scenes only, and shows you what it sends before it does.'
+  }));
 
   wrap.append(h('div.vz-ai-picks', {}, [
-    h('button.btn', { type: 'button', 'data-action': 'vz-ai-all', text: 'Tick all' }),
-    h('button.btn', { type: 'button', 'data-action': 'vz-ai-none', text: 'Clear' }),
+    button({ label: 'Tick all', size: 'sm', action: 'vz-ai-all' }),
+    button({ label: 'Clear', size: 'sm', variant: 'ghost', action: 'vz-ai-none' }),
     h('span.vz-ai-count', {
       text: plural(aiPicked.size, 'scene', 'scenes') + ' selected · '
           + formatEighths(scenes.filter((s) => aiPicked.has(s.id))
@@ -559,9 +640,9 @@ function renderAI(scenes, shots) {
   wrap.append(aiScenePicker(plan));
 
   const none = aiPicked.size === 0;
-  const basicBtn = h('button.btn.primary', {
-    type: 'button', 'data-action': 'vz-basic-run', disabled: none || aiRunning,
-    text: 'Basic breakdown (no AI key needed)'
+  const basicBtn = button({
+    label: 'Basic breakdown (no AI key needed)', variant: 'primary', icon: 'rule',
+    action: 'vz-basic-run', disabled: none || aiRunning
   });
   /* ctx is computed at the click, so it carries the scenes ticked THEN. */
   const pill = aiPill({
@@ -576,10 +657,7 @@ function renderAI(scenes, shots) {
     basicBtn,
     pill,
     aiLastRun.length && !aiRunning
-      ? h('button.btn', {
-        type: 'button', 'data-action': 'vz-ai-undo',
-        text: 'Undo the last draft (' + aiLastRun.length + ')'
-      })
+      ? button({ label: 'Undo the last draft (' + aiLastRun.length + ')', icon: 'history', action: 'vz-ai-undo' })
       : null
   ].filter(Boolean)));
 
@@ -624,15 +702,15 @@ function renderStoryboard(scenes, shots, frames) {
   const byShot = Shots.framesByShot();
   for (const group of Shots.shotsByScene(scenes)) {
     if (!group.shots.length) continue;
-    const block = h('div.vz-bd-scene');
-    block.append(h('div.vz-scene-head' + (group.scene ? '' : '.is-orphan'), {}, [
-      h('span.vz-scene-no', { text: group.scene ? (group.scene.number || '—') : '!' }),
-      h('span.vz-scene-slug', {
-        text: group.scene ? slugOf(group.scene) : 'Scene deleted in the breakdown'
-      }),
+    const block = h('div.vz-bd-scene.k-panel');
+    block.append(h('div.vz-scene-head.k-panel-head' + (group.scene ? '' : '.is-orphan'), {}, [
+      ...(group.scene
+        ? sceneIdent(group.scene)
+        : [badge({ label: '!', tag: true, tone: 'warn', class: 'vz-scene-no' }),
+          h('span.vz-scene-slug', { text: 'Scene deleted in the breakdown' })]),
       h('span.vz-scene-count', { text: plural(group.shots.length, 'shot', 'shots') })
     ]));
-    const strip = h('div.vz-strip');
+    const strip = h('div.vz-strip.k-panel-body');
     group.shots.forEach((shot) => strip.append(renderShotColumn(shot, byShot.get(shot.id) || [])));
     block.append(strip);
     wrap.append(block);
@@ -662,17 +740,15 @@ function renderNoFrames(firstShotId) {
             + 'fits in a sentence.'
       })
     ]),
-    h('button.btn.primary.bd-cta', {
-      type: 'button', 'data-action': 'vz-frame-add', 'data-shot': firstShotId,
-      text: '+  Add the first frame'
-    })
+    button({ label: 'Add the first frame', icon: 'add', variant: 'primary', pill: true,
+      action: 'vz-frame-add', class: 'bd-cta', attrs: { 'data-shot': firstShotId } })
   ]);
 }
 
 function renderShotColumn(shot, frames) {
   const col = h('article.vz-shotcol', { 'data-shot': shot.id });
   col.append(h('div.vz-shotcol-head', {}, [
-    h('span.vz-shotcol-no', { text: shot.number || '—' }),
+    badge({ label: shot.number || '—', tag: true, class: 'vz-shotcol-no' }),
     h('span.vz-shotcol-spec', { text: sizeLabel(shot.size) + ' · ' + shot.movement }),
     h('span.vz-shotcol-count', { text: plural(frames.length, 'frame', 'frames') })
   ]));
@@ -684,36 +760,40 @@ function renderShotColumn(shot, frames) {
 
   frames.forEach((frame, i) => col.append(renderFrame(frame, shot, i, frames.length)));
 
-  col.append(h('button.btn.vz-add-frame', {
-    type: 'button', 'data-action': 'vz-frame-add', text: '+  Frame'
-  }));
+  col.append(button({ label: 'Frame', icon: 'add', size: 'sm', action: 'vz-frame-add', class: 'vz-add-frame' }));
   return col;
 }
 
 function renderFrame(frame, shot, i, total) {
   const card = h('div.vz-frame', { 'data-frame': frame.id });
 
+  /* The slate: a frame-shaped space for the reference, labelled the way
+     the camera report labels it — the frame id top left, the lens top
+     right when the shot names one, the move bottom left. Every mark is
+     read off the shot; none is invented for the picture. */
   const slate = h('div.vz-frame-slate');
   slate.append(
-    h('span.vz-frame-badge', { text: (shot.number || '—') + String.fromCharCode(97 + i) }),
-    refView(frame.ref)
+    h('span.vz-frame-badge.k-mono', { text: (shot.number || '—') + String.fromCharCode(97 + i) + '  ' + sizeLabel(shot.size) }),
+    shot.lens ? h('span.vz-frame-lens.k-mono', { text: shot.lens }) : null,
+    refView(frame.ref),
+    h('span.vz-frame-move.k-mono', { text: shot.movement })
   );
   card.append(slate);
 
-  card.append(labelled('Reference', field('input', {
-    type: 'text', placeholder: 'https://… or describe the frame in words',
-    'data-frame-field': 'ref', 'aria-label': 'Frame reference'
-  }, frame.ref)));
-  card.append(labelled('Caption', field('input', {
-    type: 'text', placeholder: 'What changes by the end of the shot',
-    'data-frame-field': 'caption', 'aria-label': 'Frame caption'
-  }, frame.caption)));
+  card.append(kitField({
+    label: 'Reference', value: frame.ref, placeholder: 'https://… or describe the frame in words',
+    class: 'vz-fieldset', attrs: { 'data-frame-field': 'ref', 'aria-label': 'Frame reference' }
+  }));
+  card.append(kitField({
+    label: 'Caption', value: frame.caption, placeholder: 'What changes by the end of the shot',
+    class: 'vz-fieldset', attrs: { 'data-frame-field': 'caption', 'aria-label': 'Frame caption' }
+  }));
 
-  card.append(h('div.vz-frame-acts', {}, [
+  card.append(h('div.vz-frame-acts', {}, [ctrlTray([
     ctrlBtn('↑', 'vz-frame-up', 'Move this frame earlier', i === 0),
     ctrlBtn('↓', 'vz-frame-down', 'Move this frame later', i === total - 1),
     ctrlBtn('✕', 'vz-frame-del', 'Delete this frame', false, true)
-  ]));
+  ], 'Frame')]));
   return card;
 }
 
@@ -735,10 +815,9 @@ function renderLookbook(boards) {
     return wrap;
   }
 
-  boards.forEach((board, i) => wrap.append(renderBoard(board, i, boards.length)));
-  wrap.append(h('button.btn.vz-add', {
-    type: 'button', 'data-action': 'vz-board-add', text: '+  Add board'
-  }));
+  const grid = h('div.vz-boards');
+  boards.forEach((board, i) => grid.append(renderBoard(board, i, boards.length)));
+  wrap.append(grid, button({ label: 'Add board', icon: 'add', action: 'vz-board-add', class: 'vz-add' }));
   return wrap;
 }
 
@@ -764,35 +843,35 @@ function renderNoBoards() {
             + 'it is a picture somebody liked.'
       })
     ]),
-    h('button.btn.primary.bd-cta', {
-      type: 'button', 'data-action': 'vz-board-add', text: '+  Add the first board'
-    })
+    button({ label: 'Add the first board', icon: 'add', variant: 'primary', pill: true,
+      action: 'vz-board-add', class: 'bd-cta' })
   ]);
 }
 
 function renderBoard(board, i, total) {
-  const card = h('article.vz-boardcard', { 'data-board': board.id });
+  const card = h('article.vz-boardcard.k-panel', { 'data-board': board.id });
 
-  card.append(h('div.vz-board-head', {}, [
-    field('input.vz-board-name', {
+  card.append(h('div.vz-board-head.k-panel-head', {}, [
+    h('div.k-control.vz-board-namebox', {}, [field('input.k-input.vz-board-name', {
       type: 'text', placeholder: 'Board name — Palette, Light, Texture…',
       'data-board-field': 'name', 'aria-label': 'Board name'
-    }, board.name),
+    }, board.name)]),
     h('span.vz-board-count', { text: plural(board.entries.length, 'reference', 'references') }),
-    h('div.vz-board-acts', {}, [
+    h('div.vz-board-acts', {}, [ctrlTray([
       ctrlBtn('↑', 'vz-board-up', 'Move this board up', i === 0),
       ctrlBtn('↓', 'vz-board-down', 'Move this board down', i === total - 1),
       ctrlBtn('✕', 'vz-board-del', 'Delete this board', false, true)
-    ])
+    ], 'Board')])
   ]));
 
-  card.append(labelled('What this board is for', field('input', {
-    type: 'text', placeholder: 'One line the department can read first',
-    'data-board-field': 'note', 'aria-label': 'What this board is for'
-  }, board.note)));
+  const body = h('div.k-panel-body.vz-board-body');
+  body.append(kitField({
+    label: 'What this board is for', value: board.note, placeholder: 'One line the department can read first',
+    class: 'vz-fieldset', attrs: { 'data-board-field': 'note', 'aria-label': 'What this board is for' }
+  }));
 
   if (board.entries.length) {
-    const table = h('table.scene-table.vz-table');
+    const table = h('table.k-table.vz-table.vz-refs');
     const head = h('tr');
     [['Title', ''], ['Reference', 'vz-c-ref'], ['Why it matters', 'vz-c-desc'], ['', 'vz-c-ctrl']]
       .forEach(([label, cls]) => head.append(
@@ -800,37 +879,40 @@ function renderBoard(board, i, total) {
       ));
     table.append(h('thead', {}, [head]));
 
-    const body = h('tbody');
-    board.entries.forEach((entry) => body.append(renderEntry(entry)));
-    table.append(body);
-    card.append(table);
+    const tbody = h('tbody');
+    board.entries.forEach((entry) => tbody.append(renderEntry(entry)));
+    table.append(tbody);
+    body.append(h('div.k-table-wrap.vz-table-wrap', {
+      role: 'region', tabindex: '0', 'aria-label': 'References on ' + (board.name || 'this board')
+    }, [table]));
   } else {
-    card.append(h('p.vz-board-none', {
+    body.append(h('p.vz-board-none', {
       text: 'Nothing on this board yet. A reference is a title, a link or a note, '
           + 'and the sentence that says why it is here.'
     }));
   }
+  card.append(body);
 
-  card.append(h('button.btn.vz-add', {
-    type: 'button', 'data-action': 'vz-entry-add', text: '+  Add reference'
-  }));
+  card.append(h('div.k-panel-foot.vz-board-foot', {}, [
+    button({ label: 'Add reference', icon: 'add', size: 'sm', action: 'vz-entry-add', class: 'vz-add' })
+  ]));
   return card;
 }
 
 function renderEntry(entry) {
   const row = h('tr', { 'data-entry': entry.id });
   row.append(h('td', {}, [
-    field('input', {
+    cellInput(field('input', {
       type: 'text', placeholder: 'What it is',
       'data-entry-field': 'title', 'aria-label': 'Reference title'
-    }, entry.title)
+    }, entry.title))
   ]));
 
   const refCell = h('td.vz-c-ref');
-  refCell.append(field('input', {
+  refCell.append(cellInput(field('input', {
     type: 'text', placeholder: 'https://… or a note',
     'data-entry-field': 'ref', 'aria-label': 'Reference link or note'
-  }, entry.ref));
+  }, entry.ref)));
   if (isLinkable(entry.ref)) {
     refCell.append(h('a.vz-entry-link', {
       href: entry.ref, target: '_blank', rel: 'noopener noreferrer', text: 'Open  ↗'
@@ -839,10 +921,10 @@ function renderEntry(entry) {
   row.append(refCell);
 
   row.append(h('td.vz-c-desc', {}, [
-    field('textarea', {
+    cellInput(field('textarea', {
       rows: '2', placeholder: 'Why it matters — what the department should take from it',
       'data-entry-field': 'why', 'aria-label': 'Why it matters'
-    }, entry.why)
+    }, entry.why))
   ]));
   row.append(h('td.row-ctrl.vz-c-ctrl', {}, [
     ctrlBtn('✕', 'vz-entry-del', 'Remove this reference', false, true)
@@ -869,15 +951,10 @@ function refView(ref) {
 }
 
 /* ---- shared bits --------------------------------------------- */
-function labelled(label, control) {
-  return h('label.vz-fieldset', {}, [h('span.vz-flabel', { text: label }), control]);
-}
 function noImageNote(text) {
-  return h('p.vz-note', {}, [
-    h('strong', { text: 'No image uploads. ' }),
-    h('span', { text })
-  ]);
+  return notice({ class: 'vz-note', title: 'No image uploads.', icon: 'info', body: text });
 }
+
 
 /* ---- render --------------------------------------------------- */
 /* The scene board reads the script through the same content match every
@@ -1092,7 +1169,17 @@ delegate(document, 'click', '[data-action="vz-shot-add"]', (e, el) => {
   const input = document.querySelector('[data-shot="' + shot.id + '"] .vz-desc');
   if (input) input.focus();
 });
-delegate(document, 'click', '[data-action="vz-shot-up"]',   (e, el) => { Shots.moveShot(shotIdOf(el), -1); render(); });
+/* The status pill flips the shot's one stored boolean and repaints,
+   keeping focus on the same pill so a run of Space presses walks a
+   camera report down the table without the mouse. */
+delegate(document, 'click', '[data-action="vz-shot-status"]', (e, el) => {
+  const id = shotIdOf(el);
+  const shot = Shots.listShots().find((s) => s.id === id);
+  if (!shot) return;
+  Shots.updateShot(id, { done: !shot.done });
+  render('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-status"]');
+});
+delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => { Shots.moveShot(shotIdOf(el), -1); render(); });
 delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => { Shots.moveShot(shotIdOf(el),  1); render(); });
 delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
   const id = shotIdOf(el);

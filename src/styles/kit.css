@@ -871,3 +871,20 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
 .dlg.dlg.k-modal .k-control .dlg-field:focus-visible { outline: 0; }
 .k-table tbody th { font-weight: 500; color: var(--ink); white-space: nowrap; }
 .k-table .k-table-empty { color: var(--ink-muted); text-align: left; }
+
+/* ---- additive (visualize, 14 Oct 2026) ----------------------------
+   CELL: a kit control inside a dense table cell — the compact height,
+   tighter side padding, no label row (the column head names it).
+   BADGE BUTTON: a status badge that is also the control that changes
+   the status (a shot's "To shoot" / "In the can"). Same pill, a real
+   <button> with aria-pressed, a hover border and the focus ring. */
+.k-control--cell { height: var(--h-control); }
+.k-control--cell .k-input,
+.k-control--cell.k-select select { padding: 0 var(--s2); font-size: var(--t-tiny); }
+.k-control--cell.k-select select { padding-right: var(--s5); }
+.k-control--cell.k-select::after { right: var(--s2); }
+.k-control--cell.k-control--textarea { height: auto; }
+.k-control--cell .k-textarea { min-height: 0; padding: var(--s1h) var(--s2); font-size: var(--t-tiny); line-height: var(--lh-snug); }
+.k-badge--button { cursor: pointer; transition: border-color var(--speed) var(--ease); }
+.k-badge--button:hover { border-color: currentColor; }
+.k-badge--button:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }

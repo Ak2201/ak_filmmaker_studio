@@ -715,3 +715,15 @@
   .ct-sp-slug { flex: 1; }
   .ct-sp-syn, .ct-sp-el { margin: var(--s1) 0 0; }
 }
+
+/* Dispatch list: cast, then crew, each under a mono group heading. */
+.ct-send-group {
+  padding: var(--s2) var(--s3) var(--s1);
+  background: var(--paper-sunk);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}

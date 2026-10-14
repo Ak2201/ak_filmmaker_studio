@@ -311,7 +311,7 @@ function render(focus) {
     class: 'sd-hero-t',
     eyebrow: ['Shoot', isToday ? 'Today' : null, 'Day ' + pad(day.day) + ' of ' + pad(all.length)].filter(Boolean),
     title: 'Day ' + pad(day.day) + '.',
-    sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one in the stripboard and the page can find it on the morning.',
+    sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one on the Plan’s calendar and the page can find it on the morning.',
     meta: isToday ? [h('span.sd-live', {}, [h('span.sd-dot.is-live', { 'aria-hidden': 'true' }), h('span', { text: 'Today' })])] : [],
     actions: [sheet
       ? button({ label: 'View call sheet', icon: 'description', href: 'contacts.html#call-sheets',

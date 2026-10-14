@@ -458,6 +458,47 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
 }
 
 /* =================================================================
+   (c2) TWO SPEECHES — the Desk keeps a session per speech; Accept on
+   the restored session of speech A writes A, never the speech that
+   was sent last (ai-tasks.js once read the target from a map keyed
+   by task id only).
+   ================================================================= */
+{
+  console.log('(c2) Pro + key: two speeches, Accept on the earlier one');
+  F.reset();
+  requests.length = 0;
+  const tok = aiScenario('pro', 'tok-amy');
+  const { ctx, page, errors } = await context({ tok });
+  try {
+  await seed(page, { key: true });
+  await page.goto(BASE + '/screenplay.html', { waitUntil: 'networkidle' });
+  await planKnown(page, true);
+  const runOn = async (elId) => {
+    await page.locator('#wr-page [data-el="' + elId + '"] .wr-text').first().click();
+    await openTask(page, 'dialogue-pass');
+    await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+    await page.waitForSelector('aside.ai-desk .ai-desk-ver', { timeout: 15000 }).catch(() => {});
+    await page.click('aside.ai-desk [data-action="ai-desk-skip"]');
+    await page.waitForTimeout(300);
+  };
+  await runOn('el4');
+  await runOn('el6');
+  ok(requests.length === 2, 'one run on each speech', requests.length);
+  await page.locator('#wr-page [data-el="el4"] .wr-text').first().click();
+  await openTask(page, 'dialogue-pass');
+  ok(/\(pass v1\)/.test(await deskText(page)) && (await deskText(page)).includes('Chennai'), "the Desk restores speech A's session");
+  await page.click('aside.ai-desk [data-action="ai-desk-accept-all"]');
+  await page.waitForTimeout(1200);
+  const after = await scriptDoc(page);
+  const el = (id) => (after.elements.find((e) => e.id === id) || {}).text;
+  ok(el('el6') === 'Saapittiya?', 'speech B is untouched', el('el6'));
+  ok(el('el4') === passedSpeech(SPEECH, 1), "speech A carries A's own pass", el('el4'));
+  ok(errors.length === 0, 'no page errors', errors);
+  } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
+  finally { await ctx.close(); }
+}
+
+/* =================================================================
    (d) 390px — a sheet, no sideways scroll
    ================================================================= */
 {

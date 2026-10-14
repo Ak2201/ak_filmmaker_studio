@@ -39,12 +39,15 @@
           `previous` is the current version's result and
           `instructions` the numbered chat messages so far. A refine
           re-sends the same system prompt against the SAME schema.
-       apply(selected, ctx)  → performs the write through the owning
+       apply(selected, ctx, result)
+                             → performs the write through the owning
                                model (editor edit path, scenes.js,
                                blueprint-store writeFields). For 'text'
                                `selected` is the final merged string
                                (only the ticked hunks applied); for
                                'list' it is the array of chosen items;
+                               `result` is the SHOWN version's run()
+                               result, not the latest run's;
                                'read' tasks may omit apply. May return
                                an undo function (or a Promise of one),
                                which the Desk offers as an actionable
@@ -520,7 +523,7 @@ async function accept(all) {
   if (typeof task.apply !== 'function') { closeDesk(); return; }
   let undo;
   try {
-    undo = await task.apply(selected, ctx);
+    undo = await task.apply(selected, ctx, v.result);
   } catch (e) {
     errorText = (e && e.message) || 'The change could not be written. Nothing was changed.';
     render();

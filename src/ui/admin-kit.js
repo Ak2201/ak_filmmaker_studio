@@ -91,8 +91,11 @@ export const stampDensity = (el) => { el.dataset.density = density; return el; }
 /* ---- the small things -------------------------------------------- */
 
 export function pill(text, tone = 'neutral', { title, dot } = {}) {
-  return h('span.ad-pill.is-' + tone, { title: title || null }, [
-    dot ? h('span.ad-pill-dot', { 'aria-hidden': 'true' }) : null,
+  /* The kit's badge look (k-badge); .ad-pill / .is-<tone> stay as the
+     hooks the proofs and the other tabs read. */
+  const kt = { ok: 'ok', warn: 'warn', danger: 'danger', accent: 'info' }[tone];
+  return h('span.k-badge.ad-pill.is-' + tone + (kt ? '.k-badge--' + kt : ''), { title: title || null }, [
+    dot ? h('span.k-badge-dot.ad-pill-dot', { 'aria-hidden': 'true' }) : null,
     isEl(text) ? text : String(text)
   ]);
 }
@@ -114,10 +117,12 @@ export function delta(value, { unit = '%', goodWhen = 'up', label } = {}) {
  *  sparkline); `href` makes the tile a link. */
 export function kpi({ label, value, sub, href, delta: d, spark, attention, title } = {}) {
   const tag = href ? 'a' : 'div';
-  const el = h(tag + '.ad-stat.ad-kpi' + (attention ? '.is-attention' : ''), { href: href || null, title: title || null }, [
-    h('span.ad-stat-n', { text: value == null ? '—' : String(value) }),
-    h('span.ad-stat-l', { text: label }),
-    d || sub ? h('span.ad-kpi-row', {}, [d ? (isEl(d) ? d : delta(d)) : null, sub ? h('span.ad-stat-sub', { text: sub }) : null]) : null,
+  /* A kit stat card (k-stat): mono label, mono figure, one note line. The figure
+     stays first in the DOM (the proof reads "3 Members"); CSS puts the label above. */
+  const el = h(tag + '.k-stat.ad-stat.ad-kpi' + (attention ? '.is-attention' : ''), { href: href || null, title: title || null }, [
+    h('span.k-stat-value.ad-stat-n', { text: value == null ? '—' : String(value) }),
+    h('span.k-stat-label.ad-stat-l', { text: label }),
+    d || sub ? h('span.ad-kpi-row', {}, [d ? (isEl(d) ? d : delta(d)) : null, sub ? h('span.k-stat-note.ad-stat-sub', { text: sub }) : null]) : null,
     spark ? h('span.ad-kpi-spark', {}, [spark]) : null
   ]);
   return el;
@@ -201,13 +206,13 @@ const handlers = new WeakMap();
 
 export function emptyState({ title, body, action, stamp, icon } = {}) {
   const act = action && (action.href
-    ? h('a.btn', { href: action.href, text: action.label })
-    : h('button.btn', { type: 'button', 'data-ad-act': 'run', text: action.label }));
+    ? h('a.k-btn', { href: action.href, text: action.label })
+    : h('button.k-btn', { type: 'button', 'data-ad-act': 'run', text: action.label }));
   if (act && action.onClick) handlers.set(act, action.onClick);
-  return h('div.ad-empty', {}, [
-    h('span.ad-empty-ic', { 'aria-hidden': 'true', text: icon || '◇' }),
-    h('p.ad-empty-h', { text: title || 'Nothing here' }),
-    body ? h('p.ad-empty-b', { text: body }) : null,
+  return h('div.k-empty.ad-empty', {}, [
+    h('span.k-empty-icon.ad-empty-ic', { 'aria-hidden': 'true', text: icon || '◇' }),
+    h('p.k-empty-title.ad-empty-h', { text: title || 'Nothing here' }),
+    body ? h('p.k-empty-body.ad-empty-b', { text: body }) : null,
     act,
     stamp ? h('p.ad-empty-s', {}, [stamp === true ? 'Checked ' : String(stamp) + ' ', when(Date.now())]) : null
   ]);
@@ -316,7 +321,7 @@ export function closeDrawer({ keepHash = false } = {}) {
 export function openDrawer({ param, id, title, sub, body, actions } = {}) {
   if (open) closeDrawer({ keepHash: true });
   const label = 'ad-drawer-t-' + Math.random().toString(36).slice(2, 7);
-  const el = h('aside.ad-drawer', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': label, tabindex: '-1' }, [
+  const el = h('aside.ad-drawer.k-scope', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': label, tabindex: '-1' }, [
     h('header.ad-drawer-h', {}, [
       h('div.ad-drawer-t', {}, [h('h2', { id: label, text: title || '' }), sub ? (isEl(sub) ? sub : h('p.ad-meta', { text: sub })) : null]),
       h('div.ad-drawer-a', {}, [...arr(actions), h('button.btn.ad-drawer-x', { type: 'button', 'data-ad-act': 'close-drawer', 'aria-label': 'Close', text: 'CLOSE' })])

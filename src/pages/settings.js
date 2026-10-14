@@ -83,8 +83,10 @@ import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/ai.css';
 import '../styles/settings.css';
+import '../styles/kit-scope.css';   /* the kit's look for the legacy .btn / fields the account, invite and key modules draw */
 
 import StudioUI from '../ui/chrome.js';
+import { pageHeader, eyebrow as kitEyebrow } from '../ui/kit/index.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate, commitMain } from '../lib/dom.js';
 /* The provider table. The key area is composed by ai-panel.js; this
@@ -142,12 +144,23 @@ const titleCase = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
    Cards live INSIDE the five tab panels below; the panels, not the
    cards, are what tabs.js turns into tabs. */
 function section(id, eyebrow, title, deck) {
-  const sec = h('div.st-sec.st-card', { id });
+  /* A kit panel by construction (k-panel / k-panel-head / k-panel-body):
+     the mono eyebrow is the header band, the title and deck open the body.
+     The .st-sec and .st-card classes and the .bd-h2 title stay as the hooks
+     the proofs and the other builders read. Callers keep doing
+     sec.append(...): that lands in the BODY, below the deck. */
+  const sec = h('div.k-panel.st-sec.st-card', { id });
+  const body = h('div.k-panel-body.st-sec-body');
   sec.append(
-    h('p.bd-eyebrow', { text: eyebrow }),
+    h('div.k-panel-head', {}, [kitEyebrow(eyebrow)]),
+    body
+  );
+  body.append(
     h('h2.bd-h2', { text: title }),
     h('p.bd-sub', { text: deck })
   );
+  sec.append = (...nodes) => body.append(...nodes);
+  sec.appendChild = (node) => body.appendChild(node);
   return sec;
 }
 
@@ -1055,15 +1068,14 @@ function tabPane(id, label, group, cards, menu = {}) {
 }
 
 function render() {
-  const main = h('main#main');
+  const main = h('main#main.k-scope');
 
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Studio' }),
-    h('h1.bd-title', { text: 'Settings.' }),
-    h('p.bd-deck', {
-      text: 'Your account, how the studio behaves on this device, where your work is kept and backed up, and your team.'
-    })
-  ]));
+  main.append(pageHeader({
+    eyebrow: ['Studio', 'Settings'],
+    title: 'Settings.',
+    sub: 'Your account, how the studio behaves on this device, where your work is kept and backed up, and your team.',
+    class: 'st-head'
+  }));
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [

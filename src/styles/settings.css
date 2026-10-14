@@ -589,101 +589,108 @@
 }
 
 /* ============================================================
-   SETTINGS, OBSIDIAN LOOK (13 Oct 2026)
+   SETTINGS, SWISS KIT (14 Oct 2026)
    ------------------------------------------------------------
-   The account and the plan read as the design's two big blocks: a
-   lilac eyebrow, a large serif title and a quiet deck sit on the
-   page itself, and the thing they introduce is the card. Every
-   other settings card keeps its surface and takes the new type.
+   Every card is a kit panel (settings.js section()): a mono
+   eyebrow in the header band, the title and deck opening the body.
+   The account and the plan are the page's two lead cards. Kit
+   tokens and --sk-* only; the buttons, fields and headings the
+   modules draw are given the kit's values by kit-scope.css.
    ============================================================ */
-.st-console .st-sec .bd-eyebrow { font-family: var(--f-body); font-size: var(--t-base); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--brand-deep); }
-.st-console .st-sec .bd-h2 { font-family: var(--face-display); font-weight: 700; font-size: var(--t-2xl); letter-spacing: -0.02em; line-height: 1.1; }
-.st-console .st-sec .bd-sub { color: var(--ink-muted); }
+.st-head { max-width: min(76rem, 100%); margin-inline: auto; padding-inline: var(--s5); padding-top: var(--s6); box-sizing: border-box; }
+.st-sec.k-panel { padding: 0; gap: 0; background: var(--sk-card-bg); border: var(--sk-card-line-w, 1px) solid var(--sk-card-line); border-radius: var(--sk-radius); box-shadow: none; display: block; color: inherit; }
+.st-sec-body { display: grid; gap: var(--s4); }
+.st-sec-body > .bd-h2, .st-sec-body > .bd-sub { margin: 0; }
+.st-sec-body > .bd-h2 + .bd-sub { margin-top: calc(-1 * var(--s2)); }
 
-/* the account and the plan: head on the page, card below */
-#you.st-sec, #plan-summary.st-sec { padding: 0; background: none; border: 0; box-shadow: none; gap: var(--s3); margin-top: var(--s3); }
-#you.st-sec .bd-h2, #plan-summary.st-sec .bd-h2 { font-size: var(--t-3xl); }
-#you.st-sec .bd-sub, #plan-summary.st-sec .bd-sub { font-size: var(--t-base); }
-
-/* the account card */
+/* the account card and the plan card: a hairline panel, mono key lines */
 #you .account-menu.am-inline {
   max-width: none;
   display: grid;
   gap: 0;
-  padding: var(--s5) var(--s6);
-  background: var(--sk-deco-bg, var(--paper-raised));
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-radius: var(--sk-radius, var(--radius));
+  padding: var(--s4);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius);
 }
-#you .am-inline .am-you { gap: var(--s4); padding: 0 0 var(--s5); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); margin: 0; }
-#you .am-inline .am-avatar { width: 4.25rem; height: 4.25rem; font-size: var(--t-xl); font-family: var(--f-body); font-weight: 700; }
-#you .am-inline .am-you-name { font-size: var(--t-xl); font-family: var(--f-body); font-weight: 600; }
-#you .am-inline .am-you-mail { font-size: var(--t-small); letter-spacing: 0.04em; }
-#you .am-inline .am-account:not(:empty) { padding-block: var(--s4); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); margin: 0; }
-#you .am-inline .am-sync { padding: var(--s4) 0; border-bottom: 0; font-size: var(--t-small); color: var(--ink-body); }
+#you .am-inline .am-you { gap: var(--s4); padding: 0 0 var(--s4); border-bottom: 1px solid var(--border-hair); margin: 0; }
+#you .am-inline .am-avatar { width: 3.5rem; height: 3.5rem; font-size: var(--t-lg); font-family: var(--f-display); font-weight: 600; border-radius: var(--sk-radius); }
+#you .am-inline .am-you-name { font-size: var(--t-lg); font-family: var(--f-display); font-weight: 600; }
+#you .am-inline .am-you-mail { font-family: var(--f-mono); font-size: var(--t-small); letter-spacing: .02em; }
+#you .am-inline .am-account:not(:empty) { padding-block: var(--s3); border-bottom: 1px solid var(--border-hair); margin: 0; }
+#you .am-inline .am-sync { padding: var(--s3) 0; border-bottom: 0; font-size: var(--t-small); color: var(--ink-body); }
 #you .am-inline .am-sync-dot { width: 8px; height: 8px; }
 #you .am-inline .am-item {
   width: auto;
   justify-self: start;
-  padding: var(--s3) 0;
+  padding: var(--s2) 0;
   border-radius: 0;
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
   text-decoration: none;
   color: var(--ink);
 }
-#you .am-inline a.am-item { text-decoration: none; }
 @media (hover: hover) {
-  #you .am-inline .am-item:hover { background: none; color: var(--accent-deep); }
-  #you .am-inline .am-item.danger:hover { background: none; color: var(--danger); }
+  #you .am-inline .am-item:hover { background: none; color: var(--brand-deep); }
+  #you .am-inline .am-item.danger:hover { background: none; color: var(--danger-deep); }
 }
-#you .am-inline .am-item.danger { margin-top: var(--s4); padding-top: var(--s5); border-top: var(--sk-card-line-w) solid var(--sk-card-line); width: 100%; border-radius: 0; }
-/* Signed out: the one control is a button, not a text row. */
+#you .am-inline .am-item.danger { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--border-hair); width: 100%; }
+/* Signed out: the one control is the view's primary CTA, a pill. */
 #you .am-inline .am-acct-note + .am-item {
-  margin: var(--s2) var(--s3) var(--s3);
+  text-transform: none;
+  letter-spacing: 0;
+  margin: var(--s2) 0 var(--s1);
   width: auto;
   justify-self: start;
-  padding: var(--s2) var(--s4);
+  height: var(--h-control);
+  padding: 0 var(--s4);
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--radius-pill);
-  background: var(--cta-fill);
+  background: var(--brand);
   color: var(--brand-on);
-  font-weight: 700;
+  font-weight: 600;
+  box-shadow: var(--shadow-cta);
 }
-#you .am-inline .am-acct-note + .am-item:hover { background: var(--cta-fill-hover); color: var(--brand-on); }
+#you .am-inline .am-acct-note + .am-item:hover { background: var(--brand-hover); color: var(--brand-on); }
 #you .am-inline .am-foot { padding: 0; border-top: 0; margin: 0; font-size: var(--t-small); }
+#you .am-inline .am-item.danger, #you .am-inline .am-item.danger:hover { color: var(--danger); }
 
-/* the plan card */
 .st-plan-card {
   display: grid;
   gap: var(--s3);
-  padding: var(--s5) var(--s6);
-  background: var(--sk-deco-bg, var(--paper-raised));
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-radius: var(--sk-radius, var(--radius));
+  padding: var(--s4);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius);
 }
 .st-plan-card > * { margin: 0; }
 .st-plan-pills { display: flex; flex-wrap: wrap; gap: var(--s2); }
+/* the LED pills are kit badges in shape */
 .st-led {
   display: inline-flex;
   align-items: center;
-  gap: var(--s2);
-  padding: var(--s1) var(--s3);
+  gap: var(--s1h);
+  height: var(--h-badge);
+  padding: 0 var(--s2);
   border-radius: var(--radius-pill);
-  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  border: 1px solid var(--border-default);
   font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: .04em;
   text-transform: uppercase;
-  background: var(--paper-sunk);
-  color: var(--ink-muted);
+  background: var(--surface-hover);
+  color: var(--ink-body);
 }
-.st-led.is-ok   { background: var(--ok-wash);     color: var(--ok-deep); }
-.st-led.is-warn { background: var(--warn-wash);   color: var(--warn-deep); }
-.st-led.is-bad  { background: var(--danger-wash); color: var(--danger); }
-.st-led .st-dot { background: currentColor; box-shadow: 0 0 6px 0 currentColor; }
-.st-plan-card .st-plan-line { font-family: var(--f-body); font-size: var(--t-xl); font-weight: 600; letter-spacing: -0.01em; }
-.st-plan-card .st-plan-link { padding-top: var(--s3); border-top: var(--sk-card-line-w) solid var(--sk-card-line); }
+.st-led.is-ok   { background: var(--ok-wash);     border-color: var(--ok-line);     color: var(--ok-deep); }
+.st-led.is-warn { background: var(--warn-wash);   border-color: var(--warn-line);   color: var(--warn-deep); }
+.st-led.is-bad  { background: var(--danger-wash); border-color: var(--danger-line); color: var(--danger); }
+.st-led .st-dot { background: currentColor; }
+.st-plan-card .st-plan-line { font-family: var(--f-display); font-size: var(--t-lg); font-weight: 600; letter-spacing: var(--track-tight); }
+.st-plan-card .st-plan-link { padding-top: var(--s3); border-top: 1px solid var(--border-hair); }
+.st-drive-status, .st-group-label { color: var(--ink-muted); }
+.st-choice.st-choice.is-on { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 @media (max-width: 719px) {
-  #you .account-menu.am-inline, .st-plan-card { padding: var(--s4); }
+  .st-head { padding-inline: var(--s4); }
+  #you .account-menu.am-inline, .st-plan-card { padding: var(--s3); }
 }
-#you .am-inline .am-item.danger, #you .am-inline .am-item.danger:hover { color: var(--danger); }

@@ -54,6 +54,7 @@ import '../styles/pdf.css';
 import '../styles/festivals.css';
 import '../styles/short.css';
 import '../styles/steps-stages.css';
+import '../styles/blueprint-kit.css';   /* LAST: the Swiss kit's values for every step block */
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';

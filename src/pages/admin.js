@@ -78,6 +78,7 @@ import '../styles/gate.css';
 import '../lib/cloud.js';              /* sets window.StudioCloud; the gate lives there */
 
 import StudioUI from '../ui/chrome.js';
+import { pageHeader, button, panel } from '../ui/kit/index.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain, coalesce } from '../lib/dom.js';
 import { fmtPaise, RAZORPAY_KEY_ID } from '../lib/billing.js';
@@ -101,6 +102,7 @@ import { trialLength } from '../lib/trial-time.js';
 /* LAST, after every module's own sheet, so the console's one set of
    components (admin.css, scoped to .ad-console) wins the ties. */
 import '../styles/admin.css';
+import '../styles/kit-scope.css';   /* the kit's look for the legacy .btn / fields / tables a module still draws */
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -145,11 +147,11 @@ function block(id) {
 }
 /** The signed-out / not-admin / no-cloud states: one short block. */
 function state(id, title, line, actions) {
-  return h('section.ad-state', { id }, [
+  return panel({ tag: 'section', id, class: 'ad-state', eyebrow: 'Console', body: [
     h('h2.ad-state-h', { text: title }),
     line ? h('p.ad-meta', { text: line }) : null,
     actions && actions.length ? h('div.ad-actions', {}, actions) : null
-  ].filter(Boolean));
+  ].filter(Boolean) });
 }
 
 const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
@@ -198,7 +200,7 @@ function statusBar() {
     h('span.ad-status-r', {}, [
       ov.phase === 'loading' ? h('span.ad-meta', { text: 'Refreshing…' })
         : h('span.ad-meta', {}, ['Refreshed ', h('time', { title: at ? new Date(at).toLocaleString() : null, text: at ? new Date(at).toLocaleTimeString(undefined, { timeStyle: 'short' }) : '—' })]),
-      h('button.btn.ad-refresh', { type: 'button', 'data-ad-action': 'reload', disabled: ov.phase === 'loading' ? '' : null, text: 'REFRESH' })
+      button({ label: 'Refresh', icon: 'refresh', size: 'sm', class: 'ad-refresh', disabled: ov.phase === 'loading', attrs: { 'data-ad-action': 'reload' } })
     ])
   ]);
 }
@@ -289,7 +291,7 @@ function attentionList(d, hs) {
 
 function activityCard(ctx) {
   const rc = auditTab.recentState();
-  const card = h('div.ad-card', {}, [h('h3.ad-card-h', { text: 'Activity' })]);
+  const card = h('div.k-panel.ad-card', {}, [h('h3.ad-card-h', { text: 'Activity' })]);
   if (rc.phase === 'error') card.append(errorState({ title: 'The audit log could not load', why: rc.error, onRetry: () => auditTab.reloadRecent(ctx) }));
   else if (rc.phase !== 'ok') card.append(skeleton({ kind: 'rows', count: 4 }));
   else if (!rc.rows.length) card.append(emptyState({ title: 'No admin action recorded yet', body: 'Every admin write is listed here, newest first.', stamp: true, icon: '◷' }));
@@ -352,7 +354,7 @@ function overviewTab() {
   ]));
 
   const items = attentionList(d, hs);
-  const attention = h('div.ad-card', {}, [h('h3.ad-card-h', { text: 'Needs attention' })]);
+  const attention = h('div.k-panel.ad-card', {}, [h('h3.ad-card-h', { text: 'Needs attention' })]);
   if (items.length) attention.append(h('ul.ad-att-list', {}, items));
   else if (hs.phase === 'ok') attention.append(emptyState({ title: 'Nothing needs you', body: 'The health checks pass, and no receipt, refund, invite or payment is waiting.', stamp: true, icon: '✓' }));
   else if (hs.phase === 'loading' || hs.phase === 'idle') attention.append(skeleton({ kind: 'rows', count: 3 }));
@@ -371,7 +373,7 @@ function organisationsBlock() {
   const sec = block('organisations');
   sec.append(h('h3.gt-h3', { text: `Organisations (${ov.accounts.length})` }));
   if (!ov.accounts.length) { sec.append(h('p.gt-meta', { text: 'None yet.' })); return sec; }
-  const table = h('table.gt-table');
+  const table = h('table.gt-table.k-table');
   table.append(h('thead', {}, [h('tr', {}, ['Organisation', 'Owner', 'Plan', 'Seats', 'Films', 'Since'].map((t) => h('th', { scope: 'col', text: t })))]));
   const tb = h('tbody');
   for (const a of ov.accounts) {
@@ -403,7 +405,7 @@ function signedInBlock() {
   sec.append(h('h3.gt-h3', { text: `Everyone signed in (${ov.users.length})` }));
   if (!ov.users.length) { sec.append(h('p.gt-meta', { text: 'Nobody yet.' })); return sec; }
   const live = (u) => u.last_heartbeat && Date.now() - Date.parse(u.last_heartbeat) < 90000;
-  const table = h('table.gt-table');
+  const table = h('table.gt-table.k-table');
   table.append(h('thead', {}, [h('tr', {}, ['Who', 'Standing', 'Last sign-in', 'Joined', 'Films', 'Orgs', 'Now'].map((t) => h('th', { scope: 'col', text: t })))]));
   const tb = h('tbody');
   for (const u of ov.users) {
@@ -523,20 +525,20 @@ function render() {
   const isAdmin = !!(st && st.deployed && st.role === 'admin');
   const kept = snapshotFields();
 
-  const main = h('main#main');
+  const main = h('main#main.k-scope');
   let body;
   let statusEl = null;
   if (!c || !c.isConfigured()) {
     body = h('div.ad-body', {}, [state('local', 'No cloud, no console', 'This build carries no Supabase project (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).')]);
   } else if (!signedIn) {
     body = h('div.ad-body', {}, [state('signin', 'Sign in', 'Use an administrator’s Google account.',
-      [h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })])]);
+      [button({ label: 'CONTINUE WITH GOOGLE', variant: 'primary', pill: true, attrs: { 'data-auth-action': 'google' } })])]);
   } else if (!st) {
     body = h('div.ad-body', {}, [state('checking', 'Checking…', '')]);
   } else if (!isAdmin) {
     body = h('div.ad-body', {}, [state('denied', 'Administrators only',
       'Signed in as ' + (c.getUserEmail() || 'this account') + '. Access is granted by the studio’s owner.',
-      [h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })])]);
+      [button({ label: 'BACK TO THE STUDIO', href: 'index.html' })])]);
   } else {
     if (ov.phase === 'idle') loadOverview();
     const sections = {
@@ -558,14 +560,14 @@ function render() {
   /* The header is drawn after the body is chosen so the status chips can sit
      on the title's own row (the design's console header); statusBar() reads
      the overview phase loadOverview() just set. */
-  main.append(h('header.bd-head.ad-head', {}, [
-    h('div.ad-head-t', {}, [
-      h('p.bd-eyebrow', { text: 'Administration' }),
-      h('h1.bd-title', { text: 'Console' }),
-      isAdmin ? h('p.ad-meta', { text: 'Signed in as ' + (c.getUserEmail() || 'an administrator') }) : null
-    ].filter(Boolean)),
-    statusEl
-  ].filter(Boolean)));
+  const head = pageHeader({
+    eyebrow: 'Administration',
+    title: 'Console',
+    sub: isAdmin ? 'Signed in as ' + (c.getUserEmail() || 'an administrator') : null,
+    class: 'ad-head'
+  });
+  main.append(head);
+  if (statusEl) main.append(statusEl);
   main.append(body);
   /* Identical output is not repainted (commitMain); scroll and focus survive. */
   commitMain(app, main, () => {

@@ -1509,9 +1509,9 @@ function setRail(open) {
   // Only the wide-screen preference is worth keeping. Restoring "open"
   // on a phone would put a fifth of the screen of navigation over the
   // page on arrival.
-  if (!isNarrow()) {
-    try { localStorage.setItem(RAIL_KEY, open ? '1' : '0'); } catch (e) {}
-  }
+  /* (14 Oct 2026) On a desk the rail is fixed and has no open/closed
+     choice any more, so nothing is written. RAIL_KEY stays declared and
+     readable: an old stored '0' is simply ignored. */
   /* Below the breakpoint the rail is a drawer over the page, so it
      behaves like one: focus moves into it on open and back to the
      control that opened it on close. Without this, tabbing from an
@@ -1557,10 +1557,8 @@ function trapRailFocus(e) {
 }
 
 function initialRail() {
-  if (isNarrow()) return false;
-  let v = null;
-  try { v = localStorage.getItem(RAIL_KEY); } catch (e) {}
-  return v !== '0';
+  /* Desk: always shown (a fixed 64px icon rail). Phone: a drawer, closed. */
+  return !isNarrow();
 }
 
 function closeAllMenus(except) {
@@ -1681,13 +1679,14 @@ function wire() {
   });
 
   delegate(document, 'click', '[data-action="rail-toggle"]', () => {
+    if (!isNarrow()) return;   // no toggle on a desk
     setRail(!document.body.classList.contains('rail-shown'));
   });
 
   // Tapping the dimmed page puts the drawer away — the gesture every
   // drawer has, and the reason the scrim is a real element rather
   // than a ::before nobody can click.
-  delegate(document, 'click', '[data-action="rail-close"]', () => setRail(false));
+  delegate(document, 'click', '[data-action="rail-close"]', () => { if (isNarrow()) setRail(false); });
 
   // The breadcrumb's stage segment goes to the stage's main page (on a
   // phone mobile-nav.js intercepts it first and opens the Go-to sheet).

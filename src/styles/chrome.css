@@ -4691,3 +4691,26 @@ body.has-status-bar.has-mobile-actionbar .focus-timer { bottom: calc(var(--mab-h
 @media print {
   .sh-fly { display: none !important; }
 }
+
+/* THE RAIL HAS NO TOGGLE ON A DESK (owner, 14 Oct 2026): from 1100px up
+   it is a fixed 64px icon rail with hover/focus flyouts. The burger
+   remains below that, where the rail is a drawer. */
+@media (min-width: 1100px) {
+  :root .sh-rail-toggle { display: none; }
+}
+
+/* ONE ROW BETWEEN 721 AND 1099px (owner, 14 Oct 2026). The burger,
+   crumb, search and the tools zone (switcher, Backup, account) together
+   are wider than the band there, so the zone wrapped to a second row.
+   "Studio ›" gives way (Home is the first item in the drawer the burger
+   opens, and the crumb still names stage and module), and the project
+   name takes a shorter measure. */
+@media (min-width: 721px) and (max-width: 1099px) {
+  :root .sh-where-root:not(.sh-where-here),
+  :root .sh-where-root:not(.sh-where-here) + .sh-where-sep { display: none; }
+  :root .sh-bar .ps-btn .ps-title { max-width: 12ch; }
+  :root .sh-bar { column-gap: var(--s2); }
+}
+@media (min-width: 721px) and (max-width: 800px) {
+  :root .sh-bar { padding-inline: var(--s3); }
+}

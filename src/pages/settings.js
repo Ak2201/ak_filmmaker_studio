@@ -1072,7 +1072,7 @@ function render() {
 
   main.append(pageHeader({
     eyebrow: ['Studio', 'Settings'],
-    title: 'Settings.',
+    title: 'Settings',
     sub: 'Your account, how the studio behaves on this device, where your work is kept and backed up, and your team.',
     class: 'st-head'
   }));

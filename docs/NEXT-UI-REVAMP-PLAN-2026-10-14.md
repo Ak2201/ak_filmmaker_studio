@@ -34,6 +34,13 @@ Goal: Breakdown offers **Manual breakdown** or **Breakdown with AI**; both build
    - Review: each generated frame shown with tick + Accept selected / Accept all before anything is saved.
    - Storage: image bytes never go in `localStorage` or `blankFrame`. Accepted images are uploaded as files to the user's Drive (`drive.file` scope, `src/lib/drive.js` — add a create-file helper beside `createBackupFile`); the frame keeps only a reference (`ref` = Drive file id/URL). Display fetches with the Drive token (silent re-mint is not possible after ~1h: show a "Reconnect Drive" state, never a broken image). Images are excluded from backup files (reference only) — say so in the UI.
    - Signed-out / no Drive: generation is disabled with a clear reason (Drive-only was the owner's choice).
+   - **Built 14 Oct 2026 (P3c), proven only against FAKES.** `src/lib/board-frames.js` (pure: gate, jobs, input, prompt),
+     `generateImage()` in `src/lib/ai.js` (shares `send()` with `callModel`; Gemini key in `x-goog-api-key`),
+     `imageModels` on the Gemini row of `ai-providers.js` (`gemini-2.5-flash-image`, **unverified against a real key**),
+     `createFile` / `downloadFileBlob` / `deleteFileQuiet` / `driveRef` in `src/lib/drive.js`, `src/ui/drive-image.js`
+     (show from Drive or "Reconnect Drive"), task `board-frames` in `ai-tasks.js`, the Draw block on visualize.html#storyboard.
+     `img-src` already carried `data: blob:` in both host configs. `test:board-frames` (Node) and `prove:board-frames`
+     (Chromium, fake Supabase + fake Gemini + fake Drive). Still to do with a real key and a real Drive: one run end to end.
 5. **Verify.** `npm run test:undef`; `build:verify` + `verify`; `test:ai-lazy`; add node tests for the proposal builders (like `test:stripboard`); manual run with no key (Manual path), with a key (AI path, accept one / accept all / undo), and a re-run after adding a scene (only the new scene proposed).
 
 ## Risks / things to confirm while building

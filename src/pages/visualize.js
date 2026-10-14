@@ -52,6 +52,14 @@ import Shots, {
   SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, isLinkable
 } from '../lib/shots.js';
 import { renderBlocking, renderSceneBoard, highlightCamera } from '../ui/blocking.js';
+/* Drawn frames (NEXT-UI-REVAMP-PLAN phase 4): the picture is in the
+   writer's Drive, the frame keeps `drive:<fileId>`. drive.js and
+   drive-sync.js are CORE already; the generation itself (ai.js, the
+   Desk) stays behind the pill's click. */
+import { driveFileIdOf } from '../lib/drive.js';
+import { onDriveStatus } from '../lib/drive-sync.js';
+import { boardJobs, MAX_FRAMES } from '../lib/board-frames.js';
+import { driveImage, currentBoardGate, onDriveReconnect, wireDriveImages } from '../ui/drive-image.js';
 import { basicShotDivision, jobFor } from '../lib/shot-rules.js';
 import {
   button, buttonGroup, badge, intExtBadge, todBadge, pageHeader, statStrip, notice, field as kitField
@@ -695,11 +703,14 @@ function renderStoryboard(scenes, shots, frames) {
       text: 'A frame per drawing, hanging off the shot it draws. Grouped by scene, '
           + 'in shot order — move a shot above and the board follows it.'
     }),
-    noImageNote('A frame here holds a link or a description, not a picture. '
+    noImageNote('A frame here holds a link or a description, not a picture file. '
       + 'The studio keeps your work in this browser, where an image file would not '
       + 'fit and would not survive a backup — so paste the URL of your drawing, or '
-      + 'write the frame in words. Words are often the better storyboard anyway.')
+      + 'write the frame in words, or draw frames with AI: those pictures are saved to '
+      + 'your own Google Drive, and the frame (and every backup file) keeps only a link to each. '
+      + 'Words are often the better storyboard anyway.')
   );
+  if (shots.length) wrap.append(renderDraw(scenes, shots, frames));
 
   if (!shots.length) {
     wrap.append(h('p.bd-none', {
@@ -731,6 +742,65 @@ function renderStoryboard(scenes, shots, frames) {
   }
   return wrap;
 }
+
+/* ---- drawn frames: the AI pill, or why it cannot run --------
+   Real counts only: how many shots have no drawn frame yet. The gate
+   (board-frames.js boardGate) is read live, and this block alone is
+   repainted when Drive's state moves — never the page, which would
+   take the cursor out of a field being typed in. */
+function renderDraw(scenes, shots, frames) {
+  wireDriveImages();
+  const todo = boardJobs({ shots, scenes, frames, max: Infinity }).jobs.length;
+  const gate = currentBoardGate();
+  const wrap = h('div.vz-draw.k-panel', { 'data-gate': gate.state });
+  const head = h('div.vz-draw-acts');
+  if (!todo) {
+    head.append(button({ label: 'Draw frames with AI', icon: 'auto_awesome', disabled: true, class: 'vz-draw-off' }));
+  } else if (gate.ok) {
+    head.append(aiPill({
+      label: 'Draw ' + plural(Math.min(todo, MAX_FRAMES), 'frame', 'frames') + ' with AI',
+      tasks: ['board-frames'],
+      provider: 'gemini',
+      ctx: () => ({ identity: 'board:all', after: () => render() })
+    }));
+  } else {
+    head.append(button({ label: 'Draw frames with AI', icon: 'auto_awesome', disabled: true, class: 'vz-draw-off' }));
+    if (gate.reconnect) head.append(button({ label: 'Reconnect Drive', size: 'sm', action: 'drive-reconnect', class: 'vz-draw-fix' }));
+    if (gate.href) head.append(button({ label: gate.hrefLabel || 'Fix this', size: 'sm', href: gate.href, class: 'vz-draw-fix' }));
+  }
+  head.append(h('span.vz-draw-count.k-mono', {
+    text: todo ? plural(todo, 'shot', 'shots') + ' without a drawing' : 'Every shot has a drawing'
+  }));
+  wrap.append(head);
+  if (!gate.ok && todo) wrap.append(h('p.vz-draw-why.drv-img-note', { role: 'status', text: gate.text }));
+  wrap.append(h('p.vz-draw-note', {
+    text: 'Gemini draws one picture per shot that has none yet, up to ' + MAX_FRAMES + ' a run, in the style you pick '
+      + '(pencil, ink, marker or colour) with your own Gemini key. You tick the ones to keep; nothing is saved until you accept. '
+      + 'Kept pictures go to your Google Drive — not into this browser and not into backup files, which keep only the link.'
+  }));
+  return wrap;
+}
+
+function repaintDraw() {
+  const el = document.querySelector('.vz-draw');
+  if (!el) return;
+  const scenes = Scenes.listScenes();
+  const shots = Shots.listShots();
+  if (!shots.length) return;
+  const next = renderDraw(scenes, shots, Shots.listFrames());
+  if (next.dataset.gate !== el.dataset.gate || next.textContent !== el.textContent) el.replaceWith(next);
+}
+onDriveStatus(repaintDraw);
+onDriveReconnect(repaintDraw);
+/* The session is restored after the first paint (cloud.js reads it
+   behind an await), so "signed out" can be true only for a moment:
+   repaint when it lands. Reached through the global, as comments.js
+   does, after every module in the chunk has evaluated. */
+setTimeout(() => {
+  const c = window.StudioCloud;
+  if (c && typeof c.onAuth === 'function') c.onAuth(() => repaintDraw());
+  repaintDraw();
+}, 0);
 
 function renderNoFrames(firstShotId) {
   return h('div.bd-empty', {}, [
@@ -955,6 +1025,14 @@ function renderEntry(entry) {
     change handler, and the note there about not stealing focus. */
 function refView(ref) {
   const value = String(ref || '').trim();
+  const fileId = driveFileIdOf(value);
+  if (fileId) {
+    // The picture is in the writer's Drive: fetched with the Drive token,
+    // or a "Reconnect Drive" control — never a broken image.
+    const pic = driveImage(fileId, 'Drawn storyboard frame');
+    pic.classList.add('vz-frame-view', 'vz-frame-pic');
+    return pic;
+  }
   if (isLinkable(value)) {
     return h('a.vz-frame-view.vz-frame-link', {
       href: value, target: '_blank', rel: 'noopener noreferrer',

@@ -114,6 +114,15 @@ export const PROVIDERS = [
     models: [
       { id: 'gemini-3.8-flash',       label: 'Gemini 3.8 Flash', hint: 'quick — the default' },
       { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro',   hint: 'slower, more considered' }
+    ],
+    /* The image model the storyboard's "Draw frames" task uses
+       (board-frames, src/lib/board-frames.js). No choice is stored —
+       that would be a new key — so the first entry is the one sent.
+       NOT VERIFIED AGAINST A REAL KEY when it was written (14 Oct
+       2026): Google renames image models often. If a run answers
+       404 / "model not found", this id is the one line to change. */
+    imageModels: [
+      { id: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image' }
     ]
   }
 ];
@@ -204,6 +213,17 @@ export function looksLikeKey(value, id) {
 export function models(id) { return provider(id).models; }
 export function defaultModel(id) { return provider(id).models[0].id; }
 
+/** The image model for a provider, or '' when it draws nothing
+    (Anthropic's API makes no images). */
+export function imageModel(id) {
+  const list = provider(id).imageModels || [];
+  return list.length ? list[0].id : '';
+}
+export function imageModelLabel(id) {
+  const list = provider(id).imageModels || [];
+  return list.length ? list[0].label : '';
+}
+
 export function getModel(id) {
   const p = provider(id);
   const m = rawGet(p.modelKey);
@@ -220,5 +240,5 @@ export default {
   AI_KEY, AI_MODEL_KEY, GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
   getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
-  models, defaultModel, getModel, setModel
+  models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 };

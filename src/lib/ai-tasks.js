@@ -64,6 +64,9 @@ let Analysis = null;      // ./screenplay-analysis.js
 let Gen = null;           // ./scriptgen.js
 let Cov = null;           // ../ui/coverage.js (its coverageStore)
 let Extras = null;        // ./breakdown-extras.js
+let BoardM = null;        // ./board-frames.js (pure)
+let DriveM = null;        // ./drive.js
+let DriveImg = null;      // ../ui/drive-image.js (the live gate facts)
 let readyP = null;
 
 function loadAll() {
@@ -72,9 +75,11 @@ function loadAll() {
       import('./ai.js'), import('./blueprint-context.js'), import('./story.js'),
       import('./scenes.js'), import('./script.js'), import('./shots.js'),
       import('./screenplay-analysis.js'), import('./scriptgen.js'), import('../ui/coverage.js'),
-      import('./breakdown-extras.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx]) => {
+      import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
+      import('../ui/drive-image.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di]) => {
       AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
+      BoardM = bf; DriveM = dr; DriveImg = di;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -1350,9 +1355,138 @@ const tagsTask = {
   }
 };
 
+/* ============================================================
+   BOARD FRAMES — list. ctx { shotIds?: [id…], style?, after?(madeIds) }
+   ------------------------------------------------------------
+   NEXT-UI-REVAMP-PLAN phase 4. One picture per shot that has no
+   drawn frame yet (board-frames.js boardJobs, at most MAX_FRAMES a
+   run), drawn by Gemini's image model through ai.js generateImage —
+   the same send() as every text task, key in `x-goog-api-key`. The
+   writer picks the style in "what goes in" (Style: …) or with a chip,
+   which redraws the run in that style.
+
+   NOTHING IS KEPT UNTIL ACCEPT. The pictures live as Blobs in this
+   Desk session. Accept uploads each ticked one to the writer's Drive
+   (drive.js createFile) and adds a frame whose `ref` is
+   `drive:<fileId>` — the bytes never reach localStorage, the frame
+   record or a backup file. Undo removes those frames and deletes the
+   files it made, quietly (no popup; a failed delete leaves a file in
+   the writer's Drive, which is theirs anyway).
+
+   GATED TWICE: blocked() (signed out, Drive unreachable or not
+   connected, no live Drive token) stops the Desk before anything is
+   spent, and run() and apply() ask again.
+   ============================================================ */
+function boardJobsFor(c, max) {
+  return BoardM.boardJobs({
+    shots: ShotsM.listShots(), scenes: ScenesM.listScenes(), frames: ShotsM.listFrames(),
+    onlyShotIds: Array.isArray(c.shotIds) && c.shotIds.length ? c.shotIds : null,
+    max: max == null ? BoardM.MAX_FRAMES : max
+  });
+}
+
+const BOARD_CHIPS = ['Pencil sketch', 'Ink and wash', 'Marker', 'Colour'];
+
+const boardTask = {
+  id: 'board-frames',
+  label: 'Draw storyboard frames',
+  kind: 'list',
+  provider: 'gemini',
+  chips: BOARD_CHIPS,
+  modelLabel: () => (AI && AI.imageModelLabel ? AI.imageModelLabel('gemini') : 'image model'),
+  blocked() {
+    const g = DriveImg ? DriveImg.currentBoardGate() : { ok: false, text: 'The Drive tools did not load.' };
+    return g.ok ? null : g;
+  },
+  unblock() { return DriveImg.reconnectDrive(); },
+  identity(ctx) {
+    const c = resolve(ctx);
+    return 'board:' + [].concat(c.shotIds || []).map(String).sort().join(',');
+  },
+  input(ctx) {
+    const c = resolve(ctx);
+    const plan = boardJobsFor(c);
+    if (!plan.jobs.length) return 'Every shot already has a drawn frame. Add a shot, or delete a drawn frame to draw it again.';
+    return BoardM.boardInput(plan, c.style);
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const gate = DriveImg.currentBoardGate();
+    if (!gate.ok) fail(gate.text);
+    const c = resolve(ctx);
+    const parsed = BoardM.parseBoardInput(input);
+    const byLabel = new Map(boardJobsFor(c, Infinity).jobs.map((j) => [j.label, j]));
+    const jobs = parsed.labels.map((l) => byLabel.get(l)).filter(Boolean).slice(0, BoardM.MAX_FRAMES);
+    if (!jobs.length) fail('No shot lines are left to draw. Each line starts with a shot label such as 4.12A, then a "|".');
+    const { style, notes } = BoardM.styleFromRefine(refine && refine.instructions, parsed.style);
+    const items = [];
+    const missed = [];
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i];
+      if (signal && signal.aborted) throw new AI.AIError('Stopped. Nothing was changed.', 'aborted');
+      if (onStatus) onStatus('Drawing frame ' + (i + 1) + ' of ' + jobs.length + ' — shot ' + job.label + '…');
+      try {
+        const { blob } = await AI.generateImage({ prompt: BoardM.framePrompt(job, style, notes), aspectRatio: '16:9', signal });
+        items.push({
+          id: job.shotId, shotId: job.shotId, label: job.label, blob,
+          image: URL.createObjectURL(blob),
+          alt: 'Shot ' + job.label + ', ' + BoardM.styleOf(style).label.toLowerCase(),
+          text: 'Shot ' + job.label + ' · ' + BoardM.styleOf(style).label,
+          detail: BoardM.jobLine(job).split(' | ').slice(1).join(' · ')
+        });
+      } catch (e) {
+        // A wrong key, a stop, a dead network or a rate limit ends the run;
+        // a single refused or empty picture does not.
+        if (!e || ['auth', 'nokey', 'aborted', 'network', 'rate'].includes(e.kind)) throw e;
+        missed.push(job.label + ' (' + String(e.message || 'no picture').slice(0, 80) + ')');
+      }
+    }
+    if (!items.length) fail(missed.length ? 'No picture came back: ' + missed.join('; ') : 'No picture came back.');
+    return {
+      items,
+      note: 'Nothing is saved until you accept. Accepted frames are uploaded to your own Google Drive; '
+        + 'this browser, the shot list and your backup files keep only a link to each picture, never the picture.'
+        + (missed.length ? ' Not drawn: ' + missed.join('; ') + '.' : '')
+    };
+  },
+  async apply(selected, ctx) {
+    const c = resolve(ctx);
+    const picked = (selected || []).filter((it) => it && it.shotId && it.blob);
+    if (!picked.length) return null;
+    // Accept is a click, so this is the one place a lapsed token may be re-asked for.
+    if (!DriveM.hasToken()) await DriveM.getToken({ interactive: true });
+    const frames = [];
+    const files = [];
+    try {
+      for (const it of picked) {
+        const name = BoardM.frameFileName({ label: it.label }, it.blob.type);
+        const meta = await DriveM.createFile(name, it.blob, it.blob.type || 'image/png',
+          { description: 'Storyboard frame for shot ' + it.label + ' (the shot list links to this file).' });
+        if (!meta || !meta.id) throw new Error('Drive did not return a file id.');
+        files.push(meta.id);
+        frames.push(ShotsM.addFrame(it.shotId, { ref: DriveM.driveRef(meta.id), caption: '' }).id);
+      }
+    } catch (e) {
+      // All or nothing: one Accept is one write.
+      const ids = new Set(frames);
+      if (ids.size) ShotsM.saveFrames(ShotsM.listFrames().filter((f) => !ids.has(f.id)));
+      files.forEach((id) => DriveM.deleteFileQuiet(id).catch(() => {}));
+      throw new Error('Drive did not take the pictures (' + String((e && e.message) || 'unknown error').slice(0, 120)
+        + '). Nothing was saved; the drawings are still here to accept again.');
+    }
+    call(c.after, frames);
+    return () => {
+      const ids = new Set(frames);
+      ShotsM.saveFrames(ShotsM.listFrames().filter((f) => !ids.has(f.id)));
+      files.forEach((id) => DriveM.deleteFileQuiet(id).catch(() => {}));
+      call(c.after, []);
+    };
+  }
+};
+
 /* ---- registration ------------------------------------------- */
 const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
-  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask];
+  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once

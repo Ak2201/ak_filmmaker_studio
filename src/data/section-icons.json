@@ -98,7 +98,10 @@
     "cloud_sync",
     "cloud_upload",
     "sync_problem",
-    "cloud_off"
+    "cloud_off",
+    "local_hospital",
+    "local_police",
+    "call"
   ],
   "pages": {
     "breakdown": {

@@ -406,7 +406,9 @@ const EXPECTED = {
   visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   write: {},
   plan: {},
-  breakdown: {},
+  /* 14 Oct 2026 (P3b): the overview's one-button blurb became two buttons,
+     Manual breakdown and Breakdown with AI, and the sentence no longer says button. */
+  breakdown: { button: 'the blurb describes two start buttons now, not one' },
   feature: {},
   short: {},
   /* The library prints the glossary's term count ("N TERMS"); Phase 6 of the

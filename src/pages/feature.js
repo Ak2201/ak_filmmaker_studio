@@ -96,10 +96,22 @@ import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
 import { BRAND } from '../lib/brand.js';
-import { parseNum, fmtINR } from '../lib/money.js';
+import {
+  NOTE_PREFIX, readBlueprintBlob, readBlueprintData, peekBlueprintData,
+  saveBlueprintBlob, replaceBlueprintData, clearBlueprintData, isBlueprintStorageKey,
+  readFeaturePrefs, saveFeaturePrefs, countPrivateNotes
+} from '../lib/feature-store.js';
+import {
+  buildParts, parseInlineHandler, tallyCompletion, completionPct, fieldFilled, savedTick,
+  rowCountsFromBlob, savedAgoText, pacingChart, formatBudgetINR, budgetBreakdown, budgetBarHTML,
+  wordCounterState, charMapSVG, sceneChargeChart, vol1BridgeHTML, fileSlug, blueprintPdfOptions,
+  FEATURE_ROW_KEY, looksLikeShortFile, cleanImportedFields, sampleFields, emailToSelfHref,
+  FOCUS_SECONDS, formatTime, timerAriaLabel, fieldLabelMap, humanise, isSpecialKey,
+  buildFeatureMarkdown, buildPitchSlides, slideToHTML, buildPitchPptx
+} from '../lib/feature-model.js';
 import { mountComments, togglePanel as toggleFieldThread, hasNote, paintBadges }
   from '../ui/comments.js';
-import Blueprint, { BLUEPRINT_KEY } from '../lib/blueprint-context.js';
+import Blueprint from '../lib/blueprint-context.js';
 import { readBlueprintFile } from '../lib/blueprint-file.js';
 /* The choice a blank blueprint opens with — import, draft, or step
    01. Static because it reads nothing heavier than the step data
@@ -132,9 +144,9 @@ function themeTitle() {
    the page that writes them cannot disagree about a key holding months
    of somebody's work. Five other files still write the literal by hand
    — see the header of src/lib/blueprint-context.js. */
-const STORAGE_KEY  = BLUEPRINT_KEY;
-const PREF_KEY     = 'fms_filmmaker_prefs_v1';
-const NOTE_PREFIX  = 'fms_note_';
+/* STORAGE_KEY, PREF_KEY and NOTE_PREFIX live in src/lib/feature-store.js
+   now, which owns them (docs/ARCHITECTURE.md, V1); the strings are
+   byte-identical. */
 
 let statusEl = null;
 let saveTimer, savedAt = 0;
@@ -164,13 +176,7 @@ const NS_OF = new Map([
   ...[...STEPS.vol1, ...STEPS.vol2].map((s) => [s.id, 'feature']),
   ...[...PROD.production, ...PROD.post].map((s) => [s.id, 'production'])
 ]);
-const PARTS = partsOf('feature').map((p) => ({
-  ...p,
-  steps: ALL_STEPS.filter((s) => {
-    const info = stageInfo(NS_OF.get(s.id), s.id);
-    return info && info.parts.includes(p.part);
-  })
-}));
+const PARTS = buildParts(partsOf('feature'), ALL_STEPS, NS_OF, stageInfo);
 const partOf = (n) => PARTS.find((p) => p.part === n) || { steps: [], phase: { label: '' } };
 const partWord = (n) => numberWord(partOf(n).steps.length);
 const partTag = (n) => {
@@ -683,9 +689,8 @@ function renderPage(app) {
      anything been written", which the last save already answered.
      Reading, never writing — the idle-write assertion in verify is
      watching, and the panel must be invisible to it. */
-  let savedSoFar = {};
-  try { savedSoFar = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; }
-  catch (e) { /* unreadable storage reads as a blank desk, which it is */ }
+  /* Unreadable storage reads as a blank desk, which it is. */
+  const savedSoFar = peekBlueprintData();
   const entry = blueprintEntry(savedSoFar);
   if (entry) main.append(entry);
 
@@ -899,15 +904,10 @@ function dehydrateInlineHandlers(root) {
       const src = el.getAttribute(attr);
       if (src === null) continue;
       el.removeAttribute(attr);
-      const m = String(src).match(/^\s*([A-Za-z_$][\w$]*)\s*\((.*)\)\s*;?\s*$/);
-      if (!m) continue;
-      el.setAttribute(target, m[1]);
-      const argsSrc = m[2].trim();
-      if (argsSrc) {
-        try {
-          el.setAttribute('data-args', JSON.stringify(JSON.parse('[' + argsSrc.replace(/'/g, '"') + ']')));
-        } catch (e) { /* authored data only — a bad arg list is a data bug */ }
-      }
+      const call = parseInlineHandler(src);
+      if (!call) continue;
+      el.setAttribute(target, call.name);
+      if (call.args !== null) el.setAttribute('data-args', call.args);
     }
   });
 }
@@ -1056,29 +1056,26 @@ function assignStepIds() {
   if (master) master.id = 'top';
 }
 
+/** Rows of a table body with anything typed in them. */
+function filledRowCount(tb) {
+  let filledRows = 0;
+  tb.querySelectorAll('tr').forEach(r => {
+    if ([...r.querySelectorAll('input, textarea, select')].some(i => i.value && i.value.trim())) filledRows++;
+  });
+  return filledRows;
+}
+
 function computeStepCompletion(stepEl) {
-  const fields = stepEl.querySelectorAll('input[data-key], textarea[data-key], select[data-key]');
-  const checks = stepEl.querySelectorAll('li[data-key]');
-  let total = 0, done = 0;
-  fields.forEach(f => {
-    // skip table rows for step status (count step-level fields only)
-    if (f.closest('#sceneListBody, #shotListBody, #castListBody, #locListBody')) return;
-    total++;
-    if (fieldFilled(f)) done++;
-  });
-  checks.forEach(c => { total++; if (c.classList.contains('checked')) done++; });
+  // skip table rows for step status (count step-level fields only)
+  const fields = [...stepEl.querySelectorAll('input[data-key], textarea[data-key], select[data-key]')]
+    .filter(f => !f.closest('#sceneListBody, #shotListBody, #castListBody, #locListBody'))
+    .map(fieldFilled);
+  const checks = [...stepEl.querySelectorAll('li[data-key]')].map(c => c.classList.contains('checked'));
   // Include presence of any table content as "done"
-  const tableBodies = stepEl.querySelectorAll('#sceneListBody, #shotListBody, #castListBody, #locListBody');
-  tableBodies.forEach(tb => {
-    const rows = tb.querySelectorAll('tr');
-    let filledRows = 0;
-    rows.forEach(r => {
-      if ([...r.querySelectorAll('input, textarea, select')].some(i => i.value && i.value.trim())) filledRows++;
-    });
-    total += 3; // weight — encourage at least 3 filled rows for "complete"
-    done += Math.min(3, filledRows);
-  });
-  return { total, done };
+  const tables = [...stepEl.querySelectorAll('#sceneListBody, #shotListBody, #castListBody, #locListBody')]
+    .map(filledRowCount);
+  // weight 3 — encourage at least 3 filled rows for "complete"
+  return tallyCompletion(fields, checks, tables, 3);
 }
 
 function updateStepBadges() {
@@ -1086,7 +1083,7 @@ function updateStepBadges() {
     const badge = s.querySelector('.step-badge');
     if (!badge) return;
     const { total, done } = computeStepCompletion(s);
-    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    const pct = completionPct(total, done);
     badge.classList.remove('in-progress', 'complete');
     if (pct === 0) badge.textContent = 'EMPTY';
     else if (pct >= 100) { badge.textContent = '✓ COMPLETE'; badge.classList.add('complete'); }
@@ -1155,7 +1152,7 @@ function updatePathTicks() {
     const tick = item.querySelector('[data-path-tick]');
     if (!step || !tick) return;
     const { total, done } = computeStepCompletion(step);
-    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    const pct = completionPct(total, done);
     item.classList.toggle('is-done', pct >= 100);
     item.classList.toggle('is-part', pct > 0 && pct < 100);
     tick.textContent = pct >= 100 ? '✓' : pct > 0 ? '◐' : '○';
@@ -1167,30 +1164,17 @@ function updatePathTicks() {
    OVERALL PROGRESS
    ============================================================ */
 function updateProgress() {
-  let total = 0, done = 0;
   // All step-level fields
-  document.querySelectorAll('input[data-key], textarea[data-key], select[data-key]').forEach(f => {
-    if (f.closest('.toolbar, #sceneListBody, #shotListBody, #castListBody, #locListBody')) return;
-    total++;
-    if (fieldFilled(f)) done++;
-  });
+  const fields = [...document.querySelectorAll('input[data-key], textarea[data-key], select[data-key]')]
+    .filter(f => !f.closest('.toolbar, #sceneListBody, #shotListBody, #castListBody, #locListBody'))
+    .map(fieldFilled);
   // All checklist items
-  document.querySelectorAll('li[data-key]').forEach(li => {
-    total++;
-    if (li.classList.contains('checked')) done++;
-  });
+  const checks = [...document.querySelectorAll('li[data-key]')].map(li => li.classList.contains('checked'));
   // Tables — credit per filled row (max 5 per table)
-  ['sceneListBody', 'shotListBody', 'castListBody', 'locListBody'].forEach(id => {
-    const tb = document.getElementById(id); if (!tb) return;
-    const rows = tb.querySelectorAll('tr');
-    let filled = 0;
-    rows.forEach(r => {
-      if ([...r.querySelectorAll('input, textarea, select')].some(i => i.value && i.value.trim())) filled++;
-    });
-    total += 5;
-    done += Math.min(5, filled);
-  });
-  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const tables = ['sceneListBody', 'shotListBody', 'castListBody', 'locListBody']
+    .map(id => document.getElementById(id)).filter(Boolean).map(filledRowCount);
+  const { total, done } = tallyCompletion(fields, checks, tables, 5);
+  const pct = completionPct(total, done);
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressText').textContent = pct + '%';
 }
@@ -1201,56 +1185,12 @@ function updateProgress() {
 function renderPacingChart() {
   const svg = document.getElementById('pacingSvg');
   if (!svg) return;
-  const beats = [
-    { n: '01', label: 'Open',  x: 30,  y: 130, act: 1 },
-    { n: '02', label: 'Theme', x: 75,  y: 110, act: 1 },
-    { n: '03', label: 'Setup', x: 125, y: 95,  act: 1 },
-    { n: '04', label: 'Catlst',x: 175, y: 60,  act: 1 },
-    { n: '05', label: 'Debate',x: 220, y: 80,  act: 1 },
-    { n: '06', label: 'Brk II',x: 265, y: 50,  act: 2 },
-    { n: '07', label: 'B Sty', x: 305, y: 70,  act: 2 },
-    { n: '08', label: 'Fun',   x: 350, y: 90,  act: 2 },
-    { n: '09', label: 'Mid',   x: 395, y: 50,  act: 2 },
-    { n: '10', label: 'Close', x: 440, y: 70,  act: 2 },
-    { n: '11', label: 'Lost',  x: 485, y: 30,  act: 2 },
-    { n: '12', label: 'Dark',  x: 530, y: 100, act: 2 },
-    { n: '13', label: 'Brk III',x:580, y: 60,  act: 3 },
-    { n: '14', label: 'Final', x: 635, y: 25,  act: 3 },
-    { n: '15', label: 'Img',   x: 690, y: 130, act: 3 }
-  ];
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  let svgContent = '';
-  // Act dividers
-  svgContent += `<line class="act-divider" x1="240" y1="20" x2="240" y2="170"/>`;
-  svgContent += `<line class="act-divider" x1="555" y1="20" x2="555" y2="170"/>`;
-  svgContent += `<text class="act-label" x="125" y="190" text-anchor="middle">ACT I</text>`;
-  svgContent += `<text class="act-label" x="395" y="190" text-anchor="middle">ACT II</text>`;
-  svgContent += `<text class="act-label" x="635" y="190" text-anchor="middle">ACT III</text>`;
-  // Arc line connecting beats
-  const path = beats.map((b, i) => `${i === 0 ? 'M' : 'L'} ${b.x} ${b.y}`).join(' ');
-  svgContent += `<path class="arc-line" d="${path}"/>`;
-  // Beats
-  let filled = 0, a1 = 0, a2 = 0, a3 = 0;
-  beats.forEach((b) => {
-    const beatKey = 'b' + b.n;
-    const isFilled = data[beatKey] && data[beatKey].trim();
-    const cls = isFilled ? 'beat-dot filled' : 'beat-dot';
-    const numCls = isFilled ? 'beat-num filled' : 'beat-num';
-    svgContent += `<circle class="${cls}" cx="${b.x}" cy="${b.y}" r="14"/>`;
-    svgContent += `<text class="${numCls}" x="${b.x}" y="${b.y + 4}">${b.n}</text>`;
-    svgContent += `<text class="beat-label" x="${b.x}" y="${b.y + 30}">${b.label}</text>`;
-    if (isFilled) {
-      filled++;
-      if (b.act === 1) a1++;
-      else if (b.act === 2) a2++;
-      else a3++;
-    }
-  });
-  svg.innerHTML = svgContent;
-  document.getElementById('pacingFilled').textContent = filled;
-  document.getElementById('pacingAct1').textContent = a1 + '/3';
-  document.getElementById('pacingAct2').textContent = a2 + '/8';
-  document.getElementById('pacingAct3').textContent = a3 + '/4';
+  const chart = pacingChart(readBlueprintData());
+  svg.innerHTML = chart.svg;
+  document.getElementById('pacingFilled').textContent = chart.filled;
+  document.getElementById('pacingAct1').textContent = chart.act1;
+  document.getElementById('pacingAct2').textContent = chart.act2;
+  document.getElementById('pacingAct3').textContent = chart.act3;
 }
 
 /* ============================================================
@@ -1261,46 +1201,26 @@ function renderPacingChart() {
    matched "lens", /k|thou/ matched "bank". hub.js and library.js were
    moved onto src/lib/money.js; this page was missed, so the feature
    budget went on reading "1 lens day" as ₹1,00,000 after the others
-   had stopped. parseAmount is that shared parser now. */
-const parseAmount = parseNum;
-
-/* The budget panel shows an em-dash for "nothing entered yet" where
-   the rest of the studio shows ₹ 0. That empty case is the only
-   difference, so it wraps fmtINR rather than forking it. */
-function formatINR(n) {
-  return n ? fmtINR(n) : '—';
-}
+   had stopped. budgetBreakdown() in src/lib/feature-model.js reads every
+   figure through that shared parser now. */
+const formatINR = formatBudgetINR;   // see src/lib/feature-model.js
 
 function updateBudget() {
   const totalEl = document.getElementById('budgetTotal');
   const barEl = document.getElementById('budgetBar');
   if (!totalEl || !barEl) return;
-  const get = k => parseAmount(document.querySelector(`[data-key="${k}"]`)?.value || '');
-  let atl = get('v2s11_atl'), btl = get('v2s11_btl'), post = get('v2s11_post');
-  let totalDirect = parseAmount(document.querySelector(`[data-key="v2s11_total"]`)?.value || '');
-  let contRaw = document.querySelector(`[data-key="v2s11_cont"]`)?.value || '';
-  let contPct = 0; const m = contRaw.match(/(\d+(?:\.\d+)?)\s*%/);
-  if (m) contPct = parseFloat(m[1]);
-  const subTotal = atl + btl + post;
-  const cont = subTotal * contPct / 100;
-  const computed = subTotal + cont;
-  const total = computed > 0 ? computed : totalDirect;
-  if (total === 0) {
+  const val = k => document.querySelector(`[data-key="${k}"]`)?.value || '';
+  const b = budgetBreakdown({
+    atl: val('v2s11_atl'), btl: val('v2s11_btl'), post: val('v2s11_post'),
+    total: val('v2s11_total'), cont: val('v2s11_cont')
+  });
+  if (b.total === 0) {
     totalEl.innerHTML = '— <span>(fill numbers above)</span>';
     barEl.innerHTML = '';
     return;
   }
-  totalEl.innerHTML = formatINR(total) + ' <span>total</span>';
-  const denom = atl + btl + post + cont;
-  if (denom > 0) {
-    barEl.innerHTML = `
-        <div class="budget-bar-seg atl" style="width:${(atl / denom * 100).toFixed(1)}%" title="ATL: ${formatINR(atl)}"></div>
-        <div class="budget-bar-seg btl" style="width:${(btl / denom * 100).toFixed(1)}%" title="BTL: ${formatINR(btl)}"></div>
-        <div class="budget-bar-seg post" style="width:${(post / denom * 100).toFixed(1)}%" title="Post: ${formatINR(post)}"></div>
-        <div class="budget-bar-seg cont" style="width:${(cont / denom * 100).toFixed(1)}%" title="Contingency: ${formatINR(cont)}"></div>`;
-  } else {
-    barEl.innerHTML = '';
-  }
+  totalEl.innerHTML = formatINR(b.total) + ' <span>total</span>';
+  barEl.innerHTML = budgetBarHTML(b);
 }
 
 /* ============================================================
@@ -1316,12 +1236,10 @@ function attachWordCounter(dataKey, target, lowerLabel) {
   span.dataset.target = target;
   wrap.querySelector('.ask-label')?.appendChild(span);
   const update = () => {
-    const w = (el.value.trim().match(/\S+/g) || []).length;
-    span.textContent = `${w} ${w === 1 ? 'word' : 'words'} · target ${lowerLabel || '<' + target}`;
+    const { text, state } = wordCounterState(el.value, target, lowerLabel);
+    span.textContent = text;
     span.classList.remove('over', 'good');
-    if (w === 0) { /* neutral */ }
-    else if (w <= target) span.classList.add('good');
-    else span.classList.add('over');
+    if (state) span.classList.add(state);
   };
   el.addEventListener('input', update);
   update();
@@ -1389,15 +1307,13 @@ function bridgeTitleToProject() {
    THEME
    ============================================================ */
 function loadPrefs() {
-  try {
-    const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
-    if (p.dark) document.body.classList.add('dark');
-    updateDarkBtn();
-  } catch (e) { /* corrupt prefs are not worth a crash */ }
+  /* corrupt prefs are not worth a crash: the model answers {} for them */
+  const p = readFeaturePrefs();
+  if (p && p.dark) document.body.classList.add('dark');
+  updateDarkBtn();
 }
 function savePrefs() {
-  const p = { dark: document.body.classList.contains('dark') };
-  localStorage.setItem(PREF_KEY, JSON.stringify(p));
+  saveFeaturePrefs({ dark: document.body.classList.contains('dark') });
 }
 function toggleDark() {
   // chrome.js owns a 3-state theme (paper / sepia / ink) on its own
@@ -1432,17 +1348,11 @@ function jumpToStep(target) {
    ============================================================ */
 function loadData() {
   try {
-    lastBlob = localStorage.getItem(STORAGE_KEY) || '';
+    lastBlob = readBlueprintBlob();
     const saved = JSON.parse(lastBlob || '{}');
 
-    sceneCount = 0; shotCount = 0; castCount = 0; locCount = 0;
-    Object.keys(saved).forEach(k => {
-      let m;
-      if ((m = k.match(/^sl_(\d+)_/))) sceneCount = Math.max(sceneCount, +m[1]);
-      if ((m = k.match(/^shot_(\d+)_/))) shotCount = Math.max(shotCount, +m[1]);
-      if ((m = k.match(/^cast_(\d+)_/))) castCount = Math.max(castCount, +m[1]);
-      if ((m = k.match(/^loc_(\d+)_/))) locCount = Math.max(locCount, +m[1]);
-    });
+    const counts = rowCountsFromBlob(saved);
+    sceneCount = counts.scene; shotCount = counts.shot; castCount = counts.cast; locCount = counts.loc;
 
     const sceneBody = document.getElementById('sceneListBody'); sceneBody.innerHTML = '';
     const t1 = Math.max(sceneCount, 8); sceneCount = 0;
@@ -1528,12 +1438,7 @@ function resetFieldToDefault(el) {
    through the old load, then a save, stringified it) read as ticked.
    The guide drawer (src/ui/blueprint-drawer.js) reads and writes the
    same shape. */
-function savedTick(v) { return v === true || v === 'true'; }
-/** Filled, for the progress bar and the step badges. */
-function fieldFilled(f) {
-  if (f.type === 'checkbox') return f.checked;
-  return !!(f.value && f.value.trim());
-}
+/* savedTick() and fieldFilled() live in src/lib/feature-model.js. */
 
 function saveData() {
   const data = {};
@@ -1545,7 +1450,7 @@ function saveData() {
   });
   try {
     lastBlob = JSON.stringify(data);
-    localStorage.setItem(STORAGE_KEY, lastBlob);
+    if (!saveBlueprintBlob(lastBlob)) throw new Error('save refused');
     savePending = false;
     savedAt = Date.now();
     flashStatus('●  saved · just now');
@@ -1590,12 +1495,11 @@ let savePending = false;
 function watchBlobElsewhere() {
   const check = () => {
     if (savePending) return;
-    let now = '';
-    try { now = localStorage.getItem(STORAGE_KEY) || ''; } catch (e) { return; }
+    const now = readBlueprintBlob();   // '' when unreadable, which checks nothing
     if (now && now !== lastBlob) loadData();
   };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
-  addEventListener('storage', (e) => { if (e.key && e.key.indexOf(STORAGE_KEY) === 0) check(); });
+  addEventListener('storage', (e) => { if (isBlueprintStorageKey(e.key)) check(); });
 }
 
 function flashStatus(msg) {
@@ -1607,12 +1511,7 @@ function flashStatus(msg) {
 function updateSavedAtTimer() {
   if (!savedAt || !statusEl) return;
   statusEl.classList.remove('is-busy');
-  const sec = Math.floor((Date.now() - savedAt) / 1000);
-  let text = '●  saved · just now';
-  if (sec >= 60 && sec < 3600) text = `●  saved · ${Math.floor(sec / 60)}m ago`;
-  else if (sec >= 3600) text = `●  saved · ${Math.floor(sec / 3600)}h ago`;
-  else if (sec >= 5) text = `●  saved · ${sec}s ago`;
-  statusEl.textContent = text;
+  statusEl.textContent = savedAgoText(savedAt, Date.now());
 }
 
 /* ============================================================
@@ -1620,8 +1519,8 @@ function updateSavedAtTimer() {
    ============================================================ */
 function exportData() {
   saveData();
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  const t = (data.meta_title || data.v1_title || 'film').replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'film';
+  const data = readBlueprintData();
+  const t = fileSlug(data.meta_title || data.v1_title || 'film');
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1638,16 +1537,8 @@ function exportData() {
    include the sentence the user finished typing four seconds ago. */
 function exportBlueprintPDF() {
   saveData();
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  const title = data.meta_title || data.v1_title || 'Untitled film';
-  const done = document.querySelectorAll('.step').length;
-  PDF.exportPDF({
-    scope: 'blueprint',
-    project: title,
-    label: 'Feature blueprint',
-    title: title + ' — Feature blueprint',
-    subtitle: done + (done === 1 ? ' step' : ' steps')
-  });
+  const data = readBlueprintData();
+  PDF.exportPDF(blueprintPdfOptions(data, document.querySelectorAll('.step').length));
   flashStatus('●  printing');
 }
 
@@ -1661,7 +1552,7 @@ function importData() { document.getElementById('importFile').click(); }
    field by field. Now: the file is checked against this page's own
    data-keys (readBlueprintFile), the person is asked, and loadData()
    replaces, so a field the file does not carry is cleared. */
-const FEATURE_ROW_KEY = /^(sl|shot|cast|loc)_\d+_/;
+/* FEATURE_ROW_KEY lives in src/lib/feature-model.js. */
 
 function importNotice(msg, type) {
   if (StudioUI && StudioUI.toast) StudioUI.toast(msg, { type: type || 'error', duration: 8000 });
@@ -1680,15 +1571,13 @@ function handleImport(e) {
       extraKey: (k) => FEATURE_ROW_KEY.test(k),
       label: 'Feature Blueprint',
       otherLabel: 'Short Film Blueprint',
-      looksOther: (d) => Array.isArray(d._sceneMap) || Array.isArray(d._script)
+      looksOther: looksLikeShortFile
     });
     if (!res.ok) { flashStatus('●  import refused'); importNotice(res.error, 'error'); return; }
     if (!await askDanger('Replace everything in this Feature Blueprint with "' + file.name + '"?\n\n' +
                  'Fields the file does not contain will be emptied. Export first if you want to keep what is here now.')) return;
     try {
-      const clean = {};
-      Object.keys(res.data).forEach((k) => { if (res.data[k] != null) clean[k] = res.data[k]; });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+      replaceBlueprintData(cleanImportedFields(res.data));   // throws if refused
       loadData();
       flashStatus('●  imported');
       importNotice('Imported "' + file.name + '" — ' + res.fields + ' fields.', 'success');
@@ -1704,7 +1593,7 @@ function handleImport(e) {
 async function resetData() {
   if (!await askDanger('Clear all your work in BOTH volumes? Export first if you want a backup.')) return;
   clearTimeout(saveTimer);   // a pending autosave must not write the old fields back
-  localStorage.removeItem(STORAGE_KEY);
+  clearBlueprintData();
   loadData();
   flashStatus('●  reset');
 }
@@ -1721,51 +1610,8 @@ function renderCharMap() {
   const ally = get('s6_ally_name') || '';
   const lover = get('s6_lover_name') || '';
   const mentor = get('s6_mentor_name') || '';
-
-  // Layout positions
-  const cx = 360, cy = 180;
-  const positions = {
-    protagonist: { x: cx, y: cy, name: protag, label: 'PROTAGONIST', conn: 'Story · Step 4' },
-    antagonist:  { x: cx + 240, y: cy, name: antag, label: 'ANTAGONIST', conn: 'opposes' },
-    ally:        { x: cx - 240, y: cy - 90, name: ally, label: 'ALLY', conn: 'reflects' },
-    lover:       { x: cx - 240, y: cy + 90, name: lover, label: 'LOVE / MIRROR', conn: 'pulls toward need' },
-    mentor:      { x: cx, y: cy - 130, name: mentor, label: 'MENTOR / CATALYST', conn: 'hands over tool' }
-  };
-
-  let s = '';
-  // Connection lines from protagonist to each other
-  Object.keys(positions).forEach(key => {
-    if (key === 'protagonist') return;
-    const p = positions[key];
-    const isFilled = !!p.name;
-    const cls = isFilled ? 'conn-line solid' : 'conn-line';
-    s += `<line class="${cls}" x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}"/>`;
-    // Label at midpoint
-    const mx = (cx + p.x) / 2, my = (cy + p.y) / 2 - 6;
-    s += `<text class="conn-label" x="${mx}" y="${my}">${p.conn}</text>`;
-  });
-
-  // Draw each character
-  Object.keys(positions).forEach(key => {
-    const p = positions[key];
-    const isFilled = !!p.name;
-    const r = key === 'protagonist' ? 50 : 42;
-    let cls = 'char-circle';
-    if (key === 'protagonist') cls += ' protagonist';
-    else if (key === 'antagonist') cls += ' antagonist';
-    if (!isFilled) cls += ' empty';
-    s += `<circle class="${cls}" cx="${p.x}" cy="${p.y}" r="${r}"/>`;
-    s += `<text class="char-role" x="${p.x}" y="${p.y - 6}">${p.label}</text>`;
-    const nameCls = isFilled
-      ? (key === 'protagonist' ? 'char-name protagonist' : 'char-name')
-      : 'char-name empty';
-    const display = isFilled ? String(p.name) : '— empty —';
-    const shown = display.length > 14 ? display.slice(0, 14) + '…' : display;
-    // User text — escaped before it reaches innerHTML.
-    s += `<text class="${nameCls}" x="${p.x}" y="${p.y + 16}">${escapeHTML(shown)}</text>`;
-  });
-
-  svg.innerHTML = s;
+  // User text is escaped inside charMapSVG() before it reaches innerHTML.
+  svg.innerHTML = charMapSVG({ protag, antag, ally, lover, mentor });
 }
 
 /* ============================================================
@@ -1776,39 +1622,19 @@ function renderSceneChart() {
   if (!wrap) return;
   const tbody = document.getElementById('sceneListBody');
   if (!tbody) return;
-  const rows = [...tbody.querySelectorAll('tr')];
-  let total = 0, charged = 0, flips = 0, lastSign = 0, run = 0, maxRun = 0;
-  let html = '';
-  rows.forEach((row, i) => {
-    const inputs = row.querySelectorAll('input, textarea, select');
-    const hasContent = [...inputs].some(el => el.value && el.value.trim());
-    if (!hasContent && i > 7) return; // skip blank rows past first 8
-    total++;
+  const rows = [...tbody.querySelectorAll('tr')].map((row) => {
     const chargeSel = row.querySelector('select[data-key$="_charge"]');
-    const ch = chargeSel ? chargeSel.value : '';
-    let cls = 'scene-bar flat', sign = 0, h = 0;
-    if (ch === 'pos')      { cls = 'scene-bar pos';     sign = 1;  h = 35; charged++; }
-    else if (ch === 'dbl-pos') { cls = 'scene-bar dbl-pos'; sign = 1;  h = 50; charged++; }
-    else if (ch === 'neg') { cls = 'scene-bar neg';     sign = -1; h = 35; charged++; }
-    else if (ch === 'dbl-neg') { cls = 'scene-bar dbl-neg'; sign = -1; h = 50; charged++; }
-    // Track flips and runs
-    if (sign !== 0) {
-      if (lastSign !== 0 && sign !== lastSign) flips++;
-      if (sign === lastSign) run++;
-      else run = 1;
-      if (run > maxRun) maxRun = run;
-      lastSign = sign;
-    } else {
-      lastSign = 0; run = 0;
-    }
-    const heightStyle = h > 0 ? `style="height:${h}%;"` : '';
-    html += `<div class="${cls}"><div class="seg" ${heightStyle}></div><span class="num">${String(i + 1).padStart(2, '0')}</span></div>`;
+    return {
+      hasContent: [...row.querySelectorAll('input, textarea, select')].some(el => el.value && el.value.trim()),
+      charge: chargeSel ? chargeSel.value : ''
+    };
   });
-  wrap.innerHTML = html;
-  document.getElementById('sceneTotal').textContent = total;
-  document.getElementById('sceneCharged').textContent = charged;
-  document.getElementById('sceneFlips').textContent = flips;
-  document.getElementById('sceneRun').textContent = maxRun > 0 ? maxRun + ' scene' + (maxRun > 1 ? 's' : '') : '—';
+  const chart = sceneChargeChart(rows);
+  wrap.innerHTML = chart.html;
+  document.getElementById('sceneTotal').textContent = chart.total;
+  document.getElementById('sceneCharged').textContent = chart.charged;
+  document.getElementById('sceneFlips').textContent = chart.flips;
+  document.getElementById('sceneRun').textContent = chart.longestRun;
 }
 
 /* ============================================================
@@ -1825,11 +1651,8 @@ function updateVol1Bridge() {
     bridge.style.display = 'none';
     return;
   }
-  // User text — escaped before it reaches innerHTML.
-  let html = '';
-  if (logline) html += `<strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">LOGLINE:</strong> "${escapeHTML(logline)}"`;
-  if (theme) html += `<br><br><strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">THEME:</strong> ${escapeHTML(theme)}`;
-  content.innerHTML = html;
+  // User text — escaped inside vol1BridgeHTML() before it reaches innerHTML.
+  content.innerHTML = vol1BridgeHTML(logline, theme);
   bridge.style.display = 'block';
 }
 
@@ -1907,54 +1730,15 @@ function toggleReadingMode() {
 // key → human label, built once from the step JSON.
 let _labelMap = null;
 function fieldLabels() {
-  if (_labelMap) return _labelMap;
-  const map = new Map();
-  const clean = (s) => String(s ?? '')
-    .replace(/<[^>]+>/g, '')          // authored labels carry markup
-    .replace(/&amp;/g, '&')
-    .replace(/^[A-Z]\s*·\s*/, '')     // "A · Logline attempt 1" → "Logline attempt 1"
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  for (const step of ALL_STEPS) {
-    for (const b of step.blocks || []) {
-      if (b.type === 'asks') {
-        for (const a of b.items || []) map.set(a.key, clean(a.label) || humanise(a.key));
-      } else if (b.type === 'raw') {
-        const frag = fromHTML(b.html);
-        frag.querySelectorAll('[data-key]').forEach((el) => {
-          const key = el.getAttribute('data-key');
-          const own = el.closest('div, td, .ask');
-          const lab = own && (own.querySelector('label, .ask-label'));
-          const text = lab ? clean(lab.textContent) : '';
-          map.set(key, text || clean(el.getAttribute('placeholder')) || humanise(key));
-        });
-      }
-    }
-  }
-  _labelMap = map;
-  return map;
+  if (!_labelMap) _labelMap = fieldLabelMap(ALL_STEPS, fromHTML);
+  return _labelMap;
 }
 
-function humanise(key) {
-  return key.replace(/^(v2)?s\d+_/, '').replace(/^b\d+$/, key).replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// Keys the export renders in a bespoke block rather than as a
-// plain "**Label:** value" line.
-function isSpecialKey(k) {
-  return /^b\d\d$/.test(k) || /^s10_(setup|pay)_\d+$/.test(k);
-}
+/* humanise() and isSpecialKey() live in src/lib/feature-model.js. */
 
 async function exportMarkdown() {
   saveData();
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  const title = data.meta_title || data.v1_title || 'Untitled film';
-  let md = `# THE FILMMAKER'S BLUEPRINT\n## ${title}\n\n`;
-  md += `**Director:** ${data.meta_director || data.v2_director || '—'}\n`;
-  md += `**Started:** ${data.meta_started || '—'}\n`;
-  md += `**Genre:** ${data.v1_genre || '—'}\n\n---\n\n`;
+  const data = readBlueprintData();
 
   const labels = fieldLabels();
 
@@ -1973,19 +1757,6 @@ async function exportMarkdown() {
   const { getBeatSheetMethod } = await import('../lib/studies.js');
   const method = getBeatSheetMethod('save-the-cat');
   const methodBeats = (method && Array.isArray(method.beats)) ? method.beats : [];
-
-  // Helper to render a step — same shape as the legacy one, but the
-  // (label, key) pairs now come from the data.
-  const step = (heading, fields) => {
-    const hasContent = fields.some(([, k]) => data[k] && data[k].toString().trim());
-    if (!hasContent) return '';
-    let s = `## ${heading}\n\n`;
-    fields.forEach(([label, k]) => {
-      const v = (data[k] || '').toString().trim();
-      if (v) s += `**${label}:** ${v}\n\n`;
-    });
-    return s + '\n';
-  };
 
   // Fields worth exporting: real inputs the user typed into. That
   // rules out the checklist <li>s a couple of steps carry outside a
@@ -2008,92 +1779,14 @@ async function exportMarkdown() {
     return `${meta.num} · ${String(meta.title).replace(/\.$/, '')}`;
   };
 
-  const renderStepBlock = (s) => {
-    let out = step(heading(s), exportableFields(s));
-
-    // Step 08 — the 15 beats, as a numbered block.
-    if (s.id === 'step-08') {
-      let beatBlock = `## ${heading(s)}\n\n`;
-      let beatCount = 0;
-      for (const beat of methodBeats) {
-        const n = String(beat.n).padStart(2, '0');
-        const v = (data['b' + n] || '').toString().trim();
-        if (v) { beatBlock += `**${n} · ${beat.label}:** ${v}\n\n`; beatCount++; }
-      }
-      if (beatCount > 0) out += beatBlock + '\n';
-    }
-
-    // Step 10 — setups paired with their payoffs.
-    if (s.id === 'step-10') {
-      let spBlock = `## ${heading(s)}\n\n`;
-      let spCount = 0;
-      for (let i = 1; i <= 5; i++) {
-        const su = (data['s10_setup_' + i] || '').toString().trim();
-        const pa = (data['s10_pay_' + i] || '').toString().trim();
-        if (su || pa) { spBlock += `**${i}.** Setup: ${su || '—'} → Payoff: ${pa || '—'}\n\n`; spCount++; }
-      }
-      if (spCount > 0) out += spBlock + '\n';
-    }
-
-    // Step 11 — the scene list table.
-    if (s.id === 'step-11') {
-      let scenes = '';
-      Object.keys(data).filter(k => k.match(/^sl_\d+_slug/)).forEach(k => {
-        const idx = k.match(/sl_(\d+)/)[1];
-        const slug = data[`sl_${idx}_slug`] || '';
-        const pov = data[`sl_${idx}_pov`] || '';
-        const want = data[`sl_${idx}_want`] || '';
-        const conf = data[`sl_${idx}_conf`] || '';
-        const charge = data[`sl_${idx}_charge`] || '';
-        if (slug || pov || want || conf) {
-          const chMap = { pos: '+→−', neg: '−→+', 'dbl-pos': '+→++', 'dbl-neg': '−→−−' };
-          scenes += `**Sc${idx}** | ${slug} | POV: ${pov} | Want: ${want} | Conflict: ${conf} | ${chMap[charge] || ''}\n`;
-        }
-      });
-      if (scenes) out += `## ${heading(s)}\n\n${scenes}\n\n`;
-    }
-
-    // Step 20 — the cast list table.
-    if (s.id === 'step-20') {
-      let cast = '';
-      Object.keys(data).filter(k => k.match(/^cast_\d+_role/)).forEach(k => {
-        const idx = k.match(/cast_(\d+)/)[1];
-        const role = data[`cast_${idx}_role`] || '';
-        const actor = data[`cast_${idx}_actor`] || '';
-        const status = data[`cast_${idx}_status`] || '';
-        if (role || actor) cast += `- **${role}** — ${actor} (${status})\n`;
-      });
-      if (cast) out += `## ${heading(s)}\n\n${cast}\n\n`;
-    }
-
-    // Step 21 — the location list table.
-    if (s.id === 'step-21') {
-      let locs = '';
-      Object.keys(data).filter(k => k.match(/^loc_\d+_name/)).forEach(k => {
-        const idx = k.match(/loc_(\d+)/)[1];
-        const sc = data[`loc_${idx}_scene`] || '';
-        const name = data[`loc_${idx}_name`] || '';
-        const type = data[`loc_${idx}_type`] || '';
-        const permit = data[`loc_${idx}_permit`] || '';
-        if (name) locs += `- Sc${sc}: **${name}** | ${type} | Permit: ${permit}\n`;
-      });
-      if (locs) out += `## ${heading(s)}\n\n${locs}\n\n`;
-    }
-
-    return out;
-  };
-
-  /* One heading per part, in part order. This used to stop at the
-     end of Volume II, so a Markdown export silently left out steps
-     25–32 — the whole shoot and post. */
-  PARTS.forEach((p, i) => {
-    md += (i ? `\n---\n\n` : '') + `# ${partHeading(p.part)}\n\n`;
-    for (const s of p.steps) md += renderStepBlock(s);
+  /* The document's text is built in src/lib/feature-model.js; this
+     page supplies what only it can see (which fields are real inputs
+     on screen) and saves the file. */
+  const md = buildFeatureMarkdown({
+    data, parts: PARTS, partHeading, heading, exportableFields, methodBeats, brandName: BRAND.name
   });
 
-  md += `\n---\n*Generated from The Filmmaker's Blueprint · ${BRAND.name}*\n`;
-
-  const t = (data.meta_title || 'film').replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'film';
+  const t = fileSlug(data.meta_title || 'film');
   const blob = new Blob([md], { type: 'text/markdown' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2141,11 +1834,7 @@ function updatePalette() {
    a session ends, so `.done` keyed off `remaining === 0` never showed
    — the end of a session looked exactly like never having started.
    It stays until the next click. */
-let timerState = { running: false, paused: false, done: false, remaining: 25 * 60, pomos: 0, interval: null };
-function formatTime(s) {
-  const m = Math.floor(s / 60), sec = s % 60;
-  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-}
+let timerState = { running: false, paused: false, done: false, remaining: FOCUS_SECONDS, pomos: 0, interval: null };
 function updateTimerUI() {
   const t = document.getElementById('focusTimer');
   const time = document.getElementById('ftTime');
@@ -2154,16 +1843,11 @@ function updateTimerUI() {
   time.textContent = formatTime(timerState.remaining);
   pomo.textContent = '×' + timerState.pomos;
   t.classList.remove('running', 'paused', 'done');
-  const state = timerState.running ? 'running'
-              : timerState.paused  ? 'paused'
-              : timerState.done    ? 'session done'
-              : 'not started';
   if (timerState.done && !timerState.running) t.classList.add('done');
   else if (timerState.running) t.classList.add('running');
   else if (timerState.paused) t.classList.add('paused');
   t.setAttribute('aria-pressed', timerState.running ? 'true' : 'false');
-  t.setAttribute('aria-label', 'Focus timer, ' + formatTime(timerState.remaining) + ', ' + state
-    + (timerState.pomos ? ', ' + timerState.pomos + ' completed' : ''));
+  t.setAttribute('aria-label', timerAriaLabel(timerState));
 }
 function tickTimer() {
   if (!timerState.running) return;
@@ -2173,7 +1857,7 @@ function tickTimer() {
     timerState.done = true;
     timerState.pomos++;
     clearInterval(timerState.interval);
-    timerState.remaining = 25 * 60;
+    timerState.remaining = FOCUS_SECONDS;
     updateTimerUI();
     flashStatus('●  pomo done!');
     // Try to ring
@@ -2201,8 +1885,8 @@ function toggleTimer() {
     timerState.interval = setInterval(tickTimer, 1000);
   } else {
     // Long-press / shift-click resets; normal click starts
-    if (timerState.remaining === 25 * 60 || timerState.remaining === 0) {
-      timerState.remaining = 25 * 60;
+    if (timerState.remaining === FOCUS_SECONDS || timerState.remaining === 0) {
+      timerState.remaining = FOCUS_SECONDS;
     }
     timerState.running = true;
     timerState.interval = setInterval(tickTimer, 1000);
@@ -2269,12 +1953,8 @@ function toggleCommentPanel(key, ask) {
 }
 
 function updateCommentCount() {
-  let count = 0;
-  for (let i = 0; i < localStorage.length; i++) {
-    if (String(localStorage.key(i)).startsWith(NOTE_PREFIX)) count++;
-  }
   // Could surface this in toolbar; currently silent.
-  return count;
+  return countPrivateNotes();
 }
 
 /* ============================================================
@@ -2305,22 +1985,7 @@ function printPitchOnly() {
    EMAIL TO SELF
    ============================================================ */
 function emailToSelf() {
-  const data = collectData();
-  const title = data.meta_title || 'Untitled film';
-  const writer = data.meta_writer || 'Unknown';
-  const logline = data.s2_log_final || data.s2_log2 || data.s2_log1 || '(logline not yet locked)';
-  const theme = data.s3_theme || '(theme TBD)';
-  const subject = encodeURIComponent('[Filmmaker\'s Blueprint] ' + title);
-  const body = encodeURIComponent(
-    'Project: ' + title + '\n' +
-    'Writer/Director: ' + writer + '\n\n' +
-    'LOGLINE\n' + logline + '\n\n' +
-    'THEME\n' + theme + '\n\n' +
-    'PROGRESS\n' + computeProgress() + '% across 24 steps\n\n' +
-    '— Sent from ' + BRAND.name + '\n\n' +
-    'NOTE: To export the full data, open the blueprint and click JSON.'
-  );
-  window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
+  window.location.href = emailToSelfHref(collectData(), computeProgress(), BRAND.name);
 }
 
 function computeProgress() {
@@ -2362,8 +2027,7 @@ async function loadSamplePack(id = DEFAULT_SAMPLE) {
   if (!await askDanger('This will REPLACE your current data with the ' + SAMPLE.title
     + ' sample. Your current work will be lost (unless you exported JSON first).\n\nContinue?')) return;
   try {
-    const fields = { ...SAMPLE.blueprint, meta_title: SAMPLE.title, v1_title: SAMPLE.title };
-    for (const key of SAMPLE.blueprintChecks) fields[key] = true;
+    const fields = sampleFields(SAMPLE);
 
     Object.keys(fields).forEach(k => {
       const el = document.querySelector(`[data-key="${CSS.escape(k)}"]`);
@@ -2411,126 +2075,8 @@ function collectData() {
   return out;
 }
 
-function buildPitchSlides(d) {
-  const fallback = (v, def) => v && v.length ? v : def;
-  const beats = [];
-  for (let i = 1; i <= 15; i++) {
-    const k = 'b' + (i < 10 ? '0' + i : i);
-    if (d[k]) beats.push((i < 10 ? '0' + i : i) + ' · ' + d[k]);
-  }
-  const slides = [
-    {
-      label: 'SLIDE 01 · TITLE',
-      title: fallback(d.meta_title, 'Untitled'),
-      body: fallback(d.s2_log_final, fallback(d.s2_log2, fallback(d.s2_log1, 'Logline pending'))),
-      footer: fallback(d.meta_writer, 'Writer / Director')
-    },
-    {
-      label: 'SLIDE 02 · WHAT IF',
-      title: 'What if?',
-      body: fallback(d.s1_whatif, 'Define your spark in Step 01.'),
-      footer: 'THE SPARK'
-    },
-    {
-      label: 'SLIDE 03 · THEME & STAKES',
-      title: fallback(d.s3_theme, 'Theme pending'),
-      bullets: [
-        'External — ' + fallback(d.s3_ext, '?'),
-        'Internal — ' + fallback(d.s3_int, '?'),
-        'Philosophical — ' + fallback(d.s3_phil, '?')
-      ],
-      footer: 'WHAT THE FILM ARGUES'
-    },
-    {
-      label: 'SLIDE 04 · PROTAGONIST',
-      title: fallback(d.s4_name, 'Protagonist'),
-      bullets: [
-        'WANT — ' + fallback(d.s4_want, '?'),
-        'NEED — ' + fallback(d.s4_need, '?'),
-        'WOUND — ' + fallback(d.s4_wound, '?'),
-        'ARC — ' + fallback(d.s4_arc, '?')
-      ],
-      footer: 'OUR HERO'
-    },
-    {
-      label: 'SLIDE 05 · ANTAGONIST',
-      title: fallback(d.s5_name, 'Antagonist'),
-      bullets: [
-        'WANT — ' + fallback(d.s5_want, '?'),
-        'PHILOSOPHY — ' + fallback(d.s5_philosophy, '?'),
-        'HERO IN HIS OWN STORY — ' + fallback(d.s5_hero, '?')
-      ],
-      footer: 'THE OPPOSITION'
-    },
-    {
-      label: 'SLIDE 06 · WORLD & TONE',
-      title: 'The world.',
-      bullets: [
-        'GENRE — ' + fallback(d.v1_genre, '?'),
-        'ERA — ' + fallback(d.s7_era, '?'),
-        'LOCATION — ' + fallback(d.s7_location, '?'),
-        'RULES — ' + fallback(d.s7_rules, '?'),
-        'TONE — ' + fallback(d.v2s2_tone1, '?') + (d.v2s2_tone2 ? ' (' + d.v2s2_tone2 + ')' : '')
-      ],
-      footer: 'WHERE WE LIVE'
-    },
-    {
-      label: 'SLIDE 07 · REFERENCES',
-      title: 'Reference films.',
-      body: fallback(d.v2s2_refs, 'Pick 2-3 reference films and one out-of-medium reference. See Step 14.'),
-      bullets: d.v2s2_refuse ? ['REFUSE — ' + d.v2s2_refuse] : [],
-      footer: 'WHAT WE\'RE NOT'
-    },
-    {
-      label: 'SLIDE 08 · STORY',
-      title: 'The 15-beat story.',
-      bullets: beats.length ? beats.slice(0, 15) : ['Fill in your 15 beats in Step 08.'],
-      footer: 'STRUCTURE'
-    },
-    {
-      label: 'SLIDE 09 · PRODUCTION',
-      title: 'Production overview.',
-      bullets: [
-        'BUDGET — ' + fallback(d.v2s11_total, '?'),
-        'SHOOT DAYS — ' + fallback(d.v2s11_days, '?'),
-        'CAMERA — ' + fallback(d.v2s5_camera, '?') + (d.v2s5_aspect ? ' · ' + d.v2s5_aspect : ''),
-        'DOP — ' + fallback(d.v2s11_dop, '?'),
-        'PRODUCTION DESIGN — ' + fallback(d.v2s11_pd, '?'),
-        'EDITOR — ' + fallback(d.v2s11_editor, '?'),
-        'COMPOSER — ' + fallback(d.v2s11_composer, '?')
-      ],
-      footer: 'THE PLAN'
-    },
-    {
-      label: 'SLIDE 10 · DIRECTOR',
-      title: 'The director.',
-      body: fallback(d.s1_why_me, 'Why this film, told by you, now? Fill in Step 01.'),
-      footer: fallback(d.meta_writer, '—') + (d.v2s11_dop ? ' · DOP ' + d.v2s11_dop : '')
-    }
-  ];
-  return slides;
-}
-
-function slideToHTML(s) {
-  const isEmpty = !s.body && (!s.bullets || s.bullets.length === 0);
-  return `
-      <div class="pitch-slide${isEmpty ? ' empty' : ''}">
-        <div>
-          <span class="slide-num">${esc(s.label.split('·')[0].trim())}</span>
-          <div class="slide-label">${esc(s.label)}</div>
-          <h3>${escapeHTML(s.title || '')}</h3>
-          ${s.body ? `<p>${escapeHTML(s.body)}</p>` : ''}
-          ${s.bullets && s.bullets.length ? `<ul>${s.bullets.map(b => `<li>${escapeHTML(b)}</li>`).join('')}</ul>` : ''}
-        </div>
-        <div class="footer">${escapeHTML(s.footer || '')}</div>
-      </div>
-    `;
-}
-
-/** Same escaper the legacy page used; dom.js owns the implementation. */
-function escapeHTML(s) {
-  return esc(s == null ? '' : s);
-}
+/* buildPitchSlides(), slideToHTML() and escapeHTML() live in
+   src/lib/feature-model.js. */
 
 /* ============================================================
    A CRITIQUE OF ONE STEP
@@ -2619,61 +2165,8 @@ async function exportPitchPPTX() {
     const PptxGenJS = await ensurePptxLib();
     const data = collectData();
     const slides = buildPitchSlides(data);
-    const pres = new PptxGenJS();
-    pres.layout = 'LAYOUT_WIDE';
-    pres.title = data.meta_title || 'Filmmaker Blueprint Pitch';
-    pres.author = data.meta_writer || BRAND.name;
-    const INK = '1A1815', GOLD = 'A87A32', PAPER = 'F5ECD6';
-
-    slides.forEach((s) => {
-      const slide = pres.addSlide();
-      slide.background = { color: INK };
-      // Slide number top-right
-      slide.addText(s.label, {
-        x: 8.0, y: 0.3, w: 5.0, h: 0.4,
-        fontSize: 9, fontFace: 'Courier New',
-        color: GOLD, align: 'right', charSpacing: 2
-      });
-      // Label / heading
-      slide.addText(s.label.split('·').slice(1).join('·').trim() || s.label, {
-        x: 0.7, y: 0.7, w: 11, h: 0.4,
-        fontSize: 10, fontFace: 'Courier New',
-        color: GOLD, charSpacing: 3, bold: true
-      });
-      // Title
-      slide.addText(s.title || '', {
-        x: 0.7, y: 1.3, w: 11, h: 1.2,
-        fontSize: 32, fontFace: 'Georgia',
-        color: PAPER, italic: true, bold: true
-      });
-      // Body or bullets
-      let yCursor = 2.7;
-      if (s.body) {
-        slide.addText(s.body, {
-          x: 0.7, y: yCursor, w: 11, h: 1.5,
-          fontSize: 16, fontFace: 'Georgia',
-          color: PAPER
-        });
-        yCursor += 1.5;
-      }
-      if (s.bullets && s.bullets.length) {
-        slide.addText(
-          s.bullets.map(b => ({ text: b, options: { bullet: { code: '2014' }, color: PAPER, fontSize: 14, fontFace: 'Georgia' } })),
-          { x: 0.7, y: yCursor, w: 11, h: 4 }
-        );
-      }
-      // Footer
-      slide.addText(s.footer || '', {
-        x: 0.7, y: 6.8, w: 11, h: 0.4,
-        fontSize: 9, fontFace: 'Courier New',
-        color: GOLD, charSpacing: 2
-      });
-      // Gold accent bar
-      slide.addShape('rect', { x: 0, y: 0, w: 0.15, h: 7.5, fill: { color: GOLD } });
-    });
-
-    const filename = (data.meta_title || 'pitch') + '-deck.pptx';
-    pres.writeFile({ fileName: filename });
+    const { pres, fileName } = buildPitchPptx(PptxGenJS, data, slides, BRAND.name);
+    pres.writeFile({ fileName });
   } catch (err) {
     tell('PPTX export failed: ' + err.message);
   }
@@ -2832,7 +2325,7 @@ function wireFocusTimerReset() {
   if (!ft) return;
   const reset = () => {
     clearInterval(timerState.interval);
-    timerState = { running: false, paused: false, done: false, remaining: 25 * 60, pomos: 0, interval: null };
+    timerState = { running: false, paused: false, done: false, remaining: FOCUS_SECONDS, pomos: 0, interval: null };
     updateTimerUI();
   };
   ft.addEventListener('contextmenu', (e) => { e.preventDefault(); reset(); });

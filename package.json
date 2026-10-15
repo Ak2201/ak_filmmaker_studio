@@ -86,6 +86,7 @@
     "density": "node scripts/density.mjs",
     "demo": "node scripts/make-demo.mjs",
     "test:undef": "node scripts/check-undeclared.mjs",
+    "test:layers": "node scripts/check-layers.mjs",
     "prove:story-path": "node scripts/prove-story-path.mjs",
     "prove:dialogs": "node scripts/prove-dialogs.mjs",
     "test:dialogs": "node scripts/check-dialogs.mjs",

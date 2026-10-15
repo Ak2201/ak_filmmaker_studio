@@ -46,6 +46,7 @@
 import Store from '../lib/store.js';
 import { delegate } from '../lib/dom.js';
 import { BRAND, BRAND_HOST, BRAND_PATH } from '../lib/brand.js';
+import { setPort } from '../lib/ports.js';
 import '../styles/footer.css';
 
 const LINKS = [
@@ -273,3 +274,8 @@ export function injectFooter() {
 }
 
 export default { injectFooter, brandLine, brandingOn, mayRemoveBranding, setBrandingOff, planExtras, whatsAppLink, whatsAppHref, SUPPORT_WHATSAPP };
+
+/* The pitch deck (src/lib/pitch-deck.js) closes on this line through a
+   port, so the logic layer never imports the footer. Null when the
+   member turned branding off. */
+setPort('brandLine', (o = {}) => (brandingOn() ? brandLine(o) : null));

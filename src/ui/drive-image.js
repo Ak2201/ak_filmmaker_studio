@@ -21,39 +21,18 @@
    almost nothing.
    ============================================================ */
 import Drive from '../lib/drive.js';
-import { isConnected } from '../lib/drive-sync.js';
-import { boardGate } from '../lib/board-frames.js';
+import { boardFacts, currentBoardGate, onDriveReconnect, reconnectDrive } from '../lib/drive-board.js';
 import { h, delegate } from '../lib/dom.js';
 import { button } from './kit/index.js';
 
-/** The four facts, read now. */
-export function boardFacts() {
-  const c = typeof window !== 'undefined' ? window.StudioCloud : null;
-  let signedIn = false;
-  try { signedIn = !!(c && c.getSession && c.getSession()); } catch (e) { signedIn = false; }
-  return {
-    configured: Drive.isConfigured(),
-    signedIn,
-    connected: isConnected(),
-    token: Drive.hasToken()
-  };
-}
-export const currentBoardGate = () => boardGate(boardFacts());
+/* The facts and the reconnect are logic (src/lib/drive-board.js); this
+   file draws on top of them, and redraws when a reconnect lands. */
+export { boardFacts, currentBoardGate, onDriveReconnect, reconnectDrive };
 
 const urls = new Map();       // fileId → object URL, for this page visit
-const listeners = new Set();
-/** Called after a reconnect, so a page can redraw what depended on it. */
-export function onDriveReconnect(cb) { listeners.add(cb); return () => listeners.delete(cb); }
 
 const tokenGone = (e) => !!e && (e.status === 401
   || /click|token|popup|unauthori[sz]ed/i.test(String((e && e.message) || e)));
-
-/** Only from a click: ask Google for a token, then redraw. */
-export async function reconnectDrive() {
-  await Drive.getToken({ interactive: true });
-  refreshDriveImages();
-  listeners.forEach((cb) => { try { cb(); } catch (e) { /* a listener is not the reconnect */ } });
-}
 
 function reconnectBox(el, text) {
   el.classList.remove('is-loaded');
@@ -106,6 +85,8 @@ export function refreshDriveImages() {
   if (typeof document === 'undefined') return;
   document.querySelectorAll('[data-drive-file]').forEach((el) => fill(el));
 }
+// A reconnect from anywhere (here or the AI Desk) redraws every frame first.
+onDriveReconnect(refreshDriveImages);
 
 let wired = false;
 /** Bind the Reconnect / Try again clicks (once). driveImage() does it

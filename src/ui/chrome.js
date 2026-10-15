@@ -96,6 +96,7 @@ import './blueprint-drawer-mount.js';
 /* The app's own confirm / alert / prompt (src/ui/dialog.js), also on
    window for the few callers outside the module graph. */
 import Dialog from './dialog.js';
+import './ports-view.js';   // what this UI plugs into the logic layer's ports
 if (typeof window !== 'undefined') window.StudioDialog = Dialog;
 
 const global = typeof window !== 'undefined' ? window : globalThis;

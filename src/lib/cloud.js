@@ -30,7 +30,10 @@ import { DRIVE_SCOPE } from './drive.js';
 import { AUTH_ERROR_KEY } from './auth-scope.js';
 export { AUTH_ERROR_KEY };
 import { createGate, startHeartbeat, useHolder, getCodePass } from './gate.js';
-import { ask } from '../ui/dialog.js';
+import { callPort, hasPort } from './ports.js';
+/* The question goes to whichever view registered 'ask' (src/ui/dialog.js);
+   with no view to show it, the answer is no. */
+const ask = (q) => Promise.resolve(callPort('ask', false, q));
 import { bumpUsage } from './usage.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
@@ -533,8 +536,9 @@ function landOnInvite() {
 
 async function askTakeover(info) {
   try {
-    const { takeoverDialog } = await import('../ui/gate-ui.js');
-    return await takeoverDialog(info);
+    // The view plugs this in (src/ui/chrome.js, lazily loading gate-ui.js).
+    if (!hasPort('takeoverDialog')) throw new Error('no takeover dialog');
+    return await callPort('takeoverDialog', false, info);
   } catch (e) {
     return await ask('Your account is currently active in another Chrome window. '
       + 'Would you like to terminate that session and continue here?');

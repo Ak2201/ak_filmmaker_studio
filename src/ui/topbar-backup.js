@@ -21,13 +21,11 @@
 import { h, delegate } from '../lib/dom.js';
 import { actionMenu, wireActionBar } from './actionbar.js';
 import '../styles/topbar-backup.css';
-/* Copied from src/pages/hub/all-keys.js rather than imported: that file pulls
-   drive-sync.js, and CORE must stay light. The key is a storage contract, so
-   it does not move. */
-const ACTIVITY_KEY = 'fms_studio_activity_v1';
-/* Same reason, same contract: drive-sync.js owns this key (DRIVE_STATE_KEY),
-   and importing it would drag the Drive client into every page's band. */
-const DRIVE_STATE_KEY = 'fms_drive_sync_v1';
+/* The activity log and Drive's sync state are read and written through
+   src/lib/hub-activity.js, which owns both key names (copies, not
+   imports: all-keys.js pulls drive-sync.js, and CORE must stay light).
+   The keys are a storage contract, so they do not move. */
+import { lastBackup, logActivitySafe } from '../lib/hub-activity.js';
 
 /* ---- BACKUP HEALTH (reads only) -------------------------------------
    "When was this studio last backed up?" has two honest answers already
@@ -38,21 +36,7 @@ const DRIVE_STATE_KEY = 'fms_drive_sync_v1';
    here writes, so the idle-write assertion in verify still holds. */
 const STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
-function lastBackup() {
-  let best = 0; let via = '';
-  try {
-    const log = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || '{}') || {};
-    for (const e of (Array.isArray(log.entries) ? log.entries : [])) {
-      if (e && typeof e.ts === 'number' && /^Exported full studio backup/.test(String(e.what || '')) && e.ts > best) { best = e.ts; via = 'file'; }
-    }
-  } catch (e) { /* an unreadable log reads as never */ }
-  try {
-    const d = JSON.parse(localStorage.getItem(DRIVE_STATE_KEY) || '{}') || {};
-    const t = d.enabled && d.fileId && d.syncedAt ? Date.parse(d.syncedAt) : NaN;
-    if (Number.isFinite(t) && t > best) { best = t; via = 'drive'; }
-  } catch (e) { /* ditto */ }
-  return best ? { at: best, via } : null;
-}
+/* lastBackup() — the newer of the two — is src/lib/hub-activity.js. */
 
 function ago(ms) {
   const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
@@ -86,19 +70,9 @@ function refreshHealth() {
 /** The same activity-log write the Home page made, so "Exported a
  *  backup" still shows in Settings > Activity wherever it was done. */
 function logActivity(where, what, url) {
-  try {
-    const raw = localStorage.getItem(ACTIVITY_KEY);
-    const log = raw ? JSON.parse(raw) : {};
-    const arr = Array.isArray(log.entries) ? log.entries : [];
-    arr.unshift({ ts: Date.now(), where, what, url });
-    /* thirty lines, but the newest backup line survives the cap (see capLog in
-       src/pages/hub.js): it is what the health line reads. */
-    const isBackup = (e) => e && /^Exported full studio backup/.test(String(e.what || ''));
-    const kept = arr.slice(0, 30);
-    if (!kept.some(isBackup)) { const old = arr.slice(30).find(isBackup); if (old) kept.push(old); }
-    log.entries = kept;
-    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
-  } catch (e) { /* a log line is not worth a failed backup */ }
+  /* thirty lines, but the newest backup line survives the cap (see capLog in
+     src/lib/hub-activity.js): it is what the health line reads. */
+  logActivitySafe(where, what, url);
   refreshHealth();
 }
 

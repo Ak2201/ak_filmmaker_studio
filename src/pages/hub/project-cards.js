@@ -14,7 +14,8 @@ import PlanGate from '../../lib/plan-gate.js';
 import { STAGES, journey, guideJourney } from '../../lib/journey.js';
 import { h } from '../../lib/dom.js';
 import { isSampleTitle } from '../../lib/samples.js';
-import { FEATURE_KEY, SHORT_KEY, DASHBOARD_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
+import { DASHBOARD_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
+import { applyProjectFilters as applyProjectFiltersTo, projectBlob } from '../../lib/hub-model.js';
 import { renderFirstRun, renderSampleOnly } from './first-run.js';
 
 
@@ -25,30 +26,11 @@ export function setProjectFilter(v) { projectFilter = v; }
 export function setProjectSearch(v) { projectSearchTerm = v; }
 export function setProjectSort(v) { projectSort = v; }
 
+/* The filter, search and sort themselves, and the blueprint read for a
+   project that is not open (it bypasses the proxy), are
+   src/lib/hub-model.js; this module keeps the view state and hands it in. */
 function applyProjectFilters(projects) {
-  let arr = projects.slice();
-  if (projectFilter !== 'all') arr = arr.filter(p => p.format === projectFilter);
-  if (projectSearchTerm) {
-    arr = arr.filter(p => (p.title || '').toLowerCase().indexOf(projectSearchTerm) >= 0);
-  }
-  if (projectSort === 'alpha') {
-    arr.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-  } else if (projectSort === 'oldest') {
-    arr.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-  } else {
-    arr.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  }
-  return arr;
-}
-
-/* A project's blueprint blob, by its format, bypassing the proxy —
-   the cards speak about projects that are not open. */
-function projectBlob(p) {
-  try {
-    const key = (p.format === 'short' ? SHORT_KEY : FEATURE_KEY) + '__' + p.id;
-    const data = JSON.parse(Store.rawGet(key) || '{}');
-    return data && typeof data === 'object' ? data : {};
-  } catch (e) { return {}; }
+  return applyProjectFiltersTo(projects, { filter: projectFilter, search: projectSearchTerm, sort: projectSort });
 }
 
 /* Progress and stage for a card, from journey.js. The percentage used

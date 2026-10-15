@@ -25,6 +25,7 @@ import { h, delegate } from '../lib/dom.js';
 import * as Story from '../lib/story.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import { renderVault } from '../ui/idea-vault.js';
+import { appendClipToSynopsis, removeClip, restoreClip } from '../lib/vault-model.js';
 import { pageHeader } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
@@ -52,26 +53,15 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     const ta = document.getElementById('stClip');
     if (Story.addToVault({ snippet: ta && ta.value })) render();
   } else if (act === 'clip-use') {
-    const it = Story.listVault().find((x) => x.id === el.getAttribute('data-clip'));
-    if (!it) return;
-    const s = Story.loadStory();
-    s.source = (s.source.trim() ? s.source.replace(/\s+$/, '') + '\n\n' : '') + it.snippet;
-    Story.saveStory(s);
+    if (!appendClipToSynopsis(el.getAttribute('data-clip'))) return;
     StudioUI.toast('Added to the end of the synopsis.');
   } else if (act === 'clip-del') {
-    const id = el.getAttribute('data-clip');
-    const gone = Story.listVault().find((x) => x.id === id);
-    Story.removeFromVault(id);
+    const gone = removeClip(el.getAttribute('data-clip'));
     render();
     if (gone) {
       StudioUI.toast('Clipping removed.', {
         action: 'UNDO',
-        onAction: () => {
-          if (Story.addToVault({ snippet: gone.snippet, url: gone.url, title: gone.title, at: gone.at, id: gone.id })) {
-            if (gone.beat) Story.updateVault(gone.id, { beat: gone.beat });
-            render();
-          }
-        }
+        onAction: () => { if (restoreClip(gone)) render(); }
       });
     }
   }

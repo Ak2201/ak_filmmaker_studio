@@ -1,6 +1,13 @@
-/* The reset list, moved out of hub.js so Settings' danger zone can reach it too (11 Oct 2026). */
-import { FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY } from './util.js';
+/* The reset list, moved out of hub.js so Settings' danger zone can reach it too (11 Oct 2026).
+   The list is the PAGE's (reset belongs to the hub — CLAUDE.md) and is handed to
+   src/lib/hub-reset.js's eraseDeviceStorage(); the key names the hub's models read
+   and write are owned by src/lib/hub-keys.js and only re-exported here. */
+import {
+  FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
+  ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY
+} from '../../lib/hub-keys.js';
 import { DRIVE_STATE_KEY } from '../../lib/drive-sync.js';
+export { ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY };
 
 // ============================================================
 // STORAGE KEYS — byte-identical to the legacy hub. Do not touch.
@@ -19,12 +26,6 @@ const SYNC_CFG     = 'fms_supabase_cfg_v1';  // eslint-disable-line no-unused-va
    a note's key is the one thing a backup file stores raw, so the
    prefix the exporter walks and the prefix reset sweeps have to be
    the same string by construction. */
-export const ACTIVITY_KEY = 'fms_studio_activity_v1';
-export const SCENES_KEY   = 'fms_scenes_v1';
-export const CONTACTS_KEY = 'fms_contacts_v1';
-export const SHOTS_KEY    = 'fms_shots_v1';
-export const SCRIPT_KEY   = 'fms_script_v1';
-export const LOCS_KEY     = 'fms_locations_v1';
 const BENCH_KEY    = 'fms_workbench_v1';
 const DISSECT_KEY  = 'fms_dissect_v1';
 const FESTIVALS_KEY = 'fms_festivals_v1';

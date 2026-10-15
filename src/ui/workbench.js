@@ -40,8 +40,8 @@ import '../lib/store.js';
 import '../styles/workbench.css';
 import { h, delegate } from '../lib/dom.js';
 import { BEATS } from '../lib/studies.js';
+import { readWorkbenchAll, saveWorkbenchAll } from '../lib/write-workbench-store.js';
 
-const KEY = 'fms_workbench_v1';
 const SAVE_DELAY = 600;
 
 /* A hue is a category, and an unknown category is no category. The
@@ -116,18 +116,9 @@ function blank() {
    STORAGE
    ------------------------------------------------------------ */
 
-/* Everything on the way in is a type guard. An empty array is
-   truthy and JSON on disk is whatever the last version wrote, so
-   "it parsed" is not the same as "it is the shape I expect". */
-function readAll() {
-  let raw = null;
-  try { raw = localStorage.getItem(KEY); } catch (e) { return {}; }
-  if (typeof raw !== 'string' || !raw) return {};
-  let parsed = null;
-  try { parsed = JSON.parse(raw); } catch (e) { return {}; }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-  return parsed;
-}
+/* The blob of every film's notes, type-guarded on the way in
+   (src/lib/write-workbench-store.js). */
+const readAll = () => readWorkbenchAll();
 
 function normalise(value) {
   const out = blank();
@@ -158,11 +149,10 @@ function writeNow() {
   if (!slug) return;
   const all = readAll();
   all[slug] = work;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all));
+  if (saveWorkbenchAll(all)) {
     status('Saved in this browser');
-  } catch (e) {
-    console.warn('[workbench] save failed', e);
+  } else {
+    console.warn('[workbench] save failed');
     status('Could not save — storage is full or blocked');
   }
 }

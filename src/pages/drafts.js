@@ -39,6 +39,12 @@ import * as Drafts from '../lib/drafts.js';
 import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
 import { mountRevisionTools, renderCompareTool, presetCompare } from '../ui/write-revisions.js';
+/* What this page says about the drafts: src/lib/screenplay-drafts-model.js. */
+import { TITLE_LABELS, titlePlaceholder as titlePlaceholderFor } from '../lib/write-format.js';
+import {
+  draftStateText, titlePageStateText, draftMetaText, nextDraftName, restoreDialogSpec,
+  draftPdfMeta, draftPdfTitles
+} from '../lib/screenplay-drafts-model.js';
 
 const app = document.getElementById('app');
 const typesetter = () => import('../lib/screenplay-export.js');
@@ -49,14 +55,6 @@ const save = () => { Script.saveScript(doc); };
 let tpTimer = null;
 
 const say = (m, type = 'info') => { try { StudioUI.toast(m, { type }); } catch (e) { /* no chrome yet */ } };
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-function stamp(iso, withTime) {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  const day = d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
-  return withTime ? day + ', ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : day;
-}
-const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
 
 mountRevisionTools({
   getDoc: () => doc,
@@ -68,21 +66,7 @@ const leave = installLeavePrompt({ getDoc: () => doc, persistNow: () => { clearT
 document.addEventListener('fms:drafts-changed', () => render());
 
 /* ---- title page: the same fields and labels as write.js ---------- */
-const TITLE_LABELS = {
-  title: 'Title', credit: 'Credit', author: 'Written by', source: 'Based on',
-  draft: 'Draft', date: 'Date', contact: 'Contact'
-};
-function titlePlaceholder(f) {
-  return {
-    title: Script.projectTitle(),
-    credit: 'Written by',
-    author: 'Your name — and a co-writer, with &',
-    source: 'Based on the novel by …',
-    draft: 'First draft',
-    date: stamp(new Date().toISOString()),
-    contact: 'Name\nPhone · e-mail\nAgent or production company'
-  }[f];
-}
+const titlePlaceholder = (f) => titlePlaceholderFor(f, Script.projectTitle());
 function titlePageBlock() {
   const tp = Script.normaliseTitlePage(doc.titlePage);
   const control = (f) => {
@@ -99,9 +83,7 @@ function titlePageBlock() {
     h('h2.dr-h', { id: 'dr-tp-h', text: 'Title Page' }),
     h('p.dr-sub', {
       'data-tp-state': '',
-      text: Script.hasTitlePage(doc.titlePage)
-        ? 'Page 1 of every PDF. A draft keeps the title page it was saved with.'
-        : 'Empty — the PDF opens on a plain title.'
+      text: titlePageStateText(Script.hasTitlePage(doc.titlePage))
     }),
     h('div.dr-grid', {}, Script.TITLE_FIELDS.map(control))
   ]);
@@ -127,7 +109,7 @@ function row(d, isLatest) {
         isLatest ? badge({ label: 'Current', tone: 'info', dot: true, class: 'dr-tag' }) : null,
         h('span.dr-colour', { text: d.colour.name })
       ]),
-      h('div.dr-meta', { text: [stamp(d.savedAt, true), plural(d.pages, 'page'), plural(d.lines, 'line')].join(' · ') }),
+      h('div.dr-meta', { text: draftMetaText(d) }),
       d.note ? h('div.dr-note', { text: d.note }) : null
     ]),
     h('div.dr-acts', {}, [
@@ -139,11 +121,7 @@ function row(d, isLatest) {
   return li;
 }
 
-function stateText() {
-  const last = Drafts.latestDraft(doc);
-  if (!last) return doc.elements.length ? 'No draft saved yet.' : 'Nothing written yet.';
-  return Drafts.changedSinceDraft(doc) ? 'Unsaved draft changes since ' + last.label + '.' : 'Up to date with ' + last.label + '.';
-}
+const stateText = () => draftStateText(doc);
 function refreshState() {
   const s = document.querySelector('[data-dr-state]');
   if (s) {
@@ -152,9 +130,7 @@ function refreshState() {
   }
   const t = document.querySelector('[data-tp-state]');
   if (t) {
-    t.textContent = Script.hasTitlePage(doc.titlePage)
-      ? 'Page 1 of every PDF. A draft keeps the title page it was saved with.'
-      : 'Empty — the PDF opens on a plain title.';
+    t.textContent = titlePageStateText(Script.hasTitlePage(doc.titlePage));
   }
 }
 
@@ -180,7 +156,7 @@ function render() {
 
   const drafts = Drafts.listDrafts(doc);
   const last = drafts[0] || null;
-  const next = 'Draft ' + Drafts.nextDraftNumber(doc);
+  const next = nextDraftName(doc);
 
   main.append(h('div.dr-bar', {}, [
     button({ label: 'Back to the Screenplay Writer', href: 'screenplay.html', class: 'dr-back', variant: 'ghost' }),
@@ -211,7 +187,7 @@ function refreshStateClass(main) {
 /* ---- actions ----------------------------------------------------- */
 delegate(document, 'click', '[data-dr="new"]', async () => {
   save();
-  const name = 'Draft ' + Drafts.nextDraftNumber(doc);
+  const name = nextDraftName(doc);
   const res = await choiceDialog({
     title: 'Save as ' + name,
     body: 'A copy of the script and its title page, as they are now.',
@@ -247,17 +223,7 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   if (!d) return;
   save();
   const dirty = Drafts.changedSinceDraft(doc);
-  const choices = [];
-  if (dirty) choices.push({ id: 'save', label: 'Save as ' + 'Draft ' + Drafts.nextDraftNumber(doc) + ', then restore', primary: true });
-  choices.push({ id: 'go', label: dirty ? 'Restore anyway' : 'Restore ' + d.label, primary: !dirty, danger: dirty });
-  choices.push({ id: 'cancel', label: 'Cancel' });
-  const res = await choiceDialog({
-    title: 'Restore ' + d.label + ' as the working copy?',
-    body: dirty
-      ? 'The script you have now has changes that are in no draft. Restoring replaces it.'
-      : 'The script you have now matches the latest draft, so nothing is lost.',
-    choices
-  });
+  const res = await choiceDialog(restoreDialogSpec(d, dirty, nextDraftName(doc)));
   if (res.id === 'cancel' || res.id === null) return;
   if (res.id === 'save') Drafts.saveNewDraft(doc);
   Drafts.restoreDraft(doc, id);
@@ -287,17 +253,13 @@ delegate(document, 'click', '[data-dr="pdf"]', async (e, btn) => {
   catch (err) { say('The typesetter could not be loaded. Check the connection and try again.', 'error'); return; }
   /* Everything below comes from the draft, nothing from the clock: the
      same draft, the same sheets. */
-  const meta = {
-    title: Script.projectTitle(),
-    revision: d.colour.name + ' — ' + d.label,
-    subtitle: stamp(d.savedAt),
-    date: String(d.savedAt).slice(0, 10)
-  };
+  const meta = draftPdfMeta(d, Script.projectTitle());
+  const titles = draftPdfTitles(d, Script.projectTitle());
   let node = null;
   PDF.exportPDF({
     scope: 'screenplay',
-    title: Script.projectTitle() + ' — Screenplay — ' + d.label,
-    subtitle: [d.label, plural(d.pages, 'page'), stamp(d.savedAt)].join(' · '),
+    title: titles.title,
+    subtitle: titles.subtitle,
     before: () => { node = Typeset.buildDocument(snap, meta); main.append(node); },
     after: () => { if (node) { node.remove(); node = null; } }
   });

@@ -18,6 +18,7 @@ import { h, delegate } from '../lib/dom.js';
 import { button, sym } from './kit/index.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import * as Notes from '../lib/script-notes.js';
+import { readLocalNote } from '../lib/write-local-notes.js';
 
 let dlg = null;
 
@@ -46,7 +47,7 @@ export async function openScriptNotes(opts) {
   const rows = () => Notes.buildNotes({
     elements: opts.getElements(), numbering: opts.getNumbering && opts.getNumbering(),
     comments: shared,
-    readNote: (id) => { try { return localStorage.getItem(Notes.NOTE_PREFIX + Notes.KEY_PREFIX + id) || ''; } catch (e) { return ''; } }
+    readNote: (id) => readLocalNote(Notes.NOTE_PREFIX + Notes.KEY_PREFIX + id)
   });
   const f = { state: 'all', sceneId: '', author: '', kind: '' };
   const all = rows();

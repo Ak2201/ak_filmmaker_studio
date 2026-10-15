@@ -91,7 +91,11 @@ import * as supportTab from './admin-tabs/support.js';
 import * as usageTab from './admin-tabs/usage.js';
 import * as syncTab from './admin-tabs/sync.js';
 import * as controlsTab from './admin-tabs/controls.js';
-import { duration } from './admin-tabs/rpc.js';
+import { fmtDate, fmtWhen, fmtTime, n } from '../lib/admin-format.js';
+import {
+  TAB_DEFS, TABS, GROUP, META, BLOCK_TITLE, blankOverview, razorpayEnv as envOf, pendingCounts as countsOf, attentionItems,
+  payingCount, healthTile, refundBacklog, overviewMeta, orgSeats, userStanding, isLive
+} from '../lib/admin-model.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesRequiredNow } from '../ui/access-admin.js';
@@ -108,31 +112,11 @@ const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;
 
-/* THE TABS, in the order they appear. `group` is the sub-nav heading (src/ui/tabs.js
-   draws it from data-tab-group); the ids of the first five are the old
-   ones and every old fragment still resolves inside them. */
-const TAB_DEFS = [
-  { id: 'overview',  label: 'Overview',          group: 'Run',     icon: 'dashboard',      hint: 'The numbers, and what needs you today.' },
-  { id: 'health',    label: 'Launch & health',   group: 'Run',     icon: 'monitor_heart',  hint: 'Is everything switched on and working?' },
-  { id: 'audit',     label: 'Audit log',         group: 'Run',     icon: 'history',        hint: 'Who changed what, and when.' },
-  { id: 'people',    label: 'People',            group: 'People',  icon: 'groups',         hint: 'Members, access and organisations.' },
-  { id: 'support',   label: 'Support',           group: 'People',  icon: 'support_agent',  hint: 'Look up an account and help with it.' },
-  { id: 'requests',  label: 'Access & sharing',  group: 'People',  icon: 'share',          hint: 'Invite requests, codes and shared films.' },
-  { id: 'purchases', label: 'Purchases',         group: 'Money',   icon: 'shopping_cart',  hint: 'Payments, invoices, refunds and promo codes.' },
-  { id: 'growth',    label: 'Growth',            group: 'Money',   icon: 'trending_up',    hint: 'Visits, sign-ups and the funnel.' },
-  { id: 'usage',     label: 'Usage',             group: 'Product', icon: 'bar_chart',      hint: 'What people use, and how much.' },
-  { id: 'sync',      label: 'Sync & storage',    group: 'Product', icon: 'storage',        hint: 'Cloud sync, queues and stored work.' },
-  { id: 'controls',  label: 'Controls',          group: 'Product', icon: 'toggle_on',      hint: 'Switches, plans and features.' }
-];
-const TABS = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.label]));
-const GROUP = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.group]));
-const META = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t]));
 /* THE REGISTRY. A tab that has its own module in ./admin-tabs/. To add
    one: a file there, an import above, a row here and in TAB_DEFS. */
 const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usage: usageTab, sync: syncTab, controls: controlsTab };
-/* A block's own heading, where the module's first sub-heading does not
-   already name it. Everything else starts at the module's h3. */
-const BLOCK_TITLE = { features: 'Plan features', invoices: 'Invoices' };
+/* The tab definitions (TAB_DEFS, TABS, GROUP, META) and each block's own
+   heading (BLOCK_TITLE) are data: src/lib/admin-model.js. */
 
 function tab(id) {
   return h('section.ad-tab', { id, 'data-tab-label': TABS[id], 'data-tab-group': GROUP[id], 'data-tab-icon': META[id].icon, 'data-tab-hint': META[id].hint });
@@ -154,16 +138,10 @@ function state(id, title, line, actions) {
   ].filter(Boolean) });
 }
 
-const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
-const fmtWhen = (ts) => (ts ? new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
-const fmtTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { timeStyle: 'short' }) : '');
-const n = (v) => (Number(v) || 0).toLocaleString();
-const num0 = (v) => Number(v) || 0;
-const plural = (v, one, many) => `${n(v)} ${Number(v) === 1 ? one : many}`;
 
 /* ---- the numbers ------------------------------------------------ */
 
-let ov = { phase: 'idle', data: null, accounts: [], users: [], error: '', loadedAt: 0 };
+let ov = blankOverview();
 
 async function loadOverview() {
   const g = gate();
@@ -181,11 +159,7 @@ async function loadOverview() {
 /* ---- the status bar, and what the other tabs are handed --------- */
 
 /** Razorpay mode, read from the PREFIX of the public key id — never the key. */
-function razorpayEnv() {
-  if (/^rzp_test_/.test(RAZORPAY_KEY_ID)) return 'TEST';
-  if (/^rzp_live_/.test(RAZORPAY_KEY_ID)) return 'LIVE';
-  return null;
-}
+const razorpayEnv = () => envOf(RAZORPAY_KEY_ID);
 
 /** The two facts that change what every action on this page means. */
 function statusBar() {
@@ -206,13 +180,7 @@ function statusBar() {
 }
 
 /** Waiting items that already have a count, per tab, for the sub-nav badges. */
-function pendingCounts() {
-  const b = billingSnapshot();
-  return {
-    requests: ov.data ? Number(ov.data.requests_pending) || 0 : 0,
-    purchases: b ? Number(b.refundRequestsPending) || 0 : 0
-  };
-}
+const pendingCounts = () => countsOf(ov.data, billingSnapshot());
 
 function makeCtx(id) {
   const b = billingSnapshot();
@@ -264,34 +232,9 @@ function attentionItem({ label, tone = 'warn', text, tab: to, params }) {
   ])]);
 }
 
-/** The ranked list: health failures, failed receipts, refund requests over 48 hours,
- *  invite requests, other refund requests, abandoned payments. Anything the health
- *  report could not read is said, never counted as zero. */
+/** The ranked list (src/lib/admin-model.js decides it), drawn as rows. */
 function attentionList(d, hs) {
-  const out = [];
-  const hd = hs.phase === 'ok' ? hs.data : null;
-  const bad = (v) => !v || v.error;
-  const COVERED = new Set(['receipts', 'payments_created', 'refunds', 'invite_requests']);
-  if (hs.phase === 'error') out.push(attentionItem({ label: 'Health', tone: 'danger', text: 'The health report could not load: ' + hs.error, tab: 'health' }));
-  if (hd) {
-    for (const c of hd.checks || []) {
-      if (COVERED.has(c.id) || (c.level !== 'warn' && c.level !== 'unknown')) continue;
-      out.push(attentionItem({ label: c.level === 'unknown' ? 'Unknown' : 'Health', tone: c.level === 'unknown' ? 'neutral' : 'danger', text: c.observed || c.id, tab: 'health' }));
-    }
-    for (const c of hd.checks || []) if (c.level === 'unknown' && COVERED.has(c.id)) out.push(attentionItem({ label: 'Unknown', tone: 'neutral', text: c.observed, tab: 'health' }));
-    const r = hd.receipts;
-    if (!bad(r) && Number(r.awaiting_recent) > 0) out.push(attentionItem({ label: r.awaiting_recent, text: `${Number(r.awaiting_recent) === 1 ? 'receipt' : 'receipts'} from the last 7 days ${Number(r.awaiting_recent) === 1 ? 'has' : 'have'} no mail recorded`, tab: 'health' }));
-  }
-  const rf = hd && !bad(hd.refunds) ? hd.refunds : null;
-  const pendingRefunds = rf ? Number(rf.requests_pending) || 0 : (pendingCounts().purchases || 0);
-  const old = rf && Number(rf.oldest_pending_age_seconds) > 48 * 3600;
-  if (old && pendingRefunds) out.push(attentionItem({ label: pendingRefunds, tone: 'danger', text: `${pendingRefunds === 1 ? 'refund request' : 'refund requests'} waiting, the oldest ${duration(rf.oldest_pending_age_seconds)}`, tab: 'purchases' }));
-  const inv = Number(d.requests_pending) || 0;
-  if (inv) out.push(attentionItem({ label: inv, text: inv === 1 ? 'person is waiting for an invite' : 'people are waiting for an invite', tab: 'requests' }));
-  if (!old && pendingRefunds) out.push(attentionItem({ label: pendingRefunds, text: pendingRefunds === 1 ? 'refund request is waiting for an answer' : 'refund requests are waiting for an answer', tab: 'purchases' }));
-  const ab = hd && !bad(hd.payments) ? Number(hd.payments.created_older_than_1h) || 0 : 0;
-  if (ab) out.push(attentionItem({ label: ab, tone: 'neutral', text: `${ab === 1 ? 'payment' : 'payments'} still open after an hour (abandoned or not yet settled)`, tab: 'purchases' }));
-  return out;
+  return attentionItems(d, hs, pendingCounts().purchases).map(attentionItem);
 }
 
 function activityCard(ctx) {
@@ -334,21 +277,14 @@ function overviewTab() {
   const pr = purchasesRequiredNow();
   const hs = healthTab.healthState();
   const by = (b && b.overview.active_by_plan) || {};
-  const paying = Object.entries(by).filter(([k]) => k !== 'free').reduce((t, [, v]) => t + (Number(v) || 0), 0);
+  const paying = payingCount(by);
   const trials = Number.isInteger(d.trials_active)
     ? kpi({ label: 'Trials running', value: n(d.trials_active), href: '#growth' })
     : kpi({ label: 'Trial', value: g ? (g.trial_enabled !== false ? 'On' : 'Off') : '…', sub: g && g.trial_enabled !== false ? trialLength(g.trial_minutes || 30) : '', href: '#growth' });
 
   /* A tile from the health report. A slot that errored, or a report that
      has not landed, is "—" / "…" and says so: never a zero that reads as healthy. */
-  const hk = (label, slot, pick, { sub, href, hot = (v) => v > 0 } = {}) => {
-    if (hs.phase === 'error') return kpi({ label, value: '—', sub: 'unknown', href });
-    if (hs.phase !== 'ok') return kpi({ label, value: '…', href });
-    const v = hs.data[slot];
-    if (!v || v.error) return kpi({ label, value: '—', sub: 'unknown', href, title: v && v.message ? v.message : null });
-    const x = Number(pick(v)) || 0;
-    return kpi({ label, value: n(x), sub, href, attention: hot(x) });
-  };
+  const hk = (label, slot, pick, { sub, href, hot } = {}) => kpi({ label, href, ...healthTile(hs, slot, pick, { sub, hot }) });
 
   sec.append(h('div.ad-stats.ad-kpis', {}, [
     kpi({ label: 'Members', value: n(d.members_active), sub: `${n(d.members_admin)} admin`, href: '#people' }),
@@ -359,7 +295,7 @@ function overviewTab() {
     kpi({ label: 'Purchases required', value: pr === null ? '—' : pr ? 'On' : 'Off', href: '#purchasesRequired' }),
     hk('Failed receipts', 'receipts', (v) => v.awaiting_recent, { sub: 'last 7 days', href: '#health' }),
     hk('Abandoned payments', 'payments', (v) => v.created_older_than_1h, { sub: 'open over 1 hour', href: '#purchases', hot: () => false }),
-    hk('Refund backlog', 'refunds', (v) => num0(v.requests_pending) + num0(v.requests_approved_not_refunded) + num0(v.refunds_failed), { sub: 'pending, approved, failed', href: '#purchases' }),
+    hk('Refund backlog', 'refunds', refundBacklog, { sub: 'pending, approved, failed', href: '#purchases' }),
     hk('Walled', 'wall', (v) => v.walled, { sub: pr ? 'out of the studio' : 'if purchases were required', href: '#health', hot: () => false })
   ]));
 
@@ -372,11 +308,7 @@ function overviewTab() {
   else attention.append(emptyState({ title: 'Nothing found so far', body: 'The health report did not load, so this is not an all-clear.', stamp: true, icon: '?' }));
   sec.append(h('div.ad-cols', {}, [attention, activityCard(ctx)]));
 
-  sec.append(h('p.ad-meta', { text: [
-    plural(d.users_total, 'signed in', 'signed in'), `${n(d.users_active_7d)} active this week`,
-    plural(d.accounts, 'organisation', 'organisations'), plural(d.projects, 'film', 'films'),
-    `${n(d.sessions_live)} online`, `${plural(d.codes_active, 'code', 'codes')} open`, 'counted ' + fmtTime(d.generated_at)
-  ].join(' · ') }));
+  sec.append(h('p.ad-meta', { text: overviewMeta(d) }));
   return sec;
 }
 
@@ -392,7 +324,7 @@ function organisationsBlock() {
       h('td', {}, [h('strong', { text: a.name || 'Untitled' })]),
       h('td', { text: a.owner_email || '—' }),
       h('td', { text: a.plan || '—' }),
-      h('td', { text: `${n(a.seats_used)} of ${n(a.seat_limit)}` + (a.members_pending ? ` · ${n(a.members_pending)} invited` : '') }),
+      h('td', { text: orgSeats(a) }),
       h('td', { text: n(a.projects) }),
       h('td', { text: fmtDate(a.created_at) })
     ]));
@@ -403,19 +335,15 @@ function organisationsBlock() {
 }
 
 function roleTag(u) {
-  if (u.disabled_at) return h('span.ad-tag.is-off', { text: 'disabled' });
-  if (u.studio_role === 'admin') return h('span.ad-tag.is-admin', { text: 'admin' });
-  if (u.studio_role) return h('span.ad-tag', { text: 'member' });
-  if (u.request_status === 'pending') return h('span.ad-tag.is-pending', { text: 'waiting' });
-  if (u.request_status === 'declined') return h('span.ad-tag.is-off', { text: 'declined' });
-  return h('span.ad-tag', { text: 'not a member' });
+  const s = userStanding(u);
+  return h('span.ad-tag' + (s.mod ? '.' + s.mod : ''), { text: s.text });
 }
 
 function signedInBlock() {
   const sec = block('signed-in');
   sec.append(h('h3.gt-h3', { text: `Everyone signed in (${ov.users.length})` }));
   if (!ov.users.length) { sec.append(h('p.gt-meta', { text: 'Nobody yet.' })); return sec; }
-  const live = (u) => u.last_heartbeat && Date.now() - Date.parse(u.last_heartbeat) < 90000;
+  const live = (u) => isLive(u);
   const table = h('table.gt-table.k-table');
   table.append(h('thead', {}, [h('tr', {}, ['Who', 'Standing', 'Last sign-in', 'Joined', 'Films', 'Orgs', 'Now'].map((t) => h('th', { scope: 'col', text: t })))]));
   const tb = h('tbody');
@@ -513,7 +441,7 @@ async function refreshStatus() {
   const c = cloud();
   if (!c || !c.gate || !c.getSession()) {
     const changed = st !== null || askedFor !== '' || ov.data;
-    st = null; askedFor = ''; ov = { phase: 'idle', data: null, accounts: [], users: [], error: '', loadedAt: 0 };   // nobody's numbers outlive their session
+    st = null; askedFor = ''; ov = blankOverview();   // nobody's numbers outlive their session
     if (changed || !painted) renderSoon();
     return;
   }

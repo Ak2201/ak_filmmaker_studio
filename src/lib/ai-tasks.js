@@ -50,6 +50,7 @@
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
    ============================================================ */
+import { callPort } from './ports.js';
 import Store from './store.js';   // the open project's format (scene-story)
 
 /* ---- the modules, loaded once ------------------------------- */
@@ -1083,7 +1084,8 @@ const voiceTask = {
     let gone = 0, dup = 0;
     for (const it of selected || []) {
       if (!it || !it.elId || !it.rewrite) continue;
-      const r = Cov.addTake(it.elId, it.rewrite);
+      // The take goes onto the row the Coverage tab has open (a port it registers).
+      const r = callPort('addTake', 'gone', it.elId, it.rewrite);
       if (r === 'ok') added.push(it); else if (r === 'gone') gone++; else dup++;
     }
     if (!added.length) {
@@ -1091,7 +1093,7 @@ const voiceTask = {
     }
     call(c.after);
     return () => {
-      for (let i = added.length - 1; i >= 0; i--) Cov.removeTake(added[i].elId, added[i].rewrite);
+      for (let i = added.length - 1; i >= 0; i--) callPort('removeTake', undefined, added[i].elId, added[i].rewrite);
       call(c.after);
     };
   }

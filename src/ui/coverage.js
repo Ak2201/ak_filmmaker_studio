@@ -56,6 +56,7 @@ import { aiPill } from './ai-pill.js';
    src/lib/coverage-store.js. This file draws it. */
 import { coverageStore, stamp, VERDICT_WORD, SECTION_LABEL, quotesRemovedSentence, fmtN, plural } from '../lib/coverage-store.js';
 export { coverageStore };
+import { setPort } from '../lib/ports.js';
 
 let getDoc = () => null;
 let save = () => {};
@@ -414,6 +415,11 @@ export function removeTake(id, text) {
   if (takes.length) el.alts = takes; else delete el.alts;
   commitRow(id, el);
 }
+
+/* The AI Desk's voice check adds and removes takes through these ports
+   (src/lib/ports.js), so the logic never imports this tab. */
+setPort('addTake', addTake);
+setPort('removeTake', removeTake);
 
 /* ---- the run ------------------------------------------------
    Coverage runs from the AI Desk now (the pill in renderRunPanel).

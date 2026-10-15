@@ -75,6 +75,7 @@ registered answers its fallback, which is always the safe answer.
 | `ask(messageOrOptions)` | `Promise<boolean>` | `src/ui/dialog.js` |
 | `brandLine({ className })` | `Element \| null` | `src/ui/footer.js` |
 | `takeoverDialog(info)` | `Promise<boolean>` | `src/ui/ports-view.js` (lazy) |
+| `addTake(lineId, text)` / `removeTake(lineId, text)` | `'ok' \| 'gone' \| 'dup'` | `src/ui/coverage.js` (the open script row) |
 
 ## Replacing the UI
 

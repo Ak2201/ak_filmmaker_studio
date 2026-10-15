@@ -35,8 +35,9 @@ import { BRAND } from '../lib/brand.js';
 import '../styles/status-bar.css';
 
 /* Same contract as topbar-backup.js: drive-sync.js owns this key and
-   importing it would drag the Drive client into every page. Read only. */
-const DRIVE_STATE_KEY = 'fms_drive_sync_v1';
+   importing it would drag the Drive client into every page, so the read
+   is src/lib/hub-activity.js's driveSyncedAt(), on a copy of the key. */
+import { driveSyncedAt } from '../lib/hub-activity.js';
 const VERSION = String(import.meta.env.VITE_APP_VERSION || '');
 
 /** 'test' | 'live' | '' — from the PUBLIC key id; the secret never ships. */
@@ -80,11 +81,8 @@ export function syncLine(st) {
 }
 
 function driveLine() {
-  try {
-    const d = JSON.parse(localStorage.getItem(DRIVE_STATE_KEY) || '{}') || {};
-    const t = d.enabled && d.fileId && d.syncedAt ? Date.parse(d.syncedAt) : NaN;
-    return Number.isFinite(t) ? 'Drive ' + ago(t) : '';
-  } catch (e) { return ''; }
+  const t = driveSyncedAt();
+  return Number.isFinite(t) ? 'Drive ' + ago(t) : '';
 }
 
 const cloud = () => (typeof window !== 'undefined' && window.StudioCloud) || null;

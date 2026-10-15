@@ -5,15 +5,14 @@
    2026 verbatim; hub.js and its four modules import them from here
    so the strings exist once. ALL_KEYS stays on hub.js — that one is
    the RESET list and reset belongs to the page (CLAUDE.md).
+   The key names and page names live in src/lib/hub-keys.js now (the
+   logic owns its keys); they are re-exported from here unchanged.
    ============================================================ */
-const FEATURE_KEY  = 'fms_filmmaker_combined_v1';
-const SHORT_KEY    = 'fms_shortfilm_blueprint_v1';
-const LIB_CALC_KEY = 'fms_library_calc_v1';
-
-const FEATURE_URL = 'feature.html';
-const SHORT_URL   = 'short.html';
-const DASHBOARD_URL = 'dashboard.html';
-const LIBRARY_URL = 'library.html';
+import {
+  FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
+  FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL
+} from '../../lib/hub-keys.js';
+import { readStoredObject } from '../../lib/hub-activity.js';
 
 const FORMAT_LABELS = {
   feature: 'FEATURE FILM',
@@ -45,8 +44,9 @@ function title(s) { return plain(s).replace(/\.$/, ''); }
 // ============================================================
 // SMALL UTILITIES (ported verbatim)
 // ============================================================
+/** A stored JSON object, or {} — read by src/lib/hub-activity.js. */
 function parseStorage(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; }
+  return readStoredObject(key);
 }
 function relTime(ts) {
   const diff = Date.now() - ts;

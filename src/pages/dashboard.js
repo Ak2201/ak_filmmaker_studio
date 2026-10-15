@@ -42,8 +42,7 @@
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
 import Store, { setProjectSubtitle } from '../lib/store.js';
-import { BLUEPRINT, guideProgress, stageHueClass, journey, stageStates, suggestNext, lastWorked, favouriteOf } from '../lib/journey.js';
-import { parseNum, fmtINR, INR } from '../lib/money.js';
+import { stageHueClass, favouriteOf } from '../lib/journey.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -60,132 +59,34 @@ import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
 import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText } from '../ui/kit/index.js';
 
-import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
-import Locations from '../lib/locations.js';
-import Contacts from '../lib/contacts.js';
-import Shots from '../lib/shots.js';
-import { loadScript, pageCount, formatPages } from '../lib/script.js';
+import { formatEighths } from '../lib/scenes.js';
+import { formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
-import { readiness, sceneLabel } from '../lib/readiness.js';
+import { readiness } from '../lib/readiness.js';
 import PlanGate from '../lib/plan-gate.js';
 import { getDriveStatus, push as drivePush } from '../lib/drive-sync.js';
 import { dprSummary } from '../lib/dpr.js';
 import { planName } from '../lib/plans.js';
+/* Every number on this page, derived: the snapshot, the dates, the
+   readiness order, the activity lines (docs/ARCHITECTURE.md). */
+import {
+  snapshot, relTime, sceneTagged, nextDatedDay, nextShootNote, crewCastNote, nextShootLine,
+  weekDays, coveredSceneIds, dayDetail, sortChecks, readinessDeck, WHY, continueTarget,
+  planLine, recentEntries, pathFactLine, when
+} from '../lib/dashboard-model.js';
 
 
 const app = document.getElementById('app');
 
-/* Storage keys, spelled exactly as store.js's SCOPED_KEYS spells them.
-   These are read-only here; not one line of this file writes to them. */
-const LIB_CALC_KEY = 'fms_library_calc_v1';
-const ACTIVITY_KEY = 'fms_studio_activity_v1';
-
 /* ============================================================
-   THE BLUEPRINTS, AS A FIELD LIST — grouped by STAGE now
+   THE BLUEPRINTS, READING WHAT IS STORED, THE SNAPSHOT
    ------------------------------------------------------------
-   The field list (both sources: `key` props and data-key attributes
-   inside `raw` blocks), the step-to-stage mapping and the "filled"
-   rule all live in src/lib/journey.js, which reads
-   blueprint-fields.js — so the journey strip, the hub's cards and
-   this page count one way. This used to be a local copy grouped by
-   the four 2023 phases, which filed the scene list and the script
-   lock under Story and disagreed with the five stages the rest of
-   the studio is built on. The two blueprint keys are spelled once,
-   in journey.js's BLUEPRINT table, and read-only here.
-
-   The adapter keeps the shape every renderer below already reads:
-   phases → steps, each with done/total by FIELD.
-   ============================================================ */
-const BLUEPRINTS = { feature: BLUEPRINT.feature, short: BLUEPRINT.short };
-
-function blueprintProgress(blueprint, data) {
-  const g = guideProgress(blueprint.id, data);
-  const phases = g.stages.filter((st) => st.steps.length).map((st) => ({
-    id: st.id,
-    label: 'Part ' + st.part + ' · ' + st.label,
-    hue: st.hue,
-    href: blueprint.href,
-    steps: st.steps.map((step) => ({ ...step, total: step.fieldsTotal, done: step.fieldsDone })),
-    total: st.fields.total,
-    done: st.fields.done,
-    pct: st.pct
-  }));
-  return { blueprint, phases, total: g.fields.total, done: g.fields.done, pct: g.pct };
-}
-
-/* ============================================================
-   READING WHAT IS STORED
-   ============================================================ */
-
-/** The open project's copy of a scoped key, through the proxy. */
-function readBlob(key) {
-  let raw = null;
-  try { raw = localStorage.getItem(key); } catch (e) { /* private mode */ }
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (e) { return {}; }
-}
-
-/* parseNum / INR / the short rupee format all come from
-   src/lib/money.js now. This file used to carry its own copy with a
-   note saying "if this ever needs a third caller it should move into
-   a lib" — it did, and the copy outlived the note. It was also the
-   anchored-but-not-whole-string version, which still read
-   "1500 per roll" as 15 crore. */
-
-
-/* Two figures, because a number card is 190px wide and eight digits in
-   the display face wrap onto two lines there. The card face gets the
-   glanceable magnitude; the exact rupee figure goes in the note under
-   it, so nothing is hidden. */
-const fmtShort = fmtINR;
-
-function budgetStatus() {
-  const calc = readBlob(LIB_CALC_KEY);
-  const rows = {};
-  for (const k of Object.keys(calc)) {
-    const m = /^ci_(\d+)_(\w+)$/.exec(k);
-    if (!m) continue;
-    rows[m[1]] = rows[m[1]] || {};
-    rows[m[1]][m[2]] = calc[k];
-  }
-  let lines = 0, total = 0;
-  for (const row of Object.values(rows)) {
-    const sub = parseNum(row.days) * parseNum(row.rate);
-    if (sub > 0) { lines++; total += sub; }
-  }
-  return {
-    lines, total,
-    short: total ? fmtShort(total) : '₹ 0',
-    exact: '₹ ' + INR.format(Math.round(total))
-  };
-}
-
-/* ---- recent activity -------------------------------------------
-   Already written by the hub under a key store.js scopes per project,
-   so this is the open project's history and nobody else's. */
-function recentActivity(limit) {
-  const log = readBlob(ACTIVITY_KEY);
-  const entries = Array.isArray(log.entries) ? log.entries : [];
-  return entries.slice(0, limit);
-}
-
-function relTime(ts) {
-  const then = typeof ts === 'number' ? ts : Date.parse(ts);
-  if (!Number.isFinite(then)) return '';
-  const sec = Math.max(0, Math.round((Date.now() - then) / 1000));
-  if (sec < 60) return 'just now';
-  if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
-  if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
-  const days = Math.floor(sec / 86400);
-  if (days < 30) return days + 'd ago';
-  return Math.floor(days / 30) + 'mo ago';
-}
-
-/* ============================================================
-   THE SNAPSHOT — every number this page shows, in one object
+   src/lib/dashboard-model.js: the field list grouped by stage (from
+   journey.js, so the journey strip, the hub's cards and this page count
+   one way), the budget rows and the activity log (read-only, through the
+   proxy, so this project's), and the snapshot — every number this page
+   shows, in one object. parseNum / INR / the short rupee format come from
+   src/lib/money.js there; this file used to carry its own copy.
    ============================================================ */
 const FORMAT_LABEL = {
   feature: 'Feature film',
@@ -195,82 +96,15 @@ const FORMAT_LABEL = {
   adfilm: 'Ad film'
 };
 
-function snapshot(project) {
-  const primary = BLUEPRINTS[project.format === 'short' ? 'short' : 'feature'];
-  const secondary = primary.id === 'feature' ? BLUEPRINTS.short : BLUEPRINTS.feature;
-
-  const main = blueprintProgress(primary, readBlob(primary.storeKey));
-  const other = blueprintProgress(secondary, readBlob(secondary.storeKey));
-
-  const scenes = Scenes.listScenes();
-  const days = Locations.calendarDays(scenes);
-  const unscheduled = Locations.unscheduledScenes(scenes);
-  const contacts = Contacts.listContacts();
-  const sheets = Contacts.listCallSheets();
-  const shots = Shots.listShots();
-  const script = loadScript();
-  const budget = budgetStatus();
-
-  const locationCount = new Set(
-    scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)
-  ).size;
-  const scriptPages = pageCount(script.elements);
-  const datedDays = days.filter((d) => d.date).length;
-
-  const snap = {
-    project, main, other,
-    scenes, days, unscheduled, contacts, sheets, shots, script, budget,
-    locationCount, scriptPages, datedDays,
-    eighths: totalEighths(scenes),
-    elements: Scenes.elementIndex().length,
-    docs: (script.documents || []).length,
-    revisions: (script.revisions || []).length,
-    boards: Shots.listBoards().length,
-    /* A shot is boarded when a storyboard frame hangs off it. */
-    boardedShots: new Set(Shots.listFrames().map((f) => f && f.shotId).filter(Boolean)).size,
-    /* Derived like everything else here — journey.js stores nothing. */
-    journey: journey(project),
-    states: stageStates(project)
-  };
-  snap.suggest = suggestNext(snap.states);
-  snap.resume = lastWorked(snap.states);
-
-  /* "Nothing here yet" has to mean nothing ANYWHERE, or a project with
-     four scenes and no prose gets told it is empty. */
-  snap.isEmpty =
-    main.done === 0 && other.done === 0 && scenes.length === 0 &&
-    contacts.length === 0 && shots.length === 0 &&
-    (script.elements || []).length === 0 && budget.lines === 0;
-
-  return snap;
-}
-
 /* ============================================================
    PIECES
    ============================================================ */
 /* A figure for the KPI strip: the kit's stat card (JetBrains Mono value). */
 const stat = (value, unit, label, note) => ({ label, value, unit: value === '\u2014' ? '' : unit, note: note || '' });
 
-/* The strip's second line, each one derived from a model and left out
-   when there is nothing real to say (owner, 14 Oct 2026: no figure the
-   page cannot measure). */
-function sceneTagged(snap) {
-  return snap.scenes.filter((s) => Object.values(s.elements || {}).some((v) => Array.isArray(v) && v.length)).length;
-}
-function nextDatedDay(snap) {
-  return snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
-    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= 0).sort((a, b) => a.n - b.n)[0] || null;
-}
-function nextShootNote(snap) {
-  const nx = nextDatedDay(snap);
-  return nx ? 'Day ' + nx.d.day + ' ' + (nx.n === 0 ? 'today' : nx.n === 1 ? 'tomorrow' : 'in ' + nx.n + ' days')
-    : snap.datedDays ? '' : snap.days.length ? 'No dates yet' : '';
-}
-function crewCastNote(snap) {
-  const cast = snap.contacts.filter((c) => c.department === 'Cast').length;
-  const crew = snap.contacts.length - cast;
-  return cast && crew ? cast + ' cast · ' + crew + ' crew' : '';
-}
+/* The strip's second line (sceneTagged, nextShootNote, crewCastNote) is
+   derived in src/lib/dashboard-model.js, each left out when there is
+   nothing real to say. */
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.db-sec', { id, 'data-reveal': '' });
@@ -309,13 +143,7 @@ function renderReadiness() {
   }
 
   const tone = r.blockers ? 'is-bad' : r.gaps ? 'is-warn' : 'is-ok';
-  const deck = r.blockers
-    ? r.blockers + ' thing' + (r.blockers === 1 ? '' : 's') + ' would stop a shoot day, and '
-      + r.gaps + ' more will cost you one.'
-    : r.gaps
-      ? 'Nothing blocks a shoot day. ' + r.gaps + ' thing'
-        + (r.gaps === 1 ? ' is' : 's are') + ' still missing.'
-      : 'Every check passes. Nothing here is missing.';
+  const deck = readinessDeck(r);
 
   const sec = section('readiness', 'Derived from your scenes · nothing to tick',
     'Could you shoot tomorrow?', deck);
@@ -329,8 +157,7 @@ function renderReadiness() {
      advice. Passed checks are still SHOWN, as evidence the question
      was asked — but as one compact row of ticks under the work, so
      five green cards no longer outweigh the two things to do. */
-  const rank = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
-  const sorted = r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count);
+  const sorted = sortChecks(r.checks);
   const fails = sorted.filter((c) => !c.passed);
   const passes = sorted.filter((c) => c.passed);
   if (fails.length) {
@@ -388,20 +215,7 @@ function readinessRow(c) {
    one: the plan's project limit lives in the database (a trigger
    raises P0402), and no model records when a backup file was last
    exported, so neither is shown as a number. */
-const MS_DAY = 86400000;
-
-/** 'YYYY-MM-DD' as a LOCAL midnight; null when it is not a date. */
-function localDay(str) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
-  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
-}
-function daysFromToday(date) {
-  const t = new Date(); t.setHours(0, 0, 0, 0);
-  return Math.round((date - t) / MS_DAY);
-}
-function when(n) {
-  return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 0 ? 'in ' + n + ' days' : Math.abs(n) + ' days ago';
-}
+/* The dates (localDay, daysFromToday, when) are src/lib/dashboard-model.js. */
 
 /* A desk tile is the kit's panel: eyebrow in the header, the title
    (an h2, so the heading order holds) opening the body. Callers append
@@ -412,15 +226,6 @@ function tile(id, eyebrow, title) {
   return t;
 }
 const tb = (t) => t.querySelector('.k-panel-body');
-
-function continueTarget(snap) {
-  const log = recentActivity(1)[0];
-  if (log && log.url && !/^(feature|short)\.html/.test(log.url)) {
-    return { href: log.url, what: String(log.what || 'where you left off'), ts: log.ts };
-  }
-  const pick = snap.resume || snap.states.find((x) => snap.suggest && x.id === snap.suggest.id) || snap.states[0];
-  return { href: pick.href, what: pick.label, ts: snap.resume ? snap.resume.at : null };
-}
 
 /* ============================================================
    THE FOCUS ROW — one answer to "what now?", one to "how ready?"
@@ -433,11 +238,7 @@ function continueTarget(snap) {
    second holds the readiness summary and links down to the full list.
    The ids the old pieces carried (#suggested, #resume) live on here.
    ============================================================ */
-const WHY = {
-  start: 'Nothing started yet, so the story is a natural first step.',
-  continue: 'Work is under way here.',
-  next: 'Everything started is finished; this is the earliest stage not started.'
-};
+/* WHY, the suggestion's reason, is src/lib/dashboard-model.js. */
 
 function renderContinue(snap) {
   /* THIS PROJECT ONLY (owner, 11 Oct 2026): it used to suggest the most
@@ -499,8 +300,7 @@ function renderReadyTile() {
     return tl;
   }
 
-  const rank = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
-  const sorted = r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count);
+  const sorted = sortChecks(r.checks);
   const pass = sorted.filter((c) => c.passed).length;
   const total = sorted.length;
 
@@ -546,24 +346,15 @@ function renderFocus(snap) {
 /* ============================================================
    THE SIDE COLUMN — the calendar, the plan, the backup
    ============================================================ */
-function nextShootLine(snap) {
-  const upcoming = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
-    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= 0).sort((a, b) => a.n - b.n)[0];
-  return upcoming ? 'Next shoot: day ' + upcoming.d.day + ' · ' + when(upcoming.n)
-    : snap.days.length ? 'Shoot countdown: no upcoming dated day.' : 'Shoot countdown: no shoot days planned yet.';
-}
-
 function renderWeek(snap) {
   const tl = tile('week', 'This week', 'Shoot days and call sheets');
   tb(tl).append(h('p.db-tile-line.db-strong', { text: nextShootLine(snap) }));
-  const covered = new Set();
-  snap.sheets.forEach((cs) => (cs.sceneIds || []).forEach((id) => covered.add(id)));
+  const covered = coveredSceneIds(snap.sheets);
   /* The next dated day, in full: where, when the crew is called, and the
      call sheet itself. Each line shows only what a record really holds. */
   const nx = nextDatedDay(snap);
   if (nx) {
-    const places = [...new Set(nx.d.scenes.map((x) => String(x.location || '').trim()).filter(Boolean))];
-    const sheet = snap.sheets.find((cs) => (cs.sceneIds || []).some((id) => nx.d.scenes.some((x) => x.id === id)));
+    const { places, sheet } = dayDetail(snap, nx.d);
     const dl = h('dl.db-facts');
     const fact = (k, v) => dl.append(h('dt', { text: k }), h('dd', { text: v }));
     if (places.length) fact('Location', places.slice(0, 2).join(' · ') + (places.length > 2 ? ' +' + (places.length - 2) : ''));
@@ -578,9 +369,7 @@ function renderWeek(snap) {
     h('a.db-trio-i', { href: 'stripboard.html', text: 'Stripboard' }),
     h('a.db-trio-i', { href: 'visualize.html', text: 'Visualise' })
   ]));
-  const rows = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
-    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= -1 && x.n <= 7)
-    .sort((a, b) => a.n - b.n);
+  const rows = weekDays(snap);
   if (!rows.length) {
     tb(tl).append(h('p.db-tile-line', { text: snap.datedDays
       ? 'No shoot day falls in the next seven days.' : 'No shoot day has a date yet.' }),
@@ -610,14 +399,7 @@ function renderPlanTile() {
   const tl = tile('plan', 'Plan', 'Your plan');
   const cp = PlanGate.currentPlan();
   const name = cp.planName || (cp.plan ? planName(cp.plan) : '');
-  /* 'free' is the "no plan" state, never a plan to name (owner, 11 Oct
-     2026): it is the free trial, or nothing bought yet. */
-  const line = !name ? 'Not signed in — working locally on this device'
-    : cp.plan !== 'free' ? name + ' plan'
-    : cp.reason === 'granted' ? 'Access given by the studio'
-    : cp.reason === 'trial' ? 'Free trial'
-    : cp.reason === 'free' ? 'Free to use right now'
-    : 'No plan yet';
+  const line = planLine(cp, name);
   tb(tl).append(
     h('p.db-tile-line', { text: line }),
     button({ label: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans', href: 'purchase.html', class: 'db-tile-go', attrs: { 'aria-label': 'Plans and upgrade' } })
@@ -849,33 +631,11 @@ function renderChain(snap) {
 }
 
 /* ---- recent ------------------------------------------------------
-   TWO sources, both read-only, and the copy says which. The hub's log
-   (fms_studio_activity_v1) only records blueprint progress, the
-   equipment list and backups — it does not see scene, contact or
-   script edits, so this page does not claim it does. The second source
-   is the shoot day's own marks: `shotAt` on a scene, written by
-   shoot.html. No other model carries a per-record timestamp. */
-function derivedActivity(scenes) {
-  const out = [];
-  for (const sc of scenes) {
-    if (!sc.shotAt || (sc.shotState !== 'shot' && sc.shotState !== 'part')) continue;
-    out.push({
-      ts: Date.parse(sc.shotAt),
-      what: sceneLabel(sc) + (sc.shotState === 'part' ? ' partly shot' : ' marked shot'),
-      url: 'shoot.html'
-    });
-  }
-  return out.filter((e) => Number.isFinite(e.ts));
-}
-
+   TWO sources, both read-only, and the copy says which: the hub's log
+   and the shoot day's own marks (`shotAt`, written by shoot.html),
+   merged in src/lib/dashboard-model.js (recentEntries). */
 function renderActivity(scenes) {
-  const logged = recentActivity(12).map((e) => ({
-    ts: typeof e.ts === 'number' ? e.ts : Date.parse(e.ts),
-    what: String(e.what || e.where || 'Edited'), url: e.url
-  }));
-  const entries = logged.concat(derivedActivity(scenes))
-    .filter((e) => Number.isFinite(e.ts))
-    .sort((a, b) => b.ts - a.ts).slice(0, 8);
+  const entries = recentEntries(scenes);
   if (!entries.length) return null;
   const sec = section('recent', 'Recent', 'What moved lately.',
     'Blueprint progress, equipment lists and backups from the studio log, plus scenes '
@@ -998,12 +758,8 @@ function patchPathFact() {
   if (old) old.remove();
   let line = '';
   try {
-    const steps = pathModule.pathSteps();
-    const next = pathModule.nextStep(steps);
-    if (!next) return;
-    line = steps.every((s) => s.state === 'done')
-      ? 'All ' + steps.length + ' steps done'
-      : 'Step ' + next.n + ' of ' + steps.length + ' · next: ' + next.label;
+    line = pathFactLine(pathModule);
+    if (!line) return;
   } catch (e) { return; }
   facts.prepend(h('li.st-path-fact', { text: line }));
 }

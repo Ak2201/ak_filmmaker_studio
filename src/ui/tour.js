@@ -49,28 +49,16 @@ import { unscheduledScenes } from '../lib/locations.js';
 import data from '../data/tour.json';
 import '../styles/tour.css';
 
-export const TOUR_KEY = 'fms_tour_v1';
+/* The tour's place (`fms_tour_v1`) is read and written by
+   src/lib/tour-state.js, which owns the key; re-exported for importers. */
+import { TOUR_KEY, readTourState, writeTourState, clampStep as clampStepOf } from '../lib/tour-state.js';
+export { TOUR_KEY };
 const STEPS = data.steps;
 
 /* ---- state: read freely, written only by a user action ------------ */
-export function readTour() {
-  try {
-    const t = JSON.parse(localStorage.getItem(TOUR_KEY) || 'null');
-    if (t && typeof t === 'object' && !Array.isArray(t)) {
-      return { active: !!t.active, step: clampStep(t.step), dismissed: !!t.dismissed, finished: !!t.finished, hideList: !!t.hideList };
-    }
-  } catch (e) { /* blocked or garbled: a fresh tour */ }
-  return { active: false, step: 0, dismissed: false, finished: false, hideList: false };
-}
-function writeTour(patch) {
-  const next = { v: 1, ...readTour(), ...patch };
-  try { localStorage.setItem(TOUR_KEY, JSON.stringify(next)); } catch (e) { /* private mode: the tour still runs this page */ }
-  return next;
-}
-function clampStep(n) {
-  const i = parseInt(n, 10);
-  return Number.isFinite(i) ? Math.max(0, Math.min(STEPS.length - 1, i)) : 0;
-}
+export function readTour() { return readTourState(STEPS.length); }
+function writeTour(patch) { return writeTourState(patch, STEPS.length); }
+function clampStep(n) { return clampStepOf(n, STEPS.length); }
 
 /* ---- where am I --------------------------------------------------- */
 export function pageId(path = location.pathname) {

@@ -39,6 +39,7 @@ import { ask, askDanger } from './dialog.js';
 import { minutesToHours, hoursToMinutes, trialLength } from '../lib/trial-time.js';
 import { dataTable, errorState, emptyState } from './admin-kit.js';
 import { funnel as funnelChart } from './admin-charts.js';
+import { cohorts as fetchCohorts } from '../lib/admin-api.js';
 
 let rerender = () => {};
 const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, members: [], missing: {}, saved: '', granted: '' };
@@ -476,11 +477,7 @@ async function loadCohorts() {
   if (COHORT.phase === 'loading') return;
   COHORT.phase = 'loading'; COHORT.error = '';
   try {
-    const c = window.StudioCloud;
-    const sb = c && c.ensureClient ? await c.ensureClient() : null;
-    if (!sb) throw new Error('This build has no cloud project configured.');
-    const { data, error } = await sb.rpc('admin_cohorts', { p_weeks: COHORT.weeks });
-    if (error) throw error;
+    const data = await fetchCohorts(window.StudioCloud, COHORT.weeks);
     COHORT.data = data; COHORT.phase = 'ok';
   } catch (e) {
     COHORT.phase = 'error';

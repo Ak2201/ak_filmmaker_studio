@@ -33,6 +33,7 @@ import { pill, emptyState, errorState, skeleton, dataTable, relTime, absTime } f
 import { askText } from '../../ui/dialog.js';
 import { errorSentence } from '../../lib/gate.js';
 import { rpc, studioRole, can, currentRole, openUser } from '../../ui/admin-customer.js';
+import { SOURCE, STATUS_TONE, STATUSES, cap, inView as rowInView, personOf as personIn, chipCounts, openCount, ticketPatch } from '../../lib/admin-support-model.js';
 
 const S = { phase: 'idle', rows: [], error: '', status: 'active', source: 'all', who: 'all', busy: false };
 let last = null;       // the latest ctx, for handlers that finish after a render
@@ -54,46 +55,26 @@ async function load() {
   redraw();
 }
 
-const SOURCE = {
-  ticket: { label: 'Ticket', tone: 'neutral' },
-  refund: { label: 'Refund', tone: 'warn' },
-  invite: { label: 'Invite', tone: 'accent' }
-};
-const STATUS_TONE = { open: 'warn', waiting: 'accent', closed: 'ok' };
-const cap = (s) => String(s || '').replace(/^./, (c) => c.toUpperCase());
-
-const inView = (r) => {
-  if (S.status === 'active' && r.status === 'closed') return false;
-  if (S.status !== 'active' && S.status !== 'all' && r.status !== S.status) return false;
-  if (S.source !== 'all' && r.source !== S.source) return false;
-  if (S.who === 'mine' && r.assignee !== myId()) return false;
-  if (S.who === 'none' && r.assignee) return false;
-  return true;
-};
+const inView = (r) => rowInView(r, S, myId());
 
 /** The id of the person a row is about, when the console already knows them. */
-function personOf(row, ctx) {
-  if (row.source === 'invite') return row.id;
-  const users = (ctx.overview && ctx.overview.users) || [];
-  const hit = users.find((u) => String(u.email || '').toLowerCase() === String(row.email || '').toLowerCase());
-  return hit ? hit.user_id : '';
-}
+const personOf = (row, ctx) => personIn(row, (ctx.overview && ctx.overview.users) || []);
 
 function chip(group, value, label, count) {
   const on = S[group] === value;
   return h('button.ad-chip', { type: 'button', 'data-su-filter': group + ':' + value, 'aria-pressed': String(on) }, [label, count != null ? h('span.su-n', { text: ' ' + count }) : null]);
 }
 function filters() {
-  const c = (f) => S.rows.filter(f).length;
+  const k = chipCounts(S.rows);
   const grp = (label, chips) => h('div.su-group', { role: 'group', 'aria-label': label }, [h('span.su-gl', { text: label }), ...chips]);
   return h('div.su-filters', {}, [
     grp('Status', [
-      chip('status', 'active', 'Active', c((r) => r.status !== 'closed')), chip('status', 'open', 'Open', c((r) => r.status === 'open')),
-      chip('status', 'waiting', 'Waiting', c((r) => r.status === 'waiting')), chip('status', 'closed', 'Closed', c((r) => r.status === 'closed')), chip('status', 'all', 'All', S.rows.length)
+      chip('status', 'active', 'Active', k.active), chip('status', 'open', 'Open', k.open),
+      chip('status', 'waiting', 'Waiting', k.waiting), chip('status', 'closed', 'Closed', k.closed), chip('status', 'all', 'All', k.all)
     ]),
     grp('Source', [
-      chip('source', 'all', 'All'), chip('source', 'ticket', 'Tickets', c((r) => r.source === 'ticket')),
-      chip('source', 'refund', 'Refunds', c((r) => r.source === 'refund')), chip('source', 'invite', 'Invites', c((r) => r.source === 'invite'))
+      chip('source', 'all', 'All'), chip('source', 'ticket', 'Tickets', k.ticket),
+      chip('source', 'refund', 'Refunds', k.refund), chip('source', 'invite', 'Invites', k.invite)
     ]),
     grp('Assigned', [chip('who', 'all', 'Anyone'), chip('who', 'mine', 'Me'), chip('who', 'none', 'Nobody')])
   ]);
@@ -104,7 +85,7 @@ function rowActions(r, ctx) {
   const pid = personOf(r, ctx);
   const kids = [];
   if (r.source === 'ticket' && writer) {
-    kids.push(h('select.su-status', { 'data-su-act': 'status', 'data-id': r.id, 'aria-label': 'Status of ' + r.subject }, ['open', 'waiting', 'closed'].map((v) => h('option', { value: v, text: cap(v), selected: v === r.status ? '' : null }))));
+    kids.push(h('select.su-status', { 'data-su-act': 'status', 'data-id': r.id, 'aria-label': 'Status of ' + r.subject }, STATUSES.map((v) => h('option', { value: v, text: cap(v), selected: v === r.status ? '' : null }))));
     kids.push(r.assignee && r.assignee === myId()
       ? h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'unassign', 'data-id': r.id, text: 'UNASSIGN' })
       : h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'assign', 'data-id': r.id, 'aria-label': 'Assign ' + r.subject + ' to me', text: 'ASSIGN TO ME' }));
@@ -184,7 +165,7 @@ export function render(ctx) {
 
 export function badge() {
   if (S.phase !== 'ready') return null;
-  return S.rows.filter((r) => r.status === 'open').length || null;
+  return openCount(S.rows);
 }
 
 /* ---- handlers ------------------------------------------------------ */
@@ -192,7 +173,7 @@ export function badge() {
 const wrote = (msg) => toast(msg, 'success', { action: 'View in audit log', onAction: () => { location.hash = '#audit'; } });
 async function update(id, patch, said) {
   try {
-    await rpc('admin_update_ticket', { p_id: id, p_status: null, p_assignee: null, p_note: null, p_unassign: false, ...patch });
+    await rpc('admin_update_ticket', ticketPatch(id, patch));
     wrote(said);
     await load();
   } catch (e) { toast(errorSentence(e, 'The ticket was not changed.'), 'error'); redraw(); }

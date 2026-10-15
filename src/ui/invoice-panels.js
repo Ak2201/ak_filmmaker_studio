@@ -13,6 +13,7 @@
 import { h, delegate } from '../lib/dom.js';
 import { fmtPaise, admin as billingAdmin } from '../lib/billing.js';
 import { ask } from './dialog.js';
+import { listInvoices } from '../lib/admin-api.js';
 import '../styles/motion.css';
 
 const S = { mine: { state: 'idle', rows: [] }, all: { state: 'idle', rows: [] } };
@@ -24,10 +25,7 @@ async function load(kind) {
   const c = window.StudioCloud;
   S[kind].state = 'loading';
   try {
-    const sb = c && c.ensureClient ? await c.ensureClient() : null;
-    if (!sb) throw new Error('no cloud');
-    const { data, error } = await sb.rpc(kind === 'mine' ? 'my_invoices' : 'admin_list_invoices');
-    if (error) throw error;
+    const data = await listInvoices(c, kind);
     S[kind] = { state: 'ready', rows: data || [] };
     rows[kind] = new Map(S[kind].rows.map((r) => [r.id, r]));
   } catch (e) {

@@ -40,9 +40,13 @@ import { ask } from '../../ui/dialog.js';
 import StudioUI from '../../ui/chrome.js';
 import { fmtPaise } from '../../lib/billing.js';
 import { callRpc, duration } from './rpc.js';
+import { functionsBase, probeFunction } from '../../lib/admin-api.js';
+import {
+  FUNCTIONS, isErr, num, awaiting, lastThrowAt, probeKind, PROBE_WORD, probeDetail, findCheck, slotMsg,
+  resendInference as inferResend, launchSteps as stepsFor, stepTally, throwBody, switchState, rollbackWindow,
+  LEVEL, LABEL, factKind, checkCounts, healthBadge
+} from '../../lib/admin-health-model.js';
 
-const DAY = 86400000;
-const FUNCTIONS = ['rzp-order', 'rzp-verify', 'rzp-webhook', 'rzp-refund'];
 
 const H = { phase: 'idle', data: null, error: '', at: 0 };       // admin_health()
 const W = { phase: 'idle', data: null, error: '' };               // admin_launch_preview()
@@ -61,8 +65,6 @@ const again = () => {
   setTimeout(() => { queued = false; if (ctxRef && ctxRef.rerender) ctxRef.rerender(); }, 0);
 };
 const cloud = () => (ctxRef && ctxRef.cloud) || window.StudioCloud || null;
-const isErr = (v) => !!v && typeof v === 'object' && !Array.isArray(v) && 'error' in v;
-const num = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 
 /* ---- loading ------------------------------------------------------ */
 
@@ -92,9 +94,7 @@ async function loadThrow() {
   if (T.phase !== 'ok') T.phase = 'loading';
   try {
     const out = await callRpc(cloud(), 'admin_list_audit', { p_action: 'set_billing_settings', p_target: 'billing_settings:global', p_limit: 50 });
-    const rows = Array.isArray(out && out.rows) ? out.rows : [];
-    const flips = rows.find((r) => r.before && r.after && typeof r.after.purchase_required === 'boolean' && r.before.purchase_required !== r.after.purchase_required);
-    T.at = flips && flips.after.purchase_required === true ? Date.parse(flips.at) : null;
+    T.at = lastThrowAt(out && out.rows);
     T.phase = 'ok'; T.error = '';
   } catch (e) { T.phase = 'error'; T.at = null; T.error = e.message || 'The server did not say why.'; }
   again();
@@ -107,128 +107,40 @@ export function reload(ctx) { if (ctx) ctxRef = ctx; loadAll(); }
 /** The failed-receipt rows, for whoever wants them (the Overview counts from admin_health instead). */
 export const receiptRows = () => I.rows.filter(awaiting);
 
-const awaiting = (r) => !r.emailed_at && String(r.buyer_email || '').trim() && r.razorpay_order_id;
-
 /* ---- the edge-function probes ------------------------------------- */
 
-async function probeOne(base, fn) {
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 8000);
-  try {
-    /* No headers, a string body: a "simple" request, so no CORS preflight
-       can stand between the page and the status. */
-    const r = await fetch(`${base}/functions/v1/${fn}`, { method: 'POST', body: '{}', signal: ac.signal, cache: 'no-store', credentials: 'omit' });
-    let msg = '';
-    try { const j = await r.clone().json(); msg = String(j.error || j.message || ''); } catch (e) { /* no JSON body */ }
-    return { status: r.status, msg: msg.slice(0, 140) };
-  } catch (e) {
-    if (e && e.name === 'AbortError') return { status: 0, msg: 'no answer in 8 seconds' };
-    /* A readable answer failed. Ask again in no-cors mode: that resolves (an
-       opaque response) when a server answered and merely sent no CORS
-       headers — which is what rzp-webhook does on purpose, since only
-       Razorpay calls it — and rejects on a real network failure. A missing
-       function is NOT hidden by this: the platform answers a 404 for an
-       undeployed function WITH CORS headers, so it would have been read
-       above. */
-    try {
-      await fetch(`${base}/functions/v1/${fn}`, { method: 'POST', body: '{}', mode: 'no-cors', signal: ac.signal, cache: 'no-store', credentials: 'omit' });
-      return { status: -1, msg: 'answered, but sends no CORS headers (as a webhook should), so the browser cannot read its status' };
-    } catch (e2) {
-      return { status: 0, msg: '' };
-    }
-  } finally { clearTimeout(timer); }
-}
 async function runProbes() {
-  const c = cloud();
-  const cfg = c && c.getCfg ? c.getCfg() : null;
-  const base = cfg && cfg.url ? String(cfg.url).replace(/\/+$/, '') : '';
+  const base = functionsBase(cloud());
   if (!base) { P.phase = 'done'; P.res = {}; P.at = Date.now(); P.noUrl = true; again(); return; }
   P.phase = 'running'; P.noUrl = false;
   again();
-  const out = await Promise.all(FUNCTIONS.map((fn) => probeOne(base, fn)));
+  const out = await Promise.all(FUNCTIONS.map((fn) => probeFunction(base, fn)));
   P.res = Object.fromEntries(FUNCTIONS.map((fn, i) => [fn, out[i]]));
   P.phase = 'done'; P.at = Date.now();
   again();
 }
-const probeKind = (r) => (!r ? 'wait' : r.status === -1 ? 'alive' : r.status === 0 ? 'down' : r.status === 404 ? 'missing' : r.status >= 500 && r.status !== 503 ? 'error' : 'alive');
-const PROBE_WORD = { alive: ['Answers', 'ok'], missing: ['Missing (404)', 'danger'], down: ['Unreachable', 'danger'], error: ['Server error', 'warn'], wait: ['Not probed', 'neutral'] };
 
 function wantProbes() { return P.phase === 'idle' && hashParts().tab === 'health'; }
 
 /* ---- what the data says, as sentences ----------------------------- */
 
-const check = (id) => (H.data && Array.isArray(H.data.checks) ? H.data.checks.find((c) => c.id === id) : null) || null;
-const slotMsg = (v) => `Unknown: ${v.message || v.error}${v.error ? ` (${v.error})` : ''}`;
+const check = (id) => findCheck(H.data, id);
 
-/** Resend is not readable from SQL. What can be seen: invoices with no mail recorded. */
-function resendInference() {
-  const r = H.data && H.data.receipts;
-  const p = H.data && H.data.payments;
-  if (!r || isErr(r)) return { kind: 'none', text: 'Not observable. The receipts probe did not answer' + (isErr(r) ? ': ' + (r.message || r.error) : '.') };
-  if (num(r.awaiting_recent) > 0) return { kind: 'warn', text: `${r.awaiting_recent} invoice(s) from the last 7 days have no mail recorded.` };
-  const recentPaid = p && !isErr(p) && p.last_paid_at && Date.now() - Date.parse(p.last_paid_at) < 7 * DAY;
-  if (recentPaid) return { kind: 'ok', text: 'A payment was captured in the last 7 days and no recent receipt is waiting.' };
-  return { kind: 'none', text: 'No evidence either way: no payment in the last 7 days, so no recent receipt to judge by. Confirm with one test purchase.' };
-}
+/** Resend is not readable from SQL; src/lib/admin-health-model.js infers what it can. */
+const resendInference = () => inferResend(H.data);
 
 /** BILLING.md §19, "Throwing the switch", in order, each with a live state. */
-function launchSteps(ctx) {
-  const d = H.data;
-  if (!d) return [{ label: 'Reading the live checks…', state: 'wait' }];
-  const byCheck = (id, label, passNote) => {
-    const c = check(id);
-    if (!c) return { label, state: 'skip', note: 'The server did not report this check.' };
-    if (c.level === 'unknown') return { label, state: 'skip', note: c.observed };
-    return { label, state: c.level === 'ok' ? 'pass' : 'fail', note: c.observed || passNote };
-  };
-  const steps = [];
-  steps.push(byCheck('sections', 'Every schema section is present'));
-
-  const rs = resendInference();
-  steps.push({ label: 'Resend delivers receipts (BILLING §19.1)', state: rs.kind === 'ok' ? 'pass' : rs.kind === 'warn' ? 'fail' : 'skip', note: (rs.kind === 'ok' ? 'Inferred. ' : '') + rs.text });
-
-  const kinds = FUNCTIONS.map((fn) => probeKind(P.res[fn]));
-  const probed = P.phase === 'done' && !P.noUrl;
-  let fnState = 'wait'; let fnNote = P.phase === 'running' ? 'Probing…' : 'Not probed yet.';
-  if (probed) {
-    const bad = FUNCTIONS.filter((fn, i) => kinds[i] !== 'alive');
-    fnState = bad.length ? 'fail' : 'pass';
-    fnNote = bad.length ? bad.map((fn) => `${fn}: ${PROBE_WORD[probeKind(P.res[fn])][0].toLowerCase()}`).join('; ') : 'All four answered an unauthenticated request.';
-  } else if (P.noUrl) { fnState = 'skip'; fnNote = 'This build carries no Supabase URL to probe.'; }
-  steps.push({ label: 'The four payment functions answer (BILLING §19.2)', state: fnState, note: fnNote });
-
-  const env = ctx && ctx.env;
-  steps.push({ label: 'Razorpay is on a live key', state: env === 'LIVE' ? 'pass' : env === 'TEST' ? 'fail' : 'skip', note: env ? `The key id's prefix says ${env}.` : 'No key id in this build.' });
-
-  const p = d.payments;
-  if (isErr(p)) steps.push({ label: 'A real payment has been captured', state: 'skip', note: slotMsg(p) });
-  else steps.push({ label: 'A real payment has been captured', state: num(p.paid) > 0 ? 'pass' : 'fail', note: num(p.paid) > 0 ? `${p.paid} paid; the last ${p.last_paid_at ? relTime(p.last_paid_at) : 'at an unknown time'}. A paid row does not say whether it was test or live.` : 'No payment has been captured.' });
-
-  const rf = d.refunds;
-  if (isErr(rf)) steps.push({ label: 'A refund has been exercised', state: 'skip', note: slotMsg(rf) });
-  else steps.push({ label: 'A refund has been exercised', state: rf.last_refund_processed_at ? 'pass' : 'fail', note: rf.last_refund_processed_at ? `The last processed ${relTime(rf.last_refund_processed_at)}.` : 'No refund has been processed.' });
-
-  steps.push(byCheck('plan_features', 'Every paid plan has its features set (BILLING §19.3)'));
-
-  const w = d.wall;
-  if (isErr(w)) steps.push({ label: 'No grandfathered member would be walled (BILLING §19.4)', state: 'skip', note: slotMsg(w) });
-  else steps.push({ label: 'No grandfathered member would be walled (BILLING §19.4)', state: num(w.grandfathered_walled) === 0 ? 'pass' : 'fail', note: `${w.grandfathered_walled} grandfathered member(s) would be walled.` });
-  return steps;
-}
+const launchSteps = (ctx) => stepsFor(H.data, P, ctx && ctx.env);
 
 /* ---- drawing ------------------------------------------------------ */
 
-const LEVEL = { ok: ['OK', 'ok'], warn: ['Needs a look', 'warn'], info: ['Info', 'neutral'], unknown: ['Unknown', 'neutral'] };
-const LABEL = (k) => { const t = String(k).replace(/_seconds$/, '').replace(/_/g, ' '); return t[0].toUpperCase() + t.slice(1); };
 
 function factValue(k, v) {
-  if (v == null) return '—';
-  if (typeof v === 'string' && /not observable/i.test(v)) return pill('Not observable', 'neutral', { title: v });
-  if (/_age_seconds$/.test(k)) return duration(v) + ' old';
-  if (typeof v === 'string' && /^\d{4}-\d\d-\d\dT/.test(v)) return h('time', { datetime: v, title: absTime(v), text: relTime(v) });
-  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
-  if (typeof v === 'object') return null;
-  return String(v);
+  const f = factKind(k, v);
+  if (f.kind === 'unobservable') return pill('Not observable', 'neutral', { title: f.text });
+  if (f.kind === 'time') return h('time', { datetime: f.text, title: absTime(f.text), text: relTime(f.text) });
+  if (f.kind === 'skip') return null;
+  return f.text;
 }
 function facts(obj) {
   const dl = h('dl.ad-facts');
@@ -301,10 +213,7 @@ function probeCard(ctx) {
     const r = P.res[fn];
     const kind = P.phase === 'running' ? 'wait' : probeKind(r);
     const [word, tone] = PROBE_WORD[kind];
-    const detail = !r ? (P.phase === 'running' ? 'Probing…' : 'Not probed yet')
-      : r.status === 0 ? `No readable answer${r.msg ? ' (' + r.msg + ')' : ' (a network error or a CORS refusal look the same to a page)'}`
-      : r.status === -1 ? `Deployed: ${r.msg}`
-      : `HTTP ${r.status}${r.msg ? ': ' + r.msg : ''}`;
+    const detail = probeDetail(r, P.phase === 'running');
     list.append(h('li', {}, [h('code', { text: fn }), pill(word, tone), h('span.ad-meta', { text: detail })]));
   }
   return h('section.ad-card.ad-hc', { 'aria-label': 'Payment functions' }, [
@@ -350,7 +259,7 @@ function receiptsCard() {
 
 /* ---- the switch --------------------------------------------------- */
 
-const switchOn = () => (H.data && typeof H.data.purchases_required === 'boolean' ? H.data.purchases_required : null);
+const switchOn = () => switchState(H.data);
 
 function previewBlock() {
   if (W.phase === 'loading' || W.phase === 'idle') return skeleton({ kind: 'block', count: 1 });
@@ -396,12 +305,11 @@ function switchBlock() {
       h('span.ad-meta', { text: 'You will be asked to type REQUIRE. The server refuses the switch while it would wall a grandfathered member.' })
     ]));
   } else {
-    const left = T.at ? T.at + DAY - Date.now() : null;
+    const { left, offer } = rollbackWindow(T.phase, T.at);
     if (T.phase === 'error') box.append(h('p.ad-meta', { text: `When it was turned on could not be read from the audit log (${T.error}), so the 24-hour window is unknown. Rollback is offered anyway: the server never refuses it.` }));
     else if (T.at == null) box.append(h('p.ad-meta', { text: 'The audit log has no row that turned it on, so the 24-hour window is unknown. Rollback is available anyway: the server never refuses it.' }));
     else if (left > 0) box.append(h('p.ad-meta', {}, ['Turned on ', h('time', { datetime: new Date(T.at).toISOString(), title: absTime(T.at), text: relTime(T.at) }), `. One-click rollback stays here for ${duration(left / 1000)} more.`]));
     else box.append(h('p.ad-meta', {}, ['Turned on ', h('time', { datetime: new Date(T.at).toISOString(), title: absTime(T.at), text: relTime(T.at) }), '. The 24-hour rollback window has passed; it can still be turned off from Purchases.']));
-    const offer = T.phase === 'error' || T.at == null || left > 0;
     box.append(h('div.ad-actions', {}, [
       offer ? h('button.btn.ad-danger', { type: 'button', 'data-action': 'switch-rollback', disabled: SW.busy ? '' : null, text: SW.busy ? 'WORKING…' : 'ROLL BACK: PURCHASES NOT REQUIRED' })
         : h('a.btn', { href: '#purchases', text: 'OPEN PURCHASES' })
@@ -413,8 +321,7 @@ function switchBlock() {
 
 function launchCard(ctx) {
   const steps = launchSteps(ctx);
-  const failing = steps.filter((s) => s.state === 'fail').length;
-  const unsure = steps.filter((s) => s.state === 'skip' || s.state === 'wait').length;
+  const { failing, unsure } = stepTally(steps);
   return h('section.ad-card.ad-hc.ad-launch', { 'aria-label': 'Launch checklist' }, [
     h('div.ad-hc-h', {}, [h('h3.ad-card-h', { text: 'Launch checklist' }),
       H.phase === 'ok' ? pill(failing ? `${failing} failing` : unsure ? `${unsure} unconfirmed` : 'All passing', failing ? 'warn' : unsure ? 'neutral' : 'ok') : null]),
@@ -441,12 +348,11 @@ export function render(ctx) {
   else if (H.phase === 'error') {
     root.append(errorState({ title: 'The health report could not load', why: H.error, onRetry: () => loadAll() }));
   } else {
-    const checks = Array.isArray(H.data.checks) ? H.data.checks : [];
-    const count = (l) => checks.filter((c) => c.level === l).length;
+    const k = checkCounts(H.data.checks);
     root.append(h('div.ad-stats.ad-kpis', {}, [
-      kpi({ label: 'Checks OK', value: `${count('ok')} of ${checks.length}` }),
-      kpi({ label: 'Need a look', value: count('warn'), attention: count('warn') > 0 }),
-      kpi({ label: 'Unknown', value: count('unknown'), sub: count('unknown') ? 'could not be read' : '', attention: count('unknown') > 0 })
+      kpi({ label: 'Checks OK', value: `${k.ok} of ${k.total}` }),
+      kpi({ label: 'Need a look', value: k.warn, attention: k.warn > 0 }),
+      kpi({ label: 'Unknown', value: k.unknown, sub: k.unknown ? 'could not be read' : '', attention: k.unknown > 0 })
     ]));
   }
   root.append(launchCard(ctx));
@@ -457,8 +363,7 @@ export function render(ctx) {
 
 /** The sub-nav count: checks that need a look or could not be read. */
 export function badge() {
-  if (H.phase !== 'ok' || !H.data || !Array.isArray(H.data.checks)) return null;
-  return H.data.checks.filter((c) => c.level === 'warn' || c.level === 'unknown').length;
+  return healthBadge(H.phase, H.data);
 }
 
 /* ---- handlers: delegated, once, on document ----------------------- */
@@ -502,13 +407,10 @@ async function setSwitch(on) {
 
 delegate(document, 'click', '[data-action="switch-throw"]', async () => {
   const steps = launchSteps(ctxRef || { env: null });
-  const notPassing = steps.filter((s) => s.state !== 'pass');
   const wall = W.data ? num(W.data.would_wall_count) : null;
   const ok = await ask({
     title: 'Require a plan to use the studio?',
-    body: `${wall == null ? 'Some members' : wall + ' member(s)'} will be walled until they buy a plan or start a trial. ` +
-      (notPassing.length ? `Not passing: ${notPassing.map((s) => s.label.replace(/ \(BILLING[^)]*\)/, '')).join('; ')}. ` : 'Every launch step is passing. ') +
-      'Rollback stays one click away for 24 hours.',
+    body: throwBody(steps, wall),
     confirm: 'Require purchases', danger: true, typeToConfirm: 'REQUIRE'
   });
   if (ok) setSwitch(true);

@@ -13,26 +13,11 @@
    and nothing is written anywhere.
    ============================================================ */
 
-const SECTION_OF = { admin_usage: 43, admin_cohorts: 43, admin_sync_overview: 44, admin_limit_pressure: 44 };
+import { reasonOf, slotCall } from '../../lib/admin-api.js';
 
-export function reasonOf(name, err) {
-  const raw = String((err && (err.message || err.code)) || err || '');
-  if (/PGRST202|does not exist|Could not find/i.test(`${err && err.code} ${raw}`)) {
-    return `The database has no ${name}() yet — schema section ${SECTION_OF[name] || '?'} has not been run on it.`;
-  }
-  if (err && (err.code === '42501' || /Administrators only/i.test(raw))) return 'The database refused: this account is not an administrator.';
-  return raw || 'The server did not say why.';
-}
-
-async function call(ctx, name, args) {
-  const c = ctx.cloud;
-  if (!c || !c.ensureClient) throw new Error('Cloud is not available on this page.');
-  const sb = await c.ensureClient();
-  if (!sb) throw new Error('This build has no cloud project configured.');
-  const { data, error } = await sb.rpc(name, args || {});
-  if (error) throw error;
-  return data;
-}
+/* The call and the sentence it fails with live in src/lib/admin-api.js;
+   reasonOf is re-exported so nothing that imported it from here moves. */
+export { reasonOf };
 
 /** A read slot: { phase: 'idle'|'loading'|'ok'|'error', data, error, key, at }. */
 export const slot = () => ({ phase: 'idle', data: null, error: '', key: '', at: 0, stale: false, refreshing: false });
@@ -46,7 +31,7 @@ export function load(ctx, s, name, args, key = '') {
   const keep = s.stale && s.phase === 'ok' && s.data != null && s.key === key;
   if (keep) s.refreshing = true; else s.phase = 'loading';
   s.stale = false; s.key = key; s.error = '';
-  call(ctx, name, args)
+  slotCall(ctx.cloud, name, args)
     .then((d) => { s.data = d; s.phase = 'ok'; s.at = Date.now(); })
     .catch((e) => { s.phase = 'error'; s.error = reasonOf(name, e); })
     .finally(() => { s.refreshing = false; ctx.rerender(); });

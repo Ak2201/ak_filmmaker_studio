@@ -39,6 +39,7 @@ import PDF from '../lib/pdf.js';
 import { commitImportedScript } from '../lib/script-commit.js';
 import { sceneSyncLater, mountHandoff } from '../ui/handoff.js';
 import Keys from '../lib/write-keys.js';
+import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
@@ -49,12 +50,19 @@ import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
 import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
-import { latestDraft, changedSinceDraft } from '../lib/drafts.js';
+import { latestDraft } from '../lib/drafts.js';
+/* The page's derivations and sentences: src/lib/screenplay-model.js. */
+import {
+  draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
+  scriptStats, estimatedRuntime, splitRuntime as splitRuntimeOf, targetDeltaText, targetLabel,
+  targetPagesFor, scenePosText, shotsSummary, importReadText, importDoneText, pdfSubtitle
+} from '../lib/screenplay-model.js';
+import { pageAnchors } from '../lib/write-format.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { learn } from '../ui/learn.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
-  pageCount, formatPages, formatRuntime, wordCount
+  formatPages, formatRuntime
 } from '../lib/script.js';
 
 const analysis = () => import('../lib/screenplay-analysis.js');
@@ -160,11 +168,7 @@ const editor = mountEditor(document, {
 });
 
 /* ---- draft label ------------------------------------------------ */
-function draftLabel() {
-  const last = latestDraft(doc);
-  if (!last) return 'No draft saved yet';
-  return last.name + (changedSinceDraft(doc) ? ' · unsaved draft changes' : '');
-}
+const draftLabel = () => draftLabelOf(doc);
 /* DOM only: the label after a save settles or a draft is written. */
 function refreshDraftLabel() {
   const d = document.querySelector('[data-sc="draft"]');
@@ -392,9 +396,7 @@ function refreshDerivedUi() {
     const t = el ? el.type : typeSel.value;
     const label = typeLabel(t);
     if (typeName_.textContent !== label) typeName_.textContent = label;
-    const dm = Keys.digitMap(keyPrefs.preset, knownTypes());
-    const digit = Object.keys(dm).find((d) => dm[d] === t);
-    const hint = digit ? '[Alt+' + digit + ']' : '';
+    const hint = typeKeyHint(t, keyPrefs.preset, knownTypes());
     if (typeKey_.textContent !== hint) typeKey_.textContent = hint;
   }
   if (lineBar && el && lineBar.dataset.type !== el.type) lineBar.dataset.type = el.type;
@@ -406,7 +408,7 @@ function refreshDerivedUi() {
   paintTip(el);
   refreshPos();
   if (hintNode) {
-    const empty = doc.elements.length <= 1 && doc.elements.every((e) => !String(e.text || '').trim());
+    const empty = showStartHint(doc.elements);
     if (hintNode.hidden === empty) hintNode.hidden = !empty;
   }
 }
@@ -441,33 +443,15 @@ function watchTopBar() {
    the line's type or emptiness changes. Hidden or shown per device,
    stored as `hints` beside `keys` in the existing fms_write_prefs_v1
    (a read-merge-write, and only when the writer toggles it). */
-function hintsOn() {
-  try { return (JSON.parse(localStorage.getItem(Keys.WRITE_PREFS_KEY) || '{}') || {}).hints !== false; } catch (e) { return true; }
-}
-function setHints(on) {
-  try {
-    const raw = localStorage.getItem(Keys.WRITE_PREFS_KEY);
-    let all = {};
-    try { all = raw ? JSON.parse(raw) : {}; } catch (e) { all = {}; }
-    if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
-    if (on) delete all.hints; else all.hints = false;
-    localStorage.setItem(Keys.WRITE_PREFS_KEY, JSON.stringify(all));
-  } catch (e) { /* private mode: holds for this visit */ }
-}
-const typeName = (t) => (Keys.TYPE_NAMES && Keys.TYPE_NAMES[t]) || t;
+const hintsOn = () => writeHintsOn();
+const setHints = (on) => setWriteHints(on);   // private mode: holds for this visit
 function paintTip(el) {
   if (!tipNode || tipNode.hidden || !el) return;
   const empty = !String(el.text || '').trim();
   const key = el.type + (empty ? ':0' : ':1');
   if (key === tipKey) return;
   tipKey = key;
-  const ret = Keys.returnNext(el.type, keyPrefs, knownTypes());
-  const tab = Keys.tabAction(el.type, empty, false, knownTypes());
-  const keysLine = [
-    ret ? 'Enter → ' + typeName(ret) : null,
-    tab ? 'Tab → ' + typeName(tab.type) : null,
-    'Alt+1–7 any type'
-  ].filter(Boolean).join(' · ');
+  const keysLine = tipKeysLine(el.type, empty, keyPrefs, knownTypes());
   const topic = Keys.LEARN_TOPICS && Keys.LEARN_TOPICS[el.type];
   let box = null;
   try { box = topic ? learn(topic) : null; } catch (e) { box = null; }
@@ -536,15 +520,14 @@ function refreshStats() {
     if (n && n.textContent !== v) n.textContent = v;
   };
   const els = doc.elements;
-  const written = els.some((e) => String(e.text || '').trim());
-  const pages = pageCount(els);
-  put('words', els.reduce((n, e) => n + wordCount(e.text), 0).toLocaleString());
+  const { written, pages, words } = scriptStats(els);
+  put('words', words);
   put('pages', formatPages(pages));
   if (!written) { put('runtime', '—'); estimateMin = 0; paintRuntime(); return; }
   const estimate = () => {
-    const sec = Analysis.sliceScript(els).reduce((n, sl) => n + Analysis.estimateSlice(sl).seconds, 0);
-    put('runtime', sec ? formatRuntime(sec / 60) : formatRuntime(pages));
-    estimateMin = sec ? Math.round(sec / 60) : Math.round(pages);
+    const est = estimatedRuntime(Analysis, els, pages);
+    put('runtime', est.text);
+    estimateMin = est.minutes;
   };
   if (Analysis) estimate();
   else { put('runtime', formatRuntime(pages)); analysis().then((m) => { Analysis = m; estimate(); }, () => {}); }
@@ -566,8 +549,7 @@ function putPos(k, text, show = !!text) {
 function refreshPos(deep) {
   const p = curId ? caretPosition(doc.elements, curId) : null;
   const total = p ? p.sceneCount : sceneTotal(doc.elements);
-  putPos('scene', p && p.scene ? 'Scene ' + p.scene + ' of ' + total
-    : total ? total + (total === 1 ? ' scene' : ' scenes') : 'No scenes yet', true);
+  putPos('scene', scenePosText(p, total), true);
   putPos('page', p ? formatCaretPage(p) : '');
   const sid = p ? p.sceneElId : null;
   if (deep || sid !== posScene) {
@@ -598,12 +580,7 @@ function paintShots(sid) {
     if (posScene !== sid) return;
     let list = [];
     try { list = S.listShots().filter((x) => x.sceneId === row.id); } catch (e) { list = []; }
-    const moves = new Map();
-    list.forEach((x) => { const m = String(x.movement || '').trim(); if (m) moves.set(m, (moves.get(m) || 0) + 1); });
-    const how = [...moves].map(([m, n]) => m + ' ' + n).join(', ');
-    putPos('shots', list.length
-      ? list.length + (list.length === 1 ? ' shot' : ' shots') + (how ? ' · ' + how : '')
-      : 'No shots planned', true);
+    putPos('shots', shotsSummary(list), true);
   }, () => putPos('shots', ''));
 }
 
@@ -619,8 +596,8 @@ function loadTarget() {
 /* Where the beats should land: a page a minute against the target when
    one is set; otherwise a feature's ~110 pages or a short's ~15. */
 function targetPages() {
-  if (target.minutes > 0) return target.minutes;
-  return /short/i.test(String((currentProject() || {}).format || '')) ? 15 : 110;
+  if (target.minutes > 0) return target.minutes;   // read the project only when it decides
+  return targetPagesFor(target, (currentProject() || {}).format);
 }
 
 /* ---- the running-time panel: dialogue against action --------------
@@ -629,17 +606,7 @@ function targetPages() {
    ACTION_WPS with a floor per sentence, and a moment per heading. The
    split is that same arithmetic read apart, so it always sums to the
    total in the strip. */
-function splitRuntime(A) {
-  let dia = 0;
-  let all = 0;
-  for (const sl of A.sliceScript(doc.elements)) {
-    const est = A.estimateSlice(sl);
-    all += est.seconds;
-    dia += est.dialogueWords / A.DIALOGUE_WPS + est.speeches * A.SPEAKER_BEAT;
-  }
-  dia = Math.min(dia, all);
-  return { all, dia, act: Math.max(0, all - dia) };
-}
+const splitRuntime = (A) => splitRuntimeOf(A, doc.elements);
 function paintRuntime() {
   const box = document.getElementById('scRuntime');
   if (!box || box.hidden) return;
@@ -673,8 +640,8 @@ function paintRuntime() {
     if (target.minutes > 0) {
       const d = estMin - target.minutes;
       kids.push(h('p.sc-rt-target' + (written && d > 0 ? '.is-over' : ''), {}, [
-        h('span', { text: 'Target ' + target.minutes + ' min' + (target.source === 'edit' ? ' (Edit Log)' : ' (Reports)') }),
-        written ? h('strong', { text: d === 0 ? 'on target' : Math.abs(d) + ' min ' + (d > 0 ? 'over' : 'under') }) : null
+        h('span', { text: targetLabel(target) }),
+        written ? h('strong', { text: targetDeltaText(estMin, target.minutes) }) : null
       ].filter(Boolean)));   // append(null) would print "null"
     } else {
       kids.push(h('p.sc-rt-target', {}, [
@@ -706,12 +673,7 @@ function applyBreaks() {
   const page = document.getElementById('wr-page');
   if (!page || !Typeset) return;
   const pages = Typeset.paginateDoc(doc);
-  const anchors = [];
-  pages.forEach((rows, p) => {
-    if (p === 0) return;
-    const first = rows.find((r) => r.id);
-    anchors[p] = first ? { id: first.id, split: !!first.cont } : null;
-  });
+  const anchors = pageAnchors(pages);
   const existing = new Map();
   page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
   for (let p = 1; p < pages.length; p++) {
@@ -931,7 +893,7 @@ delegate(document, 'click', '[data-action="sc-check"]', () => {
 });
 
 async function exportPDF() {
-  if (doc.elements.every((e) => !String(e.text || '').trim())) { say('Nothing to export yet — write a line first.'); return; }
+  if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
   let T;
@@ -942,7 +904,7 @@ async function exportPDF() {
   PDF.exportPDF({
     scope: 'screenplay',
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: [draftLabel(), formatPages(pageCount(doc.elements)) + ' pages'].filter(Boolean).join(' · '),
+    subtitle: pdfSubtitle(doc),
     before: () => {
       node = T.buildDocument(doc, {
         title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: false
@@ -965,7 +927,7 @@ function closeImport() {
   if (location.hash === '#import') history.replaceState(null, '', location.pathname + location.search);
   if (curId) editor.focusEl(curId);
 }
-const isBlankDoc = () => doc.elements.every((e) => !String(e.text || '').trim());
+const isBlankDoc = () => isBlankScript(doc.elements);
 
 function drawImport() {
   const body = h('div.sc-imp-body');
@@ -984,12 +946,7 @@ function drawImport() {
       button({ label: 'Read the pasted text', action: 'sc-imp-paste' })
     );
   } else {
-    const p = imp.plan;
-    body.append(
-      h('p', { text: 'Read ' + (imp.name ? '“' + imp.name + '” ' : '') + 'as ' + (p.formatLabel || p.format) + ': '
-        + p.elements.length + ' lines, ' + formatPages(p.pages) + ' pages, '
-        + p.scenes.length + (p.scenes.length === 1 ? ' scene.' : ' scenes.') })
-    );
+    body.append(h('p', { text: importReadText(imp.name, imp.plan) }));
     if (!isBlankDoc()) {
       body.append(h('div.sc-imp-modes.k-seg', { role: 'radiogroup', 'aria-label': 'Where it goes' }, [
         ['append', 'Add after what is written'], ['replace', 'Replace the screenplay (a draft is saved first)']
@@ -1071,7 +1028,7 @@ delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   renderPage();
   const d = document.querySelector('[data-sc="draft"]');
   if (d) d.textContent = draftLabel();
-  say('Imported ' + done.elements + ' lines and ' + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '. Next: Screenplay Analysis.');
+  say(importDoneText(done));
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeImport(); });
 

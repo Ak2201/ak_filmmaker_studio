@@ -58,13 +58,14 @@ import Store from '../lib/store.js';
 import { esc, delegate } from '../lib/dom.js';
 import '../styles/comments.css';
 import { askDanger } from './dialog.js';
+import { NOTE_PREFIX, hasLocalNote, readLocalNote, writeLocalNote } from '../lib/write-local-notes.js';
 
 /* ------------------------------------------------------------
    CONFIG — one per page
    ------------------------------------------------------------ */
 let CFG = {
   scope: 'feature',              // comments.scope — matches the DB scope name
-  notePrefix: 'fms_note_',    // existing local key prefix. Do not change.
+  notePrefix: NOTE_PREFIX,       // 'fms_note_', the existing local key prefix. Do not change.
   hostSelector: '.ask, .pp-ask', // the block a panel is appended to
   onNoteChange: null             // (key, hasNote) — page updates its own badge
 };
@@ -107,16 +108,13 @@ const canPost    = () => _role === 'owner' || _role === 'edit' || _role === 'com
    PRIVATE NOTE (local, always available)
    ------------------------------------------------------------ */
 export function hasNote(key) {
-  try { return !!localStorage.getItem(CFG.notePrefix + key); } catch (e) { return false; }
+  return hasLocalNote(CFG.notePrefix + key);
 }
 function readNote(key) {
-  try { return localStorage.getItem(CFG.notePrefix + key) || ''; } catch (e) { return ''; }
+  return readLocalNote(CFG.notePrefix + key);
 }
 function writeNote(key, value) {
-  try {
-    if (value.trim()) localStorage.setItem(CFG.notePrefix + key, value);
-    else localStorage.removeItem(CFG.notePrefix + key);
-  } catch (e) { /* private mode, quota — the panel still works */ }
+  writeLocalNote(CFG.notePrefix + key, value);   // private mode, quota — the panel still works
   if (typeof CFG.onNoteChange === 'function') {
     try { CFG.onNoteChange(key, !!value.trim()); } catch (e) {}
   }

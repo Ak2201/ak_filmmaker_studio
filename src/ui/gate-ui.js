@@ -20,34 +20,19 @@
 import { h, delegate } from '../lib/dom.js';
 import { BRAND } from '../lib/brand.js';
 import { formatCode, normaliseCode, setCodePass, startInviteLink, errorSentence } from '../lib/gate.js';
-import Store from '../lib/store.js';
+import '../lib/store.js';
 import '../styles/gate.css';
 import { askDanger, askText } from './dialog.js';
 
 /* ---- the DEMO link: a pitch without a sign-in ----------------------
    An admin makes one standard invite code labelled "Demo" and copies
    invite.html#code=CODE&demo=1. Whoever opens it is let in on the code
-   alone (the code pass, as ever), and `demo=1` says where to take them:
-   the Dragon sample, opened on a device that has no film yet, and then
-   the dashboard — or straight to the dashboard when the device already
-   has films, which are never touched. Signing in later from Settings
-   works as for any code: cloud.js redeems the remembered code then.
-   sessionStorage only; nothing here is a stored key. */
-export const DEMO_PENDING_KEY = 'fms_demo_pending';
-export const DEMO_LAND_KEY = 'fms_demo_land';
+   alone (the code pass, as ever), and `demo=1` says where to take them —
+   src/lib/invite-demo.js owns that (its two per-tab keys and
+   enterAddress()); re-exported here so the pages that drew them from
+   this file still can. */
+export { DEMO_PENDING_KEY, DEMO_LAND_KEY, demoPending, markDemoPending, enterAddress } from '../lib/invite-demo.js';
 export const demoLink = (code) => new URL('invite.html#code=' + formatCode(code) + '&demo=1', location.href).href;
-export function demoPending() { try { return sessionStorage.getItem(DEMO_PENDING_KEY) === '1'; } catch (e) { return false; } }
-export function markDemoPending() { try { sessionStorage.setItem(DEMO_PENDING_KEY, '1'); } catch (e) { /* ignore */ } }
-/** Where a code-only visitor goes next. Returns the address. */
-export function enterAddress() {
-  if (!demoPending()) return 'index.html';
-  try { sessionStorage.removeItem(DEMO_PENDING_KEY); } catch (e) { /* ignore */ }
-  let n = 0;
-  try { n = Store.listProjects().length; } catch (e) { n = 0; }
-  if (n > 0) return 'dashboard.html';
-  try { sessionStorage.setItem(DEMO_LAND_KEY, '1'); } catch (e) { /* ignore */ }
-  return 'index.html?sample=1';
-}
 
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;

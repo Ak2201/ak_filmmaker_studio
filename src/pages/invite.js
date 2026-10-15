@@ -53,6 +53,13 @@ import { resolveReturn, clearReturn } from '../lib/return-to.js';
 import { inviteSection, wireGateUI, markDemoPending, enterAddress } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 import { getCodePass, setCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
+/* After chrome.js on purpose: it reads sitegate.js's key names, and
+   sitegate.js must still be evaluated where chrome.js puts it. */
+import {
+  readGateWhyRaw, clearGateWhy, readGateWhy, readSiteOpen, saveSiteOpen, wantsRequestView, forgetRequestView,
+  clearSitegatePass, takeInvitePlan, deckFor as deckSentence, whySentence as whyFrom, retryable as isRetryable,
+  isDemoHash, trialOfferFrom, anonTrialFrom, trialRefusal
+} from '../lib/invite-model.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -67,25 +74,17 @@ function section(id, eyebrow, title, deck) {
 /* The deck under the title says which of the four situations this
    is, in one sentence, before the sections repeat it with controls. */
 function deckFor(c, g) {
-  if (!c || !c.isConfigured()) return 'Invites are not available right now. Everything you write is saved in this browser.';
-  if (!c.getSession() && getCodePass()) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
-  if (!c.getSession()) {
-    return !trialsOff()
-      ? 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.'
-      : 'Buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
-  }
-  if (g.state === 'unknown') return 'Checking your invite…';
-  if (g.state === 'open') return 'You are in. Your projects sync to this account.';
-  if (g.state === 'lost') return 'This account is active on another device, so sync is paused here.';
-  /* CLOSED. The old sentence here was the sync status — "Awaiting an
-     invite" — which is true and is no longer what this page is for: it
-     told somebody who had just asked for a free trial that they were
-     waiting for one. Say what they can do instead, and keep the one
-     thing they will actually be worried about. */
-  if (g.state === 'closed' && (!g.reason || g.reason === 'noinvite')) {
-    return 'Start a free trial, buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';
-  }
-  return c.gateDetail ? c.gateDetail(g.reason) + '. Everything on this device is still here.' : 'Sync is paused.';
+  const configured = !!(c && c.isConfigured());
+  const signedIn = configured && !!c.getSession();
+  return deckSentence({
+    configured,
+    signedIn,
+    codeHeld: configured && !signedIn && !!getCodePass(),
+    trialsOff: configured && !signedIn && trialsOff(),
+    state: g.state,
+    reason: g.reason,
+    gateDetail: configured && c.gateDetail ? (r) => c.gateDetail(r) : null
+  });
 }
 
 /* The one sentence that points a newcomer at the legal pages before
@@ -101,26 +100,10 @@ function legalLine(lead) {
 }
 
 /* sitegate.js leaves the reason it turned a visitor away in
-   sessionStorage (fms_sitegate_why). Say it once, plainly; no new key. */
-function whyRaw() { try { return sessionStorage.getItem('fms_sitegate_why') || ''; } catch (e) { return ''; } }
-
+   sessionStorage (fms_sitegate_why). Say it once, plainly; no new key.
+   invite-model.js reads it and words it. */
 function whySentence(c, signedIn, state) {
-  let w = null;
-  try { w = JSON.parse(whyRaw() || 'null'); } catch (e) { w = null; }
-  if (!w || !w.reason) return '';
-  const r = String(w.reason).toLowerCase();
-  /* A BREADCRUMB ABOUT A STATE THAT NO LONGER HOLDS IS A LIE. The gate
-     cleared it when it let somebody in, but this page is exempt and so
-     never sees that happen; compare it with now instead. */
-  if (r === 'signedout' && signedIn) return '';
-  if (r === 'nocloud' && c && c.isConfigured()) return '';
-  if (signedIn && (state === 'open' || state === 'lost')) return '';
-  const page = w.from ? String(w.from).replace(/^\//, '').split(/[?#]/)[0] : '';
-  const lead = page ? 'You were sent here from ' + page + ' because ' : 'You were sent here because ';
-  if (r === 'signedout') return lead + 'you are not signed in.';
-  if (r === 'nocloud') return lead + 'this site is not connected to its server just now. Everything on this device is still here.';
-  if (r === 'timeout' || r === 'unreachable') return lead + 'your invite could not be checked just then. Everything on this device is still here.';
-  return lead + 'this account has no trial running and no plan yet.';
+  return whyFrom(readGateWhy(), { configured: !!(c && c.isConfigured()), signedIn, state });
 }
 
 /* WHAT THE READER HAS TYPED, ACROSS A REDRAW.
@@ -150,15 +133,14 @@ function restoreTyped(v) {
    is exempt from the gate, so it asks the same anon question itself and
    draws "you're in" instead of an offer nobody needs. Cached in the
    gate's own sessionStorage key, so both agree. */
-let siteOpen = false;
-try { siteOpen = sessionStorage.getItem('fms_purchases_req') === '0'; } catch (e) { /* ignore */ }
+let siteOpen = readSiteOpen();
 let askedOpen = false;
 function askSiteOpen() {
   if (siteOpen || askedOpen) return;
   askedOpen = true;
   purchasesRequired().then((v) => {
     if (typeof v !== 'boolean') return;
-    try { sessionStorage.setItem('fms_purchases_req', v ? '1' : '0'); } catch (e) { /* ignore */ }
+    saveSiteOpen(v);
     if (v === false) { siteOpen = true; render(); }
   }).catch(() => { /* the offer stands */ });
 }
@@ -170,17 +152,10 @@ function refreshReturn() {
   resolveReturn().then((to) => { if (to !== returnHref) { returnHref = to; render(); } }).catch(() => {});
 }
 
-/* `#request` survives the Google hop in sessionStorage: the hash does
-   not (the return lands on the hub). */
-const VIEW_KEY = 'fms_invite_view';
-function wantsRequest() {
-  if (/(^|#)request$/.test(location.hash)) {
-    try { sessionStorage.setItem(VIEW_KEY, 'request'); } catch (e) { /* ignore */ }
-    return true;
-  }
-  try { return sessionStorage.getItem(VIEW_KEY) === 'request'; } catch (e) { return false; }
-}
-function forgetRequest() { try { sessionStorage.removeItem(VIEW_KEY); } catch (e) { /* ignore */ } }
+/* `#request` survives the Google hop (invite-model.js remembers it for
+   the tab): the hash does not (the return lands on the hub). */
+const wantsRequest = () => wantsRequestView(location.hash);
+const forgetRequest = forgetRequestView;
 
 function render() {
   const typed = keepTyped();
@@ -403,7 +378,7 @@ function render() {
     const out = section('meanwhile', 'Meanwhile', 'Your work is safe.',
       'Anything already saved on this device stays exactly as it is. Once you are in, everything opens again and sync starts by itself.');
     /* A check that could not be made is retryable; the others are not. */
-    const retryable = g.reason === 'unreachable' || g.reason === 'nocloud' || /"reason":"(timeout|unreachable|nocloud)"/.test(whyRaw());
+    const retryable = isRetryable(g.reason, readGateWhyRaw());
     out.append(h('div.iv-actions', {}, [
       retryable ? h('button.btn.primary', { type: 'button', 'data-iv-action': 'retry', text: 'TRY AGAIN' }) : null,
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
@@ -427,7 +402,7 @@ document.addEventListener('click', (e) => {
   if (el.dataset.ivAction === 'takeover' && cloud() && cloud().takeBack) cloud().takeBack();
   if (el.dataset.ivAction === 'forget-code') {
     clearCodePass();
-    try { sessionStorage.removeItem('fms_sitegate_pass'); } catch (err) { /* ignore */ }
+    clearSitegatePass();
     render();
   }
   if (el.dataset.ivAction === 'start-trial') startTrial(el);
@@ -440,7 +415,7 @@ document.addEventListener('click', (e) => {
 async function retryGate(btn) {
   btn.disabled = true; btn.textContent = 'CHECKING…';
   try { const c = cloud(); if (c && c.runGate) await c.runGate(); } catch (e) { /* the page says what it finds */ }
-  try { sessionStorage.removeItem('fms_sitegate_why'); } catch (e) { /* ignore */ }
+  clearGateWhy();
   render();
 }
 
@@ -449,13 +424,10 @@ async function retryGate(btn) {
    hub and so loses ?plan=. Plans are bought on purchase.html only, so once
    this page knows there is a session it forwards the buyer there with the plan
    named — plan-cards.js marks that card. The stash is spent when it is used. */
-const PLAN_KEY = 'fms_invite_plan';
 function forwardPlan() {
   try {
-    const v = JSON.parse(sessionStorage.getItem(PLAN_KEY) || 'null');
-    if (!v || !v.buy || !(cloud() && cloud().getSession && cloud().getSession())) return;
-    sessionStorage.removeItem(PLAN_KEY);
-    location.replace('purchase.html' + (v.plan && /^[\w-]{1,32}$/.test(v.plan) ? '?plan=' + encodeURIComponent(v.plan) : ''));
+    const to = takeInvitePlan(!!(cloud() && cloud().getSession && cloud().getSession()));
+    if (to) location.replace(to);
   } catch (e) { /* the page still offers SEE PLANS AND BUY */ }
 }
 
@@ -474,12 +446,7 @@ async function startTrial(btn) {
     if (!r || !r.started) {
       /* The ordinary refusals come back as a verdict, not an error —
          see start_trial()'s header for why. */
-      const why = {
-        used: 'You have already had your trial on this account. A plan opens the studio for good.',
-        paid: 'You have already bought a plan — you should be in. Try reloading.',
-        disabled: 'Trials are not open at the moment.'
-      }[r && r.reason] || 'That did not start. Please try again.';
-      say(why, true);
+      say(trialRefusal(r && r.reason), true);
       btn.disabled = false; btn.textContent = was;
       trialOffer = null;
       return;
@@ -530,7 +497,7 @@ function adoptLinkCode() {
      The pass is stamped `from: 'demo'`, and sitegate.js admits a
      signed-out browser on that stamp and on no other. Read BEFORE the
      fragment is stripped. */
-  const demo = /(?:^#|&)demo=1(?:&|$)/.test(String(location.hash || ''));
+  const demo = isDemoHash(location.hash);
   const signedIn = !!(cloud() && cloud().getSession && cloud().getSession());
   if (demo && !signedIn) {
     setCodePass(code, { from: 'demo' });
@@ -579,7 +546,7 @@ function trialsOff() { return !!anonTrial && anonTrial.enabled === false; }
 if (!(cloud() && cloud().getSession && cloud().getSession())) {
   anonTrialOffer().then((t) => {
     if (!t) return;
-    anonTrial = { enabled: t.trial_enabled === true, minutes: Number(t.trial_minutes) > 0 ? Math.round(t.trial_minutes) : 30 };
+    anonTrial = anonTrialFrom(t);
     render();
   }).catch(() => { /* the length is a courtesy, never a gate */ });
 }
@@ -595,17 +562,9 @@ async function loadPlans() {
   render();
 }
 
-/* Anything paid, granted or refunded. start_trial() refuses with
- *  reason 'paid' on `payments.paid_at is not null`, which catches a grant
- *  and a refunded buyer too — so offering one here would be offering what
- *  the server is about to refuse. The same read as plan-gate.js:234,
- *  deliberately: the wall and the door must not disagree about who has
- *  already paid. */
-function paidBefore(st) {
-  return !!(st && Array.isArray(st.payments)
-            && st.payments.some((p) => p && /^(paid|granted|refunded)$/.test(p.status)));
-}
-
+/* Anything paid, granted or refunded counts as having paid
+   (paidBefore() in invite-model.js) — the same read as plan-gate.js,
+   deliberately: the wall and the door must not disagree. */
 function readTrialOffer(st) {
   lastStatus = st || null;
   try {
@@ -625,13 +584,10 @@ function readTrialOffer(st) {
        trial is a different question with a different answer, and the
        four facts below are the whole of it: trials are on, this account
        has not had one, is not in one, and has never paid. */
-    const on = st && st.trial_enabled === true && st.trial_used !== true
-            && st.trial_active !== true && !paidBefore(st);
     /* The console can set any length (1 minute to 31 days), so the
        offer reads the server's figure; 30 is the column's default, for
        a database that predates the key. */
-    const mins = Number(st && st.trial_minutes);
-    trialOffer = on ? { minutes: mins > 0 ? Math.round(mins) : 30 } : null;
+    trialOffer = trialOfferFrom(st);
   } catch (e) { trialOffer = null; }
 }
 wireGateUI(render);

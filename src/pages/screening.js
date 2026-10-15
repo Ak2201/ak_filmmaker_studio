@@ -46,12 +46,17 @@ import '../styles/modules.css';
 import '../styles/screening.css';
 
 import { h, delegate } from '../lib/dom.js';
-import { createGate, formatCode, normaliseCode, errorSentence } from '../lib/gate.js';
+import { formatCode, normaliseCode } from '../lib/gate.js';
 import { matrix, frameworkById } from '../lib/story.js';
 import { collectFrom, buildDeck } from '../lib/pitch-deck.js';
 import { createWatermark } from '../lib/watermark.js';
 import { brandLine } from '../ui/footer.js';
-import { openPublicView, renderCallSheet, renderPitch } from '../lib/public-view.js';
+import { renderCallSheet, renderPitch } from '../lib/public-view.js';
+/* The room's own anonymous client, the pass and view calls, and the
+   derivations — the logic half of this page. */
+import {
+  openScreening, openSharedView, openFailedSentence, expiryText, passScopes, watermarkLines, viewTokenFrom
+} from '../lib/screening-model.js';
 
 /* Named directly so Vite inlines the one string. Anything but `on` is off. */
 const PUBLIC_VIEW = String(import.meta.env.VITE_PUBLIC_VIEW || '').toLowerCase() === 'on';
@@ -60,18 +65,6 @@ const app = document.getElementById('app');
 
 /* Theme: there is one (dark), carried by bare :root. Nothing to set. */
 
-let client = null;
-async function getClient() {
-  if (client) return client;
-  const env = import.meta.env || {};
-  const url = String(env.VITE_SUPABASE_URL || '').trim();
-  const key = String(env.VITE_SUPABASE_ANON_KEY || '').trim();
-  if (!url || !key) return null;
-  const { createClient } = await import('@supabase/supabase-js');
-  client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-  return client;
-}
-const Gate = createGate(getClient);
 
 let state = { stage: 'enter', error: '', busy: false, pass: null };
 let wm = null, expiryTimer = 0;
@@ -87,8 +80,8 @@ if (params.has('pass')) history.replaceState(null, '', location.pathname);
 /* A public view token, only when the flag is on; read once and stripped. */
 let viewToken = '';
 if (PUBLIC_VIEW) {
-  const m = /(?:^#|&)view=([A-Za-z0-9_-]+)/.exec(location.hash || '');
-  if (m) { viewToken = m[1]; history.replaceState(null, '', location.pathname + location.search); }
+  viewToken = viewTokenFrom(location.hash);
+  if (viewToken) history.replaceState(null, '', location.pathname + location.search);
 }
 
 /* ---- entering a pass ----------------------------------------- */
@@ -118,10 +111,7 @@ function renderEnter() {
 const txt = (v) => String(v ?? '').trim();
 
 function renderRoom(pass) {
-  const scopes = pass.scopes || {};
-  const bp = scopes.feature || {};
-  const story = scopes.story || null;
-  const scenes = (scopes.scenes && Array.isArray(scopes.scenes.scenes)) ? scopes.scenes.scenes : [];
+  const { bp, story, scenes } = passScopes(pass);
   const d = collectFrom({ bp, story, scenes, title: pass.title });
 
   const main = h('main#main.sc-main.sc-room');
@@ -186,15 +176,6 @@ function aboutLink() {
   return h('p.sc-about', {}, [h('a', { href: 'start.html', text: 'About the studio' })]);
 }
 
-function expiryText(ms) {
-  if (ms <= 0) return 'This pass has expired.';
-  const m = Math.round(ms / 60000);
-  if (m < 60) return `This pass closes in ${m} minute${m === 1 ? '' : 's'}.`;
-  const hrs = Math.round(m / 60);
-  if (hrs < 48) return `This pass closes in ${hrs} hour${hrs === 1 ? '' : 's'}.`;
-  return `This pass closes in ${Math.round(hrs / 24)} days.`;
-}
-
 function closeRoom(message) {
   if (wm) { wm.destroy(); wm = null; }
   clearInterval(expiryTimer);
@@ -236,8 +217,7 @@ function render() {
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink-faint').trim() || 'currentColor';
     const p = state.pass;
     wm = createWatermark({
-      lines: [`SCREENING PASS · ACCESS ${p.accessId}`, p.viewerEmail || 'viewer not named',
-              new Date(p.openedAt).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'],
+      lines: watermarkLines(p),
       ink, protect: blocks,
       onTamper: () => closeRoom('The screening was closed because its watermark was removed. Open the pass again to continue.')
     }).mount();
@@ -269,13 +249,11 @@ delegate(document, 'submit', '[data-sc-form="open"]', async (e) => {
   }
   state.busy = true; state.error = ''; render();
   try {
-    const pass = await Gate.openScreening(code, email);
+    const pass = await openScreening(code, email);
     state = { stage: 'room', error: '', busy: false, pass: { ...pass, viewerEmail: email, openedAt: Date.now() } };
   } catch (err) {
     state.busy = false;
-    state.error = err.code === 'nocloud'
-      ? 'This copy of the studio is not connected to a cloud project, so it cannot open passes.'
-      : errorSentence(err, 'That screening pass could not be opened.');
+    state.error = openFailedSentence(err);
   }
   render();
 });
@@ -289,7 +267,7 @@ document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.targ
 if (viewToken) {
   state.stage = 'viewing';
   render();
-  getClient().then((c) => openPublicView(c, viewToken)).then((view) => {
+  openSharedView(viewToken).then((view) => {
     state = { stage: 'view', error: '', busy: false, pass: null, view };
     render();
   }).catch((err) => {

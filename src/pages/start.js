@@ -8,7 +8,8 @@
    MARKUP and this module adds only what cannot be static.
 
    WHAT IT MAY IMPORT, AND WHY THE LIST IS SHORT. Only ../styles/*.css
-   and three leaf libraries — funnel.js, invite-code.js, start-auth.js
+   and a few leaf libraries — funnel.js, invite-code.js, start-auth.js,
+   start-model.js (this page's own logic: its stashes and derivations)
    — all of which are pure or plain-fetch and none of which reaches the
    Supabase SDK. NOT store.js, chrome.js, cloud.js, gate.js, billing.js,
    plan-gate.js, plans.js or dom.js: every one of those lives in (or
@@ -55,6 +56,11 @@ import { trialLength } from '../lib/trial-time.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
+/* Import-free (the startlib trap): the stashes and the derivations. */
+import {
+  stashPlan, takeAuthError, isAppPage, buyHref, validEmail, consentText, consentedVoices, voiceByline,
+  filmByline, risingTiers, priceRiseBand, timeLeft, swappedText
+} from '../lib/start-model.js';
 
 const $ = (sel) => document.querySelector(sel);
 const byId = (id) => document.getElementById(id);
@@ -77,11 +83,10 @@ const GATED = String(import.meta.env.VITE_SITE_GATE || 'invite').toLowerCase() !
    stay that way, because that href is the whole of the no-JS fallback.
    A previous version of this file also rewrote the CTAs through a
    data-gated/data-open pair; that is gone with the buttons it served. */
-const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening|purchase)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
 function gateAppLinks(root) {
   if (!GATED) return;
   for (const a of root.querySelectorAll('a[href]')) {
-    if (APP_PAGE.test(a.getAttribute('href'))) a.setAttribute('href', 'invite.html');
+    if (isAppPage(a.getAttribute('href'))) a.setAttribute('href', 'invite.html');
   }
 }
 gateAppLinks(document);
@@ -155,11 +160,7 @@ function says(text, bad) {
    is shared; the code is not. */
 (function showWhyTheyCameBack() {
   if (!authMsg) return;
-  let info = null;
-  try {
-    const raw = sessionStorage.getItem(AUTH_ERROR_KEY);
-    if (raw) { sessionStorage.removeItem(AUTH_ERROR_KEY); info = JSON.parse(raw); }
-  } catch (e) { return; }           // private mode, or something unparseable
+  const info = takeAuthError(AUTH_ERROR_KEY);   // null: none, private mode, or unparseable
   if (!info || !info.message) return;
   says('Sign-in did not complete. ' + info.message, true);
 })();
@@ -175,19 +176,13 @@ if (SIGNED_IN) {
      plan named: plan-cards.js marks that card and opens its payment. A
      visitor who is not a member yet meets the site gate there, which
      sends them to invite.html — the stash below carries the plan across. */
-  for (const a of document.querySelectorAll('[data-start-buy]')) a.setAttribute('href', 'purchase.html?plan=' + encodeURIComponent(a.dataset.startBuy));
+  for (const a of document.querySelectorAll('[data-start-buy]')) a.setAttribute('href', buyHref(a.dataset.startBuy));
 }
 
 /* A plan's BUY must survive the Google hop. Google returns to the hub,
    the gate sends a non-member to invite.html, and the address there has
-   lost ?plan=. invite.js reads this same sessionStorage key (PLAN_KEY
-   there) and puts the plan back into its address, which is what makes
-   the card open its checkout once the buyer is signed in. sessionStorage
-   is per tab and per origin, and the Google round trip stays in both. */
-const PLAN_KEY = 'fms_invite_plan';                 // invite.js PLAN_KEY
-function stashPlan(id) {
-  try { sessionStorage.setItem(PLAN_KEY, JSON.stringify({ plan: /^[\w-]{1,32}$/.test(id) ? id : '', buy: true })); } catch (e) { /* private mode */ }
-}
+   lost ?plan=. stashPlan() (start-model.js) holds it for invite.js,
+   which forwards the buyer to the checkout once they are signed in. */
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('[data-start-auth="google"], [data-start-buy]');
   if (!a || e.defaultPrevented) return;
@@ -238,15 +233,14 @@ async function renderVoices() {
     if (!r.ok) return;
     data = await r.json();
   } catch (e) { return; }
-  const T = (Array.isArray(data.testimonials) ? data.testimonials : []).filter((t) => t && t.id && t.quote && t.name && t.consentOn);
-  const F = (Array.isArray(data.films) ? data.films : []).filter((f) => f && f.id && f.title && f.consentOn);
+  const { testimonials: T, films: F } = consentedVoices(data);
   const vl = byId('voiceList'), fl = byId('filmList');
   let shown = 0;
   for (const t of T) {
     if (sec.querySelector(`[data-testimonial="${CSS.escape(t.id)}"]`)) { shown++; continue; }
     vl.append(el('li', { class: 'st-voice', 'data-testimonial': t.id }, [
       el('blockquote', {}, [el('p', { text: t.quote })]),
-      el('p', { class: 'st-voice-who', text: [t.name, t.role, t.film].filter(Boolean).join(' · ') })
+      el('p', { class: 'st-voice-who', text: voiceByline(t) })
     ]));
     shown++;
   }
@@ -254,7 +248,7 @@ async function renderVoices() {
     if (sec.querySelector(`[data-film="${CSS.escape(f.id)}"]`)) { shown++; continue; }
     fl.append(el('li', { class: 'st-film', 'data-film': f.id }, [
       el('strong', { text: f.title }),
-      el('span', { text: ' ' + [f.year && `(${f.year})`, f.director, f.format].filter(Boolean).join(' · ') })
+      el('span', { text: filmByline(f) })
     ]));
     shown++;
   }
@@ -276,12 +270,12 @@ if (leadForm) {
     e.preventDefault();
     const email = leadForm.elements.email.value.trim();
     const say = (t, bad) => { msg.textContent = t; msg.classList.toggle('st-bad', !!bad); };
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('Please enter a valid e-mail address.', true); leadForm.elements.email.focus(); return; }
+    if (!validEmail(email)) { say('Please enter a valid e-mail address.', true); leadForm.elements.email.focus(); return; }
     if (!leadForm.elements.consent.checked) { say('Please tick the box to say you agree.', true); return; }
     const btn = leadForm.querySelector('button[type="submit"]');
     btn.disabled = true; say('Saving…');
     try {
-      await addLead(email, byId('leadConsentText').textContent.replace(/\s+/g, ' ').trim(), 'start');
+      await addLead(email, consentText(byId('leadConsentText').textContent), 'start');
       leadForm.reset(); say('Thank you. You are on the list.');
     } catch (err) { say(err.message, true); }
     finally { btn.disabled = false; }
@@ -315,56 +309,35 @@ if (pricing && 'IntersectionObserver' in window) {
    It never replaces a price. The figures in the markup came from
    LIST_PRICE at build time; this only ever ADDS the coming one beside
    them, which is why a failure here leaves a correct page. */
-const inr = (paise) => '₹' + Math.round(Number(paise || 0) / 100).toLocaleString('en-IN');
-const onDate = (iso) => {
-  const d = new Date(iso);
-  if (isNaN(d)) return '';
-  try { return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' }); }
-  catch (e) { return d.toDateString(); }
-};
-function timeLeft(ms) {
-  if (!(ms > 0)) return '';
-  const mins = Math.floor(ms / 60000), hrs = Math.floor(mins / 60), days = Math.floor(hrs / 24);
-  if (days >= 1) return days + 'd ' + (hrs % 24) + 'h left';
-  if (hrs >= 1) return hrs + 'h ' + (mins % 60) + 'm left';
-  return Math.max(1, mins) + 'm left';
-}
-
 function renderPriceRise(notice) {
   if (!notice || !Array.isArray(notice.plans)) return;
 
   /* Each tier gets its coming figure beside the current one. */
-  for (const p of notice.plans) {
-    if (!p || !p.id || !p.next_price_paise || !p.next_price_at) continue;
+  for (const p of risingTiers(notice)) {
     let li;
     try { li = document.querySelector(`.st-tiers li[data-tier="${CSS.escape(p.id)}"]`); } catch (e) { li = null; }
     const price = li && li.querySelector('.st-price');
     if (!price || price.querySelector('.st-price-next')) continue;
-    price.append(el('span', { class: 'st-price-next', text: inr(p.next_price_paise) + ' from ' + onDate(p.next_price_at) }));
+    price.append(el('span', { class: 'st-price-next', text: p.text }));
   }
 
   /* The band: the cheapest PAID tier that is rising carries the
      headline, because that is the figure most people are deciding
      about. No rise, no band — the section stays hidden and the plain
      prices stand, which is the whole of the honesty guarantee. */
-  const rise = notice.plans.find((p) => p && p.id && p.id !== 'free' && p.next_price_paise && p.next_price_at);
   const band = byId('offer');
-  if (!rise || !band) return;
-  const ends = new Date(rise.next_price_at).getTime();
-  if (!(ends > Date.now())) return;               // already fired; the server will say so next load
-
-  const seatsTotal = Number(notice.seats_total);
-  const seatsTaken = Number(notice.seats_taken);
-  const capped = Number.isFinite(seatsTotal) && seatsTotal > 0;
+  if (!band) return;
+  /* Null when nothing is rising, or the rise has already fired (the
+     server will say so next load). */
+  const rise = priceRiseBand(notice, Date.now());
+  if (!rise) return;
+  const ends = rise.ends;
 
   const line = byId('offerLine');
-  if (line) {
-    line.textContent = inr(rise.price_paise) + ' today. ' + inr(rise.next_price_paise) + ' from ' + onDate(rise.next_price_at)
-      + (capped ? ' — or once ' + seatsTotal.toLocaleString('en-IN') + ' people have joined, whichever comes first.' : '.');
-  }
+  if (line) line.textContent = rise.line;
   const seatsChip = byId('offerSeats');
-  if (seatsChip && capped && Number.isFinite(seatsTaken)) {
-    seatsChip.textContent = seatsTaken.toLocaleString('en-IN') + ' of ' + seatsTotal.toLocaleString('en-IN') + ' taken';
+  if (seatsChip && rise.seats) {
+    seatsChip.textContent = rise.seats;
     seatsChip.hidden = false;
   }
 
@@ -403,7 +376,7 @@ function renderPriceRise(notice) {
 function swapWords() {
   const off = document.documentElement.dataset.purchases === 'off';
   for (const n of document.querySelectorAll('[data-open-text], [data-off-text]')) {
-    const t = SIGNED_IN && n.dataset.openText ? n.dataset.openText : (off ? n.dataset.offText : '');
+    const t = swappedText(n.dataset, { signedIn: SIGNED_IN, off });
     if (!t) continue;
     if (n.dataset.origText === undefined) n.dataset.origText = n.textContent;
     n.textContent = t;

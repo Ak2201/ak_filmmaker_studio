@@ -34,12 +34,15 @@ import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
-import Analysis, { formatDuration } from '../lib/screenplay-analysis.js';
-import { loadScript } from '../lib/script.js';
+import { formatDuration } from '../lib/screenplay-analysis.js';
 import { listSongs, durationSeconds, setTargetMinutes } from '../lib/songs.js';
 import { targetRuntime } from '../lib/target-runtime.js';
 import { shootDayOf } from '../lib/locations.js';
-import Store from '../lib/store.js';
+import {
+  FILTERS, slug, passes as passesFilter, verdictLine, setupsText, attachPickups, puLabel, pickupNote,
+  secondsByScene, runNote, syncCheck, projectFormat, deliverablesSummary, cutsNewestFirst, cutMeta,
+  conflictBody, csvText, linkApi, storedLinks, restoreLink
+} from '../lib/edit-model.js';
 import { linkText } from '../lib/links.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { pageHeader, statCard, statStrip, notice, button, check, field, meter, panel } from '../ui/kit/index.js';
@@ -51,28 +54,9 @@ const app = document.getElementById('app');
    idle writes. */
 let filter = 'all';
 
-const FILTERS = [
-  { id: 'all',   label: 'All scenes' },
-  { id: 'owed',  label: 'Still owed' },
-  { id: 'can',   label: 'In the can' },
-  { id: 'cut',   label: 'In the cut' },
-  { id: 'out',   label: 'Cut out' }
-];
-
-const slug = (s) => {
-  const parts = [s.intExt, s.location || 'NO LOCATION'].filter(Boolean).join(' ');
-  return parts + (s.dayNight ? ' — ' + s.dayNight : '');
-};
-
-function passes(row, which = filter) {
-  switch (which) {
-    case 'owed': return row.owed;
-    case 'can':  return row.need && row.got === 'full';
-    case 'cut':  return row.edit.cut === 'in' || row.edit.cut === 'locked';
-    case 'out':  return row.edit.cut === 'out';
-    default:     return true;
-  }
-}
+/* The filters, the slug line, the verdicts and the running-time
+   sentences are src/lib/edit-model.js's. */
+const passes = (row, which = filter) => passesFilter(row, which);
 
 /* ---- pieces -------------------------------------------------- */
 
@@ -91,7 +75,7 @@ function setupsLine(row) {
   if (!row.planned) {
     return h('span.el-setups.is-none', { text: 'no shot list' });
   }
-  const txt = row.done + ' of ' + row.planned + (row.planned === 1 ? ' setup' : ' setups') + ' ticked';
+  const txt = setupsText(row);
   return h('a.el-setups' + (row.setupsOpen ? '.is-open' : ''), { href: 'visualize.html#shot-list', text: txt });
 }
 
@@ -175,22 +159,10 @@ function sceneRow(row) {
   return art;
 }
 
-function verdictLine(row) {
-  const st = row.scene.shotState || '';
-  if (row.conflict) return 'Dropped on the day, but the cut has it. One of those two is wrong.';
-  if (row.waste) return 'Shot, then cut. Coverage the film will not use.';
-  if (row.edit.cut === 'out') return '';
-  if (st === 'dropped') return 'Dropped on the day. Mark it cut out, or the cut is waiting on nothing.';
-  if (row.got === 'none') return 'Not shot yet.';
-  if (row.got === 'part') return 'Part shot — pick-ups owed before this scene can lock.';
-  if (row.setupsOpen) return 'In the can on the set’s word; the shot list still has setups unticked.';
-  return '';
-}
-
 /* "PU-03": the pick-up's place in the stored list, derived — a label for
    talking about the item, not an id anything stores. */
 let puOrder = new Map();
-const puNumber = (p) => 'PU-' + String(puOrder.get(p.id) || 0).padStart(2, '0');
+const puNumber = (p) => puLabel(puOrder, p);
 
 function pickupItem(p, tag) {
   const li = h('li.el-pickup' + (p.done ? '.is-done' : '.is-open'));
@@ -297,16 +269,6 @@ function orphanBox(list) {
    render() set. Without it focus falls to <body> (UX audit M1). */
 /* Estimated seconds per scene, from the script's own words. Empty when
    there is no script to read, so nothing is drawn rather than guessed. */
-function secondsByScene(scenes) {
-  try {
-    const els = loadScript().elements || [];
-    if (!els) return {};
-    const out = {};
-    Analysis.screenTime(scenes, els).rows.forEach((r) => { out[r.scene.id] = r.seconds; });
-    return out;
-  } catch (e) { return {}; }
-}
-
 function runPanel(run, target, cov) {
   const box = h('section.el-run', { 'aria-label': 'Running time' });
   const shown = target;
@@ -314,13 +276,7 @@ function runPanel(run, target, cov) {
   if (run && run.scenes) {
     head.append(h('span.el-run-label', { text: 'Running time of the cut' }));
     head.append(h('strong.el-run-val.k-num', { text: formatDuration(run.seconds) }));
-    const bits = ['estimate from the script and page lengths · ' + run.scenes + (run.scenes === 1 ? ' scene' : ' scenes') + ' in the cut'];
-    if (run.songsUntimed) bits.push(run.songsUntimed + (run.songsUntimed === 1 ? ' song has' : ' songs have') + ' no length yet');
-    if (shown) {
-      const diff = run.seconds - shown * 60;
-      bits.push(diff === 0 ? 'on target' : formatDuration(Math.abs(diff)) + (diff > 0 ? ' over' : ' under') + ' the ' + shown + ' min target');
-    }
-    head.append(h('span.el-run-note', { text: bits.join(' · ') }));
+    head.append(h('span.el-run-note', { text: runNote(run, shown) }));
   } else {
     head.append(h('span.el-run-label', { text: 'Running time of the cut' }));
     head.append(h('span.el-run-note', { text: cov.counts.inCut
@@ -340,11 +296,7 @@ function runPanel(run, target, cov) {
 
 let delMod = null;
 function deliverablesPanel(Deliverables) {
-  let fmt = '';
-  try { const pr = Store.currentProject && Store.currentProject(); fmt = (pr && pr.format) || ''; } catch (e) { /* none */ }
-  const items = Deliverables.listItems(fmt);
-  const prog = Deliverables.progress(items);
-  const open = items.filter((i) => i.state === 'todo' || i.state === 'doing');
+  const { prog, open } = deliverablesSummary(Deliverables, projectFormat());
   const owed = h('ul.el-side-list');
   open.slice(0, 3).forEach((i) => owed.append(h('li', {}, [
     h('span', { text: i.label }),
@@ -371,17 +323,14 @@ function deliverablesPanel(Deliverables) {
 function asideBlock(cov, data) {
   const aside = h('aside.el-aside', { 'aria-label': 'Sync, deliverables and cut versions' });
 
-  const inCut = cov.rows.filter((r) => r.edit.cut === 'in' || r.edit.cut === 'locked');
-  const synced = inCut.filter((r) => r.edit.sync).length;
+  const sync = syncCheck(cov);
   aside.append(panel({
     eyebrow: 'Pre-dub sync check',
-    meta: inCut.length ? synced + ' / ' + inCut.length : '',
+    meta: sync.inCut ? sync.synced + ' / ' + sync.inCut : '',
     class: 'el-side-panel',
-    body: inCut.length
-      ? [meter({ label: 'Scenes in the cut with audio synced', value: synced, max: inCut.length, show: 'pct', tone: synced === inCut.length ? 'ok' : undefined }),
-         h('p.el-side-note', { text: synced === inCut.length
-           ? 'Every scene in the cut is marked synced.'
-           : (inCut.length - synced) + (inCut.length - synced === 1 ? ' scene in the cut is' : ' scenes in the cut are') + ' not marked synced yet.' })]
+    body: sync.inCut
+      ? [meter({ label: 'Scenes in the cut with audio synced', value: sync.synced, max: sync.inCut, show: 'pct', tone: sync.synced === sync.inCut ? 'ok' : undefined }),
+         h('p.el-side-note', { text: sync.note })]
       : [h('p.el-side-note', { text: 'Mark scenes In the cut, then tick Audio synced as each one is conformed.' })]
   }));
 
@@ -396,11 +345,11 @@ function asideBlock(cov, data) {
   else import('../lib/deliverables.js').then((m) => { delMod = m.default; fill(delMod); })
     .catch(() => { /* a panel, never the page */ });
 
-  const cuts = data.cuts.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const cuts = cutsNewestFirst(data);
   const tl = h('ol.el-side-list.el-timeline');
   cuts.slice(0, 4).forEach((c) => tl.append(h('li', {}, [
     h('a', { href: '#cuts', text: c.name }),
-    h('span.el-side-state.k-mono', { text: [c.date, c.notes.length ? c.notes.length + (c.notes.length === 1 ? ' note' : ' notes') : ''].filter(Boolean).join(' · ') })
+    h('span.el-side-state.k-mono', { text: cutMeta(c) })
   ])));
   aside.append(panel({
     eyebrow: 'Cut version timeline',
@@ -414,10 +363,7 @@ function asideBlock(cov, data) {
 }
 
 function csvDownload() {
-  const scenes = Scenes.listScenes();
-  const cov = Edit.coverage(scenes, listShots(), Edit.loadEdit());
-  const text = Edit.toCSV(cov, secondsByScene(scenes));
-  const blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' });
+  const blob = new Blob([csvText(Scenes.listScenes(), listShots())], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = h('a', { href: url, download: 'edit-log.csv' });
   document.body.append(a);
@@ -438,13 +384,7 @@ function render(focus) {
 
   const data = Edit.loadEdit();
   const cov = Edit.coverage(scenes, listShots(), data);
-  const byScene = new Map();
-  data.pickups.forEach((p) => {
-    if (!byScene.has(p.sceneId)) byScene.set(p.sceneId, []);
-    byScene.get(p.sceneId).push(p);
-  });
-  cov.rows.forEach((r) => { r.pickups = byScene.get(r.scene.id) || []; });
-  puOrder = new Map(data.pickups.map((p, i) => [p.id, i + 1]));
+  puOrder = attachPickups(cov, data);
 
   const main = h('main#main.el-main');
 
@@ -472,15 +412,7 @@ function render(focus) {
     return card;
   };
   /* The open pick-ups by scene, so the figure says where, not only how many. */
-  const pkScenes = [];
-  cov.openPickups.forEach((p) => {
-    const sc = scenes.find((x) => x.id === p.sceneId);
-    const n = sc ? 'Sc ' + (sc.number || '—') : '';
-    if (n && !pkScenes.includes(n)) pkScenes.push(n);
-  });
-  const pkNote = cov.counts.pickups
-    ? (pkScenes.length ? pkScenes.slice(0, 3).join(', ') + (pkScenes.length > 3 ? ' +' + (pkScenes.length - 3) : '') : 'owed by the editor')
-    : '';
+  const pkNote = pickupNote(cov, scenes);
   main.append(statStrip([
     withBar(statCard({ label: 'Pages in the can', value: cov.pages.inCan + ' / ' + cov.pages.need }),
       cov.pages.eighthsInCan, cov.pages.eighthsNeed, 'Pages in the can'),
@@ -518,9 +450,7 @@ function render(focus) {
       box.append(notice({
         tone: 'danger', banner: true, live: true,
         title: 'Conflict · Sc ' + (r.scene.number || '—') + ' · ' + slug(r.scene),
-        body: 'Marked dropped on the shoot day, but the cut still has it'
-          + (r.edit.cut === 'locked' ? ' (locked)' : '') + '. One of those two is wrong. '
-          + 'Either the cut lets the scene go, or the day out of days gets a pick-up day — decide it here, not in the grade.',
+        body: conflictBody(r),
         action: [
           button({ label: 'Mark cut out', icon: 'content_cut', size: 'sm', variant: 'danger',
             attrs: { 'data-edit-action': 'conflict-cut-out', 'data-scene': r.scene.id } }),
@@ -707,15 +637,8 @@ delegate(document, 'submit', '[data-edit-form="pickup"]', (e, form) => {
 
 /* ---- links and cut versions ---------------------------------- */
 
-const linkApi = {
-  scene: { add: (id, l) => Edit.addSceneLink(id, l), del: (id, lid) => Edit.removeSceneLink(id, lid) },
-  day:   { add: (id, l) => Edit.addDayLink(id, l),   del: (id, lid) => Edit.removeDayLink(id, lid) },
-  cut:   { add: (id, l) => Edit.addCutLink(id, l),   del: (id, lid) => Edit.removeCutLink(id, lid) }
-};
+/* linkApi and storedLinks are src/lib/edit-model.js's. */
 const linkSel = (scope, id) => '[data-edit-form="link"][data-link-scope="' + scope + '"][data-link-id="' + CSS.escape(id) + '"] input';
-const storedLinks = (scope, id) => (scope === 'scene' ? Edit.sceneEdit(id).links
-  : scope === 'day' ? Edit.dayLinks(id)
-  : ((Edit.listCuts().find((c) => c.id === id) || {}).links || []));
 
 delegate(document, 'submit', '[data-edit-form="link"]', (e, form) => {
   e.preventDefault();
@@ -747,11 +670,8 @@ delegate(document, 'click', '[data-edit-action="link-del"]', (e, el) => {
     StudioUI.toast('Link removed: ' + linkText(gone), {
       action: 'Undo',
       onAction: () => {
-        /* Back at its old position: the links that sat after it come off
-           and go back on behind it, in their order. */
-        const after = before.slice(at + 1);
-        after.forEach((l) => linkApi[scope].del(id, l.id));
-        [gone, ...after].forEach((l) => linkApi[scope].add(id, l));
+        /* Back at its old position (restoreLink, src/lib/edit-model.js). */
+        restoreLink(scope, id, before, at, gone);
         render();
       }
     });

@@ -82,6 +82,11 @@ import {
   libraryContents, GROUPS, STAGES, stageLabel,
   filmId, directorId, ruleId, rateTableId, rateRowId, watchId, termId
 } from '../lib/library-search.js';
+import {
+  ROMAN, numWord, cap, libraryCounts, provenanceLine as rateProvenance,
+  CONFIDENCE_LABEL, rateChecksIndex, railItems as railItemsFor,
+  indexTerms, termsInStage, seeAlso, termSearchText
+} from '../lib/library-model.js';
 import { termBody } from '../ui/learn.js';
 
 /* The glossary is a 150 KB source and the library's only heavy one, so the
@@ -106,59 +111,22 @@ function themeTitle() {
    DERIVED COUNTS — the single source for every number the page
    says out loud.
    ============================================================ */
-const N_FILMS      = films.length;
-const N_DIRECTORS  = directors.length;
-const N_RULES      = rules.length;
-const N_STEPS      = watchlist.length;
-/* The watch list covers the writing half only (steps 01-24); the Feature
-   Blueprint itself runs on through production and post. Say both numbers,
-   or "the 24 blueprint steps" contradicts the blueprint's own count. */
-const N_BLUEPRINT  = featureSteps.vol1.length + featureSteps.vol2.length +
-                     productionSteps.production.length + productionSteps.post.length;
-const N_WATCHFILMS = watchlist.reduce((n, s) => n + s.films.length, 0);
-const N_TABLES     = rates.sections.length;
-const N_STUDIES    = listStudies().length;
-const N_DISSECTED  = listShipped().length;
-/* Films-per-step is a fact about the data, not a constant: if a
-   step ever carried four, the deck would say four. */
-const FILMS_PER_STEP = Math.round(N_WATCHFILMS / Math.max(1, N_STEPS));
+const {
+  N_FILMS, N_DIRECTORS, N_RULES, N_STEPS, N_BLUEPRINT, N_WATCHFILMS,
+  N_TABLES, N_STUDIES, N_DISSECTED, FILMS_PER_STEP
+} = libraryCounts({
+  films, directors, rules, watchlist, featureSteps, productionSteps, rates,
+  studies: listStudies(), dissections: listShipped()
+});
 
-const ROMAN = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-
-const UNITS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
-  'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
-  'sixteen', 'seventeen', 'eighteen', 'nineteen'];
-const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy',
-  'eighty', 'ninety'];
-
-/** "Fifty rules of thumb" has to still read like English when the
- *  JSON gains a rule. Words below 100, digits above. */
-function numWord(n) {
-  if (!Number.isInteger(n) || n < 0 || n > 99) return String(n);
-  if (n < 20) return UNITS[n];
-  const t = TENS[Math.floor(n / 10)];
-  const u = n % 10;
-  return u ? `${t}-${UNITS[u]}` : t;
-}
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+/* numWord / cap / ROMAN live in src/lib/library-model.js. */
 
 /* ---- rate provenance --------------------------------------
    The rate card is a snapshot, and the snapshot has a date. A
    reader pricing a shoot against it is entitled to know how old
    it is, computed now rather than asserted once and left to rot. */
-function rateAge() {
-  const firstYear = parseInt(String(rates.asOf).match(/\d{4}/)?.[0] ?? '', 10);
-  const now = new Date().getFullYear();
-  if (!firstYear || now <= firstYear) return null;
-  return now - firstYear;
-}
 function provenanceLine() {
-  const age = rateAge();
-  const asOf = rates.asOf;
-  if (!age) return `Rate card as of ${asOf}.`;
-  const span = age === 1 ? 'about a year old' : `about ${numWord(age)} years old`;
-  return `Rate card as of ${asOf} — ${span}. Most of these figures have not been ` +
-         `updated since; treat them as historical and re-quote before you budget.`;
+  return rateProvenance(rates.asOf);
 }
 
 /* ---- the 2026 check layer ---------------------------------
@@ -169,28 +137,9 @@ function provenanceLine() {
    unmatched checks are collected and rendered under their section
    as their own note. A check that quietly disappears is the same
    class of bug as a CSS variable that is never defined. */
-const CHECKS_BY_SECTION = (() => {
-  const map = new Map();
-  for (const row of (rateChecks.rows || [])) {
-    if (!map.has(row.section)) map.set(row.section, []);
-    map.get(row.section).push(row);
-  }
-  return map;
-})();
-
-const CONFIDENCE_LABEL = {
-  checked: 'CHECKED',
-  corroborating: 'CONTEXT',
-  stale: 'NOT UPDATED'
-};
-
-function checksFor(sectionId, item) {
-  return (CHECKS_BY_SECTION.get(sectionId) || []).filter((c) => c.item === item);
-}
-
-function sourceOf(id) {
-  return (rateChecks.sources || {})[id] || null;
-}
+const CHECKS = rateChecksIndex(rateChecks);
+const checksFor = CHECKS.checksFor;
+const sourceOf = CHECKS.sourceOf;
 
 /** One line of evidence under a rate, or the reason there is none. */
 function renderCheck(c) {
@@ -536,14 +485,7 @@ function renderSection(section, i) {
    the tab. Every href is an id this page draws (library-search.js
    builds them), and the rail is simply not shown below 1100px. */
 function railItems(section) {
-  switch (section.id) {
-    case 'films': return films.map((f) => ({ id: filmId(f.title), label: f.title }));
-    case 'directors': return directors.map((d) => ({ id: directorId(d.name), label: d.name }));
-    case 'equipment': return rates.sections.map((s) => ({ id: rateTableId(s.id), label: s.heading }));
-    case 'watch': return watchlist.map((w) => ({ id: watchId(w.step), label: w.label }));
-    case 'glossary': return STAGES.map((s) => ({ id: 'terms-' + s.id, label: s.label }));
-    default: return [];
-  }
+  return railItemsFor(section.id, { films, directors, rates, watchlist });
 }
 function railFor(section) {
   const items = railItems(section);
@@ -694,7 +636,7 @@ function renderEquipment() {
     /* "Not updated since" was printed under every table, including the
        camera bodies, most of which carry a CHECKED row right below it.
        Say so only where nothing in the section was re-checked. */
-    const anyChecked = (CHECKS_BY_SECTION.get(sec.id) || []).some((c) => c.confidence === 'checked');
+    const anyChecked = CHECKS.anyChecked(sec.id);
     block.append(h('p.hint', {
       text: anyChecked
         ? `Rates as of ${rates.asOf}; rows marked CHECKED were re-checked on ${rateChecks.lastChecked}.`
@@ -744,7 +686,7 @@ function renderEquipment() {
     // Anything in the overlay that matched no row is shown here
     // rather than dropped. The join is by item name and item names
     // can change; a silent miss would take the evidence with it.
-    const orphans = (CHECKS_BY_SECTION.get(sec.id) || []).filter((c) => !matched.has(c));
+    const orphans = CHECKS.orphans(sec.id, matched);
     if (orphans.length) {
       block.append(h('div.rate-orphans', {}, [
         h('p.hint', {
@@ -852,8 +794,6 @@ function mountShelf() {
    coverage, production, budget, sound); it is only reachable with
    ?stay=1, because feature.html#glossary is routed here.
    ============================================================ */
-function sortKey(t) { return String(t.term).toLowerCase().replace(/^[^a-z0-9]+/, ''); }
-
 function renderTerminology() {
   const body = h('div.lib-terms');
 
@@ -911,32 +851,24 @@ function termCard(t, g, byName) {
     });
   });
   card.append(head, h('div.lib-term-def', { text: t.def || '' }), more);
-  const see = (t.seeAlso || []).filter((n) => byName.has(String(n).toLowerCase()));
+  const see = seeAlso(t, byName);
   if (see.length) {
     card.append(h('div.lib-term-see', {}, [
       h('span.lib-term-see-label', { text: 'SEE ALSO ' }),
       ...see.map((n) => h('a', { href: '#' + slugOf(byName.get(String(n).toLowerCase()).term), text: byName.get(String(n).toLowerCase()).term }))
     ]));
   }
-  card.setAttribute('data-search', [
-    t.term, (t.aliases || []).join(' '), t.def, t.tanglish,
-    ...(t.examples || []).map((e) => e.note), stageLabel(t.stage)
-  ].filter(Boolean).join(' ').toLowerCase());
+  card.setAttribute('data-search', termSearchText(t));
   return card;
 }
 
 function drawTerms(g) {
   const host = document.getElementById('libTerms');
   if (!host) return;
-  const terms = (g.terms || []).slice().sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
-  const byName = new Map();
-  for (const t of terms) {
-    byName.set(String(t.term).toLowerCase(), t);
-    for (const a of t.aliases || []) if (!byName.has(String(a).toLowerCase())) byName.set(String(a).toLowerCase(), t);
-  }
+  const { terms, byName } = indexTerms(g);
   const nodes = [];
   for (const st of STAGES) {
-    const list = terms.filter((t) => t.stage === st.id);
+    const list = termsInStage(terms, st.id);
     if (!list.length) continue;
     nodes.push(h('div.lib-stage', { id: 'terms-' + st.id }, [
       h('h3.lib-stage-title', {}, [st.label, h('span.lib-stage-n', { text: ` ${list.length}` })]),

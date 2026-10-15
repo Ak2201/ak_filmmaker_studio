@@ -35,14 +35,20 @@ import * as Bin from '../lib/scene-bin.js';
 import '../styles/scene-bin.css';
 import '../styles/scene-list.css';
 import { shootDayOf } from '../lib/locations.js';
+import {
+  breakdownFigures, readNumberLock, numberKey, dupNumbers, daySlot, sceneStatus, STATUS_TONE,
+  castSummary, searchText, PRESET_KEYS, filterActive as filterOn, describeFilter, presetMatches,
+  rowMatches, filterCountText, applySuggestions, binEntryBits, binTotalsBits, headingInScript,
+  sceneFieldValue, songFieldValue, runSaid
+} from '../lib/breakdown-model.js';
 import '../styles/breakdown-run.css';
 import { flushStorage } from '../lib/store.js';
 import { runBreakdown } from '../lib/breakdown-run.js';
 import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
-import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
+import { loadScript, saveScript, blankElement } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
-import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
+import { suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
 import { pageHeader, statStrip, statCard, button, chip, badge } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { measureEighths } from '../lib/scene-sync.js';
@@ -85,12 +91,7 @@ function renderHeader(scenes) {
 function kpis(scenes, eighths) {
   const dash = (n, f) => (n ? f(n) : '—');
   const idx = Scenes.elementIndex();
-  const cats = new Set(idx.map((e) => e.category)).size;
-  const locs = new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size;
-  const ints = scenes.filter((s) => s.intExt === 'INT').length;
-  const exts = scenes.filter((s) => s.intExt === 'EXT').length;
-  const songs = Songs.listSongs().length;
-  const cast = idx.filter((e) => e.category === 'cast').length;
+  const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, Songs.listSongs().length);
   const card = (value, label, note) => statCard({ value, label, note: note || '' });
   return [
     card(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : ''),
@@ -184,25 +185,7 @@ const BOUND_TITLE = 'Set by the script’s scene heading. Change the heading in 
    so, because "change the heading to renumber it" stops being true. A
    hand-made scene is still the Breakdown's own and stays editable. */
 const LOCKED_TITLE = 'Locked scene number, set in the Screenplay Writer. An inserted scene is lettered and a cut one is OMITTED; unlock the numbers in Write’s Revisions to renumber.';
-let NUM_LOCK = { locked: false, omitted: [] };
-function readNumberLock() {
-  try {
-    const s = loadScript();
-    if (!isNumberingLocked(s.numbering)) return { locked: false, omitted: [] };
-    return { locked: true, omitted: sceneNumbers(s.elements, s.numbering).omitted.map((o) => o.number) };
-  } catch (e) { return { locked: false, omitted: [] }; }
-}
-const numberKey = (n) => String(n || '').trim().toUpperCase();
-/** The numbers more than one scene carries, upper-cased. */
-function dupNumbers(scenes) {
-  const seen = new Set(), dup = new Set();
-  for (const s of scenes) {
-    const k = numberKey(s.number);
-    if (!k) continue;
-    if (seen.has(k)) dup.add(k); else seen.add(k);
-  }
-  return dup;
-}
+let NUM_LOCK = { locked: false, omitted: [] };   // readNumberLock(), src/lib/breakdown-model.js
 /** Mark one number cell: the duplicate flag, and the title that says
  *  either "another scene has this number" or, on a bound scene, that
  *  the heading sets it. */
@@ -249,36 +232,14 @@ const SL = {
   ],
   presetSeq: 0
 };
-const filterActive = () => !!(SL.q.trim() || SL.ie || SL.dn || SL.st);
+const filterActive = () => filterOn(SL);
 const KEYS_HINT = 'Keys: Up and Down arrows move between scenes (from the open/close button or the location). '
   + 'Enter opens or closes a scene. N adds a scene. Delete moves the focused scene to the bin, with Undo. '
   + 'On a drag handle, Up and Down reorder the scene.';
 const GRIP_ON = 'Drag to reorder this scene (or focus it and press Up or Down)';
 const GRIP_OFF = 'Reordering is off while a search or filter is active: clear it to drag scenes into a new order';
-/* Eight shoot-day colours, from the phase and category hues in tokens.css
-   (scene-list.css maps slot -> token). Day N uses slot ((N - 1) mod 8) + 1. */
-const daySlot = (day) => ((day - 1) % 8) + 1;
-
-/** Where a scene stands, from the fields it already has. Nothing stored. */
-function sceneStatus(scene) {
-  if (scene.shotState === 'shot')    return { id: 'shot', label: 'Shot' };
-  if (scene.shotState === 'part')    return { id: 'part', label: 'Part shot' };
-  if (scene.shotState === 'dropped') return { id: 'dropped', label: 'Dropped' };
-  const day = shootDayOf(scene);
-  if (day) return { id: 'scheduled', label: 'Day ' + day };
-  const tags = ELEMENT_CATEGORIES.reduce((n, c) => n + (scene.elements[c.id] || []).length, 0);
-  if (tags) return { id: 'tagged', label: 'Tagged' };
-  return { id: 'untagged', label: 'Untagged' };
-}
-/* Where a scene stands, as a kit badge tone. Derived, nothing stored. */
-const STATUS_TONE = { shot: 'ok', part: 'warn', dropped: 'danger', scheduled: 'info', tagged: 'info', untagged: null };
-function castSummary(scene) {
-  const names = scene.elements.cast || [];
-  if (!names.length) return '';
-  return names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '');
-}
-const searchText = (scene) => [scene.number, scene.location, scene.synopsis, scene.intExt, scene.dayNight]
-  .concat(...ELEMENT_CATEGORIES.map((c) => scene.elements[c.id] || [])).join(' ').toLowerCase();
+/* The day slot, the status chip, the cast line and the search text are
+   derived in src/lib/breakdown-model.js; nothing here is stored. */
 
 /** "2 Cast  3 Props": a per-category count, in the category's own hue. */
 function rowCounts(scene) {
@@ -462,17 +423,7 @@ function renderSceneBar(scenes) {
 }
 
 /* ---- saved filters (in memory) ------------------------------ */
-const PRESET_KEYS = ['q', 'ie', 'dn', 'st'];
-const STATUS_LABELS = { untagged: 'Untagged', tagged: 'Tagged', scheduled: 'Scheduled', shot: 'Shot', part: 'Part shot', dropped: 'Dropped' };
-function describeFilter(f) {
-  const bits = [];
-  if (f.ie) bits.push(f.ie);
-  if (f.dn) bits.push(f.dn.toLowerCase());
-  if (f.st) bits.push((STATUS_LABELS[f.st] || f.st).toLowerCase());
-  if (f.q && f.q.trim()) bits.push('\u201C' + f.q.trim() + '\u201D');
-  return bits.join(' \u00B7 ') || 'every scene';
-}
-const presetOn = (p) => PRESET_KEYS.every((k) => String(p[k] || '').trim().toLowerCase() === String(SL[k] || '').trim().toLowerCase());
+const presetOn = (p) => presetMatches(p, SL);
 function renderPresets() {
   const on = filterActive();
   return h('div.bd-sl-presets', { role: 'group', 'aria-label': 'Saved filters (kept until you reload this page)' }, [
@@ -521,17 +472,15 @@ function updateGrips() {
 
 /** Hide the rows the filters rule out, in place. */
 function applySceneFilter() {
-  const q = SL.q.trim().toLowerCase();
   let shown = 0, total = 0;
   document.querySelectorAll('.bd-sl[data-scene]').forEach((row) => {
     total++;
-    const ok = (!q || row.dataset.find.includes(q)) && (!SL.ie || row.dataset.ie === SL.ie)
-      && (!SL.dn || row.dataset.dn === SL.dn) && (!SL.st || row.dataset.st === SL.st);
+    const ok = rowMatches(SL, row.dataset);
     row.hidden = !ok;
     if (ok) shown++;
   });
   const count = document.querySelector('.bd-sl-count');
-  if (count) count.textContent = (shown === total ? total + (total === 1 ? ' scene' : ' scenes') : shown + ' of ' + total + ' scenes');
+  if (count) count.textContent = filterCountText(shown, total);
   const none = document.querySelector('.bd-sl-none');
   if (none) none.hidden = shown > 0;
   updateGrips();
@@ -852,9 +801,8 @@ function batchPanel(scenes) {
    somebody presses it. A breakdown is a 1st AD's judgement; this saves
    the typing, not the judgement. */
 const SUGGEST_CATS = SUGGEST_CATEGORIES;
-/* ADD ALL takes only the five categories whose lists are tight. The
-   looser ones (furniture, clothing, crowds) are one chip at a time. */
-const BULK_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
+/* ADD ALL takes only the five tight categories (BULK_CATS in
+   src/lib/breakdown-model.js); the looser ones are one chip at a time. */
 function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
   wrap.append(h('h2.bd-h2', { text: 'Auto-Tag' }),
@@ -914,19 +862,8 @@ function renderSuggestions(scenes) {
    heading by content: a position-only pair is shown, and can be added
    one scene at a time by somebody who has looked at it, but a bulk
    write onto a guess is how 221 tags once landed on the wrong scenes.
-   Returns exactly the tags written, so the toast's Undo removes those
-   and nothing else. */
-function applySuggestions(sceneIds) {
-  const scenes = Scenes.listScenes();
-  const rows = suggestAll(scenes, loadScript().elements)
-    .filter((r) => (sceneIds ? sceneIds.includes(r.scene.id) : isConfident(r.how)));
-  const cats = sceneIds ? SUGGEST_CATS : BULK_CATS;
-  const tags = [];
-  for (const r of rows) for (const cat of cats) for (const sug of r.suggestions[cat]) {
-    tags.push({ sceneId: r.scene.id, category: cat, name: sug.name });
-  }
-  return Scenes.tagMany(tags);
-}
+   applySuggestions() (src/lib/breakdown-model.js) returns exactly the
+   tags written, so the toast's Undo removes those and nothing else. */
 
 function toastTagged(added, where) {
   const n = added.length;
@@ -961,15 +898,7 @@ function renderBin() {
   const list = h('ul.bd-bin-list');
   for (const e of entries.slice().reverse()) {
     const row = e.scene.row;
-    const c = Bin.entryCounts(e);
-    const bits = [];
-    if (c.shots) bits.push(`${c.shots} shot${c.shots === 1 ? '' : 's'}`);
-    if (c.frames) bits.push(`${c.frames} frame${c.frames === 1 ? '' : 's'}`);
-    if (c.blocks) bits.push(`${c.blocks} blocking diagram${c.blocks === 1 ? '' : 's'}`);
-    if (c.cutNotes) bits.push(`${c.cutNotes} cut note${c.cutNotes === 1 ? '' : 's'}`);
-    if (c.day) bits.push(`Day ${c.day}`);
-    if (c.sheets) bits.push(`${c.sheets} call sheet${c.sheets === 1 ? '' : 's'}`);
-    if (!bits.length) bits.push('nothing attached');
+    const bits = binEntryBits(Bin.entryCounts(e));
     const where = [row.intExt, row.location, row.dayNight].filter(Boolean).join(' · ');
     list.append(h('li.bd-bin-item', { 'data-bin': e.id }, [
       h('div.bd-bin-copy', {}, [
@@ -1382,14 +1311,6 @@ delegate(document, 'keydown', '.bd-sl-grip', (e, grip) => {
 
 /* ---- the bin ------------------------------------------------- */
 const binIdOf = (el) => el.closest('[data-bin]')?.dataset.bin;
-/** Is this heading id in the script right now? A row restored while
-    its heading is gone comes back unlinked, or the next sync on the
-    Write page would bin it again. */
-function headingInScript(id) {
-  if (!id) return false;
-  try { return loadScript().elements.some((el) => el && el.id === id && el.type === 'scene' && String(el.text || '').trim()); }
-  catch (e) { return false; }
-}
 delegate(document, 'click', '[data-action="bin-restore"]', (e, el) => {
   const id = binIdOf(el);
   const entry = Bin.listBin().find((x) => x.id === id);
@@ -1410,10 +1331,7 @@ delegate(document, 'click', '[data-action="bin-delete"]', async (e, el) => {
 delegate(document, 'click', '[data-action="bin-empty"]', async () => {
   const t = Bin.binTotals();
   if (!t.scenes) return;
-  const bits = [`${t.scenes} scene${t.scenes === 1 ? '' : 's'}`];
-  if (t.shots) bits.push(`${t.shots} shot${t.shots === 1 ? '' : 's'}`);
-  if (t.frames) bits.push(`${t.frames} frame${t.frames === 1 ? '' : 's'}`);
-  if (t.sheets) bits.push(`${t.sheets} call-sheet place${t.sheets === 1 ? '' : 's'}`);
+  const bits = binTotalsBits(t);
   if (!await askDanger(`Empty the bin? ${bits.join(', ')} will be deleted for good.\n\nThis cannot be undone.`)) return;
   Bin.emptyBin();
   render();
@@ -1539,9 +1457,7 @@ delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
 // the store write and flushes it on pagehide / hidden.
 import { saveOnInput } from '../lib/autosave.js';
 import { ask, askDanger, askText } from '../ui/dialog.js';
-const sceneValue = (el) => el.dataset.sceneField === 'eighths'
-  ? Math.max(0, parseInt(el.value, 10) || 0)
-  : el.dataset.sceneField === 'number' ? el.value.trim() : el.value;
+const sceneValue = (el) => sceneFieldValue(el.dataset.sceneField, el.value);
 /* A number is a string that is not empty: an empty one is never saved
    (a field mid-edit), and on `change` the field is put back to what is
    stored. A duplicate IS saved, and flagged. */
@@ -1641,12 +1557,7 @@ delegate(document, 'click', '[data-action="song-del"]', async (e, el) => {
   render();
 });
 
-const songValue = (el) => {
-  const key = el.dataset.songField;
-  if (key === 'days') return Math.max(0, parseFloat(el.value) || 0);
-  if (key === 'dancers') return Math.max(0, parseInt(el.value, 10) || 0);
-  return el.value;
-};
+const songValue = (el) => songFieldValue(el.dataset.songField, el.value);
 // Saved as typed, re-rendered on change — as the scene fields above.
 saveOnInput('[data-song-field]', (el) => {
   Songs.updateSong(songIdOf(el), { [el.dataset.songField]: songValue(el) });
@@ -1661,15 +1572,6 @@ delegate(document, 'change', '[data-song-field]', (e, el) => {
 });
 
 /* ---- the whole-script breakdown ------------------------------ */
-function runSaid(res) {
-  const a = res.applied, t = res.totals;
-  return a.empty
-    ? 'The script has no scene headings yet, so there was nothing to break down.'
-    : 'Broke down ' + t.scenes + (t.scenes === 1 ? ' scene' : ' scenes') + ', '
-      + res.characters.length + (res.characters.length === 1 ? ' character' : ' characters') + ' and '
-      + t.locations + (t.locations === 1 ? ' location' : ' locations') + '.'
-      + (a.castTagged ? ' Tagged ' + a.castTagged + ' cast from the dialogue cues.' : '');
-}
 function toastRun(res) {
   const a = res.applied;
   const said = runSaid(res);

@@ -142,6 +142,11 @@ const EXPIRY_SLACK_MS = 60 * 1000;
    re-prompt, which defeats the whole point of the silent path. */
 let _pending = null;
 let _pendingErr = null;
+/* One interactive request at a time. Two overlapping clicks (several
+   Reconnect buttons on one page) each parked their resolver in the one
+   slot above, so the first promise was overwritten and never settled.
+   The second click now joins the request already open. */
+let _interactiveP = null;
 
 function loadGIS() {
   if (_gisPromise) return _gisPromise;
@@ -214,7 +219,8 @@ export function getToken(opts) {
     ));
   }
 
-  return loadGIS().then((google) => new Promise((resolve, reject) => {
+  if (_interactiveP) return _interactiveP;
+  _interactiveP = loadGIS().then((google) => new Promise((resolve, reject) => {
     const done = (resp) => {
       if (!resp || !resp.access_token) {
         return reject(new Error(
@@ -244,7 +250,8 @@ export function getToken(opts) {
        'consent' is the first time, and the only time anything is
        shown. Google's own window, never a field in this app. */
     _tokenClient.requestAccessToken({ prompt: opts.interactive ? 'consent' : '' });
-  }));
+  })).finally(() => { _interactiveP = null; });
+  return _interactiveP;
 }
 
 /* ------------------------------------------------------------
@@ -342,6 +349,76 @@ export async function createBackupFile(name, text) {
   return res.json();
 }
 
+/* ------------------------------------------------------------
+   OTHER FILES — storyboard images (NEXT-UI-REVAMP-PLAN phase 4)
+   ------------------------------------------------------------
+   The backup is one file; a drawn storyboard frame is one more file
+   per frame, created under the same `drive.file` scope (so this app
+   can only ever see files it created itself). The bytes live in the
+   user's Drive and nowhere else: the frame record keeps the file id
+   in its `ref` and never the image (src/lib/shots.js, blankFrame).
+   A backup file therefore carries the REFERENCE only.
+
+   All three go through call() WITHOUT `interactive`, so an expired
+   token rejects instead of opening a popup — the caller shows a
+   "Reconnect Drive" control, and only that click asks Google. */
+
+/** The marker a frame's `ref` carries for a Drive-held image. */
+export const DRIVE_REF_PREFIX = 'drive:';
+export const driveRef = (fileId) => DRIVE_REF_PREFIX + String(fileId || '');
+/** The file id in a `drive:<id>` ref, or '' when it is not one. */
+export function driveFileIdOf(ref) {
+  const v = String(ref || '').trim();
+  if (!v.startsWith(DRIVE_REF_PREFIX)) return '';
+  const id = v.slice(DRIVE_REF_PREFIX.length);
+  return /^[A-Za-z0-9_-]{8,200}$/.test(id) ? id : '';
+}
+
+/**
+ * Create a file of any type (a Blob or a string), beside
+ * createBackupFile and built the same way — one multipart request.
+ * The body is assembled as a Blob so binary bytes cross untouched.
+ * Returns the metadata (id first).
+ */
+export async function createFile(name, data, mime, extra) {
+  const type = mime || (data && data.type) || 'application/octet-stream';
+  const boundary = 'fms' + Math.random().toString(36).slice(2);
+  const meta = Object.assign({ name: String(name || 'untitled'), mimeType: type }, extra || {});
+  const head =
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(meta) + '\r\n' +
+    '--' + boundary + '\r\nContent-Type: ' + type + '\r\n\r\n';
+  const tail = '\r\n--' + boundary + '--';
+  const body = new Blob([head, data == null ? '' : data, tail]);
+  const url = API_ORIGIN + '/upload/drive/v3/files?' + q({
+    uploadType: 'multipart',
+    fields: 'id,name,mimeType,webViewLink,size'
+  });
+  const res = await call(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+    body
+  });
+  return res.json();
+}
+
+/** A file's contents as a Blob (for an <img> through an object URL). */
+export async function downloadFileBlob(fileId) {
+  const url = API_ORIGIN + '/drive/v3/files/' + encodeURIComponent(fileId) + '?' + q({ alt: 'media' });
+  const res = await call(url, { method: 'GET' });
+  return res.blob();
+}
+
+/** Delete a file this app created WITHOUT a popup: an expired token
+    rejects (the caller says so) rather than asking Google. A 404 is
+    "already gone" and resolves false. */
+export async function deleteFileQuiet(fileId) {
+  const url = API_ORIGIN + '/drive/v3/files/' + encodeURIComponent(fileId);
+  try { await call(url, { method: 'DELETE' }); }
+  catch (e) { if (e && e.status === 404) return false; throw e; }
+  return true;
+}
+
 /**
  * Replace the file's contents. Same id every time — that is the
  * whole design, and it is what makes Drive's revision list the
@@ -412,6 +489,7 @@ export default {
   BACKUP_FILE_NAME, BACKUP_MIME, CLIENT_ID,
   isConfigured, hasToken, forgetToken, adoptToken, getToken,
   findBackupFile, createBackupFile, uploadBackup,
+  createFile, downloadFileBlob, deleteFileQuiet, driveRef, driveFileIdOf, DRIVE_REF_PREFIX,
   readMeta, deleteFile, downloadBackup, listRevisions, downloadRevision,
   __setFetch
 };

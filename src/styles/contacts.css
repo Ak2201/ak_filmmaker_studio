@@ -619,6 +619,15 @@
 
 /* ---- header: title and the New shoot day action, then four figures ---- */
 .ct-head { margin-bottom: var(--s5); }
+/* The header sits in the same column and gutter as the sections under it:
+   without this it ran from x=0 to the screen edge on a phone. */
+.ct-head {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: var(--s6) var(--s5) 0;
+  box-sizing: border-box;
+}
+@media (max-width: 719px) { .ct-head { padding-inline: var(--s4); } }
 .ct-kpis { margin-top: var(--s5); }
 
 /* Dispatch: the live WhatsApp-markdown preview. Monospace, because the
@@ -714,4 +723,16 @@
   .ct-sp-bar { display: flex; gap: var(--s3); font-weight: 700; }
   .ct-sp-slug { flex: 1; }
   .ct-sp-syn, .ct-sp-el { margin: var(--s1) 0 0; }
+}
+
+/* Dispatch list: cast, then crew, each under a mono group heading. */
+.ct-send-group {
+  padding: var(--s2) var(--s3) var(--s1);
+  background: var(--paper-sunk);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }

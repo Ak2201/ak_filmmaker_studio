@@ -139,12 +139,21 @@ export function keyForm({ lead = true } = {}) {
         + 'only — it is never put in a backup file, never synced to the cloud, and '
         + 'never attached to a project. Every call is billed to your account.'
   }));
+  /* The eye shows what you are typing before it is saved; it acts on the
+     field only (type password <-> text), stores nothing, and the field is
+     emptied on save either way. */
   box.append(h('label.ai-field', {}, [
     h('span.ai-flabel', { text: 'API key' }),
-    h('input.ai-key-input', {
-      type: 'password', autocomplete: 'off', spellcheck: 'false',
-      placeholder: prov.keyPlaceholder, 'aria-label': prov.label + ' API key'
-    })
+    h('span.ai-key-row', {}, [
+      h('input.ai-key-input', {
+        type: 'password', autocomplete: 'off', spellcheck: 'false',
+        placeholder: prov.keyPlaceholder, 'aria-label': prov.label + ' API key'
+      }),
+      h('button.ai-eye', { type: 'button', 'data-action': 'ai-reveal-key', 'aria-pressed': 'false',
+        'aria-label': 'Show the key while you type', title: 'Show the key while you type' }, [
+        h('span.sym', { text: 'visibility', 'aria-hidden': 'true', translate: 'no' })
+      ])
+    ])
   ]));
   box.append(h('div.ai-acts', {}, [
     h('button.btn.primary', { type: 'button', 'data-action': 'ai-save-key', text: 'Save the key' }),
@@ -166,6 +175,13 @@ export function keyBar() {
   // maskKey(), never the key. Twelve bullets and four characters is
   // enough to tell two keys apart and not enough to use.
   bar.append(h('span.ai-keystate', { text: 'Key on this device: ' + AI.maskKey() }));
+  /* "Key verified" is derived from the last test of THIS key, provider and
+     model (testShown), so it appears only after a real answer and goes when
+     any of the three changes. A rate-limit answer is not a verification. */
+  const verified = testShown();
+  if (verified && verified.ok && verified.kind !== 'rate') {
+    bar.append(h('span.ai-verified', { role: 'status', text: 'Key verified' }));
+  }
 
   bar.append(providerPicker());
 
@@ -352,6 +368,18 @@ export function wireAIPanel() {
     }
     editingKey = false;
     announce();
+  });
+
+  delegate(document, 'click', '[data-action="ai-reveal-key"]', (e, btn) => {
+    const box = btn.closest('.ai-key');
+    const input = box && box.querySelector('.ai-key-input');
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    const label = show ? 'Hide the key' : 'Show the key while you type';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
   });
 
   delegate(document, 'click', '[data-action="ai-test-key"]', async () => {

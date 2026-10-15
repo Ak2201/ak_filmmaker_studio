@@ -849,7 +849,9 @@ function refocusProjectControl(action, id) {
 function duplicateProject(id) {
   const p = Store.getProject(id);
   if (!p) return;
-  const copy = Store.createProject({ title: p.title + ' (copy)', format: p.format });
+  /* The favourite film and the subtitle ride on the project ENTRY, not
+     in any scoped blob, so the key loop below cannot carry them. */
+  const copy = Store.createProject({ title: p.title + ' (copy)', format: p.format, fav: p.fav, subtitle: p.subtitle });
   Store.SCOPED_KEYS.forEach(k => {
     const v = Store.rawGet(k + '__' + id);
     if (v) Store.rawSet(k + '__' + copy.id, v);

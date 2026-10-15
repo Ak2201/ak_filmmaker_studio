@@ -53,7 +53,9 @@ export function setAttr(node, name, value) {
 /** One element's row. `elements` is the whole list (the cue buttons
     read the speech before this one). */
 export function renderElement(el, i, total, elements, rowChrome = true) {
-  const row = h('article.wr-el.t-' + el.type, { 'data-el': el.id });
+  /* id=line-<element id>: the DOM target a screenplay.html#line-<id> link names
+     (script-find.js lands on it too, for rows not yet drawn). */
+  const row = h('article.wr-el.t-' + el.type, { 'data-el': el.id, id: 'line-' + el.id });
 
   const sel = h('select.wr-type', {
     'data-el-field': 'type',

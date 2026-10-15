@@ -1007,10 +1007,13 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
     made && made.scenes ? made.scenes.map((s) => [s.location, s.dayNight, !!s.scriptElId]) : null,
     [['HALL', 'DAY', true], ['KITCHEN', 'NIGHT', true]]);
 
-  // Shots on that scene, written the way the shot list writes them.
+  // Shots on that scene, written the way the shot list writes them —
+  // with the blocking diagram's `blocks` list, which saveShots() always
+  // writes since the blocking map landed; without it the undo's own
+  // write (the current shape) can never be byte-identical to the seed.
   await page.evaluate((id) => localStorage.setItem('fms_shots_v1', JSON.stringify({
     shots: [{ id: 'a-sh1', sceneId: id, number: '1' }, { id: 'a-sh2', sceneId: id, number: '2' }],
-    frames: [{ id: 'a-fr1', shotId: 'a-sh1', caption: 'x', ref: '' }], boards: []
+    frames: [{ id: 'a-fr1', shotId: 'a-sh1', caption: 'x', ref: '' }], boards: [], blocks: []
   })), sc && sc.id);
   const shotsBefore = await page.evaluate((k) => window.__raw(k), 'fms_shots_v1__' + A);
 

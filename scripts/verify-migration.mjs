@@ -406,7 +406,7 @@ const EXPECTED = {
   visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   write: {},
   plan: {},
-  breakdown: {},
+  breakdown: /* emptied by the 14 Oct 2026 gate re-baseline (P3b's two buttons) */ {},
   feature: {},
   short: {},
   /* The library prints the glossary's term count ("N TERMS"); Phase 6 of the

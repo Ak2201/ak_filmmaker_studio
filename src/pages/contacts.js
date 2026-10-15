@@ -636,11 +636,12 @@ function renderSheetDoc(sheet, contacts, scenes) {
     });
 
   if (called.length) {
+    groupCalled(sheet, called).forEach((g) => {
     const table = h('table.ct-doc-table');
-    table.append(h('caption', { text: 'Called' }));
+    table.append(h('caption', { text: 'Called — ' + g.label.toLowerCase() }));
     table.append(h('thead', {}, [row('th', ['Name', 'Role', 'Department', 'Call', 'Phone'])]));
     const body = h('tbody');
-    called.forEach((c) => body.append(row('td', [
+    g.people.forEach((c) => body.append(row('td', [
       c.name || 'Unnamed',
       c.role || '',
       c.department || '',
@@ -649,6 +650,7 @@ function renderSheetDoc(sheet, contacts, scenes) {
     ])));
     table.append(body);
     doc.append(h('div.ct-doc-scroll', {}, [table]));   // scrolls sideways on a phone
+    });
   } else {
     doc.append(h('p.ct-doc-none', { text: 'Nobody is called on this sheet yet.' }));
   }
@@ -881,6 +883,18 @@ function calledOf(sheet, contacts) {
     });
 }
 
+/** The called list as two groups, cast then crew, each in call-time
+    order (a person without their own time is called at the general
+    call). Derived from the contact's department; nothing is stored. */
+function groupCalled(sheet, called) {
+  const at = (c) => sheet.calls[c.id] || sheet.generalCall || '99:99';
+  const byCall = (a, b) => at(a).localeCompare(at(b)) || String(a.name).localeCompare(String(b.name));
+  return [
+    { label: 'Cast', people: called.filter((c) => c.department === 'Cast').sort(byCall) },
+    { label: 'Crew', people: called.filter((c) => c.department !== 'Cast').sort(byCall) }
+  ].filter((g) => g.people.length);
+}
+
 /** The sheet's facts, looked up now, for callsheet-text.js. */
 function factsOf(sheet, scenes) {
   const onSheet = sheetScenes(sheet, scenes);
@@ -956,7 +970,9 @@ function renderSend(sheet, contacts, scenes) {
     body.append(h('p.ct-pick-none', { text: 'Call somebody above and each person gets their own message, with their own call time first.' }));
   } else {
     const list = h('ul.ct-send-list');
-    called.forEach((c) => {
+    groupCalled(sheet, called).forEach((g) => {
+      list.append(h('li.ct-send-group', { text: g.label + ' · ' + g.people.length }));
+      g.people.forEach((c) => {
       const digits = WA.waDigits(c.phone);
       const li = h('li.ct-send-row', { 'data-contact': c.id });
       li.append(h('span.ct-send-who', {}, [
@@ -979,6 +995,7 @@ function renderSend(sheet, contacts, scenes) {
         }, [h('span', { text: 'Copy text' })]));
       }
       list.append(li);
+      });
     });
     body.append(list);
   }

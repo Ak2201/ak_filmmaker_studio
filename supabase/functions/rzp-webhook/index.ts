@@ -62,7 +62,13 @@ Deno.serve(async (req) => {
         const { error } = await svc.rpc('activate_payment', { p_order_id: payment.order_id, p_payment_id: payment.id, p_raw: { source: 'webhook', event: evt.event, payment } });
         // 'No payment with that order id' means an order this studio did
         // not create (another product on the same Razorpay account); say
-        // 200 so Razorpay stops retrying, and log it.
+        // 200 so Razorpay stops retrying, and log it. That and the other
+        // refusals (amount mismatch, a payment already refunded) are 22023,
+        // and a retry cannot change them. Anything else — a timeout, a
+        // dropped connection — must reach the 5xx below: rpc() RETURNS its
+        // error rather than throwing it, so without this a transient
+        // failure answered 200 and the captured payment never activated.
+        if (error && error.code !== '22023') throw new Error('activate: ' + error.message);
         if (error) console.warn('[rzp-webhook] activate', error.message);
         else logMail('receipt')(await sendReceiptOnce(svc, payment.order_id, mailEnv()));
         break;
@@ -81,7 +87,10 @@ Deno.serve(async (req) => {
           const raw = { event: evt.event, refund };
           const rec = await svc.rpc('record_refund', { p_refund: null, p_payment_rzp: refund.payment_id, p_rzp_refund: refund.id ?? null, p_status: 'processed', p_amount: refund.amount ?? null, p_error: null, p_raw: raw });
           if (rec.error) console.warn('[rzp-webhook] record_refund', rec.error.message);
-          await svc.rpc('mark_payment_refunded', { p_payment_id: refund.payment_id, p_raw: raw });
+          // It refuses nothing (a no-op when already refunded), so ANY error is
+          // a failure to end the plan, and Razorpay must deliver it again.
+          const mark = await svc.rpc('mark_payment_refunded', { p_payment_id: refund.payment_id, p_raw: raw });
+          if (mark.error) throw new Error('mark_payment_refunded: ' + mark.error.message);
           if (refund.id) logMail('refund')(await sendRefundOnce(svc, refund.id, 'processed', mailEnv()));
         }
         break;

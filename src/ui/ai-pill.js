@@ -66,15 +66,15 @@ function normTasks(tasks) {
 }
 
 /** 'locked' | 'nokey' | 'ready', for the state right now. */
-export function pillState() {
+export function pillState(providerId) {
   if (!PlanGate.aiUnlocked()) return 'locked';
-  return hasKey() ? 'ready' : 'nokey';
+  return hasKey(providerId) ? 'ready' : 'nokey';
 }
 
 function paint(el) {
   const o = opts.get(el);
   if (!o) return;
-  const state = pillState();
+  const state = pillState(o.provider);
   const sig = state + '|' + o.label + '|' + (o.tasks.length > 1);
   if (el.dataset.aiSig === sig && el.firstChild) return;   // plan:changed echoes: nothing to redraw
   el.dataset.aiSig = sig;
@@ -93,10 +93,12 @@ function paint(el) {
 
 /** Build a pill. `tasks` are ids or { id, label }; `ctx` is handed to
     the Desk unchanged. Returns a `button.ai-pill`. */
-export function aiPill({ label = 'AI', tasks = [], ctx = {} } = {}) {
+export function aiPill({ label = 'AI', tasks = [], ctx = {}, provider } = {}) {
   wire();
   const el = h('button.ai-pill', { type: 'button', 'data-action': 'ai-pill' });
-  opts.set(el, { label, tasks: normTasks(tasks), ctx });
+  /* `provider` pins the key the state reads (the storyboard's drawn
+     frames need a Gemini key whichever provider the text tools use). */
+  opts.set(el, { label, tasks: normTasks(tasks), ctx, provider });
   paint(el);
   return el;
 }

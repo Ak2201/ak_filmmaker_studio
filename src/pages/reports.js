@@ -46,6 +46,7 @@ import Shoot from '../lib/shootday.js';
 import DPR from '../lib/dpr.js';
 import { offlineSupported, offlineStatus, makeOffline, SHOOT_PACK } from '../lib/pwa.js';
 import { listSongs, updateSong, durationSeconds, getTargetMinutes, setTargetMinutes, kindLabel } from '../lib/songs.js';
+import { getTargetMin, setTargetMin } from '../lib/editlog.js';
 import { loadStory } from '../lib/story.js';
 import { resolveBeat, actsOf, qualify } from '../lib/beat-outline.js';
 import '../styles/runtime.css';
@@ -552,7 +553,10 @@ function fmtDelta(d) {
 function renderRuntime(st, scenes, numbers) {
   const box = h('div.rt-box', { id: 'runtime' });
   const songs = listSongs();
-  const targetMin = getTargetMinutes();
+  /* ONE target (src/lib/target-runtime.js): this field, else a value the
+     Edit Log stored before there was one — read the same way edit.html and
+     the stripboard read it, so the three pages never disagree. */
+  const targetMin = getTargetMinutes() || getTargetMin();
   const groups = runtimeGroups(scenes);
   const songIn = songs.map((s) => ({ id: s.id, seconds: durationSeconds(s), placement: s.placement }));
   const est = Analysis.runtimeEstimate(st, songIn, { targetSeconds: targetMin * 60, ...groups.byAct });
@@ -660,7 +664,7 @@ function wireRuntime() {
   wireRuntime.done = true;
   delegate(document, 'change', '[data-rt-field]', (e, el) => {
     const f = el.getAttribute('data-rt-field');
-    if (f === 'target') setTargetMinutes(el.value);
+    if (f === 'target') { setTargetMinutes(el.value); if (getTargetMin()) setTargetMin(0); }   // retire the legacy fallback
     else if (f === 'song-duration') updateSong(el.getAttribute('data-song'), { duration: el.value });
     else return;
     setTimeout(() => {

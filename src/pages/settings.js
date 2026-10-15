@@ -97,6 +97,8 @@ import { aiPill } from '../ui/ai-pill.js';
 import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
+import Account from '../lib/account.js';   // CORE: auth.js imports it too
+import { syncLine, ago } from '../ui/status-bar.js';
 import Billing from '../lib/billing.js';   // CORE (the `studio` chunk), so this adds no chunk
 /* The backup FILE is backup.js's, exactly as it is for the hub's
    Export and for Drive's upload. This page calls it; it does not
@@ -296,6 +298,16 @@ function renderRegion() {
       + 'invented one — so those pages show nothing rather than something made up. '
       + 'Everything you have written is untouched and comes straight back if you '
       + 'switch to India.' }));
+
+  /* What rate card the budget actually reads, said as a fact and not as a
+     union badge: no union floor exists (the FEFSI MoU lapsed in 2025), so
+     nothing here says "applied" about an agreement. */
+  if (now === 'IN') {
+    sec.append(h('p.st-rate', {}, [
+      h('span.st-rate-k', { text: 'Rate card in use' }),
+      h('span.st-rate-v', { text: 'Chennai 2024\u201325 \u00b7 indicative ranges, not a union agreement' })
+    ]));
+  }
 
   sec.append(h('p.st-note', { text: chosen
     ? 'You chose this, so it stays chosen — the studio will not change it back, '
@@ -852,7 +864,72 @@ function renderAccountMine() {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
   }
   sec.append(slot);
+  if (signedIn) sec.append(renderIdentityFacts());
   return sec;
+}
+
+/* THE IDENTITY CARD'S THREE FACTS (14 Oct 2026): role and plan, seats,
+   last sync. Every one is read, none stored, and a fact that cannot be
+   known is left out rather than guessed: no studio account means no seat
+   count; no Drive backup means no Drive line. The owner's name is never
+   printed (brand.json seller is empty by decision); the role is the
+   gate's word (admin / member). */
+let factsSeen = null;        // { uid, data } | { uid, none: true }
+let factsFetching = false;
+function wantFacts() {
+  const uid = sessionUid();
+  if (!uid || factsFetching || (factsSeen && factsSeen.uid === uid)) return;
+  factsFetching = true;
+  Account.loadAccount()
+    .then((d) => { factsSeen = { uid, data: d || null }; })
+    .catch(() => { factsSeen = { uid, data: null }; })
+    .finally(() => { factsFetching = false; if (sessionUid() === uid && !busy) render(); });
+}
+/* The Team panel re-reads the account after every create / invite /
+   revoke (and on each render). Adopt its answer, and redraw only when the
+   seat count actually moved, so its refresh-on-render cannot loop. */
+const seatsKey = (d) => (d && d.seats ? d.seats.used + '/' + d.seats.limit : '');
+document.addEventListener('fms:account-loaded', (e) => {
+  const uid = sessionUid();
+  if (!uid) return;
+  const d = e.detail || null;
+  const was = factsSeen && factsSeen.uid === uid ? seatsKey(factsSeen.data) : null;
+  factsSeen = { uid, data: d };
+  if (was !== seatsKey(d) && !busy) render();
+});
+function renderIdentityFacts() {
+  wantFacts();
+  const c = window.StudioCloud;
+  const cp = PlanGate.currentPlan();
+  const gate = (c && c.getGateState && c.getGateState()) || {};
+  const cells = [];
+  const role = gate.role === 'admin' ? 'Studio admin' : 'Member';
+  /* 'granted' is only ever computed with plan 'free' (plan-gate.js), so its
+     planName is the FREE plan's: say what it is, as purchase.js does. */
+  const plan = cp.reason === 'paid' ? cp.planName : cp.reason === 'granted' ? 'Access given by the studio' : cp.reason === 'trial' ? 'Free trial' : '';
+  cells.push(['Role', role + (plan ? ' \u00b7 ' + plan : '')]);
+  const d = factsSeen && factsSeen.uid === sessionUid() ? factsSeen.data : null;
+  if (d && d.seats && d.seats.limit) {
+    cells.push(['Seats', d.seats.used + ' of ' + d.seats.limit + ' allocated']);
+  }
+  const st = c && c.getSyncStatus ? c.getSyncStatus() : null;
+  let last = syncLine(st).text;
+  try {
+    const ds = DriveSync.getDriveStatus();
+    const t = ds && ds.syncedAt ? Date.parse(ds.syncedAt) : NaN;
+    if (Number.isFinite(t)) last += ' \u00b7 Drive ' + ago(t);
+  } catch (e) { /* no Drive line */ }
+  cells.push(['Sync', last]);
+  return h('dl.st-facts', {}, cells.map(([k, v]) => h('div.st-fact', {}, [h('dt', { text: k }), h('dd', { text: v })])));
+}
+
+/* The build, read from package.json at build time (the same value the
+   status dock prints). Nothing measured is invented: no platform, no
+   gateway. */
+function renderBuild() {
+  const v = String(import.meta.env.VITE_APP_VERSION || '');
+  if (!v) return null;
+  return h('p.st-build', { id: 'build', text: 'Build v' + v });
 }
 
 /* The plan, as a summary and nothing more. Buying, invoices and refunds are
@@ -909,7 +986,7 @@ function renderPlanCard() {
     const end = PlanGate.trialEndsAt();
     line = 'Free trial' + (end ? ' \u00b7 ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
   } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + ' \u00b7 yours for good.';
-  else if (cp.reason === 'granted') line = 'Access given to you by the studio' + (cp.planName ? ' \u00b7 ' + cp.planName : '') + '.';
+  else if (cp.reason === 'granted') line = 'Access given to you by the studio.';   // its planName is the free plan's
   else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
   /* Where the plan stands, as one LED pill: read from the same facts as the
@@ -1079,7 +1156,7 @@ function render() {
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [
-    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus)], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
     tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
     tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
     tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),
@@ -1329,6 +1406,7 @@ async function refreshGate() {
 }
 wireGateUI(() => { if (!busy) render(); });
 Store.subscribe('gate:changed', () => refreshGate());
+Store.subscribe('cloud:status', () => { if (!busy) render(); });
 /* The Drive section reads the plan's drive_backup, which arrives later. */
 Store.subscribe('plan:changed', () => { dropUsage(); if (!busy) render(); });
 refreshGate();

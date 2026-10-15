@@ -26,3 +26,4 @@ export { meter, setMeter } from './meter.js';
 export { stageCard } from './stage-card.js';
 export { toast, toastSuccess, toastError, toastInfo } from './toast.js';
 export { ask, askDanger, tell, askText } from './modal.js';
+export { sheet, closeSheet } from './sheet.js';

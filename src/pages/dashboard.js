@@ -41,7 +41,7 @@
    about the others — so that one section goes through
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
-import Store from '../lib/store.js';
+import Store, { setProjectSubtitle } from '../lib/store.js';
 import { BLUEPRINT, guideProgress, stageHueClass, journey, stageStates, suggestNext, lastWorked, favouriteOf } from '../lib/journey.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 import '../styles/base.css';
@@ -55,10 +55,10 @@ import '../styles/motion.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h, commitMain } from '../lib/dom.js';
+import { h, commitMain, delegate } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
-import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel } from '../ui/kit/index.js';
+import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText } from '../ui/kit/index.js';
 
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
@@ -68,7 +68,7 @@ import { loadScript, pageCount, formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
 import { readiness, sceneLabel } from '../lib/readiness.js';
 import PlanGate from '../lib/plan-gate.js';
-import { getDriveStatus } from '../lib/drive-sync.js';
+import { getDriveStatus, push as drivePush } from '../lib/drive-sync.js';
 import { dprSummary } from '../lib/dpr.js';
 import { planName } from '../lib/plans.js';
 
@@ -249,7 +249,28 @@ function snapshot(project) {
    PIECES
    ============================================================ */
 /* A figure for the KPI strip: the kit's stat card (JetBrains Mono value). */
-const stat = (value, unit, label) => ({ label, value, unit: value === '\u2014' ? '' : unit });
+const stat = (value, unit, label, note) => ({ label, value, unit: value === '\u2014' ? '' : unit, note: note || '' });
+
+/* The strip's second line, each one derived from a model and left out
+   when there is nothing real to say (owner, 14 Oct 2026: no figure the
+   page cannot measure). */
+function sceneTagged(snap) {
+  return snap.scenes.filter((s) => Object.values(s.elements || {}).some((v) => Array.isArray(v) && v.length)).length;
+}
+function nextDatedDay(snap) {
+  return snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
+    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= 0).sort((a, b) => a.n - b.n)[0] || null;
+}
+function nextShootNote(snap) {
+  const nx = nextDatedDay(snap);
+  return nx ? 'Day ' + nx.d.day + ' ' + (nx.n === 0 ? 'today' : nx.n === 1 ? 'tomorrow' : 'in ' + nx.n + ' days')
+    : snap.datedDays ? '' : snap.days.length ? 'No dates yet' : '';
+}
+function crewCastNote(snap) {
+  const cast = snap.contacts.filter((c) => c.department === 'Cast').length;
+  const crew = snap.contacts.length - cast;
+  return cast && crew ? cast + ' cast · ' + crew + ' crew' : '';
+}
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.db-sec', { id, 'data-reveal': '' });
@@ -298,6 +319,11 @@ function renderReadiness() {
 
   const sec = section('readiness', 'Derived from your scenes · nothing to tick',
     'Could you shoot tomorrow?', deck);
+  const nPass = r.checks.filter((c) => c.passed).length;
+  if (r.checks.length) {
+    const pct = Math.round((nPass / r.checks.length) * 100);
+    sec.querySelector('.bd-h2').after(badge({ label: pct + '% ready', tone: pct === 100 ? 'ok' : r.blockers ? 'danger' : 'warn', class: 'db-pct' }));
+  }
 
   /* Failures first and blockers above gaps, because the order IS the
      advice. Passed checks are still SHOWN, as evidence the question
@@ -419,8 +445,16 @@ function renderContinue(snap) {
   const tl = tile('continue', 'Continue', 'Pick up where you left off');
   tl.classList.add('db-up');
   const t = continueTarget(snap);
+  tb(tl).append(h('p.db-tile-line', { id: 'resume', text: t.what + (t.ts ? ' · edited ' + relTime(t.ts) : '') }));
+  /* How far the stage you are in has got, from the same figures the stage
+     cards print. Tools is the measured one; with nothing to count it is left out. */
+  const cur = snap.journey && snap.journey.stages.find((x) => x.id === snap.journey.current);
+  if (cur && cur.tools.total) {
+    const m = meter({ label: cur.label + ' · ' + cur.tools.done + ' of ' + cur.tools.total + ' done', value: cur.tools.pct, max: 100, hue: stageHueClass(cur.hue), class: 'db-up-meter' });
+    tb(tl).append(m);
+    if (cur.tools.note) tb(tl).append(h('p.db-tile-line', { text: cur.tools.note }));
+  }
   tb(tl).append(
-    h('p.db-tile-line', { id: 'resume', text: t.what + (t.ts ? ' · edited ' + relTime(t.ts) : '') }),
     button({ label: 'Continue', variant: 'primary', size: 'lg', iconAfter: 'arrow_forward', href: t.href, class: 'db-big', attrs: { 'aria-label': 'Continue: ' + t.what } })
   );
 
@@ -524,6 +558,26 @@ function renderWeek(snap) {
   tb(tl).append(h('p.db-tile-line.db-strong', { text: nextShootLine(snap) }));
   const covered = new Set();
   snap.sheets.forEach((cs) => (cs.sceneIds || []).forEach((id) => covered.add(id)));
+  /* The next dated day, in full: where, when the crew is called, and the
+     call sheet itself. Each line shows only what a record really holds. */
+  const nx = nextDatedDay(snap);
+  if (nx) {
+    const places = [...new Set(nx.d.scenes.map((x) => String(x.location || '').trim()).filter(Boolean))];
+    const sheet = snap.sheets.find((cs) => (cs.sceneIds || []).some((id) => nx.d.scenes.some((x) => x.id === id)));
+    const dl = h('dl.db-facts');
+    const fact = (k, v) => dl.append(h('dt', { text: k }), h('dd', { text: v }));
+    if (places.length) fact('Location', places.slice(0, 2).join(' · ') + (places.length > 2 ? ' +' + (places.length - 2) : ''));
+    if (sheet && sheet.generalCall) fact('Crew call', sheet.generalCall);
+    if (dl.children.length) tb(tl).append(dl);
+    tb(tl).append(sheet
+      ? h('a.db-link', { href: 'contacts.html#call-sheets', text: 'View call sheet' + (sheet.title ? ' · ' + sheet.title : '') + ' \u2192' })
+      : h('a.db-link', { href: 'contacts.html#call-sheets', text: 'Make a call sheet for day ' + nx.d.day + ' \u2192' }));
+  }
+  tb(tl).append(h('nav.db-trio', { 'aria-label': 'Shortcuts' }, [
+    h('a.db-trio-i', { href: 'breakdown.html', text: 'Breakdown' }),
+    h('a.db-trio-i', { href: 'stripboard.html', text: 'Stripboard' }),
+    h('a.db-trio-i', { href: 'visualize.html', text: 'Visualise' })
+  ]));
   const rows = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
     .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= -1 && x.n <= 7)
     .sort((a, b) => a.n - b.n);
@@ -584,6 +638,7 @@ function renderBackupTile() {
   ]));
   tb(tl).append(h('p.db-tile-line', { text: 'Everything lives in this browser. A backup file is the only other copy unless Drive is on; '
     + 'this page cannot see when you last exported one.' }));
+  if (on) tb(tl).append(button({ label: 'Sync now', icon: 'cloud_sync', attrs: { 'data-action': 'drive-sync', 'aria-label': 'Sync to Google Drive now' } }));
   tb(tl).append(button({ label: 'Export a backup', href: 'index.html', class: 'db-tile-go', attrs: { 'aria-label': 'Export a backup, from the studio home page' } }));
   return tl;
 }
@@ -623,6 +678,12 @@ function renderHead(snap) {
       j ? badge({ label: 'Stage: ' + j.currentLabel, tag: true }) : null
     ]),
     h('h1.bd-title.k-project-title', { text: p.title }),
+    h('p.db-slate', { id: 'slate' }, p.subtitle ? [
+      h('span.db-slate-k', { text: 'Slate' }), h('span.db-slate-v', { text: p.subtitle }), txt(' · '),
+      h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'change' })
+    ] : [
+      h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'Add a subtitle' })
+    ]),
     h('p.bd-deck', {
       text: 'Five stages, in any order, each read from what you have already made. '
           + 'Nothing is mandatory: with a screenplay in hand, start straight in Pre-Production.'
@@ -640,12 +701,16 @@ function renderHead(snap) {
   if (!snap.isEmpty) {
     const sc = snap.scenes.length;
     head.append(statStrip([
-      stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes'),
-      stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count'),
-      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'day' : 'days', 'Shoot days'),
-      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast'),
-      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots'),
-      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Locked budget')
+      stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes', sc ? sceneTagged(snap) + ' broken down' : ''),
+      stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count',
+        snap.scriptPages ? formatPages(snap.scriptPages) + ' script pp' : ''),
+      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'day' : 'days', 'Shoot days',
+        nextShootNote(snap)),
+      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast', crewCastNote(snap)),
+      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots',
+        snap.shots.length ? snap.shots.length + ' shots planned' : ''),
+      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Locked budget',
+        snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') : '')
     ], { class: 'db-stats', label: 'This film in numbers' }));
   }
   return head;
@@ -679,6 +744,8 @@ function stageCard(s, suggested, js, current) {
     h('span.st-part', { text: 'Part ' + s.part }),
     s.status.id === 'done' ? badge({ label: 'Done', tone: 'ok', dot: true })
       : s.status.id === 'doing' ? badge({ label: 'In progress', tone: 'info', dot: true }) : null,
+    /* The writer's own lock (outline locked / scene numbers locked), never inferred. */
+    s.locked ? badge({ label: 'Locked', tone: 'ok', icon: 'lock', title: s.id === 'story' ? 'The step outline is locked' : 'The scene numbers are locked' }) : null,
     suggested ? h('span.st-sug', { text: 'Suggested next' })
       : current ? h('span.st-sug', { text: 'You are here' }) : null
   ]));
@@ -713,6 +780,10 @@ function renderStages(snap) {
   const sec = section('stages', 'The five stages', 'Where the film stands.');
   const sug = snap.suggest;
   const j = snap.journey;
+  if (j) {
+    const at = snap.states.findIndex((x) => x.id === j.current);
+    if (at >= 0) sec.querySelector('.bd-h2').after(badge({ label: j.complete ? 'All ' + snap.states.length + ' stages in hand' : 'Step ' + (at + 1) + ' of ' + snap.states.length, tag: true, class: 'db-step-n' }));
+  }
   const list = h('ol.st-list', { id: 'journey', 'aria-label': 'The five stages of this film' });
   snap.states.forEach((s) => list.append(stageCard(s, !!sug && s.id === sug.id,
     j && j.stages.find((x) => x.id === s.id), !!j && j.current === s.id)));
@@ -955,6 +1026,38 @@ function loadPath() {
    the page twice for one click. */
 
 /* The project changed under us — switched here, or renamed on the hub. */
+delegate(app, 'click', '[data-action="slate-edit"]', async () => {
+  const p = Store.currentProject();
+  if (!p) return;
+  const v = await askText({ title: 'Project subtitle', body: 'One line under the title, for example the stage you are in. Leave it empty to remove it.',
+    value: p.subtitle || '', placeholder: 'Principal photography prep', confirm: 'Save' });
+  if (v === null || v === undefined) return;
+  setProjectSubtitle(v, p.id);
+});
+let syncing = false;
+delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {
+  if (syncing) return;
+  syncing = true; el.disabled = true;
+  try {
+    /* push() never rejects: a stale token, a moved remote or a plan
+       refusal RESOLVE with ok:false and nothing uploaded. Read it. */
+    const r = await drivePush();
+    if (r && r.ok) StudioUI.toast('Synced to Google Drive.');
+    else {
+      const why = {
+        conflict: 'Drive has a newer copy, so nothing was uploaded. Open Settings to choose which one to keep.',
+        plan: 'Drive backup is not in this plan, so nothing was uploaded.',
+        'not-connected': 'Drive is not connected, so nothing was uploaded.'
+      }[r && r.reason];
+      let detail = '';
+      try { detail = getDriveStatus().detail || ''; } catch (e) { /* the status is only wording */ }
+      StudioUI.toastError(why || ('Nothing was uploaded. ' + (detail || 'Drive did not answer.')), { duration: 6000 });
+    }
+  }
+  catch (err) { StudioUI.toastError((err && err.message) || 'Drive did not answer.', { duration: 6000 }); }
+  finally { syncing = false; render(); }
+});
+
 Store.subscribe('current:changed', () => render());
 Store.subscribe('project:meta', () => render());
 Store.subscribe('plan:changed', () => render());

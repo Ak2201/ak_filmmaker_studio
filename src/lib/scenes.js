@@ -99,6 +99,13 @@ export function blankScene(patch = {}) {
        stored row, like shotState: older rows read back [] and no
        migration or new key exists. */
     takes: [],
+    /* THE FLOOR'S NOTE ON THIS SCENE, typed on shoot.html ("insert on
+       the door lock still owed", "wind on boom, wild track taken").
+       Free text, one per scene. A FIELD spread under every stored row,
+       like shotState and takes: older rows read back '' and no
+       migration or new key exists (owner, 14 Oct 2026, item #29).
+       Written only by src/lib/shootday.js setFloorNote(). */
+    floorNote: '',
     /* WHICH STORY BEAT THIS SCENE SERVES, for the write page's Outline
        tab (src/lib/beat-outline.js). Framework-qualified —
        'save_the_cat:midpoint', never a bare 'midpoint' — so switching

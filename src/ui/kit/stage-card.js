@@ -7,6 +7,8 @@
      progress  { value, max, label } → a kit meter in the stage's hue
      next      the "suggested next" line (advice, never forced)
      href      the card becomes a link to the stage
+     stacked   one row per stage (number square · title · status, then the
+               meter): the mobile dashboard's lifecycle list, any width
    The card derives nothing: the caller passes what journey.js computed. */
 import { h, sym, cx, kids, attrs } from './util.js';
 import { badge } from './badge.js';
@@ -16,7 +18,7 @@ const PHASES = ['story', 'screenplay', 'preprod', 'production', 'post'];
 
 export function stageCard(o = {}) {
   const ph = PHASES.includes(o.phase) ? 'sh-ph-' + o.phase : null;
-  const el = h(o.href ? 'a' : 'article', { class: cx('k-stage', ph, o.current && 'is-current', o.class) });
+  const el = h(o.href ? 'a' : 'article', { class: cx('k-stage', ph, o.current && 'is-current', o.stacked && 'k-stage--stacked', o.class) });
   if (o.href) el.setAttribute('href', o.href);
   if (o.id) el.id = o.id;
   if (o.current) el.setAttribute('aria-current', 'step');

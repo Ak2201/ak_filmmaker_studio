@@ -54,11 +54,12 @@ import '../styles/library-shelf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+import { statStrip, panel } from '../ui/kit/index.js';
 import { shelves } from '../lib/navmodel.js';
 import PlanGate from '../lib/plan-gate.js';
 import { mountCaseStudies } from '../ui/case-studies.js';
 import { mountDissection } from '../ui/dissection.js';
-import { listStudies, favouriteSlug, getStudy } from '../lib/studies.js';
+import { listStudies, favouriteSlug, getStudy, favouriteStudy } from '../lib/studies.js';
 import { listShipped } from '../lib/dissect.js';
 
 import films from '../data/films.json';
@@ -397,6 +398,87 @@ function renderToolbar() {
 /* ============================================================
    COVER
    ============================================================ */
+/* ---- cover extras: the figures, the search door, three cover previews ----
+   Every number is derived from the same arrays the shelves are drawn from.
+   The rate card says what it can prove: its own year, and the date some
+   rows were re-checked (rates.chennai.checks.json) — never "verified". */
+function renderFigures() {
+  return h('div.lib-figures', {}, [
+    statStrip([
+      { label: 'Films studied', value: N_FILMS, note: 'on the Films shelf' },
+      { label: 'Director archetypes', value: N_DIRECTORS },
+      { label: N_DISSECTED === 1 ? 'Deconstruction' : 'Deconstructions', value: String(N_DISSECTED).padStart(2, '0'), note: 'worked examples' },
+      { label: 'Chennai rate card', value: rates.asOf, note: 'some rows re-checked ' + rateChecks.lastChecked }
+    ], { class: 'lib-stats', label: 'The library in figures' }),
+    /* Search is the palette's (one index for the whole studio); this is a door to it. */
+    h('button.lib-search.k-btn', { type: 'button', 'data-action': 'palette-open', 'aria-label': 'Search shelves, films, directors and rules' }, [
+      h('span.lib-search-text', { text: 'Search shelves, films, directors, rules' })
+    ])
+  ]);
+}
+
+function renderTeasers() {
+  const study = favouriteStudy() || listStudies()[0] || null;
+  const table = rates.sections[0];
+  const teasers = [];
+
+  if (study) {
+    const m = study.meta;
+    teasers.push(panel({
+      eyebrow: 'Case study', meta: N_STUDIES + (N_STUDIES === 1 ? ' film' : ' films'), class: 'lib-teaser',
+      body: [
+        h('h3.lib-teaser-title', { text: m.title }),
+        h('p.lib-teaser-sub', { text: [m.director, m.year, m.genre].filter(Boolean).join(' · ') }),
+        study.logline && study.logline.line ? h('p.lib-teaser-text', { text: String(study.logline.line) }) : null,
+        h('a.lib-teaser-link', { href: '#case-studies', text: 'Open the Case Studies shelf' })
+      ]
+    }));
+  }
+
+  if (table && table.rows && table.rows.length) {
+    const first = table.rows.slice(0, 4);
+    teasers.push(panel({
+      eyebrow: 'Rates', meta: 'Chennai ' + rates.asOf, class: 'lib-teaser',
+      body: [
+        h('h3.lib-teaser-title', { text: table.heading }),
+        h('ul.lib-teaser-list', {}, first.map((r) => h('li', {}, [
+          h('span', { text: r.item }),
+          h('span.k-mono', { text: '\u20B9 ' + r.raw })
+        ]))),
+        h('p.lib-teaser-sub', { text: 'Indicative ranges per ' + (first[0].unit || 'day') + '. Verify with vendors before locking a budget.' }),
+        h('a.lib-teaser-link', { href: '#equipment', text: 'All ' + N_TABLES + ' rate tables' })
+      ]
+    }));
+  }
+
+  const steps = watchlist.slice(0, 4);
+  if (steps.length) {
+    teasers.push(panel({
+      eyebrow: 'Watch list', meta: N_STEPS + ' steps', class: 'lib-teaser',
+      body: [
+        h('ul.lib-teaser-list', {}, steps.map((w) => h('li', {}, [
+          h('span', { text: w.label + ' · ' + w.heading }),
+          h('span.lib-teaser-films', { text: w.films.map((f) => f.title).join(', ') })
+        ]))),
+        h('a.lib-teaser-link', { href: '#watch', text: 'View all ' + N_STEPS + ' steps' })
+      ]
+    }));
+  }
+  return h('div.lib-teasers', {}, teasers);
+}
+
+/* On a phone the sticky "in this tab" rail is not drawn; the same links as a
+   disclosure, so jumping inside a long tab exists at every width. */
+function railFold(section) {
+  const items = railItems(section);
+  if (!items.length) return null;
+  return h('details.lib-intab', {}, [
+    h('summary', { text: 'In this tab · ' + items.length }),
+    h('div.lib-intab-list', {}, items.map((it) => h('a', { href: `#${it.id}`, text: it.label })))
+  ]);
+}
+
+
 function renderCover() {
   const blurb =
     `A curated reference: ${N_FILMS} Tamil & Indian films analyzed for craft, ` +
@@ -443,7 +525,7 @@ function renderSection(section, i) {
   const body = section.body();
   const rail = railFor(section);
   sec.append(renderSectionHead(section, i));
-  if (rail) sec.append(h('div.lib-split', {}, [rail, body]));
+  if (rail) sec.append(h('div.lib-split', {}, [railFold(section), rail, body]));
   else sec.append(body);
   return sec;
 }
@@ -987,7 +1069,9 @@ function render() {
   // true after the adoption.
   const main = h('main#main', { role: 'main' });
   main.append(renderCover());
+  main.append(renderFigures());
   main.append(renderContents());
+  main.append(renderTeasers());
   SECTIONS.forEach((s, i) => main.append(renderSection(s, i)));
   main.append(renderFinal());
 

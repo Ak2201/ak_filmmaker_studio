@@ -74,7 +74,7 @@ import prodData from '../data/steps.production.json';
 import shortData from '../data/steps.short.json';
 import { harvestKeys, isFilled } from './blueprint-fields.js';
 import Scenes from './scenes.js';
-import { loadScript, pageCount, formatPages, hasTitlePage } from './script.js';
+import { loadScript, pageCount, formatPages, hasTitlePage, isNumberingLocked } from './script.js';
 import * as StoryM from './story.js';
 import Locations from './locations.js';
 import * as StoreM from './store.js';
@@ -564,7 +564,9 @@ function storyState() {
   const facts = [done + ' of ' + total + ' ' + labelled + ' done'];
   const words = String(s.source || '').trim().split(/\s+/).filter(Boolean).length;
   if (words) facts.push(plur(words, 'word') + ' of synopsis');
-  return { status: status(total > 0 && done >= total, done > 0 || hasText), facts, at: tsOf(s.updatedAt) };
+  /* `locked` is the writer's own lock (the step outline's), never a guess. */
+  return { status: status(total > 0 && done >= total, done > 0 || hasText), facts, at: tsOf(s.updatedAt),
+    locked: !!s.outlineLockedAt };
 }
 
 function screenplayState() {
@@ -574,7 +576,7 @@ function screenplayState() {
   const any = els.some((e) => String(e.text || '').trim());
   const facts = any ? [formatPages(pageCount(els)) + ' pages', plur(heads, 'scene heading')] : ['No screenplay yet'];
   const done = any && heads > 0 && hasTitlePage(sc.titlePage);
-  return { status: status(done, any), facts, at: 0 };
+  return { status: status(done, any), facts, at: 0, locked: isNumberingLocked(sc.numbering) };
 }
 
 function preprodState(scenes) {
@@ -655,7 +657,7 @@ export function stageStates(project) {
       r = { status: STATUS.none, facts: ['Could not be read'], at: 0 };
     }
     return { id: st.id, label: st.label, hue: st.hue, part: st.part, href: stageHref(st.id),
-      status: r.status, facts: r.facts, at: r.at || 0, start: START[st.id] || null };
+      status: r.status, facts: r.facts, at: r.at || 0, locked: !!r.locked, start: START[st.id] || null };
   });
 }
 

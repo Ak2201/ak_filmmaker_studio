@@ -39,7 +39,7 @@ import '../styles/breakdown-run.css';
 import { flushStorage } from '../lib/store.js';
 import { runBreakdown } from '../lib/breakdown-run.js';
 import { commitImportedScript } from '../lib/script-commit.js';
-import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
+import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
 import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
@@ -733,7 +733,7 @@ function renderSongs(scenes) {
    (EX, and SL.sel which the scene list already shares). Batch tagging
    writes through Scenes.tagMany(), the one writer, and Undo takes back
    exactly what it added through untagMany(). */
-const EX = { cat: '' };
+const EX = { cat: '', sheet: false };   // sheet: the phone's index sheet is open (memory only)
 function renderElements() {
   const scenes = Scenes.listScenes();
   const totals = categoryTotals(scenes, ELEMENT_CATEGORIES);
@@ -749,7 +749,8 @@ function renderElements() {
   if (EX.cat && !totals.some((c) => c.id === EX.cat && c.tags)) EX.cat = '';
   const rows = indexRows(scenes, ELEMENT_CATEGORIES, EX.cat);
 
-  const side = h('aside.bdx-side', { 'aria-label': 'Element index' });
+  const side = h('aside.bdx-side' + (EX.sheet ? '.is-open' : ''), { 'aria-label': 'Element index', id: 'bdxSide', tabindex: '-1',
+    ...(EX.sheet ? { role: 'dialog', 'aria-modal': 'true' } : {}) });
   const cats = h('ul.bdx-cats');
   cats.append(h('li', {}, [h('button.bdx-cat.bdx-cat-all', { type: 'button', 'data-action': 'ex-cat', 'data-cat': '', 'aria-pressed': String(!EX.cat) }, [
     h('span.bdx-cat-name', { text: 'All categories' }),
@@ -768,8 +769,11 @@ function renderElements() {
   }
   side.append(
     h('div.bdx-side-head', {}, [
-      h('h3.bdx-side-title', { text: 'Element index' }),
-      h('p.bdx-side-meta', { text: usedCats + ' of ' + totals.length + ' categories · ' + grand.tags + (grand.tags === 1 ? ' tag' : ' tags') + ' · ' + grand.elements + (grand.elements === 1 ? ' element' : ' elements') })
+      h('div', {}, [
+        h('h3.bdx-side-title', { text: 'Element index' }),
+        h('p.bdx-side-meta', { text: usedCats + ' of ' + totals.length + ' categories · ' + grand.tags + (grand.tags === 1 ? ' tag' : ' tags') + ' · ' + grand.elements + (grand.elements === 1 ? ' element' : ' elements') })
+      ]),
+      button({ label: 'Close the element index', icon: 'close', iconOnly: true, variant: 'ghost', action: 'ex-sheet-close', class: 'bdx-side-close' })
     ]),
     cats,
     batchPanel(scenes),
@@ -779,7 +783,21 @@ function renderElements() {
     ])
   );
 
+  /* The phone's way in to the same index: a scrolling row of the same
+     category filters, and the button that raises the side panel (filter
+     list, batch tag, export) as a sheet. Hidden from 720px up, where the
+     panel sits beside the list. */
+  const phoneBar = h('div.bdx-phone', {}, [
+    button({ label: 'Index, batch tag and export', icon: 'tune', action: 'ex-sheet', class: 'bdx-sheet-open', attrs: { 'aria-controls': 'bdxSide', 'aria-expanded': String(EX.sheet) } }),
+    h('div.bdx-pchips.k-chip-row', { role: 'group', 'aria-label': 'Filter by category' },
+      [{ id: '', label: 'All', tags: grand.tags, hue: '' }].concat(totals.filter((c) => c.tags)).map((c) =>
+        h('button.bdx-pchip' + (c.hue ? '.hue-' + c.hue : ''), { type: 'button', 'data-action': 'ex-cat', 'data-cat': c.id, 'aria-pressed': String(EX.cat === c.id) }, [
+          h('span.bdx-pchip-name', { text: c.label }),
+          h('span.bdx-pchip-n', { text: String(c.tags) })
+        ])))
+  ]);
   const list = h('div.bdx-list');
+  list.append(phoneBar);
   list.append(h('p.bdx-list-meta', { role: 'status', text: rows.length + (rows.length === 1 ? ' element' : ' elements')
     + (EX.cat ? ' in ' + catById[EX.cat].label : '') }));
   const grid = h('div.bd-el-grid');
@@ -796,7 +814,7 @@ function renderElements() {
     ]));
   }
   list.append(grid);
-  wrap.append(h('div.bdx-layout', {}, [list, side]));
+  wrap.append(h('div.bdx-layout' + (EX.sheet ? '.sheet-open' : ''), {}, [list, h('div.bdx-scrim', { 'data-action': 'ex-sheet-close', 'aria-hidden': 'true' }), side]));
   return wrap;
 }
 
@@ -1430,8 +1448,35 @@ delegate(document, 'click', '[data-action="sug-all"]', () => {
 /* ---- element index: filter, batch tag, export ---------------- */
 delegate(document, 'click', '[data-action="ex-cat"]', (e, el) => {
   EX.cat = el.dataset.cat || '';
-  render(EX.cat ? '[data-action="ex-cat"][data-cat="' + CSS.escape(EX.cat) + '"]' : '[data-action="ex-cat"][data-cat=""]');
+  /* The same filter exists twice — the phone's chip row (first in the
+     DOM) and the side panel — so focus goes back to the copy that was
+     pressed, or a desktop click lands on a hidden chip (body) and a
+     click in the open sheet leaves the sheet. */
+  const scope = el.closest('.bdx-side') ? '#bdxSide ' : '.bdx-pchips ';
+  render(scope + '[data-action="ex-cat"][data-cat="' + CSS.escape(EX.cat) + '"]');
 });
+/* The sheet is the same panel, so it opens and closes in place (no
+   re-render, so a half-typed element name survives) and the state is
+   remembered only so a re-render keeps it. Escape closes; focus goes to
+   the panel on open and back to the button on close. */
+function exSheet(open) {
+  EX.sheet = open;
+  document.querySelector('.bdx-layout')?.classList.toggle('sheet-open', open);
+  const side = document.getElementById('bdxSide');
+  if (side) {
+    side.classList.toggle('is-open', open);
+    if (open) { side.setAttribute('role', 'dialog'); side.setAttribute('aria-modal', 'true'); } else { side.removeAttribute('role'); side.removeAttribute('aria-modal'); }
+  }
+  document.documentElement.classList.toggle('bdx-locked', open);
+  const btn = document.querySelector('.bdx-sheet-open');
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+  if (open) side?.focus({ preventScroll: true }); else btn?.focus({ preventScroll: true });
+}
+delegate(document, 'click', '[data-action="ex-sheet"]', () => exSheet(true));
+delegate(document, 'click', '[data-action="ex-sheet-close"]', () => exSheet(false));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && EX.sheet) exSheet(false); });
+/* Widening past the phone closes it: the panel is a column again. */
+matchMedia('(max-width: 720px)').addEventListener('change', (m) => { if (!m.matches && EX.sheet) exSheet(false); });
 const exSync = () => {
   const n = SL.sel.size;
   const tot = document.querySelectorAll('.bdx-batch-scenes input').length;
@@ -1616,15 +1661,18 @@ delegate(document, 'change', '[data-song-field]', (e, el) => {
 });
 
 /* ---- the whole-script breakdown ------------------------------ */
-function toastRun(res) {
+function runSaid(res) {
   const a = res.applied, t = res.totals;
-  const said = a.empty
+  return a.empty
     ? 'The script has no scene headings yet, so there was nothing to break down.'
     : 'Broke down ' + t.scenes + (t.scenes === 1 ? ' scene' : ' scenes') + ', '
       + res.characters.length + (res.characters.length === 1 ? ' character' : ' characters') + ' and '
       + t.locations + (t.locations === 1 ? ' location' : ' locations') + '.'
       + (a.castTagged ? ' Tagged ' + a.castTagged + ' cast from the dialogue cues.' : '');
-  STATUS = said;
+}
+function toastRun(res) {
+  const a = res.applied;
+  const said = runSaid(res);
   if (a.castTagged) {
     StudioUI.toast(said, {
       action: 'Undo cast tagging',
@@ -1637,13 +1685,29 @@ function toastRun(res) {
     });
   } else StudioUI.toast(said);
 }
-delegate(document, 'click', '[data-action=run-breakdown]', async () => {
-  let res;
-  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
-  await flushStorage().catch(() => {});
-  toastRun(res);
-  render('#overview');
+/* Manual breakdown and Breakdown with AI share one chain
+   (src/ui/breakdown-flow.js): the run (this toast), then shots and story
+   as reviews in the Desk. The module loads at the click, so first paint
+   carries none of it. `tab` is where the page repaints afterwards. */
+const flowHooks = (tab) => ({
+  onRun: (res) => {
+    if (!res) return;
+    flushStorage().catch(() => {});
+    scriptDoc = null;
+    STATUS = runSaid(res);
+    render(tab);
+  },
+  /* the run's toast waits for the reviews to end: on a phone it sat
+     over the existing-shots question and the Desk's sheet */
+  announce: (res) => { if (res) toastRun(res); },
+  refresh: () => { scriptDoc = null; render(tab); }
 });
+setFlowHooks(flowHooks);
+async function manualFlow(tab) {
+  try { await (await import('../ui/breakdown-flow.js')).manualBreakdown(flowHooks(tab)); }
+  catch (e) { console.warn('[breakdown] manual', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); }
+}
+delegate(document, 'click', '[data-action=run-breakdown]', () => manualFlow('#overview'));
 delegate(document, 'click', '[data-action=sum-view]', (e, btn) => {
   setView(btn.dataset.view);
   render('#' + btn.id);
@@ -1675,6 +1739,7 @@ delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) =>
   let res;
   try { res = runBreakdown(); } catch (err) { console.warn('[breakdown] run', err); StudioUI.toast('The script was imported, but the breakdown could not run.', { type: 'error' }); render(); return; }
   await flushStorage().catch(() => {});
+  STATUS = runSaid(res);
   toastRun(res);
   render('#overview');
 });
@@ -1696,13 +1761,6 @@ function wireScriptParts(bb, ch) {
     blankElement
   });
 }
-delegate(document, 'click', '[data-action=run-breakdown-script]', async () => {
-  let res;
-  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
-  await flushStorage().catch(() => {});
-  scriptDoc = null;
-  toastRun(res);
-  render('#script');
-});
+delegate(document, 'click', '[data-action=run-breakdown-script]', () => manualFlow('#script'));
 
 render();

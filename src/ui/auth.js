@@ -403,9 +403,13 @@ export function renderAccountBlock() {
       h('span.am-sync-text', { text: st.detail || 'Local only' })
     ]),
     ...gateRows,
-    h('button.am-item', { type: 'button', 'data-auth-action': 'sync', text: '↻ SYNC NOW' }),
-    h('button.am-item', { type: 'button', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
-    h('button.am-item.danger', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
+    /* The three actions are one row on the card at every width (a phone
+       wraps them to full-width buttons); the same buttons, one handler. */
+    h('div.am-actions', {}, [
+      h('button.am-item', { type: 'button', 'data-auth-action': 'sync', text: '↻ SYNC NOW' }),
+      h('button.am-item', { type: 'button', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
+      h('button.am-item.danger', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+    ]),
     h('p.am-foot', { text: 'Signing out leaves every project on this device.' })
   ]);
   /* Fill the studio-account row once the block is in the document. */

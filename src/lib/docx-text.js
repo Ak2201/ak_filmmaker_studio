@@ -87,8 +87,10 @@ export function documentXmlToText(xml) {
   const lines = [];
   for (const p of paras) {
     let line = '';
-    // Walk the tokens we care about in document order.
-    const re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\s*\/>|<w:br\s*\/>|<w:cr\s*\/>/g;
+    // Walk the tokens we care about in document order. A break may
+    // carry attributes (<w:br w:type="page"/>); a tab may not, because
+    // an attributed <w:tab …/> is a tab STOP in <w:pPr>, not a tab.
+    const re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/>|<w:cr\s*\/>/g;
     let m;
     while ((m = re.exec(p))) {
       if (m[1] !== undefined) line += decodeXml(m[1]);

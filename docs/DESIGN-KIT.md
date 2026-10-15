@@ -148,3 +148,98 @@ and the dialog (`.dlg.k-modal`, built by `dialog.js`). Both use doubled-class
 selectors so the result never depends on stylesheet order. The dialog keeps
 every class the proofs read (`.dlg`, `.dlg-overlay`, `.modal-actions`,
 `.mbtn(.primary)`, `.dlg-field`, `.dlg h3`); its × close is not an `.mbtn`.
+
+## Phone (below 720px) — 14 Oct 2026
+
+One codebase per page, one feature set; **only the placement changes**.
+Every feature on a phone exists on a desk and the other way round.
+
+### The one breakpoint
+
+Every phone rule is `@media (max-width: 720px)` — the number `chrome.js`
+attaches the bottom bar at (`MAB_QUERY`), so the kit, the shell and the bar
+cannot disagree about what a phone is. A media query cannot read a custom
+property, so the breakpoints are written down as tokens beside the queries
+(`kit.css` `:root`): `--bp-phone` 720px, `--bp-desk` 1100px. A query with
+another number is a bug. Shell rules that only make sense while the bar is
+attached key off `html.mn-on` instead (set by `mobile-nav.js` `onBar()`), so
+a page that opts out with `data-no-actionbar` keeps its desk band.
+
+### Phone tokens (`kit.css`)
+
+| token | value | use |
+| --- | --- | --- |
+| `--tap-min` | 44px | every kit control's minimum height (and an icon button's width) below 720px, whatever the pointer |
+| `--phone-gutter` | `--s4` (16px) | the side gutter |
+| `--phone-bar-h` | 56px | the phone's top band, one row |
+| `--safe-top/right/bottom/left` | `env(safe-area-inset-*)` | notches and the home indicator |
+| `--k-foot-clear` | `--mab-h` + `--ssb-h` | what the fixed bottom bar and the status dock cover; 0 on a desk |
+
+`--mab-h` (bottom bar) and `--ssb-h` (status dock) are MEASURED by
+`chrome.js` and `status-bar.js` and already include the safe area; the body
+reserves both. Never write their heights down as numbers.
+
+### Automatic below 720px (no option needed)
+
+- **44px targets** on `.k-btn` (all sizes), `.k-seg-btn`, `.k-check`, and
+  fields (`.k-control`, 44px tall); icon buttons 44 wide; the chip's × is a
+  32px square. A `--cell` control inside an un-stacked table stays compact.
+- **2-column stat grid**: `.k-stat-strip` is two equal columns.
+- Page head stacks; panel heads, feet and page actions wrap; action buttons
+  fill the row.
+- Segmented controls scroll sideways with snap instead of wrapping.
+- **The dialog is a bottom sheet**: `ask` / `askDanger` / `tell` /
+  `askText` (`dialog.js`) pin to the foot, full width, rounded top, safe
+  area under the actions, buttons a thumb wide. Same element, focus trap
+  and classes.
+
+### Variants (options on existing builders — not new components)
+
+| variant | API | what it does |
+| --- | --- | --- |
+| Responsive table | `table({ …, responsive: 'stack' })` | a table on a desk; below 720px each row is a card and each cell a "LABEL · value" line. The label is the column head (`data-label`, set by `table.js`); the row header is the card title; empty cells drop. |
+| Compact strip | `strip({ …, compact: true })` | the two-line rack at any width: tag · SC · slug · day, then pages and cast. No grip (the row menu moves it). |
+| Stacked stage card | `stageCard({ …, stacked: true })` | one row per stage — number square, title and line, status at the right, then meter and next link; hue on the left edge. The mobile dashboard's lifecycle list. |
+| Collapsible panel | `panel({ …, collapsible: true, open })` | a native `<details>`; the head is the `<summary>` (tap / Enter / Space, no script). Open by default; a closed body stays in the DOM. `actions` move into the top of the body (a button inside a summary would toggle it). |
+| Sticky segmented strip | `segmented({ …, sticky: true })` | a view switcher pinned under the measured band (`--sh-chrome-h`); full width below 720px. |
+
+CSS-only: `.k-chip-row` (wraps on a desk, one scrolling line with snap on a
+phone), `.k-sticky-foot` (an action row pinned above the bottom bar and
+dock, `bottom: --k-foot-clear`), `.k-safe-x` (gutters that clear a notch).
+
+### The bottom sheet
+
+`sheet({ title, body, kind, focus, returnTo, onClose })` and `closeSheet()`
+from the kit are the phone's own Go-to / Tools frame (`mobile-nav.js`
+`openSheet`): overlay, header, close, focus trap, Escape, backdrop, scroll
+lock. Both return a promise (the module is imported lazily so the kit stays
+light in Node tests; it is already in the CORE chunk, so nothing extra is
+fetched). At 720px and up the same frame sits centred at 560px. Use a sheet
+for a list or a form that belongs to the page; use `ask`/`tell` for a
+decision.
+
+### The phone shell (`mobile-nav.js` / `mobile-nav.css`, `status-bar.css`)
+
+- **Top band**, one 56px row on the rail surface, PINNED (it was un-pinned
+  when a wrapped phone toolbar was 391px; one row that cannot wrap is not
+  that): ☰ · `Studio › Here` (on a stage page the stage's hue dot ›
+  module) · project pill (title only) · sync pill (dot + cloud) · account
+  (initials disc signed in, a violet person disc signed out). The burger and
+  the project pill open the **Go to** sheet (the pill at the project and its
+  switcher rows); Backup and the theme button stay in the zone and are
+  reached through **Tools**, which borrows the whole zone. measureChrome()
+  reads the pin, so fragments and the tab strip park under it.
+- **Bottom bar** stays **Home · Go to · Search · Tools** on EVERY page,
+  global pages included (owner, 14 Oct 2026): four equal cells, icon over label, the
+  current one on the active fill with a violet icon.
+- **Status dock**: the same one-line real-data bar as the desk (version,
+  sync, storage), on the canvas, above the bottom bar.
+- **Sync pill** (every width, `shell.js` `buildSyncPill`): the dock's own
+  words (`syncLine()`), derived from `getSyncStatus()` on `cloud:status`,
+  stores nothing; links to Settings › Account. Words show at 1280px and up
+  and in the Tools sheet; below that the dot, cloud and accessible name.
+
+Check phone work in a 390×844 context loaded DIRECTLY at that width
+(`verify` loads at 1280 and resizes, so anything gated on `matchMedia` at
+load has already decided), and look at it against the mobile `screen.png`.
+The showcase has every variant: `kit.html#s8`.

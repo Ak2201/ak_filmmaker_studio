@@ -998,3 +998,22 @@
 .db-fix, .rd-row { border-radius: var(--sk-radius); }
 .db-main .st-meter { grid-template-columns: minmax(0, 1fr); gap: var(--s1); }
 .db-focus { align-items: start; }
+
+/* ---- Swiss kit, round 3 (14 Oct 2026): slate, facts, shortcuts ------- */
+.db-slate { margin: 0 0 var(--s3); color: var(--ink-muted); font-size: var(--t-small); display: flex; flex-wrap: wrap; gap: var(--s2); align-items: baseline; }
+.db-slate-k { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; }
+.db-slate-v { color: var(--ink); }
+.db-slate-edit { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; min-height: 44px; }
+@media (min-width: 720px) { .db-slate-edit { min-height: 0; } }
+.db-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s1) var(--s4); margin: 0; font-size: var(--t-small); }
+.db-facts dt { color: var(--ink-muted); }
+.db-facts dd { margin: 0; text-align: right; color: var(--ink); overflow-wrap: anywhere; font-family: var(--f-mono); }
+.db-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s2); }
+.db-trio-i {
+  display: flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--s2);
+  border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); color: var(--ink);
+  text-decoration: none; font-size: var(--t-small); text-align: center;
+}
+.db-trio-i:hover { border-color: var(--accent); }
+.db-pct, .db-step-n { margin-left: var(--s2); vertical-align: middle; }
+.db-up-meter { margin-block: var(--s1); }

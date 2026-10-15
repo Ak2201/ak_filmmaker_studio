@@ -29,42 +29,14 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { mountPathBar } from '../ui/path-bar.js';
 import { h } from '../lib/dom.js';
-import C from '../lib/costs.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
 import { costSections, costKpis, costAside, initCosts } from '../ui/budget-costs.js';
 import { pageHeader, button, notice } from '../ui/kit/index.js';
-import rates from '../data/rates.chennai.2024.json';
-import rateChecks from '../data/rates.chennai.checks.json';
+import { rateProvenance, versionCount } from '../lib/budget-model.js';
 
 const app = document.getElementById('app');
 
-function rateProvenance() {
-  // rates.json calls it `asOf`, not `year` — I wrote `year` first and
-  // it would have rendered "undefined" with a silent fallback hiding it.
-  /* Counted from the overlay, not asserted. This line used to say
-     every preset was 2024-25 full stop, which stopped being true the
-     moment part of the card was re-checked against a Chennai rental
-     house: the estimator below shows those with their own date, so a
-     blanket "all 2024-25" above it contradicted the hints underneath
-     it. The same one-fact-two-sources fault the estimator itself had,
-     one level up and in the prose, where it is easier to miss. */
-  const rows = rateChecks.rows || [];
-  const checked = rows.filter((r) => r.confidence === 'checked').length;
-  const stale = rows.filter((r) => r.confidence === 'stale').length;
-
-  let s = `Preset rates are Chennai ${rates.asOf}. `;
-  if (checked) {
-    s += `${checked} were re-checked on ${rateChecks.lastChecked} and are shown with that `
-       + `date — next to the ${rates.asOf} band, not over it, because the checked `
-       + `figures come in well under it and it is not settled why. `;
-  }
-  if (stale) {
-    s += `${stale} more were looked for and found published nowhere, so the `
-       + `${rates.asOf} figure stands and says so on the line. `;
-  }
-  return s + `They are a starting point for a line, not a quote — every one of `
-           + `them is editable.`;
-}
+/* rateProvenance() — the counted provenance line — is src/lib/budget-model.js's. */
 
 function render() {
   const main = h('main#main.hue-plan');
@@ -77,8 +49,7 @@ function render() {
      builder as the Export tab's button); the versions link counts what
      costs.js holds. New cost line reaches the estimator's own add-row
      action, so there is one way to add a line. */
-  let versions = 0;
-  try { versions = C.listVersions().length; } catch (e) { /* none */ }
+  const versions = versionCount();
   const head = pageHeader({
     class: 'bd-head bd-head-split',
     eyebrow: 'Budget & People · what it costs',

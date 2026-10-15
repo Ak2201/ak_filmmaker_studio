@@ -37,7 +37,9 @@ import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.j
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
 import PlanGate from '../lib/plan-gate.js';
-import { timeLeft } from '../lib/trial-time.js';
+import {
+  linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK, planHeading, plansPendingHeading, lapsedLine, trialStatus
+} from '../lib/purchase-model.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -48,13 +50,7 @@ const cloud = () => window.StudioCloud || null;
    reload nor the Google round trip, which is why the signed-out line below
    says what to do rather than promising it is remembered. `code` is accepted
    too, for a link somebody typed by hand. Same shape the server accepts. */
-const LINK_CODE = (() => {
-  try {
-    const q = new URLSearchParams(location.search);
-    const v = (q.get('ref') || q.get('code') || '').trim();
-    return /^[A-Za-z0-9_-]{3,40}$/.test(v) ? v.toUpperCase() : '';
-  } catch (e) { return ''; }
-})();
+const LINK_CODE = linkCode(location.search);
 let linkCodeApplied = false;
 
 /* Put the linked code in the "Have a code?" box and press APPLY — through
@@ -88,22 +84,15 @@ function section(id, eyebrow, title, deck) {
 
 async function refreshBilling() {
   const c = cloud();
-  if (!c || !c.isConfigured() || !c.getSession()) { billing = { plans: null, st: null, error: '', missing: false, loading: false }; render(); return; }
+  if (!c || !c.isConfigured() || !c.getSession()) { billing = { ...EMPTY_BILLING, loading: false }; render(); return; }
   billing = { ...billing, error: '', missing: false, loading: true };
   render();
-  try {
-    const [plans, st] = await Promise.all([Billing.listPlans(), Billing.status()]);
-    billing = { plans, st, error: '', missing: false, loading: false };
-    refreshRefundRequest();
-  } catch (e) {
-    const missing = /does not exist|Could not find|PGRST/i.test(e.message || '');
-    billing = { plans: null, st: null, error: missing ? '' : (e.message || 'The plans did not load.'), missing, loading: false };
-  }
+  const { ok, ...got } = await loadBilling();
+  billing = { ...got, loading: false };
+  if (ok) refreshRefundRequest();
   render();
 }
 
-const FREE_LINE = 'The studio is free to use right now \u2014 nothing to buy.';
-const purchasesOff = (st) => !!(st && st.purchase_required === false);
 
 /* §33 — WHERE THE TRIAL STANDS, said on the page that sells the way
    past it. A trial user arrives here from the band's SEE PLANS; a
@@ -112,39 +101,24 @@ const purchasesOff = (st) => !!(st && st.purchase_required === false);
    this page said they were on a plan. The line reads billing_status()
    (this page's own copy) and the server's clock through plan-gate. */
 function trialLine(st) {
-  if (!st || st.plan !== 'free' || st.purchase_required === false) return null;
+  const t = trialStatus(st, () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()));
+  if (!t) return null;
   /* §33. Access given by e-mail with no plan: in, uncapped, nothing owed
-     while it stands. Said instead of any trial wording — a trial row
-     ticking beside it is not this person's situation. */
-  if (st.granted === true) {
-    return h('p.pl-status.pu-granted', { text: 'Access given by the studio. An administrator has opened the whole studio to you — there is nothing to buy while this access stands. A plan is here if you want one of your own.' });
-  }
-  const ends = st.trial_ends_at ? Date.parse(st.trial_ends_at) : NaN;
-  if (st.trial_active === true && Number.isFinite(ends)) {
-    const left = timeLeft(ends - (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()));
-    return h('p.pl-status.pu-trial', { text: 'Your free trial has ' + left + ' left. A plan keeps the studio open after it ends.' });
-  }
-  if (st.entitled === false) {
-    const when = Number.isFinite(ends) ? ' on ' + new Date(ends).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
-    return h('div.pu-trial.pu-trial-over', {}, [
-      h('p.pl-status', { text: (st.trial_used ? 'Your free trial ended' + when + '. ' : '') + 'Choose a plan to keep using the studio. Everything you wrote is still saved on this device.' }),
-      /* The way out sits beside the way through: this is the one page
-         a lapsed trial can reach, and the band's account pill is a
-         link to Settings, two steps from here. */
-      h('div.pu-actions', {}, [h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })])
-    ]);
-  }
-  return null;
+     while it stands. Said instead of any trial wording. */
+  if (t.kind === 'granted') return h('p.pl-status.pu-granted', { text: t.text });
+  if (t.kind === 'active') return h('p.pl-status.pu-trial', { text: t.text });
+  return h('div.pu-trial.pu-trial-over', {}, [
+    h('p.pl-status', { text: t.text }),
+    /* The way out sits beside the way through: this is the one page
+       a lapsed trial can reach, and the band's account pill is a
+       link to Settings, two steps from here. */
+    h('div.pu-actions', {}, [h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })])
+  ]);
 }
 
-/* What a plan actually does. This said "work on this device is never
-   limited", which stopped being true with the three-plan split: a plan
-   decides which STAGES open (plan-matrix.json), and the trial's end walls
-   the studio. Nothing written is ever deleted — that part was true and
-   stays. Names from planName(), never typed. */
-const DECK = 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
-  + Billing.planName('indie') + ' to prepare it, ' + Billing.planName('pro') + ' to shoot and finish it — and sets how much syncs to the cloud. '
-  + 'One payment, yours for good. Nothing you write is ever deleted, on any plan or none.';
+/* What a plan actually does: DECK, in purchase-model.js. A plan decides
+   which STAGES open (plan-matrix.json), and the trial's end walls the
+   studio. Nothing written is ever deleted. */
 
 function planSection() {
   const c = cloud();
@@ -173,8 +147,7 @@ function planSection() {
     return sec;
   }
   if (!billing.plans) {
-    const sec = section('plan', 'Plan',
-      billing.missing ? 'Plans are not set up on this project yet.' : billing.error ? 'The plans did not load.' : 'Loading the plans…', DECK);
+    const sec = section('plan', 'Plan', plansPendingHeading(billing), DECK);
     if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
     sec.append(h('div.pu-actions', {}, [
       h('button.btn', { type: 'button', 'data-pu-action': 'retry', disabled: billing.loading ? true : null, text: billing.loading ? 'LOADING…' : 'TRY AGAIN' })
@@ -194,8 +167,7 @@ function planSection() {
     if (invs0) sec.append(invs0);
     return sec;
   }
-  const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' · ' + st.account_name : ''}`
-    : st && st.granted === true ? 'Access given by the studio.' : 'Choose a plan.', DECK);
+  const sec = section('plan', 'Plan', planHeading(st), DECK);
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
   if (st) {
     const tl = trialLine(st);
@@ -205,7 +177,7 @@ function planSection() {
        drawn for a buyer only. */
     const u = st.plan !== 'free' ? usageList(st) : null;
     if (u) sec.append(h('h3.gt-h3', { text: 'Your usage' }), u);
-    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). Choose a plan to keep using the studio.` }));
+    if (st.lapsed) sec.append(h('p.pl-status', { text: lapsedLine(st) }));
   }
   sec.append(planCards(billing.plans, st, {
     onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),

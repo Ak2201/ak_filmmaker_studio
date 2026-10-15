@@ -47,6 +47,7 @@ import Store from '../lib/store.js';
 import { delegate } from '../lib/dom.js';
 import { BRAND, BRAND_HOST, BRAND_PATH } from '../lib/brand.js';
 import { setPort } from '../lib/ports.js';
+import { brandingPrefOff, saveBrandingOff, tourActive } from '../lib/chrome-prefs.js';
 import '../styles/footer.css';
 
 const LINKS = [
@@ -88,7 +89,6 @@ export function whatsAppLink({ className = 'wa-link', label = 'Help on WhatsApp'
 /* The canonical host is a placeholder in ten files (LAUNCH §7); this is
    the eleventh, and the one constant to change with them. */
 export { BRAND_HOST, BRAND_PATH };
-const PREFS_KEY = 'fms_studio_prefs_v1';
 const REF_RE = /^[A-Za-z0-9_-]{3,40}$/;
 
 let lastPlan = null;        // plan-gate.js's currentPlan(), from 'plan:changed'
@@ -104,13 +104,6 @@ export function brandURL(ref = refCode) {
 /** What the line PRINTS: the address without the scheme, readable on paper. */
 export const brandText = (ref = refCode) => brandURL(ref).replace(/^https:\/\//, '');
 
-function readPrefs() {
-  try {
-    const p = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
-    return p && typeof p === 'object' && !Array.isArray(p) ? p : {};
-  } catch (e) { return {}; }
-}
-
 /** May THIS plan remove the line? Free, unknown and signed out: no. */
 export function mayRemoveBranding(plan = lastPlan) {
   if (!plan || !plan.gated) return false;
@@ -121,13 +114,11 @@ export function mayRemoveBranding(plan = lastPlan) {
 /** Is the line on? Only a plan that may remove it AND a user who did. */
 export function brandingOn(plan = lastPlan) {
   if (!mayRemoveBranding(plan)) return true;
-  return readPrefs().branding !== 'off';
+  return !brandingPrefOff();
 }
 /** Written on a click only — never on load. */
 export function setBrandingOff(off) {
-  const p = readPrefs();
-  if (off) p.branding = 'off'; else delete p.branding;
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch (e) { /* private mode: the line stays */ }
+  saveBrandingOff(off);   // private mode: not written, and the line stays
   syncFootBrand();
 }
 
@@ -232,11 +223,9 @@ export function planExtras(st) {
 }
 
 /* ---- the tour loader ---------------------------------------------- */
-const TOUR_KEY = 'fms_tour_v1';
 const isHub = () => /(^|\/)(index(\.html)?)?$/.test(location.pathname);
 function maybeTour() {
-  let active = false;
-  try { const t = JSON.parse(localStorage.getItem(TOUR_KEY) || 'null'); active = !!(t && t.active); } catch (e) { /* none */ }
+  const active = tourActive();
   if (!active && !isHub()) return;
   import('./tour.js').then((m) => m.boot()).catch((e) => console.warn('[tour]', e));
 }

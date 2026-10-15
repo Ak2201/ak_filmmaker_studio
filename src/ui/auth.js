@@ -32,6 +32,7 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
    so this cannot cycle back into chrome.js the way an import of
    cloud.js would. It is in the same `studio` chunk already. */
 import Account from '../lib/account.js';
+import { connectProject } from '../lib/chrome-auth.js';
 import '../styles/auth.css';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
@@ -627,8 +628,7 @@ export async function saveConfig() {
     return;
   }
   setModalError('');
-  c.setCfg({ url, key });
-  const ok = await c.ensureClient();
+  const ok = await connectProject({ url, key });
   if (!ok) {
     setModalError('Could not reach that project. Check the URL and the anon key.');
     return;

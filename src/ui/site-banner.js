@@ -34,16 +34,16 @@
    content down by its height, once, when it arrives; the sticky band measures itself as usual.
    ============================================================ */
 import '../styles/site-banner.css';
-
-const CACHE_KEY = 'fms_banner_v1';        // { at, row|null } for this browser session
-const SEEN_KEY = 'fms_banner_seen_v1';    // the id of a banner dismissed this session
+/* The request and the two per-tab keys are src/lib/chrome-banner.js's. */
+import {
+  bannerLive, bannerSeen, markBannerSeen, readBannerCache, saveBannerCache, forgetBanner, fetchBannerRow
+} from '../lib/chrome-banner.js';
 
 let pending = null;      // an answer not yet written to the cache (written on pagehide)
 let mounted = null;      // the live bar, if any
 let started = false;
 let inflight = null;
 
-const ss = (fn) => { try { return fn(window.sessionStorage); } catch (e) { return undefined; } };
 
 /** The bar as a node. `preview` draws the same thing without a role or a working
  *  dismiss, for the console. */
@@ -70,25 +70,17 @@ export function bannerBar(row, { preview = false } = {}) {
 }
 
 function dismiss(row) {
-  ss((s) => s.setItem(SEEN_KEY, String(row.id)));
+  markBannerSeen(row);
   unmount();
 }
 function unmount() {
   if (mounted) { mounted.remove(); mounted = null; }
 }
 
-function live(row) {
-  if (!row || !row.text) return false;
-  const now = Date.now();
-  if (row.starts_at && Date.parse(row.starts_at) > now) return false;
-  if (row.ends_at && Date.parse(row.ends_at) <= now) return false;
-  return true;
-}
-
 function mount(row) {
   unmount();
-  if (!live(row)) return;
-  if (ss((s) => s.getItem(SEEN_KEY)) === String(row.id)) return;
+  if (!bannerLive(row)) return;
+  if (bannerSeen(row)) return;
   const bar = bannerBar(row);
   const body = document.body;
   if (!body) return;
@@ -98,26 +90,8 @@ function mount(row) {
   mounted = bar;
 }
 
-function readCache() {
-  const raw = ss((s) => s.getItem(CACHE_KEY));
-  if (!raw) return undefined;
-  try { const c = JSON.parse(raw); return c && typeof c === 'object' && 'row' in c ? c : undefined; } catch (e) { return undefined; }
-}
-
-async function fetchRow() {
-  const cloud = window.StudioCloud;
-  const cfg = cloud && cloud.getCfg && cloud.getCfg();
-  if (!cfg || !cfg.url || !cfg.key) return undefined;     // no project: no banner, no request
-  const res = await fetch(String(cfg.url).replace(/\/+$/, '') + '/rest/v1/rpc/site_announcement_now', {
-    method: 'POST',
-    headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: '{}',
-    credentials: 'omit'
-  });
-  if (!res.ok) return undefined;                           // §45 not run, or a network fault: say nothing
-  const data = await res.json();
-  return data && typeof data === 'object' && data.text ? data : null;
-}
+const readCache = readBannerCache;
+const fetchRow = fetchBannerRow;
 
 function run({ force = false } = {}) {
   if (!force) {
@@ -137,9 +111,8 @@ function run({ force = false } = {}) {
  *  and look again, now. */
 export function refreshBanner() {
   pending = null;
-  ss((s) => s.removeItem(CACHE_KEY));
-  ss((s) => s.removeItem(SEEN_KEY));
-  return run({ force: true }).then(() => { if (pending) ss((s) => s.setItem(CACHE_KEY, JSON.stringify(pending))); });
+  forgetBanner();
+  return run({ force: true }).then(() => { if (pending) saveBannerCache(pending); });
 }
 
 function start() {
@@ -151,7 +124,7 @@ function start() {
   const known = readCache();
   if (known && known.row && document.body) mount(known.row);
   window.addEventListener('pagehide', () => {
-    if (pending) ss((s) => s.setItem(CACHE_KEY, JSON.stringify(pending)));
+    if (pending) saveBannerCache(pending);
   });
   const go = () => {
     const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));

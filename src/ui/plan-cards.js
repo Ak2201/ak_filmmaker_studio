@@ -40,6 +40,7 @@ import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
+import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
 
@@ -243,7 +244,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const target = row.querySelector(`.pl-card[data-plan="${CSS.escape(want)}"]`);
     if (target) {
       pickedDone = true;
-      try { sessionStorage.removeItem(PLAN_STASH); } catch (e) { /* ignore */ }
+      clearPlanStash();
       picked = { id: want, why: wantedFor() };
       markPicked(row);
       setTimeout(() => { if (target.isConnected) target.scrollIntoView({ block: 'center', behavior: 'auto' }); }, 0);
@@ -300,9 +301,9 @@ function promoBox(buyable) {
 
 /* ?plan= survives the Google hop (which returns to the bare path) through a
    sessionStorage stash written when a sign-in button is pressed on a page
-   that carried it. sessionStorage, never localStorage: verify asserts no
-   idle localStorage writes, and a plan choice is not worth keeping. */
-const PLAN_STASH = 'fms_purchase_plan';
+   that carried it (purchase-model.js owns it). sessionStorage, never
+   localStorage: verify asserts no idle localStorage writes, and a plan
+   choice is not worth keeping. */
 /* ?for=<id>: what a lock or a toast refused (plan-gate.js offerFor()).
    Only an id the studio knows is ever printed — the LABEL is looked up
    again here, so a hand-typed ?for= cannot put words on the card. */
@@ -356,19 +357,10 @@ function compareBlock(plans) {
   return det;
 }
 
-function wantedPlan() {
-  try {
-    const q = new URLSearchParams(location.search).get('plan');
-    if (q) return q;
-    return sessionStorage.getItem(PLAN_STASH) || '';
-  } catch (e) { return ''; }
-}
+const wantedPlan = () => wantedPlanFrom(location.search);
 document.addEventListener('click', (e) => {
   if (!(e.target.closest && e.target.closest('[data-auth-action="google"]'))) return;
-  try {
-    const q = new URLSearchParams(location.search).get('plan');
-    if (q && /^[\w-]{1,32}$/.test(q)) sessionStorage.setItem(PLAN_STASH, q);
-  } catch (err) { /* ignore */ }
+  stashPlanFromAddress(location.search);
 }, true);
 
 /* PURCHASE SUCCESS. What unlocked is read from the same matrix the

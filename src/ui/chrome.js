@@ -40,6 +40,9 @@ import './trial-band.js';
    asked for once per session after load. Absent from the DOM otherwise. */
 import './site-banner.js';
 import { registerSW } from '../lib/pwa.js';
+import { touchThemePref } from '../lib/chrome-prefs.js';
+/* The feature blueprint's answers, for the beat visualiser's dots. */
+import { readAll as readBlueprint } from '../lib/blueprint-store.js';
 import {
   attachSignInPill,
   refreshSignInPill,
@@ -294,7 +297,7 @@ StudioUI.notify = StudioUI.toastInfo;
    :root carries. The API keeps its shape (themeOrder, currentTheme,
    applyTheme, cycleTheme) so verify, the palette and the four legacy
    pages keep working; with one theme, cycling is a no-op. */
-const THEME_KEY = 'fms_studio_theme_v1';
+/* fms_studio_theme_v1 is read (never written) by chrome-prefs.js. */
 const THEME_ORDER = ['ink'];
 const THEME_LABEL = { ink: 'Dark' };
 const themeLabel = (t) => THEME_LABEL[t] || 'Dark';
@@ -320,7 +323,7 @@ function applyTheme() {
 function loadTheme() {
   /* Read, for the contract's sake: a stored value is honoured by being
      left alone, whatever it says. */
-  try { void localStorage.getItem(THEME_KEY); } catch (e) {}
+  touchThemePref();
   applyTheme();
 }
 StudioUI.applyTheme = applyTheme;
@@ -904,10 +907,7 @@ function buildBeatVisualizer() {
   wrap.appendChild(tooltip);
 
   // Read filled state from blueprint storage
-  let dataObj = {};
-  try {
-    dataObj = JSON.parse(localStorage.getItem('fms_filmmaker_combined_v1') || '{}');
-  } catch (e) {}
+  const dataObj = readBlueprint('feature');
 
   // Dots
   points.forEach(([x, y], i) => {
@@ -993,8 +993,7 @@ function buildBeatVisualizer() {
 function refreshBeatFills() {
   const wrap = document.getElementById('beatVisualizer');
   if (!wrap) return;
-  let dataObj = {};
-  try { dataObj = JSON.parse(localStorage.getItem('fms_filmmaker_combined_v1') || '{}'); } catch (e) {}
+  const dataObj = readBlueprint('feature');
   wrap.querySelectorAll('.beat-dot').forEach((dot, i) => {
     const key = 'b' + String(i + 1).padStart(2, '0');
     const filled = dataObj[key] && String(dataObj[key]).trim();

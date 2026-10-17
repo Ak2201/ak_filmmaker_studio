@@ -50,7 +50,7 @@
    compact row per scene still to cover
    ------------------------------------------------------------ */
 
-.vz-scene.k-panel { margin-bottom: var(--s5); }
+.vz-scene.k-panel { margin-bottom: var(--s5); border-left: 3px solid var(--accent-primary); }
 
 .vz-scene-head {
   display: flex;
@@ -78,7 +78,24 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Scenes with no shots yet: one hairline-ruled list, a row each. */
+/* Scenes with no shots yet: one compact bar at the foot of the page that
+   opens into a hairline-ruled list, a row each. */
+.vz-uncovered-bar { margin: var(--s5) 0; }
+.vz-uncovered-sum {
+  display: flex; align-items: center; gap: var(--s2);
+  min-height: var(--h-compact, 36px);
+  padding: 0 var(--s4);
+  cursor: pointer;
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius-lg));
+}
+.vz-uncovered-sum:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.vz-uncovered-bar[open] > .vz-uncovered-sum { margin-bottom: var(--s2); }
+/* the wordy header paragraphs stay in the DOM, out of sight */
+.vz-head .k-page-sub { display: none; }
 .vz-uncovered {
   display: grid;
   margin-bottom: var(--s5);
@@ -146,7 +163,7 @@
 .vz-strip {
   display: grid;
   /* min() keeps the track from demanding 260px inside a narrow column. */
-  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: var(--sk-grid-gap, var(--s3));
   align-items: start;
 }
@@ -344,7 +361,7 @@
   .vz-c-ctrl,
   .vz-frame-acts,
   .vz-board-acts,
-  .vz-uncovered { display: none !important; }
+  .vz-uncovered, .vz-uncovered-bar { display: none !important; }
 
   .vz-table-wrap { overflow: visible; }
   .vz-shotcol,

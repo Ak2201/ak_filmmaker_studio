@@ -50,6 +50,12 @@
    ============================================================ */
 import nav from '../data/navigation.json';
 import { region } from './region.js';
+import { STAY_PAGES, STAGE_PAGES, homeStage, stageLead, stageAllLocked } from './nav-stage.js';
+
+/* STAY_PAGES and STAGE_PAGES moved to nav-stage.js (pure, so journey.js
+   and the Node tests can read them), with the two stage rules —
+   homeStage() and stageLead(). Re-exported so no caller changes. */
+export { STAY_PAGES, STAGE_PAGES, homeStage, stageLead, stageAllLocked };
 
 /** Does this entry belong on the map in the region in force? An entry
  *  with no `region` belongs everywhere, which is why tagging nothing
@@ -104,30 +110,8 @@ export function projectPageFiles() {
   return files;
 }
 
-/** Retired pages that stay reachable behind `?stay=1` (write-route.js,
- *  blueprint-route.js). They are in no module's href, so without this
- *  the crumb is a bare "Studio" and no stage is lit. `frags` names the
- *  sections kept (label = the crumb's last segment, also the tab
- *  label); `stage` is the stage the page belongs to; `back` is the
- *  page the persistent back link returns to. Declarative: shell.js and
- *  tabs.js read this and name no page. */
-export const STAY_PAGES = {
-  'write.html': {
-    stage: 'screenplay', back: 'screenplay.html', backLabel: 'Back to the Screenplay Writer',
-    frags: { coverage: 'AI coverage', generate: 'Write from a synopsis' },
-    label: 'Screenplay tools'
-  },
-  'feature.html': { stage: '', label: 'Feature blueprint', frags: {} },
-  'short.html': { stage: '', label: 'Short film blueprint', frags: {} }
-};
-
-/** A stage's own landing page — not a module, so it has no plan feature and
- *  no usage counter, but it still belongs to its stage: the crumb reads
- *  "Pre-Production › Path" and the stage tab is lit. Declarative, like
- *  STAY_PAGES; shell.js reads it and names no page. */
-export const STAGE_PAGES = {
-  'preprod.html': { stage: 'preprod', label: 'Path' }
-};
+/* STAY_PAGES (retired pages behind ?stay=1) and STAGE_PAGES (a stage's
+   own landing page) are declared in nav-stage.js; see the import above. */
 export function stagePageEntry(file) { return STAGE_PAGES[String(file || '').toLowerCase()] || null; }
 
 /** The stay entry for this page, or null when `?stay=1` is absent. */
@@ -170,9 +154,10 @@ export function hueClassOf(group) {
   return 'sh-ph-' + group.hue;
 }
 
-/** The first module a visitor can open in a stage: built, with an
- *  href. The stage's menu, the rail's stage link and the hub's doors
- *  all start there, so there is one answer. */
+/** The first built module of a stage, with an href, IGNORING the plan.
+ *  A stage LINK (rail icon, crumb, dashboard card, hub door) is
+ *  stageLead() instead, which also skips modules switched off or not on
+ *  the member's plan — one rule for all of them (nav-stage.js). */
 export function firstModuleOf(phase) {
   /* A stage may carry a `home` (navigation.json): its own landing page that
      is not a module, so no plan feature or usage counter has to exist for
@@ -182,19 +167,19 @@ export function firstModuleOf(phase) {
 }
 
 /** The hub's three doors (`jobs` in navigation.json): each resolved to
- *  the stages it names, the first stage's first built module (its
- *  href is the door's), and that stage's hue class. A job whose stages
- *  are all unknown or empty is dropped rather than drawn as a door to
- *  nowhere. */
+ *  the stages it names, the first stage's LEAD (stageLead — the module
+ *  the rail icon and the crumb's stage button open too; its href is the
+ *  door's), and that stage's hue class. A job whose stages are all
+ *  unknown or empty is dropped rather than drawn as a door to nowhere. */
 export function jobs() {
   const byId = Object.fromEntries(phases().map((p) => [p.id, p]));
   return (nav.jobs || []).map((j) => {
     const stages = (j.stages || []).map((id) => byId[id]).filter(Boolean);
-    const lead = stages.map(firstModuleOf).find(Boolean);
+    const first = stages.find((p) => stageLead(p));
+    const lead = first ? stageLead(first) : null;
     if (!lead) return null;
-    const first = stages.find((p) => firstModuleOf(p) === lead);
     return { id: j.id, label: j.label, line: j.line || '', stages, href: lead.href, module: lead, hueClass: hueClassOf(first) };
   }).filter(Boolean);
 }
 
-export default { phases, globals, inRegion, shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, STAY_PAGES, stayEntry, STAGE_PAGES, stagePageEntry, guideStops, firstModuleOf, jobs };
+export default { phases, globals, inRegion, shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, STAY_PAGES, stayEntry, STAGE_PAGES, stagePageEntry, guideStops, firstModuleOf, jobs, homeStage, stageLead, stageAllLocked };

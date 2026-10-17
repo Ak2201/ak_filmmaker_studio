@@ -74,6 +74,15 @@
 .pl-promo-input { flex: 1 1 10rem; min-width: 0; text-transform: uppercase; }
 .pl-promo-msg { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-body); }
 .pl-promo-msg.is-error { color: var(--ink); background: var(--danger-wash); border-left: 3px solid var(--danger); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); }
+/* The education band under the promo box: text then the button,
+   wrapping under each other at phone width. */
+.pl-edu-band { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; justify-content: space-between; max-width: var(--measure); margin-top: var(--s3); padding: var(--s3) var(--s4); background: var(--paper-raised); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); color: var(--ink-body); }
+.pl-edu-text { flex: 1 1 16rem; min-width: 0; }
+.pl-edu-band .bd-eyebrow { margin: 0; }
+.pl-edu-lead { margin: var(--s1) 0 0; color: var(--ink); }
+.pl-edu-note { margin: var(--s1) 0 0; font-size: var(--t-small); color: var(--ink-body); overflow-wrap: anywhere; }
+.pl-edu-note a { color: var(--accent-deep); text-underline-offset: 2px; }
+.pl-edu-band .btn { flex: 0 0 auto; }
 .ba-promo { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); background: var(--paper-raised); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); max-width: 48rem; }
 .ba-promo-plans { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); font-size: var(--t-small); color: var(--ink-body); }
 .ba-promo-plans label { display: inline-flex; gap: var(--s1); align-items: center; }

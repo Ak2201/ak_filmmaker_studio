@@ -8,9 +8,9 @@
   },
   "lines": {
     "_about": "One line per PAID plan, said before what it adds (start.html, the plan cards). The lists themselves are derived from `features`, never typed.",
-    "starter": "Write the film.",
-    "indie": "Prepare it.",
-    "pro": "Shoot it and finish it: everything."
+    "starter": "Write the film — from beat sheet to formatted screenplay.",
+    "indie": "Prepare the shoot — breakdown, storyboard, stripboard and budget.",
+    "pro": "Run the production — call sheets, AI desk and white-label exports."
   },
   "card": {
     "_about": "Which of each plan's OWN additions its card on start.html lists first, in order (keys from features). The rest are counted and left to the comparison table. A key the plan does not add fails the build.",
@@ -18,22 +18,25 @@
       "screenplay",
       "story-beats",
       "revisions",
+      "docs",
       "import-script",
-      "exports",
-      "docs"
+      "exports"
     ],
     "indie": [
       "breakdowns",
-      "stripboard",
-      "budget",
-      "locations",
+      "elements",
+      "shot-list",
       "storyboard",
-      "drive_backup"
+      "stripboard",
+      "budget"
     ],
     "pro": [
       "call-sheets",
       "ai_tools",
-      "remove_branding"
+      "remove_branding",
+      "shoot-day",
+      "edit-log",
+      "deliverables"
     ]
   },
   "features": [
@@ -109,17 +112,32 @@
     {
       "key": "case-studies",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "dissection",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "glossary",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "story-beats",
@@ -134,12 +152,21 @@
     {
       "key": "idea-vault",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "pitch-deck",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "screenplay",
@@ -174,7 +201,12 @@
     {
       "key": "script-breakdown",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "breakdowns",
@@ -207,7 +239,12 @@
     {
       "key": "screen-time",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "docs",
@@ -222,12 +259,20 @@
     {
       "key": "auto-tag",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "cast-matrix",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "shot-list",
@@ -250,12 +295,20 @@
     {
       "key": "lookbook",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "media",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "budget",
@@ -287,7 +340,11 @@
     {
       "key": "songs",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "calendar",
@@ -337,7 +394,10 @@
     {
       "key": "shoot-day",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "pro"
+      ]
     },
     {
       "key": "call-sheets",
@@ -350,12 +410,18 @@
     {
       "key": "edit-log",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "pro"
+      ]
     },
     {
       "key": "deliverables",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "pro"
+      ]
     },
     {
       "key": "extension",

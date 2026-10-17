@@ -66,7 +66,7 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
 await ctx.addInitScript(() => {
   addEventListener('DOMContentLoaded', () => {
     const st = document.createElement('style');
-    st.textContent = ':root[data-plan-lock] main { visibility: visible !important; }';
+    st.textContent = ':root[data-plan-lock] main { visibility: visible !important; } .pg-lock[data-gone] { display: none !important; }';
     document.head.append(st);
   });
 });

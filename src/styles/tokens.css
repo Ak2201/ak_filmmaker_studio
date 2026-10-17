@@ -439,6 +439,23 @@
   --shadow-modal: 0 36px 90px rgba(10, 8, 20, .75), 0 0 0 1px rgba(139, 92, 246, .2);
   --blur-chrome:  saturate(180%) blur(20px);
 
+  /* ---- premium depth, specular highlights & subtle sheens ----
+     Declared on bare :root only. Every sheen is an IMAGE layered over a
+     solid background-color (verify's groundOf() reads backgroundColor,
+     so a gradient must never replace the colour). White-alpha insets
+     are invisible on the light theme's white surfaces, so one value
+     serves both palettes. */
+  --border-specular:      rgba(255, 255, 255, .12);
+  --surface-card-sheen:   linear-gradient(180deg, rgba(255, 255, 255, .035) 0%, rgba(255, 255, 255, 0) 100%);
+  --surface-rail-sheen:   linear-gradient(180deg, rgba(255, 255, 255, .02) 0%, rgba(255, 255, 255, 0) 100%);
+  --cta-sheen:            linear-gradient(180deg, rgba(255, 255, 255, .18) 0%, rgba(255, 255, 255, 0) 100%);
+  --shadow-card-rest:     0 1px 2px rgba(0, 0, 0, .40), inset 0 1px 0 rgba(255, 255, 255, .05);
+  --shadow-card-hover:    0 10px 28px rgba(0, 0, 0, .50), 0 0 0 1px rgba(139, 92, 246, .32), inset 0 1px 0 rgba(255, 255, 255, .09);
+  --shadow-control-rest:  0 1px 2px rgba(0, 0, 0, .30), inset 0 1px 0 rgba(255, 255, 255, .04);
+  --shadow-cta-hover:     0 0 0 1px rgba(139, 92, 246, .65), 0 6px 20px rgba(139, 92, 246, .35), inset 0 1px 0 rgba(255, 255, 255, .22);
+  --shadow-rail:          1px 0 0 var(--chrome-hair), 4px 0 24px rgba(0, 0, 0, .35);
+  --shadow-band:          0 4px 20px var(--scrim);
+
   --measure:       68ch;   /* max line length for running text */
   --measure-wide:  92ch;   /* card grids, tables, editor columns */
   --content-max:   1280px; /* hub sections */

@@ -43,9 +43,11 @@ import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
 import '../styles/modules.css';
+import '../styles/kit.css';         /* the kit header; chrome.js (which imports it elsewhere) is not loaded here */
 import '../styles/screening.css';
 
 import { h, delegate } from '../lib/dom.js';
+import { pageHeader } from '../ui/kit/page-header.js';
 import { formatCode, normaliseCode } from '../lib/gate.js';
 import { matrix, frameworkById } from '../lib/story.js';
 import { collectFrom, buildDeck } from '../lib/pitch-deck.js';
@@ -88,11 +90,11 @@ if (PUBLIC_VIEW) {
 
 function renderEnter() {
   const main = h('main#main.sc-main.sc-enter');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Screening room' }),
-    h('h1.bd-title', { text: 'You have been sent a film.' }),
-    h('p.bd-deck', { text: 'Enter the screening pass you were given. It opens one project, read-only, for a limited time — no account needed.' })
-  ]));
+  /* ONE PAGE FRAME: the kit header every studio page opens with, h1 the
+     page's name. The deck says what to do, so it is a body line (.bd-head
+     hides a header's sub). */
+  main.append(pageHeader({ eyebrow: ['Studio', 'Screening room'], title: 'Screening room', class: 'bd-head' }));
+  main.append(h('p.bd-deck.sc-enter-why', { text: 'You have been sent a film. Enter the screening pass you were given. It opens one project, read-only, for a limited time — no account needed.' }));
   const form = h('form.sc-form', { 'data-sc-form': 'open', autocomplete: 'off' });
   form.append(h('label', { for: 'scCode', text: 'Screening pass' }));
   form.append(h('input#scCode.sc-code', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40,

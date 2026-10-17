@@ -16,7 +16,7 @@ import '../styles/list-prices.css';
    the Supabase SDK, which a signed-out first paint must not fetch), so
    this reads LIST_PRICE — the same constant start.html is stamped from
    at build time — and says "confirmed at checkout", exactly as that
-   page does. Each plan's one line ("Write the film.") arrives with the
+   page does. Each plan's one line ("Write the film — from beat sheet to formatted screenplay.") arrives with the
    lazy matrix chunk; until then the names and figures stand alone. */
 export function listPriceBlock() {
   const ids = PLAN_ORDER.filter((id) => id !== 'free' && LIST_PRICE[id] > 0);

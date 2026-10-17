@@ -41,6 +41,12 @@ const gateCaps = [...capBlock.matchAll(/\['([a-z_]+)'/g)].map((m) => m[1]);
 const matrixCaps = matrix.features.filter((f) => f.kind === 'capability').map((f) => f.key);
 ok('plan-gate CAPABILITIES = matrix capabilities [' + gateCaps + '] vs [' + matrixCaps + ']', gateCaps.join() === matrixCaps.join());
 
+/* plan-gate.js (CORE) keeps its own list of the modules switched off for every plan. */
+const offBlock = gate.slice(gate.indexOf('export const OFF_BY_DEFAULT'), gate.indexOf(';', gate.indexOf('export const OFF_BY_DEFAULT')));
+const gateOff = [...offBlock.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]).sort();
+const matrixOff = matrix.features.filter((f) => f.kind === 'module' && !f.plans.length).map((f) => f.key).sort();
+ok('plan-gate OFF_BY_DEFAULT = matrix modules with plans: [] [' + gateOff + '] vs [' + matrixOff + ']', gateOff.join() === matrixOff.join());
+
 /* SUPERSETS: each paid plan includes everything the one below it has. */
 const PAID = PLAN_ORDER.filter((id) => id !== 'free');
 ok('PAID', M.PAID.join() === PAID.join());
@@ -50,7 +56,7 @@ for (let i = 1; i < PAID.length; i++) {
   }
 }
 ok('no paid plan is sample-only', matrix.features.filter((f) => f.inverted).every((f) => PAID.every((id) => !f.plans.includes(id))));
-ok('Pro has every row', matrix.features.filter((f) => !f.inverted).every((f) => f.plans.includes('pro')));
+ok('Pro has every row that is not switched off for everyone (plans: [])', matrix.features.filter((f) => !f.inverted && f.plans.length).every((f) => f.plans.includes('pro')));
 
 /* The seeds. */
 for (const id of PLAN_ORDER) {
@@ -58,20 +64,21 @@ for (const id of PLAN_ORDER) {
   ok('features object ' + id, f && typeof f === 'object' && Object.values(f).every((v) => typeof v === 'boolean'));
 }
 for (const id of PAID) ok('paid map ' + id + ' carries no sample_only', !('sample_only' in M.matrixFeatures(id)));
-ok('Pro locks nothing', Object.values(M.matrixFeatures('pro')).every((v) => v === true));
+const OFF_EVERYWHERE = matrix.features.filter((f) => !f.inverted && !f.plans.length).map((f) => f.key);
+ok('Pro locks nothing but the modules switched off for every plan', Object.entries(M.matrixFeatures('pro')).every(([k, v]) => v === true || OFF_EVERYWHERE.includes(k)));
 /* free mirrors the section 18 seed under plan-gate.js's rule (missing = allowed, false = locked). */
 const freeMap = M.matrixFeatures('free');
 ok('free = §18 seed: sample_only, no new projects, nothing else locked',
   freeMap.sample_only === true && freeMap.new_projects === false
-  && Object.entries(freeMap).filter(([k, v]) => v === false).map(([k]) => k).join() === 'new_projects');
-ok('owner split: Basic', ['screenplay', 'revisions', 'import-script', 'script-breakdown', 'scene-list', 'screen-time', 'story-beats', 'idea-vault', 'case-studies', 'exports', 'script_import', 'new_projects']
+  && Object.entries(freeMap).filter(([k, v]) => v === false && !OFF_EVERYWHERE.includes(k)).map(([k]) => k).join() === 'new_projects');
+ok('owner split: Basic', ['screenplay', 'revisions', 'import-script', 'scene-list', 'story-beats', 'docs', 'exports', 'script_import', 'new_projects']
   .every((k) => M.matrixFeatures('starter')[k] === true));
-ok('owner split: Intermediate, not Basic', ['budget', 'stripboard', 'breakdowns', 'pitch-deck', 'drive_backup', 'contacts', 'reports']
+ok('owner split: Intermediate, not Basic', ['budget', 'stripboard', 'breakdowns', 'drive_backup', 'contacts', 'reports']
   .every((k) => M.matrixFeatures('starter')[k] === false && M.matrixFeatures('indie')[k] === true));
-ok('owner split: Pro only', ['shoot-day', 'call-sheets', 'edit-log', 'deliverables', 'ai_tools', 'remove_branding']
+ok('owner split: Pro only', ['call-sheets', 'ai_tools', 'remove_branding']
   .every((k) => M.matrixFeatures('indie')[k] === false && M.matrixFeatures('pro')[k] === true));
 ok('extension limit', M.matrixLimits('starter').extension === false && M.matrixLimits('indie').extension === true && M.matrixLimits('pro').extension === true);
-ok('addedBy covers every row once', PAID.flatMap((id) => M.addedBy(id)).length === matrix.features.filter((f) => !f.inverted).length);
+ok('addedBy covers every row once', PAID.flatMap((id) => M.addedBy(id)).length === matrix.features.filter((f) => !f.inverted && f.plans.length).length);
 
 /* §36 in supabase-schema.sql is exactly what the matrix generates. */
 const cur = current(read('supabase-schema.sql'));

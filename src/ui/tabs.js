@@ -105,7 +105,7 @@ function dedupeHeads(sections) {
  *  and a note below them stay where they are. */
 function findTabs() {
   const main = document.querySelector('main');
-  if (!main) return { parent: null, sections: [] };
+  if (!main) return { parent: null, sections: [], out: [] };
   let all = [...main.querySelectorAll('section[id]')];
   /* A retired page kept behind ?stay=1 (navmodel STAY_PAGES) shows only
      the sections it names. The rest are hidden, not removed, and are
@@ -116,10 +116,19 @@ function findTabs() {
     for (const s of all) if (!keep.some((k) => k.contains(s))) s.hidden = true;
     all = keep;
   }
+  /* A section that is not a tab at all: `data-tab-ignore` (the page says
+     so) or `data-tab-off` (plan-gate: the module is off for everybody).
+     It stays in the document, hidden, so its fields and words still count;
+     it is only kept out of the strip. Anything inside it goes too. */
+  const out = all.filter((s) => s.hasAttribute('data-tab-ignore') || s.hasAttribute('data-tab-off'));
+  if (out.length) {
+    for (const s of out) s.hidden = true;
+    all = all.filter((s) => !out.some((o) => o === s || o.contains(s)));
+  }
   const byParent = new Map();
   for (const s of all) { const p = s.parentElement; byParent.set(p, (byParent.get(p) || []).concat(s)); }
-  for (const [parent, list] of byParent) if (list.length >= 2) return { parent, sections: list };
-  return { parent: null, sections: [] };
+  for (const [parent, list] of byParent) if (list.length >= 2) return { parent, sections: list, out };
+  return { parent: null, sections: [], out };
 }
 
 /* The strip tabs.js owns. A menu somebody else built from an explicit
@@ -230,10 +239,11 @@ export function revealTarget(id) {
    (the heading its tab sits under), `data-tab-icon` (a Material Symbols
    name from src/data/section-icons.json), `data-tab-hint` (one line: the
    tooltip and the aria description) and `data-tab-badge` ("3": a count);
-   plan-gate stamps `data-tab-lock`. Three or more tabs get the side menu
-   (a column at 1100px and over, the scrolling strip plus a Sections
-   sheet below); fewer stay the plain strip. */
-const isSide = (sections) => sections.length >= 3;
+   plan-gate stamps `data-tab-lock` (and `data-tab-off` on a module nobody
+   has: left out of the strip). Only Settings and the console get the side
+   menu (a column at 1100px and over, the scrolling strip plus a Sections
+   sheet below); every other page is the segmented bar. */
+const isSide = (sections) => (page() === 'admin' || page() === 'settings') && sections.length >= 3;
 function buildStrip(sections, activeId) {
   const strip = buildSectionMenu({
     groups: itemsFromSections(sections, labelFor, page()), active: activeId,
@@ -269,7 +279,7 @@ function watchHeight(strip) {
 
 export function apply() {
   if (typeof document === 'undefined' || !TABBED.has(page())) return;
-  const { parent, sections } = findTabs();
+  const { parent, sections, out } = findTabs();
   const old = document.querySelector(OWN);
   if (!parent) { if (old) old.remove(); signature = ''; document.querySelectorAll('.tabs-has-side').forEach((p) => p.classList.remove('tabs-has-side')); return; }
   const groups = itemsFromSections(sections, labelFor, page());
@@ -291,7 +301,12 @@ export function apply() {
   document.querySelectorAll('.tabs-has-side').forEach((p) => { if (p !== parent || !side) p.classList.remove('tabs-has-side'); });
   parent.classList.toggle('tabs-has-side', side);
   dedupeHeads(sections);
-  show(sections, want, { setHash: false });
+  /* The address names a tab that is not one (a module switched off for
+     everybody, breakdown.html#script): the first enabled tab opens and the
+     address follows it, so a reload and the breadcrumb agree. */
+  const h0 = hashTab();
+  const dead = !!h0 && !fromHash && (out || []).some((o) => o.id === h0 || (document.getElementById(h0) && o.contains(document.getElementById(h0))));
+  show(sections, want, { setHash: dead });
 }
 
 function onTabClick(e) {
@@ -405,7 +420,7 @@ export function installTabs() {
   new MutationObserver(() => {
     if (araf) return;
     araf = requestAnimationFrame(() => { araf = 0; apply(); });
-  }).observe(app, { attributes: true, subtree: true, attributeFilter: ['data-tab-badge', 'data-tab-lock', 'data-tab-hint', 'data-tab-icon', 'data-tab-label', 'data-tab-group'] });
+  }).observe(app, { attributes: true, subtree: true, attributeFilter: ['data-tab-badge', 'data-tab-lock', 'data-tab-off', 'data-tab-ignore', 'data-tab-hint', 'data-tab-icon', 'data-tab-label', 'data-tab-group'] });
 }
 
 export default { installTabs, apply, revealTarget, TABBED };

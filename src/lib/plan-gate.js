@@ -113,6 +113,37 @@ export function allowed(key) {
   if (!features) return true;
   return features[key] !== false;
 }
+/* MODULES SWITCHED OFF FOR EVERY PLAN. The module rows of
+   src/data/plan-matrix.json that carry `plans: []`, key for key (npm run
+   test:plans compares them; the matrix is not imported here because this
+   module is CORE). A module on this list is not an upsell: no plan sells
+   it, so nothing offers a PLAN flag or a SEE PLANS card - it is simply
+   not there (isDisabledEverywhere, below). */
+export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'idea-vault', 'pitch-deck', 'script-breakdown', 'auto-tag', 'songs', 'screen-time', 'cast-matrix', 'lookbook', 'media', 'shoot-day', 'edit-log', 'deliverables'];
+/* Ids the plan rows showed NO plan above this one offers - an admin kill
+   switch on a module the plans otherwise carry. Filled by loadFlagNames. */
+let offersNone = new Set();
+
+/** True when the module is off for EVERYBODY, not merely above this
+ *  person's plan: the matrix says no plan has it, or the admin's override
+ *  killed it and no plan row offers it. The difference matters - a module
+ *  one plan up is an upsell and keeps today's PLAN flag and SEE PLANS card;
+ *  one nobody sells is hidden. This is a HIDING rule only: allowed() and
+ *  entitlement() are untouched, so nothing here can wall a paying member.
+ *
+ *    unknown (signed out, offline) -> the matrix defaults;
+ *    purchases off (open_features() opens every key) -> the matrix
+ *      defaults, plus any key the server says false (nothing is plan-locked
+ *      then, so a false is an override);
+ *    purchases on -> an explicit true shows it (the console switched it
+ *      back on); otherwise the matrix default, or a false that no plan
+ *      row offers. */
+export function isDisabledEverywhere(id) {
+  const off = OFF_BY_DEFAULT.includes(id);
+  if (!features || purchaseReq === false) return off || (!!features && features[id] === false);
+  if (features[id] === true) return false;
+  return off || (features[id] === false && offersNone.has(id));
+}
 /** The one capability that is OFF unless the plan says true. */
 /* AI tools are LOCKED unless a known plan includes them. The opposite
    default from allowed(), on purpose: allowed() fails open so a page is
@@ -667,6 +698,17 @@ function tabsHere() {
 export function lockTabs() {
   if (typeof document === 'undefined') return;
   for (const { m, sec } of tabsHere()) {
+    /* Off for everybody: no card, no lock. The section stays in the
+       document (its fields and words are still there) and tabs.js leaves
+       it out of the strip. */
+    const gone = isDisabledEverywhere(m.id);
+    if (sec.hasAttribute('data-tab-off') !== gone) sec.toggleAttribute('data-tab-off', gone);
+    if (gone) {
+      const stale = sec.querySelector(':scope > .pg-lock-inline');
+      if (stale) stale.remove();
+      if (sec.hasAttribute('data-tab-lock')) sec.removeAttribute('data-tab-lock');
+      continue;
+    }
     const locked = !allowed(m.id);
     let card = sec.querySelector(':scope > .pg-lock-inline');
     if (sec.hasAttribute('data-tab-lock') !== locked) sec.toggleAttribute('data-tab-lock', locked);
@@ -685,7 +727,7 @@ let _secObs = null;
 let _secRaf = 0;
 function watchSections() {
   if (typeof MutationObserver === 'undefined' || !document.body) return;
-  const need = !!features && anyLockedHere();
+  const need = anyLockedHere();
   if (need && !_secObs) {
     _secObs = new MutationObserver(() => {
       if (_secRaf) return;
@@ -696,7 +738,7 @@ function watchSections() {
 }
 function anyLockedHere() {
   const here = file().replace(/\.html$/, '');
-  const on = (m) => { const [f, frag] = (m.href || '').split('#'); return !!frag && f.toLowerCase().replace(/\.html$/, '') === here && !allowed(m.id); };
+  const on = (m) => { const [f, frag] = (m.href || '').split('#'); return !!frag && f.toLowerCase().replace(/\.html$/, '') === here && (!allowed(m.id) || isDisabledEverywhere(m.id)); };
   return shelves().some((s) => s.modules.some(on)) || phases().some((p) => p.modules.some(on));
 }
 
@@ -752,14 +794,34 @@ function loadFlagNames() {
   Billing.listPlans().then(() => {
     const out = {};
     const ids = new Set([...document.querySelectorAll('[data-module-id]')].map((el) => el.dataset.moduleId));
+    const sold = Billing.listPlans().then((pl) => (pl || []).some((p) => p && p.active !== false && p.id !== 'free'), () => false);
+    const none = new Set();
     return Promise.all([...ids].filter((id) => !allowed(id)).map((id) =>
-      lowestPlanWith([id]).then((p) => { if (p) out[id] = p.name || Billing.planName(p.id); }, () => {})))
-      .then(() => { flagNames = out; markLocked(); });
+      lowestPlanWith([id]).then((p) => {
+        if (p) out[id] = p.name || Billing.planName(p.id);
+        else none.add(id);
+      }, () => {})))
+      .then(() => sold)
+      .then((ok) => { flagNames = out; offersNone = ok ? none : new Set(); markLocked(); lockTabs(); });
   }).catch(() => { flagAsked = false; });
 }
 export function markLocked(scope) {
   if (typeof document === 'undefined') return;
   (scope || document).querySelectorAll('[data-module-id]').forEach((el) => {
+    /* A stage tab carries its lead module's id; the tab goes only when
+       every module of the stage is off for everybody. Any other link goes
+       with its module. Nothing is removed, only [hidden]. */
+    const stage = el.classList.contains('sh-phase-btn') ? phases().find((p) => p.id === el.dataset.phase) : null;
+    const gone = stage ? stage.modules.filter((m) => m.status !== 'planned').every((m) => isDisabledEverywhere(m.id))
+                       : isDisabledEverywhere(el.dataset.moduleId);
+    const box = stage ? (el.closest('.sh-phase') || el) : el;
+    if (box.hidden !== gone) box.hidden = gone;
+    if (gone || (stage && isDisabledEverywhere(el.dataset.moduleId))) {
+      el.classList.remove('is-locked');
+      const f = el.querySelector(':scope > .pg-flag');
+      if (f) f.remove();
+      return;
+    }
     const locked = !allowed(el.dataset.moduleId);
     el.classList.toggle('is-locked', locked);
     let flag = el.querySelector(':scope > .pg-flag');
@@ -826,4 +888,4 @@ if (typeof window !== 'undefined') {
 /* journey.js asks this, without importing the module (it runs in Node tests). */
 if (typeof window !== 'undefined') window.StudioPlan = { allowed };
 
-export default { offerFor, offerText, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

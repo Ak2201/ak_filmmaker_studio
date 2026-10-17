@@ -7,7 +7,7 @@
 
        mountStageGuide(host, { stage })
 
-   appends `<section id="guide" data-tab-label="Guide">` to `host`
+   appends `<section id="guide" data-tab-label="Guide" data-tab-ignore hidden>` to `host`
    (always — with no project it says so and links to the hub), and
    guideSteps(stage, format) answers "which blueprint steps are in
    this stage" as plain data, for the section, the tests and any
@@ -199,7 +199,7 @@ export function mountStageGuide(host, { stage } = {}) {
 
   const project = openProject();
   const fmt = formatKey(project && project.format);
-  const section = h('section#guide.sg', { 'data-tab-label': 'Guide', 'data-stage': stage }, [
+  const section = h('section#guide.sg', { 'data-tab-label': 'Guide', 'data-tab-ignore': 'true', 'data-stage': stage, hidden: true }, [
     h('header.sg-head', {}, [
       h('p.sg-eyebrow', { text: 'Guide · ' + TITLES[stage] }),
       h('h2.sg-title', { text: stage === 'story' ? 'The cover sheet.' : 'The questions for this stage.' })
@@ -253,6 +253,13 @@ export function mountStageGuide(host, { stage } = {}) {
       body.replaceChildren(h('p.sg-empty', { text: 'The guide could not load. Reload the page to try again.' }));
     });
   };
+
+  /* HIDDEN BUT ALIVE (Celtx simplification). The section is out of the tab
+     strip (data-tab-ignore) and `hidden`, so nothing observes it and the
+     visibility trigger below would never fire — yet the blueprint's
+     answers (their data-keys) must still be in the DOM for verify's
+     key-union and for the merge-write. So the body is mounted now. */
+  if (section.hidden) { start(); return section; }
 
   /* Near the screen, or asked for by the hash, or the tab shown. */
   const wanted = () => (location.hash || '') === '#guide';

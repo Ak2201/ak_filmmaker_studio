@@ -23,7 +23,7 @@ import { h } from '../lib/dom.js';
 import Store from '../lib/store.js';
 import '../styles/project-switcher.css';
 
-const DASHBOARD_URL = 'dashboard.html';
+const DASHBOARD_URL = 'screenplay.html';
 const HUB_URL = 'index.html';
 const FORMAT_SHORT = { feature: 'Feature', short: 'Short', documentary: 'Doc', musicvideo: 'Music video', adfilm: 'Ad film' };
 

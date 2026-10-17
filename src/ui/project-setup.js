@@ -21,7 +21,7 @@ import PlanGate from '../lib/plan-gate.js';
 import { listStudies, favouriteSlug } from '../lib/studies.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 
-const DASHBOARD_URL = 'dashboard.html';
+const DASHBOARD_URL = 'screenplay.html';
 
 const FORMATS = {
   feature:     { label: 'Feature film', title: 'My feature film' },

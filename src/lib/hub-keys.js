@@ -40,5 +40,5 @@ export const DRIVE_STATE_KEY_COPY = 'fms_drive_sync_v1';
 
 export const FEATURE_URL   = 'feature.html';
 export const SHORT_URL     = 'short.html';
-export const DASHBOARD_URL = 'dashboard.html';
+export const DASHBOARD_URL = 'screenplay.html';
 export const LIBRARY_URL   = 'library.html';

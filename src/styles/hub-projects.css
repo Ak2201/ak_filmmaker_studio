@@ -14,14 +14,14 @@
 /* ---- (1) hero -------------------------------------------------- */
 .projects-section .projects-head.k-page-head {
   align-items: end;
-  margin-bottom: var(--s5);
+  margin-bottom: var(--s4);
   padding-bottom: 0;
   border-bottom: 0;
 }
 .projects-section .projects-head h1 {
   margin: 0;
   font-family: var(--f-display);
-  font-size: clamp(var(--t-3xl), 5vw, 3.75rem);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: var(--track-tight);
@@ -44,6 +44,12 @@
   color: var(--ink-muted);
 }
 .projects-section .greeting-block strong { color: var(--ink); font-weight: 700; }
+
+/* Compact header (Celtx 7.2): the eyebrow and the greeting stay in the DOM
+   (the greeting script writes into #hubGreeting) but are not drawn. */
+.projects-section .projects-head .k-eyebrow,
+.projects-section .projects-head .k-page-sub { display: none; }
+.projects-section .door[hidden] { display: none; }
 
 @media (max-width: 720px) {
   .projects-section .projects-head .k-page-actions .k-btn { flex: 1 1 100%; min-height: 48px; justify-content: center; }
@@ -96,10 +102,17 @@
 .projects-section .projects-toolbar {
   gap: var(--s3);
   margin-bottom: var(--s5);
-  align-items: stretch;
+  align-items: center;
+  padding: var(--s2) var(--s3);
+  background-color: var(--surface-rail);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-control-rest);
 }
+.projects-section .projects-toolbar .projects-sort-wrap { margin-left: auto; }
 .projects-section .projects-search {
-  flex: 1 1 18rem;
+  flex: 1 1 14rem;
+  max-width: 20rem;
   min-width: 0;
   padding: var(--s3) var(--s4);
   background: var(--paper-sunk);
@@ -159,26 +172,25 @@
 
 /* ---- (4) project cards ---------------------------------------- */
 .projects-section .projects-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s5);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--s4);
 }
-@media (max-width: 1100px) { .projects-section .projects-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px)  { .projects-section .projects-grid { grid-template-columns: minmax(0, 1fr); } }
 /* The first-run doors, the sample-only panel and the filter-empty state
    are not cards: they take the whole row. */
 .projects-section .projects-grid > :not(.project-card) { grid-column: 1 / -1; min-width: 0; }
 
 .projects-section .project-card {
   gap: var(--s3);
-  min-height: 14rem;
-  padding: var(--s5) var(--s5) var(--s4);
-  background: color-mix(in srgb, var(--paper-raised) 80%, transparent);
+  min-height: 11.5rem;
+  padding: var(--s5);
+  background-color: var(--surface-card);
+  background-image: var(--surface-card-sheen);
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
-  box-shadow: none;
+  box-shadow: var(--sk-card-shadow, none);
 }
 .projects-section .project-card:hover {
-  background: var(--paper-raised);
+  background-color: var(--paper-raised);
   border-color: color-mix(in srgb, var(--accent) 55%, var(--rule));
   box-shadow: none;
   transform: translateY(calc(-2px * var(--motion)));

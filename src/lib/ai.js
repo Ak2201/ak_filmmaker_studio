@@ -65,7 +65,7 @@ import Providers, {
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
   getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
-  models, defaultModel, getModel, setModel
+  models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 } from './ai-providers.js';
 
 /* Re-exported so a caller that only wants "is there a key" or
@@ -77,7 +77,7 @@ export {
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
   getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
-  models, defaultModel, getModel, setModel
+  models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 };
 
 /* The AI Desk's chat refinement: a pure block a task appends to its
@@ -467,20 +467,11 @@ const WIRE = {
    the quotation check — is written against this one function and
    none of it knows which API it is talking to.
    ------------------------------------------------------------ */
-async function callModel({
-  system, user, schema, maxTokens = 32000, effort = 'medium',
-  onStatus, signal, progress
-}) {
-  const prov = provider();
-  const key = getKey();
-  if (!key) throw new AIError('No API key saved on this device.', 'nokey');
-
-  const model = getModel();
-  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
-
-  const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
-  const req = wire.request(prov, { model, system, user, schema, maxTokens, effort });
-
+/* ---- the one fetch -------------------------------------------
+   Shared by callModel() (text, streamed) and generateImage() (one
+   picture, not streamed): one place where the key meets a header,
+   one network-error sentence, one status map. */
+async function send(prov, req, key, signal) {
   let res;
   try {
     res = await fetch(req.url, {
@@ -512,6 +503,24 @@ async function callModel({
     try { body = await res.json(); } catch (e) { /* not every error is JSON */ }
     throw errorForStatus(res.status, body, prov);
   }
+  return res;
+}
+
+async function callModel({
+  system, user, schema, maxTokens = 32000, effort = 'medium',
+  onStatus, signal, progress
+}) {
+  const prov = provider();
+  const key = getKey();
+  if (!key) throw new AIError('No API key saved on this device.', 'nokey');
+
+  const model = getModel();
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+
+  const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
+  const req = wire.request(prov, { model, system, user, schema, maxTokens, effort });
+
+  const res = await send(prov, req, key, signal);
   if (!res.body) throw new AIError('The API returned an empty response.', 'empty');
 
   let text, stop;
@@ -541,6 +550,76 @@ async function callModel({
   }
   bumpUsage('ai_call');   // a model answered; the count carries no prompt (src/lib/usage.js)
   return { parsed, truncated: stop === 'max_tokens', model };
+}
+
+/* ---- one picture -----------------------------------------------
+   The storyboard's "Draw frames" task (src/lib/board-frames.js).
+   Gemini only: it is the one provider in the table with an image
+   model (`imageModels`, ai-providers.js), so this reads the GEMINI
+   key whichever provider the text tools are set to. Same send(), so
+   the key is in `x-goog-api-key` exactly as for text — never
+   `?key=` — and the same status map turns a 400 API_KEY_INVALID
+   into "that key was rejected".
+
+   Not streamed: the answer is one inline image part, base64, which
+   is turned into a Blob HERE and never into a string anybody keeps.
+   Nothing is stored by this function. */
+export function geminiImageRequest(prov, { model, prompt, aspectRatio }) {
+  return {
+    url: prov.origin + '/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+    authHeader: 'x-goog-api-key',
+    headers: { 'content-type': 'application/json' },
+    body: {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ['IMAGE'],
+        imageConfig: { aspectRatio: aspectRatio || '16:9' }
+      }
+    }
+  };
+}
+
+/** The first image part of a generateContent answer, or an AIError. */
+export function imageFromResponse(json) {
+  const blocked = json && json.promptFeedback && json.promptFeedback.blockReason;
+  if (blocked) throw new AIError('The model declined to draw this (' + blocked + '). Nothing was changed.', 'refusal');
+  const cand = json && Array.isArray(json.candidates) ? json.candidates[0] : null;
+  const parts = (cand && cand.content && Array.isArray(cand.content.parts)) ? cand.content.parts : [];
+  for (const p of parts) {
+    const d = p && (p.inlineData || p.inline_data);
+    if (d && typeof d.data === 'string' && d.data) {
+      const mime = String(d.mimeType || d.mime_type || 'image/png');
+      if (!/^image\/(png|jpeg|webp)$/.test(mime)) continue;
+      const bin = atob(d.data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+  }
+  const why = cand && cand.finishReason ? GEMINI_STOP[cand.finishReason] || String(cand.finishReason) : '';
+  if (why === 'refusal') throw new AIError('The model declined to draw this. Nothing was changed.', 'refusal');
+  throw new AIError('The reply carried no picture, so nothing was changed.', 'malformed');
+}
+
+/**
+ * Draw one picture. Resolves to { blob, model }; writes nothing.
+ * Throws AIError 'nokey' when no Gemini key is saved on this device.
+ */
+export async function generateImage({ prompt, aspectRatio = '16:9', signal } = {}) {
+  const prov = provider('gemini');
+  const key = getKey('gemini');
+  if (!key) throw new AIError('No Gemini key saved on this device.', 'nokey');
+  const model = imageModel('gemini');
+  const req = geminiImageRequest(prov, { model, prompt: String(prompt || ''), aspectRatio });
+  const res = await send(prov, req, key, signal);
+  let json = null;
+  try { json = await res.json(); } catch (e) {
+    if (e && e.name === 'AbortError') throw new AIError('Stopped. Nothing was changed.', 'aborted');
+    throw new AIError('The reply was not the shape we asked for, so nothing was changed.', 'malformed');
+  }
+  const blob = imageFromResponse(json);
+  bumpUsage('ai_call');
+  return { blob, model };
 }
 
 /** Trim, cap and refuse anything that is not a string. Every field
@@ -1640,6 +1719,145 @@ export async function draftOutlineSteps(job, { onStatus, signal } = {}) {
   const out = parsed.steps.map((t) => str(t, 600)).filter((t) => t && !have.has(t.toLowerCase())).slice(0, 4);
   if (!out.length) throw new AIError('The reply held no new steps.', 'empty-result');
   return { steps: out, truncated, model };
+}
+
+/* ------------------------------------------------------------
+   THE STORY, READ BACK OFF THE SCENES — one outline step per scene
+   ------------------------------------------------------------
+   docs/NEXT-UI-REVAMP-PLAN-2026-10-14.md, phase 2. The breakdown has
+   made the scene rows; this asks the model for the story EVENT each
+   scene is — one step per scene, in the writer's order — and which
+   beat of the framework in force it serves. It writes nothing: the
+   Desk task 'scene-story' (src/lib/ai-tasks.js) shows the steps in a
+   tick list, and Accept files the ticked ones under their beats,
+   linked to their scenes by `sceneId`.
+
+   The beat is CHECKED, not trusted: a beat id the framework does not
+   have falls back to the one each job carries (`beat`, the beat the
+   scene sits nearest by its place in the page count — the same rule
+   the non-AI path files by), and a sceneId the job did not offer is
+   dropped. One step per scene: a second step for a scene is ignored.
+
+     job  { framework: { id, label, beats: [{ id, label, prompt }] },
+            scenes: [{ sceneId, number, slug, synopsis, script, beat }],
+            idea?, logline?, ask?, context? }
+   Resolves to { steps: [{ sceneId, beat, text }], truncated, model },
+   `beat` framework-qualified ('save_the_cat:midpoint').
+   ------------------------------------------------------------ */
+export const SCENE_STORY_SCRIPT_CHARS = 1800;   // per scene: enough to say what happens
+
+function sceneStorySchema(beatIds) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['steps'],
+    properties: {
+      steps: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sceneId', 'beat', 'text'],
+          properties: {
+            sceneId: { type: 'string', description: 'the id given for this scene, copied exactly' },
+            beat: { type: 'string', enum: beatIds.slice(), description: 'the beat this scene serves' },
+            text: { type: 'string', description: 'the story event of this scene, one or two plain sentences, present tense' }
+          }
+        }
+      }
+    }
+  };
+}
+
+/** The prompt draftSceneStory() sends. Exported so the Desk shows the
+    exact payload before anything is spent. */
+export function buildSceneStoryPrompt(job) {
+  const fw = (job && job.framework) || {};
+  const beats = Array.isArray(fw.beats) ? fw.beats : [];
+  const lines = [];
+  const ctx = contextBlock(job && job.context);
+  if (ctx) lines.push(ctx);
+  lines.push(
+    'These are the scenes of a film, in order. For EACH scene write the one story event it is, as a step of',
+    'a step outline, and choose the beat of the ' + (fw.label || 'beat') + ' structure it serves.',
+    '',
+    'RULES:',
+    '· Exactly one step per scene, keyed by the exact sceneId given.',
+    '· One or two plain sentences, present tense: what happens and what changes. No camera directions.',
+    '· Only what the scene text says. Do not invent events, names or motives that are not there.',
+    '· Write in English, even where the film is in Tamil.',
+    '',
+    'THE BEATS (id — label: what it is):'
+  );
+  for (const b of beats) lines.push('· ' + b.id + ' — ' + (b.label || b.id) + (b.prompt ? ': ' + b.prompt : ''));
+  const idea = str(job && job.idea, 1200), logline = str(job && job.logline, 800);
+  if (idea) lines.push('', 'IDEA: ' + idea);
+  if (logline) lines.push('LOGLINE: ' + logline);
+  lines.push('');
+  for (const sc of (job && job.scenes) || []) {
+    lines.push('--- SCENE ---');
+    lines.push('sceneId: ' + sc.sceneId);
+    lines.push('scene number: ' + (sc.number || '—'));
+    lines.push('slug: ' + (sc.slug || ''));
+    if (sc.synopsis) lines.push('what happens (the writer’s note): ' + str(sc.synopsis, 600));
+    const script = String(sc.script || '');
+    if (script.trim()) {
+      lines.push('', 'script:', script.length > SCENE_STORY_SCRIPT_CHARS
+        ? script.slice(0, SCENE_STORY_SCRIPT_CHARS) + '\n[… the rest of the scene is not sent]' : script);
+    } else lines.push('', '(no script text for this scene — work from the slug and the note, and keep it short)');
+    lines.push('');
+  }
+  const ask = str(job && job.ask, 4000);
+  if (ask) lines.push('THE WRITER ASKS:', ask);
+  return lines.join('\n');
+}
+
+export async function draftSceneStory(job, { onStatus, signal } = {}) {
+  const fw = (job && job.framework) || {};
+  const beats = Array.isArray(fw.beats) ? fw.beats : [];
+  if (!fw.id || !beats.length) throw new AIError('The beat framework did not load.', 'nobeats');
+  const scenes = ((job && job.scenes) || []).filter((s) => s && s.sceneId);
+  if (!scenes.length) throw new AIError('No scenes selected.', 'noscenes');
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Sending ' + scenes.length + (scenes.length === 1 ? ' scene' : ' scenes') + ' to ' + getModel() + '…');
+
+  const beatIds = beats.map((b) => String(b.id));
+  const { parsed, truncated, model } = await callModel({
+    system: 'You are a story editor reading a screenplay back into a step outline. You summarise what is written; the writer decides what to keep.',
+    user: buildSceneStoryPrompt({ ...job, scenes }),
+    schema: sceneStorySchema(beatIds),
+    maxTokens: Math.min(32000, 1200 + scenes.length * 220),
+    effort: 'medium',
+    onStatus, signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"sceneId"/g) || []).length;
+      return n ? 'Reading… ' + n + ' of ' + scenes.length + ' scenes' : 'Reading…';
+    }
+  });
+  if (!Array.isArray(parsed.steps)) {
+    throw new AIError('The reply was not a list of steps, so nothing was suggested.', 'malformed');
+  }
+  const known = new Set(beatIds);
+  const fallback = new Map(scenes.map((s) => [String(s.sceneId), String(s.beat || '')]));
+  const seen = new Set();
+  const steps = [];
+  for (const e of parsed.steps) {
+    if (!e || typeof e !== 'object') continue;
+    const sceneId = String(e.sceneId ?? '');
+    if (!fallback.has(sceneId) || seen.has(sceneId)) continue;   // never a scene we did not offer, never two
+    const text = str(e.text, 600);
+    if (!text) continue;
+    const b = String(e.beat ?? '');
+    const beat = known.has(b) ? fw.id + ':' + b : fallback.get(sceneId);
+    if (!beat) continue;
+    seen.add(sceneId);
+    steps.push({ sceneId, beat, text });
+  }
+  // In the writer's scene order, whatever order the reply came in.
+  const order = new Map(scenes.map((s, i) => [String(s.sceneId), i]));
+  steps.sort((a, b) => order.get(a.sceneId) - order.get(b.sceneId));
+  if (!steps.length) throw new AIError('The reply held no steps for the scenes sent.', 'empty-result');
+  return { steps, truncated, model };
 }
 
 /* ============================================================

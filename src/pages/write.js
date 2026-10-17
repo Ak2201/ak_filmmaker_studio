@@ -75,7 +75,7 @@ import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk an
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
    shot count and "Break into shots". */
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
-import { basicJobs, basicShotDivision } from '../lib/shot-rules.js';
+import { basicShotDivision } from '../lib/shot-rules.js';
 import { matchScenes } from '../lib/screenplay-analysis.js';
 import { addThem as handoffAddScenes, newHeadings, sceneSyncLater } from '../ui/handoff.js';
 import '../styles/write-shots.css';
@@ -108,6 +108,18 @@ import Script, {
 } from '../lib/script.js';
 import { ask, askDanger } from '../ui/dialog.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
+/* The page's own arithmetic and sentences (dates, the synopsis loader,
+   the generator's stage, the page view's layout, the import and
+   restore questions, the shot counts): src/lib/write-model.js. */
+import {
+  prettyStamp, TITLE_LABELS, titlePlaceholder as titlePlaceholderFor, titlePageStateText,
+  TYPE_ORDER, sceneNumberNote, importReplaceQuestion, importDoneMessage,
+  synopsisFromText, synopsisLoadNote, synopsisPendingText,
+  GEN_FORMATS, GEN_LANGS, genLang, genStage as genStageOf, genFailState,
+  currentRevision as currentRevisionOf, exportMeta as exportMetaOf, restoreQuestion, docMetaText,
+  pageViewLayout, omittedPlacements, pvWhereText as pvWhereTextOf,
+  shotCountLabels, uncoveredShotJobs
+} from '../lib/write-model.js';
 
 /* The typesetter and the parser are both lazy chunks. Neither is
    needed to read or write a page, both are a few kilobytes of
@@ -363,18 +375,6 @@ function labelled(text, control) {
   return h('label.wr-field', {}, [h('span', { text }), control]);
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** An ISO timestamp as '28 Sep 2026, 14:05'. No locale surprises. */
-function prettyStamp(iso) {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear()
-       + ', ' + String(d.getHours()).padStart(2, '0')
-       + ':' + String(d.getMinutes()).padStart(2, '0');
-}
-
 /* The page view's "printed pages" tooltip (see pvWhereText). */
 const PV_WHERE_TITLE = 'Sheets as the PDF prints them. The page count in the stats is the schedule\'s measure: 55 lines a page, which the breakdown\'s eighths are built on.';
 
@@ -600,8 +600,6 @@ function renderPass(el) {
    import is undone by the Restore button that already exists
    rather than by a route invented for this feature.
    ============================================================ */
-const TYPE_ORDER = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot'];
-
 function importChooser() {
   const wrap = h('div.wr-imp-choose');
 
@@ -740,30 +738,6 @@ function importPreview(plan) {
 const impStat = (value, label) =>
   h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
 
-/** Where the scene numbers came from, in one sentence. A number is
-    what the stripboard, the sides and the call sheet call a scene,
-    so a script that says 47 and a studio that says 12 is the one
-    import failure that still looks like it worked. The parser
-    ranks its three sources; this only reports which ones it used. */
-function sceneNumberNote(plan) {
-  const n = (plan && plan.numbering) || {};
-  const carried = (n.fromFile || 0) + (n.fromHeading || 0);
-  const ordinal = n.ordinal || 0;
-  if (!carried) {
-    return ordinal
-      ? 'That file carries no scene numbers, so the scenes are numbered by their position — 1 upwards.'
-      : '';
-  }
-  const source = n.fromFile && n.fromHeading ? 'the file and from the headings'
-    : n.fromFile ? 'the file’s own scene numbers' : 'the headings';
-  if (!ordinal) {
-    return 'All ' + carried + ' scene numbers come from ' + source
-      + ' — the script’s numbering is kept, letters and all.';
-  }
-  return carried + ' scene number(s) come from ' + source + '; the remaining ' + ordinal
-    + ' heading(s) carry none and are numbered by their position, skipping anything already used.';
-}
-
 /** One destination, with the choice it needs. Replace is only
     offered when there is work to lose; with an empty destination
     the two options mean the same thing and offering both is a
@@ -826,10 +800,6 @@ function renderImport() {
    the same posture the dialogue pass takes.
    ============================================================ */
 
-const GEN_FORMATS = [
-  { id: 'feature', label: 'Feature', hint: 'about 100 pages' },
-  { id: 'short', label: 'Short', hint: 'about 15 pages' }
-];
 
 /* ---- loading a synopsis off the disk ------------------------
    The synopsis stage could only be typed or pasted into, and a
@@ -852,18 +822,10 @@ const GEN_FORMATS = [
    synopsis works through the one call site that handles the
    extractor's refusals properly instead of a second copy of them. */
 
-/* The field's ceiling, stated once and in one place. It is the
-   textarea's own maxlength: about two or three pages of prose, which
-   is a synopsis, and roughly one request's worth of input for a beat
-   sheet. A forty-page treatment is not a synopsis, and the ONE thing
-   that must not happen is keeping its first sixth without saying so. */
-const SYN_LIMIT = 6000;
-
+/* The field's ceiling (SYN_LIMIT) is write-model.js's. */
 /* Prose formats only — see above for why a .fountain or a .fdx is not
    on this list even though readFile() would happily read them. */
 const SYN_ACCEPT = '.txt,.text,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf';
-
-const countFmt = (n) => Number(n).toLocaleString('en-IN');
 
 /* Written once, printed by both branches of renderGenerate(). Two
    copies of a sentence about what leaves the browser is two chances
@@ -874,31 +836,6 @@ const GEN_DISCLOSURE =
   + 'continuity. Not your other projects, not your notes, not the rest of the '
   + 'screenplay. Nothing is sent until you press a button, and the key never '
   + 'leaves this device except as the one header that authorises the request.';
-
-/** A document's text as paragraphs.
-
-    A PDF arrives from pdf-text.js as INDENTED lines, because in a
-    screenplay the indentation is the element type. In a synopsis it
-    is nothing — it is where the margin happened to be — so the
-    leading space comes off, a single newline inside a paragraph
-    becomes a space, and a blank line stays a paragraph break. */
-function prosify(text) {
-  return String(text || '')
-    .replace(/\r\n?/g, '\n')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/ *\n */g, '\n')
-    .replace(/([^\n])\n(?!\n)/g, '$1 ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-/** Cut to `limit`, at a word boundary rather than through a word. */
-function clipTo(text, limit) {
-  if (text.length <= limit) return text;
-  const hard = text.slice(0, limit);
-  const space = hard.lastIndexOf(' ');
-  return (space > limit - 400 ? hard.slice(0, space) : hard).trimEnd();
-}
 
 /**
  * Read a file into a synopsis.
@@ -920,11 +857,8 @@ async function takeSynopsis(file) {
   try { raw = await Parser.readFile(file); }
   catch (err) { say(readFailed(err)); return; }
 
-  const prose = prosify(String(raw));
-  if (!prose) { say('There was no text in that file.'); return; }
-
-  const kept = clipTo(prose, SYN_LIMIT);
-  const pending = { name: file.name || 'that file', text: kept, read: prose.length, kept: kept.length };
+  const pending = synopsisFromText(raw, file.name);
+  if (!pending) { say('There was no text in that file.'); return; }
 
   /* NEVER CLOBBER. An empty field has nothing to lose, so the text
      goes straight in. A field with writing in it gets asked first —
@@ -944,17 +878,8 @@ function applySynopsis(p) {
   gen.synopsis = p.text;
   Scriptgen.save(gen);
   synPending = null;
-  const cut = p.kept < p.read;
-  synNote = {
-    warn: cut,
-    text: cut
-      ? 'Loaded ' + countFmt(p.kept) + ' of ' + countFmt(p.read) + ' characters from \u201c'
-        + p.name + '\u201d \u2014 the rest was NOT kept. The field holds '
-        + countFmt(SYN_LIMIT) + ' characters, which is a synopsis rather than a '
-        + 'treatment. The file on your disk is untouched, so if the part that '
-        + 'matters was at the end, trim it there and load it again.'
-      : 'Loaded all ' + countFmt(p.read) + ' characters from \u201c' + p.name + '\u201d.'
-  };
+  synNote = synopsisLoadNote(p);
+  const cut = synNote.warn;
   render('#wr-gen-synopsis');
   say(cut ? 'Loaded, and truncated \u2014 read the note under the field.' : 'Synopsis loaded.');
 }
@@ -985,17 +910,8 @@ function synopsisUpload() {
   ]));
 
   if (synPending) {
-    const p = synPending;
-    const cut = p.kept < p.read;
     box.append(h('div.wr-gen-warn', {}, [
-      h('p', {
-        text: '\u201c' + p.name + '\u201d read as ' + countFmt(p.kept)
-          + (cut ? ' of ' + countFmt(p.read) : '') + ' characters'
-          + (cut ? ', the rest over the ' + countFmt(SYN_LIMIT) + '-character limit' : '')
-          + '. There are already ' + countFmt(String(gen.synopsis).length)
-          + ' characters in the synopsis field, and replacing them cannot be undone '
-          + 'from here.'
-      }),
+      h('p', { text: synopsisPendingText(synPending, String(gen.synopsis).length) }),
       /* KEEP is the primary button. The destructive option is never
          the one a reader presses by reflex. */
       h('div.wr-gen-acts', {}, [
@@ -1013,25 +929,7 @@ function synopsisUpload() {
   return box;
 }
 
-/* Mirrored from SCRIPT_LANGS in ai.js so the panel renders before the
-   model code loads. ai.js stays the authority — it is what the prompt
-   is built from — and the ids are what tie the two together. */
-const GEN_LANGS = [
-  { id: 'ta-dialogue', label: 'Tamil dialogue · English slugs and action',
-    hint: 'what Tamil crews shoot from, and the page count stays exact', exact: true },
-  { id: 'tanglish', label: 'Tanglish throughout',
-    hint: 'romanised Tamil; fits the Courier grid', exact: true },
-  { id: 'ta-full', label: 'Tamil throughout',
-    hint: 'action in Tamil too — the page count becomes an estimate', exact: false },
-  { id: 'en', label: 'English', hint: '', exact: true }
-];
-const genLang = (id) => GEN_LANGS.find((l) => l.id === id) || GEN_LANGS[0];
-
-function genStage() {
-  if (!gen.beats.length) return 'synopsis';
-  if (!gen.scenes.length) return 'beats';
-  return gen.cursor >= gen.scenes.length ? 'done' : 'pages';
-}
+const genStage = () => genStageOf(gen);
 
 function genStatusBlock() {
   const rows = [];
@@ -1430,11 +1328,6 @@ function renderDocumentsEmpty() {
   ]);
 }
 
-const docMetaText = (d) => {
-  const words = wordCount(d.body);
-  return words + (words === 1 ? ' word' : ' words') + ' · ' + prettyStamp(d.updated);
-};
-
 function renderDocCard(d) {
   const card = h('button.wr-doc' + (d.id === openDocId ? '.is-open' : ''), {
     type: 'button', 'data-action': 'doc-open', 'data-doc': d.id,
@@ -1511,21 +1404,7 @@ function renderDocEditor(d) {
    Filled in, it is the PDF's first sheet in the standard layout, the
    Fountain title page and the .fdx one. Left empty it is not stored
    at all, and the PDF keeps the plain title page it always had. */
-const TITLE_LABELS = {
-  title: 'Title', credit: 'Credit', author: 'Written by', source: 'Based on',
-  draft: 'Draft', date: 'Date', contact: 'Contact'
-};
-function titlePlaceholder(f) {
-  return {
-    title: Script.projectTitle(),
-    credit: 'Written by',
-    author: 'Your name — and a co-writer, with &',
-    source: 'Based on the novel by …',
-    draft: 'First draft',
-    date: prettyStamp(new Date().toISOString()).split(',')[0],
-    contact: 'Name\nPhone · e-mail\nAgent or production company'
-  }[f];
-}
+const titlePlaceholder = (f) => titlePlaceholderFor(f, Script.projectTitle());
 
 function renderTitlePage() {
   const tp = normaliseTitlePage(doc.titlePage);
@@ -1543,7 +1422,7 @@ function renderTitlePage() {
       h('h3.wr-tp-h', { text: 'Title page' }),
       h('span.wr-tp-state', {
         'data-tp-state': '',
-        text: on ? 'Page 1 of the PDF' : 'Empty — the PDF opens on a plain title'
+        text: titlePageStateText(on)
       })
     ]),
     h('div.wr-tp-grid', {}, TITLE_FIELDS.map((f) => labelled(TITLE_LABELS[f], fieldOf(f))))
@@ -1556,7 +1435,7 @@ delegate(document, 'input', '[data-tp-field]', (e, input) => {
   doc.titlePage = normaliseTitlePage(doc.titlePage);
   doc.titlePage[f] = input.value;
   const state = document.querySelector('[data-tp-state]');
-  const text = hasTitlePage(doc.titlePage) ? 'Page 1 of the PDF' : 'Empty — the PDF opens on a plain title';
+  const text = titlePageStateText(hasTitlePage(doc.titlePage));
   if (state && state.textContent !== text) state.textContent = text;
   persist();
 });
@@ -1733,20 +1612,7 @@ let pvFocusId = null;
 let omittedSig = '';       // the OMITTED markers last placed (placeOmitted)
 
 function pvWhereText() {
-  if (!pvTotal) return 'Paginating…';
-  let p = pvFocusId ? pvPageOf.get(pvFocusId) : undefined;
-  if (p === undefined && pvFocusId) {
-    // A blank element prints nothing; it is on the page of the line before it.
-    for (let k = indexOfEl(pvFocusId); k >= 0 && p === undefined; k--) p = pvPageOf.get(doc.elements[k].id);
-  }
-  /* "printed": these are the PDF's sheets, which run longer than the
-     55-lines-a-page count in the stats (page breaks, MORE/CONT'D, a
-     scene kept off a page foot). Both are right; they measure two
-     things, and an unlabelled 115 beside an unlabelled 106.5 read as
-     a bug. */
-  return p === undefined
-    ? pvTotal + (pvTotal === 1 ? ' printed page' : ' printed pages')
-    : 'Printed page ' + (p + 1) + ' of ' + pvTotal;
+  return pvWhereTextOf({ total: pvTotal, pageOf: pvPageOf, focusId: pvFocusId, elements: doc.elements });
 }
 
 function refreshPvStatus() {
@@ -1770,20 +1636,7 @@ function applyPageView() {
   if (!pageView || !page || !Typeset) return;
   // paginateDoc: a locked script's numbers and OMITTED rows, as the PDF sets them.
   const pages = Typeset.paginateDoc(doc);
-
-  const pageOf = new Map();
-  const sceneNo = new Map();
-  const anchors = [];
-  pages.forEach((rows, p) => {
-    for (const r of rows) {
-      for (const id of (r.ids || (r.id ? [r.id] : []))) if (!pageOf.has(id)) pageOf.set(id, p);
-      if (r.sceneNo && r.id && !r.cont) sceneNo.set(r.id, r.sceneNo);
-    }
-    if (p > 0) {
-      const first = rows.find((r) => r.id);
-      anchors[p] = first ? { id: first.id, split: !!first.cont } : null;
-    }
-  });
+  const { pageOf, sceneNo, anchors } = pageViewLayout(pages);
 
   const existing = new Map();
   page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
@@ -1836,15 +1689,7 @@ function applyPageView() {
    follows it — or after the last row, for one at the end — so the
    page breaks on screen, which already count it, are explained. */
 function placeOmitted(page, pages) {
-  const want = [];                   // [anchorId | null, numbers[]]
-  let pending = [];
-  for (const rows of pages) {
-    for (const r of rows) {
-      if (r.omitted) { pending.push(r.sceneNo); continue; }
-      if (pending.length && r.id && !r.cont) { want.push([r.id, pending]); pending = []; }
-    }
-  }
-  if (pending.length) want.push([null, pending]);
+  const want = omittedPlacements(pages);   // [anchorId | null, numbers[]]
   const sig = JSON.stringify(want);
   const have = page.querySelectorAll('.wr-omitted');
   if (sig === omittedSig && have.length === want.reduce((n, w) => n + w[1].length, 0)) return;
@@ -1956,11 +1801,7 @@ function say(message) {
 }
 
 /** "White — Second draft", or nothing if no revision has been issued. */
-function currentRevision() {
-  if (!doc.revisions.length) return '';
-  const i = doc.revisions.length - 1;
-  return revisionColour(i).name + ' — ' + doc.revisions[i].name;
-}
+const currentRevision = () => currentRevisionOf(doc);
 
 delegate(document, 'click', '[data-action="export-fountain"]', () => {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
@@ -1986,12 +1827,7 @@ delegate(document, 'click', '[data-action="export-fountain"]', () => {
    permanently in the DOM is the "one representation per thing"
    rule broken, and it would be the copy that goes stale. The
    measurements are in styles/pdf.css and styles/write.css. */
-const exportMeta = () => ({
-  title: Script.projectTitle(),
-  revision: currentRevision(),
-  subtitle: prettyStamp(new Date().toISOString()),
-  date: new Date().toISOString().slice(0, 10)
-});
+const exportMeta = () => exportMetaOf(doc, Script.projectTitle());
 
 delegate(document, 'click', '[data-action="export-pdf"]', () => exportPDF(false));
 delegate(document, 'click', '[data-action="export-pdf-numbered"]', () => exportPDF(true));
@@ -2179,38 +2015,20 @@ delegate(document, 'click', '[data-action="import-commit"]', async () => {
      than asking "are you sure?". Only shown when something is
      actually being replaced — a confirm on a safe action is the
      dialog people learn to click through. */
-  const losing = [];
-  if (replaceScript && doc.elements.length) {
-    losing.push(doc.elements.length + (doc.elements.length === 1 ? ' element' : ' elements') + ' of screenplay');
-  }
-  const existingScenes = Scenes.listScenes();
-  if (replaceScenes && existingScenes.length) {
-    losing.push(existingScenes.length + (existingScenes.length === 1 ? ' scene' : ' scenes'));
-  }
-  if (losing.length && !await askDanger(
-    'Replace ' + losing.join(' and ') + '?\n\n'
-    + (replaceScript && doc.elements.length
-      ? 'A revision of the current screenplay is taken first, so it can be restored.\n\n'
-      : '')
-    + (replaceScenes && existingScenes.length
-      ? 'The old scenes go to the Breakdown’s bin with their shots, and can be restored from there.'
-      : '')
-  )) return;
+  const question = importReplaceQuestion({
+    replaceScript, replaceScenes,
+    elementCount: doc.elements.length, sceneCount: Scenes.listScenes().length
+  });
+  if (question && !await askDanger(question)) return;
 
   importBusy = true;
 
   const done = commitImportedScript(plan, { replaceScript, replaceScenes, doc, persist: persistNow, importName });
-  const incoming = { length: done.elements };
-  const rows = { length: done.scenes };
-  const renumbered = done.renumbered;
 
   importOpen = false;
   resetImport();
   render();
-  say('Imported ' + incoming.length + ' elements and ' + rows.length
-    + (rows.length === 1 ? ' scene' : ' scenes')
-    + (renumbered ? ' · ' + renumbered + ' renumbered to avoid a clash' : '')
-    + '. The breakdown and the stripboard have them now.');
+  say(importDoneMessage(done));
 });
 
 /* ---- drop a script anywhere ---------------------------------
@@ -2280,13 +2098,7 @@ delegate(document, 'click', '[data-action="rev-restore"]', async (e, btn) => {
   // Restoring overwrites work that is on screen right now, so it asks —
   // and it says what it is about to throw away, in elements, because
   // "are you sure?" on its own tells nobody anything.
-  const ok = await ask(
-    `Restore the ${colour.name} revision — “${rev.name}”?\n\n`
-    + `The screenplay on screen (${doc.elements.length} `
-    + `${doc.elements.length === 1 ? 'element' : 'elements'}) is replaced by this `
-    + `snapshot (${rev.elements.length} ${rev.elements.length === 1 ? 'element' : 'elements'}). `
-    + 'Snapshot the current pages first if you want to keep them.'
-  );
+  const ok = await ask(restoreQuestion(colour.name, rev, doc.elements.length));
   if (!ok) return;
   doc.elements = Script.restoreElements(rev);
   persistNow();
@@ -2431,12 +2243,9 @@ const genSay = (m) => {
 /* One place that turns a thrown thing into a line the user can act
    on, so the three stages cannot disagree about what a 401 means. */
 function genFail(err) {
-  if (err && (err.kind === 'aborted' || err.name === 'AbortError')) {
-    genStatus = '';
-    genError = 'Stopped. Everything already written is kept.';
-    return;
-  }
-  genError = (err && err.message) || 'Something went wrong, and nothing was changed.';
+  const st = genFailState(err);
+  genError = st.error;
+  if (st.aborted) { genStatus = st.status; return; }
   console.warn('[write] gen', err);
 }
 
@@ -2604,29 +2413,18 @@ function decorateShotCounts() {
   const page = document.getElementById('wr-page');
   if (!page) return;
   page.querySelectorAll('.wr-shotcount').forEach((n) => n.remove());
-  // The slicer drops empty headings, so slice k is the k-th heading
-  // with text — the same walk sliceScript() makes.
-  const headIds = [];
-  for (const el of doc.elements) if (el.type === 'scene' && String(el.text ?? '').trim()) headIds.push(el.id);
-  if (!headIds.length) return;
-  let m, shots;
-  try { m = matchScenes(Scenes.listScenes(), doc.elements); shots = Shots.listShots(); }
+  // The labels (write-model.js): one per heading with text.
+  let labels;
+  try { labels = shotCountLabels(doc.elements, () => Scenes.listScenes(), () => Shots.listShots()); }
   catch (e) { console.warn('[write] shot counts', e); return; }
-  const counted = new Map();
-  for (const s of shots) counted.set(s.sceneId, (counted.get(s.sceneId) || 0) + 1);
-  const sceneAt = new Map();
-  for (const p of m.pairs) if (p.slice) sceneAt.set(p.slice.index, p.scene);
+  if (!labels.size) return;
   const rows = new Map();
   page.querySelectorAll('.wr-el.t-scene').forEach((r) => rows.set(r.dataset.el, r));
-  for (const sl of m.slices) {
-    const row = rows.get(headIds[sl.index]);
+  for (const [id, label] of labels) {
+    const row = rows.get(id);
     if (!row) continue;
-    const scene = sceneAt.get(sl.index);
-    const n = scene ? counted.get(scene.id) || 0 : 0;
-    const text = !scene ? 'Not in the Breakdown yet'
-      : 'Sc ' + (scene.number || '—') + ' · ' + (n ? n + (n === 1 ? ' shot' : ' shots') : 'no shots yet');
     row.classList.add('wr-has-shotcount');
-    row.append(h('span.wr-shotcount' + (scene && !n ? '.is-none' : ''), { text }));
+    row.append(h('span.wr-shotcount' + (label.none ? '.is-none' : ''), { text: label.text }));
   }
 }
 
@@ -2658,9 +2456,7 @@ async function breakIntoShots() {
 
     // 2. Every scene with a confident match and no shots.
     const scenes = Scenes.listScenes();
-    const covered = new Set(Shots.listShots().map((s) => s.sceneId));
-    const open = new Set(scenes.filter((s) => !covered.has(s.id)).map((s) => s.id));
-    const jobs = basicJobs(scenes, doc.elements, { only: open, confidentOnly: true });
+    const jobs = uncoveredShotJobs(scenes, Shots.listShots(), doc.elements);
     if (!jobs.length) {
       decorateShotCounts();
       if (addedScenes.length) {

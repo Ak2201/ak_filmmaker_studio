@@ -5,6 +5,8 @@
      action   data-action on each button (default 'seg') — the page's
               delegate() reads data-value and calls selectSegment()
      quiet    the raised-surface variant instead of the accent fill
+     sticky   stays under the pinned band while the view scrolls (a
+              view switcher); full width below 720px
    selectSegment(root, value) — move the selection (aria-pressed)
    wireSegmented(root, onChange) — one delegated click listener on
      `root` for every [data-k-seg] inside it; calls onChange(value, seg)
@@ -13,7 +15,7 @@ import { h, sym, cx, kids, attrs } from './util.js';
 import { delegate } from '../../lib/dom.js';
 
 export function segmented(o = {}) {
-  const el = h('div', { class: cx('k-seg', o.quiet && 'k-seg--quiet', o.class), role: 'group' });
+  const el = h('div', { class: cx('k-seg', o.quiet && 'k-seg--quiet', o.sticky && 'k-seg--sticky', o.class), role: 'group' });
   el.dataset.kSeg = o.name || '';
   if (o.label) el.setAttribute('aria-label', o.label);
   for (const opt of o.options || []) {

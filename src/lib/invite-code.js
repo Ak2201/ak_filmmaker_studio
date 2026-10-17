@@ -80,5 +80,9 @@ export function codeFromLocation(loc) {
   const l = loc || (typeof location !== 'undefined' ? location : null);
   if (!l) return '';
   const m = /(?:^#|&)code=([^&]+)/.exec(String(l.hash || ''));
-  return m ? normaliseCode(decodeURIComponent(m[1])) : '';
+  if (!m) return '';
+  /* A code mangled in a chat client, or a hand-typed '%', is a bad
+     percent-escape, and decodeURIComponent THROWS on it — at module
+     load on invite.html, which then never renders. No code, not a crash. */
+  try { return normaliseCode(decodeURIComponent(m[1])); } catch (e) { return ''; }
 }

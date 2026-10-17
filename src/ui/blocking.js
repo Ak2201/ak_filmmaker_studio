@@ -26,6 +26,18 @@
    KEYBOARD. A mark is a focus stop; the arrow keys move it one unit
    (Shift: five), [ and ] turn it, Delete removes it. A map you can
    only drag is a map somebody cannot use.
+
+   ZOOM AND PAN (14 Oct 2026, the phone pass). On a 390px phone the
+   100-unit floor is 358px wide and a mark is a dot under a thumb, so
+   the editor's map can be looked at closer: pinch, Ctrl+wheel (a
+   trackpad pinch arrives as one) or the zoom buttons; drag the empty
+   floor to pan once zoomed in. The SAME things from the keyboard: the
+   map itself is a focus stop, + and − zoom, 0 fits, the arrow keys pan
+   (Shift: further). The view is the svg's viewBox and lives in memory
+   per setup for this visit — how you are looking at a map is not the
+   map, so nothing about it is stored, and a mark keeps the coordinates
+   it always had. At rest (fit) one finger still scrolls the page
+   (touch-action: pan-y); zoomed in, the map takes the finger.
    ============================================================ */
 import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
@@ -41,12 +53,78 @@ const svg = (tag, attrs = {}, kids = []) => {
 };
 
 let pickedScene = '';          // scene id for both sections
+const views = new Map();       // blockId -> { z, cx, cy }; in memory only
+const Z_MIN = 1, Z_MAX = 4;
 let sel = { blockId: '', markId: '' };
 let rerender = () => {};
 
 const slugOf = (scene) =>
   [scene.intExt, scene.location, scene.dayNight].filter(Boolean).join(' · ') || 'Scene';
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+
+/* ---- the view (zoom and pan) ----------------------------------- */
+const clampN = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+function viewOf(blockId) {
+  return views.get(blockId) || { z: 1, cx: BLOCK_W / 2, cy: BLOCK_H / 2 };
+}
+/** The viewBox for a view, kept inside the floor: zoomed in, the edge
+    of the map is the edge of the pan. */
+function viewBoxOf(v) {
+  const w = BLOCK_W / v.z, hh = BLOCK_H / v.z;
+  const x = clampN(v.cx - w / 2, 0, BLOCK_W - w);
+  const y = clampN(v.cy - hh / 2, 0, BLOCK_H - hh);
+  return { x, y, w, h: hh };
+}
+const zoomLabel = (z) => (Math.round(z * 10) / 10) + '×';
+/** Set a block's view and paint it on every editable map of it, in
+    place: no re-render, no write. */
+function setView(blockId, next) {
+  const z = clampN(next.z, Z_MIN, Z_MAX);
+  const vb0 = viewBoxOf({ z, cx: next.cx, cy: next.cy });
+  // Keep the CLAMPED centre, so a pan past the edge does not bank
+  // distance that the next pan has to unwind first.
+  const v = { z, cx: vb0.x + vb0.w / 2, cy: vb0.y + vb0.h / 2 };
+  if (z === 1) views.delete(blockId); else views.set(blockId, v);
+  const vb = viewBoxOf(v);
+  document.querySelectorAll('.vz-map.is-editable[data-block="' + CSS.escape(blockId) + '"]').forEach((el) => {
+    el.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+    el.classList.toggle('is-zoomed', z > 1);
+    const card = el.closest('.vz-blk');
+    if (!card) return;
+    const read = card.querySelector('.vz-blk-zoomread');
+    if (read) read.textContent = zoomLabel(z);
+    const btn = (by) => card.querySelector('[data-action="blk-zoom"][data-by="' + by + '"]');
+    const out = btn('out'), inn = btn('in'), fit = btn('fit');
+    if (out) out.disabled = z <= Z_MIN;
+    if (fit) fit.disabled = z <= Z_MIN;
+    if (inn) inn.disabled = z >= Z_MAX;
+  });
+}
+/** Zoom by a factor about a point in map units (the centre if none). */
+function zoomAbout(blockId, factor, at) {
+  const v = viewOf(blockId);
+  const z = clampN(v.z * factor, Z_MIN, Z_MAX);
+  const p = at || { x: v.cx, y: v.cy };
+  // Keep `p` where it is on screen: the centre moves toward it by the
+  // share of the view the zoom took away.
+  const k = v.z / z;
+  setView(blockId, { z, cx: p.x + (v.cx - p.x) * k, cy: p.y + (v.cy - p.y) * k });
+}
+/** Pan by a share of the visible width / height. */
+function panBy(blockId, fx, fy) {
+  const v = viewOf(blockId);
+  setView(blockId, { z: v.z, cx: v.cx + fx * (BLOCK_W / v.z), cy: v.cy + fy * (BLOCK_H / v.z) });
+}
+/** After a keyboard move, keep the mark on screen. */
+function keepInView(blockId, x, y) {
+  const v = viewOf(blockId);
+  if (v.z === 1) return;
+  const vb = viewBoxOf(v);
+  const pad = 4;
+  if (x < vb.x + pad || x > vb.x + vb.w - pad || y < vb.y + pad || y > vb.y + vb.h - pad) {
+    setView(blockId, { z: v.z, cx: x, cy: y });
+  }
+}
 
 function pickScene(scenes) {
   if (!scenes.some((s) => s.id === pickedScene)) {
@@ -134,6 +212,10 @@ function drawMark(m, { editable, selected, shotNos = [] }) {
     }
     g.append(body);
   }
+  /* A thumb-sized target: an unpainted disc under the mark, about 36px
+     across on a phone at fit, so a mark can be picked up by touch
+     without first zooming in. */
+  if (editable) g.prepend(svg('circle', { class: 'vz-mk-hit', r: 5 }));
   g.append(svg('text', { class: 'vz-mk-label', y: 6.4, 'text-anchor': 'middle' }));
   // A camera that shots point at says which: "Cam A · 1, 3". Read off the
   // shot records on every draw; the mark stores none of it.
@@ -142,13 +224,29 @@ function drawMark(m, { editable, selected, shotNos = [] }) {
 }
 
 export function drawBlock(block, { editable = false } = {}) {
+  const v = editable ? viewOf(block.id) : { z: 1 };
+  const vb = editable ? viewBoxOf(v) : { x: 0, y: 0, w: BLOCK_W, h: BLOCK_H };
   const root = svg('svg', {
-    class: 'vz-map' + (editable ? ' is-editable' : ''),
-    viewBox: `0 0 ${BLOCK_W} ${BLOCK_H}`,
+    class: 'vz-map' + (editable ? ' is-editable' : '') + (v.z > 1 ? ' is-zoomed' : ''),
+    viewBox: `${vb.x} ${vb.y} ${vb.w} ${vb.h}`,
     role: editable ? 'group' : 'img',
-    'aria-label': `Overhead map "${block.name || 'setup'}": ${plural(block.marks.length, 'mark', 'marks')}`,
-    'data-block': block.id
+    'aria-label': `Overhead map "${block.name || 'setup'}": ${plural(block.marks.length, 'mark', 'marks')}`
+      + (editable ? '. Plus and minus zoom, 0 fits, the arrow keys pan.' : ''),
+    'data-block': block.id,
+    // The map itself is a focus stop in the editor: the keyboard's way
+    // to zoom and pan (see ZOOM AND PAN in the header).
+    tabindex: editable ? 0 : null
   });
+  /* At fit the map lets one finger scroll the page (touch-action:
+     pan-y), so a second finger has to claim the gesture before the
+     browser does: a cancelable two-finger move over the map is ours.
+     On the map itself, not the document, so the rest of the page
+     keeps the browser's fast scrolling path. */
+  if (editable) {
+    root.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1 && e.cancelable) e.preventDefault();
+    }, { passive: false });
+  }
   root.append(
     svg('defs', {}, [
       svg('pattern', { id: 'vzgrid-' + block.id, width: 10, height: 10, patternUnits: 'userSpaceOnUse' }, [
@@ -235,6 +333,16 @@ function renderBlockCard(block) {
   const stage = h('div.vz-blk-stage');
   stage.append(h('div.vz-blk-tools', { role: 'group', 'aria-label': 'Add to the map' }, BLOCK_KINDS.map((k) =>
     button({ label: k.label, icon: KIND_ICON[k.id] || 'add', size: 'sm', action: 'blk-add-mark', attrs: { 'data-kind': k.id } }))));
+  const z = viewOf(block.id).z;
+  stage.append(h('div.vz-blk-view', { role: 'group', 'aria-label': 'Zoom the map' }, [
+    buttonGroup([
+      button({ label: 'Zoom out', icon: 'zoom_out', iconOnly: true, size: 'sm', action: 'blk-zoom', disabled: z <= Z_MIN, attrs: { 'data-by': 'out' } }),
+      button({ label: 'Zoom in', icon: 'zoom_in', iconOnly: true, size: 'sm', action: 'blk-zoom', disabled: z >= Z_MAX, attrs: { 'data-by': 'in' } }),
+      button({ label: 'Fit the whole floor', icon: 'fit_screen', iconOnly: true, size: 'sm', action: 'blk-zoom', disabled: z <= Z_MIN, attrs: { 'data-by': 'fit' } })
+    ], { label: 'Zoom' }),
+    h('span.vz-blk-zoomread.k-mono', { text: zoomLabel(z), 'aria-live': 'polite' }),
+    h('span.vz-blk-viewhint', { text: 'Pinch or Ctrl+scroll to zoom, drag the floor to pan. Focus the map for + − 0 and the arrows.' })
+  ]));
   stage.append(drawBlock(block, { editable: true }));
   const key = mapKey(block);
   if (key) stage.append(key);
@@ -408,16 +516,68 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
 /* ---- events ----------------------------------------------------- */
 const blockIdOf = (el) => { const n = el.closest('[data-block]'); return n ? n.dataset.block : ''; };
 
-function toMap(svgEl, e) {
+/** A screen point in map units, through the svg's own transform — so
+    it is right at any zoom and pan, not only at fit. */
+function rawMap(svgEl, e) {
+  const ctm = svgEl.getScreenCTM && svgEl.getScreenCTM();
+  if (ctm) {
+    const pt = svgEl.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  }
   const r = svgEl.getBoundingClientRect();
-  return clampPoint(((e.clientX - r.left) / r.width) * BLOCK_W, ((e.clientY - r.top) / r.height) * BLOCK_H);
+  return { x: ((e.clientX - r.left) / r.width) * BLOCK_W, y: ((e.clientY - r.top) / r.height) * BLOCK_H };
+}
+function toMap(svgEl, e) {
+  const p = rawMap(svgEl, e);
+  return clampPoint(p.x, p.y);
 }
 
 let drag = null;
+/* Pointers down on an editable map, for pan (one, on the floor, once
+   zoomed in) and pinch (two, anywhere on it). Keyed by pointerId. */
+const touches = new Map();
+let gesture = null;   // { root, blockId, kind: 'pan' | 'pinch', ... }
+function startGesture(root) {
+  const pts = [...touches.values()].filter((t) => t.root === root);
+  const blockId = root.dataset.block;
+  const v = viewOf(blockId);
+  if (pts.length >= 2) {
+    const [a, b] = pts;
+    gesture = { root, blockId, kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: v.z,
+      mid: rawMap(root, { clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }) };
+  } else if (pts.length === 1 && !pts[0].onMark && v.z > 1) {
+    gesture = { root, blockId, kind: 'pan', x0: pts[0].x, y0: pts[0].y, cx0: v.cx, cy0: v.cy };
+  } else gesture = null;
+}
 document.addEventListener('pointerdown', (e) => {
   const handle = e.target.closest && e.target.closest('.vz-map.is-editable [data-handle]');
   const mk = !handle && e.target.closest && e.target.closest('.vz-map.is-editable [data-mark]');
+  const floor = !handle && !mk && e.target.closest && e.target.closest('.vz-map.is-editable');
+  if (floor) {
+    /* The floor: a pan once zoomed in, a pinch with a second finger.
+       Pressing it never moves a mark. A second finger while a mark is
+       being dragged turns the drag into a pinch — the drag is dropped
+       uncommitted, so a pinch cannot nudge a mark by accident. */
+    touches.set(e.pointerId, { root: floor, x: e.clientX, y: e.clientY });
+    if (drag && drag.root === floor) drag = null;
+    startGesture(floor);
+    if (gesture) {
+      try { floor.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
+      e.preventDefault();
+    }
+    return;
+  }
   if (!handle && !mk) return;
+  const mroot = (handle || mk).closest('.vz-map');
+  touches.set(e.pointerId, { root: mroot, x: e.clientX, y: e.clientY, onMark: true });
+  if ([...touches.values()].filter((t) => t.root === mroot).length >= 2) {
+    drag = null;
+    startGesture(mroot);
+    e.preventDefault();
+    return;
+  }
   const root = (handle || mk).closest('.vz-map');
   const blockId = root.dataset.block;
   const markId = (handle || mk).dataset.handle || (handle || mk).dataset.mark;
@@ -427,6 +587,26 @@ document.addEventListener('pointerdown', (e) => {
   e.preventDefault();
 });
 document.addEventListener('pointermove', (e) => {
+  const t = touches.get(e.pointerId);
+  if (t) { t.x = e.clientX; t.y = e.clientY; }
+  if (gesture && t && t.root === gesture.root) {
+    const g = gesture;
+    if (g.kind === 'pan') {
+      const r = g.root.getBoundingClientRect();
+      const v = viewOf(g.blockId);
+      const ux = (BLOCK_W / v.z) / (r.width || 1);   // map units per screen px
+      setView(g.blockId, { z: v.z, cx: g.cx0 - (e.clientX - g.x0) * ux, cy: g.cy0 - (e.clientY - g.y0) * ux });
+    } else {
+      const pts = [...touches.values()].filter((p) => p.root === g.root);
+      if (pts.length >= 2) {
+        const [a, b] = pts;
+        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        zoomAbout(g.blockId, (g.z0 * d / g.d0) / viewOf(g.blockId).z, g.mid);
+      }
+    }
+    e.preventDefault();
+    return;
+  }
   if (!drag) return;
   drag.moved = true;
   const p = toMap(drag.root, e);
@@ -434,7 +614,16 @@ document.addEventListener('pointermove', (e) => {
   if (drag.end) { drag.node.setAttribute('cx', p.x); drag.node.setAttribute('cy', p.y); }
   else drag.node.setAttribute('transform', `translate(${p.x} ${p.y})`);
 });
-const finish = () => {
+const finish = (e) => {
+  const t = e && touches.get(e.pointerId);
+  if (t) {
+    touches.delete(e.pointerId);
+    if (gesture && t.root === gesture.root) {
+      // A finger lifted from a pinch: carry on as a pan, or stop.
+      startGesture(t.root);
+      return;
+    }
+  }
   if (!drag) return;
   const d = drag; drag = null;
   if (d.moved && d.at) {
@@ -444,6 +633,37 @@ const finish = () => {
 };
 document.addEventListener('pointerup', finish);
 document.addEventListener('pointercancel', finish);
+
+/* Ctrl+wheel zooms about the pointer — a trackpad pinch arrives as
+   exactly that. A plain wheel is left to scroll the page. */
+document.addEventListener('wheel', (e) => {
+  if (!e.ctrlKey) return;
+  const root = e.target.closest && e.target.closest('.vz-map.is-editable');
+  if (!root) return;
+  e.preventDefault();
+  zoomAbout(root.dataset.block, Math.exp(-e.deltaY * 0.01), rawMap(root, e));
+}, { passive: false });
+
+/* The map's own keys, when the svg itself has focus (not a mark on it). */
+delegate(document, 'keydown', '.vz-map.is-editable', (e, root) => {
+  if (e.target !== root) return;
+  const id = root.dataset.block;
+  const step = e.shiftKey ? 0.5 : 0.2;
+  const pans = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+  if (e.key === '+' || e.key === '=') zoomAbout(id, 1.5);
+  else if (e.key === '-' || e.key === '_') zoomAbout(id, 1 / 1.5);
+  else if (e.key === '0') setView(id, { z: 1, cx: BLOCK_W / 2, cy: BLOCK_H / 2 });
+  else if (pans[e.key]) panBy(id, ...pans[e.key]);
+  else return;
+  e.preventDefault();
+});
+delegate(document, 'click', '[data-action="blk-zoom"]', (e, el) => {
+  const id = blockIdOf(el);
+  if (!id) return;
+  const by = el.dataset.by;
+  if (by === 'fit') setView(id, { z: 1, cx: BLOCK_W / 2, cy: BLOCK_H / 2 });
+  else zoomAbout(id, by === 'in' ? 1.5 : 1 / 1.5);
+});
 
 delegate(document, 'keydown', '.vz-map.is-editable [data-mark], .vz-map.is-editable [data-handle]', (e, el) => {
   const root = el.closest('.vz-map');
@@ -458,6 +678,7 @@ delegate(document, 'keydown', '.vz-map.is-editable [data-mark], .vz-map.is-edita
   if (arrows[e.key]) {
     const [dx, dy] = arrows[e.key];
     Shots.updateMark(blockId, markId, end ? { toX: m.toX + dx, toY: m.toY + dy } : { x: m.x + dx, y: m.y + dy });
+    if (end) keepInView(blockId, m.toX + dx, m.toY + dy); else keepInView(blockId, m.x + dx, m.y + dy);
   } else if (!end && (e.key === '[' || e.key === ']')) {
     Shots.updateMark(blockId, markId, { rot: m.rot + (e.key === ']' ? 15 : -15) });
   } else if (!end && (e.key === 'Delete' || e.key === 'Backspace')) {

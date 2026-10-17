@@ -60,7 +60,6 @@ import '../styles/ai.css';
 import '../styles/story.css';
 import '../styles/pdf.css';
 
-import Store from '../lib/store.js';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
@@ -68,6 +67,12 @@ import { saveOnInput, preservingFocus } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import Scenes from '../lib/scenes.js';
 import Pitch from '../lib/pitch-deck.js';
+import {
+  projectFormat, storyFormat, pageStory, pct, safeScenes, blueprintIdea, blueprintLogline,
+  EXTRAS, bareOf, isExtra, menuGroups as groupsOf, resolveStepId, clip, lockedWhen, peakBeat,
+  miniCurvePoints, deckContext, characterCount, synopsisFigures as figureCards, sendCounts, pitchContents,
+  sourceSegments, trimSelection, overlapsMark, whereText, blueprintStepFromSearch, startSample
+} from '../lib/story-model.js';
 /* The import, the sample, the exports, the blueprint's beat fields and
    the curve are shared with the blueprints' Part I panels, so they live
    in src/lib/story-io.js and src/ui/story-kit.js and this page uses
@@ -84,9 +89,8 @@ import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
-import { pageHeader, button } from '../ui/kit/index.js';
+import { pageHeader, button, statStrip } from '../ui/kit/index.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
-import { loadScript } from '../lib/script.js';
 
 const app = document.getElementById('app');
 
@@ -111,20 +115,17 @@ let focusStep = '';       // an outline step whose field takes focus next
    choice once made, else the format's suggestion — never a toolbar
    select. (A save writes that value back, which changes nothing the
    writer chose: `frameworkChosen` is what says whether they did.) */
-const story = () => { const s = Story.loadStory(); s.framework = Story.effectiveFramework(s, fmt()); return s; };
-const pct = (x) => Math.round(x * 100) + '%';
-const scenes = () => { try { return Scenes.listScenes(); } catch (e) { return []; } };
+const story = () => pageStory(fmt());
+const scenes = safeScenes;
 const isEmpty = IO.isEmptyStory;
-const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
-const fmt = () => (projectFormat() === 'short' ? 'short' : 'feature');
+const fmt = storyFormat;
 const pathNow = () => Story.pathFor(fmt());
 const stepNow = (id) => Story.pathStepById(id, fmt());
 const suggestedFw = () => Story.suggestedFramework(fmt());
 const progress = (s) => Story.pathProgress(s, { scenes: scenes(), format: fmt() });
 const blueprint = () => IO.readBlueprint('feature');
-const bpText = (v) => (typeof v === 'string' ? v.trim() : '');
-const bpIdea = () => (fmt() === 'feature' ? bpText(blueprint().s1_whatif) : '');
-const bpLogline = () => { if (fmt() !== 'feature') return ''; const b = blueprint(); return bpText(b.s2_log_final) || bpText(b.s2_log2) || bpText(b.s2_log1); };
+const bpIdea = () => blueprintIdea(fmt());
+const bpLogline = () => blueprintLogline(fmt());
 
 /* ---- persistence ---------------------------------------------- */
 
@@ -199,32 +200,8 @@ function currentStep(s) {
    bare id. data-step stays on the rows as the step's STABLE NUMBER
    (story-paths.json `n`): the blueprint drawer reads it from the open
    row to know which blueprint steps this path step answers. */
-const STEP_ICON = {
-  idea: 'lightbulb', logline: 'edit_note', bible: 'menu_book', character: 'person', world: 'public', conflict: 'bolt',
-  structure: 'format_list_numbered', outline: 'list', setups: 'link', timeline: 'timeline', synopsis: 'description',
-  lock: 'lock', screenplay: 'movie'
-};
-const EXTRA_META = {
-  pacing: { icon: 'trending_up', hint: 'Where the tension sags and where it peaks, against the beat sheet.' },
-  pitch: { icon: 'slideshow', hint: 'A pitch deck built from the story so far.' },
-  guide: { icon: 'local_library', hint: 'The cover sheet: what the path above leaves out.' }
-};
-const bareOf = (pid) => String(pid).replace(/^path-/, '');
 const activeId = (s) => (extra ? extra : 'path-' + currentStep(s));
-function menuGroups(s) {
-  const groups = [];
-  for (const p of progress(s)) {
-    const label = p.group || '';
-    let g = groups[groups.length - 1];
-    if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
-    g.items.push({
-      id: 'path-' + p.id, label: p.label, icon: STEP_ICON[p.id] || '', done: !!p.done,
-      hint: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do', n: p.n
-    });
-  }
-  groups.push({ label: 'Tools', items: EXTRAS.map((x) => ({ id: x.id, label: x.label, icon: EXTRA_META[x.id].icon, hint: EXTRA_META[x.id].hint })) });
-  return groups;
-}
+const menuGroups = (s) => groupsOf(progress(s));
 /* data-step / data-path on each path row: the numbers the drawer reads. A
    structural rebuild inside the same nav drops them, so every build and
    every update stamps again. */
@@ -460,7 +437,7 @@ function earlierLadder(id, title, extra = [], { open = false } = {}) {
 
 function offerBlueprint(field, where, text) {
   return h('div.st-offer', {}, [
-    h('p.st-offer-text', {}, [h('span.st-example-k', { text: where + ': ' }), '“' + (text.length > 240 ? text.slice(0, 237) + '…' : text) + '”']),
+    h('p.st-offer-text', {}, [h('span.st-example-k', { text: where + ': ' }), '“' + clip(text, 240) + '”']),
     h('button.btn', { type: 'button', 'data-st': 'use-bp', 'data-field': field, text: 'USE MY BLUEPRINT ANSWER' })
   ]);
 }
@@ -475,13 +452,13 @@ function miniCurve(fw) {
   svg.setAttribute('class', 'st-mini');
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
-  const beats = [...fw.beats].sort((a, b) => a.at - b.at);
-  const pts = beats.map((b) => [pad + b.at * (W - pad * 2), H - pad - ((b.tension - 1) / 9) * (H - pad * 2)]);
+  const curve = miniCurvePoints(fw, W, H, pad);
+  const pts = curve.pts;
   const area = document.createElementNS(ns, 'polygon');
-  area.setAttribute('points', [[pts[0][0], H - pad], ...pts, [pts[pts.length - 1][0], H - pad]].map((p) => p.join(',')).join(' '));
+  area.setAttribute('points', curve.area);
   area.setAttribute('class', 'st-mini-area');
   const line = document.createElementNS(ns, 'polyline');
-  line.setAttribute('points', pts.map((p) => p.join(',')).join(' '));
+  line.setAttribute('points', curve.line);
   line.setAttribute('class', 'st-mini-line');
   svg.append(area, line);
   for (const p of pts) {
@@ -504,7 +481,7 @@ function renderStructure(s) {
   const sug = suggestedFw();
   for (const f of Story.frameworks()) {
     const on = s.frameworkChosen && f.id === s.framework;
-    const peak = [...f.beats].sort((a, b) => b.tension - a.tension)[0];
+    const peak = peakBeat(f);
     grid.append(h('button.st-fw' + (on ? '.is-on' : ''), {
       type: 'button', 'data-st': 'pick-fw', 'data-fw': f.id, 'aria-pressed': String(on)
     }, [
@@ -651,11 +628,6 @@ function renderOutline(s) {
   return sec;
 }
 
-const lockedWhen = (iso) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : 'on ' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-};
-
 function renderStepRow(st, opts, first, last, unplaced = false, locked = false) {
   const li = h('li.st-ol-step', { 'data-step-row': st.id });
   const fid = 'stStep_' + st.id;
@@ -709,6 +681,13 @@ function renderLock(s) {
   return sec;
 }
 
+/* Four figures under the synopsis, each measured: the words on the page, the
+   passages tagged, the scenes in the list and the screen time those scenes
+   work out to (the Screenplay Analysis's own estimate). Nothing is stored. */
+function synopsisFigures(s) {
+  return statStrip(figureCards(s), { class: 'st-stats st-figures', label: 'The synopsis in numbers' });
+}
+
 function renderSynopsisStep(s) {
   const short = fmt() === 'short';
   const sec = h('section#path-synopsis.st-step.glossary-scope', { 'data-path': 'synopsis', 'aria-label': 'Synopsis' }, stepHead('synopsis', short ? 'Synopsis' : 'Synopsis & treatment',
@@ -724,6 +703,7 @@ function renderSynopsisStep(s) {
   sec.append(h('p#stWhere.st-where', { 'aria-live': 'polite', text: s.source.trim()
     ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
     : '' }));
+  if (s.source.trim()) sec.append(synopsisFigures(s));
   sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
   put(sec, earlierLadder('synopsis', 'From synopsis to treatment', [], { open: true }), nextBtn(s, 'synopsis'));
   return sec;
@@ -735,20 +715,17 @@ function renderScreenplay(s) {
   const sec = h('section#path-screenplay.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'Open the Screenplay Writer' }, stepHead('screenplay', 'Open the Screenplay Writer',
     'One placeholder scene per step, each linked to its beat, so the Screenplay Analysis’s outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
   sec.append(h('p.st-muted', { text: 'None of this is required before you write. A scene order, an outline and a lock are all optional: open the Screenplay Writer whenever you like and start on the first page.' }));
-  const live = new Set(scenes().map((x) => x.id));
-  const written = s.outline.filter((x) => x.text.trim());
-  const sent = written.filter((x) => x.sceneId && live.has(x.sceneId)).length;
-  const todo = written.length - sent;
+  const { written, sent, todo } = sendCounts(s, scenes());
   sec.append(h('p.st-coverage', { role: 'status' }, [
     h('strong', { text: `${todo} step${todo === 1 ? '' : 's'} to send` }),
-    ` · ${sent} already ha${sent === 1 ? 's' : 've'} a scene · ${written.length} written`
+    ` · ${sent} already ha${sent === 1 ? 's' : 've'} a scene · ${written} written`
   ]));
   const row = h('div.st-build');
   row.append(h('button.btn.primary', { type: 'button', 'data-st': 'send', disabled: !todo, text: 'SEND THE OUTLINE TO THE SCREENPLAY WRITER' }));
   if (lastSend && lastSend.length) row.append(h('button.btn', { type: 'button', 'data-st': 'send-undo', text: 'UNDO THE SEND' }));
   row.append(h('a.btn', { href: 'screenplay.html', text: 'OPEN THE SCREENPLAY WRITER' }));
   sec.append(row);
-  if (!written.length) sec.append(h('p.st-muted', { text: 'Write a step or two in the step outline first.' }));
+  if (!written) sec.append(h('p.st-muted', { text: 'Write a step or two in the step outline first.' }));
   return sec;
 }
 
@@ -789,22 +766,16 @@ function renderSource(s) {
   pane.append(bar);
 
   const src = h('div#stSrc.st-src', { tabindex: '0', 'aria-label': 'Synopsis — select a passage to tag it' });
-  const len = s.source.length;
-  let at = 0;
-  const live = Story.anchor(s).filter((m) => !m.detached).sort((a, b) => a.start - b.start);
-  for (const m of live) {
-    if (m.start < at) continue;        // overlapping passages: the earlier one draws
-    if (m.start > at) src.append(document.createTextNode(s.source.slice(at, m.start)));
-    const r = Story.beatOf(m, s.framework, len);
-    const mk = h('mark.st-mark' + (r.inferred ? '.is-inferred' : '') + (litBeat && r.beat && r.beat.id === litBeat ? '.is-lit' : ''), {
-      'data-mark': m.id, 'data-beat': r.beat ? r.beat.id : '',
-      title: (r.beat ? r.beat.label : '') + (r.inferred ? ' (placed by position)' : '')
+  /* Text nodes and <mark>s and nothing else (sourceSegments): the
+     character offset of a selection is then the model's offset. */
+  for (const seg of sourceSegments(s, litBeat)) {
+    if (!seg.mark) { src.append(document.createTextNode(seg.text)); continue; }
+    const mk = h('mark.st-mark' + (seg.inferred ? '.is-inferred' : '') + (seg.lit ? '.is-lit' : ''), {
+      'data-mark': seg.mark, 'data-beat': seg.beat, title: seg.title
     });
-    mk.textContent = s.source.slice(m.start, m.end);
+    mk.textContent = seg.text;
     src.append(mk);
-    at = m.end;
   }
-  if (at < len) src.append(document.createTextNode(s.source.slice(at)));
   pane.append(src);
   return pane;
 }
@@ -834,7 +805,7 @@ function renderMatrix(s) {
       for (const m of row.marks) {
         const mi = h('li.st-beat-mark');
         mi.append(h('button.st-quote', { type: 'button', 'data-st': 'goto-mark', 'data-mark': m.id,
-          text: '“' + (m.text.length > 160 ? m.text.slice(0, 157) + '…' : m.text) + '”' }));
+          text: '“' + clip(m.text, 160) + '”' }));
         const meta = h('div.st-beat-meta');
         if (m.inferred) meta.append(h('span.st-badge', { text: 'placed by position' }));
         if (m.origin === 'ai') meta.append(h('span.st-badge', { text: 'drafted by AI' }));
@@ -887,13 +858,7 @@ function renderPitch() {
   const sec = h('section#pitch.st-section.st-pitch', { 'aria-label': 'Pitch deck' });
   sec.append(h('h2.bd-h2', { text: 'Pitch deck' }));
   sec.append(h('p.bd-sub', { text: 'A landscape PDF compiled from this project: the logline, this synopsis, the tagged beats, the characters, key scenes and the numbers. A slide with nothing to say is left out.' }));
-  let d = null;
-  try { d = Pitch.collectPitch(); } catch (e) { d = null; }
-  const have = d ? [
-    d.logline && 'logline', d.synopsis && 'synopsis', d.beats.length && `${d.beats.length} beats`,
-    d.characters.length && `${d.characters.length} characters`, d.keyScenes.length && `${d.keyScenes.length} key scenes`,
-    d.numbers.length && 'production numbers'
-  ].filter(Boolean) : [];
+  const have = pitchContents();
   sec.append(h('p.st-muted', { text: have.length ? 'In the deck: ' + have.join(' · ') + '.' : 'Nothing to pitch yet — add a synopsis or a logline first.' }));
   sec.append(h('button.btn.primary', { type: 'button', 'data-st': 'pitch', disabled: !have.length, text: 'EXPORT PITCH DECK (PDF)' }));
   return sec;
@@ -904,6 +869,13 @@ function renderPitch() {
    sits inside it: it tags the synopsis against the beats, which is what
    the curve above it reads. The Idea Vault is not on this page any more
    (vault.html). */
+/* The deck's view: which act is shown and which cards are folded. In memory
+   only (nothing is stored for a view), and a redraw keeps them. */
+let deckAct = '';
+const deckClosed = new Set();
+function renderStats(s) {
+  return PacingView.renderStats(s, { ...deckContext(), characters: characterCount() });
+}
 function renderPacing(s) {
   const sec = h('section#pacing.st-section.st-pacing', { 'aria-label': 'Beats and pacing' });
   sec.append(h('h2.bd-h2', { text: 'Beats & pacing' }));
@@ -922,10 +894,7 @@ function renderPacing(s) {
   /* The beat deck draws from the framework even before a synopsis:
      every beat, its act, its conventional place and the tension it
      carries, filled in as passages are tagged and scenes linked. */
-  let scenesNow = [], elementsNow = [];
-  try { scenesNow = Scenes.listScenes(); } catch (e) { scenesNow = []; }
-  try { elementsNow = loadScript().elements || []; } catch (e) { elementsNow = []; }
-  stack.append(PacingView.renderDeck(s, { scenes: scenesNow, elements: elementsNow }));
+  stack.append(PacingView.renderDeck(s, { ...deckContext(), act: deckAct, closed: deckClosed }));
   sec.append(stack);
   sec.append(h('div#ai-map.st-ai-panel', {}, [renderAI(s)]));
   return sec;
@@ -995,6 +964,7 @@ function draw() {
     actions: [bar]
   }), main.firstChild);
 
+  if (!cards) main.insertBefore(renderStats(s), main.children[1] || null);
   const bar0 = renderStepper(s);
   if (cards) bar0.hidden = true;
   else main.classList.add('tabs-has-side');   // the column beside the step (tabs.css); never over the start cards
@@ -1054,12 +1024,7 @@ function landStepView(el, { exact = false } = {}) {
 /* A path step id, from an id or (for any caller that still holds one)
    an old step number; a step this project's path does not have (a link
    to the feature's Setups on a short film) lands on the path's first. */
-function stepId(x) {
-  const path = pathNow();
-  if (path.some((p) => p.id === x)) return x;
-  const byN = path.find((p) => p.n === Number(x));
-  return byN ? byN.id : path[0].id;
-}
+const stepId = (x) => resolveStepId(x, pathNow());
 
 /* Going to a step: light it, put it in the address bar and scroll to it.
    Every step is already on the page, so nothing is redrawn — except the
@@ -1081,11 +1046,6 @@ function goStep(x, { scroll = true } = {}) {
    — and only the current one is shown; the rest keep the `hidden`
    attribute (never removed: every data-key stays in the DOM). The sequence
    Back / Next walks is derived from the DOM, not listed a second time. */
-const EXTRAS = [
-  { id: 'pacing', label: 'Beats & pacing' },
-  { id: 'pitch', label: 'Pitch deck' },
-  { id: 'guide', label: 'Cover sheet' }
-];
 const viewPanels = () => [
   ...pathNow().map((p) => ({ id: p.id, label: p.label, el: document.getElementById('path-' + p.id) })),
   ...EXTRAS.map((x) => ({ id: x.id, label: x.label, el: document.getElementById(x.id) }))
@@ -1122,7 +1082,7 @@ function applyView() {
 
 /* A step by id, whether it is on the path or one of the sections after. */
 function goView(id) {
-  if (EXTRAS.some((x) => x.id === id)) {
+  if (isExtra(id)) {
     extra = id; started = true;
     history.replaceState(null, '', location.pathname + location.search + '#' + id);
     refreshStepper();
@@ -1141,7 +1101,7 @@ function openFragment(frag) {
   const host = el && el.closest('main > section');
   if (!host) return false;
   const pid = host.getAttribute('data-path');
-  if (pid) { pathStep = pid; extra = ''; } else if (EXTRAS.some((x) => x.id === host.id)) { extra = host.id; } else return false;
+  if (pid) { pathStep = pid; extra = ''; } else if (isExtra(host.id)) { extra = host.id; } else return false;
   started = true;
   refreshStepper();
   applyView();
@@ -1155,12 +1115,6 @@ function openFragment(frag) {
 
 /* ---- where you are (rev. 3 §1b) ------------------------------- */
 
-function whereText(fwId, pos) {
-  const w = Story.whereAt(fwId, pos);
-  let t = `You are at ${pct(w.pos)} of the synopsis — nearest beat ${w.nearest.label}, conventionally around ${pct(w.nearest.at)}`;
-  if (w.next && w.next.id !== w.nearest.id) t += `; ${w.next.label} is expected around ${pct(w.next.at)}`;
-  return t + '.';
-}
 function updateWhere() {
   const out = document.getElementById('stWhere');
   if (!out) return;
@@ -1229,11 +1183,8 @@ function selectionOffsets(quiet) {
   let start = off(r.startContainer, r.startOffset), end = off(r.endContainer, r.endOffset);
   if (quiet) return { start, end };
   if (sel.isCollapsed) return null;
-  const src = story().source;
   // Trim whitespace at the edges so a sloppy drag still tags the words.
-  while (start < end && /\s/.test(src[start])) start++;
-  while (end > start && /\s/.test(src[end - 1])) end--;
-  return end > start ? { start, end } : null;
+  return trimSelection(story().source, start, end);
 }
 
 document.addEventListener('selectionchange', () => {
@@ -1348,7 +1299,7 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
   } else if (act === 'tag') {
     const o = selectionOffsets();
     if (!o) return;
-    if (s.marks.some((m) => m.start < o.end && m.end > o.start)) {
+    if (overlapsMark(s.marks, o)) {
       StudioUI.toast('That overlaps a passage already tagged. Remove that highlight first, or select different words.', { type: 'error' });
       return;
     }
@@ -1375,9 +1326,28 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     if (card) {
       document.querySelectorAll('.pc-card.is-lit').forEach((c) => c.classList.remove('is-lit'));
       card.classList.add('is-lit');
-      card.scrollIntoView({ block: 'center', behavior: 'instant' });
+      card.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
       card.focus({ preventScroll: true });
     }
+  } else if (act === 'pc-act') {
+    deckAct = el.getAttribute('data-act') || '';
+    render();
+  } else if (act === 'pc-toggle') {
+    const id = el.getAttribute('data-beat');
+    if (deckClosed.has(id)) deckClosed.delete(id); else deckClosed.add(id);
+    keepDeckPlace(el, () => render(), '[data-st="pc-toggle"][data-beat="' + id + '"]');
+  } else if (act === 'pc-all') {
+    const close = el.getAttribute('data-mode') === 'close';
+    document.querySelectorAll('.pc-card').forEach((c) => {
+      const id = c.id.replace(/^pc-beat-/, '');
+      if (close) deckClosed.add(id); else deckClosed.delete(id);
+    });
+    keepDeckPlace(el, () => render(), '[data-st="pc-all"]');
+  } else if (act === 'pc-tension') {
+    const beat = el.getAttribute('data-beat');
+    const next = Number(el.getAttribute('data-value')) + Number(el.getAttribute('data-delta'));
+    Story.setTension(s, s.framework, beat, next);
+    keepDeckPlace(el, () => commit(s), '[data-st="pc-tension"][data-beat="' + beat + '"][data-delta="' + el.getAttribute('data-delta') + '"]');
   } else if (act === 'goto' || act === 'heat') {
     const from = Number(el.getAttribute('data-from'));
     if (mode !== 'tag') mode = 'tag';
@@ -1396,6 +1366,21 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     if (!Pitch.exportPitchPDF()) StudioUI.toast('Nothing to put in a deck yet.', { type: 'error' });
   }
 });
+
+/* A redraw replaces the card under the pointer. Keep it where it was on the
+   screen and give the same control the focus back, so a stepper can be pressed
+   again and a keyboard reader is not thrown to the top of the page. */
+function keepDeckPlace(el, redraw, sel) {
+  const card = el.closest('.pc-card');
+  const key = card ? '#' + card.id + ' ' : '';
+  const top0 = el.getBoundingClientRect().top;
+  redraw();
+  const next = document.querySelector(key + sel) || document.querySelector(sel);
+  if (!next) return;
+  const dy = next.getBoundingClientRect().top - top0;
+  if (dy) window.scrollBy({ top: dy, behavior: 'instant' });
+  if (!next.disabled) next.focus({ preventScroll: true });
+}
 
 // (the tabs under the editor are gone: every section is on the page)
 function scrollToOffset(from) {
@@ -1504,8 +1489,7 @@ if (START) history.replaceState(null, '', location.pathname + location.hash);
 /* An old blueprint link — story.html?step=feature/step-07#guide — lands on
    the path step that asks that step now, not on the Guide's cover. */
 {
-  const m = /^(feature|short)\/(step-\d+|treatment-ladder)$/.exec(new URLSearchParams(location.search).get('step') || '');
-  const id = m && m[1] === fmt() ? Story.pathStepForBlueprint(fmt(), m[2]) : '';
+  const id = blueprintStepFromSearch(location.search, fmt());
   if (id) {
     /* A real navigation to the clean address, not a replaceState: the
        shell lands on the fragment it was loaded with (#guide, which this
@@ -1518,7 +1502,7 @@ readHash();
 render();
 loadFavStudiesSoon();   // the examples' films, once the page has settled
 /* ?start=sample is Dragon; ?start=sample-<id> is that sample. */
-const START_SAMPLE = /^sample(?:-([a-z]+))?$/.exec(START || '');
+const START_SAMPLE = startSample(START);
 if (START_SAMPLE && !story().source.trim() && !story().outline.length) useSample(START_SAMPLE[1]);
 else if (START === 'new') { started = true; goStep('idea'); const ta = document.getElementById('stIdea'); if (ta) ta.focus(); }
 if (START === 'import') { const d = document.querySelector('.st-drop, .st-import'); if (d) d.scrollIntoView({ block: 'center' }); }

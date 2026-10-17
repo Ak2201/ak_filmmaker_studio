@@ -6,6 +6,7 @@
    fallback), distances are multiplied by --motion.
    ============================================================ */
 .pc-stack { display: grid; gap: var(--s4); margin-top: var(--s3); }
+.pc-stack > * { min-width: 0; }
 
 /* ---- 1. the curve ---- */
 .pc-chart { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s2); }
@@ -156,3 +157,43 @@
 /* A panel head of eyebrow + meta wraps on a phone rather than
    squeezing both into three-word columns. */
 .pc-curve .k-panel-head, .pc-intensity .k-panel-head { flex-wrap: wrap; row-gap: var(--s1); }
+
+/* ---- Swiss kit, round 3 (14 Oct 2026): figures, act filter, folding, swipe ---- */
+.st-stats { margin-block: var(--s3); }
+.st-figures { margin-block: var(--s3) var(--s2); }
+.pc-card-head { grid-template-columns: auto minmax(0, 1fr) auto; }
+.pc-card-tags { grid-column: 2 / -1; }
+.pc-fold { margin: -4px -4px 0 0; }
+.pc-card-body { display: grid; gap: var(--s3); }
+.pc-card.is-closed { gap: var(--s2); }
+.pc-tune {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-rail); border: 1px solid var(--border-hair); border-radius: var(--sk-field-radius, var(--radius));
+}
+.pc-tune-k { flex: 1 1 auto; font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
+.pc-tune-v { white-space: nowrap; min-width: 4.5ch; text-align: center; color: var(--ink); }
+.pc-filter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s4); margin-bottom: var(--s3); }
+.pc-chips { display: flex; flex-wrap: wrap; gap: var(--s2); min-width: 0; }
+.pc-filter-r { display: flex; align-items: center; gap: var(--s3); margin-left: auto; }
+.pc-deck-count { font-size: var(--t-micro); color: var(--ink-muted); text-transform: uppercase; letter-spacing: .04em; }
+
+@media (max-width: 719px) {
+  /* The header's actions are a row you scroll sideways, not a stack. */
+  main.st-main .k-page-actions .st-bar { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-bottom: var(--s1); }
+  main.st-main .k-page-actions .st-bar > * { flex: none; }
+  .st-main .k-page-actions { max-width: 100%; min-width: 0; }
+  /* The act filter is a chip row. */
+  .pc-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; padding-bottom: var(--s1); }
+  .pc-chips > * { flex: none; }
+  .pc-filter-r { width: 100%; justify-content: space-between; margin-left: 0; }
+  /* The deck is a row of cards you swipe through, the next one peeking. */
+  .pc-cards {
+    display: flex; gap: var(--s3);
+    overflow-x: auto; overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory; scroll-padding-inline: var(--s4);
+    margin-inline: calc(-1 * var(--s4)); padding-inline: var(--s4); padding-bottom: var(--s2);
+    align-items: flex-start;
+  }
+  .pc-cards > .pc-card { flex: 0 0 min(86%, 22rem); scroll-snap-align: start; }
+}

@@ -43,6 +43,7 @@
 import { h } from '../lib/dom.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import { notice as kitNotice } from './kit/notice.js';
+import { setPort } from '../lib/ports.js';
 
 let queue = Promise.resolve();
 
@@ -221,5 +222,8 @@ export function askText(opts = {}, extra) {
     return { cancelValue: null, focus: field };
   });
 }
+
+// The logic layer asks through a port, never by importing this file.
+setPort('ask', ask);
 
 export default { ask, askDanger, tell, askText };

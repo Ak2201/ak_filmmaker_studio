@@ -93,6 +93,7 @@ export const DRIVE_STATES = {
 let _status  = { state: DRIVE_STATES.OFF, detail: 'Not connected' };
 let _conflict = null;      // { remote, localAt } while unresolved
 let _applying = false;     // echo guard, same job as cloud.js's
+let _incomplete = false;   // a restore here was refused part-way; see _doPull
 let _timer = null;
 let _inflight = null;
 const listeners = new Set();
@@ -269,6 +270,15 @@ async function _doPush(opts) {
   opts = opts || {};
   if (!isConnected()) return { ok: false, reason: 'not-connected' };
   if (!PlanGate.allowed('drive_backup')) return { ok: false, reason: 'plan' };
+  /* The studio here is what a refused restore left behind: never the
+     new head, unless the person explicitly chose "keep mine" (force).
+     The forgotten head is written again because, with storage full,
+     _doPull's own attempt may have been refused too. */
+  if (_incomplete && !opts.force) {
+    writeState({ revisionId: null });
+    setStatus(DRIVE_STATES.ERROR, 'The last restore did not finish, so nothing was uploaded. Free some space and restore again.');
+    return { ok: false, reason: 'incomplete' };
+  }
   const st = readState();
   setStatus(DRIVE_STATES.SYNCING, 'Uploading to Drive…');
   try {
@@ -279,6 +289,7 @@ async function _doPush(opts) {
     }
     const out = await Drive.uploadBackup(st.fileId, serialise(buildBackup()));
     _conflict = null;
+    _incomplete = false;
     writeState({
       revisionId: await headAfterWrite(st.fileId, out),
       link: out.webViewLink || st.link || null,
@@ -329,11 +340,24 @@ async function _doPull(opts) {
       await Store.flushStorage();
     } finally { _applying = false; }
     _conflict = null;
+    /* A restore whose writes were refused (quota) left an INCOMPLETE
+       studio here. Recording it as level with the head would let the
+       next save push that over the complete copy, so forget the head
+       instead: a null revision makes push() and reconcile() treat the
+       remote as unseen and refuse to overwrite it — and hold that in
+       memory too, since with storage full this write can be refused. */
+    if (!res || !res.ok) {
+      _incomplete = true;
+      writeState({ revisionId: null });
+      setStatus(DRIVE_STATES.ERROR, (res && res.message) || 'The restore did not finish. Nothing here is level with Drive.');
+      return { ok: false, reason: 'incomplete', result: res };
+    }
     /* A restore FROM an older revision leaves this device holding
        something the head does not have, so it records the head it
        read rather than the revision it restored — the next push
        then goes through cleanly and the old content becomes the
        new head, which is what the user asked for. */
+    _incomplete = false;
     writeState({
       revisionId: remote.headRevisionId || null,
       link: remote.webViewLink || st.link || null,

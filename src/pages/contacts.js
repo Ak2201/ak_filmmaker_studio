@@ -33,52 +33,28 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
-import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
+import Contacts from '../lib/contacts.js';
 import Scenes, { formatEighths, ELEMENT_CATEGORIES } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
-import Sun from '../lib/sun.js';
 import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
+import {
+  hueOf, prettyDate, slugOf, unitCounts, deptOptions, reachProblem as reachProblemOf, scheduleOf, sheetScenes,
+  eighthsOf, placesOf, sheetDateOf, lightOf, lightNote, wrapOf, lateScenes, lateText, ROUTE_FIELDS, pinText,
+  pinRefusal, roundedPin, calledOf, groupCalled, callLabel, factsOf as factsFor, personOf, waRuns, dayName
+} from '../lib/contacts-model.js';
 import WA from '../lib/callsheet-text.js';
 import { askDanger } from '../ui/dialog.js';
 import { pageHeader, statStrip, button, badge, panel } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
-/* A hue per department, so the rule down the side of a card carries
-   data instead of decorating. Six hues, nine departments: the three
-   that share are the ones nobody confuses on a unit list. */
-const DEPT_HUE = {
-  Cast: 'feature',
-  Direction: 'plan',
-  Camera: 'shorts',
-  Sound: 'visualize',
-  Art: 'library',
-  Costume: 'shoot',
-  Makeup: 'visualize',
-  Production: 'plan',
-  Post: 'shorts'
-};
-const hueOf = (dept) => DEPT_HUE[dept] || 'feature';
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** '2026-09-28' → '28 September 2026'. No Date object: a shoot day is a
-    wall-clock date, and parsing it into an instant moves it a timezone. */
-function prettyDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
-  if (!m) return iso || 'Date not set';
-  return Number(m[3]) + ' ' + (MONTHS[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
-}
-
-const slugOf = (scene) =>
-  [scene.intExt, scene.location || 'Location TBC'].join('. ') + ' — ' + scene.dayNight;
+/* The department hues, the dates, the slug line and every fact a call
+   sheet derives are src/lib/contacts-model.js's. */
 
 /* ---- header ------------------------------------------------- */
 function renderHeader(contacts, sheets) {
-  const cast = contacts.filter((c) => c.department === 'Cast').length;
-  const depts = new Set(contacts.map((c) => c.department).filter(Boolean)).size;
+  const { cast, depts } = unitCounts(contacts);
   const wrap = h('header.ct-head');
   wrap.append(pageHeader({
     eyebrow: ['Cast & Crew', 'Call sheets & unit directory'],
@@ -191,13 +167,8 @@ function labelled(label, control, hint) {
    location falls through (UX audit L11). The email check is the
    browser's own; a phone wants six digits and only the characters a
    number is written with. */
-const PHONE_OK = /^[+\d\s().\-\/]*$/;
 function reachProblem(el) {
-  const v = String(el.value || '').trim();
-  if (!v) return '';
-  if (el.type === 'email') return el.validity && el.validity.typeMismatch ? 'Not an email address' : '';
-  const digits = (v.match(/\d/g) || []).length;
-  return !PHONE_OK.test(v) || digits < 6 ? 'Not a number anyone can dial' : '';
+  return reachProblemOf(el.value, el.type, !!(el.validity && el.validity.typeMismatch));
 }
 /** Mark the field, and return (or update) the hint line under it. */
 function checkReach(el, hint) {
@@ -220,9 +191,7 @@ function deptSelect(value) {
   const s = h('select.ct-dept', {
     'data-contact-field': 'department', 'aria-label': 'Department'
   });
-  const options = DEPARTMENTS.includes(value) || !value
-    ? DEPARTMENTS
-    : [...DEPARTMENTS, value];
+  const options = deptOptions(value);
   options.forEach((d) => {
     const opt = h('option', { value: d, text: d });
     if (d === value) opt.selected = true;
@@ -320,16 +289,6 @@ function renderSheets(sheets, contacts, scenes) {
    day, that day's calendar date is shown beside the sheet's, a
    mismatch is named, and a sheet with no date of its own prints the
    schedule's. Derived on every render, stored nowhere. */
-function scheduleOf(sheet, scenes) {
-  const days = [...new Set(sheet.sceneIds
-    .map((id) => scenes.find((s) => s.id === id))
-    .filter(Boolean)
-    .map((s) => Locations.shootDayOf(s))
-    .filter((d) => d > 0))].sort((a, b) => a - b);
-  if (days.length !== 1) return { days, day: 0, date: '' };
-  return { days, day: days[0], date: Locations.dayDate(days[0]) };
-}
-
 function renderSchedLine(sheet, scenes) {
   const sc = scheduleOf(sheet, scenes);
   const line = h('p.ct-sched', { 'aria-live': 'polite' });
@@ -383,7 +342,7 @@ function renderDayCard(sheet, scenes) {
   const total = Locations.calendarDays(scenes).length;
   const places = placesOf(onSheet);
   const lit = lightOf(sheet, scenes);
-  const eighths = onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
+  const eighths = eighthsOf(onSheet);
   const dpr = sched.day ? DPR.getDPR(sched.day) : null;
   const wrap = wrapOf(sheet, onSheet);
 
@@ -577,11 +536,8 @@ function renderSheetEdit(sheet, contacts, scenes) {
 /* The sheet as paper. Screen-hidden, print-shown. Built from the same
    data in the same pass as the form above, so the two cannot disagree. */
 function renderSheetDoc(sheet, contacts, scenes) {
-  const byId = Object.fromEntries(contacts.map((c) => [c.id, c]));
-  const onSheet = sheet.sceneIds
-    .map((id) => scenes.find((s) => s.id === id))
-    .filter(Boolean);
-  const eighths = onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
+  const onSheet = sheetScenes(sheet, scenes);
+  const eighths = eighthsOf(onSheet);
   const sched = scheduleOf(sheet, scenes);
 
   const doc = h('div.ct-doc');
@@ -626,29 +582,24 @@ function renderSheetDoc(sheet, contacts, scenes) {
     doc.append(h('div.ct-doc-scroll', {}, [table]));   // scrolls sideways on a phone
   }
 
-  const called = Object.keys(sheet.calls)
-    .map((id) => byId[id])
-    .filter(Boolean)
-    .sort((a, b) => {
-      const da = DEPARTMENTS.indexOf(a.department);
-      const db = DEPARTMENTS.indexOf(b.department);
-      return da === db ? String(a.name).localeCompare(String(b.name)) : da - db;
-    });
+  const called = calledOf(sheet, contacts);
 
   if (called.length) {
+    groupCalled(sheet, called).forEach((g) => {
     const table = h('table.ct-doc-table');
-    table.append(h('caption', { text: 'Called' }));
+    table.append(h('caption', { text: 'Called — ' + g.label.toLowerCase() }));
     table.append(h('thead', {}, [row('th', ['Name', 'Role', 'Department', 'Call', 'Phone'])]));
     const body = h('tbody');
-    called.forEach((c) => body.append(row('td', [
+    g.people.forEach((c) => body.append(row('td', [
       c.name || 'Unnamed',
       c.role || '',
       c.department || '',
-      sheet.calls[c.id] || (sheet.generalCall ? sheet.generalCall + ' (general)' : 'General call'),
+      callLabel(sheet, c),
       c.phone || ''
     ])));
     table.append(body);
     doc.append(h('div.ct-doc-scroll', {}, [table]));   // scrolls sideways on a phone
+    });
   } else {
     doc.append(h('p.ct-doc-none', { text: 'Nobody is called on this sheet yet.' }));
   }
@@ -686,73 +637,8 @@ function row(cell, values) {
    the only things written are recce fields, through setRecce(), which
    is the same record the Plan page's recce cards edit. */
 
-const sheetScenes = (sheet, scenes) => sheet.sceneIds
-  .map((id) => scenes.find((s) => s.id === id))
-  .filter(Boolean);
-
-/** The distinct places a sheet's scenes are shot at, in sheet order,
-    each with its recce. A place is a scene's location: there is no
-    list of them to keep in step. */
-function placesOf(onSheet) {
-  const seen = new Set();
-  const out = [];
-  for (const s of onSheet) {
-    const name = Locations.locationName(s);
-    const key = Locations.locationKey(name);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push({ key, name, recce: Locations.getRecce(name) });
-  }
-  return out;
-}
-
-/** The date the sheet is for: its own, else the schedule's. */
-function sheetDateOf(sheet, scenes) {
-  return sheet.date || scheduleOf(sheet, scenes).date || '';
-}
-
-/** { light, place } for the sheet's date at its first pinned place, or
-    null with no date. Chennai stands in, flagged, for a place with no pin. */
-function lightOf(sheet, scenes) {
-  const date = sheetDateOf(sheet, scenes);
-  if (!date) return null;
-  const place = Geo.placeFor(placesOf(sheetScenes(sheet, scenes)));
-  const light = Sun.daylight(date, place, { deviceOffset: deviceOffsetOn(date) });
-  return light ? { light, place } : null;
-}
-
-/* What this device's clock was offset by on that date, for a place
-   outside India (sun.js reads India as IST without asking). */
-function deviceOffsetOn(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  return m ? new Date(+m[1], +m[2] - 1, +m[3], 12).getTimezoneOffset() : new Date().getTimezoneOffset();
-}
-
-function lightNote(lit) {
-  return lit.place.fallback
-    ? 'Times for Chennai (' + lit.light.zone + ') — no location on this sheet has a pin yet. Add one under Route & safety.'
-    : 'Times at ' + lit.place.name + ', ' + lit.light.zone + '. Golden hour: the sun between 4° below and 6° above the horizon.';
-}
-
-/** The wrap the flag judges: the later of the sheet's planned wrap and
-    the DPR's wrap for the single shoot day its scenes sit on. */
-function wrapOf(sheet, onSheet) {
-  const days = [...new Set(onSheet.map((s) => Locations.shootDayOf(s)).filter((d) => d > 0))];
-  return DPR.laterWrap(sheet.wrap, days.length === 1 ? DPR.getDPR(days[0]).wrap : '');
-}
-
-/** The scenes that need daylight when the wrap is after sunset.
-    No wrap typed, no flag: the check judges a time somebody wrote down. */
-function lateScenes(sheet, onSheet, light) {
-  if (!Sun.isPastSunset(wrapOf(sheet, onSheet), light)) return [];
-  return onSheet.filter(Sun.needsDaylight);
-}
-function lateText(sheet, onSheet, light, late) {
-  return 'Wrap ' + wrapOf(sheet, onSheet) + ' is after sunset (' + light.sunset + '). '
-    + (late.length === 1 ? 'Exterior scene ' : 'Exterior scenes ')
-    + late.map((s) => s.number || '—').join(', ')
-    + ' need the light — shoot ' + (late.length === 1 ? 'it' : 'them') + ' before ' + light.sunset + '.';
-}
+/* sheetScenes, placesOf, sheetDateOf, lightOf, lightNote, wrapOf,
+   lateScenes and lateText are src/lib/contacts-model.js's. */
 
 function renderLight(sheet, scenes) {
   const wrap = h('div.ct-light', { 'aria-live': 'polite' });
@@ -778,12 +664,7 @@ const lightCell = (label, value) =>
   h('div.ct-light-cell', {}, [h('dt', { text: label }), h('dd', { text: value })]);
 
 /* ---- route & safety: the editing side -------------------------- */
-const ROUTE_FIELDS = [
-  ['address', 'Address', 'Where the van goes — a pin, a landmark, a street'],
-  ['parking', 'Parking', 'Where the unit parks, and how far the carry is'],
-  ['hospital', 'Nearest hospital', 'Name, distance, casualty phone'],
-  ['police', 'Nearest police station', 'Station, and its number']
-];
+/* ROUTE_FIELDS is src/lib/contacts-model.js's. */
 const canLocate = () => typeof navigator !== 'undefined' && 'geolocation' in navigator;
 
 function renderRouteEdit(sheet, scenes) {
@@ -834,8 +715,7 @@ function routePlace(p) {
   box.append(acts);
   return box;
 }
-const pinText = (pin) => pin ? 'Pinned at ' + pin.lat + ', ' + pin.lng
-  : 'No pin yet — sunrise and sunset fall back to Chennai.';
+/* pinText is src/lib/contacts-model.js's. */
 
 /* ---- route & safety: the paper side ---------------------------- */
 function renderRouteDoc(onSheet) {
@@ -868,53 +748,9 @@ function renderRouteDoc(onSheet) {
 
 /* ---- the message ------------------------------------------------- */
 
-/** Who is called, in the order the paper lists them. */
-function calledOf(sheet, contacts) {
-  const byId = Object.fromEntries(contacts.map((c) => [c.id, c]));
-  return Object.keys(sheet.calls)
-    .map((id) => byId[id])
-    .filter(Boolean)
-    .sort((a, b) => {
-      const da = DEPARTMENTS.indexOf(a.department);
-      const db = DEPARTMENTS.indexOf(b.department);
-      return da === db ? String(a.name).localeCompare(String(b.name)) : da - db;
-    });
-}
-
-/** The sheet's facts, looked up now, for callsheet-text.js. */
-function factsOf(sheet, scenes) {
-  const onSheet = sheetScenes(sheet, scenes);
-  const sched = scheduleOf(sheet, scenes);
-  const places = placesOf(onSheet);
-  const lit = lightOf(sheet, scenes);
-  const first = places.find((p) => Geo.coordsOf(p.recce)) || places.find((p) => p.recce.address) || null;
-  const mapUrl = first ? Geo.recceMapsLink(first.name, first.recce)
-    : Geo.mapsLink({ address: sheet.location || (places[0] ? places[0].name : '') });
-  const eighths = onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
-  const date = sheetDateOf(sheet, scenes);
-  return {
-    film: PDF.projectTitle(),
-    title: sheet.title || 'Shoot day',
-    dayNumber: sched.day || 0,
-    date: date ? prettyDate(date) : '',
-    generalCall: sheet.generalCall,
-    wrap: sheet.wrap,
-    location: sheet.location || (places[0] ? places[0].name : ''),
-    mapUrl,
-    /* The pin can belong to a LATER place on the sheet (the first with
-       coordinates or an address); name it when it is not the place the
-       Location line gives, or the crew is sent to the wrong set. */
-    mapPlace: first && !sheet.location && places[0] && first.name !== places[0].name ? first.name : '',
-    light: lit ? { ...lit.light, fallback: lit.place.fallback } : null,
-    safety: places.map((p) => ({ place: p.name, hospital: p.recce.hospital, police: p.recce.police })),
-    scenes: onSheet.map((s) => ({ number: s.number, slug: slugOf(s), pages: formatEighths(s.eighths) })),
-    pagesTotal: formatEighths(eighths),
-    notes: sheet.notes
-  };
-}
-
-const personOf = (sheet, c) =>
-  ({ name: c.name, role: c.role, department: c.department, call: sheet.calls[c.id] || '' });
+/* calledOf, groupCalled and personOf are src/lib/contacts-model.js's;
+   the sheet's facts are too, given the film's title from pdf.js. */
+const factsOf = (sheet, scenes) => factsFor(sheet, scenes, PDF.projectTitle());
 
 const canShare = () => typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
@@ -922,11 +758,8 @@ const canShare = () => typeof navigator !== 'undefined' && typeof navigator.shar
     else stays text (textContent only — never HTML from stored words). */
 function waPreview(text) {
   const box = h('pre.ct-wa-preview', { 'aria-label': 'Message preview', tabindex: '0' });
-  String(text).split('\n').forEach((line, i, all) => {
-    line.split(/(\*[^*\n]+\*)/).forEach((part) => {
-      if (/^\*[^*\n]+\*$/.test(part)) box.append(h('strong', { text: part.slice(1, -1) }));
-      else if (part) box.append(document.createTextNode(part));
-    });
+  waRuns(text).forEach((runs, i, all) => {
+    runs.forEach((r) => box.append(r.bold ? h('strong', { text: r.text }) : document.createTextNode(r.text)));
     if (i < all.length - 1) box.append(document.createTextNode('\n'));
   });
   return box;
@@ -956,16 +789,16 @@ function renderSend(sheet, contacts, scenes) {
     body.append(h('p.ct-pick-none', { text: 'Call somebody above and each person gets their own message, with their own call time first.' }));
   } else {
     const list = h('ul.ct-send-list');
-    called.forEach((c) => {
+    groupCalled(sheet, called).forEach((g) => {
+      list.append(h('li.ct-send-group', { text: g.label + ' · ' + g.people.length }));
+      g.people.forEach((c) => {
       const digits = WA.waDigits(c.phone);
       const li = h('li.ct-send-row', { 'data-contact': c.id });
       li.append(h('span.ct-send-who', {}, [
         h('span.ct-pick-name', { text: c.name || 'Unnamed' }),
         h('span.ct-pick-role', { text: [c.department, c.role].filter(Boolean).join(' · ') })
       ]));
-      li.append(h('span.ct-send-call', {
-        text: sheet.calls[c.id] || (sheet.generalCall ? sheet.generalCall + ' (general)' : 'General call')
-      }));
+      li.append(h('span.ct-send-call', { text: callLabel(sheet, c) }));
       if (digits) {
         li.append(h('a.k-btn.k-btn--sm.ct-send-btn', {
           href: WA.waLink(digits, WA.personMessage(facts, personOf(sheet, c))),
@@ -979,6 +812,7 @@ function renderSend(sheet, contacts, scenes) {
         }, [h('span', { text: 'Copy text' })]));
       }
       list.append(li);
+      });
     });
     body.append(list);
   }
@@ -1188,15 +1022,7 @@ delegate(document, 'click', '[data-action="sheet-sched-date"]', (e, el) => {
   document.querySelector('[data-sheet="' + CSS.escape(id || '') + '"] [data-sheet-field="date"]')?.focus();
 });
 
-/** The sheet's title without a leading "<project> —". */
-function dayName(title, project) {
-  const t = String(title || '').trim();
-  const p = String(project || '').trim();
-  const rest = p && t.toLowerCase().startsWith(p.toLowerCase()) ? t.slice(p.length) : '';
-  // Only at a separator: "Dragonfly Day 2" is not "Dragon" + "fly Day 2".
-  if (/^\s*[—–:·|-]\s*\S/.test(rest)) return rest.replace(/^\s*[—–:·|-]\s*/, '');
-  return t || 'Shoot day';
-}
+/* dayName() is src/lib/contacts-model.js's. */
 
 /* Print one sheet, not the page. The class comes off again on
    afterprint; the timeout is the fallback for browsers that never
@@ -1260,7 +1086,7 @@ function sidesPacket(sheet, scenes) {
   host.append(h('div.ct-sp-head', {}, [
     h('span.ct-sp-title', { text: 'Sides' }),
     h('span.ct-sp-meta', { text: onSheet.length + (onSheet.length === 1 ? ' scene' : ' scenes') + ' · '
-      + formatEighths(onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0)) + ' pages' })
+      + formatEighths(eighthsOf(onSheet)) + ' pages' })
   ]));
   onSheet.forEach((s) => {
     const no = String(s.number || scenes.indexOf(s) + 1);
@@ -1360,9 +1186,7 @@ delegate(document, 'change', '[data-route-geo]', (e, el) => {
   const at = Geo.parseLatLng(text);
   if (!at) {
     if (status) {
-      status.textContent = /goo\.gl|maps\.app/i.test(text)
-        ? 'A short link carries no coordinates. Open it, then paste the long address-bar link.'
-        : 'No coordinates in that. Paste a Google Maps link, or two numbers like 13.0827, 80.2707.';
+      status.textContent = pinRefusal(text);
     }
     el.setAttribute('aria-invalid', 'true');
     return;
@@ -1383,9 +1207,7 @@ delegate(document, 'click', '[data-action="route-locate"]', (e, el) => {
   el.disabled = true;
   navigator.geolocation.getCurrentPosition((pos) => {
     el.disabled = false;
-    const lat = Math.round(pos.coords.latitude * 1e6) / 1e6;
-    const lng = Math.round(pos.coords.longitude * 1e6) / 1e6;
-    Locations.setRecce(name, { lat: String(lat), lng: String(lng) });
+    Locations.setRecce(name, roundedPin(pos.coords));
     afterRecce(name, null);
     StudioUI.toast(name + ' pinned where this device is, to about '
       + Math.round(pos.coords.accuracy || 0) + ' m.');

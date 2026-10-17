@@ -101,6 +101,79 @@
 .bdx-batch-name:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
 .bdx-export { display: grid; gap: var(--s2); padding-top: var(--s4); border-top: 1px solid var(--border-hair); }
 
+/* ---- THE PHONE: the same index, placed differently --------------
+   Below 720px (the kit's one phone query) the side panel is a bottom
+   sheet raised by .bdx-sheet-open, and a scrolling row of the same
+   category filters sits above the list. From 720px up both are hidden
+   and the panel sits beside the list as above. */
+.bdx-phone, .bdx-scrim, .bdx-side-close { display: none; }
+.bdx-side-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
+html.bdx-locked, html.bdx-locked body { overflow: hidden; }
+@media (max-width: 720px) {
+  /* the header figures were shrink-wrapped to one column by the head's grid */
+  .bd-kpis.k-stat-strip { width: 100%; }
+  .bdx-phone { display: grid; gap: var(--s3); margin-bottom: var(--s3); }
+  .bdx-sheet-open { width: 100%; justify-content: center; }
+  .bdx-pchips { gap: var(--s2); }
+  .bdx-pchip {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    min-height: var(--tap-min);
+    padding: 0 var(--s3);
+    background: var(--surface-card);
+    border: 1px solid var(--border-hair);
+    border-left: var(--sk-hue-rule-w, 3px) solid var(--hue, var(--border-strong));
+    border-radius: var(--sk-radius, var(--radius-lg));
+    color: var(--ink-body);
+    font-size: var(--t-ui);
+    white-space: nowrap;
+    cursor: pointer;
+    flex: none;
+    scroll-snap-align: start;
+  }
+  .bdx-pchip:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
+  .bdx-pchip[aria-pressed="true"] { background: var(--brand-wash); color: var(--ink); border-color: var(--border-focus); border-left-color: var(--hue, var(--border-focus)); }
+  .bdx-pchip-n {
+    font-family: var(--f-mono);
+    font-size: var(--t-micro);
+    font-variant-numeric: tabular-nums;
+    color: var(--hue-deep, var(--ink-muted));
+  }
+  .bdx-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-overlay) - 1);
+    background: var(--scrim);
+  }
+  .bdx-layout.sheet-open .bdx-scrim { display: block; }
+  .bdx-side {
+    display: none;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: var(--z-overlay);
+    box-sizing: border-box;
+    max-height: calc(100dvh - var(--s8));
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding-bottom: calc(var(--s5) + var(--safe-bottom, 0px));
+    background: var(--surface-elevated);
+    border-bottom: 0;
+    border-radius: var(--sk-modal-radius, var(--radius-xl)) var(--sk-modal-radius, var(--radius-xl)) 0 0;
+    box-shadow: var(--shadow-modal);
+    outline: none;
+  }
+  .bdx-side.is-open { display: grid; }
+  .bdx-side-close { display: inline-flex; flex: none; }
+  .bdx-cat { min-height: var(--tap-min); }
+  .bdx-batch-pick { min-height: var(--tap-min); }
+  .bdx-batch-name { height: var(--tap-min); }
+  .bdx-batch-scenes { max-height: 30dvh; }
+}
+@media print { .bdx-phone, .bdx-scrim { display: none !important; } }
+
 .bd-el-count { color: var(--ink-body); }
 
 /* PDF: only the index (and the masthead), list full width, no controls.

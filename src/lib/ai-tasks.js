@@ -34,6 +34,8 @@
                       row's own Undo also still works, page save
      story-steps/map  story.js models, saved by the page's commit()
      shot-draft       shots.js addShot (append only)
+     scene-story      story.js outline steps, one per scene, linked by
+                      sceneId (breakdown-extras.js appendSteps)
      synopsis-script  scriptgen.js's job (stage 1 → the beat sheet)
      gen-scenes       scriptgen.js applyScenes (stage 2 → scenes.js)
      gen-batch        scriptgen.js applyBatch (stage 3, one batch →
@@ -48,7 +50,8 @@
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
    ============================================================ */
-import { registerTask as deskRegister } from '../ui/ai-desk.js';
+import { callPort } from './ports.js';
+import Store from './store.js';   // the open project's format (scene-story)
 
 /* ---- the modules, loaded once ------------------------------- */
 let AI = null;            // ./ai.js
@@ -60,6 +63,10 @@ let ShotsM = null;        // ./shots.js
 let Analysis = null;      // ./screenplay-analysis.js
 let Gen = null;           // ./scriptgen.js
 let Cov = null;           // ../ui/coverage.js (its coverageStore)
+let Extras = null;        // ./breakdown-extras.js
+let BoardM = null;        // ./board-frames.js (pure)
+let DriveM = null;        // ./drive.js
+let DriveImg = null;      // ./drive-board.js (the live gate facts)
 let readyP = null;
 
 function loadAll() {
@@ -67,9 +74,12 @@ function loadAll() {
     readyP = Promise.all([
       import('./ai.js'), import('./blueprint-context.js'), import('./story.js'),
       import('./scenes.js'), import('./script.js'), import('./shots.js'),
-      import('./screenplay-analysis.js'), import('./scriptgen.js'), import('../ui/coverage.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv]) => {
-      AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv;
+      import('./screenplay-analysis.js'), import('./scriptgen.js'), import('./coverage-store.js'),
+      import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
+      import('./drive-board.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di]) => {
+      AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
+      BoardM = bf; DriveM = dr; DriveImg = di;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -87,6 +97,18 @@ const call = (fn, ...args) => (typeof fn === 'function' ? fn(...args) : undefine
 const fail = (msg) => { const e = new Error(msg); e.kind = 'nocontent'; throw e; };
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const last = new Map();   // taskId → what apply() needs from the last run
+/* The same memory, pinned to the result it belongs to. The Desk keeps
+   a version per run (and a session per speech), and Accept can be
+   pressed on any of them, so apply() must read the memory of the
+   version shown — the third argument the Desk passes — and fall back
+   to `last` only for a caller that passes none. Non-enumerable, so a
+   refinement's `previous` never carries it. */
+function remember(id, result, mem) {
+  last.set(id, mem);
+  if (result && typeof result === 'object') Object.defineProperty(result, 'memo', { value: mem, enumerable: false });
+  return result;
+}
+const recall = (id, result) => (result && result.memo) || last.get(id);
 
 /** The refine block, as ai.js writes it, or ''. */
 function refineText(refine) {
@@ -345,15 +367,15 @@ const dialogueTask = {
     const job = passJob(els, i);
     const ask = [c.ask, refineText(refine)].filter(Boolean).join('\n\n');
     const res = await AI.dialoguePass({ ...job, speech, ask, context: BP.blueprintContext() }, { onStatus, signal });
-    last.set('dialogue-pass', { elId: els[i].id, model: res.model });
     const others = res.options.slice(1).map((o, n) => 'Version ' + (n + 2) + ': ' + o.text + (o.note ? ' (' + o.note + ')' : ''));
     const note = [res.keep ? 'What already works: ' + res.keep : '', res.options[0].note || '', ...others,
       res.truncated ? 'The reply was cut short.' : ''].filter(Boolean).join('\n');
-    return { original: String(els[i].text ?? ''), proposed: res.options[0].text, note };
+    return remember('dialogue-pass', { original: String(els[i].text ?? ''), proposed: res.options[0].text, note },
+      { elId: els[i].id, model: res.model });
   },
-  apply(text, ctx) {
+  apply(text, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('dialogue-pass') || {};
+    const mem = recall('dialogue-pass', result) || {};
     const d = call(c.getDoc);
     const els = d && Array.isArray(d.elements) ? d.elements : null;
     const el = els && els.find((e) => String(e.id) === String(mem.elId));
@@ -648,6 +670,111 @@ const shotTask = {
 };
 
 /* ============================================================
+   SCENE → STORY — list. ctx { sceneIds: [id…], format?, after?(madeIds) }
+   ------------------------------------------------------------
+   draftSceneStory() over the named scenes: one outline step per
+   scene, the beat the model chose (checked against the framework in
+   force — the writer's choice once made, else the format's
+   suggestion), else the beat the scene sits nearest. Sent in batches
+   of SCENE_STORY_BATCH scenes, one request each, so a feature's sixty
+   scenes are not one reply cut off at the ceiling.
+   Accept files the ticked steps under their beats in story.outline,
+   each linked by `sceneId` (breakdown-extras.js appendSteps, the same
+   write the non-AI 'story-basic' makes); Undo removes exactly those.
+   ============================================================ */
+const SCENE_STORY_BATCH = 25;
+
+const projectFormat = (c) => {
+  const f = String(call(c.format) ?? c.format ?? '');
+  if (f) return f === 'short' ? 'short' : 'feature';
+  try { const p = Store.currentProject && Store.currentProject(); return p && p.format === 'short' ? 'short' : 'feature'; }
+  catch (e) { return 'feature'; }
+};
+
+function sceneStoryJobs(c) {
+  const want = new Set([].concat(c.sceneIds || []).map(String));
+  const all = ScenesM.listScenes();
+  const scenes = all.filter((s) => want.has(String(s.id)));
+  if (!scenes.length) fail('Tick at least one scene.');
+  const s = StoryM.loadStory();
+  const fw = StoryM.frameworkById(StoryM.effectiveFramework(s, projectFormat(c)));
+  const script = ScriptM.loadScript();
+  const bySlice = new Map(Analysis.matchScenes(all, script.elements).pairs.map((p) => [p.scene.id, p.slice]));
+  const pos = Extras.scenePositions(all);
+  const jobs = scenes.map((scene) => {
+    const slice = bySlice.get(scene.id) || null;
+    return {
+      sceneId: String(scene.id), number: scene.number, slug: Extras.sceneSlug(scene),
+      synopsis: scene.synopsis, script: slice ? AI.sceneScriptText(slice) : '',
+      beat: Extras.beatForScene(scene, pos.get(String(scene.id)), fw.id)
+    };
+  });
+  return { fw, story: s, jobs };
+}
+
+const sceneStoryTask = {
+  id: 'scene-story',
+  label: 'Draft the story from the scenes',
+  kind: 'list',
+  editable: false,
+  input(ctx) {
+    let j;
+    try { j = sceneStoryJobs(resolve(ctx)); } catch (e) { return (e && e.message) || ''; }
+    const parts = Math.ceil(j.jobs.length / SCENE_STORY_BATCH);
+    const first = AI.buildSceneStoryPrompt({
+      framework: j.fw, scenes: j.jobs.slice(0, SCENE_STORY_BATCH), idea: j.story.idea, logline: j.story.logline
+    });
+    return plural(j.jobs.length, 'scene', 'scenes') + ', ' + plural(parts, 'request', 'requests')
+      + ', against the ' + j.fw.label + ' beats.' + (parts > 1 ? ' The first request sends:' : ' It sends:')
+      + '\n\n' + (first.length > 8000 ? first.slice(0, 8000) + '\n…' : first);
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const { fw, story, jobs } = sceneStoryJobs(c);
+    const ask = refineText(refine);
+    const steps = [];
+    let truncated = false;
+    for (let i = 0; i < jobs.length; i += SCENE_STORY_BATCH) {
+      const part = jobs.slice(i, i + SCENE_STORY_BATCH);
+      const n = Math.floor(i / SCENE_STORY_BATCH) + 1, of = Math.ceil(jobs.length / SCENE_STORY_BATCH);
+      const res = await AI.draftSceneStory({
+        framework: fw, scenes: part, idea: story.idea, logline: story.logline, ask,
+        context: BP.blueprintContext()
+      }, { signal, onStatus: (m) => call(onStatus, of > 1 ? 'Part ' + n + ' of ' + of + ' · ' + m : m) });
+      steps.push(...res.steps);
+      truncated = truncated || res.truncated;
+    }
+    const numOf = new Map(jobs.map((j) => [j.sceneId, j.number || '—']));
+    const labelOf = new Map(fw.beats.map((b) => [fw.id + ':' + b.id, b.label]));
+    const items = steps.map((st) => ({
+      id: 'st:' + st.sceneId, sceneId: st.sceneId, beat: st.beat, text: st.text,
+      detail: 'Sc ' + numOf.get(st.sceneId) + ' · under ' + (labelOf.get(st.beat) || st.beat)
+    }));
+    const missing = jobs.length - items.length;
+    const note = [
+      missing ? plural(missing, 'scene', 'scenes') + ' came back with no step.' : '',
+      truncated ? 'The reply was cut short, so some scenes may be missing.' : ''
+    ].filter(Boolean).join(' ');
+    return { items, note };
+  },
+  apply(selected, ctx) {
+    const c = resolve(ctx);
+    const s = StoryM.loadStory();
+    const made = Extras.appendSteps(s, selected);
+    if (!made.length) return null;
+    StoryM.saveStory(s);
+    call(c.after, made);
+    return () => {
+      const back = StoryM.loadStory();
+      Extras.removeSteps(back, made);
+      StoryM.saveStory(back);
+      call(c.after, []);
+    };
+  }
+};
+
+/* ============================================================
    SYNOPSIS → SCRIPT, STAGE 1 — list. ctx { prepare?(), after?() }
    ------------------------------------------------------------
    The staged flow lives in scriptgen.js and on write.html#generate.
@@ -681,16 +808,16 @@ const synopsisTask = {
        goes in front so it is never the part that is cut. */
     const sent = extra ? 'WRITER’S NOTES FOR THIS DRAFT:\n' + extra + '\n\nTHE SYNOPSIS ITSELF:\n' + synopsis : synopsis;
     const res = await AI.draftBeatSheet({ synopsis: sent, format: job.format, lang: job.lang, beats: vocab }, { onStatus, signal });
-    last.set('synopsis-script', { synopsis, logline: res.logline, model: res.model, vocab });
     const items = vocab.filter((b) => res.byBeat.get(b.id)).map((b) => ({
       id: b.id, text: res.byBeat.get(b.id), detail: b.label + (b.pages ? ' · pages ' + b.pages : '')
     }));
     if (!items.length) fail('The reply held no beats, so nothing changed.');
-    return { items, note: res.logline ? 'Logline: ' + res.logline : '' };
+    return remember('synopsis-script', { items, note: res.logline ? 'Logline: ' + res.logline : '' },
+      { synopsis, logline: res.logline, model: res.model, vocab });
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('synopsis-script');
+    const mem = recall('synopsis-script', result);
     if (!mem) fail('There is no beat sheet to keep. Run it first.');
     const keep = new Map((selected || []).map((it) => [String(it.id), it.text]));
     if (!keep.size) return null;
@@ -957,7 +1084,8 @@ const voiceTask = {
     let gone = 0, dup = 0;
     for (const it of selected || []) {
       if (!it || !it.elId || !it.rewrite) continue;
-      const r = Cov.addTake(it.elId, it.rewrite);
+      // The take goes onto the row the Coverage tab has open (a port it registers).
+      const r = callPort('addTake', 'gone', it.elId, it.rewrite);
       if (r === 'ok') added.push(it); else if (r === 'gone') gone++; else dup++;
     }
     if (!added.length) {
@@ -965,7 +1093,7 @@ const voiceTask = {
     }
     call(c.after);
     return () => {
-      for (let i = added.length - 1; i >= 0; i--) Cov.removeTake(added[i].elId, added[i].rewrite);
+      for (let i = added.length - 1; i >= 0; i--) callPort('removeTake', undefined, added[i].elId, added[i].rewrite);
       call(c.after);
     };
   }
@@ -1064,7 +1192,6 @@ const genreTask = {
       scenes: sample.scenes, title, logline: s.logline, audience: s.audience,
       context: withRefineContext(BP.blueprintContext(), refine)
     }, { onStatus, signal });
-    last.set('genre-comps', { res });
     const out = [
       'Genre: ' + res.genre + (res.subgenres.length ? ' (' + res.subgenres.join(', ') + ')' : '') + (res.tone ? ' · tone: ' + res.tone : ''),
       res.budgetTier ? 'Budget tier the page asks for: ' + TIER_LABEL[res.budgetTier] + (res.budgetWhy ? ' — ' + res.budgetWhy : '') : '',
@@ -1075,15 +1202,15 @@ const genreTask = {
       sample.sampled ? 'A long script is sampled for this, so the evidence comes from the opening of each scene.' : '',
       'Read by ' + res.model + '. Accepting saves the genre, budget tier and audience above and the comparables you tick.'
     ].filter(Boolean);
-    return {
+    return remember('genre-comps', {
       items: res.comps.map((cp, i) => ({ id: 'c' + i, title: cp.title, year: cp.year, why: cp.why,
         text: cp.title + (cp.year ? ' (' + cp.year + ')' : ''), detail: cp.why })),
       note: out.join('\n\n')
-    };
+    }, { res });
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('genre-comps');
+    const mem = recall('genre-comps', result);
     if (!mem || !mem.res) fail('There is nothing to keep. Run it first.');
     const r = mem.res;
     const before = JSON.parse(JSON.stringify(storyOf(c)));
@@ -1240,16 +1367,146 @@ const tagsTask = {
   }
 };
 
+/* ============================================================
+   BOARD FRAMES — list. ctx { shotIds?: [id…], style?, after?(madeIds) }
+   ------------------------------------------------------------
+   NEXT-UI-REVAMP-PLAN phase 4. One picture per shot that has no
+   drawn frame yet (board-frames.js boardJobs, at most MAX_FRAMES a
+   run), drawn by Gemini's image model through ai.js generateImage —
+   the same send() as every text task, key in `x-goog-api-key`. The
+   writer picks the style in "what goes in" (Style: …) or with a chip,
+   which redraws the run in that style.
+
+   NOTHING IS KEPT UNTIL ACCEPT. The pictures live as Blobs in this
+   Desk session. Accept uploads each ticked one to the writer's Drive
+   (drive.js createFile) and adds a frame whose `ref` is
+   `drive:<fileId>` — the bytes never reach localStorage, the frame
+   record or a backup file. Undo removes those frames and deletes the
+   files it made, quietly (no popup; a failed delete leaves a file in
+   the writer's Drive, which is theirs anyway).
+
+   GATED TWICE: blocked() (signed out, Drive unreachable or not
+   connected, no live Drive token) stops the Desk before anything is
+   spent, and run() and apply() ask again.
+   ============================================================ */
+function boardJobsFor(c, max) {
+  return BoardM.boardJobs({
+    shots: ShotsM.listShots(), scenes: ScenesM.listScenes(), frames: ShotsM.listFrames(),
+    onlyShotIds: Array.isArray(c.shotIds) && c.shotIds.length ? c.shotIds : null,
+    max: max == null ? BoardM.MAX_FRAMES : max
+  });
+}
+
+const BOARD_CHIPS = ['Pencil sketch', 'Ink and wash', 'Marker', 'Colour'];
+
+const boardTask = {
+  id: 'board-frames',
+  label: 'Draw storyboard frames',
+  kind: 'list',
+  provider: 'gemini',
+  chips: BOARD_CHIPS,
+  modelLabel: () => (AI && AI.imageModelLabel ? AI.imageModelLabel('gemini') : 'image model'),
+  blocked() {
+    const g = DriveImg ? DriveImg.currentBoardGate() : { ok: false, text: 'The Drive tools did not load.' };
+    return g.ok ? null : g;
+  },
+  unblock() { return DriveImg.reconnectDrive(); },
+  identity(ctx) {
+    const c = resolve(ctx);
+    return 'board:' + [].concat(c.shotIds || []).map(String).sort().join(',');
+  },
+  input(ctx) {
+    const c = resolve(ctx);
+    const plan = boardJobsFor(c);
+    if (!plan.jobs.length) return 'Every shot already has a drawn frame. Add a shot, or delete a drawn frame to draw it again.';
+    return BoardM.boardInput(plan, c.style);
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const gate = DriveImg.currentBoardGate();
+    if (!gate.ok) fail(gate.text);
+    const c = resolve(ctx);
+    const parsed = BoardM.parseBoardInput(input);
+    const byLabel = new Map(boardJobsFor(c, Infinity).jobs.map((j) => [j.label, j]));
+    const jobs = parsed.labels.map((l) => byLabel.get(l)).filter(Boolean).slice(0, BoardM.MAX_FRAMES);
+    if (!jobs.length) fail('No shot lines are left to draw. Each line starts with a shot label such as 4.12A, then a "|".');
+    const { style, notes } = BoardM.styleFromRefine(refine && refine.instructions, parsed.style);
+    const items = [];
+    const missed = [];
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i];
+      if (signal && signal.aborted) throw new AI.AIError('Stopped. Nothing was changed.', 'aborted');
+      if (onStatus) onStatus('Drawing frame ' + (i + 1) + ' of ' + jobs.length + ' — shot ' + job.label + '…');
+      try {
+        const { blob } = await AI.generateImage({ prompt: BoardM.framePrompt(job, style, notes), aspectRatio: '16:9', signal });
+        items.push({
+          id: job.shotId, shotId: job.shotId, label: job.label, blob,
+          image: URL.createObjectURL(blob),
+          alt: 'Shot ' + job.label + ', ' + BoardM.styleOf(style).label.toLowerCase(),
+          text: 'Shot ' + job.label + ' · ' + BoardM.styleOf(style).label,
+          detail: BoardM.jobLine(job).split(' | ').slice(1).join(' · ')
+        });
+      } catch (e) {
+        // A wrong key, a stop, a dead network or a rate limit ends the run;
+        // a single refused or empty picture does not.
+        if (!e || ['auth', 'nokey', 'aborted', 'network', 'rate'].includes(e.kind)) throw e;
+        missed.push(job.label + ' (' + String(e.message || 'no picture').slice(0, 80) + ')');
+      }
+    }
+    if (!items.length) fail(missed.length ? 'No picture came back: ' + missed.join('; ') : 'No picture came back.');
+    return {
+      items,
+      note: 'Nothing is saved until you accept. Accepted frames are uploaded to your own Google Drive; '
+        + 'this browser, the shot list and your backup files keep only a link to each picture, never the picture.'
+        + (missed.length ? ' Not drawn: ' + missed.join('; ') + '.' : '')
+    };
+  },
+  async apply(selected, ctx) {
+    const c = resolve(ctx);
+    const picked = (selected || []).filter((it) => it && it.shotId && it.blob);
+    if (!picked.length) return null;
+    // Accept is a click, so this is the one place a lapsed token may be re-asked for.
+    if (!DriveM.hasToken()) await DriveM.getToken({ interactive: true });
+    const frames = [];
+    const files = [];
+    try {
+      for (const it of picked) {
+        const name = BoardM.frameFileName({ label: it.label }, it.blob.type);
+        const meta = await DriveM.createFile(name, it.blob, it.blob.type || 'image/png',
+          { description: 'Storyboard frame for shot ' + it.label + ' (the shot list links to this file).' });
+        if (!meta || !meta.id) throw new Error('Drive did not return a file id.');
+        files.push(meta.id);
+        frames.push(ShotsM.addFrame(it.shotId, { ref: DriveM.driveRef(meta.id), caption: '' }).id);
+      }
+    } catch (e) {
+      // All or nothing: one Accept is one write.
+      const ids = new Set(frames);
+      if (ids.size) ShotsM.saveFrames(ShotsM.listFrames().filter((f) => !ids.has(f.id)));
+      files.forEach((id) => DriveM.deleteFileQuiet(id).catch(() => {}));
+      throw new Error('Drive did not take the pictures (' + String((e && e.message) || 'unknown error').slice(0, 120)
+        + '). Nothing was saved; the drawings are still here to accept again.');
+    }
+    call(c.after, frames);
+    return () => {
+      const ids = new Set(frames);
+      ShotsM.saveFrames(ShotsM.listFrames().filter((f) => !ids.has(f.id)));
+      files.forEach((id) => DriveM.deleteFileQuiet(id).catch(() => {}));
+      call(c.after, []);
+    };
+  }
+};
+
 /* ---- registration ------------------------------------------- */
-const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, synopsisTask,
-  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask];
+const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
+  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once
     every model the tasks read is loaded — the Desk awaits this before
     it asks a task for its input. `register` defaults to the Desk's own
     registerTask. */
-export function registerAll(register = deskRegister) {
+export function registerAll(register) {
+  if (typeof register !== 'function') throw new TypeError('[ai-tasks] registerAll needs the Desk\'s registerTask');
   if (!registered) {
     registered = true;
     for (const t of ALL_TASKS) register(t);

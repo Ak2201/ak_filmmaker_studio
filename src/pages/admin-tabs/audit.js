@@ -25,10 +25,9 @@
    ============================================================ */
 import { h, delegate } from '../../lib/dom.js';
 import { timeline, diff, dataTable, emptyState, errorState, skeleton, pill, hashParts, absTime } from '../../ui/admin-kit.js';
-import { callRpc, humanAction, csvCell } from './rpc.js';
+import { callRpc, humanAction } from './rpc.js';
+import { BLANK, isFiltered, argsFor, filtersFromParams, linkParams, filtersFromForm, actorLabel, rowTarget as targetOf, rowTone as toneOf, loadedLine, csvText, csvFileName } from '../../lib/admin-audit-model.js';
 
-const PAGE = 50;
-const BLANK = { actor: '', action: '', target: '', from: '', to: '' };
 const S = { f: { ...BLANK }, rows: [], hasMore: false, next: null, phase: 'idle', error: '', view: 'timeline', more: false, at: 0 };
 const R = { phase: 'idle', rows: [], error: '', at: 0 };
 let ctxRef = null;
@@ -41,17 +40,7 @@ const again = () => {
   queued = true;
   setTimeout(() => { queued = false; if (ctxRef && ctxRef.rerender) ctxRef.rerender(); }, 0);
 };
-const filtered = () => Object.values(S.f).some(Boolean);
-
-function argsFor(f, extra) {
-  const a = { p_limit: PAGE };
-  if (f.actor) a.p_actor = f.actor;
-  if (f.action) a.p_action = f.action;
-  if (f.target) a.p_target = f.target;
-  if (f.from) { const d = new Date(f.from + 'T00:00:00'); if (!Number.isNaN(d.getTime())) a.p_from = d.toISOString(); }
-  if (f.to) { const d = new Date(f.to + 'T23:59:59.999'); if (!Number.isNaN(d.getTime())) a.p_to = d.toISOString(); }
-  return { ...a, ...(extra || {}) };
-}
+const filtered = () => isFiltered(S.f);
 
 async function load({ more = false } = {}) {
   const mine = ++seq;
@@ -95,28 +84,22 @@ export function reloadRecent(ctx) { if (R.phase !== 'ok') R.phase = 'idle'; load
 
 /** A short line for one audit row, shared with the Overview feed. */
 export function rowTitle(r) {
-  return h('span', {}, [h('strong', { text: humanAction(r.action) }), ' by ', r.actor_email || (r.actor ? String(r.actor).slice(0, 8) : 'unknown')]);
+  return h('span', {}, [h('strong', { text: humanAction(r.action) }), ' by ', actorLabel(r)]);
 }
-export const rowTarget = (r) => `${r.target_kind || '?'} · ${r.target_id || '?'}`;
-export const rowTone = (r) => (/reset|terminate|revoke|delete|refund/i.test(r.action || '') ? 'warn' : null);
+export const rowTarget = targetOf;
+export const rowTone = toneOf;
 
 /* ---- the hash, the filters --------------------------------------- */
 
 function fromHash() {
   const { tab, params } = hashParts();
   if (tab !== 'audit') return;
-  const f = { ...S.f };
-  let changed = false;
-  for (const k of ['actor', 'action', 'target']) {
-    const v = params.get(k);
-    if (v !== null && v !== f[k]) { f[k] = v; changed = true; }
-  }
-  if (changed) { S.f = f; S.phase = 'idle'; }
+  const f = filtersFromParams(S.f, (k) => params.get(k));
+  if (f) { S.f = f; S.phase = 'idle'; }
   if (S.phase === 'idle' && ctxRef) load();
 }
 function writeFilters() {
-  const p = {};
-  for (const k of ['actor', 'action', 'target']) if (S.f[k]) p[k] = S.f[k];
+  const p = linkParams(S.f);
   if (ctxRef && ctxRef.go) ctxRef.go('audit', p);
 }
 
@@ -164,7 +147,7 @@ function tableView() {
     caption: `${S.rows.length} row${S.rows.length === 1 ? '' : 's'} loaded`,
     columns: [
       { key: 'at', label: 'When', render: (r) => h('time', { datetime: r.at, title: absTime(r.at), text: absTime(r.at) }) },
-      { key: 'actor_email', label: 'Actor', render: (r) => r.actor_email || (r.actor ? String(r.actor).slice(0, 8) : '—') },
+      { key: 'actor_email', label: 'Actor', render: (r) => actorLabel(r, '—') },
       { key: 'action', label: 'Action', render: (r) => humanAction(r.action) },
       { key: 'target_id', label: 'Target', render: (r) => rowTarget(r) },
       { key: 'note', label: 'Note' },
@@ -182,7 +165,7 @@ export function render(ctx) {
 
   const root = h('div.ad-audit', {}, [filterForm()]);
   const tools = h('div.ad-audit-t', {}, [
-    h('span.ad-meta', { text: S.phase === 'ok' ? `${S.rows.length} row${S.rows.length === 1 ? '' : 's'} loaded${S.hasMore ? ', more available' : ''}${filtered() ? ' (filtered)' : ''}` : '' }),
+    h('span.ad-meta', { text: S.phase === 'ok' ? loadedLine(S.rows.length, S.hasMore, filtered()) : '' }),
     h('span.ad-audit-tt', {}, [
       h('button.ad-chip', { type: 'button', 'data-action': 'audit-view', 'data-view': 'timeline', 'aria-pressed': String(S.view === 'timeline'), text: 'Timeline' }),
       h('button.ad-chip', { type: 'button', 'data-action': 'audit-view', 'data-view': 'table', 'aria-pressed': String(S.view === 'table'), text: 'Table' }),
@@ -215,13 +198,11 @@ function clearAll() {
   writeFilters();
 }
 
-function exportCsv() {
-  if (!S.rows.length) return;
-  const cols = ['at', 'actor', 'actor_email', 'action', 'target_kind', 'target_id', 'note', 'before', 'after'];
-  const lines = [cols.join(',')].concat(S.rows.map((r) => cols.map((c) => csvCell(r[c])).join(',')));
-  const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+function exportCsv(rows = S.rows) {
+  if (!rows.length) return;
+  const blob = new Blob([csvText(rows)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  const a = h('a', { href: url, download: 'audit-log-' + new Date().toISOString().slice(0, 10) + '.csv' });
+  const a = h('a', { href: url, download: csvFileName() });
   document.body.append(a);
   a.click();
   a.remove();
@@ -233,13 +214,15 @@ function exportCsv() {
 delegate(document, 'submit', 'form[data-audit-form]', (e, form) => {
   e.preventDefault();
   const fd = new FormData(form);
-  S.f = Object.fromEntries(Object.keys(BLANK).map((k) => [k, String(fd.get(k) || '').trim()]));
+  S.f = filtersFromForm((k) => fd.get(k));
   load();
   writeFilters();
 });
 delegate(document, 'click', '[data-action="audit-clear"]', clearAll);
 delegate(document, 'click', '[data-action="audit-more"]', () => load({ more: true }));
-delegate(document, 'click', '[data-action="audit-export"]', exportCsv);
+delegate(document, 'click', '[data-action="audit-export"]', () => exportCsv());
+/* The Overview's Activity card exports the rows it shows (the latest 15). */
+delegate(document, 'click', '[data-action="audit-export-recent"]', () => exportCsv(R.rows));
 delegate(document, 'click', '[data-action="audit-view"]', (e, el) => { S.view = el.dataset.view === 'table' ? 'table' : 'timeline'; again(); });
 delegate(document, 'click', '[data-action="audit-target"]', (e, el) => {
   const t = el.dataset.target;

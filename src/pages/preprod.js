@@ -27,42 +27,20 @@ import { h, commitMain, delegate } from '../lib/dom.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu, menuBeside } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
 import { pathSteps, nextStep } from '../lib/preprod-path.js';
+import {
+  STATE_WORD, STATE_TONE, panelId, bareId, menuGroups as groupsOf, resolveStep, sortedChecks, checkRow, summaryText
+} from '../lib/preprod-model.js';
 import { readiness } from '../lib/readiness.js';
 import Store from '../lib/store.js';
 import { pageHeader, button, badge, meter } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
-const STATE_WORD = { done: 'Done', doing: 'In progress', todo: 'Not started' };
-const STATE_TONE = { done: 'ok', doing: 'warn', todo: null };
-
 let steps = [];
 let cur = '';
 let nav = null;          /* the section menu, kept across renders (updated in place) */
 
-/* One mark per step, all in src/data/section-icons.json. */
-const ICON = {
-  script: 'description', scenes: 'view_list', breakdown: 'label', vision: 'palette', shots: 'format_list_numbered',
-  people: 'groups', places: 'place', songs: 'music_note', budget: 'currency_rupee', schedule: 'calendar_month',
-  sheets: 'content_cut', ready: 'fact_check'
-};
-/* The menu's item ids are the PANELS' element ids (step-<id>), which is
-   what a row's aria-controls has to be; the page's own ids (#<id> in the
-   address bar, the Fix links, the footer's Back/Next) stay bare. */
-const panelId = (id) => 'step-' + id;
-const bareId = (pid) => String(pid).replace(/^step-/, '');
-function menuGroups() {
-  const groups = [];
-  for (const s of steps) {
-    const label = s.group || '';
-    let g = groups[groups.length - 1];
-    if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
-    g.items.push({
-      id: panelId(s.id), label: s.label, icon: ICON[s.id] || '', done: s.state === 'done', doing: s.state === 'doing',
-      hint: STATE_WORD[s.state] + '. ' + s.about
-    });
-  }
-  return groups;
-}
+/* The marks, the panel ids and the menu's groups are src/lib/preprod-model.js's. */
+const menuGroups = () => groupsOf(steps);
 function scrollRowIntoStrip() {
   if (!nav || menuBeside(nav)) return;
   const on = nav.querySelector('[aria-selected="true"]');
@@ -70,28 +48,22 @@ function scrollRowIntoStrip() {
 }
 
 const hashId = () => decodeURIComponent((location.hash || '').replace(/^#/, ''));
-const resolve = () => {
-  const want = hashId().replace(/^step-/, '');
-  const hit = steps.find((s) => s.id === want);
-  const next = nextStep(steps);
-  return hit ? hit.id : (next ? next.id : (steps[0] || {}).id);
-};
+const resolve = () => resolveStep(steps, hashId());
 
 function readinessList() {
   const r = readiness();
   const wrap = h('div.pp-ready');
   if (!r.hasFilm) { wrap.append(h('p.pp-about', { text: 'Add scenes first; there is nothing to check yet.' })); return wrap; }
-  const order = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
   const ul = h('ul.pp-checks');
-  r.checks.slice().sort((a, b) => order(a) - order(b)).forEach((c) => {
-    const cls = c.passed ? 'is-ok' : c.severity === 'blocker' ? 'is-blocker' : 'is-gap';
-    ul.append(h('li.pp-check.' + cls, {}, [
-      h('span.pp-check-mark', { text: c.passed ? '✓' : c.severity === 'blocker' ? '✕' : '!', 'aria-label': c.passed ? 'passes' : c.severity }),
+  sortedChecks(r.checks).forEach((c) => {
+    const row = checkRow(c);
+    ul.append(h('li.pp-check.' + row.cls, {}, [
+      h('span.pp-check-mark', { text: row.mark, 'aria-label': row.markLabel }),
       h('span', {}, [
-        h('strong', { text: c.label + (c.count ? ' (' + c.count + ')' : '') }),
-        c.passed ? null : h('span.pp-check-hint', { text: c.hint + (c.items.length ? ' — ' + c.items.slice(0, 4).join('; ') + (c.items.length > 4 ? '; …' : '') : '') })
+        h('strong', { text: row.title }),
+        c.passed ? null : h('span.pp-check-hint', { text: row.hint })
       ].filter(Boolean)),
-      c.passed ? h('span') : h('a', { href: c.where || 'dashboard.html#readiness', text: 'Fix →' })
+      c.passed ? h('span') : h('a', { href: row.href, text: 'Fix →' })
     ]));
   });
   wrap.append(ul);
@@ -136,7 +108,7 @@ function stepPanel(s) {
 
 function summary(done, next) {
   return h('div.pp-sum', {}, [
-    h('span', { text: done + ' of ' + steps.length + ' steps done' + (next && next.id !== 'ready' ? ' \u00b7 next: ' + next.label : '') }),
+    h('span', { text: summaryText(done, steps.length, next) }),
     meter({ value: done, max: steps.length, show: false, class: 'pp-meter', attrs: { role: 'img', 'aria-label': done + ' of ' + steps.length + ' steps done' } })
   ]);
 }

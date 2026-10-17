@@ -35,14 +35,20 @@ import * as Bin from '../lib/scene-bin.js';
 import '../styles/scene-bin.css';
 import '../styles/scene-list.css';
 import { shootDayOf } from '../lib/locations.js';
+import {
+  breakdownFigures, readNumberLock, numberKey, dupNumbers, daySlot, sceneStatus, STATUS_TONE,
+  castSummary, searchText, PRESET_KEYS, filterActive as filterOn, describeFilter, presetMatches,
+  rowMatches, filterCountText, applySuggestions, binEntryBits, binTotalsBits, headingInScript,
+  sceneFieldValue, songFieldValue, runSaid
+} from '../lib/breakdown-model.js';
 import '../styles/breakdown-run.css';
 import { flushStorage } from '../lib/store.js';
 import { runBreakdown } from '../lib/breakdown-run.js';
 import { commitImportedScript } from '../lib/script-commit.js';
-import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
-import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
+import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
+import { loadScript, saveScript, blankElement } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
-import { suggestAll, suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
+import { suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
 import { pageHeader, statStrip, statCard, button, chip, badge } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { measureEighths } from '../lib/scene-sync.js';
@@ -85,12 +91,7 @@ function renderHeader(scenes) {
 function kpis(scenes, eighths) {
   const dash = (n, f) => (n ? f(n) : '—');
   const idx = Scenes.elementIndex();
-  const cats = new Set(idx.map((e) => e.category)).size;
-  const locs = new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size;
-  const ints = scenes.filter((s) => s.intExt === 'INT').length;
-  const exts = scenes.filter((s) => s.intExt === 'EXT').length;
-  const songs = Songs.listSongs().length;
-  const cast = idx.filter((e) => e.category === 'cast').length;
+  const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, Songs.listSongs().length);
   const card = (value, label, note) => statCard({ value, label, note: note || '' });
   return [
     card(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : ''),
@@ -184,25 +185,7 @@ const BOUND_TITLE = 'Set by the script’s scene heading. Change the heading in 
    so, because "change the heading to renumber it" stops being true. A
    hand-made scene is still the Breakdown's own and stays editable. */
 const LOCKED_TITLE = 'Locked scene number, set in the Screenplay Writer. An inserted scene is lettered and a cut one is OMITTED; unlock the numbers in Write’s Revisions to renumber.';
-let NUM_LOCK = { locked: false, omitted: [] };
-function readNumberLock() {
-  try {
-    const s = loadScript();
-    if (!isNumberingLocked(s.numbering)) return { locked: false, omitted: [] };
-    return { locked: true, omitted: sceneNumbers(s.elements, s.numbering).omitted.map((o) => o.number) };
-  } catch (e) { return { locked: false, omitted: [] }; }
-}
-const numberKey = (n) => String(n || '').trim().toUpperCase();
-/** The numbers more than one scene carries, upper-cased. */
-function dupNumbers(scenes) {
-  const seen = new Set(), dup = new Set();
-  for (const s of scenes) {
-    const k = numberKey(s.number);
-    if (!k) continue;
-    if (seen.has(k)) dup.add(k); else seen.add(k);
-  }
-  return dup;
-}
+let NUM_LOCK = { locked: false, omitted: [] };   // readNumberLock(), src/lib/breakdown-model.js
 /** Mark one number cell: the duplicate flag, and the title that says
  *  either "another scene has this number" or, on a bound scene, that
  *  the heading sets it. */
@@ -249,36 +232,14 @@ const SL = {
   ],
   presetSeq: 0
 };
-const filterActive = () => !!(SL.q.trim() || SL.ie || SL.dn || SL.st);
+const filterActive = () => filterOn(SL);
 const KEYS_HINT = 'Keys: Up and Down arrows move between scenes (from the open/close button or the location). '
   + 'Enter opens or closes a scene. N adds a scene. Delete moves the focused scene to the bin, with Undo. '
   + 'On a drag handle, Up and Down reorder the scene.';
 const GRIP_ON = 'Drag to reorder this scene (or focus it and press Up or Down)';
 const GRIP_OFF = 'Reordering is off while a search or filter is active: clear it to drag scenes into a new order';
-/* Eight shoot-day colours, from the phase and category hues in tokens.css
-   (scene-list.css maps slot -> token). Day N uses slot ((N - 1) mod 8) + 1. */
-const daySlot = (day) => ((day - 1) % 8) + 1;
-
-/** Where a scene stands, from the fields it already has. Nothing stored. */
-function sceneStatus(scene) {
-  if (scene.shotState === 'shot')    return { id: 'shot', label: 'Shot' };
-  if (scene.shotState === 'part')    return { id: 'part', label: 'Part shot' };
-  if (scene.shotState === 'dropped') return { id: 'dropped', label: 'Dropped' };
-  const day = shootDayOf(scene);
-  if (day) return { id: 'scheduled', label: 'Day ' + day };
-  const tags = ELEMENT_CATEGORIES.reduce((n, c) => n + (scene.elements[c.id] || []).length, 0);
-  if (tags) return { id: 'tagged', label: 'Tagged' };
-  return { id: 'untagged', label: 'Untagged' };
-}
-/* Where a scene stands, as a kit badge tone. Derived, nothing stored. */
-const STATUS_TONE = { shot: 'ok', part: 'warn', dropped: 'danger', scheduled: 'info', tagged: 'info', untagged: null };
-function castSummary(scene) {
-  const names = scene.elements.cast || [];
-  if (!names.length) return '';
-  return names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '');
-}
-const searchText = (scene) => [scene.number, scene.location, scene.synopsis, scene.intExt, scene.dayNight]
-  .concat(...ELEMENT_CATEGORIES.map((c) => scene.elements[c.id] || [])).join(' ').toLowerCase();
+/* The day slot, the status chip, the cast line and the search text are
+   derived in src/lib/breakdown-model.js; nothing here is stored. */
 
 /** "2 Cast  3 Props": a per-category count, in the category's own hue. */
 function rowCounts(scene) {
@@ -462,17 +423,7 @@ function renderSceneBar(scenes) {
 }
 
 /* ---- saved filters (in memory) ------------------------------ */
-const PRESET_KEYS = ['q', 'ie', 'dn', 'st'];
-const STATUS_LABELS = { untagged: 'Untagged', tagged: 'Tagged', scheduled: 'Scheduled', shot: 'Shot', part: 'Part shot', dropped: 'Dropped' };
-function describeFilter(f) {
-  const bits = [];
-  if (f.ie) bits.push(f.ie);
-  if (f.dn) bits.push(f.dn.toLowerCase());
-  if (f.st) bits.push((STATUS_LABELS[f.st] || f.st).toLowerCase());
-  if (f.q && f.q.trim()) bits.push('\u201C' + f.q.trim() + '\u201D');
-  return bits.join(' \u00B7 ') || 'every scene';
-}
-const presetOn = (p) => PRESET_KEYS.every((k) => String(p[k] || '').trim().toLowerCase() === String(SL[k] || '').trim().toLowerCase());
+const presetOn = (p) => presetMatches(p, SL);
 function renderPresets() {
   const on = filterActive();
   return h('div.bd-sl-presets', { role: 'group', 'aria-label': 'Saved filters (kept until you reload this page)' }, [
@@ -521,17 +472,15 @@ function updateGrips() {
 
 /** Hide the rows the filters rule out, in place. */
 function applySceneFilter() {
-  const q = SL.q.trim().toLowerCase();
   let shown = 0, total = 0;
   document.querySelectorAll('.bd-sl[data-scene]').forEach((row) => {
     total++;
-    const ok = (!q || row.dataset.find.includes(q)) && (!SL.ie || row.dataset.ie === SL.ie)
-      && (!SL.dn || row.dataset.dn === SL.dn) && (!SL.st || row.dataset.st === SL.st);
+    const ok = rowMatches(SL, row.dataset);
     row.hidden = !ok;
     if (ok) shown++;
   });
   const count = document.querySelector('.bd-sl-count');
-  if (count) count.textContent = (shown === total ? total + (total === 1 ? ' scene' : ' scenes') : shown + ' of ' + total + ' scenes');
+  if (count) count.textContent = filterCountText(shown, total);
   const none = document.querySelector('.bd-sl-none');
   if (none) none.hidden = shown > 0;
   updateGrips();
@@ -733,7 +682,7 @@ function renderSongs(scenes) {
    (EX, and SL.sel which the scene list already shares). Batch tagging
    writes through Scenes.tagMany(), the one writer, and Undo takes back
    exactly what it added through untagMany(). */
-const EX = { cat: '' };
+const EX = { cat: '', sheet: false };   // sheet: the phone's index sheet is open (memory only)
 function renderElements() {
   const scenes = Scenes.listScenes();
   const totals = categoryTotals(scenes, ELEMENT_CATEGORIES);
@@ -749,7 +698,8 @@ function renderElements() {
   if (EX.cat && !totals.some((c) => c.id === EX.cat && c.tags)) EX.cat = '';
   const rows = indexRows(scenes, ELEMENT_CATEGORIES, EX.cat);
 
-  const side = h('aside.bdx-side', { 'aria-label': 'Element index' });
+  const side = h('aside.bdx-side' + (EX.sheet ? '.is-open' : ''), { 'aria-label': 'Element index', id: 'bdxSide', tabindex: '-1',
+    ...(EX.sheet ? { role: 'dialog', 'aria-modal': 'true' } : {}) });
   const cats = h('ul.bdx-cats');
   cats.append(h('li', {}, [h('button.bdx-cat.bdx-cat-all', { type: 'button', 'data-action': 'ex-cat', 'data-cat': '', 'aria-pressed': String(!EX.cat) }, [
     h('span.bdx-cat-name', { text: 'All categories' }),
@@ -768,8 +718,11 @@ function renderElements() {
   }
   side.append(
     h('div.bdx-side-head', {}, [
-      h('h3.bdx-side-title', { text: 'Element index' }),
-      h('p.bdx-side-meta', { text: usedCats + ' of ' + totals.length + ' categories · ' + grand.tags + (grand.tags === 1 ? ' tag' : ' tags') + ' · ' + grand.elements + (grand.elements === 1 ? ' element' : ' elements') })
+      h('div', {}, [
+        h('h3.bdx-side-title', { text: 'Element index' }),
+        h('p.bdx-side-meta', { text: usedCats + ' of ' + totals.length + ' categories · ' + grand.tags + (grand.tags === 1 ? ' tag' : ' tags') + ' · ' + grand.elements + (grand.elements === 1 ? ' element' : ' elements') })
+      ]),
+      button({ label: 'Close the element index', icon: 'close', iconOnly: true, variant: 'ghost', action: 'ex-sheet-close', class: 'bdx-side-close' })
     ]),
     cats,
     batchPanel(scenes),
@@ -779,7 +732,21 @@ function renderElements() {
     ])
   );
 
+  /* The phone's way in to the same index: a scrolling row of the same
+     category filters, and the button that raises the side panel (filter
+     list, batch tag, export) as a sheet. Hidden from 720px up, where the
+     panel sits beside the list. */
+  const phoneBar = h('div.bdx-phone', {}, [
+    button({ label: 'Index, batch tag and export', icon: 'tune', action: 'ex-sheet', class: 'bdx-sheet-open', attrs: { 'aria-controls': 'bdxSide', 'aria-expanded': String(EX.sheet) } }),
+    h('div.bdx-pchips.k-chip-row', { role: 'group', 'aria-label': 'Filter by category' },
+      [{ id: '', label: 'All', tags: grand.tags, hue: '' }].concat(totals.filter((c) => c.tags)).map((c) =>
+        h('button.bdx-pchip' + (c.hue ? '.hue-' + c.hue : ''), { type: 'button', 'data-action': 'ex-cat', 'data-cat': c.id, 'aria-pressed': String(EX.cat === c.id) }, [
+          h('span.bdx-pchip-name', { text: c.label }),
+          h('span.bdx-pchip-n', { text: String(c.tags) })
+        ])))
+  ]);
   const list = h('div.bdx-list');
+  list.append(phoneBar);
   list.append(h('p.bdx-list-meta', { role: 'status', text: rows.length + (rows.length === 1 ? ' element' : ' elements')
     + (EX.cat ? ' in ' + catById[EX.cat].label : '') }));
   const grid = h('div.bd-el-grid');
@@ -796,7 +763,7 @@ function renderElements() {
     ]));
   }
   list.append(grid);
-  wrap.append(h('div.bdx-layout', {}, [list, side]));
+  wrap.append(h('div.bdx-layout' + (EX.sheet ? '.sheet-open' : ''), {}, [list, h('div.bdx-scrim', { 'data-action': 'ex-sheet-close', 'aria-hidden': 'true' }), side]));
   return wrap;
 }
 
@@ -834,9 +801,8 @@ function batchPanel(scenes) {
    somebody presses it. A breakdown is a 1st AD's judgement; this saves
    the typing, not the judgement. */
 const SUGGEST_CATS = SUGGEST_CATEGORIES;
-/* ADD ALL takes only the five categories whose lists are tight. The
-   looser ones (furniture, clothing, crowds) are one chip at a time. */
-const BULK_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
+/* ADD ALL takes only the five tight categories (BULK_CATS in
+   src/lib/breakdown-model.js); the looser ones are one chip at a time. */
 function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
   wrap.append(h('h2.bd-h2', { text: 'Auto-Tag' }),
@@ -896,19 +862,8 @@ function renderSuggestions(scenes) {
    heading by content: a position-only pair is shown, and can be added
    one scene at a time by somebody who has looked at it, but a bulk
    write onto a guess is how 221 tags once landed on the wrong scenes.
-   Returns exactly the tags written, so the toast's Undo removes those
-   and nothing else. */
-function applySuggestions(sceneIds) {
-  const scenes = Scenes.listScenes();
-  const rows = suggestAll(scenes, loadScript().elements)
-    .filter((r) => (sceneIds ? sceneIds.includes(r.scene.id) : isConfident(r.how)));
-  const cats = sceneIds ? SUGGEST_CATS : BULK_CATS;
-  const tags = [];
-  for (const r of rows) for (const cat of cats) for (const sug of r.suggestions[cat]) {
-    tags.push({ sceneId: r.scene.id, category: cat, name: sug.name });
-  }
-  return Scenes.tagMany(tags);
-}
+   applySuggestions() (src/lib/breakdown-model.js) returns exactly the
+   tags written, so the toast's Undo removes those and nothing else. */
 
 function toastTagged(added, where) {
   const n = added.length;
@@ -943,15 +898,7 @@ function renderBin() {
   const list = h('ul.bd-bin-list');
   for (const e of entries.slice().reverse()) {
     const row = e.scene.row;
-    const c = Bin.entryCounts(e);
-    const bits = [];
-    if (c.shots) bits.push(`${c.shots} shot${c.shots === 1 ? '' : 's'}`);
-    if (c.frames) bits.push(`${c.frames} frame${c.frames === 1 ? '' : 's'}`);
-    if (c.blocks) bits.push(`${c.blocks} blocking diagram${c.blocks === 1 ? '' : 's'}`);
-    if (c.cutNotes) bits.push(`${c.cutNotes} cut note${c.cutNotes === 1 ? '' : 's'}`);
-    if (c.day) bits.push(`Day ${c.day}`);
-    if (c.sheets) bits.push(`${c.sheets} call sheet${c.sheets === 1 ? '' : 's'}`);
-    if (!bits.length) bits.push('nothing attached');
+    const bits = binEntryBits(Bin.entryCounts(e));
     const where = [row.intExt, row.location, row.dayNight].filter(Boolean).join(' · ');
     list.append(h('li.bd-bin-item', { 'data-bin': e.id }, [
       h('div.bd-bin-copy', {}, [
@@ -1364,14 +1311,6 @@ delegate(document, 'keydown', '.bd-sl-grip', (e, grip) => {
 
 /* ---- the bin ------------------------------------------------- */
 const binIdOf = (el) => el.closest('[data-bin]')?.dataset.bin;
-/** Is this heading id in the script right now? A row restored while
-    its heading is gone comes back unlinked, or the next sync on the
-    Write page would bin it again. */
-function headingInScript(id) {
-  if (!id) return false;
-  try { return loadScript().elements.some((el) => el && el.id === id && el.type === 'scene' && String(el.text || '').trim()); }
-  catch (e) { return false; }
-}
 delegate(document, 'click', '[data-action="bin-restore"]', (e, el) => {
   const id = binIdOf(el);
   const entry = Bin.listBin().find((x) => x.id === id);
@@ -1392,10 +1331,7 @@ delegate(document, 'click', '[data-action="bin-delete"]', async (e, el) => {
 delegate(document, 'click', '[data-action="bin-empty"]', async () => {
   const t = Bin.binTotals();
   if (!t.scenes) return;
-  const bits = [`${t.scenes} scene${t.scenes === 1 ? '' : 's'}`];
-  if (t.shots) bits.push(`${t.shots} shot${t.shots === 1 ? '' : 's'}`);
-  if (t.frames) bits.push(`${t.frames} frame${t.frames === 1 ? '' : 's'}`);
-  if (t.sheets) bits.push(`${t.sheets} call-sheet place${t.sheets === 1 ? '' : 's'}`);
+  const bits = binTotalsBits(t);
   if (!await askDanger(`Empty the bin? ${bits.join(', ')} will be deleted for good.\n\nThis cannot be undone.`)) return;
   Bin.emptyBin();
   render();
@@ -1430,8 +1366,35 @@ delegate(document, 'click', '[data-action="sug-all"]', () => {
 /* ---- element index: filter, batch tag, export ---------------- */
 delegate(document, 'click', '[data-action="ex-cat"]', (e, el) => {
   EX.cat = el.dataset.cat || '';
-  render(EX.cat ? '[data-action="ex-cat"][data-cat="' + CSS.escape(EX.cat) + '"]' : '[data-action="ex-cat"][data-cat=""]');
+  /* The same filter exists twice — the phone's chip row (first in the
+     DOM) and the side panel — so focus goes back to the copy that was
+     pressed, or a desktop click lands on a hidden chip (body) and a
+     click in the open sheet leaves the sheet. */
+  const scope = el.closest('.bdx-side') ? '#bdxSide ' : '.bdx-pchips ';
+  render(scope + '[data-action="ex-cat"][data-cat="' + CSS.escape(EX.cat) + '"]');
 });
+/* The sheet is the same panel, so it opens and closes in place (no
+   re-render, so a half-typed element name survives) and the state is
+   remembered only so a re-render keeps it. Escape closes; focus goes to
+   the panel on open and back to the button on close. */
+function exSheet(open) {
+  EX.sheet = open;
+  document.querySelector('.bdx-layout')?.classList.toggle('sheet-open', open);
+  const side = document.getElementById('bdxSide');
+  if (side) {
+    side.classList.toggle('is-open', open);
+    if (open) { side.setAttribute('role', 'dialog'); side.setAttribute('aria-modal', 'true'); } else { side.removeAttribute('role'); side.removeAttribute('aria-modal'); }
+  }
+  document.documentElement.classList.toggle('bdx-locked', open);
+  const btn = document.querySelector('.bdx-sheet-open');
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+  if (open) side?.focus({ preventScroll: true }); else btn?.focus({ preventScroll: true });
+}
+delegate(document, 'click', '[data-action="ex-sheet"]', () => exSheet(true));
+delegate(document, 'click', '[data-action="ex-sheet-close"]', () => exSheet(false));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && EX.sheet) exSheet(false); });
+/* Widening past the phone closes it: the panel is a column again. */
+matchMedia('(max-width: 720px)').addEventListener('change', (m) => { if (!m.matches && EX.sheet) exSheet(false); });
 const exSync = () => {
   const n = SL.sel.size;
   const tot = document.querySelectorAll('.bdx-batch-scenes input').length;
@@ -1494,9 +1457,7 @@ delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
 // the store write and flushes it on pagehide / hidden.
 import { saveOnInput } from '../lib/autosave.js';
 import { ask, askDanger, askText } from '../ui/dialog.js';
-const sceneValue = (el) => el.dataset.sceneField === 'eighths'
-  ? Math.max(0, parseInt(el.value, 10) || 0)
-  : el.dataset.sceneField === 'number' ? el.value.trim() : el.value;
+const sceneValue = (el) => sceneFieldValue(el.dataset.sceneField, el.value);
 /* A number is a string that is not empty: an empty one is never saved
    (a field mid-edit), and on `change` the field is put back to what is
    stored. A duplicate IS saved, and flagged. */
@@ -1596,12 +1557,7 @@ delegate(document, 'click', '[data-action="song-del"]', async (e, el) => {
   render();
 });
 
-const songValue = (el) => {
-  const key = el.dataset.songField;
-  if (key === 'days') return Math.max(0, parseFloat(el.value) || 0);
-  if (key === 'dancers') return Math.max(0, parseInt(el.value, 10) || 0);
-  return el.value;
-};
+const songValue = (el) => songFieldValue(el.dataset.songField, el.value);
 // Saved as typed, re-rendered on change — as the scene fields above.
 saveOnInput('[data-song-field]', (el) => {
   Songs.updateSong(songIdOf(el), { [el.dataset.songField]: songValue(el) });
@@ -1617,14 +1573,8 @@ delegate(document, 'change', '[data-song-field]', (e, el) => {
 
 /* ---- the whole-script breakdown ------------------------------ */
 function toastRun(res) {
-  const a = res.applied, t = res.totals;
-  const said = a.empty
-    ? 'The script has no scene headings yet, so there was nothing to break down.'
-    : 'Broke down ' + t.scenes + (t.scenes === 1 ? ' scene' : ' scenes') + ', '
-      + res.characters.length + (res.characters.length === 1 ? ' character' : ' characters') + ' and '
-      + t.locations + (t.locations === 1 ? ' location' : ' locations') + '.'
-      + (a.castTagged ? ' Tagged ' + a.castTagged + ' cast from the dialogue cues.' : '');
-  STATUS = said;
+  const a = res.applied;
+  const said = runSaid(res);
   if (a.castTagged) {
     StudioUI.toast(said, {
       action: 'Undo cast tagging',
@@ -1637,13 +1587,29 @@ function toastRun(res) {
     });
   } else StudioUI.toast(said);
 }
-delegate(document, 'click', '[data-action=run-breakdown]', async () => {
-  let res;
-  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
-  await flushStorage().catch(() => {});
-  toastRun(res);
-  render('#overview');
+/* Manual breakdown and Breakdown with AI share one chain
+   (src/ui/breakdown-flow.js): the run (this toast), then shots and story
+   as reviews in the Desk. The module loads at the click, so first paint
+   carries none of it. `tab` is where the page repaints afterwards. */
+const flowHooks = (tab) => ({
+  onRun: (res) => {
+    if (!res) return;
+    flushStorage().catch(() => {});
+    scriptDoc = null;
+    STATUS = runSaid(res);
+    render(tab);
+  },
+  /* the run's toast waits for the reviews to end: on a phone it sat
+     over the existing-shots question and the Desk's sheet */
+  announce: (res) => { if (res) toastRun(res); },
+  refresh: () => { scriptDoc = null; render(tab); }
 });
+setFlowHooks(flowHooks);
+async function manualFlow(tab) {
+  try { await (await import('../ui/breakdown-flow.js')).manualBreakdown(flowHooks(tab)); }
+  catch (e) { console.warn('[breakdown] manual', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); }
+}
+delegate(document, 'click', '[data-action=run-breakdown]', () => manualFlow('#overview'));
 delegate(document, 'click', '[data-action=sum-view]', (e, btn) => {
   setView(btn.dataset.view);
   render('#' + btn.id);
@@ -1675,6 +1641,7 @@ delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) =>
   let res;
   try { res = runBreakdown(); } catch (err) { console.warn('[breakdown] run', err); StudioUI.toast('The script was imported, but the breakdown could not run.', { type: 'error' }); render(); return; }
   await flushStorage().catch(() => {});
+  STATUS = runSaid(res);
   toastRun(res);
   render('#overview');
 });
@@ -1696,13 +1663,6 @@ function wireScriptParts(bb, ch) {
     blankElement
   });
 }
-delegate(document, 'click', '[data-action=run-breakdown-script]', async () => {
-  let res;
-  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
-  await flushStorage().catch(() => {});
-  scriptDoc = null;
-  toastRun(res);
-  render('#script');
-});
+delegate(document, 'click', '[data-action=run-breakdown-script]', () => manualFlow('#script'));
 
 render();

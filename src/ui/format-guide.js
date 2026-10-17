@@ -37,10 +37,10 @@ import COPY from '../data/format-rules.json';
 import { checkScript, checkAround } from '../lib/format-rules.js';
 import { h, delegate } from '../lib/dom.js';
 import { learn } from './learn.js';
+import { WRITE_PREFS_KEY, readWritePrefs, writeWritePrefs, readGuideDismissed, saveGuideDismissed } from '../lib/write-prefs.js';
 import '../styles/format-guide.css';
 
-export const PREFS_KEY = 'fms_write_prefs_v1';
-const DISMISS_KEY = 'fms_write_guide_dismissed';
+export const PREFS_KEY = WRITE_PREFS_KEY;
 const LEVELS = COPY.levels.map((l) => l.id);
 const DEFAULT_LEVEL = 'coach';
 const SETTLE_MS = 550;
@@ -49,18 +49,10 @@ const LEARN_FOR = { scene: 'scene-heading', action: 'action', character: 'charac
   dialogue: 'dialogue', paren: 'parenthetical', transition: 'transition' };
 
 /* ---- prefs: read, merge, write ------------------------------ */
-export function readPrefs() {
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    const v = raw ? JSON.parse(raw) : {};
-    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
-  } catch (e) { return {}; }
-}
-export function writePrefs(patch) {
-  const next = Object.assign(readPrefs(), patch);
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(next)); } catch (e) { /* private mode */ }
-  return next;
-}
+/* Kept as this module's exports: beat-guide.js and tamil-type.js
+   import them from here. The storage is src/lib/write-prefs.js's. */
+export function readPrefs() { return readWritePrefs(); }
+export function writePrefs(patch) { return writeWritePrefs(patch); }
 export function guideLevel() {
   const l = readPrefs().guideLevel;
   return LEVELS.includes(l) ? l : DEFAULT_LEVEL;
@@ -72,12 +64,12 @@ const hints = () => level !== 'off';
 
 /* ---- dismissed rules, for this tab's session ---------------- */
 const dismissed = (() => {
-  try { return new Set(JSON.parse(sessionStorage.getItem(DISMISS_KEY) || '[]')); }
+  try { return new Set(readGuideDismissed()); }
   catch (e) { return new Set(); }
 })();
 function dismiss(ruleId) {
   dismissed.add(ruleId);
-  try { sessionStorage.setItem(DISMISS_KEY, JSON.stringify(Array.from(dismissed))); } catch (e) { /* */ }
+  saveGuideDismissed(dismissed);
 }
 
 /* ---- reading the page --------------------------------------- */

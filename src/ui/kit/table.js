@@ -6,6 +6,9 @@
      num      right-aligned mono tabular figures
      todayCol the key of a column to tint (DAY 04 (TODAY))
      maxHeight a CSS length: the wrapper scrolls and the header sticks
+     responsive 'stack' — below 720px every row becomes a card and every
+              cell a "label · value" line; each cell carries its column's
+              label as data-label (the head's own words, nothing new)
    Returns the scrolling wrapper; the <table> is its only child. */
 import { h, cx, kids } from './util.js';
 
@@ -14,7 +17,8 @@ export function table(o = {}) {
   const wrap = h('div.k-table-wrap');
   if (o.label) { wrap.setAttribute('role', 'region'); wrap.setAttribute('aria-label', o.label); wrap.tabIndex = 0; }
   if (o.maxHeight) { wrap.dataset.maxH = ''; wrap.style.setProperty('--k-table-max-h', o.maxHeight); }
-  const t = h('table', { class: cx('k-table', o.stickyFirst && 'k-table--sticky-first', o.center && 'k-table--center', o.class) });
+  const stack = o.responsive === 'stack';
+  const t = h('table', { class: cx('k-table', o.stickyFirst && 'k-table--sticky-first', o.center && 'k-table--center', stack && 'k-table--stack', o.class) });
   if (o.caption) t.append(h('caption.visually-hidden', { text: o.caption }));
   const tr = h('tr');
   for (const c of cols) {
@@ -32,6 +36,7 @@ export function table(o = {}) {
       const val = c.render ? c.render(row) : row[c.key];
       const cell = h(i === 0 && o.rowHeaders !== false ? 'th' : 'td', { class: cx(c.num && 'k-num k-mono', c.key === o.todayCol && 'is-col-today', c.cellClass) });
       if (i === 0 && o.rowHeaders !== false) cell.setAttribute('scope', 'row');
+      if (stack && c.label) cell.dataset.label = c.label;
       kids(cell, val == null ? '' : val);
       r.append(cell);
     });

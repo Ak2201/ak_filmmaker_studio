@@ -8,31 +8,15 @@
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { ask } from './dialog.js';
-import { parseStorage, relTime, FEATURE_URL, SHORT_URL, LIBRARY_URL } from '../pages/hub/util.js';
-import { ACTIVITY_KEY } from '../pages/hub/all-keys.js';
+import { relTime } from '../pages/hub/util.js';
+/* The log's key, its reading and its one write ("Clear log"), and where an
+   old row links to, are src/lib/hub-activity.js. */
+import { activityEntries, clearActivityLog, activityHref as rewriteUrl } from '../lib/hub-activity.js';
 
 const WHERE_CLASS = { feat: 'feat', short: 'short', lib: 'lib' };
 const WHERE_LABEL = { feat: 'FEATURE', short: 'SHORT', lib: 'LIBRARY' };
-const RENAMED = {
-  'arunak-filmmaker-blueprint.html': FEATURE_URL,
-  'arunak-shortfilm-blueprint.html': SHORT_URL,
-  'arunak-filmmaker-library.html':   LIBRARY_URL
-};
 
-/** Old rows point at the legacy files; bare fragments belong to the hub. */
-function rewriteUrl(url) {
-  if (!url) return url;
-  if (url.startsWith('#')) return 'index.html' + url;
-  for (const [oldName, newName] of Object.entries(RENAMED)) {
-    if (url.startsWith(oldName)) return newName + url.slice(oldName.length);
-  }
-  return url;
-}
-
-export function activityEntries() {
-  const log = parseStorage(ACTIVITY_KEY);
-  return Array.isArray(log.entries) ? log.entries : [];
-}
+export { activityEntries };
 
 /** Draw the log into `host` (replaces its children). Returns the entry count. */
 export function renderActivityLog(host) {
@@ -64,9 +48,7 @@ export function renderActivityLog(host) {
       confirm: 'CLEAR LOG', danger: true
     });
     if (!ok) return;
-    const log = parseStorage(ACTIVITY_KEY);
-    log.entries = [];
-    try { localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log)); } catch (err) { /* blocked storage */ }
+    clearActivityLog();
     renderActivityLog(host);
   });
   host.append(count, list, h('div.activity-actions', {}, [refresh, clear]));

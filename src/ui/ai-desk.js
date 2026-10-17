@@ -39,12 +39,15 @@
           `previous` is the current version's result and
           `instructions` the numbered chat messages so far. A refine
           re-sends the same system prompt against the SAME schema.
-       apply(selected, ctx)  → performs the write through the owning
+       apply(selected, ctx, result)
+                             → performs the write through the owning
                                model (editor edit path, scenes.js,
                                blueprint-store writeFields). For 'text'
                                `selected` is the final merged string
                                (only the ticked hunks applied); for
                                'list' it is the array of chosen items;
+                               `result` is the SHOWN version's run()
+                               result, not the latest run's;
                                'read' tasks may omit apply. May return
                                an undo function (or a Promise of one),
                                which the Desk offers as an actionable
@@ -57,6 +60,15 @@
      - No key on this device → openDesk shows a single step linking
        to settings.html#ai. No key form exists in the Desk.
      - A locked plan never reaches openDesk: the pill stops it.
+     - A task with `local: true` (src/lib/local-tasks.js — the Manual
+       breakdown's shot and story proposals) is not AI at all: no key
+       step, no Pro gate, no provider disclosure, no chat refinement;
+       it runs the moment the Desk opens, and is rebuilt from the
+       current data at every open. Same tick list, same Accept/Undo.
+     - A ctx (or the ctx a ctx function resolves to) may carry
+       `task: '<id>'` to hand the open over to another task — how the
+       "Breakdown with AI" chain goes straight to the story review when
+       every scene already has its shots (src/ui/breakdown-flow.js).
    ============================================================ */
 
 
@@ -104,10 +116,12 @@ import { diffLines, mergeHunks } from '../lib/ai-diff.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import StudioUI from './chrome.js';
 import { disclose, aiMark } from './ai-panel.js';
+import { LOCAL_TASKS, ready as localReady } from '../lib/local-tasks.js';
 import '../styles/ai.css';
 import '../styles/ai-desk.css';
 
 const tasks = new Map();
+const isLocal = (t) => !!(t && t.local);
 
 export function registerTask(task) {
   if (!task || !task.id) throw new Error('[ai-desk] a task needs an id');
@@ -123,6 +137,9 @@ export function listTasks() {
   return [...tasks.values()];
 }
 
+// The non-AI tasks are part of the Desk itself: registered at load.
+for (const t of LOCAL_TASKS) registerTask(t);
+
 /* ---- the tasks module, loaded once at the first open ---------- */
 let tasksReady = null;
 let tasksError = '';
@@ -131,7 +148,7 @@ function loadTasks() {
     // registerAll() may return a promise that settles once the tasks'
     // lazy dependencies load; it is awaited before any task.input(ctx).
     tasksReady = import('../lib/ai-tasks.js')
-      .then((m) => { if (m && typeof m.registerAll === 'function') return m.registerAll(); })
+      .then((m) => { if (m && typeof m.registerAll === 'function') return m.registerAll(registerTask); })
       .catch((e) => {
         tasksError = 'The AI tools did not load (' + ((e && e.message) || 'unknown error') + '). Reload the page and try again.';
         console.warn('[ai-desk] ai-tasks.js did not load', e);
@@ -206,13 +223,26 @@ let sess = null;
 let running = null;     // AbortController while a request is out
 let statusText = '';
 let errorText = '';
-let mode = 'task';      // 'task' | 'nokey' | 'missing'
+let mode = 'task';      // 'task' | 'nokey' | 'missing' | 'blocked'
+let blockedWhy = null;  // a task's blocked(ctx) answer while mode is 'blocked'
+let missingText = '';   // why a local task could not open
 let held = false;
 
 const WIDE = '(min-width: 1100px)';
 const isWide = () => window.matchMedia(WIDE).matches;
 
+/* A task may name the provider it needs (`provider: 'gemini'` — the
+   storyboard's drawn frames, the one image model in the table) and its
+   own model line (`modelLabel()`); every other task uses the active one. */
+const provOf = (t) => (t && t.provider) || undefined;
+
 function modelText() {
+  if (isLocal(task)) return 'On this device · no AI';
+  if (task && task.provider) {
+    let m = '';
+    try { m = typeof task.modelLabel === 'function' ? String(task.modelLabel() || '') : ''; } catch (e) { m = ''; }
+    return providerLabel(task.provider) + (m ? ' · ' + m : '');
+  }
   const id = getModel();
   const m = (models() || []).find((x) => x.id === id);
   return providerLabel() + ' · ' + (m ? m.label : id);
@@ -236,6 +266,12 @@ function publishWidth() {
   const root = document.documentElement;
   if (open && desk && isWide()) root.style.setProperty('--ai-desk-w', desk.offsetWidth + 'px');
   else root.style.removeProperty('--ai-desk-w');
+  /* The footer's height, so a toast (an Undo from the last Accept never
+     times out) is lifted clear of Accept / Skip on a phone instead of
+     sitting over them — the chain in breakdown-flow.js opens one review
+     straight after another. Measured, never assumed: it wraps. */
+  if (open && foot) root.style.setProperty('--ai-desk-foot-h', foot.offsetHeight + 'px');
+  else root.style.removeProperty('--ai-desk-foot-h');
   // Below 1100 the sheet covers the page, so Tab stays inside it.
   const want = open && !isWide();
   if (want && !held) { holdFocus(desk); held = true; }
@@ -288,6 +324,11 @@ function answerList(v) {
     h('label.ai-desk-item', {}, [
       h('input', { type: 'checkbox', 'data-tick': 'item', 'data-id': v.itemIds[i], checked: !v.unticked.has(v.itemIds[i]) }),
       h('div.ai-desk-itemtext', {}, [
+        /* A picture to judge before it is kept (board-frames): an object
+           URL for a Blob held in this session only. */
+        typeof it.image === 'string' && /^blob:/.test(it.image)
+          ? h('img.ai-desk-pic', { src: it.image, alt: String(it.alt || it.text || 'Generated picture') })
+          : null,
         h('strong', { text: String(it.text ?? '') }),
         it.detail ? h('p', { text: String(it.detail) }) : null
       ])
@@ -317,8 +358,26 @@ function render() {
   foot.replaceChildren();
   if (mode === 'nokey') {
     body.replaceChildren(header(), h('section.ai-desk-sec', {}, [
-      h('p', { text: 'AI tools run on your own key, and this device does not have one yet.' }),
+      h('p', { text: task && task.provider
+        ? 'This tool runs on ' + apiName(task.provider) + ' with your own ' + providerLabel(task.provider)
+          + ' key, and this device does not have one yet.'
+        : 'AI tools run on your own key, and this device does not have one yet.' }),
       h('a.btn.primary.ai-desk-settings', { href: 'settings.html#ai', text: 'Add your AI key in Settings →' })
+    ]));
+    return;
+  }
+  if (mode === 'blocked') {
+    /* A task that cannot run here yet says why before anything is sent
+       (board-frames: signed out, Drive not connected, Drive token
+       lapsed). `href` goes to the fix; `reconnect` asks the task to fix
+       it on this click (task.unblock), then the Desk re-opens. */
+    const why = blockedWhy || {};
+    body.replaceChildren(header(), h('section.ai-desk-sec.ai-desk-blocked', {}, [
+      h('p.ai-desk-why', { role: 'status', text: why.text || 'This tool cannot run here yet.' }),
+      why.reconnect ? h('button.btn.primary.ai-desk-unblock', {
+        type: 'button', 'data-action': 'ai-desk-unblock', text: why.reconnectLabel || 'Reconnect Drive'
+      }) : null,
+      why.href ? h('a.btn.primary.ai-desk-fix', { href: why.href, text: (why.hrefLabel || 'Fix this') + ' →' }) : null
     ]));
     return;
   }
@@ -326,7 +385,7 @@ function render() {
     body.replaceChildren(header(), h('section.ai-desk-sec', {}, [
       h('p.ai-error', { role: 'alert' }, [
         h('strong', { text: 'Not available. ' }),
-        h('span', { text: tasksError || 'This AI tool is not available on this page.' })
+        h('span', { text: missingText || tasksError || 'This AI tool is not available on this page.' })
       ])
     ]));
     return;
@@ -337,13 +396,15 @@ function render() {
   const kids = [header()];
 
   kids.push(h('section.ai-desk-sec.ai-desk-in', {}, [
-    h('h3.ai-desk-label', { text: 'What goes in' }),
+    h('h3.ai-desk-label', { text: isLocal(task) ? 'What it reads' : 'What goes in' }),
     h('textarea.ai-desk-input', {
-      rows: '8', 'aria-label': 'What goes in', spellcheck: 'false',
+      rows: isLocal(task) ? '4' : '8', 'aria-label': isLocal(task) ? 'What it reads' : 'What goes in', spellcheck: 'false',
       readonly: task.editable === false || sess.versions.length > 0 || busy ? true : null
     }),
-    disclose('When you press Run, the text above is sent to ' + apiName() + ' at ' + apiHost()
-      + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
+    isLocal(task)
+      ? h('p.ai-desk-note', { text: 'Built on this device from your script and scene list. Nothing is sent anywhere, and nothing is kept until you accept.' })
+      : disclose('When you press Run, the text above is sent to ' + apiName(provOf(task)) + ' at ' + apiHost(provOf(task))
+        + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
     sess.versions.length ? null : h('button.btn.primary.ai-desk-run', {
       type: 'button', 'data-action': 'ai-desk-run', disabled: busy ? true : null, text: busy ? 'Running…' : 'Run'
     })
@@ -364,9 +425,9 @@ function render() {
       ...answer
     ]));
 
-    kids.push(h('section.ai-desk-sec.ai-desk-talk', {}, [
+    if (!isLocal(task)) kids.push(h('section.ai-desk-sec.ai-desk-talk', {}, [
       h('h3.ai-desk-label', { text: 'Ask for changes' }),
-      h('div.ai-desk-chips', {}, ['Shorter', 'Keep my wording', 'More tension', 'In Tanglish'].map((c) =>
+      h('div.ai-desk-chips', {}, (Array.isArray(task.chips) && task.chips.length ? task.chips : ['Shorter', 'Keep my wording', 'More tension', 'In Tanglish']).map((c) =>
         h('button.ai-desk-chip', { type: 'button', 'data-action': 'ai-desk-chip', 'data-say': c, disabled: busy ? true : null, text: c }))),
       sess.chat.length ? h('ol.ai-desk-asked', {}, sess.chat.map((m) => h('li', { text: m }))) : null,
       h('textarea.ai-desk-chat', { rows: '2', 'aria-label': 'Ask for a change', placeholder: 'e.g. keep the second line as it was' }),
@@ -438,7 +499,7 @@ async function run(refineWith) {
 
 function send(text) {
   const msg = String(text || '').trim();
-  if (!msg || !sess || !sess.versions.length) return;
+  if (!msg || !sess || !sess.versions.length || isLocal(task)) return;
   run([...sess.chat, msg]);
 }
 
@@ -462,7 +523,7 @@ async function accept(all) {
   if (typeof task.apply !== 'function') { closeDesk(); return; }
   let undo;
   try {
-    undo = await task.apply(selected, ctx);
+    undo = await task.apply(selected, ctx, v.result);
   } catch (e) {
     errorText = (e && e.message) || 'The change could not be written. Nothing was changed.';
     render();
@@ -505,6 +566,19 @@ function wire() {
   delegate(desk, 'click', '[data-action="ai-desk-close"]', () => closeDesk());
   delegate(desk, 'click', '[data-action="ai-desk-skip"]', () => closeDesk());
   delegate(desk, 'click', '[data-action="ai-desk-run"]', () => run());
+  delegate(desk, 'click', '[data-action="ai-desk-unblock"]', (e, el) => {
+    if (!task || typeof task.unblock !== 'function') return;
+    el.disabled = true;
+    const id = task.id;
+    const again = ctx;
+    Promise.resolve().then(() => task.unblock())
+      .then(() => openDesk(id, again))
+      .catch((err) => {
+        el.disabled = false;
+        const why = desk.querySelector('.ai-desk-why');
+        if (why) why.textContent = 'It did not reconnect (' + String((err && err.message) || 'dismissed').slice(0, 120) + '). Try again.';
+      });
+  });
   delegate(desk, 'click', '[data-action="ai-desk-stop"]', () => {
     if (running) { running.abort(); setStatus('Stopping…'); }
   });
@@ -540,23 +614,53 @@ function wire() {
 }
 
 export async function openDesk(taskId, ctxArg = {}) {
-  if (!PlanGate.aiUnlocked()) return;      // the pill asks the Pro question
+  // The pill asks the Pro question; a local (non-AI) task needs no plan.
+  if (!isLocal(getTask(taskId)) && !PlanGate.aiUnlocked()) return;
   const from = document.activeElement;
   let c = ctxArg;
   if (typeof c === 'function') {
     try { c = await c(); } catch (e) { console.warn('[ai-desk] ctx() threw', e); c = {}; }
   }
   c = c || {};
+  if (c.cancel) return;                    // the ctx factory decided not to open
+  if (c.task && c.task !== taskId) {       // a hand-over to another task
+    taskId = String(c.task);
+    if (!isLocal(getTask(taskId)) && !PlanGate.aiUnlocked()) return;
+  }
 
   ensureDesk();
   if (running) { running.abort(); running = null; }
   statusText = '';
   errorText = '';
+  missingText = '';
 
-  await loadTasks();
-  if (!hasKey()) {
+  const local = isLocal(getTask(taskId));
+  let localFail = '';
+  if (local) {
+    try { await localReady(); }
+    catch (e) { localFail = 'The breakdown tools did not load (' + ((e && e.message) || 'unknown error') + '). Reload the page and try again.'; }
+  } else await loadTasks();
+  if (local && localFail) {
+    mode = 'missing';
+    missingText = localFail;
+    task = getTask(taskId);
+    sess = null;
+  } else if (local) {
+    mode = 'task';
+    task = getTask(taskId);
+    ctx = c;
+    // Rebuilt from the data as it is now, at every open.
+    for (const k of [...sessions.keys()]) if (k.startsWith(task.id + '|')) sessions.delete(k);
+    sess = sessionFor(task, ctx);
+  } else if (!hasKey(provOf(getTask(taskId)))) {
     mode = 'nokey';
     task = getTask(taskId);
+    sess = null;
+  } else if (getTask(taskId) && typeof getTask(taskId).blocked === 'function'
+    && (blockedWhy = (() => { try { return getTask(taskId).blocked(c); } catch (e) { return { text: (e && e.message) || 'This tool cannot run here yet.' }; } })())) {
+    mode = 'blocked';
+    task = getTask(taskId);
+    ctx = c;
     sess = null;
   } else {
     task = getTask(taskId);
@@ -578,8 +682,10 @@ export async function openDesk(taskId, ctxArg = {}) {
   publishWidth();
   const first = desk.querySelector(mode === 'task'
     ? (sess && sess.versions.length ? '.ai-desk-ver[aria-pressed="true"]' : '.ai-desk-input')
-    : (mode === 'nokey' ? 'a[href="settings.html#ai"]' : '[data-action="ai-desk-close"]'));
+    : (mode === 'nokey' ? 'a[href="settings.html#ai"]'
+      : mode === 'blocked' ? '.ai-desk-unblock, .ai-desk-fix, [data-action="ai-desk-close"]' : '[data-action="ai-desk-close"]'));
   (first || desk).focus();
+  if (local && mode === 'task' && sess && !sess.versions.length) run();   // nothing to spend: build the list now
 }
 
 export function closeDesk() {
@@ -590,9 +696,13 @@ export function closeDesk() {
   desk.hidden = true;
   document.documentElement.classList.remove('ai-desk-open');
   document.documentElement.style.removeProperty('--ai-desk-w');
+  document.documentElement.style.removeProperty('--ai-desk-foot-h');
   const back = opener;
   opener = null;
   if (back && back.isConnected && typeof back.focus === 'function') back.focus();
+  // a chain of reviews (breakdown-flow.js) waits for this to say its
+  // own result once the last review has gone, not over the top of it
+  window.dispatchEvent(new Event('ai-desk:closed'));
 }
 
 export default { registerTask, getTask, listTasks, openDesk, closeDesk };

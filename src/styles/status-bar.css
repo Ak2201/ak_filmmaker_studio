@@ -97,4 +97,68 @@ body.has-status-bar.has-mobile-actionbar {
   padding-bottom: calc(var(--mab-h, 80px) + var(--s3) + var(--ssb-h, 32px));
 }
 
+/* ============================================================
+   THE SYNC PILL IN THE BAND (shell.js buildSyncPill, 14 Oct 2026)
+   ------------------------------------------------------------
+   The dock's sync state, said again where the eye already is: the same
+   words (syncLine), the same LED tones. A quiet rail-surface pill, not
+   a button colour: it reports, and a tap only takes you to Settings.
+   The words go below 1280px in the band (the dot, the cloud and the
+   accessible name stay); in the Tools sheet they are shown in full.
+   ============================================================ */
+.sh-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  flex: none;
+  height: var(--sh-ctl-h, 32px);
+  padding: 0 var(--s2);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  color: var(--ink-body);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.sh-sync:hover { background: var(--surface-hover); border-color: var(--border-strong); color: var(--ink); }
+.sh-sync:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset, 2px); }
+.sh-sync-led { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
+.sh-sync[data-tone="ok"]   .sh-sync-led { background: var(--ok); }
+.sh-sync[data-tone="warn"] .sh-sync-led { background: var(--warn); }
+.sh-sync[data-tone="err"]  .sh-sync-led { background: var(--danger); }
+.sh-sync[data-tone="busy"] .sh-sync-led { background: var(--brand); animation: pulse-soft 1.2s var(--ease) infinite; }
+.sh-sync-icon { font-size: 16px; color: var(--ink-muted); }
+.sh-sync[data-tone="ok"]   .sh-sync-icon { color: var(--ok-deep); }
+.sh-sync[data-tone="warn"] .sh-sync-icon { color: var(--warn-deep); }
+.sh-sync[data-tone="err"]  .sh-sync-icon { color: var(--danger); }
+.sh-sync[data-tone="busy"] .sh-sync-icon { color: var(--brand-deep); }
+@media (max-width: 1279px) {
+  .sh-bar .sh-sync { gap: var(--s1); }
+  .sh-bar .sh-sync-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+/* THE PHONE'S DOCK is the same one line (the rules above already drop
+   the product name and the labels), on the canvas so it reads as the
+   page's last line rather than a second bar, clearing the notch sides. */
+@media (max-width: 720px) {
+  .ssb {
+    padding-left: max(var(--s3), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--s3), env(safe-area-inset-right, 0px));
+    background: var(--surface-canvas);
+  }
+  .ssb-ver-num { color: var(--ink-muted); }
+}
+
 @media print { .ssb { display: none !important; } }

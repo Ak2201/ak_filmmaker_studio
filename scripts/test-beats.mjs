@@ -211,7 +211,7 @@ eq(B.firstScenes(oe).map((f) => f.headingId), ['n1_0', 'n3_0', 'n2_0'], 'markers
 /* The panel's read-only mapping of beats to scenes (src/ui/beats-panel.js). */
 {
   const { deriveBeats } = await import('../src/ui/beats-panel.js');
-  const st = { framework: 'three_act', marks: [], outline: [], tension: {} };
+  const st = { framework: 'three_act', frameworkChosen: true, marks: [], outline: [], tension: {} };
   const fwBeats = (await import('../src/lib/story.js')).frameworkById('three_act').beats;
   const b0 = fwBeats[0].id, b1 = fwBeats[1].id;
   const d = deriveBeats([], null, { story: st, scenes: [
@@ -224,6 +224,23 @@ eq(B.firstScenes(oe).map((f) => f.headingId), ['n1_0', 'n3_0', 'n2_0'], 'markers
   eq(row(b1).linked, false, "another framework's link and an unnumbered scene link nothing");
   eq([d.linked, d.total], [1, fwBeats.length], 'progress counts linked beats');
   eq(d.percent, Math.round(100 / fwBeats.length), 'progress percent');
+}
+
+/* The panel reads the framework IN FORCE, as the Story stage does: a
+   story nobody picked a framework for is stored as three_act but is
+   Save the Cat for a feature and the short five-part for a short. */
+{
+  const { deriveBeats } = await import('../src/ui/beats-panel.js');
+  const st = { framework: 'three_act', frameworkChosen: false, marks: [], outline: [], tension: {} };
+  const feat = deriveBeats([], null, { story: st, format: 'feature' });
+  const short = deriveBeats([], null, { story: st, format: 'short' });
+  eq([feat.fw.id, feat.total], ['save_the_cat', S.frameworkById('save_the_cat').beats.length], 'unchosen feature: the panel shows Save the Cat');
+  eq([short.fw.id, short.total], ['short_five', S.frameworkById('short_five').beats.length], 'unchosen short: the panel shows the short five-part');
+  const b0 = S.frameworkById('save_the_cat').beats[0].id;
+  const linked = deriveBeats([], null, { story: st, format: 'feature', scenes: [{ number: '1', beatId: 'save_the_cat:' + b0 }] });
+  eq(linked.rows.find((r) => r.beat.id === b0).linked, true, 'a scene filed under save_the_cat counts as linked');
+  const chosen = deriveBeats([], null, { story: { ...st, frameworkChosen: true }, format: 'short' });
+  eq(chosen.fw.id, 'three_act', "the writer's own choice wins over the format's suggestion");
 }
 
 console.log(`test:beats — ${pass} passed, ${fail} failed`);

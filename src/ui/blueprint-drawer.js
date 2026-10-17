@@ -74,6 +74,7 @@
    ============================================================ */
 import Store from '../lib/store.js';
 import { h, delegate } from '../lib/dom.js';
+import { readBlueprintBlob, mergeIntoBlueprintBlob } from '../lib/bpdrawer-store.js';
 import INDEX from 'virtual:fms-step-index';
 import STAGES from '../data/steps.stages.json';
 import { stageInfo, resolveTool } from './step-stages.js';
@@ -236,7 +237,7 @@ function pillLabel(here) {
 function pillHost() {
   const main = document.querySelector('main') || document.getElementById('app');
   if (!main) return null;
-  const head = main.querySelector('header.bd-head');
+  const head = main.querySelector('header.bd-head, header.ct-head');
   return head || main;
 }
 
@@ -272,10 +273,8 @@ let current = null;            // { fmt, here, index }
 let pending = {};
 let saveTimer = null;
 
-function readBlob(key) {
-  try { const v = JSON.parse(localStorage.getItem(key) || '{}'); return v && typeof v === 'object' ? v : {}; }
-  catch (e) { return {}; }
-}
+/* The read and the merge-write are src/lib/bpdrawer-store.js. */
+const readBlob = readBlueprintBlob;
 
 /** Read the blueprint's blob, lay this drawer's changes over it, write
  *  it back — through the proxy, so it is the open project's blob and
@@ -285,10 +284,9 @@ function flush() {
   saveTimer = null;
   if (!current || !Object.keys(pending).length) return;
   const bp = BLUEPRINTS[current.fmt];
-  const blob = readBlob(bp.key);
-  Object.assign(blob, pending);
+  const changes = pending;
   pending = {};
-  try { localStorage.setItem(bp.key, JSON.stringify(blob)); } catch (e) { /* the proxy reports a refused write */ }
+  mergeIntoBlueprintBlob(bp.key, changes);   // a refused write is reported by the proxy
 }
 
 function queue(key, value) {

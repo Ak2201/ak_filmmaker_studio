@@ -7,16 +7,16 @@
    one the band itself already clears AA with.
    ============================================================ */
 
-/* ---- the band: one slim row, the breadcrumb ----------------------
-   The stage strip, the page's toolbar, the account zone, the palette
-   handle and the burger move off the band: Go to, Tools and Search on
-   the bottom bar are the same things, one thumb away. (The trial strip,
-   when a trial runs, stays: it is not marketing, and it is un-pinned.) */
+/* ---- the band: one slim row --------------------------------------
+   The stage strip, the page's own toolbar controls and the palette
+   handle move off the band: Go to, Tools and Search on the bottom bar
+   are the same things, one thumb away. What stays is the mobile
+   dashboard's top bar (Swiss, 14 Oct 2026; see THE PHONE TOP BAR at the
+   end of this file): the burger (Go to), where you are, the project
+   pill, the sync pill and the account. (The trial strip, when a trial
+   runs, stays: it is not marketing, and it is un-pinned.) */
 html.mn-on .sh-bar > .sh-phases,
-html.mn-on .sh-bar > .toolbar,
-html.mn-on .sh-bar > .sh-tools,
-html.mn-on .sh-bar > .sh-find,
-html.mn-on .sh-bar > .sh-rail-toggle { display: none; }
+html.mn-on .sh-bar > .sh-find { display: none; }
 
 /* The crumb's stage segment comes back (the strip that said the same
    thing is gone) and opens the Go-to sheet at that stage. */
@@ -366,5 +366,230 @@ html .mn-sheet .ps-item.is-current { background: var(--brand-wash); border-color
 html .mn-sheet .ps-item,
 html .mn-sheet .ps-link { border-radius: var(--radius); }
 html .mn-sheet .ps-link { color: var(--brand-deep); }
+
+/* ============================================================
+   THE PHONE TOP BAR (14 Oct 2026) — the mobile dashboard prototype
+   ------------------------------------------------------------
+   ☰ · Studio › Here · [FEATURE] Dragon ▾ · ● cloud · account, one
+   56px row on the rail surface, PINNED. The old reason for letting the
+   band scroll away on a phone — a stuck toolbar that wrapped to four
+   rows was 391px, 46% of the screen — no longer holds: this is one row
+   and cannot wrap (flex-wrap: nowrap; the crumb is what gives). It is
+   measured like every pinned band (measureChrome reads position, not
+   a breakpoint), so fragments and the tab strip park under it.
+
+   The zone shows its first and last controls only. The project pill
+   and the burger open the Go-to sheet (mobile-nav.js); Backup and the
+   theme button stay in the zone's DOM and are reached through TOOLS,
+   which borrows the whole zone — same controls, other placement.
+   ============================================================ */
+html.mn-on .sh-bar {
+  position: sticky;
+  top: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  column-gap: var(--s2);
+  min-height: var(--phone-bar-h, 56px);
+  padding: var(--safe-top, 0px) max(var(--s3), var(--safe-right, 0px)) 0 max(var(--s3), var(--safe-left, 0px));
+  background: var(--surface-rail);
+  border-bottom: 1px solid var(--border-hair);
+}
+html.mn-on .sh-bar > .sh-rail-toggle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--tap-min, 44px);
+  height: var(--tap-min, 44px);
+  margin-left: calc(-1 * var(--s1h));
+  border: 0;
+  color: var(--ink-body);
+}
+html.mn-on .sh-bar > .sh-where {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+}
+html.mn-on .sh-bar > .sh-where .sh-where-step { min-height: var(--tap-min, 44px); padding-inline: var(--s1); }
+/* "Studio ›" comes back (chrome.css drops it under 480px): the
+   prototype's crumb is the studio, then where you are. */
+html.mn-on .sh-bar > .sh-where .sh-where-root:not(.sh-where-here) { display: inline-flex; flex: none; }
+html.mn-on .sh-bar > .sh-where .sh-where-root:not(.sh-where-here) + .sh-where-sep { display: inline; }
+/* ...unless a stage segment follows: then the stage's dot and the
+   module are the answer, and the row has no width for three. */
+html.mn-on .sh-bar > .sh-where .sh-where-root:not(.sh-where-here):has(~ .sh-where-phase),
+html.mn-on .sh-bar > .sh-where .sh-where-root:not(.sh-where-here):has(~ .sh-where-phase) + .sh-where-sep { display: none; }
+html.mn-on .sh-bar > .sh-where .sh-where-here { min-width: 0; flex: 0 1 auto; }
+html.mn-on .sh-bar > .sh-where .sh-where-root:not(.sh-where-here) { color: var(--ink); font-weight: 600; }
+html.mn-on .sh-bar > .sh-where .sh-where-here { color: var(--brand-deep); font-weight: 500; }
+/* The stage segment is its hue dot on a phone (the label is still its
+   accessible name; the sheet it opens names the stage). */
+html.mn-on .sh-bar > .sh-where .sh-where-phase .sh-where-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+html.mn-on .sh-bar > .sh-where .sh-where-phase { min-width: var(--tap-min, 44px); justify-content: center; }
+
+/* SECTIONS on the crumb. A page with a tab strip already has the
+   strip's own pinned Sections button (and the sheet it opens), so the
+   band's copy is the same list twice and was drawn clipped over the
+   zone beside it. A page WITHOUT a strip (the hub) keeps it, as the
+   icon alone: 44px square, the words stay its accessible name. */
+html.mn-on:has(.tabs-sections) .sh-bar .sh-pagenav { display: none; }
+html.mn-on .sh-bar .sh-pagenav { flex: none; }
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn {
+  width: var(--tap-min, 44px);
+  min-width: var(--tap-min, 44px);
+  padding: 0;
+  justify-content: center;
+}
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn .sh-pagenav-label,
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn .sh-pagenav-caret {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+html.mn-on.sym-ready .sh-bar .sh-pagenav-btn::before {
+  content: "list";
+  font-family: 'Material Symbols Rounded';
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  font-feature-settings: 'liga';
+}
+
+/* The four toolbar pages keep their zone INSIDE .toolbar: the toolbar
+   stays in the band for the zone's sake, and its own controls go to
+   Tools (borrowed, with the zone, as one element). */
+html.mn-on .sh-bar > .toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  margin: 0 0 0 auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+html.mn-on .sh-bar > .toolbar > :not(.sh-tools) { display: none; }
+html.mn-on .sh-bar > .sh-tools,
+html.mn-on .sh-bar > .toolbar > .sh-tools {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--s1h);
+  margin-left: auto;
+}
+html.mn-on .sh-bar .sh-tools > [data-tb-backup],
+html.mn-on .sh-bar .sh-tools > [data-theme-toggle],
+html.mn-on .sh-bar .sh-tools > .tb-menu { display: none; }
+
+/* [FEATURE] Dragon ▾ — the format in mono, the title, the caret; a
+   short measure, because the crumb and the account share the row. */
+html.mn-on .sh-bar .sh-tools .ps-btn {
+  display: inline-flex;   /* project-switcher.css hides it below 720px; the band brings it back */
+  align-items: center;
+  height: 36px;
+  min-height: 36px;
+  max-width: 34vw;
+  gap: var(--s1);
+  padding: 0 var(--s1h) 0 var(--s2);
+  background: var(--surface-card);
+  border-color: var(--border-hair);
+}
+html.mn-on .sh-bar .sh-tools .ps-btn .ps-title { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The format chip goes: the row's width is the crumb's, and the Go-to
+   sheet this pill opens names the format in its heading. */
+html.mn-on .sh-bar .sh-tools .ps-btn .ps-fmt { display: none; }
+
+/* The sync pill: the dot and the cloud (status-bar.css styles it). */
+html.mn-on .sh-bar .sh-sync { height: var(--tap-min, 44px); min-width: var(--tap-min, 44px); justify-content: center; padding: 0 var(--s1h); }
+
+/* The account: the initials disc signed in, a compact Sign in out. */
+html.mn-on .sh-bar .sh-tools .sign-in-pill { height: 36px; min-height: 36px; padding: 0 var(--s3); }
+html.mn-on .sh-bar .sh-tools .sign-in-pill.signed-in { padding: 0 var(--s1); border-left: 0; }
+html.mn-on .sh-bar .sh-tools .sign-in-pill.signed-in:has(.sip-avatar:not([hidden])) .sip-label,
+html.mn-on .sh-bar .sh-tools .sign-in-pill.signed-in:has(.sip-avatar:not([hidden])) .sip-dot { display: none; }
+html.mn-on .sh-bar .sh-tools .sign-in-pill:not(.signed-in) .sip-dot { display: none; }
+/* Signed out, the violet pill is a disc with the person mark once the
+   icon face has loaded (the words stay its name, and show until then). */
+html.mn-on.sym-ready .sh-bar .sh-tools .sign-in-pill:not(.signed-in) {
+  width: var(--tap-min, 44px);
+  min-width: var(--tap-min, 44px);
+  padding: 0;
+  justify-content: center;
+}
+html.mn-on.sym-ready .sh-bar .sh-tools .sign-in-pill:not(.signed-in) .sip-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+html.mn-on.sym-ready .sh-bar .sh-tools .sign-in-pill:not(.signed-in)::before {
+  content: "person";
+  font-family: 'Material Symbols Rounded';
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  font-feature-settings: 'liga';
+}
+
+/* A coarse pointer floors every control at 44px (base.css); the band
+   says so too rather than drawing 36px boxes the floor then stretches. */
+@media (pointer: coarse) {
+  html.mn-on .sh-bar .sh-tools .ps-btn,
+  html.mn-on .sh-bar .sh-tools .sign-in-pill,
+  html.mn-on .sh-bar .sh-sync { height: var(--tap-min, 44px); }
+}
+
+/* ---- the bottom bar: the prototype's dock ------------------------
+   Four equal cells, an icon over a label, the current one lifted on
+   the active fill with its icon in violet. Height follows the cells
+   (48px + padding + the safe area); chrome.js measures it as --mab-h. */
+html.mn-on .mobile-actionbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-left: max(var(--s2), var(--safe-left, 0px));
+  padding-right: max(var(--s2), var(--safe-right, 0px));
+  box-shadow: 0 -1px 0 var(--border-hair);
+}
+html.mn-on .mobile-actionbar button,
+html.mn-on .mobile-actionbar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 48px;
+  font-size: var(--t-micro);
+}
+html.mn-on .mobile-actionbar .mab-icon { font-size: 20px; }
+html.mn-on .mobile-actionbar [aria-expanded="true"] .mab-icon,
+html.mn-on .mobile-actionbar [aria-current="page"] .mab-icon { color: var(--brand-deep); }
+html.mn-on .mobile-actionbar [aria-expanded="true"],
+html.mn-on .mobile-actionbar [aria-current="page"] { color: var(--ink); font-weight: 600; }
+
+/* ---- a sheet on a desk ------------------------------------------
+   The same frame opened through the kit (sheet() in src/ui/kit/) at
+   720px and up: centred at a reading width, rounded on top. */
+@media (min-width: 721px) {
+  .mn-overlay { justify-content: center; }
+  html .mn-sheet { max-width: 560px; }
+}
 
 @media print { .mn-overlay { display: none !important; } }

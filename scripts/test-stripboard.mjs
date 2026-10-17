@@ -312,5 +312,30 @@ eq(one.days[0].items.map((x) => x.type === 'scene' ? x.number + '[' + x.cast.joi
 eq(one.unscheduled.map((x) => x.number), ['5'], 'the unscheduled scenes follow');
 eq(Object.keys(one.days[0].items[0]).sort().join(','), 'cast,dayNight,eighths,intExt,number,pages,scene,slug,type', 'each line carries I/E, D/N, slug, pages and cast');
 
+/* ---- the board's derived figures (src/lib/board-stats.js) ------ */
+const B = (await import('../src/lib/board-stats.js')).default;
+eq(B.pace([]), null, 'pace: no shoot day, no figure');
+eq(B.pace([{ shootDay: 1, eighths: 8 }, { shootDay: 1, eighths: 4 }, { shootDay: 2, eighths: 9 }, { shootDay: 0, eighths: 40 }]),
+  { eighths: 21, days: 2, avg: 11 }, 'pace: scheduled pages only, over days in use, rounded eighths');
+eq(B.calendarSpan([{ day: 1, date: '' }]), null, 'span: no dated day, no span (a six-day week is never assumed)');
+eq(B.calendarSpan([{ day: 2, date: '2026-11-10' }, { day: 1, date: '2026-11-02' }, { day: 3, date: '' }]),
+  { first: '2026-11-02', last: '2026-11-10', spanDays: 9, weeks: 2, dated: 2, total: 3 }, 'span: first to last date, inclusive');
+eq(B.calendarSpan([{ day: 1, date: '2026-03-28' }, { day: 2, date: '2026-03-30' }]).spanDays, 3, 'span: counted in UTC days, so a DST change is not a day');
+eq(B.dayOnDate([{ day: 4, date: '2026-10-14' }], '2026-10-14').day, 4, 'today: the day dated today');
+eq(B.dayOnDate([{ day: 4, date: '2026-10-14' }], '2026-10-15'), null, 'today: none when no day is dated today');
+eq(B.dayCall({ crewCall: '06:30' }, [{ generalCall: '07:00' }]), '06:30', 'call: the DPR crew call first');
+eq(B.dayCall({ crewCall: '' }, [{ generalCall: '' }, { generalCall: '07:00' }]), '07:00', 'call: the call sheet second');
+eq(B.dayCall(null, []), '', 'call: neither, nothing shown');
+eq([B.formatHours(null), B.formatHours(0.1), B.formatHours(1.5), B.formatHours(3.26)], ['', '≈ 15m', '≈ 1h 30m', '≈ 3h 15m'], 'hours: quarter-hour estimates');
+eq([B.targetMinutes(110, 95), B.targetMinutes(0, 95), B.targetMinutes(0, 0)], [110, 95, 0], 'target: Reports first, the Edit Log fallback, else none');
+
+/* ---- readiness: an undated day points where dates are set ---- */
+{
+  const R = (await import('../src/lib/readiness.js')).default;
+  seed();
+  const dd = R.readiness().checks.find((c) => c.id === 'day-date');
+  eq(dd && [dd.count, dd.where], [2, 'plan.html#calendar'], 'readiness: undated days link to the Plan’s calendar, the only page that sets a date');
+}
+
 console.log(`test:stripboard — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

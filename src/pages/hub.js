@@ -38,14 +38,13 @@
 // `localStorage.getItem('fms_…')` scopes to the current project.
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
-import { fmtINR } from '../lib/money.js';
 import Store from '../lib/store.js';
 import { mountShell } from '../ui/shell.js';
 import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
 import { wireActionBar } from '../ui/actionbar.js';
 /* The five stages and where the open film is in them — derived, stored
    nowhere. See src/lib/journey.js. */
-import { STAGES, stageOfStep, journey } from '../lib/journey.js';
+import { journey } from '../lib/journey.js';
 import { renderJourneyStrip } from '../ui/journey-strip.js';
 
 import '../styles/base.css';
@@ -62,17 +61,9 @@ import '../styles/hub-projects.css';
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
-import { h, esc, delegate, coalesce } from '../lib/dom.js';
+import { h, delegate, coalesce } from '../lib/dom.js';
 import { reveal, spotlight } from '../lib/motion.js';
 
-import featureData from '../data/steps.feature.json';
-import shortData   from '../data/steps.short.json';
-import films       from '../data/films.json';
-import directors   from '../data/directors.json';
-import rules       from '../data/rules.json';
-import watchlist   from '../data/watchlist.json';
-import festivals   from '../data/festivals.json';
-import prodData    from '../data/steps.production.json';
 import { DEFAULT_SAMPLE, sampleById, isSampleTitle } from '../lib/samples.js';
 /* The plan's say over the hub (schema section 18 `features`, read by
    src/lib/plan-gate.js): `sample_only` shows the Dragon sample and no
@@ -83,11 +74,17 @@ import PlanGate    from '../lib/plan-gate.js';
 
 /* The sample project writes through the same models every page reads,
    so the ids and key shapes it produces cannot drift from the ones the
-   app expects. `formatEighths` and `locationKey` are imported rather
-   than re-implemented for that reason — a second copy of either is a
-   second representation, and CLAUDE.md is explicit about the cost. */
-import { formatEighths } from '../lib/scenes.js';
-import { locationKey, locationLink } from '../lib/locations.js';
+   app expects: the builders and the writer are src/lib/hub-sample.js,
+   which imports `formatEighths` and `locationKey` rather than
+   re-implementing them — a second copy of either is a second
+   representation, and CLAUDE.md is explicit about the cost. */
+import { sampleScenes, applyStoryBeats, sampleContacts, writeSampleData, sampleDays, samplePages } from '../lib/hub-sample.js';
+/* The page's derivations (the step lists, the greeting, the activity
+   diff, the project copy) are src/lib/hub-model.js; the activity log is
+   src/lib/hub-activity.js (docs/ARCHITECTURE.md: the view asks the
+   logic, which owns the keys). */
+import { FEATURE_STEPS, SHORT_STEPS, greetingHTML, detectActivity as diffActivity, copyProjectData, byRecent } from '../lib/hub-model.js';
+import { logActivity } from '../lib/hub-activity.js';
 
 /* THE SPLIT (7 Oct 2026). hub.js was 2,600 lines; four views moved to
    src/pages/hub/ with their behaviour byte for byte — the first-run
@@ -98,15 +95,14 @@ import { locationKey, locationLink } from '../lib/locations.js';
    here because it is the RESET list (CLAUDE.md). */
 import {
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
-  FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL,
-  FORMAT_LABELS, plain, clip, title, parseStorage, relTime, fmtRelDate, $
+  FORMAT_LABELS, fmtRelDate, $
 } from './hub/util.js';
-import { ALL_KEYS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY } from './hub/all-keys.js';
+import { ALL_KEYS } from './hub/all-keys.js';
 import { ask, tell } from '../ui/dialog.js';
 import { pageHeader, button } from '../ui/kit/index.js';
 import { createResumeCards } from './hub/resume-cards.js';
 import { shelvesMarkup } from './hub/shelves.js';
-import { sampleDays, samplePages, welcomeCard } from './hub/first-run.js';
+import { welcomeCard } from './hub/first-run.js';
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
   setProjectFilter, setProjectSearch, setProjectSort,
@@ -133,93 +129,11 @@ import {
    belongs to this page. */
 
 // ============================================================
-// PAGES — the new filenames, and a map off the old ones.
+// PAGES, DATA, ANCHORS, MASTER INDEX — src/lib/hub-model.js.
+// Activity rows saved by the legacy hub point at the old files and are
+// remapped there (rewriteUrl); the step lists the resume cards read
+// (FEATURE_STEPS, SHORT_STEPS) are flattened there, once.
 // ============================================================
-
-const RENAMED = {
-  'arunak-filmmaker-blueprint.html': FEATURE_URL,
-  'arunak-shortfilm-blueprint.html': SHORT_URL,
-  'arunak-filmmaker-library.html':   LIBRARY_URL
-};
-
-/** Activity rows saved by the legacy hub point at the old files. */
-function rewriteUrl(url) {
-  if (!url) return url;
-  for (const [oldName, newName] of Object.entries(RENAMED)) {
-    if (url.startsWith(oldName)) return newName + url.slice(oldName.length);
-  }
-  return url;
-}
-
-// ============================================================
-// DATA — flattened once, read by search, index and stats.
-// ============================================================
-/* All four phases. This was vol1+vol2 and stayed that way when
-   Production and Post-production were added, which quietly left eight
-   steps out of the search index, out of the step count on the cover
-   and out of the door tag — findable only by scrolling. */
-const FEATURE_STEPS = [
-  ...featureData.vol1, ...featureData.vol2,
-  ...prodData.production, ...prodData.post
-];
-/* The five stages, not the four 2023 phases. A step's stage comes from
-   journey.js (the steps.stages.json sidecar when present), so the search
-   snippet, the master index and the journey strip all file step 11 under
-   Screenplay rather than three of them under Story. */
-const PHASE_NAME = Object.fromEntries(STAGES.map((s) => [s.id, s.label]));
-const stageName = (ns, step) => PHASE_NAME[stageOfStep(ns, step.id)] || 'Story';
-const SHORT_STEPS   = shortData.steps;
-
-
-const WATCH_FILMS = watchlist.reduce((n, w) => n + (w.films ? w.films.length : 0), 0);
-
-
-
-// ------------------------------------------------------------
-// ANCHORS — the only hand-kept links left. These are page
-// sections with no row in src/data behind them; everything else
-// on this page is generated from the JSON.
-// ------------------------------------------------------------
-const ANCHORS = {
-  feature: [
-    { label: 'Treatment Ladder', hash: '#treatment-ladder', snippet: 'Logline → synopsis → one-pager → treatment → step outline' },
-    { label: 'Auto Pitch Deck',  hash: '#pitch-deck',       snippet: '10 slides built from your blueprint data — exports as .pptx' },
-    { label: 'Sync & backup',    hash: '#sync-section',     snippet: 'Keep your blueprint in step across devices' },
-    { label: 'Full Glossary',    hash: '#glossary',         snippet: 'Camera, lens, lighting, sound and post-production terms' }
-  ],
-  shorts: [
-    { label: 'Fountain Export',      hash: '#step-08', snippet: 'Plain-text screenplay — Final Draft, Highland, WriterDuet' },
-    { label: 'AI Prompt Generator',  hash: '#step-08', snippet: 'Build prompts for scene, dialogue or feedback' },
-    { label: 'Glossary (Shorts)',    hash: '#glossary', snippet: 'Screenplay, production, festival and craft terms' }
-  ],
-  library: [
-    { label: `${films.length} Films Analyzed`,     hash: '#films',     num: 'I',   snippet: 'One extractable lesson per film' },
-    { label: `${directors.length} Director Archetypes`, hash: '#directors', num: 'II',  snippet: 'Ten voices to study as schools of filmmaking' },
-    { label: `${rules.length} Rules of Thumb`,     hash: '#rules',     num: 'III', snippet: 'Craft maxims, attributed where the source is known' },
-    { label: 'Equipment Calculator',               hash: '', href: 'budget.html#estimate', num: 'IV',  snippet: 'Build a kit on the Budget page — Chennai 2024-25 rate ranges, a daily total' },
-    { label: `${WATCH_FILMS}-Film Watch List`,     hash: '#watch',     num: 'V',   snippet: 'Three films to study per blueprint step' }
-  ]
-};
-
-// ------------------------------------------------------------
-// MASTER INDEX — same source, grouped for the page.
-// Both blueprints are grouped by the five STAGES, one part each,
-// with the step → stage mapping read from journey.js (which reads
-// the steps.stages.json sidecar) — not from step ranges typed here.
-// A stage a blueprint has no step in (the short has no Production
-// step) simply has no group.
-// ------------------------------------------------------------
-function stageParts(ns, steps) {
-  return STAGES.map((st) => ({
-    stage: st,
-    label: 'PART ' + st.part + ' · ' + st.label.toUpperCase(),
-    steps: steps.filter((s) => stageOfStep(ns, s.id) === st.id)
-  })).filter((p) => p.steps.length);
-}
-const FEATURE_PARTS = stageParts('feature', FEATURE_STEPS);
-const SHORT_PARTS = stageParts('short', SHORT_STEPS);
-
-
 
 // ============================================================
 // MARKUP
@@ -374,19 +288,7 @@ function render() {
 function renderGreeting() {
   const el = document.getElementById('hubGreeting');
   if (!el) return;
-  const projects = Store.listProjects();
-  const cur = Store.currentProject();
-  const hour = new Date().getHours();
-  const greet = hour < 5 ? 'Working late' : hour < 12 ? 'Good morning'
-              : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : 'Working late';
-  if (projects.length === 0) {
-    el.innerHTML = greet + '. <strong>The desk is empty</strong> — what are we making?';
-  } else if (cur) {
-    el.innerHTML = greet + '. Active project: <strong>' + esc(cur.title) + '</strong> · ' + projects.length + ' total.';
-  } else {
-    el.innerHTML = greet + '. <strong>' + projects.length + ' project' + (projects.length === 1 ? '' : 's') +
-                   ' on the desk.</strong> Pick one to keep working.';
-  }
+  el.innerHTML = greetingHTML(new Date().getHours(), Store.listProjects(), Store.currentProject());
 }
 
 // ============================================================
@@ -408,70 +310,15 @@ const { updateStatus, computeFeatureStatus, computeShortStatus, computeLibrarySt
 // ============================================================
 // ACTIVITY LOG
 // ============================================================
-const ACTIVITY_LIMIT = 30;
-
-/* The newest "Exported full studio backup" line is how the Backup menu
-   (src/ui/topbar-backup.js) knows when you last backed up. The log holds
-   thirty lines, so a backup followed by thirty edits would otherwise fall
-   off the end and the menu would claim you had never made one. The newest
-   backup line is kept past the cap; it is one line, and it is a fact. */
-function capLog(arr) {
-  const kept = arr.slice(0, ACTIVITY_LIMIT);
-  const isBackup = (e) => e && /^Exported full studio backup/.test(String(e.what || ''));
-  if (!kept.some(isBackup)) {
-    const old = arr.slice(ACTIVITY_LIMIT).find(isBackup);
-    if (old) kept.push(old);
-  }
-  return kept;
-}
-
-function logActivity(where, what, url) {
-  const log = parseStorage(ACTIVITY_KEY);
-  const arr = Array.isArray(log.entries) ? log.entries : [];
-  arr.unshift({ ts: Date.now(), where, what, url });
-  log.entries = capLog(arr);
-  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
-}
-
+/* The log itself — the key, the thirty-line cap that keeps the newest
+   backup line, the write — is src/lib/hub-activity.js (logActivity);
+   the diff against the last snapshot is src/lib/hub-model.js. */
 function detectActivity() {
-  const log  = parseStorage(ACTIVITY_KEY);
-  const last = log.lastSnap || {};
-  const f = resume.lastStatus().f || computeFeatureStatus();
-  const s = resume.lastStatus().s || computeShortStatus();
-  const l = resume.lastStatus().l || computeLibraryStatus();
-  const now = {
-    fp: f.pct, ft: f.title, fs: f.lastEditedStep,
-    sp: s.pct, st: s.title, ss: s.lastEditedStep,
-    lc: l.count, lt: l.total
-  };
-  const arr = Array.isArray(log.entries) ? log.entries : [];
-
-  if (last.fp !== undefined) {
-    if (now.ft && now.ft !== last.ft) {
-      arr.unshift({ ts: Date.now(), where: 'feat', what: 'Feature title set: "' + now.ft + '"', url: DASHBOARD_URL });
-    }
-    if (now.fp > (last.fp || 0)) {
-      arr.unshift({ ts: Date.now(), where: 'feat',
-        what: 'Feature progress: ' + (last.fp || 0) + '% → ' + now.fp + '%' + (now.fs ? ' (' + now.fs + ')' : ''),
-        url: DASHBOARD_URL });
-    }
-    if (now.st && now.st !== last.st) {
-      arr.unshift({ ts: Date.now(), where: 'short', what: 'Short title set: "' + now.st + '"', url: DASHBOARD_URL });
-    }
-    if (now.sp > (last.sp || 0)) {
-      arr.unshift({ ts: Date.now(), where: 'short',
-        what: 'Short progress: ' + (last.sp || 0) + '% → ' + now.sp + '%' + (now.ss ? ' (' + now.ss + ')' : ''),
-        url: DASHBOARD_URL });
-    }
-    if (now.lc > (last.lc || 0)) {
-      arr.unshift({ ts: Date.now(), where: 'lib',
-        what: 'Equipment list: ' + (last.lc || 0) + ' → ' + now.lc + ' items (' + fmtINR(now.lt) + ')',
-        url: 'budget.html#estimate' });
-    }
-  }
-  log.entries = capLog(arr);
-  log.lastSnap = now;
-  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
+  diffActivity({
+    f: resume.lastStatus().f || computeFeatureStatus(),
+    s: resume.lastStatus().s || computeShortStatus(),
+    l: resume.lastStatus().l || computeLibraryStatus()
+  });
 }
 
 // ============================================================
@@ -498,184 +345,11 @@ function detectActivity() {
    visualize, write, plan, budget and dashboard all have something
    real to render.
 
-   THE CONTENT IS NOT HERE. It is src/data/sample.dragon.json —
-   invariant 2, content lives in the data files. This function is the
-   only thing that knows how to WRITE it, and it writes through the
-   same key shapes the app reads back:
-
-     fms_filmmaker_combined_v1   the blueprint blob, field → value
-     fms_scenes_v1               { scenes: [...] }        scenes.js
-     fms_contacts_v1             { contacts, callSheets } contacts.js
-     fms_locations_v1            { days, recces, media }  locations.js
-     fms_shots_v1                { shots, frames, boards } shots.js
-     fms_script_v1               { elements, revisions, documents }
-     fms_library_calc_v1         ci_<n>_item|days|rate    ui/budget.js
-
-   Every one of those is in SCOPED_KEYS, and createProject() has
-   already made the new project current, so the storage proxy suffixes
-   all seven writes with its id. Nothing here goes near rawSet.
-
-   ONE REPRESENTATION PER THING. Scene ids are DERIVED from the scene
-   number; the data file refers to a scene by number and never writes
-   an id. Shoot days, locations, cast, page counts and a call sheet's
-   date are likewise never listed in the file — they are what the
-   scene rows and the calendar already say. The blueprint's own legacy
-   scene/cast/location tables (sl_*, cast_*, loc_*) are left empty on
-   purpose: filling them would be the scene list stored twice, which
-   is the stranded-key trap by another name.
+   THE CONTENT IS src/data/sample.dragon.json and the only thing that
+   knows how to WRITE it is src/lib/hub-sample.js (its header lists
+   the seven keys and why nothing goes near rawSet). This page decides
+   when, creates the project, and says so.
    ------------------------------------------------------------ */
-
-/* Every builder below takes the sample object from src/lib/samples.js
-   and prefixes its ids with the sample's own id, so Dragon's stay
-   dragon-sc-<n> byte for byte and a second sample cannot collide. */
-const sampleSceneId   = (sample, number) => sample.id + '-sc-' + String(number);
-const sampleContactId = (sample, i)      => sample.id + '-c-' + (i + 1);
-const sampleShotId    = (sample, scene, number) => sample.id + '-sh-' + scene + '-' + number;
-
-/** Pages per day as the schedule step's <select> words it. Assigning a
-    value that is not one of its options silently blanks the field —
-    the select trap src/ui/budget.js documents — so this maps the
-    derived figure onto the vocabulary that exists. */
-const PAGES_PER_DAY_BANDS = [
-  [1.5, '~1 page (heavy production)'],
-  [2.5, '~2 pages (standard prestige)'],
-  [3.5, '~3 pages (mainstream)'],
-  [4.5, '~4 pages (TV / fast-paced)'],
-  [Infinity, '~5+ pages (indie / low-budget)']
-];
-
-function sampleScenes(sample) {
-  return sample.data.scenes.map((s) => ({ ...s, id: sampleSceneId(sample, s.number) }));
-}
-
-/** The blueprint blob: the written answers, the ticked checklists, and
-    the four figures that are DERIVED from the schedule rather than
-    typed beside it, so the paperwork cannot disagree with the board. */
-function sampleBlueprint(sample, scenes) {
-  const fields = { ...sample.data.blueprint };
-  fields.meta_title = sample.title;
-  fields.v1_title   = sample.title;
-
-  const days = sampleDays(sample.data);
-  const eighths = scenes.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
-  const perDay = days ? (eighths / 8) / days : 0;
-
-  fields.p3_days     = String(days);
-  fields.v2s11_days  = String(days);
-  fields.v2s11_pages = (PAGES_PER_DAY_BANDS.find(([max]) => perDay < max) || [])[1] || '';
-  fields.v2_shoot    = days + ' days · ' + formatEighths(eighths) + ' pages';
-
-  for (const key of sample.data.blueprintChecks) fields[key] = true;
-  return fields;
-}
-
-function sampleContacts(sample) {
-  return sample.data.contacts.map((c, i) => ({ ...c, id: sampleContactId(sample, i) }));
-}
-
-/** A call sheet holds ids, never copies — contacts.js is explicit
-    about it — and its date comes off the shoot-day calendar rather
-    than being written down a second time. */
-function sampleCallSheets(sample, contacts) {
-  const idByName = new Map(contacts.map((c) => [c.name, c.id]));
-  return sample.data.callSheets.map((cs, i) => ({
-    id: sample.id + '-cs-' + (i + 1),
-    title: cs.title,
-    date: sample.data.days[String(cs.day)] || '',
-    generalCall: cs.generalCall,
-    location: cs.location,
-    notes: cs.notes,
-    sceneIds: (cs.sceneNumbers || []).map((n) => sampleSceneId(sample, n)),
-    calls: Object.fromEntries(Object.entries(cs.calls || {})
-      .map(([name, time]) => [idByName.get(name), time])
-      .filter(([id]) => Boolean(id)))
-  }));
-}
-
-/** Recces are filed under locations.js's normalised key and media
-    under its `loc:` link token, both derived from the location name a
-    scene already carries. */
-function sampleLocations(sample) {
-  const recces = {};
-  for (const [name, rec] of Object.entries(sample.data.recces)) recces[locationKey(name)] = rec;
-  return {
-    days: { ...sample.data.days },
-    recces,
-    media: sample.data.media.map((m, i) => ({
-      id: sample.id + '-md-' + (i + 1),
-      title: m.title,
-      url: m.url || '',
-      kind: m.kind,
-      notes: m.notes || '',
-      linkedTo: m.linkedTo ? locationLink(m.linkedTo) : ''
-    }))
-  };
-}
-
-function sampleShots(sample) {
-  const shots = sample.data.shots.map((s) => ({
-    id: sampleShotId(sample, s.scene, s.number),
-    sceneId: sampleSceneId(sample, s.scene),
-    number: s.number,
-    size: s.size,
-    angle: s.angle,
-    movement: s.movement,
-    lens: s.lens,
-    description: s.description,
-    done: false,
-    ai: false
-  }));
-  const frames = sample.data.frames.map((f, i) => ({
-    id: sample.id + '-fr-' + (i + 1),
-    shotId: sampleShotId(sample, f.scene, f.shotNumber),
-    caption: f.caption,
-    ref: f.ref
-  }));
-  const boards = sample.data.boards.map((b, i) => ({
-    id: sample.id + '-bd-' + (i + 1),
-    name: b.name,
-    note: b.note || '',
-    entries: (b.entries || []).map((e, j) => ({
-      id: sample.id + '-bd-' + (i + 1) + '-en-' + (j + 1),
-      title: e.title, ref: e.ref || '', why: e.why || ''
-    }))
-  }));
-  return { shots, frames, boards };
-}
-
-/* `elements` is passed in rather than read off `sample`, because the
-   105 pages live in their own file and arrive by dynamic import — see
-   openSampleProject(). An empty array is a legitimate argument: the
-   project is still worth having without the screenplay. */
-function sampleScript(sample, elements) {
-  const now = new Date().toISOString();
-  return {
-    elements: (elements || []).map((e, i) => ({
-      id: sample.id + '-el-' + (i + 1), type: e.type, text: e.text
-    })),
-    // No revision history: a snapshot the user did not take is a
-    // fiction, and restoring one would silently replace their draft.
-    revisions: [],
-    documents: sample.data.script.documents.map((d, i) => ({
-      id: sample.id + '-doc-' + (i + 1),
-      title: d.title, kind: d.kind, body: d.body, updated: now
-    }))
-  };
-}
-
-/** The estimator stores one flat field per cell, `ci_<n>_item|days|rate`,
-    1-indexed. Unchanged shape on purpose — invariant 1. */
-function sampleCalc(sample) {
-  const data = {};
-  sample.data.calc.forEach((row, i) => {
-    const n = i + 1;
-    data['ci_' + n + '_item']   = row.item;
-    data['ci_' + n + '_custom'] = '';
-    data['ci_' + n + '_days']   = row.days;
-    data['ci_' + n + '_rate']   = row.rate;
-  });
-  return data;
-}
 
 /* THE SCREENPLAY IS A LAZY CHUNK, and the await happens before the
    first write rather than beside it.
@@ -779,20 +453,9 @@ async function openSampleProject(id = DEFAULT_SAMPLE) {
   // storage proxy scopes every write below to it.
   const scenes   = sampleScenes(sample);
   // Each scene takes the beat of the outline step written for it.
-  if (story) for (const st of story.outline) { const sc = scenes.find((x) => x.id === st.sceneId); if (sc && !sc.beatId) sc.beatId = st.beat; }
+  applyStoryBeats(scenes, story);
   const contacts = sampleContacts(sample);
-  try {
-    localStorage.setItem(FEATURE_KEY,  JSON.stringify(sampleBlueprint(sample, scenes)));
-    localStorage.setItem(SCENES_KEY,   JSON.stringify({ scenes }));
-    localStorage.setItem(CONTACTS_KEY, JSON.stringify({
-      contacts, callSheets: sampleCallSheets(sample, contacts)
-    }));
-    localStorage.setItem(LOCS_KEY,     JSON.stringify(sampleLocations(sample)));
-    localStorage.setItem(SHOTS_KEY,    JSON.stringify(sampleShots(sample)));
-    localStorage.setItem(SCRIPT_KEY,   JSON.stringify(sampleScript(sample, pages)));
-    localStorage.setItem(LIB_CALC_KEY, JSON.stringify(sampleCalc(sample)));
-    if (story) localStorage.setItem('fms_story_v1', JSON.stringify(story));
-  } catch (e) { /* private mode — the project itself still exists */ }
+  writeSampleData(sample, { scenes, contacts, pages, story });
   Store.notify('projects:changed', { reason: 'sample', project });
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast(
@@ -849,11 +512,10 @@ function refocusProjectControl(action, id) {
 function duplicateProject(id) {
   const p = Store.getProject(id);
   if (!p) return;
-  const copy = Store.createProject({ title: p.title + ' (copy)', format: p.format });
-  Store.SCOPED_KEYS.forEach(k => {
-    const v = Store.rawGet(k + '__' + id);
-    if (v) Store.rawSet(k + '__' + copy.id, v);
-  });
+  /* The favourite film and the subtitle ride on the project ENTRY, not
+     in any scoped blob, so the key loop below cannot carry them. */
+  const copy = Store.createProject({ title: p.title + ' (copy)', format: p.format, fav: p.fav, subtitle: p.subtitle });
+  copyProjectData(id, copy.id);
   Store.updateProject(copy.id, { title: copy.title });
   StudioUI.toastSuccess('Project duplicated.');
   renderProjects();
@@ -879,8 +541,7 @@ function renderProjectSwitcher() {
   }
 
   dd.textContent = '';
-  projects.slice()
-    .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+  byRecent(projects)
     .forEach(p => {
       dd.append(h('div', {
         class: 'sd-item' + (current && p.id === current.id ? ' active' : ''),

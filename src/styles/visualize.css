@@ -31,6 +31,11 @@
 .vz-look { padding-bottom: var(--s9); }
 
 .vz-head .vz-stats { grid-column: 1 / -1; margin-top: var(--s4); }
+/* kit.css starts every extra child of a .bd-head (`justify-self:
+   start`), which shrank the stat strip to one 140px column at 1280.
+   The strip is the full head's width; five matching selectors beat
+   that rule's four wherever either sheet loads. */
+.bd-head.vz-head.k-page-head > .vz-stats.k-stat-strip { justify-self: stretch; }
 
 .vz-add,
 .vz-add-frame { justify-self: start; }
@@ -242,6 +247,46 @@
   color: var(--ink-muted);
 }
 .vz-frame-acts { display: flex; justify-content: flex-end; margin-top: var(--s1); }
+
+/* A drawn frame: the picture fills the slate, the shot's marks sit on
+   top of it. The picture comes from the writer's Drive (drive-image.js);
+   until it does, or with no Drive token, the slate holds words and a
+   Reconnect control — never a broken image. */
+.vz-frame-slate:has(.vz-frame-pic.is-loaded) { padding: 0; border-style: solid; border-color: var(--border-hair); }
+.vz-frame-slate:has(.vz-frame-pic) > .k-mono { z-index: 1; }
+.drv-img { display: grid; gap: var(--s2); justify-items: center; }
+.drv-img.is-loaded { position: absolute; inset: 0; display: block; }
+.drv-img-pic { display: block; width: 100%; height: 100%; object-fit: cover; }
+.drv-img-note {
+  margin: 0;
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* Draw frames with AI: the pill (or why it cannot run), a real count,
+   and what happens to the pictures. One block on every width. */
+.vz-draw {
+  display: grid;
+  gap: var(--s2);
+  margin: 0 0 var(--s5);
+  padding: var(--s3) var(--s4);
+}
+.vz-draw-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.vz-draw-count {
+  margin-inline-start: auto;
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.vz-draw-why { color: var(--ink-body); font-size: var(--t-small); }
+.vz-draw-note { margin: 0; font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-muted); }
+@media (max-width: 719px) {
+  .vz-draw { padding: var(--s3); }
+  .vz-draw-count { margin-inline-start: 0; flex-basis: 100%; }
+  .vz-draw-acts .k-btn, .vz-draw-acts .ai-pill { min-height: 44px; }
+}
 
 /* ------------------------------------------------------------
    3. THE LOOKBOOK — named boards of references
@@ -627,4 +672,193 @@
   .vz-sb { display: block; }
   .vz-sb-col { break-inside: avoid; margin-bottom: var(--s4); }
   .vz-sb-map { break-inside: avoid; }
+}
+
+/* ============================================================
+   9. THE PHONE PASS (14 Oct 2026) — one page, one feature set;
+   below 720px only the placement changes (docs/DESIGN-KIT.md).
+   ------------------------------------------------------------
+   §1b THE COVERAGE TABLE AS CARDS. The same <table>, the same cells
+   and the same fields as on a desk: below 720px each row is a card —
+   setup number and status on top, then size and angle, the move, the
+   lens and rig, and what we see — each labelled from its column head
+   (data-label, set by visualize.js). Nothing is drawn twice. Screen
+   only: on paper the table prints as a table.
+   ============================================================ */
+
+/* The coverage view controls in the tools row. */
+.vz-cov-compact[aria-pressed="true"] {
+  background: var(--brand-wash);
+  border-color: var(--border-focus);
+  color: var(--ink);
+}
+.vz-filter-none {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+}
+
+/* COMPACT, at every width: the setup, size, move, lens and status. The
+   angle, the rig, the camera and the description stay in the record
+   and come back with one press. */
+.vz-shots.is-compact .vz-cov .vz-c-desc,
+.vz-shots.is-compact .vz-cov .vz-c-size .k-control + .k-control,
+.vz-shots.is-compact .vz-cov .vz-c-lens .k-control + .k-control { display: none; }
+
+/* The scene card's stripboard day and its completed-setups meter. */
+.vz-scene-day {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.vz-scene-day a { color: var(--brand-deep); text-decoration: underline; text-underline-offset: 2px; }
+.vz-scene-progress { padding: var(--s3) var(--s4) 0; }
+.vz-scene-meter .k-meter-row {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+
+/* The board card's move, as a chip beside the spec. */
+.vz-shotcol-move {
+  padding: var(--s-half) var(--s1h);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+/* "View all" is the phone's answer to a sideways row; a desk grid shows
+   every card already. */
+.vz-board-all { display: none; }
+
+/* BLOCKING: the zoom row, the focused map, and the pan. */
+.vz-blk-view { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.vz-blk-zoomread {
+  min-width: 3.5ch;
+  font-size: var(--t-micro);
+  color: var(--ink-body);
+  font-variant-numeric: tabular-nums;
+}
+.vz-blk-viewhint {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.vz-map.is-editable:focus-visible { outline: var(--focus); outline-offset: 2px; }
+.vz-map.is-zoomed { touch-action: none; cursor: grab; }
+.vz-map.is-zoomed:active { cursor: grabbing; }
+/* The thumb-sized target under each mark: unpainted, and only where
+   the pointer is a finger — a mouse picks the mark it is on. */
+.vz-mk-hit { fill: transparent; stroke: none; }
+@media (pointer: fine) { .vz-mk-hit { display: none; } }
+
+@media screen and (max-width: 720px) {
+  .vz-scroll-hint { display: none; }
+
+  .vz-tools { padding: var(--s2) var(--s3); gap: var(--s2); }
+  .vz-tools-lab { flex-basis: 100%; }
+  .vz-tools .vz-tools-gap { display: none; }
+  .vz-cov-filter { flex: 1 1 100%; }
+
+  .vz-scene .vz-table-wrap:has(> .vz-cov) { overflow: visible; }
+  .vz-cov,
+  .vz-cov tbody { display: block; width: 100%; }
+  .vz-cov thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .vz-cov tr.vz-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "no   done"
+      "size size"
+      "move move"
+      "lens lens"
+      "desc desc";
+    gap: var(--s3);
+    padding: var(--s3) var(--s3) var(--s4);
+    border-top: 1px solid var(--border-hair);
+  }
+  .vz-cov tbody tr.vz-row:first-child { border-top: 0; }
+  .vz-cov tr.vz-row.is-done { box-shadow: inset var(--sk-hue-rule-w) 0 0 var(--status-success); }
+  .vz-cov tbody tr:hover td { background: none; }
+  .vz-table.vz-cov td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .vz-cov td.vz-c-no { grid-area: no; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+  .vz-cov td .k-control { width: 100%; min-width: 0; }
+  .vz-cov td.vz-c-no .k-control { width: 5.5rem; }
+  .vz-cov td.vz-c-no .vz-ai-tag { margin-top: 0; }
+  .vz-cov td.vz-c-done { grid-area: done; }
+  .vz-cov .vz-done-stack { justify-items: end; }
+  .vz-cov .vz-status { min-height: var(--tap-min); }
+  .vz-cov td.vz-c-size { grid-area: size; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2); }
+  .vz-cov td.vz-c-move { grid-area: move; }
+  .vz-cov td.vz-c-lens { grid-area: lens; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2); }
+  .vz-cov td.vz-c-lens .k-control:nth-of-type(3) { grid-column: 1 / -1; }
+  .vz-cov td.vz-c-desc { grid-area: desc; }
+  .vz-cov .vz-c-size .k-control + .k-control,
+  .vz-cov .vz-c-lens .k-control + .k-control { margin-top: 0; }
+  /* A card's fields are thumb-high: this table stacked, so the kit's
+     dense in-table height does not apply. */
+  .vz-cov .k-control--cell:not(.k-control--textarea) { height: var(--tap-min); }
+  .vz-cov td[data-label]:not(.vz-c-no)::before {
+    content: attr(data-label);
+    display: block;
+    grid-column: 1 / -1;
+    margin-bottom: var(--s1);
+    font-family: var(--f-mono);
+    font-size: var(--t-micro);
+    font-weight: 500;
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .vz-shots.is-compact .vz-cov tr.vz-row {
+    grid-template-areas:
+      "no   done"
+      "size move"
+      "lens lens";
+  }
+  .vz-shots.is-compact .vz-cov td.vz-c-size,
+  .vz-shots.is-compact .vz-cov td.vz-c-lens { grid-template-columns: minmax(0, 1fr); }
+  .vz-shots.is-compact .vz-cov td.vz-c-lens .k-control:first-child { max-width: 50%; }
+
+  .vz-scene-progress { padding: var(--s2) var(--s3) 0; }
+
+  /* THE BOARD: a scene's shots as one sideways row of cards, snapping
+     a card at a time, with the next card's edge showing so the row
+     reads as a row. "View all" stacks them. */
+  .vz-board-all { display: inline-flex; margin-left: auto; }
+  .vz-strip:not(.is-open) {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--s3);
+    padding-bottom: var(--s3);
+  }
+  .vz-strip:not(.is-open) > .vz-shotcol { flex: 0 0 86%; scroll-snap-align: start; }
+  .vz-strip.is-open { grid-template-columns: minmax(0, 1fr); }
+
+  .vz-blk-viewhint { flex-basis: 100%; }
 }

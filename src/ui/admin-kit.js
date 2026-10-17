@@ -39,43 +39,27 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import { absTime, relTime } from '../lib/admin-format.js';
+import { readAdminDensity, saveAdminDensity } from '../lib/admin-prefs.js';
 
-const DENSITY_KEY = 'fms_admin_density_v1';
 const isEl = (v) => v instanceof Node;
 const arr = (v) => (v == null ? [] : [].concat(v));
 
 /* ---- time -------------------------------------------------------- */
 
-export function absTime(ts) {
-  if (!ts) return '';
-  const d = new Date(ts);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-}
-export function relTime(ts, now = Date.now()) {
-  if (!ts) return '—';
-  const t = new Date(ts).getTime();
-  if (Number.isNaN(t)) return '—';
-  const s = Math.round((now - t) / 1000);
-  const f = s < 0 ? 'in ' : '';
-  const a = Math.abs(s);
-  const sfx = s < 0 ? '' : ' ago';
-  if (a < 45) return s < 0 ? 'in a moment' : 'just now';
-  if (a < 3600) return `${f}${Math.round(a / 60)}m${sfx}`;
-  if (a < 86400) return `${f}${Math.round(a / 3600)}h${sfx}`;
-  if (a < 86400 * 30) return `${f}${Math.round(a / 86400)}d${sfx}`;
-  return new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' });
-}
+/* absTime / relTime are pure and live in src/lib/admin-format.js; the kit
+   re-exports them so every tab keeps importing them from here. */
+export { absTime, relTime };
 /** A relative time that carries its absolute time in title=. */
 const when = (ts) => h('time.ad-when', { datetime: ts ? new Date(ts).toISOString() : null, title: absTime(ts), text: relTime(ts) });
 
 /* ---- density: the one UI preference ------------------------------ */
 
-let density = 'comfortable';
-try { if (localStorage.getItem(DENSITY_KEY) === 'compact') density = 'compact'; } catch (e) { /* storage may throw */ }
+let density = readAdminDensity();
 export const getDensity = () => density;
 export function setDensity(d) {
   density = d === 'compact' ? 'compact' : 'comfortable';
-  try { localStorage.setItem(DENSITY_KEY, density); } catch (e) { /* private window: the toggle still works for this page */ }
+  saveAdminDensity(density);   /* private window: the toggle still works for this page */
   applyDensity();
 }
 function applyDensity() {

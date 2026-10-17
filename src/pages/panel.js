@@ -40,10 +40,11 @@ import { BRAND } from '../lib/brand.js';
 import Store from '../lib/store.js';
 import { moduleGroups, hueClassOf } from '../lib/navmodel.js';
 import { formatCode, normaliseCode } from '../lib/gate.js';
-import { inExtension, onSessionLost, onClipQueued, CLIP_QUEUE_KEY } from '../lib/extension-bridge.js';
+import { inExtension, onSessionLost, onClipQueued } from '../lib/extension-bridge.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
-import Billing from '../lib/billing.js';
-import matrix from '../data/plan-matrix.json';
+import {
+  queuedClipCount, connect, extensionAllowed, extensionPlansSentence, clipSentence, sessionLostSentence, MODES
+} from '../lib/panel-model.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud;
@@ -123,42 +124,21 @@ function renderLost() {
 }
 
 /* FR-401/402: five stages, no feed, no adverts. Story and Screenplay
-   open onto their three ways in; the other three list their modules,
-   all of which are live (the app kept every built module when the six
-   phases became five). */
-const MODES = {
-  story: [
-    ['Sample', 'The sample synopsis, ready to tag.', 'story.html?start=sample'],
-    ['New', 'A blank synopsis and a beat framework.', 'story.html?start=new'],
-    ['Import', '.docx, .pdf or .txt — or drag it onto the page.', 'story.html?start=import']
-  ],
-  screenplay: [
-    ['Sample', 'Open the sample project, a whole feature filled in.', 'index.html?sample=1'],
-    ['New', 'A blank screenplay.', 'screenplay.html'],
-    ['Import', 'Fountain, Final Draft (.fdx), PDF or plain text.', 'screenplay.html#import']
-  ]
-};
+   open onto their three ways in (MODES, panel-model.js); the other three
+   list their modules, all of which are live (the app kept every built
+   module when the six phases became five).
 
-/* The plan's say over the extension (schema section 16: limits.extension).
-   A client-side gate, and labelled as one in the schema's header: the
-   server cannot tell an extension's request from a page's, so what this
-   buys is an honest panel, not an enforced one. Unknown (section 16 not
-   run, or the status call failed) means allowed. */
-/* Which plans include it: the `extension` row of src/data/plan-matrix.json. */
-const EXT_PLANS = ((matrix.features.find((f) => f.key === 'extension') || {}).plans || []).filter((id) => id !== 'free');
+   The plan's say over the extension is extensionAllowed() — a
+   client-side gate, honest rather than enforced; unknown means allowed. */
 let extAllowed = null;
 async function checkPlan() {
-  try {
-    const st = await Billing.status();
-    extAllowed = !st || !st.limits || st.limits.extension !== false;
-  } catch (e) { extAllowed = true; }
+  extAllowed = await extensionAllowed();
   render();
 }
 
 function renderNoExtension() {
   const main = h('main#main.pn-main');
-  main.append(head('Your plan', 'The extension is not in your plan.',
-    'Your plan covers the website and local work. ' + EXT_PLANS.map(Billing.planName).join(', ').replace(/, ([^,]*)$/, ' and $1') + (EXT_PLANS.length > 1 ? ' include' : ' includes') + ' the Chrome extension \u2014 the side panel, the web clipper and the device lock.'));
+  main.append(head('Your plan', 'The extension is not in your plan.', extensionPlansSentence()));
   main.append(h('a.btn.primary', { href: '../purchase.html', target: '_blank', rel: 'noopener', text: 'SEE PLANS' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'recheck', text: 'I HAVE UPGRADED' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));
@@ -210,9 +190,7 @@ function renderPipeline() {
 }
 
 function clipLine() {
-  return h('p.pn-clips', { text: queued
-    ? `${queued} clipping${queued === 1 ? '' : 's'} waiting for the Idea Vault — they arrive when you open a page.`
-    : 'Select text on any page and choose “Send to ' + BRAND.name + '” to keep it in the Idea Vault.' });
+  return h('p.pn-clips', { text: clipSentence(queued, BRAND.name) });
 }
 
 /* ---- the flow ---------------------------------------------------- */
@@ -220,8 +198,8 @@ function clipLine() {
 async function render() {
   if (!inExtension()) { app.replaceChildren(renderNotExtension()); return; }
   const c = cloud();
-  try { queued = ((await chrome.storage.local.get(CLIP_QUEUE_KEY))[CLIP_QUEUE_KEY] || []).length; } catch (e) { queued = 0; }
-  await c.ensureClient();
+  queued = await queuedClipCount();
+  await connect();
   let view;
   if (!c.getSession()) {
     view = ui.ticketReady ? renderSignIn() : renderGatekeeper();
@@ -295,8 +273,7 @@ Store.subscribe('gate:changed', () => render());
 wireRequestUI(render);
 onSessionLost((reason) => {
   ui.ticketReady = false;
-  ui.error = reason === 'conflict' ? 'Your account was opened on another device, so this panel signed out.'
-    : reason === 'revoked' ? 'Your invite was revoked by an administrator.' : '';
+  ui.error = sessionLostSentence(reason);
   render();
 });
 onClipQueued(() => render());

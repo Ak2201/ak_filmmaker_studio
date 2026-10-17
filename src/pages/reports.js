@@ -46,68 +46,23 @@ import Shoot from '../lib/shootday.js';
 import DPR from '../lib/dpr.js';
 import { offlineSupported, offlineStatus, makeOffline, SHOOT_PACK } from '../lib/pwa.js';
 import { listSongs, updateSong, durationSeconds, getTargetMinutes, setTargetMinutes, kindLabel } from '../lib/songs.js';
-import { loadStory } from '../lib/story.js';
-import { resolveBeat, actsOf, qualify } from '../lib/beat-outline.js';
+import { getTargetMin, setTargetMin } from '../lib/editlog.js';
+import {
+  IE_HUE, DN_HUE, NO_LOCATION, catById, sceneNumbers, tally, byCategory, mix, plural, slugOf, locationCount,
+  selectionLabel as selectionText, readFrom, runtimeGroups, fmtDelta, deltaLabel, runtimeNotes, dayFromSearch,
+  openDay, shortDate, dprStatValues, calcLine, kitTitle, dayPdfSubtitle, offlineRowText
+} from '../lib/reports-model.js';
 import '../styles/runtime.css';
 
 const app = document.getElementById('app');
-const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
 
-/* Hue = data. A bucket's colour says WHICH bucket, and the same
-   bucket is the same colour in the card and in the table. Nothing
-   here is coloured to look nice. */
-const IE_HUE = { INT: 'shorts', EXT: 'plan', 'INT/EXT': 'visualize' };
-const DN_HUE = { DAY: 'library', NIGHT: 'visualize', DAWN: 'plan', DUSK: 'shoot', CONTINUOUS: 'shorts' };
-
-const NO_LOCATION = 'Unassigned';
+/* The hues, the tallies, the slug line and every derived figure are
+   src/lib/reports-model.js's. */
 
 /* Which scenes are on the sides. Null until the first render, then a
    Set of scene ids; see the note at the top about why this is not
    persisted. */
 let selected = null;
-
-/* ---- derivations — all of them, every render ---------------- */
-
-/** Display number for a scene: what the user typed, else its place. */
-function sceneNumbers(scenes) {
-  return new Map(scenes.map((s, i) => [s.id, String(s.number || i + 1)]));
-}
-
-/** Count and measure the scenes by one enum field, in the enum's order. */
-function tally(scenes, field, order) {
-  const rows = new Map(order.map((k) => [k, { key: k, count: 0, eighths: 0 }]));
-  for (const s of scenes) {
-    const key = s[field] || order[0];
-    if (!rows.has(key)) rows.set(key, { key, count: 0, eighths: 0 });
-    const row = rows.get(key);
-    row.count += 1;
-    row.eighths += Number(s.eighths) || 0;
-  }
-  return [...rows.values()].filter((r) => r.count > 0);
-}
-
-/** The element index, folded into its categories. */
-function byCategory(index) {
-  const rows = new Map();
-  for (const item of index) {
-    if (!rows.has(item.category)) rows.set(item.category, { category: item.category, names: 0, appearances: 0 });
-    const row = rows.get(item.category);
-    row.names += 1;
-    row.appearances += item.scenes.length;
-  }
-  // Report them in the order a 1st AD reads a breakdown sheet.
-  return ELEMENT_CATEGORIES.map((c) => rows.get(c.id)).filter(Boolean);
-}
-
-/* A no-break space inside each pair: in a narrow column "EXT 1 · INT 2"
-   broke as "INT" over "2", which reads as a count for the next row. */
-const mix = (counts) => Object.entries(counts).map(([k, n]) => k + '\u00a0' + n).join(' · ');
-const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-
-function slugOf(scene) {
-  const place = String(scene.location || '').trim() || 'LOCATION TBD';
-  return [scene.intExt, place, scene.dayNight].join(' · ');
-}
 
 /* ---- header ------------------------------------------------- */
 function renderHeader(scenes) {
@@ -125,7 +80,7 @@ function renderHeader(scenes) {
     stat(String(scenes.length), scenes.length === 1 ? 'scene' : 'scenes'),
     stat(formatEighths(eighths), 'pages'),
     stat(formatEighths(night), 'night pages'),
-    stat(String(new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size), 'locations'),
+    stat(String(locationCount(scenes)), 'locations'),
     stat(String(Scenes.elementIndex().length), 'elements')
   ], { label: 'The reports in figures' }));
   return head;
@@ -353,8 +308,7 @@ function sidesBody(scenes, numbers) {
   return out;
 }
 
-const selectionLabel = (scenes) =>
-  selected.size + ' of ' + scenes.length + ' selected';
+const selectionLabel = (scenes) => selectionText(selected, scenes);
 
 function renderSides(scenes, numbers) {
   const sec = h('section.rp-sec', { id: 'sides' });
@@ -492,7 +446,7 @@ function renderScreenTime(scenes, numbers) {
       td(formatDuration(r.seconds), 'numeric'),
       td(formatDuration(r.byPage), 'numeric'),
       td(r.method === 'script' ? String(r.dialogueWords) : '\u2014', 'numeric'),
-      td(r.method !== 'script' ? 'page count' : r.how === 'position' ? 'script, by position' : 'script', 'mono')
+      td(readFrom(r), 'mono')
     ]));
   }
   table.append(body);
@@ -514,45 +468,15 @@ function renderScreenTime(scenes, numbers) {
    render; the only things stored are what a person types — the
    target (inside the songs blob) and each song's length (a field on
    the song). */
-function runtimeGroups(scenes) {
-  let fwId = '';
-  try { fwId = loadStory().framework || ''; } catch (e) { fwId = ''; }
-  let acts = [];
-  try { acts = actsOf(fwId); } catch (e) { acts = []; }
-  const actOf = new Map();
-  const beatOrder = new Map();
-  let n = 0;
-  acts.forEach((a) => a.beats.forEach((b) => { actOf.set(b.id, a); beatOrder.set(b.id, n++); }));
-  const beatOfId = (id) => { try { const r = resolveBeat(id, fwId); return r ? r.beat : null; } catch (e) { return null; } };
-  const songBeat = (song) => {
-    const linked = scenes.find((s) => s.songId === song.id && beatOfId(s.beatId));
-    if (linked) return beatOfId(linked.beatId);
-    const p = String(song.placement || '');
-    if (!p) return null;
-    return beatOfId(p.includes(':') ? p : qualify('save_the_cat', p));
-  };
-  const actGroup = (b) => {
-    const a = b && actOf.get(b.id);
-    return a ? { key: 'act' + a.act, label: a.label, order: a.act, share: a.share } : null;
-  };
-  const beatGroup = (b) => (b && actOf.has(b.id)
-    ? { key: 'beat:' + b.id, label: b.label + ' · ' + actOf.get(b.id).label, order: beatOrder.get(b.id), share: 0 }
-    : null);
-  return {
-    byAct: { groupOf: (s) => actGroup(beatOfId(s && s.beatId)), songGroupOf: (s) => actGroup(songBeat(s)) },
-    byBeat: { groupOf: (s) => beatGroup(beatOfId(s && s.beatId)), songGroupOf: (s) => beatGroup(songBeat(s)) }
-  };
-}
-
-function fmtDelta(d) {
-  if (!d) return 'on target';
-  return (d > 0 ? '+' : '−') + formatDuration(Math.abs(d));
-}
+/* runtimeGroups() and fmtDelta() are src/lib/reports-model.js's. */
 
 function renderRuntime(st, scenes, numbers) {
   const box = h('div.rt-box', { id: 'runtime' });
   const songs = listSongs();
-  const targetMin = getTargetMinutes();
+  /* ONE target (src/lib/target-runtime.js): this field, else a value the
+     Edit Log stored before there was one — read the same way edit.html and
+     the stripboard read it, so the three pages never disagree. */
+  const targetMin = getTargetMinutes() || getTargetMin();
   const groups = runtimeGroups(scenes);
   const songIn = songs.map((s) => ({ id: s.id, seconds: durationSeconds(s), placement: s.placement }));
   const est = Analysis.runtimeEstimate(st, songIn, { targetSeconds: targetMin * 60, ...groups.byAct });
@@ -573,17 +497,10 @@ function renderRuntime(st, scenes, numbers) {
   box.append(h('div.k-stat-strip.rp-stats', {}, [
     stat(formatDuration(est.total), 'estimated, songs included'),
     stat(targetMin ? formatDuration(est.target) : '—', targetMin ? 'target' : 'no target set'),
-    stat(targetMin ? fmtDelta(est.delta) : '—', targetMin ? (est.delta > 0 ? 'over the target' : est.delta < 0 ? 'under the target' : 'difference') : 'difference')
+    stat(targetMin ? fmtDelta(est.delta) : '—', deltaLabel(targetMin, est.delta))
   ]));
 
-  const said = [];
-  if (!songs.length) said.push('No songs on the list, so this is the page estimate alone.');
-  else {
-    said.push(`${plural(est.songsTimed, 'song has', 'songs have')} a length, adding ${formatDuration(est.songSeconds)}.`);
-    if (est.songsUntimed) said.push(`${plural(est.songsUntimed, 'song has', 'songs have')} no length yet and add${est.songsUntimed === 1 ? 's' : ''} nothing — give each one below.`);
-    if (est.coveredScenes) said.push(`${plural(est.coveredScenes, 'scene linked to a timed song uses', 'scenes linked to timed songs use')} the song’s length instead of the page estimate, so nothing is counted twice.`);
-  }
-  box.append(h('p.bd-match-note', { text: said.join(' ') }));
+  box.append(h('p.bd-match-note', { text: runtimeNotes(est, songs.length) }));
 
   if (songs.length) {
     const t = h('table.scene-table.rp-table.rt-songs');
@@ -660,7 +577,7 @@ function wireRuntime() {
   wireRuntime.done = true;
   delegate(document, 'change', '[data-rt-field]', (e, el) => {
     const f = el.getAttribute('data-rt-field');
-    if (f === 'target') setTargetMinutes(el.value);
+    if (f === 'target') { setTargetMinutes(el.value); if (getTargetMin()) setTargetMin(0); }   // retire the legacy fallback
     else if (f === 'song-duration') updateSong(el.getAttribute('data-song'), { duration: el.value });
     else return;
     setTimeout(() => {
@@ -754,27 +671,16 @@ function renderCastMatrix(scenes, numbers) {
    "End of day → DPR" link passes.
    ============================================================ */
 let rpDay = (() => {
-  try { return parseInt(new URLSearchParams(location.search).get('day'), 10) || null; } catch (e) { return null; }
+  try { return dayFromSearch(location.search); } catch (e) { return null; }
 })();
 
 function openDayOf(days) {
   if (!days.length) return 0;
-  if (!rpDay || !days.some((d) => d.day === rpDay)) rpDay = Shoot.pickDay();
+  rpDay = openDay(rpDay, days, () => Shoot.pickDay());
   return rpDay;
 }
 
-/* "2026-11-02" → "Mon 2 Nov". Built from the parts: `new Date(iso)`
-   reads a bare date as UTC midnight and prints yesterday west of
-   Greenwich. Anything that is not a date prints as typed. */
-function shortDate(iso, long) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
-  if (!m) return String(iso || '');
-  const d = new Date(+m[1], +m[2] - 1, +m[3]);
-  return d.toLocaleDateString(undefined, long
-    ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
-    : { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
+/* shortDate() is src/lib/reports-model.js's. */
 function dayPicker(id, days, day) {
   const sel = h('select.rp-day-sel', { id, 'data-action': 'rp-day' });
   for (const d of days) {
@@ -995,24 +901,10 @@ function fillDPR(sec, scenes) {
 }
 
 function dprStats(sum) {
-  return [
-    stat(sum.shot.length + ' / ' + sum.planned.length, 'scenes shot'),
-    stat(sum.pagesShot + ' / ' + sum.pagesPlanned, 'pages shot'),
-    stat(String(sum.part.length), 'part shot'),
-    stat(String(sum.dropped.length), 'dropped'),
-    stat(sum.record.setups || '—', 'setups'),
-    stat(sum.delayMinutes ? DPR.formatMinutes(sum.delayMinutes) : '—', 'lost to delays')
-  ];
+  return dprStatValues(sum).map(([value, label]) => stat(value, label));
 }
 
-function calcLine(sum) {
-  const bits = [];
-  if (sum.dayMinutes != null) bits.push('Call to wrap ' + DPR.formatMinutes(sum.dayMinutes));
-  if (sum.lunchMinutes != null) bits.push('lunch ' + DPR.formatMinutes(sum.lunchMinutes));
-  if (sum.workMinutes != null && sum.lunchMinutes != null) bits.push('worked ' + DPR.formatMinutes(sum.workMinutes));
-  if (sum.callToFirstShot != null) bits.push('call to first shot ' + DPR.formatMinutes(sum.callToFirstShot));
-  return bits.length ? bits.join(' · ') + '.' : 'Type the call and wrap times and the day’s length works itself out.';
-}
+/* calcLine() is src/lib/reports-model.js's. */
 
 /** A field changed: redraw only the numbers, so focus stays put. */
 function refreshDPRNumbers() {
@@ -1044,8 +936,6 @@ function offlineBlock() {
   ]);
 }
 
-const PACK_LABEL = { 'shoot.html': 'Shoot day', 'contacts.html': 'Call sheets', 'reports.html': 'Reports, sides and DPR' };
-
 function paintOffline(rows, note) {
   const ul = document.getElementById('rp-offline-list');
   if (!ul) return;
@@ -1056,9 +946,7 @@ function paintOffline(rows, note) {
     return;
   }
   const draw = (list) => ul.replaceChildren(...list.map((r) => h('li.rp-off.' + (r.ready ? 'is-ok' : 'is-none'), {
-    text: (PACK_LABEL[r.page] || r.page) + ' — ' + (r.ready
-      ? 'ready offline (' + r.files + ' ' + (r.files === 1 ? 'file' : 'files') + (r.clean ? ', both addresses' : '') + ')'
-      : 'not kept yet')
+    text: offlineRowText(r)
   })).concat(note ? [h('li.rp-off.is-note', { text: note })] : []));
   if (rows) { draw(rows); return; }
   offlineStatus(SHOOT_PACK).then(draw).catch(() => {});
@@ -1150,10 +1038,7 @@ function fillKit(sec, scenes) {
   sec.replaceChildren(...out);
 }
 
-function kitTitle(day, tally) {
-  return `Day ${day}` + (Locations.dayDate(day) ? ' · ' + shortDate(Locations.dayDate(day), true) : '')
-    + ` · ${plural(tally.items, 'item', 'items')} · ${tally.picked} picked up · ${tally.back} returned`;
-}
+/* kitTitle() is src/lib/reports-model.js's. */
 
 /** Re-fill one of the day sections in place. The SECTION element is
     kept — tabs.js owns its role and hidden state — only its children
@@ -1238,8 +1123,8 @@ delegate(document, 'click', '[data-action="pdf-reports"]',   () => pdfReports())
 const dayPdf = (scope, label, cls) => () => PDF.exportPDF({
   scope, label, setup: 'a4', classes: [cls],
   subtitle: scope === 'oneliner'
-    ? plural(Shoot.days().length, 'shoot day', 'shoot days') + ' · ' + formatEighths(totalEighths(Scenes.listScenes())) + ' pages'
-    : 'Day ' + rpDay + (Locations.dayDate(rpDay) ? ' · ' + shortDate(Locations.dayDate(rpDay), true) : '')
+    ? dayPdfSubtitle(scope, rpDay, Shoot.days().length, formatEighths(totalEighths(Scenes.listScenes())))
+    : dayPdfSubtitle(scope, rpDay)
 });
 delegate(document, 'click', '[data-action="print-oneliner"]', () => printOnly('rp-print-oneliner'));
 delegate(document, 'click', '[data-action="print-dpr"]',      () => printOnly('rp-print-dpr'));

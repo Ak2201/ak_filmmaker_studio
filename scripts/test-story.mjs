@@ -420,6 +420,8 @@ const DOC = `<?xml version="1.0"?><w:document xmlns:w="x"><w:body>
 </w:body></w:document>`;
 const want = 'DRAGON\nRagavan & his "friends"\tcheat.\nKept\nafter break\n\nதமிழ்';
 eq(documentXmlToText(DOC), want, 'WordprocessingML: runs, entities, tabs, breaks, no deleted text, Tamil');
+eq(documentXmlToText('<w:body><w:p><w:pPr><w:tabs><w:tab w:val="left" w:pos="720"/></w:tabs></w:pPr><w:r><w:t>Line one</w:t></w:r><w:r><w:br w:type="textWrapping"/><w:t>Line two</w:t></w:r></w:p><w:p><w:r><w:t>A</w:t><w:br w:type="page"/><w:t>B</w:t></w:r></w:p></w:body>'),
+  'Line one\nLine two\nA\nB', 'a break with attributes is still a break; a tab stop is not a tab');
 for (const method of [8, 0]) {
   const buf = zip([['[Content_Types].xml', '<Types/>', 0], ['word/document.xml', DOC, method]]);
   const res = await extractDocxText(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length));

@@ -28,14 +28,9 @@ import { ask, askDanger, tell } from '../../ui/dialog.js';
 import { emptyState, errorState, skeleton, pill, dataTable, relTime, absTime } from '../../ui/admin-kit.js';
 import { bannerBar, refreshBanner } from '../../ui/site-banner.js';
 import Billing from '../../lib/billing.js';
+import { controlsCall } from '../../lib/admin-api.js';
+import { ROLES, ROLE_REACH, SCOPE_WORDS, personText, matchPerson, emailOf as emailIn, roleQuestion, scopeCell, overrideQuestion, toIso, exportFileName } from '../../lib/admin-controls-model.js';
 
-const ROLES = ['owner', 'finance', 'support'];
-const ROLE_REACH = {
-  owner: 'Everything: the purchases switch, prices, feature switches, roles, the banner, export and erase of a person.',
-  finance: 'Refunds, invoices and receipts, payments, promo codes and referral payouts.',
-  support: 'Notes, trial grants, ending sessions, the support queue, passes and shares.'
-};
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 let ctx = null;
 const S = {
@@ -55,14 +50,7 @@ const S = {
   }
 };
 
-async function rpc(name, args) {
-  const c = ctx && ctx.cloud;
-  const sb = c && c.ensureClient ? await c.ensureClient() : null;
-  if (!sb) throw new Error('This build has no cloud project configured.');
-  const { data, error } = await sb.rpc(name, args || {});
-  if (error) throw error;
-  return data;
-}
+const rpc = (name, args) => controlsCall(ctx && ctx.cloud, name, args);
 const why = (e) => (e && e.message) || 'The server did not say why.';
 const redraw = () => { if (ctx && ctx.rerender) ctx.rerender(); };
 
@@ -109,21 +97,11 @@ async function loadUsers() {
 
 /** An e-mail or a user id -> { id, email } or a thrown sentence. */
 async function resolvePerson(text) {
-  const t = String(text || '').trim();
-  if (!t) throw new Error('Type the person’s e-mail address or user id first.');
+  const t = personText(text);
   const users = await loadUsers();
-  if (UUID.test(t)) {
-    const u = users.find((x) => x.user_id === t.toLowerCase());
-    return { id: t.toLowerCase(), email: (u && u.email) || '' };
-  }
-  const u = users.find((x) => String(x.email || '').toLowerCase() === t.toLowerCase());
-  if (!u) throw new Error('No account has the e-mail address “' + t + '”. Check the spelling, or paste the user id.');
-  return { id: u.user_id, email: u.email };
+  return matchPerson(users, t);
 }
-const emailOf = (id) => {
-  const r = S.roles.rows.find((x) => x.user_id === id);
-  return (r && r.email) || (id ? String(id).slice(0, 8) + '…' : 'unknown');
-};
+const emailOf = (id) => emailIn(S.roles.rows, id);
 
 /* ---- small builders ---------------------------------------------- */
 
@@ -211,7 +189,7 @@ function rolesCard() {
 async function setRole(userId, label, role) {
   const who = label || userId;
   const ok = role
-    ? await ask({ title: 'Make ' + who + ' ' + (role === 'owner' ? 'an owner' : 'a ' + role + ' admin') + '?', body: ROLE_REACH[role], confirm: 'Set role' })
+    ? await ask({ title: roleQuestion(who, role), body: ROLE_REACH[role], confirm: 'Set role' })
     : await askDanger({ title: 'Remove the role of ' + who + '?', body: 'They stop being an administrator and become an ordinary member. Their own work is not touched.', confirm: 'Remove role' });
   if (!ok) return;
   await act('role', async () => {
@@ -223,7 +201,6 @@ async function setRole(userId, label, role) {
 
 /* ---- feature overrides ------------------------------------------- */
 
-const SCOPE_WORDS = { global: 'everybody', plan: 'one plan', account: 'one account' };
 function overridesCard() {
   const bad = panelState(S.ov, 'Feature overrides', { retry: loadOverrides });
   const d = S.draft.ov;
@@ -231,7 +208,7 @@ function overridesCard() {
     caption: S.ov.rows.length + (S.ov.rows.length === 1 ? ' override' : ' overrides'),
     columns: [
       { key: 'key', label: 'Feature' },
-      { key: 'scope', label: 'Applies to', render: (r) => r.scope === 'global' ? 'everybody' : r.scope + ' ' + (r.scope_id.length > 12 ? r.scope_id.slice(0, 8) + '…' : r.scope_id), title: (r) => r.scope_id || 'everybody' },
+      { key: 'scope', label: 'Applies to', render: scopeCell, title: (r) => r.scope_id || 'everybody' },
       { key: 'enabled', label: 'Effect', render: (r) => pill(r.enabled ? 'forced ON' : 'switched OFF', r.enabled ? 'ok' : 'danger') },
       { key: 'set_by', label: 'Set by', render: (r) => emailOf(r.set_by) },
       { key: 'at', label: 'When', render: (r) => h('time', { title: absTime(r.at), text: relTime(r.at) }) },
@@ -268,9 +245,10 @@ function overridesCard() {
     if (!key) { await tell({ title: 'Pick a feature', body: 'Choose the feature this applies to.' }); return; }
     if (d.scope !== 'global' && !scopeId) { await tell({ title: 'Which ' + d.scope + '?', body: 'Say which ' + d.scope + ' this override is for.' }); return; }
     const on = d.enabled === 'true';
+    const q = overrideQuestion(key, on, d.scope, scopeId);
     const ok = await ask({
-      title: (on ? 'Force ' : 'Switch off ') + key + (on ? ' ON' : '') + ' for ' + (d.scope === 'global' ? 'everybody' : d.scope + ' ' + scopeId) + '?',
-      body: on ? 'People in that scope get the feature even if their plan does not include it.' : 'People in that scope lose the feature even if their plan includes it. It takes effect the next time their page reads its plan.',
+      title: q.title,
+      body: q.body,
       confirm: 'Save override', danger: !on
     });
     if (!ok) return;
@@ -286,7 +264,6 @@ async function clearOverride(r) {
 
 /* ---- the announcement banner ------------------------------------- */
 
-const toIso = (local) => { if (!local) return null; const t = new Date(local); return Number.isNaN(t.getTime()) ? null : t.toISOString(); };
 function annCard() {
   const d = S.draft.ann;
   const live = S.ann.live;
@@ -366,8 +343,7 @@ function dataCard() {
     try { p = await resolvePerson(d.who); } catch (err) { await tell({ title: 'Check the person', body: why(err) }); return; }
     act('data', async () => {
       const out = await rpc('admin_export_user', { p_user: p.id });
-      const slug = (p.email || p.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
-      download('studio-export-' + slug + '-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(out, null, 2));
+      download(exportFileName(p), JSON.stringify(out, null, 2));
     }, 'Export downloaded. This was recorded in the audit log.');
   });
   return card('Data tools', 'Answer a data request about one person: give them a copy. Erasing a person is People → Delete totally.', [form]);

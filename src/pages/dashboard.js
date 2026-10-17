@@ -41,9 +41,8 @@
    about the others — so that one section goes through
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
-import Store from '../lib/store.js';
-import { BLUEPRINT, guideProgress, stageHueClass, journey, stageStates, suggestNext, lastWorked, favouriteOf } from '../lib/journey.js';
-import { parseNum, fmtINR, INR } from '../lib/money.js';
+import Store, { setProjectSubtitle } from '../lib/store.js';
+import { stageHueClass, favouriteOf } from '../lib/journey.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -55,137 +54,39 @@ import '../styles/motion.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h, commitMain } from '../lib/dom.js';
+import { h, commitMain, delegate } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
-import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel } from '../ui/kit/index.js';
+import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText } from '../ui/kit/index.js';
 
-import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
-import Locations from '../lib/locations.js';
-import Contacts from '../lib/contacts.js';
-import Shots from '../lib/shots.js';
-import { loadScript, pageCount, formatPages } from '../lib/script.js';
+import { formatEighths } from '../lib/scenes.js';
+import { formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
-import { readiness, sceneLabel } from '../lib/readiness.js';
+import { readiness } from '../lib/readiness.js';
 import PlanGate from '../lib/plan-gate.js';
-import { getDriveStatus } from '../lib/drive-sync.js';
+import { getDriveStatus, push as drivePush } from '../lib/drive-sync.js';
 import { dprSummary } from '../lib/dpr.js';
 import { planName } from '../lib/plans.js';
+/* Every number on this page, derived: the snapshot, the dates, the
+   readiness order, the activity lines (docs/ARCHITECTURE.md). */
+import {
+  snapshot, relTime, sceneTagged, nextDatedDay, nextShootNote, crewCastNote, nextShootLine,
+  weekDays, coveredSceneIds, dayDetail, sortChecks, readinessDeck, WHY, continueTarget,
+  planLine, recentEntries, pathFactLine, when
+} from '../lib/dashboard-model.js';
 
 
 const app = document.getElementById('app');
 
-/* Storage keys, spelled exactly as store.js's SCOPED_KEYS spells them.
-   These are read-only here; not one line of this file writes to them. */
-const LIB_CALC_KEY = 'fms_library_calc_v1';
-const ACTIVITY_KEY = 'fms_studio_activity_v1';
-
 /* ============================================================
-   THE BLUEPRINTS, AS A FIELD LIST — grouped by STAGE now
+   THE BLUEPRINTS, READING WHAT IS STORED, THE SNAPSHOT
    ------------------------------------------------------------
-   The field list (both sources: `key` props and data-key attributes
-   inside `raw` blocks), the step-to-stage mapping and the "filled"
-   rule all live in src/lib/journey.js, which reads
-   blueprint-fields.js — so the journey strip, the hub's cards and
-   this page count one way. This used to be a local copy grouped by
-   the four 2023 phases, which filed the scene list and the script
-   lock under Story and disagreed with the five stages the rest of
-   the studio is built on. The two blueprint keys are spelled once,
-   in journey.js's BLUEPRINT table, and read-only here.
-
-   The adapter keeps the shape every renderer below already reads:
-   phases → steps, each with done/total by FIELD.
-   ============================================================ */
-const BLUEPRINTS = { feature: BLUEPRINT.feature, short: BLUEPRINT.short };
-
-function blueprintProgress(blueprint, data) {
-  const g = guideProgress(blueprint.id, data);
-  const phases = g.stages.filter((st) => st.steps.length).map((st) => ({
-    id: st.id,
-    label: 'Part ' + st.part + ' · ' + st.label,
-    hue: st.hue,
-    href: blueprint.href,
-    steps: st.steps.map((step) => ({ ...step, total: step.fieldsTotal, done: step.fieldsDone })),
-    total: st.fields.total,
-    done: st.fields.done,
-    pct: st.pct
-  }));
-  return { blueprint, phases, total: g.fields.total, done: g.fields.done, pct: g.pct };
-}
-
-/* ============================================================
-   READING WHAT IS STORED
-   ============================================================ */
-
-/** The open project's copy of a scoped key, through the proxy. */
-function readBlob(key) {
-  let raw = null;
-  try { raw = localStorage.getItem(key); } catch (e) { /* private mode */ }
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (e) { return {}; }
-}
-
-/* parseNum / INR / the short rupee format all come from
-   src/lib/money.js now. This file used to carry its own copy with a
-   note saying "if this ever needs a third caller it should move into
-   a lib" — it did, and the copy outlived the note. It was also the
-   anchored-but-not-whole-string version, which still read
-   "1500 per roll" as 15 crore. */
-
-
-/* Two figures, because a number card is 190px wide and eight digits in
-   the display face wrap onto two lines there. The card face gets the
-   glanceable magnitude; the exact rupee figure goes in the note under
-   it, so nothing is hidden. */
-const fmtShort = fmtINR;
-
-function budgetStatus() {
-  const calc = readBlob(LIB_CALC_KEY);
-  const rows = {};
-  for (const k of Object.keys(calc)) {
-    const m = /^ci_(\d+)_(\w+)$/.exec(k);
-    if (!m) continue;
-    rows[m[1]] = rows[m[1]] || {};
-    rows[m[1]][m[2]] = calc[k];
-  }
-  let lines = 0, total = 0;
-  for (const row of Object.values(rows)) {
-    const sub = parseNum(row.days) * parseNum(row.rate);
-    if (sub > 0) { lines++; total += sub; }
-  }
-  return {
-    lines, total,
-    short: total ? fmtShort(total) : '₹ 0',
-    exact: '₹ ' + INR.format(Math.round(total))
-  };
-}
-
-/* ---- recent activity -------------------------------------------
-   Already written by the hub under a key store.js scopes per project,
-   so this is the open project's history and nobody else's. */
-function recentActivity(limit) {
-  const log = readBlob(ACTIVITY_KEY);
-  const entries = Array.isArray(log.entries) ? log.entries : [];
-  return entries.slice(0, limit);
-}
-
-function relTime(ts) {
-  const then = typeof ts === 'number' ? ts : Date.parse(ts);
-  if (!Number.isFinite(then)) return '';
-  const sec = Math.max(0, Math.round((Date.now() - then) / 1000));
-  if (sec < 60) return 'just now';
-  if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
-  if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
-  const days = Math.floor(sec / 86400);
-  if (days < 30) return days + 'd ago';
-  return Math.floor(days / 30) + 'mo ago';
-}
-
-/* ============================================================
-   THE SNAPSHOT — every number this page shows, in one object
+   src/lib/dashboard-model.js: the field list grouped by stage (from
+   journey.js, so the journey strip, the hub's cards and this page count
+   one way), the budget rows and the activity log (read-only, through the
+   proxy, so this project's), and the snapshot — every number this page
+   shows, in one object. parseNum / INR / the short rupee format come from
+   src/lib/money.js there; this file used to carry its own copy.
    ============================================================ */
 const FORMAT_LABEL = {
   feature: 'Feature film',
@@ -195,61 +96,15 @@ const FORMAT_LABEL = {
   adfilm: 'Ad film'
 };
 
-function snapshot(project) {
-  const primary = BLUEPRINTS[project.format === 'short' ? 'short' : 'feature'];
-  const secondary = primary.id === 'feature' ? BLUEPRINTS.short : BLUEPRINTS.feature;
-
-  const main = blueprintProgress(primary, readBlob(primary.storeKey));
-  const other = blueprintProgress(secondary, readBlob(secondary.storeKey));
-
-  const scenes = Scenes.listScenes();
-  const days = Locations.calendarDays(scenes);
-  const unscheduled = Locations.unscheduledScenes(scenes);
-  const contacts = Contacts.listContacts();
-  const sheets = Contacts.listCallSheets();
-  const shots = Shots.listShots();
-  const script = loadScript();
-  const budget = budgetStatus();
-
-  const locationCount = new Set(
-    scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)
-  ).size;
-  const scriptPages = pageCount(script.elements);
-  const datedDays = days.filter((d) => d.date).length;
-
-  const snap = {
-    project, main, other,
-    scenes, days, unscheduled, contacts, sheets, shots, script, budget,
-    locationCount, scriptPages, datedDays,
-    eighths: totalEighths(scenes),
-    elements: Scenes.elementIndex().length,
-    docs: (script.documents || []).length,
-    revisions: (script.revisions || []).length,
-    boards: Shots.listBoards().length,
-    /* A shot is boarded when a storyboard frame hangs off it. */
-    boardedShots: new Set(Shots.listFrames().map((f) => f && f.shotId).filter(Boolean)).size,
-    /* Derived like everything else here — journey.js stores nothing. */
-    journey: journey(project),
-    states: stageStates(project)
-  };
-  snap.suggest = suggestNext(snap.states);
-  snap.resume = lastWorked(snap.states);
-
-  /* "Nothing here yet" has to mean nothing ANYWHERE, or a project with
-     four scenes and no prose gets told it is empty. */
-  snap.isEmpty =
-    main.done === 0 && other.done === 0 && scenes.length === 0 &&
-    contacts.length === 0 && shots.length === 0 &&
-    (script.elements || []).length === 0 && budget.lines === 0;
-
-  return snap;
-}
-
 /* ============================================================
    PIECES
    ============================================================ */
 /* A figure for the KPI strip: the kit's stat card (JetBrains Mono value). */
-const stat = (value, unit, label) => ({ label, value, unit: value === '\u2014' ? '' : unit });
+const stat = (value, unit, label, note) => ({ label, value, unit: value === '\u2014' ? '' : unit, note: note || '' });
+
+/* The strip's second line (sceneTagged, nextShootNote, crewCastNote) is
+   derived in src/lib/dashboard-model.js, each left out when there is
+   nothing real to say. */
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.db-sec', { id, 'data-reveal': '' });
@@ -288,23 +143,21 @@ function renderReadiness() {
   }
 
   const tone = r.blockers ? 'is-bad' : r.gaps ? 'is-warn' : 'is-ok';
-  const deck = r.blockers
-    ? r.blockers + ' thing' + (r.blockers === 1 ? '' : 's') + ' would stop a shoot day, and '
-      + r.gaps + ' more will cost you one.'
-    : r.gaps
-      ? 'Nothing blocks a shoot day. ' + r.gaps + ' thing'
-        + (r.gaps === 1 ? ' is' : 's are') + ' still missing.'
-      : 'Every check passes. Nothing here is missing.';
+  const deck = readinessDeck(r);
 
   const sec = section('readiness', 'Derived from your scenes · nothing to tick',
     'Could you shoot tomorrow?', deck);
+  const nPass = r.checks.filter((c) => c.passed).length;
+  if (r.checks.length) {
+    const pct = Math.round((nPass / r.checks.length) * 100);
+    sec.querySelector('.bd-h2').after(badge({ label: pct + '% ready', tone: pct === 100 ? 'ok' : r.blockers ? 'danger' : 'warn', class: 'db-pct' }));
+  }
 
   /* Failures first and blockers above gaps, because the order IS the
      advice. Passed checks are still SHOWN, as evidence the question
      was asked — but as one compact row of ticks under the work, so
      five green cards no longer outweigh the two things to do. */
-  const rank = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
-  const sorted = r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count);
+  const sorted = sortChecks(r.checks);
   const fails = sorted.filter((c) => !c.passed);
   const passes = sorted.filter((c) => c.passed);
   if (fails.length) {
@@ -362,20 +215,7 @@ function readinessRow(c) {
    one: the plan's project limit lives in the database (a trigger
    raises P0402), and no model records when a backup file was last
    exported, so neither is shown as a number. */
-const MS_DAY = 86400000;
-
-/** 'YYYY-MM-DD' as a LOCAL midnight; null when it is not a date. */
-function localDay(str) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
-  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
-}
-function daysFromToday(date) {
-  const t = new Date(); t.setHours(0, 0, 0, 0);
-  return Math.round((date - t) / MS_DAY);
-}
-function when(n) {
-  return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 0 ? 'in ' + n + ' days' : Math.abs(n) + ' days ago';
-}
+/* The dates (localDay, daysFromToday, when) are src/lib/dashboard-model.js. */
 
 /* A desk tile is the kit's panel: eyebrow in the header, the title
    (an h2, so the heading order holds) opening the body. Callers append
@@ -386,15 +226,6 @@ function tile(id, eyebrow, title) {
   return t;
 }
 const tb = (t) => t.querySelector('.k-panel-body');
-
-function continueTarget(snap) {
-  const log = recentActivity(1)[0];
-  if (log && log.url && !/^(feature|short)\.html/.test(log.url)) {
-    return { href: log.url, what: String(log.what || 'where you left off'), ts: log.ts };
-  }
-  const pick = snap.resume || snap.states.find((x) => snap.suggest && x.id === snap.suggest.id) || snap.states[0];
-  return { href: pick.href, what: pick.label, ts: snap.resume ? snap.resume.at : null };
-}
 
 /* ============================================================
    THE FOCUS ROW — one answer to "what now?", one to "how ready?"
@@ -407,11 +238,7 @@ function continueTarget(snap) {
    second holds the readiness summary and links down to the full list.
    The ids the old pieces carried (#suggested, #resume) live on here.
    ============================================================ */
-const WHY = {
-  start: 'Nothing started yet, so the story is a natural first step.',
-  continue: 'Work is under way here.',
-  next: 'Everything started is finished; this is the earliest stage not started.'
-};
+/* WHY, the suggestion's reason, is src/lib/dashboard-model.js. */
 
 function renderContinue(snap) {
   /* THIS PROJECT ONLY (owner, 11 Oct 2026): it used to suggest the most
@@ -419,8 +246,16 @@ function renderContinue(snap) {
   const tl = tile('continue', 'Continue', 'Pick up where you left off');
   tl.classList.add('db-up');
   const t = continueTarget(snap);
+  tb(tl).append(h('p.db-tile-line', { id: 'resume', text: t.what + (t.ts ? ' · edited ' + relTime(t.ts) : '') }));
+  /* How far the stage you are in has got, from the same figures the stage
+     cards print. Tools is the measured one; with nothing to count it is left out. */
+  const cur = snap.journey && snap.journey.stages.find((x) => x.id === snap.journey.current);
+  if (cur && cur.tools.total) {
+    const m = meter({ label: cur.label + ' · ' + cur.tools.done + ' of ' + cur.tools.total + ' done', value: cur.tools.pct, max: 100, hue: stageHueClass(cur.hue), class: 'db-up-meter' });
+    tb(tl).append(m);
+    if (cur.tools.note) tb(tl).append(h('p.db-tile-line', { text: cur.tools.note }));
+  }
   tb(tl).append(
-    h('p.db-tile-line', { id: 'resume', text: t.what + (t.ts ? ' · edited ' + relTime(t.ts) : '') }),
     button({ label: 'Continue', variant: 'primary', size: 'lg', iconAfter: 'arrow_forward', href: t.href, class: 'db-big', attrs: { 'aria-label': 'Continue: ' + t.what } })
   );
 
@@ -465,8 +300,7 @@ function renderReadyTile() {
     return tl;
   }
 
-  const rank = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
-  const sorted = r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count);
+  const sorted = sortChecks(r.checks);
   const pass = sorted.filter((c) => c.passed).length;
   const total = sorted.length;
 
@@ -512,21 +346,30 @@ function renderFocus(snap) {
 /* ============================================================
    THE SIDE COLUMN — the calendar, the plan, the backup
    ============================================================ */
-function nextShootLine(snap) {
-  const upcoming = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
-    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= 0).sort((a, b) => a.n - b.n)[0];
-  return upcoming ? 'Next shoot: day ' + upcoming.d.day + ' · ' + when(upcoming.n)
-    : snap.days.length ? 'Shoot countdown: no upcoming dated day.' : 'Shoot countdown: no shoot days planned yet.';
-}
-
 function renderWeek(snap) {
   const tl = tile('week', 'This week', 'Shoot days and call sheets');
   tb(tl).append(h('p.db-tile-line.db-strong', { text: nextShootLine(snap) }));
-  const covered = new Set();
-  snap.sheets.forEach((cs) => (cs.sceneIds || []).forEach((id) => covered.add(id)));
-  const rows = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
-    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= -1 && x.n <= 7)
-    .sort((a, b) => a.n - b.n);
+  const covered = coveredSceneIds(snap.sheets);
+  /* The next dated day, in full: where, when the crew is called, and the
+     call sheet itself. Each line shows only what a record really holds. */
+  const nx = nextDatedDay(snap);
+  if (nx) {
+    const { places, sheet } = dayDetail(snap, nx.d);
+    const dl = h('dl.db-facts');
+    const fact = (k, v) => dl.append(h('dt', { text: k }), h('dd', { text: v }));
+    if (places.length) fact('Location', places.slice(0, 2).join(' · ') + (places.length > 2 ? ' +' + (places.length - 2) : ''));
+    if (sheet && sheet.generalCall) fact('Crew call', sheet.generalCall);
+    if (dl.children.length) tb(tl).append(dl);
+    tb(tl).append(sheet
+      ? h('a.db-link', { href: 'contacts.html#call-sheets', text: 'View call sheet' + (sheet.title ? ' · ' + sheet.title : '') + ' \u2192' })
+      : h('a.db-link', { href: 'contacts.html#call-sheets', text: 'Make a call sheet for day ' + nx.d.day + ' \u2192' }));
+  }
+  tb(tl).append(h('nav.db-trio', { 'aria-label': 'Shortcuts' }, [
+    h('a.db-trio-i', { href: 'breakdown.html', text: 'Breakdown' }),
+    h('a.db-trio-i', { href: 'stripboard.html', text: 'Stripboard' }),
+    h('a.db-trio-i', { href: 'visualize.html', text: 'Visualise' })
+  ]));
+  const rows = weekDays(snap);
   if (!rows.length) {
     tb(tl).append(h('p.db-tile-line', { text: snap.datedDays
       ? 'No shoot day falls in the next seven days.' : 'No shoot day has a date yet.' }),
@@ -556,14 +399,7 @@ function renderPlanTile() {
   const tl = tile('plan', 'Plan', 'Your plan');
   const cp = PlanGate.currentPlan();
   const name = cp.planName || (cp.plan ? planName(cp.plan) : '');
-  /* 'free' is the "no plan" state, never a plan to name (owner, 11 Oct
-     2026): it is the free trial, or nothing bought yet. */
-  const line = !name ? 'Not signed in — working locally on this device'
-    : cp.plan !== 'free' ? name + ' plan'
-    : cp.reason === 'granted' ? 'Access given by the studio'
-    : cp.reason === 'trial' ? 'Free trial'
-    : cp.reason === 'free' ? 'Free to use right now'
-    : 'No plan yet';
+  const line = planLine(cp, name);
   tb(tl).append(
     h('p.db-tile-line', { text: line }),
     button({ label: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans', href: 'purchase.html', class: 'db-tile-go', attrs: { 'aria-label': 'Plans and upgrade' } })
@@ -584,6 +420,7 @@ function renderBackupTile() {
   ]));
   tb(tl).append(h('p.db-tile-line', { text: 'Everything lives in this browser. A backup file is the only other copy unless Drive is on; '
     + 'this page cannot see when you last exported one.' }));
+  if (on) tb(tl).append(button({ label: 'Sync now', icon: 'cloud_sync', attrs: { 'data-action': 'drive-sync', 'aria-label': 'Sync to Google Drive now' } }));
   tb(tl).append(button({ label: 'Export a backup', href: 'index.html', class: 'db-tile-go', attrs: { 'aria-label': 'Export a backup, from the studio home page' } }));
   return tl;
 }
@@ -623,6 +460,12 @@ function renderHead(snap) {
       j ? badge({ label: 'Stage: ' + j.currentLabel, tag: true }) : null
     ]),
     h('h1.bd-title.k-project-title', { text: p.title }),
+    h('p.db-slate', { id: 'slate' }, p.subtitle ? [
+      h('span.db-slate-k', { text: 'Slate' }), h('span.db-slate-v', { text: p.subtitle }), txt(' · '),
+      h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'change' })
+    ] : [
+      h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'Add a subtitle' })
+    ]),
     h('p.bd-deck', {
       text: 'Five stages, in any order, each read from what you have already made. '
           + 'Nothing is mandatory: with a screenplay in hand, start straight in Pre-Production.'
@@ -640,12 +483,16 @@ function renderHead(snap) {
   if (!snap.isEmpty) {
     const sc = snap.scenes.length;
     head.append(statStrip([
-      stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes'),
-      stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count'),
-      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'day' : 'days', 'Shoot days'),
-      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast'),
-      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots'),
-      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Locked budget')
+      stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes', sc ? sceneTagged(snap) + ' broken down' : ''),
+      stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count',
+        snap.scriptPages ? formatPages(snap.scriptPages) + ' script pp' : ''),
+      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'day' : 'days', 'Shoot days',
+        nextShootNote(snap)),
+      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast', crewCastNote(snap)),
+      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots',
+        snap.shots.length ? snap.shots.length + ' shots planned' : ''),
+      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Locked budget',
+        snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') : '')
     ], { class: 'db-stats', label: 'This film in numbers' }));
   }
   return head;
@@ -679,6 +526,8 @@ function stageCard(s, suggested, js, current) {
     h('span.st-part', { text: 'Part ' + s.part }),
     s.status.id === 'done' ? badge({ label: 'Done', tone: 'ok', dot: true })
       : s.status.id === 'doing' ? badge({ label: 'In progress', tone: 'info', dot: true }) : null,
+    /* The writer's own lock (outline locked / scene numbers locked), never inferred. */
+    s.locked ? badge({ label: 'Locked', tone: 'ok', icon: 'lock', title: s.id === 'story' ? 'The step outline is locked' : 'The scene numbers are locked' }) : null,
     suggested ? h('span.st-sug', { text: 'Suggested next' })
       : current ? h('span.st-sug', { text: 'You are here' }) : null
   ]));
@@ -713,6 +562,10 @@ function renderStages(snap) {
   const sec = section('stages', 'The five stages', 'Where the film stands.');
   const sug = snap.suggest;
   const j = snap.journey;
+  if (j) {
+    const at = snap.states.findIndex((x) => x.id === j.current);
+    if (at >= 0) sec.querySelector('.bd-h2').after(badge({ label: j.complete ? 'All ' + snap.states.length + ' stages in hand' : 'Step ' + (at + 1) + ' of ' + snap.states.length, tag: true, class: 'db-step-n' }));
+  }
   const list = h('ol.st-list', { id: 'journey', 'aria-label': 'The five stages of this film' });
   snap.states.forEach((s) => list.append(stageCard(s, !!sug && s.id === sug.id,
     j && j.stages.find((x) => x.id === s.id), !!j && j.current === s.id)));
@@ -778,33 +631,11 @@ function renderChain(snap) {
 }
 
 /* ---- recent ------------------------------------------------------
-   TWO sources, both read-only, and the copy says which. The hub's log
-   (fms_studio_activity_v1) only records blueprint progress, the
-   equipment list and backups — it does not see scene, contact or
-   script edits, so this page does not claim it does. The second source
-   is the shoot day's own marks: `shotAt` on a scene, written by
-   shoot.html. No other model carries a per-record timestamp. */
-function derivedActivity(scenes) {
-  const out = [];
-  for (const sc of scenes) {
-    if (!sc.shotAt || (sc.shotState !== 'shot' && sc.shotState !== 'part')) continue;
-    out.push({
-      ts: Date.parse(sc.shotAt),
-      what: sceneLabel(sc) + (sc.shotState === 'part' ? ' partly shot' : ' marked shot'),
-      url: 'shoot.html'
-    });
-  }
-  return out.filter((e) => Number.isFinite(e.ts));
-}
-
+   TWO sources, both read-only, and the copy says which: the hub's log
+   and the shoot day's own marks (`shotAt`, written by shoot.html),
+   merged in src/lib/dashboard-model.js (recentEntries). */
 function renderActivity(scenes) {
-  const logged = recentActivity(12).map((e) => ({
-    ts: typeof e.ts === 'number' ? e.ts : Date.parse(e.ts),
-    what: String(e.what || e.where || 'Edited'), url: e.url
-  }));
-  const entries = logged.concat(derivedActivity(scenes))
-    .filter((e) => Number.isFinite(e.ts))
-    .sort((a, b) => b.ts - a.ts).slice(0, 8);
+  const entries = recentEntries(scenes);
   if (!entries.length) return null;
   const sec = section('recent', 'Recent', 'What moved lately.',
     'Blueprint progress, equipment lists and backups from the studio log, plus scenes '
@@ -927,12 +758,8 @@ function patchPathFact() {
   if (old) old.remove();
   let line = '';
   try {
-    const steps = pathModule.pathSteps();
-    const next = pathModule.nextStep(steps);
-    if (!next) return;
-    line = steps.every((s) => s.state === 'done')
-      ? 'All ' + steps.length + ' steps done'
-      : 'Step ' + next.n + ' of ' + steps.length + ' · next: ' + next.label;
+    line = pathFactLine(pathModule);
+    if (!line) return;
   } catch (e) { return; }
   facts.prepend(h('li.st-path-fact', { text: line }));
 }
@@ -955,6 +782,38 @@ function loadPath() {
    the page twice for one click. */
 
 /* The project changed under us — switched here, or renamed on the hub. */
+delegate(app, 'click', '[data-action="slate-edit"]', async () => {
+  const p = Store.currentProject();
+  if (!p) return;
+  const v = await askText({ title: 'Project subtitle', body: 'One line under the title, for example the stage you are in. Leave it empty to remove it.',
+    value: p.subtitle || '', placeholder: 'Principal photography prep', confirm: 'Save' });
+  if (v === null || v === undefined) return;
+  setProjectSubtitle(v, p.id);
+});
+let syncing = false;
+delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {
+  if (syncing) return;
+  syncing = true; el.disabled = true;
+  try {
+    /* push() never rejects: a stale token, a moved remote or a plan
+       refusal RESOLVE with ok:false and nothing uploaded. Read it. */
+    const r = await drivePush();
+    if (r && r.ok) StudioUI.toast('Synced to Google Drive.');
+    else {
+      const why = {
+        conflict: 'Drive has a newer copy, so nothing was uploaded. Open Settings to choose which one to keep.',
+        plan: 'Drive backup is not in this plan, so nothing was uploaded.',
+        'not-connected': 'Drive is not connected, so nothing was uploaded.'
+      }[r && r.reason];
+      let detail = '';
+      try { detail = getDriveStatus().detail || ''; } catch (e) { /* the status is only wording */ }
+      StudioUI.toastError(why || ('Nothing was uploaded. ' + (detail || 'Drive did not answer.')), { duration: 6000 });
+    }
+  }
+  catch (err) { StudioUI.toastError((err && err.message) || 'Drive did not answer.', { duration: 6000 }); }
+  finally { syncing = false; render(); }
+});
+
 Store.subscribe('current:changed', () => render());
 Store.subscribe('project:meta', () => render());
 Store.subscribe('plan:changed', () => render());

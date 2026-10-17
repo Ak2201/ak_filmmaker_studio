@@ -15,6 +15,7 @@
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { button } from './kit/index.js';
+import { aiPill } from './ai-pill.js';   // light: the model code loads at the click
 import { formatEighths } from '../lib/scenes.js';
 import { loadScript, pageCount, formatPages } from '../lib/script.js';
 import { headingsOf } from '../lib/scene-sync.js';
@@ -119,13 +120,36 @@ function totalsView(sum) {
 }
 
 /* ---- the starting buttons ---------------------------------- */
+/* The page hands over what happens around the run (its toast, its
+   repaint), once; the AI pill's ctx reads it at the click. */
+let hooksFor = () => ({});
+export const setFlowHooks = (fn) => { hooksFor = typeof fn === 'function' ? fn : () => ({}); };
+
+/** "Breakdown with AI": a pill whose ctx loads breakdown-flow.js (and
+ *  through it the Desk) only when pressed. `refreshTab` is the hash the
+ *  page repaints on. */
+export function breakdownAiPill(refreshTab) {
+  return aiPill({
+    label: 'Breakdown with AI',
+    tasks: [{ id: 'shot-draft', label: 'Breakdown with AI' }],
+    ctx: async () => {
+      const flow = await import('./breakdown-flow.js');
+      return flow.aiBreakdownCtx(hooksFor(refreshTab))();
+    }
+  });
+}
+
 function startBlock({ scriptPages, hasScript, hasScenes }) {
   const row = h('div.bdo-start');
   if (hasScript) {
-    row.append(button({
-      variant: 'primary', pill: true, action: 'run-breakdown', class: 'bd-cta',
-      label: hasScenes ? 'Break down the whole script' : `Break down my script (${formatPages(scriptPages)} pages)`
-    }));
+    row.append(
+      button({
+        variant: 'primary', pill: true, action: 'run-breakdown', class: 'bd-cta',
+        label: 'Manual breakdown',
+        title: hasScenes ? 'Break down the whole script again' : `Break down my script (${formatPages(scriptPages)} pages)`
+      }),
+      breakdownAiPill('#overview')
+    );
   }
   if (!hasScenes || !hasScript) {
     row.append(h('label' + (hasScript ? '.k-btn' : '.k-btn.k-btn--primary.k-btn--pill.bd-cta') + '.bdo-upload', {}, [
@@ -153,8 +177,10 @@ export function renderOverview(scenes, status = '') {
     h('p.bd-sub', {
       text: 'A breakdown lists everything each scene needs — who is in it, where it happens, '
         + 'inside or outside, day or night, and how long it runs — so a production can '
-        + 'plan the shoot. One button reads your script from the first page to the last and '
-        + 'fills in every scene, every character and every location. It can be run again whenever the script changes.'
+        + 'plan the shoot. Manual breakdown reads your script from the first page to the last, '
+        + 'fills in every scene, character and location, then proposes shots and a story outline by rules. '
+        + 'Breakdown with AI does the same and asks your own model for the shots and the story. '
+        + 'Either way you review each proposal before anything is kept, and it can be run again whenever the script changes.'
     }),
     startBlock({ scriptPages: pageCount(els), hasScript, hasScenes }),
     h('p.bdo-status', { role: 'status', 'aria-live': 'polite', text: status })

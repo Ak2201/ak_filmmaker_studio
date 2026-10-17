@@ -32,6 +32,7 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
    so this cannot cycle back into chrome.js the way an import of
    cloud.js would. It is in the same `studio` chunk already. */
 import Account from '../lib/account.js';
+import { connectProject } from '../lib/chrome-auth.js';
 import '../styles/auth.css';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
@@ -403,9 +404,13 @@ export function renderAccountBlock() {
       h('span.am-sync-text', { text: st.detail || 'Local only' })
     ]),
     ...gateRows,
-    h('button.am-item', { type: 'button', 'data-auth-action': 'sync', text: '↻ SYNC NOW' }),
-    h('button.am-item', { type: 'button', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
-    h('button.am-item.danger', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
+    /* The three actions are one row on the card at every width (a phone
+       wraps them to full-width buttons); the same buttons, one handler. */
+    h('div.am-actions', {}, [
+      h('button.am-item', { type: 'button', 'data-auth-action': 'sync', text: '↻ SYNC NOW' }),
+      h('button.am-item', { type: 'button', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
+      h('button.am-item.danger', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+    ]),
     h('p.am-foot', { text: 'Signing out leaves every project on this device.' })
   ]);
   /* Fill the studio-account row once the block is in the document. */
@@ -623,8 +628,7 @@ export async function saveConfig() {
     return;
   }
   setModalError('');
-  c.setCfg({ url, key });
-  const ok = await c.ensureClient();
+  const ok = await connectProject({ url, key });
   if (!ok) {
     setModalError('Could not reach that project. Check the URL and the anon key.');
     return;

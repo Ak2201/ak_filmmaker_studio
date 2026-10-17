@@ -34,28 +34,44 @@ import { mountFocusMode } from '../ui/focus-mode.js';
 import '../ui/read-as.js';        // dictation lives in its bar (hidden; the menu drives it)
 import { mountTamilType, setTamilTyping, isTamilTyping } from '../ui/tamil-type.js';
 import { h, delegate } from '../lib/dom.js';
-import { button, sym } from '../ui/kit/index.js';
+import { button, sym, sheet as kitSheet, closeSheet } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
 import { commitImportedScript } from '../lib/script-commit.js';
 import { sceneSyncLater, mountHandoff } from '../ui/handoff.js';
 import Keys from '../lib/write-keys.js';
+import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
 import { installLineLanding } from '../ui/script-find.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
-import { mountBeats } from '../ui/beats-panel.js';
+import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
+import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
+import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
-import { latestDraft, changedSinceDraft } from '../lib/drafts.js';
+import { latestDraft } from '../lib/drafts.js';
+/* The page's derivations and sentences: src/lib/screenplay-model.js. */
+import {
+  draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
+  scriptStats, estimatedRuntime, splitRuntime as splitRuntimeOf, targetDeltaText, targetLabel,
+  targetPagesFor, scenePosText, shotsSummary, importReadText, importDoneText, pdfSubtitle
+} from '../lib/screenplay-model.js';
+import { pageAnchors } from '../lib/write-format.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { learn } from '../ui/learn.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
-  pageCount, formatPages, formatRuntime, wordCount
+  formatPages, formatRuntime
 } from '../lib/script.js';
 
 const analysis = () => import('../lib/screenplay-analysis.js');
+const shotsLib = () => import('../lib/shots.js');
+const targetLib = () => import('../lib/target-runtime.js');
+/* The page's phone width: the same number every rule in screenplay.css
+   pairs with its min-width: 720px desk rules. */
+const PHONE_Q = '(max-width: 719px)';
+const isPhone = () => typeof matchMedia === 'function' && matchMedia(PHONE_Q).matches;
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
 const typesetter = () => import('../lib/screenplay-export.js');
@@ -152,11 +168,7 @@ const editor = mountEditor(document, {
 });
 
 /* ---- draft label ------------------------------------------------ */
-function draftLabel() {
-  const last = latestDraft(doc);
-  if (!last) return 'No draft saved yet';
-  return last.name + (changedSinceDraft(doc) ? ' · unsaved draft changes' : '');
-}
+const draftLabel = () => draftLabelOf(doc);
 /* DOM only: the label after a save settles or a draft is written. */
 function refreshDraftLabel() {
   const d = document.querySelector('[data-sc="draft"]');
@@ -176,6 +188,26 @@ let lineBar = null;
 let sheet = null;
 let beatsOpen = false;
 
+/* The page's tools, ONCE: the desk's File and ⋯ menus and the phone's
+   Tools sheet are both drawn from these lists, so the two layouts carry
+   the same features in different places (owner, parity rule). */
+const FILE_ITEMS = [
+  { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
+  { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' }
+];
+const TOOL_ITEMS = [
+  { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
+  { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
+  { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
+  { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
+  { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' }
+];
+const HELP_ITEMS = [
+  { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
+  { label: 'Stage guide', action: 'sc-guide', hint: 'questions', icon: 'menu_book' },
+  { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
+];
+
 function buildTop() {
   statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Saved ✓' });
   typeSel = h('select.sc-type', { id: 'scType', 'aria-label': 'Current line type' });
@@ -190,8 +222,25 @@ function buildTop() {
     h('span.sc-caret', { 'aria-hidden': 'true', text: '▾' }), typeSel
   ]);
   const stat = (label, key) => h('span.sc-stat', {}, [label + ': ', h('strong', { 'data-sc-stat': key, text: '…' })]);
+  /* The running time opens its own breakdown: dialogue against action,
+     at the speaking paces Screenplay Analysis uses, and the film's one
+     target (Reports'). A button, so it is the same on a phone and a desk. */
+  const rtBtn = h('button.sc-stat.sc-rt-btn', {
+    type: 'button', 'data-action': 'sc-runtime', 'aria-expanded': 'false', 'aria-controls': 'scRuntime',
+    title: 'Dialogue and action, against the target'
+  }, ['Est. runtime: ', h('strong', { 'data-sc-stat': 'runtime', text: '…' }), h('span.sc-rt-caret', { 'aria-hidden': 'true', text: '▾' })]);
   const stats = h('p.sc-stats', { 'aria-label': 'Script length' }, [
-    stat('Words', 'words'), stat('Pages', 'pages'), stat('Est. runtime', 'runtime')
+    stat('Words', 'words'), stat('Pages', 'pages'), rtBtn
+  ]);
+  /* Where the caret is: scene, beat, page, and the shots planned for
+     the scene on Visualize. Every part is derived; a part with nothing
+     behind it is hidden, never filled in. */
+  const pos = h('p.sc-pos', { 'aria-label': 'Where you are', 'aria-live': 'off' }, [
+    h('span.sc-pos-dot', { 'aria-hidden': 'true' }),
+    h('span.sc-pos-item', { 'data-sc-pos': 'scene' }),
+    h('span.sc-pos-item', { 'data-sc-pos': 'beat', hidden: true }),
+    h('span.sc-pos-item', { 'data-sc-pos': 'page', hidden: true }),
+    h('a.sc-pos-item.sc-pos-shots', { 'data-sc-pos': 'shots', href: 'visualize.html#shot-list', hidden: true })
   ]);
 
   const crumb = h('p.sc-crumb', {}, [
@@ -204,28 +253,21 @@ function buildTop() {
     statusNode
   ]);
   const meta = h('div.sc-meta', {}, [crumb, stats]);
+  const runtime = h('div#scRuntime.sc-runtime', { role: 'region', 'aria-label': 'Running time', hidden: true });
 
   const beatsBtn = button({
     label: 'Beats ◧', icon: 'view_sidebar', size: 'sm', action: 'sc-beats', class: 'sc-beats-btn',
     attrs: { 'aria-expanded': 'false', 'aria-controls': 'beatsPanel' }
   });
-  const fileMenu = actionMenu('File', [
-    { heading: 'File actions' },
-    { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
-    { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' }
-  ], { align: 'right', ariaLabel: 'File actions' });
-  const menu = actionMenu('⋯', [
-    { heading: 'Tools' },
-    { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
-    { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
-    { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
-    { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
-    { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' },
-    { heading: 'Help' },
-    { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
-    { label: 'Stage guide', action: 'sc-guide', hint: 'questions', icon: 'menu_book' },
-    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
-  ], { align: 'right', compact: true, ariaLabel: 'More' });
+  const fileMenu = actionMenu('File', [{ heading: 'File actions' }, ...FILE_ITEMS], { align: 'right', ariaLabel: 'File actions' });
+  const menu = actionMenu('⋯', [{ heading: 'Tools' }, ...TOOL_ITEMS, { heading: 'Help' }, ...HELP_ITEMS],
+    { align: 'right', compact: true, ariaLabel: 'More' });
+  /* The phone's one Tools button: the same items as File and ⋯ (and
+     Focus, which has no room in a 390px row), as a bottom sheet. */
+  const toolsBtn = button({
+    label: 'Tools', icon: 'more_horiz', iconOnly: true, size: 'sm', action: 'sc-tools-sheet', class: 'sc-tools-sheet-btn',
+    attrs: { 'aria-haspopup': 'dialog' }
+  });
   /* actionbar.js builds its toggles as the chrome's `.btn`; on this
      page they wear the kit's button, like everything else in the bar. */
   [fileMenu, menu].forEach((m) => {
@@ -264,8 +306,10 @@ function buildTop() {
     meta,
     h('div.sc-tools', {}, [
       h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot')]),
-      h('div.sc-tools-r', {}, [fileMenu, menu])
+      pos,
+      h('div.sc-tools-r', {}, [fileMenu, menu, toolsBtn])
     ]),
+    runtime,
     tipNode
   ]);
 }
@@ -297,8 +341,15 @@ function render() {
     h('span', { text: 'Screenplay done? ' }),
     h('a', { href: 'breakdown.html#script', text: '→ Go to Screenplay Analysis' })
   ]);
-  const aside = h('aside#beatsPanel.sc-beats', { 'aria-label': 'Beats', hidden: true });
-  main.append(buildTop(), sheet, after, aside, buildChips());
+  const aside = h('aside#beatsPanel.sc-beats', { 'aria-label': 'Beats', hidden: true }, [
+    h('div.sc-beats-bar', {}, [
+      h('span.sc-beats-grab', { 'aria-hidden': 'true' }),
+      button({ label: 'Close beats', icon: 'close', iconOnly: true, variant: 'ghost', size: 'sm', action: 'sc-beats-close', class: 'sc-beats-x' })
+    ])
+  ]);
+  /* The phone's scrim behind the beats sheet; a tap on it closes them. */
+  const scrim = h('div.sc-beats-scrim', { 'data-action': 'sc-beats-close', 'aria-hidden': 'true' });
+  main.append(buildTop(), sheet, after, aside, scrim, buildChips());
   app.replaceChildren(main);
   /* The blueprint's screenplay questions keep their saved answers here
      (verify's key-union needs section#guide on a stage page). The page
@@ -345,9 +396,7 @@ function refreshDerivedUi() {
     const t = el ? el.type : typeSel.value;
     const label = typeLabel(t);
     if (typeName_.textContent !== label) typeName_.textContent = label;
-    const dm = Keys.digitMap(keyPrefs.preset, knownTypes());
-    const digit = Object.keys(dm).find((d) => dm[d] === t);
-    const hint = digit ? '[Alt+' + digit + ']' : '';
+    const hint = typeKeyHint(t, keyPrefs.preset, knownTypes());
     if (typeKey_.textContent !== hint) typeKey_.textContent = hint;
   }
   if (lineBar && el && lineBar.dataset.type !== el.type) lineBar.dataset.type = el.type;
@@ -357,8 +406,9 @@ function refreshDerivedUi() {
     if (c.getAttribute('aria-pressed') !== String(on)) c.setAttribute('aria-pressed', String(on));
   });
   paintTip(el);
+  refreshPos();
   if (hintNode) {
-    const empty = doc.elements.length <= 1 && doc.elements.every((e) => !String(e.text || '').trim());
+    const empty = showStartHint(doc.elements);
     if (hintNode.hidden === empty) hintNode.hidden = !empty;
   }
 }
@@ -393,33 +443,15 @@ function watchTopBar() {
    the line's type or emptiness changes. Hidden or shown per device,
    stored as `hints` beside `keys` in the existing fms_write_prefs_v1
    (a read-merge-write, and only when the writer toggles it). */
-function hintsOn() {
-  try { return (JSON.parse(localStorage.getItem(Keys.WRITE_PREFS_KEY) || '{}') || {}).hints !== false; } catch (e) { return true; }
-}
-function setHints(on) {
-  try {
-    const raw = localStorage.getItem(Keys.WRITE_PREFS_KEY);
-    let all = {};
-    try { all = raw ? JSON.parse(raw) : {}; } catch (e) { all = {}; }
-    if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
-    if (on) delete all.hints; else all.hints = false;
-    localStorage.setItem(Keys.WRITE_PREFS_KEY, JSON.stringify(all));
-  } catch (e) { /* private mode: holds for this visit */ }
-}
-const typeName = (t) => (Keys.TYPE_NAMES && Keys.TYPE_NAMES[t]) || t;
+const hintsOn = () => writeHintsOn();
+const setHints = (on) => setWriteHints(on);   // private mode: holds for this visit
 function paintTip(el) {
   if (!tipNode || tipNode.hidden || !el) return;
   const empty = !String(el.text || '').trim();
   const key = el.type + (empty ? ':0' : ':1');
   if (key === tipKey) return;
   tipKey = key;
-  const ret = Keys.returnNext(el.type, keyPrefs, knownTypes());
-  const tab = Keys.tabAction(el.type, empty, false, knownTypes());
-  const keysLine = [
-    ret ? 'Enter → ' + typeName(ret) : null,
-    tab ? 'Tab → ' + typeName(tab.type) : null,
-    'Alt+1–7 any type'
-  ].filter(Boolean).join(' · ');
+  const keysLine = tipKeysLine(el.type, empty, keyPrefs, knownTypes());
   const topic = Keys.LEARN_TOPICS && Keys.LEARN_TOPICS[el.type];
   let box = null;
   try { box = topic ? learn(topic) : null; } catch (e) { box = null; }
@@ -472,6 +504,7 @@ function scheduleDerived() {
     editor.refreshCueOffers();
     applyBreaks();
     refreshStats();
+    refreshPos(true);
   }, 400);
 }
 
@@ -487,18 +520,149 @@ function refreshStats() {
     if (n && n.textContent !== v) n.textContent = v;
   };
   const els = doc.elements;
-  const written = els.some((e) => String(e.text || '').trim());
-  const pages = pageCount(els);
-  put('words', els.reduce((n, e) => n + wordCount(e.text), 0).toLocaleString());
+  const { written, pages, words } = scriptStats(els);
+  put('words', words);
   put('pages', formatPages(pages));
-  if (!written) { put('runtime', '—'); return; }
+  if (!written) { put('runtime', '—'); estimateMin = 0; paintRuntime(); return; }
   const estimate = () => {
-    const sec = Analysis.sliceScript(els).reduce((n, sl) => n + Analysis.estimateSlice(sl).seconds, 0);
-    put('runtime', sec ? formatRuntime(sec / 60) : formatRuntime(pages));
+    const est = estimatedRuntime(Analysis, els, pages);
+    put('runtime', est.text);
+    estimateMin = est.minutes;
   };
   if (Analysis) estimate();
   else { put('runtime', formatRuntime(pages)); analysis().then((m) => { Analysis = m; estimate(); }, () => {}); }
+  paintRuntime();
 }
+/* ---- the position strip: scene, beat, page, shots ---------------
+   DOM only. The arithmetic part (scene ordinal, page in eighths) is
+   cheap and runs with every caret move; the beat and the shots read
+   the story, the scenes and the shot list, so they are recomputed only
+   when the caret's scene changes or at idle (`deep`). */
+let posScene;
+let posBeat = '';
+function putPos(k, text, show = !!text) {
+  const n = document.querySelector('[data-sc-pos="' + k + '"]');
+  if (!n) return;
+  if (n.textContent !== text) n.textContent = text;
+  if (n.hidden === show) n.hidden = !show;
+}
+function refreshPos(deep) {
+  const p = curId ? caretPosition(doc.elements, curId) : null;
+  const total = p ? p.sceneCount : sceneTotal(doc.elements);
+  putPos('scene', scenePosText(p, total), true);
+  putPos('page', p ? formatCaretPage(p) : '');
+  const sid = p ? p.sceneElId : null;
+  if (deep || sid !== posScene) {
+    posScene = sid;
+    posBeat = '';
+    if (p) {
+      try {
+        const d = deriveBeats(doc.elements, curId, { targetPages: targetPages(), scenes: Scenes.listScenes() });
+        const cur = d.rows.find((r) => r.current);
+        posBeat = cur ? 'Beat: ' + (cur.beat.label || cur.beat.id) : '';
+      } catch (e) { posBeat = ''; }
+    }
+    paintShots(sid);
+  }
+  putPos('beat', posBeat);
+}
+/* The shots planned for this scene on Visualize: the scene row the
+   heading is linked to (scene.scriptElId, kept by the hand-off), and
+   the shots filed under it, with their camera movement. No time
+   estimate: nothing records how long a setup takes. A heading no scene
+   row links to has no shot list, so the part is hidden, not "0". */
+function paintShots(sid) {
+  if (!sid) { putPos('shots', ''); return; }
+  let row = null;
+  try { row = Scenes.listScenes().find((sc) => sc && sc.scriptElId === sid) || null; } catch (e) { row = null; }
+  if (!row) { putPos('shots', ''); return; }
+  shotsLib().then((S) => {
+    if (posScene !== sid) return;
+    let list = [];
+    try { list = S.listShots().filter((x) => x.sceneId === row.id); } catch (e) { list = []; }
+    putPos('shots', shotsSummary(list), true);
+  }, () => putPos('shots', ''));
+}
+
+/* ---- the film's target, for the beats and the running time -------
+   ONE field (src/lib/target-runtime.js): Reports' target, else a value
+   the Edit Log already holds. Read lazily; read again whenever the
+   running-time panel or the beats open. */
+let target = { minutes: 0, source: '' };
+let estimateMin = 0;
+function loadTarget() {
+  return targetLib().then((T) => { target = T.targetRuntime(); return target; }, () => target);
+}
+/* Where the beats should land: a page a minute against the target when
+   one is set; otherwise a feature's ~110 pages or a short's ~15. */
+function targetPages() {
+  if (target.minutes > 0) return target.minutes;   // read the project only when it decides
+  return targetPagesFor(target, (currentProject() || {}).format);
+}
+
+/* ---- the running-time panel: dialogue against action --------------
+   screenplay-analysis.js estimates every scene from its own words:
+   dialogue at DIALOGUE_WPS a second plus a beat per speech, action at
+   ACTION_WPS with a floor per sentence, and a moment per heading. The
+   split is that same arithmetic read apart, so it always sums to the
+   total in the strip. */
+const splitRuntime = (A) => splitRuntimeOf(A, doc.elements);
+function paintRuntime() {
+  const box = document.getElementById('scRuntime');
+  if (!box || box.hidden) return;
+  const written = doc.elements.some((e) => String(e.text || '').trim());
+  const done = (A) => {
+    const kids = [];
+    let estMin = 0;
+    if (!written) {
+      kids.push(h('p.sc-rt-none', { text: 'Write a line and the running time is estimated from its words.' }));
+    } else {
+      const r = splitRuntime(A);
+      estMin = Math.round(r.all / 60);
+      const pct = (x) => (r.all ? Math.round((x / r.all) * 100) : 0);
+      const mins = (sec) => formatRuntime(sec / 60);
+      const bar = h('div.sc-rt-bar', { 'aria-hidden': 'true' }, [h('span.sc-rt-dia'), h('span.sc-rt-act')]);
+      bar.firstChild.style.width = pct(r.dia) + '%';
+      bar.lastChild.style.width = (100 - pct(r.dia)) + '%';
+      kids.push(
+        h('div.sc-rt-row', {}, [
+          h('span.sc-rt-k', {}, [h('span.sc-rt-key.is-dia', { 'aria-hidden': 'true' }), h('span', { text: 'Dialogue' })]),
+          h('strong', { text: mins(r.dia) + ' · ' + pct(r.dia) + '%' })
+        ]),
+        h('div.sc-rt-row', {}, [
+          h('span.sc-rt-k', {}, [h('span.sc-rt-key.is-act', { 'aria-hidden': 'true' }), h('span', { text: 'Action and headings' })]),
+          h('strong', { text: mins(r.act) + ' · ' + (100 - pct(r.dia)) + '%' })
+        ]),
+        bar,
+        h('p.sc-rt-note', { text: 'Estimated from the words: dialogue at ' + A.DIALOGUE_WPS + ' words a second, action at ' + A.ACTION_WPS + '.' })
+      );
+    }
+    if (target.minutes > 0) {
+      const d = estMin - target.minutes;
+      kids.push(h('p.sc-rt-target' + (written && d > 0 ? '.is-over' : ''), {}, [
+        h('span', { text: targetLabel(target) }),
+        written ? h('strong', { text: targetDeltaText(estMin, target.minutes) }) : null
+      ].filter(Boolean)));   // append(null) would print "null"
+    } else {
+      kids.push(h('p.sc-rt-target', {}, [
+        h('span', { text: 'No target running time set. ' }),
+        h('a', { href: 'reports.html#reports', text: 'Set one in Reports' })
+      ]));
+    }
+    box.replaceChildren(...kids);
+  };
+  if (Analysis) done(Analysis);
+  else analysis().then((m) => { Analysis = m; done(m); }, () => {});
+}
+delegate(document, 'click', '[data-action="sc-runtime"]', (e, btn) => {
+  const box = document.getElementById('scRuntime');
+  if (!box) return;
+  const open = box.hidden;
+  box.hidden = !open;
+  btn.setAttribute('aria-expanded', String(open));
+  if (open) loadTarget().then(paintRuntime);
+});
+
 async function applyBreaksSoon() {
   if (!Typeset) {
     try { Typeset = await typesetter(); } catch (e) { return; }
@@ -509,12 +673,7 @@ function applyBreaks() {
   const page = document.getElementById('wr-page');
   if (!page || !Typeset) return;
   const pages = Typeset.paginateDoc(doc);
-  const anchors = [];
-  pages.forEach((rows, p) => {
-    if (p === 0) return;
-    const first = rows.find((r) => r.id);
-    anchors[p] = first ? { id: first.id, split: !!first.cont } : null;
-  });
+  const anchors = pageAnchors(pages);
   const existing = new Map();
   page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
   for (let p = 1; p < pages.length; p++) {
@@ -644,6 +803,7 @@ function setBeats(open) {
   if (!aside) return;
   aside.hidden = !open;
   document.getElementById('main')?.classList.toggle('has-beats', open);
+  document.documentElement.classList.toggle('sc-beats-on', open);
   if (btn) { btn.setAttribute('aria-expanded', String(open)); btn.classList.toggle('is-on', open); }
   if (open) {
     if (!beats || !aside.contains(document.querySelector('.bp'))) {
@@ -651,17 +811,65 @@ function setBeats(open) {
       beats = mountBeats(aside, {
         getElements: () => doc.elements,
         scrollToEl: (id) => editor.scrollToEl(id),
-        onJump: ({ id }) => { if (id) editor.focusEl(id); },
-        /* a feature runs ~110 pages, a short ~15: where each beat should land */
-        getTargetPages: () => (/short/i.test(String((currentProject() || {}).format || '')) ? 15 : 110)
+        onJump: ({ id }) => { if (id) editor.focusEl(id); if (isPhone()) setBeats(false); },
+        getTargetPages: () => targetPages(),
+        getTarget: () => ({ minutes: target.minutes, source: target.source, estimate: estimateMin })
       });
       if (curId) beats.setCurrent(curId);
+      loadTarget().then(() => { if (beats) beats.refresh(); });
     }
     beats.open();   // the button is the only toggle; the panel's own caret stays usable
-  }
+    if (isPhone()) aside.querySelector('[data-action="sc-beats-close"]')?.focus({ preventScroll: true });
+  } else if (btn && aside.contains(document.activeElement)) btn.focus({ preventScroll: true });
 }
+/* On a phone the beats are a bottom sheet over the page: a scrim behind
+   it and a close button on it, so the writer is never left under a
+   panel with the Beats button out of reach. */
+delegate(document, 'click', '[data-action="sc-beats-close"]', () => setBeats(false));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && beatsOpen && isPhone() && !document.querySelector('.mn-overlay')) setBeats(false);
+});
 let beats = null;
 delegate(document, 'click', '[data-action="sc-beats"]', () => setBeats(!beatsOpen));
+
+/* ---- the phone's Tools sheet -------------------------------------
+   The kit's bottom sheet (the bottom bar's own Go-to / Tools frame),
+   holding the desk's File and ⋯ items plus Focus. A row does not run
+   the action itself: it closes the sheet, then clicks the desk menu's
+   own item (still in the DOM, only hidden at this width), so there is
+   exactly one handler per action and focus lands where that handler
+   puts it, not back on the Tools button. */
+function sheetRow(it) {
+  return h('button.sc-sheet-row', { type: 'button', 'data-sc-act': it.action }, [
+    sym(it.icon),
+    h('span.sc-sheet-label', { text: it.label }),
+    it.hint ? h('span.sc-sheet-hint', { text: it.hint }) : null
+  ].filter(Boolean));
+}
+function openToolsSheet(opener) {
+  const groups = [
+    ['File', FILE_ITEMS],
+    ['Write', [{ label: 'Focus mode', action: 'fm-enter', hint: 'only the page', icon: 'center_focus_strong' }]],
+    ['Tools', TOOL_ITEMS],
+    ['Help', HELP_ITEMS]
+  ];
+  const body = h('div.sc-sheet-body', {}, groups.map(([title, items]) => h('section.sc-sheet-group', { 'aria-label': title }, [
+    h('h3.sc-sheet-h', { text: title }),
+    ...items.map(sheetRow)
+  ])));
+  body.addEventListener('click', (e) => {
+    const row = e.target.closest && e.target.closest('[data-sc-act]');
+    if (!row) return;
+    const act = row.dataset.scAct;
+    closeSheet().then(() => {
+      const real = act === 'fm-enter' ? document.getElementById('fm-enter')
+        : document.querySelector('#scTop .tb-menu-panel [data-action="' + act + '"]');
+      if (real) real.click();
+    });
+  });
+  kitSheet({ title: 'Screenplay tools', body, kind: 'sc-tools', returnTo: opener });
+}
+delegate(document, 'click', '[data-action="sc-tools-sheet"]', (e, btn) => openToolsSheet(btn));
 
 /* ---- the ⋯ menu ------------------------------------------------- */
 delegate(document, 'click', '[data-action="sc-tamil"]', () => {
@@ -685,7 +893,7 @@ delegate(document, 'click', '[data-action="sc-check"]', () => {
 });
 
 async function exportPDF() {
-  if (doc.elements.every((e) => !String(e.text || '').trim())) { say('Nothing to export yet — write a line first.'); return; }
+  if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
   let T;
@@ -696,7 +904,7 @@ async function exportPDF() {
   PDF.exportPDF({
     scope: 'screenplay',
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: [draftLabel(), formatPages(pageCount(doc.elements)) + ' pages'].filter(Boolean).join(' · '),
+    subtitle: pdfSubtitle(doc),
     before: () => {
       node = T.buildDocument(doc, {
         title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: false
@@ -719,7 +927,7 @@ function closeImport() {
   if (location.hash === '#import') history.replaceState(null, '', location.pathname + location.search);
   if (curId) editor.focusEl(curId);
 }
-const isBlankDoc = () => doc.elements.every((e) => !String(e.text || '').trim());
+const isBlankDoc = () => isBlankScript(doc.elements);
 
 function drawImport() {
   const body = h('div.sc-imp-body');
@@ -738,12 +946,7 @@ function drawImport() {
       button({ label: 'Read the pasted text', action: 'sc-imp-paste' })
     );
   } else {
-    const p = imp.plan;
-    body.append(
-      h('p', { text: 'Read ' + (imp.name ? '“' + imp.name + '” ' : '') + 'as ' + (p.formatLabel || p.format) + ': '
-        + p.elements.length + ' lines, ' + formatPages(p.pages) + ' pages, '
-        + p.scenes.length + (p.scenes.length === 1 ? ' scene.' : ' scenes.') })
-    );
+    body.append(h('p', { text: importReadText(imp.name, imp.plan) }));
     if (!isBlankDoc()) {
       body.append(h('div.sc-imp-modes.k-seg', { role: 'radiogroup', 'aria-label': 'Where it goes' }, [
         ['append', 'Add after what is written'], ['replace', 'Replace the screenplay (a draft is saved first)']
@@ -825,7 +1028,7 @@ delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   renderPage();
   const d = document.querySelector('[data-sc="draft"]');
   if (d) d.textContent = draftLabel();
-  say('Imported ' + done.elements + ' lines and ' + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '. Next: Screenplay Analysis.');
+  say(importDoneText(done));
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeImport(); });
 
@@ -833,7 +1036,14 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeI
 render();
 mountTamilType();
 WriteKeys.publishSheet(keyPrefs);
-mountFocusMode(() => doc);
+mountFocusMode(() => doc, {
+  /* focus mode's top strip: the page's own labels, as the crumb has them */
+  getMeta: () => ({
+    title: Script.projectTitle(),
+    draft: (latestDraft(doc) || {}).name || '',
+    status: statusNode ? statusNode.textContent : ''
+  })
+});
 /* Focus mode injects its button inside #screenplay; bring it up into the
    top bar (it is found by id, so it is not injected twice). */
 {

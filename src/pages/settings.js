@@ -97,6 +97,8 @@ import { aiPill } from '../ui/ai-pill.js';
 import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
+import Account from '../lib/account.js';   // CORE: auth.js imports it too
+import { syncLine, ago } from '../ui/status-bar.js';
 import Billing from '../lib/billing.js';   // CORE (the `studio` chunk), so this adds no chunk
 /* The backup FILE is backup.js's, exactly as it is for the hub's
    Export and for Drive's upload. This page calls it; it does not
@@ -119,16 +121,15 @@ import { buildBackup, downloadBackup, summariseBackup, compareForRestore } from 
 import { restorePreview, replaceSentences } from '../ui/restore-preview.js';
 import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
-import { OPTOUT_KEY, usageOptedOut } from '../lib/usage.js';
+import { usageOptedOut } from '../lib/usage.js';
+import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting } from '../lib/settings-model.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
 
 /* Old billing anchors: settings.html#plan etc. now live on purchase.html. */
 {
-  const OLD = { plan: 'purchase.html#plan', billing: 'purchase.html#plan', invoices: 'purchase.html#plan', refund: 'purchase.html#plan',
-                promo: 'purchase.html#plan', gift: 'purchase.html#plan', trial: 'purchase.html#plan', referral: 'purchase.html#plan' };
-  const dest = OLD[String(location.hash || '').replace(/^#/, '')];
+  const dest = movedAnchor(location.hash);
   if (dest) location.replace(dest);
 }
 
@@ -297,6 +298,16 @@ function renderRegion() {
       + 'Everything you have written is untouched and comes straight back if you '
       + 'switch to India.' }));
 
+  /* What rate card the budget actually reads, said as a fact and not as a
+     union badge: no union floor exists (the FEFSI MoU lapsed in 2025), so
+     nothing here says "applied" about an agreement. */
+  if (now === 'IN') {
+    sec.append(h('p.st-rate', {}, [
+      h('span.st-rate-k', { text: 'Rate card in use' }),
+      h('span.st-rate-v', { text: 'Chennai 2024\u201325 \u00b7 indicative ranges, not a union agreement' })
+    ]));
+  }
+
   sec.append(h('p.st-note', { text: chosen
     ? 'You chose this, so it stays chosen — the studio will not change it back, '
       + 'wherever you open it.'
@@ -337,20 +348,8 @@ function renderRegion() {
    — the ceiling — says so in its own line of copy rather than
    being printed to three decimal places and believed. */
 
-/* Chars in, quota bytes out. storageUsage() counts UTF-16 code
-   units because that is the unit browsers bill, and `smallLimit`
-   is quoted in the same unit, so the proportion of the two is
-   sound. Printing "characters" at somebody would be accurate and
-   useless; two bytes per unit is the conversion, and the page says
-   so out loud rather than leaving it in here. */
-function fmtQuota(chars) {
-  const kb = (Number(chars) || 0) * 2 / 1024;
-  if (kb < 1) return 'under 1 KB';
-  if (kb < 1024) return Math.round(kb) + ' KB';
-  return (kb / 1024).toFixed(1) + ' MB';
-}
-
-const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+/* Chars in, quota bytes out: fmtQuota() and the meter's band are in
+   src/lib/settings-model.js, with the reasoning. */
 
 /* The one state worth saying loudly, and it is said before any
    figure: a tier that did not open is not a tier that is empty. */
@@ -379,16 +378,12 @@ function nearlyFullCard() {
 
 function renderStorage() {
   const u = storageUsage();
-  const limit = u.smallLimit > 0 ? u.smallLimit : 0;
-  const share = limit ? u.small / limit : 0;
-  const pct   = Math.max(0, Math.min(100, Math.round(share * 100)));
   /* Three bands, and the first of them is the whole point. A studio
      with room to spare is drawn in the accent, not in a warning
      hue: colouring a healthy number amber is how people learn to
-     ignore amber. */
-  const band  = share >= 0.9 ? 'bad' : share >= 0.75 ? 'warn' : 'ok';
-  /* 0% on a studio that has written something is a lie by rounding. */
-  const shown = (u.small > 0 && pct < 1) ? 'under 1%' : pct + '%';
+     ignore amber. 0% on a studio that has written something is a lie
+     by rounding, so it reads "under 1%". */
+  const { limit, pct, band, shown } = storageReadout(u);
 
   const sec = section('storage', 'This device \u00b7 where the work actually sits',
     'Storage.',
@@ -439,11 +434,7 @@ function renderStorage() {
   const bigM = h('div.st-meter');
   bigM.append(h('p.st-meter-head', {}, [
     h('span.st-meter-label', { text: 'Large-item storage' }),
-    h('span.st-meter-figure', {
-      text: u.tier === 'unavailable' ? 'could not be counted'
-          : u.overflowed ? fmtQuota(u.big) + ' across ' + plural(u.overflowed, 'item', 'items')
-          : 'nothing here yet'
-    })
+    h('span.st-meter-figure', { text: bigTierFigure(u) })
   ]));
   bigM.append(h('p.st-meter-note', {
     text: u.tier === 'unavailable'
@@ -504,15 +495,7 @@ let busy = '';           // which control is mid-flight, for the label
    'version' | 'theirs', rev, source, savedAt, incoming, current, plan } */
 let restorePrev = null;
 
-const when = (iso) => {
-  if (!iso) return 'never';
-  const d = new Date(iso);
-  if (isNaN(d)) return 'unknown';
-  return d.toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-};
+const when = formatWhen;
 
 function driveButton(action, label, opts) {
   opts = opts || {};
@@ -852,7 +835,69 @@ function renderAccountMine() {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
   }
   sec.append(slot);
+  if (signedIn) sec.append(renderIdentityFacts());
   return sec;
+}
+
+/* THE IDENTITY CARD'S THREE FACTS (14 Oct 2026): role and plan, seats,
+   last sync. Every one is read, none stored, and a fact that cannot be
+   known is left out rather than guessed: no studio account means no seat
+   count; no Drive backup means no Drive line. The owner's name is never
+   printed (brand.json seller is empty by decision); the role is the
+   gate's word (admin / member). */
+let factsSeen = null;        // { uid, data } | { uid, none: true }
+let factsFetching = false;
+function wantFacts() {
+  const uid = sessionUid();
+  if (!uid || factsFetching || (factsSeen && factsSeen.uid === uid)) return;
+  factsFetching = true;
+  Account.loadAccount()
+    .then((d) => { factsSeen = { uid, data: d || null }; })
+    .catch(() => { factsSeen = { uid, data: null }; })
+    .finally(() => { factsFetching = false; if (sessionUid() === uid && !busy) render(); });
+}
+/* The Team panel re-reads the account after every create / invite /
+   revoke (and on each render). Adopt its answer, and redraw only when the
+   seat count actually moved, so its refresh-on-render cannot loop. */
+document.addEventListener('fms:account-loaded', (e) => {
+  const uid = sessionUid();
+  if (!uid) return;
+  const d = e.detail || null;
+  const was = factsSeen && factsSeen.uid === uid ? seatsKey(factsSeen.data) : null;
+  factsSeen = { uid, data: d };
+  if (was !== seatsKey(d) && !busy) render();
+});
+function renderIdentityFacts() {
+  wantFacts();
+  const c = window.StudioCloud;
+  const cp = PlanGate.currentPlan();
+  const gate = (c && c.getGateState && c.getGateState()) || {};
+  const cells = [];
+  /* 'granted' is only ever computed with plan 'free' (plan-gate.js), so its
+     planName is the FREE plan's: say what it is, as purchase.js does. */
+  cells.push(['Role', roleLine(cp, gate.role)]);
+  const d = factsSeen && factsSeen.uid === sessionUid() ? factsSeen.data : null;
+  if (d && d.seats && d.seats.limit) {
+    cells.push(['Seats', d.seats.used + ' of ' + d.seats.limit + ' allocated']);
+  }
+  const st = c && c.getSyncStatus ? c.getSyncStatus() : null;
+  let last = syncLine(st).text;
+  try {
+    const ds = DriveSync.getDriveStatus();
+    const t = ds && ds.syncedAt ? Date.parse(ds.syncedAt) : NaN;
+    if (Number.isFinite(t)) last += ' \u00b7 Drive ' + ago(t);
+  } catch (e) { /* no Drive line */ }
+  cells.push(['Sync', last]);
+  return h('dl.st-facts', {}, cells.map(([k, v]) => h('div.st-fact', {}, [h('dt', { text: k }), h('dd', { text: v })])));
+}
+
+/* The build, read from package.json at build time (the same value the
+   status dock prints). Nothing measured is invented: no platform, no
+   gateway. */
+function renderBuild() {
+  const v = String(import.meta.env.VITE_APP_VERSION || '');
+  if (!v) return null;
+  return h('p.st-build', { id: 'build', text: 'Build v' + v });
 }
 
 /* The plan, as a summary and nothing more. Buying, invoices and refunds are
@@ -903,32 +948,15 @@ function renderPlanCard() {
     'What you have, and when it ends. Everything about buying, invoices and refunds is on the Purchase page.');
   const card = h('div.st-plan-card');
   const off = PlanGate.purchasesOff();
-  let line;
-  if (off) line = 'The studio is free to use right now. Nothing needs buying.';
-  else if (cp.reason === 'trial') {
-    const end = PlanGate.trialEndsAt();
-    line = 'Free trial' + (end ? ' \u00b7 ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
-  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + ' \u00b7 yours for good.';
-  else if (cp.reason === 'granted') line = 'Access given to you by the studio' + (cp.planName ? ' \u00b7 ' + cp.planName : '') + '.';
-  else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
-  else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
-  /* Where the plan stands, as one LED pill: read from the same facts as the
-     line below it, so it can never say something the line does not. */
-  const led = off ? ['Open', 'ok'] : cp.reason === 'trial' ? ['Trial', 'warn'] : cp.reason === 'paid' ? ['Active', 'ok']
-    : cp.reason === 'granted' ? ['Granted', 'ok'] : cp.reason === 'expired' ? ['Ended', 'bad'] : null;
+  /* The line, the LED pill read from the same facts, and the usage note:
+     src/lib/settings-model.js planSummary(). */
+  const { line, led, usageNote, bought } = planSummary(cp, { off, signedIn, trialEndsAt: () => PlanGate.trialEndsAt() });
   if (led) card.append(h('p.st-plan-pills', {}, [h('span.st-led.is-' + led[1], {}, [h('span.st-dot.is-' + led[1], { 'aria-hidden': 'true' }), led[0]])]));
   card.append(h('p.st-plan-line', { text: line }));
 
   /* The second line: what the plan means for what you can keep and share. */
-  let usageNote = '';
-  if (off) usageNote = 'The studio is open, so nothing is capped: sync as many films as you like and share them freely.';
-  else if (!signedIn) usageNote = '';   // the line above already says plan details need a sign-in
-  else if (cp.reason === 'granted') usageNote = 'Nothing is capped while this access stands.';
-  else if (cp.reason === 'trial') usageNote = 'Plan limits on synced films and shares apply once you choose a plan.';
-  else if (cp.reason === 'expired') usageNote = 'Everything you wrote is still saved on this device.';
   if (usageNote) card.append(h('p.st-plan-note', { text: usageNote }));
 
-  const bought = signedIn && !off && cp.reason === 'paid';
   if (bought) {
     wantUsage();
     const seen = usageSeen;
@@ -1046,11 +1074,7 @@ delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
   }
   try {
     const res = await c.deleteOwnedCloudProjects();
-    const failed = (res && res.failed) || [];
-    await tell({
-      title: failed.length ? 'Some cloud projects were not deleted' : 'Cloud projects deleted',
-      body: 'Deleted ' + ((res && res.deleted) || 0) + ' cloud project(s)' + (failed.length ? '; ' + failed.length + ' failed.' : '.') + ' Cloud sync is paused.'
-    });
+    await tell(cloudDeleteReport(res));
     render();
   } catch (e) {
     StudioUI.toastError('The cloud projects were not deleted. ' + ((e && e.message) || ''), { duration: 6000 });
@@ -1079,7 +1103,7 @@ function render() {
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [
-    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus)], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
     tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
     tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
     tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),
@@ -1269,7 +1293,7 @@ delegate(document, 'click', '[data-action^="drive-"]', async (e, el) => {
    the answer is "no" and removed when it is "yes", so the default leaves nothing. */
 delegate(document, 'change', '[data-action="usage-count-toggle"]', (e, el) => {
   try {
-    if (el.checked) Store.rawRemove(OPTOUT_KEY); else Store.rawSet(OPTOUT_KEY, '1');
+    setUsageCounting(el.checked);
   } catch (err) { StudioUI.toastError('This browser would not save that choice.'); }
   render();
 });
@@ -1329,6 +1353,7 @@ async function refreshGate() {
 }
 wireGateUI(() => { if (!busy) render(); });
 Store.subscribe('gate:changed', () => refreshGate());
+Store.subscribe('cloud:status', () => { if (!busy) render(); });
 /* The Drive section reads the plan's drive_backup, which arrives later. */
 Store.subscribe('plan:changed', () => { dropUsage(); if (!busy) render(); });
 refreshGate();

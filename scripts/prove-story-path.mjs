@@ -103,8 +103,12 @@ check('feature: the menu lists the same ten', await page.evaluate(() => [...docu
    without data-path. */
 check('feature: …then the three Tools rows, in order', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-tab:not([data-path])')].map((b) => b.getAttribute('data-tab'))),
   ['pacing', 'pitch', 'guide']);
-check('feature: the groups are Idea, Build, Write up, Tools', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-group-h')].map((e) => e.textContent)),
+/* A path group carries its done count beside its name (14 Oct 2026 parity
+   pass: "Idea · 0/2"); Tools has no steps, so no count. */
+check('feature: the groups are Idea, Build, Write up, Tools', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-group-h')].map((e) => e.textContent.replace(/ · \d+\/\d+$/, ''))),
   ['Idea', 'Build', 'Write up', 'Tools']);
+check('feature: each path group says how many of its steps are done', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-group-h')].map((e) => / · \d+\/\d+$/.test(e.textContent))),
+  [true, true, true, false]);
 check('feature: the open row carries the step number the blueprint drawer reads', await page.evaluate(() => { const r = document.querySelector('#main > nav.tabs [aria-selected="true"]'); return [r && r.dataset.step, r && r.dataset.path]; }), ['1', 'idea']);
 /* the path is the menu now, and nothing else on the page is a tab */
 check('feature: no other tab and no Format drop-down', await page.evaluate(() => [document.querySelectorAll('[role="tab"]:not(.tabs-tab)').length, !!document.getElementById('stFw')]), [0, false]);

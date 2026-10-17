@@ -670,6 +670,8 @@ export function createProject(meta) {
      before the field existed simply has none (projectFav() answers ''
      and the caller falls back to the device's choice). */
   if (isFavSlug(meta.fav)) project.fav = meta.fav;
+  /* The subtitle is the same kind of field: optional, on the entry. */
+  if (isSubtitle(meta.subtitle)) project.subtitle = meta.subtitle.trim();
   arr0.push(project);
   saveAllProjects(arr0);
   _invalidateCurrent();
@@ -806,6 +808,28 @@ export function setProjectFav(slug, id) {
   if (!pid) return null;
   if (slug !== '' && !isFavSlug(slug)) return null;
   return updateProject(pid, { fav: slug || undefined });
+}
+
+/* ---- the project subtitle ("Slate"), per project -------------
+   One optional line under the title (owner, 14 Oct 2026). A field on
+   the project entry beside title, format and fav — not a new key —
+   and an entry written before it existed simply has none. No short id
+   was added, deliberately. */
+const SUBTITLE_MAX = 80;
+function isSubtitle(v) { return typeof v === 'string' && v.trim().length > 0 && v.length <= SUBTITLE_MAX * 2; }
+
+/** The open (or named) project's subtitle, or ''. */
+export function projectSubtitle(id) {
+  const p = id ? getProject(id) : currentProject();
+  return p && typeof p.subtitle === 'string' ? p.subtitle : '';
+}
+
+/** Set the open project's subtitle. '' clears it. */
+export function setProjectSubtitle(text, id) {
+  const pid = id || currentProjectId();
+  if (!pid) return null;
+  const v = String(text == null ? '' : text).replace(/\s+/g, ' ').trim().slice(0, SUBTITLE_MAX);
+  return updateProject(pid, { subtitle: v || undefined });
 }
 
 export function updateProject(id, patch) {

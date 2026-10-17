@@ -24,48 +24,13 @@
    refresh are delegated on [data-us-*] — no inline handlers.
    ============================================================ */
 import { h, delegate } from '../../lib/dom.js';
-import { allModules } from '../../lib/navmodel.js';
 import { emptyState, errorState, skeleton, kpi, pill, dataTable, absTime, relTime } from '../../ui/admin-kit.js';
 import { sparkline, bar, heatGrid } from '../../ui/admin-charts.js';
 import { slot, load, reset } from './_rpc.js';
+import { n } from '../../lib/admin-format.js';
+import { RANGES, FEATURE_LABEL, planName, moduleLabel, sum, heatValues, countingAge, adoption, limitHits } from '../../lib/admin-usage-model.js';
 
 const S = { days: 30, usage: slot(), ctx: null };
-const RANGES = [7, 30, 90];
-const n = (v) => (Number(v) || 0).toLocaleString();
-
-const FEATURE_LABEL = {
-  script_import: 'Script imported', export_pdf: 'PDF exported', export_docx: 'Word file exported',
-  ai_call: 'AI request answered', drive_connect: 'Google Drive connected', limit_hit: 'Plan limit met',
-  share_created: 'Share link created', screening_pass_used: 'Screening pass used'
-};
-const PLAN_ORDER = ['free', 'starter', 'indie', 'pro'];
-const PLAN_NAME = { free: 'No plan', starter: 'Basic', indie: 'Intermediate', pro: 'Pro' };
-const planName = (p) => PLAN_NAME[p] || p;
-
-let _labels = null;
-function moduleLabel(id) {
-  if (!_labels) { _labels = {}; try { for (const m of allModules()) _labels[m.id] = m.label; } catch (e) { /* the id is the fallback */ } }
-  return _labels[id] || id;
-}
-
-/** Day strings -> Monday-start weeks: [{ label, idx:[day indexes] }]. */
-function weeksOf(days) {
-  const out = [];
-  let cur = null;
-  days.forEach((ds, i) => {
-    const d = new Date(ds + 'T00:00:00');
-    const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    const key = monday.toISOString().slice(0, 10);
-    if (!cur || cur.key !== key) {
-      cur = { key, idx: [], label: monday.getDate() + '/' + (monday.getMonth() + 1) };
-      out.push(cur);
-    }
-    cur.idx.push(i);
-  });
-    return out;
-}
-
-const sum = (a) => a.reduce((t, v) => t + (Number(v) || 0), 0);
 
 function rangePicker() {
   return h('div.us-bar', { role: 'group', 'aria-label': 'Range' }, [
@@ -95,13 +60,11 @@ function activeBlock(d) {
 }
 
 function heatBlock(d, mods) {
-  const weeks = weeksOf(d.days || []);
-  const rows = mods.map((m) => moduleLabel(m.id));
-  const values = mods.map((m) => weeks.map((w) => sum(w.idx.map((i) => (m.by_day || [])[i]))));
+  const { rows, cols, values } = heatValues(d.days, mods);
   return h('div.ad-card', {}, [
     h('h3.ad-card-h', { text: 'Opens by module and week' }),
     h('p.ad-meta', { text: 'Darker is more opens. Columns are weeks, labelled by the Monday they start (day/month); the first and last may be partial.' }),
-    mods.length ? heatGrid({ rows, cols: weeks.map((w) => w.label), values }, { label: 'Module opens by week', unit: ' opens' })
+    mods.length ? heatGrid({ rows, cols, values }, { label: 'Module opens by week', unit: ' opens' })
       : emptyState({ title: 'No modules in the list', body: 'The server returned no module names.' })
   ]);
 }
@@ -122,8 +85,7 @@ function modulesTable(mods) {
 
 function unusedBlock(d, mods) {
   const dead = d.dead_modules || [];
-  const began = d.tracking_began ? new Date(d.tracking_began + 'T00:00:00') : null;
-  const young = !began || (Date.now() - began.getTime()) < 14 * 86400000;
+  const { began, young } = countingAge(d.tracking_began);
   const body = [
     h('p.ad-meta', { text: 'Modules with no counted open in the last 14 days. These counts come only from signed-in people who have not turned counting off, so a module listed here may still be used by someone who is not counted.' })
   ];
@@ -135,9 +97,7 @@ function unusedBlock(d, mods) {
 }
 
 function adoptionBlock(d) {
-  const feats = (d.features || []).filter((f) => f.name !== 'limit_hit');
-  const plans = PLAN_ORDER.filter((p) => feats.some((f) => (f.by_plan || {})[p] != null));
-  for (const f of feats) for (const p of Object.keys(f.by_plan || {})) if (!plans.includes(p)) plans.push(p);
+  const { feats, plans } = adoption(d.features);
   const cols = [
     { key: 'name', label: 'Feature', render: (f) => FEATURE_LABEL[f.name] || f.name },
     { key: 'total', label: `Uses (${S.days}d)`, align: 'end', render: (f) => n(f.total) },
@@ -152,8 +112,7 @@ function adoptionBlock(d) {
 }
 
 function limitBlock(d) {
-  const f = (d.features || []).find((x) => x.name === 'limit_hit') || { total: 0, by_plan: {} };
-  const items = Object.entries(f.by_plan || {}).map(([p, v]) => ({ label: planName(p), value: Number(v) || 0 })).sort((a, b) => b.value - a.value);
+  const { f, items } = limitHits(d.features);
   return h('div.ad-card', {}, [
     h('h3.ad-card-h', { text: 'Limit hits, by plan' }),
     h('p.ad-meta', { text: 'How often a plan limit stopped someone, ranked by plan. It records that a limit was met and the plan; not which limit, and not who.' }),

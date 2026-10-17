@@ -719,3 +719,243 @@ html.fm-on .sc-sheet .wr-page { box-shadow: none; }
 html.fm-on .sc-line-more,
 html.fm-on .sc-sheet .wr-el:focus-within > .sc-linebar { display: none; }
 html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
+
+/* ============================================================
+   PARITY PASS (14 Oct 2026) — position strip, running-time
+   breakdown, the phone's Tools sheet and beats sheet
+   ------------------------------------------------------------
+   Same features at every width; only the placement moves. The
+   phone rules use this file's own 719px edge, the partner of every
+   min-width: 720px desk rule above, so no width gets both.
+   ============================================================ */
+
+/* Where the caret is: scene · beat · page · shots. Mono, one line,
+   violet only as a mark (the dot). */
+.sc-pos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s4);
+  margin: 0;
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+/* On a desk it sits in the tools row, between the tools and the menus. */
+@media (min-width: 720px) {
+  .sc-tools > .sc-pos { flex: 1 1 auto; justify-content: center; }
+}
+.sc-pos-dot {
+  width: 6px; height: 6px; flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent-primary);
+}
+.sc-pos-item { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sc-pos-item[hidden] { display: none; }
+.sc-pos-shots { color: var(--brand-deep); text-decoration: none; }
+.sc-pos-shots:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* The running time is a button: the stat, then its breakdown. */
+.sc-rt-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s1);
+  min-height: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.sc-rt-btn:hover strong { color: var(--brand-deep); }
+.sc-rt-btn:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); border-radius: var(--radius-sm); }
+.sc-rt-caret { color: var(--ink-muted); }
+.sc-rt-btn[aria-expanded="true"] .sc-rt-caret { color: var(--brand-deep); }
+.sc-runtime {
+  flex: 1 1 100%;
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-top: 1px solid var(--border-hair);
+  background: var(--surface-card);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-body);
+}
+.sc-runtime[hidden] { display: none; }
+.sc-runtime p { max-width: none; }
+@media (min-width: 720px) {
+  .sc-runtime { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s6); }
+  .sc-runtime .sc-rt-bar,
+  .sc-runtime .sc-rt-note,
+  .sc-runtime .sc-rt-target,
+  .sc-runtime .sc-rt-none { grid-column: 1 / -1; }
+}
+.sc-rt-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.sc-rt-row strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sc-rt-k { display: inline-flex; align-items: center; gap: var(--s2); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.sc-rt-key { width: 8px; height: 8px; border-radius: var(--radius-sm); flex: none; }
+.sc-rt-key.is-dia, .sc-rt-dia { background: var(--accent-primary); }
+.sc-rt-key.is-act, .sc-rt-act { background: var(--border-strong); }
+.sc-rt-bar { display: flex; height: 6px; overflow: hidden; border-radius: var(--radius-pill); background: var(--border-hair); }
+.sc-rt-bar > span { display: block; height: 100%; }
+.sc-rt-note, .sc-rt-none { margin: 0; color: var(--ink-muted); font-family: var(--f-body); font-size: var(--t-tiny); }
+.sc-rt-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s1) var(--s3);
+  margin: 0;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--border-hair);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sc-rt-target strong { color: var(--ok-deep); font-weight: 600; }
+.sc-rt-target.is-over strong { color: var(--warn-deep); }
+.sc-rt-target a { color: var(--brand-deep); text-transform: none; letter-spacing: 0; }
+
+/* The Tools button exists for the phone only; the desk has File and ⋯. */
+.sc-tools-sheet-btn { display: none; }
+
+/* The phone's Tools sheet: the kit's sheet frame, rows of the kit's
+   menu shape, 44px each. */
+.sc-sheet-body { display: grid; gap: var(--s3); padding-top: var(--s2); }
+.sc-sheet-group { display: grid; gap: var(--s-half); }
+.sc-sheet-h {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sc-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: var(--tap-min, 44px);
+  padding: 0 var(--s3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.sc-sheet-row .sym { font-size: 18px; color: var(--ink-muted); }
+.sc-sheet-row:hover, .sc-sheet-row:focus-visible { background: var(--surface-hover); border-color: var(--border-hair); outline: none; }
+.sc-sheet-label { flex: 1; min-width: 0; }
+.sc-sheet-hint { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+
+/* The beats' own bar: a grab handle on the phone sheet, a close
+   button wherever the beats float over the page (below 1100px). */
+.sc-beats-bar { display: none; }
+.sc-beats-scrim { display: none; }
+@media (max-width: 1099px) {
+  .sc-beats-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: var(--s1) var(--s2) 0;
+    background: var(--surface-rail);
+  }
+  .sc-beats-grab { display: none; }
+}
+
+@media (max-width: 719px) {
+  /* The page's own bar is not pinned on a phone: under the pinned 56px
+     band (owner, 14 Oct 2026 — the band stays) a second pinned bar of
+     three rows took a third of an 844px screen above the line being
+     typed. The band stays put; this bar scrolls. The chips stay docked
+     at the foot. */
+  .sc-top { position: relative; top: auto; }
+  /* The meta strip: crumb, then the counts. */
+  .sc-meta { gap: var(--s1) var(--s3); padding-block: var(--s2); }
+  .sc-crumb { flex-basis: 100%; }
+  /* the running-time button keeps a thumb-sized target; the counts
+     beside it sit on its centre line */
+  .sc-stats { align-items: center; }
+  .sc-rt-btn { align-items: center; min-height: var(--tap-min, 44px); margin-block: calc(-1 * var(--s2)); }
+  /* its own line above the tools */
+  .sc-tools { flex-wrap: wrap; row-gap: var(--s2); }
+  .sc-tools > .sc-pos { order: -1; flex: 1 1 100%; }
+  .sc-runtime { padding-inline: var(--s3); }
+
+  /* One row that fits: type · Beats · AI · Tools. File, ⋯ and Focus
+     move into the Tools sheet; nothing is dropped. */
+  .sc-tools { overflow: visible; }
+  .sc-tools-l { flex: 1 1 auto; min-width: 0; }
+  .sc-tools-r .tb-menu,
+  .sc-focus-slot > #fm-enter { display: none; }
+  .sc-tools-sheet-btn { display: inline-flex; }
+  .sc-typekey { display: none; }
+  .sc-typepill { height: var(--tap-min, 44px); }
+
+  /* The paper page at 390px: 16px Courier, the format's indents as
+     shares of the column, page breaks inside the page's own edges. */
+  .sc-sheet .wr-el.t-character  { --wr-indent: 24%; --wr-measure: 76%; }
+  .sc-sheet .wr-el.t-paren      { --wr-indent: 14%; --wr-measure: 80%; }
+  .sc-sheet .wr-el.t-dialogue   { --wr-indent: 7%;  --wr-measure: 90%; }
+  .sc-sheet .wr-el.t-transition { --wr-indent: 0%;  --wr-measure: 100%; }
+  .sc-sheet .wr-el.t-transition .wr-text { text-align: right; }
+  .sc-sheet .wr-page.is-pageview .wr-pbreak {
+    margin-inline: calc(-1 * var(--s3));
+    padding-right: var(--s3);
+  }
+
+  /* The beats: a bottom sheet over the page, above the bottom bar and
+     the status dock, with a scrim and a close button. */
+  .sc-main.has-beats > #beatsPanel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: var(--k-foot-clear, var(--mab-h, 0px));
+    width: auto;
+    max-height: min(70vh, calc(100dvh - var(--sh-chrome-h, 0px) - var(--k-foot-clear, 0px) - var(--s5)));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: var(--z-float);
+    border: 0;
+    border-top: 1px solid var(--border-strong);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-modal);
+  }
+  .sc-beats-bar { justify-content: space-between; background: var(--surface-elevated); padding: var(--s2) var(--s2) 0 var(--s4); }
+  .sc-beats-grab {
+    display: block;
+    width: 40px; height: 4px;
+    margin-left: calc(50% - 20px - var(--s4));
+    border-radius: var(--radius-pill);
+    background: var(--border-strong);
+  }
+  .sc-main.has-beats > .sc-beats-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-float) - 1);
+    display: block;
+    background: var(--scrim);
+  }
+  /* The panel inside the sheet is the sheet: no second floating card. */
+  .sc-beats > .bp.is-open { position: static; box-shadow: none; border: 0; background: transparent; }
+  .sc-beats .bp-body { max-height: none; overflow: visible; }
+}
+@media print { .sc-pos, .sc-runtime, .sc-beats-scrim { display: none; } }

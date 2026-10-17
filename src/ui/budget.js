@@ -22,12 +22,12 @@
    is a migration, not a rename.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import rates from '../data/rates.chennai.2024.json';
-import rateChecks from '../data/rates.chennai.checks.json';
-import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
-import * as Songs from '../lib/songs.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
-import { norm, rowKey } from '../lib/costs.js';
+import {
+  PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
+  rateHint, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
+  scheduleFacts, scheduleHint, songDaysHint
+} from '../lib/budget-model.js';
 import { askDanger } from './dialog.js';
 import { button, badge, sym } from './kit/index.js';
 
@@ -58,158 +58,14 @@ import { button, badge, sym } from './kit/index.js';
         display:none and the three boxes were unlabelled entirely.
      4. No inline onchange/oninput/onclick. One delegated listener.
    ============================================================ */
-const CALC_KEY = 'fms_library_calc_v1';
-const PRESET_ITEMS = rates.presets;
-
+/* The key, the presets and the rate hint live in src/lib/budget-model.js. */
 let calcCount = 0;
-
-/* Published ranges, keyed loosely enough to survive punctuation
-   differences between the preset list and the rate tables. Used
-   only to SHOW the card's own figure next to a picked item —
-   never to fill a number in on the user's behalf. */
-/* THE RATE HINT, AND WHY IT READS TWO FILES.
-
-   rates.chennai.2024.json is the 2024-25 card. A later pass verified
-   part of it against a real Chennai rental house and wrote the
-   findings to rates.chennai.checks.json, tagging each row `checked`
-   or `corroborating` with a source and a date. The library shows
-   those; this estimator did not, because it imported the base file
-   and nothing else.
-
-   That is the same fault this codebase keeps paying for — one fact,
-   two sources, and the stale one on the page people act on. The
-   library would say a body was re-checked at 25,000 while the
-   calculator beside it still suggested the 2024-25 band.
-
-   A CHECKED row wins. A `corroborating` one does not: it is a second
-   vendor agreeing roughly, not a verification, and presenting it as
-   one would overstate what was actually confirmed. Anything with no
-   overlay row keeps the base figure and keeps saying 2024-25, which
-   is honest — most of the card has never been re-checked and the
-   page should not imply otherwise. */
-
-
-const CHECKED_BY_ITEM = (() => {
-  const map = new Map();
-  for (const row of rateChecks.rows || []) {
-    if (row.confidence !== 'checked') continue;
-    if (!row.raw) continue;
-    if (!map.has(norm(row.item))) map.set(norm(row.item), row);
-  }
-  return map;
-})();
-
-/* `stale` does not mean "an old number". It means somebody went
-   looking for a current Chennai rate for this item in the re-check
-   pass and did not find one published anywhere — the caveat on each
-   row says so in as many words, and the 2024-25 figure stands.
-
-   That absence is information. CLAUDE.md's rates item makes the
-   argument for the crew rates and it holds here: a producer is
-   better served by "we looked and there is nothing to quote" than by
-   a two-year-old number shown as though nobody had asked. The
-   library already labels these NOT UPDATED; the estimator was
-   showing the figure alone, which is the same fact told less
-   honestly. */
-const STALE_ITEMS = new Set(
-  (rateChecks.rows || [])
-    .filter((r) => r.confidence === 'stale')
-    .map((r) => norm(r.item))
-);
-
-/* THE PRESET NAMES ARE NOT THE TABLE'S NAMES — "Canon C500 II" against
-   the table's "Canon C500 Mark II". The map from one to the other,
-   PRESET_ROW, and the rowKey() built on it moved to src/lib/costs.js,
-   because the cost report needs the same map to put a preset line in
-   its rate-card section, and two copies of one map is the drift the
-   trap list is about. Nothing about the hint changed. */
-const RATE_BY_ITEM = (() => {
-  const map = new Map();
-  for (const sec of rates.sections) {
-    for (const row of sec.rows || []) {
-      if (!map.has(norm(row.item))) map.set(norm(row.item), row);
-    }
-  }
-  return { get: (name) => map.get(rowKey(name)) || null };
-})();
-
-/* How far BELOW the 2024-25 band a checked figure sits, as a
-   multiple, or '' when the two roughly agree.
-
-   The band's LOW end is the fair comparison: if the vendor figure
-   clears that, there is nothing to warn about. parseNum takes the
-   number at the front of "25,000 – 35,000", which is that low end —
-   money.js's whole-string rule, and the reason this needs no second
-   parser of its own. */
-function bandGap(card, checked) {
-  const low = parseNum(card.raw);
-  const now = Number(checked.value);
-  if (!low || !now || low <= now * 1.5) return '';
-  const x = low / now;
-  return x >= 10 ? String(Math.round(x)) : x.toFixed(1).replace(/\.0$/, '');
-}
-
-/** The rate hint for a line: BOTH figures, when the card has one. */
-/* A CHECKED figure joins the card's band, it does not replace it.
-
-   This returned the checked figure alone, which is precisely the
-   trap CLAUDE.md's rates item names two paragraphs above the line
-   that asked for this file to read the overlay at all: the 2026
-   vendor figures run about 3x BELOW the 2024-25 ranges — Alexa Mini
-   at 8,000 against a 25,000–35,000 band, Komodo at 4,500 against
-   15,000–22,000 — probably body-versus-package, but unconfirmed. A
-   hint showing only the lower one anchors the user to it on the
-   single biggest line in a shoot.
-
-   It never autofilled, which is the only reason this was a
-   misleading note and not a wrong total. The library had it right
-   already, because it renders the check rows BESIDE the card row
-   rather than over it. The estimator is the page people actually
-   type numbers into, and it was the one replacing. */
-function rateHint(name) {
-  if (!name) return '';
-  const key = rowKey(name);
-  const card = RATE_BY_ITEM.get(name);
-  const checked = CHECKED_BY_ITEM.get(key);
-
-  if (checked) {
-    const head = `Checked ${checked.checked}: ${checked.raw}`;
-    if (!card) return head;
-    const both = `${head} · card ${rates.asOf} said ${card.raw}`;
-    const gap = bandGap(card, checked);
-    return gap
-      ? `${both} — about ${gap}x more. The checked figure is one vendor's list `
-        + `price and may be body-only; budget the band until you have confirmed `
-        + `what it includes.`
-      : both;
-  }
-
-  if (!card) return '';
-  return STALE_ITEMS.has(key)
-    ? `Rate card ${rates.asOf}: ${card.raw} · no current Chennai rate found`
-    : `Rate card ${rates.asOf}: ${card.raw}`;
-}
-
-/** Legacy behaviour, unchanged: "2.5", "1,20,000", "₹18k", "2L". */
-/* parseNum / fmtINR / INR moved to src/lib/money.js — hub.js had a
-   second, still-unanchored copy of this parser and the dashboard now
-   makes three. The anchoring rule and the trap it guards are
-   documented there. */
-/** Exact, Indian grouping: ₹ 54,000 / ₹ 1,25,00,000. */
-function fmtINRExact(n) {
-  if (!n) return '₹ 0';
-  return '₹ ' + INR.format(Math.round(n));
-}
 
 /** The item this row is actually about: custom name wins, then preset. */
 function rowItemName(row) {
   const custom = row.querySelector('[data-key$="_custom"]');
   const select = row.querySelector('[data-key$="_item"]');
-  const typed = custom && custom.value.trim();
-  if (typed) return typed;
-  const picked = select && select.value.trim();
-  if (picked && picked !== 'Other (custom)') return picked;
-  return '';
+  return itemNameOf(custom && custom.value, select && select.value);
 }
 
 function buildCalcRow(idx) {
@@ -266,7 +122,12 @@ function buildCalcRow(idx) {
   // the others, so the phone layout never shows a bare number box.
   const totalCell = h('div.calc-cell', {}, [
     h('span.calc-label', { text: 'Subtotal' }),
-    h('span.total-cell.k-mono', { id: `ci_${idx}_subtotal`, text: '₹ 0' })
+    h('span.total-cell.k-mono', { id: `ci_${idx}_subtotal`, text: '₹ 0' }),
+    /* days × rate, spelled out: the phone's card drops the column
+       captions, so the sum behind the figure is said once, here.
+       Derived from the two fields every update; hidden when empty and
+       at desk widths, where the columns already show both. */
+    h('span.calc-eq.k-mono', { 'data-role': 'calc-eq', 'aria-hidden': 'true' })
   ]);
 
   return h('div.calc-row', { 'data-row': String(idx) }, [
@@ -328,6 +189,9 @@ function updateCalc() {
     subEl.setAttribute('aria-label',
       name ? `Subtotal for ${name}: ${fmtINRExact(sub)}` : `Subtotal: ${fmtINRExact(sub)}`);
 
+    const eqEl = row.querySelector('[data-role="calc-eq"]');
+    if (eqEl) eqEl.textContent = days > 0 && rate > 0 ? `${INR.format(days)} d × ${fmtINRExact(rate)}` : '';
+
     const noteEl = row.querySelector('[data-role="card-rate"]');
     noteEl.textContent = rateHint(name);
 
@@ -341,10 +205,7 @@ function updateCalc() {
 
   const out = document.getElementById('calcTotal');
   if (!out) return;
-  const caption = `across ${count} line item${count !== 1 ? 's' : ''}` +
-    // fmtINR's one surviving job: a glance-sized magnitude in a
-    // caption that has no room for eight digits.
-    (total >= 100000 ? ` · ≈${fmtINR(total)}` : '');
+  const caption = totalCaption(total, count, fmtINR);
   out.replaceChildren(
     document.createTextNode(fmtINRExact(total) + ' '),
     h('span', { text: caption })
@@ -356,17 +217,13 @@ function saveCalc() {
   document.querySelectorAll('#calcRows [data-key]').forEach((el) => {
     data[el.getAttribute('data-key')] = el.value;
   });
-  try { localStorage.setItem(CALC_KEY, JSON.stringify(data)); } catch (e) {}
+  saveCalcData(data);
 }
 
 function loadCalc() {
   try {
-    const data = JSON.parse(localStorage.getItem(CALC_KEY) || '{}');
-    let max = 0;
-    Object.keys(data).forEach((k) => {
-      const m = k.match(/^ci_(\d+)_/);
-      if (m) max = Math.max(max, +m[1]);
-    });
+    const data = readCalcData();   // throws on a corrupt blob, which the catch below swallows
+    const max = maxRowIndex(data);
     const targetRows = Math.max(max, 5);
     // addCalcRow(n) builds n rows and recalculates ONCE. Calling it in a loop
     // ran a full DOM sweep + a localStorage write per row on every page load.
@@ -391,13 +248,7 @@ function loadCalc() {
        Verified against a real case: "Bolex reversal stock - 3 rolls"
        used to come back empty and now round-trips. */
     const presets = new Set(PRESET_ITEMS);
-    const rescued = {};
-    Object.keys(data).forEach((k) => {
-      const m = k.match(/^ci_(\d+)_item$/);
-      const v = data[k];
-      if (!m || !v || presets.has(v)) return;
-      rescued[`ci_${m[1]}_custom`] = v;
-    });
+    const rescued = rescuedCustomNames(data, presets);
 
     Object.keys(data).forEach((k) => {
       const el = wrap.querySelector(`[data-key="${k}"]`);
@@ -418,7 +269,7 @@ function loadCalc() {
 
 async function resetCalc() {
   if (!await askDanger('Clear all calculator rows?')) return;
-  try { localStorage.removeItem(CALC_KEY); } catch (e) {}
+  clearCalcData();
   const wrap = document.getElementById('calcRows');
   if (wrap) wrap.replaceChildren();
   calcCount = 0;
@@ -440,46 +291,7 @@ async function resetCalc() {
    storage would be the second, and the two would disagree by the end
    of the week.
    ------------------------------------------------------------ */
-function scheduleFacts() {
-  let scenes = [];
-  try { scenes = Scenes.listScenes(); } catch (e) { scenes = []; }
-  const dayOf = (s) => { const n = parseInt(s.shootDay, 10); return Number.isFinite(n) && n > 0 ? n : 0; };
-  const scheduled = scenes.filter((s) => dayOf(s) > 0);
-  const days = new Set(scheduled.map(dayOf));
-  /* Song days the scene count CANNOT see.
-     A song is usually planned long before its scenes exist, so its
-     days live on the song row. Counting every song's days on top of
-     the scene-derived total would double-count any song whose scenes
-     ARE already on the board, so only songs with no scheduled scenes
-     contribute. Without this a four-song film budgets its shoot
-     several days short and nothing on the page says why. */
-  let songs = [];
-  try { songs = Songs.listSongs(); } catch (e) { songs = []; }
-  let songDaysUncounted = 0;
-  let songsUncounted = 0;
-  for (const sg of songs) {
-    const f = Songs.songFacts(sg, scenes);
-    if (f.scriptDays > 0) continue;        // already inside days.size
-    if (f.plannedDays > 0) {
-      songDaysUncounted += f.plannedDays;
-      songsUncounted += 1;
-    }
-  }
-
-  return {
-    totalScenes: scenes.length,
-    scheduled: scheduled.length,
-    unscheduled: scenes.length - scheduled.length,
-    days: days.size,
-    locations: new Set(scenes.map((s) => (s.location || '').trim()).filter(Boolean)).size,
-    pages: formatEighths(totalEighths(scenes)),
-    songCount: songs.length,
-    songDaysUncounted,
-    songsUncounted,
-    // what the estimate should actually use
-    totalDays: days.size + songDaysUncounted
-  };
-}
+/* scheduleFacts() is src/lib/budget-model.js's. */
 
 /* THE PIPELINE CONNECTOR — the stripboard's facts as one band: a kit
    panel with an accent rule, the four counts as mono facts, and the
@@ -528,27 +340,13 @@ function renderScheduleLink() {
     ]);
   }
 
-  const hints = [h('p.hint', {
-    text: f.unscheduled
-      ? f.days + ' scheduled day' + (f.days === 1 ? '' : 's') + ', with ' + f.unscheduled
-        + ' scene' + (f.unscheduled === 1 ? '' : 's') + ' still unscheduled — so this is a floor, not the final count.'
-      : 'Every scene has a day. This is your shoot length.'
-  })];
+  const hints = [h('p.hint', { text: scheduleHint(f) })];
 
   /* Song days are listed separately rather than folded in silently,
      because the number they change is the one the whole estimate
      scales on, and a day count that grew without saying why is a day
      count nobody trusts. */
-  if (f.songDaysUncounted) {
-    hints.push(h('p.hint', {
-      text: 'Plus ' + f.songDaysUncounted
-        + (f.songDaysUncounted === 1 ? ' day' : ' days') + ' for '
-        + f.songsUncounted + (f.songsUncounted === 1 ? ' song' : ' songs')
-        + ' whose scenes are not on the board yet. Songs are planned before their '
-        + 'scenes exist, so the scene count cannot see those days — '
-        + f.totalDays + ' is the figure to budget.'
-    }));
-  }
+  if (f.songDaysUncounted) hints.push(h('p.hint', { text: songDaysHint(f) }));
   return connector([
     facts,
     h('div.calc-actions', {}, [
@@ -667,12 +465,7 @@ export const BUDGET_ACTIONS = {
     });
     updateCalc();
     saveCalc();
-    const msg = !fields.length
-      ? 'Pick an item or set a rate on a line first, then this fills its days.'
-      : filled
-        ? filled + ' line' + (filled === 1 ? '' : 's') + ' set to ' + days + ' days'
-          + (kept ? '; ' + kept + (kept === 1 ? ' you had already set was' : ' you had already set were') + ' left alone.' : '.')
-        : 'Every line already has days set — nothing was overwritten.';
+    const msg = useDaysMessage(fields.length, filled, kept, days);
     if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, { type: 'info', duration: 4000 });
   }
 };

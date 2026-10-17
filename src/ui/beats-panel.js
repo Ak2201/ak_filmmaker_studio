@@ -9,29 +9,45 @@
    LINES_PER_PAGE, a beat's `at` × the script's pages). It stores
    nothing — no storage writes, ever.
 
-   mountBeats(host, { getElements, scrollToEl, onJump, getTargetPages })
+   mountBeats(host, { getElements, scrollToEl, onJump, getTargetPages, getTarget })
      getElements()    -> the script's elements ([{id,type,text,…}])
      scrollToEl(id)   -> scroll that element into view (editor.scrollToEl)
      onJump(info)     -> optional; { beat, page, id, written }
      getTargetPages() -> optional; the length the script is meant to
                          reach. Without it the beats are spread over
                          what is written, as beat-guide does.
+     getTarget()      -> optional; { minutes, estimate, source } — the
+                         film's ONE target running time (Reports', see
+                         src/lib/target-runtime.js) and the script's
+                         estimate. Drawn only when a target is set.
+   A filter (All / Linked / Pending) is a view of the rows, held in
+   memory. A beat's tension is shown only where somebody SET it in the
+   Story stage; the framework's convention is not a measurement.
    Returns { refresh(), setCurrent(id), open(), close(), destroy() }.
    ============================================================ */
 import { h } from '../lib/dom.js';
-import { sym, meter } from './kit/index.js';
-import { loadStory, frameworkById, matrix, qualifyBeat } from '../lib/story.js';
+import { sym, meter, segmented, selectSegment } from './kit/index.js';
+import { loadStory, frameworkById, effectiveFramework, matrix, qualifyBeat } from '../lib/story.js';
+import Store from '../lib/store.js';
 import Scenes from '../lib/scenes.js';
 import { elementLines, LINES_PER_PAGE } from '../lib/script.js';
 import '../styles/beats-panel.css';
 
 const PHONE = '(max-width: 719.98px)';
+const projectFormat = () => {
+  try { const p = Store && Store.currentProject && Store.currentProject(); return p && p.format === 'short' ? 'short' : 'feature'; }
+  catch (e) { return 'feature'; }
+};
 
 /** Pure: the rows the panel draws and where each one jumps. */
-export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneRows } = {}) {
+export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneRows, format } = {}) {
   const list = els || [];
   const st = story || loadStory();
-  const fw = frameworkById(st.framework);
+  /* The framework IN FORCE — the writer's choice once made, else the
+     format's suggestion — as the Story stage, the deck and the outline
+     tasks read it; the stored `framework` alone is three_act on every
+     project nobody chose one for. */
+  const fw = frameworkById(effectiveFramework(st, format || projectFormat()));
   let total = 0;
   const startLine = [];
   for (const e of list) { startLine.push(total); total += elementLines(e); }
@@ -41,6 +57,13 @@ export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneR
 
   let idx = currentId ? list.findIndex((e) => e.id === currentId) : -1;
   const curPage = idx >= 0 ? Math.floor(startLine[idx] / LINES_PER_PAGE) + 1 : 0;
+
+  /* The tension somebody set in the Story stage, and only that: the
+     framework's conventional curve is a default, not a reading. */
+  const setTension = (b) => {
+    const v = st.tension && st.tension[fw.id + ':' + b.id];
+    return Number.isFinite(v) ? v : null;
+  };
 
   let counts = new Map();
   try { counts = new Map(matrix(st, fw.id).map((r) => [r.beat.id, r.marks.length])); } catch (e) { /* none */ }
@@ -60,7 +83,7 @@ export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneR
   const rows = beats.map((b) => {
     const marks = counts.get(b.id) || 0;
     const scenes = (bySceneBeat.get(qualifyBeat(fw.id, b.id)) || []).slice().sort(byNum);
-    return { beat: b, page: pageOf(b.at), marks, scenes, linked: marks > 0 || scenes.length > 0 };
+    return { beat: b, page: pageOf(b.at), marks, scenes, linked: marks > 0 || scenes.length > 0, tension: setTension(b) };
   });
   // The beat being written: the last one whose target page has begun.
   let cur = -1;
@@ -90,8 +113,31 @@ function progressMeter(d) {
   return m;
 }
 
+/* "Target 120 min · est. 104 min · 16 min under the target" */
+function targetLine(t) {
+  if (!t || !(t.minutes > 0)) return null;
+  const bits = [h('span', { text: 'Target' }), h('strong', { text: t.minutes + ' min' })];
+  if (t.estimate > 0) {
+    const d = Math.round(t.estimate - t.minutes);
+    bits.push(h('span.bp-target-est', { text: 'est. ' + Math.round(t.estimate) + ' min · '
+      + (d === 0 ? 'on target' : Math.abs(d) + ' min ' + (d > 0 ? 'over' : 'under')) }));
+  }
+  const p = h('p.bp-target', { title: t.source === 'edit' ? 'The target set in the Edit Log' : 'The target running time set in Reports' }, bits);
+  if (t.estimate > t.minutes) p.classList.add('is-over');
+  return p;
+}
+
+function tensionTrack(v) {
+  const fill = h('span.bp-tension-fill');
+  fill.style.width = (Math.max(0, Math.min(10, v)) * 10) + '%';
+  return h('span.bp-tension-track', { 'aria-hidden': 'true' }, [fill]);
+}
+
+const FILTERS = [['all', 'All'], ['linked', 'Linked'], ['pending', 'Pending']];
+
 export function mountBeats(host, opts = {}) {
-  const { getElements, scrollToEl, onJump, getTargetPages } = opts;
+  const { getElements, scrollToEl, onJump, getTargetPages, getTarget } = opts;
+  let filter = 'all';
   const mq = typeof matchMedia === 'function' ? matchMedia(PHONE) : null;
   let currentId = null;
   let isOpen = !(mq && mq.matches);
@@ -99,7 +145,7 @@ export function mountBeats(host, opts = {}) {
 
   const root = h('aside.bp', { 'aria-label': 'Story beats' });
   const toggle = h('button.bp-toggle', { type: 'button', 'aria-controls': 'bp-body' });
-  const body = h('div.bp-body#bp-body');
+  const body = h('div.bp-body', { id: 'bp-body' });   // h('tag.cls#id') would make one class 'bp-body#bp-body'
   const hint = h('p.bp-hint', { role: 'status', 'aria-live': 'polite' });
   root.append(toggle, body, hint);
   host.append(root);
@@ -150,19 +196,29 @@ export function mountBeats(host, opts = {}) {
     toggle.setAttribute('aria-expanded', String(isOpen));
     root.classList.toggle('is-open', isOpen);
     body.hidden = !isOpen;
-    const sig = d.fw.id + '|' + d.rows.map((r) => r.beat.id + ':' + r.page + ':' + r.marks + ':' + r.scenes.join('+') + ':' + r.written + ':' + r.targetId + (r.current ? '*' : '')).join(',');
+    const sig = d.fw.id + '|' + d.rows.map((r) => r.beat.id + ':' + r.page + ':' + r.marks + ':' + r.scenes.join('+') + ':' + r.written + ':' + r.targetId + ':' + r.tension + (r.current ? '*' : '')).join(',')
+      + '|' + JSON.stringify((() => { try { return getTarget ? getTarget() : null; } catch (e) { return null; } })());
     if (sig === lastSig) { paintCurrent(); return; }
     lastSig = sig;
     const sc0 = scroller();
     const keep = sc0 ? sc0.scrollTop : 0;
     body.textContent = '';
+    let tgt = null;
+    try { tgt = getTarget ? getTarget() : null; } catch (e) { tgt = null; }
+    const seg = segmented({
+      name: 'bp-filter', label: 'Show beats', value: filter, action: 'bp-filter', quiet: true, class: 'bp-filter',
+      options: FILTERS.map(([v, l]) => ({ value: v, label: l + ' ' + (v === 'all' ? d.total : v === 'linked' ? d.linked : d.total - d.linked) }))
+    });
     body.append(h('div.bp-head', {}, [
       h('p.bp-progress', {}, [
         h('span', { text: 'Framework progress' }),
         h('strong', { text: d.linked + ' / ' + d.total + ' linked (' + d.percent + '%)' })
       ]),
-      progressMeter(d)
-    ]));
+      progressMeter(d),
+      targetLine(tgt),
+      seg
+    ].filter(Boolean)));   // append(null) would print "null"
+    filterSeg = seg;
     const ol = h('ol.bp-list');
     d.rows.forEach((r, i) => {
       const sceneWord = r.scenes.length ? (r.scenes.length === 1 ? 'Scene ' + r.scenes[0] : 'Sc. ' + r.scenes[0] + (r.scenes.length > 1 ? '–' + r.scenes[r.scenes.length - 1] : '')) : '';
@@ -182,8 +238,12 @@ export function mountBeats(host, opts = {}) {
           h('span.bp-line.bp-sub', {}, [
             h('span.bp-state', { text: state }),
             h('span.bp-go', { text: r.current ? 'Focus line' : r.written ? 'Jump →' : '' })
-          ])
-        ])
+          ]),
+          r.tension != null ? h('span.bp-tension', {}, [
+            h('span.bp-tension-l', { text: 'Tension ' + r.tension + '/10' }),
+            tensionTrack(r.tension)
+          ]) : null
+        ].filter(Boolean))
       ]);
       btn.classList.toggle('is-linked', r.linked);
       btn.addEventListener('click', () => {
@@ -194,12 +254,28 @@ export function mountBeats(host, opts = {}) {
           : 'Nothing written yet. This beat sits around page ' + row.page + '.');
         if (onJump) onJump({ beat: row.beat, page: row.page, id: row.targetId, written: row.written });
       });
-      ol.append(h('li', {}, [btn]));
+      ol.append(h('li', { dataset: { linked: String(!!r.linked) } }, [btn]));
     });
     body.append(ol);
+    applyFilter();
     if (sc0) sc0.scrollTop = keep;
     paintCurrent();
   }
+
+  let filterSeg = null;
+  function applyFilter() {
+    body.querySelectorAll('.bp-list > li').forEach((li) => {
+      const hide = filter !== 'all' && (filter === 'linked') !== (li.dataset.linked === 'true');
+      if (li.hidden !== hide) li.hidden = hide;
+    });
+  }
+  body.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-action="bp-filter"]');
+    if (!b || !body.contains(b)) return;
+    filter = FILTERS.some(([v]) => v === b.dataset.value) ? b.dataset.value : 'all';
+    selectSegment(filterSeg, filter);
+    applyFilter();
+  });
 
   const redraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); };
   toggle.addEventListener('click', () => { isOpen = !isOpen; draw(); });

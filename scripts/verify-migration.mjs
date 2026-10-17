@@ -2583,8 +2583,12 @@ let fragments = { checked: false };
         const px = (v) => parseFloat(v) || 0;
         const cover = px(cs.getPropertyValue('--sh-cover-h')) || px(cs.getPropertyValue('--sh-chrome-h'));
         const r = el.getBoundingClientRect();
-        const hidden = !!el.closest('[hidden]') || (r.width === 0 && r.height === 0);
-        return { top: Math.round(r.top), cover: Math.round(cover), vh: innerHeight, hidden, scrollY: Math.round(scrollY) };
+        /* A section switched off for EVERY plan (data-tab-off) or kept in the
+           DOM only for its keys (data-tab-ignore, the stage guide) is hidden
+           by design; its link is hidden with it. Not a broken anchor. */
+        const byDesign = !!el.closest('[data-tab-off], [data-tab-ignore]');
+        const hidden = !byDesign && (!!el.closest('[hidden]') || (r.width === 0 && r.height === 0));
+        return { byDesign, top: Math.round(r.top), cover: Math.round(cover), vh: innerHeight, hidden, scrollY: Math.round(scrollY) };
       }, frag);
       /* The verdict is the SETTLED position. html has scroll-behavior:
          smooth and a jump to the end of the feature blueprint travels
@@ -2597,7 +2601,7 @@ let fragments = { checked: false };
          and give a bad answer one more second to become good. */
       await pg.waitForTimeout(1700);
       let m = await measure();
-      const ok = (x) => !x.missing && !x.hidden && x.top >= x.cover - 1 && x.top < x.vh;
+      const ok = (x) => !x.missing && !x.hidden && (x.byDesign || (x.top >= x.cover - 1 && x.top < x.vh));
       if (!ok(m)) { await pg.waitForTimeout(1000); m = await measure(); }
       rows.push({ key, ...m, ok: ok(m) });
     }

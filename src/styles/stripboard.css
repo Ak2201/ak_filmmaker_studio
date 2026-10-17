@@ -467,9 +467,7 @@ body.pdf-print .sb-lock-host { display: none !important; }
 .sb-dood-scroll { max-width: 100%; }
 .sb-grid { width: 100%; }
 /* The cast column stays put while the days scroll past it. */
-.sb-grid th.sb-grid-name {
-  position: sticky;
-  left: 0;
+.sb-grid th.sb-grid-name {   /* position/left come from .k-table--sticky-first */
   z-index: 2;
   background-color: var(--surface-card);
   box-shadow: 1px 0 0 var(--border-default);

@@ -53,7 +53,7 @@
 .bud-est-main { display: grid; gap: var(--s4); min-width: 0; }
 @container bud-tab (min-width: 60rem) {
   .bud-est-grid { grid-template-columns: minmax(0, 1fr) 19rem; }
-  .bud-aside { position: sticky; top: calc(var(--scroll-offset, 0px) + var(--s4)); }
+  .bud-aside { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--tabs-h, 0px) + var(--s4)); }
 }
 
 /* ---- the old slab, taken off the two estimator blocks -------------- */

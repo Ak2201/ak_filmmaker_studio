@@ -94,6 +94,7 @@
 }
 .vz-uncovered-sum:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 .vz-uncovered-bar[open] > .vz-uncovered-sum { margin-bottom: var(--s2); }
+@media (max-width: 719px), (pointer: coarse) { .vz-uncovered-sum { min-height: var(--tap-min, 44px); } }
 /* the wordy header paragraphs stay in the DOM, out of sight */
 .vz-head .k-page-sub { display: none; }
 .vz-uncovered {

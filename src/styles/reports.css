@@ -54,7 +54,7 @@
 }
 /* The control bar stays under the pinned chrome while a long view scrolls. */
 .rp-sec > .rp-tools {
-  z-index: 15;
+  z-index: calc(var(--z-toolbar) - 2);   /* under the pinned tab strip (z-index 99) */
   padding: var(--s3);
   background-color: var(--surface-rail);
   background-image: var(--surface-rail-sheen);
@@ -63,7 +63,7 @@
 }
 /* pinned only where the shell is (>=1100px); a wrapped bar on a phone would cover the report */
 @media (min-width: 1100px) {
-  .rp-sec > .rp-tools { position: sticky; top: var(--sh-chrome-h, 0px); }
+  .rp-sec > .rp-tools { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--tabs-h, 0px)); }
 }
 .rp-spacer { margin-left: auto; }
 .rp-count {

@@ -1,122 +1,122 @@
 {
   "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says.",
-  "capturedAt": "2026-10-17T09:59:49.154Z",
+  "capturedAt": "2026-10-17T12:12:22.518Z",
   "capturedDay": "2026-10-17",
   "knownLazyFetches": {},
   "pages": {
     "hub": {
-      "bytes": 1404928,
-      "measured": 1276507,
+      "bytes": 1406976,
+      "measured": 1278854,
       "files": 40
     },
     "library": {
-      "bytes": 1340416,
-      "measured": 1217748,
+      "bytes": 1342464,
+      "measured": 1219799,
       "files": 21
     },
     "breakdown": {
-      "bytes": 1103872,
-      "measured": 1003355,
+      "bytes": 1106944,
+      "measured": 1005722,
       "files": 45
     },
     "stripboard": {
-      "bytes": 987136,
-      "measured": 896947,
+      "bytes": 989184,
+      "measured": 899001,
       "files": 32
     },
     "reports": {
-      "bytes": 1040384,
-      "measured": 945769,
+      "bytes": 1043456,
+      "measured": 947941,
       "files": 32
     },
     "contacts": {
-      "bytes": 944128,
-      "measured": 857998,
+      "bytes": 946176,
+      "measured": 860075,
       "files": 29
     },
     "visualize": {
-      "bytes": 1021952,
-      "measured": 928881,
+      "bytes": 1025024,
+      "measured": 931119,
       "files": 36
     },
     "screenplay": {
-      "bytes": 1208320,
-      "measured": 1097698,
+      "bytes": 1236992,
+      "measured": 1124381,
       "files": 40
     },
     "drafts": {
-      "bytes": 934912,
-      "measured": 849277,
+      "bytes": 936960,
+      "measured": 851344,
       "files": 26
     },
     "plan": {
-      "bytes": 890880,
-      "measured": 809167,
+      "bytes": 892928,
+      "measured": 811244,
       "files": 27
     },
     "dashboard": {
-      "bytes": 1186816,
-      "measured": 1078510,
+      "bytes": 1189888,
+      "measured": 1080830,
       "files": 32
     },
     "budget": {
-      "bytes": 980992,
-      "measured": 891061,
+      "bytes": 983040,
+      "measured": 893106,
       "files": 29
     },
     "settings": {
-      "bytes": 1042432,
-      "measured": 946973,
+      "bytes": 1044480,
+      "measured": 949024,
       "files": 31
     },
     "shoot": {
-      "bytes": 868352,
-      "measured": 789145,
+      "bytes": 871424,
+      "measured": 791438,
       "files": 23
     },
     "preprod": {
-      "bytes": 842752,
-      "measured": 766061,
+      "bytes": 845824,
+      "measured": 768138,
       "files": 22
     },
     "story": {
-      "bytes": 1573888,
-      "measured": 1429981,
-      "files": 66
+      "bytes": 1550336,
+      "measured": 1408488,
+      "files": 62
     },
     "edit": {
-      "bytes": 898048,
-      "measured": 815617,
+      "bytes": 900096,
+      "measured": 817910,
       "files": 28
     },
     "deliverables": {
-      "bytes": 914432,
-      "measured": 830961,
+      "bytes": 916480,
+      "measured": 833012,
       "files": 23
     },
     "screening": {
-      "bytes": 821248,
-      "measured": 746341,
+      "bytes": 823296,
+      "measured": 748392,
       "files": 20
     },
     "invite": {
-      "bytes": 777216,
-      "measured": 705667,
+      "bytes": 779264,
+      "measured": 707718,
       "files": 16
     },
     "admin": {
-      "bytes": 1003520,
-      "measured": 912137,
+      "bytes": 1006592,
+      "measured": 914188,
       "files": 21
     },
     "vault": {
-      "bytes": 825344,
-      "measured": 750293,
+      "bytes": 828416,
+      "measured": 752556,
       "files": 15
     },
     "purchase": {
-      "bytes": 785408,
-      "measured": 713554,
+      "bytes": 787456,
+      "measured": 715605,
       "files": 21
     }
   }

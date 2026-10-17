@@ -145,16 +145,15 @@ function toolbarMarkup() {
      page where space is permanent. The colophon's byline at the foot
      of the page is where the curator's name belongs.
 
-     The six section links below are still built here and are still
-     this page's own. shell.js lifts them into an "on this page" menu
-     on the end of the breadcrumb; see buildPageNav() in shell.js for
-     why they are discovered there rather than declared. */
+     The section links went too (17 Oct 2026): one "Projects" link was a
+     one-item Sections menu on the breadcrumb for a page that is all one
+     section. The element stays — shell.js adopts it into the band and
+     chrome.js/print.css key off `.toolbar` — holding the install button. */
   /* The project switcher, theme, Backup and the account pill are NOT here any
      more: the shell band's right-hand zone carries the same four on every
      page (shell.js buildStudioTools), so the hub is no longer different. */
   return h('div.toolbar', {
     html: `
-      <a class="nav-link" href="#projects">Projects</a>
       <button class="btn" data-action="install-app" id="installBtn" title="Install the Studio as an app" hidden>⇣ INSTALL</button>
       <div class="toolbar-stripe" aria-hidden="true"></div>`
   });
@@ -218,16 +217,18 @@ function projectsMarkup() {
   });
   /* The page header is the kit's. The ids the greeting and the proofs read
      (#projectsHeading, #hubGreeting) and the new-project action survive. */
+  /* ONE PAGE FRAME: `.bd-head` like every page's header, and the h1 is
+     the page's name (navigation.json's "Home"), not a sentence that
+     changed with the project count. */
   const head = pageHeader({
-    class: 'projects-head',
+    class: 'bd-head projects-head',
     eyebrow: 'Projects · one per film',
-    title: '',
+    title: 'Home',
     sub: 'A working desk for the working filmmaker.',
     actions: [button({ label: 'New project', variant: 'primary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
   });
   const hh = head.querySelector('.k-page-title');
   hh.id = 'projectsHeading';
-  hh.append('Continue ', h('em', { text: 'where you left off.' }));
   head.querySelector('.k-page-sub').id = 'hubGreeting';
   head.querySelector('.k-page-sub').classList.add('greeting-block');
   sec.querySelector('#projectsHeadSlot').replaceWith(head);

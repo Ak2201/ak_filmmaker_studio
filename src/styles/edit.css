@@ -11,11 +11,8 @@
    a hue means a phase. Text on a light card is the -deep variant,
    never the fill (CLAUDE.md, "a fill is not a text colour").
    ============================================================ */
-.el-main {
-  max-width: var(--measure-wide);
-  margin: 0 auto;
-  padding: var(--s5) var(--gutter) var(--s9);
-}
+/* The column is the studio's one frame (.k-page, modules.css). */
+.el-main { padding-block: 0 var(--s9); }
 
 .el-stats { margin: var(--s4) 0 var(--s5); }
 

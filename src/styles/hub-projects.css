@@ -12,31 +12,7 @@
    ============================================================ */
 
 /* ---- (1) hero -------------------------------------------------- */
-.projects-section .projects-head.k-page-head {
-  align-items: end;
-  margin-bottom: var(--s4);
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-.projects-section .projects-head h1 {
-  margin: 0;
-  font-family: var(--f-display);
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: var(--track-tight);
-  color: var(--ink);
-}
-/* "where you left off." / "a path." — the accent half. A page title is
-   never serif (14 Oct 2026): --face-accent is the display face and
-   --face-accent-style upright; the colour carries the accent. */
-.projects-section .projects-head h1 em {
-  font-family: var(--face-accent);
-  font-style: var(--face-accent-style);
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--accent-deep);
-}
+/* The title is the studio's one frame (.bd-head, modules.css): "Home". */
 .projects-section .greeting-block {
   margin: var(--s3) 0 0;
   max-width: none;
@@ -390,3 +366,30 @@
 }
 .projects-section .project-card { background: var(--surface-card); border-color: var(--border-hair); }
 .projects-section .project-card.active { border-color: var(--border-focus); }
+
+/* ---- ONE PAGE FRAME (17 Oct 2026) ---------------------------------
+   Home sits in the studio's one column like every page (.k-page in
+   modules.css): the hero and the first-week band keep their grounds edge
+   to edge, and their content takes the measure and the gutter. The hero's
+   inner block was a flex item with auto margins, so it shrink-wrapped to
+   the cards (366px at 1280) and the title sat 220px right of every other
+   page's. */
+#main > .hero,
+#main > .section { padding-inline: 0; }
+/* the title sits at the same height as every page's: the header's own
+   padding is the only space above it */
+#main > .hero { padding-top: 0; }
+#main > .hero .projects-section { padding-top: 0; }
+#main > .hero > .hero-inner,
+#main > .section > .section-inner {
+  width: 100%;
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  box-sizing: border-box;
+}
+.projects-inner > .bd-head.bd-head { max-width: none; margin-inline: 0; padding-inline: 0; }
+@media (max-width: 719px) {
+  #main > .hero > .hero-inner,
+  #main > .section > .section-inner { padding-inline: var(--s4); }
+}

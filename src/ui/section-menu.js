@@ -11,14 +11,16 @@
    selected row looks is made once.
 
    WHAT IT LOOKS LIKE
+     A STRIP by default, on every page (one frame, 17 Oct 2026). The
+     side layout below is opt-in, and only Settings and the Console opt in:
      >= 1100px  a vertical column (13.75rem), headings above each group,
                 a hairline between groups, pinned under the shell's band.
                 Only when the page puts the menu beside a panel: tabs.js
                 does (class `tabs-has-side` on the panel's container).
      <  1100px  one scrolling strip, headings folded away, and a
                 "Sections" button at its start that opens the same list
-                as a sheet (openSectionsSheet). Fewer than three items
-                is orientation 'strip': never a side column, no button.
+                as a sheet (openSectionsSheet). Orientation 'strip' (every
+                other page) is never a side column and has no button.
      Selected = the accent fill with a leading bar, in both layouts and
      both themes; hover is a quiet tint, never an outline; nothing is
      underlined. (motion-app.js used to append a sliding 2px underline,
@@ -53,7 +55,8 @@
    THE API
      buildSectionMenu({ groups, active, ariaLabel, orientation,
                         onSelect, sectionsLabel }) -> HTMLElement (nav.tabs)
-        orientation 'side' (default when there are >= 3 items) | 'strip'.
+        orientation 'strip' (the default) | 'side' (opt-in: Settings and
+          the Console only, via tabs.js).
         onSelect(id): when given, the menu is SELF-MANAGED: it wires its
           own click and arrow-key handling and marks itself
           [data-sm-self], which tabs.js's delegated handlers ignore.
@@ -202,7 +205,9 @@ function bindOrientation() {
 export function buildSectionMenu({ groups, active, ariaLabel = 'Sections', orientation, onSelect, sectionsLabel = 'Sections' } = {}) {
   const g = normalise(groups);
   const items = flat(g);
-  const side = orientation ? orientation === 'side' : items.length >= 3;
+  /* The strip unless a caller asks for the column: the side menu is
+     Settings' and the Console's alone (tabs.js decides), never a default. */
+  const side = orientation === 'side';
   const list = h('div.tabs-list', { role: 'tablist', 'aria-label': ariaLabel, 'aria-orientation': side ? (sideNow() ? 'vertical' : 'horizontal') : 'horizontal' });
   const hints = h('div.tabs-hints', { hidden: true });
   const labelled = fillList(list, hints, g, active);

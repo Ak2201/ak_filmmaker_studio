@@ -38,7 +38,6 @@ import '../styles/plan.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { mountPathBar } from '../ui/path-bar.js';
 import { h, delegate } from '../lib/dom.js';
 import { pageHeader, statStrip, button } from '../ui/kit/index.js';
 import { saveOnInput } from '../lib/autosave.js';
@@ -60,7 +59,7 @@ function renderHeader(scenes, days, locs, media) {
   const head = pageHeader({
     class: 'bd-head',
     eyebrow: 'Plan \u00b7 dates, places, references',
-    title: 'Shoot Calendar & Locations.',
+    title: 'Locations & Shoot Calendar',
     sub: 'The schedule already exists \u2014 the stripboard made it. This page puts '
        + 'real dates on those shoot days, keeps a recce record for every place '
        + 'the script names, and indexes the reference material you have '
@@ -634,7 +633,6 @@ function render() {
     renderMedia(scenes, media)
   );
 
-  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   // Chrome initialises at import time, when #app is still empty — the

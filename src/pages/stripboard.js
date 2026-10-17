@@ -65,7 +65,6 @@ import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
@@ -117,7 +116,7 @@ function renderHeader(scenes, rows) {
   const head = pageHeader({
     class: 'bd-head sb-head',
     eyebrow: ['Stripboard', 'The schedule'],
-    title: 'The Board.',
+    title: 'Stripboard',
     sub: 'One strip per scene, straight from the breakdown. Group them the way '
        + 'you will shoot them — everything in one location together, every night '
        + 'exterior together — then hand each group a shoot day. The day out of '
@@ -896,7 +895,6 @@ function render() {
     main.append(renderBoard(scenes), renderDood(scenes));
   }
 
-  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   wireActionBar();
@@ -926,7 +924,8 @@ function render() {
    blob, the Breakdown's rows renumbered by position through
    applyNumbers(doc.elements, null) — and, because it renumbers every
    scene, it asks first through dialog.js's askDanger. The revision
-   tools (write.html?stay=1#revisions) keep their copy and stay linked.
+   tools keep their copy and stay linked: Manage numbering opens it on
+   drafts.html#numbering, beside the drafts it numbers.
 
    The DRAFT badge names the latest numbered draft — the newest entry
    in the script blob's `revisions`, which is what drafts.html lists —
@@ -974,7 +973,7 @@ function fillLock() {
         label: 'Unlock draft', icon: 'lock_open', variant: 'secondary', size: 'sm', action: 'sb-unlock', class: 'sb-unlock-btn',
         title: 'Unfreeze the scene numbers. Every scene is renumbered by position.'
       }),
-      button({ label: 'Manage numbering', href: 'write.html?stay=1#revisions', variant: 'ghost', size: 'sm', class: 'sb-lock-manage' })
+      button({ label: 'Manage numbering', href: 'drafts.html#numbering', variant: 'ghost', size: 'sm', class: 'sb-lock-manage' })
     ].filter(Boolean));
   }).catch((e) => console.warn('[stripboard] lock state', e));
 }

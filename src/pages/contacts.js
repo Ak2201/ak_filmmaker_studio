@@ -28,7 +28,6 @@ import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
@@ -55,10 +54,12 @@ const app = document.getElementById('app');
 /* ---- header ------------------------------------------------- */
 function renderHeader(contacts, sheets) {
   const { cast, depts } = unitCounts(contacts);
-  const wrap = h('header.ct-head');
-  wrap.append(pageHeader({
+  /* ONE PAGE FRAME: the kit header itself, `.bd-head` like every page's
+     (`.ct-head` kept for print.css and contacts.css), the figures inside it. */
+  const wrap = pageHeader({
+    class: 'bd-head ct-head',
     eyebrow: ['Cast & Crew', 'Call sheets & unit directory'],
-    title: 'Call Sheets & Dispatch.',
+    title: 'Cast & Crew',
     sub: 'Everybody on the film, once, with a department and a number. '
        + 'One call sheet per shoot day, built from this list and from the scenes '
        + 'in the breakdown — call times, the light, the route to the nearest hospital, '
@@ -66,7 +67,7 @@ function renderHeader(contacts, sheets) {
     actions: contacts.length
       ? [button({ label: 'New shoot day', icon: 'add', variant: 'primary', pill: true, action: 'sheet-add' })]
       : []
-  }));
+  });
   wrap.append(statStrip([
     { label: 'Unit roster', value: contacts.length, note: contacts.length === 1 ? 'person on the unit' : 'people on the unit' },
     { label: 'Talent registry', value: cast, note: 'in the cast' },
@@ -841,7 +842,6 @@ function render() {
   if (contacts.length) main.append(sheetsEl, people);
   else main.append(people, sheetsEl);
 
-  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   wireActionBar();

@@ -514,3 +514,24 @@
 @media print {
   .pl-light-flag { background: var(--print-paper); color: var(--print-ink); border-left-color: var(--print-ink); }
 }
+
+/* ------------------------------------------------------------
+   The cards in a grid (Celtx-style schedule): two columns where the
+   page is wide enough, one where it is not. The cards' own bottom
+   margin gives way to the grid gap.
+   ------------------------------------------------------------ */
+.pl-days,
+.pl-loc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr));
+  gap: var(--s4);
+  align-items: start;
+  margin-bottom: var(--s4);
+}
+.pl-days > .pl-day,
+.pl-loc-grid > .pl-loc { margin-bottom: 0; min-width: 0; }
+@media screen {
+  .pl-day,
+  .pl-loc { background-image: var(--surface-card-sheen); }
+}
+.pl-back-sb { white-space: nowrap; }

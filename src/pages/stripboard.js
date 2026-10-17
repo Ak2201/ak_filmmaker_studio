@@ -125,7 +125,7 @@ function renderHeader(scenes, rows) {
     /* The shoot calendar lives on the Plan (owner, 14 Oct 2026): this
        page links to it rather than drawing a second, read-only copy. */
     actions: [
-      button({ label: 'Shoot calendar', icon: 'calendar_month', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', href: 'plan.html#calendar', class: 'sb-cal-plan' }),
+      button({ label: 'Shoot calendar & locations', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', href: 'plan.html#calendar', class: 'sb-cal-plan' }),
       h('div.sb-lock-host', {}, [lockButton()])
     ]
   });

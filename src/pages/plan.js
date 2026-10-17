@@ -64,7 +64,12 @@ function renderHeader(scenes, days, locs, media) {
     sub: 'The schedule already exists \u2014 the stripboard made it. This page puts '
        + 'real dates on those shoot days, keeps a recce record for every place '
        + 'the script names, and indexes the reference material you have '
-       + 'gathered. Not one scene is typed again here.'
+       + 'gathered. Not one scene is typed again here.',
+    /* Stripboard, day out of days, calendar and locations read as one
+       scheduling workspace: this is the way back to the board. */
+    actions: [
+      button({ label: '\u2190 Stripboard & DOOD', variant: 'secondary', size: 'sm', href: 'stripboard.html#stripboard', class: 'pl-back-sb' })
+    ]
   });
   head.append(statStrip([
     { value: String(days.length), label: days.length === 1 ? 'shoot day' : 'shoot days' },
@@ -150,7 +155,9 @@ function renderCalendar(scenes) {
     // A date used by two shoot days is almost always a slip, and the
     // only place it is visible is here. Counted once, read per card.
     const clashes = dateClashes(days);
-    days.forEach((d) => wrap.append(renderDay(d, clashes)));
+    const grid = h('div.pl-days');
+    days.forEach((d) => grid.append(renderDay(d, clashes)));
+    wrap.append(grid);
   }
 
   const orphans = Locations.orphanDays(scenes);
@@ -297,7 +304,9 @@ function renderLocations(scenes) {
           + 'yet. Fill in the location field on a scene and its recce card appears here.'
     }));
   } else {
-    locs.forEach((loc) => wrap.append(renderLocation(loc)));
+    const grid = h('div.pl-loc-grid');
+    locs.forEach((loc) => grid.append(renderLocation(loc)));
+    wrap.append(grid);
   }
 
   if (unplaced.length) {

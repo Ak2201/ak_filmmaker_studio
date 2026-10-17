@@ -59,6 +59,17 @@ function check(label, got, want) {
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+/* shoot.html and edit.html host the Production and Post guides but both
+   modules are off for every plan, so plan-gate covers the page with its
+   "not available" panel (main goes visibility:hidden). This proof is about
+   the guide mounting, not the gate, so it looks past that overlay. */
+await ctx.addInitScript(() => {
+  addEventListener('DOMContentLoaded', () => {
+    const st = document.createElement('style');
+    st.textContent = ':root[data-plan-lock] main { visibility: visible !important; }';
+    document.head.append(st);
+  });
+});
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));

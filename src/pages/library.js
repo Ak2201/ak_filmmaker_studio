@@ -154,7 +154,7 @@ function renderCheck(c) {
 }
 
 /* ============================================================
-   SECTIONS — one list drives the toolbar nav, the cover TOC and
+   SECTIONS — one list drives the tab strip, the cover TOC and
    the five section heads. Three copies became one.
    ============================================================ */
 /* The section menu's grouping, icon and hint per tab (src/ui/section-menu.js).
@@ -913,18 +913,10 @@ function renderFinal() {
 /* ============================================================
    ACTIONS — one delegated listener, zero inline handlers.
    ============================================================ */
-function toggleDark() {
-  // Delegate to the shared 3-state theme in src/ui/chrome.js — local
-  // toggling desynced the page class from StudioUI's stored theme.
-  StudioUI.cycleTheme();
-}
-
-/* The calculator's actions went with it to src/ui/budget.js, which
-   owns its own delegated listener now. What is left here is the
-   page's own chrome. */
-const ACTIONS = {
-  theme: toggleDark,
-};
+/* The page's own delegated actions. The theme button went in the
+   one-frame pass (one theme; the band's tools are the same everywhere),
+   so the table is empty, and the dispatcher stays for the next one. */
+const ACTIONS = {};
 
 function wireActions(root) {
   delegate(root, 'click', '[data-action]', (e, el) => {

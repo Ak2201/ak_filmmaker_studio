@@ -363,22 +363,11 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 /* ============================================================
    THE COVER, OBSIDIAN LOOK (13 Oct 2026)
    ------------------------------------------------------------
-   An amber mono kicker, a very large serif title with one italic
-   amber word, the deck and the real shelf count beside it, and the
-   contents as a grid of shelf cards: amber SECTION numeral, title,
+   The page header is the kit's (.bd-head, one frame); under it the
+   deck and the real shelf count beside it, and the contents as a grid of shelf cards: amber SECTION numeral, title,
    summary, and the count that shelf's own array produced. Amber is
    --library-deep, the text variant, never the fill. Tokens only.
    ============================================================ */
-.cover .cover-mark { font-family: var(--f-mono); color: var(--library-deep); letter-spacing: var(--track-label); }
-.cover .cover-title {
-  font-family: var(--face-display);
-  font-weight: 700;
-  font-size: clamp(2.5rem, 7vw, 4.5rem);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  margin-bottom: var(--s4);
-}
-.cover .cover-title .light { font-style: var(--face-accent-style); font-weight: 700; color: var(--library-deep); }
 .cover-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4) var(--s6); max-width: none; margin-bottom: var(--s6); padding-bottom: var(--s5); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); }
 .cover-row .cover-sub { flex: 1 1 28rem; max-width: 46rem; margin: 0; }
 .cover-pills { margin: 0; display: flex; gap: var(--s2); }

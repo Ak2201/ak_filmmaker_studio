@@ -59,17 +59,17 @@
   <div class="st-top-in">
     <a class="st-brand" href="#top"><span class="sn-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="st-nav" aria-label="Page sections">
-      <a href="#workflow">Workflow</a>
-      <a href="#demo">Demo</a>
-      <a href="#features">Samples</a>
+      <a href="#workflow">Product</a>
+      <a href="#demo">Studio Preview</a>
       <a href="#pricing">Pricing</a>
+      <a href="#pricing" data-pricing-jump="edu">Education</a>
       <a href="#faq">FAQ</a>
     </nav>
     <a class="sn-login" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Login with Google</a>
     <!-- Both labels are in the markup and CSS shows one: at 375px the long
          label beside the brand truncates the brand to an ellipsis.
          display: none hides the other from a screen reader too. -->
-    <a class="st-btn st-btn-primary st-btn-sm" href="invite.html" data-start-auth="google" data-open-text="Open the studio"><span class="st-at-narrow">Sign in</span><span class="st-at-wide">Launch the studio</span></a>
+    <a class="st-btn st-btn-primary st-btn-sm" href="invite.html" data-start-auth="google" data-open-text="Open the studio"><span class="st-at-narrow">Sign in</span><span class="st-at-wide">Start the free trial</span></a>
   </div>
 </header>
 
@@ -195,21 +195,26 @@
   </figure>
 </section>
 
-<!-- 3. THE FIVE-STAGE WORKFLOW. The mock draws four stages; the studio
-     has five, in this order, so five cards are drawn. -->
+<!-- 3. THE PRODUCT, IN FOUR PILLARS. One card per job a film needs
+     done, three or four real tools in each. Every tool named here is a
+     module in src/data/navigation.json under the same name — if one is
+     renamed or removed there, change it here too (this page keeps its
+     words in markup). Which plan opens which tool is NOT repeated here:
+     it lives in plan-matrix.json and prints in "Compare every feature"
+     under the plans. -->
 <section data-reveal="fade" class="sn-sec sn-glow st-sec sn-workflow" id="workflow" aria-labelledby="workflow-h">
   <div class="sn-head">
-    <p class="st-eyebrow st-eyebrow-gold">How a film moves through it</p>
-    <h2 class="st-h2" id="workflow-h">The production workflow</h2>
-    <p class="st-lede">In the order a film is actually made, from the spark of an idea to the sheets the unit reads on set and the files that leave with the film.</p>
+    <p class="st-eyebrow st-eyebrow-gold">The product</p>
+    <h2 class="st-h2" id="workflow-h">One studio, four jobs a film needs done</h2>
+    <p class="st-lede">Every tool reads the same scene list, so a change in the script shows up in the breakdown, the schedule, the budget and the call sheet without being typed again.</p>
   </div>
   <div class="st-grid sn-four" data-reveal-group>
-    <article class="st-card sn-stage"><div><span class="sn-ico" aria-hidden="true">&#9670;</span><p class="sn-num">STAGE 01</p><h3 class="st-h3">Story &amp; character bible</h3><p>Logline, characters, conflict, stakes and beats, one question at a time, each with a worked example and a check that it is done.</p></div><p class="sn-foot">&#10003; Idea Vault &amp; pitch deck</p></article>
-    <article class="st-card sn-stage"><div><span class="sn-ico sn-ico-v" aria-hidden="true">&#9998;</span><p class="sn-num">STAGE 02</p><h3 class="st-h3">Industry-standard screenplay</h3><p>Fountain, Final Draft and PDF import. Slug lines, characters and dialogue format as you type, with an honest page count and numbered drafts.</p></div><p class="sn-foot sn-foot-v">&#10003; Screenplay PDF export</p></article>
-    <article class="st-card sn-stage sn-stage-hot"><div><span class="sn-ico sn-ico-a" aria-hidden="true">&#9719;</span><p class="sn-num">STAGE 03</p><h3 class="st-h3">Automatic scene breakdown</h3><p>Reads the script and suggests the cast, props, vehicles, stunts and sounds in each scene, then collects every element once with its scenes.</p></div><p class="sn-foot">&#10003; Auto-Tag, one-click suggestions</p></article>
-    <article class="st-card sn-stage"><div><span class="sn-ico" aria-hidden="true">&#9776;</span><p class="sn-num">STAGE 04</p><h3 class="st-h3">Stripboard &amp; call sheets</h3><p>Lay scenes into shoot days, see who works when, and print sides and call sheets the unit reads on WhatsApp.</p></div><p class="sn-foot sn-foot-v">&#10003; Printable call sheets</p></article>
+    <article class="st-card sn-stage"><div><span class="sn-ico sn-ico-v" aria-hidden="true">&#9998;</span><p class="sn-num">PILLAR 01</p><h3 class="st-h3">Writing</h3><p>An industry-format screenplay in Tamil, Tanglish or English: slug lines, action and dialogue format as you type, with an honest page count.</p><ul class="sn-tools"><li>Screenplay Writer</li><li>Drafts</li><li>Title Page</li><li>Import Screenplay</li></ul></div><p class="sn-foot sn-foot-v">&#10003; Fountain, Final Draft and PDF in; screenplay PDF out</p></article>
+    <article class="st-card sn-stage"><div><span class="sn-ico" aria-hidden="true">&#9670;</span><p class="sn-num">PILLAR 02</p><h3 class="st-h3">Story &amp; Storyboard</h3><p>Find the shape of the story, then see it before you shoot it: the shots for each scene and a frame for each shot.</p><ul class="sn-tools"><li>Beats &amp; Pacing</li><li>Idea Vault</li><li>Shot List</li><li>Storyboard</li></ul></div><p class="sn-foot">&#10003; A pitch deck in one click</p></article>
+    <article class="st-card sn-stage sn-stage-hot"><div><span class="sn-ico sn-ico-a" aria-hidden="true">&#9719;</span><p class="sn-num">PILLAR 03</p><h3 class="st-h3">Breakdown &amp; Schedule</h3><p>The script is read for the cast, props, vehicles, stunts and sounds in each scene; you accept what is right, then lay the scenes into shoot days.</p><ul class="sn-tools"><li>Auto-Tag</li><li>Scene Breakdown</li><li>Stripboard</li><li>Day Out of Days</li></ul></div><p class="sn-foot">&#10003; Every element listed once, with its scenes</p></article>
+    <article class="st-card sn-stage"><div><span class="sn-ico" aria-hidden="true">&#9776;</span><p class="sn-num">PILLAR 04</p><h3 class="st-h3">Budget &amp; Call Sheets</h3><p>What the film will cost, line by line from Chennai rates, and the sheets that tell the unit where to be and when.</p><ul class="sn-tools"><li>Budget</li><li>Cast &amp; Crew</li><li>Call Sheets</li><li>Sides</li></ul></div><p class="sn-foot sn-foot-v">&#10003; Printable, and readable on WhatsApp</p></article>
   </div>
-  <p class="sn-after">Then the set and the cut: a shoot-day view that marks each scene shot, part or dropped, an edit log built from those marks, and a deliverables checklist. <a href="#everything">See every tool</a></p>
+  <p class="sn-after">Then the set and the cut: a shoot-day view that marks each scene shot, part or dropped, an edit log built from those marks, and a deliverables checklist. <a href="#pricing">Compare what each plan includes</a></p>
 </section>
 
 <!-- 4. BUILT FOR THE REAL WORLD. Four cards, as in the mock, with every
@@ -231,108 +236,6 @@
       <article class="st-card"><p class="sn-card-t"><span aria-hidden="true">&#9679;</span> Your script stays yours</p><p>Nothing leaves your browser unless you sign in to sync or back up to your own Drive. AI tools are optional and use your own key, so drafts are never sent anywhere you did not choose.</p></article>
     </div>
   </div>
-</section>
-
-<!-- 3b. EVERYTHING IT DOES. One card per stage, one line per tool, in
-     the studio's own order. The one-liners are the `purpose` strings in
-     src/data/navigation.json — if a module is added or renamed there,
-     change it here too (this page keeps its words in markup and carries
-     no count, so nothing drifts silently except the list itself).
-     Which plan unlocks which tool is NOT repeated here: it lives in
-     plan-matrix.json and prints in "Compare every feature" above. -->
-<section data-reveal="fade" class="sn-sec st-sec st-everything" id="everything" aria-labelledby="everything-h">
-  <p class="st-eyebrow">Everything it does</p>
-  <h2 class="st-h2" id="everything-h">Every tool a film needs, from the idea to the delivery</h2>
-  <p class="st-lede">Five stages, one film. Each tool reads the same scene list, so a change in the script shows up in the schedule, the call sheet and the budget without being typed again.</p>
-  <div class="st-grid st-grid-3 st-tools" data-reveal-group>
-    <article class="st-card">
-      <p class="st-chip">1 &middot; Story</p>
-      <h3 class="st-h3">Find the film</h3>
-      <ul class="st-toollist">
-        <li><strong>Guided story path</strong> Logline, characters, conflict, stakes and theme, one question at a time, with a worked example.</li>
-        <li><strong>Beats &amp; Pacing</strong> Write the story and check its shape: where it rises, where it sags.</li>
-        <li><strong>Idea Vault</strong> Links, pictures and notes for this film, kept in one place.</li>
-        <li><strong>Pitch Deck</strong> A short PDF that sells your film to investors, made in one click.</li>
-      </ul>
-    </article>
-    <article class="st-card">
-      <p class="st-chip">2 &middot; Screenplay</p>
-      <h3 class="st-h3">Write it properly</h3>
-      <ul class="st-toollist">
-        <li><strong>Screenplay Writer</strong> Slug lines, action, dialogue and transitions format themselves; the page count is honest. Tamil, Tanglish or English.</li>
-        <li><strong>Drafts</strong> Numbered drafts: compare, restore, print.</li>
-        <li><strong>Title Page</strong> Title, credit, author, draft, date and contact on page 1 of every PDF.</li>
-        <li><strong>Import Screenplay</strong> Bring in a Fountain, Final Draft, PDF or text screenplay, and export a proper screenplay PDF.</li>
-      </ul>
-    </article>
-    <article class="st-card">
-      <p class="st-chip">3 &middot; Pre-Production, the script</p>
-      <h3 class="st-h3">Understand what you wrote</h3>
-      <ul class="st-toollist">
-        <li><strong>Screenplay Analysis</strong> Pages, runtime, scenes, cast, locations, outline and characters.</li>
-        <li><strong>Scene List</strong> Every scene in order, where it happens, day or night.</li>
-        <li><strong>Screen Time</strong> Minutes each scene will run on screen, worked out from the pages.</li>
-        <li><strong>Cast Matrix</strong> Which character is in which scene, and who shares the most.</li>
-        <li><strong>Auto-Tag</strong> Reads the script and suggests what each scene calls for: cast, background, props, set dressing, wardrobe, hair and makeup, vehicles, stunts, animals, sound, special effects, visual effects and special equipment. You accept what is right.</li>
-        <li><strong>Scene Breakdown &amp; Elements</strong> Mark what each scene needs, from set dressing to SFX, then see everything the film needs, listed once with its scenes. Recount each scene&rsquo;s length from the script when it changes.</li>
-      </ul>
-    </article>
-    <article class="st-card">
-      <p class="st-chip">3 &middot; Pre-Production, the look</p>
-      <h3 class="st-h3">See it before you shoot it</h3>
-      <ul class="st-toollist">
-        <li><strong>Shot List</strong> The shots for each scene: how close the camera is and how it moves.</li>
-        <li><strong>Storyboard</strong> A drawing or picture for each shot you plan.</li>
-        <li><strong>Blocking</strong> An overhead map for each setup: drag the actors, the camera and their marks into place.</li>
-        <li><strong>Scene Board</strong> One scene on one printable page: its script, shots, storyboard frames and blocking maps side by side.</li>
-        <li><strong>Lookbook</strong> Pictures for the look you want: costume, sets, colour, light.</li>
-        <li><strong>Reference Media</strong> Your own files and pictures, kept with the film.</li>
-        <li><strong>Songs</strong> Each song planned as its own block of shooting.</li>
-        <li><strong>Locations</strong> Where you will shoot, with notes from your visits and how to get there.</li>
-      </ul>
-    </article>
-    <article class="st-card">
-      <p class="st-chip">3 &middot; Pre-Production, the plan</p>
-      <h3 class="st-h3">Schedule it and cost it</h3>
-      <ul class="st-toollist">
-        <li><strong>Shoot Calendar</strong> When prep starts, when you shoot, when the edit is due.</li>
-        <li><strong>Stripboard</strong> Scenes in shooting order, grouped into shoot days.</li>
-        <li><strong>Day Out of Days</strong> Which actor works on which day, so nobody is called in for nothing.</li>
-        <li><strong>Sides</strong> The script pages each actor needs for the day, ready to print.</li>
-        <li><strong>Budget</strong> What the film will cost, line by line, with Chennai rates to start from.</li>
-        <li><strong>Schedule Impact</strong> What a shoot day costs, and what cutting scenes really saves. A day is saved only when its last scene goes.</li>
-        <li><strong>Budget Versions</strong> Lock the budget as it stands, then compare any later change against it.</li>
-        <li><strong>Cast &amp; Crew</strong> Phone and e-mail, by department.</li>
-        <li><strong>Production Reports</strong> Printable lists of what each scene and each shoot day needs.</li>
-      </ul>
-    </article>
-    <article class="st-card">
-      <p class="st-chip">4 &middot; Production &amp; 5 &middot; Post</p>
-      <h3 class="st-h3">Shoot it and finish it</h3>
-      <ul class="st-toollist">
-        <li><strong>Shoot Day</strong> Today&rsquo;s scenes on one screen, with a mark for what you shot: shot, part or dropped.</li>
-        <li><strong>Call Sheets</strong> The sheet that tells everyone where to be and when, with sunrise and golden hour per location.</li>
-        <li><strong>Edit Log</strong> What the edit still needs against what was shot, scene by scene, with a link to each scene&rsquo;s dailies.</li>
-        <li><strong>Cut Versions</strong> Name each cut, from assembly onward, and keep notes against timecodes.</li>
-        <li><strong>Deliverables</strong> Censor certificate, subtitles, cinema copy and festival files, checked off.</li>
-        <li><strong>Cloud Workflow</strong> An optional checklist for a film whose footage travels through the cloud: offload, backup, folders. Add the link to where each file lives, in Drive, Frame.io, LucidLink or Dropbox. The studio keeps the address, never the files.</li>
-      </ul>
-    </article>
-  </div>
-
-  <h3 class="st-h3 st-everything-sub">And across the whole film</h3>
-  <div class="st-grid st-grid-3 st-tools" data-reveal-group>
-    <article class="st-card"><p class="st-chip">Learn</p><h3 class="st-h3">A library that teaches while you work</h3><p>Tamil films taken apart beat by beat, craft terms in plain words, a topic panel beside every step, and a command palette that finds any tool, scene or contact.</p></article>
-    <article class="st-card"><p class="st-chip">AI Desk</p><h3 class="st-h3">AI that suggests and never overwrites</h3><p>Bring your own key. Draft scene layouts, page batches and a voice check. Suggest a genre and comparables, which you should check yourself. Write one note per scene, with the quotes checked against the scene, and propose breakdown tags you accept one by one. Review and refine each result before it touches your script.</p></article>
-    <article class="st-card"><p class="st-chip">Your work</p><h3 class="st-h3">Yours, on every device</h3><p>Saved in your browser first. Sign in to sync across devices, back up to your own Google Drive, and export the whole studio as one file whenever you like.</p></article>
-    <article class="st-card"><p class="st-chip">Anywhere</p><h3 class="st-h3">Works on the set, and offline</h3><p>Install it like an app, read the shoot day on your phone, and keep writing when the signal drops. Nothing to download first.</p></article>
-    <article class="st-card"><p class="st-chip">Share</p><h3 class="st-h3">Show a cut without handing over the keys</h3><p>Send a read-only screening link, print sides, call sheets and reports, and export screenplay and shot-list PDFs.</p></article>
-    <article class="st-card"><p class="st-chip">Made here</p><h3 class="st-h3">Built for a Tamil Nadu unit</h3><p>FEFSI bata and Chennai rates that feed the budget, CBFC flags with their sources, and every rupee figure dated for when it was last checked.</p></article>
-  </div>
-  <p class="st-cta st-everything-cta">
-    <a class="st-btn st-btn-primary" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start your free trial</a>
-    <a class="st-btn" href="#pricing">See the plans</a>
-  </p>
 </section>
 
 <!-- ============================================================
@@ -361,36 +264,117 @@
   <div class="sn-head">
     <p class="st-eyebrow st-eyebrow-gold">Radically honest economics</p>
     <h2 class="st-h2" id="pricing-h">No subscriptions. Pay once, yours for good.</h2>
-    <p class="st-lede" data-off-text="Pick the stage you need. Every plan is bought once, never renews and never lapses.">Pick the stage you need. Every plan is bought once, never renews and never lapses. Not sure yet? A free trial of the whole studio sits under the plans.</p>
+    <p class="st-lede" data-off-text="Pick the stage you need. Every plan is bought once, never renews and never lapses.">Pick the stage you need. Every plan is bought once, never renews and never lapses. Not sure yet? A free trial of the whole studio sits above the plans.</p>
   </div>
 
-  <div class="st-offer" id="offer" hidden role="note" aria-labelledby="offer-h">
-    <p class="st-eyebrow st-eyebrow-gold">Launch price</p>
-    <h3 class="st-h3" id="offer-h">The price goes up, and the date is already set.</h3>
-    <p id="offerLine">Today&rsquo;s figure is the launch price. It rises on a date held by the server, or once the launch seats are taken &mdash; whichever comes first.</p>
-    <p class="st-offer-meta"><span class="st-chip st-chip-gold" id="offerSeats" hidden></span><span class="st-chip st-chip-gold" id="offerLeft" hidden></span></p>
-    <p class="st-fine">Nothing here resets. The rise is scheduled on the server and fires by itself, so reloading this page shows you less time, never more.</p>
+  <!-- THE TWO TRACKS. A tab list, two panels. The Individual panel is
+       the default and holds everything the proofs and the build read:
+       the one trial strip, the three paid tiers, the three plan buy
+       links (all visible by default), the offer band and the
+       comparison. The Education panel is hidden until its tab is pressed
+       (start.js, or #education / ?track=edu on load) and its cards are
+       articles marked data-edu-tier, never data-tier or data-plan: they are
+       not plans the checkout sells. The student card is Intermediate
+       with a promo code; the other two are enquiries, set up by hand. -->
+  <div class="st-track-bar" role="tablist" aria-label="Pricing track">
+    <button type="button" class="st-track-btn is-active" role="tab" aria-selected="true" aria-controls="trackIndividual" id="tabIndividual" data-pricing-tab="individual">Individual &amp; Teams</button>
+    <button type="button" class="st-track-btn" role="tab" aria-selected="false" aria-controls="tiersEdu" id="tabEdu" tabindex="-1" data-pricing-tab="edu">Education &amp; Film Schools <span class="st-track-badge">Student offer</span></button>
   </div>
 
-  <ul class="st-tiers" data-reveal-group>
-    <li data-trial class="st-trial"><strong>Not sure yet? Try it free</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card. Then keep the plan that fits.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Start the free trial</a></li>
-    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><p class="st-tier-line">{{fms:tier.line.starter}}</p><b class="st-price">{{fms:price.starter}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.starter}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=starter" data-start-buy="starter" data-plan="starter" data-off-text="Sign in" data-open-text="Buy {{fms:plan.starter}}">Buy {{fms:plan.starter}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
-    <li data-tier="indie" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.indie}}</strong><p class="st-tier-line">{{fms:tier.line.indie}}</p><b class="st-price">{{fms:price.indie}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.indie}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=indie" data-start-buy="indie" data-plan="indie" data-off-text="Sign in" data-open-text="Buy {{fms:plan.indie}}">Buy {{fms:plan.indie}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
-    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><p class="st-tier-line">{{fms:tier.line.pro}}</p><b class="st-price">{{fms:price.pro}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.pro}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=pro" data-start-buy="pro" data-plan="pro" data-off-text="Sign in" data-open-text="Buy {{fms:plan.pro}}">Buy {{fms:plan.pro}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
-  </ul>
-
-  <details class="st-compare-all">
-    <summary>Compare every feature</summary>
-    <div class="st-table-wrap" role="region" aria-label="Plan comparison" tabindex="0">
-      <table class="st-table">
-        <colgroup><col class="st-col-what"><col><col><col></colgroup>
-        <thead><tr><th scope="col">What you get</th><th scope="col">{{fms:plan.starter}}</th><th scope="col">{{fms:plan.indie}}</th><th scope="col">{{fms:plan.pro}}</th></tr></thead>
-        <tbody>{{fms:matrix.rows}}</tbody>
-      </table>
+  <div class="st-track" id="trackIndividual" role="tabpanel" aria-labelledby="tabIndividual">
+    <div class="st-offer" id="offer" hidden role="note" aria-labelledby="offer-h">
+      <p class="st-eyebrow st-eyebrow-gold">Launch price</p>
+      <h3 class="st-h3" id="offer-h">The price goes up, and the date is already set.</h3>
+      <p id="offerLine">Today&rsquo;s figure is the launch price. It rises on a date held by the server, or once the launch seats are taken &mdash; whichever comes first.</p>
+      <p class="st-offer-meta"><span class="st-chip st-chip-gold" id="offerSeats" hidden></span><span class="st-chip st-chip-gold" id="offerLeft" hidden></span></p>
+      <p class="st-fine">Nothing here resets. The rise is scheduled on the server and fires by itself, so reloading this page shows you less time, never more.</p>
     </div>
-  </details>
-  <p class="st-compare">Subscription tools charge every month for as long as you keep making films. Here you pay once and the desk is yours.</p>
-  <p class="st-note">One-time list prices in Indian rupees, paid through Razorpay and confirmed at checkout. Move up a plan later by paying the difference. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href="refund.html">Refund &amp; Cancellation Policy</a>, which is why the free trial comes first.</p>
+
+    <ul class="st-tiers" id="tiersIndividual" data-reveal-group>
+      <li data-trial class="st-trial"><strong>Not sure yet? Try the whole studio free</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card required. Then keep the plan that fits.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Start the free trial</a></li>
+      <li data-tier="starter"><span class="st-tier-tag">Tier 01 &middot; Writer</span><strong>{{fms:plan.starter}}</strong><p class="st-tier-line">{{fms:tier.line.starter}}</p><b class="st-price">{{fms:price.starter}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.starter}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=starter" data-start-buy="starter" data-plan="starter" data-off-text="Sign in" data-open-text="Buy {{fms:plan.starter}}">Buy {{fms:plan.starter}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
+      <li data-tier="indie" class="st-pick"><p class="st-pick-flag"><span aria-hidden="true">&#9733; </span>Recommended for filmmakers</p><span class="st-tier-tag">Tier 02 &middot; Director</span><strong>{{fms:plan.indie}}</strong><p class="st-tier-line">{{fms:tier.line.indie}}</p><b class="st-price">{{fms:price.indie}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.indie}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=indie" data-start-buy="indie" data-plan="indie" data-off-text="Sign in" data-open-text="Buy {{fms:plan.indie}}">Buy {{fms:plan.indie}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
+      <li data-tier="pro"><span class="st-tier-tag">Tier 03 &middot; Production house</span><strong>{{fms:plan.pro}}</strong><p class="st-tier-line">{{fms:tier.line.pro}}</p><b class="st-price">{{fms:price.pro}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.pro}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="purchase.html?plan=pro" data-start-buy="pro" data-plan="pro" data-off-text="Sign in" data-open-text="Buy {{fms:plan.pro}}">Buy {{fms:plan.pro}}</a><a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
+    </ul>
+
+    <details class="st-compare-all">
+      <summary>Compare every feature</summary>
+      <div class="st-table-wrap" role="region" aria-label="Plan comparison" tabindex="0">
+        <table class="st-table">
+          <colgroup><col class="st-col-what"><col><col><col></colgroup>
+          <thead><tr><th scope="col">What you get</th><th scope="col">{{fms:plan.starter}}</th><th scope="col">{{fms:plan.indie}}</th><th scope="col">{{fms:plan.pro}}</th></tr></thead>
+          <tbody>{{fms:matrix.rows}}</tbody>
+        </table>
+      </div>
+    </details>
+    <p class="st-compare">Subscription tools charge every month for as long as you keep making films. Here you pay once and the desk is yours.</p>
+    <p class="st-note">One-time list prices in Indian rupees, paid through Razorpay and confirmed at checkout. Move up a plan later by paying the difference. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href="refund.html">Refund &amp; Cancellation Policy</a>, which is why the free trial comes first.</p>
+  </div>
+
+  <div class="st-edu-panel" id="tiersEdu" role="tabpanel" aria-labelledby="tabEdu" hidden>
+    <div class="st-edu-banner">
+      <div>
+        <p class="st-eyebrow st-eyebrow-gold">Film schools, Viscom departments &amp; student directors</p>
+        <h3 class="st-h3">Learn filmmaking by making a real film, with guided blueprints and real production paperwork.</h3>
+        <p class="st-note">The studio carries a {{fms:short.steps}}-step short film blueprint, a {{fms:feature.steps}}-step feature blueprint, {{fms:studies.count}} Tamil films taken apart beat by beat and {{fms:glossary.count}} craft terms in plain words, beside the full pre-production desk.</p>
+      </div>
+      <a class="st-btn" href="invite.html" data-start-auth="google" data-trial-link data-open-text="Open the studio">Try the sample films free <span aria-hidden="true">&rarr;</span></a>
+    </div>
+
+    <div class="st-edu-grid">
+      <article class="st-edu-card st-edu-pick" data-edu-tier="student">
+        <p class="st-edu-flag">Student offer</p>
+        <span class="st-edu-eyebrow">EDU 01 &middot; Individual student</span>
+        <strong>Student Filmmaker</strong>
+        <p class="st-tier-line">The {{fms:plan.indie}} plan for your own diploma or short film, at the student price.</p>
+        <b class="st-price">{{fms:price.student}}</b>
+        <span class="st-once">one payment &middot; with code STUDENT50</span>
+        <ul class="st-inc">
+          <li class="st-inc-all">Everything in {{fms:plan.indie}}, listed at {{fms:price.indie}}</li>
+          <li>Screenplay Writer in Tamil, Tanglish or English</li>
+          <li>Scene Breakdown, Shot List and Storyboard</li>
+          <li>Stripboard, Day Out of Days and Budget</li>
+          <li>{{fms:short.steps}}-step short film and {{fms:feature.steps}}-step feature blueprints</li>
+          <li>{{fms:studies.count}} case studies and {{fms:glossary.count}} craft terms</li>
+        </ul>
+        <a class="st-btn st-btn-primary st-edu-buy" href="purchase.html?plan=indie&amp;code=STUDENT50">Claim the student price</a>
+        <a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a>
+      </article>
+
+      <article class="st-edu-card" data-edu-tier="cohort">
+        <span class="st-edu-eyebrow">EDU 02 &middot; Workshops &amp; film clubs</span>
+        <strong>Cohort &amp; Workshop</strong>
+        <p class="st-tier-line">For a college film club, a short-film crew or a weekend workshop that wants the whole group in the studio together.</p>
+        <b class="st-price"><small class="st-from">from</small> {{fms:price.cohort}}</b>
+        <span class="st-once">by enquiry &middot; priced for your group</span>
+        <ul class="st-inc">
+          <li>Group access set up by hand, with invite codes or grants from us</li>
+          <li>The same studio and sample films for every member</li>
+          <li>The {{fms:short.steps}}-step short film blueprint as the workshop&rsquo;s spine</li>
+          <li>Each member&rsquo;s work saved in their own browser</li>
+        </ul>
+        <a class="st-btn st-edu-buy" href="mailto:{{brand:email}}?subject=Cohort%20or%20workshop%20access&amp;body=Group%20name%3A%0AHow%20many%20people%3A%0AStart%20date%3A%0A">E-mail us about a cohort</a>
+        <span class="st-tier-alt">Tell us the group and the dates; we reply with a price.</span>
+      </article>
+
+      <article class="st-edu-card" data-edu-tier="institution">
+        <span class="st-edu-eyebrow">EDU 03 &middot; Film schools &amp; departments</span>
+        <strong>Film School</strong>
+        <p class="st-tier-line">For a Viscom, mass communication or film department teaching production with a class at a time.</p>
+        <b class="st-price"><small class="st-from">from</small> {{fms:price.edu}}</b>
+        <span class="st-once">by enquiry &middot; arranged with your department</span>
+        <ul class="st-inc">
+          <li>Access for a class set up by hand, with invite codes or grants from us</li>
+          <li>Read-only screening links, so faculty can see a student&rsquo;s cut</li>
+          <li>Installs like an app on lab machines and works offline</li>
+          <li>{{fms:studies.count}} case studies and {{fms:glossary.count}} craft terms to teach from</li>
+        </ul>
+        <a class="st-btn st-edu-buy" href="mailto:{{brand:email}}?subject=Film%20school%20access&amp;body=Institution%3A%0ADepartment%3A%0AHow%20many%20students%3A%0A">Ask about film school access</a>
+        <a class="st-tier-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or try the sample films first</a>
+      </article>
+    </div>
+    <p class="st-note">Education access is arranged by hand: we reply from {{brand:email}} and set the group up with invite codes or grants. The student price is the {{fms:plan.indie}} plan with code STUDENT50 at checkout, confirmed there before you pay.</p>
+  </div>
 </section>
 
 <!-- ============================================================
@@ -502,10 +486,10 @@
       <p class="sn-foot-line">&copy; {{brand:name}}. Made for independent filmmakers. Your work stays in your browser unless you choose otherwise.</p>
     </div>
     <nav class="st-foot-links" aria-label="Footer">
-      <a href="#workflow">Workflow</a>
-      <a href="#demo">Demo</a>
-      <a href="#features">Samples</a>
+      <a href="#workflow">Product</a>
+      <a href="#demo">Studio Preview</a>
       <a href="#pricing">Pricing</a>
+      <a href="#pricing" data-pricing-jump="edu">Education</a>
       <a href="#faq">FAQ</a>
       <a href="privacy.html">Privacy Policy</a>
       <a href="terms.html">Terms of Service</a>

@@ -52,6 +52,17 @@
   gap: var(--s3);
   margin-bottom: var(--s5);
 }
+/* The control bar stays under the pinned chrome while a long view scrolls. */
+.rp-sec > .rp-tools {
+  position: sticky;
+  top: var(--sh-chrome-h, 0px);
+  z-index: 15;
+  padding: var(--s3);
+  background-color: var(--surface-rail);
+  background-image: var(--surface-rail-sheen);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius));
+}
 .rp-spacer { margin-left: auto; }
 .rp-count {
   font-family: var(--f-mono);

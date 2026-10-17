@@ -81,9 +81,14 @@ export function stepsMayLandOn(page) {
 
 const GUIDE_PAGES = new Set(['story.html', 'write.html', 'breakdown.html', 'shoot.html', 'edit.html']);
 
+const RETIRED = true;
 let loading = null;
 /** Fetch and mount the drawer once; a no-op where no step lands. */
 export function mountBlueprintDrawerIfNeeded(page = pageName()) {
+  /* RETIRED (Celtx simplification): the floating "Blueprint step N" pill is
+     never injected. The stage pages' #guide section still carries the
+     questions, hidden. */
+  if (RETIRED) return Promise.resolve(null);
   if (loading) return loading;
   if (!stepsMayLandOn(page)) return Promise.resolve(null);
   loading = import('./blueprint-drawer.js').catch((e) => {

@@ -50,7 +50,7 @@ import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry, st
 import { renderTrialBand } from './trial-band.js';
 import { mountStatusBar } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
-import { markLocked } from '../lib/plan-gate.js';
+import { markLocked, allowed } from '../lib/plan-gate.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -183,6 +183,17 @@ function isShown(el) {
  * Nothing here names a page or a module; it is all derived from
  * navigation.json and the DOM, so a sixth two-phase page needs no edit.
  */
+const GUIDE_HIDDEN = true;
+
+/* A stage's lead module: navmodel's firstModuleOf, but skipping modules the
+   plan matrix has switched off (plan-gate hides those links, and a stage
+   link whose lead is hidden would disappear with it). */
+function leadOf(phase) {
+  if (phase && phase.home && phase.home.href) return firstModuleOf(phase);
+  const on = ((phase && phase.modules) || []).find((m) => m.status === 'built' && m.href && allowed(m.id));
+  return on || firstModuleOf(phase);
+}
+
 function resolveLocation(hash = location.hash) {
   const loc = stayLocation(hash) || resolveModule(hash);
   const part = blueprintPart();
@@ -197,6 +208,9 @@ function resolveLocation(hash = location.hash) {
    before it in document order. Null above the first part (the cover)
    and on every page that is not a blueprint. */
 function blueprintPart() {
+  /* The stage guide is hidden now (stage-guide.js), so a "Part II ·"
+     crumb segment would link to a section nobody can see. */
+  if (GUIDE_HIDDEN) return null;
   const stops = guideStops(CURRENT);
   if (!stops.length) return null;
   const seen = new Set();
@@ -224,7 +238,7 @@ function stayLocation(hash) {
   const frag = (hash || '').replace(/^#/, '');
   const phase = e.stage ? phases().find((p) => p.id === e.stage) || null : null;
   const label = (e.frags && e.frags[frag]) || e.label;
-  const lead = phase && firstModuleOf(phase);
+  const lead = phase && leadOf(phase);
   return {
     phase, global: null, exact: true,
     module: { id: 'stay:' + CURRENT, label, href: CURRENT + location.search + (frag ? '#' + frag : ''),
@@ -311,7 +325,7 @@ function resolveModule(hash) {
    over the page was a second, slower way to the same place. A real
    <a> gives keyboard, middle-click and aria-current for free. */
 function phaseHref(phase) {
-  const first = firstModuleOf(phase);
+  const first = leadOf(phase);
   return first ? first.href : null;
 }
 
@@ -327,7 +341,7 @@ function phaseTab(phase, active) {
   if (active) btn.setAttribute('aria-current', 'page');
   /* plan-gate.js markLocked() flags a link by the module it opens: the
      stage's first one is where the tab lands. */
-  const lead = firstModuleOf(phase);
+  const lead = leadOf(phase);
   if (href && lead) btn.dataset.moduleId = lead.id;
   btn.append(h('span.sh-phase-dot', { 'aria-hidden': 'true' }),
              h('span.sh-phase-label', { text: phase.label }));
@@ -520,6 +534,12 @@ function buildRail() {
   globals().forEach((g) => {
     /* No project items in the global shell. */
     if (isGlobalMode() && g.id === 'dashboard') return;
+    /* Celtx flow: opening a project goes straight to the workspace, so the
+       Dashboard has no rail entry; the Library shelf shows only while at
+       least one of its modules is still enabled in the plan matrix. */
+    if (g.id === 'dashboard') return;
+    if (g.id === 'library' && Array.isArray(g.modules) && g.modules.length
+      && !g.modules.some((m) => allowed(m.id))) return;
     /* A shelf is "here" on its own page and on the pages of its
        modules: the Blueprints entry lands on the hub's blueprint
        section, and is lit on feature.html and short.html. */
@@ -561,7 +581,9 @@ function buildRail() {
 function buildRailStages() {
   const wrap = h('div.sh-rail-stages', { role: 'group', 'aria-label': 'Stages' });
   phases().forEach((p) => {
-    const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href);
+    /* The first module still enabled: a disabled one is hidden by plan-gate,
+       which would take the whole stage link with it. */
+    const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href && allowed(m.id));
     if (!first) return;
     /* The drawer is 72px wide, so a stage's blurb and its modules'
        plain-English purposes (navigation.json) cannot be printed beside

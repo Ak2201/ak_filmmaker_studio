@@ -75,7 +75,7 @@ import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId } from '../lib/store.js';
 import { switchProject } from './project-switcher.js';
-import { markLocked, aiUnlocked } from '../lib/plan-gate.js';
+import { markLocked, aiUnlocked, allowed } from '../lib/plan-gate.js';
 import { pageFile } from '../lib/page-file.js';
 import '../styles/palette.css';
 
@@ -275,6 +275,7 @@ function navItems() {
      glossary are modules too, grouped under the Library. */
   for (const p of moduleGroups()) {
     for (const m of p.modules) {
+      if (!allowed(m.id)) continue;   // switched off in the plan matrix / console: not searchable
       /* `status` is carried through rather than filtered on. A
          planned module that vanished from search would be a map
          with a hole in it, and the honest answer — the row is

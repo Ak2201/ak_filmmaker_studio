@@ -231,7 +231,11 @@ function projectsMarkup() {
   head.querySelector('.k-page-sub').id = 'hubGreeting';
   head.querySelector('.k-page-sub').classList.add('greeting-block');
   sec.querySelector('#projectsHeadSlot').replaceWith(head);
-  sec.querySelector('.projects-inner').append(shelvesMarkup());
+  /* Celtx simplification (plan 7.2): the knowledge-base shelves stay in the
+     DOM, hidden, so their words and links still exist for the gate. */
+  const shelves = shelvesMarkup();
+  shelves.hidden = true;
+  sec.querySelector('.projects-inner').append(shelves);
   return sec;
 }
 
@@ -838,14 +842,9 @@ function init() {
     if (wc && pj && pj.parentNode) pj.before(wc);
   } catch (e) { /* the welcome is a convenience */ }
 
-  /* The "Today" line is a lazy chunk on purpose: the path model reads
-     readiness, contacts, songs and shots, none of which the hub's first
-     paint needs. Idle, so it never competes with the first render; if
-     the import fails the line simply never appears. */
-  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
-  idle(() => {
-    import('./hub/today-line.js').then((m) => m.mountTodayLine()).catch((e) => console.warn('[hub] today line', e));
-  });
+  /* The "Today" line is not mounted (Celtx simplification, plan 7.2):
+     #todayLine stays hidden in the markup, so nothing fetches its chunk.
+     today-line.js is untouched and can be mounted again from here. */
 
   decorateMotion();
   reveal(document);

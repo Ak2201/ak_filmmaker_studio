@@ -28,5 +28,5 @@
     background: var(--paper);
   }
   .stp-tab { min-height: 36px; padding: var(--s1) var(--s3); }
-  .sg-steps > section, .sg-steps > .sg-cover { scroll-margin-top: var(--stp-bar-h, 0px); }
+  .sg-steps > section, .sg-steps > .sg-cover { scroll-margin-top: calc(var(--stp-bar-h, 0px) + var(--tabs-h, 0px)); }   /* + a pinned tab strip above the bar (breakdown#guide) */
 }

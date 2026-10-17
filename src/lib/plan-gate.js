@@ -113,6 +113,37 @@ export function allowed(key) {
   if (!features) return true;
   return features[key] !== false;
 }
+/* MODULES SWITCHED OFF FOR EVERY PLAN. The module rows of
+   src/data/plan-matrix.json that carry `plans: []`, key for key (npm run
+   test:plans compares them; the matrix is not imported here because this
+   module is CORE). A module on this list is not an upsell: no plan sells
+   it, so nothing offers a PLAN flag or a SEE PLANS card - it is simply
+   not there (isDisabledEverywhere, below). */
+export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'idea-vault', 'pitch-deck', 'script-breakdown', 'auto-tag', 'songs', 'screen-time', 'cast-matrix', 'lookbook', 'media', 'shoot-day', 'edit-log', 'deliverables'];
+/* Ids the plan rows showed NO plan above this one offers - an admin kill
+   switch on a module the plans otherwise carry. Filled by loadFlagNames. */
+let offersNone = new Set();
+
+/** True when the module is off for EVERYBODY, not merely above this
+ *  person's plan: the matrix says no plan has it, or the admin's override
+ *  killed it and no plan row offers it. The difference matters - a module
+ *  one plan up is an upsell and keeps today's PLAN flag and SEE PLANS card;
+ *  one nobody sells is hidden. This is a HIDING rule only: allowed() and
+ *  entitlement() are untouched, so nothing here can wall a paying member.
+ *
+ *    unknown (signed out, offline) -> the matrix defaults;
+ *    purchases off (open_features() opens every key) -> the matrix
+ *      defaults, plus any key the server says false (nothing is plan-locked
+ *      then, so a false is an override);
+ *    purchases on -> an explicit true shows it (the console switched it
+ *      back on); otherwise the matrix default, or a false that no plan
+ *      row offers. */
+export function isDisabledEverywhere(id) {
+  const off = OFF_BY_DEFAULT.includes(id);
+  if (!features || purchaseReq === false) return off || (!!features && features[id] === false);
+  if (features[id] === true) return false;
+  return off || (features[id] === false && offersNone.has(id));
+}
 /** The one capability that is OFF unless the plan says true. */
 /* AI tools are LOCKED unless a known plan includes them. The opposite
    default from allowed(), on purpose: allowed() fails open so a page is
@@ -323,8 +354,17 @@ export function modulesHere() {
 }
 /** Locked when the page has modules and none of them is allowed. */
 export function pageLocked() {
+  /* Only modules that can be on a plan count: one that is off for every
+     plan is hidden anyway, and a plan map that never names it reads as
+     "allowed", which would keep the page open with nothing left on it. */
+  const live = modulesHere().filter((m) => !isDisabledEverywhere(m.id));
+  return live.length > 0 && live.every((m) => !allowed(m.id));
+}
+/** Every module here is off for every plan: nothing to sell, so the
+ *  page says "not available" and offers no upgrade. */
+export function pageGone() {
   const ms = modulesHere();
-  return ms.length > 0 && ms.every((m) => !allowed(m.id));
+  return ms.length > 0 && ms.every((m) => isDisabledEverywhere(m.id));
 }
 
 /* ---- which plan has it ------------------------------------------
@@ -446,7 +486,20 @@ function lockCard(mods) {
 }
 
 function lockPanel() {
-  return h('div.pg-lock', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(modulesHere())]);
+  return h('div.pg-lock', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(modulesHere().filter((m) => !isDisabledEverywhere(m.id)))]);
+}
+/* Neutral variant: same .pg-lock shell and card, no plan, no price, no
+   SEE PLANS. No redirect either: the page stays where it is. */
+function gonePanel() {
+  const card = h('div.pg-lock-card', {}, [
+    h('p.bd-eyebrow', { text: 'Not available' }),
+    h('h2.pg-lock-h', { text: 'This part of the studio is not available yet.' }),
+    h('p.pg-lock-p', { text: 'It is not switched on for any plan right now. Anything you wrote here is still saved on this device.' }),
+    h('div.pg-lock-actions', {}, [h('a.btn.primary', { href: 'index.html', text: 'BACK TO THE STUDIO' })])
+  ]);
+  const el = h('div.pg-lock', { role: 'region', 'aria-label': 'Not available' }, [card]);
+  el.dataset.gone = '1';
+  return el;
 }
 
 /* ---- the wall (§30) ----------------------------------------------
@@ -651,8 +704,8 @@ function tabsHere() {
     if (sec) cands.push({ m, sec });
   };
   for (const s of shelves()) for (const m of s.modules) take(m);
-  if (!pageLocked()) for (const p of phases()) for (const m of p.modules) if (m.status !== 'planned') take(m);
-  const open = cands.filter((c) => allowed(c.m.id)).map((c) => c.sec);
+  if (!pageLocked() && !pageGone()) for (const p of phases()) for (const m of p.modules) if (m.status !== 'planned') take(m);
+  const open = cands.filter((c) => allowed(c.m.id) && !isDisabledEverywhere(c.m.id)).map((c) => c.sec);
   return cands.filter((c) => allowed(c.m.id)
     || !open.some((o) => o !== c.sec && (o.contains(c.sec) || c.sec.contains(o))));
 }
@@ -667,6 +720,17 @@ function tabsHere() {
 export function lockTabs() {
   if (typeof document === 'undefined') return;
   for (const { m, sec } of tabsHere()) {
+    /* Off for everybody: no card, no lock. The section stays in the
+       document (its fields and words are still there) and tabs.js leaves
+       it out of the strip. */
+    const gone = isDisabledEverywhere(m.id);
+    if (sec.hasAttribute('data-tab-off') !== gone) sec.toggleAttribute('data-tab-off', gone);
+    if (gone) {
+      const stale = sec.querySelector(':scope > .pg-lock-inline');
+      if (stale) stale.remove();
+      if (sec.hasAttribute('data-tab-lock')) sec.removeAttribute('data-tab-lock');
+      continue;
+    }
     const locked = !allowed(m.id);
     let card = sec.querySelector(':scope > .pg-lock-inline');
     if (sec.hasAttribute('data-tab-lock') !== locked) sec.toggleAttribute('data-tab-lock', locked);
@@ -685,9 +749,13 @@ let _secObs = null;
 let _secRaf = 0;
 function watchSections() {
   if (typeof MutationObserver === 'undefined' || !document.body) return;
-  const need = !!features && anyLockedHere();
+  const need = anyLockedHere();
   if (need && !_secObs) {
-    _secObs = new MutationObserver(() => {
+    _secObs = new MutationObserver((recs) => {
+      /* Only a section appearing or going matters (a page re-render);
+         our own card inserts and every text change are not. */
+      const sec = (n) => n.nodeType === 1 && (n.matches('section[id]') || !!n.querySelector('section[id]'));
+      if (!recs.some((r) => [...r.addedNodes].some(sec) || [...r.removedNodes].some(sec))) return;
       if (_secRaf) return;
       _secRaf = requestAnimationFrame(() => { _secRaf = 0; lockTabs(); });
     });
@@ -696,7 +764,7 @@ function watchSections() {
 }
 function anyLockedHere() {
   const here = file().replace(/\.html$/, '');
-  const on = (m) => { const [f, frag] = (m.href || '').split('#'); return !!frag && f.toLowerCase().replace(/\.html$/, '') === here && !allowed(m.id); };
+  const on = (m) => { const [f, frag] = (m.href || '').split('#'); return !!frag && f.toLowerCase().replace(/\.html$/, '') === here && (!allowed(m.id) || isDisabledEverywhere(m.id)); };
   return shelves().some((s) => s.modules.some(on)) || phases().some((p) => p.modules.some(on));
 }
 
@@ -710,7 +778,8 @@ function apply() {
   /* The wall outranks the module lock: there is no point telling
      somebody which tier a module is on when their trial has ended. */
   const wall = walled();
-  const lock = !wall && pageLocked();
+  const gone = !wall && pageGone();
+  const lock = !wall && (gone || pageLocked());
   if (wall || lock) {
     root.dataset.planLock = '1';
     root.toggleAttribute('data-paywall', wall);
@@ -718,6 +787,7 @@ function apply() {
     /* Swap when the KIND changes, not just when one is missing — a
        trial expiring while a module lock is on screen must replace it. */
     if (existing && (wall !== existing.classList.contains('pg-wall'))) existing.remove();
+    if (existing && !wall && existing.hasAttribute('data-gone') !== gone) existing.remove();
     /* The wall's words follow the entitlement (a trial offered, or one
        that is over), so a wall drawn for the other case is redrawn —
        only when that changes, never on every refresh. */
@@ -725,7 +795,7 @@ function apply() {
     const cur = document.querySelector('.pg-wall');
     if (cur && cur.dataset.kind !== kind) cur.remove();
     if (!document.querySelector('.' + want)) {
-      const panel = wall ? wallPanel() : lockPanel();
+      const panel = wall ? wallPanel() : gone ? gonePanel() : lockPanel();
       if (wall) panel.dataset.kind = kind;
       document.body.append(panel);
     }
@@ -752,14 +822,41 @@ function loadFlagNames() {
   Billing.listPlans().then(() => {
     const out = {};
     const ids = new Set([...document.querySelectorAll('[data-module-id]')].map((el) => el.dataset.moduleId));
+    const sold = Billing.listPlans().then((pl) => (pl || []).some((p) => p && p.active !== false && p.id !== 'free'), () => false);
+    const none = new Set();
     return Promise.all([...ids].filter((id) => !allowed(id)).map((id) =>
-      lowestPlanWith([id]).then((p) => { if (p) out[id] = p.name || Billing.planName(p.id); }, () => {})))
-      .then(() => { flagNames = out; markLocked(); });
+      lowestPlanWith([id]).then((p) => {
+        if (p) out[id] = p.name || Billing.planName(p.id);
+        else none.add(id);
+      }, () => {})))
+      .then(() => sold)
+      .then((ok) => { flagNames = out; offersNone = ok ? none : new Set(); markLocked(); lockTabs(); });
   }).catch(() => { flagAsked = false; });
 }
 export function markLocked(scope) {
   if (typeof document === 'undefined') return;
   (scope || document).querySelectorAll('[data-module-id]').forEach((el) => {
+    /* A stage tab carries its lead module's id; the tab goes only when
+       every module of the stage is off for everybody. Any other link goes
+       with its module. Nothing is removed, only [hidden]. */
+    const stage = el.classList.contains('sh-rail-stage') ? phases().find((p) => p.id === el.dataset.phase) : null;
+    const gone = stage ? stage.modules.filter((m) => m.status !== 'planned').every((m) => isDisabledEverywhere(m.id))
+                       : isDisabledEverywhere(el.dataset.moduleId);
+    const box = stage ? (el.closest('.sh-rail-stagecell') || el) : el;
+    /* Only ever WRITE hidden=true, and remember that this code did it:
+       a row some other code hid (the palette's filter) is never un-hidden here. */
+    if (gone) {
+      if (!box.hidden) { box.hidden = true; box.setAttribute('data-pg-gone', ''); }
+    } else if (box.hasAttribute('data-pg-gone')) {
+      box.removeAttribute('data-pg-gone');
+      box.hidden = false;
+    }
+    if (gone || (stage && isDisabledEverywhere(el.dataset.moduleId))) {
+      el.classList.remove('is-locked');
+      const f = el.querySelector(':scope > .pg-flag');
+      if (f) f.remove();
+      return;
+    }
     const locked = !allowed(el.dataset.moduleId);
     el.classList.toggle('is-locked', locked);
     let flag = el.querySelector(':scope > .pg-flag');
@@ -770,7 +867,30 @@ export function markLocked(scope) {
     else if (locked && flag && flag.textContent !== text) { flag.textContent = text; flag.title = title; }
     if (!locked && flag) flag.remove();
   });
+  tidyHeadings(scope || document);
   if (features && !flagNames) loadFlagNames();
+}
+/* A heading with nothing visible under it (every row off for everybody)
+   goes too: group headings in the phone sheet and sub-headings in the
+   sheet and the rail flyouts. Same rule as the rows: only this code's own
+   hiding is ever undone. */
+function tidyHeadings(root) {
+  const rowOn = (n) => n.hasAttribute && n.hasAttribute('data-module-id') && !n.hidden;
+  const set = (el, off) => {
+    if (off) { if (!el.hidden) { el.hidden = true; el.setAttribute('data-pg-gone', ''); } }
+    else if (el.hasAttribute('data-pg-gone')) { el.removeAttribute('data-pg-gone'); el.hidden = false; }
+  };
+  root.querySelectorAll('.mn-sub, .sh-fly-sub').forEach((hd) => {
+    let any = false, rows = 0;
+    for (let n = hd.nextElementSibling; n && !n.matches('.mn-sub, .sh-fly-sub'); n = n.nextElementSibling) {
+      if (n.hasAttribute('data-module-id')) { rows++; if (!n.hidden) any = true; }
+    }
+    set(hd, rows > 0 && !any);
+  });
+  root.querySelectorAll('.mn-group[data-mn-phase]').forEach((g) => {
+    const rows = [...g.querySelectorAll('[data-module-id]')];
+    set(g, rows.length > 0 && !rows.some(rowOn));
+  });
 }
 
 /* ---- wiring ------------------------------------------------------- */
@@ -824,6 +944,6 @@ if (typeof window !== 'undefined') {
 }
 
 /* journey.js asks this, without importing the module (it runs in Node tests). */
-if (typeof window !== 'undefined') window.StudioPlan = { allowed };
+if (typeof window !== 'undefined') window.StudioPlan = { allowed, isDisabledEverywhere };
 
-export default { offerFor, offerText, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, pageGone, lockTabs, markLocked, CAPABILITIES };

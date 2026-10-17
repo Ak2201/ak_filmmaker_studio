@@ -87,9 +87,11 @@ import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/s
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
-import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
+import { showOnly, stepFooter, wireStepper, landUnder } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
-import { pageHeader, button, statStrip } from '../ui/kit/index.js';
+import { pageHeader, button, statStrip, segmented, selectSegment } from '../ui/kit/index.js';
+import Store from '../lib/store.js';
+import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
 
 const app = document.getElementById('app');
@@ -185,8 +187,25 @@ onFavChange((slug) => (slug ? render() : fillExamples()));
 /* ---- the path stepper ---------------------------------------- */
 
 function currentStep(s) {
-  return pathStep || Story.defaultPathStep(s, { scenes: scenes(), format: fmt() });
+  /* Celtx's first view is the beat sheet: with nothing chosen the page opens
+     on the step outline (every path has one), not on the first question. */
+  return pathStep || (pathNow().some((p) => p.id === 'outline') ? 'outline' : Story.defaultPathStep(s, { scenes: scenes(), format: fmt() }));
 }
+
+/* THE THREE VIEWS. The beat sheet, the synopsis and the pacing sit in a
+   segmented switcher; every other step of the path is under the "Story
+   notes / Outline details" disclosure (a closed <details> that keeps all
+   of them in the DOM, so every data-key and word is still read). */
+const VIEWS = [
+  { id: 'outline', label: 'Beat Sheet', icon: 'list' },
+  { id: 'synopsis', label: 'Synopsis & Tagging', icon: 'description' },
+  { id: 'pacing', label: 'Pacing & Story Notes', icon: 'trending_up' }
+];
+const viewIds = VIEWS.map((v) => v.id);
+/* The pitch deck is a module nobody sells unless the console switches it
+   on: when it is off for everybody its section stays in the DOM, hidden,
+   and leaves the menu. Unknown plan state answers with the matrix default. */
+const pitchOff = () => { try { return isDisabledEverywhere('pitch-deck'); } catch (e) { return false; } };
 
 /* THE STEPS ARE THE SHARED SECTION MENU (src/ui/section-menu.js), the
    same control as the admin console's: a grouped column beside the step at
@@ -201,7 +220,11 @@ function currentStep(s) {
    (story-paths.json `n`): the blueprint drawer reads it from the open
    row to know which blueprint steps this path step answers. */
 const activeId = (s) => (extra ? extra : 'path-' + currentStep(s));
-const menuGroups = (s) => groupsOf(progress(s));
+const menuGroups = (s) => {
+  const gs = groupsOf(progress(s));
+  if (pitchOff()) gs.forEach((g) => { g.items = g.items.filter((i) => i.id !== 'pitch'); });
+  return gs.filter((g) => g.items.length);
+};
 /* data-step / data-path on each path row: the numbers the drawer reads. A
    structural rebuild inside the same nav drops them, so every build and
    every update stamps again. */
@@ -212,10 +235,10 @@ function stamp(nav, s) {
     if (b.dataset.tab.startsWith('path-') && n.has(id)) { b.dataset.step = String(n.get(id)); b.dataset.path = id; }
   }
 }
-const storyNav = () => document.querySelector('#main > nav.tabs[data-sm-self]');
+const storyNav = () => document.querySelector('#main nav.tabs[data-sm-self]');
 function renderStepper(s) {
   const nav = buildSectionMenu({
-    groups: menuGroups(s), active: activeId(s), ariaLabel: 'Story path', sectionsLabel: 'Steps', orientation: 'side',
+    groups: menuGroups(s), active: activeId(s), ariaLabel: 'Story path', sectionsLabel: 'Steps', orientation: 'strip',
     onSelect: (pid) => goView(bareOf(pid))
   });
   stamp(nav, s);
@@ -247,7 +270,7 @@ function refreshStepper() {
 wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
-  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + (pathNow().length + EXTRAS.length) }),
+  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + (pathNow().length + EXTRAS.filter((x) => !(x.id === 'pitch' && pitchOff())).length) }),
   h('h2.bd-h2', { text: title }),
   lead ? h('p.bd-sub', { text: lead }) : null,
   learnBox(LEARN_TOPIC[id])
@@ -600,7 +623,11 @@ function renderOutline(s) {
     if (acts.children.length) li.append(acts);
     list.append(li);
   }
-  sec.append(list);
+  /* the board: the beat cards in a grid and, when steps were written under
+     another format, the "not placed" holding column beside them (story.css) */
+  const board = h('div.st-ol-board' + (o.unplaced.length ? '.has-holding' : ''));
+  board.append(list);
+  sec.append(board);
 
   if (o.unplaced.length) {
     const un = h('section.st-unplaced', { 'aria-label': 'Not placed in this format' });
@@ -620,7 +647,7 @@ function renderOutline(s) {
       ol.append(row);
     });
     un.append(ol);
-    sec.append(un);
+    board.append(un);
   }
   put(sec, earlierLadder('outline', 'Earlier step outline (free text, treatment ladder rung 5)',
     [h('p.st-muted', { text: 'The numbered outline above is the one the synopsis and the screenplay read. This is the free-text version from the blueprint, kept as you wrote it.' })]),
@@ -967,8 +994,13 @@ function draw() {
   if (!cards) main.insertBefore(renderStats(s), main.children[1] || null);
   const bar0 = renderStepper(s);
   if (cards) bar0.hidden = true;
-  else main.classList.add('tabs-has-side');   // the column beside the step (tabs.css); never over the start cards
-  main.append(bar0);
+  /* The segmented switcher, and under it the closed disclosure that holds
+     the full step menu (the rest of the path) — see VIEWS. */
+  const sw = segmented({ name: 'story-view', class: 'st-views', label: 'Story view', options: VIEWS.map((v) => ({ value: v.id, label: v.label, icon: v.icon })), value: viewIds.includes(extra || currentStep(s)) ? (extra || currentStep(s)) : '' });
+  sw.querySelectorAll('.k-seg-btn').forEach((b) => { b.dataset.stepperGo = b.dataset.value; });
+  const notes = h('details.st-notes', {}, [h('summary', { text: 'Story notes / Outline details' }), bar0]);
+  if (cards) { sw.hidden = true; notes.hidden = true; }
+  main.append(sw, notes);
   /* EVERY STEP IS ON THE PAGE, in the project's own path. */
   const panels = {
     idea: renderIdea, logline: renderLogline, structure: renderStructure, outline: renderOutline,
@@ -1018,7 +1050,8 @@ function after() {
 /* Landing on a step: src/ui/stepper.js landUnderMenu(), with Story's menu
    (a column beside the step wide, a sticky strip narrow). */
 function landStepView(el, { exact = false } = {}) {
-  landUnderMenu(el, storyNav(), { exact });
+  document.documentElement.style.setProperty('--stp-bar-h', '0px');   // nothing of the page's own is pinned: the menu is in the disclosure
+  landUnder(el, null, { exact });
 }
 
 /* A path step id, from an id or (for any caller that still holds one)
@@ -1057,23 +1090,35 @@ function applyView() {
   const s = story();
   const cards = isEmpty(s) && !started;
   const panels = viewPanels();
+  if (extra === 'pitch' && pitchOff()) extra = '';
   const shown = cards ? '' : (extra || currentStep(s));
   showOnly(panels, shown);
+  const pit = document.getElementById('pitch');
+  if (pit && pitchOff()) pit.hidden = true;   // off for everybody: kept in the DOM, never shown
+  const sw = main.querySelector('.st-views');
+  if (sw) { sw.hidden = cards; selectSegment(sw, viewIds.includes(shown) ? shown : ''); }
+  const det = main.querySelector('details.st-notes');
+  if (det) {
+    det.hidden = cards;
+    /* A step that is not one of the three views (a hash into #path-idea,
+       the Back / Next walk) lives under the disclosure: open it. */
+    if (!cards && shown && !viewIds.includes(shown)) det.open = true;
+  }
+  const footPanels = panels.filter((p) => !(p.id === 'pitch' && pitchOff()));
   panels.forEach((p) => {
     const old = p.el.querySelector(':scope > .stp-nav');
     if (old) old.remove();
     /* The count is the PATH's, the same "of N" the step bar says; the
        sections after it (Beats & pacing, Pitch deck, Cover sheet) are
        the bar's "Then" row and say so rather than taking a number. */
-    if (p.id === shown) {
-      const f = stepFooter(panels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + panels.length });
+    if (p.id === shown && !viewIds.includes(p.id)) {
+      const f = stepFooter(footPanels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + footPanels.length });
       if (f) p.el.append(f);
     }
   });
   const bar = storyNav();
   if (bar) {
     bar.hidden = cards;
-    main.classList.toggle('tabs-has-side', !cards);
     const on = bar.querySelector('[aria-selected="true"]');
     /* the strip (narrow) keeps the open row in view; a column has nothing to scroll */
     if (!cards && on && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = Math.max(0, on.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2);
@@ -1082,6 +1127,7 @@ function applyView() {
 
 /* A step by id, whether it is on the path or one of the sections after. */
 function goView(id) {
+  if (id === 'pitch' && pitchOff()) id = 'outline';
   if (isExtra(id)) {
     extra = id; started = true;
     history.replaceState(null, '', location.pathname + location.search + '#' + id);
@@ -1100,6 +1146,7 @@ function openFragment(frag) {
   const el = direct || document.getElementById(frag);
   const host = el && el.closest('main > section');
   if (!host) return false;
+  if (host.id === 'pitch' && pitchOff()) return false;
   const pid = host.getAttribute('data-path');
   if (pid) { pathStep = pid; extra = ''; } else if (isExtra(host.id)) { extra = host.id; } else return false;
   started = true;
@@ -1500,6 +1547,14 @@ if (START) history.replaceState(null, '', location.pathname + location.hash);
 readHash();
 
 render();
+/* The plan state arrives after first paint: when it says the pitch deck is
+   off for everybody, its menu row goes and its section stays hidden. */
+{
+  let lastPitch = pitchOff();
+  const regate = () => { const now = pitchOff(); if (now === lastPitch) return; lastPitch = now; refreshStepper(); applyView(); };
+  try { Store.subscribe('gate:changed', () => setTimeout(regate, 0)); Store.subscribe('billing:changed', () => setTimeout(regate, 0)); } catch (e) { /* no subscribe: the first answer stands */ }
+  try { Promise.resolve(refreshPlan()).then(regate, () => {}); } catch (e) { /* offline: matrix default */ }
+}
 loadFavStudiesSoon();   // the examples' films, once the page has settled
 /* ?start=sample is Dragon; ?start=sample-<id> is that sample. */
 const START_SAMPLE = startSample(START);

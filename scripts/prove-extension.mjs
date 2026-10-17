@@ -78,6 +78,16 @@ try {
   story.on('pageerror', (e) => errors.push(e.message));
   /* The Idea Vault is its own page now (vault.html, 11 Oct 2026), and
      it is the one page that drains the clip queue. */
+  /* idea-vault is off for every plan, so plan-gate covers the page with
+     its "not available" panel; this proof is about the clip queue
+     draining into the page, so it looks past that overlay. */
+  await story.addInitScript(() => {
+    addEventListener('DOMContentLoaded', () => {
+      const st = document.createElement('style');
+      st.textContent = ':root[data-plan-lock] main { visibility: visible !important; } .pg-lock[data-gone] { display: none !important; }';
+      document.head.append(st);
+    });
+  });
   await story.goto(X('vault.html'));
   await story.waitForSelector('.st-clip-text', { timeout: 10000 });
   ok((await story.textContent('.st-clip-text')).includes('forged degree'), 'it arrives in the Idea Vault');

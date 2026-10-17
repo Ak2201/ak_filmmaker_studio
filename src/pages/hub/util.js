@@ -10,7 +10,7 @@
    ============================================================ */
 import {
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
-  FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL
+  FEATURE_URL, SHORT_URL, PROJECT_HOME_URL, LIBRARY_URL
 } from '../../lib/hub-keys.js';
 import { readStoredObject } from '../../lib/hub-activity.js';
 
@@ -67,7 +67,7 @@ const $ = (sel) => document.querySelector(sel);
 
 export {
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
-  FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL,
+  FEATURE_URL, SHORT_URL, PROJECT_HOME_URL, LIBRARY_URL,
   FORMAT_LABELS,
   plain, clip, title,
   parseStorage, relTime, fmtRelDate, $

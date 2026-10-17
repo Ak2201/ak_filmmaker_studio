@@ -59,6 +59,17 @@ function check(label, got, want) {
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+/* shoot.html and edit.html host the Production and Post guides but both
+   modules are off for every plan, so plan-gate covers the page with its
+   "not available" panel (main goes visibility:hidden). This proof is about
+   the guide mounting, not the gate, so it looks past that overlay. */
+await ctx.addInitScript(() => {
+  addEventListener('DOMContentLoaded', () => {
+    const st = document.createElement('style');
+    st.textContent = ':root[data-plan-lock] main { visibility: visible !important; } .pg-lock[data-gone] { display: none !important; }';
+    document.head.append(st);
+  });
+});
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -67,10 +78,13 @@ page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resourc
 
 const url = (p) => `http://localhost:${PORT}/${p}`;
 const blob = (key) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || '{}'), key);
-const guideReady = async () => {
-  await page.evaluate(() => document.getElementById('guide') && document.getElementById('guide').scrollIntoView());
-  await page.waitForSelector('#guide .sg-steps', { timeout: 15000 });
+/* The guide is hidden until #guide asks for it (the deep link every
+   blueprint route uses), so the proof opens it the way a reader does. */
+const guideSteps = async (timeout = 15000) => {
+  await page.evaluate(() => { if (location.hash !== '#guide') location.hash = '#guide'; });
+  await page.waitForSelector('#guide .sg-steps', { timeout });
 };
+const guideReady = () => guideSteps(15000);
 const guideFields = () => page.evaluate(() => [...document.querySelectorAll('#guide [data-key]')]
   .map((el) => el.getAttribute('data-key') + ':' + el.tagName));
 /* ONE STEP AT A TIME: a guide shows one blueprint step, so a proof that
@@ -231,13 +245,28 @@ check('(2) short.html’s answer shows in the guide', await page.inputValue('#gu
 const vite = await createServer({ configFile: path.resolve('vite.config.js'), server: { port: DEV_PORT, strictPort: true }, logLevel: 'error' });
 await vite.listen();
 const dev = (p) => `http://localhost:${DEV_PORT}/${p}`;
-const mount = (stage) => page.evaluate(async (st) => {
-  document.querySelectorAll('#guide').forEach((n) => n.remove());
-  const m = await import('/src/ui/stage-guide.js');
-  m.mountStageGuide(document.querySelector('main') || document.body, { stage: st });
-  await new Promise((r) => setTimeout(r, 0));
-  document.getElementById('guide').scrollIntoView();
-}, stage);
+/* A stage page's guide is hidden until the hash asks for it (stage-guide.js sync()):
+   mount with an empty hash, assert it is hidden, then navigate to #guide so the
+   real un-hide path runs. story.html un-hides its own guide, so story is forced. */
+const mount = async (stage) => {
+  const hiddenFirst = await page.evaluate(async (st) => {
+    document.querySelectorAll('#guide').forEach((n) => n.remove());
+    history.replaceState(null, '', location.pathname + location.search);
+    const m = await import('/src/ui/stage-guide.js');
+    m.mountStageGuide(document.querySelector('main') || document.body, { stage: st });
+    await new Promise((r) => setTimeout(r, 0));
+    const g = document.getElementById('guide');
+    const was = g.hidden;
+    if (st === 'story') { g.hidden = false; g.scrollIntoView(); }
+    else location.hash = '#guide';
+    return was;
+  }, stage);
+  if (stage !== 'story') {
+    check(`(3) ${stage}: the guide is hidden until #guide`, hiddenFirst, true);
+    await page.waitForFunction(() => { const g = document.getElementById('guide'); return g && !g.hidden; }, null, { timeout: 5000 })
+      .then(() => check(`(3) ${stage}: #guide un-hides it`, true, true), () => check(`(3) ${stage}: #guide un-hides it`, false, true));
+  }
+};
 const stageIds = () => page.evaluate(() => [...document.querySelectorAll('#guide .step')].map((s) => s.getAttribute('data-sg-id')));
 
 async function devSeed(format, key, data) {
@@ -264,7 +293,7 @@ const script = [
 ];
 await devSeed('short', SKEY, { meta_title: 'Tiny', meta_runtime: '2 min', _sceneMap: sceneMap, _script: script, b1_setup: 'BEAT-ONE' });
 await mount('screenplay');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 await settle();
 check('(3) short screenplay: steps 06, 07, 08, 11', await stageIds(), ['step-06', 'step-07', 'step-08', 'step-11']);
 const afterMount = await blob(SKEY);
@@ -307,7 +336,7 @@ check('(3) short.html reads the guide’s scene map back', await page.evaluate((
 /* the old flat scene-map keys: the guide refuses to overwrite them */
 await devSeed('short', SKEY, { sm_1_slug: 'OLD', sm_1_who: 'x' });
 await mount('screenplay');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) a flat-key scene map is not editable in the guide', await page.evaluate(() =>
   document.querySelector('#guide .sg-scenemap table').hidden), true);
 
@@ -319,12 +348,12 @@ await devSeed('feature', FKEY, { s4_name: 'Kavin', s5_name: 'Rana', b01: 'open',
 const want = { story: 0, screenplay: 4, preprod: 11, production: 4, post: 4 };
 for (const [stage, n] of Object.entries(want)) {
   await mount(stage);
-  await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+  await guideSteps(20000);
   const ids = await stageIds();
   check(`(3) feature ${stage}: ${n} steps drawn`, ids.length, n);
 }
 await mount('story');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) feature story: the Guide is the cover sheet (title, writer, genre…), no blueprint step',
   await page.evaluate(() => [...document.querySelectorAll('#guide [data-key]')].map((e) => e.getAttribute('data-key'))),
   ['meta_title', 'meta_writer', 'meta_started', 'meta_stage', 'v1_title', 'v1_genre', 'v1_draft']);
@@ -366,7 +395,7 @@ check('(3) a Bible card answer is stored under the blueprint’s key', (await bl
 await page.goto(dev('index.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => window.StudioStore, null, { timeout: 20000 });
 await mount('preprod');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) the budget total is derived from the fields', await page.evaluate(() =>
   /3|30/.test(document.querySelector('#guide [data-sg-id="budgetTotal"]').textContent)), true);
 check('(3) the shot, cast and location tables each show rows', await page.evaluate(() =>
@@ -378,7 +407,7 @@ b = await blob(FKEY);
 check('(3) a table row writes its flat key', b.shot_2_desc, 'WIDE');
 
 await mount('screenplay');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) the scene-list table shows rows', await page.evaluate(() =>
   document.querySelectorAll('#guide [data-sg-id="sceneListBody"] tr').length >= 3), true);
 /* the SHORT road: its own steps, and none of the feature's */

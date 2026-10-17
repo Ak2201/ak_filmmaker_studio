@@ -715,6 +715,18 @@
 }
 .bd-head { padding-block: var(--s7) var(--s5); }
 
+/* Tool headers, decluttered (Celtx pass). The sub-paragraph and eyebrow stay
+   in the DOM for the gate's word coverage and are hidden from view. */
+.bd-head .k-page-sub,
+.ct-head .k-page-sub,
+.bd-head .k-eyebrow,
+.ct-head .k-eyebrow { display: none; }
+.bd-head.k-page-head,
+.ct-head .k-page-head {
+  padding-block: var(--s4) var(--s3);
+  margin-bottom: var(--s4);
+}
+
 .bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
 /* #breakdown, the tagging area inside the Scene List: a wrapper, so it
    carries the list's own grid down to the cards. minmax(0, 1fr) for the

@@ -75,7 +75,7 @@ import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId } from '../lib/store.js';
 import { switchProject } from './project-switcher.js';
-import { markLocked, aiUnlocked } from '../lib/plan-gate.js';
+import { markLocked, aiUnlocked, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { pageFile } from '../lib/page-file.js';
 import '../styles/palette.css';
 
@@ -275,6 +275,7 @@ function navItems() {
      glossary are modules too, grouped under the Library. */
   for (const p of moduleGroups()) {
     for (const m of p.modules) {
+      if (isDisabledEverywhere(m.id)) continue;   // off for everybody: not searchable; a plan-locked row stays, flagged by markLocked
       /* `status` is carried through rather than filtered on. A
          planned module that vanished from search would be a map
          with a hole in it, and the honest answer — the row is
@@ -320,7 +321,7 @@ function projectItems() {
       group: 'Projects',
       icon: '◳',
       keywords: ['project', 'switch', 'open film'],
-      run: () => { switchProject(p.id); }   // the one switch: sets the project, lands on the dashboard (project-switcher.js)
+      run: () => { switchProject(p.id); }   // the one switch: sets the project, lands on the screenplay (project-switcher.js)
     }));
 }
 

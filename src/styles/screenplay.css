@@ -959,3 +959,30 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-beats .bp-body { max-height: none; overflow: visible; }
 }
 @media print { .sc-pos, .sc-runtime, .sc-beats-scrim { display: none; } }
+
+/* ============================================================
+   Celtx pass (plan 7.4): one glass bar, a centred sheet, a recessed
+   beats drawer. Tokens only; every element and id is unchanged.
+   ============================================================ */
+.sc-top {
+  background-color: var(--paper);
+  border-bottom: 1px solid var(--border-subtle, var(--rule-hair));
+  box-shadow: var(--shadow-sm);
+}
+/* Meta strip and tool row read as ONE bar: no rule between them. */
+.sc-meta { border-bottom: 0; padding-block: var(--s1); }
+.sc-tools { padding-top: var(--s1); }
+.sc-sheet .wr-page { max-width: min(8.5in, 100%); }
+.sc-beats {
+  background-color: var(--paper-raised, var(--paper));
+  border: 1px solid var(--border-subtle, var(--rule-hair));
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--shadow-sm);
+}
+@media (min-width: 1100px) {
+  /* Keyboard prose stays in the DOM; the "?" sheet carries it. */
+  .sc-tip-keys { display: none; }
+  .sc-sheet { padding-block: var(--s6); }
+  .sc-main.has-beats { grid-template-columns: minmax(0, 1fr) 20rem; column-gap: var(--s4); padding-right: var(--s4); }
+  .sc-main > #beatsPanel { margin-top: var(--s4); }
+}

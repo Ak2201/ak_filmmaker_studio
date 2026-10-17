@@ -42,17 +42,17 @@
   --sk-card-ink:        var(--ink-body);
   --sk-card-line:       var(--border-hair);
   --sk-card-line-w:     1px;
-  --sk-card-shadow:     none;
+  --sk-card-shadow:     var(--shadow-card-rest, none);
   --sk-deco-bg:         var(--surface-card);
   --sk-deco-ink:        var(--ink-body);
 
   /* ---- interaction ------------------------------------------
      A hover brightens the hairline (done in the rules) and lifts by
-     nothing: a workstation panel does not float toward you. Press is a
+     nothing; the premium shadow tokens carry the response. Press is a
      barely-there scale so a click still registers. */
-  --sk-card-shadow-hover: none;
+  --sk-card-shadow-hover: var(--shadow-card-hover, none);
   --sk-lift:            0px;
-  --sk-press:           0.99;
+  --sk-press:           0.985;
   --sk-focus-w:         2px;
 
   /* ---- rules: colour only where colour is data ---------------

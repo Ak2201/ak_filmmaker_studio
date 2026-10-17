@@ -371,7 +371,9 @@ try {
     ok(/shares a page with .*Elements/.test(await A.page.textContent('tr[data-feature="breakdowns"]')), 'a module that shares a page says so, and with whom');
     // story.html hosts story-beats (a real plan row) and pitch-deck (off for every plan, so never a plan row);
     // a page locks when every module that CAN be on a plan is unticked.
-    for (const id of ['story-beats']) await A.page.uncheck(`input[name="free:${id}"]`);
+    // pitch-deck is off on every plan in the real §36 rows (a tick here would be the
+    // console switching it back on), so the fixture unticks it too, as the live matrix reads.
+    for (const id of ['story-beats', 'pitch-deck']) await A.page.uncheck(`input[name="free:${id}"]`);
     await A.page.click('#features button[type="submit"]');
     await A.page.waitForSelector('#features .ba-saved', { timeout: 8000 });
     const free = F.db.plans.find((p) => p.id === 'free');
@@ -1303,9 +1305,11 @@ try {
     ok(await unlocked('screenplay.html'), 'Basic: screenplay.html (Screenplay Writer) opens');
     ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts) opens');
     ok(await unlocked('story.html'), 'Basic: story.html (Beats & Pacing) opens');
-    ok(await unlocked('reports.html'), 'Basic: reports.html opens — Screen Time is Basic');
-    await T.page.waitForSelector('#cast-matrix[data-tab-lock] .pg-lock-inline', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: on reports.html the Cast Matrix section is locked in place'), () => ok(false, 'Basic: on reports.html the Cast Matrix section is locked in place'));
-    ok(!(await T.page.$('#screentime[data-tab-lock]')), 'and Screen Time is not');
+    /* Screen Time and Cast Matrix are off for every plan, so what is left on
+       reports.html (Production Reports, Sides) is Intermediate: the page locks
+       for Basic, and the two off sections are kept hidden, never sold. */
+    ok(await locked('reports.html'), 'Basic: reports.html is locked — only the Intermediate sections are left on it');
+    ok(!!(await T.page.$('#screentime[data-tab-off]')) && !!(await T.page.$('#cast-matrix[data-tab-off]')), 'and Screen Time and Cast Matrix are hidden (off for every plan), not offered');
     ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Screenplay Analysis, Scene List)');
     await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
     ok(!(await T.page.$('#scenes[data-tab-lock]')) && !(await T.page.$('#breakdown[data-tab-lock]')), 'and the Scene List (with the cards nested in it) is not');
@@ -1316,7 +1320,7 @@ try {
     { const t = await T.page.textContent('#plan .pl-card[data-plan="indie"] .pl-adds').catch(() => '');
       ok(/Everything in Basic, plus/.test(t) && /Budget/.test(t) && !/Shoot Day/.test(t), 'the Intermediate card lists what it adds, from the rows: ' + t.replace(/\s+/g, ' ').slice(0, 80)); }
     { const t = await T.page.textContent('#plan .pl-card[data-plan="pro"] .pl-adds').catch(() => '');
-      ok(/Everything in Intermediate, plus/.test(t) && /Shoot Day/.test(t) && /Deliverables/.test(t), 'the Pro card adds Shoot Day and Deliverables'); }
+      ok(/Everything in Intermediate, plus/.test(t) && /Call sheets/i.test(t) && !/Shoot Day/.test(t) && !/Deliverables/.test(t), 'the Pro card adds Call sheets and no longer lists Shoot Day or Deliverables'); }
 
     acc.plan = 'indie';
     ok(await unlocked('budget.html'), 'Intermediate: budget.html opens');
@@ -1325,7 +1329,13 @@ try {
     await T.page.waitForSelector('#call-sheets[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Intermediate: Call Sheets is locked in place on contacts.html'), () => ok(false, 'Intermediate: Call Sheets is locked in place on contacts.html'));
 
     acc.plan = 'pro';
-    for (const f of ['shoot.html', 'budget.html', 'edit.html', 'deliverables.html', 'contacts.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
+    for (const f of ['budget.html', 'contacts.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
+    /* Shoot Day, Edit Log and Deliverables are off for every plan, Pro included:
+       the page says so, with no plan to buy. */
+    for (const f of ['shoot.html', 'edit.html', 'deliverables.html']) {
+      await open(f);
+      ok(await T.page.waitForSelector('.pg-lock[data-gone]', { timeout: 8000 }).then(() => true, () => false), 'Pro: ' + f + ' says not available (off for every plan)');
+    }
     ok(!(await T.page.$('[data-tab-lock]')), 'Pro: no section is locked anywhere on contacts.html');
     allErrors.push(...T.errors); await T.ctx.close();
   }

@@ -57,7 +57,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, commitMain, delegate } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
-import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText } from '../ui/kit/index.js';
+import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText, pageHeader } from '../ui/kit/index.js';
 
 import { formatEighths } from '../lib/scenes.js';
 import { formatPages } from '../lib/script.js';
@@ -451,7 +451,10 @@ function renderHead(snap) {
     studiesAsked = true;
     import('../lib/studies.js').then((m) => { studiesMod = m; render(); }).catch(() => { /* the slug stands in */ });
   }
-  const head = h('header.bd-head.db-head');
+  /* The project's own block, under the page's header (ONE PAGE FRAME:
+     the h1 is the page's name on every page; the film's title is the
+     first thing under it, as an h2). */
+  const head = h('header.db-head', { 'aria-label': 'This project' });
   const j = snap.journey;
   head.append(
     h('div.db-chips', {}, [
@@ -459,7 +462,7 @@ function renderHead(snap) {
       badge({ label: 'Project dashboard', tag: true }),
       j ? badge({ label: 'Stage: ' + j.currentLabel, tag: true }) : null
     ]),
-    h('h1.bd-title.k-project-title', { text: p.title }),
+    h('h2.bd-title.k-project-title.db-project-title', { text: p.title }),
     h('p.db-slate', { id: 'slate' }, p.subtitle ? [
       h('span.db-slate-k', { text: 'Slate' }), h('span.db-slate-v', { text: p.subtitle }), txt(' · '),
       h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'change' })
@@ -681,18 +684,17 @@ function renderNoProject() {
 let revealed = false;
 function render() {
   const project = Store.currentProject();
-  const main = h('main.db-main', { id: 'main' });
+  const main = h('main.db-main.k-page', { id: 'main' });
+  main.append(pageHeader({
+    eyebrow: ['Studio', 'Dashboard'],
+    title: 'Dashboard',
+    sub: 'Where a film stands across story, screenplay, pre-production, production '
+       + 'and post — read from the project you have open.',
+    class: 'bd-head'
+  }));
 
   if (!project) {
     main.append(
-      h('header.bd-head', {}, [
-        h('p.bd-eyebrow', { text: 'Studio' }),
-        h('h1.bd-title', { text: 'Project dashboard' }),
-        h('p.bd-deck', {
-          text: 'Where a film stands across story, screenplay, pre-production, production '
-              + 'and post — read from the project you have open.'
-        })
-      ]),
       renderNoProject(),
       /* The id, even here: a link into #readiness followed with no
          project open must land on the section that says why it is

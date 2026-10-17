@@ -16,13 +16,7 @@
    ============================================================ */
 
 /* ---- the head: kit page header inside the module column ----------- */
-.bd-head.k-page-head {
-  max-width: var(--measure-wide);
-  margin: 0 auto var(--s5);
-  padding: var(--s7) var(--s5) var(--s5);
-  box-sizing: border-box;
-}
-.bd-head.k-page-head .k-page-title { font-size: var(--sk-title-size); }
+/* The head is the studio's one frame (.bd-head, modules.css). */
 .bd-head .bpd-pill { justify-self: start; }
 
 /* ---- the header figures -------------------------------------------- */
@@ -35,7 +29,6 @@
 }
 .bd-kpi.k-stat.over { border-color: var(--danger-line); }
 @media (max-width: 720px) {
-  .bd-head.k-page-head { padding: var(--s5) var(--s4) var(--s4); }
   .bd-kpis.k-stat-strip { padding-inline: var(--s4); }
 }
 

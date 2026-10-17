@@ -129,8 +129,9 @@ function outlinePart(d) {
   return wrap;
 }
 
-/** The section. `scenes` is listScenes(); `opts.from` is the ?from value. */
-export function renderScriptOverview(scenes, opts = {}) {
+/** The section. `scenes` is listScenes(). (It once read a `?from=script`
+    hint that nothing ever wrote: a page reads the same however it is reached.) */
+export function renderScriptOverview(scenes) {
   const wrap = h('section.bd-script', { id: 'script', 'data-tab-label': 'Screenplay Analysis' });
   let els = [];
   try { els = loadScript().elements; } catch (e) { /* no script */ }
@@ -147,11 +148,6 @@ export function renderScriptOverview(scenes, opts = {}) {
     ].filter(Boolean)),
     h('p.bdo-status', { role: 'status', 'aria-live': 'polite', 'data-so-status': '', text: '' })
   );
-  if (opts.from === 'script' && hasScript) {
-    wrap.append(h('p.so-hint', { role: 'note', text: scenes.length
-      ? 'You came from the Screenplay Writer. If the script changed, run the breakdown again to bring the scenes up to date.'
-      : 'You came from the Screenplay Writer. Run the breakdown to turn its scene headings into scenes you can schedule and budget.' }));
-  }
   if (!hasScript) {
     wrap.append(h('p.bd-none', { text: 'No screenplay yet. Write one in the Screenplay Writer or use Import Screenplay, and this fills in.' }));
   }

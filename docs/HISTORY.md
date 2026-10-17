@@ -2140,3 +2140,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     (`scripts/make-plan-features-sql.mjs --write`) before purchases are
     required, or the live plan rows still carry the 15 modules as on.
 
+
+49. **One frame per page, however it is reached (17 Oct 2026).** The owner
+    reported that the UI changed with the page you came from. Two causes.
+    First, `shell.js` stamped `html[data-phase]` from the ENTRY hash, so
+    `contacts.html#call-sheets` painted Production and `contacts.html`
+    Pre-Production, and the reports tabs that own no module (`#dpr`,
+    `#kit`, `#oneliner`) got no stage at all; `[data-volume]` rules also
+    sat after `[data-phase]` in `tokens.css` and beat it. Now a page has
+    ONE home stage, derived by `homeStage(file)` in `src/lib/nav-stage.js`
+    (the stage of its first module in `navigation.json`), which decides the
+    accent, the lit rail stage and the crumb's stage segment; only the
+    crumb's last segment follows the tab. Root `.html` files carry the same
+    value statically (`test:homestage`). One stage-link rule, `stageLead()`,
+    serves the rail, the crumb, the dashboard cards and the hub doors.
+    Second, pages did not share a frame: every studio page now renders the
+    kit `pageHeader` with `bd-head` (h1 = the page's name, no full stop),
+    one `.k-page` column, the tabs strip (side menu only in Settings and
+    the console), no page toolbar beyond `.sh-tools` (Library and the hub
+    lost theirs; the `.toolbar` element is kept, empty). Screenplay keeps
+    its full-width editor but lost its duplicate crumb, and `#import` opens
+    the same modal as the button. The retired path bar is deleted.
+    `prove:nav` loads every page through every inbound link at 1280 and 390
+    and fails on any frame difference, including the h1's position, size and
+    weight across pages; against the old code it reported 35 mismatches.
+    Re-baselined deliberately (the dropped words are the rewordings).

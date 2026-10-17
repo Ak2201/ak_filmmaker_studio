@@ -86,7 +86,7 @@ function projectCard(p, currentId, openJourney) {
         h('button.pc-share', { type: 'button', 'data-action': 'share-project', 'data-id': p.id, 'aria-label': 'Share project', title: 'Share', text: '↗ SHARE' }),
         h('a.pc-open', {
           href: DASHBOARD_URL, 'data-action': 'open-project', 'data-id': p.id,
-          'aria-label': 'Open ' + p.title + ' on its dashboard', text: 'open →'
+          'aria-label': 'Open ' + p.title + ' in the Screenplay Writer', text: 'open script →'
         })
       ])
     ])

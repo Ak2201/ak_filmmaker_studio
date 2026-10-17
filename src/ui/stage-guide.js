@@ -206,6 +206,18 @@ export function mountStageGuide(host, { stage } = {}) {
     ])
   ]);
   host.append(section);
+  /* A deep link (#guide: navigation, blueprint-route, deliverables) opens
+     the hidden guide; story does this itself (screenplay also does, harmlessly). */
+  if (stage !== 'story') {
+    const sync = () => {
+      if (!section.isConnected) { removeEventListener('hashchange', sync); return; }
+      const on = location.hash === '#guide';
+      if (section.hidden === on) section.hidden = !on;
+      if (on) section.scrollIntoView({ behavior: 'instant', block: 'start' });
+    };
+    sync();
+    addEventListener('hashchange', sync);
+  }
 
   /* No project: the section stays (it is a nav target) with its heading
      only. The red NO PROJECT OPEN banner above the page already says so

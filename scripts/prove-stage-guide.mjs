@@ -67,10 +67,13 @@ page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resourc
 
 const url = (p) => `http://localhost:${PORT}/${p}`;
 const blob = (key) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || '{}'), key);
-const guideReady = async () => {
-  await page.evaluate(() => document.getElementById('guide') && document.getElementById('guide').scrollIntoView());
-  await page.waitForSelector('#guide .sg-steps', { timeout: 15000 });
+/* The guide is hidden until #guide asks for it (the deep link every
+   blueprint route uses), so the proof opens it the way a reader does. */
+const guideSteps = async (timeout = 15000) => {
+  await page.evaluate(() => { if (location.hash !== '#guide') location.hash = '#guide'; });
+  await page.waitForSelector('#guide .sg-steps', { timeout });
 };
+const guideReady = () => guideSteps(15000);
 const guideFields = () => page.evaluate(() => [...document.querySelectorAll('#guide [data-key]')]
   .map((el) => el.getAttribute('data-key') + ':' + el.tagName));
 /* ONE STEP AT A TIME: a guide shows one blueprint step, so a proof that
@@ -236,6 +239,7 @@ const mount = (stage) => page.evaluate(async (st) => {
   const m = await import('/src/ui/stage-guide.js');
   m.mountStageGuide(document.querySelector('main') || document.body, { stage: st });
   await new Promise((r) => setTimeout(r, 0));
+  document.getElementById('guide').hidden = false;   // story.html un-hides its own guide; the stage pages do it on #guide
   document.getElementById('guide').scrollIntoView();
 }, stage);
 const stageIds = () => page.evaluate(() => [...document.querySelectorAll('#guide .step')].map((s) => s.getAttribute('data-sg-id')));
@@ -264,7 +268,7 @@ const script = [
 ];
 await devSeed('short', SKEY, { meta_title: 'Tiny', meta_runtime: '2 min', _sceneMap: sceneMap, _script: script, b1_setup: 'BEAT-ONE' });
 await mount('screenplay');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 await settle();
 check('(3) short screenplay: steps 06, 07, 08, 11', await stageIds(), ['step-06', 'step-07', 'step-08', 'step-11']);
 const afterMount = await blob(SKEY);
@@ -307,7 +311,7 @@ check('(3) short.html reads the guide’s scene map back', await page.evaluate((
 /* the old flat scene-map keys: the guide refuses to overwrite them */
 await devSeed('short', SKEY, { sm_1_slug: 'OLD', sm_1_who: 'x' });
 await mount('screenplay');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) a flat-key scene map is not editable in the guide', await page.evaluate(() =>
   document.querySelector('#guide .sg-scenemap table').hidden), true);
 
@@ -319,12 +323,12 @@ await devSeed('feature', FKEY, { s4_name: 'Kavin', s5_name: 'Rana', b01: 'open',
 const want = { story: 0, screenplay: 4, preprod: 11, production: 4, post: 4 };
 for (const [stage, n] of Object.entries(want)) {
   await mount(stage);
-  await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+  await guideSteps(20000);
   const ids = await stageIds();
   check(`(3) feature ${stage}: ${n} steps drawn`, ids.length, n);
 }
 await mount('story');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) feature story: the Guide is the cover sheet (title, writer, genre…), no blueprint step',
   await page.evaluate(() => [...document.querySelectorAll('#guide [data-key]')].map((e) => e.getAttribute('data-key'))),
   ['meta_title', 'meta_writer', 'meta_started', 'meta_stage', 'v1_title', 'v1_genre', 'v1_draft']);
@@ -366,7 +370,7 @@ check('(3) a Bible card answer is stored under the blueprint’s key', (await bl
 await page.goto(dev('index.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => window.StudioStore, null, { timeout: 20000 });
 await mount('preprod');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) the budget total is derived from the fields', await page.evaluate(() =>
   /3|30/.test(document.querySelector('#guide [data-sg-id="budgetTotal"]').textContent)), true);
 check('(3) the shot, cast and location tables each show rows', await page.evaluate(() =>
@@ -378,7 +382,7 @@ b = await blob(FKEY);
 check('(3) a table row writes its flat key', b.shot_2_desc, 'WIDE');
 
 await mount('screenplay');
-await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
+await guideSteps(20000);
 check('(3) the scene-list table shows rows', await page.evaluate(() =>
   document.querySelectorAll('#guide [data-sg-id="sceneListBody"] tr').length >= 3), true);
 /* the SHORT road: its own steps, and none of the feature's */

@@ -332,6 +332,8 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
     padding-inline: 0;
   }
   .tabs-has-side > .tabs-side + :not([role="tabpanel"]):not(.tabs) { grid-column: panel-start / panel-end; }
+  /* a #guide deep link opens the hidden stage guide beside the menu, as a panel */
+  .tabs-has-side > section#guide[data-tab-ignore]:not([hidden]) { grid-column: panel-start / panel-end; }
   /* .tabs.tabs-side: a page's own `> .tabs` margin rule (the library's, the
      budget's) is more specific than one class, and must not move the column */
   .tabs-has-side > .tabs.tabs-side {

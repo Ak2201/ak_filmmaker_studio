@@ -122,7 +122,9 @@ function findTabs() {
      it is only kept out of the strip. Anything inside it goes too. */
   const out = all.filter((s) => s.hasAttribute('data-tab-ignore') || s.hasAttribute('data-tab-off'));
   if (out.length) {
-    for (const s of out) s.hidden = true;
+    /* #guide (an old blueprint link) names an ignored section: it is the
+       one thing a deep link may open, so it is not forced shut again. */
+    for (const s of out) s.hidden = !(s.id === 'guide' && hashTab() === 'guide');
     all = all.filter((s) => !out.some((o) => o === s || o.contains(s)));
   }
   const byParent = new Map();
@@ -163,8 +165,12 @@ function currentFromHash(sections) {
 
 function show(sections, id, { setHash = true, animate = false } = {}) {
   active = id;
+  /* An open #guide deep link stands alone: the tab panels give way to it
+     until a tab is picked (a click passes animate, and moves the hash). */
+  const guide = document.getElementById('guide');
+  const guideOpen = !animate && hashTab() === 'guide' && !!guide && guide.hasAttribute('data-tab-ignore');
   for (const s of sections) {
-    const on = s.id === id;
+    const on = s.id === id && !guideOpen;
     const wasHidden = s.hidden;
     s.hidden = !on;
     /* Only a switch the reader made animates the panel that arrives
@@ -305,7 +311,7 @@ export function apply() {
      everybody, breakdown.html#script): the first enabled tab opens and the
      address follows it, so a reload and the breadcrumb agree. */
   const h0 = hashTab();
-  const dead = !!h0 && !fromHash && (out || []).some((o) => o.id === h0 || (document.getElementById(h0) && o.contains(document.getElementById(h0))));
+  const dead = !!h0 && h0 !== 'guide' && !fromHash && (out || []).some((o) => o.id === h0 || (document.getElementById(h0) && o.contains(document.getElementById(h0))));
   show(sections, want, { setHash: dead });
 }
 

@@ -54,14 +54,16 @@
 }
 /* The control bar stays under the pinned chrome while a long view scrolls. */
 .rp-sec > .rp-tools {
-  position: sticky;
-  top: var(--sh-chrome-h, 0px);
   z-index: 15;
   padding: var(--s3);
   background-color: var(--surface-rail);
   background-image: var(--surface-rail-sheen);
   border: 1px solid var(--border-default);
   border-radius: var(--sk-radius, var(--radius));
+}
+/* pinned only where the shell is (>=1100px); a wrapped bar on a phone would cover the report */
+@media (min-width: 1100px) {
+  .rp-sec > .rp-tools { position: sticky; top: var(--sh-chrome-h, 0px); }
 }
 .rp-spacer { margin-left: auto; }
 .rp-count {

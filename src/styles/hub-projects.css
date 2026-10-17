@@ -106,7 +106,7 @@
   padding: var(--s2) var(--s3);
   background-color: var(--surface-rail);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
+  border-radius: var(--sk-radius, var(--radius-lg));
   box-shadow: var(--shadow-control-rest);
 }
 .projects-section .projects-toolbar .projects-sort-wrap { margin-left: auto; }

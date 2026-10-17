@@ -354,8 +354,11 @@ export function modulesHere() {
 }
 /** Locked when the page has modules and none of them is allowed. */
 export function pageLocked() {
-  const ms = modulesHere();
-  return ms.length > 0 && !ms.every((m) => isDisabledEverywhere(m.id)) && ms.every((m) => !allowed(m.id));
+  /* Only modules that can be on a plan count: one that is off for every
+     plan is hidden anyway, and a plan map that never names it reads as
+     "allowed", which would keep the page open with nothing left on it. */
+  const live = modulesHere().filter((m) => !isDisabledEverywhere(m.id));
+  return live.length > 0 && live.every((m) => !allowed(m.id));
 }
 /** Every module here is off for every plan: nothing to sell, so the
  *  page says "not available" and offers no upgrade. */

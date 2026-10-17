@@ -12,8 +12,8 @@
   /* Celtx's Catalog: the category / batch-tag panel on the LEFT, the
      inventory on the right. DOM order is unchanged (order only). */
   .bdx-layout { grid-template-columns: 280px minmax(0, 1fr); }
-  .bdx-side { order: -1; }
-  .bdx-side { position: sticky; top: calc(var(--scroll-offset, 0px) + var(--s4)); max-height: calc(100vh - var(--scroll-offset, 0px) - var(--s8)); overflow: auto; }
+  .bdx-side { order: -1; }   /* panel sits left of the list visually but after it in the DOM: a product choice */
+  .bdx-side { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--tabs-h, 0px) + var(--s4)); max-height: calc(100vh - var(--sh-chrome-h, 0px) - var(--tabs-h, 0px) - var(--s4) - var(--s4)); overflow: auto; }
 }
 .bdx-side {
   display: grid;

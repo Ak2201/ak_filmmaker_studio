@@ -34,10 +34,10 @@
    1. THE UNIT LIST
    ------------------------------------------------------------ */
 
-.ct-dept-block { margin-bottom: var(--s6); }
 /* Celtx-style card grid: the department head spans the row, the people
    under it sit two to a row where the column is wide enough. */
 .ct-dept-block {
+  margin-bottom: var(--s6);
   display: grid;
   gap: var(--s3);
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));

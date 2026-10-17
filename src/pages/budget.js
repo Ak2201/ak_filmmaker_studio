@@ -27,7 +27,6 @@ import '../styles/budget.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { mountPathBar } from '../ui/path-bar.js';
 import { h } from '../lib/dom.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
 import { costSections, costKpis, costAside, initCosts } from '../ui/budget-costs.js';
@@ -54,7 +53,7 @@ function render() {
   const head = pageHeader({
     class: 'bd-head bd-head-split',
     eyebrow: 'Budget & People · what it costs',
-    title: 'Production Budget.',
+    title: 'Budget',
     sub: 'A line-item estimate that reads your schedule. Days come from the '
        + 'stripboard if you have built one, rates from the Chennai tables if '
        + 'you want them, and every figure stays editable. Then, once you are '
@@ -130,7 +129,6 @@ function render() {
   body.append(estimate, ...sections);
   main.append(body);
 
-  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   /* Learn-in-place (src/ui/learn.js, loaded on demand so it stays out of first paint).
      It writes nothing; an unknown topic id returns null and is filtered. */

@@ -10,6 +10,8 @@
   display: grid;
   gap: var(--sk-grid-gap);
 }
+/* the phone gutter every page's column takes (one frame) */
+@media (max-width: 719px) { .pu-body { padding-inline: var(--s4); } }
 .pu-sec { display: grid; gap: var(--s4); }
 .pu-sec > .bd-eyebrow,
 .pu-sec > .bd-h2,

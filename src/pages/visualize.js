@@ -40,7 +40,6 @@ import '../styles/ai.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
@@ -154,7 +153,7 @@ function renderHeader(scenes, shots, frames, boards) {
   const head = pageHeader({
     class: 'bd-head vz-head',
     eyebrow: ['Visualise', 'the film seen before it is shot'],
-    title: 'Shots & Frames.',
+    title: 'Visualise',
     sub: 'A shot list is the scene broken into the pieces the camera actually '
        + 'records. The storyboard draws those pieces and the lookbook says what '
        + 'they should feel like — all three hang off the scenes you have already '
@@ -1137,7 +1136,6 @@ function render(focus) {
     h('datalist#vzRigs', {}, SHOT_RIGS.map((l) => h('option', { value: l })))
   );
 
-  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   /* Learn-in-place (src/ui/learn.js, loaded on demand so it stays out of first paint).
      It writes nothing; an unknown topic id returns null and is filtered. */

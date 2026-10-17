@@ -339,6 +339,14 @@ function wire() {
   });
 }
 
+/** The scene-number lock on its own, for drafts.html#numbering (the
+    stripboard's "Manage numbering" lands there). The lock and unlock
+    handlers are the ones mountRevisionTools() wires. */
+export function renderNumberingTool() {
+  const doc = ctx.getDoc && ctx.getDoc();
+  return doc ? renderNumbering(doc) : null;
+}
+
 /** Once, from write.js. */
 export function mountRevisionTools(opts = {}) {
   ctx = { ...ctx, ...opts };

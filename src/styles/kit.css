@@ -878,7 +878,6 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
    row above the title, as it did when the header was a block, instead of
    becoming a grid cell of its own. */
 .bd-head.k-page-head > :not(.k-page-head-main):not(.k-page-actions) { grid-column: 1 / -1; justify-self: start; }
-.bd-head.k-page-head { padding-block: var(--s6) var(--s4); }
 
 /* ---- additive (visualize, 14 Oct 2026) ----------------------------
    CELL: a kit control inside a dense table cell — the compact height,

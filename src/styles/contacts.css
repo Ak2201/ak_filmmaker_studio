@@ -627,18 +627,9 @@
      printed beside it already, so the URL itself is left off. */
 }
 
-/* ---- header: title and the New shoot day action, then four figures ---- */
-.ct-head { margin-bottom: var(--s5); }
-/* The header sits in the same column and gutter as the sections under it:
-   without this it ran from x=0 to the screen edge on a phone. */
-.ct-head {
-  max-width: var(--measure-wide);
-  margin-inline: auto;
-  padding: var(--s6) var(--s5) 0;
-  box-sizing: border-box;
-}
-@media (max-width: 719px) { .ct-head { padding-inline: var(--s4); } }
-.ct-kpis { margin-top: var(--s5); }
+/* ---- header: title and the New shoot day action, then four figures ----
+   The header is the studio's one frame (.bd-head, modules.css). */
+.ct-kpis { margin-top: var(--s3); }
 
 /* Dispatch: the live WhatsApp-markdown preview. Monospace, because the
    message is plain text and its line breaks are the layout. */

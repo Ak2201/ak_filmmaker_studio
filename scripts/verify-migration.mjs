@@ -495,11 +495,10 @@ const EXPECTED = {
   deliverables: {},
   screening: {},
   /* The conversion pass's rows were absorbed by the 12 Oct 2026 recapture
-     that followed the UI revamp and the plan features.
-     The Pro plan's one line moved from "Shoot it and finish it:
-     everything." to an outcome sentence (plan-matrix.json `lines`, the
-     pricing spec), and this page prints it on the plan cards. */
-  invite: { finish: 'Pro plan line reworded to say what it adds' },
+     that followed the UI revamp and the plan features. The pricing
+     pass's `finish` row (the Pro line reworded) was absorbed by the
+     17 Oct 2026 recapture after the one-frame navigation pass. */
+  invite: {},
   admin: {},
   vault: {},
   purchase: {}

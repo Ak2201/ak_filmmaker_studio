@@ -29,6 +29,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud */
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
+import { pageHeader } from '../ui/kit/page-header.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageList } from '../ui/plan-cards.js';
 import { listPriceBlock } from '../ui/list-prices.js';
@@ -196,13 +197,12 @@ function planSection() {
 
 function render() {
   const main = h('main#main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Studio · Purchase' }),
-    h('h1.bd-title', { text: 'Purchase.' }),
-    h('p.bd-deck', { text: purchasesOff(billing.st) ? 'Nothing is for sale at the moment, and every part of the studio is open.'
-      : 'Choose a plan, pay once, and find your invoices and refund requests in the same place.' })
-  ]));
+  /* ONE PAGE FRAME: the kit header; the deck is a body line (.bd-head
+     hides a header's sub, and this one says whether anything is on sale). */
+  main.append(pageHeader({ eyebrow: ['Studio', 'Purchase'], title: 'Purchase', class: 'bd-head' }));
   const body = h('div.pu-body');
+  body.append(h('p.bd-deck.pu-deck', { text: purchasesOff(billing.st) ? 'Nothing is for sale at the moment, and every part of the studio is open.'
+    : 'Choose a plan, pay once, and find your invoices and refund requests in the same place.' }));
   body.append(planSection());
   main.append(body);
   if (!commitMain(app, main, mountShell)) return;

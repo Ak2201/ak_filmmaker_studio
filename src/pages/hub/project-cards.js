@@ -228,11 +228,6 @@ function renderProjects() {
 
   if (toolbar) toolbar.hidden = projects.length < 2;
   syncFormatFilters(projects);
-  const heading = $('#projectsHeading');
-  if (heading) {
-    const want = projects.length ? 'Continue <em>where you left off.</em>' : 'Pick <em>a path.</em>';
-    if (heading.dataset.sig !== want) { heading.dataset.sig = want; heading.innerHTML = want; }
-  }
 
   applyPlanToControls();
   /* Build off-DOM and swap only when the result differs. plan:changed

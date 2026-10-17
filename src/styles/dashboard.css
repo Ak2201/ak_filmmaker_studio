@@ -650,19 +650,21 @@
    token, a fill never a text colour, and every grid track
    min(Xpx, 100%) so 390px cannot overflow.
    ============================================================ */
-.db-main {
-  --db-w: 1200px;
-  padding-bottom: var(--s8);
-}
-.db-main > .bd-head,
+.db-main { padding-bottom: var(--s8); }
+/* ONE PAGE FRAME (17 Oct 2026): <main> is the studio's one column
+   (.k-page, modules.css), so its blocks carry no width or gutter of
+   their own. It was a 1200px desk; it is the same column as every page. */
+.db-main > .db-head,
 .db-main > .db-sec,
-.db-focus,
-.db-body {
-  max-width: var(--db-w);
-  margin-inline: auto;
-  padding-inline: var(--s5);
+.db-main > .db-focus,
+.db-main > .db-body {
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
 }
-.db-head { padding-block: var(--s6) var(--s4); }
+.db-head { padding-block: 0 var(--s4); }
+/* the module map is an editorial .section, which brings a band gutter */
+.db-main > #modules.section { padding-inline: 0; }
 .db-head .bd-deck { max-width: var(--measure); }
 .db-head .st-fav { margin-bottom: var(--s4); }
 
@@ -873,10 +875,6 @@
 .rd-chip .rd-mark { color: var(--ink-muted); font-size: var(--t-small); }
 
 @media (max-width: 719px) {
-  .db-main > .bd-head,
-  .db-main > .db-sec,
-  .db-focus,
-  .db-body { padding-inline: var(--s4); }
   .db-focus .db-tile { padding: var(--s4); }
   .db-score strong { font-size: var(--t-2xl); }
 }

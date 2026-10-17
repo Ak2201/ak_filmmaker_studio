@@ -131,3 +131,9 @@ jobs:
         run: npm run build:verify
       - run: npm run prove:growth
       - run: npm run prove:ai-coverage
+      # One frame per page whichever link opened it (colour, lit stage,
+      # crumb stage, band tools, header, tab layout), at 1280 and 390.
+      # dist/ here is the GATED build, so it reads the open one above.
+      - run: npm run prove:nav
+        env:
+          PROVE_DIST: dist-verify

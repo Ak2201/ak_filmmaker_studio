@@ -54,6 +54,7 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { mountFocusMode } from '../ui/focus-mode.js';
 import { mountBeatGuide } from '../ui/beat-guide.js';
 import { h, delegate } from '../lib/dom.js';
+import { pageHeader } from '../ui/kit/page-header.js';
 import '../ui/read-as.js';   // read as a character + dictation (Phase 6), a view only
 import BeatBoard from '../ui/beat-board.js';
 /* The provider TABLE only — not src/lib/ai.js, which this page
@@ -381,15 +382,17 @@ const PV_WHERE_TITLE = 'Sheets as the PDF prints them. The page count in the sta
 /* ---- header ------------------------------------------------- */
 function renderHeader() {
   const pages = pageCount(doc.elements);
-  return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Write · one script, its history, and its paper' }),
-    h('h1.bd-title', { text: 'The Pages.' }),
-    h('p.bd-deck', {
-      text: 'A typed screenplay — every line knows whether it is a slug, an action '
-          + 'or a cue — with a page count that follows the format rather than '
-          + 'guessing at it, a coloured revision history, and the documents that '
-          + 'travel with the script.'
-    }),
+  /* ONE PAGE FRAME: the kit header every studio page opens with. */
+  const head = pageHeader({
+    class: 'bd-head',
+    eyebrow: ['Write', 'one script, its history, and its paper'],
+    title: 'Screenplay tools',
+    sub: 'A typed screenplay — every line knows whether it is a slug, an action '
+       + 'or a cue — with a page count that follows the format rather than '
+       + 'guessing at it, a coloured revision history, and the documents that '
+       + 'travel with the script.'
+  });
+  head.append(
     h('div.bd-stats', {}, [
       h('div.bd-stat', {}, [
         h('strong', { 'data-count': 'pages', text: formatPages(pages), title: 'At 55 lines a page, the measure the schedule uses. The printed PDF can run a few pages longer.' }),
@@ -402,7 +405,8 @@ function renderHeader() {
       stat(String(doc.revisions.length), doc.revisions.length === 1 ? 'revision' : 'revisions'),
       stat(String(doc.documents.length), doc.documents.length === 1 ? 'document' : 'documents')
     ])
-  ]);
+  );
+  return head;
 }
 
 /* ============================================================

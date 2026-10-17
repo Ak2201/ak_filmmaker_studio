@@ -93,7 +93,7 @@ function renderEnter() {
   /* ONE PAGE FRAME: the kit header every studio page opens with, h1 the
      page's name. The deck says what to do, so it is a body line (.bd-head
      hides a header's sub). */
-  main.append(pageHeader({ eyebrow: ['Studio', 'Screening room'], title: 'Screening room', class: 'bd-head' }));
+  main.append(pageHeader({ eyebrow: ['Studio', 'Screening Room'], title: 'Screening Room', class: 'bd-head' }));
   main.append(h('p.bd-deck.sc-enter-why', { text: 'You have been sent a film. Enter the screening pass you were given. It opens one project, read-only, for a limited time — no account needed.' }));
   const form = h('form.sc-form', { 'data-sc-form': 'open', autocomplete: 'off' });
   form.append(h('label', { for: 'scCode', text: 'Screening pass' }));

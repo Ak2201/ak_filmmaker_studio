@@ -211,7 +211,9 @@ function buildTop() {
   const fileMenu = actionMenu('File', [
     { heading: 'File actions' },
     { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
-    { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' }
+    { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
+    { label: 'Drafts & history', href: 'drafts.html', icon: 'history' },
+    { label: 'Title page', href: 'drafts.html#title', icon: 'menu_book' }
   ], { align: 'right', ariaLabel: 'File actions' });
   const menu = actionMenu('⋯', [
     { heading: 'Tools' },
@@ -222,7 +224,6 @@ function buildTop() {
     { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' },
     { heading: 'Help' },
     { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
-    { label: 'Stage guide', action: 'sc-guide', hint: 'questions', icon: 'menu_book' },
     { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
 

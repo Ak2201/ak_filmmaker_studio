@@ -187,6 +187,7 @@ const probe = () => {
     crumbHere: txt('.sh-where-here .sh-where-text'),
     tools: sig,
     h1: !!document.querySelector('main h1'),
+    h1Box: (() => { const e = document.querySelector('main h1'); if (!e) return null; const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return `${Math.round(r.left)}px ${cs.fontSize} ${cs.fontWeight}`; })(),
     layout,
     tabOk,
     accentOk,
@@ -270,12 +271,28 @@ for (const file of [...byFile.keys()].sort()) {
     rail: wide.rail || '—',
     crumbStage: wide.crumbStage || '—',
     tabs: [...new Set(ok.map((r) => r.crumbHere || '—'))].join(' | ').slice(0, 60),
-    h1: wide.h1 ? 'yes' : 'NO',
+    h1: wide.h1Box && narrow.h1Box ? `${wide.h1Box} / ${narrow.h1Box}` : (wide.h1 ? 'yes' : 'NO'),
     layout: `${wide.layout}/${narrow.layout}`,
     toolsN: wide.tools ? wide.tools.split(' ').length : 0,
     mainMax: `${wide.mainMax}/${narrow.mainMax}`,
     ok: failures.some((f) => f.startsWith(file + ':')) ? 'FAIL' : 'ok'
   });
+}
+/* ---- one frame ACROSS pages ---------------------------------
+   The same header in the same place on every studio page: an h1 that
+   starts at one x, in one size and weight, per width. Screenplay keeps
+   its full-width editor (no header, by owner decision); Settings and
+   the console carry the side menu, so their column starts further in. */
+const OWN_FRAME = new Set(['screenplay.html', 'settings.html', 'admin.html']);
+for (const vp of WIDTHS) {
+  const boxes = new Map();
+  for (const r of results) {
+    if (r.error || r.vp.width !== vp.width || OWN_FRAME.has(fileOf(r.href)) || r.file !== fileOf(r.href)) continue;
+    if (!r.h1Box) { fail(r.file, `no main h1 @${vp.width} (${r.href})`); continue; }
+    if (!boxes.has(r.h1Box)) boxes.set(r.h1Box, new Set());
+    boxes.get(r.h1Box).add(r.file);
+  }
+  if (boxes.size > 1) fail('frame', `the page header differs between pages @${vp.width}: ` + [...boxes].map(([b, f]) => `${b} on ${[...f].join(',')}`).join('  |  '));
 }
 console.table(table);
 console.log(`${results.length} loads across ${byFile.size} pages (${WIDTHS.map((w) => w.width).join(' and ')}px)`);

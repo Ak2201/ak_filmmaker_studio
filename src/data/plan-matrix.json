@@ -8,9 +8,9 @@
   },
   "lines": {
     "_about": "One line per PAID plan, said before what it adds (start.html, the plan cards). The lists themselves are derived from `features`, never typed.",
-    "starter": "Write the film.",
-    "indie": "Prepare it.",
-    "pro": "Shoot it and finish it: everything."
+    "starter": "Write the film — from beat sheet to formatted screenplay.",
+    "indie": "Prepare the shoot — breakdown, storyboard, stripboard and budget.",
+    "pro": "Run the production — call sheets, AI desk and white-label exports."
   },
   "card": {
     "_about": "Which of each plan's OWN additions its card on start.html lists first, in order (keys from features). The rest are counted and left to the comparison table. A key the plan does not add fails the build.",
@@ -18,23 +18,20 @@
       "screenplay",
       "story-beats",
       "revisions",
+      "docs",
       "import-script",
-      "exports",
-      "case-studies"
+      "exports"
     ],
     "indie": [
       "breakdowns",
-      "stripboard",
-      "budget",
-      "locations",
+      "elements",
+      "shot-list",
       "storyboard",
-      "drive_backup"
+      "stripboard",
+      "budget"
     ],
     "pro": [
-      "shoot-day",
       "call-sheets",
-      "edit-log",
-      "deliverables",
       "ai_tools",
       "remove_branding"
     ]

@@ -265,8 +265,8 @@
   gap: var(--s2) var(--s4);
   margin: 0;
   padding: var(--s4);
-  border-top: 1px solid var(--border-default);
-  background: var(--surface-rail);
+  border-top: 2px solid var(--accent-primary);
+  background-color: var(--brand-wash);
 }
 .bud-est .calc-grand .lab {
   font-family: var(--f-mono);
@@ -300,6 +300,12 @@
 }
 
 /* ---- the petty-cash aside ------------------------------------------- */
+@media screen {
+  .bud-aside > * {
+    background-image: var(--surface-card-sheen);
+    box-shadow: var(--sk-card-shadow, var(--shadow-card-rest));
+  }
+}
 .bud-aside-body.k-panel-body { display: grid; gap: var(--s4); }
 .bud-aside-sec { display: grid; gap: var(--s2); }
 .bud-aside-h {

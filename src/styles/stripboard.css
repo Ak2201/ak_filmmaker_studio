@@ -123,8 +123,10 @@
 .sb-group {
   margin-bottom: var(--s4);
   background: var(--surface-rail);
-  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  background-image: var(--surface-rail-sheen);
+  border: var(--sk-card-line-w, 1px) solid var(--border-default);
   border-radius: var(--sk-radius);
+  box-shadow: var(--shadow-card-rest);
   overflow: hidden;
 }
 .sb-group-head {
@@ -133,7 +135,8 @@
   align-items: center;
   gap: var(--s2) var(--s3);
   padding: var(--s3) var(--s4);
-  border-bottom: 1px solid var(--border-hair);
+  background-color: var(--surface-elevated);
+  border-bottom: 1px solid var(--border-default);
 }
 .sb-group-title { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); min-width: 0; }
 .sb-group-name {
@@ -463,6 +466,15 @@ body.pdf-print .sb-lock-host { display: none !important; }
 
 .sb-dood-scroll { max-width: 100%; }
 .sb-grid { width: 100%; }
+/* The cast column stays put while the days scroll past it. */
+.sb-grid th.sb-grid-name {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: var(--surface-card);
+  box-shadow: 1px 0 0 var(--border-default);
+}
+.sb-grid thead th.sb-grid-name { z-index: 3; }
 .sb-grid .sb-grid-name { min-width: 10rem; text-align: left; }
 .sb-grid tbody .sb-grid-name strong { display: block; font-family: var(--f-display); font-size: var(--t-small); font-weight: 600; color: var(--ink); }
 .sb-grid-sub {

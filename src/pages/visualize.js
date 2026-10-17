@@ -289,20 +289,26 @@ function renderShotList(scenes, shots) {
      yet are still every one of them here — a scene hidden is a scene
      nobody covers — but as one compact row each, in script order, so
      the tables are not lost between thirty empty headers. */
-  let run = null;
+  /* The uncovered scenes are gathered into one compact bar at the foot of
+     the page (a closed <details>, still in the DOM) so they never push the
+     covered scenes' tables down. */
+  const uncovered = [];
   for (const group of Shots.shotsByScene(scenes)) {
     if (group.scene && !group.shots.length) {
       // "In the can" is a list of shots; a scene with none has none to show.
       if (covFilter === 'done') continue;
-      if (!run) {
-        run = h('div.vz-uncovered', { role: 'list', 'aria-label': 'Scenes with no shots yet' });
-        wrap.append(run);
-      }
-      run.append(renderUncovered(group.scene));
+      uncovered.push(renderUncovered(group.scene));
       continue;
     }
-    run = null;
     wrap.append(renderSceneBlock(group));
+  }
+  if (uncovered.length) {
+    const run = h('div.vz-uncovered', { role: 'list', 'aria-label': 'Scenes with no shots yet' });
+    run.append(...uncovered);
+    wrap.append(h('details.vz-uncovered-bar', {}, [
+      h('summary.vz-uncovered-sum', { text: 'Uncovered scenes (' + uncovered.length + ')' }),
+      run
+    ]));
   }
   return wrap;
 }

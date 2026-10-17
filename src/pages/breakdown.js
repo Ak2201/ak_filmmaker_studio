@@ -63,7 +63,7 @@ function renderHeader(scenes) {
   /* The kit's page header; `.bd-head` stays on it for the layout the
      other module pages share (measure, gutters, the stage-guide pill). */
   const head = pageHeader({
-    class: 'bd-head',
+    class: 'bd-head bd-head-celtx',
     eyebrow: 'Breakdown · one scene model, every view',
     title: 'Breakdown.',
     sub: 'Every scene once — INT/EXT, time, location, length. The stripboard, '

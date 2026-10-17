@@ -25,7 +25,15 @@ section#scenes .bd-breakdown { gap: 0; }
 }
 
 /* ---- toolbar -------------------------------------------------- */
-.bd-sl-tools { display: grid; gap: var(--s3); margin-bottom: var(--s4); }
+.bd-sl-tools {
+  display: grid; gap: var(--s3); margin-bottom: var(--s4);
+  padding: var(--s3);
+  background-color: var(--surface-rail);
+  background-image: var(--surface-rail-sheen);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius-lg));
+  box-shadow: var(--shadow-control-rest);
+}
 .bd-sl-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .bd-sl-bar .bd-sl-search { flex: 1 1 18rem; min-width: 0; width: auto; }
 .bd-sl-bar .bd-sl-filter { flex: 0 0 auto; width: auto; max-width: 100%; }
@@ -141,6 +149,8 @@ section#scenes .bd-breakdown { gap: 0; }
   padding: var(--s2) var(--s4) var(--s4) calc(var(--sl-grip-w) + 28px + 56px + var(--s2) * 3 + var(--s3));
 }
 .bd-sl-detail[hidden] { display: none; }
+/* the open scene is a recessed workspace under its summary row */
+.bd-sl-detail { background-color: var(--surface-rail); border-left: 3px solid var(--accent-primary); }
 .bd-sl-detail .bd-scene-acts { margin-left: 0; justify-self: start; }
 .bd-sl-none { margin: var(--s5) 0; text-align: center; color: var(--ink-muted); }
 .bd-sl-none[hidden] { display: none; }
@@ -303,3 +313,6 @@ button.k-chip.bd-sug:hover { background: var(--surface-hover); }
 button.k-chip.bd-sug:focus-visible { outline: var(--focus); outline-offset: 1px; }
 .k-chip.bd-count { height: auto; min-height: 20px; padding-block: 0; }
 .bd-sl-counts .k-chip-count { color: var(--hue-deep); }
+
+/* the header's explanatory paragraph stays in the DOM, out of sight */
+.bd-head-celtx .k-page-sub { display: none; }

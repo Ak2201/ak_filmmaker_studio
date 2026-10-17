@@ -276,7 +276,19 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 
 /* ---- 4 · the step outline ----------------------------------- */
 .st-coverage { margin: var(--s3) 0; color: var(--ink-body); }
-.st-ol-beats { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: var(--s3); }
+.st-ol-beats {
+  list-style: none; margin: var(--s3) 0 0; padding: 0;
+  display: grid; gap: var(--s4); align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));   /* the beat board: a card grid, not one long column */
+}
+.st-ol-board { min-width: 0; }
+/* steps filed under another format are a holding column beside the board
+   (the shape of Celtx's Unassigned column); without any, the grid is the whole width */
+@media (min-width: 1100px) {
+  .st-ol-board.has-holding { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--s4); align-items: start; }
+  .st-ol-board.has-holding > .st-unplaced { grid-column: 1; grid-row: 1; position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--s4)); margin-top: var(--s3); }
+  .st-ol-board.has-holding > .st-ol-beats { grid-column: 2; grid-row: 1; }
+}
 .st-ol-beat, .st-unplaced {
   padding: var(--s3) var(--s4);
   background: var(--paper-raised);
@@ -284,7 +296,14 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
   border-radius: var(--sk-radius, var(--radius));
   min-width: 0;
 }
-.st-ol-beat.is-empty { background: var(--paper); border-style: dashed; }
+.st-ol-beat {
+  background-color: var(--surface-card);
+  background-image: var(--surface-card-sheen);
+  box-shadow: var(--sk-card-shadow, var(--shadow-card-rest));
+  border-top: 3px solid var(--accent-primary);
+}
+.st-ol-beat.is-empty { background-color: var(--paper); background-image: none; border-style: dashed; border-top-style: dashed; box-shadow: none; }
+.st-unplaced { background-color: var(--surface-rail); box-shadow: var(--shadow-card-rest); }
 .st-unplaced { margin-top: var(--s4); border-color: var(--warn); }
 .st-ol-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
 .st-ol-name { margin: 0; font-size: var(--t-base, 1rem); font-weight: 700; color: var(--ink); }
@@ -352,3 +371,22 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-import { cursor: pointer; position: relative; }
 .st-import:focus-within { outline: var(--focus); outline-offset: var(--focus-offset); }
 .st-main > .bd-head { padding-block-end: var(--s4); }
+
+/* ---- the three views and the notes disclosure ---------------------
+   The step menu moved under <details class="st-notes">: a wrapping row of
+   steps, not a pinned strip or a side column (the page has no rail now). */
+.st-views { margin-block: var(--s3) var(--s4); max-width: 100%; }
+.st-main > .st-views[hidden], .st-main > .st-notes[hidden] { display: none; }
+.st-notes { margin-bottom: var(--s4); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); background-color: var(--surface-rail); min-width: 0; }
+.st-notes > summary { cursor: pointer; padding: var(--s2) var(--s4); color: var(--ink-body); font-size: var(--t-small); }
+.st-notes > summary:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.st-notes[open] > summary { color: var(--ink); border-bottom: 1px solid var(--rule); }
+.st-notes .tabs { position: static; margin: 0; padding: var(--s3) var(--s4); overflow: visible; flex-wrap: wrap; border-bottom: 0; background: transparent; }
+.st-notes .tabs-list { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.st-notes .tabs-group { display: contents; }
+.st-notes .tabs-group-h { display: none; }
+.st-notes .tabs[hidden] { display: none; }
+/* the synopsis step: the tagging palette is a sticky inspector */
+@media (min-width: 1100px) {
+  #path-synopsis .st-beats { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--s4)); background-color: var(--surface-rail); box-shadow: var(--shadow-card-rest); }
+}

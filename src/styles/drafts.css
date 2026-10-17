@@ -80,3 +80,15 @@
   background: var(--paper); border: 1px solid var(--rule);
   border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
 }
+
+/* Celtx pass (plan 7.4): history left, the title page sticky on the right. */
+@media (min-width: 1100px) {
+  .dr-main {
+    grid-template-columns: minmax(0, 1.2fr) minmax(22rem, 0.8fr);
+    gap: var(--s4) var(--s5);
+    align-items: start;
+  }
+  .dr-main > * { grid-column: 1; }
+  .dr-main > .bd-head, .dr-main > .dr-bar { grid-column: 1 / -1; }
+  .dr-main > #title { grid-column: 2; grid-row: 3 / span 6; position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--s4)); }
+}

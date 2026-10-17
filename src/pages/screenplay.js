@@ -193,7 +193,9 @@ let beatsOpen = false;
    the same features in different places (owner, parity rule). */
 const FILE_ITEMS = [
   { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
-  { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' }
+  { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
+  { label: 'Drafts & history', href: 'drafts.html', icon: 'history' },
+  { label: 'Title page', href: 'drafts.html#title', icon: 'menu_book' }
 ];
 const TOOL_ITEMS = [
   { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
@@ -204,7 +206,6 @@ const TOOL_ITEMS = [
 ];
 const HELP_ITEMS = [
   { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
-  { label: 'Stage guide', action: 'sc-guide', hint: 'questions', icon: 'menu_book' },
   { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
 ];
 
@@ -840,6 +841,12 @@ delegate(document, 'click', '[data-action="sc-beats"]', () => setBeats(!beatsOpe
    exactly one handler per action and focus lands where that handler
    puts it, not back on the Tools button. */
 function sheetRow(it) {
+  if (it.href) {
+    return h('a.sc-sheet-row', { href: it.href }, [
+      sym(it.icon),
+      h('span.sc-sheet-label', { text: it.label })
+    ]);
+  }
   return h('button.sc-sheet-row', { type: 'button', 'data-sc-act': it.action }, [
     sym(it.icon),
     h('span.sc-sheet-label', { text: it.label }),

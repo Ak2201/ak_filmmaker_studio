@@ -41,6 +41,7 @@ import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
 import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
+import { SUPPORT_EMAIL } from '../lib/brand.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
 
@@ -255,7 +256,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   else if (picked.id) markPicked(row);
   { const cmp = compareBlock(plans); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   loadUpgradeQuotes(st, buyable);
-  if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(promoBox(buyable));
+  if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(promoBox(buyable), eduCallout());
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
@@ -297,6 +298,26 @@ function promoBox(buyable) {
     text: `${promo.code} applied to ${applied.map((id) => planName(id)).join(', ')}. The price above is what you will pay.` }));
   else det.append(h('p#plPromoHint.pl-promo-msg', { text: 'Spaces and case do not matter. The discount shows on the card before you pay.' }));
   return det;
+}
+
+/* EDUCATION. The student offer is a promo code like any other, so this
+   band only fills the "Have a code?" box and presses its APPLY — the
+   quote, the refusal sentence and the repricing all stay promoBox's.
+   Drawn under the same condition as the box, because without the box
+   the button has nothing to press. Deliberately not a form and not a
+   pl-promo* class: prove:billing reads those as the promo box itself. */
+function eduCallout() {
+  const mail = SUPPORT_EMAIL
+    ? h('a', { href: 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent('Group access for a film school'), text: 'e-mail us' })
+    : 'e-mail us';
+  return h('aside.pl-edu-band', { 'aria-label': 'Education and film schools' }, [
+    h('div.pl-edu-text', {}, [
+      h('p.bd-eyebrow', { text: 'Education & film schools' }),
+      h('p.pl-edu-lead', {}, [h('strong', { text: 'Film or Viscom student?' })]),
+      h('p.pl-edu-note', {}, ['Use code STUDENT50 for the student price on Intermediate. Film schools, clubs and workshops: ', mail, ' for group access.'])
+    ]),
+    h('button.btn', { type: 'button', 'data-plan-action': 'edu-apply', disabled: promo.busy || busyPlan !== '', text: 'APPLY STUDENT50' })
+  ]);
 }
 
 /* ?plan= survives the Google hop (which returns to the bare path) through a
@@ -457,6 +478,25 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
     promo.busy = false;
     if (hooks.rerender) hooks.rerender();
   }
+});
+
+/* APPLY STUDENT50: through the promo box's own form, as purchase.js's
+   applyLinkCode() does, deferred so the submit's redraw is not inside
+   this click. A box that is missing or disabled (a buy or a check in
+   flight) is left alone. */
+delegate(document, 'click', '[data-plan-action="edu-apply"]', () => {
+  const input = document.getElementById('plPromoCode');
+  const form = input && input.closest('form');
+  if (!input || !form || input.disabled || promo.busy || busyPlan) return;
+  promo.typed = 'STUDENT50'; promo.open = true;
+  const det = input.closest('details');
+  if (det) det.open = true;
+  input.value = 'STUDENT50';
+  setTimeout(() => {
+    if (!form.isConnected) return;
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }, 0);
 });
 
 delegate(document, 'click', '[data-plan-action="promo-clear"]', () => {

@@ -27,27 +27,16 @@ import { h, delegate } from '../../lib/dom.js';
 import { emptyState, errorState, skeleton, kpi, pill, meter, dataTable, absTime, relTime } from '../../ui/admin-kit.js';
 import { sparkline, bar } from '../../ui/admin-charts.js';
 import { slot, load, reset } from './_rpc.js';
+import { n } from '../../lib/admin-format.js';
+import { fmtBytes, METRIC, CODE, clientScopes as scopesOf, scopeDiff as diffScopes, syncBuckets, refusalsByCode, refusalsPerDay, metersOver } from '../../lib/admin-sync-model.js';
+
+export { fmtBytes };
 
 const S = { overview: slot(), pressure: slot(), ctx: null };
-const n = (v) => (Number(v) || 0).toLocaleString();
-
-export function fmtBytes(b) {
-  const v = Number(b) || 0;
-  if (v < 1024) return v + ' B';
-  if (v < 1048576) return (v / 1024).toFixed(v < 10240 ? 1 : 0) + ' KB';
-  if (v < 1073741824) return (v / 1048576).toFixed(v < 10485760 ? 1 : 0) + ' MB';
-  return (v / 1073741824).toFixed(2) + ' GB';
-}
-const METRIC = { projects: 'Films', shares: 'Share links', collaborators: 'Collaborators', seats: 'Seats', storage_bytes: 'Storage' };
-const CODE = {
-  '23514': 'A CHECK refused it (an unknown kind of data)', '42501': 'Row security refused it', P0401: 'Not a studio member',
-  P0402: 'A plan limit', P0429: 'Rate limit', '23505': 'A conflict', PGRST202: 'Function missing', network: 'The request never arrived', other: 'Something else'
-};
 
 /** The scope names the running client can write. */
 function clientScopes(ctx) {
-  const m = (ctx.cloud && ctx.cloud.KEY_BY_SCOPE) || {};
-  return Object.keys(m).sort();
+  return scopesOf((ctx.cloud && ctx.cloud.KEY_BY_SCOPE) || {});
 }
 
 function head() {
@@ -61,12 +50,7 @@ function head() {
 }
 
 function scopeDiff(ctx, d) {
-  const client = clientScopes(ctx);
-  const allowed = d.allowed_scopes || [];
-  const ahead = client.filter((s) => !allowed.includes(s));
-  const unknownToClient = allowed.filter((s) => !client.includes(s));
-  const inUseBad = d.in_use_not_allowed || [];
-  const reportBad = d.reportable_not_allowed || [];
+  const { client, allowed, ahead, unknownToClient, inUseBad, reportBad } = diffScopes(clientScopes(ctx), d);
   const card = h('div.ad-card' + (ahead.length ? '.us-alarm' : ''), {}, [h('h3.ad-card-h', { text: 'Client and database agree on scopes?' })]);
   if (!allowed.length) {
     card.append(errorState({ title: 'The database did not list its allowed scopes', why: 'admin_sync_overview() returned no scopes from the project_data CHECK constraint, so the comparison cannot be made.' }));
@@ -87,11 +71,7 @@ function scopeDiff(ctx, d) {
 }
 
 function bucketsBlock(d) {
-  const b = d.last_sync_buckets || {};
-  const items = [
-    { label: 'Within a day', value: b.under_1d }, { label: '1 to 7 days', value: b.d1_to_7 }, { label: '7 to 30 days', value: b.d7_to_30 },
-    { label: 'Over 30 days', value: b.over_30d }, { label: 'Never synced', value: b.never }
-  ].map((i) => ({ ...i, value: Number(i.value) || 0 }));
+  const items = syncBuckets(d);
   return h('div.ad-card', {}, [
     h('h3.ad-card-h', { text: 'When did members last sync?' }),
     h('p.ad-meta', { text: `${n(d.members)} active members, by the newest save that reached their account. "Never synced" includes people who simply work on one device.` }),
@@ -139,10 +119,8 @@ function scopeTable(d) {
 function errorsBlock(d) {
   const e = d.errors || {};
   const rows = e.by_scope_code || [];
-  const byCode = {};
-  for (const r of rows) byCode[r.code] = (byCode[r.code] || 0) + (Number(r.count) || 0);
-  const items = Object.entries(byCode).sort((a, b) => b[1] - a[1]).map(([c, v]) => ({ label: c, value: v, note: CODE[c] || '' }));
-  const days = (e.by_day || []).map((x) => Number(x.count) || 0);
+  const items = refusalsByCode(rows);
+  const days = refusalsPerDay(e);
   const card = h('div.ad-card', {}, [
     h('h3.ad-card-h', { text: 'Refused saves reported by browsers' }),
     h('p.ad-meta', { text: `Since ${e.since || 'two weeks ago'}. Browsers report only the kind of data and the refusal code, once per page load, and not at all if the person turned counting off; so this is a floor.` }),
@@ -184,7 +162,7 @@ function pressureBlock(ctx) {
       { key: 'email', label: 'Account', render: (r) => r.email || r.user_id },
       { key: 'plan', label: 'Plan', render: (r) => r.plan_name || r.plan },
       { key: 'max', label: 'Fullest', align: 'end', render: (r) => `${Math.round(Number(r.max_pct) || 0)}%` },
-      { key: 'm', label: 'Meters', render: (r) => h('div.sy-meters', {}, (r.metrics || []).filter((m) => Number(m.pct) >= (d.threshold_pct || 80)).map((m) => {
+      { key: 'm', label: 'Meters', render: (r) => h('div.sy-meters', {}, metersOver(r, d.threshold_pct).map((m) => {
         const bytes = m.key === 'storage_bytes';
         return meter({ value: Number(m.used) || 0, max: Number(m.cap) || 0, label: METRIC[m.key] || m.key, format: bytes ? fmtBytes : undefined });
       })) }

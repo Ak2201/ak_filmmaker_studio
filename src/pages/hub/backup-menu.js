@@ -9,7 +9,8 @@
    are the one builder and the one applier, shared with Drive.
    ============================================================ */
 import Store from '../../lib/store.js';
-import { NOTE_PREFIX, downloadBackup, applyBackup, backupShape } from '../../lib/backup.js';
+import { downloadBackup, applyBackup, backupShape } from '../../lib/backup.js';
+import { projectsToErase, eraseDeviceStorage } from '../../lib/hub-reset.js';
 import PDF from '../../lib/pdf.js';
 import { $ } from './util.js';
 import { BRAND } from '../../lib/brand.js';
@@ -21,16 +22,8 @@ import * as DriveSync from '../../lib/drive-sync.js';
  * @param {string[]} o.allKeys        hub.js's ALL_KEYS, the reset list
  * @param {Function} o.logActivity    the hub's activity logger
  */
-/* Kept through an erase: credentials and access, not work. The AI key
-   (a credential), the account identity and the Supabase destination
-   (erasing them signs the user out), the invite code and device
-   session (the site gate would bounce a code-only visitor). The
-   Supabase SESSION is `sb-*-auth-token`, never an `fms_` key, so the
-   prefix sweep cannot touch it. */
-const KEEP_ON_ERASE = new Set([
-  'fms_ai_key_v1', 'fms_studio_account_v1', 'fms_supabase_cfg_v1',
-  'fms_invite_code_v1', 'fms_device_session_v1'
-]);
+/* KEEP_ON_ERASE (credentials and access, not work) lives with the erase
+   itself, in src/lib/hub-reset.js. */
 
 /**
  * Erase this device. Does NOT sign out. Cloud copies are untouched,
@@ -44,7 +37,7 @@ export async function resetAll({ alsoDrive = false, confirmed = false, allKeys =
 }
 
 async function resetAllImpl({ alsoDrive = false, confirmed = false, allKeys = [] } = {}) {
-  const projects = Store.listAllProjects();
+  const projects = projectsToErase();
   const n = projects.length;
   const plural = n === 1 ? '' : 's';
   if (!confirmed) {
@@ -65,36 +58,10 @@ async function resetAllImpl({ alsoDrive = false, confirmed = false, allKeys = []
     catch (e) { driveNote = ' The Drive file could not be deleted (' + (e && e.message || e) + ') and is still there.'; }
   }
 
-  projects.forEach((p) => Store.purgeProjectEverywhere(p.id));
-  const keys = new Set(allKeys);
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith('fms_')) continue;
-    keys.add(k.replace(/__.*$/, ''));
-    /* And the suffixed key itself: a blob whose project id is no longer
-       in the list (an earlier orphan) is not reached by purging the
-       listed projects, and removing only its base name leaves it — and
-       its IndexedDB bytes — behind an "erases EVERYTHING". */
-    if (k.includes('__')) keys.add(k);
-  }
-  keys.forEach((k) => { if (!KEEP_ON_ERASE.has(k)) Store.rawRemove(k); });
-  Store.currentPointerKeys().forEach((k) => Store.rawRemove(k));
-  const notes = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(NOTE_PREFIX)) notes.push(k);
-  }
-  notes.forEach((k) => localStorage.removeItem(k));
-
-  /* Pause cloud sync AFTER the prefs wipe. Signed in, an unpaused
-     sync would pull the account's projects straight back or push the
-     empty studio over them. Turning sync on again pulls them back. */
-  try {
-    let p = {};
-    try { p = JSON.parse(Store.rawGet('fms_studio_prefs_v1') || '{}') || {}; } catch (e) { p = {}; }
-    p.cloudSync = 'off';
-    Store.rawSet('fms_studio_prefs_v1', JSON.stringify(p));
-  } catch (e) { /* storage refused */ }
+  /* The storage half — every project in every namespace, every `fms_`
+     key by base and suffixed name, the pointers, the notes, then
+     cloudSync:'off' in the device prefs — is src/lib/hub-reset.js. */
+  eraseDeviceStorage({ projects, allKeys });
   const c = window.StudioCloud;
   if (c && c.setSyncEnabled) { try { await c.setSyncEnabled(false); } catch (e) { /* none */ } }
 

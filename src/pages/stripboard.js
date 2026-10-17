@@ -77,44 +77,24 @@ import Contacts from '../lib/contacts.js';
 import { sheetsForDay } from '../lib/shootday.js';
 import Board from '../lib/board-stats.js';
 import {
+  CAST, GROUPINGS, shootDayOf, castOf, locationOf, shootDays, groupScenes as groupBy, localDate, todayISO,
+  daysNote as daysNoteFor, runtimeNote, screenTimeByDay, uncoveredMoves, nextUncoveredMove,
+  doodRows as doodRowsFor, LONG, describeMove as moveSentence, scheduleByLocation,
+  sceneHeadings, latestDraft, lockPreset, boardSummary
+} from '../lib/stripboard-model.js';
+import {
   pageHeader, statStrip, statCard, meter, button, badge, chip, todBadge, todKey, doodCode,
   segmented, panel, stripBanner, emptyState, eyebrow, sym, ask, askDanger, tell
 } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
-const CAST = 'cast';
 const castCat = ELEMENT_CATEGORIES.find((c) => c.id === CAST) || { id: CAST, label: 'Cast', hue: 'feature' };
 
 /* View state. Not persisted — see the header. */
 const view = { group: 'script', matrix: false };
 
-const GROUPINGS = [
-  { id: 'script',   label: 'Script order' },
-  { id: 'location', label: 'Location' },
-  { id: 'time',     label: 'Day / night' },
-  { id: 'day',      label: 'Shoot day' },
-  // A song is shot as a block, usually by its own unit, so seeing its
-  // strips together is how its days get scheduled at all.
-  { id: 'song',     label: 'Song' }
-];
-
-const TIME_ORDER = ['DAY', 'DAWN', 'DUSK', 'NIGHT', 'CONTINUOUS'];
-
-/* ---- small readers ------------------------------------------
-   `shootDay` is a field this page adds to the scene. It may be
-   absent on every scene written before today, so it is read through
-   one function that always answers an integer: 0 means unscheduled. */
-function shootDayOf(scene) {
-  const n = parseInt(scene.shootDay, 10);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
-const castOf = (scene) => (scene.elements && scene.elements[CAST]) || [];
-const locationOf = (scene) => String(scene.location || '').trim();
-
-/** Every day number in use, ascending. */
-function shootDays(scenes) {
-  return [...new Set(scenes.map(shootDayOf).filter(Boolean))].sort((a, b) => a - b);
-}
+/* The groupings, the readers (shootDayOf, locationOf, shootDays) and
+   every derivation below live in src/lib/stripboard-model.js. */
 
 /* ---- header --------------------------------------------------
    The kit's page header. `.bd-head` stays on it: the module column,
@@ -160,12 +140,7 @@ function renderHeader(scenes, rows) {
       tone: placed === scenes.length ? 'ok' : null
     }));
   }
-  let daysNote = '';
-  if (days.length) {
-    daysNote = span
-      ? `${span.dated < span.total ? span.dated + ' dated · ' : ''}${span.spanDays} calendar ${span.spanDays === 1 ? 'day' : 'days'} · ${span.weeks} ${span.weeks === 1 ? 'week' : 'weeks'}`
-      : 'scheduled · no dates yet';
-  }
+  const daysNote = daysNoteFor(days.length, span);
   const cards = [
     strips,
     statCard({
@@ -225,13 +200,7 @@ function fillRuntime(strip) {
     const est = A.default.runtimeEstimate(st, songs, { targetSeconds: target * 60 });
     if (!est.total) return;
     const mins = Math.max(1, Math.round(est.total / 60));
-    let note = 'estimated from the script';
-    let tone = null;
-    if (target) {
-      const d = mins - target;
-      note = `target ${target} min · ${d === 0 ? 'on target' : (d > 0 ? d + ' over' : -d + ' under')}`;
-      tone = d > 0 ? 'warn' : 'ok';
-    }
+    const { note, tone } = runtimeNote(mins, target);
     strip.append(statCard({
       label: 'Est. runtime', value: String(mins), unit: 'min', note, noteTone: tone,
       class: 'sb-kpi-runtime',
@@ -286,66 +255,7 @@ const songById = () => (_songCache || (_songCache = Object.fromEntries(
 )));
 
 /* ---- grouping — a view, never a write ------------------------ */
-function groupScenes(scenes, mode) {
-  if (mode === 'script') {
-    return [{ key: 'script', label: 'Script order', scenes }];
-  }
-  const buckets = new Map();
-  const put = (key, label, scene) => {
-    if (!buckets.has(key)) buckets.set(key, { key, label, scenes: [] });
-    buckets.get(key).scenes.push(scene);
-  };
-
-  for (const scene of scenes) {
-    if (mode === 'location') {
-      const loc = locationOf(scene);
-      put(loc ? loc.toLowerCase() : '￿', loc || 'Location not set', scene);
-    } else if (mode === 'time') {
-      const label = `${scene.intExt} · ${scene.dayNight}`;
-      put(label, label, scene);
-    } else if (mode === 'song') {
-      /* Reads songs.js and writes nothing, like every other grouping
-         here. The sort key is the song's POSITION, not its title, so
-         the blocks come out in the order a producer counts them —
-         "song three" means the third one. */
-      const sg = songById()[scene.songId];
-      if (sg) {
-        const n = parseInt(sg.number, 10);
-        put(Number.isFinite(n) ? n : 9e8,
-          (sg.number ? sg.number + '. ' : '') + (sg.title || Songs.kindLabel(sg.kind)), scene);
-      } else {
-        put(Infinity, 'Not part of a song', scene);
-      }
-    } else {
-      const d = shootDayOf(scene);
-      put(d ? d : Infinity, d ? `Day ${d}` : 'Not scheduled yet', scene);
-    }
-  }
-
-  const groups = [...buckets.values()];
-  if (mode === 'day') {
-    /* The one grouping with an order of its own: each day's strips in
-       the order the AD put them (locations.js), unlisted ones after in
-       script order. The unscheduled group stays in script order. */
-    const orders = Locations.listDayOrder();
-    for (const g of groups) {
-      if (g.key !== Infinity) g.scenes = Locations.orderByList(g.scenes, orders[String(g.key)]);
-    }
-  }
-  if (mode === 'day' || mode === 'song') {
-    groups.sort((a, b) => a.key - b.key);
-  } else if (mode === 'time') {
-    const rank = (g) => {
-      const [ie, tod] = g.key.split(' · ');
-      const t = TIME_ORDER.indexOf(tod);
-      return (t < 0 ? TIME_ORDER.length : t) * 10 + (ie === 'EXT' ? 1 : ie === 'INT/EXT' ? 2 : 0);
-    };
-    groups.sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
-  } else {
-    groups.sort((a, b) => String(a.key).localeCompare(String(b.key)));
-  }
-  return groups;
-}
+const groupScenes = (scenes, mode) => groupBy(scenes, mode, { songsById: mode === 'song' ? songById() : {} });
 
 /* ---- one strip -----------------------------------------------
    The kit's strip language: a card with the time-of-day hue as its
@@ -465,15 +375,6 @@ function dayPicker(scene, maxDay) {
 }
 
 /* ---- the board ----------------------------------------------- */
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-/** 'YYYY-MM-DD' as "Mon 27 Oct 2025"; '' when it is not a date. */
-function localDate(str) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
-  if (!m) return '';
-  const d = new Date(+m[1], +m[2] - 1, +m[3]);
-  return WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
-}
 
 /* The controls: one kit panel. Grouping is a view, so it is a
    segmented toggle, not a form; the scheduling actions and the export
@@ -589,9 +490,7 @@ function renderBoard(scenes) {
          banner wherever the AD has not written one. Derived on render
          and stored nowhere; "+ Banner → Company move" writes the real
          one (pre-filled with this same From → To). */
-      const covered = new Set(dayBanners.filter((b) => b.kind === 'move').map((b) => b.after));
-      const implied = new Map(DPR.impliedMoves(group.scenes)
-        .filter((m) => !covered.has(m.after)).map((m) => [m.after, m]));
+      const implied = uncoveredMoves(group.scenes, dayBanners);
       /* Banners sit between the strips they were written between —
          anchored to a scene, so dragging strips about keeps them. */
       for (const it of DPR.layoutDay(group.scenes, dayBanners)) {
@@ -701,20 +600,7 @@ function fillHours() {
   if (_hours) { Promise.resolve().then(() => paint(_hours())); return; }
   Promise.all([import('../lib/screenplay-analysis.js'), import('../lib/script.js')])
     .then(([A, S]) => {
-      _hours = () => {
-        const scenes = Scenes.listScenes();
-        const st = A.default.screenTime(scenes, S.loadScript().elements);
-        const byDay = new Map(), byScene = new Map();
-        if (!st || !st.fromScript) return { byDay, byScene };
-        for (const r of st.rows) {
-          if (r.method !== 'script') continue;
-          const sec = Number(r.seconds) || 0;
-          byScene.set(r.scene.id, sec);
-          const d = shootDayOf(r.scene);
-          if (d) byDay.set(d, (byDay.get(d) || 0) + sec);
-        }
-        return { byDay, byScene };
-      };
+      _hours = () => screenTimeByDay(A.default.screenTime(Scenes.listScenes(), S.loadScript().elements));
       paint(_hours());
     })
     .catch((e) => console.warn('[stripboard] screen time', e));
@@ -818,41 +704,7 @@ function legend() {
    Every value is computed here and none of it is stored. Move a scene
    to another day and the entire grid is different, which is exactly
    why nobody should be maintaining it by hand in a spreadsheet. */
-const MARK = { start: 'SW', work: 'W', hold: 'H', finish: 'WF', only: 'SWF' };
-
-function doodRows(scenes, days) {
-  const dayOf = new Map(scenes.map((s) => [s.id, shootDayOf(s)]));
-  return Scenes.elementIndex()
-    .filter((item) => item.category === CAST)
-    .map((item) => {
-      const working = new Set(
-        item.scenes.map((s) => dayOf.get(s.id)).filter((d) => d && d > 0)
-      );
-      const sorted = [...working].sort((a, b) => a - b);
-      const first = sorted[0] || 0;
-      const last = sorted[sorted.length - 1] || 0;
-      let hold = 0;
-      const cells = days.map((d) => {
-        if (working.has(d)) {
-          if (first === last) return { day: d, mark: MARK.only, kind: 'only' };
-          if (d === first) return { day: d, mark: MARK.start, kind: 'start' };
-          if (d === last) return { day: d, mark: MARK.finish, kind: 'finish' };
-          return { day: d, mark: MARK.work, kind: 'work' };
-        }
-        if (first && d > first && d < last) { hold += 1; return { day: d, mark: MARK.hold, kind: 'hold' }; }
-        return { day: d, mark: '', kind: 'off' };
-      });
-      return {
-        name: item.name,
-        scenes: item.scenes.length,
-        work: working.size,
-        hold,
-        span: first ? (last - first + 1) : 0,
-        cells
-      };
-    })
-    .sort((a, b) => b.work - a.work || a.name.localeCompare(b.name));
-}
+const doodRows = (scenes, days) => doodRowsFor(scenes, days, Scenes.elementIndex());
 
 /* The DOOD key, as the kit's own codes, so the legend and the cells
    cannot drift apart. */
@@ -864,11 +716,6 @@ function doodKey() {
   });
   return k;
 }
-
-const todayISO = () => {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-};
 
 function renderDood(scenes) {
   const wrap = h('section.sb-dood', { id: 'dood' });
@@ -979,10 +826,6 @@ function renderDood(scenes) {
   }));
   return wrap;
 }
-const LONG = {
-  start: 'starts work', work: 'works', hold: 'on hold', finish: 'works and finishes',
-  only: 'starts, works and finishes', off: 'not needed'
-};
 
 /* One card per performer — doodRows() again, nothing recounted: the
    number is the row's place (most working days first, the order the
@@ -1109,12 +952,11 @@ function fillLock() {
     const host = document.querySelector('.sb-lock-host');
     if (!host) return;
     const doc = S.loadScript();
-    const revs = Array.isArray(doc.revisions) ? doc.revisions : [];
-    const latest = revs.length ? revs[revs.length - 1] : null;
+    const { latest, count } = latestDraft(doc);
     const draft = latest && String(latest.name || '').trim()
       ? badge({
           label: 'Draft · ' + String(latest.name).trim(), tag: true, class: 'sb-draft',
-          title: `The latest numbered draft (${revs.length} in all), from Drafts`
+          title: `The latest numbered draft (${count} in all), from Drafts`
         })
       : null;
     if (!S.isNumberingLocked(doc.numbering)) {
@@ -1182,8 +1024,6 @@ delegate(document, 'click', '[data-action="sb-dood-matrix"]', () => {
   document.querySelector('.sb-dood-toggle')?.focus({ preventScroll: true });
 });
 
-const sceneHeadings = (doc) => (doc.elements || []).filter((e) => e && e.type === 'scene' && String(e.text ?? '').trim()).length;
-
 delegate(document, 'click', '[data-action="sb-lock"]', async () => {
   let S, Sync;
   try { [S, Sync] = await scriptLib(); } catch (e) {
@@ -1222,10 +1062,8 @@ delegate(document, 'click', '[data-action="sb-lock"]', async () => {
      rows (the importer never puts them in the element text). When
      every heading's row carries one, they are what is locked — the
      same preset the revision tools build. */
-  const preset = new Map();
-  try {
-    for (const s of Scenes.listScenes()) if (s.scriptElId && s.number) preset.set(s.scriptElId, String(s.number));
-  } catch (e) { /* no scenes */ }
+  let preset = new Map();
+  try { preset = lockPreset(Scenes.listScenes()); } catch (e) { /* no scenes */ }
   doc.numbering = S.lockNumbering(doc.elements, preset);
   if (!S.saveScript(doc)) {
     toast('The lock could not be saved: the browser refused the write. Nothing changed.', { type: 'error' });
@@ -1270,9 +1108,7 @@ delegate(document, 'click', '[data-action="sb-banner-add"]', (e, el) => {
   if (kind === 'move') {
     /* The first change of location on the day that no move covers yet
        — the move the AD was about to type. */
-    const dayScenes = Locations.orderedDayScenes(day);
-    const taken = new Set(DPR.listBanners(day).filter((b) => b.kind === 'move').map((b) => b.after));
-    const next = DPR.impliedMoves(dayScenes).find((m) => !taken.has(m.after));
+    const next = nextUncoveredMove(Locations.orderedDayScenes(day), DPR.listBanners(day));
     if (next) Object.assign(patch, next);
   }
   const b = DPR.addBanner(day, patch);
@@ -1315,12 +1151,7 @@ delegate(document, 'click', '[data-action="sb-banner-remove"]', (e, el) => {
    keyboard user is not dropped at the top of the page. */
 function describeMove(rec) {
   const scene = Scenes.listScenes().find((s) => s.id === rec.sceneId);
-  const n = scene && scene.number ? `Scene ${scene.number}` : 'The scene';
-  if (!rec.toDay) return `${n} is off the schedule.`;
-  const total = Locations.orderedDayScenes(rec.toDay).length;
-  const where = rec.fromDay === rec.toDay ? `moved to position ${rec.index + 1} of ${total} on Day ${rec.toDay}`
-    : `moved to Day ${rec.toDay}, position ${rec.index + 1} of ${total}`;
-  return `${n} ${where}.`;
+  return moveSentence(rec, scene, rec.toDay ? Locations.orderedDayScenes(rec.toDay).length : 0);
 }
 
 function afterMove(rec, opts = {}) {
@@ -1564,17 +1395,13 @@ delegate(document, 'click', '[data-action="sb-auto"]', async () => {
     + 'Re-schedule every scene by location?'
   )) return;
 
-  const dayFor = new Map();
-  for (const scene of scenes) {
-    const key = locationOf(scene).toLowerCase() || '￿';
-    if (!dayFor.has(key)) dayFor.set(key, dayFor.size + 1);
-    Scenes.updateScene(scene.id, { shootDay: dayFor.get(key) });
-  }
+  const { plan, days } = scheduleByLocation(scenes);
+  for (const p of plan) Scenes.updateScene(p.id, { shootDay: p.day });
   // A fresh schedule starts in script order within each day.
   Locations.clearDayOrders();
   view.group = 'day';
   render();
-  toast(`Scheduled into ${dayFor.size} ${dayFor.size === 1 ? 'day' : 'days'}, one per location.`);
+  toast(`Scheduled into ${days} ${days === 1 ? 'day' : 'days'}, one per location.`);
 });
 
 delegate(document, 'click', '[data-action="sb-clear"]', async () => {
@@ -1592,12 +1419,7 @@ delegate(document, 'click', '[data-action="sb-clear"]', async () => {
    print rules at all before — a board printed with the app rail
    down the side and the shoot-day select as an empty box — so the
    whole treatment lives in styles/pdf.css. */
-function boardSummary(scenes) {
-  const days = shootDays(scenes).length;
-  return `${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'} · `
-       + `${formatEighths(totalEighths(scenes))} pages · `
-       + `${days} ${days === 1 ? 'shoot day' : 'shoot days'}`;
-}
+/* The subtitle is boardSummary() (src/lib/stripboard-model.js). */
 
 delegate(document, 'click', '[data-action="pdf-board"]', () => {
   PDF.exportPDF({ scope: 'board', subtitle: boardSummary(Scenes.listScenes()) });

@@ -33,22 +33,16 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Store from '../lib/store.js';
-import { INR, fmtINR, parseNum } from '../lib/money.js';
+import { fmtINR, parseNum } from '../lib/money.js';
 import C from '../lib/costs.js';
-import { listContacts, listCallSheets, DEPARTMENTS } from '../lib/contacts.js';
-import { calendarDays } from '../lib/locations.js';
+import { DEPARTMENTS } from '../lib/contacts.js';
+import { rs, pct, today, label, costContext, crewAccountFor, wageHintRows } from '../lib/budget-costs-model.js';
 import wages from '../data/wages.fefsi.json';
 import { askDanger } from './dialog.js';
 import { button, badge, statCard, statStrip, emptyState, notice, meter } from './kit/index.js';
 import { renderSchedule, renderVersions, impactActions, impactForms, bindImpact } from './budget-impact.js';
 
-const rs = (n) => (n < 0 ? '−₹ ' : '₹ ') + INR.format(Math.round(Math.abs(n || 0)));
-const pct = (n) => (n === null || n === undefined ? '—' : n + '%');
-const today = () => {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-};
-const label = (list, id) => (list.find((x) => x.id === id) || {}).label || id;
+/* rs, pct, today and label are src/lib/budget-costs-model.js's. */
 
 /* Remembered for the life of the page only, so the second expense of
    the day is two taps: who paid and how are usually the same as the
@@ -57,26 +51,9 @@ const label = (list, id) => (list.find((x) => x.id === id) || {}).label || id;
 const sticky = { paidBy: '', method: 'cash', shootDay: '', date: '' };
 const openCrew = new Set();
 
-/* ---- context: everything a render reads, read once ------------ */
-function context() {
-  let contacts = [], sheets = [], days = [];
-  try { contacts = listContacts(); } catch (e) { /* none */ }
-  try { sheets = listCallSheets(); } catch (e) { /* none */ }
-  try { days = calendarDays(); } catch (e) { /* none */ }
-  const all = C.readAll();
-  const lines = C.estimateLines(C.readCalc(), all.lines);
-  const byId = new Map(contacts.map((c) => [c.id, c]));
-  const nameOf = (id) => (byId.has(id) ? byId.get(id).name || 'Unnamed contact' : id);
-  const lineById = new Map(lines.map((l) => [l.id, l]));
-  const lineName = (id) => (lineById.has(id) ? lineById.get(id).name : id ? 'A line no longer in the estimate' : '');
-  const expenses = C.listExpenses();
-  const floats = C.listFloats();
-  const crew = C.listCrew();
-  const payments = C.listPayments();
-  const settings = C.getSettings();
-  const report = C.costReport({ lines, expenses, crew, payments, contacts, contingencyPct: settings.contingencyPct });
-  return { contacts, sheets, days, lines, byId, nameOf, lineName, expenses, floats, crew, payments, settings, report, overrides: all.wageOverrides };
-}
+/* ---- context: everything a render reads, read once ------------
+   costContext() in src/lib/budget-costs-model.js. */
+const context = costContext;
 
 /* ---- small builders --------------------------------------------- */
 const stat = (value, text) => statCard({ label: text, value });
@@ -362,18 +339,7 @@ function renderActuals(ctx) {
 /* ============================================================
    3. CREW PAYMENTS + THE ADVANCES LEDGER
    ============================================================ */
-function crewAccountFor(ctx, c) {
-  const rec = ctx.crew[c.id] || C.getCrew(c.id);
-  const paid = ctx.payments.filter((p) => p.contactId === c.id);
-  const derived = C.derivedDays(c, ctx.days, ctx.sheets);
-  return { rec, paid, derived, acct: C.crewAccount(rec, paid, derived) };
-}
-
-function wageHintRows(ctx, department) {
-  const rows = C.wageRows(wages, ctx.overrides);
-  const own = rows.filter((r) => r.department === department);
-  return own.length ? [rows[0], ...own] : rows;
-}
+/* crewAccountFor() and wageHintRows() are src/lib/budget-costs-model.js's. */
 
 function renderCrewCard(ctx, c) {
   const { rec, paid, derived, acct } = crewAccountFor(ctx, c);

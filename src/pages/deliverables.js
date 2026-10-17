@@ -16,7 +16,7 @@
    None of them is copied into this page's key. Change them where
    they live and this page follows.
    ============================================================ */
-import Store from '../lib/store.js';          /* FIRST — it patches Storage.prototype. */
+import '../lib/store.js';          /* FIRST — it patches Storage.prototype. */
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -35,6 +35,11 @@ import { LINK_KINDS, guessKind, linkText } from '../lib/links.js';
 import { listScenes } from '../lib/scenes.js';
 import { isIndia } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
+import {
+  blueprintSays, projectFormat, TABS, tabFromHash as tabOf, tabForKey, shownItems, TOOL_LINK, fmtChecked, hostOf,
+  festivalFormat, streamerKind, KIND_LABEL, TYPE_LABEL, hintWhy, flagTerms, ruleScenes, ruleCertainty,
+  dialogueData, dialogueMeta, dialogueWho, dialogueSubtitle, fileBase as fileBaseOf
+} from '../lib/deliverables-model.js';
 import { guideHref } from '../lib/blueprint-route.js';
 import { pageHeader, statCard, statStrip } from '../ui/kit/index.js';
 /* pdf.js, cbfc.js and cbfc-rules.json are only needed by the certification
@@ -46,7 +51,7 @@ function loadLazy() {
     import('../lib/pdf.js'), import('../lib/cbfc.js'), import('../data/cbfc-rules.json')
   ]).then(([p, c, r]) => { PDF = p.default; Cbfc = c.default; CBFC_RULES = r.default; }));
 }
-import { dialogueRows, toCSV, toSRT, REEL_MINUTES } from '../lib/dialogue-list.js';
+import { toCSV, toSRT, REEL_MINUTES } from '../lib/dialogue-list.js';
 
 const app = document.getElementById('app');
 
@@ -56,37 +61,9 @@ let show = 'all';   // 'all' | a WHEN id
 /* Which tab. Read from the hash, so deliverables.html#certification
    and #dialogue-list land on their tab; anything else (#festivals,
    #checklist, a group's #g-…) is the checklist. Not stored. */
-const TABS = [
-  { id: 'checklist',     label: 'Checklist' },
-  { id: 'certification', label: 'Certification' },
-  { id: 'dialogue-list', label: 'Dialogue list' }
-];
-const tabFromHash = () => {
-  const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '');
-  return TABS.some((t) => t.id === h && t.id !== 'checklist') ? h : 'checklist';
-};
+/* TABS, the hash rule and the blueprint read are src/lib/deliverables-model.js's. */
+const tabFromHash = () => tabOf(typeof location !== 'undefined' ? location.hash : '');
 let tab = tabFromHash();
-
-const FEATURE_KEY = 'fms_filmmaker_combined_v1';
-
-/* The blueprint's post step holds two free-text answers this page
-   should sit beside. Read through the proxy, so it is the open
-   project's; never written here. */
-function blueprintSays() {
-  try {
-    const raw = localStorage.getItem(FEATURE_KEY);
-    const bag = raw ? JSON.parse(raw) : {};
-    return {
-      list: String((bag && bag.po_deliver_list) || '').trim(),
-      plan: String((bag && bag.po_release_plan) || '').trim()
-    };
-  } catch (e) { return { list: '', plan: '' }; }
-}
-
-function projectFormat() {
-  try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; }
-  catch (e) { return ''; }
-}
 
 /* ---- pieces -------------------------------------------------- */
 
@@ -188,15 +165,7 @@ function itemRow(item, asked) {
   return row;
 }
 
-const TOOL_LINK = {
-  'dialogue-list': 'Prepare the dialogue list and the subtitle skeleton',
-  certification: 'Check the script for certification flags'
-};
-
-const fmtChecked = (iso) => {
-  const d = new Date(String(iso || '') + 'T00:00:00');
-  return Number.isNaN(d.getTime()) ? String(iso || '') : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-};
+/* TOOL_LINK and fmtChecked are src/lib/deliverables-model.js's. */
 
 /* Where a streamer's or a rule's facts came from, and when they were
    checked. Links open the source; nothing here is paraphrased into a
@@ -209,9 +178,7 @@ function sourceLine(src, urls, checked) {
   if (list.length) {
     const ul = h('ul.dv-src-links');
     list.forEach((u) => {
-      let host = u;
-      try { host = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { /* keep the URL */ }
-      ul.append(h('li', {}, [h('a', { href: u, target: '_blank', rel: 'noopener noreferrer', text: host })]));
+      ul.append(h('li', {}, [h('a', { href: u, target: '_blank', rel: 'noopener noreferrer', text: hostOf(u) })]));
     });
     p.append(ul);
   }
@@ -266,11 +233,7 @@ function festivalBlock(reqs, format) {
     const li = h('li.dv-fest-row');
     li.append(h('strong', { text: r.festival }));
     li.append(h('span.dv-fest-status', { text: r.status }));
-    li.append(h('span.dv-fest-fmt' + (r.format ? '' : '.is-unknown'), {
-      text: r.format
-        ? 'Format: ' + r.format + (r.maxLength ? ' · ' + r.maxLength : '')
-        : (r.known ? 'Format not recorded in the catalogue' : 'Not in the catalogue — check their page')
-    }));
+    li.append(h('span.dv-fest-fmt' + (r.format ? '' : '.is-unknown'), { text: festivalFormat(r) }));
     ul.append(li);
   });
   sec.append(ul);
@@ -340,10 +303,7 @@ function streamerBlock() {
       box,
       h('label', { for: id }, [
         h('span.dv-ott-name', { text: g.label.replace(/ — delivery template$/, '') }),
-        h('span.dv-ott-kind' + (g.published ? '' : '.is-template'), {
-          text: g.kind === 'workflow' ? 'our own checklist · checked ' + fmtChecked(g.checked)
-            : g.published ? 'published spec · checked ' + fmtChecked(g.checked) : 'no published spec — template'
-        })
+        h('span.dv-ott-kind' + (g.published ? '' : '.is-template'), { text: streamerKind(g) })
       ])
     ]));
   });
@@ -352,13 +312,7 @@ function streamerBlock() {
 }
 
 /* ---- certification -------------------------------------------- */
-const KIND_LABEL = { requirement: 'Requirement', review: 'For the committee', caution: 'Legal caution' };
-const CONFIDENCE_LABEL = {
-  official: 'Read on the regulator’s own site.',
-  secondary: 'Read from reports of the official text, not the text itself.',
-  uncertain: 'Uncertain — reported, not confirmed.'
-};
-const TYPE_LABEL = { dialogue: 'dialogue', action: 'action', heading: 'heading', paren: 'parenthetical', synopsis: 'scene synopsis', elements: 'breakdown tag' };
+/* KIND_LABEL, CONFIDENCE_LABEL and TYPE_LABEL are src/lib/deliverables-model.js's. */
 
 function certificationPanel(build) {
   const sec = h('section#certification.dv-panel.dv-cert', { role: 'tabpanel', 'aria-labelledby': 'dv-tab-certification', 'data-tab-label': 'Certification' });
@@ -416,12 +370,7 @@ function certificationPanel(build) {
   hint.append(h('p.dv-hint-eyebrow', { id: 'dv-hint-h', text: 'Likely rating — a hint, not advice' }));
   hint.append(h('p.dv-hint-rating', { text: rep.hint.rating }));
   if (meaning) hint.append(h('p.dv-hint-means', { text: meaning }));
-  hint.append(h('p.dv-hint-why', {
-    text: rep.hint.reasons.length
-      ? 'Because of: ' + rep.hint.reasons.map((r) => r.label.toLowerCase() + ' (' + r.tier + ', '
-          + r.scenes + (r.scenes === 1 ? ' scene' : ' scenes') + ')').join('; ') + '.'
-      : 'Nothing in the word lists that this app associates with a higher category.'
-  }));
+  hint.append(h('p.dv-hint-why', { text: hintWhy(rep.hint) }));
   hint.append(h('p.dv-hint-foot', {
     text: 'The app’s own heuristic over the words above — the Board certifies the finished film as a whole, '
         + 'and how a scene is shot moves it more than what the page says. Categories: '
@@ -467,11 +416,10 @@ function certificationPanel(build) {
     ]));
     const flags = h('ul.dv-cert-flags');
     row.flags.forEach((f) => {
-      const terms = [...new Set(f.hits.map((x) => x.term.toLowerCase()))];
       const item = h('li.dv-flag.is-' + f.kind);
       item.append(h('span.dv-flag-kind', { text: KIND_LABEL[f.kind] || f.kind }));
       item.append(h('span.dv-flag-label', { text: f.label + (f.hint ? ' · hint ' + f.hint : '') }));
-      item.append(h('span.dv-flag-terms', { text: terms.slice(0, 6).join(', ') + (terms.length > 6 ? ', …' : '') }));
+      item.append(h('span.dv-flag-terms', { text: flagTerms(f) }));
       const ev = f.hits.slice(0, 2).map((x) => h('q.dv-flag-from', { text: x.from, title: TYPE_LABEL[x.type] || x.type }));
       if (ev.length) item.append(h('span.dv-flag-ev', {}, ev));
       flags.append(item);
@@ -490,11 +438,7 @@ function ruleCard(b) {
   head.append(h('h4.dv-label', { id: 'dv-rule-' + r.id, text: r.label }));
   head.append(h('span.dv-when', { text: KIND_LABEL[b.kind] || b.kind }));
   card.append(head);
-  const nums = b.scenes.map((row) => row.number);
-  card.append(h('p.dv-asked', {
-    text: (b.scenes.length === 1 ? '1 scene: ' : b.scenes.length + ' scenes: ')
-      + nums.slice(0, 12).join(', ') + (nums.length > 12 ? ', …' : '')
-  }));
+  card.append(h('p.dv-asked', { text: ruleScenes(b) }));
   card.append(h('p.dv-why', { text: r.what }));
   if (Array.isArray(r.do) && r.do.length) {
     const ul = h('ul.dv-do');
@@ -502,18 +446,13 @@ function ruleCard(b) {
     card.append(ul);
   }
   card.append(sourceLine(r.source, r.sourceUrls, r.checked));
-  const conf = CONFIDENCE_LABEL[r.confidence];
-  if (conf || r.uncertain) {
-    card.append(h('p.dv-uncertain', { text: [conf, r.uncertain ? 'Check: ' + r.uncertain : ''].filter(Boolean).join(' ') }));
-  }
+  const certainty = ruleCertainty(r);
+  if (certainty) card.append(h('p.dv-uncertain', { text: certainty }));
   return card;
 }
 
 /* ---- dialogue list --------------------------------------------- */
-function dialogueData() {
-  return dialogueRows(loadScript().elements, listScenes(), { reelMinutes: REEL_MINUTES });
-}
-
+/* dialogueData() is src/lib/deliverables-model.js's. */
 function dialoguePanel(build) {
   const sec = h('section#dialogue-list.dv-panel.dv-dl', { role: 'tabpanel', 'aria-labelledby': 'dv-tab-dialogue-list', 'data-tab-label': 'Dialogue list' });
   if (!build) { sec.hidden = true; return sec; }
@@ -558,8 +497,8 @@ function dialoguePanel(build) {
   const ol = h('ol.dv-dl-list');
   dl.rows.slice(0, PREVIEW).forEach((r) => {
     ol.append(h('li.dv-dl-row', {}, [
-      h('span.dv-dl-meta', { text: r.n + ' · reel ' + r.reel + (r.scene ? ' · scene ' + r.scene : ' · before the first scene') }),
-      h('span.dv-dl-who', { text: (r.character || 'NO CUE') + (r.parenthetical ? ' (' + r.parenthetical + ')' : '') }),
+      h('span.dv-dl-meta', { text: dialogueMeta(r) }),
+      h('span.dv-dl-who', { text: dialogueWho(r) }),
       h('span.dv-dl-line', { text: r.line })
     ]));
   });
@@ -593,7 +532,7 @@ function dialoguePrintSheet(dl) {
 }
 
 function fileBase() {
-  return (PDF.projectTitle() || 'film').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'film';
+  return fileBaseOf(PDF.projectTitle());
 }
 function download(name, body, type) {
   const url = URL.createObjectURL(new Blob([body], { type }));
@@ -619,7 +558,7 @@ function renderNow(focus) {
   const reqs = Deliverables.requirements();
   const asked = Deliverables.askedBy(reqs);
   const prog = Deliverables.progress(all);
-  const shown = show === 'all' ? all : all.filter((i) => i.when === show || i.when === 'always');
+  const shown = shownItems(all, show);
 
   const main = h('main#main.dv-main');
 
@@ -728,7 +667,7 @@ delegate(document, 'click', '[data-dv-action]', (e, el) => {
     let sheet = null;
     PDF.exportPDF({
       scope: 'dialogue', setup: 'a4', label: 'Dialogue list', classes: ['dv-print-dl'],
-      subtitle: dl.rows.length + ' lines · ' + dl.scenes + ' scenes · reels estimated at ' + REEL_MINUTES + ' minutes',
+      subtitle: dialogueSubtitle(dl),
       before: () => { sheet = dialoguePrintSheet(dl); (document.getElementById('main') || document.body).append(sheet); },
       after: () => { if (sheet) sheet.remove(); }
     });
@@ -770,16 +709,10 @@ delegate(document, 'click', '[data-dv-action]', (e, el) => {
 
 /* Arrow keys, Home and End across the tabs (WAI-ARIA tabs pattern). */
 delegate(document, 'keydown', '.dv-tabs [role="tab"]', (e, el) => {
-  const ids = TABS.map((t) => t.id);
-  const i = ids.indexOf(el.getAttribute('data-tab'));
-  let j = -1;
-  if (e.key === 'ArrowRight') j = (i + 1) % ids.length;
-  else if (e.key === 'ArrowLeft') j = (i - 1 + ids.length) % ids.length;
-  else if (e.key === 'Home') j = 0;
-  else if (e.key === 'End') j = ids.length - 1;
-  if (j < 0) return;
+  const to = tabForKey(el.getAttribute('data-tab'), e.key);
+  if (!to) return;
   e.preventDefault();
-  switchTab(ids[j], { focusTab: true });
+  switchTab(to, { focusTab: true });
 });
 
 delegate(document, 'change', '[data-dv-group]', (e, el) => {

@@ -38,7 +38,7 @@ import { listScenes } from './scenes.js';
 import { loadScript } from './script.js';
 import { loadStory, matrix, frameworkById } from './story.js';
 import { castMatrix, screenTime, formatDuration } from './screenplay-analysis.js';
-import { brandLine, brandingOn } from '../ui/footer.js';
+import { callPort } from './ports.js';
 
 const FEATURE_KEY = 'fms_filmmaker_combined_v1';
 
@@ -171,7 +171,7 @@ export function buildDeck(d, opts = {}) {
     deck.append(slide('The production', '', row));
   }
   const brand = opts.brand === undefined ? true : opts.brand;
-  const line = brand === true ? (brandingOn() ? brandLine({ className: 'made-with pd-made' }) : null)
+  const line = brand === true ? callPort('brandLine', null, { className: 'made-with pd-made' })
              : (brand && brand.nodeType === 1 ? brand : null);
   if (line && deck.lastElementChild) deck.lastElementChild.append(line);
   return deck;

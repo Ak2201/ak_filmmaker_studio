@@ -148,7 +148,7 @@ function loadTasks() {
     // registerAll() may return a promise that settles once the tasks'
     // lazy dependencies load; it is awaited before any task.input(ctx).
     tasksReady = import('../lib/ai-tasks.js')
-      .then((m) => { if (m && typeof m.registerAll === 'function') return m.registerAll(); })
+      .then((m) => { if (m && typeof m.registerAll === 'function') return m.registerAll(registerTask); })
       .catch((e) => {
         tasksError = 'The AI tools did not load (' + ((e && e.message) || 'unknown error') + '). Reload the page and try again.';
         console.warn('[ai-desk] ai-tasks.js did not load', e);

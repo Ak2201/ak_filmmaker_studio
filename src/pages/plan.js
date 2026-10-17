@@ -42,51 +42,21 @@ import { mountPathBar } from '../ui/path-bar.js';
 import { h, delegate } from '../lib/dom.js';
 import { pageHeader, statStrip, button } from '../ui/kit/index.js';
 import { saveOnInput } from '../lib/autosave.js';
-import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
-import Locations, { PERMISSIONS, MEDIA_KINDS } from '../lib/locations.js';
+import Scenes, { formatEighths } from '../lib/scenes.js';
+import Locations, { PERMISSIONS } from '../lib/locations.js';
 import Geo from '../lib/recce-geo.js';
-import Shoot from '../lib/shootday.js';
-import Contacts from '../lib/contacts.js';
-import DPR from '../lib/dpr.js';
-import { recceLight } from '../lib/recce-light.js';
+import {
+  permOf, prettyDate, weekdayOf, plural, pagesOf, slugOf, dateClashes, datedCount, dayWhen,
+  orphanDateLabel, locationLight, lightTimes, lightFlagText, pinRefusal, dateReady, dateUnchanged,
+  isOpenable, kindOptions, linkOptions, mediaLabel
+} from '../lib/plan-model.js';
 import { askDanger } from '../ui/dialog.js';
 
 const app = document.getElementById('app');
 
-const permById = Object.fromEntries(PERMISSIONS.map((p) => [p.id, p]));
-const permOf = (id) => permById[id] || PERMISSIONS[0];
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-/* '2026-01-12' → '12 January 2026'. Built by hand from the string, the
-   same way contacts.js does it: a shoot date is a wall-clock day, and
-   parsing it into an instant is how it lands a timezone away. */
-function prettyDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
-  if (!m) return '';
-  return Number(m[3]) + ' ' + (MONTHS[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
-}
-
-/* The weekday IS worth computing — a shoot day that lands on a Sunday
-   costs a different amount. UTC throughout so the arithmetic cannot
-   drift across a date boundary. */
-function weekdayOf(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
-  if (!m) return '';
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  return Number.isNaN(d.getTime()) ? '' : WEEKDAYS[d.getUTCDay()];
-}
-
-const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-const pagesOf = (e) => formatEighths(e) + ' ' + (e === 8 ? 'page' : 'pages');
-const slugOf = (scene) => scene.intExt + '. ' + (Locations.locationName(scene) || 'Location TBC')
-  + ' — ' + scene.dayNight;
-
 /* ---- header -------------------------------------------------- */
 function renderHeader(scenes, days, locs, media) {
-  const dated = days.filter((d) => d.date).length;
+  const dated = datedCount(days);
   const head = pageHeader({
     class: 'bd-head',
     eyebrow: 'Plan \u00b7 dates, places, references',
@@ -179,8 +149,7 @@ function renderCalendar(scenes) {
   } else {
     // A date used by two shoot days is almost always a slip, and the
     // only place it is visible is here. Counted once, read per card.
-    const clashes = new Map();
-    days.filter((d) => d.date).forEach((d) => clashes.set(d.date, (clashes.get(d.date) || 0) + 1));
+    const clashes = dateClashes(days);
     days.forEach((d) => wrap.append(renderDay(d, clashes)));
   }
 
@@ -248,13 +217,6 @@ function dateInput(entry) {
   return input;
 }
 
-function dayWhen(entry, clashes) {
-  if (!entry.date) return 'No date yet';
-  const parts = [weekdayOf(entry.date), prettyDate(entry.date)].filter(Boolean);
-  const shared = clashes && clashes.get(entry.date) > 1;
-  return parts.join(' · ') + (shared ? ' · shared with another day' : '');
-}
-
 function dayTable(entry) {
   const table = h('table.scene-table.pl-table');
   const thead = h('thead');
@@ -293,7 +255,7 @@ function renderOrphanDays(orphans) {
   );
   orphans.forEach((o) => block.append(h('div.pl-orphan', { 'data-day': String(o.day) }, [
     h('span.pl-chip', { text: 'Day ' + o.day }),
-    h('span.pl-orphan-date', { text: [weekdayOf(o.date), prettyDate(o.date)].filter(Boolean).join(' · ') || o.date }),
+    h('span.pl-orphan-date', { text: orphanDateLabel(o) }),
     h('button.bd-icon.is-danger', {
       type: 'button', 'data-action': 'day-clear',
       title: 'Clear this date', 'aria-label': 'Clear the date on shoot day ' + o.day, text: '✕'
@@ -424,37 +386,12 @@ function renderLocation(loc) {
 }
 
 /* ---- the light on a recce card ---------------------------------
-   Sunrise, sunset and golden hour for each of this location's shoot
-   days that has a date, at THIS location's own map pin — and a warning
-   when a day's planned wrap falls after sunset while an exterior
-   daylight scene is still to shoot here (src/lib/recce-light.js, pure).
-   A location with no pin gets no times and no guess: the pin field is
-   a few rows down. The wrap is the one somebody wrote on the day's call
-   sheet or its DPR (the same two the call sheet and the shoot day
-   read); none typed, no warning. Derived on render, stored nowhere. */
-function lightFor(loc) {
-  const all = Scenes.listScenes();
-  const dates = Locations.listDayDates();
-  let sheets = [];
-  try { sheets = Contacts.listCallSheets(); } catch (e) { sheets = []; }
-  const byDay = new Map();
-  loc.scenes.forEach((s) => {
-    const d = Locations.shootDayOf(s);
-    if (!d) return;
-    if (!byDay.has(d)) byDay.set(d, []);
-    byDay.get(d).push(s);
-  });
-  const days = [...byDay.entries()].map(([day, scenes]) => ({ day, date: dates[String(day)] || '', scenes }));
-  const wrapOf = (day) => {
-    const sheet = Shoot.sheetsForDay(day, sheets, all)[0];
-    return DPR.laterWrap(sheet && sheet.wrap, DPR.getDPR(day).wrap);
-  };
-  return { out: recceLight({ recce: loc.recce, days, wrapOf }), days };
-}
-
+   The figures are locationLight() in src/lib/plan-model.js — derived on
+   render, stored nowhere. A location with no pin gets no times and no
+   guess: the pin field is a few rows down. */
 function renderLight(loc) {
   const wrap = h('div.pl-light');
-  const { out, days } = lightFor(loc);
+  const { out, days } = locationLight(loc);
   if (!days.length) return wrap;
   const anyDate = days.some((d) => d.date);
   if (!out.pinned) {
@@ -468,19 +405,14 @@ function renderLight(loc) {
   wrap.append(h('span.pl-rowlab', { text: 'Daylight' }));
   const list = h('ul.pl-light-list');
   out.rows.forEach((r) => {
-    const parts = ['Sunrise ' + (r.light.sunrise || '—'), 'Sunset ' + (r.light.sunset || '—')];
-    if (r.light.goldenPm) parts.push('Golden hour ' + r.light.goldenPm);
     const li = h('li.pl-light-row', { 'data-light-day': String(r.day) }, [
       h('strong', { text: 'Day ' + r.day + ' · ' + weekdayOf(r.date).slice(0, 3) + ' ' + prettyDate(r.date) }),
-      h('span.pl-light-times', { text: parts.join(' · ') + ' (' + r.light.zone + ')' })
+      h('span.pl-light-times', { text: lightTimes(r.light) })
     ]);
     if (r.flag) {
       li.append(h('p.pl-light-flag', {
         role: 'note',
-        text: 'Day ' + r.day + ' is planned to wrap at ' + r.flag.wrap + ', after sunset (' + r.flag.sunset + '). '
-          + (r.flag.scenes.length === 1 ? 'Exterior scene ' : 'Exterior scenes ') + r.flag.scenes.join(', ')
-          + ' here need' + (r.flag.scenes.length === 1 ? 's' : '') + ' daylight; place '
-          + (r.flag.scenes.length === 1 ? 'it' : 'them') + ' early in the day or move the wrap.'
+        text: lightFlagText(r.day, r.flag)
       }));
     }
     list.append(li);
@@ -641,12 +573,7 @@ function renderMediaItem(item, scenes) {
   return card;
 }
 
-/** Only an http(s) link is offered as clickable. Anything else — a
-    drive path, a note to self — is stored and shown, but this app is
-    not going to pretend it can open it. */
-function isOpenable(url) {
-  return /^https?:\/\/\S+$/i.test(String(url || '').trim());
-}
+/* Only an http(s) link is offered as clickable (isOpenable, plan-model.js). */
 function openLink(url) {
   const ok = isOpenable(url);
   const a = h('a.pl-media-open', {
@@ -660,8 +587,7 @@ function openLink(url) {
 
 function kindSelect(value) {
   const sel = h('select.pl-sel', { 'data-media-field': 'kind', 'aria-label': 'Kind of material' });
-  const options = MEDIA_KINDS.includes(value) || !value ? MEDIA_KINDS : [...MEDIA_KINDS, value];
-  options.forEach((k) => {
+  kindOptions(value).forEach((k) => {
     const opt = h('option', { value: k, text: k });
     if (k === value) opt.selected = true;
     sel.append(opt);
@@ -674,19 +600,13 @@ function kindSelect(value) {
     the breakdown renames it on every link that points at it. */
 function linkSelect(value, scenes) {
   const sel = h('select.pl-sel', { 'data-media-field': 'linkedTo', 'aria-label': 'What this belongs to' });
-  const seen = new Set();
-  const add = (val, label) => {
-    seen.add(val);
-    const opt = h('option', { value: val, text: label });
-    if (val === value) opt.selected = true;
-    sel.append(opt);
-  };
-  add('', 'Not linked');
-  Locations.locationIndex(scenes).forEach((l) => add(Locations.locationLink(l.name), l.name));
-  Locations.calendarDays(scenes).forEach((d) => add(Locations.dayLink(d.day), 'Day ' + d.day));
   // A token pointing at something that has gone stays selectable and
   // says so, rather than silently resetting the user's choice to none.
-  if (value && !seen.has(value)) add(value, (Locations.linkLabel(value, scenes) || value) + ' — no longer in the script');
+  linkOptions(value, scenes).forEach((o) => {
+    const opt = h('option', { value: o.value, text: o.label });
+    if (o.value === value) opt.selected = true;
+    sel.append(opt);
+  });
   return sel;
 }
 
@@ -761,15 +681,12 @@ const mediaIdOf = (el) => el.closest('[data-media]')?.dataset.media || '';
    empty value only once the field is left, and what depends on the
    dates — each card's weekday and clash note, the "dates set" count —
    is patched in place around it. */
-const isWholeDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && parseInt(v, 10) >= 1000;
-
 function commitDate(el, leaving) {
   const day = dayOf(el);
   if (!day) return;
   const value = el.value || '';
-  if (value ? !isWholeDate(value) : !leaving) return;
-  const current = Locations.calendarDays(Scenes.listScenes()).find((d) => d.day === day);
-  if (current && (current.date || '') === value) return;
+  if (!dateReady(value, leaving)) return;
+  if (dateUnchanged(day, value)) return;
   Locations.setDayDate(day, value);
   patchCalendarDates();
   patchLight();
@@ -777,13 +694,12 @@ function commitDate(el, leaving) {
 
 function patchCalendarDates() {
   const days = Locations.calendarDays(Scenes.listScenes());
-  const clashes = new Map();
-  days.filter((d) => d.date).forEach((d) => clashes.set(d.date, (clashes.get(d.date) || 0) + 1));
+  const clashes = dateClashes(days);
   days.forEach((d) => {
     const when = document.querySelector('.pl-day[data-day="' + d.day + '"] .pl-day-when');
     if (when) when.textContent = dayWhen(d, clashes);
   });
-  const dated = days.filter((d) => d.date).length;
+  const dated = datedCount(days);
   document.querySelectorAll('.bd-head [data-pl-dated]').forEach((st) => {
     st.querySelector('.k-stat-value').textContent = String(dated);
     st.querySelector('.k-stat-label').textContent = dated === 1 ? 'date set' : 'dates set';
@@ -835,9 +751,7 @@ delegate(document, 'change', '[data-recce-geo]', (e, el) => {
   const at = Geo.parseLatLng(text);
   if (!at) {
     el.setAttribute('aria-invalid', 'true');
-    el.title = /goo\.gl|maps\.app/i.test(text)
-      ? 'A short link carries no coordinates. Paste the long address-bar link.'
-      : 'No coordinates in that. Paste a Maps link, or two numbers like 13.0827, 80.2707.';
+    el.title = pinRefusal(text);
     return;
   }
   el.removeAttribute('aria-invalid'); el.removeAttribute('title');
@@ -873,8 +787,7 @@ delegate(document, 'click', '[data-action="media-add"]', () => {
 delegate(document, 'click', '[data-action="media-del"]', async (e, el) => {
   const id = mediaIdOf(el);
   if (!id) return;
-  const item = Locations.listMedia().find((m) => m.id === id);
-  const label = item && item.title ? ' "' + item.title + '"' : '';
+  const label = mediaLabel(id);
   if (!await askDanger('Remove the reference' + label + '? The file itself is wherever you keep it and is untouched.')) return;
   Locations.removeMedia(id);
   render();

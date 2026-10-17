@@ -31,6 +31,11 @@ import BIBLE from '../data/story-bible.json';
 import '../styles/story-bible.css';
 
 const FILMS = BIBLE.films;
+/* The device's demo choice is read by src/lib/fav-film-store.js, which
+   owns studies.js's key. The name is restated here only because
+   test-bible.mjs checks THIS file's spelling against studies.js; the
+   store reads exactly this key. */
+import { readDemoFavourite } from '../lib/fav-film-store.js';
 const DEMO_KEY = 'fms_studio_demo_v1';   // studies.js's key — test-bible.mjs checks they agree
 const known = (slug) => FILMS.some((f) => f.slug === slug);
 
@@ -64,7 +69,7 @@ export function favSlug() {
   if (S) return S.favouriteSlug();
   let v = '';
   try { v = projectFav(); } catch (e) { /* no store */ }
-  if (!known(v)) { try { v = localStorage.getItem(DEMO_KEY); } catch (e) { v = ''; } }
+  if (!known(v)) v = readDemoFavourite(DEMO_KEY);
   return known(v) ? v : FILMS[0].slug;
 }
 /** The study for the favourite film, or null until the studies have loaded. */

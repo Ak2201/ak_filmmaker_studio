@@ -34,22 +34,13 @@ import { ask, askDanger } from './dialog.js';
 import Billing, { fmtPaise, planName } from '../lib/billing.js';
 import { trialLength } from '../lib/trial-time.js';
 import { errorSentence } from '../lib/gate.js';
+import { customerCall } from '../lib/admin-api.js';
 
 /* ---- talking to the server ---------------------------------------- */
 
-export async function rpc(name, args) {
-  const c = window.StudioCloud;
-  if (!c || !c.ensureClient) throw new Error('Cloud is not available on this page.');
-  const sb = await c.ensureClient();
-  if (!sb) throw new Error('This build has no cloud project configured.');
-  const { data, error } = await sb.rpc(name, args);
-  if (error) {
-    const e = new Error(error.message || 'The server refused that.');
-    e.code = error.code;
-    throw e;
-  }
-  return data;
-}
+/* The call itself is src/lib/admin-api.js's (rule V2); this keeps the
+   name the drawer and the Support tab import. */
+export function rpc(name, args) { return customerCall(window.StudioCloud, name, args); }
 const isMissingFn = (e) => !!e && (e.code === 'PGRST202' || e.code === '42883' || /Could not find|does not exist/i.test(String(e.message || '')));
 const sentence = (e, fallback) => errorSentence(e, fallback || 'That did not work.');
 

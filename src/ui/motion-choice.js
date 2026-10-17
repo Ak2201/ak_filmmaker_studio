@@ -1,14 +1,11 @@
 /* Settings > Appearance > Reduce motion radio row. Kept out of motion-pref.js,
    which every page loads, so only settings pays for it. */
-const KEY = 'fms_studio_prefs_v1';
-const read = () => { try { const p = JSON.parse(localStorage.getItem(KEY) || '{}'); return p && typeof p === 'object' && !Array.isArray(p) ? p : {}; } catch (e) { return {}; } };
-const motionReduced = () => read().reduceMotion === true;
-/* Same merge-not-replace write as motion-pref.js; kept local so this file
-   shares no module with the core chunk (a shared module re-chunks pages). */
+/* The blob (fms_studio_prefs_v1) is src/lib/chrome-prefs.js's: a
+   merge-not-replace write, the same one motion-pref.js reads. */
+import { motionReduced, saveMotionPref } from '../lib/chrome-prefs.js';
+
 function setMotionPref(mode) {
-  const p = read();
-  if (mode === 'reduced') p.reduceMotion = true; else delete p.reduceMotion;
-  try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) { /* private mode */ }
+  saveMotionPref(mode);   // private mode: false, and the page still follows the click
   const root = document.documentElement;
   root.classList.toggle('ma-off', mode === 'reduced');
   if (mode === 'reduced') root.style.setProperty('--motion', '0'); else root.style.removeProperty('--motion');

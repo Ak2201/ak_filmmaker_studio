@@ -47,7 +47,7 @@ import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk an
 import PDF from '../lib/pdf.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Script from '../lib/script.js';
-import { matchScenes, describeMatch } from '../lib/screenplay-analysis.js';
+import { matchScenes } from '../lib/screenplay-analysis.js';
 import Shots, {
   SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, isLinkable
 } from '../lib/shots.js';
@@ -60,7 +60,13 @@ import { driveFileIdOf } from '../lib/drive.js';
 import { onDriveStatus } from '../lib/drive-sync.js';
 import { boardJobs, MAX_FRAMES } from '../lib/board-frames.js';
 import { driveImage, currentBoardGate, onDriveReconnect, wireDriveImages } from '../ui/drive-image.js';
-import { basicShotDivision, jobFor } from '../lib/shot-rules.js';
+import { basicShotDivision } from '../lib/shot-rules.js';
+import {
+  plural, slugOf, shotSpec, headerFigures, sceneSpread, COV_FILTERS, keepShot as keepFor,
+  scenePlan, pickMeta, pickedSummary, uncoveredIds, basicJobs, addBasicShots, basicNoneMatched,
+  basicDoneStatus, aiDraftStatus, removeShotIds, shotDeleteQuestion, boardDeleteQuestion,
+  frameBadge, rigLabel, framesIn, findEntry, restoreEntry, fileStem as stemOf
+} from '../lib/visualize-model.js';
 import {
   button, buttonGroup, badge, intExtBadge, todBadge, pageHeader, statStrip, notice, field as kitField,
   segmented, meter
@@ -74,14 +80,6 @@ const exporter = () => import('../lib/shotlist-export.js');
 
 const app = document.getElementById('app');
 
-const sizeLabel = (id) => (SHOT_SIZES.find((s) => s.id === id) || { id }).id;
-
-/** The slug line, read off the scene. Never stored on a shot. */
-const slugOf = (scene) =>
-  scene.intExt + '. ' + (scene.location || 'Location TBC') + ' — ' + scene.dayNight;
-
-const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-
 /* VIEW STATE for the coverage table and the board. None of it is
    stored: a filter, a density and an expanded strip are how you are
    looking at the work, not the work — and the idle-write assertion in
@@ -89,12 +87,7 @@ const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 let covFilter = 'all';            // 'all' | 'todo' | 'done'
 let covCompact = false;
 const boardOpen = new Set();      // scene ids whose phone strip shows every shot
-const COV_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'todo', label: 'To shoot' },
-  { value: 'done', label: 'In the can' }
-];
-const keepShot = (shot) => covFilter === 'all' || (covFilter === 'done' ? !!shot.done : !shot.done);
+const keepShot = (shot) => keepFor(covFilter, shot);
 
 /* ---- small builders -----------------------------------------
    The kit (src/ui/kit/) draws every control on this page. These are
@@ -153,28 +146,10 @@ function sceneIdent(scene) {
   ];
 }
 
-/** The most used lens across the shots that name one, or null. Derived. */
-function primaryLens(shots) {
-  const n = new Map();
-  for (const s of shots) {
-    const l = String(s.lens || '').trim();
-    if (l) n.set(l, (n.get(l) || 0) + 1);
-  }
-  let best = '', most = 0;
-  for (const [l, c] of n) if (c > most) { best = l; most = c; }
-  return best ? { lens: best, count: most } : null;
-}
-
 /* ---- header -------------------------------------------------- */
 function renderHeader(scenes, shots, frames, boards) {
-  // Only scenes that still exist count as covered. A shot left behind by
-  // a deleted scene would otherwise push the numerator past the
-  // denominator — "3 / 2 scenes covered", which is nonsense on a stat.
-  const live = new Set(scenes.map((s) => s.id));
-  const covered = new Set(shots.map((s) => s.sceneId).filter((id) => live.has(id))).size;
-  const refs = Shots.countEntries(boards);
-  const done = shots.filter((s) => s.done).length;
-  const lens = primaryLens(shots);
+  // Only scenes that still exist count as covered (headerFigures).
+  const { covered, refs, done, lens } = headerFigures(scenes, shots, boards);
   const head = pageHeader({
     class: 'bd-head vz-head',
     eyebrow: ['Visualise', 'the film seen before it is shot'],
@@ -278,7 +253,7 @@ function renderShotList(scenes, shots) {
     wrap.append(h('div.vz-tools.pdf-menu-host', {}, [
       h('span.vz-tools-lab', {
         text: shots.length + (shots.length === 1 ? ' setup' : ' setups')
-            + ' across ' + new Set(shots.map((s) => s.sceneId)).size
+            + ' across ' + sceneSpread(shots)
             + ' scenes'
       }),
       h('span.vz-tools-gap'),
@@ -600,9 +575,7 @@ let aiLastRun = [];            // shot ids from the most recent draft
 function shotsDrafted(made) {
   aiLastRun = made || [];
   aiError = '';
-  aiStatus = aiLastRun.length
-    ? plural(aiLastRun.length, 'shot', 'shots') + ' drafted by AI. Every one of them is marked and editable.'
-    : '';
+  aiStatus = aiDraftStatus(aiLastRun.length);
   preservingFocus(render);
 }
 
@@ -616,20 +589,7 @@ function shotsDrafted(made) {
 function aiScenePlan(scenes, shots) {
   const script = Script.loadScript();
   const match = matchScenes(scenes, script.elements);
-  const counted = new Map();
-  for (const s of shots) counted.set(s.sceneId, (counted.get(s.sceneId) || 0) + 1);
-
-  const rows = match.pairs.map(({ scene, slice, how }) => ({
-    scene, slice, how,
-    existing: counted.get(scene.id) || 0
-  }));
-  return {
-    hasScript: script.elements.length > 0,
-    pages: Script.pageCount(script.elements),
-    rows,
-    bySceneId: new Map(rows.map((r) => [r.scene.id, r])),
-    notes: describeMatch(match)
-  };
+  return scenePlan(script, match, shots);
 }
 
 function aiScenePicker(plan) {
@@ -645,11 +605,7 @@ function aiScenePicker(plan) {
       box,
       badge({ label: row.scene.number || '—', tag: true, class: 'vz-scene-no' }),
       h('span.vz-ai-pickslug', { text: slugOf(row.scene) }),
-      h('span.vz-ai-pickmeta', {
-        text: (!row.slice ? 'synopsis only'
-              : row.how === 'position' ? 'script matched by position, check it' : 'script matched')
-            + (row.existing ? ' · ' + plural(row.existing, 'shot', 'shots') + ' already' : '')
-      })
+      h('span.vz-ai-pickmeta', { text: pickMeta(row) })
     ]);
     list.append(label);
   }
@@ -704,7 +660,7 @@ function renderAI(scenes, shots) {
   if (aiPicked === null) {
     // First render: everything that has no shots yet. A scene that is
     // already covered is not silently re-covered.
-    aiPicked = new Set(plan.rows.filter((r) => !r.existing).map((r) => r.scene.id));
+    aiPicked = uncoveredIds(plan);
   }
 
   wrap.append(notice({
@@ -719,11 +675,7 @@ function renderAI(scenes, shots) {
   wrap.append(h('div.vz-ai-picks', {}, [
     button({ label: 'Tick all', size: 'sm', action: 'vz-ai-all' }),
     button({ label: 'Clear', size: 'sm', variant: 'ghost', action: 'vz-ai-none' }),
-    h('span.vz-ai-count', {
-      text: plural(aiPicked.size, 'scene', 'scenes') + ' selected · '
-          + formatEighths(scenes.filter((s) => aiPicked.has(s.id))
-            .reduce((a, s) => a + (Number(s.eighths) || 0), 0)) + ' pages'
-    })
+    h('span.vz-ai-count', { text: pickedSummary(scenes, aiPicked) })
   ]));
   if (plan.notes.length) wrap.append(h('p.bd-match-note', { text: plan.notes.join(' ') }));
   wrap.append(aiScenePicker(plan));
@@ -796,7 +748,7 @@ function renderStoryboard(scenes, shots, frames) {
     if (!group.shots.length) continue;
     const sid = group.scene ? group.scene.id : '';
     const open = boardOpen.has(sid);
-    const nFrames = group.shots.reduce((n, s) => n + (byShot.get(s.id) || []).length, 0);
+    const nFrames = framesIn(group.shots, byShot);
     const block = h('div.vz-bd-scene.k-panel');
     block.append(h('div.vz-scene-head.k-panel-head' + (group.scene ? '' : '.is-orphan'), {}, [
       ...(group.scene
@@ -916,7 +868,7 @@ function renderShotColumn(shot, frames) {
      lens and the move as a chip. Nothing is typed twice. */
   col.append(h('div.vz-shotcol-head', {}, [
     badge({ label: shot.number || '—', tag: true, class: 'vz-shotcol-no' }),
-    h('span.vz-shotcol-spec', { text: [sizeLabel(shot.size), String(shot.lens || '').trim()].filter(Boolean).join(' · ') }),
+    h('span.vz-shotcol-spec', { text: shotSpec(shot) }),
     shot.movement ? h('span.vz-shotcol-move.k-mono', { text: shot.movement }) : null,
     h('span.vz-shotcol-count', { text: plural(frames.length, 'frame', 'frames') })
   ]));
@@ -941,14 +893,14 @@ function renderFrame(frame, shot, i, total, cams) {
      read off the shot; none is invented for the picture. */
   const slate = h('div.vz-frame-slate');
   const cam = Shots.camOf(shot, cams || Shots.sceneCameras(shot.sceneId));
-  const rigLabel = [String(shot.rig || '').trim(), cam ? cam.name : ''].filter(Boolean).join(' · ');
+  const rig = rigLabel(shot, cam);
   // Element.append(null) prints "null" (CLAUDE.md row 22): filter first.
   slate.append(...[
-    h('span.vz-frame-badge.k-mono', { text: (shot.number || '—') + String.fromCharCode(97 + i) + '  ' + sizeLabel(shot.size) }),
+    h('span.vz-frame-badge.k-mono', { text: frameBadge(shot, i) }),
     shot.lens ? h('span.vz-frame-lens.k-mono', { text: shot.lens }) : null,
     refView(frame.ref),
     h('span.vz-frame-move.k-mono', { text: shot.movement }),
-    rigLabel ? h('span.vz-frame-rig.k-mono', { text: rigLabel }) : null
+    rig ? h('span.vz-frame-rig.k-mono', { text: rig }) : null
   ].filter(Boolean));
   card.append(slate);
 
@@ -1214,9 +1166,7 @@ function download(text, filename, mime) {
   URL.revokeObjectURL(url);
 }
 
-const fileStem = () =>
-  String(PDF.projectTitle() || 'shot-division')
-    .replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase() || 'shot_division';
+const fileStem = () => stemOf(PDF.projectTitle());
 
 /* ---- the shot division as a document -------------------------
    One path for both scopes. `scope` is a scene id or 'all', and
@@ -1297,32 +1247,19 @@ delegate(document, 'click', '[data-action="vz-basic-run"]', async () => {
   if (!chosen.length) { aiError = 'Tick at least one scene.'; render(); return; }
 
   const plan = aiScenePlan(scenes, []);
-  const jobs = chosen
-    .map((scene) => ({ scene, slice: (plan.bySceneId.get(scene.id) || {}).slice || null }))
-    .filter((r) => r.slice)
-    .map((r) => jobFor(r.scene, r.slice));
-  const noScript = chosen.length - jobs.length;
+  const { jobs, noScript } = basicJobs(chosen, plan);
 
   const result = await basicShotDivision(jobs);
-  const made = [];
-  for (const [sceneId, list] of result.byScene) {
-    for (const draft of list) {
-      made.push(Shots.addShot(sceneId, { ...draft, rules: true }).id);
-    }
-  }
+  const made = addBasicShots(result.byScene);
   aiLastRun = made;
 
   if (!made.length) {
     aiStatus = '';
-    aiError = 'The basic breakdown needs script pages to read, and the ticked '
-      + (chosen.length === 1 ? 'scene has' : 'scenes have') + ' none matched. Nothing was added.';
+    aiError = basicNoneMatched(chosen.length);
     render();
     return;
   }
-  aiStatus = plural(made.length, 'shot', 'shots') + ' drafted by the basic breakdown'
-    + ' across ' + plural(result.byScene.size, 'scene', 'scenes')
-    + (noScript ? ' — ' + plural(noScript, 'ticked scene', 'ticked scenes') + ' had no script to read' : '')
-    + '. Every one of them is marked Basic and editable.';
+  aiStatus = basicDoneStatus(made.length, result.byScene.size, noScript);
   aiError = '';
   render();
   say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');
@@ -1332,8 +1269,7 @@ delegate(document, 'click', '[data-action="vz-ai-undo"]', async () => {
   if (!aiLastRun.length) return;
   if (!await askDanger('Remove the ' + aiLastRun.length + ' shots from the last draft?\n\n'
     + 'Only those shots are removed. Anything you wrote or edited since is kept.')) return;
-  const ids = new Set(aiLastRun);
-  Shots.saveShots(Shots.listShots().filter((s) => !ids.has(s.id)));
+  removeShotIds(aiLastRun);
   aiLastRun = [];
   aiStatus = 'The last draft was removed.';
   render();
@@ -1395,11 +1331,7 @@ delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => { Shots.mo
 delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => { Shots.moveShot(shotIdOf(el),  1); render(); });
 delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
   const id = shotIdOf(el);
-  const shot = Shots.listShots().find((s) => s.id === id);
-  const frames = Shots.listFrames().filter((f) => f.shotId === id).length;
-  const label = shot && shot.description ? ' "' + shot.description.slice(0, 40) + '"' : '';
-  const also = frames ? ' Its ' + plural(frames, 'frame goes', 'frames go') + ' with it.' : '';
-  if (!await askDanger('Delete shot' + label + '?' + also)) return;
+  if (!await askDanger(shotDeleteQuestion(id))) return;
   Shots.removeShot(id);
   render();
 });
@@ -1429,7 +1361,7 @@ delegate(document, 'change', '[data-shot-field]', (e, el) => {
     // The board card's head names the lens; patched for the same reason.
     const shot = Shots.listShots().find((s) => s.id === id);
     const spec = document.querySelector('.vz-shotcol[data-shot="' + id + '"] .vz-shotcol-spec');
-    if (shot && spec) spec.textContent = [sizeLabel(shot.size), String(shot.lens || '').trim()].filter(Boolean).join(' · ');
+    if (shot && spec) spec.textContent = shotSpec(shot);
   }
 });
 
@@ -1479,10 +1411,7 @@ delegate(document, 'click', '[data-action="vz-board-up"]',   (e, el) => { Shots.
 delegate(document, 'click', '[data-action="vz-board-down"]', (e, el) => { Shots.moveBoard(boardIdOf(el),  1); render(); });
 delegate(document, 'click', '[data-action="vz-board-del"]',  async (e, el) => {
   const id = boardIdOf(el);
-  const board = Shots.listBoards().find((b) => b.id === id);
-  const n = board ? board.entries.length : 0;
-  const also = n ? ' Its ' + plural(n, 'reference goes', 'references go') + ' with it.' : '';
-  if (!await askDanger('Delete the board "' + ((board && board.name) || 'untitled') + '"?' + also)) return;
+  if (!await askDanger(boardDeleteQuestion(id))) return;
   Shots.removeBoard(id);
   render();
 });
@@ -1504,22 +1433,13 @@ delegate(document, 'click', '[data-action="vz-entry-add"]', (e, el) => {
 delegate(document, 'click', '[data-action="vz-entry-del"]', (e, el) => {
   const boardId = boardIdOf(el);
   const entryId = entryIdOf(el);
-  const board = Shots.listBoards().find((b) => b.id === boardId);
-  const at = board ? board.entries.findIndex((x) => x.id === entryId) : -1;
-  const gone = at >= 0 ? board.entries[at] : null;
+  const { at, gone } = findEntry(boardId, entryId);
   Shots.removeEntry(boardId, entryId);
   render('[data-board="' + CSS.escape(boardId || '') + '"] [data-action="vz-entry-add"]');
   if (!gone || !StudioUI.toast) return;
   StudioUI.toast('Reference removed' + (gone.title ? ': ' + gone.title : ''), {
     action: 'Undo',
-    onAction: () => {
-      const boards = Shots.listBoards();
-      const b = boards.find((x) => x.id === boardId);
-      if (!b || b.entries.some((x) => x.id === gone.id)) return;
-      b.entries.splice(Math.min(at, b.entries.length), 0, gone);
-      Shots.saveBoards(boards);
-      render();
-    }
+    onAction: () => { if (restoreEntry(boardId, gone, at)) render(); }
   });
 });
 delegate(document, 'change', '[data-entry-field]', (e, el) => {

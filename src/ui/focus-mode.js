@@ -56,9 +56,9 @@ import { revealTarget } from './tabs.js';
 import { isPaletteOpen } from './palette.js';
 import Goals, { GOAL_KINDS } from '../lib/write-goals.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
+import { readWritePrefs, writeWritePrefs } from '../lib/write-prefs.js';
 import '../styles/focus-mode.css';
 
-const PREFS_KEY = 'fms_write_prefs_v1';
 const SCRIPT_KEY = 'fms_script_v1';
 const MARKERS = [
   { id: 'frame', label: 'Frame' },
@@ -87,13 +87,7 @@ let pointerDown = false;
 let curRows = [];
 
 /* ---- per-device prefs, merged ------------------------------- */
-function readPrefsBlob() {
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    const o = raw ? JSON.parse(raw) : {};
-    return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
-  } catch (e) { return {}; }
-}
+const readPrefsBlob = () => readWritePrefs();   // fms_write_prefs_v1 (src/lib/write-prefs.js)
 function loadPrefs() {
   const o = readPrefsBlob();
   if (MARKERS.some((m) => m.id === o.focusMarker)) prefs.marker = o.focusMarker;
@@ -102,11 +96,7 @@ function loadPrefs() {
 }
 function savePrefs() {
   // READ, MERGE, WRITE — the format guide's fields ride along untouched.
-  const o = readPrefsBlob();
-  o.focusMarker = prefs.marker;
-  o.focusDim = prefs.dim;
-  o.focusNight = prefs.night;
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(o)); } catch (e) { /* private mode */ }
+  writeWritePrefs({ focusMarker: prefs.marker, focusDim: prefs.dim, focusNight: prefs.night });
 }
 
 /* ---- the entry button --------------------------------------- */

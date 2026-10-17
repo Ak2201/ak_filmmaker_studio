@@ -50,8 +50,8 @@
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
    ============================================================ */
+import { callPort } from './ports.js';
 import Store from './store.js';   // the open project's format (scene-story)
-import { registerTask as deskRegister } from '../ui/ai-desk.js';
 
 /* ---- the modules, loaded once ------------------------------- */
 let AI = null;            // ./ai.js
@@ -66,7 +66,7 @@ let Cov = null;           // ../ui/coverage.js (its coverageStore)
 let Extras = null;        // ./breakdown-extras.js
 let BoardM = null;        // ./board-frames.js (pure)
 let DriveM = null;        // ./drive.js
-let DriveImg = null;      // ../ui/drive-image.js (the live gate facts)
+let DriveImg = null;      // ./drive-board.js (the live gate facts)
 let readyP = null;
 
 function loadAll() {
@@ -74,9 +74,9 @@ function loadAll() {
     readyP = Promise.all([
       import('./ai.js'), import('./blueprint-context.js'), import('./story.js'),
       import('./scenes.js'), import('./script.js'), import('./shots.js'),
-      import('./screenplay-analysis.js'), import('./scriptgen.js'), import('../ui/coverage.js'),
+      import('./screenplay-analysis.js'), import('./scriptgen.js'), import('./coverage-store.js'),
       import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
-      import('../ui/drive-image.js')
+      import('./drive-board.js')
     ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di]) => {
       AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
       BoardM = bf; DriveM = dr; DriveImg = di;
@@ -1084,7 +1084,8 @@ const voiceTask = {
     let gone = 0, dup = 0;
     for (const it of selected || []) {
       if (!it || !it.elId || !it.rewrite) continue;
-      const r = Cov.addTake(it.elId, it.rewrite);
+      // The take goes onto the row the Coverage tab has open (a port it registers).
+      const r = callPort('addTake', 'gone', it.elId, it.rewrite);
       if (r === 'ok') added.push(it); else if (r === 'gone') gone++; else dup++;
     }
     if (!added.length) {
@@ -1092,7 +1093,7 @@ const voiceTask = {
     }
     call(c.after);
     return () => {
-      for (let i = added.length - 1; i >= 0; i--) Cov.removeTake(added[i].elId, added[i].rewrite);
+      for (let i = added.length - 1; i >= 0; i--) callPort('removeTake', undefined, added[i].elId, added[i].rewrite);
       call(c.after);
     };
   }
@@ -1504,7 +1505,8 @@ let registered = false;
     every model the tasks read is loaded — the Desk awaits this before
     it asks a task for its input. `register` defaults to the Desk's own
     registerTask. */
-export function registerAll(register = deskRegister) {
+export function registerAll(register) {
+  if (typeof register !== 'function') throw new TypeError('[ai-tasks] registerAll needs the Desk\'s registerTask');
   if (!registered) {
     registered = true;
     for (const t of ALL_TASKS) register(t);

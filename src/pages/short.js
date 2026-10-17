@@ -61,7 +61,16 @@ import '../lib/cloud.js';
 
 import { h, delegate } from '../lib/dom.js';
 import { readBlueprintFile } from '../lib/blueprint-file.js';
-import { parseNum, INR, USD } from '../lib/money.js';
+import {
+  STORAGE_KEY,
+  readBlueprintBlob, writeBlueprintBlob, readBlueprint, eraseShortBlueprint,
+  readShortPrefs, saveShortPrefs,
+  migrateFlatSceneKeys, IMPORT_RULES,
+  percent, badgeState, wordCount, scriptIsEmpty, scriptLength, parseRuntime, runtimeVerdict,
+  beatCurvePath, feeTotals, formatSpend, deadlineState,
+  buildFountain as fountainText, buildPlainText as plainText, fileSlug,
+  buildAIPromptText, parseInlineHandler
+} from '../lib/short-model.js';
 import * as Fest from '../lib/festivals.js';
 import {
   renderSteps, mountStepsLang, stageInfo, partLabel, watchReadouts
@@ -89,12 +98,8 @@ function themeTitle() {
 // ============================================================
 // CONSTANTS
 // ============================================================
-const STORAGE_KEY = 'fms_shortfilm_blueprint_v1';
-const PREF_KEY    = 'fms_shortfilm_prefs_v1';
-
-// Industry rule of thumb: one formatted screenplay page ≈ 210 words
-// ≈ one minute of screen time.
-const WORDS_PER_PAGE = 210;
+// The storage keys, the page arithmetic and the export text live in
+// src/lib/short-model.js; this file draws the page and wires it.
 
 // A returning user used to be able to end up with a scene table of
 // zero rows and no way to add one, because `[]` is truthy. These are
@@ -338,16 +343,7 @@ function renderBeatViz() {
 
   // Anchor the curve to both edges at the height of the first/last beat,
   // then run a quadratic through every beat dot.
-  const dots = BEATS.map((b) => [b.svg.dotX, b.svg.dotY]);
-  const pts = [[0, dots[0][1]], ...dots, [W, dots[dots.length - 1][1]]];
-  let d = `M ${pts[0][0]} ${pts[0][1]}`;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const [x, y] = pts[i];
-    const [nx, ny] = pts[i + 1];
-    d += ` Q ${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`;
-  }
-  d += ` L ${pts[pts.length - 1][0]} ${pts[pts.length - 1][1]}`;
-  svg.append(svgEl('path', { class: 'beat-line', d }));
+  svg.append(svgEl('path', { class: 'beat-line', d: beatCurvePath(BEATS, W) }));
 
   for (const b of BEATS) {
     const dot = svgEl('circle', {
@@ -402,26 +398,7 @@ function festStat(value, label, mod) {
   ]);
 }
 
-/** Totals are per currency. A $50 Sundance fee and a ₹500 IFFK fee
-    are not addable, and a tracker that adds them has invented a
-    number. parseNum comes from money.js — no second parser. */
-function feeTotals(list) {
-  const totals = { USD: 0, INR: 0 };
-  for (const s of list) {
-    const n = parseNum(s.fee);
-    if (!n) continue;
-    const cur = totals[s.currency] === undefined ? 'USD' : s.currency;
-    totals[cur] += n;
-  }
-  return totals;
-}
-
-function formatSpend(totals) {
-  const parts = [];
-  if (totals.USD) parts.push('$' + USD.format(Math.round(totals.USD)));
-  if (totals.INR) parts.push('₹' + INR.format(Math.round(totals.INR)));
-  return parts.length ? parts.join(' + ') : '—';
-}
+/* feeTotals / formatSpend (per-currency fee totals) are short-model.js's. */
 
 function renderTrackerAlerts(list, premiere) {
   const conflicts = Fest.premiereConflicts(list, premiere);
@@ -460,8 +437,7 @@ function renderTrackerRow(s) {
   const entry = Fest.catalogueEntry(s.festival);
   const approx = entry && entry.deadlineApprox;
   const days = s.deadline ? Fest.daysUntil(s.deadline) : null;
-  const overdue = s.status === 'target' && days !== null && days < 0;
-  const soon = s.status === 'target' && days !== null && days >= 0 && days <= 14;
+  const { overdue, soon } = deadlineState(s, days);
 
   const field = (label, node) => h('label.ft-field', {}, [
     h('span.ft-field-l', { text: label }), node
@@ -898,35 +874,20 @@ function renderFinalPage() {
 // live DOM (they need `unsafe-inline` and a global function of that
 // name), rewrite each one into the data-action it maps to.
 // ============================================================
-const ADOPTED_HANDLERS = {
-  addSceneMapRow:  'scenemap-add',
-  addScriptScene:  'script-add-scene',
-  rebuildPreview:  'preview-refresh',
-  copyFountain:    'copy-fountain',
-  copyPlainText:   'copy-plain',
-  clearScript:     'clear-script',
-  buildAIPrompt:   'ai-prompt',
-  copyAIPrompt:    'copy-ai-prompt',
-  exportFountain:  'export-fountain',
-  exportPlainTxt:  'export-txt',
-  printScriptOnly: 'print-script'
-};
-
+// The handler → data-action table and the parse: short-model.js.
 function adoptInlineHandlers(root) {
   root.querySelectorAll('[onclick], [onchange]').forEach((el) => {
     for (const attr of ['onclick', 'onchange']) {
       const src = el.getAttribute(attr);
       if (src == null) continue;
       el.removeAttribute(attr);
-      const m = String(src).trim().match(/^([A-Za-z_$][\w$]*)\s*\(\s*(.*?)\s*\)\s*;?$/);
-      const action = m && ADOPTED_HANDLERS[m[1]];
-      if (!action) {
+      const parsed = parseInlineHandler(src);
+      if (!parsed) {
         console.warn('[short] dropped an inline handler with no data-action mapping:', src);
         continue;
       }
-      el.setAttribute(attr === 'onclick' ? 'data-action' : 'data-change', action);
-      const arg = m[2].replace(/^['"]|['"]$/g, '');
-      if (arg) el.setAttribute('data-arg', arg);
+      el.setAttribute(attr === 'onclick' ? 'data-action' : 'data-change', parsed.action);
+      if (parsed.arg) el.setAttribute('data-arg', parsed.arg);
     }
   });
 }
@@ -1024,7 +985,7 @@ function saveData() {
     if (k) data[k] = li.classList.contains('done');
   });
   lastBlob = JSON.stringify(data);
-  localStorage.setItem(STORAGE_KEY, lastBlob);
+  writeBlueprintBlob(lastBlob);   // throws on a refused write, as setItem did
   savePending = false;
   flashStatus('●  saved');
   updateProgress();
@@ -1035,37 +996,14 @@ function saveData() {
   refreshBeatDots();
 }
 
-/**
- * Bug (a), the returning-user half: earlier builds wrote the scene map
- * twice, and because row numbers renumber on every reload the flat
- * `sm_<n>_<field>` keys piled up in storage forever. Lift whatever is
- * in them into rows, and drop them — the caller re-saves, so they never
- * come back.
- */
-function migrateFlatSceneKeys(data) {
-  const byIndex = new Map();
-  let found = false;
-  for (const key of Object.keys(data)) {
-    const m = key.match(/^sm_(\d+)_(.+)$/);
-    if (!m || !SCENE_FIELDS.includes(m[2])) continue;
-    found = true;
-    const idx = parseInt(m[1], 10);
-    if (!byIndex.has(idx)) byIndex.set(idx, {});
-    byIndex.get(idx)[m[2]] = data[key];
-    delete data[key];
-  }
-  if (!found) return null;
-  const rows = [...byIndex.keys()].sort((a, b) => a - b)
-    .map((i) => byIndex.get(i))
-    .filter((row) => Object.values(row).some((v) => String(v || '').trim()));
-  return { rows };
-}
-
+/* migrateFlatSceneKeys() (bug (a), the flat sm_<n>_<field> keys) is
+   short-model.js's; loadData() re-saves the cleaned blob. */
 function loadData() {
   let data = {};
-  try { lastBlob = localStorage.getItem(STORAGE_KEY) || ''; data = JSON.parse(lastBlob || '{}'); } catch (e) {}
+  lastBlob = readBlueprintBlob();
+  try { data = JSON.parse(lastBlob || '{}'); } catch (e) {}
 
-  const migrated = migrateFlatSceneKeys(data);
+  const migrated = migrateFlatSceneKeys(data, SCENE_FIELDS);
 
   /* REPLACE, NOT MERGE: a key the blob does not carry is an EMPTY
      field, so it goes back to its markup default. The old loop skipped
@@ -1132,8 +1070,7 @@ let savePending = false;
 function watchBlobElsewhere() {
   const check = () => {
     if (savePending) return;
-    let now = '';
-    try { now = localStorage.getItem(STORAGE_KEY) || ''; } catch (e) { return; }
+    const now = readBlueprintBlob();
     if (!now || now === lastBlob) return;
     document.getElementById('sceneMapBody').innerHTML = '';
     document.getElementById('scriptScenes').innerHTML = '';
@@ -1184,7 +1121,7 @@ function updateProgress() {
     total++;
     if (li.classList.contains('done')) filled++;
   });
-  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  const pct = percent(filled, total);
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressText').textContent = pct + '%';
 }
@@ -1204,11 +1141,9 @@ function updateAllBadges() {
       if (li.classList.contains('done')) filled++;
     });
     badge.classList.remove('empty', 'partial', 'complete');
-    if (total === 0) { badge.classList.add('empty'); badge.textContent = 'EMPTY'; return; }
-    const ratio = filled / total;
-    if (ratio === 0) { badge.classList.add('empty'); badge.textContent = 'EMPTY'; }
-    else if (ratio < 1) { badge.classList.add('partial'); badge.textContent = 'IN PROGRESS · ' + Math.round(ratio * 100) + '%'; }
-    else { badge.classList.add('complete'); badge.textContent = 'COMPLETE'; }
+    const st = badgeState(filled, total);
+    badge.classList.add(st.cls);
+    badge.textContent = st.text;
   });
 }
 
@@ -1219,7 +1154,7 @@ function updateLoglineCount() {
   const el = document.querySelector('[data-key="s2_log_final"]');
   const out = document.getElementById('logline-count');
   if (!el || !out) return;
-  const words = (el.value || '').trim().split(/\s+/).filter(Boolean).length;
+  const words = wordCount(el.value);
   out.textContent = words + ' / 25 words';
   out.style.color = words > 25 ? 'var(--warn)' : 'var(--ink-muted)';
 }
@@ -1390,7 +1325,7 @@ async function clearScript() {
 function rebuildPreview(scenes = collectScriptData()) {
   const preview = document.getElementById('scriptPreview');
   if (!preview) return;
-  if (scenes.length === 0 || (scenes.length === 1 && !scenes[0].slug && !scenes[0].action)) {
+  if (scriptIsEmpty(scenes)) {
     preview.innerHTML = '<div class="sp-empty">Add scenes and dialogue in Step 7 to see the formatted preview here.</div>';
     return;
   }
@@ -1417,73 +1352,22 @@ function rebuildPreview(scenes = collectScriptData()) {
 }
 
 function updatePageCounter(scenes = collectScriptData()) {
-  let words = 0;
-  scenes.forEach((scene) => {
-    if (scene.slug) words += scene.slug.split(/\s+/).filter(Boolean).length;
-    if (scene.action) words += scene.action.split(/\s+/).filter(Boolean).length;
-    scene.dialogues.forEach((d) => {
-      if (d.character) words += 2; // weighted higher (centered, takes a line)
-      if (d.line) words += d.line.split(/\s+/).filter(Boolean).length;
-    });
-  });
-  // ~210 words per formatted page (industry rule of thumb)
-  const pages = Math.round((words / WORDS_PER_PAGE) * 10) / 10;
-  const minutes = Math.floor(pages);
-  const seconds = Math.round((pages - minutes) * 60);
+  // ~210 words per formatted page (industry rule of thumb) — short-model.js
+  const { words, pages, minutes, seconds } = scriptLength(scenes);
   document.getElementById('totalWords').textContent = words.toLocaleString();
   document.getElementById('totalPages').textContent = pages.toFixed(1);
   document.getElementById('totalRuntime').textContent = minutes + ':' + String(seconds).padStart(2, '0');
   const status = document.getElementById('runtimeStatus');
   const target = parseRuntime(document.querySelector('[data-key="meta_runtime"]')?.value || '');
-  if (target && pages > 0) {
-    const diff = pages - target;
-    if (Math.abs(diff) < 1) { status.textContent = 'on target'; status.className = 'pc-status ok'; }
-    else if (diff > 0) { status.textContent = 'long by ' + diff.toFixed(1) + ' pages'; status.className = 'pc-status warn'; }
-    else { status.textContent = 'short by ' + Math.abs(diff).toFixed(1) + ' pages'; status.className = 'pc-status warn'; }
-  } else if (pages > 30) {
-    status.textContent = 'feature territory'; status.className = 'pc-status warn';
-  } else {
-    status.textContent = pages > 0 ? 'enter target runtime' : 'enter scenes below'; status.className = 'pc-status';
-  }
-}
-
-function parseRuntime(s) {
-  if (!s) return null;
-  const m = s.match(/(\d+(?:\.\d+)?)/);
-  return m ? parseFloat(m[1]) : null;
+  const verdict = runtimeVerdict(pages, target);
+  status.textContent = verdict.text; status.className = verdict.cls;
 }
 
 // ============================================================
 // FOUNTAIN / PLAIN TEXT EXPORT
 // ============================================================
 function buildFountain() {
-  const data = collectFieldData();
-  const scenes = collectScriptData();
-  let out = '';
-  out += 'Title: ' + (data.meta_title || 'Untitled Short') + '\n';
-  out += 'Author: ' + (data.meta_writer || '') + '\n';
-  if (data.meta_started) out += 'Draft date: ' + data.meta_started + '\n';
-  out += '\n';
-  out += '====\n\n';
-  out += 'FADE IN:\n\n';
-  scenes.forEach((scene) => {
-    if (scene.slug) out += scene.slug.toUpperCase().trim() + '\n\n';
-    if (scene.action) out += scene.action.trim() + '\n\n';
-    scene.dialogues.forEach((d) => {
-      if (!d.character && !d.line) return;
-      if (d.character) out += d.character.toUpperCase().trim() + '\n';
-      if (d.parenthetical) {
-        let p = d.parenthetical.trim();
-        if (!p.startsWith('(')) p = '(' + p;
-        if (!p.endsWith(')')) p = p + ')';
-        out += p + '\n';
-      }
-      if (d.line) out += d.line.trim() + '\n';
-      out += '\n';
-    });
-  });
-  out += 'FADE OUT.\n';
-  return out;
+  return fountainText(collectFieldData(), collectScriptData());
 }
 
 function downloadFile(text, filename, type) {
@@ -1494,8 +1378,7 @@ function downloadFile(text, filename, type) {
   URL.revokeObjectURL(url);
 }
 function slugTitle() {
-  const data = collectFieldData();
-  return (data.meta_title || 'short').replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'short';
+  return fileSlug(collectFieldData().meta_title);
 }
 
 function exportFountain() {
@@ -1507,26 +1390,7 @@ function copyFountain() {
 }
 
 function buildPlainText() {
-  const data = collectFieldData();
-  const scenes = collectScriptData();
-  let out = '';
-  out += (data.meta_title || 'UNTITLED').toUpperCase() + '\n';
-  if (data.meta_writer) out += 'by ' + data.meta_writer + '\n';
-  out += '\n';
-  out += 'FADE IN:\n\n';
-  scenes.forEach((scene) => {
-    if (scene.slug) out += scene.slug.toUpperCase().trim() + '\n\n';
-    if (scene.action) out += scene.action.trim() + '\n\n';
-    scene.dialogues.forEach((d) => {
-      if (!d.character && !d.line) return;
-      if (d.character) out += '                    ' + d.character.toUpperCase().trim() + '\n';
-      if (d.parenthetical) out += '              (' + d.parenthetical.replace(/^\(|\)$/g, '').trim() + ')\n';
-      if (d.line) out += '          ' + d.line.trim() + '\n';
-      out += '\n';
-    });
-  });
-  out += 'FADE OUT.\n';
-  return out;
+  return plainText(collectFieldData(), collectScriptData());
 }
 function copyPlainText() { copyToClipboard(buildPlainText(), '●  plain text copied'); }
 function exportPlainTxt() {
@@ -1551,93 +1415,10 @@ function copyToClipboard(text, msg) {
 // ============================================================
 function buildAIPrompt(kind) {
   const d = collectFieldData();
-  const fb = (v, def) => (v && v.length ? v : def || '[fill in the blueprint]');
-  let prompt = '';
-
-  if (kind === 'scene') {
-    prompt = `You are a screenwriter helping me write a single scene of a short film. Write ONE scene, in standard screenplay format, ~1 page (~210 words).
-
-PROJECT
-Title: ${fb(d.meta_title, 'Untitled Short')}
-Logline: ${fb(d.s2_log_final, fb(d.s2_log2, d.s2_log1))}
-Theme: The film argues that — ${fb(d.b5_image, 'see beat 5 / final image')}.
-
-PROTAGONIST
-Name: ${fb(d.s3_name)}
-Want: ${fb(d.s3_want)}
-Obstacle: ${fb(d.s3_obstacle)}
-
-WORLD
-Location: ${fb(d.s5_loc)}
-Time/weather: ${fb(d.s5_time)}
-Sensory anchors: ${fb(d.s5_anchors)}
-Rules of the world: ${fb(d.s5_rules)}
-
-THE SCENE TO WRITE
-[Describe the specific scene you want generated here. E.g. "the moment the protagonist first realizes their daughter doesn't trust them — set in their kitchen, mid-afternoon."]
-
-CONSTRAINTS
-- Standard screenplay format (slug line, action, dialogue).
-- Present tense, third person.
-- No camera directions unless essential.
-- Keep dialogue spare — show, don't tell.
-- ~1 page total (max 250 words).
-- End the scene on a different value-charge than it started (positive→negative or vice versa).
-- Match the tone of the world: ${fb(d.s5_time, 'realist')}.
-
-Write only the scene. No commentary.`;
-  } else if (kind === 'dialogue') {
-    prompt = `You are a screenwriter helping me find the right dialogue for a moment in a short film. Write 4–8 lines of exchange between two characters.
-
-PROJECT
-Title: ${fb(d.meta_title, 'Untitled Short')}
-Logline: ${fb(d.s2_log_final)}
-
-PROTAGONIST
-${fb(d.s3_name)} — wants ${fb(d.s3_want)}, blocked by ${fb(d.s3_obstacle)}.
-
-OTHER CHARACTER
-[Describe — name, relationship, what THEY want in this moment.]
-
-THE MOMENT
-[Describe the dramatic situation: what just happened, what's at stake, what each character is trying to get from the other.]
-
-CONSTRAINTS
-- Each line under 15 words.
-- Subtext over text — they say one thing, mean another.
-- No exposition, no "as you know" dialogue.
-- One of them lies; one of them notices.
-- End on a beat — a silence, a look, a small action.
-- Standard screenplay format (CHARACTER NAME above line).
-
-Write only the dialogue exchange. No commentary.`;
-  } else { // feedback
-    prompt = `You are a script editor giving structural feedback on a short film. Read the script below and answer the FOUR questions at the end.
-
-PROJECT
-Title: ${fb(d.meta_title, 'Untitled Short')}
-Logline: ${fb(d.s2_log_final)}
-Target runtime: ${fb(d.meta_runtime, '~10 min')}
-Protagonist's want: ${fb(d.s3_want)}
-The 5 beats:
-1. Setup — ${fb(d.b1_setup)}
-2. Disturbance — ${fb(d.b2_disturb)}
-3. Escalation — ${fb(d.b3_escalate)}
-4. Turn — ${fb(d.b4_turn)}
-5. Image — ${fb(d.b5_image)}
-
-SCRIPT
-${buildPlainText()}
-
-QUESTIONS
-1. Does the script earn its runtime, or does any scene stall?
-2. Is the protagonist's want concrete and visible throughout?
-3. Does the turn (Beat 4) actually change something, or is it just a reveal?
-4. Does the final image (last frame) hold the meaning of the whole film?
-
-Be specific. Quote scenes by their slug lines. Be honest, not nice.`;
-  }
-  document.getElementById('aiPrompt').value = prompt;
+  /* Only the feedback prompt carries the script; build it only then,
+     as the template literal used to. */
+  const script = (kind === 'scene' || kind === 'dialogue') ? '' : buildPlainText();
+  document.getElementById('aiPrompt').value = buildAIPromptText(kind, d, script);
 }
 
 function copyAIPrompt() {
@@ -1661,8 +1442,8 @@ function collectFieldData() {
 
 function exportData() {
   saveData();
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  const t = (data.meta_title || 'short').replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'short';
+  const data = readBlueprint();
+  const t = fileSlug(data.meta_title);
   downloadFile(JSON.stringify(data, null, 2), 'fms_short_' + t + '.json', 'application/json');
   flashStatus('●  exported');
 }
@@ -1672,7 +1453,7 @@ function exportData() {
    page setup, the running band and a filename with the film in it. */
 function exportPDF() {
   saveData();
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  const data = readBlueprint();
   const title = data.meta_title || 'Untitled short';
   PDF.exportPDF({
     scope: 'blueprint',
@@ -1698,11 +1479,7 @@ function handleImport(e) {
     const keys = new Set(Array.from(document.querySelectorAll('[data-key]'), (el) => el.getAttribute('data-key')));
     const res = readBlueprintFile(String(ev.target.result || ''), {
       keys,
-      extraKey: (k) => k === '_sceneMap' || k === '_script' || /^sm_\d+_/.test(k),
-      allowNonScalar: (k, v) => (k === '_sceneMap' || k === '_script') && Array.isArray(v),
-      label: 'Short Film Blueprint',
-      otherLabel: 'Feature Blueprint',
-      looksOther: (d) => Object.keys(d).some((k) => /^(sl|shot|cast|loc)_\d+_/.test(k))
+      ...IMPORT_RULES
     });
     if (!res.ok) {
       flashStatus('●  import refused');
@@ -1715,7 +1492,7 @@ function handleImport(e) {
                    'Fields the file does not contain will be emptied. Your festival tracker is not touched. ' +
                    'Export first if you want to keep what is here now.')) return;
       clearTimeout(saveTimer);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(res.data));
+      writeBlueprintBlob(JSON.stringify(res.data));
       // Clear DOM and reload
       document.getElementById('sceneMapBody').innerHTML = '';
       document.getElementById('scriptScenes').innerHTML = '';
@@ -1741,8 +1518,7 @@ async function resetData() {
      dialog that has to be typed answers both. */
   if (!await askDanger('Erase ALL your data for this short — every field, the scene map, the script and the festival tracker — and start fresh? This cannot be undone unless you exported JSON first.', { typeToConfirm: 'ERASE', confirm: 'Erase everything' })) return;
   clearTimeout(saveTimer);
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(Fest.FESTIVALS_KEY);
+  eraseShortBlueprint();   // the blob and fms_festivals_v1, this project only
   Store.flushStorage().then(() => location.reload());
 }
 
@@ -1764,7 +1540,7 @@ function toggleDark() {
   if (StudioUI && StudioUI.cycleTheme) { StudioUI.cycleTheme(); return; }
   document.body.classList.toggle('dark');
   const dark = document.body.classList.contains('dark');
-  localStorage.setItem(PREF_KEY, JSON.stringify({ dark }));
+  saveShortPrefs({ dark });
   document.getElementById('darkBtn').textContent = dark ? '☀' : '◐';
 }
 
@@ -1772,7 +1548,7 @@ function loadPrefs() {
   // Legacy path only — StudioUI's loadTheme() runs after this and is the
   // authority whenever the shared chrome is present.
   try {
-    const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+    const p = readShortPrefs();
     if (p.dark) document.body.classList.add('dark');
     document.getElementById('darkBtn').textContent =
       document.body.classList.contains('dark') ? '☀' : '◐';

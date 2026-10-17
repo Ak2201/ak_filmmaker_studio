@@ -57,7 +57,7 @@ import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry, st
 import { renderTrialBand } from './trial-band.js';
 import { mountStatusBar, syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
-import { markLocked, allowed } from '../lib/plan-gate.js';
+import { markLocked, allowed, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { BRAND } from '../lib/brand.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
@@ -187,7 +187,7 @@ const GUIDE_HIDDEN = true;
    link whose lead is hidden would disappear with it). */
 function leadOf(phase) {
   if (phase && phase.home && phase.home.href) return firstModuleOf(phase);
-  const on = ((phase && phase.modules) || []).find((m) => m.status === 'built' && m.href && allowed(m.id));
+  const on = ((phase && phase.modules) || []).find((m) => m.status === 'built' && m.href && !isDisabledEverywhere(m.id) && allowed(m.id));
   return on || firstModuleOf(phase);
 }
 
@@ -557,7 +557,7 @@ function buildRail() {
      straight to the workspace, so the Dashboard has no rail entry; the Library
      shelf shows only while one of its modules is still enabled in the plan matrix. */
   const gl = globals().filter((g) => g.id !== 'dashboard'
-    && !(g.id === 'library' && Array.isArray(g.modules) && g.modules.length && !g.modules.some((m) => allowed(m.id))));
+    && !(g.id === 'library' && Array.isArray(g.modules) && g.modules.length && !g.modules.some((m) => !isDisabledEverywhere(m.id) && allowed(m.id))));
   /* Home and Dashboard lead; the stages follow them; the rest of the
      app-scope entries (Library, Settings, Purchase, Console) close the
      column. The split is by position in navigation.json, not by name:
@@ -606,7 +606,7 @@ function buildRailStages() {
   phases().forEach((p) => {
     /* The first module still enabled: a disabled one is hidden by plan-gate,
        which would take the whole stage link with it. */
-    const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href && allowed(m.id));
+    const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href && !isDisabledEverywhere(m.id));
     if (!first) return;
     /* The rail is 64px wide, so a stage's blurb and its modules'
        plain-English purposes (navigation.json) ride on the link too:

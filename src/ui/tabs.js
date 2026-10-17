@@ -130,7 +130,7 @@ function findTabs() {
   const byParent = new Map();
   for (const s of all) { const p = s.parentElement; byParent.set(p, (byParent.get(p) || []).concat(s)); }
   for (const [parent, list] of byParent) if (list.length >= 2) return { parent, sections: list, out };
-  return { parent: null, sections: [], out };
+  return { parent: null, sections: [], out, rest: all };
 }
 
 /* The strip tabs.js owns. A menu somebody else built from an explicit
@@ -285,9 +285,14 @@ function watchHeight(strip) {
 
 export function apply() {
   if (typeof document === 'undefined' || !TABBED.has(page())) return;
-  const { parent, sections, out } = findTabs();
+  const { parent, sections, out, rest } = findTabs();
   const old = document.querySelector(OWN);
-  if (!parent) { if (old) old.remove(); signature = ''; document.querySelectorAll('.tabs-has-side').forEach((p) => p.classList.remove('tabs-has-side')); return; }
+  if (!parent) {
+    /* Fewer than two tabs left (a module went off): the one that remains
+       may still be hidden from when it was a panel, so open it. Only a
+       section show() itself hid is touched. */
+    for (const s of rest || []) if (s.hidden && s.getAttribute('role') === 'tabpanel') s.hidden = false;
+    if (old) old.remove(); signature = ''; document.querySelectorAll('.tabs-has-side').forEach((p) => p.classList.remove('tabs-has-side')); return; }
   const groups = itemsFromSections(sections, labelFor, page());
   const sig = JSON.stringify(groups);
   const fromHash = currentFromHash(sections);
@@ -394,7 +399,11 @@ export function installTabs() {
   window.addEventListener('hashchange', () => {
     const { sections } = findTabs();
     const id = currentFromHash(sections);
-    if (id && id !== active) show(sections, id, { setHash: false, animate: true });
+    /* #guide names an ignored section, so no tab matches: behave like the
+       load path and show() with the guide open (the panels give way to it). */
+    if (hashTab() === 'guide' && sections.length) show(sections, active || sections[0].id, { setHash: false });
+    else if (id && id !== active) show(sections, id, { setHash: false, animate: true });
+    else if (sections.length && sections.every((s) => s.hidden)) show(sections, active || sections[0].id, { setHash: false });
   });
   /* ONLY MUTATIONS THAT CAN CHANGE THE SET OF TABS. The observer has to
      watch the whole subtree — settings and admin replace <main>, other

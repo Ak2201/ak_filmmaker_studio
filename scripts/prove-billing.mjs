@@ -369,12 +369,13 @@ try {
     ok(await A.page.isChecked('input[name="free:sample_only"]') && !(await A.page.isChecked('input[name="free:new_projects"]')) && await A.page.isChecked('input[name="pro:new_projects"]'), 'the free tier reads sample only, no new projects; pro reads everything');
     ok(await A.page.isChecked('input[name="free:story-beats"]'), 'a module nobody has touched is ticked (missing = allowed)');
     ok(/shares a page with .*Elements/.test(await A.page.textContent('tr[data-feature="breakdowns"]')), 'a module that shares a page says so, and with whom');
-    // story.html hosts three modules; a page locks only when all of its modules are unticked.
-    for (const id of ['story-beats', 'idea-vault', 'pitch-deck']) await A.page.uncheck(`input[name="free:${id}"]`);
+    // story.html hosts story-beats (a real plan row) and pitch-deck (off for every plan, so never a plan row);
+    // a page locks when every module that CAN be on a plan is unticked.
+    for (const id of ['story-beats']) await A.page.uncheck(`input[name="free:${id}"]`);
     await A.page.click('#features button[type="submit"]');
     await A.page.waitForSelector('#features .ba-saved', { timeout: 8000 });
     const free = F.db.plans.find((p) => p.id === 'free');
-    ok(free.features['story-beats'] === false && free.features['idea-vault'] === false && free.features.sample_only === true && free.features['scene-list'] === true, 'admin_set_plan received the whole map: the three unticked false, sample_only kept, the rest true');
+    ok(free.features['story-beats'] === false && free.features.sample_only === true && free.features['scene-list'] === true, 'admin_set_plan received the whole map: story-beats unticked false, sample_only kept, the rest true');
     ok(!(await A.page.$('.pg-lock')), 'the console itself is never locked (it is not a module page)');
     allErrors.push(...A.errors); await A.ctx.close();
 
@@ -400,7 +401,7 @@ try {
     ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no NEW PROJECT control is offered');
     ok(!(await amy.page.$('#projectsGrid .new-card')), 'and no new-project card in the grid');
     await amy.page.goto(BASE + 'story.html');
-    await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (all three of its modules unticked for Free) shows the plan lock'), () => ok(false, 'story.html (all three of its modules unticked for Free) shows the plan lock'));
+    await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (its one plan row unticked for Free) shows the plan lock'), () => ok(false, 'story.html (its one plan row unticked for Free) shows the plan lock'));
     ok(/Not part of the free trial/.test(await amy.page.textContent('.pg-lock')), 'saying it is not part of the free trial (no "Free plan" is named)');
     ok((await amy.page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility)) === 'hidden', 'with the page veiled underneath, not removed');
     await amy.page.goto(BASE + 'breakdown.html');

@@ -28,6 +28,26 @@ eq(J.suggestNext(st), { id: 'story', why: 'start' }, 'empty → suggest the firs
 eq(J.lastWorked(st), null, 'nothing to resume');
 ok(by(st, 'preprod').start && by(st, 'screenplay').start, 'the two script-in-hand starts exist');
 
+/* ---- the stage lead agrees with the plan gate's isDisabledEverywhere ---- */
+{
+  const fs = await import('node:fs');
+  const nav = JSON.parse(fs.readFileSync(new URL('../src/data/navigation.json', import.meta.url), 'utf8'));
+  const gp = fs.readFileSync(new URL('../src/lib/plan-gate.js', import.meta.url), 'utf8');
+  const blk = gp.slice(gp.indexOf('export const OFF_BY_DEFAULT'), gp.indexOf(';', gp.indexOf('export const OFF_BY_DEFAULT')));
+  const off = [...blk.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]);
+  globalThis.window = { StudioPlan: { isDisabledEverywhere: (id) => off.includes(id), allowed: () => true } };
+  for (const ph of nav.phases) {
+    const lead = J.leadModule(ph);
+    const live = ph.modules.some((m) => m.status === 'built' && !off.includes(m.id));
+    if (live) {
+      ok(!!lead && !off.includes(lead.id), 'stage "' + ph.id + '" leads with a module that is not off for every plan (' + (lead && lead.id) + ')');
+      if (!(ph.home && ph.home.href)) eq(J.stageHref(ph.id), lead.href, 'stageHref("' + ph.id + '") opens the lead');
+    } else ok(lead === null, 'a stage with every module off has no lead (' + ph.id + ')');
+  }
+  eq(J.stageStates({ id: 'p1', title: 'T', format: 'feature' }).some((s) => s.locked), false, 'no stage reads locked while allowed() says yes');
+  delete globalThis.window;
+}
+
 /* ---- only a story ---------------------------------------------- */
 mem.clear();
 mem.set('fms_story_v1', JSON.stringify({ v: 1, logline: 'A boy finds a dragon.', source: 'Once upon a time there was a dragon.', updatedAt: 1700000000000 }));

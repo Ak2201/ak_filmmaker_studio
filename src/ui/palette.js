@@ -321,7 +321,7 @@ function projectItems() {
       group: 'Projects',
       icon: '◳',
       keywords: ['project', 'switch', 'open film'],
-      run: () => { switchProject(p.id); }   // the one switch: sets the project, lands on the dashboard (project-switcher.js)
+      run: () => { switchProject(p.id); }   // the one switch: sets the project, lands on the screenplay (project-switcher.js)
     }));
 }
 

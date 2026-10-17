@@ -2586,10 +2586,11 @@ let fragments = { checked: false };
         const px = (v) => parseFloat(v) || 0;
         const cover = px(cs.getPropertyValue('--sh-cover-h')) || px(cs.getPropertyValue('--sh-chrome-h'));
         const r = el.getBoundingClientRect();
-        /* A section switched off for EVERY plan (data-tab-off) or kept in the
-           DOM only for its keys (data-tab-ignore, the stage guide) is hidden
-           by design; its link is hidden with it. Not a broken anchor. */
-        const byDesign = !!el.closest('[data-tab-off], [data-tab-ignore]');
+        /* A section switched off for EVERY plan (data-tab-off) is hidden by
+           design; its link is hidden with it. Not a broken anchor. The stage
+           guide (data-tab-ignore) is NOT exempt: the hash has just been
+           navigated, so a #guide that stays hidden is a broken deep link. */
+        const byDesign = !!el.closest('[data-tab-off]');
         const hidden = !byDesign && (!!el.closest('[hidden]') || (r.width === 0 && r.height === 0));
         return { byDesign, top: Math.round(r.top), cover: Math.round(cover), vh: innerHeight, hidden, scrollY: Math.round(scrollY) };
       }, frag);

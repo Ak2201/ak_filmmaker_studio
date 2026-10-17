@@ -47,6 +47,18 @@ const gateOff = [...offBlock.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]).sort();
 const matrixOff = matrix.features.filter((f) => f.kind === 'module' && !f.plans.length).map((f) => f.key).sort();
 ok('plan-gate OFF_BY_DEFAULT = matrix modules with plans: [] [' + gateOff + '] vs [' + matrixOff + ']', gateOff.join() === matrixOff.join());
 
+/* Every phase keeps at least one module that is not off for every plan,
+   except the stages listed here, which the owner has switched off whole
+   (Post-production: edit-log and deliverables). A stage whose modules are
+   ALL off has nothing to open, so a NEW all-off stage fails this, and so
+   does a listed one that comes back (remove it from the list then). */
+const ALL_OFF_STAGES = ['post'];
+for (const ph of nav.phases) {
+  const live = (ph.modules || []).filter((m) => m.status === 'built' && !gateOff.includes(m.id));
+  if (ALL_OFF_STAGES.includes(ph.id)) ok('phase "' + ph.id + '" is listed as all-off and has no live module', live.length === 0);
+  else ok('phase "' + ph.id + '" keeps a built module that is not in OFF_BY_DEFAULT [' + live.map((m) => m.id) + ']', live.length > 0);
+}
+
 /* SUPERSETS: each paid plan includes everything the one below it has. */
 const PAID = PLAN_ORDER.filter((id) => id !== 'free');
 ok('PAID', M.PAID.join() === PAID.join());

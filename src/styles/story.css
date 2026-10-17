@@ -382,10 +382,13 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-notes > summary:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
 .st-notes[open] > summary { color: var(--ink); border-bottom: 1px solid var(--rule); }
 .st-notes .tabs { position: static; margin: 0; padding: var(--s3) var(--s4); overflow: visible; flex-wrap: wrap; border-bottom: 0; background: transparent; }
+/* beats .tabs:not(.tabs-side) (tabs.css), which ties on specificity */
+.st-notes .tabs.tabs { border: 0; border-radius: 0; box-shadow: none; width: auto; max-width: none; }
 .st-notes .tabs-list { display: flex; flex-wrap: wrap; gap: var(--s1); }
 .st-notes .tabs-group { display: contents; }
 .st-notes .tabs-group-h { display: none; }
 .st-notes .tabs[hidden] { display: none; }
+@media (max-width: 719px), (pointer: coarse) { .st-notes > summary { min-height: var(--tap-min, 44px); display: flex; align-items: center; } }
 /* the synopsis step: the tagging palette is a sticky inspector */
 @media (min-width: 1100px) {
   #path-synopsis .st-beats { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--s4)); background-color: var(--surface-rail); box-shadow: var(--shadow-card-rest); }

@@ -58,7 +58,7 @@ function renderFirstRun() {
   const panel = h('div#doors.first-run-doors');
   panel.append(h('div.fr-pick', {}, [
     h('div.lab', { text: 'PICK A PATH' }),
-    h('p.deck', { text: 'New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your project dashboard, where you can always see how far you have got.' })
+    h('p.deck', { text: 'New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your script, with the rest of your project one step away.' })
   ]));
   const doors = h('div.doors', {}, [
     h('div.door', {}, [

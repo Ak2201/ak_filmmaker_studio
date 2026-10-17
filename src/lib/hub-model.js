@@ -16,7 +16,7 @@ import { esc } from './dom.js';
 import { STAGES, stageOfStep } from './journey.js';
 import { readActivityLog, saveActivityLog, capLog } from './hub-activity.js';
 import {
-  FEATURE_KEY, SHORT_KEY, FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL
+  FEATURE_KEY, SHORT_KEY, FEATURE_URL, SHORT_URL, PROJECT_HOME_URL, LIBRARY_URL
 } from './hub-keys.js';
 
 import featureData from '../data/steps.feature.json';
@@ -146,20 +146,20 @@ export function detectActivity({ f, s, l }) {
 
   if (last.fp !== undefined) {
     if (now.ft && now.ft !== last.ft) {
-      arr.unshift({ ts: Date.now(), where: 'feat', what: 'Feature title set: "' + now.ft + '"', url: DASHBOARD_URL });
+      arr.unshift({ ts: Date.now(), where: 'feat', what: 'Feature title set: "' + now.ft + '"', url: PROJECT_HOME_URL });
     }
     if (now.fp > (last.fp || 0)) {
       arr.unshift({ ts: Date.now(), where: 'feat',
         what: 'Feature progress: ' + (last.fp || 0) + '% → ' + now.fp + '%' + (now.fs ? ' (' + now.fs + ')' : ''),
-        url: DASHBOARD_URL });
+        url: PROJECT_HOME_URL });
     }
     if (now.st && now.st !== last.st) {
-      arr.unshift({ ts: Date.now(), where: 'short', what: 'Short title set: "' + now.st + '"', url: DASHBOARD_URL });
+      arr.unshift({ ts: Date.now(), where: 'short', what: 'Short title set: "' + now.st + '"', url: PROJECT_HOME_URL });
     }
     if (now.sp > (last.sp || 0)) {
       arr.unshift({ ts: Date.now(), where: 'short',
         what: 'Short progress: ' + (last.sp || 0) + '% → ' + now.sp + '%' + (now.ss ? ' (' + now.ss + ')' : ''),
-        url: DASHBOARD_URL });
+        url: PROJECT_HOME_URL });
     }
     if (now.lc > (last.lc || 0)) {
       arr.unshift({ ts: Date.now(), where: 'lib',

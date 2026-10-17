@@ -9,12 +9,12 @@
 
    A button in the shell band shows the open project and its format;
    it opens a list of every project this namespace can see. Choosing
-   one calls setCurrentProject() and lands on the dashboard, where each
+   one calls setCurrentProject() and lands on the screenplay, where each
    film's own "continue" cards pick up from its own saved state — the
    position is stored per project already, so nothing is remembered here.
 
    The list builder is exported so the phone's Go-to sheet
-   (mobile-nav.js) draws the same rows. The constant DASHBOARD_URL is
+   (mobile-nav.js) draws the same rows. The constant PROJECT_HOME_URL is
    copied from hub/util.js rather than imported: CORE must not pull hub
    code. This module WRITES NOTHING except setCurrentProject() on an
    explicit choice (verify asserts zero idle writes).
@@ -23,7 +23,7 @@ import { h } from '../lib/dom.js';
 import Store from '../lib/store.js';
 import '../styles/project-switcher.css';
 
-const DASHBOARD_URL = 'screenplay.html';
+const PROJECT_HOME_URL = 'screenplay.html';
 const HUB_URL = 'index.html';
 const FORMAT_SHORT = { feature: 'Feature', short: 'Short', documentary: 'Doc', musicvideo: 'Music video', adfilm: 'Ad film' };
 
@@ -49,10 +49,10 @@ export function projectList() {
   return { list, current: cur };
 }
 
-/** Make `id` the open project and go to its dashboard. */
+/** Make `id` the open project and go to its script. */
 export function switchProject(id) {
   if (!id || !Store.setCurrentProject(id)) return false;
-  location.assign(DASHBOARD_URL);
+  location.assign(PROJECT_HOME_URL);
   return true;
 }
 

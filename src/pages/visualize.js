@@ -86,6 +86,7 @@ const app = document.getElementById('app');
    `verify` would catch a view that saved itself. */
 let covFilter = 'all';            // 'all' | 'todo' | 'done'
 let covCompact = false;
+let uncoveredOpen = false;       // the uncovered-scenes bar's open state, kept across render()
 const boardOpen = new Set();      // scene ids whose phone strip shows every shot
 const keepShot = (shot) => keepFor(covFilter, shot);
 
@@ -290,8 +291,9 @@ function renderShotList(scenes, shots) {
      nobody covers — but as one compact row each, in script order, so
      the tables are not lost between thirty empty headers. */
   /* The uncovered scenes are gathered into one compact bar at the foot of
-     the page (a closed <details>, still in the DOM) so they never push the
-     covered scenes' tables down. */
+     the page (a <details>, closed until opened, still in the DOM) so they
+     never push the covered scenes' tables down. render() rebuilds it every
+     time, so its open state is kept in `uncoveredOpen`. */
   const uncovered = [];
   for (const group of Shots.shotsByScene(scenes)) {
     if (group.scene && !group.shots.length) {
@@ -305,10 +307,13 @@ function renderShotList(scenes, shots) {
   if (uncovered.length) {
     const run = h('div.vz-uncovered', { role: 'list', 'aria-label': 'Scenes with no shots yet' });
     run.append(...uncovered);
-    wrap.append(h('details.vz-uncovered-bar', {}, [
+    const bar = h('details.vz-uncovered-bar', {}, [
       h('summary.vz-uncovered-sum', { text: 'Uncovered scenes (' + uncovered.length + ')' }),
       run
-    ]));
+    ]);
+    bar.open = uncoveredOpen;
+    bar.addEventListener('toggle', () => { uncoveredOpen = bar.open; });
+    wrap.append(bar);
   }
   return wrap;
 }

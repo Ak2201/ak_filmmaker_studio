@@ -98,13 +98,12 @@ function render() {
       ])
     ])
   });
-  /* The banner points at the Library. When every Library reference tool is
-     switched off for everybody it points at nothing, so it is hidden —
+  /* The banner points at the Library's equipment rates (module 'library').
+     When that module is switched off for everybody it points at nothing, so it is hidden —
      [hidden], never removed (the gate reads its words). The plan state
      arrives after first paint, so the answer is read again as it lands. */
-  const LIB_MODULES = ['case-studies', 'dissection', 'glossary'];
   const syncNotes = () => {
-    const gone = LIB_MODULES.every((id) => isDisabledEverywhere(id));
+    const gone = isDisabledEverywhere('library');
     if (notes.hidden !== gone) notes.hidden = gone;
   };
   syncNotes();

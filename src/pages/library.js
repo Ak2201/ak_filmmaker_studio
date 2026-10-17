@@ -54,7 +54,7 @@ import '../styles/library-shelf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
-import { statStrip, panel } from '../ui/kit/index.js';
+import { statStrip, panel, pageHeader } from '../ui/kit/index.js';
 import { shelves } from '../lib/navmodel.js';
 import PlanGate from '../lib/plan-gate.js';
 import { mountCaseStudies } from '../ui/case-studies.js';
@@ -97,16 +97,6 @@ let glossaryP = null;
 const loadGlossary = () => glossaryP || (glossaryP = import('../data/glossary.json').then((m) => m.default || m));
 
 
-/* The theme toggle's tooltip, derived from the list it describes.
-   This one said "Cycle theme (paper → sepia → ink)" — a fifth
-   hand-written copy of StudioUI.themeOrder(), and the one that
-   survived the first sweep because it was worded differently from
-   the other four. A list spelled out in five places is wrong in five
-   places the moment the list changes. */
-function themeTitle() {
-  const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
-  return order.length ? `Cycle theme (${order.join(' → ')})` : 'Cycle theme';
-}
 /* ============================================================
    DERIVED COUNTS — the single source for every number the page
    says out loud.
@@ -319,29 +309,14 @@ function renderToolbar() {
      page. The band above IS the banner. "Arunak" went with it: the
      breadcrumb two inches to the left says "Studio › Library", and the
      cover byline and the colophon both still carry the name. */
-  return h('div.toolbar', {}, [
-    h('a#studioProjLink.studio-proj-link', {
-      href: 'index.html',
-      title: 'Back to Studio · current project'
-    }, [
-      h('span.spl-arrow', { text: '←', 'aria-hidden': 'true' }),
-      h('span#studioProjLabel.spl-label', { text: 'STUDIO' })
-    ]),
-    // HUB / FEATURE / SHORTS removed: the shell's rail and phase bar
-    // carry them now, and three more links in a strip was the problem.
-    h('nav.nav-jump', { 'aria-label': 'Library sections' },
-      SECTIONS.map((s) => h('a.nav-link', { href: `#${s.id}`, text: s.nav }))),
-    // No inline onclick anywhere on this page — see wireActions().
-    h('button#darkBtn.btn.icon-btn', {
-      type: 'button',
-      'data-action': 'theme',
-      title: themeTitle(),
-      'aria-label': 'Cycle theme',
-      text: '◐'
-    })
-    /* No print button: the Library is a page for reading, not a document
-       to export (owner, 11 Oct 2026). */
-  ]);
+  /* EMPTY ON PURPOSE (one frame, 17 Oct 2026). It held "← STUDIO" (the
+     rail and the band already go home), a ◐ theme button (one theme; the
+     band's tools zone is the same on every page) and five section links
+     that shell.js turned into a Sections menu on the breadcrumb while the
+     tab strip below listed the same shelves. The element stays: shell.js
+     adopts it as the band's tools zone, and chrome.js, print.css and the
+     sign-in pill key off `.toolbar`. */
+  return h('div.toolbar');
 }
 
 /* ============================================================
@@ -435,12 +410,15 @@ function renderCover() {
     `ranges (Chennai ${rates.asOf}), and a ${N_WATCHFILMS}-film watch list mapped ` +
     `to every step of the blueprint.`;
 
-  return h('section.cover', {}, [
+  /* ONE PAGE FRAME: the kit header every studio page opens with, h1 the
+     page's name; the cover keeps the blurb and the contents under it. */
+  const head = pageHeader({
+    class: 'bd-head lib-head',
+    eyebrow: ['Library', 'A reference companion to every stage of the studio'],
+    title: 'Library'
+  });
+  return [head, h('section.cover', {}, [
     h('div', {}, [
-      h('div.cover-mark', { text: 'A reference companion to every stage of the studio' }),
-      h('h1.cover-title', {}, [
-        'The ', h('span.light', { text: 'Filmmaker\'s' }), ' Library.'
-      ]),
       h('div.cover-row', {}, [
         h('p.cover-sub', { text: blurb }),
         /* the count is the real number of shelves below */
@@ -457,7 +435,7 @@ function renderCover() {
           h('span.toc-foot', {}, [h('span.toc-count', { text: '\u25B6 ' + s.count.toLowerCase() })])
         ])))
     ])
-  ]);
+  ])];
 }
 
 /* One section per tab: the id, the head and the body together. */
@@ -979,12 +957,6 @@ function wireActions(root) {
    PREF_KEY, so it never ran — and it never needed to: ink is the
    default, and chrome.js's loadTheme() already hands ink to anyone
    with no stored theme, which is exactly who it was for. */
-function syncThemeButton() {
-  const theme = document.body.classList.contains('dark') ? 'ink' : 'paper';
-  // applyTheme also updates #darkBtn's glyph, which did not exist
-  // when StudioUI ran its own boot.
-  StudioUI.applyTheme(theme);
-}
 
 /* ============================================================
    BOOT
@@ -999,8 +971,8 @@ function render() {
   // <main> so the skip link actually skips it — and mountShell() then
   // moves it into .sh-bar, which is also before <main>, so that stays
   // true after the adoption.
-  const main = h('main#main', { role: 'main' });
-  main.append(renderCover());
+  const main = h('main#main.lib-main.k-page', { role: 'main' });
+  main.append(...renderCover());
   main.append(renderFigures());
   main.append(renderContents());
   main.append(renderTeasers());
@@ -1011,7 +983,6 @@ function render() {
 
   wireActions(app);
   mountShelf();
-  syncThemeButton();
 
   // StudioUI boots before this module renders, so the bits of it
   // that look for page furniture get a second, explicit call.

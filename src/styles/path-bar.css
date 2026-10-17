@@ -1,57 +1,31 @@
 /* ============================================================
-   THE PRE-PRODUCTION PATH BAR (src/ui/path-bar.js) and the path page
-   (src/pages/preprod.js). Shapes are skin variables, colours tokens.
-   The numbered strip itself is stepper.css's .stp-bar / .stp-tab; this
-   file only adds what is the path's own.
+   THE PRE-PRODUCTION PATH PAGE (src/pages/preprod.js) and its
+   ready-to-shoot print sheet. Shapes are skin variables, colours tokens.
+   The file keeps its old name: the path BAR that once sat on every tool
+   page (src/ui/path-bar.js) was retired in the Celtx pass and deleted in
+   the one-frame pass (17 Oct 2026); only the page's own rules are left.
    ============================================================ */
-.stp-bar.pp-bar {
-  /* NOT pinned, unlike Story's strip (stepper.css makes .stp-bar sticky).
-     On a tabbed page the pinned things are the band and the tab strip, and
-     shell.js measureChrome() reads every pinned row as part of the band: a
-     third one that is not parked exactly on the published value feeds its
-     own height back into it. So the strip scrolls with the page and each
-     tab's section lands BELOW it (scroll-margin-top, below). */
-  position: static;
-  margin-block: 0;
-  max-width: var(--measure-wide);
-  margin-inline: auto;
-  padding-inline: var(--s5);
-}
-.pp-has-bar > section[id] { scroll-margin-top: var(--stp-bar-h, 0px); }
-.pp-all .stp-n { color: var(--accent-deep); }
-.pp-bar .stp-tab { text-decoration: none; }
-.pp-foot { max-width: var(--measure-wide); margin: var(--s6) auto var(--s7); padding-inline: var(--s5); }
-.pp-foot .k-btn { text-decoration: none; }
-@media (max-width: 719px) {
-  .pp-bar, .pp-foot { padding-inline: var(--s4); }
-}
-@media print { .pp-bar, .pp-foot { display: none !important; } }
-
 /* ---- the path page ---------------------------------------------- */
 .pp-page { max-width: var(--measure-wide); margin: 0 auto; padding: 0 var(--s5) var(--s8); }
-/* The page's layout is the shared section menu's (src/styles/tabs.css):
-   <main class="tabs-has-side pp-has-menu"> holds the header, the summary,
-   the menu and .pp-body (the open step). The header and the summary span
-   the width; at 1100px and over the menu is a column and .pp-body the
-   panel column beside it, below that the menu is a sticky strip over a
-   body that is the old measure. (.pp-page is only the "no film open"
-   message now.) */
+/* <main class="pp-has-menu"> holds the header, the summary, the step
+   strip (the shared section menu, as a strip like every page's) and
+   .pp-body (the open step), each on the page's one column. (.pp-page is
+   only the "no film open" message.) */
 .pp-has-menu > .pp-sum { max-width: var(--measure-wide); margin-inline: auto; padding-inline: var(--s5); }
 .pp-has-menu > .pp-body { max-width: var(--measure-wide); margin-inline: auto; padding: 0 var(--s5) var(--s8); }
 .pp-has-menu .pp-step { scroll-margin-top: var(--stp-bar-h, 0px); }
-@media (min-width: 1100px) {
-  /* from the menu's left edge to the panel's right: NOT a max-width in
-     --side-total, which is `92ch` resolved in THIS element's (smaller) font
-     and so came out narrower than the grid it sits in */
-  .pp-has-menu > .pp-sum { grid-column: menu-start / panel-end; max-width: none; margin-inline: 0; padding-inline: var(--s1); }
-  .pp-has-menu > .pp-body { max-width: none; margin-inline: 0; padding-inline: 0; }
+/* Eleven steps: the strip scrolls inside the column. tabs.css caps a strip
+   at the container less two gutters, which on a full-width <main> is wider
+   than the centred column its margin puts it in (178px of document
+   overflow at 1280, measured). */
+.pp-has-menu > .tabs:not(.tabs-side) {
+  max-width: calc(100% - 2 * max(var(--tabs-gutter), calc((100% - var(--measure-wide)) / 2 + var(--tabs-gutter))));
 }
 @media (max-width: 719px) {
   .pp-has-menu > .pp-sum, .pp-has-menu > .pp-body { padding-inline: var(--s4); }
 }
 .pp-sum { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin: var(--s3) 0 var(--s4); color: var(--ink-muted); font-size: var(--t-small); }
 .pp-sum .pp-meter { flex: 1 1 14rem; max-width: 22rem; }
-.bd-head > .k-stat-strip { grid-column: 1 / -1; }
 .pp-step { display: grid; gap: var(--s4); padding: var(--s5); background: var(--paper-raised); border: var(--sk-card-line-w, 1px) solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
 .pp-step[hidden] { display: none; }
 .pp-step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s3); }

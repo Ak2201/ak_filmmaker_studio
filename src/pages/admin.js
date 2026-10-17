@@ -464,7 +464,8 @@ function render() {
   const isAdmin = !!(st && st.deployed && st.role === 'admin');
   const kept = snapshotFields();
 
-  const main = h('main#main.k-scope');
+  /* The side layout's wider column only while the console's menu is drawn. */
+  const main = h('main#main.k-scope.k-page' + (isAdmin ? '.k-page--side' : ''));
   let body;
   let statusEl = null;
   if (!c || !c.isConfigured()) {
@@ -503,7 +504,7 @@ function render() {
     eyebrow: 'Administration',
     title: 'Console',
     sub: isAdmin ? 'Signed in as ' + (c.getUserEmail() || 'an administrator') : null,
-    class: 'ad-head'
+    class: 'bd-head ad-head'
   });
   main.append(head);
   if (statusEl) main.append(statusEl);

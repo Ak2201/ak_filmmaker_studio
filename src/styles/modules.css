@@ -718,14 +718,8 @@
 /* Tool headers, decluttered (Celtx pass). The sub-paragraph and eyebrow stay
    in the DOM for the gate's word coverage and are hidden from view. */
 .bd-head .k-page-sub,
-.ct-head .k-page-sub,
-.bd-head .k-eyebrow,
-.ct-head .k-eyebrow { display: none; }
-.bd-head.k-page-head,
-.ct-head .k-page-head {
-  padding-block: var(--s4) var(--s3);
-  margin-bottom: var(--s4);
-}
+.bd-head .k-eyebrow { display: none; }
+/* The header's rhythm is the ONE PAGE FRAME block at the end of this file. */
 
 .bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
 /* #breakdown, the tagging area inside the Scene List: a wrapper, so it
@@ -1190,4 +1184,62 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   border: 1px solid var(--accent-teal-subtle);
   border-radius: var(--radius-pill);
   padding-inline: var(--s2);
+}
+
+/* ============================================================
+   ONE PAGE FRAME (17 Oct 2026, owner: "I want my UI to be the same
+   when opened from any page")
+   ------------------------------------------------------------
+   Every studio page except the Screenplay Writer's full-width editor
+   sits in the same column and opens with the same header:
+
+     .k-page    the column — the measure, centred, the one gutter. A
+                page whose <main> is the column wears it; a page whose
+                <main> is full-bleed gives each top-level block the
+                .bd-head family's identical box (above), which is the
+                same box.
+     .k-page--side  the same column widened by the side menu's track
+                (Settings and the Console only), so the PANEL is the
+                measure every other page's content is.
+     .bd-head   the kit pageHeader on every page, one rhythm. Doubled
+                classes: a page sheet loads after this one and must not
+                be able to re-space its own header.
+
+   A header is never re-spaced, re-sized or re-widened by a page sheet:
+   if a page needs a different header, the frame is what changes.
+   ============================================================ */
+.k-page {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  box-sizing: border-box;
+  min-width: 0;
+}
+.k-page.k-page--side { max-width: calc(var(--measure-wide) + 13.75rem + var(--s6) + 2 * var(--s5)); }
+.k-page > .bd-head.bd-head { max-width: none; margin-inline: 0; padding-inline: 0; }
+.bd-head.bd-head.k-page-head {
+  /* start, not the kit's end: a page whose actions wrap to two rows must
+     not push its title lower than every other page's */
+  display: grid;
+  align-items: start;
+  gap: var(--s2) var(--s4);
+  padding-block: var(--s6) var(--s4);
+  margin-bottom: var(--s5);
+  border-bottom: 1px solid var(--border-hair);
+}
+.bd-head.bd-head.k-page-head .k-page-title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--sk-title-size);
+  font-weight: 700;
+  line-height: var(--sk-title-lh, 1.12);
+  letter-spacing: var(--track-display);
+}
+/* kit.css starts every extra header child (`justify-self: start`), which
+   shrink-wraps an auto-fit stat strip to ONE column — the figures stood
+   in a 100px stack on Breakdown, Plan and Reports. The strip takes the row. */
+.bd-head.bd-head.k-page-head > .k-stat-strip { grid-column: 1 / -1; justify-self: stretch; width: 100%; }
+@media (max-width: 719px) {
+  .k-page { padding-inline: var(--s4); }
+  .bd-head.bd-head.k-page-head { padding-block: var(--s5) var(--s4); }
 }

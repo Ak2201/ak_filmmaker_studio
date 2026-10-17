@@ -19,11 +19,8 @@
    The three states take the SEMANTIC families — ok / warn / the
    muted ink — never a volume hue, because a hue means a phase.
    ============================================================ */
-.sd-main {
-  max-width: var(--measure-wide);
-  margin: 0 auto;
-  padding: var(--s5) var(--gutter) var(--s9);
-}
+/* The column is the studio's one frame (.k-page, modules.css). */
+.sd-main { padding-block: 0 var(--s9); }
 
 /* ---- the numbers ------------------------------------------- */
 .sd-stats {
@@ -249,7 +246,6 @@
    --sk-radius for every corner; mono tracked labels, the display face
    for the title only. Nothing here states a theme.
    ============================================================ */
-.sd-main { max-width: 80rem; }
 .sd-k {
   font-family: var(--f-mono);
   font-size: var(--t-micro);

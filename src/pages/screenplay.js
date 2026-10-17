@@ -244,11 +244,11 @@ function buildTop() {
     h('a.sc-pos-item.sc-pos-shots', { 'data-sc-pos': 'shots', href: 'visualize.html#shot-list', hidden: true })
   ]);
 
-  const crumb = h('p.sc-crumb', {}, [
-    h('strong', { text: 'Screenplay Writer' }),
-    h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
-    h('span.sc-title', { text: Script.projectTitle() }),
-    h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
+  /* The draft and the save state. It used to open with "Screenplay Writer
+     · <project>", a second breadcrumb under the band's (which names the
+     page) beside the band's switcher (which names the project); the
+     editor's own line says only what the band cannot. */
+  const crumb = h('p.sc-draftline', {}, [
     h('span.sc-draft', { 'data-sc': 'draft', text: draftLabel() }),
     h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
     statusNode
@@ -926,7 +926,10 @@ delegate(document, 'click', '[data-action="sc-pdf"]', () => { exportPDF(); });
 /* ---- import (a dialog; script-import.js and script-commit.js) --- */
 let imp = null;      // { plan, name, replace }
 let impDialog = null;
-let impInline = false;   // arrived by #import: an in-page panel, not a modal
+/* ONE import, however it is reached: the Import button, the hint's link
+   and an arrival at screenplay.html#import (the nav's Import Screenplay)
+   all open this same dialog. Its card carries id="import", so the
+   fragment still names a visible element. */
 
 function closeImport() {
   if (impDialog) { impDialog.remove(); impDialog = null; }
@@ -967,10 +970,8 @@ function drawImport() {
       button({ label: 'Back', variant: 'ghost', action: 'sc-imp-back' })
     ]));
   }
-  const dlg = h(impInline ? 'section#import.sc-imp.is-inline' : 'div#scImport.sc-imp', impInline
-    ? { 'aria-label': 'Import Screenplay' }
-    : { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import Screenplay' }, [
-    h('div.sc-imp-card', {}, [
+  const dlg = h('div#scImport.sc-imp', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import Screenplay' }, [
+    h('div.sc-imp-card', { id: 'import' }, [
       h('div.sc-imp-head', {}, [
         h('span.sc-imp-icon', {}, [sym('upload_file')]),
         h('h2', { text: 'Import Screenplay' }),
@@ -980,12 +981,11 @@ function drawImport() {
     ])
   ]);
   if (impDialog) impDialog.replaceWith(dlg);
-  else if (impInline) { const m = document.getElementById('main'); const sh = document.getElementById('screenplay'); if (m && sh) m.insertBefore(dlg, sh); else document.body.append(dlg); }
   else document.body.append(dlg);
   impDialog = dlg;
   (dlg.querySelector('textarea, button.k-btn--primary') || dlg).focus?.();
 }
-function openImport(inline = false) { if (!PlanGate.guard('script_import')) return; if (!impDialog) { imp = null; impInline = inline; drawImport(); } }
+function openImport() { if (!PlanGate.guard('script_import')) return; if (!impDialog) { imp = null; drawImport(); } }
 
 async function takeScript(text, name) {
   if (!PlanGate.guard('script_import')) return;
@@ -1059,7 +1059,7 @@ mountFocusMode(() => doc, {
   if (slot && btn) slot.append(btn);
 }
 installLeavePrompt({ getDoc: () => doc, persistNow: () => persistNow() });
-if (location.hash === '#import') openImport(true);
+if (location.hash === '#import') openImport();
 /* script.html#line-<id>: a search result opens the page at that line. */
 installLineLanding(editor);
 function syncGuide() {
@@ -1069,7 +1069,7 @@ function syncGuide() {
   if (g.hidden === show) g.hidden = !show;
   if (show) g.scrollIntoView({ behavior: 'instant', block: 'start' });
 }
-addEventListener('hashchange', () => { if (location.hash === '#import') openImport(true); syncGuide(); });
+addEventListener('hashchange', () => { if (location.hash === '#import') openImport(); syncGuide(); });
 delegate(document, 'click', '[data-action="sc-generate"]', () => { location.href = 'write.html?stay=1#generate'; });
 delegate(document, 'click', '[data-action="sc-notes"]', async () => {
   try {

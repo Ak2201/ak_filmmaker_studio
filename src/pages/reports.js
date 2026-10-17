@@ -31,7 +31,6 @@ import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { pageHeader, statStrip, statCard, button } from '../ui/kit/index.js';
@@ -71,7 +70,7 @@ function renderHeader(scenes) {
   const head = pageHeader({
     class: 'bd-head',
     eyebrow: 'Production Reports \u00b7 from your scenes',
-    title: 'Production Reports.',
+    title: 'Production Reports',
     sub: 'Every number on this page is counted from the scene breakdown the '
        + 'moment you open it. Change a scene there and the reports change here '
        + '\u2014 there is nothing to regenerate, and nothing to keep in step.'
@@ -1087,7 +1086,6 @@ function render() {
   main.append(renderScreenTime(scenes, numbers), renderCastMatrix(scenes, numbers));
   main.append(renderOneLiner(scenes), renderDPR(scenes), renderKit(scenes));
 
-  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   wireActionBar();

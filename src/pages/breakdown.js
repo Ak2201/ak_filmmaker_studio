@@ -21,7 +21,6 @@ import '../styles/print.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { mountPathBar } from '../ui/path-bar.js';
 import { h, delegate } from '../lib/dom.js';
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
@@ -65,7 +64,7 @@ function renderHeader(scenes) {
   const head = pageHeader({
     class: 'bd-head bd-head-celtx',
     eyebrow: 'Breakdown · one scene model, every view',
-    title: 'Breakdown.',
+    title: 'Breakdown',
     sub: 'Every scene once — INT/EXT, time, location, length. The stripboard, '
        + 'the sides, the shot list and the call sheet all read from this, so it '
        + 'is the only place any of it gets typed.',
@@ -989,9 +988,8 @@ function render(focus) {
      a song list is decided before the scenes are, so hiding it until a
      scene exists would hide it at exactly the moment it is most
      useful. The branch-local version this replaces called it twice. */
-  main.append(renderScriptOverview(scenes, { from: new URLSearchParams(location.search).get('from') }), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
+  main.append(renderScriptOverview(scenes), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
-  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   applySceneFilter();
   hydrateScriptParts(wireScriptParts);

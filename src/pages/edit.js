@@ -45,7 +45,7 @@ import {
 } from '../lib/edit-model.js';
 import { linkText } from '../lib/links.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
-import { pageHeader, statCard, statStrip, notice, button, check, field, meter, panel } from '../ui/kit/index.js';
+import { pageHeader, statCard, statStrip, notice, button, check, field, meter, panel, badge } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
 
@@ -238,13 +238,10 @@ function cutsShell(data, scenes) {
    were (CLAUDE.md, "A nav target must not depend on data existing").
    It also says where the scenes come from, as a link. */
 function renderEmpty(reason) {
-  const main = h('main#main.el-main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Post · edit log' }),
-    h('h1.bd-title', { text: 'Edit log.' }),
-    h('p.bd-deck', { text: reason })
-  ]));
+  const main = h('main#main.el-main.k-page');
+  main.append(pageHeader({ eyebrow: ['Post', 'Edit log'], title: 'Edit Log', class: 'bd-head' }));
   main.append(h('div.el-list', { id: 'log' }, [
+    h('p.bd-deck.el-empty-why', { text: reason }),
     h('p', {}, [h('a.btn', { href: 'breakdown.html#scenes', text: 'Open the Scene List →' })])
   ]));
   return main;
@@ -386,11 +383,15 @@ function render(focus) {
   const cov = Edit.coverage(scenes, listShots(), data);
   puOrder = attachPickups(cov, data);
 
-  const main = h('main#main.el-main');
+  const main = h('main#main.el-main.k-page');
 
+  /* ONE PAGE FRAME: the h1 is the page's name; "ready to lock" is a
+     state, so it is a badge under it rather than a second title. */
   main.append(pageHeader({
     eyebrow: ['Post', 'Edit log'],
-    title: cov.ready ? 'Ready to lock.' : 'Edit log.',
+    title: 'Edit Log',
+    class: 'bd-head',
+    meta: cov.ready ? [badge({ label: 'Ready to lock', tone: 'ok', tag: true })] : [],
     sub: cov.ready
       ? 'Everything the cut needs is in the can and nothing it claims was dropped. '
         + 'Nothing here is stored — it is read from the shoot day’s marks and the shot list.'

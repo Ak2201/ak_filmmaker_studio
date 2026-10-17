@@ -25,6 +25,11 @@
   --hue: var(--visualize);
   --hue-on: var(--visualize-on);
   min-width: 0;
+  /* ONE PAGE FRAME: the studio's one column, like the header above
+     (.bd-head). They ran edge to edge; the tables scroll inside it. */
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  box-sizing: border-box;
   padding-inline: var(--s5);
   padding-block: var(--s6);
 }

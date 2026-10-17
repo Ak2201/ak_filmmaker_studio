@@ -16,6 +16,16 @@
    tab, as it already did below 720px. */
 .lib-embed .ds-bar { position: static; }
 
+/* ONE PAGE FRAME (17 Oct 2026): <main> is the studio's one column
+   (.k-page, modules.css), and the Library's bands — the cover, the index,
+   the section heads and bodies, the terminology list, the embedded case
+   studies — all inset themselves by --gutter. Inside the column that
+   inset is the column's own, so it is zero here, once, rather than a
+   padding rule per band. */
+.lib-main.k-page { --gutter: 0px; }
+/* three bands set a fixed inset of their own rather than the gutter */
+.lib-main.k-page > :is(.cover, .lib-contents, .final-page) { padding-inline: 0; }
+
 /* The tab strip takes the module pages' column by default
    (--measure-wide, centred: 234-1122px at 1280). The Library's own
    sections are full-bleed bands whose heads are inset by --gutter, so
@@ -24,10 +34,6 @@
    and cut "Craft Glossary" off at 1280 with room to spare. Here the
    strip takes the heads' inset instead. */
 main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
-/* With the side menu (tabs.css) the library takes the full width rather
-   than the module pages' centred measure: its sections are bands with
-   their own gutter, and the in-tab rail below needs the room. */
-main:has(> .lib-sec).tabs-has-side { --side-pad: var(--s4); } /* not --gutter: heads and bodies carry their own, and a second one outside left 596px of cards at 1100px (measured); this leaves 652 */
 
 /* ---- the craft glossary: every film's example, under the term ---- */
 .lib-gloss-ex {

@@ -13,16 +13,9 @@
    rather than by hand is dashed underneath, so the difference is not
    carried by colour alone.
    ============================================================ */
-.st-main {
-  max-width: var(--content-max, 1200px);
-  margin: 0 auto;
-  padding: var(--s5) var(--gutter) var(--s9);
-}
-/* The hero is the shared .bd-head, which brings its own max-width and
-   inline padding for pages whose <main> is full-bleed. Inside .st-main
-   that inset the title 108px right of the bar, the stepper and every
-   panel under it (16px at 390). The main already supplies both. */
-.st-main > .bd-head { max-width: none; padding-inline: 0; }
+/* The column is the studio's one frame (.k-page, modules.css), which
+   also zeroes the header's own inset inside it. */
+.st-main { padding-block: 0 var(--s9); }
 
 /* ---- the three ways in ------------------------------------- */
 .st-modes {
@@ -191,34 +184,14 @@
 .st-clip-meta select { min-width: 0; max-width: 100%; }
 .st-clip-src { color: var(--accent-deep); }
 
-/* ---- the path = the shared section menu ----------------------
-   The steps are src/ui/section-menu.js's grouped menu (tabs.css): the
-   same control as the admin console. <main class="st-main tabs-has-side">
-   is its container: at 1100px and over it is a grid of [menu | panel],
-   with the header, the import/export bar (and the start cards) spanning
-   the width; below that the menu is a sticky strip over the step with a
-   "Steps" button that opens the grouped list as a sheet. State is the
-   row's tick and its tooltip ("Done · 4 of 9 cards" / "To do"), read
-   aloud as "done"; nothing is carried by colour alone. */
-.st-main { --side-pad: 0px; }
+/* ---- the path = the shared section menu, as a strip ----------
+   The steps are src/ui/section-menu.js's grouped menu (tabs.css), drawn
+   as the strip every page's sections use (the side column is Settings'
+   and the Console's alone). State is the row's tick and its tooltip
+   ("Done · 4 of 9 cards" / "To do"), read aloud as "done"; nothing is
+   carried by colour alone. */
 .st-main > .tabs[hidden] { display: none; }
 main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--stp-bar-h, 0px); }
-@media (min-width: 1100px) {
-  /* a hidden step is out of the grid, so the open one is placed by NAME,
-     not by being the sibling after the menu */
-  .st-main.tabs-has-side > section[data-path],
-  .st-main.tabs-has-side > #pacing,
-  .st-main.tabs-has-side > #pitch,
-  .st-main.tabs-has-side > #guide { grid-column: panel-start / panel-end; }
-  .st-main.tabs-has-side > .bd-head { max-width: none; }
-}
-/* 1100-1279px: the menu takes 220px of a content column that is only
-   about 1000px, which would halve the synopsis step's two panes. They
-   stack there (one column of ~750px) and sit side by side again from
-   1280px, where the column is wide enough for both. */
-@media (min-width: 1100px) and (max-width: 1279px) {
-  .st-main.tabs-has-side .st-panes { grid-template-columns: minmax(0, 1fr); }
-}
 
 .st-step { padding-block: var(--s5); border-bottom: 1px solid var(--rule); }
 .st-step .st-text { max-width: var(--measure, 70ch); }
@@ -370,7 +343,6 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-main .k-page-actions .st-bar { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: flex-end; }
 .st-import { cursor: pointer; position: relative; }
 .st-import:focus-within { outline: var(--focus); outline-offset: var(--focus-offset); }
-.st-main > .bd-head { padding-block-end: var(--s4); }
 
 /* ---- the three views and the notes disclosure ---------------------
    The step menu moved under <details class="st-notes">: a wrapping row of

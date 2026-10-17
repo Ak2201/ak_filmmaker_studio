@@ -227,11 +227,14 @@ function sceneCard(scene, ctx, next) {
    a sentence naming the stripboard with no way to reach it is a
    dead end on a phone, where the band has scrolled away. */
 function renderEmpty(reason, link) {
-  const main = h('main#main.sd-main');
+  const main = h('main#main.sd-main.k-page');
   main.append(pageHeader({
-    eyebrow: ['Shoot', 'Today'], title: 'Shoot day.', sub: reason,
+    eyebrow: ['Shoot', 'Today'], title: 'Shoot Day', class: 'bd-head',
     actions: link ? [button({ label: link.label, href: link.href })] : []
   }));
+  /* The reason is the page's whole message, so it is a body line, not
+     the header's sub (which .bd-head hides). */
+  main.append(h('p.bd-deck.sd-empty-why', { text: reason }));
   return main;
 }
 
@@ -264,7 +267,10 @@ function render(focus) {
   const day = all.find((d) => d.day === openDay) || all[0];
   const overall = Shoot.overall(scenes);
 
-  const main = h('main#main.sd-main');
+  const main = h('main#main.sd-main.k-page');
+  /* ONE PAGE FRAME: the page's own header, the same as every page's;
+     the day's title is the hero's h2 under it. */
+  main.append(pageHeader({ eyebrow: ['Shoot', 'Shoot day'], title: 'Shoot Day', class: 'bd-head' }));
 
   /* "today" only when it is: pickDay() falls back to the first day
      with work left, and an eyebrow calling a February date "today"
@@ -289,6 +295,7 @@ function render(focus) {
   const pad = (n) => String(n).padStart(2, '0');
   const titleBox = pageHeader({
     class: 'sd-hero-t',
+    level: 2,
     eyebrow: ['Shoot', isToday ? 'Today' : null, 'Day ' + pad(day.day) + ' of ' + pad(all.length)].filter(Boolean),
     title: 'Day ' + pad(day.day) + '.',
     sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one on the Plan’s calendar and the page can find it on the morning.',

@@ -513,8 +513,22 @@ export const STATUS = {
 export function stageHref(id) {
   const ph = nav.phases.find((p) => p.id === id);
   if (ph && ph.home && ph.home.href) return ph.home.href;   // the stage's own landing page (navigation.json `home`)
-  const m = ph && ph.modules && ph.modules[0];
+  const m = leadModule(ph) || (ph && ph.modules && ph.modules[0]);
   return (m && m.href) || 'dashboard.html';
+}
+
+/* A stage's lead: the first built module that is not off for everybody.
+   plan-gate.js (via window.StudioPlan) knows what is off; with no gate the
+   answer is the first built module, as before. Pure: no import. */
+function disabledEverywhere(id) {
+  try {
+    const gate = typeof window !== 'undefined' && window.StudioPlan;
+    return !!(gate && typeof gate.isDisabledEverywhere === 'function' && gate.isDisabledEverywhere(id));
+  } catch (e) { return false; }
+}
+export function leadModule(ph) {
+  const ms = (ph && ph.modules) || [];
+  return ms.find((x) => x.status === 'built' && x.href && !disabledEverywhere(x.id)) || null;
 }
 
 /* A stage whose first module is not on the member's plan. Asked of
@@ -527,7 +541,7 @@ function stageLocked(id) {
     const gate = typeof window !== 'undefined' && window.StudioPlan;
     if (!gate || typeof gate.allowed !== 'function') return false;
     const ph = nav.phases.find((p) => p.id === id);
-    const m = ph && (ph.modules || []).find((x) => x.status === 'built' && x.href);
+    const m = ph && (ph.modules || []).find((x) => x.status === 'built' && x.href && !disabledEverywhere(x.id));
     return !!m && !gate.allowed(m.id);
   } catch (e) { return false; }
 }

@@ -2583,8 +2583,13 @@ let fragments = { checked: false };
         const px = (v) => parseFloat(v) || 0;
         const cover = px(cs.getPropertyValue('--sh-cover-h')) || px(cs.getPropertyValue('--sh-chrome-h'));
         const r = el.getBoundingClientRect();
-        const hidden = !!el.closest('[hidden]') || (r.width === 0 && r.height === 0);
-        return { top: Math.round(r.top), cover: Math.round(cover), vh: innerHeight, hidden, scrollY: Math.round(scrollY) };
+        /* A section switched off for EVERY plan (data-tab-off) is hidden by
+           design; its link is hidden with it. Not a broken anchor. The stage
+           guide (data-tab-ignore) is NOT exempt: the hash has just been
+           navigated, so a #guide that stays hidden is a broken deep link. */
+        const byDesign = !!el.closest('[data-tab-off]');
+        const hidden = !byDesign && (!!el.closest('[hidden]') || (r.width === 0 && r.height === 0));
+        return { byDesign, top: Math.round(r.top), cover: Math.round(cover), vh: innerHeight, hidden, scrollY: Math.round(scrollY) };
       }, frag);
       /* The verdict is the SETTLED position. html has scroll-behavior:
          smooth and a jump to the end of the feature blueprint travels
@@ -2597,7 +2602,7 @@ let fragments = { checked: false };
          and give a bad answer one more second to become good. */
       await pg.waitForTimeout(1700);
       let m = await measure();
-      const ok = (x) => !x.missing && !x.hidden && x.top >= x.cover - 1 && x.top < x.vh;
+      const ok = (x) => !x.missing && !x.hidden && (x.byDesign || (x.top >= x.cover - 1 && x.top < x.vh));
       if (!ok(m)) { await pg.waitForTimeout(1000); m = await measure(); }
       rows.push({ key, ...m, ok: ok(m) });
     }

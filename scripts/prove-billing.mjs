@@ -286,7 +286,7 @@ try {
     await page.locator('[data-action="new-project"]:visible').first().click();
     await page.waitForSelector('#projectSetupForm #psTitle', { timeout: 5000 });
     await page.fill('#psTitle', 'Second film');
-    await Promise.all([page.waitForURL(/dashboard/, { timeout: 10000 }).catch(() => {}), page.click('#psSubmit')]);
+    await Promise.all([page.waitForURL(/screenplay/, { timeout: 10000 }).catch(() => {}), page.click('#psSubmit')]);
     await page.waitForFunction(() => /plan limit/i.test((window.StudioCloud.getSyncStatus() || {}).detail || ''), null, { timeout: 10000 })
       .then(() => ok(true, 'the sync status says the plan limit was reached'), () => ok(false, 'the sync status says the plan limit was reached (status: ' + 'see log)'));
     ok(F.db.calls.filter((c) => c === 'write:projects:P0402').length >= 1, 'the cloud refused the insert with P0402');
@@ -369,12 +369,15 @@ try {
     ok(await A.page.isChecked('input[name="free:sample_only"]') && !(await A.page.isChecked('input[name="free:new_projects"]')) && await A.page.isChecked('input[name="pro:new_projects"]'), 'the free tier reads sample only, no new projects; pro reads everything');
     ok(await A.page.isChecked('input[name="free:story-beats"]'), 'a module nobody has touched is ticked (missing = allowed)');
     ok(/shares a page with .*Elements/.test(await A.page.textContent('tr[data-feature="breakdowns"]')), 'a module that shares a page says so, and with whom');
-    // story.html hosts three modules; a page locks only when all of its modules are unticked.
-    for (const id of ['story-beats', 'idea-vault', 'pitch-deck']) await A.page.uncheck(`input[name="free:${id}"]`);
+    // story.html hosts story-beats (a real plan row) and pitch-deck (off for every plan, so never a plan row);
+    // a page locks when every module that CAN be on a plan is unticked.
+    // pitch-deck is off on every plan in the real §36 rows (a tick here would be the
+    // console switching it back on), so the fixture unticks it too, as the live matrix reads.
+    for (const id of ['story-beats', 'pitch-deck']) await A.page.uncheck(`input[name="free:${id}"]`);
     await A.page.click('#features button[type="submit"]');
     await A.page.waitForSelector('#features .ba-saved', { timeout: 8000 });
     const free = F.db.plans.find((p) => p.id === 'free');
-    ok(free.features['story-beats'] === false && free.features['idea-vault'] === false && free.features.sample_only === true && free.features['scene-list'] === true, 'admin_set_plan received the whole map: the three unticked false, sample_only kept, the rest true');
+    ok(free.features['story-beats'] === false && free.features.sample_only === true && free.features['scene-list'] === true, 'admin_set_plan received the whole map: story-beats unticked false, sample_only kept, the rest true');
     ok(!(await A.page.$('.pg-lock')), 'the console itself is never locked (it is not a module page)');
     allErrors.push(...A.errors); await A.ctx.close();
 
@@ -400,7 +403,7 @@ try {
     ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no NEW PROJECT control is offered');
     ok(!(await amy.page.$('#projectsGrid .new-card')), 'and no new-project card in the grid');
     await amy.page.goto(BASE + 'story.html');
-    await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (all three of its modules unticked for Free) shows the plan lock'), () => ok(false, 'story.html (all three of its modules unticked for Free) shows the plan lock'));
+    await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (its one plan row unticked for Free) shows the plan lock'), () => ok(false, 'story.html (its one plan row unticked for Free) shows the plan lock'));
     ok(/Not part of the free trial/.test(await amy.page.textContent('.pg-lock')), 'saying it is not part of the free trial (no "Free plan" is named)');
     ok((await amy.page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility)) === 'hidden', 'with the page veiled underneath, not removed');
     await amy.page.goto(BASE + 'breakdown.html');
@@ -1302,9 +1305,11 @@ try {
     ok(await unlocked('screenplay.html'), 'Basic: screenplay.html (Screenplay Writer) opens');
     ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts) opens');
     ok(await unlocked('story.html'), 'Basic: story.html (Beats & Pacing) opens');
-    ok(await unlocked('reports.html'), 'Basic: reports.html opens — Screen Time is Basic');
-    await T.page.waitForSelector('#cast-matrix[data-tab-lock] .pg-lock-inline', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: on reports.html the Cast Matrix section is locked in place'), () => ok(false, 'Basic: on reports.html the Cast Matrix section is locked in place'));
-    ok(!(await T.page.$('#screentime[data-tab-lock]')), 'and Screen Time is not');
+    /* Screen Time and Cast Matrix are off for every plan, so what is left on
+       reports.html (Production Reports, Sides) is Intermediate: the page locks
+       for Basic, and the two off sections are kept hidden, never sold. */
+    ok(await locked('reports.html'), 'Basic: reports.html is locked — only the Intermediate sections are left on it');
+    ok(!!(await T.page.$('#screentime[data-tab-off]')) && !!(await T.page.$('#cast-matrix[data-tab-off]')), 'and Screen Time and Cast Matrix are hidden (off for every plan), not offered');
     ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Screenplay Analysis, Scene List)');
     await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
     ok(!(await T.page.$('#scenes[data-tab-lock]')) && !(await T.page.$('#breakdown[data-tab-lock]')), 'and the Scene List (with the cards nested in it) is not');
@@ -1315,7 +1320,7 @@ try {
     { const t = await T.page.textContent('#plan .pl-card[data-plan="indie"] .pl-adds').catch(() => '');
       ok(/Everything in Basic, plus/.test(t) && /Budget/.test(t) && !/Shoot Day/.test(t), 'the Intermediate card lists what it adds, from the rows: ' + t.replace(/\s+/g, ' ').slice(0, 80)); }
     { const t = await T.page.textContent('#plan .pl-card[data-plan="pro"] .pl-adds').catch(() => '');
-      ok(/Everything in Intermediate, plus/.test(t) && /Shoot Day/.test(t) && /Deliverables/.test(t), 'the Pro card adds Shoot Day and Deliverables'); }
+      ok(/Everything in Intermediate, plus/.test(t) && /Call sheets/i.test(t) && !/Shoot Day/.test(t) && !/Deliverables/.test(t), 'the Pro card adds Call sheets and no longer lists Shoot Day or Deliverables'); }
 
     acc.plan = 'indie';
     ok(await unlocked('budget.html'), 'Intermediate: budget.html opens');
@@ -1324,7 +1329,13 @@ try {
     await T.page.waitForSelector('#call-sheets[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Intermediate: Call Sheets is locked in place on contacts.html'), () => ok(false, 'Intermediate: Call Sheets is locked in place on contacts.html'));
 
     acc.plan = 'pro';
-    for (const f of ['shoot.html', 'budget.html', 'edit.html', 'deliverables.html', 'contacts.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
+    for (const f of ['budget.html', 'contacts.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
+    /* Shoot Day, Edit Log and Deliverables are off for every plan, Pro included:
+       the page says so, with no plan to buy. */
+    for (const f of ['shoot.html', 'edit.html', 'deliverables.html']) {
+      await open(f);
+      ok(await T.page.waitForSelector('.pg-lock[data-gone]', { timeout: 8000 }).then(() => true, () => false), 'Pro: ' + f + ' says not available (off for every plan)');
+    }
     ok(!(await T.page.$('[data-tab-lock]')), 'Pro: no section is locked anywhere on contacts.html');
     allErrors.push(...T.errors); await T.ctx.close();
   }

@@ -17,7 +17,8 @@ import dragonData from '../../data/sample.dragon.json';
 import films from '../../data/films.json';
 import directors from '../../data/directors.json';
 import rules from '../../data/rules.json';
-import PlanGate from '../../lib/plan-gate.js';
+import PlanGate, { isDisabledEverywhere } from '../../lib/plan-gate.js';
+import Store from '../../lib/store.js';
 
 
 /* The figures the hub quotes about the sample, derived from the scene
@@ -52,13 +53,14 @@ function sampleButtons(prefix, primary) {
    from hub.js's old #doors section (owner, 11 Oct 2026: "if there is no
    project let have three doors, pick a path"). Same classes, same
    data-actions, so hub-doors.css and the delegate need no change. */
+const LIBRARY_MODULES = ['case-studies', 'dissection', 'glossary'];
 function renderFirstRun() {
   const panel = h('div#doors.first-run-doors');
   panel.append(h('div.fr-pick', {}, [
     h('div.lab', { text: 'PICK A PATH' }),
-    h('p.deck', { text: 'New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your project dashboard, where you can always see how far you have got.' })
+    h('p.deck', { text: 'New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your script, with the rest of your project one step away.' })
   ]));
-  panel.append(h('div.doors', {}, [
+  const doors = h('div.doors', {}, [
     h('div.door', {}, [
       h('div.door-tag', {}, [h('span.door-num-circle', { text: 'I' }), ' A FULL-LENGTH STORY']),
       h('h3', {}, ['Feature', h('br'), h('span.light', { text: 'film.' })]),
@@ -77,7 +79,15 @@ function renderFirstRun() {
       h('p.door-sub', { text: 'Not ready to start? Read how films you know were built: ' + films.length + ' films, ' + directors.length + ' directors and ' + rules.length + ' rules of thumb. No project needed.' }),
       h('a.door-cta', { href: 'library.html' }, [h('span', { text: 'OPEN THE LIBRARY' }), h('span.arrow', { text: '→' })])
     ])
-  ]));
+  ]);
+  panel.append(doors);
+  /* The library door goes when every Library module is deselected in the
+     console (plan 7.2). Hidden, not removed; re-checked when the plan
+     arrives, because the answer is not known on first paint. */
+  const libDoor = doors.querySelector('.door.library');
+  const syncLib = () => { libDoor.hidden = LIBRARY_MODULES.every((id) => isDisabledEverywhere(id)); };
+  syncLib();
+  Store.subscribe('plan:changed', syncLib);
   /* The sample is the secondary way in: a filled studio to look at
      before being asked to name a film. */
   panel.append(h('div.eps-actions', {}, sampleButtons('OR OPEN A SAMPLE FILM: ', false)));

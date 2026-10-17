@@ -95,21 +95,21 @@ await project('feature', 'Proof Feature');
 await open();
 check('feature: its own path, every step on the page', await pathIds(),
   ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
-check('feature: the menu lists the same ten', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-tab[data-path]')].map((b) => b.getAttribute('data-path'))),
+check('feature: the menu lists the same ten', await page.evaluate(() => [...document.querySelectorAll('#main nav.tabs[data-sm-self] .tabs-tab[data-path]')].map((b) => b.getAttribute('data-path'))),
   ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
-/* Beats & pacing, Pitch deck and the Cover sheet are the menu's Tools
+/* Beats & pacing and the Cover sheet (the Pitch deck is off for everybody) are the menu's Tools
    group (the shared section menu, since 13 Oct 2026): no done state and no
    data-path (the row's id is the panel's element id), so they are the rows
    without data-path. */
-check('feature: …then the three Tools rows, in order', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-tab:not([data-path])')].map((b) => b.getAttribute('data-tab'))),
-  ['pacing', 'pitch', 'guide']);
+check('feature: …then the Tools rows, in order', await page.evaluate(() => [...document.querySelectorAll('#main nav.tabs[data-sm-self] .tabs-tab:not([data-path])')].map((b) => b.getAttribute('data-tab'))),
+  ['pacing', 'guide']);
 /* A path group carries its done count beside its name (14 Oct 2026 parity
    pass: "Idea · 0/2"); Tools has no steps, so no count. */
-check('feature: the groups are Idea, Build, Write up, Tools', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-group-h')].map((e) => e.textContent.replace(/ · \d+\/\d+$/, ''))),
+check('feature: the groups are Idea, Build, Write up, Tools', await page.evaluate(() => [...document.querySelectorAll('#main nav.tabs[data-sm-self] .tabs-group-h')].map((e) => e.textContent.replace(/ · \d+\/\d+$/, ''))),
   ['Idea', 'Build', 'Write up', 'Tools']);
-check('feature: each path group says how many of its steps are done', await page.evaluate(() => [...document.querySelectorAll('#main > nav.tabs .tabs-group-h')].map((e) => / · \d+\/\d+$/.test(e.textContent))),
+check('feature: each path group says how many of its steps are done', await page.evaluate(() => [...document.querySelectorAll('#main nav.tabs[data-sm-self] .tabs-group-h')].map((e) => / · \d+\/\d+$/.test(e.textContent))),
   [true, true, true, false]);
-check('feature: the open row carries the step number the blueprint drawer reads', await page.evaluate(() => { const r = document.querySelector('#main > nav.tabs [aria-selected="true"]'); return [r && r.dataset.step, r && r.dataset.path]; }), ['1', 'idea']);
+check('feature: the open row carries the step number the blueprint drawer reads', await page.evaluate(() => { const r = document.querySelector('#main nav.tabs[data-sm-self] [aria-selected="true"]'); return [r && r.dataset.step, r && r.dataset.path]; }), ['4', 'outline']);   // the page opens on the beat sheet (currentStep defaults to outline)
 /* the path is the menu now, and nothing else on the page is a tab */
 check('feature: no other tab and no Format drop-down', await page.evaluate(() => [document.querySelectorAll('[role="tab"]:not(.tabs-tab)').length, !!document.getElementById('stFw')]), [0, false]);
 check('feature: no favourite-film picker on the page', await page.evaluate(() => document.querySelectorAll('.fav-picker, .fav-switch, .st-fav').length), 0);
@@ -184,7 +184,9 @@ check('#path-4 (the old outline number) lands on the Step outline', await inView
 await open('#path-nope');
 check('an unknown #path-… lands on the first step', await inView('idea'), true);
 await open('#pitch');
-check('#pitch is a plain section and the page lands on it', await page.evaluate(() => { const r = document.getElementById('pitch').getBoundingClientRect(); return r.top < window.innerHeight && r.bottom > 0; }), true);
+/* The pitch deck is off for everybody (features['pitch-deck']): the section
+   stays in the DOM, hidden, and a link to it lands nowhere. */
+check('#pitch is off for everybody: kept in the DOM, hidden, not shown', await page.evaluate(() => { const p = document.getElementById('pitch'); return [!!p, p && p.hidden]; }), [true, true]);
 await open('#guide', '?step=feature/step-07');
 check('an old ?step=feature/step-07#guide link lands on the Story Bible', [await page.evaluate(() => location.hash), await inView('bible')], ['#path-bible', true]);
 check('the favourite film is a Settings link under an example, not a switcher', await page.evaluate(async () => {
@@ -234,7 +236,7 @@ check('Next shows the next step only and lands at its top', [await shown(), awai
 await page.click('#path-logline .stp-nav .btn:not(.primary)');
 check('Back returns', [await shown(), await page.evaluate(() => location.hash)], [['path-idea'], '#path-idea']);
 await open('#pitch');
-check('#pitch opens the Pitch deck step alone', await shown(), ['pitch']);
+check('#pitch (off for everybody) opens no Pitch deck step', (await shown()).includes('pitch'), false);
 await open('#logline');
 check('#logline opens the Logline step', await shown(), ['path-logline']);
 

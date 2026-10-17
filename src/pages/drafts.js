@@ -159,7 +159,7 @@ function render() {
   const next = nextDraftName(doc);
 
   main.append(h('div.dr-bar', {}, [
-    button({ label: 'Back to the Screenplay Writer', href: 'screenplay.html', class: 'dr-back', variant: 'ghost' }),
+    button({ label: '← Back to Screenplay', href: 'screenplay.html', class: 'dr-back', variant: 'ghost' }),
     h('span.dr-state', { 'data-dr-state': '', 'aria-live': 'polite', text: stateText() }),
     h('span.dr-spacer'),
     button({ label: 'Save as new draft', variant: 'primary', icon: 'add', attrs: { 'data-dr': 'new' } }),

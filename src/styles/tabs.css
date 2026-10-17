@@ -248,6 +248,42 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
 .sm-done { color: var(--ok-deep, var(--ok)); }
 .sm-doing { color: var(--warn-deep); }
 
+/* ---- the segmented pill bar (every page but Settings and the console) ----
+   One left sidebar (the studio rail) and a horizontal control above the
+   panel: the strip is a rounded track and the selected tab is the brand
+   fill, sheen and glow. Solid background-color under every gradient
+   (the AA walk reads the colour, not the image). The side menu below is
+   untouched: `.tabs-side` opts out of all of it. Shapes are skin
+   variables, the shadows and sheen are tokens (tokens.css). */
+.tabs:not(.tabs-side) {
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--tabs-gutter));
+  padding: var(--s1);
+  gap: var(--s1);
+  background-color: var(--paper);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius-lg));
+  box-shadow: var(--shadow-control-rest, none);
+}
+.tabs:not(.tabs-side) .tabs-tab {
+  min-height: 2.25rem;
+  padding: 0 var(--s3);
+  border-radius: var(--sk-field-radius, var(--radius));
+}
+.tabs:not(.tabs-side) .tabs-tab[aria-selected="true"] {
+  color: var(--brand-on);
+  background-color: var(--brand);
+  background-image: var(--cta-sheen, none);
+  box-shadow: var(--shadow-cta, none);
+}
+.tabs:not(.tabs-side) .tabs-tab[aria-selected="true"]::after { content: none; }
+@media (hover: hover) {
+  .tabs:not(.tabs-side) .tabs-tab[aria-selected="true"]:hover { background-color: var(--brand-hover, var(--brand)); }
+}
+@media (pointer: coarse) {
+  .tabs:not(.tabs-side) .tabs-tab { min-height: 44px; }
+}
+
 /* ---- the strip is the column's container's business below ----- */
 .st-body > .tabs { margin-inline: 0; }
 @media (max-width: 719px) { .tabs { --tabs-gutter: var(--s4); } }
@@ -296,6 +332,8 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
     padding-inline: 0;
   }
   .tabs-has-side > .tabs-side + :not([role="tabpanel"]):not(.tabs) { grid-column: panel-start / panel-end; }
+  /* a #guide deep link opens the hidden stage guide beside the menu, as a panel */
+  .tabs-has-side > section#guide[data-tab-ignore]:not([hidden]) { grid-column: panel-start / panel-end; }
   /* .tabs.tabs-side: a page's own `> .tabs` margin rule (the library's, the
      budget's) is more specific than one class, and must not move the column */
   .tabs-has-side > .tabs.tabs-side {

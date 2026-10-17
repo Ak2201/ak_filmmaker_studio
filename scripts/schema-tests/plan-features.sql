@@ -33,8 +33,12 @@ select t.ok((select bool_and(not (features ? 'sample_only')) from public.plans w
   '35. (1) no paid map carries sample_only');
 select t.ok((select bool_and(jsonb_typeof(v) = 'boolean') from public.plans p, jsonb_each(p.features) e(k, v) where p.id in ('starter','indie','pro')),
   '35. (1) every value is true or false');
-select t.ok((select count(*) from public.plans p, jsonb_each(p.features) e(k, v) where p.id = 'pro' and v = 'false'::jsonb) = 0,
-  '35. (1) Pro: nothing is false — everything');
+-- A key Pro lacks is a module the matrix gives to NO plan (plans: []), kept
+-- off for everybody; nothing is withheld from Pro alone.
+select t.ok(not exists (select 1 from public.plans p, jsonb_each(p.features) e(k, v)
+                         where p.id = 'pro' and v = 'false'::jsonb
+                           and exists (select 1 from public.plans q where q.id in ('starter','indie') and q.features -> e.k = 'true'::jsonb)),
+  '35. (1) Pro: nothing is false that a lower plan has — only modules no plan carries');
 -- each plan is a superset of the one below it
 select t.ok(not exists (select 1 from public.plans lo, jsonb_each(lo.features) e(k, v), public.plans hi
                          where (lo.id, hi.id) in (('starter','indie'), ('indie','pro'))
@@ -58,9 +62,9 @@ select t.ok((public.billing_status() ->> 'plan') = 'starter'
         and (public.billing_status() -> 'features') = (select features from public.plans where id = 'starter'),
   '35. (2) Basic buyer: billing_status().features = the starter row');
 select t.ok((public.billing_status() -> 'features' ->> 'screenplay')::bool and (public.billing_status() -> 'features' ->> 'revisions')::bool
-        and (public.billing_status() -> 'features' ->> 'import-script')::bool and (public.billing_status() -> 'features' ->> 'case-studies')::bool
+        and (public.billing_status() -> 'features' ->> 'import-script')::bool and (public.billing_status() -> 'features' ->> 'story-beats')::bool
         and (public.billing_status() -> 'features' ->> 'exports')::bool and (public.billing_status() -> 'features' ->> 'new_projects')::bool,
-  '35. (2) Basic: Script, Drafts, Import, the Library, exports and new projects are on');
+  '35. (2) Basic: Script, Drafts, Import, Story beats, exports and new projects are on');
 select t.ok(not (public.billing_status() -> 'features' ->> 'budget')::bool and not (public.billing_status() -> 'features' ->> 'shoot-day')::bool
         and not (public.billing_status() -> 'features' ->> 'drive_backup')::bool and not (public.billing_status() -> 'features' ->> 'ai_tools')::bool,
   '35. (2) Basic: Budget, Shoot Day, Drive and AI are off');
@@ -81,9 +85,9 @@ select t.claims('00000000-0000-4000-8000-000000003603');
 select t.ok((public.billing_status() ->> 'plan') = 'pro'
         and (public.billing_status() -> 'features') = (select features from public.plans where id = 'pro'),
   '35. (2) Pro buyer: billing_status().features = the pro row');
-select t.ok((public.billing_status() -> 'features' ->> 'shoot-day')::bool and (public.billing_status() -> 'features' ->> 'deliverables')::bool
+select t.ok((public.billing_status() -> 'features' ->> 'call-sheets')::bool and (public.billing_status() -> 'features' ->> 'drive_backup')::bool
         and (public.billing_status() -> 'features' ->> 'ai_tools')::bool and (public.billing_status() -> 'features' ->> 'remove_branding')::bool,
-  '35. (2) Pro: Shoot Day, Deliverables, AI and Remove branding on');
+  '35. (2) Pro: Call Sheets, Drive, AI and Remove branding on');
 select t.reset();
 
 -- 3b. a plan-less e-mail grant, purchases required -> open_features() = Pro's

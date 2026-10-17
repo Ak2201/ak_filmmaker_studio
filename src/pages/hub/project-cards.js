@@ -14,7 +14,7 @@ import PlanGate from '../../lib/plan-gate.js';
 import { STAGES, journey, guideJourney } from '../../lib/journey.js';
 import { h } from '../../lib/dom.js';
 import { isSampleTitle } from '../../lib/samples.js';
-import { DASHBOARD_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
+import { PROJECT_HOME_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
 import { applyProjectFilters as applyProjectFiltersTo, projectBlob } from '../../lib/hub-model.js';
 import { renderFirstRun, renderSampleOnly } from './first-run.js';
 
@@ -85,8 +85,8 @@ function projectCard(p, currentId, openJourney) {
       h('span.pc-foot', {}, [
         h('button.pc-share', { type: 'button', 'data-action': 'share-project', 'data-id': p.id, 'aria-label': 'Share project', title: 'Share', text: '↗ SHARE' }),
         h('a.pc-open', {
-          href: DASHBOARD_URL, 'data-action': 'open-project', 'data-id': p.id,
-          'aria-label': 'Open ' + p.title + ' on its dashboard', text: 'open →'
+          href: PROJECT_HOME_URL, 'data-action': 'open-project', 'data-id': p.id,
+          'aria-label': 'Open ' + p.title + ' in the Screenplay Writer', text: 'open script →'
         })
       ])
     ])

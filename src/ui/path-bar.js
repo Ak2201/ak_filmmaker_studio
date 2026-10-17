@@ -24,9 +24,20 @@ import '../styles/path-bar.css';
 
 /* production serves clean URLs (/breakdown), the dev server .html */
 const file = () => { const p = location.pathname.split('/').pop() || 'index'; return /\.html$/.test(p) ? p : p + '.html'; };
+const RETIRED = true;
 const hrefOf = (s) => (s.id === 'ready' ? 'preprod.html#step-ready' : s.tool.href);
 
 export function mountPathBar(main) {
+  /* RETIRED FROM THE TOOL PAGES (Celtx simplification): the sticky 11-step
+     strip and its Back / Next footer no longer draw. Every caller ignores
+     the return value, so null is safe. The strip's height is published as
+     0 so a tab section's scroll-margin (--stp-bar-h) does not wait on a bar
+     that is not there. preprod.html itself is untouched. The body below is
+     kept so the bar can be restored by deleting this block. */
+  if (RETIRED) {
+    try { if (!document.documentElement.style.getPropertyValue('--stp-bar-h')) document.documentElement.style.setProperty('--stp-bar-h', '0px'); } catch (e) { /* no DOM */ }
+    return null;
+  }
   if (!main || !Store.currentProject()) return null;
   let steps;
   try { steps = pathSteps(); } catch (e) { return null; }

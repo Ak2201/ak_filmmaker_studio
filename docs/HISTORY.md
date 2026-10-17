@@ -2099,3 +2099,44 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     re-landing until its timeout. Found by logging every scroll call with its
     stack: the explicit calls landed at different `y` each time because each
     aligned to a different effective padding.
+
+48. **Celtx-style simplification (17 Oct 2026).** Built from
+    `celtx-ui-simplification-plan.md`, on top of `develop`, by three
+    foundation lanes and six page lanes, then a bug round. What changed:
+    (a) **modules off for every plan**: 15 modules carry `plans: []` in
+    `src/data/plan-matrix.json` (case-studies, dissection, glossary,
+    idea-vault, pitch-deck, script-breakdown, auto-tag, songs, screen-time,
+    cast-matrix, lookbook, media, shoot-day, edit-log, deliverables);
+    `plan-gate.js` `isDisabledEverywhere()` (a HIDING rule only, fed by the
+    hard-coded `OFF_BY_DEFAULT`, which `test:plans` keeps equal to the matrix)
+    hides their links and sections (`hidden` / `data-tab-off`, kept in the
+    DOM), and a page whose every module is off draws a neutral "Not
+    available" panel (`.pg-lock[data-gone]`) instead of a SEE PLANS card.
+    `allowed()`, `entitlement()` and `walled()` are untouched. (b) The side
+    tab menu is now Admin and Settings only; every other tabbed page gets the
+    segmented pill strip. (c) The path bar, the blueprint-step pill and the
+    visible stage guide are retired (`#guide` stays in the DOM, `hidden`, and
+    opens on a `#guide` link); the Pre-Production rail item opens
+    `breakdown.html`. (d) Opening a project lands on `screenplay.html`
+    (`PROJECT_HOME_URL`). (e) Premium depth tokens in `tokens.css`; page
+    layouts per plan section 7. `scripts/baseline.json` was recaptured
+    deliberately: zero data-key movement; the words removed are the
+    Post-Production stage text and the Library rail label (every module in
+    both is off for every plan, so the stage has no live module and leaves
+    the rail).
+    **Bugs worth remembering.** A merge cut `screenplay.css` from 961 to 27
+    lines and every gate stayed green (verify checks words, keys, contrast
+    and overflow, not whether a stylesheet still exists). The rail's lead
+    module was picked with `allowed()`, which is true while the plan is
+    unknown, so the Pre-Production link pointed at an off module and plan-gate
+    then hid it for everyone. `pageLocked()` must count only modules that can
+    be on a plan.
+    **Consequences for the owner.** `shoot.html`, `edit.html`,
+    `deliverables.html` and `vault.html` are "not available" to everyone, on
+    every plan. The browser extension's clipper drains its queue into
+    `vault.html`, so clips have no visible destination until Idea Vault is
+    switched back on (`prove:extension` looks past the overlay to test the
+    queue). `plan-matrix.json` is the source of §36: regenerate and run it
+    (`scripts/make-plan-features-sql.mjs --write`) before purchases are
+    required, or the live plan rows still carry the 15 modules as on.
+

@@ -30,6 +30,14 @@ export const PLAN_NAMES = { free: 'Free', starter: 'Basic', indie: 'Intermediate
    could contradict an hour later. */
 export const LIST_PRICE = { free: 0, starter: 599, indie: 799, pro: 999 };
 
+/* THE EDUCATION TRACK'S FIGURES, IN WHOLE RUPEES. Display copy only, and
+   stamped into start.html the same way as LIST_PRICE: nothing charges
+   these. `student` is Intermediate after the STUDENT50 promo code (the
+   promo is priced server-side by quote_order); `cohort` and `edu` are
+   the "from" figures on two enquiry cards that are set up by hand
+   (invite codes and grants), never sold through the checkout. */
+export const EDU_PRICE = { student: 399, cohort: 2999, edu: 9999 };
+
 /** "₹799", in Indian digit grouping. 0 renders as "₹0"; callers that
  *  mean "not for sale" check the number, not this string. */
 export const inr = (n) => '\u20B9' + Number(n || 0).toLocaleString('en-IN');

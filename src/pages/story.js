@@ -270,7 +270,7 @@ function refreshStepper() {
 wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
-  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + (pathNow().length + EXTRAS.length) }),
+  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + (pathNow().length + EXTRAS.filter((x) => !(x.id === 'pitch' && pitchOff())).length) }),
   h('h2.bd-h2', { text: title }),
   lead ? h('p.bd-sub', { text: lead }) : null,
   learnBox(LEARN_TOPIC[id])
@@ -1112,7 +1112,7 @@ function applyView() {
        sections after it (Beats & pacing, Pitch deck, Cover sheet) are
        the bar's "Then" row and say so rather than taking a number. */
     if (p.id === shown && !viewIds.includes(p.id)) {
-      const f = stepFooter(footPanels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + panels.length });
+      const f = stepFooter(footPanels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + footPanels.length });
       if (f) p.el.append(f);
     }
   });

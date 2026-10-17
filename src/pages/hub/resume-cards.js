@@ -14,7 +14,7 @@ import Store from '../../lib/store.js';
 import { fmtINR } from '../../lib/money.js';
 import * as Status from '../../lib/hub-status.js';
 import { h } from '../../lib/dom.js';
-import { DASHBOARD_URL, FORMAT_LABELS, fmtRelDate, title, $ } from './util.js';
+import { PROJECT_HOME_URL, FORMAT_LABELS, fmtRelDate, title, $ } from './util.js';
 
 /**
  * @param {object} o
@@ -94,7 +94,7 @@ function stepName(steps, id) {
 
 function updateResume() {
   /* The blueprints are not destinations any more: the card names the
-     open project and continues to ITS dashboard. */
+     open project and continues to ITS script. */
   const card    = $('#resumeCard');
   const heading = $('#resumeTitle');
   const body    = $('#resumeBody');
@@ -106,7 +106,7 @@ function updateResume() {
   card.classList.add('has-data');
   heading.textContent = cur.title || 'Untitled project';
   body.textContent = (FORMAT_LABELS[cur.format] || cur.format) + ' · edited ' + fmtRelDate(cur.updatedAt);
-  actions.append(resumeBtn(DASHBOARD_URL, 'CONTINUE  →'));
+  actions.append(resumeBtn(PROJECT_HOME_URL, 'CONTINUE  →'));
 }
 
 function updateIndexChecks(f, s) {

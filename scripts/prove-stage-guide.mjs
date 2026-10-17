@@ -234,14 +234,28 @@ check('(2) short.html’s answer shows in the guide', await page.inputValue('#gu
 const vite = await createServer({ configFile: path.resolve('vite.config.js'), server: { port: DEV_PORT, strictPort: true }, logLevel: 'error' });
 await vite.listen();
 const dev = (p) => `http://localhost:${DEV_PORT}/${p}`;
-const mount = (stage) => page.evaluate(async (st) => {
-  document.querySelectorAll('#guide').forEach((n) => n.remove());
-  const m = await import('/src/ui/stage-guide.js');
-  m.mountStageGuide(document.querySelector('main') || document.body, { stage: st });
-  await new Promise((r) => setTimeout(r, 0));
-  document.getElementById('guide').hidden = false;   // story.html un-hides its own guide; the stage pages do it on #guide
-  document.getElementById('guide').scrollIntoView();
-}, stage);
+/* A stage page's guide is hidden until the hash asks for it (stage-guide.js sync()):
+   mount with an empty hash, assert it is hidden, then navigate to #guide so the
+   real un-hide path runs. story.html un-hides its own guide, so story is forced. */
+const mount = async (stage) => {
+  const hiddenFirst = await page.evaluate(async (st) => {
+    document.querySelectorAll('#guide').forEach((n) => n.remove());
+    history.replaceState(null, '', location.pathname + location.search);
+    const m = await import('/src/ui/stage-guide.js');
+    m.mountStageGuide(document.querySelector('main') || document.body, { stage: st });
+    await new Promise((r) => setTimeout(r, 0));
+    const g = document.getElementById('guide');
+    const was = g.hidden;
+    if (st === 'story') { g.hidden = false; g.scrollIntoView(); }
+    else location.hash = '#guide';
+    return was;
+  }, stage);
+  if (stage !== 'story') {
+    check(`(3) ${stage}: the guide is hidden until #guide`, hiddenFirst, true);
+    await page.waitForFunction(() => { const g = document.getElementById('guide'); return g && !g.hidden; }, null, { timeout: 5000 })
+      .then(() => check(`(3) ${stage}: #guide un-hides it`, true, true), () => check(`(3) ${stage}: #guide un-hides it`, false, true));
+  }
+};
 const stageIds = () => page.evaluate(() => [...document.querySelectorAll('#guide .step')].map((s) => s.getAttribute('data-sg-id')));
 
 async function devSeed(format, key, data) {

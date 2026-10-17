@@ -69,6 +69,7 @@
    ============================================================ */
 import './store.js';   // must evaluate before anything reads localStorage
 import nav from '../data/navigation.json';
+import { stageLead, stageAllLocked } from './nav-stage.js';   // pure: the one stage-link rule
 import featureData from '../data/steps.feature.json';
 import prodData from '../data/steps.production.json';
 import shortData from '../data/steps.short.json';
@@ -509,41 +510,29 @@ export const STATUS = {
   done:  { id: 'done',  label: 'Done' }
 };
 
-/** A stage's main page, from navigation.json (the stage's first module). */
+/** A stage's main page: its lead (nav-stage.js stageLead — the same
+ *  module the rail icon, the crumb's stage button and the hub's doors
+ *  open, so a stage card never disagrees with the rail). */
 export function stageHref(id) {
   const ph = nav.phases.find((p) => p.id === id);
-  if (ph && ph.home && ph.home.href) return ph.home.href;   // the stage's own landing page (navigation.json `home`)
-  const m = leadModule(ph) || (ph && ph.modules && ph.modules[0]);
+  const m = stageLead(ph) || (ph && ph.modules && ph.modules[0]);
   return (m && m.href) || 'dashboard.html';
 }
 
-/* A stage's lead: the first built module that is not off for everybody.
-   plan-gate.js (via window.StudioPlan) knows what is off; with no gate the
-   answer is the first built module, as before. Pure: no import. */
-function disabledEverywhere(id) {
-  try {
-    const gate = typeof window !== 'undefined' && window.StudioPlan;
-    return !!(gate && typeof gate.isDisabledEverywhere === 'function' && gate.isDisabledEverywhere(id));
-  } catch (e) { return false; }
-}
+/** A stage's lead module (stageLead). The plan gate is read from
+ *  `window.StudioPlan` (plan-gate.js sets it) rather than imported: this
+ *  file is read by Node tests and must stay pure. With no gate the answer
+ *  is the first built module. */
 export function leadModule(ph) {
-  const ms = (ph && ph.modules) || [];
-  return ms.find((x) => x.status === 'built' && x.href && !disabledEverywhere(x.id)) || null;
+  return stageLead(ph);
 }
 
-/* A stage whose first module is not on the member's plan. Asked of
-   plan-gate.js through `window.StudioPlan` (set there) rather than an
-   import: this file is read by Node tests and must stay pure. Unknown
-   is NOT locked — entitlement fails open, so with no plan state, no
-   window or a throw the answer is false and nothing is skipped. */
+/* A stage none of whose live modules is on the member's plan: the
+   suggestion below skips it (its link still opens the first module).
+   Unknown is NOT locked — entitlement fails open, so with no plan state,
+   no window or a throw the answer is false and nothing is skipped. */
 function stageLocked(id) {
-  try {
-    const gate = typeof window !== 'undefined' && window.StudioPlan;
-    if (!gate || typeof gate.allowed !== 'function') return false;
-    const ph = nav.phases.find((p) => p.id === id);
-    const m = ph && (ph.modules || []).find((x) => x.status === 'built' && x.href && !disabledEverywhere(x.id));
-    return !!m && !gate.allowed(m.id);
-  } catch (e) { return false; }
+  return stageAllLocked(nav.phases.find((p) => p.id === id));
 }
 
 const plur = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));

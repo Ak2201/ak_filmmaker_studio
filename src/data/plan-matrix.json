@@ -20,7 +20,7 @@
       "revisions",
       "import-script",
       "exports",
-      "case-studies"
+      "docs"
     ],
     "indie": [
       "breakdowns",
@@ -31,10 +31,7 @@
       "drive_backup"
     ],
     "pro": [
-      "shoot-day",
       "call-sheets",
-      "edit-log",
-      "deliverables",
       "ai_tools",
       "remove_branding"
     ]
@@ -112,32 +109,17 @@
     {
       "key": "case-studies",
       "kind": "module",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "dissection",
       "kind": "module",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "glossary",
       "kind": "module",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "story-beats",
@@ -152,21 +134,12 @@
     {
       "key": "idea-vault",
       "kind": "module",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "pitch-deck",
       "kind": "module",
-      "plans": [
-        "free",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "screenplay",
@@ -201,12 +174,7 @@
     {
       "key": "script-breakdown",
       "kind": "module",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "breakdowns",
@@ -239,12 +207,7 @@
     {
       "key": "screen-time",
       "kind": "module",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "docs",
@@ -259,20 +222,12 @@
     {
       "key": "auto-tag",
       "kind": "module",
-      "plans": [
-        "free",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "cast-matrix",
       "kind": "module",
-      "plans": [
-        "free",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "shot-list",
@@ -295,20 +250,12 @@
     {
       "key": "lookbook",
       "kind": "module",
-      "plans": [
-        "free",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "media",
       "kind": "module",
-      "plans": [
-        "free",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "budget",
@@ -340,11 +287,7 @@
     {
       "key": "songs",
       "kind": "module",
-      "plans": [
-        "free",
-        "indie",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "calendar",
@@ -394,10 +337,7 @@
     {
       "key": "shoot-day",
       "kind": "module",
-      "plans": [
-        "free",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "call-sheets",
@@ -410,18 +350,12 @@
     {
       "key": "edit-log",
       "kind": "module",
-      "plans": [
-        "free",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "deliverables",
       "kind": "module",
-      "plans": [
-        "free",
-        "pro"
-      ]
+      "plans": []
     },
     {
       "key": "extension",

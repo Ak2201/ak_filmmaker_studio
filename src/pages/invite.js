@@ -42,6 +42,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
+import { pageHeader } from '../ui/kit/page-header.js';
 import { listPriceBlock } from '../ui/list-prices.js';
 import { trialLength } from '../lib/trial-time.js';
 /* §33's trial_offer(): ANON-callable, one narrow public fact (is the
@@ -169,12 +170,12 @@ function render() {
   const email = (c && c.getUserEmail && c.getUserEmail()) || '';
 
   const main = h('main#main');
-  main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Studio · Come in' }),
-    h('h1.bd-title', { text: 'Come in.' }),
-    h('p.bd-deck', { text: deckFor(c, g) })
-  ]));
+  /* ONE PAGE FRAME: the kit header every studio page opens with. The
+     deck is this page's answer to "why am I here", so it is a body
+     paragraph rather than the header's sub (which .bd-head hides). */
+  main.append(pageHeader({ eyebrow: ['Studio', 'Come in'], title: 'Come in', class: 'bd-head' }));
   const body = h('div.iv-body');
+  body.append(h('p.bd-deck.iv-deck', { text: deckFor(c, g) }));
   const why = whySentence(c, signedIn, g.state);
   if (why) body.append(h('p.bd-sub.iv-why', { role: 'status', text: why }));
 

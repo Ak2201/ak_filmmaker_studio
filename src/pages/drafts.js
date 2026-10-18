@@ -38,7 +38,7 @@ import * as Script from '../lib/script.js';
 import * as Drafts from '../lib/drafts.js';
 import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
-import { mountRevisionTools, renderCompareTool, presetCompare } from '../ui/write-revisions.js';
+import { mountRevisionTools, renderCompareTool, renderNumberingTool, presetCompare } from '../ui/write-revisions.js';
 /* What this page says about the drafts: src/lib/screenplay-drafts-model.js. */
 import { TITLE_LABELS, titlePlaceholder as titlePlaceholderFor } from '../lib/write-format.js';
 import {
@@ -135,12 +135,12 @@ function refreshState() {
 }
 
 function render() {
-  const main = h('main#main.dr-main');
+  const main = h('main#main.dr-main.k-page');
   const hasProject = !!(Store.currentProject && Store.currentProject());
   main.append(pageHeader({
     class: 'bd-head',
     eyebrow: ['Screenplay', 'Drafts'],
-    title: 'Drafts.',
+    title: 'Drafts',
     sub: 'A draft is a copy of the script as it stood, with its title page. Save one when a pass is done; '
        + 'print it, compare it with the next, or go back to it. Your working copy is always kept as you type.'
   }));
@@ -174,6 +174,9 @@ function render() {
   }
 
   main.append(h('div#dr-compare', {}, [renderCompareTool()]));
+  /* The scene-number lock: the stripboard's "Manage numbering" lands
+     here. Filtered — Element.append(null) prints "null". */
+  main.append(h('div#numbering.dr-numbering', {}, [renderNumberingTool()].filter(Boolean)));
   main.append(titlePageBlock());
   app.replaceChildren(main);
   mountShell();

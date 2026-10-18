@@ -16,6 +16,16 @@
    tab, as it already did below 720px. */
 .lib-embed .ds-bar { position: static; }
 
+/* ONE PAGE FRAME (17 Oct 2026): <main> is the studio's one column
+   (.k-page, modules.css), and the Library's bands — the cover, the index,
+   the section heads and bodies, the terminology list, the embedded case
+   studies — all inset themselves by --gutter. Inside the column that
+   inset is the column's own, so it is zero here, once, rather than a
+   padding rule per band. */
+.lib-main.k-page { --gutter: 0px; }
+/* three bands set a fixed inset of their own rather than the gutter */
+.lib-main.k-page > :is(.cover, .lib-contents, .final-page) { padding-inline: 0; }
+
 /* The tab strip takes the module pages' column by default
    (--measure-wide, centred: 234-1122px at 1280). The Library's own
    sections are full-bleed bands whose heads are inset by --gutter, so
@@ -24,10 +34,6 @@
    and cut "Craft Glossary" off at 1280 with room to spare. Here the
    strip takes the heads' inset instead. */
 main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
-/* With the side menu (tabs.css) the library takes the full width rather
-   than the module pages' centred measure: its sections are bands with
-   their own gutter, and the in-tab rail below needs the room. */
-main:has(> .lib-sec).tabs-has-side { --side-pad: var(--s4); } /* not --gutter: heads and bodies carry their own, and a second one outside left 596px of cards at 1100px (measured); this leaves 652 */
 
 /* ---- the craft glossary: every film's example, under the term ---- */
 .lib-gloss-ex {
@@ -357,22 +363,11 @@ main:has(> .lib-sec).tabs-has-side { --side-pad: var(--s4); } /* not --gutter: h
 /* ============================================================
    THE COVER, OBSIDIAN LOOK (13 Oct 2026)
    ------------------------------------------------------------
-   An amber mono kicker, a very large serif title with one italic
-   amber word, the deck and the real shelf count beside it, and the
-   contents as a grid of shelf cards: amber SECTION numeral, title,
+   The page header is the kit's (.bd-head, one frame); under it the
+   deck and the real shelf count beside it, and the contents as a grid of shelf cards: amber SECTION numeral, title,
    summary, and the count that shelf's own array produced. Amber is
    --library-deep, the text variant, never the fill. Tokens only.
    ============================================================ */
-.cover .cover-mark { font-family: var(--f-mono); color: var(--library-deep); letter-spacing: var(--track-label); }
-.cover .cover-title {
-  font-family: var(--face-display);
-  font-weight: 700;
-  font-size: clamp(2.5rem, 7vw, 4.5rem);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  margin-bottom: var(--s4);
-}
-.cover .cover-title .light { font-style: var(--face-accent-style); font-weight: 700; color: var(--library-deep); }
 .cover-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4) var(--s6); max-width: none; margin-bottom: var(--s6); padding-bottom: var(--s5); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); }
 .cover-row .cover-sub { flex: 1 1 28rem; max-width: 46rem; margin: 0; }
 .cover-pills { margin: 0; display: flex; gap: var(--s2); }

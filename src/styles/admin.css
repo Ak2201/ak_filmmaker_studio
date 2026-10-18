@@ -30,10 +30,6 @@
   gap: var(--s4);
   min-width: 0;
 }
-.ad-head { padding-block: var(--s5) var(--s3); }
-.ad-head .bd-title { font-size: var(--t-3xl); margin: 0; }
-.ad-head .bd-eyebrow { margin-bottom: var(--s1); }
-.ad-head .ad-meta { margin-top: var(--s2); }
 
 .ad-meta { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
 .ad-sub { display: block; font-size: var(--t-tiny); color: var(--ink-muted); }
@@ -223,7 +219,6 @@ a.ad-stat:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); o
 /* .bd-head drops to the 16px gutter below 720px; the body follows. */
 @media (max-width: 719px) {
   .ad-body { padding-inline: var(--s4); }
-  .ad-head .bd-title { font-size: var(--t-2xl); }
   .ad-console :is(.gr-panel, .ba-plan, .ba-promo, .ba-grant, .gt-create, .acc-switch) { padding: var(--s3); }
 }
 
@@ -240,11 +235,12 @@ a.ad-stat:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); o
    on --ok-wash, --danger on --danger-wash); a fill is never text.
    ============================================================ */
 
-/* ---- the column: wider than the reading measure ---------------- */
-.ad-body.ad-console,
-.ad-head,
-.ad-status { max-width: 80rem; }
-.ad-head { margin-inline: auto; width: 100%; box-sizing: border-box; padding-inline: var(--s5); }
+/* ---- the column -------------------------------------------------
+   The studio's one frame (.k-page.k-page--side, modules.css): <main> is
+   the column, the side menu's track wider than every other page so the
+   PANEL is the measure; the header, the status bar and the body carry
+   no width or gutter of their own. */
+main.k-page > :is(.ad-body, .ad-status) { max-width: none; margin-inline: 0; padding-inline: 0; }
 
 /* ---- the status bar: the facts that change what an action means - */
 .ad-status {
@@ -551,7 +547,7 @@ html.ad-drawer-on { overflow: hidden; }
 }
 @media print { .ad-drawer, .ad-drawer-scrim, .adc-tip { display: none; } }
 @media (max-width: 719px) {
-  .ad-head, .ad-status { padding-inline: var(--s4); }
+  .ad-status { padding-inline: var(--s4); }
   .ad-drawer-h, .ad-drawer-b { padding-inline: var(--s4); }
   .adc-bar-r, .adc-fn-r { grid-template-columns: minmax(4rem, 7rem) minmax(0, 1fr) auto; }
   .adc-fn-d { display: none; }
@@ -766,7 +762,6 @@ figure.adc { position: relative; overflow: clip; overflow-clip-margin: 4px; }
    by kit.css; the .ad-* classes stay as the hooks the proofs read.
    What is left here is arrangement only. Tokens and --sk-* only.
    ============================================================ */
-.ad-head { max-width: 80rem; margin-inline: auto; width: 100%; box-sizing: border-box; padding: var(--s6) var(--s5) var(--s4); margin-bottom: 0; }
 .ad-status { max-width: 80rem; margin-inline: auto; padding: 0 var(--s5) var(--s4); width: 100%; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
 .ad-status-r { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 .ad-status .ad-meta { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); }
@@ -794,7 +789,6 @@ a.k-stat.ad-stat:focus-visible { outline: var(--focus); outline-offset: var(--fo
 .ad-tl-s { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
 .ad-tl-a { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: .04em; }
 .ad-meter-bar { background: var(--surface-rail); border-radius: var(--radius-pill); }
-@media (max-width: 719px) { .ad-head, .ad-status { padding-inline: var(--s4); } }
 
 /* severity tag on a "Needs attention" row (CRIT / HIGH / LOW), text variants only */
 .ad-sev {

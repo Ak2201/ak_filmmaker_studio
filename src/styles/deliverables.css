@@ -10,12 +10,8 @@
    Status takes the semantic families; the page's accent is the
    stage's. No table: the gate measures overflow at 390px.
    ============================================================ */
-.dv-main {
-  max-width: var(--measure-wide);
-  margin: 0 auto;
-  padding: var(--s5) var(--gutter) var(--s9);
-}
-.dv-main .bd-head { padding-inline: 0; }
+/* The column is the studio's one frame (.k-page, modules.css). */
+.dv-main { padding-block: 0 var(--s9); }
 .dv-stats { margin: var(--s4) 0 var(--s5); }
 
 .dv-h2 {

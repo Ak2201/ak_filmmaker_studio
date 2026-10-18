@@ -41,7 +41,7 @@ import {
   dialogueData, dialogueMeta, dialogueWho, dialogueSubtitle, fileBase as fileBaseOf
 } from '../lib/deliverables-model.js';
 import { guideHref } from '../lib/blueprint-route.js';
-import { pageHeader, statCard, statStrip } from '../ui/kit/index.js';
+import { pageHeader, statCard, statStrip, badge } from '../ui/kit/index.js';
 /* pdf.js, cbfc.js and cbfc-rules.json are only needed by the certification
    and dialogue tabs, so they load on demand, not in first paint. */
 let PDF = null, Cbfc = null, CBFC_RULES = null, lazyP = null;
@@ -560,11 +560,15 @@ function renderNow(focus) {
   const prog = Deliverables.progress(all);
   const shown = shownItems(all, show);
 
-  const main = h('main#main.dv-main');
+  const main = h('main#main.dv-main.k-page');
 
+  /* ONE PAGE FRAME: the h1 is the page's name; "ready to deliver" is a
+     state, a badge under it. */
   main.append(pageHeader({
     eyebrow: ['Post', 'Deliverables'],
-    title: prog.complete ? 'Ready to deliver.' : 'Deliverables.',
+    title: 'Deliverables',
+    class: 'bd-head',
+    meta: prog.complete ? [badge({ label: 'Ready to deliver', tone: 'ok', tag: true })] : [],
     sub: 'The censor certificate, the subtitles, the DCP, the stills and the paper behind them, '
        + 'as one list. Tick what is done, mark what this film does not need, and the festival '
        + 'formats come from the tracker rather than from memory.'

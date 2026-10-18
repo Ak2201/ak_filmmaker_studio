@@ -568,16 +568,38 @@
 }
 
 /* ============================================================
+   VOLUME ACCENTS — <html data-volume>, the fallback under a stage
+   ------------------------------------------------------------
+   Declared BEFORE the phase accents on purpose (17 Oct 2026). Both are
+   one attribute selector on <html>, so the later rule wins, and for a
+   year the volume came later: budget, preprod, drafts and the vault
+   carried data-volume="studio" beside their stage and wore the brand
+   violet while their sibling pages wore the stage's hue. A page's STAGE
+   is its colour; the volume only speaks where there is no stage (the
+   hub, the blueprints, the Library, Settings).
+   ============================================================ */
+[data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
+[data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); }
+[data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
+/* The studio itself is no phase: it takes the brand — the hub, the
+   dashboard, Settings, the console. */
+[data-volume="studio"]  { --accent: var(--brand); --accent-deep: var(--brand-deep); --accent-wash: var(--brand-wash); --accent-lift: var(--brand-lift); --accent-on: var(--brand-on); --accent-hover: var(--brand-hover); }
+
+/* ============================================================
    PHASE ACCENTS — set once per page on <html data-phase>
    ------------------------------------------------------------
    The five-stage spine (Story → Screenplay → Pre-Production →
    Production → Post-Production). Every --accent reference follows.
+   Each states --accent-hover too: a page that also carries
+   data-volume="studio" would otherwise keep the brand's hover.
+   The value is the page's HOME STAGE (src/lib/nav-stage.js), the same
+   whichever link the page was opened from.
    ============================================================ */
-[data-phase="story"]      { --accent: var(--feature);   --accent-deep: var(--feature-deep);   --accent-wash: var(--feature-wash);   --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
-[data-phase="screenplay"] { --accent: var(--library);   --accent-deep: var(--library-deep);   --accent-wash: var(--library-wash);   --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
-[data-phase="preprod"]    { --accent: var(--plan);      --accent-deep: var(--plan-deep);      --accent-wash: var(--plan-wash);      --accent-lift: var(--plan-lift); --accent-on: var(--plan-on); }
-[data-phase="production"] { --accent: var(--shoot);     --accent-deep: var(--shoot-deep);     --accent-wash: var(--shoot-wash);     --accent-lift: var(--shoot-lift); --accent-on: var(--shoot-on); }
-[data-phase="post"]       { --accent: var(--visualize); --accent-deep: var(--visualize-deep); --accent-wash: var(--visualize-wash); --accent-lift: var(--visualize-lift); --accent-on: var(--visualize-on); }
+[data-phase="story"]      { --accent: var(--feature);   --accent-deep: var(--feature-deep);   --accent-wash: var(--feature-wash);   --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); --accent-hover: var(--feature-deep); }
+[data-phase="screenplay"] { --accent: var(--library);   --accent-deep: var(--library-deep);   --accent-wash: var(--library-wash);   --accent-lift: var(--library-lift); --accent-on: var(--library-on); --accent-hover: var(--library-deep); }
+[data-phase="preprod"]    { --accent: var(--plan);      --accent-deep: var(--plan-deep);      --accent-wash: var(--plan-wash);      --accent-lift: var(--plan-lift); --accent-on: var(--plan-on); --accent-hover: var(--plan-deep); }
+[data-phase="production"] { --accent: var(--shoot);     --accent-deep: var(--shoot-deep);     --accent-wash: var(--shoot-wash);     --accent-lift: var(--shoot-lift); --accent-on: var(--shoot-on); --accent-hover: var(--shoot-deep); }
+[data-phase="post"]       { --accent: var(--visualize); --accent-deep: var(--visualize-deep); --accent-wash: var(--visualize-wash); --accent-lift: var(--visualize-lift); --accent-on: var(--visualize-on); --accent-hover: var(--visualize-deep); }
 
 /* One swatch variable, --hue, set by two families of class:
    .sh-ph-* maps a PHASE to its hue (the nav); .hue-* names the hue
@@ -610,13 +632,6 @@
 .hue-dusk  { --hue: var(--strip-dusk);  --hue-on: var(--on-fill); --hue-deep: var(--strip-dusk-ink);  --hue-lift: var(--strip-dusk-ink);  --hue-wash: var(--strip-dusk-bg); }
 .hue-dawn  { --hue: var(--strip-dawn);  --hue-on: var(--on-fill); --hue-deep: var(--strip-dawn-ink);  --hue-lift: var(--strip-dawn-ink);  --hue-wash: var(--strip-dawn-bg); }
 
-[data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
-[data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); }
-[data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
-/* The studio itself is no phase: it takes the brand. This one line
-   paints the hub (and, being declared after [data-phase], wins there:
-   --accent-deep IS --brand-deep on every studio page). */
-[data-volume="studio"]  { --accent: var(--brand); --accent-deep: var(--brand-deep); --accent-wash: var(--brand-wash); --accent-lift: var(--brand-lift); --accent-on: var(--brand-on); --accent-hover: var(--brand-hover); }
 
 /* Volume II of the feature blueprint switches accent mid-document. */
 .vol-2 { --accent: var(--shorts); --accent-deep: var(--shorts-deep); --accent-wash: var(--shorts-wash); --accent-lift: var(--shorts-lift); }

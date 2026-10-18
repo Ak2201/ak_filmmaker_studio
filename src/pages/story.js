@@ -964,7 +964,7 @@ function draw() {
   if (mode === null) mode = s.source.trim() ? 'tag' : 'edit';
   const cur = currentStep(s);
   const cards = isEmpty(s) && !started;
-  const main = h('main#main.st-main');
+  const main = h('main#main.st-main.k-page');
   if (cards) main.append(renderModes());
 
   /* The header's actions: import, the two exports, start over. One
@@ -984,7 +984,7 @@ function draw() {
   main.insertBefore(pageHeader({
     class: 'bd-head',
     eyebrow: ['Story', 'Beats & pacing'],
-    title: 'Story.',
+    title: 'Story',
     sub: fmt() === 'short'
       ? 'From a seed to a step outline to a synopsis. Everything a short film needs is on this page: the character, the world, the conflict, the order of the beats.'
       : 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Everything is on this page, in order; tag the passages that turn the story and watch where the tension sags.',

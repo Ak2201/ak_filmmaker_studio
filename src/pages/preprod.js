@@ -10,7 +10,8 @@
    stores nothing and writes nothing. A step says what it is for, how far
    it stands, what is missing, and links to the tool where it is done.
    The last step, Ready to shoot, lists every readiness check together.
-   The same strip sits above each of those tools (src/ui/path-bar.js).
+   (The strip that once sat above each of those tools, path-bar.js, is
+   retired and gone: this page is where the path lives.)
    ============================================================ */
 import '../lib/store.js';   /* FIRST — invariant 6. */
 import '../styles/base.css';
@@ -144,22 +145,23 @@ function render() {
   const main = h('main#main');
   main.append(pageHeader({
     class: 'bd-head',
-    eyebrow: 'Studio \u00b7 Pre-Production',
-    title: 'Pre-Production.',
+    eyebrow: ['Studio', 'Pre-Production'],
+    title: 'Pre-Production',
     sub: 'From the script to the first day of shooting, one step at a time. Each step says what it is for and what is still missing, then opens the tool where it is done.'
   }));
   nav = null;
   if (!project) {
     main.append(h('div.pp-page', {}, [h('p.bd-sub', { text: 'No film is open. Open or create one from Home, and its path appears here.' })]));
   } else {
-    /* main IS the container the shared menu lays out beside (tabs.css
-       .tabs-has-side): header and summary span the width, the column
-       is the menu, .pp-body is the open step. */
-    main.classList.add('tabs-has-side', 'pp-has-menu');
+    /* The steps are the shared section menu as a STRIP, the same control
+       every page's sections use (the side column is Settings' and the
+       Console's alone); header, summary, strip and the open step sit on
+       the page's one column. */
+    main.classList.add('pp-has-menu');
     main.dataset.film = project.id;
     main.append(summary(done, next));
     nav = buildSectionMenu({
-      groups: menuGroups(), active: panelId(cur), ariaLabel: 'Pre-Production steps', sectionsLabel: 'Steps', orientation: 'side',
+      groups: menuGroups(), active: panelId(cur), ariaLabel: 'Pre-Production steps', sectionsLabel: 'Steps', orientation: 'strip',
       onSelect: (pid) => go(bareId(pid))
     });
     main.append(nav);
@@ -176,7 +178,7 @@ function go(id) {
   if (nav && nav.isConnected) updateSectionMenu(nav, menuGroups(), panelId(id));
   scrollRowIntoStrip();
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* file:// */ }
-  /* beside the panels (>= 1100px) nothing is pinned above them; below, the strip is */
+  /* the strip is pinned above the panels; land the step under it */
   landUnderMenu(document.getElementById(panelId(id)), nav);
 }
 

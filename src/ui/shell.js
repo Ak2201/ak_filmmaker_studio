@@ -53,7 +53,7 @@ import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
 import { mountProjectSwitcher } from './project-switcher.js';
 import { mountBackupMenu } from './topbar-backup.js';
-import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry, stagePageEntry } from '../lib/navmodel.js';
+import { moduleGroups, guideStops, phases, globals, stayEntry, stagePageEntry, homeStage, stageLead } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
 import { mountStatusBar, syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
@@ -157,8 +157,11 @@ function isShown(el) {
  * SEVERAL PAGES HOST MODULES FROM TWO PHASES — contacts.html is
  * Contacts (Pre-Production) and Call Sheets (Production); story.html,
  * stripboard.html and reports.html each straddle two stages as well.
- * Which of those you are in is answered in this order, and only the
- * first two are an ANSWER (exact:true):
+ * Which MODULE you are in is answered in this order, and only the
+ * first two are an ANSWER (exact:true). The STAGE is not: since
+ * 17 Oct 2026 it is always the page's home stage (HOME_PHASE below),
+ * whichever module or tab the hash names, so the frame is the same
+ * however the page was reached.
  *
  *   1. the hash names a module's fragment;
  *   2. the hash names something INSIDE a module's section (a scene
@@ -182,17 +185,34 @@ function isShown(el) {
  */
 const GUIDE_HIDDEN = true;
 
-/* A stage's lead module: navmodel's firstModuleOf, but skipping modules the
-   plan matrix has switched off (plan-gate hides those links, and a stage
-   link whose lead is hidden would disappear with it). */
+/* A stage's lead module — THE one stage-link rule (nav-stage.js
+   stageLead): first built module not switched off for everybody and on
+   this member's plan. The rail icon, the crumb's stage button, the
+   dashboard's cards and the hub's doors all ask it, with plan-gate's two
+   answers passed in here because this file may import plan-gate. */
+const PLAN = { isOff: (id) => isDisabledEverywhere(id), allowed: (id) => allowed(id) };
 function leadOf(phase) {
-  if (phase && phase.home && phase.home.href) return firstModuleOf(phase);
-  const on = ((phase && phase.modules) || []).find((m) => m.status === 'built' && m.href && !isDisabledEverywhere(m.id) && allowed(m.id));
-  return on || firstModuleOf(phase);
+  return stageLead(phase, PLAN);
 }
+
+/* THE PAGE'S HOME STAGE (owner, 17 Oct 2026: "I want my UI to be the
+   same when it is opened from any page"). Derived once from the FILE
+   (navmodel homeStage: the stage of the page's first module), never from
+   the hash it was entered by. It decides <html data-phase>, the lit rail
+   stage and the crumb's stage segment; the crumb's LAST segment still
+   follows the open tab. contacts.html#call-sheets therefore reads
+   "Pre-Production › Call Sheets" in Pre-Production's colour, exactly as
+   contacts.html does, and Reports' DPR tab sits under Pre-Production
+   instead of under no stage. Global pages (the hub, the dashboard, the
+   Library, Settings, the console, the purchase pages) have none. */
+const HOME_STAGE_ID = homeStage(CURRENT);
+const HOME_PHASE = (GLOBAL_MODE === 'project' && HOME_STAGE_ID && phases().find((p) => p.id === HOME_STAGE_ID)) || null;
 
 function resolveLocation(hash = location.hash) {
   const loc = stayLocation(hash) || resolveModule(hash);
+  /* The module (or tab) still comes from the hash and the scroll; the
+     stage never does. */
+  loc.phase = HOME_PHASE;
   const part = blueprintPart();
   if (part) loc.part = part;
   return loc;
@@ -273,8 +293,8 @@ function resolveModule(hash) {
       const tabText = tab && (tab.querySelector('.tabs-tab-l') || tab).textContent;
       const label = (tabText || (panel && panel.dataset.tabLabel) || '').trim();
       if (panel && base && label) {
-        /* No stage: nothing records which one a non-module tab belongs
-           to, and a guess put Reports' DPR under "Screenplay". */
+        /* No stage of its own: resolveLocation() puts it under the
+           page's home stage (Reports' DPR reads "Pre-Production › DPR"). */
         return {
           phase: null, global: null, exact: true,
           module: { id: 'tab:' + panel.id, label, href: CURRENT + '#' + panel.id, sym: base.module.sym, icon: base.module.icon }
@@ -603,9 +623,9 @@ function buildRail() {
 function buildRailStages() {
   const wrap = h('div.sh-rail-stages', { role: 'group', 'aria-label': 'Stages' });
   phases().forEach((p) => {
-    /* The first module still enabled: a disabled one is hidden by plan-gate,
-       which would take the whole stage link with it. */
-    const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href && !isDisabledEverywhere(m.id));
+    /* The stage's lead (the one stage-link rule): a module switched off
+       everywhere is hidden by plan-gate and would take the link with it. */
+    const first = leadOf(p);
     if (!first) return;
     /* The rail is 64px wide, so a stage's blurb and its modules'
        plain-English purposes (navigation.json) ride on the link too:
@@ -1811,8 +1831,9 @@ function wire() {
      without a page load. An inexact resolution never overwrites an
      exact one: see the note above resolveLocation(). */
   /* tabs.js dispatches one by hand when a tab is picked, so choosing
-     Call Sheets on contacts.html moves the crumb and the active pill to
-     Production, and choosing Contacts moves them back. */
+     Call Sheets on contacts.html moves the crumb's LAST segment to Call
+     Sheets and choosing Contacts moves it back. The stage segment, the
+     lit rail stage and the colour stay the page's home stage. */
   window.addEventListener('hashchange', () => {
     const loc = resolveLocation();
     if (loc.exact || !current || !current.exact) goTo(loc);
@@ -1842,15 +1863,15 @@ export function mountShell() {
   const active = resolveLocation();
   current = active;
 
-  /* The page's palette is decided ONCE, at load. The crumb follows
-     the hash and the scroll; --data-phase deliberately does not.
-     plan.html holds Calendar and Media (Plan) and Locations (Shoot),
-     so a scroll-following data-phase would repaint every accent on
-     the page mid-scroll — a whole-page colour change to report a
-     change of section is a worse answer than the section not being
-     coloured. The crumb carries its own .sh-ph-* class, so the
-     breadcrumb's hue is right either way. */
-  if (active.phase) document.documentElement.setAttribute('data-phase', active.phase.id);
+  /* The page's palette is its HOME STAGE's, from the file alone — never
+     from the hash it was entered by, which used to paint
+     contacts.html#call-sheets in Production's colour and contacts.html
+     in Pre-Production's. Every root .html carries the same value
+     statically (scripts/test-home-stage.mjs), so this restates the
+     first paint rather than changing it; a page with no home stage
+     carries none. */
+  if (HOME_PHASE) document.documentElement.setAttribute('data-phase', HOME_PHASE.id);
+  else document.documentElement.removeAttribute('data-phase');
 
   const rail = buildRail();
   const bar = buildBar(active);

@@ -1,7 +1,15 @@
 /* ============================================================
    DRAFTS (src/pages/drafts.js). Tokens and --sk-* only.
    ============================================================ */
-.dr-main {
+/* The column is the studio's one frame (.k-page, modules.css). */
+main.dr-main {
+  padding-block: 0 var(--s9);
+  display: grid;
+  gap: var(--s4);
+}
+/* A draft row's text column shares the class name, and used to share
+   the page column's rule with it; it keeps that box. */
+.dr-row > .dr-main {
   max-width: var(--measure-wide);
   margin: 0 auto;
   padding: var(--s5) var(--gutter) var(--s9);
@@ -9,7 +17,6 @@
   gap: var(--s4);
   min-width: 0;
 }
-.dr-main .bd-head { padding-inline: 0; max-width: none; margin-inline: 0; }
 .dr-bar {
   display: flex;
   flex-wrap: wrap;

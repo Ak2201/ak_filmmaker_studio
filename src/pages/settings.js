@@ -1092,13 +1092,13 @@ function tabPane(id, label, group, cards, menu = {}) {
 }
 
 function render() {
-  const main = h('main#main.k-scope');
+  const main = h('main#main.k-scope.k-page.k-page--side');
 
   main.append(pageHeader({
     eyebrow: ['Studio', 'Settings'],
     title: 'Settings',
     sub: 'Your account, how the studio behaves on this device, where your work is kept and backed up, and your team.',
-    class: 'st-head'
+    class: 'bd-head st-head'
   }));
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));

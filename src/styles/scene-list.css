@@ -315,4 +315,3 @@ button.k-chip.bd-sug:focus-visible { outline: var(--focus); outline-offset: 1px;
 .bd-sl-counts .k-chip-count { color: var(--hue-deep); }
 
 /* the header's explanatory paragraph stays in the DOM, out of sight */
-.bd-head-celtx .k-page-sub { display: none; }

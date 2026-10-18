@@ -36,7 +36,7 @@ function render() {
   main.append(pageHeader({
     class: 'bd-head vault-head',
     eyebrow: ['Story', 'Idea Vault'],
-    title: 'Idea Vault.',
+    title: 'Idea Vault',
     sub: 'Everything you collect for this film, in one place. Pin a clipping to a beat, or add it to the synopsis when it earns its place.'
   }));
   const sec = h('section.st-sec', { id: 'vault', 'data-tab-label': 'Idea Vault' });

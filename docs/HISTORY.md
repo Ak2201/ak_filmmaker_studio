@@ -2141,7 +2141,32 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     required, or the live plan rows still carry the 15 modules as on.
 
 
-49. **Launcher as project home (18 Oct 2026).** Reverses clause (d) of item 48:
+49. **One frame per page, however it is reached (17 Oct 2026).** The owner
+    reported that the UI changed with the page you came from. Two causes.
+    First, `shell.js` stamped `html[data-phase]` from the ENTRY hash, so
+    `contacts.html#call-sheets` painted Production and `contacts.html`
+    Pre-Production, and the reports tabs that own no module (`#dpr`,
+    `#kit`, `#oneliner`) got no stage at all; `[data-volume]` rules also
+    sat after `[data-phase]` in `tokens.css` and beat it. Now a page has
+    ONE home stage, derived by `homeStage(file)` in `src/lib/nav-stage.js`
+    (the stage of its first module in `navigation.json`), which decides the
+    accent, the lit rail stage and the crumb's stage segment; only the
+    crumb's last segment follows the tab. Root `.html` files carry the same
+    value statically (`test:homestage`). One stage-link rule, `stageLead()`,
+    serves the rail, the crumb, the dashboard cards and the hub doors.
+    Second, pages did not share a frame: every studio page now renders the
+    kit `pageHeader` with `bd-head` (h1 = the page's name, no full stop),
+    one `.k-page` column, the tabs strip (side menu only in Settings and
+    the console), no page toolbar beyond `.sh-tools` (Library and the hub
+    lost theirs; the `.toolbar` element is kept, empty). Screenplay keeps
+    its full-width editor but lost its duplicate crumb, and `#import` opens
+    the same modal as the button. The retired path bar is deleted.
+    `prove:nav` loads every page through every inbound link at 1280 and 390
+    and fails on any frame difference, including the h1's position, size and
+    weight across pages; against the old code it reported 35 mismatches.
+    Re-baselined deliberately (the dropped words are the rewordings).
+
+50. **Launcher as project home (18 Oct 2026).** Reverses clause (d) of item 48:
     opening a project, Continue, creating one, switching project and the demo
     path land on `dashboard.html` again. `PROJECT_HOME_URL` is `'dashboard.html'`
     in all three copies (`hub-keys.js`, `project-setup.js`, `project-switcher.js`).
@@ -2151,3 +2176,36 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     open with sits in a closed `details.db-overview` ("Project overview"), every
     node still in the DOM with `#journey #suggested #resume #readiness` intact.
     `prove-billing` waits for `/dashboard/` after project setup again.
+
+51. **The public site, Celtx-structured (18 Oct 2026).** Home (`start.html`),
+    `pricing.html` and eleven product pages (`product-<id>.html`: writing,
+    story, storyboard, breakdown, catalog, shot-list, schedule, budget,
+    call-sheets, cast-crew, sides) in the order of the owner's Celtx report
+    (hero, value, demo video, how it works, related tools, tools for every
+    stage, call to action, facts), in our theme. The product pages and
+    pricing are GENERATED and committed (words live in the markup, like
+    start.html): `scripts/make-marketing-pages.mjs` reads
+    `src/data/marketing-site.json` (header, footer, modal), `marketing-pages.json`
+    (copy for the 11 pages), `marketing-home.json`, `marketing-faq.json` and
+    `pricing-compare.json`; `npm run make:marketing` regenerates,
+    `npm run test:marketing` fails on drift, a missing media file, a wrong
+    step count, an unknown related id or an external host. Media are recorded
+    from the Dragon sample by `npm run record:marketing`: one silent demo loop
+    and a poster per page plus one still per how-it-works step, in
+    `public/marketing/` (about 4 MB). Decisions (owner): no social proof of
+    any kind (no ratings, logo bars, quotes or counts: true product facts
+    only); header = Product (grouped by stage), Pricing, Log in, Sign up;
+    Sign up opens a modal with Google sign-in through the existing
+    `start-auth.js`; no Education tab; pricing moved off the home page; the
+    invite banner, e-mail offers form, voices and regional block left the
+    home page, but the invite-code hold (`#inviteBand`, `fms_invite_code_v1`)
+    stays in `start.js` because `prove:gate` asserts it, and `marketing.js`
+    holds a `#code=` from any marketing page. Registration points a new
+    public page needs: `sitegate.js` EXEMPT, `plan-gate.js` and
+    `start-model.js`/`return-to.js` exempt lists, the `marketingFigures`
+    plugin in `vite.config.js`, the service worker's `marketing/**`
+    exclusion (videos are never precached), `vercel.json` and `netlify.toml`
+    rewrites plus `media-src 'self'`, `public/sitemap.xml`. The pages are not
+    in `baseline.json` (like start.html), so a missing word there is read in
+    a browser, not by the gate; `test:marketing` and `prove:growth` (no
+    `supabase-*` or `studio-*` chunk on a product page) are what watch them.

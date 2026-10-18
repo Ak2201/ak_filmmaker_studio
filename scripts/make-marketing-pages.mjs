@@ -69,8 +69,8 @@ export function validate({ site, pages }) {
   if ([...staged].sort().join() !== [...ids].sort().join()) bad.push('stages[].pages and stepCounts name different pages');
   if (Object.keys(site.tools).sort().join() !== [...ids].sort().join()) bad.push('tools and stepCounts name different pages');
   for (const s of site.stages) if (!/^hue-(library|feature|plan|shoot)$/.test(s.hue)) bad.push('stage ' + s.id + ': hue ' + s.hue + ' is not an existing hue class');
-  if (Object.keys(pages).sort().join() !== [...ids].sort().join()) {
-    bad.push('the copy file keys [' + Object.keys(pages).sort() + '] are not the page ids [' + [...ids].sort() + ']');
+  if (Object.keys(pages).filter((k) => !k.startsWith('_')).sort().join() !== [...ids].sort().join()) {
+    bad.push('the copy file keys [' + Object.keys(pages).filter((k) => !k.startsWith('_')).sort() + '] are not the page ids [' + [...ids].sort() + ']');
   }
   const stageOf = Object.fromEntries(site.stages.flatMap((s) => s.pages.map((p) => [p, s.id])));
   for (const id of ids) {

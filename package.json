@@ -60,6 +60,7 @@
     "test:ai-phase2": "node scripts/test-ai-phase2.mjs",
     "test:testimonials": "node scripts/check-testimonials.mjs",
     "shots": "node scripts/make-shots.mjs",
+    "record:marketing": "node scripts/record-marketing-media.mjs",
     "test:brand": "node scripts/check-brand.mjs",
     "test:marketing": "node scripts/test-marketing.mjs",
     "make:marketing": "node scripts/make-marketing-pages.mjs",

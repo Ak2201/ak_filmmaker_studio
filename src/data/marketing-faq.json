@@ -1,0 +1,77 @@
+[
+  {
+    "group": "Billing",
+    "items": [
+      {
+        "q": "Is it really one payment, with no subscription?",
+        "a": "Yes. A plan is bought once, never renews and never lapses, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay."
+      },
+      {
+        "q": "Can I get a refund?",
+        "a": "Purchases are final, with three exceptions that are not discretionary: a duplicate or erroneous charge, a payment for a plan that was never activated on your account, and any refund the law of India requires. The Refund and Cancellation Policy has the detail."
+      },
+      {
+        "q": "How do I ask for a refund in one of those cases?",
+        "a": "Email us from the address on your account with the Razorpay payment or order ID and a line about what went wrong. We reply within two working days. An issued refund goes to your original payment method and reaches it in 5 to 7 working days."
+      },
+      {
+        "q": "Where do I find my invoices?",
+        "a": "On the Purchase page once you are signed in. It lists your plan, your invoices and a way to request a refund in the cases above."
+      },
+      {
+        "q": "Is there a free trial?",
+        "a": "The studio can offer a free trial of the whole product, and whether it is on, and for how long, is a setting we control. The sign-up window and the pricing page show the current offer, so look there rather than here."
+      }
+    ]
+  },
+  {
+    "group": "Plans",
+    "items": [
+      {
+        "q": "Which plan is right for me?",
+        "a": "Basic is for writing: story, screenplay, drafts and import. Intermediate is for preparing the shoot: breakdown, storyboard, shot list, stripboard, budget, cast and crew, and sides. Pro adds call sheets, the AI tools and removal of branding. Each plan includes everything below it."
+      },
+      {
+        "q": "Can I move up a plan later?",
+        "a": "Yes. You move up by paying the difference, and the work you have already done stays where it is."
+      },
+      {
+        "q": "Is there a free plan?",
+        "a": "No. There is no free plan. Whether purchases are required, and whether a trial is running, are settings that can change, so the pricing page always shows what applies today."
+      },
+      {
+        "q": "Where can I see exactly what each plan includes?",
+        "a": "In the comparison table on the pricing page. It is generated from the same list the studio uses to decide what to open, so it cannot disagree with the product."
+      },
+      {
+        "q": "Do I need a plan to try the sample films?",
+        "a": "The Dragon sample project is there so you can see every tool filled in before you commit. What a visitor can open depends on whether a trial is running, which the sign-up window shows."
+      }
+    ]
+  },
+  {
+    "group": "Your data",
+    "items": [
+      {
+        "q": "Where is my screenplay stored?",
+        "a": "In your own browser, on your device, first. Signing in with Google lets your films sync to the studio's cloud, where row-level security keeps each account's rows to itself. Both are optional beyond the browser copy."
+      },
+      {
+        "q": "Does it work offline on a film set?",
+        "a": "Yes. The studio installs like an app and caches itself, so you can keep writing, reordering the stripboard and printing call sheets without a signal. What you changed offline is still there when you reconnect."
+      },
+      {
+        "q": "Can I back my work up?",
+        "a": "Yes. You can download a backup file of your studio, and on the plans that include it you can back up to your own Google Drive. The Drive file belongs to you and the studio only writes to it when you have connected it."
+      },
+      {
+        "q": "Can I bring in a script from Final Draft or Fountain?",
+        "a": "Yes. Import a Fountain, Final Draft, text or PDF screenplay and the studio reads the scene headings, action, characters and dialogue into its own format. Scanned or encrypted PDFs are refused with a reason rather than guessed at."
+      },
+      {
+        "q": "Does the AI see my script?",
+        "a": "Only if you choose to use the AI tools, which are optional and use your own key from a provider you pick. Nothing is sent to an AI provider unless you run one of those tools."
+      }
+    ]
+  }
+]

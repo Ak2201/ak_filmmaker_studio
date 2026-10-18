@@ -75,7 +75,7 @@ console.log(`expected host (from src/data/brand.json): ${HOST}\n`);
 
 /* ---- 1. the public pages answer ---------------------------- */
 console.log('the four public pages plus the hub');
-const PUBLIC = ['/', '/start', '/privacy', '/terms', '/refund'];
+const PUBLIC = ['/', '/start', '/pricing', '/product-writing', '/product-story', '/product-storyboard', '/product-breakdown', '/product-catalog', '/product-shot-list', '/product-schedule', '/product-budget', '/product-call-sheets', '/product-cast-crew', '/product-sides', '/privacy', '/terms', '/refund'];
 for (const path of PUBLIC) {
   try {
     const r = await get(BASE + path);

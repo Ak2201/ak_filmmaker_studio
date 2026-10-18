@@ -25,6 +25,11 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
+  for = "/marketing/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, stale-while-revalidate=86400"
+
+[[headers]]
   for = "/*.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
@@ -89,7 +94,7 @@
     # 14 Oct 2026: both already present here AND in vercel.json.
     #
     # This value must stay byte-identical to the one in vercel.json.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; font-src 'self'; img-src 'self' data: blob: https://*.razorpay.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://generativelanguage.googleapis.com https://www.googleapis.com https://accounts.google.com/gsi/ https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com; frame-src 'self' https://accounts.google.com/gsi/ https://api.razorpay.com https://checkout.razorpay.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; font-src 'self'; img-src 'self' data: blob: https://*.razorpay.com; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://generativelanguage.googleapis.com https://www.googleapis.com https://accounts.google.com/gsi/ https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com; frame-src 'self' https://accounts.google.com/gsi/ https://api.razorpay.com https://checkout.razorpay.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
 # ---- old URLs ------------------------------------------------
 # force = true because the stub files still exist in dist/; without it
@@ -240,6 +245,66 @@
 [[redirects]]
   from = "/start"
   to = "/start.html"
+  status = 200
+
+[[redirects]]
+  from = "/pricing"
+  to = "/pricing.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-writing"
+  to = "/product-writing.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-story"
+  to = "/product-story.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-storyboard"
+  to = "/product-storyboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-breakdown"
+  to = "/product-breakdown.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-catalog"
+  to = "/product-catalog.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-shot-list"
+  to = "/product-shot-list.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-schedule"
+  to = "/product-schedule.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-budget"
+  to = "/product-budget.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-call-sheets"
+  to = "/product-call-sheets.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-cast-crew"
+  to = "/product-cast-crew.html"
+  status = 200
+
+[[redirects]]
+  from = "/product-sides"
+  to = "/product-sides.html"
   status = 200
 
 [[redirects]]

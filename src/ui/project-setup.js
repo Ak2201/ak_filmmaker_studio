@@ -7,7 +7,7 @@
    path, so what a project starts with cannot differ by button.
 
    Creating goes through Store.createProject({title, format, fav,
-   adopt:true}) and lands on the screenplay (the project is open by
+   adopt:true}) and lands on the project home, dashboard.html (the project is open by
    then). The plan's new_projects limit is checked here as well as at
    the callers, because this is the one place that creates.
 
@@ -21,7 +21,7 @@ import PlanGate from '../lib/plan-gate.js';
 import { listStudies, favouriteSlug } from '../lib/studies.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 
-const PROJECT_HOME_URL = 'screenplay.html';
+const PROJECT_HOME_URL = 'dashboard.html';
 
 const FORMATS = {
   feature:     { label: 'Feature film', title: 'My feature film' },
@@ -115,7 +115,7 @@ function submit() {
   if (!p) return;
   /* Signed in, the new project's cloud push is in flight: give it a
      moment so a plan-limit refusal is heard (cloud.js carries it to
-     the screenplay), then go. Signed out, settle() resolves at once. */
+     the project home), then go. Signed out, settle() resolves at once. */
   const C = window.StudioCloud;
   const wait = C && typeof C.settle === 'function' ? C.settle(3000) : Promise.resolve();
   wait.then(() => { location.href = PROJECT_HOME_URL; }, () => { location.href = PROJECT_HOME_URL; });

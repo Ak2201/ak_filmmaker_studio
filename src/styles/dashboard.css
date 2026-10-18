@@ -1017,3 +1017,22 @@
 .db-trio-i:hover { border-color: var(--accent); }
 .db-pct, .db-step-n { margin-left: var(--s2); vertical-align: middle; }
 .db-up-meter { margin-block: var(--s1); }
+
+/* The project overview disclosure: closed under the launcher. */
+.db-overview {
+  margin-block: var(--s4);
+  border: 1px solid var(--border-hair, var(--hairline));
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--surface-card);
+}
+.db-overview-sum {
+  cursor: pointer;
+  padding: var(--s3) var(--s4);
+  font-weight: 600;
+  color: var(--ink);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.db-overview[open] > .db-overview-sum { border-bottom: 1px solid var(--border-hair, var(--hairline)); }
+@media (pointer: coarse) {
+  .db-overview-sum { min-height: 44px; display: flex; align-items: center; }
+}

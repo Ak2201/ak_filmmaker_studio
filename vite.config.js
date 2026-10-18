@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sampleFigures } from './src/lib/sample-figures.js';
-import { PLAN_ORDER, planName, LIST_PRICE, inr } from './src/lib/plans.js';
+import { PLAN_ORDER, planName, LIST_PRICE, EDU_PRICE, inr } from './src/lib/plans.js';
 import { loadMatrixModule } from './scripts/make-plan-features-sql.mjs';
 
 /* ============================================================
@@ -287,6 +287,9 @@ function startFigures() {
            into the HTML is a claim the server can contradict an hour
            later. */
         for (const id of PLAN_ORDER) values['price.' + id] = inr(LIST_PRICE[id]);
+        /* The education track's display figures (EDU_PRICE, plans.js):
+           price.student / price.cohort / price.edu. Nothing charges them. */
+        for (const [k, v] of Object.entries(EDU_PRICE)) values['price.' + k] = inr(v);
         /* NO FREE TIER (owner, 11 Oct 2026): 'free' is the "no plan"
            state, never a column or a card. The trial is not a plan. */
         const PAID = PLAN_ORDER.filter((id) => id !== 'free');

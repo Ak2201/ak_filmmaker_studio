@@ -29,7 +29,7 @@
       so a fragment jump lands under it rather than behind it.
    4. An invite code arriving as start.html#code=XXXX: held in this
       browser, stripped from the address bar, announced in a band.
-   5. Sign-in. Every CTA is already <a href="invite.html"> in the
+   5. Sign-in (and 5b, the pricing section's two tracks). Every CTA is already <a href="invite.html"> in the
       markup — a real door for a reader with scripts off — and this
       only INTERCEPTS it when the build has a Supabase project.
    6. (The stage list that was here went with the section, 12 Oct
@@ -179,11 +179,58 @@ if (SIGNED_IN) {
   for (const a of document.querySelectorAll('[data-start-buy]')) a.setAttribute('href', buyHref(a.dataset.startBuy));
 }
 
+/* ---- 5b. the pricing track: Individual & Teams | Education ---------
+   Two tab panels in #pricing. The Individual one is the default and is
+   what the build and every proof read (the trial strip, the three
+   tiers, the three buy links), so nothing here runs until a tab is
+   pressed — or the address asks for the other track: #education, or
+   ?track=edu, for a link a film school can be sent. With scripts off
+   the Education panel stays hidden and the plans stand on their own. */
+const TRACK_PANELS = { individual: byId('trackIndividual'), edu: byId('tiersEdu') };
+const TRACK_TABS = [...document.querySelectorAll('[data-pricing-tab]')];
+function setTrack(track, focus) {
+  if (!TRACK_PANELS.individual || !TRACK_PANELS.edu || !TRACK_PANELS[track]) return;
+  for (const [k, panel] of Object.entries(TRACK_PANELS)) panel.hidden = k !== track;
+  for (const b of TRACK_TABS) {
+    const on = b.dataset.pricingTab === track;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.tabIndex = on ? 0 : -1;
+    if (on && focus) b.focus();
+  }
+}
+/* Arrow keys move between the two tabs, as a tab list should. */
+const trackBar = $('.st-track-bar');
+if (trackBar) trackBar.addEventListener('keydown', (e) => {
+  const i = TRACK_TABS.indexOf(e.target);
+  if (i < 0) return;
+  const n = TRACK_TABS.length;
+  const to = { ArrowRight: i + 1, ArrowLeft: i - 1 + n, Home: 0, End: n - 1 }[e.key];
+  if (to === undefined) return;
+  e.preventDefault();
+  setTrack(TRACK_TABS[to % n].dataset.pricingTab, true);
+});
+function trackFromAddress() {
+  let edu = location.hash === '#education';
+  try { edu = edu || new URLSearchParams(location.search).get('track') === 'edu'; } catch (e) { /* */ }
+  if (!edu) return;
+  setTrack('edu');
+  /* #education names no element, so the browser scrolls nowhere. */
+  if (location.hash === '#education') {
+    const sec = byId('pricing');
+    if (sec) requestAnimationFrame(() => sec.scrollIntoView({ behavior: 'instant', block: 'start' }));
+  }
+}
+trackFromAddress();
+addEventListener('hashchange', trackFromAddress);
+
 /* A plan's BUY must survive the Google hop. Google returns to the hub,
    the gate sends a non-member to invite.html, and the address there has
    lost ?plan=. stashPlan() (start-model.js) holds it for invite.js,
    which forwards the buyer to the checkout once they are signed in. */
 document.addEventListener('click', (e) => {
+  const t = e.target.closest && e.target.closest('[data-pricing-tab], [data-pricing-jump]');
+  if (t) setTrack(t.dataset.pricingTab || t.dataset.pricingJump);   // the jump's href still scrolls to #pricing
   const a = e.target.closest && e.target.closest('[data-start-auth="google"], [data-start-buy]');
   if (!a || e.defaultPrevented) return;
   if (a.dataset.startBuy) stashPlan(a.dataset.startBuy);   // bump_event() accepts a fixed list; 'signup' below counts it
@@ -540,7 +587,7 @@ try {
     parallax(q('.st-shot-hero'), { speed: 0.06 });
     qa('.st-sec .st-shot').forEach((f) => parallax(f, { speed: 0.04 }));
     spotlight(q('.st-hero'));
-    qa('.st-card, .st-tiers > li, .st-faq').forEach((n) => spotlight(n));
+    qa('.st-card, .st-tiers > li, .st-edu-card, .st-faq').forEach((n) => spotlight(n));
     const pick = q('.st-pick');
     if (pick) glow(pick);   /* no mo-trail: its conic rule drew a half border */
     /* The facts count; the PRICES never do — a price that reads ₹0 for

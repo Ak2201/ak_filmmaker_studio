@@ -836,7 +836,7 @@ try {
        for the first time. Nothing else in this repository would point
        at it. THIS IS THE ONLY CHECK THAT CATCHES THAT DRIFT. Do not
        delete it, and do not relax it to "something was requested". */
-    const btn = await page.$('[data-start-auth="google"]');
+    const btn = await page.$('[data-start-auth="google"]:visible');
     ok(!!btn, 'start.html carries a Continue with Google control ([data-start-auth="google"])');
     if (!btn) {
       skip('the authorize URL: origin and path, provider, redirect_to, scopes (no button to click)');
@@ -881,17 +881,21 @@ try {
     ok(!!held, 'start.html#code= holds the code in fms_invite_code_v1');
     ok(!!held && JSON.parse(held).code === 'LINKCODE2345', 'normalised, the dashes dropped: ' + String(held).slice(0, 80));
     ok(!/code=/.test(p2.url()), 'and the fragment is stripped from the address bar: ' + p2.url());
-    /* THE CONTRACT FOR THE BAND is the attribute, not a class or a
-       phrase: a visitor who followed an invite link must be told it
-       took, or the only feedback for a correct code is that nothing
-       visible happened. */
-    const band = await p2.evaluate(() => {
-      const el = document.querySelector('[data-invite-band], #inviteBand');
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return { text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120), shown: !el.hidden && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' };
+    /* THE CONTRACT FOR THE FEEDBACK. A visitor who followed an invite link
+       must be told it took, or the only feedback for a correct code is that
+       nothing visible happened. The banner that said so is gone with the
+       rebuilt home page; the
+       sign-up modal opens and says it, exactly as it does on a product page.
+       What is asserted is unchanged: the code is held, the fragment is
+       stripped, and the visitor is told. */
+    const told = await p2.evaluate(() => {
+      const m = document.getElementById('mkSignup');
+      const el = document.getElementById('mkMsg');
+      if (!m || !el) return null;
+      const r = m.getBoundingClientRect();
+      return { text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120), shown: !m.hidden && r.height > 0 };
     });
-    ok(!!band && band.shown, 'the invite band is shown ([data-invite-band] or #inviteBand): ' + JSON.stringify(band));
+    ok(!!told && told.shown && /Invite code saved/.test(told.text), 'the visitor is told the code took (sign-up modal, #mkMsg): ' + JSON.stringify(told));
 
     /* ---- THE MARKETING PAGES ARE PUBLIC, AND A CODE WORKS FROM THEM --
        product-*.html sit outside the gate (EXEMPT in sitegate.js) and

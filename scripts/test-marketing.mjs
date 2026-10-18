@@ -34,7 +34,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAll, validate, validatePricing, comparableRows, PAGES_FILE, FIXTURE_FILE, PRICING_FILE } from './make-marketing-pages.mjs';
+import { buildAll, validate, validatePricing, comparableRows, PAGES_FILE, FIXTURE_FILE, PRICING_FILE, HOME_FILE } from './make-marketing-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE = process.argv.includes('--fixture') || process.env.MARKETING_FIXTURE === '1';
@@ -220,6 +220,59 @@ for (const id of IDS) {
   const pstray = pimports.filter((i) => !pallowed.some((a) => a.test(i)));
   ok(pstray.length === 0, 'pricing.js imports only the light allowlist (the startlib rule)' + (pstray.length ? ': ' + pstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(pjs), 'pricing.js builds no markup from strings');
+}
+
+/* ---- start.html (the home page) ------------------------------------- */
+{
+  const tag = HOME_FILE + ': ';
+  const at = path.join(ROOT, HOME_FILE);
+  const home = inputs.home;
+  if (!fs.existsSync(at)) ok(false, tag + 'is not committed (run npm run make:marketing)');
+  else {
+    const html = fs.readFileSync(at, 'utf8');
+    ok(html === files[HOME_FILE], tag + 'committed HTML equals the generator output (run npm run make:marketing)');
+    ok((html.match(/<h1[\s>]/g) || []).length === 1, tag + 'exactly one h1');
+    ok(!/\sstyle="/.test(html) && !/\son[a-z]+="/i.test(html), tag + 'no inline style or handler (CSP)');
+    ok(/<script type="module" src="\/src\/pages\/start\.js"><\/script>/.test(html), tag + 'loads start.js');
+    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '')), tag + 'no inline script');
+    ok(!/\{\{(?!brand:|fms:)/.test(html), tag + 'no unknown {{ stamp');
+    ok(!html.includes('₹'), tag + 'no bare rupee sign');
+    ok(/\{\{fms:dragon\./.test(html), tag + 'a sample figure is a stamp, not typed');
+    ok(/<link rel="canonical" href="https:\/\/{{brand:host}}\/start">/.test(html), tag + 'canonical is the {{brand:host}} stamp');
+    const urls = [...html.matchAll(/\s(href|src|poster|action)="([^"]*)"/g)].map((m) => ({ attr: m[1], v: m[2] }));
+    const bad = urls.filter(({ v }) => EXTERNAL.test(v) && !/^https:\/\/{{brand:host}}\//.test(v));
+    ok(bad.length === 0, tag + 'no external host in href/src/poster' + (bad.length ? ': ' + bad.map((b) => b.v).join(', ') : ''));
+    ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b|st-voice|id="voices"|inviteBand|leadForm/i.test(html), tag + 'no social proof, voices block, invite banner or e-mail offers form');
+    /* five stages, media alternating; the fifth has no CTA and no video */
+    const arts = [...html.matchAll(/<article class="st-stage[^"]*"[\s\S]*?<\/article>/g)].map((m) => m[0]);
+    ok(arts.length === 5, tag + 'five stage rows');
+    arts.forEach((a, i) => {
+      ok(/st-stage--flip/.test(a) === (i % 2 === 1), `${tag}stage ${i + 1} puts its media ${i % 2 ? 'right' : 'left'}`);
+      ok((i < 4) === /<video controls muted loop playsinline preload="none"/.test(a), `${tag}stage ${i + 1} ${i < 4 ? 'has' : 'has no'} demo video`);
+      ok((i < 4) === /class="mk-link" href="product-/.test(a), `${tag}stage ${i + 1} ${i < 4 ? 'links to its product page' : 'has no CTA'}`);
+    });
+    const refs = [...html.matchAll(/(?:src|poster)="(\/marketing\/[^"]+)"/g)].map((m) => m[1]);
+    if (!FIXTURE) for (const r of new Set(refs)) ok(fs.existsSync(path.join(ROOT, 'public', r)), `${tag}${r} exists under public/`);
+    ok(/id="tools"/.test(html) && /id="start"/.test(html), tag + 'the #tools and #start anchors resolve');
+    ok(/data-open-signup/.test(html) && /id="mkSignup"/.test(html), tag + 'Get started opens the sign-up modal');
+    ok(/href="pricing\.html"/.test(html) && /<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'links pricing and the three legal pages');
+    ok(home.facts.length === 4 && (html.match(/class="st-fact-n"/g) || []).length === 4, tag + 'four facts');
+    const icons = JSON.parse(read('src/data/section-icons.json')).icons;
+    const nav = read('src/data/navigation.json');
+    const drawn = new Set([...html.matchAll(/<span class="sym[^"]*" aria-hidden="true" translate="no">([a-z0-9_]+)<\/span>/g)].map((m) => m[1]));
+    const missing = [...drawn].filter((nme) => !icons.includes(nme) && !nav.includes('"sym": "' + nme + '"') && !nav.includes('"sym":"' + nme + '"'));
+    ok(missing.length === 0, tag + 'every icon is in the font subset' + (missing.length ? ': ' + missing.join(', ') : ''));
+  }
+  const scss = read('src/styles/start.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/#[0-9a-fA-F]{3,8}\b/.test(scss) && !/\b(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch)\(/.test(scss), 'start.css has no raw colour');
+  ok(!/border-radius:\s*\d/.test(scss), 'start.css types no literal radius');
+  ok([...scss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate/.test(v)).every((v) => /var\(--motion\)/.test(v)), 'every translate in start.css is multiplied by --motion');
+  const sjs = read('src/pages/start.js');
+  const simports = [...sjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
+  const sallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model)\.js$/];
+  const sstray = simports.filter((i) => !sallowed.some((a) => a.test(i)));
+  ok(sstray.length === 0, 'start.js imports only the light allowlist (the startlib rule)' + (sstray.length ? ': ' + sstray.join(', ') : ''));
+  ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(sjs), 'start.js builds no markup from strings');
 }
 
 /* ---- the stylesheet and the script --------------------------------- */

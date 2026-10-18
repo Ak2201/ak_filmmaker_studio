@@ -717,8 +717,15 @@ function render() {
     col.append(renderReadiness());
     const activity = renderActivity(snap.scenes);
     if (activity) col.append(activity);
-    main.append(renderHead(snap), renderFocus(snap), renderStages(snap),
-      h('div.db-body', {}, [col, renderDesk(snap)]), renderLauncher());
+    /* The launcher is the project home and leads; everything the dashboard
+       used to open with sits under a closed disclosure. Every node stays in
+       the DOM (verify reads innerHTML and data-keys), ids intact. */
+    const overview = h('details.db-overview', {}, [
+      h('summary.db-overview-sum', { text: 'Project overview' }),
+      renderFocus(snap), renderStages(snap),
+      h('div.db-body', {}, [col, renderDesk(snap)])
+    ]);
+    main.append(renderHead(snap), renderLauncher(), overview);
   }
 
   /* The path line is applied whether or not the swap happened: a skipped

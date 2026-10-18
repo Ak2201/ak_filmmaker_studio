@@ -2140,3 +2140,14 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     (`scripts/make-plan-features-sql.mjs --write`) before purchases are
     required, or the live plan rows still carry the 15 modules as on.
 
+
+49. **Launcher as project home (18 Oct 2026).** Reverses clause (d) of item 48:
+    opening a project, Continue, creating one, switching project and the demo
+    path land on `dashboard.html` again. `PROJECT_HOME_URL` is `'dashboard.html'`
+    in all three copies (`hub-keys.js`, `project-setup.js`, `project-switcher.js`).
+    The rail's Dashboard entry is back as the project's home item. The dashboard
+    opens on the slim head and the stage-row launcher (rows mirror the reference
+    image: Write / Breakdown / Visualize / Plan / Shoot); everything it used to
+    open with sits in a closed `details.db-overview` ("Project overview"), every
+    node still in the DOM with `#journey #suggested #resume #readiness` intact.
+    `prove-billing` waits for `/dashboard/` after project setup again.

@@ -9,7 +9,7 @@
 
    A button in the shell band shows the open project and its format;
    it opens a list of every project this namespace can see. Choosing
-   one calls setCurrentProject() and lands on the screenplay, where each
+   one calls setCurrentProject() and lands on the project home (dashboard.html), where each
    film's own "continue" cards pick up from its own saved state — the
    position is stored per project already, so nothing is remembered here.
 
@@ -23,7 +23,7 @@ import { h } from '../lib/dom.js';
 import Store from '../lib/store.js';
 import '../styles/project-switcher.css';
 
-const PROJECT_HOME_URL = 'screenplay.html';
+const PROJECT_HOME_URL = 'dashboard.html';
 const HUB_URL = 'index.html';
 const FORMAT_SHORT = { feature: 'Feature', short: 'Short', documentary: 'Doc', musicvideo: 'Music video', adfilm: 'Ad film' };
 

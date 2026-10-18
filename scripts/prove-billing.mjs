@@ -286,7 +286,7 @@ try {
     await page.locator('[data-action="new-project"]:visible').first().click();
     await page.waitForSelector('#projectSetupForm #psTitle', { timeout: 5000 });
     await page.fill('#psTitle', 'Second film');
-    await Promise.all([page.waitForURL(/screenplay/, { timeout: 10000 }).catch(() => {}), page.click('#psSubmit')]);
+    await Promise.all([page.waitForURL(/dashboard/, { timeout: 10000 }).catch(() => {}), page.click('#psSubmit')]);
     await page.waitForFunction(() => /plan limit/i.test((window.StudioCloud.getSyncStatus() || {}).detail || ''), null, { timeout: 10000 })
       .then(() => ok(true, 'the sync status says the plan limit was reached'), () => ok(false, 'the sync status says the plan limit was reached (status: ' + 'see log)'));
     ok(F.db.calls.filter((c) => c === 'write:projects:P0402').length >= 1, 'the cloud refused the insert with P0402');

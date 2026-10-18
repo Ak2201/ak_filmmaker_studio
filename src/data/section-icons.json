@@ -12,6 +12,8 @@
     "dashboard",
     "description",
     "edit_note",
+    "view_carousel",
+    "event_note",
     "event",
     "fact_check",
     "format_list_numbered",

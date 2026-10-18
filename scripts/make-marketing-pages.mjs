@@ -76,7 +76,7 @@ export function loadInputs({ fixture = false } = {}) {
     throw new Error(pagesRel + ' is missing. The marketing pages are generated from it and there is no silent fallback.'
       + (fixture ? '' : ' (Use --fixture to generate from ' + FIXTURE_FILE + ' while the copy is being written.)'));
   }
-  return { site, pages: readJson(pagesRel), compare: readJson(COMPARE_FILE), faq: readJson(FAQ_FILE), fixture, pagesRel };
+  return { site, pages: readJson(pagesRel), compare: readJson(COMPARE_FILE), faq: readJson(FAQ_FILE), home: readJson(HOME_COPY), fixture, pagesRel };
 }
 
 /** Every structural rule the template relies on. Returns a list of problems. */
@@ -549,13 +549,185 @@ ${modal(site)}
 `;
 }
 
+/* ---- start.html (the home page) -------------------------------------- */
+
+export const HOME_FILE = 'start.html';
+export const HOME_COPY = 'src/data/marketing-home.json';
+
+export function validateHome(home, { site, pages }) {
+  const bad = [];
+  const w = (m) => bad.push('marketing-home.json: ' + m);
+  if (!home.hero || !home.hero.h1 || !home.hero.sub || !home.hero.note || !home.hero.cta) w('hero needs h1, sub, note and cta');
+  if (!home.meta || !home.meta.title || !home.meta.description) w('meta needs title and description');
+  if (!Array.isArray(home.stages) || home.stages.length !== 5) w('five stages');
+  else home.stages.forEach((s, i) => {
+    const last = i === 4;
+    if (!s.id || !s.sym || !s.h2 || !s.body) w('stage ' + (i + 1) + ' needs id, sym, h2 and body');
+    if (last) { if (s.cta || s.video) w('the fifth stage has no CTA and no video'); }
+    else {
+      if (!s.cta || !pages[s.cta.page] || !s.cta.label) w('stage ' + (i + 1) + ': cta.page must be a product page id');
+      if (!s.video || !site.stepCounts[s.video]) w('stage ' + (i + 1) + ': video must be a product page id');
+      if (!site.stages.some((g) => g.id === s.id)) w('stage ' + (i + 1) + ': id ' + s.id + ' is not a stage in marketing-site.json');
+    }
+  });
+  if (!Array.isArray(home.facts) || home.facts.length !== 4) w('exactly four facts');
+  if (!home.panel || !Array.isArray(home.panel.items) || home.panel.items.length !== 3) w('panel needs three items');
+  if (!home.pricing || !home.pricing.cta || !home.pricing.pill || !home.pricingTeaser) w('pricing teaser needs pricingTeaser, pricing.cta and pricing.pill');
+  if (!home.optOut || !home.optOut.label || !home.optOut.done) w('optOut needs label and done (privacy.html promises the control)');
+  if (!home.closing || !home.closing.h2 || !home.closing.sub || !home.closing.cta) w('closing needs h2, sub and cta');
+  return bad;
+}
+
+export function renderHome({ site, pages, home }) {
+  const u = site.ui;
+  const media = (name) => MEDIA_BASE + name;
+  const hue = (id) => (site.stages.find((s) => s.id === id) || {}).hue || '';
+
+  const hero = `<section class="mk-hero st-hero" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in">
+    <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
+    <p class="mk-sub">${esc(home.hero.sub)}</p>
+    <div class="mk-cta-row">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.hero.cta)}</a>
+    </div>
+    <p class="st-note">${esc(home.hero.note)}</p>
+  </div>
+</section>`;
+
+  const facts = `<section class="st-facts-band" id="facts" aria-label="${esc(home.factsLabel)}">
+  <div class="mk-wrap">
+    <ul class="st-facts">
+${home.facts.map((f) => `      <li><b class="st-fact-n">${esc(f.value)}</b><span class="st-fact-l">${esc(f.label)}</span></li>`).join('\n')}
+    </ul>
+  </div>
+</section>`;
+
+  const row = (s, i) => {
+    const h = hue(s.id);
+    const copy = `    <div class="st-copy">
+      <span class="st-glyph">${sym(s.sym)}</span>
+      <h2 class="mk-h2" id="st-h-${esc(s.id)}">${esc(s.h2)}</h2>
+      <p class="mk-body">${esc(s.body)}</p>${s.cta ? `
+      <a class="mk-link" href="${esc(pages[s.cta.page].file)}">${esc(s.cta.label)}${sym('arrow_forward')}</a>` : ''}
+    </div>`;
+    let mediaHtml;
+    if (s.video) {
+      mediaHtml = `    <div class="st-media">
+      <div class="mk-player st-player">
+        <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(s.video + '.webp')}">
+          <source src="${media(s.video + '.webm')}" type="video/webm">
+          ${esc(u.demoFallback)}
+        </video>
+      </div>
+    </div>`;
+    } else {
+      mediaHtml = `    <div class="st-media">
+      <div class="st-panel" role="group" aria-label="${esc(home.panel.label)}">
+        <ul>
+${home.panel.items.map((it) => `          <li>${sym(it.sym)}<div><b>${esc(it.title)}</b><span>${esc(it.text)}</span></div></li>`).join('\n')}
+        </ul>
+      </div>
+    </div>`;
+    }
+    return `  <article class="st-stage${h ? ' ' + h : ' st-stage--brand'}${i % 2 ? ' st-stage--flip' : ''}" id="stage-${esc(s.id)}" aria-labelledby="st-h-${esc(s.id)}">
+${copy}
+${mediaHtml}
+  </article>`;
+  };
+
+  const explorer = `<section class="mk-sec mk-band-b st-explorer" id="tools" aria-label="${esc(u.product)}">
+  <div class="mk-wrap st-stages">
+${home.stages.map(row).join('\n')}
+  </div>
+</section>`;
+
+  const teaser = `<section class="st-teaser" id="pricing-teaser" aria-labelledby="stTeaserH">
+  <div class="mk-wrap st-teaser-in">
+    <div>
+      <h2 class="mk-h3" id="stTeaserH">${esc(home.pricing.cta)}</h2>
+      <p class="mk-card-p">${esc(home.pricingTeaser)}</p>
+    </div>
+    <div class="st-teaser-act">
+      <a class="mk-btn mk-btn--outline" href="pricing.html">${esc(home.pricing.pill)}</a>
+    </div>
+  </div>
+</section>`;
+
+  const closing = `<section class="mk-sec mk-band-c mk-mid st-closing" id="start" aria-labelledby="mkMidH">
+  <div class="mk-wrap mk-center">
+    <h2 class="mk-h2" id="mkMidH">${esc(home.closing.h2)}</h2>
+    <p class="mk-sub st-closing-sub">${esc(home.closing.sub)}</p>
+    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.closing.cta)}</a>
+  </div>
+</section>`;
+
+  const t = esc(home.meta.title), d = esc(home.meta.description);
+  return `<!DOCTYPE html>
+<html lang="en" data-volume="studio" data-fms-marketing>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${t}</title>
+<meta name="description" content="${d}">
+<link rel="canonical" href="https://{{brand:host}}/start">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{brand:name}}">
+<meta property="og:title" content="${t}">
+<meta property="og:description" content="${d}">
+<meta property="og:url" content="https://{{brand:host}}/start">
+<meta property="og:image" content="https://{{brand:host}}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{brand:name}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${t}">
+<meta name="twitter:description" content="${d}">
+<meta name="twitter:image" content="https://{{brand:host}}/og.png">
+<meta property="og:locale" content="en_IN">
+<meta name="theme-color" content="#0d0e13">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+{{fms:jsonld}}
+</head>
+<body>
+<!-- GENERATED by scripts/make-marketing-pages.mjs from src/data/marketing-home.json
+     and src/data/marketing-site.json. Edit those, then run npm run make:marketing.
+     npm run test:marketing fails when this file drifts from the generator.
+
+     THE PUBLIC HOME PAGE, AND THE FRONT DOOR. Outside the site gate (EXEMPT in
+     src/lib/sitegate.js); every signed-out visitor lands here. The words are in
+     the markup (a crawler, a link preview and a reader with scripts off get the
+     whole page). src/pages/start.js adds, on top of marketing.js (header state,
+     mega-menu, sign-up modal, invite-code hold): the reason a Google sign-in
+     did not complete, the landing_view count and the doorway rewrite of app
+     links under the site gate. Every figure is an fms stamp
+     (vite.config.js startFigures()), never typed; no price is printed here. -->
+${header(site, pages, 'home')}
+<main id="main" class="mk st">
+${hero}
+${facts}
+${explorer}
+${teaser}
+${closing}
+  <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></div>
+</main>
+${footer(site, pages)}
+${modal(site)}
+<script type="module" src="/src/pages/start.js"></script>
+</body>
+</html>
+`;
+}
+
 export function buildAll(opts = {}) {
   const inputs = loadInputs(opts);
-  const problems = validate(inputs);
+  const problems = [...validate(inputs), ...validateHome(inputs.home, inputs)];
   if (problems.length) throw new Error('marketing copy is not valid:\n  - ' + problems.join('\n  - '));
   const out = {};
   for (const id of Object.keys(inputs.site.stepCounts)) out[inputs.pages[id].file] = renderPage(id, inputs);
   out[PRICING_FILE] = renderPricing(inputs);
+  out[HOME_FILE] = renderHome(inputs);
   return { files: out, inputs };
 }
 

@@ -496,18 +496,8 @@ try {
        what stops the next import putting it back. */
     ok(core.length === 0, 'and no studio-* core chunk either (the startlib split)' + (core.length ? ': ' + core.join(', ') : ''));
     ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /analytics|funnel|lead/.test(k))), 'no new localStorage key');
-    await page.fill('#leadEmail', 'not-an-email'); await page.click('#leadForm button[type=submit]');
-    ok(LEADS.length === 0 && /valid e-mail/.test(await page.textContent('#leadMsg')), 'a malformed address is refused before any request');
-    await page.fill('#leadEmail', 'fan@example.test'); await page.click('#leadForm button[type=submit]');
-    ok(LEADS.length === 0 && /tick the box/.test(await page.textContent('#leadMsg')), 'no consent tick, no request');
-    await page.check('#leadConsent'); await page.click('#leadForm button[type=submit]');
-    await page.waitForFunction(() => /on the list/.test(document.getElementById('leadMsg').textContent), null, { timeout: 4000 }).catch(() => {});
-    ok(LEADS.length === 1 && LEADS[0].p_email === 'fan@example.test' && LEADS[0].p_source === 'start', 'a ticked, valid form sends add_lead(email, consent, source)');
-    ok(LEADS[0] && /agree/.test(LEADS[0].p_consent) && /Privacy Policy/.test(LEADS[0].p_consent), 'with the consent sentence the visitor saw');
-    ok(/on the list/.test(await page.textContent('#leadMsg')), 'and says thank you');
-    await page.fill('#leadEmail', 'reject@example.test'); await page.check('#leadConsent'); await page.click('#leadForm button[type=submit]');
-    await page.waitForFunction(() => /Too many/.test(document.getElementById('leadMsg').textContent), null, { timeout: 4000 }).catch(() => {});
-    ok(/Too many/.test(await page.textContent('#leadMsg')), 'a throttled answer is shown as a sentence');
+    /* The e-mail offers form left the home page (owner, Oct 2026), so the add_lead
+       assertions that lived here went with it; funnel.js keeps addLead for a later form. */
     allErrors.push(...errors); await ctx.close();
     /* A PRODUCT PAGE IS LIGHT TOO. product-*.html carry src/pages/marketing.js,
        which may import only the startlib leaves and start-auth.js. The day it

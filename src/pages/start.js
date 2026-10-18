@@ -29,7 +29,7 @@
       so a fragment jump lands under it rather than behind it.
    4. An invite code arriving as start.html#code=XXXX: held in this
       browser, stripped from the address bar, announced in a band.
-   5. Sign-in (and 5b, the pricing section's two tracks). Every CTA is already <a href="invite.html"> in the
+   5. Sign-in. Every CTA is already <a href="invite.html"> in the
       markup — a real door for a reader with scripts off — and this
       only INTERCEPTS it when the build has a Supabase project.
    6. (The stage list that was here went with the section, 12 Oct
@@ -38,10 +38,8 @@
    7. Testimonials, if any have been given with consent. There are
       none; the section stays hidden.
    8. The launch-offer form and the day counters.
-   9. The scheduled price rise, from price_notice(). It ADDS the
-      coming figure beside the build-stamped one and never replaces
-      it, and the band stays hidden unless the server reports a rise
-      it will actually execute.
+   9. (The scheduled price rise went to pricing.html with the plans:
+      src/pages/pricing.js.)
   10. The thumb rail: one gold button, one thumb away, below 720px.
    ============================================================ */
 import '../styles/base.css';
@@ -51,15 +49,15 @@ import '../styles/motion.css';
 import '../styles/motion-landing.css';
 import { reveal, splitWords, countUp, spotlight, magnetic, tilt, prefersReducedMotion } from '../lib/motion.js';
 import { scrollProgress, parallax, glow, aurora } from '../lib/motion-landing.js';
-import { addLead, bumpOnce, bumpEvent, optOut, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
+import { addLead, bumpOnce, bumpEvent, optOut, purchasesRequired, trialOffer } from '../lib/funnel.js';
 import { trialLength } from '../lib/trial-time.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
 /* Import-free (the startlib trap): the stashes and the derivations. */
 import {
-  stashPlan, takeAuthError, isAppPage, buyHref, validEmail, consentText, consentedVoices, voiceByline,
-  filmByline, risingTiers, priceRiseBand, timeLeft, swappedText
+  takeAuthError, isAppPage, validEmail, consentText, consentedVoices, voiceByline,
+  filmByline, swappedText
 } from '../lib/start-model.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -172,68 +170,16 @@ const SIGNED_IN = StartAuth.hasStoredSession();
 if (SIGNED_IN) {
   document.documentElement.dataset.signedin = '1';
   for (const a of document.querySelectorAll('[data-start-auth="google"]')) a.setAttribute('href', '/');
-  /* Signed in, a plan's BUY goes straight to the checkout page with the
-     plan named: plan-cards.js marks that card and opens its payment. A
-     visitor who is not a member yet meets the site gate there, which
-     sends them to invite.html — the stash below carries the plan across. */
-  for (const a of document.querySelectorAll('[data-start-buy]')) a.setAttribute('href', buyHref(a.dataset.startBuy));
 }
 
-/* ---- 5b. the pricing track: Individual & Teams | Education ---------
-   Two tab panels in #pricing. The Individual one is the default and is
-   what the build and every proof read (the trial strip, the three
-   tiers, the three buy links), so nothing here runs until a tab is
-   pressed — or the address asks for the other track: #education, or
-   ?track=edu, for a link a film school can be sent. With scripts off
-   the Education panel stays hidden and the plans stand on their own. */
-const TRACK_PANELS = { individual: byId('trackIndividual'), edu: byId('tiersEdu') };
-const TRACK_TABS = [...document.querySelectorAll('[data-pricing-tab]')];
-function setTrack(track, focus) {
-  if (!TRACK_PANELS.individual || !TRACK_PANELS.edu || !TRACK_PANELS[track]) return;
-  for (const [k, panel] of Object.entries(TRACK_PANELS)) panel.hidden = k !== track;
-  for (const b of TRACK_TABS) {
-    const on = b.dataset.pricingTab === track;
-    b.classList.toggle('is-active', on);
-    b.setAttribute('aria-selected', on ? 'true' : 'false');
-    b.tabIndex = on ? 0 : -1;
-    if (on && focus) b.focus();
-  }
-}
-/* Arrow keys move between the two tabs, as a tab list should. */
-const trackBar = $('.st-track-bar');
-if (trackBar) trackBar.addEventListener('keydown', (e) => {
-  const i = TRACK_TABS.indexOf(e.target);
-  if (i < 0) return;
-  const n = TRACK_TABS.length;
-  const to = { ArrowRight: i + 1, ArrowLeft: i - 1 + n, Home: 0, End: n - 1 }[e.key];
-  if (to === undefined) return;
-  e.preventDefault();
-  setTrack(TRACK_TABS[to % n].dataset.pricingTab, true);
-});
-function trackFromAddress() {
-  let edu = location.hash === '#education';
-  try { edu = edu || new URLSearchParams(location.search).get('track') === 'edu'; } catch (e) { /* */ }
-  if (!edu) return;
-  setTrack('edu');
-  /* #education names no element, so the browser scrolls nowhere. */
-  if (location.hash === '#education') {
-    const sec = byId('pricing');
-    if (sec) requestAnimationFrame(() => sec.scrollIntoView({ behavior: 'instant', block: 'start' }));
-  }
-}
-trackFromAddress();
-addEventListener('hashchange', trackFromAddress);
-
-/* A plan's BUY must survive the Google hop. Google returns to the hub,
-   the gate sends a non-member to invite.html, and the address there has
-   lost ?plan=. stashPlan() (start-model.js) holds it for invite.js,
-   which forwards the buyer to the checkout once they are signed in. */
+/* ---- 5b. (moved) ----------------------------------------------------
+   The plans, the comparison, the FAQ and everything that drew or
+   enhanced them live on pricing.html and src/pages/pricing.js now: the
+   buy hand-off with its plan stash, the pricing_view count, the scheduled
+   price rise, and the trial strip. The Education track was dropped. */
 document.addEventListener('click', (e) => {
-  const t = e.target.closest && e.target.closest('[data-pricing-tab], [data-pricing-jump]');
-  if (t) setTrack(t.dataset.pricingTab || t.dataset.pricingJump);   // the jump's href still scrolls to #pricing
-  const a = e.target.closest && e.target.closest('[data-start-auth="google"], [data-start-buy]');
+  const a = e.target.closest && e.target.closest('[data-start-auth="google"]');
   if (!a || e.defaultPrevented) return;
-  if (a.dataset.startBuy) stashPlan(a.dataset.startBuy);   // bump_event() accepts a fixed list; 'signup' below counts it
   if (SIGNED_IN) return;                        // the href is the studio; let it go
   /* A modified click is the reader asking for a new tab or a saved
      link. Let the href do exactly what they asked for. */
@@ -332,77 +278,10 @@ const noCount = byId('noCount');
 if (noCount) noCount.addEventListener('click', () => { optOut(); noCount.textContent = 'This visit is not counted'; noCount.disabled = true; });
 
 bumpOnce('landing_view');
-const pricing = byId('pricing');
-if (pricing && 'IntersectionObserver' in window) {
-  const io = new IntersectionObserver((es) => {
-    if (es.some((x) => x.isIntersecting)) { io.disconnect(); bumpOnce('pricing_view'); }
-  }, { threshold: 0.25 });
-  io.observe(pricing);
-}
 
-/* ---- 9. the scheduled price rise -----------------------------------
-   §30's price_notice(): anon-callable, one narrow fact per plan, and
-   NOTHING unless a rise is actually scheduled. What makes this an
-   announcement rather than false urgency is that effective_price()
-   fires the rise by itself the instant next_price_at passes or the
-   buyer cap is reached — the same function that charges the card. So:
-
-     - the countdown renders the SERVER's instant. It is the same for
-       every visitor and shows LESS time on a reload, never more.
-     - the seat count is a real COUNT of paid rows against a real cap.
-     - if either is missing, or the call fails, this draws nothing and
-       the build-stamped list prices stand on their own.
-
-   It never replaces a price. The figures in the markup came from
-   LIST_PRICE at build time; this only ever ADDS the coming one beside
-   them, which is why a failure here leaves a correct page. */
-function renderPriceRise(notice) {
-  if (!notice || !Array.isArray(notice.plans)) return;
-
-  /* Each tier gets its coming figure beside the current one. */
-  for (const p of risingTiers(notice)) {
-    let li;
-    try { li = document.querySelector(`.st-tiers li[data-tier="${CSS.escape(p.id)}"]`); } catch (e) { li = null; }
-    const price = li && li.querySelector('.st-price');
-    if (!price || price.querySelector('.st-price-next')) continue;
-    price.append(el('span', { class: 'st-price-next', text: p.text }));
-  }
-
-  /* The band: the cheapest PAID tier that is rising carries the
-     headline, because that is the figure most people are deciding
-     about. No rise, no band — the section stays hidden and the plain
-     prices stand, which is the whole of the honesty guarantee. */
-  const band = byId('offer');
-  if (!band) return;
-  /* Null when nothing is rising, or the rise has already fired (the
-     server will say so next load). */
-  const rise = priceRiseBand(notice, Date.now());
-  if (!rise) return;
-  const ends = rise.ends;
-
-  const line = byId('offerLine');
-  if (line) line.textContent = rise.line;
-  const seatsChip = byId('offerSeats');
-  if (seatsChip && rise.seats) {
-    seatsChip.textContent = rise.seats;
-    seatsChip.hidden = false;
-  }
-
-  const leftChip = byId('offerLeft');
-  const tick = () => {
-    const t = timeLeft(ends - Date.now());
-    if (!t) { band.hidden = true; return; }        // it fired while the page was open
-    if (leftChip) { leftChip.textContent = t; leftChip.hidden = false; }
-  };
-  tick();
-  /* Minutes, not seconds. A ticking second counter on a three-week
-     deadline is pressure theatre, and it is the thing that makes a
-     true announcement read like a fake one. */
-  setInterval(tick, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
-
-  band.hidden = false;
-}
+/* ---- 9. (moved) -----------------------------------------------------
+   The scheduled price rise (price_notice()) is drawn on pricing.html by
+   src/pages/pricing.js, beside the prices it describes. */
 /* ---- 9b. purchases not required (§32) ------------------------------
    The owner can switch purchasing off. The plans STAY on this page
    either way (owner, 12 Oct 2026): it is the purchase page, and the
@@ -430,11 +309,11 @@ function swapWords() {
   }
   if (off) hideTrial();
 }
-/* No trial on offer (purchases off, or trials switched off): the strip
-   under the plans and each card's "or start the free trial" line go,
-   because both would promise what the server will refuse. */
+/* No trial on offer (purchases off, or trials switched off): any
+   "or start the free trial" line goes, because it would promise what the
+   server will refuse. (The strip under the plans is pricing.html's.) */
 function hideTrial() {
-  document.querySelectorAll('.st-tiers li[data-trial], [data-trial-link]').forEach((n) => { n.hidden = true; });
+  document.querySelectorAll('[data-trial], [data-trial-link]').forEach((n) => { n.hidden = true; });
 }
 swapWords();
 function showFreeNow() {
@@ -442,10 +321,7 @@ function showFreeNow() {
   swapWords();
 }
 try {
-  Promise.all([purchasesRequired(), priceNotice()]).then(([req, notice]) => {
-    if (req === false) { showFreeNow(); return; }
-    renderPriceRise(notice);
-  }, () => {});
+  purchasesRequired().then((req) => { if (req === false) showFreeNow(); }, () => {});
 } catch (e) { /* never breaks the page */ }
 
 /* ---- 9c. the free trial's length (§33) -----------------------------
@@ -487,16 +363,13 @@ try {
   let mq;
   try { mq = matchMedia('(max-width: 720px)'); } catch (e) { return; }
   let heroGone = false;
-  /* Off over the plans as well: there the card's own BUY is the button,
-     and a trial bar laid across the cards argues with it. */
-  let plansOn = false;
 
   const measure = () => {
     document.documentElement.style.setProperty('--st-bar-h', Math.round(bar.getBoundingClientRect().height) + 'px');
   };
 
   function sync() {
-    const on = mq.matches && heroGone && !plansOn;
+    const on = mq.matches && heroGone;
     if (on) {
       if (!bar.hidden) { measure(); return; }
       bar.hidden = false;
@@ -515,12 +388,6 @@ try {
     for (const en of entries) heroGone = !en.isIntersecting;
     sync();
   }, { threshold: 0 }).observe(hero);
-  const plans = byId('pricing');
-  if (plans) new IntersectionObserver((entries) => {
-    for (const en of entries) plansOn = en.isIntersecting;
-    sync();
-  }, { threshold: 0 }).observe(plans);
-
   if (mq.addEventListener) mq.addEventListener('change', sync);
   else if (mq.addListener) mq.addListener(sync);
   addEventListener('resize', () => { if (!bar.hidden) measure(); }, { passive: true });
@@ -587,9 +454,7 @@ try {
     parallax(q('.st-shot-hero'), { speed: 0.06 });
     qa('.st-sec .st-shot').forEach((f) => parallax(f, { speed: 0.04 }));
     spotlight(q('.st-hero'));
-    qa('.st-card, .st-tiers > li, .st-edu-card, .st-faq').forEach((n) => spotlight(n));
-    const pick = q('.st-pick');
-    if (pick) glow(pick);   /* no mo-trail: its conic rule drew a half border */
+    qa('.st-card, .st-faq').forEach((n) => spotlight(n));
     /* The facts count; the PRICES never do — a price that reads ₹0 for
        a second, or to a screen reader, is a price that misleads. */
     qa('.st-fact-n').forEach((n) => countUp(n));

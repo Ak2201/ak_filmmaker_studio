@@ -189,6 +189,53 @@ function stepIndex() {
 }
 
 /* ============================================================
+   THE PLAN FIGURES, SHARED (start.html's cards, pricing.html's cards)
+   ------------------------------------------------------------
+   One derivation of the tier lines, the card bullets and the matrix
+   rows, filled into `values` as tier.adds.ID / tier.line.ID /
+   tier.list.ID / matrix.rows. `cls` is the page's class prefix for the
+   list's own marks ('st' on the landing page, 'pr' on pricing.html).
+   A second copy of this would be the drift the matrix exists to end.
+   ============================================================ */
+async function planFigures(values, cls, fail) {
+  const PAID = PLAN_ORDER.filter((id) => id !== 'free');
+  /* WHAT EACH PLAN INCLUDES, from src/data/plan-matrix.json through
+     src/lib/plan-matrix.js — the same functions schema section 35 is
+     generated with, so the page, the database and the cards agree.
+     The table has a row per feature, grouped by the plan that first
+     includes it; each tier's line is that plan's addedBy(). Nothing
+     here names a feature. */
+  const M = await loadMatrixModule();
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const list = (xs) => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : (xs[0] || '');
+  if (M.PAID.join() !== PAID.join()) fail('plan-matrix.json plans [' + M.PAID + '] are not the paid PLAN_ORDER [' + PAID + ']');
+  for (const [i, id] of PAID.entries()) {
+    const adds = M.addedBy(id).map(M.labelOf);
+    if (!adds.length) fail('plan-matrix.json: ' + id + ' adds nothing to the plan below it');
+    const line = (M.MATRIX.lines && M.MATRIX.lines[id]) || '';
+    values['tier.adds.' + id] = esc((line ? line + ' ' : '') + (i === 0 ? '' : 'Everything in ' + planName(PAID[i - 1]) + ', plus ') + list(adds) + '.');
+    /* The card's own bullets: the plan's line, then what it ADDS
+       (the first six, the rest counted and left to the table). */
+    values['tier.line.' + id] = esc(line);
+    const own = M.addedBy(id);
+    const pick = ((M.MATRIX.card && M.MATRIX.card[id]) || []).map((k) => {
+      const row = own.find((r) => r.key === k);
+      if (!row) fail('plan-matrix.json card.' + id + ' names "' + k + '", which ' + id + ' does not add.');
+      return M.labelOf(row);
+    });
+    const shown = pick.length ? pick : adds.slice(0, 6);
+    values['tier.list.' + id] = (i === 0 ? '' : '<li class="' + cls + '-inc-all">Everything in ' + esc(planName(PAID[i - 1])) + '</li>')
+      + shown.map((t) => '<li>' + esc(t) + '</li>').join('')
+      + (adds.length > shown.length ? '<li class="' + cls + '-inc-more">+ ' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
+  }
+  const cell = (yes) => yes ? '<td class="' + cls + '-yes"><span aria-hidden="true">\u2713</span><span class="' + cls + '-vh">Included</span></td>'
+                            : '<td class="' + cls + '-no"><span aria-hidden="true">\u2014</span><span class="' + cls + '-vh">Not included</span></td>';
+  values['matrix.rows'] = PAID.map((id) => M.addedBy(id).map((row) =>
+    '<tr><th scope="row">' + esc(M.labelOf(row)) + '</th>' + PAID.map((p) => cell(M.planHas(row, p))).join('') + '</tr>').join('')).join('');
+  return { PAID, M, esc };
+}
+
+/* ============================================================
    START.HTML'S FIGURES AND TIER NAMES, STAMPED AT BUILD TIME
    ------------------------------------------------------------
    start.html keeps its words in the MARKUP (a crawler, a link preview
@@ -297,51 +344,22 @@ function startFigures() {
         /* NO FREE TIER (owner, 11 Oct 2026): 'free' is the "no plan"
            state, never a column or a card. The trial is not a plan. */
         const PAID = PLAN_ORDER.filter((id) => id !== 'free');
-        /* WHAT EACH PLAN INCLUDES, from src/data/plan-matrix.json through
-           src/lib/plan-matrix.js — the same functions schema section 35 is
-           generated with, so the page, the database and the cards agree.
-           The table has a row per feature, grouped by the plan that first
-           includes it; each tier's line is that plan's addedBy(). Nothing
-           here names a feature. */
-        const M = await loadMatrixModule();
-        const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const list = (xs) => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : (xs[0] || '');
-        if (M.PAID.join() !== PAID.join()) fail('plan-matrix.json plans [' + M.PAID + '] are not the paid PLAN_ORDER [' + PAID + ']');
-        for (const [i, id] of PAID.entries()) {
-          const adds = M.addedBy(id).map(M.labelOf);
-          if (!adds.length) fail('plan-matrix.json: ' + id + ' adds nothing to the plan below it');
-          const line = (M.MATRIX.lines && M.MATRIX.lines[id]) || '';
-          values['tier.adds.' + id] = esc((line ? line + ' ' : '') + (i === 0 ? '' : 'Everything in ' + planName(PAID[i - 1]) + ', plus ') + list(adds) + '.');
-          /* The card's own bullets: the plan's line, then what it ADDS
-             (the first six, the rest counted and left to the table). */
-          values['tier.line.' + id] = esc(line);
-          const own = M.addedBy(id);
-          const pick = ((M.MATRIX.card && M.MATRIX.card[id]) || []).map((k) => {
-            const row = own.find((r) => r.key === k);
-            if (!row) fail('plan-matrix.json card.' + id + ' names "' + k + '", which ' + id + ' does not add.');
-            return M.labelOf(row);
-          });
-          const shown = pick.length ? pick : adds.slice(0, 6);
-          values['tier.list.' + id] = (i === 0 ? '' : '<li class="st-inc-all">Everything in ' + esc(planName(PAID[i - 1])) + '</li>')
-            + shown.map((t) => '<li>' + esc(t) + '</li>').join('')
-            + (adds.length > shown.length ? '<li class="st-inc-more">+ ' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
-        }
-        const cell = (yes) => yes ? '<td class="st-yes"><span aria-hidden="true">\u2713</span><span class="st-vh">Included</span></td>'
-                                  : '<td class="st-no"><span aria-hidden="true">\u2014</span><span class="st-vh">Not included</span></td>';
-        values['matrix.rows'] = PAID.map((id) => M.addedBy(id).map((row) =>
-          '<tr><th scope="row">' + esc(M.labelOf(row)) + '</th>' + PAID.map((p) => cell(M.planHas(row, p))).join('') + '</tr>').join('')).join('');
-
-        const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)];
-        const ids = tiers.map((m) => m[1]);
-        if (ids.join(',') !== PAID.join(',')) {
-          fail('the pricing list\'s data-tier ids [' + ids.join(', ') + '] are not the PAID tiers of PLAN_ORDER ['
-               + PAID.join(', ') + '] from src/lib/plans.js — add, remove or reorder the <li>s to match. There is no free tier.');
-        }
-        if ((html.replace(/<!--[\s\S]*?-->/g, '').match(/<li\b[^>]*\bdata-trial\b/g) || []).length !== 1) {
-          fail('the pricing list needs exactly one <li data-trial> — the free TRIAL is the first card, not a free plan.');
-        }
-        for (const [, id, body] of tiers) {
-          if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
+        await planFigures(values, 'st', fail);
+        /* The pricing list moved to pricing.html (Oct 2026). When a page
+           that still carries one is built, it is checked as before. */
+        if (html.includes('data-tier=')) {
+          const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)];
+          const ids = tiers.map((m) => m[1]);
+          if (ids.join(',') !== PAID.join(',')) {
+            fail('the pricing list\'s data-tier ids [' + ids.join(', ') + '] are not the PAID tiers of PLAN_ORDER ['
+                 + PAID.join(', ') + '] from src/lib/plans.js — add, remove or reorder the <li>s to match. There is no free tier.');
+          }
+          if ((html.replace(/<!--[\s\S]*?-->/g, '').match(/<li\b[^>]*\bdata-trial\b/g) || []).length !== 1) {
+            fail('the pricing list needs exactly one <li data-trial> — the free TRIAL is the first card, not a free plan.');
+          }
+          for (const [, id, body] of tiers) {
+            if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
+          }
         }
         if (!html.includes('{{fms:dragon.')) fail('no {{fms:dragon.*}} placeholder — the sample figures must be derived, not typed.');
 
@@ -424,7 +442,7 @@ function marketingFigures() {
     name: 'fms-marketing-figures',
     transformIndexHtml: {
       order: 'pre',
-      handler(html, ctx) {
+      async handler(html, ctx) {
         const file = String((ctx && (ctx.filename || ctx.path)) || '');
         if (!MARKETING_PAGE.test(file)) return;
         const fail = (msg) => { throw new Error(file.split(/[\\/]/).pop() + ': ' + msg); };
@@ -443,6 +461,46 @@ function marketingFigures() {
         }
         /* A price is never typed into the markup (see startFigures). */
         if (html.includes('₹')) fail('a bare rupee sign in the markup; prices come from {{fms:price.<tier>}}.');
+
+        /* PRICING.HTML ONLY: the plan cards. The tier lines and card bullets
+           are the SAME derivation start.html used (planFigures, above); the
+           comparison table is written by scripts/make-marketing-pages.mjs
+           from the same matrix and checked for drift by test:marketing. */
+        if (/(^|[\\/])pricing\.html$/.test(file)) {
+          const PAID = PLAN_ORDER.filter((id) => id !== 'free');
+          await planFigures(values, 'pr', fail);
+          const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)];
+          const ids = tiers.map((m) => m[1]);
+          if (ids.join(',') !== PAID.join(',')) {
+            fail('the plan cards\' data-tier ids [' + ids.join(', ') + '] are not the PAID tiers of PLAN_ORDER [' + PAID.join(', ')
+                 + '] from src/lib/plans.js. There is no free tier.');
+          }
+          if ((html.replace(/<!--[\s\S]*?-->/g, '').match(/<aside\b[^>]*\sdata-trial[\s>]/g) || []).length !== 1) {
+            fail('the pricing page needs exactly one <aside data-trial>: the free TRIAL is a strip above the cards, not a free plan.');
+          }
+          for (const [, id, body] of tiers) {
+            if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
+          }
+          /* JSON-LD: a Product with one Offer per plan (INR, the same LIST_PRICE
+             as the visible prices) and the FAQPage, built from the static
+             accordion markup so it cannot drift from it. */
+          const plain = (t) => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+          const faq = [...html.matchAll(/<dt>([\s\S]*?)<\/dt>\s*<dd>([\s\S]*?)<\/dd>/g)]
+            .map((m) => ({ '@type': 'Question', name: plain(m[1]), acceptedAnswer: { '@type': 'Answer', text: plain(m[2]) } }));
+          if (!faq.length) fail('no <dt>/<dd> FAQ markup found to build FAQPage JSON-LD from.');
+          const BR = json('brand.json');
+          const ORIGIN = 'https://' + BR.host;
+          const ld = [
+            { '@context': 'https://schema.org', '@type': 'Product', name: BR.name, description: BR.tagline, image: ORIGIN + '/og.png',
+              brand: { '@type': 'Brand', name: BR.name },
+              offers: PAID.filter((id) => LIST_PRICE[id] > 0).map((id) => ({
+                '@type': 'Offer', name: planName(id), price: String(LIST_PRICE[id]), priceCurrency: 'INR',
+                availability: 'https://schema.org/InStock', url: ORIGIN + '/purchase.html?plan=' + id })) },
+            { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq }
+          ];
+          values.jsonld = ld.map((o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('\n');
+        }
         const out = html.replace(/\{\{fms:([a-zA-Z.]+)(?::(word))?\}\}/g, (all, key, fmt) => {
           if (!(key in values)) fail('unknown placeholder ' + all + '. Known: ' + Object.keys(values).join(', '));
           return fmt === 'word' ? (WORDS[values[key]] || String(values[key])) : String(values[key]);

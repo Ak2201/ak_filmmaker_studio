@@ -1192,13 +1192,13 @@ try {
     ok(inv.length === 3 && !inv.includes('free'), 'purchase.html’s cards are the three paid plans, no Free card: ' + inv.join(','));
     allErrors.push(...N.errors); await N.ctx.close();
 
-    /* start.html: no Free tier, no Free column, and the trial card says 3 hours. */
+    /* pricing.html (the plans moved off start.html): no Free tier, no Free column, and the trial strip says 3 hours. */
     const S = await soloContext();
-    await S.page.goto(BASE + 'start.html');
-    await S.page.waitForFunction(() => /3 hours/.test((document.querySelector('.st-tiers [data-trial-length]') || {}).textContent || ''), null, { timeout: 10000 }).catch(() => {});
-    ok(!(await S.page.$('.st-tiers li[data-tier="free"]')) && !!(await S.page.$('.st-tiers li[data-trial]')), 'start.html: no Free tier, and a free-trial card in its place');
-    ok(!(await S.page.$$eval('.st-table thead th', (t) => t.map((x) => x.textContent.trim()))).includes('Free'), 'start.html: no Free column in the comparison table');
-    ok(/3 hours/.test(await S.page.textContent('.st-tiers [data-trial-length]').catch(() => '')), 'start.html: the trial card says "3 hours", from the anon trial_offer()');
+    await S.page.goto(BASE + 'pricing.html');
+    await S.page.waitForFunction(() => /3 hours/.test((document.querySelector('#pricing [data-trial] [data-trial-length]') || {}).textContent || ''), null, { timeout: 10000 }).catch(() => {});
+    ok(!(await S.page.$('.pr-tiers li[data-tier="free"]')) && !!(await S.page.$('#pricing [data-trial]')), 'pricing.html: no Free tier, and a free-trial strip in its place');
+    ok(!(await S.page.$$eval('.pr-table thead .pr-th-name', (t) => t.map((x) => x.textContent.trim()))).includes('Free'), 'pricing.html: no Free column in the comparison table');
+    ok(/3 hours/.test(await S.page.textContent('#pricing [data-trial] [data-trial-length]').catch(() => '')), 'pricing.html: the trial strip says "3 hours", from the anon trial_offer()');
     allErrors.push(...S.errors); await S.ctx.close();
 
     /* the band, in hours */

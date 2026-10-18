@@ -243,7 +243,7 @@ function render() {
       buy.append(listPriceBlock());
       buy.append(h('div.iv-actions', {}, [
         h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
-        h('a.btn', { href: 'start.html#pricing', text: 'COMPARE EVERY FEATURE' })
+        h('a.btn', { href: 'pricing.html#compare', text: 'COMPARE EVERY FEATURE' })
       ]));
       body.append(buy);
     }

@@ -1,0 +1,364 @@
+{
+  "_about": "Copy for the 11 product pages (marketing site). Read by scripts/make-marketing-pages.mjs. Every claim is checkable in this repo; see _sources. No figure is typed that the app does not derive, and no price, plan limit or date appears here. No stamped {{fms:...}} tokens are used: only start.html is stamped by vite.config.js startFigures().",
+  "_sources": {
+    "writing": ["src/data/navigation.json", "src/ui/script-editor/keys.js", "src/ui/script-editor/inference.js", "src/lib/script.js", "src/lib/screenplay-export.js", "src/lib/script-import.js"],
+    "story": ["src/data/frameworks.json", "src/lib/story.js", "src/data/story-paths.json", "src/pages/story.js"],
+    "storyboard": ["src/lib/shots.js", "src/pages/visualize.js", "src/data/navigation.json"],
+    "breakdown": ["src/data/navigation.json", "src/lib/screenplay-analysis.js", "src/data/element-lexicon.json", "src/lib/breakdown-run.js"],
+    "catalog": ["src/data/navigation.json", "src/pages/breakdown.js"],
+    "shot-list": ["src/lib/shots.js", "src/lib/shotlist-export.js", "src/pages/visualize.js"],
+    "schedule": ["src/lib/stripboard-model.js", "src/pages/stripboard.js", "src/lib/songs.js", "src/data/navigation.json"],
+    "budget": ["src/pages/budget.js", "src/lib/costs.js", "src/data/rates.chennai.2024.json", "src/data/rates.chennai.checks.json", "src/data/wages.fefsi.json"],
+    "call-sheets": ["src/pages/contacts.js", "src/lib/callsheet-text.js", "src/lib/sun.js", "src/lib/contacts-model.js"],
+    "cast-crew": ["src/lib/contacts.js", "src/lib/contacts-model.js", "src/pages/contacts.js"],
+    "sides": ["src/pages/reports.js", "src/styles/reports.css", "src/data/navigation.json"]
+  },
+  "writing": {
+    "file": "product-writing.html",
+    "label": "Writing",
+    "stage": "writing",
+    "metaTitle": "Screenplay writer for Tamil, Tanglish and English",
+    "metaDescription": "Write a formatted screenplay in Tamil, Tanglish or English. Slug lines, action and dialogue format as you type, with numbered drafts and PDF export.",
+    "hero": {
+      "h1": "Write the screenplay. The format takes care of itself.",
+      "sub": "A screenplay writer for Tamil, Tanglish and English. Slug lines, action and dialogue set themselves as you type, and every scene feeds the rest of the studio."
+    },
+    "value": {
+      "h2": "Stay in the scene, not in the margins",
+      "body": [
+        "Press Return and the next element is guessed from the line you just wrote. Tab and Shift+Tab walk from character to parenthetical to dialogue, so your hands stay on the keys and your head stays in the story.",
+        "Every scene heading you write becomes a scene in the studio. The breakdown, schedule and call sheet read from your script, so a rewrite shows up everywhere without being typed twice."
+      ]
+    },
+    "demo": { "h2": "See the writer in action" },
+    "steps": [
+      { "title": "Start a scene with a slug line", "body": "Write a scene heading with INT. or EXT. and a location. It is formatted for you, and the scene joins the scene list as you move on." },
+      { "title": "Write action and dialogue", "body": "Return and Tab pick the next element for you. Write dialogue in Tamil script or Tanglish, with headings and action in English if that is how your unit reads." },
+      { "title": "Keep numbered drafts", "body": "Save a draft, keep writing, then compare drafts, restore an old one or print it. Lock the scene numbers for production and later scenes take letters like 12A." },
+      { "title": "Print or export a screenplay PDF", "body": "Add a title page and print a properly formatted screenplay PDF with an honest page count. Already have a script? Bring in Fountain, Final Draft or PDF." }
+    ],
+    "related": ["story", "breakdown", "storyboard"],
+    "midCta": { "h2": "Open a blank page and write scene one" },
+    "facts": [
+      { "value": "Tamil, Tanglish, English", "label": "Dialogue in the language you write" },
+      { "value": "Fountain, FDX, PDF", "label": "Screenplay formats you can bring in" },
+      { "value": "12A", "label": "Locked scene numbers keep their letters" }
+    ]
+  },
+  "story": {
+    "file": "product-story.html",
+    "label": "Story",
+    "stage": "story",
+    "metaTitle": "Beat sheet and story structure tool for filmmakers",
+    "metaDescription": "Build your story on a beat board, pick from 11 structures, and see where the pacing rises and sags before you write a page of screenplay.",
+    "hero": {
+      "h1": "Find your story's shape before you write it",
+      "sub": "A beat board with eleven story structures and a pacing check that shows where the film rises, where it sags and where a beat is missing."
+    },
+    "value": {
+      "h2": "Structure you can see, not just read about",
+      "body": [
+        "Pick a framework such as Three-Act, Save the Cat, Story Circle or the Short Film Five-Beat, and place your synopsis against its beats. Switch frameworks and your marked passages move to the nearest beat.",
+        "Tension is plotted against the shape each structure expects. Pacing flags point at the stretch of story they mean, so you fix the sag in the outline, not in the third draft."
+      ]
+    },
+    "demo": { "h2": "See the beat board in action" },
+    "steps": [
+      { "title": "Write the idea and the logline", "body": "Start with a seed and a one-line logline. The Story path asks for what a film needs first, one step at a time, for a feature or a short." },
+      { "title": "Mark your beats", "body": "Choose a structure and tag passages of your synopsis as its beats. A matrix shows which beats are covered and which are still empty." },
+      { "title": "Check the pacing", "body": "Read the tension curve against the expected shape. Flags name the stretch that drags, and clicking one scrolls the synopsis to it." }
+    ],
+    "related": ["writing", "storyboard", "breakdown"],
+    "midCta": { "h2": "Put your first beat on the board" },
+    "facts": [
+      { "value": "11", "label": "Story structures to place your beats on" },
+      { "value": "4 to 15", "label": "Beats per structure, Kishotenketsu to Save the Cat" },
+      { "value": "Derived", "label": "Pacing flags are computed, never typed in" }
+    ]
+  },
+  "storyboard": {
+    "file": "product-storyboard.html",
+    "label": "Storyboard",
+    "stage": "story",
+    "metaTitle": "Storyboard and shot visualiser for indie directors",
+    "metaDescription": "Give every planned shot a frame. Link a picture or describe it, plan camera and actor blocking, and keep the storyboard in step with your shot list.",
+    "hero": {
+      "h1": "See every shot before you shoot it",
+      "sub": "A frame for each shot you plan, tied to its scene, with blocking diagrams for where the camera, actors and lights stand."
+    },
+    "value": {
+      "h2": "One shot, one frame, always in step",
+      "body": [
+        "A frame belongs to a shot, and a shot belongs to a scene. Rename a location in the breakdown and the storyboard says the new name, because it was never typed here.",
+        "Frames hold a link to a picture or a written description, not the picture itself. That keeps your studio light and your work saved in your own browser."
+      ]
+    },
+    "demo": { "h2": "See the storyboard in action" },
+    "steps": [
+      { "title": "Pick a scene", "body": "Choose any scene from your script. Its slug line, number and length come from the scene list, so there is nothing to retype." },
+      { "title": "Add the shots", "body": "Plan the shots for the scene with size, angle, movement and lens. Each shot you add has a frame waiting for it on the storyboard." },
+      { "title": "Fill each frame", "body": "Paste a link to a reference picture or describe what we see in the frame, in a line or two." },
+      { "title": "Block the scene", "body": "Mark where the camera, actors, lights, dolly tracks and floor marks go on a simple diagram, so the crew reads the plan at a glance." }
+    ],
+    "related": ["shot-list", "story", "writing"],
+    "midCta": { "h2": "Plan your first frame" },
+    "facts": [
+      { "value": "8", "label": "Shot sizes, from extreme wide to extreme close" },
+      { "value": "Links", "label": "Frames link to pictures instead of storing files" },
+      { "value": "5", "label": "Block marks: camera, actor, light, dolly track, mark" }
+    ]
+  },
+  "breakdown": {
+    "file": "product-breakdown.html",
+    "label": "Breakdown",
+    "stage": "prep",
+    "metaTitle": "Script breakdown software with auto-tagging",
+    "metaDescription": "Break a screenplay down scene by scene. Auto-tag suggests cast, props, vehicles, stunts and sounds. You accept what is right and the schedule follows.",
+    "hero": {
+      "h1": "Break down your script scene by scene",
+      "sub": "The script is read for the cast, props, vehicles, stunts and sounds in every scene. You accept what is right and add what it missed."
+    },
+    "value": {
+      "h2": "A breakdown you check, not one you type",
+      "body": [
+        "Auto-tag reads each scene and suggests what it needs. Nothing is added until you accept it, so the breakdown stays your decision and the first pass takes minutes.",
+        "Every tag you accept feeds the element list, the schedule, the day out of days and the budget. Change the script and the scenes update, so the paperwork never drifts from the film."
+      ]
+    },
+    "demo": { "h2": "See the breakdown in action" },
+    "steps": [
+      { "title": "Bring in the script", "body": "Write in the Screenplay Writer or import a Fountain, Final Draft or PDF file. Each scene heading becomes a scene in the list." },
+      { "title": "Let auto-tag suggest", "body": "Run auto-tag to get suggested actors, props, vehicles, stunts and sounds for each scene. Suggestions wait for your decision." },
+      { "title": "Accept and correct", "body": "Accept the right suggestions, reject the wrong ones and add anything the script only implies. The scene keeps your final word." },
+      { "title": "Mark day or night, inside or out", "body": "Each scene carries its location and whether it is day or night, so the stripboard can group scenes the way a unit shoots." },
+      { "title": "Read what the film needs", "body": "Open the element list and the reports for everything the film needs, with the scenes that need it, ready to print." }
+    ],
+    "related": ["catalog", "schedule", "shot-list"],
+    "midCta": { "h2": "Break down your first scene" },
+    "facts": [
+      { "value": "You decide", "label": "Auto-tag only suggests; you accept" },
+      { "value": "Fountain, FDX, PDF", "label": "Screenplay formats the breakdown can start from" },
+      { "value": "1 scene list", "label": "The same scenes feed schedule, budget and sheets" }
+    ]
+  },
+  "catalog": {
+    "file": "product-catalog.html",
+    "label": "Catalog",
+    "stage": "prep",
+    "metaTitle": "Film element catalog: every prop, costume and vehicle",
+    "metaDescription": "See everything your film needs, listed once, with the scenes that need it. Props, wardrobe, vehicles and more, built from your breakdown.",
+    "hero": {
+      "h1": "Everything the film needs, listed once",
+      "sub": "Props, wardrobe, vehicles and cast gathered from your breakdown into one catalog, each with the scenes that need it."
+    },
+    "value": {
+      "h2": "Never buy the same prop twice",
+      "body": [
+        "The same lanyard turns up in six scenes. The catalog lists it once and shows all six, so art and costume plan one purchase and a continuity note, not six separate asks.",
+        "The catalog is a view of your breakdown, not a second list to maintain. Tag a scene and the catalog updates; remove the tag and the element goes with it."
+      ]
+    },
+    "demo": { "h2": "See the catalog in action" },
+    "steps": [
+      { "title": "Open the catalog", "body": "Every element from your breakdown appears here, listed once, together with the scenes that use it." },
+      { "title": "Follow an element to its scenes", "body": "Pick a prop or a costume and see each scene it appears in, so a continuity question has an answer on the page." },
+      { "title": "Print the list", "body": "Print the element list and hand it to art, costume or transport before the shoot, so each department sees what it must find." }
+    ],
+    "related": ["breakdown", "schedule", "budget"],
+    "midCta": { "h2": "See your film as a list of things" },
+    "facts": [
+      { "value": "Once", "label": "Each element is listed a single time" },
+      { "value": "Derived", "label": "Built from your breakdown, never retyped" },
+      { "value": "Printable", "label": "The reports print from the same scenes" }
+    ]
+  },
+  "shot-list": {
+    "file": "product-shot-list.html",
+    "label": "Shot list",
+    "stage": "prep",
+    "metaTitle": "Shot list maker with PDF and CSV export",
+    "metaDescription": "Plan the shots in every scene with size, angle, movement and lens, then print a shot division or export it as a spreadsheet.",
+    "hero": {
+      "h1": "Plan every shot, scene by scene",
+      "sub": "A shot list built on your scene list. Set the size, angle, movement and lens for each setup, then print it for the set."
+    },
+    "value": {
+      "h2": "The list your AD and DOP both read",
+      "body": [
+        "Each shot belongs to a scene and carries its number, size, angle, movement, lens and one line of what we see. Totals at the foot show setups, scenes and pages.",
+        "Slug lines and page lengths are read from the scene at print time, so a renamed location is renamed on the sheet without anyone editing it."
+      ]
+    },
+    "demo": { "h2": "See the shot list in action" },
+    "steps": [
+      { "title": "Choose a scene", "body": "Pick a scene from the script. Its heading and page length come with it, so you plan against the real scene." },
+      { "title": "Add the setups", "body": "Add each shot with a size from extreme wide to extreme close, an angle, a movement and a lens. Lens is free text, so write what you carry." },
+      { "title": "Print or export", "body": "Print one scene or the whole script as a shot division with a tick box per shot, or export the same list as a CSV spreadsheet." }
+    ],
+    "related": ["storyboard", "breakdown", "schedule"],
+    "midCta": { "h2": "Plan your first setup" },
+    "facts": [
+      { "value": "PDF + CSV", "label": "Print it or open it in a spreadsheet" },
+      { "value": "5", "label": "Angles: eye level, high, low, overhead, dutch" },
+      { "value": "1 or all", "label": "Export one scene or the whole script" }
+    ]
+  },
+  "schedule": {
+    "file": "product-schedule.html",
+    "label": "Schedule",
+    "stage": "prep",
+    "metaTitle": "Stripboard and day out of days scheduling",
+    "metaDescription": "Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule. Songs plan as their own blocks.",
+    "hero": {
+      "h1": "From scenes to shoot days, on a stripboard",
+      "sub": "Order your scenes into shooting days, see who works when, and spot a company move before it costs you an afternoon."
+    },
+    "value": {
+      "h2": "A schedule that follows the script",
+      "body": [
+        "Each scene is a strip. Group the strips by script order, location, day or night, or shoot day, and move them between days. The board is a view of your scenes, so nothing is typed twice.",
+        "The day out of days shows which actor works on which day, so nobody is called in for nothing. Songs are planned as their own blocks, because a song is shot as one."
+      ]
+    },
+    "demo": { "h2": "See the stripboard in action" },
+    "steps": [
+      { "title": "Start from your scenes", "body": "Every scene from the script is already a strip, with its location, day or night, and page length read from the breakdown." },
+      { "title": "Group the way you shoot", "body": "Switch the board between script order, location, day or night, and shoot day to find the order that saves the most moves." },
+      { "title": "Fill the shoot days", "body": "Place scenes into days. Screen time per day is worked out for you, and a company move that a day has not covered is flagged." },
+      { "title": "Read the day out of days", "body": "See which actor works on which day and trim the calls. Print the Day Out of Days as a landscape PDF for the production office." },
+      { "title": "Plan the songs as blocks", "body": "Give each song its own block of shooting, so a unit that shoots songs separately can see those days together." }
+    ],
+    "related": ["breakdown", "call-sheets", "cast-crew"],
+    "midCta": { "h2": "Lay out your first shoot day" },
+    "facts": [
+      { "value": "5", "label": "Ways to group strips: script, place, time, day, song" },
+      { "value": "PDF", "label": "Day out of days prints in landscape" },
+      { "value": "Songs", "label": "Each song plans as its own block" }
+    ]
+  },
+  "budget": {
+    "file": "product-budget.html",
+    "label": "Budget",
+    "stage": "production",
+    "metaTitle": "Film budget in rupees with Chennai rates",
+    "metaDescription": "Estimate what the film costs line by line from Chennai rates, track what is spent against the plan, and lock budget versions you can compare.",
+    "hero": {
+      "h1": "Know what the film costs before you shoot",
+      "sub": "A line-by-line budget in rupees that starts from Chennai rates, then follows the money once the shoot begins."
+    },
+    "value": {
+      "h2": "Honest rates, honestly dated",
+      "body": [
+        "The estimator starts from Chennai rate bands and a FEFSI bata table. Each rate says when it was last checked and is never inflated to look current, so you know how old your starting point is.",
+        "Budget days follow your schedule. After the shoot starts, log expenses and petty cash against the plan and see what is left, with the contingency you chose."
+      ]
+    },
+    "demo": { "h2": "See the budget in action" },
+    "steps": [
+      { "title": "Start from the rate bands", "body": "Pick lines from the Chennai rate tables, each marked with when it was last checked. The estimate begins from real numbers." },
+      { "title": "Let the schedule set the days", "body": "Lines that grow with shoot days can take the days from your stripboard. Only blank fields are filled, and your own entries stay yours." },
+      { "title": "Set the crew fees", "body": "Give each crew member a fee, advances and days worked. Edit the wage table and bata figures to match what you have agreed." },
+      { "title": "Track the spend and lock versions", "body": "Log expenses and petty cash, add contingency, and lock a version of the budget so a later change can be compared with it." }
+    ],
+    "related": ["schedule", "call-sheets", "breakdown"],
+    "midCta": { "h2": "Price your first shoot day" },
+    "facts": [
+      { "value": "Dated", "label": "Every rate shows when it was last checked" },
+      { "value": "FEFSI", "label": "A bata table feeds the crew lines" },
+      { "value": "Locked", "label": "Freeze a budget version to compare later" }
+    ]
+  },
+  "call-sheets": {
+    "file": "product-call-sheets.html",
+    "label": "Call sheets",
+    "stage": "production",
+    "metaTitle": "Call sheet maker with WhatsApp sharing",
+    "metaDescription": "Build one call sheet per shoot day from your scenes and unit list. Print it, or send it as a WhatsApp message with each person's own call time.",
+    "hero": {
+      "h1": "Tell everyone where to be, and when",
+      "sub": "One call sheet for each shoot day, built from your scenes and your unit list, ready to print or send on WhatsApp."
+    },
+    "value": {
+      "h2": "Built for the way a unit actually reads",
+      "body": [
+        "A call sheet holds scene numbers and people, not copies of them. Rename a person or move a scene and every sheet says the new thing.",
+        "A unit often reads the production group on WhatsApp at five in the morning, not a PDF. So each sheet also becomes a plain-text message, for everyone or for one person with their own call time first."
+      ]
+    },
+    "demo": { "h2": "See a call sheet in action" },
+    "steps": [
+      { "title": "Add a shoot day", "body": "Create a sheet for the day. Tick the scenes being shot and their locations and page lengths come from the script." },
+      { "title": "Give each person a call time", "body": "Choose who is called from your unit list and set a time for each. Late-running scenes and wrap time are worked out from the sheet." },
+      { "title": "Send it or print it", "body": "Print the sheet, or copy it as a WhatsApp message for the whole unit or for one person. Sunrise, sunset and golden hour are included." }
+    ],
+    "related": ["cast-crew", "schedule", "sides"],
+    "midCta": { "h2": "Build your first call sheet" },
+    "facts": [
+      { "value": "WhatsApp", "label": "Send to the whole unit or one person" },
+      { "value": "Offline", "label": "Sunrise and golden hour worked out on-device" },
+      { "value": "Per day", "label": "One sheet per shoot day, built from scenes" }
+    ]
+  },
+  "cast-crew": {
+    "file": "product-cast-crew.html",
+    "label": "Cast and crew",
+    "stage": "prep",
+    "metaTitle": "Cast and crew directory for your film unit",
+    "metaDescription": "Keep cast and crew in one directory by department, with phone and email. Call sheets are built from the same list, so a change is made once.",
+    "hero": {
+      "h1": "Your whole unit, by department, in one list",
+      "sub": "Cast and crew with phone and email, sorted by department, and the same list your call sheets are built from."
+    },
+    "value": {
+      "h2": "Change a name once",
+      "body": [
+        "People are stored once. A call sheet points at a person, so correcting a phone number or a name fixes every sheet that person is on.",
+        "The directory is grouped into nine departments, from Cast and Direction to Post, so the person you need at the end of a long shoot day is easy to find."
+      ]
+    },
+    "demo": { "h2": "See the directory in action" },
+    "steps": [
+      { "title": "Add a person", "body": "Enter a name, a role and a department, with phone and email. Departments run from Cast and Direction to Production and Post." },
+      { "title": "Check the details", "body": "Browse the unit by department. Contact details with a problem are flagged, so a missing phone number shows before the shoot day." },
+      { "title": "Call them", "body": "Pick the people for a day when you build a call sheet and give each a time. The sheet reads their details from here." }
+    ],
+    "related": ["call-sheets", "schedule", "sides"],
+    "midCta": { "h2": "Add your first crew member" },
+    "facts": [
+      { "value": "9", "label": "Departments, from Cast to Post" },
+      { "value": "Once", "label": "A person is stored in one place only" },
+      { "value": "Linked", "label": "Call sheets read the unit list directly" }
+    ]
+  },
+  "sides": {
+    "file": "product-sides.html",
+    "label": "Sides",
+    "stage": "prep",
+    "metaTitle": "Script sides for the day, ready to print",
+    "metaDescription": "Tick the scenes being shot and print sides with slug, length, synopsis and elements, one block per scene, ready for the actors.",
+    "hero": {
+      "h1": "Print the sides for tomorrow in a minute",
+      "sub": "Tick the scenes being shot and get a clean block for each, with slug line, length, synopsis and the elements it needs."
+    },
+    "value": {
+      "h2": "Only what the day needs",
+      "body": [
+        "Actors and department heads do not need the whole script for one shoot day. Sides give them the scenes being shot and what each scene involves.",
+        "Sides are worked out from your scenes every time, so they match the script on the day you print them. Each scene prints as its own block that does not split across a page."
+      ]
+    },
+    "demo": { "h2": "See sides in action" },
+    "steps": [
+      { "title": "Tick the scenes", "body": "Open the reports and tick the scenes being shot on the day. The selection is yours for the moment and is not saved." },
+      { "title": "Check each block", "body": "Each scene shows its slug line, length, synopsis and elements, so you can see what the day involves before you print." },
+      { "title": "Print them", "body": "Print the sides, one block for each scene. Hand them out at the call, or save them as a PDF to send." }
+    ],
+    "related": ["schedule", "call-sheets", "breakdown"],
+    "midCta": { "h2": "Print your first sides" },
+    "facts": [
+      { "value": "1 block", "label": "Each scene prints as its own block" },
+      { "value": "Fresh", "label": "Worked out from the scenes at print time" },
+      { "value": "PDF", "label": "Print to paper or save as a PDF" }
+    ]
+  }
+}

@@ -50,41 +50,51 @@
    and in the mono face so the geometric glyphs line up with the
    meta type rather than drifting with the serif.
    ------------------------------------------------------------ */
-.lx-grid .lx-phase-icon {
-  font-family: var(--f-mono);
-  font-size: var(--t-xl);
-  line-height: 1;
-  margin-bottom: var(--s1);
-}
-
-.lx-grid .lx-mod-icon {
-  font-family: var(--f-mono);
-  font-size: var(--t-lg);
-  line-height: 1;
-  color: var(--hue-deep);
-  margin-bottom: var(--s1);
-}
-
-/* Only the SIZES live here. The face, the ligature settings and the
-   two resets that make a ligature form at all are one shared rule in
-   base.css, because the shell and the command palette draw the same
-   marks on every page in the studio and three copies of a font stack
-   is three things to keep in step. */
 .lx-grid .lx-phase-icon.sym { font-size: 28px; }
-.lx-grid .lx-mod-icon.sym   { font-size: 24px; }
+.lx-grid .lx-mod-icon.sym   { font-size: 56px; }
 
 /* ------------------------------------------------------------
-   2. THE TILES
+   2. THE ROW AND ITS TILES
    ------------------------------------------------------------
-   The <li> is the grid cell now and the tile stretches to fill it,
-   so a row of tiles is one height whatever the length of the
-   purpose line. The list markup is for the screen reader: a nav of
-   twenty-four links reads as four lists of a known length rather
-   than as one undifferentiated run.
+   A row is a card: the hue tile on the left, then the module tiles.
+   The <li> is the grid cell and the tile stretches to fill it, so a
+   row of tiles is one height. Tiles are glyph + label only (purpose
+   and state live in the `title`), the glyph in currentColor =
+   --hue-lift, which is the hue's text-safe colour on a dark card.
+   A `hidden` cell or row stays in the DOM and must really hide:
+   the display rules below would otherwise beat the attribute.
    ------------------------------------------------------------ */
+.lx-grid [hidden] { display: none; }
+.lx-grid .lx-row {
+  grid-template-columns: minmax(150px, 180px) 1fr;
+  background-color: var(--sk-card-bg);
+}
+.lx-grid .lx-phase {
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s4);
+  text-align: center;
+  background-color: var(--hue);
+  color: var(--hue-on);
+}
+.lx-grid .lx-phase-disc {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--hue-wash);
+  color: var(--hue-deep);
+}
+.lx-grid .lx-phase-icon { line-height: 1; }
+.lx-grid .lx-phase-label { font-size: var(--t-lg); }
+
 .lx-grid .lx-mods {
   list-style: none;
   margin: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr));
+  align-content: center;
 }
 .lx-grid .lx-mod-cell {
   display: grid;
@@ -94,8 +104,31 @@
   height: 100%;
   min-width: 0;
   align-content: start;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s4) var(--s2);
+  text-align: center;
   overflow-wrap: anywhere;
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--hue-lift);
 }
+.lx-grid .lx-mod-icon {
+  color: var(--hue-lift);
+  line-height: 1;
+}
+.lx-grid .lx-mod-label {
+  color: var(--hue-lift);
+  font-size: var(--t-small);
+}
+.lx-grid .lx-mod:hover,
+.lx-grid .lx-mod:focus-visible {
+  border-color: var(--hue);
+  box-shadow: var(--sk-card-shadow-hover, none);
+  transform: translateY(calc(-1 * var(--sk-lift, 0px) * var(--motion)));
+}
+.lx-grid .lx-mod .lx-flag,
+.lx-grid .lx-mod .lx-mod-here { justify-self: center; margin-top: 0; }
 
 /* ------------------------------------------------------------
    3. THE STATE LINE
@@ -226,13 +259,23 @@
    has to stop claiming a line of its own.
    ------------------------------------------------------------ */
 @media (max-width: 719px) {
-  .lx-grid .lx-phase-icon {
-    margin-bottom: 0;
-    font-size: var(--t-lg);
+  .lx-grid .lx-row { grid-template-columns: 1fr; }
+  .lx-grid .lx-phase {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--s3);
+    padding: var(--s3) var(--s4);
+    text-align: left;
   }
-  .lx-grid .lx-phase-work {
-    margin-top: 0;
+  .lx-grid .lx-phase-disc { width: 40px; height: 40px; }
+  .lx-grid .lx-phase-icon.sym { font-size: 24px; }
+  .lx-grid .lx-phase-work { margin-left: auto; }
+  .lx-grid .lx-mods {
+    grid-template-columns: repeat(auto-fill, minmax(min(96px, 100%), 1fr));
+    padding: var(--s3);
+    gap: var(--s2);
   }
+  .lx-grid .lx-mod-icon.sym { font-size: 44px; }
 }
 
 /* ============================================================

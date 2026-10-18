@@ -836,7 +836,7 @@ try {
        for the first time. Nothing else in this repository would point
        at it. THIS IS THE ONLY CHECK THAT CATCHES THAT DRIFT. Do not
        delete it, and do not relax it to "something was requested". */
-    const btn = await page.$('[data-start-auth="google"]');
+    const btn = await page.$('[data-start-auth="google"]:visible');
     ok(!!btn, 'start.html carries a Continue with Google control ([data-start-auth="google"])');
     if (!btn) {
       skip('the authorize URL: origin and path, provider, redirect_to, scopes (no button to click)');
@@ -881,18 +881,46 @@ try {
     ok(!!held, 'start.html#code= holds the code in fms_invite_code_v1');
     ok(!!held && JSON.parse(held).code === 'LINKCODE2345', 'normalised, the dashes dropped: ' + String(held).slice(0, 80));
     ok(!/code=/.test(p2.url()), 'and the fragment is stripped from the address bar: ' + p2.url());
-    /* THE CONTRACT FOR THE BAND is the attribute, not a class or a
-       phrase: a visitor who followed an invite link must be told it
-       took, or the only feedback for a correct code is that nothing
-       visible happened. */
-    const band = await p2.evaluate(() => {
-      const el = document.querySelector('[data-invite-band], #inviteBand');
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return { text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120), shown: !el.hidden && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' };
+    /* THE CONTRACT FOR THE FEEDBACK. A visitor who followed an invite link
+       must be told it took, or the only feedback for a correct code is that
+       nothing visible happened. The banner that said so is gone with the
+       rebuilt home page; the
+       sign-up modal opens and says it, exactly as it does on a product page.
+       What is asserted is unchanged: the code is held, the fragment is
+       stripped, and the visitor is told. */
+    const told = await p2.evaluate(() => {
+      const m = document.getElementById('mkSignup');
+      const el = document.getElementById('mkMsg');
+      if (!m || !el) return null;
+      const r = m.getBoundingClientRect();
+      return { text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120), shown: !m.hidden && r.height > 0 };
     });
-    ok(!!band && band.shown, 'the invite band is shown ([data-invite-band] or #inviteBand): ' + JSON.stringify(band));
-    allErrors.push(...errs, ...perrs); await ctx.close();
+    ok(!!told && told.shown && /Invite code saved/.test(told.text), 'the visitor is told the code took (sign-up modal, #mkMsg): ' + JSON.stringify(told));
+
+    /* ---- THE MARKETING PAGES ARE PUBLIC, AND A CODE WORKS FROM THEM --
+       product-*.html sit outside the gate (EXEMPT in sitegate.js) and
+       carry src/pages/marketing.js, which holds an invite code in the
+       fragment exactly as start.js does and says so in the sign-up modal.
+       The code is cleared first so this cannot pass on the start page's
+       write above. */
+    await p2.evaluate(() => localStorage.removeItem('fms_invite_code_v1'));
+    const p6 = await ctx.newPage();
+    const merrs = []; p6.on('pageerror', (e) => merrs.push(e.message));
+    await p6.goto(BASE + 'product-writing.html#code=LINK-CODE-2345');
+    const mheld = await p6.waitForFunction(() => localStorage.getItem('fms_invite_code_v1'), null, { timeout: 8000 })
+      .then((h) => h.jsonValue(), () => null);
+    ok(/product-writing\.html/.test(p6.url()), 'a signed-out visitor stays on product-writing.html (exempt from the gate): ' + p6.url());
+    ok(!!mheld && JSON.parse(mheld).code === 'LINKCODE2345', 'product-writing.html#code= holds the code in fms_invite_code_v1');
+    ok(!/code=/.test(p6.url()), 'and strips the fragment from the address bar: ' + p6.url());
+    const modalOpen = await p6.evaluate(() => { const m = document.getElementById('mkSignup'); return !!m && !m.hidden; });
+    ok(modalOpen, 'the sign-up modal opens to say the code was saved');
+    ok(/Invite code saved/.test(await p6.evaluate(() => (document.getElementById('mkMsg') || {}).textContent || '')), 'and says so');
+    await p6.keyboard.press('Escape');
+    ok(await p6.evaluate(() => document.getElementById('mkSignup').hidden), 'Escape closes the modal');
+    await p6.goto(BASE + 'product-schedule.html');
+    await p6.waitForTimeout(400);
+    ok(/product-schedule\.html/.test(p6.url()), 'product-schedule.html is exempt too');
+    allErrors.push(...errs, ...perrs, ...merrs); await ctx.close();
   }
 
   console.log('(p) optimistic admission: a passed tab paints at once');

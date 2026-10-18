@@ -1,0 +1,62 @@
+{
+  "_": "Copy and structure of pricing.html, read by scripts/make-marketing-pages.mjs (which writes the committed HTML). `groups` maps EVERY plan-matrix.json feature row that any paid plan has to one comparison group; the table is built from plan-matrix.json at generation time, so a cell cannot say what the matrix does not, and `npm run test:marketing` fails when a row is in no group, in two groups, or a key here is not a matrix row. Fields ending in Html are our own trusted markup (an em, a stamped span); everything else is escaped. No price, no plan name and no figure is typed here: those are stamped at build time from src/lib/plans.js and src/data/plan-matrix.json. No social proof of any kind.",
+  "meta": {
+    "title": "Pricing: pay once, yours for good",
+    "description": "Three plans, each bought once in Indian rupees with no subscription and no renewal. Compare what Basic, Intermediate and Pro include, feature by feature."
+  },
+  "hero": {
+    "eyebrow": "Pricing",
+    "h1": "Pay once. Make the film.",
+    "sub": "Three plans, and each one includes everything in the plan below it. Every plan is a single payment in Indian rupees: no subscription, no renewal, nothing to cancel."
+  },
+  "trial": {
+    "h": "Not sure yet? Try the whole studio free",
+    "bodyHtml": "Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card required. Then keep the plan that fits.",
+    "cta": "Start the free trial",
+    "ctaOpen": "Open the studio"
+  },
+  "plans": {
+    "h": "Pick the stage you need",
+    "lede": "Every plan is bought once, never renews and never lapses. Move up a plan later by paying the difference.",
+    "once": "one payment",
+    "keep": "Yours for good, no renewal",
+    "tags": { "starter": "Writer", "indie": "Director", "pro": "Production house" },
+    "pickFlag": "Recommended for filmmakers",
+    "pick": "indie",
+    "buy": "Buy {name}",
+    "buySignIn": "Sign in",
+    "alt": "or start the free trial first",
+    "altOpen": "or open the studio",
+    "noteHtml": "One-time list prices in Indian rupees, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first."
+  },
+  "offer": {
+    "eyebrow": "Launch price",
+    "h": "The price goes up, and the date is already set.",
+    "line": "Today's figure is the launch price. It rises on a date held by the server, or once the launch seats are taken, whichever comes first.",
+    "fine": "Nothing here resets. The rise is scheduled on the server and fires by itself, so reloading this page shows you less time, never more."
+  },
+  "compare": {
+    "h": "Compare every feature",
+    "lede": "Generated from the same list the studio uses to decide what to open, so it cannot disagree with the product.",
+    "caption": "What each plan includes",
+    "what": "What you get",
+    "yes": "Included",
+    "no": "Not included"
+  },
+  "faq": {
+    "h": "Questions about billing, plans and your data",
+    "lede": "Short answers, in plain words. Anything not covered is a message away."
+  },
+  "close": {
+    "h": "See every tool filled in before you decide",
+    "cta": "Get started"
+  },
+  "groups": [
+    { "id": "basics",  "label": "Account basics",       "keys": ["new_projects", "exports", "drive_backup", "extension"] },
+    { "id": "writing", "label": "Writing",              "keys": ["screenplay", "revisions", "docs", "script_import", "import-script"] },
+    { "id": "story",   "label": "Story development",    "keys": ["story-beats", "storyboard"] },
+    { "id": "prep",    "label": "Pre-production",       "keys": ["scene-list", "breakdowns", "elements", "shot-list", "stripboard", "calendar", "locations", "dood", "contacts", "sides"] },
+    { "id": "prod",    "label": "Production",           "keys": ["budget", "reports", "call-sheets"] },
+    { "id": "extras",  "label": "AI and white label",   "keys": ["ai_tools", "remove_branding"] }
+  ]
+}

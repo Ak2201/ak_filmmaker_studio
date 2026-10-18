@@ -62,6 +62,8 @@
    EXEMPT: invite.html (the doorway), screening.html (a guest's pass is
    its own credential), privacy.html, terms.html and refund.html (the OAuth consent
    screen's and the payment gateway's readers, which import nothing anyway),
+   pricing.html and product-*.html (the public marketing pages, written by
+   scripts/make-marketing-pages.mjs; they import no app code either),
    start.html (the public landing page — what the product IS, for a
    stranger who has not been invited yet; it imports no app code either),
    and everything under
@@ -141,7 +143,7 @@ const GIVE_UP_MS = 20000;
    plan, no trial) has to be able to reach it. invite.html used to sell plans
    itself for exactly that reason. The page draws no studio content, and it
    handles being signed out. */
-const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund|start|purchase)(\.html)?$/;
+const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund|start|purchase|pricing|product-[a-z-]+)(\.html)?$/;
 
 export function isExempt() {
   if (typeof location === 'undefined') return true;

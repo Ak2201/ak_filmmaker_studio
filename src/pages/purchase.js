@@ -142,7 +142,7 @@ function planSection() {
     }
     sec.append(h('div.pu-actions', {}, [
       h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
-      h('a.btn', { href: 'start.html#pricing', text: 'COMPARE EVERY FEATURE' })
+      h('a.btn', { href: 'pricing.html#compare', text: 'COMPARE EVERY FEATURE' })
     ]));
     const x1 = planExtras(null); if (x1) sec.append(x1);
     return sec;

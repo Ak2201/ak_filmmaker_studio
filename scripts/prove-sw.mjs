@@ -265,7 +265,7 @@ check('the page is controlled by the worker',
   await page.evaluate(() => !!navigator.serviceWorker.controller));
 
 // (b) typed .html URLs, through the worker
-const TYPED = ['index.html', 'dashboard.html', 'breakdown.html', 'feature.html', 'feature.html?stay=1', 'settings.html', 'write.html', 'write.html?stay=1', 'screenplay.html', 'drafts.html', 'story.html'];
+const TYPED = ['index.html', 'dashboard.html', 'breakdown.html', 'feature.html', 'feature.html?stay=1', 'settings.html', 'write.html', 'write.html?stay=1', 'screenplay.html', 'drafts.html', 'story.html', 'product-writing.html', 'product-schedule.html'];
 /* feature.html / short.html forward to their stage guide (10 Oct 2026,
    src/pages/blueprint-redirect.js); with no #step the guide is Story's.
    ?stay=1 is the full old page, and has to resolve through the worker

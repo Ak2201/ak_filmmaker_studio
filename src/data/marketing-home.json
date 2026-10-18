@@ -1,0 +1,120 @@
+{
+  "_about": "Copy for the rebuilt home page (start.html), rendered by scripts/make-marketing-pages.mjs. Every claim is checkable in this repo. No price, no date, no social proof. A figure is a {{fms:...}} stamp (dragon.*) filled by the fms-start-figures plugin in vite.config.js, never typed.",
+  "hero": {
+    "h1": "From first draft to final call sheet",
+    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place, saved in your own browser.",
+    "note": "Every tool is open on a sample feature, {{fms:dragon.scenes}} scenes long, so you can look around before you write.",
+    "cta": "Get started"
+  },
+  "stages": [
+    {
+      "id": "writing",
+      "sym": "edit_note",
+      "h2": "Write the screenplay",
+      "body": "A screenplay writer for Tamil, Tanglish and English. The format sets itself as you type, drafts are numbered, and every scene heading becomes a scene the rest of the studio can use.",
+      "cta": {
+        "label": "Explore writing",
+        "page": "writing"
+      },
+      "video": "writing"
+    },
+    {
+      "id": "story",
+      "sym": "lightbulb",
+      "h2": "Develop the story",
+      "body": "Place your beats on one of eleven story structures, check where the pacing sags, then give each planned shot a frame on the storyboard.",
+      "cta": {
+        "label": "Explore story development",
+        "page": "story"
+      },
+      "video": "story"
+    },
+    {
+      "id": "prep",
+      "sym": "grid_view",
+      "h2": "Plan the shoot",
+      "body": "Auto-tag suggests what each scene needs and you accept what is right. Then build the shot list, lay scenes onto a stripboard, and print the sides for the day.",
+      "cta": {
+        "label": "Explore pre-production",
+        "page": "breakdown"
+      },
+      "video": "schedule"
+    },
+    {
+      "id": "production",
+      "sym": "videocam",
+      "h2": "Run the production",
+      "body": "A budget in rupees that starts from dated Chennai rates, and a call sheet for each shoot day that you can print or send on WhatsApp.",
+      "cta": {
+        "label": "Explore production",
+        "page": "call-sheets"
+      },
+      "video": "call-sheets"
+    },
+    {
+      "id": "local-first",
+      "sym": "lock",
+      "h2": "Local-first: your work stays yours",
+      "body": "Everything you write is saved in your own browser first, and the studio installs like an app and keeps working offline. Sync and a backup to your own Google Drive are there if you switch them on.",
+      "cta": null,
+      "video": null
+    }
+  ],
+  "facts": [
+    {
+      "value": "Tamil, Tanglish, English",
+      "label": "Dialogue in the language you write"
+    },
+    {
+      "value": "11",
+      "label": "Story structures to place your beats on"
+    },
+    {
+      "value": "Fountain, FDX, PDF",
+      "label": "Screenplay formats you can bring in"
+    },
+    {
+      "value": "1 scene list",
+      "label": "Feeds breakdown, schedule, budget and call sheets"
+    }
+  ],
+  "pricingTeaser": "Plans are a single payment that never renews. See what each one includes.",
+  "closing": {
+    "h2": "Open the studio and write scene one",
+    "sub": "Sign in with Google to start. Your work stays in your browser, and every tool reads the same scenes.",
+    "cta": "Get started"
+  },
+  "meta": {
+    "title": "{{brand:name}}: from first draft to final call sheet",
+    "description": "Write the screenplay, break it down and plan the shoot in one place. Built for indie directors, writers and line producers; your work is saved in your own browser."
+  },
+  "factsLabel": "The studio in four facts",
+  "panel": {
+    "label": "What local-first means here",
+    "items": [
+      {
+        "sym": "storage",
+        "title": "Saved in your browser",
+        "text": "Every keystroke is written to this device first."
+      },
+      {
+        "sym": "cloud_off",
+        "title": "Works offline",
+        "text": "Install it like an app and keep writing without a connection."
+      },
+      {
+        "sym": "backup",
+        "title": "Backup to your own Drive",
+        "text": "Switch on sync or a Google Drive backup when you want a second copy."
+      }
+    ]
+  },
+  "pricing": {
+    "cta": "View plans and pricing",
+    "pill": "See the plans"
+  },
+  "optOut": {
+    "label": "Don't count this visit",
+    "done": "This visit is not counted"
+  }
+}

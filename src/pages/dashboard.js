@@ -682,6 +682,16 @@ function renderNoProject() {
    RENDER
    ============================================================ */
 let revealed = false;
+/* Open the closed 'Project overview' when the hash names something inside it. */
+function openOverviewFor(hash) {
+  const id = String(hash || '').replace(/^#/, '');
+  if (!id) return;
+  const el = document.getElementById(id);
+  const det = el && el.closest('details.db-overview');
+  if (det && !det.open) det.open = true;
+}
+window.addEventListener('hashchange', () => openOverviewFor(location.hash));
+
 function render() {
   const project = Store.currentProject();
   const main = h('main.db-main.k-page', { id: 'main' });
@@ -719,8 +729,15 @@ function render() {
     col.append(renderReadiness());
     const activity = renderActivity(snap.scenes);
     if (activity) col.append(activity);
-    main.append(renderHead(snap), renderFocus(snap), renderStages(snap),
-      h('div.db-body', {}, [col, renderDesk(snap)]), renderLauncher());
+    /* The launcher is the project home and leads; everything the dashboard
+       used to open with sits under a closed disclosure. Every node stays in
+       the DOM (verify reads innerHTML and data-keys), ids intact. */
+    const overview = h('details.db-overview', {}, [
+      h('summary.db-overview-sum', { text: 'Project overview' }),
+      renderFocus(snap), renderStages(snap),
+      h('div.db-body', {}, [col, renderDesk(snap)])
+    ]);
+    main.append(renderHead(snap), renderLauncher(), overview);
   }
 
   /* The path line is applied whether or not the swap happened: a skipped
@@ -728,6 +745,9 @@ function render() {
   const painted = commitMain(app, main, mountShell);
   if (project) loadPath();
   if (!painted) return;
+  /* A link INTO the overview (#readiness, #resume...) has to open it: a
+     closed <details> hides its target, so the jump would land on nothing. */
+  openOverviewFor(location.hash);
   /* Play once: render() runs on every store event, and a desk that
      re-faded on each edit would be noise. */
   if (!revealed) { revealed = true; reveal(main); }

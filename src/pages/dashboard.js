@@ -679,6 +679,16 @@ function renderNoProject() {
    RENDER
    ============================================================ */
 let revealed = false;
+/* Open the closed 'Project overview' when the hash names something inside it. */
+function openOverviewFor(hash) {
+  const id = String(hash || '').replace(/^#/, '');
+  if (!id) return;
+  const el = document.getElementById(id);
+  const det = el && el.closest('details.db-overview');
+  if (det && !det.open) det.open = true;
+}
+window.addEventListener('hashchange', () => openOverviewFor(location.hash));
+
 function render() {
   const project = Store.currentProject();
   const main = h('main.db-main', { id: 'main' });
@@ -733,6 +743,9 @@ function render() {
   const painted = commitMain(app, main, mountShell);
   if (project) loadPath();
   if (!painted) return;
+  /* A link INTO the overview (#readiness, #resume...) has to open it: a
+     closed <details> hides its target, so the jump would land on nothing. */
+  openOverviewFor(location.hash);
   /* Play once: render() runs on every store event, and a desk that
      re-faded on each edit would be noise. */
   if (!revealed) { revealed = true; reveal(main); }

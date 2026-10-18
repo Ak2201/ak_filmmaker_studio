@@ -573,11 +573,10 @@ function buildRail() {
     href: (homeG && homeG.href) || 'index.html', tabindex: '-1', 'aria-hidden': 'true',
     text: monogram()
   }));
-  /* No project items in the global shell. Celtx flow: opening a project goes
-     straight to the workspace, so the Dashboard has no rail entry; the Library
-     shelf shows only while one of its modules is still enabled in the plan matrix. */
-  const gl = globals().filter((g) => g.id !== 'dashboard'
-    && !(g.id === 'library' && Array.isArray(g.modules) && g.modules.length && !g.modules.some((m) => !isDisabledEverywhere(m.id) && allowed(m.id))));
+  /* The Dashboard is the project's home (the launcher) and leads the rail
+     again; the Library shelf shows only while one of its modules is still
+     enabled in the plan matrix. */
+  const gl = globals().filter((g) => !(g.id === 'library' && Array.isArray(g.modules) && g.modules.length && !g.modules.some((m) => !isDisabledEverywhere(m.id) && allowed(m.id))));
   /* Home and Dashboard lead; the stages follow them; the rest of the
      app-scope entries (Library, Settings, Purchase, Console) close the
      column. The split is by position in navigation.json, not by name:

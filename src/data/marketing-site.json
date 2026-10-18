@@ -1,0 +1,71 @@
+{
+  "_": "Shared copy and structure for the public marketing pages (product-*.html, later pricing.html). Read by scripts/make-marketing-pages.mjs, which writes the committed HTML. The per-page copy lives in marketing-pages.json. Nothing here names the product: the generator stamps {{brand:...}}. A stage's hue class is an EXISTING one from tokens.css (.hue-library, .hue-feature, .hue-plan, .hue-shoot).",
+  "stages": [
+    { "id": "writing",    "label": "Writing",           "hue": "hue-library", "pages": ["writing"] },
+    { "id": "story",      "label": "Story development", "hue": "hue-feature", "pages": ["story", "storyboard"] },
+    { "id": "prep",       "label": "Pre-production",    "hue": "hue-plan",    "pages": ["breakdown", "catalog", "shot-list", "schedule", "cast-crew", "sides"] },
+    { "id": "production", "label": "Production",        "hue": "hue-shoot",   "pages": ["budget", "call-sheets"] }
+  ],
+  "stepCounts": { "writing": 4, "story": 3, "storyboard": 4, "breakdown": 5, "catalog": 3, "shot-list": 3, "schedule": 5, "budget": 4, "call-sheets": 3, "cast-crew": 3, "sides": 3 },
+  "tools": {
+    "writing":     { "icon": "edit_note",      "blurb": "Write in a screenplay editor that sets the format as you type." },
+    "story":       { "icon": "timeline",       "blurb": "Lay your beats out on a board and see the shape of the story." },
+    "storyboard":  { "icon": "view_carousel",  "blurb": "Turn scenes into frames and plan how each one is covered." },
+    "breakdown":   { "icon": "fact_check",     "blurb": "Tag every element in the script, scene by scene." },
+    "catalog":     { "icon": "category",       "blurb": "One index of every prop, costume and location the script names." },
+    "shot-list":   { "icon": "videocam",       "blurb": "List the shots for each scene and keep them in order." },
+    "schedule":    { "icon": "calendar_month", "blurb": "Arrange scenes into shoot days on a stripboard." },
+    "budget":      { "icon": "payments",       "blurb": "Estimate costs line by line, from the schedule you already made." },
+    "call-sheets": { "icon": "assignment",     "blurb": "Build the call sheet for any shoot day from your plan." },
+    "cast-crew":   { "icon": "groups",         "blurb": "Keep every contact, and who is called on which day." },
+    "sides":       { "icon": "description",    "blurb": "Cut the script down to the pages a day needs." }
+  },
+  "ui": {
+    "skip": "Skip to content",
+    "product": "Product",
+    "pricing": "Pricing",
+    "login": "Log in",
+    "signup": "Sign up",
+    "menu": "Menu",
+    "mainNav": "Main",
+    "productNav": "Product tools",
+    "getStarted": "Get started",
+    "watch": "Watch the video",
+    "explore": "Explore",
+    "labelNav": "On this page",
+    "labelDemo": "Demo",
+    "labelHow": "How it works",
+    "demoFallback": "Your browser cannot play this video.",
+    "howLabel": "How it works",
+    "howHeading": "How it works",
+    "relatedHeading": "Browse more tools",
+    "toolsHeading": "Tools for every stage",
+    "midCta": "Create your free account",
+    "factsHeading": "The plain facts",
+    "viewPricing": "View plans & pricing"
+  },
+  "signup": {
+    "heading": "Create a free account",
+    "offer": "Try every module on the sample films free for <span data-trial-length>a limited time</span>. No card required.",
+    "offerOff": "The studio is open: sign in with Google and every module is yours to use, saved in your browser.",
+    "offerIn": "You are already signed in.",
+    "google": "Continue with Google",
+    "googleIn": "Open the studio",
+    "terms": "By continuing you agree to the {terms} and the {privacy}.",
+    "termsLabel": "Terms",
+    "privacyLabel": "Privacy Policy",
+    "have": "Already have an account?",
+    "haveLink": "Log in",
+    "close": "Close"
+  },
+  "footer": {
+    "legalHeading": "Company",
+    "pricing": "Pricing",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "refund": "Refunds",
+    "support": "Support",
+    "note": "Your work is saved in your browser first. Syncing to the cloud is optional.",
+    "copyright": "© {{brand:name}}"
+  }
+}

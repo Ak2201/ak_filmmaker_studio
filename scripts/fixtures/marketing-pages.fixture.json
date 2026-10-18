@@ -1,0 +1,657 @@
+{
+  "writing": {
+    "file": "product-writing.html",
+    "label": "Writing",
+    "stage": "writing",
+    "metaTitle": "Writing (fixture copy)",
+    "metaDescription": "Fixture description for the Writing page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Writing, fixture headline",
+      "sub": "Fixture sub-line for writing."
+    },
+    "value": {
+      "h2": "Fixture value heading for writing",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See writing in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of writing."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of writing."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of writing."
+      },
+      {
+        "title": "Fixture step 4",
+        "body": "Fixture body for step 4 of writing."
+      }
+    ],
+    "related": [
+      "story",
+      "storyboard",
+      "breakdown"
+    ],
+    "midCta": {
+      "h2": "Start with writing today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "story": {
+    "file": "product-story.html",
+    "label": "Story",
+    "stage": "story",
+    "metaTitle": "Story (fixture copy)",
+    "metaDescription": "Fixture description for the Story page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Story, fixture headline",
+      "sub": "Fixture sub-line for story."
+    },
+    "value": {
+      "h2": "Fixture value heading for story",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See story in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of story."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of story."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of story."
+      }
+    ],
+    "related": [
+      "storyboard",
+      "breakdown",
+      "catalog"
+    ],
+    "midCta": {
+      "h2": "Start with story today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "storyboard": {
+    "file": "product-storyboard.html",
+    "label": "Storyboard",
+    "stage": "story",
+    "metaTitle": "Storyboard (fixture copy)",
+    "metaDescription": "Fixture description for the Storyboard page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Storyboard, fixture headline",
+      "sub": "Fixture sub-line for storyboard."
+    },
+    "value": {
+      "h2": "Fixture value heading for storyboard",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See storyboard in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of storyboard."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of storyboard."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of storyboard."
+      },
+      {
+        "title": "Fixture step 4",
+        "body": "Fixture body for step 4 of storyboard."
+      }
+    ],
+    "related": [
+      "breakdown",
+      "catalog",
+      "shot-list"
+    ],
+    "midCta": {
+      "h2": "Start with storyboard today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "breakdown": {
+    "file": "product-breakdown.html",
+    "label": "Breakdown",
+    "stage": "prep",
+    "metaTitle": "Breakdown (fixture copy)",
+    "metaDescription": "Fixture description for the Breakdown page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Breakdown, fixture headline",
+      "sub": "Fixture sub-line for breakdown."
+    },
+    "value": {
+      "h2": "Fixture value heading for breakdown",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See breakdown in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of breakdown."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of breakdown."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of breakdown."
+      },
+      {
+        "title": "Fixture step 4",
+        "body": "Fixture body for step 4 of breakdown."
+      },
+      {
+        "title": "Fixture step 5",
+        "body": "Fixture body for step 5 of breakdown."
+      }
+    ],
+    "related": [
+      "catalog",
+      "shot-list",
+      "schedule"
+    ],
+    "midCta": {
+      "h2": "Start with breakdown today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "catalog": {
+    "file": "product-catalog.html",
+    "label": "Catalog",
+    "stage": "prep",
+    "metaTitle": "Catalog (fixture copy)",
+    "metaDescription": "Fixture description for the Catalog page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Catalog, fixture headline",
+      "sub": "Fixture sub-line for catalog."
+    },
+    "value": {
+      "h2": "Fixture value heading for catalog",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See catalog in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of catalog."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of catalog."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of catalog."
+      }
+    ],
+    "related": [
+      "shot-list",
+      "schedule",
+      "budget"
+    ],
+    "midCta": {
+      "h2": "Start with catalog today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "shot-list": {
+    "file": "product-shot-list.html",
+    "label": "Shot list",
+    "stage": "prep",
+    "metaTitle": "Shot list (fixture copy)",
+    "metaDescription": "Fixture description for the Shot list page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Shot list, fixture headline",
+      "sub": "Fixture sub-line for shot list."
+    },
+    "value": {
+      "h2": "Fixture value heading for shot list",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See shot list in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of shot list."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of shot list."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of shot list."
+      }
+    ],
+    "related": [
+      "schedule",
+      "budget",
+      "call-sheets"
+    ],
+    "midCta": {
+      "h2": "Start with shot list today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "schedule": {
+    "file": "product-schedule.html",
+    "label": "Schedule",
+    "stage": "prep",
+    "metaTitle": "Schedule (fixture copy)",
+    "metaDescription": "Fixture description for the Schedule page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Schedule, fixture headline",
+      "sub": "Fixture sub-line for schedule."
+    },
+    "value": {
+      "h2": "Fixture value heading for schedule",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See schedule in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of schedule."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of schedule."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of schedule."
+      },
+      {
+        "title": "Fixture step 4",
+        "body": "Fixture body for step 4 of schedule."
+      },
+      {
+        "title": "Fixture step 5",
+        "body": "Fixture body for step 5 of schedule."
+      }
+    ],
+    "related": [
+      "budget",
+      "call-sheets",
+      "cast-crew"
+    ],
+    "midCta": {
+      "h2": "Start with schedule today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "budget": {
+    "file": "product-budget.html",
+    "label": "Budget",
+    "stage": "production",
+    "metaTitle": "Budget (fixture copy)",
+    "metaDescription": "Fixture description for the Budget page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Budget, fixture headline",
+      "sub": "Fixture sub-line for budget."
+    },
+    "value": {
+      "h2": "Fixture value heading for budget",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See budget in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of budget."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of budget."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of budget."
+      },
+      {
+        "title": "Fixture step 4",
+        "body": "Fixture body for step 4 of budget."
+      }
+    ],
+    "related": [
+      "call-sheets",
+      "cast-crew",
+      "sides"
+    ],
+    "midCta": {
+      "h2": "Start with budget today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "call-sheets": {
+    "file": "product-call-sheets.html",
+    "label": "Call sheets",
+    "stage": "production",
+    "metaTitle": "Call sheets (fixture copy)",
+    "metaDescription": "Fixture description for the Call sheets page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Call sheets, fixture headline",
+      "sub": "Fixture sub-line for call sheets."
+    },
+    "value": {
+      "h2": "Fixture value heading for call sheets",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See call sheets in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of call sheets."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of call sheets."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of call sheets."
+      }
+    ],
+    "related": [
+      "cast-crew",
+      "sides",
+      "writing"
+    ],
+    "midCta": {
+      "h2": "Start with call sheets today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "cast-crew": {
+    "file": "product-cast-crew.html",
+    "label": "Cast and crew",
+    "stage": "prep",
+    "metaTitle": "Cast and crew (fixture copy)",
+    "metaDescription": "Fixture description for the Cast and crew page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Cast and crew, fixture headline",
+      "sub": "Fixture sub-line for cast and crew."
+    },
+    "value": {
+      "h2": "Fixture value heading for cast and crew",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See cast and crew in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of cast and crew."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of cast and crew."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of cast and crew."
+      }
+    ],
+    "related": [
+      "sides",
+      "writing",
+      "story"
+    ],
+    "midCta": {
+      "h2": "Start with cast and crew today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  },
+  "sides": {
+    "file": "product-sides.html",
+    "label": "Sides",
+    "stage": "prep",
+    "metaTitle": "Sides (fixture copy)",
+    "metaDescription": "Fixture description for the Sides page. Replaced by the real copy at merge.",
+    "hero": {
+      "h1": "Sides, fixture headline",
+      "sub": "Fixture sub-line for sides."
+    },
+    "value": {
+      "h2": "Fixture value heading for sides",
+      "body": [
+        "First fixture paragraph.",
+        "Second fixture paragraph."
+      ]
+    },
+    "demo": {
+      "h2": "See sides in action"
+    },
+    "steps": [
+      {
+        "title": "Fixture step 1",
+        "body": "Fixture body for step 1 of sides."
+      },
+      {
+        "title": "Fixture step 2",
+        "body": "Fixture body for step 2 of sides."
+      },
+      {
+        "title": "Fixture step 3",
+        "body": "Fixture body for step 3 of sides."
+      }
+    ],
+    "related": [
+      "writing",
+      "story",
+      "storyboard"
+    ],
+    "midCta": {
+      "h2": "Start with sides today"
+    },
+    "facts": [
+      {
+        "value": "{{fms:dragon.scenes}}",
+        "label": "scenes in the sample film"
+      },
+      {
+        "value": "{{fms:dragon.days}}",
+        "label": "shoot days in the sample schedule"
+      },
+      {
+        "value": "0",
+        "label": "accounts needed to read this page"
+      }
+    ]
+  }
+}

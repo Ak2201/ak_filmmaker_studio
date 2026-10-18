@@ -36,7 +36,10 @@ const F = Array.isArray(data.films) ? data.films : null;
 ok(T && F, 'testimonials.json has `testimonials` and `films` arrays');
 
 const sec = document.getElementById('voices');
-ok(!!sec, 'start.html has a #voices section');
+/* The home page was rebuilt without a voices block (owner, Oct 2026: no social
+   proof). The section may be ABSENT only while there is nothing consented to
+   show; the day an entry exists, the page must carry it. */
+if (!sec) ok(!!T && !!F && T.length === 0 && F.length === 0, 'start.html has no #voices section, so testimonials.json must hold no entry (a consented voice may not be stranded in the data)');
 if (sec && T && F) {
   const voiceList = sec.querySelector('#voiceList');
   const filmList = sec.querySelector('#filmList');

@@ -128,7 +128,7 @@
 .pr-table tbody th[scope="row"] { padding-left: var(--s3); text-align: left; font-weight: 500; color: var(--ink-body); overflow-wrap: anywhere; }
 .pr-table td { text-align: center; }
 .pr-yes { color: var(--accent-primary); font-weight: 700; font-size: var(--t-lg); }
-.pr-no { color: var(--ink-faint); }
+.pr-no { color: var(--ink-muted); }
 .pr-table tbody tr:not(.pr-group):hover > * { background: var(--surface-hover); }
 
 /* ---- the FAQ: three <details> accordions, no script ----------------- */

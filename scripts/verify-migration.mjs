@@ -499,7 +499,7 @@ const EXPECTED = {
      The Pro plan's one line moved from "Shoot it and finish it:
      everything." to an outcome sentence (plan-matrix.json `lines`, the
      pricing spec), and this page prints it on the plan cards. */
-  invite: { finish: 'Pro plan line reworded to say what it adds' },
+  invite: {},
   admin: {},
   vault: {},
   purchase: {}

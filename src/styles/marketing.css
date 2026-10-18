@@ -192,7 +192,7 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 .mk-label-path { display: flex; align-items: center; gap: var(--s2); margin: 0; font-size: var(--t-small); color: var(--ink-body); max-width: none; }
 .mk-label-path .sym { color: var(--hue-lift); font-size: 22px; }
 .mk-label-path strong { color: var(--ink); }
-.mk-label-sep { color: var(--ink-faint); }
+.mk-label-sep { color: var(--ink-muted); }
 .mk-label-nav { display: flex; align-items: center; gap: var(--s4); }
 .mk-label-nav a { color: var(--ink-body); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
 .mk-label-nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }

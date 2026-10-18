@@ -19,6 +19,13 @@
      - marketing.css holds a raw colour, or a page has an inline style or
        handler
      - a page has other than one h1, or does not link to pricing.html
+     - pricing.html: differs from the generator; its comparison table
+       disagrees with src/data/plan-matrix.json (read here independently of
+       the generator: a row missing, a row in no group, a cell that says
+       what the matrix does not); the cards are not the paid plans in order;
+       a price typed in the markup; an Education tab, a rating or a
+       testimonial; the FAQ is not three <details> accordions of the real
+       FAQ file; pricing.js reaches outside the light allowlist
      - a page is not registered: sitemap, gate exemption, both hosts'
        rewrites, the CSP's media-src, the icon font's subset
      - marketing.js imports something outside the light allowlist (the
@@ -27,7 +34,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAll, validate, PAGES_FILE, FIXTURE_FILE } from './make-marketing-pages.mjs';
+import { buildAll, validate, validatePricing, comparableRows, PAGES_FILE, FIXTURE_FILE, PRICING_FILE } from './make-marketing-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE = process.argv.includes('--fixture') || process.env.MARKETING_FIXTURE === '1';
@@ -114,6 +121,105 @@ for (const id of IDS) {
   const drawn = new Set([...html.matchAll(/<span class="sym[^"]*" aria-hidden="true" translate="no">([a-z0-9_]+)<\/span>/g)].map((m) => m[1]));
   const missing = [...drawn].filter((nme) => !icons.includes(nme) && !nav.includes('"sym": "' + nme + '"') && !nav.includes('"sym":"' + nme + '"'));
   ok(missing.length === 0, tag + 'every icon is in the font subset' + (missing.length ? ': ' + missing.join(', ') : ''));
+}
+
+/* ---- pricing.html ---------------------------------------------------- */
+{
+  const tag = PRICING_FILE + ': ';
+  const at = path.join(ROOT, PRICING_FILE);
+  ok(validatePricing(inputs.compare, inputs.faq).length === 0, 'the pricing copy and the row grouping validate' + (validatePricing(inputs.compare, inputs.faq).length ? ': ' + validatePricing(inputs.compare, inputs.faq).join('; ') : ''));
+  if (!fs.existsSync(at)) ok(false, tag + 'is not committed (run npm run make:marketing)');
+  else {
+    const html = fs.readFileSync(at, 'utf8');
+    ok(html === files[PRICING_FILE], tag + 'committed HTML equals the generator output (run npm run make:marketing)');
+    ok((html.match(/<h1[\s>]/g) || []).length === 1, tag + 'exactly one h1');
+    ok(!/\sstyle="/.test(html) && !/\son[a-z]+="/i.test(html), tag + 'no inline style or handler (CSP)');
+    ok(/<script type="module" src="\/src\/pages\/pricing\.js"><\/script>/.test(html), tag + 'loads pricing.js');
+    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '')), tag + 'no inline script');
+    ok(!/\{\{(?!brand:|fms:)/.test(html), tag + 'no unknown {{ stamp');
+    ok(/<link rel="canonical" href="https:\/\/{{brand:host}}\/pricing">/.test(html), tag + 'canonical is the {{brand:host}} stamp');
+    ok(!html.includes('₹'), tag + 'no bare rupee sign: every price is a {{fms:price.*}} stamp');
+    ok(!/\b(?:19|20)\d\d\b[^<]{0,12}(?:price|rise)/i.test(html.replace(/<!--[\s\S]*?-->/g, '')), tag + 'no date typed beside a price');
+    const urls = [...html.matchAll(/\s(href|src|poster|action)="([^"]*)"/g)].map((m) => ({ attr: m[1], v: m[2] }));
+    const bad = urls.filter(({ v }) => EXTERNAL.test(v) && !/^https:\/\/{{brand:host}}\//.test(v));
+    ok(bad.length === 0, tag + 'no external host in href/src' + (bad.length ? ': ' + bad.map((b) => b.v).join(', ') : ''));
+    ok(urls.filter(({ v }) => /^mailto:/.test(v)).every(({ v }) => v === 'mailto:{{brand:email}}'), tag + 'mailto is the {{brand:email}} stamp');
+    ok(!/education|film school|student offer/i.test(html), tag + 'no Education tab or student card');
+    ok(!/testimonial|\brated\b|★|&#9733;|\bstars?\b|trusted by|\bcustomers?\b/i.test(html), tag + 'no rating, testimonial or customer claim');
+    ok(/<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'footer links the three legal pages');
+    ok(/<a class="mk-nav-link" href="pricing\.html" aria-current="page">/.test(html), tag + 'the header marks Pricing as the current page');
+    for (const other of IDS) ok(new RegExp(`href="${pages[other].file.replace(/[.]/g, '\\.')}"`).test(html), `${tag}links to ${pages[other].file} (header and footer)`);
+
+    /* the cards: the paid plans of plan-matrix.json, in order, and no free card */
+    const matrix = JSON.parse(read('src/data/plan-matrix.json'));
+    const PAID = Object.keys(matrix.plans).filter((id) => id !== 'free');
+    const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"/g)].map((m) => m[1]);
+    ok(tiers.join() === PAID.join(), tag + 'the cards are the paid plans in matrix order: ' + tiers.join(', '));
+    ok((html.match(/<aside\b[^>]*\sdata-trial[\s>]/g) || []).length === 1, tag + 'exactly one free-trial strip, and it is not a card');
+    for (const id of PAID) {
+      ok(html.includes('{{fms:plan.' + id + '}}') && html.includes('{{fms:price.' + id + '}}') && html.includes('{{fms:tier.list.' + id + '}}'), `${tag}${id}: name, price and bullets are build-time stamps`);
+      ok(new RegExp(`data-start-buy="${id}" data-plan="${id}"`).test(html) && html.includes(`href="purchase.html?plan=${id}"`), `${tag}${id}: the buy link carries the plan`);
+    }
+    ok(/id="offer"[^>]*\shidden/.test(html), tag + 'the price-rise band is in the markup and hidden until the server announces a rise');
+    ok(/one payment/.test(html) && !/per month|\/mo\b|monthly|billed yearly|annually/i.test(html), tag + 'worded as sold: one payment, no subscription wording');
+
+    /* THE COMPARISON TABLE, read back out of the HTML and compared with the
+       matrix JSON read here (not through the generator's own helpers). */
+    const NAV = {};
+    const navJson = JSON.parse(read('src/data/navigation.json'));
+    for (const g of navJson.global || []) for (const m of g.modules || []) NAV[m.id] = m.label;
+    for (const ph of navJson.phases || []) for (const m of ph.modules || []) NAV[m.id] = m.label;
+    const labelOf = (r) => r.label || NAV[r.key] || r.key;
+    const wantRows = matrix.features.filter((r) => !r.inverted && PAID.some((p) => r.plans.includes(p)));
+    const table = (html.match(/<table class="pr-table">[\s\S]*?<\/table>/) || [''])[0];
+    ok(!!table, tag + 'has the comparison table');
+    const headNames = [...(table.match(/<thead>[\s\S]*?<\/thead>/) || [''])[0].matchAll(/<span class="pr-th-name">([^<]*)<\/span>/g)].map((m) => m[1]);
+    ok(headNames.join() === PAID.map((id) => '{{fms:plan.' + id + '}}').join(), tag + 'table columns are the paid plans in order: ' + headNames.join(', '));
+    const got = [];
+    for (const m of table.matchAll(/<tr><th scope="row">([^<]*)<\/th>((?:<td class="pr-(?:yes|no)">[\s\S]*?<\/td>)+)<\/tr>/g)) {
+      got.push({ label: m[1].replace(/&amp;/g, '&'), cells: [...m[2].matchAll(/<td class="pr-(yes|no)">/g)].map((c) => c[1] === 'yes') });
+    }
+    ok(got.length === wantRows.length, `${tag}the table has one row per feature a paid plan has (${got.length} of ${wantRows.length})`);
+    const byLabel = new Map(got.map((g) => [g.label, g]));
+    for (const r of wantRows) {
+      const g = byLabel.get(labelOf(r));
+      ok(!!g, `${tag}row "${labelOf(r)}" (${r.key}) is in the table`);
+      if (g) ok(g.cells.join() === PAID.map((p) => r.plans.includes(p)).join(), `${tag}row "${labelOf(r)}": cells ${g.cells.map((c) => (c ? 'yes' : 'no')).join('/')} match the matrix`);
+    }
+    ok(new Set(got.map((g) => g.label)).size === got.length, tag + 'no row appears twice');
+    ok(comparableRows().length === wantRows.length, tag + 'the generator and this test agree on which rows are sellable');
+    const groupHeads = [...table.matchAll(/<tr class="pr-group"><th scope="colgroup" colspan="(\d+)">([^<]*)<\/th>/g)];
+    ok(groupHeads.length === inputs.compare.groups.length && groupHeads.every((g) => Number(g[1]) === PAID.length + 1), tag + 'one heading per group, each spanning every column');
+    ok(/\.pr-table thead th\s*\{[^}]*position:\s*sticky/.test(read('src/styles/pricing.css').replace(/\/\*[\s\S]*?\*\//g, '')), 'pricing.css: the table header is sticky');
+
+    /* the FAQ: three accordions of the real FAQ file, single-open by name */
+    const faq = JSON.parse(read('src/data/marketing-faq.json'));
+    const acc = [...html.matchAll(/<details class="pr-acc" name="([^"]+)" id="faq-\d">/g)];
+    ok(acc.length === 3 && new Set(acc.map((a) => a[1])).size === 1 && acc.length === faq.length, tag + 'FAQ is three <details name=...> accordions (single-open)');
+    const nQ = (html.match(/<dt>/g) || []).length;
+    ok(nQ === faq.reduce((n, g) => n + g.items.length, 0) && (html.match(/<dd>/g) || []).length === nQ, tag + 'every question in marketing-faq.json is in the markup, answered');
+    ok(!/<details[^>]*\sopen[\s>]/.test(html), tag + 'the accordions start collapsed');
+
+    /* icons the page draws are in the font subset */
+    const icons = JSON.parse(read('src/data/section-icons.json')).icons;
+    const nav = read('src/data/navigation.json');
+    const drawn = new Set([...html.matchAll(/<span class="sym[^"]*" aria-hidden="true" translate="no">([a-z0-9_]+)<\/span>/g)].map((m) => m[1]));
+    const missing = [...drawn].filter((nme) => !icons.includes(nme) && !nav.includes('"sym": "' + nme + '"') && !nav.includes('"sym":"' + nme + '"'));
+    ok(missing.length === 0, tag + 'every icon is in the font subset' + (missing.length ? ': ' + missing.join(', ') : ''));
+  }
+  const pcss = read('src/styles/pricing.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/#[0-9a-fA-F]{3,8}\b/.test(pcss) && !/\b(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch)\(/.test(pcss), 'pricing.css has no raw colour');
+  ok(!/border-radius:\s*\d/.test(pcss), 'pricing.css types no literal radius');
+  {
+    const travels = [...pcss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate/.test(v));
+    ok(travels.every((v) => /var\(--motion\)/.test(v)), 'every translate in pricing.css is multiplied by --motion');
+  }
+  const pjs = read('src/pages/pricing.js');
+  const pimports = [...pjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
+  const pallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/pricing\.css$/, /^\.\.\/lib\/(funnel|start-auth|start-model)\.js$/];
+  const pstray = pimports.filter((i) => !pallowed.some((a) => a.test(i)));
+  ok(pstray.length === 0, 'pricing.js imports only the light allowlist (the startlib rule)' + (pstray.length ? ': ' + pstray.join(', ') : ''));
+  ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(pjs), 'pricing.js builds no markup from strings');
 }
 
 /* ---- the stylesheet and the script --------------------------------- */

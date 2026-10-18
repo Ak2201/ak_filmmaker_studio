@@ -30,18 +30,36 @@
    the footer columns, the "tools for every stage" block and the related
    cards: nothing here is a hand-written copy of that list.
 
+   PRICING. The same run also writes pricing.html (renderPricing): its header,
+   footer and sign-up modal are the SAME three functions the product pages
+   use, so the chrome stays single-sourced. Its copy is
+   src/data/pricing-compare.json, its FAQ is src/data/marketing-faq.json, and
+   the comparison table is built here from src/data/plan-matrix.json through
+   the same labelOf()/planHas() the plan cards and schema section 36 use, so
+   a cell cannot say what the matrix does not. The plan cards' prices, names
+   and bullet lists are {{fms:...}} stamps filled at build time
+   (vite.config.js planFigures).
+
    Exported for scripts/test-marketing.mjs: loadInputs, validate,
-   renderPage, buildAll.
+   renderPage, renderPricing, buildAll.
    ============================================================ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadMatrixModule } from './make-plan-features-sql.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SITE_FILE = 'src/data/marketing-site.json';
 export const PAGES_FILE = 'src/data/marketing-pages.json';
 export const FIXTURE_FILE = 'scripts/fixtures/marketing-pages.fixture.json';
 export const MEDIA_BASE = '/marketing/';
+export const COMPARE_FILE = 'src/data/pricing-compare.json';
+export const FAQ_FILE = 'src/data/marketing-faq.json';
+export const PRICING_FILE = 'pricing.html';
+
+/** plan-matrix.js loaded in Node: the one place that knows a row's label and
+ *  which plan has it. Loaded once, here, so buildAll stays synchronous. */
+export const M = await loadMatrixModule();
 
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
@@ -58,12 +76,13 @@ export function loadInputs({ fixture = false } = {}) {
     throw new Error(pagesRel + ' is missing. The marketing pages are generated from it and there is no silent fallback.'
       + (fixture ? '' : ' (Use --fixture to generate from ' + FIXTURE_FILE + ' while the copy is being written.)'));
   }
-  return { site, pages: readJson(pagesRel), fixture, pagesRel };
+  return { site, pages: readJson(pagesRel), compare: readJson(COMPARE_FILE), faq: readJson(FAQ_FILE), fixture, pagesRel };
 }
 
 /** Every structural rule the template relies on. Returns a list of problems. */
-export function validate({ site, pages }) {
+export function validate({ site, pages, compare, faq }) {
   const bad = [];
+  bad.push(...validatePricing(compare, faq));
   const ids = Object.keys(site.stepCounts);
   const staged = site.stages.flatMap((s) => s.pages);
   if ([...staged].sort().join() !== [...ids].sort().join()) bad.push('stages[].pages and stepCounts name different pages');
@@ -91,6 +110,41 @@ export function validate({ site, pages }) {
     if (!Array.isArray(p.facts) || p.facts.length !== 3) w('facts must be exactly three');
     else p.facts.forEach((f, i) => { if (!f.value || !f.label) w('fact ' + (i + 1) + ' needs value and label'); });
   }
+  return bad;
+}
+
+/** The matrix rows a comparison table must show: every non-inverted row some
+ *  PAID plan has (a row with no plan is switched off everywhere and is not
+ *  sold, so it is not a line in a price list). */
+export const comparableRows = () => M.MATRIX.features.filter((r) => !r.inverted && M.PAID.some((p) => M.planHas(r, p)));
+
+/** Rules for pricing.html's copy and its row grouping. */
+export function validatePricing(compare, faq) {
+  const bad = [];
+  const w = (m) => bad.push('pricing: ' + m);
+  if (!compare) { w(COMPARE_FILE + ' was not loaded'); return bad; }
+  for (const k of ['meta', 'hero', 'trial', 'plans', 'offer', 'compare', 'faq', 'close']) if (!compare[k]) w('copy block ' + k + ' missing');
+  if (!Array.isArray(compare.groups) || !compare.groups.length) { w('groups missing'); return bad; }
+  const want = comparableRows().map((r) => r.key);
+  const seen = new Map();
+  for (const g of compare.groups) {
+    if (!g.id || !g.label || !Array.isArray(g.keys) || !g.keys.length) w('group ' + (g.id || '?') + ' needs id, label and keys');
+    for (const k of g.keys || []) {
+      if (!M.MATRIX.features.some((r) => r.key === k)) w('group ' + g.id + ' names "' + k + '", which is not a plan-matrix.json row');
+      else if (!want.includes(k)) w('group ' + g.id + ' names "' + k + '", which no paid plan has (or is an inverted restriction)');
+      seen.set(k, (seen.get(k) || 0) + 1);
+    }
+  }
+  for (const k of want) if (!seen.has(k)) w('plan-matrix.json row "' + k + '" is in no comparison group');
+  for (const [k, n] of seen) if (n > 1) w('row "' + k + '" is in ' + n + ' groups');
+  for (const id of M.PAID) {
+    if (!compare.plans.tags || !compare.plans.tags[id]) w('plans.tags.' + id + ' missing');
+  }
+  if (!M.PAID.includes(compare.plans && compare.plans.pick)) w('plans.pick is not a paid plan');
+  if (!Array.isArray(faq) || faq.length !== 3) w('marketing-faq.json must hold exactly three groups (Billing, Plans, Your data)');
+  else faq.forEach((g) => { if (!g.group || !Array.isArray(g.items) || !g.items.length || g.items.some((i) => !i.q || !i.a)) w('faq group "' + g.group + '" is malformed'); });
+  const typed = JSON.stringify(compare);
+  if (typed.includes('₹')) w('a bare rupee sign in the copy; prices are stamped, never typed');
   return bad;
 }
 
@@ -123,7 +177,7 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
         <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}
         </div>
       </div>
-      <a class="mk-nav-link" href="pricing.html">${esc(u.pricing)}</a>
+      <a class="mk-nav-link" href="pricing.html"${current === 'pricing' ? ' aria-current="page"' : ''}>${esc(u.pricing)}</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
     </nav>
     <div class="mk-top-end">
@@ -354,12 +408,154 @@ ${modal(site)}
 `;
 }
 
+/* ---- pricing.html ---------------------------------------------------- */
+
+export function renderPricing({ site, pages, compare, faq }) {
+  const c = compare;
+  const u = site.ui;
+  const PAID = M.PAID;
+  const stamp = (kind, id) => '{{fms:' + kind + '.' + id + '}}';
+  const buyText = (id) => esc(c.plans.buy).replace('{name}', stamp('plan', id));
+
+  const hero = `<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in">
+    <p class="mk-eyebrow">${esc(c.hero.eyebrow)}</p>
+    <h1 class="mk-h1" id="mkH1">${esc(c.hero.h1)}</h1>
+    <p class="mk-sub">${esc(c.hero.sub)}</p>
+  </div>
+</section>`;
+
+  const card = (id, i) => {
+    const pick = id === c.plans.pick;
+    const buy = `<a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
+    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${stamp('price', id)}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${esc(c.plans.keep)}</span></span><ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="${esc(c.plans.altOpen)}">${esc(c.plans.alt)}</a></li>`;
+  };
+
+  const plans = `<section class="mk-sec mk-band-b pr-plans" id="pricing" aria-labelledby="prPlansH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="prPlansH">${esc(c.plans.h)}</h2>
+    <p class="mk-body pr-lede">${esc(c.plans.lede)}</p>
+
+    <aside class="pr-trial" data-trial aria-label="${esc(c.trial.h)}">
+      <div class="pr-trial-text"><strong>${esc(c.trial.h)}</strong><span class="pr-trial-say">${c.trial.bodyHtml}</span></div>
+      <a class="mk-btn mk-btn--outline" href="invite.html" data-start-auth="google" data-open-text="${esc(c.trial.ctaOpen)}">${esc(c.trial.cta)}</a>
+    </aside>
+
+    <div class="pr-offer" id="offer" hidden role="note" aria-labelledby="offer-h">
+      <p class="mk-eyebrow">${esc(c.offer.eyebrow)}</p>
+      <h3 class="mk-h3" id="offer-h">${esc(c.offer.h)}</h3>
+      <p id="offerLine">${esc(c.offer.line)}</p>
+      <p class="pr-offer-meta"><span class="pr-chip" id="offerSeats" hidden></span><span class="pr-chip" id="offerLeft" hidden></span></p>
+      <p class="pr-fine">${esc(c.offer.fine)}</p>
+    </div>
+
+    <ul class="pr-tiers" id="tiersIndividual">
+${PAID.map(card).join('\n')}
+    </ul>
+    <p class="pr-fine" id="authMsg" role="status" aria-live="polite"></p>
+    <p class="pr-note">${c.plans.noteHtml}</p>
+  </div>
+</section>`;
+
+  const yes = `<td class="pr-yes"><span aria-hidden="true">✓</span><span class="mk-vh">${esc(c.compare.yes)}</span></td>`;
+  const no = `<td class="pr-no"><span aria-hidden="true">—</span><span class="mk-vh">${esc(c.compare.no)}</span></td>`;
+  const rowOf = (key) => M.MATRIX.features.find((r) => r.key === key);
+  const body = c.groups.map((g) => `      <tbody id="cmp-${esc(g.id)}">
+        <tr class="pr-group"><th scope="colgroup" colspan="${PAID.length + 1}">${esc(g.label)}</th></tr>
+${g.keys.map((k) => { const r = rowOf(k); return `        <tr><th scope="row">${esc(M.labelOf(r))}</th>${PAID.map((p) => (M.planHas(r, p) ? yes : no)).join('')}</tr>`; }).join('\n')}
+      </tbody>`).join('\n');
+  const compareSec = `<section class="mk-sec mk-band-a pr-compare" id="compare" aria-labelledby="prCompH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="prCompH">${esc(c.compare.h)}</h2>
+    <p class="mk-body pr-lede">${esc(c.compare.lede)}</p>
+    <table class="pr-table">
+      <caption class="mk-vh">${esc(c.compare.caption)}</caption>
+      <colgroup><col class="pr-col-what">${PAID.map(() => '<col>').join('')}</colgroup>
+      <thead><tr><th scope="col">${esc(c.compare.what)}</th>${PAID.map((p) => `<th scope="col"><span class="pr-th-name">${stamp('plan', p)}</span><span class="pr-th-price">${stamp('price', p)}</span></th>`).join('')}</tr></thead>
+${body}
+    </table>
+  </div>
+</section>`;
+
+  const faqSec = `<section class="mk-sec mk-band-b pr-faq" id="faq" aria-labelledby="prFaqH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="prFaqH">${esc(c.faq.h)}</h2>
+    <p class="mk-body pr-lede">${esc(c.faq.lede)}</p>
+    <div class="pr-acc-list">
+${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
+        <summary><span>${esc(g.group)}</span>${sym('expand_more')}</summary>
+        <dl class="pr-qa">
+${g.items.map((it) => `          <dt>${esc(it.q)}</dt>\n          <dd>${esc(it.a)}</dd>`).join('\n')}
+        </dl>
+      </details>`).join('\n')}
+    </div>
+  </div>
+</section>`;
+
+  const close = `<section class="mk-sec mk-band-c mk-mid pr-close" id="start" aria-labelledby="mkMidH">
+  <div class="mk-wrap mk-center">
+    <h2 class="mk-h2" id="mkMidH">${esc(c.close.h)}</h2>
+    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(c.close.cta)}</a>
+  </div>
+</section>`;
+
+  return `<!DOCTYPE html>
+<html lang="en" data-volume="studio" data-fms-marketing>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${esc(c.meta.title)}</title>
+<meta name="description" content="${esc(c.meta.description)}">
+<link rel="canonical" href="https://{{brand:host}}/pricing">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{brand:name}}">
+<meta property="og:title" content="${esc(c.meta.title)}">
+<meta property="og:description" content="${esc(c.meta.description)}">
+<meta property="og:url" content="https://{{brand:host}}/pricing">
+<meta property="og:image" content="https://{{brand:host}}/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(c.meta.title)}">
+<meta name="twitter:description" content="${esc(c.meta.description)}">
+<meta name="twitter:image" content="https://{{brand:host}}/og.png">
+<meta property="og:locale" content="en_IN">
+<meta name="theme-color" content="#0d0e13">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+{{fms:jsonld}}
+</head>
+<body>
+<!-- GENERATED by scripts/make-marketing-pages.mjs from src/data/pricing-compare.json,
+     src/data/marketing-faq.json, src/data/plan-matrix.json and
+     src/data/marketing-site.json. Edit those, then run npm run make:marketing.
+     npm run test:marketing fails when this file drifts from the generator. The
+     plan cards' names, prices and bullets are build-time (fms) stamps filled by
+     vite.config.js at build time; a price is never typed. The words are in the
+     markup on purpose (crawlers, link previews, scripts off); src/pages/pricing.js
+     adds the live trial line, the scheduled price rise and the buy hand-off. -->
+${header(site, pages, 'pricing')}
+<main id="main" class="mk mk-pricing">
+${hero}
+${plans}
+${compareSec}
+${faqSec}
+${close}
+</main>
+${footer(site, pages)}
+${modal(site)}
+<script type="module" src="/src/pages/pricing.js"></script>
+</body>
+</html>
+`;
+}
+
 export function buildAll(opts = {}) {
   const inputs = loadInputs(opts);
   const problems = validate(inputs);
   if (problems.length) throw new Error('marketing copy is not valid:\n  - ' + problems.join('\n  - '));
   const out = {};
   for (const id of Object.keys(inputs.site.stepCounts)) out[inputs.pages[id].file] = renderPage(id, inputs);
+  out[PRICING_FILE] = renderPricing(inputs);
   return { files: out, inputs };
 }
 

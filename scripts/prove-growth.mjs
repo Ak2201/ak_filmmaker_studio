@@ -484,12 +484,6 @@ try {
     ok(EVENTS.filter((e) => e === 'landing_view').length === 1, 'landing_view is counted once on load');
     await page.goto(BASE + 'start.html'); await page.waitForLoadState('networkidle');
     ok(EVENTS.filter((e) => e === 'landing_view').length === 1, 'and not again on a reload in the same session');
-    await page.evaluate(() => document.getElementById('pricing').scrollIntoView());
-    /* The observer fires, then a fetch lands: poll for it rather than
-       guess a delay (600ms failed under load). */
-    for (let t = 0; t < 50 && !EVENTS.includes('pricing_view'); t++) await page.waitForTimeout(100);
-    await page.waitForTimeout(300);   // and a second, wrong count would have arrived by now
-    ok(EVENTS.filter((e) => e === 'pricing_view').length === 1, 'pricing_view is counted when #pricing scrolls into view');
     ok(sdk.length === 0, 'no Supabase SDK chunk is fetched on the start page');
     /* AND NOT THE APP'S CORE EITHER, which it DID until the `startlib`
        manualChunk landed: start.js reaching for a helper that lived in
@@ -534,6 +528,31 @@ try {
       ok(await m.page.evaluate(() => !Object.keys(localStorage).some((k) => /analytics|funnel|lead/.test(k))), 'a product page writes no new localStorage key');
       allErrors.push(...m.errors); await m.ctx.close();
     }
+    /* THE PRICING PAGE IS LIGHT TOO, and it is where pricing_view is counted
+       now that the plans moved off start.html. Same two properties on a
+       phone-width load, and the count fires once when #pricing scrolls in. */
+    {
+      const pr = await context(browser, { width: 390 });
+      const psdk = [], pcore = [];
+      pr.page.on('request', (q) => {
+        if (/supabase-[\w-]+\.js/.test(q.url())) psdk.push(q.url());
+        if (/\/studio-[\w-]+\.js/.test(q.url())) pcore.push(q.url());
+      });
+      EVENTS.length = 0;
+      await pr.page.goto(BASE + 'pricing.html'); await pr.page.waitForLoadState('networkidle');
+      await pr.page.evaluate(() => document.getElementById('pricing').scrollIntoView());
+      /* The observer fires, then a fetch lands: poll for it rather than
+         guess a delay (600ms failed under load). */
+      for (let t = 0; t < 50 && !EVENTS.includes('pricing_view'); t++) await pr.page.waitForTimeout(100);
+      await pr.page.waitForTimeout(300);   // and a second, wrong count would have arrived by now
+      ok(EVENTS.filter((e) => e === 'pricing_view').length === 1, 'pricing_view is counted once when #pricing scrolls into view (on pricing.html)');
+      ok(psdk.length === 0, 'no Supabase SDK chunk is fetched on the pricing page');
+      ok(pcore.length === 0, 'and no studio-* core chunk either' + (pcore.length ? ': ' + pcore.join(', ') : ''));
+      ok(await pr.page.evaluate(() => document.documentElement.classList.contains('mk-js')), 'the pricing page script ran (mk-js)');
+      ok(await pr.page.evaluate(() => !Object.keys(localStorage).some((k) => /analytics|funnel|lead/.test(k))), 'the pricing page writes no new localStorage key');
+      ok(await pr.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the pricing page has no horizontal overflow at 390px');
+      allErrors.push(...pr.errors); await pr.ctx.close();
+    }
     // opt-out and Do Not Track
     const o = await context(browser, { width: 390 });
     EVENTS.length = 0;
@@ -549,6 +568,7 @@ try {
     await o.page.waitForFunction(() => /not counted/i.test(document.getElementById('noCount').textContent), null, { timeout: 5000 })
       .then(() => ok(true, 'the opt-out control acknowledges the press'), () => ok(false, 'the opt-out control acknowledges the press'));
     await o.page.evaluate(() => sessionStorage.removeItem('fms_funnel_pricing_view'));
+    await o.page.goto(BASE + 'pricing.html'); await o.page.waitForLoadState('networkidle');
     await o.page.evaluate(() => document.getElementById('pricing').scrollIntoView()); await o.page.waitForTimeout(600);
     ok(EVENTS.filter((e) => e === 'pricing_view').length === 0, '"Don\'t count this visit" stops further counts');
     await o.ctx.close();
@@ -569,7 +589,7 @@ try {
        nobody made. */
     RISE.on = false; RISE.at = null;
     const quiet = await context(browser, { width: 390 });
-    await quiet.page.goto(BASE + 'start.html');
+    await quiet.page.goto(BASE + 'pricing.html');
     await quiet.page.waitForLoadState('networkidle');
     await quiet.page.waitForTimeout(400);
     const q = await bandState(quiet.page);
@@ -588,10 +608,10 @@ try {
     F.db.settings.purchase_required = false;
     RISE.on = true; RISE.at = new Date(Date.now() + 26 * 3600e3).toISOString();
     const free = await context(browser, { width: 390 });
-    await free.page.goto(BASE + 'start.html');
+    await free.page.goto(BASE + 'pricing.html');
     const marked = await free.page.waitForSelector('html[data-purchases="off"]', { state: 'attached', timeout: 8000 }).then(() => true, () => false);
-    ok(marked, 'OFF: start.html is marked data-purchases=off');
-    ok(await free.page.isVisible('#pricing .st-tiers li[data-tier="indie"]'), 'OFF: the plans still show');
+    ok(marked, 'OFF: pricing.html is marked data-purchases=off');
+    ok(await free.page.isVisible('#pricing .pr-tiers li[data-tier="indie"]'), 'OFF: the plans still show');
     ok(/₹\s?599/.test(await free.page.evaluate(() => document.getElementById('pricing').textContent)), 'OFF: and so do the prices');
     ok(await free.page.evaluate(() => [...document.querySelectorAll('a[data-plan]')].length === 3 && [...document.querySelectorAll('a[data-plan]')].every((a) => a.offsetParent)), 'OFF: every plan keeps its buy link');
     ok(!(await bandState(free.page)).shown, 'OFF: and no price-rise band, even with a rise scheduled');
@@ -602,7 +622,7 @@ try {
     /* ---- a rise is scheduled ------------------------------------- */
     RISE.on = true; RISE.at = new Date(Date.now() + 26 * 3600e3).toISOString();
     const r = await context(browser, { width: 390 });
-    await r.page.goto(BASE + 'start.html');
+    await r.page.goto(BASE + 'pricing.html');
     const up = await r.page.waitForFunction((sel) => {
       const el = document.querySelector(sel);
       return !!el && !el.hidden && el.getBoundingClientRect().height > 0;

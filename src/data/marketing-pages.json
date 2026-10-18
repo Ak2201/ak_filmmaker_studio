@@ -98,14 +98,14 @@
       { "title": "Pick a scene", "body": "Choose any scene from your script. Its slug line, number and length come from the scene list, so there is nothing to retype." },
       { "title": "Add the shots", "body": "Plan the shots for the scene with size, angle, movement and lens. Each shot you add has a frame waiting for it on the storyboard." },
       { "title": "Fill each frame", "body": "Paste a link to a reference picture or describe what we see in the frame, in a line or two." },
-      { "title": "Block the scene", "body": "Mark where the camera, actors, lights and tracks go on a simple diagram, so the crew reads the plan at a glance." }
+      { "title": "Block the scene", "body": "Mark where the camera, actors, lights, dolly tracks and floor marks go on a simple diagram, so the crew reads the plan at a glance." }
     ],
     "related": ["shot-list", "story", "writing"],
     "midCta": { "h2": "Plan your first frame" },
     "facts": [
       { "value": "8", "label": "Shot sizes, from extreme wide to extreme close" },
       { "value": "Links", "label": "Frames link to pictures instead of storing files" },
-      { "value": "4", "label": "Block marks: camera, actor, light, track" }
+      { "value": "5", "label": "Block marks: camera, actor, light, dolly track, mark" }
     ]
   },
   "breakdown": {
@@ -231,7 +231,7 @@
     "related": ["breakdown", "call-sheets", "cast-crew"],
     "midCta": { "h2": "Lay out your first shoot day" },
     "facts": [
-      { "value": "4", "label": "Ways to group strips: script, place, time, day" },
+      { "value": "5", "label": "Ways to group strips: script, place, time, day, song" },
       { "value": "PDF", "label": "Day out of days prints in landscape" },
       { "value": "Songs", "label": "Each song plans as its own block" }
     ]

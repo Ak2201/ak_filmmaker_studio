@@ -164,6 +164,8 @@ try { (wide.addEventListener ? wide.addEventListener.bind(wide, 'change') : wide
   const stills = $$('.mk-still', how);
   const panel = byId('mkSlot');
   if (!tabs.length || tabs.length !== stills.length) return;
+  /* the panel holds no focusable child, so it is itself a keyboard stop (APG) */
+  if (panel) panel.tabIndex = 0;
   function select(i, { focus = false } = {}) {
     tabs.forEach((t, k) => {
       const on = k === i;
@@ -178,7 +180,15 @@ try { (wide.addEventListener ? wide.addEventListener.bind(wide, 'change') : wide
   tabs.forEach((t, i) => {
     t.addEventListener('click', () => select(i));
     t.addEventListener('focus', () => select(i));
-    t.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') select(i); });
+    /* hover selects only after the pointer rests on a step, so a mouse
+       crossing the list on its way elsewhere changes nothing */
+    let hoverTimer = 0;
+    t.addEventListener('pointerenter', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => select(i), 150);
+    });
+    t.addEventListener('pointerleave', () => clearTimeout(hoverTimer));
   });
   how.addEventListener('keydown', (e) => {
     const i = tabs.indexOf(document.activeElement);

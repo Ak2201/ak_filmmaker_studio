@@ -51,10 +51,12 @@
 /* navigation.json is read through navmodel.js (phases/globals/
    moduleGroups), which applies the region filter — see its header.
    No unfiltered second view of the map lives here. */
-import { moduleGroups, hueClassOf, phases, globals } from '../lib/navmodel.js';
+import { moduleGroups, phases, globals } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
-import { safe, snapshot, stateOf } from '../lib/launcher-model.js';
+import { safe, snapshot, stateOf, resolveRows } from '../lib/launcher-model.js';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
+import ROWS_JSON from '../data/launcher-rows.json';
 import '../styles/launcher.css';
 
 /* TWO derived figures, and which one a sentence quotes is not a detail.
@@ -87,7 +89,6 @@ import '../styles/launcher.css';
    fixed for the life of a document: the Settings control RELOADS
    after a change rather than notifying, precisely so these three
    and every other derived count cannot go stale. */
-const STAGE_COUNT = phases().length;
 const MODULE_COUNT = moduleGroups().reduce((n, p) => n + p.modules.length, 0);
 export const BUILT_MODULE_COUNT = moduleGroups().reduce(
   (n, p) => n + p.modules.filter((m) => m.status === 'built').length, 0);
@@ -95,6 +96,7 @@ export const BUILT_MODULE_COUNT = moduleGroups().reduce(
 /* READING THE STUDIO — the snapshot, the per-module probes and the three
    blueprint-era blobs they read — is src/lib/launcher-model.js. Reads only:
    the launcher must never write during a render. */
+const ROWS = ROWS_JSON.rows;
 const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 
 /* ------------------------------------------------------------
@@ -140,115 +142,91 @@ function whereAmI() {
   return { phase: null, module: null };
 }
 
+
 /* ------------------------------------------------------------
-   THE MARKUP
+   THE MARKUP — five rows, from src/data/launcher-rows.json
+   ------------------------------------------------------------
+   A row is a card: a solid hue tile on the left (the row's glyph in a
+   wash circle, its name under it) and a big-glyph tile per module to
+   the right. The tile is glyph + label only; what the module is for
+   and what it holds go in the `title`, and the quiet state line is
+   printed only when the module has real work in it.
    ------------------------------------------------------------ */
 
-function moduleTile(m, snap, at) {
+function moduleTile(m, hiddenTile, snap, at) {
   const planned = m.status === 'planned';
   const isHere = !!(at.module && at.module.id === m.id);
   const cls = '.lx-mod'
     + (planned ? '.is-planned' : '')
     + (m.status === 'partial' ? '.is-partial' : '')
     + (isHere ? '.is-here' : '');
+  const state = stateOf(m, snap);
+  const tip = [m.purpose, state && state.text].filter(Boolean).join(' - ');
   const el = h(planned ? `button${cls}` : `a${cls}`, planned
-    ? { type: 'button', 'data-action': 'module-planned', 'data-module': m.id }
-    : { href: m.href });
+    ? { type: 'button', 'data-action': 'module-planned', 'data-module': m.id, title: tip }
+    : { href: m.href, title: tip });
   el.dataset.moduleId = m.id;   // plan-gate.js marks a locked tile by this
   if (isHere && !planned) el.setAttribute('aria-current', 'page');
 
-  el.append(iconSpan('lx-mod-icon', m));
-  el.append(
-    h('span.lx-mod-label', { text: m.label }),
-    h('span.lx-mod-purpose', { text: m.purpose })
-  );
-
-  const state = stateOf(m, snap);
-  if (state) el.append(h(`span.lx-mod-state.is-${state.kind}`, { text: state.text }));
-
+  el.append(iconSpan('lx-mod-icon', m), h('span.lx-mod-label', { text: m.label }));
+  if (state && state.kind === 'work') {
+    el.append(h('span.lx-mod-state.is-work', { text: state.text }));
+  }
   if (m.status !== 'built') {
     el.append(h('span.lx-flag', { text: m.status === 'partial' ? 'PARTIAL' : 'SOON' }));
   }
   if (isHere) el.append(h('span.lx-mod-here', { text: 'THIS PAGE' }));
 
   const item = h('li.lx-mod-cell');
+  if (hiddenTile) item.hidden = true;
   item.append(el);
   return item;
 }
 
-function phaseRow(phase, snap, at) {
-  const isHere = !!(at.phase && at.phase.id === phase.id);
-  const row = h(`div.lx-row.${hueClassOf(phase)}` + (isHere ? '.is-here' : ''));
-  const built = phase.modules.filter((m) => m.status === 'built').length;
-  const withWork = phase.modules.filter((m) => {
-    const s = stateOf(m, snap);
+function stageRow(row, snap, at) {
+  const isHere = !!(at.module && row.modules.some((x) => x.m.id === at.module.id));
+  const el = h(`div.lx-row.${row.hue}` + (isHere ? '.is-here' : ''), { 'data-row': row.id });
+  if (row.hidden) el.hidden = true;
+  const withWork = row.modules.filter((x) => !x.hidden).filter((x) => {
+    const s = stateOf(x.m, snap);
     return s && s.kind === 'work';
   }).length;
 
   const tile = h('div.lx-phase');
-  tile.append(iconSpan('lx-phase-icon', phase));
   tile.append(
-    h('span.lx-phase-label', { text: phase.label }),
-    h('span.lx-phase-blurb', { text: phase.blurb }),
-    h('span.lx-phase-count', { text: `${built} of ${phase.modules.length} ready` }),
-    h('span.lx-phase-work', { text: withWork ? `${withWork} with work` : 'nothing here yet' })
+    h('span.lx-phase-disc', {}, [iconSpan('lx-phase-icon', { sym: row.sym })]),
+    h('span.lx-phase-label', { text: row.label })
   );
+  if (withWork) tile.append(h('span.lx-phase-work', { text: `${withWork} with work` }));
 
-  /* `group` on a module is a sub-heading (Pre-Production's Break down ·
-     See it · Cost & staff it · Schedule it). The order is the order of
-     first appearance in navigation.json, the same rule the band's
-     menu follows, so the two never disagree about it. A stage with no
-     groups renders one flat list, exactly as before; the headings are
-     only drawn when a module asks for one. */
-  const grouped = phase.modules.some((m) => m.group);
-  if (!grouped) {
-    const mods = h('ul.lx-mods', { 'aria-label': phase.label + ' modules' });
-    phase.modules.forEach((m) => mods.append(moduleTile(m, snap, at)));
-    row.append(tile, mods);
-    return row;
-  }
-  const order = [];
-  const byGroup = new Map();
-  phase.modules.forEach((m) => {
-    const g = m.group || '';
-    if (!byGroup.has(g)) { byGroup.set(g, []); order.push(g); }
-    byGroup.get(g).push(m);
-  });
-  const wrap = h('div.lx-groups');
-  order.forEach((g) => {
-    const block = h('div.lx-group');
-    if (g) block.append(h('h3.lx-group-head', { text: g }));
-    const mods = h('ul.lx-mods', { 'aria-label': (g ? phase.label + ' · ' + g : phase.label) + ' modules' });
-    byGroup.get(g).forEach((m) => mods.append(moduleTile(m, snap, at)));
-    block.append(mods);
-    wrap.append(block);
-  });
-  row.append(tile, wrap);
-  return row;
+  const mods = h('ul.lx-mods', { 'aria-label': row.label + ' modules' });
+  row.modules.forEach((x) => mods.append(moduleTile(x.m, x.hidden, snap, at)));
+  el.append(tile, mods);
+  return el;
 }
 
-/** The launcher section, ready to append to the hub. */
+/** The launcher section, ready to append to a page. Reads only. */
 export function renderLauncher() {
   const snap = safe(snapshot, {});
   const at = safe(whereAmI, { phase: null, module: null });
+  const rows = resolveRows(ROWS, moduleGroups(), (id) => safe(() => isDisabledEverywhere(id), false));
 
   const sec = h('section#modules.section', { 'aria-labelledby': 'lxHeading' });
   const inner = h('div.section-inner');
 
-  const worked = moduleGroups().reduce((n, p) => n + p.modules.filter((m) => {
-    const s = stateOf(m, snap);
+  const live = rows.filter((r) => !r.hidden);
+  const worked = live.reduce((n, r) => n + r.modules.filter((x) => {
+    if (x.hidden) return false;
+    const s = stateOf(x.m, snap);
     return s && s.kind === 'work';
   }).length, 0);
 
   const head = h('div.section-head');
   head.append(
     h('div.left', {}, [
-      h('div.label', { text: 'THE MAP · EVERY MODULE BY PHASE' }),
+      h('div.label', { text: 'THE MAP · EVERY MODULE BY STAGE OF WORK' }),
       h('h2#lxHeading', {}, [
-        // Derived, like the module count beside it: this said "Six
-        // phases" in a hard-coded string, which was wrong the day the
-        // six became the PRD's five stages.
-        document.createTextNode(`${NUMBER_WORDS[STAGE_COUNT] || STAGE_COUNT} stages, `),
+        document.createTextNode(`${NUMBER_WORDS[live.length] || live.length} rows, `),
         h('em', { text: `${MODULE_COUNT} modules.` })
       ]),
       h('p.deck', {
@@ -263,8 +241,8 @@ export function renderLauncher() {
     ])
   );
 
-  const grid = h('nav.lx-grid', { 'aria-label': 'Every module, by phase' });
-  moduleGroups().forEach((p) => grid.append(phaseRow(p, snap, at)));
+  const grid = h('nav.lx-grid', { 'aria-label': 'Every module, by stage of work' });
+  rows.forEach((r) => grid.append(stageRow(r, snap, at)));
 
   inner.append(head, grid);
   sec.append(inner);

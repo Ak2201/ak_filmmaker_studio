@@ -209,4 +209,20 @@ export function stateOf(m, snap) {
   return safe(() => probe(snap), null);
 }
 
-export default { safe, snapshot, stateOf };
+/** The project home's rows (src/data/launcher-rows.json) resolved against
+ *  the map. Pure: `groups` is moduleGroups(), `rows` the JSON's `rows`.
+ *  An id the map does not have is skipped (test:launcher-rows is what
+ *  fails on it); `hidden(id)` marks a module nobody can open (kept in the
+ *  list so plan-gate and the DOM still see it). A row with no live module
+ *  comes back `hidden: true`. */
+export function resolveRows(rows, groups, hidden = () => false) {
+  const byId = new Map();
+  (groups || []).forEach((g) => (g.modules || []).forEach((m) => { if (!byId.has(m.id)) byId.set(m.id, m); }));
+  return (rows || []).map((r) => {
+    const modules = (r.modules || []).map((id) => byId.get(id)).filter(Boolean)
+      .map((m) => ({ m, hidden: !!hidden(m.id) }));
+    return { ...r, modules, hidden: !modules.some((x) => !x.hidden) };
+  });
+}
+
+export default { safe, snapshot, stateOf, resolveRows };

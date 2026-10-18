@@ -515,6 +515,25 @@ try {
     await page.waitForFunction(() => /Too many/.test(document.getElementById('leadMsg').textContent), null, { timeout: 4000 }).catch(() => {});
     ok(/Too many/.test(await page.textContent('#leadMsg')), 'a throttled answer is shown as a sentence');
     allErrors.push(...errors); await ctx.close();
+    /* A PRODUCT PAGE IS LIGHT TOO. product-*.html carry src/pages/marketing.js,
+       which may import only the startlib leaves and start-auth.js. The day it
+       reaches store.js, cloud.js or gate.js the page statically imports the
+       ~209 KB studio chunk, and a chunk-by-name assertion elsewhere would not
+       notice. Same two properties as the start page, on a phone-width load. */
+    {
+      const m = await context(browser, { width: 390 });
+      const msdk = [], mcore = [];
+      m.page.on('request', (q) => {
+        if (/supabase-[\w-]+\.js/.test(q.url())) msdk.push(q.url());
+        if (/\/studio-[\w-]+\.js/.test(q.url())) mcore.push(q.url());
+      });
+      await m.page.goto(BASE + 'product-writing.html'); await m.page.waitForLoadState('networkidle');
+      ok(msdk.length === 0, 'no Supabase SDK chunk is fetched on a product page');
+      ok(mcore.length === 0, 'and no studio-* core chunk either' + (mcore.length ? ': ' + mcore.join(', ') : ''));
+      ok(await m.page.evaluate(() => document.documentElement.classList.contains('mk-js')), 'the product page script ran (mk-js)');
+      ok(await m.page.evaluate(() => !Object.keys(localStorage).some((k) => /analytics|funnel|lead/.test(k))), 'a product page writes no new localStorage key');
+      allErrors.push(...m.errors); await m.ctx.close();
+    }
     // opt-out and Do Not Track
     const o = await context(browser, { width: 390 });
     EVENTS.length = 0;

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sampleFigures } from './src/lib/sample-figures.js';
@@ -82,10 +82,14 @@ function materialSymbols() {
       });
     },
     async transformIndexHtml(html) {
-      if (!isAppPage(html)) return;
+      /* The public marketing pages (product-*.html, pricing.html) draw
+         marks too but are no app pages: they carry data-fms-marketing, get
+         the face and NOT the site-gate meta (they load no gate). */
+      const marketing = html.includes('data-fms-marketing');
+      if (!isAppPage(html) && !marketing) return;
       const f = await ready;
       return [
-        { tag: 'meta', attrs: { name: 'fms-site-gate', content: siteGate }, injectTo: 'head' },
+        ...(marketing ? [] : [{ tag: 'meta', attrs: { name: 'fms-site-gate', content: siteGate }, injectTo: 'head' }]),
         { tag: 'link', attrs: { rel: 'preload', href: f.file, as: 'font', type: 'font/woff', crossorigin: '' }, injectTo: 'head' },
         { tag: 'style', attrs: { 'data-fms-icons': '' }, injectTo: 'head',
           children: "@font-face{font-family:'Material Symbols Rounded';font-style:normal;font-weight:400;font-display:block;src:url(" + f.file + ") format('woff')}" }
@@ -119,7 +123,7 @@ function fontPreloads() {
         if (!ctx || !ctx.bundle) return;
         const where = String(ctx.path || ctx.filename || '');
         if (/panel\.html$/.test(where)) return;
-        if (!html.includes('id="app"') && !/(^|\/)start\.html$/.test(where)) return;
+        if (!html.includes('id="app"') && !/(^|\/)(start|pricing|product-[a-z-]+)\.html$/.test(where)) return;
         const tags = [];
         for (const face of PRELOAD_FACES) {
           const a = Object.values(ctx.bundle).find((f) => f.type === 'asset' && /\.woff2$/.test(f.fileName)
@@ -397,6 +401,71 @@ function startFigures() {
 }
 
 /* ============================================================
+   THE MARKETING PAGES' FIGURES (product-*.html, pricing.html)
+   ------------------------------------------------------------
+   Same idea as startFigures() above and the same sources: a page keeps
+   its words in the markup, and any figure in it is an `{{fms:...}}`
+   placeholder filled here from the data the app itself renders, never
+   typed. Product pages use only the sample film's figures (dragon.*),
+   the tier names (plan.*), the list prices (price.*) and the blueprint
+   counts, so that is the set stamped. An unknown placeholder or one left
+   unreplaced FAILS THE BUILD (and the dev server's response).
+
+   pricing.html will need the tier lists and the matrix rows startFigures()
+   builds inline (tier.*, matrix.rows): when it lands, factor those out of
+   startFigures() into a shared function and add them here, rather than
+   typing a second copy of that derivation.
+   ============================================================ */
+const MARKETING_PAGE = /(^|[\\/])(pricing|product-[a-z-]+)\.html$/;
+function marketingFigures() {
+  const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  const json = (p) => JSON.parse(readFileSync(resolve(__dirname, 'src/data/' + p), 'utf8'));
+  return {
+    name: 'fms-marketing-figures',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        const file = String((ctx && (ctx.filename || ctx.path)) || '');
+        if (!MARKETING_PAGE.test(file)) return;
+        const fail = (msg) => { throw new Error(file.split(/[\\/]/).pop() + ': ' + msg); };
+        const fig = sampleFigures(json('sample.dragon.json'));
+        const values = { ...Object.fromEntries(Object.entries(fig).map(([k, v]) => ['dragon.' + k, v])),
+                         ...Object.fromEntries(PLAN_ORDER.map((id) => ['plan.' + id, planName(id)])) };
+        for (const id of PLAN_ORDER) values['price.' + id] = inr(LIST_PRICE[id]);
+        for (const [k, v] of Object.entries(EDU_PRICE)) values['price.' + k] = inr(v);
+        const FEATURE = json('steps.feature.json');
+        values['short.steps'] = (json('steps.short.json').steps || []).length;
+        values['feature.steps'] = Object.values(FEATURE).reduce((n, v) => n + (Array.isArray(v) ? v.length : 0), 0);
+        values['studies.count'] = (json('studies.json').films || []).length;
+        values['glossary.count'] = (json('glossary.json').terms || []).length;
+        for (const k of ['short.steps', 'feature.steps', 'studies.count', 'glossary.count']) {
+          if (!values[k]) fail(k + ' counted 0: the data file it reads moved or changed shape.');
+        }
+        /* A price is never typed into the markup (see startFigures). */
+        if (html.includes('₹')) fail('a bare rupee sign in the markup; prices come from {{fms:price.<tier>}}.');
+        const out = html.replace(/\{\{fms:([a-zA-Z.]+)(?::(word))?\}\}/g, (all, key, fmt) => {
+          if (!(key in values)) fail('unknown placeholder ' + all + '. Known: ' + Object.keys(values).join(', '));
+          return fmt === 'word' ? (WORDS[values[key]] || String(values[key])) : String(values[key]);
+        });
+        const left = out.match(/\{\{(?!brand:)[^}]*\}\}/);
+        if (left) fail('placeholder left unreplaced: ' + left[0]);
+        return out;
+      }
+    }
+  };
+}
+
+/* The marketing pages that exist at the repo root, as rollup inputs.
+   pricing.html is optional until its own branch lands. */
+function marketingInputs() {
+  const out = {};
+  for (const f of readdirSync(__dirname)) {
+    if (/^(pricing|product-[a-z-]+)\.html$/.test(f)) out[f.replace(/\.html$/, '')] = resolve(__dirname, f);
+  }
+  return out;
+}
+
+/* ============================================================
    THE PRODUCT NAME, STAMPED INTO EVERY PAGE (src/data/brand.json)
    ------------------------------------------------------------
    `{{brand:name|short|host|email|seller|tagline|upper}}` in any HTML
@@ -533,6 +602,7 @@ export default defineConfig({
     brandPlugin(),
     studySlicePlugin(),
     startFigures(),
+    marketingFigures(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -544,7 +614,7 @@ export default defineConfig({
         // The app shell, all four pages, the manifest and the icons.
         globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest,woff,woff2}'],
         // Recorded media (public/media/**) is fetched on demand, never precached.
-        globIgnores: ['media/**'],
+        globIgnores: ['media/**', 'marketing/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
       }
     })
@@ -615,6 +685,10 @@ export default defineConfig({
         // The public landing page: outside the site gate, no app code
         // (src/pages/start.js), the words in the markup like the legal pages.
         start:      resolve(__dirname, 'start.html'),
+        // The public marketing pages: product-*.html (generated by
+        // scripts/make-marketing-pages.mjs) and pricing.html when it exists.
+        // Discovered, not listed, so a twelfth product page needs no edit here.
+        ...marketingInputs(),
         // Redirect stubs at the old filenames. Shipped so existing
         // bookmarks, the links in the published README and anything
         // already shared keep resolving instead of 404ing.

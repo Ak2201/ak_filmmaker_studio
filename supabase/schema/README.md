@@ -9,7 +9,7 @@ order they were AUTHORED, not the order they are applied (see run order below).
 | `schema-40-admin-audit.sql` | §40 | Admin audit log. Needs §1–§39. |
 | `schema-41-admin-health.sql` | §41 | Admin health. Standalone. |
 | `schema-42-customer-360.sql` | §42 | Customer 360 view. Needs §40. |
-| `schema-43-usage-cohorts.sql` | §43 | Usage cohorts; `usage_names()` is generated (`npm run make:usage-names`). |
+| `schema-43-usage-cohorts.sql` | §43 | Usage cohorts; `usage_names()` is generated (`node scripts/make-usage-names-sql.mjs --write`). |
 | `schema-44-sync-limits.sql` | §44 | Sync limits. Standalone. |
 | `schema-45-admin-controls.sql` | §45 | Admin controls. Needs §40. |
 | `schema-46-role-matrix.sql` | §46 | Role matrix (`require_role()` on the admin writers). Needs §45. |

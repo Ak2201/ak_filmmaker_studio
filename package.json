@@ -107,6 +107,7 @@
     "test:returnto": "node scripts/test-return-to.mjs",
     "prove:script": "node scripts/prove-script.mjs",
     "prove:replace": "node scripts/prove-replace.mjs",
+    "prove:cards": "node scripts/prove-cards.mjs",
     "prove:tamil": "node scripts/prove-tamil.mjs",
     "prove:walk": "node scripts/prove-walk.mjs",
     "thumbs": "node scripts/make-video-thumbs.mjs",

@@ -2241,3 +2241,17 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Esc lands on the match with it selected, Replace all is one save and an
     actionable Undo that skips a line edited since. `test:replace` and
     `prove:replace` (in CI beside `prove:script`).
+
+    **Index cards** on the Scene List (`breakdown.html#scenes`): a Table /
+    Cards switch (in memory, like the saved filters, because a remembered
+    view would be a new key). `renderSceneCard` builds a `.bd-sl` carrying
+    the row's `data-*`, so the search, the filters, the drag handle and the
+    keyboard route work on cards unchanged; only the drop differs — the card
+    under the pointer is marked on its leading or trailing edge
+    (`updateCardDrop`) instead of a line being inserted, which would take a
+    grid cell and shuffle the board mid-drag. Left / Right move a card too.
+    Reordering is the scene list's (`reorderScene`, one write), never the
+    script's text, and the first move of a visit says so. The top edge wears
+    the time of day's hue. Edit returns to the table with the scene open.
+    `prove:cards` (in CI).
+

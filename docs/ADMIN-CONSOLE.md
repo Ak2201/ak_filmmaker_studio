@@ -1,7 +1,16 @@
-# Admin console v2 — schema run order (stub)
+# Admin console v2 — schema run order
 
-The plan is `docs/archive/ADMIN-CONSOLE-PLAN.md`. This file is only the deploy half for
-the sections that exist so far. Neither section has been run live.
+Last reviewed: 2026-10-19
+
+The plan is `docs/archive/ADMIN-CONSOLE-PLAN.md` (archived). This file is the deploy half for
+§40–§47. **All of §40–§47 are LIVE on the production project (run 13 Oct 2026):**
+§46 and §47 were run checksummed and read back with `pg_get_functiondef`; §40–§45 were
+confirmed by PostgREST probe (42501 = exists and refuses). Source: `docs/HANDOFF.md` §4.
+Live admin-session checks are still open — see `docs/ADMIN-CONSOLE-TODO.md` (L1–L5).
+None of §40–§47 is folded into `supabase/schema/supabase-schema.sql` (that file is §1–§39);
+each is its own file in `supabase/schema/`, run order in `supabase/schema/README.md`.
+The console's tabs are in `src/lib/admin-model.js` (`TAB_DEFS`): Overview, Launch & health,
+Audit log, People, Support, Access & sharing, Purchases, Growth, Usage, Sync & storage, Controls.
 
 | Section | File | Needs | Adds |
 | --- | --- | --- | --- |
@@ -20,11 +29,11 @@ the sections that exist so far. Neither section has been run live.
    reserved for the health lane. If another session has taken either number,
    renumber; do not collide.
 3. Both files are re-runnable. `npm run test:schema` loads each twice.
-4. Until the main thread folds them into `supabase/schema/supabase-schema.sql`, the test runner
-   loads the two standalone files itself, on top of the whole schema, before
-   the §32-onward check files. Once `admin_audit_write` appears in
-   `supabase/schema/supabase-schema.sql` the runner stops loading them and only runs
-   `admin-audit.sql` and `admin-customer.sql`.
+4. They are not folded into `supabase/schema/supabase-schema.sql`, so the test runner
+   (`scripts/test-schema.mjs`, `ADMIN_FILES`) loads the two files itself, on top of the whole
+   schema, before the §32-onward check files, and then runs `admin-audit.sql` and
+   `admin-customer.sql`. (Its comments still say "at the repo root"; the files are in
+   `supabase/schema/`.)
 
 ## Pasting SQL: checksum, never the raw clipboard
 
@@ -112,8 +121,8 @@ title or data anywhere; `admin_customer` for a random uuid raises 22023
 
 ## Lane: §41 launch & health, §43 usage & cohorts, §44 sync & limits
 
-Standalone files at the repo root, **not yet folded into `supabase/schema/supabase-schema.sql`**
-and **run live 13 Oct 2026** (confirmed by PostgREST probe: each section's functions exist and refuse anon with 42501). They are still not folded into `supabase/schema/supabase-schema.sql`:
+Standalone files in `supabase/schema/`, **not folded into `supabase-schema.sql`**
+and **run live 13 Oct 2026** (confirmed by PostgREST probe: each section's functions exist and refuse anon with 42501):
 
 | File | Contents |
 | --- | --- |
@@ -228,7 +237,7 @@ then runs the three check files. When a section is merged into
 
 ## §45 — Admin controls (schema)
 
-File: `supabase/schema/schema-45-admin-controls.sql` (standalone, **RUN LIVE: not yet**; requires
+File: `supabase/schema/schema-45-admin-controls.sql` (standalone, **RUN LIVE 13 Oct 2026**; requires
 §40's `admin_audit_write`, and refuses to load without it). Checks:
 `scripts/schema-tests/admin-controls.sql`. Until §40 is folded into
 `supabase/schema/supabase-schema.sql`, `npm run test:schema` loads
@@ -324,7 +333,7 @@ must run with `site_announcement` empty (it does; the table is new and empty).
 
 ## §46 — The role matrix (schema) and the Controls tab
 
-File: `supabase/schema/schema-46-role-matrix.sql` (standalone, **RUN LIVE: not yet**; refuses to
+File: `supabase/schema/schema-46-role-matrix.sql` (standalone, **RUN LIVE 13 Oct 2026**, run checksummed and read back; refuses to
 load without §40 `admin_audit_write`, §42 `admin_add_note` and §45
 `require_role`). Checks: `scripts/schema-tests/role-matrix.sql`; `npm run
 test:schema` loads it twice, after the §45 checks. Fixture ids `…046xx`.

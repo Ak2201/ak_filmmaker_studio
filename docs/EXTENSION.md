@@ -1,6 +1,14 @@
 # The Chrome extension
 
+Last reviewed: 2026-10-19
+
 The extension is the app. `npm run build:extension` builds the same pages as the website into `dist-extension/`, adds the side panel (`extension/panel.html`), a manifest and a background worker, and turns the PWA's service worker off. A fix to any page is a fix in the extension, and there is no second copy to keep in step.
+
+## Plan gate
+
+The extension is a plan-gated feature: `src/data/plan-matrix.json` lists it as `extension`
+(enforced by `plans.limits.extension`; `docs/HANDOFF.md` B15 records it off on Basic, on for
+Intermediate and Pro). It is only enforced once the purchases switch is on.
 
 ## Load it
 
@@ -30,7 +38,7 @@ To ship it to the Chrome Web Store, zip the *contents* of `dist-extension/` (wit
 | PRD | Where | Notes |
 |---|---|---|
 | FR-101 gatekeeper | `src/pages/panel.js` | Code is normalised as typed; verifying spends nothing. |
-| FR-102 admin console | `settings.html#admin-console` (`src/ui/gate-ui.js`) | Shown by the server's role; every RPC re-checks it. |
+| FR-102 admin console | `settings.html#admin-console` (`src/ui/gate-ui.js`) is the original block; the full console is now `admin.html` (`docs/GATE.md` §0, `docs/ADMIN-CONSOLE.md`) | Shown by the server's role; every RPC re-checks it. |
 | FR-103 screening passes | `screening.html` (`src/pages/screening.js`, `src/lib/watermark.js`) | Read-only, expiring, canvas watermark overlaid **and** baked into each block, tamper watchdog, print refused. |
 | FR-201 Google SSO | `chrome.identity.launchWebAuthFlow` → `supabase.auth.setSession` (`extension-bridge.js`, `cloud.js`) | Same Google client as the website. |
 | FR-202 ephemeral storage | supabase-js is given a `chrome.storage.session` adapter | Tokens, the ticket and the lock handle never reach `localStorage` or `chrome.storage.local`. Quitting Chrome signs you out. |
@@ -49,8 +57,10 @@ Extension pages have their own origin, so their `localStorage` is not the websit
 ## Proving it
 
 ```bash
-npm run build:extension && npm run prove:extension   # 28 checks, the real unpacked extension
-npm run build && npm run prove:gate                  # 34 checks, the website's half
+npm run build:extension && npm run prove:extension   # the real unpacked extension
+npm run build && npm run prove:gate                  # the website's half (needs the GATED build)
 ```
+
+(The check counts this file used to quote, 28 and 34, were stale: `docs/HANDOFF.md` and `docs/HISTORY.md` record 28–30 for the extension proof and 107–120 for `prove:gate`. Run them for the current number.)
 
 Both replace only the network to Supabase, with an in-memory implementation of section 13 (`scripts/fake-supabase.mjs`), plus the two things a headless browser cannot do: a human at Google's consent screen, and a 30-second wait.

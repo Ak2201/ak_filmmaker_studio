@@ -1,5 +1,57 @@
 # HANDOFF — read this first
 
+Last reviewed: 2026-10-19
+
+> **2026-10-19 (repo layout + where things stand) — read this before the older
+> dated notes below, which are a record and are NOT rewritten.**
+>
+> **Repo layout changed on 19 Oct (commits `853a23a`, `ee3a5db`, `16ddb04`):**
+> - **SQL lives in `supabase/schema/`**, not the repo root or `docs/sql`:
+>   `supabase-schema.sql` (§1–§39), `schema-40…47-*.sql`, and
+>   `patches/2026-10-10-billing_status.sql`. Run order and rules are in
+>   `supabase/schema/README.md`. Edge functions stay in `supabase/functions/`
+>   (`rzp-order`, `rzp-verify`, `rzp-webhook`, `rzp-refund`, `_shared`).
+>   Where an older paragraph below says "`supabase-schema.sql`" it means that file.
+> - **Superseded docs moved to `docs/archive/`:** `ADMIN-CONSOLE-PLAN`,
+>   `BLUEPRINT-REALIGN-PLAN`, `SCREENPLAY-WRITER-PLAN`, `RESUME`, `WIP`,
+>   `UX-AUDIT-2026-10-06`, `VIDEO-CANDIDATES`, `FEATURE-IDEAS`,
+>   `NEXT-STAGE-FLOW`, `COVERAGE`, `SPASEX-DESIGN-ANALYSIS`. Links below point there.
+>   `docs/HISTORY.md` stays the build log; `CLAUDE.md` is the invariants and the
+>   status table.
+> - **Branches, checked 19 Oct:** `origin/main` = `ff9668a` ("Release: launcher
+>   project home and the Celtx-structured public site"), which contains
+>   `origin/develop` (`be1b003`). The branch this review ran on
+>   (`claude/improvement-ideas-0gwjyx`) is three docs/layout commits ahead of
+>   `develop`. Check `git log` rather than quoting these.
+>
+> **What happened between this file's last dated note (13 Oct) and today**
+> (detail: `CLAUDE.md` rows 35–38 and `docs/HISTORY.md` items 48–51):
+> - **14 Oct** Swiss Precision kit (PR #18; one dark theme, violet, kit in
+>   `src/ui/kit/`, `docs/DESIGN-KIT.md`); the mobile + Breakdown/AI revamp
+>   (PR #21, `work/mobile-and-revamp`: Manual breakdown / Breakdown with AI,
+>   `breakdown-extras.js`, tasks `shot-basic`, `story-basic`, `scene-story`,
+>   `board-frames`; phone passes; `docs/PARITY-MATRIX.md`). Plan:
+>   `docs/NEXT-UI-REVAMP-PLAN-2026-10-14.md`.
+> - **15 Oct** "Layers": page logic moved into `src/lib` models (`npm run test:layers`).
+> - **17 Oct** Celtx-style simplification (15 modules `plans: []`, hidden by
+>   `isDisabledEverywhere()`); one frame per page (`homeStage()`, `prove:nav`);
+>   (18 Oct, item 50: project home is `dashboard.html` as the launcher).
+> - **18 Oct** the public site is generated (home, `pricing.html`, 11
+>   `product-<id>.html` from `src/data/marketing-*.json`, `npm run make:marketing`);
+>   plans moved off `start.html` onto `pricing.html`. Released to `main` as `ff9668a`.
+> - **Gate at that release:** `test:all` 0 failures; `verify` 26 pages, 0 data-keys
+>   lost; `prove:nav/script/stage-guide/story-path/ai-desk/tamil/sw/growth`,
+>   `prove:gate`, `prove:billing` pass; `prove:extension` 29/29; `prove:storage` and
+>   `prove:drive` fail only on the sandbox's `ERR_TUNNEL_CONNECTION_FAILED`,
+>   identically before the change (from the `ff9668a` commit message).
+> - **Still not run live / still the owner's** (unchanged by any of the above):
+>   Resend (`RESEND_API_KEY`, `MAIL_FROM`) before a real payment; a LIVE Razorpay
+>   key and a refund end to end; the two-account RLS checks; GSTIN; the §36
+>   re-run noted in `CLAUDE.md` row 36; storyboard images against a real Gemini
+>   key and a real Drive (`prove:board-frames` uses fakes only). The plan docs
+>   `RELEASE-PLAN.md` and `NEXT-IDEAS-PLAN.md` carry their own status banners.
+
+
 > **12 Oct 2026 (UI revamp) — branch `feature/ui-revamp`, merged to `develop` in one
 > change.** One top bar (switcher · Backup · Dark/Light · name) on every page; Settings as
 > a five-tab console; plans bought only on `purchase.html`; People "Delete totally"
@@ -234,7 +286,7 @@ studio for Tamil/Indian indie filmmakers (story → screenplay → breakdown →
 stripboard → call sheets → shoot day → edit log → deliverables), with
 Chennai rate cards, a festival tracker, bring-your-own-key AI (Anthropic and
 Gemini), Google Drive backup, optional Supabase sync, Razorpay billing
-(pay-once, full-time access: Free / Starter / Indie / Pro), promo codes, an
+(pay-once, full-time access: Basic / Intermediate / Pro on the ids starter / indie / pro; the free plan was retired by §38), promo codes, an
 invite-only site gate, a Chrome extension, and a public landing page
 `start.html`. The owner is selling it as a digital product. Read `CLAUDE.md`
 for invariants before changing anything.

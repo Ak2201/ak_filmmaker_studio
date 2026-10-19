@@ -1,5 +1,7 @@
 # FilmMakerStudio — working notes
 
+Last reviewed: 2026-10-19 (Layout block only)
+
 > **New session? Read `docs/HANDOFF.md` first.** It records everything done on
 > 7–8 Oct 2026, every branch and where unfinished work sits, the owner's
 > decisions, and what is planned. Then come back here for the invariants.
@@ -201,6 +203,10 @@ src/
                      resume-cards: hub.js is the composition
   sw.js      service worker (vite-plugin-pwa injectManifest)
 docs/KNOWN-ISSUES.md  bugs found and not yet fixed — check it first
+docs/archive/         superseded plans and audits (ADMIN-CONSOLE-PLAN, BLUEPRINT-REALIGN-PLAN,
+                      SCREENPLAY-WRITER-PLAN, RESUME, WIP, VIDEO-CANDIDATES, FEATURE-IDEAS,
+                      NEXT-STAGE-FLOW, COVERAGE, SPASEX-DESIGN-ANALYSIS, the UX audit) —
+                      history, not instructions; moved here 19 Oct 2026
 docs/archive/UX-AUDIT-2026-10-06.md  the full UI/UX audit, ranked by severity
 docs/HISTORY.md       the build log — the long form of every open item
 scripts/
@@ -208,6 +214,16 @@ scripts/
   verify-migration.mjs   the gate
   density.mjs            the design-density report
   baseline.json          what verify diffs against
+  README     (scripts/README.md) what each script is for
+  schema-tests/  the SQL fixtures `npm run test:schema` runs
+supabase/
+  functions/ the edge functions (rzp-order, rzp-verify, rzp-webhook, rzp-refund)
+             and _shared/ — deploy with the CLI, see docs/BILLING.md
+  schema/    supabase-schema.sql (sections 1–39), schema-40..47 files, patches/,
+             README.md — SQL moved here from the repo root on 19 Oct 2026
+social/      CAPTIONS.md plus the posters / feature images for social posts
+.github/workflows/  gate.yml (test:all, verify, prove:*) and smoke.yml
+extension/   (see the root listing above) built into dist-extension/
 legacy/      the original hand-written pages. Reference only. NEVER EDIT.
 ```
 

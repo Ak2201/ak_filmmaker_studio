@@ -1,5 +1,10 @@
 # Billing — Razorpay, three paid tiers, and what a plan caps
 
+Last reviewed: 2026-10-19. Live state (which schema sections ran, what is deployed, what
+is still unset) is recorded in `docs/HANDOFF.md` §4 and §6c and in `CLAUDE.md`; where a
+section below was written before it ran, its heading now says RUN LIVE and the original
+prose is kept as the history of how it was decided.
+
 Written 5 Oct 2026 for the owner's ask: *Razorpay payments, three tier
 amounts set from the admin console, restrictions by plan.* Four decisions
 were asked before a line was written, and every file below follows from
@@ -19,8 +24,9 @@ good — no monthly or yearly period, nothing to renew, nothing to lapse.
 `plans.price_paise` is the one price; the monthly/yearly columns are left
 in place and read by nothing. The console edits all of this; these are the
 rows §16.1 inserts and §18 adjusts so that the pages have something to show.
-**The prices are placeholders** (§18 copies the old yearly figure into the
-one-time price) — set the real ones on `admin.html` before the key goes live.
+The §18 seed figures were placeholders (§18 copied the old yearly figure into the
+one-time price); the live table has real prices (next paragraph's table), set on
+`admin.html`. A price rise is scheduled in the database for 31 Oct 2026 (§30, §12 below).
 
 **Features by plan (§18, same day).** `plans.features` is a map of feature
 key → boolean that the console's **Features** matrix edits: every built
@@ -48,7 +54,7 @@ owner's product boundary; the data boundary stays RLS and the triggers.
 > price from the table on every order. The seeded figures §18 wrote
 > (₹2,999 / ₹7,999 / ₹19,999) are history. **What each plan includes**
 > is `src/data/plan-matrix.json` (owner, 11 Oct 2026; §16 below):
-> schema §35 writes it into `plans.features`, and start.html, the plan
+> schema §36 writes it into `plans.features`, and start.html, the plan
 > cards and the console all read from it or from those rows.
 
 | Live share links | 0 | 3 | 10 | unlimited |
@@ -65,15 +71,20 @@ sale" and the card offers no button. The free tier may not carry a price
 reach Supabase and holds a personal access token in
 `SUPABASE_ACCESS_TOKEN` (and the three `RAZORPAY_*` secrets, if they
 are to be set in the same run): `node scripts/deploy-billing.mjs`. It
-slices §16–§17 out of `supabase/schema/supabase-schema.sql`, runs them through the
+slices `supabase/schema/supabase-schema.sql` from the §16 heading to the END of the
+file (so today that is §16–§39, not just §16–§17; the script's own comments still
+say "§16 and §17"), runs it through the
 Management API, asks the database that they landed, and deploys the
-functions with the CLI via npx. `--print` writes the same SQL to stdout
+functions (all four, `rzp-refund` included) with the CLI via npx. `--print` writes the same SQL to stdout
 for the dashboard editor instead. The cloud session this was built in
 could do neither: its network policy denies every Supabase host and it
 holds no token, which is why the script exists.
 
-Nothing here has met the live database or a live Razorpay account.
-The schema section passes `npm run test:schema` on a real PostgreSQL;
+**Status (19 Oct 2026):** §16–§39 have all run live, the three edge functions in
+this list and `rzp-refund` are deployed, and a TEST-mode purchase has been made
+end to end (8 Oct); there is still no LIVE Razorpay key and a refund has never
+been exercised (`docs/HANDOFF.md` §4). The steps below are the original deploy
+recipe and still the right order for a fresh project. The schema section passes `npm run test:schema` on a real PostgreSQL;
 the whole purchase passes `npm run prove:billing` against a faked
 Razorpay and a faked Supabase. The order:
 
@@ -87,7 +98,7 @@ Razorpay and a faked Supabase. The order:
    ```bash
    supabase secrets set RAZORPAY_KEY_ID=rzp_test_… RAZORPAY_KEY_SECRET=…
    ```
-4. **Deploy the three edge functions:**
+4. **Deploy the edge functions** (three here; `rzp-refund` joined with §27, see §10):
    ```bash
    supabase functions deploy rzp-order
    supabase functions deploy rzp-verify
@@ -99,7 +110,7 @@ Razorpay and a faked Supabase. The order:
    function verifies the body's HMAC instead.
 5. **Register the webhook** in the Razorpay dashboard: URL
    `https://<ref>.supabase.co/functions/v1/rzp-webhook`, events
-   `payment.captured`, `payment.failed`, `refund.processed`. Choose a
+   `payment.captured`, `payment.failed`, `refund.processed` (and `refund.failed`, added with §27). Choose a
    webhook secret there and set it:
    ```bash
    supabase secrets set RAZORPAY_WEBHOOK_SECRET=…
@@ -206,7 +217,7 @@ not evicted by a lapse; they are refused on the next insert.
 | --- | --- |
 | `supabase/schema/supabase-schema.sql` §16 | plans, payments, `accounts.plan_until`/`plan_period`, `apply_plan`, the service-role surface, `billing_status`, the triggers, the console RPCs, twelve checks |
 | `supabase/functions/_shared/razorpay.js` | HMAC, signature checks, periods, prices, paise formatting. Plain JS so the browser imports the same formatter |
-| `supabase/functions/rzp-order` `rzp-verify` `rzp-webhook` | the three edge functions (Deno) |
+| `supabase/functions/rzp-order` `rzp-verify` `rzp-webhook` `rzp-refund` | the four edge functions (Deno); `rzp-refund` since §27 |
 | `src/lib/billing.js` | the browser's half: plans, status, `buy()`, the admin RPCs. Writes nothing to localStorage |
 | `supabase/schema/supabase-schema.sql` §19 | the accounts INSERT guard (A1b in `docs/SECURITY-RLS.md`) |
 | `supabase/schema/supabase-schema.sql` §20 | `promo_codes`, `quote_order`, `promo_price`, the code on `payments`, the console RPCs |
@@ -220,14 +231,16 @@ not evicted by a lapse; they are refused on the next insert.
 
 **Proved, in this repo:**
 
-- `npm run test:billing` — 50 assertions on the shared helper: both
+- `npm run test:billing` — 79 assertions (re-run 19 Oct 2026; 50 when first written) on the shared helper: both
   HMACs against known vectors, timing-safe compare, periods, prices,
   `fmtPaise`, `parseRupees`, and the promo helpers (`normalisePromo`,
   `isPromoShaped`, `promoPrice` mirroring `public.promo_price`,
   `promoLabel`).
-- `npm run test:schema` — the WHOLE schema (twenty sections) loads on
+- `npm run test:schema` — the WHOLE schema loads on
   a real PostgreSQL 16 under a shim for the `auth` schema and the API
-  roles, and 133 checks run in three files: `billing.sql` (50, §16 +
+  roles (§1–§39 plus the `supabase/schema/schema-40..47` files; `CLAUDE.md` gives
+  the current total, 478 checks). The paragraph below is the count when §20
+  was the last section — 133 checks in three files: `billing.sql` (50, §16 +
   §18: the price from the table, both activation paths, idempotence,
   the account made for a first buyer, every trigger's refusal and its
   lifting after a grant, the refund lapsing the plan, `accounts_guard`
@@ -260,8 +273,10 @@ not evicted by a lapse; they are refused on the next insert.
   deactivating a code, and `invite.html` refusing the deactivated code
   while pricing the new one on the plans it names. 93 assertions.
 
-**Not proved:** anything against the live database or a live Razorpay
-account — the §16.10 checks, the real Orders API, a real Checkout, the
+**Not proved (as of 19 Oct 2026):** anything against a LIVE Razorpay
+account, and the §16.10 checks against the live database (the schema's own
+PostgreSQL tests pass; the live RLS checks needing two accounts are unrun, see
+`docs/SECURITY-RLS.md`). Specifically still unproved: the real Orders API, a real Checkout, the
 webhook's delivery and its retries, refunds from the dashboard, and
 Razorpay's KYC and settlement. The fake Razorpay signs exactly as the
 real one does, but it is still a fake.
@@ -364,6 +379,14 @@ owner's to make unguessable; if that ever matters, revoke it from
 
 ## 8. What an invite code means for the plan gate
 
+> **SUPERSEDED IN PART (12 Oct 2026).** A code is no longer a key on its own: the
+> box holds it (`fms_invite_code_v1`) and goes to Google, and `runGate()` redeems
+> it for the account that comes back, worth a 7-day trial (`startCodeTrial()` in
+> `cloud.js`). So the "code alone, no account" visitor described below no longer
+> exists outside demo links (`…&demo=1`). Kept as the record of the original
+> reasoning; see `CLAUDE.md` (top) and `docs/GATE.md` §0. Also, the Free column in
+> §0 is the "no plan" state since §38 (`active = false`, named "No plan").
+
 A visitor who enters on a **code alone** — `invite.html#code=…`, or the
 code typed into the box, with no Google sign-in — is through the site
 gate but has **no account**. `plan-gate.js` reads the plan off
@@ -386,7 +409,7 @@ plan — or approve their request from the queue, which admits them with
 an account from the start. A screening pass is unaffected: it opens
 one project read-only and nothing else.
 
-## 9. Growth — schema §21 onward (7 Oct 2026). NOT RUN LIVE.
+## 9. Growth — schema §21 onward (7 Oct 2026). §21–§23 RUN LIVE 8 Oct 2026.
 
 Eight additions asked for at launch, each its own schema section, each
 with checks in `scripts/schema-tests/<name>.sql` (run by
@@ -476,13 +499,13 @@ checks), `prove-billing.mjs` (m). Nothing to redeploy.
 
 
 
-## 10. Refunds — schema §27 (8 Oct 2026). NOT RUN LIVE.
+## 10. Refunds — schema §27 (8 Oct 2026). RUN LIVE 9 Oct 2026; `rzp-refund` deployed 12 Oct; never exercised end to end.
 
 `refund.html` says purchases are final except a duplicate charge, a charge
 that was not delivered, and where the law requires. §27 is how the studio
 honours those without the Razorpay dashboard, and how a customer asks.
 
-**Deploy order.** (1) Run §27 of `supabase/schema/supabase-schema.sql` (it needs §16, §18
+**Deploy order** (historical; all of it is done). (1) Run §27 of `supabase/schema/supabase-schema.sql` (it needs §16, §18
 and §22 — it adds a column to `billing_settings` — and replaces
 `mark_payment_refunded`). (2) `supabase functions deploy rzp-refund`
 (verifies the JWT itself; the gateway check is fine too). (3) **Redeploy
@@ -583,7 +606,7 @@ against real Razorpay (the `X-Refund-Idempotency` header and the
 `receipt`/`notes` fields follow Razorpay's refund API but have not met a
 live account), and the live checks at the foot of §27.
 
-## 11. Buyer invoices — Bill of Supply (schema §28, 8 Oct 2026). NOT RUN LIVE — owner approval.
+## 11. Buyer invoices — Bill of Supply (schema §28, 8 Oct 2026). RUN LIVE 9 Oct 2026.
 
 The seller is an individual **not registered for GST**, so the document is a
 **Bill of Supply**: no tax is charged or shown. `doc_type` is CHECKed to
@@ -755,9 +778,10 @@ server locks out the people who have paid, and `npm run verify` loads all
 §26 → §27 → §28 → §29 → §30 → §31. **ALL SIX RAN LIVE on 9 Oct 2026**,
 each verified afterwards over PostgREST rather than from the screen.
 
-**§32, §33, §34 and §35 are NOT run live** — see §13, §14, §15 and §16
-below; they are the next owner steps, in that order:
-**§32 → §33 → §34 → §35 → §36**.
+**§32–§39 all RAN LIVE on 12 Oct 2026** (§13–§19 below; §34 on the owner's
+word, not a probe). They were written as "next owner steps" in the order
+**§32 → §33 → §34 → §35 → §36**, which is kept in each section's deploy list
+as the order to follow on a fresh project.
 
 **Checksum every paste.** `pbcopy` → Chrome turns an em-dash into `‚Äî`;
 §30's refusal sentences carry em-dashes and `₹`, so that mojibake would
@@ -898,7 +922,7 @@ disagreed.
 for the grant), `prove:billing` (q), (r) and (s), `prove:gate` (m2) and
 (q), `prove:growth`.
 
-### Deploy (owner) — after §32
+### Deploy (owner) — after §32 (done 12 Oct 2026)
 
 1. Run **§33** (from `-- 33. A FREE TRIAL` down to, NOT including,
    `-- 34. A REFUND GIVES A FRESH TRIAL` — §34 is its own step, §15 below)
@@ -944,8 +968,8 @@ row untouched; a failure inside is a WARNING, never a lost refund.
 
 ### Deploy (owner) — after §33
 
-1. Run **§34** (from `-- 34. A REFUND GIVES A FRESH TRIAL` to the end of
-   §37 below is its own run) the same checksummed way.
+1. Run **§34** (from `-- 34. A REFUND GIVES A FRESH TRIAL` up to, NOT
+   including, `-- 35. RECEIPT AND REFUND E-MAILS`) the same checksummed way.
 2. Confirm: `select tgname, tgdeferrable, tginitdeferred from pg_trigger
    where tgname = 'payments_refund_trial'` → one row, true, true; and
    `pg_get_constraintdef` of `studio_members_trial_source_check` names
@@ -1014,8 +1038,8 @@ the published policy. Change both together.
    "Verified".
 2. **Resend → API Keys → create** a key with *Sending access* for that domain.
 3. `supabase secrets set RESEND_API_KEY=re_… MAIL_FROM="FilmMakerStudio <support@filmmakerstudio.in>"`
-4. Run **§35** (from `-- 35. RECEIPT AND REFUND E-MAILS` to the end of
-   `supabase/schema/supabase-schema.sql`) the checksummed way, after §32, §33 and §34.
+4. Run **§35** (from `-- 35. RECEIPT AND REFUND E-MAILS` up to, NOT including,
+   `-- 36. PLAN FEATURES FROM THE MATRIX`; the file now runs on to §39) the checksummed way, after §32, §33 and §34.
 5. Redeploy **`rzp-verify`** and **`rzp-webhook`** from current source (both
    import `_shared/mail.js`). Keep `rzp-webhook` on `--no-verify-jwt`.
 6. Check: one test purchase → the receipt arrives; in Gmail, *Show original*
@@ -1084,8 +1108,9 @@ other's days. Tests: `scripts/schema-tests/goals-sync.sql`.
 
 ### Deploy (owner) — independent of §32–§36
 
-1. Take the text from `-- 37. ONE MORE SYNC SCOPE: write_goals` to the end of
-   `supabase/schema/supabase-schema.sql`. Base64 it (`base64 -w0`), paste the ASCII, decode
+1. Take the text from `-- 37. ONE MORE SYNC SCOPE: write_goals` to
+   `-- END OF SECTION 37` in `supabase/schema/supabase-schema.sql` (the file now
+   continues with §38 and §39). Base64 it (`base64 -w0`), paste the ASCII, decode
    in the SQL editor page (never paste raw SQL through the clipboard — it
    corrupts non-ASCII), and compare the editor's SHA-256 with
    `sha256sum` of the same text before pressing Run.
@@ -1168,13 +1193,15 @@ select public.admin_set_billing_settings('{"purchase_required": true}');
 
 **Do not make it until all four of these hold.**
 
-1. **Resend works** (§16 above). §35 is live, so a payment already CLAIMS a
+1. **Resend works** (§16 above) — STILL OPEN at the 13 Oct record: `RESEND_API_KEY`
+   and `MAIL_FROM` were unset (`docs/HANDOFF.md` B14). §35 is live, so a payment already CLAIMS a
    receipt and then fails to send it. Requiring a purchase before that is
    fixed means the first person walled is also the first person to pay and
    get nothing in writing.
 2. **One real purchase has been proved end to end** on the live Razorpay key,
    with the webhook delivering **200** — and a refund exercised once.
-3. **§36 (three plans from the matrix) has run.** Probed live on 12 Oct
+3. **§36 (three plans from the matrix) has run — SATISFIED, run live 12 Oct
+   2026.** Before it ran, probed live on 12 Oct
    2026: `starter`, `indie` and `pro` all carry an EMPTY `features` map, so
    `allowed()` finds no key and permits everything. Require purchases before
    §36 runs and the three paid tiers are indistinguishable — a Basic buyer

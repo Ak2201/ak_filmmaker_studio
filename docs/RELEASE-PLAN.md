@@ -1,5 +1,23 @@
 # Release plan — taking {{brand}} from "wired in test mode" to paying customers
 
+Last reviewed: 2026-10-19
+
+> **Status refresh, 19 Oct 2026 (the plan text below is the 9 Oct original; this box and the edited "State" cells
+> carry the changes).** Per `docs/HANDOFF.md` and `CLAUDE.md`: schema **§1 to §47 have all run live** (§26-§31 on 9 Oct,
+> §32-§39 on 12 Oct, §40-§47 on 13 Oct), so O4 is closed; **`rzp-refund` is deployed** (12 Oct), so O5 is closed; **§36 seeded
+> `plans.features`** from `plan-matrix.json` (12 Oct), so O6 is closed; the support inbox is `support@filmmakerstudio.in`
+> (O10 closed); the Google branding was **verified** (12 Oct, O12) and the sitemap **submitted and read** (12 Oct, O13). **The free
+> plan is retired (§38)**: the `free` row stays internally as "No plan", but there is no Free tier to sell, `price_notice()`
+> returns three plans, and every "Free" column or "Free (sample)" below is history. The production host is `filmmakerstudio.in`.
+> **`start.html` is now a generated marketing home and the plans live on `pricing.html`** (18 Oct); where this plan says
+> `/start#pricing` read `/pricing`. The trial (§30/§33) and the **price rise** (Basic 59900 to 99900, Intermediate 79900 to 149900,
+> Pro 99900 to 199900 paise at 2026-10-31T18:29Z, `price_notice()`) are live, so the list prices in section 1.1 and 4.1 are the
+> pre-rise ones. `purchases_required()` is still **false** (nothing is walled).
+> **Still open, all owner/browser:** live Razorpay key and webhook (O1-O3), a refund drill (O17) and a live purchase (O18), Resend
+> (`RESEND_API_KEY`, `MAIL_FROM`) before ANY real payment, the two-account RLS checks (O8), GSTIN (O9), WhatsApp number (O11),
+> the Meta link-card check (O14), the invite-or-open decision (O15, now also the `purchase_required` switch), the second admin sign-in (O16).
+> The marketing plan, channels and numbers in sections 5 to 11 are untouched and unverified here.
+
 Written 9 Oct 2026 on branch `sell/doc`. This is a plan, not a status report.
 Where it says something is live or not live it copies `docs/HANDOFF.md` §4,
 which is the authority; if the two disagree, HANDOFF §4 and the database win.
@@ -96,19 +114,19 @@ production deploy.
 
 | # | Step | Acceptance check | Steps are in | State |
 |---|---|---|---|---|
-| O1 | **Razorpay LIVE**: complete KYC for an individual seller, generate live key id + secret | Razorpay dashboard shows live mode enabled | `docs/BILLING.md` §1, `docs/LAUNCH.md` §6 | Not done; test mode works (HANDOFF §4) |
+| O1 | **Razorpay LIVE**: complete KYC for an individual seller, generate live key id + secret | Razorpay dashboard shows live mode enabled | `docs/BILLING.md` §1, `docs/LAUNCH.md` §6 | Not done; test mode works (HANDOFF §4) — still open 19 Oct |
 | O2 | Put the live key id in `VITE_RAZORPAY_KEY_ID`; set live key secret and webhook secret as Supabase function secrets only (never git) | `rzp-webhook` answers **401 "bad signature"** to an unsigned POST (the 503 to 401 transition is the proof) | `docs/BILLING.md` §1; HANDOFF §4 | Test-mode equivalents done; live not |
 | O3 | Register the **live** webhook URL in Razorpay and set the matching secret (two halves of one step) | `supabase secrets list` shows the digest; probe returns 401 | HANDOFF §4 | Not done for live |
-| O4 | Run schema **§20 to §29 in order**, in the same session as redeploying edge functions. HANDOFF §4 says **§20–§24 are already live**; §25 onward and §26 are **not run live**; §27 (refunds), §28 (Bill of Supply invoices) and §29 (leads, funnel) are built and need running. Read the live database first (`select` from the tables / functions) and run only what is missing, in order, asking before each SQL | Each section's read-back check in its `-- RUN` header passes; `npm run test:schema` green on PostgreSQL 16 before running live | `docs/BROWSER-HANDOFF.md` §1, `docs/LAUNCH.md` §4, `docs/BILLING.md` | §20–§24 live; §25–§29 pending (confirm §25 state) |
-| O5 | **Deploy the edge functions**: `rzp-order`, `rzp-verify`, `rzp-webhook --no-verify-jwt`, and the new **`rzp-refund`** | All four ACTIVE; `rzp-order` returns 401 without a JWT; `rzp-refund` returns 401/403 without an admin JWT | `docs/BILLING.md` §1 | Three deployed in test mode; `rzp-refund` built, not deployed |
-| O6 | **Seed `plans.features`** for each tier from `matrixFeatures(planId)` (`src/lib/plans.js`) so tiers really differ | In the console Features matrix, Free is sample-only; Basic has no Drive/AI if the matrix says so; matches `src/data/plan-matrix.json` | `docs/BILLING.md` §0; HANDOFF §6c R4 | Not seeded (matrix gates nothing until seeded) |
-| O7 | **Confirm prices in the admin console equal the landing page** (`free 0 / starter 59900 / indie 79900 / pro 99900` paise; landing stamps from `vite.config.js` `startFigures`) | Open `/start#pricing` and `admin.html` side by side; identical | HANDOFF §4, §6c P3 | Prices real; confirm at launch |
+| O4 | Run schema **§20 to §29 in order**, in the same session as redeploying edge functions. HANDOFF §4 says **§20–§24 are already live**; §25 onward and §26 are **not run live**; §27 (refunds), §28 (Bill of Supply invoices) and §29 (leads, funnel) are built and need running. Read the live database first (`select` from the tables / functions) and run only what is missing, in order, asking before each SQL | Each section's read-back check in its `-- RUN` header passes; `npm run test:schema` green on PostgreSQL 16 before running live | `docs/BROWSER-HANDOFF.md` §1, `docs/LAUNCH.md` §4, `docs/BILLING.md` | **DONE: §1–§47 all run live** (HANDOFF §6c, 13 Oct). Next free section is §48 |
+| O5 | **Deploy the edge functions**: `rzp-order`, `rzp-verify`, `rzp-webhook --no-verify-jwt`, and the new **`rzp-refund`** | All four ACTIVE; `rzp-order` returns 401 without a JWT; `rzp-refund` returns 401/403 without an admin JWT | `docs/BILLING.md` §1 | **DONE 12 Oct:** all four deployed and ACTIVE (`rzp-refund` had been 404 for three days; HANDOFF B19). Redeploy from current source after any change |
+| O6 | **Seed `plans.features`** for each tier from `matrixFeatures(planId)` (`src/lib/plans.js`) so tiers really differ | In the console Features matrix, Free is sample-only; Basic has no Drive/AI if the matrix says so; matches `src/data/plan-matrix.json` | `docs/BILLING.md` §0; HANDOFF §6c R4 | **DONE 12 Oct (§36, generated by `scripts/make-plan-features-sql.mjs`)**: Basic 15 / Intermediate 34 / Pro 40 features on. The "Free is sample-only" check no longer applies (free plan retired, §38) |
+| O7 | **Confirm prices in the admin console equal the landing page** (`free 0 / starter 59900 / indie 79900 / pro 99900` paise; landing stamps from `vite.config.js` `startFigures`) | Open `/start#pricing` and `admin.html` side by side; identical | HANDOFF §4, §6c P3 | Prices real; the rise on 31 Oct 2026 changes them, so re-confirm against `price_notice()`. The page is now `pricing.html` |
 | O8 | Run the **two-account RLS checks** (second real Google account) before taking money | Every row in `docs/SECURITY-RLS.md` ticked with a date; account B cannot read account A's film | `docs/SECURITY-RLS.md`, `docs/LAUNCH.md` §5 | Read side proven; two-account checks never run |
 | O9 | **GSTIN line** on Terms: supply the number or delete the sentence | `/terms` has no `[OWNER: GSTIN…]` marker | `docs/LAUNCH.md` §3, HANDOFF P8 | Open |
-| O10 | **Support inbox**: replace `supportEmail` in `src/data/brand.json` (still a personal Gmail) with a dedicated inbox; rebuild | Footer, legal pages, extension show the new address; `npm run test:brand` passes | HANDOFF §6c R "Owner steps left" | Open |
+| O10 | **Support inbox**: replace `supportEmail` in `src/data/brand.json` (still a personal Gmail) with a dedicated inbox; rebuild | Footer, legal pages, extension show the new address; `npm run test:brand` passes | HANDOFF §6c R "Owner steps left" | **DONE:** `brand.json` `supportEmail` is `support@filmmakerstudio.in` |
 | O11 | Optional: set `VITE_SUPPORT_WHATSAPP` (digits only) | Footer shows a WhatsApp help link that opens a chat | HANDOFF P11 | Open |
-| O12 | **Google Branding re-request** on 9 Oct 2026 or later | Branding status clears in the console | `docs/LAUNCH.md` §2, HANDOFF P6 | Open |
-| O13 | Submit `sitemap.xml` in Search Console | Property verified; sitemap shows "Success" | `docs/LAUNCH.md` §7 | Open |
+| O12 | **Google Branding re-request** on 9 Oct 2026 or later | Branding status clears in the console | `docs/LAUNCH.md` §2, HANDOFF P6 | **DONE, verified 12 Oct** (HANDOFF P6); the console still lists a gmail as user-support, left on purpose |
+| O13 | Submit `sitemap.xml` in Search Console | Property verified; sitemap shows "Success" | `docs/LAUNCH.md` §7 | **DONE 12 Oct:** `https://filmmakerstudio.in/sitemap.xml` read, status Success (HANDOFF P7). `public/sitemap.xml` now carries 16 URLs, so Search Console should be asked to re-read it |
 | O14 | Paste landing URL into WhatsApp and Instagram DM; run Meta's sharing debugger | Link card with image and hook appears | `docs/LAUNCH.md` §7 | Open |
 | O15 | Decide **invite-only or open** (`VITE_SITE_GATE`) and write the decision in `docs/LAUNCH.md` §1 | Decision recorded; deploy matches it | `docs/LAUNCH.md` §1, `docs/GATE.md` | Open (see §3 for the recommended staging) |
 | O16 | Second admin address (`VITE_ADMIN_EMAILS`) signs in once | Console shows both admins | HANDOFF P5 | Open |
@@ -120,7 +138,7 @@ production deploy.
 | Item | Where | Smoke check |
 |---|---|---|
 | One brand variable and no owner traces | `src/data/brand.json`, `npm run test:brand` | Footer name and OG card match brand.json |
-| Tier labels Free/Basic/Intermediate/Pro on unchanged ids | `src/lib/plans.js`; schema §26 (not run live) | Pricing table and console agree on names |
+| Tier labels Basic/Intermediate/Pro on unchanged ids starter/indie/pro (Free retired, §38) | `src/lib/plans.js`; schema §26 (run live 9 Oct) | Pricing table and console agree on names |
 | Plan matrix drives landing pricing | `src/data/plan-matrix.json` | Landing table matches the matrix |
 | Landing page, FAQ, pricing, screenshots | `start.html` (public, outside the gate) | `/start` loads signed out; sections `#features #pricing #faq` resolve |
 | Dashboard "Today's desk", UX audit fixes | HANDOFF §6c R6, R7 | Open dashboard in a fresh project |
@@ -134,7 +152,7 @@ production deploy.
 | Release gate script | `npm run ship` | Green; note T8: it does not yet run every `test:*` suite, so also run the ones in `docs/BRANCHING.md` |
 
 > Everything in the "Built, needs owner step" rows above is **not live** until
-> the owner steps run: run §27–§29 live, deploy `rzp-refund`.
+> the owner steps run. (19 Oct: §27–§29 have run live and `rzp-refund` is deployed, so what remains of these rows is the owner drills O17/O18 and Resend.)
 
 ### 2.3 Go / no-go rule
 
@@ -155,7 +173,7 @@ suggestions; shorten if gates close early, never skip a gate to hit a date.
 |---|---|---|
 | T-14 | Merge `feature/sell-ready` into `develop`, run the full release gate (`docs/BRANCHING.md`), promote to `main` only through it | Owner + a cloud session |
 | T-14 | Start Razorpay live KYC (it can take days); decide the dedicated support inbox | Owner |
-| T-13 | Run §25–§29 live in one session with edge function deploys (O4, O5); read back every object | Owner + browser session |
+| T-13 | ~~Run §25–§29 live in one session with edge function deploys (O4, O5)~~ done 9 to 13 Oct (§1–§47 live, `rzp-refund` deployed) | Owner + browser session |
 | T-12 | Seed `plans.features` (O6); confirm prices (O7) | Owner |
 | T-11 | Two-account RLS checks (O8) with a trusted friend as account B | Owner + friend |
 | T-10 | GSTIN decision (O9); set support inbox and WhatsApp (O10, O11); rebuild | Owner |
@@ -260,6 +278,8 @@ a rebuild, not just a console edit; keep both equal (O7).
 | Live share links | 0 | 3 | 10 | unlimited |
 | Organisation seats | 1 | 1 | 3 | 10 |
 | Chrome extension | no | yes | yes | yes |
+
+> 19 Oct: the **Free column is history** (free plan retired, §38) and these are the pre-rise list prices; the live tiers and limits are in `src/data/plan-matrix.json` and `price_notice()`.
 
 Limits come from `docs/BILLING.md` §0; feature rows come from the plan
 matrix. Cells marked "check matrix" must be read from the file when you

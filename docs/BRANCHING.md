@@ -1,5 +1,7 @@
 # Branching — develop, then main
 
+Last reviewed: 2026-10-19.
+
 Set by the owner on 8 Oct 2026: **all development happens on `develop`;
 `main` only receives work that has been tested.** `main` is what the hosts
 deploy, so it must always pass the release gate below.
@@ -137,17 +139,23 @@ Run on a clean checkout of `develop`, **uncapped**, with distinct
    proving **zero data-key movement** on every page.
 3. Every `npm run test:*` passes (`test:schema` needs
    `pg_ctlcluster 16 main start`). Any script in `scripts/` that has no npm
-   entry (`test-revisions`, `test-ai-coverage`, `prove-ai-coverage`) is either
-   given one or run by hand.
+   entry is either given one or run by hand. (The three named when this was
+   written now have entries; at 19 Oct the two without are `prove-admin-health.mjs`
+   and `prove-admin-people.mjs`, `docs/ADMIN-CONSOLE-TODO.md` C10.)
 4. `npm run prove:storage`, `prove:drive`, `prove:sw`, `build:extension` +
-   `prove:extension`.
+   `prove:extension`. CI's `proofs` job (`.github/workflows/gate.yml`) also runs
+   `prove:adoption`, `prove:story-path`, `prove:dialogs`, `prove:script`, `prove:ai-desk`,
+   `prove:cloud-delete`, `prove:growth`, `prove:ai-coverage` and `prove:nav` (the last
+   with `PROVE_DIST=dist-verify`); `npm run ship` is the local equivalent minus `prove:nav`
+   and `prove:ai-desk`.
 5. `npm run build` (gate ON), then `prove:gate` and `prove:billing`.
 6. First-paint budget (`scripts/budget.json`) holds, or the growth is
    justified in the commit and the file recaptured with
    `npm run verify -- --budget`.
 7. `CLAUDE.md`'s status table, `docs/HISTORY.md`, `docs/archive/FEATURE-IDEAS.md` and
    `docs/LAUNCH.md` describe what is being released.
-8. Any new Supabase schema section is listed in `docs/LAUNCH.md` §4 so the
+8. Any new Supabase schema section is listed in `docs/LAUNCH.md` §4 (and
+   `supabase/schema/README.md`, where the SQL now lives) so the
    owner runs it **before** the release goes live.
 
 Then:
@@ -159,6 +167,12 @@ git push origin main
 ```
 
 ## Today's position
+
+**19 Oct 2026:** local `main` still points at its 11 Oct 2026 commit and `develop` is 303
+commits ahead of it (`git log main..develop`; `develop..main` is empty). That is the open
+release `docs/HANDOFF.md` describes as the owner's call, now much larger — re-run the gate
+below rather than trusting any count quoted in a document. Production is promoted by hand
+(section above), so a merge to `main` does not itself change the public site.
 
 The first release ran on 8 Oct 2026: the ten workstreams, gated on
 `feature/integration`, merged into `develop` and then into `main`
@@ -181,7 +195,7 @@ failed resource by its URL.
   checks report but do not block.
 - **CI exists since 9 Oct 2026**: `.github/workflows/gate.yml` ("Gate") runs
   steps 2–5 on every pull request into `main` or `develop`, on every push to
-  `develop`, and by hand (Actions → Gate → Run workflow). Three parallel
+  `develop` or `main` (main as a backstop, since 11 Oct), and by hand (Actions → Gate → Run workflow). Three parallel
   jobs: `tests` (`test:all` against a `postgres:16` service), `verify`
   (open build, uncapped, log kept 7 days on failure) and `proofs` (gated
   build and every `prove:*`). The first-paint budget (step 6) is inside

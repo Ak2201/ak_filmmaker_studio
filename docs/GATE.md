@@ -1,5 +1,7 @@
 # The gate — switching it on, and what it does once it is
 
+Last reviewed: 2026-10-19. Live state of every schema section is recorded in `docs/HANDOFF.md` §4; the SQL lives in `supabase/schema/` (run order in `supabase/schema/README.md`).
+
 `supabase/schema/supabase-schema.sql` sections 13 and 14 are the invite gate: codes, the
 invite-request queue, the one-device lock, screening passes, the admin
 console. **Both ran against the live project on 5 October 2026** (dashboard
@@ -73,9 +75,12 @@ consumed the one trial an account ever gets, before the person had read what it
 was, would spend it for them. The single exception is a redeemed code, where
 the press was the code submission.
 
-Exempt from the gate entirely: `invite.html`, `screening.html`, `start.html`,
-`privacy.html`, `terms.html`, `refund.html`, and everything inside the Chrome
-extension, which has its own gatekeeper.
+Exempt from the gate entirely (the `EXEMPT` pattern in `src/lib/sitegate.js`):
+`invite.html`, `screening.html`, `start.html`, `purchase.html`, `pricing.html`,
+the generated `product-<id>.html` pages, `privacy.html`, `terms.html`,
+`refund.html`, and everything inside the Chrome extension, which has its own
+gatekeeper. (This list used to stop at `refund.html`; `purchase`, `pricing` and
+`product-*` were added with the purchase page and the public marketing site.)
 
 Local work is hidden from a visitor outside the gate; it is never deleted or
 touched, and it is all there the moment they are let in.
@@ -86,13 +91,18 @@ any other build, because it measures every page signed out. `npm run
 prove:gate` refuses the open build. `npm run ship` does both in order. The
 build stamps which it is into `<meta name="fms-site-gate">` on every app page.
 
-**The application console** is `admin.html`, six tabs — Overview (schema
-§15: everyone who has signed in, members, the queue, organisations, seats,
-films, live sessions), Organisations, People, Access (requests, codes,
-members, sessions, moved there from `settings.html`), Billing and Features.
-One tab on screen at a time; `admin.html#billing` lands on Billing. Reached
-from the rail (shown to admins), the account menu, or the pointer on
-Settings. Shown by the server-reported role; every RPC re-checks.
+**The application console** is `admin.html`, now eleven tabs in four groups
+(`TAB_DEFS` in `src/lib/admin-model.js`): Run — Overview (schema §15: everyone
+who has signed in, members, the queue, organisations, seats, films, live
+sessions), Launch & health, Audit log; People — People, Support, Access &
+sharing (requests, codes, members, sessions); Money — Purchases, Growth;
+Product — Usage, Sync & storage, Controls. (It was six tabs — Overview,
+Organisations, People, Access, Billing, Features — when this was written;
+the admin sections are in `docs/ADMIN-CONSOLE.md`.) One tab on screen at a
+time; fragments such as `admin.html#audit` land on a tab. Reached from the
+rail (shown to admins), the account menu, or the pointer on Settings. Shown
+by the server-reported role; every RPC re-checks, and since §46 the writers
+also check the admin's role (owner / finance / support).
 
 ## 1. Order of operations
 
@@ -154,7 +164,7 @@ visitor ── Google sign-in ──► studio_status()
                    verify → redeem   request_invite(): email + name from
                         │            auth.users, a note, the browser
                         │                   │
-                        │            admin console (settings.html)
+                        │            admin console (admin.html, Access & sharing)
                         │              APPROVE → studio_members row
                         │              DECLINE → note, 7-day cooling-off
                         └────────┬────────┘
@@ -186,9 +196,9 @@ visitor ── Google sign-in ──► studio_status()
 
 | Thing | Where |
 |---|---|
-| SQL | `supabase/schema/supabase-schema.sql` §13, §14, §15 (the console's counts) — all three deployed 5 Oct 2026 |
+| SQL | `supabase/schema/supabase-schema.sql` §13, §14, §15 (the console's counts) — all three deployed 5 Oct 2026; §32 (purchases switch) is what the site gate now follows |
 | The site gate | `src/lib/sitegate.js` (imported by `src/ui/chrome.js`), the `data-sitegate` rule in `base.css` |
-| The console | `admin.html`, `src/pages/admin.js`, `src/styles/admin.css` |
+| The console | `admin.html`, `src/pages/admin.js`, `src/pages/admin-tabs/`, `src/lib/admin-model.js`, `src/styles/admin.css` |
 | Client calls | `src/lib/gate.js` (`status`, `requestInvite`, `admin.listRequests`, `admin.decideRequest`) |
 | The decision | `src/lib/cloud.js` `runGate()`, `getGateState()`, `gateDetail()` |
 | The doorway | `invite.html`, `src/pages/invite.js`, `src/styles/invite.css` |
@@ -196,7 +206,7 @@ visitor ── Google sign-in ──► studio_status()
 | Code box + admin console | `src/ui/gate-ui.js` |
 | Pill and account menu | `src/ui/auth.js` |
 | Extension panel | `src/pages/panel.js` |
-| Proof against a fake Supabase | `scripts/prove-gate.mjs`, `scripts/fake-supabase.mjs` |
+| Proof against a fake Supabase | `scripts/prove-gate.mjs`, `scripts/fake-supabase.mjs` (`npm run prove:gate`; the check count has moved with every change, so none is quoted here) |
 
 ## 5. What is proved, and what is not
 

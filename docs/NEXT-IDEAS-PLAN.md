@@ -1,7 +1,38 @@
 # Next ideas: the plan (12 Oct 2026)
 
 Twenty ideas from the post-revamp list, put in order, with what each one touches, what it
-costs, what could go wrong, and what only the owner can decide. Nothing here is built yet.
+costs, what could go wrong, and what only the owner can decide.
+
+Last reviewed: 2026-10-19
+
+> **Status, 19 Oct 2026: Phases 1 and 2 are BUILT; Phase 0 is partly done; Phase 3 is OPEN
+> (nothing built, every item still waits for an owner decision).** Checked against the code and
+> `git log`; the body below is the original plan text, kept as the record.
+>
+> | Item | Status | Where |
+> |---|---|---|
+> | 0.1 recapture the baseline | Done, and repeated deliberately after later merges | `0dc034d`, `7ec6bf3`, `1a98756`, `1e5569e` |
+> | 0.2 run the blind-edited proofs | Superseded by the release gates (see `ff9668a`); `prove:storage`/`prove:drive` still cannot run in the sandbox (proxy). Not re-verified here | `docs/HANDOFF.md` |
+> | 0.3 `prove:preprod` | **Not built** (no such script; `prove:walk` and `prove:nav` cover other walks) | `package.json` |
+> | 0.4 dead-code sweep | Not verified | n/a |
+> | 1.1 Today line | Built (`src/pages/hub/today-line.js`), then **switched off on Home on 17 Oct** (`8124b03`): `#todayLine` stays hidden, the module is kept and can be mounted again | `src/pages/hub.js` |
+> | 1.2 dashboard card shows the path | Built (lazy `preprod-path.js` in `dashboard.js`) | `4007879` |
+> | 1.3 search lands on the script line | Built (`screenplay.html#line-<id>`; the page is `screenplay.html`, not `script.html`) | `3e98ff2`, `src/ui/palette.js` |
+> | 1.4 search prefixes and recents | Built (`>` `#` `@`, in-memory recents) | `3e98ff2` |
+> | 1.5 scene list keyboard flow | Built | `3d5c0a5` |
+> | 1.6 shoot-day stripe | Built (`.bd-sl-day`) | `3d5c0a5` |
+> | 1.7 saved filters (in memory) | Built (`.bd-sl-preset`, kept until reload) | `3d5c0a5` |
+> | 1.8 backup health badge | Built (`src/ui/topbar-backup.js`) | `4007879` |
+> | 1.9 plan usage in the Account tab | Built (`usageList()` in `settings.js`) | `4007879` |
+> | 2.1 drag to reorder scenes | Built | `3d5c0a5` |
+> | 2.2 ready-to-shoot PDF | Built (`src/lib/ready-pdf.js`, `ready-sheet.js`, `test:ready-sheet`) | `7216c43` |
+> | 2.3 sunrise/sunset on the recce | Built (`plan.js` recce card) | `7216c43` |
+> | 2.4 restore preview for Drive backups | Built (`test:backup-summary`) | `88de40f` |
+> | 2.5 referral on the Purchase page | Built (referral panel and link) | `88de40f` |
+> | 3.1 to 3.5 | **Open.** No path-notes key, no stored filters, no clone-a-path, no weekly e-mail, no receipt-resend RPC. `RESEND_API_KEY` / `MAIL_FROM` are still unset (`docs/HANDOFF.md` B14) | n/a |
+>
+> Later changes that touch the wording below: the Breakdown page is now a catalog panel plus filter deck
+> (Celtx lane, 17 Oct), the tool-page strip is "one frame per page", and `docs/HISTORY.md` items 48 to 51 are the record.
 
 ## How to read this
 

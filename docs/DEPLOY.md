@@ -1,5 +1,10 @@
 # Deploying FilmMakerStudio
 
+Last reviewed: 2026-10-19. Release flow (develop to main, the gate) is `docs/BRANCHING.md`;
+what is live is `docs/HANDOFF.md` §4. This file was first written for v1 (local-only) and
+the account layer, both of which have since shipped; passages that described them as
+future are marked.
+
 Static build, no server. The app is **local-first**: everything a user
 writes lives in their own browser. The Supabase account layer is
 optional and can ship later — see [v1.1](#v11--the-account-layer).
@@ -47,36 +52,47 @@ production. That is the whole of the difference day to day.
 
 ```bash
 npm ci
-npm run ship      # build + verify; refuses to pass if the gate is red
+npm run ship      # the whole gate: test:all, build:open + verify, the prove:* scripts, then build
 ```
+
+`npm run ship` is no longer "build + verify": it runs `test:all`, `build:open` and `verify`
+(verify refuses a gated `dist/`; the open build is the only one it accepts), a series of
+`prove:*` scripts, then the real gated `build`, which is the output the hosts serve (gate
+ON). The quick pre-commit check CLAUDE.md names is `npm run build:open && npm run verify`.
 
 `verify` must print `✓ all pages pass`. It is not a linter — it is the
 thing standing between a refactor and somebody's lost screenplay. It
-checks, across 13 pages:
+checks, across the pages in `scripts/baseline.json` (26 today; 13 when this
+table was written):
 
 | | |
 |---|---|
 | data-key parity | the storage contract. A renamed key orphans saved work |
 | text coverage | no prose silently disappeared |
-| contrast | WCAG AA, 4 themes × 5 skins, modals open |
+| contrast | WCAG AA on every theme × skin (one of each now: dark, `studio`), modals open |
 | overflow | none at 390px, menus open and shut |
 | inline handlers | zero, including inside modals — they are inert under our CSP |
 | idle writes | zero in four seconds (the save-loop regression test) |
-| themes / skins | 4 and 5, each visibly distinct |
-| backup round trip | all 14 scoped keys restored, per project, none crossed over |
+| themes / skins | counted from the app, not named (one each since 14 Oct 2026) |
+| backup round trip | two projects out and back, every scoped key restored per project, none crossed over |
 
 **If it is red, do not deploy.** Every failure it has ever reported has
 been real.
 
 ### 2. Push
 
+Develop on `develop` and release to `main` through the gate in `docs/BRANCHING.md`;
+never push unfinished work to `main`. Pushing `main` redeploys production.
+
 ```bash
-git push -u origin main
+git push -u origin main   # only after the release gate in docs/BRANCHING.md
 ```
 
 ### 3. Deploy
 
-Netlify (`netlify.toml` is committed, with the headers):
+The live hosts are on Vercel (see the table above). `netlify.toml` is committed and kept
+in step with `vercel.json` (CSP `connect-src` must name the same origins in both), but no
+Netlify site is recorded as deployed. For Netlify:
 
 ```bash
 npx netlify deploy --prod --dir=dist
@@ -135,10 +151,17 @@ On the real URL, not localhost:
 Step 6 is the one worth doing properly. It is the only backup a
 local-first app has.
 
-### 6. Offline / PWA — untested, test it first
+### 6. Offline / PWA
 
-The service worker has **never been observed working**, and the cause
-is now established rather than assumed. On the preview server
+> **Update 10 Oct 2026:** on the production host the worker WAS observed — one active
+> worker, typed `.html` URLs open (`docs/BROWSER-HANDOFF.md` §0 RESULT 0.2 item 2), and
+> `npm run prove:sw` checks it against a cleanUrls host. The dev preview deliberately
+> registers none (`VITE_DISABLE_SW=1`). Whether the OFFLINE shell works end to end is
+> still only what steps 1-3 below would show. The text that follows is the original
+> account from the build environment.
+
+The service worker had **never been observed working** when this was written, and the cause
+was established rather than assumed. On the preview server
 (`localhost`, a secure context, worker served 200 as `text/javascript`
 with valid content and no module syntax) registration still fails with
 Chromium's opaque *"An unknown error occurred when fetching the
@@ -167,15 +190,22 @@ VITE_DISABLE_SW=1 npm run build
 
 ## v1.1 — the account layer
 
+> **DONE.** The account layer is live: schema §1–§47 have run on project
+> `conhlrulxfwkhsnymakz`, Google sign-in works on both hosts, and the Supabase Site URL and
+> redirect allow-list cover both (`docs/HANDOFF.md` §4, `docs/LAUNCH.md` §4 and §7a). The
+> steps below are the recipe for a fresh project, not a to-do list.
+
 **Each step is useless without the one before it. Do them in order.**
 
 ### 1. Run the schema — nothing works until this happens
 
-`supabase/schema/supabase-schema.sql` has never been executed against the live project.
-Until it runs, sign-in will *appear* to succeed and every sync will
+On a fresh project, `supabase/schema/supabase-schema.sql` (§1–§39) is run first, then
+`supabase/schema/schema-40..47` in order (`supabase/schema/README.md`). It has run on the
+live project. Until it runs on a new one, sign-in will *appear* to succeed and every sync will
 fail against tables that do not exist.
 
-Supabase → SQL Editor → run the whole file. Then check:
+Supabase → SQL Editor → run the file (checksummed: never paste SQL through the clipboard
+unhashed, see `supabase/schema/README.md`). Then check:
 
 ```sql
 select tablename from pg_tables where schemaname = 'public';
@@ -188,21 +218,21 @@ Every table must have `relrowsecurity = true`. RLS off on
 
 ### 2. Fix the Site URL
 
-Supabase → Authentication → URL Configuration. It still points at
-`ak-filmmaker-studio.vercel.app`. Set it to your real origin and add
-`/**` to Additional Redirect URLs — the app returns the user to
-whichever of the 13 pages they signed in from.
+Supabase → Authentication → URL Configuration. A new project must set the Site URL to
+the real origin (`filmmakerstudio.in`; it once pointed at the dead
+`ak-filmmaker-studio.vercel.app`) and add `/**` entries for BOTH hosts to Additional
+Redirect URLs (done for the live project, `docs/LAUNCH.md` §7a item 4).
 
 ### 3. Google OAuth
 
-Follow `docs/GOOGLE-AUTH.md`. It has the click-path and the traps,
-including the consent-screen state that produces a bare `access_denied`
-with no explanation.
+Follow `docs/GOOGLE-AUTH.md` for the click-path and the traps (including the
+consent-screen state that produces a bare `access_denied`), and `docs/LAUNCH.md` §2 for
+the live project's actual configuration.
 
 ### 4. Test on two devices
 
-Cross-device continuity is the whole point of the account layer and has
-never been exercised. Sign in on one machine, write, sign in on
+Cross-device continuity is the whole point of the account layer; no record in
+`docs/HANDOFF.md` or `docs/LIVE-CHECKS.md` shows it exercised end to end. Sign in on one machine, write, sign in on
 another, confirm it arrives — then edit both while offline and confirm
 neither silently wins.
 
@@ -226,11 +256,12 @@ account layer is additive — turning it off loses no local work.
 Stated plainly, because "untested" and "broken" are different things
 and only a deployment can tell them apart:
 
-- **Offline / PWA** — never observed working. Proven to be the build
-  environment blocking worker fetches, not the app; see step 6
-- **Google sign-in** — the code path is built and exercised up to and
-  back from the redirect, but no real login has ever completed
-- **RLS, realtime, cross-device sync** — need a live project
+- **Offline / PWA** — registration observed working on production (10 Oct 2026);
+  the offline shell itself is still unrecorded; see step 6
+- **Google sign-in** — works: a real login completed on the preview and production hosts
+  (`docs/BROWSER-HANDOFF.md` §0 RESULT 0.2 item 4)
+- **RLS, realtime, cross-device sync** — the RLS read side is proven live; the checks
+  needing two real accounts have never run (`docs/SECURITY-RLS.md`)
 - **Safari `afterprint`** — PDF cleanup has a timeout fallback, untested
 - **The 101-page feature-blueprint PDF** is correct but long: `print.css`
   gives each step its own page on purpose
@@ -240,7 +271,7 @@ and only a deployment can tell them apart:
 ## Adding a page later
 
 1. `vite.config.js` → add the entry
-2. `scripts/verify-migration.mjs` → add it to `PAGES`
+2. `scripts/verify-migration.mjs` → add it to its page list (`ALL_PAGES`, filtered into `PAGES`)
 3. `src/data/navigation.json` → add the module, `status: "planned"`
    until it is real
 4. `npm run build && npm run baseline` — **deliberately**, and say so in
@@ -249,7 +280,6 @@ and only a deployment can tell them apart:
    thing the new baseline captures is the thing you meant.
 
 A new **storage key** needs four registrations or it silently misbehaves
-— `SCOPED_KEYS`, hub's `PROJECT_KEYS` and `ALL_KEYS`, and the Supabase
-scope list. Miss the backup map and the key is exported by nothing and
-restored by nothing. The round-trip check in `verify` covers all 14
-keys and will catch it.
+— `SCOPED_KEYS`, `PROJECT_KEYS` (now in `src/lib/backup.js`, not the hub), `ALL_KEYS` (still
+on the hub) and the Supabase scope list. Miss the backup map and the key is exported by nothing and
+restored by nothing. The round-trip check in `verify` will catch it.

@@ -1,5 +1,7 @@
 # Build history — the open items, as they were worked
 
+Last reviewed: 2026-10-19. **This is a historical log, not current documentation.** Paths, counts and "not run live" statements below were true when written and are NOT kept up to date; some files named here have since moved (SQL to `supabase/schema/`, superseded plans to `docs/archive/`). For the live state read `docs/HANDOFF.md` and `CLAUDE.md`.
+
 This is the "Open items" section that lived in CLAUDE.md until 7 Oct 2026,
 moved here verbatim because it had grown to half that file and almost all
 of it records FINISHED work: the reasoning, the dead ends and the

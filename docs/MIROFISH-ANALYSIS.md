@@ -46,15 +46,22 @@ seed docs ──► ontology + graph ──► personas ──► simulation ─
 | Report | `report_agent` | A ReACT loop: it plans an outline of 2–5 sections, then writes each section with at least 3 and at most 5 tool calls. The tools are `insight_forge` (decompose and search), `panorama_search`, `quick_search` and `interview_agents` (asks up to 10 live agents). The output is Markdown plus a step log. |
 | Chat | `report_agent.chat` | Follow-up questions against the saved report, with at most 2 tool calls. |
 
-**Stack.** Python 3.11–3.12 (uv) behind a Flask-style API on :5001, a Node
-frontend on :3000, and Docker Compose. It needs any OpenAI-compatible LLM (the
+**Stack.** Python 3.11–3.12 (uv) behind a Flask API on :5001 (`FLASK_PORT`).
+It pins `camel-oasis==0.2.5`, `camel-ai==0.2.78` and `zep-cloud==3.25.0`.
+The frontend is Vue on Vite and serves on :3000, and Docker Compose. It needs any OpenAI-compatible LLM (the
 README recommends qwen-plus) and a `ZEP_API_KEY`.
 
 **Cost.** The README itself warns that runs are "high consumption" and suggests
 starting under 40 rounds. The cost drivers are agents × rounds × two platforms,
-plus one memory ingestion per action, plus interviews and the report. The calls
-that drive agent decisions run inside OASIS, so the per-run cost cannot be read
-from MiroFish's own code.
+plus one memory ingestion per action, plus interviews and the report. The
+runner scripts in `backend/scripts/` make this concrete.
+`get_active_agents_for_round()` in `run_parallel_simulation.py` wakes 5–20
+agents per simulated hour per platform by default; the LLM-written config
+may raise that to 50. The count is then multiplied by 1.5 at peak hours and
+0.3 off-peak, and each woken agent is one LLM decision. With the default
+60-minute rounds, the README's "under 40 rounds" works out to roughly
+**400–1,600 agent calls**. That is before persona generation, Zep ingestion
+and the report.
 
 **Maturity.** It is a viral, young project. Its finance and politics examples
 are still "coming soon", and the demos are curated (a campus opinion case, an
@@ -159,7 +166,27 @@ plumbing, plus one chart.
    AGPL project is fine; copying its **code or prompts verbatim** is not
    without accepting AGPL. Write the prompts here from scratch.
 
-## 7. Sources
+## 7. Checked against the source (19 Oct 2026)
+
+A shallow clone of `main` at `7657031` (2 Oct 2026) was read, not run.
+Installing and executing it was refused in the session's sandbox. It
+could not have simulated anything anyway: a run needs an `LLM_API_KEY`
+(OpenAI-compatible) and a `ZEP_API_KEY`, and neither was available. Every
+claim above was checked by reading the code:
+
+| Claim | Where it holds |
+| --- | --- |
+| AGPL-3.0 | `LICENSE`, `package.json`, `backend/pyproject.toml` |
+| OASIS runs as a subprocess | `simulation_runner.py:539` (`subprocess.Popen`), per-process `_processes` dict at :229 |
+| Five personas in parallel, retries with temperature 0.7 − 0.1 × attempt, 3,000-char context | `oasis_profile_generator.py:901`, `:581`, `:732` |
+| Report: at least 3 and at most 5 tool calls per section, 5 iterations, 2 tool calls per chat | `report_agent.py:1327`, `:882`, `:1326`, `:888` |
+| Interview up to 5 agents by default | `zep_tools.py:1275` |
+| 60-minute rounds, 5–20 (up to 50) agents per hour | `simulation_config_generator.py:91`, `:94`, `:571`; `run_parallel_simulation.py:1040` |
+
+The repo ships its own pytest suite (20 files in `backend/tests/`, mostly
+the Zep and LLM-JSON contracts). It was not run here, for the same reason.
+
+## 8. Sources
 
 - MiroFish repository and README: <https://github.com/666ghj/MiroFish> (read 19 Oct 2026).
 - `backend/app/services/oasis_profile_generator.py`, `simulation_runner.py`, `report_agent.py` (main, 19 Oct 2026).

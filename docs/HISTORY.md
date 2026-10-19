@@ -2211,3 +2211,21 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     in `baseline.json` (like start.html), so a missing word there is read in
     a browser, not by the gate; `test:marketing` and `prove:growth` (no
     `supabase-*` or `studio-*` chunk on a product page) are what watch them.
+
+52. **Celtx gaps, round 1 (19 Oct 2026).** From the owner's Celtx comparison
+    (replica-skill recon → diff → entrepreneur; parity 76.4/100, the one
+    must-have gap being co-writing presence). Six of the fifteen modules item
+    48 switched off came back, because they answer gaps the comparison
+    found: `auto-tag`, `screen-time` and `cast-matrix` on Intermediate
+    (Celtx's breakdown is manual tagging), `shoot-day`, `edit-log` and
+    `deliverables` on Pro (Celtx stops at the call sheet). The change is the
+    matrix and `OFF_BY_DEFAULT` only, with §36 regenerated; the page code
+    had never been touched. Fallout the checks caught: `test:plans` listed
+    `post` as an all-off stage (now none), `test:launcher-rows` wanted the
+    six in a project-home row (Shoot Day joins Shoot; a new Finish row holds
+    the post pair) and `test:marketing` wanted them in a pricing comparison
+    group (a new Post-production group). Re-baselined deliberately: the only
+    words lost were the "Not available" card on shoot, edit and deliverables;
+    every other page only gained module labels. Owner step: re-run §36 live
+    (the live map still says true for all six on Pro from 12 Oct, so the
+    gap is harmless meanwhile).

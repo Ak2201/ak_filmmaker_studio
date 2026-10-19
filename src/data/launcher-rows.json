@@ -4,12 +4,14 @@
     { "id": "write", "label": "Write", "hue": "hue-library", "sym": "edit_note",
       "modules": ["story-beats", "screenplay", "revisions", "docs", "import-script"] },
     { "id": "breakdown", "label": "Breakdown", "hue": "hue-feature", "sym": "fact_check",
-      "modules": ["breakdowns", "scene-list", "elements", "sides", "reports"] },
+      "modules": ["breakdowns", "scene-list", "elements", "auto-tag", "screen-time", "cast-matrix", "sides", "reports"] },
     { "id": "visualize", "label": "Visualize", "hue": "hue-visualize", "sym": "view_carousel",
       "modules": ["shot-list", "storyboard"] },
     { "id": "plan", "label": "Plan", "hue": "hue-plan", "sym": "event_note",
       "modules": ["stripboard", "dood", "calendar", "locations", "contacts", "budget"] },
     { "id": "shoot", "label": "Shoot", "hue": "hue-shoot", "sym": "videocam",
-      "modules": ["call-sheets"] }
+      "modules": ["call-sheets", "shoot-day"] },
+    { "id": "finish", "label": "Finish", "hue": "hue-shorts", "sym": "movie",
+      "modules": ["edit-log", "deliverables"] }
   ]
 }

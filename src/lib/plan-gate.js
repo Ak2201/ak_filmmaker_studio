@@ -119,7 +119,7 @@ export function allowed(key) {
    module is CORE). A module on this list is not an upsell: no plan sells
    it, so nothing offers a PLAN flag or a SEE PLANS card - it is simply
    not there (isDisabledEverywhere, below). */
-export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'idea-vault', 'pitch-deck', 'script-breakdown', 'auto-tag', 'songs', 'screen-time', 'cast-matrix', 'lookbook', 'media', 'shoot-day', 'edit-log', 'deliverables'];
+export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'idea-vault', 'pitch-deck', 'script-breakdown', 'songs', 'lookbook', 'media'];
 /* Ids the plan rows showed NO plan above this one offers - an admin kill
    switch on a module the plans otherwise carry. Filled by loadFlagNames. */
 let offersNone = new Set();
@@ -143,7 +143,10 @@ export function isDisabledEverywhere(id) {
      features map cannot bring one of these back: the live §36 was run on
      12 Oct, before 15 modules were switched off, so it still says true
      for them on Pro, and trusting it put every one back in the rail's
-     flyouts. A module comes back by giving it a plan in the matrix. */
+     flyouts. A module comes back by giving it a plan in the matrix -
+     which is how six came back on 19 Oct 2026 (owner, after the Celtx
+     comparison): auto-tag, screen-time and cast-matrix on Intermediate,
+     shoot-day, edit-log and deliverables on Pro. */
   if (OFF_BY_DEFAULT.includes(id)) return true;
   if (!features) return false;
   if (purchaseReq === false) return features[id] === false;

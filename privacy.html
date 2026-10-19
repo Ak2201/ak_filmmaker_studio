@@ -47,8 +47,9 @@
     <li>Payment data is described exactly: the payment record Razorpay sends us can include
     your phone number, UPI ID or bank name, never a full card number.</li>
     <li>New: receipt and refund e-mails (sent through Resend), invoices, session records
-    (IP address and browser type), screening passes, the Chrome extension, support records,
-    and what an administrator can and cannot see.</li>
+    and sign-in history (IP address and browser type), team invitations, what we give
+    Razorpay at checkout, screening passes, the Chrome extension, support records, and who
+    else can see your data, administrators included.</li>
     <li>Account deletion now says what is removed and what is kept (an invoice with your
     name and e-mail taken off it).</li>
     <li>Google Fonts is gone from the list of providers: our typefaces are served from our
@@ -90,9 +91,13 @@ kept in the tab&rsquo;s session storage so the code survives the trip to Google 
   <li><strong>Session records</strong> &mdash; your account is used on one device at a
   time. To do that we keep one record per account: a random session identifier, when the
   device last checked in (about every 30 seconds while the studio is open), and that
-  device&rsquo;s IP address and browser type. The IP address is shown to you if another
-  device takes over the session, and to administrators; it is never used to grant
-  access.</li>
+  device&rsquo;s IP address and browser type. The IP address is visible to our
+  administrators; if another device holds your session, you are shown only its browser type
+  and when it last checked in. The IP address is never used to grant access.</li>
+  <li><strong>Sign-in history</strong> &mdash; separately, our sign-in provider (Supabase)
+  keeps a record of each sign-in: when it started, the IP address and the browser type. Our
+  administrators can see your five most recent. These records end when you sign out of that
+  sign-in, and are deleted with your account.</li>
 </ul>
 
 <h3>Synced project data</h3>
@@ -103,7 +108,9 @@ settings, story and characters, the screenplay and its drafts, scenes, shots, lo
 the schedule, contacts (including any phone numbers and e-mail addresses you type for your
 crew), costs, songs, festival plans, the idea vault, the edit log, deliverables, writing
 goals and the activity log. The scene bin stays on your device only. Comments, share links
-and collaborator lists you create are stored with the project.</p>
+and collaborator lists you create are stored with the project. If you invite someone to a
+seat on your team (organisation) account, we store the e-mail address you invite, the role
+you give them and whether they have joined.</p>
 <p>You can turn cloud sync off at any time in Settings &rarr; Cloud sync; changes then stay
 on that device until you turn it back on. Settings &rarr; Danger zone &rarr; &ldquo;Delete my
 cloud projects&rdquo; deletes the cloud copy of every project you own and leaves the copies
@@ -113,13 +120,16 @@ on your device.</p>
 
 <h3>When you buy a plan</h3>
 <p>Payments are processed by Razorpay. <strong>Your full card number, CVV, UPI PIN and
-banking passwords are entered with Razorpay and never reach us.</strong> We keep:</p>
+banking passwords are entered with Razorpay and never reach us.</strong> When you start a
+purchase we give Razorpay your name and e-mail address, to fill in its checkout, and our
+internal identifier for your account, to match the payment to it. We keep:</p>
 <ul>
   <li>the order: plan, amount, currency, date, status (for example paid or refunded), the
   Razorpay order and payment identifiers, and any promo or referral code used;</li>
   <li>the payment record Razorpay sends us when a payment is confirmed. Depending on how you
   paid, it can include the payment method, the e-mail address and phone number you gave at
-  checkout, your UPI ID, or the name of your bank or wallet;</li>
+  checkout, your UPI ID, the name of your bank or wallet, or, for a card, its network, type,
+  issuer and last four digits;</li>
   <li>the invoice we issue for the purchase (a Bill of Supply): its number, your name and
   e-mail address, a GSTIN if you give us one, the plan, the amount and the date;</li>
   <li>refund records and any refund request you send (its reason category and your
@@ -130,8 +140,8 @@ banking passwords are entered with Razorpay and never reach us.</strong> We keep
 
 <h3>Receipts and refund e-mails</h3>
 <p>After a purchase we e-mail a receipt to your account&rsquo;s address, and we e-mail you
-again when a refund is processed or fails. These are sent through Resend. They carry the
-invoice number, the plan, the amount, the date and the Razorpay payment or refund
+again when a refund is processed or fails. These are sent through Resend, which receives
+your name and e-mail address to deliver them. They carry the invoice number, the plan, the amount, the date and the Razorpay payment or refund
 identifier. We do not send marketing e-mail without your consent.</p>
 
 <h3>When you use AI features</h3>
@@ -280,15 +290,20 @@ in the side panel work exactly as they do on the website.</p>
   deleted.</li>
   <li><strong>What deletion keeps</strong> &mdash; invoices, because the law requires them,
   with your name, e-mail address and GSTIN removed; a one-way fingerprint (hash) of your
-  e-mail address, so that it is not added back to our lists; and the log of actions our
-  administrators took on your account, which records what was done and when, never your
-  project content.</li>
+  e-mail address, so that it is not added back to our lists; the log of actions our
+  administrators took, which records what was done and when, never your project content,
+  and which can include your e-mail address where an action was about it (access given to
+  an address, for example) or where you were an administrator yourself; and comments you
+  left on other people&rsquo;s projects, which stay with your name replaced by
+  &ldquo;Deleted user&rdquo;.</li>
   <li><strong>Invoices</strong> &mdash; for as long as Indian tax and accounting law
   requires (generally up to eight years).</li>
   <li><strong>Invite requests</strong> &mdash; until they are decided and for a reasonable
   period afterwards, so that repeat requests can be handled fairly.</li>
   <li><strong>Session records</strong> &mdash; one per account, replaced each time you
   start a session on a new device.</li>
+  <li><strong>Sign-in history</strong> &mdash; kept by our sign-in provider until you sign
+  out of that sign-in, and deleted with your account.</li>
   <li><strong>Per-account call counts</strong> behind the usage totals &mdash; 48 hours.</li>
   <li><strong>Server logs</strong> &mdash; for a short period set by our hosting and
   database providers.</li>
@@ -316,23 +331,29 @@ may complain to the Data Protection Board of India.</p>
 
 <h2>9. Security, and who can see your data</h2>
 <p>Data in transit is encrypted with HTTPS. Our database checks every request against the
-signed-in account, so synced data can be reached only by you and the people you share a
-project with.</p>
+signed-in account, so synced data can be reached only by you and the people listed
+below.</p>
 <ul>
   <li><strong>Collaborators</strong> &mdash; a share link lets someone who signs in see,
   comment on or edit the whole project, as you chose when you made the link, until it
   expires or you remove it.</li>
+  <li><strong>Team owners and admins</strong> &mdash; if a project belongs to a team
+  (organisation) account, that team&rsquo;s owner and admins can open it.</li>
   <li><strong>Screening passes</strong> &mdash; a pass is created from our administrator
-  console for one project. Anyone holding it can read that project&rsquo;s story, blueprint
+  console for one project, and we create one only when that project&rsquo;s owner asks us
+  to. Anyone holding it can read that project&rsquo;s story, blueprint
   and scenes &mdash; never its contacts or budget &mdash; until it expires or runs out of
   openings.</li>
   <li><strong>Our administrators</strong> &mdash; can see your account details, how you got
   access, your plan, payments, invoices, refund requests, invite requests, session record,
-  and how many projects you sync and how large they are. The console is built not to show
-  your project titles or content. Every change an administrator makes to an account is
-  recorded in a log that cannot be edited from the console. As the operator of the
-  database we can technically reach synced content; we do not open it unless you ask us to
-  help with it or the law requires it.</li>
+  sign-in history, and how many projects you sync and how large they are. The console does
+  not show your project content. It does show the title of a project that has a share link
+  (with its owner&rsquo;s e-mail address) or a screening pass. Every change an administrator
+  makes to an account is recorded in a log that cannot be edited from the console. The data
+  export we use to answer a request for your data contains your synced projects, content
+  included; only the studio&rsquo;s owner can make one. As the operator of the database we
+  can technically reach synced content; we do not open it unless you ask us to help with
+  it, you ask for your data, or the law requires it.</li>
 </ul>
 <p>No system is perfectly secure; if a breach affecting your personal data occurs, we will
 notify you and the Data Protection Board as the law requires.</p>

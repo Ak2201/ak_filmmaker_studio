@@ -55,7 +55,7 @@ export function refundRequestPanel(opts = {}) {
   const box = h('div.rf-block', { 'data-rf-panel': 'request' });
   if (!faded) { faded = true; box.classList.add('mo-in'); }
   box.append(h('h3.gt-h3', { text: 'Request a refund' }));
-  box.append(h('p.rf-state', { text: `Your ${planName(d.payment.plan_id)} plan, ${fmtPaise(d.payment.amount_paise)}${d.payment.paid_at ? ', paid ' + fmtDate(d.payment.paid_at) : ''}. Purchases are final, except a duplicate charge, a charge where you did not receive what you paid for, or where the law requires. This sends a request; the studio decides, and a refund ends the plan.` }));
+  box.append(h('p.rf-state', { text: `Your ${planName(d.payment.plan_id)} plan, ${fmtPaise(d.payment.amount_paise)}${d.payment.paid_at ? ', paid ' + fmtDate(d.payment.paid_at) : ''}. Purchases are final, except a duplicate or erroneous charge, a payment for a plan that was never activated, or where the law requires. This sends a request, which we check against those exceptions; if one applies, the refund is yours, and a refund ends the plan.` }));
   const l = d.latest;
   if (l) {
     box.append(h('p.rf-state', { role: 'status' }, [

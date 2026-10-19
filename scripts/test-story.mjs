@@ -262,59 +262,98 @@ const again = S.sendOutlineToScenes(sendStory, api);
 api.removeScene(again[0]);
 eq(S.sendOutlineToScenes(sendStory, api).length, 1, 'a step whose scene is gone is sent again');
 
-// The path, derived — one per format, never mixed.
-const FEATURE_PATH = ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay'];
-const SHORT_PATH = ['idea', 'logline', 'character', 'world', 'conflict', 'structure', 'outline', 'synopsis', 'lock', 'screenplay'];
+// The path, derived — one per format, never mixed. FOUR steps for both
+// formats since 19 Oct 2026 (owner): Idea · Characters & world · Beat Sheet · Synopsis.
+const FOUR = ['idea', 'bible', 'outline', 'synopsis'];
+const FEATURE_PATH = FOUR, SHORT_PATH = FOUR;
 const pp = S.pathProgress({ ...S.blankStory(), logline: 'x' }, { scenes: [] });
-eq(pp.map((p) => p.id), FEATURE_PATH, 'the feature path: Idea, Logline, Story Bible, Scene order, Step outline, Setups & payoffs, Timeline, Synopsis & treatment, Lock, Open the Screenplay Writer');
-eq(pp.map((p) => p.label), ['Idea', 'Logline', 'Story Bible', 'Scene order', 'Step outline', 'Setups & payoffs', 'Timeline', 'Synopsis & treatment', 'Lock the outline', 'Open the Screenplay Writer'], 'the feature path labels');
-eq(pp.map((p) => p.pos), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 'ten places in the feature line');
-eq(pp.map((p) => p.done), [false, true, false, false, false, false, false, false, false, false], 'the path reads what is filled');
+eq(pp.map((p) => p.id), FEATURE_PATH, 'the feature path: Idea, Characters & world, Beat Sheet, Synopsis');
+eq(pp.map((p) => p.label), ['Idea', 'Characters & world', 'Beat Sheet', 'Synopsis'], 'the feature path labels');
+eq(pp.map((p) => p.pos), [1, 2, 3, 4], 'four places in the feature line');
+eq(pp.map((p) => p.n), [1, 7, 4, 5], 'each keeps its stable number (1 idea, 7 bible, 4 outline, 5 synopsis)');
+eq(pp.map((p) => p.done), [true, false, false, false], 'the path reads what is filled (a logline alone fills the Idea step)');
+eq(pp[0].detail, 'logline', 'and says what is in it');
 const sp = S.pathProgress({ ...S.blankStory(), logline: 'x' }, { scenes: [], format: 'short' });
-eq(sp.map((p) => p.id), SHORT_PATH, 'the short path: Seed, Logline, Character, World, Conflict, Scene order, Step outline, Synopsis, Lock, Open the Screenplay Writer');
-eq(sp.map((p) => p.label), ['Seed', 'Logline', 'Character', 'World', 'Conflict', 'Scene order', 'Step outline', 'Synopsis', 'Lock the outline', 'Open the Screenplay Writer'], 'the short path labels');
-ok(!sp.some((p) => ['bible', 'setups', 'timeline'].includes(p.id)), 'a short film’s path has no feature-only step (Story Bible, Setups, Timeline)');
-ok(!pp.some((p) => ['character', 'world', 'conflict'].includes(p.id)), 'and the feature’s has none of the short’s');
+eq(sp.map((p) => p.id), SHORT_PATH, 'the short path: the same four steps');
+eq(sp.map((p) => p.label), ['Idea', 'Characters & world', 'Beat Sheet', 'Synopsis'], 'the short path labels');
+eq(S.pathFor('short').find((p) => p.id === 'bible').cards, ['characters', 'world', 'conflict'], 'a short film’s Characters & world shows its three cards');
+eq(S.pathFor('feature').find((p) => p.id === 'bible').cards, ['characters', 'conflict', 'stakes', 'theme', 'world'], 'a feature’s shows all five');
+eq(S.pathFor('short').find((p) => p.id === 'outline').absorbs, ['short:step-04'], 'a short film’s Beat Sheet asks the short blueprint’s beats');
+eq(S.pathFor('feature').find((p) => p.id === 'outline').absorbs, ['feature:step-08', 'feature:step-09', 'feature:step-10', 'feature:treatment-ladder#lad_5_outline'],
+  'a feature’s Beat Sheet asks step 08, Timeline (09), Setups & payoffs (10) and the free-text outline, in closed boxes');
+eq(S.pathFor('feature').find((p) => p.id === 'idea').absorbs, ['feature:step-01', 'feature:step-02', 'feature:treatment-ladder#lad_1_logline'], 'the Idea step asks step 01, step 02 and ladder rung 1');
 eq(S.pathFor('short').map((p) => p.id), SHORT_PATH, 'pathFor(short)');
 eq(S.pathFor('feature').map((p) => p.id), FEATURE_PATH, 'pathFor(feature)');
 eq(S.pathFor(undefined).map((p) => p.id), FEATURE_PATH, 'anything that is not short is the feature path');
 eq(S.PATH.map((p) => p.id), FEATURE_PATH, 'PATH (the export every old caller reads) is the feature path');
 eq(S.defaultPathStep(S.blankStory()), 'idea', 'a new story opens on the idea');
-eq(S.defaultPathStep({ ...S.blankStory(), idea: 'i', logline: 'l' }), 'bible', 'idea and logline filled: the Bible is the first empty step');
-eq(S.defaultPathStep({ ...S.blankStory(), idea: 'i', logline: 'l' }, { format: 'short' }), 'character', 'the same story on a short film: Character is the first empty step');
+eq(S.defaultPathStep({ ...S.blankStory(), idea: 'i', logline: 'l' }), 'bible', 'idea and logline filled: Characters & world is the first empty step');
+eq(S.defaultPathStep({ ...S.blankStory(), idea: 'i', logline: 'l' }, { format: 'short' }), 'bible', 'the same on a short film');
 eq(S.defaultPathStep({ ...S.blankStory(), source: 'x' }), 'synopsis', 'a story with a synopsis opens on the synopsis');
+
+/* The Beat Sheet's state: done once a step is written; a beat sheet chosen
+   with nothing under it is "doing"; the lock and the send are its detail. */
+{
+  const chosen = S.pathProgress({ ...S.blankStory(), framework: 'three_act', frameworkChosen: true }, { scenes: [] }).find((p) => p.id === 'outline');
+  eq([chosen.done, chosen.doing, chosen.detail], [false, true, S.frameworkById('three_act').short], 'a beat sheet chosen, no step yet: started, not done');
+  const st = { ...S.blankStory(), framework: 'three_act', frameworkChosen: true, outline: [{ id: 'a', beat: 'three_act:setup', text: 'A dragon hatches.', sceneId: 'sc1' }] };
+  const one = S.pathProgress(st, { scenes: [{ id: 'sc1' }] }).find((p) => p.id === 'outline');
+  eq([one.done, one.doing], [true, false], 'a written step: done');
+  ok(/^1 step · 1 of 7 beats · 1 sent$/.test(one.detail), 'its detail counts the steps, the beats and what was sent — got ' + one.detail);
+  const locked = S.pathProgress({ ...st, outlineLockedAt: '2026-10-11T10:00:00.000Z' }, { scenes: [] }).find((p) => p.id === 'outline');
+  ok(/ · locked$/.test(locked.detail), 'a locked outline says so — got ' + locked.detail);
+  const syn = S.pathProgress({ ...S.blankStory(), source: 'one two three', marks: [{ id: 'm', start: 0, end: 3, fw: 'three_act', beat: 'setup' }] }, { scenes: [] }).find((p) => p.id === 'synopsis');
+  eq([syn.done, syn.detail], [true, '3 words · 1 tagged'], 'the synopsis counts its words and its tagged passages');
+}
 
 /* No step is mandatory; Next suggests the first EMPTY step after this one. */
 {
   const base = S.pathProgress({ ...S.blankStory(), idea: 'i', logline: 'l', source: 's' }, { scenes: [] });
-  eq(S.suggestNext(base, 'logline').id, 'bible', 'Next from the logline offers the empty Bible');
-  eq(S.suggestNext(base, 'bible').id, 'structure', 'Next from the Bible offers Scene order');
-  const skip = base.map((p) => (p.id === 'structure' ? { ...p, done: true } : p));
-  eq(S.suggestNext(skip, 'bible').id, 'outline', 'a filled step after the current one is skipped');
+  eq(S.suggestNext(base, 'idea').id, 'bible', 'Next from the Idea offers the empty Characters & world');
+  eq(S.suggestNext(base, 'bible').id, 'outline', 'Next from Characters & world offers the Beat Sheet');
+  const skip = base.map((p) => (p.id === 'outline' ? { ...p, done: true } : p));
+  eq(S.suggestNext(skip, 'idea').id, 'bible', 'the first empty step after the current one');
   const all = base.map((p) => ({ ...p, done: true }));
-  eq(S.suggestNext(all, 'idea').id, 'logline', 'every later step filled: simply the step after');
-  eq(S.suggestNext(base, 'screenplay'), null, 'nothing after the last step');
-  eq(S.suggestNext(base, 'outline').id, 'setups', 'Next from the outline offers Setups & payoffs (nothing is mandatory, so it is only offered)');
+  eq(S.suggestNext(all, 'idea').id, 'bible', 'every later step filled: simply the step after');
+  eq(S.suggestNext(base, 'synopsis'), null, 'nothing after the last step (the Screenplay Writer is the next stage, not a step)');
 }
 
-/* #path-N links written before the Bible keep their meaning. */
-eq(['1', '2', '3', '4', '5', '6'].map((n) => S.pathStepFromHash('#path-' + n)),
-  ['idea', 'logline', 'structure', 'outline', 'synopsis', 'screenplay'], 'old numeric hashes map to the same steps as before');
-eq(['1', '2', '3', '4', '5', '6', '7'].map((n) => S.pathStepFromHash('#path-' + n, 'short')),
-  ['idea', 'logline', 'structure', 'outline', 'synopsis', 'screenplay', 'character'], 'the same numbers on a short film (7, the Bible, lands on Character)');
-eq(S.pathStepFromHash('path-bible'), 'bible', 'the new form: path-<id>');
-eq(S.pathStepFromHash('#path-structure'), 'structure', 'with or without the #');
-eq(S.pathStepFromHash('path-lock'), 'lock', 'the new lock step has an id');
-eq(S.pathStepFromHash('path-setups', 'short'), 'idea', 'a step this format has no use for lands on its first step');
-eq(S.pathStepFromHash('path-bible', 'short'), 'character', 'the short film’s Bible link lands on Character');
-eq([S.pathStepFromHash('path-99'), S.pathStepFromHash('path-nope')], ['idea', 'idea'], 'an unknown path step lands on the first step');
-eq(S.pathStepFromHash('vault'), '', 'a hash that is not a path hash names no step');
-eq(S.pathStepFromHash('pitch'), '', 'a section hash names no step');
-eq(S.PATH.find((p) => p.id === 'outline').n, 4, 'the stable number of the outline is still 4 (the blueprint drawer keys on it)');
-eq(S.PATH.filter((p) => p.n <= 7).map((p) => p.n + ':' + p.id).sort(), ['1:idea', '2:logline', '3:structure', '4:outline', '5:synopsis', '6:screenplay', '7:bible'], 'every old number still names its step');
-eq(new Set(S.PATH.map((p) => p.n)).size, S.PATH.length, 'no two path steps share a number');
+/* EVERY OLD LINK LANDS ON ITS NEW HOME, never on step 1 by default:
+   each retired number (#path-2 … #path-13) and each retired id, in both
+   formats (story-paths.json `aliases`). */
+{
+  const HOME = {
+    1: 'idea', 2: 'idea', 3: 'outline', 4: 'outline', 5: 'synopsis', 6: 'outline', 7: 'bible',
+    8: 'outline', 9: 'outline', 10: 'outline', 11: 'bible', 12: 'bible', 13: 'bible',
+    idea: 'idea', logline: 'idea', seed: 'idea', bible: 'bible', character: 'bible', world: 'bible', conflict: 'bible',
+    structure: 'outline', outline: 'outline', setups: 'outline', timeline: 'outline', lock: 'outline', screenplay: 'outline',
+    synopsis: 'synopsis', pacing: 'synopsis'
+  };
+  for (const fmt of ['feature', 'short']) {
+    const got = Object.fromEntries(Object.keys(HOME).map((k) => [k, S.pathStepFromHash('#path-' + k, fmt)]));
+    eq(got, HOME, `${fmt}: every old #path-N and #path-<id> lands on the step that holds it now`);
+    const retired = Object.keys(HOME).filter((k) => !S.pathFor(fmt).some((p) => p.id === k || String(p.n) === k));
+    eq(retired.filter((k) => S.pathAlias(k, fmt) !== HOME[k]), [], `${fmt}: pathAlias names the same home for every retired id and number (${retired.length})`);
+    eq(S.pathFor(fmt).map((p) => S.pathAlias(p.id, fmt)), ['', '', '', ''], `${fmt}: a live step is not an alias`);
+  }
+  /* the aliases name only steps that exist, in both formats */
+  const PATHS = JSON.parse((await import('node:fs')).readFileSync(new URL('../src/data/story-paths.json', import.meta.url), 'utf8'));
+  for (const fmt of ['feature', 'short']) {
+    const ids = PATHS[fmt].map((p) => p.id);
+    eq(Object.entries(PATHS.aliases[fmt]).filter(([, to]) => !ids.includes(to)).map(([k]) => k), [], `${fmt}: every alias names a live step`);
+    eq(Object.keys(PATHS.aliases[fmt]).filter((k) => ids.includes(k) || PATHS[fmt].some((p) => String(p.n) === k)), [], `${fmt}: no alias shadows a live step or number`);
+  }
+  eq(S.pathAlias('nope'), '', 'something no path ever had is not an alias');
+  eq([S.pathStepFromHash('path-99'), S.pathStepFromHash('path-nope')], ['idea', 'idea'], 'only an unknown path step lands on the first step');
+  eq(S.pathStepFromHash('vault'), '', 'a hash that is not a path hash names no step');
+  eq(S.pathStepFromHash('pitch'), '', 'a section hash names no step');
+  eq(S.PATH.find((p) => p.id === 'outline').n, 4, 'the stable number of the outline is still 4 (the blueprint drawer keys on it)');
+  eq(new Set(S.PATH.map((p) => p.n)).size, S.PATH.length, 'no two path steps share a number');
+  eq(S.pathStepForBlueprint('feature', 'step-09'), 'outline', 'an old ?step=feature/step-09 link (Timeline) lands on the Beat Sheet');
+  eq(S.pathStepForBlueprint('feature', 'step-02'), 'idea', 'and step 02 (the logline) on the Idea');
+}
 
-/* The scene order is chosen in Scene order — never first. */
+/* The scene order is chosen in the Beat Sheet's picker — never first. */
 eq(S.blankStory().frameworkChosen, false, 'a blank story has chosen no scene order');
 eq(S.suggestedFramework('feature'), 'save_the_cat', 'a feature is laid out against Save the Cat until one is chosen');
 eq(S.suggestedFramework('short'), 'short_five', 'a short film against the Short Five');
@@ -345,11 +384,11 @@ eq(S.blankStory().outlineLockedAt, '', 'a blank story’s outline is not locked'
   eq(at, '2026-10-11T10:00:00.000Z', 'Lock stores the time as ISO');
   S.saveStory(lk);
   eq(S.loadStory().outlineLockedAt, '2026-10-11T10:00:00.000Z', 'and it survives a reload');
-  eq(S.pathProgress(S.loadStory(), { scenes: [] }).find((p) => p.id === 'lock').done, true, 'a locked outline marks the lock step done (the path is finalised)');
-  eq(S.pathProgress(S.loadStory(), { scenes: [], format: 'short' }).find((p) => p.id === 'lock').detail, 'locked', 'and says so');
+  eq(S.pathProgress(S.loadStory(), { scenes: [] }).find((p) => p.id === 'outline').detail, 'locked', 'a locked outline is the Beat Sheet’s detail (the lock is a toggle on it, not a step)');
+  eq(S.pathProgress(S.loadStory(), { scenes: [], format: 'short' }).find((p) => p.id === 'outline').detail, 'locked', 'on a short film too');
   eq(S.setOutlineLock(lk, false), '', 'Unlock clears it');
   S.saveStory(lk);
-  eq(S.pathProgress(S.loadStory(), { scenes: [] }).find((p) => p.id === 'lock').done, false, 'and the step is open again');
+  eq(S.pathProgress(S.loadStory(), { scenes: [] }).find((p) => p.id === 'outline').detail, '', 'and the detail goes');
   mem.delete(S.STORY_KEY);
 }
 

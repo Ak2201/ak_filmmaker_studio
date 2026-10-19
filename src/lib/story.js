@@ -765,9 +765,9 @@ export function undoSendOutline(story, ids, api) {
 
    `n` is the step's STABLE NUMBER — what `#path-N` links and the
    blueprint drawer's `steps.stages.json` mapping were written against
-   (1 idea, 2 logline, 3 structure, 4 outline, 5 synopsis, 6 screenplay,
-   7 bible; later steps 8 and up). It is not the step's place in the
-   line: that is `pos`. */
+   (1 idea, 4 outline, 5 synopsis, 7 bible; the retired numbers land
+   through story-paths.json `aliases`, see pathAlias). It is not the
+   step's place in the line: that is `pos`. */
 const buildPath = (rows) => rows.map((p, i) => ({ ...p, cards: p.cards || [], absorbs: p.absorbs || [], pos: i + 1 }));
 const PATH_BY_FORMAT = { feature: buildPath(PATHS.feature), short: buildPath(PATHS.short) };
 export const PATH = PATH_BY_FORMAT.feature;
@@ -787,24 +787,31 @@ export const suggestedFramework = (format) => (pathFormat(format) === 'short' ? 
 export const effectiveFramework = (story, format) =>
   (story && story.frameworkChosen ? frameworkById(story.framework).id : suggestedFramework(format));
 
+/** The step a RETIRED step id or number lands on now (story-paths.json
+    `aliases`: 2 logline, 3 structure, 6 screenplay, 8 setups, 9 timeline,
+    10 lock, 11-13 the short film's old Bible steps, and ids such as
+    `pacing`), or '' when `x` is not a retired one. Since the four-step
+    path (19 Oct 2026) every old link lands where its question is asked. */
+export function pathAlias(x, format = 'feature') {
+  const aliases = (PATHS.aliases || {})[pathFormat(format)] || {};
+  const k = String(x == null ? '' : x).replace(/^#?path-/, '');
+  const to = Object.prototype.hasOwnProperty.call(aliases, k) ? aliases[k] : '';
+  return to && pathFor(format).some((p) => p.id === to) ? to : '';
+}
+
 /** A path step id from whatever a link carries: `path-<id>` (the form
-    the page writes) or `path-<N>` (every link written before the Bible,
-    which keeps meaning what it meant). '' when the hash is not a path
-    hash at all; the format's FIRST step when it names one that does not
-    exist (an old link to a step the short film's road has no use for
-    lands at the start, never nowhere). */
+    the page writes), `path-<N>` (the stable numbers) or a RETIRED id or
+    number (pathAlias). '' when the hash is not a path hash at all; the
+    format's FIRST step only when it names nothing this path ever had. */
 export function pathStepFromHash(hash, format = 'feature') {
   const m = /^#?path-([a-z][a-z0-9_-]*|\d+)$/.exec(String(hash || ''));
   if (!m) return '';
   const path = pathFor(format);
-  const aliases = (PATHS.aliases || {})[pathFormat(format)] || {};
   if (/^\d+$/.test(m[1])) {
     const p = path.find((x) => x.n === Number(m[1]));
     if (p) return p.id;
-    return Number(m[1]) === 7 ? (aliases.bible || path[0].id) : path[0].id;   // 7 was the Bible
-  }
-  if (path.some((x) => x.id === m[1])) return m[1];
-  return aliases[m[1]] || path[0].id;
+  } else if (path.some((x) => x.id === m[1])) return m[1];
+  return pathAlias(m[1], format) || path[0].id;
 }
 
 /** "<ns>:<id>[#part]" → { ns, id, part, raw } for the absorbs lists. */
@@ -924,22 +931,25 @@ const blueprintHas = (ns, keys) => {
 /* Every blueprint key a path step's own absorbs list names — for a whole
    step the keys its content carries, which only the blueprint JSON knows;
    a step's filled-ness therefore reads the keys the page asks for it. */
+const range15 = Array.from({ length: 15 }, (_, i) => 'b' + String(i + 1).padStart(2, '0'));
 const STEP_KEYS = {
   feature: {
-    idea: ['s1_whatif', 's1_why_me', 's1_image'], logline: ['s2_log1', 's2_log2', 's2_log_final', 'lad_1_logline'],
-    structure: Array.from({ length: 15 }, (_, i) => 'b' + String(i + 1).padStart(2, '0')),
-    outline: ['lad_5_outline'], setups: Array.from({ length: 5 }, (_, i) => ['s10_setup_' + (i + 1), 's10_pay_' + (i + 1)]).flat(),
-    timeline: ['s9_chrono', 's9_screen', 's9_why'], synopsis: ['lad_2_synopsis', 'lad_3_onepager', 'lad_4_treatment']
+    idea: ['s1_whatif', 's1_why_me', 's1_image', 's2_log1', 's2_log2', 's2_log_final', 'lad_1_logline'],
+    outline: [...range15, 'lad_5_outline', 's9_chrono', 's9_screen', 's9_why',
+      ...Array.from({ length: 5 }, (_, i) => ['s10_setup_' + (i + 1), 's10_pay_' + (i + 1)]).flat()],
+    synopsis: ['lad_2_synopsis', 'lad_3_onepager', 'lad_4_treatment']
   },
   short: {
-    idea: ['s1_seed', 's1_image', 's1_why'], logline: ['s2_log1', 's2_log2', 's2_log_final'],
-    structure: ['b1_setup', 'b2_disturb', 'b3_escalate', 'b4_turn', 'b5_image', 's4_test']
+    idea: ['s1_seed', 's1_image', 's1_why', 's2_log1', 's2_log2', 's2_log_final'],
+    outline: ['b1_setup', 'b2_disturb', 'b3_escalate', 'b4_turn', 'b5_image', 's4_test']
   }
 };
 
 /** Which path steps are filled, from the story, the blueprint answers
     each one asks inline, and the scene rows. `format` defaults to the
-    open project's. */
+    open project's. Four steps since 19 Oct 2026: the Beat Sheet is done
+    once a step is written (a beat sheet chosen with nothing under it yet
+    is `doing`), and its lock and its send to the Screenplay are detail. */
 export function pathProgress(story, { scenes = [], format } = {}) {
   const s = story || blankStory();
   const fmt = pathFormat(format || (projectIsShort() ? 'short' : 'feature'));
@@ -947,37 +957,34 @@ export function pathProgress(story, { scenes = [], format } = {}) {
   const o = outlineByBeat(s, fw);
   const live = new Set((scenes || []).map((x) => x.id));
   const sent = (s.outline || []).filter((x) => x.sceneId && live.has(x.sceneId)).length;
-  const beatScenes = (scenes || []).filter((x) => x.beatId).length;
   const bible = bibleStatus(s);
   const keys = STEP_KEYS[fmt];
   const bp = (id) => !!(keys[id] && blueprintHas(fmt, keys[id]));
+  const idea = !!String(s.idea || '').trim(), logline = !!String(s.logline || '').trim();
+  /* a short film's Bible step shows three cards, a feature's all five */
+  const cardIds = fmt === 'short' ? ['characters', 'world', 'conflict'] : Object.keys(bible.cards);
+  const cardsIn = cardIds.filter((c) => bible.cards[c]).length;
+  const locked = !!String(s.outlineLockedAt || '').trim();
+  const words = (String(s.source || '').match(/\S+/g) || []).length;
+  const tagged = (s.marks || []).length;
   const done = {
-    idea: !!String(s.idea || '').trim() || bp('idea'),
-    logline: !!String(s.logline || '').trim() || bp('logline'),
+    idea: idea || logline || bp('idea'),
     bible: bible.any,
-    character: bible.cards.characters,
-    world: bible.cards.world,
-    conflict: bible.cards.conflict,
-    structure: s.frameworkChosen || (s.marks || []).length > 0 || bp('structure'),
     outline: o.withText > 0 || bp('outline'),
-    setups: bp('setups'),
-    timeline: bp('timeline'),
-    synopsis: !!String(s.source || '').trim() || bp('synopsis'),
-    lock: !!String(s.outlineLockedAt || '').trim(),
-    screenplay: sent > 0 || beatScenes > 0
+    synopsis: words > 0 || bp('synopsis')
   };
+  const doing = { outline: !done.outline && (!!s.frameworkChosen || tagged > 0) };
   const detail = {
-    idea: '', logline: '',
-    bible: bible.any ? `${bible.count} of ${bible.total} cards` : '',
-    character: '', world: '', conflict: '',
-    structure: s.frameworkChosen ? frameworkById(fw).short : '',
-    outline: o.withText ? `${o.withText} step${o.withText === 1 ? '' : 's'} · ${o.covered} of ${o.beatsTotal} beats` : '',
-    setups: '', timeline: '',
-    synopsis: s.source ? `${(String(s.source).match(/\S+/g) || []).length} words` : '',
-    lock: s.outlineLockedAt ? 'locked' : '',
-    screenplay: sent ? `${sent} sent` : beatScenes ? `${beatScenes} scenes on beats` : ''
+    idea: idea && logline ? 'idea and logline' : idea ? 'idea, no logline yet' : logline ? 'logline' : '',
+    bible: cardsIn ? `${cardsIn} of ${cardIds.length} cards` : '',
+    outline: [
+      o.withText ? `${o.withText} step${o.withText === 1 ? '' : 's'} · ${o.covered} of ${o.beatsTotal} beats` : (s.frameworkChosen ? frameworkById(fw).short : ''),
+      locked ? 'locked' : '',
+      sent ? `${sent} sent` : ''
+    ].filter(Boolean).join(' · '),
+    synopsis: words ? `${words} words` + (tagged ? ` · ${tagged} tagged` : '') : ''
   };
-  return pathFor(fmt).map((p) => ({ ...p, done: !!done[p.id], detail: detail[p.id] || '' }));
+  return pathFor(fmt).map((p) => ({ ...p, done: !!done[p.id], doing: !!doing[p.id], detail: detail[p.id] || '' }));
 }
 
 /** What "Next" offers from `cur`: the first step AFTER it with nothing

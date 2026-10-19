@@ -6,15 +6,23 @@
    (no tabs, no drop-downs — the owner's rule). There are TWO paths,
    one per project format, in src/data/story-paths.json:
 
-     feature  Idea · Logline · Story Bible · Scene order · Step outline ·
-              Setups & payoffs · Timeline · Synopsis & treatment ·
-              Lock the outline · Open the Screenplay Writer
-     short    Seed · Logline · Character · World · Conflict · Scene order ·
-              Step outline · Synopsis · Lock the outline · Open the Screenplay Writer
+     feature  Idea · Characters & world · Beat Sheet · Synopsis
+     short    Idea · Characters & world · Beat Sheet · Synopsis
 
-   so a short film never meets the feature's road with steps missing.
-   Beats & Pacing and the Pitch deck follow as ordinary sections, then
-   the Guide (the film's cover sheet).
+   FOUR STEPS FOR BOTH FORMATS (owner, 19 Oct 2026, on Celtx's model):
+   the idea and the logline are one step; the Story Bible's cards are
+   "Characters & world" (a short film's three, a feature's five); the
+   Beat Sheet is the step outline under its beats with the beat sheet
+   picker, the lock (a toggle) and Send to screenplay in its head, an
+   Unassigned bin, and Setups & payoffs, Timeline and the free-text
+   outline in closed "More craft" boxes; the Synopsis carries the beats
+   and pacing curve beside its tagging panes and the treatment ladder in
+   a closed box. The Screenplay Writer is the next STAGE (a button), not
+   a step. Every retired step's id and number still lands, on its new
+   home (story-paths.json `aliases`). The Pitch deck is a section after
+   the path, off unless the console switches it on; the cover sheet
+   (#guide) is hidden here and edited on the project dashboard's Title
+   page through the same keys.
 
    EACH QUESTION IS ASKED ONCE. The blueprint's steps are drawn INLINE
    inside the path step that owns them (the story-paths.json `absorbs`
@@ -24,8 +32,8 @@
    character / stakes / theme / world fields (src/ui/story-bible.js).
 
    NO FORMAT IS CHOSEN FIRST. The outline is laid out against the
-   format's suggestion until the writer picks a beat sheet in Scene
-   order — and the script can be written without ever doing so.
+   format's suggestion until the writer picks a beat sheet in the Beat
+   Sheet's picker — and the script can be written without ever doing so.
 
    GUIDED, NOT GATED. Every step is reachable at any time, and the old
    ways in stay: the sample, a synopsis you already have, or a file. NO
@@ -71,7 +79,7 @@ import {
   projectFormat, storyFormat, pageStory, pct, safeScenes, blueprintIdea, blueprintLogline,
   EXTRAS, bareOf, isExtra, menuGroups as groupsOf, resolveStepId, clip, lockedWhen, peakBeat,
   miniCurvePoints, deckContext, characterCount, synopsisFigures as figureCards, sendCounts, pitchContents,
-  sourceSegments, trimSelection, overlapsMark, whereText, blueprintStepFromSearch, startSample
+  sourceSegments, trimSelection, overlapsMark, whereText, blueprintStepFromSearch, startSample, legacySpot
 } from '../lib/story-model.js';
 /* The import, the sample, the exports, the blueprint's beat fields and
    the curve are shared with the blueprints' Part I panels, so they live
@@ -87,9 +95,9 @@ import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/s
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
-import { showOnly, stepFooter, wireStepper, landUnder } from '../ui/stepper.js';
+import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
-import { pageHeader, button, statStrip, segmented, selectSegment } from '../ui/kit/index.js';
+import { pageHeader, button, statStrip } from '../ui/kit/index.js';
 import Store from '../lib/store.js';
 import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
@@ -107,7 +115,9 @@ let flashMark = '';       // a mark to scroll to after the next render
 let pathStep = null;      // the lit path step's id, or null = derive from the story
 let landStep = '';        // a step to scroll to after the next draw (a link, a hash)
 let reland = '';          // the step a link landed on: the blueprint hosts above it grow when they load, so land again then
-let extra = '';           // 'pacing' | 'pitch' | 'guide' when one of the sections after the path is the step shown
+let landSpot = '';        // an element inside the step a retired step's link lands on (story-model.js legacySpot)
+let relandSpot = '';      // …and the same, landed again once the blueprint hosts have loaded
+let extra = '';           // 'pitch' (only while the console has it on) or 'guide' (by its address) when a section after the path is the one shown
 let started = false;      // the start cards were answered this visit
 let undoBuild = null;     // one level: the synopsis before the last build
 let lastSend = null;      // the scene ids the last send created
@@ -192,30 +202,20 @@ function currentStep(s) {
   return pathStep || (pathNow().some((p) => p.id === 'outline') ? 'outline' : Story.defaultPathStep(s, { scenes: scenes(), format: fmt() }));
 }
 
-/* THE THREE VIEWS. The beat sheet, the synopsis and the pacing sit in a
-   segmented switcher; every other step of the path is under the "Story
-   notes / Outline details" disclosure (a closed <details> that keeps all
-   of them in the DOM, so every data-key and word is still read). */
-const VIEWS = [
-  { id: 'outline', label: 'Beat Sheet', icon: 'list' },
-  { id: 'synopsis', label: 'Synopsis & Tagging', icon: 'description' },
-  { id: 'pacing', label: 'Pacing & Story Notes', icon: 'trending_up' }
-];
-const viewIds = VIEWS.map((v) => v.id);
 /* The pitch deck is a module nobody sells unless the console switches it
    on: when it is off for everybody its section stays in the DOM, hidden,
    and leaves the menu. Unknown plan state answers with the matrix default. */
 const pitchOff = () => { try { return isDisabledEverywhere('pitch-deck'); } catch (e) { return false; } };
 
 /* THE STEPS ARE THE SHARED SECTION MENU (src/ui/section-menu.js), the
-   same control as the admin console's: a grouped column beside the step at
-   1100px and over, a strip with a Steps sheet below. Every step is on the
-   page below; a row opens its step (goView). Items are the path's
-   (progress() ticks them) and then the three sections after it, under
-   Tools — which have no done-state, so they carry no tick.
+   same control every page's sections use, drawn as a strip above the
+   steps. Every step is on the page below; a row opens its step (goView),
+   in any order. Items are the path's four (progress() ticks them, and a
+   started Beat Sheet shows half a circle) and then, only while the
+   console has it on, the Pitch deck under Tools, which has no tick.
 
-   An item's id is the PANEL's element id (path-<id>, or pacing / pitch /
-   guide), which is what a row's aria-controls must be; goView takes the
+   An item's id is the PANEL's element id (path-<id>, or pitch), which
+   is what a row's aria-controls must be; goView takes the
    bare id. data-step stays on the rows as the step's STABLE NUMBER
    (story-paths.json `n`): the blueprint drawer reads it from the open
    row to know which blueprint steps this path step answers. */
@@ -248,7 +248,7 @@ function renderStepper(s) {
 /* The words under every step's title are explained with the favourite
    film, in a closed box (src/ui/learn.js — null for a topic with no
    content yet, so it is filtered before append). */
-const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: 'story-bible', character: 'character', world: 'world', conflict: 'conflict', structure: 'beat-sheet', outline: 'step-outline', synopsis: 'synopsis', screenplay: 'screenplay' };
+const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: 'story-bible', outline: 'step-outline', synopsis: 'synopsis' };
 const learnBox = (topic) => {
   let el = null;
   try { el = learn(topic); } catch (e) { el = null; }   // no film given: the project's favourite
@@ -270,14 +270,11 @@ function refreshStepper() {
 wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
-  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + (pathNow().length + EXTRAS.filter((x) => !(x.id === 'pitch' && pitchOff())).length) }),
+  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + pathNow().length }),
   h('h2.bd-h2', { text: title }),
   lead ? h('p.bd-sub', { text: lead }) : null,
   learnBox(LEARN_TOPIC[id])
 ].filter(Boolean);
-/* Next suggests the first step AFTER this one with nothing in it; it is
-   a suggestion and never a gate (the stepper reaches any step). */
-const nextBtn = () => null;   // Back / Next are the stepper's footer now (src/ui/stepper.js), added in applyView()
 /* A film's own words for a step (the favourite film, chosen in Settings).
    The films are imported a moment after first paint (fav-film.js), so the
    box is drawn empty and FILLED IN PLACE when they land: a redraw of the
@@ -362,7 +359,8 @@ function paintBlueprintHosts(m, todo) {
   }
   rewireNotes();      // the Bible's pencils point at the whole document again
   refreshStepper();   // the answers read from the blueprint tick their steps
-  if (reland) {       // a link landed above blocks that were still loading: land again, unless the reader has moved
+  if (relandSpot) landStepView(document.getElementById(relandSpot), { exact: true });   // a retired step's spot, inside its new step
+  else if (reland) {  // a link landed above blocks that were still loading: land again, unless the reader has moved
     landStepView(document.getElementById('path-' + reland));
   }
 }
@@ -401,60 +399,69 @@ function watchBlueprintInput() {
 }
 watchBlueprintInput();
 
-/* ---- 1 · the idea ------------------------------------------------ */
+/* One blueprint step of a path step's absorbs, as a host of its own: the
+   Idea step asks blueprint step 01 and step 02 in two closed boxes, the
+   Beat Sheet step 08, 09 and 10 in three. Same renderer, same keys, same
+   merge-write as a whole-step host; only the grouping differs. */
+const bpOne = (id, bpId, wrap) => bpBlock(id + ':' + bpId, stepItems(id).steps.filter((it) => it.id === bpId), wrap);
+/* A closed box around a host (an answer stays one click away, in the one
+   place it is asked; every data-key stays in the DOM while it is shut). */
+const closedBox = (title, attrs = {}) => (el) => h('details.st-earlier', attrs, [h('summary', { text: title }), el]);
+
+/* ---- 1 · the idea: the idea and the logline ---------------------- */
 
 function renderIdea(s) {
   const short = fmt() === 'short';
-  const sec = h('section#path-idea.st-step.glossary-scope', { 'data-path': 'idea', 'aria-label': short ? 'The seed' : 'The idea' }, stepHead('idea', short ? 'The seed' : 'The idea',
+  const sec = h('section#path-idea.st-step.glossary-scope', { 'data-path': 'idea', 'aria-label': 'The idea' }, stepHead('idea', 'The idea',
     short
-      ? 'What is the film, in a sentence or two? A single image, a moment, a question. A short film is one thing; nothing here is final.'
-      : 'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Nothing here is final.'));
+      ? 'What is the film, in a sentence or two? A single image, a moment, a question. Then say it again as a logline. A short film is one thing; nothing here is final.'
+      : 'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Then say it again as a logline. Nothing here is final.'));
   // Only when the start cards are NOT on the page: two copies of the same offer is noise.
   if (isEmpty(s) && started) sec.append(renderWaysIn());
   sec.append(h('label.st-label', { for: 'stIdea', text: short ? 'Your seed' : 'Your idea' }));
   const ta = h('textarea#stIdea.st-text', { rows: 3, 'data-st-field': 'idea', spellcheck: 'true' });
   ta.value = s.idea;
   sec.append(ta);
+  /* The Story page's own copy shows; the blueprint's answer is OFFERED
+     when the page's is empty, never written over it (owner, 19 Oct 2026). */
   const bpi = bpIdea();
   if (!s.idea.trim() && bpi) sec.append(offerBlueprint('idea', 'Feature blueprint, step 01', bpi));
   put(sec, exampleBox('idea'),
-    sub(short ? 'The seed, the image, why you' : 'Your spark', short
-      ? 'The blueprint’s own questions for a seed. Answer what you can.'
-      : 'The blueprint’s own questions for an idea: the what-if, the image and why it has to be you.'),
-    bpSteps('idea'), nextBtn(s, 'idea'));
-  return sec;
-}
+    bpOne('idea', 'step-01', closedBox(short
+      ? 'The blueprint’s questions for a seed: the seed, the image, why you'
+      : 'The blueprint’s questions for an idea: the what-if, the image, why it has to be you')));
 
-/* ---- 2 · the logline ---------------------------------------------- */
-
-function renderLogline(s) {
-  const sec = h('section#path-logline.st-step.glossary-scope', { 'data-path': 'logline', 'aria-label': 'The logline' }, stepHead('logline', 'The logline',
-    'One sentence: who the story is about, what they want, what stands in the way, and what it costs if they fail.'));
-  sec.append(h('label.st-label', { for: 'stLogline', text: 'Your logline' }));
-  const ta = h('textarea#stLogline.st-text', { rows: 3, 'data-st-field': 'logline', spellcheck: 'true' });
-  ta.value = s.logline;
-  sec.append(ta);
+  /* The logline, in the same step (#logline lands here). */
+  const lg = h('div#logline.st-part', { 'aria-label': 'The logline' }, [
+    h('h3.st-sub', { text: 'The logline' }),
+    h('p.st-muted', { text: 'One sentence: who the story is about, what they want, what stands in the way, and what it costs if they fail.' })
+  ]);
+  const lb = learnBox(LEARN_TOPIC.logline);
+  if (lb) lg.append(lb);
+  lg.append(h('label.st-label', { for: 'stLogline', text: 'Your logline' }));
+  const lt = h('textarea#stLogline.st-text', { rows: 3, 'data-st-field': 'logline', spellcheck: 'true' });
+  lt.value = s.logline;
+  lg.append(lt);
   const bpl = bpLogline();
-  if (!s.logline.trim() && bpl) sec.append(offerBlueprint('logline', 'Feature blueprint, step 02', bpl));
-  put(sec, exampleBox('logline'),
+  if (!s.logline.trim() && bpl) lg.append(offerBlueprint('logline', 'Feature blueprint, step 02', bpl));
+  put(lg, exampleBox('logline'),
     renderLoglineWorkshop(s, { getStory: story, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }),
-    sub('Drafts, then the final one', 'Write it three ways — a first go, a sharper one, the one you will use — then keep the best as your logline above.'),
-    bpSteps('logline'),
-    earlierLadder('logline', 'Earlier version of your logline (treatment ladder, rung 1)',
-      [h('button.btn', { type: 'button', 'data-st': 'use-lad1', text: 'USE THIS AS MY LOGLINE' })]),
-    nextBtn(s, 'logline'));
+    bpOne('idea', 'step-02', closedBox('Drafts, then the final one: write it three ways (blueprint step 02)')),
+    earlierLadder('idea', 'Earlier version of your logline (treatment ladder, rung 1)',
+      [h('button.btn', { type: 'button', 'data-st': 'use-lad1', text: 'USE THIS AS MY LOGLINE' })]));
+  sec.append(lg);
   return sec;
 }
 
 /* The treatment ladder's rungs a step takes, in a closed "earlier answers"
    box (an answer a person wrote in the blueprint stays one click away,
    in the one place it is asked) — or open, under its own heading. */
-function earlierLadder(id, title, extra = [], { open = false } = {}) {
+function earlierLadder(id, title, extra = [], { open = false, boxId = '' } = {}) {
   const g = stepItems(id);
   if (!g.ladder) return null;
   return bpBlock(id + ':ladder', [g.ladder], (el) => {
     if (open) return h('div.st-ladder', {}, [h('h3.st-sub', { text: title }), el, ...extra]);
-    return h('details.st-earlier', {}, [h('summary', { text: title }), el, ...extra]);
+    return h('details.st-earlier', boxId ? { id: boxId } : {}, [h('summary', { text: title }), el, ...extra]);
   });
 }
 
@@ -493,15 +500,25 @@ function miniCurve(fw) {
   return svg;
 }
 
-function renderStructure(s) {
-  const short = fmt() === 'short';
-  const sec = h('section#path-structure.st-step.glossary-scope', { 'data-path': 'structure', 'aria-label': 'Scene order' }, stepHead('structure', 'Scene order',
-    'The order your story’s big moments come in — pick a beat sheet to lay them out. You do not have to: the outline and the screenplay work without one.'));
-  sec.append(h('p.st-muted', {
-    text: 'Every format is here. The suggestion is only a suggestion, and switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new format is listed rather than lost.'
+/* The beat sheet picker: every format with its tension curve, in a box at
+   the head of the Beat Sheet. Closed by default (the outline is what the
+   step is for); "Choose one" and an old #path-structure link open it. */
+let fwPickOpen = false;   // in memory: the picker stays open across a redraw it caused
+function renderFwPicker(s) {
+  const sug = suggestedFw();
+  const cur = Story.frameworkById(s.framework);
+  const box = h('details#st-fw-pick.st-fw-pick', { open: fwPickOpen ? '' : null }, [
+    h('summary.st-fw-sum', {}, [
+      h('span.st-example-k', { text: 'Beat sheet' }),
+      h('span.st-fw-cur', { text: cur.label }),
+      h('span.st-badge' + (s.frameworkChosen ? '.is-on' : ''), { text: s.frameworkChosen ? 'In use' : 'Suggested' }),
+      h('span.st-fw-change', { text: 'Change' })
+    ])
+  ]);
+  box.append(h('p.st-muted', {
+    text: 'The order your story’s big moments come in. Pick one to lay the outline out against; you do not have to. Switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new beat sheet waits in Unassigned rather than being lost.'
   }));
   const grid = h('div.st-fw-grid');
-  const sug = suggestedFw();
   for (const f of Story.frameworks()) {
     const on = s.frameworkChosen && f.id === s.framework;
     const peak = peakBeat(f);
@@ -518,59 +535,79 @@ function renderStructure(s) {
       h('span.st-fw-suits', { text: f.suits || f.blurb || '' })
     ]));
   }
-  sec.append(grid);
-  if (!s.frameworkChosen) {
-    sec.append(h('p.st-using', { role: 'status', text: 'Using ' + Story.frameworkById(s.framework).label + ' until you choose a scene order.' }));
-  }
-  put(sec,
-    sub(short ? 'Your five beats' : 'Your beat notes', short
-      ? 'One line for each of the short film’s five beats, and the test it has to pass.'
-      : 'The fifteen beats, in your own words. They show beside the matching beat in the step outline.'),
-    bpSteps('structure'), nextBtn(s, 'structure'));
-  return sec;
+  box.append(grid);
+  box.addEventListener('toggle', () => { fwPickOpen = box.open; });
+  return box;
 }
 
-/* ---- 3 · the Story Bible (src/ui/story-bible.js) -------------- */
+/* ---- 2 · Characters & world (src/ui/story-bible.js) ----------- */
 
-const BIBLE_STEP = {
-  bible: ['Story Bible', 'The facts of your film in one place: who is in it, what it is fought over, what is at stake, what it is about and where it happens. Fill what you know; none of it is required.'],
-  character: ['Character', 'Who is the film about? Their name, what they want, what stands in their way, and the turn that changes everything. Add anyone else who matters.'],
-  world: ['World', 'Where and when it happens, and the few rules of the place. A short film has room for one location done well.'],
-  conflict: ['Conflict', 'What the film is fought over, and against what. Pick every kind that applies, then say it in one line.']
+const BIBLE_LEAD = {
+  feature: 'The facts of your film in one place: who is in it, what it is fought over, what is at stake, what it is about and where it happens. Fill what you know; none of it is required.',
+  short: 'Who the film is about and what they want, where and when it happens, and what it is fought over. A short film has room for one character and one place done well; fill what you know.'
 };
-function renderBible(s, id = 'bible') {
-  const [title, lead] = BIBLE_STEP[id];
-  const sec = h('section#path-' + id + '.st-step.glossary-scope', { 'data-path': id, 'aria-label': title }, stepHead(id, title, lead));
-  let cards = stepNow(id).cards.slice();
+function renderBible(s) {
+  const short = fmt() === 'short';
+  const sec = h('section#path-bible.st-step.glossary-scope', { 'data-path': 'bible', 'aria-label': 'Characters and world' },
+    stepHead('bible', 'Characters & world', BIBLE_LEAD[short ? 'short' : 'feature']));
+  let cards = stepNow('bible').cards.slice();
   /* A short film never sees a feature-only card (stakes, theme) — unless
      the feature keys behind it already hold an answer, so nothing written
      is hidden. */
-  if (fmt() === 'short' && id === 'conflict') cards = cards.concat(['stakes', 'theme'].filter(shortShowsCard));
+  if (short) cards = cards.concat(['stakes', 'theme'].filter(shortShowsCard));
   sec.append(renderBibleBody({ cards, format: fmt() }));
   /* The blueprint's own notes for these steps (formula, craft, examples, the
      relationship map) and its "before moving on" checklists — everything
      but the questions, which the cards above ask. */
-  put(sec, bpSteps(id, (el) => {
+  put(sec, bpSteps('bible', (el) => {
     el.classList.add('st-bp-notes');
-    return h('details.st-earlier', {}, [h('summary', { text: 'The blueprint’s notes and checklist for this step' }), el]);
-  }), nextBtn(s, id));
+    return h('details.st-earlier', {}, [h('summary', { text: 'The blueprint’s notes and checklists for these cards' }), el]);
+  }));
   return sec;
 }
 
-/* ---- 4 · the step outline ------------------------------------ */
+/* ---- 3 · the Beat Sheet: the step outline under its beats -------
+   Celtx's first view. Its head carries the beat sheet picker, the lock
+   (a toggle) and the send to the Screenplay Writer (with Undo); steps
+   written under another beat sheet wait in the Unassigned bin. The
+   blueprint's beat notes, Setups & payoffs, Timeline and the free-text
+   outline sit in closed boxes underneath. */
 
 function renderOutline(s) {
+  const short = fmt() === 'short';
   const o = Story.outlineByBeat(s, s.framework);
   const fw = o.fw;
   const locked = !!s.outlineLockedAt;
-  const sec = h('section#path-outline.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Step outline' }, stepHead('outline', 'Step outline · ' + fw.label,
-    'A numbered list of what happens, beat by beat. One or two lines a step. Add, reorder and move steps between beats as the story finds its shape.'));
+  const sec = h('section#path-outline.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Beat Sheet' }, stepHead('outline', 'Beat Sheet · ' + fw.label,
+    'What happens, beat by beat: one or two lines a step, numbered as you go. Add, reorder and move steps between beats as the story finds its shape.'));
   if (!s.frameworkChosen) {
     sec.append(h('p.st-using', {}, [
-      'Using ' + fw.label + ' until you choose a scene order. ',
-      h('button.st-link', { type: 'button', 'data-st': 'path', 'data-path': 'structure', text: 'Choose one' })
+      'Using ' + fw.label + ' until you choose a beat sheet. ',
+      h('button.st-link', { type: 'button', 'data-st': 'open-fw', text: 'Choose one' })
     ]));
   }
+
+  /* the head: picker, lock, send */
+  const { written, sent, todo } = sendCounts(s, scenes());
+  const lockBtn = button({
+    label: locked ? 'Locked' : 'Lock the outline', icon: locked ? 'lock' : 'lock_open', variant: locked ? 'primary' : 'secondary',
+    attrs: { 'data-st': locked ? 'unlock' : 'lock', 'aria-pressed': String(locked), title: locked ? 'Unlock to edit the outline' : 'Lock the outline: it stops taking edits until you unlock it' }
+  });
+  const lockRow = h('div#stLockRow.st-bs-lock', {}, [lockBtn,
+    h('span.st-muted', { role: 'status', text: locked ? 'Locked ' + lockedWhen(s.outlineLockedAt) + '. Press again to unlock.' : 'A lock is a promise to yourself that the outline is finished; unlock any time.' })]);
+  /* Never disabled while there is something to send: this head is drawn
+     before the step typed a moment ago is saved and redrawn, and the click
+     checks. Disabled only when nothing is written at all. */
+  const sendRow = h('div#stHandoff.st-bs-send', {}, [
+    button({ label: 'Send to screenplay', icon: 'movie', variant: 'primary', disabled: !todo, attrs: { 'data-st': 'send', title: 'One placeholder scene per step, linked to its beat' } }),
+    lastSend && lastSend.length ? button({ label: 'Undo the send', attrs: { 'data-st': 'send-undo' } }) : null,
+    h('a.st-link', { href: 'screenplay.html', text: 'Open the Screenplay Writer' }),
+    h('span.st-muted', { role: 'status', text: written
+      ? `${todo} step${todo === 1 ? '' : 's'} to send · ${sent} already ha${sent === 1 ? 's' : 've'} a scene`
+      : 'Write a step or two, then send them: one placeholder scene each, so the Breakdown and the Stripboard have the shape of the story before a page is written.' })
+  ].filter(Boolean));
+  sec.append(h('div.st-bs-head', {}, [renderFwPicker(s), h('div.st-bs-actions', {}, [lockRow, sendRow])]));
+
   if (locked) {
     sec.append(h('p.st-locked', { role: 'status' }, [
       h('strong', { text: 'Locked ' + lockedWhen(s.outlineLockedAt) + '. ' }),
@@ -580,7 +617,7 @@ function renderOutline(s) {
   }
   sec.append(h('p.st-coverage', { role: 'status' }, [
     h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
-    ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} not placed in this format` : '')
+    ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} unassigned` : '')
   ]));
   const bp = fw.id === 'save_the_cat' && fmt() === 'feature' ? blueprint() : null;
   const beatOpts = (sel) => {
@@ -601,7 +638,7 @@ function renderOutline(s) {
     li.append(h('p.st-beat-prompt', { text: r.beat.prompt }));
     if (bp) {
       const v = IO.blueprintBeatText('feature', r.beat.id, bp);
-      if (v) li.append(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your blueprint, step 08: ' }), '“' + v + '”']));
+      if (v) li.append(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your beat note: ' }), '“' + v + '”']));
     }
     if (r.steps.length) {
       const ol = h('ol.st-ol-steps', { start: String(r.steps[0].n) });
@@ -623,16 +660,20 @@ function renderOutline(s) {
     if (acts.children.length) li.append(acts);
     list.append(li);
   }
-  /* the board: the beat cards in a grid and, when steps were written under
-     another format, the "not placed" holding column beside them (story.css) */
+  /* the board: the beat cards in a grid and, when steps wait unassigned,
+     the Unassigned bin beside them (story.css); an empty bin sits under
+     the board, so the place exists before anything is in it */
   const board = h('div.st-ol-board' + (o.unplaced.length ? '.has-holding' : ''));
   board.append(list);
   sec.append(board);
 
-  if (o.unplaced.length) {
-    const un = h('section.st-unplaced', { 'aria-label': 'Not placed in this format' });
-    un.append(h('h3.st-ol-name', { text: 'Not placed in ' + fw.short }));
-    un.append(h('p.st-muted', { text: 'These steps were written under another format. They are kept as they are; file them under a beat here, or switch the format back to see them where they were.' }));
+  const un = h('section.st-unplaced' + (o.unplaced.length ? '' : '.is-empty'), { 'aria-label': 'Unassigned steps' });
+  un.append(h('h3.st-ol-name', { text: 'Unassigned' + (o.unplaced.length ? ' · ' + o.unplaced.length : '') }));
+  if (!o.unplaced.length) {
+    un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under a beat of ' + fw.short + '.' }));
+    sec.append(un);
+  } else {
+    un.append(h('p.st-muted', { text: 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
     if (o.unplaced.some((u) => u.suggest) && !locked) {
       un.append(h('button.btn', { type: 'button', 'data-st': 'file-all', text: 'FILE ALL BY POSITION' }));
     }
@@ -649,9 +690,20 @@ function renderOutline(s) {
     un.append(ol);
     board.append(un);
   }
-  put(sec, earlierLadder('outline', 'Earlier step outline (free text, treatment ladder rung 5)',
-    [h('p.st-muted', { text: 'The numbered outline above is the one the synopsis and the screenplay read. This is the free-text version from the blueprint, kept as you wrote it.' })]),
-    nextBtn(s, 'outline'));
+
+  /* More craft, closed: the blueprint's own beat notes (they show on the
+     cards above), then the feature's Setups & payoffs and Timeline, then
+     the free-text outline from the treatment ladder. */
+  put(sec,
+    sub('More craft', 'Optional, and kept where you left it. Every answer here is the blueprint’s own.'),
+    bpOne('outline', short ? 'step-04' : 'step-08', closedBox(short
+      ? 'Your five beats, one line each, and the test the film has to pass'
+      : 'Your beat notes: the fifteen beats in your own words (they show on the cards above)', { id: 'st-more-beats' })),
+    short ? null : bpOne('outline', 'step-10', closedBox('Setups & payoffs: what you plant early and pay off late', { id: 'st-more-setups' })),
+    short ? null : bpOne('outline', 'step-09', closedBox('Timeline: story order against screen order (only if the film jumps around)', { id: 'st-more-timeline' })),
+    earlierLadder('outline', 'Free-text outline (treatment ladder, rung 5)',
+      [h('p.st-muted', { text: 'The numbered outline above is the one the synopsis and the screenplay read. This is the free-text version from the blueprint, kept as you wrote it.' })],
+      { boxId: 'st-more-free' }));
   return sec;
 }
 
@@ -674,39 +726,7 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false) 
   return li;
 }
 
-/* ---- 5 · the synopsis ---------------------------------------- */
-
-function renderBlueprintStep(s, id, title, lead, subTitle) {
-  const sec = h('section#path-' + id + '.st-step.glossary-scope', { 'data-path': id, 'aria-label': title }, stepHead(id, title, lead));
-  put(sec, bpSteps(id), nextBtn(s, id));
-  return sec;
-}
-
-/* ---- the lock ----------------------------------------------------- */
-
-function renderLock(s) {
-  const locked = !!s.outlineLockedAt;
-  const o = Story.outlineByBeat(s, s.framework);
-  const sec = h('section#path-lock.st-step.glossary-scope', { 'data-path': 'lock', 'aria-label': 'Lock the outline' }, stepHead('lock', 'Lock the outline',
-    'When the step outline says what you mean, lock it. A lock is a promise to yourself that the outline is finished: it stops taking edits until you unlock it, and the path counts as done. Nothing else changes, and you can unlock at any time.'));
-  sec.append(h('p.st-coverage', { role: 'status' }, [
-    h('strong', { text: locked ? 'Locked ' + lockedWhen(s.outlineLockedAt) : 'Not locked' }),
-    ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written · ${o.covered} of ${o.beatsTotal} beats have a step`
-  ]));
-  const row = h('div.st-build');
-  if (locked) {
-    row.append(h('button.btn', { type: 'button', 'data-st': 'unlock', text: 'UNLOCK THE OUTLINE' }));
-  } else {
-    /* Never disabled: this section is drawn before the step typed a moment ago
-       is saved and redrawn, and a button that is disabled at pointer-down
-       cannot be clicked. The click checks. */
-    row.append(h('button.btn.primary', { type: 'button', 'data-st': 'lock', text: 'LOCK THE OUTLINE' }));
-    if (!o.withText) row.append(h('span.st-muted', { text: 'Write a step or two in the step outline first.' }));
-  }
-  sec.append(row);
-  put(sec, nextBtn(s, 'lock'));
-  return sec;
-}
+/* ---- 4 · the synopsis, with the beats and pacing beside it ---- */
 
 /* Four figures under the synopsis, each measured: the words on the page, the
    passages tagged, the scenes in the list and the screen time those scenes
@@ -716,9 +736,8 @@ function synopsisFigures(s) {
 }
 
 function renderSynopsisStep(s) {
-  const short = fmt() === 'short';
-  const sec = h('section#path-synopsis.st-step.glossary-scope', { 'data-path': 'synopsis', 'aria-label': 'Synopsis' }, stepHead('synopsis', short ? 'Synopsis' : 'Synopsis & treatment',
-    'The story as prose. Build it from the outline — one paragraph per act, every step tagged with its beat — or write and tag your own.'));
+  const sec = h('section#path-synopsis.st-step.glossary-scope', { 'data-path': 'synopsis', 'aria-label': 'Synopsis' }, stepHead('synopsis', 'Synopsis',
+    'The story as prose. Build it from the Beat Sheet — one paragraph per act, every step tagged with its beat — or write and tag your own, and watch the tension curve beside it.'));
   const o = Story.outlineByBeat(s, s.framework);
   const row = h('div.st-build');
   if (o.withText) {
@@ -732,27 +751,8 @@ function renderSynopsisStep(s) {
     : '' }));
   if (s.source.trim()) sec.append(synopsisFigures(s));
   sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
-  put(sec, earlierLadder('synopsis', 'From synopsis to treatment', [], { open: true }), nextBtn(s, 'synopsis'));
-  return sec;
-}
-
-/* ---- 6 · to the Screenplay ----------------------------------- */
-
-function renderScreenplay(s) {
-  const sec = h('section#path-screenplay.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'Open the Screenplay Writer' }, stepHead('screenplay', 'Open the Screenplay Writer',
-    'One placeholder scene per step, each linked to its beat, so the Screenplay Analysis’s outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
-  sec.append(h('p.st-muted', { text: 'None of this is required before you write. A scene order, an outline and a lock are all optional: open the Screenplay Writer whenever you like and start on the first page.' }));
-  const { written, sent, todo } = sendCounts(s, scenes());
-  sec.append(h('p.st-coverage', { role: 'status' }, [
-    h('strong', { text: `${todo} step${todo === 1 ? '' : 's'} to send` }),
-    ` · ${sent} already ha${sent === 1 ? 's' : 've'} a scene · ${written} written`
-  ]));
-  const row = h('div.st-build');
-  row.append(h('button.btn.primary', { type: 'button', 'data-st': 'send', disabled: !todo, text: 'SEND THE OUTLINE TO THE SCREENPLAY WRITER' }));
-  if (lastSend && lastSend.length) row.append(h('button.btn', { type: 'button', 'data-st': 'send-undo', text: 'UNDO THE SEND' }));
-  row.append(h('a.btn', { href: 'screenplay.html', text: 'OPEN THE SCREENPLAY WRITER' }));
-  sec.append(row);
-  if (!written) sec.append(h('p.st-muted', { text: 'Write a step or two in the step outline first.' }));
+  sec.append(renderPacing(s));
+  put(sec, earlierLadder('synopsis', 'Treatment: from synopsis to one-pager to treatment (treatment ladder, rungs 2–4)', [], { boxId: 'st-treatment' }));
   return sec;
 }
 
@@ -892,7 +892,8 @@ function renderPitch() {
 }
 
 /* ---- Beats & Pacing -------------------------------------------
-   A section of the page like any other (it used to be a tab). Map-with-AI
+   Inside the Synopsis step since 19 Oct 2026 (it was a section after the
+   path, and a tab before that); #pacing still lands on it. Map-with-AI
    sits inside it: it tags the synopsis against the beats, which is what
    the curve above it reads. The Idea Vault is not on this page any more
    (vault.html). */
@@ -904,8 +905,8 @@ function renderStats(s) {
   return PacingView.renderStats(s, { ...deckContext(), characters: characterCount() });
 }
 function renderPacing(s) {
-  const sec = h('section#pacing.st-section.st-pacing', { 'aria-label': 'Beats and pacing' });
-  sec.append(h('h2.bd-h2', { text: 'Beats & pacing' }));
+  const sec = h('div#pacing.st-pacing', { role: 'region', 'aria-label': 'Beats and pacing' });
+  sec.append(h('h3.st-sub', { text: 'Beats & pacing' }));
   const stack = h('div.pc-stack');
   if (s.source.trim()) {
     stack.append(PacingView.renderCurve(s));
@@ -986,34 +987,20 @@ function draw() {
     eyebrow: ['Story', 'Beats & pacing'],
     title: 'Story',
     sub: fmt() === 'short'
-      ? 'From a seed to a step outline to a synopsis. Everything a short film needs is on this page: the character, the world, the conflict, the order of the beats.'
-      : 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Everything is on this page, in order; tag the passages that turn the story and watch where the tension sags.',
+      ? 'Four steps from a seed to a synopsis: the idea, the character and the world, the beat sheet, the synopsis. Then the Screenplay Writer.'
+      : 'Four steps from an idea to a synopsis: the idea, the characters and the world, the beat sheet of your choice, the synopsis. Then the Screenplay Writer.',
     actions: [bar]
   }), main.firstChild);
 
   if (!cards) main.insertBefore(renderStats(s), main.children[1] || null);
+  /* The four steps are the section menu, a strip above them: any step
+     opens at any time, and Back / Next at each step's foot only suggest. */
   const bar0 = renderStepper(s);
   if (cards) bar0.hidden = true;
-  /* The segmented switcher, and under it the closed disclosure that holds
-     the full step menu (the rest of the path) — see VIEWS. */
-  const sw = segmented({ name: 'story-view', class: 'st-views', label: 'Story view', options: VIEWS.map((v) => ({ value: v.id, label: v.label, icon: v.icon })), value: viewIds.includes(extra || currentStep(s)) ? (extra || currentStep(s)) : '' });
-  sw.querySelectorAll('.k-seg-btn').forEach((b) => { b.dataset.stepperGo = b.dataset.value; });
-  const notes = h('details.st-notes', {}, [h('summary', { text: 'Story notes / Outline details' }), bar0]);
-  if (cards) { sw.hidden = true; notes.hidden = true; }
-  main.append(sw, notes);
+  main.append(bar0);
   /* EVERY STEP IS ON THE PAGE, in the project's own path. */
-  const panels = {
-    idea: renderIdea, logline: renderLogline, structure: renderStructure, outline: renderOutline,
-    synopsis: renderSynopsisStep, screenplay: renderScreenplay, lock: renderLock,
-    bible: (x) => renderBible(x, 'bible'), character: (x) => renderBible(x, 'character'),
-    world: (x) => renderBible(x, 'world'), conflict: (x) => renderBible(x, 'conflict'),
-    setups: (x) => renderBlueprintStep(x, 'setups', 'Setups & payoffs',
-      'What you plant early and pay off late. A setup nobody notices is the best kind; list the ones you know about.'),
-    timeline: (x) => renderBlueprintStep(x, 'timeline', 'Timeline',
-      'The order things happen in the world, against the order the audience sees them. Only needed if the film jumps around.')
-  };
+  const panels = { idea: renderIdea, bible: renderBible, outline: renderOutline, synopsis: renderSynopsisStep };
   for (const p of pathNow()) { const draw1 = panels[p.id]; if (draw1) main.append(draw1(s)); }
-  main.append(renderPacing(s));
   main.append(renderPitch());
   app.replaceChildren(main);
   after();
@@ -1040,9 +1027,11 @@ function after() {
   }
   applyView();
   if (landStep) {
+    const spot = landSpot && document.getElementById(landSpot);
     const el = document.getElementById('path-' + landStep);
-    landStep = '';
-    landStepView(el);
+    landStep = ''; landSpot = '';
+    if (spot && el && el.contains(spot)) { reland = ''; relandSpot = spot.id; landStepView(spot, { exact: true }); }
+    else landStepView(el);
   }
 }
 
@@ -1050,14 +1039,14 @@ function after() {
 /* Landing on a step: src/ui/stepper.js landUnderMenu(), with Story's menu
    (a column beside the step wide, a sticky strip narrow). */
 function landStepView(el, { exact = false } = {}) {
-  document.documentElement.style.setProperty('--stp-bar-h', '0px');   // nothing of the page's own is pinned: the menu is in the disclosure
-  landUnder(el, null, { exact });
+  if (el && exact) { const box = el.closest('details'); if (box) box.open = true; if (el.tagName === 'DETAILS') el.open = true; }
+  landUnderMenu(el, storyNav(), { exact });
 }
 
-/* A path step id, from an id or (for any caller that still holds one)
-   an old step number; a step this project's path does not have (a link
-   to the feature's Setups on a short film) lands on the path's first. */
-const stepId = (x) => resolveStepId(x, pathNow());
+/* A path step id, from an id, a stable number or a RETIRED id or number
+   (#path-6 → the Beat Sheet, whose Send replaced the Screenplay step);
+   only something no path ever had lands on the path's first step. */
+const stepId = (x) => resolveStepId(x, pathNow(), fmt());
 
 /* Going to a step: light it, put it in the address bar and scroll to it.
    Every step is already on the page, so nothing is redrawn — except the
@@ -1079,9 +1068,13 @@ function goStep(x, { scroll = true } = {}) {
    — and only the current one is shown; the rest keep the `hidden`
    attribute (never removed: every data-key stays in the DOM). The sequence
    Back / Next walks is derived from the DOM, not listed a second time. */
+/* Sections reached by their address only, never by a menu row: the cover
+   sheet (#guide), whose home is the project dashboard's Title page. */
+const ADDRESS_ONLY = [{ id: 'guide', label: 'Cover sheet' }];
+const isAddressOnly = (id) => ADDRESS_ONLY.some((x) => x.id === id);
 const viewPanels = () => [
   ...pathNow().map((p) => ({ id: p.id, label: p.label, el: document.getElementById('path-' + p.id) })),
-  ...EXTRAS.map((x) => ({ id: x.id, label: x.label, el: document.getElementById(x.id) }))
+  ...EXTRAS.concat(ADDRESS_ONLY).map((x) => ({ id: x.id, label: x.label, el: document.getElementById(x.id) }))
 ].filter((p) => p.el);
 
 function applyView() {
@@ -1095,26 +1088,20 @@ function applyView() {
   showOnly(panels, shown);
   const pit = document.getElementById('pitch');
   if (pit && pitchOff()) pit.hidden = true;   // off for everybody: kept in the DOM, never shown
-  const sw = main.querySelector('.st-views');
-  if (sw) { sw.hidden = cards; selectSegment(sw, viewIds.includes(shown) ? shown : ''); }
-  const det = main.querySelector('details.st-notes');
-  if (det) {
-    det.hidden = cards;
-    /* A step that is not one of the three views (a hash into #path-idea,
-       the Back / Next walk) lives under the disclosure: open it. */
-    if (!cards && shown && !viewIds.includes(shown)) det.open = true;
-  }
-  const footPanels = panels.filter((p) => !(p.id === 'pitch' && pitchOff()));
+  /* Back / Next walk the PATH's four steps only (a suggestion, never a
+     gate); the last one hands over to the next stage, the Screenplay
+     Writer. The Pitch deck, when it is on, is reached from the menu. */
+  const pathIds = pathNow().map((p) => p.id);
+  const footPanels = panels.filter((p) => pathIds.includes(p.id));
   panels.forEach((p) => {
     const old = p.el.querySelector(':scope > .stp-nav');
     if (old) old.remove();
-    /* The count is the PATH's, the same "of N" the step bar says; the
-       sections after it (Beats & pacing, Pitch deck, Cover sheet) are
-       the bar's "Then" row and say so rather than taking a number. */
-    if (p.id === shown && !viewIds.includes(p.id)) {
-      const f = stepFooter(footPanels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + footPanels.length });
-      if (f) p.el.append(f);
+    if (p.id !== shown || !pathIds.includes(p.id)) return;
+    const f = stepFooter(footPanels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + footPanels.length });
+    if (f && p.id === pathIds[pathIds.length - 1]) {
+      f.append(h('a.btn.primary.st-next-stage', { href: 'screenplay.html', text: 'NEXT STAGE: THE SCREENPLAY WRITER →' }));
     }
+    if (f) p.el.append(f);
   });
   const bar = storyNav();
   if (bar) {
@@ -1128,7 +1115,8 @@ function applyView() {
 /* A step by id, whether it is on the path or one of the sections after. */
 function goView(id) {
   if (id === 'pitch' && pitchOff()) id = 'outline';
-  if (isExtra(id)) {
+  if (id === 'pacing' || id === 'ai-map') { openFragment(id); return; }
+  if (isExtra(id) || isAddressOnly(id)) {
     extra = id; started = true;
     history.replaceState(null, '', location.pathname + location.search + '#' + id);
     refreshStepper();
@@ -1138,17 +1126,23 @@ function goView(id) {
 }
 wireStepper(document, goView);
 
-/* A fragment (#pitch, #ai-map, #logline, an id inside a step): open the
-   step that holds it, then land on it. */
+/* A fragment (#pacing, #ai-map, #logline, an id inside a step, or a
+   retired step's bare id such as #structure): open the step that holds
+   it, then land on it. #guide (the cover sheet, edited on the project
+   dashboard's Title page now) is not a menu row, but a link to it still
+   opens it, so a navigation target is never a hidden one. */
 function openFragment(frag) {
   if (!frag) return false;
-  const direct = pathNow().some((p) => p.id === frag) ? document.getElementById('path-' + frag) : null;
-  const el = direct || document.getElementById(frag);
+  const own = pathNow().some((p) => p.id === frag) ? frag : '';
+  const byId = own ? null : document.getElementById(frag);
+  const moved = !own && !byId ? Story.pathAlias(frag, fmt()) : '';
+  const direct = own || moved ? document.getElementById('path-' + (own || moved)) : null;
+  const el = direct || byId;
   const host = el && el.closest('main > section');
   if (!host) return false;
   if (host.id === 'pitch' && pitchOff()) return false;
   const pid = host.getAttribute('data-path');
-  if (pid) { pathStep = pid; extra = ''; } else if (isExtra(host.id)) { extra = host.id; } else return false;
+  if (pid) { pathStep = pid; extra = ''; } else if (isExtra(host.id) || isAddressOnly(host.id)) { extra = host.id; } else return false;
   started = true;
   refreshStepper();
   applyView();
@@ -1285,20 +1279,25 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     commit(s);
   } else if (act === 'lock' || act === 'unlock') {
     if (act === 'lock' && !Story.outlineByBeat(s, s.framework).withText) {
-      StudioUI.toast('Write a step or two in the step outline first, then lock it.');
+      StudioUI.toast('Write a step or two in the Beat Sheet first, then lock it.');
       return;
     }
     Story.setOutlineLock(s, act === 'lock');
     commit(s);
-    StudioUI.toast(act === 'lock' ? 'Outline locked. The path is finalised; unlock any time to edit.' : 'Outline unlocked.');
+    StudioUI.toast(act === 'lock' ? 'Outline locked. Unlock any time to edit.' : 'Outline unlocked.');
   } else if (act === 'use-bp') {
     const f = el.getAttribute('data-field');
     if (f === 'idea') s.idea = bpIdea(); else if (f === 'logline') s.logline = bpLogline();
     commit(s);
   } else if (act === 'pick-fw') {
     s.framework = el.getAttribute('data-fw'); s.frameworkChosen = true; litBeat = '';
+    fwPickOpen = false;   // chosen: the picker folds back into the Beat Sheet's head
     commit(s);
-    StudioUI.toast(`Scene order: ${Story.frameworkById(s.framework).label}.`);
+    StudioUI.toast(`Beat sheet: ${Story.frameworkById(s.framework).label}.`);
+  } else if (act === 'open-fw') {
+    fwPickOpen = true;
+    const box = document.getElementById('st-fw-pick');
+    if (box) { box.open = true; landStepView(box, { exact: true }); }
   } else if (act === 'step-add') {
     const st = Story.addOutlineStep(s, { beat: el.getAttribute('data-beat') });
     if (st) { focusStep = st.id; commit(s); }
@@ -1510,19 +1509,25 @@ document.addEventListener('drop', (e) => {
 });
 
 
-/* The address bar: #path-<id> lights a path step and lands on it (#path-N,
-   the form every link before the Story Bible used, lands on the step it
-   always did; a step this project's path does not have lands on its first).
-   Every other fragment (#pacing, #ai-map, #pitch, #guide) is a plain
-   section of the page. */
+/* The address bar: #path-<id> lights a path step and lands on it; #path-N
+   (the stable numbers) and every RETIRED step id or number land on the
+   step that holds that question now (story-paths.json `aliases`). Every
+   other fragment (#pacing, #ai-map, #logline, #pitch) is an element of the
+   page, opened in the step that holds it; #guide points at the dashboard. */
 function readHash() {
   const hash = (location.hash || '').replace(/^#/, '');
   const id = Story.pathStepFromHash(hash, fmt());
-  if (id) { pathStep = id; started = true; landStep = id; reland = id; return true; }
-  return false;
+  if (!id) return false;
+  pathStep = id; started = true; landStep = id; reland = id;
+  /* A retired step's link (#path-lock, #path-6, #path-setups) lands on the
+     spot inside its new step that holds it, and the address bar says the
+     step it is in now. */
+  landSpot = legacySpot(hash);
+  if (hash !== 'path-' + id) history.replaceState(null, '', location.pathname + location.search + '#path-' + id);
+  return true;
 }
 /* The reader taking over ends the second landing. */
-['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => addEventListener(t, () => { reland = ''; }, { passive: true, capture: true }));
+['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => addEventListener(t, () => { reland = ''; relandSpot = ''; }, { passive: true, capture: true }));
 addEventListener('hashchange', () => {
   if (readHash()) { extra = ''; render(); return; }
   openFragment((location.hash || '').replace(/^#/, ''));

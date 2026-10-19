@@ -518,12 +518,15 @@
 /* ------------------------------------------------------------
    The cards in a grid (Celtx-style schedule): two columns where the
    page is wide enough, one where it is not. The cards' own bottom
-   margin gives way to the grid gap.
+   margin gives way to the grid gap. 34rem, not 28: a day card holds the
+   scene table, whose Where and What columns have minimum widths (about
+   31rem together with the padding), and on the full-width frame a 28rem
+   track fitted two columns at 1100px that the table then overflowed.
    ------------------------------------------------------------ */
 .pl-days,
 .pl-loc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 34rem), 1fr));
   gap: var(--s4);
   align-items: start;
   margin-bottom: var(--s4);

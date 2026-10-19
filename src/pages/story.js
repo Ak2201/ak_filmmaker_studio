@@ -418,7 +418,7 @@ function renderIdea(s) {
       : 'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Then say it again as a logline. Nothing here is final.'));
   // Only when the start cards are NOT on the page: two copies of the same offer is noise.
   if (isEmpty(s) && started) sec.append(renderWaysIn());
-  sec.append(h('label.st-label', { for: 'stIdea', text: short ? 'Your seed' : 'Your idea' }));
+  sec.append(h('label.st-label', { for: 'stIdea', text: 'Your idea' }));
   const ta = h('textarea#stIdea.st-text', { rows: 3, 'data-st-field': 'idea', spellcheck: 'true' });
   ta.value = s.idea;
   sec.append(ta);
@@ -578,7 +578,7 @@ function renderOutline(s) {
   const o = Story.outlineByBeat(s, s.framework);
   const fw = o.fw;
   const locked = !!s.outlineLockedAt;
-  const sec = h('section#path-outline.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Beat Sheet' }, stepHead('outline', 'Beat Sheet · ' + fw.label,
+  const sec = h('section#path-outline.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Beat Sheet' }, stepHead('outline', 'Beat Sheet',
     'What happens, beat by beat: one or two lines a step, numbered as you go. Add, reorder and move steps between beats as the story finds its shape.'));
   if (!s.frameworkChosen) {
     sec.append(h('p.st-using', {}, [
@@ -595,11 +595,12 @@ function renderOutline(s) {
   });
   const lockRow = h('div#stLockRow.st-bs-lock', {}, [lockBtn,
     h('span.st-muted', { role: 'status', text: locked ? 'Locked ' + lockedWhen(s.outlineLockedAt) + '. Press again to unlock.' : 'A lock is a promise to yourself that the outline is finished; unlock any time.' })]);
-  /* Never disabled while there is something to send: this head is drawn
-     before the step typed a moment ago is saved and redrawn, and the click
-     checks. Disabled only when nothing is written at all. */
+  /* Never disabled: this head is drawn once and NOT redrawn while a step
+     is typed (saveOnInput saves without a redraw), so a button disabled
+     on an empty outline would stay dead after the first step is written.
+     The click re-reads the story and says when there is nothing to send. */
   const sendRow = h('div#stHandoff.st-bs-send', {}, [
-    button({ label: 'Send to screenplay', icon: 'movie', variant: 'primary', disabled: !todo, attrs: { 'data-st': 'send', title: 'One placeholder scene per step, linked to its beat' } }),
+    button({ label: 'Send to screenplay', icon: 'movie', variant: 'primary', attrs: { 'data-st': 'send', title: 'One placeholder scene per step, linked to its beat' } }),
     lastSend && lastSend.length ? button({ label: 'Undo the send', attrs: { 'data-st': 'send-undo' } }) : null,
     h('a.st-link', { href: 'screenplay.html', text: 'Open the Screenplay Writer' }),
     h('span.st-muted', { role: 'status', text: written
@@ -984,7 +985,7 @@ function draw() {
   }
   main.insertBefore(pageHeader({
     class: 'bd-head',
-    eyebrow: ['Story', 'Beats & pacing'],
+    eyebrow: ['Story'],
     title: 'Story',
     sub: fmt() === 'short'
       ? 'Four steps from a seed to a synopsis: the idea, the character and the world, the beat sheet, the synopsis. Then the Screenplay Writer.'
@@ -1099,7 +1100,7 @@ function applyView() {
     if (p.id !== shown || !pathIds.includes(p.id)) return;
     const f = stepFooter(footPanels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + footPanels.length });
     if (f && p.id === pathIds[pathIds.length - 1]) {
-      f.append(h('a.btn.primary.st-next-stage', { href: 'screenplay.html', text: 'NEXT STAGE: THE SCREENPLAY WRITER →' }));
+      f.append(button({ label: 'Next stage: the Screenplay Writer →', variant: 'primary', href: 'screenplay.html', class: 'st-next-stage' }));
     }
     if (f) p.el.append(f);
   });
@@ -1237,7 +1238,10 @@ document.addEventListener('selectionchange', () => {
 function sendToScreenplay() {
   const s = story();
   const ids = Story.sendOutlineToScenes(s, Scenes, { fwId: s.framework });
-  if (!ids.length) { StudioUI.toast('Every written step already has a scene.'); return; }
+  if (!ids.length) {
+    StudioUI.toast(sendCounts(s, scenes()).written ? 'Every written step already has a scene.' : 'Write a step first: each written step becomes one placeholder scene.');
+    return;
+  }
   lastSend = ids;
   commit(s);
   StudioUI.toast(`${ids.length} placeholder scene${ids.length === 1 ? '' : 's'} added to the scene list; the pages in the Screenplay Writer start empty.`, {

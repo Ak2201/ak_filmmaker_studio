@@ -315,9 +315,12 @@ function resolveModule(hash) {
     /* The page as a whole is not always the module that owns its address:
        story.html is the Story editor, and "Beats & Pacing" is only one
        section of it. A module that says so (`pageLabel` / `pageFrag`) is
-       named by the page until its own section is the one on screen. */
+       named by the page until its own section is the one on screen; with
+       `pageLabel` and no `pageFrag` (Story since 19 Oct 2026: Beats &
+       pacing is a part of the Synopsis step, not a section) the page's
+       name is used throughout. */
     let module = whole.module;
-    if (module.pageLabel && module.pageFrag && !isShown(document.getElementById(module.pageFrag))) {
+    if (module.pageLabel && (!module.pageFrag || !isShown(document.getElementById(module.pageFrag)))) {
       module = Object.assign({}, module, { label: module.pageLabel });
     }
     return { phase: whole.phase, module, global: whole.global, exact: false };

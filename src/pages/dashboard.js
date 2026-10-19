@@ -62,7 +62,7 @@ import { renderLauncher } from '../ui/launcher.js';
 import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText, pageHeader, field } from '../ui/kit/index.js';
 /* The Title page: the Story stage's cover fields, the blueprint's own keys
    (src/lib/cover-fields.js), written through the merge-write. */
-import { readFields, writeFields } from '../lib/blueprint-store.js';
+import { readFields, writeFields, blobKey } from '../lib/blueprint-store.js';
 import { coverFields, coverNs } from '../lib/cover-fields.js';
 
 import { formatEighths } from '../lib/scenes.js';
@@ -782,7 +782,7 @@ function render() {
   /* The path line is applied whether or not the swap happened: a skipped
      swap leaves last time's DOM, whose path fact may have gone stale. */
   const painted = commitMain(app, main, mountShell);
-  if (project) loadPath();
+  if (project) { loadPath(); refreshTitleFields(); }
   if (!painted) return;
   /* A link INTO the overview (#readiness, #resume...) has to open it: a
      closed <details> hides its target, so the jump would land on nothing. */
@@ -858,10 +858,48 @@ const saveTitleField = (e, el) => {
   const ns = el.getAttribute('data-tp-ns');
   const key = el.getAttribute('data-key');
   if (!ns || !key) return;
-  if (!writeFields(ns, { [key]: el.value })) StudioUI.toastError('That was not saved: this browser refused the write.');
+  const patch = { [key]: el.value };
+  /* feature.js syncTitleAcrossCovers(): the two titles are twins, and
+     typing one fills the other while the other is empty. */
+  const twin = key === 'meta_title' ? 'v1_title' : key === 'v1_title' ? 'meta_title' : null;
+  const t = twin && app.querySelector('[data-tp-ns][data-key="' + twin + '"]');
+  if (t && el.value) {
+    const stored = readFields(ns, [twin])[twin];
+    if (t.value === '' && !(typeof stored === 'string' && stored)) { t.value = el.value; patch[twin] = el.value; }
+  }
+  if (!writeFields(ns, patch)) StudioUI.toastError('That was not saved: this browser refused the write.');
 };
-delegate(app, 'input', '[data-tp-ns][data-key]', saveTitleField);
+/* A <select> fires BOTH input and change; inputs take `input`, the
+   select takes `change` only, so one pick is one write. */
+delegate(app, 'input', 'input[data-tp-ns][data-key], textarea[data-tp-ns][data-key]', saveTitleField);
 delegate(app, 'change', 'select[data-tp-ns][data-key]', saveTitleField);
+
+/* The fields' values are PROPERTIES, which never reach innerHTML, so
+   commitMain's signature cannot see a stored value change and may keep
+   the old DOM. After every render, and whenever the blob changes under
+   us (another tab, a cloud or Drive pull, coming back to the tab), the
+   fields are re-read from the store — all but the one being typed in,
+   so a stale value is never shown and then written over a newer one. */
+function refreshTitleFields() {
+  const els = [...app.querySelectorAll('[data-tp-ns][data-key]')];
+  if (!els.length) return;
+  const ns = els[0].getAttribute('data-tp-ns');
+  const vals = readFields(ns, els.map((el) => el.getAttribute('data-key')));
+  const active = document.activeElement;
+  for (const el of els) {
+    if (el === active) continue;
+    const v = vals[el.getAttribute('data-key')];
+    const want = typeof v === 'string' ? v : '';
+    if (el.value !== want) el.value = want;
+  }
+}
+addEventListener('storage', (e) => {
+  const el = app.querySelector('[data-tp-ns]');
+  if (el && (!e.key || e.key.indexOf(blobKey(el.getAttribute('data-tp-ns'))) === 0)) refreshTitleFields();
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshTitleFields(); });
+Store.subscribe('cloud:synced', () => refreshTitleFields());
+Store.subscribe('cloud:restored', () => refreshTitleFields());
 
 let syncing = false;
 delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {

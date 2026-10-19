@@ -961,15 +961,21 @@ export function pathProgress(story, { scenes = [], format } = {}) {
   const keys = STEP_KEYS[fmt];
   const bp = (id) => !!(keys[id] && blueprintHas(fmt, keys[id]));
   const idea = !!String(s.idea || '').trim(), logline = !!String(s.logline || '').trim();
-  /* a short film's Bible step shows three cards, a feature's all five */
-  const cardIds = fmt === 'short' ? ['characters', 'world', 'conflict'] : Object.keys(bible.cards);
+  /* a short film's Bible step shows three cards, a feature's all five; a
+     short also shows stakes and theme when (and only when) they hold the
+     feature blueprint's answer (story-bible.js shortShowsCard), so those
+     count exactly when they are on the page and the tick and the
+     "n of N" always agree */
+  const cardIds = fmt === 'short'
+    ? ['characters', 'world', 'conflict', ...['stakes', 'theme'].filter((c) => bible.cards[c])]
+    : Object.keys(bible.cards);
   const cardsIn = cardIds.filter((c) => bible.cards[c]).length;
   const locked = !!String(s.outlineLockedAt || '').trim();
   const words = (String(s.source || '').match(/\S+/g) || []).length;
   const tagged = (s.marks || []).length;
   const done = {
     idea: idea || logline || bp('idea'),
-    bible: bible.any,
+    bible: cardsIn > 0,   /* the cards this format's step shows */
     outline: o.withText > 0 || bp('outline'),
     synopsis: words > 0 || bp('synopsis')
   };

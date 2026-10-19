@@ -265,8 +265,8 @@ eq(s.meta_title, 'T2', 'and the fields');
   eq(synop.ladder.rungs, ['lad_2_synopsis', 'lad_3_onepager', 'lad_4_treatment'], 'the synopsis step takes rungs 2-4');
   eq(Story.absorbItems(PATHS.feature.find((p) => p.id === 'bible').absorbs, 'feature').steps.map((i) => i.id + ':' + i.only), ['step-03:rest', 'step-04:rest', 'step-05:rest', 'step-06:rest', 'step-07:rest'], 'the Bible takes the five steps’ notes and checklists');
   eq(Story.pathStepForBlueprint('feature', 'step-07'), 'bible', 'an old ?step=feature/step-07 link lands on the Bible');
-  eq(Story.pathStepForBlueprint('feature', 'treatment-ladder'), 'logline', 'the ladder link lands on its first rung’s step');
-  eq(Story.pathStepForBlueprint('short', 'step-05'), 'world', 'short step 05 is the World step');
+  eq(Story.pathStepForBlueprint('feature', 'treatment-ladder'), 'idea', 'the ladder link lands on its first rung’s step (rung 1, in the Idea step)');
+  eq(Story.pathStepForBlueprint('short', 'step-05'), 'bible', 'short step 05 (the world) is in Characters & world');
   eq(Story.pathStepForBlueprint('short', 'step-09'), '', 'a step the Story path does not ask has no step');
 }
 

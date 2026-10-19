@@ -39,9 +39,10 @@ import { reveal } from '../lib/motion.js';
 import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
-import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
+import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
 import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
+import { meter } from './kit/meter.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
 
@@ -87,94 +88,117 @@ const LIMIT_LINES = [
   ['shares',        (n) => n === null ? 'Unlimited share links' : n === 0 ? 'No share links' : `${n} live share link${n === 1 ? '' : 's'}`],
   ['seats',         (n) => n === null ? 'Unlimited organisation seats' : `${n} organisation seat${n === 1 ? '' : 's'}`]
 ];
+/* The same caps as a comparison-table row: a label and a short cell. */
+const LIMIT_ROWS = [
+  ['projects',      'Cloud projects'],
+  ['collaborators', 'Collaborators per film'],
+  ['shares',        'Live share links'],
+  ['seats',         'Organisation seats']
+];
+
+/* WHICH MODULES ARE SOLD AT ALL. A module switched off for everybody
+   (plan-matrix.json `plans: []`, mirrored by OFF_BY_DEFAULT; or unticked
+   on every paid plan row in the console) is not a feature of any plan,
+   so neither a card nor the comparison lists it — a ticked "Songs" on
+   Pro would sell a page nobody can open. A row that says true for some
+   plan wins, the same precedence isDisabledEverywhere() gives it. Built
+   from the plans ROWS, so a console edit shows on the next load. */
+function listedIn(plans) {
+  const paid = (plans || []).filter((p) => p && p.id !== 'free');
+  return (id) => {
+    if (paid.some((p) => p.features && p.features[id] === true)) return true;
+    if (OFF_BY_DEFAULT.includes(id)) return false;
+    return !(paid.length && paid.every((p) => p.features && p.features[id] === false));
+  };
+}
 
 /* WHAT A PLAN INCLUDES, counted from the console's Features matrix
-   (plans.features, schema section 18): every built module plus the
-   capabilities, except `sample_only`, which is a restriction and is
+   (plans.features, schema section 18): every module that is sold plus
+   the capabilities, except `sample_only`, which is a restriction and is
    said in words instead. A missing key is included (plan-gate.js reads
-   it as allowed), so the count agrees with what the pages will do. */
-function featureSummary(p) {
+   it as allowed), so the count agrees with what the pages will do.
+   Stages with nothing sold in them are dropped. */
+function featureSummary(p, listed = () => true) {
   const f = (p && p.features) || {};
   const incl = (key) => f[key] !== false;
-  const stages = PlanGate.moduleCatalogue().map((s) => ({ label: s.label, items: s.modules.map((m) => ({ ...m, on: incl(m.id) })) }));
+  const stages = PlanGate.moduleCatalogue()
+    .map((s) => ({ id: s.id, label: s.label, items: s.modules.filter((m) => listed(m.id)).map((m) => ({ ...m, on: incl(m.id) })) }))
+    .filter((s) => s.items.length);
   const caps = CAPABILITIES.filter(([k]) => k !== 'sample_only').map(([k, label]) => ({ id: k, label, on: incl(k) }));
   const all = [...stages.flatMap((s) => s.items), ...caps];
   return { stages, caps, total: all.length, included: all.filter((x) => x.on).length, sampleOnly: f.sample_only === true };
 }
-function featureBlock(p) {
-  const s = featureSummary(p);
+/* The card's foot: the count, and the way to the full table below. */
+function featureBlock(p, listed) {
+  const s = featureSummary(p, listed);
   const wrap = h('div.pl-features');
   wrap.append(h('p.pl-features-n', {}, [h('strong', { text: `${s.included} of ${s.total}` }), h('span', { text: ' features' })]));
   if (s.sampleOnly) wrap.append(h('p.pl-features-note', { text: 'Sample project only' }));
-  const det = h('details.pl-what', {}, [h('summary', { text: 'What’s included' })]);
-  for (const st of s.stages) {
-    const on = st.items.filter((i) => i.on);
-    det.append(h('p.pl-what-stage', { text: `${st.label} · ${on.length} of ${st.items.length}` }));
-    det.append(h('ul.pl-what-list', {}, st.items.map((i) => h('li' + (i.on ? '' : '.is-off'), { text: i.label }))));
-  }
-  det.append(h('p.pl-what-stage', { text: `Capabilities · ${s.caps.filter((c) => c.on).length} of ${s.caps.length}` }));
-  det.append(h('ul.pl-what-list', {}, s.caps.map((c) => h('li' + (c.on ? '' : '.is-off'), { text: c.label }))));
-  wrap.append(det);
+  wrap.append(h('a.pl-features-link', { href: '#plCompare', 'data-plan-action': 'compare', text: 'Compare every feature' }));
   return wrap;
 }
 
-/* WHAT THIS PLAN ADDS to the paid plan below it. From the plans ROWS
-   (plans.features — what the pages will actually do, console edits
-   included), which schema section 35 seeds from src/data/plan-matrix.json.
-   If the rows do not tell the plans apart at all (section 35 not run
-   yet, every map still {}), the matrix itself says it, loaded lazily —
-   invite.html's first paint is budgeted. Never a typed list. */
+/* WHAT THIS PLAN ADDS to the paid plan below it, as a checklist grouped
+   by stage. From the plans ROWS (plans.features — what the pages will
+   actually do, console edits included), which schema section 36 seeds
+   from src/data/plan-matrix.json. If the rows do not tell the plans
+   apart at all (every map still {}), the matrix itself says it, loaded
+   lazily. Never a typed list. */
 let matrixMod = null;
 let matrixAsked = false;
-function addsFromRows(plans, p) {
-  const paid = plans.filter((x) => x.id !== 'free').sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
+function wantMatrix() {
+  if (matrixMod || matrixAsked) return;
+  matrixAsked = true;
+  import('../lib/plan-matrix.js').then((m) => { matrixMod = m; if (hooks.rerender) hooks.rerender(); }).catch(() => { /* the counts stand */ });
+}
+const paidSorted = (plans) => (plans || []).filter((x) => x && x.id !== 'free').sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
+/** The ids this plan adds, and the plan it adds them to (null = the first). */
+function addedIds(plans, p) {
+  const paid = paidSorted(plans);
+  const differ = paid.some((x) => x.features && Object.values(x.features).some((v) => v === false));
   const i = paid.findIndex((x) => x.id === p.id);
   if (i < 0) return null;
-  const items = featureSummary(p);
-  const mine = [...items.stages.flatMap((s) => s.items), ...items.caps].filter((x) => x.on);
-  if (i === 0) return { first: true, prev: null, labels: mine.map((x) => x.label) };
-  const prevF = (paid[i - 1].features) || {};
-  return { first: false, prev: paid[i - 1], labels: mine.filter((x) => prevF[x.id] === false).map((x) => x.label) };
-}
-function addsBlock(plans, p) {
-  const paid = plans.filter((x) => x.id !== 'free');
-  const differ = paid.some((x) => x.features && Object.values(x.features).some((v) => v === false));
-  let first, prevName, labels, line = '';
+  const prev = i > 0 ? paid[i - 1] : null;
+  let ids;
   if (differ) {
-    const r = addsFromRows(plans, p);
-    if (!r) return null;
-    first = r.first; prevName = r.prev && (r.prev.name || planName(r.prev.id)); labels = r.labels;
+    const f = p.features || {};
+    const pf = (prev && prev.features) || {};
+    const s = featureSummary(p);
+    ids = [...s.stages.flatMap((x) => x.items), ...s.caps].map((x) => x.id).filter((id) => f[id] !== false && (!prev || pf[id] === false));
   } else {
-    if (!matrixMod) {
-      if (!matrixAsked) {
-        matrixAsked = true;
-        import('../lib/plan-matrix.js').then((m) => { matrixMod = m; if (hooks.rerender) hooks.rerender(); }).catch(() => { /* the counts stand */ });
-      }
-      return null;
-    }
-    const i = matrixMod.PAID.indexOf(p.id);
-    if (i < 0) return null;
-    first = i === 0; prevName = i > 0 ? planName(matrixMod.PAID[i - 1]) : '';
-    labels = matrixMod.addedBy(p.id).map(matrixMod.labelOf);
-    line = (matrixMod.MATRIX.lines && matrixMod.MATRIX.lines[p.id]) || '';
+    wantMatrix();
+    if (!matrixMod) return null;
+    ids = matrixMod.addedBy(p.id).filter((r) => r.kind !== 'limit').map((r) => r.key);
   }
-  if (!labels.length) return null;
+  /* The Chrome extension is a LIMIT (plans.limits.extension), not a
+     feature key: the card's Limits group says it, not this list. */
+  return { prev, ids: new Set(ids) };
+}
+function checklist(labels) {
+  return h('ul.pl-check', {}, labels.map((t) => h('li', { text: t })));
+}
+function addsBlock(plans, p, listed) {
+  const a = addedIds(plans, p);
+  if (!a) return null;
+  const s = featureSummary(p, listed);
+  const groups = s.stages.map((st) => ({ label: st.label, labels: st.items.filter((x) => a.ids.has(x.id)).map((x) => x.label) }));
+  const extras = s.caps.filter((c) => a.ids.has(c.id)).map((c) => c.label);
+  groups.push({ label: 'Tools', labels: extras });
+  const shown = groups.filter((g) => g.labels.length);
+  if (!shown.length) return null;
   const box = h('div.pl-adds', { 'data-plan-adds': p.id });
-  box.append(h('p.pl-note', { text: (line ? line + ' ' : '') + (first ? 'Includes:' : 'Everything in ' + prevName + ', plus:') }));
-  box.append(h('ul.pl-what-list', {}, labels.map((t) => h('li', { text: t }))));
+  box.append(h('p.pl-adds-lead', { text: a.prev ? 'Everything in ' + (a.prev.name || planName(a.prev.id)) + ', plus:' : 'Includes:' }));
+  for (const g of shown) box.append(h('p.pl-check-stage', { text: g.label }), checklist(g.labels));
   return box;
 }
 
-function limitList(limits, features) {
+/* The caps, as the card's last group. What the plan INCLUDES (Drive,
+   AI, the stages) is the checklist above and the table below, so it is
+   not said a third time here. */
+function limitList(limits) {
   const ul = h('ul.pl-limits');
   for (const [key, text] of LIMIT_LINES) ul.append(h('li', { text: text(cap(limits, key)) }));
-  ul.append(h('li', { text: limits && limits.extension ? 'Chrome extension included' : 'Chrome extension not included' }));
-  const f = features || {};
-  const items = ['Local work'];
-  if (f.drive_backup !== false) items.push('Drive backup');
-  if (f.ai_tools !== false) items.push('AI tools (your own key)');
-  const said = items.length > 1 ? items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1] : items[0];
-  ul.append(h('li', { text: said + (items.length > 1 ? ' are' : ' is') + ' included' }));
+  ul.append(h('li' + (limits && limits.extension ? '' : '.is-off'), { text: limits && limits.extension ? 'Chrome extension included' : 'Chrome extension not included' }));
   return ul;
 }
 
@@ -185,7 +209,9 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender, onSuccess: onSuccess || hooks.onSuccess };
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? st.plan : null;
+  const listed = listedIn(plans);
   if (justBought) wrap.append(successCard(justBought, plans));
+  if (!matrixMod) wantMatrix();
 
   const row = h('div.pl-row');
   const buyable = [];
@@ -196,41 +222,65 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const pq = appliedQuote(p.id);
     const uq = upgradeQuote(p.id);
     const q = pq || uq;
-    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (p.id === 'free' ? '.is-free' : '') + (pq ? '.has-promo' : '') + (q && q.credit_paise > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id });
-    card.append(h('p.bd-eyebrow', { text: isCurrent ? 'Your plan' : ' ' }));
-    card.append(h('h3.pl-name', { text: p.name || planName(p.id) }));
-    card.append(h('p.pl-blurb', { text: p.blurb || '' }));
-    card.append(h('p.pl-price', {}, [
-      h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : fmtPaise(q ? q.amount_paise : price) }),
-      q ? h('s.pl-list', { text: fmtPaise(q.list_paise), 'aria-label': 'list price ' + fmtPaise(q.list_paise) }) : null,
-      h('span', { text: p.id === 'free' ? '' : price === null ? ' not for sale' : ' once · yours for good' })
-    ].filter(Boolean)));
-    if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${p.name || planName(p.id)} — ${fmtPaise(q.amount_paise)} (you paid ${fmtPaise(q.paid_paise || q.credit_paise)} for ${q.upgrade_from_name || planName(q.upgrade_from)})` }));
-    if (pq && pq.discount_paise > 0) card.append(h('p.pl-save', { text: `${fmtPaise(pq.discount_paise)} off with ${pq.code}` }));
-    { const adds = addsBlock(plans, p); if (adds) card.append(adds); }
-    card.append(limitList(p.limits, p.features));
-    card.append(featureBlock(p));
-    /* A button only where there is something to buy: a higher tier.
-       The current tier says so instead, and a lower one offers nothing
-       — paying to have less is not a thing this page will sell. */
+    const name = p.name || planName(p.id);
     const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);
-    if (p.id !== 'free' && price !== null && higher) {
+    const canBuy = p.id !== 'free' && price !== null && higher;
+    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (pq ? '.has-promo' : '') + (q && q.credit_paise > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id, 'aria-label': name + (isCurrent ? ' — your plan' : '') });
+
+    /* HEAD: what it is called and who it is for. The badge row keeps its
+       height on every card so the prices line up across the row. */
+    const pitch = p.blurb || (matrixMod && matrixMod.MATRIX.lines && matrixMod.MATRIX.lines[p.id]) || '';
+    card.append(h('div.pl-card-head', {}, [
+      h('p.bd-eyebrow.pl-tag', {}, [isCurrent ? h('span.k-badge.k-badge--solid', { text: 'Your plan' }) : null, ' '].filter(Boolean)),
+      h('h3.pl-name', { text: name }),
+      h('p.pl-blurb', { text: pitch })
+    ]));
+
+    /* PRICE: the figure on one line, what kind of payment it is under it. */
+    card.append(h('div.pl-price-block', {}, [
+      h('p.pl-price', {}, [
+        h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : fmtPaise(q ? q.amount_paise : price) }),
+        q ? h('s.pl-list', { text: fmtPaise(q.list_paise), 'aria-label': 'list price ' + fmtPaise(q.list_paise) }) : null
+      ].filter(Boolean)),
+      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : 'One-time payment · yours for good' })
+    ]));
+    if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${fmtPaise(q.amount_paise)} (you paid ${fmtPaise(q.paid_paise || q.credit_paise)} for ${q.upgrade_from_name || planName(q.upgrade_from)})` }));
+    if (pq && pq.discount_paise > 0) card.append(h('p.pl-save', { text: `${fmtPaise(pq.discount_paise)} off with ${pq.code}` }));
+
+    /* ACTION. A button only where there is something to buy: a higher
+       tier. The current tier says so instead, and a lower one offers
+       nothing — paying to have less is not a thing this page will sell.
+       Neither stand-in carries data-plan-action, so nothing can buy it. */
+    const act = h('div.pl-cta');
+    if (canBuy) {
       if (!buyable.length) nextCard = card;
       buyable.push(p.id);
       const disabled = busyPlan !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
-      const label = busyPlan === p.id ? 'OPENING…' : current && current !== 'free' ? 'UPGRADE' : 'BUY';
-      card.append(h('button.btn' + (!current || current === 'free' ? '.primary' : ''), {
+      const first = !current || current === 'free';
+      const label = busyPlan === p.id ? 'OPENING…' : first ? 'BUY ' + name.toUpperCase() : 'UPGRADE TO ' + name.toUpperCase();
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block' + (buyable.length === 1 ? '.k-btn--primary' : '.k-btn--secondary'), {
         type: 'button', 'data-plan-action': 'buy', 'data-plan': p.id, disabled, text: label }));
+    } else if (isCurrent && p.id !== 'free') {
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'YOUR CURRENT PLAN' }));
+      act.append(h('p.pl-until', { text: 'Yours, for good. Nothing to renew.' }));
+    } else if (current && !higher) {
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--ghost.pl-cta-held', { type: 'button', disabled: true, text: 'INCLUDED IN YOUR PLAN' }));
     }
-    if (isCurrent && p.id !== 'free') {
-      card.append(h('p.pl-until', { text: 'Yours, for good. Nothing to renew.' }));
-    }
+    if (act.childNodes.length) card.append(act);
+
+    /* WHAT YOU GET: the additions by stage, then the limits, then the
+       count with the way to the full table. */
+    const body = h('div.pl-card-body');
+    { const adds = addsBlock(plans, p, listed); if (adds) body.append(adds); }
+    body.append(h('p.pl-check-stage', { text: 'Limits' }), limitList(p.limits));
+    card.append(body);
+    card.append(featureBlock(p, listed));
     row.append(card);
   }
   /* The next step up wears the slow border trail (it is a class, so it
      is there on every redraw), and the row staggers in ONCE: the settings
      page redraws this block on every billing event. */
-  if (nextCard) nextCard.classList.add('mo-trail');
+  if (nextCard) nextCard.classList.add('mo-trail', 'is-next');
   if (!staggered) {
     staggered = true;
     row.setAttribute('data-reveal-group', '');
@@ -254,28 +304,32 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     }
   }
   else if (picked.id) markPicked(row);
-  { const cmp = compareBlock(plans); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   loadUpgradeQuotes(st, buyable);
-  if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(promoBox(buyable), eduCallout());
+  if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
-  if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
-  wrap.append(h('p.pl-note', { text: 'One payment, full access for good — nothing recurs and nothing expires. Paid through Razorpay in INR; an invoice arrives from Razorpay by e-mail.' }));
-  /* The refund terms and the upgrade credit, said BESIDE the button
-     rather than only in refund.html: the exceptions are the policy's
-     own three (refund.html §4), and the credit is schema section 21. */
-  wrap.append(h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a plan is final — which is why the trial comes first. Move up later and pay only the difference.' }));
-  wrap.append(h('p.pl-note.pl-legal', {}, [
-    'By paying you agree to the ',
-    h('a', { href: 'terms.html', text: 'Terms of Service' }),
-    ' and the ',
-    h('a', { href: 'refund.html', text: 'Refund & Cancellation Policy' }),
-    '. See also our ',
-    h('a', { href: 'privacy.html', text: 'Privacy Policy' }),
-    '.'
+  /* The offers sit side by side under the row: the code box and the
+     student band. Drawn only where there is something to buy. */
+  if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(h('div.pl-offers', {}, [promoBox(buyable), eduCallout()]));
+  /* The fine print, together: what kind of payment, the refund terms and
+     the upgrade credit (refund.html §4, schema section 21), the legal. */
+  wrap.append(h('div.pl-fine', {}, [
+    h('p.pl-note', { text: 'One payment, full access for good — nothing recurs and nothing expires. Paid through Razorpay in INR; an invoice arrives from Razorpay by e-mail.' }),
+    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a plan is final — which is why the trial comes first. Move up later and pay only the difference.' }),
+    h('p.pl-note.pl-legal', {}, [
+      'By paying you agree to the ',
+      h('a', { href: 'terms.html', text: 'Terms of Service' }),
+      ' and the ',
+      h('a', { href: 'refund.html', text: 'Refund & Cancellation Policy' }),
+      '. See also our ',
+      h('a', { href: 'privacy.html', text: 'Privacy Policy' }),
+      '.'
+    ])
   ]));
+  { const cmp = compareBlock(plans, current, listed); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   return wrap;
 }
+
 
 /* "Have a code?" — a disclosure so the row reads as prices first and an
    offer second. `buyable` is the plan ids the row has a button for; the
@@ -348,35 +402,66 @@ function markPicked(row) {
 /* COMPARE EVERY FEATURE, side by side. The cards each list what they
    ADD, which answers "what is new here" and not "which one has X"; this
    is the table for that question. From the plans ROWS (featureSummary,
-   so console edits show), one column per paid plan on sale, grouped by
-   stage. Closed by default: the cards are the decision, this is the
-   check. */
-function compareBlock(plans) {
-  const cols = (plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
+   so console edits show), one column per paid plan on sale, the limits
+   first and then every SOLD module grouped by stage. Open on a desk;
+   on a phone it starts closed, so the cards stay the decision and the
+   table is the check. Whether it is open is kept here for the page (the
+   block is rebuilt on every billing event) and in no storage. */
+let compareOpen = null;
+function compareBlock(plans, current, listed) {
+  const cols = (plans || []).filter((p) => p && p.id !== 'free' && (p.active !== false || p.id === current))
     .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
   if (cols.length < 2) return null;
-  const sums = cols.map(featureSummary);
-  const det = h('details.pl-compare');
-  det.append(h('summary', { text: 'Compare every feature' }));
+  if (compareOpen === null) {
+    try { compareOpen = !window.matchMedia('(max-width: 720px)').matches; } catch (e) { compareOpen = true; }
+  }
+  const sums = cols.map((p) => featureSummary(p, listed));
+  const det = h('details#plCompare.pl-compare', { 'data-plan-compare': '', ...(compareOpen ? { open: true } : {}) });
+  det.append(h('summary', {}, [
+    h('span.pl-compare-h', { text: 'Compare every feature' }),
+    h('span.pl-compare-n', { text: `${sums[sums.length - 1].total} features across ${sums[0].stages.length} stages` })
+  ]));
   const table = h('table.pl-compare-table');
   table.append(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Feature' }),
-    ...cols.map((p) => h('th', { scope: 'col', text: p.name || planName(p.id) }))])]));
+    ...cols.map((p) => h('th' + (p.id === current ? '.is-current' : ''), { scope: 'col' }, [
+      h('span.pl-compare-plan', { text: p.name || planName(p.id) }),
+      p.id === current ? h('span.pl-compare-mine', { text: 'Your plan' }) : null
+    ].filter(Boolean)))])]));
   const body = h('tbody');
-  const cell = (on) => h('td' + (on ? '.is-on' : '.is-off'), {}, [
-    h('span', { 'aria-hidden': 'true', text: on ? '\u2713' : '\u2014' }),
+  const span = String(cols.length + 1);
+  const group = (label) => body.append(h('tr.pl-compare-stage', {}, [h('th', { scope: 'rowgroup', colspan: span, text: label })]));
+  const mark = (on, cls = '') => h('td' + (on ? '.is-on' : '.is-off') + cls, {}, [
+    h('span', { 'aria-hidden': 'true', text: on ? '✓' : '—' }),
     h('span.visually-hidden', { text: on ? 'Included' : 'Not included' })]);
+  const curCls = (i) => (cols[i].id === current ? '.is-current' : '');
+
+  group('Limits');
+  for (const [key, label] of LIMIT_ROWS) {
+    body.append(h('tr', {}, [h('th', { scope: 'row', text: label }),
+      ...cols.map((p, i) => { const n = cap(p.limits, key); return h('td.pl-compare-num' + curCls(i), { text: n === null ? 'Unlimited' : String(n) }); })]));
+  }
+  body.append(h('tr', {}, [h('th', { scope: 'row', text: 'Chrome extension' }),
+    ...cols.map((p, i) => mark(!!(p.limits && p.limits.extension), curCls(i)))]));
   sums[0].stages.forEach((stage, si) => {
-    body.append(h('tr.pl-compare-stage', {}, [h('th', { scope: 'rowgroup', colspan: String(cols.length + 1), text: stage.label })]));
+    group(stage.label);
     stage.items.forEach((item, ii) => body.append(h('tr', {}, [h('th', { scope: 'row', text: item.label }),
-      ...sums.map((s) => cell(s.stages[si] && s.stages[si].items[ii] && s.stages[si].items[ii].on))])));
+      ...sums.map((s, i) => mark(s.stages[si] && s.stages[si].items[ii] && s.stages[si].items[ii].on, curCls(i)))])));
   });
-  body.append(h('tr.pl-compare-stage', {}, [h('th', { scope: 'rowgroup', colspan: String(cols.length + 1), text: 'Capabilities' })]));
+  group('Tools');
   sums[0].caps.forEach((c, ci) => body.append(h('tr', {}, [h('th', { scope: 'row', text: c.label }),
-    ...sums.map((s) => cell(s.caps[ci] && s.caps[ci].on))])));
+    ...sums.map((s, i) => mark(s.caps[ci] && s.caps[ci].on, curCls(i)))])));
   table.append(body);
   det.append(h('div.pl-compare-wrap', { role: 'region', 'aria-label': 'Plan comparison', tabindex: '0' }, [table]));
   return det;
 }
+delegate(document, 'toggle', '[data-plan-compare]', (e, el) => { compareOpen = el.open; }, true);
+/* "Compare every feature" on a card: open the table before the jump. */
+delegate(document, 'click', '[data-plan-action="compare"]', () => {
+  compareOpen = true;
+  const det = document.getElementById('plCompare');
+  if (det) det.open = true;
+});
+
 
 const wantedPlan = () => wantedPlanFrom(location.search);
 document.addEventListener('click', (e) => {
@@ -406,7 +491,7 @@ function successCard(planId, plans) {
   
   card.append(h('p.pl-note', {}, [
     'Your invoice is on its way from Razorpay by e-mail, and ',
-    h('a', { href: 'purchase.html#plan', text: 'listed under Invoices on the Purchase page' }), '.'
+    h('a', { href: 'purchase.html#invoices', text: 'listed under Invoices on the Purchase page' }), '.'
   ]));
   card.append(h('div.iv-actions', {}, [h('a.btn.primary', { href: 'index.html?welcome=plan', text: 'START YOUR FILM' })]));
   return card;
@@ -428,6 +513,36 @@ export function usageList(st) {
   line('Most collaborators on one film', u.collaborators || 0, 'collaborators');
   line('Organisation seats used', u.seats || 0, 'seats');
   return ul;
+}
+
+/** The same usage as tiles with a meter each, for the purchase page's
+ *  current-plan strip. A cap that is null is unlimited: the tile prints
+ *  what is used and says so, with no bar to fill. */
+export function usageTiles(st) {
+  if (!st) return null;
+  const u = st.usage || {};
+  const lim = st.limits || {};
+  const tile = (label, used, key) => {
+    const c = cap(lim, key);
+    const full = c !== null && used >= c;
+    const el = h('div.pl-use' + (full ? '.is-full' : ''), { 'data-usage': key });
+    el.append(h('p.pl-use-label', { text: label }));
+    el.append(h('p.pl-use-fig', {}, [h('strong', { text: String(used) }), h('span', { text: c === null ? ' · unlimited' : ' of ' + c })]));
+    if (c !== null) {
+      const m = meter({ value: used, max: Math.max(c, 1), show: false, tone: full ? 'warn' : null });
+      const track = m.querySelector('.k-meter-track');
+      if (track) track.setAttribute('aria-label', label + ' used');
+      el.append(m);
+    }
+    if (full) el.append(h('p.pl-use-note', { text: 'At the limit' }));
+    return el;
+  };
+  return h('div.pl-usage-tiles', { role: 'group', 'aria-label': 'Your usage' }, [
+    tile('Cloud projects', u.projects || 0, 'projects'),
+    tile('Live share links', u.shares || 0, 'shares'),
+    tile('Most collaborators on a film', u.collaborators || 0, 'collaborators'),
+    tile('Organisation seats', u.seats || 0, 'seats')
+  ]);
 }
 
 delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
@@ -504,4 +619,4 @@ delegate(document, 'click', '[data-plan-action="promo-clear"]', () => {
   if (hooks.rerender) hooks.rerender();
 });
 
-export default { planCards, usageList };
+export default { planCards, usageList, usageTiles };

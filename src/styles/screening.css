@@ -6,7 +6,7 @@
    is correct here and nowhere else in the app: it is a mark meant to
    sit BELOW legibility, not text anybody is meant to read.
    ============================================================ */
-.sc-main { max-width: var(--measure-wide); margin: 0 auto; padding: var(--s6) var(--gutter) var(--s9); }
+.sc-main { max-width: var(--measure-text); margin: 0 auto; padding: var(--s6) var(--gutter) var(--s9); }
 /* .bd-head carries its own side padding for the module pages; here the
    main is already the frame, so it pushed the heading 24px right of
    the form under it. Same exception edit.css makes. */

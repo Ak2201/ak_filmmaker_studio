@@ -309,12 +309,12 @@ reset();
   eq(S.bibleFields('world', 'short').filter((f) => f.ns === 'short').map((f) => f.key), ['s5_loc', 's5_time', 's5_anchors', 's5_rules'], 'a short world is the short blueprint’s four');
   eq(S.bibleFields('world', 'short').filter((f) => f.ns === 'feature').map((f) => f.key), ['s7_era', 's7_duration'], '…with the feature’s era and duration behind it (shown only once they hold an answer)');
   ok(S.bibleFields('stakes', 'short').every((f) => f.ns === 'feature'), 'a short film’s stakes are feature keys — hidden until filled');
-  /* the path steps name real cards, and the three short steps split the Bible */
+  /* the path steps name real cards; a short film’s one Bible step shows three */
   for (const fmt of ['feature', 'short']) for (const p of PATHS[fmt]) {
     eq((p.cards || []).filter((c) => !cardIds.includes(c)), [], `${fmt}/${p.id}: its cards are real`);
   }
   eq(PATHS.feature.find((p) => p.id === 'bible').cards, cardIds, 'the feature’s Story Bible step shows all five cards, on the page at once');
-  eq(PATHS.short.flatMap((p) => p.cards || []), ['characters', 'world', 'conflict'], 'a short film’s Character, World and Conflict steps show only those three cards');
+  eq(PATHS.short.flatMap((p) => p.cards || []), ['characters', 'world', 'conflict'], 'a short film’s Characters & world step shows only those three cards');
   /* the source: no one-card-at-a-time state, a data-key on every blueprint-backed field */
   const bibleSrc = src('../src/ui/story-bible.js');
   ok(!/seeAll|card-next|card-back/.test(bibleSrc), 'the Bible no longer hides cards behind a toggle (every card is on the page)');

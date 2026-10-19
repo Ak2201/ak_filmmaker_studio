@@ -1923,7 +1923,8 @@ for (const spec of PAGES) {
      the overflow measurements above all describe the page AS LOADED,
      and the baseline must not move because the walk got wider. */
   const EXTRA_STATES = {
-    story: [3, 4, 6].map((n) => ({ state: 'path step ' + n, hash: 'path-' + n })),
+    /* the four steps (19 Oct 2026); the page opens on the Beat Sheet */
+    story: ['idea', 'bible', 'synopsis'].map((id) => ({ state: 'path step ' + id, hash: 'path-' + id })),
     write: [{ state: 'Panel beat guide', prefs: { key: 'fms_write_prefs_v1', set: { beatGuide: 'panel' } } }]
   };
   for (const st of EXTRA_STATES[spec.name] || []) {

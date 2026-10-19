@@ -50,7 +50,7 @@ html.fm-on main { background: var(--surface-canvas); }
 
 /* ---- the page, centred ---------------------------------------- */
 html.fm-on #screenplay {
-  max-width: var(--measure-wide);
+  max-width: var(--measure-text);
   margin-inline: auto;
   /* Room above and below so the first and last lines can both be held
      at a third of the way down. */

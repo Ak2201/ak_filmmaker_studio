@@ -24,7 +24,7 @@
    ============================================================ */
 
 .legal {
-  max-width: var(--measure-wide);
+  max-width: var(--measure-text);
   margin: 0 auto;
   padding: var(--s7) var(--gutter) var(--s9);
 }

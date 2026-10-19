@@ -419,7 +419,16 @@ try {
        (case studies, dissection, glossary hang off the Library since
        6 Oct 2026 — src/lib/navmodel.js joins the two lists the same way). */
     const NAV = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/navigation.json'), 'utf8'));
-    const built = [...NAV.phases, ...NAV.global].flatMap((p) => p.modules || []).filter((m) => m.status !== 'planned').length;
+    /* A module switched off for everybody (plan-matrix.json `plans: []`)
+       is not a feature of any plan, so the cards do not count it — unless
+       a paid plan ROW ticks it true (the console switching it back on),
+       which wins, as isDisabledEverywhere() has it. The console SAVE
+       above wrote whole maps, so read the rows rather than assume. */
+    const MATRIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/plan-matrix.json'), 'utf8'));
+    const offEverywhere = new Set(MATRIX.features.filter((r) => r.kind === 'module' && !(r.plans || []).length).map((r) => r.key));
+    const paidRows = F.db.plans.filter((p) => p.id !== 'free');
+    const sold = (id) => paidRows.some((p) => p.features && p.features[id] === true) || !offEverywhere.has(id);
+    const built = [...NAV.phases, ...NAV.global].flatMap((p) => p.modules || []).filter((m) => m.status !== 'planned' && sold(m.id)).length;
     // Every capability row counts except sample_only, which narrows
     // rather than grants. Read from plan-gate.js rather than typed here,
     // or each new capability (remove_branding was the sixth) fails this.

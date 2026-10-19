@@ -198,7 +198,7 @@ function panelStart() {
   const kids = [
     eyebrow('Story page · the story path'),
     h('h3.sk-title', { text: any ? 'Your story, so far' : 'Start your story' }),
-    h('p.sk-lead', { text: 'The Story page takes a film from an idea to a logline, a beat sheet, a step outline and a synopsis. These steps are its working copy; how far this project has got there:' })
+    h('p.sk-lead', { text: 'The Story page takes a film in four steps: the idea and its logline, the characters and the world, the beat sheet, and the synopsis. These steps are its working copy; how far this project has got there:' })
   ];
   const ol = h('ol.sk-path', { 'aria-label': 'Story path progress' });
   for (const p of path) {
@@ -277,13 +277,13 @@ function panelBeats(ns) {
     h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
     ` · ${plural(tagged, 'passage')} tagged in the synopsis. ` +
     (have ? 'Each beat’s are shown under its field below, read from the Story page. The fields stay this blueprint’s own.'
-      : 'Once the Story page has a step outline, each beat’s steps show under its field below. The fields stay this blueprint’s own.')
+      : 'Once the Story page’s beat sheet has steps, each beat’s steps show under its field below. The fields stay this blueprint’s own.')
   ]));
   if (s.framework !== fw.id && (s.outline.length || s.marks.length)) {
     kids.push(h('p.sk-note', { text: `The Story page is set to ${Story.frameworkById(s.framework).label}. Shown here in ${fw.short}: steps written under another format stay on the Story page, and tagged passages are placed by position.` }));
   }
   const acts = h('div.sk-actions');
-  acts.append(link(STORY_HREF + '#path-4', 'OPEN THE STEP OUTLINE →', o.covered ? '' : '.primary'));
+  acts.append(link(STORY_HREF + '#path-4', 'OPEN THE BEAT SHEET →', o.covered ? '' : '.primary'));
   if (!s.source.trim()) {
     acts.append(h('button.btn', { type: 'button', 'data-sk': 'copy-beats', 'data-ns': ns,
       text: `START THE STORY SYNOPSIS FROM MY ${fw.beats.length} BEATS` }));

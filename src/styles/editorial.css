@@ -379,7 +379,7 @@
 .how-to p { max-width: var(--measure); margin-bottom: var(--s3); }
 
 /* Numbered how-to list */
-.how-to ol { list-style: none; counter-reset: how; max-width: var(--measure-wide); }
+.how-to ol { list-style: none; counter-reset: how; max-width: var(--measure-text); }
 .how-to ol li {
   counter-increment: how;
   position: relative;
@@ -563,7 +563,7 @@
   border-radius: var(--sk-radius);
 }
 .tip-box,
-.why-box { max-width: var(--measure-wide); margin: var(--s4) 0 var(--s5); }
+.why-box { max-width: var(--measure-text); margin: var(--s4) 0 var(--s5); }
 
 /* These labels are eyebrows too — modules.css §1. Only .formula-box and
    .formula still sit on ink, and modules gives those two the gilt; the
@@ -600,7 +600,7 @@
 /* Surface: modules.css §3. Only the measure is this file's business. */
 .por-thozil,
 .why-this,
-.disclaimer { max-width: var(--measure-wide); margin: var(--s4) 0 var(--s5); }
+.disclaimer { max-width: var(--measure-text); margin: var(--s4) 0 var(--s5); }
 /* Every eyebrow on the four editorial pages is one object — modules.css
    §1. This list lived here as well for a while, which is how an eyebrow
    ends up meaning two slightly different things. */
@@ -692,7 +692,7 @@
 /* ------------------------------------------------------------
    ASKS — the prompt above each field.
    ------------------------------------------------------------ */
-.ask { max-width: var(--measure-wide); margin: var(--s5) 0 var(--s3); }
+.ask { max-width: var(--measure-text); margin: var(--s5) 0 var(--s3); }
 .ask-label { display: block; margin-bottom: var(--s2); }
 .ask-label::before { content: "✎  "; }
 
@@ -759,7 +759,7 @@ select.field-input {
    step readable; both marker states are honoured because both
    scripts set their own class.
    ------------------------------------------------------------ */
-.step-check { max-width: var(--measure-wide); margin-top: var(--s5); }
+.step-check { max-width: var(--measure-text); margin-top: var(--s5); }
 .step-check ul { list-style: none; }
 .step-check li {
   position: relative;

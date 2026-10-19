@@ -75,8 +75,9 @@
 .st-import { position: relative; overflow: hidden; }
 .st-import input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
-/* ---- pacing ------------------------------------------------- */
-.st-pacing { padding-block: var(--s5); }
+/* ---- pacing (inside the Synopsis step) ---------------------- */
+.st-pacing { padding-block: var(--s5); border-top: 1px solid var(--rule-hair); scroll-margin-top: var(--scroll-offset, 0px); }
+.st-pacing > .st-sub:first-child { margin-top: 0; }
 /* The curve and its flags: src/styles/story-heat.css, shared with the
    blueprints' Part I panel (src/ui/story-kit.js). */
 .st-muted { color: var(--ink-muted); font-size: var(--t-small); }
@@ -344,23 +345,57 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-import { cursor: pointer; position: relative; }
 .st-import:focus-within { outline: var(--focus); outline-offset: var(--focus-offset); }
 
-/* ---- the three views and the notes disclosure ---------------------
-   The step menu moved under <details class="st-notes">: a wrapping row of
-   steps, not a pinned strip or a side column (the page has no rail now). */
-.st-views { margin-block: var(--s3) var(--s4); max-width: 100%; }
-.st-main > .st-views[hidden], .st-main > .st-notes[hidden] { display: none; }
-.st-notes { margin-bottom: var(--s4); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); background-color: var(--surface-rail); min-width: 0; }
-.st-notes > summary { cursor: pointer; padding: var(--s2) var(--s4); color: var(--ink-body); font-size: var(--t-small); }
-.st-notes > summary:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
-.st-notes[open] > summary { color: var(--ink); border-bottom: 1px solid var(--rule); }
-.st-notes .tabs { position: static; margin: 0; padding: var(--s3) var(--s4); overflow: visible; flex-wrap: wrap; border-bottom: 0; background: transparent; }
-/* beats .tabs:not(.tabs-side) (tabs.css), which ties on specificity */
-.st-notes .tabs.tabs { border: 0; border-radius: 0; box-shadow: none; width: auto; max-width: none; }
-.st-notes .tabs-list { display: flex; flex-wrap: wrap; gap: var(--s1); }
-.st-notes .tabs-group { display: contents; }
-.st-notes .tabs-group-h { display: none; }
-.st-notes .tabs[hidden] { display: none; }
-@media (max-width: 719px), (pointer: coarse) { .st-notes > summary { min-height: var(--tap-min, 44px); display: flex; align-items: center; } }
+/* ---- four steps (owner, 19 Oct 2026) ------------------------------
+   The path is the section menu's strip (tabs.css) straight above the
+   steps: Idea · Characters & world · Beat Sheet · Synopsis. Any step
+   opens at any time; Back / Next at the foot only suggest. */
+.st-main > nav.tabs { margin-block: var(--s4) 0; }
+
+/* the logline, inside the Idea step */
+.st-part { margin-top: var(--s6); padding-top: var(--s5); border-top: 1px solid var(--rule-hair); scroll-margin-top: var(--scroll-offset, 0px); }
+.st-part > .st-sub:first-child { margin-top: 0; }
+
+/* the Beat Sheet's head: the picker, the lock, the send */
+.st-bs-head { display: grid; gap: var(--s3); margin-top: var(--s4); min-width: 0; }
+.st-fw-pick {
+  min-width: 0;
+  background-color: var(--surface-rail);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  scroll-margin-top: var(--scroll-offset, 0px);
+}
+.st-fw-pick > :not(summary) { margin-inline: var(--s4); }
+.st-fw-pick > .st-fw-grid { margin-bottom: var(--s4); }
+.st-fw-pick > .st-muted { margin-top: var(--s3); max-width: var(--measure, 70ch); }
+.st-fw-sum {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4);
+  cursor: pointer;
+  min-height: var(--tap-min, 44px);
+  box-sizing: border-box;
+}
+.st-fw-sum:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.st-fw-cur { font-family: var(--f-display); font-weight: 700; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+.st-fw-change { margin-inline-start: auto; color: var(--accent-deep); font-size: var(--t-small); text-decoration: underline; }
+.st-fw-pick[open] > .st-fw-sum { border-bottom: 1px solid var(--rule); }
+.st-fw-pick[open] .st-fw-change { visibility: hidden; }
+.st-bs-actions { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s3) var(--s5); }
+.st-bs-lock, .st-bs-send { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); min-width: 0; scroll-margin-top: var(--scroll-offset, 0px); }
+.st-bs-lock { flex: 1 1 18rem; }
+.st-bs-send { flex: 1 1 22rem; justify-content: flex-end; }
+.st-bs-lock .st-muted, .st-bs-send .st-muted { flex: 1 1 14rem; min-width: 0; margin: 0; }
+.st-bs-send .st-muted { flex-basis: 100%; text-align: end; }
+@media (max-width: 719px) {
+  .st-bs-send { justify-content: flex-start; }
+  .st-bs-send .st-muted { text-align: start; }
+}
+
+/* the Unassigned bin, empty: a quiet place that exists before it is needed */
+.st-unplaced.is-empty { border-style: dashed; border-color: var(--rule); background-color: transparent; box-shadow: none; }
+.st-unplaced.is-empty .st-muted { margin: var(--s1) 0 0; }
+
+/* the hand-over at the end of the last step */
+.st-next-stage { margin-inline-start: auto; }
 /* the synopsis step: the tagging palette is a sticky inspector */
 @media (min-width: 1100px) {
   #path-synopsis .st-beats { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--s4)); background-color: var(--surface-rail); box-shadow: var(--shadow-card-rest); }

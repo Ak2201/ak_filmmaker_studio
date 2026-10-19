@@ -538,7 +538,7 @@ function gonePanel() {
    `/settings`, not `/settings.html`, and a regex anchored to `.html`
    would have walled the page you buy from on the live site and nowhere
    else. modulesHere() strips the extension for the same reason. */
-const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|product-[a-z-]+)$/;
+const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|contact|about|product-[a-z-]+)$/;
 const pageName = () => file().replace(/\.html$/, '');
 
 function wallPanel() {

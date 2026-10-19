@@ -67,6 +67,8 @@
     { "source": "/refund", "destination": "/refund.html" },
     { "source": "/start", "destination": "/start.html" },
     { "source": "/pricing", "destination": "/pricing.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/about", "destination": "/about.html" },
     { "source": "/product-writing", "destination": "/product-writing.html" },
     { "source": "/product-story", "destination": "/product-story.html" },
     { "source": "/product-storyboard", "destination": "/product-storyboard.html" },

@@ -123,7 +123,7 @@ function fontPreloads() {
         if (!ctx || !ctx.bundle) return;
         const where = String(ctx.path || ctx.filename || '');
         if (/panel\.html$/.test(where)) return;
-        if (!html.includes('id="app"') && !/(^|\/)(start|pricing|product-[a-z-]+)\.html$/.test(where)) return;
+        if (!html.includes('id="app"') && !/(^|\/)(start|pricing|contact|about|product-[a-z-]+)\.html$/.test(where)) return;
         const tags = [];
         for (const face of PRELOAD_FACES) {
           const a = Object.values(ctx.bundle).find((f) => f.type === 'asset' && /\.woff2$/.test(f.fileName)
@@ -421,7 +421,7 @@ function startFigures() {
    startFigures() into a shared function and add them here, rather than
    typing a second copy of that derivation.
    ============================================================ */
-const MARKETING_PAGE = /(^|[\\/])(pricing|product-[a-z-]+)\.html$/;
+const MARKETING_PAGE = /(^|[\\/])(pricing|contact|about|product-[a-z-]+)\.html$/;
 function marketingFigures() {
   const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
   const json = (p) => JSON.parse(readFileSync(resolve(__dirname, 'src/data/' + p), 'utf8'));
@@ -505,7 +505,7 @@ function marketingFigures() {
 function marketingInputs() {
   const out = {};
   for (const f of readdirSync(__dirname)) {
-    if (/^(pricing|product-[a-z-]+)\.html$/.test(f)) out[f.replace(/\.html$/, '')] = resolve(__dirname, f);
+    if (/^(pricing|contact|about|product-[a-z-]+)\.html$/.test(f)) out[f.replace(/\.html$/, '')] = resolve(__dirname, f);
   }
   return out;
 }

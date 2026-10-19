@@ -34,7 +34,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAll, validate, validatePricing, comparableRows, PAGES_FILE, FIXTURE_FILE, PRICING_FILE, HOME_FILE } from './make-marketing-pages.mjs';
+import { buildAll, validate, validatePricing, validateCompany, comparableRows, esc, PAGES_FILE, FIXTURE_FILE, PRICING_FILE, HOME_FILE, CONTACT_FILE, ABOUT_FILE } from './make-marketing-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE = process.argv.includes('--fixture') || process.env.MARKETING_FIXTURE === '1';
@@ -275,6 +275,77 @@ for (const id of IDS) {
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(sjs), 'start.js builds no markup from strings');
 }
 
+/* ---- contact.html and about.html (the company pages) ---------------- */
+{
+  ok(validateCompany(inputs.company).length === 0, 'the company copy validates' + (validateCompany(inputs.company).length ? ': ' + validateCompany(inputs.company).join('; ') : ''));
+  const brandJson = JSON.parse(read('src/data/brand.json'));
+  const personal = [brandJson.seller, brandJson.owner].filter((v) => typeof v === 'string' && v.trim());
+  for (const file of [CONTACT_FILE, ABOUT_FILE]) {
+    const tag = file + ': ';
+    const at = path.join(ROOT, file);
+    if (!fs.existsSync(at)) { ok(false, tag + 'is not committed (run npm run make:marketing)'); continue; }
+    const html = fs.readFileSync(at, 'utf8');
+    const slug = file.replace(/\.html$/, '');
+    ok(html === files[file], tag + 'committed HTML equals the generator output (run npm run make:marketing)');
+    ok((html.match(/<h1[\s>]/g) || []).length === 1, tag + 'exactly one h1');
+    ok(!/\sstyle="/.test(html) && !/\son[a-z]+="/i.test(html), tag + 'no inline style or handler (CSP)');
+    ok(/<script type="module" src="\/src\/pages\/company\.js"><\/script>/.test(html), tag + 'loads company.js');
+    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html), tag + 'no inline script');
+    ok(!/\{\{(?!brand:)/.test(html), tag + 'no stamp other than {{brand:...}}');
+    ok(!html.includes('₹'), tag + 'no bare rupee sign');
+    ok(new RegExp(`<link rel="canonical" href="https://{{brand:host}}/${slug}">`).test(html), tag + 'canonical is the {{brand:host}} stamp');
+    const urls = [...html.matchAll(/\s(href|src|poster|action)="([^"]*)"/g)].map((m) => ({ attr: m[1], v: m[2] }));
+    const bad = urls.filter(({ v }) => EXTERNAL.test(v) && !/^https:\/\/{{brand:host}}\//.test(v));
+    ok(bad.length === 0, tag + 'no external host in href/src' + (bad.length ? ': ' + bad.map((b) => b.v).join(', ') : ''));
+    ok(urls.filter(({ v }) => /^mailto:/.test(v)).every(({ v }) => v === 'mailto:{{brand:email}}'), tag + 'mailto is the {{brand:email}} stamp');
+    ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b/i.test(html), tag + 'no rating, testimonial or customer claim');
+    for (const p of personal) ok(!html.includes(p), tag + 'no personal name');
+    /* the call to action: the landing page's door, and the plans */
+    const trial = [...html.matchAll(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
+    ok(trial.length >= 1 && trial.every((t) => t === inputs.company.cta.trial), tag + 'the primary CTA is "' + inputs.company.cta.trial + '" through the sign-up door (invite.html, data-open-signup), as on start.html');
+    ok(new RegExp(`<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\\.html">${inputs.company.cta.plans}</a>`).test(html), tag + 'the secondary CTA "' + inputs.company.cta.plans + '" goes to pricing.html');
+    ok(/data-open-signup/.test(files[HOME_FILE]) && /href="invite\.html" data-open-signup/.test(files[HOME_FILE]), tag + 'start.html\'s CTA is the same door');
+    ok(/id="mkSignup"/.test(html), tag + 'carries the sign-up modal the CTA opens');
+    ok(/<footer class="mk-foot"[\s\S]*about\.html[\s\S]*contact\.html[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'footer links About, Contact and the three legal pages');
+    const icons = JSON.parse(read('src/data/section-icons.json')).icons;
+    const nav = read('src/data/navigation.json');
+    const drawn = new Set([...html.matchAll(/<span class="sym[^"]*" aria-hidden="true" translate="no">([a-z0-9_]+)<\/span>/g)].map((m) => m[1]));
+    const missing = [...drawn].filter((nme) => !icons.includes(nme) && !nav.includes('"sym": "' + nme + '"') && !nav.includes('"sym":"' + nme + '"'));
+    ok(missing.length === 0, tag + 'every icon is in the font subset' + (missing.length ? ': ' + missing.join(', ') : ''));
+  }
+  {
+    const html = files[CONTACT_FILE];
+    const formTag = (html.match(/<form\b[^>]*>/) || [''])[0];
+    ok(/\smethod="dialog"/.test(formTag) && !/\saction=/.test(formTag), 'contact.html: the form has no action and method="dialog", so it cannot submit to any server');
+    ok(/\snovalidate/.test(formTag), 'contact.html: the form validates itself (novalidate, accessible messages)');
+    for (const k of ['name', 'email', 'topic', 'message']) {
+      ok(new RegExp(`<label class="co-label" for="co-${k}">`).test(html), `contact.html: ${k} has a label`);
+      ok(new RegExp(`id="co-${k}"[^>]*aria-describedby="co-${k}-err`).test(html) && new RegExp(`<p class="co-err" id="co-${k}-err" hidden>`).test(html), `contact.html: ${k} is described by its error line`);
+    }
+    const opts = [...html.matchAll(/<option value="[^"]+"[^>]*>([^<]+)<\/option>/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+    ok(opts.join('|') === 'General|Billing & refunds|Bug report|Feature request|Press', 'contact.html: the topics are General / Billing & refunds / Bug report / Feature request / Press: ' + opts.join(', '));
+    ok(/<span class="co-mail-v" id="coEmail" translate="no">{{brand:email}}<\/span>/.test(html), 'contact.html: the support address is printed as plain text from {{brand:email}}');
+    ok(/href="refund\.html"/.test(html), 'contact.html: links the refund policy for refund requests');
+    ok(/role="alert"/.test(html) && /role="status"/.test(html), 'contact.html: an alert summary and a status line');
+    ok(html.includes(esc(inputs.company.contact.form.privacy)), 'contact.html: says in one line that nothing is sent to or stored on a server');
+  }
+  ok(/<p class="co-sign">&mdash; The {{brand:name}} team<\/p>/.test(files[ABOUT_FILE]), 'about.html: signed as the team');
+  const ccss = read('src/styles/company.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/#[0-9a-fA-F]{3,8}\b/.test(ccss) && !/\b(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch)\(/.test(ccss), 'company.css has no raw colour');
+  ok(!/border-radius:\s*\d/.test(ccss), 'company.css types no literal radius');
+  ok([...ccss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate/.test(v)).every((v) => /var\(--motion\)/.test(v)), 'every translate in company.css is multiplied by --motion');
+  const cjs = read('src/pages/company.js');
+  const cimports = [...cjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
+  const callowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/company\.css$/, /^\.\.\/lib\/contact-model\.js$/];
+  const cstray = cimports.filter((i) => !callowed.some((a) => a.test(i)));
+  ok(cstray.length === 0, 'company.js imports only the light allowlist (the startlib rule)' + (cstray.length ? ': ' + cstray.join(', ') : ''));
+  ok(!/\bdocument\.write\b|\.innerHTML\s*=|localStorage|sessionStorage|fetch\(/.test(cjs), 'company.js builds no markup from strings, stores nothing and fetches nothing');
+  ok(!/^import/m.test(read('src/lib/contact-model.js')), 'contact-model.js imports nothing (pure)');
+  for (const f of ['privacy.html', 'terms.html', 'refund.html']) {
+    ok(/<p class="legal-foot">[\s\S]*href="\/about"[\s\S]*href="\/contact"/.test(read(f)), f + ': the footer links About and Contact');
+  }
+}
+
 /* ---- the stylesheet and the script --------------------------------- */
 const css = read('src/styles/marketing.css');
 const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -309,7 +380,7 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
   ok(/for = "\/marketing\/\*"/.test(netlify), 'netlify.toml caches /marketing/* for long');
   ok(/globIgnores: \[[^\]]*'marketing\/\*\*'/.test(vite), 'the service worker does not precache /marketing/* (video size)');
   ok(/marketingInputs\(\)/.test(vite) && /fms-marketing-figures|marketingFigures\(\)/.test(vite), 'vite.config.js discovers the pages and stamps their figures');
-  for (const id of [...IDS.map((i) => 'product-' + i), 'pricing']) {
+  for (const id of [...IDS.map((i) => 'product-' + i), 'pricing', 'contact', 'about']) {
     ok(gateRe.test('/' + id + '.html') && gateRe.test('/' + id), `${id} is exempt from the site gate (.html and clean)`);
     ok(vercel.rewrites.some((r) => r.source === '/' + id && r.destination === '/' + id + '.html'), `${id}: vercel rewrite`);
     ok(new RegExp(`from = "/${id}"\\s+to = "/${id}\\.html"\\s+status = 200`).test(netlify), `${id}: netlify rewrite`);

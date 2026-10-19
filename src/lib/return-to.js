@@ -24,7 +24,7 @@ export const RETURN_KEY = 'fms_return_to';
 const MAX_AGE_MS = 30 * 60 * 1000;
 /* Pages that are the door itself or have their own gatekeeper: sending
    somebody "back" to one of them is a loop or a non sequitur. */
-const NEVER = /^(invite|start|screening|privacy|terms|refund|index|pricing|product-[\w-]+)\.html(#.*)?$|^arunak-/;
+const NEVER = /^(invite|start|screening|privacy|terms|refund|index|pricing|contact|about|product-[\w-]+)\.html(#.*)?$|^arunak-/;
 const SHAPE = /^[a-z][a-z0-9-]*\.html(#[A-Za-z0-9_-]{1,64})?$/;
 
 /** Returns the normalised target or '' when it is not an acceptable one. */

@@ -46,6 +46,7 @@ import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
 import { installLineLanding } from '../ui/script-find.js';
 import { mountReplaceBar } from '../ui/script-replace-bar.js';
+import { mountPresence } from '../ui/presence.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
@@ -264,7 +265,10 @@ function buildTop() {
   const crumb = h('p.sc-draftline', {}, [
     h('span.sc-draft', { 'data-sc': 'draft', text: draftLabel() }),
     h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
-    statusNode
+    statusNode,
+    /* Who else is in this script (src/ui/presence.js). Hidden until
+       somebody is; a role="group" so the label reads with the faces. */
+    h('span#scPeers.sc-peers', { role: 'group', hidden: true })
   ]);
   const meta = h('div.sc-meta', {}, [crumb, stats]);
   const runtime = h('div#scRuntime.sc-runtime', { role: 'region', 'aria-label': 'Running time', hidden: true });
@@ -324,6 +328,7 @@ function buildTop() {
       h('div.sc-tools-r', {}, [fileMenu, menu, toolsBtn])
     ]),
     runtime,
+    h('p#scPeerWarn.sc-peer-warn', { role: 'status', 'aria-live': 'polite', hidden: true }),
     tipNode
   ]);
 }
@@ -1054,6 +1059,11 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeI
 
 /* ---- boot --------------------------------------------------------- */
 render();
+mountPresence({
+  strip: () => document.getElementById('scPeers'),
+  warn: () => document.getElementById('scPeerWarn'),
+  rowOf: (id) => editor.rowOf(id)
+});
 mountTamilType();
 WriteKeys.publishSheet(keyPrefs);
 mountFocusMode(() => doc, {

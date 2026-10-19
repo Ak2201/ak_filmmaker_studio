@@ -1712,6 +1712,44 @@ export async function attachToCurrentProject() {
   _activeChannels = [dataChannel, commentsChannel];
 }
 
+/* PRESENCE — who else has this project's screenplay open. A PRIVATE
+   channel 'pr:<project id>', because presence on a public channel is
+   outside RLS: anyone with the anon key and a project id could read who
+   is writing. Who may join is schema §48's two policies on
+   realtime.messages (the people has_project_access() lets read the
+   project). Until §48 runs, the join is refused and onSync never fires:
+   the page shows nobody, and nothing else changes. Kept apart from
+   _activeChannels on purpose — the page that shows presence owns its
+   channel (src/ui/presence.js) and leaves it on pagehide; a re-attach
+   for sync must not drop it. Stores nothing.
+   → { track(meta), leave() } or null when there is no session, no
+     client or sync is off. */
+export async function joinPresence(pid, onSync) {
+  if (!pid || !session || !syncEnabled()) return null;
+  let client;
+  try { client = await ensureClient(); } catch (e) { return null; }
+  if (!client || !session) return null;
+  try { client.realtime.setAuth(session.access_token); } catch (e) { /* the SDK sets it on SIGNED_IN as well */ }
+  const key = session.user.id;
+  const ch = client.channel('pr:' + pid, { config: { private: true, presence: { key } } });
+  let joined = false, last = null, gone = false;
+  ch.on('presence', { event: 'sync' }, () => { if (!gone) { try { onSync(ch.presenceState(), key); } catch (e) { /* the page's */ } } });
+  ch.subscribe((status) => {
+    if (status !== 'SUBSCRIBED' || gone) return;
+    joined = true;
+    if (last) ch.track(last).catch(() => {});
+  });
+  return {
+    track(meta) { last = meta; if (joined && !gone) ch.track(meta).catch(() => {}); },
+    leave() {
+      if (gone) return;
+      gone = true;
+      try { ch.untrack(); } catch (e) { /* not tracked */ }
+      try { client.removeChannel(ch); } catch (e) { try { ch.unsubscribe(); } catch (err) { /* gone */ } }
+    }
+  };
+}
+
 function _onRemoteData(payload) {
   /* A DELETE carries no data: `new` is empty and `old` names the scope,
      so `row.data` would be undefined, `nextRaw` '{}', and the stamp
@@ -2162,7 +2200,7 @@ const StudioCloud = {
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
-  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects,
+  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,
   listSalvage, restoreSalvage,

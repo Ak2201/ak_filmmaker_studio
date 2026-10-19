@@ -14,10 +14,11 @@ order they were AUTHORED, not the order they are applied (see run order below).
 | `schema-45-admin-controls.sql` | §45 | Admin controls. Needs §40. |
 | `schema-46-role-matrix.sql` | §46 | Role matrix (`require_role()` on the admin writers). Needs §45. |
 | `schema-47-delete-anonymise.sql` | §47 | Total delete anonymises kept invoices. Needs §45. |
+| `schema-48-presence.sql` | §48 | Who may join a project's private presence channel (`realtime.messages` policies + `can_join_presence()`). Needs §1–§3. **Not run live.** The client ships safely first: until this runs, presence shows nobody. |
 | `patches/2026-10-10-billing_status.sql` | — | Hand-extracted `billing_status()` for pasting into the SQL editor. |
 
 ## Run order
-`supabase-schema.sql` (§1–§39) → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47. Every file
+`supabase-schema.sql` (§1–§39) → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48. Every file
 is re-runnable.
 
 ## Rules

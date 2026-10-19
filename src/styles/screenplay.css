@@ -1034,3 +1034,42 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
    so the line does not move. */
 .sc-sheet .wr-el.sc-find-row { box-shadow: -6px 0 0 -3px var(--paper-page-rule); }
 .sc-sheet .wr-el.sc-find-cur { box-shadow: -6px 0 0 -2px var(--accent-primary); }
+
+/* ---- co-writing presence (src/ui/presence.js) --------------------
+   Faces in the draft line, a warning row in the top bar while someone
+   else types, and a mark at the right edge of the line each person is
+   on, with their name. Hidden until there is somebody to show. */
+.sc-peers { display: inline-flex; align-items: center; margin-inline-start: var(--s2); }
+.sc-peers[hidden] { display: none; }
+.sc-peer {
+  display: inline-grid; place-items: center;
+  width: 1.75rem; height: 1.75rem; margin-inline-start: -0.35rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand); color: var(--brand-on);
+  border: 2px solid var(--surface-rail);
+  font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 700; letter-spacing: 0;
+}
+.sc-peer:first-child { margin-inline-start: 0; }
+.sc-peer[data-editing="true"] { box-shadow: 0 0 0 2px var(--accent-primary); }
+.sc-peer-more { background: var(--surface-elevated); color: var(--ink); }
+.sc-peer-warn {
+  flex: 1 1 100%; margin: 0; max-width: none; box-sizing: border-box;
+  padding: var(--s2) var(--s3);
+  border-top: 1px solid var(--border-hair);
+  color: var(--warn-deep); background: var(--warn-wash);
+}
+.sc-peer-warn[hidden] { display: none; }
+.sc-sheet .wr-el.sc-peer-row::after {
+  content: attr(data-peer);
+  position: absolute; top: 0; right: calc(-1 * var(--s2)); transform: translateX(100%);
+  max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--f-body); font-size: var(--t-micro); font-weight: 600;
+  color: var(--paper-page-muted);
+  pointer-events: none;
+}
+.sc-sheet .wr-el.sc-peer-row { box-shadow: 6px 0 0 -2px var(--brand); }
+@media (max-width: 719px) {
+  /* No margin to write a name in on a phone page: the bar alone says it. */
+  .sc-sheet .wr-el.sc-peer-row::after { content: none; }
+}
+@media print { .sc-peers, .sc-peer-warn { display: none !important; } .sc-sheet .wr-el.sc-peer-row { box-shadow: none; } .sc-sheet .wr-el.sc-peer-row::after { content: none; } }

@@ -104,6 +104,7 @@ jobs:
       - run: npm run prove:script
       - run: npm run prove:replace
       - run: npm run prove:cards
+      - run: npm run prove:presence
       - run: npm run prove:ai-desk
 
   proofs:

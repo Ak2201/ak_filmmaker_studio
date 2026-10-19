@@ -215,6 +215,21 @@ for (const f of ['supabase/schema/schema-47-delete-anonymise.sql', 'supabase/sch
 console.log('✓ §47 loads (and re-runs cleanly)');
 runChecks('delete-anonymise.sql');
 /* --- end §47 --- */
+/* --- §48 (who may join a project's presence channel) --- standalone, on
+   §1–§3. Loaded once with no Realtime (it must only say so), then on top
+   of a stand-in realtime.messages, twice, then its checks. --- */
+r = psql(['-f', 'supabase/schema/schema-48-presence.sql']);
+if (r.status !== 0) fail('schema-48-presence.sql did not load cleanly without a realtime schema', r);
+if (!/realtime\.messages does not exist here/.test(r.stderr || '')) fail('§48 without Realtime should say it made no policy', r);
+r = psql(['-f', 'scripts/schema-tests/presence-stub.sql']);
+if (r.status !== 0) fail('presence-stub.sql did not load', r);
+for (const f of ['supabase/schema/schema-48-presence.sql', 'supabase/schema/schema-48-presence.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §48 loads without Realtime, then on it (and re-runs cleanly)');
+runChecks('presence.sql');
+/* --- end §48 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

@@ -2269,3 +2269,24 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     2.39:1 film boards in 2.39:1. `prove:board-frames` scenario (d) drives
     it against the faked Drive; no real Drive was reached.
 
+    **Co-writing presence** on the Screenplay Writer: who else has the
+    script open (faces in the draft line), the line each is on (a named
+    mark at the line's right edge) and, while another writer types, a
+    warning — because the script still syncs as one blob, last write wins,
+    and presence merges nothing. The channel is PRIVATE (`pr:<project id>`,
+    `cloud.js joinPresence()`), because presence on a public channel is
+    outside RLS: the anon key and a project id would show who is writing.
+    `supabase/schema/schema-48-presence.sql` adds `can_join_presence(topic)`
+    and two `realtime.messages` policies (presence extension only) for the
+    people `has_project_access()` already lets read the project; it is a
+    no-op where `realtime.messages` does not exist, and `test:schema` checks
+    it against a stand-in (`presence-stub.sql`, 11 checks). The client is
+    safe before §48 runs: the join is refused and nobody shows. "Typing" is
+    judged on the receiver's clock (`noteSeen`), not the sender's `at`.
+    Sends the line id and typing, throttled to one message per two seconds,
+    never the words; stores nothing. `test:presence`, `prove:presence`
+    (Realtime FAKED). Live check owed: two signed-in accounts on one project,
+    after §48 runs. Live character-level cursors were deliberately not built:
+    without a per-element merge they would promise co-editing that does not
+    exist.
+

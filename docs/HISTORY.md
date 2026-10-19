@@ -2255,3 +2255,17 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     the time of day's hue. Edit returns to the table with the scene open.
     `prove:cards` (in CI).
 
+    **Storyboard image upload**: Upload picture on every frame
+    (`src/ui/frame-upload.js`). The same road as a drawn frame: shrunk to
+    1600px on the long edge and re-encoded as JPEG in the browser, saved as
+    a file in the writer's own Google Drive, and the frame keeps only
+    `ref = drive:<fileId>` — no bytes in localStorage or a backup, no new
+    key. The board gate (`boardGate`) decides first; a lapsed token
+    reconnects on the press and asks for one more press, because the file
+    picker needs a click of its own. Undo restores the old ref and deletes
+    the new file; an earlier Drive picture is never deleted. Each frame also
+    has a Shape (`aspect`, a field on the frame spread by `listFrames()`,
+    ids in `board-frames.js ASPECTS`, read by `[data-aspect]` rules), so a
+    2.39:1 film boards in 2.39:1. `prove:board-frames` scenario (d) drives
+    it against the faked Drive; no real Drive was reached.
+

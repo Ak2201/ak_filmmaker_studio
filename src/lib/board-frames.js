@@ -193,7 +193,56 @@ export function frameFileName(job, mime = 'image/png', at = new Date()) {
   return 'filmmakers-studio-frame-' + label + '-' + stamp + '.' + ext;
 }
 
+/* ---- an UPLOADED frame ------------------------------------------
+   The writer's own drawing or photo, saved the same way a drawn frame
+   is: a file in their Google Drive, and `ref = drive:<fileId>` on the
+   frame. Shrunk first, so a 12-megapixel phone photo does not cost a
+   12-megapixel upload: its long edge is brought down to UPLOAD_EDGE
+   and it is re-encoded as JPEG. */
+export const UPLOAD_EDGE = 1600;
+export const UPLOAD_QUALITY = 0.85;
+/** Bigger than this is refused before it is read (a 40 MB RAW is not a frame). */
+export const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
+export const UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+/** { w, h } scaled to fit inside `edge` on the long side; never enlarged. */
+export function fitWithin(w, h, edge = UPLOAD_EDGE) {
+  const W = Math.max(0, Math.round(Number(w) || 0)), H = Math.max(0, Math.round(Number(h) || 0));
+  if (!W || !H) return { w: 0, h: 0 };
+  const k = Math.min(1, edge / Math.max(W, H));
+  return { w: Math.max(1, Math.round(W * k)), h: Math.max(1, Math.round(H * k)) };
+}
+
+/** Why a picked file cannot be a frame, or '' when it can. */
+export function uploadProblem(file) {
+  if (!file) return 'No file was chosen.';
+  if (!UPLOAD_TYPES.includes(String(file.type || '').toLowerCase())) {
+    return 'That file is not a picture the studio can read. Choose a JPEG, PNG, WebP or GIF.';
+  }
+  if (Number(file.size) > UPLOAD_MAX_BYTES) return 'That picture is larger than 25 MB. Choose a smaller one.';
+  return '';
+}
+
+/* ---- the frame's shape -------------------------------------------
+   `aspect` is a FIELD on the frame record (shots.js blankFrame), ''
+   meaning the board's default. The ids are what the slate's
+   [data-aspect] rules in visualize.css key off, so they are stored
+   values: do not rename one. */
+export const ASPECTS = [
+  { id: '16:9', label: '16:9 (HD)' },
+  { id: '2.39:1', label: '2.39:1 (scope)' },
+  { id: '1.85:1', label: '1.85:1 (flat)' },
+  { id: '4:3', label: '4:3' },
+  { id: '1:1', label: '1:1 (square)' },
+  { id: '9:16', label: '9:16 (vertical)' }
+];
+export const DEFAULT_ASPECT = '16:9';
+/** A stored aspect, or the default for '' and anything unknown. */
+export const aspectOf = (id) => (ASPECTS.some((a) => a.id === id) ? id : DEFAULT_ASPECT);
+
 export default {
   MAX_FRAMES, STYLES, DEFAULT_STYLE, styleOf, matchStyle, boardGate, shotLabel, isDrawnRef,
-  boardJobs, jobLine, boardInput, parseBoardInput, styleFromRefine, framePrompt, frameFileName
+  boardJobs, jobLine, boardInput, parseBoardInput, styleFromRefine, framePrompt, frameFileName,
+  UPLOAD_EDGE, UPLOAD_QUALITY, UPLOAD_MAX_BYTES, UPLOAD_TYPES, fitWithin, uploadProblem,
+  ASPECTS, DEFAULT_ASPECT, aspectOf
 };

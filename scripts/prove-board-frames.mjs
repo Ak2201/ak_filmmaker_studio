@@ -171,17 +171,20 @@ const SHOTS_SEED = [
 ];
 
 /** A project with scenes and shots; `drawn` adds a frame already held in Drive. */
-async function seed(page, { key = false, drive = false, drawn = false } = {}) {
+async function seed(page, { key = false, drive = false, drawn = false, empty = false } = {}) {
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
-  await page.evaluate(({ scenes, shots, key, drive, drawn }) => {
+  await page.evaluate(({ scenes, shots, key, drive, drawn, empty }) => {
     const S = window.StudioStore;
     const p = S.createProject({ title: 'Board Proof', format: 'feature' });
     S.setCurrentProject(p.id);
     localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes }));
-    localStorage.setItem('fms_shots_v1', JSON.stringify({ shots, frames: drawn ? [{ id: 'frSeed', shotId: 'sh1', caption: 'Seeded', ref: 'drive:SEEDEDFILE0001' }] : [], boards: [], blocks: [] }));
+    const frames = [];
+    if (drawn) frames.push({ id: 'frSeed', shotId: 'sh1', caption: 'Seeded', ref: 'drive:SEEDEDFILE0001' });
+    if (empty) frames.push({ id: 'frEmpty', shotId: 'sh2', caption: '', ref: '' });
+    localStorage.setItem('fms_shots_v1', JSON.stringify({ shots, frames, boards: [], blocks: [] }));
     if (key) S.rawSet('fms_ai_key_gemini_v1', 'AIzaPROVEPROVEPROVEPROVE12');
     if (drive) S.rawSet('fms_drive_sync_v1', JSON.stringify({ enabled: true, fileId: 'BACKUPFILE0001', revisionId: 'rev1', syncedAt: new Date().toISOString() }));
-  }, { scenes: SCENES, shots: SHOTS_SEED, key, drive, drawn });
+  }, { scenes: SCENES, shots: SHOTS_SEED, key, drive, drawn, empty });
 }
 const shotsDoc = (page) => page.evaluate(() => {
   const k = Object.keys(localStorage).find((x) => x.startsWith('fms_shots_v1'));
@@ -330,6 +333,91 @@ function eq2(a, b, m) { return ok(JSON.stringify(a) === JSON.stringify(b), m, { 
     ok(pic === 0, 'the drawn frame waits for Reconnect, no broken image');
     await shot(page, 'board-reconnect-1280.png', '.vz-draw');
     ok(G.requests.length === 0 && D.uploads.length === 0, 'nothing sent');
+    ok(errors.length === 0, 'no page errors', errors);
+  } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
+  finally { await ctx.close(); }
+}
+
+/* =================================================================
+   (d) UPLOAD A PICTURE (src/ui/frame-upload.js)
+   Signed out: the press says why and opens no file picker. Signed in
+   with Drive and a token: a 2400x1350 picture goes up shrunk to
+   1600x900 JPEG, the frame keeps drive:<fileId> and no bytes, the
+   picture shows from Drive, the Shape select sets the slate; Undo
+   restores the frame and deletes the new file.
+   ================================================================= */
+{
+  console.log('(d) upload, signed out');
+  F.reset(); resetFakes();
+  const { ctx, page, errors } = await context({ width: 1280 });
+  try {
+    await seed(page, { empty: true });
+    await page.goto(BASE + '/visualize.html#storyboard', { waitUntil: 'networkidle' });
+    await settle(page, false);
+    let chooser = false;
+    page.on('filechooser', () => { chooser = true; });
+    await page.click('.vz-frame[data-frame="frEmpty"] [data-action="vz-frame-upload"]');
+    await page.waitForTimeout(400);
+    const said = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | '));
+    ok(!chooser, 'signed out: no file picker opens');
+    ok(/Sign in with Google first/.test(said) && /Google Drive/.test(said), 'and the press says why', said);
+    ok(D.uploads.length === 0, 'nothing reached Drive');
+    ok(errors.length === 0, 'no page errors', errors);
+  } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
+  finally { await ctx.close(); }
+}
+for (const width of [1280, 390]) {
+  console.log('(d) upload, Drive with a token @' + width);
+  F.reset(); resetFakes();
+  const tok = aiScenario('pro', 'tok-amy');
+  const { ctx, page, errors } = await context({ tok, width, driveToken: true });
+  try {
+    await seed(page, { drive: true, empty: true });
+    await page.goto(BASE + '/visualize.html#storyboard', { waitUntil: 'networkidle' });
+    await settle(page, true);
+    /* A 2400x1350 picture, drawn in the page so its bytes are a real PNG. */
+    const big = await page.evaluate(async () => {
+      const c = document.createElement('canvas'); c.width = 2400; c.height = 1350;
+      const x = c.getContext('2d'); x.fillStyle = 'gray'; x.fillRect(0, 0, 2400, 1350); x.fillStyle = 'black'; x.fillRect(300, 300, 900, 600);
+      const b = await new Promise((r) => c.toBlob(r, 'image/png'));
+      return Array.from(new Uint8Array(await b.arrayBuffer()));
+    });
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser', { timeout: 5000 }),
+      page.click('.vz-frame[data-frame="frEmpty"] [data-action="vz-frame-upload"]')
+    ]);
+    await chooser.setFiles({ name: 'board.png', mimeType: 'image/png', buffer: Buffer.from(big) });
+    for (let i = 0; i < 50 && !D.uploads.length; i++) await page.waitForTimeout(100);
+    await page.waitForTimeout(600);
+    ok(D.uploads.length === 1, 'one file went to Drive', D.uploads.length);
+    const up = D.uploads[0] || {};
+    ok(/"mimeType":"image\/jpeg"/.test(up.meta || '') && /filmmakers-studio-frame-/.test(up.meta || ''), 'as a JPEG with a readable name', up.meta);
+    ok(up.size > 0 && up.size < big.length, 'shrunk before it left (smaller than the picked file)', { sent: up.size, picked: big.length });
+    const doc = await shotsDoc(page);
+    const fr = doc.frames.find((f) => f.id === 'frEmpty');
+    ok(fr && fr.ref === 'drive:' + up.id, 'the frame keeps drive:<fileId>', fr);
+    ok(JSON.stringify(doc).length < 4000, 'and no picture bytes in storage', JSON.stringify(doc).length);
+    await page.waitForFunction(() => !!document.querySelector('.vz-frame[data-frame="frEmpty"] .drv-img img'), null, { timeout: 5000 }).catch(() => {});
+    ok(await page.$$eval('.vz-frame[data-frame="frEmpty"] .drv-img img', (i) => i.length) === 1, 'the picture shows, from Drive');
+    ok(await page.isVisible('.toast:has-text("Picture saved to your Google Drive") .toast-action'), 'the toast offers Undo');
+    ok(/Replace picture/.test(await page.textContent('.vz-frame[data-frame="frEmpty"] [data-action="vz-frame-upload"]')), 'the button now reads Replace picture');
+
+    await page.selectOption('.vz-frame[data-frame="frEmpty"] .vz-frame-aspect', '2.39:1');
+    await page.waitForTimeout(300);
+    const shape = await page.evaluate(() => {
+      const c = document.querySelector('.vz-frame[data-frame="frEmpty"]');
+      const r = c.querySelector('.vz-frame-slate').getBoundingClientRect();
+      return { attr: c.dataset.aspect, ratio: Math.round((r.width / r.height) * 100) / 100 };
+    });
+    ok(shape.attr === '2.39:1' && Math.abs(shape.ratio - 2.39) < 0.05, 'Shape 2.39:1 sets the slate', shape);
+    ok(((await shotsDoc(page)).frames.find((f) => f.id === 'frEmpty') || {}).aspect === '2.39:1', 'and is stored on the frame');
+    ok(await overflow(page) <= 0, 'no sideways overflow');
+
+    await page.click('.toast:has-text("Picture saved to your Google Drive") .toast-action');
+    await page.waitForTimeout(500);
+    const back = ((await shotsDoc(page)).frames.find((f) => f.id === 'frEmpty') || {});
+    ok(back.ref === '', 'Undo puts the frame back as it was', back);
+    ok(D.deletes.length === 1 && D.deletes[0] === up.id, 'and deletes the new file from Drive', D.deletes);
     ok(errors.length === 0, 'no page errors', errors);
   } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
   finally { await ctx.close(); }

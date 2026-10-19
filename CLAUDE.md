@@ -1528,10 +1528,10 @@ a checksum.
 **false** — so nothing is walled or capped, `billing_status().entitled` is
 true for everybody and `features` is `open_features()`. §33's
 `trial_offer()` reads 30 minutes, trial enabled. §34 was marked on the
-owner's word rather than a probe: it has no API surface, and the read that
-settles it is
+owner's word until 19 Oct 2026, when the read that settles it was run:
 `select pg_get_constraintdef(oid) from pg_constraint where conname =
-'studio_members_trial_source_check';` — it should mention `'refund'`.
+'studio_members_trial_source_check';` — it mentions `'refund'`, so §34 is
+CONFIRMED live (it has no API surface, hence no anonymous probe).
 §35 is live but **`RESEND_API_KEY` and `MAIL_FROM` are still unset**, so a
 payment now CLAIMS a receipt in the database and the send then fails. DO
 NOT TAKE A REAL PAYMENT until Resend is configured: a buyer pays, the row

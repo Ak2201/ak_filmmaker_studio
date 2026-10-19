@@ -1,0 +1,106 @@
+{
+  "_": "Copy for contact.html and about.html, rendered by scripts/make-marketing-pages.mjs (renderContact, renderAbout) inside the same header, footer and sign-up modal as the product pages. Nothing here names the product, the host or the support address: the generator stamps {{brand:...}}. NO PERSONAL NAME anywhere (brand.json 'seller' is empty by the owner's decision): the About page is signed by the team. Every claim is one already made in README.md, src/data/marketing-*.json or the legal pages. The Contact form sends nothing: it builds a mailto: link and the visitor's own mail app does the sending (src/pages/company.js).",
+  "cta": {
+    "start": "Get started",
+    "startOpen": "Open the studio",
+    "plans": "See plans"
+  },
+  "contact": {
+    "meta": {
+      "title": "Contact us · {{brand:name}}",
+      "description": "Questions, bug reports, billing and refunds, feature requests and press: write to the {{brand:name}} team."
+    },
+    "hero": {
+      "h1": "Contact us",
+      "sub": "A question, a bug, an idea or a payment that went wrong: write to us and a person reads it."
+    },
+    "form": {
+      "h2": "Send us a message",
+      "name": "Your name",
+      "email": "Your e-mail address",
+      "emailHint": "So we can reply. Use the address on your account for anything about a plan or a payment.",
+      "topic": "Topic",
+      "topics": [
+        { "id": "general", "label": "General" },
+        { "id": "billing", "label": "Billing & refunds" },
+        { "id": "bug", "label": "Bug report" },
+        { "id": "feature", "label": "Feature request" },
+        { "id": "press", "label": "Press" }
+      ],
+      "message": "Message",
+      "messageHint": "For a bug, say what you did, what you expected and what happened instead.",
+      "send": "Open in my e-mail app",
+      "privacy": "Sending opens your own e-mail app with this message filled in. Nothing is sent to or stored on our servers.",
+      "errors": {
+        "summary": "Please fix the highlighted fields.",
+        "name": "Enter your name.",
+        "email": "Enter your e-mail address.",
+        "emailBad": "Enter an e-mail address like name@example.com.",
+        "topic": "Choose a topic.",
+        "message": "Write a message of at least 10 characters.",
+        "messageLong": "This message is too long to hand to an e-mail app in one piece. Shorten it, or copy it into an e-mail to the address on this page."
+      },
+      "opened": "Your e-mail app should now be open with the message filled in. If nothing opened, write to the address on this page.",
+      "failed": "Your e-mail app could not be opened with this message. Copy it into an e-mail to the address on this page.",
+      "noscript": "This form needs JavaScript to open your e-mail app. Write to the address on this page instead.",
+      "subjectPrefix": "Contact form"
+    },
+    "aside": {
+      "h2": "Or write to us directly",
+      "emailLabel": "Support e-mail",
+      "refundH": "Asking for a refund?",
+      "refundBody": "Purchases are final, with three exceptions that are not discretionary. The Refund and Cancellation Policy lists them and what to include in your e-mail: the Razorpay payment or order ID, sent from the address on your account.",
+      "refundLink": "Read the refund policy",
+      "faqH": "Questions about plans?",
+      "faqBody": "Billing, plans and where your work is stored are answered on the pricing page.",
+      "faqLink": "Read the questions and answers"
+    },
+    "close": {
+      "h2": "Ready to write scene one?"
+    }
+  },
+  "about": {
+    "meta": {
+      "title": "About us · {{brand:name}}",
+      "description": "A local-first studio for Tamil and Indian filmmakers, from idea to call sheet: write the story and the screenplay, plan the shoot, all saved in your own browser first."
+    },
+    "hero": {
+      "h1": "A studio for Tamil and Indian filmmakers, from idea to call sheet",
+      "sub": "{{brand:name}} is a working desk for screenwriting, pre-production and craft study, built to run in your browser and keep your work on your own device first."
+    },
+    "why": {
+      "h2": "Why it exists",
+      "body": [
+        "A film moves through many hands and many files before the first shoot day: a story, a screenplay, a breakdown, a schedule, a budget, a call sheet. We built one place where each of those reads the same scenes, so a change in the script reaches the plan.",
+        "It starts from how films here are made: dialogue in Tamil, Tanglish or English, a budget in rupees that starts from dated Chennai rates, and a reference library of films, directors and the rules of the craft."
+      ]
+    },
+    "who": {
+      "h2": "Who it is for",
+      "body": "Independent and first-time filmmakers, screenwriters and small crews: indie directors, writers and line producers who want the script and the plan in one place."
+    },
+    "does": {
+      "h2": "What it does",
+      "items": [
+        { "sym": "lightbulb", "title": "Story", "text": "Place your beats on one of eleven story structures and keep a story bible of characters, conflict, stakes, theme and world.", "page": "product-story.html", "link": "Explore story development" },
+        { "sym": "edit_note", "title": "Screenplay", "text": "A screenplay writer for Tamil, Tanglish and English. The format sets itself as you type, drafts are numbered, and Fountain, Final Draft and PDF scripts can be brought in.", "page": "product-writing.html", "link": "Explore writing" },
+        { "sym": "grid_view", "title": "Pre-production tools", "text": "Breakdown, shot list, storyboard, stripboard, budget, cast and crew, sides and call sheets, all read from one scene list.", "page": "product-breakdown.html", "link": "Explore pre-production" },
+        { "sym": "local_library", "title": "Library", "text": "Films, director archetypes, rules of thumb, the craft books, equipment and rate tables, and a watch list, to study while you work." }
+      ]
+    },
+    "principles": {
+      "h2": "What we hold to",
+      "items": [
+        { "sym": "storage", "title": "Your work is saved in your own browser first", "text": "Every keystroke is written to your device first. We do not claim ownership of anything you write here." },
+        { "sym": "cloud_off", "title": "It works offline", "text": "The studio installs like an app and keeps working without a connection, on a film set included." },
+        { "sym": "backup", "title": "Sync and backup when you want them", "text": "You enter the studio by signing in with Google. Syncing your films between devices comes with a studio membership, and a backup to your own Google Drive is there if you switch it on." },
+        { "sym": "lock", "title": "Nothing you write is deleted", "text": "If a part of the studio is closed to your plan, what you wrote in it stays and reappears when your plan includes it. You can download all of your work at any time." },
+        { "sym": "currency_rupee", "title": "One-time plans in rupees", "text": "A plan is bought with a single payment, in Indian rupees, and never renews. There is nothing to cancel." }
+      ]
+    },
+    "sign": "The {{brand:name}} team",
+    "close": {
+      "h2": "Open the studio and write scene one"
+    }
+  }
+}

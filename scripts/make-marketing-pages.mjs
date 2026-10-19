@@ -76,7 +76,7 @@ export function loadInputs({ fixture = false } = {}) {
     throw new Error(pagesRel + ' is missing. The marketing pages are generated from it and there is no silent fallback.'
       + (fixture ? '' : ' (Use --fixture to generate from ' + FIXTURE_FILE + ' while the copy is being written.)'));
   }
-  return { site, pages: readJson(pagesRel), compare: readJson(COMPARE_FILE), faq: readJson(FAQ_FILE), home: readJson(HOME_COPY), fixture, pagesRel };
+  return { site, pages: readJson(pagesRel), compare: readJson(COMPARE_FILE), faq: readJson(FAQ_FILE), home: readJson(HOME_COPY), company: readJson(COMPANY_COPY), fixture, pagesRel };
 }
 
 /** Every structural rule the template relies on. Returns a list of problems. */
@@ -205,6 +205,8 @@ ${s.ids.map((id) => `          <li><a href="${esc(pages[id].file)}">${esc(pages[
         <p class="mk-foot-h">${esc(f.legalHeading)}</p>
         <ul>
           <li><a href="pricing.html">${esc(f.pricing)}</a></li>
+          <li><a href="about.html">${esc(f.about)}</a></li>
+          <li><a href="contact.html">${esc(f.contact)}</a></li>
           <li><a href="privacy.html">${esc(f.privacy)}</a></li>
           <li><a href="terms.html">${esc(f.terms)}</a></li>
           <li><a href="refund.html">${esc(f.refund)}</a></li>
@@ -718,14 +720,241 @@ ${modal(site)}
 `;
 }
 
+/* ---- contact.html and about.html -------------------------------------
+   The company pages: the same header, footer and sign-up modal, the copy
+   from src/data/marketing-company.json, and ONE call to action on each,
+   the landing page's own: "Start your free trial" is the same
+   <a href="invite.html" data-open-signup> door start.html's Get started
+   is, and "See plans" goes to pricing.html. NO PERSONAL NAME: brand.json's
+   seller is empty by the owner's decision, so About is signed by the team.
+
+   The contact form SENDS NOTHING. It has no action (the CSP's form-action
+   'self' would refuse a mailto: action anyway) and method="dialog", which
+   outside a <dialog> submits nowhere, so with scripts off it cannot put a
+   message into a URL or a server log. src/pages/company.js validates it
+   and opens the visitor's own mail app with a mailto: link to the support
+   address printed beside it. */
+
+export const COMPANY_COPY = 'src/data/marketing-company.json';
+export const CONTACT_FILE = 'contact.html';
+export const ABOUT_FILE = 'about.html';
+
+export function validateCompany(company) {
+  const bad = [];
+  const w = (m) => bad.push('marketing-company.json: ' + m);
+  if (!company) { w('was not loaded'); return bad; }
+  const c = company.contact, a = company.about, cta = company.cta;
+  if (!cta || !cta.start || !cta.plans || !cta.startOpen) w('cta needs start, startOpen and plans');
+  if (!c || !c.meta || !c.hero || !c.form || !c.aside || !c.close) w('contact needs meta, hero, form, aside and close');
+  else {
+    const f = c.form;
+    for (const k of ['h2', 'name', 'email', 'topic', 'message', 'send', 'privacy', 'opened', 'failed', 'noscript', 'subjectPrefix']) if (!f[k]) w('contact.form.' + k + ' missing');
+    if (!Array.isArray(f.topics) || f.topics.length !== 5 || f.topics.some((t) => !t.id || !t.label)) w('contact.form.topics must be five {id, label}');
+    for (const k of ['summary', 'name', 'email', 'emailBad', 'topic', 'message', 'messageLong']) if (!f.errors || !f.errors[k]) w('contact.form.errors.' + k + ' missing');
+  }
+  if (!a || !a.meta || !a.hero || !a.why || !a.who || !a.does || !a.principles || !a.sign || !a.close) w('about needs meta, hero, why, who, does, principles, sign and close');
+  else {
+    if (!Array.isArray(a.does.items) || a.does.items.length !== 4) w('about.does needs four items (Story, Screenplay, Pre-production, Library)');
+    if (!Array.isArray(a.principles.items) || a.principles.items.length !== 5) w('about.principles needs five items');
+  }
+  const typed = JSON.stringify(company);
+  if (typed.includes('₹')) w('a bare rupee sign in the copy');
+  return bad;
+}
+
+function companyHead({ title, description, slug }) {
+  const t = esc(title), d = esc(description);
+  return `<!DOCTYPE html>
+<html lang="en" data-volume="studio" data-fms-marketing>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${t}</title>
+<meta name="description" content="${d}">
+<link rel="canonical" href="https://{{brand:host}}/${slug}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{brand:name}}">
+<meta property="og:title" content="${t}">
+<meta property="og:description" content="${d}">
+<meta property="og:url" content="https://{{brand:host}}/${slug}">
+<meta property="og:image" content="https://{{brand:host}}/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${t}">
+<meta name="twitter:description" content="${d}">
+<meta name="twitter:image" content="https://{{brand:host}}/og.png">
+<meta property="og:locale" content="en_IN">
+<meta name="theme-color" content="#0d0e13">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+</head>
+<body>
+<!-- GENERATED by scripts/make-marketing-pages.mjs from src/data/marketing-company.json
+     and src/data/marketing-site.json. Edit those, then run npm run make:marketing.
+     npm run test:marketing fails when this file drifts from the generator. The
+     words are in the markup on purpose (crawlers, link previews, scripts off);
+     src/pages/company.js adds marketing.js and the contact form's mailto. -->`;
+}
+
+/** The one call to action both company pages carry: the same neutral "Get
+ *  started" door start.html and the product pages use (data-open-signup),
+ *  and the plans. Not "Start your free trial": live, purchases are off and
+ *  marketing.js drops every promise of a trial then, and a trial can also
+ *  be switched off; a neutral door is true in every state. */
+function companyCta(company, h2) {
+  const cta = company.cta;
+  return `<section class="mk-sec mk-band-c mk-mid co-cta" id="start" aria-labelledby="mkMidH">
+  <div class="mk-wrap mk-center">
+    <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
+    </div>
+  </div>
+</section>`;
+}
+
+function companyHero(company, h1, sub) {
+  const cta = company.cta;
+  return `<section class="mk-hero co-hero" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in">
+    <h1 class="mk-h1" id="mkH1">${esc(h1)}</h1>
+    <p class="mk-sub">${esc(sub)}</p>
+    <div class="mk-cta-row">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
+    </div>
+  </div>
+</section>`;
+}
+
+export function renderContact({ site, pages, company }) {
+  const c = company.contact;
+  const f = c.form;
+  const field = (id, label, control, hint) => `        <div class="co-field" data-field="${id}">
+          <label class="co-label" for="co-${id}">${esc(label)}</label>${hint ? `
+          <p class="co-hint" id="co-${id}-hint">${esc(hint)}</p>` : ''}
+          ${control}
+          <p class="co-err" id="co-${id}-err" hidden></p>
+        </div>`;
+  const desc = (id, hint) => `co-${id}-err${hint ? ` co-${id}-hint` : ''}`;
+  const form = `<section class="mk-sec mk-band-b co-contact" id="write" aria-labelledby="coFormH">
+  <div class="mk-wrap co-grid">
+    <div class="co-main">
+      <h2 class="mk-h2" id="coFormH">${esc(f.h2)}</h2>
+      <form class="co-form" id="coForm" method="dialog" novalidate aria-labelledby="coFormH"
+            data-err-summary="${esc(f.errors.summary)}" data-err-name="${esc(f.errors.name)}" data-err-email="${esc(f.errors.email)}"
+            data-err-email-bad="${esc(f.errors.emailBad)}" data-err-topic="${esc(f.errors.topic)}" data-err-message="${esc(f.errors.message)}"
+            data-err-message-long="${esc(f.errors.messageLong)}" data-opened="${esc(f.opened)}" data-failed="${esc(f.failed)}" data-subject="${esc(f.subjectPrefix)}">
+        <noscript><p class="co-summary">${esc(f.noscript)}</p></noscript>
+        <p class="co-summary" id="coSummary" role="alert" tabindex="-1" hidden></p>
+${field('name', f.name, `<input class="co-input" id="co-name" name="name" type="text" autocomplete="name" maxlength="120" required aria-describedby="${desc('name')}">`)}
+${field('email', f.email, `<input class="co-input" id="co-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="200" required aria-describedby="${desc('email', f.emailHint)}">`, f.emailHint)}
+${field('topic', f.topic, `<select class="co-input" id="co-topic" name="topic" required aria-describedby="${desc('topic')}">
+${f.topics.map((t, i) => `            <option value="${esc(t.id)}"${i === 0 ? ' selected' : ''}>${esc(t.label)}</option>`).join('\n')}
+          </select>`)}
+${field('message', f.message, `<textarea class="co-input co-area" id="co-message" name="message" rows="7" maxlength="4000" required aria-describedby="${desc('message', f.messageHint)}"></textarea>`, f.messageHint)}
+        <div class="co-actions">
+          <button class="mk-btn mk-btn--primary mk-btn--lg" type="submit">${sym('mail')}<span>${esc(f.send)}</span></button>
+        </div>
+        <p class="co-privacy">${sym('lock')}<span>${esc(f.privacy)}</span></p>
+        <p class="co-status" id="coStatus" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+    <aside class="co-aside" aria-labelledby="coAsideH">
+      <h2 class="mk-h3" id="coAsideH">${esc(c.aside.h2)}</h2>
+      <p class="co-mail"><span class="co-mail-l">${esc(c.aside.emailLabel)}</span><span class="co-mail-v" id="coEmail" translate="no">{{brand:email}}</span></p>
+      <div class="co-note">
+        <h3 class="co-note-h">${esc(c.aside.refundH)}</h3>
+        <p>${esc(c.aside.refundBody)}</p>
+        <a class="mk-link" href="refund.html">${esc(c.aside.refundLink)}${sym('arrow_forward')}</a>
+      </div>
+      <div class="co-note">
+        <h3 class="co-note-h">${esc(c.aside.faqH)}</h3>
+        <p>${esc(c.aside.faqBody)}</p>
+        <a class="mk-link" href="pricing.html#faq">${esc(c.aside.faqLink)}${sym('arrow_forward')}</a>
+      </div>
+    </aside>
+  </div>
+</section>`;
+  return `${companyHead({ title: c.meta.title, description: c.meta.description, slug: 'contact' })}
+${header(site, pages, 'contact')}
+<main id="main" class="mk mk-company co-page">
+${companyHero(company, c.hero.h1, c.hero.sub)}
+${form}
+${companyCta(company, c.close.h2)}
+</main>
+${footer(site, pages)}
+${modal(site)}
+<script type="module" src="/src/pages/company.js"></script>
+</body>
+</html>
+`;
+}
+
+export function renderAbout({ site, pages, company }) {
+  const a = company.about;
+  const why = `<section class="mk-sec mk-band-b" id="why" aria-labelledby="coWhyH">
+  <div class="mk-wrap mk-split co-split">
+    <div>
+      <h2 class="mk-h2" id="coWhyH">${esc(a.why.h2)}</h2>
+${a.why.body.map((t) => `      <p class="mk-body">${esc(t)}</p>`).join('\n')}
+    </div>
+    <div class="co-who">
+      <h2 class="mk-h3" id="who">${esc(a.who.h2)}</h2>
+      <p class="mk-body">${esc(a.who.body)}</p>
+    </div>
+  </div>
+</section>`;
+  const does = `<section class="mk-sec mk-band-a" id="what" aria-labelledby="coDoesH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="coDoesH">${esc(a.does.h2)}</h2>
+    <div class="co-cards">
+${a.does.items.map((it) => `      <article class="mk-card co-card">
+        <span class="mk-card-icon">${sym(it.sym)}</span>
+        <h3 class="mk-h3">${esc(it.title)}</h3>
+        <p class="mk-card-p">${esc(it.text)}</p>${it.page ? `
+        <a class="mk-link" href="${esc(it.page)}">${esc(it.link)}${sym('arrow_forward')}</a>` : ''}
+      </article>`).join('\n')}
+    </div>
+  </div>
+</section>`;
+  const principles = `<section class="mk-sec mk-band-b" id="principles" aria-labelledby="coPrinH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="coPrinH">${esc(a.principles.h2)}</h2>
+    <ul class="co-principles">
+${a.principles.items.map((it) => `      <li>${sym(it.sym)}<div><b>${esc(it.title)}</b><span>${esc(it.text)}</span></div></li>`).join('\n')}
+    </ul>
+    <p class="co-sign">&mdash; ${esc(a.sign)}</p>
+  </div>
+</section>`;
+  return `${companyHead({ title: a.meta.title, description: a.meta.description, slug: 'about' })}
+${header(site, pages, 'about')}
+<main id="main" class="mk mk-company co-page">
+${companyHero(company, a.hero.h1, a.hero.sub)}
+${why}
+${does}
+${principles}
+${companyCta(company, a.close.h2)}
+</main>
+${footer(site, pages)}
+${modal(site)}
+<script type="module" src="/src/pages/company.js"></script>
+</body>
+</html>
+`;
+}
+
 export function buildAll(opts = {}) {
   const inputs = loadInputs(opts);
-  const problems = [...validate(inputs), ...validateHome(inputs.home, inputs)];
+  const problems = [...validate(inputs), ...validateHome(inputs.home, inputs), ...validateCompany(inputs.company)];
   if (problems.length) throw new Error('marketing copy is not valid:\n  - ' + problems.join('\n  - '));
   const out = {};
   for (const id of Object.keys(inputs.site.stepCounts)) out[inputs.pages[id].file] = renderPage(id, inputs);
   out[PRICING_FILE] = renderPricing(inputs);
   out[HOME_FILE] = renderHome(inputs);
+  out[CONTACT_FILE] = renderContact(inputs);
+  out[ABOUT_FILE] = renderAbout(inputs);
   return { files: out, inputs };
 }
 

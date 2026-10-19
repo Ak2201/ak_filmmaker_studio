@@ -6,7 +6,7 @@ fixes it; a list nobody prunes stops being believed.
 
 Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
 Pruned 7 Oct 2026, twice: first with the Medium/Low fix pass over
-`docs/UX-AUDIT-2026-10-06.md`, then with the open-issues pass that
+`docs/archive/UX-AUDIT-2026-10-06.md`, then with the open-issues pass that
 closed everything that pass had left (CLAUDE.md open item 17). What is
 below is what is NOT a bug — two recorded decisions — and one thing seen
 once and not yet looked at.

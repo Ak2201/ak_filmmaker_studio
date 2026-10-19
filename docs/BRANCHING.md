@@ -145,7 +145,7 @@ Run on a clean checkout of `develop`, **uncapped**, with distinct
 6. First-paint budget (`scripts/budget.json`) holds, or the growth is
    justified in the commit and the file recaptured with
    `npm run verify -- --budget`.
-7. `CLAUDE.md`'s status table, `docs/HISTORY.md`, `docs/FEATURE-IDEAS.md` and
+7. `CLAUDE.md`'s status table, `docs/HISTORY.md`, `docs/archive/FEATURE-IDEAS.md` and
    `docs/LAUNCH.md` describe what is being released.
 8. Any new Supabase schema section is listed in `docs/LAUNCH.md` §4 so the
    owner runs it **before** the release goes live.

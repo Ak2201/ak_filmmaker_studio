@@ -1,6 +1,6 @@
 # Admin console v2 — schema run order (stub)
 
-The plan is `docs/ADMIN-CONSOLE-PLAN.md`. This file is only the deploy half for
+The plan is `docs/archive/ADMIN-CONSOLE-PLAN.md`. This file is only the deploy half for
 the sections that exist so far. Neither section has been run live.
 
 | Section | File | Needs | Adds |

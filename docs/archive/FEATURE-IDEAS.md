@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: a research snapshot from 7 Oct 2026.
+
 # Feature ideas — 7 Oct 2026
 
 Gathered by four research passes on 7 Oct 2026: three read the code for
@@ -18,7 +20,7 @@ reached `main` in the release of 8 Oct 2026 (`docs/HISTORY.md` item 20).
 The billing items marked *not started* need schema sections of their own,
 from §25 (§24 is the characters/costs sync scopes).
 Strike an idea through, and say where it landed, in the commit that ships
-it — the same rule as `docs/UX-AUDIT-2026-10-06.md`.
+it — the same rule as `docs/archive/UX-AUDIT-2026-10-06.md`.
 
 ## Tier 1 — build first: small, India-specific, and rivals don't have them
 

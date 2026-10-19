@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: ../HANDOFF.md (wip-all was merged).
+
 # WIP — every stopped workstream on one branch
 
 Read this file instead of the ten `archive/*` branches. It is meant to be
@@ -416,7 +418,7 @@ that do not exist.
 ### Discarded during merge
 
 - **Nothing was discarded.** No hunk was dropped on any file.
-- The rules said to ignore the branches' copies of `docs/FEATURE-IDEAS.md`, `docs/RESUME.md`, `scripts/baseline.json`, `scripts/budget.json`. None of the ten branches differed from `origin/main` on any of those four files after the merge-base diff, so there was nothing to discard (final diff vs `origin/main` for the four: empty).
+- The rules said to ignore the branches' copies of `docs/archive/FEATURE-IDEAS.md`, `docs/archive/RESUME.md`, `scripts/baseline.json`, `scripts/budget.json`. None of the ten branches differed from `origin/main` on any of those four files after the merge-base diff, so there was nothing to discard (final diff vs `origin/main` for the four: empty).
 - `CLAUDE.md` did not conflict, so nothing was discarded there; it carries merge 1's row-18 edit (see above).
 - Removed on purpose (`git rm`): `scripts/.dbg-growth.mjs` (billing growth, debug) and `scripts/scratch-tour-walk.mjs` (growth UX, scratch).
 - Dropped by RESOLUTION only: the duplicate `hub.js` `ALL_KEYS` line from each side was replaced by one line containing every key.
@@ -460,7 +462,7 @@ then each command above.
 1. `test-screenplay.mjs` stale assertion (above).
 2. `test:revisions`, `test:ai-coverage`, `prove:ai-coverage` have no `package.json` scripts.
 3. `src/lib/growth.js` describes §24–§28 that are not in the schema.
-4. `docs/RESUME.md` says the voice check has no UI; `coverage.js` appears to include it.
+4. `docs/archive/RESUME.md` says the voice check has no UI; `coverage.js` appears to include it.
 5. `INEFFECTIVE_DYNAMIC_IMPORT` warning on `backup.js` (check against `origin/main` whether it is new).
 
 ## 8. Integration checklist, ideas, decisions, limits
@@ -468,13 +470,13 @@ then each command above.
 > **Start at `docs/HANDOFF.md`.** Planned, not started: the emotional-craft layer →
 > `docs/WIP-EMOTION-PLAN.md` (built on top of this branch, Phase 0 first).
 
-### Checklist (updated from `docs/RESUME.md`)
+### Checklist (updated from `docs/archive/RESUME.md`)
 
 1. Fix the known problems in §7; work each workstream's resume brief in §3. `wip-all` carries all ten merged, so the per-branch merge step of the old list is done.
 2. **One schema section** (§24 or the next free number, written by a single agent) widening the Supabase scope CHECK for `fms_characters_v1` and `fms_costs_v1`; then move each out of `LOCAL_ONLY` into `SCOPE_BY_KEY` in `cloud.js` in the same commit. Billing's §24+ items (invoices, gifts, edu, leads, events) take the numbers after it — decide the order first.
 3. Full gate: every `test:*` (add the three missing npm scripts); `prove:storage`, `prove:drive`, `prove:sw`, `prove:extension`; gated `build` + `prove:gate` + `prove:billing` (+ `prove:growth`, `prove-ai-coverage`); `verify` on the open build. Read the failures; only deliberate copy changes are acceptable.
 4. Re-baseline only with zero data-key movement on every page; recapture `scripts/budget.json` (`npm run verify -- --budget`) only if growth is justified and listed. Neither file was touched on this branch.
-5. Update `docs/FEATURE-IDEAS.md` statuses, the `CLAUDE.md` table (new rows for the workstreams, new keys in the key notes), `docs/HISTORY.md` (item 19), `docs/LAUNCH.md` (schema sections to run, in order), prune `docs/KNOWN-ISSUES.md`.
+5. Update `docs/archive/FEATURE-IDEAS.md` statuses, the `CLAUDE.md` table (new rows for the workstreams, new keys in the key notes), `docs/HISTORY.md` (item 19), `docs/LAUNCH.md` (schema sections to run, in order), prune `docs/KNOWN-ISSUES.md`.
 6. Merge to `main`. Do not delete the `archive/*` branches without the owner.
 
 ### Queued ideas nobody started
@@ -521,7 +523,7 @@ export PW_CHROMIUM=/opt/pw-browsers/chromium
 Hand a workstream to a fresh agent with its resume brief from §3 plus the
 common rules below. Work on a branch off `wip-all`, never on `main`.
 
-### Common rules for every agent (from `docs/RESUME.md`)
+### Common rules for every agent (from `docs/archive/RESUME.md`)
 
 Read `CLAUDE.md` first. Storage keys are a contract; prefer a new field
 inside an existing record over a new key; no inline handlers (use

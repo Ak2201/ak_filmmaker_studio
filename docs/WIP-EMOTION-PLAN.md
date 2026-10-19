@@ -55,7 +55,7 @@ integrated and released (`ad7ab02`), `wip-all` is fully merged and frozen, and
 - `npm install`; `VITE_SITE_GATE=off npx vite build --outDir dist-verify`;
   every `npm run test:*`; `VERIFY_DIST=dist-verify npm run verify` uncapped;
   `prove:sw`.
-- Write `docs/WIP-EMOTION.md` (status doc, same shape as `docs/WIP.md` §3) and
+- Write `docs/WIP-EMOTION.md` (status doc, same shape as `docs/archive/WIP.md` §3) and
   record what already fails.
 
 ## Phase A — Vocabulary, glossary, Library shelf (M) — first shippable slice

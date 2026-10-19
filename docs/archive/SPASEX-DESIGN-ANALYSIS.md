@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: not this product's design language; see ../DESIGN-KIT.md.
+
 ---
 version: alpha
 name: Spasex-design-analysis

@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: ../ADMIN-CONSOLE.md (sections 40-47 are built).
+
 # Admin console v2 — full plan (12 Oct 2026)
 
 Status: PLAN, nothing built. Owner asked for every idea in the analysis plus a

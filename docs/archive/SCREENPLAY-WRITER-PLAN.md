@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: shipped work; see ../HISTORY.md.
+
 # Screenplay writer: plan
 
 Written 6 Oct 2026 for the owner's ask, which had six parts:

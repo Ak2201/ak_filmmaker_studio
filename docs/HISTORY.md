@@ -965,7 +965,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       Library at 390px, and Case Studies being one long tab. Read it
       before touching any of those files; prune it when you fix one.
 
-15. **The screenplay writer (6 Oct 2026): `docs/SCREENPLAY-WRITER-PLAN.md`,
+15. **The screenplay writer (6 Oct 2026): `docs/archive/SCREENPLAY-WRITER-PLAN.md`,
     all six phases built.** Seven parallel agents, merged in `write.js`.
     - **Format (Phase 1):** a `shot` element type (additive; never a
       scene); dual dialogue as `dual: true` on the SECOND cue, pairs
@@ -1001,7 +1001,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       remaining cost is the browser laying out the inserted row.
 
 16. **Story first, blueprints beside the stages, the script drives the
-    scenes (6 Oct 2026): `docs/BLUEPRINT-REALIGN-PLAN.md` revision 3,
+    scenes (6 Oct 2026): `docs/archive/BLUEPRINT-REALIGN-PLAN.md` revision 3,
     built.** Nothing was removed; module ids and every data-key held
     (verify: 720 keys, 0 moved, re-baselined from `edfb125`).
     - **Nav.** Six modules moved Screenplay → Pre-Production (breakdowns,
@@ -1047,7 +1047,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `PW_CHROMIUM=/opt/pw-browsers/chromium`.
 
 17. **The Medium/Low pass over the UX audit (7 Oct 2026).** All 27 Medium
-    and 30 of 31 Low items in `docs/UX-AUDIT-2026-10-06.md`, struck
+    and 30 of 31 Low items in `docs/archive/UX-AUDIT-2026-10-06.md`, struck
     through there item by item; five parallel agents, each on its own
     file set, merged and gated once. Re-baselined from `94e062d` with
     zero data-key movement on all 21 pages — the words that left are
@@ -1184,7 +1184,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
 19. **The handoff and the stopped work (7–8 Oct 2026).** Ten feature
     agents were stopped mid-work by the owner; their snapshots are
     `archive/*`, merged into `wip-all`, and `develop` was cut from it.
-    `docs/HANDOFF.md`, `docs/WIP.md` and `docs/BRANCHING.md` record it.
+    `docs/HANDOFF.md`, `docs/archive/WIP.md` and `docs/BRANCHING.md` record it.
 
 20. **Release: the ten workstreams reach `main` (8 Oct 2026).** Branch
     `feature/integration` off `develop`, merged back into `develop` and

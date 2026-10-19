@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: a roadmap input from 28 Sep 2026.
+
 # StudioBinder topics vs. FilmMakerStudio
 
 A roadmap input, not shipped content. Nothing here is built into the app.

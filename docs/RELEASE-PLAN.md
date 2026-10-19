@@ -12,7 +12,7 @@ Conventions used throughout:
   target, conversion rate and budget in this file is [H] unless it cites a
   source. Validate it in the first two weeks, then replace it with an actual.
 - **[re-check]** marks a competitor fact that came from aggregator sites
-  (`docs/FEATURE-IDEAS.md` "Market context" says they disagree). Do not put
+  (`docs/archive/FEATURE-IDEAS.md` "Market context" says they disagree). Do not put
   one in an ad until you have read the vendor's own page that day.
 - Status words: **LIVE** (verified live per HANDOFF §4), **BUILT** (in code,
   needs an owner step before it works for customers), **PLANNED**.

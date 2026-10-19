@@ -30,7 +30,15 @@ once and not yet looked at.
   duplicates save and are flagged). To renumber a bound scene, change
   its heading in Write.
 
-## Open 19 Oct 2026: the gated site cannot be OPENED from scratch offline
+## ~~Open 19 Oct 2026: the gated site cannot be OPENED from scratch offline~~ FIXED 19 Oct 2026
+
+**Owner chose the grace.** Every admission the server confirms stamps
+`fms_sitegate_verified_v1` ({at, uid}, at most hourly); a cold start that
+cannot reach the server opens when that stamp is under 14 days old, belongs to
+the stored session's account and that session is still on the device. A server
+"no" is never overridden; signing out clears it. `src/lib/sitegate.js`
+`graceOk()`, `prove:gate` (s). The original report:
+
 
 Found by the round-2 review. Once a tab is open it keeps working without a
 signal, but a cold start with no connection is refused: `sitegate.js` fails
@@ -46,7 +54,12 @@ localStorage stamp with an expiry, admitting `unreachable` only when a
 recent successful check exists) would do it, and it reverses fail-closed
 for that one case.
 
-## Open 19 Oct 2026: old Outline links land on a hidden tab, sometimes
+## ~~Open 19 Oct 2026: old Outline links land on a hidden tab, sometimes~~ FIXED 19 Oct 2026
+
+**Owner: they land on the Story path's Beat Sheet** — `write.html#outline` →
+`story.html#path-outline` (`src/lib/write-route.js`; `test:blueprint-route`,
+`prove:script` case 12). The original report:
+
 
 `write.html#outline` redirects to `breakdown.html#script` (`src/lib/write-route.js`
 `outline:`). `#script` is Screenplay Analysis, module `script-breakdown`, which

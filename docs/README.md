@@ -47,6 +47,7 @@ document disagree, the document wins; when a document and `HANDOFF.md` §4 disag
 - [`PROMPT-FOR-NEXT-PERSON.md`](PROMPT-FOR-NEXT-PERSON.md) - the prompt that drove the 14 Oct mobile-and-revamp workflow; historical, keeps the owner rules and gotchas.
 - [`NEXT-IDEAS-PLAN.md`](NEXT-IDEAS-PLAN.md) - twenty ideas ordered (12 Oct); Phases 1-2 built, Phase 0 partly done, Phase 3 open awaiting owner decisions.
 - [`WIP-EMOTION-PLAN.md`](WIP-EMOTION-PLAN.md) - emotional-craft layer; plan only, still open, nothing built (checked 19 Oct; next free schema section is §48).
+- [`MIROFISH-ANALYSIS.md`](MIROFISH-ANALYSIS.md) - MiroFish (multi-agent prediction engine) against this product: do not integrate (AGPL, server, Zep); a native "Test audience (simulated)" Desk task is sketched. Research only, 19 Oct; nothing built.
 
 ## Archive
 

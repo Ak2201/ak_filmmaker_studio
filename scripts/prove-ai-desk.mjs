@@ -433,7 +433,12 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   if (hasUndo) await undo.click();
   await page.waitForTimeout(1200);
   const undone = await scriptDoc(page);
-  ok(JSON.stringify(undone.elements) === JSON.stringify(before.elements), 'Undo restores the script exactly', (undone.elements.find((e) => e.id === 'el4') || {}).text);
+  /* `u` is the co-editing stamp (script-merge.js): an Undo is a new edit and
+     is stamped fresh, or a line-by-line merge would rank it below the Accept.
+     Everything else must come back byte for byte. */
+  const unstamped = (els) => els.map(({ u, ...rest }) => rest);
+  const ue = unstamped(undone.elements), be = unstamped(before.elements);
+  ok(JSON.stringify(ue) === JSON.stringify(be), 'Undo restores the script exactly (bar the edit stamp)', ue.map((e, i) => JSON.stringify(e) === JSON.stringify(be[i]) ? null : { got: e, want: be[i] }).filter(Boolean));
 
   /* Skip */
   if (!(await deskOpen(page))) await openTask(page, 'dialogue-pass');

@@ -32,7 +32,17 @@ const STYLE_OF = {
   transition: ['Transition', 'Transition'], shot: ['Shot', 'Shot']
 };
 
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+/* Every text value — the elements, the title page, the core.xml title —
+   goes through here. XML 1.0 forbids the C0 controls other than tab, LF
+   and CR, U+FFFE/U+FFFF and an unpaired surrogate, and ONE of them makes
+   the part not well-formed, which Word reports as a corrupt file and
+   nothing else. A vertical tab or form feed arrives by paste or import
+   and nothing on input strips it, so it comes off here — dropped, since
+   XML 1.0 has no escape for them either. With the u flag the surrogate
+   range matches only an UNPAIRED half; a pair is one astral character. */
+const XML_ILLEGAL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]|[\uD800-\uDFFF]/gu;
+const esc = (s) => String(s ?? '').replace(XML_ILLEGAL, '')
+  .replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 
 /* A run of text, with line breaks inside an element kept as <w:br/>. */
 function runs(text) {

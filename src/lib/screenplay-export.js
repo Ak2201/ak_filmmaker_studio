@@ -255,8 +255,17 @@ export function paginate(elements, opts = {}) {
   /* LOCKED PAGES: a page starts before each of these element ids, as it
      did the day the pages were locked (pageNumbersDoc below numbers
      them). Material added since then overflows into A-pages instead of
-     moving every later page. */
+     moving every later page. `breakAfter` (id → K) is the same promise
+     for a page that began part-way through an element: that element
+     broke K times when it was locked, and if it now breaks fewer (an
+     edit above let more of it fit), the page that held its tail starts
+     at the next element that prints rather than being swallowed by the
+     page before. Both apply only to elements that print — a blanked
+     element puts nothing on the page, so a break before it would start
+     a page with nothing of its own. */
   const breakBefore = opts && opts.breakBefore instanceof Set ? opts.breakBefore : null;
+  const breakAfter = opts && opts.breakAfter instanceof Map ? opts.breakAfter : null;
+  let pendingBreak = false;  // breakAfter fired: break before the next printed element
   const byId = nums && nums.byId instanceof Map ? nums.byId : null;
   const omitBefore = new Map();
   const omitEnd = [];
@@ -290,8 +299,16 @@ export function paginate(elements, opts = {}) {
 
   for (let idx = 0; idx < els.length; idx++) {
     const el = els[idx];
-    if (breakBefore && el && breakBefore.has(el.id) && page.length) flush();
+    /* An OMITTED row anchored here stands where its scene stood, which
+       is BEFORE this element: on the page before a locked break, not at
+       the top of the locked page (whose lines it would push into an
+       A-page that nothing on it earned). */
     if (omitBefore.size && el && omitBefore.has(el.id)) omitBefore.get(el.id).forEach(placeOmitted);
+    if ((breakBefore || breakAfter) && el && printedText(el)) {
+      if ((pendingBreak || (breakBefore && breakBefore.has(el.id))) && page.length) flush();
+      pendingBreak = false;
+    }
+    let pieces = 0;          // page breaks inside this element
     const pair = pairs && pairs.get(idx);
     if (pair) {
       const block = dualBlock(els, pair);
@@ -302,6 +319,7 @@ export function paginate(elements, opts = {}) {
         place({ type: 'dual', id: els[pair.left[0]].id, ids: block.ids, cols: block.cols,
           lines: block.lines, blankBefore: gap }, gap + block.height);
         idx = pair.right[1];
+        if (breakAfter && breakAfter.has(els[pair.left[0]].id)) pendingBreak = true;
         continue;
       }
     }
@@ -332,7 +350,11 @@ export function paginate(elements, opts = {}) {
        act, and nothing can overflow. */
     const reserve = (type === 'scene' || type === 'character' || type === 'shot') ? 1 : 0;
 
-    if (used + need + reserve <= BODY_LINES) { place({ type, lines, blankBefore: gap, id, ...extra }, need); continue; }
+    if (used + need + reserve <= BODY_LINES) {
+      place({ type, lines, blankBefore: gap, id, ...extra }, need);
+      if (breakAfter && breakAfter.has(id)) pendingBreak = true;
+      continue;
+    }
 
     /* A speech and an action block are the two worth breaking; a
        speech gets the two words the format has for it. Everything
@@ -367,6 +389,7 @@ export function paginate(elements, opts = {}) {
 
         place({ type, lines: rest.slice(0, room), blankBefore: lead, id, ...(piece ? { cont: true } : extra) }, lead + room);
         piece++;
+        pieces = piece;
         if (speech) page.push({ type: 'more', lines: ['(MORE)'], blankBefore: 0 });
         flush();
         lead = 0;
@@ -379,6 +402,7 @@ export function paginate(elements, opts = {}) {
           used += 1;
         }
       }
+      if (breakAfter && breakAfter.has(id) && pieces < breakAfter.get(id)) pendingBreak = true;
       continue;
     }
 
@@ -388,6 +412,7 @@ export function paginate(elements, opts = {}) {
        same page. What must not happen is the cue carrying a
        (CONT'D) it did not earn. */
     place({ type, lines, blankBefore: 0, id, ...extra }, lines.length);
+    if (breakAfter && breakAfter.has(id)) pendingBreak = true;
   }
   omitEnd.forEach(placeOmitted);
   flush();
@@ -401,9 +426,11 @@ export function paginate(elements, opts = {}) {
 export function paginateDoc(doc) {
   const els = (doc && doc.elements) || [];
   if (!doc || !doc.numbering || doc.numbering.locked !== true) return paginate(els);
-  const lock = pagesLock(doc);
-  const breakBefore = lock ? new Set(lock.starts.filter((s) => s.id && !s.split).map((s) => s.id)) : null;
-  return paginate(els, { numbers: sceneNumbers(els, doc.numbering), breakBefore });
+  const plan = lockPlan(doc);
+  return paginate(els, {
+    numbers: sceneNumbers(els, doc.numbering),
+    ...(plan ? { breakBefore: plan.breakBefore, breakAfter: plan.breakAfter } : {})
+  });
 }
 
 /* ------------------------------------------------------------
@@ -419,23 +446,46 @@ export function paginateDoc(doc) {
      pages: { locked: true, at: ISO, starts: [{ n: '1', id, split }, …] }
 
    `split` is a page that began part-way through a speech or an action
-   block. From then on paginateDoc() breaks before every unsplit start,
-   and pageNumbersDoc() names the pages:
-     · a page that begins where a locked page began keeps its number;
-     · a page that overflows after it is 12A, then 12B;
-     · a locked page whose start has been cut is folded into the page
-       before, which is numbered as the range: 12-13.
+   block. One long element can begin several pages; which of them a
+   start is follows from its ORDER among that element's split starts
+   (the k-th one is the k-th page the element runs onto), so the shape
+   needs no extra field and a lock written before this was understood
+   reads the same way. From then on paginateDoc() breaks before every
+   unsplit start, and pageNumbersDoc() names the pages:
+     · a page that begins where a locked page began keeps its number —
+       and a split page whose element now ends sooner (an edit above it
+       let more fit) begins at the next printed element instead, and
+       keeps its number there;
+     · a start whose element no longer prints (its text blanked) hands
+       its page to the next element that does;
+     · the numbers that survive must still run in order: a start that
+       now sits out of sequence (its scene was moved) is new material
+       where it stands, gets a letter, and forces no break;
+     · a page that overflows after a numbered one is 12A, then 12B;
+     · a locked number that no longer begins any page is folded into
+       the LAST page before the next surviving number, which prints as
+       a range: 12-13, or 12B-13 after lettered pages. A missing 1 (or
+       any number below the first that survives) folds onto the first
+       page: 1-2.
+   Labels never go backwards.
    ------------------------------------------------------------ */
 export function pagesLock(doc) {
   const p = doc && doc.numbering && doc.numbering.locked === true ? doc.numbering.pages : null;
   return p && p.locked === true && Array.isArray(p.starts) && p.starts.length ? p : null;
 }
 
-/** Where each page begins: { id, split } of its first row with an element. */
+/** Where each page begins: { id, split, k } of its first row with an
+    element. `k` counts a split element's pages: the first page it runs
+    onto is 1, the next 2 (0 for an unsplit start). */
 export function pageStarts(pages) {
+  const seen = new Map();
   return (pages || []).map((rows) => {
     const row = rows.find((r) => r && r.id);
-    return row ? { id: row.id, split: !!row.cont } : { id: null, split: false };
+    if (!row) return { id: null, split: false, k: 0 };
+    if (!row.cont) return { id: row.id, split: false, k: 0 };
+    const k = (seen.get(row.id) || 0) + 1;
+    seen.set(row.id, k);
+    return { id: row.id, split: true, k };
   });
 }
 
@@ -443,6 +493,71 @@ export function pageStarts(pages) {
 export function lockPages(doc, at = new Date().toISOString()) {
   const starts = pageStarts(paginateDoc(doc)).map((s, i) => ({ n: String(i + 1), id: s.id, split: s.split }));
   return { locked: true, at, starts };
+}
+
+const startKey = (id, split, k) => (split ? id + '|s|' + k : id);
+
+/* What the lock means for the elements as they stand now: the breaks
+   paginate() must keep and the key each locked number answers to.
+   null when nothing is locked. PURE. */
+function lockPlan(doc) {
+  const lock = pagesLock(doc);
+  if (!lock) return null;
+  const els = (doc && doc.elements) || [];
+  const at = new Map();
+  els.forEach((e, i) => { if (e && e.id && !at.has(e.id)) at.set(e.id, i); });
+  const recorded = new Set(lock.starts.filter((s) => s.id).map((s) => s.id));
+  const prints = (i) => !!printedText(els[i]);
+  const nextPrinted = (i) => { for (let j = i; j < els.length; j++) if (prints(j)) return j; return -1; };
+  /* Each start that still names an element, with where it sits now. */
+  const counts = new Map();
+  const cands = [];
+  for (const s of lock.starts) {
+    const num = parseInt(s.n, 10);
+    if (!s.id || !at.has(s.id) || !Number.isFinite(num)) continue;
+    if (s.split) {
+      const k = (counts.get(s.id) || 0) + 1;
+      counts.set(s.id, k);
+      cands.push({ n: s.n, num, split: true, id: s.id, k, pos: at.get(s.id), sub: k });
+      continue;
+    }
+    // a blanked start: its page begins at the next element that prints,
+    // unless that element begins a locked page of its own
+    const j = nextPrinted(at.get(s.id));
+    if (j < 0) continue;
+    const id = els[j].id;
+    if (id !== s.id && recorded.has(id)) continue;
+    cands.push({ n: s.n, num, split: false, id, k: 0, pos: j, sub: 0 });
+  }
+  /* The numbers must still run in order down the script: keep the
+     longest run of starts whose numbers increase with their position
+     (a moved scene's start falls out of it). */
+  cands.sort((x, y) => x.pos - y.pos || x.sub - y.sub);
+  const len = cands.map(() => 1), prev = cands.map(() => -1);
+  for (let i = 0; i < cands.length; i++) {
+    for (let j = 0; j < i; j++) {
+      if (cands[j].num < cands[i].num && len[j] + 1 > len[i]) { len[i] = len[j] + 1; prev[i] = j; }
+    }
+  }
+  let best = -1;
+  len.forEach((l, i) => { if (best < 0 || l > len[best]) best = i; });
+  const kept = [];
+  for (let i = best; i >= 0; i = prev[i]) kept.unshift(cands[i]);
+
+  const keys = new Map();
+  const breakBefore = new Set();
+  const breakAfter = new Map();
+  for (const c of kept) {
+    keys.set(startKey(c.id, c.split, c.k), c.n);
+    if (!c.split) { breakBefore.add(c.id); continue; }
+    if (c.k !== counts.get(c.id)) continue;
+    /* The element's last recorded page: if it now breaks fewer times,
+       the page that held its tail begins at the next printed element. */
+    breakAfter.set(c.id, c.k);
+    const j = nextPrinted(c.pos + 1);
+    if (j >= 0 && !recorded.has(els[j].id)) keys.set(startKey(els[j].id, false, 0), c.n);
+  }
+  return { lock, keys, breakBefore, breakAfter };
 }
 
 const pageLetter = (k) => {
@@ -456,38 +571,48 @@ const pageLetter = (k) => {
  * Without a page lock the label is the position, as it always was.
  */
 export function pageNumbersDoc(doc, pages = paginateDoc(doc)) {
-  const lock = pagesLock(doc);
-  if (!lock) return pages.map((_, i) => String(i + 1));
-  const byKey = new Map(lock.starts.filter((s) => s.id).map((s) => [s.id + (s.split ? '|s' : ''), s.n]));
+  const plan = lockPlan(doc);
+  if (!plan) return pages.map((_, i) => String(i + 1));
   const starts = pageStarts(pages);
   const labels = [];
-  const used = new Set();
-  let cur = '1', letters = 0;
+  const nums = [];                 // the locked number a page kept, or null
+  let last = 0, cur = '1', letters = 0;
   starts.forEach((s, i) => {
-    const n = s.id ? byKey.get(s.id + (s.split ? '|s' : '')) : null;
-    if (n && !used.has(n)) { used.add(n); cur = n; letters = 0; labels.push(n); return; }
-    if (i === 0) { used.add('1'); labels.push('1'); return; }
+    const n = s.id ? plan.keys.get(startKey(s.id, s.split, s.k)) : null;
+    const num = n ? parseInt(n, 10) : NaN;
+    if (n && num > last) { last = num; cur = n; letters = 0; labels.push(n); nums.push(num); return; }
+    if (i === 0) { last = 1; labels.push('1'); nums.push(1); return; }
     letters++;
     labels.push(cur + pageLetter(letters));
+    nums.push(null);
   });
-  /* A locked page that no longer starts anywhere is folded into the
-     numbered page before it: 12 becomes 12-13. */
-  const nums = lock.starts.map((s) => s.n);
-  const missing = nums.filter((n) => !used.has(n));
-  if (missing.length) {
-    const asInt = (n) => parseInt(n, 10);
-    labels.forEach((l, i) => {
-      if (!/^\d+$/.test(l)) return;
-      const next = labels.slice(i + 1).find((x) => /^\d+$/.test(x));
-      const upto = missing.filter((m) => asInt(m) > asInt(l) && (!next || asInt(m) < asInt(next)));
-      if (upto.length) labels[i] = l + '-' + upto[upto.length - 1];
-    });
+  /* A locked number that no longer begins a page is folded into the
+     last page before the next number that does — after its A-pages,
+     so the labels still run forward: 12B-13, then 14. One below the
+     first surviving number folds onto the first page: 1-2. */
+  const have = new Set(nums.filter((x) => x !== null));
+  const folds = new Map();         // page index → numbers folded into it
+  for (const s of plan.lock.starts) {
+    const m = parseInt(s.n, 10);
+    if (!Number.isFinite(m) || have.has(m)) continue;
+    have.add(m);
+    const j = nums.findIndex((x) => x !== null && x > m);
+    const t = j > 0 ? j - 1 : j === 0 ? 0 : labels.length - 1;
+    if (t >= 0) folds.set(t, [...(folds.get(t) || []), m]);
   }
+  folds.forEach((ms, t) => {
+    const own = nums[t];
+    if (own === null) { labels[t] = labels[t] + '-' + Math.max(...ms); return; }
+    labels[t] = Math.min(own, ...ms) + '-' + Math.max(own, ...ms);
+  });
   return labels;
 }
 
-/** The printed page number: unnumbered first page, a full stop after. */
-export const pageLabelPrinted = (label, i) => (i === 0 && (label === '1' || !label) ? '' : String(label) + '.');
+/** The printed page number, a full stop after it. The first page is
+    never numbered — that is the convention — and that holds when it
+    carries a folded range too: a first page that is now 1-2 prints
+    nothing, as page 1 did. */
+export const pageLabelPrinted = (label, i) => (i === 0 || !label ? '' : String(label) + '.');
 
 /* ------------------------------------------------------------
    THE PAGE NUMBER

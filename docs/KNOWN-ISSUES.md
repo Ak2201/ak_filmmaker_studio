@@ -30,6 +30,22 @@ once and not yet looked at.
   duplicates save and are flagged). To renumber a bound scene, change
   its heading in Write.
 
+## Open 19 Oct 2026: the gated site cannot be OPENED from scratch offline
+
+Found by the round-2 review. Once a tab is open it keeps working without a
+signal, but a cold start with no connection is refused: `sitegate.js` fails
+closed, its pass lives in sessionStorage (empty in a new browser session),
+and `runGate()` reads a failed status call as `unreachable`, so the visitor
+is sent to `invite.html` and their local work stays hidden (never touched).
+That is the documented stance (`docs/GATE.md` §0), so the marketing copy
+was corrected to say "once it is open" rather than the gate being changed.
+
+**Owner decision needed** if a film set should be able to open the app with
+no signal at all: a durable "last verified on this device" grace (a
+localStorage stamp with an expiry, admitting `unreachable` only when a
+recent successful check exists) would do it, and it reverses fail-closed
+for that one case.
+
 ## Open 19 Oct 2026: old Outline links land on a hidden tab, sometimes
 
 `write.html#outline` redirects to `breakdown.html#script` (`src/lib/write-route.js`

@@ -179,6 +179,11 @@ export function mountPresence(o) {
     const row = e.target && e.target.closest && e.target.closest('#wr-page [data-el]');
     if (!row || row.dataset.el === me.elId) return;
     me.elId = row.dataset.el;
+    /* The offset belongs to the line it was measured in: a caret moving
+       to another row's type menu or buttons says which line, and no
+       position until the text box has one. */
+    const ta = e.target.matches && e.target.matches('.wr-text') ? e.target : null;
+    me.pos = ta && typeof ta.selectionStart === 'number' ? ta.selectionStart : null;
     sendSoon();
   });
   const notePos = () => {
@@ -190,11 +195,21 @@ export function mountPresence(o) {
   };
   document.addEventListener('selectionchange', notePos);
   document.addEventListener('keyup', notePos, { capture: true });
+  /* A peer's caret is placed in pixels, so it is re-placed whenever
+     this writer's own typing or the window can have moved the text
+     under it — once a frame at most, and only while one is showing. */
+  let redraw = 0;
+  const redrawSoon = () => {
+    if (redraw || !(carets.length || marked.length)) return;
+    redraw = requestAnimationFrame(() => { redraw = 0; draw(); });
+  };
+  addEventListener('resize', redrawSoon);
   document.addEventListener('input', (e) => {
     if (!e.target || !e.target.matches || !e.target.matches('#wr-page .wr-text')) return;
     me.editing = true;
     me.at = Date.now();
     sendSoon();
+    redrawSoon();
   }, { capture: true });
 
   setInterval(() => {

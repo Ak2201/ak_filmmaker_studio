@@ -53,6 +53,17 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
   const theirsEdit = clone(base); theirsEdit.elements[3] = e('d', 'Not tonight, Meera.', 50, 'dialogue');
   eq(texts(M.mergeScript(mineCut, theirsEdit, base))[3], 'Not tonight, Meera.', 'unless they edited it after');
 }
+// The base is the copy last RECEIVED, never this device's own push: a
+// writer who was offline never saw that push, and a line added here must
+// not read as cut over there (cloud.js noteBase).
+{
+  const received = clone(base);
+  const mine = clone(base); mine.elements.push(e('L', 'A new line, pushed from here.', 60));
+  const theirs = clone(base); theirs.elements[1] = e('a', 'Ravi paces, offline.', 61);   // built on `received`, never saw L
+  const m = texts(M.mergeScript(mine, theirs, received));
+  ok(m.includes('A new line, pushed from here.') && m.includes('Ravi paces, offline.'), 'a line pushed here survives a copy from a writer who never received it');
+  eq(texts(M.mergeScript(mine, theirs, mine)).includes('A new line, pushed from here.'), false, '(with our own push as the base it would have been cut — the bug this guards)');
+}
 // The rest of the script.
 {
   const mine = { ...clone(base), revisions: [{ id: 'r1', name: 'Draft 1', date: '2026-10-01' }], documents: [{ id: 'd1', title: 'Notes', updated: '2026-10-02' }] };

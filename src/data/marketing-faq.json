@@ -58,7 +58,7 @@
       },
       {
         "q": "Does it work offline on a film set?",
-        "a": "Yes. The studio installs like an app and caches itself, so you can keep writing, reordering the stripboard and printing call sheets without a signal. What you changed offline is still there when you reconnect."
+        "a": "Once it is open, yes. The studio installs like an app and caches itself, so you can keep writing, reordering the stripboard and printing call sheets when the signal drops, and what you changed is still there when you reconnect. Opening it from scratch with no signal at all does not work yet: the sign-in check needs a connection, so open it before you lose one."
       },
       {
         "q": "Can I back my work up?",

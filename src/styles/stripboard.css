@@ -70,8 +70,6 @@
 }
 .sb-seg,
 .sb-acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-width: 0; max-width: 100%; }
-/* Clear days: last, and pushed off the scheduling actions. */
-.sb-acts .sb-clear { margin-inline-start: var(--s4); }
 .sb-seg-lab,
 .sb-legend-lab,
 .sb-day-lab {
@@ -654,7 +652,9 @@ body.pdf-print .sb-dood .sb-dood-scroll { display: block !important; }
   .sb-kpis .k-stat { padding: var(--s2); gap: var(--s-half); }
   .sb-kpis .k-stat-value { font-size: var(--t-lg); }
   .sb-kpis .k-stat-unit { display: block; margin-left: 0; }
-  .sb-kpis .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
+  /* ...except on an empty card, where the note is the only thing
+     saying what the dash is waiting for. */
+  .sb-kpis .k-stat:not(.is-empty) .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
   /* The Scheduled meter keeps its bar (the progressbar still carries
      its values) and drops the "36 / 36" row, which wrapped in a third. */
   .sb-kpis .k-meter-row { display: none; }

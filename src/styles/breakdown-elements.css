@@ -196,5 +196,7 @@ body.pdf-elements .bdx-layout { display: block; }
   .bd-kpis .k-stat { padding: var(--s2); gap: var(--s-half); }
   .bd-kpis .k-stat-value { font-size: var(--t-lg); }
   .bd-kpis .k-stat-unit { display: block; margin-left: 0; }
-  .bd-kpis .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
+  /* ...except on an empty card, where the note is the only thing
+     saying what the dash is waiting for. */
+  .bd-kpis .k-stat:not(.is-empty) .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
 }

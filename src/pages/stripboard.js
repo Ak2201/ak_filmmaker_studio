@@ -161,7 +161,8 @@ function renderHeader(scenes, rows) {
       label: 'Unscheduled', value: scenes.length ? String(unscheduled) : '—',
       unit: scenes.length ? (unscheduled === 1 ? 'strip' : 'strips') : '',
       note: !scenes.length ? 'no scenes yet' : unscheduled ? 'still to place' : 'all placed',
-      noteTone: scenes.length ? (unscheduled ? 'warn' : 'ok') : null
+      noteTone: scenes.length ? (unscheduled ? 'warn' : 'ok') : null,
+      class: scenes.length ? '' : 'is-empty'
     })
   ];
   if (rows && rows.length) {
@@ -407,11 +408,12 @@ function renderControls() {
       button({ label: 'Schedule by location', icon: 'auto_awesome', action: 'sb-auto', class: 'sb-btn' }),
       exportMenu,
       /* The destructive one stands apart from the action it undoes (it
-         sat touching "Schedule by location"), and is off while no strip
-         has a day to clear. It still asks before clearing. */
+         sat touching "Schedule by location"). It stays pressable when no
+         strip has a day: a disabled button cannot take focus or show its
+         reason, so the press says why instead. It still asks before
+         clearing. */
       button({
         label: 'Clear days', variant: 'danger', action: 'sb-clear', class: 'sb-btn is-danger sb-clear',
-        disabled: !Scenes.listScenes().some((s) => shootDayOf(s)),
         title: 'Take the shoot day off every strip; the scenes themselves are untouched'
       })
     ])
@@ -945,15 +947,17 @@ function render() {
    page's first paint (fillHours() loads script.js the same way). */
 const scriptLib = () => Promise.all([import('../lib/script.js'), import('../lib/scene-sync.js')]);
 
-/* With no scenes there is nothing to number, so the filled CTA is
-   disabled and says why rather than offering a lock on an empty board. */
+/* With no scenes there is nothing to number, so the filled CTA is not
+   drawn at all (the empty board already points at the Breakdown). A
+   disabled button would explain itself only in a tooltip that keyboard,
+   screen-reader and touch users never get. Returns null then: filter
+   before a native append. */
 function lockButton(empty = !Scenes.listScenes().length) {
+  if (empty) return null;
   return button({
     label: 'Lock production draft', variant: 'primary', pill: true, icon: 'lock',
-    action: 'sb-lock', class: 'sb-lock-btn', disabled: empty,
-    title: empty
-      ? 'Add scenes in the Breakdown first'
-      : 'Freeze the scene numbers, so every strip, side and call sheet keeps pointing at the same scene'
+    action: 'sb-lock', class: 'sb-lock-btn',
+    title: 'Freeze the scene numbers, so every strip, side and call sheet keeps pointing at the same scene'
   });
 }
 
@@ -973,7 +977,7 @@ function fillLock() {
         })
       : null;
     if (!S.isNumberingLocked(doc.numbering)) {
-      if (draft) host.replaceChildren(draft, lockButton());
+      if (draft) host.replaceChildren(...[draft, lockButton()].filter(Boolean));
       return;
     }
     const stamp = String(doc.numbering.at || '').slice(0, 10);
@@ -1419,7 +1423,7 @@ delegate(document, 'click', '[data-action="sb-auto"]', async () => {
 
 delegate(document, 'click', '[data-action="sb-clear"]', async () => {
   const scenes = Scenes.listScenes().filter((s) => shootDayOf(s));
-  if (!scenes.length) return;
+  if (!scenes.length) { toast('No strip has a shoot day yet, so there is nothing to clear.'); return; }
   if (!await askDanger(`Clear the shoot day from ${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}? The scenes themselves are untouched.`)) return;
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.

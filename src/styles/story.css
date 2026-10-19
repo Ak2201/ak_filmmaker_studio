@@ -419,10 +419,8 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
   .st-stats .k-stat { padding: var(--s2); gap: var(--s-half); }
   .st-stats .k-stat-value { font-size: var(--t-lg); }
   .st-stats .k-stat-unit { display: block; margin-left: 0; }
-  .st-stats .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
+  /* ...except on an empty card, where the note is the only thing
+     saying what the dash is waiting for. */
+  .st-stats .k-stat:not(.is-empty) .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
 }
 
-/* The header: the Export menu's item with nothing to export is off. */
-.st-bar .tb-item:disabled { opacity: .5; cursor: not-allowed; }
-.st-bar .st-start-over { color: var(--danger); }
-.st-bar .st-start-over:hover { color: var(--danger-deep); background: var(--danger-wash); }

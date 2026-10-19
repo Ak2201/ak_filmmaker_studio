@@ -119,25 +119,29 @@
   .bdo-table td { padding: var(--s2); }
 }
 .bdo-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-/* The scene number stays put while the row scrolls under it. */
-.bdo-table :is(th, td):first-child {
+/* The scene number stays put while the row scrolls under it. The
+   scenes table only: there the first cell is a short number, while the
+   character and location tables lead with a long bold name that would
+   eat the phone column. A hairline marks where the pinned cell ends. */
+#bdo-pane-scenes .bdo-table :is(th, td):first-child {
   position: sticky;
   inset-inline-start: 0;
   z-index: 1;
   background: var(--paper-raised);
+  border-inline-end: 1px solid var(--rule);
 }
-/* A table that runs past the box says so: the right edge fades while
-   there is more to the right, and stops fading at the end. Driven by
-   the box's own scroll, so a table that fits is never masked. */
-@property --bdo-fade { syntax: '<length>'; inherits: false; initial-value: 0px; }
-@supports (animation-timeline: scroll()) {
-  .bdo-scroll {
-    mask-image: linear-gradient(to left, transparent 0, var(--ink) var(--bdo-fade));
-    animation: bdo-fade linear both;
-    animation-timeline: scroll(self inline);
-  }
+/* A table that runs past the box says so: a shade on the right edge
+   while there is more to the right, covered once the end is reached.
+   Drawn as the box's own background (the cover scrolls with the table,
+   the shade stays with the box) rather than as a mask, which would also
+   fade the box's border and its focus ring. A table that fits never
+   shows it: the cover sits over the shade. */
+.bdo-scroll {
+  background:
+    linear-gradient(to left, var(--paper-raised) var(--s4), transparent) right center / var(--s6) 100% no-repeat local,
+    linear-gradient(to left, var(--scrim), transparent) right center / var(--s4) 100% no-repeat scroll,
+    var(--paper-raised);
 }
-@keyframes bdo-fade { from { --bdo-fade: var(--s6); } to { --bdo-fade: 0px; } }
 .bdo-name { font-weight: 600; }
 .bdo-totals { margin: 0; }
 .bdo-onward { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin: 0; color: var(--ink-muted); }

@@ -885,21 +885,23 @@ function renderAI(s) {
    in it. */
 /* The header's Export menu. actionMenu draws commands as `data-action`
    items; this page's click handler reads `data-st`, so each item is
-   re-pointed after the build, and one with nothing to export is off. */
+   re-pointed after the build. An export with nothing in it is left out
+   rather than drawn disabled: a disabled item cannot take focus, so its
+   reason would live only in a tooltip. */
 function exportMenu(s) {
-  const menu = actionMenu('Export', [
-    { label: 'Synopsis', hint: '.txt' },
-    { label: 'Outline', hint: '.md' }
-  ], { align: 'right' });
+  const opts = [
+    { label: 'Synopsis', hint: '.txt', st: 'export-txt', can: IO.canExportSynopsis(s) },
+    { label: 'Outline', hint: '.md', st: 'export-md', can: IO.canExportOutline(s) }
+  ].filter((o) => o.can);
+  const menu = actionMenu('Export', opts.map(({ label, hint }) => ({ label, hint })), { align: 'right' });
   const btn = menu.querySelector('.tb-menu-btn');
   btn.classList.remove('btn');
   btn.classList.add('k-btn', 'k-btn--secondary');
   const items = menu.querySelectorAll('.tb-item');
-  [['export-txt', IO.canExportSynopsis(s)], ['export-md', IO.canExportOutline(s)]].forEach(([act, can], i) => {
+  opts.forEach((o, i) => {
     const it = items[i];
     it.removeAttribute('data-action');
-    it.dataset.st = act;
-    if (!can) { it.disabled = true; it.title = 'Nothing to export yet'; }
+    it.dataset.st = o.st;
   });
   return menu;
 }
@@ -1006,7 +1008,7 @@ function draw() {
   if (IO.canExportSynopsis(s) || IO.canExportOutline(s)) bar.append(exportMenu(s));   // nothing to export: no menu of two dead rows
   /* Destructive, so last and quiet: never weighted like the exports. */
   if (s.source.trim() || s.marks.length) {
-    bar.append(button({ label: 'Start over', variant: 'ghost', class: 'st-start-over', attrs: { 'data-st': 'clear' } }));
+    bar.append(button({ label: 'Start over', variant: 'danger', size: 'sm', class: 'st-start-over', attrs: { 'data-st': 'clear' } }));
   }
   main.insertBefore(pageHeader({
     class: 'bd-head',

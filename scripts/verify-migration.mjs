@@ -402,7 +402,8 @@ const EXPECTED = {
   stripboard: {
     '0': 'Unscheduled card: a dash, not a zero, when there are no scenes',
     all: 'Unscheduled card: "all placed" is no longer claimed on an empty board',
-    placed: 'Unscheduled card: "all placed" is no longer claimed on an empty board'
+    placed: 'Unscheduled card: "all placed" is no longer claimed on an empty board',
+    lock: 'the "Lock production draft" CTA is not drawn on a board with no scenes (nothing to number)'
   },
   reports: {},
   contacts: {},
@@ -447,7 +448,8 @@ const EXPECTED = {
     does: 'map deck: "and so does the studio" removed (it contradicted the hero)',
     answers: 'title page sub: internal blueprint jargon removed',
     keeps: 'title page sub: internal blueprint jargon removed',
-    same: 'title page sub: internal blueprint jargon removed'
+    same: 'title page sub: internal blueprint jargon removed',
+    cover: 'title page sub: internal blueprint jargon removed ("for its cover")'
   },
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is

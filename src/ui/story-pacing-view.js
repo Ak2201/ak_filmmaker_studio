@@ -238,9 +238,9 @@ export function renderStats(s, { scenes = [], elements = [], characters = 0 } = 
   const peak = deck.beats.reduce((a, b) => (b.tension > a.tension ? b : a), deck.beats[0]);
   const cards = [
     { label: 'Beats tagged', value: `${tagged} / ${n}`, note: tagged === n ? 'Every beat has a passage' : (n - tagged) + ' still to tag', noteTone: tagged === n ? 'ok' : '' },
-    { label: 'Characters', value: characters ? String(characters) : '—', note: characters ? 'in the Story Bible' : 'add them in the Story Bible' },
+    { label: 'Characters', value: characters ? String(characters) : '—', note: characters ? 'in the Story Bible' : 'add them in the Story Bible', class: characters ? '' : 'is-empty' },
     { label: 'Peak tension', value: peak ? String(peak.tension) : '—', unit: peak ? '/ 10' : '', note: peak ? peak.beat.label : '' },
-    { label: 'Pages', value: deck.pages.total ? String(Math.round(deck.pages.total)) : '—', note: deck.pages.total ? (deck.pages.source === 'script' ? 'in the script' : 'in the scene list') : 'from the script or the scene list' },
+    { label: 'Pages', value: deck.pages.total ? String(Math.round(deck.pages.total)) : '—', note: deck.pages.total ? (deck.pages.source === 'script' ? 'in the script' : 'in the scene list') : 'from the script or the scene list', class: deck.pages.total ? '' : 'is-empty' },
     { label: 'Beat sheet', value: deck.fw.short, note: `${n} beats` }
   ];
   return statStrip(cards, { class: 'st-stats', label: 'The story in numbers' });

@@ -91,7 +91,7 @@ function kpis(scenes, eighths) {
   const dash = (n, f) => (n ? f(n) : '—');
   const idx = Scenes.elementIndex();
   const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, Songs.listSongs().length);
-  const card = (value, label, note) => statCard({ value, label, note: note || '' });
+  const card = (value, label, note) => statCard({ value, label, note: note || '', class: value === '—' ? 'is-empty' : '' });
   /* A dash says "nothing here"; the note under it says where it comes
      from, so an empty card points at the next step instead of reading as
      a broken figure. Songs is the one optional figure: a film with none

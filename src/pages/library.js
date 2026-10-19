@@ -166,8 +166,8 @@ function renderCheck(c) {
    Groups are merged by name, so Craft is one heading although its two
    tabs are not neighbours in this order. */
 const MENU = {
-  'films': { group: 'The shelf', icon: 'movie', hint: 'Tamil films and the craft lesson in each.' },
-  'directors': { group: 'The shelf', icon: 'videocam', hint: 'Director archetypes to study.' },
+  'films': { group: 'Reference', icon: 'movie', hint: 'Tamil films and the craft lesson in each.' },
+  'directors': { group: 'Reference', icon: 'videocam', hint: 'Director archetypes to study.' },
   'rules': { group: 'Craft', icon: 'rule', hint: 'Rules of thumb, attributed.' },
   'glossary': { group: 'Craft', icon: 'sort_by_alpha', hint: 'Every film term, with examples.' },
   'emotional-impact': { group: 'Craft books', icon: 'favorite', hint: 'Engineering what the reader feels, page by page.' },
@@ -475,11 +475,14 @@ function renderCover() {
         h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${openShelves().length} SHELVES`])])
       ]),
       h('nav.cover-toc', { 'aria-label': 'Contents' },
-        openShelves().map((s) => h('a.toc-item', { href: `#${s.id}` }, [
+        openShelves().map((s, i, all) => h('a.toc-item', { href: `#${s.id}` }, [
           h('span.toc-head', {}, [
             /* The shelf's kind (its menu group), not a roman numeral:
-               the order carries nothing the reader needs. */
-            h('span.num', { text: shelfKind(s) }),
+               the order carries nothing the reader needs. Shelves come in
+               pairs, so the kind is printed on the first of each group
+               only; a neighbour repeating it says nothing. Capitals are
+               the stylesheet's (text-transform), not the string's. */
+            h('span.num', { text: i && shelfKind(all[i - 1]) === shelfKind(s) ? '' : shelfKind(s) }),
             h('span.toc-go', { 'aria-hidden': 'true', text: '\u2197' })
           ]),
           h('span.title', { text: s.tocTitle }),
@@ -569,7 +572,7 @@ function renderContents() {
   ]);
 }
 
-const shelfKind = (s) => ((MENU[s.id] || {}).group || s.nav || '').toUpperCase();
+const shelfKind = (s) => (MENU[s.id] || {}).group || s.nav || '';
 
 function renderSectionHead(section) {
   return h('div.section-head', {}, [

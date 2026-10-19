@@ -525,7 +525,7 @@ function renderHead(snap) {
    studio's own stage badge. Labels only; every data-key is unchanged. */
 const TP_HINTS = {
   v1_title: 'If different from the project title',
-  meta_stage: 'As printed on the cover, e.g. First draft'
+  meta_stage: 'Where the film is: Story, Screenplay, Pre-production…'
 };
 
 function renderTitlePage(project) {
@@ -547,7 +547,7 @@ function renderTitlePage(project) {
         /* A saved genre the list does not name (typed in an older
            version, or the sample's) stays an option: otherwise the
            select showed a blank box and a change would drop the answer. */
-        options: [{ value: '', label: 'Choose a genre' },
+        options: [{ value: '', label: f.empty || 'Choose…' },
           ...(v && !f.options.includes(v) ? [{ value: v, label: v }] : []),
           ...f.options.map((o) => ({ value: o, label: o }))] })
       : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs, hint }));

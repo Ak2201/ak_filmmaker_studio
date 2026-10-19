@@ -2476,7 +2476,12 @@ let keyUnion = { checked: false, skipped: true };
   const have = {};
   for (const pg of STAGE_PAGES) {
     await probe.goto(`${GUIDE_ORIGIN}/${pg}`, { waitUntil: 'networkidle' });
-    have[pg] = await probe.waitForSelector('section#guide', { state: 'attached', timeout: 1500 }).then(() => true, () => false);
+    /* Wait for the CONDITION, not a fixed delay: the guide is drawn by
+       script after the page settles, and a 1.5s ceiling flaked on a busy
+       machine ("section#guide is on … but missing from story.html").
+       Polled up to 8s; the assertion is unchanged — absent after 8s is
+       still absent. */
+    have[pg] = await probe.waitForFunction(() => !!document.querySelector('section#guide'), null, { timeout: 8000, polling: 100 }).then(() => true, () => false);
   }
   await probeCtx.close();
   const present = STAGE_PAGES.filter((pg) => have[pg]);

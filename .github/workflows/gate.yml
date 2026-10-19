@@ -137,3 +137,7 @@ jobs:
       - run: npm run prove:nav
         env:
           PROVE_DIST: dist-verify
+      # Scroll and fragment landings on the open build, like prove:nav.
+      - run: npm run prove:scroll
+        env:
+          PROVE_DIST: dist-verify

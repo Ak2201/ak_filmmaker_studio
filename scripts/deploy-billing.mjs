@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /* ============================================================
-   DEPLOY BILLING — run schema §16–§18 and deploy the edge functions
+   DEPLOY BILLING — run schema §16 onward and deploy the edge functions
    ------------------------------------------------------------
    Everything docs/BILLING.md §1 lists as "do this in the dashboard",
    as one command, against the project in .env (VITE_SUPABASE_URL).
 
      node scripts/deploy-billing.mjs --print     write the SQL to stdout,
                                                  for the dashboard editor
-     node scripts/deploy-billing.mjs --sql       run §16 and §17 through
-                                                 the Management API
+     node scripts/deploy-billing.mjs --sql       run §16 to the end of the
+                                                 schema file through the
+                                                 Management API
      node scripts/deploy-billing.mjs --functions deploy rzp-order,
                                                  rzp-verify, rzp-refund, rzp-webhook
                                                  (--no-verify-jwt), and
@@ -25,8 +26,9 @@
      RAZORPAY_WEBHOOK_SECRET   deploy and answer 503 until they are set.
 
    The SQL is SLICED FROM supabase/schema/supabase-schema.sql rather than copied into
-   this file, so there is one text of each section. The slice is the
-   two sections verbatim, including their CHECKS comments; it is
+   this file, so there is one text of each section. The slice is every
+   section from §16 to the end of the file, verbatim, including their
+   CHECKS comments; it is
    idempotent (create if not exists / or replace / drop if exists), as
    every section of that file is, so a second run is safe.
 
@@ -57,7 +59,7 @@ function sliceSchema() {
   if (start < 0) { console.error('✗ section 16 not found in supabase/schema/supabase-schema.sql'); process.exit(2); }
   // The separator line above the heading belongs to the section too.
   const from = sql.lastIndexOf('\n-- ====', start) + 1;
-  return sql.slice(from);   // 16, 17 and 18 run to the end of the file
+  return sql.slice(from);   // §16 through the last section in the file
 }
 
 if (want('--print')) { process.stdout.write(sliceSchema()); process.exit(0); }

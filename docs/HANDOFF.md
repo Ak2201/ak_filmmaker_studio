@@ -2,6 +2,28 @@
 
 Last reviewed: 2026-10-19
 
+> **2026-10-19, later (what landed today) — `CLAUDE.md` rows 39–48, `docs/HISTORY.md` item 52.**
+> - Rail: the status bar is retired; one account avatar (Google photo) opens a
+>   menu holding Settings, Plan & purchases, Help and sign in/out.
+> - Full-width frame (`--measure-wide: 100vw`, prose on `--measure-text`).
+> - Story is four steps for both formats; a Title page card on the dashboard.
+> - `plans: []` is absolute in `isDisabledEverywhere()`; the Library is always
+>   shown, with `openShelves()`; two craft-book shelves (original wording only).
+> - Purchase page revamp; Contact and About pages; privacy/terms/refund rewritten.
+> - Emil (motion), Impeccable and Taste design passes; `prove:scroll`, now in CI.
+> - Schema §48 written (refund role, seat limit, decline mark), not run.
+>
+> **Owner steps from today:**
+> 1. Re-run **§36** live (`scripts/make-plan-features-sql.mjs`; the live map
+>    predates the 17 Oct switch-off) and run **§48** live, each with the SHA-256
+>    checksum against the file before pressing Run (CLAUDE.md, the clipboard trap).
+> 2. Redeploy **`rzp-refund`** with the CLI after §48 (`docs/BILLING.md` §20).
+> 3. Decide the **licence** (`package.json` says ISC; README says "see owner").
+> 4. Check the **Google photo** in the rail on the live site (CSP `img-src`
+>    googleusercontent in both host configs).
+> 5. Decide whether to keep the terms' **retired-tools promise** (§12: a retired
+>    tool's writing is never deleted and stays in backups) — it is a commitment.
+
 > **2026-10-19 (repo layout + where things stand) — read this before the older
 > dated notes below, which are a record and are NOT rewritten.**
 >

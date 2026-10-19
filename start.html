@@ -6,6 +6,7 @@
 <title>{{brand:name}}: from first draft to final call sheet</title>
 <meta name="description" content="Write the screenplay, break it down and plan the shoot in one place. Built for indie directors, writers and line producers; your work is saved in your own browser.">
 <link rel="canonical" href="https://{{brand:host}}/start">
+<link rel="preload" as="image" href="/marketing/breakdown.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="{{brand:name}}: from first draft to final call sheet">
@@ -93,13 +94,21 @@
 </header>
 <main id="main" class="mk st">
 <section class="mk-hero st-hero" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in">
-    <h1 class="mk-h1" id="mkH1">From first draft to final call sheet</h1>
-    <p class="mk-sub">For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place, saved in your own browser.</p>
-    <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+  <div class="mk-wrap mk-hero-in st-hero-grid">
+    <div class="st-hero-copy">
+      <h1 class="mk-h1" id="mkH1">From first draft to final call sheet</h1>
+      <p class="mk-sub">For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place, saved in your own browser.</p>
+      <div class="mk-cta-row">
+        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      </div>
+      <p class="st-note">Every tool is open on a sample feature, {{fms:dragon.scenes}} scenes long, so you can look around before you write.</p>
     </div>
-    <p class="st-note">Every tool is open on a sample feature, {{fms:dragon.scenes}} scenes long, so you can look around before you write.</p>
+    <figure class="mk-player st-hero-media" aria-label="The sample feature's scene list">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/breakdown.webp">
+        <source src="/marketing/breakdown.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
   </div>
 </section>
 <section class="st-facts-band" id="facts" aria-label="The studio in four facts">
@@ -114,7 +123,7 @@
 </section>
 <section class="mk-sec mk-band-b st-explorer" id="tools" aria-label="Product">
   <div class="mk-wrap st-stages">
-  <article class="st-stage hue-library" id="stage-writing" aria-labelledby="st-h-writing">
+  <article class="st-stage hue-library st-stage--wide" id="stage-writing" aria-labelledby="st-h-writing">
     <div class="st-copy">
       <span class="st-glyph"><span class="sym" aria-hidden="true" translate="no">edit_note</span></span>
       <h2 class="mk-h2" id="st-h-writing">Write the screenplay</h2>
@@ -146,7 +155,7 @@
       </div>
     </div>
   </article>
-  <article class="st-stage hue-plan" id="stage-prep" aria-labelledby="st-h-prep">
+  <article class="st-stage hue-plan st-stage--media-wide" id="stage-prep" aria-labelledby="st-h-prep">
     <div class="st-copy">
       <span class="st-glyph"><span class="sym" aria-hidden="true" translate="no">grid_view</span></span>
       <h2 class="mk-h2" id="st-h-prep">Plan the shoot</h2>
@@ -178,7 +187,7 @@
       </div>
     </div>
   </article>
-  <article class="st-stage st-stage--brand" id="stage-local-first" aria-labelledby="st-h-local-first">
+  <article class="st-stage st-stage--brand st-stage--field" id="stage-local-first" aria-labelledby="st-h-local-first">
     <div class="st-copy">
       <span class="st-glyph"><span class="sym" aria-hidden="true" translate="no">lock</span></span>
       <h2 class="mk-h2" id="st-h-local-first">Local-first: your work stays yours</h2>
@@ -196,22 +205,15 @@
   </article>
   </div>
 </section>
-<section class="st-teaser" id="pricing-teaser" aria-labelledby="stTeaserH">
-  <div class="mk-wrap st-teaser-in">
-    <div>
-      <h2 class="mk-h3" id="stTeaserH">View plans and pricing</h2>
-      <p class="mk-card-p">Plans are a single payment that never renews. See what each one includes.</p>
-    </div>
-    <div class="st-teaser-act">
-      <a class="mk-btn mk-btn--outline" href="pricing.html">See the plans</a>
-    </div>
-  </div>
-</section>
 <section class="mk-sec mk-band-c mk-mid st-closing" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Open the studio and write scene one</h2>
     <p class="mk-sub st-closing-sub">Sign in with Google to start. Your work stays in your browser, and every tool reads the same scenes.</p>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">See the plans</a>
+    </div>
+    <p class="st-note st-closing-note">Plans are a single payment that never renews. See what each one includes.</p>
   </div>
 </section>
   <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="This visit is not counted">Don't count this visit</button></div>

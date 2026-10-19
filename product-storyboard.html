@@ -6,6 +6,7 @@
 <title>Storyboard and shot visualiser for indie directors</title>
 <meta name="description" content="Give every planned shot a frame. Link a picture or describe it, plan camera and actor blocking, and keep the storyboard in step with your shot list.">
 <link rel="canonical" href="https://{{brand:host}}/product-storyboard">
+<link rel="preload" as="image" href="/marketing/storyboard.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="Storyboard and shot visualiser for indie directors">
@@ -82,22 +83,25 @@
   </div>
 </header>
 <main id="main" class="mk hue-feature">
-<section class="mk-hero hue-feature" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in">
-    <p class="mk-eyebrow">Story development</p>
+<section class="mk-hero mk-hero--media hue-feature" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in mk-hero-grid">
     <h1 class="mk-h1" id="mkH1">See every shot before you shoot it</h1>
     <p class="mk-sub">A frame for each shot you plan, tied to its scene, with blocking diagrams for where the camera, actors and lights stand.</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
-      <a class="mk-btn mk-btn--ghost mk-btn--lg" href="#demo"><span class="sym" aria-hidden="true" translate="no">play_circle</span><span>Watch the video</span></a>
     </div>
+    <figure class="mk-player mk-hero-media" id="demo" aria-label="See the storyboard in action">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/storyboard.webp">
+        <source src="/marketing/storyboard.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
   </div>
 </section>
 <div class="mk-label hue-feature">
   <div class="mk-wrap mk-label-in">
     <p class="mk-label-path"><span class="sym" aria-hidden="true" translate="no">view_carousel</span><span>Story development</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>Storyboard</strong></p>
     <nav class="mk-label-nav" aria-label="On this page">
-      <a href="#demo">Demo</a>
       <a href="#how">How it works</a>
       <a href="pricing.html">Pricing</a>
     </nav>
@@ -110,20 +114,11 @@
       <p class="mk-body">A frame belongs to a shot, and a shot belongs to a scene. Rename a location in the breakdown and the storyboard says the new name, because it was never typed here.</p>
       <p class="mk-body">Frames hold a link to a picture or a written description, not the picture itself. That keeps your studio light and your work saved in your own browser.</p>
     </div>
-    <figure class="mk-frame">
-      <img src="/marketing/storyboard-1.webp" width="1280" height="720" alt="Pick a scene" loading="lazy" decoding="async">
-    </figure>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="demo" aria-labelledby="mkDemoH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkDemoH">See the storyboard in action</h2>
-    <div class="mk-player">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/storyboard.webp">
-        <source src="/marketing/storyboard.webm" type="video/webm">
-        Your browser cannot play this video.
-      </video>
-    </div>
+    <ul class="mk-facts mk-facts--side" id="facts" aria-label="The plain facts">
+      <li><b class="mk-fact-n">8</b><span class="mk-fact-l">Shot sizes, from extreme wide to extreme close</span></li>
+      <li><b class="mk-fact-n">Links</b><span class="mk-fact-l">Frames link to pictures instead of storing files</span></li>
+      <li><b class="mk-fact-n">5</b><span class="mk-fact-l">Block marks: camera, actor, light, dolly track, mark</span></li>
+    </ul>
   </div>
 </section>
 <section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
@@ -211,18 +206,10 @@
 <section class="mk-sec mk-band-c mk-mid hue-feature" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Plan your first frame</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Create your free account</a>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="facts" aria-labelledby="mkFactsH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkFactsH">The plain facts</h2>
-    <ul class="mk-facts">
-      <li><b class="mk-fact-n">8</b><span class="mk-fact-l">Shot sizes, from extreme wide to extreme close</span></li>
-      <li><b class="mk-fact-n">Links</b><span class="mk-fact-l">Frames link to pictures instead of storing files</span></li>
-      <li><b class="mk-fact-n">5</b><span class="mk-fact-l">Block marks: camera, actor, light, dolly track, mark</span></li>
-    </ul>
-    <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    </div>
   </div>
 </section>
 </main>

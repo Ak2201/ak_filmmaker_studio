@@ -6,6 +6,7 @@
 <title>Film element catalog: every prop, costume and vehicle</title>
 <meta name="description" content="See everything your film needs, listed once, with the scenes that need it. Props, wardrobe, vehicles and more, built from your breakdown.">
 <link rel="canonical" href="https://{{brand:host}}/product-catalog">
+<link rel="preload" as="image" href="/marketing/catalog.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="Film element catalog: every prop, costume and vehicle">
@@ -82,22 +83,25 @@
   </div>
 </header>
 <main id="main" class="mk hue-plan">
-<section class="mk-hero hue-plan" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in">
-    <p class="mk-eyebrow">Pre-production</p>
+<section class="mk-hero mk-hero--media hue-plan" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in mk-hero-grid">
     <h1 class="mk-h1" id="mkH1">Everything the film needs, listed once</h1>
     <p class="mk-sub">Props, wardrobe, vehicles and cast gathered from your breakdown into one catalog, each with the scenes that need it.</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
-      <a class="mk-btn mk-btn--ghost mk-btn--lg" href="#demo"><span class="sym" aria-hidden="true" translate="no">play_circle</span><span>Watch the video</span></a>
     </div>
+    <figure class="mk-player mk-hero-media" id="demo" aria-label="See the catalog in action">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/catalog.webp">
+        <source src="/marketing/catalog.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
   </div>
 </section>
 <div class="mk-label hue-plan">
   <div class="mk-wrap mk-label-in">
     <p class="mk-label-path"><span class="sym" aria-hidden="true" translate="no">category</span><span>Pre-production</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>Catalog</strong></p>
     <nav class="mk-label-nav" aria-label="On this page">
-      <a href="#demo">Demo</a>
       <a href="#how">How it works</a>
       <a href="pricing.html">Pricing</a>
     </nav>
@@ -110,20 +114,11 @@
       <p class="mk-body">The same lanyard turns up in six scenes. The catalog lists it once and shows all six, so art and costume plan one purchase and a continuity note, not six separate asks.</p>
       <p class="mk-body">The catalog is a view of your breakdown, not a second list to maintain. Tag a scene and the catalog updates; remove the tag and the element goes with it.</p>
     </div>
-    <figure class="mk-frame">
-      <img src="/marketing/catalog-1.webp" width="1280" height="720" alt="Open the catalog" loading="lazy" decoding="async">
-    </figure>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="demo" aria-labelledby="mkDemoH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkDemoH">See the catalog in action</h2>
-    <div class="mk-player">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/catalog.webp">
-        <source src="/marketing/catalog.webm" type="video/webm">
-        Your browser cannot play this video.
-      </video>
-    </div>
+    <ul class="mk-facts mk-facts--side" id="facts" aria-label="The plain facts">
+      <li><b class="mk-fact-n">Once</b><span class="mk-fact-l">Each element is listed a single time</span></li>
+      <li><b class="mk-fact-n">Derived</b><span class="mk-fact-l">Built from your breakdown, never retyped</span></li>
+      <li><b class="mk-fact-n">Printable</b><span class="mk-fact-l">The reports print from the same scenes</span></li>
+    </ul>
   </div>
 </section>
 <section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
@@ -209,18 +204,10 @@
 <section class="mk-sec mk-band-c mk-mid hue-plan" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">See your film as a list of things</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Create your free account</a>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="facts" aria-labelledby="mkFactsH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkFactsH">The plain facts</h2>
-    <ul class="mk-facts">
-      <li><b class="mk-fact-n">Once</b><span class="mk-fact-l">Each element is listed a single time</span></li>
-      <li><b class="mk-fact-n">Derived</b><span class="mk-fact-l">Built from your breakdown, never retyped</span></li>
-      <li><b class="mk-fact-n">Printable</b><span class="mk-fact-l">The reports print from the same scenes</span></li>
-    </ul>
-    <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    </div>
   </div>
 </section>
 </main>

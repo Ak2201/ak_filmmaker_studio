@@ -6,6 +6,7 @@
 <title>Script sides for the day, ready to print</title>
 <meta name="description" content="Tick the scenes being shot and print sides with slug, length, synopsis and elements, one block per scene, ready for the actors.">
 <link rel="canonical" href="https://{{brand:host}}/product-sides">
+<link rel="preload" as="image" href="/marketing/sides.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="Script sides for the day, ready to print">
@@ -82,22 +83,25 @@
   </div>
 </header>
 <main id="main" class="mk hue-plan">
-<section class="mk-hero hue-plan" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in">
-    <p class="mk-eyebrow">Pre-production</p>
+<section class="mk-hero mk-hero--media hue-plan" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in mk-hero-grid">
     <h1 class="mk-h1" id="mkH1">Print the sides for tomorrow in a minute</h1>
     <p class="mk-sub">Tick the scenes being shot and get a clean block for each, with slug line, length, synopsis and the elements it needs.</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
-      <a class="mk-btn mk-btn--ghost mk-btn--lg" href="#demo"><span class="sym" aria-hidden="true" translate="no">play_circle</span><span>Watch the video</span></a>
     </div>
+    <figure class="mk-player mk-hero-media" id="demo" aria-label="See sides in action">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/sides.webp">
+        <source src="/marketing/sides.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
   </div>
 </section>
 <div class="mk-label hue-plan">
   <div class="mk-wrap mk-label-in">
     <p class="mk-label-path"><span class="sym" aria-hidden="true" translate="no">description</span><span>Pre-production</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>Sides</strong></p>
     <nav class="mk-label-nav" aria-label="On this page">
-      <a href="#demo">Demo</a>
       <a href="#how">How it works</a>
       <a href="pricing.html">Pricing</a>
     </nav>
@@ -110,20 +114,11 @@
       <p class="mk-body">Actors and department heads do not need the whole script for one shoot day. Sides give them the scenes being shot and what each scene involves.</p>
       <p class="mk-body">Sides are worked out from your scenes every time, so they match the script on the day you print them. Each scene prints as its own block that does not split across a page.</p>
     </div>
-    <figure class="mk-frame">
-      <img src="/marketing/sides-1.webp" width="1280" height="720" alt="Tick the scenes" loading="lazy" decoding="async">
-    </figure>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="demo" aria-labelledby="mkDemoH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkDemoH">See sides in action</h2>
-    <div class="mk-player">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/sides.webp">
-        <source src="/marketing/sides.webm" type="video/webm">
-        Your browser cannot play this video.
-      </video>
-    </div>
+    <ul class="mk-facts mk-facts--side" id="facts" aria-label="The plain facts">
+      <li><b class="mk-fact-n">1 block</b><span class="mk-fact-l">Each scene prints as its own block</span></li>
+      <li><b class="mk-fact-n">Fresh</b><span class="mk-fact-l">Worked out from the scenes at print time</span></li>
+      <li><b class="mk-fact-n">PDF</b><span class="mk-fact-l">Print to paper or save as a PDF</span></li>
+    </ul>
   </div>
 </section>
 <section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
@@ -209,18 +204,10 @@
 <section class="mk-sec mk-band-c mk-mid hue-plan" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Print your first sides</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Create your free account</a>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="facts" aria-labelledby="mkFactsH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkFactsH">The plain facts</h2>
-    <ul class="mk-facts">
-      <li><b class="mk-fact-n">1 block</b><span class="mk-fact-l">Each scene prints as its own block</span></li>
-      <li><b class="mk-fact-n">Fresh</b><span class="mk-fact-l">Worked out from the scenes at print time</span></li>
-      <li><b class="mk-fact-n">PDF</b><span class="mk-fact-l">Print to paper or save as a PDF</span></li>
-    </ul>
-    <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    </div>
   </div>
 </section>
 </main>

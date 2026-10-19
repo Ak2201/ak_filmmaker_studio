@@ -1,9 +1,11 @@
 /* ============================================================
    DASHBOARD — where the open project actually stands
    ------------------------------------------------------------
-   A LANDING PAGE, not another editor. Nothing here is typed and
-   nothing here is stored: every number on this page is derived, on
-   render, from the models that already own it —
+   A LANDING PAGE, not another editor. Nothing here is stored that
+   another model does not own: the one thing typed here is the Title
+   page (the blueprint's own cover keys, through blueprint-store's
+   merge-write; see renderTitlePage), and every number on this page is
+   derived, on render, from the models that already own it —
 
      src/lib/scenes.js      scenes, eighths, locations, elements
      src/lib/locations.js   shoot days, unscheduled scenes
@@ -57,7 +59,11 @@ import { mountShell } from '../ui/shell.js';
 import { h, commitMain, delegate } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
-import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText, pageHeader } from '../ui/kit/index.js';
+import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText, pageHeader, field } from '../ui/kit/index.js';
+/* The Title page: the Story stage's cover fields, the blueprint's own keys
+   (src/lib/cover-fields.js), written through the merge-write. */
+import { readFields, writeFields, blobKey } from '../lib/blueprint-store.js';
+import { coverFields, coverNs } from '../lib/cover-fields.js';
 
 import { formatEighths } from '../lib/scenes.js';
 import { formatPages } from '../lib/script.js';
@@ -501,6 +507,39 @@ function renderHead(snap) {
   return head;
 }
 
+/* ---- the title page -----------------------------------------------
+   The film's cover sheet — title, writer, draft (and, on a feature, the
+   working title, genre and stage) — moved here from the Story page on
+   19 Oct 2026 (owner). The ONE thing this page types into, and it
+   invents no state for it: the fields carry the blueprint's own
+   data-keys (meta_*, v1_*), read from and written to the blueprint's
+   blob through src/lib/blueprint-store.js writeFields(), the merge-write
+   that leaves every other answer in the blob alone. story.html keeps its
+   copy of the cover hidden (#guide), on another page, so there are never
+   two live inputs for one key in one document. Nothing is written until
+   somebody types: the idle-write check still holds. */
+function renderTitlePage(project) {
+  const fmt = coverNs(project.format);
+  const fields = coverFields('story', fmt);
+  const sec = section('title-page', 'Title page', 'The title page',
+    (fmt === 'short' ? 'What heads this film: its title, writer, start date and runtime.' : 'What heads this film: its title, writer, genre and draft.')
+    + ' The same answers the ' + (fmt === 'short' ? 'Short Film' : 'Feature') + ' Blueprint keeps for its cover; change them here.');
+  sec.classList.add('db-title-page');
+  if (!fields.length) return sec;
+  const vals = readFields(fmt, fields.map((f) => f.key));
+  const grid = h('div.db-tp-grid');
+  for (const f of fields) {
+    const v = typeof vals[f.key] === 'string' ? vals[f.key] : '';
+    const attrs = { 'data-key': f.key, 'data-tp-ns': fmt };
+    grid.append(f.options
+      ? field({ kind: 'select', id: 'tp_' + f.key, label: f.label, value: v, attrs,
+        options: [{ value: '', label: f.empty || 'Choose…' }, ...f.options.map((o) => ({ value: o, label: o }))] })
+      : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs }));
+  }
+  sec.append(grid);
+  return sec;
+}
+
 /* ---- the five stage cards ----------------------------------------
    State is derived by journey.js stageStates(); this only arranges it.
    Status is a WORD plus a glyph, never colour alone. The ids always
@@ -737,13 +776,13 @@ function render() {
       renderFocus(snap), renderStages(snap),
       h('div.db-body', {}, [col, renderDesk(snap)])
     ]);
-    main.append(renderHead(snap), renderLauncher(), overview);
+    main.append(renderHead(snap), renderLauncher(), renderTitlePage(project), overview);
   }
 
   /* The path line is applied whether or not the swap happened: a skipped
      swap leaves last time's DOM, whose path fact may have gone stale. */
   const painted = commitMain(app, main, mountShell);
-  if (project) loadPath();
+  if (project) { loadPath(); refreshTitleFields(); }
   if (!painted) return;
   /* A link INTO the overview (#readiness, #resume...) has to open it: a
      closed <details> hides its target, so the jump would land on nothing. */
@@ -812,6 +851,56 @@ delegate(app, 'click', '[data-action="slate-edit"]', async () => {
   if (v === null || v === undefined) return;
   setProjectSubtitle(v, p.id);
 });
+/* The Title page: each keystroke is written at once (a debounced write
+   could be dropped by a redraw that a store event causes mid-word), and
+   only the key that was typed — writeFields() merges it into the blob. */
+const saveTitleField = (e, el) => {
+  const ns = el.getAttribute('data-tp-ns');
+  const key = el.getAttribute('data-key');
+  if (!ns || !key) return;
+  const patch = { [key]: el.value };
+  /* feature.js syncTitleAcrossCovers(): the two titles are twins, and
+     typing one fills the other while the other is empty. */
+  const twin = key === 'meta_title' ? 'v1_title' : key === 'v1_title' ? 'meta_title' : null;
+  const t = twin && app.querySelector('[data-tp-ns][data-key="' + twin + '"]');
+  if (t && el.value) {
+    const stored = readFields(ns, [twin])[twin];
+    if (t.value === '' && !(typeof stored === 'string' && stored)) { t.value = el.value; patch[twin] = el.value; }
+  }
+  if (!writeFields(ns, patch)) StudioUI.toastError('That was not saved: this browser refused the write.');
+};
+/* A <select> fires BOTH input and change; inputs take `input`, the
+   select takes `change` only, so one pick is one write. */
+delegate(app, 'input', 'input[data-tp-ns][data-key], textarea[data-tp-ns][data-key]', saveTitleField);
+delegate(app, 'change', 'select[data-tp-ns][data-key]', saveTitleField);
+
+/* The fields' values are PROPERTIES, which never reach innerHTML, so
+   commitMain's signature cannot see a stored value change and may keep
+   the old DOM. After every render, and whenever the blob changes under
+   us (another tab, a cloud or Drive pull, coming back to the tab), the
+   fields are re-read from the store — all but the one being typed in,
+   so a stale value is never shown and then written over a newer one. */
+function refreshTitleFields() {
+  const els = [...app.querySelectorAll('[data-tp-ns][data-key]')];
+  if (!els.length) return;
+  const ns = els[0].getAttribute('data-tp-ns');
+  const vals = readFields(ns, els.map((el) => el.getAttribute('data-key')));
+  const active = document.activeElement;
+  for (const el of els) {
+    if (el === active) continue;
+    const v = vals[el.getAttribute('data-key')];
+    const want = typeof v === 'string' ? v : '';
+    if (el.value !== want) el.value = want;
+  }
+}
+addEventListener('storage', (e) => {
+  const el = app.querySelector('[data-tp-ns]');
+  if (el && (!e.key || e.key.indexOf(blobKey(el.getAttribute('data-tp-ns'))) === 0)) refreshTitleFields();
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshTitleFields(); });
+Store.subscribe('cloud:synced', () => refreshTitleFields());
+Store.subscribe('cloud:restored', () => refreshTitleFields());
+
 let syncing = false;
 delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {
   if (syncing) return;

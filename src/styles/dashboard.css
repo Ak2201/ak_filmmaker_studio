@@ -1034,3 +1034,22 @@
 @media (pointer: coarse) {
   .db-overview-sum { min-height: 44px; display: flex; align-items: center; }
 }
+
+/* The Title page (19 Oct 2026): the film's cover fields, a card of kit
+   fields under the launcher. Tracks are min(…, 100%) so 390px cannot
+   overflow. */
+.db-main > .db-title-page {
+  margin-block: var(--s4);
+  padding: var(--sk-card-pad, var(--s5));
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair, var(--hairline));
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--surface-card);
+}
+.db-title-page .bd-sub { max-width: var(--measure); }
+.db-tp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+  gap: var(--s3) var(--s4);
+  margin-top: var(--s4);
+}
+.db-tp-grid .k-field { min-width: 0; }

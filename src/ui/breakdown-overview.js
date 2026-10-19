@@ -89,7 +89,7 @@ function charactersView(sum) {
     ]));
     wrap.append(table(['Character', 'Scenes', 'First appears', 'Lines', ''], rows, 'Characters'));
   }
-  wrap.append(h('p.bdo-onward', {}, [h('a.btn', { href: 'story.html#path-bible', text: 'Open the Character Bible' })]));
+  wrap.append(h('p.bdo-onward', {}, [h('a.btn', { href: 'story.html#path-bible', text: 'Open Characters & world on the Story page' })]));
   return wrap;
 }
 

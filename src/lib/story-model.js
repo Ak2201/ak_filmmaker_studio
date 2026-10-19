@@ -56,24 +56,20 @@ export function blueprintLogline(format) {
 }
 
 /* ---- the step menu --------------------------------------------------
-   The path's steps (progress ticks them) and then the sections after it,
-   under Tools — which have no done-state, so they carry no tick. An
-   item's id is the PANEL's element id (path-<id>, or pacing / pitch /
-   guide). */
+   The path's four steps (progress ticks them) and then, only when the
+   console switches it on, the Pitch deck under Tools — which has no
+   done-state, so it carries no tick. Beats & pacing is inside the
+   Synopsis step and the cover sheet is the project dashboard's Title
+   page since 19 Oct 2026; their sections are not menu rows. An item's id
+   is the PANEL's element id (path-<id>, or pitch). */
 export const EXTRAS = [
-  { id: 'pacing', label: 'Beats & pacing' },
-  { id: 'pitch', label: 'Pitch deck' },
-  { id: 'guide', label: 'Cover sheet' }
+  { id: 'pitch', label: 'Pitch deck' }
 ];
 export const STEP_ICON = {
-  idea: 'lightbulb', logline: 'edit_note', bible: 'menu_book', character: 'person', world: 'public', conflict: 'bolt',
-  structure: 'format_list_numbered', outline: 'list', setups: 'link', timeline: 'timeline', synopsis: 'description',
-  lock: 'lock', screenplay: 'movie'
+  idea: 'lightbulb', bible: 'menu_book', outline: 'list', synopsis: 'description'
 };
 export const EXTRA_META = {
-  pacing: { icon: 'trending_up', hint: 'Where the tension sags and where it peaks, against the beat sheet.' },
-  pitch: { icon: 'slideshow', hint: 'A pitch deck built from the story so far.' },
-  guide: { icon: 'local_library', hint: 'The cover sheet: what the path above leaves out.' }
+  pitch: { icon: 'slideshow', hint: 'A pitch deck built from the story so far.' }
 };
 export const bareOf = (pid) => String(pid).replace(/^path-/, '');
 export const isExtra = (id) => EXTRAS.some((x) => x.id === id);
@@ -86,8 +82,8 @@ export function menuGroups(progress) {
     let g = groups[groups.length - 1];
     if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
     g.items.push({
-      id: 'path-' + p.id, label: p.label, icon: STEP_ICON[p.id] || '', done: !!p.done,
-      hint: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do', n: p.n
+      id: 'path-' + p.id, label: p.label, icon: STEP_ICON[p.id] || '', done: !!p.done, doing: !p.done && !!p.doing,
+      hint: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : p.doing ? (p.detail ? 'Started · ' + p.detail : 'Started') : 'To do', n: p.n
     });
   }
   /* How many of a group's steps are done, beside its name. */
@@ -98,12 +94,31 @@ export function menuGroups(progress) {
   return groups;
 }
 
-/** A path step id, from an id or an old step number; a step this path
-    does not have lands on the path's first. */
-export function resolveStepId(x, path) {
+/** A path step id, from an id, a stable number or a RETIRED id or number
+    (story-paths.json `aliases`: #path-6 is the Beat Sheet's Send now); only
+    something this path never had lands on the path's first step. */
+export function resolveStepId(x, path, format = 'feature') {
   if (path.some((p) => p.id === x)) return x;
   const byN = path.find((p) => p.n === Number(x));
-  return byN ? byN.id : path[0].id;
+  if (byN) return byN.id;
+  return Story.pathAlias(x, format) || path[0].id;
+}
+
+/* Where inside its new step a RETIRED step's link lands (an element id on
+   the page), so #path-lock reaches the lock toggle and #path-setups opens
+   the Setups & payoffs box rather than the top of the Beat Sheet. Keyed
+   by the old id AND its stable number. Page ids, not storage. */
+const LEGACY_SPOT = {
+  logline: 'logline', structure: 'st-fw-pick', setups: 'st-more-setups', timeline: 'st-more-timeline',
+  lock: 'stLockRow', screenplay: 'stHandoff', pacing: 'pacing'
+};
+const LEGACY_N = { 2: 'logline', 3: 'structure', 6: 'screenplay', 8: 'setups', 9: 'timeline', 10: 'lock' };
+/** The element a retired path hash lands on inside its new step, or ''. */
+export function legacySpot(hash) {
+  const m = /^#?path-([a-z][a-z0-9_-]*|\d+)$/.exec(String(hash || ''));
+  if (!m) return '';
+  const id = /^\d+$/.test(m[1]) ? LEGACY_N[m[1]] : m[1];
+  return (id && LEGACY_SPOT[id]) || '';
 }
 
 /* ---- small text ------------------------------------------------------ */

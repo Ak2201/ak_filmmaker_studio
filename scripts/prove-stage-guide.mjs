@@ -360,20 +360,20 @@ check('(3) feature story: the Guide is the cover sheet (title, writer, genre…)
 
 /* the Story page itself: every blueprint question is on it ONCE, drawn inline in its path step */
 await page.goto(dev('story.html#guide'), { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000, state: 'attached' });
-await page.waitForSelector('[data-bp="bible:ladder"], [data-bp="logline:ladder"]', { state: 'attached', timeout: 30000 });
+await page.waitForSelector('[data-bp="outline:step-08"] .sg-steps', { timeout: 30000, state: 'attached' });
+await page.waitForSelector('[data-bp="idea:ladder"]', { state: 'attached', timeout: 30000 });
 await settle();
-check('(3) story.html feature: the path steps are on the page, in order', await page.evaluate(() =>
+check('(3) story.html feature: the four path steps are on the page, in order', await page.evaluate(() =>
   [...document.querySelectorAll('main > section.st-step')].map((s) => s.getAttribute('data-path'))),
-['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
-check('(3) story.html feature: Idea asks step 01, Logline step 02, Scene order step 08, Setups 10, Timeline 09', await page.evaluate(() =>
-  ['idea', 'logline', 'structure', 'setups', 'timeline'].map((k) => [...document.querySelectorAll(`[data-bp="${k}"] .sg-steps > section`)].map((s) => s.getAttribute('data-sg-id')).join('+'))),
+['idea', 'bible', 'outline', 'synopsis']);
+check('(3) story.html feature: the Idea asks steps 01 and 02; the Beat Sheet step 08, Setups 10 and Timeline 09, each in its own box', await page.evaluate(() =>
+  ['idea:step-01', 'idea:step-02', 'outline:step-08', 'outline:step-10', 'outline:step-09'].map((k) => [...document.querySelectorAll(`[data-bp="${k}"] .sg-steps > section`)].map((s) => s.getAttribute('data-sg-id')).join('+'))),
 ['step-01', 'step-02', 'step-08', 'step-10', 'step-09']);
-check('(3) story.html feature: the ladder’s rungs are split — 1 under Logline, 5 under the outline, 2-4 under Synopsis', await page.evaluate(() =>
-  ['logline', 'outline', 'synopsis'].map((k) => [...document.querySelectorAll(`[data-bp="${k}:ladder"] [data-key]`)].map((e) => e.getAttribute('data-key')).join(','))),
+check('(3) story.html feature: the ladder’s rungs are split — 1 under the Idea’s logline, 5 under the Beat Sheet, 2-4 under Synopsis', await page.evaluate(() =>
+  ['idea', 'outline', 'synopsis'].map((k) => [...document.querySelectorAll(`[data-bp="${k}:ladder"] [data-key]`)].map((e) => e.getAttribute('data-key')).join(','))),
 ['lad_1_logline', 'lad_5_outline', 'lad_2_synopsis,lad_3_onepager,lad_4_treatment']);
-check('(3) story.html feature: the ladder shows the saved rung', await page.inputValue('[data-bp="logline:ladder"] [data-key="lad_1_logline"]'), 'LOGLINE-KEEP');
-check('(3) story.html feature: the pacing chart counts filled beats', await page.evaluate(() => document.querySelector('[data-bp="structure"] [data-sg-id="pacingFilled"]').textContent), '2');
+check('(3) story.html feature: the ladder shows the saved rung', await page.inputValue('[data-bp="idea:ladder"] [data-key="lad_1_logline"]'), 'LOGLINE-KEEP');
+check('(3) story.html feature: the pacing chart counts filled beats', await page.evaluate(() => document.querySelector('[data-bp="outline:step-08"] [data-sg-id="pacingFilled"]').textContent), '2');
 check('(3) story.html feature: the relationship map names the protagonist', await page.evaluate(() => document.querySelector('[data-bp="bible"] [data-sg-id="charMapSvg"]').textContent.includes('Kavin')), true);
 check('(3) story.html feature: no data-key appears twice on the page', await page.evaluate(() => {
   const k = [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key'));
@@ -386,7 +386,7 @@ check('(3) story.html feature: the Bible shows the saved answers', await page.ev
   [document.querySelector('.sb [data-key="s4_name"]').value, document.querySelector('.sb [data-key="s5_name"]').value]), ['Kavin', 'Rana']);
 check('(3) the Story page wrote nothing', Object.keys(await blob(FKEY)).sort(), ['b01', 'b02', 's4_name', 's5_name', 'v2s11_atl', 'v2s11_btl', 'lad_1_logline'].sort());
 /* an answer typed in the Bible card is the blueprint's own key, in the blueprint's blob */
-await page.evaluate(() => { location.hash = '#path-bible'; });   // one step at a time: open the Story Bible step first
+await page.evaluate(() => { location.hash = '#path-bible'; });   // one step at a time: open Characters & world first
 await page.waitForTimeout(500);
 await page.fill('.sb [data-key="s3_theme"]', 'THEME-ONCE');
 await settle();
@@ -413,13 +413,13 @@ check('(3) the scene-list table shows rows', await page.evaluate(() =>
 /* the SHORT road: its own steps, and none of the feature's */
 await devSeed('short', SKEY, { meta_title: 'Tiny', b1_setup: 'BEAT-ONE', s3_name: 'Ravi' });
 await page.goto(dev('story.html#guide'), { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000, state: 'attached' });
+await page.waitForSelector('[data-bp="outline:step-04"] .sg-steps', { timeout: 30000, state: 'attached' });
 await settle();
-check('(3) story.html short: its own path', await page.evaluate(() =>
+check('(3) story.html short: the same four steps', await page.evaluate(() =>
   [...document.querySelectorAll('main > section.st-step')].map((s) => s.getAttribute('data-path'))),
-['idea', 'logline', 'character', 'world', 'conflict', 'structure', 'outline', 'synopsis', 'lock', 'screenplay']);
-check('(3) story.html short: Seed asks step 01, Logline step 02, Scene order step 04', await page.evaluate(() =>
-  ['idea', 'logline', 'structure'].map((k) => [...document.querySelectorAll(`[data-bp="${k}"] .sg-steps > section`)].map((s) => s.getAttribute('data-sg-id')).join('+'))),
+['idea', 'bible', 'outline', 'synopsis']);
+check('(3) story.html short: the Idea asks steps 01 and 02, the Beat Sheet step 04', await page.evaluate(() =>
+  ['idea:step-01', 'idea:step-02', 'outline:step-04'].map((k) => [...document.querySelectorAll(`[data-bp="${k}"] .sg-steps > section`)].map((s) => s.getAttribute('data-sg-id')).join('+'))),
 ['step-01', 'step-02', 'step-04']);
 check('(3) story.html short: no feature-only key, no feature-only card', await page.evaluate(() => {
   const k = [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key'));

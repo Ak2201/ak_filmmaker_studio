@@ -30,17 +30,19 @@ once and not yet looked at.
   duplicates save and are flagged). To renumber a bound scene, change
   its heading in Write.
 
-## Seen 19 Oct 2026, not investigated: a held Ctrl widens the band at 390
+## ~~A held Ctrl widens the band at 390~~ FIXED 19 Oct 2026
 
-On `screenplay.html` at a 390px viewport, with a project titled "Proof
-Replace", pressing and releasing Ctrl — on its own, or as part of
-Ctrl+Shift+S or Ctrl+Shift+H — makes the page 13px wider than the
-viewport: `.sh-tools` and `#signInPill` end at x=403. Before the key it
-measures 0. A short title ("X") does not trigger it. No code in `src/`
-matches a bare Control key, so the listener was not found. A phone has
-no Ctrl key, so the cost is a tablet or a desktop window narrowed to
-phone width. `prove:replace` opens its bar through the Tools menu at
-390 for this reason and proves the shortcut at 1280.
+It was not Ctrl. `shell.js` loads `video-help.js` on the first keydown,
+pointer move or tap (or after 8s), and that mounts the "How this works"
+button at the front of `.sh-tools`. Below 1100px `video.css` hid it with
+`.sh-bar .vid-help-btn` (0,2,0), but kit.css's phone tap floor
+`:root :is(…, .site-foot a, …, .btn) { display: inline-flex }` scores
+(0,2,1) because `:is()` takes its most specific item — so the button
+showed, the breadcrumb collapsed and, with a title as long as "Proof
+Replace", the band ended 13px past a 390px screen. Phones were affected
+too (a tap is enough), which the first version of this entry got wrong.
+The hide rule is `:root .sh-bar .vid-help-btn` now; `prove:replace` fires
+a keydown at 390 and measures.
 
 ## ~~Seen once, not investigated~~ CLOSED 9 Oct 2026
 

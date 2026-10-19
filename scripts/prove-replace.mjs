@@ -174,11 +174,15 @@ phone.on('pageerror', (e) => errors.push(e.message));
 await phone.setViewportSize({ width: 390, height: 860 });
 await phone.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
 await phone.waitForTimeout(400);
-/* Through the Tools menu item, which is what the phone's Tools sheet
-   clicks. A held Ctrl on its own widens the band by 13px at 390 on
-   this page today (Ctrl+Shift+S does it too; docs/KNOWN-ISSUES.md), and
-   a phone has no Ctrl key, so the shortcut is proved at 1280 above. */
-await phone.evaluate(() => document.querySelector('#scTop [data-action="sc-find"]').click());
+/* The shortcut, at 390. The first keydown also mounts the band's
+   "How this works" button (shell.js loads video-help.js on it); that
+   button once showed in the phone band and pushed it 13px past the
+   screen (docs/KNOWN-ISSUES.md, fixed 19 Oct 2026), so this is the
+   measurement that guards it. */
+await phone.focus('#wr-page .wr-text');
+await phone.keyboard.press('Control+Shift+H');
+await phone.waitForTimeout(600);
+ok(await phone.$$eval('.sh-bar .vid-help-btn', (b) => b.every((x) => getComputedStyle(x).display === 'none')), '10 the band keeps "How this works" hidden at 390 after a keydown');
 await phone.waitForTimeout(300);
 ok(await phone.isVisible('#scFind'), '10 the bar opens at 390');
 await phone.fill('#scFindQ', 'ravi');

@@ -197,8 +197,22 @@ that one.
 
 ## 4. Run the schema sections that have never run
 
-> **NOTHING IS OUTSTANDING AS OF 13 Oct 2026.** §32–§39 ran live on 12 Oct and §40–§47 on
-> 13 Oct (`docs/HANDOFF.md` §4, `supabase/schema/README.md`). The next free section is §48.
+> **OUTSTANDING AS OF 19 Oct 2026 — run these before the 19 Oct release goes live**, in
+> this order, each pasted the base64 way and checked against its SHA-256 first
+> (`docs/LIVE-STEPS-2026-10-19.md` has the commands, checksums and read-backs):
+>
+> 1. **§36, regenerated** (a slice of `supabase-schema.sql`) — the seven modules that came back
+>    (auto-tag, screen time, cast matrix; shoot day, edit log, deliverables; the Idea Vault).
+> 2. **§48** `schema-48-presence.sql` — co-writing presence.
+> 3. **§49** `schema-49-co-editing.sql` — the co-editing switch.
+> 4. **§50** `schema-50-refund-seat-trial.sql` — refunds need finance/owner in the database,
+>    seats follow the plan, a decline sticks. Then redeploy **`rzp-refund`** (`docs/BILLING.md` §20).
+> 5. **§51** `schema-51-security-followups.sql` — the security follow-ups, including the
+>    `claim_share()` repair (share links fail on every call until it runs). Then redeploy
+>    **`rzp-verify`** (`docs/BILLING.md` §21).
+>
+> §32–§39 ran live on 12 Oct and §40–§47 on 13 Oct (`docs/HANDOFF.md` §4,
+> `supabase/schema/README.md`). The next free section is §52.
 > The only unfinished piece of what follows is the Resend setup behind §35. The notes below
 > are the record of how each batch was run.
 

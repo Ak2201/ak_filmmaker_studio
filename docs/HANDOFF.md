@@ -439,8 +439,9 @@ and wrong in the owner's favour — three supposed blockers did not exist.
   `projects` holds 6 rows and `project_data` 30, and an anonymous GET still
   returns `[]`. The checks needing TWO real accounts have still never run.
 - **Prices are REAL, not placeholders:** `free=0, starter=59900,
-  indie=79900, pro=99900` paise. `docs/BILLING.md` §0 still says
-  ₹2,999/₹7,999/₹19,999; believe the table.
+  indie=79900, pro=99900` paise, confirmed by the owner on 19 Oct 2026
+  (P3). `docs/BILLING.md` §0 prints them; ₹2,999/₹7,999/₹19,999 there is
+  the §18 seed, labelled as history.
 - **The legal pages on `main` are the newest** and carry the owner's legal
   name as of `0b49c56`. One `[OWNER: GSTIN, if registered]` marker remains
   on the Terms' tax line.
@@ -596,7 +597,7 @@ cloud container session.
 |---|---|---|---|---|
 | P1 | **Razorpay**: account (test mode first), key id + secret, webhook secret, register the webhook URL, set `VITE_RAZORPAY_KEY_ID` in `.env` (the secret and webhook secret go in Supabase function secrets only, never git), one test purchase and one refund | owner, then browser | a test-mode order completes, the plan activates, the refund lapses it | `docs/BILLING.md` §1 |
 | P2 | **Run schema §20→§23 live**, in the SAME session as redeploying `rzp-order` (and deploying `rzp-verify`, `rzp-webhook --no-verify-jwt`). §20 drops and recreates `create_pending_payment`, so running it alone makes every order fail PGRST202. Ask the owner before running SQL; read back what the database says | browser | `select quote_order('indie', null)` answers; anon `select count(*) from promo_codes` → 42501; a coded test order prices correctly | `BROWSER-HANDOFF.md` §1, `LAUNCH.md` §4 |
-| P3 | **Confirm the live prices** with the owner (`free 0 / starter 59900 / indie 79900 / pro 99900` paise) and correct `docs/BILLING.md` §0, which still says ₹2,999 / 7,999 / 19,999. Do not re-seed | owner + cloud | BILLING.md matches the table | `LAUNCH.md` §6 |
+| P3 | ~~**Confirm the live prices**~~ **DONE — confirmed by the owner 19 Oct 2026:** ₹599 / ₹799 / ₹999 (`starter 59900 / indie 79900 / pro 99900` paise), and the scheduled rise to ₹999 / ₹1,499 / ₹1,999 on 31 Oct 2026 stays. `docs/BILLING.md` §0 already prints these; the ₹2,999 / 7,999 / 19,999 figures there are the §18 seed, labelled as history | owner | done | `docs/BILLING.md` §0 |
 | P4 | **Live RLS checks that need TWO real Google accounts** (13.8, 14.5, 15.1, the §16–§24 additions, 24.1). The read side is already proven. Run these BEFORE taking payments — a buyer seeing another's film is the unrecoverable failure | owner supplies the 2nd account; browser runs | every row ticked with the date in `SECURITY-RLS.md` | `SECURITY-RLS.md`, `LAUNCH.md` §5 |
 | P5 | The **13.2 admin row** for the second `VITE_ADMIN_EMAILS` address — it has never signed in; either it signs in or the env var names the wrong address | owner | the console shows both admins, or the env var is corrected | `LAUNCH.md` §4 |
 | P6 | ~~**Google Branding re-request**~~ **DONE — verified 12 Oct 2026.** The Branding page reads "Your branding has been verified and is being shown to users." App name FilmMakerStudio, logo present. One note, deliberately NOT changed: the user-support email is a gmail address rather than `support@filmmakerstudio.in` — editing it can re-trigger verification, so leave it unless the mismatch matters to you. | owner | done | — |
@@ -907,9 +908,10 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
 | `docs/BILLING.md`, `SECURITY-RLS.md`, `GATE.md`, `STORAGE-MODEL.md`, `EXTENSION.md`, `DEPLOY.md`, `LIVE-CHECKS.md` | main | subsystem docs |
 | `docs/GOOGLE-AUTH.md` | main | **STALE — do not follow it.** Flagged 8 Oct 2026. It is a generic setup runbook from before any of this existed: it names no real Google project (it tells you to CREATE one called `filmmakers-studio-auth`, when the live one is `filmstudio-495419`), lists three scopes and omits `drive.file`, points at the dead host `ak-filmmaker-studio.vercel.app`, describes the Supabase config as a per-browser `localStorage` key under the OLD `arunak_` prefix, and says "none of it is done yet" when the consent screen is published and in production. The live facts are in §4 of this file and `docs/LAUNCH.md` §2. Rewrite it or delete it; following it would undo working configuration. |
 
-**Two notes on using this table.** `docs/BILLING.md` §0 still prints the old
-placeholder prices (₹2,999 / ₹7,999 / ₹19,999); the live table says ₹599 /
-₹799 / ₹999 and the live table wins (§4). And a doc being listed here is not
+**Two notes on using this table.** `docs/BILLING.md` §0's prices are the
+live ones, ₹599 / ₹799 / ₹999, confirmed by the owner on 19 Oct 2026; the
+₹2,999 / ₹7,999 / ₹19,999 it also mentions is the §18 seed, kept as history.
+And a doc being listed here is not
 a promise that it is current — `GOOGLE-AUTH.md` above is the proof. Check a
 status claim against the database, the console or `git log` before acting on
 it, which is this file's own standing instruction and the one it has itself

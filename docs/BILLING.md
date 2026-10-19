@@ -42,7 +42,8 @@ owner's product boundary; the data boundary stays RLS and the triggers.
 
 | | Free | Basic (`starter`) | Intermediate (`indie`) | Pro |
 | --- | --- | --- | --- | --- |
-| Price, once (live, 8 Oct 2026) | — | ₹599 (59900 paise) | ₹799 (79900) | ₹999 (99900) |
+| Price, once (live, 8 Oct 2026; confirmed by the owner 19 Oct 2026) | — | ₹599 (59900 paise) | ₹799 (79900) | ₹999 (99900) |
+| Scheduled rise (§30, kept by the owner 19 Oct 2026) | — | ₹999 on 31 Oct 2026 | ₹1,499 | ₹1,999 |
 | Sample only / new projects | yes / no | no / yes | no / yes | no / yes |
 | Cloud projects | 1 | 3 | 10 | unlimited |
 | Collaborators / film | 0 | 2 | 5 | unlimited |

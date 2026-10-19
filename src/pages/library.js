@@ -55,7 +55,7 @@ import '../styles/library-books.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
-import { statStrip, panel, pageHeader } from '../ui/kit/index.js';
+import { panel, pageHeader, button } from '../ui/kit/index.js';
 import { shelves } from '../lib/navmodel.js';
 import PlanGate from '../lib/plan-gate.js';
 import { mountCaseStudies } from '../ui/case-studies.js';
@@ -88,7 +88,7 @@ import {
   filmId, directorId, ruleId, rateTableId, rateRowId, watchId, termId
 } from '../lib/library-search.js';
 import {
-  ROMAN, numWord, cap, libraryCounts, provenanceLine as rateProvenance,
+  numWord, cap, libraryCounts, provenanceLine as rateProvenance,
   CONFIDENCE_LABEL, rateChecksIndex, railItems as railItemsFor,
   indexTerms, termsInStage, seeAlso, termSearchText
 } from '../lib/library-model.js';
@@ -114,7 +114,7 @@ const {
   studies: listStudies(), dissections: listShipped()
 });
 
-/* numWord / cap / ROMAN live in src/lib/library-model.js. */
+/* numWord / cap live in src/lib/library-model.js. */
 
 /* ---- rate provenance --------------------------------------
    The rate card is a snapshot, and the snapshot has a date. A
@@ -166,8 +166,8 @@ function renderCheck(c) {
    Groups are merged by name, so Craft is one heading although its two
    tabs are not neighbours in this order. */
 const MENU = {
-  'films': { group: 'The shelf', icon: 'movie', hint: 'Tamil films and the craft lesson in each.' },
-  'directors': { group: 'The shelf', icon: 'videocam', hint: 'Director archetypes to study.' },
+  'films': { group: 'Reference', icon: 'movie', hint: 'Tamil films and the craft lesson in each.' },
+  'directors': { group: 'Reference', icon: 'videocam', hint: 'Director archetypes to study.' },
   'rules': { group: 'Craft', icon: 'rule', hint: 'Rules of thumb, attributed.' },
   'glossary': { group: 'Craft', icon: 'sort_by_alpha', hint: 'Every film term, with examples.' },
   'emotional-impact': { group: 'Craft books', icon: 'favorite', hint: 'Engineering what the reader feels, page by page.' },
@@ -379,15 +379,11 @@ function renderToolbar() {
    Every number is derived from the same arrays the shelves are drawn from.
    The rate card says what it can prove: its own year, and the date some
    rows were re-checked (rates.chennai.checks.json) — never "verified". */
+/* The figures strip that sat here (films, archetypes, deconstructions,
+   the rate card's year) repeated the shelf cards right under it, which
+   already say "22 films" and "10 archetypes"; only the search door stays. */
 function renderFigures() {
   return h('div.lib-figures', {}, [
-    statStrip([
-      { label: 'Films studied', value: N_FILMS, note: 'on the Films shelf' },
-      { label: 'Director archetypes', value: N_DIRECTORS },
-      PlanGate.isDisabledEverywhere('dissection') ? null
-        : { label: N_DISSECTED === 1 ? 'Deconstruction' : 'Deconstructions', value: String(N_DISSECTED).padStart(2, '0'), note: 'worked examples' },
-      { label: 'Chennai rate card', value: rates.asOf, note: 'some rows re-checked ' + rateChecks.lastChecked }
-    ].filter(Boolean), { class: 'lib-stats', label: 'The library in figures' }),
     /* Search is the palette's (one index for the whole studio); this is a door to it. */
     h('button.lib-search.k-btn', { type: 'button', 'data-action': 'palette-open', 'aria-label': 'Search shelves, films, directors and rules' }, [
       h('span.lib-search-text', { text: 'Search shelves, films, directors, rules' })
@@ -479,9 +475,14 @@ function renderCover() {
         h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${openShelves().length} SHELVES`])])
       ]),
       h('nav.cover-toc', { 'aria-label': 'Contents' },
-        openShelves().map((s, i) => h('a.toc-item', { href: `#${s.id}` }, [
+        openShelves().map((s, i, all) => h('a.toc-item', { href: `#${s.id}` }, [
           h('span.toc-head', {}, [
-            h('span.num', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
+            /* The shelf's kind (its menu group), not a roman numeral:
+               the order carries nothing the reader needs. Shelves come in
+               pairs, so the kind is printed on the first of each group
+               only; a neighbour repeating it says nothing. Capitals are
+               the stylesheet's (text-transform), not the string's. */
+            h('span.num', { text: i && shelfKind(all[i - 1]) === shelfKind(s) ? '' : shelfKind(s) }),
             h('span.toc-go', { 'aria-hidden': 'true', text: '\u2197' })
           ]),
           h('span.title', { text: s.tocTitle }),
@@ -505,7 +506,7 @@ function renderSection(section, i) {
   });
   const body = section.body();
   const rail = railFor(section);
-  sec.append(renderSectionHead(section, i));
+  sec.append(renderSectionHead(section));
   if (rail) sec.append(h('div.lib-split', {}, [railFold(section), rail, body]));
   else sec.append(body);
   return sec;
@@ -571,10 +572,12 @@ function renderContents() {
   ]);
 }
 
-function renderSectionHead(section, i) {
+const shelfKind = (s) => (MENU[s.id] || {}).group || s.nav || '';
+
+function renderSectionHead(section) {
   return h('div.section-head', {}, [
     h('div.left', {}, [
-      h('div.label', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
+      h('div.label', { text: shelfKind(section) }),
       h('h2', { html: section.title }),
       h('p.deck', { text: section.deck })
     ]),
@@ -851,7 +854,7 @@ function renderSaveTheCat() {
   const studio = h('div.book-studio', { id: 'stc-studio' }, [
     h('h3.book-h3', { text: S.title }),
     h('p.book-p', { text: S.text }),
-    h('a.btn.primary', { href: S.href, text: S.label })
+    button({ label: S.label, href: S.href, variant: 'primary', iconAfter: 'arrow_forward' })
   ]);
 
   return h('div.section-body.book', {}, [intro, logline, genres, beats, board, rulesEl, studio]);
@@ -972,7 +975,7 @@ function renderEquipment() {
       text: 'The line-item estimator reads these rates and your shoot days '
           + 'from the stripboard. It has its own page now.'
     }),
-    h('a.btn.primary', { href: 'budget.html', text: 'OPEN THE BUDGET →' })
+    button({ label: 'Open the budget', href: 'budget.html', variant: 'primary', iconAfter: 'arrow_forward' })
   ]));
   return body;
 }

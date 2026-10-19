@@ -1196,8 +1196,7 @@ html .sh-fly-mod:active {
 /* Chips, tags and pills that are labels, not categories: teal. */
 :root .watch-step .step-tag,
 :root .fest-card .tier,
-:root .scene-tag,
-:root .section-head .right .lx-here-tag {
+:root .scene-tag {
   background: var(--accent-teal-subtle);
   color: var(--accent-teal);
   border: 1px solid var(--accent-teal-subtle);

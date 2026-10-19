@@ -76,7 +76,7 @@ function renderHeader(scenes) {
         ctx: { elements: () => loadScript().elements, after: () => render() }
       }),
       button({
-        label: 'RE-MEASURE PAGES FROM THE SCRIPT', action: 'eighths-measure',
+        label: 'Re-measure pages from the script', action: 'eighths-measure',
         title: 'Recount each scene’s length in eighths from the script as it stands now'
       })
     ] : null
@@ -91,15 +91,19 @@ function kpis(scenes, eighths) {
   const dash = (n, f) => (n ? f(n) : '—');
   const idx = Scenes.elementIndex();
   const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, Songs.listSongs().length);
-  const card = (value, label, note) => statCard({ value, label, note: note || '' });
+  const card = (value, label, note) => statCard({ value, label, note: note || '', class: value === '—' ? 'is-empty' : '' });
+  /* A dash says "nothing here"; the note under it says where it comes
+     from, so an empty card points at the next step instead of reading as
+     a broken figure. Songs is the one optional figure: a film with none
+     simply has no songs card. */
   return [
-    card(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : ''),
-    card(dash(scenes.length, () => formatEighths(eighths)), eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : ''),
-    card(dash(idx.length, String), 'elements', idx.length ? cats + (cats === 1 ? ' category' : ' categories') : ''),
-    card(dash(locs, String), 'locations', locs ? ints + ' INT / ' + exts + ' EXT scenes' : ''),
-    card(dash(songs, String), 'songs', songs ? 'musical' : ''),
-    card(dash(cast, String), 'cast', cast ? 'tagged' : '')
-  ];
+    card(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : 'add or import scenes'),
+    card(dash(scenes.length, () => formatEighths(eighths)), eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : 'measured from the scenes'),
+    card(dash(idx.length, String), 'elements', idx.length ? cats + (cats === 1 ? ' category' : ' categories') : 'tag them on a scene'),
+    card(dash(locs, String), 'locations', locs ? ints + ' INT / ' + exts + ' EXT scenes' : 'from the scene headings'),
+    songs ? card(String(songs), 'songs', 'musical') : null,
+    card(dash(cast, String), 'cast', cast ? 'tagged' : 'tag them on a scene')
+  ].filter(Boolean);
 }
 
 /* One element chip: the kit chip, in its category's hue. The category word

@@ -31,7 +31,7 @@ import { h } from '../lib/dom.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
 import { costSections, costKpis, costAside, initCosts } from '../ui/budget-costs.js';
 import { pageHeader, button, notice } from '../ui/kit/index.js';
-import { rateProvenance, versionCount } from '../lib/budget-model.js';
+import { rateProvenance } from '../lib/budget-model.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 
 const app = document.getElementById('app');
@@ -46,10 +46,9 @@ function render() {
      that class is the module column every page shares AND the host the
      blueprint pill looks for (blueprint-drawer.js), which lands after
      the `.bd-eyebrow` it finds. Export CSV is the budget file (the same
-     builder as the Export tab's button); the versions link counts what
-     costs.js holds. New cost line reaches the estimator's own add-row
+     builder as the Export tab's button). Versions is a tab of its own,
+     so it is not repeated up here. New cost line reaches the estimator's own add-row
      action, so there is one way to add a line. */
-  const versions = versionCount();
   const head = pageHeader({
     class: 'bd-head bd-head-split',
     eyebrow: 'Budget & People · what it costs',
@@ -59,7 +58,6 @@ function render() {
        + 'you want them, and every figure stays editable. Then, once you are '
        + 'shooting: petty cash, crew payments and the cost report against it.',
     actions: [
-      button({ label: versions ? 'Versions (' + versions + ')' : 'Versions', icon: 'history', href: '#versions' }),
       button({ label: 'Export CSV', icon: 'download', attrs: { 'data-cx': 'csv-budget' } }),
       button({ label: 'New cost line', icon: 'add', variant: 'primary', pill: true, action: 'add-row' })
     ]
@@ -136,7 +134,9 @@ function render() {
     const at = document.querySelector("#estimate");
     if (!at) return;
     const boxes = ["atl-btl","schedule-budget","who-owns-what"].map((id) => m.learn(id)).filter(Boolean);
-    if (boxes.length) at.prepend(...boxes);
+    /* One row of three, not three stacked rows: closed, they are three
+       short questions, and stacked they took a phone's first screen. */
+    if (boxes.length) at.prepend(h('div.bud-learn-row', {}, boxes));
   }).catch(() => { /* a nicety, never the page */ });
   mountShell();
   initBudget(app);

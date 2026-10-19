@@ -227,17 +227,21 @@ export function renderLauncher() {
       h('div.label', { text: 'THE MAP · EVERY MODULE BY STAGE OF WORK' }),
       h('h2#lxHeading', {}, [
         document.createTextNode(`${NUMBER_WORDS[live.length] || live.length} rows, `),
-        h('em', { text: `${MODULE_COUNT} modules.` })
+        // Emphasis by weight, not an italic accent.
+        h('strong.lx-count', { text: `${MODULE_COUNT} modules.` })
       ]),
+      /* "Usually": the hero above says the stages go in any order and
+         nothing is mandatory; this line must not contradict it. */
       h('p.deck', {
-        text: 'A film moves through these in order, and so does the studio. '
+        text: 'A film usually moves through these in this order. '
             + 'Open any module directly.'
       })
     ]),
+    /* What varies for this project only: how many modules hold work.
+       "N of N built" never varied for anyone, and "you are here" on the
+       dashboard said the page you were already reading. */
     h('div.right', {}, [
-      h('div', { text: `${BUILT_MODULE_COUNT} OF ${MODULE_COUNT} BUILT` }),
-      h('div.lx-worked', { text: `${worked} HOLD WORK` }),
-      hereLine(at)
+      h('div.lx-worked', { text: `${worked} with work` })
     ])
   );
 
@@ -247,21 +251,6 @@ export function renderLauncher() {
   inner.append(head, grid);
   sec.append(inner);
   return sec;
-}
-
-/** "YOU ARE HERE · Breakdown → Scene List", or the honest short
-    version on a page that is not a module. */
-function hereLine(at) {
-  let trail = '';
-  if (at.module) trail = at.phase.label + ' → ' + at.module.label;
-  else if (at.global) trail = at.global.label;
-  if (!trail) return null;
-  const el = h('div.lx-here-line');
-  el.append(
-    h('span.lx-here-tag', { text: 'YOU ARE HERE' }),
-    h('span.lx-here-trail', { text: trail })
-  );
-  return el;
 }
 
 export default { renderLauncher };

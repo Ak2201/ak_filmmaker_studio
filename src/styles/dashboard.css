@@ -1048,8 +1048,10 @@
 .db-title-page .bd-sub { max-width: var(--measure); }
 .db-tp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+  /* 22rem, not 14: at 14 the seven fields went five across and long
+     sample values (a writer's full name, "All five stages") were cut. */
+  grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
   gap: var(--s3) var(--s4);
   margin-top: var(--s4);
 }
-.db-tp-grid .k-field { min-width: 0; }
+.db-tp-grid .k-field { min-width: 0; align-content: start; }   /* a hint under one field must not pull its neighbours' inputs down */

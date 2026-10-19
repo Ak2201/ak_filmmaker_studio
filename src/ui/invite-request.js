@@ -58,7 +58,7 @@ export function requestBlock(st, reason) {
   if (!st || !st.deployed || reason === 'notdeployed') {
     wrap.append(h('p.ir-p', { text: 'Invites are not open yet, so there is nothing to request right now. Please check back soon — your work on this device is safe meanwhile.' }));
     if (c && c.isAdmin && c.isAdmin()) {
-      wrap.append(h('p.ir-meta', { text: 'You are listed as an administrator of this build: run supabase-schema.sql sections 13 and 14 in the Supabase SQL editor, then the one-line admin bootstrap in 13.2. docs/GATE.md walks through it.' }));
+      wrap.append(h('p.ir-meta', { text: 'You are listed as an administrator of this build: run supabase/schema/supabase-schema.sql sections 13 and 14 in the Supabase SQL editor, then the one-line admin bootstrap in 13.2. docs/GATE.md walks through it.' }));
     }
     wrap.append(h('button.btn', { type: 'button', 'data-ir-action': 'recheck', disabled: busy, text: busy ? 'CHECKING…' : 'CHECK AGAIN' }));
     return wrap;

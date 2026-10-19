@@ -1,7 +1,26 @@
 # HAND-OFF — mobile UI + the next revamp — 14 October 2026
 
-> Status: PLAN ONLY for everything under "To do". Nothing in Phases 2–3 is built.
+Last reviewed: 2026-10-19
+
+> **Status, 19 Oct 2026: Phases 2 and 3 are BUILT and merged** (PR #21, `work/mobile-and-revamp`, merged 15 Oct;
+> released to `main` since, now `ff9668a`). Gate integration: commit `9fa13e4`. What is still open is listed in
+> section 7 and in "Status of the to-do" below. The sections that follow are the original hand-off, kept as the record.
+> Original status line: "PLAN ONLY for everything under To do. Nothing in Phases 2–3 is built."
 > Written for the person taking this over. Read `CLAUDE.md` and `docs/DESIGN-KIT.md` first.
+
+## Status of the to-do (19 Oct 2026)
+- **Phase 2, mobile UI: built.** The parity audit is `docs/PARITY-MATRIX.md` (rows marked **done**); the kit's phone layer,
+  the per-page passes and the 44px tap floor (`f589cce`) are merged; the phone band is pinned below 720px and the bottom
+  bar is Home · Go to · Search · Tools on every page (`9fa13e4`). Not re-verified here: the 390x844 / 360x740 sweep
+  result for all pages; later work (Celtx-style simplification 17 Oct, one frame per page, the launcher, the generated
+  public site) changed pages after that sweep, so re-run the sweep before claiming it still holds.
+- **Phase 3, Breakdown manual / with AI and storyboard images: built** (P3a, P3b, P3c). The "do not exist in the repo"
+  correction in section 4 describes 14 Oct before the build; they exist now (`src/lib/breakdown-extras.js`,
+  `src/lib/local-tasks.js`, `draftSceneStory()`, tasks `scene-story` and `board-frames`, `src/ui/breakdown-flow.js`).
+  P3c has only been proven against FAKES (`prove:board-frames`).
+- **Open questions (section 7) were answered 14 Oct** and are recorded at the end of `docs/PARITY-MATRIX.md`: one target-runtime
+  field (`src/lib/target-runtime.js`, Reports' `targetMinutes` is the field); the data-less prototype features were left out
+  except the three single-field ones (floor note, project subtitle, target runtime); "Unlock draft" got a home on the Stripboard.
 
 ## 1. Where things stand (merged)
 PR #18 (`develop` @ `ed75c14`) moved the whole web app onto the **Swiss Precision kit**:

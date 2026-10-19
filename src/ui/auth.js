@@ -114,6 +114,7 @@ export function refreshSignInPill() {
     pill.dataset.sync = 'busy';
     lab.textContent = 'Opening Google…';
     setAvatar(pill, '');
+    setIdentity(pill, null);
     pill.title = 'Waiting for Google. Your work is saved on this device.';
     pill.setAttribute('aria-label', 'Signing in with Google');
     pill.disabled = true;
@@ -127,6 +128,7 @@ export function refreshSignInPill() {
     pill.dataset.sync = 'off';
     lab.textContent = 'Sign in';
     setAvatar(pill, '');
+    setIdentity(pill, null);
     pill.title = 'Sign in to back up your projects to your account and pick them up on another device. Local-only keeps working either way.';
     pill.setAttribute('aria-label', 'Sign in to your account');
     return;
@@ -155,17 +157,52 @@ export function refreshSignInPill() {
        out and the admin link live in the account block there. */
     const nm = displayName();
     lab.textContent = nm.split(/\s+/)[0] || nm;
-    setAvatar(pill, initials(nm));
+    setAvatar(pill, initials(nm), photoUrl());
   }
+  setIdentity(pill, { name: displayName(), email, photo: g.state === 'closed' ? '' : photoUrl() });
   pill.title = 'Signed in as ' + email + (st.detail ? ' · ' + st.detail : '') + ' — open your account';
   pill.setAttribute('aria-label', 'Account settings for ' + email + '. ' + (st.detail || ''));
 }
 
-function setAvatar(pill, text) {
+/* The Google profile photo when the account has one, the initials
+   otherwise and whenever the image will not load (offline, a revoked
+   URL). The <img> is only rebuilt when the URL changes: this runs on
+   every cloud:status event. no-referrer because Google's photo host
+   refuses some requests that carry one. */
+function setAvatar(pill, text, photo = '') {
   const a = pill.querySelector('.sip-avatar');
   if (!a) return;
-  a.textContent = text;
+  paintAvatar(a, text, photo);
   a.hidden = !text;
+}
+function paintAvatar(el, text, photo = '') {
+  const img = el.querySelector('img');
+  if (photo && img && img.getAttribute('src') === photo && !el.classList.contains('is-broken')) return;
+  el.classList.remove('has-photo', 'is-broken');
+  el.textContent = text;
+  if (!photo) return;
+  const pic = h('img', { src: photo, alt: '', referrerpolicy: 'no-referrer', decoding: 'async' });
+  pic.addEventListener('error', () => { el.classList.add('is-broken'); el.classList.remove('has-photo'); pic.remove(); el.textContent = text; }, { once: true });
+  el.classList.add('has-photo');
+  el.textContent = '';
+  el.append(pic);
+}
+
+/* Who is signed in, on the pill's dataset, for the rail's account cell
+   and its menu to read (shell.js does not import this module). */
+function setIdentity(pill, id) {
+  const put = (k, v) => { if (v) { if (pill.dataset[k] !== v) pill.dataset[k] = v; } else if (k in pill.dataset) delete pill.dataset[k]; };
+  put('name', id && id.name); put('email', id && id.email); put('photo', id && id.photo);
+}
+
+/** The account's Google profile photo (Supabase copies it into the
+ *  user's metadata at sign-in), or '' when there is none. https only. */
+function photoUrl() {
+  const c = cloud();
+  const u = (c && c.getUser && c.getUser()) || null;
+  const m = (u && u.user_metadata) || {};
+  const p = String(m.avatar_url || m.picture || '').trim();
+  return /^https:\/\//.test(p) ? p : '';
 }
 
 /* Five sync states collapse to four tones, because the dot has to be

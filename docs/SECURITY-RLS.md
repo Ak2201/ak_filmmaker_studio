@@ -1,7 +1,25 @@
-# Row-level security audit — `supabase-schema.sql`
+# Row-level security audit — `supabase/schema/supabase-schema.sql`
 
-**This is a static audit.** `supabase-schema.sql` has never been executed against a
-real database, and nothing below was tested against one. Every claim here is read
+Last reviewed: 2026-10-19
+
+> **Status note (19 Oct 2026) — read before the body, which is kept as written.**
+> The audit text below dates from 29 Sep – 8 Oct 2026 and says "never run" / "UNRUN"
+> in several places that have since changed. Live state is recorded in
+> `docs/HANDOFF.md` §4, which wins over anything here:
+> schema §1–§14 live; §16–§18 live (6 Oct); §19–§24 live (8 Oct); §26–§31 live (9 Oct);
+> §32–§39 live (12 Oct); §40–§47 live (13 Oct). The SQL now lives in `supabase/schema/`
+> (`supabase-schema.sql` = §1–§39, plus `schema-40…47` files; run order in
+> `supabase/schema/README.md`). This audit covers §1–§23 only; the admin sections
+> (§40–§47: audit log, `require_role`, delete-and-anonymise) are described in
+> `docs/ADMIN-CONSOLE.md` and were never audited here.
+> **Still true:** the two-account live checks (LIVE CHECK list below, `npm run live-checks`)
+> have not been run; only the anonymous read side is proven (LIVE CHECK 4), and
+> `shares`, `project_collaborators` and `comments` remain empty-table ambiguous.
+> Every `UNRUN` / "NOT RUN" label below means "not run when this was written";
+> deployed is not the same as live-checked.
+
+**This is a static audit.** `supabase/schema/supabase-schema.sql` had never been executed against a
+real database when this was written (it has since been deployed; see the status note above), and nothing below was tested against one. Every claim here is read
 off the SQL text and the documented behaviour of Postgres RLS. The syntax was
 machine-checked — all 141 top-level statements and all 24 PL/pgSQL function bodies
 parse under the real Postgres grammar (libpg_query via `pglast`) — but parsing is
@@ -377,7 +395,7 @@ is deliberately **not** `security definer` — `is_privileged_caller()` has to s
 real caller, and a definer function would report the definer's role and make every
 caller look privileged.
 
-### A1b — the customer could MINT an account on any plan. **HIGH (billing). Fixed in schema §19, UNRUN.**
+### A1b — the customer could MINT an account on any plan. **HIGH (billing). Fixed in schema §19 — UNRUN when written; §19 has been live since 8 Oct 2026.**
 
 A1's fix was `accounts_guard`, a `BEFORE UPDATE` trigger. `acc_insert`'s
 `WITH CHECK` is `owner_id = auth.uid()` and nothing else, so
@@ -450,7 +468,7 @@ account's own owner a power they already had by every other route.
 Flipping a `revoked` row back to `active` walked straight past it. §7.7 checks that
 transition too, excluding the row being updated from its own count.
 
-### A6 — pending invites cannot be claimed. **Functional gap. Addressed in schema §11, UNRUN.**
+### A6 — pending invites cannot be claimed. **Functional gap. Addressed in schema §11 (UNRUN when written; §1–§14 are live).**
 
 `account_members.user_id` stays null until an invite is claimed, and *nothing in the
 schema ever claims one* — there is no `claim_invite()` RPC, and `am_write` requires
@@ -477,7 +495,7 @@ nobody expected it.
 
 ---
 
-## 6b. `promo_codes` (schema §20, 7 Oct 2026). **UNRUN.**
+## 6b. `promo_codes` (schema §20, 7 Oct 2026). **UNRUN when written; live 8 Oct 2026.**
 
 | Policy | Cmd | Permits | To whom |
 |---|---|---|---|
@@ -512,7 +530,7 @@ deactivates, it does not delete. Live checks:
 
 ---
 
-## 6c. The growth sections (schema §21 onward, 7 Oct 2026). **UNRUN.**
+## 6c. The growth sections (schema §21 onward, 7 Oct 2026). **UNRUN when written; §21–§23 live 8 Oct 2026 (§24+ not covered here).**
 
 Each section below passes `npm run test:schema` on PostgreSQL 16 (its own
 file in `scripts/schema-tests/`); none has met the live database. The
@@ -868,7 +886,7 @@ fires in the first branch, so the later branch is never reached. An
 error that arrives before a line runs says nothing about that line.
 
 **What this means beyond the finding:** sections 6 and 7 of
-`supabase-schema.sql` have never run either. `projects_guard_owner`
+`supabase/schema/supabase-schema.sql` have never run either. `projects_guard_owner`
 and `comments_set_author` — both from section 5, line 268 onward —
 are also absent, so the original run stopped somewhere near line 200.
 The database is roughly sections 1-4 plus section 9.
@@ -1039,11 +1057,13 @@ overflow.
    everything above: an anonymous session gives a non-null `auth.uid()`,
    which satisfies the "is the caller signed in?" half of every policy
    in this document. Setup steps are in the header of
-   `supabase-schema.sql`; verifying them is a live check, like the rest
+   `supabase/schema/supabase-schema.sql`; verifying them is a live check, like the rest
    of this list.
 ---
 
 ## CLAIM_INVITE (§11) — WRITTEN 1 OCT 2026. NOT RUN. NOT TESTED.
+
+> Update 19 Oct 2026: §11 is part of §1–§14, which `docs/HANDOFF.md` §4 records as live. The live checks listed in this section are still unrun. The text below is the 1 Oct state.
 
 Everything above this line has at least been probed against a live database.
 This section has not. It closes finding **A6** on paper and the paper is all

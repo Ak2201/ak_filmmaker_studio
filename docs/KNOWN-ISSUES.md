@@ -1,12 +1,14 @@
 # Known issues
 
+Last reviewed: 2026-10-19 (the deliverables lazy-import entry was stale and is corrected; the rest is history or recorded decisions).
+
 Bugs found and NOT yet fixed. Each one says where it is, what goes
 wrong, and the likely fix. Delete an entry in the same commit that
 fixes it; a list nobody prunes stops being believed.
 
 Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
 Pruned 7 Oct 2026, twice: first with the Medium/Low fix pass over
-`docs/UX-AUDIT-2026-10-06.md`, then with the open-issues pass that
+`docs/archive/UX-AUDIT-2026-10-06.md`, then with the open-issues pass that
 closed everything that pass had left (CLAUDE.md open item 17). What is
 below is what is NOT a bug — two recorded decisions — and one thing seen
 once and not yet looked at.
@@ -59,10 +61,11 @@ once and not yet looked at.
   reports (+43 KB: DPR, one-liner, running time), deliverables (+41 KB:
   CBFC flags, dialogue list), budget (+22 KB: the six cost tabs) and write
   (+2 KB). The growth is the features themselves, visible on those pages'
-  first render. The cheapest win if it matters: `src/pages/deliverables.js`
-  imports `src/data/cbfc-rules.json` (~44 KB raw — 32 KB until the 8 Oct source check grew it) and `lib/pdf.js` at module
-  scope although the PDF is only needed inside the export click — making
-  both dynamic needs the certification section to render after an await.
+  first render. ~~The cheapest win if it matters: `src/pages/deliverables.js`
+  imports `src/data/cbfc-rules.json` and `lib/pdf.js` at module scope.~~
+  **Already done (checked 19 Oct 2026; HANDOFF §6c row G7):** `deliverables.js`
+  now loads `lib/pdf.js`, `lib/cbfc.js` and `cbfc-rules.json` with dynamic
+  `import()`. The +41 KB figure is the measurement as first taken, before that.
 - ~~**The CBFC/AWBI/OTT facts were re-checked against search summaries, not
   the pages themselves** (8 Oct 2026; the container cannot reach the cited
   hosts).~~ **CLOSED 8 Oct 2026 (evening), from a session with a real

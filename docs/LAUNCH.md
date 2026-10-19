@@ -1,5 +1,15 @@
 # Launch checklist — what only the owner can do
 
+Written 7 Oct 2026. Last reviewed: 2026-10-19.
+
+> **CURRENT STATE (19 Oct 2026), from `docs/HANDOFF.md` §4 and §6c.** Still owner-only and
+> open: P1 a LIVE Razorpay key plus one refund exercised, and the Razorpay website/callback
+> URLs on `filmmakerstudio.in` (§7a item 8); `RESEND_API_KEY` / `MAIL_FROM` (blocks real
+> payments, B14); P4 the two-account RLS checks (§5); P5 the second admin sign-in; P8 GSTIN
+> (see §3); P11 WhatsApp number. Done since this file was written: Google branding verified
+> (12 Oct), Search Console and sitemap, the domain cutover, schema §1–§47 live (§4). The
+> dated passages below are kept as the record; their status lines say what changed.
+
 Written 7 Oct 2026. Everything in the code that could be done for a
 public launch has been (CLAUDE.md open items 17–18). What is left needs
 an account, a credential or a decision that lives outside this repo.
@@ -7,7 +17,14 @@ Work it top to bottom; each step says how to check it is done.
 
 ## 1. Decide the door
 
-The site is INVITE-ONLY (`npm run build` has the gate on). A stranger who
+> **Overtaken 12 Oct 2026 (owner).** The door now FOLLOWS the purchases switch
+> (`purchase_required`, live value OFF): switch off, anybody signed in with Google is in and
+> membership only decides whether work syncs; switch on, a plan or a running trial; signed
+> out goes to `start.html`, every other refusal to `invite.html` (the offer page: trial,
+> plans, code). See `CLAUDE.md` (top) and `docs/GATE.md` §0. The text below is the original
+> 7 Oct framing; P10 in `docs/HANDOFF.md` records the decision was still marked open.
+
+The site was INVITE-ONLY (`npm run build` has the gate on). A stranger who
 clicks an ad lands on `invite.html`. The public landing page `start.html`
 is outside the gate and links in. Two choices:
 
@@ -77,7 +94,12 @@ downloading anything. The meta-tag method would mean putting a tag in
 `index.html`, which is the page behind the gate, and markup is the one
 place this project tries not to keep content.
 
-**Not done, and deliberately so:** nothing was clicked in Search Console,
+**Status 19 Oct 2026:** the branding was RE-SUBMITTED and is now VERIFIED (12 Oct,
+`docs/HANDOFF.md` P6); the Search Console property exists and is verified (below);
+the consent-screen home page and privacy/terms links moved to `filmmakerstudio.in`
+(§7a). The "REJECTED" row above is the 8 Oct state.
+
+**Not done at the time, and deliberately so:** nothing was clicked in Search Console,
 because creating the property is a change to the owner's Google account.
 
 Also still owed, approved 8 Oct: remove the stale
@@ -109,7 +131,7 @@ a project that needs no review acquires one.
    holds exactly `http://localhost:5173`, `http://localhost:4173` and
    `https://thefilmmakerstudio.vercel.app`, verified by re-reading the
    form after a full reload. The redirect URI is untouched.
-3. **STILL OWED: wait 24 hours, then re-request.** Google's own words:
+3. **DONE (verified 12 Oct 2026): wait 24 hours, then re-request.** Google's own words:
    "Verify ownership of your home page, then wait 24 hours before
    retrying to allow our systems to update." So on **9 Oct 2026 or
    later**, go to Branding → View issues → "I have fixed the issues" →
@@ -129,6 +151,13 @@ anything, which is the safer shape for this form: **edit a row's value
 instead of deleting a row** whenever the counts allow it.
 
 ## 3. Finish the legal pages
+
+> **Superseded 11 Oct 2026.** The owner's name was taken OFF the legal pages again
+> (`brand.json` `seller` is empty on purpose; the pages say "a sole proprietor"), and
+> `terms.html` now carries a comment saying the GSTIN sentence is deliberately absent.
+> Today `grep -rn '\[OWNER:' privacy.html terms.html refund.html` returns nothing. P8 in
+> `docs/HANDOFF.md` still lists a GSTIN decision; whether that means "supply it" now that
+> the sentence is gone is an owner call. The 8 Oct account follows.
 
 **DONE except the GSTIN, 8 Oct 2026 — and it is LIVE.** The owner supplied
 the legal name; it is written into `privacy.html`, `terms.html` and
@@ -168,7 +197,12 @@ that one.
 
 ## 4. Run the schema sections that have never run
 
-> **OUTSTANDING AS OF 11 Oct 2026 — run in this order, each checksummed:**
+> **NOTHING IS OUTSTANDING AS OF 13 Oct 2026.** §32–§39 ran live on 12 Oct and §40–§47 on
+> 13 Oct (`docs/HANDOFF.md` §4, `supabase/schema/README.md`). The next free section is §48.
+> The only unfinished piece of what follows is the Resend setup behind §35. The notes below
+> are the record of how each batch was run.
+
+> **WAS OUTSTANDING AS OF 11 Oct 2026 — run in this order, each checksummed:**
 > §32 (purchases required, access by e-mail; `docs/BILLING.md` §13),
 > §33 (trial in hours; §14), §34 (a refund gives a fresh trial; §15),
 > §35 (receipt and refund e-mails; §16 — needs the Resend domain and the
@@ -179,12 +213,12 @@ that one.
 
 > **ONE THING TO RE-RUN (9 Oct 2026, after the UI/UX release):**
 > `billing_status()` (§30.6, the LAST `create or replace` of it in
-> `supabase-schema.sql`) changed twice: it gained the key
+> `supabase/schema/supabase-schema.sql`) changed twice: it gained the key
 > `trial_minutes`, and a full-scope trial no longer swaps the trial
 > plan's features over a plan the person has BOUGHT (`and pl = 'free'`).
 > Re-run just that function definition and its two grant lines — they
 > are extracted, with a SHA-256 to check the editor against, in
-> `docs/sql/2026-10-10-billing_status.sql`; the route is
+> `supabase/schema/patches/2026-10-10-billing_status.sql`; the route is
 > `docs/BROWSER-HANDOFF.md` §0.1. Until
 > then the invite page's trial offer falls back to "30 minutes", and a
 > buyer who pays mid-trial sees the trial plan's features until the
@@ -192,7 +226,7 @@ that one.
 > carries `trial_minutes`.
 
 > **10 Oct 2026 — one more function re-run, and it is the last of them.**
-> `docs/sql/2026-10-10-billing_status.sql` (SHA-256 `ddd159ab…5827d`,
+> `supabase/schema/patches/2026-10-10-billing_status.sql` (SHA-256 `ddd159ab…5827d`,
 > checked against the editor's own contents before Run) replaced
 > `billing_status()`: it carries a numeric `trial_minutes` now, and a
 > full-scope trial no longer overrides a plan somebody has PAID for — a
@@ -231,7 +265,7 @@ outstanding. Take the lesson over the fact — the read-back is the
 evidence, not either document.
 
 Against project `conhlrulxfwkhsnymakz`, dashboard SQL editor
-(`node scripts/deploy-billing.mjs --print` writes §16-to-EOF for you;
+(`node scripts/deploy-billing.mjs --print` writes §16-to-EOF for you, which now means §16–§39;
 slice out only the sections the database lacks — it starts at §16 every
 time, and re-running a live section is risk you do not need to take).
 
@@ -300,7 +334,7 @@ And `select pg_get_constraintdef(oid) from pg_constraint where conname =
 The live prices are no longer placeholders and no longer match any doc:
 `free=0, starter=59900, indie=79900, pro=99900` paise — ₹599 / ₹799 /
 ₹999. `docs/BILLING.md` §0 still says ₹2,999 / ₹7,999 / ₹19,999 and the
-§18 header in `supabase-schema.sql` recorded 299900 / 499900 / 799900.
+§18 header in `supabase/schema/supabase-schema.sql` recorded 299900 / 499900 / 799900.
 Someone set real prices on the console; believe the table, and §6 below
 no longer needs a price-setting step so much as a price CONFIRMATION.
 And `projects` holds **6** rows with `project_data` at **30**, where
@@ -321,8 +355,8 @@ Check: every row in those tables ticked, with the date.
 
 ## 6. Razorpay
 
-Test mode first. `docs/BILLING.md` §1 has the order: key id + secret as
-Supabase secrets, deploy the three functions (`rzp-webhook` with
+Test mode first (done 8 Oct; a LIVE key is still owed). `docs/BILLING.md` §1 has the order: key id + secret as
+Supabase secrets, deploy the functions — three here, and `rzp-refund` since §27 (`rzp-webhook` with
 `--no-verify-jwt`; REDEPLOY `rzp-order` too, since it now passes the promo code), register the webhook URL, set `VITE_RAZORPAY_KEY_ID`
 in `.env`, rebuild. The prices are ALREADY REAL on the console — `free 0 / starter 59900 /
 indie 79900 / pro 99900` paise, read from the live table on 8 Oct 2026 —
@@ -377,7 +411,7 @@ the plan lapse.
 - Paste the landing URL into WhatsApp and Instagram DM: a card with the
   image and the one-line hook should appear. If not, Meta's debugger
   (developers.facebook.com/tools/debug) says which tag it missed.
-- Submit the sitemap in Google Search Console.
+- Submit the sitemap in Google Search Console (done 11 Oct, status Success on 12 Oct, `docs/HANDOFF.md` P7).
 
 ## 7a. The domain cutover, step by step (11 Oct 2026)
 
@@ -406,7 +440,7 @@ rather than taken from a save toast.
 | 6 | deploy | done — canonical, og:url and sitemap all serve the new host |
 | 7 | Search Console verified by DNS TXT | done |
 | 9 | sitemap submitted under the new property | done |
-| - | **branding RE-SUBMIT** | **PENDING — not before 12 Oct.** Google requires 24h after verification. Branding -> View issues -> "I have fixed the issues" -> Proceed. |
+| - | **branding RE-SUBMIT** | **DONE — verified 12 Oct 2026** (`docs/HANDOFF.md` P6: "Your branding has been verified and is being shown to users"). |
 | 8 | **Razorpay website/callback URLs** | **PENDING — owner.** Still name the old host. |
 | 10 | **Resend: verify `filmmakerstudio.in`** (DKIM TXT `resend._domainkey`, MX + SPF on `send.`) | **PENDING — owner.** Adds records only; the root MX/SPF/DMARC stay as they are. Steps in `docs/BILLING.md` §16. |
 

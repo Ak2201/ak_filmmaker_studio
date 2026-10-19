@@ -92,9 +92,9 @@ ok('owner split: Pro only', ['call-sheets', 'ai_tools', 'remove_branding']
 ok('extension limit', M.matrixLimits('starter').extension === false && M.matrixLimits('indie').extension === true && M.matrixLimits('pro').extension === true);
 ok('addedBy covers every row once', PAID.flatMap((id) => M.addedBy(id)).length === matrix.features.filter((f) => !f.inverted && f.plans.length).length);
 
-/* §36 in supabase-schema.sql is exactly what the matrix generates. */
-const cur = current(read('supabase-schema.sql'));
-ok('supabase-schema.sql has §36', !!cur);
+/* §36 in supabase/schema/supabase-schema.sql is exactly what the matrix generates. */
+const cur = current(read('supabase/schema/supabase-schema.sql'));
+ok('supabase/schema/supabase-schema.sql has §36', !!cur);
 ok('§36 = scripts/make-plan-features-sql.mjs output (run it with --write)', cur && cur.body === await generate());
 
 if (bad) process.exit(1);

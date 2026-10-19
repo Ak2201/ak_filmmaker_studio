@@ -1,6 +1,14 @@
 # The Chrome extension
 
+Last reviewed: 2026-10-19
+
 The extension is the app. `npm run build:extension` builds the same pages as the website into `dist-extension/`, adds the side panel (`extension/panel.html`), a manifest and a background worker, and turns the PWA's service worker off. A fix to any page is a fix in the extension, and there is no second copy to keep in step.
+
+## Plan gate
+
+The extension is a plan-gated feature: `src/data/plan-matrix.json` lists it as `extension`
+(enforced by `plans.limits.extension`; `docs/HANDOFF.md` B15 records it off on Basic, on for
+Intermediate and Pro). It is only enforced once the purchases switch is on.
 
 ## Load it
 
@@ -23,14 +31,14 @@ To ship it to the Chrome Web Store, zip the *contents* of `dist-extension/` (wit
 
    The id is shown on `chrome://extensions`. An unpacked extension's id changes with its folder path unless the manifest has a `key`; a Web Store build has a fixed id. Without this entry, Google sign-in in the panel ends with "the extension redirect URL is not allowed".
 
-2. **Schema sections 13 and 14** (`supabase-schema.sql`) have to run for invite codes, invite requests, the device lock and screening passes to exist. Until they do, everything **fails closed**: a signed-in account is told the gate is not switched on, sync stays paused, and the panel offers nothing it cannot honour. (It used to fail open so the code could ship before the SQL; that let every Google account through, and is gone — `docs/GATE.md`.) Then make the first admin by hand. Section 13.2 has the one-line insert, and no UI can do it, because anything that can grant the first admin can grant the second.
+2. **Schema sections 13 and 14** (`supabase/schema/supabase-schema.sql`) have to run for invite codes, invite requests, the device lock and screening passes to exist. Until they do, everything **fails closed**: a signed-in account is told the gate is not switched on, sync stays paused, and the panel offers nothing it cannot honour. (It used to fail open so the code could ship before the SQL; that let every Google account through, and is gone — `docs/GATE.md`.) Then make the first admin by hand. Section 13.2 has the one-line insert, and no UI can do it, because anything that can grant the first admin can grant the second.
 
 ## What each PRD requirement is, here
 
 | PRD | Where | Notes |
 |---|---|---|
 | FR-101 gatekeeper | `src/pages/panel.js` | Code is normalised as typed; verifying spends nothing. |
-| FR-102 admin console | `settings.html#admin-console` (`src/ui/gate-ui.js`) | Shown by the server's role; every RPC re-checks it. |
+| FR-102 admin console | `settings.html#admin-console` (`src/ui/gate-ui.js`) is the original block; the full console is now `admin.html` (`docs/GATE.md` §0, `docs/ADMIN-CONSOLE.md`) | Shown by the server's role; every RPC re-checks it. |
 | FR-103 screening passes | `screening.html` (`src/pages/screening.js`, `src/lib/watermark.js`) | Read-only, expiring, canvas watermark overlaid **and** baked into each block, tamper watchdog, print refused. |
 | FR-201 Google SSO | `chrome.identity.launchWebAuthFlow` → `supabase.auth.setSession` (`extension-bridge.js`, `cloud.js`) | Same Google client as the website. |
 | FR-202 ephemeral storage | supabase-js is given a `chrome.storage.session` adapter | Tokens, the ticket and the lock handle never reach `localStorage` or `chrome.storage.local`. Quitting Chrome signs you out. |
@@ -49,8 +57,10 @@ Extension pages have their own origin, so their `localStorage` is not the websit
 ## Proving it
 
 ```bash
-npm run build:extension && npm run prove:extension   # 28 checks, the real unpacked extension
-npm run build && npm run prove:gate                  # 34 checks, the website's half
+npm run build:extension && npm run prove:extension   # the real unpacked extension
+npm run build && npm run prove:gate                  # the website's half (needs the GATED build)
 ```
+
+(The check counts this file used to quote, 28 and 34, were stale: `docs/HANDOFF.md` and `docs/HISTORY.md` record 28–30 for the extension proof and 107–120 for `prove:gate`. Run them for the current number.)
 
 Both replace only the network to Supabase, with an in-memory implementation of section 13 (`scripts/fake-supabase.mjs`), plus the two things a headless browser cannot do: a human at Google's consent screen, and a 30-second wait.

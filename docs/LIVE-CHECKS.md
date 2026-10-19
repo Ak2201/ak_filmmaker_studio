@@ -1,5 +1,15 @@
 # Live checks — running `docs/SECURITY-RLS.md` against a real database
 
+Last reviewed: 2026-10-19.
+
+> **Status.** `scripts/live-checks.mjs` (`npm run live-checks`) exists with 30 registered
+> checks. `docs/HANDOFF.md` (P4, §4) records that the checks needing TWO real accounts have
+> never been run, only the anonymous read side (LIVE CHECK 4 in `docs/SECURITY-RLS.md`); no
+> recorded two-account run of this script was found. The script covers the tables and
+> functions of schema §1–§11 (projects, comments, shares, accounts, collaborators); it has
+> no checks for the billing, trial, refund or admin sections (§16–§47), which
+> `docs/SECURITY-RLS.md` §6c lists separately.
+
 `docs/SECURITY-RLS.md` is a **static** audit. It ends with a list of checks that
 need two real signed-in accounts, and three live runs have whittled that list
 down without clearing it. This document is how the rest of it gets run, by
@@ -64,8 +74,9 @@ Both refusals exit **2** with `NOT RUN`, never 0.
 
 Where to find the right key: Supabase dashboard → Project Settings → API →
 *Project API keys* → the **anon / public** (or `sb_publishable_…`) one. It is
-the same key that ships in the browser bundle under `fms_supabase_cfg_v1`,
-which is exactly why it is the interesting one to test with.
+the same key that ships in the browser bundle (the `VITE_SUPABASE_ANON_KEY` build setting,
+or an `fms_supabase_cfg_v1` override), which is exactly why it is the interesting one to test
+with.
 
 ### 1.2 Getting A's and B's tokens (the Google-only route)
 
@@ -95,7 +106,7 @@ Use `export` in a throwaway shell, not a `.env` file in the repo. There is no
 
 `FMS_*_EMAIL` + `FMS_*_PASSWORD` sign in through
 `/auth/v1/token?grant_type=password`. That only works if the **Email provider is
-enabled**, which `supabase-schema.sql`'s header says to disable. If this route
+enabled**, which `supabase/schema/supabase-schema.sql`'s header says to disable. If this route
 works, the script records it and **check PS1 fails** citing it — the behaviour
 is better evidence than the dashboard flag. Treat a working password grant as a
 finding, not a convenience.
@@ -146,7 +157,7 @@ prints the same ids.
 
 ### Provider settings — configuration, not SQL
 
-No policy in `supabase-schema.sql` can compensate for either of the first two.
+No policy in `supabase/schema/supabase-schema.sql` can compensate for either of the first two.
 "Google only" is two facts and this repository can supply only one: the client
 ships a single auth call, which is the markup, while Supabase mints a session
 for **any** enabled provider and the `/auth/v1/*` endpoints accept the public
@@ -379,8 +390,10 @@ Run these in the SQL editor when the schema changes.
 16. **`claim_invite()` — schema section 11, and its nine checks.** A separate
     piece of work adds a `claim_invite()` RPC as schema section 11, with nine
     live checks of its own written into `docs/SECURITY-RLS.md` under
-    **CLAIM_INVITE (§11)**. That work was not committed when this harness was
-    written, so **it is not covered here**. Check `A6b` probes
+    **CLAIM_INVITE (§11)**. Schema section 11 is in
+    `supabase/schema/supabase-schema.sql` now and is live (`docs/HANDOFF.md` §4), but
+    this harness still has no entries for those nine checks, so **they are not covered
+    here**. (When this was written the work was not yet committed.) Check `A6b` probes
     `rpc/claim_invite` and reports which state the database is in, so a run
     tells you whether the gap is still open.
 

@@ -1,5 +1,7 @@
 # The design kit — Swiss Precision, dark only
 
+Last reviewed: 2026-10-19 (checked: file paths, `kit.html`, the single `studio` skin, `src/ui/kit/` builders).
+
 Since 14 Oct 2026 the studio is one look: **Swiss Precision** on a layered
 obsidian ground, one **violet** accent, **dark only**. This file is the
 reference for the tokens and the component kit every page is built from.

@@ -4,7 +4,7 @@
    StudioCloud.deleteOwnedCloudProjects() against a faked Supabase
    (scripts/fake-supabase.mjs for everything it already fakes; this
    file answers /rest/v1/projects and /rest/v1/project_data itself,
-   with RLS reproduced from supabase-schema.sql: proj_delete is
+   with RLS reproduced from supabase/schema/supabase-schema.sql: proj_delete is
    owner-only, pd_write is FOR ALL for anyone with edit access, and
    project_data cascades from projects).
 

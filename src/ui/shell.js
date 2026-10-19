@@ -55,7 +55,7 @@ import { mountProjectSwitcher } from './project-switcher.js';
 import { mountBackupMenu } from './topbar-backup.js';
 import { moduleGroups, guideStops, phases, globals, stayEntry, stagePageEntry, homeStage, stageLead } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
-import { mountStatusBar, syncLine } from './status-bar.js';
+import { syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked, allowed, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { BRAND } from '../lib/brand.js';
@@ -583,7 +583,9 @@ function buildRail() {
      everything up to and including the dashboard entry leads. */
   const dashAt = gl.findIndex((g) => g.id === 'dashboard');
   const lead = dashAt >= 0 ? gl.slice(0, dashAt + 1) : gl.slice(0, 1);
-  const rest = gl.slice(lead.length);
+  /* Settings is not a rail entry (owner, 19 Oct 2026): it opens from the
+     account avatar at the foot, the one place that is about YOU. */
+  const rest = gl.slice(lead.length).filter((g) => g.id !== 'settings');
   const main = h('div.sh-rail-main');
   lead.forEach((g) => main.append(railGlobal(g)));
   if (!isGlobalMode()) main.append(buildRailStages());
@@ -598,18 +600,18 @@ function buildRail() {
   /* The live trial clock, at the foot of the rail. Built HIDDEN and
      empty; trial-band.js fills and shows it only while a trial runs. */
   foot.append(h('div.sh-rail-trial', { hidden: true }));
-  const help = h('button.sh-rail-item.sh-rail-util', {
-    type: 'button', 'data-action': 'rail-help', title: 'Keyboard shortcuts and help (?)'
+  /* The account, and nothing else (owner, 19 Oct 2026): the Google photo
+     or the initials when signed in (copied from the account pill, which
+     auth.js keeps), a person glyph otherwise. It opens the account menu:
+     who you are, Settings, your plan, help, and the way out. */
+  const acct = h('button.sh-rail-item.sh-rail-util.sh-rail-account', {
+    type: 'button', 'data-action': 'rail-account', title: 'Your account',
+    'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-controls': 'shAcctMenu'
   });
-  help.append(iconSpan('sh-rail-icon', { sym: 'help', icon: '?' }), h('span.sh-rail-label', { text: 'Help' }));
-  /* The account: initials when signed in (copied from the band's account
-     pill, which auth.js keeps), a person glyph otherwise. A link to the
-     account block in Settings, the same place the pill goes. */
-  const acct = h('a.sh-rail-item.sh-rail-util.sh-rail-account', { href: 'settings.html#account', title: 'Your account' });
   acct.append(h('span.sh-rail-avatar', { 'aria-hidden': 'true', hidden: true }),
               iconSpan('sh-rail-icon.sh-rail-person', { sym: 'person', icon: '◉' }),
               h('span.sh-rail-label', { text: 'Account' }));
-  foot.append(help, acct);
+  foot.append(acct);
   rail.append(foot);
   return rail;
 }
@@ -772,15 +774,92 @@ function syncRailAccount() {
   if (!cell) return;
   const pill = document.getElementById('signInPill');
   const av = pill && pill.querySelector('.sip-avatar');
-  const text = av && !av.hidden ? (av.textContent || '').trim() : '';
+  const text = av && !av.hidden ? (av.textContent || '').trim() || initialsOf(pill.dataset.name) : '';
+  const photo = (text && pill && pill.dataset.photo) || '';
   const disc = cell.querySelector('.sh-rail-avatar');
   const person = cell.querySelector('.sh-rail-person');
-  if (disc && disc.textContent !== text) disc.textContent = text;
+  if (disc) paintDisc(disc, text, photo);
   if (disc && disc.hidden !== !text) disc.hidden = !text;
   if (person && person.hidden !== !!text) person.hidden = !!text;
   const title = (pill && pill.title) || 'Your account';
   if (cell.title !== title) cell.title = title;
 }
+function initialsOf(name) {
+  const parts = String(name || '').trim().split(/[\s._-]+/).filter(Boolean);
+  if (!parts.length) return '';
+  return ((parts[0][0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] || '' : '')).toUpperCase();
+}
+/* Initials, or the Google photo over them; only rebuilt when the URL or
+   the text changes (this runs from the band's MutationObserver). A photo
+   that fails to load leaves the initials showing. */
+function paintDisc(el, text, photo) {
+  if (el.dataset.text === text && (el.dataset.photo || '') === photo) return;
+  el.dataset.text = text;
+  el.dataset.photo = photo;
+  el.classList.remove('has-photo');
+  el.textContent = text;
+  if (!photo) return;
+  const pic = h('img', { src: photo, alt: '', referrerpolicy: 'no-referrer', decoding: 'async' });
+  pic.addEventListener('error', () => { pic.remove(); el.classList.remove('has-photo'); el.textContent = text; }, { once: true });
+  el.classList.add('has-photo');
+  el.append(pic);
+}
+
+/* ---- the account menu ------------------------------------------
+   Opened from the rail's avatar. Built on open from the pill's dataset
+   (auth.js keeps it) so it is never stale, and torn down on close. Its
+   sign-in and sign-out rows are auth.js's own [data-auth-action]
+   buttons, so there is one implementation of each. Writes nothing. */
+function closeAcctMenu(returnFocus) {
+  const m = document.getElementById('shAcctMenu');
+  if (!m) return;
+  m.remove();
+  const btn = document.querySelector('#studioRail .sh-rail-account');
+  if (btn) { btn.setAttribute('aria-expanded', 'false'); if (returnFocus) btn.focus(); }
+}
+function openAcctMenu(btn) {
+  if (document.getElementById('shAcctMenu')) { closeAcctMenu(true); return; }
+  const pill = document.getElementById('signInPill');
+  const d = (pill && pill.dataset) || {};
+  const signedIn = !!(pill && pill.classList.contains('signed-in'));
+  const menu = h('div#shAcctMenu.sh-acct-menu', { role: 'menu', 'aria-label': 'Account' });
+  if (signedIn) {
+    const disc = h('span.sh-acct-avatar', { 'aria-hidden': 'true' });
+    paintDisc(disc, initialsOf(d.name) || '?', d.photo || '');
+    menu.append(h('div.sh-acct-who', {}, [disc, h('div.sh-acct-id', {}, [
+      h('span.sh-acct-name', { text: d.name || 'Signed in' }),
+      d.email ? h('span.sh-acct-email', { text: d.email }) : null
+    ])]));
+  } else {
+    menu.append(h('div.sh-acct-who', {}, [h('div.sh-acct-id', {}, [
+      h('span.sh-acct-name', { text: 'Not signed in' }),
+      h('span.sh-acct-email', { text: 'Your work is saved on this device.' })
+    ])]));
+  }
+  const row = (tag, attrs, sym, label) => {
+    const el = h(tag + '.sh-acct-item', { role: 'menuitem', ...attrs });
+    el.append(iconSpan('sh-acct-icon', { sym, icon: '' }), h('span', { text: label }));
+    return el;
+  };
+  const settings = globals().find((g) => g.id === 'settings');
+  const purchase = globals().find((g) => g.id === 'purchase');
+  menu.append(h('div.sh-acct-list', {}, [
+    row('a', { href: (settings && settings.href) || 'settings.html' }, 'settings', 'Settings'),
+    purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Plan & purchases') : null,
+    row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
+    signedIn
+      ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out')
+      : row('button', { type: 'button', 'data-auth-action': 'pill' }, 'login', 'Sign in')
+  ]));
+  document.body.append(menu);
+  const r = btn.getBoundingClientRect();
+  menu.style.setProperty('--sh-acct-left', Math.round(r.right + 8) + 'px');
+  menu.style.setProperty('--sh-acct-bottom', Math.max(8, Math.round(window.innerHeight - r.bottom)) + 'px');
+  btn.setAttribute('aria-expanded', 'true');
+  const first = menu.querySelector('.sh-acct-item');
+  if (first) first.focus();
+}
+
 if (typeof document !== 'undefined') {
   Store.subscribe('gate:changed', syncAdminOnly);
   const hook = setInterval(() => {
@@ -1757,6 +1836,26 @@ function wire() {
 
   /* Help in the rail's foot: the shortcut sheet, which already lists the
      keys and the page's own help. */
+  delegate(document, 'click', '[data-action="rail-account"]', (e, el) => openAcctMenu(el));
+  /* Any choice in the account menu closes it; a click elsewhere or
+     Escape does too. Arrow keys move between its rows. */
+  delegate(document, 'click', '.sh-acct-item', () => closeAcctMenu(false));
+  document.addEventListener('click', (e) => {
+    const m = document.getElementById('shAcctMenu');
+    if (m && !m.contains(e.target) && !e.target.closest('.sh-rail-account')) closeAcctMenu(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    const m = document.getElementById('shAcctMenu');
+    if (!m) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeAcctMenu(true); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const items = [...m.querySelectorAll('.sh-acct-item')];
+    const i = items.indexOf(document.activeElement);
+    const n = items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
+    if (n) { e.preventDefault(); n.focus(); }
+  });
+  window.addEventListener('resize', () => closeAcctMenu(false));
+
   delegate(document, 'click', '[data-action="rail-help"]', () => {
     const ui = window.StudioUI;
     if (ui && ui.openShortcutSheet) ui.openShortcutSheet();
@@ -1904,8 +2003,8 @@ export function mountShell() {
   document.body.classList.add('has-sh-shell');
   document.documentElement.setAttribute('data-shell-mode', GLOBAL_MODE);
   renderTrialBand();   // the strip exists only while a trial runs
-  /* The status line at the foot of the window: real facts only (src/ui/status-bar.js). */
-  try { mountStatusBar(); } catch (e) { /* a status line is not a reason to lose the shell */ }
+  /* The status bar at the foot is retired (owner, 19 Oct 2026): the
+     rail's account avatar is the only thing at the bottom now. */
   wire();
   setRail(initialRail());
   paintLocation(active);

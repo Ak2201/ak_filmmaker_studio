@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: all approved and live.
+
 # Video candidates
 
 **Status (10 Oct 2026): ALL APPROVED by the owner and live.** None was verified by oEmbed from the build sandbox. If one breaks or is wrong, set its `approved` to `false` in `src/data/videos.json` (or delete the entry) and rebuild.

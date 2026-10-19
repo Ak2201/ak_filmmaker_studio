@@ -1,13 +1,22 @@
-# Admin console v2 — schema run order (stub)
+# Admin console v2 — schema run order
 
-The plan is `docs/ADMIN-CONSOLE-PLAN.md`. This file is only the deploy half for
-the sections that exist so far. Neither section has been run live.
+Last reviewed: 2026-10-19
+
+The plan is `docs/archive/ADMIN-CONSOLE-PLAN.md` (archived). This file is the deploy half for
+§40–§47. **All of §40–§47 are LIVE on the production project (run 13 Oct 2026):**
+§46 and §47 were run checksummed and read back with `pg_get_functiondef`; §40–§45 were
+confirmed by PostgREST probe (42501 = exists and refuses). Source: `docs/HANDOFF.md` §4.
+Live admin-session checks are still open — see `docs/ADMIN-CONSOLE-TODO.md` (L1–L5).
+None of §40–§47 is folded into `supabase/schema/supabase-schema.sql` (that file is §1–§39);
+each is its own file in `supabase/schema/`, run order in `supabase/schema/README.md`.
+The console's tabs are in `src/lib/admin-model.js` (`TAB_DEFS`): Overview, Launch & health,
+Audit log, People, Support, Access & sharing, Purchases, Growth, Usage, Sync & storage, Controls.
 
 | Section | File | Needs | Adds |
 | --- | --- | --- | --- |
-| §40 | `schema-40-admin-audit.sql` | §1–§39 | `admin_audit`, `admin_audit_write()`, `admin_list_audit()`, and nineteen admin writers restated with an audit call |
-| §42 | `schema-42-customer-360.sql` | **§40** | `admin_notes`, `admin_add_note()`, `admin_list_notes()`, `admin_customer()` |
-| §47 | `schema-47-delete-anonymise.sql` | **§45** | `admin_delete_user()` restated: the retained invoices lose the buyer's name, e-mail and GSTIN (People → Delete totally) |
+| §40 | `supabase/schema/schema-40-admin-audit.sql` | §1–§39 | `admin_audit`, `admin_audit_write()`, `admin_list_audit()`, and nineteen admin writers restated with an audit call |
+| §42 | `supabase/schema/schema-42-customer-360.sql` | **§40** | `admin_notes`, `admin_add_note()`, `admin_list_notes()`, `admin_customer()` |
+| §47 | `supabase/schema/schema-47-delete-anonymise.sql` | **§45** | `admin_delete_user()` restated: the retained invoices lose the buyer's name, e-mail and GSTIN (People → Delete totally) |
 
 (§41, health and launch, is another lane. §42 does not depend on it.)
 
@@ -20,11 +29,11 @@ the sections that exist so far. Neither section has been run live.
    reserved for the health lane. If another session has taken either number,
    renumber; do not collide.
 3. Both files are re-runnable. `npm run test:schema` loads each twice.
-4. Until the main thread folds them into `supabase-schema.sql`, the test runner
-   loads the two standalone files itself, on top of the whole schema, before
-   the §32-onward check files. Once `admin_audit_write` appears in
-   `supabase-schema.sql` the runner stops loading them and only runs
-   `admin-audit.sql` and `admin-customer.sql`.
+4. They are not folded into `supabase/schema/supabase-schema.sql`, so the test runner
+   (`scripts/test-schema.mjs`, `ADMIN_FILES`) loads the two files itself, on top of the whole
+   schema, before the §32-onward check files, and then runs `admin-audit.sql` and
+   `admin-customer.sql`. (Its comments still say "at the repo root"; the files are in
+   `supabase/schema/`.)
 
 ## Pasting SQL: checksum, never the raw clipboard
 
@@ -33,8 +42,8 @@ mojibake (UTF-8 read as MacRoman), and both files contain em-dashes and
 user-facing sentences. Do not paste them.
 
 ```bash
-shasum -a 256 schema-40-admin-audit.sql          # note it
-base64 -i schema-40-admin-audit.sql | pbcopy      # pure ASCII crosses the clipboard
+shasum -a 256 supabase/schema/schema-40-admin-audit.sql          # note it
+base64 -i supabase/schema/schema-40-admin-audit.sql | pbcopy      # pure ASCII crosses the clipboard
 ```
 
 In the editor page, decode the base64, set the Monaco model to the result, then
@@ -112,14 +121,14 @@ title or data anywhere; `admin_customer` for a random uuid raises 22023
 
 ## Lane: §41 launch & health, §43 usage & cohorts, §44 sync & limits
 
-Standalone files at the repo root, **not yet folded into `supabase-schema.sql`**
-and **run live 13 Oct 2026** (confirmed by PostgREST probe: each section's functions exist and refuse anon with 42501). They are still not folded into `supabase-schema.sql`:
+Standalone files in `supabase/schema/`, **not folded into `supabase-schema.sql`**
+and **run live 13 Oct 2026** (confirmed by PostgREST probe: each section's functions exist and refuse anon with 42501):
 
 | File | Contents |
 | --- | --- |
-| `schema-41-admin-health.sql` | `admin_health()`, `admin_launch_preview()`, three internal probes |
-| `schema-43-usage-cohorts.sql` | `usage_daily`, `usage_rate`, `usage_names()` (GENERATED block), `bump_usage()`, `admin_usage()`, `admin_cohorts()` |
-| `schema-44-sync-limits.sql` | `sync_errors`, `sync_error_rate`, the two allow-lists, `report_sync_error()`, `admin_sync_overview()`, `admin_limit_pressure()` |
+| `supabase/schema/schema-41-admin-health.sql` | `admin_health()`, `admin_launch_preview()`, three internal probes |
+| `supabase/schema/schema-43-usage-cohorts.sql` | `usage_daily`, `usage_rate`, `usage_names()` (GENERATED block), `bump_usage()`, `admin_usage()`, `admin_cohorts()` |
+| `supabase/schema/schema-44-sync-limits.sql` | `sync_errors`, `sync_error_rate`, the two allow-lists, `report_sync_error()`, `admin_sync_overview()`, `admin_limit_pressure()` |
 | `scripts/make-usage-names-sql.mjs` | regenerates / checks the §43 name list from `navigation.json`; `npm run test:usage-names` (in `test:all`) |
 | `scripts/schema-tests/{admin-health,usage-cohorts,sync-limits}.sql` | the checks; run by `npm run test:schema` |
 | `scripts/schema-tests/audit-shim.sql` | a no-op stand-in for §40's `admin_audit_write()`, created only if absent |
@@ -222,16 +231,16 @@ select has_table_privilege('authenticated', 'public.sync_errors', 'insert');    
 Tests: `npm run test:schema` loads the three files on top of the whole schema
 twice (re-runnability), compares the live `usage_names()` to `navigation.json`,
 then runs the three check files. When a section is merged into
-`supabase-schema.sql`, remove it from `STANDALONE` in `scripts/test-schema.mjs`.
+`supabase/schema/supabase-schema.sql`, remove it from `STANDALONE` in `scripts/test-schema.mjs`.
 
 ---
 
 ## §45 — Admin controls (schema)
 
-File: `schema-45-admin-controls.sql` (standalone, **RUN LIVE: not yet**; requires
+File: `supabase/schema/schema-45-admin-controls.sql` (standalone, **RUN LIVE 13 Oct 2026**; requires
 §40's `admin_audit_write`, and refuses to load without it). Checks:
 `scripts/schema-tests/admin-controls.sql`. Until §40 is folded into
-`supabase-schema.sql`, `npm run test:schema` loads
+`supabase/schema/supabase-schema.sql`, `npm run test:schema` loads
 `scripts/schema-tests/audit-shim.sql` (a stand-in `admin_audit_write` that logs to
 `public.test_audit_log`) and then the section, twice; delete the shim and its
 line in `scripts/test-schema.mjs` when §40 lands and point the audit assertions
@@ -324,7 +333,7 @@ must run with `site_announcement` empty (it does; the table is new and empty).
 
 ## §46 — The role matrix (schema) and the Controls tab
 
-File: `schema-46-role-matrix.sql` (standalone, **RUN LIVE: not yet**; refuses to
+File: `supabase/schema/schema-46-role-matrix.sql` (standalone, **RUN LIVE 13 Oct 2026**, run checksummed and read back; refuses to
 load without §40 `admin_audit_write`, §42 `admin_add_note` and §45
 `require_role`). Checks: `scripts/schema-tests/role-matrix.sql`; `npm run
 test:schema` loads it twice, after the §45 checks. Fixture ids `…046xx`.

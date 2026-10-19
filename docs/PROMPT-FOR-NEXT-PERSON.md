@@ -1,5 +1,15 @@
 # Prompt for the person taking over (paste into Claude Code)
 
+Last reviewed: 2026-10-19
+
+> **Historical, 19 Oct 2026.** This prompt drove the 14 Oct "mobile-and-revamp" workflow (audit, build, gate), and that
+> work is merged (PR #21) and released. Do not paste it to redo the job. It is kept because it records the owner rules and the
+> gotchas, which still apply, and because the workflow script `.claude/workflows/mobile-and-revamp.js` still exists. For a
+> new session, start from `CLAUDE.md` and `docs/HANDOFF.md` (which has a 2026-10-19 note on the new repo layout). Things below
+> that are no longer true: stage 1's matrix is written (`docs/PARITY-MATRIX.md`, with the owner's bin-c decisions recorded at its
+> end); `draftSceneStory` and the `scene-story` task now exist; "all 37 pages" has since changed (check the page list in
+> `scripts/baseline.json`); and the docs this prompt names are unchanged in place except that superseded plans live in `docs/archive/`.
+
 Use Claude Code in a clone of `Ak2201/ak_filmmaker_studio`. The workflow script is `.claude/workflows/mobile-and-revamp.js`
 (three stages, run one at a time). Everything below the line is the prompt.
 

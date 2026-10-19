@@ -417,7 +417,7 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   ok(/characters:\s*'fms_characters_v1'/.test(src('../src/lib/backup.js')), 'in PROJECT_KEYS (backup.js)');
   ok(/CHARACTERS_KEY = 'fms_characters_v1'/.test(src('../src/pages/hub/all-keys.js')) && /SCENE_BIN_KEY, CHARACTERS_KEY/.test(src('../src/pages/hub/all-keys.js')), 'in ALL_KEYS (hub/all-keys.js)');
   ok(/'fms_characters_v1':\s*'characters'/.test(src('../src/lib/cloud.js')) && !/LOCAL_ONLY = new Set\([^)]*'fms_characters_v1'/.test(src('../src/lib/cloud.js')), 'synced as scope characters (SCOPE_BY_KEY, schema §24), not LOCAL_ONLY');
-  ok(/'characters','costs'/.test(src('../supabase-schema.sql')), 'schema §24 names the characters scope');
+  ok(/'characters','costs'/.test(src('../supabase/schema/supabase-schema.sql')), 'schema §24 names the characters scope');
 
   // Rename: a plan with a count, extensions kept, dual flag kept, undoable.
   const work = els.map((e) => ({ ...e }));

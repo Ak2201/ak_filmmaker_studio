@@ -1,3 +1,5 @@
+Last reviewed: 2026-10-19
+
 Recorded media for the public marketing pages: one silent demo loop (`<id>.webm`), its poster (`<id>.webp`) and one still per how-it-works step (`<id>-<n>.webp`) for each of the 11 product pages, all taken from the real app on the Dragon sample project.
-Regenerate with `npm run build:open && PLAYWRIGHT_BROWSERS_PATH=<dir> npm run record:marketing` (needs Chromium and ffmpeg; `ONLY=story,budget` redoes a few). The script overwrites every file, prints a size table and exits non-zero on a missing file or a blown cap.
+Regenerate with `npm run build:open && PLAYWRIGHT_BROWSERS_PATH=<dir> npm run record:marketing` (needs Chromium, or `PW_CHROMIUM=<path>`, and ffmpeg; `ONLY=story,budget` redoes a few). The script overwrites every file, prints a size table and exits non-zero on a missing file or a blown cap.
 Caps: videos 1.2 MB, stills and posters 150 KB; the wording of what each frame shows lives in `scripts/record-marketing-media.mjs`, not here.

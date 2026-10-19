@@ -622,7 +622,7 @@ const server = http.createServer((req, res) => {
     }
   };
   roots.forEach((r) => { const d = path.join(ROOT, r); if (fs.existsSync(d)) walk(d); });
-  ['vercel.json', 'netlify.toml', 'supabase-schema.sql'].forEach((f) => {
+  ['vercel.json', 'netlify.toml', 'supabase/schema/supabase-schema.sql'].forEach((f) => {
     const full = path.join(ROOT, f);
     if (!fs.existsSync(full)) return;
     fs.readFileSync(full, 'utf8').split('\n').forEach((line, i) => {

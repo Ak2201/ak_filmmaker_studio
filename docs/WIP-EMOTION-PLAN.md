@@ -1,5 +1,17 @@
 # Emotional-craft layer — PLAN ONLY, nothing built
 
+Last reviewed: 2026-10-19
+
+> **Status, 19 Oct 2026: still OPEN, nothing built.** Checked: none of `src/data/emotions.json`, `src/data/emotional-craft.json`,
+> `src/ui/emotional-craft.js`, `scripts/test-emotions.mjs`, `scripts/check-copyright.mjs` or `scripts/deny-shingles.txt` exists,
+> and `navigation.json` has no `emotional-craft` module. Corrections since this was written (the plan text below is unchanged):
+> the next free schema section is **§48** (not §25; §1 to §47 have run live); the base branch is `develop` (now contained in
+> `main`); the Library, the stage pages, the shell and `navigation.json` have been reworked since 8 Oct (Celtx-style
+> simplification, one frame per page, the Swiss kit), so re-find every anchor by symbol and build the shelf from `src/ui/kit/`;
+> the plan gate now hides modules through `isDisabledEverywhere()` and `plan-matrix.json` (`test:plans`), so check whether a new module id must
+> also be listed in the matrix; `docs/WIP.md` is now `docs/archive/WIP.md`. Still undecided and the owner's: whether to build it at all
+> ahead of the other open items (`docs/HANDOFF.md` section 6c, E0 to E5).
+
 Planned 8 Oct 2026. **No code for this exists.** To start, say: *"Resume the
 emotional-craft plan from docs/WIP-EMOTION-PLAN.md, Phase 0."* Read
 `docs/HANDOFF.md` first for the state of the repo.
@@ -55,7 +67,7 @@ integrated and released (`ad7ab02`), `wip-all` is fully merged and frozen, and
 - `npm install`; `VITE_SITE_GATE=off npx vite build --outDir dist-verify`;
   every `npm run test:*`; `VERIFY_DIST=dist-verify npm run verify` uncapped;
   `prove:sw`.
-- Write `docs/WIP-EMOTION.md` (status doc, same shape as `docs/WIP.md` §3) and
+- Write `docs/WIP-EMOTION.md` (status doc, same shape as `docs/archive/WIP.md` §3) and
   record what already fails.
 
 ## Phase A — Vocabulary, glossary, Library shelf (M) — first shippable slice
@@ -90,7 +102,7 @@ Pure content, no storage change, a selling point on its own.
   short film's 5-beat step, so "Do this in…" chips point at the shelf.
 - **Plan gate:** the module id is the feature key; `plan-gate.js:69-70` treats
   a key as open unless `features[key] === false`. The shelf is open on every
-  plan. Check `supabase-schema.sql` §18 for hard-coded key lists first.
+  plan. Check `supabase/schema/supabase-schema.sql` §18 for hard-coded key lists first.
 - **Tests / gates:** `scripts/test-emotions.mjs` (unique ids, every technique's
   emotions exist, film keys valid); `scripts/check-copyright.mjs` (below);
   `npm run verify`. Re-baseline with **zero data-key movement** asserted

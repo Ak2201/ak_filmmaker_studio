@@ -14,7 +14,7 @@ order they were AUTHORED, not the order they are applied (see run order below).
 | `schema-45-admin-controls.sql` | §45 | Admin controls. Needs §40. |
 | `schema-46-role-matrix.sql` | §46 | Role matrix (`require_role()` on the admin writers). Needs §45. |
 | `schema-47-delete-anonymise.sql` | §47 | Total delete anonymises kept invoices. Needs §45. |
-| `schema-48-refund-seat-trial.sql` | §48 | Refunds need the finance (or owner) role in the database too; a refund request reads refunded only once processed; seats follow the current plan; a declined invite request keeps blocking `start_trial()` after a re-ask. Needs §45. **Not yet run live.** |
+| `schema-48-refund-seat-trial.sql` | §48 | Refunds need the finance (or owner) role in the database too; a refund request reads refunded only once processed, and cannot be declined while a refund is in flight; seats follow the current plan; a declined invite request keeps blocking `start_trial()` after a re-ask. Needs §45. **Not yet run live.** |
 | `patches/2026-10-10-billing_status.sql` | — | Hand-extracted `billing_status()` for pasting into the SQL editor. |
 
 ## Run order

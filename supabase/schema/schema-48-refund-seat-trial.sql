@@ -18,7 +18,12 @@
 --       issued it approved it), so a refund that later fails leaves an open,
 --       approved request to retry rather than a request that reads refunded
 --       with no money moved. The plan was already ended only on 'processed';
---       that is unchanged.
+--       that is unchanged. Once the payment reads refunded, the payment's
+--       open request is settled as 'refunded' whichever refunds row carried
+--       the news (the webhook can record its own row first), and a late
+--       'pending' never walks it back. admin_decide_refund_request() (§46)
+--       refuses to DECLINE a request while a refund on its payment is
+--       initiated or pending.
 --
 --  48.3 enforce_seat_limit() (§v5) caps the stored accounts.seat_limit by
 --       the seats limit of the plan the account is on RIGHT NOW
@@ -120,17 +125,60 @@ begin
     select * into pay from public.payments p where p.id = f.payment_id;
     perform public.mark_payment_refunded(pay.razorpay_payment_id, p_raw);
   end if;
-  -- §48: 'refunded' only once processed; pending means approved, in flight.
-  if p_status = 'processed' and f.request_id is not null then
+  -- §48: 'refunded' only once the money moved; pending means approved, in
+  -- flight. The money having moved is read off the PAYMENT, not this call's
+  -- status, and the request is found by payment as well as by link: the
+  -- refund.processed webhook can arrive before rzp-refund has stored the
+  -- Razorpay id, and then it records an unlinked row and this request's own
+  -- row never reaches 'processed'. A payment has at most one open request
+  -- (refund_requests_one_open).
+  select * into pay from public.payments p where p.id = f.payment_id;
+  if pay.status = 'refunded' then
     update public.refund_requests q set status = 'refunded', decided_at = coalesce(q.decided_at, now()),
            decided_by = coalesce(q.decided_by, f.refunded_by)
-     where q.id = f.request_id and q.status in ('pending','approved');
+     where (q.id = f.request_id or q.payment_id = pay.id) and q.status in ('pending','approved');
   elsif p_status = 'pending' and f.request_id is not null then
     update public.refund_requests q set status = 'approved', decided_at = coalesce(q.decided_at, now()),
            decided_by = coalesce(q.decided_by, f.refunded_by)
      where q.id = f.request_id and q.status = 'pending';
   end if;
   -- end §48
+end;
+$fn$;
+
+-- 48.2b admin_decide_refund_request: §46's body, plus the marked block -----
+create or replace function public.admin_decide_refund_request(p_id uuid, p_decision text, p_note text default null)
+returns public.refund_requests
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare q public.refund_requests;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  perform public.require_role(array['finance']);
+  if p_decision not in ('approved','declined') then raise exception 'Decision is approved or declined' using errcode = '22023'; end if;
+  if p_decision = 'declined' and length(btrim(coalesce(p_note, ''))) = 0 then
+    raise exception 'Say why, in a sentence — the customer will read it' using errcode = '22023';
+  end if;
+  select * into q from public.refund_requests r where r.id = p_id for update;
+  if q.id is null then raise exception 'No such request' using errcode = '22023'; end if;
+  if q.status not in ('pending','approved') then raise exception 'That request was already %', q.status using errcode = '22023'; end if;
+  -- §48: a refund already sent to Razorpay will settle this request when it
+  -- is processed; a "no" now would be contradicted by the money arriving.
+  if p_decision = 'declined'
+     and exists (select 1 from public.refunds f where f.payment_id = q.payment_id and f.status in ('initiated','pending')) then
+    raise exception 'A refund for that payment is in progress; it cannot be declined now' using errcode = '22023';
+  end if;
+  -- end §48
+  perform public.admin_audit_write('decide_refund_request', 'refund_request', p_id::text,
+    jsonb_build_object('status', q.status),
+    jsonb_build_object('status', p_decision, 'user_id', q.user_id, 'payment_id', q.payment_id),
+    nullif(left(btrim(coalesce(p_note, '')), 500), ''));
+  update public.refund_requests r set status = p_decision, admin_note = nullif(left(btrim(coalesce(p_note, '')), 500), ''),
+         decided_at = now(), decided_by = auth.uid()
+   where r.id = p_id returning * into q;
+  return q;
 end;
 $fn$;
 
@@ -221,19 +269,23 @@ end;
 $fn$;
 revoke execute on function public.invite_requests_remember_decline() from public, anon, authenticated;
 drop trigger if exists invite_requests_remember_decline on public.invite_requests;
-create trigger invite_requests_remember_decline
-  before insert or update on public.invite_requests
-  for each row execute function public.invite_requests_remember_decline();
 
 -- Backfill, once: today's declines, and a pending re-ask by somebody who
 -- is not a member (the re-ask erased the decline it followed; a request
 -- that was approved always left a membership behind). Only fills nulls,
--- so a re-run changes nothing.
+-- so a re-run changes nothing. It runs BEFORE the trigger is created:
+-- the trigger keeps a pending row's old mark, which for every row here is
+-- the null the column was just added with, so with the trigger in place
+-- the second update would write nothing.
 update public.invite_requests r set last_declined_at = coalesce(r.decided_at, r.requested_at)
  where r.last_declined_at is null and r.status = 'declined';
-update public.invite_requests r set last_declined_at = r.requested_at
+update public.invite_requests r set last_declined_at = coalesce(r.decided_at, r.requested_at)
  where r.last_declined_at is null and r.status = 'pending' and r.times_asked > 1
    and not exists (select 1 from public.studio_members m where m.user_id = r.user_id);
+
+create trigger invite_requests_remember_decline
+  before insert or update on public.invite_requests
+  for each row execute function public.invite_requests_remember_decline();
 
 -- start_trial: §30's body, plus the marked block
 create or replace function public.start_trial(p_source text default null)
@@ -319,6 +371,8 @@ $fn$;
 revoke execute on function public.begin_refund(uuid, int, text, uuid, uuid)               from public, anon, authenticated;
 revoke execute on function public.record_refund(uuid, text, text, text, int, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.mark_payment_refunded(text, jsonb)                      from public, anon, authenticated;
+revoke execute on function public.admin_decide_refund_request(uuid, text, text)           from public, anon;
+grant  execute on function public.admin_decide_refund_request(uuid, text, text)           to authenticated;
 revoke execute on function public.start_trial(text)                                       from public, anon;
 grant  execute on function public.start_trial(text)                                       to authenticated;
 
@@ -330,6 +384,10 @@ notify pgrst, 'reload schema';
 --     mentions 'finance'.
 --  3. select count(*) from information_schema.columns
 --      where table_name = 'invite_requests' and column_name = 'last_declined_at';  -> 1
--- Test file: scripts/schema-tests/refund-seat-trial.sql (npm run test:schema).
+--  4. select count(*) from public.invite_requests r
+--      where r.status = 'pending' and r.times_asked > 1 and r.last_declined_at is null
+--        and not exists (select 1 from public.studio_members m where m.user_id = r.user_id);  -> 0
+-- Test files: scripts/schema-tests/refund-seat-trial-seed.sql (before the
+-- first load) and refund-seat-trial.sql (npm run test:schema).
 -- END OF SECTION 48
 -- ============================================================

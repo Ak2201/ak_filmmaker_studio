@@ -217,7 +217,11 @@ runChecks('delete-anonymise.sql');
 /* --- end §47 --- */
 /* --- §48 (refunds follow the role matrix, seats follow the plan, a decline
    sticks) --- standalone, on §45. Loaded twice (re-runnable), after every
-   earlier check file so those ran against the functions it restates. --- */
+   earlier check file so those ran against the functions it restates. The
+   seed goes in BEFORE the first load: it is the live data the backfill has
+   to mark, and the second load fills only nulls. --- */
+r = psql(['-f', 'scripts/schema-tests/refund-seat-trial-seed.sql']);
+if (r.status !== 0) fail('refund-seat-trial-seed.sql did not load', r);
 for (const f of ['supabase/schema/schema-48-refund-seat-trial.sql', 'supabase/schema/schema-48-refund-seat-trial.sql']) {
   r = psql(['-f', f]);
   if (r.status !== 0) fail(`${f} did not load cleanly`, r);

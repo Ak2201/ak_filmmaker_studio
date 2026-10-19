@@ -1242,7 +1242,12 @@ Three corrections, each restating one function body plus a marked block
   linked refund request `refunded` only on `processed`; while Razorpay says
   `pending` the request reads `approved`. The plan still ends only on
   `processed` (unchanged), and a refund that later fails leaves an open,
-  approved request to retry.
+  approved request to retry. Once the PAYMENT reads refunded, its open
+  request is settled `refunded` whichever refunds row carried the news (the
+  `refund.processed` webhook can arrive before `rzp-refund` stored the
+  Razorpay id and record its own row), and a late `pending` never walks it
+  back. `admin_decide_refund_request()` refuses to decline a request while a
+  refund on its payment is `initiated` or `pending` (22023).
 - **Seats follow the plan the account is on now.** `enforce_seat_limit()`
   caps the stored `accounts.seat_limit` by `account_plan()`'s `seats` limit,
   so a lapsed timed grant or a refunded plan stops admitting new seats; and
@@ -1253,7 +1258,9 @@ Three corrections, each restating one function body plus a marked block
   becomes `declined`, cleared only when it becomes `approved`;
   `request_invite()`'s re-ask leaves it alone. `start_trial()` refuses a
   non-member while it is set. The backfill marks today's declines and any
-  pending re-ask by a non-member.
+  pending re-ask by a non-member; it runs before the trigger is created,
+  because the trigger keeps a pending row's (null) mark and would otherwise
+  make the re-ask half write nothing.
 
 **Owner steps.**
 1. Run §48 in the SQL editor — after §47 — verifying the checksum first

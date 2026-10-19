@@ -216,3 +216,86 @@ select t.claims('00000000-0000-4000-8000-000000004814');
 select t.ok((public.start_trial() ->> 'started')::boolean, '48.4 and that member may start the trial the membership was for');
 select t.reset();
 rollback;
+
+-- ------------------------------------------------------------
+-- 48.4 THE BACKFILL (rows seeded by refund-seat-trial-seed.sql before §48)
+-- ------------------------------------------------------------
+select t.ok((select last_declined_at is not null from public.invite_requests where user_id = '00000000-0000-4000-8000-000000004815'),
+  '48.4 backfill: a re-ask made BEFORE §48 (pending, asked twice, no membership) is marked declined');
+select t.ok((select last_declined_at is not null from public.invite_requests where user_id = '00000000-0000-4000-8000-000000004817'),
+  '48.4 backfill: a decline still standing is marked');
+select t.ok((select last_declined_at is null from public.invite_requests where user_id = '00000000-0000-4000-8000-000000004816'),
+  '48.4 backfill: a first request still waiting is left unmarked');
+begin;
+update public.billing_settings set trial_enabled = true where id;
+select t.claims('00000000-0000-4000-8000-000000004815');
+do $$ begin
+  perform public.start_trial();
+  raise exception 'should have refused';
+exception when sqlstate '42501' then raise notice 'ok - 48.4 backfill: that pre-§48 re-ask cannot start_trial() -> 42501'; end $$;
+select t.claims('00000000-0000-4000-8000-000000004816');
+select t.ok((public.start_trial() ->> 'started')::boolean, '48.4 backfill: the unmarked first request still starts a trial');
+select t.reset();
+rollback;
+
+-- ------------------------------------------------------------
+-- 48.2 A REFUND IN FLIGHT SETTLES ITS REQUEST WHATEVER ORDER THINGS ARRIVE
+-- ------------------------------------------------------------
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
+  ('00000000-0000-4000-8000-000000004821', 'rst-race@example.com',    now(), '{}'),
+  ('00000000-0000-4000-8000-000000004822', 'rst-decline@example.com', now(), '{}');
+begin;
+select t.service();
+select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-000000004821', 'indie', 'lifetime')), 'order_48w1');
+select public.activate_payment('order_48w1', 'pay_48w1');
+select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-000000004822', 'indie', 'lifetime')), 'order_48w2');
+select public.activate_payment('order_48w2', 'pay_48w2');
+select t.reset();
+commit;
+insert into public.refund_requests (user_id, payment_id, category, message) values
+  ('00000000-0000-4000-8000-000000004821', (select id from public.payments where razorpay_payment_id = 'pay_48w1'), 'duplicate_charge', 'twice'),
+  ('00000000-0000-4000-8000-000000004822', (select id from public.payments where razorpay_payment_id = 'pay_48w2'), 'duplicate_charge', 'twice');
+
+-- the webhook's 'processed' arrives before rzp-refund recorded the Razorpay id
+begin;
+select t.service();
+select (public.begin_refund((select id from public.payments where razorpay_payment_id = 'pay_48w1'), null, 'duplicate charge',
+        '00000000-0000-4000-8000-000000004801', (select id from public.refund_requests where user_id = '00000000-0000-4000-8000-000000004821')) ->> 'refund_id') as wid \gset
+select public.record_refund(null, 'pay_48w1', 'rfnd_48w1', 'processed', (select amount_paise from public.payments where razorpay_payment_id = 'pay_48w1'));
+select t.reset();
+select t.ok((select status from public.refund_requests where user_id = '00000000-0000-4000-8000-000000004821') = 'refunded'
+        and (select status from public.payments where razorpay_payment_id = 'pay_48w1') = 'refunded',
+  '48.2 webhook first: the processed refund settles the open request on that payment as refunded');
+-- rzp-refund's own (late) 'pending' call must not walk it back to approved
+select t.service();
+select public.record_refund(:'wid'::uuid, 'pay_48w1', null, 'pending', null);
+select t.reset();
+select t.ok((select status from public.refund_requests where user_id = '00000000-0000-4000-8000-000000004821') = 'refunded',
+  '48.2 webhook first: a late pending call leaves the request refunded');
+rollback;
+
+-- finance cannot decline a request while a refund for its payment is in flight
+begin;
+select t.service();
+select public.begin_refund((select id from public.payments where razorpay_payment_id = 'pay_48w2'), null, 'duplicate charge',
+        '00000000-0000-4000-8000-000000004801', (select id from public.refund_requests where user_id = '00000000-0000-4000-8000-000000004822'));
+select t.claims('00000000-0000-4000-8000-000000004801');
+do $$ begin
+  perform public.admin_decide_refund_request((select id from public.refund_requests where user_id = '00000000-0000-4000-8000-000000004822'), 'declined', 'changed my mind');
+  raise exception 'should have refused';
+exception when sqlstate '22023' then raise notice 'ok - 48.2 declining while a refund is initiated -> 22023'; end $$;
+select t.service();
+select public.record_refund((select id from public.refunds where payment_id = (select id from public.payments where razorpay_payment_id = 'pay_48w2')),
+        'pay_48w2', 'rfnd_48w2', 'pending', null);
+select t.claims('00000000-0000-4000-8000-000000004801');
+do $$ begin
+  perform public.admin_decide_refund_request((select id from public.refund_requests where user_id = '00000000-0000-4000-8000-000000004822'), 'declined', 'changed my mind');
+  raise exception 'should have refused';
+exception when sqlstate '22023' then raise notice 'ok - 48.2 declining while a refund is pending -> 22023'; end $$;
+select t.service();
+select public.record_refund(null, 'pay_48w2', 'rfnd_48w2', 'failed', null, 'bank refused');
+select t.claims('00000000-0000-4000-8000-000000004801');
+select t.ok((public.admin_decide_refund_request((select id from public.refund_requests where user_id = '00000000-0000-4000-8000-000000004822'), 'declined', 'Outside the policy.')).status = 'declined',
+  '48.2 once the refund failed, finance may decline the request');
+select t.reset();
+rollback;

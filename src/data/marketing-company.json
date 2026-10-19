@@ -1,8 +1,8 @@
 {
   "_": "Copy for contact.html and about.html, rendered by scripts/make-marketing-pages.mjs (renderContact, renderAbout) inside the same header, footer and sign-up modal as the product pages. Nothing here names the product, the host or the support address: the generator stamps {{brand:...}}. NO PERSONAL NAME anywhere (brand.json 'seller' is empty by the owner's decision): the About page is signed by the team. Every claim is one already made in README.md, src/data/marketing-*.json or the legal pages. The Contact form sends nothing: it builds a mailto: link and the visitor's own mail app does the sending (src/pages/company.js).",
   "cta": {
-    "trial": "Start your free trial",
-    "trialOpen": "Open the studio",
+    "start": "Get started",
+    "startOpen": "Open the studio",
     "plans": "See plans"
   },
   "contact": {
@@ -37,9 +37,12 @@
         "email": "Enter your e-mail address.",
         "emailBad": "Enter an e-mail address like name@example.com.",
         "topic": "Choose a topic.",
-        "message": "Write a message of at least 10 characters."
+        "message": "Write a message of at least 10 characters.",
+        "messageLong": "This message is too long to hand to an e-mail app in one piece. Shorten it, or copy it into an e-mail to the address on this page."
       },
       "opened": "Your e-mail app should now be open with the message filled in. If nothing opened, write to the address on this page.",
+      "failed": "Your e-mail app could not be opened with this message. Copy it into an e-mail to the address on this page.",
+      "noscript": "This form needs JavaScript to open your e-mail app. Write to the address on this page instead.",
       "subjectPrefix": "Contact form"
     },
     "aside": {
@@ -69,7 +72,7 @@
       "h2": "Why it exists",
       "body": [
         "A film moves through many hands and many files before the first shoot day: a story, a screenplay, a breakdown, a schedule, a budget, a call sheet. We built one place where each of those reads the same scenes, so a change in the script reaches the plan.",
-        "It starts from how films here are made: dialogue in Tamil, Tanglish or English, a budget in rupees that starts from dated Chennai rates, and Indian festival and certification rules in the reference library."
+        "It starts from how films here are made: dialogue in Tamil, Tanglish or English, a budget in rupees that starts from dated Chennai rates, and a reference library of films, directors and the rules of the craft."
       ]
     },
     "who": {
@@ -79,10 +82,10 @@
     "does": {
       "h2": "What it does",
       "items": [
-        { "sym": "lightbulb", "title": "Story", "text": "Place your beats on one of eleven story structures, keep a story bible of characters, conflict, stakes, theme and world, and park ideas in the Idea Vault.", "page": "product-story.html", "link": "Explore story development" },
+        { "sym": "lightbulb", "title": "Story", "text": "Place your beats on one of eleven story structures and keep a story bible of characters, conflict, stakes, theme and world.", "page": "product-story.html", "link": "Explore story development" },
         { "sym": "edit_note", "title": "Screenplay", "text": "A screenplay writer for Tamil, Tanglish and English. The format sets itself as you type, drafts are numbered, and Fountain, Final Draft and PDF scripts can be brought in.", "page": "product-writing.html", "link": "Explore writing" },
         { "sym": "grid_view", "title": "Pre-production tools", "text": "Breakdown, shot list, storyboard, stripboard, budget, cast and crew, sides and call sheets, all read from one scene list.", "page": "product-breakdown.html", "link": "Explore pre-production" },
-        { "sym": "local_library", "title": "Library", "text": "Case studies, film terminology, directors, the rules of the craft, rates and festivals, to study while you work." }
+        { "sym": "local_library", "title": "Library", "text": "Films, director archetypes, rules of thumb, the craft books, equipment and rate tables, and a watch list, to study while you work." }
       ]
     },
     "principles": {
@@ -90,7 +93,7 @@
       "items": [
         { "sym": "storage", "title": "Your work is saved in your own browser first", "text": "Every keystroke is written to your device first. We do not claim ownership of anything you write here." },
         { "sym": "cloud_off", "title": "It works offline", "text": "The studio installs like an app and keeps working without a connection, on a film set included." },
-        { "sym": "backup", "title": "Sync is optional", "text": "Signing in with Google lets your films sync, and a backup to your own Google Drive is there if you switch it on." },
+        { "sym": "backup", "title": "Sync and backup when you want them", "text": "You enter the studio by signing in with Google. Syncing your films between devices comes with a studio membership, and a backup to your own Google Drive is there if you switch it on." },
         { "sym": "lock", "title": "Nothing you write is deleted", "text": "If a part of the studio is closed to your plan, what you wrote in it stays and reappears when your plan includes it. You can download all of your work at any time." },
         { "sym": "currency_rupee", "title": "One-time plans in rupees", "text": "A plan is bought with a single payment, in Indian rupees, and never renews. There is nothing to cancel." }
       ]

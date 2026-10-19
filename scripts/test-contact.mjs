@@ -28,9 +28,24 @@ const url = C.contactMailto({ to: ' support@example.in ', prefix: 'Contact form'
 ok(url.startsWith('mailto:support@example.in?subject='), 'the link is a mailto: to the trimmed support address: ' + url.slice(0, 50));
 const q = new URLSearchParams(url.slice(url.indexOf('?') + 1));
 eq(q.get('subject'), 'Contact form: Billing & refunds (Asha)', 'the subject carries the topic label and the name');
-ok(q.get('body').startsWith('Line one\nLine two & more?\r\n\r\n--\r\nAsha\r\nasha@example.com'), 'the body is the message, then the name and the reply address');
+ok(q.get('body').startsWith('Line one\r\nLine two & more?\r\n\r\n--\r\nAsha\r\nasha@example.com'), 'the body is the message, then the name and the reply address');
 ok(!/[ &?#]/.test(url.slice(url.indexOf('subject=') + 8).replace('&body=', '')), 'spaces, ampersands, question marks and hashes are percent-encoded');
 ok(!url.includes('+'), 'a space is %20, never + (mail apps do not decode + in mailto:)');
+
+
+/* typed line breaks are CRLF too (a textarea's value uses LF) */
+ok(!/(^|[^D])%0A/.test(url), 'every line break in the link is %0D%0A, the visitor\'s own included');
+ok(q.get('body').startsWith('Line one\r\nLine two'), 'a typed LF becomes CRLF in the body');
+/* a lone surrogate (pasted broken text) does not throw */
+let lone = '';
+try { lone = C.contactMailto({ to: 's@e.in', fields: { ...good, message: 'broken \uD83D text here' } }); } catch (e) { lone = ''; }
+ok(lone.includes('%EF%BF%BD'), 'a lone surrogate becomes U+FFFD instead of throwing URIError');
+/* the length limit */
+const link = { to: 'support@example.in', prefix: 'Contact form', topicLabel: 'Bug report' };
+eq(C.validateContact(good, TOPICS, link), {}, 'a short message fits in a mailto: link');
+eq(C.validateContact({ ...good, message: 'x'.repeat(1900) }, TOPICS, link), { message: 'messageLong' }, `a message whose link passes ${C.MAX_MAILTO} characters is refused`);
+eq(C.validateContact({ ...good, message: '\u0BA4'.repeat(230) }, TOPICS, link), { message: 'messageLong' }, 'a 230-character Tamil message passes the limit (about nine encoded bytes each)');
+eq(C.validateContact({ ...good, name: '', message: 'x'.repeat(1900) }, TOPICS, link), { name: 'name' }, 'the length is judged only once everything else is right');
 
 console.log(`\ntest:contact: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

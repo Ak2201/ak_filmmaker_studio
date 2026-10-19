@@ -38,6 +38,14 @@ function wireContact(form) {
   let tried = false;
 
   const values = () => Object.fromEntries(FIELDS.map((k) => [k, ctl(k) ? ctl(k).value : '']));
+  /* What the mailto: link is built from, so validateContact can refuse a
+     message too long to reach a mail app intact (MAX_MAILTO). */
+  const link = () => {
+    const toEl = document.getElementById('coEmail');
+    const opt = topicSel && topicSel.selectedOptions[0];
+    return { to: toEl ? toEl.textContent : '', prefix: form.dataset.subject, topicLabel: opt ? opt.textContent.trim() : '' };
+  };
+  const check = () => validateContact(values(), topics, link());
 
   function show(bad) {
     for (const k of FIELDS) {
@@ -59,7 +67,7 @@ function wireContact(form) {
      fixed field stops saying it is wrong without another press. */
   form.addEventListener('input', (e) => {
     if (!tried || !e.target || !FIELDS.includes(e.target.name)) return;
-    const bad = validateContact(values(), topics);
+    const bad = check();
     show(bad);
     if (!Object.keys(bad).length && summary) summary.hidden = true;
   });
@@ -68,7 +76,7 @@ function wireContact(form) {
     e.preventDefault();
     tried = true;
     if (status) status.textContent = '';
-    const bad = validateContact(values(), topics);
+    const bad = check();
     show(bad);
     const first = FIELDS.find((k) => bad[k]);
     if (first) {
@@ -81,10 +89,13 @@ function wireContact(form) {
       return;
     }
     if (summary) summary.hidden = true;
-    const toEl = document.getElementById('coEmail');
-    const to = toEl ? toEl.textContent : '';
-    const topicLabel = topicSel && topicSel.selectedOptions[0] ? topicSel.selectedOptions[0].textContent.trim() : '';
-    const url = contactMailto({ to, prefix: form.dataset.subject, topicLabel, fields: values() });
+    let url = '';
+    try { url = contactMailto({ ...link(), fields: values() }); } catch (err) { url = ''; }
+    if (!url) {
+      /* preventDefault has already run: never fail silently */
+      if (status) status.textContent = form.dataset.failed || '';
+      return;
+    }
     if (status) status.textContent = form.dataset.opened || '';
     window.location.href = url;
   });

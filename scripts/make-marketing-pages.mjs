@@ -744,13 +744,13 @@ export function validateCompany(company) {
   const w = (m) => bad.push('marketing-company.json: ' + m);
   if (!company) { w('was not loaded'); return bad; }
   const c = company.contact, a = company.about, cta = company.cta;
-  if (!cta || !cta.trial || !cta.plans || !cta.trialOpen) w('cta needs trial, trialOpen and plans');
+  if (!cta || !cta.start || !cta.plans || !cta.startOpen) w('cta needs start, startOpen and plans');
   if (!c || !c.meta || !c.hero || !c.form || !c.aside || !c.close) w('contact needs meta, hero, form, aside and close');
   else {
     const f = c.form;
-    for (const k of ['h2', 'name', 'email', 'topic', 'message', 'send', 'privacy', 'opened', 'subjectPrefix']) if (!f[k]) w('contact.form.' + k + ' missing');
+    for (const k of ['h2', 'name', 'email', 'topic', 'message', 'send', 'privacy', 'opened', 'failed', 'noscript', 'subjectPrefix']) if (!f[k]) w('contact.form.' + k + ' missing');
     if (!Array.isArray(f.topics) || f.topics.length !== 5 || f.topics.some((t) => !t.id || !t.label)) w('contact.form.topics must be five {id, label}');
-    for (const k of ['summary', 'name', 'email', 'emailBad', 'topic', 'message']) if (!f.errors || !f.errors[k]) w('contact.form.errors.' + k + ' missing');
+    for (const k of ['summary', 'name', 'email', 'emailBad', 'topic', 'message', 'messageLong']) if (!f.errors || !f.errors[k]) w('contact.form.errors.' + k + ' missing');
   }
   if (!a || !a.meta || !a.hero || !a.why || !a.who || !a.does || !a.principles || !a.sign || !a.close) w('about needs meta, hero, why, who, does, principles, sign and close');
   else {
@@ -796,14 +796,18 @@ function companyHead({ title, description, slug }) {
      src/pages/company.js adds marketing.js and the contact form's mailto. -->`;
 }
 
-/** The one call to action both company pages carry: the landing page's door, and the plans. */
+/** The one call to action both company pages carry: the same neutral "Get
+ *  started" door start.html and the product pages use (data-open-signup),
+ *  and the plans. Not "Start your free trial": live, purchases are off and
+ *  marketing.js drops every promise of a trial then, and a trial can also
+ *  be switched off; a neutral door is true in every state. */
 function companyCta(company, h2) {
   const cta = company.cta;
   return `<section class="mk-sec mk-band-c mk-mid co-cta" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
     <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.trialOpen)}">${esc(cta.trial)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
     </div>
   </div>
@@ -817,7 +821,7 @@ function companyHero(company, h1, sub) {
     <h1 class="mk-h1" id="mkH1">${esc(h1)}</h1>
     <p class="mk-sub">${esc(sub)}</p>
     <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.trialOpen)}">${esc(cta.trial)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
     </div>
   </div>
@@ -841,7 +845,8 @@ export function renderContact({ site, pages, company }) {
       <form class="co-form" id="coForm" method="dialog" novalidate aria-labelledby="coFormH"
             data-err-summary="${esc(f.errors.summary)}" data-err-name="${esc(f.errors.name)}" data-err-email="${esc(f.errors.email)}"
             data-err-email-bad="${esc(f.errors.emailBad)}" data-err-topic="${esc(f.errors.topic)}" data-err-message="${esc(f.errors.message)}"
-            data-opened="${esc(f.opened)}" data-subject="${esc(f.subjectPrefix)}">
+            data-err-message-long="${esc(f.errors.messageLong)}" data-opened="${esc(f.opened)}" data-failed="${esc(f.failed)}" data-subject="${esc(f.subjectPrefix)}">
+        <noscript><p class="co-summary">${esc(f.noscript)}</p></noscript>
         <p class="co-summary" id="coSummary" role="alert" tabindex="-1" hidden></p>
 ${field('name', f.name, `<input class="co-input" id="co-name" name="name" type="text" autocomplete="name" maxlength="120" required aria-describedby="${desc('name')}">`)}
 ${field('email', f.email, `<input class="co-input" id="co-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="200" required aria-describedby="${desc('email', f.emailHint)}">`, f.emailHint)}

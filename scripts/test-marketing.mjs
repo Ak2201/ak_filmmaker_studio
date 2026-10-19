@@ -302,7 +302,8 @@ for (const id of IDS) {
     for (const p of personal) ok(!html.includes(p), tag + 'no personal name');
     /* the call to action: the landing page's door, and the plans */
     const trial = [...html.matchAll(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
-    ok(trial.length >= 1 && trial.every((t) => t === inputs.company.cta.trial), tag + 'the primary CTA is "' + inputs.company.cta.trial + '" through the sign-up door (invite.html, data-open-signup), as on start.html');
+    ok(trial.length >= 1 && trial.every((t) => t === inputs.company.cta.start), tag + 'the primary CTA is "' + inputs.company.cta.start + '" through the sign-up door (invite.html, data-open-signup), as on start.html');
+    ok(!/free trial/i.test(inputs.company.cta.start), tag + 'the primary CTA promises no trial (purchases off drops that promise, and a trial can be switched off)');
     ok(new RegExp(`<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\\.html">${inputs.company.cta.plans}</a>`).test(html), tag + 'the secondary CTA "' + inputs.company.cta.plans + '" goes to pricing.html');
     ok(/data-open-signup/.test(files[HOME_FILE]) && /href="invite\.html" data-open-signup/.test(files[HOME_FILE]), tag + 'start.html\'s CTA is the same door');
     ok(/id="mkSignup"/.test(html), tag + 'carries the sign-up modal the CTA opens');

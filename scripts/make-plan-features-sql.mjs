@@ -4,7 +4,7 @@
    src/data/plan-matrix.json through src/lib/plan-matrix.js
    ------------------------------------------------------------
      node scripts/make-plan-features-sql.mjs           print §36
-     node scripts/make-plan-features-sql.mjs --write   put it in supabase-schema.sql
+     node scripts/make-plan-features-sql.mjs --write   put it in supabase/schema/supabase-schema.sql
      node scripts/make-plan-features-sql.mjs --check   exit 1 if the file differs
 
    The section is everything from its header line to the end of the
@@ -15,7 +15,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const ROOT = new URL('../', import.meta.url);
-const SCHEMA = new URL('supabase-schema.sql', ROOT);
+const SCHEMA = new URL('supabase/schema/supabase-schema.sql', ROOT);
 export const HEAD_MARK = '-- 36. PLAN FEATURES FROM THE MATRIX';
 export const END_MARK = '-- END OF SECTION 36 (generated)';
 
@@ -37,7 +37,7 @@ export async function generate() {
   L('-- ============================================================');
   /* The run marker lives HERE because the generator owns this section's
      text: `npm run test:plans` compares the file against this output, so
-     marking the section RUN LIVE in supabase-schema.sql alone makes the
+     marking the section RUN LIVE in supabase/schema/supabase-schema.sql alone makes the
      two disagree and fails the gate. (It did, on 12 Oct 2026.) When this
      section is re-run live, change the date here and regenerate. */
   L(HEAD_MARK + '   RUN LIVE 12 Oct 2026');
@@ -105,7 +105,7 @@ export async function generate() {
   return lines.join('\n') + '\n';
 }
 
-/** The §36 text currently in supabase-schema.sql, or null. */
+/** The §36 text currently in supabase/schema/supabase-schema.sql, or null. */
 export function current(text) {
   const at = text.indexOf(HEAD_MARK);
   if (at < 0) return null;
@@ -122,7 +122,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const cur = current(text);
   if (process.argv.includes('--check')) {
     if (!cur || cur.body !== want) {
-      console.error('✗ supabase-schema.sql §36 is not what scripts/make-plan-features-sql.mjs generates from plan-matrix.json — run it with --write');
+      console.error('✗ supabase/schema/supabase-schema.sql §36 is not what scripts/make-plan-features-sql.mjs generates from plan-matrix.json — run it with --write');
       process.exit(1);
     }
     console.log('✓ §36 matches plan-matrix.json');

@@ -1,5 +1,7 @@
 # Storage model — projects, accounts, and what syncs
 
+Last reviewed: 2026-10-19
+
 Where a user's work actually lives, and which of the three axes decides it.
 Read this with invariant 1 in `CLAUDE.md` open: every key string here is a
 contract with somebody's months of writing.
@@ -90,10 +92,10 @@ Like the AI key at `fms_ai_key_v1`, it goes through `rawGet`/`rawSet`/
 | registry | why not |
 | --- | --- |
 | `SCOPED_KEYS` (store.js) | must never be suffixed with a project id |
-| `PROJECT_KEYS` (hub.js) | it is not project data |
-| `ALL_KEYS` (hub.js) | "reset the studio" should not half-sign-you-out while Supabase still holds a session |
+| `PROJECT_KEYS` (`src/lib/backup.js`; it sat in hub.js when this was written) | it is not project data |
+| `ALL_KEYS` (`src/pages/hub/all-keys.js`) | "reset the studio" should not half-sign-you-out while Supabase still holds a session |
 | the Supabase scope list | it must never sync; it is per device |
-| `GLOBAL_KEYS` (hub.js) | **the one most easily missed** — it is what `export-all` walks, and an account id inside a backup file would make another machine claim to be somebody |
+| `GLOBAL_KEYS` (`src/lib/backup.js`) | **the one most easily missed** — it is what `export-all` walks, and an account id inside a backup file would make another machine claim to be somebody |
 
 ## Signing in does not move anything
 
@@ -115,24 +117,27 @@ does not erase the copy that was on the machine before that account existed.
 
 The rule from `CLAUDE.md` about the storage proxy scoping "studio-wide"
 operations to the open project now has a second edge: **anything built from
-`Store.listProjects()` is scoped to the open namespace.** Two callers in
-`src/pages/hub.js` are genuinely studio-wide and want `listAllProjects()`
-instead:
+`Store.listProjects()` is scoped to the open namespace.** Two operations are
+genuinely studio-wide and use `listAllProjects()` instead (when this was first
+written they sat in `src/pages/hub.js`; they have since moved):
 
-- `exportAll()` — a file that calls itself a full studio backup and holds one
-  namespace's films is the 2024 single-film "full backup" bug wearing a new
-  hat.
-- `resetAll()` — "this erases EVERYTHING" must not leave another namespace's
-  projects on disk, for the same reason it must not leave another project's.
+- the backup builder (`src/lib/backup.js`, formerly `exportAll()` in hub.js) — a
+  file that calls itself a full studio backup and holds one namespace's films
+  is the 2024 single-film "full backup" bug wearing a new hat. Drive sync
+  (`src/lib/drive-sync.js`) also reads `listAllProjects()`.
+- the reset (`src/lib/hub-reset.js`, formerly `resetAll()`) — "this erases
+  EVERYTHING" must not leave another namespace's projects on disk, for the
+  same reason it must not leave another project's. It erases through
+  `purgeProjectEverywhere()` and sweeps `currentPointerKeys()`.
 
-Both are outside this change's file ownership and are recorded here so the
-next person does not have to rediscover them.
+This was recorded here as an open item when the second dimension landed; it
+is done (`CLAUDE.md`, invariant 1, says so and names the scripted proofs).
 
 ## Not separated per account (deliberate, and stated plainly)
 
 | key | scope | why |
 | --- | --- | --- |
-| `fms_studio_prefs_v1`, `fms_studio_theme_v1`, `fms_studio_skin_v1` | device | appearance is a property of the screen you are at, not of an account |
+| `fms_studio_prefs_v1`, `fms_studio_theme_v1`, `fms_studio_skin_v1` | device | appearance is a property of the screen you are at, not of an account (the theme key is read but no longer written since the dark-only palette, 14 Oct 2026) |
 | `fms_supabase_cfg_v1` | device | it is what lets you sign in at all; scoping it per account would lock the door and post the key inside |
 | `fms_ai_key_v1`, `fms_ai_key_gemini_v1` | device | bring-your-own keys typed on this machine, one per provider; see the header of `src/lib/ai-providers.js`. Two keys rather than one renamed key: `fms_ai_key_v1` still means exactly what it meant when Anthropic was the only provider, so adding Gemini needed no migration |
 | `fms_ai_model_v1`, `fms_ai_model_gemini_v1`, `fms_ai_provider_v1` | device | which model, per provider, and which provider is active. A model id is only meaningful to the API it belongs to, so one shared model key would have meant switching provider carried a model the other side has never heard of |
@@ -141,9 +146,11 @@ next person does not have to rediscover them.
 
 ## What is NOT verified
 
-- **Nothing in this file has ever run against a live Supabase project.**
-  `supabase-schema.sql` has still never been applied to a database (see
-  `docs/SECURITY-RLS.md`), so the cloud half of the account story —
+- **The cloud half of this file has not been observed live.** The schema
+  (`supabase/schema/`, §1–§47) has since been applied to the project
+  (`docs/HANDOFF.md` §4 is the live-state record, and `docs/SECURITY-RLS.md`
+  records the one live RLS read-side proof), but no check has exercised the
+  account story end to end:
   `pullProjectList()` filing a pulled project into the right namespace, a
   claimed share landing in two namespaces, realtime writing to a blob whose
   project this namespace can see — is reasoned about, not observed.

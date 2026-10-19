@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: ../HANDOFF.md.
+
 # Where work stopped — resume here
 
 > **Superseded as the entry point by `docs/HANDOFF.md`** (8 Oct 2026), which
@@ -5,14 +7,14 @@
 > and is kept for its per-workstream notes.
 
 > **Pointer (7 Oct 2026):** all ten workstreams below have been merged into
-> ONE snapshot branch, `wip-all`, and documented in `docs/WIP.md` on that
-> branch. Read `docs/WIP.md` instead of the individual branches; the
+> ONE snapshot branch, `wip-all`, and documented in `docs/archive/WIP.md` on that
+> branch. Read `docs/archive/WIP.md` instead of the individual branches; the
 > originals are kept as `archive/*`. The text below is the earlier,
 > per-branch description.
 
 
 Written 7 Oct 2026 when the owner stopped every running agent. **Nothing
-in this file is on `main` except this file and `docs/FEATURE-IDEAS.md`.**
+in this file is on `main` except this file and `docs/archive/FEATURE-IDEAS.md`.**
 The feature work lives on `wip/*` branches on GitHub. They are backups of
 whatever existed at the moment of stopping — read the state column before
 trusting any of them.
@@ -36,7 +38,7 @@ brief" in each section) plus **the common rules** at the end of this file.
 Do the work on that branch, never directly on `main`.
 
 A wip branch is based on the `main` of the moment it started, so it will
-not contain `docs/FEATURE-IDEAS.md` and it will need `git merge
+not contain `docs/archive/FEATURE-IDEAS.md` and it will need `git merge
 origin/main` before the integration pass.
 
 ## State at a glance
@@ -231,7 +233,7 @@ switched OFF** (`public-view.js`, `public-view-model.js`, `prove-growth.mjs`).
 Left to do: delete the scratch file `scripts/scratch-tour-walk.mjs`; run
 `verify` (the tour must write nothing while idle), gated `prove:gate`
 (screening room), `prove:billing`; the SQL for public links must stay a
-PROPOSAL until a security review — do not put it into `supabase-schema.sql`.
+PROPOSAL until a security review — do not put it into `supabase/schema/supabase-schema.sql`.
 
 ## Queued — nobody has started these
 
@@ -258,7 +260,7 @@ PROPOSAL until a security review — do not put it into `supabase-schema.sql`.
 4. Re-baseline only with zero data-key movement on every page; recapture
    `scripts/budget.json` (`npm run verify -- --budget`) only if growth is
    justified and listed.
-5. Update statuses in `docs/FEATURE-IDEAS.md`, the table in `CLAUDE.md`,
+5. Update statuses in `docs/archive/FEATURE-IDEAS.md`, the table in `CLAUDE.md`,
    `docs/HISTORY.md` (item 19), `docs/LAUNCH.md` (new schema sections to
    run, in order), and prune `docs/KNOWN-ISSUES.md`.
 6. Merge to `main`; delete the `wip/*` branches.
@@ -278,7 +280,7 @@ an existing record, as On set and Schedule did, needs none of this.
 
 ### Schema sections
 
-`supabase-schema.sql` has run through §14 on the live project; §16–§20
+`supabase/schema/supabase-schema.sql` has run through §14 on the live project; §16–§20
 are written and tested but **not run live**; §21 (upgrade), §22
 (referrals) and §23 (affiliates) exist only on `wip/a1db0236c653737b2`.
 Next free number is §24. Only one agent may write schema sections at a

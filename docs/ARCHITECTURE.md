@@ -1,5 +1,7 @@
 # Architecture — the screen and the logic are separate
 
+Last reviewed: 2026-10-19 (checked: `test:layers` / `scripts/check-layers.mjs`, the four ports and their registering files, the `src/lib` models named below).
+
 > Owner's goal (15 Oct 2026): **plug and play** — the UI can be changed, or
 > replaced outright, without touching how a film's data is kept or how the
 > backend is reached. `npm run test:layers` (`scripts/check-layers.mjs`) holds

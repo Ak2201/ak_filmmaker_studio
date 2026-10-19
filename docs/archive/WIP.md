@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: ../HANDOFF.md (wip-all was merged).
+
 # WIP — every stopped workstream on one branch
 
 Read this file instead of the ten `archive/*` branches. It is meant to be
@@ -54,7 +56,7 @@ exists in `scripts/`; results are in §7.
 | 6 AI | whole-script coverage report **U**; logline workshop **U**; character voice check — code **U**, UI is in `coverage.js` (RESUME said "no UI"; the file now mentions voice 51 times) **U** | `src/lib/ai.js`, `src/ui/coverage.js`, `logline-workshop.js`, `src/pages/story.js`, `write.js`, `src/styles/coverage.css`, `scripts/fake-ai.mjs`, `prove-ai-coverage.mjs`, `test-ai-coverage.mjs` | none (results are in memory only) | none | `test-ai-coverage.mjs`, `prove-ai-coverage.mjs` (**no npm scripts**) | run `prove-ai-coverage` for both providers; confirm `ai.js` stays out of first paint; verify |
 | 7 Compliance | CBFC sensitivity flags **U**; dialogue list CSV/SRT skeleton **U**; song duration + target runtime **U**; OTT optional groups (Aha, Sun NXT, ZEE5 as user-filled) **U** | `src/lib/cbfc.js`, `src/data/cbfc-rules.json`, `dialogue-list.js`, `screenplay-analysis.js`, `songs.js`, `deliverables.js`, `src/data/deliverables.json`, `src/pages/deliverables.js`, `reports.js`, `src/styles/deliverables-tools.css`, `runtime.css` | target runtime inside the songs blob (`fms_songs_v1`), song `duration`; **new deliverable ids are storage keys** | none | `test:delivery`, `test:post`, `test:screenplay` | verify every CBFC/AWBI/OTT fact against its source; rating output must read as a hint; verify |
 | 8 Money | petty cash + floats **U**; budget vs actuals **U**; crew payments, advances, GST/TDS **U**; top sheet **U**; FEFSI wage table **U**; Movie-Magic-style CSV export **U** | `src/lib/costs.js`, `src/ui/budget-costs.js`, `budget.js`, `tabs.js`, `src/pages/budget.js`, `src/data/wages.fefsi.json`, `src/styles/budget.css` | **`fms_costs_v1`** | cloud scope CHECK still to add | `test:costs` | never exercised in a browser; walk each tab on the Dragon sample; confirm export/import round trip |
-| 9 Billing growth | §21 upgrade by difference **U**; §22 referral codes + credits ledger **U**; §23 affiliate codes + commission report **U**; GST invoices, gift licence, edu licence, lead capture, funnel counts **N** | `supabase-schema.sql`, `supabase/functions/rzp-order/index.ts`, `src/lib/growth.js`, `src/ui/growth-admin.js`, `growth-panels.js`, `plan-cards.js`, `billing-admin.js`, `src/pages/settings.js`, `admin.js`, `src/styles/growth.css`, `scripts/fake-supabase.mjs`, `prove-billing.mjs`, `scripts/schema-tests/{upgrade,referral,affiliate}.sql` | `fms_no_analytics_v1` planned, not built | §21, §22, §23 | `test:schema` | docs for §23; live checks; items §24 onward; update `fake-supabase.mjs` per RPC |
+| 9 Billing growth | §21 upgrade by difference **U**; §22 referral codes + credits ledger **U**; §23 affiliate codes + commission report **U**; GST invoices, gift licence, edu licence, lead capture, funnel counts **N** | `supabase/schema/supabase-schema.sql`, `supabase/functions/rzp-order/index.ts`, `src/lib/growth.js`, `src/ui/growth-admin.js`, `growth-panels.js`, `plan-cards.js`, `billing-admin.js`, `src/pages/settings.js`, `admin.js`, `src/styles/growth.css`, `scripts/fake-supabase.mjs`, `prove-billing.mjs`, `scripts/schema-tests/{upgrade,referral,affiliate}.sql` | `fms_no_analytics_v1` planned, not built | §21, §22, §23 | `test:schema` | docs for §23; live checks; items §24 onward; update `fake-supabase.mjs` per RPC |
 | 10 Growth UX | footer + "Made with" line **U**; onboarding tour + first-week checklist **U**; testimonials (ships EMPTY) **U**; WhatsApp support link **U**; public read-only share link **design only, OFF** | `src/ui/footer.js`, `tour.js`, `src/data/tour.json`, `testimonials.json`, `src/lib/public-view.js`, `public-view-model.js`, `pitch-deck.js`, `plan-gate.js`, `src/pages/screening.js`, `settings.js`, `start.html`, `src/styles/footer.css`, `tour.css`, `print.css`, `screening.css`, `start.css` | **`fms_tour_v1`** (device); `branding: 'off'` inside existing `fms_studio_prefs_v1` | public-link SQL is a proposal only | `test:testimonials`, `prove:growth` | tour must write nothing while idle; `prove:gate` for the screening room; `prove:billing` |
 
 ## 3. Per workstream
@@ -308,7 +310,7 @@ report; then (not started) GST invoices, gifts, edu licences, lead capture
 and funnel counts.
 
 **What exists.**
-- `supabase-schema.sql` §21 (upgrade), §22 (referral codes are promo codes + a credits ledger), §23 (affiliate codes, derived commission report). All headed "NOT YET RUN against conhlrulxfwkhsnymakz".
+- `supabase/schema/supabase-schema.sql` §21 (upgrade), §22 (referral codes are promo codes + a credits ledger), §23 (affiliate codes, derived commission report). All headed "NOT YET RUN against conhlrulxfwkhsnymakz".
 - `supabase/functions/rzp-order/index.ts` — returns `credit_paise`.
 - `src/lib/growth.js` — browser half; reads and asks, never computes money. Its header already names §24–§28 (GST invoices, gifts, edu seats, leads, funnel counts) which **do not exist in the schema** — it is a plan.
 - `src/ui/growth-admin.js`, `growth-panels.js`, `plan-cards.js`, `billing-admin.js`; `src/pages/settings.js`, `admin.js`; `src/styles/growth.css`.
@@ -343,7 +345,7 @@ a WhatsApp support link, and a design for a public read-only share link.
 - `src/ui/footer.js` — site footer (appended after `#app`), the "Made with" line on pitch deck PDF / screening room / printed call sheet; paid plans may switch it off (`branding: 'off'` inside `fms_studio_prefs_v1`; `plan-gate.js` rule: a missing `remove_branding` key is ALLOWED); WhatsApp help line from `VITE_SUPPORT_WHATSAPP` (digits).
 - `src/ui/tour.js`, `src/data/tour.json`, `src/styles/tour.css` — lazy chunk; `fms_tour_v1` holds only `{ v, active, step, dismissed, finished, hideList }`, written only on a click or key; the checklist ticks are derived from the film's models, never stored.
 - `src/data/testimonials.json` — **ships EMPTY on purpose**; adding one needs written consent and a verbatim quote; entries are copied by hand into start.html's `#voices`. `scripts/check-testimonials.mjs`.
-- `src/lib/public-view.js`, `public-view-model.js`, `src/pages/screening.js` (`#view=` only when `VITE_PUBLIC_VIEW=on`), `scripts/prove-growth.mjs` — a public link is a SNAPSHOT rendered in the owner's browser (pitch or call sheet), with `PRIVATE_KEYS` scrubbing; **no page offers a way to create one**; the server half is a proposal and is NOT in `supabase-schema.sql`.
+- `src/lib/public-view.js`, `public-view-model.js`, `src/pages/screening.js` (`#view=` only when `VITE_PUBLIC_VIEW=on`), `scripts/prove-growth.mjs` — a public link is a SNAPSHOT rendered in the owner's browser (pitch or call sheet), with `PRIVATE_KEYS` scrubbing; **no page offers a way to create one**; the server half is a proposal and is NOT in `supabase/schema/supabase-schema.sql`.
 - `src/lib/pitch-deck.js`, `plan-gate.js`, `src/styles/footer.css`, `print.css`, `screening.css`, `start.css`, `start.html`.
 - The scratch file `scripts/scratch-tour-walk.mjs` was removed in the merge.
 
@@ -377,7 +379,7 @@ and target minutes; `fms_studio_prefs_v1` `branding`.
 Also in the merged tree but not storage keys: `VITE_SUPPORT_WHATSAPP`
 (digits, country code) and `VITE_PUBLIC_VIEW=on` are build settings.
 
-## 5. Schema sections (`supabase-schema.sql`)
+## 5. Schema sections (`supabase/schema/supabase-schema.sql`)
 
 | § | What | Run live? | Tests |
 |---|---|---|---|
@@ -416,7 +418,7 @@ that do not exist.
 ### Discarded during merge
 
 - **Nothing was discarded.** No hunk was dropped on any file.
-- The rules said to ignore the branches' copies of `docs/FEATURE-IDEAS.md`, `docs/RESUME.md`, `scripts/baseline.json`, `scripts/budget.json`. None of the ten branches differed from `origin/main` on any of those four files after the merge-base diff, so there was nothing to discard (final diff vs `origin/main` for the four: empty).
+- The rules said to ignore the branches' copies of `docs/archive/FEATURE-IDEAS.md`, `docs/archive/RESUME.md`, `scripts/baseline.json`, `scripts/budget.json`. None of the ten branches differed from `origin/main` on any of those four files after the merge-base diff, so there was nothing to discard (final diff vs `origin/main` for the four: empty).
 - `CLAUDE.md` did not conflict, so nothing was discarded there; it carries merge 1's row-18 edit (see above).
 - Removed on purpose (`git rm`): `scripts/.dbg-growth.mjs` (billing growth, debug) and `scripts/scratch-tour-walk.mjs` (growth UX, scratch).
 - Dropped by RESOLUTION only: the duplicate `hub.js` `ALL_KEYS` line from each side was replaced by one line containing every key.
@@ -460,7 +462,7 @@ then each command above.
 1. `test-screenplay.mjs` stale assertion (above).
 2. `test:revisions`, `test:ai-coverage`, `prove:ai-coverage` have no `package.json` scripts.
 3. `src/lib/growth.js` describes §24–§28 that are not in the schema.
-4. `docs/RESUME.md` says the voice check has no UI; `coverage.js` appears to include it.
+4. `docs/archive/RESUME.md` says the voice check has no UI; `coverage.js` appears to include it.
 5. `INEFFECTIVE_DYNAMIC_IMPORT` warning on `backup.js` (check against `origin/main` whether it is new).
 
 ## 8. Integration checklist, ideas, decisions, limits
@@ -468,13 +470,13 @@ then each command above.
 > **Start at `docs/HANDOFF.md`.** Planned, not started: the emotional-craft layer →
 > `docs/WIP-EMOTION-PLAN.md` (built on top of this branch, Phase 0 first).
 
-### Checklist (updated from `docs/RESUME.md`)
+### Checklist (updated from `docs/archive/RESUME.md`)
 
 1. Fix the known problems in §7; work each workstream's resume brief in §3. `wip-all` carries all ten merged, so the per-branch merge step of the old list is done.
 2. **One schema section** (§24 or the next free number, written by a single agent) widening the Supabase scope CHECK for `fms_characters_v1` and `fms_costs_v1`; then move each out of `LOCAL_ONLY` into `SCOPE_BY_KEY` in `cloud.js` in the same commit. Billing's §24+ items (invoices, gifts, edu, leads, events) take the numbers after it — decide the order first.
 3. Full gate: every `test:*` (add the three missing npm scripts); `prove:storage`, `prove:drive`, `prove:sw`, `prove:extension`; gated `build` + `prove:gate` + `prove:billing` (+ `prove:growth`, `prove-ai-coverage`); `verify` on the open build. Read the failures; only deliberate copy changes are acceptable.
 4. Re-baseline only with zero data-key movement on every page; recapture `scripts/budget.json` (`npm run verify -- --budget`) only if growth is justified and listed. Neither file was touched on this branch.
-5. Update `docs/FEATURE-IDEAS.md` statuses, the `CLAUDE.md` table (new rows for the workstreams, new keys in the key notes), `docs/HISTORY.md` (item 19), `docs/LAUNCH.md` (schema sections to run, in order), prune `docs/KNOWN-ISSUES.md`.
+5. Update `docs/archive/FEATURE-IDEAS.md` statuses, the `CLAUDE.md` table (new rows for the workstreams, new keys in the key notes), `docs/HISTORY.md` (item 19), `docs/LAUNCH.md` (schema sections to run, in order), prune `docs/KNOWN-ISSUES.md`.
 6. Merge to `main`. Do not delete the `archive/*` branches without the owner.
 
 ### Queued ideas nobody started
@@ -521,7 +523,7 @@ export PW_CHROMIUM=/opt/pw-browsers/chromium
 Hand a workstream to a fresh agent with its resume brief from §3 plus the
 common rules below. Work on a branch off `wip-all`, never on `main`.
 
-### Common rules for every agent (from `docs/RESUME.md`)
+### Common rules for every agent (from `docs/archive/RESUME.md`)
 
 Read `CLAUDE.md` first. Storage keys are a contract; prefer a new field
 inside an existing record over a new key; no inline handlers (use

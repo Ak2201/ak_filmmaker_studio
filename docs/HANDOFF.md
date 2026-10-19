@@ -1,5 +1,57 @@
 # HANDOFF — read this first
 
+Last reviewed: 2026-10-19
+
+> **2026-10-19 (repo layout + where things stand) — read this before the older
+> dated notes below, which are a record and are NOT rewritten.**
+>
+> **Repo layout changed on 19 Oct (commits `853a23a`, `ee3a5db`, `16ddb04`):**
+> - **SQL lives in `supabase/schema/`**, not the repo root or `docs/sql`:
+>   `supabase-schema.sql` (§1–§39), `schema-40…47-*.sql`, and
+>   `patches/2026-10-10-billing_status.sql`. Run order and rules are in
+>   `supabase/schema/README.md`. Edge functions stay in `supabase/functions/`
+>   (`rzp-order`, `rzp-verify`, `rzp-webhook`, `rzp-refund`, `_shared`).
+>   Where an older paragraph below says "`supabase-schema.sql`" it means that file.
+> - **Superseded docs moved to `docs/archive/`:** `ADMIN-CONSOLE-PLAN`,
+>   `BLUEPRINT-REALIGN-PLAN`, `SCREENPLAY-WRITER-PLAN`, `RESUME`, `WIP`,
+>   `UX-AUDIT-2026-10-06`, `VIDEO-CANDIDATES`, `FEATURE-IDEAS`,
+>   `NEXT-STAGE-FLOW`, `COVERAGE`, `SPASEX-DESIGN-ANALYSIS`. Links below point there.
+>   `docs/HISTORY.md` stays the build log; `CLAUDE.md` is the invariants and the
+>   status table.
+> - **Branches, checked 19 Oct:** `origin/main` = `ff9668a` ("Release: launcher
+>   project home and the Celtx-structured public site"), which contains
+>   `origin/develop` (`be1b003`). The branch this review ran on
+>   (`claude/improvement-ideas-0gwjyx`) is three docs/layout commits ahead of
+>   `develop`. Check `git log` rather than quoting these.
+>
+> **What happened between this file's last dated note (13 Oct) and today**
+> (detail: `CLAUDE.md` rows 35–38 and `docs/HISTORY.md` items 48–51):
+> - **14 Oct** Swiss Precision kit (PR #18; one dark theme, violet, kit in
+>   `src/ui/kit/`, `docs/DESIGN-KIT.md`); the mobile + Breakdown/AI revamp
+>   (PR #21, `work/mobile-and-revamp`: Manual breakdown / Breakdown with AI,
+>   `breakdown-extras.js`, tasks `shot-basic`, `story-basic`, `scene-story`,
+>   `board-frames`; phone passes; `docs/PARITY-MATRIX.md`). Plan:
+>   `docs/NEXT-UI-REVAMP-PLAN-2026-10-14.md`.
+> - **15 Oct** "Layers": page logic moved into `src/lib` models (`npm run test:layers`).
+> - **17 Oct** Celtx-style simplification (15 modules `plans: []`, hidden by
+>   `isDisabledEverywhere()`); one frame per page (`homeStage()`, `prove:nav`);
+>   (18 Oct, item 50: project home is `dashboard.html` as the launcher).
+> - **18 Oct** the public site is generated (home, `pricing.html`, 11
+>   `product-<id>.html` from `src/data/marketing-*.json`, `npm run make:marketing`);
+>   plans moved off `start.html` onto `pricing.html`. Released to `main` as `ff9668a`.
+> - **Gate at that release:** `test:all` 0 failures; `verify` 26 pages, 0 data-keys
+>   lost; `prove:nav/script/stage-guide/story-path/ai-desk/tamil/sw/growth`,
+>   `prove:gate`, `prove:billing` pass; `prove:extension` 29/29; `prove:storage` and
+>   `prove:drive` fail only on the sandbox's `ERR_TUNNEL_CONNECTION_FAILED`,
+>   identically before the change (from the `ff9668a` commit message).
+> - **Still not run live / still the owner's** (unchanged by any of the above):
+>   Resend (`RESEND_API_KEY`, `MAIL_FROM`) before a real payment; a LIVE Razorpay
+>   key and a refund end to end; the two-account RLS checks; GSTIN; the §36
+>   re-run noted in `CLAUDE.md` row 36; storyboard images against a real Gemini
+>   key and a real Drive (`prove:board-frames` uses fakes only). The plan docs
+>   `RELEASE-PLAN.md` and `NEXT-IDEAS-PLAN.md` carry their own status banners.
+
+
 > **12 Oct 2026 (UI revamp) — branch `feature/ui-revamp`, merged to `develop` in one
 > change.** One top bar (switcher · Backup · Dark/Light · name) on every page; Settings as
 > a five-tab console; plans bought only on `purchase.html`; People "Delete totally"
@@ -127,7 +179,7 @@
 
 
 > **10 Oct 2026: the browser to-do list is `docs/BROWSER-HANDOFF.md` §0**
-> (re-run `billing_status()` from `docs/sql/2026-10-10-billing_status.sql`,
+> (re-run `billing_status()` from `supabase/schema/patches/2026-10-10-billing_status.sql`,
 > and the real-browser checks the container could not make). The code side
 > of the 9–10 Oct UI/UX releases is done and on `main` (`99ba52b`);
 > `docs/HISTORY.md` item 24 is the record.
@@ -234,7 +286,7 @@ studio for Tamil/Indian indie filmmakers (story → screenplay → breakdown →
 stripboard → call sheets → shoot day → edit log → deliverables), with
 Chennai rate cards, a festival tracker, bring-your-own-key AI (Anthropic and
 Gemini), Google Drive backup, optional Supabase sync, Razorpay billing
-(pay-once, full-time access: Free / Starter / Indie / Pro), promo codes, an
+(pay-once, full-time access: Basic / Intermediate / Pro on the ids starter / indie / pro; the free plan was retired by §38), promo codes, an
 invite-only site gate, a Chrome extension, and a public landing page
 `start.html`. The owner is selling it as a digital product. Read `CLAUDE.md`
 for invariants before changing anything.
@@ -273,12 +325,12 @@ nags about — their content is already merged, so do not commit them.
 
 | When | What | Commit |
 |---|---|---|
-| 7 Oct | **UX-audit Medium/Low pass** — 27 Medium + 30 of 31 Low fixed (focus handling, modal focus trap, validated backup import, filtered tab observer, rails `visibility:hidden`, budget fixes, print colours, etc.). `docs/UX-AUDIT-2026-10-06.md` is struck through item by item. | merge `a4d29ca` |
+| 7 Oct | **UX-audit Medium/Low pass** — 27 Medium + 30 of 31 Low fixed (focus handling, modal focus trap, validated backup import, filtered tab observer, rails `visibility:hidden`, budget fixes, print colours, etc.). `docs/archive/UX-AUDIT-2026-10-06.md` is struck through item by item. | merge `a4d29ca` |
 | 7 Oct | **Open-issues pass** — sign-in + Appearance on every page's band, stable palette handle, Case Studies in parts, one script slicer (`sliceScenes` = `sliceScript`, pinned by `test:import`), path-aware Story guide pill, wider AA walk (Story steps 3/4/6, Write Panel mode), hand-editable scene numbers for unbound scenes, print hides controls, deterministic `prove:gate`. `docs/KNOWN-ISSUES.md` reduced to recorded decisions. | merge `f09779f` |
 | 7 Oct | **Launch readiness** — public `start.html` (outside the gate, words in markup), OG/Twitter cards + `og.png`, `robots.txt`/`sitemap.xml`, **first-paint JS cut** (module pages ~29–47 % of before; `studio` chunk split into CORE + per-page; data JSON per file), **Supabase kept out of first paint**, 37 plain-English module descriptions, grouped Pre-Production launcher, three job cards on the hub, sample button first, lock panel names the plan that includes a module, `hub.js` split into `src/pages/hub/*`, **promo codes** (schema §20) and the **accounts INSERT hole closed** (§19), **stripboard drag-and-drop** with per-day order (inside `fms_locations_v1` as `order`), Story "ways in", Drive one-hour copy, and new gate checks: `prove:sw`, a fragment-target sweep (found two real bugs), a scripts-off no-flash probe, a first-paint byte budget (`scripts/budget.json`). | merge `5791a27` |
-| 7 Oct | **Docs**: `CLAUDE.md` slimmed (log moved to `docs/HISTORY.md`, status table kept), `docs/LAUNCH.md` (owner checklist), `docs/FEATURE-IDEAS.md` (~55 ideas, ranked), `docs/RESUME.md`. | `c858447`…`7c56c81` |
-| 7 Oct | **Four read-only research passes** (story/screenplay, pre-prod→post, growth/money, competitors/India market) → merged into `docs/FEATURE-IDEAS.md`. | `c507bb2` |
-| 7 Oct | **Nine feature agents + a leftovers agent started in parallel**, then **stopped by the owner mid-work**. Only *On set* finished. Snapshots pushed as `archive/*`, then merged into `wip-all` with `docs/WIP.md`. | `wip-all` `989fbf0` |
+| 7 Oct | **Docs**: `CLAUDE.md` slimmed (log moved to `docs/HISTORY.md`, status table kept), `docs/LAUNCH.md` (owner checklist), `docs/archive/FEATURE-IDEAS.md` (~55 ideas, ranked), `docs/archive/RESUME.md`. | `c858447`…`7c56c81` |
+| 7 Oct | **Four read-only research passes** (story/screenplay, pre-prod→post, growth/money, competitors/India market) → merged into `docs/archive/FEATURE-IDEAS.md`. | `c507bb2` |
+| 7 Oct | **Nine feature agents + a leftovers agent started in parallel**, then **stopped by the owner mid-work**. Only *On set* finished. Snapshots pushed as `archive/*`, then merged into `wip-all` with `docs/archive/WIP.md`. | `wip-all` `989fbf0` |
 | 8 Oct | **Emotional-craft layer** (idea from *Writing for Emotional Impact*) — explored by three agents, planned, decisions taken, **nothing built**. Saved as `docs/WIP-EMOTION-PLAN.md`. | `7fcff13` |
 | 8 Oct | **`develop` created** and the branch rule written (`docs/BRANCHING.md`). | `943b92b` |
 | 8 Oct | **Integration pass and release** by another session: all ten workstreams gated, schema §24 added for `fms_characters_v1` / `fms_costs_v1`, budget recaptured, re-baseline with zero data-key movement. | `ad7ab02` |
@@ -296,7 +348,7 @@ call sheet" on the Dragon sample + free templates for sign-ups; Meta ads =
 small retargeting budget to people who opened the sample, **no Meta Pixel
 inside the studio** (it needs a CSP change, a privacy-policy paragraph and
 contradicts "your work stays in your browser"; if ever wanted, put it on
-`start.html` only); positioning lines are in `docs/FEATURE-IDEAS.md`.
+`start.html` only); positioning lines are in `docs/archive/FEATURE-IDEAS.md`.
 
 **11 Oct 2026 — HISTORY item 31.** The screenplay space rebuilt the
 conventional way: `script.html` (writing only, beats beside it), `drafts.html`
@@ -505,7 +557,7 @@ later. The integration pass has HAPPENED: branch `wip-emotion` off
 Nothing is blocked by this — it is a one-line correction to make before
 Phase 0, not a redesign.
 
-**Historical branch names**, kept because `docs/WIP.md` and `docs/HISTORY.md`
+**Historical branch names**, kept because `docs/archive/WIP.md` and `docs/HISTORY.md`
 refer to them. They are MERGED; do not resume work on them:
 `archive/leftovers`, `archive/ac7bac5586116f143` (On set),
 `archive/a8500da1354391964` (Schedule), `archive/a40f499bfa0c512e8` (Writing),
@@ -727,7 +779,7 @@ live; §20–§23 written, tested and wired in the UI.
 
 | Lane | Takes | Touches (own these files) | Never run alongside |
 |---|---|---|---|
-| **1 Billing & growth** | B1–B7, P2 | `supabase-schema.sql`, `supabase/functions/*`, `src/lib/billing.js`, `growth.js`, `src/ui/plan-cards.js`, `billing-admin.js`, `growth-admin.js`, `src/pages/admin.js`, `settings.js`, `scripts/fake-supabase.mjs`, `scripts/schema-tests/*` | another schema writer (Q3 must ask lane 1 for its section number) |
+| **1 Billing & growth** | B1–B7, P2 | `supabase/schema/supabase-schema.sql`, `supabase/functions/*`, `src/lib/billing.js`, `growth.js`, `src/ui/plan-cards.js`, `billing-admin.js`, `growth-admin.js`, `src/pages/admin.js`, `settings.js`, `scripts/fake-supabase.mjs`, `scripts/schema-tests/*` | another schema writer (Q3 must ask lane 1 for its section number) |
 | **2 Production** | G1, G2, G5, G7 | `src/lib/dpr.js`, `locations.js`, `sun.js`, `callsheet-text.js`, `src/pages/shoot.js`, `contacts.js`, `plan.js`, `reports.js`, `stripboard.js`, `deliverables.js` | — |
 | **3 Quality** | T1–T4, T8–T10 | `scripts/*`, `package.json`, `.github/workflows/*` (new), `scripts/budget.json` | lane 4 while both recapture `budget.json` |
 | **4 Emotional craft** | E0–E5 | new files + one-line hooks in `story.js`, `scenes.js`, `library.js`, `ai.js`, `navigation.json`, `glossary.json`, `steps.stages.json` | lane 5 on `write.js` |
@@ -739,7 +791,7 @@ live; §20–§23 written, tested and wired in the UI.
 
 | Lane | Order | First action |
 |---|---|---|
-| **1 Billing & growth** | ~~1. **B6**~~ (done) → 2. **P2** with the owner/browser (turns on promo, upgrade, referral, affiliate — already built) → 3. **B1** GST invoices (§25) → 4. **B4** + **B5** (leads, funnel — small, one session) → 5. **B2**, **B3** → 6. **B7** only after a security review | B6 is done; start at P2. Before writing any SQL, read `supabase-schema.sql` §21–§23 and `docs/BILLING.md` §7 so §25 follows their conventions. |
+| **1 Billing & growth** | ~~1. **B6**~~ (done) → 2. **P2** with the owner/browser (turns on promo, upgrade, referral, affiliate — already built) → 3. **B1** GST invoices (§25) → 4. **B4** + **B5** (leads, funnel — small, one session) → 5. **B2**, **B3** → 6. **B7** only after a security review | B6 is done; start at P2. Before writing any SQL, read `supabase/schema/supabase-schema.sql` §21–§23 and `docs/BILLING.md` §7 so §25 follows their conventions. |
 | **2 Production** | 1. **G1** (after-sunset reads the DPR wrap) → 2. **G2** (recce fields on Plan) → 3. **G7** (dynamic imports, measurable) → 4. **G5** (only after checking the CBFC manual) | `src/pages/shoot.js:282`: take the later of the call-sheet `wrap` and the DPR's wrap for the day (`src/lib/dpr.js`), and add the case to `test:sun` / `test:stripboard`. |
 | **3 Quality** | ~~T8~~, ~~T4~~, ~~T2~~, ~~T1~~, ~~T10~~ all done. What is left is the two BROWSER ones: 1. **T9** (walk the revisions, coverage and costs UIs on the Dragon sample at 390 and 1280, both themes) → 2. **T3** (Tamil typing is only regex-read, never executed) | Open the Dragon sample in a browser and work through Write › Revisions, the AI coverage panel and each Budget cost tab, watching the console. |
 | **4 Emotional craft** | E0 → E1 (the first shippable slice) → E2 → E3 → E4 → E5 | `git worktree add .claude/worktrees/emotional-craft -b feature/emotional-craft origin/develop`, then Phase 0 of `docs/WIP-EMOTION-PLAN.md` (build, every `test:*`, uncapped `verify`; write `docs/WIP-EMOTION.md`). |
@@ -747,7 +799,7 @@ live; §20–§23 written, tested and wired in the UI.
 
 ### Old numbers → registry IDs
 
-Earlier text in this file and in `docs/WIP.md` / `docs/RESUME.md` uses the
+Earlier text in this file and in `docs/archive/WIP.md` / `docs/archive/RESUME.md` uses the
 session task numbers. Map: task **#9** → B1–B5 (+P2); **#10** public link → B7;
 **#11** weather → Q1; **#12** notes overview → Q2; **#13** goal sync → Q3;
 **#14** template packs → Q4; **#15** Tamil labels → Q5; **#16** integration →
@@ -843,15 +895,15 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
 | `docs/HANDOFF.md` | main, develop | **this file** — read first |
 | `docs/BRANCHING.md` | main, develop | **develop → main workflow and the release gate** |
 | `docs/WIP-EMOTION-PLAN.md` | main, develop | the emotional-craft plan (lane 4) |
-| `docs/WIP.md` | main, develop | per-workstream detail of the ten workstreams — now history, but it describes each feature's files |
-| `docs/RESUME.md` | main, develop | where each stopped workstream was (superseded; history) |
-| `docs/FEATURE-IDEAS.md` | main, develop | ~55 ranked ideas with statuses, market table, positioning |
+| `docs/archive/WIP.md` | main, develop | per-workstream detail of the ten workstreams — now history, but it describes each feature's files |
+| `docs/archive/RESUME.md` | main, develop | where each stopped workstream was (superseded; history) |
+| `docs/archive/FEATURE-IDEAS.md` | main, develop | ~55 ranked ideas with statuses, market table, positioning |
 | `docs/LAUNCH.md` | main, develop | owner checklist (current) |
 | `docs/RELEASE-PLAN.md` | sell/doc | release gates, T-14 to T+30 timeline, pricing offers, channels, funnel, support, risks |
 | `docs/BROWSER-HANDOFF.md` | main, develop | the launch steps a local Claude-in-Chrome session can do |
 | `docs/HISTORY.md` | main, develop | the long build log, items 1–20 |
 | `docs/KNOWN-ISSUES.md` | main, develop | recorded decisions, things seen once, release leftovers |
-| `docs/UX-AUDIT-2026-10-06.md` | main | audit, struck through |
+| `docs/archive/UX-AUDIT-2026-10-06.md` | main | audit, struck through |
 | `docs/BILLING.md`, `SECURITY-RLS.md`, `GATE.md`, `STORAGE-MODEL.md`, `EXTENSION.md`, `DEPLOY.md`, `LIVE-CHECKS.md` | main | subsystem docs |
 | `docs/GOOGLE-AUTH.md` | main | **STALE — do not follow it.** Flagged 8 Oct 2026. It is a generic setup runbook from before any of this existed: it names no real Google project (it tells you to CREATE one called `filmmakers-studio-auth`, when the live one is `filmstudio-495419`), lists three scopes and omits `drive.file`, points at the dead host `ak-filmmaker-studio.vercel.app`, describes the Supabase config as a per-browser `localStorage` key under the OLD `arunak_` prefix, and says "none of it is done yet" when the consent screen is published and in production. The live facts are in §4 of this file and `docs/LAUNCH.md` §2. Rewrite it or delete it; following it would undo working configuration. |
 

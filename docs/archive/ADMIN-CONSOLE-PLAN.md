@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: ../ADMIN-CONSOLE.md (sections 40-47 are built).
+
 # Admin console v2 — full plan (12 Oct 2026)
 
 Status: PLAN, nothing built. Owner asked for every idea in the analysis plus a
@@ -352,7 +354,7 @@ thread (credentials and decisions stay there).
 ## 10. Re-check after pulling develop (12 Oct 2026, `37e7ecc`)
 
 Pulled 15 commits past `b25b526`. Verified:
-- **Schema:** `supabase-schema.sql` unchanged; still ends at §39, so §40–§45 stand.
+- **Schema:** `supabase/schema/supabase-schema.sql` unchanged; still ends at §39, so §40–§45 stand.
 - **Admin code:** `admin.js`, `access-admin.js`, `growth-admin.js`, `admin.css`
   unchanged. `gate-ui.js` changed copy only (the code-box error text).
 - **Edge functions:** still four; no admin or digest function exists yet.

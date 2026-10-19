@@ -1,170 +1,309 @@
 # FilmMakerStudio
 
-> *A working desk for screenwriting, pre-production, and craft study.*
+> *A working desk for screenwriting, pre-production and craft study.*
 
-Four browser-based tools for filmmakers — three companion blueprints and a
-reference library. Your work stays in your browser unless you opt into sync.
+Last reviewed: 2026-10-19
 
-**[Open the Studio →](./index.html)**
+A local-first, browser-based studio for filmmakers: write the story, write and
+revise the screenplay, break it down into scenes and elements, schedule, budget,
+shoot, and deliver. About 50 HTML pages, one static build, no application server.
+Everything a user writes lives in their browser's `localStorage`; signing in with
+Google and a plan or trial adds optional Supabase sync on top.
 
----
+It is a **writing tool people keep months of work in**, so correctness of stored
+data beats every other consideration. Read [`CLAUDE.md`](CLAUDE.md) before
+changing anything.
 
-## What's inside
+## Who it is for
 
-### 📕 Feature Film Blueprint — `feature.html`
-Vols I & II · 24 steps from "what if?" to "ROLL CAMERA."
+Independent and first-time filmmakers, screenwriters and small crews, with a
+working knowledge of Tamil cinema in the reference material (Tanglish glosses,
+Chennai rate cards, Tamil-aware screenplay type). Rupee figures and Indian
+festival and certification rules are first-class.
 
-- **Vol I — Story** (12 steps): spark, logline, theme, protagonist, antagonist,
-  supporting cast, world, 15 beats, timeline, setups & payoffs, scene list, final check.
-- **Vol II — Pre-Production** (12 steps): script lock, director's vision, lookbook,
-  storyboard, cinematography, production design, costume, casting, locations, sound,
-  schedule/budget, tech recce.
-- **Treatment Ladder** — five rungs from logline to step outline.
-- **Auto Pitch Deck** — 10 slides built from your filled fields, exports as `.pptx`.
-- **HOD Sign-off Block** — countersignature checklist for every department head.
-- Tanglish glosses, formula boxes and Por Thozhil craft lessons throughout.
+## Feature map
 
-### 📘 Short Film Blueprint — `short.html`
-11 steps, with a structured script editor.
+Stages follow `src/data/navigation.json`, which is the information architecture.
 
-- **5-Beat Structure** — Setup → Disturbance → Escalation → Turn → Image, with an SVG visualiser.
-- **Scene Map** — 5–12 scenes with beat tagging and a pages estimate.
-- **Live Screenplay Editor** — slug, action, character, dialogue, parentheticals.
-- **Auto Page Counter** — 210 words/page industry standard, with a runtime estimate.
-- **Fountain Export** — `.fountain` opens in Final Draft, Highland, WriterDuet, Fade In.
-- **AI Prompt Generator** — builds a prompt from your blueprint data to paste into a model.
-- **Festival Strategy** — 18 festivals across 3 tiers, with deadlines and premiere rules.
+| Stage | Pages | What is there |
+| --- | --- | --- |
+| **Story** | `story.html`, `vault.html` | Beats and pacing, story bible (characters, conflict, stakes, theme, world), Idea Vault, pitch deck (`.pptx`) |
+| **Screenplay** | `screenplay.html`, `drafts.html` | Screenplay Writer (one type-change path, smart type, dictation, find, notes, revisions), numbered drafts, title page, screenplay import (text, `.docx`, PDF), Fountain and PDF export. `write.html` redirects here |
+| **Pre-production** | `preprod.html`, `breakdown.html`, `stripboard.html`, `plan.html`, `visualize.html`, `reports.html`, `contacts.html`, `budget.html` | Screenplay Analysis (screen time, cast matrix, auto-tag), Scene Breakdown and Elements, Scene List, Songs, Shot List, Storyboard, Lookbook, Locations and Shoot Calendar (schedule), Stripboard and Day Out of Days, Sides, Budget, Cast and Crew contacts, Production Reports. All are views of one scene model |
+| **Shoot** | `shoot.html`, `contacts.html#call-sheets` | Shoot Day (the one view that writes back to a scene: shot, part, dropped) and Call Sheets |
+| **Post-production** | `edit.html`, `deliverables.html` | Edit log (reads shoot marks, never writes them) and the deliverables checklist, with festival formats |
+| **Library** | `library.html` (`study.html` and `dissect.html` redirect) | Case studies, dissection, film terminology, directors, rules, rates, festivals |
+| **Dashboard** | `dashboard.html`, `index.html` | The hub (your films, where you left off) and the project dashboard (progress and readiness, derived) |
+| **Settings** | `settings.html` | Account, AI key on this device, Drive backup, appearance |
+| **Purchase** | `purchase.html`, `purchases.html` | Plans, checkout, invoices and refund requests; `purchases.html` is the admin side |
+| **Admin console** | `admin.html` | People, requests, purchases, growth, health, audit, usage, controls. Shown by `VITE_ADMIN_EMAILS`, guarded by RLS |
 
-### 📗 The Filmmaker's Library — `library.html`
-Reference companion · 5 sections.
+The two original blueprints (`feature.html`, `short.html`) are still shipped; their
+steps now also surface inside the stages above.
 
-- **22 films** analysed for one extractable craft lesson each.
-- **10 director archetypes** — Mani Ratnam, Vetrimaaran, Mysskin, Pa. Ranjith,
-  Selvaraghavan, Lokesh Kanagaraj, Karthik Subbaraj, Bala, Thiagarajan Kumararaja, Pushkar–Gayathri.
-- **50 craft rules of thumb**, attributed where the source is known.
-- **Equipment & Cost Estimator** — with a working calculator.
-- **72-film watch list** — three films per blueprint step, deep-linked to the matching step.
+Cross-cutting:
 
-### 🏛️ The Studio — `index.html`
-The hub: live progress per blueprint, a resume card, global search across every
-step / film / director / rule, the master index, an activity log, and
-cross-blueprint export / import / reset.
+- **AI Desk, bring your own key.** Anthropic or Gemini through one `callModel()`;
+  the key stays on the device, drafts are applied only on Accept. Plan-gated.
+- **Chrome extension.** The same pages in a side panel (`extension/`,
+  built by `npm run build:extension`). Details: [`docs/EXTENSION.md`](docs/EXTENSION.md).
+- **Screening room.** `screening.html` is a read-only room for a screening pass.
+- **Backup.** JSON export/import and optional Google Drive backup.
+- **PWA.** Installable, offline shell through a service worker.
 
----
+## The public site, plans, purchases switch and site gate
 
-## How it works
+**Public site.** `start.html` (the landing page), `pricing.html` and eleven
+`product-*.html` pages sit outside the site gate. The home, pricing and product
+pages are generated from `src/data/marketing-*.json` by `npm run make:marketing`.
+`privacy.html`, `terms.html` and `refund.html` keep their words in markup on purpose.
 
-- **Local-first.** Everything saves to your browser's `localStorage`.
-- **Installable.** It's a PWA — install it and it works offline.
-- **Cross-device** via Export → Import, or the optional Supabase sync.
-- **No tracking.** No analytics, no third-party scripts.
+**Plans.** Three paid tiers (Basic, Intermediate, Pro) generated from one matrix,
+`src/data/plan-matrix.json`, with a free trial offered first. Payments are
+Razorpay, through four Supabase edge functions. Caps are database triggers.
+See [`docs/BILLING.md`](docs/BILLING.md).
 
-> **The rates are dated.** The Chennai equipment and crew figures are from
-> **2024–25** and have not been revised. The Library shows that date next to
-> every table. Re-quote before you budget against them.
+**Purchases switch.** `purchase_required` is a database setting. Off (the current
+state per [`docs/HANDOFF.md`](docs/HANDOFF.md)) nothing is walled or capped and
+membership only decides whether work syncs; on, a plan or a running trial is needed.
 
-### Where your work lives
+**Site gate.** `src/lib/sitegate.js` hides every non-public page until it knows
+who is asking: signed out goes to `start.html`, any other refusal to `invite.html`
+(the offer page). It follows the purchases switch and fails closed when it cannot
+tell. `npm run build` has the gate on; `npm run build:open` turns it off and is
+the only build `npm run verify` accepts. [`docs/GATE.md`](docs/GATE.md).
 
-```
-arunak_studio_projects_v1           // the project list
-arunak_filmmaker_combined_v1__<id>  // feature blueprint, per project
-arunak_shortfilm_blueprint_v1__<id> // short blueprint, per project
-arunak_library_calc_v1__<id>        // equipment calculator
-arunak_studio_activity_v1__<id>     // activity log
-arunak_studio_theme_v1              // theme (global)
-```
+## Quick start
 
-The `arunak_` prefix is historical. It is the storage contract with anyone who
-already has work saved, so renaming it needs a migration — see *Roadmap*.
-
----
-
-## Development
+Needs **Node >= 22.12** (Vite 8). Older Node fails with
+`styleText is not exported from node:util`.
 
 ```bash
 npm install
-npm run dev       # vite dev server
-npm run build     # static output in dist/
-npm run preview   # serve the build
-npm run verify    # load every page in Chromium and check nothing was lost
+npm run dev          # Vite dev server on :5173, no service worker
+npm run build        # static output in dist/, site gate ON (what hosts run)
+npm run build:open   # same with the gate off; what verify needs
+npm run preview      # serve the build on :4173, exercises the real service worker
+npm run verify       # the page gate; run build:open first
 ```
 
-### Project layout
+Before every commit: `npm run build:open && npm run verify`.
+
+## Commands
+
+All defined in [`package.json`](package.json).
+
+### Dev and build
+
+| Command | Does |
+| --- | --- |
+| `dev`, `preview` | Dev server; serve the build |
+| `build`, `build:open` | Production build (gate on); gate-off build |
+| `build:verify` | Gate-off build into `dist-verify/` (read by `prove:growth`, `prove:ai-coverage`, `prove:nav`) |
+| `build:extension` | The Chrome extension into `dist-extension/` |
+| `extract` | Regenerate `src/data/*.json` from `legacy/` and self-check |
+| `icons`, `og` | PWA icons from tokens; `public/og.png` |
+
+### Verify and baseline
+
+| Command | Does |
+| --- | --- |
+| `verify` | Loads every page in Chromium and diffs against `scripts/baseline.json` (data-keys, words, handlers, overflow at 390px, contrast, skins, backup round trip). Refuses a gated `dist/` |
+| `verify -- --budget` | Recapture `scripts/budget.json` (first-paint bytes) |
+| `baseline` | Recapture `scripts/baseline.json`; deliberate, never a fix for a failing run |
+| `density` | Design-density report; measures, asserts nothing |
+| `smoke` | Smoke the production host |
+| `live-checks` | The RLS audit against a real database ([`docs/LIVE-CHECKS.md`](docs/LIVE-CHECKS.md)) |
+
+### `test:*` (Node, no browser unless noted)
+
+| Group | Commands |
+| --- | --- |
+| Static checks | `test:undef`, `test:layers`, `test:dialogs`, `test:brand`, `test:keys`, `test:links`, `test:pagefile`, `test:returnto`, `test:countdown`, `test:homestage`, `test:launcher-rows`, `test:marketing`, `test:testimonials`, `test:videos` |
+| Models | `test:story`, `test:bible`, `test:beats`, `test:pacing`, `test:screenplay`, `test:script-notes`, `test:drafts`, `test:import`, `test:pdf`, `test:format`, `test:journey`, `test:learn`, `test:stage-guide`, `test:blueprint-route`, `test:board-models`, `test:hub-models`, `test:write-models`, `test:feature-model`, `test:tanglish`, `test:samples`, `test:sync`, `test:backup-summary` |
+| Production modules | `test:breakdown`, `test:breakdown-extras`, `test:element-index`, `test:stripboard`, `test:shots`, `test:blocking`, `test:board-frames`, `test:sun`, `test:takes`, `test:ready-sheet`, `test:callsheet`, `test:costs`, `test:budget-kpis`, `test:impact`, `test:revisions`, `test:post`, `test:delivery`, `test:inference` |
+| Money and plans | `test:money`, `test:billing`, `test:invoice`, `test:plans`, `test:usage-names` |
+| AI | `test:ai-coverage`, `test:ai-phase2`; also `test:ai-desk` and `test:ai-lazy` (needs a gated build), which are not in `test:all` (`ship` and CI run `test:ai-lazy`) |
+| Database | `test:schema` loads the whole schema on a real PostgreSQL and runs `scripts/schema-tests/*.sql`; needs a local Postgres or `PGHOST` (setup in `CLAUDE.md`) |
+| Online | `test:videos:online` (not in `test:all`) |
+
+`test:undef` parses `src/` for an identifier used and never declared; it exists
+because the motion layer is invisible to every browser check (`navigator.webdriver`).
+
+### `prove:*` (Playwright, need a build)
+
+| Command | Proves |
+| --- | --- |
+| `prove:gate` | Invite gate, device lock, admin, screening room (gated build) |
+| `prove:billing` | A purchase end to end against a faked Razorpay |
+| `prove:storage`, `prove:drive`, `prove:cloud-delete` | Storage and sync, Drive backup against a faked Drive, total delete |
+| `prove:sw` | The service worker against a cleanUrls host |
+| `prove:extension` | The unpacked extension in Chromium (after `build:extension`) |
+| `prove:growth`, `prove:ai-coverage` | Landing-page weight and funnel; AI coverage (read `dist-verify/`) |
+| `prove:story-path`, `prove:dialogs`, `prove:script`, `prove:tamil`, `prove:walk`, `prove:adoption` | Story path per format, in-app dialogs, screenplay editor, Tamil type, a walk through the studio, adoption of no-project work (gate-off build) |
+| `prove:nav` | One frame per page whichever link opened it (`PROVE_DIST=dist-verify`) |
+| `prove:ai-desk`, `prove:stage-guide`, `prove:board-frames` | AI Desk, stage guide, board frames (run in CI or on demand) |
+
+### Make, record and asset
+
+`make:marketing` (generated public pages), `record:marketing`, `shots`,
+`thumbs`, `demo`.
+
+### `test:all` and `ship`
+
+- **`test:all`** chains every Node-only `test:*` check above (about 60, starting
+  with `test:undef` and `test:layers`) with no browser. CI runs it with a
+  PostgreSQL 16 service for `test:schema`.
+- **`ship`** is the full local release gate: `test:all`, `build:open`, `verify`,
+  the gate-off proofs, then a gated `build`, `test:ai-lazy`, `prove:gate`,
+  `prove:billing`, `prove:storage`, `prove:cloud-delete`, `prove:drive`,
+  `prove:sw`, `build:extension`, `prove:extension`, `build:verify`,
+  `prove:growth` and `prove:ai-coverage`. CI also runs `prove:nav` and
+  `prove:ai-desk`, which `ship` does not.
+
+## Architecture
+
+Short version; the long one is [`CLAUDE.md`](CLAUDE.md), with
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/STORAGE-MODEL.md`](docs/STORAGE-MODEL.md).
+
+- **Storage proxy and `fms_` keys.** `src/lib/store.js` patches `Storage.prototype`
+  to suffix keys per project (`fms_scenes_v1__<id>`); accounts are scoped by an `ns`
+  field on the project list. Every storage key and `data-key` is a contract with
+  saved work and is never renamed without a migration (`migratePrefix()` is the
+  pattern). `store.js` must evaluate before anything reads storage.
+- **One scene model.** Scene list, breakdown, stripboard, day out of days, call
+  sheet, budget and reports all read `src/lib/scenes.js`; only `shoot.html` writes back.
+- **Derived, not stored.** Readiness, the journey, counts, heatmaps and pacing
+  flags are computed at render time; one representation per thing.
+- **Two layers.** `src/lib/` holds models and logic with no DOM; `src/ui/` and
+  `src/pages/` draw. `npm run test:layers` enforces the split.
+- **Content in JSON.** Copy, steps, films, rules and navigation live in
+  `src/data/*.json`, not in markup.
+- **Skin and tokens.** Colours come from `src/styles/tokens.css`; shapes from
+  `--sk-*` variables set by the one skin in `src/styles/skins/`.
+- **One dark Swiss look.** Dark only; violet `#8B5CF6` is a mark, `--brand`
+  `#7C3AED` the text-bearing fill. Kit and token table: [`docs/DESIGN-KIT.md`](docs/DESIGN-KIT.md).
+- **Service worker.** `src/sw.js` (vite-plugin-pwa, `injectManifest`) precaches the
+  shell and must never answer a navigation with a redirected response; `prove:sw` checks it.
+- **No inline handlers.** A strict CSP ships in `vercel.json`; use `delegate()`
+  with `data-action`.
+
+## Directory tree
 
 ```
-├── index.html feature.html short.html library.html   # page entries
+.
+├── index.html feature.html short.html library.html     hub, two blueprints, reference library
+├── dashboard.html preprod.html story.html vault.html   project home, pre-production path, Story, Idea Vault
+├── screenplay.html drafts.html                         Screenplay Writer and numbered drafts
+├── breakdown.html stripboard.html plan.html            scene-derived views (plan = locations, calendar)
+├── visualize.html reports.html contacts.html budget.html
+├── shoot.html edit.html deliverables.html              shoot day, post-production
+├── screening.html                                      a screening pass's read-only room
+├── settings.html purchase.html purchases.html          account; plans; admin purchases
+├── admin.html invite.html                              console; the offer page a closed gate lands on
+├── start.html pricing.html product-*.html (11)         public site (GENERATED: make:marketing)
+├── privacy.html terms.html refund.html                 legal, words kept in markup
+├── write.html study.html dissect.html                  redirect stubs
+├── arunak-*.html (3), 404.html                         old-URL redirect stubs; not found
+├── kit.html                                            dev-only component showcase, not shipped
+├── arunak-portothozhil-sample.json                     legacy sample file at the root
+├── package.json vite.config.js                         scripts; build, chunks, PWA, brand stamping
+├── vercel.json netlify.toml                            host config, kept in step (headers, CSP, rewrites)
+├── .env                                                public VITE_* build settings (committed)
+├── CLAUDE.md                                           working notes and invariants: READ FIRST
 ├── src/
-│   ├── data/        # ALL content as JSON — the asset
-│   ├── lib/         # store, cloud, dom, pwa
-│   ├── ui/          # chrome, step renderer
-│   ├── styles/      # tokens + base + component sheets
-│   └── pages/       # one entry module per page
-├── scripts/extract/ # the parsers that produced src/data — re-runnable
-├── legacy/          # the original hand-written pages, kept for verification
-└── public/          # manifest, icons, service worker assets
+│   ├── data/      ALL content as JSON; navigation.json is the IA
+│   ├── lib/       models and logic, no DOM (store, cloud, scenes, plan-gate, sitegate, ...)
+│   ├── ui/        shared chrome and widgets (chrome, shell, tabs, dialog, palette, ...)
+│   │   ├── kit/             the Swiss component kit, one import path
+│   │   └── script-editor/   the screenplay editor core
+│   ├── pages/     one entry script per page (hub/ and admin-tabs/ hold parts)
+│   ├── styles/    tokens.css, base.css, one sheet per page; skins/ holds the one skin
+│   └── sw.js      service worker
+├── scripts/       verify, prove-*, test-*, make-* and fakes (see Commands)
+│   ├── extract/ lib/ fixtures/ schema-tests/ pdf-fixtures/ sample-darkknight/
+│   └── baseline.json budget.json                       what verify diffs against
+├── supabase/
+│   ├── functions/ rzp-order rzp-verify rzp-webhook rzp-refund, _shared/
+│   └── schema/    supabase-schema.sql (§1-§39), schema-40..47, patches/, README.md
+├── extension/     manifest template, background worker, side-panel entry
+├── public/        icons, manifest, og.png, robots.txt, sitemap.xml, marketing/, media/, shots/
+├── legacy/        the original hand-written pages: reference only, NEVER EDIT
+├── social/        captions, posters and post images
+├── docs/          handoff, plans, runbooks (docs/README.md is the index); archive/ for superseded
+├── .github/workflows/   gate.yml, smoke.yml
+└── .claude/       launch.json, settings, workflows/, worktrees/ (local tooling)
 ```
 
-**The content is the asset.** The 24 feature steps, 11 short steps, 22 films,
-10 directors, 50 rules, 72 watch-list entries, 18 festivals and every Tanglish
-gloss live in `src/data/*.json`. Pages render from it. Nothing is hand-written
-markup any more, so the step list cannot disagree with the jump menu, the
-search index, or the Markdown export — all four derive from the same file.
+## Environment variables
 
-`npm run extract` regenerates the JSON from `legacy/` and self-checks text
-coverage. `npm run verify` loads the built pages in a browser and asserts
-against the originals: every `data-key` present, no lost copy, no inline
-handlers, no runaway writes, no horizontal overflow on a phone.
+Vite inlines every `VITE_*` variable into the bundle, so they are public. A real
+secret never goes in them.
 
----
+| Where | Names | Notes |
+| --- | --- | --- |
+| `.env` (committed, public on purpose) | `VITE_GOOGLE_CLIENT_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ADMIN_EMAILS`, `VITE_RAZORPAY_KEY_ID` | The anon key is the legacy `eyJ...` JWT, not `sb_publishable_...` (supabase-js is pinned at 2.45.4). Admin e-mails decide what is shown, not what is allowed |
+| `VITE_SITE_GATE` | `off` only | Set by `build:open` / `build:verify`; unset means gate ON. Not set in `.env` on purpose |
+| `.env.local` (gitignored) and host settings | local secrets | Never committed |
+| Supabase function secrets (`supabase secrets set`) | Razorpay key secret and webhook secret, `RESEND_API_KEY`, `MAIL_FROM` | Read only by the edge functions. See [`docs/BILLING.md`](docs/BILLING.md) |
 
-## Keyboard shortcuts
+## Data and security
 
-| Shortcut       | Action                             |
-|----------------|------------------------------------|
-| `⌘ / Ctrl + K` | Focus the global search            |
-| `⌘ / Ctrl + D` | Cycle theme — paper / sepia / ink  |
-| `⌘ / Ctrl + S` | Save (in any blueprint)            |
-| `↑ ↓`          | Navigate search results            |
-| `Enter`        | Open the highlighted result        |
-| `Esc`          | Clear search                       |
+- **Local first.** Without signing in, nothing leaves the browser.
+- **Row-level security** guards every table; the client bundle is public and the
+  admin gate by e-mail is visibility, not a boundary. Audit: [`docs/SECURITY-RLS.md`](docs/SECURITY-RLS.md);
+  the live two-account checks are listed in `docs/HANDOFF.md` and [`docs/LIVE-CHECKS.md`](docs/LIVE-CHECKS.md).
+- **Edge functions** (`supabase/functions/`): `rzp-order`, `rzp-verify`,
+  `rzp-webhook` (`verify_jwt: false`, HMAC-checked), `rzp-refund`. Deploy with the
+  Supabase CLI, not the dashboard editor.
+- **Schema run order.** `supabase-schema.sql` (§1-§39), then `schema-40` to
+  `schema-47`; every file is re-runnable. Hash a file before pasting it, and run a
+  section before shipping a client that needs its scope. Full rules and the table:
+  [`supabase/schema/README.md`](supabase/schema/README.md). Which sections are live: `docs/HANDOFF.md`.
 
----
+## CI
 
-## Design system
+| Workflow | Runs | What |
+| --- | --- | --- |
+| **Gate** (`.github/workflows/gate.yml`) | PRs into `main` and `develop`; pushes to `develop` and `main`; manual | Three parallel jobs: `tests` (`test:all` with PostgreSQL 16), `verify` (`build:open`, `verify`, then `prove:adoption`, `prove:story-path`, `prove:dialogs`, `prove:script`, `prove:ai-desk`) and `proofs` (gated `build`, `test:ai-lazy`, gate/billing/storage/cloud-delete/drive/sw proofs, extension, `build:verify`, growth, ai-coverage, `prove:nav`) |
+| **Smoke** (`.github/workflows/smoke.yml`) | A successful Vercel production deployment; manual | Smokes the served site (`npm run smoke`), because the build gates cannot tell that the deployed bundle is the one just built |
 
-- **Type:** Fraunces (display & body), JetBrains Mono (labels & data), Courier Prime (screenplay).
-- **Colour:** one token set in `src/styles/tokens.css`. Each blueprint owns a hue —
-  feature red, shorts cobalt, library gold — applied through a single `--accent`.
-  Semantic colours are deliberately never a volume hue.
-- **Themes:** paper, sepia, ink. All three are token swaps; no component reads a raw hex.
-- **Print:** every blueprint has a PRINT mode, plus a zine layout and a pitch-deck-only mode.
+## Branching and release
 
----
+Develop on `develop` (or a `feature/*` branch cut from it); `main` receives only
+a `--no-ff` merge of `develop` that passed the release gate, a hotfix or a
+docs-only change. Never commit unfinished work to `main`.
+Full rules: [`docs/BRANCHING.md`](docs/BRANCHING.md).
 
-## Roadmap
+## Deployment
 
-Tracked in the revamp plan. Next up:
+A static build (`dist/`) on Vercel (`vercel.json`) or Netlify (`netlify.toml`),
+kept in step: cache headers, a strict CSP whose `connect-src` must name every
+provider origin, and clean-URL rewrites. Node 22 on the host. Production host and
+the off-repo steps: [`docs/DEPLOY.md`](docs/DEPLOY.md) and [`docs/LAUNCH.md`](docs/LAUNCH.md).
 
-1. **Rename the storage keys** off the `arunak_` prefix, with a migration — blocked on a product name.
-2. Close the chain: scene → shot → stripboard → day-out-of-days → call sheet.
-3. AI with your own key: in-place dialogue passes and beat critique, not copy-paste prompts.
-4. Script import (`.fountain`, `.fdx`) and a proper screenplay PDF.
-5. Finish the collaboration UI — the comments API is already written.
-6. Refresh the Chennai rates and turn the festival list into a submission tracker.
+## Documentation
 
----
+[`docs/README.md`](docs/README.md) is the index. Start with
+[`docs/HANDOFF.md`](docs/HANDOFF.md) (repo state, decisions, pending registry),
+then [`CLAUDE.md`](CLAUDE.md). Superseded documents are in [`docs/archive/`](docs/archive/).
 
-## Credits
+## Contributing
 
-Tamil cinema lessons drawn from the work of the directors
-profiled in the Library. Por Thozhil (2023, dir. Vignesh Raja) is referenced
-throughout as a craft case study.
+The short rules; the reasons are in [`CLAUDE.md`](CLAUDE.md).
 
-Tanglish glosses are conversational Tamil–English in Roman script — meant to feel
-like a friend explaining the idea on a chai break, not a textbook.
+1. Storage keys and `data-key` strings are never renamed without a migration.
+2. Content goes in `src/data/*.json`; derive lists, never hand-write them.
+3. Colours, sizes and shapes come from tokens and `--sk-*` variables; no raw colours.
+4. No inline handlers, no native `confirm`/`alert`/`prompt` (use `src/ui/dialog.js`).
+5. The product name lives only in `src/data/brand.json`.
+6. Never edit `legacy/`. Money parsing only through `src/lib/money.js`.
+7. Run `npm run build:open && npm run verify` before every commit, and the
+   `test:*` checks for what you touched.
 
-## License
+## Licence
 
-Personal-use, non-commercial. If you build something with it, share back.
-
-> *"A studio is not a building. It is the pattern of attention, decisions, and study a working filmmaker keeps."*
+Licence: see owner.
+<!-- TODO(owner): decide the licence. package.json declares "ISC", but a
+     previous README stated a different (personal-use) licence. Resolve and
+     keep package.json and this section in agreement. -->

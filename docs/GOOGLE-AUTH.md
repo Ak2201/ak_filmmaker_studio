@@ -1,8 +1,35 @@
 # Google sign-in and account-backed storage — setup runbook
 
+Last reviewed: 2026-10-19.
+
+> **STATUS (19 Oct 2026) — READ THIS BEFORE THE REST.** This file is a generic setup
+> runbook written before the project was configured. `docs/HANDOFF.md` §10 flagged it
+> STALE on 8 Oct 2026; this review corrects the facts and keeps the runbook as the recipe
+> for a FRESH project. For the live project, the sources are `docs/HANDOFF.md` §4 and
+> `docs/LAUNCH.md` §2 and §7a:
+>
+> - Google Cloud project **`filmstudio-495419`**, OAuth client **`filmstudio`** (not the
+>   `filmmakers-studio-auth` name suggested in step 1). Consent screen **In production,
+>   External**; verification not required; **branding verified 12 Oct 2026**.
+> - Sign-in has worked for real since before 8 Oct (a preview-host round trip passed
+>   10 Oct, `docs/BROWSER-HANDOFF.md` §0). Nothing below is "not done yet".
+> - Schema **§1–§47 have all run** on Supabase project `conhlrulxfwkhsnymakz`.
+> - Production host is **`filmmakerstudio.in`** (alias `thefilmmakerstudio.vercel.app`);
+>   the dev preview is `thefilmakerlocal.vercel.app`. The old `ak-filmmaker-studio.vercel.app`
+>   is dead and was removed from the authorised origins.
+> - The Supabase URL and anon key are a BUILD setting (`VITE_SUPABASE_URL` /
+>   `VITE_SUPABASE_ANON_KEY` in `.env`); `fms_supabase_cfg_v1` is only an override. Step 7
+>   below describes the older per-browser entry and the dead `arunak_` prefix.
+> - The sign-in asks for `drive.file` as well as e-mail (one OAuth client, one consent;
+>   `DRIVE_SCOPE` in `src/lib/auth-scope.js`). `drive.file` is non-sensitive, so no
+>   verification review is needed.
+> - Still open: the two-account RLS checks (`docs/LIVE-CHECKS.md`, `docs/SECURITY-RLS.md`).
+
+
 Everything in this file is console work: Google Cloud Console and the
-Supabase dashboard. None of it can be done from the repository, and none
-of it is done yet. The application code is finished and shipped; until
+Supabase dashboard. None of it can be done from the repository. (When this was
+written none of it was done; for the live project it is, see the status block above.)
+The application code is finished and shipped; on a fresh project, until
 somebody walks this document, clicking **CONTINUE WITH GOOGLE** will end
 at a Supabase error page reading `Unsupported provider: provider is not
 enabled`.
@@ -12,9 +39,11 @@ first attempt fails.
 
 ---
 
-## Blocker 1 — the schema has never been run
+## Blocker 1 — the schema has never been run (on a fresh project)
 
-`supabase-schema.sql` has **never been executed against the live
+*Live project: §1–§47 have run. This blocker applies to any NEW Supabase project, where
+the run order is `supabase/schema/supabase-schema.sql` (§1–§39) then
+`schema-40..47` (`supabase/schema/README.md`).* As first written: `supabase/schema/supabase-schema.sql` had **never been executed against the live
 project.** It is a file in this repository, not a state of the database.
 
 Until it is run there are no `projects`, `project_data`, `accounts`,
@@ -31,10 +60,11 @@ order is in [step 4](#4-run-the-schema).
 
 ## Blocker 2 — the Site URL points at a host that is not yours
 
-The project's Supabase **Site URL** currently points at
+*Live project: fixed — the Site URL and the redirect allow-list were set for both hosts
+and re-read after reload (`docs/LAUNCH.md` §7a item 4). Applies to any new project.* As first written, the project's Supabase **Site URL** pointed at
 `https://ak-filmmaker-studio.vercel.app` — a stale address from an
-earlier deploy. The comment at the top of `supabase-schema.sql` still
-records that value, which is where it came from.
+earlier deploy. The comment at the top of `supabase/schema/supabase-schema.sql` records it
+(as the old value, now), which is where it came from.
 
 Supabase uses the Site URL as the fallback redirect target whenever the
 `redirect_to` it is handed is not on the allow-list. So with this left
@@ -53,8 +83,8 @@ match something the code computes.
 
 - **The redirect target is the page the user was on.** `signInWithGoogle()`
   passes `location.origin + location.pathname` — so `/index.html`,
-  `/feature.html`, `/write.html` and the ten others are all valid return
-  addresses. The allow-list therefore needs a per-origin wildcard, not a
+  `/feature.html`, `/write.html` and the other pages are all valid return
+  addresses (production serves clean URLs, so the real value is `/settings`, `/` and so on). The allow-list therefore needs a per-origin wildcard, not a
   single URL.
 - **The flow is implicit, not PKCE.** The tokens come back in the URL
   *fragment* (`#access_token=…`), which is never transmitted to any
@@ -74,7 +104,7 @@ match something the code computes.
   `src/lib/cloud.js` under "COMING BACK FROM THE PROVIDER".
 - **The anon key is public by design.** It ships in the browser and that
   is fine — access is decided by the row-level policies in
-  `supabase-schema.sql`. **Never** put a `service_role` key anywhere near
+  `supabase/schema/supabase-schema.sql`. **Never** put a `service_role` key anywhere near
   this app; the sign-in dialog rejects one if you paste it, but that is a
   courtesy, not a security boundary.
 - **Local-first is still the contract.** Nothing below is required for
@@ -88,8 +118,8 @@ match something the code computes.
 1. Go to <https://console.cloud.google.com/>.
 2. Open the project picker in the top bar → **New Project** (or pick an
    existing one).
-3. Name it something you will recognise in two years —
-   `filmmakers-studio-auth` — and **Create**.
+3. Name it something you will recognise in two years — **the live project is
+   `filmstudio-495419`; do not create another for this app** — and **Create**.
 4. Make sure the picker now shows that project. Everything below is
    scoped to it, and configuring the wrong project is the single most
    common way to lose an hour here.
@@ -106,8 +136,9 @@ match something the code computes.
    - App name: `FilmMakerStudio` — this is the name the user sees
      on the Google consent sheet, so it should be the name they expect.
    - User support email: your address.
-   - App logo: optional. Uploading one triggers Google's brand review;
-     skip it unless you want that process.
+   - App logo: optional. Uploading one triggers Google's brand review; the live
+     project uploaded one (`public/icons/icon-consent-120.png`) and the branding
+     is verified.
 3. **App domain** (optional while testing, required to publish)
    - Application home page: your production URL.
    - Privacy policy and Terms of service links: required before Google
@@ -123,7 +154,10 @@ match something the code computes.
    `localhost` is not entered here; Google allows it implicitly.
 5. **Scopes** — click **Add or remove scopes** and select exactly these
    three non-sensitive scopes. Supabase needs no more, and anything more
-   drags you into Google's verification review:
+   drags you into Google's verification review. (The app ALSO requests
+   `drive.file` at sign-in for Drive backup. The live scope tables are left
+   empty on purpose, and `drive.file` is non-sensitive, so no review is
+   triggered; `docs/LAUNCH.md` §2. Do not register scopes there without reading it.)
    - `.../auth/userinfo.email`
    - `.../auth/userinfo.profile`
    - `openid`
@@ -132,7 +166,7 @@ match something the code computes.
    own address and anyone else trying it out. The app surfaces that error
    verbatim, so if a tester reports "Google sign-in did not complete: …
    has not been granted access", this list is why.
-7. **Publishing status** — leave it in Testing until the flow works
+7. **Publishing status** — the live project is already **In production**. On a new project, leave it in Testing until the flow works
    end-to-end, then **Publish app** when you want anyone with a Google
    account to sign in. With only the three scopes above, publishing does
    not require Google's verification review.
@@ -155,6 +189,11 @@ match something the code computes.
    https://<your-site>.netlify.app
    https://<your-custom-domain>   ← if you have one
    ```
+
+   The live client holds the localhost pair, `https://thefilmmakerstudio.vercel.app`,
+   `https://thefilmakerlocal.vercel.app` and `https://filmmakerstudio.in`
+   (`docs/LAUNCH.md` §7a, `docs/BROWSER-HANDOFF.md` §6). Production is on Vercel, not
+   Netlify; the `netlify.app` lines are generic.
 
 4. **Authorised redirect URIs** — this is the one people get wrong.
    It is **not** your site. The browser returns to *Supabase*, which then
@@ -185,8 +224,9 @@ match something the code computes.
 
 **Supabase dashboard → SQL Editor → New query.**
 
-1. Paste the whole of `supabase-schema.sql` — the entire file, top to
-   bottom, in one go. It is written to be applied in order: section 6
+1. Paste the whole of `supabase/schema/supabase-schema.sql` (§1–§39) — the entire file, top to
+   bottom, in one go — and then each `schema-40..47` file in order
+   (checksummed, `supabase/schema/README.md`). It is written to be applied in order: section 6
    deliberately redefines `has_project_access()`, `proj_select` and
    `proj_insert` over the versions defined earlier, and the last
    definition is the live one. Running it in pieces, or out of order,
@@ -206,7 +246,7 @@ match something the code computes.
    select relname, relrowsecurity from pg_class
     where relnamespace = 'public'::regnamespace and relkind = 'r' order by 1;
 
-   -- the scope allow-list must name all 14 keys
+   -- the scope allow-list must name every synced scope (24 in SCOPE_BY_KEY today)
    select pg_get_constraintdef(oid) from pg_constraint
     where conrelid = 'public.project_data'::regclass and contype = 'c';
 
@@ -215,11 +255,14 @@ match something the code computes.
     where pubname = 'supabase_realtime' and schemaname = 'public';
    ```
 
-   The scope constraint must list all fourteen:
+   The scope constraint must list every scope in `SCOPE_BY_KEY` (24 at this
+   review). It started as fourteen:
    `feature, short, library, feature_prefs, short_prefs, library_prefs,
    activity, scenes, contacts, shots, script, locations, workbench,
-   dissect`. These are the same fourteen as `SCOPED_KEYS` in
-   `src/lib/store.js` and `SCOPE_BY_KEY` in `src/lib/cloud.js`. All three
+   dissect`; later sections added festivals, scriptgen, songs, story, idea_vault, edit,
+   deliverables, characters, costs and write_goals. They must match
+   `SCOPED_KEYS` in
+   `src/lib/store.js` (minus the `LOCAL_ONLY` ones) and `SCOPE_BY_KEY` in `src/lib/cloud.js`. All three
    lists have to agree: a scope missing from the SQL constraint is
    rejected by Postgres on upsert, and a key missing from `SCOPE_BY_KEY`
    never leaves the browser at all. (`cloud.js` warns in the console at
@@ -243,7 +286,7 @@ provider, for the reason in [Blocker 2](#blocker-2--the-site-url-points-at-a-hos
 
 - **Redirect URLs** (Additional Redirect URLs) — the allow-list the
   `redirect_to` parameter is checked against. Because the app returns the
-  user to whichever of the thirteen pages they were on, use a wildcard
+  user to whichever page they were on, use a wildcard
   per origin:
 
   ```
@@ -274,9 +317,16 @@ provider, for the reason in [Blocker 2](#blocker-2--the-site-url-points-at-a-hos
 
 ## 7. Point the browser at the project
 
-The app does not read the Supabase URL from a build-time env var — it is
+> **OUTDATED (see the status block).** The Supabase URL and anon key are now a build
+> setting: `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `.env` (both public, RLS
+> guards the data), with `fms_supabase_cfg_v1` (formerly `arunak_supabase_cfg_v1`) read
+> only as an override. A build that carries them needs no per-browser step and no one has
+> to type a JWT into a modal. The per-browser flow below is what a build WITHOUT those
+> values shows.
+
+The app did not originally read the Supabase URL from a build-time env var — it was
 entered per browser and stored in `localStorage` under
-`arunak_supabase_cfg_v1`. This is what makes the repository deployable by
+`arunak_supabase_cfg_v1`. This is what made the repository deployable by
 anyone without secrets in it.
 
 1. Open the app, click the **SIGN IN** pill in the toolbar.
@@ -320,7 +370,7 @@ In order, because each step tells you something the next one assumes.
 
    Exercise each module you care about — a scene in Breakdown, a contact,
    a shot, a script page, a dissection — and you should see the matching
-   scope row appear. Fourteen scopes can appear in total; a project only
+   scope row appear. Up to 24 scopes can appear in total; a project only
    writes the ones it has used.
 5. **Cross-device continuity.** Sign in on a second browser. The project
    list and every scope should pull down. Edit in one and watch the other
@@ -378,14 +428,15 @@ It holds the last twelve displaced values, per browser.
   on the redirect URL, precisely so it does not end up in a server log or
   a `Referer` header.
 - **Audit RLS before you hand out share links to strangers.** The
-  policies in `supabase-schema.sql` have been reasoned about and the file
-  documents several fixed holes, but they have never been exercised
+  policies in `supabase/schema/supabase-schema.sql` have been reasoned about and the file
+  documents several fixed holes, but the read side is proven live
+  (`docs/SECURITY-RLS.md` LIVE CHECK 4) but they have never been exercised
   against a live project with more than one real user. That audit is open
-  item 5 in `CLAUDE.md`.
+  item 5 in `CLAUDE.md`; the runner is `docs/LIVE-CHECKS.md`.
 - **Google's branding.** The sign-in button here uses a single-colour
   glyph that inherits the theme, not Google's four-colour mark, because
-  four brand hexes would be the only unthemed thing in a five-skin,
-  four-theme palette. If you publish the app and Google's brand review
+  four brand hexes would be the only unthemed thing in the palette
+  (it was five skins and four themes when this was written; it is one skin, dark only, now). If you publish the app and Google's brand review
   asks for the official button, that is the place to change it —
   `GOOGLE_MARK` in `src/ui/auth.js` and `.cm-btn.google` in
   `src/styles/auth.css`.

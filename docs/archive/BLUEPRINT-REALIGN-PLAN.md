@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: shipped work; see ../HISTORY.md.
+
 # Blueprint and stages realignment — plan
 
 Status: BUILT, 6 Oct 2026. Revision 3 (see the end) is what shipped; CLAUDE.md open item 16 has the notes.
@@ -459,7 +461,7 @@ Later asks from the owner, all folded into this plan:
   A removed one takes its breakdown, shots, schedule and call-sheet rows
   with it, into a bin first and then deleted for good (§1d).
 
-The full rationale is in `docs/BLUEPRINT-REALIGN-PLAN.md`, revision 2,
+The full rationale is in `docs/archive/BLUEPRINT-REALIGN-PLAN.md`, revision 2,
 already pushed. Revision 3 adds this story path and is the first commit
 of the build.
 
@@ -934,7 +936,7 @@ the draft interlude's page count, and step 25 "Day 3 of 18".
   `#vol-2`, `#part-2`, `#phase-3`, `#phase-4`, `#scenes`, `#breakdown`,
   `#pitch` and `#vault`.
 - **Docs:**
-  - `docs/BLUEPRINT-REALIGN-PLAN.md` revision 3, marked BUILT at the
+  - `docs/archive/BLUEPRINT-REALIGN-PLAN.md` revision 3, marked BUILT at the
     end.
   - A CLAUDE.md open item 16.
   - KNOWN-ISSUES #2 pruned.

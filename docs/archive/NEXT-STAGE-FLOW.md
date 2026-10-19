@@ -1,3 +1,5 @@
+> **ARCHIVED 19 Oct 2026** - kept for history, not maintained. Superseded by / see: work completed; see ../HANDOFF.md.
+
 # Prompt: the remaining stage-flow work
 
 Hand the block below to a new session. It is written to be read cold —

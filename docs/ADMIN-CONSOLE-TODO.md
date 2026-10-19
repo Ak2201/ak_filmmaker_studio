@@ -1,7 +1,10 @@
 # Admin console v2 — what still needs fixing (13 Oct 2026)
 
-State: §40–§46 are LIVE on `conhlrulxfwkhsnymakz` (run 13 Oct 2026, each read back over
-PostgREST: new functions answer 42501, new tables refuse the anon key). The console code is on
+Last reviewed: 2026-10-19 (counts and paths re-checked; the 13 Oct owner/live items are unchanged unless marked)
+
+State: §40–§47 are LIVE on `conhlrulxfwkhsnymakz` (run 13 Oct 2026; §46 and §47 read back with `pg_get_functiondef`, the rest by
+PostgREST probe: new functions answer 42501, new tables refuse the anon key; §47 added to this
+line on 19 Oct — `docs/HANDOFF.md` records it live, and `docs/ADMIN-CONSOLE.md` has the run order). The console code is on
 `develop`. This file is the honest remainder — nothing here is hidden behind a green tick.
 IDs: **O** owner step, **L** live check, **D** decision, **C** code gap, **Q** quality gap, **H** housekeeping.
 
@@ -62,10 +65,13 @@ IDs: **O** owner step, **L** live check, **D** decision, **C** code gap, **Q** q
 - **C8. Admin first paint is 740 KB.** The admin row of `scripts/budget.json` was raised on purpose
   (596562 → 756932 measured). Lazy-loading the tab modules like `controls.js` does would claw back ~50 KB;
   `access-admin.js` imports `admin-customer.js` statically, so that import must be made lazy first.
-- **C9. Fold §40–§46 into `supabase-schema.sql`** (they are standalone files; the runner loads them
-  itself) and replace "NOT RUN LIVE" with "RUN LIVE 13 Oct 2026" in each header and in `CLAUDE.md`'s
-  "what is live" paragraph. Then drop the `STANDALONE` block in `scripts/test-schema.mjs`.
-- **C10. `prove-admin-health.mjs` and `prove-admin-people.mjs` are not in `package.json` / `test:all`.**
+- **C9. Fold §40–§47 into `supabase/schema/supabase-schema.sql`** (they are standalone files in
+  `supabase/schema/`; `scripts/test-schema.mjs` loads them itself). **Half done:** every file header now
+  reads "RUN LIVE 13 Oct 2026"; `supabase/schema/README.md` documents the run order. Still open:
+  the fold itself (`supabase-schema.sql` is still §1–§39), `CLAUDE.md`'s "what is live" paragraph (it
+  stops at §39 — CLAUDE.md is not edited from here), and dropping the `STANDALONE` block and
+  `audit-shim.sql` from `scripts/test-schema.mjs`.
+- **C10. `prove-admin-health.mjs` and `prove-admin-people.mjs` are not in `package.json` / `test:all`** (re-checked 19 Oct: still true; no `prove:admin-*` script exists).
   Add `prove:admin-health` and `prove:admin-people` (and a CI step).
 
 ## Q — quality gaps (never verified)
@@ -84,7 +90,7 @@ IDs: **O** owner step, **L** live check, **D** decision, **C** code gap, **Q** q
   starts the trial it carries") — flaky on a clean build too.
 
 ## H — housekeeping
-- **H1.** ~20 stale `worktree-agent-*` branches (local) and their worktrees under `.claude/worktrees/` —
+- **H1.** Stale `worktree-agent-*` branches (local) and their worktrees under `.claude/worktrees/` (19 Oct: 37 such local branches, 60 entries in `git worktree list`) —
   prune the ones not yours (`git worktree list`). GitHub branch deletion is blocked (403).
 - **H2.** Two Vercel projects watch the repo and the daily deployment cap has been hit once — batch pushes.
 - **H3.** `main` has none of this: merge only through the release gate in `docs/BRANCHING.md`.

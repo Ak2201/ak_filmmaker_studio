@@ -24,7 +24,7 @@
      RAZORPAY_KEY_SECRET       present. Without them the functions
      RAZORPAY_WEBHOOK_SECRET   deploy and answer 503 until they are set.
 
-   The SQL is SLICED FROM supabase-schema.sql rather than copied into
+   The SQL is SLICED FROM supabase/schema/supabase-schema.sql rather than copied into
    this file, so there is one text of each section. The slice is the
    two sections verbatim, including their CHECKS comments; it is
    idempotent (create if not exists / or replace / drop if exists), as
@@ -52,9 +52,9 @@ if (!REF) { console.error('✗ VITE_SUPABASE_URL in .env does not name a Supabas
 
 /* ---- the SQL: sections 16 and 17, sliced ------------------------- */
 function sliceSchema() {
-  const sql = fs.readFileSync(path.join(ROOT, 'supabase-schema.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase/schema/supabase-schema.sql'), 'utf8');
   const start = sql.search(/^-- 16\. BILLING/m);
-  if (start < 0) { console.error('✗ section 16 not found in supabase-schema.sql'); process.exit(2); }
+  if (start < 0) { console.error('✗ section 16 not found in supabase/schema/supabase-schema.sql'); process.exit(2); }
   // The separator line above the heading belongs to the section too.
   const from = sql.lastIndexOf('\n-- ====', start) + 1;
   return sql.slice(from);   // 16, 17 and 18 run to the end of the file

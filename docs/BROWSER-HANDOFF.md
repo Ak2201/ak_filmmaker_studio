@@ -6,6 +6,17 @@ Chrome, signed in as the owner) because the cloud container cannot reach
 Supabase, Google Cloud or Razorpay. **For a session running on the owner's
 computer with the Claude in Chrome extension connected.**
 
+Last reviewed: 2026-10-19.
+
+> **STATUS NOTE (19 Oct 2026).** This file is a dated record of 8–10 Oct browser work, kept
+> for its read-backs and traps. The current live state is `docs/HANDOFF.md` §4 and §6c:
+> schema §1–§47 have all run live (§20–§23 on 8 Oct, §26–§31 on 9 Oct, §32–§39 on 12 Oct,
+> §40–§47 on 13 Oct); all four edge functions are deployed; the Google branding is
+> verified (HANDOFF P6, 12 Oct); production is `filmmakerstudio.in`. Where a section below
+> says "not run" or "untested" it is describing that day. Still genuinely open: the
+> two-account RLS checks, a LIVE Razorpay key, a refund exercised end to end, and
+> `RESEND_API_KEY`/`MAIL_FROM`.
+
 Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
 
 ## Rules for the session doing this
@@ -19,12 +30,12 @@ Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
   host's dashboard (Vercel env vars, Supabase function secrets) or
   `.env.local` (gitignored). `VITE_RAZORPAY_KEY_ID` is public and may be
   committed in `.env`; the Razorpay SECRET and webhook secret never are.
-- **Ask the database, not the file.** The schema file's own headers say
-  §16, §17 and §18 ran on 6 Oct 2026; the handoff notes say §16–§20 did
-  not. Check before running anything.
+- **Ask the database, not the file.** The schema file's own `-- RUN` headers are
+  the record of what ran (as of 13 Oct every section through §47 is marked or
+  recorded live; `docs/HANDOFF.md` §4). Check before running anything.
 - Record each result (what ran, what the read-back said) in
   `docs/LAUNCH.md` and in the matching `-- RUN …` header of
-  `supabase-schema.sql`, commit on a `feature/launch-steps` branch off
+  `supabase/schema/supabase-schema.sql`, commit on a `feature/launch-steps` branch off
   `develop`, and promote per `docs/BRANCHING.md` (docs-only may go straight
   to `main`; then merge `main` into `develop`).
 
@@ -98,8 +109,9 @@ Read-backs:
 
 Every session until now reported this as "cannot run here". It can: the
 harness wants a local PostgreSQL 16 and macOS has one a `brew install`
-away. The whole of `supabase-schema.sql` loads on PostgreSQL 16.15 and
-every check file passes — **including `trial.sql` (57) and
+away. The whole of `supabase/schema/supabase-schema.sql` loads on PostgreSQL 16.15 and
+every check file passes (430 checks that day; `CLAUDE.md` now says 478) —
+**including `trial.sql` (57) and
 `currency.sql` (48), which had never been executed at all**; §30 and
 §31 had been static-parsed with `pglast` and shipped on that.
 
@@ -142,9 +154,9 @@ sets, not a hard-coded 30), and a buyer who pays during a full-scope trial
 keeps the plan they BOUGHT instead of the trial plan's features. Until it
 runs nothing breaks; both just behave the old way.
 
-- The exact statements are in **`docs/sql/2026-10-10-billing_status.sql`**
+- The exact statements are in **`supabase/schema/patches/2026-10-10-billing_status.sql`**
   (the last `create or replace function public.billing_status()` in
-  `supabase-schema.sql`, lines 7207–7284, plus its revoke/grant lines).
+  `supabase/schema/supabase-schema.sql`, lines 7207–7284, plus its revoke/grant lines).
   Nothing else in the schema changed. It depends only on §30 functions,
   which are live.
 - **SHA-256 of that file: `ddd159ab27093d9fc48d77c95b26de7d91af06c35c9db5540ec4510b7df5827d`.**
@@ -186,7 +198,7 @@ not trusted by the browser), so these were never seen live:
    `start.html` — pricing reads 1 column; `reports.html#dpr` — the
    breadcrumb reads "Studio › DPR".
 5. **Google sign-in round trip on `thefilmakerlocal.vercel.app`**
-   (still untested, see §6 below).
+   (PASSED 10 Oct, see RESULT 0.2 item 4 above).
 
 ### 0.4 Check the 65 explainer videos against YouTube (added 10 Oct)
 
@@ -248,7 +260,9 @@ back the saved values after a full reload, and record them here.
 
 ## 1. Supabase — run the missing schema sections (§16 → §24)
 
-**DONE IN PART, 8 Oct 2026.** Project ref `conhlrulxfwkhsnymakz`,
+**DONE, 8 Oct 2026 — §20–§23 ran later that same day** (`docs/HANDOFF.md` §4:
+"§1 to §24 are now ALL live"); the account below is what stood when §19 and §24
+were run. **DONE IN PART at the time of this entry, 8 Oct 2026.** Project ref `conhlrulxfwkhsnymakz`,
 dashboard → SQL editor, signed in as the owner.
 
 The read-back settled the disagreement this file flagged: **the schema
@@ -268,9 +282,9 @@ returned", then read back: tgtype **23** (INSERT and UPDATE both set),
 the scope CHECK **442** characters naming `'characters'`, `'costs'` and
 still `'edit'` and `'deliverables'`, and `project_data` / `projects`
 intact at 30 / 6 rows. Recorded in the `-- RUN` headers of both sections
-in `supabase-schema.sql` and in `docs/LAUNCH.md` §4.
+in `supabase/schema/supabase-schema.sql` and in `docs/LAUNCH.md` §4.
 
-**§20–§23 were deliberately NOT run.** Promo, upgrade-by-difference,
+**§20–§23 were deliberately NOT run at that point (they ran later on 8 Oct).** Promo, upgrade-by-difference,
 referral and affiliate do nothing until Razorpay is live, and §20 drops
 and recreates `create_pending_payment` and `admin_list_payments` — so it
 belongs in the same session as the `rzp-order` redeploy
@@ -374,9 +388,10 @@ Record pass/fail for each in `docs/SECURITY-RLS.md`.
 `docs/BILLING.md` §1 is the deploy order: secrets
 (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`) as
 Supabase function secrets; deploy `rzp-order`, `rzp-verify`, `rzp-webhook`
-(`--no-verify-jwt`); register the webhook; set `VITE_RAZORPAY_KEY_ID`;
-set real prices in the admin console (`admin.html#billing`) — the seeded
-prices are placeholders. One test-mode purchase end to end, one refund.
+(`--no-verify-jwt`) and `rzp-refund` (§27; deployed 12 Oct); register the webhook; set
+`VITE_RAZORPAY_KEY_ID`; set real prices in the admin console (`admin.html#billing`).
+Done as of 8 Oct: all of that in TEST mode, with real prices and one test purchase
+end to end. Still owed: a LIVE key, one refund exercised end to end, and Resend.
 
 ## 5. Things only the owner can supply (ask, do not invent)
 
@@ -436,7 +451,7 @@ the webhook points at Supabase.
   so `VITE_DISABLE_SW=1` did what it was set for and this preview will
   not outlive itself in anybody's cache.
 
-**NOT tested: an actual Google sign-in round trip on the new origin.**
+**At the time of this entry, NOT tested: an actual Google sign-in round trip on the new origin (it PASSED on 10 Oct, RESULT 0.2 item 4 above).**
 The configuration is in place and verified, but nobody has signed in
 through `thefilmakerlocal.vercel.app` yet. Google warns an origin change
 can take five minutes to a few hours to take effect, so a first attempt

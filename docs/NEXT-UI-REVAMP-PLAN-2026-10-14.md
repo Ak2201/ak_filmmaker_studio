@@ -1,7 +1,21 @@
 # NEXT UI REVAMP PLAN — 14 October 2026
 
-> Status: PLAN ONLY. Nothing here is built. Decisions below were made by the owner on 14 Oct 2026.
-> Work happens on a new branch cut from `develop`, not on `develop` itself.
+Last reviewed: 2026-10-19
+
+> **Status, 19 Oct 2026: BUILT (phases 1 to 4), merged via PR #21 (`work/mobile-and-revamp`) and released to `main`.
+> Verified in the repo: `src/lib/breakdown-extras.js`, `src/lib/local-tasks.js` (non-AI tasks `shot-basic` and
+> `story-basic`), `draftSceneStory()` in `src/lib/ai.js`, task `scene-story` and task `board-frames` in
+> `src/lib/ai-tasks.js`, `src/ui/breakdown-flow.js` (Manual breakdown / Breakdown with AI), the two buttons in
+> `src/ui/breakdown-overview.js` and `script-overview.js`, `src/lib/board-frames.js`, `src/lib/drive-board.js`,
+> `src/ui/drive-image.js`, and the scripts `test:breakdown-extras`, `test:board-frames`, `prove:board-frames`.
+> Phase 5 (verify): the node tests and gates are in `test:all`; the manual runs with a real key were not done.
+> **Still open:** one real run of storyboard images end to end with a real Gemini key and a real Drive
+> (`gemini-2.5-flash-image` is unverified against a real key; the proof uses fakes); a first real-provider run of
+> the AI path.**
+> The section "Already in the working tree" below was never true of the repo: those pieces were written fresh in
+> the build (see `docs/HANDOFF-MOBILE-AND-REVAMP-2026-10-14.md` section 4). Original status line, kept:
+> "PLAN ONLY. Nothing here is built. Decisions below were made by the owner on 14 Oct 2026. Work happens on a new
+> branch cut from `develop`, not on `develop` itself."
 
 
 ## Context

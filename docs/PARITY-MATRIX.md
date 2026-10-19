@@ -1,5 +1,20 @@
 # Parity matrix: mobile and desktop prototypes against the app
 
+Last reviewed: 2026-10-19
+
+> **Status, 19 Oct 2026: the work this matrix drove is BUILT and merged** (PR #21; the closing section "Closed 14 Oct 2026"
+> lists what was done and the owner's bin-c decisions). Rows are the 14 Oct audit and are not re-audited; where a later change
+> overtook a row, it is noted here rather than edited:
+> - **Public rows (hero, sample cards, pricing; rows in the "public" table) are superseded.** `start.html`, `pricing.html` and the
+>   11 product pages are now GENERATED from `src/data/marketing-*.json` (18 Oct, `docs/HISTORY.md` item 51); the Dark Knight
+>   sample the row doubts DOES ship (`src/data/sample.darkknight.json`). Do not act on those rows.
+> - **Breakdown row "category count chips" is built** (`bd-sl` rows print per-category counts in `src/pages/breakdown.js`).
+>   The Breakdown scene list was later rebuilt as a catalog panel plus filter deck (17 Oct), so the other open Breakdown a/b rows
+>   (header lock badge, scene card layout, bin/bulk reachable on phone) were not re-checked and stay open until someone looks.
+> - Page frames, the shell and the launcher changed after the audit (17 to 18 Oct); the "app web / app phone" columns describe
+>   the 14 Oct app.
+> - The summary counts below (272 rows; 25 a, 45 b, 55 c) are the audit's totals, not what is open now.
+
 > Generated 14 Oct 2026 by the audit stage of the mobile-and-revamp workflow (`docs/PROMPT-FOR-NEXT-PERSON.md`, stage 1).
 > Source: the audit JSON for this stage. Stitch sets: desktop `stitch_film_making`, mobile-1 `m1`, mobile-2 `m2`.
 > Column meanings: **mobile proto** / **desktop proto** = the feature appears on that prototype screen;

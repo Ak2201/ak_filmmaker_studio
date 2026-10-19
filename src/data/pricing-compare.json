@@ -54,7 +54,7 @@
   "groups": [
     { "id": "basics",  "label": "Account basics",       "keys": ["new_projects", "exports", "drive_backup", "extension"] },
     { "id": "writing", "label": "Writing",              "keys": ["screenplay", "revisions", "docs", "script_import", "import-script"] },
-    { "id": "story",   "label": "Story development",    "keys": ["story-beats", "storyboard"] },
+    { "id": "story",   "label": "Story development",    "keys": ["story-beats", "idea-vault", "storyboard"] },
     { "id": "prep",    "label": "Pre-production",       "keys": ["scene-list", "breakdowns", "elements", "auto-tag", "screen-time", "cast-matrix", "shot-list", "stripboard", "calendar", "locations", "dood", "contacts", "sides"] },
     { "id": "prod",    "label": "Production",           "keys": ["budget", "reports", "call-sheets", "shoot-day"] },
     { "id": "post",    "label": "Post-production",      "keys": ["edit-log", "deliverables"] },

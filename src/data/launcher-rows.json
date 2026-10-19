@@ -2,7 +2,7 @@
   "_about": "The project home's five rows. A row is a stage-of-work as a filmmaker reads it, not one of the app's five stages: modules are placed by id and resolved through navmodel.moduleGroups(). `hue` is an existing class in tokens.css (hue-library/feature/visualize/plan/shoot) - never invent one. `sym` is a Material Symbol and must be listed in section-icons.json icons. scripts/test-launcher-rows.mjs fails a live built module that is in no row.",
   "rows": [
     { "id": "write", "label": "Write", "hue": "hue-library", "sym": "edit_note",
-      "modules": ["story-beats", "screenplay", "revisions", "docs", "import-script"] },
+      "modules": ["story-beats", "idea-vault", "screenplay", "revisions", "docs", "import-script"] },
     { "id": "breakdown", "label": "Breakdown", "hue": "hue-feature", "sym": "fact_check",
       "modules": ["breakdowns", "scene-list", "elements", "auto-tag", "screen-time", "cast-matrix", "sides", "reports"] },
     { "id": "visualize", "label": "Visualize", "hue": "hue-visualize", "sym": "view_carousel",

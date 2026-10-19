@@ -134,7 +134,12 @@
     {
       "key": "idea-vault",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "pitch-deck",

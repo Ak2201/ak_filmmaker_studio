@@ -2290,3 +2290,11 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     without a per-element merge they would promise co-editing that does not
     exist.
 
+    **Idea Vault back on Basic and up** (owner, same day), so the Chrome
+    clipper's clips land somewhere visible again. Matrix, `OFF_BY_DEFAULT`,
+    the `write` launcher row, the `story` pricing group and §36 regenerated;
+    `prove:extension` lost the style override that looked past the "Not
+    available" panel and now asserts there is none. The clipper itself is
+    still `limits.extension` (Intermediate and up), so Basic has the page and
+    not the clipper. Re-baselined: vault lost only the panel's words.
+

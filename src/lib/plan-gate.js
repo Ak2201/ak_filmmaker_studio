@@ -119,7 +119,7 @@ export function allowed(key) {
    module is CORE). A module on this list is not an upsell: no plan sells
    it, so nothing offers a PLAN flag or a SEE PLANS card - it is simply
    not there (isDisabledEverywhere, below). */
-export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'idea-vault', 'pitch-deck', 'script-breakdown', 'songs', 'lookbook', 'media'];
+export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'pitch-deck', 'script-breakdown', 'songs', 'lookbook', 'media'];
 /* Ids the plan rows showed NO plan above this one offers - an admin kill
    switch on a module the plans otherwise carry. Filled by loadFlagNames. */
 let offersNone = new Set();
@@ -146,7 +146,8 @@ export function isDisabledEverywhere(id) {
      flyouts. A module comes back by giving it a plan in the matrix -
      which is how six came back on 19 Oct 2026 (owner, after the Celtx
      comparison): auto-tag, screen-time and cast-matrix on Intermediate,
-     shoot-day, edit-log and deliverables on Pro. */
+     shoot-day, edit-log and deliverables on Pro — and idea-vault on Basic
+     and up the same day, so the Chrome clipper's clips have a home. */
   if (OFF_BY_DEFAULT.includes(id)) return true;
   if (!features) return false;
   if (purchaseReq === false) return features[id] === false;

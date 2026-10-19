@@ -124,6 +124,25 @@
 }
 .legal-key p:last-child { margin-bottom: 0; }
 
+/* "What changed" — the short list of edits since the last version, read
+   once by a returning reader and skipped by everyone else. Quieter than
+   .legal-key (no accent bar): it is a note about the document, not the
+   document's main promise. Fixed tokens only, like everything here. */
+.legal-changes {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: var(--s4);
+  margin: 0 0 var(--s5);
+}
+.legal-changes h2 {
+  font-size: var(--t-base);
+  margin: 0 0 var(--s2);
+}
+.legal-changes ul { margin-bottom: 0; }
+.legal-changes li { font-size: var(--t-small); }
+.legal-changes li:last-child { margin-bottom: 0; }
+
 /* A detail the OWNER has still to supply — the seller's legal name, a
    GSTIN — printed in brackets and marked so nobody reads it as filled
    in. Fixed tokens only: no skin loads on these pages. */

@@ -318,6 +318,50 @@ ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).incl
   ok((r.paras || []).some((p) => p.text === 'INT. TEA STALL - MORNING'), '17 with the imported scene in it');
 }
 
+/* ---- 18 locked pages: 12A, through the real controls --------------------- */
+{
+  // A script long enough for several pages.
+  await page.evaluate(() => {
+    const S = window.StudioStore;
+    const k = 'fms_script_v1__' + S.currentProjectId();
+    const els = [];
+    for (let n = 1; n <= 8; n++) {
+      els.push({ id: 'h' + n, type: 'scene', text: 'INT. ROOM ' + n + ' - DAY' });
+      for (let j = 0; j < 9; j++) els.push({ id: 'a' + n + '_' + j, type: 'action', text: 'A line of action in scene ' + n + ', long enough to wrap onto a second line of the page, number ' + j + '.' });
+    }
+    S.rawSet(k, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+  });
+  await page.goto(url('drafts.html#numbering'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.click('[data-action="numbers-lock"]');
+  await page.waitForTimeout(400);
+  await page.click('[data-action="pages-lock"]');
+  await page.waitForTimeout(800);
+  let d = await doc();
+  ok(d.numbering && d.numbering.pages && d.numbering.pages.locked && d.numbering.pages.starts.length >= 3, '18 Lock page numbers records where each page starts', d.numbering && d.numbering.pages);
+  ok(/Pages locked/.test(await page.textContent('#numbering')), '18 and the tool says the pages are locked');
+  const startP3 = d.numbering.pages.starts[2].id;
+  // Grow page 2 by a long passage, the way a writer would: in storage, then reopen.
+  await page.evaluate(() => {
+    const S = window.StudioStore;
+    const k = 'fms_script_v1__' + S.currentProjectId();
+    const b = JSON.parse(S.rawGet(k));
+    const at = b.elements.findIndex((e) => e.id === b.numbering.pages.starts[1].id) + 1;
+    const more = Array.from({ length: 20 }, (_, j) => ({ id: 'x' + j, type: 'action', text: 'An added line that grows page two and should not move page three, number ' + j + '.' }));
+    b.elements.splice(at, 0, ...more);
+    S.rawSet(k, JSON.stringify(b));
+  });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1500);
+  const breaks = await page.$$eval('#wr-page .wr-pbreak', (ns) => ns.map((n) => n.textContent));
+  ok(breaks.some((t) => /^Page 2A/.test(t)), '18 the page view shows 2A after page 2 grows', breaks);
+  const p3 = await page.$$eval('#wr-page .wr-pbreak', (ns) => { const n = ns.find((x) => x.textContent === 'Page 3'); return n ? (n.nextElementSibling && n.nextElementSibling.dataset.el) : null; });
+  ok(p3 === startP3, '18 and page 3 still begins on the same line', { p3, startP3 });
+  await page.goto(url('drafts.html#numbering'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(800);
+  ok(/\b[1-9]\d* A-pages?\b/.test(await page.textContent('#numbering')), '18 the tool counts the A-pages', (await page.textContent('#numbering')).match(/[^.]*A-page[^.]*/));
+}
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {

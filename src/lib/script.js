@@ -488,7 +488,22 @@ export function normaliseNumbering(raw) {
     const n = String((e && e.n) ?? '').trim().toUpperCase();
     if (id && n) ids[id] = { n, t: String((e && e.t) ?? '') };
   }
-  return { locked: true, at: String(raw.at || nowISO()), ids };
+  const out = { locked: true, at: String(raw.at || nowISO()), ids };
+  const pages = normalisePagesLock(raw.pages);
+  if (pages) out.pages = pages;
+  return out;
+}
+
+/* The page lock rides inside the scene lock (screenplay-export.js
+   "LOCKED PAGES"): { locked, at, starts: [{ n, id, split }] }. Kept
+   only when it is well formed; anything else reads as unlocked pages,
+   never as a broken script. */
+export function normalisePagesLock(raw) {
+  if (!raw || typeof raw !== 'object' || raw.locked !== true || !Array.isArray(raw.starts)) return null;
+  const starts = raw.starts
+    .filter((x) => x && typeof x === 'object' && String(x.n ?? '').trim())
+    .map((x) => ({ n: String(x.n).trim(), id: x.id ? String(x.id) : null, split: x.split === true }));
+  return starts.length ? { locked: true, at: String(raw.at || nowISO()), starts } : null;
 }
 
 export const isNumberingLocked = (numbering) => !!(numbering && numbering.locked === true);
@@ -624,7 +639,10 @@ export function settleNumbering(elements, numbering) {
     if (!movedFrom.has(k)) ids[k] = { n: e.n, t: e.t };
   }
   for (const h of snHeadings(elements)) ids[h.id] = { n: res.byId.get(h.id), t: snNorm(h.text) };
-  return { locked: true, at: numbering.at, ids };
+  const out = { locked: true, at: numbering.at, ids };
+  // The page lock is a record of the day it was taken: a save never moves it.
+  if (numbering.pages) out.pages = numbering.pages;
+  return out;
 }
 
 /* ---- the page count ----------------------------------------
@@ -947,7 +965,7 @@ export default {
   LINES_PER_PAGE, typeLabel, revisionColour,
   blankElement, blankDocument, blankScript, loadScript, saveScript,
   makeRevision, restoreElements,
-  sceneNumbers, lockNumbering, settleNumbering, normaliseNumbering, compareSceneNumbers,
+  sceneNumbers, lockNumbering, settleNumbering, normaliseNumbering, normalisePagesLock, compareSceneNumbers,
   parseSceneNumber, isNumberingLocked,
   elementLines, totalLines, pageCount, formatPages, formatRuntime, wordCount,
   dualPairs, canPairDual, contdOffer, withContd, cueSpeaker, CONTD_RE, EXTENSIONS,

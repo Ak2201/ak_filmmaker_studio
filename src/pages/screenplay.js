@@ -748,6 +748,8 @@ function applyBreaks() {
   if (!page || !Typeset) return;
   const pages = Typeset.paginateDoc(doc);
   const anchors = pageAnchors(pages);
+  // Locked pages print 12A or 12-13; the page view says the same.
+  const labels = Typeset.pageNumbersDoc(doc, pages);
   const existing = new Map();
   page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
   for (let p = 1; p < pages.length; p++) {
@@ -758,13 +760,13 @@ function applyBreaks() {
     if (!row) { if (node) node.remove(); continue; }
     const target = row.closest('.wr-dual') || row;
     const key = a.id + (a.split ? '|split' : '');
-    const placed = node && node.dataset.anchor === key
+    const label = a.split ? 'Page ' + labels[p] + ' · continues' : 'Page ' + labels[p];
+    const placed = node && node.dataset.anchor === key && node.textContent === label
       && (a.split ? node.previousElementSibling === target : node.nextElementSibling === target);
     if (placed) continue;
     if (!node) node = h('div.wr-pbreak', { role: 'separator', 'data-page': String(p) });
     node.dataset.anchor = key;
     node.classList.toggle('is-split', a.split);
-    const label = a.split ? 'Page ' + (p + 1) + ' · continues' : 'Page ' + (p + 1);
     if (node.textContent !== label) node.textContent = label;
     if (a.split) target.after(node); else target.before(node);
   }

@@ -1642,6 +1642,8 @@ function applyPageView() {
   // paginateDoc: a locked script's numbers and OMITTED rows, as the PDF sets them.
   const pages = Typeset.paginateDoc(doc);
   const { pageOf, sceneNo, anchors } = pageViewLayout(pages);
+  // Locked pages print 12A or 12-13; the page view says the same.
+  const labels = Typeset.pageNumbersDoc(doc, pages);
 
   const existing = new Map();
   page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
@@ -1653,7 +1655,10 @@ function applyPageView() {
     if (!row) { if (node) node.remove(); continue; }
     const target = row.closest('.wr-dual') || row;
     const key = a.id + (a.split ? '|split' : '');
-    const placed = node && node.dataset.anchor === key
+    const label = a.split
+      ? "(MORE)  ·  page " + labels[p] + ' starts inside the line above  ·  (CONT’D)'
+      : 'Page ' + labels[p];
+    const placed = node && node.dataset.anchor === key && node.textContent === label
       && (a.split ? node.previousElementSibling === target : node.nextElementSibling === target);
     if (placed) continue;
     if (!node) {
@@ -1661,11 +1666,8 @@ function applyPageView() {
     }
     node.dataset.anchor = key;
     node.classList.toggle('is-split', a.split);
-    const label = a.split
-      ? "(MORE)  ·  page " + (p + 1) + ' starts inside the line above  ·  (CONT’D)'
-      : 'Page ' + (p + 1);
     if (node.textContent !== label) node.textContent = label;
-    node.setAttribute('aria-label', 'Page ' + (p + 1) + ' of ' + pages.length);
+    node.setAttribute('aria-label', 'Page ' + labels[p] + ', sheet ' + (p + 1) + ' of ' + pages.length);
     if (a.split) target.after(node); else target.before(node);
   }
   existing.forEach((n) => n.remove());

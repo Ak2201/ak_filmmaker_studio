@@ -2346,3 +2346,19 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     checks, indents, round trip through our importer); `prove:script` case 17
     downloads it. LibreOffice renders it correctly (checked by hand once).
 
+    **Locked pages (A-pages).** Inside a scene lock, "Lock page numbers"
+    (drafts.html#numbering and write's Revisions) records where each page
+    starts — `numbering.pages = { locked, at, starts: [{ n, id, split }] }`,
+    inside the script blob, no new key; `normaliseNumbering` and
+    `settleNumbering` carry it (both rebuilt `numbering` from three fields
+    and would have dropped it on the first load or save). `paginate()` takes
+    `opts.breakBefore` and `paginateDoc()` breaks before every unsplit locked
+    start; `pageNumbersDoc()` names the pages: the locked number where a page
+    starts where it did, 12A / 12B for overflow, and a page whose start was
+    cut folds into the one before as 12-13. The PDF, the text export and both
+    page views print those labels (the page views also stopped skipping a
+    break whose label changed while its position did not). Unlocking the
+    scene numbers unlocks the pages with them, and says so. `test:revisions`
+    (+16 on the Dragon sample), `prove:script` case 18 through the real
+    controls.
+

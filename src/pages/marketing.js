@@ -80,7 +80,7 @@ const top = byId('mkTop');
 })();
 
 /* ---- 3. the mega-menu and the phone menu ---------------------------
-   Product is an <a href="#tools"> in the markup, so with scripts off it
+   Product is an <a href="start.html#tools"> in the markup (only the home page has #tools), so with scripts off it
    jumps to the list of every tool. Here it becomes the disclosure for the
    four-column panel: click, Enter and Space toggle it; hover opens it
    with a short grace period (mouse only, desktop width); Escape closes it
@@ -321,4 +321,52 @@ try {
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* */ }
   if (!SIGNED_IN) openModal();
   says('Invite code saved: it is applied when you sign in.');
+})();
+
+/* ---- 7. the demo loops play while they are on screen ---------------
+   Every player is muted, looped and preload="none". A loop below the fold
+   downloads nothing until half of it scrolls into view; then it loads and
+   plays, and it pauses when it leaves. The HERO's loop is in view on load,
+   so it does download on every visit (about 90-310KB): that is a choice,
+   and to keep it off the first paint the observer only starts after the
+   page's `load` event, so the poster (preloaded) is the first screen.
+   The native controls stay in the markup and are the pause control WCAG
+   2.2.2 asks for, and A PAUSE STAYS A PAUSE: a pause the visitor made is
+   remembered (data-user-paused) and the observer never restarts that
+   video; pressing play clears it. Skipped entirely under reduced motion
+   and Save-Data: the poster stays and the visitor can press play. A
+   play() that the browser refuses (autoplay policy) leaves the poster. */
+(function playInView() {
+  const vids = $$('video');
+  if (!vids.length || !('IntersectionObserver' in window)) return;
+  try {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (navigator.connection && navigator.connection.saveData) return;
+  } catch (e) { return; }
+  const auto = new WeakSet(); /* play/pause calls the observer made */
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const v = e.target;
+      if (e.isIntersecting) {
+        if (v.dataset.userPaused || !v.paused) continue;
+        if (v.preload !== 'auto') v.preload = 'auto';
+        auto.add(v);
+        const p = v.play();
+        if (p && typeof p.catch === 'function') p.catch(() => { auto.delete(v); });
+      } else if (!v.paused) { auto.add(v); v.pause(); }
+    }
+  }, { threshold: 0.5 });
+  vids.forEach((v) => {
+    v.addEventListener('pause', () => {
+      if (auto.has(v)) auto.delete(v);
+      else if (!v.ended) v.dataset.userPaused = '1';
+    });
+    v.addEventListener('play', () => {
+      if (auto.has(v)) auto.delete(v);
+      else delete v.dataset.userPaused;
+    });
+  });
+  const start = () => vids.forEach((v) => io.observe(v));
+  if (document.readyState === 'complete') start();
+  else addEventListener('load', start, { once: true });
 })();

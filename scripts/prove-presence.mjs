@@ -67,7 +67,7 @@ await ctx.addInitScript(() => {
     set(v) {
       real = v;
       const q = new URLSearchParams(location.search);
-      if (q.has('coedit')) v.coEditingEnabled = async () => true;
+      if (q.has('coedit')) { v.coEditingEnabled = async () => true; v.coEditingKnown = () => true; }
       if (!q.has('presence')) return;
       v.isBooted = () => true;
       v.getSession = () => ({ access_token: 'x', user: { id: 'me-1', email: 'pia@example.com', user_metadata: { full_name: 'Pia Owner' } } });

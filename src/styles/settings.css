@@ -462,7 +462,7 @@
 .st-plan-sub { margin: var(--s2) 0 0; font-size: var(--t-small); font-family: var(--f-mono); letter-spacing: var(--track-wide); text-transform: uppercase; color: var(--ink-muted); }
 .st-tab .pl-usage { margin: 0; }
 @media (pointer: coarse) {
-  .st-plan-link .btn { min-height: 44px; display: inline-flex; align-items: center; }
+  .st-plan-link .k-btn { min-height: 44px; display: inline-flex; align-items: center; }
 }
 /* The side menu (columns, group headings, rows) is tabs.css's, shared
    with the admin console and every tabbed page: it sets --side-pad to 0

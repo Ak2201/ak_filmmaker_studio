@@ -105,6 +105,8 @@
   border: 0;
   border-radius: var(--radius-pill);
   cursor: pointer;
+  transition: color var(--speed) var(--ease), background-color var(--speed) var(--ease),
+              transform var(--speed-tap) var(--ease-out);
 }
 /* the selected row's own dot, at the end: only when nothing else
    (count, tick, PLAN flag) sits there. A shape, not a distance. */
@@ -343,6 +345,7 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
     top: calc(var(--sh-chrome-h, 0px) + var(--s3));
     display: block;
     max-height: calc(100vh - var(--sh-chrome-h, 0px) - var(--s5));
+    max-height: calc(100dvh - var(--sh-chrome-h, 0px) - var(--s5));   /* the visible viewport, not the one under a phone's URL bar */
     overflow: hidden auto;
     margin: 0;
     padding: var(--s1);
@@ -393,11 +396,14 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
    reader made (a click, an arrow key, an in-page link), never on the
    first paint, and removes it on animationend. The distance is
    multiplied by --motion, and reduced motion removes the animation. */
+/* 19 Oct 2026: opacity only, over --speed (120ms), and only for a
+   POINTER switch (tabs.js: a keyboard switch has e.detail 0). Tabs are
+   switched tens of times a day; the rise was travel nobody needed. */
 [role="tabpanel"]:not([hidden]).tabs-enter {
-  animation: tabs-in var(--speed-slow) var(--ease-out);
+  animation: tabs-in var(--speed) var(--ease-out);
 }
 @keyframes tabs-in {
-  from { opacity: 0; transform: translateY(calc(6px * var(--motion))); }
+  from { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   [role="tabpanel"].tabs-enter { animation: none; }

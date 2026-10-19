@@ -169,7 +169,10 @@
   background-color: var(--paper-raised);
   border-color: color-mix(in srgb, var(--accent) 55%, var(--rule));
   box-shadow: var(--sk-card-shadow-hover, none);
-  transform: translateY(calc(-2px * var(--motion)));
+}
+/* The lift only where hover is real: on a phone a tapped card kept it. */
+@media (hover: hover) and (pointer: fine) {
+  .projects-section .project-card:hover { transform: translateY(calc(-1 * var(--sk-lift, 0px) * var(--motion))); }
 }
 .projects-section .project-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .projects-section .project-card .pc-format {
@@ -191,12 +194,12 @@
   overflow-wrap: anywhere;
 }
 .projects-section .project-card:hover .pc-title { color: var(--ink); }
-/* SHARE appears on hover: out of the row's flow (beside "open →") so the
-   footer keeps one line. Where there is no hover it stays in flow. */
-@media (hover: hover) {
-  .projects-section .project-card .pc-meta { position: relative; }
-  .projects-section .project-card .pc-share { position: absolute; right: 5.25rem; bottom: 0; }
-}
+/* SHARE stays in the footer's flow, before "open script →", and fades in
+   on hover. It used to be pinned at `right: 5.25rem`, a number measured
+   against the old "open →" label: when the label grew, Share sat on top
+   of it (x 394-419 overlapping at 1440). A measured number written down
+   as a constant stops being measured; the flow measures itself. */
+.projects-section .project-card .pc-foot { margin-left: auto; gap: var(--s2); }
 .projects-section .project-card .pc-meta {
   margin-top: auto;
   padding-top: var(--s4);

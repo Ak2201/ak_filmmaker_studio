@@ -114,11 +114,10 @@ function persistNow() {
   saving = true;
   setStatus('Saving…');
   Script.saveScript(doc);
-  notePageBase();
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
-    setStatus('Saved ✓');
+    setStatus('Autosaved ✓');
     refreshDraftLabel();
   };
   flushStorage().then(settle, settle);
@@ -155,17 +154,17 @@ document.addEventListener('input', (e) => {
 
 /* CO-EDITING (schema §49, off by default). On, an arriving copy is
    MERGED into the one on screen line by line instead of kept beside it
-   as a draft. `pageBase` is the copy this page last loaded or saved —
-   the merge's common ancestor, so it can tell a line the other writer
-   cut from a line this writer has just added. */
-let coEditOn = false;
+   as a draft. `pageBase` is the copy this page last LOADED or RECEIVED —
+   never one it saved, which the other writer may not have seen — so the
+   merge can tell a line they cut from a line this writer has just added.
+   The switch is asked on every arrival, not once: cloud.js learns it
+   only after the session is restored, which is after this page loads. */
+const coEditOn = () => { try { return !!(window.StudioCloud && StudioCloud.coEditingKnown && StudioCloud.coEditingKnown()); } catch (e) { return false; } };
 let pageBase = null;
-function notePageBase() { try { pageBase = JSON.parse(JSON.stringify(doc)); } catch (e) { pageBase = null; } }
-notePageBase();
-try {
-  const c = window.StudioCloud;
-  if (c && c.coEditingEnabled) c.coEditingEnabled().then((on) => { coEditOn = on === true; }, () => {});
-} catch (e) { /* no cloud on this page */ }
+function notePageBase(from) { try { pageBase = JSON.parse(JSON.stringify(from)); } catch (e) { pageBase = null; } }
+notePageBase(doc);
+let theirsToast = null;
+let incomingDraftId = null;   // the draft the last arrival made
 const clock = () => new Date().toTimeString().slice(0, 5);
 const inEditor = () => !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#wr-page'));
 function showDoc() {
@@ -189,14 +188,15 @@ function mergeIncoming(fresh) {
   const changedHere = scriptSignature(merged) !== scriptSignature(doc);
   const differsThere = scriptSignature(merged) !== scriptSignature(fresh);
   doc = merged;
-  pageBase = JSON.parse(JSON.stringify(fresh));
+  notePageBase(fresh);
   if (changedHere) showDoc();
   if (differsThere) persistNow();   // this writer's part goes up too
 }
 function onIncomingScript(live) {
   const fresh = Script.loadScript();
   const dirty = !!(saveTimer || saving || saveOwed) || Date.now() - lastTypedAt < 2500;
-  if (coEditOn) { mergeIncoming(fresh); return; }
+  if (coEditOn()) { mergeIncoming(fresh); return; }
+  notePageBase(fresh);
   const act = incomingAction({ mine: doc, fresh, dirty });
   if (act === 'same') return;
   if (act === 'load') {
@@ -206,13 +206,21 @@ function onIncomingScript(live) {
     return;
   }
   const arrived = fresh;
-  doc = keepBoth(doc, arrived, 'From another device, ' + clock());
-  persistNow();
+  /* While both writers type, each save reaches the other mid-edit. The
+     arrival REPLACES this page's recent "From another device" draft
+     rather than adding one per save, and the save waits for the usual
+     debounce, so two people typing do not trade copies as fast as the
+     network allows. Only the newest offer to swap stays on screen. */
+  doc = keepBoth(doc, arrived, 'From another device, ' + clock(), { replaceId: incomingDraftId });
+  incomingDraftId = doc.revisions[doc.revisions.length - 1]?.id || null;
+  persist();
   refreshDraftLabel();
   try {
-    StudioUI.toast('Another device saved a different version of this script while you were writing. Yours is kept; theirs is in Drafts as “From another device”.', {
+    if (theirsToast) theirsToast.dismiss();
+    theirsToast = StudioUI.toast('Another device saved a different version of this script while you were writing. Yours is kept; theirs is in Drafts as “From another device”.', {
       type: 'info', action: 'Use theirs',
       onAction: () => {
+        theirsToast = null;
         doc = takeTheirs(doc, arrived, 'Your version, ' + clock());
         persistNow();
         showDoc();
@@ -323,7 +331,7 @@ const HELP_ITEMS = [
 ];
 
 function buildTop() {
-  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Saved ✓' });
+  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Autosaved ✓' });
   typeSel = h('select.sc-type', { id: 'scType', 'aria-label': 'Current line type' });
   ELEMENT_TYPES.forEach((t) => typeSel.append(h('option', { value: t.id, text: t.label })));
   /* The pill SHOWS the type and its Alt+digit; the real <select> sits
@@ -373,7 +381,7 @@ function buildTop() {
   const runtime = h('div#scRuntime.sc-runtime', { role: 'region', 'aria-label': 'Running time', hidden: true });
 
   const beatsBtn = button({
-    label: 'Beats ◧', icon: 'view_sidebar', size: 'sm', action: 'sc-beats', class: 'sc-beats-btn',
+    label: 'Beats', icon: 'view_sidebar', size: 'sm', action: 'sc-beats', class: 'sc-beats-btn',
     attrs: { 'aria-expanded': 'false', 'aria-controls': 'beatsPanel' }
   });
   const fileMenu = actionMenu('File', [{ heading: 'File actions' }, ...FILE_ITEMS], { align: 'right', ariaLabel: 'File actions' });
@@ -418,7 +426,12 @@ function buildTop() {
   /* The shell's `.toolbar` convention is not used: this bar is the
      page's own, and a focus button is moved in once focus-mode has
      injected it (see mountFocus). */
-  tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() });
+  /* A resting line until a line takes focus: the strip keeps its reserved
+     height either way, so the first view is a sentence, not a blank band
+     that reads as broken, and the first click shifts nothing. */
+  tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() }, [
+    h('span.sc-tip-what', { text: 'Click a line on the page to see what it is for and where Enter and Tab go.' })
+  ]);
   return h('div#scTop.sc-top', {}, [
     meta,
     h('div.sc-tools', {}, [
@@ -467,7 +480,8 @@ function render() {
   ]);
   /* The phone's scrim behind the beats sheet; a tap on it closes them. */
   const scrim = h('div.sc-beats-scrim', { 'data-action': 'sc-beats-close', 'aria-hidden': 'true' });
-  main.append(buildTop(), sheet, after, aside, scrim, buildChips());
+  // The page's name for the accessibility tree: the bar carries no heading.
+  main.append(h('h1.visually-hidden', { text: 'Screenplay Writer' }), buildTop(), sheet, after, aside, scrim, buildChips());
   app.replaceChildren(main);
   /* The blueprint's screenplay questions keep their saved answers here
      (verify's key-union needs section#guide on a stage page). The page

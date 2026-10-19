@@ -114,7 +114,9 @@ const stat = (value, unit, label, note) => ({ label, value, unit: value === '\u2
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.db-sec', { id, 'data-reveal': '' });
-  sec.append(kEyebrow(eyebrow), h('h2.bd-h2', { text: title }));
+  // No eyebrow when it would only repeat the heading ("Title page" over "The title page").
+  if (eyebrow) sec.append(kEyebrow(eyebrow));
+  sec.append(h('h2.bd-h2', { text: title }));
   if (deck) sec.append(h('p.bd-sub', { text: deck }));
   return sec;
 }
@@ -518,12 +520,20 @@ function renderHead(snap) {
    copy of the cover hidden (#guide), on another page, so there are never
    two live inputs for one key in one document. Nothing is written until
    somebody types: the idle-write check still holds. */
+/* Why two titles and what "Stage" means here: the cover holds both,
+   and with no hint the pair read as a duplicate and Stage as the
+   studio's own stage badge. Labels only; every data-key is unchanged. */
+const TP_HINTS = {
+  v1_title: 'If different from the project title',
+  meta_stage: 'Where the film is: Story, Screenplay, Pre-production…'
+};
+
 function renderTitlePage(project) {
   const fmt = coverNs(project.format);
   const fields = coverFields('story', fmt);
-  const sec = section('title-page', 'Title page', 'The title page',
-    (fmt === 'short' ? 'What heads this film: its title, writer, start date and runtime.' : 'What heads this film: its title, writer, genre and draft.')
-    + ' The same answers the ' + (fmt === 'short' ? 'Short Film' : 'Feature') + ' Blueprint keeps for its cover; change them here.');
+  const sec = section('title-page', null, 'The title page',
+    (fmt === 'short' ? 'What heads this film’s title page: its title, writer, start date and runtime.' : 'What heads this film’s title page: its title, writer, genre and draft.')
+    + ' Change it here.');
   sec.classList.add('db-title-page');
   if (!fields.length) return sec;
   const vals = readFields(fmt, fields.map((f) => f.key));
@@ -531,10 +541,16 @@ function renderTitlePage(project) {
   for (const f of fields) {
     const v = typeof vals[f.key] === 'string' ? vals[f.key] : '';
     const attrs = { 'data-key': f.key, 'data-tp-ns': fmt };
+    const hint = TP_HINTS[f.key] || '';
     grid.append(f.options
-      ? field({ kind: 'select', id: 'tp_' + f.key, label: f.label, value: v, attrs,
-        options: [{ value: '', label: f.empty || 'Choose…' }, ...f.options.map((o) => ({ value: o, label: o }))] })
-      : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs }));
+      ? field({ kind: 'select', id: 'tp_' + f.key, label: f.label, value: v, attrs, hint,
+        /* A saved genre the list does not name (typed in an older
+           version, or the sample's) stays an option: otherwise the
+           select showed a blank box and a change would drop the answer. */
+        options: [{ value: '', label: f.empty || 'Choose…' },
+          ...(v && !f.options.includes(v) ? [{ value: v, label: v }] : []),
+          ...f.options.map((o) => ({ value: o, label: o }))] })
+      : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs, hint }));
   }
   sec.append(grid);
   return sec;
@@ -588,7 +604,9 @@ function stageCard(s, suggested, js, current) {
   s.facts.forEach((f) => facts.append(h('li', { text: f })));
   li.append(facts);
   const acts = h('div.st-acts');
-  acts.append(button({
+  /* No href: every module of the stage is switched off (journey.js
+     stageHref), so there is nothing to open and no button is drawn. */
+  if (s.href) acts.append(button({
     label: GO[s.status.id], variant: suggested ? 'primary' : 'secondary', iconAfter: 'arrow_forward',
     href: s.href, class: 'st-go',
     attrs: { 'aria-label': GO[s.status.id] + ' ' + s.label + ' — ' + s.status.label }
@@ -710,8 +728,8 @@ function renderNoProject() {
           + 'of yours, and its five stages appear here.'
     }),
     h('div.db-cta-row', {}, [
-      h('a.btn.primary.bd-cta', { href: 'index.html', text: 'Pick or start a project  →' }),
-      h('a.btn', { href: 'library.html', text: 'Look around the library first' })
+      button({ label: 'Pick or start a project', href: 'index.html', variant: 'primary', pill: true, iconAfter: 'arrow_forward', class: 'bd-cta' }),
+      button({ label: 'Look around the library first', href: 'library.html' })
     ])
   ]));
   return wrap;

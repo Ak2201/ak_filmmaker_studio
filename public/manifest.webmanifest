@@ -9,8 +9,8 @@
   "start_url": "./index.html",
   "scope": "./",
   "id": "./",
-  "theme_color": "#16140f",
-  "background_color": "#f6f1e6",
+  "theme_color": "#121318",
+  "background_color": "#0d0e13",
   "categories": ["productivity", "education"],
   "icons": [
     {

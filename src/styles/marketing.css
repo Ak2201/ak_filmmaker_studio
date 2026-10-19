@@ -181,7 +181,24 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
     var(--surface-canvas);
 }
 .mk-hero-in { position: relative; }
-.mk-cta-row { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.mk-cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); }
+.mk-cta-row--center { justify-content: center; }
+.mk-cta-row .mk-link--lg { margin-top: 0; }
+
+/* the product hero: the headline across the wrap (two lines at most at
+   every width), the sub and the one action on a row under it, then the
+   demo loop at full width, so the first screen is mostly the tool */
+.mk-hero.mk-hero--media { min-height: 0; padding-top: calc(var(--mk-top-h) + var(--s7)); padding-bottom: clamp(var(--s7), 7vw, var(--s9)); }
+.mk-hero-grid {
+  display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  column-gap: clamp(var(--s6), 5vw, var(--s8)); align-items: end;
+}
+.mk-hero-grid .mk-h1 { grid-column: 1 / -1; font-size: clamp(var(--t-2xl), 4vw, var(--t-4xl)); max-width: 32ch; margin-bottom: var(--s5); }
+.mk-hero-grid .mk-sub { grid-column: 1; margin: 0; }
+/* the one action sits directly under the sentence it belongs to */
+.mk-hero-grid .mk-cta-row { grid-column: 1; justify-content: flex-start; margin-top: var(--s5); }
+/* doubled class: .mk-player's own margin and max-width come later in this sheet */
+.mk-player.mk-hero-media { grid-column: 1 / -1; max-width: none; margin-top: clamp(var(--s6), 4vw, var(--s7)); }
 
 /* the label bar: 64px, translucent, tinted by the stage */
 .mk-label {
@@ -194,7 +211,7 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 .mk-label-path strong { color: var(--ink); }
 .mk-label-sep { color: var(--ink-muted); }
 .mk-label-nav { display: flex; align-items: center; gap: var(--s4); }
-.mk-label-nav a { color: var(--ink-body); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
+.mk-label-nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-body); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
 .mk-label-nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 
 /* value: text left, a still right */
@@ -262,9 +279,16 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 }
 .mk-mid .mk-h2 { margin-bottom: var(--s5); }
 .mk-facts { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); }
-.mk-facts li { display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: none; padding: var(--s5); border-top: 1px solid var(--border-strong); }
-.mk-fact-n { font-family: var(--sk-display, var(--f-display)); font-size: clamp(var(--t-3xl), 6vw, var(--t-5xl)); font-weight: 700; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.mk-facts li { display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: none; padding: var(--s5); }
+.mk-fact-n { font-family: var(--sk-display, var(--f-display)); font-size: clamp(var(--t-2xl), 3vw, var(--t-4xl)); font-weight: 700; line-height: 1.05; color: var(--ink); font-variant-numeric: tabular-nums; text-wrap: balance; overflow-wrap: normal; }
 .mk-fact-l { font-size: var(--t-small); color: var(--ink-muted); max-width: 26ch; }
+
+/* the facts beside the value copy: a typographic stack, the number large
+   and the line under it; no tiles, no rules, space does the grouping */
+.mk-facts--side { grid-template-columns: 1fr; gap: var(--s6); }
+.mk-facts--side li { align-items: flex-start; padding: 0; }
+.mk-facts--side .mk-fact-n { font-size: clamp(var(--t-2xl), 2.6vw, var(--t-4xl)); }
+.mk-facts--side .mk-fact-l { font-size: var(--t-base); color: var(--ink-body); max-width: 40ch; }
 
 /* ---- the footer ------------------------------------------------ */
 .mk-foot { background: var(--surface-rail); border-top: 1px solid var(--border-hair); padding-block: var(--s8) var(--s6); }
@@ -319,7 +343,7 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
     grid-template-columns: 1fr; gap: var(--s4); background: transparent; border: 0; box-shadow: none;
   }
   .mk-nav-item[data-open] .mk-mega { animation: none; }
-  .mk-split, .mk-how { grid-template-columns: 1fr; }
+  .mk-split, .mk-how, .mk-hero-grid { grid-template-columns: 1fr; }
   .mk-slot { position: static; order: -1; }
   .mk-cards { grid-template-columns: 1fr; }
   .mk-facts { grid-template-columns: 1fr; }
@@ -329,11 +353,41 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
   .mk-stages { grid-template-columns: 1fr; }
   .mk-hero { min-height: 0; }
   .mk-label-nav { gap: var(--s3); }
+  /* one row on a phone: the icon and the tool name stay, the stage goes */
+  .mk-label-in { flex-wrap: nowrap; gap: var(--s3); }
+  .mk-label-path > span:not(.sym) { display: none; }
+  .mk-label-path strong { white-space: nowrap; }
   .mk-cta-row .mk-btn { flex: 1 1 100%; }
 }
 
+/* ---- entrances: each section's parts rise as it enters ------------
+   Scroll-driven, so nothing waits on a script and nothing starts hidden
+   where the timeline is unsupported; anything already in view at load is
+   past its range and renders complete. The body and the picture start a
+   step later than the heading. The distance is times --motion.
+   A FRAGMENT TARGET NEVER TRAVELS: anything with an id (every h2, the
+   facts list) only fades. A target still offset by its entrance when the
+   browser scrolls to it is measured where it WAS, and lands 24px under
+   the header once the offset ends (prove:scroll caught exactly that). */
+@supports (animation-timeline: view()) {
+  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media) {
+    animation: mk-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media)[id] { animation-name: mk-fade; }
+  .mk-sec :is(.mk-body, .st-media, .mk-facts, .mk-steps, .mk-cards, .mk-stages) { animation-range: entry 8% entry 48%; }
+}
+@keyframes mk-rise { from { opacity: 0; transform: translateY(calc(24px * var(--motion))); } }
+@keyframes mk-fade { from { opacity: 0; } }
+
+/* print: nothing is caught part-way through its entrance */
+@media print {
+  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media) { animation: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media) { animation: none; }
   .mk-still, .mk-top, .mk-btn, .mk-card, .mk-step, .mk-link .sym, .mk-nav-prod .sym { transition: none; }
   .mk-mega, .mk-modal-card { animation: none; }
 }

@@ -76,7 +76,7 @@ function renderHeader(scenes) {
         ctx: { elements: () => loadScript().elements, after: () => render() }
       }),
       button({
-        label: 'RE-MEASURE PAGES FROM THE SCRIPT', action: 'eighths-measure',
+        label: 'Re-measure pages from the script', action: 'eighths-measure',
         title: 'Recount each scene’s length in eighths from the script as it stands now'
       })
     ] : null
@@ -90,16 +90,24 @@ function renderHeader(scenes) {
 function kpis(scenes, eighths) {
   const dash = (n, f) => (n ? f(n) : '—');
   const idx = Scenes.elementIndex();
-  const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, Songs.listSongs().length);
-  const card = (value, label, note) => statCard({ value, label, note: note || '' });
+  /* Songs is switched off for everybody (plan-matrix `plans: []`), so its
+     figure goes with it: a counter for a module nobody can open is a
+     leftover, not a fact. Asked of the plan gate, never a list here. */
+  const songCount = PlanGate.isDisabledEverywhere('songs') ? 0 : Songs.listSongs().length;
+  const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, songCount);
+  const card = (value, label, note) => statCard({ value, label, note: note || '', class: value === '—' ? 'is-empty' : '' });
+  /* A dash says "nothing here"; the note under it says where it comes
+     from, so an empty card points at the next step instead of reading as
+     a broken figure. Songs is the one optional figure: a film with none
+     simply has no songs card. */
   return [
-    card(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : ''),
-    card(dash(scenes.length, () => formatEighths(eighths)), eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : ''),
-    card(dash(idx.length, String), 'elements', idx.length ? cats + (cats === 1 ? ' category' : ' categories') : ''),
-    card(dash(locs, String), 'locations', locs ? ints + ' INT / ' + exts + ' EXT scenes' : ''),
-    card(dash(songs, String), 'songs', songs ? 'musical' : ''),
-    card(dash(cast, String), 'cast', cast ? 'tagged' : '')
-  ];
+    card(dash(scenes.length, String), scenes.length === 1 ? 'scene' : 'scenes', scenes.length ? 'in the breakdown' : 'add or import scenes'),
+    card(dash(scenes.length, () => formatEighths(eighths)), eighths === 8 ? 'page' : 'pages', scenes.length ? eighths + ' eighths' : 'measured from the scenes'),
+    card(dash(idx.length, String), 'elements', idx.length ? cats + (cats === 1 ? ' category' : ' categories') : 'tag them on a scene'),
+    card(dash(locs, String), 'locations', locs ? ints + ' INT / ' + exts + ' EXT scenes' : 'from the scene headings'),
+    songs ? card(String(songs), 'songs', 'musical') : null,
+    card(dash(cast, String), 'cast', cast ? 'tagged' : 'tag them on a scene')
+  ].filter(Boolean);
 }
 
 /* One element chip: the kit chip, in its category's hue. The category word
@@ -322,7 +330,7 @@ function renderScene(scene, i, total) {
   /* Which song this scene belongs to, if any. Only offered once a
      song exists — an empty dropdown on every scene card would be
      noise on the 95% of films that have not added one yet. */
-  const songs = Songs.listSongs();
+  const songs = PlanGate.isDisabledEverywhere('songs') ? [] : Songs.listSongs();
   if (songs.length) {
     const sel = h('select.bd-sel.bd-scene-song', {
       'data-scene-field': 'songId', 'aria-label': 'Part of which song'

@@ -67,6 +67,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import PDF from '../lib/pdf.js';
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
@@ -125,7 +126,7 @@ function renderHeader(scenes, rows) {
        page links to it rather than drawing a second, read-only copy. */
     actions: [
       button({ label: 'Shoot calendar & locations', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', href: 'plan.html#calendar', class: 'sb-cal-plan' }),
-      h('div.sb-lock-host', {}, [lockButton()])
+      h('div.sb-lock-host', {}, [lockButton(!scenes.length)])
     ]
   });
   const strips = statCard({
@@ -154,11 +155,15 @@ function renderHeader(scenes, rows) {
       note: daysNote,
       class: 'sb-kpi-days'
     }),
+    /* "0 strips · all placed" on a board with no scenes claimed a
+       finished schedule that does not exist. No scenes: a dash, and
+       where the strips come from. */
     statCard({
-      label: 'Unscheduled', value: String(unscheduled),
-      unit: unscheduled === 1 ? 'strip' : 'strips',
-      note: unscheduled ? 'still to place' : 'all placed',
-      noteTone: scenes.length ? (unscheduled ? 'warn' : 'ok') : null
+      label: 'Unscheduled', value: scenes.length ? String(unscheduled) : '—',
+      unit: scenes.length ? (unscheduled === 1 ? 'strip' : 'strips') : '',
+      note: !scenes.length ? 'no scenes yet' : unscheduled ? 'still to place' : 'all placed',
+      noteTone: scenes.length ? (unscheduled ? 'warn' : 'ok') : null,
+      class: scenes.length ? '' : 'is-empty'
     })
   ];
   if (rows && rows.length) {
@@ -291,8 +296,11 @@ function renderStrip(scene, maxDay, movable) {
   const st = scene.shotState || '';
   if (st) {
     const tone = st === 'shot' ? 'ok' : st === 'part' ? 'warn' : null;
-    row.append(h('a.sb-shot.is-' + st + '.k-badge' + (tone ? '.k-badge--' + tone : ''), {
-      href: 'shoot.html', title: 'Marked on the shoot day — change it there',
+    /* A link only while Shoot Day can be opened; switched off, the mark
+       is still a fact about the strip, so it stays, as plain text. */
+    const toShoot = !isDisabledEverywhere('shoot-day');
+    row.append(h((toShoot ? 'a' : 'span') + '.sb-shot.is-' + st + '.k-badge' + (tone ? '.k-badge--' + tone : ''), {
+      href: toShoot ? 'shoot.html' : null, title: toShoot ? 'Marked on the shoot day — change it there' : 'Marked on the shoot day',
       text: st === 'part' ? 'Part shot' : Scenes.shotLabel(st)
     }));
   }
@@ -381,7 +389,9 @@ function dayPicker(scene, maxDay) {
 function renderControls() {
   const seg = segmented({
     label: 'Group strips by', name: 'sb-group', value: view.group, action: 'sb-group',
-    options: GROUPINGS.map((g) => ({ value: g.id, label: g.label }))
+    /* "Song" only while the Songs module exists for somebody. */
+    options: GROUPINGS.filter((g) => g.id !== 'song' || !isDisabledEverywhere('songs'))
+      .map((g) => ({ value: g.id, label: g.label }))
   });
   seg.querySelectorAll('.k-seg-btn').forEach((b) => {
     b.dataset.group = b.dataset.value;
@@ -402,8 +412,16 @@ function renderControls() {
     h('div.sb-seg', {}, [h('span.sb-seg-lab', { text: 'Group by', 'aria-hidden': 'true' }), seg]),
     h('div.sb-acts.pdf-menu-host', {}, [
       button({ label: 'Schedule by location', icon: 'auto_awesome', action: 'sb-auto', class: 'sb-btn' }),
-      button({ label: 'Clear days', variant: 'danger', action: 'sb-clear', class: 'sb-btn is-danger' }),
-      exportMenu
+      exportMenu,
+      /* The destructive one stands apart from the action it undoes (it
+         sat touching "Schedule by location"). It stays pressable when no
+         strip has a day: a disabled button cannot take focus or show its
+         reason, so the press says why instead. It still asks before
+         clearing. */
+      button({
+        label: 'Clear days', variant: 'danger', action: 'sb-clear', class: 'sb-btn is-danger sb-clear',
+        title: 'Take the shoot day off every strip; the scenes themselves are untouched'
+      })
     ])
   ]);
   return panel({ class: 'sb-controls-panel', body: [controls, legend()] });
@@ -935,7 +953,13 @@ function render() {
    page's first paint (fillHours() loads script.js the same way). */
 const scriptLib = () => Promise.all([import('../lib/script.js'), import('../lib/scene-sync.js')]);
 
-function lockButton() {
+/* With no scenes there is nothing to number, so the filled CTA is not
+   drawn at all (the empty board already points at the Breakdown). A
+   disabled button would explain itself only in a tooltip that keyboard,
+   screen-reader and touch users never get. Returns null then: filter
+   before a native append. */
+function lockButton(empty = !Scenes.listScenes().length) {
+  if (empty) return null;
   return button({
     label: 'Lock production draft', variant: 'primary', pill: true, icon: 'lock',
     action: 'sb-lock', class: 'sb-lock-btn',
@@ -959,7 +983,7 @@ function fillLock() {
         })
       : null;
     if (!S.isNumberingLocked(doc.numbering)) {
-      if (draft) host.replaceChildren(draft, lockButton());
+      if (draft) host.replaceChildren(...[draft, lockButton()].filter(Boolean));
       return;
     }
     const stamp = String(doc.numbering.at || '').slice(0, 10);
@@ -1405,7 +1429,7 @@ delegate(document, 'click', '[data-action="sb-auto"]', async () => {
 
 delegate(document, 'click', '[data-action="sb-clear"]', async () => {
   const scenes = Scenes.listScenes().filter((s) => shootDayOf(s));
-  if (!scenes.length) return;
+  if (!scenes.length) { toast('No strip has a shoot day yet, so there is nothing to clear.'); return; }
   if (!await askDanger(`Clear the shoot day from ${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}? The scenes themselves are untouched.`)) return;
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.

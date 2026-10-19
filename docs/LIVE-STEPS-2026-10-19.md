@@ -1,17 +1,23 @@
-# Live steps, 19 Oct 2026 — §36 (again), §48, §49
+# Live steps, 19 Oct 2026 — §36 (again), §48, §49, §50, §51
 
-Three pieces of SQL to run on the live project (`conhlrulxfwkhsnymakz`),
+Five pieces of SQL to run on the live project (`conhlrulxfwkhsnymakz`),
 in this order. None of them is needed for the site to keep working. Each
-one turns on something the code already ships:
+one turns on something the code already ships (§50 and §51 were written
+as "§48"/"§49" on the improvement branch and renumbered when it merged
+with develop — any checksum given for those earlier is void):
 
 | Order | Section | What it turns on | If you never run it |
 | --- | --- | --- | --- |
 | 1 | §36, regenerated | The six modules that came back (auto-tag, screen time, cast matrix on Intermediate; shoot day, edit log, deliverables on Pro). Also the Idea Vault on Basic and up | The live plans still carry the 12 Oct map: those seven modules stay off for paying buyers once purchases are required. While purchases are not required, everybody gets `open_features()`, which is Pro's map, so that has the same gap |
 | 2 | §48 | Co-writing presence ("Meera is also here", live carets) | The Screenplay Writer shows nobody. Sync is unaffected |
 | 3 | §49 | The co-editing switch in the console (People tab) | The console says "not available on this database yet". Scripts keep the old rule: the newer copy wins, and the other copy is kept as a draft |
+| 4 | §50 | Refunds need the finance (or owner) role in the database, not only in `rzp-refund`; a pending refund leaves the request approved; seats follow the current plan; a declined invite request keeps blocking `start_trial()` after a re-ask. Redeploy `rzp-refund` after it (`docs/BILLING.md` §20) | A support admin can still issue refunds through the database path; a lapsed grant keeps its seats; a declined requester can re-ask and start a trial |
+| 5 | §51 | The security follow-ups: promo caps held at payment, upgrade-credit and refund loopholes closed, support cannot disable an owner, no cross-user plan lookups, screening passes for owned films only, the collaborator cap holds on a move, **`claim_share()` works again** (it fails on every call today), comment bodies are the author's, no anonymous trials, team deletes keep members' films. Redeploy `rzp-verify` after it (`docs/BILLING.md` §21) | Share links cannot be claimed; the loopholes above stay open |
 
 §36 and §48 are independent. §49 needs §40 (`admin_audit_write`) and §45
-(`require_role`), which are both live. All three can be re-run safely.
+(`require_role`), which are both live. §50 needs §45; §51 needs §40, §45, §46
+and §50. All five can be re-run safely, each at its own place in this order —
+but never replay an EARLIER file afterwards (`supabase/schema/README.md`).
 
 ## 0. The paste rule (every section)
 
@@ -27,15 +33,19 @@ On your Mac, from the repo root on `develop`:
 awk '/^-- 36\. PLAN FEATURES FROM THE MATRIX/{p=1; print prev} p{print} /^-- END OF SECTION 36 \(generated\)/{exit} {prev=$0}' \
   supabase/schema/supabase-schema.sql > /tmp/s36.sql
 
-shasum -a 256 /tmp/s36.sql supabase/schema/schema-48-presence.sql supabase/schema/schema-49-co-editing.sql
+shasum -a 256 /tmp/s36.sql supabase/schema/schema-48-presence.sql supabase/schema/schema-49-co-editing.sql \
+  supabase/schema/schema-50-refund-seat-trial.sql supabase/schema/schema-51-security-followups.sql
 ```
 
-At commit `dac7de8` the checksums are:
+After the 19 Oct merge of the improvement branch into develop the checksums are
+(§36 changed by one comment line: the Basic list reads "Story", not "Beats & Pacing"):
 
 ```
-b1f5bc655ff35daed53f2030ab3db9663ff36313e4a2fcabba223e97218abaec  /tmp/s36.sql   (66 lines)
+60c73ff3b35e9c711abb9e59341c04a133bb26dd3dfe6a6fc85cf1202557f4c1  /tmp/s36.sql   (66 lines)
 752919adb42732305bcb57e35317f2de14ddaebdb279d01b433a75bb3a1950af  schema-48-presence.sql
 fa4ce74553262824e9f80b5eed7d7cfdaea11152ac847d7e3be605282a3c31f5  schema-49-co-editing.sql
+95f801230f19eca0736df3f0f388d049137945f8330aa9bbee5f5b1a23b4e275  schema-50-refund-seat-trial.sql
+860ed0741bad08c196d40d00602c4fb5481290519017691a30529bb4ac63ac44  schema-51-security-followups.sql
 ```
 
 If yours differ, stop. You are not on the same commit, or the cut went

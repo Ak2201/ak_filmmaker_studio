@@ -5,9 +5,11 @@
    customer's refund request (schema section 27). Runs with the caller's
    JWT in the Authorization header and the service role in the function.
 
-     1. who — Auth is asked who the JWT belongs to; then is_studio_admin()
-        is called AS THAT CALLER, the same check every console RPC makes.
-        Nobody else gets past here, whatever the browser showed.
+     1. who — Auth is asked who the JWT belongs to; then
+        require_role(['finance']) is called AS THAT CALLER, the same check
+        the finance console RPCs make (owner always passes; support and
+        non-admins get 403). Nobody else gets past here, whatever the
+        browser showed, and begin_refund() re-checks the actor's role.
      2. begin_refund() — under a row lock on the payment: it must be
         'paid' (captured), not refunded and with no refund in flight,
         the amount between 1 paisa and what was paid (default: all), a
@@ -20,7 +22,9 @@
         admin's e-mail.
      4. record_refund() — 'pending' or 'processed' as Razorpay says;
         'failed' (with the error) when it refused, which leaves the
-        payment and any request untouched and allows a retry.
+        payment and any request untouched and allows a retry. A linked
+        request reads 'refunded' only once the refund is processed;
+        while it is pending the request is 'approved' (section 50).
 
    WHO ENDS THE PLAN. record_refund() calls mark_payment_refunded() when
    the status is 'processed'; the refund.processed WEBHOOK calls
@@ -64,8 +68,12 @@ Deno.serve(async (req) => {
   const { data: who, error: whoErr } = await asUser.auth.getUser();
   if (whoErr || !who?.user) return json(401, { error: 'Sign in first.' });
   const admin = who.user;
-  const { data: isAdmin, error: adminErr } = await asUser.rpc('is_studio_admin');
-  if (adminErr || isAdmin !== true) return json(403, { error: 'Administrators only.' });
+  // The console's role matrix (schema sections 45/46): a refund is a
+  // finance decision, and an owner always passes. require_role() raises
+  // 42501 for a non-admin and for any other role. begin_refund() asks the
+  // same question of p_admin again (section 50), so this is not the only gate.
+  const { error: roleErr } = await asUser.rpc('require_role', { p_roles: ['finance'] });
+  if (roleErr) return json(403, { error: roleErr.message || 'Administrators only.' });
 
   let body: { payment_id?: string; amount_paise?: number | null; reason?: string; request_id?: string | null } = {};
   try { body = await req.json(); } catch { /* empty body */ }

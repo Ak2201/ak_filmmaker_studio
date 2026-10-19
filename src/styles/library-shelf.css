@@ -419,7 +419,7 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
   }
 }
 .cover .toc-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
-.cover .toc-item .num { font-weight: 600; color: var(--library-deep); }
+.cover .toc-item .num { font-weight: 600; color: var(--library-deep); text-transform: uppercase; }
 .cover .toc-go { font-size: var(--t-lg); line-height: 1; color: var(--ink-muted); }
 .cover .toc-item:hover .toc-go { color: var(--library-deep); }
 .cover .toc-item .title { margin-top: 0; font-size: var(--t-xl); font-weight: 600; color: var(--ink); }

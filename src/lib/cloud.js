@@ -94,20 +94,17 @@ const SCOPE_BY_KEY = {
   'fms_songs_v1':               'songs',
   'fms_story_v1':               'story',
   'fms_idea_vault_v1':          'idea_vault',
-  // Post-Production. The scope names are in schema section 17, which
-  // has NOT run against the database at the time of writing — until it
-  // does, Postgres refuses these two upserts and the rest still sync.
+  // Post-Production. The scope names are in schema section 17 (live).
+  // Before a section like this has run, Postgres refuses its upserts
+  // (23514) and the rest still sync.
   'fms_edit_v1':                'edit',
   'fms_deliverables_v1':        'deliverables',
-  // Schema section 24, which has NOT run against the database at the
-  // time of writing — until it does, Postgres refuses these two upserts
-  // and the rest still sync (the same window section 17 had).
+  // Schema section 24 (live since 8 Oct 2026).
   'fms_characters_v1':          'characters',
   'fms_costs_v1':               'costs',
-  // Schema section 37, which has NOT run against the database at the
-  // time of writing — until it does, Postgres refuses this upsert and
-  // the rest still sync (the same window sections 17 and 24 had). Its
-  // value is a per-day history, so it is MERGED, not replaced: see
+  // Schema section 37 (live since 12 Oct 2026; the client shipped
+  // first and every save answered 23514 until it ran — run the section
+  // BEFORE the client names a new scope). Its value is a per-day history, so it is MERGED, not replaced: see
   // MERGE_BY_SCOPE below.
   'fms_write_goals_v1':         'write_goals'
 };
@@ -155,23 +152,43 @@ const MERGE_BY_SCOPE = { write_goals: mergeWriteGoals };
 
 /* The script scope merges ONLY with the co-editing switch on (§49);
    off, it is newer-wins as it always was. Its merge is three-way, so it
-   needs the copy both sides last agreed on: `_base` holds, per project,
-   the script as last pushed from here or last received, in memory. A
-   page that has just opened has none, and script-merge.js then never
-   deletes a line (a line coming back beats a line lost). */
+   needs a copy the other side is known to have built on: `_base` holds,
+   per project, the script as last RECEIVED from the server, in memory.
+   Never this device's own push — a writer who was offline never saw it,
+   and a line added here would then read as "cut over there". A page that
+   has just opened has none, and script-merge.js then never deletes a
+   line (a line coming back beats a line lost). */
 const _base = new Map();
 const baseKey = (pid, scope) => pid + '::' + scope;
 function mergerFor(projectId, scope) {
   if (scope === 'script') {
     if (_coEdit !== true) return null;
-    return (localRaw, remote) => mergeScriptRaw(localRaw, remote, _base.get(baseKey(projectId, scope)) || null);
+    /* `noBase` gives the arrival's own canonical form, to compare the
+       merge against: merged against the base, '{}' reads every line the
+       base has as cut here, and every arrival looked different. */
+    return (localRaw, remote, _localWins, noBase) =>
+      mergeScriptRaw(localRaw, remote, noBase ? null : (_base.get(baseKey(projectId, scope)) || null));
   }
   return MERGE_BY_SCOPE[scope] || null;
 }
 const noteBase = (pid, scope, data) => { if (scope === 'script') _base.set(baseKey(pid, scope), data); };
+/* A merge that leaves out a line this device had keeps the whole local
+   copy in the salvage list first, as a replace does. */
+function salvageDropped(pid, scope, localRaw, merged) {
+  if (scope !== 'script') return;
+  try {
+    const kept = new Set((JSON.parse(merged).elements || []).map((e) => e && e.id));
+    if ((JSON.parse(localRaw).elements || []).some((e) => e && e.id && !kept.has(e.id))) salvage(pid, scope, localRaw);
+  } catch (e) { /* not JSON: nothing to compare */ }
+}
 /* Self-echo by our OWN last push, not by user id, once co-editing is on:
-   the same person on a second device is a collaborator too. */
+   the same person on a second device is a collaborator too. Compared as
+   instants: Postgres hands a timestamptz back in its own spelling. */
 const _lastPushedAt = new Map();
+const isOwnPush = (row) => {
+  const sent = _lastPushedAt.get(baseKey(row.project_id, row.scope));
+  return !!sent && Date.parse(sent) === Date.parse(row.updated_at || '');
+};
 const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k] && !LOCAL_ONLY.has(k));
 if (_unsynced.length) {
   console.warn(
@@ -1429,9 +1446,10 @@ export async function pullProjectData(projectId) {
     if (pullMerge && localRaw != null && localRaw !== '{}') {
       const localWins = localClock(projectId, row.scope) > remoteTs;
       const merged = pullMerge(localRaw, row.data || {}, localWins);
-      const remoteCanon = pullMerge('{}', row.data || {}, false);
+      const remoteCanon = pullMerge('{}', row.data || {}, false, true);
       noteBase(projectId, row.scope, row.data || {});
       if (merged !== localRaw) {
+        salvageDropped(projectId, row.scope, localRaw, merged);
         _applyingRemote = true;
         try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
         applied++;
@@ -1551,7 +1569,6 @@ async function _pushScope(projectId, scope) {
   }
   // Both clocks now agree on the value this device just sent.
   markRemoteSeen(projectId, scope, Date.parse(stamp), true);
-  noteBase(projectId, scope, json);
   idleSync();
 }
 
@@ -1814,7 +1831,7 @@ function _onRemoteData(payload) {
   if (session && row.updated_by === session.user.id) {          // self echo
     // …or this person on another device, which co-editing merges.
     if (!(row.scope === 'script' && _coEdit === true)) return;
-    if (_lastPushedAt.get(baseKey(row.project_id, row.scope)) === row.updated_at) return;
+    if (isOwnPush(row)) return;
   }
   const localKey = KEY_BY_SCOPE[row.scope];
   if (!localKey) return;
@@ -1827,9 +1844,10 @@ function _onRemoteData(payload) {
   const merge = mergerFor(row.project_id, row.scope);
   if (merge && localRaw != null && localRaw !== '{}') {
     const merged = merge(localRaw, row.data || {}, localClock(row.project_id, row.scope) > remoteTs);
-    const remoteCanon = merge('{}', row.data || {}, false);
+    const remoteCanon = merge('{}', row.data || {}, false, true);
     noteBase(row.project_id, row.scope, row.data || {});
     if (merged !== localRaw) {
+      salvageDropped(row.project_id, row.scope, localRaw, merged);
       _applyingRemote = true;
       try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
       Store.notify('cloud:synced', { projectId: row.project_id, scope: row.scope });

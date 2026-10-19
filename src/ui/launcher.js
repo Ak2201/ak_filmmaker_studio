@@ -60,7 +60,7 @@ import ROWS_JSON from '../data/launcher-rows.json';
 import '../styles/launcher.css';
 
 /* TWO derived figures, and which one a sentence quotes is not a detail.
-   MODULE_COUNT is how many modules the MAP has; BUILT_MODULE_COUNT is
+   the heading counts the modules the MAP draws; BUILT_MODULE_COUNT is
    how many a visitor can actually open. The launcher prints both, side
    by side ("N OF M BUILT"), under a label that says it is a map and a
    deck that says the ones still to come say so — so the total is the
@@ -89,9 +89,14 @@ import '../styles/launcher.css';
    fixed for the life of a document: the Settings control RELOADS
    after a change rather than notifying, precisely so these three
    and every other derived count cannot go stale. */
-const MODULE_COUNT = moduleGroups().reduce((n, p) => n + p.modules.length, 0);
+/* Both skip a module that is switched off for EVERYBODY
+   (isDisabledEverywhere): the grid hides those, and a heading that
+   counted them said "34 modules" over a map of 20. The heading itself
+   counts what the grid renders (renderLauncher); this figure is the
+   prose one, and OFF_BY_DEFAULT is static, so it is right at import. */
+const offEverywhere = (m) => safe(() => isDisabledEverywhere(m.id), false);
 export const BUILT_MODULE_COUNT = moduleGroups().reduce(
-  (n, p) => n + p.modules.filter((m) => m.status === 'built').length, 0);
+  (n, p) => n + p.modules.filter((m) => m.status === 'built' && !offEverywhere(m)).length, 0);
 
 /* READING THE STUDIO — the snapshot, the per-module probes and the three
    blueprint-era blobs they read — is src/lib/launcher-model.js. Reads only:
@@ -215,6 +220,9 @@ export function renderLauncher() {
   const inner = h('div.section-inner');
 
   const live = rows.filter((r) => !r.hidden);
+  /* The count is of what the grid DRAWS, so the heading and the map can
+     never disagree about which modules exist. */
+  const shown = live.reduce((n, r) => n + r.modules.filter((x) => !x.hidden).length, 0);
   const worked = live.reduce((n, r) => n + r.modules.filter((x) => {
     if (x.hidden) return false;
     const s = stateOf(x.m, snap);
@@ -227,17 +235,21 @@ export function renderLauncher() {
       h('div.label', { text: 'THE MAP · EVERY MODULE BY STAGE OF WORK' }),
       h('h2#lxHeading', {}, [
         document.createTextNode(`${NUMBER_WORDS[live.length] || live.length} rows, `),
-        h('em', { text: `${MODULE_COUNT} modules.` })
+        // Emphasis by weight, not an italic accent.
+        h('strong.lx-count', { text: `${shown} ${shown === 1 ? 'module' : 'modules'}.` })
       ]),
+      /* "Usually": the hero above says the stages go in any order and
+         nothing is mandatory; this line must not contradict it. */
       h('p.deck', {
-        text: 'A film moves through these in order, and so does the studio. '
+        text: 'A film usually moves through these in this order. '
             + 'Open any module directly.'
       })
     ]),
+    /* What varies for this project only: how many modules hold work.
+       "N of N built" never varied for anyone, and "you are here" on the
+       dashboard said the page you were already reading. */
     h('div.right', {}, [
-      h('div', { text: `${BUILT_MODULE_COUNT} OF ${MODULE_COUNT} BUILT` }),
-      h('div.lx-worked', { text: `${worked} HOLD WORK` }),
-      hereLine(at)
+      h('div.lx-worked', { text: `${worked} with work` })
     ])
   );
 
@@ -247,21 +259,6 @@ export function renderLauncher() {
   inner.append(head, grid);
   sec.append(inner);
   return sec;
-}
-
-/** "YOU ARE HERE · Breakdown → Scene List", or the honest short
-    version on a page that is not a module. */
-function hereLine(at) {
-  let trail = '';
-  if (at.module) trail = at.phase.label + ' → ' + at.module.label;
-  else if (at.global) trail = at.global.label;
-  if (!trail) return null;
-  const el = h('div.lx-here-line');
-  el.append(
-    h('span.lx-here-tag', { text: 'YOU ARE HERE' }),
-    h('span.lx-here-trail', { text: trail })
-  );
-  return el;
 }
 
 export default { renderLauncher };

@@ -453,7 +453,7 @@ function settlementDoc(ctx, id) {
   const proj = (Store.currentProject && Store.currentProject()) || null;
   return h('article.cx-doc', {}, [
     h('p.cx-doc-eyebrow', { text: (proj && proj.title ? proj.title + ' · ' : '') + 'Crew settlement' }),
-    h('h1.cx-doc-title', { text: c.name || 'Unnamed contact' }),
+    h('h2.cx-doc-title', { text: c.name || 'Unnamed contact' }),
     h('p.cx-doc-sub', { text: [c.role, c.department, c.phone].filter(Boolean).join(' · ') }),
     h('table.cx-table', {}, [
       h('tbody', {}, [
@@ -508,7 +508,7 @@ function topSheetDoc(ctx, screen) {
   ]));
   return h('article.cx-doc', {}, [
     h('p.cx-doc-eyebrow', { text: 'Budget top sheet' + (proj && proj.title ? ' · ' + proj.title : '') }),
-    h('h1.cx-doc-title', { text: rs(ts.grand) }),
+    h('h2.cx-doc-title', { text: rs(ts.grand) }),
     h('p.cx-doc-sub', { text: (ts.grand >= 100000 ? '≈' + fmtINR(ts.grand) + ' · ' : '') + 'Prepared ' + today() + ' from ' + ctx.lines.length + ' estimate line' + (ctx.lines.length === 1 ? '' : 's') + '.' }),
     screen ? scroll(table) : table,
     h('p.cx-hint', { text: 'Rates are a starting point, not quotes: the Chennai card is 2024-25 and crew rates have no current union floor.' })

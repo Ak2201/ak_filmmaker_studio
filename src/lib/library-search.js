@@ -49,7 +49,8 @@ export const GROUPS = [
   { id: 'glossary', label: 'Film terminology' }
 ];
 
-const plain = (s) => String(s == null ? '' : s).replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+/** The extractor stores some headings as HTML ("Theme &amp; Stakes"); as text. */
+export const plain = (s) => String(s == null ? '' : s).replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const fold = (s) => plain(s).toLowerCase();
 const arr = (v) => (Array.isArray(v) ? v : []);
 

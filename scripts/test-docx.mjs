@@ -87,5 +87,43 @@ eq(back.elements.map((e) => e.type + ':' + e.text), [
   'dialogue:நான் முடிப்பேன். I will finish this.', 'transition:CUT TO:', 'scene:EXT. ROOF - DAWN', 'shot:CLOSE ON THE KITE'
 ], 'export → import gives back every element, by type, without the title page');
 
+/* The STYLE decides on the way back, not the words. Each of these reads
+   as something else to PARSER 2's guess: a heading with no INT./EXT.,
+   a Tamil heading with no உள்/வெளி, a shot that does not start with a
+   camera word, an action that starts "INT.", a transition not ending
+   TO:, and a Tamil sentence as a cue. */
+const odd = {
+  elements: [
+    el('scene', 'MONTAGE'), el('action', 'Days pass.'),
+    el('scene', 'LATER'), el('shot', 'THE KITE'), el('action', 'INT. is what the slug says.'),
+    el('scene', 'வீடு - இரவு'), el('character', 'மீரா அவள் சொல்கிறாள்'), el('dialogue', 'வா.'),
+    el('transition', 'FADE OUT.')
+  ]
+};
+const oddBytes = X.toDOCX(odd, { title: 'Odd' });
+const oddRes = await D.extractDocxParagraphs(oddBytes.buffer.slice(oddBytes.byteOffset, oddBytes.byteOffset + oddBytes.length));
+const oddBack = I.parseScript(I.docxScreenplayText(oddRes.paras).text, 'odd.docx');
+eq(oddBack.elements.map((e) => e.type + ':' + e.text), [
+  'scene:MONTAGE', 'action:Days pass.', 'scene:LATER', 'shot:THE KITE', 'action:INT. is what the slug says.',
+  'scene:வீடு - இரவு', 'character:மீரா அவள் சொல்கிறாள்', 'dialogue:வா.', 'transition:FADE OUT.'
+], 'export → import keeps every type the style named, even where the words look like another');
+eq(oddBack.scenes.length, 3, 'and so the three headings are three scenes, and the "INT." action is none');
+
+/* XML 1.0 forbids most C0 controls, U+FFFE/U+FFFF and a lone surrogate;
+   one of them anywhere makes a part not well-formed and Word refuses the
+   file. A strict XML parser reads every part. */
+const dirty = X.toDOCX({ elements: [el('action', 'a\x0bb\x0cc\x01d\tt\uFFFEe\uD800f 😀')] }, { title: 'T\x08itle\uDC00' });
+const dirtyFile = join(dir, 'dirty.docx');
+writeFileSync(dirtyFile, dirty);
+try {
+  const out = execFileSync('python3', ['-I', '-c', 'import sys,zipfile\nfrom xml.dom import minidom\nz=zipfile.ZipFile(sys.argv[1])\nfor n in z.namelist():\n  try:\n    minidom.parseString(z.read(n)); print("OK", n)\n  except Exception as e:\n    print("BAD", n, e)', dirtyFile]).toString().trim().split('\n');
+  ok(out.length >= 6 && out.every((l) => l.startsWith('OK')), 'with control characters in the text and the title, every part is well-formed XML — ' + out.filter((l) => !l.startsWith('OK')).join('; '));
+} catch (e) {
+  ok(false, 'Python could not parse the parts: ' + e.message);
+}
+const dirtyRes = await D.extractDocxParagraphs(dirty.buffer.slice(dirty.byteOffset, dirty.byteOffset + dirty.length));
+eq((dirtyRes.paras || []).map((p) => p.text), ['abcd\ttef 😀'], 'the illegal characters are dropped; tab and an emoji are kept');
+ok(/<dc:title>Title<\/dc:title>/.test(new TextDecoder().decode(dirty)), 'the core.xml title is cleaned too');
+
 console.log((fail ? '✗' : '✓') + ' test-docx: ' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

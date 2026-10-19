@@ -180,6 +180,16 @@
   .pl-compare-wrap { padding: 0 var(--s2) var(--s3); }
   .pl-compare-table th, .pl-compare-table td { padding: var(--s2) var(--s1); }
   .pl-compare-table thead th { font-size: var(--t-small); }
+  /* A tier below the one held (plan-cards.js .is-below): a one-line
+     summary under the buyer's own card, never a full card above it.
+     The compare table below still has every row for the curious. */
+  .pl-card.is-below { order: 1; padding: var(--s3) var(--s4); gap: var(--s2); }
+  .pl-card.is-below .pl-tag,
+  .pl-card.is-below .pl-blurb,
+  .pl-card.is-below .pl-price-cap,
+  .pl-card.is-below .pl-card-body,
+  .pl-card.is-below .pl-features { display: none; }
+  .pl-card.is-below .pl-cta .k-btn { min-height: 0; padding-block: var(--s1); }
 }
 
 /* ---- usage tiles (plan-cards.js usageTiles) ---------------------- */

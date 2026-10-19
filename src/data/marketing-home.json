@@ -2,9 +2,10 @@
   "_about": "Copy for the rebuilt home page (start.html), rendered by scripts/make-marketing-pages.mjs. Every claim is checkable in this repo. No price, no date, no social proof. A figure is a {{fms:...}} stamp (dragon.*) filled by the fms-start-figures plugin in vite.config.js, never typed.",
   "hero": {
     "h1": "From first draft to final call sheet",
-    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place, saved in your own browser. One payment, never a subscription, and it keeps working offline.",
+    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place, saved in your own browser. One payment, never a subscription, and once it is open it keeps working when the signal drops.",
     "note": "Every tool is open on a sample feature, {{fms:dragon.scenes}} scenes long, so you can look around before you write.",
-    "cta": "Get started"
+    "cta": "Get started",
+    "mediaLabel": "The sample feature's scene list"
   },
   "stages": [
     {
@@ -31,6 +32,7 @@
     },
     {
       "id": "prep",
+      "mediaWide": true,
       "sym": "grid_view",
       "h2": "Plan the shoot",
       "body": "Auto-tag suggests what each scene needs and you accept what is right. Then build the shot list, lay scenes onto a stripboard, and print the sides for the day.",
@@ -55,7 +57,7 @@
       "id": "local-first",
       "sym": "lock",
       "h2": "Local-first: your work stays yours",
-      "body": "Everything you write is saved in your own browser first, and the studio installs like an app and keeps working offline. Sync and a backup to your own Google Drive are there if you switch them on.",
+      "body": "Everything you write is saved in your own browser first, and the studio installs like an app, and once it is open it keeps working without a signal. Sync and a backup to your own Google Drive are there if you switch them on.",
       "cta": null,
       "video": null
     }
@@ -99,8 +101,8 @@
       },
       {
         "sym": "cloud_off",
-        "title": "Works offline",
-        "text": "Install it like an app and keep writing without a connection."
+        "title": "Keeps working when the signal drops",
+        "text": "Install it like an app. Once it is open, keep writing without a connection."
       },
       {
         "sym": "backup",
@@ -110,7 +112,6 @@
     ]
   },
   "pricing": {
-    "cta": "View plans and pricing",
     "pill": "See the plans"
   },
   "optOut": {

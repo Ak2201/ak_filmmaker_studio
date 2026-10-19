@@ -21,3 +21,7 @@ supabase/.temp/
 social/*.svg
 social/*.zip
 schema-3*.sql
+
+# /brag launch-video output (rendered frames, mp4) — generated, not source
+brag-output/
+brag-output-*/

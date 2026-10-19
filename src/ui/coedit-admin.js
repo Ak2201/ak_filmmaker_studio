@@ -16,16 +16,21 @@
 import { h, delegate } from '../lib/dom.js';
 import { ask } from './dialog.js';
 import { readCoEditSwitch, setCoEditSwitch } from '../lib/coedit-api.js';
+import { studioRole } from './admin-customer.js';
 
-const S = { state: 'idle', on: false, missing: false, busy: false, error: '' };
+const S = { state: 'idle', on: false, missing: false, busy: false, error: '', owner: false };
 let rerender = () => {};
 
 const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
 async function load() {
   S.state = 'loading'; rerender();
   try {
-    const r = await readCoEditSwitch();
+    const [r, role] = await Promise.all([readCoEditSwitch(), studioRole().catch(() => null)]);
     S.on = r.on; S.missing = r.missing;
+    /* Only the owner may change it (the server refuses anyone else);
+       everyone else sees the state as text. */
+    S.owner = role === 'owner';
+    S.error = '';
     S.state = 'ready';
   } catch (e) {
     S.error = e.message || 'The switch could not be read.'; S.state = 'error';
@@ -40,18 +45,28 @@ export function coEditSwitchBlock(onChange) {
   if (S.state === 'idle') load();
   const box = h('div.gr-panel.acc-switch', { id: 'coEditing' });
   box.append(h('h3.gt-h3', { text: 'Co-editing' }));
-  if (S.state !== 'ready') { box.append(h('p.gt-meta', { text: S.error || 'Loading…' })); return box; }
+  if (S.state === 'error') {
+    box.append(h('p.gt-meta', { text: S.error }),
+      h('div.gr-row', {}, [h('button.btn', { type: 'button', 'data-coedit-action': 'retry', text: 'Try again' })]));
+    return box;
+  }
+  if (S.state !== 'ready') { box.append(h('p.gt-meta', { text: 'Loading…' })); return box; }
   if (S.missing) {
     box.append(h('p.gt-meta', { text: 'This switch is not available on this database yet (schema section 49 has not run). Until it runs, the newer copy of a script wins, as it always has.' }));
     return box;
   }
-  const sw = h('input', { id: 'coEditOn', type: 'checkbox', 'data-coedit-action': 'switch' });
-  sw.checked = S.on;
-  sw.disabled = S.busy;
-  box.append(h('div.gr-row', {}, [h('label.gr-check', { for: 'coEditOn' }, [sw, h('span', { text: 'Merge collaborators’ edits line by line' })])]));
+  if (S.owner) {
+    const sw = h('input', { id: 'coEditOn', type: 'checkbox', 'data-coedit-action': 'switch' });
+    sw.checked = S.on;
+    sw.disabled = S.busy;
+    box.append(h('div.gr-row', {}, [h('label.gr-check', { for: 'coEditOn' }, [sw, h('span', { text: 'Merge collaborators’ edits line by line' })])]));
+  }
   box.append(h('p.gr-meta', { 'data-coedit-state': S.on ? 'on' : 'off', text: S.on ? COEDIT_ON : COEDIT_OFF }));
+  if (!S.owner) box.append(h('p.gt-meta', { text: 'Only the owner can change this.' }));
   return box;
 }
+
+delegate(document, 'click', '[data-coedit-action="retry"]', () => { S.state = 'idle'; load(); });
 
 delegate(document, 'change', '[data-coedit-action="switch"]', async (e, el) => {
   const want = el.checked;

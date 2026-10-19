@@ -76,10 +76,15 @@ a:focus-visible { outline-offset: 3px; }
   pointer-events: none;
 }
 .reading-progress-bar {
+  /* A scale, not a width: width re-lays-out on every scroll frame, a
+     transform only composites. No transition either: scroll-linked
+     feedback that lags the scroll reads as broken. The scale is a
+     resting state, not a distance travelled, so it is NOT x --motion. */
   height: 100%;
-  width: 0;
+  width: 100%;
   background: var(--accent);
-  transition: width var(--speed) linear;
+  transform-origin: left center;
+  transform: scaleX(0);
 }
 
 /* ------------------------------------------------------------
@@ -571,6 +576,7 @@ a:focus-visible { outline-offset: 3px; }
   left: 0;
   width: var(--rail-w);
   max-height: calc(100vh - var(--s9));
+  max-height: calc(100dvh - var(--s9));   /* under a phone's URL bar 100vh is too tall */
   overflow: hidden auto;
   padding: var(--s4);
   z-index: var(--z-rail);
@@ -710,11 +716,15 @@ a:focus-visible { outline-offset: 3px; }
   line-height: var(--lh-snug);
   pointer-events: auto;
   opacity: 0;
-  transform: translateY(calc(var(--s2) * var(--motion)));
-  /* Exit is the shorter one (--speed-exit). The entrance is the
-     .show state's own transition, so it is the destination's that
-     runs when the toast arrives. */
-  transition: opacity var(--speed-exit) var(--ease-in), transform var(--speed-exit) var(--ease-in);
+  /* In and out by the SAME edge, its own height (a percentage, so a
+     two-line toast travels as far as it is tall). Exit is the shorter
+     one (--speed-exit) and also ease-out — ease-in on UI starts slow,
+     which is exactly when the eye is watching. The entrance is the
+     .show state's own transition. Transitions, not keyframes, so a
+     toast dismissed mid-entrance reverses from where it is. This is
+     the ONE toast motion; motion-app.css no longer declares another. */
+  transform: translateY(calc(100% * var(--motion)));
+  transition: opacity var(--speed-exit) var(--ease-out), transform var(--speed-exit) var(--ease-out);
 }
 .toast.show {
   opacity: 1;
@@ -1460,10 +1470,18 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
   cursor: pointer;
+  /* base.css's (pointer: coarse) rule centres every [role="button"]
+     and the UA centres button text: on a phone "Jo" sat in the middle
+     of its card while a long title only looked left-aligned. */
+  align-items: stretch;
+  text-align: start;
   transition: transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out),
               border-color var(--speed-slow) var(--ease-out);
 }
-.project-card:hover { transform: translateY(calc(-2px * var(--motion))); box-shadow: var(--shadow-md); }
+.project-card:hover { box-shadow: var(--shadow-md); }
+@media (hover: hover) and (pointer: fine) {
+  .project-card:hover { transform: translateY(calc(-2px * var(--motion))); }   /* no sticky lift on a tapped phone card */
+}
 .project-card.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .project-card > * { position: relative; z-index: 1; }
 .project-card .pc-cover {
@@ -2430,7 +2448,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
      fitMenu() in shell.js, which publishes --sh-menu-max on open.
      `contain` so the wheel at either end does not carry on into the
      page underneath. */
-  max-height: var(--sh-menu-max, calc(100vh - var(--s7)));
+  max-height: var(--sh-menu-max, calc(100dvh - var(--s7)));
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -4255,11 +4273,21 @@ html {
   pointer-events: none;
   transition: opacity var(--speed) var(--ease), visibility 0s linear var(--speed);
 }
-:root .sh-rail-item:hover .sh-rail-label,
 :root .sh-rail-item:focus-visible .sh-rail-label {
   opacity: 1;
   visibility: visible;
   transition: opacity var(--speed) var(--ease) 0.12s, visibility 0s linear 0.12s;
+}
+/* Hover tooltips only where hover is real (a tapped phone item kept its
+   label up). The first waits 120ms; once one has shown, the rail is
+   .is-tipping (shell.js) and the next appears at once, with no fade. */
+@media (hover: hover) and (pointer: fine) {
+  :root .sh-rail-item:hover .sh-rail-label {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity var(--speed) var(--ease) 0.12s, visibility 0s linear 0.12s;
+  }
+  :root .sh-rail.is-tipping .sh-rail-item:hover .sh-rail-label { transition: none; }
 }
 /* A stage's name is the flyout's heading; its own label stays as the
    accessible name only. */
@@ -4353,10 +4381,13 @@ html {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  transition: opacity var(--speed) var(--ease), transform var(--speed) var(--ease);
+  /* it grows from the account button it is anchored to, not from its
+     own centre and not sideways */
+  transform-origin: left bottom;
+  transition: opacity var(--speed) var(--ease-out), transform var(--speed) var(--ease-out);
 }
 @starting-style {
-  .sh-acct-menu { opacity: 0; transform: translateX(calc(-4px * var(--motion))); }
+  .sh-acct-menu { opacity: 0; transform: scale(calc(1 - 0.03 * var(--motion))); }
 }
 .sh-acct-who {
   display: flex;
@@ -4429,8 +4460,10 @@ html {
 }
 .sh-fly[hidden] { display: none; }
 @starting-style {
-  .sh-fly { opacity: 0; transform: translateX(calc(-4px * var(--motion))); }
+  .sh-fly:not(.is-instant) { opacity: 0; transform: translateX(calc(-4px * var(--motion))); }
 }
+/* the neighbour of an open flyout: no fade, no travel (shell.js) */
+.sh-fly.is-instant { transition: none; }
 .sh-fly-head {
   display: flex;
   align-items: center;

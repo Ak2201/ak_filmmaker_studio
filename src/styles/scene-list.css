@@ -21,7 +21,17 @@ section#scenes .bd-breakdown { gap: 0; }
   --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 1fr) 76px 100px 92px 92px 36px;
 }
 @container sl (min-width: 62rem) {
-  .bd-breakdown { --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 2.4fr) 80px 104px 96px minmax(0, 1fr) 96px 36px; }
+  /* Sized for the worst values, not the usual ones (19 Oct 2026):
+     "112A-PT2" in the number, CONTINUOUS in the time, "12 1/8" plus
+     its field in the length, and a TAGGED badge before the toggle. A
+     fixed track, never `auto`: each row is its own grid, so an auto
+     track would size per row and the columns would stop lining up.
+     ON THE ROWS, NOT ON .bd-breakdown: a container query cannot style
+     its own container, so this tier used to match nothing at all — the
+     wide list ran on the nine-track template while cast, status and the
+     toggle asked for columns 8, 9 and 10, and the toggle landed in an
+     implicit track on top of the status badge. */
+  .bd-sl-head, .bd-sl-main { --sl-cols: var(--sl-grip-w) 28px 72px minmax(0, 2.4fr) 96px 140px 112px minmax(0, 1fr) 104px 36px; }
 }
 
 /* ---- toolbar -------------------------------------------------- */
@@ -134,12 +144,12 @@ section#scenes .bd-breakdown { gap: 0; }
 }
 .bd-sl-len { display: flex; align-items: center; gap: var(--s1); }
 .bd-sl-len input { width: 3.6rem; flex: 0 0 auto; text-align: right; }
-.bd-sl-len .bd-pages { min-width: 0; }
+.bd-sl-len .bd-pages { min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }   /* a figure is never broken or cut */
 .bd-sl-cast { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-small); color: var(--ink-body); }
 .bd-sl-cast.is-none { color: var(--ink-muted); }
 
 /* where a scene stands is a kit badge (tone from the derived state) */
-.bd-sl-status { justify-self: start; white-space: nowrap; }
+.bd-sl-status { justify-self: start; white-space: nowrap; min-width: 0; }
 .bd-sl-toggle { min-width: 36px; min-height: 36px; }
 
 /* ---- the open scene -------------------------------------------- */
@@ -159,10 +169,13 @@ section#scenes .bd-breakdown { gap: 0; }
 @container sl (max-width: 39.99rem) {
   .bd-sl-head { display: none; }
   .bd-sl-main {
-    grid-template-columns: var(--sl-grip-w) 28px 64px minmax(0, 1fr) minmax(0, 1fr) 40px;
+    grid-template-columns: var(--sl-grip-w) 28px 72px minmax(0, 1fr) minmax(0, 1fr) 40px;   /* 72: the coarse-pointer number field is 4.25rem */
+    /* The location is how a row is recognised, so it gets the card's
+       whole width on its own line (it was cut to "EXT. KOYA…"). */
     grid-template-areas:
-      "grip pick no   where where tog"
-      ".    ie   ie   ie    dn    dn"
+      "grip  pick  no    .     .     tog"
+      "where where where where where where"
+      ".     ie    ie    ie    dn    dn"
       ".    len  len  len   cast  cast"
       ".    st   st   st    st    st"
       ".    cnt  cnt  cnt   cnt   cnt";

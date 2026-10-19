@@ -237,7 +237,7 @@ StudioUI.toast = function (msg, opts) {
     clearTimeout(timer);
     timer = null;
     t.classList.remove('show');
-    setTimeout(() => { try { host.removeChild(t); } catch (e) {} }, 260);
+    setTimeout(() => { try { host.removeChild(t); } catch (e) {} }, 180);   /* --speed-exit + a frame */
   }
   function start() {
     if (!(remaining > 0)) return;
@@ -362,7 +362,7 @@ function injectReadingProgress() {
     const h = document.documentElement;
     const max = (h.scrollHeight || 0) - (h.clientHeight || 0);
     const pct = max > 0 ? Math.min(100, (h.scrollTop / max) * 100) : 0;
-    bar.style.width = pct + '%';
+    bar.style.transform = 'scaleX(' + (pct / 100) + ')';   /* composite-only (chrome.css) */
     raf = null;
   }
   window.addEventListener('scroll', () => {

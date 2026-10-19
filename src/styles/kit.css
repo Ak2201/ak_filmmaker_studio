@@ -66,10 +66,13 @@
   text-decoration: none;
   cursor: pointer;
   transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease),
-              color var(--speed) var(--ease), transform var(--speed-tap) var(--ease);
+              color var(--speed) var(--ease), transform var(--speed-tap) var(--ease-out);
 }
 .k-btn:hover { background: var(--surface-hover); border-color: var(--border-strong); }
-.k-btn:active:not(:disabled) { transform: scale(var(--sk-press, 1)); }
+/* The skin's one press scale, multiplied by --motion like every other
+   distance (reduced motion: no scale). A locked (aria-disabled) button
+   does not press — it is not going to do anything. */
+.k-btn:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(calc(1 - (1 - var(--sk-press, 1)) * var(--motion))); }
 .k-btn:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 .k-btn:disabled,
 .k-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
@@ -655,11 +658,15 @@
 .k-meter-row b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .k-meter-track { position: relative; height: 4px; background: var(--surface-hover); border-radius: var(--radius-pill); overflow: hidden; }
 .k-meter-fill {
-  position: absolute; inset: 0 auto 0 0;
-  width: var(--k-pct, 0%);
+  /* transform, not width: a composite-only change (meter.js sets
+     --k-frac on the fill itself, so nothing else restyles). A resting
+     scale, not a distance, so not x --motion. The track's pill radius
+     and overflow:hidden clip the ends. */
+  position: absolute; inset: 0;
   background: var(--k-meter-c, var(--accent-primary));
-  border-radius: inherit;
-  transition: width var(--speed-slow) var(--ease-out);
+  transform-origin: left center;
+  transform: scaleX(var(--k-frac, 0));
+  transition: transform var(--speed-slow) var(--ease-out);
 }
 .k-meter--ok     { --k-meter-c: var(--status-success); }
 .k-meter--warn   { --k-meter-c: var(--status-warning); }

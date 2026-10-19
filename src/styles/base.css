@@ -29,6 +29,16 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  /* The phone baseline (19 Oct 2026): no grey-blue flash over a tapped
+     control (every control already has its own :active and focus
+     states), and labels on CONTROLS are not text to select or
+     long-press. Never on body or content: writing stays selectable. */
+  -webkit-tap-highlight-color: transparent;
+}
+button, .btn, .k-btn, .tabs-tab, .mobile-actionbar a, .mn-mod, .sh-fly-mod {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -55,6 +65,7 @@ body {
   font-optical-sizing: auto;
   line-height: var(--lh-body);
   min-height: 100vh;
+  min-height: 100dvh;   /* the visible viewport on a phone, not the one under the URL bar */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -63,16 +63,30 @@ html.mn-locked body { overflow: hidden; }
   border-radius: var(--sk-radius, var(--radius)) var(--sk-radius, var(--radius)) 0 0;
   box-shadow: var(--shadow-modal);
   transform: none;
-  transition: transform var(--speed-slow) var(--ease-out);
+  /* A drawer (19 Oct 2026): it rises by its own full height on --ease,
+     which IS the iOS drawer curve (0.32, 0.72, 0, 1), over --speed-lazy,
+     and leaves the same way, faster (the is-closing rule below). */
+  transition: transform var(--speed-lazy) var(--ease);
 }
-/* the sheet rises from the bar, a distance x --motion; a "from" for
-   the first frame, because the overlay is new to the document */
+/* the "from" for the first frame, because the overlay is new to the
+   document; a distance x --motion, so reduced motion simply appears */
 @starting-style {
   .mn-overlay { opacity: 0; }
-  .mn-sheet { transform: translateY(calc(32px * var(--motion))); }
+  .mn-sheet { transform: translateY(calc(100% * var(--motion))); }
+}
+/* The exit: only under ma-on, where mobile-nav.js keeps the overlay for
+   the slide; anywhere else it is removed at once. */
+.ma-on .mn-overlay.is-closing { opacity: 0; pointer-events: none; }
+.ma-on .mn-overlay.is-closing .mn-sheet {
+  transform: translateY(calc(100% * var(--motion)));
+  transition-duration: var(--speed-slow);
 }
 
 .mn-head {
+  /* the header is the drag handle (mobile-nav.js wireDrag): the
+     browser must not take the vertical pan for a scroll here. Only the
+     head: the body below still scrolls natively. */
+  touch-action: none;
   position: sticky;
   top: 0;
   z-index: 1;
@@ -590,6 +604,20 @@ html.mn-on .mobile-actionbar [aria-current="page"] { color: var(--ink); font-wei
 @media (min-width: 721px) {
   .mn-overlay { justify-content: center; }
   html .mn-sheet { max-width: 560px; }
+}
+
+/* the grabber: says "this pulls down" before anyone tries */
+html .mn-head::before {
+  content: "";
+  position: absolute;
+  top: var(--s1);
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  pointer-events: none;
 }
 
 @media print { .mn-overlay { display: none !important; } }

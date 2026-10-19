@@ -1391,6 +1391,17 @@ function exSheet(open) {
 delegate(document, 'click', '[data-action="ex-sheet"]', () => exSheet(true));
 delegate(document, 'click', '[data-action="ex-sheet-close"]', () => exSheet(false));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && EX.sheet) exSheet(false); });
+/* Leaving the Elements tab closes it. The sheet lives INSIDE that tab's
+   panel, so a tab switch (a hash change — Back, a crumb, the strip)
+   hid the sheet while `bdx-locked` stayed on <html>: overflow hidden on
+   a page with nothing open, and a phone that could no longer be scrolled
+   by hand (prove:scroll, 19 Oct 2026). Next tick, so tabs.js has shown
+   the new panel before the sheet is asked whether it can still be seen. */
+window.addEventListener('hashchange', () => setTimeout(() => {
+  if (!EX.sheet) return;
+  const side = document.getElementById('bdxSide');
+  if (!side || !side.getClientRects().length || side.closest('[hidden]')) exSheet(false);
+}, 0));
 /* Widening past the phone closes it: the panel is a column again. */
 matchMedia('(max-width: 720px)').addEventListener('change', (m) => { if (!m.matches && EX.sheet) exSheet(false); });
 const exSync = () => {

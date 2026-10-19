@@ -74,10 +74,33 @@ const WAIT_MS = 20000;
 
 let _observer = null;
 let _timer = 0;
+let _takeover = null;
 
 function stopWaiting() {
   if (_observer) { _observer.disconnect(); _observer = null; }
   if (_timer) { clearTimeout(_timer); _timer = 0; }
+  if (_takeover) { _takeover(); _takeover = null; }
+}
+
+/* THE READER OUTRANKS THE RESOLVER (owner, 19 Oct 2026: "there are
+   scrolling issues in a few pages"). The settle loop below runs for up
+   to WAIT_MS while a page is still rendering, and every mutation re-lands
+   the target — so on library.html#films, whose shelves keep rendering
+   for seconds, scrolling down was yanked straight back to Films, again
+   and again: measured, the page could not be scrolled past 2,727px of
+   7,311. The guard already stood down on input; the loop did not.
+
+   Two signals, because neither is enough alone: any input the reader
+   makes (a wheel, a touch, a key, a press — which includes grabbing the
+   scrollbar), and a target that has ARRIVED and then left the viewport's
+   rest line while its own document position did not move — nothing
+   re-rendered, so the viewport moved, and only somebody scrolling moves
+   it. Either one ends the wait and the guard. */
+function watchTakeover(onTakeover) {
+  const inputs = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
+  const fire = () => onTakeover();
+  inputs.forEach((e) => window.addEventListener(e, fire, { passive: true, capture: true }));
+  return () => inputs.forEach((e) => window.removeEventListener(e, fire, { capture: true }));
 }
 
 /* A LANDING CAN BE UNDONE BY THE BROWSER'S OWN.
@@ -130,7 +153,10 @@ function guardLanding(id) {
       if (moved) return;
       const el = document.getElementById(id);
       if (!el) return;
-      if (Math.abs(el.getBoundingClientRect().top - restTop(el)) > 2) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+      const off = Math.abs(el.getBoundingClientRect().top - restTop(el));
+      /* half a screen away is the reader scrolling, not a late landing */
+      if (off > innerHeight / 2) { stopGuard(); return; }
+      if (off > 2) el.scrollIntoView({ block: 'start', behavior: 'instant' });
     });
   };
   window.addEventListener('scroll', onScroll, { passive: true });
@@ -204,6 +230,9 @@ export function resolveFragment(hash = location.hash) {
 
   let lastTop = null;
   let stableTicks = 0;
+  let arrived = false;
+  const takeOver = () => { stopWaiting(); stopGuard(); };
+  _takeover = watchTakeover(takeOver);
 
   /* Returns true once the target has held the same document position
      across enough frames to call it settled. */
@@ -243,6 +272,15 @@ export function resolveFragment(hash = location.hash) {
        has arrived. If not, scroll again and keep waiting. */
     const want = restTop(el);
     const now = el.getBoundingClientRect().top;
+    if (arrived && Math.abs(now - want) > innerHeight / 2) {
+      /* It was there, nothing above it moved, and now it is half a
+         screen or more away: the reader scrolled. Stop, rather than drag
+         them back. (Half a screen, not 2px: the browser's own smooth
+         landing can finish late against a smaller padding — the 46px
+         slide guardLanding() exists for — and that one we DO correct.) */
+      takeOver();
+      return null;
+    }
     if (Math.abs(now - want) > 2) {
       /* 'instant', NOT 'auto'. Per spec 'auto' means "use the computed
          scroll-behavior", and base.css sets `scroll-behavior: smooth`
@@ -255,10 +293,13 @@ export function resolveFragment(hash = location.hash) {
       stableTicks = 0;
       return false;
     }
+    arrived = true;
     return ++stableTicks >= 3;
   };
 
-  if (settle()) { guardLanding(id); return; }
+  const first = settle();
+  if (first === null) return;
+  if (first) { stopWaiting(); guardLanding(id); return; }
   if (typeof MutationObserver !== 'function') return;
 
   /* rAF-throttled, for the same reason shell.js throttles its own
@@ -268,7 +309,11 @@ export function resolveFragment(hash = location.hash) {
   let raf = 0;
   const tick = () => {
     if (raf) return;
-    raf = requestAnimationFrame(() => { raf = 0; if (settle()) { stopWaiting(); guardLanding(id); } });
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const done = settle();
+      if (done) { stopWaiting(); guardLanding(id); }
+    });
   };
   _observer = new MutationObserver(tick);
   _observer.observe(document.body, { childList: true, subtree: true });

@@ -524,7 +524,9 @@ export function normaliseNumbering(raw) {
 /* The page lock rides inside the scene lock (screenplay-export.js
    "LOCKED PAGES"): { locked, at, starts: [{ n, id, split }] }. Kept
    only when it is well formed; anything else reads as unlocked pages,
-   never as a broken script. */
+   never as a broken script. The ORDER of the starts is kept as stored:
+   when one element began several pages, which page each split start
+   was is read from its place among that element's starts. */
 export function normalisePagesLock(raw) {
   if (!raw || typeof raw !== 'object' || raw.locked !== true || !Array.isArray(raw.starts)) return null;
   const starts = raw.starts

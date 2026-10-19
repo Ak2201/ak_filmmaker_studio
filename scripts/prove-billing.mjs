@@ -1313,7 +1313,7 @@ try {
     ok(await locked('shoot.html'), 'Basic: shoot.html (Shoot Day) is locked');
     ok(await unlocked('screenplay.html'), 'Basic: screenplay.html (Screenplay Writer) opens');
     ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts) opens');
-    ok(await unlocked('story.html'), 'Basic: story.html (Beats & Pacing) opens');
+    ok(await unlocked('story.html'), 'Basic: story.html (Story) opens');
     /* Screen Time and Cast Matrix are off for every plan, so what is left on
        reports.html (Production Reports, Sides) is Intermediate: the page locks
        for Basic, and the two off sections are kept hidden, never sold. */

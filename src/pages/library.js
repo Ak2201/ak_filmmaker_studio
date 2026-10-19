@@ -85,7 +85,7 @@ import bookSTC from '../data/book-save-the-cat.json';
 import { guideHref } from '../lib/blueprint-route.js';
 import {
   libraryContents, GROUPS, STAGES, stageLabel,
-  filmId, directorId, ruleId, rateTableId, rateRowId, watchId, termId
+  filmId, directorId, ruleId, rateTableId, rateRowId, watchId, termId, plain
 } from '../lib/library-search.js';
 import {
   numWord, cap, libraryCounts, provenanceLine as rateProvenance,
@@ -396,7 +396,9 @@ function renderTeasers() {
   const table = rates.sections[0];
   const teasers = [];
 
-  if (study) {
+  /* Case Studies switched off for everybody: no teaser for a shelf the
+     tab strip does not draw. */
+  if (study && !PlanGate.isDisabledEverywhere('case-studies')) {
     const m = study.meta;
     teasers.push(panel({
       eyebrow: 'Case study', meta: N_STUDIES + (N_STUDIES === 1 ? ' film' : ' films'), class: 'lib-teaser',
@@ -431,7 +433,7 @@ function renderTeasers() {
       eyebrow: 'Watch list', meta: N_STEPS + ' steps', class: 'lib-teaser',
       body: [
         h('ul.lib-teaser-list', {}, steps.map((w) => h('li', {}, [
-          h('span', { text: w.label + ' · ' + w.heading }),
+          h('span', { text: w.label + ' · ' + plain(w.heading) }),   // the heading is HTML ("&amp;")
           h('span.lib-teaser-films', { text: w.films.map((f) => f.title).join(', ') })
         ]))),
         h('a.lib-teaser-link', { href: '#watch', text: 'View all ' + N_STEPS + ' steps' })

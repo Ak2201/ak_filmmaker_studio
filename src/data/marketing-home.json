@@ -35,7 +35,7 @@
       "mediaWide": true,
       "sym": "grid_view",
       "h2": "Plan the shoot",
-      "body": "Auto-tag suggests what each scene needs and you accept what is right. Then build the shot list, lay scenes onto a stripboard, and print the sides for the day.",
+      "body": "One run lists every scene and tags the cast from the script. Then build the shot list, lay scenes onto a stripboard, and print the sides for the day.",
       "cta": {
         "label": "Explore pre-production",
         "page": "breakdown"

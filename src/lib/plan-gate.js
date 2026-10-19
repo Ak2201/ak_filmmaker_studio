@@ -789,6 +789,7 @@ function apply() {
   if (wall || lock) {
     root.dataset.planLock = '1';
     root.toggleAttribute('data-paywall', wall);
+    root.toggleAttribute('data-plan-gone', gone);   // plan-gate.css collapses main's height
     const want = wall ? 'pg-wall' : 'pg-lock';
     /* Swap when the KIND changes, not just when one is missing — a
        trial expiring while a module lock is on screen must replace it. */
@@ -808,6 +809,7 @@ function apply() {
   } else {
     delete root.dataset.planLock;
     root.removeAttribute('data-paywall');
+    root.removeAttribute('data-plan-gone');
     if (existing) existing.remove();
   }
   lockTabs();

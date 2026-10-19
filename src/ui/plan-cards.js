@@ -225,7 +225,11 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const name = p.name || planName(p.id);
     const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);
     const canBuy = p.id !== 'free' && price !== null && higher;
-    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (pq ? '.has-promo' : '') + (q && q.credit_paise > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id, 'aria-label': name + (isCurrent ? ' — your plan' : '') });
+    /* A tier BELOW the one held: on a phone it collapses to its name, its
+       price and "Included in your plan" and drops under the buyer's own
+       (plans.css), so the first full card a buyer reads is theirs. */
+    const below = !!current && current !== 'free' && !isCurrent && !higher;
+    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (below ? '.is-below' : '') + (pq ? '.has-promo' : '') + (q && q.credit_paise > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id, 'aria-label': name + (isCurrent ? ' — your plan' : '') });
 
     /* HEAD: what it is called and who it is for. The badge row keeps its
        height on every card so the prices line up across the row. */

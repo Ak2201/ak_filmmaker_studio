@@ -225,7 +225,7 @@ const VOL1_COVER_HTML   = `
       <div class="meta-field"><label>Working title</label><input type="text" data-key="v1_title" placeholder="Untitled film"></div>
       <div class="meta-field"><label>Genre</label>
         <select data-key="v1_genre">
-          <option value="">Pick a genre...</option>
+          <option value="">Choose a genre</option>
           <option>Drama</option>
           <option>Romance</option>
           <option>Thriller</option>

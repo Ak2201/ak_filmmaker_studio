@@ -232,8 +232,8 @@ export function renderOverview(scenes, status = '') {
     h('span', { text: 'Next: ' }),
     button({ label: 'Schedule it on the Stripboard', href: 'stripboard.html', variant: 'primary', iconAfter: 'arrow_forward' }),
     h('span.bdo-learn', { 'data-learn': 'stripboard' }),
-    button({ label: 'Production Reports', href: 'reports.html', variant: 'ghost' }),
-    button({ label: 'Plan', href: 'plan.html', variant: 'ghost' })
+    button({ label: 'Production Reports', href: 'reports.html', variant: 'secondary' }),
+    button({ label: 'Plan', href: 'plan.html', variant: 'secondary' })
   ]));
   return wrap;
 }

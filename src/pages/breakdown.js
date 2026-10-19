@@ -90,7 +90,11 @@ function renderHeader(scenes) {
 function kpis(scenes, eighths) {
   const dash = (n, f) => (n ? f(n) : '—');
   const idx = Scenes.elementIndex();
-  const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, Songs.listSongs().length);
+  /* Songs is switched off for everybody (plan-matrix `plans: []`), so its
+     figure goes with it: a counter for a module nobody can open is a
+     leftover, not a fact. Asked of the plan gate, never a list here. */
+  const songCount = PlanGate.isDisabledEverywhere('songs') ? 0 : Songs.listSongs().length;
+  const { cats, locs, ints, exts, songs, cast } = breakdownFigures(scenes, idx, songCount);
   const card = (value, label, note) => statCard({ value, label, note: note || '', class: value === '—' ? 'is-empty' : '' });
   /* A dash says "nothing here"; the note under it says where it comes
      from, so an empty card points at the next step instead of reading as
@@ -323,7 +327,7 @@ function renderScene(scene, i, total) {
   /* Which song this scene belongs to, if any. Only offered once a
      song exists — an empty dropdown on every scene card would be
      noise on the 95% of films that have not added one yet. */
-  const songs = Songs.listSongs();
+  const songs = PlanGate.isDisabledEverywhere('songs') ? [] : Songs.listSongs();
   if (songs.length) {
     const sel = h('select.bd-sel.bd-scene-song', {
       'data-scene-field': 'songId', 'aria-label': 'Part of which song'

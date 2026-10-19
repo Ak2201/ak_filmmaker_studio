@@ -95,6 +95,11 @@ function gateOf(gate) {
   };
 }
 
+/** True when a module is switched off for everybody (plan-gate's
+ *  isDisabledEverywhere via window.StudioPlan, or the gate passed in).
+ *  Fails toward "on": in Node, or before the gate loads, nothing is off. */
+export function moduleOff(id, gate) { return gateOf(gate).isOff(id); }
+
 const live = (m) => !!(m && m.status === 'built' && m.href);   // 'planned' is not built
 
 /** The module a stage's link opens (see rule 2 above). A stage with a
@@ -118,4 +123,4 @@ export function stageAllLocked(phase, gate) {
   return on.length > 0 && !on.some((m) => g.allowed(m.id));
 }
 
-export default { homeStage, stageLead, stageAllLocked, STAY_PAGES, STAGE_PAGES };
+export default { homeStage, stageLead, stageAllLocked, moduleOff, STAY_PAGES, STAGE_PAGES };

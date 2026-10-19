@@ -17,10 +17,10 @@ import { latestDraft, changedSinceDraft } from './drafts.js';
 import { pageCount, formatPages, formatRuntime, wordCount } from './script.js';
 
 /* ---- the crumb ------------------------------------------------- */
-/** "Draft 3 · unsaved draft changes", or "No draft saved yet". */
+/** "Draft 3 · unsaved draft changes", or "No numbered draft yet" (the autosave is a separate status). */
 export function draftLabel(doc) {
   const last = latestDraft(doc);
-  if (!last) return 'No draft saved yet';
+  if (!last) return 'No numbered draft yet';
   return last.name + (changedSinceDraft(doc) ? ' · unsaved draft changes' : '');
 }
 

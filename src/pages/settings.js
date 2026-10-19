@@ -86,7 +86,7 @@ import '../styles/settings.css';
 import '../styles/kit-scope.css';   /* the kit's look for the legacy .btn / fields the account, invite and key modules draw */
 
 import StudioUI from '../ui/chrome.js';
-import { pageHeader, eyebrow as kitEyebrow } from '../ui/kit/index.js';
+import { pageHeader, eyebrow as kitEyebrow, button } from '../ui/kit/index.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate, commitMain } from '../lib/dom.js';
 /* The provider table. The key area is composed by ai-panel.js; this
@@ -175,11 +175,11 @@ function choices(label, attr, current, options) {
   const row = h('div.st-choices');
   options.forEach((o) => {
     const on = o.value === current;
-    /* `.btn` as well as `.st-choice`: this is the studio's button,
-       not a new control, so the padding, the pill radius, the mono
-       label and the focus ring all come from chrome.css. `.st-choice`
-       only adds which of them is live. */
-    const b = h('button.btn.st-choice' + (on ? '.is-on' : ''), {
+    /* The kit's button as well as `.st-choice`: this is the studio's
+       button, not a new control, so the shape, the label face and the
+       focus ring all come from kit.css. `.st-choice` only adds which of
+       them is live. */
+    const b = h('button.k-btn.k-btn--secondary.st-choice' + (on ? '.is-on' : ''), {
       type: 'button',
       role: 'radio',
       'aria-checked': String(on),
@@ -499,7 +499,7 @@ const when = formatWhen;
 
 function driveButton(action, label, opts) {
   opts = opts || {};
-  const b = h('button.btn' + (opts.primary ? '.primary' : ''), {
+  const b = h('button.k-btn' + (opts.primary ? '.k-btn--primary' : '.k-btn--secondary'), {
     type: 'button',
     'data-action': action,
     disabled: !!busy
@@ -548,7 +548,7 @@ function versionList() {
   versions.forEach((r) => {
     ul.append(h('li', {}, [
       h('span.st-version-at', { text: when(r.modifiedTime) }),
-      h('button.btn.st-version-btn', {
+      h('button.k-btn.k-btn--secondary.st-version-btn', {
         type: 'button',
         'data-action': 'drive-restore-version',
         'data-rev': r.id,
@@ -598,7 +598,7 @@ function renderCloudSync() {
     ? 'Cloud sync is not available in this build.'
     : 'Sign in to turn on cloud sync. Everything works without an account; your projects stay on this device.' }));
   if (!signedIn && c && c.isConfigured && c.isConfigured()) {
-    sec.append(h('p', {}, [h('button.btn.primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+    sec.append(h('p', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
   }
   return sec;
 }
@@ -620,7 +620,7 @@ function renderDrive() {
       text: 'Google Drive backup is not part of your plan. You can still '
           + 'export a backup file from Backup in the top bar.'
     });
-    const see = h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' });
+    const see = h('a.k-btn.k-btn--secondary', { href: 'purchase.html', text: 'See plans' });
     sec.append(note, h('div.st-drive-actions', {}, [see]));
     /* Which plan has it, and what it costs (PlanGate.offerFor). */
     PlanGate.offerFor(['drive_backup']).then((o) => {
@@ -628,7 +628,7 @@ function renderDrive() {
       note.textContent = 'Google Drive backup comes with ' + PlanGate.offerText(o) + ' — one payment. You can still '
         + 'export a backup file from Backup in the top bar.';
       see.href = o.href;
-      see.textContent = 'SEE ' + o.name.toUpperCase();
+      see.textContent = 'See ' + o.name;
     }).catch(() => { /* the plain note stands */ });
     return sec;
   }
@@ -772,7 +772,7 @@ function renderAdmin() {
   if (live) sec.append(h('p.st-note', { text: 'In use right now: ' + live.url }));
 
   const row = h('div.st-row');
-  row.append(h('button.btn', {
+  row.append(h('button.k-btn.k-btn--secondary', {
     type: 'button', 'data-action': 'admin-configure',
     text: override ? 'Change the project' : 'Point at another project'
   }));
@@ -781,7 +781,7 @@ function renderAdmin() {
      unable to sign anybody in, with the form that fixes it now hidden
      behind an admin check that needs a sign-in. */
   if (override && built) {
-    row.append(h('button.btn', {
+    row.append(h('button.k-btn.k-btn--secondary', {
       type: 'button', 'data-action': 'admin-use-built-in',
       text: 'Use the build\u2019s project'
     }));
@@ -805,7 +805,7 @@ function consolePointer() {
     'Invite requests, codes, members and sessions, and the studio as a whole in numbers, are on their own page.');
   const n = gateStatus.pendingRequests || 0;
   sec.append(h('div.st-row', {}, [
-    h('a.btn.primary', { href: 'admin.html', text: 'OPEN THE CONSOLE' }),
+    h('a.k-btn.k-btn--primary', { href: 'admin.html', text: 'Open the console' }),
     n ? h('span.st-note', { text: `${n} invite request${n === 1 ? '' : 's'} waiting` }) : null
   ].filter(Boolean)));
   return sec;
@@ -830,7 +830,7 @@ function renderAccountMine() {
   if (block) slot.append(block);
   else if (signedIn) slot.append(h('p', { text: 'Signed in as ' + ((c.getUserEmail && c.getUserEmail()) || 'your Google account') + '.' }));
   else if (c && c.isConfigured && c.isConfigured()) {
-    slot.append(h('p', {}, [h('button.btn.primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+    slot.append(h('p', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
   } else {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
   }
@@ -968,9 +968,9 @@ function renderPlanCard() {
       card.append(h('p.st-plan-note', { text: 'Your usage could not be loaded just now. The Purchase page shows it too.' }));
     }
   }
-  card.append(h('p.st-plan-link', {}, [h('a.btn.primary', {
-    href: 'purchase.html',
-    text: bought ? 'Manage plan \u2192' : 'Plan & purchases \u2192'
+  card.append(h('p.st-plan-link', {}, [button({
+    href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward',
+    label: bought ? 'Manage plan' : 'Plan & purchases'
   })]));
   sec.append(card);
   return sec;
@@ -1011,7 +1011,7 @@ function renderPrivacySection() {
 function renderTourSection() {
   const sec = section('tour', 'Help', 'Take the tour.',
     'A two-minute walk through the studio. It never starts by itself; this is the button for it.');
-  sec.append(h('p', {}, [h('button.btn', { type: 'button', 'data-action': 'tour-start', text: 'Take the tour again' })]));
+  sec.append(h('p', {}, [h('button.k-btn.k-btn--secondary', { type: 'button', 'data-action': 'tour-start', text: 'Take the tour again' })]));
   return sec;
 }
 
@@ -1022,12 +1022,12 @@ function renderDanger() {
     'These cannot be undone. Export a backup first (Backup, in the top bar) if you want to keep anything.');
   sec.append(h('div.st-danger-row', {}, [
     h('p', { text: 'Removes every project, setting and saved key from this browser, and signs you out.' }),
-    h('button.btn.danger', { type: 'button', 'data-action': 'erase-all', text: 'Erase everything on this device' })
+    h('button.k-btn.k-btn--danger', { type: 'button', 'data-action': 'erase-all', text: 'Erase everything on this device' })
   ]));
   if (signedIn) {
     sec.append(h('div.st-danger-row', {}, [
       h('p', { text: 'Deletes the cloud copy of every project you own. The copies on this device stay.' }),
-      h('button.btn.danger', { type: 'button', 'data-action': 'delete-cloud', text: 'Delete my cloud projects' })
+      h('button.k-btn.k-btn--danger', { type: 'button', 'data-action': 'delete-cloud', text: 'Delete my cloud projects' })
     ]));
   }
   return sec;

@@ -125,7 +125,7 @@ function renderHeader(scenes, rows) {
        page links to it rather than drawing a second, read-only copy. */
     actions: [
       button({ label: 'Shoot calendar & locations', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', href: 'plan.html#calendar', class: 'sb-cal-plan' }),
-      h('div.sb-lock-host', {}, [lockButton()])
+      h('div.sb-lock-host', {}, [lockButton(!scenes.length)])
     ]
   });
   const strips = statCard({
@@ -154,10 +154,13 @@ function renderHeader(scenes, rows) {
       note: daysNote,
       class: 'sb-kpi-days'
     }),
+    /* "0 strips · all placed" on a board with no scenes claimed a
+       finished schedule that does not exist. No scenes: a dash, and
+       where the strips come from. */
     statCard({
-      label: 'Unscheduled', value: String(unscheduled),
-      unit: unscheduled === 1 ? 'strip' : 'strips',
-      note: unscheduled ? 'still to place' : 'all placed',
+      label: 'Unscheduled', value: scenes.length ? String(unscheduled) : '—',
+      unit: scenes.length ? (unscheduled === 1 ? 'strip' : 'strips') : '',
+      note: !scenes.length ? 'no scenes yet' : unscheduled ? 'still to place' : 'all placed',
       noteTone: scenes.length ? (unscheduled ? 'warn' : 'ok') : null
     })
   ];
@@ -402,8 +405,15 @@ function renderControls() {
     h('div.sb-seg', {}, [h('span.sb-seg-lab', { text: 'Group by', 'aria-hidden': 'true' }), seg]),
     h('div.sb-acts.pdf-menu-host', {}, [
       button({ label: 'Schedule by location', icon: 'auto_awesome', action: 'sb-auto', class: 'sb-btn' }),
-      button({ label: 'Clear days', variant: 'danger', action: 'sb-clear', class: 'sb-btn is-danger' }),
-      exportMenu
+      exportMenu,
+      /* The destructive one stands apart from the action it undoes (it
+         sat touching "Schedule by location"), and is off while no strip
+         has a day to clear. It still asks before clearing. */
+      button({
+        label: 'Clear days', variant: 'danger', action: 'sb-clear', class: 'sb-btn is-danger sb-clear',
+        disabled: !Scenes.listScenes().some((s) => shootDayOf(s)),
+        title: 'Take the shoot day off every strip; the scenes themselves are untouched'
+      })
     ])
   ]);
   return panel({ class: 'sb-controls-panel', body: [controls, legend()] });
@@ -935,11 +945,15 @@ function render() {
    page's first paint (fillHours() loads script.js the same way). */
 const scriptLib = () => Promise.all([import('../lib/script.js'), import('../lib/scene-sync.js')]);
 
-function lockButton() {
+/* With no scenes there is nothing to number, so the filled CTA is
+   disabled and says why rather than offering a lock on an empty board. */
+function lockButton(empty = !Scenes.listScenes().length) {
   return button({
     label: 'Lock production draft', variant: 'primary', pill: true, icon: 'lock',
-    action: 'sb-lock', class: 'sb-lock-btn',
-    title: 'Freeze the scene numbers, so every strip, side and call sheet keeps pointing at the same scene'
+    action: 'sb-lock', class: 'sb-lock-btn', disabled: empty,
+    title: empty
+      ? 'Add scenes in the Breakdown first'
+      : 'Freeze the scene numbers, so every strip, side and call sheet keeps pointing at the same scene'
   });
 }
 

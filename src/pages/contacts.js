@@ -102,9 +102,7 @@ function renderEmpty() {
             + 'only the crew — it is everyone who has to be somewhere at a time.'
       })
     ]),
-    h('button.btn.primary.bd-cta', {
-      type: 'button', 'data-action': 'contact-add', text: '+  Add the first person'
-    })
+    button({ label: 'Add the first person', icon: 'add', variant: 'primary', pill: true, action: 'contact-add', class: 'bd-cta' })
   ]);
 }
 const how = (n, title, body) =>
@@ -238,9 +236,7 @@ function renderPeople(contacts) {
     wrap.append(block);
   }
 
-  wrap.append(h('button.btn.ct-add', {
-    type: 'button', 'data-action': 'contact-add', text: '+  Add person'
-  }));
+  wrap.append(button({ label: 'Add person', icon: 'add', action: 'contact-add', class: 'ct-add' }));
   return wrap;
 }
 
@@ -275,9 +271,7 @@ function renderSheets(sheets, contacts, scenes) {
   }
 
   sheets.forEach((sheet) => wrap.append(renderSheet(sheet, contacts, scenes)));
-  wrap.append(h('button.btn.ct-add', {
-    type: 'button', 'data-action': 'sheet-add', text: '+  New call sheet'
-  }));
+  wrap.append(button({ label: 'New call sheet', icon: 'add', action: 'sheet-add', class: 'ct-add' }));
   return wrap;
 }
 
@@ -705,12 +699,12 @@ function routePlace(p) {
   box.append(grid);
   const acts = h('div.ct-route-acts');
   if (canLocate()) {
-    acts.append(h('button.btn.ct-route-btn', {
+    acts.append(h('button.k-btn.k-btn--secondary.ct-route-btn', {
       type: 'button', 'data-action': 'route-locate', text: 'Use this device’s location'
     }));
   }
   const link = Geo.recceMapsLink(p.name, p.recce);
-  acts.append(h('a.btn.ct-route-btn.ct-route-map', {
+  acts.append(h('a.k-btn.k-btn--secondary.ct-route-btn.ct-route-map', {
     href: link, target: '_blank', rel: 'noopener noreferrer', text: 'Open in Maps'
   }));
   box.append(acts);

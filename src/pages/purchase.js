@@ -114,7 +114,7 @@ function trialLine(st) {
     /* The way out sits beside the way through: this is the one page
        a lapsed trial can reach, and the band's account pill is a
        link to Settings, two steps from here. */
-    h('div.pu-actions', {}, [h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })])
+    h('div.pu-actions', {}, [h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })])
   ]);
 }
 
@@ -142,8 +142,8 @@ function planSection() {
       sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
     }
     sec.append(h('div.pu-actions', {}, [
-      h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
-      h('a.btn', { href: 'pricing.html#compare', text: 'COMPARE EVERY FEATURE' })
+      h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Sign in to buy' }),
+      h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
     ]));
     const x1 = planExtras(null); if (x1) sec.append(x1);
     return sec;
@@ -152,7 +152,7 @@ function planSection() {
     const sec = section('plan', 'Plan', plansPendingHeading(billing), DECK);
     if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
     sec.append(h('div.pu-actions', {}, [
-      h('button.btn', { type: 'button', 'data-pu-action': 'retry', disabled: billing.loading ? true : null, text: billing.loading ? 'LOADING…' : 'TRY AGAIN' })
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-pu-action': 'retry', disabled: billing.loading ? true : null, text: billing.loading ? 'Loading…' : 'Try again' })
     ]));
     const x2 = planExtras(null); if (x2) sec.append(x2);
     return sec;

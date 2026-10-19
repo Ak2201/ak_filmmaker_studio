@@ -70,6 +70,8 @@
 }
 .sb-seg,
 .sb-acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-width: 0; max-width: 100%; }
+/* Clear days: last, and pushed off the scheduling actions. */
+.sb-acts .sb-clear { margin-inline-start: var(--s4); }
 .sb-seg-lab,
 .sb-legend-lab,
 .sb-day-lab {
@@ -639,4 +641,22 @@ body.pdf-print .sb-dood .sb-dood-scroll { display: block !important; }
   .sb-dood:not(.is-matrix) .sb-dood-scroll { display: none; }
 
   .sb-cal-day { grid-template-columns: 1fr; }
+}
+
+/* ---- the figures on a phone (impeccable pass, 19 Oct 2026) ----------
+   The stat cards summarise; the work is the board / the table / the step
+   under them. Two columns of six cards put that work below the first
+   screen at 390px, so on a phone the strip goes three across, tight, and
+   the neutral notes step out (a warning note stays: it is the one that
+   asks for something). Hidden, not removed: the words are still there. */
+@media (max-width: 719px) {
+  .sb-kpis.k-stat-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s1h); }
+  .sb-kpis .k-stat { padding: var(--s2); gap: var(--s-half); }
+  .sb-kpis .k-stat-value { font-size: var(--t-lg); }
+  .sb-kpis .k-stat-unit { display: block; margin-left: 0; }
+  .sb-kpis .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
+  /* The Scheduled meter keeps its bar (the progressbar still carries
+     its values) and drops the "36 / 36" row, which wrapped in a third. */
+  .sb-kpis .k-meter-row { display: none; }
+  .sb-kpis .k-stat .k-meter { margin-top: var(--s1); }
 }

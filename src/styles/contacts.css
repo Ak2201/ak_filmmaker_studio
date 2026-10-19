@@ -739,3 +739,10 @@
   text-transform: uppercase;
   color: var(--ink-muted);
 }
+
+/* On a phone the four figures stay two across but drop their notes, so
+   the unit list starts on the first screen (impeccable pass, 19 Oct 2026). */
+@media (max-width: 719px) {
+  .ct-kpis .k-stat { padding: var(--s2); }
+  .ct-kpis .k-stat-note { display: none; }
+}

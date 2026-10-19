@@ -395,7 +395,15 @@ const EXPECTED = {
      until the next recapture, whoever makes it and for whatever
      reason. */
   hub: {},
-  stripboard: {},
+  /* Impeccable pass (19 Oct 2026): on a board with no scenes the
+     Unscheduled card said "0 strips · all placed", claiming a finished
+     schedule that does not exist. It prints a dash and "no scenes yet"
+     now, so the words left the empty page the baseline was taken on. */
+  stripboard: {
+    '0': 'Unscheduled card: a dash, not a zero, when there are no scenes',
+    all: 'Unscheduled card: "all placed" is no longer claimed on an empty board',
+    placed: 'Unscheduled card: "all placed" is no longer claimed on an empty board'
+  },
   reports: {},
   contacts: {},
   /* AI Desk (12 Oct 2026): the key lives in Settings only and AI is
@@ -413,11 +421,34 @@ const EXPECTED = {
      script-to-screen work took it from 122 to 141, so the bare integer 122 left
      the page. A derived count, not lost copy. The next glossary change moves it
      again: re-baseline then, rather than adding a row each time. */
-  library: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
+  /* Impeccable pass (19 Oct 2026): the shelves were headed "SECTION I"
+     … "SECTION IX", numbering an order the reader does not need; each
+     is headed by its shelf's kind (its menu group) now. The numerals that
+     still appear elsewhere on the page (i, ii, v, x) are not missing. */
+  library: {
+    iii: 'roman shelf numeral replaced by the shelf kind',
+    iv: 'roman shelf numeral replaced by the shelf kind',
+    vi: 'roman shelf numeral replaced by the shelf kind',
+    vii: 'roman shelf numeral replaced by the shelf kind',
+    viii: 'roman shelf numeral replaced by the shelf kind',
+    ix: 'roman shelf numeral replaced by the shelf kind'
+  },
   budget: {},
   /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
      revamp's words (the journey strip folded into the stage cards). */
-  dashboard: {},
+  /* Impeccable pass (19 Oct 2026): the map's "N OF N BUILT" never
+     varied for anyone and "N HOLD WORK" reads "N with work" now; its
+     deck no longer says "and so does the studio" (the hero says the
+     stages go in any order); the title page's sub dropped the internal
+     "the same answers the Feature Blueprint keeps for its cover". */
+  dashboard: {
+    built: 'the map\'s constant "N of N built" line was removed',
+    hold: '"N hold work" reads "N with work"',
+    does: 'map deck: "and so does the studio" removed (it contradicted the hero)',
+    answers: 'title page sub: internal blueprint jargon removed',
+    keeps: 'title page sub: internal blueprint jargon removed',
+    same: 'title page sub: internal blueprint jargon removed'
+  },
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is
      built only when it is opened. */
@@ -490,7 +521,13 @@ const EXPECTED = {
      "Mapping…"); they are AI pills that open the Desk now, and
      signed out the pill is locked. Every word below was that form's
      copy. */
-  story: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
+  /* Impeccable pass (19 Oct 2026): the header's two disabled export
+     buttons ("Synopsis .txt", "Outline .md") are one Export menu now, and
+     on an empty story (the baseline's state) there is nothing to export,
+     so the menu is not drawn. ".txt" survives in the import copy. */
+  story: {
+    md: 'the empty story no longer shows a disabled "Outline .md" button'
+  },
   edit: {},
   deliverables: {},
   screening: {},

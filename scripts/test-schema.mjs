@@ -215,6 +215,20 @@ for (const f of ['supabase/schema/schema-47-delete-anonymise.sql', 'supabase/sch
 console.log('✓ §47 loads (and re-runs cleanly)');
 runChecks('delete-anonymise.sql');
 /* --- end §47 --- */
+/* --- §48 (refunds follow the role matrix, seats follow the plan, a decline
+   sticks) --- standalone, on §45. Loaded twice (re-runnable), after every
+   earlier check file so those ran against the functions it restates. The
+   seed goes in BEFORE the first load: it is the live data the backfill has
+   to mark, and the second load fills only nulls. --- */
+r = psql(['-f', 'scripts/schema-tests/refund-seat-trial-seed.sql']);
+if (r.status !== 0) fail('refund-seat-trial-seed.sql did not load', r);
+for (const f of ['supabase/schema/schema-48-refund-seat-trial.sql', 'supabase/schema/schema-48-refund-seat-trial.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §48 loads (and re-runs cleanly)');
+runChecks('refund-seat-trial.sql');
+/* --- end §48 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

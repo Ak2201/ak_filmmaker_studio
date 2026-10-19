@@ -1021,6 +1021,8 @@ export async function handle(route) {
   if (url.pathname === '/functions/v1/rzp-refund' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });
     if (!F.db.members.get(user.id) || F.db.members.get(user.id).role !== 'admin') { F.db.calls.push('fn:rzp-refund refused non-admin'); return json(route, 403, { error: 'Administrators only.' }); }
+    // require_role(['finance']): an admin with no console role reads as owner (schema §45/§48)
+    { const cr = F.db.members.get(user.id).consoleRole; if (cr && !['owner', 'finance'].includes(cr)) { F.db.calls.push('fn:rzp-refund refused role'); return json(route, 403, { error: `Your role (${cr}) cannot do this. It needs the finance role.` }); } }
     let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
     if (!String(body.reason || '').trim()) return json(route, 400, { error: 'A reason is required.' });
     const pay = F.db.payments.find((x) => x.id === body.payment_id);
@@ -1038,7 +1040,8 @@ export async function handle(route) {
     F.db.calls.push(`fn:rzp-refund ${pay.razorpay_payment_id} ${amount}`);
     if (RZP.refundMode === 'fail') { Object.assign(f, { status: 'failed', error: 'The payment has already been fully refunded' }); return json(route, 502, { error: f.error }); }
     f.razorpay_refund_id = 'rfnd_' + f.id; f.status = RZP.refundMode === 'processed' ? 'processed' : 'pending';
-    if (rq) Object.assign(rq, { status: 'refunded', decided_at: rq.decided_at || new Date().toISOString() });
+    // §48: the request is settled as refunded only once processed; pending means approved
+    if (rq) Object.assign(rq, { status: f.status === 'processed' ? 'refunded' : (rq.status === 'pending' ? 'approved' : rq.status), decided_at: rq.decided_at || new Date().toISOString() });
     if (f.status === 'processed') endPlanByRefund(pay);
     return json(route, 200, { ok: true, refund_id: f.razorpay_refund_id, status: f.status, amount_paise: amount, email: (Object.values(USERS).find((u) => u.id === pay.user_id) || {}).email, plan_ended: f.status === 'processed' });
   }

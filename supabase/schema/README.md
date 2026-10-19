@@ -14,11 +14,12 @@ order they were AUTHORED, not the order they are applied (see run order below).
 | `schema-45-admin-controls.sql` | §45 | Admin controls. Needs §40. |
 | `schema-46-role-matrix.sql` | §46 | Role matrix (`require_role()` on the admin writers). Needs §45. |
 | `schema-47-delete-anonymise.sql` | §47 | Total delete anonymises kept invoices. Needs §45. |
+| `schema-48-refund-seat-trial.sql` | §48 | Refunds need the finance (or owner) role in the database too; a refund request reads refunded only once processed, and cannot be declined while a refund is in flight; seats follow the current plan; a declined invite request keeps blocking `start_trial()` after a re-ask. Needs §45. **Not yet run live.** |
 | `patches/2026-10-10-billing_status.sql` | — | Hand-extracted `billing_status()` for pasting into the SQL editor. |
 
 ## Run order
-`supabase-schema.sql` (§1–§39) → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47. Every file
-is re-runnable.
+`supabase-schema.sql` (§1–§39) → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48. Every file
+is re-runnable. §48 goes with a redeploy of `rzp-refund` (`docs/BILLING.md` §20).
 
 ## Rules
 - **Verify before you run.** Pasting SQL through a clipboard corrupts em-dashes and `₹`. Hash the file

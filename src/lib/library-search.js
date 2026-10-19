@@ -196,7 +196,7 @@ export function libraryContents(sections, src) {
     equipment: ((s.rates && s.rates.sections) || []).map((x) => ({ title: x.heading, id: rateTableId(x.id) })),
     watch: arr(s.watchlist).map((w) => ({ title: w.label + ' · ' + plain(w.heading), id: watchId(w.step) }))
   };
-  return arr(sections).map((sec) => Object.assign({}, sec, { items: items[sec.id] || [] }));
+  return arr(sections).map((sec) => Object.assign({}, sec, { items: items[sec.id] || sec.items || [] }));
 }
 
 export default { slug, buildIndex, searchLibrary, libraryContents, GROUPS, STAGES, stageLabel,

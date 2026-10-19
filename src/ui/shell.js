@@ -315,9 +315,12 @@ function resolveModule(hash) {
     /* The page as a whole is not always the module that owns its address:
        story.html is the Story editor, and "Beats & Pacing" is only one
        section of it. A module that says so (`pageLabel` / `pageFrag`) is
-       named by the page until its own section is the one on screen. */
+       named by the page until its own section is the one on screen; with
+       `pageLabel` and no `pageFrag` (Story since 19 Oct 2026: Beats &
+       pacing is a part of the Synopsis step, not a section) the page's
+       name is used throughout. */
     let module = whole.module;
-    if (module.pageLabel && module.pageFrag && !isShown(document.getElementById(module.pageFrag))) {
+    if (module.pageLabel && (!module.pageFrag || !isShown(document.getElementById(module.pageFrag)))) {
       module = Object.assign({}, module, { label: module.pageLabel });
     }
     return { phase: whole.phase, module, global: whole.global, exact: false };
@@ -574,9 +577,10 @@ function buildRail() {
     text: monogram()
   }));
   /* The Dashboard is the project's home (the launcher) and leads the rail
-     again; the Library shelf shows only while one of its modules is still
-     enabled in the plan matrix. */
-  const gl = globals().filter((g) => !(g.id === 'library' && Array.isArray(g.modules) && g.modules.length && !g.modules.some((m) => !isDisabledEverywhere(m.id) && allowed(m.id))));
+     again. The Library is always there (owner, 19 Oct 2026): its films,
+     directors, rules, rates and watch list are not modules, so switching
+     its three module shelves off must not take the whole page with it. */
+  const gl = globals();
   /* Home and Dashboard lead; the stages follow them; the rest of the
      app-scope entries (Library, Settings, Purchase, Console) close the
      column. The split is by position in navigation.json, not by name:
@@ -799,10 +803,12 @@ function paintDisc(el, text, photo) {
   el.classList.remove('has-photo');
   el.textContent = text;
   if (!photo) return;
+  /* The photo REPLACES the initials (they used to sit on top of it);
+     they come back only if the image fails to load. */
   const pic = h('img', { src: photo, alt: '', referrerpolicy: 'no-referrer', decoding: 'async' });
   pic.addEventListener('error', () => { pic.remove(); el.classList.remove('has-photo'); el.textContent = text; }, { once: true });
   el.classList.add('has-photo');
-  el.append(pic);
+  el.replaceChildren(pic);
 }
 
 /* ---- the account menu ------------------------------------------

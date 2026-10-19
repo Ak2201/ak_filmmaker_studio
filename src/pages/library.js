@@ -50,6 +50,7 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/rates.css';
 import '../styles/library-shelf.css';
+import '../styles/library-books.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
@@ -77,6 +78,10 @@ import rates from '../data/rates.chennai.2024.json';
    The base file's name is still true — it is the 2024-25 card. What
    is 2026 is in the overlay and is labelled as such, per figure. */
 import rateChecks from '../data/rates.chennai.checks.json';
+/* The two craft-book shelves (19 Oct 2026). Read-only teaching text in
+   original wording; each file's _about carries the copyright rules. */
+import bookEI from '../data/book-emotional-impact.json';
+import bookSTC from '../data/book-save-the-cat.json';
 import { guideHref } from '../lib/blueprint-route.js';
 import {
   libraryContents, GROUPS, STAGES, stageLabel,
@@ -165,6 +170,8 @@ const MENU = {
   'directors': { group: 'The shelf', icon: 'videocam', hint: 'Director archetypes to study.' },
   'rules': { group: 'Craft', icon: 'rule', hint: 'Rules of thumb, attributed.' },
   'glossary': { group: 'Craft', icon: 'sort_by_alpha', hint: 'Every film term, with examples.' },
+  'emotional-impact': { group: 'Craft books', icon: 'favorite', hint: 'Engineering what the reader feels, page by page.' },
+  'save-the-cat': { group: 'Craft books', icon: 'pets', hint: 'Logline, genres, fifteen beats, the Board.' },
   'equipment': { group: 'Practice', icon: 'photo_camera', hint: 'Rate tables for kit and crew.' },
   'watch': { group: 'Practice', icon: 'visibility', hint: 'Films to watch for each blueprint step.' },
   'case-studies': { group: 'Study', icon: 'menu_book', hint: 'Films read beat by beat.' },
@@ -210,6 +217,37 @@ const SECTIONS = [
     deck: `Craft maxims, attributed where the source is known. Treat them as ` +
           `starting points, not laws — every great film breaks at least one.`,
     body: renderRules
+  },
+  /* The craft-book shelves. Not plan modules (no navigation.json entry),
+     so openShelves() always keeps them. */
+  {
+    id: 'emotional-impact',
+    nav: 'EMOTIONAL IMPACT',
+    tab: 'Emotional impact',
+    title: 'Writing for <em>Emotional Impact.</em>',
+    tocTitle: 'Writing for Emotional Impact',
+    tocDesc: `${bookEI.tools.length} tools for engineering what the reader feels`,
+    count: `${bookEI.tools.length} TOOLS`,
+    deck: 'A script delivers an experience, and the experience is built page by page. ' +
+          `${cap(numWord(bookEI.tools.length))} emotional tools, each with why it works, how to put it on ` +
+          'the page, the usual mistakes, a moment from a studied film and a checklist for your draft.',
+    body: renderEmotionalImpact,
+    rail: () => eiRail()
+  },
+  {
+    id: 'save-the-cat',
+    nav: 'SAVE THE CAT',
+    tab: 'Save the Cat',
+    title: 'Save the <em>Cat.</em>',
+    tocTitle: 'Save the Cat',
+    tocDesc: `Logline, ${bookSTC.genres.items.length} genres, ${bookSTC.beats.items.length} beats and the Board`,
+    count: `${bookSTC.beats.items.length} BEATS · ${bookSTC.genres.items.length} GENRES`,
+    deck: 'Story first: the one-line pitch and the title, genre as the engine underneath, ' +
+          `${numWord(bookSTC.beats.items.length)} beats placed on a ${bookSTC.beats.pages}-page script, ` +
+          `the ${numWord(bookSTC.board.rows.length * bookSTC.board.cardsPerRow)}-card Board and the ` +
+          'rules of thumb, each mapped onto the films we study.',
+    body: renderSaveTheCat,
+    rail: () => stcRail()
   },
   {
     id: 'equipment',
@@ -288,6 +326,21 @@ const SECTIONS = [
   }
 ];
 
+/* The shelves a reader can open. A shelf that is a module switched off
+   for every plan (Case Studies, Dissection, Film Terminology today) keeps
+   its section in the DOM, hidden by plan-gate as a tab, but leaves the
+   contents, the index and the shelf count: a card that opens nothing is
+   worse than no card (owner, 19 Oct 2026). */
+function shelfModuleId(id) {
+  for (const sh of shelves()) for (const m of sh.modules) {
+    if ((m.href || '').split('#')[1] === id) return m.id;
+  }
+  return '';
+}
+function openShelves() {
+  return SECTIONS.filter((s) => { const m = shelfModuleId(s.id); return !m || !PlanGate.isDisabledEverywhere(m); });
+}
+
 /** A shelf module's label from navigation.json, for the tab strip. */
 function shelfLabel(id) {
   for (const sh of shelves()) for (const m of sh.modules) {
@@ -331,9 +384,10 @@ function renderFigures() {
     statStrip([
       { label: 'Films studied', value: N_FILMS, note: 'on the Films shelf' },
       { label: 'Director archetypes', value: N_DIRECTORS },
-      { label: N_DISSECTED === 1 ? 'Deconstruction' : 'Deconstructions', value: String(N_DISSECTED).padStart(2, '0'), note: 'worked examples' },
+      PlanGate.isDisabledEverywhere('dissection') ? null
+        : { label: N_DISSECTED === 1 ? 'Deconstruction' : 'Deconstructions', value: String(N_DISSECTED).padStart(2, '0'), note: 'worked examples' },
       { label: 'Chennai rate card', value: rates.asOf, note: 'some rows re-checked ' + rateChecks.lastChecked }
-    ], { class: 'lib-stats', label: 'The library in figures' }),
+    ].filter(Boolean), { class: 'lib-stats', label: 'The library in figures' }),
     /* Search is the palette's (one index for the whole studio); this is a door to it. */
     h('button.lib-search.k-btn', { type: 'button', 'data-action': 'palette-open', 'aria-label': 'Search shelves, films, directors and rules' }, [
       h('span.lib-search-text', { text: 'Search shelves, films, directors, rules' })
@@ -422,10 +476,10 @@ function renderCover() {
       h('div.cover-row', {}, [
         h('p.cover-sub', { text: blurb }),
         /* the count is the real number of shelves below */
-        h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${SECTIONS.length} SHELVES`])])
+        h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${openShelves().length} SHELVES`])])
       ]),
       h('nav.cover-toc', { 'aria-label': 'Contents' },
-        SECTIONS.map((s, i) => h('a.toc-item', { href: `#${s.id}` }, [
+        openShelves().map((s, i) => h('a.toc-item', { href: `#${s.id}` }, [
           h('span.toc-head', {}, [
             h('span.num', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
             h('span.toc-go', { 'aria-hidden': 'true', text: '\u2197' })
@@ -463,6 +517,7 @@ function renderSection(section, i) {
    the tab. Every href is an id this page draws (library-search.js
    builds them), and the rail is simply not shown below 1100px. */
 function railItems(section) {
+  if (section.rail) return section.rail();
   return railItemsFor(section.id, { films, directors, rates, watchlist });
 }
 function railFor(section) {
@@ -486,7 +541,10 @@ function searchSource() {
    The hub's master index listed the library's sections, films and
    directors; it lives here now, derived from the same arrays. */
 function renderContents() {
-  const secs = libraryContents(SECTIONS.map((s) => ({ id: s.id, title: s.tocTitle, desc: s.tocDesc })), searchSource());
+  const secs = libraryContents(openShelves().map((s) => ({
+    id: s.id, title: s.tocTitle, desc: s.tocDesc,
+    items: s.rail ? s.rail().map((it) => ({ id: it.id, title: it.label })) : undefined
+  })), searchSource());
   return h('div#library-index.lib-contents', {}, [
     h('div.section-head', {}, [
       h('div.left', {}, [
@@ -494,7 +552,7 @@ function renderContents() {
         h('h2', { html: 'The library <em>index.</em>' }),
         h('p.deck', { text: 'Every shelf, and the films, directors, rate tables and watch-list steps on it, in one place. Open one to jump straight in.' })
       ]),
-      h('div.right', { text: `${SECTIONS.length} SHELVES` })
+      h('div.right', { text: `${openShelves().length} SHELVES` })
     ]),
     h('div.lib-contents-grid', {}, secs.map((s) => {
       const head = h('a.lib-contents-head', { href: `#${s.id}` }, [
@@ -584,6 +642,219 @@ function renderRules() {
       videoSlot(libKey('rule', r.n))
     ])))
   ]);
+}
+
+/* ============================================================
+   THE CRAFT-BOOK SHELVES — Writing for Emotional Impact, Save the Cat
+   ------------------------------------------------------------
+   Two read-only shelves drawn from src/data/book-*.json. COPYRIGHT:
+   both books are copyrighted; the JSON teaches the general ideas in
+   original wording with examples only from the studied films, and
+   credits each book once (bookCredit). Nothing here writes storage.
+   Every inner id is prefixed (ei- / stc-) so it cannot collide with a
+   shelf id, and each is an anchor the rail and the index point at.
+   ============================================================ */
+function bookCredit(c) {
+  return h('aside.book-credit', { 'aria-label': 'Recommended reading' }, [
+    h('div.book-label', { text: 'RECOMMENDED READING' }),
+    h('p.book-credit-title', {}, [
+      h('cite', { text: c.title }),
+      h('span.book-credit-meta', { text: ` · ${c.author} · ${c.publisher}, ${c.year}` })
+    ]),
+    h('p.book-credit-note', { text: c.note })
+  ]);
+}
+
+function bookBlock(label, children) {
+  return h('div.book-block', {}, [h('h4.book-label', { text: label }), ...children]);
+}
+
+function bookExample(ex, label) {
+  if (!ex) return null;
+  return h('div.book-example', {}, [
+    h('div.book-label', { text: label || 'IN A STUDIED FILM' }),
+    h('p.book-example-head', {}, [
+      h('span.book-example-film', { text: ex.film }),
+      ex.function ? h('span.book-example-fn', { text: ex.function }) : null
+    ]),
+    h('p.book-example-text', { text: ex.text })
+  ]);
+}
+
+function bookChecklist(items, label) {
+  return h('div.book-check', {}, [
+    h('h4.book-label', { text: label || 'APPLY IT TO YOUR SCRIPT' }),
+    h('ul', {}, items.map((t) => h('li', { text: t })))
+  ]);
+}
+
+/* ---- Writing for Emotional Impact ---- */
+const eiId = (id) => 'ei-' + id;
+function eiRail() {
+  return [{ id: 'ei-overview', label: 'What the book is about' }]
+    .concat(bookEI.tools.map((t) => ({ id: eiId(t.id), label: t.label })))
+    .concat([{ id: 'ei-together', label: bookEI.closing.title }]);
+}
+
+function renderEmotionalImpact() {
+  const b = bookEI;
+  const intro = h('div.book-intro', { id: 'ei-overview' }, [
+    h('h3.book-h3', { text: 'What the book is about' }),
+    h('p.book-lede', { text: b.intro.lede }),
+    ...b.intro.paragraphs.map((p) => h('p.book-p', { text: p })),
+    h('div.book-pillars', {}, b.intro.principles.map((p) => h('div.book-pillar', {}, [
+      h('h4.book-pillar-title', { text: p.label }),
+      h('p', { text: p.text })
+    ]))),
+    bookCredit(b.credit)
+  ]);
+
+  const tools = b.tools.map((t, i) => h('article.book-chapter', { id: eiId(t.id) }, [
+    h('header.book-chapter-head', {}, [
+      h('span.book-num', { text: String(i + 1).padStart(2, '0') }),
+      h('div', {}, [
+        h('h3.book-h3', { text: t.label }),
+        h('p.book-kicker', { text: t.kicker })
+      ])
+    ]),
+    h('div.book-cols', {}, [
+      bookBlock('WHAT IT IS', [h('p.book-p', { text: t.what })]),
+      bookBlock('WHY IT WORKS ON AN AUDIENCE', [h('p.book-p', { text: t.why })])
+    ]),
+    bookBlock('HOW TO BUILD IT ON THE PAGE', [h('ol.book-list', {}, t.how.map((x) => h('li', { text: x })))]),
+    h('div.book-cols', {}, [
+      bookBlock('COMMON MISTAKES', [h('ul.book-list.book-list-x', {}, t.mistakes.map((x) => h('li', { text: x })))]),
+      bookExample(t.example)
+    ]),
+    bookChecklist(t.checklist)
+  ]));
+
+  const closing = h('div.book-intro', { id: 'ei-together' }, [
+    h('h3.book-h3', { text: b.closing.title }),
+    ...b.closing.paragraphs.map((p) => h('p.book-p', { text: p })),
+    /* The Case Studies shelf can be switched off (plan-matrix "plans": []),
+       and a link to a shelf that is not there opens nothing — so it is
+       named as a link only while openShelves() still holds it. */
+    h('p.book-p', {}, openShelves().some((s) => s.id === 'case-studies')
+      ? ['The four films these examples come from are on the ',
+          h('a', { href: '#case-studies', text: 'Case Studies shelf' }),
+          '; the structural side of the same ideas is on the ',
+          h('a', { href: '#save-the-cat', text: 'Save the Cat shelf' }),
+          '.']
+      : ['The structural side of the same ideas is on the ',
+          h('a', { href: '#save-the-cat', text: 'Save the Cat shelf' }),
+          '.'])
+  ]);
+  return h('div.section-body.book', {}, [intro, ...tools, closing]);
+}
+
+/* ---- Save the Cat ---- */
+const stcId = (id) => 'stc-' + id;
+function stcRail() {
+  return [
+    { id: 'stc-overview', label: 'What the book is about' },
+    { id: 'stc-logline', label: bookSTC.logline.title },
+    { id: 'stc-genres', label: bookSTC.genres.title },
+    { id: 'stc-beats', label: bookSTC.beats.title },
+    { id: 'stc-board', label: bookSTC.board.title },
+    { id: 'stc-rules', label: bookSTC.rules.title },
+    { id: 'stc-studio', label: bookSTC.studio.title }
+  ];
+}
+
+function renderSaveTheCat() {
+  const b = bookSTC;
+  const intro = h('div.book-intro', { id: 'stc-overview' }, [
+    h('h3.book-h3', { text: 'What the book is about' }),
+    h('p.book-lede', { text: b.intro.lede }),
+    ...b.intro.paragraphs.map((p) => h('p.book-p', { text: p })),
+    h('div.book-pillars', {}, b.intro.pillars.map((p) => h('div.book-pillar', {}, [
+      h('h4.book-pillar-title', { text: p.label }),
+      h('p', { text: p.text })
+    ]))),
+    bookCredit(b.credit)
+  ]);
+
+  const L = b.logline;
+  const logline = h('div.book-chapter', { id: 'stc-logline' }, [
+    h('h3.book-h3', { text: L.title }),
+    ...L.paragraphs.map((p) => h('p.book-p', { text: p })),
+    h('dl.book-defs', {}, L.qualities.flatMap((q) => [h('dt', { text: q.label }), h('dd', { text: q.text })])),
+    h('div.book-template', {}, [h('div.book-label', { text: 'A SHAPE TO START FROM' }), h('p', { text: L.template })]),
+    h('div.book-cols', {}, L.examples.map((ex) => bookExample(ex))),
+    bookChecklist(L.checklist)
+  ]);
+
+  const G = b.genres;
+  const genres = h('div.book-chapter', { id: 'stc-genres' }, [
+    h('h3.book-h3', { text: G.title }),
+    h('p.book-p', { text: G.intro }),
+    h('div.book-grid', {}, G.items.map((g, i) => h('article.book-card', { id: stcId('genre-' + g.id) }, [
+      h('div.book-card-top', {}, [
+        h('span.book-num', { text: String(i + 1).padStart(2, '0') }),
+        h('h4.book-card-title', { text: g.label })
+      ]),
+      h('p.book-p', { text: g.engine }),
+      h('p.book-p.book-question', {}, [h('strong', { text: 'Ask yourself. ' }), g.question]),
+      bookExample({ film: g.example.film, text: g.example.text }, 'TAMIL EXAMPLE')
+    ])))
+  ]);
+
+  const B = b.beats;
+  const beats = h('div.book-chapter', { id: 'stc-beats' }, [
+    h('h3.book-h3', { text: B.title }),
+    h('p.book-p', { text: B.intro }),
+    h('ol.book-beats', {}, B.items.map((x, i) => h('li.book-beat', { id: stcId('beat-' + x.id) }, [
+      h('div.book-beat-rail', {}, [
+        h('span.book-num', { text: String(i + 1).padStart(2, '0') }),
+        h('span.book-page', { text: 'p. ' + x.page })
+      ]),
+      h('div.book-beat-body', {}, [
+        h('h4.book-card-title', { text: x.label }),
+        h('p.book-p', {}, [h('strong', { text: 'Its job. ' }), x.purpose]),
+        h('p.book-p', {}, [h('strong', { text: 'How to write it. ' }), x.how]),
+        bookExample({ film: x.film.name, text: x.film.text })
+      ])
+    ]))),
+    bookChecklist(B.checklist, 'CHECK YOUR BEATS')
+  ]);
+
+  const BD = b.board;
+  const board = h('div.book-chapter', { id: 'stc-board' }, [
+    h('h3.book-h3', { text: BD.title }),
+    ...BD.paragraphs.map((p) => h('p.book-p', { text: p })),
+    h('div.book-board', { role: 'group', 'aria-label': `The Board: ${numWord(BD.rows.length)} rows of about ${numWord(BD.cardsPerRow)} cards, one row per quarter of the script` },
+      BD.rows.map((r) => h('div.book-board-row', {}, [
+        h('div.book-board-head', {}, [h('span.book-label', { text: r.label }), h('span.book-page', { text: r.span })]),
+        h('div.book-board-cards', { 'aria-hidden': 'true' }, Array.from({ length: BD.cardsPerRow }, () => h('span.book-board-card'))),
+        h('p.book-board-beats', { text: r.beats })
+      ]))),
+    h('div.book-cols', {}, [
+      bookBlock('ON EACH CARD', [h('dl.book-defs', {}, BD.card.flatMap((c) => [h('dt', { text: c.label }), h('dd', { text: c.text })]))]),
+      bookBlock('HOW TO USE IT', [h('ol.book-list', {}, BD.steps.map((x) => h('li', { text: x })))])
+    ]),
+    h('p.book-p.book-aside', { text: BD.studio })
+  ]);
+
+  const R = b.rules;
+  const rulesEl = h('div.book-chapter', { id: 'stc-rules' }, [
+    h('h3.book-h3', { text: R.title }),
+    h('p.book-p', { text: R.intro }),
+    h('div.book-grid', {}, R.items.map((r) => h('article.book-card', { id: stcId('rule-' + r.id) }, [
+      h('h4.book-card-title', { text: r.label }),
+      h('p.book-p', { text: r.principle }),
+      bookExample({ film: r.example.film, text: r.example.text })
+    ])))
+  ]);
+
+  const S = b.studio;
+  const studio = h('div.book-studio', { id: 'stc-studio' }, [
+    h('h3.book-h3', { text: S.title }),
+    h('p.book-p', { text: S.text }),
+    h('a.btn.primary', { href: S.href, text: S.label })
+  ]);
+
+  return h('div.section-body.book', {}, [intro, logline, genres, beats, board, rulesEl, studio]);
 }
 
 /* ============================================================

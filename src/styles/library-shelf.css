@@ -368,6 +368,17 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
    summary, and the count that shelf's own array produced. Amber is
    --library-deep, the text variant, never the fill. Tokens only.
    ============================================================ */
+/* The cover is not a hero band any more: under the kit header it is the
+   page's own content, so it drops the band's glow, the inset top padding
+   and the closing rule, and its deck and shelf cards sit on the canvas in
+   the same column as every other page's content (owner, 19 Oct 2026). */
+:root .lib-main > .cover.cover {
+  min-height: 0;
+  padding: 0 0 var(--s6);
+  background: none;
+  border-bottom: 0;
+  overflow: visible;
+}
 .cover-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4) var(--s6); max-width: none; margin-bottom: var(--s6); padding-bottom: var(--s5); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); }
 .cover-row .cover-sub { flex: 1 1 28rem; max-width: 46rem; margin: 0; }
 .cover-pills { margin: 0; display: flex; gap: var(--s2); }
@@ -387,7 +398,7 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 }
 .cover-pill-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--library); }
 
-.cover .cover-toc { max-width: none; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); gap: var(--s4); margin-bottom: 0; }
+.cover .cover-toc { max-width: none; grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr)); gap: var(--s4); margin-bottom: 0; }
 .cover .toc-item {
   display: flex;
   flex-direction: column;
@@ -456,3 +467,30 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 .lib-intab-list { display: grid; gap: 2px; max-height: 16rem; overflow: auto; padding: 0 var(--s4) var(--s3); }
 .lib-intab-list a { display: flex; align-items: center; min-height: 44px; font-size: var(--t-small); color: var(--ink-body); text-decoration: none; overflow-wrap: anywhere; }
 @media (min-width: 1100px) { .lib-intab { display: none; } }
+
+/* ---- one frame: a shelf's head is a heading, not a band (19 Oct 2026) ----
+   [data-volume="library"] .section-head (editorial.css) paints each shelf's
+   head as a full raised band with s9 of top padding — the right thing when
+   the shelves were full-bleed pages, an inset grey block once they sit in
+   the studio's column under a pinned tab strip. Inside the column the head
+   is the panel's own title row: canvas ground, the column's edges, one
+   hairline under it, the rhythm of every other page's section heads. */
+:root .lib-main .lib-sec > .section-head {
+  padding: var(--s6) 0 var(--s5);
+  margin-bottom: var(--s5);
+  background: none;
+  border-bottom: 1px solid var(--border-hair);
+}
+/* …and the body under it starts at the head's hairline and the column's
+   edge: the band's own s7 top and narrow-width side inset were a second
+   frame inside the first. */
+:root .lib-main .lib-sec .section-body {
+  padding: 0 0 var(--s7);
+  background: none;
+  border-bottom: 0;
+}
+:root .lib-main .lib-sec > .lib-split { padding-inline: 0; }
+/* A rule with a video beside two without one stretched the whole row to the
+   video's height, leaving two cards mostly empty — more visible now the
+   column fits three. Each rule card is its own height. */
+:root .lib-main .rules-grid { align-items: start; }

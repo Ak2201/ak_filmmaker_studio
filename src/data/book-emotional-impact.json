@@ -1,0 +1,442 @@
+{
+  "_about": "The Library's 'Writing for Emotional Impact' shelf (src/pages/library.js, renderEmotionalImpact). COPYRIGHT RULES, owner decision recorded in docs/WIP-EMOTION-PLAN.md: the book is copyrighted. This file teaches the GENERAL craft ideas in ORIGINAL wording. It never reproduces the book's text, sentences, chapter titles or chapter order, its distinctive coined phrasing beyond widely used concept names, its lists in the author's order with the author's descriptions, or the book's own film examples. Every example comes from the four studied films (dragon, 96, porthozhil, vikramvedha; src/data/studies.json) or src/data/films.json, labels the FUNCTION of a moment, retells no more plot than a clause and quotes no dialogue (the same rule as studies.json _about). The book is credited ONCE, in `credit`, as recommended reading. Never type the product's brand name here (npm run test:brand). Read-only content: nothing in this file is a storage key, so ids may be renamed, but each id is also an anchor (#ei-<id>) that links may point at.",
+  "credit": {
+    "title": "Writing for Emotional Impact: Advanced Dramatic Techniques to Attract, Engage, and Fascinate the Reader from Beginning to End",
+    "author": "Karl Iglesias",
+    "publisher": "WingSpan Press",
+    "year": "2005",
+    "note": "Recommended reading. This shelf is an independent summary of general craft ideas, many of which the book explores in depth, written in our own words with our own examples. It is not affiliated with, authorised or endorsed by the author or the publisher. Buy the book for the full text, its reasoning and its examples."
+  },
+  "intro": {
+    "lede": "A screenplay is not a description of a film. It is a machine for producing feelings in one reader at a time, and every page either runs that machine or lets it idle.",
+    "paragraphs": [
+      "The central idea behind this shelf is simple to say and hard to practise: what a script actually delivers is the reader’s emotional experience. Plot, structure, character and theme matter because of what they make somebody feel while they read — curiosity on page one, worry by page ten, dread at the act break, relief or grief at the end. A reader who feels nothing turns pages out of duty. A reader who is gripped forgets they are reading at all, and that reader is the one who passes your script up the chain.",
+      "The second idea follows from the first: emotion on the page is engineered, not hoped for. Writers often treat feeling as a by-product of a good story, something that arrives on its own if the events are strong enough. The craft view is the opposite. Each emotional response has causes that can be named — information given or withheld, a character’s want made clear, a threat brought closer, a promise made and kept — and those causes can be placed deliberately, page by page, the way an editor places cuts.",
+      "That shifts the question you ask of every scene. Not ‘what happens here?’ but ‘what is the reader meant to feel here, and what on this page produces that feeling?’ A scene that answers the first question and not the second is information. A scene that answers both is drama.",
+      "The tools below are the levers writers reach for again and again. They are not a checklist to complete in order and they overlap constantly: suspense needs empathy to work, payoff needs anticipation, surprise needs a reader who thought they knew what was coming. Learn each one on its own, then watch how the four films on our Case Studies shelf combine them."
+    ],
+    "principles": [
+      { "label": "The reader is the audience", "text": "Before anyone sees your film, somebody reads it. Write for the person holding the pages: their attention, their patience, their pulse." },
+      { "label": "Feeling is caused", "text": "Every emotional response has a mechanism. Name the mechanism and you can build it on purpose, test it and repair it when it fails." },
+      { "label": "Every page earns the next", "text": "A page that produces no feeling and no question is a page the reader skims. Skimming is how a script dies quietly." },
+      { "label": "Variety keeps it alive", "text": "One emotion held too long goes numb. The same reader needs fear, then relief, then laughter, then worry again — contrast is what keeps feeling fresh." }
+    ]
+  },
+  "tools": [
+    {
+      "id": "hook",
+      "label": "The hook and the first impression",
+      "kicker": "Make the reader lean in before they decide whether to.",
+      "what": "The hook is whatever on your opening pages makes the reader want the next page more than they want to put the script down. It is rarely an explosion. More often it is a question that cannot be left alone, a voice that is unmistakably particular, a situation with a crack already running through it, or a character doing something that reveals exactly who they are. The first impression is the larger promise the opening makes: what kind of story this is, what tone it will keep, and why it is worth two hours.",
+      "why": "Readers decide quickly. A professional reader with a stack of scripts forms a working opinion within a few pages and spends the rest of the read confirming it. An opening that feels generic is read as a writer who is generic. An opening that is specific, confident and slightly unsettling earns patience — the reader extends credit for the slow stretches to come because the first pages proved the writer knows what they are doing.",
+      "how": [
+        "Open on a situation already in motion. Start late, after the ordinary has begun to wobble, rather than with a character waking up to a normal day.",
+        "Raise a concrete question on page one — who is this, what are they hiding, why is this happening — and make it impossible to answer from what is on screen yet.",
+        "Let the protagonist’s first action define them. What they do when nobody is watching tells the reader more than any description of them.",
+        "Establish tone at once. If the film will be funny, be funny in the first scene; if it will be frightening, unsettle the reader before page three.",
+        "Use specific, sensory detail in the first image so the world feels lived-in, not assembled.",
+        "Cut every line in the opening that exists only to inform. The reader will tolerate exposition later, once they care; at the start they will not."
+      ],
+      "mistakes": [
+        "A slow wake-up: alarm clock, breakfast, commute, while the story waits off-page.",
+        "A cold open so loud and disconnected from what follows that the real film feels like a step down.",
+        "Opening on a crowd of names, so the reader cannot tell who to follow.",
+        "Front-loading backstory in description or dialogue before the reader has any reason to want it."
+      ],
+      "example": {
+        "slug": "dragon",
+        "film": "Dragon",
+        "function": "Hook through a skill that is also a liability",
+        "text": "The opening puts the protagonist in a comic register, performing a fluency he does not actually have. It entertains on the surface while quietly planting the one talent — persuasion — that will both rescue and convict him, so the reader’s first laugh is also their first unease."
+      },
+      "checklist": [
+        "Is there a question on page one that the reader cannot answer yet?",
+        "Does the protagonist’s first action reveal who they are without anyone explaining it?",
+        "Could a reader name the film’s tone from the first scene alone?",
+        "Have you removed every line in the opening that only delivers information?",
+        "Does the first image carry one specific detail nobody else would have chosen?"
+      ]
+    },
+    {
+      "id": "empathy",
+      "label": "Empathy and identification",
+      "kicker": "The reader feels what the character feels only after the reader cares.",
+      "what": "Identification is the bond that lets a reader experience the story through a character rather than merely watching it. Once that bond forms, the character’s fear becomes the reader’s worry, their hope becomes the reader’s hope, and their losses land as small personal losses. It does not require the character to be nice. It requires only that the reader can follow the character’s logic, see a piece of their own life in them, or find them too interesting to look away from.",
+      "why": "Human beings are built to read other people. We track intentions, feel pulled toward someone who is treated unfairly, admire competence, and are drawn to anyone who wants something badly. A character who triggers any of those responses recruits the reader’s own emotional machinery. Without that recruitment, everything else on this shelf is weaker: suspense needs someone to worry about, and payoff needs someone to be glad for.",
+      "how": [
+        "Show an undeserved hardship early — an injustice, a humiliation, a loss — so the reader’s sense of fairness sides with the character.",
+        "Give them a clear, strongly felt desire. Wanting something badly is the fastest route into a reader’s sympathy, even when the thing wanted is questionable.",
+        "Let them be good at something. Competence is attractive in itself and makes a flawed character worth following.",
+        "Reveal a private vulnerability: a fear, a wound or a tenderness the character hides from the people around them but not from the reader.",
+        "Put a universal experience on the page — embarrassment, grief, first love, being underestimated — so the reader recognises their own life inside the character’s.",
+        "For a hard or unlikeable protagonist, give them a code, a wit, or one relationship in which they are better than they appear."
+      ],
+      "mistakes": [
+        "A passive protagonist who reacts to everything and wants nothing in particular.",
+        "Asking for sympathy through description (‘kind, brave, lovable’) instead of earning it through action.",
+        "A protagonist so perfect that nothing about them is recognisable or at risk.",
+        "Spending the opening on a supporting character the reader bonds with more strongly than the lead."
+      ],
+      "example": {
+        "slug": "porthozhil",
+        "film": "Por Thozhil",
+        "function": "Identification through fear the reader recognises",
+        "text": "The trainee is shown as the least steady person in a room of competent professionals. His nerves are not played as a joke but as a condition, and because nearly everyone has felt out of their depth at a new job, the reader attaches to him before the case has properly begun."
+      },
+      "checklist": [
+        "By page ten, can the reader say what your protagonist wants?",
+        "Is there a moment where the protagonist is treated unfairly, or pays a price they did not earn?",
+        "Have you shown one thing they are genuinely good at?",
+        "Does the reader see a vulnerability the other characters do not?",
+        "If they are hard to like, what makes them worth watching anyway?"
+      ]
+    },
+    {
+      "id": "curiosity",
+      "label": "Curiosity",
+      "kicker": "An open question is a reason to turn the page.",
+      "what": "Curiosity is the itch of not knowing. It is produced whenever the reader becomes aware of a gap in what they understand — a mystery about the past, an unexplained behaviour, an object that seems to matter, a situation whose rules have not been explained. It pulls the reader forward with the promise that the gap will be filled.",
+      "why": "The mind dislikes incomplete patterns. Once a reader notices that something is missing, they keep reading to complete the picture, often without deciding to. Curiosity also makes readers active: they form theories, test them against each new page and enjoy being right or wrong. An actively guessing reader is an engaged one.",
+      "how": [
+        "Withhold the reason, not the event. Show the character doing something strange and delay the explanation.",
+        "Introduce an object, a name or a place that the characters react to strongly before the reader knows why.",
+        "Open questions faster than you close them in the first half; close more than you open in the second.",
+        "When you answer one question, let the answer raise a sharper one, so the reader is never fully satisfied until the end.",
+        "Use dramatic irony in reverse: let characters know something the reader does not, and let their behaviour hint at it.",
+        "Keep each mystery attached to a character’s desire, so finding the answer matters to someone on the page as well as to the reader."
+      ],
+      "mistakes": [
+        "Withholding information the protagonist obviously knows, purely to manufacture a mystery — the reader feels cheated.",
+        "Too many open questions at once, so none of them feels urgent.",
+        "A mystery nobody on the page cares about, so its solution changes nothing.",
+        "Answering the central question early by accident, in a line of exposition."
+      ],
+      "example": {
+        "slug": "vikramvedha",
+        "film": "Vikram Vedha",
+        "function": "Curiosity built into the form itself",
+        "text": "The antagonist answers questions only with stories, each ending on a choice he hands back to the officer. Every story opens a gap the reader wants closed, and because the gaps concern the protagonist’s own judgement, curiosity and character pressure become the same engine."
+      },
+      "checklist": [
+        "List the questions open at the end of each act. Is there always at least one strong one?",
+        "Does each answer you give raise a new, sharper question?",
+        "Are you hiding only what the point-of-view character genuinely does not know?",
+        "Is every mystery tied to something a character wants?",
+        "Have you checked for an early line that accidentally gives the central answer away?"
+      ]
+    },
+    {
+      "id": "suspense",
+      "label": "Suspense",
+      "kicker": "Worry is curiosity with something at stake.",
+      "what": "Suspense is anxious uncertainty about what will happen to someone the reader cares about. Where curiosity asks ‘what is going on?’, suspense asks ‘will they be all right?’. It needs three ingredients together: a character the reader is attached to, a clear danger or goal, and an outcome that is genuinely in doubt.",
+      "why": "Suspense borrows the body’s own alarm system. When the reader can see a threat coming and cannot intervene, they experience a version of the tension they would feel if they were there. The longer that tension is sustained without release, the more intensely it is felt — up to the point where it exhausts the reader, which is why it must be paced.",
+      "how": [
+        "Tell the reader about the danger before the character knows. Shared knowledge of a threat produces dread; a sudden attack produces only a jolt.",
+        "Make the stakes concrete and personal: not ‘the city’ but this person, this relationship, this one chance.",
+        "Add a clock — a deadline, a countdown, a closing window — so time itself becomes pressure.",
+        "Slow down at the critical moment. Stretch the approach to the danger with small specific actions rather than skipping to the outcome.",
+        "Narrow the options. Close off escape routes one by one so the reader feels the space shrinking.",
+        "Release the tension briefly — a joke, a false relief — before tightening again, so the reader can keep feeling it."
+      ],
+      "mistakes": [
+        "A threat so abstract or distant that it produces no physical worry.",
+        "A protagonist the reader does not care about, so the danger is interesting but not frightening.",
+        "Rushing the critical moment and resolving it in a single line.",
+        "Holding maximum tension for too long without release, until the reader goes numb."
+      ],
+      "example": {
+        "slug": "porthozhil",
+        "film": "Por Thozhil",
+        "function": "Suspense over surprise, by withholding the frame not the facts",
+        "text": "The investigation shows its working openly and holds back only the arrangement that would make the pieces mean something, so each procedural step carries dread about what the pattern will turn out to be. The film rarely ambushes the audience; it lets them watch the danger forming and makes them wait."
+      },
+      "checklist": [
+        "Does the reader know about the danger before the character does, at least once?",
+        "Can you state the stakes as a specific person and a specific loss?",
+        "Is there a clock in the second half of your script?",
+        "At your most suspenseful moment, have you slowed the page down rather than sped it up?",
+        "Have you given the reader a breath before the tightest stretch?"
+      ]
+    },
+    {
+      "id": "anticipation",
+      "label": "Anticipation",
+      "kicker": "Make the reader look forward to something, then make them wait for it.",
+      "what": "Anticipation is the pleasure of expecting. The reader knows something is coming — a confrontation, a reunion, a reveal, a plan put into action — and enjoys the approach as much as the arrival. Where suspense is mostly fearful, anticipation can be hopeful, delighted or grimly satisfied. It is the feeling of a promise that has been made and not yet kept.",
+      "why": "Expectation is its own reward. A reader who has been told that two characters must eventually meet, or that a secret must eventually come out, reads every intervening scene with that future moment in mind. The scenes in between become charged, because each one moves the promised moment closer or threatens to stop it.",
+      "how": [
+        "State the plan, the appointment or the deadline out loud early, so the reader knows what is coming and roughly when.",
+        "Set up a confrontation between two characters and then keep them apart for as long as the story allows.",
+        "Plant a skill, an object or a weakness and let the reader wonder when it will matter.",
+        "Show preparation: characters getting ready for an event builds expectation of the event.",
+        "Let the reader know a secret one character is keeping from another, and anticipate the moment it comes out.",
+        "When the promised moment arrives, deliver it fully on the page; anticipation that ends off-screen feels like a broken promise."
+      ],
+      "mistakes": [
+        "Making a promise and forgetting it — a set-up that never pays off.",
+        "Delivering the anticipated moment too soon, before the expectation has built.",
+        "Cutting away from the moment the reader has been waiting for.",
+        "Building so much expectation that the payoff cannot possibly match it."
+      ],
+      "example": {
+        "slug": "96",
+        "film": "96",
+        "function": "Anticipation of a meeting, held off deliberately",
+        "text": "Once the reunion is arranged, the reader knows the two former classmates must face each other, and the film makes the approach to that first recognition long and careful. The waiting becomes the emotion, so the moment itself can be quiet and still land."
+      },
+      "checklist": [
+        "What is the reader looking forward to at the end of act one?",
+        "Have you made at least one clear appointment, deadline or plan the reader can wait for?",
+        "Is there a confrontation you have set up and then delayed?",
+        "Does every planted skill, object or secret eventually come due?",
+        "When the moment arrives, do you play it on the page in full?"
+      ]
+    },
+    {
+      "id": "surprise",
+      "label": "Surprise",
+      "kicker": "The best surprise is the one the reader could have seen coming and did not.",
+      "what": "Surprise is the jolt of an outcome the reader did not predict. It ranges from a small unexpected line to a reversal that changes the meaning of everything before it. A good surprise feels, a moment later, inevitable: the clues were there, and the reader enjoys realising they missed them.",
+      "why": "Readers constantly predict. When a prediction fails in a way that still makes sense, the brain gets a burst of attention and pleasure, and it rereads the past in light of the new information. A surprise that does not make sense produces the opposite: the reader feels the writer cheated, and trust drops.",
+      "how": [
+        "Lead the reader to expect one outcome, then deliver another that the earlier pages also support.",
+        "Plant the key clue openly but in a moment when the reader is attending to something else.",
+        "Reverse a character’s apparent motive late: the ally had a reason, the villain had a point.",
+        "Surprise at the level of the line as well as the plot — an unexpected response, an action that subverts the obvious beat.",
+        "Use reversals inside scenes: let a scene end with the power between characters flipped from where it began.",
+        "Weigh surprise against suspense. If telling the reader in advance would create more tension than hiding it, tell them."
+      ],
+      "mistakes": [
+        "A twist with no planted clues, which reads as arbitrary rather than clever.",
+        "Surprising for its own sake, at the cost of the reader’s investment in a character.",
+        "Telegraphing the twist so heavily that the reader is ahead of the story.",
+        "Stacking twists until the reader stops believing any of them."
+      ],
+      "example": {
+        "slug": "vikramvedha",
+        "film": "Vikram Vedha",
+        "function": "Surprise by withholding the expected device",
+        "text": "Having trained the audience to expect each question to be settled by another story, the film refuses that pattern at the end and makes the protagonist answer for himself. The surprise is formal rather than a plot twist, and it lands because the pattern was so clearly established."
+      },
+      "checklist": [
+        "For each surprise, can you point to the earlier page that makes it fair?",
+        "Is the key clue planted in plain sight, while attention is elsewhere?",
+        "Does the surprise deepen a character rather than merely trick the reader?",
+        "Would telling the reader in advance create more tension than surprising them?",
+        "Does at least one scene in each act end with the power reversed?"
+      ]
+    },
+    {
+      "id": "tension",
+      "label": "Tension and contrast",
+      "kicker": "Feeling is measured against its opposite.",
+      "what": "Tension is the stretched, unresolved quality of a moment in which opposing forces are held against each other. Contrast is the placing of opposites side by side — loud and quiet, comic and tragic, safety and danger, hope and despair — so that each makes the other stronger. Together they shape the rhythm of the reader’s experience across scenes and sequences.",
+      "why": "Emotion is relative. A frightening scene is more frightening after a warm one; a joke is funnier when it breaks unbearable strain; a quiet moment feels quieter after noise. A script that stays in one emotional key, however intense, flattens out, because the reader adapts. Contrast resets the reader’s sensitivity so the next feeling registers at full strength.",
+      "how": [
+        "Alternate the emotional charge of consecutive scenes. Follow a high with a low, a public scene with a private one.",
+        "Place a light moment just before your darkest turn so the turn falls further.",
+        "Put opposed characters in the same small space and give each a reason not to leave.",
+        "Mix tones inside one scene: let a funny exchange carry a serious undercurrent, or a grim situation contain an absurd detail.",
+        "Vary scene length and pace. A run of short scenes speeds the pulse; one long, still scene slows it.",
+        "Track the emotional value at the start and end of each scene and make sure it changes."
+      ],
+      "mistakes": [
+        "Uniform intensity, scene after scene, until nothing feels intense.",
+        "Comic relief that deflates tension the story needed to keep.",
+        "Tonal shifts so abrupt and unprepared that the reader cannot follow them.",
+        "Scenes that begin and end on the same emotional note, changing nothing."
+      ],
+      "example": {
+        "slug": "dragon",
+        "film": "Dragon",
+        "function": "Two tones held on one subject",
+        "text": "The same deception plays as comedy in the middle of the film and as a reckoning near the end. Because the audience laughed at the scheme first, the moment the cost of it becomes visible lands harder; the earlier lightness is what gives the later weight its depth."
+      },
+      "checklist": [
+        "Chart the emotional charge of your scenes in order. Where do three similar ones sit together?",
+        "Is there a lighter beat just before your darkest turn?",
+        "Do opposing characters share a confined space at least once?",
+        "Does each scene end on a different emotional value from where it began?",
+        "Have you varied scene length in your second act?"
+      ]
+    },
+    {
+      "id": "conflict",
+      "label": "Conflict",
+      "kicker": "Someone wants something and something stands in the way.",
+      "what": "Conflict is the friction between a character’s desire and whatever opposes it — another person, a group, nature, circumstance, or a contradictory desire inside the character. It is the source of most dramatic energy. Without opposition there is only events; with it, every action has resistance and every choice a cost.",
+      "why": "Readers engage with struggle. A character who gets what they want easily gives the reader nothing to feel; one who must fight, sacrifice or change to get it gives the reader something to hope and fear for. Conflict also reveals character: under pressure people show who they really are, and readers trust what they see under pressure more than anything a character says about themselves.",
+      "how": [
+        "Give every major character in a scene a want, and make at least two of those wants incompatible.",
+        "Make the opposition as strong and as intelligent as the protagonist, or stronger. An antagonist who is simply right about something is the hardest to beat.",
+        "Layer conflict: outer obstacles, conflict with people close to the protagonist, and an inner contradiction.",
+        "Escalate. Each obstacle should cost more or demand more than the last.",
+        "Let characters pursue their goals indirectly when direct confrontation would be implausible; the friction moves beneath the surface.",
+        "Force choices between two things the character values, not between good and bad."
+      ],
+      "mistakes": [
+        "Arguments that go round in circles without anyone’s position changing.",
+        "A weak or foolish antagonist, which makes the protagonist’s victory worthless.",
+        "Conflict that is only external, so the protagonist never has to change.",
+        "Obstacles that are coincidences rather than consequences of someone’s choice."
+      ],
+      "example": {
+        "slug": "dragon",
+        "film": "Dragon",
+        "function": "An antagonist who is simply correct",
+        "text": "The figure who threatens to expose the protagonist is not cruel or corrupt; he is right about the forgery. Because the reader cannot dismiss the opposition, the conflict moves inside the protagonist, where it has to be resolved by a choice rather than a victory."
+      },
+      "checklist": [
+        "In each scene, can you name what every principal character wants?",
+        "Is your antagonist right about at least one thing?",
+        "Does your protagonist face outer, relational and inner conflict?",
+        "Does each obstacle cost more than the last?",
+        "Is the climactic choice between two things the protagonist values?"
+      ]
+    },
+    {
+      "id": "payoff",
+      "label": "Payoff and satisfaction",
+      "kicker": "Keep every promise, and keep it in a way the reader did not quite expect.",
+      "what": "A payoff is the moment a set-up comes due: the planted skill is used, the secret comes out, the relationship reaches its turning point, the question raised on page one is answered. Satisfaction is the overall feeling, at the end, that the story has delivered on what it promised — not necessarily a happy ending, but a fitting one.",
+      "why": "Set-ups create a debt in the reader’s mind. When the debt is paid, the reader feels the story’s design, and that recognition is deeply pleasing; it says the writer was in control all along. When a debt is left unpaid, or paid by coincidence, the reader feels the story fall apart behind them, however good the individual scenes were.",
+      "how": [
+        "Keep a list of every set-up as you write — objects, lines, skills, fears, promises — and check each one has a payoff.",
+        "Plant early and lightly; pay off late and fully. The distance between the two is where the pleasure comes from.",
+        "Let the payoff come from the protagonist’s own action, not from luck or from another character rescuing them.",
+        "Twist the expected payoff: deliver what was promised, but in a form or at a cost the reader did not foresee.",
+        "Tie the external resolution to the internal one, so the plot’s answer and the character’s change arrive together.",
+        "Give the ending an image or action that echoes the opening, so the reader feels how far the story has come."
+      ],
+      "mistakes": [
+        "A climax resolved by coincidence or by a character the reader barely met.",
+        "Set-ups that are simply forgotten.",
+        "Paying everything off with dialogue that explains what the reader already understood.",
+        "An ending that resolves the plot but leaves the protagonist unchanged."
+      ],
+      "example": {
+        "slug": "dragon",
+        "film": "Dragon",
+        "function": "The gag that becomes arithmetic",
+        "text": "A detail first played for a laugh returns near the end as an accounting the protagonist cannot argue with. The payoff is satisfying because it was planted openly and dismissed by the audience as a joke, and because it arrives as the protagonist’s reckoning rather than as an external punishment."
+      },
+      "checklist": [
+        "Does every set-up on your list have a payoff on the page?",
+        "Is the gap between set-up and payoff long enough to be felt?",
+        "Does the climax turn on something the protagonist does?",
+        "Does at least one payoff arrive in a form the reader did not expect?",
+        "Do the outer resolution and the inner change land in the same sequence?"
+      ]
+    },
+    {
+      "id": "scene",
+      "label": "Craft at the level of the scene",
+      "kicker": "Each scene is a small story with its own turn.",
+      "what": "The scene is the unit in which emotion is actually produced. A strong scene has a point-of-view character who wants something specific within it, an obstacle to that want, and a change by the end — the situation, the relationship or the character’s understanding is different from how it began. The reader should feel that change.",
+      "why": "Readers experience a script scene by scene. Big structural movements are felt only as the accumulation of small ones. A scene with no turn is a scene that could be cut without loss, and a reader senses that, even if they cannot say why. A scene that turns gives the reader a small hit of story every few pages.",
+      "how": [
+        "Before writing a scene, name its purpose in one line and the emotion it is meant to produce.",
+        "Enter the scene as late as possible and leave as early as possible; cut the greetings and goodbyes.",
+        "Give the point-of-view character a scene-sized goal and let the scene be the attempt.",
+        "End on a turn, a question or a new piece of information that propels the reader into the next scene.",
+        "Do two jobs at once: advance the plot while revealing character, or deliver exposition inside conflict.",
+        "Shrink the space or the number of people as a scene intensifies, so there is less room to escape."
+      ],
+      "mistakes": [
+        "Scenes that exist only to deliver information.",
+        "Starting with arrival small-talk and ending after the point has been made.",
+        "Scenes that repeat an emotional beat already delivered earlier.",
+        "A point-of-view that drifts, so the reader does not know whose scene it is."
+      ],
+      "example": {
+        "slug": "porthozhil",
+        "film": "Por Thozhil",
+        "function": "Procedure as a character test",
+        "text": "Routine investigative scenes double as tests of the trainee’s nerve. Each one advances the case while measuring whether he can stand in the room, so the reader receives the plot information and the character beat in the same moment."
+      },
+      "checklist": [
+        "Can you write each scene’s purpose and intended emotion in one line?",
+        "Does each scene end with something changed?",
+        "Have you cut the first and last few lines of every scene to see if it survives?",
+        "Is every scene doing at least two jobs?",
+        "Is it always clear whose scene it is?"
+      ]
+    },
+    {
+      "id": "dialogue",
+      "label": "Craft at the level of dialogue",
+      "kicker": "People rarely say what they mean, and that gap is where the feeling lives.",
+      "what": "Effective screen dialogue is not conversation transcribed. It is compressed, purposeful speech in which each line is an action — a character trying to get something from another — and in which the most important meaning often sits beneath the words rather than in them. That underneath layer is subtext.",
+      "why": "Readers enjoy working out what a character really means. When the words say one thing and the situation says another, the reader fills the gap and feels the tension of what is unsaid. Dialogue that states feelings directly removes that work and with it most of the emotion; dialogue that hides them invites the reader in.",
+      "how": [
+        "Treat each line as a tactic: the speaker wants something and the line is how they try to get it.",
+        "Let characters talk about something other than what is really at stake, while the staging or the silence carries the real subject.",
+        "Give each speaker a distinct rhythm, vocabulary and set of evasions, so a line could not belong to anyone else.",
+        "Cut lines that tell the other character something both already know.",
+        "Use interruption, deflection, a changed subject or a refusal to answer to show pressure.",
+        "Trust silence: a character who does not reply can say more than one who does."
+      ],
+      "mistakes": [
+        "Characters announcing their feelings in complete, articulate sentences.",
+        "Exposition delivered as a speech nobody would actually make.",
+        "Every character sounding like the writer.",
+        "Long exchanges of pleasantries before the scene’s real business."
+      ],
+      "example": {
+        "slug": "96",
+        "film": "96",
+        "function": "Subtext carried by staging",
+        "text": "In the first reunion encounter the words stay on logistics and old classmates, while distance, who looks away first and who addresses the group instead carry the real subject. The reader feels the twenty-two years in what neither character will say."
+      },
+      "checklist": [
+        "For each line, can you say what the speaker is trying to get?",
+        "Is there a scene where the real subject is never spoken aloud?",
+        "Cover the names: can you tell who is speaking?",
+        "Have you removed lines that tell another character what they already know?",
+        "Is there at least one silence doing work in each major scene?"
+      ]
+    },
+    {
+      "id": "description",
+      "label": "Craft at the level of description",
+      "kicker": "Action lines are where the reader sees the film, so make them see it.",
+      "what": "Description — the action lines — is the prose that puts images, movement and atmosphere into the reader’s mind. In a screenplay it must be lean, present-tense and visual, but lean does not mean flat. The best description chooses the one detail that makes a room, a face or a moment vivid, and uses rhythm and white space to control how fast the reader moves.",
+      "why": "The reader cannot see your film; they can only see what your sentences let them picture. Generic description produces a generic mental picture and no feeling. Precise, energetic description produces a scene the reader experiences, and its pacing on the page becomes the pacing of the reader’s pulse.",
+      "how": [
+        "Choose the telling detail over the complete inventory: one object that says who lives here.",
+        "Use strong, specific verbs; they do more than adjectives and adverbs combined.",
+        "Keep paragraphs short — three or four lines — so the page breathes and the eye keeps moving.",
+        "Break moments of high tension into single-line paragraphs to slow the read and stretch time.",
+        "Describe only what can be seen and heard, but choose it to imply what is felt.",
+        "Let the voice of the description match the tone of the film: dry for a comedy, taut for a thriller."
+      ],
+      "mistakes": [
+        "Dense blocks of description that the reader skims.",
+        "Camera directions and technical language that pull the reader out of the story.",
+        "Describing a character’s thoughts or backstory that the camera cannot show.",
+        "Generic adjectives that could describe any place or any person."
+      ],
+      "example": {
+        "slug": "96",
+        "film": "96",
+        "function": "Objects standing in for years",
+        "text": "Small physical details — what has been kept and what has been replaced — do the work of two decades of exposition. On the page, that is the description choosing the one object that tells the reader what time has done, instead of explaining it."
+      },
+      "checklist": [
+        "Does each location have one detail that could only belong there?",
+        "Is any description paragraph longer than four lines?",
+        "At your tensest moment, have you broken the page into short lines?",
+        "Have you removed every camera direction that is not essential?",
+        "Does the voice of your action lines match the film’s tone?"
+      ]
+    }
+  ],
+  "closing": {
+    "title": "Putting the tools together",
+    "paragraphs": [
+      "No tool works alone. Empathy is what makes suspense hurt; curiosity is what makes a surprise land; anticipation is what a payoff spends. When a scene is not working, the cure is usually not more of the same lever but a different one: a flat suspense sequence often needs the reader to care more about the person in danger, not a bigger danger.",
+      "A practical way to use this shelf is a second pass devoted only to the reader’s feelings. Go through your draft scene by scene and write, in the margin, the one emotion each scene is meant to produce and the tool it uses to produce it. Gaps, repeats and flat stretches show up at once. Then rewrite for the margin, not for the plot."
+    ]
+  }
+}

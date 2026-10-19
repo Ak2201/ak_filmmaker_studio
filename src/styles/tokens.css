@@ -416,7 +416,15 @@
   --blur-chrome:  saturate(140%) blur(12px);
 
   --measure:       68ch;
-  --measure-wide:  92ch;
+  /* --measure-wide is THE STUDIO'S ONE FRAME: the column every studio
+     page's header, tab strip and content share (.k-page, the .bd-head
+     family, tabs.css, the footer). It was 92ch — about 812px — which
+     left a third of a 1440px screen empty either side of every page
+     (owner, 19 Oct 2026: "space in left and right side, remove them,
+     same throughout the app"). It is a width now, not a reading
+     measure; prose that wants a line length reads --measure-text. */
+  --measure-wide:  78rem;
+  --measure-text:  92ch;
   --content-max:   1280px;
   --rail-w:        220px;
   --viz-min:       560px;

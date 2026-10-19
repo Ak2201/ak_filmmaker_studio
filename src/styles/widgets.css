@@ -1114,7 +1114,7 @@
 /* ------------------------------------------------------------
    SCREENPLAY EDITOR
    ------------------------------------------------------------ */
-.script-editor { max-width: var(--measure-wide); margin: var(--s5) 0; }
+.script-editor { max-width: var(--measure-text); margin: var(--s5) 0; }
 .scene-block {
   margin-bottom: var(--s4);
   padding: var(--sk-card-pad);

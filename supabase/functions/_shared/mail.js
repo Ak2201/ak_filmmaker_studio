@@ -67,7 +67,7 @@ export function receiptMail(inv) {
   const link = site('purchase');
   return message(inv.buyer_email, `Payment received: ${inv.plan_name} plan (${inv.number})`, [
     ['Invoice', inv.number],
-    ['Plan', `${inv.plan_name} (one-time purchase, lifetime access)`],
+    ['Plan', `${inv.plan_name} (one-time purchase, no renewal)`],
     ['Amount paid', fmtPaise(inv.amount_paise)],
     ['Date', dateIST(inv.paid_at || inv.issued_at)],
     ['Razorpay payment ID', inv.razorpay_payment_id]

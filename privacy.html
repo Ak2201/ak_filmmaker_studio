@@ -27,16 +27,36 @@
 
 <h1>Privacy Policy</h1>
 <p class="legal-sub">What we collect, why we collect it, who helps us process it, and the rights you have over it.</p>
-<p class="legal-date">Last updated 12 October 2026</p>
+<p class="legal-date">Last updated 19 October 2026</p>
 
 <div class="legal-key">
-  <p><strong>Your work stays on your device unless you choose otherwise.</strong>
+  <p><strong>Your work is saved on your device first.</strong>
   Everything you write in {{brand:name}} &mdash; scripts, breakdowns, schedules, budgets,
-  contacts and notes &mdash; is saved in your own browser first. It reaches our servers only
-  if you sign in and use cloud sync, and it reaches Google Drive only if you connect Drive.</p>
-  <p>We never sell your personal data, we do not show advertising, and we do not use
-  your scripts or projects to train AI models.</p>
+  contacts and notes &mdash; is saved in your own browser. It is copied to our database
+  only while you are signed in as a member with cloud sync on (it is on by default, and
+  you can turn it off in Settings), and to your Google Drive only if Drive backup is
+  connected.</p>
+  <p>We never sell your personal data, we do not show advertising, we run no third-party
+  analytics, and we do not use your scripts or projects to train AI models.</p>
 </div>
+
+<section class="legal-changes" id="changes" aria-labelledby="changes-h">
+  <h2 id="changes-h">What changed on 19 October 2026</h2>
+  <ul>
+    <li>Cloud sync is described as it works: on by default for members, with an off switch.</li>
+    <li>Payment data is described exactly: the payment record Razorpay sends us can include
+    your phone number, UPI ID or bank name, never a full card number.</li>
+    <li>New: receipt and refund e-mails (sent through Resend), invoices, session records
+    and sign-in history (IP address and browser type), team invitations, what we give
+    Razorpay at checkout, screening passes, the Chrome extension, support records, and who
+    else can see your data, administrators included.</li>
+    <li>Account deletion now says what is removed and what is kept (an invoice with your
+    name and e-mail taken off it).</li>
+    <li>Google Fonts is gone from the list of providers: our typefaces are served from our
+    own site. The launch-offers form has been removed.</li>
+    <li>The list of counted features now names all eight.</li>
+  </ul>
+</section>
 
 <h2>1. Who we are</h2>
 
@@ -49,53 +69,118 @@ described in this policy. You can reach us at
 
 <h2>2. What we collect</h2>
 
-<h3>When you use the studio without signing in</h3>
-<p>Your projects and preferences are stored in your browser on your device. We do not
-receive them. If you enter with an invite code, the code is remembered in your browser so
-you do not have to type it again.</p>
+<h3>Before you sign in</h3>
+<p>Our public pages (the start page, pricing, the product pages and these policies) can be
+read without an account. The studio itself opens after you sign in with Google. If you
+enter an invite code before signing in, the code is kept in your browser until it has been
+checked against the account you sign in with, and a short-lived ticket (ten minutes) is
+kept in the tab&rsquo;s session storage so the code survives the trip to Google and back.</p>
 
 <h3>When you sign in with Google</h3>
 <ul>
-  <li><strong>Account details</strong> &mdash; your name and e-mail address as provided by
-  Google, and an internal account identifier. We never see your Google password.</li>
-  <li><strong>Synced project data</strong> &mdash; the projects you choose to sync, along with
-  comments, share links and collaborator lists you create.</li>
-  <li><strong>Invite and membership records</strong> &mdash; any invite request you send
-  (including the optional note you write and the type of browser you sent it from), and
-  whether it was approved.</li>
-  <li><strong>Session records</strong> &mdash; which device currently holds your active
-  session, so that your account is used on one device at a time.</li>
+  <li><strong>Account details</strong> &mdash; your name, e-mail address and profile
+  picture as provided by Google, Google&rsquo;s identifier for your account, and an internal
+  account identifier. We never see your Google password.</li>
+  <li><strong>Access records</strong> &mdash; whether you are a member and how you became
+  one (an invite code, an approved request, a free trial, a purchase, or access we gave you
+  by e-mail), when a free trial started and how long it runs, and which invite code you
+  redeemed.</li>
+  <li><strong>Invite requests</strong> &mdash; if you ask for access, your e-mail address
+  and name as Google gives them, the optional note you write, the type of browser you sent
+  it from, and whether it was approved or declined.</li>
+  <li><strong>Session records</strong> &mdash; your account is used on one device at a
+  time. To do that we keep one record per account: a random session identifier, when the
+  device last checked in (about every 30 seconds while the studio is open), and that
+  device&rsquo;s IP address and browser type. The IP address is visible to our
+  administrators; if another device holds your session, you are shown only its browser type
+  and when it last checked in. The IP address is never used to grant access.</li>
+  <li><strong>Sign-in history</strong> &mdash; separately, our sign-in provider (Supabase)
+  keeps a record of each sign-in: when it started, the IP address and the browser type. Our
+  administrators can see your five most recent. These records end when you sign out of that
+  sign-in, and are deleted with your account.</li>
 </ul>
 
+<h3>Synced project data</h3>
+<p>While you are signed in as a member and cloud sync is on, each project you work on is
+copied to our database a few seconds after you stop typing, so that it is the same on every
+device you sign in on. That covers what you write in the studio: the blueprints and their
+settings, story and characters, the screenplay and its drafts, scenes, shots, locations and
+the schedule, contacts (including any phone numbers and e-mail addresses you type for your
+crew), costs, songs, festival plans, the idea vault, the edit log, deliverables, writing
+goals and the activity log. The scene bin stays on your device only. Comments, share links
+and collaborator lists you create are stored with the project. If you invite someone to a
+seat on your team (organisation) account, we store the e-mail address you invite, the role
+you give them and whether they have joined.</p>
+<p>You can turn cloud sync off at any time in Settings &rarr; Cloud sync; changes then stay
+on that device until you turn it back on. Settings &rarr; Danger zone &rarr; &ldquo;Delete my
+cloud projects&rdquo; deletes the cloud copy of every project you own and leaves the copies
+on your device.</p>
+<p>If you enter other people&rsquo;s details &mdash; a crew member&rsquo;s phone number, say
+&mdash; you are responsible for having their permission to keep them.</p>
+
 <h3>When you buy a plan</h3>
-<p>Payments are processed by Razorpay. <strong>Your card, UPI, net-banking or wallet
-details are entered with Razorpay and never reach us.</strong> We receive and keep the
-order and payment identifiers, the plan, the amount, the date, and the payment status
-(for example, captured or refunded), so that we can activate your plan and keep proper
-accounting records.</p>
+<p>Payments are processed by Razorpay. <strong>Your full card number, CVV, UPI PIN and
+banking passwords are entered with Razorpay and never reach us.</strong> When you start a
+purchase we give Razorpay your name and e-mail address, to fill in its checkout, and our
+internal identifier for your account, to match the payment to it. We keep:</p>
+<ul>
+  <li>the order: plan, amount, currency, date, status (for example paid or refunded), the
+  Razorpay order and payment identifiers, and any promo or referral code used;</li>
+  <li>the payment record Razorpay sends us when a payment is confirmed. Depending on how you
+  paid, it can include the payment method, the e-mail address and phone number you gave at
+  checkout, your UPI ID, the name of your bank or wallet, or, for a card, its network, type,
+  issuer and last four digits;</li>
+  <li>the invoice we issue for the purchase (a Bill of Supply): its number, your name and
+  e-mail address, a GSTIN if you give us one, the plan, the amount and the date;</li>
+  <li>refund records and any refund request you send (its reason category and your
+  message); and</li>
+  <li>if you have a referral code, the credits it has earned and whether they have been
+  paid out.</li>
+</ul>
+
+<h3>Receipts and refund e-mails</h3>
+<p>After a purchase we e-mail a receipt to your account&rsquo;s address, and we e-mail you
+again when a refund is processed or fails. These are sent through Resend, which receives
+your name and e-mail address to deliver them. They carry the invoice number, the plan, the amount, the date and the Razorpay payment or refund
+identifier. We do not send marketing e-mail without your consent.</p>
 
 <h3>When you use AI features</h3>
 <p>AI tools work only with an API key that you supply for Anthropic or Google Gemini. The
 key is stored in your browser on your device, is never included in backups or cloud sync,
 and is never sent to us. When you run an AI tool, the text it shows you it will send goes
 directly from your browser to that provider and is handled under the provider&rsquo;s own
-terms and privacy policy.</p>
+terms and privacy policy. Storyboard pictures drawn with Gemini are saved, when you accept
+them, as files in your own Google Drive; the project keeps only a reference to each
+file.</p>
+
+<h3>When you write to us</h3>
+<p>Support works by e-mail. When a message needs following up, an administrator may log it
+as a ticket with your e-mail address, a subject and a summary, and may keep short internal
+notes on your account (for example, &ldquo;asked about an invoice&rdquo;).</p>
+
+<h3>If you open a screening pass</h3>
+<p>A screening pass opens a read-only copy of one project for a guest without an account.
+When you open one you may be asked for your e-mail address; it is not checked. Each opening
+is logged with that address and a short access code, and both are printed as a watermark
+across the page. Our administrators can see the log.</p>
 
 <h3>Technical data</h3>
 <p>Like any website, our hosting provider receives your IP address and basic request
-information (such as browser type and the page requested) when you load a page, and may
-keep it in short-lived server logs for security and reliability. We do not run third-party analytics,
+information (such as browser type and the page requested) when you load a page, and our
+database provider does the same when the studio talks to it. Both may keep short-lived logs
+for security and reliability. We do not run third-party analytics,
 advertising trackers or session recording. The one thing we count ourselves is described next.</p>
 
 <h3 id="usage-counts">Counts of which tools are used (signed in)</h3>
 <p>While you are signed in, {{brand:name}} adds one to a <strong>daily total</strong> each time you open one of its
 tools (for example the budget or the stripboard) or use one of eight features: importing a script, exporting a PDF,
-an AI request, connecting Google Drive, creating a share link, using a screening pass, and meeting a plan limit. A total is
+exporting a Word file, an AI request, connecting Google Drive, creating a share link, using a screening pass, and
+meeting a plan limit. A total is
 a row of three things &mdash; the day, the name of the tool or feature, and your plan &mdash; plus a number. It has no
 name, e-mail, account identifier, film title, script text, note, file, prompt or AI answer on it, and the names it can
 hold are a fixed list, so nothing you write can reach it. Because a total does not say whose it is, it cannot be traced
 back to you or taken back out.</p>
-<p><strong>What is kept about you for a moment:</strong> so that nobody can flood the totals, we keep a call count against
+<p><strong>What is kept about you for a moment:</strong> so that nobody can flood the totals, we keep an hourly call count against
 your account identifier for 48 hours and then delete it. We use that count only to say how many people used the studio
 in the last day or two. We cannot say how many used it in a week, by design. The same fixed-list, counts-only rule
 applies to a second set of totals that records when a save to your account was refused and the plain reason code
@@ -104,25 +189,30 @@ applies to a second set of totals that records when a save to your account was r
 someone. <strong>Retention:</strong> the daily totals are kept for as long as {{brand:name}} runs, because they identify
 nobody.</p>
 <p><strong>How to turn it off:</strong> Settings &rarr; Privacy &rarr; &ldquo;Count which tools I use (no content, ever)&rdquo;.
-The choice is kept on your device and takes effect from your next click. When you are not signed in, nothing is counted.
+The choice is kept on your device and takes effect from your next click; it also stops the refused-save reports. When
+you are not signed in, nothing is counted.
 We send the totals once, as you leave or hide the page; we never send them in the background.</p>
 
-<h3>Launch-offer e-mails and visit counts</h3>
-<p>If you type your e-mail into the &ldquo;Get launch offers&rdquo; form on our start page and tick the consent box,
-we store that address, the exact consent sentence you saw, and the date. We use it only to write to you about
-{{brand:name}}&rsquo;s launch and offers; you can ask us to delete it at any time at {{brand:email}}. Only an
-administrator can read the list, and it is not shared. Separately, we count visits to the start page, the pricing section,
-invite requests, sign-ups and purchases as plain daily totals, with no identifier, IP address or cookie attached, so a
-count cannot be traced to you. We honour Do Not Track and Global Privacy Control, and the start page has a
-&ldquo;Don&rsquo;t count this visit&rdquo; button.</p>
+<h3>Visit counts and the old launch-offers list</h3>
+<p>We count visits to the start page and the pricing section, invite requests, sign-ups,
+checkouts started and purchases as plain daily totals, with no identifier, IP address or
+cookie attached, so a count cannot be traced to you. We honour Do Not Track and Global
+Privacy Control, and the start page has a &ldquo;Don&rsquo;t count this visit&rdquo; button.</p>
+<p>Our start page used to have a &ldquo;Get launch offers&rdquo; form. It has been removed.
+If you used it, we still hold the address, the exact consent sentence you saw, and the date;
+we use it only to write to you about {{brand:name}}&rsquo;s launch and offers, only an
+administrator can read the list, and it is not shared. Ask us at {{brand:email}} and we
+will delete it.</p>
 
 <h2>3. Why we use it</h2>
 <ul>
   <li>To provide the service you asked for: signing you in, syncing and sharing your
   projects, and backing them up.</li>
-  <li>To run the invite-only membership: reviewing invite requests and admitting members.</li>
-  <li>To activate the plan you bought, keep payment records required by law, and handle
-  refunds.</li>
+  <li>To run access to the studio: free trials, invite codes, invite requests and
+  memberships, and keeping each account to one device at a time.</li>
+  <li>To activate the plan you bought, issue invoices and receipts, keep payment records
+  required by law, and handle refunds and referral credits.</li>
+  <li>To answer your support requests.</li>
   <li>To keep the service secure, prevent abuse, and enforce our
   <a href="/terms">Terms of Service</a>.</li>
   <li>To contact you about your account, a purchase or an important change to the
@@ -137,10 +227,15 @@ permits, such as complying with law.</p>
 the purpose listed:</p>
 <ul>
   <li><strong>Supabase</strong> &mdash; sign-in, the database that holds synced projects,
-  comments, sharing and account records.</li>
-  <li><strong>Google</strong> &mdash; Google sign-in; Google Drive, only if you connect it;
-  Google Fonts, which serves the typefaces on our pages and so receives your IP address.</li>
-  <li><strong>Razorpay</strong> &mdash; payment processing, invoices and refunds.</li>
+  comments, sharing, account, membership and payment records, and the server functions that
+  talk to Razorpay and Resend.</li>
+  <li><strong>Google</strong> &mdash; Google sign-in, and Google Drive for the backup file
+  and storyboard pictures. Google&rsquo;s sign-in script is loaded from
+  <code>accounts.google.com</code> when Drive needs it, and your profile picture is shown
+  from Google&rsquo;s servers.</li>
+  <li><strong>Razorpay</strong> &mdash; payment processing and refunds. Its checkout is
+  loaded from Razorpay when you start a purchase.</li>
+  <li><strong>Resend</strong> &mdash; delivering receipt and refund e-mails.</li>
   <li><strong>YouTube (Google)</strong> &mdash; only if you press play on one of the
   explainer videos. Nothing is loaded from YouTube before that: the player then loads from
   <code>youtube-nocookie.com</code>, which receives your IP address and may store data in
@@ -150,15 +245,22 @@ the purpose listed:</p>
   <li><strong>Anthropic or Google (Gemini)</strong> &mdash; only when you run an AI tool with
   your own key; you have the direct relationship with that provider.</li>
 </ul>
-<p>Some of these providers store or process data outside India. Where they do, they
+<p>Our typefaces are served from our own site, so loading a page does not contact a font
+service. Some of these providers store or process data outside India. Where they do, they
 process it on our instructions and under their own security commitments. We share
 personal data with authorities only when the law requires us to.</p>
 
 <h2>5. Google Drive backup</h2>
-<p>If you connect Google Drive, we request the <code>drive.file</code> permission, which
-lets the studio see only the files it created. It cannot read anything else in your Drive.
-The studio writes a single backup file that you can open, download or delete at any time,
-and disconnecting never deletes it. You can remove the studio&rsquo;s access from your
+<p>When you sign in, Google&rsquo;s screen also asks for the <code>drive.file</code>
+permission, which lets the studio see only the files it created. It cannot read anything
+else in your Drive. If you allow it and your plan includes Drive backup, the studio
+connects straight away and writes a single backup file of your studio, which it keeps up to
+date (or, while cloud sync is on, updates when you back up). You can also connect or
+reconnect from Settings. Accepted storyboard pictures are saved as files in your Drive too.
+You can open, download or delete these files at any time.</p>
+<p>Disconnecting Drive never deletes the backup file. &ldquo;Erase everything on this
+device&rdquo; in Settings deletes it only if you tick the box that offers to. You can remove
+the studio&rsquo;s access from your
 <a href="https://myaccount.google.com/permissions" rel="noopener">Google account permissions page</a>.</p>
 
 <h2>6. Cookies and browser storage</h2>
@@ -169,18 +271,45 @@ your browser so that you stay signed in. If you play an explainer video, YouTube
 player may store its own data in your browser; it is not loaded until you press play. Clearing your browser&rsquo;s site data removes all
 of this from that device &mdash; including any work you have not backed up.</p>
 
+<h3>In the Chrome extension</h3>
+<p>The {{brand:name}} extension opens the studio in Chrome&rsquo;s side panel. Its sign-in
+lives in Chrome&rsquo;s session storage, which is cleared when the browser closes, and it
+checks in with our database about every 30 seconds to keep your account on one device at a
+time. If you select text on a web page and choose &ldquo;Send to {{brand:name}}&rdquo;, the
+selected text, the page&rsquo;s address and its title are kept in the extension&rsquo;s storage
+until the studio adds them to your Idea Vault. The extension reads nothing else from the
+pages you visit. Its background part talks only to our database; the studio pages it opens
+in the side panel work exactly as they do on the website.</p>
+
 <h2>7. How long we keep it</h2>
 <ul>
   <li><strong>Account and synced project data</strong> &mdash; for as long as your account is
-  active. When you ask us to delete your account, we delete it and your synced data within
-  30 days, except where the law requires us to keep something longer.</li>
-  <li><strong>Payment records</strong> &mdash; for as long as Indian tax and accounting law
+  active. You can delete your cloud projects yourself at any time (see section 2). When you
+  ask us to delete your account, we do it within 30 days: your sign-in, synced projects,
+  payment records, team, support tickets, access grants and any launch-offers entry are
+  deleted.</li>
+  <li><strong>What deletion keeps</strong> &mdash; invoices, because the law requires them,
+  with your name, e-mail address and GSTIN removed; a one-way fingerprint (hash) of your
+  e-mail address, so that it is not added back to our lists; the log of actions our
+  administrators took, which records what was done and when, never your project content,
+  and which can include your e-mail address where an action was about it (access given to
+  an address, for example) or where you were an administrator yourself; and comments you
+  left on other people&rsquo;s projects, which stay with your name replaced by
+  &ldquo;Deleted user&rdquo;.</li>
+  <li><strong>Invoices</strong> &mdash; for as long as Indian tax and accounting law
   requires (generally up to eight years).</li>
   <li><strong>Invite requests</strong> &mdash; until they are decided and for a reasonable
   period afterwards, so that repeat requests can be handled fairly.</li>
-  <li><strong>Server logs</strong> &mdash; for a short period set by our hosting provider.</li>
+  <li><strong>Session records</strong> &mdash; one per account, replaced each time you
+  start a session on a new device.</li>
+  <li><strong>Sign-in history</strong> &mdash; kept by our sign-in provider until you sign
+  out of that sign-in, and deleted with your account.</li>
+  <li><strong>Per-account call counts</strong> behind the usage totals &mdash; 48 hours.</li>
+  <li><strong>Server logs</strong> &mdash; for a short period set by our hosting and
+  database providers.</li>
   <li><strong>Data on your device</strong> &mdash; until you delete it; it is under your
-  control, not ours.</li>
+  control, not ours. Settings &rarr; Danger zone &rarr; &ldquo;Erase everything on this
+  device&rdquo; removes it in one step.</li>
 </ul>
 
 <h2>8. Your rights</h2>
@@ -200,11 +329,34 @@ of this from that device &mdash; including any work you have not backed up.</p>
 account. We will respond within 30 days. If you are not satisfied with our response, you
 may complain to the Data Protection Board of India.</p>
 
-<h2>9. Security</h2>
-<p>Data in transit is encrypted with HTTPS. Access to synced data is restricted so that
-only you and the people you share a project with can reach it. No system is perfectly
-secure; if a breach affecting your personal data occurs, we will notify you and the Data
-Protection Board as the law requires.</p>
+<h2>9. Security, and who can see your data</h2>
+<p>Data in transit is encrypted with HTTPS. Our database checks every request against the
+signed-in account, so synced data can be reached only by you and the people listed
+below.</p>
+<ul>
+  <li><strong>Collaborators</strong> &mdash; a share link lets someone who signs in see,
+  comment on or edit the whole project, as you chose when you made the link, until it
+  expires or you remove it.</li>
+  <li><strong>Team owners and admins</strong> &mdash; if a project belongs to a team
+  (organisation) account, that team&rsquo;s owner and admins can open it.</li>
+  <li><strong>Screening passes</strong> &mdash; a pass is created from our administrator
+  console for one project, and we create one only when that project&rsquo;s owner asks us
+  to. Anyone holding it can read that project&rsquo;s story, blueprint
+  and scenes &mdash; never its contacts or budget &mdash; until it expires or runs out of
+  openings.</li>
+  <li><strong>Our administrators</strong> &mdash; can see your account details, how you got
+  access, your plan, payments, invoices, refund requests, invite requests, session record,
+  sign-in history, and how many projects you sync and how large they are. The console does
+  not show your project content. It does show the title of a project that has a share link
+  (with its owner&rsquo;s e-mail address) or a screening pass. Every change an administrator
+  makes to an account is recorded in a log that cannot be edited from the console. The data
+  export we use to answer a request for your data contains your synced projects, content
+  included; only the studio&rsquo;s owner can make one. As the operator of the database we
+  can technically reach synced content; we do not open it unless you ask us to help with
+  it, you ask for your data, or the law requires it.</li>
+</ul>
+<p>No system is perfectly secure; if a breach affecting your personal data occurs, we will
+notify you and the Data Protection Board as the law requires.</p>
 
 <h2>10. Children</h2>
 <p>{{brand:name}} is meant for adults. You must be at least 18 years old to create an
@@ -213,8 +365,8 @@ you believe a child has given us personal data, contact us and we will delete it
 
 <h2>11. Changes to this policy</h2>
 <p>We may update this policy from time to time. The date at the top shows the latest
-version. If a change is significant, we will let signed-in members know in the app or by
-e-mail before it takes effect.</p>
+version, and the note under it says what changed. If a change is significant, we will let
+signed-in members know in the app or by e-mail before it takes effect.</p>
 
 <h2>12. Contact and grievances</h2>
 <p>Questions, requests and grievances about your personal data:

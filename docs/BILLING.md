@@ -558,9 +558,11 @@ test mode or live. Deploying the function makes it possible, not proven.
 **The button (A).** Console → Billing → Payments: REFUND on every `paid`
 row. The dialog asks for an amount (rupees, full by default, never more
 than was paid) and a REQUIRED reason, and warns that a refund ends the
-plan. The function: Auth names the caller, then `is_studio_admin()` is
-called AS the caller (the same check every console RPC makes) — a
-non-admin gets 403 and nothing else runs. `begin_refund()` then locks the
+plan. The function: Auth names the caller, then `require_role(['finance'])`
+is called AS the caller (the §45/§46 role matrix: owner and finance pass) —
+a non-admin or a support admin gets 403 and nothing else runs; since §48
+`begin_refund()` refuses an actor who is not owner or finance as well, so
+the function is not the only gate. `begin_refund()` then locks the
 payment row and checks it is captured, not refunded, has no refund in
 flight, and that the amount fits; it writes a `refunds` row (`initiated`)
 BEFORE Razorpay is called. Razorpay is called with Basic auth, the amount,
@@ -1225,4 +1227,42 @@ false until the switch is thrown**, because `purchase_required` is false and
 sentence sits on terms.html:74 and start.html. Either throw the switch or
 soften the pages — do not leave a legal page making a claim the database
 contradicts.
+
+## 20. Refunds follow the role matrix, seats follow the plan, a decline sticks (schema §48, 19 Oct 2026). NOT YET RUN LIVE.
+
+Three corrections, each restating one function body plus a marked block
+(`supabase/schema/schema-48-refund-seat-trial.sql`, checks in
+`scripts/schema-tests/refund-seat-trial.sql`):
+
+- **Refunds are a finance decision end to end.** `rzp-refund` asks
+  `require_role(['finance'])` as the caller (owner always passes) instead of
+  `is_studio_admin()`, and `begin_refund()` refuses a `p_admin` who is not an
+  owner or finance administrator (42501, which the function maps to 403).
+- **A pending refund does not settle the request.** `record_refund()` marks a
+  linked refund request `refunded` only on `processed`; while Razorpay says
+  `pending` the request reads `approved`. The plan still ends only on
+  `processed` (unchanged), and a refund that later fails leaves an open,
+  approved request to retry.
+- **Seats follow the plan the account is on now.** `enforce_seat_limit()`
+  caps the stored `accounts.seat_limit` by `account_plan()`'s `seats` limit,
+  so a lapsed timed grant or a refunded plan stops admitting new seats; and
+  `mark_payment_refunded()` brings `seat_limit` down to the free plan's cap
+  when it ends the plan. Seats already taken are not removed.
+- **A declined invite request stays declined for the trial.** New column
+  `invite_requests.last_declined_at`, kept by a trigger: set when a request
+  becomes `declined`, cleared only when it becomes `approved`;
+  `request_invite()`'s re-ask leaves it alone. `start_trial()` refuses a
+  non-member while it is set. The backfill marks today's declines and any
+  pending re-ask by a non-member.
+
+**Owner steps.**
+1. Run §48 in the SQL editor — after §47 — verifying the checksum first
+   (`shasum -a 256 supabase/schema/schema-48-refund-seat-trial.sql`, compared
+   with the editor's contents; see `supabase/schema/README.md`).
+2. Redeploy the refund function with the CLI (never the dashboard editor):
+   `npx --yes supabase@latest functions deploy rzp-refund --project-ref conhlrulxfwkhsnymakz`.
+   Run §48 first: the new function needs nothing new from the database
+   (`require_role()` is §45, already live), but §48 is what makes the
+   database refuse a support actor too.
+3. Read back: the checks at 48.5 in the section file.
 

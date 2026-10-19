@@ -82,7 +82,7 @@
     "does": {
       "h2": "What it does",
       "items": [
-        { "sym": "lightbulb", "title": "Story", "text": "Place your beats on one of eleven story structures and keep a story bible of characters, conflict, stakes, theme and world.", "page": "product-story.html", "link": "Explore story development" },
+        { "sym": "lightbulb", "title": "Story", "text": "Place your beats on one of eleven story structures, keep a story bible of characters, conflict, stakes, theme and world, and park ideas in the Idea Vault.", "page": "product-story.html", "link": "Explore story development" },
         { "sym": "edit_note", "title": "Screenplay", "text": "A screenplay writer for Tamil, Tanglish and English. The format sets itself as you type, drafts are numbered, and Fountain, Final Draft and PDF scripts can be brought in.", "page": "product-writing.html", "link": "Explore writing" },
         { "sym": "grid_view", "title": "Pre-production tools", "text": "Breakdown, shot list, storyboard, stripboard, budget, cast and crew, sides and call sheets, all read from one scene list.", "page": "product-breakdown.html", "link": "Explore pre-production" },
         { "sym": "local_library", "title": "Library", "text": "Films, director archetypes, rules of thumb, the craft books, equipment and rate tables, and a watch list, to study while you work." }

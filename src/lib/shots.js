@@ -37,6 +37,10 @@
    frame and a lookbook entry carry a `ref` — a URL the user pastes,
    or a description in words — and never bytes. The UI says so out
    loud rather than letting somebody discover it by losing work.
+   A frame's PICTURE (drawn with AI, or uploaded by the writer through
+   src/ui/frame-upload.js) is a file in the writer's own Google Drive,
+   and the frame's `ref` is `drive:<fileId>`: still a reference, still
+   no bytes here.
 
    COUNTS ARE DERIVED. The number of shots in a scene is counted at
    render time, never stored. A stored count is the second
@@ -232,13 +236,18 @@ function cleanMark(m) {
   return out;
 }
 
-/** A storyboard frame. `ref` is a URL or a description — never bytes. */
+/** A storyboard frame. `ref` is a URL, a description or `drive:<fileId>` — never bytes. */
 export function blankFrame(patch = {}) {
   return {
     id: uid('fr'),
     shotId: '',
     caption: '',
     ref: '',
+    /* The frame's shape on the board: an id from board-frames.js ASPECTS,
+       '' meaning the default (16:9). A FIELD spread under every stored row
+       by listFrames(), so an older frame reads back '' and needs no
+       migration or new key — the shotState pattern. */
+    aspect: '',
     ...patch
   };
 }

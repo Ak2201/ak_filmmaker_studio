@@ -38,7 +38,7 @@
      (h) the offline shoot pack (reports.html#dpr): after its button,
          `/shoot` — never visited — opens offline as the shoot day
      (i) a page opened with ?share= / ?code= is cached under its path,
-         so no bearer string sits in Cache Storage (§49 follow-up)
+         so no bearer string sits in Cache Storage (§51 follow-up)
 
    Run (needs Node >= 22.12; set PW_CHROMIUM if Playwright's own
    download is not present):

@@ -1,18 +1,18 @@
 -- ============================================================
--- 48. REFUNDS FOLLOW THE ROLE MATRIX; SEATS FOLLOW THE PLAN; A DECLINE STICKS
+-- 50. REFUNDS FOLLOW THE ROLE MATRIX; SEATS FOLLOW THE PLAN; A DECLINE STICKS
 -- ------------------------------------------------------------
 -- NOT YET RUN LIVE. Three narrow corrections, each at the last point that
 -- decides, each restating ONE function body from an earlier section plus a
 -- marked block (the rest is byte for byte the latest definition):
 --
---  48.1 begin_refund() (§27.6) refuses an actor who is not an owner or a
+--  50.1 begin_refund() (§27.6) refuses an actor who is not an owner or a
 --       finance administrator. It is service-only, and the rzp-refund edge
 --       function passes the signed-in caller as p_admin — so the database is
 --       a second gate behind the function's own require_role(['finance'])
 --       call, not a replacement for it. Same rule as require_role(): an admin
 --       member with no admin_roles row reads as owner.
 --
---  48.2 record_refund() (§27.6) settles a linked refund request as
+--  50.2 record_refund() (§27.6) settles a linked refund request as
 --       'refunded' only when Razorpay says the refund is PROCESSED. While it
 --       is pending the request moves to 'approved' (the finance actor who
 --       issued it approved it), so a refund that later fails leaves an open,
@@ -25,7 +25,7 @@
 --       refuses to DECLINE a request while a refund on its payment is
 --       initiated or pending.
 --
---  48.3 enforce_seat_limit() (§v5) caps the stored accounts.seat_limit by
+--  50.3 enforce_seat_limit() (§v5) caps the stored accounts.seat_limit by
 --       the seats limit of the plan the account is on RIGHT NOW
 --       (account_plan()), so a timed grant that lapses or a refunded plan
 --       stops admitting new seats without a background job. And
@@ -33,7 +33,7 @@
 --       free plan's cap in the same update that ends the plan, so the
 --       stored column agrees with what the trigger enforces.
 --
---  48.4 A DECLINE IS DURABLE. invite_requests.last_declined_at is set by a
+--  50.4 A DECLINE IS DURABLE. invite_requests.last_declined_at is set by a
 --       trigger whenever a request becomes 'declined' and cleared only when
 --       it becomes 'approved' (an administrator's approval, or a membership
 --       inserted by an administrator / a redeemed code, through the §14
@@ -47,7 +47,7 @@
 -- REQUIRES §45 (admin_roles, require_role). Re-runnable.
 -- ============================================================
 
--- 48.1 begin_refund: the actor must be owner or finance --------------------
+-- 50.1 begin_refund: the actor must be owner or finance --------------------
 create or replace function public.begin_refund(p_payment uuid, p_amount int, p_reason text, p_admin uuid, p_request uuid default null)
 returns jsonb
 language plpgsql
@@ -57,7 +57,7 @@ as $fn$
 declare pay public.payments; amt int; f public.refunds; q public.refund_requests; em text;
 begin
   perform public.billing_require_service();
-  -- §48: the same matrix as require_role(array['finance']), asked of the
+  -- §50: the same matrix as require_role(array['finance']), asked of the
   -- actor the edge function names (it runs as the service role, so
   -- auth.uid() is not the caller here).
   if p_admin is null
@@ -66,7 +66,7 @@ begin
      or coalesce((select r.role from public.admin_roles r where r.user_id = p_admin), 'owner') not in ('owner','finance') then
     raise exception 'Only an owner or a finance administrator can refund a payment.' using errcode = '42501';
   end if;
-  -- end §48
+  -- end §50
   select * into pay from public.payments p where p.id = p_payment for update;
   if pay.id is null then raise exception 'No such payment' using errcode = '22023'; end if;
   if pay.status = 'refunded' then raise exception 'That payment has already been refunded' using errcode = '22023'; end if;
@@ -93,7 +93,7 @@ begin
 end;
 $fn$;
 
--- 48.2 record_refund: a request is 'refunded' only when the money moved ----
+-- 50.2 record_refund: a request is 'refunded' only when the money moved ----
 create or replace function public.record_refund(p_refund uuid, p_payment_rzp text, p_rzp_refund text, p_status text, p_amount int, p_error text default null, p_raw jsonb default null)
 returns void
 language plpgsql
@@ -125,7 +125,7 @@ begin
     select * into pay from public.payments p where p.id = f.payment_id;
     perform public.mark_payment_refunded(pay.razorpay_payment_id, p_raw);
   end if;
-  -- §48: 'refunded' only once the money moved; pending means approved, in
+  -- §50: 'refunded' only once the money moved; pending means approved, in
   -- flight. The money having moved is read off the PAYMENT, not this call's
   -- status, and the request is found by payment as well as by link: the
   -- refund.processed webhook can arrive before rzp-refund has stored the
@@ -142,11 +142,11 @@ begin
            decided_by = coalesce(q.decided_by, f.refunded_by)
      where q.id = f.request_id and q.status = 'pending';
   end if;
-  -- end §48
+  -- end §50
 end;
 $fn$;
 
--- 48.2b admin_decide_refund_request: §46's body, plus the marked block -----
+-- 50.2b admin_decide_refund_request: §46's body, plus the marked block -----
 create or replace function public.admin_decide_refund_request(p_id uuid, p_decision text, p_note text default null)
 returns public.refund_requests
 language plpgsql
@@ -164,13 +164,13 @@ begin
   select * into q from public.refund_requests r where r.id = p_id for update;
   if q.id is null then raise exception 'No such request' using errcode = '22023'; end if;
   if q.status not in ('pending','approved') then raise exception 'That request was already %', q.status using errcode = '22023'; end if;
-  -- §48: a refund already sent to Razorpay will settle this request when it
+  -- §50: a refund already sent to Razorpay will settle this request when it
   -- is processed; a "no" now would be contradicted by the money arriving.
   if p_decision = 'declined'
      and exists (select 1 from public.refunds f where f.payment_id = q.payment_id and f.status in ('initiated','pending')) then
     raise exception 'A refund for that payment is in progress; it cannot be declined now' using errcode = '22023';
   end if;
-  -- end §48
+  -- end §50
   perform public.admin_audit_write('decide_refund_request', 'refund_request', p_id::text,
     jsonb_build_object('status', q.status),
     jsonb_build_object('status', p_decision, 'user_id', q.user_id, 'payment_id', q.payment_id),
@@ -182,7 +182,7 @@ begin
 end;
 $fn$;
 
--- 48.3a mark_payment_refunded: the seat ceiling comes down with the plan ---
+-- 50.3a mark_payment_refunded: the seat ceiling comes down with the plan ---
 create or replace function public.mark_payment_refunded(p_payment_id text, p_raw jsonb default null)
 returns void
 language plpgsql
@@ -198,7 +198,7 @@ begin
   if pay.account_id is not null then
     perform set_config('fms.billing', 'on', true);
     update public.accounts a set plan_until = least(a.plan_until, now()), updated_at = now(),
-           -- §48: back to the free plan's seat cap (never raised)
+           -- §50: back to the free plan's seat cap (never raised)
            seat_limit = least(a.seat_limit, greatest(1, coalesce(public.plan_cap(
                           (select p.limits from public.plans p where p.id = 'free'), 'seats'), 1000)))
      where a.id = pay.account_id and a.plan = pay.plan_id;
@@ -206,7 +206,7 @@ begin
 end;
 $fn$;
 
--- 48.3b enforce_seat_limit: the ceiling is the CURRENT plan's -------------
+-- 50.3b enforce_seat_limit: the ceiling is the CURRENT plan's -------------
 create or replace function public.enforce_seat_limit()
 returns trigger
 language plpgsql
@@ -222,12 +222,12 @@ begin
      and not (old.status = 'revoked' and new.status in ('pending','active')) then
     return new;
   end if;
-  -- §48: a lapsed grant or a refunded plan reads as 'free' here, whatever
+  -- §50: a lapsed grant or a refunded plan reads as 'free' here, whatever
   -- the stored column still says.
   select p.limits into cur from public.plans p where p.id = public.account_plan(new.account_id);
   select least(a.seat_limit, greatest(1, coalesce(public.plan_cap(cur, 'seats'), 1000)))
     into lim from public.accounts a where a.id = new.account_id;
-  -- end §48
+  -- end §50
   select count(*) into used
     from public.account_members
    where account_id = new.account_id
@@ -245,7 +245,7 @@ create trigger account_members_seat_limit
   before insert or update on public.account_members
   for each row execute function public.enforce_seat_limit();
 
--- 48.4 a decline that a re-ask cannot erase -------------------------------
+-- 50.4 a decline that a re-ask cannot erase -------------------------------
 alter table public.invite_requests add column if not exists last_declined_at timestamptz;
 
 create or replace function public.invite_requests_remember_decline()
@@ -316,14 +316,14 @@ begin
   if exists (select 1 from public.invite_requests r where r.user_id = uid and r.status = 'declined') then
     raise exception 'This account was not approved.' using errcode = '42501';
   end if;
-  -- §48: and a re-ask does not erase it. Only an approval clears
+  -- §50: and a re-ask does not erase it. Only an approval clears
   -- last_declined_at. Non-members only, so a member's landing call still
   -- gets its 'used' verdict rather than an error.
   if m.user_id is null
      and exists (select 1 from public.invite_requests r where r.user_id = uid and r.last_declined_at is not null) then
     raise exception 'This account was not approved.' using errcode = '42501';
   end if;
-  -- end §48
+  -- end §50
 
   if not coalesce(s.trial_enabled, false) then
     return jsonb_build_object('started', false, 'reason', 'disabled');
@@ -378,7 +378,7 @@ grant  execute on function public.start_trial(text)                             
 
 notify pgrst, 'reload schema';
 
--- 48.5 CHECKS TO RUN LIVE -------------------------------------------------
+-- 50.5 CHECKS TO RUN LIVE -------------------------------------------------
 --  1. as a support-role admin, REFUND in the console -> 403, no refunds row.
 --  2. select pg_get_functiondef('public.begin_refund(uuid,int,text,uuid,uuid)'::regprocedure)
 --     mentions 'finance'.
@@ -389,5 +389,5 @@ notify pgrst, 'reload schema';
 --        and not exists (select 1 from public.studio_members m where m.user_id = r.user_id);  -> 0
 -- Test files: scripts/schema-tests/refund-seat-trial-seed.sql (before the
 -- first load) and refund-seat-trial.sql (npm run test:schema).
--- END OF SECTION 48
+-- END OF SECTION 50
 -- ============================================================

@@ -1,14 +1,14 @@
 -- ============================================================
--- 49. THE SECURITY FOLLOW-UPS — money, roles, links, comments, teams
+-- 51. THE SECURITY FOLLOW-UPS — money, roles, links, comments, teams
 -- ------------------------------------------------------------
 -- NOT YET RUN LIVE. The security audit of 18 Oct 2026 left 22 leads it
 -- could not execute. Each fix below was first written as a failing check
 -- against the real schema on PostgreSQL (scripts/schema-tests/
--- security-49.sql), then made to pass. Every restated function is the
--- latest earlier body byte for byte plus a block marked `§49`; the
+-- security-51.sql), then made to pass. Every restated function is the
+-- latest earlier body byte for byte plus a block marked `§51`; the
 -- require_role() lines and admin_audit_write() calls are kept.
 --
---  49.1 A LIMITED CODE IS RESERVED WHEN AN ORDER OPENS. quote_for()
+--  51.1 A LIMITED CODE IS RESERVED WHEN AN ORDER OPENS. quote_for()
 --       counts other buyers' open orders on the code (status 'created',
 --       opened in the last hour) towards max_uses; create_pending_payment()
 --       locks the code row first so two buyers cannot both see the last
@@ -17,12 +17,12 @@
 --       counts past it. Before, the cap was read only at quote time, so
 --       every order opened before the first activation could be paid.
 --
---  49.2 UPGRADE CREDIT FOLLOWS THE ORGANISATION. paid_credit_paise()
+--  51.2 UPGRADE CREDIT FOLLOWS THE ORGANISATION. paid_credit_paise()
 --       counts only payments on organisations the buyer still owns, so
 --       handing a paid organisation to somebody else no longer prices a
 --       re-buy at the Rs 1 floor.
 --
---  49.3 A DUPLICATE IS NOT CREDIT, AND A CREDIT IS RE-CHECKED.
+--  51.3 A DUPLICATE IS NOT CREDIT, AND A CREDIT IS RE-CHECKED.
 --       payments.plan_applied records whether activation applied the plan
 --       (it is false for a second payment of a plan already held, the
 --       duplicate charge refund.html promises to refund). Only payments
@@ -34,33 +34,33 @@
 --       duplicate stays refundable because it was never credit. Backfill:
 --       plan_applied for every payment already activated.
 --
---  49.4 SUPPORT CANNOT LOCK AN ADMINISTRATOR OUT. admin_terminate_session()
+--  51.4 SUPPORT CANNOT LOCK AN ADMINISTRATOR OUT. admin_terminate_session()
 --       with p_disable refuses an administrator target unless the caller
 --       is an owner, and never disables the last enabled owner (23514).
 --       Ending a session without disabling is still support-level.
 --
---  49.5 NO CROSS-USER PLAN ORACLE. user_plan(uuid), user_limits(uuid),
+--  51.5 NO CROSS-USER PLAN ORACLE. user_plan(uuid), user_limits(uuid),
 --       is_entitled(uuid), is_studio_member(uuid) and account_plan(uuid)
 --       are no longer executable by `authenticated`. No policy and no
 --       invoker function uses them; the definer functions that do
 --       (billing_status, studio_status, the P0402 triggers …) run as their
 --       owner and are unaffected. The browser never called them.
 --
---  49.6 A SCREENING PASS IS FOR A FILM THE ADMINISTRATOR OWNS.
+--  51.6 A SCREENING PASS IS FOR A FILM THE ADMINISTRATOR OWNS.
 --       admin_create_invite() refuses a target project the caller does
 --       not own: a pass opens a film's synced writing to anyone holding
 --       the code.
 --
---  49.7 THE COLLABORATOR CAP HOLDS ON A MOVE. collaborators_plan_limit
+--  51.7 THE COLLABORATOR CAP HOLDS ON A MOVE. collaborators_plan_limit
 --       fires on UPDATE OF project_id as well as INSERT.
 --
---  49.8 A FILM IS NOT HANDED TO SOMEBODY WHO DID NOT ASK.
+--  51.8 A FILM IS NOT HANDED TO SOMEBODY WHO DID NOT ASK.
 --       projects_guard_owner() refuses an owner_id change from the app (no
 --       feature sends one); the service role and SQL still can. It also
 --       allows anyone to DETACH a film (account_id -> null) from a team
---       its owner is no longer in, which 49.14 needs.
+--       its owner is no longer in, which 51.14 needs.
 --
---  49.9 SHARE LINKS. claim_share() could not run: its RETURNS TABLE
+--  51.9 SHARE LINKS. claim_share() could not run: its RETURNS TABLE
 --       column project_id made `on conflict (project_id, user_id)`
 --       ambiguous (42702), so every claim failed. It names the primary
 --       key now. And the merge keeps a grant tied to the link that
@@ -68,33 +68,33 @@
 --       un-expires a higher grant, a higher link replaces the grant with
 --       its own lifetime, and a manual grant is never changed by a link.
 --
---  49.10 AN OWNER MAY RESOLVE A COMMENT, NOT REWRITE IT. comments_guard()
+--  51.10 AN OWNER MAY RESOLVE A COMMENT, NOT REWRITE IT. comments_guard()
 --       refuses a body change by anyone but the author.
 --
---  49.11 sh_owner_all (§8.4) is dropped; it ORed away §10.3's
+--  51.11 sh_owner_all (§8.4) is dropped; it ORed away §10.3's
 --       created_by = auth.uid() check on shares.
 --
---  49.12 start_trial() refuses an anonymous session, as claim_invite,
+--  51.12 start_trial() refuses an anonymous session, as claim_invite,
 --       redeem_invite and request_invite already do.
 --
---  49.13 invite_tickets(expires_at) is indexed for verify_invite's sweep.
+--  51.13 invite_tickets(expires_at) is indexed for verify_invite's sweep.
 --
---  49.14 A TEAM NEVER TAKES A MEMBER'S FILM. projects.account_id is ON
+--  51.14 A TEAM NEVER TAKES A MEMBER'S FILM. projects.account_id is ON
 --       DELETE SET NULL (was CASCADE), so deleting an organisation
 --       detaches the films in it instead of deleting other people's work;
 --       and a member who leaves or is removed takes their films with them
 --       (account_members trigger), so the team keeps no access to them.
 --
---  49.15 A DELETED MEMBER'S ADDRESS DOES NOT OUTLIVE THEM. When a
+--  51.15 A DELETED MEMBER'S ADDRESS DOES NOT OUTLIVE THEM. When a
 --       referral code loses its owner (the account is deleted) its note
 --       stops naming the address and the code is withdrawn. Backfill for
 --       codes already orphaned.
 --
 -- REQUIRES §45 (studio_role, require_role, _other_owner_count), §40
--- (admin_audit_write) and §48. Re-runnable.
+-- (admin_audit_write) and §50. Re-runnable.
 -- ============================================================
 
--- 49.3a THE COLUMN, AND ITS BACKFILL ---------------------------------------
+-- 51.3a THE COLUMN, AND ITS BACKFILL ---------------------------------------
 alter table public.payments add column if not exists plan_applied boolean;
 -- Already activated: the plan applied unless an EARLIER paid payment on the
 -- same organisation was for the same or a higher plan (activate_payment's
@@ -109,7 +109,7 @@ update public.payments p
  where p.plan_applied is null and p.paid_at is not null and p.period = 'lifetime';
 create index if not exists payments_promo_open_idx on public.payments(promo_code, status) where promo_code is not null;
 
--- 49.2 / 49.3b paid_credit_paise -------------------------------------------
+-- 51.2 / 51.3b paid_credit_paise -------------------------------------------
 /** What a user has already paid for full-time access. */
 create or replace function public.paid_credit_paise(p_user uuid)
 returns int
@@ -120,7 +120,7 @@ set search_path = public, pg_temp
 as $$
   select coalesce(sum(p.amount_paise), 0)::int
     from public.payments p
-    -- §49: only organisations the buyer still owns, and only payments that
+    -- §51: only organisations the buyer still owns, and only payments that
     -- applied a plan (a duplicate is a refund, not credit)
     join public.accounts a on a.id = p.account_id and a.owner_id = p_user
    where p.user_id = p_user and p.status = 'paid' and p.period = 'lifetime'
@@ -128,7 +128,7 @@ as $$
 $$;
 revoke execute on function public.paid_credit_paise(uuid) from public, anon, authenticated;
 
--- 49.1a quote_for: other buyers' open orders hold a limited code ------------
+-- 51.1a quote_for: other buyers' open orders hold a limited code ------------
 create or replace function public.quote_for(p_user uuid, p_plan text, p_code text default null)
 returns jsonb
 language plpgsql
@@ -181,7 +181,7 @@ begin
                              'next_price_at',    case when price = pl.price_paise then pl.next_price_at end);
   if v_code is null then return base; end if;
   select * into pc from public.promo_codes c where c.code = v_code;
-  -- §49: an order opened in the last hour by ANOTHER buyer holds one use
+  -- §51: an order opened in the last hour by ANOTHER buyer holds one use
   -- until it is paid or lapses (one per buyer, however many tabs).
   if pc.code is not null and pc.max_uses is not null then
     select count(distinct x.user_id)::int into held
@@ -190,14 +190,14 @@ begin
        and x.created_at > now() - interval '60 minutes'
        and x.user_id is distinct from p_user;
   end if;
-  -- end §49
+  -- end §51
   reason := case
     when pc.code is null                                                   then 'unknown'
     when pc.kind = 'gift'                                                  then 'gift'
     when not pc.active                                                     then 'inactive'
     when pc.valid_from is not null and pc.valid_from > now()               then 'inactive'
     when pc.valid_until is not null and pc.valid_until <= now()            then 'expired'
-    when pc.max_uses is not null and pc.uses + held >= pc.max_uses         then 'exhausted'   -- §49: + held
+    when pc.max_uses is not null and pc.uses + held >= pc.max_uses         then 'exhausted'   -- §51: + held
     when pc.plan_ids is not null and not (pl.id = any (pc.plan_ids))       then 'not_for_plan'
     when p_user is not null and pc.owner_user_id = p_user                  then 'own_code'
   end;
@@ -210,7 +210,7 @@ begin
 end;
 $fn$;
 
--- 49.1b create_pending_payment: the code row is locked while it is priced --
+-- 51.1b create_pending_payment: the code row is locked while it is priced --
 create or replace function public.create_pending_payment(p_user uuid, p_plan text, p_period text, p_account uuid default null, p_code text default null)
 returns table (payment_id uuid, amount_paise int, currency text, plan_name text, list_paise int, discount_paise int, promo_code text, credit_paise int)
 language plpgsql
@@ -234,13 +234,13 @@ begin
   if p_account is not null and not exists (select 1 from public.accounts a where a.id = p_account and a.owner_id = p_user) then
     raise exception 'Not the owner of that organisation' using errcode = '42501';
   end if;
-  -- §49: serialise every order on a limited code, so two buyers cannot both
+  -- §51: serialise every order on a limited code, so two buyers cannot both
   -- be quoted the last use. Held until this transaction commits, by which
   -- time this order's 'created' row is visible to the next quote.
   perform 1 from public.promo_codes c
    where c.code = nullif(upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g')), '')
      for update;
-  -- end §49
+  -- end §51
   q := public.quote_for(p_user, p_plan, p_code);
   if not (q ->> 'ok')::boolean then
     raise exception '%', q ->> 'sentence' using errcode = '22023', hint = q ->> 'reason';
@@ -255,7 +255,7 @@ end;
 $fn$;
 revoke execute on function public.create_pending_payment(uuid, text, text, uuid, text) from public, anon, authenticated;
 
--- 49.1c / 49.3c activate_payment ---------------------------------------------
+-- 51.1c / 51.3c activate_payment ---------------------------------------------
 create or replace function public.activate_payment(p_order_id text, p_payment_id text, p_raw jsonb default null)
 returns table (payment_id uuid, account_id uuid, plan_id text, ends_at timestamptz, already boolean)
 language plpgsql
@@ -282,7 +282,7 @@ begin
   if rep is not null and rep <> pay.amount_paise then
     raise exception 'Razorpay reports % paise for an order recorded at %', rep, pay.amount_paise using errcode = '22023';
   end if;
-  -- §49: a limited code never counts past its cap, and a credit that has
+  -- §51: a limited code never counts past its cap, and a credit that has
   -- gone (refunded, or its organisation given away) is not honoured.
   if pay.promo_code is not null then
     select * into pc from public.promo_codes c where c.code = pay.promo_code for update;
@@ -295,9 +295,9 @@ begin
     raise exception 'This order was priced with credit for a payment that no longer counts, so the plan was not applied. Ask for a refund from Settings.'
       using errcode = '22023', hint = 'credit_gone';
   end if;
-  -- end §49
+  -- end §51
   acc := public.account_for_buyer(pay.user_id, pay.account_id);
-  applied := public.plan_rank(pay.plan_id) > public.plan_rank(public.account_plan(acc));   -- §49: remembered
+  applied := public.plan_rank(pay.plan_id) > public.plan_rank(public.account_plan(acc));   -- §51: remembered
   if applied then
     perform public.apply_plan(acc, pay.plan_id, 'lifetime', 0);
   end if;
@@ -305,7 +305,7 @@ begin
      set status = 'paid', razorpay_payment_id = p_payment_id, paid_at = now(),
          account_id = acc, starts_at = now(), ends_at = null,
          raw = coalesce(p_raw, p.raw),
-         plan_applied = applied   -- §49
+         plan_applied = applied   -- §51
    where p.id = pay.id;
   if pay.promo_code is not null then
     update public.promo_codes c set uses = c.uses + 1, updated_at = now() where c.code = pay.promo_code;
@@ -316,7 +316,7 @@ end;
 $fn$;
 revoke execute on function public.activate_payment(text, text, jsonb) from public, anon, authenticated;
 
--- 49.3d begin_refund: §48's body, plus the marked block --------------------
+-- 51.3d begin_refund: §50's body, plus the marked block --------------------
 create or replace function public.begin_refund(p_payment uuid, p_amount int, p_reason text, p_admin uuid, p_request uuid default null)
 returns jsonb
 language plpgsql
@@ -326,7 +326,7 @@ as $fn$
 declare pay public.payments; amt int; f public.refunds; q public.refund_requests; em text; later public.payments;
 begin
   perform public.billing_require_service();
-  -- §48: the same matrix as require_role(array['finance']), asked of the
+  -- §50: the same matrix as require_role(array['finance']), asked of the
   -- actor the edge function names (it runs as the service role, so
   -- auth.uid() is not the caller here).
   if p_admin is null
@@ -335,7 +335,7 @@ begin
      or coalesce((select r.role from public.admin_roles r where r.user_id = p_admin), 'owner') not in ('owner','finance') then
     raise exception 'Only an owner or a finance administrator can refund a payment.' using errcode = '42501';
   end if;
-  -- end §48
+  -- end §50
   select * into pay from public.payments p where p.id = p_payment for update;
   if pay.id is null then raise exception 'No such payment' using errcode = '22023'; end if;
   if pay.status = 'refunded' then raise exception 'That payment has already been refunded' using errcode = '22023'; end if;
@@ -345,7 +345,7 @@ begin
   if exists (select 1 from public.refunds r where r.payment_id = pay.id and r.status in ('initiated','pending','processed')) then
     raise exception 'A refund for that payment is already in progress' using errcode = '22023';
   end if;
-  -- §49: a payment that applied a plan was credit toward any later paid
+  -- §51: a payment that applied a plan was credit toward any later paid
   -- upgrade; refunding it under that upgrade would leave the higher plan
   -- bought at a discount nobody paid for. Refund the upgrade first.
   if pay.plan_applied is not false then
@@ -358,7 +358,7 @@ begin
         later.plan_id, to_char(later.paid_at, 'YYYY-MM-DD') using errcode = '22023', hint = 'credited';
     end if;
   end if;
-  -- end §49
+  -- end §51
   amt := coalesce(p_amount, pay.amount_paise);
   if amt < 1 or amt > pay.amount_paise then
     raise exception 'The amount must be between 1 paisa and the % paise that was paid', pay.amount_paise using errcode = '22023';
@@ -377,7 +377,7 @@ end;
 $fn$;
 revoke execute on function public.begin_refund(uuid, int, text, uuid, uuid) from public, anon, authenticated;
 
--- 49.4 admin_terminate_session: §46's body, plus the marked block ----------
+-- 51.4 admin_terminate_session: §46's body, plus the marked block ----------
 create or replace function public.admin_terminate_session(p_user uuid, p_disable boolean default false)
 returns void
 language plpgsql
@@ -393,7 +393,7 @@ begin
   if p_user = auth.uid() and p_disable then
     raise exception 'You cannot disable your own account' using errcode = '22023';
   end if;
-  -- §49: disabling an ADMINISTRATOR is an owner's act (it is a demotion
+  -- §51: disabling an ADMINISTRATOR is an owner's act (it is a demotion
   -- the role matrix gives only to owners), and never the last owner.
   if p_disable and exists (select 1 from public.studio_members m where m.user_id = p_user and m.role = 'admin') then
     if public.studio_role() is distinct from 'owner' then
@@ -403,7 +403,7 @@ begin
       raise exception 'There must always be at least one owner.' using errcode = '23514';
     end if;
   end if;
-  -- end §49
+  -- end §51
   delete from public.user_active_sessions s where s.user_id = p_user;
   get diagnostics n = row_count;
   if p_disable then
@@ -416,14 +416,14 @@ $fn$;
 revoke execute on function public.admin_terminate_session(uuid, boolean) from public, anon;
 grant  execute on function public.admin_terminate_session(uuid, boolean) to authenticated;
 
--- 49.5 NO CROSS-USER ORACLE --------------------------------------------------
+-- 51.5 NO CROSS-USER ORACLE --------------------------------------------------
 revoke execute on function public.user_plan(uuid)        from public, anon, authenticated;
 revoke execute on function public.user_limits(uuid)      from public, anon, authenticated;
 revoke execute on function public.is_entitled(uuid)      from public, anon, authenticated;
 revoke execute on function public.is_studio_member(uuid) from public, anon, authenticated;
 revoke execute on function public.account_plan(uuid)     from public, anon, authenticated;
 
--- 49.6 admin_create_invite: §46's body, plus the marked block --------------
+-- 51.6 admin_create_invite: §46's body, plus the marked block --------------
 create or replace function public.admin_create_invite(
   p_pass_type text default 'standard',
   p_max_redemptions int default 1,
@@ -451,13 +451,13 @@ begin
     -- FR-103: a screening pass is time-limited by definition.
     raise exception 'A screening pass needs an expiry' using errcode = '22023';
   end if;
-  -- §49: a screening pass shows a film's synced writing to whoever holds
+  -- §51: a screening pass shows a film's synced writing to whoever holds
   -- the code, so it is the film owner's decision, not the console's.
   if p_target_project is not null
      and not exists (select 1 from public.projects p where p.id = p_target_project and p.owner_id = auth.uid()) then
     raise exception 'A screening pass can only be made for a film you own.' using errcode = '42501';
   end if;
-  -- end §49
+  -- end §51
   loop
     bytes := gen_random_bytes(12);
     v := '';
@@ -478,7 +478,7 @@ $fn$;
 revoke execute on function public.admin_create_invite(text, int, timestamptz, uuid, text) from public, anon;
 grant  execute on function public.admin_create_invite(text, int, timestamptz, uuid, text) to authenticated;
 
--- 49.7 enforce_collaborator_limit: on a move too -----------------------------
+-- 51.7 enforce_collaborator_limit: on a move too -----------------------------
 create or replace function public.enforce_collaborator_limit()
 returns trigger
 language plpgsql
@@ -488,7 +488,7 @@ as $fn$
 declare owner uuid; cap int; n int; pl text;
 begin
   if public.is_privileged_caller() then return new; end if;
-  -- §49: an UPDATE that keeps the film is not a new seat
+  -- §51: an UPDATE that keeps the film is not a new seat
   if tg_op = 'UPDATE' and new.project_id is not distinct from old.project_id then return new; end if;
   select p.owner_id into owner from public.projects p where p.id = new.project_id;
   pl  := public.user_plan(owner);
@@ -506,7 +506,7 @@ drop trigger if exists collaborators_plan_limit on public.project_collaborators;
 create trigger collaborators_plan_limit before insert or update of project_id on public.project_collaborators
   for each row execute function public.enforce_collaborator_limit();
 
--- 49.8 projects_guard_owner -----------------------------------------------
+-- 51.8 projects_guard_owner -----------------------------------------------
 create or replace function public.projects_guard_owner()
 returns trigger
 language plpgsql
@@ -514,15 +514,15 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  -- §49: no feature hands a film to somebody else, and a hand-made request
+  -- §51: no feature hands a film to somebody else, and a hand-made request
   -- doing it planted the film on a stranger's count while the sender kept
   -- access through their team. The service role and SQL still can.
   if new.owner_id is distinct from old.owner_id and not public.is_privileged_caller() then
     raise exception 'A film cannot be handed to another account holder' using errcode = '42501';
   end if;
   if new.account_id is distinct from old.account_id then
-    -- §49: detaching a film from a team its owner is no longer in (removed,
-    -- left, or the team was deleted) is always allowed; it is how 49.14
+    -- §51: detaching a film from a team its owner is no longer in (removed,
+    -- left, or the team was deleted) is always allowed; it is how 51.14
     -- returns the film to its owner.
     if new.account_id is null
        and not exists (select 1 from public.account_members m
@@ -530,7 +530,7 @@ begin
        and not exists (select 1 from public.accounts a where a.id = old.account_id and a.owner_id = old.owner_id) then
       return new;
     end if;
-    -- end §49
+    -- end §51
     if old.owner_id <> auth.uid() then
       raise exception 'Only the owner can move a project between accounts' using errcode = '42501';
     end if;
@@ -547,7 +547,7 @@ create trigger projects_guard_owner
   before update on public.projects
   for each row execute function public.projects_guard_owner();
 
--- 49.9 claim_share -----------------------------------------------------------
+-- 51.9 claim_share -----------------------------------------------------------
 create or replace function public.share_role_rank(p_role text)
 returns int language sql immutable set search_path = public, pg_temp as $$
   select case p_role when 'view' then 1 when 'comment' then 2 when 'edit' then 3 else 0 end;
@@ -575,7 +575,7 @@ begin
     raise exception 'Share is invalid or expired' using errcode = '22023';
   end if;
 
-  -- §49: `on conflict (project_id, user_id)` was ambiguous with the
+  -- §51: `on conflict (project_id, user_id)` was ambiguous with the
   -- RETURNS TABLE column project_id (42702 on every call); name the key.
   -- And the grant stays the property of the link that conferred its role:
   --   * a manual grant (via_share null) is the owner's and is never changed;
@@ -607,7 +607,7 @@ begin
                             and pc.expires_at is not null
                             and (excluded.expires_at is null or excluded.expires_at > pc.expires_at)))
                       then excluded.expires_at else pc.expires_at end;
-  -- end §49
+  -- end §51
 
   return query
     select s_record.project_id, c.role
@@ -617,7 +617,7 @@ end;
 $$;
 grant execute on function public.claim_share(text) to authenticated;
 
--- 49.10 comments_guard ------------------------------------------------------
+-- 51.10 comments_guard ------------------------------------------------------
 create or replace function public.comments_guard()
 returns trigger
 language plpgsql
@@ -654,7 +654,7 @@ begin
   new.suggest_from := old.suggest_from;
   new.suggest_to   := old.suggest_to;
 
-  -- §49: the words are the author's. comments_set_author keeps the
+  -- §51: the words are the author's. comments_set_author keeps the
   -- author's name on the row, so anybody else changing the body would be
   -- putting words in their mouth.
   if new.body is distinct from old.body
@@ -662,7 +662,7 @@ begin
      and not public.is_privileged_caller() then
     raise exception 'Only the author can change what a comment says' using errcode = '42501';
   end if;
-  -- end §49
+  -- end §51
 
   if new.status is distinct from old.status
      and not public.has_project_access(new.project_id, 'edit') then
@@ -677,10 +677,10 @@ create trigger comments_guard
   before insert or update on public.comments
   for each row execute function public.comments_guard();
 
--- 49.11 the orphaned policy -----------------------------------------------
+-- 51.11 the orphaned policy -----------------------------------------------
 drop policy if exists sh_owner_all on public.shares;
 
--- 49.12 start_trial: §48's body, plus the marked block ----------------------
+-- 51.12 start_trial: §50's body, plus the marked block ----------------------
 create or replace function public.start_trial(p_source text default null)
 returns jsonb
 language plpgsql
@@ -697,11 +697,11 @@ begin
   if uid is null then
     raise exception 'Sign in first' using errcode = '42501';
   end if;
-  -- §49: an anonymous session has a uid but is not an account
+  -- §51: an anonymous session has a uid but is not an account
   if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
     raise exception 'Sign in with Google to start a trial' using errcode = '42501';
   end if;
-  -- end §49
+  -- end §51
 
   select * into s from public.billing_settings x where x.id;
   select * into m from public.studio_members x where x.user_id = uid for update;
@@ -714,14 +714,14 @@ begin
   if exists (select 1 from public.invite_requests r where r.user_id = uid and r.status = 'declined') then
     raise exception 'This account was not approved.' using errcode = '42501';
   end if;
-  -- §48: and a re-ask does not erase it. Only an approval clears
+  -- §50: and a re-ask does not erase it. Only an approval clears
   -- last_declined_at. Non-members only, so a member's landing call still
   -- gets its 'used' verdict rather than an error.
   if m.user_id is null
      and exists (select 1 from public.invite_requests r where r.user_id = uid and r.last_declined_at is not null) then
     raise exception 'This account was not approved.' using errcode = '42501';
   end if;
-  -- end §48
+  -- end §50
 
   if not coalesce(s.trial_enabled, false) then
     return jsonb_build_object('started', false, 'reason', 'disabled');
@@ -768,10 +768,10 @@ $fn$;
 revoke execute on function public.start_trial(text) from public, anon;
 grant  execute on function public.start_trial(text) to authenticated;
 
--- 49.13 the sweep's index -------------------------------------------------
+-- 51.13 the sweep's index -------------------------------------------------
 create index if not exists invite_tickets_expires_idx on public.invite_tickets(expires_at);
 
--- 49.14 A TEAM NEVER TAKES A MEMBER'S FILM ----------------------------------
+-- 51.14 A TEAM NEVER TAKES A MEMBER'S FILM ----------------------------------
 alter table public.projects drop constraint if exists projects_account_id_fkey;
 alter table public.projects add constraint projects_account_id_fkey
   foreign key (account_id) references public.accounts(id) on delete set null;
@@ -801,7 +801,7 @@ create trigger account_members_release_films
   after delete or update of status on public.account_members
   for each row execute function public.account_members_release_films();
 
--- 49.15 A REFERRAL CODE FORGETS A DELETED OWNER ------------------------------
+-- 51.15 A REFERRAL CODE FORGETS A DELETED OWNER ------------------------------
 create or replace function public.promo_codes_forget_owner()
 returns trigger
 language plpgsql
@@ -828,7 +828,7 @@ update public.promo_codes c
 
 notify pgrst, 'reload schema';
 
--- 49.16 CHECKS TO RUN LIVE (read-only) --------------------------------------
+-- 51.16 CHECKS TO RUN LIVE (read-only) --------------------------------------
 --  1. select count(*) from public.payments where paid_at is not null and period = 'lifetime' and plan_applied is null;  -> 0
 --  2. select has_function_privilege('authenticated', 'public.user_plan(uuid)', 'execute');  -> false
 --     (and the same for user_limits, is_entitled, is_studio_member, account_plan)
@@ -837,8 +837,8 @@ notify pgrst, 'reload schema';
 --  5. select count(*) from pg_policies where tablename = 'shares' and policyname = 'sh_owner_all';  -> 0
 --  6. select count(*) from public.promo_codes where kind = 'referral' and owner_user_id is null and note like '%@%';  -> 0
 --  7. Open a share link signed in as a second test account: it is claimed
---     (before §49 every claim answered 42702 "column reference is ambiguous").
--- Test files: scripts/schema-tests/security-49-seed.sql (before the first
--- load) and security-49.sql (npm run test:schema).
--- END OF SECTION 49
+--     (before §51 every claim answered 42702 "column reference is ambiguous").
+-- Test files: scripts/schema-tests/security-51-seed.sql (before the first
+-- load) and security-51.sql (npm run test:schema).
+-- END OF SECTION 51
 -- ============================================================

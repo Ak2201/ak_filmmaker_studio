@@ -172,8 +172,49 @@ function renderNumbering(doc) {
     }),
     h('div.wr-tool-row', {}, [
       h('button.btn', { type: 'button', 'data-action': 'numbers-unlock', text: 'Unlock and renumber…' })
-    ])
+    ]),
+    renderPagesLock(doc)
   ].filter(Boolean));
+  return box;
+}
+
+/* Locked PAGES, inside a scene lock (screenplay-export.js "LOCKED PAGES").
+   The labels are computed where the pages are, so this module only
+   records the lock and reads the summary back; the typesetter is a lazy
+   chunk and is loaded at the press. */
+let TS = null;
+const typeset = async () => (TS || (TS = await import('../lib/screenplay-export.js')));
+function renderPagesLock(doc) {
+  const box = h('div.wr-pages-lock');
+  box.append(h('h4.wr-tool-h', { text: 'Page numbers' }));
+  const lock = doc.numbering && doc.numbering.pages && doc.numbering.pages.locked ? doc.numbering.pages : null;
+  if (!lock) {
+    box.append(
+      h('p.wr-tool-sub', {
+        text: 'Lock the pages too once they are handed out. After that, a page that grows spills '
+            + 'into 12A, 12B rather than pushing every later page on, and a page whose lines are '
+            + 'all cut is folded into the one before it as 12-13, so a crew swaps in only the pages that changed.'
+      }),
+      h('div.wr-tool-row', {}, [h('button.btn', { type: 'button', 'data-action': 'pages-lock', text: 'Lock page numbers' })])
+    );
+    return box;
+  }
+  const summary = h('p.wr-lock-state', {}, [
+    h('strong', { text: 'Pages locked' + (lock.at ? ' since ' + String(lock.at).slice(0, 10) : '') + '. ' }),
+    h('span', { 'data-pages-summary': '', text: plural(lock.starts.length, 'page') + ' when locked.' })
+  ]);
+  box.append(summary, h('div.wr-tool-row', {}, [
+    h('button.btn', { type: 'button', 'data-action': 'pages-unlock', text: 'Unlock page numbers…' })
+  ]));
+  /* The A-pages and folded pages as they stand now, filled in once the
+     typesetter has loaded. */
+  typeset().then((T) => {
+    const labels = T.pageNumbersDoc(doc);
+    const a = labels.filter((l) => /[A-Z]/.test(l)).length;
+    const folded = labels.filter((l) => l.includes('-')).length;
+    const node = summary.querySelector('[data-pages-summary]');
+    if (node) node.textContent = plural(lock.starts.length, 'page') + ' when locked · ' + plural(a, 'A-page') + ' · ' + plural(folded, 'folded page');
+  }).catch(() => { /* the summary keeps its first line */ });
   return box;
 }
 
@@ -318,6 +359,30 @@ function wire() {
       + (moved ? ' ' + plural(moved, 'Breakdown row') + ' renumbered to match.' : ''), 'success');
   });
 
+  delegate(document, 'click', '[data-action="pages-lock"]', async () => {
+    const doc = ctx.getDoc();
+    if (!doc || !isNumberingLocked(doc.numbering) || (doc.numbering.pages && doc.numbering.pages.locked)) return;
+    let T;
+    try { T = await typeset(); } catch (e) { say('The page typesetter could not be loaded. Check the connection and try again.'); return; }
+    doc.numbering.pages = T.lockPages(doc);
+    ctx.persistNow();
+    ctx.render('[data-action="pages-unlock"]');
+    say('Page numbers locked: ' + plural(doc.numbering.pages.starts.length, 'page') + '.', 'success');
+  });
+
+  delegate(document, 'click', '[data-action="pages-unlock"]', async () => {
+    const doc = ctx.getDoc();
+    if (!doc || !doc.numbering || !doc.numbering.pages) return;
+    const ok = await askDanger('Unlock the page numbers?\n\n'
+      + 'The pages are numbered by position again: A-pages become whole numbers and folded pages split '
+      + 'out. Scene numbers stay locked.\n\nPages already handed out will no longer match. Cancel keeps them locked.');
+    if (!ok) return;
+    delete doc.numbering.pages;
+    ctx.persistNow();
+    ctx.render('[data-action="pages-lock"]');
+    say('Page numbers unlocked.', 'success');
+  });
+
   delegate(document, 'click', '[data-action="numbers-unlock"]', async () => {
     const doc = ctx.getDoc();
     if (!doc || !isNumberingLocked(doc.numbering)) return;
@@ -326,7 +391,8 @@ function wire() {
       + 'Every scene is renumbered by its position, 1 to ' + res.byId.size + ' — lettered inserts '
       + 'like 12A become whole numbers'
       + (res.omitted.length ? ', and the ' + plural(res.omitted.length, 'OMITTED placeholder') + ' go' : '')
-      + '. The Breakdown, the stripboard and the call sheets follow.\n\n'
+      + '. The Breakdown, the stripboard and the call sheets follow.'
+      + (doc.numbering.pages ? ' The page numbers are unlocked with them.' : '') + '\n\n'
       + 'Pages already handed out will no longer match. Cancel keeps the numbers locked.');
     if (!ok) return;
     delete doc.numbering;

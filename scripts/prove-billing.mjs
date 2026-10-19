@@ -248,7 +248,7 @@ try {
     await page.waitForFunction(() => /cancelled/i.test((document.querySelector('.pl-status') || {}).textContent || ''), null, { timeout: 10000 }).then(() => ok(true, 'closing Checkout says the payment was cancelled'), () => ok(false, 'closing Checkout says the payment was cancelled'));
     ok(F.db.payments.filter((x) => x.plan_id === 'pro').every((x) => x.status === 'created'), 'a dismissed order stays created, never paid');
 
-    console.log('(d2) authorized is not captured (§49)');
+    console.log('(d2) authorized is not captured (§51)');
     RZP.mode = 'pay'; RZP.capture = 'held';
     await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
     await page.waitForFunction(() => /being confirmed/i.test((document.querySelector('.pl-status') || {}).textContent || ''), null, { timeout: 10000 })

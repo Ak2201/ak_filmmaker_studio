@@ -189,7 +189,8 @@ export function saveWritePrefs(patch) {
    Actions: { kind: 'type', type }        set this element's type
             { kind: 'return', op, type }  op 'insert' | 'change'
             { kind: 'tab', op, type }
-            { kind: 'dual' } { kind: 'note' } { kind: 'navigator' } */
+            { kind: 'dual' } { kind: 'note' } { kind: 'navigator' }
+            { kind: 'find' } */
 export function digitOf(e) {
   const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code || '');
   if (m) return Number(m[1]);
@@ -214,7 +215,9 @@ export function resolveKey(e, ctx) {
   if (mod && e.shiftKey && !e.altKey) {
     if (e.code === 'KeyK' || lower === 'k') return { kind: 'note' };
     if (e.code === 'KeyS' || lower === 's') return { kind: 'navigator' };
-    // Ctrl/Cmd+Shift+F is focus mode's (Phase 4); deliberately not here.
+    /* H for replace, as in Word and VS Code; F would be the natural
+       letter, but Ctrl/Cmd+Shift+F is focus mode's (Phase 4). */
+    if (e.code === 'KeyH' || lower === 'h') return { kind: 'find' };
     return null;
   }
   if (key === 'Enter' && !e.shiftKey && !e.altKey && !mod) {
@@ -250,6 +253,7 @@ export function shortcutRows(prefs, known, ctrlDigits) {
     { keys: ['Alt/⌥ D'], label: 'Dual dialogue on this cue' },
     { keys: ['Ctrl/⌘ Shift K'], label: 'Note on this line' },
     { keys: ['Ctrl/⌘ Shift S'], label: 'Scene navigator — jump to a scene heading' },
+    { keys: ['Ctrl/⌘ Shift H'], label: 'Find and replace in the screenplay' },
     { keys: ['↑ ↓', 'Tab / Return', 'Esc'], label: 'SmartType: move, accept, dismiss' },
     /* src/ui/tamil-type.js. Alt+T because every other Alt letter the
        editor might want is free and T is the one that names it; it is

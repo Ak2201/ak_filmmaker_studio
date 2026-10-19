@@ -195,7 +195,7 @@ export function renderOverview(scenes, status = '') {
     /* Empty: the state first, then the one thing to do, then how it works. */
     if (!hasScript) {
       wrap.append(h('p.bd-none', {
-        text: 'No script yet. Upload a Fountain, Final Draft, PDF or text file and it is read straight into scenes — '
+        text: 'No script yet. Upload a Fountain, Final Draft, Word, PDF or text file and it is read straight into scenes — '
           + 'or write one in the Screenplay Writer, even five pages is enough.'
       }));
     }

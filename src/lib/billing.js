@@ -135,7 +135,7 @@ async function invoke(name, body) {
     try { const j = await error.context?.json?.(); detail = (j && j.error) || ''; } catch (e) { /* no body */ }
     throw new BillingError(detail || error.message || 'The payment service did not answer.', 'edge');
   }
-  // §49: rzp-verify answers 202 { pending } when Razorpay has authorized but
+  // §51: rzp-verify answers 202 { pending } when Razorpay has authorized but
   // not yet captured the money — not a failure, and not a reason to pay again.
   if (data && data.pending) throw new BillingError(data.error || 'Your payment is still being confirmed.', 'pending');
   if (data && data.error) throw new BillingError(data.error, 'edge');

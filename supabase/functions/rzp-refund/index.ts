@@ -24,7 +24,7 @@
         'failed' (with the error) when it refused, which leaves the
         payment and any request untouched and allows a retry. A linked
         request reads 'refunded' only once the refund is processed;
-        while it is pending the request is 'approved' (section 48).
+        while it is pending the request is 'approved' (section 50).
 
    WHO ENDS THE PLAN. record_refund() calls mark_payment_refunded() when
    the status is 'processed'; the refund.processed WEBHOOK calls
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   // The console's role matrix (schema sections 45/46): a refund is a
   // finance decision, and an owner always passes. require_role() raises
   // 42501 for a non-admin and for any other role. begin_refund() asks the
-  // same question of p_admin again (section 48), so this is not the only gate.
+  // same question of p_admin again (section 50), so this is not the only gate.
   const { error: roleErr } = await asUser.rpc('require_role', { p_roles: ['finance'] });
   if (roleErr) return json(403, { error: roleErr.message || 'Administrators only.' });
 

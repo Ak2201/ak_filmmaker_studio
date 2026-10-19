@@ -269,7 +269,21 @@
   line-height: var(--lh-snug);
   color: var(--ink-muted);
 }
-.vz-frame-acts { display: flex; justify-content: flex-end; margin-top: var(--s1); }
+.vz-frame-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s1); }
+
+/* The frame's SHAPE (shots.js blankFrame `aspect`, ids from
+   board-frames.js ASPECTS). The ids are stored values; the rules key
+   off the attribute rather than a class so a stored id is the selector. */
+.vz-frame[data-aspect="2.39:1"] .vz-frame-slate { aspect-ratio: 2.39 / 1; }
+.vz-frame[data-aspect="1.85:1"] .vz-frame-slate { aspect-ratio: 1.85 / 1; }
+.vz-frame[data-aspect="4:3"]    .vz-frame-slate { aspect-ratio: 4 / 3; }
+.vz-frame[data-aspect="1:1"]    .vz-frame-slate { aspect-ratio: 1 / 1; }
+/* A vertical frame would be as tall as three landscape ones at full
+   width, so it takes a phone's width and sits in the middle. */
+.vz-frame[data-aspect="9:16"]   .vz-frame-slate { aspect-ratio: 9 / 16; width: min(100%, 13.5rem); margin-inline: auto; }
+.vz-frame-shape { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-micro); color: var(--ink-muted); }
+.vz-frame-shape-lab { font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; }
+.vz-frame-aspect { width: auto; max-width: 100%; }
 
 /* A drawn frame: the picture fills the slate, the shot's marks sit on
    top of it. The picture comes from the writer's Drive (drive-image.js);
@@ -366,6 +380,7 @@
   .row-ctrl,
   .vz-c-ctrl,
   .vz-frame-acts,
+  .vz-frame-shape,
   .vz-board-acts,
   .vz-uncovered, .vz-uncovered-bar { display: none !important; }
 

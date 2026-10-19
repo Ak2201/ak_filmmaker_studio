@@ -14,7 +14,9 @@
    script gets ONE blank line in memory so there is somewhere to type,
    and that line is saved only when the writer types in it.
    ============================================================ */
-import { flushStorage, currentProject } from '../lib/store.js';
+import { flushStorage, currentProject, currentProjectId, subscribe } from '../lib/store.js';
+import { incomingAction, keepBoth, takeTheirs, scriptSignature } from '../lib/script-incoming.js';
+import { mergeScript } from '../lib/script-merge.js';
 import { ask, askDanger } from '../ui/dialog.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -45,6 +47,8 @@ import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
 import { installLineLanding } from '../ui/script-find.js';
+import { mountReplaceBar } from '../ui/script-replace-bar.js';
+import { mountPresence } from '../ui/presence.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
@@ -110,6 +114,7 @@ function persistNow() {
   saving = true;
   setStatus('Saving…');
   Script.saveScript(doc);
+  notePageBase();
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
@@ -126,6 +131,100 @@ function persistBeforeLeaving() {
   Script.saveScript(doc);
 }
 addEventListener('pagehide', persistBeforeLeaving);
+
+/* ---- a newer copy arrived (cloud.js, pulled or live) ---------------
+   cloud.js writes the synced script straight into storage; `doc` above is
+   this page's own copy. Without this, the next keystroke saved that older
+   copy over the one just synced, with a newer clock, and the other
+   device's work was gone from the cloud. src/lib/script-incoming.js
+   decides: nothing unsaved here → show the arrival; mid-edit → keep what
+   is on screen AND keep the arrival as a draft, with "Use theirs" one
+   press away (which keeps this copy as a draft in turn). No branch
+   drops a line. */
+let lastTypedAt = 0;
+document.addEventListener('input', (e) => {
+  if (!e.target || !e.target.matches || !e.target.matches('#wr-page .wr-text')) return;
+  lastTypedAt = Date.now();
+  /* The line's edit time, as it is typed: the co-editing merge
+     (src/lib/script-merge.js) keeps the later edit of a line, and an
+     unsaved keystroke must count as later than what just arrived. */
+  const id = e.target.closest('[data-el]')?.dataset.el;
+  const el = id && doc.elements.find((x) => x.id === id);
+  if (el) el.u = lastTypedAt;
+}, { capture: true });
+
+/* CO-EDITING (schema §49, off by default). On, an arriving copy is
+   MERGED into the one on screen line by line instead of kept beside it
+   as a draft. `pageBase` is the copy this page last loaded or saved —
+   the merge's common ancestor, so it can tell a line the other writer
+   cut from a line this writer has just added. */
+let coEditOn = false;
+let pageBase = null;
+function notePageBase() { try { pageBase = JSON.parse(JSON.stringify(doc)); } catch (e) { pageBase = null; } }
+notePageBase();
+try {
+  const c = window.StudioCloud;
+  if (c && c.coEditingEnabled) c.coEditingEnabled().then((on) => { coEditOn = on === true; }, () => {});
+} catch (e) { /* no cloud on this page */ }
+const clock = () => new Date().toTimeString().slice(0, 5);
+const inEditor = () => !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#wr-page'));
+function showDoc() {
+  if (!doc.elements.length) doc.elements.push(blankElement({ type: 'scene' }));
+  /* Keep the caret where it was, to the character: a merge redraws the
+     page under a writer who may be mid-word. */
+  const ta = inEditor() ? document.activeElement : null;
+  const sel = ta && typeof ta.selectionStart === 'number' ? [ta.selectionStart, ta.selectionEnd] : null;
+  const keep = curId && doc.elements.some((e) => e.id === curId) && ta ? elFocus(curId) : null;
+  renderPage(keep);
+  if (keep && sel) {
+    const now = document.querySelector(keep);
+    if (now && typeof now.setSelectionRange === 'function') {
+      try { now.setSelectionRange(Math.min(sel[0], now.value.length), Math.min(sel[1], now.value.length)); } catch (e) { /* select */ }
+    }
+  }
+  refreshDraftLabel();
+}
+function mergeIncoming(fresh) {
+  const merged = mergeScript(doc, fresh, pageBase);
+  const changedHere = scriptSignature(merged) !== scriptSignature(doc);
+  const differsThere = scriptSignature(merged) !== scriptSignature(fresh);
+  doc = merged;
+  pageBase = JSON.parse(JSON.stringify(fresh));
+  if (changedHere) showDoc();
+  if (differsThere) persistNow();   // this writer's part goes up too
+}
+function onIncomingScript(live) {
+  const fresh = Script.loadScript();
+  const dirty = !!(saveTimer || saving || saveOwed) || Date.now() - lastTypedAt < 2500;
+  if (coEditOn) { mergeIncoming(fresh); return; }
+  const act = incomingAction({ mine: doc, fresh, dirty });
+  if (act === 'same') return;
+  if (act === 'load') {
+    doc = fresh;
+    showDoc();
+    if (!live) say('Updated with the newer copy from your other device.');   // the live path already said so
+    return;
+  }
+  const arrived = fresh;
+  doc = keepBoth(doc, arrived, 'From another device, ' + clock());
+  persistNow();
+  refreshDraftLabel();
+  try {
+    StudioUI.toast('Another device saved a different version of this script while you were writing. Yours is kept; theirs is in Drafts as “From another device”.', {
+      type: 'info', action: 'Use theirs',
+      onAction: () => {
+        doc = takeTheirs(doc, arrived, 'Your version, ' + clock());
+        persistNow();
+        showDoc();
+      }
+    });
+  } catch (e) { /* chrome may not be up */ }
+}
+subscribe('cloud:synced', (p) => {
+  if (!p || (p.projectId && p.projectId !== currentProjectId())) return;
+  if (p.scope === 'script') onIncomingScript(true);
+  else if (Array.isArray(p.scopes) && p.scopes.includes('script')) onIncomingScript(false);
+});
 addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') persistBeforeLeaving();
 });
@@ -148,6 +247,7 @@ const smart = createSmartType({
 const say = (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (e) { /* chrome may not be up */ } };
 
 /* ---- the editor ----------------------------------------------- */
+let presence = null;        // src/ui/presence.js, mounted at boot; redrawn after a page render
 let curId = null;           // the line the caret is in
 let Typeset = null;         // the typesetter, once loaded (page breaks)
 
@@ -166,6 +266,17 @@ const editor = mountEditor(document, {
   toast: (m, o) => StudioUI.toast(m, o),
   rowChrome: false
 });
+
+/* ---- find and replace (Ctrl/Cmd+Shift+H, or Tools) ------------- */
+const replaceBar = mountReplaceBar({
+  editor,
+  getDoc: () => doc,
+  persistNow: () => persistNow(),
+  afterChange: () => { refreshDerivedUi(); scheduleDerived(); },
+  toast: (m, o) => StudioUI.toast(m, o),
+  host: () => document.getElementById('scTop')
+});
+delegate(document, 'click', '[data-action="sc-find"]', () => replaceBar.open(curId));
 
 /* ---- draft label ------------------------------------------------ */
 const draftLabel = () => draftLabelOf(doc);
@@ -194,12 +305,14 @@ let beatsOpen = false;
 const FILE_ITEMS = [
   { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
   { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
+  { label: 'Export Word (.docx)', action: 'sc-docx', hint: 'to edit in Word', icon: 'description' },
   { label: 'Drafts & history', href: 'drafts.html', icon: 'history' },
   { label: 'Title page', href: 'drafts.html#title', icon: 'menu_book' }
 ];
 const TOOL_ITEMS = [
   { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
   { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
+  { label: 'Find and replace', action: 'sc-find', hint: 'Ctrl/⌘ Shift H', icon: 'find_replace' },
   { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
   { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
   { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' }
@@ -251,7 +364,10 @@ function buildTop() {
   const crumb = h('p.sc-draftline', {}, [
     h('span.sc-draft', { 'data-sc': 'draft', text: draftLabel() }),
     h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
-    statusNode
+    statusNode,
+    /* Who else is in this script (src/ui/presence.js). Hidden until
+       somebody is; a role="group" so the label reads with the faces. */
+    h('span#scPeers.sc-peers', { role: 'group', hidden: true })
   ]);
   const meta = h('div.sc-meta', {}, [crumb, stats]);
   const runtime = h('div#scRuntime.sc-runtime', { role: 'region', 'aria-label': 'Running time', hidden: true });
@@ -316,6 +432,7 @@ function buildTop() {
       h('div.sc-tools-r', {}, [fileMenu, menu, toolsBtn])
     ]),
     runtime,
+    h('p#scPeerWarn.sc-peer-warn', { role: 'status', 'aria-live': 'polite', hidden: true }),
     tipNode
   ]);
 }
@@ -388,6 +505,7 @@ function renderPage(focus) {
   if (focus) editor.applyFocus(focus);
   applyBreaksSoon();
   sceneSyncLater();
+  if (presence) presence.draw();   // the rows are new, so are the marks and carets on them
 }
 
 /* ---- current line type + the empty hint (DOM only) ------------ */
@@ -681,6 +799,8 @@ function applyBreaks() {
   if (!page || !Typeset) return;
   const pages = Typeset.paginateDoc(doc);
   const anchors = pageAnchors(pages);
+  // Locked pages print 12A or 12-13; the page view says the same.
+  const labels = Typeset.pageNumbersDoc(doc, pages);
   const existing = new Map();
   page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
   for (let p = 1; p < pages.length; p++) {
@@ -691,13 +811,13 @@ function applyBreaks() {
     if (!row) { if (node) node.remove(); continue; }
     const target = row.closest('.wr-dual') || row;
     const key = a.id + (a.split ? '|split' : '');
-    const placed = node && node.dataset.anchor === key
+    const label = a.split ? 'Page ' + labels[p] + ' · continues' : 'Page ' + labels[p];
+    const placed = node && node.dataset.anchor === key && node.textContent === label
       && (a.split ? node.previousElementSibling === target : node.nextElementSibling === target);
     if (placed) continue;
     if (!node) node = h('div.wr-pbreak', { role: 'separator', 'data-page': String(p) });
     node.dataset.anchor = key;
     node.classList.toggle('is-split', a.split);
-    const label = a.split ? 'Page ' + (p + 1) + ' · continues' : 'Page ' + (p + 1);
     if (node.textContent !== label) node.textContent = label;
     if (a.split) target.after(node); else target.before(node);
   }
@@ -929,6 +1049,25 @@ async function exportPDF() {
 }
 delegate(document, 'click', '[data-action="sc-pdf"]', () => { exportPDF(); });
 
+/* Word: a file someone without the studio can open and edit, each
+   element in its named screenplay style (src/lib/screenplay-docx.js).
+   Loaded at the press, so no page pays for it on first paint. */
+async function exportDOCX() {
+  if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
+  let W;
+  try { W = await import('../lib/screenplay-docx.js'); }
+  catch (e) { say('The Word exporter could not be loaded. Check the connection and try again.'); return; }
+  const title = Script.projectTitle();
+  const blob = new Blob([W.toDOCX(doc, { title })], { type: W.DOCX_MIME });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = Script.slugify(title, 'screenplay') + '.docx';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+delegate(document, 'click', '[data-action="sc-docx"]', () => { exportDOCX(); });
+
 /* ---- import (a dialog; script-import.js and script-commit.js) --- */
 let imp = null;      // { plan, name, replace }
 let impDialog = null;
@@ -949,9 +1088,9 @@ function drawImport() {
   const body = h('div.sc-imp-body');
   if (!imp) {
     const file = h('input', { type: 'file', id: 'scImpFile', class: 'sc-imp-file',
-      accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf', 'data-action': 'sc-imp-file' });
+      accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'data-action': 'sc-imp-file' });
     body.append(
-      h('p', { text: 'Choose a PDF, Fountain, plain-text or Final Draft file, or paste the text. It is read in this browser; nothing is uploaded.' }),
+      h('p', { text: 'Choose a PDF, Fountain, plain-text, Final Draft or Word file, or paste the text. It is read in this browser; nothing is uploaded.' }),
       h('div.sc-imp-row', {}, [h('label.k-btn.k-btn--primary.k-btn--pill', { for: 'scImpFile' }, [sym('upload_file'), h('span', { text: 'Choose a file…' })]), file]),
       h('label.sc-imp-paste-l.k-field', {}, [
         h('span.k-field-label', { text: 'Or paste the screenplay' }),
@@ -1047,6 +1186,11 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeI
 
 /* ---- boot --------------------------------------------------------- */
 render();
+presence = mountPresence({
+  strip: () => document.getElementById('scPeers'),
+  warn: () => document.getElementById('scPeerWarn'),
+  rowOf: (id) => editor.rowOf(id)
+});
 mountTamilType();
 WriteKeys.publishSheet(keyPrefs);
 mountFocusMode(() => doc, {

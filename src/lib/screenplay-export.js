@@ -252,6 +252,11 @@ const contdCue = (speaker) => String(speaker).replace(CONTD_RE, ' ').replace(/\s
 export function paginate(elements, opts = {}) {
   const els = elements || [];
   const nums = opts && opts.numbers;
+  /* LOCKED PAGES: a page starts before each of these element ids, as it
+     did the day the pages were locked (pageNumbersDoc below numbers
+     them). Material added since then overflows into A-pages instead of
+     moving every later page. */
+  const breakBefore = opts && opts.breakBefore instanceof Set ? opts.breakBefore : null;
   const byId = nums && nums.byId instanceof Map ? nums.byId : null;
   const omitBefore = new Map();
   const omitEnd = [];
@@ -285,6 +290,7 @@ export function paginate(elements, opts = {}) {
 
   for (let idx = 0; idx < els.length; idx++) {
     const el = els[idx];
+    if (breakBefore && el && breakBefore.has(el.id) && page.length) flush();
     if (omitBefore.size && el && omitBefore.has(el.id)) omitBefore.get(el.id).forEach(placeOmitted);
     const pair = pairs && pairs.get(idx);
     if (pair) {
@@ -395,8 +401,93 @@ export function paginate(elements, opts = {}) {
 export function paginateDoc(doc) {
   const els = (doc && doc.elements) || [];
   if (!doc || !doc.numbering || doc.numbering.locked !== true) return paginate(els);
-  return paginate(els, { numbers: sceneNumbers(els, doc.numbering) });
+  const lock = pagesLock(doc);
+  const breakBefore = lock ? new Set(lock.starts.filter((s) => s.id && !s.split).map((s) => s.id)) : null;
+  return paginate(els, { numbers: sceneNumbers(els, doc.numbering), breakBefore });
 }
+
+/* ------------------------------------------------------------
+   LOCKED PAGES (A-pages)
+   ------------------------------------------------------------
+   A shooting script's PAGES are locked as well as its scenes: a crew
+   holding page 34 must be able to swap in a revised page 34, not find
+   that a line added on page 12 has moved everything after it. So the
+   day pages are locked, the element each page starts with is recorded
+   (`numbering.pages`, inside the script blob beside the scene lock —
+   no new key):
+
+     pages: { locked: true, at: ISO, starts: [{ n: '1', id, split }, …] }
+
+   `split` is a page that began part-way through a speech or an action
+   block. From then on paginateDoc() breaks before every unsplit start,
+   and pageNumbersDoc() names the pages:
+     · a page that begins where a locked page began keeps its number;
+     · a page that overflows after it is 12A, then 12B;
+     · a locked page whose start has been cut is folded into the page
+       before, which is numbered as the range: 12-13.
+   ------------------------------------------------------------ */
+export function pagesLock(doc) {
+  const p = doc && doc.numbering && doc.numbering.locked === true ? doc.numbering.pages : null;
+  return p && p.locked === true && Array.isArray(p.starts) && p.starts.length ? p : null;
+}
+
+/** Where each page begins: { id, split } of its first row with an element. */
+export function pageStarts(pages) {
+  return (pages || []).map((rows) => {
+    const row = rows.find((r) => r && r.id);
+    return row ? { id: row.id, split: !!row.cont } : { id: null, split: false };
+  });
+}
+
+/** A record of the pages as they stand, for numbering.pages. */
+export function lockPages(doc, at = new Date().toISOString()) {
+  const starts = pageStarts(paginateDoc(doc)).map((s, i) => ({ n: String(i + 1), id: s.id, split: s.split }));
+  return { locked: true, at, starts };
+}
+
+const pageLetter = (k) => {
+  let s = '';
+  for (let n = k; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
+  return s;
+};
+
+/**
+ * Every page's number as a label ('1', '12A', '12-13'). PURE.
+ * Without a page lock the label is the position, as it always was.
+ */
+export function pageNumbersDoc(doc, pages = paginateDoc(doc)) {
+  const lock = pagesLock(doc);
+  if (!lock) return pages.map((_, i) => String(i + 1));
+  const byKey = new Map(lock.starts.filter((s) => s.id).map((s) => [s.id + (s.split ? '|s' : ''), s.n]));
+  const starts = pageStarts(pages);
+  const labels = [];
+  const used = new Set();
+  let cur = '1', letters = 0;
+  starts.forEach((s, i) => {
+    const n = s.id ? byKey.get(s.id + (s.split ? '|s' : '')) : null;
+    if (n && !used.has(n)) { used.add(n); cur = n; letters = 0; labels.push(n); return; }
+    if (i === 0) { used.add('1'); labels.push('1'); return; }
+    letters++;
+    labels.push(cur + pageLetter(letters));
+  });
+  /* A locked page that no longer starts anywhere is folded into the
+     numbered page before it: 12 becomes 12-13. */
+  const nums = lock.starts.map((s) => s.n);
+  const missing = nums.filter((n) => !used.has(n));
+  if (missing.length) {
+    const asInt = (n) => parseInt(n, 10);
+    labels.forEach((l, i) => {
+      if (!/^\d+$/.test(l)) return;
+      const next = labels.slice(i + 1).find((x) => /^\d+$/.test(x));
+      const upto = missing.filter((m) => asInt(m) > asInt(l) && (!next || asInt(m) < asInt(next)));
+      if (upto.length) labels[i] = l + '-' + upto[upto.length - 1];
+    });
+  }
+  return labels;
+}
+
+/** The printed page number: unnumbered first page, a full stop after. */
+export const pageLabelPrinted = (label, i) => (i === 0 && (label === '1' || !label) ? '' : String(label) + '.');
 
 /* ------------------------------------------------------------
    THE PAGE NUMBER
@@ -570,6 +661,7 @@ export function buildDocument(doc, meta = {}) {
   const marked = markSet(meta.marks);
   const opts = { sceneNumbers: !!meta.sceneNumbers, marked };
   const pages = paginateDoc(doc);
+  const labels = pageNumbersDoc(doc, pages);
   pages.forEach((rows, i) => {
     const revised = !!marked && rows.some((r) => rowMarked(r, marked));
     const sheet = h('section.wr-pg');
@@ -578,10 +670,10 @@ export function buildDocument(doc, meta = {}) {
       if (meta.marks.tint && meta.marks.swatch) sheet.classList.add('wr-pg-tint', 'c-' + meta.marks.swatch);
       sheet.append(h('div.wr-pg-num.has-rev', {}, [
         h('span.wr-pg-rev', { text: String(meta.marks.label || 'Revised') }),
-        h('span', { text: pageNumber(i) })
+        h('span', { text: pageLabelPrinted(labels[i], i) })
       ]));
     } else {
-      sheet.append(h('div.wr-pg-num', { text: pageNumber(i) }));
+      sheet.append(h('div.wr-pg-num', { text: pageLabelPrinted(labels[i], i) }));
     }
     for (const row of rows) sheet.append(rowNode(row, opts));
     root.append(sheet);
@@ -667,9 +759,10 @@ export function toText(doc, meta = {}) {
 
   const marked = markSet(meta.marks);
   const pages = paginateDoc(doc);
+  const labels = pageNumbersDoc(doc, pages);
   pages.forEach((rows, i) => {
     out.push('\f');                                  // a real page break
-    const num = pageNumber(i);
+    const num = pageLabelPrinted(labels[i], i);
     const rev = marked && rows.some((r) => rowMarked(r, marked)) ? String(meta.marks.label || 'Revised') : '';
     const head = rev ? rev + (num ? '  ' + num : '') : num;
     out.push(head ? pad(Math.max(0, TEXT_WIDTH - head.length)) + head : '');
@@ -696,5 +789,6 @@ export function toText(doc, meta = {}) {
 export default {
   GEOMETRY, geometryOf, DUAL, PAGE_LINES, BODY_LINES,
   wrapText, printedText, paginate, paginateDoc, pageNumber, titlePageOf,
+  pagesLock, pageStarts, lockPages, pageNumbersDoc, pageLabelPrinted,
   buildDocument, sheetCount, revisedPages, toText
 };

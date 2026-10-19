@@ -50,7 +50,7 @@ export const EXT_FN = {};
    the Checkout stub reads ('pay' | 'dismiss' | 'tamper'). signFor()
    is what Razorpay does: HMAC-SHA256(order|payment, KEY_SECRET). */
 export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay', refundMode: 'pending', capture: 'captured' };   // refundMode: 'pending' | 'processed' | 'fail'
-// capture: what GET /v1/payments/{id} says when rzp-verify reads the payment back (§49) —
+// capture: what GET /v1/payments/{id} says when rzp-verify reads the payment back (§51) —
 //   'captured' (auto-capture), 'authorized' (manual capture; rzp-verify captures it),
 //   'held' (authorized and the capture does not go through: no plan, 202 pending)
 export const signFor = async (order, payment) => createHmac('sha256', RZP.secret).update(`${order}|${payment}`).digest('hex');
@@ -1015,7 +1015,7 @@ export async function handle(route) {
     const pay = F.db.payments.find((x) => x.razorpay_order_id === body.razorpay_order_id);
     if (!pay) return json(route, 404, { error: 'No such order.' });
     if (pay.user_id !== user.id) return json(route, 403, { error: 'That order belongs to another account.' });
-    // §49: the payment is read back from Razorpay; a signature proves authorization, not capture
+    // §51: the payment is read back from Razorpay; a signature proves authorization, not capture
     if (pay.status !== 'paid') {
       if (RZP.capture === 'authorized') F.db.calls.push(`fn:rzp-verify capture ${pay.amount_paise}`);
       if (RZP.capture === 'held') {
@@ -1032,7 +1032,7 @@ export async function handle(route) {
   if (url.pathname === '/functions/v1/rzp-refund' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });
     if (!F.db.members.get(user.id) || F.db.members.get(user.id).role !== 'admin') { F.db.calls.push('fn:rzp-refund refused non-admin'); return json(route, 403, { error: 'Administrators only.' }); }
-    // require_role(['finance']): an admin with no console role reads as owner (schema §45/§48)
+    // require_role(['finance']): an admin with no console role reads as owner (schema §45/§50)
     { const cr = F.db.members.get(user.id).consoleRole; if (cr && !['owner', 'finance'].includes(cr)) { F.db.calls.push('fn:rzp-refund refused role'); return json(route, 403, { error: `Your role (${cr}) cannot do this. It needs the finance role.` }); } }
     let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
     if (!String(body.reason || '').trim()) return json(route, 400, { error: 'A reason is required.' });
@@ -1051,7 +1051,7 @@ export async function handle(route) {
     F.db.calls.push(`fn:rzp-refund ${pay.razorpay_payment_id} ${amount}`);
     if (RZP.refundMode === 'fail') { Object.assign(f, { status: 'failed', error: 'The payment has already been fully refunded' }); return json(route, 502, { error: f.error }); }
     f.razorpay_refund_id = 'rfnd_' + f.id; f.status = RZP.refundMode === 'processed' ? 'processed' : 'pending';
-    // §48: the request is settled as refunded only once processed; pending means approved
+    // §50: the request is settled as refunded only once processed; pending means approved
     if (rq) Object.assign(rq, { status: f.status === 'processed' ? 'refunded' : (rq.status === 'pending' ? 'approved' : rq.status), decided_at: rq.decided_at || new Date().toISOString() });
     if (f.status === 'processed') endPlanByRefund(pay);
     return json(route, 200, { ok: true, refund_id: f.razorpay_refund_id, status: f.status, amount_paise: amount, email: (Object.values(USERS).find((u) => u.id === pay.user_id) || {}).email, plan_ended: f.status === 'processed' });

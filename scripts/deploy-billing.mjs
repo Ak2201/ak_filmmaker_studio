@@ -15,7 +15,7 @@
                                                  (--no-verify-jwt), and
                                                  set the Razorpay secrets
                                                  that are in the env
-     node scripts/deploy-billing.mjs             --functions only (§49: --sql is
+     node scripts/deploy-billing.mjs             --functions only (§51: --sql is
                                                  never implied, and refuses a
                                                  database where §45 has run)
 
@@ -45,11 +45,11 @@ import { spawnSync } from 'node:child_process';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const args = new Set(process.argv.slice(2));
 const want = (f) => args.has(f);
-/* --sql is never implied any more (§49 follow-up). The slice is §16 to the
+/* --sql is never implied any more (§51 follow-up). The slice is §16 to the
    END of supabase-schema.sql, and every admin writer in it is the pre-§46
-   body: replaying it over a database where §45/§46/§48/§49 ran puts back
+   body: replaying it over a database where §45/§46/§50/§51 ran puts back
    the is_studio_admin()-only checks, drops the role matrix and the audit
-   writes, and undoes §49's money fixes — silently, because every statement
+   writes, and undoes §51's money fixes — silently, because every statement
    succeeds. So a bare run deploys the functions only, and --sql refuses a
    database that already has the later sections (see below). */
 const doSql = want('--sql');
@@ -73,7 +73,7 @@ function sliceSchema() {
 
 if (want('--print')) {
   console.error('! §16 to the end of supabase-schema.sql — for a database where §45 has NOT run. Pasting it over a');
-  console.error('  later database reverts §46 (the role matrix) and §48/§49. See supabase/schema/README.md.');
+  console.error('  later database reverts §46 (the role matrix) and §50/§51. See supabase/schema/README.md.');
   process.stdout.write(sliceSchema()); process.exit(0);
 }
 
@@ -101,7 +101,7 @@ if (doSql) {
   if (later && later[0] && later[0].s45) {
     console.error('✗ this database already has §45 (admin_roles), so §46 and later have probably run too.');
     console.error('  Replaying §16 to the end of supabase-schema.sql would put the pre-§46 admin writers back');
-    console.error('  (no role matrix, no audit) and undo §48/§49. Run only the NEW section file, in the SQL editor,');
+    console.error('  (no role matrix, no audit) and undo §50/§51. Run only the NEW section file, in the SQL editor,');
     console.error('  as supabase/schema/README.md lists. Nothing was changed.');
     process.exit(2);
   }

@@ -500,7 +500,8 @@ function renderScreenplay() {
         { label: 'PDF, scene numbers', action: 'export-pdf-numbered', hint: 'shooting script' },
         { label: 'Screenplay text',    action: 'export-text',     hint: '.txt' },
         { label: 'Export .fountain',   action: 'export-fountain', hint: 'plain text' },
-        { label: 'Export .fdx',        action: 'export-fdx',      hint: 'Final Draft' }
+        { label: 'Export .fdx',        action: 'export-fdx',      hint: 'Final Draft' },
+        { label: 'Export .docx',       action: 'export-docx',     hint: 'Word' }
       ], { align: 'right' })
     ].filter(Boolean))
   ]));
@@ -609,8 +610,8 @@ function importChooser() {
 
   wrap.append(h('p.wr-imp-lead', {
     text: 'Drop a script anywhere on this page, choose a file, or paste the text below. '
-        + 'A PDF (.pdf), Fountain (.fountain), a plain screenplay (.txt) and '
-        + 'Final Draft (.fdx) all work.'
+        + 'A PDF (.pdf), Fountain (.fountain), a plain screenplay (.txt), '
+        + 'Final Draft (.fdx) and Word (.docx) all work.'
   }));
   wrap.append(h('p.wr-imp-privacy', {}, [
     h('strong', { text: 'The file is read in this browser. ' }),
@@ -628,7 +629,7 @@ function importChooser() {
        here, and a literal that silently falls behind the parser is
        how a format becomes unpickable while still being
        importable. */
-    accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf',
+    accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'data-action': 'import-file'
   });
   wrap.append(h('div.wr-imp-row', {}, [
@@ -1641,6 +1642,8 @@ function applyPageView() {
   // paginateDoc: a locked script's numbers and OMITTED rows, as the PDF sets them.
   const pages = Typeset.paginateDoc(doc);
   const { pageOf, sceneNo, anchors } = pageViewLayout(pages);
+  // Locked pages print 12A or 12-13; the page view says the same.
+  const labels = Typeset.pageNumbersDoc(doc, pages);
 
   const existing = new Map();
   page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
@@ -1652,7 +1655,10 @@ function applyPageView() {
     if (!row) { if (node) node.remove(); continue; }
     const target = row.closest('.wr-dual') || row;
     const key = a.id + (a.split ? '|split' : '');
-    const placed = node && node.dataset.anchor === key
+    const label = a.split
+      ? "(MORE)  ·  page " + labels[p] + ' starts inside the line above  ·  (CONT’D)'
+      : 'Page ' + labels[p];
+    const placed = node && node.dataset.anchor === key && node.textContent === label
       && (a.split ? node.previousElementSibling === target : node.nextElementSibling === target);
     if (placed) continue;
     if (!node) {
@@ -1660,11 +1666,8 @@ function applyPageView() {
     }
     node.dataset.anchor = key;
     node.classList.toggle('is-split', a.split);
-    const label = a.split
-      ? "(MORE)  ·  page " + (p + 1) + ' starts inside the line above  ·  (CONT’D)'
-      : 'Page ' + (p + 1);
     if (node.textContent !== label) node.textContent = label;
-    node.setAttribute('aria-label', 'Page ' + (p + 1) + ' of ' + pages.length);
+    node.setAttribute('aria-label', 'Page ' + labels[p] + ', sheet ' + (p + 1) + ' of ' + pages.length);
     if (a.split) target.after(node); else target.before(node);
   }
   existing.forEach((n) => n.remove());
@@ -1840,6 +1843,15 @@ delegate(document, 'click', '[data-action="export-fdx"]', () => {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
   const title = Script.projectTitle();
   download(Script.toFDX(doc, { title }), Script.slugify(title, 'screenplay') + '.fdx', 'application/xml');
+});
+
+delegate(document, 'click', '[data-action="export-docx"]', async () => {
+  if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
+  let W;
+  try { W = await import('../lib/screenplay-docx.js'); }
+  catch (e) { say('The Word exporter could not be loaded. Check the connection and try again.'); return; }
+  const title = Script.projectTitle();
+  download(W.toDOCX(doc, { title }), Script.slugify(title, 'screenplay') + '.docx', W.DOCX_MIME);
 });
 
 /* `extra.marks` is a revised-pages export (src/ui/write-revisions.js):

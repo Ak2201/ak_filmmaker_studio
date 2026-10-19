@@ -42,7 +42,8 @@ owner's product boundary; the data boundary stays RLS and the triggers.
 
 | | Free | Basic (`starter`) | Intermediate (`indie`) | Pro |
 | --- | --- | --- | --- | --- |
-| Price, once (live, 8 Oct 2026) | — | ₹599 (59900 paise) | ₹799 (79900) | ₹999 (99900) |
+| Price, once (live, 8 Oct 2026; confirmed by the owner 19 Oct 2026) | — | ₹599 (59900 paise) | ₹799 (79900) | ₹999 (99900) |
+| Scheduled rise (§30, kept by the owner 19 Oct 2026) | — | ₹999 on 31 Oct 2026 | ₹1,499 | ₹1,999 |
 | Sample only / new projects | yes / no | no / yes | no / yes | no / yes |
 | Cloud projects | 1 | 3 | 10 | unlimited |
 | Collaborators / film | 0 | 2 | 5 | unlimited |
@@ -560,7 +561,7 @@ row. The dialog asks for an amount (rupees, full by default, never more
 than was paid) and a REQUIRED reason, and warns that a refund ends the
 plan. The function: Auth names the caller, then `require_role(['finance'])`
 is called AS the caller (the §45/§46 role matrix: owner and finance pass) —
-a non-admin or a support admin gets 403 and nothing else runs; since §48
+a non-admin or a support admin gets 403 and nothing else runs; since §50
 `begin_refund()` refuses an actor who is not owner or finance as well, so
 the function is not the only gate. `begin_refund()` then locks the
 payment row and checks it is captured, not refunded, has no refund in
@@ -1228,10 +1229,10 @@ sentence sits on terms.html:74 and start.html. Either throw the switch or
 soften the pages — do not leave a legal page making a claim the database
 contradicts.
 
-## 20. Refunds follow the role matrix, seats follow the plan, a decline sticks (schema §48, 19 Oct 2026). NOT YET RUN LIVE.
+## 20. Refunds follow the role matrix, seats follow the plan, a decline sticks (schema §50, 19 Oct 2026). NOT YET RUN LIVE.
 
 Three corrections, each restating one function body plus a marked block
-(`supabase/schema/schema-48-refund-seat-trial.sql`, checks in
+(`supabase/schema/schema-50-refund-seat-trial.sql`, checks in
 `scripts/schema-tests/refund-seat-trial.sql`):
 
 - **Refunds are a finance decision end to end.** `rzp-refund` asks
@@ -1263,22 +1264,23 @@ Three corrections, each restating one function body plus a marked block
   make the re-ask half write nothing.
 
 **Owner steps.**
-1. Run §48 in the SQL editor — after §47 — verifying the checksum first
-   (`shasum -a 256 supabase/schema/schema-48-refund-seat-trial.sql`, compared
+1. Run §50 in the SQL editor — after §49 (develop's co-editing switch) — verifying the checksum first
+   (`shasum -a 256 supabase/schema/schema-50-refund-seat-trial.sql` must read
+   `95f801230f19eca0736df3f0f388d049137945f8330aa9bbee5f5b1a23b4e275`, compared
    with the editor's contents; see `supabase/schema/README.md`).
 2. Redeploy the refund function with the CLI (never the dashboard editor):
    `npx --yes supabase@latest functions deploy rzp-refund --project-ref conhlrulxfwkhsnymakz`.
-   Run §48 first: the new function needs nothing new from the database
-   (`require_role()` is §45, already live), but §48 is what makes the
+   Run §50 first: the new function needs nothing new from the database
+   (`require_role()` is §45, already live), but §50 is what makes the
    database refuse a support actor too.
 3. Read back: the checks at 48.5 in the section file.
 
-## 21. The security follow-ups (schema §49, 19 Oct 2026). NOT YET RUN LIVE.
+## 21. The security follow-ups (schema §51, 19 Oct 2026). NOT YET RUN LIVE.
 
 The 18 Oct security audit left leads it could not execute. Each was re-derived
 from source, written as a failing check against the real schema
-(`scripts/schema-tests/security-49.sql`, seed `security-49-seed.sql`), and
-fixed in `supabase/schema/schema-49-security-followups.sql`. The money ones:
+(`scripts/schema-tests/security-51.sql`, seed `security-51-seed.sql`), and
+fixed in `supabase/schema/schema-51-security-followups.sql`. The money ones:
 
 - **A limited promo code is reserved when an order opens.** `quote_for()`
   counts other buyers' open orders on the code (opened in the last hour)
@@ -1306,19 +1308,19 @@ fixed in `supabase/schema/schema-49-security-followups.sql`. The money ones:
   the payment is still being confirmed and not to pay again. It needs
   `RAZORPAY_KEY_ID` as a function secret (already set for `rzp-order`).
 
-The rest of §49 (roles, sharing, comments, teams) is listed at the head of the
+The rest of §51 (roles, sharing, comments, teams) is listed at the head of the
 section file and in `docs/ADMIN-CONSOLE.md`. One is a plain break: **share
 links could not be claimed at all** — `claim_share()` failed 42702 ("column
-reference project_id is ambiguous") on every call — and §49 repairs it.
+reference project_id is ambiguous") on every call — and §51 repairs it.
 
 **Owner steps.**
-1. Run §49 in the SQL editor — after §48 — verifying the checksum first:
-   `shasum -a 256 supabase/schema/schema-49-security-followups.sql` must read
-   `4ab15837024c8987ae07bfe89f3f04f0232ddefb7dbc9cf2cdab60c22a3c3040`,
+1. Run §51 in the SQL editor — after §50 — verifying the checksum first:
+   `shasum -a 256 supabase/schema/schema-51-security-followups.sql` must read
+   `860ed0741bad08c196d40d00602c4fb5481290519017691a30529bb4ac63ac44`,
    and the editor's contents must hash the same (see `supabase/schema/README.md`).
 2. Redeploy the verify function with the CLI (never the dashboard editor):
    `npx --yes supabase@latest functions deploy rzp-verify --project-ref conhlrulxfwkhsnymakz`.
-   Order does not matter for safety: the new function needs nothing from §49.
+   Order does not matter for safety: the new function needs nothing from §51.
 3. Read back: the checks at 49.16 in the section file.
 4. Razorpay dashboard → Account & Settings → Payment Capture: note whether it is
    Automatic (and its window) or Manual. Either now works; Manual means
@@ -1328,5 +1330,5 @@ reference project_id is ambiguous") on every call — and §49 repairs it.
    secure e-mail change are on) — a pending e-mail grant, including an admin
    one, goes to the first account with that CONFIRMED address.
 6. Do not run `node scripts/deploy-billing.mjs --sql` against this project: it
-   now refuses (§45 has run), because replaying §16 onward would undo §46–§49.
+   now refuses (§45 has run), because replaying §16 onward would undo §46–§51.
 

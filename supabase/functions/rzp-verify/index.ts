@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   if (!pay) return json(404, { error: 'No such order.' });
   if (pay.user_id !== who.user.id) return json(403, { error: 'That order belongs to another account.' });
 
-  /* CAPTURED, NOT MERELY AUTHORIZED (security follow-up, §49). Checkout
+  /* CAPTURED, NOT MERELY AUTHORIZED (security follow-up, §51). Checkout
      signs order_id|payment_id when the payment is AUTHORIZED; whether the
      money is ever collected depends on the account's Payment Capture
      setting, which lives in the Razorpay dashboard. So the payment itself

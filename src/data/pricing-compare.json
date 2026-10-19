@@ -6,7 +6,7 @@
   },
   "hero": {
     "h1": "Pay once. Make the film.",
-    "sub": "Three plans, and each one includes everything in the plan below it. Every plan is a single payment in Indian rupees: no subscription, no renewal, nothing to cancel."
+    "sub": "Three plans, and each one includes everything in the plan below it. Every plan is a single payment in Indian rupees: no subscription, no renewal, nothing to cancel. Nothing in a plan is sold as an add-on, and it all keeps working offline."
   },
   "trial": {
     "h": "Not sure yet? Try the whole studio free",
@@ -52,9 +52,10 @@
   "groups": [
     { "id": "basics",  "label": "Account basics",       "keys": ["new_projects", "exports", "drive_backup", "extension"] },
     { "id": "writing", "label": "Writing",              "keys": ["screenplay", "revisions", "docs", "script_import", "import-script"] },
-    { "id": "story",   "label": "Story development",    "keys": ["story-beats", "storyboard"] },
-    { "id": "prep",    "label": "Pre-production",       "keys": ["scene-list", "breakdowns", "elements", "shot-list", "stripboard", "calendar", "locations", "dood", "contacts", "sides"] },
-    { "id": "prod",    "label": "Production",           "keys": ["budget", "reports", "call-sheets"] },
+    { "id": "story",   "label": "Story development",    "keys": ["story-beats", "idea-vault", "storyboard"] },
+    { "id": "prep",    "label": "Pre-production",       "keys": ["scene-list", "breakdowns", "elements", "auto-tag", "screen-time", "cast-matrix", "shot-list", "stripboard", "calendar", "locations", "dood", "contacts", "sides"] },
+    { "id": "prod",    "label": "Production",           "keys": ["budget", "reports", "call-sheets", "shoot-day"] },
+    { "id": "post",    "label": "Post-production",      "keys": ["edit-log", "deliverables"] },
     { "id": "extras",  "label": "AI and white label",   "keys": ["ai_tools", "remove_branding"] }
   ]
 }

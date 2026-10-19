@@ -272,7 +272,7 @@ export function createGate(getClient) {
      *  project into this browser and pulls all of its data. */
     async listProjects() {
       const sb = await getClient();
-      /* Owned films only (schema §49): a screening pass shows a film's
+      /* Owned films only (schema §51): a screening pass shows a film's
          synced writing to whoever holds the code, so the server refuses a
          film the administrator does not own — offering collaborations here
          would only offer refusals. */

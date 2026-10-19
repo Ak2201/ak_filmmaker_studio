@@ -35,13 +35,13 @@
       { "title": "Start a scene with a slug line", "body": "Write a scene heading with INT. or EXT. and a location. It is formatted for you, and the scene joins the scene list as you move on." },
       { "title": "Write action and dialogue", "body": "Return and Tab pick the next element for you. Write dialogue in Tamil script or Tanglish, with headings and action in English if that is how your unit reads." },
       { "title": "Keep numbered drafts", "body": "Save a draft, keep writing, then compare drafts, restore an old one or print it. Lock the scene numbers for production and later scenes take letters like 12A." },
-      { "title": "Print or export a screenplay PDF", "body": "Add a title page and print a properly formatted screenplay PDF with an honest page count. Already have a script? Bring in Fountain, Final Draft or PDF." }
+      { "title": "Print or export a screenplay PDF", "body": "Add a title page and print a properly formatted screenplay PDF with an honest page count. Already have a script? Bring in Fountain, Final Draft, Word or PDF." }
     ],
     "related": ["story", "breakdown", "storyboard"],
     "midCta": { "h2": "Open a blank page and write scene one" },
     "facts": [
       { "value": "Tamil, Tanglish, English", "label": "Dialogue in the language you write" },
-      { "value": "Fountain, FDX, PDF", "label": "Screenplay formats you can bring in" },
+      { "value": "Fountain, FDX, Word, PDF", "label": "Screenplay formats you can bring in" },
       { "value": "12A", "label": "Locked scene numbers keep their letters" }
     ]
   },
@@ -112,8 +112,8 @@
     "file": "product-breakdown.html",
     "label": "Breakdown",
     "stage": "prep",
-    "metaTitle": "Script breakdown software, scene by scene",
-    "metaDescription": "Break a screenplay down scene by scene. One run lists every scene and tags the cast from the character cues; you tag the props, vehicles and sounds, and the schedule follows.",
+    "metaTitle": "Script breakdown software with auto-tagging",
+    "metaDescription": "Break a screenplay down scene by scene. Auto-tag suggests cast, props, vehicles, stunts and sounds. You accept what is right and the schedule follows.",
     "hero": {
       "h1": "Break down your script scene by scene",
       "sub": "One run turns every scene heading into a scene and tags the cast its character cues name. You add the props, vehicles, stunts and sounds each scene needs."
@@ -121,23 +121,23 @@
     "value": {
       "h2": "A breakdown you check, not one you type",
       "body": [
-        "Run the breakdown and every scene heading becomes a scene, with the cast its character cues name already tagged. The rest you tag once, on the scene, so the breakdown stays your decision.",
+        "Auto-tag reads each scene and suggests what it needs. Nothing is added until you accept it, so the breakdown stays your decision and the first pass takes minutes.",
         "Every tag you accept feeds the element list, the schedule, the day out of days and the budget. Change the script and the scenes update, so the paperwork never drifts from the film."
       ]
     },
     "demo": { "h2": "See the breakdown in action" },
     "steps": [
-      { "title": "Bring in the script", "body": "Write in the Screenplay Writer or import a Fountain, Final Draft or PDF file. Each scene heading becomes a scene in the list." },
-      { "title": "Run the breakdown", "body": "One run lists every scene in script order and tags the cast from the character cues. Run it again and nothing is added twice." },
-      { "title": "Tag what each scene needs", "body": "Add the props, vehicles, stunts and sounds each scene needs, and anything the script only implies. The scene keeps your final word." },
+      { "title": "Bring in the script", "body": "Write in the Screenplay Writer or import a Fountain, Final Draft, Word or PDF file. Each scene heading becomes a scene in the list." },
+      { "title": "Let auto-tag suggest", "body": "Run auto-tag to get suggested actors, props, vehicles, stunts and sounds for each scene. Suggestions wait for your decision." },
+      { "title": "Accept and correct", "body": "Accept the right suggestions, reject the wrong ones and add anything the script only implies. The scene keeps your final word." },
       { "title": "Mark day or night, inside or out", "body": "Each scene carries its location and whether it is day or night, so the stripboard can group scenes the way a unit shoots." },
       { "title": "Read what the film needs", "body": "Open the element list and the reports for everything the film needs, with the scenes that need it, ready to print." }
     ],
     "related": ["catalog", "schedule", "shot-list"],
     "midCta": { "h2": "Break down your first scene" },
     "facts": [
-      { "value": "One run", "label": "Every scene listed, the cast tagged from the cues" },
-      { "value": "Fountain, FDX, PDF", "label": "Screenplay formats the breakdown can start from" },
+      { "value": "You decide", "label": "Auto-tag only suggests; you accept" },
+      { "value": "Fountain, FDX, Word, PDF", "label": "Screenplay formats the breakdown can start from" },
       { "value": "1 scene list", "label": "The same scenes feed schedule, budget and sheets" }
     ]
   },

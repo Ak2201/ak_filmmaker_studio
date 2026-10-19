@@ -101,6 +101,9 @@ eq(K.resolveKey(ev({ key: 'd', code: 'KeyD', ctrlKey: true }), ctx), null, 'Ctrl
 eq(K.resolveKey(ev({ key: 'K', code: 'KeyK', ctrlKey: true, shiftKey: true }), ctx), { kind: 'note' }, 'Ctrl+Shift+K note');
 eq(K.resolveKey(ev({ key: 'k', code: 'KeyK', metaKey: true, shiftKey: true }), ctx), { kind: 'note' }, 'Cmd+Shift+K note');
 eq(K.resolveKey(ev({ key: 'S', code: 'KeyS', ctrlKey: true, shiftKey: true }), ctx), { kind: 'navigator' }, 'Ctrl+Shift+S navigator');
+eq(K.resolveKey(ev({ key: 'H', code: 'KeyH', ctrlKey: true, shiftKey: true }), ctx), { kind: 'find' }, 'Ctrl+Shift+H find');
+eq(K.resolveKey(ev({ key: 'h', code: 'KeyH', metaKey: true, shiftKey: true }), ctx), { kind: 'find' }, 'Cmd+Shift+H find');
+eq(K.resolveKey(ev({ key: 'F', code: 'KeyF', ctrlKey: true, shiftKey: true }), ctx), null, 'Ctrl+Shift+F stays focus mode');
 eq(K.resolveKey(ev({ key: 'F', code: 'KeyF', ctrlKey: true, shiftKey: true }), ctx), null, 'Ctrl+Shift+F is focus mode\'s, not ours');
 eq(K.resolveKey(ev({ key: 'k', code: 'KeyK', ctrlKey: true }), ctx), null, 'Ctrl+K is the palette\'s');
 eq(K.resolveKey(ev({ key: 'a', code: 'KeyA' }), ctx), null, 'a letter is not ours');

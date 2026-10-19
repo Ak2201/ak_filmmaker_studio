@@ -66,7 +66,9 @@ await ctx.addInitScript(() => {
     get() { return real; },
     set(v) {
       real = v;
-      if (!new URLSearchParams(location.search).has('presence')) return;
+      const q = new URLSearchParams(location.search);
+      if (q.has('coedit')) v.coEditingEnabled = async () => true;
+      if (!q.has('presence')) return;
       v.isBooted = () => true;
       v.getSession = () => ({ access_token: 'x', user: { id: 'me-1', email: 'pia@example.com', user_metadata: { full_name: 'Pia Owner' } } });
       v.joinPresence = async (pid, onSync) => {
@@ -151,6 +153,40 @@ ok(await page.$eval('#scPeers', (n) => n.hidden) && await page.$eval('#scPeerWar
 ok(await page.$$eval('.sc-peer-row', (r) => r.length) === 0, '6  and the marks are cleared');
 const presenceWrites = await page.evaluate(() => window.__writes.filter((k) => /presence|peer/i.test(k)).length);
 ok(presenceWrites === 0, '6  presence wrote nothing to storage');
+
+/* 8 co-editing ON: an arrival is merged into the open script, line by line */
+await page.goto(url('screenplay.html?coedit=1'), { waitUntil: 'networkidle' });
+await page.waitForTimeout(600);
+const arrive = (fn) => page.evaluate((src) => {
+  const S = window.StudioStore;
+  const pid = S.currentProjectId();
+  const k = 'fms_script_v1__' + pid;
+  const b = JSON.parse(S.rawGet(k));
+  (new Function('b', src))(b);
+  S.rawSet(k, JSON.stringify(b));
+  S.notify('cloud:synced', { projectId: pid, scope: 'script' });
+}, fn);
+const stored = async () => (await page.evaluate(() => {
+  const S = window.StudioStore;
+  return JSON.parse(S.rawGet('fms_script_v1__' + S.currentProjectId()));
+})).elements.map((e) => e.text);
+// The writer is mid-edit on line 2 (unsaved) when the other writer's copy arrives with line 4 changed.
+await page.focus('[data-el="e2"] .wr-text');
+await page.keyboard.press('End');
+await page.keyboard.type(' He stops at the window.');
+await arrive("b.elements = b.elements.map((e) => e.id === 'e4' ? { ...e, text: 'Not tonight, Meera.', u: Date.now() } : e);");
+await page.waitForTimeout(900);
+let lines = await stored();
+ok(lines.some((t) => /He stops at the window\.$/.test(t)) && lines.includes('Not tonight, Meera.'), '8  co-editing: the unsaved edit here AND the arrival\'s edit both survive', lines);
+const caretOk = await page.evaluate(() => { const a = document.activeElement; return !!a && a.matches('.wr-text') && a.closest('[data-el]').dataset.el === 'e2' && a.selectionStart === a.value.length; });
+ok(caretOk, '8  and the caret stays where the writer was typing');
+// The other writer cuts line 3 (the cue); nothing here touched it since.
+await page.waitForTimeout(1200);
+await arrive("b.elements = b.elements.filter((e) => e.id !== 'e3');");
+await page.waitForTimeout(900);
+lines = await stored();
+ok(!lines.includes('RAVI') && lines.includes('Not tonight, Meera.'), '8  a line the other writer cut is gone, the rest kept', lines);
+ok(!(await page.isVisible('.toast:has-text("Use theirs")')), '8  no "Use theirs" draft offer: nothing needed keeping');
 
 /* 7 phone width */
 const phone = await ctx.newPage();

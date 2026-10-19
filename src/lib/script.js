@@ -331,8 +331,29 @@ function normaliseRevision(rev) {
   return out;
 }
 
+/* EACH LINE'S EDIT TIME, `u` (ms), for the co-editing merge
+   (src/lib/script-merge.js): a line whose type, text or dual flag
+   differs from the stored copy is stamped now, unless it already carries
+   a later stamp (the Screenplay Writer stamps a line as it is typed). An
+   unchanged line keeps whatever it had — an old script that is only
+   loaded and saved gains no field and stays byte-identical. */
+function stampChanged(elements) {
+  let prev = null;
+  try { prev = JSON.parse(localStorage.getItem(SCRIPT_KEY) || 'null'); } catch (e) { prev = null; }
+  const before = new Map(((prev && Array.isArray(prev.elements)) ? prev.elements : []).map((e) => [e && e.id, e]));
+  const now = Date.now();
+  for (const el of elements) {
+    if (!el) continue;
+    const p = before.get(el.id);
+    const changed = !p || p.type !== el.type || p.text !== el.text || (p.dual === true) !== (el.dual === true);
+    if (changed) { if (!(Number(el.u) >= now - 5000)) el.u = Math.max(Number(el.u) || 0, now); }
+    else if (p.u && !el.u) el.u = p.u;
+  }
+}
+
 export function saveScript(doc) {
   try {
+    stampChanged(doc.elements || []);
     const blob = {
       elements: doc.elements || [],
       revisions: doc.revisions || [],

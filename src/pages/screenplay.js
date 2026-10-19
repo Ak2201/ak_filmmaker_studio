@@ -15,7 +15,8 @@
    and that line is saved only when the writer types in it.
    ============================================================ */
 import { flushStorage, currentProject, currentProjectId, subscribe } from '../lib/store.js';
-import { incomingAction, keepBoth, takeTheirs } from '../lib/script-incoming.js';
+import { incomingAction, keepBoth, takeTheirs, scriptSignature } from '../lib/script-incoming.js';
+import { mergeScript } from '../lib/script-merge.js';
 import { ask, askDanger } from '../ui/dialog.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -113,6 +114,7 @@ function persistNow() {
   saving = true;
   setStatus('Saving…');
   Script.saveScript(doc);
+  notePageBase();
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
@@ -141,19 +143,60 @@ addEventListener('pagehide', persistBeforeLeaving);
    drops a line. */
 let lastTypedAt = 0;
 document.addEventListener('input', (e) => {
-  if (e.target && e.target.matches && e.target.matches('#wr-page .wr-text')) lastTypedAt = Date.now();
+  if (!e.target || !e.target.matches || !e.target.matches('#wr-page .wr-text')) return;
+  lastTypedAt = Date.now();
+  /* The line's edit time, as it is typed: the co-editing merge
+     (src/lib/script-merge.js) keeps the later edit of a line, and an
+     unsaved keystroke must count as later than what just arrived. */
+  const id = e.target.closest('[data-el]')?.dataset.el;
+  const el = id && doc.elements.find((x) => x.id === id);
+  if (el) el.u = lastTypedAt;
 }, { capture: true });
+
+/* CO-EDITING (schema §49, off by default). On, an arriving copy is
+   MERGED into the one on screen line by line instead of kept beside it
+   as a draft. `pageBase` is the copy this page last loaded or saved —
+   the merge's common ancestor, so it can tell a line the other writer
+   cut from a line this writer has just added. */
+let coEditOn = false;
+let pageBase = null;
+function notePageBase() { try { pageBase = JSON.parse(JSON.stringify(doc)); } catch (e) { pageBase = null; } }
+notePageBase();
+try {
+  const c = window.StudioCloud;
+  if (c && c.coEditingEnabled) c.coEditingEnabled().then((on) => { coEditOn = on === true; }, () => {});
+} catch (e) { /* no cloud on this page */ }
 const clock = () => new Date().toTimeString().slice(0, 5);
 const inEditor = () => !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#wr-page'));
 function showDoc() {
   if (!doc.elements.length) doc.elements.push(blankElement({ type: 'scene' }));
-  const keep = curId && doc.elements.some((e) => e.id === curId) && inEditor() ? elFocus(curId) : null;
+  /* Keep the caret where it was, to the character: a merge redraws the
+     page under a writer who may be mid-word. */
+  const ta = inEditor() ? document.activeElement : null;
+  const sel = ta && typeof ta.selectionStart === 'number' ? [ta.selectionStart, ta.selectionEnd] : null;
+  const keep = curId && doc.elements.some((e) => e.id === curId) && ta ? elFocus(curId) : null;
   renderPage(keep);
+  if (keep && sel) {
+    const now = document.querySelector(keep);
+    if (now && typeof now.setSelectionRange === 'function') {
+      try { now.setSelectionRange(Math.min(sel[0], now.value.length), Math.min(sel[1], now.value.length)); } catch (e) { /* select */ }
+    }
+  }
   refreshDraftLabel();
+}
+function mergeIncoming(fresh) {
+  const merged = mergeScript(doc, fresh, pageBase);
+  const changedHere = scriptSignature(merged) !== scriptSignature(doc);
+  const differsThere = scriptSignature(merged) !== scriptSignature(fresh);
+  doc = merged;
+  pageBase = JSON.parse(JSON.stringify(fresh));
+  if (changedHere) showDoc();
+  if (differsThere) persistNow();   // this writer's part goes up too
 }
 function onIncomingScript(live) {
   const fresh = Script.loadScript();
   const dirty = !!(saveTimer || saving || saveOwed) || Date.now() - lastTypedAt < 2500;
+  if (coEditOn) { mergeIncoming(fresh); return; }
   const act = incomingAction({ mine: doc, fresh, dirty });
   if (act === 'same') return;
   if (act === 'load') {

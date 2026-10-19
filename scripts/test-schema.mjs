@@ -230,6 +230,14 @@ for (const f of ['supabase/schema/schema-48-presence.sql', 'supabase/schema/sche
 console.log('✓ §48 loads without Realtime, then on it (and re-runs cleanly)');
 runChecks('presence.sql');
 /* --- end §48 --- */
+/* --- §49 (the co-editing switch) --- standalone, on §40 and §45/§46. --- */
+for (const f of ['supabase/schema/schema-49-co-editing.sql', 'supabase/schema/schema-49-co-editing.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §49 loads (and re-runs cleanly)');
+runChecks('co-editing.sql');
+/* --- end §49 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

@@ -2362,3 +2362,26 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     (+16 on the Dragon sample), `prove:script` case 18 through the real
     controls.
 
+    **Co-editing, behind a switch (schema §49, OFF).**
+    `supabase/schema/schema-49-co-editing.sql`: `billing_settings.co_editing_enabled`,
+    `co_editing_enabled()` for anyone and `admin_set_co_editing_enabled()`
+    for the owner only, audited (`test:schema` +9). The console's People tab
+    draws it (`src/ui/coedit-admin.js` over `src/lib/coedit-api.js` —
+    `test:layers` refused a view calling `.rpc()` directly), and says so when
+    §49 has not run. ON, the script scope MERGES instead of newer-wins:
+    `src/lib/script-merge.js` merges line by line by id (the later `u` of a
+    line both sides changed; a delete only when the common base proves it
+    and nobody edited the line since; no base, nothing is deleted; order
+    follows the arrival; drafts and documents union; title page and
+    numbering follow the side that changed them). `u` is stamped by
+    `saveScript` on every line that changed since the stored copy, and by the
+    Screenplay Writer as a line is typed, so an unsaved keystroke counts as
+    later than an arrival. `cloud.js` reads the switch at attach
+    (`coEditingEnabled`, a missing function reads OFF), keeps the base per
+    project in memory (last pushed or received), and judges self-echo by its
+    own last push rather than user id while it is on, so one person's two
+    devices merge too. The open page merges an arrival into `doc` (its own
+    `pageBase` as ancestor) and keeps the caret to the character. `test:merge`
+    (19), `prove:presence` case 8 (merge on the page; Realtime faked). The
+    live check needs two accounts after §49 runs and the switch is on.
+

@@ -60,7 +60,8 @@
                 border-color var(--speed) var(--ease), transform var(--speed-tap) var(--ease-out);
   }
   /* Press feedback is the skin's (--sk-press, modules.css / kit.css):
-     one scale, one place. This layer used to add a second, deeper one. */
+     one scale, one place — the transform above eases the tab's press.
+     This layer used to add a second, deeper one. */
 
   /* ---- checkbox tick: the mark pops ----------------------------- */
   .step-check li.ma-tick::before { animation: ma-pop 0.45s var(--ease-spring); }

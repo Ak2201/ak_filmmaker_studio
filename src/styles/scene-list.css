@@ -171,10 +171,11 @@ section#scenes .bd-breakdown { gap: 0; }
   .bd-sl-main {
     grid-template-columns: var(--sl-grip-w) 28px 72px minmax(0, 1fr) minmax(0, 1fr) 40px;   /* 72: the coarse-pointer number field is 4.25rem */
     /* The location is how a row is recognised, so it gets the card's
-       whole width on its own line (it was cut to "EXT. KOYA…"). */
+       whole width on its own line (it was cut to "EXT. KOYA…") — from
+       column 2, the edge every row under the grip starts at. */
     grid-template-areas:
       "grip  pick  no    .     .     tog"
-      "where where where where where where"
+      ".     where where where where where"
       ".     ie    ie    ie    dn    dn"
       ".    len  len  len   cast  cast"
       ".    st   st   st    st    st"

@@ -30,8 +30,10 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   /* The phone baseline (19 Oct 2026): no grey-blue flash over a tapped
-     control (every control already has its own :active and focus
-     states), and labels on CONTROLS are not text to select or
+     control. Each control a finger lands on carries its own :active
+     instead (modules.css: the small controls and, below them, the
+     bottom bar, sheet rows, flyout, tabs and segments; kit.css .k-btn)
+     — add one with any new tappable control. Labels on CONTROLS are not text to select or
      long-press. Never on body or content: writing stays selectable. */
   -webkit-tap-highlight-color: transparent;
 }

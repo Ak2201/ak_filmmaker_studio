@@ -68,6 +68,11 @@ function open(build) {
          removed at once, exactly as before. */
       if (!document.documentElement.classList.contains('ma-on')) { overlay.remove(); return; }
       overlay.classList.add('is-closing');
+      /* a leaving dialog is no longer one: nothing in it takes focus and
+         the page behind it is no longer hidden from a screen reader */
+      overlay.inert = true;
+      card.removeAttribute('aria-modal');
+      overlay.removeAttribute('aria-modal');
       let gone = false;
       const drop = () => { if (gone) return; gone = true; overlay.remove(); };
       overlay.addEventListener('transitionend', (e) => { if (e.target === overlay) drop(); });

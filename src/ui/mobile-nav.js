@@ -99,7 +99,7 @@ function finishClose() {
   window.dispatchEvent(new Event('resize'));
 }
 
-function close({ instant = false } = {}) {
+function close({ instant = false, ms = 0 } = {}) {
   if (!sheet) return;
   const s = sheet; sheet = null;
   releaseFocus(s.overlay);
@@ -113,10 +113,14 @@ function close({ instant = false } = {}) {
   if (instant || !animating()) finishClose();
   else {
     s.overlay.classList.add('is-closing');
+    /* a leaving sheet is no longer a dialog: nothing in it takes focus
+       and the page behind it is no longer hidden from a screen reader */
+    s.overlay.inert = true;
+    s.overlay.removeAttribute('aria-modal');
     s.overlay.addEventListener('transitionend', (e) => {
       if (e.target.classList && e.target.classList.contains('mn-sheet') && e.propertyName === 'transform') finishClose();
     });
-    closing.timer = setTimeout(finishClose, 240);
+    closing.timer = setTimeout(finishClose, Math.max(240, ms + 40));
   }
   syncBar();
   if (typeof s.onClose === 'function') { try { s.onClose(); } catch (e) { console.warn('[mobile-nav] onClose', e); } }
@@ -125,17 +129,22 @@ function close({ instant = false } = {}) {
 /* SWIPE DOWN TO DISMISS, from the sheet's header (never its scrolling
    body). The pointer is captured, a second finger is ignored, an upward
    pull gets friction rather than a wall, and the transform is set on
-   the panel itself (not through an inherited variable). It closes on a
-   flick (> 0.11px/ms) or a quarter of the sheet's height; otherwise the
-   CSS transition snaps it home. With --motion at 0 nothing follows the
-   finger; the release still closes past the threshold. */
+   the panel itself (not through an inherited variable). The scrim
+   thins with the drag (its colour, not the overlay's opacity). It closes on a flick (release velocity > 0.11
+   px/ms) or a quarter of the sheet's height, and the rest of the way
+   runs at the finger's own speed (remaining distance / release
+   velocity, 120-300ms) so a fast flick does not slow at the handoff;
+   otherwise the CSS transition snaps it home. With --motion at 0
+   nothing follows the finger; the release still closes past the
+   threshold. */
 function wireDrag(overlay, panel, head) {
   let drag = null;
   const still = () => getComputedStyle(document.documentElement).getPropertyValue('--motion').trim() === '0';
   head.addEventListener('pointerdown', (e) => {
     if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if (e.target.closest && e.target.closest('button, a, input, select, textarea')) return;
-    drag = { id: e.pointerId, y: e.clientY, t: performance.now(), dy: 0, still: still() };
+    const t = performance.now();
+    drag = { id: e.pointerId, y: e.clientY, t, dy: 0, v: 0, py: e.clientY, pt: t, still: still() };
     try { head.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
   });
   head.addEventListener('pointermove', (e) => {
@@ -143,24 +152,57 @@ function wireDrag(overlay, panel, head) {
     let dy = e.clientY - drag.y;
     if (dy < 0) dy = dy * 0.2;                 // friction past the open edge
     drag.dy = dy;
+    /* release velocity: the latest stretch of the move, smoothed a little,
+       not the average since the press (a slow start hid a fast flick) */
+    const now = performance.now();
+    const dt = now - drag.pt;
+    if (dt > 0) {
+      const v = (e.clientY - drag.py) / dt;
+      drag.v = drag.v ? 0.6 * v + 0.4 * drag.v : v;
+      drag.py = e.clientY; drag.pt = now;
+    }
     if (drag.still) return;
     panel.style.transition = 'none';
     panel.style.transform = 'translateY(' + dy + 'px)';
+    /* the SCRIM thins with the drag, not the overlay (the sheet is its
+       child and must stay solid under the finger) */
+    const left = Math.max(0, 1 - Math.max(0, dy) / Math.max(1, panel.offsetHeight));
+    overlay.style.transition = 'none';
+    overlay.style.backgroundColor = 'color-mix(in srgb, var(--scrim) ' + Math.round(left * 100) + '%, transparent)';
   });
   const end = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
-    const ms = Math.max(1, performance.now() - d.t);
-    panel.style.transition = '';
-    const go = d.dy > 0 && (d.dy > 0.25 * panel.offsetHeight || d.dy / ms > 0.11);
+    /* a finger that stopped before lifting has no velocity left */
+    const v = performance.now() - d.pt > 80 ? 0 : d.v;
+    const h = Math.max(1, panel.offsetHeight);
+    const go = d.dy > 0 && (d.dy > 0.25 * h || v > 0.11);
     if (go) {
-      /* continue from where the finger left it: the closing rule's
-         transform is the destination; the inline one is cleared on the
-         next frame so the transition runs from here */
-      if (sheet && sheet.overlay === overlay) close();
+      /* continue from where the finger left it, at its speed: the closing
+         rule's transform and opacity are the destination; the inline ones
+         are cleared on the next frame so the transitions run from here */
+      let ms = 0;
+      if (!d.still && v > 0) {
+        const rest = Math.max(1, h - d.dy);
+        ms = Math.round(Math.min(300, Math.max(120, rest / v)));
+        /* an ease-out whose opening slope IS the finger's speed: for
+           cubic-bezier(x1, 1, …) the start slope is 1/x1 (in units of
+           rest/ms), so x1 = rest / (v * ms), kept inside 0.05-0.5 */
+        const x1 = Math.min(0.5, Math.max(0.05, rest / (v * ms))).toFixed(3);
+        const curve = 'cubic-bezier(' + x1 + ', 1, 0.3, 1)';
+        panel.style.transition = 'transform ' + ms + 'ms ' + curve;
+        overlay.style.transition = 'opacity ' + ms + 'ms ' + curve;
+      } else {
+        panel.style.transition = '';
+        overlay.style.transition = '';
+      }
+      if (sheet && sheet.overlay === overlay) close({ ms });
       requestAnimationFrame(() => { panel.style.transform = ''; });
     } else {
+      panel.style.transition = '';
       panel.style.transform = '';               // the transition snaps it back
+      overlay.style.transition = 'background-color var(--speed) var(--ease-out)';
+      overlay.style.backgroundColor = '';
     }
   };
   head.addEventListener('pointerup', end);

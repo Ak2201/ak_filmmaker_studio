@@ -291,6 +291,11 @@ html .mobile-actionbar a {
   text-transform: none;
 }
 html .mobile-actionbar .mab-icon { font-size: 22px; line-height: 1; color: inherit; }
+html .mobile-actionbar button,
+html .mobile-actionbar a {
+  transition: background var(--speed) var(--ease), color var(--speed) var(--ease),
+              transform var(--speed-tap) var(--ease-out);
+}
 @media (hover: hover) {
   html .mobile-actionbar button:hover,
   html .mobile-actionbar a:hover { background: var(--surface-hover); color: var(--ink); }
@@ -611,10 +616,10 @@ html .mn-head::before {
   content: "";
   position: absolute;
   top: var(--s1);
-  left: 50%;
-  width: 36px;
-  height: 4px;
-  margin-left: -18px;
+  inset-inline: 0;
+  width: calc(var(--s6) + var(--s1));   /* 36px */
+  height: var(--s1);
+  margin-inline: auto;
   border-radius: var(--radius-pill);
   background: var(--border-strong);
   pointer-events: none;

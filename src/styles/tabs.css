@@ -105,6 +105,8 @@
   border: 0;
   border-radius: var(--radius-pill);
   cursor: pointer;
+  transition: color var(--speed) var(--ease), background-color var(--speed) var(--ease),
+              transform var(--speed-tap) var(--ease-out);
 }
 /* the selected row's own dot, at the end: only when nothing else
    (count, tick, PLAN flag) sits there. A shape, not a distance. */

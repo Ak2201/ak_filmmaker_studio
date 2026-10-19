@@ -357,7 +357,8 @@
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+  transition: background var(--speed) var(--ease), color var(--speed) var(--ease),
+              transform var(--speed-tap) var(--ease-out);
 }
 .k-seg-btn:hover { color: var(--ink); background: var(--surface-card); }
 .k-seg-btn:focus-visible { outline: var(--focus); outline-offset: 1px; }
@@ -658,15 +659,15 @@
 .k-meter-row b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .k-meter-track { position: relative; height: 4px; background: var(--surface-hover); border-radius: var(--radius-pill); overflow: hidden; }
 .k-meter-fill {
-  /* transform, not width: a composite-only change (meter.js sets
-     --k-frac on the fill itself, so nothing else restyles). A resting
-     scale, not a distance, so not x --motion. The track's pill radius
-     and overflow:hidden clip the ends. */
+  /* A clip, not width: no layout (meter.js sets --k-frac on the fill
+     itself, so nothing else restyles). Not scaleX either: a scale
+     squashes the rounded moving end square, and the kit's meter ends in
+     a pill. A resting extent, not a distance, so not x --motion. */
   position: absolute; inset: 0;
   background: var(--k-meter-c, var(--accent-primary));
-  transform-origin: left center;
-  transform: scaleX(var(--k-frac, 0));
-  transition: transform var(--speed-slow) var(--ease-out);
+  border-radius: inherit;
+  clip-path: inset(0 calc((1 - var(--k-frac, 0)) * 100%) 0 0 round var(--radius-pill));
+  transition: clip-path var(--speed-slow) var(--ease-out);
 }
 .k-meter--ok     { --k-meter-c: var(--status-success); }
 .k-meter--warn   { --k-meter-c: var(--status-warning); }

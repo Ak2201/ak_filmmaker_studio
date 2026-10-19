@@ -1117,6 +1117,25 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   transform: none;
 }
 
+/* THE PHONE'S NAVIGATION PRESSES TOO (19 Oct 2026). base.css removes
+   the browser's tap flash, so every control a thumb lands on needs its
+   own :active or a tap is silent. Compact controls (bottom bar, tabs,
+   segments) take the skin's one press scale; full-width rows (sheet
+   rows, rail flyout) take a tint, because a scaled row reads as the
+   whole sheet flinching. `html` lifts these over `html .mn-mod` and
+   `html .mobile-actionbar a` in mobile-nav.css. */
+html .mobile-actionbar a:active,
+html .mobile-actionbar button:active,
+html .tabs-tab:active,
+html .k-seg-btn:active {
+  transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion)));
+}
+html .mn-mod:active,
+html .sh-fly-mod:active {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
 /* A scene number Write has LOCKED (breakdown.js): the same badge, with
    an inner ring that says "this is fixed" without a word on the card;
    the title says it in words. Polarity-neutral: the ring is the

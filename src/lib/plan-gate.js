@@ -135,14 +135,20 @@ let offersNone = new Set();
  *    purchases off (open_features() opens every key) -> the matrix
  *      defaults, plus any key the server says false (nothing is plan-locked
  *      then, so a false is an override);
- *    purchases on -> an explicit true shows it (the console switched it
- *      back on); otherwise the matrix default, or a false that no plan
- *      row offers. */
+ *    purchases on -> a module the matrix leaves on shows unless the
+ *      server says false and no plan row offers it.
+ *  A matrix `plans: []` module is hidden in every case (see below). */
 export function isDisabledEverywhere(id) {
-  const off = OFF_BY_DEFAULT.includes(id);
-  if (!features || purchaseReq === false) return off || (!!features && features[id] === false);
+  /* The matrix's `plans: []` is FINAL (owner, 19 Oct 2026). The server's
+     features map cannot bring one of these back: the live §36 was run on
+     12 Oct, before 15 modules were switched off, so it still says true
+     for them on Pro, and trusting it put every one back in the rail's
+     flyouts. A module comes back by giving it a plan in the matrix. */
+  if (OFF_BY_DEFAULT.includes(id)) return true;
+  if (!features) return false;
+  if (purchaseReq === false) return features[id] === false;
   if (features[id] === true) return false;
-  return off || (features[id] === false && offersNone.has(id));
+  return features[id] === false && offersNone.has(id);
 }
 /** The one capability that is OFF unless the plan says true. */
 /* AI tools are LOCKED unless a known plan includes them. The opposite

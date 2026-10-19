@@ -4317,6 +4317,95 @@ html {
 .sh-rail-avatar[hidden],
 :root .sh-rail-person[hidden] { display: none; }
 
+/* ---- the account: the Google photo over the initials ----------------
+   (owner, 19 Oct 2026). The disc keeps its brand fill underneath, so a
+   photo that never arrives still reads as the initials. */
+.sh-rail-avatar { overflow: hidden; }
+.sh-rail-avatar.has-photo,
+.sh-acct-avatar.has-photo { background: var(--surface-elevated); }
+.sh-rail-avatar img,
+.sh-acct-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:root .sh-rail-account .sh-rail-avatar { width: 36px; height: 36px; font-size: var(--t-small); }
+/* The band's name pill is gone on a desk: the rail's avatar is the
+   account now. Kept in the DOM (auth.js keeps who is signed in on it,
+   and the phone's Tools sheet still offers it below 720px). */
+@media (min-width: 720px) {
+  .sh-bar #signInPill { display: none; }
+}
+
+/* ---- the account menu (shell.js openAcctMenu) ---------------------- */
+.sh-acct-menu {
+  position: fixed;
+  left: var(--sh-acct-left, calc(var(--sh-rail-w) + var(--s1)));
+  bottom: var(--sh-acct-bottom, var(--s2));
+  z-index: var(--z-float);
+  box-sizing: border-box;
+  width: 264px;
+  max-width: calc(100vw - var(--s4));
+  padding: var(--s2);
+  background: var(--surface-elevated);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: opacity var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+@starting-style {
+  .sh-acct-menu { opacity: 0; transform: translateX(calc(-4px * var(--motion))); }
+}
+.sh-acct-who {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s2) var(--s3);
+  margin-bottom: var(--s1);
+  border-bottom: 1px solid var(--border-hair);
+}
+.sh-acct-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--brand);
+  color: var(--brand-on);
+  font-size: var(--t-small);
+  font-weight: 700;
+}
+.sh-acct-id { display: flex; flex-direction: column; min-width: 0; }
+.sh-acct-name { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-acct-email { font-size: var(--t-micro); color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-acct-list { display: flex; flex-direction: column; gap: 2px; }
+.sh-acct-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--s2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--t-small);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sh-acct-item:hover,
+.sh-acct-item:focus-visible { background: var(--surface-hover); color: var(--ink); }
+.sh-acct-item:focus-visible { outline: var(--focus); outline-offset: -2px; }
+.sh-acct-icon { font-size: 18px; width: 20px; text-align: center; }
+@media print { .sh-acct-menu { display: none; } }
+
 /* ---- the stage flyout --------------------------------------------- */
 .sh-fly {
   position: fixed;
@@ -4680,10 +4769,6 @@ html {
 /* THE FLOATS clear the rail and the dock. The save state sat over the
    rail's foot at bottom-left, and both floats over the 32px dock. (The
    toasts keep their corner: the tour card shares it and is not the shell's.) */
-body.has-status-bar .save-indicator,
-body.has-status-bar .focus-timer { bottom: calc(var(--ssb-h, 32px) + var(--s3)); }
-body.has-status-bar.has-mobile-actionbar .save-indicator,
-body.has-status-bar.has-mobile-actionbar .focus-timer { bottom: calc(var(--mab-h, 80px) + var(--ssb-h, 32px) + var(--s3)); }
 @media (min-width: 1100px) {
   body.has-sh-shell.rail-shown .save-indicator { left: calc(var(--sh-rail-w) + var(--s4)); }
 }

@@ -2396,3 +2396,38 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     `prove:presence` 5b (the caret moves four characters' width for four
     characters, and survives a redraw).
 
+    **Round-2 review (19 Oct 2026).** A ten-agent review workflow (five
+    reviewers, each followed by a skeptic who tried to refute every finding
+    and reproduced the pure-module ones in Node) reported 25 findings: 24
+    confirmed, 1 unsure, none refuted. All were fixed:
+    - **Co-editing (switch-only, nothing live):** the merge base was this
+      device's own push, which a writer who was offline never saw, so a
+      line added here read as cut over there and was lost everywhere. The
+      base is now the copy last RECEIVED; a merge that drops a local line
+      salvages first. The page sampled the switch once, before the session
+      was restored, and read OFF; it now asks on every arrival. The
+      arrival's canonical form was computed against the base, so identical
+      arrivals were pushed back; own-push echo is compared as instants.
+    - **Switch off (live behaviour):** two writers typing at once added a
+      whole-script draft per save on both sides. The page's last arrival
+      draft is replaced in place for ten minutes and only the newest
+      "Use theirs" toast stays. A page saving a stale in-memory copy no
+      longer stamps its stale lines as the newest edit (`stampChanged`).
+    - **Word:** XML-illegal characters stripped on export; hand-typed
+      indents (leading tabs/spaces) read on import; a paragraph's style now
+      decides its type (the round trip keeps MONTAGE, LATER, shots);
+      `heading N` is not a scene style; non-breaking/soft hyphens; text
+      boxes no longer duplicate. The Breakdown's picker accepts .docx
+      (`test:accept` guards every picker).
+    - **Locked pages:** `lockPlan()` keeps only rising starts, keys split
+      starts by occurrence, re-anchors split and blanked starts, places
+      OMITTED rows before the locked break, folds a missing number onto the
+      last page before the next one, and never prints the first page's
+      number.
+    - **Presence/console:** carets follow typing and resize; focus on another
+      row sends no stale offset; only the owner sees the switch; a failed
+      read can be retried.
+    - **Copy:** "keeps working offline" became "once it is open"; a cold
+      offline start is refused by the site gate (KNOWN-ISSUES, owner
+      decision).
+

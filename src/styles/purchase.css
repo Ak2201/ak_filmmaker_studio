@@ -12,11 +12,45 @@
 }
 /* the phone gutter every page's column takes (one frame) */
 @media (max-width: 719px) { .pu-body { padding-inline: var(--s4); } }
-.pu-sec { display: grid; gap: var(--s4); }
-.pu-sec > .bd-eyebrow,
-.pu-sec > .bd-h2,
-.pu-sec > .bd-sub { margin-bottom: 0; }
+/* A section is a stack, not a card: the surfaces are its parts (the
+   current-plan strip, each plan card, the comparison, the panels), so
+   no card ever holds another card. */
+.pu-sec { display: grid; gap: var(--s5); min-width: 0; }
+.pu-sec-head { display: grid; gap: var(--s1); }
+.pu-sec-head > .bd-eyebrow,
+.pu-sec-head > .bd-h2,
+.pu-sec-head > .bd-sub { margin: 0; }
+.pu-sec-head > .bd-sub { max-width: var(--measure); }
 .pu-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.pu-deck { margin: 0; }
+
+/* ---- the current plan: one strip, identity left, usage right ------ */
+.pu-current {
+  display: grid;
+  gap: var(--s4) var(--s6);
+  padding: var(--s5);
+  background: var(--paper-raised);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.pu-current.is-buyer { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: start; }
+.pu-current-id { display: grid; gap: var(--s2); align-content: start; min-width: 0; }
+.pu-current-id > .bd-eyebrow,
+.pu-current-id > .bd-h2 { margin: 0; }
+.pu-current-id > .bd-h2 { overflow-wrap: anywhere; }
+.pu-current-state { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); font-size: var(--t-small); color: var(--ink-body); }
+.pu-current-use { display: grid; gap: var(--s2); min-width: 0; }
+.pu-use-h { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+@media (max-width: 960px) { .pu-current.is-buyer { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 719px) { .pu-current { padding: var(--s4); } }
+
+/* ---- the plans heading -------------------------------------------- */
+.pu-plans-head { display: grid; gap: var(--s1); }
+.pu-h3 { margin: 0; font-family: var(--f-display); font-size: var(--t-xl); font-weight: 700; color: var(--ink); }
+.pu-plans-head > .bd-sub { margin: 0; max-width: var(--measure); }
+
+/* ---- refunds and invoices, each its own section ------------------- */
+.pu-aside > * { margin: 0; }
 
 /* ---- the referral panel (growth-panels.js) -----------------
    Drawn under the plan cards. growth.css owns the panel's own shape

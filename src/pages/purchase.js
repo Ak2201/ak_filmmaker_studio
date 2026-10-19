@@ -31,7 +31,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
 import { pageHeader } from '../ui/kit/page-header.js';
 import Billing from '../lib/billing.js';
-import { planCards, usageList } from '../ui/plan-cards.js';
+import { planCards, usageTiles } from '../ui/plan-cards.js';
 import { listPriceBlock } from '../ui/list-prices.js';
 import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
@@ -77,9 +77,10 @@ function applyLinkCode() {
 let billing = { plans: null, st: null, error: '', missing: false, loading: false };
 
 function section(id, eyebrow, title, deck) {
-  const sec = h('section.pu-sec.st-sec', { id });
-  sec.append(h('p.bd-eyebrow', { text: eyebrow }), h('h2.bd-h2', { text: title }));
-  if (deck) sec.append(h('p.bd-sub', { text: deck }));
+  const sec = h('section.pu-sec', { id });
+  const head = h('div.pu-sec-head', {}, [h('p.bd-eyebrow', { text: eyebrow }), h('h2.bd-h2', { text: title })]);
+  if (deck) head.append(h('p.bd-sub', { text: deck }));
+  sec.append(head);
   return sec;
 }
 
@@ -164,35 +165,70 @@ function planSection() {
   if (purchasesOff(st)) {
     const sec = section('plan', 'Plan', 'Free to use.', FREE_LINE);
     sec.dataset.purchases = 'off';
-    const invs0 = memberInvoicePanel(st, { rerender: render });
-    if (invs0) sec.append(invs0);
     return sec;
   }
-  const sec = section('plan', 'Plan', planHeading(st), DECK);
+  const buyer = !!(st && st.plan !== 'free');
+  const sec = h('section#plan.pu-sec');
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
+
+  /* THE CURRENT PLAN, as one strip: what you hold and where it stands,
+     then the usage against its caps as tiles. Usage is measured against
+     a PLAN's caps; with no plan there is no free tier to be "0 of 1"
+     against (owner, 11 Oct 2026), so the tiles are drawn for a buyer only. */
+  const strip = h('div.pu-current' + (buyer ? '.is-buyer' : ''));
+  const ident = h('div.pu-current-id', {}, [
+    h('p.bd-eyebrow', { text: buyer ? 'Your plan' : 'Plan' }),
+    h('h2.bd-h2', { text: planHeading(st) })
+  ]);
+  if (buyer && !(st && st.lapsed)) {
+    ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Active']),
+      h('span', { text: ' Bought once, yours for good. Move up any time and pay only the difference.' })]));
+  }
   if (st) {
     const tl = trialLine(st);
-    if (tl) sec.append(tl);
-    /* Usage is measured against a PLAN's caps. With no plan there is no
-       free tier to be "0 of 1" against (owner, 11 Oct 2026), so it is
-       drawn for a buyer only. */
-    const u = st.plan !== 'free' ? usageList(st) : null;
-    if (u) sec.append(h('h3.gt-h3', { text: 'Your usage' }), u);
-    if (st.lapsed) sec.append(h('p.pl-status', { text: lapsedLine(st) }));
+    if (tl) ident.append(tl);
+    if (st.lapsed) ident.append(h('p.pl-status', { text: lapsedLine(st) }));
   }
+  strip.append(ident);
+  const tiles = buyer ? usageTiles(st) : null;
+  if (tiles) strip.append(h('div.pu-current-use', {}, [h('h3.pu-use-h', { text: 'Your usage' }), tiles]));
+  sec.append(strip);
+
+  /* THE PLANS: a heading, what a plan does, and the row. */
+  sec.append(h('div.pu-plans-head', {}, [
+    h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
+    h('p.bd-sub', { text: DECK })
+  ]));
   sec.append(planCards(billing.plans, st, {
     onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
   }));
   const growth = memberGrowthPanels(st, { rerender: render });
   if (growth) sec.append(growth);
-  const refundBlock = refundRequestPanel({ rerender: render });
-  if (refundBlock) sec.append(refundBlock);
-  const invs = memberInvoicePanel(st, { rerender: render });
-  if (invs) sec.append(invs);
   const extras = planExtras(st);
   if (extras) sec.append(extras);
   return sec;
+}
+
+/* REFUNDS and INVOICES, each its own section under the plans, so a
+   buyer looking for a receipt does not scroll through the price row to
+   find it. Each panel decides whether it has anything to say (a refund
+   request only while the studio's switch is on and a payment is
+   eligible; invoices once billing is deployed); an empty one draws
+   nothing. An invoice already issued stays the buyer's even while
+   nothing is on sale. */
+function afterSections() {
+  const st = billing.st;
+  const c = cloud();
+  if (!st || !billing.plans || !c || !c.getSession || !c.getSession()) return [];
+  const out = [];
+  if (!purchasesOff(st)) {
+    const rf = refundRequestPanel({ rerender: render });
+    if (rf) { const sec = h('section#refunds.pu-sec.pu-aside'); sec.append(rf); out.push(sec); }
+  }
+  const inv = memberInvoicePanel(st, { rerender: render });
+  if (inv) { const sec = h('section#invoices.pu-sec.pu-aside'); sec.append(inv); out.push(sec); }
+  return out;
 }
 
 function render() {
@@ -204,6 +240,7 @@ function render() {
   body.append(h('p.bd-deck.pu-deck', { text: purchasesOff(billing.st) ? 'Nothing is for sale at the moment, and every part of the studio is open.'
     : 'Choose a plan, pay once, and find your invoices and refund requests in the same place.' }));
   body.append(planSection());
+  for (const x of afterSections()) body.append(x);
   main.append(body);
   if (!commitMain(app, main, mountShell)) return;
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[purchase] chrome', e); }

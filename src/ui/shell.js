@@ -137,7 +137,13 @@ function hereModules() {
   };
   for (const phase of phases()) add(phase, null, phase.modules);
   for (const g of globals()) if (Array.isArray(g.modules)) add(null, g, g.modules);
-  return out;
+  /* A module switched off for everybody is not where you are: the rail
+     hides it, so a crumb naming it ("Screenplay Analysis" on the
+     Breakdown) points at nothing. Unless EVERY module the page hosts is
+     off — then the page is a "Not available" card and the crumb still
+     says what it was. Guarded: plan-gate is not ready at first call. */
+  const on = out.filter((x) => { try { return !PLAN.isOff(x.module.id); } catch (e) { return true; } });
+  return on.length ? on : out;
 }
 
 /** Laid out and not inside anything hidden — a tab that is not the

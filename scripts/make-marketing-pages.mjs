@@ -173,7 +173,7 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="${esc(u.mainNav)}">
       <div class="mk-nav-item">
-        <a class="mk-nav-link mk-nav-prod" id="mkProd" href="#tools" aria-haspopup="true" aria-expanded="false" aria-controls="mkMega"><span>${esc(u.product)}</span>${sym('expand_more')}</a>
+        <a class="mk-nav-link mk-nav-prod" id="mkProd" href="start.html#tools" aria-haspopup="true" aria-expanded="false" aria-controls="mkMega"><span>${esc(u.product)}</span>${sym('expand_more')}</a>
         <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}
         </div>
       </div>

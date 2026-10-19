@@ -80,7 +80,7 @@ const top = byId('mkTop');
 })();
 
 /* ---- 3. the mega-menu and the phone menu ---------------------------
-   Product is an <a href="#tools"> in the markup, so with scripts off it
+   Product is an <a href="start.html#tools"> in the markup (only the home page has #tools), so with scripts off it
    jumps to the list of every tool. Here it becomes the disclosure for the
    four-column panel: click, Enter and Space toggle it; hover opens it
    with a short grace period (mouse only, desktop width); Escape closes it

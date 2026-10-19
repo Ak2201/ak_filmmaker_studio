@@ -883,9 +883,8 @@ function renderAI(s) {
    One button. What goes in is listed beside it, read from the same
    models the deck reads, so nobody prints a deck to find out what is
    in it. */
-/* The header's Export menu. actionMenu draws commands as `data-action`
-   items; this page's click handler reads `data-st`, so each item is
-   re-pointed after the build. An export with nothing in it is left out
+/* The header's Export menu: a kit button (actionMenu's `kit`), and each
+   item carries `data-st`, which this page's click handler reads. An export with nothing in it is left out
    rather than drawn disabled: a disabled item cannot take focus, so its
    reason would live only in a tooltip. */
 function exportMenu(s) {
@@ -893,17 +892,7 @@ function exportMenu(s) {
     { label: 'Synopsis', hint: '.txt', st: 'export-txt', can: IO.canExportSynopsis(s) },
     { label: 'Outline', hint: '.md', st: 'export-md', can: IO.canExportOutline(s) }
   ].filter((o) => o.can);
-  const menu = actionMenu('Export', opts.map(({ label, hint }) => ({ label, hint })), { align: 'right' });
-  const btn = menu.querySelector('.tb-menu-btn');
-  btn.classList.remove('btn');
-  btn.classList.add('k-btn', 'k-btn--secondary');
-  const items = menu.querySelectorAll('.tb-item');
-  opts.forEach((o, i) => {
-    const it = items[i];
-    it.removeAttribute('data-action');
-    it.dataset.st = o.st;
-  });
-  return menu;
+  return actionMenu('Export', opts.map(({ label, hint, st }) => ({ label, hint, data: { st } })), { align: 'right', kit: 'secondary' });
 }
 
 function renderPitch() {

@@ -67,6 +67,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import PDF from '../lib/pdf.js';
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
@@ -295,8 +296,11 @@ function renderStrip(scene, maxDay, movable) {
   const st = scene.shotState || '';
   if (st) {
     const tone = st === 'shot' ? 'ok' : st === 'part' ? 'warn' : null;
-    row.append(h('a.sb-shot.is-' + st + '.k-badge' + (tone ? '.k-badge--' + tone : ''), {
-      href: 'shoot.html', title: 'Marked on the shoot day — change it there',
+    /* A link only while Shoot Day can be opened; switched off, the mark
+       is still a fact about the strip, so it stays, as plain text. */
+    const toShoot = !isDisabledEverywhere('shoot-day');
+    row.append(h((toShoot ? 'a' : 'span') + '.sb-shot.is-' + st + '.k-badge' + (tone ? '.k-badge--' + tone : ''), {
+      href: toShoot ? 'shoot.html' : null, title: toShoot ? 'Marked on the shoot day — change it there' : 'Marked on the shoot day',
       text: st === 'part' ? 'Part shot' : Scenes.shotLabel(st)
     }));
   }
@@ -385,7 +389,9 @@ function dayPicker(scene, maxDay) {
 function renderControls() {
   const seg = segmented({
     label: 'Group strips by', name: 'sb-group', value: view.group, action: 'sb-group',
-    options: GROUPINGS.map((g) => ({ value: g.id, label: g.label }))
+    /* "Song" only while the Songs module exists for somebody. */
+    options: GROUPINGS.filter((g) => g.id !== 'song' || !isDisabledEverywhere('songs'))
+      .map((g) => ({ value: g.id, label: g.label }))
   });
   seg.querySelectorAll('.k-seg-btn').forEach((b) => {
     b.dataset.group = b.dataset.value;

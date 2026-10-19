@@ -604,7 +604,9 @@ function stageCard(s, suggested, js, current) {
   s.facts.forEach((f) => facts.append(h('li', { text: f })));
   li.append(facts);
   const acts = h('div.st-acts');
-  acts.append(button({
+  /* No href: every module of the stage is switched off (journey.js
+     stageHref), so there is nothing to open and no button is drawn. */
+  if (s.href) acts.append(button({
     label: GO[s.status.id], variant: suggested ? 'primary' : 'secondary', iconAfter: 'arrow_forward',
     href: s.href, class: 'st-go',
     attrs: { 'aria-label': GO[s.status.id] + ' ' + s.label + ' — ' + s.status.label }

@@ -33,6 +33,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import { pageHeader, statStrip, statCard, button } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
 import Scenes, {
@@ -800,7 +801,8 @@ function fillDPR(sec, scenes) {
 
   out.push(h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
     dayPicker('rp-dpr-day', days, d.day),
-    button({ label: 'Mark scenes on the shoot day', href: 'shoot.html' }),
+    /* Shoot Day switched off for everybody: no way there to offer. */
+    isDisabledEverywhere('shoot-day') ? null : button({ label: 'Mark scenes on the shoot day', href: 'shoot.html' }),
     h('span.rp-spacer'),
     actionMenu('Export', [
       { label: 'Print the DPR', action: 'print-dpr' },

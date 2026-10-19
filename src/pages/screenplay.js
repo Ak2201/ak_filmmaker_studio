@@ -247,6 +247,7 @@ const smart = createSmartType({
 const say = (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (e) { /* chrome may not be up */ } };
 
 /* ---- the editor ----------------------------------------------- */
+let presence = null;        // src/ui/presence.js, mounted at boot; redrawn after a page render
 let curId = null;           // the line the caret is in
 let Typeset = null;         // the typesetter, once loaded (page breaks)
 
@@ -498,6 +499,7 @@ function renderPage(focus) {
   if (focus) editor.applyFocus(focus);
   applyBreaksSoon();
   sceneSyncLater();
+  if (presence) presence.draw();   // the rows are new, so are the marks and carets on them
 }
 
 /* ---- current line type + the empty hint (DOM only) ------------ */
@@ -1178,7 +1180,7 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeI
 
 /* ---- boot --------------------------------------------------------- */
 render();
-mountPresence({
+presence = mountPresence({
   strip: () => document.getElementById('scPeers'),
   warn: () => document.getElementById('scPeerWarn'),
   rowOf: (id) => editor.rowOf(id)

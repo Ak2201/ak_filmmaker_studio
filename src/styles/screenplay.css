@@ -1083,3 +1083,18 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-sheet .wr-el.sc-peer-row::after { content: none; }
 }
 @media print { .sc-peers, .sc-peer-warn { display: none !important; } .sc-sheet .wr-el.sc-peer-row { box-shadow: none; } .sc-sheet .wr-el.sc-peer-row::after { content: none; } }
+/* Another writer's caret, at the character (src/ui/presence.js
+   caretPoint). Positioned in the row; never takes a click. */
+.sc-sheet .wr-el .sc-peer-caret {
+  position: absolute; z-index: 2; width: 2px;
+  background: var(--brand);
+  pointer-events: none;
+}
+.sc-peer-caret-name {
+  position: absolute; bottom: 100%; left: 0;
+  padding: 0 var(--s1);
+  font-family: var(--f-body); font-size: var(--t-micro); font-weight: 600; line-height: 1.4; white-space: nowrap;
+  color: var(--brand-on); background: var(--brand);
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-sm) 0;
+}
+@media print { .sc-sheet .wr-el .sc-peer-caret { display: none; } }

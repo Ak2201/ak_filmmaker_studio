@@ -11,8 +11,10 @@
    WHAT IT IS NOT. The script syncs as one blob, last write wins
    (cloud.js scope `script`). Presence does not merge anything; it
    tells two writers they are both in the script, and warns while the
-   other one is typing, so they can agree who writes. Live cursors
-   inside a line would promise a merge that does not exist.
+   other one is typing, so they can agree who writes. With the
+   co-editing switch on (schema §49) the two copies DO merge, line by
+   line (src/lib/script-merge.js), and each person's caret is drawn in
+   the line they are on, at the character (`pos`).
 
    CLOCKS. "Is typing" is judged on THIS machine's clock: the page
    records when it last SAW a person's edit stamp change (lastSeen),
@@ -49,7 +51,8 @@ export function initials(name) {
  *   selfKey   this user's key (left out: you know you are here)
  *   lastSeen  { [key]: ms } when this page last saw that person's `at` change
  *   now       ms
- * → [{ key, name, elId, editing }]
+ * → [{ key, name, elId, pos, editing }]   pos: the caret's offset in that
+ *   line, or null when the other page did not say (an older build)
  */
 export function presencePeople(raw, selfKey, lastSeen = {}, now = Date.now()) {
   const out = [];
@@ -61,6 +64,7 @@ export function presencePeople(raw, selfKey, lastSeen = {}, now = Date.now()) {
       key,
       name: String(latest.name || 'A collaborator').slice(0, 80),
       elId: typeof latest.elId === 'string' ? latest.elId : '',
+      pos: Number.isInteger(latest.pos) && latest.pos >= 0 ? latest.pos : null,
       editing: !!latest.editing && seen > 0 && now - seen < EDIT_WINDOW_MS
     });
   }

@@ -2385,3 +2385,14 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     (19), `prove:presence` case 8 (merge on the page; Realtime faked). The
     live check needs two accounts after §49 runs and the switch is on.
 
+    **Live cursors.** Presence sends the caret's offset as well as its
+    line (`pos`, from `selectionchange`/`keyup`, throttled with the rest),
+    and the Screenplay Writer draws each other writer's caret at the
+    character: a hidden mirror of the line's textarea, given its box and text
+    styles, lays the text out the same way and a marker span at `pos` is
+    measured (`caretPoint` in `src/ui/presence.js`). A named 2px caret sits
+    in the row and never takes a click; a page render redraws them. An older
+    page that sends no `pos` simply has no caret. `test:presence` (+3),
+    `prove:presence` 5b (the caret moves four characters' width for four
+    characters, and survives a redraw).
+

@@ -30,6 +30,19 @@ once and not yet looked at.
   duplicates save and are flagged). To renumber a bound scene, change
   its heading in Write.
 
+## Open 19 Oct 2026: old Outline links land on a hidden tab, sometimes
+
+`write.html#outline` redirects to `breakdown.html#script` (`src/lib/write-route.js`
+`outline:`). `#script` is Screenplay Analysis, module `script-breakdown`, which
+has been `plans: []` since 17 Oct 2026, so plan-gate hides it. Whether
+`tabs.js` picks the tab before or after it is hidden is a race: usually the
+URL stays `#script` (on a hidden section), sometimes `tabs.js` falls back to
+the first tab and rewrites it to `#overview`. `prove:script` case 12 failed
+once in three runs on this. Not caused by item 52; found while running it.
+Needs an owner decision on where an old Outline link should land now (the
+Whole script tab, or the Story page's beat board), then one line in
+write-route.js and the proof's expectation.
+
 ## ~~A held Ctrl widens the band at 390~~ FIXED 19 Oct 2026
 
 It was not Ctrl. `shell.js` loads `video-help.js` on the first keydown,

@@ -146,6 +146,29 @@ const last = sent[sent.length - 1] || {};
 ok(last.elId === 'e2' && last.editing === true, '5  and says which line, and typing', last);
 ok(!sent.some((m) => 'text' in m || JSON.stringify(m).includes('He stops')), '5  the words themselves are never sent');
 
+/* 5b carets, at the character */
+await page.evaluate(() => window.__pr.sync({
+  'me-1': [{ name: 'Pia Owner', elId: 'e2', editing: false, at: 0 }],
+  'cal-2': [{ name: 'Cal Collab', elId: 'e2', pos: 0, editing: false, at: 0 }]
+}));
+await page.waitForTimeout(150);
+const c0 = await page.$eval('[data-el="e2"] .sc-peer-caret', (c) => ({ left: c.offsetLeft, name: c.textContent })).catch(() => null);
+await page.evaluate(() => window.__pr.sync({
+  'me-1': [{ name: 'Pia Owner', elId: 'e2', editing: false, at: 0 }],
+  'cal-2': [{ name: 'Cal Collab', elId: 'e2', pos: 4, editing: false, at: 0 }]
+}));
+await page.waitForTimeout(150);
+const c4 = await page.$eval('[data-el="e2"] .sc-peer-caret', (c) => c.offsetLeft).catch(() => null);
+const charW = await page.$eval('[data-el="e2"] .wr-text', (t) => { const c = document.createElement('canvas').getContext('2d'); c.font = getComputedStyle(t).font; return c.measureText('Ravi').width; });
+ok(c0 && c0.name === 'Cal', '5b the other writer\'s caret is drawn in their line, named', c0);
+ok(c0 && c4 != null && Math.abs((c4 - c0.left) - charW) <= 3, '5b and moves to the character: four characters on is four characters\' width', { c0: c0 && c0.left, c4, charW });
+const sentPos = await page.evaluate(() => window.__pr.sent.filter((m) => m.pos != null).length);
+ok(sentPos >= 1, '5b this page sends its own caret offset', sentPos);
+if (process.env.PROVE_SHOTS) await page.screenshot({ path: process.env.PROVE_SHOTS + '/caret-1280.png', clip: { x: 260, y: 380, width: 820, height: 260 } });
+await page.evaluate(() => { const t = document.querySelector('[data-el="e1"] .wr-text'); t.focus(); t.value = t.value + ' '; t.dispatchEvent(new Event('input', { bubbles: true })); });
+await page.waitForTimeout(400);
+ok(await page.$$eval('[data-el="e2"] .sc-peer-caret', (c) => c.length) === 1, '5b a page redraw keeps the caret (exactly one)');
+
 /* 6 they leave */
 await page.evaluate(() => window.__pr.sync({ 'me-1': [{ name: 'Pia Owner', elId: 'e2', editing: true, at: 1 }] }));
 await page.waitForTimeout(100);

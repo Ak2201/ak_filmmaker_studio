@@ -2,7 +2,9 @@
    PRESENCE — the screenplay's "also here" strip
    ------------------------------------------------------------
    Who else has this script open (avatars in the top bar), which line
-   each is on (a mark at the line's right edge, with their name), and a
+   each is on (a mark at the line's right edge, with their name), where
+   in that line their caret is (a thin named caret, drawn by measuring
+   the text in a hidden mirror of the line's textarea), and a
    warning while one of them is typing — because the script syncs last
    write wins, two people typing at once replace each other's saves.
    The model is src/lib/presence.js; the channel is cloud.js
@@ -33,11 +35,52 @@ const cloud = () => (typeof window !== 'undefined' ? window.StudioCloud : null);
  *   rowOf   (elId) => the line's row element, or null
  * }
  */
+/* Where character `pos` of a textarea sits, relative to the row that
+   holds it: a hidden div given the textarea's own box and text styles
+   lays the text out the same way, and a marker span at `pos` is
+   measured. Null when the textarea is not laid out (another tab). */
+const MIRROR_PROPS = ['boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+  'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'fontFamily', 'fontSize',
+  'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'textTransform', 'textIndent', 'tabSize', 'wordSpacing', 'textAlign'];
+let mirror = null;
+export function caretPoint(ta, pos) {
+  if (!ta || !ta.offsetParent || !ta.getClientRects().length) return null;
+  const cs = getComputedStyle(ta);
+  if (!mirror) {
+    mirror = document.createElement('div');
+    mirror.setAttribute('aria-hidden', 'true');
+    mirror.className = 'sc-peer-mirror';
+    document.body.append(mirror);
+  }
+  for (const k of MIRROR_PROPS) mirror.style[k] = cs[k];
+  mirror.style.position = 'absolute';
+  mirror.style.visibility = 'hidden';
+  mirror.style.whiteSpace = 'pre-wrap';
+  mirror.style.overflowWrap = 'break-word';
+  mirror.style.top = '0';
+  mirror.style.left = '-9999px';
+  const text = ta.value;
+  const at = Math.max(0, Math.min(pos, text.length));
+  mirror.textContent = text.slice(0, at);
+  const mark = document.createElement('span');
+  mark.textContent = text.slice(at, at + 1) || '\u200b';
+  mirror.append(mark);
+  const lineH = parseFloat(cs.lineHeight) || mark.offsetHeight || 16;
+  const row = ta.closest('[data-el]');
+  const t = ta.getBoundingClientRect(), r = row ? row.getBoundingClientRect() : t;
+  return {
+    left: Math.round(t.left - r.left + mark.offsetLeft - ta.scrollLeft),
+    top: Math.round(t.top - r.top + mark.offsetTop - ta.scrollTop),
+    height: Math.round(lineH)
+  };
+}
+
 export function mountPresence(o) {
   let link = null, joining = false;
   let raw = {}, selfKey = '', prevAt = {}, lastSeen = {};
   let marked = [];
-  let me = { name: '', elId: '', editing: false, at: 0 };
+  let me = { name: '', elId: '', pos: null, editing: false, at: 0 };
+  let carets = [];
   let sendTimer = 0, lastSent = 0;
 
   function draw() {
@@ -55,6 +98,23 @@ export function mountPresence(o) {
     }
     for (const row of marked) { row.classList.remove('sc-peer-row'); delete row.dataset.peer; }
     marked = [];
+    for (const c of carets) c.remove();
+    carets = [];
+    for (const p of people) {
+      if (!p.elId || p.pos == null) continue;
+      const row = o.rowOf(p.elId);
+      const ta = row && row.querySelector('.wr-text');
+      const at = ta ? caretPoint(ta, p.pos) : null;
+      if (!at) continue;
+      const mark = h('span.sc-peer-caret', { 'aria-hidden': 'true', title: p.name, 'data-editing': p.editing ? 'true' : 'false' }, [
+        h('span.sc-peer-caret-name', { text: p.name.split(/\s+/)[0] })
+      ]);
+      mark.style.left = at.left + 'px';
+      mark.style.top = at.top + 'px';
+      mark.style.height = at.height + 'px';
+      row.append(mark);
+      carets.push(mark);
+    }
     const byLine = new Map();
     for (const p of people) if (p.elId) byLine.set(p.elId, (byLine.get(p.elId) || []).concat(p.name));
     for (const [elId, names] of byLine) {
@@ -113,13 +173,23 @@ export function mountPresence(o) {
     raw = {}; draw();
   }
 
-  /* What this writer is doing: the line the caret is in, and typing. */
+  /* What this writer is doing: the line the caret is in, where in it,
+     and typing. */
   document.addEventListener('focusin', (e) => {
     const row = e.target && e.target.closest && e.target.closest('#wr-page [data-el]');
     if (!row || row.dataset.el === me.elId) return;
     me.elId = row.dataset.el;
     sendSoon();
   });
+  const notePos = () => {
+    const ta = document.activeElement;
+    if (!ta || !ta.matches || !ta.matches('#wr-page .wr-text') || typeof ta.selectionStart !== 'number') return;
+    if (ta.selectionStart === me.pos) return;
+    me.pos = ta.selectionStart;
+    sendSoon();
+  };
+  document.addEventListener('selectionchange', notePos);
+  document.addEventListener('keyup', notePos, { capture: true });
   document.addEventListener('input', (e) => {
     if (!e.target || !e.target.matches || !e.target.matches('#wr-page .wr-text')) return;
     me.editing = true;

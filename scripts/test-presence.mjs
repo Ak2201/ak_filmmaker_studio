@@ -35,6 +35,11 @@ ok(people.find((p) => p.key === 'cal').editing, 'seen typing a second ago: editi
 ok(!people.find((p) => p.key === 'ann').editing, 'seen a minute ago: no longer editing, whatever it says');
 ok(!P.presencePeople({ x: [{ name: 'X', editing: true, at: 1 }] }, 'me', {}, now)[0].editing, 'never seen to change: not editing');
 
+// caret offsets
+eq(P.presencePeople({ x: [{ name: 'X', elId: 'e1', pos: 7, at: 1 }] }, 'me', {}, now)[0].pos, 7, 'a caret offset is carried');
+eq(P.presencePeople({ x: [{ name: 'X', elId: 'e1', pos: -1, at: 1 }] }, 'me', {}, now)[0].pos, null, 'a bad one reads as unknown');
+eq(P.presencePeople({ x: [{ name: 'X', elId: 'e1', at: 1 }] }, 'me', {}, now)[0].pos, null, 'an older page that sends none: unknown');
+
 // noteSeen
 let st = P.noteSeen(raw, {}, {}, 500);
 eq(st.seen, { me: 500, cal: 500, ann: 500 }, 'first look stamps everyone with an edit time');

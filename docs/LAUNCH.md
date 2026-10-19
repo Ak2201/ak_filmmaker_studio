@@ -197,8 +197,11 @@ that one.
 
 ## 4. Run the schema sections that have never run
 
-> **OUTSTANDING AS OF 19 Oct 2026 — run these before the 19 Oct release goes live**, in
-> this order, each pasted the base64 way and checked against its SHA-256 first
+> **RAN LIVE 19 Oct 2026 (§36 re-run, §48–§51), each checksummed and probed over PostgREST** —
+> §48 `can_join_presence` and §49 `co_editing_enabled` answer, `claim_share` now answers 42501
+> "Sign in required" instead of failing 42702, anonymous `start_trial` is refused; §50 has no
+> anonymous probe (editor said Success). STILL OWED: redeploy `rzp-refund` and `rzp-verify`. The
+> list below is the record, in the order they ran, each pasted the base64 way and checked against its SHA-256 first
 > (`docs/LIVE-STEPS-2026-10-19.md` has the commands, checksums and read-backs):
 >
 > 1. **§36, regenerated** (a slice of `supabase-schema.sql`) — the seven modules that came back

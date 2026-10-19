@@ -420,6 +420,41 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(I.parseScript(hand.text, 'hand.docx').elements.map((e) => e.type), ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'],
     'docx (by hand): the indents and the right alignment give each type');
 
+  /* Typed by hand the usual way: tabs and spaces, no w:ind. A tab goes
+     to the next 0.5in stop (5 columns) unless the paragraph sets its own. */
+  const tabs = (n, text, extra = '') => `<w:p><w:pPr>${extra}</w:pPr><w:r>${'<w:tab/>'.repeat(n)}<w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
+  const typedBody = '<w:document><w:body>'
+    + wp('', 'INT. ROOM - DAY') + wp('', 'He sits.')
+    + tabs(5, 'ARUN') + tabs(2, 'Hello there.')
+    + wp('', ' '.repeat(22) + 'MEERA') + wp('', ' '.repeat(10) + 'Hi.')
+    + tabs(1, 'RAVI', '<w:tabs><w:tab w:val="left" w:pos="3168"/></w:tabs>')
+    + tabs(1, 'Yes.', '<w:ind w:left="720"/>')
+    + '</w:body></w:document>';
+  const typed = I.parseScript(I.docxScreenplayText(D.documentXmlToParagraphs(typedBody, {})).text, 'typed.docx');
+  eq(typed.elements.map((e) => e.type + ':' + e.text), [
+    'scene:INT. ROOM - DAY', 'action:He sits.', 'character:ARUN', 'dialogue:Hello there.',
+    'character:MEERA', 'dialogue:Hi.', 'character:RAVI', 'dialogue:Yes.'
+  ], 'docx (tabs and spaces): leading tabs and spaces count as indent, and a paragraph\'s own tab stop is used');
+
+  // Word's built-in Heading 1 is an act title, not a slug line.
+  eq([I.docxStyleType('heading 1'), I.docxStyleType('Heading 2'), I.docxStyleType('Scene Heading')], ['', '', 'scene'],
+    'docx: "heading N" is not a scene-heading style');
+  const acts = I.docxScreenplayText([{ text: 'Act One', style: 'heading 1' }, { text: 'INT. A - DAY' }, { text: 'Rain.' }]);
+  eq([acts.styled, String(acts.text).split('\n')[0]], [0, 'Act One'], 'docx: a Heading 1 line keeps its case and does not count as styled');
+
+  // A non-breaking hyphen is a hyphen; a soft one is nothing.
+  const hy = D.documentXmlToParagraphs('<w:body><w:p><w:r><w:t>SELF</w:t><w:noBreakHyphen/><w:t>DE</w:t><w:softHyphen/><w:t>STRUCT</w:t></w:r></w:p></w:body>');
+  eq(hy.map((p) => p.text), ['SELF-DESTRUCT'], 'docx: w:noBreakHyphen reads as "-", w:softHyphen as nothing');
+
+  /* A text box as modern Word writes it, Choice and Fallback: not read,
+     not duplicated, and the words after it in the same paragraph kept. */
+  const box = '<w:txbxContent><w:p><w:r><w:t>BOXED</w:t></w:r></w:p></w:txbxContent>';
+  const boxed = '<w:body><w:p><w:r><w:t>Before</w:t></w:r><w:r><mc:AlternateContent><mc:Choice Requires="wps"><w:drawing><wps:txbx>' + box
+    + '</wps:txbx></w:drawing></mc:Choice><mc:Fallback><w:pict><v:textbox>' + box + '</v:textbox></w:pict></mc:Fallback></mc:AlternateContent></w:r>'
+    + '<w:r><w:t>After</w:t></w:r></w:p><w:p><w:r><w:t>Next</w:t></w:r></w:p></w:body>';
+  eq(D.documentXmlToParagraphs(boxed).map((p) => p.text), ['BeforeAfter', 'Next'], 'docx: a text box is cut out whole, and the paragraph around it survives');
+  eq(D.documentXmlToText(boxed), 'BeforeAfter\nNext', 'docx (plain text): the same for the synopsis reader');
+
   // The whole file, through the ZIP, both ways a part can be stored.
   for (const method of [8, 0]) {
     const buf = zip([['[Content_Types].xml', '<Types/>', 0], ['word/document.xml', styledBody, method], ['word/styles.xml', STYLES, method]]);

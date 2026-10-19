@@ -14,10 +14,18 @@
 
    WHAT IT READS: paragraphs, tabs, line breaks and the text runs
    inside them, including text in tables (each cell is paragraphs
-   too). WHAT IT DOES NOT: headers, footers, footnotes, comments,
+   too). A non-breaking hyphen (`w:noBreakHyphen`, Ctrl+Shift+-) reads
+   as '-', or SELF-DESTRUCT comes back as one word; a soft hyphen
+   (`w:softHyphen`) is only a place Word MAY break and reads as
+   nothing. WHAT IT DOES NOT: headers, footers, footnotes, comments,
    tracked deletions (`w:delText` is skipped on purpose — deleted text
    is not the synopsis) and anything inside a text box drawn as a
-   shape. Encrypted documents are not ZIPs at all and are refused by
+   shape. A text box is CUT OUT before the paragraphs are split, not
+   merely ignored: its paragraphs sit inside the paragraph that
+   anchors it, so their </w:p> would end that one early and lose the
+   words after the box, and Word writes every box twice (mc:Choice and
+   an mc:Fallback copy for older readers), so the Fallback goes first.
+   Encrypted documents are not ZIPs at all and are refused by
    name rather than reported as corrupt.
 
    Regex rather than DOMParser for the XML, deliberately: it keeps
@@ -78,24 +86,48 @@ const decodeXml = (s) => s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi,
   return ENT[e.toLowerCase()] || _;
 });
 
+/* Remove every <tag …>…</tag> (and <tag/>), innermost first, so a
+   box inside a box — or a Fallback inside a Fallback — goes whole
+   rather than leaving the outer one's tail behind. */
+function cut(xml, tag) {
+  const self = new RegExp('<' + tag + '\\b[^>]*/>', 'g');
+  const inner = new RegExp('<' + tag + '\\b[^>]*>(?:(?!<' + tag + '\\b)[\\s\\S])*?</' + tag + '>', 'g');
+  let s = xml.replace(self, '');
+  for (let prev = ''; prev !== s;) { prev = s; s = s.replace(inner, ''); }
+  return s;
+}
+
+/* The body, with text boxes cut out (see the header) and every empty
+   paragraph — written self-closing, <w:p/>, with no </w:p> to split
+   on — expanded so it does not merge into the next, split into
+   paragraphs. */
+function paragraphsOf(xml) {
+  const body = (String(xml || '').match(/<w:body[\s\S]*<\/w:body>/) || [String(xml || '')])[0];
+  return cut(cut(body, 'mc:Fallback'), 'w:txbxContent')
+    .replace(/<w:p(\s[^>]*)?\/>/g, '<w:p></w:p>').split(/<\/w:p>/);
+}
+
+/* The run tokens we care about, in document order. A break may carry
+   attributes (<w:br w:type="page"/>); a tab may not, because an
+   attributed <w:tab …/> is a tab STOP in <w:pPr>, not a tab. */
+const RUN_RE = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/>|<w:cr\s*\/>|<w:noBreakHyphen\s*\/>|<w:softHyphen\s*\/>/g;
+/* One token's text, or null for a line break. */
+const runToken = (m) => m[1] !== undefined ? decodeXml(m[1])
+  : m[0].startsWith('<w:tab') ? '\t'
+  : m[0].startsWith('<w:noBreakHyphen') ? '-'
+  : m[0].startsWith('<w:softHyphen') ? ''
+  : null;
+
 /** WordprocessingML → text, one line per paragraph. Exported for tests. */
 export function documentXmlToText(xml) {
-  const body = (xml.match(/<w:body[\s\S]*<\/w:body>/) || [xml])[0];
-  // An empty paragraph is written self-closing, <w:p/>, and has no
-  // </w:p> to split on — expand it first or it merges into the next.
-  const paras = body.replace(/<w:p(\s[^>]*)?\/>/g, '<w:p></w:p>').split(/<\/w:p>/);
   const lines = [];
-  for (const p of paras) {
+  for (const p of paragraphsOf(xml)) {
     let line = '';
-    // Walk the tokens we care about in document order. A break may
-    // carry attributes (<w:br w:type="page"/>); a tab may not, because
-    // an attributed <w:tab …/> is a tab STOP in <w:pPr>, not a tab.
-    const re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/>|<w:cr\s*\/>/g;
+    const re = new RegExp(RUN_RE.source, 'g');
     let m;
     while ((m = re.exec(p))) {
-      if (m[1] !== undefined) line += decodeXml(m[1]);
-      else if (m[0].startsWith('<w:tab')) line += '\t';
-      else line += '\n';
+      const t = runToken(m);
+      line += t === null ? '\n' : t;
     }
     if (/<w:p[\s>]/.test(p) || line) lines.push(line);
   }
@@ -111,6 +143,8 @@ export function documentXmlToText(xml) {
      text      as documentXmlToText reads it (tabs, breaks)
      style     the style's NAME from word/styles.xml, else its id, else ''
      indL      the left indent in twips (1440 = one inch), 0 when unset
+     tabs      the paragraph's own tab stops in twips, ascending ([]
+               when it sets none — Word's default is every 720)
      jc        the alignment: '', 'left', 'center', 'right', 'both'…
      pageBreak a page break before or inside it
    Regex, like the rest of this file, so it runs in Node. */
@@ -132,30 +166,31 @@ export function styleNames(xml) {
   return out;
 }
 
-/** WordprocessingML → [{ text, style, indL, jc, pageBreak }]. Exported for tests. */
+/** WordprocessingML → [{ text, style, indL, tabs, jc, pageBreak }]. Exported for tests. */
 export function documentXmlToParagraphs(xml, names = {}) {
-  const body = (String(xml || '').match(/<w:body[\s\S]*<\/w:body>/) || [String(xml || '')])[0];
-  const paras = body.replace(/<w:p(\s[^>]*)?\/>/g, '<w:p></w:p>').split(/<\/w:p>/);
   const out = [];
-  for (const p of paras) {
+  for (const p of paragraphsOf(xml)) {
     if (!/<w:p[\s>]/.test(p)) continue;
     const pPr = (/<w:pPr>([\s\S]*?)<\/w:pPr>/.exec(p) || ['', ''])[1];
     const styleId = attr((/<w:pStyle\b[^>]*\/?>/.exec(pPr) || [''])[0], 'val');
     const ind = (/<w:ind\b[^>]*\/?>/.exec(pPr) || [''])[0];
     const indL = parseInt(attr(ind, 'left') || attr(ind, 'start') || '0', 10) || 0;
+    const tabs = ((/<w:tabs>([\s\S]*?)<\/w:tabs>/.exec(pPr) || ['', ''])[1].match(/<w:tab\b[^>]*\/>/g) || [])
+      .filter((t) => attr(t, 'val') !== 'clear')
+      .map((t) => parseInt(attr(t, 'pos'), 10)).filter((n) => n > 0).sort((a, b) => a - b);
     const jc = attr((/<w:jc\b[^>]*\/?>/.exec(pPr) || [''])[0], 'val');
     const pageBreak = /<w:pageBreakBefore(?:\s[^>]*)?\/>/.test(pPr) && !/w:val="(?:0|false)"/.test((/<w:pageBreakBefore[^>]*>/.exec(pPr) || [''])[0])
       || /<w:br\b[^>]*w:type="page"/.test(p);
     let text = '';
     const runs = p.replace(/<w:pPr>[\s\S]*?<\/w:pPr>/, '');
-    const re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/>|<w:cr\s*\/>/g;
+    const re = new RegExp(RUN_RE.source, 'g');
     let m;
     while ((m = re.exec(runs))) {
-      if (m[1] !== undefined) text += decodeXml(m[1]);
-      else if (m[0].startsWith('<w:tab')) text += '\t';
+      const t = runToken(m);
+      if (t !== null) text += t;
       else if (!/w:type="page"/.test(m[0])) text += '\n';
     }
-    out.push({ text, style: names[styleId] || styleId || '', indL, jc, pageBreak });
+    out.push({ text, style: names[styleId] || styleId || '', indL, tabs, jc, pageBreak });
   }
   return out;
 }

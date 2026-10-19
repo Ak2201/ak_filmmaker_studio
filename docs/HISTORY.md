@@ -147,7 +147,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    a deleted parent, and three account-tier escalations.
 
    **The SCHEMA HAS NOW RUN; the AUDIT is still static.** This note said for
-   a long time that `supabase-schema.sql` had never met a database, and that
+   a long time that `supabase/schema/supabase-schema.sql` had never met a database, and that
    stopped being true without anybody updating it — which is the failure mode
    this file exists to avoid. All seven tables are live on the project
    `conhlrulxfwkhsnymakz`, sections 11 and 12 (`claim_invite`, the scriptgen

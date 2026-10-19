@@ -65,7 +65,7 @@ sale" and the card offers no button. The free tier may not carry a price
 reach Supabase and holds a personal access token in
 `SUPABASE_ACCESS_TOKEN` (and the three `RAZORPAY_*` secrets, if they
 are to be set in the same run): `node scripts/deploy-billing.mjs`. It
-slices §16–§17 out of `supabase-schema.sql`, runs them through the
+slices §16–§17 out of `supabase/schema/supabase-schema.sql`, runs them through the
 Management API, asks the database that they landed, and deploys the
 functions with the CLI via npx. `--print` writes the same SQL to stdout
 for the dashboard editor instead. The cloud session this was built in
@@ -77,7 +77,7 @@ The schema section passes `npm run test:schema` on a real PostgreSQL;
 the whole purchase passes `npm run prove:billing` against a faked
 Razorpay and a faked Supabase. The order:
 
-1. **Run §16 of `supabase-schema.sql`** in the dashboard SQL editor.
+1. **Run §16 of `supabase/schema/supabase-schema.sql`** in the dashboard SQL editor.
    Then ask the database, not the file: `select id from plans order by
    sort` should return four rows through PostgREST as any signed-in
    user, and `billing_status()` should answer with `plan: 'free'`.
@@ -204,12 +204,12 @@ not evicted by a lapse; they are refused on the next insert.
 
 | | |
 | --- | --- |
-| `supabase-schema.sql` §16 | plans, payments, `accounts.plan_until`/`plan_period`, `apply_plan`, the service-role surface, `billing_status`, the triggers, the console RPCs, twelve checks |
+| `supabase/schema/supabase-schema.sql` §16 | plans, payments, `accounts.plan_until`/`plan_period`, `apply_plan`, the service-role surface, `billing_status`, the triggers, the console RPCs, twelve checks |
 | `supabase/functions/_shared/razorpay.js` | HMAC, signature checks, periods, prices, paise formatting. Plain JS so the browser imports the same formatter |
 | `supabase/functions/rzp-order` `rzp-verify` `rzp-webhook` | the three edge functions (Deno) |
 | `src/lib/billing.js` | the browser's half: plans, status, `buy()`, the admin RPCs. Writes nothing to localStorage |
-| `supabase-schema.sql` §19 | the accounts INSERT guard (A1b in `docs/SECURITY-RLS.md`) |
-| `supabase-schema.sql` §20 | `promo_codes`, `quote_order`, `promo_price`, the code on `payments`, the console RPCs |
+| `supabase/schema/supabase-schema.sql` §19 | the accounts INSERT guard (A1b in `docs/SECURITY-RLS.md`) |
+| `supabase/schema/supabase-schema.sql` §20 | `promo_codes`, `quote_order`, `promo_price`, the code on `payments`, the console RPCs |
 | `src/ui/plan-cards.js` + `src/styles/plans.css` | the four cards, the "Have a code?" box, the usage list |
 | `src/ui/billing-admin.js` | the console: overview, tier editor, promo codes, grant form, ledger |
 | `src/pages/settings.js` #plan · `purchase.html` #plan (the only buy screen) · `admin.html` #billing · `panel.js` | where they are drawn |
@@ -482,7 +482,7 @@ checks), `prove-billing.mjs` (m). Nothing to redeploy.
 that was not delivered, and where the law requires. §27 is how the studio
 honours those without the Razorpay dashboard, and how a customer asks.
 
-**Deploy order.** (1) Run §27 of `supabase-schema.sql` (it needs §16, §18
+**Deploy order.** (1) Run §27 of `supabase/schema/supabase-schema.sql` (it needs §16, §18
 and §22 — it adds a column to `billing_settings` — and replaces
 `mark_payment_refunded`). (2) `supabase functions deploy rzp-refund`
 (verifies the JWT itself; the gateway check is fine too). (3) **Redeploy
@@ -1015,7 +1015,7 @@ the published policy. Change both together.
 2. **Resend → API Keys → create** a key with *Sending access* for that domain.
 3. `supabase secrets set RESEND_API_KEY=re_… MAIL_FROM="FilmMakerStudio <support@filmmakerstudio.in>"`
 4. Run **§35** (from `-- 35. RECEIPT AND REFUND E-MAILS` to the end of
-   `supabase-schema.sql`) the checksummed way, after §32, §33 and §34.
+   `supabase/schema/supabase-schema.sql`) the checksummed way, after §32, §33 and §34.
 5. Redeploy **`rzp-verify`** and **`rzp-webhook`** from current source (both
    import `_shared/mail.js`). Keep `rzp-webhook` on `--no-verify-jwt`.
 6. Check: one test purchase → the receipt arrives; in Gmail, *Show original*
@@ -1085,7 +1085,7 @@ other's days. Tests: `scripts/schema-tests/goals-sync.sql`.
 ### Deploy (owner) — independent of §32–§36
 
 1. Take the text from `-- 37. ONE MORE SYNC SCOPE: write_goals` to the end of
-   `supabase-schema.sql`. Base64 it (`base64 -w0`), paste the ASCII, decode
+   `supabase/schema/supabase-schema.sql`. Base64 it (`base64 -w0`), paste the ASCII, decode
    in the SQL editor page (never paste raw SQL through the clipboard — it
    corrupts non-ASCII), and compare the editor's SHA-256 with
    `sha256sum` of the same text before pressing Run.

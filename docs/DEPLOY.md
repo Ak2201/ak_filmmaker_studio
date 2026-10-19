@@ -171,7 +171,7 @@ VITE_DISABLE_SW=1 npm run build
 
 ### 1. Run the schema — nothing works until this happens
 
-`supabase-schema.sql` has never been executed against the live project.
+`supabase/schema/supabase-schema.sql` has never been executed against the live project.
 Until it runs, sign-in will *appear* to succeed and every sync will
 fail against tables that do not exist.
 

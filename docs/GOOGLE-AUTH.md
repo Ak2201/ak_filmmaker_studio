@@ -14,7 +14,7 @@ first attempt fails.
 
 ## Blocker 1 — the schema has never been run
 
-`supabase-schema.sql` has **never been executed against the live
+`supabase/schema/supabase-schema.sql` has **never been executed against the live
 project.** It is a file in this repository, not a state of the database.
 
 Until it is run there are no `projects`, `project_data`, `accounts`,
@@ -33,7 +33,7 @@ order is in [step 4](#4-run-the-schema).
 
 The project's Supabase **Site URL** currently points at
 `https://ak-filmmaker-studio.vercel.app` — a stale address from an
-earlier deploy. The comment at the top of `supabase-schema.sql` still
+earlier deploy. The comment at the top of `supabase/schema/supabase-schema.sql` still
 records that value, which is where it came from.
 
 Supabase uses the Site URL as the fallback redirect target whenever the
@@ -74,7 +74,7 @@ match something the code computes.
   `src/lib/cloud.js` under "COMING BACK FROM THE PROVIDER".
 - **The anon key is public by design.** It ships in the browser and that
   is fine — access is decided by the row-level policies in
-  `supabase-schema.sql`. **Never** put a `service_role` key anywhere near
+  `supabase/schema/supabase-schema.sql`. **Never** put a `service_role` key anywhere near
   this app; the sign-in dialog rejects one if you paste it, but that is a
   courtesy, not a security boundary.
 - **Local-first is still the contract.** Nothing below is required for
@@ -185,7 +185,7 @@ match something the code computes.
 
 **Supabase dashboard → SQL Editor → New query.**
 
-1. Paste the whole of `supabase-schema.sql` — the entire file, top to
+1. Paste the whole of `supabase/schema/supabase-schema.sql` — the entire file, top to
    bottom, in one go. It is written to be applied in order: section 6
    deliberately redefines `has_project_access()`, `proj_select` and
    `proj_insert` over the versions defined earlier, and the last
@@ -378,7 +378,7 @@ It holds the last twelve displaced values, per browser.
   on the redirect URL, precisely so it does not end up in a server log or
   a `Referer` header.
 - **Audit RLS before you hand out share links to strangers.** The
-  policies in `supabase-schema.sql` have been reasoned about and the file
+  policies in `supabase/schema/supabase-schema.sql` have been reasoned about and the file
   documents several fixed holes, but they have never been exercised
   against a live project with more than one real user. That audit is open
   item 5 in `CLAUDE.md`.

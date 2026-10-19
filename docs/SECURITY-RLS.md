@@ -1,6 +1,6 @@
-# Row-level security audit — `supabase-schema.sql`
+# Row-level security audit — `supabase/schema/supabase-schema.sql`
 
-**This is a static audit.** `supabase-schema.sql` has never been executed against a
+**This is a static audit.** `supabase/schema/supabase-schema.sql` has never been executed against a
 real database, and nothing below was tested against one. Every claim here is read
 off the SQL text and the documented behaviour of Postgres RLS. The syntax was
 machine-checked — all 141 top-level statements and all 24 PL/pgSQL function bodies
@@ -868,7 +868,7 @@ fires in the first branch, so the later branch is never reached. An
 error that arrives before a line runs says nothing about that line.
 
 **What this means beyond the finding:** sections 6 and 7 of
-`supabase-schema.sql` have never run either. `projects_guard_owner`
+`supabase/schema/supabase-schema.sql` have never run either. `projects_guard_owner`
 and `comments_set_author` — both from section 5, line 268 onward —
 are also absent, so the original run stopped somewhere near line 200.
 The database is roughly sections 1-4 plus section 9.
@@ -1039,7 +1039,7 @@ overflow.
    everything above: an anonymous session gives a non-null `auth.uid()`,
    which satisfies the "is the caller signed in?" half of every policy
    in this document. Setup steps are in the header of
-   `supabase-schema.sql`; verifying them is a live check, like the rest
+   `supabase/schema/supabase-schema.sql`; verifying them is a live check, like the rest
    of this list.
 ---
 

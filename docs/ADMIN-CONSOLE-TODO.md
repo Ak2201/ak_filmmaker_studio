@@ -62,7 +62,7 @@ IDs: **O** owner step, **L** live check, **D** decision, **C** code gap, **Q** q
 - **C8. Admin first paint is 740 KB.** The admin row of `scripts/budget.json` was raised on purpose
   (596562 → 756932 measured). Lazy-loading the tab modules like `controls.js` does would claw back ~50 KB;
   `access-admin.js` imports `admin-customer.js` statically, so that import must be made lazy first.
-- **C9. Fold §40–§46 into `supabase-schema.sql`** (they are standalone files; the runner loads them
+- **C9. Fold §40–§46 into `supabase/schema/supabase-schema.sql`** (they are standalone files; the runner loads them
   itself) and replace "NOT RUN LIVE" with "RUN LIVE 13 Oct 2026" in each header and in `CLAUDE.md`'s
   "what is live" paragraph. Then drop the `STANDALONE` block in `scripts/test-schema.mjs`.
 - **C10. `prove-admin-health.mjs` and `prove-admin-people.mjs` are not in `package.json` / `test:all`.**

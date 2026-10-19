@@ -231,7 +231,7 @@ switched OFF** (`public-view.js`, `public-view-model.js`, `prove-growth.mjs`).
 Left to do: delete the scratch file `scripts/scratch-tour-walk.mjs`; run
 `verify` (the tour must write nothing while idle), gated `prove:gate`
 (screening room), `prove:billing`; the SQL for public links must stay a
-PROPOSAL until a security review — do not put it into `supabase-schema.sql`.
+PROPOSAL until a security review — do not put it into `supabase/schema/supabase-schema.sql`.
 
 ## Queued — nobody has started these
 
@@ -278,7 +278,7 @@ an existing record, as On set and Schedule did, needs none of this.
 
 ### Schema sections
 
-`supabase-schema.sql` has run through §14 on the live project; §16–§20
+`supabase/schema/supabase-schema.sql` has run through §14 on the live project; §16–§20
 are written and tested but **not run live**; §21 (upgrade), §22
 (referrals) and §23 (affiliates) exist only on `wip/a1db0236c653737b2`.
 Next free number is §24. Only one agent may write schema sections at a

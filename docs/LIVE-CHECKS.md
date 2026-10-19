@@ -95,7 +95,7 @@ Use `export` in a throwaway shell, not a `.env` file in the repo. There is no
 
 `FMS_*_EMAIL` + `FMS_*_PASSWORD` sign in through
 `/auth/v1/token?grant_type=password`. That only works if the **Email provider is
-enabled**, which `supabase-schema.sql`'s header says to disable. If this route
+enabled**, which `supabase/schema/supabase-schema.sql`'s header says to disable. If this route
 works, the script records it and **check PS1 fails** citing it — the behaviour
 is better evidence than the dashboard flag. Treat a working password grant as a
 finding, not a convenience.
@@ -146,7 +146,7 @@ prints the same ids.
 
 ### Provider settings — configuration, not SQL
 
-No policy in `supabase-schema.sql` can compensate for either of the first two.
+No policy in `supabase/schema/supabase-schema.sql` can compensate for either of the first two.
 "Google only" is two facts and this repository can supply only one: the client
 ships a single auth call, which is the markup, while Supabase mints a session
 for **any** enabled provider and the `/auth/v1/*` endpoints accept the public

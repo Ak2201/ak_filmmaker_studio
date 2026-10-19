@@ -4,11 +4,11 @@
    from src/data/navigation.json
    ------------------------------------------------------------
      node scripts/make-usage-names-sql.mjs           print the block
-     node scripts/make-usage-names-sql.mjs --write   put it in schema-43-usage-cohorts.sql
+     node scripts/make-usage-names-sql.mjs --write   put it in supabase/schema/schema-43-usage-cohorts.sql
      node scripts/make-usage-names-sql.mjs --check   exit 1 if the file differs
 
    The block is everything between BEGIN_MARK and END_MARK in
-   schema-43-usage-cohorts.sql: public.usage_names(), the one list the
+   supabase/schema/schema-43-usage-cohorts.sql: public.usage_names(), the one list the
    usage_daily CHECK and bump_usage() both read. `npm run test:usage-names`
    runs --check, so a module added to navigation.json without the SQL
    being regenerated fails the gate — the same pattern as
@@ -23,7 +23,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const ROOT = new URL('../', import.meta.url);
-const SQL = new URL('schema-43-usage-cohorts.sql', ROOT);
+const SQL = new URL('supabase/schema/schema-43-usage-cohorts.sql', ROOT);
 export const BEGIN_MARK = '-- BEGIN GENERATED: usage names';
 export const END_MARK = '-- END GENERATED: usage names';
 
@@ -71,7 +71,7 @@ export function generate() {
 function splice(text, block) {
   const a = text.indexOf(BEGIN_MARK);
   const b = text.indexOf(END_MARK);
-  if (a < 0 || b < a) throw new Error('schema-43-usage-cohorts.sql has no "' + BEGIN_MARK + '" … "' + END_MARK + '" block');
+  if (a < 0 || b < a) throw new Error('supabase/schema/schema-43-usage-cohorts.sql has no "' + BEGIN_MARK + '" … "' + END_MARK + '" block');
   return text.slice(0, a) + block + text.slice(b + END_MARK.length);
 }
 
@@ -83,11 +83,11 @@ if (import.meta.url === 'file://' + process.argv[1]) {
     const cur = readFileSync(SQL, 'utf8');
     const next = splice(cur, block);
     if (arg === '--write') {
-      if (next !== cur) { writeFileSync(SQL, next); console.log('✓ wrote usage names into schema-43-usage-cohorts.sql (' + allNames().length + ' names)'); }
+      if (next !== cur) { writeFileSync(SQL, next); console.log('✓ wrote usage names into supabase/schema/schema-43-usage-cohorts.sql (' + allNames().length + ' names)'); }
       else console.log('✓ already current (' + allNames().length + ' names)');
     } else if (arg === '--check') {
       if (next !== cur) {
-        console.error('✗ schema-43-usage-cohorts.sql does not match src/data/navigation.json — run: node scripts/make-usage-names-sql.mjs --write');
+        console.error('✗ supabase/schema/schema-43-usage-cohorts.sql does not match src/data/navigation.json — run: node scripts/make-usage-names-sql.mjs --write');
         process.exit(1);
       }
       console.log('✓ usage names match navigation.json (' + allNames().length + ' names)');

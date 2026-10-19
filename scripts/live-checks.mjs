@@ -5,7 +5,7 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * docs/SECURITY-RLS.md is a static audit of supabase-schema.sql. It found
+ * docs/SECURITY-RLS.md is a static audit of supabase/schema/supabase-schema.sql. It found
  * three high-severity holes by reading, and sections 7 and 10 of the schema
  * fix them. A fix nobody re-tested is a fix nobody has. The document ends with
  * a list of live checks that need two real signed-in accounts, and that list
@@ -374,7 +374,7 @@ let passwordGrantWorked = false;
  *     cloud.js ships exactly one auth call, signInWithGoogle().
  *  2. FMS_<L>_REFRESH_TOKEN — the same, but survives the hour-long expiry.
  *  3. FMS_<L>_EMAIL + _PASSWORD — only works if the Email provider is on,
- *     which supabase-schema.sql's header says to disable. If this route
+ *     which supabase/schema/supabase-schema.sql's header says to disable. If this route
  *     succeeds the run says so, because it is evidence for check PS1.
  */
 async function resolveSession(label) {
@@ -406,7 +406,7 @@ async function resolveSession(label) {
     if (!r.ok || !r.json || !r.json.access_token) {
       return { error: `password sign-in for ${label} was rejected: ` +
                       `${r.networkError || `HTTP ${r.status}`} — which is the CORRECT answer if ` +
-                      `the Email provider is disabled as supabase-schema.sql's header requires. ` +
+                      `the Email provider is disabled as supabase/schema/supabase-schema.sql's header requires. ` +
                       `Use FMS_${label}_ACCESS_TOKEN or FMS_${label}_REFRESH_TOKEN instead.` };
     }
     registerSecret(r.json.access_token);
@@ -518,7 +518,7 @@ const CHECKS = [
 
   {
     id: 'PS1',
-    source: 'still open #6 · supabase-schema.sql header · task requirement',
+    source: 'still open #6 · supabase/schema/supabase-schema.sql header · task requirement',
     title: 'Email sign-in is disabled at the provider',
     run: async () => {
       const settings = await _settings();
@@ -564,7 +564,7 @@ const CHECKS = [
 
   {
     id: 'PS2',
-    source: 'still open #6 · supabase-schema.sql header · task requirement',
+    source: 'still open #6 · supabase/schema/supabase-schema.sql header · task requirement',
     title: 'Anonymous sign-in is off at the provider',
     run: async () => {
       const settings = await _settings();
@@ -576,7 +576,7 @@ const CHECKS = [
       if (ext.anonymous_users === true) {
         return fail(`settings.external.anonymous_users = true. This is the sharper of the two: ` +
           `an anonymous session has a non-null auth.uid(), which satisfies the "is the caller ` +
-          `signed in?" half of EVERY policy in supabase-schema.sql — including claim_share()'s ` +
+          `signed in?" half of EVERY policy in supabase/schema/supabase-schema.sql — including claim_share()'s ` +
           `own sign-in gate. Turn it off in Authentication → Providers.`);
       }
       if (ext.anonymous_users !== false) {
@@ -602,7 +602,7 @@ const CHECKS = [
 
   {
     id: 'PS3',
-    source: 'still open #6 · supabase-schema.sql header',
+    source: 'still open #6 · supabase/schema/supabase-schema.sql header',
     title: 'Google is the ONLY sign-in provider enabled',
     run: async () => {
       const settings = await _settings();
@@ -678,7 +678,7 @@ const CHECKS = [
       const missing = TABLES.filter((t) => sweep[t].code === 'PGRST205' || sweep[t].code === '42P01');
       if (missing.length) {
         return fail(`absent or not in the schema cache: ${missing.join(', ')}. ` +
-          `Sections 6 and 7 of supabase-schema.sql may not have run, in which case everything ` +
+          `Sections 6 and 7 of supabase/schema/supabase-schema.sql may not have run, in which case everything ` +
           `section 7 hardened — share expiry and revocation, the account-move escalation, ` +
           `comment author-name leakage, comment status forgery — is unfixed live.`);
       }

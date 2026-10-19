@@ -1,5 +1,5 @@
 /* ============================================================
-   THE SCHEMA, RUN — supabase-schema.sql against a real PostgreSQL
+   THE SCHEMA, RUN — supabase/schema/supabase-schema.sql against a real PostgreSQL
    ------------------------------------------------------------
    CLAUDE.md's standing complaint about the schema is that its record
    of its own runs is not evidence. This is evidence: a scratch
@@ -70,7 +70,7 @@ if (r.status !== 0) fail('the shim did not load', r);
    state, re-asserting the §20 invariants that still hold. Splitting at
    the section header rather than editing the old files keeps both
    statements true at once. */
-const full = fs.readFileSync(path.join(ROOT, 'supabase-schema.sql'), 'utf8');
+const full = fs.readFileSync(path.join(ROOT, 'supabase/schema/supabase-schema.sql'), 'utf8');
 const lines = full.split('\n');
 const at = lines.findIndex((l) => /^-- 21\. /.test(l));
 if (at < 1) fail('could not find the §21 header to split the schema at');
@@ -87,10 +87,10 @@ if (at32 < at) fail('could not find the §32 header to split the schema at');
 const phase2 = lines.slice(at - 1, at32 - 1).join('\n') + '\n';
 const phase3 = lines.slice(at32 - 1).join('\n');
 
-console.log('supabase-schema.sql §1–§20 …');
+console.log('supabase/schema/supabase-schema.sql §1–§20 …');
 const t0 = Date.now();
 r = psql(['-f', '-'], { input: phase1 });
-if (r.status !== 0) fail('supabase-schema.sql (§1–§20) did not load cleanly', r);
+if (r.status !== 0) fail('supabase/schema/supabase-schema.sql (§1–§20) did not load cleanly', r);
 const warnings = (r.stderr || '').split('\n').filter((l) => /WARNING/.test(l));
 console.log(`✓ §1–§20 load (${Math.round((Date.now() - t0) / 100) / 10}s${warnings.length ? `, ${warnings.length} warning(s)` : ''})`);
 
@@ -106,9 +106,9 @@ function runChecks(file) {
 // In order: later files use the people and prices the earlier ones left.
 for (const file of ['billing.sql', 'accounts.sql', 'promo.sql']) runChecks(file);
 
-console.log('supabase-schema.sql §21–§31 …');
+console.log('supabase/schema/supabase-schema.sql §21–§31 …');
 r = psql(['-f', '-'], { input: phase2 });
-if (r.status !== 0) fail('supabase-schema.sql (§21–§31) did not load cleanly on top of §1–§20', r);
+if (r.status !== 0) fail('supabase/schema/supabase-schema.sql (§21–§31) did not load cleanly on top of §1–§20', r);
 console.log('✓ §21–§31 load');
 /* §21 onward: each growth file seeds its own people (fresh uuids), so
    what promo.sql left behind cannot make a check pass for the wrong
@@ -116,19 +116,19 @@ console.log('✓ §21–§31 load');
    and is not named here is not run, and nothing would say so. */
 for (const file of GROWTH_FILES) runChecks(file);
 
-console.log('supabase-schema.sql §32 onward …');
+console.log('supabase/schema/supabase-schema.sql §32 onward …');
 r = psql(['-f', '-'], { input: phase3 });
-if (r.status !== 0) fail('supabase-schema.sql (§32 onward) did not load cleanly on top of §1–§31', r);
+if (r.status !== 0) fail('supabase/schema/supabase-schema.sql (§32 onward) did not load cleanly on top of §1–§31', r);
 /* Twice: every section claims to be idempotent, and this one ALTERs a
    table, replaces a trigger on auth.users and restates five functions. */
 r = psql(['-f', '-'], { input: phase3 });
-if (r.status !== 0) fail('supabase-schema.sql (§32 onward) is not re-runnable', r);
+if (r.status !== 0) fail('supabase/schema/supabase-schema.sql (§32 onward) is not re-runnable', r);
 console.log('✓ the whole schema loads (and §32 onward — §33 to §39 included — re-runs cleanly)');
 /* §40 and §42 (the admin console's audit log and Customer 360). Until the
-   main thread folds them into supabase-schema.sql they are standalone
+   main thread folds them into supabase/schema/supabase-schema.sql they are standalone
    files at the repo root, loaded here ON TOP of the whole schema — twice,
    because §40 restates nineteen functions and every section claims to be
-   re-runnable. Once they ARE in supabase-schema.sql this block loads
+   re-runnable. Once they ARE in supabase/schema/supabase-schema.sql this block loads
    nothing and the two check files still run. They load BEFORE the
    §32-onward check files, so purchases, trial-hours, refund-trial,
    receipt-email, plan-features, goals-sync and no-free-plan — which call
@@ -137,7 +137,7 @@ console.log('✓ the whole schema loads (and §32 onward — §33 to §39 includ
    files (billing, promo, refunds, invoice …) assert §16–§31 behaviour
    that §32 deliberately changed and cannot be replayed here; the two
    admin files re-assert every restated writer's contract instead. */
-const ADMIN_FILES = ['schema-40-admin-audit.sql', 'schema-42-customer-360.sql'];
+const ADMIN_FILES = ['supabase/schema/schema-40-admin-audit.sql', 'supabase/schema/schema-42-customer-360.sql'];
 if (!/admin_audit_write/.test(full)) {
   for (const f of ADMIN_FILES) {
     for (let pass = 1; pass <= 2; pass++) {
@@ -155,11 +155,11 @@ for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'rec
 
 for (const file of ['admin-audit.sql', 'admin-customer.sql']) runChecks(file);
 /* ADMIN CONSOLE V2 — the STANDALONE sections (41, 43, 44), authored as files
-   at the repo root and not yet folded into supabase-schema.sql. They load on
+   at the repo root and not yet folded into supabase/schema/supabase-schema.sql. They load on
    top of the whole schema, twice (re-runnable), after the audit shim that
    stands in for section 40's admin_audit_write(). When a section is merged
-   into supabase-schema.sql, delete it from this list. */
-const STANDALONE = ['schema-41-admin-health.sql', 'schema-43-usage-cohorts.sql', 'schema-44-sync-limits.sql'];
+   into supabase/schema/supabase-schema.sql, delete it from this list. */
+const STANDALONE = ['supabase/schema/schema-41-admin-health.sql', 'supabase/schema/schema-43-usage-cohorts.sql', 'supabase/schema/schema-44-sync-limits.sql'];
 const STANDALONE_CHECKS = ['admin-health.sql', 'usage-cohorts.sql', 'sync-limits.sql'];
 r = psql(['-f', 'scripts/schema-tests/audit-shim.sql']);
 if (r.status !== 0) fail('the audit shim did not load', r);
@@ -187,10 +187,10 @@ console.log('✓ the standalone sections (§41, §43, §44) load and re-run clea
 }
 for (const file of STANDALONE_CHECKS) runChecks(file);
 /* §45 (admin controls) is a standalone file at the repo root, not yet
-   folded into supabase-schema.sql, and it calls section 40's
+   folded into supabase/schema/supabase-schema.sql, and it calls section 40's
    admin_audit_write(), which §40 (loaded above) provides: load the section — twice, for re-runnability — then its checks.
    */
-for (const f of ['schema-45-admin-controls.sql', 'schema-45-admin-controls.sql']) {
+for (const f of ['supabase/schema/schema-45-admin-controls.sql', 'supabase/schema/schema-45-admin-controls.sql']) {
   r = psql(['-f', f]);
   if (r.status !== 0) fail(`${f} did not load cleanly`, r);
 }
@@ -200,7 +200,7 @@ runChecks('admin-controls.sql');
    it restates twenty writers with one require_role() line each. Loaded twice
    (re-runnable), after the §45 checks so they ran against the unrestated
    writers. */
-for (const f of ['schema-46-role-matrix.sql', 'schema-46-role-matrix.sql']) {
+for (const f of ['supabase/schema/schema-46-role-matrix.sql', 'supabase/schema/schema-46-role-matrix.sql']) {
   r = psql(['-f', f]);
   if (r.status !== 0) fail(`${f} did not load cleanly`, r);
 }
@@ -208,7 +208,7 @@ console.log('✓ §46 loads (and re-runs cleanly)');
 runChecks('role-matrix.sql');
 /* --- end §46 --- */
 /* --- §47 (total delete anonymises the invoice) --- standalone, on §45. --- */
-for (const f of ['schema-47-delete-anonymise.sql', 'schema-47-delete-anonymise.sql']) {
+for (const f of ['supabase/schema/schema-47-delete-anonymise.sql', 'supabase/schema/schema-47-delete-anonymise.sql']) {
   r = psql(['-f', f]);
   if (r.status !== 0) fail(`${f} did not load cleanly`, r);
 }

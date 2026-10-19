@@ -142,7 +142,7 @@ next person does not have to rediscover them.
 ## What is NOT verified
 
 - **Nothing in this file has ever run against a live Supabase project.**
-  `supabase-schema.sql` has still never been applied to a database (see
+  `supabase/schema/supabase-schema.sql` has still never been applied to a database (see
   `docs/SECURITY-RLS.md`), so the cloud half of the account story —
   `pullProjectList()` filing a pulled project into the right namespace, a
   claimed share landing in two namespaces, realtime writing to a blob whose

@@ -90,7 +90,7 @@ Pure content, no storage change, a selling point on its own.
   short film's 5-beat step, so "Do this in…" chips point at the shelf.
 - **Plan gate:** the module id is the feature key; `plan-gate.js:69-70` treats
   a key as open unless `features[key] === false`. The shelf is open on every
-  plan. Check `supabase-schema.sql` §18 for hard-coded key lists first.
+  plan. Check `supabase/schema/supabase-schema.sql` §18 for hard-coded key lists first.
 - **Tests / gates:** `scripts/test-emotions.mjs` (unique ids, every technique's
   emotions exist, film keys valid); `scripts/check-copyright.mjs` (below);
   `npm run verify`. Re-baseline with **zero data-key movement** asserted

@@ -1,6 +1,6 @@
 # The gate — switching it on, and what it does once it is
 
-`supabase-schema.sql` sections 13 and 14 are the invite gate: codes, the
+`supabase/schema/supabase-schema.sql` sections 13 and 14 are the invite gate: codes, the
 invite-request queue, the one-device lock, screening passes, the admin
 console. **Both ran against the live project on 5 October 2026** (dashboard
 SQL editor, "Success" each; verified through PostgREST — every function
@@ -186,7 +186,7 @@ visitor ── Google sign-in ──► studio_status()
 
 | Thing | Where |
 |---|---|
-| SQL | `supabase-schema.sql` §13, §14, §15 (the console's counts) — all three deployed 5 Oct 2026 |
+| SQL | `supabase/schema/supabase-schema.sql` §13, §14, §15 (the console's counts) — all three deployed 5 Oct 2026 |
 | The site gate | `src/lib/sitegate.js` (imported by `src/ui/chrome.js`), the `data-sitegate` rule in `base.css` |
 | The console | `admin.html`, `src/pages/admin.js`, `src/styles/admin.css` |
 | Client calls | `src/lib/gate.js` (`status`, `requestInvite`, `admin.listRequests`, `admin.decideRequest`) |

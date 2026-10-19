@@ -127,7 +127,7 @@
 
 
 > **10 Oct 2026: the browser to-do list is `docs/BROWSER-HANDOFF.md` §0**
-> (re-run `billing_status()` from `docs/sql/2026-10-10-billing_status.sql`,
+> (re-run `billing_status()` from `supabase/schema/patches/2026-10-10-billing_status.sql`,
 > and the real-browser checks the container could not make). The code side
 > of the 9–10 Oct UI/UX releases is done and on `main` (`99ba52b`);
 > `docs/HISTORY.md` item 24 is the record.
@@ -727,7 +727,7 @@ live; §20–§23 written, tested and wired in the UI.
 
 | Lane | Takes | Touches (own these files) | Never run alongside |
 |---|---|---|---|
-| **1 Billing & growth** | B1–B7, P2 | `supabase-schema.sql`, `supabase/functions/*`, `src/lib/billing.js`, `growth.js`, `src/ui/plan-cards.js`, `billing-admin.js`, `growth-admin.js`, `src/pages/admin.js`, `settings.js`, `scripts/fake-supabase.mjs`, `scripts/schema-tests/*` | another schema writer (Q3 must ask lane 1 for its section number) |
+| **1 Billing & growth** | B1–B7, P2 | `supabase/schema/supabase-schema.sql`, `supabase/functions/*`, `src/lib/billing.js`, `growth.js`, `src/ui/plan-cards.js`, `billing-admin.js`, `growth-admin.js`, `src/pages/admin.js`, `settings.js`, `scripts/fake-supabase.mjs`, `scripts/schema-tests/*` | another schema writer (Q3 must ask lane 1 for its section number) |
 | **2 Production** | G1, G2, G5, G7 | `src/lib/dpr.js`, `locations.js`, `sun.js`, `callsheet-text.js`, `src/pages/shoot.js`, `contacts.js`, `plan.js`, `reports.js`, `stripboard.js`, `deliverables.js` | — |
 | **3 Quality** | T1–T4, T8–T10 | `scripts/*`, `package.json`, `.github/workflows/*` (new), `scripts/budget.json` | lane 4 while both recapture `budget.json` |
 | **4 Emotional craft** | E0–E5 | new files + one-line hooks in `story.js`, `scenes.js`, `library.js`, `ai.js`, `navigation.json`, `glossary.json`, `steps.stages.json` | lane 5 on `write.js` |
@@ -739,7 +739,7 @@ live; §20–§23 written, tested and wired in the UI.
 
 | Lane | Order | First action |
 |---|---|---|
-| **1 Billing & growth** | ~~1. **B6**~~ (done) → 2. **P2** with the owner/browser (turns on promo, upgrade, referral, affiliate — already built) → 3. **B1** GST invoices (§25) → 4. **B4** + **B5** (leads, funnel — small, one session) → 5. **B2**, **B3** → 6. **B7** only after a security review | B6 is done; start at P2. Before writing any SQL, read `supabase-schema.sql` §21–§23 and `docs/BILLING.md` §7 so §25 follows their conventions. |
+| **1 Billing & growth** | ~~1. **B6**~~ (done) → 2. **P2** with the owner/browser (turns on promo, upgrade, referral, affiliate — already built) → 3. **B1** GST invoices (§25) → 4. **B4** + **B5** (leads, funnel — small, one session) → 5. **B2**, **B3** → 6. **B7** only after a security review | B6 is done; start at P2. Before writing any SQL, read `supabase/schema/supabase-schema.sql` §21–§23 and `docs/BILLING.md` §7 so §25 follows their conventions. |
 | **2 Production** | 1. **G1** (after-sunset reads the DPR wrap) → 2. **G2** (recce fields on Plan) → 3. **G7** (dynamic imports, measurable) → 4. **G5** (only after checking the CBFC manual) | `src/pages/shoot.js:282`: take the later of the call-sheet `wrap` and the DPR's wrap for the day (`src/lib/dpr.js`), and add the case to `test:sun` / `test:stripboard`. |
 | **3 Quality** | ~~T8~~, ~~T4~~, ~~T2~~, ~~T1~~, ~~T10~~ all done. What is left is the two BROWSER ones: 1. **T9** (walk the revisions, coverage and costs UIs on the Dragon sample at 390 and 1280, both themes) → 2. **T3** (Tamil typing is only regex-read, never executed) | Open the Dragon sample in a browser and work through Write › Revisions, the AI coverage panel and each Budget cost tab, watching the console. |
 | **4 Emotional craft** | E0 → E1 (the first shippable slice) → E2 → E3 → E4 → E5 | `git worktree add .claude/worktrees/emotional-craft -b feature/emotional-craft origin/develop`, then Phase 0 of `docs/WIP-EMOTION-PLAN.md` (build, every `test:*`, uncapped `verify`; write `docs/WIP-EMOTION.md`). |

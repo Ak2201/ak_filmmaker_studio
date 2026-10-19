@@ -179,12 +179,12 @@ that one.
 
 > **ONE THING TO RE-RUN (9 Oct 2026, after the UI/UX release):**
 > `billing_status()` (§30.6, the LAST `create or replace` of it in
-> `supabase-schema.sql`) changed twice: it gained the key
+> `supabase/schema/supabase-schema.sql`) changed twice: it gained the key
 > `trial_minutes`, and a full-scope trial no longer swaps the trial
 > plan's features over a plan the person has BOUGHT (`and pl = 'free'`).
 > Re-run just that function definition and its two grant lines — they
 > are extracted, with a SHA-256 to check the editor against, in
-> `docs/sql/2026-10-10-billing_status.sql`; the route is
+> `supabase/schema/patches/2026-10-10-billing_status.sql`; the route is
 > `docs/BROWSER-HANDOFF.md` §0.1. Until
 > then the invite page's trial offer falls back to "30 minutes", and a
 > buyer who pays mid-trial sees the trial plan's features until the
@@ -192,7 +192,7 @@ that one.
 > carries `trial_minutes`.
 
 > **10 Oct 2026 — one more function re-run, and it is the last of them.**
-> `docs/sql/2026-10-10-billing_status.sql` (SHA-256 `ddd159ab…5827d`,
+> `supabase/schema/patches/2026-10-10-billing_status.sql` (SHA-256 `ddd159ab…5827d`,
 > checked against the editor's own contents before Run) replaced
 > `billing_status()`: it carries a numeric `trial_minutes` now, and a
 > full-scope trial no longer overrides a plan somebody has PAID for — a
@@ -300,7 +300,7 @@ And `select pg_get_constraintdef(oid) from pg_constraint where conname =
 The live prices are no longer placeholders and no longer match any doc:
 `free=0, starter=59900, indie=79900, pro=99900` paise — ₹599 / ₹799 /
 ₹999. `docs/BILLING.md` §0 still says ₹2,999 / ₹7,999 / ₹19,999 and the
-§18 header in `supabase-schema.sql` recorded 299900 / 499900 / 799900.
+§18 header in `supabase/schema/supabase-schema.sql` recorded 299900 / 499900 / 799900.
 Someone set real prices on the console; believe the table, and §6 below
 no longer needs a price-setting step so much as a price CONFIRMATION.
 And `projects` holds **6** rows with `project_data` at **30**, where

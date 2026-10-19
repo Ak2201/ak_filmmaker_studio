@@ -24,7 +24,7 @@ Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
   not. Check before running anything.
 - Record each result (what ran, what the read-back said) in
   `docs/LAUNCH.md` and in the matching `-- RUN …` header of
-  `supabase-schema.sql`, commit on a `feature/launch-steps` branch off
+  `supabase/schema/supabase-schema.sql`, commit on a `feature/launch-steps` branch off
   `develop`, and promote per `docs/BRANCHING.md` (docs-only may go straight
   to `main`; then merge `main` into `develop`).
 
@@ -98,7 +98,7 @@ Read-backs:
 
 Every session until now reported this as "cannot run here". It can: the
 harness wants a local PostgreSQL 16 and macOS has one a `brew install`
-away. The whole of `supabase-schema.sql` loads on PostgreSQL 16.15 and
+away. The whole of `supabase/schema/supabase-schema.sql` loads on PostgreSQL 16.15 and
 every check file passes — **including `trial.sql` (57) and
 `currency.sql` (48), which had never been executed at all**; §30 and
 §31 had been static-parsed with `pglast` and shipped on that.
@@ -142,9 +142,9 @@ sets, not a hard-coded 30), and a buyer who pays during a full-scope trial
 keeps the plan they BOUGHT instead of the trial plan's features. Until it
 runs nothing breaks; both just behave the old way.
 
-- The exact statements are in **`docs/sql/2026-10-10-billing_status.sql`**
+- The exact statements are in **`supabase/schema/patches/2026-10-10-billing_status.sql`**
   (the last `create or replace function public.billing_status()` in
-  `supabase-schema.sql`, lines 7207–7284, plus its revoke/grant lines).
+  `supabase/schema/supabase-schema.sql`, lines 7207–7284, plus its revoke/grant lines).
   Nothing else in the schema changed. It depends only on §30 functions,
   which are live.
 - **SHA-256 of that file: `ddd159ab27093d9fc48d77c95b26de7d91af06c35c9db5540ec4510b7df5827d`.**
@@ -268,7 +268,7 @@ returned", then read back: tgtype **23** (INSERT and UPDATE both set),
 the scope CHECK **442** characters naming `'characters'`, `'costs'` and
 still `'edit'` and `'deliverables'`, and `project_data` / `projects`
 intact at 30 / 6 rows. Recorded in the `-- RUN` headers of both sections
-in `supabase-schema.sql` and in `docs/LAUNCH.md` §4.
+in `supabase/schema/supabase-schema.sql` and in `docs/LAUNCH.md` §4.
 
 **§20–§23 were deliberately NOT run.** Promo, upgrade-by-difference,
 referral and affiliate do nothing until Razorpay is live, and §20 drops

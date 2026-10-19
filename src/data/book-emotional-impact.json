@@ -1,11 +1,11 @@
 {
   "_about": "The Library's 'Writing for Emotional Impact' shelf (src/pages/library.js, renderEmotionalImpact). COPYRIGHT RULES, owner decision recorded in docs/WIP-EMOTION-PLAN.md: the book is copyrighted. This file teaches the GENERAL craft ideas in ORIGINAL wording. It never reproduces the book's text, sentences, chapter titles or chapter order, its distinctive coined phrasing beyond widely used concept names, its lists in the author's order with the author's descriptions, or the book's own film examples. Every example comes from the four studied films (dragon, 96, porthozhil, vikramvedha; src/data/studies.json) or src/data/films.json, labels the FUNCTION of a moment, retells no more plot than a clause and quotes no dialogue (the same rule as studies.json _about). The book is credited ONCE, in `credit`, as recommended reading. Never type the product's brand name here (npm run test:brand). Read-only content: nothing in this file is a storage key, so ids may be renamed, but each id is also an anchor (#ei-<id>) that links may point at.",
   "credit": {
-    "title": "Writing for Emotional Impact",
+    "title": "Writing for Emotional Impact: Advanced Dramatic Techniques to Attract, Engage, and Fascinate the Reader from Beginning to End",
     "author": "Karl Iglesias",
     "publisher": "WingSpan Press",
     "year": "2005",
-    "note": "Recommended reading. This shelf is an independent summary of the general craft ideas the book is known for, written in our own words with our own examples. It is not affiliated with, authorised or endorsed by the author or the publisher. Buy the book for the full text, its reasoning and its examples."
+    "note": "Recommended reading. This shelf is an independent summary of general craft ideas, many of which the book explores in depth, written in our own words with our own examples. It is not affiliated with, authorised or endorsed by the author or the publisher. Buy the book for the full text, its reasoning and its examples."
   },
   "intro": {
     "lede": "A screenplay is not a description of a film. It is a machine for producing feelings in one reader at a time, and every page either runs that machine or lets it idle.",
@@ -61,7 +61,7 @@
       "id": "empathy",
       "label": "Empathy and identification",
       "kicker": "The reader feels what the character feels only after the reader cares.",
-      "what": "Identification is the bond that lets a reader experience the story through a character rather than merely watching it. Once that bond forms, the character’s fear becomes the reader’s worry, their hope becomes the reader’s hope, and their losses land as small personal losses. It does not require the character to be nice. It requires the reader to understand them, recognise something of themselves in them, or be fascinated by them enough to keep looking.",
+      "what": "Identification is the bond that lets a reader experience the story through a character rather than merely watching it. Once that bond forms, the character’s fear becomes the reader’s worry, their hope becomes the reader’s hope, and their losses land as small personal losses. It does not require the character to be nice. It requires only that the reader can follow the character’s logic, see a piece of their own life in them, or find them too interesting to look away from.",
       "why": "Human beings are built to read other people. We track intentions, feel pulled toward someone who is treated unfairly, admire competence, and are drawn to anyone who wants something badly. A character who triggers any of those responses recruits the reader’s own emotional machinery. Without that recruitment, everything else on this shelf is weaker: suspense needs someone to worry about, and payoff needs someone to be glad for.",
       "how": [
         "Show an undeserved hardship early — an injustice, a humiliation, a loss — so the reader’s sense of fairness sides with the character.",
@@ -149,7 +149,7 @@
         "slug": "porthozhil",
         "film": "Por Thozhil",
         "function": "Suspense over surprise, by withholding the frame not the facts",
-        "text": "The investigation lets the reader understand the pattern the killer follows, so each new procedural step carries dread about where the pattern leads. The film rarely ambushes the audience; it lets them see the danger forming and makes them wait."
+        "text": "The investigation shows its working openly and holds back only the arrangement that would make the pieces mean something, so each procedural step carries dread about what the pattern will turn out to be. The film rarely ambushes the audience; it lets them watch the danger forming and makes them wait."
       },
       "checklist": [
         "Does the reader know about the danger before the character does, at least once?",

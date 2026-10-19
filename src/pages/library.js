@@ -243,8 +243,9 @@ const SECTIONS = [
     tocDesc: `Logline, ${bookSTC.genres.items.length} genres, ${bookSTC.beats.items.length} beats and the Board`,
     count: `${bookSTC.beats.items.length} BEATS · ${bookSTC.genres.items.length} GENRES`,
     deck: 'Story first: the one-line pitch and the title, genre as the engine underneath, ' +
-          `${numWord(bookSTC.beats.items.length)} beats placed on a 110-page script, the forty-card Board and the ` +
-          'rules of thumb, each mapped onto the films on our Case Studies shelf.',
+          `${numWord(bookSTC.beats.items.length)} beats placed on a ${bookSTC.beats.pages}-page script, ` +
+          `the ${numWord(bookSTC.board.rows.length * bookSTC.board.cardsPerRow)}-card Board and the ` +
+          'rules of thumb, each mapped onto the films we study.',
     body: renderSaveTheCat,
     rail: () => stcRail()
   },
@@ -731,13 +732,18 @@ function renderEmotionalImpact() {
   const closing = h('div.book-intro', { id: 'ei-together' }, [
     h('h3.book-h3', { text: b.closing.title }),
     ...b.closing.paragraphs.map((p) => h('p.book-p', { text: p })),
-    h('p.book-p', {}, [
-      'The four films these examples come from are on the ',
-      h('a', { href: '#case-studies', text: 'Case Studies shelf' }),
-      '; the structural side of the same ideas is on the ',
-      h('a', { href: '#save-the-cat', text: 'Save the Cat shelf' }),
-      '.'
-    ])
+    /* The Case Studies shelf can be switched off (plan-matrix "plans": []),
+       and a link to a shelf that is not there opens nothing — so it is
+       named as a link only while openShelves() still holds it. */
+    h('p.book-p', {}, openShelves().some((s) => s.id === 'case-studies')
+      ? ['The four films these examples come from are on the ',
+          h('a', { href: '#case-studies', text: 'Case Studies shelf' }),
+          '; the structural side of the same ideas is on the ',
+          h('a', { href: '#save-the-cat', text: 'Save the Cat shelf' }),
+          '.']
+      : ['The structural side of the same ideas is on the ',
+          h('a', { href: '#save-the-cat', text: 'Save the Cat shelf' }),
+          '.'])
   ]);
   return h('div.section-body.book', {}, [intro, ...tools, closing]);
 }
@@ -789,7 +795,7 @@ function renderSaveTheCat() {
         h('h4.book-card-title', { text: g.label })
       ]),
       h('p.book-p', { text: g.engine }),
-      h('ul.book-keys', { 'aria-label': 'What it needs' }, g.keys.map((k) => h('li', { text: k }))),
+      h('p.book-p.book-question', {}, [h('strong', { text: 'Ask yourself. ' }), g.question]),
       bookExample({ film: g.example.film, text: g.example.text }, 'TAMIL EXAMPLE')
     ])))
   ]);
@@ -817,10 +823,10 @@ function renderSaveTheCat() {
   const board = h('div.book-chapter', { id: 'stc-board' }, [
     h('h3.book-h3', { text: BD.title }),
     ...BD.paragraphs.map((p) => h('p.book-p', { text: p })),
-    h('div.book-board', { role: 'group', 'aria-label': 'The Board: four rows of about ten cards, one row per quarter of the script' },
+    h('div.book-board', { role: 'group', 'aria-label': `The Board: ${numWord(BD.rows.length)} rows of about ${numWord(BD.cardsPerRow)} cards, one row per quarter of the script` },
       BD.rows.map((r) => h('div.book-board-row', {}, [
         h('div.book-board-head', {}, [h('span.book-label', { text: r.label }), h('span.book-page', { text: r.span })]),
-        h('div.book-board-cards', { 'aria-hidden': 'true' }, Array.from({ length: 10 }, () => h('span.book-board-card'))),
+        h('div.book-board-cards', { 'aria-hidden': 'true' }, Array.from({ length: BD.cardsPerRow }, () => h('span.book-board-card'))),
         h('p.book-board-beats', { text: r.beats })
       ]))),
     h('div.book-cols', {}, [

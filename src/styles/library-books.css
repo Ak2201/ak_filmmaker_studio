@@ -80,7 +80,7 @@
   gap: var(--s5);
   min-width: 0;
   padding-top: var(--s6);
-  border-top: 1px solid var(--border-hair);
+  border-top: var(--sk-card-line-w, 1px) solid var(--border-hair);
 }
 .book-chapter-head { display: flex; gap: var(--s4); align-items: baseline; }
 .book-kicker { margin-top: var(--s1); font-size: var(--t-base); color: var(--ink-muted); font-style: italic; }
@@ -154,7 +154,7 @@
   top: 0.3em;
   width: 1em;
   height: 1em;
-  border: 1.5px solid var(--border-strong);
+  border: var(--sk-card-line-w, 1px) solid var(--border-strong);
   border-radius: var(--sk-field-radius, var(--radius-sm));
 }
 
@@ -176,7 +176,7 @@
   display: grid;
   gap: var(--s2);
   padding: var(--s4);
-  border: 1px dashed var(--border-strong);
+  border: var(--sk-card-line-w, 1px) dashed var(--border-strong);
   border-radius: var(--sk-radius, var(--radius));
   max-width: 80ch;
 }
@@ -200,14 +200,7 @@
 .book-card .book-p { font-size: var(--t-small); }
 .book-card-top { display: flex; gap: var(--s3); align-items: baseline; }
 .book-card-title { margin: 0; font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; }
-.book-keys { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: var(--s1); }
-.book-keys li {
-  padding: 2px var(--s2);
-  border: 1px solid var(--border-hair);
-  border-radius: var(--radius-pill);
-  font-size: var(--t-tiny);
-  color: var(--ink-body);
-}
+.book-question { color: var(--ink); }
 .book-card:target { border-color: var(--accent-deep); }
 
 /* ---- the fifteen beats: a numbered spine with the page on it ---- */
@@ -253,17 +246,19 @@
   gap: var(--s1) var(--s4);
   align-items: center;
 }
-.book-board-head { grid-area: head; display: grid; gap: 2px; }
+.book-board-head { grid-area: head; display: grid; gap: var(--s-half); }
 .book-board-cards {
   grid-area: cards;
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  /* One column per card, however many cards the JSON asks for. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: var(--s1);
 }
 .book-board-card {
   aspect-ratio: 5 / 3;
   background: var(--surface-elevated);
-  border: 1px solid var(--border-hair);
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
   border-radius: var(--sk-field-radius, var(--radius-sm));
 }
 .book-board-beats { grid-area: beats; font-size: var(--t-tiny); color: var(--ink-body); line-height: var(--lh-body); }

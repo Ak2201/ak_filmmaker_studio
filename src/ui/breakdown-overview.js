@@ -187,7 +187,7 @@ export function renderOverview(scenes, status = '') {
   );
   if (!hasScript && !hasScenes) {
     wrap.append(h('p.bd-none', {
-      text: 'No script yet. Upload a Fountain, Final Draft, PDF or text file and it is read straight into scenes — '
+      text: 'No script yet. Upload a Fountain, Final Draft, Word, PDF or text file and it is read straight into scenes — '
         + 'or write one on the Write page, even five pages is enough.'
     }));
   }

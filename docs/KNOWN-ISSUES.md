@@ -30,6 +30,33 @@ once and not yet looked at.
   duplicates save and are flagged). To renumber a bound scene, change
   its heading in Write.
 
+## Open 19 Oct 2026: old Outline links land on a hidden tab, sometimes
+
+`write.html#outline` redirects to `breakdown.html#script` (`src/lib/write-route.js`
+`outline:`). `#script` is Screenplay Analysis, module `script-breakdown`, which
+has been `plans: []` since 17 Oct 2026, so plan-gate hides it. Whether
+`tabs.js` picks the tab before or after it is hidden is a race: usually the
+URL stays `#script` (on a hidden section), sometimes `tabs.js` falls back to
+the first tab and rewrites it to `#overview`. `prove:script` case 12 failed
+once in three runs on this. Not caused by item 52; found while running it.
+Needs an owner decision on where an old Outline link should land now (the
+Whole script tab, or the Story page's beat board), then one line in
+write-route.js and the proof's expectation.
+
+## ~~A held Ctrl widens the band at 390~~ FIXED 19 Oct 2026
+
+It was not Ctrl. `shell.js` loads `video-help.js` on the first keydown,
+pointer move or tap (or after 8s), and that mounts the "How this works"
+button at the front of `.sh-tools`. Below 1100px `video.css` hid it with
+`.sh-bar .vid-help-btn` (0,2,0), but kit.css's phone tap floor
+`:root :is(…, .site-foot a, …, .btn) { display: inline-flex }` scores
+(0,2,1) because `:is()` takes its most specific item — so the button
+showed, the breadcrumb collapsed and, with a title as long as "Proof
+Replace", the band ended 13px past a 390px screen. Phones were affected
+too (a tap is enough), which the first version of this entry got wrong.
+The hide rule is `:root .sh-bar .vid-help-btn` now; `prove:replace` fires
+a keydown at 390 and measures.
+
 ## ~~Seen once, not investigated~~ CLOSED 9 Oct 2026
 
 - ~~write.html at 390 under `isMobile` showed ~350px of blank ground

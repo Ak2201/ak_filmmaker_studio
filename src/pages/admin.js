@@ -99,6 +99,7 @@ import {
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesRequiredNow } from '../ui/access-admin.js';
+import { coEditSwitchBlock } from '../ui/coedit-admin.js';
 import { billingAdminSection, wireBillingAdmin, billingSnapshot } from '../ui/billing-admin.js';
 import { invoiceAdminSection } from '../ui/invoice-panels.js';
 import { growthAdminSection, wireGrowthAdmin, growthSnapshot } from '../ui/growth-admin.js';
@@ -369,6 +370,7 @@ function peopleTab(st) {
   return fill(tab('people'), [
     adminSection(block, st, { part: 'members' }),
     accessAdminSection(block, st),
+    coEditSwitchBlock(() => renderSoon()),
     ov.data ? signedInBlock() : null,
     ov.data ? organisationsBlock() : null
   ]);

@@ -53,14 +53,19 @@ export const FORMATS = [
      text and PARSER 2 reads it, because a PDF's columns and a
      screenplay text file's columns are the same columns. Two
      classifiers for one layout would be two places to disagree. */
-  { id: 'pdf',      label: 'PDF screenplay', ext: ['.pdf'] }
+  { id: 'pdf',      label: 'PDF screenplay', ext: ['.pdf'] },
+  /* Word. Like the PDF, no parser of its own: docxScreenplayText()
+     below lays each paragraph out at the column its STYLE names (Scene
+     Heading, Character…) or, with no screenplay style, at its own
+     indent, and PARSER 2 reads the result. */
+  { id: 'docx',     label: 'Word screenplay', ext: ['.docx'] }
 ];
 
 /* The file picker's `accept`. write.js sets the attribute from this
    once the parser has loaded — it renders before the lazy import
    resolves, so it starts with a literal and is corrected. This is
    the source; the literal there is a first guess. */
-export const ACCEPT = '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf';
+export const ACCEPT = '.fountain,.spmd,.txt,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 /** Which parser a file wants. The extension decides, and the
     content breaks the tie when there isn't one — a .txt that
@@ -75,6 +80,7 @@ export function detectFormat(filename, text) {
      test would say "screenplay text" and the preview would claim
      the wrong source. */
   if (name.endsWith('.pdf') || /^%PDF-/.test(head)) return 'pdf';
+  if (name.endsWith('.docx')) return 'docx';
   if (/^\s*<\?xml/.test(head) && /FinalDraft/i.test(head)) return 'fdx';
   if (name.endsWith('.fdx') || name.endsWith('.xml')) return 'fdx';
   if (name.endsWith('.fountain') || name.endsWith('.spmd')) return 'fountain';
@@ -1075,7 +1081,7 @@ export function scenesFrom(elements) {
 export function parseScript(raw, filename) {
   const format = detectFormat(filename, raw);
   const parser = format === 'fdx' ? parseFDX
-    : (format === 'text' || format === 'pdf') ? parseText
+    : (format === 'text' || format === 'pdf' || format === 'docx') ? parseText
     : parseFountain;
   const result = parser(raw);
 
@@ -1102,6 +1108,7 @@ export function parseScript(raw, filename) {
      characters would not decode" before "two slug lines had no
      time of day". */
   if (raw && raw.pdfWarnings) warnings.unshift(...raw.pdfWarnings);
+  if (raw && raw.docxWarnings) warnings.unshift(...raw.docxWarnings);
 
   /* Where the scene numbers came from is said out loud, because the
      stripboard, the sides and the call sheet all key off them and a
@@ -1156,12 +1163,101 @@ export function parseScript(raw, filename) {
 /** Read a File without uploading it anywhere. */
 export function readFile(file) {
   if (isPDF(file)) return readPDF(file);
+  if (isDOCX(file)) return readDOCX(file);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
     reader.onerror = () => reject(new Error('That file could not be read.'));
     reader.readAsText(file);
   });
+}
+
+function isDOCX(file) {
+  return String((file && file.name) || '').toLowerCase().endsWith('.docx');
+}
+
+/* ---- WORD → the columns PARSER 2 reads -------------------------
+   A Word screenplay is one paragraph per element. Each paragraph is
+   written as one line at the column a screenplay text file uses for
+   its type, with a blank line after it (PARSER 2's separator) and a
+   form feed where Word put a page break, so the title page before the
+   first break is read as front matter exactly as it is in a .txt.
+
+   The STYLE decides when it names a screenplay element — Final Draft's
+   .docx export and the Word screenplay templates use the names in
+   DOCX_TYPE. With no such style the INDENT decides: twips to columns
+   at 10 characters an inch (144 twips each), measured from the page
+   margin, which is how the paragraph was laid out by whoever typed it.
+   Right-aligned is a transition. A styled cue or heading is set in
+   capitals, because Word often shows capitals through the style while
+   the text underneath is lower case, and PARSER 2 reads a cue by its
+   capitals. */
+const DOCX_TYPE = {
+  sceneheading: 'scene', slugline: 'scene', heading: 'scene',
+  action: 'action', general: 'action', description: 'action',
+  character: 'character', charactername: 'character',
+  parenthetical: 'paren', parentheticals: 'paren', wryly: 'paren',
+  dialogue: 'dialogue', dialog: 'dialogue',
+  transition: 'transition', shot: 'shot'
+};
+const COLUMN = { scene: 0, action: 0, shot: 0, character: 22, paren: 16, dialogue: 10, transition: 45 };
+
+/** The type a paragraph's style names, or ''. */
+export function docxStyleType(style) {
+  return DOCX_TYPE[String(style || '').toLowerCase().replace(/[^a-z]/g, '')] || '';
+}
+
+/** [{ text, style, indL, jc, pageBreak }] → { text, styled, total }. Exported for tests. */
+export function docxScreenplayText(paras) {
+  const out = [];
+  let styled = 0, total = 0;
+  for (const p of paras || []) {
+    if (p.pageBreak) out.push('\f');
+    const lines = String(p.text || '').split('\n').map((l) => l.replace(/\t/g, '    ').trim()).filter(Boolean);
+    if (!lines.length) continue;
+    total++;
+    const type = docxStyleType(p.style);
+    let col;
+    if (type) {
+      styled++;
+      col = COLUMN[type];
+    } else if (p.jc === 'right' || p.jc === 'end') {
+      col = COLUMN.transition;
+    } else {
+      col = Math.max(0, Math.round((Number(p.indL) || 0) / 144));
+    }
+    const caps = type === 'scene' || type === 'character' || type === 'transition';
+    lines.forEach((l, i) => {
+      let t = caps ? l.toUpperCase() : l;
+      if (type === 'paren' && i === 0 && !t.startsWith('(')) t = '(' + t;
+      if (type === 'paren' && i === lines.length - 1 && !t.endsWith(')')) t += ')';
+      out.push(' '.repeat(col) + t);
+    });
+    out.push('');
+  }
+  return { text: out.join('\n'), styled, total };
+}
+
+/* A .docx is bytes too: src/lib/docx-text.js reads its paragraphs (no
+   library, the same reasons as pdf-text.js), imported here dynamically
+   for the reason readPDF gives. Its refusals are sentences and are
+   thrown as the message. */
+async function readDOCX(file) {
+  const buffer = await file.arrayBuffer();
+  let extract;
+  try {
+    ({ extractDocxParagraphs: extract } = await import('./docx-text.js'));
+  } catch (e) {
+    throw new Error('The Word reader could not be loaded.');
+  }
+  const result = await extract(buffer);
+  if (result.fatal) throw new Error(result.fatal);
+  const laid = docxScreenplayText(result.paras);
+  const text = new String(laid.text);
+  text.docxWarnings = laid.styled
+    ? []
+    : ['That Word file uses no screenplay paragraph styles, so each line\'s type was read from its indent. Check the cues and the dialogue in the preview.'];
+  return text;
 }
 
 function isPDF(file) {
@@ -1204,5 +1300,5 @@ async function readPDF(file) {
 
 export default {
   FORMATS, ACCEPT, detectFormat, parseScript, parseSlug, scenesFrom, sliceScenes, readFile,
-  titlePageFromMeta
+  titlePageFromMeta, docxScreenplayText, docxStyleType
 };

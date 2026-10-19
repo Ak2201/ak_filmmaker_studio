@@ -331,8 +331,29 @@ function normaliseRevision(rev) {
   return out;
 }
 
+/* EACH LINE'S EDIT TIME, `u` (ms), for the co-editing merge
+   (src/lib/script-merge.js): a line whose type, text or dual flag
+   differs from the stored copy is stamped now, unless it already carries
+   a later stamp (the Screenplay Writer stamps a line as it is typed). An
+   unchanged line keeps whatever it had — an old script that is only
+   loaded and saved gains no field and stays byte-identical. */
+function stampChanged(elements) {
+  let prev = null;
+  try { prev = JSON.parse(localStorage.getItem(SCRIPT_KEY) || 'null'); } catch (e) { prev = null; }
+  const before = new Map(((prev && Array.isArray(prev.elements)) ? prev.elements : []).map((e) => [e && e.id, e]));
+  const now = Date.now();
+  for (const el of elements) {
+    if (!el) continue;
+    const p = before.get(el.id);
+    const changed = !p || p.type !== el.type || p.text !== el.text || (p.dual === true) !== (el.dual === true);
+    if (changed) { if (!(Number(el.u) >= now - 5000)) el.u = Math.max(Number(el.u) || 0, now); }
+    else if (p.u && !el.u) el.u = p.u;
+  }
+}
+
 export function saveScript(doc) {
   try {
+    stampChanged(doc.elements || []);
     const blob = {
       elements: doc.elements || [],
       revisions: doc.revisions || [],
@@ -488,7 +509,22 @@ export function normaliseNumbering(raw) {
     const n = String((e && e.n) ?? '').trim().toUpperCase();
     if (id && n) ids[id] = { n, t: String((e && e.t) ?? '') };
   }
-  return { locked: true, at: String(raw.at || nowISO()), ids };
+  const out = { locked: true, at: String(raw.at || nowISO()), ids };
+  const pages = normalisePagesLock(raw.pages);
+  if (pages) out.pages = pages;
+  return out;
+}
+
+/* The page lock rides inside the scene lock (screenplay-export.js
+   "LOCKED PAGES"): { locked, at, starts: [{ n, id, split }] }. Kept
+   only when it is well formed; anything else reads as unlocked pages,
+   never as a broken script. */
+export function normalisePagesLock(raw) {
+  if (!raw || typeof raw !== 'object' || raw.locked !== true || !Array.isArray(raw.starts)) return null;
+  const starts = raw.starts
+    .filter((x) => x && typeof x === 'object' && String(x.n ?? '').trim())
+    .map((x) => ({ n: String(x.n).trim(), id: x.id ? String(x.id) : null, split: x.split === true }));
+  return starts.length ? { locked: true, at: String(raw.at || nowISO()), starts } : null;
 }
 
 export const isNumberingLocked = (numbering) => !!(numbering && numbering.locked === true);
@@ -624,7 +660,10 @@ export function settleNumbering(elements, numbering) {
     if (!movedFrom.has(k)) ids[k] = { n: e.n, t: e.t };
   }
   for (const h of snHeadings(elements)) ids[h.id] = { n: res.byId.get(h.id), t: snNorm(h.text) };
-  return { locked: true, at: numbering.at, ids };
+  const out = { locked: true, at: numbering.at, ids };
+  // The page lock is a record of the day it was taken: a save never moves it.
+  if (numbering.pages) out.pages = numbering.pages;
+  return out;
 }
 
 /* ---- the page count ----------------------------------------
@@ -947,7 +986,7 @@ export default {
   LINES_PER_PAGE, typeLabel, revisionColour,
   blankElement, blankDocument, blankScript, loadScript, saveScript,
   makeRevision, restoreElements,
-  sceneNumbers, lockNumbering, settleNumbering, normaliseNumbering, compareSceneNumbers,
+  sceneNumbers, lockNumbering, settleNumbering, normaliseNumbering, normalisePagesLock, compareSceneNumbers,
   parseSceneNumber, isNumberingLocked,
   elementLines, totalLines, pageCount, formatPages, formatRuntime, wordCount,
   dualPairs, canPairDual, contdOffer, withContd, cueSpeaker, CONTD_RE, EXTENSIONS,

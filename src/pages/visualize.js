@@ -12,10 +12,12 @@
    time. Rename a location in the breakdown and this page says the new
    name, because it was never typed here.
 
-   NO IMAGES. The studio is local-first: a storyboard frame and a
-   lookbook entry carry a link or a description, never bytes. The
-   reason is in the header of src/lib/shots.js, and the UI repeats it
-   where a user would otherwise go looking for an upload button.
+   NO IMAGES IN THE BROWSER. The studio is local-first: a storyboard
+   frame and a lookbook entry carry a link or a description, never
+   bytes. The reason is in the header of src/lib/shots.js. A frame's
+   PICTURE — drawn with AI or uploaded (src/ui/frame-upload.js) — is a
+   file in the writer's own Google Drive, and the frame keeps only
+   `drive:<fileId>`; the UI says so where the upload button is.
 
    Every colour is a token, every shape is a --sk-* skin variable, and
    there is not one inline handler — a strict CSP ships in
@@ -57,7 +59,8 @@ import { renderBlocking, renderSceneBoard, highlightCamera } from '../ui/blockin
    Desk) stays behind the pill's click. */
 import { driveFileIdOf } from '../lib/drive.js';
 import { onDriveStatus } from '../lib/drive-sync.js';
-import { boardJobs, MAX_FRAMES } from '../lib/board-frames.js';
+import { boardJobs, MAX_FRAMES, ASPECTS, aspectOf } from '../lib/board-frames.js';
+import { uploadToFrame } from '../ui/frame-upload.js';
 import { driveImage, currentBoardGate, onDriveReconnect, wireDriveImages } from '../ui/drive-image.js';
 import { basicShotDivision } from '../lib/shot-rules.js';
 import {
@@ -732,12 +735,11 @@ function renderStoryboard(scenes, shots, frames) {
       text: 'A frame per drawing, hanging off the shot it draws. Grouped by scene, '
           + 'in shot order — move a shot above and the board follows it.'
     }),
-    noImageNote('A frame here holds a link or a description, not a picture file. '
-      + 'The studio keeps your work in this browser, where an image file would not '
-      + 'fit and would not survive a backup — so paste the URL of your drawing, or '
-      + 'write the frame in words, or draw frames with AI: those pictures are saved to '
-      + 'your own Google Drive, and the frame (and every backup file) keeps only a link to each. '
-      + 'Words are often the better storyboard anyway.')
+    noImageNote('A frame holds a picture, a link or a description. Upload a picture or '
+      + 'draw one with AI: either is saved to your own Google Drive, and the frame (and every '
+      + 'backup file) keeps only a link to it, because an image would not fit in this '
+      + 'browser and would not survive a backup. Or paste the URL of your drawing, or '
+      + 'write the frame in words. Words are often the better storyboard anyway.')
   );
   if (shots.length) wrap.append(renderDraw(scenes, shots, frames));
 
@@ -895,7 +897,7 @@ function renderShotColumn(shot, frames) {
 }
 
 function renderFrame(frame, shot, i, total, cams) {
-  const card = h('div.vz-frame', { 'data-frame': frame.id });
+  const card = h('div.vz-frame', { 'data-frame': frame.id, 'data-aspect': aspectOf(frame.aspect) });
 
   /* The slate: a frame-shaped space for the reference, labelled the way
      the camera report labels it — the frame id top left, the lens top
@@ -934,7 +936,16 @@ function renderFrame(frame, shot, i, total, cams) {
     class: 'vz-fieldset', attrs: { 'data-frame-field': 'caption', 'aria-label': 'Frame caption' }
   }));
 
-  card.append(h('div.vz-frame-acts', {}, [ctrlTray([
+  /* The frame's shape: the slate takes it from [data-aspect] on the
+     card (visualize.css), so a 2.39:1 film boards in 2.39:1. */
+  const aspect = h('select.k-input.vz-frame-aspect', { 'data-frame-field': 'aspect', 'aria-label': 'Frame shape' });
+  for (const a of ASPECTS) aspect.append(h('option', { value: a.id, text: a.label, selected: a.id === aspectOf(frame.aspect) }));
+  card.append(h('label.vz-frame-shape', {}, [h('span.vz-frame-shape-lab', { text: 'Shape' }), aspect]));
+
+  card.append(h('div.vz-frame-acts', {}, [
+    button({ label: driveFileIdOf(String(frame.ref || '').trim()) ? 'Replace picture' : 'Upload picture', icon: 'upload', size: 'sm',
+      action: 'vz-frame-upload', class: 'vz-frame-upload', attrs: { 'data-label': frameBadge(shot, i) } }),
+    ctrlTray([
     ctrlBtn('↑', 'vz-frame-up', 'Move this frame earlier', i === 0),
     ctrlBtn('↓', 'vz-frame-down', 'Move this frame later', i === total - 1),
     ctrlBtn('✕', 'vz-frame-del', 'Delete this frame', false, true)
@@ -1099,7 +1110,7 @@ function refView(ref) {
   }
   if (value) return h('p.vz-frame-view.vz-frame-desc', { text: value });
   return h('p.vz-frame-view.vz-frame-none', {
-    text: 'No reference yet — paste a link, or describe it below.'
+    text: 'No picture yet — upload one, paste a link, or describe it below.'
   });
 }
 
@@ -1393,6 +1404,19 @@ delegate(document, 'click', '[data-action="vz-frame-add"]', (e, el) => {
 });
 delegate(document, 'click', '[data-action="vz-frame-up"]',   (e, el) => { Shots.moveFrame(frameIdOf(el), -1); render(); });
 delegate(document, 'click', '[data-action="vz-frame-down"]', (e, el) => { Shots.moveFrame(frameIdOf(el),  1); render(); });
+delegate(document, 'click', '[data-action="vz-frame-upload"]', (e, el) => {
+  const id = frameIdOf(el);
+  const frame = Shots.listFrames().find((f) => f.id === id);
+  if (!frame) return;
+  uploadToFrame({
+    frame,
+    label: el.dataset.label || 'shot',
+    update: (patch) => Shots.updateFrame(id, patch),
+    after: () => render(),
+    toast: (m, o) => StudioUI.toast(m, o),
+    say: (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (err) { /* chrome may not be up */ } }
+  });
+});
 delegate(document, 'click', '[data-action="vz-frame-del"]',  async (e, el) => {
   if (!await askDanger('Delete this frame? The shot it draws is untouched.')) return;
   Shots.removeFrame(frameIdOf(el));
@@ -1403,8 +1427,9 @@ delegate(document, 'change', '[data-frame-field]', (e, el) => {
   Shots.updateFrame(id, { [el.dataset.frameField]: el.value });
   // The slate shows the reference. Patched in place, not re-rendered:
   // see the note on the shot-field handler above.
-  if (el.dataset.frameField !== 'ref') return;
   const card = document.querySelector('.vz-frame[data-frame="' + id + '"]');
+  if (el.dataset.frameField === 'aspect') { if (card) card.dataset.aspect = aspectOf(el.value); return; }
+  if (el.dataset.frameField !== 'ref') return;
   const view = card && card.querySelector('.vz-frame-view');
   if (view) view.replaceWith(refView(el.value));
 });

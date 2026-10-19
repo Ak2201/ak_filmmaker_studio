@@ -48,7 +48,7 @@ import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } f
 import { loadScript, saveScript, blankElement } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
 import { suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
-import { pageHeader, statStrip, statCard, button, chip, badge } from '../ui/kit/index.js';
+import { pageHeader, statStrip, statCard, button, chip, badge, todBadge, segmented } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { measureEighths } from '../lib/scene-sync.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
@@ -229,7 +229,10 @@ const SL = {
     { id: 'p-night-ext', name: 'Night exteriors', q: '', ie: 'EXT', dn: 'NIGHT', st: '' },
     { id: 'p-untagged', name: 'Untagged scenes', q: '', ie: '', dn: '', st: 'untagged' }
   ],
-  presetSeq: 0
+  presetSeq: 0,
+  /* TABLE OR INDEX CARDS. In memory, like the presets and for the same
+     reason: a view that survived a reload would be a new storage key. */
+  view: 'table'
 };
 const filterActive = () => filterOn(SL);
 const KEYS_HINT = 'Keys: Up and Down arrows move between scenes (from the open/close button or the location). '
@@ -389,6 +392,52 @@ function renderScene(scene, i, total) {
   return card;
 }
 
+/* ---- index cards ---------------------------------------------
+   The same scenes as the table, read the way a writer pins them to a
+   board: one card each, slug and synopsis first. A card is a `.bd-sl`
+   carrying the row's data-* attributes, so the search, the filters, the
+   drag handle and the keyboard route all work on it unchanged; the
+   only thing that differs is where a drop lands (a grid, not a list).
+   Reordering moves the SCENE LIST, exactly as the table's handle does —
+   the screenplay's text stays where it is, and the first drag says so.
+   Derived from listScenes() on every render; nothing here is stored. */
+const TOD_HUE = { DAY: 'day', NIGHT: 'night', DAWN: 'dawn', DUSK: 'dusk' };
+function renderSceneCard(scene, i) {
+  const status = sceneStatus(scene);
+  const n = scene.number || String(i + 1);
+  const off = filterActive();
+  const hue = TOD_HUE[scene.dayNight];
+  const cast = castSummary(scene);
+  const card = h('article.bd-sl.bd-card' + (hue ? '.hue-' + hue : ''), {
+    'data-scene': scene.id, id: 'scene-' + scene.id, role: 'listitem',
+    'data-ie': scene.intExt, 'data-dn': scene.dayNight, 'data-st': status.id,
+    'data-find': searchText(scene)
+  });
+  card.append(
+    h('div.bd-card-top', {}, [
+      h('button.bd-icon.bd-sl-grip', {
+        type: 'button', 'data-action': 'sl-grip', 'aria-disabled': String(off), title: off ? GRIP_OFF : GRIP_ON,
+        'aria-label': 'Reorder scene ' + n + '. Drag, or press an arrow key.', text: '\u283F'
+      }),
+      h('span.bd-card-no', { text: n }),
+      h('span.bd-card-ie', { text: scene.intExt }),
+      todBadge(scene.dayNight, { icon: false }),
+      h('span.bd-card-len', { text: formatEighths(scene.eighths), title: 'Length in pages' })
+    ]),
+    h('h3.bd-card-slug', { text: scene.location || 'No location yet' }),
+    h('p.bd-card-syn' + (scene.synopsis ? '' : '.is-none'), { text: scene.synopsis || 'No synopsis yet' }),
+    h('div.bd-card-foot', {}, [
+      h('span.bd-card-cast' + (cast ? '' : '.is-none'), { text: cast || 'No cast tagged', title: (scene.elements.cast || []).join(', ') || 'No cast tagged yet' }),
+      badge({ label: status.label, tone: STATUS_TONE[status.id], dot: true, class: 'bd-sl-status is-' + status.id })
+    ]),
+    h('button.bd-card-open', {
+      type: 'button', 'data-action': 'sl-card-open',
+      'aria-label': 'Edit scene ' + n + ' in the table', text: 'Edit'
+    })
+  );
+  return card;
+}
+
 /** The toolbar above the rows: find, three filters, expand all, and the
  *  bulk bar that appears once rows are ticked. Filtering hides rows in
  *  place (applySceneFilter) — a re-render here would take the caret out of
@@ -404,7 +453,11 @@ function renderSceneBar(scenes) {
       [opt('', 'Any time', SL.dn)].concat(DAY_NIGHT.map((v) => opt(v, v, SL.dn)))),
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'st', 'aria-label': 'Filter by where the scene stands' },
       [['', 'Any status'], ['untagged', 'Untagged'], ['tagged', 'Tagged'], ['scheduled', 'Scheduled'], ['shot', 'Shot'], ['part', 'Part shot'], ['dropped', 'Dropped']].map(([v, l]) => opt(v, l, SL.st))),
-    button({ label: SL.open.size ? 'COLLAPSE ALL' : 'EXPAND ALL', action: 'sl-expand', class: 'bd-sl-expand' }),
+    SL.view === 'cards' ? null : button({ label: SL.open.size ? 'COLLAPSE ALL' : 'EXPAND ALL', action: 'sl-expand', class: 'bd-sl-expand' }),
+    segmented({
+      label: 'Show the scenes as', name: 'sl-view', action: 'sl-view', quiet: true, value: SL.view, class: 'bd-sl-view',
+      options: [{ value: 'table', label: 'Table', icon: 'table_rows' }, { value: 'cards', label: 'Cards', icon: 'view_module' }]
+    }),
     h('span.bd-sl-count', { role: 'status', 'aria-live': 'polite', title: KEYS_HINT, text: scenes.length + ' scenes' })
   ]);
   const bulk = h('div.bd-sl-bulk', { hidden: !SL.sel.size, role: 'group', 'aria-label': 'Selected scenes' }, [
@@ -969,11 +1022,17 @@ function render(focus) {
     if (hashId) SL.open.add(decodeURIComponent(hashId[1]));
     for (const id of [...SL.sel]) if (!scenes.some((s) => s.id === id)) SL.sel.delete(id);
     tagging.append(renderSceneBar(scenes));
-    tagging.append(h('div.bd-sl-head', { 'aria-hidden': 'true' }, [
-      h('span'), h('span'), h('span', { text: 'No.' }), h('span', { text: 'Location' }), h('span', { text: 'INT / EXT' }), h('span', { text: 'Time' }),
-      h('span', { text: 'Length' }), h('span', { text: 'Cast' }), h('span', { text: 'Status' }), h('span')
-    ]));
-    scenes.forEach((s, i) => tagging.append(renderScene(s, i, scenes.length)));
+    if (SL.view === 'cards') {
+      const grid = h('div.bd-cards', { role: 'list', 'aria-label': 'Scenes as index cards' });
+      scenes.forEach((s, i) => grid.append(renderSceneCard(s, i)));
+      tagging.append(grid);
+    } else {
+      tagging.append(h('div.bd-sl-head', { 'aria-hidden': 'true' }, [
+        h('span'), h('span'), h('span', { text: 'No.' }), h('span', { text: 'Location' }), h('span', { text: 'INT / EXT' }), h('span', { text: 'Time' }),
+        h('span', { text: 'Length' }), h('span', { text: 'Cast' }), h('span', { text: 'Status' }), h('span')
+      ]));
+      scenes.forEach((s, i) => tagging.append(renderScene(s, i, scenes.length)));
+    }
     tagging.append(h('p.bd-sl-none', { hidden: true, text: 'No scene matches. Clear the search or a filter above.' }));
     tagging.append(button({ label: '+  Add scene', action: 'scene-add', class: 'bd-add' }));
   }
@@ -1233,6 +1292,7 @@ function updateRowDrag(e) {
   RD.line.remove();
   RD.at = null;
   if (!rows.length) return;
+  if (SL.view === 'cards') { updateCardDrop(e, rows, p); return; }
   const first = rows[0].getBoundingClientRect(), last = rows[rows.length - 1].getBoundingClientRect();
   if (e.clientY < first.top - 80 || e.clientY > last.bottom + 80) return;   // pointer is nowhere near the list
   /* The row's own line is its midpoint, so a tall open row is judged by
@@ -1252,9 +1312,37 @@ function updateRowDrag(e) {
   if (index === from) { RD.line.remove(); return; }   // its own place: nothing to write
   RD.at = { index };
 }
+/* On the card grid the drop is the card under the pointer (or nearest
+   it), before or after by which half of it the pointer is in. The card
+   is marked on that edge rather than a line being inserted, because an
+   inserted element would take a grid cell and move every card after it
+   while the pointer is still deciding. */
+function clearCardDrop() {
+  document.querySelectorAll('.bd-card.is-drop-before, .bd-card.is-drop-after')
+    .forEach((c) => c.classList.remove('is-drop-before', 'is-drop-after'));
+}
+function updateCardDrop(e, cards, p) {
+  clearCardDrop();
+  let best = null, bestD = Infinity;
+  for (const c of cards) {
+    const r = c.getBoundingClientRect();
+    const dx = e.clientX < r.left ? r.left - e.clientX : e.clientX > r.right ? e.clientX - r.right : 0;
+    const dy = e.clientY < r.top ? r.top - e.clientY : e.clientY > r.bottom ? e.clientY - r.bottom : 0;
+    const d = Math.hypot(dx, dy);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  if (!best || bestD > 120) return;   // nowhere near the board
+  const r = best.getBoundingClientRect();
+  const before = e.clientX < r.left + r.width / 2;
+  const index = cards.indexOf(best) + (before ? 0 : 1);
+  if (index === visibleRows().indexOf(p.row)) return;   // its own place: nothing to write
+  best.classList.add(before ? 'is-drop-before' : 'is-drop-after');
+  RD.at = { index };
+}
 function endRowDrag({ drop }) {
   const p = RD.p;
   if (!p) return;
+  clearCardDrop();
   const at = drop ? RD.at : null;
   const wasActive = RD.active;
   if (wasActive) {
@@ -1271,6 +1359,7 @@ function endRowDrag({ drop }) {
   Scenes.reorderScene(p.id, at.index);
   render(inScene(p.id, '.bd-sl-grip'));
   sayLive(sceneLabel(p.id) + ' moved to position ' + (at.index + 1) + ' of ' + all.length + '.');
+  if (SL.view === 'cards') noteCardOrder();
 }
 document.addEventListener('pointermove', (e) => {
   const p = RD.p;
@@ -1295,17 +1384,50 @@ document.addEventListener('contextmenu', (e) => {
 /* The keyboard route: Up / Down on the handle moves the scene one place. */
 delegate(document, 'keydown', '.bd-sl-grip', (e, grip) => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  /* On the card grid Left and Right move it too, which is the direction
+     the cards read in; Up and Down keep the table's meaning (one place). */
+  const back = e.key === 'ArrowUp' || (SL.view === 'cards' && e.key === 'ArrowLeft');
+  const fwd = e.key === 'ArrowDown' || (SL.view === 'cards' && e.key === 'ArrowRight');
+  if (!back && !fwd) return;
   e.preventDefault();
   if (filterActive()) { sayLive('Reordering is off while a search or filter is active. Clear it first.'); return; }
   const id = sceneIdOf(grip);
   const list = Scenes.listScenes();
-  const i = list.findIndex((x) => x.id === id), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+  const i = list.findIndex((x) => x.id === id), j = i + (back ? -1 : 1);
   if (i < 0 || j < 0 || j >= list.length) { sayLive(sceneLabel(id) + ' is already ' + (j < 0 ? 'first' : 'last') + '.'); return; }
   Scenes.reorderScene(id, j);
   render(inScene(id, '.bd-sl-grip'));
   sayLive(sceneLabel(id) + ' moved to position ' + (j + 1) + ' of ' + list.length + '.');
+  if (SL.view === 'cards') noteCardOrder();
 });
+
+/* ---- the view: table or index cards ---------------------------- */
+delegate(document, 'click', '[data-action="sl-view"]', (e, btn) => {
+  const v = btn.dataset.value === 'cards' ? 'cards' : 'table';
+  if (v === SL.view) return;
+  SL.view = v;
+  render('.bd-sl-view [data-value="' + v + '"]');
+});
+/* Edit on a card: the table, with that scene open and its location
+   field focused — the card is for reading and ordering, the row is
+   where a scene is edited. */
+delegate(document, 'click', '[data-action="sl-card-open"]', (e, btn) => {
+  const id = sceneIdOf(btn);
+  if (!id) return;
+  SL.view = 'table';
+  SL.open.add(id);
+  render(inScene(id, '.bd-slug'));
+  document.getElementById('scene-' + id)?.scrollIntoView({ block: 'center', behavior: 'instant' });
+});
+/* Said once per visit, the first time a card moves: the order is the
+   scene list's (the stripboard and the reports read it), and the
+   screenplay's text has not moved. */
+let cardOrderSaid = false;
+function noteCardOrder() {
+  if (cardOrderSaid) return;
+  cardOrderSaid = true;
+  try { StudioUI.toast('Scene order changed. The screenplay itself has not moved.', { type: 'info' }); } catch (err) { /* chrome may not be up */ }
+}
 
 /* ---- the bin ------------------------------------------------- */
 const binIdOf = (el) => el.closest('[data-bin]')?.dataset.bin;

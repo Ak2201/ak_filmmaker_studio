@@ -78,18 +78,12 @@ try {
   story.on('pageerror', (e) => errors.push(e.message));
   /* The Idea Vault is its own page now (vault.html, 11 Oct 2026), and
      it is the one page that drains the clip queue. */
-  /* idea-vault is off for every plan, so plan-gate covers the page with
-     its "not available" panel; this proof is about the clip queue
-     draining into the page, so it looks past that overlay. */
-  await story.addInitScript(() => {
-    addEventListener('DOMContentLoaded', () => {
-      const st = document.createElement('style');
-      st.textContent = ':root[data-plan-lock] main { visibility: visible !important; } .pg-lock[data-gone] { display: none !important; }';
-      document.head.append(st);
-    });
-  });
+  /* idea-vault is on from Basic up again (19 Oct 2026), so the page is
+     no longer covered by plan-gate's "not available" panel — the
+     workaround that looked past it is gone, and this asserts it. */
   await story.goto(X('vault.html'));
   await story.waitForSelector('.st-clip-text', { timeout: 10000 });
+  ok(!(await story.$('.pg-lock[data-gone]')), 'the Idea Vault page is available, not covered by "Not available"');
   ok((await story.textContent('.st-clip-text')).includes('forged degree'), 'it arrives in the Idea Vault');
   ok((await story.textContent('.st-clip-src')).includes('news.example'), 'with the page it came from');
   const q2 = await sw.evaluate(() => chrome.storage.local.get('fms_clip_queue').then((r) => (r.fms_clip_queue || []).length));

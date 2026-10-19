@@ -439,5 +439,54 @@ const at = (els, id) => els.findIndex((e) => e.id === id);
   }
 }
 
+/* ================================================================
+   4. LOCKED PAGES (A-pages) — screenplay-export.js pagesLock
+   ================================================================ */
+{
+  const S = sample.elements.map((e) => blankElement(e));
+  const base = { elements: S, numbering: lockNumbering(S) };
+  const before = Typeset.paginateDoc(base);
+  const lock = Typeset.lockPages(base, '2026-10-19T10:00:00.000Z');
+  eq(lock.starts.length, before.length, 'lockPages records one start per page');
+  const doc = { elements: S, numbering: { ...base.numbering, pages: lock } };
+  const locked = Typeset.paginateDoc(doc);
+  eq(locked.length, before.length, 'a fresh page lock moves no page break');
+  eq(Typeset.pageNumbersDoc(doc, locked), before.map((_, i) => String(i + 1)), 'and numbers the pages 1 to N');
+  eq(Typeset.pageNumbersDoc({ elements: S }, before), before.map((_, i) => String(i + 1)), 'unlocked pages are numbered by position');
+
+  // Insert a long passage on page 2: page 3 must still be page 3.
+  const p2 = Typeset.pageStarts(locked)[1];
+  const at = S.findIndex((e) => e.id === p2.id) + 1;
+  const added = Array.from({ length: 40 }, (_, k) => el('action', 'An added line of action, long enough to take a few lines on the page, number ' + k + '.'));
+  const grown = { ...doc, elements: [...S.slice(0, at), ...added, ...S.slice(at)] };
+  const gp = Typeset.paginateDoc(grown);
+  const gl = Typeset.pageNumbersDoc(grown, gp);
+  ok(gl[1] === '2' && /^2A$/.test(gl[2]), 'material added on page 2 overflows into 2A', gl.slice(0, 6));
+  const p3 = Typeset.pageStarts(locked)[2];
+  const i3 = gl.indexOf('3');
+  ok(i3 > 2 && Typeset.pageStarts(gp)[i3].id === p3.id, 'page 3 still begins where it did', { i3, labels: gl.slice(0, 6) });
+  ok(gl.slice(i3).every((l, k) => !/[A-Z]/.test(l) || k === 0 || l.startsWith(gl[i3 + k - 1].replace(/[A-Z]+$/, ''))), 'and no later page is renumbered');
+  eq(gl[gl.length - 1], String(before.length), 'the last page keeps its number');
+
+  // Cut everything on page 3: page 2 is now 2-3.
+  const starts = Typeset.pageStarts(locked);
+  const from = S.findIndex((e) => e.id === starts[2].id), to = S.findIndex((e) => e.id === starts[3].id);
+  const shrunk = { ...doc, elements: [...S.slice(0, from), ...S.slice(to)] };
+  const sl = Typeset.pageNumbersDoc(shrunk);
+  eq(sl.slice(0, 3), ['1', '2-3', '4'], 'a cut page folds into the one before: 2-3, then 4');
+
+  // The printed label, and the text export carries it.
+  eq([Typeset.pageLabelPrinted('1', 0), Typeset.pageLabelPrinted('2A', 2), Typeset.pageLabelPrinted('2-3', 1)], ['', '2A.', '2-3.'], 'printed labels: first page bare, a full stop after');
+  ok(/\n\s+2A\.\n/.test(Typeset.toText(grown, { title: 'T' })), 'the text export prints 2A.');
+
+  // Carried through load and save, never moved by a save.
+  const norm = Script.normaliseNumbering(doc.numbering);
+  eq(norm.pages.starts.length, lock.starts.length, 'normaliseNumbering keeps the page lock');
+  eq(Script.settleNumbering(grown.elements, doc.numbering).pages, doc.numbering.pages, 'settleNumbering keeps it as it was');
+  eq(Script.normalisePagesLock({ locked: true, starts: [] }), null, 'an empty page lock reads as unlocked');
+  eq(Script.normalisePagesLock({ locked: 'yes', starts: [{ n: '1' }] }), null, 'a malformed one too');
+  ok(Typeset.pagesLock({ elements: S, numbering: null }) === null, 'no scene lock, no page lock');
+}
+
 console.log(`test:revisions — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

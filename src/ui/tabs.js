@@ -165,7 +165,7 @@ function currentFromHash(sections) {
   return tab && sections.some((s) => s.id === tab) ? tab : '';
 }
 
-function show(sections, id, { setHash = true, animate = false } = {}) {
+function show(sections, id, { setHash = true, animate = false, enter = animate } = {}) {
   active = id;
   /* An open #guide deep link stands alone: the tab panels give way to it
      until a tab is picked (a click passes animate, and moves the hash). */
@@ -178,7 +178,7 @@ function show(sections, id, { setHash = true, animate = false } = {}) {
     /* Only a switch the reader made animates the panel that arrives
        (tabs.css). Restarting the class forces a reflow first, so a
        second switch back to the same panel plays again. */
-    if (on && animate && wasHidden) {
+    if (on && enter && wasHidden) {
       s.classList.remove('tabs-enter');
       void s.offsetWidth;
       s.classList.add('tabs-enter');
@@ -329,7 +329,10 @@ function onTabClick(e) {
   const strip = t.closest('.tabs');
   const y0 = window.scrollY;
   const stuckAt = strip ? strip.getBoundingClientRect().top : 0;
-  show(sections, t.dataset.tab, { animate: true });
+  /* A keyboard switch (the arrow keys call .click(), and Enter/Space
+     on a tab) has e.detail 0 and never animates: a panel that fades in
+     under every keypress is a delay, not feedback. */
+  show(sections, t.dataset.tab, { animate: true, enter: e.detail > 0 });
   t.focus({ preventScroll: true });
   revealPanel(strip, document.getElementById(t.dataset.tab), y0, stuckAt);
 }

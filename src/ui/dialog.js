@@ -60,8 +60,23 @@ function open(build) {
       done = true;
       document.removeEventListener('keydown', onKey, true);
       releaseFocus(overlay);
-      overlay.remove();
       resolve(v);
+      /* The exit. Focus and the answer are settled above, synchronously;
+         only the pixels linger. Under ma-on (motion wanted, a real
+         browser) the overlay fades for --speed-exit and then goes; without
+         it — reduced motion, or webdriver, which is every proof — it is
+         removed at once, exactly as before. */
+      if (!document.documentElement.classList.contains('ma-on')) { overlay.remove(); return; }
+      overlay.classList.add('is-closing');
+      /* a leaving dialog is no longer one: nothing in it takes focus and
+         the page behind it is no longer hidden from a screen reader */
+      overlay.inert = true;
+      card.removeAttribute('aria-modal');
+      overlay.removeAttribute('aria-modal');
+      let gone = false;
+      const drop = () => { if (gone) return; gone = true; overlay.remove(); };
+      overlay.addEventListener('transitionend', (e) => { if (e.target === overlay) drop(); });
+      setTimeout(drop, 200);
     };
     const parts = build(card, finish);
     const onKey = (e) => {

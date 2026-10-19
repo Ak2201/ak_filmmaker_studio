@@ -607,6 +607,34 @@ function brandPlugin() {
    (src/ui/status-bar.js) prints it, and nothing fetches it at run time. */
 const APP_VERSION = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version || '';
 
+/* ============================================================
+   THE PHONE'S STATUS-BAR COLOUR, READ FROM tokens.css (19 Oct 2026)
+   ------------------------------------------------------------
+   Four pages carried `#16140f`, the retired palette, typed into their
+   <head>, and the module pages carried no theme-color at all. On a
+   studio page (one with #app) any typed theme-color is dropped and one
+   is stamped from --surface-rail, the ground of the pinned phone band,
+   so it cannot drift from the palette again. The public pages keep
+   their own (generated elsewhere; they paint --surface-canvas).
+   ============================================================ */
+function themeColor() {
+  const css = readFileSync(resolve(__dirname, 'src/styles/tokens.css'), 'utf8');
+  const m = css.match(/--surface-rail:\s*(#[0-9a-fA-F]{3,8})\s*;/);
+  if (!m) throw new Error('fms-theme-color: --surface-rail is not a hex in tokens.css');
+  const rail = m[1];
+  return {
+    name: 'fms-theme-color',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        if (!html.includes('id="app"')) return html;
+        const stripped = html.replace(/[ \t]*<meta name="theme-color"[^>]*>\n?/g, '');
+        return stripped.replace('</head>', '<meta name="theme-color" content="' + rail + '">\n</head>');
+      }
+    }
+  };
+}
+
 export default defineConfig({
   base: './',
   appType: 'mpa',
@@ -643,6 +671,7 @@ export default defineConfig({
   plugins: [
     materialSymbols(),
     fontPreloads(),
+    themeColor(),
     stepIndex(),
     brandPlugin(),
     studySlicePlugin(),

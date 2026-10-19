@@ -28,7 +28,9 @@ export function meter(o = {}) {
 export function setMeter(el, value, max) {
   if (!el) return;
   const p = pct(value, max);
-  el.style.setProperty('--k-pct', p.toFixed(1) + '%');
+  el.style.setProperty('--k-pct', p.toFixed(1) + '%');   // kept: a public hook pages may read
+  const fill = el.querySelector('.k-meter-fill');
+  if (fill) fill.style.setProperty('--k-frac', (p / 100).toFixed(3));
   const track = el.querySelector('.k-meter-track');
   if (track) {
     track.setAttribute('aria-valuenow', String(Number(value) || 0));

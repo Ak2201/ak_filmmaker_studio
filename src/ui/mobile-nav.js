@@ -69,24 +69,144 @@ function isAdmin() {
 }
 
 /* ---- the sheet frame ------------------------------------------ */
-function close() {
-  if (!sheet) return;
-  const s = sheet; sheet = null;
-  for (const b of s.borrowed) {
+/* THE EXIT (19 Oct 2026). A drawer leaves the way it came, down by its
+   own height, faster than it rose. Everything a caller can observe —
+   `sheet` cleared, focus returned, the scroll lock lifted, onClose —
+   still happens synchronously; only the pixels linger, and only under
+   html.ma-on (motion wanted, a real browser: never under webdriver, so
+   every proof still sees the overlay go at once). Borrowed band nodes
+   go home AFTER the slide, so the Tools sheet does not empty as it
+   leaves; open() flushes a pending exit first, so a new sheet can never
+   borrow a node that is still inside the old one. */
+let closing = null;        // { overlay, borrowed, returnTo, timer }
+const animating = () => document.documentElement.classList.contains('ma-on');
+
+function finishClose() {
+  const c = closing;
+  if (!c) return;
+  closing = null;
+  clearTimeout(c.timer);
+  for (const b of c.borrowed) {
     if (b.next && b.next.parentNode === b.parent) b.parent.insertBefore(b.node, b.next);
     else b.parent.append(b.node);
   }
+  c.overlay.remove();
+  /* a node that held focus inside the sliding sheet lost it on the move */
+  if (c.returnTo && c.returnTo.isConnected && (!document.activeElement || document.activeElement === document.body)) {
+    try { c.returnTo.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
+  }
+  // the band's contents moved back: let the shell re-measure it
+  window.dispatchEvent(new Event('resize'));
+}
+
+function close({ instant = false, ms = 0 } = {}) {
+  if (!sheet) return;
+  const s = sheet; sheet = null;
   releaseFocus(s.overlay);
   /* the opener named at open() wins over "whatever had focus": a button
      tapped in Safari is never focused, so the focus the trap remembered
      is <body> and would be dropped */
   if (s.returnTo && s.returnTo.isConnected && typeof s.returnTo.focus === 'function') s.returnTo.focus({ preventScroll: true });
-  s.overlay.remove();
   document.documentElement.classList.remove('mn-locked');
+  finishClose();   // any earlier exit still sliding
+  closing = { overlay: s.overlay, borrowed: s.borrowed, returnTo: s.returnTo, timer: 0 };
+  if (instant || !animating()) finishClose();
+  else {
+    s.overlay.classList.add('is-closing');
+    /* a leaving sheet is no longer a dialog: nothing in it takes focus
+       and the page behind it is no longer hidden from a screen reader */
+    s.overlay.inert = true;
+    s.overlay.removeAttribute('aria-modal');
+    s.overlay.addEventListener('transitionend', (e) => {
+      if (e.target.classList && e.target.classList.contains('mn-sheet') && e.propertyName === 'transform') finishClose();
+    });
+    closing.timer = setTimeout(finishClose, Math.max(240, ms + 40));
+  }
   syncBar();
-  // the band's contents moved back: let the shell re-measure it
-  window.dispatchEvent(new Event('resize'));
   if (typeof s.onClose === 'function') { try { s.onClose(); } catch (e) { console.warn('[mobile-nav] onClose', e); } }
+}
+
+/* SWIPE DOWN TO DISMISS, from the sheet's header (never its scrolling
+   body). The pointer is captured, a second finger is ignored, an upward
+   pull gets friction rather than a wall, and the transform is set on
+   the panel itself (not through an inherited variable). The scrim
+   thins with the drag (its colour, not the overlay's opacity). It closes on a flick (release velocity > 0.11
+   px/ms) or a quarter of the sheet's height, and the rest of the way
+   runs at the finger's own speed (remaining distance / release
+   velocity, 120-300ms) so a fast flick does not slow at the handoff;
+   otherwise the CSS transition snaps it home. With --motion at 0
+   nothing follows the finger; the release still closes past the
+   threshold. */
+function wireDrag(overlay, panel, head) {
+  let drag = null;
+  const still = () => getComputedStyle(document.documentElement).getPropertyValue('--motion').trim() === '0';
+  head.addEventListener('pointerdown', (e) => {
+    if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (e.target.closest && e.target.closest('button, a, input, select, textarea')) return;
+    const t = performance.now();
+    drag = { id: e.pointerId, y: e.clientY, t, dy: 0, v: 0, py: e.clientY, pt: t, still: still() };
+    try { head.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+  });
+  head.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    let dy = e.clientY - drag.y;
+    if (dy < 0) dy = dy * 0.2;                 // friction past the open edge
+    drag.dy = dy;
+    /* release velocity: the latest stretch of the move, smoothed a little,
+       not the average since the press (a slow start hid a fast flick) */
+    const now = performance.now();
+    const dt = now - drag.pt;
+    if (dt > 0) {
+      const v = (e.clientY - drag.py) / dt;
+      drag.v = drag.v ? 0.6 * v + 0.4 * drag.v : v;
+      drag.py = e.clientY; drag.pt = now;
+    }
+    if (drag.still) return;
+    panel.style.transition = 'none';
+    panel.style.transform = 'translateY(' + dy + 'px)';
+    /* the SCRIM thins with the drag, not the overlay (the sheet is its
+       child and must stay solid under the finger) */
+    const left = Math.max(0, 1 - Math.max(0, dy) / Math.max(1, panel.offsetHeight));
+    overlay.style.transition = 'none';
+    overlay.style.backgroundColor = 'color-mix(in srgb, var(--scrim) ' + Math.round(left * 100) + '%, transparent)';
+  });
+  const end = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null;
+    /* a finger that stopped before lifting has no velocity left */
+    const v = performance.now() - d.pt > 80 ? 0 : d.v;
+    const h = Math.max(1, panel.offsetHeight);
+    const go = d.dy > 0 && (d.dy > 0.25 * h || v > 0.11);
+    if (go) {
+      /* continue from where the finger left it, at its speed: the closing
+         rule's transform and opacity are the destination; the inline ones
+         are cleared on the next frame so the transitions run from here */
+      let ms = 0;
+      if (!d.still && v > 0) {
+        const rest = Math.max(1, h - d.dy);
+        ms = Math.round(Math.min(300, Math.max(120, rest / v)));
+        /* an ease-out whose opening slope IS the finger's speed: for
+           cubic-bezier(x1, 1, …) the start slope is 1/x1 (in units of
+           rest/ms), so x1 = rest / (v * ms), kept inside 0.05-0.5 */
+        const x1 = Math.min(0.5, Math.max(0.05, rest / (v * ms))).toFixed(3);
+        const curve = 'cubic-bezier(' + x1 + ', 1, 0.3, 1)';
+        panel.style.transition = 'transform ' + ms + 'ms ' + curve;
+        overlay.style.transition = 'opacity ' + ms + 'ms ' + curve;
+      } else {
+        panel.style.transition = '';
+        overlay.style.transition = '';
+      }
+      if (sheet && sheet.overlay === overlay) close({ ms });
+      requestAnimationFrame(() => { panel.style.transform = ''; });
+    } else {
+      panel.style.transition = '';
+      panel.style.transform = '';               // the transition snaps it back
+      overlay.style.transition = 'background-color var(--speed) var(--ease-out)';
+      overlay.style.backgroundColor = '';
+    }
+  };
+  head.addEventListener('pointerup', end);
+  head.addEventListener('pointercancel', end);
 }
 
 /* THE ONE SHEET FRAME, exported for the section menu's phone list
@@ -99,7 +219,8 @@ function close() {
      returnTo element that gets focus back on close
      onClose  called once, after the sheet is gone */
 function open(kind, title, body, { focus, returnTo, onClose } = {}) {
-  close();
+  close({ instant: true });
+  finishClose();
   const id = 'mnSheetTitle';
   const overlay = h('div.mn-overlay', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': id, 'data-mn-sheet': kind });
   const panel = h('div.mn-sheet');
@@ -111,6 +232,7 @@ function open(kind, title, body, { focus, returnTo, onClose } = {}) {
     body
   );
   overlay.append(panel);
+  wireDrag(overlay, panel, panel.querySelector('.mn-head'));
   document.body.append(overlay);
   document.documentElement.classList.add('mn-locked');
   sheet = { overlay, kind, borrowed: [], returnTo: returnTo || null, onClose: onClose || null };
@@ -293,7 +415,7 @@ function burgerFor(attached) {
 export function onBar(attached) {
   document.documentElement.classList.toggle('mn-on', !!attached);
   burgerFor(!!attached);
-  if (!attached) close();
+  if (!attached) close({ instant: true });
   syncBar();
   window.dispatchEvent(new Event('resize'));
 }
@@ -316,7 +438,7 @@ if (typeof document !== 'undefined') {
        stopPropagation does not stop a later listener on the same node.
        One Escape used to cancel the dialog AND drop the sheet under it,
        sending focus to a button that was display:none by then. */
-    if (document.querySelector('.modal-overlay.show, #studioPalette:not([hidden]), body.pal-open, .tb-menu-panel:not([hidden]), .switcher-dropdown:not([hidden])')) return;
+    if (document.querySelector('.modal-overlay.show:not(.is-closing), #studioPalette:not([hidden]), body.pal-open, .tb-menu-panel:not([hidden]), .switcher-dropdown:not([hidden])')) return;
     e.stopPropagation(); close();
   }, true);
   /* The crumb's stage segment opens that stage's menu on a desktop.

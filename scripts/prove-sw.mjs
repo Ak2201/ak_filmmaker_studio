@@ -37,6 +37,8 @@
      (g) a `/page` clean URL visited online is served offline too
      (h) the offline shoot pack (reports.html#dpr): after its button,
          `/shoot` — never visited — opens offline as the shoot day
+     (i) a page opened with ?share= / ?code= is cached under its path,
+         so no bearer string sits in Cache Storage (§49 follow-up)
 
    Run (needs Node >= 22.12; set PW_CHROMIUM if Playwright's own
    download is not present):
@@ -322,6 +324,22 @@ let packResult = null;
   }
   packResult = failed ? { failed: failed.split('\n')[0] }
     : await page.evaluate(() => [...document.querySelectorAll('#rp-offline-list li')].map((li) => li.textContent));
+}
+
+// (i) a page opened with a bearer string in its query is not cached
+// under that query (a share token, an invite code, an OAuth code)
+await page.goto(ORIGIN + '/breakdown?share=s49-bearer-token&code=s49-oauth-code', { waitUntil: 'networkidle' });
+await page.waitForTimeout(500);
+{
+  const leaked = await page.evaluate(async () => {
+    const hits = [];
+    for (const n of await caches.keys()) {
+      const c = await caches.open(n);
+      for (const req of await c.keys()) if (/s49-bearer-token|s49-oauth-code/.test(req.url)) hits.push(n + ' ' + req.url);
+    }
+    return hits;
+  });
+  check('(i) no cache key holds a ?share= token or an OAuth ?code=', leaked.length === 0, leaked.length ? leaked.join(', ') : 'none');
 }
 
 // (e) nothing cached is redirected

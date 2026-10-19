@@ -229,6 +229,20 @@ for (const f of ['supabase/schema/schema-48-refund-seat-trial.sql', 'supabase/sc
 console.log('✓ §48 loads (and re-runs cleanly)');
 runChecks('refund-seat-trial.sql');
 /* --- end §48 --- */
+/* --- §49 (the security follow-ups) --- standalone, on §40, §45, §46 and
+   §48. The seed goes in BEFORE the first load: a duplicate payment and an
+   orphaned referral code made with the pre-§49 functions, which the
+   backfills have to mark. Loaded twice (re-runnable), after every earlier
+   check file so those ran against the functions it restates. --- */
+r = psql(['-f', 'scripts/schema-tests/security-49-seed.sql']);
+if (r.status !== 0) fail('security-49-seed.sql did not load', r);
+for (const f of ['supabase/schema/schema-49-security-followups.sql', 'supabase/schema/schema-49-security-followups.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §49 loads (and re-runs cleanly)');
+runChecks('security-49.sql');
+/* --- end §49 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

@@ -577,9 +577,10 @@ function buildRail() {
     text: monogram()
   }));
   /* The Dashboard is the project's home (the launcher) and leads the rail
-     again; the Library shelf shows only while one of its modules is still
-     enabled in the plan matrix. */
-  const gl = globals().filter((g) => !(g.id === 'library' && Array.isArray(g.modules) && g.modules.length && !g.modules.some((m) => !isDisabledEverywhere(m.id) && allowed(m.id))));
+     again. The Library is always there (owner, 19 Oct 2026): its films,
+     directors, rules, rates and watch list are not modules, so switching
+     its three module shelves off must not take the whole page with it. */
+  const gl = globals();
   /* Home and Dashboard lead; the stages follow them; the rest of the
      app-scope entries (Library, Settings, Purchase, Console) close the
      column. The split is by position in navigation.json, not by name:
@@ -802,10 +803,12 @@ function paintDisc(el, text, photo) {
   el.classList.remove('has-photo');
   el.textContent = text;
   if (!photo) return;
+  /* The photo REPLACES the initials (they used to sit on top of it);
+     they come back only if the image fails to load. */
   const pic = h('img', { src: photo, alt: '', referrerpolicy: 'no-referrer', decoding: 'async' });
   pic.addEventListener('error', () => { pic.remove(); el.classList.remove('has-photo'); el.textContent = text; }, { once: true });
   el.classList.add('has-photo');
-  el.append(pic);
+  el.replaceChildren(pic);
 }
 
 /* ---- the account menu ------------------------------------------

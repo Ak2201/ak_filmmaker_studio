@@ -422,8 +422,12 @@
      left a third of a 1440px screen empty either side of every page
      (owner, 19 Oct 2026: "space in left and right side, remove them,
      same throughout the app"). It is a width now, not a reading
-     measure; prose that wants a line length reads --measure-text. */
-  --measure-wide:  78rem;
+     measure; prose that wants a line length reads --measure-text.
+     Then 78rem still left a gap on a wide screen, so it is the whole
+     viewport now (owner, 19 Oct 2026: "occupy the full page"): every
+     max(gutter, (100% - measure) / 2) collapses to the gutter, and the
+     page runs edge to edge beside the rail at every width. */
+  --measure-wide:  100vw;
   --measure-text:  92ch;
   --content-max:   1280px;
   --rail-w:        220px;

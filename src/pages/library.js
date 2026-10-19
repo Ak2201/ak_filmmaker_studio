@@ -288,6 +288,21 @@ const SECTIONS = [
   }
 ];
 
+/* The shelves a reader can open. A shelf that is a module switched off
+   for every plan (Case Studies, Dissection, Film Terminology today) keeps
+   its section in the DOM, hidden by plan-gate as a tab, but leaves the
+   contents, the index and the shelf count: a card that opens nothing is
+   worse than no card (owner, 19 Oct 2026). */
+function shelfModuleId(id) {
+  for (const sh of shelves()) for (const m of sh.modules) {
+    if ((m.href || '').split('#')[1] === id) return m.id;
+  }
+  return '';
+}
+function openShelves() {
+  return SECTIONS.filter((s) => { const m = shelfModuleId(s.id); return !m || !PlanGate.isDisabledEverywhere(m); });
+}
+
 /** A shelf module's label from navigation.json, for the tab strip. */
 function shelfLabel(id) {
   for (const sh of shelves()) for (const m of sh.modules) {
@@ -331,9 +346,10 @@ function renderFigures() {
     statStrip([
       { label: 'Films studied', value: N_FILMS, note: 'on the Films shelf' },
       { label: 'Director archetypes', value: N_DIRECTORS },
-      { label: N_DISSECTED === 1 ? 'Deconstruction' : 'Deconstructions', value: String(N_DISSECTED).padStart(2, '0'), note: 'worked examples' },
+      PlanGate.isDisabledEverywhere('dissection') ? null
+        : { label: N_DISSECTED === 1 ? 'Deconstruction' : 'Deconstructions', value: String(N_DISSECTED).padStart(2, '0'), note: 'worked examples' },
       { label: 'Chennai rate card', value: rates.asOf, note: 'some rows re-checked ' + rateChecks.lastChecked }
-    ], { class: 'lib-stats', label: 'The library in figures' }),
+    ].filter(Boolean), { class: 'lib-stats', label: 'The library in figures' }),
     /* Search is the palette's (one index for the whole studio); this is a door to it. */
     h('button.lib-search.k-btn', { type: 'button', 'data-action': 'palette-open', 'aria-label': 'Search shelves, films, directors and rules' }, [
       h('span.lib-search-text', { text: 'Search shelves, films, directors, rules' })
@@ -422,10 +438,10 @@ function renderCover() {
       h('div.cover-row', {}, [
         h('p.cover-sub', { text: blurb }),
         /* the count is the real number of shelves below */
-        h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${SECTIONS.length} SHELVES`])])
+        h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${openShelves().length} SHELVES`])])
       ]),
       h('nav.cover-toc', { 'aria-label': 'Contents' },
-        SECTIONS.map((s, i) => h('a.toc-item', { href: `#${s.id}` }, [
+        openShelves().map((s, i) => h('a.toc-item', { href: `#${s.id}` }, [
           h('span.toc-head', {}, [
             h('span.num', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
             h('span.toc-go', { 'aria-hidden': 'true', text: '\u2197' })
@@ -486,7 +502,7 @@ function searchSource() {
    The hub's master index listed the library's sections, films and
    directors; it lives here now, derived from the same arrays. */
 function renderContents() {
-  const secs = libraryContents(SECTIONS.map((s) => ({ id: s.id, title: s.tocTitle, desc: s.tocDesc })), searchSource());
+  const secs = libraryContents(openShelves().map((s) => ({ id: s.id, title: s.tocTitle, desc: s.tocDesc })), searchSource());
   return h('div#library-index.lib-contents', {}, [
     h('div.section-head', {}, [
       h('div.left', {}, [
@@ -494,7 +510,7 @@ function renderContents() {
         h('h2', { html: 'The library <em>index.</em>' }),
         h('p.deck', { text: 'Every shelf, and the films, directors, rate tables and watch-list steps on it, in one place. Open one to jump straight in.' })
       ]),
-      h('div.right', { text: `${SECTIONS.length} SHELVES` })
+      h('div.right', { text: `${openShelves().length} SHELVES` })
     ]),
     h('div.lib-contents-grid', {}, secs.map((s) => {
       const head = h('a.lib-contents-head', { href: `#${s.id}` }, [

@@ -609,8 +609,8 @@ function importChooser() {
 
   wrap.append(h('p.wr-imp-lead', {
     text: 'Drop a script anywhere on this page, choose a file, or paste the text below. '
-        + 'A PDF (.pdf), Fountain (.fountain), a plain screenplay (.txt) and '
-        + 'Final Draft (.fdx) all work.'
+        + 'A PDF (.pdf), Fountain (.fountain), a plain screenplay (.txt), '
+        + 'Final Draft (.fdx) and Word (.docx) all work.'
   }));
   wrap.append(h('p.wr-imp-privacy', {}, [
     h('strong', { text: 'The file is read in this browser. ' }),
@@ -628,7 +628,7 @@ function importChooser() {
        here, and a literal that silently falls behind the parser is
        how a format becomes unpickable while still being
        importable. */
-    accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf',
+    accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'data-action': 'import-file'
   });
   wrap.append(h('div.wr-imp-row', {}, [

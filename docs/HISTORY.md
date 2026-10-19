@@ -2313,3 +2313,19 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Found on the way: a long draft name pushed the draft line 42px past a
     390px screen; it truncates now.
 
+    **Word (.docx) screenplay import.** `docx-text.js` gained
+    `documentXmlToParagraphs` (text, the style's display NAME from
+    `word/styles.xml`, left indent in twips, alignment, page breaks) beside
+    the synopsis reader it already had. `script-import.js` lays each
+    paragraph out the way a PDF already is — one line at the column its type
+    sits at in a screenplay text file — and PARSER 2 reads it: the STYLE
+    decides when it names a screenplay element (`DOCX_TYPE`; Final Draft's
+    .docx export and the Word templates use those names), otherwise the
+    indent at 144 twips a column, and right-aligned is a transition. Styled
+    cues and headings are set in capitals (Word often shows capitals through
+    the style over lower-case text). A file with no screenplay styles says so
+    in the preview. Both pickers accept .docx and the copy that lists the
+    formats says Word. `test:import` (+16, fixtures through
+    `scripts/lib/zip-fixture.mjs`, moved out of test-story), `prove:script`
+    case 16 through the real file picker.
+

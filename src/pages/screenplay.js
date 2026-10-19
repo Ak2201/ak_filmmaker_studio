@@ -1015,9 +1015,9 @@ function drawImport() {
   const body = h('div.sc-imp-body');
   if (!imp) {
     const file = h('input', { type: 'file', id: 'scImpFile', class: 'sc-imp-file',
-      accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf', 'data-action': 'sc-imp-file' });
+      accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'data-action': 'sc-imp-file' });
     body.append(
-      h('p', { text: 'Choose a PDF, Fountain, plain-text or Final Draft file, or paste the text. It is read in this browser; nothing is uploaded.' }),
+      h('p', { text: 'Choose a PDF, Fountain, plain-text, Final Draft or Word file, or paste the text. It is read in this browser; nothing is uploaded.' }),
       h('div.sc-imp-row', {}, [h('label.k-btn.k-btn--primary.k-btn--pill', { for: 'scImpFile' }, [sym('upload_file'), h('span', { text: 'Choose a file…' })]), file]),
       h('label.sc-imp-paste-l.k-field', {}, [
         h('span.k-field-label', { text: 'Or paste the screenplay' }),

@@ -279,6 +279,28 @@ ok(d.elements.some((e) => e.text === 'Arun leaves the room.'), '15 Use theirs pu
 ok((d.revisions || []).some((r) => /^Your version/.test(r.name) && r.elements.some((e) => /And again\.$/.test(e.text))), '15 and keeps the writer\'s copy as a draft');
 ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).includes('Arun leaves the room.'), '15 the page shows it');
 
+/* ---- 16 a Word screenplay, through the real file picker ------------------ */
+{
+  const { zip } = await import('./lib/zip-fixture.mjs');
+  const wp = (style, text) => `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
+  const docx = zip([
+    ['[Content_Types].xml', '<Types/>', 0],
+    ['word/styles.xml', '<w:styles><w:style w:styleId="SH"><w:name w:val="Scene Heading"/></w:style><w:style w:styleId="AC"><w:name w:val="Action"/></w:style><w:style w:styleId="CH"><w:name w:val="Character"/></w:style><w:style w:styleId="DI"><w:name w:val="Dialogue"/></w:style></w:styles>', 8],
+    ['word/document.xml', '<w:document><w:body>' + wp('SH', 'INT. TEA STALL - MORNING') + wp('AC', 'Steam rises.') + wp('CH', 'kumar') + wp('DI', 'Two teas.') + '</w:body></w:document>', 8]
+  ]);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => document.querySelector('[data-action="sc-import"]').click());
+  await page.waitForSelector('#scImpFile', { state: 'attached', timeout: 5000 });
+  await page.setInputFiles('#scImpFile', { name: 'tea.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: docx });
+  await page.waitForFunction(() => /Word screenplay/.test((document.getElementById('scImport') || {}).textContent || ''), null, { timeout: 8000 }).catch(() => {});
+  ok(/Word screenplay/.test(await page.textContent('#scImport')), '16 a .docx previews as a Word screenplay');
+  await page.evaluate(() => document.querySelector('[data-action="sc-imp-commit"]').click());
+  await page.waitForTimeout(1200);
+  const imported = await types();
+  ok(['scene:INT. TEA STALL - MORNING', 'action:Steam rises.', 'character:KUMAR', 'dialogue:Two teas.'].every((l) => imported.includes(l)), '16 and imports with each line\'s type from its Word style', imported);
+}
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {

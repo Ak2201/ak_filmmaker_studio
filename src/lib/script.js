@@ -336,7 +336,12 @@ function normaliseRevision(rev) {
    differs from the stored copy is stamped now, unless it already carries
    a later stamp (the Screenplay Writer stamps a line as it is typed). An
    unchanged line keeps whatever it had — an old script that is only
-   loaded and saved gains no field and stays byte-identical. */
+   loaded and saved gains no field and stays byte-identical.
+   A line whose stored copy carries a LATER stamp than this one is not an
+   edit here: it is a page saving the copy it loaded before a newer one
+   synced in (drafts, the beat board). Stamping it now would make the
+   stale text beat the real edit in every later merge, so it keeps its
+   old stamp and the merge prefers the newer line. */
 function stampChanged(elements) {
   let prev = null;
   try { prev = JSON.parse(localStorage.getItem(SCRIPT_KEY) || 'null'); } catch (e) { prev = null; }
@@ -346,6 +351,7 @@ function stampChanged(elements) {
     if (!el) continue;
     const p = before.get(el.id);
     const changed = !p || p.type !== el.type || p.text !== el.text || (p.dual === true) !== (el.dual === true);
+    if (changed && p && (Number(el.u) || 0) < (Number(p.u) || 0)) continue;
     if (changed) { if (!(Number(el.u) >= now - 5000)) el.u = Math.max(Number(el.u) || 0, now); }
     else if (p.u && !el.u) el.u = p.u;
   }

@@ -55,14 +55,24 @@ export function unionRevisions(a = [], b = []) {
   return out.sort((x, y) => String(x.date || '').localeCompare(String(y.date || '')));
 }
 
+const COALESCE_MS = 10 * 60 * 1000;
+
 /** The writer's copy, with the arrival kept as a draft named `label`, and
-    every draft either side had. Returns a NEW doc. */
-export function keepBoth(mine, fresh, label) {
+    every draft either side had. Returns a NEW doc.
+    `replaceId`: the draft this page made from the LAST arrival. If it is
+    under ten minutes old it is overwritten in place (same id, so the
+    other side's copy of it unions back to one) instead of a new draft
+    being added — two people typing at once would otherwise add a
+    whole-script draft on both sides with every save. */
+export function keepBoth(mine, fresh, label, { replaceId = null, now = Date.now() } = {}) {
   const draft = makeRevision((fresh && fresh.elements) || [], label);
-  return {
-    ...mine,
-    revisions: unionRevisions(mine.revisions, fresh && fresh.revisions).concat(draft)
-  };
+  const revs = unionRevisions(mine.revisions, fresh && fresh.revisions);
+  const i = replaceId ? revs.findIndex((r) => r.id === replaceId) : -1;
+  if (i >= 0 && now - (Date.parse(revs[i].date) || 0) < COALESCE_MS) {
+    revs[i] = { ...draft, id: replaceId };
+    return { ...mine, revisions: unionRevisions(revs) };
+  }
+  return { ...mine, revisions: revs.concat(draft) };
 }
 
 /** The arrival on screen, with the writer's copy kept as a draft named

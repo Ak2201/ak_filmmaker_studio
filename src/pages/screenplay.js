@@ -114,7 +114,6 @@ function persistNow() {
   saving = true;
   setStatus('Saving…');
   Script.saveScript(doc);
-  notePageBase();
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
@@ -155,17 +154,17 @@ document.addEventListener('input', (e) => {
 
 /* CO-EDITING (schema §49, off by default). On, an arriving copy is
    MERGED into the one on screen line by line instead of kept beside it
-   as a draft. `pageBase` is the copy this page last loaded or saved —
-   the merge's common ancestor, so it can tell a line the other writer
-   cut from a line this writer has just added. */
-let coEditOn = false;
+   as a draft. `pageBase` is the copy this page last LOADED or RECEIVED —
+   never one it saved, which the other writer may not have seen — so the
+   merge can tell a line they cut from a line this writer has just added.
+   The switch is asked on every arrival, not once: cloud.js learns it
+   only after the session is restored, which is after this page loads. */
+const coEditOn = () => { try { return !!(window.StudioCloud && StudioCloud.coEditingKnown && StudioCloud.coEditingKnown()); } catch (e) { return false; } };
 let pageBase = null;
-function notePageBase() { try { pageBase = JSON.parse(JSON.stringify(doc)); } catch (e) { pageBase = null; } }
-notePageBase();
-try {
-  const c = window.StudioCloud;
-  if (c && c.coEditingEnabled) c.coEditingEnabled().then((on) => { coEditOn = on === true; }, () => {});
-} catch (e) { /* no cloud on this page */ }
+function notePageBase(from) { try { pageBase = JSON.parse(JSON.stringify(from)); } catch (e) { pageBase = null; } }
+notePageBase(doc);
+let theirsToast = null;
+let incomingDraftId = null;   // the draft the last arrival made
 const clock = () => new Date().toTimeString().slice(0, 5);
 const inEditor = () => !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#wr-page'));
 function showDoc() {
@@ -189,14 +188,15 @@ function mergeIncoming(fresh) {
   const changedHere = scriptSignature(merged) !== scriptSignature(doc);
   const differsThere = scriptSignature(merged) !== scriptSignature(fresh);
   doc = merged;
-  pageBase = JSON.parse(JSON.stringify(fresh));
+  notePageBase(fresh);
   if (changedHere) showDoc();
   if (differsThere) persistNow();   // this writer's part goes up too
 }
 function onIncomingScript(live) {
   const fresh = Script.loadScript();
   const dirty = !!(saveTimer || saving || saveOwed) || Date.now() - lastTypedAt < 2500;
-  if (coEditOn) { mergeIncoming(fresh); return; }
+  if (coEditOn()) { mergeIncoming(fresh); return; }
+  notePageBase(fresh);
   const act = incomingAction({ mine: doc, fresh, dirty });
   if (act === 'same') return;
   if (act === 'load') {
@@ -206,13 +206,21 @@ function onIncomingScript(live) {
     return;
   }
   const arrived = fresh;
-  doc = keepBoth(doc, arrived, 'From another device, ' + clock());
-  persistNow();
+  /* While both writers type, each save reaches the other mid-edit. The
+     arrival REPLACES this page's recent "From another device" draft
+     rather than adding one per save, and the save waits for the usual
+     debounce, so two people typing do not trade copies as fast as the
+     network allows. Only the newest offer to swap stays on screen. */
+  doc = keepBoth(doc, arrived, 'From another device, ' + clock(), { replaceId: incomingDraftId });
+  incomingDraftId = doc.revisions[doc.revisions.length - 1]?.id || null;
+  persist();
   refreshDraftLabel();
   try {
-    StudioUI.toast('Another device saved a different version of this script while you were writing. Yours is kept; theirs is in Drafts as “From another device”.', {
+    if (theirsToast) theirsToast.dismiss();
+    theirsToast = StudioUI.toast('Another device saved a different version of this script while you were writing. Yours is kept; theirs is in Drafts as “From another device”.', {
       type: 'info', action: 'Use theirs',
       onAction: () => {
+        theirsToast = null;
         doc = takeTheirs(doc, arrived, 'Your version, ' + clock());
         persistNow();
         showDoc();

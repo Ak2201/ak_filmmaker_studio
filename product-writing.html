@@ -6,6 +6,7 @@
 <title>Screenplay writer for Tamil, Tanglish and English</title>
 <meta name="description" content="Write a formatted screenplay in Tamil, Tanglish or English. Slug lines, action and dialogue format as you type, with numbered drafts and PDF export.">
 <link rel="canonical" href="https://{{brand:host}}/product-writing">
+<link rel="preload" as="image" href="/marketing/writing.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="Screenplay writer for Tamil, Tanglish and English">
@@ -82,22 +83,25 @@
   </div>
 </header>
 <main id="main" class="mk hue-library">
-<section class="mk-hero hue-library" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in">
-    <p class="mk-eyebrow">Writing</p>
+<section class="mk-hero mk-hero--media hue-library" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in mk-hero-grid">
     <h1 class="mk-h1" id="mkH1">Write the screenplay. The format takes care of itself.</h1>
     <p class="mk-sub">A screenplay writer for Tamil, Tanglish and English. Slug lines, action and dialogue set themselves as you type, and every scene feeds the rest of the studio.</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
-      <a class="mk-btn mk-btn--ghost mk-btn--lg" href="#demo"><span class="sym" aria-hidden="true" translate="no">play_circle</span><span>Watch the video</span></a>
     </div>
+    <figure class="mk-player mk-hero-media" id="demo" aria-label="See the writer in action">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/writing.webp">
+        <source src="/marketing/writing.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
   </div>
 </section>
 <div class="mk-label hue-library">
   <div class="mk-wrap mk-label-in">
     <p class="mk-label-path"><span class="sym" aria-hidden="true" translate="no">edit_note</span><span>Writing</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>Writing</strong></p>
     <nav class="mk-label-nav" aria-label="On this page">
-      <a href="#demo">Demo</a>
       <a href="#how">How it works</a>
       <a href="pricing.html">Pricing</a>
     </nav>
@@ -110,20 +114,11 @@
       <p class="mk-body">Press Return and the next element is guessed from the line you just wrote. Tab and Shift+Tab walk from character to parenthetical to dialogue, so your hands stay on the keys and your head stays in the story.</p>
       <p class="mk-body">Every scene heading you write becomes a scene in the studio. The breakdown, schedule and call sheet read from your script, so a rewrite shows up everywhere without being typed twice.</p>
     </div>
-    <figure class="mk-frame">
-      <img src="/marketing/writing-1.webp" width="1280" height="720" alt="Start a scene with a slug line" loading="lazy" decoding="async">
-    </figure>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="demo" aria-labelledby="mkDemoH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkDemoH">See the writer in action</h2>
-    <div class="mk-player">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/writing.webp">
-        <source src="/marketing/writing.webm" type="video/webm">
-        Your browser cannot play this video.
-      </video>
-    </div>
+    <ul class="mk-facts mk-facts--side" id="facts" aria-label="The plain facts">
+      <li><b class="mk-fact-n">Tamil, Tanglish, English</b><span class="mk-fact-l">Dialogue in the language you write</span></li>
+      <li><b class="mk-fact-n">Fountain, FDX, PDF</b><span class="mk-fact-l">Screenplay formats you can bring in</span></li>
+      <li><b class="mk-fact-n">12A</b><span class="mk-fact-l">Locked scene numbers keep their letters</span></li>
+    </ul>
   </div>
 </section>
 <section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
@@ -211,18 +206,10 @@
 <section class="mk-sec mk-band-c mk-mid hue-library" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Open a blank page and write scene one</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Create your free account</a>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="facts" aria-labelledby="mkFactsH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkFactsH">The plain facts</h2>
-    <ul class="mk-facts">
-      <li><b class="mk-fact-n">Tamil, Tanglish, English</b><span class="mk-fact-l">Dialogue in the language you write</span></li>
-      <li><b class="mk-fact-n">Fountain, FDX, PDF</b><span class="mk-fact-l">Screenplay formats you can bring in</span></li>
-      <li><b class="mk-fact-n">12A</b><span class="mk-fact-l">Locked scene numbers keep their letters</span></li>
-    </ul>
-    <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    </div>
   </div>
 </section>
 </main>

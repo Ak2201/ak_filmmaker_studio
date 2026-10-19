@@ -6,6 +6,7 @@
 <title>Shot list maker with PDF and CSV export</title>
 <meta name="description" content="Plan the shots in every scene with size, angle, movement and lens, then print a shot division or export it as a spreadsheet.">
 <link rel="canonical" href="https://{{brand:host}}/product-shot-list">
+<link rel="preload" as="image" href="/marketing/shot-list.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="Shot list maker with PDF and CSV export">
@@ -82,22 +83,25 @@
   </div>
 </header>
 <main id="main" class="mk hue-plan">
-<section class="mk-hero hue-plan" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in">
-    <p class="mk-eyebrow">Pre-production</p>
+<section class="mk-hero mk-hero--media hue-plan" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in mk-hero-grid">
     <h1 class="mk-h1" id="mkH1">Plan every shot, scene by scene</h1>
     <p class="mk-sub">A shot list built on your scene list. Set the size, angle, movement and lens for each setup, then print it for the set.</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
-      <a class="mk-btn mk-btn--ghost mk-btn--lg" href="#demo"><span class="sym" aria-hidden="true" translate="no">play_circle</span><span>Watch the video</span></a>
     </div>
+    <figure class="mk-player mk-hero-media" id="demo" aria-label="See the shot list in action">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/shot-list.webp">
+        <source src="/marketing/shot-list.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
   </div>
 </section>
 <div class="mk-label hue-plan">
   <div class="mk-wrap mk-label-in">
     <p class="mk-label-path"><span class="sym" aria-hidden="true" translate="no">videocam</span><span>Pre-production</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>Shot list</strong></p>
     <nav class="mk-label-nav" aria-label="On this page">
-      <a href="#demo">Demo</a>
       <a href="#how">How it works</a>
       <a href="pricing.html">Pricing</a>
     </nav>
@@ -110,20 +114,11 @@
       <p class="mk-body">Each shot belongs to a scene and carries its number, size, angle, movement, lens and one line of what we see. Totals at the foot show setups, scenes and pages.</p>
       <p class="mk-body">Slug lines and page lengths are read from the scene at print time, so a renamed location is renamed on the sheet without anyone editing it.</p>
     </div>
-    <figure class="mk-frame">
-      <img src="/marketing/shot-list-1.webp" width="1280" height="720" alt="Choose a scene" loading="lazy" decoding="async">
-    </figure>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="demo" aria-labelledby="mkDemoH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkDemoH">See the shot list in action</h2>
-    <div class="mk-player">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/shot-list.webp">
-        <source src="/marketing/shot-list.webm" type="video/webm">
-        Your browser cannot play this video.
-      </video>
-    </div>
+    <ul class="mk-facts mk-facts--side" id="facts" aria-label="The plain facts">
+      <li><b class="mk-fact-n">PDF + CSV</b><span class="mk-fact-l">Print it or open it in a spreadsheet</span></li>
+      <li><b class="mk-fact-n">5</b><span class="mk-fact-l">Angles: eye level, high, low, overhead, dutch</span></li>
+      <li><b class="mk-fact-n">1 or all</b><span class="mk-fact-l">Export one scene or the whole script</span></li>
+    </ul>
   </div>
 </section>
 <section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
@@ -209,18 +204,10 @@
 <section class="mk-sec mk-band-c mk-mid hue-plan" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Plan your first setup</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Create your free account</a>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="facts" aria-labelledby="mkFactsH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkFactsH">The plain facts</h2>
-    <ul class="mk-facts">
-      <li><b class="mk-fact-n">PDF + CSV</b><span class="mk-fact-l">Print it or open it in a spreadsheet</span></li>
-      <li><b class="mk-fact-n">5</b><span class="mk-fact-l">Angles: eye level, high, low, overhead, dutch</span></li>
-      <li><b class="mk-fact-n">1 or all</b><span class="mk-fact-l">Export one scene or the whole script</span></li>
-    </ul>
-    <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    </div>
   </div>
 </section>
 </main>

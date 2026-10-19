@@ -4,7 +4,8 @@
     "h1": "From first draft to final call sheet",
     "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place, saved in your own browser.",
     "note": "Every tool is open on a sample feature, {{fms:dragon.scenes}} scenes long, so you can look around before you write.",
-    "cta": "Get started"
+    "cta": "Get started",
+    "mediaLabel": "The sample feature's scene list"
   },
   "stages": [
     {
@@ -31,6 +32,7 @@
     },
     {
       "id": "prep",
+      "mediaWide": true,
       "sym": "grid_view",
       "h2": "Plan the shoot",
       "body": "Auto-tag suggests what each scene needs and you accept what is right. Then build the shot list, lay scenes onto a stripboard, and print the sides for the day.",
@@ -110,7 +112,6 @@
     ]
   },
   "pricing": {
-    "cta": "View plans and pricing",
     "pill": "See the plans"
   },
   "optOut": {

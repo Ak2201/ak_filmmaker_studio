@@ -13,14 +13,26 @@
 
 /* the hero: the brand's violet, soft, from the top. No photograph. */
 .st-hero { --hue: var(--accent-primary); --hue-lift: var(--brand-lift); }
-.st-hero .mk-h1 { max-width: 16ch; }
+/* the first screen shows the product, large: words 5, picture 7. The
+   picture stays inside the wrap (equal outer margins) at the footage's own
+   16:9, uncropped: it is the live UI, and a crop cuts the UI off */
+.st-hero { min-height: 0; }
+.st-hero .mk-h1 { font-size: clamp(var(--t-3xl), 3.3vw, var(--t-4xl)); max-width: none; }
+.st-hero .mk-sub { font-size: clamp(var(--t-base), 1.6vw, var(--t-lg)); }
+.st-hero-grid {
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(var(--s6), 5vw, var(--s8)); align-items: center;
+}
+.st-hero-copy { min-width: 0; }
+.st-hero-media { max-width: none; aspect-ratio: 16 / 9; }
+.st-hero-media video { object-fit: contain; }
 .st-note { margin: var(--s5) 0 0; max-width: 48ch; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
 
 /* the facts strip, where a badge strip would be */
 .st-facts-band { background: var(--surface-rail); border-block: 1px solid var(--border-hair); padding-block: var(--s6); }
 .st-facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s5); }
-.st-facts li { display: flex; flex-direction: column; gap: var(--s1); max-width: none; padding-inline: var(--s4); border-left: 1px solid var(--border-strong); }
-.st-fact-n { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-xl); font-weight: 700; line-height: 1.2; color: var(--ink); }
+.st-facts li { display: flex; flex-direction: column; gap: var(--s1); max-width: none; }
+.st-fact-n { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-xl); font-weight: 700; line-height: 1.2; color: var(--ink); text-wrap: balance; }
 .st-fact-l { font-size: var(--t-small); line-height: 1.45; color: var(--ink-muted); }
 
 /* the product explorer: five alternating rows on the dark band */
@@ -40,48 +52,77 @@
 .st-copy { grid-column: 2; grid-row: 1; min-width: 0; }
 .st-stage--flip .st-media { grid-column: 2; }
 .st-stage--flip .st-copy { grid-column: 1; }
-.st-glyph {
-  display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: var(--s4);
-  border-radius: var(--sk-radius, var(--radius-lg)); background: var(--hue-wash); color: var(--hue-lift);
-}
+/* the stage's icon, bare in its hue: no tinted square behind it */
+.st-glyph { display: block; margin-bottom: var(--s3); color: var(--hue-lift); }
 .st-glyph .sym { font-size: 28px; }
 .st-copy .mk-h2 { max-width: 20ch; margin-bottom: var(--s4); }
-.st-player { max-width: none; aspect-ratio: 1.31; }
+/* ratios vary: stages 2 and 4 give the picture 7 of 12, and a stage
+   marked "mediaWide" in marketing-home.json does too (picture left) */
+.st-stage--flip { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.st-stage--media-wide { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+
+/* stage 1, WIDE: the words in one row (heading left, text right), the
+   loop full width beneath them */
+.st-stage--wide { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); row-gap: var(--s6); align-items: start; }
+.st-stage--wide .st-copy {
+  grid-column: 1 / -1; grid-row: 1;
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(var(--s6), 6vw, var(--s9)); align-items: start;
+}
+.st-stage--wide .st-glyph { grid-column: 1; grid-row: 1; }
+.st-stage--wide .mk-h2 { grid-column: 1; grid-row: 2; margin-bottom: 0; }
+.st-stage--wide .mk-body { grid-column: 2; grid-row: 2; }
+.st-stage--wide .mk-link { grid-column: 2; grid-row: 3; justify-self: start; }
+.st-stage--wide .st-media { grid-column: 1 / -1; grid-row: 2; }
+.st-stage--wide .st-player { aspect-ratio: 16 / 9; }
+
+/* stage 5, FIELD: no picture; the whole row is one tone-stepped surface
+   and the three local-first facts sit across it */
+.st-stage--field {
+  grid-template-columns: 1fr; gap: var(--s6);
+  padding: clamp(var(--s6), 5vw, var(--s8)); box-sizing: border-box;
+  background: var(--surface-card); border-radius: var(--sk-radius, var(--radius-lg));
+}
+.st-stage--field .st-copy, .st-stage--field .st-media { grid-column: 1; }
+.st-stage--field .st-copy {
+  grid-row: 1;
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(var(--s6), 6vw, var(--s9)); align-items: start;
+}
+.st-stage--field .st-glyph { grid-column: 1; grid-row: 1; }
+.st-stage--field .mk-h2 { grid-column: 1; grid-row: 2; margin-bottom: 0; }
+.st-stage--field .mk-body { grid-column: 2; grid-row: 2; margin-bottom: 0; }
+.st-stage--field .st-media { grid-row: 2; }
+.st-stage--field .st-copy .mk-h2 { max-width: 16ch; }
+.st-player { max-width: none; aspect-ratio: 16 / 9; }
 .st-player video { object-fit: cover; }
 
-/* Local-first: a static panel in the video's slot, same footprint */
-.st-panel {
-  display: flex; align-items: center; box-sizing: border-box; aspect-ratio: 1.31; padding: var(--s6);
-  background:
-    radial-gradient(80% 80% at 0% 0%, color-mix(in srgb, var(--accent-primary) 18%, transparent), transparent 70%),
-    var(--surface-card);
-  border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg)); box-shadow: var(--shadow-md);
-}
-.st-panel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s5); width: 100%; }
-.st-panel li { display: flex; align-items: flex-start; gap: var(--s4); max-width: none; }
+/* Local-first: the three facts as a row inside the field */
+.st-panel ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s6); width: 100%; }
+.st-panel li { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3); max-width: none; }
 .st-panel .sym { flex: none; font-size: 28px; color: var(--brand-lift); }
 .st-panel b { display: block; font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
-.st-panel span:not(.sym) { display: block; margin-top: var(--s1); font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
-
-/* the pricing teaser: one line, a link and an outline pill */
-.st-teaser { background: var(--surface-rail); border-block: 1px solid var(--border-hair); padding-block: var(--s7); }
-.st-teaser-in { display: flex; align-items: center; justify-content: space-between; gap: var(--s5); flex-wrap: wrap; }
-.st-teaser .mk-h3 { margin-bottom: var(--s1); }
-.st-teaser .mk-card-p { margin: 0; flex: none; max-width: 52ch; }
+.st-panel span:not(.sym) { display: block; margin-top: var(--s1); font-size: var(--t-base); line-height: 1.5; color: var(--ink-body); }
 
 /* closing */
 .st-closing { --hue: var(--accent-primary); }
 .st-closing-sub { max-width: 44ch; margin-inline: auto; }
+.st-closing-note { margin-inline: auto; text-align: center; }
 
 @media (max-width: 899px) {
   .st-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5) var(--s4); }
-  .st-stage, .st-stage--flip { grid-template-columns: 1fr; gap: var(--s5); }
+  .st-hero-grid { grid-template-columns: 1fr; }
+  .st-stage, .st-stage--flip, .st-stage--media-wide, .st-stage--wide { grid-template-columns: 1fr; gap: var(--s5); }
   .st-copy, .st-stage--flip .st-copy { grid-column: 1; grid-row: 1; }
   .st-media, .st-stage--flip .st-media { grid-column: 1; grid-row: 2; }
+  .st-stage--wide .st-copy, .st-stage--field .st-copy { display: block; }
+  .st-stage--wide .mk-h2, .st-stage--field .mk-h2 { margin-bottom: var(--s4); }
+  .st-stage--wide .st-media { grid-row: 2; }
+  .st-panel ul { grid-template-columns: 1fr; gap: var(--s5); }
 }
+/* a phone keeps the facts 2 by 2 (its own composition, not a tall stack) */
 @media (max-width: 560px) {
-  .st-facts { grid-template-columns: 1fr; }
-  .st-teaser-act, .st-teaser-act .mk-btn { width: 100%; }
+  .st-facts-band { padding-block: var(--s5); }
+  .st-facts { gap: var(--s4) var(--s3); }
+  .st-fact-n { font-size: var(--t-lg); }
 }
 
 /* the opt-out the privacy page promises: quiet, below the closing band */

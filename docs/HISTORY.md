@@ -2298,3 +2298,18 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     still `limits.extension` (Intermediate and up), so Basic has the page and
     not the clipper. Re-baselined: vault lost only the panel's words.
 
+    **A newer copy arriving no longer gets overwritten** (a live data-loss
+    bug found while planning co-editing). `screenplay.js` loaded `doc` once
+    and nothing listened for `cloud:synced`, so after cloud.js wrote a pulled
+    or live script into storage the next keystroke saved the page's older
+    copy over it with a newer clock — the other device's work was gone from
+    the cloud (only the local copy cloud.js displaced went to salvage). The
+    page now listens (the pull's notify gained `scopes`, the names it WROTE)
+    and `src/lib/script-incoming.js` decides: nothing unsaved → show the
+    arrival; mid-edit → keep the screen AND keep the arrival as a draft
+    ("From another device, HH:MM", a `revisions` entry — no new key), with
+    Use theirs one press away, which keeps the writer's copy as a draft in
+    turn. No branch drops a line. `test:incoming`, `prove:script` case 15.
+    Found on the way: a long draft name pushed the draft line 42px past a
+    390px screen; it truncates now.
+

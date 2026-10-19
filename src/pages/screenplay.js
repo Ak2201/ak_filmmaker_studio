@@ -14,7 +14,8 @@
    script gets ONE blank line in memory so there is somewhere to type,
    and that line is saved only when the writer types in it.
    ============================================================ */
-import { flushStorage, currentProject } from '../lib/store.js';
+import { flushStorage, currentProject, currentProjectId, subscribe } from '../lib/store.js';
+import { incomingAction, keepBoth, takeTheirs } from '../lib/script-incoming.js';
 import { ask, askDanger } from '../ui/dialog.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -128,6 +129,59 @@ function persistBeforeLeaving() {
   Script.saveScript(doc);
 }
 addEventListener('pagehide', persistBeforeLeaving);
+
+/* ---- a newer copy arrived (cloud.js, pulled or live) ---------------
+   cloud.js writes the synced script straight into storage; `doc` above is
+   this page's own copy. Without this, the next keystroke saved that older
+   copy over the one just synced, with a newer clock, and the other
+   device's work was gone from the cloud. src/lib/script-incoming.js
+   decides: nothing unsaved here → show the arrival; mid-edit → keep what
+   is on screen AND keep the arrival as a draft, with "Use theirs" one
+   press away (which keeps this copy as a draft in turn). No branch
+   drops a line. */
+let lastTypedAt = 0;
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.matches && e.target.matches('#wr-page .wr-text')) lastTypedAt = Date.now();
+}, { capture: true });
+const clock = () => new Date().toTimeString().slice(0, 5);
+const inEditor = () => !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#wr-page'));
+function showDoc() {
+  if (!doc.elements.length) doc.elements.push(blankElement({ type: 'scene' }));
+  const keep = curId && doc.elements.some((e) => e.id === curId) && inEditor() ? elFocus(curId) : null;
+  renderPage(keep);
+  refreshDraftLabel();
+}
+function onIncomingScript(live) {
+  const fresh = Script.loadScript();
+  const dirty = !!(saveTimer || saving || saveOwed) || Date.now() - lastTypedAt < 2500;
+  const act = incomingAction({ mine: doc, fresh, dirty });
+  if (act === 'same') return;
+  if (act === 'load') {
+    doc = fresh;
+    showDoc();
+    if (!live) say('Updated with the newer copy from your other device.');   // the live path already said so
+    return;
+  }
+  const arrived = fresh;
+  doc = keepBoth(doc, arrived, 'From another device, ' + clock());
+  persistNow();
+  refreshDraftLabel();
+  try {
+    StudioUI.toast('Another device saved a different version of this script while you were writing. Yours is kept; theirs is in Drafts as “From another device”.', {
+      type: 'info', action: 'Use theirs',
+      onAction: () => {
+        doc = takeTheirs(doc, arrived, 'Your version, ' + clock());
+        persistNow();
+        showDoc();
+      }
+    });
+  } catch (e) { /* chrome may not be up */ }
+}
+subscribe('cloud:synced', (p) => {
+  if (!p || (p.projectId && p.projectId !== currentProjectId())) return;
+  if (p.scope === 'script') onIncomingScript(true);
+  else if (Array.isArray(p.scopes) && p.scopes.includes('script')) onIncomingScript(false);
+});
 addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') persistBeforeLeaving();
 });

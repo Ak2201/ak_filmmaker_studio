@@ -1395,6 +1395,7 @@ export async function pullProjectData(projectId) {
   if (!data) { idleSync(); return; }
 
   let applied = 0, kept = 0;
+  const scopes = [];
   for (const row of data) {
     const localKey = KEY_BY_SCOPE[row.scope];
     if (!localKey) continue;                      // scope this build doesn't know
@@ -1411,6 +1412,7 @@ export async function pullProjectData(projectId) {
         _applyingRemote = true;
         try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
         applied++;
+        scopes.push(row.scope);
       }
       markRemoteSeen(projectId, row.scope, remoteTs, merged === remoteCanon);
       if (merged !== remoteCanon) { kept++; _debouncedPush(projectId, row.scope, 250); }
@@ -1434,9 +1436,13 @@ export async function pullProjectData(projectId) {
     try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
     markRemoteSeen(projectId, row.scope, remoteTs, true);
     applied++;
+    scopes.push(row.scope);
   }
   if (applied || kept) {
-    Store.notify('cloud:synced', { projectId, applied, kept });
+    /* `scopes` names what was WRITTEN here, so an open page holding one of
+       them in memory (the Screenplay Writer's script) knows to re-read it
+       rather than save its older copy over the one just pulled. */
+    Store.notify('cloud:synced', { projectId, applied, kept, scopes });
   }
   idleSync();
   return { applied, kept };

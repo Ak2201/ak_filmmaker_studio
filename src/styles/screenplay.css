@@ -79,7 +79,17 @@
   color: var(--ink-muted);
   white-space: nowrap;
 }
-.sc-draftline .sc-draft { color: var(--ink); font-weight: 600; }
+.sc-draftline .sc-draft {
+  color: var(--ink); font-weight: 600;
+  /* A draft's name is the writer's (or "From another device, 10:42"), so
+     it can be long: it gives way with an ellipsis instead of pushing the
+     draft line past a 390px screen. */
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sc-draftline .sc-status { flex: none; }
+/* …and its row may shrink below that content, or the ellipsis never comes. */
+.sc-meta { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.sc-draftline { max-width: 100%; }
 .sc-sep { color: var(--ink-muted); }
 .sc-status { display: inline-flex; align-items: center; gap: var(--s1); color: var(--ok-deep); }
 .sc-status::before {

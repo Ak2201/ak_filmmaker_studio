@@ -234,6 +234,51 @@ ok(!(await page.$('.sn')), '14 Escape closes it');
 ok((await page.evaluate(() => Object.keys(localStorage).sort().join('|'))) === keysBefore, '14 opening the overview adds no storage key');
 await page.evaluate((id) => localStorage.removeItem('fms_note_script_' + id), noteId);
 
+/* ---- 15 a newer copy arrives while the page is open ----------------------
+   cloud.js writes a synced script into storage and announces it with
+   cloud:synced. The page used to keep its own older copy and save it over
+   the arrival on the next keystroke. Simulated here exactly as cloud.js
+   does it: rawSet under the project's key, then notify. */
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+await page.waitForTimeout(600);
+const arrive = (text, opts = {}) => page.evaluate(({ text, opts }) => {
+  const S = window.StudioStore;
+  const pid = S.currentProjectId();
+  const k = 'fms_script_v1__' + pid;
+  const blob = JSON.parse(S.rawGet(k));
+  blob.elements = blob.elements.map((e, i) => (i === 1 ? { ...e, text } : e));
+  S.rawSet(k, JSON.stringify(blob));
+  S.notify('cloud:synced', opts.live ? { projectId: pid, scope: 'script' } : { projectId: pid, applied: 1, kept: 0, scopes: ['script'] });
+}, { text, opts });
+const shown = (i) => page.$eval(`#wr-page .wr-el:nth-child(${i}) .wr-text`, (t) => t.value).catch(() => null);
+await arrive('Arun stares at the board. Meera walks in.');
+await page.waitForTimeout(500);
+const second = await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value)[1]);
+ok(second === 'Arun stares at the board. Meera walks in.', '15 nothing unsaved: the newer copy is shown at once', second);
+await page.focus('#wr-page .wr-el:last-child .wr-text');
+await page.keyboard.press('End');
+await page.keyboard.type(' Later.');
+await settle();
+const afterType = await types();
+ok(afterType.includes('action:Arun stares at the board. Meera walks in.'), '15 and the next keystroke does not save the old copy back over it', afterType);
+
+/* mid-edit: both kept */
+await page.focus('#wr-page .wr-el:last-child .wr-text');
+await page.keyboard.type(' And again.');
+await arrive('Arun leaves the room.', { live: true });
+await page.waitForTimeout(800);
+let d = await doc();
+ok(d.elements.some((e) => /Later\. And again\.$/.test(e.text)) && !d.elements.some((e) => e.text === 'Arun leaves the room.'), '15 mid-edit: the writer\'s lines stay on screen and in storage', d.elements.map((e) => e.text));
+const kept = (d.revisions || []).find((r) => /^From another device/.test(r.name));
+ok(kept && kept.elements.some((e) => e.text === 'Arun leaves the room.'), '15 and the arrival is kept whole as a draft', (d.revisions || []).map((r) => r.name));
+ok(await page.isVisible('.toast:has-text("Use theirs")'), '15 the toast offers Use theirs');
+await page.click('.toast:has-text("Another device saved") .toast-action');
+await page.waitForTimeout(800);
+d = await doc();
+ok(d.elements.some((e) => e.text === 'Arun leaves the room.'), '15 Use theirs puts the arrival on screen', d.elements.map((e) => e.text));
+ok((d.revisions || []).some((r) => /^Your version/.test(r.name) && r.elements.some((e) => /And again\.$/.test(e.text))), '15 and keeps the writer\'s copy as a draft');
+ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).includes('Arun leaves the room.'), '15 the page shows it');
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {
@@ -241,6 +286,7 @@ for (const w of [390, 1280]) {
     await page.goto(url(p), { waitUntil: 'networkidle' });
     await page.waitForTimeout(400);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (over > 0) console.log('        wide:', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1).slice(0, 6).map((e) => e.tagName + '.' + String(e.className).slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().right) + ' ' + (e.textContent || '').slice(0, 40)))));
     ok(over <= 0, `13 ${p} has no horizontal overflow at ${w}px`, over);
   }
 }

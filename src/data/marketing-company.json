@@ -92,7 +92,7 @@
       "h2": "What we hold to",
       "items": [
         { "sym": "storage", "title": "Your work is saved in your own browser first", "text": "Every keystroke is written to your device first. We do not claim ownership of anything you write here." },
-        { "sym": "cloud_off", "title": "It works offline", "text": "The studio installs like an app and keeps working without a connection, on a film set included." },
+        { "sym": "cloud_off", "title": "It works offline", "text": "The studio installs like an app and opens and keeps working without a connection, on a film set included, for 14 days after you last signed in on that device." },
         { "sym": "backup", "title": "Sync and backup when you want them", "text": "You enter the studio by signing in with Google. Syncing your films between devices comes with a studio membership, and a backup to your own Google Drive is there if you switch it on." },
         { "sym": "lock", "title": "Nothing you write is deleted", "text": "If a part of the studio is closed to your plan, what you wrote in it stays and reappears when your plan includes it. You can download all of your work at any time." },
         { "sym": "currency_rupee", "title": "One-time plans in rupees", "text": "A plan is bought with a single payment, in Indian rupees, and never renews. There is nothing to cancel." }

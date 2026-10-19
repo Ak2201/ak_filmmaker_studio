@@ -232,8 +232,7 @@ function panelVaultList() {
   for (const it of items.slice(0, SHOW)) {
     const li = h('li.sk-clip', {}, [h('p.sk-clip-text', { text: clip(it.snippet, 280) })]);
     const meta = h('p.sk-clip-meta');
-    let host = '';
-    try { host = it.url ? new URL(it.url).hostname : ''; } catch (e) { host = ''; }
+    const host = Story.clipSourceHost(it.url);   // http(s) only
     if (host) meta.append(h('a', { href: it.url, target: '_blank', rel: 'noopener noreferrer', text: host }), ' · ');
     meta.append(new Date(it.at).toLocaleDateString());
     li.append(meta);

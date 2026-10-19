@@ -1273,3 +1273,60 @@ Three corrections, each restating one function body plus a marked block
    database refuse a support actor too.
 3. Read back: the checks at 48.5 in the section file.
 
+## 21. The security follow-ups (schema §49, 19 Oct 2026). NOT YET RUN LIVE.
+
+The 18 Oct security audit left leads it could not execute. Each was re-derived
+from source, written as a failing check against the real schema
+(`scripts/schema-tests/security-49.sql`, seed `security-49-seed.sql`), and
+fixed in `supabase/schema/schema-49-security-followups.sql`. The money ones:
+
+- **A limited promo code is reserved when an order opens.** `quote_for()`
+  counts other buyers' open orders on the code (opened in the last hour)
+  toward `max_uses`; `create_pending_payment()` locks the code row while it
+  prices; `activate_payment()` refuses (22023, hint `exhausted`) a payment on
+  a code already at its cap, so `uses` never passes `max_uses`. Before, every
+  order opened before the first activation could be paid at the discount. The
+  refused payment stays `created`; if Razorpay captured it (an order paid more
+  than an hour after it was opened, after the code filled), refund it from the
+  console.
+- **Upgrade credit follows the organisation and the plan.** `paid_credit_paise()`
+  counts only payments on organisations the buyer still owns (handing a paid
+  organisation away used to price a re-buy at the Rs 1 floor) and only payments
+  that applied a plan — new column `payments.plan_applied`, backfilled — so a
+  duplicate charge is a refund, not credit. `activate_payment()` refuses an
+  order whose stored credit no longer exists (hint `credit_gone`), and
+  `begin_refund()` refuses to refund a payment a later paid upgrade was
+  credited with (hint `credited`: refund the upgrade first).
+- **rzp-verify activates a CAPTURED payment, not a signature.** Checkout signs
+  at authorization. `rzp-verify` now reads the payment back
+  (`GET /v1/payments/{id}`): captured → activate, with the entity, so the amount
+  check runs; authorized → capture it for exactly the recorded amount, then
+  activate; anything else → `202 { pending }` and no plan (the
+  `payment.captured` webhook activates it if the money arrives). The page says
+  the payment is still being confirmed and not to pay again. It needs
+  `RAZORPAY_KEY_ID` as a function secret (already set for `rzp-order`).
+
+The rest of §49 (roles, sharing, comments, teams) is listed at the head of the
+section file and in `docs/ADMIN-CONSOLE.md`. One is a plain break: **share
+links could not be claimed at all** — `claim_share()` failed 42702 ("column
+reference project_id is ambiguous") on every call — and §49 repairs it.
+
+**Owner steps.**
+1. Run §49 in the SQL editor — after §48 — verifying the checksum first:
+   `shasum -a 256 supabase/schema/schema-49-security-followups.sql` must read
+   `4ab15837024c8987ae07bfe89f3f04f0232ddefb7dbc9cf2cdab60c22a3c3040`,
+   and the editor's contents must hash the same (see `supabase/schema/README.md`).
+2. Redeploy the verify function with the CLI (never the dashboard editor):
+   `npx --yes supabase@latest functions deploy rzp-verify --project-ref conhlrulxfwkhsnymakz`.
+   Order does not matter for safety: the new function needs nothing from §49.
+3. Read back: the checks at 49.16 in the section file.
+4. Razorpay dashboard → Account & Settings → Payment Capture: note whether it is
+   Automatic (and its window) or Manual. Either now works; Manual means
+   `rzp-verify` does the capture.
+5. Supabase dashboard → Authentication → Providers: confirm Anonymous sign-ins
+   are OFF, and that the Email provider is off (or, if on, "Confirm email" and
+   secure e-mail change are on) — a pending e-mail grant, including an admin
+   one, goes to the first account with that CONFIRMED address.
+6. Do not run `node scripts/deploy-billing.mjs --sql` against this project: it
+   now refuses (§45 has run), because replaying §16 onward would undo §46–§49.
+

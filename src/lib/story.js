@@ -1163,6 +1163,16 @@ export function listVault() {
 }
 function saveVault(items) { return write(VAULT_KEY, items); }
 
+/** The host to show for a clipping's source, or '' when it should not be
+ *  a link at all. Only http(s): a vault syncs with the project, so an
+ *  editor could store `javascript://host/%0a…`, which has a hostname and
+ *  would otherwise be drawn as a clickable link. */
+export function clipSourceHost(url) {
+  const s = String(url || '');
+  if (!/^https?:\/\//i.test(s)) return '';
+  try { return new URL(s).hostname; } catch (e) { return ''; }
+}
+
 export function addToVault({ snippet, url = '', title = '', at = Date.now(), id } = {}) {
   const text = String(snippet || '').trim();
   if (!text) return null;

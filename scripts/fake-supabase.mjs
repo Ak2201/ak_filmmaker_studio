@@ -49,7 +49,10 @@ export const EXT_FN = {};
    The key secret the fake "edge functions" verify with, and the mode
    the Checkout stub reads ('pay' | 'dismiss' | 'tamper'). signFor()
    is what Razorpay does: HMAC-SHA256(order|payment, KEY_SECRET). */
-export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay', refundMode: 'pending' };   // refundMode: 'pending' | 'processed' | 'fail'
+export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay', refundMode: 'pending', capture: 'captured' };   // refundMode: 'pending' | 'processed' | 'fail'
+// capture: what GET /v1/payments/{id} says when rzp-verify reads the payment back (§49) —
+//   'captured' (auto-capture), 'authorized' (manual capture; rzp-verify captures it),
+//   'held' (authorized and the capture does not go through: no plan, 202 pending)
 export const signFor = async (order, payment) => createHmac('sha256', RZP.secret).update(`${order}|${payment}`).digest('hex');
 const PLAN_RANK = { free: 0, starter: 1, indie: 2, pro: 3 };
 /* Section 18: a plan is for good. applyPlan() writes plan_until null;
@@ -1012,6 +1015,14 @@ export async function handle(route) {
     const pay = F.db.payments.find((x) => x.razorpay_order_id === body.razorpay_order_id);
     if (!pay) return json(route, 404, { error: 'No such order.' });
     if (pay.user_id !== user.id) return json(route, 403, { error: 'That order belongs to another account.' });
+    // §49: the payment is read back from Razorpay; a signature proves authorization, not capture
+    if (pay.status !== 'paid') {
+      if (RZP.capture === 'authorized') F.db.calls.push(`fn:rzp-verify capture ${pay.amount_paise}`);
+      if (RZP.capture === 'held') {
+        F.db.calls.push('fn:rzp-verify pending');
+        return json(route, 202, { ok: false, pending: true, error: 'Your payment is still being confirmed by Razorpay. Your plan will appear as soon as the money arrives — usually within a few minutes. You do not need to pay again.' });
+      }
+    }
     const r = activate(body.razorpay_order_id, body.razorpay_payment_id, body);
     F.db.calls.push('fn:rzp-verify ok');
     return json(route, 200, { ok: true, plan: r.pay.plan_id, ends_at: r.pay.ends_at, account_id: r.pay.account_id, already: r.already });

@@ -29,7 +29,7 @@
    them nothing is claimed and nothing is sent.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { verifyPaymentSignature } from '../_shared/razorpay.js';
+import { verifyPaymentSignature, basicAuth } from '../_shared/razorpay.js';
 import { sendReceiptOnce } from '../_shared/mail.js';
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -43,6 +43,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+const PENDING = 'Your payment is still being confirmed by Razorpay. Your plan will appear as soon as the money arrives — usually within a few minutes. You do not need to pay again.';
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
@@ -51,8 +52,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'POST only' });
 
   const url = Deno.env.get('SUPABASE_URL') ?? '';
+  const keyId = Deno.env.get('RAZORPAY_KEY_ID') ?? '';
   const keySecret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? '';
-  if (!keySecret) return json(503, { error: 'Payments are not configured on this studio yet.' });
+  if (!keySecret || !keyId) return json(503, { error: 'Payments are not configured on this studio yet.' });
 
   const auth = req.headers.get('Authorization') ?? '';
   if (!auth.startsWith('Bearer ')) return json(401, { error: 'Sign in first.' });
@@ -75,12 +77,44 @@ Deno.serve(async (req) => {
   if (!ok) return json(400, { error: 'The payment could not be verified. If money left your account, it will be matched within a few minutes or refunded by Razorpay.' });
 
   const svc = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-  const { data: pay } = await svc.from('payments').select('user_id').eq('razorpay_order_id', body.razorpay_order_id).maybeSingle();
+  const { data: pay } = await svc.from('payments').select('user_id, amount_paise, currency, status').eq('razorpay_order_id', body.razorpay_order_id).maybeSingle();
   if (!pay) return json(404, { error: 'No such order.' });
   if (pay.user_id !== who.user.id) return json(403, { error: 'That order belongs to another account.' });
 
+  /* CAPTURED, NOT MERELY AUTHORIZED (security follow-up, §49). Checkout
+     signs order_id|payment_id when the payment is AUTHORIZED; whether the
+     money is ever collected depends on the account's Payment Capture
+     setting, which lives in the Razorpay dashboard. So the payment itself
+     is read back: captured -> activate (with the entity, so
+     activate_payment's amount check runs); authorized -> capture it for
+     exactly the recorded amount, then activate; anything else -> no plan
+     here, and the webhook's payment.captured activates it later if the
+     money does arrive. A plan is never granted on a signature alone. */
+  let entity: any = null;
+  if (pay.status !== 'paid') {
+    const rzpAuth = basicAuth(keyId, keySecret);
+    const pid = encodeURIComponent(body.razorpay_payment_id);
+    const got = await fetch(`https://api.razorpay.com/v1/payments/${pid}`, { headers: { Authorization: rzpAuth } }).catch(() => null);
+    entity = got && got.ok ? await got.json().catch(() => null) : null;
+    if (!entity || entity.order_id !== body.razorpay_order_id) {
+      return json(202, { ok: false, pending: true, error: PENDING });
+    }
+    if (entity.status === 'authorized') {
+      if (Number(entity.amount) !== Number(pay.amount_paise)) return json(400, { error: 'The payment amount does not match the order. Nothing was collected; Razorpay releases the hold.' });
+      const cap = await fetch(`https://api.razorpay.com/v1/payments/${pid}/capture`, {
+        method: 'POST',
+        headers: { Authorization: rzpAuth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(pay.amount_paise), currency: pay.currency || 'INR' })
+      }).catch(() => null);
+      const capped = cap && cap.ok ? await cap.json().catch(() => null) : null;
+      if (capped && capped.status === 'captured') entity = capped;
+    }
+    if (entity.status !== 'captured') return json(202, { ok: false, pending: true, error: PENDING });
+  }
+
   const { data, error } = await svc.rpc('activate_payment', {
-    p_order_id: body.razorpay_order_id, p_payment_id: body.razorpay_payment_id, p_raw: { source: 'verify', ...body }
+    p_order_id: body.razorpay_order_id, p_payment_id: body.razorpay_payment_id,
+    p_raw: { source: 'verify', ...body, ...(entity ? { payment: entity } : {}) }
   });
   if (error) return json(400, { error: error.message });
   background(sendReceiptOnce(svc, body.razorpay_order_id, mailEnv()).then((m) => {

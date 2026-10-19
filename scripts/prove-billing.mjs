@@ -247,6 +247,20 @@ try {
     await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
     await page.waitForFunction(() => /cancelled/i.test((document.querySelector('.pl-status') || {}).textContent || ''), null, { timeout: 10000 }).then(() => ok(true, 'closing Checkout says the payment was cancelled'), () => ok(false, 'closing Checkout says the payment was cancelled'));
     ok(F.db.payments.filter((x) => x.plan_id === 'pro').every((x) => x.status === 'created'), 'a dismissed order stays created, never paid');
+
+    console.log('(d2) authorized is not captured (§49)');
+    RZP.mode = 'pay'; RZP.capture = 'held';
+    await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => /being confirmed/i.test((document.querySelector('.pl-status') || {}).textContent || ''), null, { timeout: 10000 })
+      .then(() => ok(true, 'a payment Razorpay has authorized but not captured says it is still being confirmed'), () => ok(false, 'a payment Razorpay has authorized but not captured says it is still being confirmed'));
+    ok(F.db.calls.includes('fn:rzp-verify pending') && !F.db.payments.some((x) => x.plan_id === 'pro' && x.status === 'paid'), 'and a valid signature alone activated nothing');
+    ok(F.db.accounts.find((a) => a.owner_id === USERS['tok-amy'].id).plan === 'indie', 'Amy is still on Indie');
+    RZP.capture = 'authorized';
+    await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'pro', null, { timeout: 15000 })
+      .then(() => ok(true, 'a manually-captured account: rzp-verify captures the payment and Pro activates'), () => ok(false, 'a manually-captured account: rzp-verify captures the payment and Pro activates'));
+    ok(F.db.calls.some((c) => /^fn:rzp-verify capture \d+$/.test(c)), 'the capture was for the recorded amount');
+    RZP.capture = 'captured';
     allErrors.push(...errors); await ctx.close();
   }
 

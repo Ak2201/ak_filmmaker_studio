@@ -500,7 +500,8 @@ function renderScreenplay() {
         { label: 'PDF, scene numbers', action: 'export-pdf-numbered', hint: 'shooting script' },
         { label: 'Screenplay text',    action: 'export-text',     hint: '.txt' },
         { label: 'Export .fountain',   action: 'export-fountain', hint: 'plain text' },
-        { label: 'Export .fdx',        action: 'export-fdx',      hint: 'Final Draft' }
+        { label: 'Export .fdx',        action: 'export-fdx',      hint: 'Final Draft' },
+        { label: 'Export .docx',       action: 'export-docx',     hint: 'Word' }
       ], { align: 'right' })
     ].filter(Boolean))
   ]));
@@ -1840,6 +1841,15 @@ delegate(document, 'click', '[data-action="export-fdx"]', () => {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
   const title = Script.projectTitle();
   download(Script.toFDX(doc, { title }), Script.slugify(title, 'screenplay') + '.fdx', 'application/xml');
+});
+
+delegate(document, 'click', '[data-action="export-docx"]', async () => {
+  if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
+  let W;
+  try { W = await import('../lib/screenplay-docx.js'); }
+  catch (e) { say('The Word exporter could not be loaded. Check the connection and try again.'); return; }
+  const title = Script.projectTitle();
+  download(W.toDOCX(doc, { title }), Script.slugify(title, 'screenplay') + '.docx', W.DOCX_MIME);
 });
 
 /* `extra.marks` is a revised-pages export (src/ui/write-revisions.js):

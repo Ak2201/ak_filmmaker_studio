@@ -2329,3 +2329,20 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     `scripts/lib/zip-fixture.mjs`, moved out of test-story), `prove:script`
     case 16 through the real file picker.
 
+    **Word (.docx) export.** `src/lib/zip-write.js` writes a stored ZIP with
+    a real CRC-32 (Word checks it; our own reader does not, which is why the
+    test fixture's zero CRC was never enough) and fixed timestamps, so the
+    same script writes the same bytes. `src/lib/screenplay-docx.js toDOCX`
+    lays the script out from the typesetter's own `GEOMETRY` — US Letter, a
+    1.5in gutter, 144 twips a character — with each element a paragraph in a
+    NAMED style (Scene Heading … Shot, the Final Draft / Word template names),
+    text printed as on the page (`printedText`: capitals and brackets in the
+    text, not a style's caps), the title page first and a page break after
+    it. Courier New, not Courier Prime: every machine with Word has it and the
+    metrics match. Dual dialogue is written one speech after the other (a
+    table would break every re-import). File → Export Word (.docx) on
+    screenplay.html and Export .docx on write.html, loaded at the press.
+    `test:docx` (20: standard CRC, Python's zipfile opens it and every CRC
+    checks, indents, round trip through our importer); `prove:script` case 17
+    downloads it. LibreOffice renders it correctly (checked by hand once).
+

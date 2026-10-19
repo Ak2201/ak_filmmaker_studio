@@ -261,6 +261,7 @@ let beatsOpen = false;
 const FILE_ITEMS = [
   { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
   { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
+  { label: 'Export Word (.docx)', action: 'sc-docx', hint: 'to edit in Word', icon: 'description' },
   { label: 'Drafts & history', href: 'drafts.html', icon: 'history' },
   { label: 'Title page', href: 'drafts.html#title', icon: 'menu_book' }
 ];
@@ -994,6 +995,25 @@ async function exportPDF() {
   });
 }
 delegate(document, 'click', '[data-action="sc-pdf"]', () => { exportPDF(); });
+
+/* Word: a file someone without the studio can open and edit, each
+   element in its named screenplay style (src/lib/screenplay-docx.js).
+   Loaded at the press, so no page pays for it on first paint. */
+async function exportDOCX() {
+  if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
+  let W;
+  try { W = await import('../lib/screenplay-docx.js'); }
+  catch (e) { say('The Word exporter could not be loaded. Check the connection and try again.'); return; }
+  const title = Script.projectTitle();
+  const blob = new Blob([W.toDOCX(doc, { title })], { type: W.DOCX_MIME });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = Script.slugify(title, 'screenplay') + '.docx';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+delegate(document, 'click', '[data-action="sc-docx"]', () => { exportDOCX(); });
 
 /* ---- import (a dialog; script-import.js and script-commit.js) --- */
 let imp = null;      // { plan, name, replace }

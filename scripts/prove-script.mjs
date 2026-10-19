@@ -301,6 +301,23 @@ ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).incl
   ok(['scene:INT. TEA STALL - MORNING', 'action:Steam rises.', 'character:KUMAR', 'dialogue:Two teas.'].every((l) => imported.includes(l)), '16 and imports with each line\'s type from its Word style', imported);
 }
 
+/* ---- 17 Export Word (.docx) — a real download, read back --------------- */
+{
+  const fs = await import('node:fs');
+  const [dl] = await Promise.all([
+    page.waitForEvent('download', { timeout: 10000 }),
+    page.evaluate(() => document.querySelector('#scTop [data-action="sc-docx"]').click())
+  ]);
+  ok(/\.docx$/.test(dl.suggestedFilename()), '17 Export Word downloads a .docx', dl.suggestedFilename());
+  const buf = fs.readFileSync(await dl.path());
+  ok(buf.readUInt32LE(0) === 0x04034b50, '17 it is a ZIP');
+  const D = await import('../src/lib/docx-text.js');
+  const r = await D.extractDocxParagraphs(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length));
+  const styles = (r.paras || []).map((p) => p.style);
+  ok(styles.includes('Scene Heading') && styles.includes('Character') && styles.includes('Dialogue'), '17 and holds the script in named screenplay styles', styles);
+  ok((r.paras || []).some((p) => p.text === 'INT. TEA STALL - MORNING'), '17 with the imported scene in it');
+}
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {

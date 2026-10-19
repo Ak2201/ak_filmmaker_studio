@@ -2229,3 +2229,15 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     every other page only gained module labels. Owner step: re-run §36 live
     (the live map still says true for all six on Pro from 12 Oct, so the
     gap is harmless meanwhile).
+
+    **Find and replace** in the Screenplay Writer: Ctrl/⌘+Shift+H, or
+    Tools → Find and replace (H because Ctrl/⌘+Shift+F is focus mode).
+    `src/lib/script-replace.js` is pure (`findMatches`, `replaceAll`,
+    `replaceOne`): text only, never a type or an id; Whole word is
+    Unicode-bounded so Tamil works (`\b` would split every letter); without
+    Match case a match in capitals is replaced in capitals, so renaming a
+    character renames the cue too. `src/ui/script-replace-bar.js` is a row of
+    `#scTop`: it marks the LINE of a match (a textarea cannot paint one),
+    Esc lands on the match with it selected, Replace all is one save and an
+    actionable Undo that skips a line edited since. `test:replace` and
+    `prove:replace` (in CI beside `prove:script`).

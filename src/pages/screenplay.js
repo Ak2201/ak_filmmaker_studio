@@ -45,6 +45,7 @@ import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
 import { installLineLanding } from '../ui/script-find.js';
+import { mountReplaceBar } from '../ui/script-replace-bar.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
@@ -167,6 +168,17 @@ const editor = mountEditor(document, {
   rowChrome: false
 });
 
+/* ---- find and replace (Ctrl/Cmd+Shift+H, or Tools) ------------- */
+const replaceBar = mountReplaceBar({
+  editor,
+  getDoc: () => doc,
+  persistNow: () => persistNow(),
+  afterChange: () => { refreshDerivedUi(); scheduleDerived(); },
+  toast: (m, o) => StudioUI.toast(m, o),
+  host: () => document.getElementById('scTop')
+});
+delegate(document, 'click', '[data-action="sc-find"]', () => replaceBar.open(curId));
+
 /* ---- draft label ------------------------------------------------ */
 const draftLabel = () => draftLabelOf(doc);
 /* DOM only: the label after a save settles or a draft is written. */
@@ -200,6 +212,7 @@ const FILE_ITEMS = [
 const TOOL_ITEMS = [
   { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
   { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
+  { label: 'Find and replace', action: 'sc-find', hint: 'Ctrl/⌘ Shift H', icon: 'find_replace' },
   { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
   { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
   { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' }

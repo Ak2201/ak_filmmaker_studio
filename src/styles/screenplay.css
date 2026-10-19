@@ -982,3 +982,55 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-main.has-beats { grid-template-columns: minmax(0, 1fr) 20rem; column-gap: var(--s4); padding-right: var(--s4); }
   .sc-main > #beatsPanel { margin-top: var(--s4); }
 }
+
+/* ---- find and replace (src/ui/script-replace-bar.js) ------------
+   A row of #scTop, so it pins with the bar and is measured with it
+   (--sc-top-h). The current match's LINE is marked, because a match
+   cannot be painted inside a textarea. */
+.sc-find {
+  box-sizing: border-box;
+  flex: 1 1 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s3);
+  border-top: 1px solid var(--border-hair);
+}
+.sc-find[hidden] { display: none; }
+.sc-find-fields { display: flex; flex-wrap: wrap; gap: var(--s2); flex: 1 1 22rem; min-width: 0; }
+.sc-find-in {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--sk-field-radius, var(--radius-sm));
+  padding: var(--s1) var(--s2);
+}
+.sc-find-in:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 1px; }
+.sc-find-opts { display: flex; gap: var(--s3); }
+.sc-find-opt { display: inline-flex; align-items: center; gap: var(--s1); color: var(--ink-muted); cursor: pointer; }
+.sc-find-opt input { accent-color: var(--accent-primary); }
+.sc-find-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); }
+/* On a phone the actions take a row of their own and Close sits
+   beside the two options, where there is room for it. */
+@media (max-width: 719px) {
+  .sc-find {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "fields fields" "opts x" "acts acts";
+  }
+  .sc-find-fields { grid-area: fields; }
+  .sc-find-opts { grid-area: opts; }
+  .sc-find-x { grid-area: x; }
+  .sc-find-acts { grid-area: acts; }
+}
+.sc-find-count { min-width: 6.5em; color: var(--ink-muted); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+/* On the paper page: the page's own rule colour for a line with a
+   match, the accent for the current one. A box-shadow, not a border,
+   so the line does not move. */
+.sc-sheet .wr-el.sc-find-row { box-shadow: -6px 0 0 -3px var(--paper-page-rule); }
+.sc-sheet .wr-el.sc-find-cur { box-shadow: -6px 0 0 -2px var(--accent-primary); }

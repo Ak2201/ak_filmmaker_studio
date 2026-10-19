@@ -210,9 +210,11 @@ body 165-205; `beat-board.js:116-118`.
    committed); fails on definitions over 40 words, blurbs over 20, prompts over
    25; fails on numbered "1." / "Chapter" style lists; caps techniques at 9 per
    shelf so the shelf cannot mirror the book's structure.
-2. **Credit:** exactly one occurrence of the author's name in `src/`, as
-   "Further reading: *Writing for Emotional Impact* by Karl Iglesias." on the
-   shelf. No link, no affiliate, no quotes. A test asserts the count.
+2. **Credit:** exactly one occurrence of the author's name in `src/`, in the
+   shelf's `credit` block (`src/data/book-emotional-impact.json`): full title
+   with subtitle, author, publisher and year, rendered once as RECOMMENDED
+   READING with the independent-summary / not-endorsed / buy-the-book note.
+   No link, no affiliate, no quotes. A test asserts the count.
 3. **Examples:** only the four studied films + `films.json`; a validator checks
    `film` keys and runs the existing `_about` linter.
 4. **Standing:** zero new storage keys (diff the registries), zero idle writes,

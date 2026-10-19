@@ -234,6 +234,134 @@ ok(!(await page.$('.sn')), '14 Escape closes it');
 ok((await page.evaluate(() => Object.keys(localStorage).sort().join('|'))) === keysBefore, '14 opening the overview adds no storage key');
 await page.evaluate((id) => localStorage.removeItem('fms_note_script_' + id), noteId);
 
+/* ---- 15 a newer copy arrives while the page is open ----------------------
+   cloud.js writes a synced script into storage and announces it with
+   cloud:synced. The page used to keep its own older copy and save it over
+   the arrival on the next keystroke. Simulated here exactly as cloud.js
+   does it: rawSet under the project's key, then notify. */
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+await page.waitForTimeout(600);
+const arrive = (text, opts = {}) => page.evaluate(({ text, opts }) => {
+  const S = window.StudioStore;
+  const pid = S.currentProjectId();
+  const k = 'fms_script_v1__' + pid;
+  const blob = JSON.parse(S.rawGet(k));
+  blob.elements = blob.elements.map((e, i) => (i === 1 ? { ...e, text } : e));
+  S.rawSet(k, JSON.stringify(blob));
+  S.notify('cloud:synced', opts.live ? { projectId: pid, scope: 'script' } : { projectId: pid, applied: 1, kept: 0, scopes: ['script'] });
+}, { text, opts });
+const shown = (i) => page.$eval(`#wr-page .wr-el:nth-child(${i}) .wr-text`, (t) => t.value).catch(() => null);
+await arrive('Arun stares at the board. Meera walks in.');
+await page.waitForTimeout(500);
+const second = await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value)[1]);
+ok(second === 'Arun stares at the board. Meera walks in.', '15 nothing unsaved: the newer copy is shown at once', second);
+await page.focus('#wr-page .wr-el:last-child .wr-text');
+await page.keyboard.press('End');
+await page.keyboard.type(' Later.');
+await settle();
+const afterType = await types();
+ok(afterType.includes('action:Arun stares at the board. Meera walks in.'), '15 and the next keystroke does not save the old copy back over it', afterType);
+
+/* mid-edit: both kept */
+await page.focus('#wr-page .wr-el:last-child .wr-text');
+await page.keyboard.type(' And again.');
+await arrive('Arun leaves the room.', { live: true });
+await page.waitForTimeout(800);
+let d = await doc();
+ok(d.elements.some((e) => /Later\. And again\.$/.test(e.text)) && !d.elements.some((e) => e.text === 'Arun leaves the room.'), '15 mid-edit: the writer\'s lines stay on screen and in storage', d.elements.map((e) => e.text));
+const kept = (d.revisions || []).find((r) => /^From another device/.test(r.name));
+ok(kept && kept.elements.some((e) => e.text === 'Arun leaves the room.'), '15 and the arrival is kept whole as a draft', (d.revisions || []).map((r) => r.name));
+ok(await page.isVisible('.toast:has-text("Use theirs")'), '15 the toast offers Use theirs');
+await page.click('.toast:has-text("Another device saved") .toast-action');
+await page.waitForTimeout(800);
+d = await doc();
+ok(d.elements.some((e) => e.text === 'Arun leaves the room.'), '15 Use theirs puts the arrival on screen', d.elements.map((e) => e.text));
+ok((d.revisions || []).some((r) => /^Your version/.test(r.name) && r.elements.some((e) => /And again\.$/.test(e.text))), '15 and keeps the writer\'s copy as a draft');
+ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).includes('Arun leaves the room.'), '15 the page shows it');
+
+/* ---- 16 a Word screenplay, through the real file picker ------------------ */
+{
+  const { zip } = await import('./lib/zip-fixture.mjs');
+  const wp = (style, text) => `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
+  const docx = zip([
+    ['[Content_Types].xml', '<Types/>', 0],
+    ['word/styles.xml', '<w:styles><w:style w:styleId="SH"><w:name w:val="Scene Heading"/></w:style><w:style w:styleId="AC"><w:name w:val="Action"/></w:style><w:style w:styleId="CH"><w:name w:val="Character"/></w:style><w:style w:styleId="DI"><w:name w:val="Dialogue"/></w:style></w:styles>', 8],
+    ['word/document.xml', '<w:document><w:body>' + wp('SH', 'INT. TEA STALL - MORNING') + wp('AC', 'Steam rises.') + wp('CH', 'kumar') + wp('DI', 'Two teas.') + '</w:body></w:document>', 8]
+  ]);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => document.querySelector('[data-action="sc-import"]').click());
+  await page.waitForSelector('#scImpFile', { state: 'attached', timeout: 5000 });
+  await page.setInputFiles('#scImpFile', { name: 'tea.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: docx });
+  await page.waitForFunction(() => /Word screenplay/.test((document.getElementById('scImport') || {}).textContent || ''), null, { timeout: 8000 }).catch(() => {});
+  ok(/Word screenplay/.test(await page.textContent('#scImport')), '16 a .docx previews as a Word screenplay');
+  await page.evaluate(() => document.querySelector('[data-action="sc-imp-commit"]').click());
+  await page.waitForTimeout(1200);
+  const imported = await types();
+  ok(['scene:INT. TEA STALL - MORNING', 'action:Steam rises.', 'character:KUMAR', 'dialogue:Two teas.'].every((l) => imported.includes(l)), '16 and imports with each line\'s type from its Word style', imported);
+}
+
+/* ---- 17 Export Word (.docx) — a real download, read back --------------- */
+{
+  const fs = await import('node:fs');
+  const [dl] = await Promise.all([
+    page.waitForEvent('download', { timeout: 10000 }),
+    page.evaluate(() => document.querySelector('#scTop [data-action="sc-docx"]').click())
+  ]);
+  ok(/\.docx$/.test(dl.suggestedFilename()), '17 Export Word downloads a .docx', dl.suggestedFilename());
+  const buf = fs.readFileSync(await dl.path());
+  ok(buf.readUInt32LE(0) === 0x04034b50, '17 it is a ZIP');
+  const D = await import('../src/lib/docx-text.js');
+  const r = await D.extractDocxParagraphs(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length));
+  const styles = (r.paras || []).map((p) => p.style);
+  ok(styles.includes('Scene Heading') && styles.includes('Character') && styles.includes('Dialogue'), '17 and holds the script in named screenplay styles', styles);
+  ok((r.paras || []).some((p) => p.text === 'INT. TEA STALL - MORNING'), '17 with the imported scene in it');
+}
+
+/* ---- 18 locked pages: 12A, through the real controls --------------------- */
+{
+  // A script long enough for several pages.
+  await page.evaluate(() => {
+    const S = window.StudioStore;
+    const k = 'fms_script_v1__' + S.currentProjectId();
+    const els = [];
+    for (let n = 1; n <= 8; n++) {
+      els.push({ id: 'h' + n, type: 'scene', text: 'INT. ROOM ' + n + ' - DAY' });
+      for (let j = 0; j < 9; j++) els.push({ id: 'a' + n + '_' + j, type: 'action', text: 'A line of action in scene ' + n + ', long enough to wrap onto a second line of the page, number ' + j + '.' });
+    }
+    S.rawSet(k, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+  });
+  await page.goto(url('drafts.html#numbering'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.click('[data-action="numbers-lock"]');
+  await page.waitForTimeout(400);
+  await page.click('[data-action="pages-lock"]');
+  await page.waitForTimeout(800);
+  let d = await doc();
+  ok(d.numbering && d.numbering.pages && d.numbering.pages.locked && d.numbering.pages.starts.length >= 3, '18 Lock page numbers records where each page starts', d.numbering && d.numbering.pages);
+  ok(/Pages locked/.test(await page.textContent('#numbering')), '18 and the tool says the pages are locked');
+  const startP3 = d.numbering.pages.starts[2].id;
+  // Grow page 2 by a long passage, the way a writer would: in storage, then reopen.
+  await page.evaluate(() => {
+    const S = window.StudioStore;
+    const k = 'fms_script_v1__' + S.currentProjectId();
+    const b = JSON.parse(S.rawGet(k));
+    const at = b.elements.findIndex((e) => e.id === b.numbering.pages.starts[1].id) + 1;
+    const more = Array.from({ length: 20 }, (_, j) => ({ id: 'x' + j, type: 'action', text: 'An added line that grows page two and should not move page three, number ' + j + '.' }));
+    b.elements.splice(at, 0, ...more);
+    S.rawSet(k, JSON.stringify(b));
+  });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1500);
+  const breaks = await page.$$eval('#wr-page .wr-pbreak', (ns) => ns.map((n) => n.textContent));
+  ok(breaks.some((t) => /^Page 2A/.test(t)), '18 the page view shows 2A after page 2 grows', breaks);
+  const p3 = await page.$$eval('#wr-page .wr-pbreak', (ns) => { const n = ns.find((x) => x.textContent === 'Page 3'); return n ? (n.nextElementSibling && n.nextElementSibling.dataset.el) : null; });
+  ok(p3 === startP3, '18 and page 3 still begins on the same line', { p3, startP3 });
+  await page.goto(url('drafts.html#numbering'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(800);
+  ok(/\b[1-9]\d* A-pages?\b/.test(await page.textContent('#numbering')), '18 the tool counts the A-pages', (await page.textContent('#numbering')).match(/[^.]*A-page[^.]*/));
+}
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {
@@ -241,6 +369,7 @@ for (const w of [390, 1280]) {
     await page.goto(url(p), { waitUntil: 'networkidle' });
     await page.waitForTimeout(400);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (over > 0) console.log('        wide:', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1).slice(0, 6).map((e) => e.tagName + '.' + String(e.className).slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().right) + ' ' + (e.textContent || '').slice(0, 40)))));
     ok(over <= 0, `13 ${p} has no horizontal overflow at ${w}px`, over);
   }
 }

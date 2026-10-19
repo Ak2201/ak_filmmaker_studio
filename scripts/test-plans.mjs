@@ -48,11 +48,12 @@ const matrixOff = matrix.features.filter((f) => f.kind === 'module' && !f.plans.
 ok('plan-gate OFF_BY_DEFAULT = matrix modules with plans: [] [' + gateOff + '] vs [' + matrixOff + ']', gateOff.join() === matrixOff.join());
 
 /* Every phase keeps at least one module that is not off for every plan,
-   except the stages listed here, which the owner has switched off whole
-   (Post-production: edit-log and deliverables). A stage whose modules are
-   ALL off has nothing to open, so a NEW all-off stage fails this, and so
-   does a listed one that comes back (remove it from the list then). */
-const ALL_OFF_STAGES = ['post'];
+   except the stages listed here, which the owner has switched off whole.
+   None today: Post-production (edit-log, deliverables) was the one, and
+   came back on Pro on 19 Oct 2026. A stage whose modules are ALL off has
+   nothing to open, so a NEW all-off stage fails this, and so does a
+   listed one that comes back (remove it from the list then). */
+const ALL_OFF_STAGES = [];
 for (const ph of nav.phases) {
   const live = (ph.modules || []).filter((m) => m.status === 'built' && !gateOff.includes(m.id));
   if (ALL_OFF_STAGES.includes(ph.id)) ok('phase "' + ph.id + '" is listed as all-off and has no live module', live.length === 0);

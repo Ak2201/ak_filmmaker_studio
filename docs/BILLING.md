@@ -42,7 +42,8 @@ owner's product boundary; the data boundary stays RLS and the triggers.
 
 | | Free | Basic (`starter`) | Intermediate (`indie`) | Pro |
 | --- | --- | --- | --- | --- |
-| Price, once (live, 8 Oct 2026) | — | ₹599 (59900 paise) | ₹799 (79900) | ₹999 (99900) |
+| Price, once (live, 8 Oct 2026; confirmed by the owner 19 Oct 2026) | — | ₹599 (59900 paise) | ₹799 (79900) | ₹999 (99900) |
+| Scheduled rise (§30, kept by the owner 19 Oct 2026) | — | ₹999 on 31 Oct 2026 | ₹1,499 | ₹1,999 |
 | Sample only / new projects | yes / no | no / yes | no / yes | no / yes |
 | Cloud projects | 1 | 3 | 10 | unlimited |
 | Collaborators / film | 0 | 2 | 5 | unlimited |
@@ -558,9 +559,11 @@ test mode or live. Deploying the function makes it possible, not proven.
 **The button (A).** Console → Billing → Payments: REFUND on every `paid`
 row. The dialog asks for an amount (rupees, full by default, never more
 than was paid) and a REQUIRED reason, and warns that a refund ends the
-plan. The function: Auth names the caller, then `is_studio_admin()` is
-called AS the caller (the same check every console RPC makes) — a
-non-admin gets 403 and nothing else runs. `begin_refund()` then locks the
+plan. The function: Auth names the caller, then `require_role(['finance'])`
+is called AS the caller (the §45/§46 role matrix: owner and finance pass) —
+a non-admin or a support admin gets 403 and nothing else runs; since §50
+`begin_refund()` refuses an actor who is not owner or finance as well, so
+the function is not the only gate. `begin_refund()` then locks the
 payment row and checks it is captured, not refunded, has no refund in
 flight, and that the amount fits; it writes a `refunds` row (`initiated`)
 BEFORE Razorpay is called. Razorpay is called with Basic auth, the amount,
@@ -1225,4 +1228,107 @@ false until the switch is thrown**, because `purchase_required` is false and
 sentence sits on terms.html:74 and start.html. Either throw the switch or
 soften the pages — do not leave a legal page making a claim the database
 contradicts.
+
+## 20. Refunds follow the role matrix, seats follow the plan, a decline sticks (schema §50, 19 Oct 2026). NOT YET RUN LIVE.
+
+Three corrections, each restating one function body plus a marked block
+(`supabase/schema/schema-50-refund-seat-trial.sql`, checks in
+`scripts/schema-tests/refund-seat-trial.sql`):
+
+- **Refunds are a finance decision end to end.** `rzp-refund` asks
+  `require_role(['finance'])` as the caller (owner always passes) instead of
+  `is_studio_admin()`, and `begin_refund()` refuses a `p_admin` who is not an
+  owner or finance administrator (42501, which the function maps to 403).
+- **A pending refund does not settle the request.** `record_refund()` marks a
+  linked refund request `refunded` only on `processed`; while Razorpay says
+  `pending` the request reads `approved`. The plan still ends only on
+  `processed` (unchanged), and a refund that later fails leaves an open,
+  approved request to retry. Once the PAYMENT reads refunded, its open
+  request is settled `refunded` whichever refunds row carried the news (the
+  `refund.processed` webhook can arrive before `rzp-refund` stored the
+  Razorpay id and record its own row), and a late `pending` never walks it
+  back. `admin_decide_refund_request()` refuses to decline a request while a
+  refund on its payment is `initiated` or `pending` (22023).
+- **Seats follow the plan the account is on now.** `enforce_seat_limit()`
+  caps the stored `accounts.seat_limit` by `account_plan()`'s `seats` limit,
+  so a lapsed timed grant or a refunded plan stops admitting new seats; and
+  `mark_payment_refunded()` brings `seat_limit` down to the free plan's cap
+  when it ends the plan. Seats already taken are not removed.
+- **A declined invite request stays declined for the trial.** New column
+  `invite_requests.last_declined_at`, kept by a trigger: set when a request
+  becomes `declined`, cleared only when it becomes `approved`;
+  `request_invite()`'s re-ask leaves it alone. `start_trial()` refuses a
+  non-member while it is set. The backfill marks today's declines and any
+  pending re-ask by a non-member; it runs before the trigger is created,
+  because the trigger keeps a pending row's (null) mark and would otherwise
+  make the re-ask half write nothing.
+
+**Owner steps.**
+1. Run §50 in the SQL editor — after §49 (develop's co-editing switch) — verifying the checksum first
+   (`shasum -a 256 supabase/schema/schema-50-refund-seat-trial.sql` must read
+   `95f801230f19eca0736df3f0f388d049137945f8330aa9bbee5f5b1a23b4e275`, compared
+   with the editor's contents; see `supabase/schema/README.md`).
+2. Redeploy the refund function with the CLI (never the dashboard editor):
+   `npx --yes supabase@latest functions deploy rzp-refund --project-ref conhlrulxfwkhsnymakz`.
+   Run §50 first: the new function needs nothing new from the database
+   (`require_role()` is §45, already live), but §50 is what makes the
+   database refuse a support actor too.
+3. Read back: the checks at 48.5 in the section file.
+
+## 21. The security follow-ups (schema §51, 19 Oct 2026). NOT YET RUN LIVE.
+
+The 18 Oct security audit left leads it could not execute. Each was re-derived
+from source, written as a failing check against the real schema
+(`scripts/schema-tests/security-51.sql`, seed `security-51-seed.sql`), and
+fixed in `supabase/schema/schema-51-security-followups.sql`. The money ones:
+
+- **A limited promo code is reserved when an order opens.** `quote_for()`
+  counts other buyers' open orders on the code (opened in the last hour)
+  toward `max_uses`; `create_pending_payment()` locks the code row while it
+  prices; `activate_payment()` refuses (22023, hint `exhausted`) a payment on
+  a code already at its cap, so `uses` never passes `max_uses`. Before, every
+  order opened before the first activation could be paid at the discount. The
+  refused payment stays `created`; if Razorpay captured it (an order paid more
+  than an hour after it was opened, after the code filled), refund it from the
+  console.
+- **Upgrade credit follows the organisation and the plan.** `paid_credit_paise()`
+  counts only payments on organisations the buyer still owns (handing a paid
+  organisation away used to price a re-buy at the Rs 1 floor) and only payments
+  that applied a plan — new column `payments.plan_applied`, backfilled — so a
+  duplicate charge is a refund, not credit. `activate_payment()` refuses an
+  order whose stored credit no longer exists (hint `credit_gone`), and
+  `begin_refund()` refuses to refund a payment a later paid upgrade was
+  credited with (hint `credited`: refund the upgrade first).
+- **rzp-verify activates a CAPTURED payment, not a signature.** Checkout signs
+  at authorization. `rzp-verify` now reads the payment back
+  (`GET /v1/payments/{id}`): captured → activate, with the entity, so the amount
+  check runs; authorized → capture it for exactly the recorded amount, then
+  activate; anything else → `202 { pending }` and no plan (the
+  `payment.captured` webhook activates it if the money arrives). The page says
+  the payment is still being confirmed and not to pay again. It needs
+  `RAZORPAY_KEY_ID` as a function secret (already set for `rzp-order`).
+
+The rest of §51 (roles, sharing, comments, teams) is listed at the head of the
+section file and in `docs/ADMIN-CONSOLE.md`. One is a plain break: **share
+links could not be claimed at all** — `claim_share()` failed 42702 ("column
+reference project_id is ambiguous") on every call — and §51 repairs it.
+
+**Owner steps.**
+1. Run §51 in the SQL editor — after §50 — verifying the checksum first:
+   `shasum -a 256 supabase/schema/schema-51-security-followups.sql` must read
+   `860ed0741bad08c196d40d00602c4fb5481290519017691a30529bb4ac63ac44`,
+   and the editor's contents must hash the same (see `supabase/schema/README.md`).
+2. Redeploy the verify function with the CLI (never the dashboard editor):
+   `npx --yes supabase@latest functions deploy rzp-verify --project-ref conhlrulxfwkhsnymakz`.
+   Order does not matter for safety: the new function needs nothing from §51.
+3. Read back: the checks at 49.16 in the section file.
+4. Razorpay dashboard → Account & Settings → Payment Capture: note whether it is
+   Automatic (and its window) or Manual. Either now works; Manual means
+   `rzp-verify` does the capture.
+5. Supabase dashboard → Authentication → Providers: confirm Anonymous sign-ins
+   are OFF, and that the Email provider is off (or, if on, "Confirm email" and
+   secure e-mail change are on) — a pending e-mail grant, including an admin
+   one, goes to the first account with that CONFIRMED address.
+6. Do not run `node scripts/deploy-billing.mjs --sql` against this project: it
+   now refuses (§45 has run), because replaying §16 onward would undo §46–§51.
 

@@ -215,6 +215,57 @@ for (const f of ['supabase/schema/schema-47-delete-anonymise.sql', 'supabase/sch
 console.log('✓ §47 loads (and re-runs cleanly)');
 runChecks('delete-anonymise.sql');
 /* --- end §47 --- */
+/* --- §48 (who may join a project's presence channel) --- standalone, on
+   §1–§3. Loaded once with no Realtime (it must only say so), then on top
+   of a stand-in realtime.messages, twice, then its checks. --- */
+r = psql(['-f', 'supabase/schema/schema-48-presence.sql']);
+if (r.status !== 0) fail('schema-48-presence.sql did not load cleanly without a realtime schema', r);
+if (!/realtime\.messages does not exist here/.test(r.stderr || '')) fail('§48 without Realtime should say it made no policy', r);
+r = psql(['-f', 'scripts/schema-tests/presence-stub.sql']);
+if (r.status !== 0) fail('presence-stub.sql did not load', r);
+for (const f of ['supabase/schema/schema-48-presence.sql', 'supabase/schema/schema-48-presence.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §48 loads without Realtime, then on it (and re-runs cleanly)');
+runChecks('presence.sql');
+/* --- end §48 --- */
+/* --- §49 (the co-editing switch) --- standalone, on §40 and §45/§46. --- */
+for (const f of ['supabase/schema/schema-49-co-editing.sql', 'supabase/schema/schema-49-co-editing.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §49 loads (and re-runs cleanly)');
+runChecks('co-editing.sql');
+/* --- end §49 --- */
+/* --- §50 (refunds follow the role matrix, seats follow the plan, a decline
+   sticks) --- standalone, on §45. Loaded twice (re-runnable), after every
+   earlier check file so those ran against the functions it restates. The
+   seed goes in BEFORE the first load: it is the live data the backfill has
+   to mark, and the second load fills only nulls. --- */
+r = psql(['-f', 'scripts/schema-tests/refund-seat-trial-seed.sql']);
+if (r.status !== 0) fail('refund-seat-trial-seed.sql did not load', r);
+for (const f of ['supabase/schema/schema-50-refund-seat-trial.sql', 'supabase/schema/schema-50-refund-seat-trial.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §50 loads (and re-runs cleanly)');
+runChecks('refund-seat-trial.sql');
+/* --- end §50 --- */
+/* --- §51 (the security follow-ups) --- standalone, on §40, §45, §46 and
+   §50. The seed goes in BEFORE the first load: a duplicate payment and an
+   orphaned referral code made with the pre-§51 functions, which the
+   backfills have to mark. Loaded twice (re-runnable), after every earlier
+   check file so those ran against the functions it restates. --- */
+r = psql(['-f', 'scripts/schema-tests/security-51-seed.sql']);
+if (r.status !== 0) fail('security-51-seed.sql did not load', r);
+for (const f of ['supabase/schema/schema-51-security-followups.sql', 'supabase/schema/schema-51-security-followups.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §51 loads (and re-runs cleanly)');
+runChecks('security-51.sql');
+/* --- end §51 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

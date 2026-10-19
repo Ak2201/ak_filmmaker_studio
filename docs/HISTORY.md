@@ -2211,3 +2211,280 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     in `baseline.json` (like start.html), so a missing word there is read in
     a browser, not by the gate; `test:marketing` and `prove:growth` (no
     `supabase-*` or `studio-*` chunk on a product page) are what watch them.
+
+52. **Celtx gaps, round 1 (19 Oct 2026).** From the owner's Celtx comparison
+    (replica-skill recon → diff → entrepreneur; parity 76.4/100, the one
+    must-have gap being co-writing presence). Six of the fifteen modules item
+    48 switched off came back, because they answer gaps the comparison
+    found: `auto-tag`, `screen-time` and `cast-matrix` on Intermediate
+    (Celtx's breakdown is manual tagging), `shoot-day`, `edit-log` and
+    `deliverables` on Pro (Celtx stops at the call sheet). The change is the
+    matrix and `OFF_BY_DEFAULT` only, with §36 regenerated; the page code
+    had never been touched. Fallout the checks caught: `test:plans` listed
+    `post` as an all-off stage (now none), `test:launcher-rows` wanted the
+    six in a project-home row (Shoot Day joins Shoot; a new Finish row holds
+    the post pair) and `test:marketing` wanted them in a pricing comparison
+    group (a new Post-production group). Re-baselined deliberately: the only
+    words lost were the "Not available" card on shoot, edit and deliverables;
+    every other page only gained module labels. Owner step: re-run §36 live
+    (the live map still says true for all six on Pro from 12 Oct, so the
+    gap is harmless meanwhile).
+
+    **Find and replace** in the Screenplay Writer: Ctrl/⌘+Shift+H, or
+    Tools → Find and replace (H because Ctrl/⌘+Shift+F is focus mode).
+    `src/lib/script-replace.js` is pure (`findMatches`, `replaceAll`,
+    `replaceOne`): text only, never a type or an id; Whole word is
+    Unicode-bounded so Tamil works (`\b` would split every letter); without
+    Match case a match in capitals is replaced in capitals, so renaming a
+    character renames the cue too. `src/ui/script-replace-bar.js` is a row of
+    `#scTop`: it marks the LINE of a match (a textarea cannot paint one),
+    Esc lands on the match with it selected, Replace all is one save and an
+    actionable Undo that skips a line edited since. `test:replace` and
+    `prove:replace` (in CI beside `prove:script`).
+
+    **Index cards** on the Scene List (`breakdown.html#scenes`): a Table /
+    Cards switch (in memory, like the saved filters, because a remembered
+    view would be a new key). `renderSceneCard` builds a `.bd-sl` carrying
+    the row's `data-*`, so the search, the filters, the drag handle and the
+    keyboard route work on cards unchanged; only the drop differs — the card
+    under the pointer is marked on its leading or trailing edge
+    (`updateCardDrop`) instead of a line being inserted, which would take a
+    grid cell and shuffle the board mid-drag. Left / Right move a card too.
+    Reordering is the scene list's (`reorderScene`, one write), never the
+    script's text, and the first move of a visit says so. The top edge wears
+    the time of day's hue. Edit returns to the table with the scene open.
+    `prove:cards` (in CI).
+
+    **Storyboard image upload**: Upload picture on every frame
+    (`src/ui/frame-upload.js`). The same road as a drawn frame: shrunk to
+    1600px on the long edge and re-encoded as JPEG in the browser, saved as
+    a file in the writer's own Google Drive, and the frame keeps only
+    `ref = drive:<fileId>` — no bytes in localStorage or a backup, no new
+    key. The board gate (`boardGate`) decides first; a lapsed token
+    reconnects on the press and asks for one more press, because the file
+    picker needs a click of its own. Undo restores the old ref and deletes
+    the new file; an earlier Drive picture is never deleted. Each frame also
+    has a Shape (`aspect`, a field on the frame spread by `listFrames()`,
+    ids in `board-frames.js ASPECTS`, read by `[data-aspect]` rules), so a
+    2.39:1 film boards in 2.39:1. `prove:board-frames` scenario (d) drives
+    it against the faked Drive; no real Drive was reached.
+
+    **Co-writing presence** on the Screenplay Writer: who else has the
+    script open (faces in the draft line), the line each is on (a named
+    mark at the line's right edge) and, while another writer types, a
+    warning — because the script still syncs as one blob, last write wins,
+    and presence merges nothing. The channel is PRIVATE (`pr:<project id>`,
+    `cloud.js joinPresence()`), because presence on a public channel is
+    outside RLS: the anon key and a project id would show who is writing.
+    `supabase/schema/schema-48-presence.sql` adds `can_join_presence(topic)`
+    and two `realtime.messages` policies (presence extension only) for the
+    people `has_project_access()` already lets read the project; it is a
+    no-op where `realtime.messages` does not exist, and `test:schema` checks
+    it against a stand-in (`presence-stub.sql`, 11 checks). The client is
+    safe before §48 runs: the join is refused and nobody shows. "Typing" is
+    judged on the receiver's clock (`noteSeen`), not the sender's `at`.
+    Sends the line id and typing, throttled to one message per two seconds,
+    never the words; stores nothing. `test:presence`, `prove:presence`
+    (Realtime FAKED). Live check owed: two signed-in accounts on one project,
+    after §48 runs. Live character-level cursors were deliberately not built:
+    without a per-element merge they would promise co-editing that does not
+    exist.
+
+    **Idea Vault back on Basic and up** (owner, same day), so the Chrome
+    clipper's clips land somewhere visible again. Matrix, `OFF_BY_DEFAULT`,
+    the `write` launcher row, the `story` pricing group and §36 regenerated;
+    `prove:extension` lost the style override that looked past the "Not
+    available" panel and now asserts there is none. The clipper itself is
+    still `limits.extension` (Intermediate and up), so Basic has the page and
+    not the clipper. Re-baselined: vault lost only the panel's words.
+
+    **A newer copy arriving no longer gets overwritten** (a live data-loss
+    bug found while planning co-editing). `screenplay.js` loaded `doc` once
+    and nothing listened for `cloud:synced`, so after cloud.js wrote a pulled
+    or live script into storage the next keystroke saved the page's older
+    copy over it with a newer clock — the other device's work was gone from
+    the cloud (only the local copy cloud.js displaced went to salvage). The
+    page now listens (the pull's notify gained `scopes`, the names it WROTE)
+    and `src/lib/script-incoming.js` decides: nothing unsaved → show the
+    arrival; mid-edit → keep the screen AND keep the arrival as a draft
+    ("From another device, HH:MM", a `revisions` entry — no new key), with
+    Use theirs one press away, which keeps the writer's copy as a draft in
+    turn. No branch drops a line. `test:incoming`, `prove:script` case 15.
+    Found on the way: a long draft name pushed the draft line 42px past a
+    390px screen; it truncates now.
+
+    **Word (.docx) screenplay import.** `docx-text.js` gained
+    `documentXmlToParagraphs` (text, the style's display NAME from
+    `word/styles.xml`, left indent in twips, alignment, page breaks) beside
+    the synopsis reader it already had. `script-import.js` lays each
+    paragraph out the way a PDF already is — one line at the column its type
+    sits at in a screenplay text file — and PARSER 2 reads it: the STYLE
+    decides when it names a screenplay element (`DOCX_TYPE`; Final Draft's
+    .docx export and the Word templates use those names), otherwise the
+    indent at 144 twips a column, and right-aligned is a transition. Styled
+    cues and headings are set in capitals (Word often shows capitals through
+    the style over lower-case text). A file with no screenplay styles says so
+    in the preview. Both pickers accept .docx and the copy that lists the
+    formats says Word. `test:import` (+16, fixtures through
+    `scripts/lib/zip-fixture.mjs`, moved out of test-story), `prove:script`
+    case 16 through the real file picker.
+
+    **Word (.docx) export.** `src/lib/zip-write.js` writes a stored ZIP with
+    a real CRC-32 (Word checks it; our own reader does not, which is why the
+    test fixture's zero CRC was never enough) and fixed timestamps, so the
+    same script writes the same bytes. `src/lib/screenplay-docx.js toDOCX`
+    lays the script out from the typesetter's own `GEOMETRY` — US Letter, a
+    1.5in gutter, 144 twips a character — with each element a paragraph in a
+    NAMED style (Scene Heading … Shot, the Final Draft / Word template names),
+    text printed as on the page (`printedText`: capitals and brackets in the
+    text, not a style's caps), the title page first and a page break after
+    it. Courier New, not Courier Prime: every machine with Word has it and the
+    metrics match. Dual dialogue is written one speech after the other (a
+    table would break every re-import). File → Export Word (.docx) on
+    screenplay.html and Export .docx on write.html, loaded at the press.
+    `test:docx` (20: standard CRC, Python's zipfile opens it and every CRC
+    checks, indents, round trip through our importer); `prove:script` case 17
+    downloads it. LibreOffice renders it correctly (checked by hand once).
+
+    **Locked pages (A-pages).** Inside a scene lock, "Lock page numbers"
+    (drafts.html#numbering and write's Revisions) records where each page
+    starts — `numbering.pages = { locked, at, starts: [{ n, id, split }] }`,
+    inside the script blob, no new key; `normaliseNumbering` and
+    `settleNumbering` carry it (both rebuilt `numbering` from three fields
+    and would have dropped it on the first load or save). `paginate()` takes
+    `opts.breakBefore` and `paginateDoc()` breaks before every unsplit locked
+    start; `pageNumbersDoc()` names the pages: the locked number where a page
+    starts where it did, 12A / 12B for overflow, and a page whose start was
+    cut folds into the one before as 12-13. The PDF, the text export and both
+    page views print those labels (the page views also stopped skipping a
+    break whose label changed while its position did not). Unlocking the
+    scene numbers unlocks the pages with them, and says so. `test:revisions`
+    (+16 on the Dragon sample), `prove:script` case 18 through the real
+    controls.
+
+    **Co-editing, behind a switch (schema §49, OFF).**
+    `supabase/schema/schema-49-co-editing.sql`: `billing_settings.co_editing_enabled`,
+    `co_editing_enabled()` for anyone and `admin_set_co_editing_enabled()`
+    for the owner only, audited (`test:schema` +9). The console's People tab
+    draws it (`src/ui/coedit-admin.js` over `src/lib/coedit-api.js` —
+    `test:layers` refused a view calling `.rpc()` directly), and says so when
+    §49 has not run. ON, the script scope MERGES instead of newer-wins:
+    `src/lib/script-merge.js` merges line by line by id (the later `u` of a
+    line both sides changed; a delete only when the common base proves it
+    and nobody edited the line since; no base, nothing is deleted; order
+    follows the arrival; drafts and documents union; title page and
+    numbering follow the side that changed them). `u` is stamped by
+    `saveScript` on every line that changed since the stored copy, and by the
+    Screenplay Writer as a line is typed, so an unsaved keystroke counts as
+    later than an arrival. `cloud.js` reads the switch at attach
+    (`coEditingEnabled`, a missing function reads OFF), keeps the base per
+    project in memory (last pushed or received), and judges self-echo by its
+    own last push rather than user id while it is on, so one person's two
+    devices merge too. The open page merges an arrival into `doc` (its own
+    `pageBase` as ancestor) and keeps the caret to the character. `test:merge`
+    (19), `prove:presence` case 8 (merge on the page; Realtime faked). The
+    live check needs two accounts after §49 runs and the switch is on.
+
+    **Live cursors.** Presence sends the caret's offset as well as its
+    line (`pos`, from `selectionchange`/`keyup`, throttled with the rest),
+    and the Screenplay Writer draws each other writer's caret at the
+    character: a hidden mirror of the line's textarea, given its box and text
+    styles, lays the text out the same way and a marker span at `pos` is
+    measured (`caretPoint` in `src/ui/presence.js`). A named 2px caret sits
+    in the row and never takes a click; a page render redraws them. An older
+    page that sends no `pos` simply has no caret. `test:presence` (+3),
+    `prove:presence` 5b (the caret moves four characters' width for four
+    characters, and survives a redraw).
+
+    **Round-2 review (19 Oct 2026).** A ten-agent review workflow (five
+    reviewers, each followed by a skeptic who tried to refute every finding
+    and reproduced the pure-module ones in Node) reported 25 findings: 24
+    confirmed, 1 unsure, none refuted. All were fixed:
+    - **Co-editing (switch-only, nothing live):** the merge base was this
+      device's own push, which a writer who was offline never saw, so a
+      line added here read as cut over there and was lost everywhere. The
+      base is now the copy last RECEIVED; a merge that drops a local line
+      salvages first. The page sampled the switch once, before the session
+      was restored, and read OFF; it now asks on every arrival. The
+      arrival's canonical form was computed against the base, so identical
+      arrivals were pushed back; own-push echo is compared as instants.
+    - **Switch off (live behaviour):** two writers typing at once added a
+      whole-script draft per save on both sides. The page's last arrival
+      draft is replaced in place for ten minutes and only the newest
+      "Use theirs" toast stays. A page saving a stale in-memory copy no
+      longer stamps its stale lines as the newest edit (`stampChanged`).
+    - **Word:** XML-illegal characters stripped on export; hand-typed
+      indents (leading tabs/spaces) read on import; a paragraph's style now
+      decides its type (the round trip keeps MONTAGE, LATER, shots);
+      `heading N` is not a scene style; non-breaking/soft hyphens; text
+      boxes no longer duplicate. The Breakdown's picker accepts .docx
+      (`test:accept` guards every picker).
+    - **Locked pages:** `lockPlan()` keeps only rising starts, keys split
+      starts by occurrence, re-anchors split and blanked starts, places
+      OMITTED rows before the locked break, folds a missing number onto the
+      last page before the next one, and never prints the first page's
+      number.
+    - **Presence/console:** carets follow typing and resize; focus on another
+      row sends no stale offset; only the owner sees the switch; a failed
+      read can be retried.
+    - **Copy:** "keeps working offline" became "once it is open"; a cold
+      offline start is refused by the site gate (KNOWN-ISSUES, owner
+      decision).
+
+53. **The 19 Oct 2026 pass (CLAUDE.md rows 41–50).** One day, several
+    branches merged into `claude/improvement-ideas-0gwjyx`:
+
+    - **Account avatar menu** (`40beb10`). The status bar at the rail's foot
+      is no longer mounted; the foot is one avatar that opens a menu (who you
+      are, Settings, Plan & purchases, Help & shortcuts, Sign in / Sign out).
+      Settings left the rail; the band's name pill is hidden on a desk but
+      kept in the DOM for auth state and the phone's Tools sheet. The avatar
+      is the Google profile photo (`user_metadata.avatar_url` / `picture`),
+      replacing the initials rather than sitting under them (`906261c`);
+      `img-src` names googleusercontent in `vercel.json` and `netlify.toml`.
+    - **Full-width frame** (`ace671f`, then `906261c`). `--measure-wide` went
+      92ch → 78rem → `100vw`, so every studio page runs edge to edge beside
+      the rail; `--measure-text` (92ch) keeps prose at a reading measure. The
+      Plan day cards then fitted two columns at 1100px and overflowed by 14px
+      (`0190191`, found by `prove:scroll`).
+    - **Story four steps** (`743576a`, `a4863d6`). Idea, Characters & world,
+      Beat Sheet, Synopsis for both formats, stable numbers 1, 7, 4, 5; every
+      retired step id and number reaches its new home through `aliases`. A
+      Title page card on the dashboard edits the cover keys through
+      `blueprint-store` and re-reads them after every render and on storage,
+      visibility and cloud events. No key added, renamed or removed.
+    - **Plan gate and Library** (`40beb10`, `906261c`). A matrix `plans: []`
+      module is hidden whatever the server's features map says (the live §36
+      predates the switch-off). The Library is always reachable;
+      `openShelves()` drops switched-off shelves from the contents, index and
+      counts while their sections stay in the DOM as hidden tabs.
+    - **Craft-book shelves** (`91340c9`, `5a99882`). Writing for Emotional
+      Impact and Save the Cat as Library tabs, content in
+      `src/data/book-*.json` with an `_about` stating the copyright rules; the
+      review removed list orders and triads that followed the books too
+      closely.
+    - **Purchase page revamp** (`29eb905`). Current-plan strip, comparison
+      cards, full feature table, refunds and invoices as their own sections;
+      modules no plan sells are neither listed nor counted.
+    - **`prove:scroll`** (`d4f3229`). Every root page at 1440/1100/390 with
+      the Dragon sample: nested scrollers, end reachable above fixed chrome,
+      locks at rest and after each sheet, sticky, fragments, overscroll
+      chaining, wheel, height jumps. It found `fragments.js` fighting the
+      reader for 20s on `library.html#films` and a breakdown sheet leaving
+      `bdx-locked` on `<html>`. Added to CI after `build:verify`.
+    - **Design passes.** Emil Kowalski motion audit E1–E15 (`76182bc`,
+      `709e87e`), Impeccable (`f2b36ff`, `c163516`), Taste on the public
+      pages (`62f1b05`). A deliberate baseline recapture (`3f75db3`) sits
+      between them; later passes added `EXPECTED` rows instead.
+    - **Schema §50** (`b9f4548`, `550b01f`). Refunds follow the role matrix in
+      the database, seats follow the current plan, a decline sticks across a
+      re-ask. Not run live; it goes with a redeploy of `rzp-refund`.
+    - **Contact / About and the policies** (`dc42067`, `6d3a588`, `ad4a604`,
+      `bacbcd1`). Generated public pages; the contact form only opens a
+      `mailto:`. privacy, terms and refund rewritten against the code; the
+      terms' purchase-day promise was removed because 15 modules are off for
+      every plan and nothing snapshots features per buyer.
+    - **Tooling** (this retro). verify's stage-guide probe waits for the
+      condition (up to 8s) instead of a 1.5s ceiling that flaked on
+      `story.html`; stale "not run live" comments in `cloud.js` and the
+      `deploy-billing.mjs` slice description corrected.

@@ -17,6 +17,8 @@ Audit log, People, Support, Access & sharing, Purchases, Growth, Usage, Sync & s
 | §40 | `supabase/schema/schema-40-admin-audit.sql` | §1–§39 | `admin_audit`, `admin_audit_write()`, `admin_list_audit()`, and nineteen admin writers restated with an audit call |
 | §42 | `supabase/schema/schema-42-customer-360.sql` | **§40** | `admin_notes`, `admin_add_note()`, `admin_list_notes()`, `admin_customer()` |
 | §47 | `supabase/schema/schema-47-delete-anonymise.sql` | **§45** | `admin_delete_user()` restated: the retained invoices lose the buyer's name, e-mail and GSTIN (People → Delete totally) |
+| §50 | `supabase/schema/schema-50-refund-seat-trial.sql` | **§45** | NOT YET RUN LIVE. `begin_refund()` refuses an actor who is not owner/finance; `record_refund()` settles a request as refunded only once the payment is refunded (also when the webhook recorded the refund first), and `admin_decide_refund_request()` refuses a decline while a refund on that payment is in flight; `enforce_seat_limit()` uses the current plan's seats; `invite_requests.last_declined_at` keeps a decline in force for `start_trial()` across a re-ask. Goes with an `rzp-refund` redeploy. |
+| §51 | `supabase/schema/schema-51-security-followups.sql` | **§45, §46, §50** | NOT YET RUN LIVE. `admin_terminate_session(p_disable => true)` on an ADMINISTRATOR needs an owner and never disables the last owner; `admin_create_invite()` makes a screening pass only for a film the caller owns (the picker lists owned films only); plus the money, sharing and team fixes in `docs/BILLING.md` §21. sha256 `860ed0741bad08c196d40d00602c4fb5481290519017691a30529bb4ac63ac44`. |
 
 (§41, health and launch, is another lane. §42 does not depend on it.)
 
@@ -355,7 +357,7 @@ something yesterday is refused today. Reads (`admin_list_*`, `admin_customer`,
 
 | Role | Writers |
 | --- | --- |
-| finance | `admin_decide_refund_request`, `admin_issue_invoice`, `admin_resend_receipt`, `admin_set_promo_code`, `admin_mark_referral_paid` |
+| finance | `admin_decide_refund_request`, `admin_issue_invoice`, `admin_resend_receipt`, `admin_set_promo_code`, `admin_mark_referral_paid`, **the REFUND itself** (`rzp-refund` calls `require_role(['finance'])` as the caller, and §48's `begin_refund()` checks the actor again) |
 | support | `admin_grant_trial`, `admin_terminate_session`, `admin_add_note` |
 | owner | `admin_grant_plan`, `admin_set_plan`, `admin_set_plan_price`, `admin_set_next_price`, `admin_set_billing_settings`, `admin_set_refund_requests_enabled`, `admin_grant_email`, `admin_revoke_email_grant`, `admin_decide_request`, `admin_reset_user`, `admin_create_invite`, `admin_revoke_invite` (+ every §45 owner RPC) |
 
@@ -371,10 +373,16 @@ Judgement calls, all conservative toward owner — change one by editing its
 - `admin_set_refund_requests_enabled` is **owner**: it is a switch, like the
   purchases switch.
 - `admin_set_plan` is **owner**: it edits what a plan is.
+- **Issuing a refund** (`rzp-refund` → `begin_refund()`) is **finance**: money out.
+  Until §50 and the redeploy, the edge function checked only `is_studio_admin()`,
+  so any console role could issue one; it now asks `require_role(['finance'])`
+  as the caller and the database asks the same of `p_admin`.
 - `admin_mark_referral_paid` is **finance**: money out. `admin_resend_receipt` is
   **finance**: the invoice's other half.
-- `admin_terminate_session` is **support** (the brief names sessions) even though
-  `disable := true` locks the account; revisit if that should be owner.
+- `admin_terminate_session` is **support** (the brief names sessions). Since §51,
+  `disable := true` on another ADMINISTRATOR needs an owner (42501 otherwise), and
+  never disables the last enabled owner (23514): before, a support admin could
+  disable every owner, which no other path allowed, and only SQL could undo it.
 - `admin_reset_user` is **owner**; `admin_create_invite` / `admin_revoke_invite`
   are **owner**.
 

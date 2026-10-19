@@ -20,6 +20,7 @@
    bundler can version-pin and code-split it.
    ============================================================ */
 import Store from './store.js';
+import { mergeScriptRaw } from './script-merge.js';
 /* One constant, for the scope string, so sign-in and the Drive client
    cannot drift apart about what was consented to. drive.js imports
    nothing from here, so this is not a cycle, and vite.config folds
@@ -93,20 +94,17 @@ const SCOPE_BY_KEY = {
   'fms_songs_v1':               'songs',
   'fms_story_v1':               'story',
   'fms_idea_vault_v1':          'idea_vault',
-  // Post-Production. The scope names are in schema section 17, which
-  // has NOT run against the database at the time of writing — until it
-  // does, Postgres refuses these two upserts and the rest still sync.
+  // Post-Production. The scope names are in schema section 17 (live).
+  // Before a section like this has run, Postgres refuses its upserts
+  // (23514) and the rest still sync.
   'fms_edit_v1':                'edit',
   'fms_deliverables_v1':        'deliverables',
-  // Schema section 24, which has NOT run against the database at the
-  // time of writing — until it does, Postgres refuses these two upserts
-  // and the rest still sync (the same window section 17 had).
+  // Schema section 24 (live since 8 Oct 2026).
   'fms_characters_v1':          'characters',
   'fms_costs_v1':               'costs',
-  // Schema section 37, which has NOT run against the database at the
-  // time of writing — until it does, Postgres refuses this upsert and
-  // the rest still sync (the same window sections 17 and 24 had). Its
-  // value is a per-day history, so it is MERGED, not replaced: see
+  // Schema section 37 (live since 12 Oct 2026; the client shipped
+  // first and every save answered 23514 until it ran — run the section
+  // BEFORE the client names a new scope). Its value is a per-day history, so it is MERGED, not replaced: see
   // MERGE_BY_SCOPE below.
   'fms_write_goals_v1':         'write_goals'
 };
@@ -151,6 +149,46 @@ export function mergeWriteGoals(localRaw, remoteRaw, localWins) {
   return JSON.stringify(out);
 }
 const MERGE_BY_SCOPE = { write_goals: mergeWriteGoals };
+
+/* The script scope merges ONLY with the co-editing switch on (§49);
+   off, it is newer-wins as it always was. Its merge is three-way, so it
+   needs a copy the other side is known to have built on: `_base` holds,
+   per project, the script as last RECEIVED from the server, in memory.
+   Never this device's own push — a writer who was offline never saw it,
+   and a line added here would then read as "cut over there". A page that
+   has just opened has none, and script-merge.js then never deletes a
+   line (a line coming back beats a line lost). */
+const _base = new Map();
+const baseKey = (pid, scope) => pid + '::' + scope;
+function mergerFor(projectId, scope) {
+  if (scope === 'script') {
+    if (_coEdit !== true) return null;
+    /* `noBase` gives the arrival's own canonical form, to compare the
+       merge against: merged against the base, '{}' reads every line the
+       base has as cut here, and every arrival looked different. */
+    return (localRaw, remote, _localWins, noBase) =>
+      mergeScriptRaw(localRaw, remote, noBase ? null : (_base.get(baseKey(projectId, scope)) || null));
+  }
+  return MERGE_BY_SCOPE[scope] || null;
+}
+const noteBase = (pid, scope, data) => { if (scope === 'script') _base.set(baseKey(pid, scope), data); };
+/* A merge that leaves out a line this device had keeps the whole local
+   copy in the salvage list first, as a replace does. */
+function salvageDropped(pid, scope, localRaw, merged) {
+  if (scope !== 'script') return;
+  try {
+    const kept = new Set((JSON.parse(merged).elements || []).map((e) => e && e.id));
+    if ((JSON.parse(localRaw).elements || []).some((e) => e && e.id && !kept.has(e.id))) salvage(pid, scope, localRaw);
+  } catch (e) { /* not JSON: nothing to compare */ }
+}
+/* Self-echo by our OWN last push, not by user id, once co-editing is on:
+   the same person on a second device is a collaborator too. Compared as
+   instants: Postgres hands a timestamptz back in its own spelling. */
+const _lastPushedAt = new Map();
+const isOwnPush = (row) => {
+  const sent = _lastPushedAt.get(baseKey(row.project_id, row.scope));
+  return !!sent && Date.parse(sent) === Date.parse(row.updated_at || '');
+};
 const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k] && !LOCAL_ONLY.has(k));
 if (_unsynced.length) {
   console.warn(
@@ -1395,6 +1433,7 @@ export async function pullProjectData(projectId) {
   if (!data) { idleSync(); return; }
 
   let applied = 0, kept = 0;
+  const scopes = [];
   for (const row of data) {
     const localKey = KEY_BY_SCOPE[row.scope];
     if (!localKey) continue;                      // scope this build doesn't know
@@ -1403,14 +1442,18 @@ export async function pullProjectData(projectId) {
     const localRaw = Store.rawGet(nsKey);
     let nextRaw    = JSON.stringify(row.data || {});
 
-    if (MERGE_BY_SCOPE[row.scope] && localRaw != null && localRaw !== '{}') {
+    const pullMerge = mergerFor(projectId, row.scope);
+    if (pullMerge && localRaw != null && localRaw !== '{}') {
       const localWins = localClock(projectId, row.scope) > remoteTs;
-      const merged = MERGE_BY_SCOPE[row.scope](localRaw, row.data || {}, localWins);
-      const remoteCanon = MERGE_BY_SCOPE[row.scope]('{}', row.data || {}, false);
+      const merged = pullMerge(localRaw, row.data || {}, localWins);
+      const remoteCanon = pullMerge('{}', row.data || {}, false, true);
+      noteBase(projectId, row.scope, row.data || {});
       if (merged !== localRaw) {
+        salvageDropped(projectId, row.scope, localRaw, merged);
         _applyingRemote = true;
         try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
         applied++;
+        scopes.push(row.scope);
       }
       markRemoteSeen(projectId, row.scope, remoteTs, merged === remoteCanon);
       if (merged !== remoteCanon) { kept++; _debouncedPush(projectId, row.scope, 250); }
@@ -1434,9 +1477,13 @@ export async function pullProjectData(projectId) {
     try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
     markRemoteSeen(projectId, row.scope, remoteTs, true);
     applied++;
+    scopes.push(row.scope);
   }
   if (applied || kept) {
-    Store.notify('cloud:synced', { projectId, applied, kept });
+    /* `scopes` names what was WRITTEN here, so an open page holding one of
+       them in memory (the Screenplay Writer's script) knows to re-read it
+       rather than save its older copy over the one just pulled. */
+    Store.notify('cloud:synced', { projectId, applied, kept, scopes });
   }
   idleSync();
   return { applied, kept };
@@ -1500,6 +1547,7 @@ async function _pushScope(projectId, scope) {
   let json = {};
   try { json = JSON.parse(raw); } catch (e) { return; }
   const stamp = new Date().toISOString();
+  _lastPushedAt.set(baseKey(projectId, scope), stamp);
   setSync(SYNC_STATES.SYNCING, 'Saving to your account…');
   const { error } = await supabase.from('project_data').upsert({
     project_id: projectId,
@@ -1692,6 +1740,8 @@ export async function attachToCurrentProject() {
   tearDownChannels();
   const pid = Store.currentProjectId();
   if (!pid) return;
+  // 0. The co-editing switch decides how the script scope is applied.
+  await coEditingEnabled();
   // 1. Pull latest data
   await pullProjectData(pid);
   // 2. Subscribe to changes
@@ -1712,6 +1762,63 @@ export async function attachToCurrentProject() {
   _activeChannels = [dataChannel, commentsChannel];
 }
 
+/* THE CO-EDITING SWITCH (schema §49). When it is ON the script scope
+   merges a remote copy into the local one line by line
+   (src/lib/script-merge.js) instead of newer-wins. Read once per page
+   and kept; a missing function (§49 not run), no client or no session
+   all read as OFF, which is how this database has always behaved. */
+let _coEdit = null;
+export async function coEditingEnabled() {
+  if (_coEdit !== null) return _coEdit;
+  if (!session) return false;
+  try {
+    const client = await ensureClient();
+    if (!client) return false;
+    const { data, error } = await client.rpc('co_editing_enabled');
+    _coEdit = !error && data === true;
+  } catch (e) { _coEdit = false; }
+  return _coEdit;
+}
+export const coEditingKnown = () => _coEdit === true;
+
+/* PRESENCE — who else has this project's screenplay open. A PRIVATE
+   channel 'pr:<project id>', because presence on a public channel is
+   outside RLS: anyone with the anon key and a project id could read who
+   is writing. Who may join is schema §48's two policies on
+   realtime.messages (the people has_project_access() lets read the
+   project). Until §48 runs, the join is refused and onSync never fires:
+   the page shows nobody, and nothing else changes. Kept apart from
+   _activeChannels on purpose — the page that shows presence owns its
+   channel (src/ui/presence.js) and leaves it on pagehide; a re-attach
+   for sync must not drop it. Stores nothing.
+   → { track(meta), leave() } or null when there is no session, no
+     client or sync is off. */
+export async function joinPresence(pid, onSync) {
+  if (!pid || !session || !syncEnabled()) return null;
+  let client;
+  try { client = await ensureClient(); } catch (e) { return null; }
+  if (!client || !session) return null;
+  try { client.realtime.setAuth(session.access_token); } catch (e) { /* the SDK sets it on SIGNED_IN as well */ }
+  const key = session.user.id;
+  const ch = client.channel('pr:' + pid, { config: { private: true, presence: { key } } });
+  let joined = false, last = null, gone = false;
+  ch.on('presence', { event: 'sync' }, () => { if (!gone) { try { onSync(ch.presenceState(), key); } catch (e) { /* the page's */ } } });
+  ch.subscribe((status) => {
+    if (status !== 'SUBSCRIBED' || gone) return;
+    joined = true;
+    if (last) ch.track(last).catch(() => {});
+  });
+  return {
+    track(meta) { last = meta; if (joined && !gone) ch.track(meta).catch(() => {}); },
+    leave() {
+      if (gone) return;
+      gone = true;
+      try { ch.untrack(); } catch (e) { /* not tracked */ }
+      try { client.removeChannel(ch); } catch (e) { try { ch.unsubscribe(); } catch (err) { /* gone */ } }
+    }
+  };
+}
+
 function _onRemoteData(payload) {
   /* A DELETE carries no data: `new` is empty and `old` names the scope,
      so `row.data` would be undefined, `nextRaw` '{}', and the stamp
@@ -1721,7 +1828,11 @@ function _onRemoteData(payload) {
   if (payload && payload.eventType === 'DELETE') return;
   const row = payload.new || payload.old;
   if (!row || !row.scope) return;
-  if (session && row.updated_by === session.user.id) return;  // self echo
+  if (session && row.updated_by === session.user.id) {          // self echo
+    // …or this person on another device, which co-editing merges.
+    if (!(row.scope === 'script' && _coEdit === true)) return;
+    if (isOwnPush(row)) return;
+  }
   const localKey = KEY_BY_SCOPE[row.scope];
   if (!localKey) return;
   const nsKey    = localKey + '__' + row.project_id;
@@ -1730,11 +1841,13 @@ function _onRemoteData(payload) {
   const nextRaw  = JSON.stringify(row.data || {});
   if (localRaw === nextRaw) return;
 
-  if (MERGE_BY_SCOPE[row.scope] && localRaw != null && localRaw !== '{}') {
-    const merge = MERGE_BY_SCOPE[row.scope];
+  const merge = mergerFor(row.project_id, row.scope);
+  if (merge && localRaw != null && localRaw !== '{}') {
     const merged = merge(localRaw, row.data || {}, localClock(row.project_id, row.scope) > remoteTs);
-    const remoteCanon = merge('{}', row.data || {}, false);
+    const remoteCanon = merge('{}', row.data || {}, false, true);
+    noteBase(row.project_id, row.scope, row.data || {});
     if (merged !== localRaw) {
+      salvageDropped(row.project_id, row.scope, localRaw, merged);
       _applyingRemote = true;
       try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
       Store.notify('cloud:synced', { projectId: row.project_id, scope: row.scope });
@@ -2162,7 +2275,7 @@ const StudioCloud = {
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
-  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects,
+  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence, coEditingEnabled,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,
   listSalvage, restoreSalvage,

@@ -30,7 +30,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const DIST = path.resolve('dist');
+const DIST = path.resolve(process.env.PROVE_DIST || 'dist');   // like the other proofs: CI points it at dist-verify
 const PORT = Number(process.env.PROVE_PORT) || 5381;
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',

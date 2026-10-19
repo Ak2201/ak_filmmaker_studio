@@ -216,24 +216,8 @@
 .section-head .right .lx-worked {
   margin-top: var(--s1);
 }
-.section-head .right .lx-here-line {
-  margin-top: var(--s3);
-  display: grid;
-  gap: 2px;
-  justify-items: end;
-}
-.section-head .right .lx-here-tag {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  color: var(--accent-deep);
-}
-.section-head .right .lx-here-trail {
-  font-family: var(--f-display);
-  font-size: var(--t-small);
-  letter-spacing: normal;
-  color: var(--ink);
-}
+/* "34 modules." is emphasised by weight in the heading's own ink. */
+#lxHeading .lx-count { font-weight: 700; font-style: normal; color: var(--ink); }
 
 /* ------------------------------------------------------------
    5. KEYBOARD

@@ -11,7 +11,7 @@
 
    The two seams (store.js and JSON imports) are in node-seams.mjs.
    ============================================================ */
-import { deflateRawSync } from 'node:zlib';
+import { zip } from './lib/zip-fixture.mjs';
 import { mem } from './node-seams.mjs';
 
 const S = await import('../src/lib/story.js');
@@ -429,28 +429,6 @@ eq(S.synopsisText({ source: '  hello  ' }), 'hello\n', 'synopsis .txt');
 }
 
 /* ---- .docx --------------------------------------------------- */
-function zip(files) {
-  const enc = new TextEncoder();
-  const locals = [], centrals = [];
-  let offset = 0;
-  for (const [name, text, method] of files) {
-    const raw = enc.encode(text);
-    const data = method === 8 ? deflateRawSync(raw) : raw;
-    const n = enc.encode(name);
-    const lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(method, 8);
-    lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(raw.length, 22); lh.writeUInt16LE(n.length, 26);
-    const ch = Buffer.alloc(46); ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(method, 10);
-    ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(raw.length, 24); ch.writeUInt16LE(n.length, 28);
-    ch.writeUInt32LE(offset, 42);
-    locals.push(lh, n, data); centrals.push(ch, n);
-    offset += 30 + n.length + data.length;
-  }
-  const cd = Buffer.concat(centrals);
-  const eocd = Buffer.alloc(22); eocd.writeUInt32LE(0x06054b50, 0);
-  eocd.writeUInt16LE(files.length, 8); eocd.writeUInt16LE(files.length, 10);
-  eocd.writeUInt32LE(cd.length, 12); eocd.writeUInt32LE(offset, 16);
-  return Buffer.concat([...locals, cd, eocd]);
-}
 const DOC = `<?xml version="1.0"?><w:document xmlns:w="x"><w:body>
 <w:p><w:r><w:t>DRAGON</w:t></w:r></w:p>
 <w:p><w:r><w:t xml:space="preserve">Ragavan &amp; his </w:t></w:r><w:r><w:t>&quot;friends&quot;</w:t></w:r><w:r><w:tab/><w:t>cheat.</w:t></w:r></w:p>
@@ -496,6 +474,13 @@ ok(/password-protected/.test((await extractDocxText(ole.buffer)).fatal), 'an enc
   S.docStarter(st, 'Treatment'); S.docStarter(st, 'One-Pager');
   eq(JSON.stringify(st), before, 'docStarter reads and never writes');
 }
+
+// A clipping's source is a link only when it is http(s) (security follow-up, §51).
+eq(S.clipSourceHost('https://example.com/a?b=1'), 'example.com', 'clipSourceHost: an https source shows its host');
+eq(S.clipSourceHost('http://news.example.org/x'), 'news.example.org', 'clipSourceHost: an http source shows its host');
+eq(S.clipSourceHost('javascript://example.com/%0aalert(1)'), '', 'clipSourceHost: a javascript: URL with a host is not a link');
+eq(S.clipSourceHost('data:text/html,<b>x</b>'), '', 'clipSourceHost: a data: URL is not a link');
+eq(S.clipSourceHost(''), '', 'clipSourceHost: no URL, no link');
 
 console.log(`${fail ? '✗' : '✓'} story model + docx: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -39,6 +39,11 @@
     "test:pacing": "node scripts/test-story-pacing.mjs",
     "test:tanglish": "node scripts/test-tanglish.mjs",
     "test:keys": "node scripts/test-keys.mjs",
+    "test:replace": "node scripts/test-replace.mjs",
+    "test:presence": "node scripts/test-presence.mjs",
+    "test:incoming": "node scripts/test-incoming.mjs",
+    "test:docx": "node scripts/test-docx.mjs",
+    "test:merge": "node scripts/test-merge.mjs",
     "test:inference": "node scripts/test-inference.mjs",
     "test:shots": "node scripts/test-shots.mjs",
     "test:blocking": "node scripts/test-blocking.mjs",
@@ -66,8 +71,9 @@
     "record:marketing": "node scripts/record-marketing-media.mjs",
     "test:brand": "node scripts/check-brand.mjs",
     "test:marketing": "node scripts/test-marketing.mjs",
+    "test:contact": "node scripts/test-contact.mjs",
     "make:marketing": "node scripts/make-marketing-pages.mjs",
-    "test:all": "npm run test:undef && npm run test:layers && npm run test:board-models && npm run test:hub-models && npm run test:write-models && npm run test:feature-model && npm run test:dialogs && npm run test:pagefile && npm run test:countdown && npm run test:returnto && npm run test:brand && npm run test:pdf && npm run test:story && npm run test:bible && npm run test:screenplay && npm run test:billing && npm run test:invoice && npm run test:schema && npm run test:post && npm run test:format && npm run test:links && npm run test:homestage && npm run test:delivery && npm run test:beats && npm run test:pacing && npm run test:tanglish && npm run test:keys && npm run test:shots && npm run test:blocking && npm run test:sync && npm run test:samples && npm run test:stripboard && npm run test:import && npm run test:sun && npm run test:takes && npm run test:ready-sheet && npm run test:backup-summary && npm run test:callsheet && npm run test:costs && npm run test:impact && npm run test:revisions && npm run test:ai-coverage && npm run test:ai-phase2 && npm run test:testimonials && npm run test:videos && npm run test:money && npm run test:plans && npm run test:usage-names && npm run test:breakdown && npm run test:learn && npm run test:stage-guide && npm run test:journey && npm run test:blueprint-route && npm run test:drafts && npm run test:inference && npm run test:script-notes && npm run test:budget-kpis && npm run test:element-index && npm run test:breakdown-extras && npm run test:board-frames && npm run test:launcher-rows && npm run test:marketing",
+    "test:all": "npm run test:undef && npm run test:layers && npm run test:board-models && npm run test:hub-models && npm run test:write-models && npm run test:feature-model && npm run test:dialogs && npm run test:pagefile && npm run test:countdown && npm run test:returnto && npm run test:brand && npm run test:pdf && npm run test:story && npm run test:bible && npm run test:screenplay && npm run test:billing && npm run test:invoice && npm run test:schema && npm run test:post && npm run test:format && npm run test:links && npm run test:homestage && npm run test:delivery && npm run test:beats && npm run test:pacing && npm run test:tanglish && npm run test:keys && npm run test:replace && npm run test:presence && npm run test:incoming && npm run test:docx && npm run test:merge && npm run test:shots && npm run test:blocking && npm run test:sync && npm run test:samples && npm run test:stripboard && npm run test:import && npm run test:accept && npm run test:sun && npm run test:takes && npm run test:ready-sheet && npm run test:backup-summary && npm run test:callsheet && npm run test:costs && npm run test:impact && npm run test:revisions && npm run test:ai-coverage && npm run test:ai-phase2 && npm run test:testimonials && npm run test:videos && npm run test:money && npm run test:plans && npm run test:usage-names && npm run test:breakdown && npm run test:learn && npm run test:stage-guide && npm run test:journey && npm run test:blueprint-route && npm run test:drafts && npm run test:inference && npm run test:script-notes && npm run test:budget-kpis && npm run test:element-index && npm run test:breakdown-extras && npm run test:board-frames && npm run test:launcher-rows && npm run test:marketing && npm run test:contact",
     "build:verify": "VITE_SITE_GATE=off vite build --outDir dist-verify",
     "test:ai-lazy": "node scripts/check-ai-lazy.mjs",
     "test:ai-desk": "node scripts/test-ai-desk.mjs",
@@ -105,10 +111,14 @@
     "test:countdown": "node scripts/test-trial-countdown.mjs",
     "test:returnto": "node scripts/test-return-to.mjs",
     "prove:script": "node scripts/prove-script.mjs",
+    "prove:replace": "node scripts/prove-replace.mjs",
+    "prove:cards": "node scripts/prove-cards.mjs",
+    "prove:presence": "node scripts/prove-presence.mjs",
     "prove:tamil": "node scripts/prove-tamil.mjs",
     "prove:walk": "node scripts/prove-walk.mjs",
     "thumbs": "node scripts/make-video-thumbs.mjs",
-    "smoke": "node scripts/smoke-production.mjs"
+    "smoke": "node scripts/smoke-production.mjs",
+    "test:accept": "node scripts/test-accept.mjs"
   },
   "engines": {
     "node": ">=22.12"

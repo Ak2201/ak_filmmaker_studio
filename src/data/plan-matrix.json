@@ -134,7 +134,12 @@
     {
       "key": "idea-vault",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "pitch-deck",
@@ -207,7 +212,11 @@
     {
       "key": "screen-time",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "docs",
@@ -222,12 +231,20 @@
     {
       "key": "auto-tag",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "cast-matrix",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
     },
     {
       "key": "shot-list",
@@ -337,7 +354,10 @@
     {
       "key": "shoot-day",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "pro"
+      ]
     },
     {
       "key": "call-sheets",
@@ -350,12 +370,18 @@
     {
       "key": "edit-log",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "pro"
+      ]
     },
     {
       "key": "deliverables",
       "kind": "module",
-      "plans": []
+      "plans": [
+        "free",
+        "pro"
+      ]
     },
     {
       "key": "extension",

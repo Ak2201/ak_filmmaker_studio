@@ -5,6 +5,11 @@
    rather than removing it: nothing on the page is lost, only covered.
    ============================================================ */
 :root[data-plan-lock] main { visibility: hidden; }
+/* A page switched off for EVERYBODY ("Not available"): nobody will ever
+   scroll it, so its height goes too — otherwise the card sits over
+   11,000px of empty scroll. Clipped, not display:none: the content stays
+   in the DOM and in innerText, which the gate reads. */
+:root[data-plan-lock][data-plan-gone] main { height: 0; min-height: 0; overflow: hidden; padding-block: 0; }
 .pg-lock {
   position: fixed;
   inset: var(--sh-chrome-h, 0px) 0 0 0;

@@ -69,7 +69,7 @@
    ============================================================ */
 import './store.js';   // must evaluate before anything reads localStorage
 import nav from '../data/navigation.json';
-import { stageLead, stageAllLocked } from './nav-stage.js';   // pure: the one stage-link rule
+import { stageLead, stageAllLocked, moduleOff } from './nav-stage.js';   // pure: the one stage-link rule
 import featureData from '../data/steps.feature.json';
 import prodData from '../data/steps.production.json';
 import shortData from '../data/steps.short.json';
@@ -314,8 +314,11 @@ function productionTools(ctx) {
   const o = shootOverall(ctx.scenes);
   return {
     done: o.done, total: o.scenes,
-    next: o.scenes ? { label: 'Mark today’s scenes on the shoot day', href: 'shoot.html' }
-                   : { label: 'Add scenes to shoot', href: 'breakdown.html#scenes' },
+    /* Shoot Day switched off for everybody: the day's sheet is the
+       production tool that is left, so the next step points there. */
+    next: !o.scenes ? { label: 'Add scenes to shoot', href: 'breakdown.html#scenes' }
+        : moduleOff('shoot-day') ? { label: 'Print the call sheets', href: 'contacts.html#call-sheets' }
+        : { label: 'Mark today’s scenes on the shoot day', href: 'shoot.html' },
     /* `done` is settled (shot or dropped) — the right meter — but the note
        says what was SHOT, and dropped scenes separately, as the stage card
        does; a dropped scene is not a shot one. */
@@ -331,8 +334,11 @@ function postTools(ctx) {
   const cutOpen = need > 0 && inCut < need;
   return {
     done: inCut + dl.done, total: need + dl.total,
-    next: cutOpen ? { label: 'Log the cut', href: 'edit.html#log' }
-                  : { label: 'Work through the deliverables', href: 'deliverables.html#checklist' },
+    /* Neither post module may be switched off for everybody when it is
+       advised; with both off there is no next step to give. */
+    next: cutOpen && !moduleOff('edit-log') ? { label: 'Log the cut', href: 'edit.html#log' }
+        : !moduleOff('deliverables') ? { label: 'Work through the deliverables', href: 'deliverables.html#checklist' }
+        : null,
     note: (need ? inCut + ' of ' + need + ' scenes in the cut · ' : '')
         + dl.done + ' of ' + dl.total + ' deliverables'
   };
@@ -387,7 +393,7 @@ function pickCurrent(stages) {
    builds a feature.html#step-xx href as a "next" any more. When a
    stage has no failing tool check the answer is the stage's own page. */
 function stageFallback(st) {
-  return { label: 'Continue in ' + st.label, href: stageHref(st.id) };
+  return { label: 'Continue in ' + st.label, href: stageHref(st.id) || 'dashboard.html' };
 }
 
 /**
@@ -442,7 +448,8 @@ export function journey(project) {
       ? (nextStage.tools.next || stageFallback(nextStage))
       : { label: 'See the dashboard', href: 'dashboard.html' };
   }
-  if (!next) next = { label: 'Review the deliverables', href: 'deliverables.html#checklist' };
+  if (!next) next = moduleOff('deliverables') ? { label: 'See the dashboard', href: 'dashboard.html' }
+    : { label: 'Review the deliverables', href: 'deliverables.html#checklist' };
 
   /* steps arrays are for the dashboard's detail; the strip needs only
      the counts, so they are left on `guide` but never rendered there. */
@@ -515,7 +522,12 @@ export const STATUS = {
  *  open, so a stage card never disagrees with the rail). */
 export function stageHref(id) {
   const ph = nav.phases.find((p) => p.id === id);
-  const m = stageLead(ph) || (ph && ph.modules && ph.modules[0]);
+  /* A stage whose every module is switched off for everybody (Post, since
+     19 Oct 2026) has no page to open: null, and the caller draws no link,
+     rather than one that lands on a "Not available" card. */
+  const mods = (ph && ph.modules) || [];
+  if (mods.length && mods.every((x) => moduleOff(x.id))) return null;
+  const m = stageLead(ph) || mods[0];
   return (m && m.href) || 'dashboard.html';
 }
 

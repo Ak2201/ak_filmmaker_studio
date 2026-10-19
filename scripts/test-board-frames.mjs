@@ -222,6 +222,19 @@ dans = () => ({ status: 404, json: { error: { message: 'not found' } } });
 Drive.adoptToken('ya29.TOKEN2', 3600);
 eq(await Drive.deleteFileQuiet('FILE123456789'), false, 'deleteFileQuiet: a 404 is "already gone"');
 
+/* ---- uploads and the frame's shape ---- */
+ok(JSON.stringify(B.fitWithin(4000, 3000)) === '{"w":1600,"h":1200}', 'a 4000x3000 photo fits 1600 on the long edge');
+ok(JSON.stringify(B.fitWithin(1080, 1920)) === '{"w":900,"h":1600}', 'a portrait fits on its height');
+ok(JSON.stringify(B.fitWithin(800, 450)) === '{"w":800,"h":450}', 'a small picture is never enlarged');
+ok(JSON.stringify(B.fitWithin(0, 450)) === '{"w":0,"h":0}', 'no size, no picture');
+ok(B.uploadProblem({ type: 'image/png', size: 1000 }) === '', 'a PNG is accepted');
+ok(/not a picture/.test(B.uploadProblem({ type: 'application/pdf', size: 1000 })), 'a PDF is refused, in words');
+ok(/25 MB/.test(B.uploadProblem({ type: 'image/jpeg', size: 30 * 1024 * 1024 })), 'a 30 MB file is refused');
+ok(/No file/.test(B.uploadProblem(null)), 'nothing chosen says so');
+ok(B.aspectOf('') === '16:9' && B.aspectOf('nonsense') === '16:9', "'' and unknown read as the default");
+ok(B.aspectOf('2.39:1') === '2.39:1' && B.aspectOf('1:1') === '1:1', 'a known aspect reads back');
+ok(new Set(B.ASPECTS.map((a) => a.id)).size === B.ASPECTS.length, 'aspect ids are unique');
+
 console.log(`test:board-frames — ${pass} passed, ${fail} failed`);
 console.log('  (Gemini and Drive are FAKED here; nothing in this test reached a real provider.)');
 process.exit(fail ? 1 : 0);

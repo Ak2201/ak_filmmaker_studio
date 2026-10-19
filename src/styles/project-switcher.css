@@ -69,7 +69,7 @@
   text-decoration: none;
   cursor: pointer;
 }
-.ps-item { flex-direction: column; justify-content: center; gap: 2px; }
+.ps-item { flex-direction: column; justify-content: center; gap: 2px; align-items: stretch; text-align: start; }   /* not centred on touch (base.css coarse rule) */
 .ps-link { align-items: center; color: var(--chrome-accent); }
 .ps-item:hover, .ps-link:hover { background: var(--chrome-fill); }
 .ps-item.is-current { background: var(--chrome-fill-strong); border-color: var(--chrome-accent); }

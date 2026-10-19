@@ -2,6 +2,32 @@
 
 Last reviewed: 2026-10-19
 
+> **2026-10-19, later (what landed today) — `CLAUDE.md` rows 39–48, `docs/HISTORY.md` item 52.**
+> - Rail: the status bar is retired; one account avatar (Google photo) opens a
+>   menu holding Settings, Plan & purchases, Help and sign in/out.
+> - Full-width frame (`--measure-wide: 100vw`, prose on `--measure-text`).
+> - Story is four steps for both formats; a Title page card on the dashboard.
+> - `plans: []` is absolute in `isDisabledEverywhere()`; the Library is always
+>   shown, with `openShelves()`; two craft-book shelves (original wording only).
+> - Purchase page revamp; Contact and About pages; privacy/terms/refund rewritten.
+> - Emil (motion), Impeccable and Taste design passes; `prove:scroll`, now in CI.
+> - Schema §50 written (refund role, seat limit, decline mark) and §51 (the security
+>   follow-ups), not run. (Written as §48/§49 on a branch; renumbered on the merge with
+>   develop, whose §48 presence and §49 co-editing were numbered first.)
+>
+> **Owner steps from today:**
+> 1. Re-run **§36** live (`scripts/make-plan-features-sql.mjs`; the live map
+>    predates the 17 Oct switch-off), then develop's **§48** and **§49**, then **§50** and **§51**,
+>    each with the SHA-256
+>    checksum against the file before pressing Run (CLAUDE.md, the clipboard trap).
+> 2. Redeploy **`rzp-refund`** after §50 and **`rzp-verify`** after §51, with the CLI
+>    (`docs/BILLING.md` §20 and §21).
+> 3. Decide the **licence** (`package.json` says ISC; README says "see owner").
+> 4. Check the **Google photo** in the rail on the live site (CSP `img-src`
+>    googleusercontent in both host configs).
+> 5. Decide whether to keep the terms' **retired-tools promise** (§12: a retired
+>    tool's writing is never deleted and stays in backups) — it is a commitment.
+
 > **2026-10-19 (repo layout + where things stand) — read this before the older
 > dated notes below, which are a record and are NOT rewritten.**
 >
@@ -439,8 +465,9 @@ and wrong in the owner's favour — three supposed blockers did not exist.
   `projects` holds 6 rows and `project_data` 30, and an anonymous GET still
   returns `[]`. The checks needing TWO real accounts have still never run.
 - **Prices are REAL, not placeholders:** `free=0, starter=59900,
-  indie=79900, pro=99900` paise. `docs/BILLING.md` §0 still says
-  ₹2,999/₹7,999/₹19,999; believe the table.
+  indie=79900, pro=99900` paise, confirmed by the owner on 19 Oct 2026
+  (P3). `docs/BILLING.md` §0 prints them; ₹2,999/₹7,999/₹19,999 there is
+  the §18 seed, labelled as history.
 - **The legal pages on `main` are the newest** and carry the owner's legal
   name as of `0b49c56`. One `[OWNER: GSTIN, if registered]` marker remains
   on the Terms' tax line.
@@ -596,7 +623,7 @@ cloud container session.
 |---|---|---|---|---|
 | P1 | **Razorpay**: account (test mode first), key id + secret, webhook secret, register the webhook URL, set `VITE_RAZORPAY_KEY_ID` in `.env` (the secret and webhook secret go in Supabase function secrets only, never git), one test purchase and one refund | owner, then browser | a test-mode order completes, the plan activates, the refund lapses it | `docs/BILLING.md` §1 |
 | P2 | **Run schema §20→§23 live**, in the SAME session as redeploying `rzp-order` (and deploying `rzp-verify`, `rzp-webhook --no-verify-jwt`). §20 drops and recreates `create_pending_payment`, so running it alone makes every order fail PGRST202. Ask the owner before running SQL; read back what the database says | browser | `select quote_order('indie', null)` answers; anon `select count(*) from promo_codes` → 42501; a coded test order prices correctly | `BROWSER-HANDOFF.md` §1, `LAUNCH.md` §4 |
-| P3 | **Confirm the live prices** with the owner (`free 0 / starter 59900 / indie 79900 / pro 99900` paise) and correct `docs/BILLING.md` §0, which still says ₹2,999 / 7,999 / 19,999. Do not re-seed | owner + cloud | BILLING.md matches the table | `LAUNCH.md` §6 |
+| P3 | ~~**Confirm the live prices**~~ **DONE — confirmed by the owner 19 Oct 2026:** ₹599 / ₹799 / ₹999 (`starter 59900 / indie 79900 / pro 99900` paise), and the scheduled rise to ₹999 / ₹1,499 / ₹1,999 on 31 Oct 2026 stays. `docs/BILLING.md` §0 already prints these; the ₹2,999 / 7,999 / 19,999 figures there are the §18 seed, labelled as history | owner | done | `docs/BILLING.md` §0 |
 | P4 | **Live RLS checks that need TWO real Google accounts** (13.8, 14.5, 15.1, the §16–§24 additions, 24.1). The read side is already proven. Run these BEFORE taking payments — a buyer seeing another's film is the unrecoverable failure | owner supplies the 2nd account; browser runs | every row ticked with the date in `SECURITY-RLS.md` | `SECURITY-RLS.md`, `LAUNCH.md` §5 |
 | P5 | The **13.2 admin row** for the second `VITE_ADMIN_EMAILS` address — it has never signed in; either it signs in or the env var names the wrong address | owner | the console shows both admins, or the env var is corrected | `LAUNCH.md` §4 |
 | P6 | ~~**Google Branding re-request**~~ **DONE — verified 12 Oct 2026.** The Branding page reads "Your branding has been verified and is being shown to users." App name FilmMakerStudio, logo present. One note, deliberately NOT changed: the user-support email is a gmail address rather than `support@filmmakerstudio.in` — editing it can re-trigger verification, so leave it unless the mismatch matters to you. | owner | done | — |
@@ -660,7 +687,7 @@ cloud container session.
 | B18 | **Requiring a plan, without walling the grandfathered** (§39, 12 Oct 2026) | BUILT AND **RUN LIVE 12 Oct 2026** — `admin_purchase_wall()` and `admin_set_billing_settings()` both answer 42501 to anon (they EXIST and refuse; PGRST202 would have meant missing), and `purchases_required()` still answers **false**, the proof the switch was not thrown. §39 deliberately does NOT throw `purchase_required` — that is operational state with an admin RPC, and flipping it in the schema file would change the fixture every later test runs against (§32's own check 1 asserts it is false after loading). It adds `admin_purchase_wall()` (members / paid / in_trial / walled / grandfathered_walled, admin only) and restates `admin_set_billing_settings()` with one new refusal: turning the switch ON is refused while it would wall a member the §30 grandfather backfill covered (`trial_source 'admin'`, 525600 minutes) whose year has lapsed. Turning it OFF is never guarded. **The flip is blocked on Resend AND on §36**, in that order. |
 | B19 | **The free trial was unreachable, and the door was the wrong door** (12 Oct 2026) | **DONE, client only — no schema change.** Three faults, each enough on its own. (1) `invite.js`'s `readTrialOffer()` offered a trial only when `billing_status().entitled !== true`; `entitled` is `(not purchase_required) or (plan <> 'free') or trial_active` and the live switch is OFF, so entitled is **true for everybody** — the "Start your free trial" button was never drawn and nobody could ever begin one. The feature was built, deployed, enabled at 30 minutes and invisible. (2) Every landing-page CTA returns to the hub, where the site gate reads "not a member" and replaces the document with invite.html. (3) That page led with **Ask for an invite** — so somebody who pressed *Start your free trial* was handed an application form. Fixed: the offer reads the four facts that actually answer it (trials on, not used, not running, never paid); `sitegate.js` now follows the purchases switch (OFF → anybody signed in is in, and membership only decides whether work SYNCS; ON → a plan or a running trial; **not known → the old membership gate, failing closed**, and a closed gate WAITS for the switch before redirecting, or an open website bounced people for the half-second before the answer landed); invite.html is the offer page — trial, plans, code — with the request queue moved to `invite.html#request` and the console. **Nothing starts a trial by itself** (owner): the one exception is a redeemed code, where submitting it was the press — `startCodeTrial()`, because `redeem_invite()` writes the membership but never `trial_started_at`, so a code holder was walled by the thing the code opened. A code is **no longer a key on its own**: the box holds it and goes to Google. `prove:gate` block (r); invite.html re-baselined. Trial LENGTH and SCOPE are untouched console dials — 30 minutes, samples-only, which is a demo rather than a trial by any market standard; `trial_minutes` 10080 and `trial_scope` 'full' are the 7-day whole-studio setting, owner's call. |
 
-Next free schema section: **§48** (§40–§47 all RAN LIVE 13 Oct 2026). §26-§31 RAN LIVE 9 Oct 2026; **§32-§39 all RAN LIVE 12 Oct 2026** — this line said "§36 and §37 have NOT run live" for several hours after they had, which is the same stale-by-reading failure the paragraph below warns about. §34 was marked on the owner's word, not an independent probe — it has no API surface; the constraint read is in the §34 header. **Two sessions picked §36/§37 on the same day** — fetch before you NUMBER a section, not just before you push. Every new section needs a `-- RUN` header
+Next free schema section: **§52** (§40–§47 all RAN LIVE 13 Oct 2026; §48–§51 written 19 Oct 2026 and NOT yet run live, with §36 to be re-run — `docs/LIVE-STEPS-2026-10-19.md` is the step-by-step). §26-§31 RAN LIVE 9 Oct 2026; **§32-§39 all RAN LIVE 12 Oct 2026** — this line said "§36 and §37 have NOT run live" for several hours after they had, which is the same stale-by-reading failure the paragraph below warns about. §34 was marked on the owner's word, not an independent probe — it has no API surface; the constraint read is in the §34 header. **Two sessions picked §36/§37 on the same day** — fetch before you NUMBER a section, not just before you push. Every new section needs a `-- RUN` header
 when it is run live, live checks in `docs/SECURITY-RLS.md`, and assertions in
 `scripts/schema-tests/*.sql` (`npm run test:schema`, PostgreSQL 16:
 `pg_ctlcluster 16 main start`). `scripts/fake-supabase.mjs` must honour each
@@ -907,9 +934,10 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
 | `docs/BILLING.md`, `SECURITY-RLS.md`, `GATE.md`, `STORAGE-MODEL.md`, `EXTENSION.md`, `DEPLOY.md`, `LIVE-CHECKS.md` | main | subsystem docs |
 | `docs/GOOGLE-AUTH.md` | main | **STALE — do not follow it.** Flagged 8 Oct 2026. It is a generic setup runbook from before any of this existed: it names no real Google project (it tells you to CREATE one called `filmmakers-studio-auth`, when the live one is `filmstudio-495419`), lists three scopes and omits `drive.file`, points at the dead host `ak-filmmaker-studio.vercel.app`, describes the Supabase config as a per-browser `localStorage` key under the OLD `arunak_` prefix, and says "none of it is done yet" when the consent screen is published and in production. The live facts are in §4 of this file and `docs/LAUNCH.md` §2. Rewrite it or delete it; following it would undo working configuration. |
 
-**Two notes on using this table.** `docs/BILLING.md` §0 still prints the old
-placeholder prices (₹2,999 / ₹7,999 / ₹19,999); the live table says ₹599 /
-₹799 / ₹999 and the live table wins (§4). And a doc being listed here is not
+**Two notes on using this table.** `docs/BILLING.md` §0's prices are the
+live ones, ₹599 / ₹799 / ₹999, confirmed by the owner on 19 Oct 2026; the
+₹2,999 / ₹7,999 / ₹19,999 it also mentions is the §18 seed, kept as history.
+And a doc being listed here is not
 a promise that it is current — `GOOGLE-AUTH.md` above is the proof. Check a
 status claim against the database, the console or `git log` before acting on
 it, which is this file's own standing instruction and the one it has itself

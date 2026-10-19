@@ -363,5 +363,110 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(ty('INT. A - DAY\n\nMARY (whispering)\nHello.', 'x.fountain'), 'scene character dialogue', '15: MARY (whispering) is a cue');
 }
 
+/* ---- Word screenplays (.docx) -------------------------------------
+   Two ways a script reaches Word: with screenplay paragraph STYLES
+   (Final Draft's .docx export, every Word screenplay template), and
+   typed by hand with INDENTS. Both lay out to PARSER 2's columns. */
+{
+  const { zip, arrayBufferOf } = await import('./lib/zip-fixture.mjs');
+  const D = await import('../src/lib/docx-text.js');
+  const wp = (style, text, extra = '') => `<w:p><w:pPr>${style ? `<w:pStyle w:val="${style}"/>` : ''}${extra}</w:pPr><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
+  const STYLES = `<w:styles>
+    <w:style w:type="paragraph" w:styleId="SceneHeading"><w:name w:val="Scene Heading"/></w:style>
+    <w:style w:type="paragraph" w:styleId="Action"><w:name w:val="Action"/></w:style>
+    <w:style w:type="paragraph" w:styleId="Character"><w:name w:val="Character"/></w:style>
+    <w:style w:type="paragraph" w:styleId="Parenthetical"><w:name w:val="Parenthetical"/></w:style>
+    <w:style w:type="paragraph" w:styleId="Dialogue"><w:name w:val="Dialogue"/></w:style>
+    <w:style w:type="paragraph" w:styleId="Transition"><w:name w:val="Transition"/></w:style>
+  </w:styles>`;
+  const styledBody = '<w:document><w:body>'
+    + wp('', 'MY FILM') + wp('', 'Written by A. Writer', '<w:jc w:val="center"/>')
+    + wp('SceneHeading', 'int. hostel room - night', '<w:pageBreakBefore/>')
+    + wp('Action', 'Arun stares at the board.')
+    + wp('Character', 'arun')
+    + wp('Parenthetical', 'quietly')
+    + wp('Dialogue', 'I will finish this.')
+    + wp('Transition', 'cut to:')
+    + wp('SceneHeading', 'EXT. ROOF - DAWN')
+    + wp('Action', 'Meera waits.')
+    + '</w:body></w:document>';
+  const names = D.styleNames(STYLES);
+  eq(names.SceneHeading, 'Scene Heading', 'docx: style ids map to their display names');
+  const paras = D.documentXmlToParagraphs(styledBody, names);
+  eq(paras.map((p) => p.style).slice(2, 5), ['Scene Heading', 'Action', 'Character'], 'docx: each paragraph carries its style name');
+  ok(paras[2].pageBreak && !paras[1].pageBreak, 'docx: a page break before a paragraph is seen');
+  const laid = I.docxScreenplayText(paras);
+  eq([laid.styled, laid.total], [8, 10], 'docx: eight of ten paragraphs carried a screenplay style');
+  const plan = I.parseScript(laid.text, 'film.docx');
+  eq(plan.format, 'docx', 'docx: the format is Word');
+  eq(plan.formatLabel, 'Word screenplay', 'docx: and the preview says so');
+  eq(plan.elements.map((e) => e.type + ':' + e.text), [
+    'scene:INT. HOSTEL ROOM - NIGHT', 'action:Arun stares at the board.', 'character:ARUN', 'paren:quietly',
+    'dialogue:I will finish this.', 'transition:CUT TO:', 'scene:EXT. ROOF - DAWN', 'action:Meera waits.'
+  ], 'docx (styled): every element by its style, the title page left out, capitals where a screenplay wears them');
+  eq(plan.scenes.length, 2, 'docx (styled): two scenes');
+
+  // Typed by hand: no styles, indents in twips (1440 = 1 inch, 144 = one column).
+  const handBody = '<w:document><w:body>'
+    + wp('', 'INT. KITCHEN - DAY')
+    + wp('', 'Ravi pours tea.')
+    + wp('', 'RAVI', '<w:ind w:left="3168"/>')
+    + wp('', '(to himself)', '<w:ind w:left="2304"/>')
+    + wp('', 'Too sweet.', '<w:ind w:left="1440"/>')
+    + wp('', 'CUT TO:', '<w:jc w:val="right"/>')
+    + '</w:body></w:document>';
+  const hand = I.docxScreenplayText(D.documentXmlToParagraphs(handBody, {}));
+  eq(hand.styled, 0, 'docx (by hand): no screenplay styles');
+  eq(I.parseScript(hand.text, 'hand.docx').elements.map((e) => e.type), ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'],
+    'docx (by hand): the indents and the right alignment give each type');
+
+  /* Typed by hand the usual way: tabs and spaces, no w:ind. A tab goes
+     to the next 0.5in stop (5 columns) unless the paragraph sets its own. */
+  const tabs = (n, text, extra = '') => `<w:p><w:pPr>${extra}</w:pPr><w:r>${'<w:tab/>'.repeat(n)}<w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
+  const typedBody = '<w:document><w:body>'
+    + wp('', 'INT. ROOM - DAY') + wp('', 'He sits.')
+    + tabs(5, 'ARUN') + tabs(2, 'Hello there.')
+    + wp('', ' '.repeat(22) + 'MEERA') + wp('', ' '.repeat(10) + 'Hi.')
+    + tabs(1, 'RAVI', '<w:tabs><w:tab w:val="left" w:pos="3168"/></w:tabs>')
+    + tabs(1, 'Yes.', '<w:ind w:left="720"/>')
+    + '</w:body></w:document>';
+  const typed = I.parseScript(I.docxScreenplayText(D.documentXmlToParagraphs(typedBody, {})).text, 'typed.docx');
+  eq(typed.elements.map((e) => e.type + ':' + e.text), [
+    'scene:INT. ROOM - DAY', 'action:He sits.', 'character:ARUN', 'dialogue:Hello there.',
+    'character:MEERA', 'dialogue:Hi.', 'character:RAVI', 'dialogue:Yes.'
+  ], 'docx (tabs and spaces): leading tabs and spaces count as indent, and a paragraph\'s own tab stop is used');
+
+  // Word's built-in Heading 1 is an act title, not a slug line.
+  eq([I.docxStyleType('heading 1'), I.docxStyleType('Heading 2'), I.docxStyleType('Scene Heading')], ['', '', 'scene'],
+    'docx: "heading N" is not a scene-heading style');
+  const acts = I.docxScreenplayText([{ text: 'Act One', style: 'heading 1' }, { text: 'INT. A - DAY' }, { text: 'Rain.' }]);
+  eq([acts.styled, String(acts.text).split('\n')[0]], [0, 'Act One'], 'docx: a Heading 1 line keeps its case and does not count as styled');
+
+  // A non-breaking hyphen is a hyphen; a soft one is nothing.
+  const hy = D.documentXmlToParagraphs('<w:body><w:p><w:r><w:t>SELF</w:t><w:noBreakHyphen/><w:t>DE</w:t><w:softHyphen/><w:t>STRUCT</w:t></w:r></w:p></w:body>');
+  eq(hy.map((p) => p.text), ['SELF-DESTRUCT'], 'docx: w:noBreakHyphen reads as "-", w:softHyphen as nothing');
+
+  /* A text box as modern Word writes it, Choice and Fallback: not read,
+     not duplicated, and the words after it in the same paragraph kept. */
+  const box = '<w:txbxContent><w:p><w:r><w:t>BOXED</w:t></w:r></w:p></w:txbxContent>';
+  const boxed = '<w:body><w:p><w:r><w:t>Before</w:t></w:r><w:r><mc:AlternateContent><mc:Choice Requires="wps"><w:drawing><wps:txbx>' + box
+    + '</wps:txbx></w:drawing></mc:Choice><mc:Fallback><w:pict><v:textbox>' + box + '</v:textbox></w:pict></mc:Fallback></mc:AlternateContent></w:r>'
+    + '<w:r><w:t>After</w:t></w:r></w:p><w:p><w:r><w:t>Next</w:t></w:r></w:p></w:body>';
+  eq(D.documentXmlToParagraphs(boxed).map((p) => p.text), ['BeforeAfter', 'Next'], 'docx: a text box is cut out whole, and the paragraph around it survives');
+  eq(D.documentXmlToText(boxed), 'BeforeAfter\nNext', 'docx (plain text): the same for the synopsis reader');
+
+  // The whole file, through the ZIP, both ways a part can be stored.
+  for (const method of [8, 0]) {
+    const buf = zip([['[Content_Types].xml', '<Types/>', 0], ['word/document.xml', styledBody, method], ['word/styles.xml', STYLES, method]]);
+    const r = await D.extractDocxParagraphs(arrayBufferOf(buf));
+    eq((r.paras || []).length, 10, `docx: the file reads as ten paragraphs (${method === 8 ? 'deflated' : 'stored'})`);
+  }
+  const noStyles = zip([['word/document.xml', handBody, 8]]);
+  ok(((await D.extractDocxParagraphs(arrayBufferOf(noStyles))).paras || []).length === 6, 'docx: a file without styles.xml still reads');
+  ok(/password-protected/.test((await D.extractDocxParagraphs(new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0, 0, 0, 0]).buffer)).fatal), 'docx: an old .doc or encrypted file is refused by name');
+  eq(I.detectFormat('Script.DOCX', ''), 'docx', 'docx: the extension decides, in any case');
+  ok(I.ACCEPT.includes('.docx'), 'docx: the file picker offers .docx');
+}
+
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -14,8 +14,9 @@
      declineDialog({ request })           DECLINE: a note the customer
                   will read. Resolves to the updated request or null.
 
-   The server is the authority — rzp-refund re-checks the role, the
-   payment and the amount — so nothing here is a gate, only a courtesy.
+   The server is the authority — rzp-refund re-checks the role (finance
+   or owner, via require_role(); begin_refund() asks again), the payment
+   and the amount — so nothing here is a gate, only a courtesy.
    No inline handlers; Escape cancels; focus is held by modal-focus.js.
    ============================================================ */
 import { h } from '../lib/dom.js';

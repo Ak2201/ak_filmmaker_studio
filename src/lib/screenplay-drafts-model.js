@@ -17,7 +17,7 @@ export const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one 
 /** Where the working copy stands against the drafts. */
 export function draftStateText(doc) {
   const last = latestDraft(doc);
-  if (!last) return doc.elements.length ? 'No draft saved yet.' : 'Nothing written yet.';
+  if (!last) return doc.elements.length ? 'No numbered draft yet.' : 'Nothing written yet.';
   return changedSinceDraft(doc) ? 'Unsaved draft changes since ' + last.label + '.' : 'Up to date with ' + last.label + '.';
 }
 

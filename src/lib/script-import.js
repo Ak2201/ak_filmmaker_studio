@@ -53,14 +53,19 @@ export const FORMATS = [
      text and PARSER 2 reads it, because a PDF's columns and a
      screenplay text file's columns are the same columns. Two
      classifiers for one layout would be two places to disagree. */
-  { id: 'pdf',      label: 'PDF screenplay', ext: ['.pdf'] }
+  { id: 'pdf',      label: 'PDF screenplay', ext: ['.pdf'] },
+  /* Word. Like the PDF, no parser of its own: docxScreenplayText()
+     below lays each paragraph out at the column its STYLE names (Scene
+     Heading, Character…) or, with no screenplay style, at its own
+     indent, and PARSER 2 reads the result. */
+  { id: 'docx',     label: 'Word screenplay', ext: ['.docx'] }
 ];
 
 /* The file picker's `accept`. write.js sets the attribute from this
    once the parser has loaded — it renders before the lazy import
    resolves, so it starts with a literal and is corrected. This is
    the source; the literal there is a first guess. */
-export const ACCEPT = '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf';
+export const ACCEPT = '.fountain,.spmd,.txt,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 /** Which parser a file wants. The extension decides, and the
     content breaks the tie when there isn't one — a .txt that
@@ -75,6 +80,7 @@ export function detectFormat(filename, text) {
      test would say "screenplay text" and the preview would claim
      the wrong source. */
   if (name.endsWith('.pdf') || /^%PDF-/.test(head)) return 'pdf';
+  if (name.endsWith('.docx')) return 'docx';
   if (/^\s*<\?xml/.test(head) && /FinalDraft/i.test(head)) return 'fdx';
   if (name.endsWith('.fdx') || name.endsWith('.xml')) return 'fdx';
   if (name.endsWith('.fountain') || name.endsWith('.spmd')) return 'fountain';
@@ -448,6 +454,12 @@ function parseText(raw) {
   const warnings = [];
   const skipped = { pageNumbers: 0, more: 0, continued: 0, titlePage: 0, revisions: 0 };
   let text = String(raw || '').replace(/\r\n?/g, '\n');
+  /* A Word file whose paragraphs wear screenplay styles has already
+     said what each line IS (docxScreenplayText): one entry per line,
+     '' where the style named nothing. `skip` keeps the index in step
+     when a title page is cut off the front. */
+  const styled = (raw && Array.isArray(raw.docxTypes)) ? raw.docxTypes : null;
+  let skip = 0;
 
   /* A title page is centred, which to an indent-based parser looks
      exactly like a column of character cues — and that is how the
@@ -464,6 +476,7 @@ function parseText(raw) {
     const front = text.slice(0, ff);
     if (looksLikeTitlePage(front)) {
       skipped.titlePage = front.split('\n').filter((l) => l.trim()).length;
+      skip = front.split('\n').length - 1;
       text = text.slice(ff);
       if (skipped.titlePage) {
         warnings.push(skipped.titlePage + ' title-page line(s) before the first page break '
@@ -476,17 +489,18 @@ function parseText(raw) {
      are all furniture. They are dropped, but each leaves a `pb` marker so
      a speech the break cut in two can be put back together. */
   const rows = [];
-  for (let line of text.split('\n')) {
-    if (line.includes('\f')) { rows.push({ pb: true }); line = line.replace(/\f/g, ''); if (!line.trim()) { rows.push(null); continue; } }
+  text.split('\n').forEach((line, i) => {
+    if (line.includes('\f')) { rows.push({ pb: true }); line = line.replace(/\f/g, ''); if (!line.trim()) { rows.push(null); return; } }
     const t = line.trim();
-    if (!t) { rows.push(null); continue; }              // a blank is a separator
-    if (PAGE_NO.test(line)) { skipped.pageNumbers++; rows.push({ pb: true }); continue; }
-    if (MORE_LINE.test(line)) { skipped.more++; rows.push({ pb: true }); continue; }
-    if (CONTINUED.test(line)) { skipped.continued++; rows.push({ pb: true }); continue; }
-    if (REV_HEADER.test(t)) { skipped.revisions++; rows.push({ pb: true }); continue; }
+    if (!t) { rows.push(null); return; }                // a blank is a separator
+    if (PAGE_NO.test(line)) { skipped.pageNumbers++; rows.push({ pb: true }); return; }
+    if (MORE_LINE.test(line)) { skipped.more++; rows.push({ pb: true }); return; }
+    if (CONTINUED.test(line)) { skipped.continued++; rows.push({ pb: true }); return; }
+    if (REV_HEADER.test(t)) { skipped.revisions++; rows.push({ pb: true }); return; }
     const indent = line.match(/^ */)[0].length;
-    rows.push({ indent, text: t });
-  }
+    const forced = styled ? styled[i + skip] || '' : '';
+    rows.push(forced ? { indent, text: t, forced } : { indent, text: t });
+  });
 
   /* Re-origin on the slug lines, then every column below is read
      from the page's own left margin rather than from the file's. */
@@ -499,6 +513,7 @@ function parseText(raw) {
 
   const classify = (row, prev) => {
     const { indent, text } = row;
+    if (row.forced) return row.forced;                  // a Word style said so
     if (SLUG_RE.test(text)) return 'scene';
     if (isTransitionLine(text) && indent < 6) return 'transition';
     if (isUpperish(text) && (ENDS_TO.test(text) || indent >= 40)) return 'transition';
@@ -616,7 +631,8 @@ function pairDual(rows) {
   };
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const head = row && !row.pb && row.indent >= 6 ? cols(row) : null;
+    // A styled line is one element, never two speeches side by side.
+    const head = row && !row.pb && !row.forced && row.indent >= 6 ? cols(row) : null;
     if (!head || head.length !== 2 || !head.every((p) => p.text.length <= 36 && !SLUG_RE.test(p.text) && !isTransitionLine(p.text) && isUpperish(p.text))) {
       out.push(row);
       continue;
@@ -625,7 +641,7 @@ function pairDual(rows) {
     const left = [{ indent: 20, text: head[0].text }];
     const right = [{ indent: 20, text: head[1].text, dual: true }];
     let j = i + 1;
-    for (; j < rows.length && rows[j] && !rows[j].pb; j++) {
+    for (; j < rows.length && rows[j] && !rows[j].pb && !rows[j].forced; j++) {
       const parts = cols(rows[j]);
       if (parts.length < 2 && rows[j].indent < 6) break;
       const put = (side, p) => side.push({ indent: /^\(.*\)$/.test(p.text) ? 16 : 10, text: p.text });
@@ -1075,7 +1091,7 @@ export function scenesFrom(elements) {
 export function parseScript(raw, filename) {
   const format = detectFormat(filename, raw);
   const parser = format === 'fdx' ? parseFDX
-    : (format === 'text' || format === 'pdf') ? parseText
+    : (format === 'text' || format === 'pdf' || format === 'docx') ? parseText
     : parseFountain;
   const result = parser(raw);
 
@@ -1102,6 +1118,7 @@ export function parseScript(raw, filename) {
      characters would not decode" before "two slug lines had no
      time of day". */
   if (raw && raw.pdfWarnings) warnings.unshift(...raw.pdfWarnings);
+  if (raw && raw.docxWarnings) warnings.unshift(...raw.docxWarnings);
 
   /* Where the scene numbers came from is said out loud, because the
      stripboard, the sides and the call sheet all key off them and a
@@ -1156,12 +1173,130 @@ export function parseScript(raw, filename) {
 /** Read a File without uploading it anywhere. */
 export function readFile(file) {
   if (isPDF(file)) return readPDF(file);
+  if (isDOCX(file)) return readDOCX(file);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
     reader.onerror = () => reject(new Error('That file could not be read.'));
     reader.readAsText(file);
   });
+}
+
+function isDOCX(file) {
+  return String((file && file.name) || '').toLowerCase().endsWith('.docx');
+}
+
+/* ---- WORD → the columns PARSER 2 reads -------------------------
+   A Word screenplay is one paragraph per element. Each paragraph is
+   written as one line at the column a screenplay text file uses for
+   its type, with a blank line after it (PARSER 2's separator) and a
+   form feed where Word put a page break, so the title page before the
+   first break is read as front matter exactly as it is in a .txt.
+
+   The STYLE decides when it names a screenplay element — Final Draft's
+   .docx export and the Word screenplay templates use the names in
+   DOCX_TYPE — and it decides OUTRIGHT: the type rides beside the text
+   (`docxTypes` on the String, one entry per line, the way pdfWarnings
+   rides) and PARSER 2 takes it instead of guessing from the column and
+   the words. Without that, a heading styled Scene Heading that does not
+   read like one (MONTAGE, LATER, a Tamil heading with no உள்/வெளி) came
+   back as action or a shot, and an Action paragraph starting "INT." came
+   back as a scene, so our own export did not survive its own import.
+   Word's built-in "heading 1"… are NOT scene headings: an act title in
+   Heading 1 is not a slug line, and the name is matched whole, digits
+   included, so they never match.
+
+   With no such style the INDENT decides: twips to columns at 10
+   characters an inch (144 twips each), measured from the page margin,
+   which is how the paragraph was laid out by whoever typed it — plus
+   the leading tabs and spaces a hand-typed script indents with. Each
+   space is a column; each tab advances to the paragraph's next tab stop
+   (its own w:tabs when it sets any, else Word's default every 720
+   twips, 5 columns). Tab stops a STYLE defines are not read; a script
+   that leans on those is styled, and the style decides anyway.
+   Right-aligned is a transition. A styled cue or heading is set in
+   capitals, because Word often shows capitals through the style while
+   the text underneath is lower case, and a cue is printed in them. */
+const DOCX_TYPE = {
+  sceneheading: 'scene', slugline: 'scene',
+  action: 'action', general: 'action', description: 'action',
+  character: 'character', charactername: 'character',
+  parenthetical: 'paren', parentheticals: 'paren', wryly: 'paren',
+  dialogue: 'dialogue', dialog: 'dialogue',
+  transition: 'transition', shot: 'shot'
+};
+const COLUMN = { scene: 0, action: 0, shot: 0, character: 22, paren: 16, dialogue: 10, transition: 45 };
+
+/** The type a paragraph's style names, or ''. */
+export function docxStyleType(style) {
+  return DOCX_TYPE[String(style || '').toLowerCase().replace(/[^a-z0-9]/g, '')] || '';
+}
+
+const DEFAULT_TAB = 720;             // Word's default tab stop, 0.5in
+/* Where a hand-typed line's text starts, in twips from the margin: the
+   paragraph's indent, then each leading space one column and each
+   leading tab on to the next stop. */
+function leadTwips(line, indL, tabs) {
+  let pos = Math.max(0, Number(indL) || 0);
+  for (const ch of line) {
+    if (ch === ' ') pos += 144;
+    else if (ch === '\t') pos = (tabs || []).find((t) => t > pos) || (Math.floor(pos / DEFAULT_TAB) + 1) * DEFAULT_TAB;
+    else break;
+  }
+  return pos;
+}
+
+/** [{ text, style, indL, tabs, jc, pageBreak }] → { text, styled, total }.
+    `text` is a String carrying `docxTypes` (see above). Exported for tests. */
+export function docxScreenplayText(paras) {
+  const out = [];
+  const types = [];                  // parallel to out: the styled type of each line, or ''
+  const push = (line, type = '') => { out.push(line); types.push(type); };
+  let styled = 0, total = 0;
+  for (const p of paras || []) {
+    if (p.pageBreak) push('\f');
+    const type = docxStyleType(p.style);
+    const right = !type && (p.jc === 'right' || p.jc === 'end');
+    const lines = String(p.text || '').split('\n')
+      .map((l) => ({ col: type ? COLUMN[type] : right ? COLUMN.transition : Math.round(leadTwips(l, p.indL, p.tabs) / 144), t: l.replace(/\t/g, '    ').trim() }))
+      .filter((l) => l.t);
+    if (!lines.length) continue;
+    total++;
+    if (type) styled++;
+    const caps = type === 'scene' || type === 'character' || type === 'transition';
+    lines.forEach(({ col, t: l }, i) => {
+      let t = caps ? l.toUpperCase() : l;
+      if (type === 'paren' && i === 0 && !t.startsWith('(')) t = '(' + t;
+      if (type === 'paren' && i === lines.length - 1 && !t.endsWith(')')) t += ')';
+      push(' '.repeat(col) + t, type);
+    });
+    push('');
+  }
+  const text = new String(out.join('\n'));
+  text.docxTypes = types;
+  return { text, styled, total };
+}
+
+/* A .docx is bytes too: src/lib/docx-text.js reads its paragraphs (no
+   library, the same reasons as pdf-text.js), imported here dynamically
+   for the reason readPDF gives. Its refusals are sentences and are
+   thrown as the message. */
+async function readDOCX(file) {
+  const buffer = await file.arrayBuffer();
+  let extract;
+  try {
+    ({ extractDocxParagraphs: extract } = await import('./docx-text.js'));
+  } catch (e) {
+    throw new Error('The Word reader could not be loaded.');
+  }
+  const result = await extract(buffer);
+  if (result.fatal) throw new Error(result.fatal);
+  const laid = docxScreenplayText(result.paras);
+  const text = laid.text;
+  text.docxWarnings = laid.styled
+    ? []
+    : ['That Word file uses no screenplay paragraph styles, so each line\'s type was read from its indent. Check the cues and the dialogue in the preview.'];
+  return text;
 }
 
 function isPDF(file) {
@@ -1204,5 +1339,5 @@ async function readPDF(file) {
 
 export default {
   FORMATS, ACCEPT, detectFormat, parseScript, parseSlug, scenesFrom, sliceScenes, readFile,
-  titlePageFromMeta
+  titlePageFromMeta, docxScreenplayText, docxStyleType
 };

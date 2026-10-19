@@ -29,9 +29,10 @@
   padding: clamp(var(--s4), 10vh, var(--s9)) var(--s4) var(--s4);
   backdrop-filter: var(--blur-chrome);
   -webkit-backdrop-filter: var(--blur-chrome);
-  animation: pal-fade var(--speed-slow) var(--ease-out);
+  /* NO ENTRANCE (19 Oct 2026). A keyboard command opened a hundred
+     times a day is never animated: it used to fade, spring-rise and
+     stagger its rows for ~540ms. The palette is there when Ctrl+K is. */
 }
-@keyframes pal-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .pal-box {
   width: min(640px, 100%);
@@ -44,15 +45,6 @@
   border-radius: var(--sk-radius);
   box-shadow: var(--shadow-modal);
   overflow: hidden;
-  /* The travel is --motion'd, so reduced motion gets the final
-     state with no movement at all rather than a fast movement.
-     Spring easing because this one appears under a deliberate
-     command — see the note on --ease-spring in tokens.css. */
-  animation: pal-rise var(--speed-slow) var(--ease-spring);
-}
-@keyframes pal-rise {
-  from { opacity: 0; transform: translateY(calc(-12px * var(--motion))) scale(calc(1 - 0.02 * var(--motion))); }
-  to   { opacity: 1; transform: none; }
 }
 
 /* ---- the field ------------------------------------------- */
@@ -288,9 +280,6 @@ body.pal-open { overflow: hidden; }
   .pal-foot { display: none; }   /* no keyboard to shortcut */
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pal-overlay, .pal-box { animation: none; }
-}
 
 /* ============================================================
    SWISS PRECISION (14 Oct 2026). The palette is a modal-weight

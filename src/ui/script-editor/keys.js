@@ -99,6 +99,7 @@ export function wireKeys(root, ed, o) {
       case 'dual': ed.toggleDual(i); break;
       case 'note': openNote(i, ta); break;
       case 'navigator': openNavigator(); break;
+      case 'find': openFind(); break;
       default: break;
     }
   }, { signal });
@@ -112,6 +113,25 @@ export function wireKeys(root, ed, o) {
     if (!document.getElementById('wr-page')) return;
     e.preventDefault();
     openNavigator();
+  }, { signal });
+
+  /* Ctrl/Cmd+Shift+H: find and replace. The page that has a find bar
+     listens for this event (screenplay.js mounts src/ui/script-replace-bar.js);
+     a page without one simply ignores it. Outside a line too, like S. */
+  function openFind() {
+    document.dispatchEvent(new CustomEvent('fms:script-find', { detail: { id: curLineId() } }));
+  }
+  function curLineId() {
+    const ta = document.activeElement;
+    return ta && ta.closest ? (ta.closest('[data-el]')?.dataset.el || null) : null;
+  }
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.altKey) return;
+    if (e.code !== 'KeyH' && String(e.key).toLowerCase() !== 'h') return;
+    if (e.target && e.target.closest && e.target.closest('.wr-text, .wk-nav')) return;
+    if (!document.getElementById('wr-page')) return;
+    e.preventDefault();
+    openFind();
   }, { signal });
 
   function openNavigator() {

@@ -272,7 +272,14 @@ export function createGate(getClient) {
      *  project into this browser and pulls all of its data. */
     async listProjects() {
       const sb = await getClient();
-      const { data, error } = await sb.from('projects').select('id,title,format').order('updated_at', { ascending: false }).limit(200);
+      /* Owned films only (schema §51): a screening pass shows a film's
+         synced writing to whoever holds the code, so the server refuses a
+         film the administrator does not own — offering collaborations here
+         would only offer refusals. */
+      const { data: sess } = await sb.auth.getSession();
+      const uid = sess && sess.session && sess.session.user && sess.session.user.id;
+      if (!uid) return [];
+      const { data, error } = await sb.from('projects').select('id,title,format').eq('owner_id', uid).order('updated_at', { ascending: false }).limit(200);
       if (error) throw new GateError(error.message, error.code);
       return data || [];
     },

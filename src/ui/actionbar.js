@@ -27,7 +27,7 @@ let seq = 0;
 /**
  * A dropdown of actions.
  * items: [
- *   { label, action?, href?, title?, danger?, hint?, id? }   a command
+ *   { label, action?, href?, title?, danger?, hint?, id?, data? }   a command
  * | { label, choices: [{ value, label }], action, attr, value }  a choice group
  * | '---'                                                    a separator
  * | { heading: 'File' }                                      a group heading
@@ -46,10 +46,23 @@ let seq = 0;
  * is a command: picking "Sepia" does not close the conversation, it
  * changes a setting you may want to try three of.
  */
+/* `data: { st: 'export-md' }` on a command becomes data-st="export-md",
+   for a page whose own delegate reads its own attribute; with no
+   `action` the item carries no data-action at all (h() skips undefined). */
+function dataAttrs(data) {
+  const out = {};
+  if (data) for (const [k, v] of Object.entries(data)) if (/^[a-z][\w-]*$/.test(k)) out['data-' + k] = v;
+  return out;
+}
+
 export function actionMenu(label, items, opts = {}) {
   const id = 'tbm-' + (++seq);
   const wrap = h('div.tb-menu' + (opts.align === 'right' ? '.align-right' : ''));
-  const btn = h('button.btn.tb-menu-btn' + (opts.compact ? '.is-compact' : ''), {
+  /* opts.kit ('secondary' | 'primary' | 'ghost') draws the opener as a kit
+     button with a symbol caret, for a page already on the kit — instead
+     of every such page swapping .btn for .k-btn after the build. */
+  const kit = /^(primary|secondary|ghost)$/.test(opts.kit || '') ? opts.kit : '';
+  const btn = h((kit ? 'button.k-btn.k-btn--' + kit : 'button.btn') + '.tb-menu-btn' + (opts.compact ? '.is-compact' : ''), {
     type: 'button',
     'data-action': 'tb-menu-toggle',
     'aria-expanded': 'false',
@@ -65,7 +78,7 @@ export function actionMenu(label, items, opts = {}) {
     btn.setAttribute('title', opts.ariaLabel);
   }
   btn.append(h('span', { text: label }));
-  if (!opts.compact) btn.append(h('span.tb-caret', { text: '▾', 'aria-hidden': 'true' }));
+  if (!opts.compact) btn.append(kit ? iconSpan('tb-caret', { sym: 'expand_more' }) : h('span.tb-caret', { text: '▾', 'aria-hidden': 'true' }));
 
   const panel = h('div.tb-menu-panel', { id, hidden: true, role: 'menu' });
   let into = panel;   // where a command goes: the panel, or the open group
@@ -86,7 +99,7 @@ export function actionMenu(label, items, opts = {}) {
       el = h('a.tb-item' + (item.danger ? '.is-danger' : ''), { ...props, href: item.href });
     } else {
       el = h('button.tb-item' + (item.danger ? '.is-danger' : ''), {
-        ...props, type: 'button', 'data-action': item.action,
+        ...props, ...dataAttrs(item.data), type: 'button', 'data-action': item.action,
         ...(item.args ? { 'data-args': JSON.stringify(item.args) } : {})
       });
     }

@@ -4,17 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Stripboard and day out of days scheduling</title>
-<meta name="description" content="Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule. Songs plan as their own blocks.">
+<meta name="description" content="Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule.">
 <link rel="canonical" href="https://{{brand:host}}/product-schedule">
+<link rel="preload" as="image" href="/marketing/schedule.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="Stripboard and day out of days scheduling">
-<meta property="og:description" content="Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule. Songs plan as their own blocks.">
+<meta property="og:description" content="Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule.">
 <meta property="og:url" content="https://{{brand:host}}/product-schedule">
 <meta property="og:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Stripboard and day out of days scheduling">
-<meta name="twitter:description" content="Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule. Songs plan as their own blocks.">
+<meta name="twitter:description" content="Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule.">
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta property="og:locale" content="en_IN">
 <meta name="theme-color" content="#0d0e13">
@@ -36,7 +37,7 @@
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="Main">
       <div class="mk-nav-item">
-        <a class="mk-nav-link mk-nav-prod" id="mkProd" href="#tools" aria-haspopup="true" aria-expanded="false" aria-controls="mkMega"><span>Product</span><span class="sym" aria-hidden="true" translate="no">expand_more</span></a>
+        <a class="mk-nav-link mk-nav-prod" id="mkProd" href="start.html#tools" aria-haspopup="true" aria-expanded="false" aria-controls="mkMega"><span>Product</span><span class="sym" aria-hidden="true" translate="no">expand_more</span></a>
         <div class="mk-mega" id="mkMega" role="group" aria-label="Product tools">
           <div class="mk-mega-col hue-library">
             <p class="mk-mega-h">Writing</p>
@@ -82,22 +83,25 @@
   </div>
 </header>
 <main id="main" class="mk hue-plan">
-<section class="mk-hero hue-plan" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in">
-    <p class="mk-eyebrow">Pre-production</p>
+<section class="mk-hero mk-hero--media hue-plan" id="top" aria-labelledby="mkH1">
+  <div class="mk-wrap mk-hero-in mk-hero-grid">
     <h1 class="mk-h1" id="mkH1">From scenes to shoot days, on a stripboard</h1>
     <p class="mk-sub">Order your scenes into shooting days, see who works when, and spot a company move before it costs you an afternoon.</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
-      <a class="mk-btn mk-btn--ghost mk-btn--lg" href="#demo"><span class="sym" aria-hidden="true" translate="no">play_circle</span><span>Watch the video</span></a>
     </div>
+    <figure class="mk-player mk-hero-media" id="demo" aria-label="See the stripboard in action">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/schedule.webp">
+        <source src="/marketing/schedule.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
   </div>
 </section>
 <div class="mk-label hue-plan">
   <div class="mk-wrap mk-label-in">
     <p class="mk-label-path"><span class="sym" aria-hidden="true" translate="no">calendar_month</span><span>Pre-production</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>Schedule</strong></p>
     <nav class="mk-label-nav" aria-label="On this page">
-      <a href="#demo">Demo</a>
       <a href="#how">How it works</a>
       <a href="pricing.html">Pricing</a>
     </nav>
@@ -108,22 +112,13 @@
     <div class="mk-split-text">
       <h2 class="mk-h2" id="mkValueH">A schedule that follows the script</h2>
       <p class="mk-body">Each scene is a strip. Group the strips by script order, location, day or night, or shoot day, and move them between days. The board is a view of your scenes, so nothing is typed twice.</p>
-      <p class="mk-body">The day out of days shows which actor works on which day, so nobody is called in for nothing. Songs are planned as their own blocks, because a song is shot as one.</p>
+      <p class="mk-body">The day out of days shows which actor works on which day, so nobody is called in for nothing.</p>
     </div>
-    <figure class="mk-frame">
-      <img src="/marketing/schedule-1.webp" width="1280" height="720" alt="Start from your scenes" loading="lazy" decoding="async">
-    </figure>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="demo" aria-labelledby="mkDemoH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkDemoH">See the stripboard in action</h2>
-    <div class="mk-player">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/schedule.webp">
-        <source src="/marketing/schedule.webm" type="video/webm">
-        Your browser cannot play this video.
-      </video>
-    </div>
+    <ul class="mk-facts mk-facts--side" id="facts" aria-label="The plain facts">
+      <li><b class="mk-fact-n">4</b><span class="mk-fact-l">Ways to group strips: script, place, time, day</span></li>
+      <li><b class="mk-fact-n">PDF</b><span class="mk-fact-l">Day out of days prints in landscape</span></li>
+      <li><b class="mk-fact-n">1 board</b><span class="mk-fact-l">Strips are your scenes, never typed twice</span></li>
+    </ul>
   </div>
 </section>
 <section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
@@ -135,14 +130,14 @@
         <li role="presentation"><button class="mk-step" type="button" role="tab" id="mkStep2" aria-controls="mkSlot" aria-selected="false" tabindex="-1" data-step="2"><span class="mk-step-n" aria-hidden="true">2</span><span class="mk-step-t">Group the way you shoot</span><span class="mk-step-b">Switch the board between script order, location, day or night, and shoot day to find the order that saves the most moves.</span></button></li>
         <li role="presentation"><button class="mk-step" type="button" role="tab" id="mkStep3" aria-controls="mkSlot" aria-selected="false" tabindex="-1" data-step="3"><span class="mk-step-n" aria-hidden="true">3</span><span class="mk-step-t">Fill the shoot days</span><span class="mk-step-b">Place scenes into days. Screen time per day is worked out for you, and a company move that a day has not covered is flagged.</span></button></li>
         <li role="presentation"><button class="mk-step" type="button" role="tab" id="mkStep4" aria-controls="mkSlot" aria-selected="false" tabindex="-1" data-step="4"><span class="mk-step-n" aria-hidden="true">4</span><span class="mk-step-t">Read the day out of days</span><span class="mk-step-b">See which actor works on which day and trim the calls. Print the Day Out of Days as a landscape PDF for the production office.</span></button></li>
-        <li role="presentation"><button class="mk-step" type="button" role="tab" id="mkStep5" aria-controls="mkSlot" aria-selected="false" tabindex="-1" data-step="5"><span class="mk-step-n" aria-hidden="true">5</span><span class="mk-step-t">Plan the songs as blocks</span><span class="mk-step-b">Give each song its own block of shooting, so a unit that shoots songs separately can see those days together.</span></button></li>
+        <li role="presentation"><button class="mk-step" type="button" role="tab" id="mkStep5" aria-controls="mkSlot" aria-selected="false" tabindex="-1" data-step="5"><span class="mk-step-n" aria-hidden="true">5</span><span class="mk-step-t">Print the board</span><span class="mk-step-b">Save the stripboard and the day out of days as landscape PDFs, or print the page, for the production office.</span></button></li>
       </ol>
       <div class="mk-slot" id="mkSlot" role="tabpanel" aria-labelledby="mkStep1">
         <figure class="mk-still is-on" data-step="1"><img src="/marketing/schedule-1.webp" width="1280" height="720" alt="Start from your scenes" loading="lazy" decoding="async"></figure>
         <figure class="mk-still" data-step="2" aria-hidden="true"><img src="/marketing/schedule-2.webp" width="1280" height="720" alt="Group the way you shoot" loading="lazy" decoding="async"></figure>
         <figure class="mk-still" data-step="3" aria-hidden="true"><img src="/marketing/schedule-3.webp" width="1280" height="720" alt="Fill the shoot days" loading="lazy" decoding="async"></figure>
         <figure class="mk-still" data-step="4" aria-hidden="true"><img src="/marketing/schedule-4.webp" width="1280" height="720" alt="Read the day out of days" loading="lazy" decoding="async"></figure>
-        <figure class="mk-still" data-step="5" aria-hidden="true"><img src="/marketing/schedule-5.webp" width="1280" height="720" alt="Plan the songs as blocks" loading="lazy" decoding="async"></figure>
+        <figure class="mk-still" data-step="5" aria-hidden="true"><img src="/marketing/schedule-5.webp" width="1280" height="720" alt="Print the board" loading="lazy" decoding="async"></figure>
       </div>
     </div>
   </div>
@@ -213,18 +208,10 @@
 <section class="mk-sec mk-band-c mk-mid hue-plan" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Lay out your first shoot day</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Create your free account</a>
-  </div>
-</section>
-<section class="mk-sec mk-band-a" id="facts" aria-labelledby="mkFactsH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkFactsH">The plain facts</h2>
-    <ul class="mk-facts">
-      <li><b class="mk-fact-n">5</b><span class="mk-fact-l">Ways to group strips: script, place, time, day, song</span></li>
-      <li><b class="mk-fact-n">PDF</b><span class="mk-fact-l">Day out of days prints in landscape</span></li>
-      <li><b class="mk-fact-n">Songs</b><span class="mk-fact-l">Each song plans as its own block</span></li>
-    </ul>
-    <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+      <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
+    </div>
   </div>
 </section>
 </main>
@@ -266,6 +253,8 @@
         <p class="mk-foot-h">Company</p>
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
+          <li><a href="about.html">About us</a></li>
+          <li><a href="contact.html">Contact us</a></li>
           <li><a href="privacy.html">Privacy</a></li>
           <li><a href="terms.html">Terms</a></li>
           <li><a href="refund.html">Refunds</a></li>

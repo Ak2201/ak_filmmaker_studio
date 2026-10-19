@@ -109,8 +109,8 @@ function renderEmpty() {
       })
     ]),
     h('div.pl-empty-acts', {}, [
-      button({ href: 'breakdown.html#scenes', label: 'Add the scenes  →', variant: 'primary', pill: true, class: 'bd-cta' }),
-      button({ href: 'stripboard.html#stripboard', label: 'Schedule them  →', class: 'bd-cta' })
+      button({ href: 'breakdown.html#scenes', label: 'Add the scenes', iconAfter: 'arrow_forward', variant: 'primary', pill: true, class: 'bd-cta' }),
+      button({ href: 'stripboard.html#stripboard', label: 'Schedule them', iconAfter: 'arrow_forward', class: 'bd-cta' })
     ])
   ]);
 }
@@ -149,7 +149,7 @@ function renderCalendar(scenes) {
       text: 'None of the ' + plural(scenes.length, 'scene', 'scenes') + ' has a shoot day yet. '
           + 'Give a strip a day on the stripboard — or use "Schedule by location" there — '
           + 'and the calendar fills itself in.'
-    }), button({ href: 'stripboard.html#stripboard', label: 'Go to the stripboard  →', class: 'pl-jump' }));
+    }), button({ href: 'stripboard.html#stripboard', label: 'Go to the stripboard', iconAfter: 'arrow_forward', class: 'pl-jump' }));
   } else {
     // A date used by two shoot days is almost always a slip, and the
     // only place it is visible is here. Counted once, read per card.
@@ -172,7 +172,7 @@ function renderCalendar(scenes) {
       h('div.pl-chips', {}, loose.map((s) => h('span.pl-chip', {
         text: 'Sc ' + (s.number || '—'), title: slugOf(s)
       }))),
-      button({ href: 'stripboard.html#stripboard', label: 'Schedule them  →', class: 'pl-jump' })
+      button({ href: 'stripboard.html#stripboard', label: 'Schedule them', iconAfter: 'arrow_forward', class: 'pl-jump' })
     ]));
   }
   return wrap;
@@ -290,7 +290,7 @@ function renderLocations(scenes) {
     wrap.append(h('p.bd-none', {
       text: 'No scenes yet, so no locations. Type a place on a scene in the breakdown '
           + 'and a recce card appears here with the scenes already attached.'
-    }), button({ href: 'breakdown.html#scenes', label: 'Go to the breakdown  →', class: 'pl-jump' }));
+    }), button({ href: 'breakdown.html#scenes', label: 'Go to the breakdown', iconAfter: 'arrow_forward', class: 'pl-jump' }));
     return wrap;
   }
 
@@ -319,7 +319,7 @@ function renderLocations(scenes) {
         text: 'Sc ' + (s.number || '—'),
         title: s.synopsis || slugOf(s)
       }))),
-      button({ href: 'breakdown.html#scenes', label: 'Go to the breakdown  →', class: 'pl-jump' })
+      button({ href: 'breakdown.html#scenes', label: 'Go to the breakdown', iconAfter: 'arrow_forward', class: 'pl-jump' })
     ]));
   }
 

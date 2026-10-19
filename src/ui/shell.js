@@ -137,7 +137,13 @@ function hereModules() {
   };
   for (const phase of phases()) add(phase, null, phase.modules);
   for (const g of globals()) if (Array.isArray(g.modules)) add(null, g, g.modules);
-  return out;
+  /* A module switched off for everybody is not where you are: the rail
+     hides it, so a crumb naming it ("Screenplay Analysis" on the
+     Breakdown) points at nothing. Unless EVERY module the page hosts is
+     off — then the page is a "Not available" card and the crumb still
+     says what it was. Guarded: plan-gate is not ready at first call. */
+  const on = out.filter((x) => { try { return !PLAN.isOff(x.module.id); } catch (e) { return true; } });
+  return on.length ? on : out;
 }
 
 /** Laid out and not inside anything hidden — a tab that is not the
@@ -710,8 +716,12 @@ function showFly(cell) {
   clearTimeout(flyTimer);
   const fly = cell && cell.querySelector(':scope > .sh-fly');
   if (!fly) return;
+  /* moving from one open flyout to the next is instant: the first one
+     waited for intent, the neighbours do not fade in again */
+  const instant = !!flyOpen && flyOpen !== fly;
   if (flyOpen && flyOpen !== fly) hideFly(true);
   if (!fly.hidden) return;
+  fly.classList.toggle('is-instant', instant);
   fly.hidden = false;
   cell.classList.add('is-fly');
   placeFly(cell, fly);
@@ -726,6 +736,7 @@ function hideFly(now) {
     if (!now && f.parentElement.contains(document.activeElement) && document.activeElement !== document.body
         && f.parentElement.matches(':focus-within')) return;
     f.hidden = true;
+    f.classList.remove('is-instant');
     f.parentElement.classList.remove('is-fly');
     flyOpen = null;
   };
@@ -1821,12 +1832,37 @@ function wire() {
     };
     rail.addEventListener('pointerover', tip);
     rail.addEventListener('focusin', tip);
+    /* INTENT, THEN INSTANT (19 Oct 2026). The first flyout waits for the
+       pointer to rest 120ms, so a mouse travelling down the rail to the
+       account button no longer flashes every stage on the way; once one
+       is open, the next opens at once and without a fade. The labels do
+       the same: after the first one has shown, the rail is `is-tipping`
+       and the next label appears with no delay, until the pointer has
+       been off the rail for 300ms. */
+    let intentCell = null;
+    let tipOn = 0, tipOff = 0;
     rail.addEventListener('pointerover', (e) => {
       if (e.pointerType === 'touch') return;
       const cell = e.target.closest && e.target.closest('.sh-rail-stagecell');
-      if (cell) showFly(cell); else if (!e.target.closest('.sh-fly')) hideFly();
+      if (!cell) { intentCell = null; if (!e.target.closest('.sh-fly')) hideFly(); return; }
+      if (flyOpen) { intentCell = null; showFly(cell); return; }
+      if (intentCell === cell) return;   // still resting on the same stage
+      intentCell = cell;
+      clearTimeout(flyTimer);
+      flyTimer = setTimeout(() => { if (intentCell === cell) showFly(cell); }, 120);
     });
-    rail.addEventListener('pointerleave', () => hideFly());
+    rail.addEventListener('pointerover', (e) => {
+      if (e.pointerType === 'touch' || !(e.target.closest && e.target.closest('.sh-rail-item'))) return;
+      clearTimeout(tipOff);
+      if (!rail.classList.contains('is-tipping') && !tipOn) tipOn = setTimeout(() => { tipOn = 0; rail.classList.add('is-tipping'); }, 120);
+    });
+    rail.addEventListener('pointerleave', () => {
+      intentCell = null;
+      hideFly();
+      clearTimeout(tipOn); tipOn = 0;
+      clearTimeout(tipOff);
+      tipOff = setTimeout(() => rail.classList.remove('is-tipping'), 300);
+    });
     rail.addEventListener('focusin', (e) => {
       const cell = e.target.closest && e.target.closest('.sh-rail-stagecell');
       if (cell && cell === flyQuiet) return;   // Escape handing focus back: stay shut

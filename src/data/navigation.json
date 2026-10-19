@@ -92,7 +92,7 @@
       "modules": [
         {
           "id": "story-beats",
-          "label": "Beats & Pacing",
+          "label": "Story",
           "purpose": "Write the story and check its shape: where it rises, where it sags",
           "status": "built",
           "href": "story.html",
@@ -165,7 +165,7 @@
         {
           "id": "import-script",
           "label": "Import Screenplay",
-          "purpose": "Bring in a Fountain, Final Draft, PDF or text screenplay",
+          "purpose": "Bring in a Fountain, Final Draft, Word, PDF or text screenplay",
           "status": "built",
           "href": "screenplay.html#import",
           "icon": "⇪",

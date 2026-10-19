@@ -119,7 +119,7 @@ export function allowed(key) {
    module is CORE). A module on this list is not an upsell: no plan sells
    it, so nothing offers a PLAN flag or a SEE PLANS card - it is simply
    not there (isDisabledEverywhere, below). */
-export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'idea-vault', 'pitch-deck', 'script-breakdown', 'auto-tag', 'songs', 'screen-time', 'cast-matrix', 'lookbook', 'media', 'shoot-day', 'edit-log', 'deliverables'];
+export const OFF_BY_DEFAULT = ['case-studies', 'dissection', 'glossary', 'pitch-deck', 'script-breakdown', 'songs', 'lookbook', 'media'];
 /* Ids the plan rows showed NO plan above this one offers - an admin kill
    switch on a module the plans otherwise carry. Filled by loadFlagNames. */
 let offersNone = new Set();
@@ -143,7 +143,11 @@ export function isDisabledEverywhere(id) {
      features map cannot bring one of these back: the live §36 was run on
      12 Oct, before 15 modules were switched off, so it still says true
      for them on Pro, and trusting it put every one back in the rail's
-     flyouts. A module comes back by giving it a plan in the matrix. */
+     flyouts. A module comes back by giving it a plan in the matrix -
+     which is how six came back on 19 Oct 2026 (owner, after the Celtx
+     comparison): auto-tag, screen-time and cast-matrix on Intermediate,
+     shoot-day, edit-log and deliverables on Pro — and idea-vault on Basic
+     and up the same day, so the Chrome clipper's clips have a home. */
   if (OFF_BY_DEFAULT.includes(id)) return true;
   if (!features) return false;
   if (purchaseReq === false) return features[id] === false;
@@ -538,7 +542,7 @@ function gonePanel() {
    `/settings`, not `/settings.html`, and a regex anchored to `.html`
    would have walled the page you buy from on the live site and nowhere
    else. modulesHere() strips the extension for the same reason. */
-const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|product-[a-z-]+)$/;
+const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|contact|about|product-[a-z-]+)$/;
 const pageName = () => file().replace(/\.html$/, '');
 
 function wallPanel() {
@@ -789,6 +793,7 @@ function apply() {
   if (wall || lock) {
     root.dataset.planLock = '1';
     root.toggleAttribute('data-paywall', wall);
+    root.toggleAttribute('data-plan-gone', gone);   // plan-gate.css collapses main's height
     const want = wall ? 'pg-wall' : 'pg-lock';
     /* Swap when the KIND changes, not just when one is missing — a
        trial expiring while a module lock is on screen must replace it. */
@@ -808,6 +813,7 @@ function apply() {
   } else {
     delete root.dataset.planLock;
     root.removeAttribute('data-paywall');
+    root.removeAttribute('data-plan-gone');
     if (existing) existing.remove();
   }
   lockTabs();

@@ -1,5 +1,5 @@
 {
-  "_comment": "The onboarding tour and the hub's first-week checklist (src/ui/tour.js). Copy only: the anchors are CSS selectors tried in order (a [data-tour] attribute first, so a page can name its own anchor), and every checklist tick is DERIVED from the open film in tour.js by the item's id — nothing here, and nothing about a tick, is stored. Only the tour's own place (which step, dismissed) is kept, in fms_tour_v1, and only when the reader clicks.",
+  "_comment": "The onboarding tour and the hub's first-week checklist (src/ui/tour.js). Copy only: the anchors are CSS selectors tried in order (a [data-tour] attribute first, so a page can name its own anchor), and every checklist tick is DERIVED from the open film in tour.js by the item's id; a step or item with a `module` is left out while that module is switched off for everybody (plan-gate isDisabledEverywhere) — nothing here, and nothing about a tick, is stored. Only the tour's own place (which step, dismissed) is kept, in fms_tour_v1, and only when the reader clicks.",
   "steps": [
     {
       "id": "sample",
@@ -28,7 +28,7 @@
         "#main"
       ],
       "title": "Story: the idea, the logline, the beats",
-      "body": "Write the synopsis and tag its passages to the beats of a structure; the heatmap and the pacing notes are worked out from what you tag. The pitch deck is printed from here."
+      "body": "Write the synopsis and tag its passages to the beats of a structure; the heatmap and the pacing notes are worked out from what you tag."
     },
     {
       "id": "write",
@@ -94,6 +94,7 @@
     },
     {
       "id": "shoot",
+      "module": "shoot-day",
       "page": "shoot",
       "href": "shoot.html",
       "anchor": [
@@ -109,6 +110,7 @@
     },
     {
       "id": "edit",
+      "module": "edit-log",
       "page": "edit",
       "href": "edit.html#guide",
       "anchor": [
@@ -123,6 +125,7 @@
     },
     {
       "id": "deliverables",
+      "module": "deliverables",
       "page": "deliverables",
       "href": "deliverables.html#festivals",
       "anchor": [
@@ -144,7 +147,7 @@
   "checklist": {
     "label": "YOUR FIRST WEEK",
     "title": "Find your way round.",
-    "deck": "Six things to try. The ticks are read from the open film every time this page draws — nothing here is stored.",
+    "deck": "A few things to try. The ticks are read from the open film every time this page draws — nothing here is stored.",
     "items": [
       {
         "id": "story",
@@ -173,6 +176,7 @@
       },
       {
         "id": "shot",
+        "module": "shoot-day",
         "label": "Mark a scene on the shoot day",
         "href": "shoot.html"
       }

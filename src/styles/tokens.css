@@ -462,7 +462,7 @@
      translate and scale is `calc(<distance> * var(--motion))`, and the
      media query at the foot sets it to 0. Exit is ~65% of enter. */
   --motion:       1;
-  --speed-tap:  0.08s;
+  --speed-tap:  0.12s;
   --speed:      0.12s;
   --speed-slow: 0.22s;
   --speed-lazy: 0.36s;

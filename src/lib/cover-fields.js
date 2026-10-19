@@ -32,7 +32,7 @@ export const COVER_FIELDS = {
     { key: 'meta_started', label: 'Started on', placeholder: 'DD / MM / YYYY' },
     { key: 'meta_stage', label: 'Stage', placeholder: 'Story / Screenplay / Pre-prod…' },
     { key: 'v1_title', label: 'Working title', placeholder: 'Untitled film' },
-    { key: 'v1_genre', label: 'Genre', options: GENRES, empty: 'Pick a genre...' },
+    { key: 'v1_genre', label: 'Genre', options: GENRES, empty: 'Choose a genre' },
     { key: 'v1_draft', label: 'Draft', placeholder: '01 — Treatment' }
   ],
   'part-2': [],

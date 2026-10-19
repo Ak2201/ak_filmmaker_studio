@@ -21,7 +21,17 @@ section#scenes .bd-breakdown { gap: 0; }
   --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 1fr) 76px 100px 92px 92px 36px;
 }
 @container sl (min-width: 62rem) {
-  .bd-breakdown { --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 2.4fr) 80px 104px 96px minmax(0, 1fr) 96px 36px; }
+  /* Sized for the worst values, not the usual ones (19 Oct 2026):
+     "112A-PT2" in the number, CONTINUOUS in the time, "12 1/8" plus
+     its field in the length, and a TAGGED badge before the toggle. A
+     fixed track, never `auto`: each row is its own grid, so an auto
+     track would size per row and the columns would stop lining up.
+     ON THE ROWS, NOT ON .bd-breakdown: a container query cannot style
+     its own container, so this tier used to match nothing at all — the
+     wide list ran on the nine-track template while cast, status and the
+     toggle asked for columns 8, 9 and 10, and the toggle landed in an
+     implicit track on top of the status badge. */
+  .bd-sl-head, .bd-sl-main { --sl-cols: var(--sl-grip-w) 28px 72px minmax(0, 2.4fr) 96px 140px 112px minmax(0, 1fr) 104px 36px; }
 }
 
 /* ---- toolbar -------------------------------------------------- */
@@ -134,12 +144,12 @@ section#scenes .bd-breakdown { gap: 0; }
 }
 .bd-sl-len { display: flex; align-items: center; gap: var(--s1); }
 .bd-sl-len input { width: 3.6rem; flex: 0 0 auto; text-align: right; }
-.bd-sl-len .bd-pages { min-width: 0; }
+.bd-sl-len .bd-pages { min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }   /* a figure is never broken or cut */
 .bd-sl-cast { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-small); color: var(--ink-body); }
 .bd-sl-cast.is-none { color: var(--ink-muted); }
 
 /* where a scene stands is a kit badge (tone from the derived state) */
-.bd-sl-status { justify-self: start; white-space: nowrap; }
+.bd-sl-status { justify-self: start; white-space: nowrap; min-width: 0; }
 .bd-sl-toggle { min-width: 36px; min-height: 36px; }
 
 /* ---- the open scene -------------------------------------------- */
@@ -159,10 +169,14 @@ section#scenes .bd-breakdown { gap: 0; }
 @container sl (max-width: 39.99rem) {
   .bd-sl-head { display: none; }
   .bd-sl-main {
-    grid-template-columns: var(--sl-grip-w) 28px 64px minmax(0, 1fr) minmax(0, 1fr) 40px;
+    grid-template-columns: var(--sl-grip-w) 28px 72px minmax(0, 1fr) minmax(0, 1fr) 40px;   /* 72: the coarse-pointer number field is 4.25rem */
+    /* The location is how a row is recognised, so it gets the card's
+       whole width on its own line (it was cut to "EXT. KOYA…") — from
+       column 2, the edge every row under the grip starts at. */
     grid-template-areas:
-      "grip pick no   where where tog"
-      ".    ie   ie   ie    dn    dn"
+      "grip  pick  no    .     .     tog"
+      ".     where where where where where"
+      ".     ie    ie    ie    dn    dn"
       ".    len  len  len   cast  cast"
       ".    st   st   st    st    st"
       ".    cnt  cnt  cnt   cnt   cnt";
@@ -315,3 +329,53 @@ button.k-chip.bd-sug:focus-visible { outline: var(--focus); outline-offset: 1px;
 .bd-sl-counts .k-chip-count { color: var(--hue-deep); }
 
 /* the header's explanatory paragraph stays in the DOM, out of sight */
+
+/* ---- index cards (breakdown.js renderSceneCard) ------------------
+   The same scenes on a board. Each card is a skin card; its top edge
+   wears the time of day's hue (.hue-day / -night / -dawn / -dusk set
+   --hue), which is the one colour a pinned index card traditionally
+   carries. A drop is shown on the card's leading or trailing edge. */
+.bd-sl-view { flex: 0 0 auto; }
+.bd-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.bd-sl.bd-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-top: 3px solid var(--hue, var(--sk-card-line));
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow);
+}
+.bd-card-top { display: flex; align-items: center; gap: var(--s2); min-width: 0; font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); letter-spacing: var(--track-label); text-transform: uppercase; }
+.bd-card-no { font-weight: 700; color: var(--ink); }
+.bd-card-len { margin-left: auto; font-variant-numeric: tabular-nums; }
+.bd-card-slug { margin: 0; font-size: var(--sk-card-h-size, var(--t-small)); font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.bd-card-syn {
+  margin: 0; color: var(--ink-body); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden;
+}
+.bd-card-syn.is-none, .bd-card-cast.is-none { color: var(--ink-muted); font-style: normal; }
+.bd-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); min-width: 0; }
+.bd-card-cast { min-width: 0; font-size: var(--t-micro); color: var(--ink-muted); overflow-wrap: anywhere; }
+.bd-card-open {
+  justify-self: start;
+  font: inherit; font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase;
+  color: var(--accent-deep); background: none; border: 0; padding: var(--s1) 0; cursor: pointer;
+}
+.bd-card-open:hover { text-decoration: underline; text-underline-offset: 2px; }
+.bd-card-open:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
+.bd-sl.bd-card.is-dragging { opacity: 0.5; pointer-events: none; }
+.bd-card.is-drop-before { box-shadow: -4px 0 0 0 var(--accent), var(--sk-card-shadow); }
+.bd-card.is-drop-after  { box-shadow:  4px 0 0 0 var(--accent), var(--sk-card-shadow); }
+@media (pointer: coarse) { .bd-card-open { min-height: 44px; } }
+@media print { .bd-card-open, .bd-sl-view { display: none !important; } .bd-cards { grid-template-columns: repeat(3, 1fr); } .bd-sl.bd-card { break-inside: avoid; } }

@@ -13,7 +13,10 @@
        number, cut-and-paste by text, settle at save, unlock, the blob
        round trip and the absent-until-locked field;
      · src/lib/screenplay-export.js: OMITTED rows paginate, marks do not
-       move a break, revisedPages() agrees with the diff;
+       move a break, revisedPages() agrees with the diff; locked pages
+       (A-pages): overflow letters, folded ranges, one element over
+       several pages, a mid-speech page, a moved start, OMITTED at a
+       locked break, a missing page 1, a blanked start;
      · src/lib/scene-sync.js: a locked script writes 12A into the row,
        an unlocked one is unchanged, numberPatches() renumbers.
 
@@ -436,6 +439,165 @@ const at = (els, id) => els.findIndex((e) => e.id === id);
   } finally {
     if (!hadDoc) delete globalThis.document;
     if (!hadNode) delete globalThis.Node;
+  }
+}
+
+/* ================================================================
+   4. LOCKED PAGES (A-pages) — screenplay-export.js pagesLock
+   ================================================================ */
+{
+  const S = sample.elements.map((e) => blankElement(e));
+  const base = { elements: S, numbering: lockNumbering(S) };
+  const before = Typeset.paginateDoc(base);
+  const lock = Typeset.lockPages(base, '2026-10-19T10:00:00.000Z');
+  eq(lock.starts.length, before.length, 'lockPages records one start per page');
+  const doc = { elements: S, numbering: { ...base.numbering, pages: lock } };
+  const locked = Typeset.paginateDoc(doc);
+  eq(locked.length, before.length, 'a fresh page lock moves no page break');
+  eq(Typeset.pageNumbersDoc(doc, locked), before.map((_, i) => String(i + 1)), 'and numbers the pages 1 to N');
+  eq(Typeset.pageNumbersDoc({ elements: S }, before), before.map((_, i) => String(i + 1)), 'unlocked pages are numbered by position');
+
+  // Insert a long passage on page 2: page 3 must still be page 3.
+  const p2 = Typeset.pageStarts(locked)[1];
+  const at = S.findIndex((e) => e.id === p2.id) + 1;
+  const added = Array.from({ length: 40 }, (_, k) => el('action', 'An added line of action, long enough to take a few lines on the page, number ' + k + '.'));
+  const grown = { ...doc, elements: [...S.slice(0, at), ...added, ...S.slice(at)] };
+  const gp = Typeset.paginateDoc(grown);
+  const gl = Typeset.pageNumbersDoc(grown, gp);
+  ok(gl[1] === '2' && /^2A$/.test(gl[2]), 'material added on page 2 overflows into 2A', gl.slice(0, 6));
+  const p3 = Typeset.pageStarts(locked)[2];
+  const i3 = gl.indexOf('3');
+  ok(i3 > 2 && Typeset.pageStarts(gp)[i3].id === p3.id, 'page 3 still begins where it did', { i3, labels: gl.slice(0, 6) });
+  ok(gl.slice(i3).every((l, k) => !/[A-Z]/.test(l) || k === 0 || l.startsWith(gl[i3 + k - 1].replace(/[A-Z]+$/, ''))), 'and no later page is renumbered');
+  eq(gl[gl.length - 1], String(before.length), 'the last page keeps its number');
+
+  // Cut everything on page 3: page 2 is now 2-3.
+  const starts = Typeset.pageStarts(locked);
+  const from = S.findIndex((e) => e.id === starts[2].id), to = S.findIndex((e) => e.id === starts[3].id);
+  const shrunk = { ...doc, elements: [...S.slice(0, from), ...S.slice(to)] };
+  const sl = Typeset.pageNumbersDoc(shrunk);
+  eq(sl.slice(0, 3), ['1', '2-3', '4'], 'a cut page folds into the one before: 2-3, then 4');
+
+  // The printed label, and the text export carries it.
+  eq([Typeset.pageLabelPrinted('1', 0), Typeset.pageLabelPrinted('2A', 2), Typeset.pageLabelPrinted('2-3', 1)], ['', '2A.', '2-3.'], 'printed labels: first page bare, a full stop after');
+  ok(/\n\s+2A\.\n/.test(Typeset.toText(grown, { title: 'T' })), 'the text export prints 2A.');
+
+  // Carried through load and save, never moved by a save.
+  const norm = Script.normaliseNumbering(doc.numbering);
+  eq(norm.pages.starts.length, lock.starts.length, 'normaliseNumbering keeps the page lock');
+  eq(Script.settleNumbering(grown.elements, doc.numbering).pages, doc.numbering.pages, 'settleNumbering keeps it as it was');
+  eq(Script.normalisePagesLock({ locked: true, starts: [] }), null, 'an empty page lock reads as unlocked');
+  eq(Script.normalisePagesLock({ locked: 'yes', starts: [{ n: '1' }] }), null, 'a malformed one too');
+  ok(Typeset.pagesLock({ elements: S, numbering: null }) === null, 'no scene lock, no page lock');
+}
+
+/* ================================================================
+   5. LOCKED PAGES — the round-2 review, one case per finding
+   ================================================================ */
+{
+  const lockDoc = (E) => {
+    const base = { elements: E, numbering: lockNumbering(E) };
+    return { elements: E, numbering: { ...base.numbering, pages: Typeset.lockPages(base, '2026-10-19T10:00:00.000Z') } };
+  };
+  const labels = (d) => Typeset.pageNumbersDoc(d);
+  const words = (n) => Array.from({ length: n }, (_, i) => 'word' + (i % 10)).join(' ');
+  /* Labels never go backwards: each page's first number (and letters)
+     comes after the previous page's last. */
+  const rank = (l) => { const m = /^(\d+)([A-Z]*)$/.exec(l); return m ? [+m[1], m[2].length, m[2]] : null; };
+  const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0);
+  const forward = (ls) => ls.every((l, i) => {
+    if (!i) return true;
+    const prev = ls[i - 1].split('-'), here = l.split('-');
+    return cmp(rank(prev[prev.length - 1]), rank(here[0])) < 0;
+  });
+  // Twelve scenes of a heading and twelve one-line actions: two scenes a page.
+  const twelve = () => {
+    const E = [];
+    for (let s = 1; s <= 12; s++) {
+      E.push(el('scene', 'INT. ROOM ' + s + ' - DAY', 'h' + s));
+      for (let i = 0; i < 12; i++) E.push(el('action', 'S' + s + ' l' + i, 'h' + s + 'a' + i));
+    }
+    return E;
+  };
+  const sceneOf = (E, hid) => E.filter((x) => x.id === hid || x.id.startsWith(hid + 'a'));
+  const T12 = twelve();
+  const D12 = lockDoc(T12);
+  eq(D12.numbering.pages.starts.map((s) => s.id), ['h1', 'h3', 'h5', 'h7', 'h9', 'h11'], 'fixture: six pages, each begun by a heading');
+
+  // #4 — one element over several page tops: each keeps its own number.
+  {
+    const E = [el('scene', 'INT. A - DAY', 's1'), el('action', 'One line.', 'a1'), el('action', words(1100), 'big'), el('scene', 'INT. B - DAY', 's2'), el('action', 'x', 'a2')];
+    const d = lockDoc(E);
+    eq(d.numbering.pages.starts.map((s) => s.id + (s.split ? '|s' : '')), ['s1', 'big|s', 'big|s'], 'a long action block begins two locked pages');
+    eq(labels(d), ['1', '2', '3'], 'and each keeps its own number straight after locking');
+    eq((Typeset.toText(d, { title: 'T' }).match(/^\s+\S+\.\s*$/gm) || []).map((x) => x.trim()), ['2.', '3.'], 'the text export prints 2. and 3.');
+    const back = { ...d, numbering: Script.normaliseNumbering(d.numbering) };
+    eq(labels(back), ['1', '2', '3'], 'the stored shape needs no new field: a normalised lock reads the same');
+  }
+
+  // #3 — a page that began mid-speech keeps its number when an edit above lets the speech fit.
+  {
+    const E = [el('scene', 'INT. A - DAY', 's1')];
+    for (let i = 0; i < 22; i++) E.push(el('action', 'Line ' + i, 't' + i));
+    E.push(el('character', 'RAVI', 'c1'), el('dialogue', words(40), 'd1'));
+    for (let i = 22; i < 82; i++) E.push(el('action', 'Line ' + i, 't' + i));
+    const d = lockDoc(E);
+    eq(d.numbering.pages.starts.map((s) => s.id + (s.split ? '|s' : '')), ['s1', 'd1|s', 't46', 't72'], 'fixture: page 2 begins mid-speech');
+    const e2 = { ...d, elements: E.filter((x) => x.id !== 't0') };
+    eq(labels(e2), ['1', '2', '3', '4'], 'one line cut on page 1: no 1-2, no 1A');
+    eq(Typeset.pageStarts(Typeset.paginateDoc(e2))[1].id, 't22', 'page 2 now begins with what followed the speech');
+  }
+
+  // #2 — a moved page start is new material where it lands, never its old number out of order.
+  {
+    const blk = sceneOf(T12, 'h11');
+    const rest = T12.filter((x) => !blk.includes(x));
+    const at = rest.findIndex((x) => x.id === 'h5');
+    const m = { ...D12, elements: [...rest.slice(0, at), ...blk, ...rest.slice(at)] };
+    const ls = labels(m);
+    eq(ls, ['1', '2', '2A', '3', '4', '5', '5A-6'], 'scene 11 moved before page 3: it is 2A, not a 6 between 2 and 3');
+    ok(forward(ls), 'and the labels run forward', ls);
+    ok(!Typeset.paginateDoc(m).some((p, i) => i && p[0].id === 'h11' && ls[i] === '6'), 'no break is forced before the moved heading');
+  }
+
+  // #1 — an OMITTED row stays on the page its scene was cut from.
+  {
+    const cut = { ...D12, elements: T12.filter((x) => !sceneOf(T12, 'h6').includes(x)) };
+    const pg = Typeset.paginateDoc(cut);
+    eq(labels(cut), ['1', '2', '3', '4', '5', '6'], 'scene 6 cut from page 3: no page after it moves');
+    eq([pg[3][0].id, pg[3][0].sceneNo], ['h7', '7'], 'page 4 still begins with scene 7');
+    ok(pg[2].some((r) => r.omitted && r.sceneNo === '6'), 'and 6 OMITTED sits at the foot of page 3');
+  }
+
+  // #5 — a missing page 1 folds onto the first page, and a first page never prints its number.
+  {
+    // A cold open of action lines (no heading, so nothing is OMITTED), then the twelve scenes.
+    const E = [...Array.from({ length: 40 }, (_, k) => el('action', 'Open ' + k, 'o' + k)), ...twelve()];
+    const d = lockDoc(E);
+    const p2 = E.findIndex((x) => x.id === d.numbering.pages.starts[1].id);
+    const e5 = { ...d, elements: E.slice(p2) };
+    const ls = labels(e5);
+    eq(ls[0], '1-2', 'page 1 cut: the first page is 1-2, not 2');
+    ok(forward(ls), 'and the labels run forward', ls);
+    eq([Typeset.pageLabelPrinted('1-2', 0), Typeset.pageLabelPrinted('1', 0), Typeset.pageLabelPrinted('1-2', 1)], ['', '', '1-2.'], 'the first page prints no number, range or not');
+    ok(!/^\s+1-2\.\s*$/m.test(Typeset.toText(e5, { title: 'T' })), 'the text export does not print 1-2.');
+  }
+
+  // #6 — a missing number folds after the lettered pages; a blanked start keeps its page.
+  {
+    const add = Array.from({ length: 30 }, (_, k) => el('action', 'Added line ' + k + ' of action that is long enough to wrap.', 'ad' + k));
+    const at = T12.findIndex((x) => x.id === 'h3') + 1;
+    const gone = new Set([...sceneOf(T12, 'h5'), ...sceneOf(T12, 'h6')]);
+    const grown = [...T12.slice(0, at), ...add, ...T12.slice(at)];
+    const la = labels({ ...D12, elements: grown.filter((x) => !gone.has(x)) });
+    const i4 = la.indexOf('4');
+    ok(i4 > 2 && /^2[A-Z]+-3$/.test(la[i4 - 1]) && la.slice(1, i4 - 1).every((l) => !l.includes('-')), 'page 3 cut, page 2 grown: the fold is on the last A-page (2B-3)', la);
+    ok(forward(la), 'and the labels run forward', la);
+    const blank = grown.map((x) => (x.id === 'h5' ? { ...x, text: '' } : x));
+    const lb = labels({ ...D12, elements: blank });
+    ok(lb.includes('3') && !lb.some((l) => l.includes('-')), "page 3's heading blanked: page 3 is still 3, nothing folded", lb);
+    const i3 = lb.indexOf('3');
+    eq((Typeset.pageStarts(Typeset.paginateDoc({ ...D12, elements: blank }))[i3] || {}).id, 'h5a0', 'and it begins with the first line that prints');
   }
 }
 

@@ -102,6 +102,9 @@ jobs:
       # No native confirm/alert/prompt: the in-app dialog appears, Cancel keeps data.
       - run: npm run prove:dialogs
       - run: npm run prove:script
+      - run: npm run prove:replace
+      - run: npm run prove:cards
+      - run: npm run prove:presence
       - run: npm run prove:ai-desk
 
   proofs:
@@ -135,5 +138,9 @@ jobs:
       # crumb stage, band tools, header, tab layout), at 1280 and 390.
       # dist/ here is the GATED build, so it reads the open one above.
       - run: npm run prove:nav
+        env:
+          PROVE_DIST: dist-verify
+      # Scroll and fragment landings on the open build, like prove:nav.
+      - run: npm run prove:scroll
         env:
           PROVE_DIST: dist-verify

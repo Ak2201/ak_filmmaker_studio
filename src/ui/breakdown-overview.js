@@ -66,11 +66,11 @@ function table(head, rows, label) {
 function scenesView(sum) {
   const rows = sum.scenes.map((s) => h('tr', {}, [
     cell(s.number || '—', 'bdo-num'),
-    cell(s.intExt),
-    cell(s.location || 'Unassigned'),
-    cell(s.dayNight),
-    cell(formatEighths(Number(s.eighths) || 0)),
-    cell(((s.elements && s.elements.cast) || []).join(', ') || '—')
+    cell(s.intExt, 'bdo-num'),
+    cell(s.location || 'Unassigned', 'bdo-wide'),
+    cell(s.dayNight, 'bdo-num'),
+    cell(formatEighths(Number(s.eighths) || 0), 'bdo-num'),
+    cell(((s.elements && s.elements.cast) || []).join(', ') || '—', 'bdo-wide')
   ]));
   return table(['#', 'INT/EXT', 'Location', 'Day / night', 'Pages', 'Cast'], rows, 'Scenes in script order');
 }
@@ -89,17 +89,17 @@ function charactersView(sum) {
     ]));
     wrap.append(table(['Character', 'Scenes', 'First appears', 'Lines', ''], rows, 'Characters'));
   }
-  wrap.append(h('p.bdo-onward', {}, [h('a.btn', { href: 'story.html#path-bible', text: 'Open Characters & world on the Story page' })]));
+  wrap.append(h('p.bdo-onward', {}, [button({ label: 'Open Characters & world on the Story page', href: 'story.html#path-bible', iconAfter: 'arrow_forward' })]));
   return wrap;
 }
 
 function locationsView(sum) {
   const rows = sum.locations.map((l) => h('tr', {}, [
     cell(l.name, 'bdo-name'),
-    cell(counts(l.intExt)),
-    cell(counts(l.dayNight)),
-    cell(l.scenes.join(', ')),
-    cell(l.pages)
+    cell(counts(l.intExt), 'bdo-num'),
+    cell(counts(l.dayNight), 'bdo-num'),
+    cell(l.scenes.join(', '), 'bdo-wide'),
+    cell(l.pages, 'bdo-num')
   ]));
   return table(['Location', 'INT / EXT', 'Day / night', 'Scenes', 'Pages'], rows, 'Locations');
 }
@@ -143,8 +143,10 @@ function startBlock({ scriptPages, hasScript, hasScenes }) {
   const row = h('div.bdo-start');
   if (hasScript) {
     row.append(
+      /* Once the script is broken down the result is the page and a
+         re-run is the secondary act; before, the run IS the page. */
       button({
-        variant: 'primary', pill: true, action: 'run-breakdown', class: 'bd-cta',
+        variant: hasScenes ? 'secondary' : 'primary', pill: !hasScenes, action: 'run-breakdown', class: hasScenes ? '' : 'bd-cta',
         label: 'Manual breakdown',
         title: hasScenes ? 'Break down the whole script again' : `Break down my script (${formatPages(scriptPages)} pages)`
       }),
@@ -156,7 +158,9 @@ function startBlock({ scriptPages, hasScript, hasScenes }) {
       h('span', { text: 'Upload a script' }),
       h('input.bdo-file', {
         type: 'file', 'data-action': 'bd-upload', 'aria-label': 'Upload a script file',
-        accept: '.fountain,.fdx,.pdf,.txt,.md,.spmd,.xml,text/plain,application/pdf'
+        /* Parser.ACCEPT (script-import.js) is a lazy chunk this panel does
+           not load; npm run test:accept fails when this falls behind it. */
+        accept: '.fountain,.spmd,.txt,.md,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
     ]));
   }
@@ -171,27 +175,36 @@ export function renderOverview(scenes, status = '') {
   const hasScript = headingsOf(els).length > 0;
   const hasScenes = scenes.length > 0;
 
-  wrap.append(
+  /* The explainer. The learn() disclosure beside the heading says what a
+     breakdown IS; this paragraph says what the two buttons DO, so the
+     two no longer repeat each other. */
+  const how = h('p.bd-sub', {
+    text: 'A breakdown lists everything each scene needs — who is in it, where it happens, '
+      + 'inside or outside, day or night, and how long it runs — so a production can '
+      + 'plan the shoot. Manual breakdown reads your script from the first page to the last, '
+      + 'fills in every scene, character and location, then proposes shots and a story outline by rules. '
+      + 'Breakdown with AI does the same and asks your own model for the shots and the story. '
+      + 'Either way you review each proposal before anything is kept, and it can be run again whenever the script changes.'
+  });
+  const start = startBlock({ scriptPages: pageCount(els), hasScript, hasScenes });
+  const statusLine = h('p.bdo-status', { role: 'status', 'aria-live': 'polite', text: status });
+
+  wrap.append(h('div.bdo-title', {}, [
     h('h2.bd-h2', { text: 'Break down the whole script' }),
-    h('span.bdo-learn', { 'data-learn': 'breakdown' }),
-    h('p.bd-sub', {
-      text: 'A breakdown lists everything each scene needs — who is in it, where it happens, '
-        + 'inside or outside, day or night, and how long it runs — so a production can '
-        + 'plan the shoot. Manual breakdown reads your script from the first page to the last, '
-        + 'fills in every scene, character and location, then proposes shots and a story outline by rules. '
-        + 'Breakdown with AI does the same and asks your own model for the shots and the story. '
-        + 'Either way you review each proposal before anything is kept, and it can be run again whenever the script changes.'
-    }),
-    startBlock({ scriptPages: pageCount(els), hasScript, hasScenes }),
-    h('p.bdo-status', { role: 'status', 'aria-live': 'polite', text: status })
-  );
-  if (!hasScript && !hasScenes) {
-    wrap.append(h('p.bd-none', {
-      text: 'No script yet. Upload a Fountain, Final Draft, PDF or text file and it is read straight into scenes — '
-        + 'or write one on the Write page, even five pages is enough.'
-    }));
+    h('span.bdo-learn', { 'data-learn': 'breakdown' })
+  ]));
+  if (!hasScenes) {
+    /* Empty: the state first, then the one thing to do, then how it works. */
+    if (!hasScript) {
+      wrap.append(h('p.bd-none', {
+        text: 'No script yet. Upload a Fountain, Final Draft, Word, PDF or text file and it is read straight into scenes — '
+          + 'or write one in the Screenplay Writer, even five pages is enough.'
+      }));
+    }
+    wrap.append(start, statusLine, how);
+    return wrap;
   }
-  if (!hasScenes) return wrap;
+  wrap.append(statusLine);
 
   const sum = summarize({ elements: els });
   const nav = h('div.bdo-seg', { role: 'tablist', 'aria-label': 'Breakdown summary' },
@@ -210,12 +223,19 @@ export function renderOverview(scenes, status = '') {
       role: 'tabpanel', id: 'bdo-pane-' + v.id, 'aria-labelledby': 'bdo-tab-' + v.id, hidden: view !== v.id
     }, [builders[v.id](sum)]));
   }
+  /* Already broken down: the result leads, and running it again is a
+     closed disclosure under it rather than the page's first ask. */
+  wrap.append(h('details.bdo-rerun', {}, [
+    h('summary', { text: hasScript ? 'Run the breakdown again' : 'Upload a script to break down' }),
+    how,
+    start
+  ]));
   wrap.append(h('p.bdo-onward', {}, [
     h('span', { text: 'Next: ' }),
-    h('a.btn', { href: 'stripboard.html', text: 'Schedule it on the Stripboard' }),
+    button({ label: 'Schedule it on the Stripboard', href: 'stripboard.html', variant: 'primary', iconAfter: 'arrow_forward' }),
     h('span.bdo-learn', { 'data-learn': 'stripboard' }),
-    h('a.btn', { href: 'reports.html', text: 'Production Reports' }),
-    h('a.btn', { href: 'plan.html', text: 'Plan' })
+    button({ label: 'Production Reports', href: 'reports.html', variant: 'secondary' }),
+    button({ label: 'Plan', href: 'plan.html', variant: 'secondary' })
   ]));
   return wrap;
 }

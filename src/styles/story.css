@@ -70,7 +70,12 @@
   padding-block: var(--s3);
   border-bottom: 1px solid var(--rule);
 }
-.st-bar label { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+/* In the page header the bar is a row of actions, not a ruled band (the
+   rule drew a stray line under the three buttons). */
+.k-page-actions .st-bar { border-bottom: 0; padding-block: 0; }
+/* A field label, not the Import button (a label.k-btn): that one keeps
+   the kit's sentence-case face instead of turning mono capitals. */
+.st-bar label:not(.k-btn) { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
 .st-bar select { min-width: 0; max-width: 100%; }
 .st-import { position: relative; overflow: hidden; }
 .st-import input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
@@ -94,7 +99,9 @@
 .st-pane { min-width: 0; }
 .st-pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
 .st-toggle { display: inline-flex; gap: var(--s1); }
-.st-toggle .btn.is-on { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+/* The kit's quiet segmented look: the selected half is a raised
+   surface, not a second accent fill beside the page's own CTA. */
+.st-toggle .k-btn.is-on { background: var(--surface-active); color: var(--ink); border-color: var(--border-strong); }
 .st-label { display: block; margin: var(--s2) 0; font-size: var(--t-small); color: var(--ink-muted); }
 .st-text { width: 100%; min-width: 0; font: inherit; line-height: var(--lh-body); }
 
@@ -172,7 +179,7 @@
 .st-ai, .st-pitch, .st-vault { padding-block: var(--s5); border-top: 1px solid var(--rule); }
 .st-ai-row { display: flex; gap: var(--s2); margin-top: var(--s3); }
 .st-vault-add { display: grid; gap: var(--s2); max-width: var(--measure); margin-block: var(--s3); }
-.st-vault-add .btn { justify-self: start; }
+.st-vault-add :is(.btn, .k-btn) { justify-self: start; }
 .st-clips { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
 .st-clip {
   padding: var(--s3) var(--s4);
@@ -400,3 +407,20 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 @media (min-width: 1100px) {
   #path-synopsis .st-beats { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--s4)); background-color: var(--surface-rail); box-shadow: var(--shadow-card-rest); }
 }
+
+/* ---- the figures on a phone (impeccable pass, 19 Oct 2026) ----------
+   The stat cards summarise; the work is the board / the table / the step
+   under them. Two columns of six cards put that work below the first
+   screen at 390px, so on a phone the strip goes three across, tight, and
+   the neutral notes step out (a warning note stays: it is the one that
+   asks for something). Hidden, not removed: the words are still there. */
+@media (max-width: 719px) {
+  .st-stats.k-stat-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s1h); }
+  .st-stats .k-stat { padding: var(--s2); gap: var(--s-half); }
+  .st-stats .k-stat-value { font-size: var(--t-lg); }
+  .st-stats .k-stat-unit { display: block; margin-left: 0; }
+  /* ...except on an empty card, where the note is the only thing
+     saying what the dash is waiting for. */
+  .st-stats .k-stat:not(.is-empty) .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
+}
+

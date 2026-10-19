@@ -98,6 +98,7 @@ import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
 import { pageHeader, button, statStrip } from '../ui/kit/index.js';
+import { actionMenu } from '../ui/actionbar.js';
 import Store from '../lib/store.js';
 import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
@@ -172,13 +173,13 @@ function renderModes() {
       h('p.st-mode-body', { text: body }), control]);
   sec.append(card('Sample', 'Start from a sample.',
     'A sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
-    h('div.st-sample-picks', {}, SAMPLES.map((sm) => h('button.btn', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'USE ' + sm.label.toUpperCase() })))));
+    h('div.st-sample-picks', {}, SAMPLES.map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Use ' + sm.label })))));
   sec.append(card('New', 'Start with the idea.',
     'A guided path: the idea, a logline, the people and the world, a scene order, then a step outline. Every step is on this page; start anywhere. The synopsis can be built from the outline when you get there.',
-    h('button.btn.primary', { type: 'button', 'data-st': 'new', text: 'START THE PATH' })));
+    h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'new', text: 'Start the path' })));
   sec.append(card('Skip ahead', 'I already have a synopsis.',
     'Paste it and go straight to tagging it against a structure. Every step of the path stays a click away above.',
-    h('button.btn', { type: 'button', 'data-st': 'have-synopsis', text: 'PASTE A SYNOPSIS' })));
+    h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' })));
   const drop = h('label.st-drop', {}, [
     h('span', { text: 'Drop a .docx, .pdf or .txt here, or choose a file' }),
     h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'data-st-field': 'file' })
@@ -310,13 +311,13 @@ function renderWaysIn() {
       'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file. '
       + 'Or open the sample film to see a finished one.'
     ]),
-    h('button.btn.primary', { type: 'button', 'data-st': 'ways-idea', text: 'START FROM AN IDEA' }),
-    h('button.btn', { type: 'button', 'data-st': 'have-synopsis', text: 'PASTE A SYNOPSIS' }),
-    h('label.btn.st-import', {}, [
-      h('span', { text: 'IMPORT A .DOCX OR .TXT' }),
+    h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'ways-idea', text: 'Start from an idea' }),
+    h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' }),
+    h('label.k-btn.k-btn--secondary.st-import', {}, [
+      h('span', { text: 'Import a .docx or .txt' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis from a .docx, .txt or .pdf file' })
     ]),
-    ...SAMPLES.map((sm) => h('button.btn', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'OPEN ' + sm.label.toUpperCase() }))
+    ...SAMPLES.map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Open ' + sm.label }))
   ]);
 }
 
@@ -448,7 +449,7 @@ function renderIdea(s) {
     renderLoglineWorkshop(s, { getStory: story, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }),
     bpOne('idea', 'step-02', closedBox('Drafts, then the final one: write it three ways (blueprint step 02)')),
     earlierLadder('idea', 'Earlier version of your logline (treatment ladder, rung 1)',
-      [h('button.btn', { type: 'button', 'data-st': 'use-lad1', text: 'USE THIS AS MY LOGLINE' })]));
+      [h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'use-lad1', text: 'Use this as my logline' })]));
   sec.append(lg);
   return sec;
 }
@@ -468,7 +469,7 @@ function earlierLadder(id, title, extra = [], { open = false, boxId = '' } = {})
 function offerBlueprint(field, where, text) {
   return h('div.st-offer', {}, [
     h('p.st-offer-text', {}, [h('span.st-example-k', { text: where + ': ' }), '“' + clip(text, 240) + '”']),
-    h('button.btn', { type: 'button', 'data-st': 'use-bp', 'data-field': field, text: 'USE MY BLUEPRINT ANSWER' })
+    h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'use-bp', 'data-field': field, text: 'Use my blueprint answer' })
   ]);
 }
 
@@ -647,7 +648,7 @@ function renderOutline(s) {
       li.append(ol);
     }
     const acts = h('div.st-ol-actions');
-    if (!locked) acts.append(h('button.btn', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'ADD A STEP' }));
+    if (!locked) acts.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'Add a step' }));
     /* AI suggestions for this beat: the AI Desk's 'story-steps' task.
        The writer ticks the ones to keep and Accept adds them under this
        beat through commit() — the same save as ADD A STEP. */
@@ -676,7 +677,7 @@ function renderOutline(s) {
   } else {
     un.append(h('p.st-muted', { text: 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
     if (o.unplaced.some((u) => u.suggest) && !locked) {
-      un.append(h('button.btn', { type: 'button', 'data-st': 'file-all', text: 'FILE ALL BY POSITION' }));
+      un.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'file-all', text: 'File all by position' }));
     }
     const ol = h('ol.st-ol-steps', { start: String(o.unplaced[0].n) });
     o.unplaced.forEach((st) => {
@@ -684,7 +685,7 @@ function renderOutline(s) {
       const meta = h('p.st-ol-from', { text: st.from ? 'Written under ' + st.from.fw.short + ': ' + st.from.beat.label : 'Written under a beat that no longer exists' });
       row.insertBefore(meta, row.children[1] || null);
       if (st.suggest && !locked) {
-        row.querySelector('.st-ol-ctl').prepend(h('button.btn', { type: 'button', 'data-st': 'step-file', 'data-step': st.id, text: 'FILE UNDER ' + st.suggest.label.toUpperCase() }));
+        row.querySelector('.st-ol-ctl').prepend(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-file', 'data-step': st.id, text: 'File under ' + st.suggest.label }));
       }
       ol.append(row);
     });
@@ -718,11 +719,11 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false) 
   if (locked) return li;
   const ctl = h('div.st-ol-ctl');
   if (!unplaced) {
-    ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-up', 'data-step': st.id, disabled: first, 'aria-label': 'Move step ' + st.n + ' up', text: 'UP' }));
-    ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-down', 'data-step': st.id, disabled: last, 'aria-label': 'Move step ' + st.n + ' down', text: 'DOWN' }));
+    ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-up', 'data-step': st.id, disabled: first, 'aria-label': 'Move step ' + st.n + ' up', text: 'Up' }));
+    ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-down', 'data-step': st.id, disabled: last, 'aria-label': 'Move step ' + st.n + ' down', text: 'Down' }));
   }
   ctl.append(h('select.st-retag', { 'data-st-field': 'step-beat', 'data-step': st.id, 'aria-label': 'Move step ' + st.n + ' to another beat' }, opts));
-  ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-del', 'data-step': st.id, 'aria-label': 'Remove step ' + st.n, text: 'REMOVE' }));
+  ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-del', 'data-step': st.id, 'aria-label': 'Remove step ' + st.n, text: 'Remove' }));
   li.append(ctl);
   return li;
 }
@@ -742,10 +743,10 @@ function renderSynopsisStep(s) {
   const o = Story.outlineByBeat(s, s.framework);
   const row = h('div.st-build');
   if (o.withText) {
-    row.append(h('button.btn' + (s.source.trim() ? '' : '.primary'), { type: 'button', 'data-st': 'build',
-      text: s.source.trim() ? 'REBUILD FROM THE OUTLINE' : 'BUILD MY SYNOPSIS FROM THE OUTLINE' }));
+    row.append(h('button.k-btn' + (s.source.trim() ? '.k-btn--secondary' : '.k-btn--primary'), { type: 'button', 'data-st': 'build',
+      text: s.source.trim() ? 'Rebuild from the outline' : 'Build my synopsis from the outline' }));
   }
-  if (undoBuild) row.append(h('button.btn', { type: 'button', 'data-st': 'build-undo', text: 'UNDO THE BUILD' }));
+  if (undoBuild) row.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'build-undo', text: 'Undo the build' }));
   if (row.children.length) sec.append(row);
   sec.append(h('p#stWhere.st-where', { 'aria-live': 'polite', text: s.source.trim()
     ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
@@ -771,7 +772,7 @@ function renderSource(s) {
   const head = h('div.st-pane-head');
   head.append(h('h3.bd-h2', { text: 'Synopsis' }));
   const toggle = h('div.st-toggle', { role: 'group', 'aria-label': 'Synopsis mode' });
-  [['tag', 'TAG'], ['edit', 'EDIT']].forEach(([id, label]) => toggle.append(h('button.btn' + (mode === id ? '.is-on' : ''), {
+  [['tag', 'Tag'], ['edit', 'Edit']].forEach(([id, label]) => toggle.append(h('button.k-btn.k-btn--secondary.k-btn--sm' + (mode === id ? '.is-on' : ''), {
     type: 'button', 'data-st': 'mode', 'data-mode': id, 'aria-pressed': String(mode === id), text: label })));
   head.append(toggle);
   pane.append(head);
@@ -790,7 +791,7 @@ function renderSource(s) {
   fw.beats.forEach((b) => sel.append(h('option', { value: b.id, text: b.label })));
   if (litBeat && fw.beats.some((b) => b.id === litBeat)) sel.value = litBeat;
   bar.append(sel);
-  bar.append(h('button#stTagBtn.btn.primary', { type: 'button', 'data-st': 'tag', disabled: true, text: 'TAG SELECTION' }));
+  bar.append(h('button#stTagBtn.k-btn.k-btn--primary', { type: 'button', 'data-st': 'tag', disabled: true, text: 'Tag selection' }));
   pane.append(bar);
 
   const src = h('div#stSrc.st-src', { tabindex: '0', 'aria-label': 'Synopsis — select a passage to tag it' });
@@ -843,7 +844,7 @@ function renderMatrix(s) {
         fw.beats.forEach((x) => rs.append(h('option', { value: x.id, text: x.label, selected: !m.inferred && x.id === b.id })));
         if (m.inferred) rs.value = '';
         meta.append(rs);
-        meta.append(h('button.btn.st-x', { type: 'button', 'data-st': 'unmark', 'data-mark': m.id, 'aria-label': 'Remove this highlight', text: 'REMOVE' }));
+        meta.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'unmark', 'data-mark': m.id, 'aria-label': 'Remove this highlight', text: 'Remove' }));
         mi.append(meta);
         if (m.rationale) mi.append(h('p.st-why', { text: m.rationale }));
         ul.append(mi);
@@ -882,13 +883,25 @@ function renderAI(s) {
    One button. What goes in is listed beside it, read from the same
    models the deck reads, so nobody prints a deck to find out what is
    in it. */
+/* The header's Export menu: a kit button (actionMenu's `kit`), and each
+   item carries `data-st`, which this page's click handler reads. An export with nothing in it is left out
+   rather than drawn disabled: a disabled item cannot take focus, so its
+   reason would live only in a tooltip. */
+function exportMenu(s) {
+  const opts = [
+    { label: 'Synopsis', hint: '.txt', st: 'export-txt', can: IO.canExportSynopsis(s) },
+    { label: 'Outline', hint: '.md', st: 'export-md', can: IO.canExportOutline(s) }
+  ].filter((o) => o.can);
+  return actionMenu('Export', opts.map(({ label, hint, st }) => ({ label, hint, data: { st } })), { align: 'right', kit: 'secondary' });
+}
+
 function renderPitch() {
   const sec = h('section#pitch.st-section.st-pitch', { 'aria-label': 'Pitch deck' });
   sec.append(h('h2.bd-h2', { text: 'Pitch deck' }));
   sec.append(h('p.bd-sub', { text: 'A landscape PDF compiled from this project: the logline, this synopsis, the tagged beats, the characters, key scenes and the numbers. A slide with nothing to say is left out.' }));
   const have = pitchContents();
   sec.append(h('p.st-muted', { text: have.length ? 'In the deck: ' + have.join(' · ') + '.' : 'Nothing to pitch yet — add a synopsis or a logline first.' }));
-  sec.append(h('button.btn.primary', { type: 'button', 'data-st': 'pitch', disabled: !have.length, text: 'EXPORT PITCH DECK (PDF)' }));
+  sec.append(h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'pitch', disabled: !have.length, text: 'Export pitch deck (PDF)' }));
   return sec;
 }
 
@@ -978,10 +991,13 @@ function draw() {
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis file' })
     ]));
   }
-  bar.append(button({ label: 'Synopsis .txt', disabled: !IO.canExportSynopsis(s), attrs: { 'data-st': 'export-txt' } }));
-  bar.append(button({ label: 'Outline .md', disabled: !IO.canExportOutline(s), attrs: { 'data-st': 'export-md' } }));
+  /* The two exports are one named menu, so the row is three controls
+     that wrap on a phone instead of five that scroll off its edge (a
+     menu inside a sideways-scrolling row is clipped to nothing). */
+  if (IO.canExportSynopsis(s) || IO.canExportOutline(s)) bar.append(exportMenu(s));   // nothing to export: no menu of two dead rows
+  /* Destructive, so last and quiet: never weighted like the exports. */
   if (s.source.trim() || s.marks.length) {
-    bar.append(button({ label: 'Start over', variant: 'danger', attrs: { 'data-st': 'clear' } }));
+    bar.append(button({ label: 'Start over', variant: 'danger', size: 'sm', class: 'st-start-over', attrs: { 'data-st': 'clear' } }));
   }
   main.insertBefore(pageHeader({
     class: 'bd-head',
@@ -1100,7 +1116,7 @@ function applyView() {
     if (p.id !== shown || !pathIds.includes(p.id)) return;
     const f = stepFooter(footPanels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + footPanels.length });
     if (f && p.id === pathIds[pathIds.length - 1]) {
-      f.append(button({ label: 'Next stage: the Screenplay Writer →', variant: 'primary', href: 'screenplay.html', class: 'st-next-stage' }));
+      f.append(button({ label: 'Next stage: the Screenplay Writer', iconAfter: 'arrow_forward', variant: 'primary', href: 'screenplay.html', class: 'st-next-stage' }));
     }
     if (f) p.el.append(f);
   });

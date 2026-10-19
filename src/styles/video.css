@@ -99,6 +99,12 @@
    real button. */
 .vid-help-more { display: none; }
 @media (max-width: 1099px) {
-  .sh-bar .vid-help-btn { display: none; }
+  /* `:root` is there for specificity, not scope: kit.css's phone tap
+     floor (`:root :is(…, .site-foot a, …, .btn) { display: inline-flex }`)
+     scores (0,2,1) and used to beat a plain `.sh-bar .vid-help-btn`, so
+     the button appeared in the phone band as soon as video-help.js
+     mounted it on the first keydown, tap or after 8s — and pushed the
+     band 13px past a 390px screen. */
+  :root .sh-bar .vid-help-btn { display: none; }
   .sh-bar .vid-help-more { display: inline-block; }
 }

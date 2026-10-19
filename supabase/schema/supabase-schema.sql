@@ -9239,14 +9239,15 @@ notify pgrst, 'reload schema';
 -- The owner's decision, 11 Oct 2026: three plans, each including
 -- everything below it, and the matrix REPLACES the live features map
 -- (the console can fine-tune it afterwards):
---   Basic: New projects, Screenplay import, PDF exports, Beats & Pacing,
---       Screenplay Writer, Drafts, Import Screenplay, Scene List,
---       Title Page.
+--   Basic: New projects, Screenplay import, PDF exports, Story,
+--       Idea Vault, Screenplay Writer, Drafts, Import Screenplay,
+--       Scene List, Title Page.
 --   Intermediate adds: Google Drive backup, Scene Breakdown, Elements,
---       Shot List, Storyboard, Budget, Cast & Crew, Stripboard,
---       Shoot Calendar, Locations, Day Out of Days, Sides,
---       Production Reports, Chrome extension.
---   Pro adds: AI tools (your own key), Remove branding, Call Sheets.
+--       Screen Time, Auto-Tag, Cast Matrix, Shot List, Storyboard,
+--       Budget, Cast & Crew, Stripboard, Shoot Calendar, Locations,
+--       Day Out of Days, Sides, Production Reports, Chrome extension.
+--   Pro adds: AI tools (your own key), Remove branding, Shoot Day,
+--       Call Sheets, Edit Log, Deliverables.
 --
 -- WHAT IT WRITES. plans.features for each paid plan, replaced whole —
 -- every module id in navigation.json and every capability, explicitly
@@ -9266,15 +9267,15 @@ notify pgrst, 'reload schema';
 -- IDEMPOTENT: plain updates by id; a re-run writes the same values.
 -- ============================================================
 
-update public.plans set features = '{"new_projects":true,"script_import":true,"exports":true,"drive_backup":false,"ai_tools":false,"remove_branding":false,"case-studies":false,"dissection":false,"glossary":false,"story-beats":true,"idea-vault":false,"pitch-deck":false,"screenplay":true,"revisions":true,"import-script":true,"script-breakdown":false,"breakdowns":false,"elements":false,"scene-list":true,"screen-time":false,"docs":true,"auto-tag":false,"cast-matrix":false,"shot-list":false,"storyboard":false,"lookbook":false,"media":false,"budget":false,"contacts":false,"stripboard":false,"songs":false,"calendar":false,"locations":false,"dood":false,"sides":false,"reports":false,"shoot-day":false,"call-sheets":false,"edit-log":false,"deliverables":false}'::jsonb
+update public.plans set features = '{"new_projects":true,"script_import":true,"exports":true,"drive_backup":false,"ai_tools":false,"remove_branding":false,"case-studies":false,"dissection":false,"glossary":false,"story-beats":true,"idea-vault":true,"pitch-deck":false,"screenplay":true,"revisions":true,"import-script":true,"script-breakdown":false,"breakdowns":false,"elements":false,"scene-list":true,"screen-time":false,"docs":true,"auto-tag":false,"cast-matrix":false,"shot-list":false,"storyboard":false,"lookbook":false,"media":false,"budget":false,"contacts":false,"stripboard":false,"songs":false,"calendar":false,"locations":false,"dood":false,"sides":false,"reports":false,"shoot-day":false,"call-sheets":false,"edit-log":false,"deliverables":false}'::jsonb
   where id = 'starter';
 update public.plans set limits = coalesce(limits, '{}'::jsonb) || '{"extension":false}'::jsonb
   where id = 'starter';
-update public.plans set features = '{"new_projects":true,"script_import":true,"exports":true,"drive_backup":true,"ai_tools":false,"remove_branding":false,"case-studies":false,"dissection":false,"glossary":false,"story-beats":true,"idea-vault":false,"pitch-deck":false,"screenplay":true,"revisions":true,"import-script":true,"script-breakdown":false,"breakdowns":true,"elements":true,"scene-list":true,"screen-time":false,"docs":true,"auto-tag":false,"cast-matrix":false,"shot-list":true,"storyboard":true,"lookbook":false,"media":false,"budget":true,"contacts":true,"stripboard":true,"songs":false,"calendar":true,"locations":true,"dood":true,"sides":true,"reports":true,"shoot-day":false,"call-sheets":false,"edit-log":false,"deliverables":false}'::jsonb
+update public.plans set features = '{"new_projects":true,"script_import":true,"exports":true,"drive_backup":true,"ai_tools":false,"remove_branding":false,"case-studies":false,"dissection":false,"glossary":false,"story-beats":true,"idea-vault":true,"pitch-deck":false,"screenplay":true,"revisions":true,"import-script":true,"script-breakdown":false,"breakdowns":true,"elements":true,"scene-list":true,"screen-time":true,"docs":true,"auto-tag":true,"cast-matrix":true,"shot-list":true,"storyboard":true,"lookbook":false,"media":false,"budget":true,"contacts":true,"stripboard":true,"songs":false,"calendar":true,"locations":true,"dood":true,"sides":true,"reports":true,"shoot-day":false,"call-sheets":false,"edit-log":false,"deliverables":false}'::jsonb
   where id = 'indie';
 update public.plans set limits = coalesce(limits, '{}'::jsonb) || '{"extension":true}'::jsonb
   where id = 'indie';
-update public.plans set features = '{"new_projects":true,"script_import":true,"exports":true,"drive_backup":true,"ai_tools":true,"remove_branding":true,"case-studies":false,"dissection":false,"glossary":false,"story-beats":true,"idea-vault":false,"pitch-deck":false,"screenplay":true,"revisions":true,"import-script":true,"script-breakdown":false,"breakdowns":true,"elements":true,"scene-list":true,"screen-time":false,"docs":true,"auto-tag":false,"cast-matrix":false,"shot-list":true,"storyboard":true,"lookbook":false,"media":false,"budget":true,"contacts":true,"stripboard":true,"songs":false,"calendar":true,"locations":true,"dood":true,"sides":true,"reports":true,"shoot-day":false,"call-sheets":true,"edit-log":false,"deliverables":false}'::jsonb
+update public.plans set features = '{"new_projects":true,"script_import":true,"exports":true,"drive_backup":true,"ai_tools":true,"remove_branding":true,"case-studies":false,"dissection":false,"glossary":false,"story-beats":true,"idea-vault":true,"pitch-deck":false,"screenplay":true,"revisions":true,"import-script":true,"script-breakdown":false,"breakdowns":true,"elements":true,"scene-list":true,"screen-time":true,"docs":true,"auto-tag":true,"cast-matrix":true,"shot-list":true,"storyboard":true,"lookbook":false,"media":false,"budget":true,"contacts":true,"stripboard":true,"songs":false,"calendar":true,"locations":true,"dood":true,"sides":true,"reports":true,"shoot-day":true,"call-sheets":true,"edit-log":true,"deliverables":true}'::jsonb
   where id = 'pro';
 update public.plans set limits = coalesce(limits, '{}'::jsonb) || '{"extension":true}'::jsonb
   where id = 'pro';

@@ -247,6 +247,20 @@ try {
     await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
     await page.waitForFunction(() => /cancelled/i.test((document.querySelector('.pl-status') || {}).textContent || ''), null, { timeout: 10000 }).then(() => ok(true, 'closing Checkout says the payment was cancelled'), () => ok(false, 'closing Checkout says the payment was cancelled'));
     ok(F.db.payments.filter((x) => x.plan_id === 'pro').every((x) => x.status === 'created'), 'a dismissed order stays created, never paid');
+
+    console.log('(d2) authorized is not captured (§51)');
+    RZP.mode = 'pay'; RZP.capture = 'held';
+    await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => /being confirmed/i.test((document.querySelector('.pl-status') || {}).textContent || ''), null, { timeout: 10000 })
+      .then(() => ok(true, 'a payment Razorpay has authorized but not captured says it is still being confirmed'), () => ok(false, 'a payment Razorpay has authorized but not captured says it is still being confirmed'));
+    ok(F.db.calls.includes('fn:rzp-verify pending') && !F.db.payments.some((x) => x.plan_id === 'pro' && x.status === 'paid'), 'and a valid signature alone activated nothing');
+    ok(F.db.accounts.find((a) => a.owner_id === USERS['tok-amy'].id).plan === 'indie', 'Amy is still on Indie');
+    RZP.capture = 'authorized';
+    await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'pro', null, { timeout: 15000 })
+      .then(() => ok(true, 'a manually-captured account: rzp-verify captures the payment and Pro activates'), () => ok(false, 'a manually-captured account: rzp-verify captures the payment and Pro activates'));
+    ok(F.db.calls.some((c) => /^fn:rzp-verify capture \d+$/.test(c)), 'the capture was for the recorded amount');
+    RZP.capture = 'captured';
     allErrors.push(...errors); await ctx.close();
   }
 
@@ -1313,12 +1327,13 @@ try {
     ok(await locked('shoot.html'), 'Basic: shoot.html (Shoot Day) is locked');
     ok(await unlocked('screenplay.html'), 'Basic: screenplay.html (Screenplay Writer) opens');
     ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts) opens');
-    ok(await unlocked('story.html'), 'Basic: story.html (Beats & Pacing) opens');
-    /* Screen Time and Cast Matrix are off for every plan, so what is left on
-       reports.html (Production Reports, Sides) is Intermediate: the page locks
-       for Basic, and the two off sections are kept hidden, never sold. */
-    ok(await locked('reports.html'), 'Basic: reports.html is locked — only the Intermediate sections are left on it');
-    ok(!!(await T.page.$('#screentime[data-tab-off]')) && !!(await T.page.$('#cast-matrix[data-tab-off]')), 'and Screen Time and Cast Matrix are hidden (off for every plan), not offered');
+    ok(await unlocked('story.html'), 'Basic: story.html (Story) opens');
+    /* Every section of reports.html (Production Reports, Sides, and since
+       19 Oct 2026 Screen Time and Cast Matrix again) is Intermediate: the page
+       locks for Basic, and the two returned sections are on a plan, so they
+       are not hidden as off for everybody. */
+    ok(await locked('reports.html'), 'Basic: reports.html is locked — every section on it is Intermediate');
+    ok(!(await T.page.$('#screentime[data-tab-off]')) && !(await T.page.$('#cast-matrix[data-tab-off]')), 'and Screen Time and Cast Matrix are sold on a plan again, not hidden as off for everybody');
     ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Screenplay Analysis, Scene List)');
     await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
     ok(!(await T.page.$('#scenes[data-tab-lock]')) && !(await T.page.$('#breakdown[data-tab-lock]')), 'and the Scene List (with the cards nested in it) is not');
@@ -1329,7 +1344,7 @@ try {
     { const t = await T.page.textContent('#plan .pl-card[data-plan="indie"] .pl-adds').catch(() => '');
       ok(/Everything in Basic, plus/.test(t) && /Budget/.test(t) && !/Shoot Day/.test(t), 'the Intermediate card lists what it adds, from the rows: ' + t.replace(/\s+/g, ' ').slice(0, 80)); }
     { const t = await T.page.textContent('#plan .pl-card[data-plan="pro"] .pl-adds').catch(() => '');
-      ok(/Everything in Intermediate, plus/.test(t) && /Call sheets/i.test(t) && !/Shoot Day/.test(t) && !/Deliverables/.test(t), 'the Pro card adds Call sheets and no longer lists Shoot Day or Deliverables'); }
+      ok(/Everything in Intermediate, plus/.test(t) && /Call sheets/i.test(t) && /Shoot Day/.test(t) && /Deliverables/.test(t), 'the Pro card adds Call sheets, Shoot Day and Deliverables'); }
 
     acc.plan = 'indie';
     ok(await unlocked('budget.html'), 'Intermediate: budget.html opens');
@@ -1339,12 +1354,8 @@ try {
 
     acc.plan = 'pro';
     for (const f of ['budget.html', 'contacts.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
-    /* Shoot Day, Edit Log and Deliverables are off for every plan, Pro included:
-       the page says so, with no plan to buy. */
-    for (const f of ['shoot.html', 'edit.html', 'deliverables.html']) {
-      await open(f);
-      ok(await T.page.waitForSelector('.pg-lock[data-gone]', { timeout: 8000 }).then(() => true, () => false), 'Pro: ' + f + ' says not available (off for every plan)');
-    }
+    /* Shoot Day, Edit Log and Deliverables came back on Pro (19 Oct 2026). */
+    for (const f of ['shoot.html', 'edit.html', 'deliverables.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
     ok(!(await T.page.$('[data-tab-lock]')), 'Pro: no section is locked anywhere on contacts.html');
     allErrors.push(...T.errors); await T.ctx.close();
   }

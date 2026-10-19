@@ -47,13 +47,21 @@ import { loadStory } from '../lib/story.js';
 import { listCallSheets } from '../lib/contacts.js';
 import { unscheduledScenes } from '../lib/locations.js';
 import data from '../data/tour.json';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import '../styles/tour.css';
 
 /* The tour's place (`fms_tour_v1`) is read and written by
    src/lib/tour-state.js, which owns the key; re-exported for importers. */
 import { TOUR_KEY, readTourState, writeTourState, clampStep as clampStepOf } from '../lib/tour-state.js';
 export { TOUR_KEY };
-const STEPS = data.steps;
+/* A step or checklist item naming a `module` is dropped while that module
+   is switched off for everybody — the tour must not walk a reader to a
+   "Not available" card. The switched-off ones are the LAST steps, so the
+   stored step index of every step that stays is unchanged. */
+const live = (x) => !(x && x.module) || !safeOff(x.module);
+function safeOff(id) { try { return isDisabledEverywhere(id); } catch (e) { return false; } }
+const STEPS = data.steps.filter(live);
+const CHECK_ITEMS = data.checklist.items.filter(live);
 
 /* ---- state: read freely, written only by a user action ------------ */
 export function readTour() { return readTourState(STEPS.length); }
@@ -318,7 +326,7 @@ function renderChecklist() {
   const t = readTour();
   if (t.hideList) { if (listHost) { listHost.remove(); listHost = null; } return; }
   const facts = firstWeekFacts();
-  const items = data.checklist.items;
+  const items = CHECK_ITEMS;
   const onSample = !!facts.onSample;
   const done = items.filter((it) => facts[it.id]).length;
 

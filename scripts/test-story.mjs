@@ -475,5 +475,12 @@ ok(/password-protected/.test((await extractDocxText(ole.buffer)).fatal), 'an enc
   eq(JSON.stringify(st), before, 'docStarter reads and never writes');
 }
 
+// A clipping's source is a link only when it is http(s) (security follow-up, §51).
+eq(S.clipSourceHost('https://example.com/a?b=1'), 'example.com', 'clipSourceHost: an https source shows its host');
+eq(S.clipSourceHost('http://news.example.org/x'), 'news.example.org', 'clipSourceHost: an http source shows its host');
+eq(S.clipSourceHost('javascript://example.com/%0aalert(1)'), '', 'clipSourceHost: a javascript: URL with a host is not a link');
+eq(S.clipSourceHost('data:text/html,<b>x</b>'), '', 'clipSourceHost: a data: URL is not a link');
+eq(S.clipSourceHost(''), '', 'clipSourceHost: no URL, no link');
+
 console.log(`${fail ? '✗' : '✓'} story model + docx: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

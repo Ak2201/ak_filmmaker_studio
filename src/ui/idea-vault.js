@@ -32,8 +32,7 @@ export function renderVault(s) {
     const li = h('li.st-clip');
     li.append(h('p.st-clip-text', { text: it.snippet }));
     const meta = h('div.st-clip-meta');
-    let host = '';
-    try { host = it.url ? new URL(it.url).hostname : ''; } catch (e) { host = ''; }
+    const host = Story.clipSourceHost(it.url);   // http(s) only
     if (host) meta.append(h('a.st-clip-src', { href: it.url, target: '_blank', rel: 'noopener noreferrer', text: host }));
     meta.append(badge({ label: dayLabel(it.at), tag: true }));
     const ps = h('select', { 'data-st-field': 'clip-beat', 'data-clip': it.id, 'aria-label': 'Pin this clipping to a beat' });

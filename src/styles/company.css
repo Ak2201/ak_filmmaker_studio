@@ -1,0 +1,98 @@
+/* ============================================================
+   CONTACT.HTML AND ABOUT.HTML — the company pages
+   ------------------------------------------------------------
+   Loaded by src/pages/company.js on top of marketing.css, which owns the
+   header, the footer, the sign-up modal, the bands, the type, the cards
+   and the buttons. This sheet adds only the hero's height, the contact
+   form, its aside and About's principles list. Same rules as
+   marketing.css:
+     - no colour literal: every colour is a token or a color-mix() of tokens
+     - shapes are --sk-radius / --sk-field-radius / --radius-pill
+     - every translate is multiplied by --motion
+     - a fill is not a text colour: danger as TEXT is --danger-lift,
+       --danger is only the border
+   ============================================================ */
+
+/* ---- the hero: short, the brand's glow, the call to action -------- */
+.co-hero {
+  --hue: var(--accent-primary);
+  min-height: 0; align-items: flex-end;
+  padding-top: calc(var(--mk-top-h) + var(--s7)); padding-bottom: var(--s7);
+}
+.co-hero .mk-h1 { max-width: 22ch; font-size: clamp(2rem, 5.4vw, 3.5rem); }
+.co-hero .mk-sub { max-width: 56ch; }
+
+/* ---- contact: the form beside the plain address ------------------- */
+.co-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(var(--s6), 6vw, var(--s9)); align-items: start; }
+.co-form { display: grid; gap: var(--s5); max-width: 640px; }
+.co-field { display: grid; gap: var(--s2); }
+.co-label { font-weight: 600; color: var(--ink); font-size: var(--t-base); }
+.co-hint { margin: 0; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); max-width: 60ch; }
+.co-input {
+  width: 100%; box-sizing: border-box; min-height: 48px; padding: var(--s3) var(--s4);
+  font: inherit; font-size: var(--t-base); color: var(--ink);
+  background: var(--surface-card); border: 1px solid var(--border-strong);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.co-input:hover { border-color: var(--border-grip, var(--border-strong)); }
+.co-input:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-color: var(--accent-primary); }
+.co-area { min-height: 168px; resize: vertical; line-height: 1.55; }
+select.co-input { appearance: auto; }
+.co-input[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.co-err { margin: 0; display: flex; align-items: center; gap: var(--s2); font-size: var(--t-small); font-weight: 600; color: var(--danger-lift); }
+.co-summary {
+  margin: 0; padding: var(--s3) var(--s4); font-weight: 600; color: var(--ink);
+  background: var(--danger-wash); border: 1px solid var(--danger);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.co-summary:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.co-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.co-actions .mk-btn { border: 0; cursor: pointer; font: inherit; font-weight: 600; }
+.co-actions .mk-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.co-privacy { margin: 0; display: flex; align-items: flex-start; gap: var(--s2); font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); max-width: 60ch; }
+.co-privacy .sym { font-size: 18px; color: var(--accent-primary); flex: none; margin-top: 1px; }
+.co-status { margin: 0; font-size: var(--t-small); color: var(--ink-body); min-height: 1.5em; }
+
+.co-aside {
+  display: grid; gap: var(--s5); padding: var(--s6);
+  background: var(--surface-card); border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius-lg)); box-shadow: var(--shadow-card-rest);
+}
+.co-mail { margin: 0; display: grid; gap: var(--s1); }
+.co-mail-l { font-size: var(--t-small); color: var(--ink-muted); }
+.co-mail-v { font-family: var(--f-mono, monospace); font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; user-select: all; }
+.co-note { display: grid; gap: var(--s2); padding-top: var(--s5); border-top: 1px solid var(--border-default); }
+.co-note-h { margin: 0; font-family: var(--sk-display, var(--f-display)); font-size: var(--t-base); font-weight: 600; color: var(--ink); }
+.co-note p { margin: 0; font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); }
+.co-note .mk-link { margin-top: var(--s1); }
+
+/* ---- about ---------------------------------------------------------- */
+.co-split { align-items: start; }
+.co-who {
+  padding: var(--s6); background: var(--surface-card); border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius-lg));
+}
+.co-who .mk-body { margin: 0; }
+.co-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); }
+.co-principles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4) var(--s6); }
+.co-principles li {
+  display: grid; grid-template-columns: 40px 1fr; gap: var(--s3); align-items: start;
+  padding: var(--s5); background: var(--surface-card); border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius-lg));
+}
+.co-principles .sym { font-size: 26px; color: var(--accent-primary); }
+.co-principles b { display: block; margin-bottom: var(--s1); color: var(--ink); font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); font-weight: 600; }
+.co-principles span:not(.sym) { font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); }
+.co-sign { margin: var(--s7) 0 0; font-family: var(--f-editorial, serif); font-style: italic; font-size: var(--t-xl); color: var(--ink); }
+
+@media (max-width: 900px) {
+  .co-grid, .co-cards, .co-principles { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .co-aside, .co-who { padding: var(--s5); }
+  .co-actions .mk-btn { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .co-input { transition: none; }
+}

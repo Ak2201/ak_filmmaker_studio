@@ -15,10 +15,22 @@
    - Distances live in motion-app.css, multiplied by --motion.
    ============================================================ */
 import { lowEndDevice } from './motion-pref.js';
-import { prefersReducedMotion, countUp, spotlight, magnetic } from '../lib/motion.js';
+import { prefersReducedMotion } from '../lib/motion.js';
 
 const doc = typeof document !== 'undefined' ? document : null;
 const WANT = !!doc && !prefersReducedMotion() && !lowEndDevice() && !navigator.webdriver && 'IntersectionObserver' in window;
+/* ENTRANCES ONLY ON ARRIVAL (19 Oct 2026). This is a multi-page app, so
+   every click between two studio pages is a page load, and replaying the
+   page fade and the card rise on each of them is motion seen tens of
+   times a day. They play when the visitor came from OUTSIDE the studio
+   (a bookmark, a link, a fresh tab) and not on a same-origin hop. Read
+   from document.referrer only; no storage. `ma-on` (exits, modal
+   transitions, the sheet) is unaffected. */
+const sameOrigin = () => {
+  try { return !!document.referrer && new URL(document.referrer).origin === location.origin; }
+  catch (_) { return false; }
+};
+const ENTER = WANT && !sameOrigin();
 const T0 = Date.now();
 const WINDOW = 4000;
 const BACKSTOP = 8000;
@@ -31,11 +43,12 @@ const BACKSTOP = 8000;
    landing page, signed out. Nothing caught it because WANT above
    switches this whole module off under `navigator.webdriver`. */
 const HEADS = 'main h2';
-const CARDS = '.door, .start-card, .tool-card, .project-card, .film-card, .director-card, .rule-card, .fest-card, .job-card, .db-tile, .db-card, .db-proj, .lx-mod, .ct-person';
+/* .lx-mod is not here: launcher.css's own lx-arrive already brings the
+   launcher's tiles in, and two systems on one element meant one won by
+   order. */
+const CARDS = '.door, .start-card, .tool-card, .project-card, .film-card, .director-card, .rule-card, .fest-card, .job-card, .db-tile, .db-card, .db-proj, .ct-person';
 const ROWS = '.bd-scene, .sb-shot';
-const NUMS = '.hero-stat .num, .bd-stat strong, .db-num, .db-big-num, .rp-stat strong, .cx-stats .bd-stat strong';
 const FILLS = '.progress-fill-bar, .db-bar-fill, .rp-meter-fill, .st-bar-fill, .tw-fill, .js-fill, .bb-bar-fill, .fm-bar-fill';
-const MAGNETS = 'main .btn.primary.db-big, main .hero .btn.primary';
 
 const seen = new WeakSet();
 const kinds = new WeakMap();
@@ -43,6 +56,7 @@ const pending = new Set();
 let io = null;
 
 const fresh = () => Date.now() - T0 < WINDOW;
+const entering = () => ENTER && fresh();
 const inView = (n) => { const r = n.getBoundingClientRect(); return r.width + r.height > 0 && r.top < innerHeight && r.bottom > 0; };
 
 function show(n) {
@@ -93,13 +107,13 @@ function markReplacedMain(records) {
 }
 
 function scan(root) {
-  const isNew = fresh();
+  const isNew = entering();
   const counts = new Map();
   const stagger = (n) => {
     const p = n.parentElement;
     const c = counts.get(p) || 0;
     counts.set(p, c + 1);
-    n.style.setProperty('--i', Math.min(c, 8));
+    n.style.setProperty('--i', Math.min(c, 5));   /* 30ms x 5: the last card starts by 150ms */
   };
 
   pick(root, HEADS).forEach((h) => {
@@ -125,11 +139,11 @@ function scan(root) {
     seen.add(n);
     const row = n.matches(ROWS);
     n.classList.add(row ? 'ma-row' : 'ma-card');
-    if (!row) {
-      const cs = getComputedStyle(n);
-      if (cs.position === 'static') n.classList.add('ma-rel');
-      if (getComputedStyle(n, '::after').content === 'none') spotlight(n);
-    }
+    /* No pointer spotlight: it wrote --mx/--my onto the card on every
+       pointermove, which restyles every child, and decorative tracking
+       on a working surface is noise. (lib/motion.js keeps it for the
+       landing page.) */
+    if (!row && getComputedStyle(n).position === 'static') n.classList.add('ma-rel');
     if (isNew && replay(n)) { stagger(n); watch(n, 'card', 'ma-veil'); }
   });
 
@@ -139,33 +153,17 @@ function scan(root) {
     if (isNew && replay(n)) watch(n, 'fill', 'ma-fill-veil');
   });
 
-  pick(root, NUMS).forEach((n) => {
-    if (seen.has(n)) return;
-    seen.add(n);
-    if (isNew && replay(n) && !n.closest('input, textarea, [contenteditable]')) countUp(n);
-  });
-
-  let m = 0;
-  pick(root, MAGNETS).forEach((n) => {
-    if (seen.has(n) || m++ > 5) return;
-    seen.add(n);
-    magnetic(n, { strength: 5 });
-  });
+  /* No count-up and no magnetic buttons on app pages: a figure on a
+     dashboard is data being read, and a button that drifts toward the
+     pointer is a target that moves. */
 }
 
 /* The sliding tab underline (span.tabs-ink) is gone: the selected row's
    own fill is the marker, and in the side menu `bottom: 0` put the line
    under the last row. See tabs.css. */
 
-/* ---- the shell band slides down once ----------------------------- */
-let bandDone = false;
-function band() {
-  if (bandDone) return;
-  const b = document.querySelector('.sh-bar');
-  if (!b) return;
-  bandDone = true;
-  b.classList.add('ma-band');
-}
+/* The shell band no longer slides in: persistent navigation does not
+   move on every page load. */
 
 /* ---- small, event-driven touches --------------------------------- */
 function wireEvents() {
@@ -177,17 +175,8 @@ function wireEvents() {
     li.classList.add('ma-tick');
     setTimeout(() => li.classList.remove('ma-tick'), 500);
   }, true);
-  /* The palette re-renders its rows on every keystroke, so its stagger
-     is the OPENING only: a class on <html> for a moment. */
-  let wasOpen = false;
-  new MutationObserver(() => {
-    const open = document.body.classList.contains('pal-open');
-    if (open && !wasOpen) {
-      document.documentElement.classList.add('ma-pal-fresh');
-      setTimeout(() => document.documentElement.classList.remove('ma-pal-fresh'), 700);
-    }
-    wasOpen = open;
-  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  /* The command palette is deliberately NOT animated (keyboard, 100+
+     times a day); its row stagger and observer are gone. */
 }
 
 /* Infinite animations only run while their element is on screen. */
@@ -216,7 +205,6 @@ function boot() {
     else for (const n of added) if (n.isConnected) scan(n);
     if (fresh()) pauseOffscreen(document.body); else for (const n of added) if (n.isConnected && n.querySelectorAll) pauseOffscreen(n);
     added = new Set();
-    band();
   };
   tick();
   new MutationObserver((records) => {
@@ -238,6 +226,7 @@ function boot() {
 
 if (WANT) {
   doc.documentElement.classList.add('ma-on');
+  if (ENTER) doc.documentElement.classList.add('ma-enter');
   const go = () => boot();
   if (doc.body) go(); else doc.addEventListener('DOMContentLoaded', go, { once: true });
 }

@@ -94,20 +94,17 @@ const SCOPE_BY_KEY = {
   'fms_songs_v1':               'songs',
   'fms_story_v1':               'story',
   'fms_idea_vault_v1':          'idea_vault',
-  // Post-Production. The scope names are in schema section 17, which
-  // has NOT run against the database at the time of writing — until it
-  // does, Postgres refuses these two upserts and the rest still sync.
+  // Post-Production. The scope names are in schema section 17 (live).
+  // Before a section like this has run, Postgres refuses its upserts
+  // (23514) and the rest still sync.
   'fms_edit_v1':                'edit',
   'fms_deliverables_v1':        'deliverables',
-  // Schema section 24, which has NOT run against the database at the
-  // time of writing — until it does, Postgres refuses these two upserts
-  // and the rest still sync (the same window section 17 had).
+  // Schema section 24 (live since 8 Oct 2026).
   'fms_characters_v1':          'characters',
   'fms_costs_v1':               'costs',
-  // Schema section 37, which has NOT run against the database at the
-  // time of writing — until it does, Postgres refuses this upsert and
-  // the rest still sync (the same window sections 17 and 24 had). Its
-  // value is a per-day history, so it is MERGED, not replaced: see
+  // Schema section 37 (live since 12 Oct 2026; the client shipped
+  // first and every save answered 23514 until it ran — run the section
+  // BEFORE the client names a new scope). Its value is a per-day history, so it is MERGED, not replaced: see
   // MERGE_BY_SCOPE below.
   'fms_write_goals_v1':         'write_goals'
 };

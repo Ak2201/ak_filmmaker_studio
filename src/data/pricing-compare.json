@@ -5,7 +5,6 @@
     "description": "Three plans, each bought once in Indian rupees with no subscription and no renewal. Compare what Basic, Intermediate and Pro include, feature by feature."
   },
   "hero": {
-    "eyebrow": "Pricing",
     "h1": "Pay once. Make the film.",
     "sub": "Three plans, and each one includes everything in the plan below it. Every plan is a single payment in Indian rupees: no subscription, no renewal, nothing to cancel. Nothing in a plan is sold as an add-on."
   },
@@ -30,7 +29,6 @@
     "noteHtml": "One-time list prices in Indian rupees, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first."
   },
   "offer": {
-    "eyebrow": "Launch price",
     "h": "The price goes up, and the date is already set.",
     "line": "Today's figure is the launch price. It rises on a date held by the server, or once the launch seats are taken, whichever comes first.",
     "fine": "Nothing here resets. The rise is scheduled on the server and fires by itself, so reloading this page shows you less time, never more."

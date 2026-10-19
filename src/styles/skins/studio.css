@@ -48,11 +48,12 @@
 
   /* ---- interaction ------------------------------------------
      A hover brightens the hairline (done in the rules) and lifts by
-     nothing; the premium shadow tokens carry the response. Press is a
-     barely-there scale so a click still registers. */
+     nothing; the premium shadow tokens carry the response. Press is
+     0.97 over --speed-tap (120ms): the ONE press scale in the studio,
+     read by modules.css, kit.css and chrome.css, always x --motion. */
   --sk-card-shadow-hover: var(--shadow-card-hover, none);
   --sk-lift:            0px;
-  --sk-press:           0.985;
+  --sk-press:           0.97;
   --sk-focus-w:         2px;
 
   /* ---- rules: colour only where colour is data ---------------

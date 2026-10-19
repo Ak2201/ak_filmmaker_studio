@@ -4,10 +4,10 @@
     "writing": ["src/data/navigation.json", "src/ui/script-editor/keys.js", "src/ui/script-editor/inference.js", "src/lib/script.js", "src/lib/screenplay-export.js", "src/lib/script-import.js"],
     "story": ["src/data/frameworks.json", "src/lib/story.js", "src/data/story-paths.json", "src/pages/story.js"],
     "storyboard": ["src/lib/shots.js", "src/pages/visualize.js", "src/data/navigation.json"],
-    "breakdown": ["src/data/navigation.json", "src/lib/screenplay-analysis.js", "src/data/element-lexicon.json", "src/lib/breakdown-run.js"],
+    "breakdown": ["src/data/navigation.json", "src/lib/breakdown-run.js", "src/lib/screenplay-analysis.js"],
     "catalog": ["src/data/navigation.json", "src/pages/breakdown.js"],
     "shot-list": ["src/lib/shots.js", "src/lib/shotlist-export.js", "src/pages/visualize.js"],
-    "schedule": ["src/lib/stripboard-model.js", "src/pages/stripboard.js", "src/lib/songs.js", "src/data/navigation.json"],
+    "schedule": ["src/lib/stripboard-model.js", "src/pages/stripboard.js", "src/data/navigation.json"],
     "budget": ["src/pages/budget.js", "src/lib/costs.js", "src/data/rates.chennai.2024.json", "src/data/rates.chennai.checks.json", "src/data/wages.fefsi.json"],
     "call-sheets": ["src/pages/contacts.js", "src/lib/callsheet-text.js", "src/lib/sun.js", "src/lib/contacts-model.js"],
     "cast-crew": ["src/lib/contacts.js", "src/lib/contacts-model.js", "src/pages/contacts.js"],
@@ -116,7 +116,7 @@
     "metaDescription": "Break a screenplay down scene by scene. Auto-tag suggests cast, props, vehicles, stunts and sounds. You accept what is right and the schedule follows.",
     "hero": {
       "h1": "Break down your script scene by scene",
-      "sub": "The script is read for the cast, props, vehicles, stunts and sounds in every scene. You accept what is right and add what it missed."
+      "sub": "One run turns every scene heading into a scene and tags the cast its character cues name. You add the props, vehicles, stunts and sounds each scene needs."
     },
     "value": {
       "h2": "A breakdown you check, not one you type",
@@ -208,7 +208,7 @@
     "label": "Schedule",
     "stage": "prep",
     "metaTitle": "Stripboard and day out of days scheduling",
-    "metaDescription": "Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule. Songs plan as their own blocks.",
+    "metaDescription": "Lay scenes into shoot days on a stripboard, see which actor works which day, and print the schedule.",
     "hero": {
       "h1": "From scenes to shoot days, on a stripboard",
       "sub": "Order your scenes into shooting days, see who works when, and spot a company move before it costs you an afternoon."
@@ -217,7 +217,7 @@
       "h2": "A schedule that follows the script",
       "body": [
         "Each scene is a strip. Group the strips by script order, location, day or night, or shoot day, and move them between days. The board is a view of your scenes, so nothing is typed twice.",
-        "The day out of days shows which actor works on which day, so nobody is called in for nothing. Songs are planned as their own blocks, because a song is shot as one."
+        "The day out of days shows which actor works on which day, so nobody is called in for nothing."
       ]
     },
     "demo": { "h2": "See the stripboard in action" },
@@ -226,14 +226,14 @@
       { "title": "Group the way you shoot", "body": "Switch the board between script order, location, day or night, and shoot day to find the order that saves the most moves." },
       { "title": "Fill the shoot days", "body": "Place scenes into days. Screen time per day is worked out for you, and a company move that a day has not covered is flagged." },
       { "title": "Read the day out of days", "body": "See which actor works on which day and trim the calls. Print the Day Out of Days as a landscape PDF for the production office." },
-      { "title": "Plan the songs as blocks", "body": "Give each song its own block of shooting, so a unit that shoots songs separately can see those days together." }
+      { "title": "Print the board", "body": "Save the stripboard and the day out of days as landscape PDFs, or print the page, for the production office." }
     ],
     "related": ["breakdown", "call-sheets", "cast-crew"],
     "midCta": { "h2": "Lay out your first shoot day" },
     "facts": [
-      { "value": "5", "label": "Ways to group strips: script, place, time, day, song" },
+      { "value": "4", "label": "Ways to group strips: script, place, time, day" },
       { "value": "PDF", "label": "Day out of days prints in landscape" },
-      { "value": "Songs", "label": "Each song plans as its own block" }
+      { "value": "1 board", "label": "Strips are your scenes, never typed twice" }
     ]
   },
   "budget": {

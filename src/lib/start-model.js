@@ -57,7 +57,7 @@ export function takeAuthError(key) {
    would land them on the landing page they came from. The exempt pages
    (invite.html first: it is the no-JS fallback of every sign-in CTA)
    keep their hrefs. */
-const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening|purchase|pricing|product-[\w-]+)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
+const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening|purchase|pricing|contact|about|product-[\w-]+)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
 /** Is this href a link INTO the gated app? */
 export const isAppPage = (href) => APP_PAGE.test(href);
 

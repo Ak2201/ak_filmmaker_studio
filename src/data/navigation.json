@@ -92,7 +92,7 @@
       "modules": [
         {
           "id": "story-beats",
-          "label": "Beats & Pacing",
+          "label": "Story",
           "purpose": "Write the story and check its shape: where it rises, where it sags",
           "status": "built",
           "href": "story.html",

@@ -220,6 +220,17 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
+/* A page is cached under its PATH, never its query. The shell is the same
+   bytes whatever follows the `?` (pages read the query from location), and
+   the query is where the bearer strings travel: `?share=<token>`, an
+   invite `?code=`, and Supabase's OAuth `?code=` on the sign-in return.
+   Keyed by the full URL they sat in Cache Storage indefinitely. Lookups
+   already ignore the query (matchUsable), so nothing else changes. */
+function pageKey(request) {
+  const u = new URL(request.url);
+  return u.origin + u.pathname;
+}
+
 async function staleWhileRevalidate(request) {
   const cache  = await caches.open(RUNTIME);
   const cached = await matchUsable(request);
@@ -231,7 +242,7 @@ async function staleWhileRevalidate(request) {
          does. */
       if (response && response.ok && response.type === 'basic') {
         clean(response.clone())
-          .then(c => cache.put(request, c))
+          .then(c => cache.put(pageKey(request), c))
           .catch(() => {});
       }
       return response;

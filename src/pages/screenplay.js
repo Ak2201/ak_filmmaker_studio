@@ -117,7 +117,7 @@ function persistNow() {
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
-    setStatus('Saved ✓');
+    setStatus('Autosaved ✓');
     refreshDraftLabel();
   };
   flushStorage().then(settle, settle);
@@ -331,7 +331,7 @@ const HELP_ITEMS = [
 ];
 
 function buildTop() {
-  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Saved ✓' });
+  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Autosaved ✓' });
   typeSel = h('select.sc-type', { id: 'scType', 'aria-label': 'Current line type' });
   ELEMENT_TYPES.forEach((t) => typeSel.append(h('option', { value: t.id, text: t.label })));
   /* The pill SHOWS the type and its Alt+digit; the real <select> sits
@@ -381,7 +381,7 @@ function buildTop() {
   const runtime = h('div#scRuntime.sc-runtime', { role: 'region', 'aria-label': 'Running time', hidden: true });
 
   const beatsBtn = button({
-    label: 'Beats ◧', icon: 'view_sidebar', size: 'sm', action: 'sc-beats', class: 'sc-beats-btn',
+    label: 'Beats', icon: 'view_sidebar', size: 'sm', action: 'sc-beats', class: 'sc-beats-btn',
     attrs: { 'aria-expanded': 'false', 'aria-controls': 'beatsPanel' }
   });
   const fileMenu = actionMenu('File', [{ heading: 'File actions' }, ...FILE_ITEMS], { align: 'right', ariaLabel: 'File actions' });
@@ -426,7 +426,12 @@ function buildTop() {
   /* The shell's `.toolbar` convention is not used: this bar is the
      page's own, and a focus button is moved in once focus-mode has
      injected it (see mountFocus). */
-  tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() });
+  /* A resting line until a line takes focus: the strip keeps its reserved
+     height either way, so the first view is a sentence, not a blank band
+     that reads as broken, and the first click shifts nothing. */
+  tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() }, [
+    h('span.sc-tip-what', { text: 'Click a line on the page to see what it is for and where Enter and Tab go.' })
+  ]);
   return h('div#scTop.sc-top', {}, [
     meta,
     h('div.sc-tools', {}, [
@@ -475,7 +480,8 @@ function render() {
   ]);
   /* The phone's scrim behind the beats sheet; a tap on it closes them. */
   const scrim = h('div.sc-beats-scrim', { 'data-action': 'sc-beats-close', 'aria-hidden': 'true' });
-  main.append(buildTop(), sheet, after, aside, scrim, buildChips());
+  // The page's name for the accessibility tree: the bar carries no heading.
+  main.append(h('h1.visually-hidden', { text: 'Screenplay Writer' }), buildTop(), sheet, after, aside, scrim, buildChips());
   app.replaceChildren(main);
   /* The blueprint's screenplay questions keep their saved answers here
      (verify's key-union needs section#guide on a stage page). The page

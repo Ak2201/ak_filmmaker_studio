@@ -179,8 +179,10 @@
 .pc-deck-count { font-size: var(--t-micro); color: var(--ink-muted); text-transform: uppercase; letter-spacing: .04em; }
 
 @media (max-width: 719px) {
-  /* The header's actions are a row you scroll sideways, not a stack. */
-  main.st-main .k-page-actions .st-bar { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-bottom: var(--s1); }
+  /* The header's actions WRAP. They used to scroll sideways, which cut
+     "Start over" off at the edge and would clip the Export menu's panel
+     to nothing; three controls fit a phone on one or two rows. */
+  main.st-main .k-page-actions .st-bar { flex-wrap: wrap; justify-content: flex-start; }
   main.st-main .k-page-actions .st-bar > * { flex: none; }
   .st-main .k-page-actions { max-width: 100%; min-width: 0; }
   /* The act filter is a chip row. */

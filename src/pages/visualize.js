@@ -44,6 +44,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import PDF from '../lib/pdf.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
@@ -153,14 +154,21 @@ function sceneIdent(scene) {
 function renderHeader(scenes, shots, frames, boards) {
   // Only scenes that still exist count as covered (headerFigures).
   const { covered, refs, done, lens } = headerFigures(scenes, shots, boards);
+  const lookbookOn = !isDisabledEverywhere('lookbook');
   const head = pageHeader({
     class: 'bd-head vz-head',
     eyebrow: ['Visualise', 'the film seen before it is shot'],
     title: 'Visualise',
-    sub: 'A shot list is the scene broken into the pieces the camera actually '
+    /* The lookbook is switched off for everybody (plan-matrix), so the
+       sentence names it only while it exists; asked of the gate. */
+    sub: lookbookOn
+      ? 'A shot list is the scene broken into the pieces the camera actually '
        + 'records. The storyboard draws those pieces and the lookbook says what '
        + 'they should feel like — all three hang off the scenes you have already '
        + 'broken down, so nothing is described twice.'
+      : 'A shot list is the scene broken into the pieces the camera actually '
+       + 'records, and the storyboard draws those pieces. Both hang off the scenes '
+       + 'you have already broken down, so nothing is described twice.'
   });
   /* Every figure is counted from the model at render time. A stat that
      cannot be measured (no lens typed anywhere) is not shown at all —
@@ -170,7 +178,7 @@ function renderHeader(scenes, shots, frames, boards) {
       note: shots.length ? done + ' in the can' : null, noteTone: shots.length && done === shots.length ? 'ok' : null },
     { label: 'scenes covered', value: covered + ' / ' + scenes.length },
     { label: frames.length === 1 ? 'frame' : 'frames', value: frames.length },
-    { label: refs === 1 ? 'reference' : 'references', value: refs },
+    lookbookOn ? { label: refs === 1 ? 'reference' : 'references', value: refs } : null,   // lookbook boards
     lens ? { label: 'Primary lens', value: lens.lens, note: plural(lens.count, 'setup', 'setups') } : null
   ].filter(Boolean), { class: 'vz-stats', label: 'Visualise in numbers' });
   head.append(stats);

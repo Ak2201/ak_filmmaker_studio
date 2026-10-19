@@ -542,7 +542,7 @@ function gonePanel() {
    `/settings`, not `/settings.html`, and a regex anchored to `.html`
    would have walled the page you buy from on the live site and nowhere
    else. modulesHere() strips the extension for the same reason. */
-const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|product-[a-z-]+)$/;
+const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|contact|about|product-[a-z-]+)$/;
 const pageName = () => file().replace(/\.html$/, '');
 
 function wallPanel() {
@@ -793,6 +793,7 @@ function apply() {
   if (wall || lock) {
     root.dataset.planLock = '1';
     root.toggleAttribute('data-paywall', wall);
+    root.toggleAttribute('data-plan-gone', gone);   // plan-gate.css collapses main's height
     const want = wall ? 'pg-wall' : 'pg-lock';
     /* Swap when the KIND changes, not just when one is missing — a
        trial expiring while a module lock is on screen must replace it. */
@@ -812,6 +813,7 @@ function apply() {
   } else {
     delete root.dataset.planLock;
     root.removeAttribute('data-paywall');
+    root.removeAttribute('data-plan-gone');
     if (existing) existing.remove();
   }
   lockTabs();

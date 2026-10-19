@@ -2431,3 +2431,60 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       offline start is refused by the site gate (KNOWN-ISSUES, owner
       decision).
 
+53. **The 19 Oct 2026 pass (CLAUDE.md rows 41–50).** One day, several
+    branches merged into `claude/improvement-ideas-0gwjyx`:
+
+    - **Account avatar menu** (`40beb10`). The status bar at the rail's foot
+      is no longer mounted; the foot is one avatar that opens a menu (who you
+      are, Settings, Plan & purchases, Help & shortcuts, Sign in / Sign out).
+      Settings left the rail; the band's name pill is hidden on a desk but
+      kept in the DOM for auth state and the phone's Tools sheet. The avatar
+      is the Google profile photo (`user_metadata.avatar_url` / `picture`),
+      replacing the initials rather than sitting under them (`906261c`);
+      `img-src` names googleusercontent in `vercel.json` and `netlify.toml`.
+    - **Full-width frame** (`ace671f`, then `906261c`). `--measure-wide` went
+      92ch → 78rem → `100vw`, so every studio page runs edge to edge beside
+      the rail; `--measure-text` (92ch) keeps prose at a reading measure. The
+      Plan day cards then fitted two columns at 1100px and overflowed by 14px
+      (`0190191`, found by `prove:scroll`).
+    - **Story four steps** (`743576a`, `a4863d6`). Idea, Characters & world,
+      Beat Sheet, Synopsis for both formats, stable numbers 1, 7, 4, 5; every
+      retired step id and number reaches its new home through `aliases`. A
+      Title page card on the dashboard edits the cover keys through
+      `blueprint-store` and re-reads them after every render and on storage,
+      visibility and cloud events. No key added, renamed or removed.
+    - **Plan gate and Library** (`40beb10`, `906261c`). A matrix `plans: []`
+      module is hidden whatever the server's features map says (the live §36
+      predates the switch-off). The Library is always reachable;
+      `openShelves()` drops switched-off shelves from the contents, index and
+      counts while their sections stay in the DOM as hidden tabs.
+    - **Craft-book shelves** (`91340c9`, `5a99882`). Writing for Emotional
+      Impact and Save the Cat as Library tabs, content in
+      `src/data/book-*.json` with an `_about` stating the copyright rules; the
+      review removed list orders and triads that followed the books too
+      closely.
+    - **Purchase page revamp** (`29eb905`). Current-plan strip, comparison
+      cards, full feature table, refunds and invoices as their own sections;
+      modules no plan sells are neither listed nor counted.
+    - **`prove:scroll`** (`d4f3229`). Every root page at 1440/1100/390 with
+      the Dragon sample: nested scrollers, end reachable above fixed chrome,
+      locks at rest and after each sheet, sticky, fragments, overscroll
+      chaining, wheel, height jumps. It found `fragments.js` fighting the
+      reader for 20s on `library.html#films` and a breakdown sheet leaving
+      `bdx-locked` on `<html>`. Added to CI after `build:verify`.
+    - **Design passes.** Emil Kowalski motion audit E1–E15 (`76182bc`,
+      `709e87e`), Impeccable (`f2b36ff`, `c163516`), Taste on the public
+      pages (`62f1b05`). A deliberate baseline recapture (`3f75db3`) sits
+      between them; later passes added `EXPECTED` rows instead.
+    - **Schema §50** (`b9f4548`, `550b01f`). Refunds follow the role matrix in
+      the database, seats follow the current plan, a decline sticks across a
+      re-ask. Not run live; it goes with a redeploy of `rzp-refund`.
+    - **Contact / About and the policies** (`dc42067`, `6d3a588`, `ad4a604`,
+      `bacbcd1`). Generated public pages; the contact form only opens a
+      `mailto:`. privacy, terms and refund rewritten against the code; the
+      terms' purchase-day promise was removed because 15 modules are off for
+      every plan and nothing snapshots features per buyer.
+    - **Tooling** (this retro). verify's stage-guide probe waits for the
+      condition (up to 8s) instead of a 1.5s ceiling that flaked on
+      `story.html`; stale "not run live" comments in `cloud.js` and the
+      `deploy-billing.mjs` slice description corrected.

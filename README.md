@@ -27,15 +27,16 @@ Stages follow `src/data/navigation.json`, which is the information architecture.
 
 | Stage | Pages | What is there |
 | --- | --- | --- |
-| **Story** | `story.html`, `vault.html` | Beats and pacing, story bible (characters, conflict, stakes, theme, world), Idea Vault, pitch deck (`.pptx`) |
+| **Story** | `story.html`, `vault.html` | Four steps for both formats: Idea, Characters & world (the story bible), Beat Sheet, Synopsis; pacing, pitch deck (`.pptx`). The Title page card is on the dashboard |
 | **Screenplay** | `screenplay.html`, `drafts.html` | Screenplay Writer (one type-change path, smart type, dictation, find, notes, revisions), numbered drafts, title page, screenplay import (text, `.docx`, PDF), Fountain and PDF export. `write.html` redirects here |
 | **Pre-production** | `preprod.html`, `breakdown.html`, `stripboard.html`, `plan.html`, `visualize.html`, `reports.html`, `contacts.html`, `budget.html` | Screenplay Analysis (screen time, cast matrix, auto-tag), Scene Breakdown and Elements, Scene List, Songs, Shot List, Storyboard, Lookbook, Locations and Shoot Calendar (schedule), Stripboard and Day Out of Days, Sides, Budget, Cast and Crew contacts, Production Reports. All are views of one scene model |
 | **Shoot** | `shoot.html`, `contacts.html#call-sheets` | Shoot Day (the one view that writes back to a scene: shot, part, dropped) and Call Sheets |
 | **Post-production** | `edit.html`, `deliverables.html` | Edit log (reads shoot marks, never writes them) and the deliverables checklist, with festival formats |
-| **Library** | `library.html` (`study.html` and `dissect.html` redirect) | Case studies, dissection, film terminology, directors, rules, rates, festivals |
-| **Dashboard** | `dashboard.html`, `index.html` | The hub (your films, where you left off) and the project dashboard (progress and readiness, derived) |
-| **Settings** | `settings.html` | Account, AI key on this device, Drive backup, appearance |
-| **Purchase** | `purchase.html`, `purchases.html` | Plans, checkout, invoices and refund requests; `purchases.html` is the admin side |
+| **Library** | `library.html` (`study.html` and `dissect.html` redirect) | Always shown. Films, directors, rules, rates, watch list, and two craft-book shelves (Writing for Emotional Impact, Save the Cat, in original wording); shelves switched off for every plan are left out |
+| **Dashboard** | `dashboard.html`, `index.html` | The hub (your films, where you left off) and the project dashboard (progress and readiness, derived; the Title page card) |
+| **Settings** | `settings.html` (from the rail's account avatar menu) | Account, AI key on this device, Drive backup, appearance |
+| **Purchase** | `purchase.html`, `purchases.html` | Current-plan strip, comparison cards and full feature table, checkout, invoices and refund requests; `purchases.html` is the admin side |
+| **Public** | `start.html`, `pricing.html`, `product-*.html`, `contact.html`, `about.html` | Generated marketing pages outside the site gate; the contact form opens a `mailto:` and stores nothing |
 | **Admin console** | `admin.html` | People, requests, purchases, growth, health, audit, usage, controls. Shown by `VITE_ADMIN_EMAILS`, guarded by RLS |
 
 The two original blueprints (`feature.html`, `short.html`) are still shipped; their
@@ -99,7 +100,7 @@ All defined in [`package.json`](package.json).
 | --- | --- |
 | `dev`, `preview` | Dev server; serve the build |
 | `build`, `build:open` | Production build (gate on); gate-off build |
-| `build:verify` | Gate-off build into `dist-verify/` (read by `prove:growth`, `prove:ai-coverage`, `prove:nav`) |
+| `build:verify` | Gate-off build into `dist-verify/` (read by `prove:growth`, `prove:ai-coverage`, `prove:nav`, `prove:scroll` in CI) |
 | `build:extension` | The Chrome extension into `dist-extension/` |
 | `extract` | Regenerate `src/data/*.json` from `legacy/` and self-check |
 | `icons`, `og` | PWA icons from tokens; `public/og.png` |
@@ -119,7 +120,7 @@ All defined in [`package.json`](package.json).
 
 | Group | Commands |
 | --- | --- |
-| Static checks | `test:undef`, `test:layers`, `test:dialogs`, `test:brand`, `test:keys`, `test:links`, `test:pagefile`, `test:returnto`, `test:countdown`, `test:homestage`, `test:launcher-rows`, `test:marketing`, `test:testimonials`, `test:videos` |
+| Static checks | `test:contact`, `test:undef`, `test:layers`, `test:dialogs`, `test:brand`, `test:keys`, `test:links`, `test:pagefile`, `test:returnto`, `test:countdown`, `test:homestage`, `test:launcher-rows`, `test:marketing`, `test:testimonials`, `test:videos` |
 | Models | `test:story`, `test:bible`, `test:beats`, `test:pacing`, `test:screenplay`, `test:script-notes`, `test:drafts`, `test:import`, `test:pdf`, `test:format`, `test:journey`, `test:learn`, `test:stage-guide`, `test:blueprint-route`, `test:board-models`, `test:hub-models`, `test:write-models`, `test:feature-model`, `test:tanglish`, `test:samples`, `test:sync`, `test:backup-summary` |
 | Production modules | `test:breakdown`, `test:breakdown-extras`, `test:element-index`, `test:stripboard`, `test:shots`, `test:blocking`, `test:board-frames`, `test:sun`, `test:takes`, `test:ready-sheet`, `test:callsheet`, `test:costs`, `test:budget-kpis`, `test:impact`, `test:revisions`, `test:post`, `test:delivery`, `test:inference` |
 | Money and plans | `test:money`, `test:billing`, `test:invoice`, `test:plans`, `test:usage-names` |
@@ -129,6 +130,9 @@ All defined in [`package.json`](package.json).
 
 `test:undef` parses `src/` for an identifier used and never declared; it exists
 because the motion layer is invisible to every browser check (`navigator.webdriver`).
+
+In a sandbox where Playwright's bundled browser is missing, point the scripts at an
+installed Chromium: `PW_CHROMIUM=/opt/pw-browsers/chromium npm run verify`.
 
 ### `prove:*` (Playwright, need a build)
 
@@ -142,6 +146,7 @@ because the motion layer is invisible to every browser check (`navigator.webdriv
 | `prove:growth`, `prove:ai-coverage` | Landing-page weight and funnel; AI coverage (read `dist-verify/`) |
 | `prove:story-path`, `prove:dialogs`, `prove:script`, `prove:tamil`, `prove:walk`, `prove:adoption` | Story path per format, in-app dialogs, screenplay editor, Tamil type, a walk through the studio, adoption of no-project work (gate-off build) |
 | `prove:nav` | One frame per page whichever link opened it (`PROVE_DIST=dist-verify`) |
+| `prove:scroll` | Every root page scrolls correctly at 1440/1100/390: nested scrollers, end reachable, locks, sticky, fragments, wheel (`PROVE_DIST=dist-verify` in CI) |
 | `prove:ai-desk`, `prove:stage-guide`, `prove:board-frames` | AI Desk, stage guide, board frames (run in CI or on demand) |
 
 ### Make, record and asset

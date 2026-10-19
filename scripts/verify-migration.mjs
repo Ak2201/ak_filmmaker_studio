@@ -395,7 +395,11 @@ const EXPECTED = {
      until the next recapture, whoever makes it and for whatever
      reason. */
   hub: {},
-  stripboard: {},
+  /* Impeccable pass (19 Oct 2026): on a board with no scenes the
+     Unscheduled card said "0 strips · all placed", claiming a finished
+     schedule that does not exist. It prints a dash and "no scenes yet"
+     now, so the words left the empty page the baseline was taken on. */
+  stripboard: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
   reports: {},
   contacts: {},
   /* AI Desk (12 Oct 2026): the key lives in Settings only and AI is
@@ -413,11 +417,20 @@ const EXPECTED = {
      script-to-screen work took it from 122 to 141, so the bare integer 122 left
      the page. A derived count, not lost copy. The next glossary change moves it
      again: re-baseline then, rather than adding a row each time. */
-  library: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
+  /* Impeccable pass (19 Oct 2026): the shelves were headed "SECTION I"
+     … "SECTION IX", numbering an order the reader does not need; each
+     is headed by its shelf's kind (its menu group) now. The numerals that
+     still appear elsewhere on the page (i, ii, v, x) are not missing. */
+  library: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
   budget: {},
   /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
      revamp's words (the journey strip folded into the stage cards). */
-  dashboard: {},
+  /* Impeccable pass (19 Oct 2026): the map's "N OF N BUILT" never
+     varied for anyone and "N HOLD WORK" reads "N with work" now; its
+     deck no longer says "and so does the studio" (the hero says the
+     stages go in any order); the title page's sub dropped the internal
+     "the same answers the Feature Blueprint keeps for its cover". */
+  dashboard: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is
      built only when it is opened. */
@@ -490,7 +503,11 @@ const EXPECTED = {
      "Mapping…"); they are AI pills that open the Desk now, and
      signed out the pill is locked. Every word below was that form's
      copy. */
-  story: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
+  /* Impeccable pass (19 Oct 2026): the header's two disabled export
+     buttons ("Synopsis .txt", "Outline .md") are one Export menu now, and
+     on an empty story (the baseline's state) there is nothing to export,
+     so the menu is not drawn. ".txt" survives in the import copy. */
+  story: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
   edit: {},
   deliverables: {},
   screening: {},
@@ -2437,7 +2454,12 @@ let keyUnion = { checked: false, skipped: true };
   const have = {};
   for (const pg of STAGE_PAGES) {
     await probe.goto(`${GUIDE_ORIGIN}/${pg}`, { waitUntil: 'networkidle' });
-    have[pg] = await probe.waitForSelector('section#guide', { state: 'attached', timeout: 1500 }).then(() => true, () => false);
+    /* Wait for the CONDITION, not a fixed delay: the guide is drawn by
+       script after the page settles, and a 1.5s ceiling flaked on a busy
+       machine ("section#guide is on … but missing from story.html").
+       Polled up to 8s; the assertion is unchanged — absent after 8s is
+       still absent. */
+    have[pg] = await probe.waitForFunction(() => !!document.querySelector('section#guide'), null, { timeout: 8000, polling: 100 }).then(() => true, () => false);
   }
   await probeCtx.close();
   const present = STAGE_PAGES.filter((pg) => have[pg]);

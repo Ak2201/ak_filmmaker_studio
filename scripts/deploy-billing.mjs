@@ -1,20 +1,23 @@
 #!/usr/bin/env node
 /* ============================================================
-   DEPLOY BILLING — run schema §16–§18 and deploy the edge functions
+   DEPLOY BILLING — run schema §16 onward and deploy the edge functions
    ------------------------------------------------------------
    Everything docs/BILLING.md §1 lists as "do this in the dashboard",
    as one command, against the project in .env (VITE_SUPABASE_URL).
 
      node scripts/deploy-billing.mjs --print     write the SQL to stdout,
                                                  for the dashboard editor
-     node scripts/deploy-billing.mjs --sql       run §16 and §17 through
-                                                 the Management API
+     node scripts/deploy-billing.mjs --sql       run §16 to the end of the
+                                                 schema file through the
+                                                 Management API
      node scripts/deploy-billing.mjs --functions deploy rzp-order,
                                                  rzp-verify, rzp-refund, rzp-webhook
                                                  (--no-verify-jwt), and
                                                  set the Razorpay secrets
                                                  that are in the env
-     node scripts/deploy-billing.mjs             --sql then --functions
+     node scripts/deploy-billing.mjs             --functions only (§51: --sql is
+                                                 never implied, and refuses a
+                                                 database where §45 has run)
 
    NEEDS, as environment variables, never as arguments and never in
    the repo:
@@ -25,8 +28,9 @@
      RAZORPAY_WEBHOOK_SECRET   deploy and answer 503 until they are set.
 
    The SQL is SLICED FROM supabase/schema/supabase-schema.sql rather than copied into
-   this file, so there is one text of each section. The slice is the
-   two sections verbatim, including their CHECKS comments; it is
+   this file, so there is one text of each section. The slice is every
+   section from §16 to the end of the file, verbatim, including their
+   CHECKS comments; it is
    idempotent (create if not exists / or replace / drop if exists), as
    every section of that file is, so a second run is safe.
 
@@ -41,7 +45,14 @@ import { spawnSync } from 'node:child_process';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const args = new Set(process.argv.slice(2));
 const want = (f) => args.has(f);
-const doSql = want('--sql') || (!want('--functions') && !want('--print'));
+/* --sql is never implied any more (§51 follow-up). The slice is §16 to the
+   END of supabase-schema.sql, and every admin writer in it is the pre-§46
+   body: replaying it over a database where §45/§46/§50/§51 ran puts back
+   the is_studio_admin()-only checks, drops the role matrix and the audit
+   writes, and undoes §51's money fixes — silently, because every statement
+   succeeds. So a bare run deploys the functions only, and --sql refuses a
+   database that already has the later sections (see below). */
+const doSql = want('--sql');
 const doFns = want('--functions') || (!want('--sql') && !want('--print'));
 
 /* ---- the project ---------------------------------------------- */
@@ -57,10 +68,14 @@ function sliceSchema() {
   if (start < 0) { console.error('✗ section 16 not found in supabase/schema/supabase-schema.sql'); process.exit(2); }
   // The separator line above the heading belongs to the section too.
   const from = sql.lastIndexOf('\n-- ====', start) + 1;
-  return sql.slice(from);   // 16, 17 and 18 run to the end of the file
+  return sql.slice(from);   // §16 through the last section in the file
 }
 
-if (want('--print')) { process.stdout.write(sliceSchema()); process.exit(0); }
+if (want('--print')) {
+  console.error('! §16 to the end of supabase-schema.sql — for a database where §45 has NOT run. Pasting it over a');
+  console.error('  later database reverts §46 (the role matrix) and §50/§51. See supabase/schema/README.md.');
+  process.stdout.write(sliceSchema()); process.exit(0);
+}
 
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN || '';
 if (!TOKEN) {
@@ -81,6 +96,15 @@ async function runSql(query) {
 }
 
 if (doSql) {
+  // Ask the database, not the file: has a later section already run?
+  const later = await runSql(`select to_regclass('public.admin_roles') is not null as s45`);
+  if (later && later[0] && later[0].s45) {
+    console.error('✗ this database already has §45 (admin_roles), so §46 and later have probably run too.');
+    console.error('  Replaying §16 to the end of supabase-schema.sql would put the pre-§46 admin writers back');
+    console.error('  (no role matrix, no audit) and undo §50/§51. Run only the NEW section file, in the SQL editor,');
+    console.error('  as supabase/schema/README.md lists. Nothing was changed.');
+    process.exit(2);
+  }
   console.log(`running schema §16 onward on ${REF} …`);
   await runSql(sliceSchema());
   // Ask the database, not the file (CLAUDE.md, open item 5).

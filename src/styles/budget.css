@@ -603,3 +603,9 @@ p.cx-hint { margin: 0; }
   .bud-aside, .bud-link-icon, .bud-est .calc-actions, .bud-est .calc-row.head { display: none !important; }
   .bud-est .k-control { border: 0 !important; background: none !important; }
 }
+
+/* The three learn-in-place questions on the Estimate tab: one wrapping
+   row while closed; an opened one takes the full width for its body. */
+.bud-learn-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s1) var(--s4); margin-block: var(--s3); }
+.bud-learn-row > .learn { margin: 0; }
+.bud-learn-row > .learn[open] { flex-basis: 100%; }

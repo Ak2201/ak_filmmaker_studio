@@ -156,7 +156,9 @@ function startBlock({ scriptPages, hasScript, hasScenes }) {
       h('span', { text: 'Upload a script' }),
       h('input.bdo-file', {
         type: 'file', 'data-action': 'bd-upload', 'aria-label': 'Upload a script file',
-        accept: '.fountain,.fdx,.pdf,.txt,.md,.spmd,.xml,text/plain,application/pdf'
+        /* Parser.ACCEPT (script-import.js) is a lazy chunk this panel does
+           not load; npm run test:accept fails when this falls behind it. */
+        accept: '.fountain,.spmd,.txt,.md,.fdx,.xml,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
     ]));
   }

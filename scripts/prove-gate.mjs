@@ -72,6 +72,12 @@
          enters the studio nor leaves a pass; a redeemed code starts the
          trial it carries
 
+     (s) THE OFFLINE GRACE (owner, 19 Oct 2026): a server-confirmed
+         admission is stamped; a cold start that cannot reach the server
+         opens on a fresh stamp for the same account and not on a stale,
+         future-dated or other account's one; a server "no" is never
+         overridden; a sign-out clears the stamp
+
    Run:  npm run build && node scripts/prove-gate.mjs
    ============================================================ */
 import { spawn } from 'node:child_process';
@@ -1143,6 +1149,64 @@ try {
     await K.page.waitForTimeout(1500);
     ok(F.db.calls.includes('start_trial'), 'and the code starts the trial it carries — the submission was the press (calls: ' + F.db.calls.slice(-6).join(',') + ')');
     allErrors.push(...K.errors); await K.ctx.close();
+  }
+
+  /* (s) THE OFFLINE GRACE (owner, 19 Oct 2026). A server-confirmed
+     admission stamps fms_sitegate_verified_v1; a NEW tab that cannot reach
+     the server (the status and switch calls aborted, as with no signal)
+     is let in on a fresh stamp for the same account, and turned away on
+     a stale one, another account's, or a server that answers "no". */
+  {
+    console.log('(s) the offline grace');
+    F.reset();
+    F.db.settings.purchase_required = true;
+    const S = await newContext(browser, { tok: 'tok-admin' });
+    await S.page.goto(BASE + 'index.html');
+    ok(await waitGate(S.page, 'open'), '(s) a member is let in online');
+    await S.page.waitForTimeout(500);
+    const st = await S.page.evaluate(() => JSON.parse(localStorage.getItem('fms_sitegate_verified_v1') || 'null'));
+    ok(!!st && st.uid === USERS['tok-admin'].id && Math.abs(Date.now() - st.at) < 60000, '(s) and that admission is stamped for that account: ' + JSON.stringify(st));
+    /* Only the offline tab may be open: a tab that is online re-checks
+       when another tab writes the session, and stamps afresh, which is
+       right for it and would overwrite the stamp under test. */
+    const ctx = S.ctx;
+    await S.page.close();
+    const offlineTab = async (stamp) => {
+      const p = await ctx.newPage();
+      await p.route(/\/rest\/v1\/rpc\/(studio_status|purchases_required)/, (r) => r.abort('internetdisconnected'));
+      if (stamp) await p.addInitScript((v) => localStorage.setItem('fms_sitegate_verified_v1', JSON.stringify(v)), stamp);
+      await p.goto(BASE + 'dashboard.html').catch(() => {});
+      await p.waitForTimeout(4000);
+      const u = p.url();
+      await p.close(); return u;
+    };
+    const uid = USERS['tok-admin'].id;
+    const fresh = await offlineTab(null);
+    ok(/dashboard\.html/.test(fresh), '(s) a cold start with no signal opens on a fresh stamp: ' + fresh);
+    const stale = await offlineTab({ at: Date.now() - 15 * 86400000, uid });
+    ok(/invite\.html/.test(stale), '(s) a stamp older than 14 days does not: ' + stale);
+    const future = await offlineTab({ at: Date.now() + 86400000, uid });
+    ok(/invite\.html/.test(future), '(s) a stamp dated in the future is not believed: ' + future);
+    const other = await offlineTab({ at: Date.now() - 3600000, uid: USERS['tok-amy'].id });
+    ok(/invite\.html/.test(other), "(s) another account's stamp does not admit this one: " + other);
+    allErrors.push(...S.errors); await ctx.close();
+
+    /* A "no" from the server is never overridden by a stamp. */
+    F.reset();
+    F.db.settings.purchase_required = true;
+    const N = await newContext(browser, { tok: 'tok-amy' });
+    await N.page.addInitScript((v) => localStorage.setItem('fms_sitegate_verified_v1', JSON.stringify(v)), { at: Date.now(), uid: USERS['tok-amy'].id });
+    await N.page.goto(BASE + 'dashboard.html').catch(() => {});
+    ok(await urlBecomes(N.page, /invite\.html/), '(s) a non-member with a fresh stamp is still sent to the door when the server answers: ' + N.page.url());
+    allErrors.push(...N.errors); await N.ctx.close();
+
+    /* Signed out for real (no session on the device): the stamp goes. */
+    const O = await newContext(browser);
+    await O.page.addInitScript((v) => { if (!sessionStorage.getItem('__st')) { localStorage.setItem('fms_sitegate_verified_v1', JSON.stringify(v)); sessionStorage.setItem('__st', '1'); } }, { at: Date.now(), uid: USERS['tok-amy'].id });
+    await O.page.goto(BASE + 'dashboard.html').catch(() => {});
+    ok(await urlBecomes(O.page, /start\.html/), '(s) signed out goes to the landing page: ' + O.page.url());
+    ok(await O.page.evaluate(() => localStorage.getItem('fms_sitegate_verified_v1')) == null, '(s) and the stamp is cleared with the sign-out');
+    allErrors.push(...O.errors); await O.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

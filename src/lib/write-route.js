@@ -19,7 +19,9 @@ const ROUTES = {
   'wr-import-paste': 'screenplay.html#import',
   revisions: 'drafts.html',
   documents: 'drafts.html#title',
-  outline: 'breakdown.html#script',
+  /* The outline lives under the Story path's Beat Sheet now (owner,
+     19 Oct 2026); #script is Screenplay Analysis, switched off for all. */
+  outline: 'story.html#path-outline',
   characters: 'breakdown.html#script',
   /* The AI coverage report and synopsis-to-script still live in
      write.js; they are reached through the escape, linked from the

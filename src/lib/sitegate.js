@@ -56,8 +56,21 @@
                                  invite.html (a status call that never
                                  returns is not a pass)
    The pass is remembered in sessionStorage only: this tab, this
-   session. A new tab asks again. Nothing is written to localStorage,
-   which the verify gate asserts.
+   session. A new tab asks again.
+
+   THE OFFLINE GRACE (owner, 19 Oct 2026) is the one exception to
+   failing closed, and the one localStorage write here. A film set with
+   no signal must be able to open the app it used yesterday. So every
+   admission the SERVER confirmed stamps `fms_sitegate_verified_v1`
+   ({at, uid}, at most once an hour), and a cold start that cannot
+   reach the server is let in when that stamp is under GRACE_MS old,
+   belongs to the account whose session is stored, and that session is
+   still on the device. Only "could not ask" is graced: an answer of
+   "no" is never overridden, a code pass is never stamped, and signing
+   out (no stored session) voids it. It reverses fail-closed for that
+   one case on purpose; RLS still guards every byte of cloud data, and
+   the next online check decides afresh. In ALL_KEYS (reset forgets it),
+   in no backup (it is about this device).
 
    EXEMPT: invite.html (the doorway), screening.html (a guest's pass is
    its own credential), privacy.html, terms.html and refund.html (the OAuth consent
@@ -139,6 +152,12 @@ export const WHY_KEY = 'fms_sitegate_why';
    inside twenty seconds and the allowance is gone, deliberately. A
    timeout here should stay loud enough to mean something. */
 const GIVE_UP_MS = 20000;
+/* The offline grace (see the header). Fourteen days covers a long
+   schedule away from a signal without letting a revoked member in for
+   a season. */
+export const VERIFIED_KEY = 'fms_sitegate_verified_v1';
+export const GRACE_MS = 14 * 24 * 3600 * 1000;
+const RESTAMP_MS = 3600 * 1000;
 /* purchase is exempt since 12 Oct 2026: it is the ONE place a plan is bought,
    and a signed-in person the gate has not let through (purchases required, no
    plan, no trial) has to be able to reach it. invite.html used to sell plans
@@ -168,6 +187,37 @@ function hasStoredSession() {
   } catch (e) { /* no storage, no optimism */ }
   return false;
 }
+
+function readStamp() {
+  try {
+    const v = JSON.parse(localStorage.getItem(VERIFIED_KEY) || 'null');
+    return v && typeof v.at === 'number' ? v : null;
+  } catch (e) { return null; }
+}
+/* Written only on a server-confirmed admission with a session, and at
+   most once an hour, so a run of navigations is not a run of writes. */
+function stampVerified(uid) {
+  if (!uid) return;
+  try {
+    const old = readStamp(), now = Date.now();
+    if (old && old.uid === uid && old.at <= now && now - old.at < RESTAMP_MS) return;
+    localStorage.setItem(VERIFIED_KEY, JSON.stringify({ at: now, uid }));
+  } catch (e) { /* no storage: no grace, which is the old behaviour */ }
+}
+function clearVerified() { try { localStorage.removeItem(VERIFIED_KEY); } catch (e) { /* ignore */ } }
+const sessionUid = (c) => { try { const s = c && c.getSession(); return (s && s.user && s.user.id) || ''; } catch (e) { return ''; } };
+/** May a server we cannot reach be taken as a yes? Exported for the
+ *  proof harness. `uid` is the restored session's, when there is one;
+ *  a stamp from another account never admits this one, and a stamp
+ *  dated in the future (a clock set back) is not believed. */
+export function graceOk(uid, now = Date.now()) {
+  if (!hasStoredSession()) return false;
+  const st = readStamp();
+  if (!st || st.at > now + 60000 || now - st.at > GRACE_MS) return false;
+  if (uid && st.uid !== uid) return false;
+  return true;
+}
+const SERVER_CONFIRMED = new Set(['open', 'lost', 'open-site']);
 
 /* ---- THE PURCHASES SWITCH, AND WHAT IT NOW DECIDES ----------------
    The owner's decision, 12 Oct 2026, and it changes what this gate IS:
@@ -216,11 +266,12 @@ let decided = false;
 let optimistic = false;   // the veil was lifted before the verdict; the verdict is still owed
 let timer = 0;
 
-function allow() {
+function allow(reason) {
   if (decided) return;
   decided = true;
   clearTimeout(timer);
   remember();
+  if (SERVER_CONFIRMED.has(reason)) stampVerified(sessionUid(window.StudioCloud));
   delete document.documentElement.dataset.sitegate;
   /* The reason for an earlier bounce is history once they are in; left
      behind it would be printed by invite.html for a state that no longer
@@ -245,6 +296,9 @@ function deny(reason) {
   decided = true;
   clearTimeout(timer);
   try { sessionStorage.removeItem(PASS_KEY); } catch (e) { /* ignore */ }
+  /* Signed out for real (no session left on the device): the grace goes
+     with it, so the next person at this browser does not inherit it. */
+  if (!hasStoredSession()) clearVerified();
   /* WHY the gate sent them away, and from where. The redirect destroys
      the page that knew, so without this a bounce is indistinguishable
      from a broken page — which is exactly how it reads, and how it read
@@ -308,7 +362,13 @@ export function evaluate() {
       if (pass0.from === 'demo' || c.getSession()) return { verdict: 'allow', reason: 'code' };
     }
   }
-  if (!c.getSession()) return { verdict: 'deny', reason: 'signedout' };
+  if (!c.getSession()) {
+    /* Offline, the session can fail to restore (the SDK chunk or the
+       token refresh needs the network) while its token is still on the
+       device. That is the grace's case, not a sign-out. */
+    if (typeof navigator !== 'undefined' && navigator.onLine === false && graceOk('')) return { verdict: 'allow', reason: 'offline-grace' };
+    return { verdict: 'deny', reason: 'signedout' };
+  }
   /* Signed in, and nothing is for sale: the website is open. Note this
      sits AFTER the signed-out check on purpose — "open" means open to
      accounts, not to strangers, which is the owner's wording. It also
@@ -321,6 +381,7 @@ export function evaluate() {
   if (g.state === 'open' || g.state === 'lost') return { verdict: 'allow', reason: g.state };
   if (g.state === 'closed') {
     if (g.reason === 'unreachable' && passed()) return { verdict: 'allow', reason: 'unreachable-but-passed' };
+    if (g.reason === 'unreachable' && graceOk(sessionUid(c))) return { verdict: 'allow', reason: 'offline-grace' };
     /* DO NOT WALK THEM OUT BEFORE THE SWITCH HAS ANSWERED. The membership
        call and the purchases call go out together, and the membership one
        is the quicker of the two — so without this a signed-in visitor on
@@ -361,7 +422,7 @@ async function verifyCodePass() {
 function decide() {
   const v = evaluate();
   if (v.verdict === 'wait' && v.reason === 'code-check') { verifyCodePass(); return; }
-  if (v.verdict === 'allow') allow();
+  if (v.verdict === 'allow') allow(v.reason);
   else if (v.verdict === 'deny') deny(v.reason);
 }
 
@@ -426,7 +487,10 @@ if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
     /* Already admitted on this tab's pass and never contradicted: an
        unanswered status call is the unreachable case, which a passed
        tab survives. */
-    if (optimistic) { allow(); return; }
+    if (optimistic) { allow('optimistic'); return; }
+    /* Nothing answered at all: the server could not be asked, which the
+       grace covers. A "no" would have decided long before this. */
+    if (graceOk(sessionUid(window.StudioCloud))) { allow('offline-grace'); return; }
     deny('timeout');
   };
   timer = setTimeout(giveUp, GIVE_UP_MS);

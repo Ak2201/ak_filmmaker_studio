@@ -37,6 +37,17 @@ access model rather than this module's:
 | either | member whose session is on another device | in, sync paused |
 | either | `purchases_required()` not known | the membership gate below, **failing closed** |
 
+**The offline grace (owner, 19 Oct 2026)** is the one exception to failing
+closed. Every admission the SERVER confirmed (gate `open`/`lost`, or the open
+site) writes `fms_sitegate_verified_v1` = `{at, uid}` to localStorage, at most
+once an hour. A load that cannot reach the server — the status call fails
+(`unreachable`), nothing answers before the give-up timer, or the browser is
+offline and the session cannot restore — is let in when that stamp is under 14
+days old, names the account whose session is stored, is not dated in the future,
+and a session token is still on the device. An ANSWER of "no" is never
+overridden, a code pass never stamps, and a real sign-out clears it. The key is
+in `ALL_KEYS` and in no backup. Proved by `prove:gate` (s).
+
 The unknown case is deliberately the old behaviour and not "open": a gate that
 opened on a failed fetch would open on every offline load, on a database that
 has not run §32, and on any request a proxy ate — which is the fail-open bug

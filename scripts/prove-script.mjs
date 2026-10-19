@@ -208,7 +208,7 @@ ok(prints.length === 2 && prints[0] === prints[1] && prints[0].length > 200, '11
 
 /* ---- 12 redirects ------------------------------------------------------ */
 for (const [from, to] of [['write.html', /screenplay\.html$/], ['write.html#revisions', /drafts\.html$/],
-  ['write.html#outline', /breakdown\.html#script$/], ['write.html#guide', /screenplay\.html#guide$/]]) {
+  ['write.html#outline', /story\.html#path-outline$/], ['write.html#guide', /screenplay\.html#guide$/]]) {
   await page.goto(url(from));
   await page.waitForURL(to, { timeout: 5000 }).catch(() => {});
   ok(to.test(page.url()), `12 ${from} → ${page.url().replace(/^.*\//, '')}`);

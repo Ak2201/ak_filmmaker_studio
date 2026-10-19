@@ -54,13 +54,17 @@ const TOUR_KEY = 'fms_tour_v1';
    list so a wiped studio counts again by default; NOT in GLOBAL_KEYS or any
    backup — a choice about this device's reporting must not travel to another. */
 const USAGE_OPTOUT_KEY = 'fms_usage_optout_v1';
+/* The site gate's offline grace (src/lib/sitegate.js VERIFIED_KEY): when
+   the server last let this account in on this device. Reset forgets it;
+   no backup carries it, for the device-lock key's reason. */
+const SITEGATE_VERIFIED_KEY = 'fms_sitegate_verified_v1';
 
 export const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
   PREF_KEY, WRITE_PREFS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
   SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
-  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, GOALS_KEY, SCENE_BIN_KEY, CHARACTERS_KEY, COSTS_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY, TOUR_KEY, USAGE_OPTOUT_KEY,
+  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, GOALS_KEY, SCENE_BIN_KEY, CHARACTERS_KEY, COSTS_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY, TOUR_KEY, USAGE_OPTOUT_KEY, SITEGATE_VERIFIED_KEY,
   /* The Drive pointer, so "reset everything" also DISCONNECTS Drive.
      Without it a wiped studio stays connected to a file full of
      work, and the next keystroke pushes the empty studio over it.

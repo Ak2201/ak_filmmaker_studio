@@ -48,7 +48,10 @@ account that comes back. It is re-verified each browser session. Demo links
 (`…&demo=1`) keep the anonymous landing, deliberately. Every code is also a
 link that the console copies. This all reverses "the gate guards the cloud,
 never local work", which older notes below still say; read those as history. Local work is HIDDEN from a visitor outside the
-gate, never deleted or touched. Two builds follow from it: `npm run build` has
+gate, never deleted or touched. ONE exception to failing closed (owner,
+19 Oct 2026): a cold start that cannot reach the server opens on a
+`fms_sitegate_verified_v1` stamp under 14 days old for the stored account
+(`graceOk()` in `sitegate.js`; `docs/GATE.md` §0). Two builds follow from it: `npm run build` has
 the gate on (what the hosts run); `npm run build:open` turns it off and is the
 only build `npm run verify` accepts, because verify loads every page signed
 out. `prove:gate` refuses the open build. `docs/GATE.md` §0.

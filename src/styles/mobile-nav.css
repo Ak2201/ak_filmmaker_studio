@@ -444,7 +444,9 @@ html.mn-on .sh-bar > .sh-where .sh-where-root:not(.sh-where-here) { color: var(-
 html.mn-on .sh-bar > .sh-where .sh-where-here { color: var(--brand-deep); font-weight: 500; }
 /* The stage segment is its hue dot on a phone (the label is still its
    accessible name; the sheet it opens names the stage). */
-html.mn-on .sh-bar > .sh-where .sh-where-phase .sh-where-text {
+/* ...except when the stage IS the page (story.html, a stage home): then
+   it is the only "where" there is, and a bare dot names nothing. */
+html.mn-on .sh-bar > .sh-where .sh-where-phase:not([aria-current]) .sh-where-text {
   position: absolute;
   width: 1px;
   height: 1px;

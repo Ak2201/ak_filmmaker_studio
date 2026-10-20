@@ -9,7 +9,7 @@
    ============================================================ */
 import { listScenes, elementIndex } from './scenes.js';
 import { listShots, listFrames, listBoards, countEntries } from './shots.js';
-import { loadScript, pageCount, formatPages } from './script.js';
+import { loadScript, pageCount, formatPages, hasTitlePage, TITLE_FIELDS } from './script.js';
 import { listContacts, listCallSheets } from './contacts.js';
 import { locationIndex, listMedia, listDayDates, shootDayOf, castOf } from './locations.js';
 import { loadStory, listVault } from './story.js';
@@ -156,7 +156,11 @@ const PROBES = {
 
   screenplay: (s) => (s.pages ? work(formatPages(s.pages) + ' pages written') : empty('no pages yet')),
   revisions:  (s) => (s.script.revisions.length ? work(plural(s.script.revisions.length, 'draft saved', 'drafts saved')) : empty('no drafts yet')),
-  docs:       (s) => (s.script.documents.length ? work(plural(s.script.documents.length, 'document', 'documents')) : empty('no documents yet')),
+  /* `docs` is the Title Page module now (navigation.json); it counts the
+     title page's filled fields, not the pitch documents it once listed. */
+  docs:       (s) => (hasTitlePage(s.script.titlePage)
+                       ? work(plural(TITLE_FIELDS.filter((f) => String(s.script.titlePage[f] ?? '').trim()).length, 'field filled', 'fields filled'))
+                       : empty('not filled in yet')),
 
   'scene-list': (s) => (s.scenes.length ? work(plural(s.scenes.length, 'scene', 'scenes')) : empty('no scenes yet')),
   breakdowns:   (s) => (s.tagged ? work(`${s.tagged} of ${s.scenes.length} tagged`)

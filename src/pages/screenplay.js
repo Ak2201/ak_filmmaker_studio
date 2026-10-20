@@ -39,7 +39,7 @@ import { h, delegate } from '../lib/dom.js';
 import { button, sym, sheet as kitSheet, closeSheet } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
 import { commitImportedScript } from '../lib/script-commit.js';
-import { sceneSyncLater, mountHandoff, offerPipeline } from '../ui/handoff.js';
+import { sceneSyncLater, mountHandoff, offerPipeline, runPipelineHere } from '../ui/handoff.js';
 import Keys from '../lib/write-keys.js';
 import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
@@ -50,6 +50,7 @@ import { installLineLanding } from '../ui/script-find.js';
 import { mountReplaceBar } from '../ui/script-replace-bar.js';
 import { mountPresence } from '../ui/presence.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
+import { buildSectionMenu } from '../ui/section-menu.js';   // Write | Script analysis
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
 import Scenes from '../lib/scenes.js';
@@ -97,7 +98,8 @@ try {
   mountHandoff({
     getDoc: () => doc,
     save: () => persistNow(),
-    afterPipeline: () => refreshStats()
+    // a run (or its Undo) changed the scenes: the stats and the analysis follow
+    afterPipeline: () => { refreshStats(); refreshAnalysis(); }
   });
 } catch (e) { console.warn('[screenplay] hand-off', e); }
 
@@ -336,6 +338,75 @@ const HELP_ITEMS = [
   { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
 ];
 
+/* ---- two views: Write | Script analysis --------------------------
+   Owner, 20 Oct 2026: "a script analysing space". The page's own two
+   views, through the ONE section-menu control (src/ui/section-menu.js,
+   self-managed: this page is not one of tabs.js's TABBED pages, because
+   its sections are an editor and its stage guide, not categories).
+   #analysis picks the view, a press moves the hash with replaceState
+   (no history entry per switch). The analysis is built only when its
+   view is open (src/ui/script-analysis.js, a dynamic import), so the
+   editor's first paint carries none of it. Not a navigation.json
+   module: it is a view of this page. */
+const VIEWS = [{ id: 'screenplay', label: 'Write', icon: 'edit_note' }, { id: 'analysis', label: 'Script analysis', icon: 'assessment' }];
+const viewFromHash = () => (location.hash === '#analysis' ? 'analysis' : 'screenplay');
+let view = viewFromHash();
+let viewMenu = null;
+let analysisHost = null;
+let analysisMod = null;
+
+function buildViews() {
+  viewMenu = buildSectionMenu({
+    groups: [{ label: '', items: VIEWS }], active: view, ariaLabel: 'Screenplay views', orientation: 'strip',
+    onSelect: (id) => setView(id, true)
+  });
+  return h('div.sc-views', {}, [viewMenu]);
+}
+
+function setView(id, moveHash) {
+  view = id === 'analysis' ? 'analysis' : 'screenplay';
+  const main = document.getElementById('main');
+  if (main) main.dataset.view = view;
+  if (viewMenu) {
+    for (const b of viewMenu.querySelectorAll('[role="tab"]')) {
+      const on = b.dataset.tab === view;
+      b.setAttribute('aria-selected', String(on));
+      b.classList.toggle('is-on', on);
+      b.tabIndex = on ? 0 : -1;
+    }
+  }
+  if (sheet) sheet.hidden = view !== 'screenplay';
+  if (analysisHost) analysisHost.hidden = view !== 'analysis';
+  if (moveHash) {
+    const want = view === 'analysis' ? '#analysis' : '';
+    if (location.hash !== want && !(want === '' && location.hash !== '#analysis')) {
+      try { history.replaceState(history.state, '', location.pathname + location.search + want); } catch (e) { /* ignore */ }
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  if (view === 'analysis') { persistNow(); refreshAnalysis(); }
+  else if (curId) editor.focusEl(curId);
+}
+
+/** Rebuild the analysis, if its view is open (it is never built hidden). */
+async function refreshAnalysis() {
+  if (view !== 'analysis' || !analysisHost) return;
+  try {
+    if (!analysisMod) analysisMod = await import('../ui/script-analysis.js');
+    analysisHost.replaceChildren(analysisMod.renderAnalysis({
+      getDoc: () => doc, save: () => persistNow(),
+      refresh: () => refreshAnalysis(),
+      onBreakdown: true
+    }));
+  } catch (e) {
+    console.warn('[script] analysis', e);
+    analysisHost.replaceChildren(h('p.sa-none', { text: 'The analysis could not load. Check the connection and try again.' }));
+  }
+}
+delegate(document, 'click', '[data-action="sc-pipeline"]', () => {
+  runPipelineHere().catch((e) => { console.warn('[script] pipeline', e); say('The breakdown could not run on this script.'); });
+});
+
 function buildTop() {
   statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Autosaved ✓' });
   typeSel = h('select.sc-type', { id: 'scType', 'aria-label': 'Current line type' });
@@ -439,6 +510,7 @@ function buildTop() {
     h('span.sc-tip-what', { text: 'Click a line on the page to see what it is for and where Enter and Tab go.' })
   ]);
   return h('div#scTop.sc-top', {}, [
+    buildViews(),
     meta,
     h('div.sc-tools', {}, [
       h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot')]),
@@ -461,8 +533,9 @@ function buildChips() {
 }
 
 function render() {
-  const main = h('main#main.sc-main');
-  sheet = h('section#screenplay.sc-sheet', { 'aria-label': 'Screenplay' });
+  const main = h('main#main.sc-main', { 'data-view': view });
+  sheet = h('section#screenplay.sc-sheet', { 'aria-label': 'Screenplay', role: 'tabpanel', 'aria-labelledby': 'tab-screenplay', hidden: view !== 'screenplay' });
+  analysisHost = h('section#analysis.sc-analysis', { 'aria-label': 'Script analysis', role: 'tabpanel', 'aria-labelledby': 'tab-analysis', hidden: view !== 'analysis' });
   /* Hosts the other modules look for inside #screenplay: focus mode
      puts its button in `.wr-export`, read-as/dictation use `.wr-bar`.
      Hidden (screenplay.css); the ⋯ menu drives them. */
@@ -487,7 +560,7 @@ function render() {
   /* The phone's scrim behind the beats sheet; a tap on it closes them. */
   const scrim = h('div.sc-beats-scrim', { 'data-action': 'sc-beats-close', 'aria-hidden': 'true' });
   // The page's name for the accessibility tree: the bar carries no heading.
-  main.append(h('h1.visually-hidden', { text: 'Screenplay Writer' }), buildTop(), sheet, after, aside, scrim, buildChips());
+  main.append(h('h1.visually-hidden', { text: 'Screenplay Writer' }), buildTop(), sheet, analysisHost, after, aside, scrim, buildChips());
   app.replaceChildren(main);
   /* The blueprint's screenplay questions keep their saved answers here
      (verify's key-union needs section#guide on a stage page). The page
@@ -504,6 +577,7 @@ function render() {
   editor.autosizeAll();
   requestAnimationFrame(editor.autosizeAll);
   applyBreaksSoon();
+  if (view === 'analysis') refreshAnalysis();
 }
 
 /** The page alone, rebuilt (an import, a dual-dialogue toggle, a pairing change). */
@@ -1235,7 +1309,11 @@ function syncGuide() {
   if (g.hidden === show) g.hidden = !show;
   if (show) g.scrollIntoView({ behavior: 'instant', block: 'start' });
 }
-addEventListener('hashchange', () => { if (location.hash === '#import') openImport(); syncGuide(); });
+addEventListener('hashchange', () => {
+  if (location.hash === '#import') openImport();
+  syncGuide();
+  if (viewFromHash() !== view && (location.hash === '#analysis' || view === 'analysis')) setView(viewFromHash(), false);
+});
 delegate(document, 'click', '[data-action="sc-generate"]', () => { location.href = 'write.html?stay=1#generate'; });
 delegate(document, 'click', '[data-action="sc-notes"]', async () => {
   try {

@@ -1,0 +1,74 @@
+/* ============================================================
+   SCRIPT ANALYSIS — screenplay.html#analysis (src/ui/script-analysis.js)
+   ------------------------------------------------------------
+   The curve borrows story-pacing.css (.pc-*); this sheet adds the
+   per-scene dots, the length bars, the cast tracks and the layout.
+   Colours are tokens, shapes are --sk-* with the fixed token behind.
+   ============================================================ */
+.sa { display: grid; gap: var(--s4); width: 100%; max-width: 72rem; margin-inline: auto; padding: var(--s5) var(--s5) var(--s9); }
+.sa > * { min-width: 0; }
+.sa-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s3) var(--s5); }
+.sa-head-copy { min-width: 0; flex: 1 1 24rem; }
+.sa-title { margin: 0; font-family: var(--f-display); font-size: var(--t-xl); font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
+.sa-sub { margin: var(--s1) 0 0; color: var(--ink-muted); font-size: var(--t-small); line-height: 1.5; max-width: var(--measure-text, 92ch); }
+.sa-head-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.sa-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sa-stats .k-stat-value { text-transform: capitalize; }
+
+.sa-none, .sa-note { margin: var(--s2) 0 0; color: var(--ink-body); font-size: var(--t-small); line-height: 1.5; }
+.sa-none { color: var(--ink-muted); }
+
+/* the curve's per-scene dots (decorative; the svg carries the words) */
+.sa-plot { height: 220px; }
+.sa-dots { position: absolute; inset: 0; pointer-events: none; }
+.sa-dot { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: var(--radius-pill); background: var(--ink-muted); }
+.sa-dot.is-high { background: var(--status-danger); }
+.sa-dot.is-low { background: var(--status-warning); }
+.sa-dot.is-peak { width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--accent-primary); box-shadow: 0 0 0 3px var(--surface-rail); }
+.sa-dot-tip {
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  padding: var(--s-half) var(--s1h);
+  background: var(--surface-elevated); color: var(--ink);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  font-family: var(--f-mono); font-size: var(--t-micro); white-space: nowrap;
+}
+.sa-key-dot::before { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--ink-muted); }
+
+.sa-flags { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.sa-flag { padding: var(--s2) var(--s3); border-left: 2px solid var(--border-strong); background: var(--surface-rail); color: var(--ink-body); font-size: var(--t-small); line-height: 1.45; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.sa-flag.is-warn { border-left-color: var(--status-warning); }
+
+/* pacing: one bar per scene, its height its length */
+.sa-bars { height: 120px; padding: var(--s2); background: var(--surface-rail); border: 1px solid var(--border-hair); border-radius: var(--sk-field-radius, var(--radius)); }
+.sa-bars-svg { width: 100%; height: 100%; display: block; }
+.sa-bar { fill: var(--accent-primary); opacity: .75; }
+.sa-bar.is-long { fill: var(--status-warning); opacity: .9; }
+.sa-bar.is-short { opacity: .45; }
+.sa-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); margin-top: var(--s3); }
+.sa-two > * { min-width: 0; }
+.sa-wide { min-width: 14rem; }
+
+/* the cast: a track per character, first scene to last */
+.sa-cast { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.sa-cast-row { display: grid; grid-template-columns: minmax(7rem, 12rem) minmax(8rem, 12rem) minmax(0, 1fr); align-items: center; gap: var(--s3); }
+.sa-cast-name { color: var(--ink); font-weight: 600; font-size: var(--t-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sa-cast-n { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); white-space: nowrap; }
+.sa-track { position: relative; height: 14px; background: var(--surface-rail); border-radius: var(--radius-sm); }
+.sa-span { position: absolute; top: 6px; height: 2px; background: var(--border-strong); }
+.sa-tick { position: absolute; top: 2px; width: 2px; height: 10px; margin-left: -1px; background: var(--accent-primary); border-radius: 1px; }
+
+.sa-verdict { margin: 0; color: var(--ink-body); font-size: var(--t-ui); }
+.sa-verdict b { color: var(--ink); }
+
+@media (max-width: 1099px) {
+  .sa-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .sa { padding: var(--s4) var(--s3) var(--s9); }
+  .sa-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sa-two { grid-template-columns: minmax(0, 1fr); }
+  .sa-plot { height: 180px; }
+  .sa-cast-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s1) var(--s2); }
+  .sa-track { grid-column: 1 / -1; }
+  .sa-wide { min-width: 0; }
+}

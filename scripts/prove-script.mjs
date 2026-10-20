@@ -22,6 +22,9 @@
     11  a draft's print staging is identical twice
     12  old write.html fragments land on their new homes; ?stay=1 stays
     13  no horizontal overflow at 390 or 1280; no page errors
+    19  an import offers "Break down everything"; the checklist runs every
+        step, the summary counts what was made, and the Script analysis
+        tab draws — at 1280 and 390
 
        npm run build:open && npm run prove:script
    ============================================================ */
@@ -361,6 +364,63 @@ ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).incl
   await page.waitForTimeout(800);
   ok(/\b[1-9]\d* A-pages?\b/.test(await page.textContent('#numbering')), '18 the tool counts the A-pages', (await page.textContent('#numbering')).match(/[^.]*A-page[^.]*/));
 }
+
+/* ---- 19 import → Break down everything → summary → Script analysis ------ */
+for (const w of [1280, 390]) {
+  await page.setViewportSize({ width: w, height: 860 });
+  await page.evaluate(() => {
+    const S = window.StudioStore;
+    const p = S.createProject({ title: 'Proof Pipeline ' + Date.now(), format: 'feature' });
+    S.setCurrentProject(p.id);
+  });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  const fountain = [
+    'INT. CHAI SHOP - DAY', '', 'RAVI, 30s, wipes a glass. A KNIFE on the counter.', '', 'RAVI', 'One tea. Only one.', '', 'MEENA', 'Then two.', '',
+    'EXT. BUS STAND - NIGHT', '', 'Rain. Meena runs. A bus pulls away.', '', 'MEENA', 'Wait!', '',
+    'INT. CHAI SHOP - NIGHT', '', 'RAVI', 'You came back.', '', 'MEENA', 'For the tea.', '',
+    'EXT. ROOFTOP - DAY', '', 'They fight. Blood on the parapet. A scream.', '', 'RAVI', 'Run!'
+  ].join('\n');
+  await page.evaluate(() => document.querySelector('[data-action="sc-import"]').click());
+  await page.waitForSelector('#scImpPaste');
+  await page.evaluate((t) => { document.getElementById('scImpPaste').value = t; }, fountain);
+  await page.evaluate(() => document.querySelector('[data-action="sc-imp-paste"]').click());
+  await page.waitForSelector('[data-action="sc-imp-commit"]');
+  await page.evaluate(() => document.querySelector('[data-action="sc-imp-commit"]').click());
+  const offered = await page.waitForSelector('#pl-offer [data-action="pipeline-run"]', { timeout: 8000 }).then(() => true, () => false);
+  ok(offered, `19 an import offers "Break down everything" (${w}px)`);
+  if (!offered) continue;
+  await page.click('#pl-offer [data-action="pipeline-run"]');
+  const done = await page.waitForSelector('[data-pipeline="done"]', { timeout: 15000 }).then(() => true, () => false);
+  ok(done, `19 the checklist runs to the end (${w}px)`);
+  const rows = await page.$$eval('.pl-row', (rs) => rs.map((r) => r.dataset.step + ':' + r.dataset.status));
+  ok(rows.length === 8 && rows.every((r) => !/:(waiting|running|error)$/.test(r)), `19 every step reports (${w}px)`, rows);
+  const sum = await page.textContent('.pl-sumline');
+  ok(/4 scenes/.test(sum) && /shots?/.test(sum) && /shooting days?/.test(sum), `19 the summary counts what was made (${w}px)`, sum);
+  const store = await page.evaluate(() => {
+    const S = window.StudioStore; const id = S.currentProjectId();
+    const g = (k) => JSON.parse(S.rawGet(k + '__' + id) || 'null');
+    const scenes = (g('fms_scenes_v1') || {}).scenes || [];
+    const shots = (g('fms_shots_v1') || {}).shots || [];
+    return { scenes: scenes.length, days: scenes.filter((x) => x.shootDay > 0).length, shots: shots.length, props: scenes.some((x) => (x.elements && x.elements.props || []).length) };
+  });
+  ok(store.scenes === 4 && store.days === 4 && store.shots >= 4 && !store.props, `19 scenes, days and shots are stored; props stay suggestions (${w}px)`, store);
+  const over1 = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  ok(over1 <= 0, `19 the checklist fits at ${w}px`, over1);
+  await page.click('.mn-sheet [data-mn="close"]');
+  await page.waitForTimeout(300);
+  await page.click('#scTop [role="tab"][data-tab="analysis"]');
+  const drawn = await page.waitForSelector('#analysis .sa .pc-curve-svg', { timeout: 8000 }).then(() => true, () => false);
+  ok(drawn, `19 the Script analysis tab draws the tension curve (${w}px)`);
+  ok(/#analysis$/.test(page.url()) && await page.isHidden('#screenplay'), `19 the tab moves the hash and the editor steps aside (${w}px)`, page.url());
+  const panels = await page.$$eval('#analysis .k-panel', (ps) => ps.length);
+  ok(panels >= 5, `19 tension, pacing, structure, cast and coverage panels (${w}px)`, panels);
+  const over2 = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  ok(over2 <= 0, `19 the analysis has no horizontal overflow at ${w}px`, over2);
+  await page.click('#scTop [role="tab"][data-tab="screenplay"]');
+  ok(await page.isVisible('#wr-page') && !/#analysis$/.test(page.url()), `19 Write brings the editor back (${w}px)`);
+}
+await page.setViewportSize({ width: 1280, height: 900 });
 
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {

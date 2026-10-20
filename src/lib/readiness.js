@@ -154,8 +154,17 @@ export function readiness() {
      the Dragon sample documents and the call sheet already reads. */
   const contacts = Contacts.listContacts();
   const claimed  = new Set();
+  /* A role column often carries a note after the character — the
+     sample's own "RAGAVAN — 'Dragon'" and "YOUNG RAGAVAN (2014)" — and
+     an exact match called both leads uncast while the call sheet had
+     them on it. The role up to its first spaced dash or bracket counts
+     as well — the same rule as castNames() in costs.js, which the budget's
+     days-worked already uses (not imported: it would bring the rate card
+     into every page that reads this). */
+  const roleCore = (r) => String(r || '').split(/\s[—–-]\s|[(,/]/)[0];
   contacts.forEach((c) => {
     if (norm(c.role)) claimed.add(norm(c.role));
+    if (norm(roleCore(c.role))) claimed.add(norm(roleCore(c.role)));
     if (norm(c.name)) claimed.add(norm(c.name));
   });
   const characters = [];

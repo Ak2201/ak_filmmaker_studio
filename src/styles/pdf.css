@@ -224,9 +224,15 @@
     margin: 0;
   }
   body.pdf-print .sb-controls,
+  body.pdf-print .sb-controls-panel,
   body.pdf-print .sb-legend { display: none !important; }
   body.pdf-board #dood,
   body.pdf-dood #stripboard { display: none !important; }
+  /* The two are tabs (src/ui/tabs.js), and the Export menu lives on
+     the Stripboard tab, so the Day Out of Days was ALWAYS `hidden`
+     when its PDF was asked for and printed a masthead on a blank page. */
+  body.pdf-board #stripboard[hidden],
+  body.pdf-dood #dood[hidden] { display: block !important; }
   body.pdf-dood .bd-head,
   body.pdf-board .bd-head { display: none !important; }
 
@@ -271,13 +277,31 @@
     background: var(--print-wash) !important;
     border: 1px solid var(--print-rule) !important;
   }
-  body.pdf-print .sb-synopsis { flex: 1 0 100%; margin: 2pt 0 0; max-width: none; }
+  /* The synopsis sits INSIDE .sb-slug beside the location now, so a
+     100% synopsis squeezed the location to zero width and every strip
+     printed without its place. The slug wraps on paper instead. */
+  body.pdf-print .sb-slug { flex: 1 1 auto; flex-wrap: wrap; overflow: visible; }
+  body.pdf-print .sb-loc { flex: 0 0 auto; overflow: visible; white-space: normal; }
+  body.pdf-print .sb-synopsis { flex: 1 0 100%; margin: 2pt 0 0; max-width: none; white-space: normal; }
   body.pdf-print .sb-cast { flex: 1 0 100%; margin: 1pt 0 0; }
 
   /* The shoot day is data, so the control prints as its value
      rather than as an empty 36px box. print.css floors every
      select at 36px for the blueprints, where a printed field IS
      a rule to write on; a stripboard is not that document. */
+  /* print.css hides the per-strip picker for a plain Print (on the
+     shoot-day grouping it repeats the day heading); the PDF keeps it,
+     because in script order or by location it is the only place the
+     day is printed. The kit wrapper loses its box and its caret. */
+  body.pdf-print.pdf-board.has-sh-shell main .sb-strip .sb-day-sel { display: inline-block !important; }
+  body.pdf-print .sb-day-ctl {
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  body.pdf-print .sb-day-ctl::after { display: none !important; }
   body.pdf-print .sb-day-sel,
   body.pdf-print .sb-day {
     width: auto !important;

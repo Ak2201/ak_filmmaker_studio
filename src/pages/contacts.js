@@ -40,7 +40,7 @@ import Geo from '../lib/recce-geo.js';
 import {
   hueOf, prettyDate, slugOf, unitCounts, deptOptions, reachProblem as reachProblemOf, scheduleOf, sheetScenes,
   eighthsOf, placesOf, sheetDateOf, lightOf, lightNote, wrapOf, lateScenes, lateText, ROUTE_FIELDS, pinText,
-  pinRefusal, roundedPin, calledOf, groupCalled, callLabel, factsOf as factsFor, personOf, waRuns, dayName
+  pinRefusal, roundedPin, calledOf, groupCalled, callLabel, factsOf as factsFor, personOf, waRuns, dayName, nextSheetPatch
 } from '../lib/contacts-model.js';
 import WA from '../lib/callsheet-text.js';
 import { askDanger } from '../ui/dialog.js';
@@ -872,7 +872,11 @@ const sheetIdOf   = (el) => el.closest('[data-sheet]')?.dataset.sheet;
 delegate(document, 'click', '[data-action="contact-add"]', () => {
   const added = Contacts.addContact();
   render();
-  const card = added && document.querySelector('[data-contact="' + added.id + '"]');
+  /* .ct-person, not any [data-contact]: every call sheet's "who is
+     called" rows carry the same attribute and come first in the page,
+     so the bare selector found a row on a hidden tab, scrolled there,
+     and the focus — and the typing — went nowhere. */
+  const card = added && document.querySelector('.ct-person[data-contact="' + CSS.escape(added.id) + '"]');
   const name = card && card.querySelector('.ct-name');
   if (!name) return;
   name.focus({ preventScroll: true });
@@ -900,7 +904,7 @@ delegate(document, 'change', '[data-contact-field]', (e, el) => {
   // reach the call sheets.
   if (key === 'department') {
     render();
-    const sel = document.querySelector('[data-contact="' + CSS.escape(id) + '"] .ct-dept');
+    const sel = document.querySelector('.ct-person[data-contact="' + CSS.escape(id) + '"] .ct-dept');
     if (sel) {
       sel.focus({ preventScroll: true });
       sel.closest('.ct-person').scrollIntoView({ block: 'center', behavior: 'instant' });
@@ -909,8 +913,10 @@ delegate(document, 'change', '[data-contact-field]', (e, el) => {
 });
 
 delegate(document, 'click', '[data-action="sheet-add"]', () => {
-  Contacts.addCallSheet();
+  const patch = nextSheetPatch(Contacts.listCallSheets(), Locations.calendarDays(Scenes.listScenes()));
+  Contacts.addCallSheet(patch || undefined);
   render();
+  if (patch) StudioUI.toast(patch.title + ': ' + patch.sceneIds.length + (patch.sceneIds.length === 1 ? ' scene' : ' scenes') + ' ticked from the stripboard.');
   const last = document.querySelector('.ct-sheet:last-of-type .ct-sheet-title');
   if (last) last.focus();
 });

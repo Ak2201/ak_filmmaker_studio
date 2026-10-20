@@ -50,6 +50,7 @@ import {
   isOpenable, kindOptions, linkOptions, mediaLabel
 } from '../lib/plan-model.js';
 import { askDanger } from '../ui/dialog.js';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
 
 const app = document.getElementById('app');
 
@@ -74,8 +75,9 @@ function renderHeader(scenes, days, locs, media) {
     { value: String(days.length), label: days.length === 1 ? 'shoot day' : 'shoot days' },
     { value: String(dated), label: dated === 1 ? 'date set' : 'dates set', attrs: { 'data-pl-dated': '' } },
     { value: String(locs.length), label: locs.length === 1 ? 'location' : 'locations' },
-    { value: String(media.length), label: media.length === 1 ? 'reference' : 'references' }
-  ], { label: 'The plan in figures' }));
+    /* The reference index is the Media module, off for every plan. */
+    isDisabledEverywhere('media') ? null : { value: String(media.length), label: media.length === 1 ? 'reference' : 'references' }
+  ].filter(Boolean), { label: 'The plan in figures' }));
   return head;
 }
 

@@ -259,6 +259,27 @@ export function waRuns(text) {
     .filter((r) => r.bold || r.text));
 }
 
+/** What a NEW call sheet starts from: the first shoot day (calendarDays()
+    output) that no sheet claims yet — a sheet claims a day by listing its
+    scenes, the same reading as readiness.js's day-callsheet check — with
+    that day's scenes ticked, its date and its places. Null when every day
+    has a sheet (or nothing is scheduled), and the sheet starts blank.
+    It was always blank, titled "Shoot day <count + 1>": with Day 1 and
+    Day 14 on sheets, "New shoot day" made a sheet called "Shoot day 3"
+    that was not Day 3 and carried none of Day 2's scenes. */
+export function nextSheetPatch(sheets, days) {
+  const covered = new Set();
+  (sheets || []).forEach((s) => (s.sceneIds || []).forEach((id) => covered.add(id)));
+  const d = (days || []).find((x) => !(x.scenes || []).some((sc) => covered.has(sc.id)));
+  if (!d) return null;
+  return {
+    title: 'Day ' + d.day,
+    date: d.date || '',
+    location: (d.locations || []).join(' · '),
+    sceneIds: d.scenes.map((sc) => sc.id)
+  };
+}
+
 /** The sheet's title without a leading "<project> —". */
 export function dayName(title, project) {
   const t = String(title || '').trim();
@@ -272,5 +293,5 @@ export function dayName(title, project) {
 export default {
   DEPT_HUE, hueOf, prettyDate, slugOf, unitCounts, deptOptions, reachProblem, scheduleOf, sheetScenes, eighthsOf,
   placesOf, sheetDateOf, lightOf, lightNote, wrapOf, lateScenes, lateText, ROUTE_FIELDS, pinText, pinRefusal,
-  roundedPin, calledOf, groupCalled, callLabel, factsOf, personOf, waRuns, dayName
+  roundedPin, calledOf, groupCalled, callLabel, factsOf, personOf, waRuns, dayName, nextSheetPatch
 };

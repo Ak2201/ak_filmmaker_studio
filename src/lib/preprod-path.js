@@ -26,6 +26,7 @@ import { listContacts, listCallSheets } from './contacts.js';
 import { listSongs } from './songs.js';
 import { listShots, listBoards, listFrames } from './shots.js';
 import { loadScript, isNumberingLocked } from './script.js';
+import { isDisabledEverywhere } from './plan-gate.js';
 
 export const STEPS = data.steps;
 
@@ -160,6 +161,7 @@ export function pathSteps() {
   const read = readers({ scenes, report, locationCount });
   return data.steps
     .filter((s) => !s.only || (s.only === 'songs' && songs > 0))
+    .filter((s) => !s.module || !isDisabledEverywhere(s.module))
     .map((s, i) => {
       let r;
       try { r = read[s.id](); } catch (e) {

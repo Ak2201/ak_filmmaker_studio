@@ -76,7 +76,10 @@ function castChips(scene) {
 /* The breakdown element ids that have a kit chip hue. The rest print
    as a neutral chip with the category name in its title. */
 const CHIP_CAT = { props: 'props', setdressing: 'dressing', vehicles: 'vehicles', stunts: 'stunts',
-  sfx: 'sfx', vfx: 'vfx', sound: 'sound', animals: 'animals' };
+  sfx: 'sfx', vfx: 'vfx', sound: 'sound', animals: 'animals',
+  /* The industry code gave these four their own hue; unmapped, they
+     printed as the neutral chip on the floor while the breakdown coloured them. */
+  extras: 'extras', wardrobe: 'wardrobe', makeup: 'makeup', special: 'special' };
 
 /* What the scene needs on the floor: the breakdown's tagged elements
    and the shot list's coverage (src/lib/shootday.js sceneNeeds). A

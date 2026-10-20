@@ -1289,6 +1289,9 @@ delegate(document, 'click', '[data-action="vz-basic-run"]', async () => {
   }
   aiStatus = basicDoneStatus(made.length, result.byScene.size, noScript);
   aiError = '';
+  /* The scenes just drafted come off the pick: left ticked, a second
+     press drafted all 254 shots again on top of the first. */
+  for (const id of result.byScene.keys()) aiPicked.delete(id);
   render();
   say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');
 });
@@ -1299,6 +1302,7 @@ delegate(document, 'click', '[data-action="vz-ai-undo"]', async () => {
     + 'Only those shots are removed. Anything you wrote or edited since is kept.')) return;
   removeShotIds(aiLastRun);
   aiLastRun = [];
+  aiPicked = null;   // re-read: the scenes the draft covered are uncovered again
   aiStatus = 'The last draft was removed.';
   render();
 });
@@ -1355,8 +1359,18 @@ delegate(document, 'click', '[data-action="vz-board-all"]', (e, el) => {
   if (boardOpen.has(id)) boardOpen.delete(id); else boardOpen.add(id);
   render('[data-action="vz-board-all"][data-scene="' + CSS.escape(id) + '"]');
 });
-delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => { Shots.moveShot(shotIdOf(el), -1); render(); });
-delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => { Shots.moveShot(shotIdOf(el),  1); render(); });
+/* A move re-renders the page, which dropped the focus to <body>: a
+   keyboard user pressing ↓ twice moved the shot once and then nothing.
+   The focus follows the row to its new place — on the same arrow while
+   it can still move that way, else on the other one. */
+function refocusMoved(host, id, action, other) {
+  const at = '[data-' + host + '="' + CSS.escape(id) + '"] ';
+  const node = document.querySelector(at + '[data-action="' + action + '"]:not(:disabled)')
+    || document.querySelector(at + '[data-action="' + other + '"]:not(:disabled)');
+  if (node) node.focus();
+}
+delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => { const id = shotIdOf(el); Shots.moveShot(id, -1); render(); refocusMoved('shot', id, 'vz-shot-up', 'vz-shot-down'); });
+delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => { const id = shotIdOf(el); Shots.moveShot(id,  1); render(); refocusMoved('shot', id, 'vz-shot-down', 'vz-shot-up'); });
 delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
   const id = shotIdOf(el);
   if (!await askDanger(shotDeleteQuestion(id))) return;
@@ -1410,8 +1424,8 @@ delegate(document, 'click', '[data-action="vz-frame-add"]', (e, el) => {
   const input = document.querySelector('[data-frame="' + frame.id + '"] [data-frame-field="ref"]');
   if (input) input.focus();
 });
-delegate(document, 'click', '[data-action="vz-frame-up"]',   (e, el) => { Shots.moveFrame(frameIdOf(el), -1); render(); });
-delegate(document, 'click', '[data-action="vz-frame-down"]', (e, el) => { Shots.moveFrame(frameIdOf(el),  1); render(); });
+delegate(document, 'click', '[data-action="vz-frame-up"]',   (e, el) => { const id = frameIdOf(el); Shots.moveFrame(id, -1); render(); refocusMoved('frame', id, 'vz-frame-up', 'vz-frame-down'); });
+delegate(document, 'click', '[data-action="vz-frame-down"]', (e, el) => { const id = frameIdOf(el); Shots.moveFrame(id,  1); render(); refocusMoved('frame', id, 'vz-frame-down', 'vz-frame-up'); });
 delegate(document, 'click', '[data-action="vz-frame-upload"]', (e, el) => {
   const id = frameIdOf(el);
   const frame = Shots.listFrames().find((f) => f.id === id);

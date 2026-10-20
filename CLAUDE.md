@@ -25,7 +25,7 @@ most arguments: correctness of stored data beats every other consideration.
 
 **THE WEBSITE'S DOOR FOLLOWS THE PURCHASES SWITCH (owner, 12 Oct 2026).**
 `src/lib/sitegate.js` (imported by `chrome.js`, so on every reachable page)
-hides the document until the gate answers. `purchase_required` OFF → anybody
+hides the document until the gate answers. `purchase_required` (LIVE VALUE ON since the owner threw it, read 19 Oct 2026; the branches below are conditional) OFF → anybody
 signed in with Google is in, and membership only decides whether their work
 SYNCS. ON → a plan or a running free trial, both of which write the
 `studio_members` row the gate reads. Not known (offline, §32 absent) → the
@@ -1527,9 +1527,9 @@ way and every one matched byte for byte. Never paste schema SQL without
 a checksum.
 
 **SECTIONS 32, 33, 34 AND 35 ARE ALL LIVE** (run 12 Oct 2026). §32's
-"Purchases required" switch is live and `purchases_required()` answers
-**false** — so nothing is walled or capped, `billing_status().entitled` is
-true for everybody and `features` is `open_features()`. §33's
+"Purchases required" switch is live and `purchases_required()` answered
+**false** on 12 Oct — so nothing was walled or capped, `billing_status().entitled` was
+true for everybody and `features` was `open_features()`. **THE SWITCH IS NOW ON (read 19 Oct 2026):** `purchases_required()` answers **true** and the census (`admin_purchase_wall()` logic, run in the SQL editor) reads members 6, paid 3, in_trial 0, walled 3, grandfathered_walled 0 — so nobody the §30 grandfather covered is walled. The door, `entitled` and `features` now follow the plan or trial. §33's
 `trial_offer()` reads 30 minutes, trial enabled. §34 was marked on the
 owner's word until 19 Oct 2026, when the read that settles it was run:
 `select pg_get_constraintdef(oid) from pg_constraint where conname =
@@ -1602,8 +1602,8 @@ members, paid, in_trial, walled, grandfathered_walled) and restates
 is refused while it would wall a member the §30 grandfather backfill
 covered. **Neither section makes a plan necessary**, so refund.html's "a
 plan is needed again" stays untrue until the switch flips, and
-`purchases_required()` still answers **false**, which is the proof §39 did
-not throw it. `scripts/schema-tests/no-free-plan.sql`.
+`purchases_required()` answered **false** on 12 Oct, which was the proof §39 did
+not throw it (the owner has since thrown it: true on 19 Oct, `grandfathered_walled` 0). `scripts/schema-tests/no-free-plan.sql`.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this

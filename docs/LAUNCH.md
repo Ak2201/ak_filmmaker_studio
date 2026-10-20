@@ -18,7 +18,7 @@ Work it top to bottom; each step says how to check it is done.
 ## 1. Decide the door
 
 > **Overtaken 12 Oct 2026 (owner).** The door now FOLLOWS the purchases switch
-> (`purchase_required`, live value OFF): switch off, anybody signed in with Google is in and
+> (`purchase_required`, live value ON as read 19 Oct 2026; it was OFF on 12 Oct): switch off, anybody signed in with Google is in and
 > membership only decides whether work syncs; switch on, a plan or a running trial; signed
 > out goes to `start.html`, every other refusal to `invite.html` (the offer page: trial,
 > plans, code). See `CLAUDE.md` (top) and `docs/GATE.md` §0. The text below is the original

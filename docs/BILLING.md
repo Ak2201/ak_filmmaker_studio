@@ -1184,7 +1184,7 @@ Verified afterwards over PostgREST, not read off the screen:
 | `quote_order` starter / indie / pro | 59900 / 79900 / 99900 — selling unbroken |
 | `admin_purchase_wall()` | 42501 (exists and refuses anon; PGRST202 would be missing) |
 | `admin_set_billing_settings()` | 42501 (exists) |
-| `purchases_required()` | **false** — the switch was not thrown |
+| `purchases_required()` | **false** on 12 Oct — the switch was not thrown by §39. **Read TRUE on 19 Oct 2026** (owner threw it; census: members 6, paid 3, walled 3, grandfathered_walled 0) |
 
 ### Throwing the switch — NOT YET, and here is the order
 

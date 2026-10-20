@@ -129,10 +129,21 @@ export function validatePricing(compare, faq) {
   const seen = new Map();
   for (const g of compare.groups) {
     if (!g.id || !g.label || !Array.isArray(g.keys) || !g.keys.length) w('group ' + (g.id || '?') + ' needs id, label and keys');
-    for (const k of g.keys || []) {
-      if (!M.MATRIX.features.some((r) => r.key === k)) w('group ' + g.id + ' names "' + k + '", which is not a plan-matrix.json row');
-      else if (!want.includes(k)) w('group ' + g.id + ' names "' + k + '", which no paid plan has (or is an inverted restriction)');
-      seen.set(k, (seen.get(k) || 0) + 1);
+    for (const entry of g.keys || []) {
+      // an array is ONE table row for several matrix rows that are the same
+      // feature to a buyer (a capability and the module it opens); they must
+      // agree on every paid plan, or the merged row would hide a difference
+      const ks = Array.isArray(entry) ? entry : [entry];
+      if (!ks.length) w('group ' + g.id + ' has an empty merged row');
+      for (const k of ks) {
+        if (!M.MATRIX.features.some((r) => r.key === k)) w('group ' + g.id + ' names "' + k + '", which is not a plan-matrix.json row');
+        else if (!want.includes(k)) w('group ' + g.id + ' names "' + k + '", which no paid plan has (or is an inverted restriction)');
+        seen.set(k, (seen.get(k) || 0) + 1);
+      }
+      const rows = ks.map((k) => M.MATRIX.features.find((r) => r.key === k)).filter(Boolean);
+      if (rows.length > 1 && M.PAID.some((p) => rows.some((r) => M.planHas(r, p) !== M.planHas(rows[0], p)))) {
+        w('group ' + g.id + ' merges ' + ks.join(' + ') + ', which differ on a paid plan');
+      }
     }
   }
   for (const k of want) if (!seen.has(k)) w('plan-matrix.json row "' + k + '" is in no comparison group');
@@ -274,7 +285,7 @@ export function renderPage(id, { site, pages }) {
 
   const labelBar = `<div class="mk-label ${stage.hue}">
   <div class="mk-wrap mk-label-in">
-    <p class="mk-label-path">${sym(site.tools[id].icon)}<span>${esc(stage.label)}</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>${esc(p.label)}</strong></p>
+    <p class="mk-label-path">${sym(site.tools[id].icon)}${stage.label === p.label ? '' : `<span>${esc(stage.label)}</span><span class="mk-label-sep" aria-hidden="true">/</span>`}<strong>${esc(p.label)}</strong></p>
     <nav class="mk-label-nav" aria-label="${esc(u.labelNav)}">
       <a href="#how">${esc(u.labelHow)}</a>
       <a href="pricing.html">${esc(u.pricing)}</a>
@@ -453,7 +464,7 @@ ${PAID.map(card).join('\n')}
   const rowOf = (key) => M.MATRIX.features.find((r) => r.key === key);
   const body = c.groups.map((g) => `      <tbody id="cmp-${esc(g.id)}">
         <tr class="pr-group"><th scope="colgroup" colspan="${PAID.length + 1}">${esc(g.label)}</th></tr>
-${g.keys.map((k) => { const r = rowOf(k); return `        <tr><th scope="row">${esc(M.labelOf(r))}</th>${PAID.map((p) => (M.planHas(r, p) ? yes : no)).join('')}</tr>`; }).join('\n')}
+${g.keys.map((k) => { const r = rowOf(Array.isArray(k) ? k[0] : k); return `        <tr><th scope="row">${esc(M.labelOf(r))}</th>${PAID.map((p) => (M.planHas(r, p) ? yes : no)).join('')}</tr>`; }).join('\n')}
       </tbody>`).join('\n');
   const compareSec = `<section class="mk-sec mk-band-a pr-compare" id="compare" aria-labelledby="prCompH">
   <div class="mk-wrap">
@@ -956,6 +967,17 @@ ${modal(site)}
    modal: legal.js loads no script that could open one, so "Sign up" stays a
    plain link to invite.html. */
 export const LEGAL_FILES = ['privacy.html', 'terms.html', 'refund.html'];
+/* Pages that wear the frame but are no document: the header and footer
+   regions only, no contents list. 404.html loads legal.js like the three
+   above, so without the frame it rendered as unstyled dark-on-dark text
+   once the legal pages went dark. */
+export const FRAME_FILES = ['404.html'];
+
+export function renderFrame(file, src, { site, pages }) {
+  let html = replaceRegion(src, 'header', header(site, pages, null), file);
+  html = replaceRegion(html, 'footer', footer(site, pages), file);
+  return html;
+}
 
 function slugOf(text) {
   const words = text.replace(/&[a-z]+;|&#\d+;/gi, ' ').replace(/^\s*\d+\.\s*/, '').toLowerCase()
@@ -1023,6 +1045,7 @@ export function buildAll(opts = {}) {
      one on disk; the legal pages are built from the real copy only. */
   if (!opts.fixture) {
     for (const f of LEGAL_FILES) out[f] = renderLegal(f, fs.readFileSync(path.join(ROOT, f), 'utf8'), inputs);
+    for (const f of FRAME_FILES) out[f] = renderFrame(f, fs.readFileSync(path.join(ROOT, f), 'utf8'), inputs);
   }
   return { files: out, inputs };
 }

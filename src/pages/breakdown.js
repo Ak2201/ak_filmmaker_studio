@@ -47,6 +47,9 @@ import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, saveScript, blankElement } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
+import { renderPaperBreakdown, wirePaperBreakdown } from '../ui/breakdown-paper.js';
+import '../styles/breakdown-paper.css';
+wirePaperBreakdown();
 import { suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
 import { pageHeader, statStrip, statCard, button, chip, badge, todBadge, segmented } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
@@ -308,7 +311,8 @@ function renderScene(scene, i, total) {
         type: 'number', min: '0', max: '80', step: '1', value: String(scene.eighths),
         'data-scene-field': 'eighths', 'aria-label': 'Length in eighths of a page'
       }),
-      h('span.bd-pages', { text: formatEighths(scene.eighths), title: 'Length in pages (eighths in the box)' })
+      h('span.bd-sl-unit', { text: '/8', 'aria-hidden': 'true' }),
+      h('span.bd-pages', { text: formatEighths(scene.eighths), title: 'Length in pages (eighths of a page in the box)' })
     ]),
     h('span.bd-sl-cast' + (cast ? '' : '.is-none'), { text: cast || '—', title: (scene.elements.cast || []).join(', ') || 'No cast tagged yet' }),
     badge({ label: status.label, tone: STATUS_TONE[status.id], dot: true, class: 'bd-sl-status is-' + status.id }),
@@ -392,6 +396,10 @@ function renderScene(scene, i, total) {
   tags.append(adder);
   detail.append(tags);
   detail.append(h('div.bd-scene-acts', {}, [
+    h('button.k-btn.k-btn--secondary.k-btn--sm.bd-sl-paper', {
+      type: 'button', 'data-action': 'bdp-open', 'data-id': scene.id,
+      text: 'Break down on the page →', title: 'Open this scene on the page in Scene Breakdown'
+    }),
     iconBtn('↑', 'scene-up',   'Move earlier', i === 0),
     iconBtn('↓', 'scene-down', 'Move later',   i === total - 1),
     iconBtn('✕', 'scene-del',  'Move to the bin', false, true)
@@ -750,7 +758,7 @@ function renderElements() {
   const usedCats = totals.filter((c) => c.tags).length;
   const wrap = h('section.bd-elements.bdx', { id: 'elements' });
   wrap.append(h('h2.bd-h2', { text: 'Elements' }),
-              h('p.bd-sub', { text: 'Derived from the tags above. Nothing here is typed twice.' }));
+              h('p.bd-sub', { text: 'Derived from the tags on each scene. Nothing here is typed twice.' }));
   if (!grand.tags) {
     wrap.append(h('p.bd-none', { text: 'No elements tagged yet. Tag one on any scene and it appears here, with every scene it touches.' }));
     return wrap;
@@ -1007,12 +1015,12 @@ function render(focus) {
      renderElements() needed nothing — it already keeps its id and
      carries its own teaching copy when the index is empty. */
   const list = h('section.bd-list', { id: 'scenes' });
-  /* #breakdown is Script Breakdowns' own target (Pre-Production), and
-     #scenes the Scene List's (also Pre-Production): the same cards, read two
-     ways — the list of scenes, and the tagging inside each one. A div,
-     not a section, so tabs.js still sees one Scene List tab; and it
-     ALWAYS renders, empty state included, for the reason above. */
-  const tagging = h('div.bd-breakdown', { id: 'breakdown' });
+  /* The rows' wrapper. #breakdown (Scene Breakdown) used to be this div,
+     the tagging inside each card; since 20 Oct 2026 it is its own tab,
+     the paper breakdown (src/ui/breakdown-paper.js), and the cards keep
+     their own tags under #scenes. It ALWAYS renders, empty state
+     included, for the reason above. */
+  const tagging = h('div.bd-breakdown');
   if (!scenes.length) {
     tagging.append(renderEmpty());
   } else {
@@ -1055,7 +1063,8 @@ function render(focus) {
      a song list is decided before the scenes are, so hiding it until a
      scene exists would hide it at exactly the moment it is most
      useful. The branch-local version this replaces called it twice. */
-  main.append(renderScriptOverview(scenes), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
+  main.append(renderPaperBreakdown(scenes, loadScript().elements, { refresh: () => render(), toast: (m, o) => StudioUI.toast(m, o) }),
+    renderScriptOverview(scenes), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
   applySceneFilter();

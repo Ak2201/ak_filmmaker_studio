@@ -32,6 +32,7 @@ import {
   STATE_WORD, STATE_TONE, panelId, bareId, menuGroups as groupsOf, resolveStep, sortedChecks, checkRow, summaryText
 } from '../lib/preprod-model.js';
 import { readiness } from '../lib/readiness.js';
+import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import Store from '../lib/store.js';
 import { pageHeader, button, badge, meter } from '../ui/kit/index.js';
 
@@ -90,8 +91,10 @@ function stepPanel(s) {
     sec.append(readinessList());
     sec.append(h('div.pp-act', {}, [
       button({ href: 'contacts.html#call-sheets', label: 'MAKE THE CALL SHEET →', variant: 'primary' }),
-      button({ href: 'shoot.html', label: 'OPEN THE SHOOT DAY →' })
-    ]));
+      /* Only while the Shoot Day is on for some plan: switched off for every
+         plan, its page says Not available. */
+      isDisabledEverywhere('shoot-day') ? null : button({ href: 'shoot.html', label: 'OPEN THE SHOOT DAY →' })
+    ].filter(Boolean)));
   }
   else if (s.missing.length) {
     sec.append(h('p.pp-missing-h', { text: 'Still to do' }),

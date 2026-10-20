@@ -28,9 +28,19 @@
   width: 100%;
   max-width: var(--mk-wrap, 1200px);
   margin-inline: auto;
-  padding: var(--s7) var(--gutter) var(--s9);
+  /* The header is position: fixed, so the page starts below it, as the
+     marketing hero does. */
+  padding: calc(var(--mk-top-h, 72px) + var(--s7)) var(--gutter) var(--s9);
   box-sizing: border-box;
 }
+/* a page in the frame with no contents list (404.html): one column */
+.legal-page.legal-page--solo { display: block; }
+.legal-page--solo .legal { margin-inline: auto; }
+.legal-links { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s6); max-width: none; }
+/* the buttons keep marketing.css's inks: `.legal a` would paint both labels link-violet */
+.legal .mk-btn { text-decoration: none; }
+.legal .mk-btn--primary, .legal .mk-btn--primary:hover { color: var(--brand-on); }
+.legal .mk-btn--outline, .legal .mk-btn--outline:hover { color: var(--ink); }
 
 .legal {
   min-width: 0;
@@ -40,10 +50,13 @@
 @media (min-width: 1100px) {
   .legal-page {
     display: grid;
-    grid-template-columns: 15rem minmax(0, var(--measure-text));
-    gap: var(--s8, var(--s7));
+    /* Both tracks can shrink, so the grid never outgrows the window: a
+       fixed 15rem + 92ch track was wider than a laptop screen, and centring
+       it spilled the contents column off the left edge. The text still stops
+       at --measure-text through .legal's max-width. */
+    grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr);
+    gap: var(--s7);
     align-items: start;
-    justify-content: center;
   }
 }
 
@@ -116,6 +129,20 @@
   align-items: center;
   cursor: pointer;
 }
+.legal-toc-m > summary { list-style: none; justify-content: space-between; }
+.legal-toc-m > summary::-webkit-details-marker { display: none; }
+/* The open/closed mark: display:flex drops the native triangle, so a
+   chevron drawn from two borders stands in (no icon font needed). */
+.legal-toc-m > summary::after {
+  content: '';
+  width: 0.5em;
+  height: 0.5em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform .18s var(--ease, ease);
+}
+.legal-toc-m[open] > summary::after { transform: rotate(-135deg); }
 .legal-toc-m[open] > summary { margin-bottom: var(--s2); }
 .legal-toc-m a { min-height: 40px; display: flex; align-items: center; }
 
@@ -131,7 +158,12 @@
   text-wrap: balance;
 }
 
-.legal-sub {
+/* `.legal .legal-sub` / `.legal .legal-date`, not the bare class: both are
+   <p>s, and `.legal p` (one class and a tag) outranked a single class, so
+   the deck lost its --t-lg and the date its tiny muted mono (it printed at
+   body size, ink-body, and its rule stopped at --measure short of the
+   callouts below it). */
+.legal .legal-sub {
   color: var(--ink-body);
   font-size: var(--t-lg);
   line-height: var(--lh-body);
@@ -139,7 +171,8 @@
   max-width: 52ch;
 }
 
-.legal-date {
+.legal .legal-date {
+  max-width: none;
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-label);
@@ -179,6 +212,9 @@
 }
 
 .legal p { margin: 0 0 var(--s3); }
+/* The date's rule runs the column's width, like the boxes below it;
+   .legal p would otherwise cap it at --measure. */
+.legal p.legal-date { max-width: none; margin-bottom: var(--s6); }
 .legal ul,
 .legal ol { margin: 0 0 var(--s3); padding-left: var(--s5); }
 .legal li { margin-bottom: var(--s2); }
@@ -259,7 +295,7 @@
   .legal-page { display: block; max-width: none; padding: 0; }
   .legal h1, .legal h2, .legal h3, .legal strong { color: var(--print-ink); }
   .legal p, .legal li, .legal-sub { color: var(--print-ink); }
-  .legal-date, .legal li::marker { color: var(--print-muted); }
+  .legal .legal-date, .legal li::marker { color: var(--print-muted); }
   .legal h2, .legal-date { border-color: var(--print-rule); }
   .legal a { color: var(--print-ink); }
   .legal-key, .legal-changes, .legal code {

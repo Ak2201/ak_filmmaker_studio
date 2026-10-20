@@ -453,6 +453,13 @@
 
 /* What the scene needs on the floor: tagged elements and coverage. */
 .sd-needs { display: grid; gap: var(--s2); margin-top: var(--s1); }
+/* On a phone the kit makes a chip row one line that scrolls with no
+   scrollbar. On the floor that hid eight of a scene's eleven needs —
+   "Crane for the arrival wide" behind a swipe nobody knew to make — so
+   this row wraps at every width. */
+@media (max-width: 720px) {
+  .sd-needs-tags.k-chip-row { flex-wrap: wrap; overflow-x: visible; scroll-snap-type: none; }
+}
 .sd-needs-facts { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: 0; }
 .sd-needs-facts div { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
 .sd-needs-facts dd { margin: 0; font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink); overflow-wrap: anywhere; }

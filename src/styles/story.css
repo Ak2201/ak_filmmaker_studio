@@ -356,7 +356,10 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
    The path is the section menu's strip (tabs.css) straight above the
    steps: Idea · Characters & world · Beat Sheet · Synopsis. Any step
    opens at any time; Back / Next at the foot only suggest. */
-.st-main > nav.tabs { margin-block: var(--s4) 0; }
+/* <main> is already the column (.k-page), so the strip drops the gutter
+   tabs.css gives a strip beside full-bleed sections: with it the path
+   sat 24px right of every step heading under it. */
+.st-main > nav.tabs { margin-block: var(--s4) 0; margin-inline: 0; max-width: 100%; }
 
 /* the logline, inside the Idea step */
 .st-part { margin-top: var(--s6); padding-top: var(--s5); border-top: 1px solid var(--rule-hair); scroll-margin-top: var(--scroll-offset, 0px); }

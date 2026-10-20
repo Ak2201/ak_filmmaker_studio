@@ -37,6 +37,21 @@
      ---------------------------------------------------------- */
   html:root {
     color-scheme: light;
+    /* The Swiss stack (14 Oct 2026). The page sheets read these
+       directly now, not --paper, so without them every card, strip,
+       group and kit control printed its obsidian ground. */
+    --surface-canvas:   var(--print-paper);
+    --surface-rail:     var(--print-paper);
+    --surface-card:     var(--print-paper);
+    --surface-elevated: var(--print-paper);
+    --surface-hover:    var(--print-wash);
+    --surface-active:   var(--print-wash);
+    --surface-card-sheen: none;
+    --surface-rail-sheen: none;
+    --border-hair:      var(--print-rule);
+    --border-default:   var(--print-rule);
+    --border-strong:    var(--print-rule);
+    --border-grip:      var(--print-rule);
     --paper:        var(--print-paper);
     --paper-raised: var(--print-paper);
     --paper-sunk:   var(--print-wash);
@@ -63,6 +78,10 @@
     --el-animals-deep: var(--print-ink);  --el-animals-wash: var(--print-wash);
     --el-sfx-deep: var(--print-ink);  --el-sfx-wash: var(--print-wash);
     --el-dressing-deep: var(--print-ink);  --el-dressing-wash: var(--print-wash);
+    --el-extras-deep: var(--print-ink);  --el-extras-wash: var(--print-wash);
+    --el-wardrobe-deep: var(--print-ink);  --el-wardrobe-wash: var(--print-wash);
+    --el-makeup-deep: var(--print-ink);  --el-makeup-wash: var(--print-wash);
+    --el-special-deep: var(--print-ink);  --el-special-wash: var(--print-wash);
     --ok-deep:      var(--print-ink);   --ok-wash:      var(--print-wash);
     --warn-deep:    var(--print-ink);   --warn-wash:    var(--print-wash);
     --danger-wash:  var(--print-wash);

@@ -29,6 +29,7 @@ import {
   scheduleFacts, scheduleHint, songDaysHint
 } from '../lib/budget-model.js';
 import { askDanger } from './dialog.js';
+import { revealTarget } from './tabs.js';
 import { button, badge, sym } from './kit/index.js';
 
 /* ============================================================
@@ -164,9 +165,23 @@ function addCalcRow(n = 1, persist = true) {
     calcCount++;
     frag.append(buildCalcRow(calcCount));
   }
+  const first = frag.firstElementChild;
   wrap.append(frag);
   updateCalc();
   if (persist) saveCalc();
+  return first;
+}
+
+/* A row added from a button lands at the foot of a long list — the
+   header's "New cost line" is 2,000px above it, and may be pressed from
+   another tab — so nothing seemed to happen. The new row's item field
+   takes the focus and comes into view. */
+function focusNewRow(row) {
+  if (!row) return;
+  revealTarget('calcRows');
+  const field = row.querySelector('select, input');
+  if (field) field.focus({ preventScroll: true });
+  row.scrollIntoView({ block: 'center', behavior: 'instant' });
 }
 
 function updateCalc() {
@@ -435,8 +450,8 @@ export function initBudget(root) {
 }
 
 export const BUDGET_ACTIONS = {
-  'add-row': () => addCalcRow(1),
-  'add-5': () => addCalcRow(5),
+  'add-row': () => focusNewRow(addCalcRow(1)),
+  'add-5': () => focusNewRow(addCalcRow(5)),
   reset: resetCalc,
   print: () => window.print(),
   'use-shoot-days': (el) => {

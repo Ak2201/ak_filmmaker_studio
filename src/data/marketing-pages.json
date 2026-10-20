@@ -116,7 +116,7 @@
     "metaDescription": "Break a screenplay down scene by scene. Auto-tag suggests cast, props, vehicles, stunts and sounds. You accept what is right and the schedule follows.",
     "hero": {
       "h1": "Break down your script scene by scene",
-      "sub": "One run turns every scene heading into a scene and tags the cast its character cues name. You add the props, vehicles, stunts and sounds each scene needs."
+      "sub": "One run turns every scene heading into a scene and tags the cast its character cues name. Then each scene opens on the page, and you mark what it needs in the industry colour code, with its breakdown sheet beside it."
     },
     "value": {
       "h2": "A breakdown you check, not one you type",
@@ -129,9 +129,9 @@
     "steps": [
       { "title": "Bring in the script", "body": "Write in the Screenplay Writer or import a Fountain, Final Draft, Word or PDF file. Each scene heading becomes a scene in the list." },
       { "title": "Let auto-tag suggest", "body": "Run auto-tag to get suggested actors, props, vehicles, stunts and sounds for each scene. Suggestions wait for your decision." },
-      { "title": "Accept and correct", "body": "Accept the right suggestions, reject the wrong ones and add anything the script only implies. The scene keeps your final word." },
+      { "title": "Mark it on the page", "body": "Select words in the scene to tag them, each category in its own colour: cast red, props violet, vehicles pink. Click a dotted suggestion to take it, or a mark to move it. The scene keeps your final word." },
       { "title": "Mark day or night, inside or out", "body": "Each scene carries its location and whether it is day or night, so the stripboard can group scenes the way a unit shoots." },
-      { "title": "Read what the film needs", "body": "Open the element list and the reports for everything the film needs, with the scenes that need it, ready to print." }
+      { "title": "Read the breakdown sheet", "body": "Every scene has its breakdown sheet beside the page, box by box, and prints one sheet a page. The element list and the reports gather the same tags for the whole film." }
     ],
     "related": ["catalog", "schedule", "shot-list"],
     "midCta": { "h2": "Break down your first scene" },

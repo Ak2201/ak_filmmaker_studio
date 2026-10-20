@@ -146,38 +146,56 @@
   --shoot-deep:   #f9a8d4;
   --shoot-wash:   #2d1624;
 
-  /* ---- breakdown category hues (PRD 2.0 FR-603) -------------
-     CATEGORY colours, reached only through .hue-el-* — never a phase,
-     never a status. Every chip carries its category's NAME as well as
-     its colour: identity is never colour alone. */
-  --el-cast:        #fb7185;
-  --el-cast-deep:   #fda4af;
-  --el-cast-wash:   #31141c;
-  --el-props:       #38bdf8;
-  --el-props-deep:  #7dd3fc;
-  --el-props-wash:  #0e2433;
-  --el-vehicles:      #facc15;
-  --el-vehicles-deep: #fde68a;
-  --el-vehicles-wash: #2b250c;
-  --el-vehicles-on:   var(--on-fill);
-  --el-sound:       #4ade80;
-  --el-sound-deep:  #86efac;
-  --el-sound-wash:  #10291a;
-  --el-stunts:        #fb923c;
-  --el-stunts-deep:   #fdba74;
-  --el-stunts-wash:   #2c180b;
-  --el-vfx:        #818cf8;
-  --el-vfx-deep:   #a5b4fc;
-  --el-vfx-wash:   #181a35;
-  --el-animals:        #d6a77a;
-  --el-animals-deep:   #e7c4a0;
-  --el-animals-wash:   #281f17;
-  --el-sfx:        #22d3ee;
-  --el-sfx-deep:   #67e8f9;
-  --el-sfx-wash:   #0b252b;
-  --el-dressing:        #94a3b8;
-  --el-dressing-deep:   #cbd5e1;
-  --el-dressing-wash:   #1c222c;
+  /* ---- breakdown category hues: the INDUSTRY colour code ----
+     (owner, 20 Oct 2026). The colours a 1st AD's highlighters have
+     always used on a paper script: cast red, stunts orange, background
+     green, special effects blue, props violet, vehicles and animals
+     pink, sound brown. Wardrobe, hair & makeup and special equipment
+     were marks rather than colours on paper (a circle, an asterisk, a
+     box); here they take the remaining hues and the sheet prints the
+     mark beside the name. CATEGORY colours, reached only through
+     .hue-el-* — never a phase, never a status. Every chip carries its
+     category's NAME as well as its colour: identity is never colour
+     alone. */
+  --el-cast: #f87171;
+  --el-cast-deep: #fca5a5;
+  --el-cast-wash: #331618;
+  --el-stunts: #fb923c;
+  --el-stunts-deep: #fdba74;
+  --el-stunts-wash: #2c180b;
+  --el-extras: #4ade80;
+  --el-extras-deep: #86efac;
+  --el-extras-wash: #10291a;
+  --el-sfx: #3b82f6;
+  --el-sfx-deep: #93c5fd;
+  --el-sfx-wash: #0f1d36;
+  --el-props: #a78bfa;
+  --el-props-deep: #c4b5fd;
+  --el-props-wash: #1f1838;
+  --el-vehicles: #f472b6;
+  --el-vehicles-deep: #f9a8d4;
+  --el-vehicles-wash: #2d1624;
+  --el-animals: #e879f9;
+  --el-animals-deep: #f0abfc;
+  --el-animals-wash: #2a1430;
+  --el-wardrobe: #2dd4bf;
+  --el-wardrobe-deep: #7fe8da;
+  --el-wardrobe-wash: #0f2724;
+  --el-makeup: #facc15;
+  --el-makeup-deep: #fde68a;
+  --el-makeup-wash: #2b250c;
+  --el-sound: #c08457;
+  --el-sound-deep: #e3b58f;
+  --el-sound-wash: #2a1d12;
+  --el-dressing: #b5c25a;
+  --el-dressing-deep: #d6df9a;
+  --el-dressing-wash: #22260f;
+  --el-vfx: #38bdf8;
+  --el-vfx-deep: #7dd3fc;
+  --el-vfx-wash: #0e2433;
+  --el-special: #94a3b8;
+  --el-special-deep: #cbd5e1;
+  --el-special-wash: #1c222c;
 
   /* Lifted: text on --panel. Identical to -deep in a dark-only palette;
      the names stay because rules read them. */
@@ -187,15 +205,19 @@
   --visualize-lift: var(--visualize-deep);
   --plan-lift:    var(--plan-deep);
   --shoot-lift:   var(--shoot-deep);
-  --el-cast-lift:     var(--el-cast-deep);
-  --el-props-lift:    var(--el-props-deep);
+  --el-cast-lift: var(--el-cast-deep);
+  --el-stunts-lift: var(--el-stunts-deep);
+  --el-extras-lift: var(--el-extras-deep);
+  --el-sfx-lift: var(--el-sfx-deep);
+  --el-props-lift: var(--el-props-deep);
   --el-vehicles-lift: var(--el-vehicles-deep);
-  --el-sound-lift:    var(--el-sound-deep);
-  --el-stunts-lift:   var(--el-stunts-deep);
-  --el-vfx-lift:      var(--el-vfx-deep);
-  --el-animals-lift:  var(--el-animals-deep);
-  --el-sfx-lift:      var(--el-sfx-deep);
+  --el-animals-lift: var(--el-animals-deep);
+  --el-wardrobe-lift: var(--el-wardrobe-deep);
+  --el-makeup-lift: var(--el-makeup-deep);
+  --el-sound-lift: var(--el-sound-deep);
   --el-dressing-lift: var(--el-dressing-deep);
+  --el-vfx-lift: var(--el-vfx-deep);
+  --el-special-lift: var(--el-special-deep);
   --ok-lift:      #6ee7b7;
   --danger-lift:  #fca5a5;
 
@@ -289,14 +311,19 @@
   --visualize-on: var(--on-fill);
   --plan-on:      var(--on-fill);
   --shoot-on:     var(--on-fill);
-  --el-cast-on:   var(--on-fill);
-  --el-props-on:  var(--on-fill);
-  --el-sound-on:  var(--on-fill);
-  --el-stunts-on:  var(--on-fill);
-  --el-vfx-on:  var(--on-fill);
-  --el-animals-on:  var(--on-fill);
-  --el-sfx-on:  var(--on-fill);
-  --el-dressing-on:  var(--on-fill);
+  --el-cast-on: var(--on-fill);
+  --el-stunts-on: var(--on-fill);
+  --el-extras-on: var(--on-fill);
+  --el-sfx-on: var(--on-fill);
+  --el-props-on: var(--on-fill);
+  --el-vehicles-on: var(--on-fill);
+  --el-animals-on: var(--on-fill);
+  --el-wardrobe-on: var(--on-fill);
+  --el-makeup-on: var(--on-fill);
+  --el-sound-on: var(--on-fill);
+  --el-dressing-on: var(--on-fill);
+  --el-vfx-on: var(--on-fill);
+  --el-special-on: var(--on-fill);
   --danger-on:    var(--accent-on);
 
   /* ---- chrome: the rail, the band, the dock (level 1) -------- */
@@ -629,15 +656,19 @@
 .sh-ph-post,       .hue-visualize { --hue: var(--visualize); --hue-on: var(--visualize-on); --hue-deep: var(--visualize-deep); --hue-lift: var(--visualize-lift); --hue-wash: var(--visualize-wash); }
 .sh-ph-preprod,    .hue-plan      { --hue: var(--plan);      --hue-on: var(--plan-on);      --hue-deep: var(--plan-deep);      --hue-lift: var(--plan-lift); --hue-wash: var(--plan-wash); }
 .sh-ph-production, .hue-shoot     { --hue: var(--shoot);     --hue-on: var(--shoot-on);     --hue-deep: var(--shoot-deep);     --hue-lift: var(--shoot-lift); --hue-wash: var(--shoot-wash); }
-.hue-el-cast     { --hue: var(--el-cast);     --hue-on: var(--el-cast-on);     --hue-deep: var(--el-cast-deep);     --hue-lift: var(--el-cast-lift);     --hue-wash: var(--el-cast-wash); }
-.hue-el-props    { --hue: var(--el-props);    --hue-on: var(--el-props-on);    --hue-deep: var(--el-props-deep);    --hue-lift: var(--el-props-lift);    --hue-wash: var(--el-props-wash); }
+.hue-el-cast { --hue: var(--el-cast); --hue-on: var(--el-cast-on); --hue-deep: var(--el-cast-deep); --hue-lift: var(--el-cast-lift); --hue-wash: var(--el-cast-wash); }
+.hue-el-stunts { --hue: var(--el-stunts); --hue-on: var(--el-stunts-on); --hue-deep: var(--el-stunts-deep); --hue-lift: var(--el-stunts-lift); --hue-wash: var(--el-stunts-wash); }
+.hue-el-extras { --hue: var(--el-extras); --hue-on: var(--el-extras-on); --hue-deep: var(--el-extras-deep); --hue-lift: var(--el-extras-lift); --hue-wash: var(--el-extras-wash); }
+.hue-el-sfx { --hue: var(--el-sfx); --hue-on: var(--el-sfx-on); --hue-deep: var(--el-sfx-deep); --hue-lift: var(--el-sfx-lift); --hue-wash: var(--el-sfx-wash); }
+.hue-el-props { --hue: var(--el-props); --hue-on: var(--el-props-on); --hue-deep: var(--el-props-deep); --hue-lift: var(--el-props-lift); --hue-wash: var(--el-props-wash); }
 .hue-el-vehicles { --hue: var(--el-vehicles); --hue-on: var(--el-vehicles-on); --hue-deep: var(--el-vehicles-deep); --hue-lift: var(--el-vehicles-lift); --hue-wash: var(--el-vehicles-wash); }
-.hue-el-sound    { --hue: var(--el-sound);    --hue-on: var(--el-sound-on);    --hue-deep: var(--el-sound-deep);    --hue-lift: var(--el-sound-lift);    --hue-wash: var(--el-sound-wash); }
-.hue-el-stunts   { --hue: var(--el-stunts);   --hue-on: var(--el-stunts-on);   --hue-deep: var(--el-stunts-deep);   --hue-lift: var(--el-stunts-lift);   --hue-wash: var(--el-stunts-wash); }
-.hue-el-vfx      { --hue: var(--el-vfx);      --hue-on: var(--el-vfx-on);      --hue-deep: var(--el-vfx-deep);      --hue-lift: var(--el-vfx-lift);      --hue-wash: var(--el-vfx-wash); }
-.hue-el-animals  { --hue: var(--el-animals);  --hue-on: var(--el-animals-on);  --hue-deep: var(--el-animals-deep);  --hue-lift: var(--el-animals-lift);  --hue-wash: var(--el-animals-wash); }
-.hue-el-sfx      { --hue: var(--el-sfx);      --hue-on: var(--el-sfx-on);      --hue-deep: var(--el-sfx-deep);      --hue-lift: var(--el-sfx-lift);      --hue-wash: var(--el-sfx-wash); }
+.hue-el-animals { --hue: var(--el-animals); --hue-on: var(--el-animals-on); --hue-deep: var(--el-animals-deep); --hue-lift: var(--el-animals-lift); --hue-wash: var(--el-animals-wash); }
+.hue-el-wardrobe { --hue: var(--el-wardrobe); --hue-on: var(--el-wardrobe-on); --hue-deep: var(--el-wardrobe-deep); --hue-lift: var(--el-wardrobe-lift); --hue-wash: var(--el-wardrobe-wash); }
+.hue-el-makeup { --hue: var(--el-makeup); --hue-on: var(--el-makeup-on); --hue-deep: var(--el-makeup-deep); --hue-lift: var(--el-makeup-lift); --hue-wash: var(--el-makeup-wash); }
+.hue-el-sound { --hue: var(--el-sound); --hue-on: var(--el-sound-on); --hue-deep: var(--el-sound-deep); --hue-lift: var(--el-sound-lift); --hue-wash: var(--el-sound-wash); }
 .hue-el-dressing { --hue: var(--el-dressing); --hue-on: var(--el-dressing-on); --hue-deep: var(--el-dressing-deep); --hue-lift: var(--el-dressing-lift); --hue-wash: var(--el-dressing-wash); }
+.hue-el-vfx { --hue: var(--el-vfx); --hue-on: var(--el-vfx-on); --hue-deep: var(--el-vfx-deep); --hue-lift: var(--el-vfx-lift); --hue-wash: var(--el-vfx-wash); }
+.hue-el-special { --hue: var(--el-special); --hue-on: var(--el-special-on); --hue-deep: var(--el-special-deep); --hue-lift: var(--el-special-lift); --hue-wash: var(--el-special-wash); }
 /* Time of day, for the kit's strip and badge (same four-way shape). */
 .hue-day   { --hue: var(--strip-day);   --hue-on: var(--on-fill); --hue-deep: var(--strip-day-ink);   --hue-lift: var(--strip-day-ink);   --hue-wash: var(--strip-day-bg); }
 .hue-night { --hue: var(--strip-night); --hue-on: var(--on-fill); --hue-deep: var(--strip-night-ink); --hue-lift: var(--strip-night-ink); --hue-wash: var(--strip-night-bg); }

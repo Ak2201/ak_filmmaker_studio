@@ -14,7 +14,8 @@
        rule that keeps the 24 steps out of markup exists because
        those ARE derived. This is the case it does not cover.
 
-   So this file carries the stylesheets and one font check. No
+   So this file carries the stylesheets, one font check and (for
+   404.html, which shares it) a fragment fix. No
    store.js, because these pages touch no storage; no chrome.js,
    because they have no toolbar, no theme picker and no shell to
    re-init; no pwa.js, because a document does not need a service
@@ -57,3 +58,23 @@ import '../styles/legal.css';
   try { fonts.ready.then(check); } catch (e) { /* older engines */ }
   addEventListener('load', check, { once: true });
 })();
+
+/* 404.html is served at ANY unknown path, so it carries <base href="/">
+   for its assets — and under a base, the frame's bare "#main" (skip link)
+   and "#mkFoot" (the phone menu's no-script target) resolve to "/#main"
+   and leave the page for the home page. Keep a same-document fragment on
+   this document. The three policies have no <base>, so this never runs
+   there. */
+if (document.querySelector('base[href]')) {
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    let t = null;
+    try { t = document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1))); } catch (err) { t = null; }
+    if (!t) return;
+    e.preventDefault();
+    if (!t.hasAttribute('tabindex') && !/^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) t.setAttribute('tabindex', '-1');
+    t.scrollIntoView();
+    t.focus({ preventScroll: true });
+  });
+}

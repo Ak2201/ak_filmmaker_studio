@@ -1336,7 +1336,11 @@ try {
     ok(!(await T.page.$('#screentime[data-tab-off]')) && !(await T.page.$('#cast-matrix[data-tab-off]')), 'and Screen Time and Cast Matrix are sold on a plan again, not hidden as off for everybody');
     ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Screenplay Analysis, Scene List)');
     await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
-    ok(!(await T.page.$('#scenes[data-tab-lock]')) && !(await T.page.$('#breakdown[data-tab-lock]')), 'and the Scene List (with the cards nested in it) is not');
+    ok(!(await T.page.$('#scenes[data-tab-lock]')), 'and the Scene List (with its own tags in each row) is not');
+    /* Scene Breakdown (breakdowns, Intermediate) has been its own tab since
+       20 Oct 2026 — the paper breakdown — so on Basic it is locked in place
+       like Elements, rather than riding inside the Scene List. */
+    await T.page.waitForSelector('#breakdown[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Scene Breakdown section is locked in place'), () => ok(false, 'Basic: the Scene Breakdown section is locked in place'));
     await open('settings.html#drive');
     await T.page.waitForSelector('[data-plan-locked="drive_backup"]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: Settings says Drive backup is not part of the plan'), () => ok(false, 'Basic: Settings says Drive backup is not part of the plan'));
     await open('purchase.html');

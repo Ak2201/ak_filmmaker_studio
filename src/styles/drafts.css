@@ -7,14 +7,13 @@ main.dr-main {
   display: grid;
   gap: var(--s4);
 }
-/* A draft row's text column shares the class name, and used to share
-   the page column's rule with it; it keeps that box. */
+/* A draft row's text column shares the class name with the page column.
+   It is a plain stack: the page column's padding (a --s9 foot and the
+   gutter) made every draft card ~300px tall with its meta squeezed into
+   a 186px strip beside the actions. */
 .dr-row > .dr-main {
-  max-width: var(--measure-wide);
-  margin: 0 auto;
-  padding: var(--s5) var(--gutter) var(--s9);
   display: grid;
-  gap: var(--s4);
+  gap: var(--s1);
   min-width: 0;
 }
 .dr-bar {
@@ -63,10 +62,11 @@ main.dr-main {
 .dr-tag { color: var(--accent-deep); font-weight: 700; text-transform: uppercase; letter-spacing: var(--track-wide, .06em); }
 .dr-meta { color: var(--ink-muted); font-size: var(--t-sm); }
 .dr-note { margin-top: var(--s1); color: var(--ink); overflow-wrap: anywhere; }
+/* The actions sit under the name and meta, in the text column: three
+   buttons beside the meta left it a third of the card. */
 .dr-acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s2); }
 @media (min-width: 720px) {
-  .dr-row { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .dr-acts { grid-column: auto; justify-content: flex-end; }
+  .dr-acts { grid-column: 2; }
 }
 .dr-card {
   display: grid;

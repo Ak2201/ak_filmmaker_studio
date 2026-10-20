@@ -102,6 +102,8 @@ export const DOCUMENTS = {
   sides:      { setup: 'a4',         label: 'Sides',    classes: ['rp-print-sides'] },
   reports:    { setup: 'a4',         label: 'Production reports', classes: ['rp-print-reports'] },
   board:      { setup: 'landscape',  label: 'Stripboard' },
+  // One industry breakdown sheet per scene; each sheet is its own heading.
+  bdsheets:   { setup: 'a4',         label: 'Breakdown sheets', masthead: false },
   dood:       { setup: 'landscape',  label: 'Day Out of Days' },
   // An invoice is its own letterhead.
   invoice:    { setup: 'a4',         label: 'Invoice', masthead: false },

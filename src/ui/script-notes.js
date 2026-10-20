@@ -104,7 +104,7 @@ export async function openScriptNotes(opts) {
         sel('state', 'Status', [['all', 'All'], ['open', 'Open'], ['resolved', 'Resolved']]),
         sel('sceneId', 'Scene', [['', 'All scenes'], ...fx.scenes.map((s) => [s.id, s.label])]),
         sel('author', 'Author', [['', 'Everyone'], ...fx.authors.map((a) => [a, a])]),
-        sel('kind', 'Kind', [['', 'Shared and private'], ['shared', 'Shared'], ['private', 'Private']])
+        sel('kind', 'Kind', [['', 'All kinds'], ['shared', 'Shared'], ['private', 'Private']])
       ]),
       count, list,
       h('div.sn-foot', {}, [

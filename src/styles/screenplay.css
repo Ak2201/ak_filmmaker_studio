@@ -237,6 +237,9 @@
   --paper-raised: var(--paper-page);
   --rule: var(--paper-page-rule);
   --rule-hair: var(--paper-page-rule);
+  /* The format check's inline note (format-guide.css) sits on --paper-sunk:
+     left at the obsidian value it was a near-black box carrying paper ink. */
+  --paper-sunk: color-mix(in srgb, var(--paper-page-ink) 6%, var(--paper-page));
   --accent: var(--accent-primary);
   --accent-deep: var(--paper-page-ink);
   --accent-wash: color-mix(in srgb, var(--accent-primary) 9%, var(--paper-page));

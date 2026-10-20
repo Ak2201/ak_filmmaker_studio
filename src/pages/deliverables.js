@@ -219,7 +219,11 @@ function festivalBlock(reqs, format) {
           + 'appears here with the format it asks for.'
     }));
     sec.append(h('a.btn', {
-      href: guideHref('short', 'step-10') || 'edit.html#guide',
+      /* A stage guide shows the OPEN project's format, so on a feature
+         guideHref('short', …) opened the Feature questions for post and
+         no tracker. The retired short page, kept behind ?stay=1, is the
+         one place a feature can reach the short film's festival step. */
+      href: feature ? 'short.html?stay=1#step-10' : (guideHref('short', 'step-10') || 'edit.html#guide'),
       text: feature ? 'OPEN THE SUBMISSION TRACKER (SHORT FILM BLUEPRINT)' : 'OPEN THE SUBMISSION TRACKER'
     }));
     return sec;

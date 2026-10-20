@@ -110,6 +110,32 @@ function driver(page) {
   return d;
 }
 
+/* Press, drag and release across a phrase on the breakdown's page, the
+   way a person selects it, so the tag menu opens on its own. */
+async function dragWords(d, phrase) {
+  const r = await d.page.evaluate((ph) => {
+    for (const el of document.querySelectorAll('.bdp-page .bdp-el')) {
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = w.nextNode())) {
+        const i = n.data.indexOf(ph);
+        if (i < 0) continue;
+        const range = document.createRange();
+        range.setStart(n, i); range.setEnd(n, i + ph.length);
+        const b = range.getBoundingClientRect();
+        return { x0: b.left + 1, x1: b.right - 1, y: b.top + b.height / 2 };
+      }
+    }
+    return null;
+  }, phrase);
+  if (!r) return false;
+  await d.page.mouse.move(r.x0, r.y, { steps: 20 });
+  await d.page.mouse.down();
+  await d.page.mouse.move(r.x1, r.y, { steps: 24 });
+  await d.page.mouse.up();
+  return true;
+}
+
 async function openPage(d, url, ready, prep) {
   await d.page.goto(BASE + url, { waitUntil: 'load' });
   if (ready) await d.page.waitForSelector(ready, { timeout: 12000 });
@@ -200,24 +226,29 @@ const SPACES = {
   },
 
   breakdown: {
-    url: 'breakdown.html#scenes', ready: '.bd-slug',
+    /* The paper breakdown (20 Oct 2026): the scene on the page in the
+       colour code, a phrase dragged and tagged, the sheet beside it. */
+    url: 'breakdown.html#breakdown', ready: '.bdp-page .bdp-el',
+    async prep(d) { await d.scrollTo(d.page.locator('#breakdown .bdp-bar'), 140); },
     async demo(d) {
-      await d.pause(500);
-      await d.scroll(200, 900);
-      await d.click(d.page.locator('.bd-sl-toggle').first(), 1200);
-      await d.scroll(260, 1000);
-      await d.click(d.page.locator('.bd-sl-toggle').nth(1), 1200);
-      await d.scrollTop();
-      await d.click(d.page.locator('#bdSceneSearch'), 300);
-      await d.type(d.page.locator('#bdSceneSearch'), 'canteen', 120);
-      await d.pause(1500);
+      await d.pause(700);
+      await d.glide(d.page.locator('.bdp-page .bdp-mark').first());
+      await d.pause(700);
+      await dragWords(d, 'long stems');
+      await d.pause(1100);
+      await d.page.keyboard.press('p');
+      await d.pause(900);
+      await d.click(d.page.locator('.bdp-page .bdp-mark.is-sug').first(), 900);
+      await d.click(d.page.locator('[data-action="bdp-next"]'), 1300);
+      await d.scroll(240, 1000);
+      await d.pause(600);
     },
     stills: [
-      async (d) => { await d.click(d.t('Whole script'), 900); },                                       // 1 the whole script, tagged
-      async (d) => { await d.click(d.t('Scene List'), 800); },                                         // 2 the scene list
-      async (d) => { await d.click(d.page.locator('.bd-sl-toggle').first(), 800); },                    // 3 a scene opened
-      async (d) => { await d.scroll(520, 500); },                                                      // 4 more scenes, chips by category
-      async (d) => { await d.scrollTop(); await d.click(d.page.locator('#bdSceneSearch'), 200); await d.type(d.page.locator('#bdSceneSearch'), 'night', 30); await d.pause(700); } // 5 filtered
+      async (d) => { await d.click(d.t('Whole script'), 900); },                                       // 1 the whole script, broken down
+      async (d) => { await d.click(d.t('Scene Breakdown'), 900); await d.scrollTo(d.page.locator('#breakdown .bdp-bar'), 140); }, // 2 the page, marked and suggested
+      async (d) => { await dragWords(d, 'long stems'); await d.pause(600); },                          // 3 a phrase being tagged
+      async (d) => { await d.page.keyboard.press('Escape'); await d.click(d.t('Scene List'), 800); },   // 4 day or night, inside or out
+      async (d) => { await d.click(d.t('Scene Breakdown'), 900); await d.click(d.page.locator('[data-action="bdp-next"]'), 900); await d.scrollTo(d.page.locator('#breakdown .bdp-bar'), 140); } // 5 the breakdown sheet
     ]
   },
 

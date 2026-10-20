@@ -311,7 +311,8 @@ function renderScene(scene, i, total) {
         type: 'number', min: '0', max: '80', step: '1', value: String(scene.eighths),
         'data-scene-field': 'eighths', 'aria-label': 'Length in eighths of a page'
       }),
-      h('span.bd-pages', { text: formatEighths(scene.eighths), title: 'Length in pages (eighths in the box)' })
+      h('span.bd-sl-unit', { text: '/8', 'aria-hidden': 'true' }),
+      h('span.bd-pages', { text: formatEighths(scene.eighths), title: 'Length in pages (eighths of a page in the box)' })
     ]),
     h('span.bd-sl-cast' + (cast ? '' : '.is-none'), { text: cast || '—', title: (scene.elements.cast || []).join(', ') || 'No cast tagged yet' }),
     badge({ label: status.label, tone: STATUS_TONE[status.id], dot: true, class: 'bd-sl-status is-' + status.id }),
@@ -395,6 +396,10 @@ function renderScene(scene, i, total) {
   tags.append(adder);
   detail.append(tags);
   detail.append(h('div.bd-scene-acts', {}, [
+    h('button.k-btn.k-btn--secondary.k-btn--sm.bd-sl-paper', {
+      type: 'button', 'data-action': 'bdp-open', 'data-id': scene.id,
+      text: 'Break down on the page →', title: 'Open this scene on the page in Scene Breakdown'
+    }),
     iconBtn('↑', 'scene-up',   'Move earlier', i === 0),
     iconBtn('↓', 'scene-down', 'Move later',   i === total - 1),
     iconBtn('✕', 'scene-del',  'Move to the bin', false, true)

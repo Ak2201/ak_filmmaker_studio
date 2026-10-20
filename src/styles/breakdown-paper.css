@@ -217,6 +217,8 @@
 .bdp-form .bdp-desc::placeholder { color: var(--paper-page-muted); }
 .bdp-boxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 1px; background: var(--paper-page-rule); }
 .bdp-box { display: grid; align-content: start; background: var(--paper-page); min-width: 0; }
+/* thirteen boxes: the last takes the row, so no grey hole closes the form */
+.bdp-box:last-child { grid-column: 1 / -1; }
 .bdp-box-head {
   display: flex; align-items: center; gap: 6px;
   padding: 4px var(--s2);
@@ -300,6 +302,22 @@
 
 /* ---- print: one sheet a page ---- */
 @media print {
+  /* print.css hides every [role="button"] on a module page; a mark is
+     the page's own words, so it prints, as an underline in ink. */
+  body.has-sh-shell main .bdp-page mark.bdp-mark[role="button"] {
+    display: inline !important;
+    color: var(--print-ink);
+    background: transparent;
+    border-bottom: 1.5px solid var(--hue);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .bdp-bar, .bdp-legend, .bdp-rail, .bdp-intro, .bdp-tagger { display: none !important; }
+  .bdp-page { box-shadow: none; padding: 0 0 0 6ch; min-height: 0; color: var(--print-ink); background: var(--print-paper); }
+  /* Print sheets (src/ui/breakdown-paper.js printSheets): the job appends
+     #bdp-print to <body> and everything else steps aside, the invoice's
+     arrangement. Here rather than in pdf.css, which this page does not load. */
+  body.pdf-bdsheets > *:not(#bdp-print) { display: none !important; }
+  body.pdf-bdsheets > #bdp-print { display: block; }
   #bdp-print .bdp-form {
     break-after: page;
     box-shadow: none;
@@ -312,5 +330,9 @@
   }
   #bdp-print .bdp-form:last-child { break-after: auto; }
   #bdp-print .bdp-boxes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  #bdp-print .bdp-box { break-inside: avoid; }
+  #bdp-print .bdp-boxes { background: var(--print-rule); }
+  #bdp-print .bdp-box { break-inside: avoid; min-height: 26mm; background: var(--print-paper); }
+  #bdp-print .bdp-box-head { color: var(--print-ink); }
+  #bdp-print .bdp-notes { min-height: 34mm; border-top: 1px solid var(--print-rule); }
+  #bdp-print .bdp-notes .bdp-box-head { background: var(--print-wash); border-top: 0; }
 }

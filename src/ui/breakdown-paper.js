@@ -184,11 +184,15 @@ export function renderSheet(pair, total, opts = {}) {
   }
   form.append(desc);
   const boxes = h('div.bdp-boxes');
-  for (const b of d.boxes) {
-    if (!editable && !b.names.length) continue;
-    boxes.append(box(b, scene.id, editable));
-  }
+  /* Every box, empty ones too: a breakdown sheet is a form, and an
+     empty box is the AD's answer "nothing here", not a missing one. */
+  for (const b of d.boxes) boxes.append(box(b, scene.id, editable));
   form.append(boxes);
+  if (!editable) {
+    form.append(h('section.bdp-notes', { 'aria-label': 'Production notes' }, [
+      h('header.bdp-box-head', {}, [h('span.bdp-box-label', { text: 'Production notes' })])
+    ]));
+  }
   return form;
 }
 
@@ -496,6 +500,15 @@ export function wirePaperBreakdown() {
     else say('Added ' + name + ' to ' + categoryOf(cat).label);
   });
   delegate(document, 'click', '[data-action="bdp-print"]', () => printSheets());
+  /* From a Scene List row: this scene, on the page. The hash switches
+     the tab (tabs.js listens for it). */
+  delegate(document, 'click', '[data-action="bdp-open"]', (e, el) => {
+    P.id = el.dataset.id;
+    CTX.refresh();
+    if (location.hash !== '#breakdown') location.hash = 'breakdown';
+    const bar = document.querySelector('#breakdown .bdp-bar');
+    if (bar) { bar.scrollIntoView({ block: 'start', behavior: 'instant' }); const s = bar.querySelector('.bdp-pick'); if (s) s.focus({ preventScroll: true }); }
+  });
   delegate(document, 'click', '[data-action="bdp-tosheet"]', () => {
     const f = document.querySelector('#breakdown .bdp-form');
     if (f) f.scrollIntoView({ block: 'start', behavior: 'instant' });

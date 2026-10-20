@@ -21,7 +21,7 @@ import Scenes from './scenes.js';
 import Pitch from './pitch-deck.js';
 import IO from './story-io.js';
 import { loadScript } from './script.js';
-import { loadCharacters } from './characters.js';
+import { loadCharacters, buildRoster } from './characters.js';
 import { screenTime, formatDuration } from './screenplay-analysis.js';
 
 /* ---- the project ------------------------------------------------- */
@@ -156,7 +156,13 @@ export function deckContext() {
   return { scenes: scenesNow, elements: elementsNow };
 }
 export function characterCount() {
-  try { return loadCharacters().length; } catch (e) { return 0; }
+  /* The roster the Characters & world step shows — stored records, the
+     blueprint's protagonist / antagonist and every speaker the script
+     cues — so the stat and the step agree (stored records alone read
+     "—" on a script full of characters). */
+  try {
+    return buildRoster(loadCharacters(), loadScript().elements || []).filter((c) => String(c.name || '').trim()).length;
+  } catch (e) { return 0; }
 }
 
 /* Four figures under the synopsis, each measured: the words on the page,

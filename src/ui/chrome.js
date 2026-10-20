@@ -99,6 +99,7 @@ import './blueprint-drawer-mount.js';
 /* The app's own confirm / alert / prompt (src/ui/dialog.js), also on
    window for the few callers outside the module graph. */
 import Dialog from './dialog.js';
+import { holdFocus, releaseFocus } from './modal-focus.js';
 import './ports-view.js';   // what this UI plugs into the logic layer's ports
 if (typeof window !== 'undefined') window.StudioDialog = Dialog;
 
@@ -428,7 +429,7 @@ StudioUI.flashFieldSaved = function (el) {
 const DEFAULT_SHORTCUTS = [
   { keys: ['?'],          label: 'Open this shortcut sheet' },
   { keys: ['Esc'],        label: 'Close any open dialog / dropdown' },
-  { keys: ['⌘/Ctrl', 'S'],label: 'Save current blueprint' },
+  { keys: ['⌘/Ctrl', 'S'],label: 'Save current blueprint (in the Screenplay Writer: save a draft)' },
   /* ⌘/Ctrl D (switch theme) is gone with the second theme
      (14 Oct 2026); the key is the browser's again. */
   { keys: ['j'],          label: 'Next step (in any blueprint)' },
@@ -455,6 +456,7 @@ StudioUI.setPageShortcuts = function (group) {
     // of the page's markup from load, and a page that dropped it until
     // somebody pressed ? would read as having lost its words.
     const wasOpen = old.classList.contains('show');
+    releaseFocus(old);
     old.remove();
     ensureShortcutSheet();
     if (wasOpen) openShortcutSheet();
@@ -494,13 +496,21 @@ function ensureShortcutSheet() {
   sheet.querySelector('.shortcut-sheet-close').addEventListener('click', closeShortcutSheet);
   document.body.appendChild(overlay);
 }
+/* aria-modal promises nothing behind it is reachable: focus goes in, Tab
+   stays in, and closing hands focus back (it was left on <body>). */
 function openShortcutSheet() {
   ensureShortcutSheet();
-  document.getElementById('shortcutSheet').classList.add('show');
+  const el = document.getElementById('shortcutSheet');
+  el.classList.add('show');
+  holdFocus(el);
+  const close = el.querySelector('.shortcut-sheet-close');
+  if (close) close.focus({ preventScroll: true });
 }
 function closeShortcutSheet() {
   const el = document.getElementById('shortcutSheet');
-  if (el) el.classList.remove('show');
+  if (!el) return;
+  el.classList.remove('show');
+  releaseFocus(el);
 }
 StudioUI.openPalette  = openPalette;
 StudioUI.closePalette = closePalette;

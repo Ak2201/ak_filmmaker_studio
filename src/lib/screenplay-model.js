@@ -57,9 +57,12 @@ export function tipKeysLine(type, empty, prefs, known) {
 /* ---- the status strip ------------------------------------------ */
 /** Words (formatted), pages and whether anything is written. */
 export function scriptStats(elements) {
+  /* A blank page is 0 pages, not the 0.1 one empty heading line measures
+     to — the strip read "Words 0 · Pages 0.1 · Runtime —". */
+  const written = elements.some((e) => String(e.text || '').trim());
   return {
-    written: elements.some((e) => String(e.text || '').trim()),
-    pages: pageCount(elements),
+    written,
+    pages: written ? pageCount(elements) : 0,
     words: elements.reduce((n, e) => n + wordCount(e.text), 0).toLocaleString()
   };
 }

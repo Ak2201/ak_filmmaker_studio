@@ -175,10 +175,10 @@ function renderModes() {
     'A sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
     h('div.st-sample-picks', {}, SAMPLES.map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Use ' + sm.label })))));
   sec.append(card('New', 'Start with the idea.',
-    'A guided path: the idea, a logline, the people and the world, a scene order, then a step outline. Every step is on this page; start anywhere. The synopsis can be built from the outline when you get there.',
+    'A guided path in four steps: the idea and its logline, the people and the world, a beat sheet, then the synopsis built from it. Every step is on this page; start anywhere.',
     h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'new', text: 'Start the path' })));
   sec.append(card('Skip ahead', 'I already have a synopsis.',
-    'Paste it and go straight to tagging it against a structure. Every step of the path stays a click away above.',
+    'Paste it and go straight to tagging it against a structure. Every step of the path stays a click away.',
     h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' })));
   const drop = h('label.st-drop', {}, [
     h('span', { text: 'Drop a .docx, .pdf or .txt here, or choose a file' }),

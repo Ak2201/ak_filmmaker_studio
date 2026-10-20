@@ -1,10 +1,15 @@
-/* The hub's three doors: the call to action is a button on two of them. */button.door-cta {
+/* The hub's three doors: the call to action is a button on two of them
+   and a link on the third. No `font: inherit` on the button: it is more
+   specific than `.door-cta` and set two of the three CTAs in the body
+   face at body size beside a mono-caps link. */
+button.door-cta {
   width: 100%;
-  font: inherit;
+  line-height: inherit;
   text-align: left;
   border: 0;
   cursor: pointer;
 }
+a.door-cta { text-decoration: none; }
 .index-grid.index-grid-single { grid-template-columns: minmax(0, 1fr); }
 
 /* THE HERO IS THE PROJECT LIST (11 Oct 2026). The projects section nests
@@ -23,5 +28,5 @@
   letter-spacing: var(--track-wide);
   color: var(--accent-deep);
 }
-.first-run-doors .eps-actions { margin-top: var(--s5); }
+.first-run-doors .eps-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s5); }
 .first-run-doors .eps-fine { margin-top: var(--s3); max-width: 62ch; color: var(--ink-muted); font-size: var(--t-small); }

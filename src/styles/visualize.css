@@ -137,17 +137,123 @@
 
 .vz-table td { vertical-align: top; }
 .vz-table th, .vz-table td { padding-inline: var(--s2); }
-.vz-table .vz-c-no   { width: 4.5rem; min-width: 4.5rem; }
-.vz-table .vz-c-size { width: 8.5rem; min-width: 8.5rem; }
-.vz-table .vz-c-size .k-control + .k-control { margin-top: var(--s1); }
-.vz-table .vz-c-move { width: 7rem; min-width: 7rem; }
-.vz-table .vz-c-lens { width: 7.5rem; min-width: 7.5rem; }
-.vz-table .vz-c-lens .k-control + .k-control { margin-top: var(--s1); }
-.vz-table .vz-c-desc { min-width: 9.5rem; }
-.vz-table .vz-c-done { width: 7rem; min-width: 7rem; }
-.vz-done-stack { display: grid; gap: var(--s1h); justify-items: start; }
-.vz-table .vz-c-ctrl { width: 4rem; }
-.vz-done-stack .vz-c-ctrl { width: auto; }
+/* A column per field (the Columns menu shows and hides them). */
+.vz-table .vz-c-no    { width: 6.5rem; min-width: 6.5rem; }
+.vz-table .vz-c-size  { width: 8rem; min-width: 8rem; }
+.vz-table .vz-c-angle { width: 7rem; min-width: 7rem; }
+.vz-table .vz-c-move  { width: 6.5rem; min-width: 6.5rem; }
+.vz-table .vz-c-lens  { width: 6rem; min-width: 6rem; }
+.vz-table .vz-c-rig   { width: 8rem; min-width: 8rem; }
+.vz-table .vz-c-setup { width: 8rem; min-width: 8rem; }
+.vz-table .vz-c-setup .k-control + .k-control { margin-top: var(--s1); }
+.vz-table .vz-c-mins  { width: 4.25rem; min-width: 4.25rem; }
+.vz-table .vz-c-desc  { min-width: 11rem; }
+.vz-table .vz-c-done  { width: 6.5rem; min-width: 6.5rem; }
+.vz-table th.vz-c-ctrl, .vz-table td.vz-c-ctrl { width: 1%; }
+.vz-cov .vz-c-ctrl .k-btn-group { flex-wrap: nowrap; }
+.vz-no-row { display: flex; align-items: center; gap: var(--s1); }
+.vz-no-row .k-control { flex: 1 1 auto; min-width: 0; }
+.vz-lock .sym { font-size: 1rem; }
+.vz-lock:not(.is-locked) { color: var(--ink-muted); }
+.vz-lock.is-locked { color: var(--brand-deep); }
+.vz-done-check { font-size: var(--t-tiny); color: var(--ink-body); white-space: nowrap; }
+
+/* The grip: drag (pointer events, so a finger works too) or arrow keys. */
+.vz-grip { cursor: grab; touch-action: none; }
+.vz-grip:active { cursor: grabbing; }
+.vz-row.is-dragging, .vz-card.is-dragging { opacity: 0.45; }
+.vz-row.is-drop-before > td { box-shadow: inset 0 2px 0 var(--accent-primary); }
+.vz-row.is-drop-after > td  { box-shadow: inset 0 -2px 0 var(--accent-primary); }
+.vz-card.is-drop-before { box-shadow: inset 3px 0 0 var(--accent-primary); }
+.vz-card.is-drop-after  { box-shadow: inset -3px 0 0 var(--accent-primary); }
+
+/* Grouped by setup: a heading row per setup inside the same table. */
+.vz-setup-row th {
+  padding: var(--s2) var(--s3);
+  background: var(--surface-rail);
+  border-top: 1px solid var(--border-hair);
+  text-align: left;
+}
+.vz-setup-name { font-weight: 600; color: var(--ink); font-size: var(--t-small); }
+.vz-setup-meta {
+  margin-left: var(--s2);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.vz-setup-head { display: flex; align-items: baseline; gap: var(--s2); margin: var(--s3) 0 var(--s2); font-size: var(--t-small); }
+.vz-setup-head:first-child { margin-top: 0; }
+.vz-group-note { margin: 0; padding: var(--s2) var(--s4); font-size: var(--t-tiny); color: var(--ink-muted); }
+.vz-scene-time {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+  font-variant-numeric: tabular-nums;
+}
+
+/* THE BOARD VIEW of the shot list: a card per shot, its first frame on top. */
+.vz-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+  gap: var(--sk-grid-gap, var(--s3));
+  align-items: start;
+}
+.vz-card {
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--s2);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius);
+}
+.vz-card.is-done { border-color: var(--status-success); }
+.vz-card-thumb {
+  position: relative;
+  display: grid;
+  place-content: center;
+  aspect-ratio: 16 / 9;
+  padding: var(--s3);
+  background: var(--surface-canvas);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  text-align: center;
+  overflow: hidden;
+}
+.vz-card-thumb[data-aspect="2.39:1"] { aspect-ratio: 2.39 / 1; }
+.vz-card-thumb[data-aspect="1.85:1"] { aspect-ratio: 1.85 / 1; }
+.vz-card-thumb[data-aspect="4:3"]    { aspect-ratio: 4 / 3; }
+.vz-card-thumb[data-aspect="1:1"]    { aspect-ratio: 1 / 1; }
+.vz-card-thumb[data-aspect="9:16"]   { aspect-ratio: 9 / 16; width: min(100%, 9rem); margin-inline: auto; }
+.vz-card-thumb:has(.drv-img.is-loaded) { padding: 0; border-style: solid; border-color: var(--border-hair); }
+.vz-card-no {
+  position: absolute;
+  top: var(--s1h);
+  left: var(--s1h);
+  z-index: 1;
+  padding: var(--s-half) var(--s1h);
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+  font-size: var(--t-micro);
+  color: var(--ink);
+}
+.vz-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+.vz-card-spec {
+  min-width: 0;
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+.vz-card-meta { margin: 0; font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.vz-card-desc { margin: 0; font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-body); }
+.vz-card-foot .row-ctrl { display: flex; justify-content: flex-end; }
+
+/* A picture dragged over a shot: the shot says it will take it. */
+.is-file-over { outline: 2px dashed var(--accent-primary); outline-offset: 2px; }
 .vz-table .vz-c-ref  { min-width: 13rem; }
 .vz-cov .vz-no { color: var(--brand-deep); }
 .vz-ai-tag { margin-top: var(--s1); }
@@ -206,6 +312,18 @@
   color: var(--ink-muted);
 }
 .vz-shotcol-desc:empty { display: none; }
+.vz-shotcol-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+/* Frames per row (the board's own control), on a desk only: a phone
+   shows one sideways row (§9). */
+.vz-board-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0 0 var(--s4); }
+.vz-board-hint { font-size: var(--t-tiny); color: var(--ink-muted); }
+@media (min-width: 720px) {
+  .vz-board[data-per-row="2"] .vz-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vz-board[data-per-row="3"] .vz-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vz-board[data-per-row="4"] .vz-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) { .vz-per-row { display: none; } }
 
 .vz-frame {
   display: grid;
@@ -564,6 +682,42 @@
   .vz-pr-c-spec { width: 9%; }
   .vz-pr-c-desc { width: 39%; }
   .vz-pr-c-done { width: 5%; text-align: center; }
+  .vz-pr-c-min  { width: 5%; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* THE STORYBOARD SHEETS: two panels a row; four to an A4 page
+     (grid4) or six (grid6). A panel never splits across a page. */
+  .vz-pr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6mm 5mm; margin-top: 3pt; }
+  .vz-pr-panel {
+    display: grid;
+    align-content: start;
+    gap: 2pt;
+    overflow: hidden;
+    break-inside: avoid;
+    color: var(--print-ink);
+  }
+  .vz-pr-grid4 .vz-pr-panel { height: 112mm; }
+  .vz-pr-grid6 .vz-pr-panel { height: 74mm; }
+  .vz-pr-pic {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border: 1px solid var(--print-ink);
+    background: var(--print-paper);
+  }
+  .vz-pr-pic[data-aspect="2.39:1"] { aspect-ratio: 2.39 / 1; }
+  .vz-pr-pic[data-aspect="1.85:1"] { aspect-ratio: 1.85 / 1; }
+  .vz-pr-pic[data-aspect="4:3"]    { aspect-ratio: 4 / 3; }
+  .vz-pr-pic[data-aspect="1:1"]    { aspect-ratio: 1 / 1; max-height: 52mm; margin-inline: auto; }
+  .vz-pr-pic[data-aspect="9:16"]   { aspect-ratio: 9 / 16; max-height: 52mm; margin-inline: auto; }
+  .vz-pr-grid6 .vz-pr-pic { max-height: 44mm; }
+  .vz-pr-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .vz-pr-ref { margin: 0; padding: 4pt; font-size: 7.5pt; line-height: 1.3; text-align: center; }
+  .vz-pr-cap { display: flex; align-items: baseline; gap: 5pt; font-family: var(--f-mono); font-size: 7.5pt; letter-spacing: 0.06em; text-transform: uppercase; }
+  .vz-pr-cap-no { font-size: 9pt; }
+  .vz-pr-cap-spec { flex: 1 1 auto; min-width: 0; }
+  .vz-pr-line { margin: 0; font-size: 8pt; line-height: 1.3; }
+  .vz-pr-line b { font-family: var(--f-mono); font-size: 6.5pt; letter-spacing: 0.08em; text-transform: uppercase; }
 
   .vz-pr-total {
     display: flex;
@@ -737,12 +891,44 @@
   font-size: var(--t-small);
 }
 
-/* COMPACT, at every width: the setup, size, move, lens and status. The
-   angle, the rig, the camera and the description stay in the record
-   and come back with one press. */
+.vz-group-btn[aria-pressed="true"] {
+  background: var(--brand-wash);
+  border-color: var(--border-focus);
+  color: var(--ink);
+}
+
+/* The Columns disclosure: a kit button that opens a panel of checkboxes. */
+.vz-colmenu { position: relative; }
+.vz-colmenu > summary { list-style: none; cursor: pointer; }
+.vz-colmenu > summary::-webkit-details-marker { display: none; }
+.vz-colmenu > summary:focus-visible { outline: var(--focus); outline-offset: 2px; }
+.vz-colmenu-n { color: var(--ink-muted); font-size: var(--t-micro); }
+.vz-colmenu-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--s1));
+  right: 0;
+  display: grid;
+  gap: var(--s1);
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2rem));
+  padding: var(--s3);
+  background: var(--panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--shadow-panel);
+  color: var(--ink);
+}
+.vz-colmenu-note { margin: 0 0 var(--s1); font-size: var(--t-micro); line-height: var(--lh-snug); color: var(--ink-muted); }
+.vz-colmenu-item { min-height: 2rem; }
+
+/* COMPACT, at every width: the number, size, move, lens and status. The
+   angle, the rig, the setup and the description stay in the record and
+   come back with one press. */
 .vz-shots.is-compact .vz-cov .vz-c-desc,
-.vz-shots.is-compact .vz-cov .vz-c-size .k-control + .k-control,
-.vz-shots.is-compact .vz-cov .vz-c-lens .k-control + .k-control { display: none; }
+.vz-shots.is-compact .vz-cov .vz-c-angle,
+.vz-shots.is-compact .vz-cov .vz-c-rig,
+.vz-shots.is-compact .vz-cov .vz-c-setup { display: none; }
 
 /* The scene card's stripboard day and its completed-setups meter. */
 .vz-scene-day {
@@ -819,19 +1005,19 @@
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
+  /* A card of two columns: the number and the status on top, then the
+     short fields two a row in table order, the long ones full width, and
+     the grips last. Columns hidden by the menu simply are not there. */
   .vz-cov tr.vz-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "no   done"
-      "size size"
-      "move move"
-      "lens lens"
-      "desc desc";
+    grid-auto-flow: row dense;
     gap: var(--s3);
     padding: var(--s3) var(--s3) var(--s4);
     border-top: 1px solid var(--border-hair);
   }
+  .vz-cov tr.vz-setup-row { display: block; }
+  .vz-cov tr.vz-setup-row th { display: block; }
   .vz-cov tbody tr.vz-row:first-child { border-top: 0; }
   .vz-cov tr.vz-row.is-done { box-shadow: inset var(--sk-hue-rule-w) 0 0 var(--status-success); }
   .vz-cov tbody tr:hover td { background: none; }
@@ -842,24 +1028,22 @@
     padding: 0;
     border: 0;
   }
-  .vz-cov td.vz-c-no { grid-area: no; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+  .vz-cov td.vz-c-no { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
   .vz-cov td .k-control { width: 100%; min-width: 0; }
-  .vz-cov td.vz-c-no .k-control { width: 5.5rem; }
+  .vz-cov td.vz-c-no .vz-no-row { width: 7.5rem; }
   .vz-cov td.vz-c-no .vz-ai-tag { margin-top: 0; }
-  .vz-cov td.vz-c-done { grid-area: done; }
-  .vz-cov .vz-done-stack { justify-items: end; }
-  .vz-cov .vz-status { min-height: var(--tap-min); }
-  .vz-cov td.vz-c-size { grid-area: size; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2); }
-  .vz-cov td.vz-c-move { grid-area: move; }
-  .vz-cov td.vz-c-lens { grid-area: lens; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2); }
-  .vz-cov td.vz-c-lens .k-control:nth-of-type(3) { grid-column: 1 / -1; }
-  .vz-cov td.vz-c-desc { grid-area: desc; }
-  .vz-cov .vz-c-size .k-control + .k-control,
-  .vz-cov .vz-c-lens .k-control + .k-control { margin-top: 0; }
+  .vz-cov td.vz-c-done { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
+  .vz-cov .vz-done-check { min-height: var(--tap-min); }
+  .vz-cov td.vz-c-desc,
+  .vz-cov td.vz-c-rig,
+  .vz-cov td.vz-c-ctrl { grid-column: 1 / -1; }
+  .vz-cov td.vz-c-setup:has(.k-select) { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2); }
+  .vz-cov td.vz-c-setup .k-control + .k-control { margin-top: 0; }
+  .vz-cov td.vz-c-ctrl .row-ctrl { display: flex; justify-content: flex-end; }
   /* A card's fields are thumb-high: this table stacked, so the kit's
      dense in-table height does not apply. */
   .vz-cov .k-control--cell:not(.k-control--textarea) { height: var(--tap-min); }
-  .vz-cov td[data-label]:not(.vz-c-no)::before {
+  .vz-cov td[data-label]:not(.vz-c-no):not(.vz-c-done)::before {
     content: attr(data-label);
     display: block;
     grid-column: 1 / -1;
@@ -871,15 +1055,8 @@
     text-transform: uppercase;
     color: var(--ink-muted);
   }
-  .vz-shots.is-compact .vz-cov tr.vz-row {
-    grid-template-areas:
-      "no   done"
-      "size move"
-      "lens lens";
-  }
-  .vz-shots.is-compact .vz-cov td.vz-c-size,
-  .vz-shots.is-compact .vz-cov td.vz-c-lens { grid-template-columns: minmax(0, 1fr); }
-  .vz-shots.is-compact .vz-cov td.vz-c-lens .k-control:first-child { max-width: 50%; }
+  .vz-cards { grid-template-columns: minmax(0, 1fr); }
+  .vz-tools .vz-mode { flex: 1 1 auto; }
 
   .vz-scene-progress { padding: var(--s2) var(--s3) 0; }
 

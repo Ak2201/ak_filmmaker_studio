@@ -423,6 +423,77 @@ for (const width of [1280, 390]) {
   finally { await ctx.close(); }
 }
 
+/* =================================================================
+   (e) MANY PICTURES AT ONCE (frame-upload.js uploadManyToFrames)
+   "Pictures" with three files picked → three new frames on that shot,
+   each its own Drive file, uploaded one at a time; one Undo removes all
+   three and deletes the files. Then two pictures and a PDF DROPPED on a
+   shot → two frames, the PDF refused.
+   ================================================================= */
+{
+  console.log('(e) bulk pictures, Drive with a token');
+  F.reset(); resetFakes();
+  const tok = aiScenario('pro', 'tok-amy');
+  const { ctx, page, errors } = await context({ tok, width: 1280, driveToken: true });
+  try {
+    await seed(page, { drive: true, empty: true });
+    await page.goto(BASE + '/visualize.html#storyboard', { waitUntil: 'networkidle' });
+    await settle(page, true);
+    const png = await page.evaluate(async () => {
+      const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+      const x = c.getContext('2d'); x.fillStyle = 'gray'; x.fillRect(0, 0, 320, 180);
+      const b = await new Promise((r) => c.toBlob(r, 'image/png'));
+      return Array.from(new Uint8Array(await b.arrayBuffer()));
+    });
+    const col = '.vz-shotcol:has(.vz-frame[data-frame="frEmpty"])';
+    const shotId = await page.getAttribute(col, 'data-shot');
+    const before = (await shotsDoc(page)).frames.filter((f) => f.shotId === shotId).length;
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser', { timeout: 5000 }),
+      page.click(col + ' [data-action="vz-frame-bulk"]')
+    ]);
+    ok(chooser.isMultiple(), 'the Pictures picker takes several files');
+    await chooser.setFiles(['a', 'b', 'c'].map((n) => ({ name: n + '.png', mimeType: 'image/png', buffer: Buffer.from(png) })));
+    for (let i = 0; i < 80 && D.uploads.length < 3; i++) await page.waitForTimeout(100);
+    await page.waitForTimeout(600);
+    ok(D.uploads.length === 3, 'three files went to Drive', D.uploads.length);
+    let doc = await shotsDoc(page);
+    const mine = doc.frames.filter((f) => f.shotId === shotId);
+    ok(mine.length === before + 3, 'one new frame per picture', { before, after: mine.length });
+    const ids = D.uploads.map((u) => 'drive:' + u.id);
+    ok(ids.every((r) => mine.some((f) => f.ref === r)), 'each new frame keeps its own drive:<fileId>');
+    ok(JSON.stringify(doc).length < 6000, 'and no picture bytes in storage', JSON.stringify(doc).length);
+    ok(await page.isVisible('.toast:has-text("3 pictures saved") .toast-action'), 'one toast for the run, with Undo');
+    await page.click('.toast:has-text("3 pictures saved") .toast-action');
+    await page.waitForTimeout(600);
+    doc = await shotsDoc(page);
+    ok(doc.frames.filter((f) => f.shotId === shotId).length === before, 'Undo removes the three frames');
+    ok(D.deletes.length === 3, 'and deletes the three files from Drive', D.deletes);
+
+    /* A drop: two pictures and a PDF onto the same shot. */
+    const n0 = D.uploads.length;
+    await page.evaluate(async ({ sel, bytes }) => {
+      const dt = new DataTransfer();
+      const u8 = new Uint8Array(bytes);
+      dt.items.add(new File([u8], 'd1.png', { type: 'image/png' }));
+      dt.items.add(new File(['%PDF-1.4'], 'notes.pdf', { type: 'application/pdf' }));
+      dt.items.add(new File([u8], 'd2.png', { type: 'image/png' }));
+      const el = document.querySelector(sel);
+      el.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+      el.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    }, { sel: col, bytes: png });
+    for (let i = 0; i < 80 && D.uploads.length < n0 + 2; i++) await page.waitForTimeout(100);
+    await page.waitForTimeout(600);
+    ok(D.uploads.length === n0 + 2, 'a drop of two pictures and a PDF uploads two', D.uploads.length - n0);
+    ok((await shotsDoc(page)).frames.filter((f) => f.shotId === shotId).length === before + 2, 'two new frames from the drop');
+    const said = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | '));
+    ok(/1 file was not a picture/.test(said), 'and the PDF is named as refused', said);
+    ok(await overflow(page) <= 0, 'no sideways overflow');
+    ok(errors.length === 0, 'no page errors', errors);
+  } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
+  finally { await ctx.close(); }
+}
+
 await browser.close();
 server.close();
 console.log(`\nprove:board-frames — ${pass} passed, ${fail} failed`);

@@ -358,7 +358,42 @@ export function toCSV(scope, opts = {}) {
   return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
+/* ------------------------------------------------------------
+   RENDERER 3 — the frame pictures, for a ZIP
+   ------------------------------------------------------------
+   Only frames whose ref is `drive:<fileId>` have a picture to send:
+   a link is somebody else's file and a description has no bytes.
+   The page downloads each file (src/ui/drive-image.js) and zips them
+   with src/lib/zip-write.js; this only says WHICH files and what each
+   is called inside the archive — scene folder, shot and frame letter,
+   in board order, so the ZIP sorts the way the board reads.
+   ------------------------------------------------------------ */
+const safePart = (v) => String(v ?? '').trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
+const DRIVE_ID = /^drive:([A-Za-z0-9_-]{8,})$/;
+
+export function frameFiles(scope, byShot = Shots.framesByShot()) {
+  const out = [];
+  const used = new Set();
+  for (const group of groups(scope)) {
+    const folder = group.scene ? 'scene-' + safePart(group.scene.number || group.scene.id) : 'scene-deleted';
+    group.shots.forEach((shot, i) => {
+      (byShot.get(shot.id) || []).forEach((frame, n) => {
+        const m = String(frame.ref || '').trim().match(DRIVE_ID);
+        if (!m) return;
+        let stem = folder + '/shot-' + safePart(shot.number || String(i + 1)) + String.fromCharCode(97 + (n % 26));
+        while (used.has(stem)) stem += '_';
+        used.add(stem);
+        out.push({ fileId: m[1], frameId: frame.id, stem });
+      });
+    });
+  }
+  return out;
+}
+
+/** The extension a picture's MIME type is saved under. */
+export const extFor = (mime) => ({ 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' })[String(mime || '').toLowerCase()] || '.jpg';
+
 export default {
   ALL, groups, summarise, subtitleFor, labelFor, slugOf, LAYOUTS, layoutOf, panelsOf,
-  buildDocument, toCSV, CSV_HEADER
+  buildDocument, toCSV, CSV_HEADER, frameFiles, extFor
 };

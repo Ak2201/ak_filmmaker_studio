@@ -303,6 +303,16 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   M.addFrame(shots[0].id, { action: 'A' }); M.addFrame(shots[0].id, { action: 'B' });
   const panels = X.panelsOf({ shots });
   eq(panels.map((p) => [p.shot.id === shots[0].id, p.frame ? M.frameAction(p.frame) : null]), [[true, 'A'], [true, 'B'], [false, null]], 'panelsOf: a panel per frame, an empty one for a shot with none');
+  // The image ZIP: only drive: refs, named by scene, shot and frame letter.
+  M.addFrame(shots[0].id, { ref: 'drive:FILEaaaaaaaa' });
+  M.addFrame(shots[1].id, { ref: 'https://example.com/x.png' });
+  M.addFrame(shots[1].id, { ref: 'drive:FILEbbbbbbbb' });
+  M.addFrame(shots[1].id, { ref: 'drive:../../etc' });
+  eq(X.frameFiles('all').map((f) => [f.fileId, f.stem]), [['FILEaaaaaaaa', 'scene-1/shot-1c'], ['FILEbbbbbbbb', 'scene-1/shot-2b']], 'frameFiles: drive refs only, named scene/shot+letter');
+  eq([X.extFor('image/png'), X.extFor('image/jpeg'), X.extFor('')], ['.png', '.jpg', '.jpg'], 'extFor');
+  const Z = await import('../src/lib/zip-write.js');
+  const zip = Z.zipStore([['scene-1/shot-1c.png', new Uint8Array([1, 2, 3])]]);
+  ok(zip[0] === 0x50 && zip[1] === 0x4b && zip.length > 30, 'zipStore makes an archive of the picture bytes');
   mem.delete(M.SHOTS_KEY); mem.delete(Sc.SCENES_KEY);
 }
 

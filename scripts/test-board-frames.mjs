@@ -235,6 +235,63 @@ ok(B.aspectOf('') === '16:9' && B.aspectOf('nonsense') === '16:9', "'' and unkno
 ok(B.aspectOf('2.39:1') === '2.39:1' && B.aspectOf('1:1') === '1:1', 'a known aspect reads back');
 ok(new Set(B.ASPECTS.map((a) => a.id)).size === B.ASPECTS.length, 'aspect ids are unique');
 
+/* ---- many pictures at once (runBulkUpload), against the faked Drive ---- */
+{
+  const before = dlog.length;
+  let nextId = 0;
+  dans = () => ({ status: 200, json: { id: 'BULKFILE' + String(++nextId).padStart(4, '0') } });
+  Drive.adoptToken('ya29.BULK', 3600);
+  const frames = [];
+  const removed = [];
+  const order = [];
+  const pic = (name, type = 'image/jpeg', size = 2000) => ({ name, type, size, blob: new Blob([PNG], { type }) });
+  const files = [pic('a.jpg'), pic('notes.pdf', 'application/pdf'), pic('b.png', 'image/png'), pic('c.webp', 'image/webp')];
+  let inFlight = 0, maxInFlight = 0;
+  const res = await B.runBulkUpload(files, {
+    addFrame: (file, i) => { const f = { id: 'fr' + i, shotId: 'sh0', ref: '' }; frames.push(f); return f; },
+    removeFrame: (f) => removed.push(f.id),
+    onProgress: (i, n, file) => order.push(i + '/' + n + ':' + file.name),
+    uploadOne: async (file, frame) => {
+      inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
+      const meta = await Drive.createFile(B.frameFileName({ label: '4.' + frame.id }, 'image/jpeg'), file.blob, 'image/jpeg');
+      inFlight--;
+      frame.ref = Drive.driveRef(meta.id);
+      return { ok: true, id: meta.id };
+    }
+  });
+  eq(res.refused.map((r) => r.file.name), ['notes.pdf'], 'bulk: the PDF is refused before any frame is made');
+  eq(frames.length, 3, 'bulk: one frame per picture');
+  eq(dlog.length - before, 3, 'bulk: three uploads to Drive');
+  eq(maxInFlight, 1, 'bulk: uploads run one at a time, never in parallel');
+  eq(order, ['0/3:a.jpg', '1/3:b.png', '2/3:c.webp'], 'bulk: in the order dropped');
+  ok(frames.every((f) => /^drive:BULKFILE\d{4}$/.test(f.ref)), 'bulk: each frame keeps only drive:<fileId>');
+  ok(dlog.slice(before).every((r) => r.opts.method === 'POST' && /uploadType=multipart/.test(r.url)), 'bulk: each is a multipart POST');
+  eq(res.made.map((m) => m.id), ['BULKFILE0001', 'BULKFILE0002', 'BULKFILE0003'], 'bulk: the made list names the files (for Undo)');
+  eq(removed, [], 'bulk: nothing removed when every upload worked');
+  ok(/3 pictures saved/.test(B.bulkSummary(res)) && /1 file was not a picture/.test(B.bulkSummary(res)), 'bulk: one sentence says both — ' + B.bulkSummary(res));
+
+  // A failure mid-run: that frame is taken away again; a gate stop ends the run.
+  let call = 0;
+  dans = () => (++call === 2 ? { status: 500, json: { error: { message: 'backend error' } } } : { status: 200, json: { id: 'BULKX' + call + 'XXXXXX' } });
+  const frames2 = [], removed2 = [];
+  const res2 = await B.runBulkUpload([pic('1.jpg'), pic('2.jpg'), pic('3.jpg')], {
+    addFrame: (file, i) => { const f = { id: 'g' + i }; frames2.push(f); return f; },
+    removeFrame: (f) => removed2.push(f.id),
+    uploadOne: async (file) => {
+      try { const m = await Drive.createFile('x.jpg', file.blob, 'image/jpeg'); return { ok: true, id: m.id }; }
+      catch (e) { return { ok: false, why: e.message }; }
+    }
+  });
+  eq([res2.made.length, res2.failed.length], [2, 1], 'bulk: one failure, the others still made');
+  eq(removed2, ['g1'], 'bulk: the failed frame is removed, so no empty frame is left');
+  const res3 = await B.runBulkUpload([pic('1.jpg'), pic('2.jpg')], {
+    addFrame: (file, i) => ({ id: 'h' + i }), removeFrame: () => {},
+    uploadOne: async () => ({ ok: false, why: 'Drive needs reconnecting', stop: true })
+  });
+  eq([res3.made.length, res3.failed.length], [0, 1], 'bulk: a closed gate stops the run after the first');
+  eq(B.bulkSummary({}), 'Nothing to upload.', 'bulk: an empty run says so');
+}
+
 console.log(`test:board-frames — ${pass} passed, ${fail} failed`);
 console.log('  (Gemini and Drive are FAKED here; nothing in this test reached a real provider.)');
 process.exit(fail ? 1 : 0);

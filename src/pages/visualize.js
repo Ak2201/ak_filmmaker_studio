@@ -51,18 +51,19 @@ import Scenes, { formatEighths } from '../lib/scenes.js';
 import Script from '../lib/script.js';
 import { matchScenes } from '../lib/screenplay-analysis.js';
 import Shots, {
-  SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, isLinkable
+  SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, SHOT_COLUMNS, DEFAULT_COLUMNS, isLinkable
 } from '../lib/shots.js';
+import { readShotView, saveShotView } from '../lib/chrome-prefs.js';
 import { renderBlocking, renderSceneBoard, highlightCamera } from '../ui/blocking.js';
 /* Drawn frames (NEXT-UI-REVAMP-PLAN phase 4): the picture is in the
    writer's Drive, the frame keeps `drive:<fileId>`. drive.js and
    drive-sync.js are CORE already; the generation itself (ai.js, the
    Desk) stays behind the pill's click. */
-import { driveFileIdOf } from '../lib/drive.js';
+import Drive, { driveFileIdOf } from '../lib/drive.js';
 import { onDriveStatus } from '../lib/drive-sync.js';
 import { boardJobs, MAX_FRAMES, ASPECTS, aspectOf } from '../lib/board-frames.js';
-import { uploadToFrame } from '../ui/frame-upload.js';
-import { driveImage, currentBoardGate, onDriveReconnect, wireDriveImages } from '../ui/drive-image.js';
+import { uploadToFrame, uploadManyToFrames, chooseFile } from '../ui/frame-upload.js';
+import { driveImage, currentBoardGate, onDriveReconnect, reconnectDrive, wireDriveImages, cachedImageUrl, driveImageBlob } from '../ui/drive-image.js';
 import { basicShotDivision } from '../lib/shot-rules.js';
 import {
   plural, slugOf, shotSpec, headerFigures, sceneSpread, COV_FILTERS, keepShot as keepFor,
@@ -72,7 +73,7 @@ import {
 } from '../lib/visualize-model.js';
 import {
   button, buttonGroup, badge, intExtBadge, todBadge, pageHeader, statStrip, notice, field as kitField,
-  segmented, meter
+  segmented, meter, check, sym
 } from '../ui/kit/index.js';
 import { shootDayOf } from '../lib/locations.js';
 
@@ -92,6 +93,24 @@ let covCompact = false;
 let uncoveredOpen = false;       // the uncovered-scenes bar's open state, kept across render()
 const boardOpen = new Set();      // scene ids whose phone strip shows every shot
 const keepShot = (shot) => keepFor(covFilter, shot);
+
+/* HOW THIS DEVICE LOOKS AT THE SHOT LIST: List or Board, the visible
+   columns (which are also the export's), grouping by setup, and the
+   storyboard's frames per row. Kept in the existing device prefs blob
+   (chrome-prefs.js readShotView) and written on a click only — never in
+   the project's shot key, which holds the work and nothing about how
+   it is viewed. */
+const SAVED_VIEW = readShotView();
+const PER_ROW = [0, 2, 3, 4];             // 0 = as many as fit
+const view = {
+  mode: SAVED_VIEW.mode === 'board' ? 'board' : 'list',
+  cols: Array.isArray(SAVED_VIEW.cols) ? Shots.cleanColumns(SAVED_VIEW.cols) : DEFAULT_COLUMNS.slice(),
+  group: SAVED_VIEW.group === true,
+  perRow: PER_ROW.includes(SAVED_VIEW.perRow) ? SAVED_VIEW.perRow : 0
+};
+const saveView = () => saveShotView({ mode: view.mode, cols: view.cols, group: view.group, perRow: view.perRow });
+let colMenuOpen = false;          // the Columns disclosure, kept open across render()
+let liveText = '';                // the last keyboard move, for the polite live region
 
 /* ---- small builders -----------------------------------------
    The kit (src/ui/kit/) draws every control on this page. These are
@@ -178,6 +197,8 @@ function renderHeader(scenes, shots, frames, boards) {
       note: shots.length ? done + ' in the can' : null, noteTone: shots.length && done === shots.length ? 'ok' : null },
     { label: 'scenes covered', value: covered + ' / ' + scenes.length },
     { label: frames.length === 1 ? 'frame' : 'frames', value: frames.length },
+    // Only once a shot carries an estimate: never a placeholder figure.
+    Shots.minutesOf(shots).total ? { label: 'estimated', value: Shots.formatMinutes(Shots.minutesOf(shots).total) } : null,
     lookbookOn ? { label: refs === 1 ? 'reference' : 'references', value: refs } : null,   // lookbook boards
     lens ? { label: 'Primary lens', value: lens.lens, note: plural(lens.count, 'setup', 'setups') } : null
   ].filter(Boolean), { class: 'vz-stats', label: 'Visualise in numbers' });
@@ -242,9 +263,15 @@ function renderNoShots(firstSceneId) {
   ]);
 }
 
-/* ---- section 1: the shot list -------------------------------- */
+/* ---- section 1: the shot list --------------------------------
+   TWO VIEWS OF THE SAME SHOTS (20 Oct 2026): the List (the coverage
+   table, a column per field) and the Board (a card per shot with its
+   first frame's picture), Celtx / StudioBinder style. Both read the one
+   shot model; the toggle, the columns, the grouping and the frames per
+   row are how this device looks at the work (view state above), never
+   the work. */
 function renderShotList(scenes, shots) {
-  const wrap = h('section.vz-shots' + (covCompact ? '.is-compact' : ''), { id: 'shot-list' });
+  const wrap = h('section.vz-shots' + (covCompact ? '.is-compact' : '') + '.is-' + view.mode, { id: 'shot-list' });
   /* The tab's count: the shots on the list, counted. No badge at zero —
      a "0" pill reads as a notification, not a number. */
   if (shots.length) wrap.dataset.tabBadge = String(shots.length);
@@ -259,15 +286,28 @@ function renderShotList(scenes, shots) {
   /* The whole-script export. The per-scene one is on each scene,
      because "this scene" is a thing you ask for while looking at
      that scene and nowhere else. Both go through the same builder
-     in src/lib/shotlist-export.js — one scope argument apart. */
+     in src/lib/shotlist-export.js — one scope argument apart — and
+     both print the columns the column menu shows. */
   if (shots.length) {
+    const time = Shots.formatMinutes(Shots.minutesOf(shots).total);
     wrap.append(h('div.vz-tools.pdf-menu-host', {}, [
       h('span.vz-tools-lab', {
         text: shots.length + (shots.length === 1 ? ' setup' : ' setups')
             + ' across ' + sceneSpread(shots)
-            + ' scenes'
+            + ' scenes' + (time ? ' · ' + time + ' estimated' : '')
       }),
       h('span.vz-tools-gap'),
+      segmented({
+        label: 'Shot list view', name: 'vz-mode', value: view.mode, quiet: true,
+        action: 'vz-mode', class: 'vz-mode',
+        options: [{ value: 'list', label: 'List', icon: 'view_list' }, { value: 'board', label: 'Board', icon: 'grid_view' }]
+      }),
+      columnMenu(),
+      button({
+        label: 'Group by setup', icon: 'view_agenda', size: 'sm', action: 'vz-group', class: 'vz-group-btn',
+        attrs: { 'aria-pressed': view.group ? 'true' : 'false' },
+        title: view.group ? 'Show the shots in shooting order again' : 'Gather each scene’s shots under their camera setup'
+      }),
       /* Filter and density: view state over the shot rows, in memory.
          The same controls at every width; on a phone they wrap above
          the cards. */
@@ -275,16 +315,13 @@ function renderShotList(scenes, shots) {
         label: 'Show shots', name: 'vz-filter', value: covFilter, quiet: true,
         action: 'vz-cov-filter', options: COV_FILTERS, class: 'vz-cov-filter'
       }),
-      button({
+      view.mode === 'list' ? button({
         label: 'Compact', icon: 'density_small', size: 'sm', action: 'vz-cov-compact',
         class: 'vz-cov-compact', attrs: { 'aria-pressed': covCompact ? 'true' : 'false' },
-        title: covCompact ? 'Show every field of each shot' : 'Show only the setup, size, move, lens and status'
-      }),
-      actionMenu('Export the shot division', [
-        { label: 'Whole script — PDF', action: 'vz-pdf-all', hint: 'A4' },
-        { label: 'Whole script — CSV', action: 'vz-csv-all', hint: 'spreadsheet' }
-      ], { align: 'right' })
-    ]));
+        title: covCompact ? 'Show every field of each shot' : 'Show only the number, size, move, lens and status'
+      }) : null,
+      actionMenu('Export the shot division', exportItems('all'), { align: 'right' })
+    ].filter(Boolean)));
   }
 
   if (!scenes.length && !shots.length) {
@@ -304,6 +341,7 @@ function renderShotList(scenes, shots) {
      the page (a <details>, closed until opened, still in the DOM) so they
      never push the covered scenes' tables down. render() rebuilds it every
      time, so its open state is kept in `uncoveredOpen`. */
+  const dayMins = Shots.minutesByDay(scenes, shots);
   const uncovered = [];
   for (const group of Shots.shotsByScene(scenes)) {
     if (group.scene && !group.shots.length) {
@@ -312,7 +350,7 @@ function renderShotList(scenes, shots) {
       uncovered.push(renderUncovered(group.scene));
       continue;
     }
-    wrap.append(renderSceneBlock(group));
+    wrap.append(renderSceneBlock(group, dayMins));
   }
   if (uncovered.length) {
     const run = h('div.vz-uncovered', { role: 'list', 'aria-label': 'Scenes with no shots yet' });
@@ -325,7 +363,45 @@ function renderShotList(scenes, shots) {
     bar.addEventListener('toggle', () => { uncoveredOpen = bar.open; });
     wrap.append(bar);
   }
+  // Where a keyboard move is announced ("Shot 3 is now 2 of 5").
+  wrap.append(h('p.visually-hidden', { id: 'vz-live', role: 'status', 'aria-live': 'polite', text: liveText }));
   return wrap;
+}
+
+/** The export menu for a scope: the PDF in each layout, the CSV, and the
+    frame pictures as a ZIP. Every item prints the visible columns. */
+function exportItems(scope) {
+  const all = scope === 'all';
+  const who = all ? 'Whole script' : 'This scene';
+  const act = (kind) => 'vz-' + kind + (all ? '-all' : '-scene');
+  return [
+    { label: who + ' — PDF list', action: act('pdf'), hint: 'A4', data: { layout: 'list' } },
+    { label: who + ' — PDF 4-grid', action: act('pdf'), hint: 'storyboard', data: { layout: 'grid4' } },
+    { label: who + ' — PDF 6-grid', action: act('pdf'), hint: 'storyboard', data: { layout: 'grid6' } },
+    { label: who + ' — CSV', action: act('csv'), hint: 'spreadsheet' },
+    { label: who + ' — frame pictures', action: act('zip'), hint: 'ZIP' }
+  ];
+}
+
+/** Show / hide columns. A disclosure of checkboxes, so it stays open
+    while several are ticked; the same list drives the PDF and the CSV. */
+function columnMenu() {
+  const d = h('details.vz-colmenu');
+  d.open = colMenuOpen;
+  d.addEventListener('toggle', () => { colMenuOpen = d.open; });
+  d.append(
+    h('summary.k-btn.k-btn--secondary.k-btn--sm.vz-colmenu-btn', { 'aria-label': 'Columns: choose what the list shows and exports' }, [
+      sym('tune'), h('span', { text: 'Columns' }), h('span.vz-colmenu-n.k-mono', { text: String(view.cols.length) })
+    ]),
+    h('div.vz-colmenu-panel', { role: 'group', 'aria-label': 'Columns to show and export' }, [
+      h('p.vz-colmenu-note', { text: 'The shot number always shows. The PDF and CSV print the same columns.' }),
+      ...SHOT_COLUMNS.map((c) => check({
+        label: c.label, checked: view.cols.includes(c.id), class: 'vz-colmenu-item',
+        attrs: { 'data-action': 'vz-col', 'data-col': c.id }
+      }))
+    ])
+  );
+  return d;
 }
 
 /** One uncovered scene: its identity and the way to start covering it. */
@@ -339,26 +415,33 @@ function renderUncovered(scene) {
   ]);
 }
 
-function renderSceneBlock(group) {
+function renderSceneBlock(group, dayMins = new Map()) {
   const scene = group.scene;
   const cov = Shots.coverageOf(group.shots);
+  const time = Shots.minutesOf(group.shots);
   const block = h('div.vz-scene.k-panel' + (scene ? '' : '.is-orphan'), { 'data-scene': scene ? scene.id : '' });
 
   if (scene) {
     /* The current-scene card: identity, length, where the stripboard
-       put it, and how far the coverage has got. Every figure is read
-       off the scene and its shots; the stripboard day is the scene's
-       own `shootDay`, and a scene without one says so rather than
-       guessing. No call time: nothing stores one per scene. */
+       put it, how far the coverage has got and how long it will take.
+       Every figure is read off the scene and its shots; the stripboard
+       day is the scene's own `shootDay`, and a scene without one says
+       so rather than guessing. The day's total is every scene on that
+       day added up (Shots.minutesByDay), never stored. */
     const day = shootDayOf(scene);
+    const dayTotal = day && dayMins.get(day) ? Shots.formatMinutes(dayMins.get(day).total) : '';
     block.append(h('div.vz-scene-head.k-panel-head', {}, [
       ...sceneIdent(scene),
       h('span.vz-scene-count', {
         text: [formatEighths(Number(scene.eighths) || 0) + ' pgs',
           plural(cov.setups, 'shot', 'shots'), cov.done + ' in the can'].join(' · ')
       }),
+      h('span.vz-scene-time.k-mono', {
+        title: time.timed ? plural(time.timed, 'shot has', 'shots have') + ' a time estimate' : 'Type minutes on a shot to see the scene’s running time',
+        text: time.total ? Shots.formatMinutes(time.total) + (time.timed < time.count ? ' (' + time.timed + ' of ' + time.count + ' timed)' : '') : 'No time estimate'
+      }),
       h('span.vz-scene-day', {}, [
-        day ? h('a', { href: 'stripboard.html#stripboard', text: 'Day ' + day + ' on the stripboard' })
+        day ? h('a', { href: 'stripboard.html#stripboard', text: 'Day ' + day + ' on the stripboard' + (dayTotal ? ' · ' + dayTotal + ' that day' : '') })
           : h('span', { text: 'Not on the stripboard yet' })
       ])
     ]));
@@ -386,14 +469,18 @@ function renderSceneBlock(group) {
   }
 
   if (group.shots.length) {
-    /* Between a phone and a desk the seven columns do not fit, so the
-       table scrolls inside itself and says so (UX audit L30). Below
-       720px each row becomes a card instead (visualize.css §1b) and
-       the hint is hidden: there is nothing sideways left to find. */
     const shown = group.shots.filter(keepShot);
     if (shown.length) {
-      block.append(h('p.vz-scroll-hint', { 'aria-hidden': 'true', text: 'Swipe the table sideways for every column →' }));
-      block.append(renderShotTable(group.shots, scene, shown));
+      if (view.mode === 'board') block.append(renderShotCards(group.shots, scene, shown));
+      else {
+        /* Between a phone and a desk the columns do not fit, so the
+           table scrolls inside itself and says so (UX audit L30). Below
+           720px each row becomes a card instead (visualize.css §1b) and
+           the hint is hidden: there is nothing sideways left to find. */
+        block.append(h('p.vz-scroll-hint', { 'aria-hidden': 'true', text: 'Swipe the table sideways for every column →' }));
+        block.append(renderShotTable(group.shots, scene, shown));
+      }
+      if (view.group) block.append(h('p.vz-group-note', { text: 'Grouped by setup. Reordering is off while grouped: switch Group by setup off to drag or move shots.' }));
     } else {
       block.append(h('p.vz-filter-none', {
         text: covFilter === 'done' ? 'Nothing in this scene is in the can yet.' : 'Every shot in this scene is in the can.'
@@ -407,36 +494,103 @@ function renderSceneBlock(group) {
     ]);
     // Only offered once there is something to put on the sheet.
     if (group.shots.length) {
-      row.append(actionMenu('Export this scene', [
-        { label: 'This scene — PDF', action: 'vz-pdf-scene', hint: 'A4' },
-        { label: 'This scene — CSV', action: 'vz-csv-scene', hint: 'spreadsheet' }
-      ], { align: 'right' }));
+      row.append(button({
+        label: 'Renumber', icon: 'format_list_numbered', size: 'sm', variant: 'ghost', action: 'vz-shot-renumber',
+        title: 'Number the shots 1, 2, 3 in this order. Locked numbers (and ones like 4A) are kept.'
+      }));
+      row.append(actionMenu('Export this scene', exportItems(scene.id), { align: 'right' }));
     }
     block.append(row);
   }
   return block;
 }
 
-/* THE COVERAGE TABLE. One row per setup: number, size over angle,
-   movement, lens, what we see, and the status pill. Every cell is a
-   field of the one shot record in src/lib/shots.js; the pill is the
-   shot's `done`, printed in words. */
+/* The columns, once. `cell` builds the field; the number column and the
+   row grips are not in the menu because a shot always has both. Each
+   cell carries its column's words as data-label, which the phone card
+   prints over the field (visualize.css §1b). */
+const COLDEFS = {
+  size:        { label: 'Size', cls: 'vz-c-size', cell: (s) => picker(SHOT_SIZES, s.size, 'data-shot-field', 'size', 'Shot size') },
+  angle:       { label: 'Angle', cls: 'vz-c-angle', cell: (s) => picker(SHOT_ANGLES, s.angle, 'data-shot-field', 'angle', 'Camera angle') },
+  movement:    { label: 'Move', cls: 'vz-c-move', cell: (s) => picker(SHOT_MOVEMENTS, s.movement, 'data-shot-field', 'movement', 'Camera movement') },
+  lens:        { label: 'Lens', cls: 'vz-c-lens', cell: (s) => cellInput(field('input.vz-lens', {
+    type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off', 'data-shot-field': 'lens', 'aria-label': 'Lens'
+  }, s.lens), true) },
+  rig:         { label: 'Light / rig', cls: 'vz-c-rig', cell: (s) => cellInput(field('input.vz-rig', {
+    type: 'text', placeholder: 'Key from window', list: 'vzRigs', autocomplete: 'off', 'data-shot-field': 'rig', 'aria-label': 'Lighting or rig'
+  }, s.rig), true) },
+  /* Setup is free text whose default is the blocking camera's name
+     (Shots.setupOf), shown as the placeholder; the camera itself is a
+     pick from the marks on this scene's maps. No camera marks, no
+     picker: the map is where a camera is made. */
+  setup:       { label: 'Setup', cls: 'vz-c-setup', cell: (s, cams) => {
+    const cam = Shots.camOf(s, cams);
+    const out = [cellInput(field('input.vz-setup', {
+      type: 'text', placeholder: cam ? cam.name : 'Setup A', autocomplete: 'off',
+      'data-shot-field': 'setup', 'aria-label': 'Camera setup'
+    }, s.setup), true)];
+    if (cams.length) {
+      out.push(picker([{ id: '', label: 'No camera' }, ...cams.map((c) => ({ id: c.id, label: c.name }))],
+        cam ? s.cam : '', 'data-shot-field', 'cam', 'Camera on the blocking map'));
+    }
+    return out;
+  } },
+  mins:        { label: 'Min', cls: 'vz-c-mins', cell: (s) => cellInput(field('input.vz-mins', {
+    type: 'text', inputmode: 'decimal', placeholder: '—', autocomplete: 'off',
+    'data-shot-field': 'mins', 'aria-label': 'Time estimate in minutes', title: 'Minutes for this setup: 12, 7.5, 1h 30 or 1:30'
+  }, s.mins), true) },
+  description: { label: 'What we see', cls: 'vz-c-desc', cell: (s) => cellInput(field('textarea.vz-desc', {
+    rows: '2', placeholder: 'One line of what the audience sees', 'data-shot-field': 'description', 'aria-label': 'What we see'
+  }, s.description)) },
+  done:        { label: 'Done', cls: 'vz-c-done', cell: (s, cams, n) => doneBox(s, n) }
+};
+const visibleCols = () => Shots.cleanColumns(view.cols);
+
+/** The status checkbox: the shot's one stored boolean, `done`. */
+function doneBox(shot, n) {
+  return check({
+    label: 'In the can', checked: !!shot.done, class: 'vz-done-check',
+    attrs: { 'data-shot-field': 'done', 'aria-label': 'Shot ' + n + ' is in the can' }
+  });
+}
+
+/** The ordered runs a scene's shots are drawn in: one run in shot order,
+    or one per setup when grouped. Filtered shots keep their place. */
+function shotRuns(shots, cams) {
+  return view.group ? Shots.groupBySetup(shots, cams) : [{ label: null, shots }];
+}
+
+/* THE COVERAGE TABLE. One row per setup, a column per visible field.
+   Every cell is a field of the one shot record in src/lib/shots.js. */
 function renderShotTable(shots, scene, shown = shots) {
+  const cols = visibleCols();
   const table = h('table.k-table.vz-table.vz-cov');
   table.append(h('caption.visually-hidden', {
     text: 'Coverage' + (scene ? ' for scene ' + (scene.number || '') : '')
   }));
   const head = h('tr');
-  COV_COLS.forEach(([label, cls]) => head.append(
-    h('th' + (cls ? '.' + cls : ''), { scope: 'col', text: label })
-  ));
+  head.append(h('th.vz-c-no', { scope: 'col', text: 'Shot' }));
+  cols.forEach((id) => head.append(h('th.' + COLDEFS[id].cls, { scope: 'col', text: COLDEFS[id].label })));
+  head.append(h('th.vz-c-ctrl', { scope: 'col' }, [h('span.visually-hidden', { text: 'Order and delete' })]));
   table.append(h('thead', {}, [head]));
 
-  const body = h('tbody');
+  const sortable = !view.group;
+  const body = h('tbody', sortable && scene ? { 'data-sort-scene': scene.id } : {});
   const cams = scene ? Shots.sceneCameras(scene.id) : [];
-  /* Filtered rows keep their place in the FULL list, so the number
-     placeholder and the up / down grips still mean the scene's order. */
-  shots.forEach((shot, i) => { if (shown.includes(shot)) body.append(renderShotRow(shot, i, shots.length, cams)); });
+  for (const run of shotRuns(shots, cams)) {
+    const mine = run.shots.filter((s) => shown.includes(s));
+    if (!mine.length) continue;
+    if (run.label !== null) {
+      const t = Shots.formatMinutes(Shots.minutesOf(run.shots).total);
+      body.append(h('tr.vz-setup-row', {}, [h('th', { scope: 'rowgroup', colspan: String(cols.length + 2) }, [
+        h('span.vz-setup-name', { text: run.label || 'No setup' }),
+        h('span.vz-setup-meta.k-mono', { text: plural(run.shots.length, 'shot', 'shots') + (t ? ' · ' + t : '') })
+      ])]));
+    }
+    /* Filtered rows keep their place in the FULL list, so the number
+       placeholder and the up / down grips still mean the scene's order. */
+    for (const shot of mine) body.append(renderShotRow(shot, shots.indexOf(shot), shots.length, cams, cols, sortable && !!scene));
+  }
   table.append(body);
   return h('div.k-table-wrap.vz-table-wrap', {
     role: 'region', tabindex: '0',
@@ -444,37 +598,23 @@ function renderShotTable(shots, scene, shown = shots) {
   }, [table]);
 }
 
-/* The coverage columns, once: the head prints them and each cell
-   carries its column's words as data-label, which the phone card
-   prints over the field (visualize.css §1b). */
-const COV_COLS = [['Setup', 'vz-c-no'], ['Size & angle', 'vz-c-size'], ['Move', 'vz-c-move'],
-  ['Lens, light & camera', 'vz-c-lens'], ['What we see', 'vz-c-desc'], ['Status', 'vz-c-done']];
-const covLabel = (cls) => (COV_COLS.find((c) => c[1] === cls) || [''])[0];
-
-/** The status pill: the shot's `done`, in words, and the control that
-    flips it. A button with aria-pressed, so it is one Tab stop and
-    Space or Enter marks a setup in the can. */
-function statusPill(shot, i) {
-  const st = Shots.shotStatus(shot);
-  const n = shot.number || String(i + 1);
-  return h('button.k-badge.k-badge--button.k-badge--' + st.tone + '.vz-status', {
-    type: 'button', 'data-action': 'vz-shot-status',
-    'aria-pressed': shot.done ? 'true' : 'false',
-    'aria-label': 'Shot ' + n + ' is in the can',
-    title: shot.done ? 'In the can — press to mark it still to shoot' : 'To shoot — press when it is in the can'
-  }, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), h('span', { text: st.label })]);
-}
-
-function renderShotRow(shot, i, total, cams = []) {
-  const row = h('tr.vz-row' + (shot.done ? '.is-done' : '') + (shot.ai || shot.rules ? '.is-ai' : ''), {
-    'data-shot': shot.id
-  });
-
-  const no = h('td.vz-c-no', { 'data-label': covLabel('vz-c-no') }, [
-    cellInput(field('input.vz-no', {
-      type: 'text', placeholder: String(i + 1),
-      'data-shot-field': 'number', 'aria-label': 'Shot number'
-    }, shot.number), true)
+/** The number cell: the number, its lock, and the provenance tag. */
+function numberCell(shot, i) {
+  const locked = Shots.isLockedNumber(shot);
+  const no = h('td.vz-c-no', { 'data-label': 'Shot' }, [
+    h('div.vz-no-row', {}, [
+      cellInput(field('input.vz-no', {
+        type: 'text', placeholder: String(i + 1),
+        'data-shot-field': 'number', 'aria-label': 'Shot number'
+      }, shot.number), true),
+      button({
+        label: locked ? 'Number locked: auto-numbering leaves it alone' : 'Lock this number',
+        icon: locked ? 'lock' : 'lock_open', iconOnly: true, size: 'sm', variant: 'ghost',
+        action: 'vz-shot-lock', class: 'vz-lock' + (locked ? ' is-locked' : ''),
+        attrs: { 'aria-pressed': locked ? 'true' : 'false' },
+        title: locked ? 'Locked — Renumber and moves keep this number. Press to unlock.' : 'Unlocked — Renumber and moves number this shot in order. Press to lock.'
+      })
+    ])
   ]);
   /* A shot a machine drafted is marked, permanently and visibly,
      so a person can always tell what they wrote from what was
@@ -489,46 +629,94 @@ function renderShotRow(shot, i, total, cams = []) {
     no.append(badge({ label: 'Basic', tag: true, class: 'vz-ai-tag vz-rules-tag',
       title: 'Drafted by the basic breakdown from the script — edit or delete it like any other shot' }));
   }
-  row.append(no);
-  row.append(h('td.vz-c-size', { 'data-label': covLabel('vz-c-size') }, [
-    picker(SHOT_SIZES, shot.size, 'data-shot-field', 'size', 'Shot size'),
-    picker(SHOT_ANGLES, shot.angle, 'data-shot-field', 'angle', 'Camera angle')
-  ]));
-  row.append(h('td.vz-c-move', { 'data-label': covLabel('vz-c-move') }, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
-  /* Lighting / rig is free text; the camera is a pick from the marks on
-     this scene's blocking maps. No camera marks, no picker: the map is
-     where a camera is made, so there is nothing to offer instead of an
-     empty list. */
-  const cell = h('td.vz-c-lens', { 'data-label': covLabel('vz-c-lens') }, [
-    cellInput(field('input.vz-lens', {
-      type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off',
-      'data-shot-field': 'lens', 'aria-label': 'Lens'
-    }, shot.lens), true),
-    cellInput(field('input.vz-rig', {
-      type: 'text', placeholder: 'Key from window', list: 'vzRigs', autocomplete: 'off',
-      'data-shot-field': 'rig', 'aria-label': 'Lighting or rig'
-    }, shot.rig), true)
-  ]);
-  if (cams.length) {
-    cell.append(picker([{ id: '', label: 'No camera' }, ...cams.map((c) => ({ id: c.id, label: c.name }))],
-      Shots.camOf(shot, cams) ? shot.cam : '', 'data-shot-field', 'cam', 'Camera on the blocking map'));
+  return no;
+}
+
+/** The grip (drag, or the arrow keys) and the row's buttons. */
+function rowControls(shot, i, total, sortable) {
+  const n = shot.number || String(i + 1);
+  const btns = [];
+  if (sortable) {
+    btns.push(button({
+      label: 'Reorder shot ' + n + ': drag, or press the arrow keys', icon: 'drag_indicator', iconOnly: true, size: 'sm',
+      variant: 'ghost', action: 'vz-shot-grip', class: 'vz-grip', title: 'Drag to reorder (or focus and press ↑ / ↓)'
+    }));
+    btns.push(ctrlBtn('↑', 'vz-shot-up', 'Move this shot earlier', i === 0));
+    btns.push(ctrlBtn('↓', 'vz-shot-down', 'Move this shot later', i === total - 1));
   }
-  row.append(cell);
-  row.append(h('td.vz-c-desc', { 'data-label': covLabel('vz-c-desc') }, [
-    cellInput(field('textarea.vz-desc', {
-      rows: '2', placeholder: 'One line of what the audience sees',
-      'data-shot-field': 'description', 'aria-label': 'What we see'
-    }, shot.description))
-  ]));
-  /* Status and the row grips share the last cell: the pill on top, the
-     tray under it — a seventh column would push the table past the
-     panel at 1280. */
-  row.append(h('td.vz-c-done', {}, [h('div.vz-done-stack', {}, [statusPill(shot, i), h('div.row-ctrl.vz-c-ctrl', {}, [ctrlTray([
-    ctrlBtn('↑', 'vz-shot-up', 'Move this shot earlier', i === 0),
-    ctrlBtn('↓', 'vz-shot-down', 'Move this shot later', i === total - 1),
-    ctrlBtn('✕', 'vz-shot-del', 'Delete this shot', false, true)
-  ], 'Shot ' + (shot.number || String(i + 1)))])])]));
+  btns.push(ctrlBtn('✕', 'vz-shot-del', 'Delete this shot', false, true));
+  return h('div.row-ctrl.vz-c-ctrl', {}, [ctrlTray(btns, 'Shot ' + n)]);
+}
+
+function renderShotRow(shot, i, total, cams = [], cols = visibleCols(), sortable = true) {
+  const row = h('tr.vz-row' + (shot.done ? '.is-done' : '') + (shot.ai || shot.rules ? '.is-ai' : ''), {
+    'data-shot': shot.id
+  });
+  if (sortable) row.dataset.sortable = '';
+  const n = shot.number || String(i + 1);
+  row.append(numberCell(shot, i));
+  for (const id of cols) {
+    const c = COLDEFS[id];
+    const made = c.cell(shot, cams, n);
+    row.append(h('td.' + c.cls, { 'data-label': c.label }, Array.isArray(made) ? made : [made]));
+  }
+  row.append(h('td.vz-c-ctrl', {}, [rowControls(shot, i, total, sortable)]));
   return row;
+}
+
+/* THE BOARD: a card per shot, its first frame on top. The same fields as
+   the table, read-only here except the status box; the List is where a
+   shot is typed. A card is a drop target for pictures too (one frame
+   each, through the storyboard's upload). */
+function renderShotCards(shots, scene, shown = shots) {
+  const cols = visibleCols();
+  const cams = scene ? Shots.sceneCameras(scene.id) : [];
+  const byShot = Shots.framesByShot();
+  const sortable = !view.group && !!scene;
+  const out = h('div.vz-cards-wrap.k-panel-body');
+  for (const run of shotRuns(shots, cams)) {
+    const mine = run.shots.filter((s) => shown.includes(s));
+    if (!mine.length) continue;
+    if (run.label !== null) {
+      const t = Shots.formatMinutes(Shots.minutesOf(run.shots).total);
+      out.append(h('h3.vz-setup-head', {}, [
+        h('span.vz-setup-name', { text: run.label || 'No setup' }),
+        h('span.vz-setup-meta.k-mono', { text: plural(run.shots.length, 'shot', 'shots') + (t ? ' · ' + t : '') })
+      ]));
+    }
+    const grid = h('div.vz-cards', { role: 'list', 'aria-label': 'Shots' + (scene ? ', scene ' + (scene.number || '') : '') });
+    if (sortable) grid.dataset.sortScene = scene.id;
+    for (const shot of mine) grid.append(renderShotCard(shot, shots.indexOf(shot), shots.length, cams, cols, (byShot.get(shot.id) || [])[0], sortable));
+    out.append(grid);
+  }
+  return out;
+}
+
+function renderShotCard(shot, i, total, cams, cols, frame, sortable) {
+  const n = shot.number || String(i + 1);
+  const card = h('article.vz-card' + (shot.done ? '.is-done' : ''), {
+    'data-shot': shot.id, 'data-drop-shot': shot.id, role: 'listitem', 'aria-label': 'Shot ' + n
+  });
+  if (sortable) card.dataset.sortable = '';
+  const thumb = h('div.vz-card-thumb', { 'data-aspect': aspectOf(frame && frame.aspect) }, [
+    frame ? refView(frame.ref) : h('p.vz-frame-view.vz-frame-none', { text: 'No frame yet — drop a picture here' }),
+    h('span.vz-card-no.k-mono', { text: n })
+  ]);
+  card.append(thumb);
+  const spec = ['size', 'angle', 'movement', 'lens'].filter((id) => cols.includes(id))
+    .map((id) => (id === 'size' ? shotSpec({ size: shot.size }) : String(shot[id] || '').trim())).filter(Boolean);
+  card.append(h('div.vz-card-head', {}, [
+    h('span.vz-card-spec.k-mono', { text: spec.join(' · ') || 'Shot ' + n }),
+    cols.includes('done') ? doneBox(shot, n) : null
+  ].filter(Boolean)));
+  const meta = [];
+  if (cols.includes('setup')) { const su = Shots.setupOf(shot, cams); if (su) meta.push(su); }
+  if (cols.includes('rig') && String(shot.rig || '').trim()) meta.push(String(shot.rig).trim());
+  if (cols.includes('mins')) { const m = Shots.formatMinutes(Shots.shotMinutes(shot)); if (m) meta.push(m); }
+  if (meta.length) card.append(h('p.vz-card-meta.k-mono', { text: meta.join(' · ') }));
+  if (cols.includes('description') && shot.description) card.append(h('p.vz-card-desc', { text: shot.description }));
+  card.append(h('div.vz-card-foot', {}, [rowControls(shot, i, total, sortable)]));
+  return card;
 }
 
 /* ============================================================
@@ -736,7 +924,7 @@ function renderAI(scenes, shots) {
    shot list above already holds, so the board cannot drift out of
    step with it. */
 function renderStoryboard(scenes, shots, frames) {
-  const wrap = h('section.vz-board', { id: 'storyboard' });
+  const wrap = h('section.vz-board', { id: 'storyboard', 'data-per-row': String(view.perRow) });
   wrap.append(
     h('h2.bd-h2', { text: 'Storyboard' }),
     h('p.bd-sub', {
@@ -750,6 +938,19 @@ function renderStoryboard(scenes, shots, frames) {
       + 'write the frame in words. Words are often the better storyboard anyway.')
   );
   if (shots.length) wrap.append(renderDraw(scenes, shots, frames));
+  /* Frames per row: how wide the board's cards sit on a desk. A phone
+     always shows one sideways row (visualize.css §9), so the control
+     is only drawn where it does something. */
+  if (shots.length && frames.length) {
+    wrap.append(h('div.vz-board-tools', {}, [
+      segmented({
+        label: 'Shots per row', name: 'vz-per-row', value: String(view.perRow), quiet: true,
+        action: 'vz-per-row', class: 'vz-per-row',
+        options: PER_ROW.map((n) => ({ value: String(n), label: n ? String(n) + ' per row' : 'Fit' }))
+      }),
+      h('span.vz-board-hint', { text: 'Drop pictures on a shot to add one frame per picture.' })
+    ]));
+  }
 
   if (!shots.length) {
     wrap.append(h('p.bd-none', {
@@ -883,7 +1084,8 @@ function renderNoFrames(firstShotId) {
 }
 
 function renderShotColumn(shot, frames) {
-  const col = h('article.vz-shotcol', { 'data-shot': shot.id, role: 'listitem' });
+  // A drop target: pictures dropped here become one frame each.
+  const col = h('article.vz-shotcol', { 'data-shot': shot.id, 'data-drop-shot': shot.id, role: 'listitem' });
   /* The card's head is the parent shot, read off it: number, size,
      lens and the move as a chip. Nothing is typed twice. */
   col.append(h('div.vz-shotcol-head', {}, [
@@ -900,7 +1102,11 @@ function renderShotColumn(shot, frames) {
 
   frames.forEach((frame, i) => col.append(renderFrame(frame, shot, i, frames.length)));
 
-  col.append(button({ label: 'Frame', icon: 'add', size: 'sm', action: 'vz-frame-add', class: 'vz-add-frame' }));
+  col.append(h('div.vz-shotcol-acts', {}, [
+    button({ label: 'Frame', icon: 'add', size: 'sm', action: 'vz-frame-add', class: 'vz-add-frame' }),
+    button({ label: 'Pictures', icon: 'upload', size: 'sm', variant: 'ghost', action: 'vz-frame-bulk', class: 'vz-add-pics',
+      title: 'Choose several pictures: one new frame each, saved to your Google Drive' })
+  ]));
   return col;
 }
 
@@ -939,9 +1145,19 @@ function renderFrame(frame, shot, i, total, cams) {
       label: 'Reference', value: frame.ref, placeholder: 'https://… or describe the frame in words',
       class: 'vz-fieldset', attrs: { 'data-frame-field': 'ref', 'aria-label': 'Frame reference' }
     }));
+  /* The panel's three lines, Boords-style. Action shows the older
+     caption until it is edited (Shots.frameAction); the edit moves it. */
   card.append(kitField({
-    label: 'Caption', value: frame.caption, placeholder: 'What changes by the end of the shot',
-    class: 'vz-fieldset', attrs: { 'data-frame-field': 'caption', 'aria-label': 'Frame caption' }
+    label: 'Action', value: Shots.frameAction(frame), placeholder: 'What happens — what changes by the end of the shot',
+    class: 'vz-fieldset', attrs: { 'data-frame-field': 'action', 'aria-label': 'Frame action' }
+  }));
+  card.append(kitField({
+    label: 'Dialogue', value: frame.dialogue, placeholder: 'The line spoken over this frame',
+    class: 'vz-fieldset', attrs: { 'data-frame-field': 'dialogue', 'aria-label': 'Frame dialogue' }
+  }));
+  card.append(kitField({
+    label: 'Camera', value: frame.camera, placeholder: 'Push in, rack focus, pan left…',
+    class: 'vz-fieldset', attrs: { 'data-frame-field': 'camera', 'aria-label': 'Frame camera note' }
   }));
 
   /* The frame's shape: the slate takes it from [data-aspect] on the
@@ -1185,7 +1401,10 @@ function say(message, type) {
 }
 
 function download(text, filename, mime) {
-  const blob = new Blob([text], { type: mime || 'text/plain' });
+  downloadBlob(new Blob([text], { type: mime || 'text/plain' }), filename);
+}
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -1201,23 +1420,41 @@ const fileStem = () => stemOf(PDF.projectTitle());
    everything downstream — the document, the CSV, the subtitle,
    the filename — takes the same argument, so the two cannot
    drift apart. */
-async function exportShotlist(scope, kind) {
+/** A frame's picture as this page visit holds it, for the PDF sheet. */
+const imageFor = (frame) => {
+  const id = driveFileIdOf(String((frame && frame.ref) || '').trim());
+  return id ? cachedImageUrl(id) : '';
+};
+
+async function exportShotlist(scope, kind, layout = 'list') {
   let Sheet;
   try { Sheet = await exporter(); }
   catch (e) { say('The exporter could not be loaded. Check the connection and try again.', 'warn'); return; }
 
   const summary = Sheet.summarise(scope);
   if (!summary.shots) { say('There are no shots in that scope yet.', 'warn'); return; }
+  // The column menu is the export's column list too.
+  const columns = visibleCols();
 
   if (kind === 'csv') {
     const tail = scope === Sheet.ALL ? 'shot_division' : 'shot_division_scene';
-    download(Sheet.toCSV(scope), fileStem() + '_' + tail + '.csv', 'text/csv');
+    download(Sheet.toCSV(scope, { columns }), fileStem() + '_' + tail + '.csv', 'text/csv');
     say('Exported ' + summary.shots + ' setups as CSV.');
     return;
   }
+  if (kind === 'zip') { exportPictures(Sheet, scope); return; }
 
   const main = document.getElementById('main');
   if (!main) return;
+  layout = Sheet.layoutOf(layout);
+  /* A storyboard sheet prints the pictures this page visit already
+     holds; with a Drive token, the ones not yet on screen are fetched
+     first (one at a time) so the sheet is not half blank. */
+  if (layout !== 'list' && Drive.hasToken()) {
+    const want = Sheet.frameFiles(scope).filter((f) => !cachedImageUrl(f.fileId));
+    if (want.length) say('Collecting ' + plural(want.length, 'picture', 'pictures') + ' from your Google Drive for the sheet…');
+    for (const f of want) { try { await driveImageBlob(f.fileId); } catch (e) { /* printed as an empty box */ } }
+  }
   let node = null;
   PDF.exportPDF({
     scope: 'shotlist',
@@ -1225,20 +1462,55 @@ async function exportShotlist(scope, kind) {
     label: Sheet.labelFor(scope),
     title: PDF.projectTitle() + ' — ' + Sheet.labelFor(scope),
     subtitle: Sheet.subtitleFor(scope),
-    before: () => { node = Sheet.buildDocument(scope); main.append(node); },
+    before: () => { node = Sheet.buildDocument(scope, { columns, layout, imageFor }); main.append(node); },
     after: () => { if (node) { node.remove(); node = null; } }
   });
 }
 
-delegate(document, 'click', '[data-action="vz-pdf-all"]', () => exportShotlist('all', 'pdf'));
+/* THE FRAME PICTURES AS A ZIP. Only frames whose picture is a file in
+   the writer's Drive (`drive:<fileId>`) have bytes to send; each is
+   read with the Drive token (or taken from this page visit), stored
+   uncompressed by src/lib/zip-write.js and handed over as one file.
+   Nothing is kept: the archive is built, downloaded and dropped. */
+async function exportPictures(Sheet, scope) {
+  const list = Sheet.frameFiles(scope);
+  if (!list.length) { say('No frame in that scope has a picture in your Google Drive yet.', 'warn'); return; }
+  if (!Drive.hasToken() && list.some((f) => !cachedImageUrl(f.fileId))) {
+    say('The pictures are in your Google Drive: press Reconnect Drive on the storyboard first, then export again.', 'warn');
+    return;
+  }
+  say('Collecting ' + plural(list.length, 'picture', 'pictures') + ' from your Google Drive…');
+  const files = [];
+  let missed = 0;
+  for (const f of list) {
+    try {
+      const blob = await driveImageBlob(f.fileId);
+      files.push([f.stem + Sheet.extFor(blob.type), new Uint8Array(await blob.arrayBuffer())]);
+    } catch (e) { missed++; }
+  }
+  if (!files.length) { say('Drive did not send any of the pictures. Reconnect Drive and try again.', 'warn'); return; }
+  const { zipStore } = await import('../lib/zip-write.js');
+  downloadBlob(new Blob([zipStore(files)], { type: 'application/zip' }),
+    fileStem() + (scope === Sheet.ALL ? '_frames' : '_frames_scene') + '.zip');
+  say('Exported ' + plural(files.length, 'picture', 'pictures') + ' as a ZIP.'
+    + (missed ? ' ' + plural(missed, 'picture was', 'pictures were') + ' not sent by Drive and left out.' : ''));
+}
+
+const layoutOfEl = (el) => el.dataset.layout || 'list';
+delegate(document, 'click', '[data-action="vz-pdf-all"]', (e, el) => exportShotlist('all', 'pdf', layoutOfEl(el)));
 delegate(document, 'click', '[data-action="vz-csv-all"]', () => exportShotlist('all', 'csv'));
+delegate(document, 'click', '[data-action="vz-zip-all"]', () => exportShotlist('all', 'zip'));
 delegate(document, 'click', '[data-action="vz-pdf-scene"]', (e, el) => {
   const id = sceneIdOf(el);
-  if (id) exportShotlist(id, 'pdf');
+  if (id) exportShotlist(id, 'pdf', layoutOfEl(el));
 });
 delegate(document, 'click', '[data-action="vz-csv-scene"]', (e, el) => {
   const id = sceneIdOf(el);
   if (id) exportShotlist(id, 'csv');
+});
+delegate(document, 'click', '[data-action="vz-zip-scene"]', (e, el) => {
+  const id = sceneIdOf(el);
+  if (id) exportShotlist(id, 'zip');
 });
 
 /* ---- the AI panel ---------------------------------------------
@@ -1329,16 +1601,173 @@ delegate(document, 'click', '[data-action="vz-shot-add"]', (e, el) => {
   const input = document.querySelector('[data-shot="' + shot.id + '"] .vz-desc');
   if (input) input.focus();
 });
-/* The status pill flips the shot's one stored boolean and repaints,
-   keeping focus on the same pill so a run of Space presses walks a
-   camera report down the table without the mouse. */
-delegate(document, 'click', '[data-action="vz-shot-status"]', (e, el) => {
+/* ---- the view: List / Board, columns, grouping, frames per row ----
+   Each is a click, and each is saved for this device (saveView) at the
+   click and nowhere else. */
+delegate(document, 'click', '[data-action="vz-mode"]', (e, el) => {
+  const v = el.dataset.value === 'board' ? 'board' : 'list';
+  if (v === view.mode) return;
+  view.mode = v;
+  saveView();
+  render('[data-action="vz-mode"][data-value="' + v + '"]');
+});
+delegate(document, 'change', 'input[data-action="vz-col"]', (e, box) => {
+  const id = box.dataset.col;
+  const on = new Set(view.cols);
+  if (box.checked) on.add(id); else on.delete(id);
+  view.cols = Shots.cleanColumns([...on]);
+  saveView();
+  render('input[data-action="vz-col"][data-col="' + CSS.escape(id) + '"]');
+});
+/* The Columns disclosure closes on Escape and on a click outside it. */
+document.addEventListener('click', (e) => {
+  const open = document.querySelector('details.vz-colmenu[open]');
+  if (open && !open.contains(e.target)) { open.open = false; colMenuOpen = false; }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const open = document.querySelector('details.vz-colmenu[open]');
+  if (!open) return;
+  open.open = false; colMenuOpen = false;
+  const sum = open.querySelector('summary');
+  if (sum) sum.focus();
+});
+delegate(document, 'click', '[data-action="vz-group"]', () => {
+  view.group = !view.group;
+  saveView();
+  render('[data-action="vz-group"]');
+});
+delegate(document, 'click', '[data-action="vz-per-row"]', (e, el) => {
+  const n = Number(el.dataset.value);
+  if (!PER_ROW.includes(n) || n === view.perRow) return;
+  view.perRow = n;
+  saveView();
+  render('[data-action="vz-per-row"][data-value="' + n + '"]');
+});
+
+/* ---- order and numbers -----------------------------------------
+   Every move goes through one path: reorder, then auto-number the
+   scene (Shots.autoNumber leaves locked numbers, and ones like 4A,
+   alone), then repaint with the focus back on the moved shot. */
+const sceneOfShot = (id) => (Shots.listShots().find((s) => s.id === id) || {}).sceneId;
+function announce(id) {
+  const list = Shots.listShots();
+  const shot = list.find((s) => s.id === id);
+  if (!shot) return;
+  const mine = list.filter((s) => s.sceneId === shot.sceneId);
+  liveText = 'Shot ' + (shot.number || '') + ' is now ' + (mine.indexOf(shot) + 1) + ' of ' + mine.length + '.';
+  const live = document.getElementById('vz-live');
+  if (live) live.textContent = liveText;
+}
+function moveShotBy(id, delta, focusAction) {
+  const scene = sceneOfShot(id);
+  if (scene === undefined) return;
+  Shots.moveShot(id, delta);
+  Shots.autoNumber(scene);
+  render();
+  if (focusAction === 'vz-shot-grip') {
+    const g = document.querySelector('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-grip"]');
+    if (g) g.focus();
+  } else {
+    refocusMoved('shot', id, focusAction, focusAction === 'vz-shot-up' ? 'vz-shot-down' : 'vz-shot-up');
+  }
+  announce(id);
+}
+delegate(document, 'click', '[data-action="vz-shot-renumber"]', (e, el) => {
+  const id = sceneIdOf(el);
+  if (!id) return;
+  const n = Shots.autoNumber(id);
+  render('[data-scene="' + CSS.escape(id) + '"] [data-action="vz-shot-renumber"]');
+  say(n ? plural(n, 'number', 'numbers') + ' changed. Locked numbers were kept.' : 'The shots were already numbered in order.');
+});
+delegate(document, 'click', '[data-action="vz-shot-lock"]', (e, el) => {
   const id = shotIdOf(el);
   const shot = Shots.listShots().find((s) => s.id === id);
   if (!shot) return;
-  Shots.updateShot(id, { done: !shot.done });
-  render('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-status"]');
+  const locked = Shots.isLockedNumber(shot);
+  /* Unlocking a number like "4A" hands it back to the list: it takes
+     the next ordinal at once, or it would still read as the writer's own. */
+  const ordinal = /^\d*$/.test(String(shot.number || '').trim());
+  Shots.updateShot(id, locked && !ordinal ? { numLocked: false, number: '' } : { numLocked: !locked });
+  if (locked) Shots.autoNumber(shot.sceneId);
+  render('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-lock"]');
 });
+/* The grip: the arrow keys move the shot one place (a list reads ↑ ↓,
+   a board of cards ← → as well). Drag is below. */
+delegate(document, 'keydown', '[data-action="vz-shot-grip"]', (e, el) => {
+  const back = e.key === 'ArrowUp' || e.key === 'ArrowLeft';
+  const fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight';
+  if (!back && !fwd) return;
+  e.preventDefault();
+  moveShotBy(shotIdOf(el), back ? -1 : 1, 'vz-shot-grip');
+});
+
+/* DRAG TO REORDER, with pointer events so a mouse, a pen and a finger
+   all work (the grip is `touch-action: none`). The drop computes the
+   scene's FULL order — rows hidden by a filter keep their place — and
+   writes it through Shots.reorderShots, then auto-numbers. Escape or a
+   cancelled pointer puts everything back untouched. */
+let drag = null;
+function clearDropMarks() {
+  document.querySelectorAll('.is-drop-before, .is-drop-after, .is-dragging')
+    .forEach((n) => n.classList.remove('is-drop-before', 'is-drop-after', 'is-dragging'));
+}
+delegate(document, 'pointerdown', '[data-action="vz-shot-grip"]', (e, grip) => {
+  if (e.button !== 0) return;
+  const item = grip.closest('[data-sortable]');
+  const box = grip.closest('[data-sort-scene]');
+  if (!item || !box) return;
+  drag = {
+    id: item.dataset.shot, scene: box.dataset.sortScene, box, item, pid: e.pointerId,
+    x: e.clientX, y: e.clientY, moved: false, target: null, after: false,
+    cards: box.classList.contains('vz-cards')
+  };
+  try { grip.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+});
+document.addEventListener('pointermove', (e) => {
+  if (!drag || e.pointerId !== drag.pid) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
+  drag.moved = true;
+  e.preventDefault();
+  clearDropMarks();
+  drag.item.classList.add('is-dragging');
+  let best = null, bestD = Infinity;
+  for (const n of drag.box.querySelectorAll('[data-sortable]')) {
+    if (n === drag.item) continue;
+    const r = n.getBoundingClientRect();
+    const d = drag.cards ? Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2))
+      : Math.abs(e.clientY - (r.top + r.height / 2));
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  drag.target = best;
+  if (best) {
+    const r = best.getBoundingClientRect();
+    drag.after = drag.cards ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2;
+    best.classList.add(drag.after ? 'is-drop-after' : 'is-drop-before');
+  }
+  // Near the top or bottom of the window, the page scrolls with the drag.
+  if (e.clientY < 72) window.scrollBy(0, -14);
+  else if (e.clientY > window.innerHeight - 72) window.scrollBy(0, 14);
+});
+function endDrag(commit) {
+  const d = drag;
+  drag = null;
+  clearDropMarks();
+  if (!d || !commit || !d.moved || !d.target) return;
+  const ids = Shots.listShots().filter((s) => s.sceneId === d.scene).map((s) => s.id).filter((id) => id !== d.id);
+  const at = ids.indexOf(d.target.dataset.shot);
+  if (at < 0) return;
+  ids.splice(at + (d.after ? 1 : 0), 0, d.id);
+  Shots.reorderShots(d.scene, ids);
+  Shots.autoNumber(d.scene);
+  render();
+  const g = document.querySelector('[data-shot="' + CSS.escape(d.id) + '"] [data-action="vz-shot-grip"]');
+  if (g) g.focus();
+  announce(d.id);
+}
+document.addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.pid) endDrag(true); });
+document.addEventListener('pointercancel', (e) => { if (drag && e.pointerId === drag.pid) endDrag(false); });
+document.addEventListener('keydown', (e) => { if (drag && e.key === 'Escape') endDrag(false); });
 /* The coverage view: filter and density. Both are module state (see
    VIEW STATE above) and repaint the page with focus kept on the control. */
 delegate(document, 'click', '[data-action="vz-cov-filter"]', (e, el) => {
@@ -1369,8 +1798,8 @@ function refocusMoved(host, id, action, other) {
     || document.querySelector(at + '[data-action="' + other + '"]:not(:disabled)');
   if (node) node.focus();
 }
-delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => { const id = shotIdOf(el); Shots.moveShot(id, -1); render(); refocusMoved('shot', id, 'vz-shot-up', 'vz-shot-down'); });
-delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => { const id = shotIdOf(el); Shots.moveShot(id,  1); render(); refocusMoved('shot', id, 'vz-shot-down', 'vz-shot-up'); });
+delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => moveShotBy(shotIdOf(el), -1, 'vz-shot-up'));
+delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => moveShotBy(shotIdOf(el),  1, 'vz-shot-down'));
 delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
   const id = shotIdOf(el);
   if (!await askDanger(shotDeleteQuestion(id))) return;
@@ -1387,13 +1816,36 @@ delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
    page at that moment destroys the element the browser was about to
    focus. So the two places a typed value is mirrored are patched in
    place instead. */
+/* A typed number is the writer's: it locks, so a later move or Renumber
+   keeps it. Clearing the field hands the number back to the list. */
+function shotPatch(el) {
+  const key = el.dataset.shotField;
+  const value = el.type === 'checkbox' ? el.checked : el.value;
+  if (key === 'number') return { number: value, numLocked: String(value).trim() !== '' };
+  return { [key]: value };
+}
 delegate(document, 'change', '[data-shot-field]', (e, el) => {
   const key = el.dataset.shotField;
   const id = shotIdOf(el);
   const value = el.type === 'checkbox' ? el.checked : el.value;
-  Shots.updateShot(id, { [key]: value });
+  Shots.updateShot(id, shotPatch(el));
 
-  if (el.tagName === 'SELECT' || el.type === 'checkbox') { render(); return; }
+  /* The status box keeps the focus, so Space walks a camera report down
+     the list without the mouse. */
+  if (el.type === 'checkbox') { render('[data-shot="' + CSS.escape(id) + '"] [data-shot-field="' + key + '"]'); return; }
+  if (el.tagName === 'SELECT') { render(); return; }
+  if (key === 'number') {
+    // The lock follows the typed number, patched in place (focus is leaving).
+    const lock = document.querySelector('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-lock"]');
+    const shot = Shots.listShots().find((s) => s.id === id);
+    if (lock && shot) {
+      const on = Shots.isLockedNumber(shot);
+      lock.setAttribute('aria-pressed', on ? 'true' : 'false');
+      lock.classList.toggle('is-locked', on);
+      const glyph = lock.querySelector('.sym');
+      if (glyph) glyph.textContent = on ? 'lock' : 'lock_open';
+    }
+  }
   if (key === 'description') {
     const col = document.querySelector('.vz-shotcol[data-shot="' + id + '"]');
     const line = col && col.querySelector('.vz-shotcol-desc');
@@ -1439,14 +1891,71 @@ delegate(document, 'click', '[data-action="vz-frame-upload"]', (e, el) => {
     say: (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (err) { /* chrome may not be up */ } }
   });
 });
+/* MANY PICTURES AT ONCE: picked with "Pictures" or dropped on a shot
+   (a storyboard card or a Board card). One new frame per picture, each
+   uploaded in turn through the same single-frame path, and one Undo. */
+function addPictures(shotId, files) {
+  const shot = Shots.listShots().find((s) => s.id === shotId);
+  if (!shot || !files || !files.length) return;
+  const label = (frame) => {
+    const mine = Shots.listFrames().filter((f) => f.shotId === shotId);
+    return (shot.number || 'shot') + String.fromCharCode(97 + Math.max(0, mine.findIndex((f) => f.id === frame.id)));
+  };
+  uploadManyToFrames({
+    files,
+    label,
+    addFrame: () => Shots.addFrame(shotId),
+    updateFrame: (id, patch) => Shots.updateFrame(id, patch),
+    removeFrame: (id) => Shots.removeFrame(id),
+    after: () => render(),
+    toast: (m, o) => StudioUI.toast(m, o),
+    say: (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (err) { /* chrome may not be up */ } }
+  });
+}
+delegate(document, 'click', '[data-action="vz-frame-bulk"]', async (e, el) => {
+  const shotId = shotIdOf(el);
+  if (!shotId) return;
+  /* The press is a click, so a lapsed token can be renewed here — and
+     then the picker needs a click of its own (Google's window used this
+     one), exactly as the single Upload does. */
+  const gate = currentBoardGate();
+  if (!gate.ok) {
+    if (gate.reconnect) {
+      try { await reconnectDrive(); say('Drive is connected again. Press Pictures once more to choose them.'); }
+      catch (err) { say('Google did not reconnect Drive (' + String((err && err.message) || 'cancelled').slice(0, 80) + ').'); }
+    } else say(gate.text);
+    return;
+  }
+  const files = await chooseFile(true);
+  if (files.length) addPictures(shotId, files);
+});
+const hasFiles = (e) => !!(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'));
+delegate(document, 'dragover', '[data-drop-shot]', (e, el) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  el.classList.add('is-file-over');
+});
+delegate(document, 'dragleave', '[data-drop-shot]', (e, el) => {
+  if (!el.contains(e.relatedTarget)) el.classList.remove('is-file-over');
+});
+delegate(document, 'drop', '[data-drop-shot]', (e, el) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  el.classList.remove('is-file-over');
+  addPictures(el.dataset.dropShot, Array.from(e.dataTransfer.files || []));
+});
 delegate(document, 'click', '[data-action="vz-frame-del"]',  async (e, el) => {
   if (!await askDanger('Delete this frame? The shot it draws is untouched.')) return;
   Shots.removeFrame(frameIdOf(el));
   render();
 });
+/* The action field MOVES an older caption into `action` (Shots.actionPatch). */
+const framePatch = (el) => (el.dataset.frameField === 'action'
+  ? Shots.actionPatch(el.value) : { [el.dataset.frameField]: el.value });
 delegate(document, 'change', '[data-frame-field]', (e, el) => {
   const id = frameIdOf(el);
-  Shots.updateFrame(id, { [el.dataset.frameField]: el.value });
+  Shots.updateFrame(id, framePatch(el));
   // The slate shows the reference. Patched in place, not re-rendered:
   // see the note on the shot-field handler above.
   const card = document.querySelector('.vz-frame[data-frame="' + id + '"]');
@@ -1524,8 +2033,8 @@ delegate(document, 'change', '[data-entry-field]', (e, el) => {
    their `change` already saved them. */
 import { saveOnInput, preservingFocus } from '../lib/autosave.js';
 import { askDanger } from '../ui/dialog.js';
-saveOnInput('[data-shot-field]', (el) => Shots.updateShot(shotIdOf(el), { [el.dataset.shotField]: el.value }));
-saveOnInput('[data-frame-field]', (el) => Shots.updateFrame(frameIdOf(el), { [el.dataset.frameField]: el.value }));
+saveOnInput('[data-shot-field]', (el) => Shots.updateShot(shotIdOf(el), shotPatch(el)));
+saveOnInput('[data-frame-field]', (el) => Shots.updateFrame(frameIdOf(el), framePatch(el)));
 saveOnInput('[data-board-field]', (el) => Shots.updateBoard(boardIdOf(el), { [el.dataset.boardField]: el.value }));
 saveOnInput('[data-entry-field]', (el) => Shots.updateEntry(boardIdOf(el), entryIdOf(el), { [el.dataset.entryField]: el.value }));
 

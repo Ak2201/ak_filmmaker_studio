@@ -1,0 +1,44 @@
+/* ============================================================
+   PIPELINE — "Break down everything" (src/ui/pipeline-checklist.js)
+   Tokens only; shapes from the skin (--sk-*), text on the dark ground
+   in the ink family or a hue's -lift (a fill is not a text colour).
+   ============================================================ */
+.pl-offer { margin: var(--s3) var(--s4) 0; }
+.pl-offer .k-notice-act { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+.pl-body { display: grid; gap: var(--s4); padding: var(--s4); max-width: 44rem; }
+.pl-intro { margin: 0; color: var(--ink-muted); font-size: var(--t-small); line-height: 1.5; }
+
+.pl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); }
+.pl-row { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); gap: var(--s3); align-items: start; padding: var(--s3); border-top: 1px solid var(--border-hair); }
+.pl-row:first-child { border-top: 0; }
+.pl-ico { display: inline-flex; color: var(--ink-muted); line-height: 1; padding-top: 2px; }
+.pl-row[data-status="running"] .pl-ico { color: var(--accent-primary); }
+.pl-row[data-status="done"] .pl-ico,
+.pl-row[data-status="nothing"] .pl-ico { color: var(--ok-lift); }
+.pl-row[data-status="derived"] .pl-ico { color: var(--accent-lift); }
+.pl-row[data-status="error"] .pl-ico { color: var(--danger-lift); }
+.pl-copy { min-width: 0; }
+.pl-label { margin: 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s3); color: var(--ink); font-weight: 600; font-size: var(--t-ui); }
+.pl-state { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label, 0.06em); text-transform: uppercase; color: var(--ink-muted); font-weight: 500; }
+.pl-row[data-status="running"] .pl-state { color: var(--accent-lift); }
+.pl-detail { margin: var(--s1) 0 0; color: var(--ink-muted); font-size: var(--t-small); line-height: 1.45; overflow-wrap: anywhere; }
+
+.pl-summary { display: grid; gap: var(--s4); }
+.pl-sumline { margin: 0; color: var(--ink); font-size: var(--t-base); line-height: 1.5; }
+.pl-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pl-ai { display: grid; gap: var(--s3); padding: var(--s4); border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); background: var(--surface-card); justify-items: start; }
+.pl-ai-copy { margin: 0; color: var(--ink-muted); font-size: var(--t-small); line-height: 1.5; }
+.pl-links { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.pl-foot { display: flex; justify-content: flex-end; }
+
+/* Two buttons beside the copy only when there is room for both. */
+@media (max-width: 899px) {
+  .pl-offer .k-notice-act { grid-column: 2 / -1; grid-row: auto; align-self: start; }
+}
+@media (max-width: 719px) {
+  .pl-offer { margin-inline: var(--s3); }
+  .pl-body { padding: var(--s3); }
+  .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pl-links .k-btn { flex: 1 1 calc(50% - var(--s2)); justify-content: center; }
+}

@@ -1758,6 +1758,20 @@ async function manualFlow(tab) {
   catch (e) { console.warn('[breakdown] manual', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); }
 }
 delegate(document, 'click', '[data-action=run-breakdown]', () => manualFlow('#overview'));
+/* Break down everything (src/lib/script-pipeline.js, drawn by
+   src/ui/pipeline-checklist.js): the whole run by rules, blanks only,
+   one Undo. Loaded at the click. */
+delegate(document, 'click', '[data-action=run-pipeline]', async (e, btn) => {
+  try {
+    const P = await import('../ui/pipeline-checklist.js');
+    await P.openPipeline({
+      getDoc: getScriptDoc,
+      save: () => { try { saveScript(getScriptDoc()); } catch (err) { console.warn('[breakdown] save script', err); } },
+      returnTo: btn,
+      onChange: () => { flushStorage().catch(() => {}); scriptDoc = null; render('#overview'); }
+    });
+  } catch (err) { console.warn('[breakdown] pipeline', err); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); }
+});
 delegate(document, 'click', '[data-action=sum-view]', (e, btn) => {
   setView(btn.dataset.view);
   render('#' + btn.id);

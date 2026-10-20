@@ -39,7 +39,7 @@ import { h, delegate } from '../lib/dom.js';
 import { button, sym, sheet as kitSheet, closeSheet } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
 import { commitImportedScript } from '../lib/script-commit.js';
-import { sceneSyncLater, mountHandoff } from '../ui/handoff.js';
+import { sceneSyncLater, mountHandoff, offerPipeline } from '../ui/handoff.js';
 import Keys from '../lib/write-keys.js';
 import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
@@ -93,7 +93,13 @@ if (!doc.elements.length) doc.elements.push(blankElement({ type: 'scene' }));
    stayed `() => null`, so every sceneSyncLater() below was a no-op and
    headings typed in the Screenplay Writer never reached the Breakdown.
    prove:storage's "two projects" block is what caught it. */
-try { mountHandoff({ getDoc: () => doc }); } catch (e) { console.warn('[screenplay] hand-off', e); }
+try {
+  mountHandoff({
+    getDoc: () => doc,
+    save: () => persistNow(),
+    afterPipeline: () => refreshStats()
+  });
+} catch (e) { console.warn('[screenplay] hand-off', e); }
 
 const SAVE_DELAY = 500;
 let saveTimer = null;
@@ -1189,6 +1195,8 @@ delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   const d = document.querySelector('[data-sc="draft"]');
   if (d) d.textContent = draftLabel();
   say(importDoneText(done));
+  /* Everything starts from the script: offer the whole breakdown. */
+  offerPipeline().catch((e) => console.warn('[script] pipeline offer', e));
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeImport(); });
 

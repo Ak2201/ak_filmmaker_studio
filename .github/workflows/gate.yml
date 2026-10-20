@@ -144,3 +144,7 @@ jobs:
       - run: npm run prove:scroll
         env:
           PROVE_DIST: dist-verify
+      # The legal pages sit inside the window under the fixed header.
+      - run: npm run prove:legal
+        env:
+          PROVE_DIST: dist-verify

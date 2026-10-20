@@ -348,6 +348,7 @@ for (const id of IDS) {
     ok(/<header class="mk-top"/.test(h), f + ': carries the shared header');
     ok(/<footer class="mk-foot"[\s\S]*about\.html[\s\S]*contact\.html[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(h), f + ': the shared footer links About, Contact and the three legal pages');
     ok(!/<html[^>]*data-surface="paper"/.test(h), f + ': is not a paper surface any more');
+    ok(/<html[^>]*\sdata-fms-marketing[\s>]/.test(h), f + ': carries data-fms-marketing, so the build injects the icon font the header\'s marks need');
     const main = (h.match(/<main\b[^>]*>([\s\S]*?)<\/main>/) || [])[1] || '';
     const ids = [...main.matchAll(/<h2\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]);
     const h2s = (main.match(/<h2\b/g) || []).length;

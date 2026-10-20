@@ -42,25 +42,26 @@ export const shotLabel = (id) =>
 
 /* The standard breakdown categories, in the order a 1st AD reads them.
    Colour is a hue token name, not a value — tokens.css owns the value.
-   Cast, props, vehicles, stunts and sound take the PRD 2.0 FR-603
-   colour coding (red / blue / yellow / yellow / green) through the
-   `el-*` category hues; the rest keep the hues they always had. The
-   category ids are storage keys inside every scene's `elements` — the
-   hue may change, the id may not. */
+   Every category takes an `el-*` hue in the industry colour code (owner,
+   20 Oct 2026: cast red, stunts orange, background green, SFX blue,
+   props violet, vehicles and animals pink, sound brown); `mark` is the
+   paper sheet's traditional mark for the three that were never a
+   colour. The category ids are storage keys inside every scene's
+   `elements` — the hue may change, the id may not. */
 export const ELEMENT_CATEGORIES = [
   { id: 'cast',      label: 'Cast',            hue: 'el-cast' },
-  { id: 'extras',    label: 'Background',      hue: 'shorts' },
+  { id: 'extras',    label: 'Background',      hue: 'el-extras' },
   { id: 'props',     label: 'Props',           hue: 'el-props' },
   { id: 'setdressing', label: 'Set Dressing',  hue: 'el-dressing' },
-  { id: 'wardrobe',  label: 'Wardrobe',        hue: 'visualize' },
-  { id: 'makeup',    label: 'Hair & Makeup',   hue: 'plan' },
+  { id: 'wardrobe',  label: 'Wardrobe',        hue: 'el-wardrobe', mark: '◯' },
+  { id: 'makeup',    label: 'Hair & Makeup',   hue: 'el-makeup', mark: '✱' },
   { id: 'vehicles',  label: 'Vehicles',        hue: 'el-vehicles' },
   { id: 'stunts',    label: 'Stunts',          hue: 'el-stunts' },
   { id: 'sfx',       label: 'SFX',             hue: 'el-sfx' },
   { id: 'vfx',       label: 'VFX',             hue: 'el-vfx' },
   { id: 'sound',     label: 'Sound',           hue: 'el-sound' },
   { id: 'animals',   label: 'Animals',         hue: 'el-animals' },
-  { id: 'special',   label: 'Special Equipment', hue: 'shoot' }
+  { id: 'special',   label: 'Special Equipment', hue: 'el-special', mark: '▢' }
 ];
 
 const uid = () =>

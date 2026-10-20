@@ -1,14 +1,15 @@
 /* KIT · CHIP — one breakdown element, coloured by its category
    chip({ label, category, count, showCategory, removable, action, value })
      category   cast | props | vehicles | sound | stunts | vfx | animals |
-                sfx | dressing  → the .hue-el-* class in tokens.css
+                sfx | dressing | extras | wardrobe | makeup | special
+                → the .hue-el-* class in tokens.css
      removable  adds a × button with data-action=`action` and
                 data-value=`value` (the page's delegate() removes it)
    The category NAME can be printed (showCategory) because identity is
    never colour alone; when it is not, it is the chip's title. */
 import { h, cx, kids, attrs } from './util.js';
 
-export const CATEGORIES = ['cast', 'props', 'vehicles', 'sound', 'stunts', 'vfx', 'animals', 'sfx', 'dressing'];
+export const CATEGORIES = ['cast', 'props', 'vehicles', 'sound', 'stunts', 'vfx', 'animals', 'sfx', 'dressing', 'extras', 'wardrobe', 'makeup', 'special'];
 
 export function chip(o = {}) {
   const cat = CATEGORIES.includes(o.category) ? o.category : null;

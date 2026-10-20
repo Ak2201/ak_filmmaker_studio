@@ -28,6 +28,7 @@
     "event_note",
     "event",
     "fact_check",
+    "ink_highlighter",
     "format_list_numbered",
     "grid_view",
     "groups",
@@ -135,6 +136,10 @@
   ],
   "pages": {
     "breakdown": {
+      "breakdown": {
+        "icon": "ink_highlighter",
+        "hint": "The script on the page, marked in the colour code, with each scene's breakdown sheet."
+      },
       "script": {
         "icon": "assessment",
         "hint": "Screen time, cast and a read of the whole screenplay."

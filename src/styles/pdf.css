@@ -50,6 +50,8 @@
   /* THE INVOICE. src/lib/invoice-pdf.js appends one .inv-doc to <body>
      for the length of the job; everything else steps aside. */
   body.pdf-invoice > *:not(.inv-doc) { display: none !important; }
+  body.pdf-bdsheets > *:not(#bdp-print) { display: none !important; }
+  body.pdf-bdsheets > #bdp-print { display: block; }
   body.pdf-invoice > .inv-doc { display: block; color: var(--print-ink); background: var(--print-paper); font: 11pt/1.45 var(--f-body, sans-serif); }
   .inv-doc h1 { font-size: 20pt; margin: 0 0 2pt; }
   .inv-doc .inv-no { font-size: 12pt; margin: 0 0 14pt; }

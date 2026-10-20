@@ -47,6 +47,9 @@ import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, saveScript, blankElement } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
+import { renderPaperBreakdown, wirePaperBreakdown } from '../ui/breakdown-paper.js';
+import '../styles/breakdown-paper.css';
+wirePaperBreakdown();
 import { suggestReport, describeMatch, isConfident, SUGGEST_CATEGORIES } from '../lib/screenplay-analysis.js';
 import { pageHeader, statStrip, statCard, button, chip, badge, todBadge, segmented } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
@@ -1007,12 +1010,12 @@ function render(focus) {
      renderElements() needed nothing — it already keeps its id and
      carries its own teaching copy when the index is empty. */
   const list = h('section.bd-list', { id: 'scenes' });
-  /* #breakdown is Script Breakdowns' own target (Pre-Production), and
-     #scenes the Scene List's (also Pre-Production): the same cards, read two
-     ways — the list of scenes, and the tagging inside each one. A div,
-     not a section, so tabs.js still sees one Scene List tab; and it
-     ALWAYS renders, empty state included, for the reason above. */
-  const tagging = h('div.bd-breakdown', { id: 'breakdown' });
+  /* The rows' wrapper. #breakdown (Scene Breakdown) used to be this div,
+     the tagging inside each card; since 20 Oct 2026 it is its own tab,
+     the paper breakdown (src/ui/breakdown-paper.js), and the cards keep
+     their own tags under #scenes. It ALWAYS renders, empty state
+     included, for the reason above. */
+  const tagging = h('div.bd-breakdown');
   if (!scenes.length) {
     tagging.append(renderEmpty());
   } else {
@@ -1055,7 +1058,8 @@ function render(focus) {
      a song list is decided before the scenes are, so hiding it until a
      scene exists would hide it at exactly the moment it is most
      useful. The branch-local version this replaces called it twice. */
-  main.append(renderScriptOverview(scenes), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
+  main.append(renderPaperBreakdown(scenes, loadScript().elements, { refresh: () => render(), toast: (m, o) => StudioUI.toast(m, o) }),
+    renderScriptOverview(scenes), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
   applySceneFilter();

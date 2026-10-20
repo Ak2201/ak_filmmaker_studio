@@ -211,5 +211,100 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   mem.delete(M.SHOTS_KEY);
 }
 
+/* ---- the shot-list revamp: order, numbers, time, setups, frames ---- */
+{
+  const M = await import('../src/lib/shots.js');
+  mem.delete(M.SHOTS_KEY);
+  const b = M.blankShot();
+  eq([b.mins, b.setup, b.numLocked], ['', '', false], 'blankShot declares mins, setup, numLocked');
+  const f0 = M.blankFrame();
+  eq([f0.action, f0.dialogue, f0.camera], ['', '', ''], 'blankFrame declares action, dialogue, camera');
+  // An old stored shot reads back with the new defaults (no migration).
+  mem.set(M.SHOTS_KEY, JSON.stringify({ shots: [{ id: 'old', sceneId: 'A', number: '1' }], frames: [{ id: 'of', shotId: 'old', caption: 'He turns.' }] }));
+  eq([M.listShots()[0].mins, M.listShots()[0].numLocked], ['', false], 'an old shot reads back with the new fields blank');
+  const of = M.listFrames()[0];
+  eq(M.frameAction(of), 'He turns.', 'an old frame shows its caption as the action');
+  M.updateFrame('of', M.actionPatch('She turns.'));
+  const of2 = JSON.parse(mem.get(M.SHOTS_KEY)).frames[0];
+  eq([of2.action, of2.caption], ['She turns.', ''], 'editing the action MOVES the caption, it does not copy it');
+  eq(M.frameAction(M.listFrames()[0]), 'She turns.', 'the action reads back');
+
+  // Interleaved scenes: reorder must keep the other scene's shots in place.
+  mem.delete(M.SHOTS_KEY);
+  const a1 = M.addShot('A'), b1 = M.addShot('B'), a2 = M.addShot('A'), a3 = M.addShot('A'), b2 = M.addShot('B');
+  eq(M.listShots().map((s) => s.id), [a1.id, b1.id, a2.id, a3.id, b2.id], 'setup: five shots over two scenes');
+  M.reorderShots('A', [a3.id, a1.id, a2.id]);
+  eq(M.listShots().map((s) => s.id), [a3.id, b1.id, a1.id, a2.id, b2.id], 'reorderShots keeps scene B in its slots');
+  M.reorderShots('A', [a2.id, 'nope', b1.id]);
+  eq(M.listShots().filter((s) => s.sceneId === 'A').map((s) => s.id), [a2.id, a3.id, a1.id], 'unknown and foreign ids are ignored; the rest follow in order');
+  eq(M.listShots().filter((s) => s.sceneId === 'B').map((s) => s.id), [b1.id, b2.id], 'scene B never moved');
+  const before = mem.get(M.SHOTS_KEY);
+  M.reorderShots('A', [a2.id, a3.id, a1.id]);
+  ok(mem.get(M.SHOTS_KEY) === before, 'a reorder that changes nothing writes nothing');
+
+  // Auto-number: unlocked shots renumber; a locked number and a "4A" stay.
+  eq(M.listShots().filter((s) => s.sceneId === 'A').map((s) => s.number), ['2', '3', '1'], 'numbers travelled with their shots');
+  eq(M.autoNumber('A'), 3, 'autoNumber renumbers the three');
+  eq(M.listShots().filter((s) => s.sceneId === 'A').map((s) => s.number), ['1', '2', '3'], 'in list order');
+  M.updateShot(a3.id, { number: '2', numLocked: true });   // the middle one is locked at 2
+  M.reorderShots('A', [a3.id, a2.id, a1.id]);
+  M.autoNumber('A');
+  eq(M.listShots().filter((s) => s.sceneId === 'A').map((s) => s.number), ['2', '1', '3'], 'a locked number keeps its value and its number is skipped');
+  M.updateShot(a1.id, { number: '4A' });
+  ok(M.isLockedNumber(M.listShots().find((s) => s.id === a1.id)), 'a number like 4A counts as the writer\'s own');
+  M.autoNumber('A');
+  eq(M.listShots().find((s) => s.id === a1.id).number, '4A', 'autoNumber leaves 4A alone');
+  eq(M.autoNumbers([{ id: 'x', number: '1' }, { id: 'y', number: '2' }]), [], 'nothing to change, nothing returned');
+  eq(M.autoNumber('B'), 0, 'scene B already reads 1, 2');
+
+  // Time.
+  const mins = (v) => M.shotMinutes({ mins: v });
+  eq([mins(''), mins('12'), mins('7.5'), mins('20 min'), mins('1h 30'), mins('2 hrs'), mins('1:30'), mins('about 10'), mins('10 lens'), mins('-5')],
+    [0, 12, 7.5, 20, 90, 120, 90, 0, 0, 0], 'shotMinutes reads whole strings only');
+  M.updateShot(a1.id, { mins: '15' }); M.updateShot(a2.id, { mins: '1h' }); M.updateShot(b1.id, { mins: '20' });
+  const tA = M.minutesOf(M.listShots().filter((s) => s.sceneId === 'A'));
+  eq(tA, { total: 75, timed: 2, count: 3 }, 'minutesOf totals a scene and counts what is timed');
+  eq([M.formatMinutes(75), M.formatMinutes(45), M.formatMinutes(120), M.formatMinutes(0)], ['1 h 15 min', '45 min', '2 h', ''], 'formatMinutes');
+  const days = M.minutesByDay([{ id: 'A', shootDay: 2 }, { id: 'B', shootDay: '2' }, { id: 'C', shootDay: 0 }]);
+  eq([...days.keys()], [2], 'per day: only scheduled days');
+  eq(days.get(2), { total: 95, timed: 3, count: 5, scenes: 2 }, 'per day: both scenes on day 2 summed');
+
+  // Setups: own words first, else the blocking camera's name.
+  const cams = [{ id: 'cA', name: 'Cam A' }];
+  eq(M.setupOf({ setup: ' Wide ', cam: 'cA' }, cams), 'Wide', 'setupOf: the shot\'s own words win');
+  eq(M.setupOf({ setup: '', cam: 'cA' }, cams), 'Cam A', 'setupOf: defaults from the camera link');
+  eq(M.setupOf({ setup: '', cam: 'gone' }, cams), '', 'setupOf: a dead camera id is no setup');
+  const g = M.groupBySetup([{ id: 1, setup: 'B' }, { id: 2, cam: 'cA' }, { id: 3 }, { id: 4, setup: 'B' }], cams);
+  eq(g.map((x) => [x.label, x.shots.map((s) => s.id)]), [['B', [1, 4]], ['Cam A', [2]], ['', [3]]], 'groupBySetup: first-seen order, unset last');
+  mem.delete(M.SHOTS_KEY);
+}
+
+/* ---- the export's columns (shotlist-export.js), in Node ---- */
+{
+  const M = await import('../src/lib/shots.js');
+  const Sc = await import('../src/lib/scenes.js');
+  const X = await import('../src/lib/shotlist-export.js');
+  mem.delete(M.SHOTS_KEY);
+  Sc.saveScenes([{ id: 'S1', number: '1', intExt: 'INT', location: 'FLAT', dayNight: 'NIGHT', eighths: 8 }]);
+  M.addShot('S1', { description: 'He waits, "late"', lens: '35mm', mins: '12', setup: 'Wide' });
+  M.addShot('S1', { description: 'Close', done: true });
+  const full = X.toCSV('all').split('\r\n');
+  eq(full[0], X.CSV_HEADER.map((c) => '"' + c + '"').join(','), 'no columns: the CSV header is exactly the old one');
+  eq(full.length, 4, 'two rows and the trailing CRLF');
+  const pick = X.toCSV('all', { columns: ['description', 'mins', 'lens', 'bogus'] }).split('\r\n');
+  eq(pick[0], '"Scene","Slug","Int/Ext","Time","Location","Scene pages","Shot","Lens","Minutes","What we see","Drafted by"', 'columns: scene head, shot, chosen columns in TABLE order, unknown dropped');
+  ok(pick[1].endsWith('"35mm","12","He waits, ""late""","you"'), 'columns: values follow, quotes doubled — ' + pick[1]);
+  const st = X.toCSV('all', { columns: ['setup', 'done'] }).split('\r\n');
+  ok(/"Setup","Camera","Status"/.test(st[0]) && /"Wide","","to shoot"/.test(st[1]) && /"in the can"/.test(st[2]), 'setup brings camera; done prints the status');
+  eq(X.summarise('all').minutes, 12, 'summarise counts the minutes');
+  eq(X.layoutOf('grid6'), 'grid6', 'a known layout reads back');
+  eq(X.layoutOf('nope'), 'list', 'an unknown layout is the list');
+  const shots = M.listShots();
+  M.addFrame(shots[0].id, { action: 'A' }); M.addFrame(shots[0].id, { action: 'B' });
+  const panels = X.panelsOf({ shots });
+  eq(panels.map((p) => [p.shot.id === shots[0].id, p.frame ? M.frameAction(p.frame) : null]), [[true, 'A'], [true, 'B'], [false, null]], 'panelsOf: a panel per frame, an empty one for a shot with none');
+  mem.delete(M.SHOTS_KEY); mem.delete(Sc.SCENES_KEY);
+}
+
 console.log(`\ntest:shots — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

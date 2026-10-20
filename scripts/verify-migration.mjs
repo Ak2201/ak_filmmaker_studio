@@ -410,7 +410,12 @@ const EXPECTED = {
   visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   write: {},
   plan: {},
-  breakdown: /* emptied by the 14 Oct 2026 gate re-baseline (P3b's two buttons) */ {},
+  breakdown: /* emptied by the 14 Oct 2026 gate re-baseline (P3b's two buttons) */ {
+    /* 20 Oct 2026: the Elements tab said "Derived from the tags above",
+       and since the paper Scene Breakdown the tags are on another tab,
+       not above it. "From the tags on each scene" now. */
+    above: 'Elements copy no longer points at a section above it'
+  },
   feature: {},
   short: {},
   /* The library prints the glossary's term count ("N TERMS"); Phase 6 of the

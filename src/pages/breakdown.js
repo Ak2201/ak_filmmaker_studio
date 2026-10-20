@@ -758,7 +758,7 @@ function renderElements() {
   const usedCats = totals.filter((c) => c.tags).length;
   const wrap = h('section.bd-elements.bdx', { id: 'elements' });
   wrap.append(h('h2.bd-h2', { text: 'Elements' }),
-              h('p.bd-sub', { text: 'Derived from the tags above. Nothing here is typed twice.' }));
+              h('p.bd-sub', { text: 'Derived from the tags on each scene. Nothing here is typed twice.' }));
   if (!grand.tags) {
     wrap.append(h('p.bd-none', { text: 'No elements tagged yet. Tag one on any scene and it appears here, with every scene it touches.' }));
     return wrap;

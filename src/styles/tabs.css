@@ -411,3 +411,11 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
 
 /* a heading that only repeats its tab's label (tabs.js dedupeHeads) */
 .tabs-dup { display: none !important; }
+
+/* A tab panel is focusable (tabindex 0, the ARIA pattern), and Chrome
+   FOCUSES a focusable fragment target on load — so every link that
+   lands on a tab (reports.html#sides, breakdown.html#scenes) drew the
+   2px focus frame round the whole panel, top and bottom of the page.
+   The panel keeps a focus mark, a quiet one on its leading edge, which
+   still answers a keyboard reader who tabs into it. */
+[role="tabpanel"]:focus-visible { outline: none; box-shadow: inset 3px 0 0 var(--accent-primary); }

@@ -270,12 +270,14 @@ export function renderPaperBreakdown(scenes, elements, ctx = {}) {
   PAIRS = paperScenes(scenes, elements);
   const wrap = h('section.bdp', { id: 'breakdown', 'data-tab-label': 'Scene Breakdown', 'data-tab-icon': 'ink_highlighter',
     'data-tab-hint': 'The script on the page, marked in the colour code, with each scene’s breakdown sheet.' });
-  wrap.append(h('div.bdp-intro', {}, [
+  const intro = h('div.bdp-intro', {}, [
     h('h2.bdp-title', { text: 'Scene breakdown' }),
     h('p.bdp-sub', { text: 'Select words on the page to tag them. Each category has its industry colour; the dotted marks are what the script suggests — click one to take it.' })
-  ]));
+  ]);
+  wrap.append(intro);
   const pair = current();
   if (!pair) {
+    intro.querySelector('.bdp-sub').hidden = true;   // nothing on a page to select yet
     wrap.append(h('div.bdp-empty', {}, [
       h('p', { text: 'No scenes yet. Break the screenplay into scenes first, and every scene opens here on the page, ready to mark.' }),
       h('div.bdp-empty-go', {}, [

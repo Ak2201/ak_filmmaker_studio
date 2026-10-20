@@ -102,6 +102,7 @@ import { actionMenu } from '../ui/actionbar.js';
 import Store from '../lib/store.js';
 import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
+import { paperTextarea } from '../ui/paper-field.js';   // writing fields are paper (owner, 20 Oct 2026)
 
 const app = document.getElementById('app');
 
@@ -420,7 +421,7 @@ function renderIdea(s) {
   // Only when the start cards are NOT on the page: two copies of the same offer is noise.
   if (isEmpty(s) && started) sec.append(renderWaysIn());
   sec.append(h('label.st-label', { for: 'stIdea', text: 'Your idea' }));
-  const ta = h('textarea#stIdea.st-text', { rows: 3, 'data-st-field': 'idea', spellcheck: 'true' });
+  const ta = paperTextarea('#stIdea.st-text', { rows: 3, 'data-st-field': 'idea', spellcheck: 'true' });
   ta.value = s.idea;
   sec.append(ta);
   /* The Story page's own copy shows; the blueprint's answer is OFFERED
@@ -440,7 +441,7 @@ function renderIdea(s) {
   const lb = learnBox(LEARN_TOPIC.logline);
   if (lb) lg.append(lb);
   lg.append(h('label.st-label', { for: 'stLogline', text: 'Your logline' }));
-  const lt = h('textarea#stLogline.st-text', { rows: 3, 'data-st-field': 'logline', spellcheck: 'true' });
+  const lt = paperTextarea('#stLogline.st-text', { rows: 3, 'data-st-field': 'logline', spellcheck: 'true' });
   lt.value = s.logline;
   lg.append(lt);
   const bpl = bpLogline();
@@ -713,7 +714,7 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false) 
   const li = h('li.st-ol-step', { 'data-step-row': st.id });
   const fid = 'stStep_' + st.id;
   li.append(h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }));
-  const ta = h('textarea#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null });
+  const ta = paperTextarea('#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null });
   ta.value = st.text;
   li.append(ta);
   if (locked) return li;
@@ -779,7 +780,7 @@ function renderSource(s) {
 
   if (mode === 'edit') {
     pane.append(h('label.st-label', { for: 'stSource', text: 'Write or paste the synopsis. Highlights follow their passage when you edit around them.' }));
-    pane.append(h('textarea#stSource.st-text', { rows: 18, 'data-st-field': 'source', spellcheck: 'true' }, []));
+    pane.append(paperTextarea('#stSource.st-text', { rows: 18, 'data-st-field': 'source', spellcheck: 'true' }, []));
     pane.querySelector('textarea').value = s.source;
     return pane;
   }

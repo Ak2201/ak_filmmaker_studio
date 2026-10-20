@@ -36,6 +36,7 @@
      report says so.
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { paperTextarea } from './paper-field.js';
 import { parseNum, fmtINR } from '../lib/money.js';
 import shortData from '../data/steps.short.json';
 import { askDanger } from './dialog.js';
@@ -89,7 +90,7 @@ export function interludeSection(item) {
       h('div.ladder-rungs', {}, LADDER.map((r) => h('div.ladder-rung', {}, [
         h('h4', { text: r.title }),
         h('div.target', { text: r.target }),
-        h('textarea', { 'data-key': r.key, rows: String(r.rows), placeholder: r.placeholder, 'aria-label': r.title }),
+        paperTextarea({ 'data-key': r.key, rows: String(r.rows), placeholder: r.placeholder, 'aria-label': r.title }),
         h('p.hint', { text: r.hint })
       ])))
     ]);
@@ -189,9 +190,9 @@ function sceneMapRow(prefill) {
   const tr = document.createElement('tr');
   const cell = (el) => { const td = document.createElement('td'); td.append(el); return td; };
   const num = document.createElement('td'); num.className = 'num'; num.textContent = '01';
-  const slug = h('input', { type: 'text', 'data-field': 'slug', 'aria-label': 'Slug line', placeholder: 'INT. APARTMENT - DAY' });
-  const who = h('input', { type: 'text', 'data-field': 'who', 'aria-label': 'Who is in the scene', placeholder: 'Ravi, Maya' });
-  const what = h('textarea', { 'data-field': 'what', 'aria-label': 'What happens', placeholder: 'What happens. End on a different value than start.' });
+  const slug = h('input.paper-field', { type: 'text', 'data-field': 'slug', 'aria-label': 'Slug line', placeholder: 'INT. APARTMENT - DAY' });
+  const who = h('input.paper-field', { type: 'text', 'data-field': 'who', 'aria-label': 'Who is in the scene', placeholder: 'Ravi, Maya' });
+  const what = paperTextarea({ 'data-field': 'what', 'aria-label': 'What happens', placeholder: 'What happens. End on a different value than start.' });
   const beat = h('select', { 'data-field': 'beat', 'aria-label': 'Beat' }, [
     h('option', { value: '', text: '—' }),
     ...SCENE_BEATS.map((b) => h('option', { text: b }))
@@ -287,9 +288,9 @@ export function sceneMapWidget(ctx) {
 /* ---- the short's script editor (_script) ------------------------------ */
 function dialogueBlock(prefill) {
   const d = prefill || {};
-  const character = h('input', { type: 'text', class: 'character', 'aria-label': 'Character name', placeholder: 'CHARACTER NAME' });
-  const line = h('textarea', { class: 'line', 'aria-label': 'Dialogue line', placeholder: 'The dialogue line.' });
-  const paren = h('input', { type: 'text', class: 'parenthetical', 'aria-label': 'Parenthetical', placeholder: '(parenthetical, optional — e.g. whispering, off-screen)' });
+  const character = h('input', { type: 'text', class: 'character paper-field', 'aria-label': 'Character name', placeholder: 'CHARACTER NAME' });
+  const line = paperTextarea({ class: 'line', 'aria-label': 'Dialogue line', placeholder: 'The dialogue line.' });
+  const paren = h('input', { type: 'text', class: 'parenthetical paper-field', 'aria-label': 'Parenthetical', placeholder: '(parenthetical, optional — e.g. whispering, off-screen)' });
   character.value = d.character || ''; line.value = d.line || ''; paren.value = d.parenthetical || '';
   return h('div.dialogue-block', {}, [
     h('div.dlg-row', {}, [
@@ -302,8 +303,8 @@ function dialogueBlock(prefill) {
 
 function sceneBlock(prefill) {
   const d = prefill || { slug: '', action: '', dialogues: [] };
-  const slug = h('input', { type: 'text', class: 'slug', 'aria-label': 'Slug line', placeholder: 'INT. APARTMENT - DAY' });
-  const action = h('textarea', { class: 'action', 'aria-label': 'Action', placeholder: 'Describe what happens. Present tense. Third person. No camera directions unless essential.' });
+  const slug = h('input', { type: 'text', class: 'slug paper-field', 'aria-label': 'Slug line', placeholder: 'INT. APARTMENT - DAY' });
+  const action = paperTextarea({ class: 'action', 'aria-label': 'Action', placeholder: 'Describe what happens. Present tense. Third person. No camera directions unless essential.' });
   slug.value = d.slug || ''; action.value = d.action || '';
   const dialogues = h('div.dialogues');
   (Array.isArray(d.dialogues) ? d.dialogues : []).forEach((x) => dialogues.append(dialogueBlock(x)));

@@ -37,6 +37,7 @@
 import '../styles/story-heat.css';
 import '../styles/story-kit.css';
 import { h, delegate } from '../lib/dom.js';
+import { paperTextarea } from './paper-field.js';
 import { BRAND } from '../lib/brand.js';
 import * as Story from '../lib/story.js';
 import IO from '../lib/story-io.js';
@@ -250,7 +251,7 @@ function panelVault(card) {
   card.append(h('div.sk-dyn', { 'data-sk-dyn': 'vault' }));
   const add = h('div.sk-vault-add');
   add.append(h('label.sk-label', { for: 'skClip', text: 'Add a clipping' }));
-  add.append(h('textarea#skClip.sk-text', { rows: 2, spellcheck: 'true' }));
+  add.append(paperTextarea('#skClip.sk-text', { rows: 2, spellcheck: 'true' }));
   card.append(add);
   card.append(h('div.sk-actions', {}, [
     h('button.btn', { type: 'button', 'data-sk': 'clip-add', text: 'ADD TO VAULT' }),

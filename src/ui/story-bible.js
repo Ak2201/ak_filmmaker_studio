@@ -41,6 +41,7 @@
    open sections stay where they are.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { paperTextarea } from './paper-field.js';
 import { saveOnInput } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import { readFields, writeFields } from '../lib/blueprint-store.js';
@@ -80,7 +81,7 @@ function cardHead(c, film) {
    blueprint's `data-key` too (see the header). */
 function bpField(f, film, fmt) {
   const id = 'sb-' + f.key;
-  const ta = h('textarea#' + id + '.sb-input', { rows: f.rows || 2, 'data-sb-key': f.key, 'data-sb-ns': f.ns, 'data-key': f.key, placeholder: f.placeholder || '' });
+  const ta = paperTextarea('#' + id + '.sb-input', { rows: f.rows || 2, 'data-sb-key': f.key, 'data-sb-ns': f.ns, 'data-key': f.key, placeholder: f.placeholder || '' });
   return h('div.sb-field', {}, [
     h('label.sb-lab', { for: id, text: f.label }),
     noteButton(f.key, fmt),
@@ -143,7 +144,7 @@ function conflictCard(film) {
       type: 'button', 'data-sb': 'conflict', 'data-id': k.id, 'aria-pressed': String(on)
     }, [h('span.sb-chip-l', { text: k.label }), h('span.sb-chip-m', { text: k.meaning })]));
   }
-  const ta = h('textarea#sb-conflictLine.sb-input', { rows: 2, 'data-sb-story': 'conflictLine', placeholder: BIBLE.conflictLine.placeholder });
+  const ta = paperTextarea('#sb-conflictLine.sb-input', { rows: 2, 'data-sb-story': 'conflictLine', placeholder: BIBLE.conflictLine.placeholder });
   ta.value = s.conflictLine;
   return h('div.sb-card-body', {}, [
     grid,

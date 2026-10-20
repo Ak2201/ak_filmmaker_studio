@@ -841,6 +841,14 @@ const server = http.createServer((req, res) => {
         + 'family is at ' + (lastMono + 1) + ' — it will claim Latin too: ' + d.trim());
     }
   }
+  /* The paper writing fields (src/styles/paper-field.css, 20 Oct 2026)
+     set Courier on every story and blueprint input, so they are the
+     widest user of this stack. They must READ it, never restate it: a
+     restated stack is one nobody re-orders when this one is fixed. */
+  const paper = fs.readFileSync(path.join(ROOT, 'src', 'styles', 'paper-field.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  if (!/font-family:\s*var\(--f-script\)/.test(paper)) bad.push('paper-field.css does not read var(--f-script)');
+  if (/Courier|Tamil/i.test(paper)) bad.push('paper-field.css restates a font family instead of reading var(--f-script)');
   if (bad.length) {
     console.error('\n✗ --f-script font order is wrong:');
     bad.forEach((b) => console.error('  ' + b));

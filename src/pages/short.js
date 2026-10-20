@@ -85,6 +85,7 @@ import { mountWraps } from '../ui/blueprint-wrap.js';
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
 import { askDanger, tell } from '../ui/dialog.js';
+import { paperScope } from '../ui/paper-field.js';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -897,7 +898,8 @@ function adoptInlineHandlers(root) {
 // ============================================================
 function render() {
   const app = document.getElementById('app');
-  const main = h('main', { id: 'main' });
+  /* Every textarea on the blueprint is paper (owner, 20 Oct 2026). */
+  const main = paperScope(h('main', { id: 'main' }));
 
   main.append(renderCover(), renderHowTo());
 
@@ -1171,9 +1173,9 @@ function buildSceneMapRow(prefill) {
   const data = prefill || {};
   tr.innerHTML = `
     <td class="num">01</td>
-    <td><input type="text" data-field="slug" aria-label="Slug line" placeholder="INT. APARTMENT - DAY" value="${escAttr(data.slug)}"></td>
-    <td><input type="text" data-field="who" aria-label="Who is in the scene" placeholder="Ravi, Maya" value="${escAttr(data.who)}"></td>
-    <td><textarea data-field="what" aria-label="What happens" placeholder="What happens. End on a different value than start.">${escHTML(data.what)}</textarea></td>
+    <td><input type="text" class="paper-field" data-field="slug" aria-label="Slug line" placeholder="INT. APARTMENT - DAY" value="${escAttr(data.slug)}"></td>
+    <td><input type="text" class="paper-field" data-field="who" aria-label="Who is in the scene" placeholder="Ravi, Maya" value="${escAttr(data.who)}"></td>
+    <td><textarea class="paper-field" data-field="what" aria-label="What happens" placeholder="What happens. End on a different value than start.">${escHTML(data.what)}</textarea></td>
     <td><select data-field="beat" aria-label="Beat">
       <option value="">—</option>
       ${SCENE_BEATS.map((b) => `<option${data.beat === b ? ' selected' : ''}>${b}</option>`).join('')}
@@ -1241,11 +1243,11 @@ function addScriptScene(prefill) {
   div.innerHTML = `
     <div class="scene-header">
       <span class="scene-tag">SCENE 01</span>
-      <input type="text" class="slug" aria-label="Slug line" placeholder="INT. APARTMENT - DAY" value="${escAttr(data.slug)}">
+      <input type="text" class="slug paper-field" aria-label="Slug line" placeholder="INT. APARTMENT - DAY" value="${escAttr(data.slug)}">
       <button class="row-ctrl-btn del" data-action="script-remove-scene" data-index="${idx}" title="Delete this scene" aria-label="Delete this scene">✕</button>
     </div>
     <span class="action-label">ACTION</span>
-    <textarea class="action" aria-label="Action" placeholder="Describe what happens. Present tense. Third person. No camera directions unless essential.">${escHTML(data.action)}</textarea>
+    <textarea class="action paper-field" aria-label="Action" placeholder="Describe what happens. Present tense. Third person. No camera directions unless essential.">${escHTML(data.action)}</textarea>
     <div class="dialogues" id="dialogues_${idx}"></div>
     <button class="add-dialogue-btn" data-action="add-dialogue" data-index="${idx}">+ ADD DIALOGUE</button>
   `;
@@ -1269,12 +1271,12 @@ function addDialogue(sceneIdx, prefill) {
   div.className = 'dialogue-block';
   div.innerHTML = `
     <div class="dlg-row">
-      <input type="text" class="character" aria-label="Character name" placeholder="CHARACTER NAME" value="${escAttr(data.character)}">
-      <textarea class="line" aria-label="Dialogue line" placeholder="The dialogue line.">${escHTML(data.line)}</textarea>
+      <input type="text" class="character paper-field" aria-label="Character name" placeholder="CHARACTER NAME" value="${escAttr(data.character)}">
+      <textarea class="line paper-field" aria-label="Dialogue line" placeholder="The dialogue line.">${escHTML(data.line)}</textarea>
       <button class="row-ctrl-btn del" data-action="remove-dialogue" title="Delete" aria-label="Delete this dialogue">✕</button>
     </div>
     <div class="paren">
-      <input type="text" class="parenthetical" aria-label="Parenthetical" placeholder="(parenthetical, optional — e.g. whispering, off-screen)" value="${escAttr(data.parenthetical)}">
+      <input type="text" class="parenthetical paper-field" aria-label="Parenthetical" placeholder="(parenthetical, optional — e.g. whispering, off-screen)" value="${escAttr(data.parenthetical)}">
     </div>
   `;
   wrap.appendChild(div);

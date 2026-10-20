@@ -19,6 +19,7 @@
 import { videoSlot } from './video-slots.js';
 import { stepKey } from '../lib/video-keys.js';
 import { h, fromHTML, delegate } from '../lib/dom.js';
+import { paperTextarea, paperField, paperScope } from './paper-field.js';
 import SIDECAR from '../data/steps.tanglish.json';
 import PRIORITY from '../data/steps.priority.json';
 import COPY from '../data/steps.copy.json';
@@ -389,8 +390,10 @@ function renderAsk(a) {
       id, type: a.inputType || 'text', 'data-key': a.key,
       placeholder: a.placeholder, readonly: a.readonly
     });
+    // A prose answer is paper; a number, a date or a figure stays dark.
+    if (!a.inputType || a.inputType === 'text') paperField(field);
   } else {
-    field = h('textarea', {
+    field = paperTextarea({
       id, 'data-key': a.key, placeholder: a.placeholder,
       rows: a.rows, readonly: a.readonly
     });
@@ -453,7 +456,10 @@ function applyCopy(ns, step) {
 
 export function renderStep(step, extra, ns) {
   step = applyCopy(ns, step);
-  const section = h('section.step', { id: step.id });
+  /* Every textarea in a step is paper (owner, 20 Oct 2026), including
+     the raw blocks' markup — the Save the Cat beat table — and rows a
+     table adds later; src/ui/paper-field.js. */
+  const section = paperScope(h('section.step', { id: step.id }));
   if (step.vol === 2) section.classList.add('vol-2');
 
   /* The spine mark goes in the HEADER, between the title and the

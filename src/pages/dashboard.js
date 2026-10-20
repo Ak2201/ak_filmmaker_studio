@@ -64,6 +64,7 @@ import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, 
    (src/lib/cover-fields.js), written through the merge-write. */
 import { readFields, writeFields, blobKey } from '../lib/blueprint-store.js';
 import { coverFields, coverNs } from '../lib/cover-fields.js';
+import { paperField } from '../ui/paper-field.js';
 
 import { formatEighths } from '../lib/scenes.js';
 import { formatPages } from '../lib/script.js';
@@ -552,6 +553,9 @@ function renderTitlePage(project) {
           ...f.options.map((o) => ({ value: o, label: o }))] })
       : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs, hint }));
   }
+  /* A title page is writing: its text fields are paper (owner, 20 Oct
+     2026). The genre select stays a control. */
+  grid.querySelectorAll('input').forEach(paperField);
   sec.append(grid);
   return sec;
 }

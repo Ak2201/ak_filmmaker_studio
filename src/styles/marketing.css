@@ -337,7 +337,11 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
     background: var(--surface-canvas); border-bottom: 1px solid var(--border-hair);
   }
   .mk-top[data-menu] .mk-nav { display: flex; }
-  .mk-nav-prod { display: none; }
+  /* doubled: marketing.js gives it role="button", and base.css's touch
+     rule `[role="button"] { display: inline-flex }` ties with a single
+     class and wins on order, so on a real phone the dead Product toggle
+     showed at the top of the menu sheet */
+  .mk-nav-prod.mk-nav-prod { display: none; }
   .mk-mega {
     display: grid; position: static; max-width: none; margin: 0 0 var(--s3); padding: 0;
     grid-template-columns: 1fr; gap: var(--s4); background: transparent; border: 0; box-shadow: none;

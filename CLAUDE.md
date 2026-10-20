@@ -95,6 +95,8 @@ npm run prove:scroll      # every root page scrolls right at 1440/1100/390: nest
 #   the end reachable above fixed chrome, locks at rest, sticky, fragments, wheel (item 45;
 #   reads dist by default, CI runs it with PROVE_DIST=dist-verify after build:verify)
 npm run test:contact      # contact.html's pure form model: validation and the mailto (item 48)
+npm run prove:legal       # privacy/terms/refund inside the window under the fixed header, at 5 widths
+#   (PROVE_DIST=dist-verify after build:verify; in CI)
 # Playwright in a sandbox: the bundled browser build may be missing and `playwright install`
 # is not available. Point the scripts at an installed Chromium instead:
 #   PW_CHROMIUM=/opt/pw-browsers/chromium VERIFY_PORT=5811 npm run verify

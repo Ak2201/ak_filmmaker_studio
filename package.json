@@ -35,6 +35,7 @@
     "test:homestage": "node scripts/test-home-stage.mjs",
     "prove:nav": "node scripts/prove-nav.mjs",
     "prove:scroll": "node scripts/prove-scroll.mjs",
+    "prove:legal": "node scripts/prove-legal.mjs",
     "test:beats": "node scripts/test-beats.mjs",
     "test:pacing": "node scripts/test-story-pacing.mjs",
     "test:tanglish": "node scripts/test-tanglish.mjs",

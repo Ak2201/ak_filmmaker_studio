@@ -2488,3 +2488,12 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       condition (up to 8s) instead of a 1.5s ceiling that flaked on
       `story.html`; stale "not run live" comments in `cloud.js` and the
       `deploy-billing.mjs` slice description corrected.
+    - **The legal pages go dark (20 Oct 2026).** privacy, terms and refund
+      leave the light paper surface and wear the public site's frame: the
+      shared header and footer and an "On this page" list are stamped into
+      marked regions by `make:marketing` (`renderLegal()`), which also gives
+      each id-less `<h2>` a slug id and never edits the legal text (checked
+      word for word before and after). `legal.css` is rewritten on the dark
+      tokens with a sticky contents column at 1100px and up and a disclosure
+      below; print stays black on white. `legal.js` loads stylesheets and
+      the icon-font check only — no `marketing.js`, which counts visits.

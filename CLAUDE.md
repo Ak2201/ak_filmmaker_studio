@@ -25,7 +25,7 @@ most arguments: correctness of stored data beats every other consideration.
 
 **THE WEBSITE'S DOOR FOLLOWS THE PURCHASES SWITCH (owner, 12 Oct 2026).**
 `src/lib/sitegate.js` (imported by `chrome.js`, so on every reachable page)
-hides the document until the gate answers. `purchase_required` OFF → anybody
+hides the document until the gate answers. `purchase_required` (LIVE VALUE ON since the owner threw it, read 19 Oct 2026; the branches below are conditional) OFF → anybody
 signed in with Google is in, and membership only decides whether their work
 SYNCS. ON → a plan or a running free trial, both of which write the
 `studio_members` row the gate reads. Not known (offline, §32 absent) → the
@@ -359,8 +359,9 @@ Three things worth knowing before you pick a colour:
 - **`--brand` is not `--visualize`.** The six phase hues are held apart by
   the gate because each means a phase; the brand means the product.
 - **Light survives in three places only, each its own token family, never a
-  theme:** `--print-*` (print / PDF), `[data-surface="paper"]` (the legal
-  pages carry it on `<html>` in their markup) and `--paper-page*` (the
+  theme:** `--print-*` (print / PDF, which is also how the legal pages
+  print), `[data-surface="paper"]` (no page carries it since the legal pages
+  went dark on 20 Oct 2026; the token block stays) and `--paper-page*` (the
   screenplay's paper page).
 
 **`--panel` and the slab are now two different things.** They used to be one,
@@ -1527,9 +1528,9 @@ way and every one matched byte for byte. Never paste schema SQL without
 a checksum.
 
 **SECTIONS 32, 33, 34 AND 35 ARE ALL LIVE** (run 12 Oct 2026). §32's
-"Purchases required" switch is live and `purchases_required()` answers
-**false** — so nothing is walled or capped, `billing_status().entitled` is
-true for everybody and `features` is `open_features()`. §33's
+"Purchases required" switch is live and `purchases_required()` answered
+**false** on 12 Oct — so nothing was walled or capped, `billing_status().entitled` was
+true for everybody and `features` was `open_features()`. **THE SWITCH IS NOW ON (read 19 Oct 2026):** `purchases_required()` answers **true** and the census (`admin_purchase_wall()` logic, run in the SQL editor) reads members 6, paid 3, in_trial 0, walled 3, grandfathered_walled 0 — so nobody the §30 grandfather covered is walled. The door, `entitled` and `features` now follow the plan or trial. §33's
 `trial_offer()` reads 30 minutes, trial enabled. §34 was marked on the
 owner's word until 19 Oct 2026, when the read that settles it was run:
 `select pg_get_constraintdef(oid) from pg_constraint where conname =
@@ -1602,8 +1603,8 @@ members, paid, in_trial, walled, grandfathered_walled) and restates
 is refused while it would wall a member the §30 grandfather backfill
 covered. **Neither section makes a plan necessary**, so refund.html's "a
 plan is needed again" stays untrue until the switch flips, and
-`purchases_required()` still answers **false**, which is the proof §39 did
-not throw it. `scripts/schema-tests/no-free-plan.sql`.
+`purchases_required()` answered **false** on 12 Oct, which was the proof §39 did
+not throw it (the owner has since thrown it: true on 19 Oct, `grandfathered_walled` 0). `scripts/schema-tests/no-free-plan.sql`.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this
@@ -1648,13 +1649,22 @@ argument for asking.
   in three places. These words are derived from nothing and counted by
   nothing.
 
+  **Since 20 Oct 2026 they are DARK and wear the public site's frame**
+  (refund.html too): `make:marketing` stamps the shared header, an "On this
+  page" list and the shared footer into `<!-- mk:header -->`, `mk:toc` and
+  `mk:footer` regions and gives an id-less `<h2>` a slug id — it never edits
+  the text between the markers (`renderLegal()`, `test:marketing`). `legal.js`
+  imports base.css, marketing.css and legal.css plus the icon-font check —
+  still no `marketing.js` (it counts visits), no CORE, no storage. Print is
+  still black on white from `--print-*`.
+
   Two consequences to know before editing them. **No skin loads**, because
   `skin.js` never runs, so `legal.css` may not read a `--sk-*` variable and
   reads the fixed tokens instead — the one place in this codebase where that
-  is correct rather than the trap named above. And **they are not in the
-  gate**: `PAGES` is read from `baseline.json` and neither is in it, so the
-  text check, the AA walk and the overflow measurement all skip them. Read
-  them in a browser, at 390px, in both themes. Nothing else will.
+  is correct rather than the trap named above. And **they are not in
+  `verify`**: `PAGES` is read from `baseline.json` and none is in it, so the
+  text check and the AA walk skip them (`prove:scroll` does load them). Read
+  them in a browser, at 1440 and 390, and in print preview.
 
 - **The `google-site-verification` meta tag in `index.html` is
   load-bearing.** `<meta name="google-site-verification" content="-V57…">`

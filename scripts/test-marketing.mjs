@@ -342,9 +342,23 @@ for (const id of IDS) {
   ok(cstray.length === 0, 'company.js imports only the light allowlist (the startlib rule)' + (cstray.length ? ': ' + cstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=|localStorage|sessionStorage|fetch\(/.test(cjs), 'company.js builds no markup from strings, stores nothing and fetches nothing');
   ok(!/^import/m.test(read('src/lib/contact-model.js')), 'contact-model.js imports nothing (pure)');
+  /* The legal pages: hand-written words, the site's frame stamped in (20 Oct 2026). */
   for (const f of ['privacy.html', 'terms.html', 'refund.html']) {
-    ok(/<p class="legal-foot">[\s\S]*href="\/about"[\s\S]*href="\/contact"/.test(read(f)), f + ': the footer links About and Contact');
+    const h = read(f);
+    ok(/<header class="mk-top"/.test(h), f + ': carries the shared header');
+    ok(/<footer class="mk-foot"[\s\S]*about\.html[\s\S]*contact\.html[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(h), f + ': the shared footer links About, Contact and the three legal pages');
+    ok(!/<html[^>]*data-surface="paper"/.test(h), f + ': is not a paper surface any more');
+    const main = (h.match(/<main\b[^>]*>([\s\S]*?)<\/main>/) || [])[1] || '';
+    const ids = [...main.matchAll(/<h2\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]);
+    const h2s = (main.match(/<h2\b/g) || []).length;
+    const toc = (h.match(/<nav class="legal-toc"[\s\S]*?<\/nav>/) || [''])[0];
+    const linked = [...toc.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+    ok(h2s > 0 && ids.length === h2s && JSON.stringify(ids) === JSON.stringify(linked), f + ': every heading has an id and the contents list links each, in order (' + ids.length + '/' + h2s + ')');
   }
+  const ljs = read('src/pages/legal.js');
+  const limports = [...ljs.matchAll(/^import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+  ok(JSON.stringify(limports) === JSON.stringify(['../styles/base.css', '../styles/marketing.css', '../styles/legal.css']) && !/^import\s.*from/m.test(ljs), 'legal.js imports the three stylesheets and nothing else: ' + limports.join(', '));
+  ok(!/localStorage|sessionStorage|fetch\(/.test(ljs), 'legal.js stores nothing and fetches nothing');
 }
 
 /* ---- the stylesheet and the script --------------------------------- */

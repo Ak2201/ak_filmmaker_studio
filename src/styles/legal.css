@@ -1,61 +1,142 @@
 /* ============================================================
-   THE TWO LEGAL PAGES
+   THE LEGAL PAGES — privacy.html, terms.html, refund.html
    ------------------------------------------------------------
-   privacy.html and terms.html. They exist because Google will
-   not move an OAuth consent screen out of Testing without a
-   public privacy policy and terms of service on the app's own
-   authorised domain — see docs and the Branding page of the
-   Google Cloud project.
+   They exist because Google will not publish an OAuth consent screen
+   without a public privacy policy and terms on the app's own domain,
+   and because a payment gateway reads the refund policy. So the WORDS
+   live in the markup: a reviewer, a crawler and a reader with scripts
+   off get the whole document.
 
-   THEY CARRY NO APP CODE ON PURPOSE. No chrome, no shell, no
-   store.js, no service worker registration: the content is in
-   the markup, so the page is complete and readable with
-   scripts off, which is how a reviewer and a screen reader
-   will meet it. That also means no skin is loaded, so nothing
-   here may read a --sk-* variable: those are set by
-   skins/studio.css, which only skin.js pulls in. Shapes come
-   from the fixed tokens instead, which is the one place in
-   this codebase where that is correct rather than the trap
-   CLAUDE.md names.
+   SINCE 20 OCT 2026 THEY WEAR THE PUBLIC SITE'S FRAME. The dark ground,
+   the shared header and footer (stamped into marked regions by
+   scripts/make-marketing-pages.mjs, styled by marketing.css) and an
+   "On this page" contents list: a sticky column at 1100px and over, a
+   closed disclosure above the text below that. They were the light
+   "paper" documents until then.
 
-   Every colour, size and space is a token. The page therefore
-   follows the OS light/dark preference through tokens.css's own
-   media query without a line of JavaScript.
+   STILL NO APP CODE. legal.js imports stylesheets only — no store.js,
+   no chrome.js, no marketing.js (which counts visits and asks the
+   purchases switch: a policy page adds nothing to what is counted). So
+   no skin loads either, and nothing here reads a --sk-* variable: the
+   fixed tokens are correct on these pages, the one place they are.
+
+   PRINT IS STILL PAPER: black on white from the --print-* family, with
+   the header, footer and contents left out.
    ============================================================ */
 
-.legal {
-  max-width: var(--measure-text);
-  margin: 0 auto;
+.legal-page {
+  width: 100%;
+  max-width: var(--mk-wrap, 1200px);
+  margin-inline: auto;
   padding: var(--s7) var(--gutter) var(--s9);
+  box-sizing: border-box;
 }
 
-.legal-back {
-  display: inline-block;
-  /* 19px of text is too small a target on a phone; the padding makes
-     it 35px tall without moving the heading (margin absorbs it). */
-  padding-block: var(--s2);
-  margin-bottom: var(--s3);
+.legal {
+  min-width: 0;
+  max-width: var(--measure-text);
+}
+
+@media (min-width: 1100px) {
+  .legal-page {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, var(--measure-text));
+    gap: var(--s8, var(--s7));
+    align-items: start;
+    justify-content: center;
+  }
+}
+
+/* ---- the contents ---------------------------------------------- */
+.legal-toc {
+  display: none;
+}
+@media (min-width: 1100px) {
+  .legal-toc {
+    display: block;
+    position: sticky;
+    top: calc(var(--mk-top-h, 72px) + var(--s4));
+    max-height: calc(100vh - var(--mk-top-h, 72px) - var(--s6));
+    overflow-y: auto;
+    padding-right: var(--s2);
+  }
+  .legal-toc-m { display: none; }
+}
+.legal-toc-h,
+.legal-toc-m > summary {
+  margin: 0 0 var(--s3);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-wide);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--brand-deep);
+  color: var(--ink-muted);
+}
+.legal-toc ol,
+.legal-toc-m ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.legal-toc li,
+.legal-toc-m li { margin: 0; }
+.legal-toc a,
+.legal-toc-m a {
+  display: block;
+  padding: var(--s1, 4px) var(--s3);
+  border-left: 2px solid var(--border-hair);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: 1.4;
+  text-decoration: none;
+}
+.legal-toc a:hover,
+.legal-toc-m a:hover {
+  color: var(--ink);
+  border-left-color: var(--accent-primary);
+}
+.legal-toc a:focus-visible,
+.legal-toc-m a:focus-visible,
+.legal a:focus-visible,
+.legal-toc-m > summary:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
+.legal-toc-m {
+  margin: 0 0 var(--s6);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-lg);
+  padding: var(--s3) var(--s4);
+}
+.legal-toc-m > summary {
+  margin: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.legal-toc-m[open] > summary { margin-bottom: var(--s2); }
+.legal-toc-m a { min-height: 40px; display: flex; align-items: center; }
+
+/* ---- the document ---------------------------------------------- */
 .legal h1 {
   font-family: var(--f-display);
-  font-size: var(--t-4xl);
+  font-size: clamp(var(--t-2xl), 5vw, var(--t-4xl));
+  font-weight: 700;
   line-height: var(--lh-display);
   letter-spacing: var(--track-tight);
   color: var(--ink);
-  margin: 0 0 var(--s2);
+  margin: 0 0 var(--s3);
+  text-wrap: balance;
 }
 
 .legal-sub {
-  color: var(--ink-muted);
+  color: var(--ink-body);
   font-size: var(--t-lg);
   line-height: var(--lh-body);
   margin: 0 0 var(--s3);
+  max-width: 52ch;
 }
 
 .legal-date {
@@ -66,19 +147,24 @@
   color: var(--ink-muted);
   margin: 0 0 var(--s6);
   padding-bottom: var(--s4);
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--border-hair);
 }
 
 .legal h2 {
   font-family: var(--f-display);
   font-size: var(--t-xl);
+  font-weight: 600;
   line-height: var(--lh-snug);
   color: var(--ink);
-  margin: var(--s6) 0 var(--s3);
+  margin: var(--s7) 0 var(--s3);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border-hair);
 }
 
 .legal h3 {
+  font-family: var(--f-display);
   font-size: var(--t-base);
+  font-weight: 600;
   line-height: var(--lh-snug);
   color: var(--ink);
   margin: var(--s5) 0 var(--s2);
@@ -93,59 +179,60 @@
 }
 
 .legal p { margin: 0 0 var(--s3); }
-
-.legal ul { margin: 0 0 var(--s3); padding-left: var(--s4); }
+.legal ul,
+.legal ol { margin: 0 0 var(--s3); padding-left: var(--s5); }
 .legal li { margin-bottom: var(--s2); }
+.legal li::marker { color: var(--ink-muted); }
+.legal strong { color: var(--ink); }
 
 .legal a {
   color: var(--brand-deep);
   text-underline-offset: 2px;
+  overflow-wrap: anywhere;
 }
+.legal a:hover { color: var(--ink); }
 
 .legal code {
   font-family: var(--f-code);
   font-size: 0.92em;
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule-hair);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-hair);
   border-radius: var(--radius);
   padding: 0.1em 0.4em;
 }
 
-/* The one thing on these pages worth pulling out of the flow:
-   the sentence that answers "where does my writing actually
-   live". A reader who only reads one box should read that one. */
+/* The one box worth pulling out of the flow: the answer to "where does
+   my writing actually live". A reader who reads one box reads this. */
 .legal-key {
-  background: var(--accent-wash);
-  border: 1px solid var(--rule);
-  border-left: 3px solid var(--brand);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-left: 3px solid var(--accent-primary);
   border-radius: var(--radius-lg);
-  padding: var(--s4);
+  padding: var(--s4) var(--s5);
   margin: 0 0 var(--s5);
 }
 .legal-key p:last-child { margin-bottom: 0; }
 
-/* "What changed" — the short list of edits since the last version, read
-   once by a returning reader and skipped by everyone else. Quieter than
-   .legal-key (no accent bar): it is a note about the document, not the
-   document's main promise. Fixed tokens only, like everything here. */
+/* "What changed" — a note about the document, quieter than the key box. */
 .legal-changes {
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
   border-radius: var(--radius-lg);
-  padding: var(--s4);
+  padding: var(--s4) var(--s5);
   margin: 0 0 var(--s5);
 }
 .legal-changes h2 {
   font-size: var(--t-base);
   margin: 0 0 var(--s2);
+  padding-top: 0;
+  border-top: 0;
 }
 .legal-changes ul { margin-bottom: 0; }
 .legal-changes li { font-size: var(--t-small); }
 .legal-changes li:last-child { margin-bottom: 0; }
 
-/* A detail the OWNER has still to supply — the seller's legal name, a
-   GSTIN — printed in brackets and marked so nobody reads it as filled
-   in. Fixed tokens only: no skin loads on these pages. */
+/* A detail the OWNER has still to supply, marked so nobody reads it as
+   filled in. */
 .legal-ph {
   background: var(--warn-wash);
   color: var(--warn-deep);
@@ -156,19 +243,28 @@
   overflow-wrap: anywhere;
 }
 
-.legal-foot {
-  margin-top: var(--s7);
-  padding-top: var(--s4);
-  border-top: 1px solid var(--rule);
-  color: var(--ink-muted);
-  font-size: var(--t-small);
-}
-
-/* Phone tap floor: 44px tall by width (this page loads no kit.css). */
+/* The landing page's tap floor, kept from the old sheet. */
 @media (max-width: 719px) {
-  .st .st-tier-alt, .st-brand, .legal-back {
+  .st .st-tier-alt, .st-brand {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
   }
+}
+
+/* ---- print: still paper ---------------------------------------- */
+@media print {
+  .mk-skip, .mk-sentinel, .mk-top, .mk-foot, .legal-toc, .legal-toc-m { display: none !important; }
+  body { background: var(--print-paper); color: var(--print-ink); }
+  .legal-page { display: block; max-width: none; padding: 0; }
+  .legal h1, .legal h2, .legal h3, .legal strong { color: var(--print-ink); }
+  .legal p, .legal li, .legal-sub { color: var(--print-ink); }
+  .legal-date, .legal li::marker { color: var(--print-muted); }
+  .legal h2, .legal-date { border-color: var(--print-rule); }
+  .legal a { color: var(--print-ink); }
+  .legal-key, .legal-changes, .legal code {
+    background: var(--print-wash);
+    border-color: var(--print-rule);
+  }
+  .legal h2, .legal h3 { break-after: avoid; }
 }

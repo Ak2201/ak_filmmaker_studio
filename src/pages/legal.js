@@ -14,7 +14,7 @@
        rule that keeps the 24 steps out of markup exists because
        those ARE derived. This is the case it does not cover.
 
-   So this file carries the stylesheets and nothing else. No
+   So this file carries the stylesheets and one font check. No
    store.js, because these pages touch no storage; no chrome.js,
    because they have no toolbar, no theme picker and no shell to
    re-init; no pwa.js, because a document does not need a service
@@ -24,10 +24,36 @@
    src/styles/skins/ and sets the --sk-* family; none of it runs
    here, so legal.css reads the fixed tokens instead.
 
-   THESE ARE THE STUDIO'S LIGHT DOCUMENTS. The app is dark-only since
-   14 Oct 2026; these three carry data-surface="paper" on <html> in the
-   markup, so tokens.css gives them the paper document palette with
-   scripts off and with no theme to read. Nothing here reads storage.
+   SINCE 20 OCT 2026 THEY ARE DARK AND WEAR THE PUBLIC SITE'S FRAME:
+   the shared header and footer are stamped into marked regions by
+   scripts/make-marketing-pages.mjs, and marketing.css styles them.
+   marketing.js is NOT imported: it counts visits and asks the
+   purchases switch, and a policy page adds nothing to what is counted.
+   Without it the header uses its no-script fallbacks (Product goes to
+   start.html#tools, the menu button to the footer), which work.
    ============================================================ */
 import '../styles/base.css';
+import '../styles/marketing.css';
 import '../styles/legal.css';
+
+/* The header's two marks (the Product chevron, the phone menu button) are
+   Material Symbols ligatures, which base.css keeps hidden until the face
+   has loaded (html:not(.sym-ready)). marketing.js and chrome.js say so on
+   their pages; this is the same few lines, and all this file runs. */
+(function symbolFontReady() {
+  const root = document.documentElement;
+  const done = () => root.classList.add('sym-ready');
+  let fonts;
+  try { fonts = document.fonts; } catch (e) { fonts = null; }
+  if (!fonts || typeof fonts.forEach !== 'function') return done();
+  const check = () => {
+    if (root.classList.contains('sym-ready')) return;
+    let ok = false;
+    fonts.forEach((f) => { if (f.status === 'loaded' && /Material Symbols/i.test(f.family)) ok = true; });
+    if (ok) done();
+  };
+  check();
+  try { fonts.addEventListener('loadingdone', check); } catch (e) { /* older engines */ }
+  try { fonts.ready.then(check); } catch (e) { /* older engines */ }
+  addEventListener('load', check, { once: true });
+})();

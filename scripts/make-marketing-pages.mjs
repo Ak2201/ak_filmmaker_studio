@@ -945,6 +945,70 @@ ${modal(site)}
 `;
 }
 
+/* ---- the legal pages: privacy, terms, refund ---------------------------
+   These three are HAND-WRITTEN and keep their words in the markup (a
+   consent-screen reviewer, a crawler and a scripts-off reader get the whole
+   document). Since 20 Oct 2026 they wear the public site's frame, so this run
+   stamps only three MARKED regions in each file — the shared header, an
+   "On this page" contents list, the shared footer — and gives an <h2> with no
+   id a stable one so the contents can link it. Nothing between the markers
+   is read as copy or rewritten; the legal text is never touched. No sign-up
+   modal: legal.js loads no script that could open one, so "Sign up" stays a
+   plain link to invite.html. */
+export const LEGAL_FILES = ['privacy.html', 'terms.html', 'refund.html'];
+
+function slugOf(text) {
+  const words = text.replace(/&[a-z]+;|&#\d+;/gi, ' ').replace(/^\s*\d+\.\s*/, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  let out = '';
+  for (const w of words) { if ((out + '-' + w).length > 40 && out) break; out = out ? out + '-' + w : w; }
+  return out || 'section';
+}
+
+function replaceRegion(html, key, body, file) {
+  const open = `<!-- mk:${key} -->`, close = `<!-- /mk:${key} -->`;
+  const i = html.indexOf(open), j = html.indexOf(close);
+  if (i < 0 || j < i) throw new Error(`${file}: the ${open} … ${close} markers are missing`);
+  return html.slice(0, i + open.length) + '\n' + body + '\n' + html.slice(j);
+}
+
+export function renderLegal(file, src, { site, pages }) {
+  const m = src.match(/<main\b[^>]*>([\s\S]*?)<\/main>/);
+  if (!m) throw new Error(file + ': no <main>');
+  const used = new Set([...m[1].matchAll(/\sid="([^"]+)"/g)].map((x) => x[1]));
+  const heads = [];
+  const main = m[0].replace(/<h2(\s[^>]*)?>([\s\S]*?)<\/h2>/g, (all, attrs = '', inner) => {
+    let id = (attrs.match(/\sid="([^"]+)"/) || [])[1];
+    if (!id) {
+      const base = slugOf(inner.replace(/<[^>]+>/g, ''));
+      id = base; for (let n = 2; used.has(id); n++) id = base + '-' + n;
+      used.add(id);
+      all = `<h2${attrs} id="${id}">${inner}</h2>`;
+    }
+    heads.push({ id, label: inner.replace(/<[^>]+>/g, '').trim() });
+    return all;
+  });
+  let html = src.replace(m[0], main);
+  const label = esc(site.ui.labelNav);
+  const items = heads.map((h) => `      <li><a href="#${h.id}">${h.label}</a></li>`).join('\n');
+  const toc = `<nav class="legal-toc" aria-label="${label}">
+  <p class="legal-toc-h">${label}</p>
+  <ol>
+${items}
+  </ol>
+</nav>
+<details class="legal-toc-m">
+  <summary>${label}</summary>
+  <ol>
+${items}
+  </ol>
+</details>`;
+  html = replaceRegion(html, 'header', header(site, pages, null), file);
+  html = replaceRegion(html, 'toc', toc, file);
+  html = replaceRegion(html, 'footer', footer(site, pages), file);
+  return html;
+}
+
 export function buildAll(opts = {}) {
   const inputs = loadInputs(opts);
   const problems = [...validate(inputs), ...validateHome(inputs.home, inputs), ...validateCompany(inputs.company)];
@@ -955,6 +1019,11 @@ export function buildAll(opts = {}) {
   out[HOME_FILE] = renderHome(inputs);
   out[CONTACT_FILE] = renderContact(inputs);
   out[ABOUT_FILE] = renderAbout(inputs);
+  /* The fixture swaps the page list, so the frame it would stamp is not the
+     one on disk; the legal pages are built from the real copy only. */
+  if (!opts.fixture) {
+    for (const f of LEGAL_FILES) out[f] = renderLegal(f, fs.readFileSync(path.join(ROOT, f), 'utf8'), inputs);
+  }
   return { files: out, inputs };
 }
 

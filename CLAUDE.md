@@ -359,8 +359,9 @@ Three things worth knowing before you pick a colour:
 - **`--brand` is not `--visualize`.** The six phase hues are held apart by
   the gate because each means a phase; the brand means the product.
 - **Light survives in three places only, each its own token family, never a
-  theme:** `--print-*` (print / PDF), `[data-surface="paper"]` (the legal
-  pages carry it on `<html>` in their markup) and `--paper-page*` (the
+  theme:** `--print-*` (print / PDF, which is also how the legal pages
+  print), `[data-surface="paper"]` (no page carries it since the legal pages
+  went dark on 20 Oct 2026; the token block stays) and `--paper-page*` (the
   screenplay's paper page).
 
 **`--panel` and the slab are now two different things.** They used to be one,
@@ -1648,13 +1649,22 @@ argument for asking.
   in three places. These words are derived from nothing and counted by
   nothing.
 
+  **Since 20 Oct 2026 they are DARK and wear the public site's frame**
+  (refund.html too): `make:marketing` stamps the shared header, an "On this
+  page" list and the shared footer into `<!-- mk:header -->`, `mk:toc` and
+  `mk:footer` regions and gives an id-less `<h2>` a slug id — it never edits
+  the text between the markers (`renderLegal()`, `test:marketing`). `legal.js`
+  imports base.css, marketing.css and legal.css plus the icon-font check —
+  still no `marketing.js` (it counts visits), no CORE, no storage. Print is
+  still black on white from `--print-*`.
+
   Two consequences to know before editing them. **No skin loads**, because
   `skin.js` never runs, so `legal.css` may not read a `--sk-*` variable and
   reads the fixed tokens instead — the one place in this codebase where that
-  is correct rather than the trap named above. And **they are not in the
-  gate**: `PAGES` is read from `baseline.json` and neither is in it, so the
-  text check, the AA walk and the overflow measurement all skip them. Read
-  them in a browser, at 390px, in both themes. Nothing else will.
+  is correct rather than the trap named above. And **they are not in
+  `verify`**: `PAGES` is read from `baseline.json` and none is in it, so the
+  text check and the AA walk skip them (`prove:scroll` does load them). Read
+  them in a browser, at 1440 and 390, and in print preview.
 
 - **The `google-site-verification` meta tag in `index.html` is
   load-bearing.** `<meta name="google-site-verification" content="-V57…">`

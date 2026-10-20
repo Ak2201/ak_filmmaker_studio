@@ -281,10 +281,21 @@ function readAll() {
   try { raw = localStorage.getItem(SHOTS_KEY); } catch (e) { /* private mode */ }
   if (!raw) return { shots: [], frames: [], boards: [], blocks: [] };
   try {
-    const parsed = JSON.parse(raw) || {};
+    const got = JSON.parse(raw);
+    const parsed = got && typeof got === 'object' && !Array.isArray(got) ? got : {};
     // An empty array is truthy — the trap that once gave returning users
     // a table with no rows and no way to add one. Check Array.isArray.
+    //
+    // PASSTHROUGH. Every writer here does `{ ...readAll(), x }`, so a
+    // top-level field this build does not know (written by a NEWER build
+    // in another tab, or synced in from one) must ride along in what
+    // readAll() returns, or the first save from this tab wipes it. The
+    // four collections are restated after the spread, shape-guaranteed;
+    // everything else is carried through untouched. Records keep their
+    // unknown fields the same way: the list readers spread the stored
+    // row OVER the blank one, never pick fields out of it.
     return {
+      ...parsed,
       shots:  Array.isArray(parsed.shots)  ? parsed.shots  : [],
       frames: Array.isArray(parsed.frames) ? parsed.frames : [],
       boards: Array.isArray(parsed.boards) ? parsed.boards : [],

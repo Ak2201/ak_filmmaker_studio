@@ -21,7 +21,6 @@
    ============================================================ */
 import { mem } from './node-seams.mjs';
 import { readFileSync } from 'node:fs';
-void mem;
 
 const R = await import('../src/lib/shot-rules.js');
 const { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, blankShot } = await import('../src/lib/shots.js');
@@ -187,6 +186,30 @@ const gEls = [el('scene', 'INT. FLAT - NIGHT'), el('action', 'x'), el('scene', '
 eq(R.basicJobs(guessed, gEls).map((j) => j.sceneId), ['a', 'b', 'c'], 'all pairs by default');
 eq(R.basicJobs(guessed, gEls, { confidentOnly: true }).map((j) => j.sceneId), ['a', 'c'], 'confidentOnly drops a positional guess');
 eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), ['c'], 'only limits to the picked scenes');
+
+/* ---- passthrough: what a newer build wrote survives this one ---- */
+{
+  const M = await import('../src/lib/shots.js');
+  mem.set(M.SHOTS_KEY, JSON.stringify({
+    shots: [{ id: 'p1', sceneId: 'z', number: '1', future: 'keep me' }],
+    frames: [{ id: 'pf1', shotId: 'p1', caption: 'x', futureFrame: 7 }],
+    boards: [], blocks: [],
+    futureTop: { a: 1 }
+  }));
+  M.updateShot('p1', { description: 'edited' });
+  M.addFrame('p1', { caption: 'second' });
+  M.saveBoards([]);
+  const back = JSON.parse(mem.get(M.SHOTS_KEY));
+  eq(back.futureTop, { a: 1 }, 'passthrough: an unknown TOP-LEVEL field survives a save');
+  eq(back.shots[0].future, 'keep me', 'passthrough: an unknown SHOT field survives a save');
+  eq(back.frames[0].futureFrame, 7, 'passthrough: an unknown FRAME field survives a save');
+  eq(back.shots[0].description, 'edited', 'passthrough: the edit itself landed');
+  M.removeShot('p1');
+  eq(JSON.parse(mem.get(M.SHOTS_KEY)).futureTop, { a: 1 }, 'passthrough: removeShot keeps the unknown top-level field');
+  mem.set(M.SHOTS_KEY, '[1,2]');
+  eq(M.listShots(), [], 'a stored array (not an object) reads as empty, not as indices');
+  mem.delete(M.SHOTS_KEY);
+}
 
 console.log(`\ntest:shots — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

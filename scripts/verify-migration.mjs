@@ -435,7 +435,22 @@ const EXPECTED = {
      deck no longer says "and so does the studio" (the hero says the
      stages go in any order); the title page's sub dropped the internal
      "the same answers the Feature Blueprint keeps for its cover". */
-  dashboard: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
+  dashboard: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {
+    /* 20 Oct 2026: the pre-production path leaves out a step whose module
+       no plan sells (the lookbook's "Vision & look"), so its step count
+       printed here went from 11 to 10. A derived count, not lost copy. */
+    '11': 'pre-production path step count, one step fewer without the lookbook'
+  },
+  /* 20 Oct 2026: "Vision & look" left the pre-production path because the
+     lookbook module is off for every plan and its button landed on a page
+     that says Not available. These were that step's words. */
+  preprod: {
+    '11': 'step count, one step fewer without the lookbook',
+    board: 'the lookbook step left the path', colours: 'the lookbook step left the path',
+    few: 'the lookbook step left the path', frames: 'the lookbook step left the path',
+    pin: 'the lookbook step left the path', references: 'the lookbook step left the path',
+    through: 'the lookbook step left the path', vision: 'the lookbook step left the path'
+  },
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is
      built only when it is opened. */

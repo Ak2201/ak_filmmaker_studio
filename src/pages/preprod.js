@@ -91,7 +91,8 @@ function stepPanel(s) {
     sec.append(readinessList());
     sec.append(h('div.pp-act', {}, [
       button({ href: 'contacts.html#call-sheets', label: 'MAKE THE CALL SHEET →', variant: 'primary' }),
-      /* The Shoot Day is off for every plan: its page says Not available. */
+      /* Only while the Shoot Day is on for some plan: switched off for every
+         plan, its page says Not available. */
       isDisabledEverywhere('shoot-day') ? null : button({ href: 'shoot.html', label: 'OPEN THE SHOOT DAY →' })
     ].filter(Boolean)));
   }

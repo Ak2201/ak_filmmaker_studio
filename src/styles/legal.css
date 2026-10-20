@@ -33,6 +33,14 @@
   padding: calc(var(--mk-top-h, 72px) + var(--s7)) var(--gutter) var(--s9);
   box-sizing: border-box;
 }
+/* a page in the frame with no contents list (404.html): one column */
+.legal-page.legal-page--solo { display: block; }
+.legal-page--solo .legal { margin-inline: auto; }
+.legal-links { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s6); max-width: none; }
+/* the buttons keep marketing.css's inks: `.legal a` would paint both labels link-violet */
+.legal .mk-btn { text-decoration: none; }
+.legal .mk-btn--primary, .legal .mk-btn--primary:hover { color: var(--brand-on); }
+.legal .mk-btn--outline, .legal .mk-btn--outline:hover { color: var(--ink); }
 
 .legal {
   min-width: 0;
@@ -150,7 +158,12 @@
   text-wrap: balance;
 }
 
-.legal-sub {
+/* `.legal .legal-sub` / `.legal .legal-date`, not the bare class: both are
+   <p>s, and `.legal p` (one class and a tag) outranked a single class, so
+   the deck lost its --t-lg and the date its tiny muted mono (it printed at
+   body size, ink-body, and its rule stopped at --measure short of the
+   callouts below it). */
+.legal .legal-sub {
   color: var(--ink-body);
   font-size: var(--t-lg);
   line-height: var(--lh-body);
@@ -158,7 +171,8 @@
   max-width: 52ch;
 }
 
-.legal-date {
+.legal .legal-date {
+  max-width: none;
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-label);
@@ -281,7 +295,7 @@
   .legal-page { display: block; max-width: none; padding: 0; }
   .legal h1, .legal h2, .legal h3, .legal strong { color: var(--print-ink); }
   .legal p, .legal li, .legal-sub { color: var(--print-ink); }
-  .legal-date, .legal li::marker { color: var(--print-muted); }
+  .legal .legal-date, .legal li::marker { color: var(--print-muted); }
   .legal h2, .legal-date { border-color: var(--print-rule); }
   .legal a { color: var(--print-ink); }
   .legal-key, .legal-changes, .legal code {

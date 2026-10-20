@@ -169,7 +169,17 @@ for (const id of IDS) {
     const navJson = JSON.parse(read('src/data/navigation.json'));
     for (const g of navJson.global || []) for (const m of g.modules || []) NAV[m.id] = m.label;
     for (const ph of navJson.phases || []) for (const m of ph.modules || []) NAV[m.id] = m.label;
-    const labelOf = (r) => r.label || NAV[r.key] || r.key;
+    const ownLabel = (r) => r.label || NAV[r.key] || r.key;
+    /* a group key given as an array is one table row for several matrix rows
+       (they are the same feature to a buyer); each is shown under the first's label */
+    const shownAs = new Map();
+    let nShown = 0;
+    for (const g of inputs.compare.groups) for (const e of g.keys) {
+      const ks = Array.isArray(e) ? e : [e];
+      nShown++;
+      for (const k of ks) shownAs.set(k, ks[0]);
+    }
+    const labelOf = (r) => ownLabel(matrix.features.find((x) => x.key === (shownAs.get(r.key) || r.key)) || r);
     const wantRows = matrix.features.filter((r) => !r.inverted && PAID.some((p) => r.plans.includes(p)));
     const table = (html.match(/<table class="pr-table">[\s\S]*?<\/table>/) || [''])[0];
     ok(!!table, tag + 'has the comparison table');
@@ -179,7 +189,7 @@ for (const id of IDS) {
     for (const m of table.matchAll(/<tr><th scope="row">([^<]*)<\/th>((?:<td class="pr-(?:yes|no)">[\s\S]*?<\/td>)+)<\/tr>/g)) {
       got.push({ label: m[1].replace(/&amp;/g, '&'), cells: [...m[2].matchAll(/<td class="pr-(yes|no)">/g)].map((c) => c[1] === 'yes') });
     }
-    ok(got.length === wantRows.length, `${tag}the table has one row per feature a paid plan has (${got.length} of ${wantRows.length})`);
+    ok(got.length === nShown && wantRows.every((r) => shownAs.has(r.key)), `${tag}the table has one row per feature a paid plan has (${got.length} of ${nShown}, from ${wantRows.length} matrix rows)`);
     const byLabel = new Map(got.map((g) => [g.label, g]));
     for (const r of wantRows) {
       const g = byLabel.get(labelOf(r));
@@ -342,6 +352,14 @@ for (const id of IDS) {
   ok(cstray.length === 0, 'company.js imports only the light allowlist (the startlib rule)' + (cstray.length ? ': ' + cstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=|localStorage|sessionStorage|fetch\(/.test(cjs), 'company.js builds no markup from strings, stores nothing and fetches nothing');
   ok(!/^import/m.test(read('src/lib/contact-model.js')), 'contact-model.js imports nothing (pure)');
+  /* 404.html wears the frame too (header and footer, no contents list),
+     and is not a paper surface: legal.css is dark and has no paper rules. */
+  {
+    const h = read('404.html');
+    ok(/<header class="mk-top"/.test(h) && /<footer class="mk-foot"/.test(h), '404.html: carries the shared header and footer');
+    ok(!/<html[^>]*data-surface="paper"/.test(h), '404.html: is not a paper surface');
+    ok(/class="legal-page legal-page--solo"/.test(h), '404.html: one column, no contents list');
+  }
   /* The legal pages: hand-written words, the site's frame stamped in (20 Oct 2026). */
   for (const f of ['privacy.html', 'terms.html', 'refund.html']) {
     const h = read(f);

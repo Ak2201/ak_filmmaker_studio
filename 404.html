@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-volume="studio" data-surface="paper">
+<html lang="en" data-volume="studio">
 <head>
 <meta charset="UTF-8">
 <!-- Served at ANY unknown path (/a/b/c), and the build uses relative asset
@@ -12,17 +12,125 @@
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 </head>
 <body>
-<main class="legal">
-
-<a class="legal-back" href="/">&larr; {{brand:name}}</a>
+<!-- mk:header -->
+<a class="mk-skip" href="#main">Skip to content</a>
+<div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
+<header class="mk-top" id="mkTop">
+  <div class="mk-top-in">
+    <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+    <nav class="mk-nav" id="mkNav" aria-label="Main">
+      <div class="mk-nav-item">
+        <a class="mk-nav-link mk-nav-prod" id="mkProd" href="start.html#tools" aria-haspopup="true" aria-expanded="false" aria-controls="mkMega"><span>Product</span><span class="sym" aria-hidden="true" translate="no">expand_more</span></a>
+        <div class="mk-mega" id="mkMega" role="group" aria-label="Product tools">
+          <div class="mk-mega-col hue-library">
+            <p class="mk-mega-h">Writing</p>
+            <ul>
+              <li><a href="product-writing.html"><span class="sym" aria-hidden="true" translate="no">edit_note</span><span>Writing</span></a></li>
+            </ul>
+          </div>
+          <div class="mk-mega-col hue-feature">
+            <p class="mk-mega-h">Story development</p>
+            <ul>
+              <li><a href="product-story.html"><span class="sym" aria-hidden="true" translate="no">timeline</span><span>Story</span></a></li>
+              <li><a href="product-storyboard.html"><span class="sym" aria-hidden="true" translate="no">view_carousel</span><span>Storyboard</span></a></li>
+            </ul>
+          </div>
+          <div class="mk-mega-col hue-plan">
+            <p class="mk-mega-h">Pre-production</p>
+            <ul>
+              <li><a href="product-breakdown.html"><span class="sym" aria-hidden="true" translate="no">fact_check</span><span>Breakdown</span></a></li>
+              <li><a href="product-catalog.html"><span class="sym" aria-hidden="true" translate="no">category</span><span>Catalog</span></a></li>
+              <li><a href="product-shot-list.html"><span class="sym" aria-hidden="true" translate="no">videocam</span><span>Shot list</span></a></li>
+              <li><a href="product-schedule.html"><span class="sym" aria-hidden="true" translate="no">calendar_month</span><span>Schedule</span></a></li>
+              <li><a href="product-cast-crew.html"><span class="sym" aria-hidden="true" translate="no">groups</span><span>Cast and crew</span></a></li>
+              <li><a href="product-sides.html"><span class="sym" aria-hidden="true" translate="no">description</span><span>Sides</span></a></li>
+            </ul>
+          </div>
+          <div class="mk-mega-col hue-shoot">
+            <p class="mk-mega-h">Production</p>
+            <ul>
+              <li><a href="product-budget.html"><span class="sym" aria-hidden="true" translate="no">payments</span><span>Budget</span></a></li>
+              <li><a href="product-call-sheets.html"><span class="sym" aria-hidden="true" translate="no">assignment</span><span>Call sheets</span></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <a class="mk-nav-link" href="pricing.html">Pricing</a>
+      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Log in</a>
+    </nav>
+    <div class="mk-top-end">
+      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Log in</a>
+      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
+      <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
+    </div>
+  </div>
+</header>
+<!-- /mk:header -->
+<div class="legal-page legal-page--solo">
+<main class="legal" id="main">
 
 <h1>That page is not here.</h1>
 <p class="legal-sub">The link may be old, or the address mistyped. Your work is untouched &mdash; it lives in your browser.</p>
 
-<p><a class="legal-back" href="/">Go to the studio</a></p>
-<p><a class="legal-back" href="/start">About {{brand:name}}</a></p>
+<p class="legal-links"><a class="mk-btn mk-btn--primary" href="/">Go to the studio</a> <a class="mk-btn mk-btn--outline" href="/start">About {{brand:name}}</a></p>
 
 </main>
+</div>
+<!-- mk:footer -->
+<footer class="mk-foot" id="mkFoot">
+  <div class="mk-wrap">
+    <div class="mk-foot-grid">
+      <div class="mk-foot-col hue-library">
+        <p class="mk-foot-h">Writing</p>
+        <ul>
+          <li><a href="product-writing.html">Writing</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col hue-feature">
+        <p class="mk-foot-h">Story development</p>
+        <ul>
+          <li><a href="product-story.html">Story</a></li>
+          <li><a href="product-storyboard.html">Storyboard</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col hue-plan">
+        <p class="mk-foot-h">Pre-production</p>
+        <ul>
+          <li><a href="product-breakdown.html">Breakdown</a></li>
+          <li><a href="product-catalog.html">Catalog</a></li>
+          <li><a href="product-shot-list.html">Shot list</a></li>
+          <li><a href="product-schedule.html">Schedule</a></li>
+          <li><a href="product-cast-crew.html">Cast and crew</a></li>
+          <li><a href="product-sides.html">Sides</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col hue-shoot">
+        <p class="mk-foot-h">Production</p>
+        <ul>
+          <li><a href="product-budget.html">Budget</a></li>
+          <li><a href="product-call-sheets.html">Call sheets</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col">
+        <p class="mk-foot-h">Company</p>
+        <ul>
+          <li><a href="pricing.html">Pricing</a></li>
+          <li><a href="about.html">About us</a></li>
+          <li><a href="contact.html">Contact us</a></li>
+          <li><a href="privacy.html">Privacy</a></li>
+          <li><a href="terms.html">Terms</a></li>
+          <li><a href="refund.html">Refunds</a></li>
+          <li><a href="mailto:{{brand:email}}">Support</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="mk-foot-base">
+      <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
+      <p class="mk-foot-copy">© {{brand:name}}</p>
+    </div>
+  </div>
+</footer>
+<!-- /mk:footer -->
 <script type="module" src="/src/pages/legal.js"></script>
 </body>
 </html>

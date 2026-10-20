@@ -1,5 +1,5 @@
 {
-  "_": "Copy and structure of pricing.html, read by scripts/make-marketing-pages.mjs (which writes the committed HTML). `groups` maps EVERY plan-matrix.json feature row that any paid plan has to one comparison group; the table is built from plan-matrix.json at generation time, so a cell cannot say what the matrix does not, and `npm run test:marketing` fails when a row is in no group, in two groups, or a key here is not a matrix row. Fields ending in Html are our own trusted markup (an em, a stamped span); everything else is escaped. No price, no plan name and no figure is typed here: those are stamped at build time from src/lib/plans.js and src/data/plan-matrix.json. No social proof of any kind.",
+  "_": "Copy and structure of pricing.html, read by scripts/make-marketing-pages.mjs (which writes the committed HTML). `groups` maps EVERY plan-matrix.json feature row that any paid plan has to one comparison group; the table is built from plan-matrix.json at generation time, so a cell cannot say what the matrix does not, and `npm run test:marketing` fails when a row is in no group, in two groups, or a key here is not a matrix row. A key given as an array is ONE table row for matrix rows that are the same feature to a buyer (the import capability and the import module were two rows reading \"Screenplay import\" and \"Import Screenplay\"); the label is the first one's, and they must agree on every paid plan. Fields ending in Html are our own trusted markup (an em, a stamped span); everything else is escaped. No price, no plan name and no figure is typed here: those are stamped at build time from src/lib/plans.js and src/data/plan-matrix.json. No social proof of any kind.",
   "meta": {
     "title": "Pricing: pay once, yours for good",
     "description": "Three plans, each bought once in Indian rupees with no subscription and no renewal. Compare what Basic, Intermediate and Pro include, feature by feature."
@@ -51,7 +51,7 @@
   },
   "groups": [
     { "id": "basics",  "label": "Account basics",       "keys": ["new_projects", "exports", "drive_backup", "extension"] },
-    { "id": "writing", "label": "Writing",              "keys": ["screenplay", "revisions", "docs", "script_import", "import-script"] },
+    { "id": "writing", "label": "Writing",              "keys": ["screenplay", "revisions", "docs", ["import-script", "script_import"]] },
     { "id": "story",   "label": "Story development",    "keys": ["story-beats", "idea-vault", "storyboard"] },
     { "id": "prep",    "label": "Pre-production",       "keys": ["scene-list", "breakdowns", "elements", "auto-tag", "screen-time", "cast-matrix", "shot-list", "stripboard", "calendar", "locations", "dood", "contacts", "sides"] },
     { "id": "prod",    "label": "Production",           "keys": ["budget", "reports", "call-sheets", "shoot-day"] },

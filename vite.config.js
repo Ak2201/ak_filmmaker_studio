@@ -62,8 +62,9 @@ function materialSymbols() {
     font = { file: 'assets/material-symbols-' + hash + '.woff', bytes: Buffer.from(woff) };
     return font;
   })();
-  /* The app pages only: the legal documents and the redirect stubs draw
-     no marks, and the extension panel never had the font. */
+  /* The app pages, plus (below) the public pages that carry the shared
+     header; the redirect stubs draw no marks, and the extension panel
+     never had the font. */
   const isAppPage = (html) => html.includes('id="app"') && !html.includes('/src/pages/panel.js');
   return {
     name: 'fms-material-symbols',
@@ -85,7 +86,11 @@ function materialSymbols() {
       /* The public marketing pages (product-*.html, pricing.html) draw
          marks too but are no app pages: they carry data-fms-marketing, get
          the face and NOT the site-gate meta (they load no gate). */
-      const marketing = html.includes('data-fms-marketing');
+      /* The legal pages and 404.html wear the same header (class="mk-top") since
+         20 Oct 2026, with its Product chevron and phone menu mark: without
+         the face legal.js's sym-ready check never passed and both marks
+         stayed hidden boxes. */
+      const marketing = html.includes('data-fms-marketing') || html.includes('<header class="mk-top"');
       if (!isAppPage(html) && !marketing) return;
       const f = await ready;
       return [
@@ -226,7 +231,7 @@ async function planFigures(values, cls, fail) {
     const shown = pick.length ? pick : adds.slice(0, 6);
     values['tier.list.' + id] = (i === 0 ? '' : '<li class="' + cls + '-inc-all">Everything in ' + esc(planName(PAID[i - 1])) + '</li>')
       + shown.map((t) => '<li>' + esc(t) + '</li>').join('')
-      + (adds.length > shown.length ? '<li class="' + cls + '-inc-more">+ ' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
+      + (adds.length > shown.length ? '<li class="' + cls + '-inc-more">' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
   }
   const cell = (yes) => yes ? '<td class="' + cls + '-yes"><span aria-hidden="true">\u2713</span><span class="' + cls + '-vh">Included</span></td>'
                             : '<td class="' + cls + '-no"><span aria-hidden="true">\u2014</span><span class="' + cls + '-vh">Not included</span></td>';

@@ -28,9 +28,20 @@
   width: 100%;
   max-width: var(--mk-wrap, 1200px);
   margin-inline: auto;
-  padding: var(--s7) var(--gutter) var(--s9);
+  /* the shared header is position: fixed, so the page starts below it;
+     a bare --s7 put the title (and, on a phone, the contents button)
+     under the bar on first paint */
+  padding: calc(var(--mk-top-h, 72px) + var(--s7)) var(--gutter) var(--s9);
   box-sizing: border-box;
 }
+/* a page in the frame with no contents list (404.html): one column */
+.legal-page.legal-page--solo { display: block; }
+.legal-page--solo .legal { margin-inline: auto; }
+.legal-links { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s6); max-width: none; }
+/* the buttons keep marketing.css's inks: `.legal a` would paint both labels link-violet */
+.legal .mk-btn { text-decoration: none; }
+.legal .mk-btn--primary, .legal .mk-btn--primary:hover { color: var(--brand-on); }
+.legal .mk-btn--outline, .legal .mk-btn--outline:hover { color: var(--ink); }
 
 .legal {
   min-width: 0;
@@ -116,6 +127,11 @@
   align-items: center;
   cursor: pointer;
 }
+.legal-toc-m > summary::-webkit-details-marker { display: none; }
+/* display: flex drops the native disclosure triangle, which left a closed
+   box with nothing saying it opens; this is its mark */
+.legal-toc-m > summary::after { content: '\25BE'; margin-left: auto; font-size: var(--t-base); transition: transform .18s var(--ease); }
+.legal-toc-m[open] > summary::after { transform: rotate(180deg); }
 .legal-toc-m[open] > summary { margin-bottom: var(--s2); }
 .legal-toc-m a { min-height: 40px; display: flex; align-items: center; }
 
@@ -131,7 +147,12 @@
   text-wrap: balance;
 }
 
-.legal-sub {
+/* `.legal .legal-sub` / `.legal .legal-date`, not the bare class: both are
+   <p>s, and `.legal p` (one class and a tag) outranked a single class, so
+   the deck lost its --t-lg and the date its tiny muted mono (it printed at
+   body size, ink-body, and its rule stopped at --measure short of the
+   callouts below it). */
+.legal .legal-sub {
   color: var(--ink-body);
   font-size: var(--t-lg);
   line-height: var(--lh-body);
@@ -139,7 +160,8 @@
   max-width: 52ch;
 }
 
-.legal-date {
+.legal .legal-date {
+  max-width: none;
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-label);
@@ -259,7 +281,7 @@
   .legal-page { display: block; max-width: none; padding: 0; }
   .legal h1, .legal h2, .legal h3, .legal strong { color: var(--print-ink); }
   .legal p, .legal li, .legal-sub { color: var(--print-ink); }
-  .legal-date, .legal li::marker { color: var(--print-muted); }
+  .legal .legal-date, .legal li::marker { color: var(--print-muted); }
   .legal h2, .legal-date { border-color: var(--print-rule); }
   .legal a { color: var(--print-ink); }
   .legal-key, .legal-changes, .legal code {

@@ -84,7 +84,10 @@
 }
 .pr-pick:hover { border-color: var(--accent-primary); }
 .pr-pick-flag {
-  margin: calc(-1 * var(--s2)) 0 0; padding: 0 var(--s3); min-height: 26px; display: inline-flex; align-items: center;
+  /* on the card's top edge, out of the flow, so the picked card's tag,
+     name and price sit on the same lines as its neighbours' */
+  position: absolute; top: -13px; left: var(--s6);
+  margin: 0; padding: 0 var(--s3); min-height: 26px; display: inline-flex; align-items: center;
   border-radius: var(--radius-pill); background: var(--brand); color: var(--brand-on);
   font-size: var(--t-tiny); font-weight: 700; letter-spacing: .02em; max-width: none;
 }
@@ -172,6 +175,7 @@
 }
 @media (max-width: 560px) {
   .pr-tier { padding: var(--s5); }
+  .pr-pick-flag { left: var(--s5); }
   .pr-trial .mk-btn { flex: 1 1 100%; }
   .pr-col-what { width: 31%; }
   .pr-th-name { font-size: var(--t-tiny); overflow-wrap: normal; letter-spacing: -0.01em; }

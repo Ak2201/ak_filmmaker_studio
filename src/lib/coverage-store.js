@@ -7,6 +7,7 @@
    prose in the Documents tab and in a backup. Stores nothing itself:
    it writes into the script doc it is handed and calls that doc's save.
    ============================================================ */
+import { newId } from './record-id.js';
 
 export const fmtN = (n) => Number(n || 0).toLocaleString('en-IN');
 export const plural = (n, one, many) => fmtN(n) + ' ' + (n === 1 ? one : many);
@@ -72,10 +73,7 @@ export function quotesRemovedSentence(res) {
   return out.join(' ');
 }
 
-function newDocId() {
-  return (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID()
-    : 'w_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-}
+const newDocId = () => newId('w');
 
 /* ---- the stored reports -------------------------------------
    A stored coverage is a document with a `coverage` object:

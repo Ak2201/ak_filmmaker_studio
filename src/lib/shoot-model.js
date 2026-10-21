@@ -12,11 +12,9 @@ import Locations from './locations.js';
 import Sun from './sun.js';
 import Geo from './recce-geo.js';
 
-/** "INT KITCHEN — NIGHT": the scene heading as the floor reads it. */
-export function slug(s) {
-  const parts = [s.intExt, s.location || 'NO LOCATION'].filter(Boolean).join(' ');
-  return parts + (s.dayNight ? ' — ' + s.dayNight : '');
-}
+/* slug — the scene heading as the floor reads it — lives in scenes.js,
+   shared with edit-model.js; re-exported so callers keep this name. */
+export { slug } from './scenes.js';
 
 export const STATE_WORD = { shot: 'Shot', part: 'Part-shot', dropped: 'Dropped' };
 

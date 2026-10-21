@@ -69,6 +69,7 @@
 import Store from './store.js';
 import { listScenes, updateScene, totalEighths } from './scenes.js';
 import { locationKey } from './sample-figures.js';
+import { newId } from './record-id.js';
 
 export const LOCATIONS_KEY = 'fms_locations_v1';
 
@@ -88,10 +89,7 @@ export const MEDIA_KINDS = [
   'Document', 'Folder', 'Other'
 ];
 
-const uid = () =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+const uid = () => newId('m');
 
 /* locationKey is pure and lives in sample-figures.js (the build counts
    the sample's locations with it); re-exported here for every caller. */

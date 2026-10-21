@@ -13,6 +13,7 @@ import Edit from './editlog.js';
 import Analysis, { formatDuration } from './screenplay-analysis.js';
 import { loadScript } from './script.js';
 import Store from './store.js';
+import { slug } from './scenes.js';
 
 export const FILTERS = [
   { id: 'all',   label: 'All scenes' },
@@ -22,10 +23,8 @@ export const FILTERS = [
   { id: 'out',   label: 'Cut out' }
 ];
 
-export const slug = (s) => {
-  const parts = [s.intExt, s.location || 'NO LOCATION'].filter(Boolean).join(' ');
-  return parts + (s.dayNight ? ' — ' + s.dayNight : '');
-};
+/* The same slug line the shoot day prints: one copy, in scenes.js. */
+export { slug };
 
 /** Whether a coverage row shows under filter `which`. */
 export function passes(row, which) {

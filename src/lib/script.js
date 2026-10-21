@@ -32,6 +32,7 @@
    snapshot that shared structure with the live script would not be one.
    ============================================================ */
 import Store from './store.js';
+import { newId } from './record-id.js';
 
 export const SCRIPT_KEY = 'fms_script_v1';
 
@@ -118,10 +119,7 @@ export const DOC_KINDS = [
   'Notes'
 ];
 
-const uid = () =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'w_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+const uid = () => newId('w');
 
 const nowISO = () => new Date().toISOString();
 

@@ -94,7 +94,7 @@ import { h, delegate, commitMain } from '../lib/dom.js';
 import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
 import { aiPill } from '../ui/ai-pill.js';
-import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
+import { REGIONS, region, chosenRegion, detectRegion, setRegion, currentProjectPrefs, setProjectRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
 import Account from '../lib/account.js';   // CORE: auth.js imports it too
@@ -280,8 +280,9 @@ function renderRegion() {
   const guess = detectRegion();
   const sec = section('region', 'This device · not part of the film',
     'Where you are making this film.',
-    'India, or somewhere else. This changes what the studio OFFERS, not what '
-      + 'it charges: there is one checkout and it settles in rupees either way.');
+    'India, or somewhere else. This changes what the studio OFFERS on this device. '
+      + 'Prices are shown in rupees in India and in US dollars elsewhere, and the '
+      + 'purchase page says which currency the charge is made in.');
 
   sec.append(choices('Mode', 'data-region-choice', now,
     REGIONS.map((r) => ({ value: r.id, label: r.label, title: r.line }))));
@@ -297,6 +298,29 @@ function renderRegion() {
       + 'invented one — so those pages show nothing rather than something made up. '
       + 'Everything you have written is untouched and comes straight back if you '
       + 'switch to India.' }));
+
+  /* The OPEN FILM's region (docs/US-MARKET-PLAN.md §A3), beside the
+     device's mode because the two are different questions: the device
+     decides what the map offers, the film decides its paperwork and
+     whether its pages show the India-only material. Set on a click only
+     (setProjectRegion); a film that predates regions reads as India
+     paperwork with its content following this device. */
+  const proj = Store.currentProject();
+  if (proj) {
+    const pp = currentProjectPrefs();
+    const filmNow = pp.explicit ? pp.region : '';
+    sec.append(choices('This film', 'data-project-region-choice', filmNow, [
+      { value: 'IN', label: 'India', title: 'Rupees, A4 and Indian dates on the paperwork, with the India-only checks.' },
+      { value: 'INT', label: 'Elsewhere', title: 'US dollars, US Letter and US dates on the paperwork; the India-only material is hidden.' }
+    ]));
+    sec.append(h('p.st-note', { text: pp.explicit
+      ? (pp.region === 'IN'
+        ? '“' + proj.title + '” is made in India: rupees, A4 and Indian dates on its paperwork.'
+        : '“' + proj.title + '” is made elsewhere: US dollars, US Letter and US dates on its paperwork, '
+          + 'and the India-only material is hidden on its pages. Nothing is deleted.')
+      : '“' + proj.title + '” was started before films had a region, so its paperwork stays in rupees '
+        + 'on A4 and its India-only material follows this device. Pick one above to set it.' }));
+  }
 
   /* What rate card the budget actually reads, said as a fact and not as a
      union badge: no union floor exists (the FEFSI MoU lapsed in 2025), so
@@ -1148,6 +1172,17 @@ delegate(document, 'click', '[data-region-choice]', (e, el) => {
   if (want === region()) return;
   try { setRegion(want); } catch (err) { StudioUI.toastError('That region is not one the studio knows.'); return; }
   location.reload();
+});
+
+/* The open film's region: a click only, never on load (verify's
+   idle-write check). No reload: the film's paperwork is read when it
+   is printed, and region.js re-reads the India-only switch on the
+   `region:project` notice, so a redraw of this page is enough. */
+delegate(document, 'click', '[data-project-region-choice]', (e, el) => {
+  const want = el.getAttribute('data-project-region-choice');
+  const after = setProjectRegion(want);
+  if (!after) { StudioUI.toastError('The film’s region could not be changed.'); return; }
+  render();
 });
 
 /* ---- Drive --------------------------------------------------

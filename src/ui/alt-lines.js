@@ -108,18 +108,18 @@ function buildStrip(row, el) {
         text: n > 1 ? `Alternates · ${n}` : 'Alternates'
       }),
       h('button.btn.wx-mini', {
-        type: 'button', 'data-action': 'tamil-toggle',
+        type: 'button', 'data-action': 'tamil-toggle', 'data-india-only': '',
         'aria-pressed': showTamil ? 'true' : 'false',
         title: 'An approximate preview in Tamil script. Never saved into the script.',
         text: 'Tamil script'
       }),
       h('button.btn.wx-mini', {
-        type: 'button', 'data-action': 'tamil-type-toggle',
+        type: 'button', 'data-action': 'tamil-type-toggle', 'data-india-only': '',
         'aria-pressed': isTamilTyping() ? 'true' : 'false',
         title: 'Type Roman letters, get Tamil script — in dialogue and parentheticals only (Alt/⌥ T)',
         text: 'Type Tamil'
       }),
-      h('span.wx-suggest-slot', { 'aria-live': 'polite' })
+      h('span.wx-suggest-slot', { 'aria-live': 'polite', 'data-india-only': '' })
     ])
   );
   if (showTamil) strip.append(tamilPreview(el.text));
@@ -135,7 +135,7 @@ function tamilPreview(text) {
     text: 'Keep as Tamil take'
   });
   keep.hidden = !hasLatin(t);
-  return h('div.wx-tamil', {}, [
+  return h('div.wx-tamil', { 'data-india-only': '' }, [
     h('p.wx-tamil-line', { lang: 'ta', text: t ? toTamil(t) : '—' }),
     h('div.wx-tamil-foot', {}, [
       h('p.wx-note', { text: 'Approximate preview from the romanised line. It is not saved unless you keep it as a take; the line in use stays as you typed it.' }),

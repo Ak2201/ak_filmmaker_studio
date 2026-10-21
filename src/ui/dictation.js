@@ -32,6 +32,7 @@
    when the button is pressed again.
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { currentProjectPrefs } from '../lib/region.js';
 
 const SR = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition || null)
@@ -44,6 +45,11 @@ const LANGS = [
 ];
 
 let lang = 'en-IN';
+/* Tamil is India-only material (docs/US-MARKET-PLAN.md §E): for a film
+   made elsewhere its option is hidden (data-india-only, base.css) and a
+   Tamil pick left over from an India film falls back to English. */
+const here = () => { try { return currentProjectPrefs().showIndiaContent !== false; } catch (e) { return true; } };
+const langNow = () => (lang === 'ta-IN' && !here() ? 'en-IN' : lang);
 let rec = null;
 let target = null;        // the textarea being dictated into
 let lastField = null;     // the last script line that had focus
@@ -112,7 +118,7 @@ function start() {
   if (!ta) { say('Click into a line of the script first, then press Dictation.', 'warn'); return; }
   let r;
   try { r = new SR(); } catch (err) { say('Dictation could not start in this browser.', 'warn'); return; }
-  r.lang = lang;
+  r.lang = langNow();
   r.continuous = true;
   r.interimResults = true;
   r.maxAlternatives = 1;
@@ -141,7 +147,7 @@ function start() {
   if (document.activeElement !== ta) ta.focus();   // the selection survives a blur
   try { r.start(); } catch (err) { rec = null; target = null; say('Dictation could not start.', 'warn'); paint(); return; }
   armSilence();
-  say('Listening' + (lang === 'ta-IN' ? ' (Tamil)' : '') + '. Esc stops.', 'on');
+  say('Listening' + (langNow() === 'ta-IN' ? ' (Tamil)' : '') + '. Esc stops.', 'on');
   paint();
 }
 
@@ -163,7 +169,7 @@ function buildGroup() {
     text: 'Dictation (Chrome)'
   });
   const langSel = h('select.wr-xa-select', { id: 'wr-dict-lang', 'aria-label': 'Dictation language' },
-    LANGS.map(([v, t]) => h('option', { value: v, text: t })));
+    LANGS.map(([v, t]) => h('option', { value: v, text: t, 'data-india-only': v === 'ta-IN' ? '' : null })));
   langSel.value = lang;
   const status = h('span.wr-xa-status', { role: 'status', 'aria-live': 'polite' });
   const prev = h('span.wr-xa-preview', { 'aria-hidden': 'true', hidden: true });

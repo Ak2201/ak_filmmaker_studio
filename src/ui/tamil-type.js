@@ -46,6 +46,7 @@
 import { readPrefs, writePrefs } from './format-guide.js';
 import { wordBefore, tamilCandidates } from '../lib/tanglish.js';
 import StudioUI from './chrome.js';
+import { currentProjectPrefs } from '../lib/region.js';
 
 const ROW_TYPES = ['t-dialogue', 't-paren'];
 const COMMIT_PUNCT = /^[.,?!;:)"'”’…-]$/;
@@ -56,9 +57,20 @@ let list = null;
 let state = null;      // { ta, start, word, items, active }
 let skip = null;       // { ta, start } — Esc'd: leave this word alone
 
-export const isTamilTyping = () => on;
+/* A film made outside India (its region, or a pre-region film on a
+   device set to International) does not offer Tamil typing: the mode
+   is treated as off for it, and the stored preference is left alone,
+   so an India film on the same device keeps the writer's choice.
+   docs/US-MARKET-PLAN.md §E, REGION-CONTENT. */
+const here = () => { try { return currentProjectPrefs().showIndiaContent !== false; } catch (e) { return true; } };
+
+export const isTamilTyping = () => on && here();
 
 export function setTamilTyping(next, { announce = true } = {}) {
+  if (next && !here()) {
+    if (announce) StudioUI.toast('Tamil typing is for films made in India. This film is set to be made elsewhere; change that on the dashboard\u2019s Title page card.', { type: 'info' });
+    return false;
+  }
   on = !!next;
   try { writePrefs({ tamilTyping: on }); } catch (e) { /* private mode: holds for this visit */ }
   if (!on) close();
@@ -150,7 +162,7 @@ function paint() {
 
 /** Offer the word that ends at the caret, or close. */
 function offer(ta) {
-  if (!on || !speechRow(ta) || ta.selectionStart !== ta.selectionEnd) { close(); return; }
+  if (!on || !here() || !speechRow(ta) || ta.selectionStart !== ta.selectionEnd) { close(); return; }
   const at = wordBefore(ta.value, ta.selectionEnd);
   if (!at.word) { close(); return; }
   if (skip && skip.ta === ta && skip.start === at.start) { close(); return; }
@@ -188,7 +200,7 @@ export function mountTamilType() {
     // rewrites e.key on a Mac (Option+T is '†').
     if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey
         && (e.code === 'KeyT' || String(e.key).toLowerCase() === 't')
-        && document.getElementById('wr-page')) {
+        && document.getElementById('wr-page') && here()) {
       e.preventDefault();
       e.stopPropagation();
       setTamilTyping(!on);
@@ -220,7 +232,7 @@ export function mountTamilType() {
   document.addEventListener('input', (e) => {
     const ta = e.target;
     if (!isLine(ta)) return;
-    if (!on || !speechRow(ta)) { if (state) close(); return; }
+    if (!on || !here() || !speechRow(ta)) { if (state) close(); return; }
     /* The phone path: a space or a mark that has just closed a Roman
        word. Only for real typing (insertText), never a paste, and
        never our own synthetic event (which has no inputType). */

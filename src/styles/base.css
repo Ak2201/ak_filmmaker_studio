@@ -160,6 +160,10 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 }
 
 [hidden] { display: none !important; }
+/* India-only material for a film made elsewhere (region.js
+   markIndiaContent; docs/US-MARKET-PLAN.md §E). HIDDEN, never removed:
+   every data-key and fragment target stays in the DOM. */
+:root[data-no-india] :is([data-india-only], .tn, .tanglish, [data-action="sc-tamil"]) { display: none !important; }
 
 
 /* ============================================================

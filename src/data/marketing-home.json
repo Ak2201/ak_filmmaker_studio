@@ -141,7 +141,8 @@
         "title": "Your whole studio",
         "text": "A backup file of every project, downloaded whenever you like and restored from the same menu. On Intermediate and Pro you can also back up to your own Google Drive."
       }
-    ]
+    ],
+    "footHtml": "Check the page for yourself: <a class=\"mk-link\" href=\"{{media}}sample-screenplay.pdf\" download>download the sample screenplay as a PDF</a>, the whole sample feature exactly as Export PDF lays it out, written for this app. What a Final Draft file keeps on the way in and out is in the <a class=\"mk-link\" href=\"pricing.html#faq\">FAQ</a>."
   },
   "answers": {
     "h2": "Four questions to ask before you sign in",

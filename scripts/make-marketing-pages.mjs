@@ -705,7 +705,8 @@ ${home.exports.items.map((it) => `      <article class="mk-card">
         <h3 class="mk-h3">${esc(it.title)}</h3>
         <p class="mk-card-p">${esc(it.text)}</p>
       </article>`).join('\n')}
-    </div>
+    </div>${home.exports.footHtml ? `
+    <p class="mk-body mk-ex-foot">${home.exports.footHtml.replace('{{media}}', MEDIA_BASE)}</p>` : ''}
   </div>
 </section>`;
 

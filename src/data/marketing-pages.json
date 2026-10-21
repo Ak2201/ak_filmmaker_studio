@@ -21,7 +21,8 @@
     "metaDescription": "Write a formatted screenplay in Tamil, Tanglish or English. Slug lines, action and dialogue format as you type, with numbered drafts and PDF export.",
     "hero": {
       "h1": "Write the screenplay. The format takes care of itself.",
-      "sub": "A screenplay writer for Tamil, Tanglish and English. Slug lines, action and dialogue set themselves as you type, and every scene feeds the rest of the studio."
+      "sub": "A screenplay writer for Tamil, Tanglish and English. Slug lines, action and dialogue set themselves as you type, and every scene feeds the rest of the studio.",
+      "subElsewhere": "A screenplay writer in the standard format. Slug lines, action and dialogue set themselves as you type, and every scene feeds the rest of the studio."
     },
     "value": {
       "h2": "Stay in the scene, not in the margins",
@@ -33,14 +34,14 @@
     "demo": { "h2": "See the writer in action" },
     "steps": [
       { "title": "Start a scene with a slug line", "body": "Write a scene heading with INT. or EXT. and a location. It is formatted for you, and the scene joins the scene list as you move on." },
-      { "title": "Write action and dialogue", "body": "Return and Tab pick the next element for you. Write dialogue in Tamil script or Tanglish, with headings and action in English if that is how your unit reads." },
+      { "title": "Write action and dialogue", "body": "Return and Tab pick the next element for you. Write dialogue in Tamil script or Tanglish, with headings and action in English if that is how your unit reads.", "bodyElsewhere": "Return and Tab pick the next element for you, from scene heading to action, character, parenthetical and dialogue, so your hands stay on the keys." },
       { "title": "Keep numbered drafts", "body": "Save a draft, keep writing, then compare drafts, restore an old one or print it. Lock the scene numbers for production and later scenes take letters like 12A." },
       { "title": "Print or export a screenplay PDF", "body": "Add a title page and print a properly formatted screenplay PDF with an honest page count. Already have a script? Bring in Fountain, Final Draft, Word or PDF." }
     ],
     "related": ["story", "breakdown", "storyboard"],
     "midCta": { "h2": "Open a blank page and write scene one" },
     "facts": [
-      { "value": "Tamil, Tanglish, English", "label": "Dialogue in the language you write" },
+      { "value": "Tamil, Tanglish, English", "label": "Dialogue in the language you write", "valueElsewhere": "Return, Tab", "labelElsewhere": "Pick the next element as you type" },
       { "value": "Fountain, FDX, Word, PDF", "label": "Screenplay formats you can bring in" },
       { "value": "12A", "label": "Locked scene numbers keep their letters" }
     ]
@@ -244,27 +245,32 @@
     "metaDescription": "Estimate what the film costs line by line from Chennai rates, track what is spent against the plan, and lock budget versions you can compare.",
     "hero": {
       "h1": "Know what the film costs before you shoot",
-      "sub": "A line-by-line budget in rupees that starts from Chennai rates, then follows the money once the shoot begins."
+      "sub": "A line-by-line budget in rupees that starts from Chennai rates, then follows the money once the shoot begins.",
+      "subElsewhere": "A line-by-line budget that takes its days from your schedule, then follows the money once the shoot begins."
     },
     "value": {
       "h2": "Honest rates, honestly dated",
       "body": [
         "The estimator starts from Chennai rate bands and a FEFSI bata table. Each rate says when it was last checked and is never inflated to look current, so you know how old your starting point is.",
         "Budget days follow your schedule. After the shoot starts, log expenses and petty cash against the plan and see what is left, with the contingency you chose."
+      ],
+      "bodyElsewhere": [
+        "Build the estimate line by line, in your own figures. The studio does not invent rates for places it has not checked, so every number on the page is one you typed.",
+        null
       ]
     },
     "demo": { "h2": "See the budget in action" },
     "steps": [
-      { "title": "Start from the rate bands", "body": "Pick lines from the Chennai rate tables, each marked with when it was last checked. The estimate begins from real numbers." },
+      { "title": "Start from the rate bands", "titleElsewhere": "Add the lines you need", "body": "Pick lines from the Chennai rate tables, each marked with when it was last checked. The estimate begins from real numbers.", "bodyElsewhere": "Add the lines your film needs and price each one yourself. Nothing is filled in from a rate card for a place the studio has not checked." },
       { "title": "Let the schedule set the days", "body": "Lines that grow with shoot days can take the days from your stripboard. Only blank fields are filled, and your own entries stay yours." },
-      { "title": "Set the crew fees", "body": "Give each crew member a fee, advances and days worked. Edit the wage table and bata figures to match what you have agreed." },
+      { "title": "Set the crew fees", "body": "Give each crew member a fee, advances and days worked. Edit the wage table and bata figures to match what you have agreed.", "bodyElsewhere": "Give each crew member a fee, advances and days worked, to match what you have agreed." },
       { "title": "Track the spend and lock versions", "body": "Log expenses and petty cash, add contingency, and lock a version of the budget so a later change can be compared with it." }
     ],
     "related": ["schedule", "call-sheets", "breakdown"],
     "midCta": { "h2": "Price your first shoot day" },
     "facts": [
       { "value": "Dated", "label": "Every rate shows when it was last checked" },
-      { "value": "FEFSI", "label": "A bata table feeds the crew lines" },
+      { "value": "FEFSI", "label": "A bata table feeds the crew lines", "valueElsewhere": "Days", "labelElsewhere": "Lines that grow with the shoot take their days from the schedule" },
       { "value": "Locked", "label": "Freeze a budget version to compare later" }
     ]
   },

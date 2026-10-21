@@ -6,7 +6,7 @@
    pages.mjs writes them. This module adds only what cannot be static.
 
    WHAT IT MAY IMPORT. Stylesheets and the pure leaf libraries start.js
-   already uses (funnel.js, trial-time.js, invite-code.js in the `startlib`
+   already uses (funnel.js, trial-time.js, invite-code.js, region-core.js in the `startlib`
    chunk; start-auth.js, which reaches only auth-scope.js). NOT store.js,
    chrome.js, cloud.js, gate.js, plan-gate.js, billing.js, dom.js or
    modal-focus.js: every one of those lives in (or drags in) the `studio`
@@ -22,6 +22,8 @@
      5. the sign-up modal: Google through start-auth.js, the live offer line
      6. an invite code in the address bar (held, stripped, announced) —
         the same hold start.js does, so a code link works from any page
+     7. the demo loops, played while on screen
+     8. the lines a visitor outside India reads instead (data-mk-intl)
    ============================================================ */
 import '../styles/base.css';
 import '../styles/marketing.css';
@@ -29,6 +31,7 @@ import { bumpEvent, purchasesRequired, trialOffer } from '../lib/funnel.js';
 import { trialLength } from '../lib/trial-time.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
+import { guessVisitorRegion, normaliseRegion } from '../lib/region-core.js';
 
 const root = document.documentElement;
 const $ = (sel, from = document) => from.querySelector(sel);
@@ -369,4 +372,25 @@ try {
   const start = () => vids.forEach((v) => io.observe(v));
   if (document.readyState === 'complete') start();
   else addEventListener('load', start, { once: true });
+})();
+
+/* ---- 8. lines for a visitor outside India ---------------------------
+   REGION-CONTENT (docs/US-MARKET-PLAN.md §E). The pages are written with
+   the India lines (crawlers and no-JS visitors read those, as before); a
+   line that has an `…Elsewhere` variant in src/data/marketing-*.json
+   carries it as data-mk-intl, and for a visitor whose region is not India
+   the text is swapped in. The region is the device's own stated market
+   (`fms_region_v1`, read raw: this page loads no store.js) or else the
+   browser's local guess (region-core.js guessVisitorRegion: time zone
+   and language, never a network call, never an IP). Reads only. */
+export function visitorRegion() {
+  let chosen = '';
+  try { chosen = normaliseRegion(localStorage.getItem('fms_region_v1')); } catch (e) { /* no storage */ }
+  return chosen || guessVisitorRegion();
+}
+(function regionLines() {
+  const els = $$('[data-mk-intl]');
+  if (!els.length || visitorRegion() === 'IN') return;
+  root.setAttribute('data-mk-region', 'INT');
+  els.forEach((el) => { el.textContent = el.getAttribute('data-mk-intl'); });
 })();

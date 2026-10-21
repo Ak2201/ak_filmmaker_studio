@@ -107,14 +107,23 @@ function wire() {
   delegate(document, 'click', '[data-action="bk-overview"]', async () => { (await backup()).exportOverviewPDF(); });
   /* The wording is relative ("2 hours ago"), so it is recomputed when the
      menu opens and when the tab is looked at again, never on a timer. */
-  delegate(document, 'click', '[data-tb-backup] [data-action="tb-menu-toggle"]', () => refreshHealth());
+  delegate(document, 'click', '[data-tb-backup] [data-action="tb-menu-toggle"]', (e, btn) => {
+    refreshHealth();
+    const menu = btn.closest('[data-tb-backup]');
+    if (menu && menu.classList.contains('is-rail')) {
+      const r = btn.getBoundingClientRect();
+      const rail = btn.closest('#studioRail');
+      menu.style.setProperty('--tb-rail-x', Math.round((rail || btn).getBoundingClientRect().right) + 'px');
+      menu.style.setProperty('--tb-rail-bottom', Math.max(8, Math.round(window.innerHeight - r.bottom)) + 'px');
+    }
+  });
   window.addEventListener('focus', refreshHealth);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshHealth(); });
 }
 
 /** Mount the Backup menu into `host` (the band's right-hand zone).
  *  Idempotent: one per document. */
-export function mountBackupMenu(host) {
+export function mountBackupMenu(host, opts = {}) {
   if (!host || document.querySelector('[data-tb-backup]')) return null;
   const menu = actionMenu('Backup', [
     { label: 'Export everything', hint: '.json', action: 'bk-export', title: 'Every project, not just the open one' },
@@ -131,6 +140,17 @@ export function mountBackupMenu(host) {
   if (panel) panel.prepend(h('div.tb-note', { role: 'presentation' }));
   const btn = menu.querySelector('.tb-menu-btn');
   if (btn) btn.append(h('span.tb-backup-dot', { 'aria-hidden': 'true' }));
+  /* IN THE RAIL (owner, 21 Oct 2026): the opener is a rail item, an icon
+     with the word as the rail's tooltip, and the panel opens beside the
+     rail (placed on open, below, because the rail scrolls and clips). */
+  if (opts.rail && btn) {
+    menu.classList.add('is-rail');
+    btn.className = 'sh-rail-item sh-rail-util tb-menu-btn';
+    btn.replaceChildren(
+      h('span.sh-rail-icon.sym', { text: 'backup', 'aria-hidden': 'true', translate: 'no' }),
+      h('span.sh-rail-label', { text: 'Backup' }),
+      h('span.tb-backup-dot', { 'aria-hidden': 'true' }));
+  }
   host.append(menu);
   wire();
   refreshHealth();

@@ -628,3 +628,47 @@ html .mn-head::before {
 }
 
 @media print { .mn-overlay { display: none !important; } }
+
+/* Backup and sync, borrowed from the rail's foot: in the sheet each is a
+   full row with its words showing (in the rail the words are a tooltip). */
+.mn-tools-group > .sh-rail-tools {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  width: auto;
+  gap: var(--s2);
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+html.mn-on .mn-sheet .mn-tools-group .sh-rail-tools .sh-rail-item,
+.mn-sheet .mn-tools-group .sh-rail-tools .sh-rail-item {
+  display: inline-flex;
+  flex-direction: row;   /* the bottom bar's column rule reaches the sheet */
+  min-height: 0;
+  align-items: center;
+  gap: var(--s2);
+  width: auto;
+  height: var(--tap-min, 44px);
+  padding: 0 var(--s4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  color: var(--ink);
+}
+.mn-sheet .mn-tools-group .sh-rail-tools .sh-rail-item .sh-rail-label {
+  position: static;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  font-size: var(--t-small);
+}
+.mn-sheet .mn-tools-group .sh-rail-tools .tb-menu.is-rail .tb-menu-panel {
+  position: static;
+  flex: 1 0 100%;
+  left: auto;
+  bottom: auto;
+}

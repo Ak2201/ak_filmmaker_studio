@@ -1085,6 +1085,13 @@ export async function handle(route) {
     }
     F.db.calls.push('write:projects'); return json(route, 201, []);
   }
+  /* F.db.refuseData = 'P0402' (or any code): every project_data write is
+     REFUSED the way PostgREST refuses one, so a proof can watch the queue
+     tell a refusal from a dead network (prove:gate case t). */
+  if (url.pathname.startsWith('/rest/v1/project_data') && req.method() !== 'GET' && F.db.refuseData) {
+    F.db.calls.push('write:project_data:' + F.db.refuseData);
+    return json(route, 400, { code: F.db.refuseData, message: 'refused by the proof', details: null, hint: null });
+  }
   if (url.pathname.startsWith('/rest/v1/')) {
     if (req.method() !== 'GET') F.db.calls.push('write:' + url.pathname.split('/')[3]);
     return json(route, req.method() === 'GET' ? 200 : 201, []);

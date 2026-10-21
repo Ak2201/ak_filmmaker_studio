@@ -322,6 +322,8 @@ const FILE_ITEMS = [
   { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
   { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
   { label: 'Export Word (.docx)', action: 'sc-docx', hint: 'to edit in Word', icon: 'description' },
+  { label: 'Export Final Draft (.fdx)', action: 'sc-fdx', hint: 'opens in Final Draft', icon: 'description' },
+  { label: 'Export Fountain (.fountain)', action: 'sc-fountain', hint: 'plain text, any app', icon: 'description' },
   { label: 'Drafts & history', href: 'drafts.html', icon: 'history' },
   { label: 'Title page', href: 'drafts.html#title', icon: 'menu_book' }
 ];
@@ -1146,15 +1148,33 @@ async function exportDOCX() {
   try { W = await import('../lib/screenplay-docx.js'); }
   catch (e) { say('The Word exporter could not be loaded. Check the connection and try again.'); return; }
   const title = Script.projectTitle();
-  const blob = new Blob([W.toDOCX(doc, { title })], { type: W.DOCX_MIME });
-  const url = URL.createObjectURL(blob);
+  saveFile(Script.slugify(title, 'screenplay') + '.docx', W.toDOCX(doc, { title }), W.DOCX_MIME);
+}
+delegate(document, 'click', '[data-action="sc-docx"]', () => { exportDOCX(); });
+
+/* Final Draft and Fountain: the two interchange formats every other
+   screenwriting tool reads. Both writers live in script.js beside the
+   importers that read them back, so a round trip stays one model. */
+function exportText(ext, type, write) {
+  if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
+  const title = Script.projectTitle();
+  saveFile(Script.slugify(title, 'screenplay') + ext, write(doc, { title }), type);
+}
+delegate(document, 'click', '[data-action="sc-fdx"]', () => {
+  exportText('.fdx', 'application/xml', Script.toFDX);
+});
+delegate(document, 'click', '[data-action="sc-fountain"]', () => {
+  exportText('.fountain', 'text/plain', Script.toFountain);
+});
+
+function saveFile(name, body, type) {
+  const url = URL.createObjectURL(new Blob([body], { type }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = Script.slugify(title, 'screenplay') + '.docx';
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-delegate(document, 'click', '[data-action="sc-docx"]', () => { exportDOCX(); });
 
 /* ---- import (a dialog; script-import.js and script-commit.js) --- */
 let imp = null;      // { plan, name, replace }

@@ -280,9 +280,9 @@ function renderRegion() {
   const guess = detectRegion();
   const sec = section('region', 'This device · not part of the film',
     'Where you are making this film.',
-    'India, or somewhere else. This changes what the studio OFFERS on this device. '
-      + 'Prices are shown in rupees in India and in US dollars elsewhere, and the '
-      + 'purchase page says which currency the charge is made in.');
+    'India, or somewhere else. This changes what the studio OFFERS on this device, '
+      + 'not what it charges: the purchase page says which currency a price is in '
+      + 'and which currency the charge is made in.');
 
   sec.append(choices('Mode', 'data-region-choice', now,
     REGIONS.map((r) => ({ value: r.id, label: r.label, title: r.line }))));
@@ -1176,8 +1176,8 @@ delegate(document, 'click', '[data-region-choice]', (e, el) => {
 
 /* The open film's region: a click only, never on load (verify's
    idle-write check). No reload: the film's paperwork is read when it
-   is printed, and region.js re-reads the India-only switch on the
-   `region:project` notice, so a redraw of this page is enough. */
+   is printed, and src/ui/india-content.js re-reads the India-only switch
+   on the `region:project` notice, so a redraw of this page is enough. */
 delegate(document, 'click', '[data-project-region-choice]', (e, el) => {
   const want = el.getAttribute('data-project-region-choice');
   const after = setProjectRegion(want);

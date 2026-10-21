@@ -208,6 +208,35 @@ export function unstage() {
 }
 
 /* ------------------------------------------------------------
+   A PLAIN PRINT (Ctrl+P, "Print this page") on a Letter film
+   ------------------------------------------------------------
+   print.css sets `@page { size: A4 }` for every page, and a plain
+   print never goes through stage(), so on a film whose paper is
+   Letter the browser's own print would still lay the page out on
+   A4. For the length of that print only, the same margins on the
+   film's paper. A staged job injects its own setup and is left
+   alone. Nothing is stored; the film is asked at the moment of
+   printing, so a region changed a second ago is honoured.
+   ------------------------------------------------------------ */
+export const PLAIN_PRINT_MARGIN = '16mm 14mm';
+let plainStyle = null;
+function onBeforePrint() {
+  if (active || plainStyle) return;
+  if (filmPrefs().paper !== 'Letter') return;
+  plainStyle = document.createElement('style');
+  plainStyle.id = 'pdf-plain-paper';
+  plainStyle.textContent = pageStyle({ size: 'Letter', margin: PLAIN_PRINT_MARGIN });
+  document.head.append(plainStyle);
+}
+function onAfterPrint() {
+  if (plainStyle) { plainStyle.remove(); plainStyle = null; }
+}
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('beforeprint', onBeforePrint);
+  window.addEventListener('afterprint', onAfterPrint);
+}
+
+/* ------------------------------------------------------------
    THE ONE PATH
    ------------------------------------------------------------
    exportPDF({ title, scope }) — plus the optional trimmings:

@@ -83,6 +83,18 @@ eq(size({ scope: 'callsheet', paper: 'Letter' }, IN), 'Letter', 'opts.paper Lett
 eq(PDF.paperSetupName('nonsense', 'Letter'), 'letter', 'an unknown setup is a4, then its twin');
 eq(PDF.paperSetupName('a4', 'A4'), 'a4', 'A4 keeps the name');
 
+// paper-date.js's paperPrefsOf() is projectPrefs() cut to the two fields
+// paperwork reads; it must give the same answer for every kind of entry.
+const { paperPrefsOf } = await import('../src/lib/paper-date.js');
+const ENTRIES = [null, undefined, {}, { region: 'IN' }, { region: 'INT' }, { region: 'intl' }, { region: 'International' },
+  { region: 'India' }, { region: 'XX' }, { region: '' }, { region: 'INT', paper: 'A4' }, { region: 'IN', paper: 'Letter' },
+  { paper: 'Letter' }, { region: 'INT', paper: 'legal' }, { region: ' int ' }];
+for (const e of ENTRIES) for (const dev of ['IN', 'INT', '']) {
+  // With no entry, both answer for the device's market (currentProjectPrefs()).
+  const want = projectPrefs(e || { region: dev }, dev);
+  eq(paperPrefsOf(e, dev), { paper: want.paper, dateStyle: want.dateStyle }, `paperPrefsOf = projectPrefs (${JSON.stringify(e)}, device ${dev || 'none'})`);
+}
+
 /* ---- dates in the film's style ------------------------------------ */
 // paperDate and region-core's formatPaperDate must agree wherever their
 // styles overlap, so the copy cannot drift from the contract's function.
@@ -202,6 +214,13 @@ ok(!/paper-date/.test(read('vite.config.js')), 'paper-date.js is not forced into
 ok(!/toLocaleDateString\(undefined/.test(pdf), 'pdf.js: no device-locale date left on the masthead');
 ok(/from '\.\/paper-setups\.js'/.test(pdf) && /export \{ SETUPS, LETTER_OF, DOCUMENTS, paperSetupName \}/.test(pdf), 'pdf.js re-exports the setups it prints with');
 ok(/resolveSetup\(opts, prefs\)/.test(pdf), 'pdf.js stage() resolves the setup against the film');
+// A plain print (Ctrl+P, "Print this page") on a Letter film keeps print.css's margins.
+const printCss = read('src/styles/print.css');
+const plainMargin = /PLAIN_PRINT_MARGIN = '([^']+)'/.exec(pdf);
+const cssMargin = /@page \{ size: A4; margin: ([^;]+); \}/.exec(printCss);
+ok(plainMargin && cssMargin && plainMargin[1] === cssMargin[1], 'pdf.js PLAIN_PRINT_MARGIN equals print.css\'s @page margin');
+ok(/addEventListener\('beforeprint'/.test(pdf) && /addEventListener\('afterprint'/.test(pdf), 'pdf.js swaps the paper for a plain print and puts it back');
+ok(/body\.pdf-callsheet\.pdf-letter/.test(read('src/styles/pdf.css')), 'pdf.css has the Letter call-sheet rules pdf-letter exists for');
 
 console.log(`\n  paperwork: ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

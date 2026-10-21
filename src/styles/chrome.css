@@ -4812,3 +4812,41 @@ html {
 @media (min-width: 721px) and (max-width: 800px) {
   :root .sh-bar { padding-inline: var(--s3); }
 }
+
+/* ---- Backup and sync in the rail foot (owner, 21 Oct 2026) ---------
+   Two rail items above the account: the Backup menu's opener and the
+   sync link. Their words are the rail tooltip; the sync dot and the
+   stale-backup dot sit on the icon's corner like a stage's hue dot. */
+.sh-rail-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  width: var(--sh-rail-cell);
+  padding-bottom: var(--s1);
+  margin-bottom: var(--s1);
+  border-bottom: 1px solid var(--border-hair);
+}
+.sh-rail-tools:empty { display: none; }
+.sh-rail-tools .tb-menu { position: static; display: block; }
+:root .sh-rail-tools .sh-sync { gap: 0; height: var(--sh-rail-cell); font-family: inherit; }
+.sh-rail-tools .sh-sync .sh-sync-icon { font-size: 20px; }
+.sh-rail-tools .sh-sync .sh-sync-led,
+.sh-rail-tools .is-backup-stale > .tb-menu-btn > .tb-backup-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 2px var(--surface-rail);
+}
+.sh-rail-tools .tb-menu.is-rail .tb-menu-panel {
+  position: fixed;
+  top: auto;
+  right: auto;
+  left: calc(var(--tb-rail-x, var(--sh-rail-w)) + var(--s2));
+  bottom: var(--tb-rail-bottom, var(--s4));
+  z-index: var(--z-float);
+}
+/* the word's tooltip gives way to the open menu it names */
+:root .sh-rail-item.tb-menu-btn[aria-expanded="true"] .sh-rail-label { opacity: 0; visibility: hidden; }

@@ -337,7 +337,11 @@ export function openTools() {
   const body = h('div.mn-body.mn-tools');
   const take = [
     ['.sh-bar > .toolbar', 'This page'],
-    ['.sh-bar > .sh-tools', 'Account and appearance']
+    ['.sh-bar > .sh-tools', 'Account and appearance'],
+    /* Backup and sync live in the rail's foot (21 Oct 2026); the rail is
+       never opened on a phone (the burger opens Go to), so they are
+       borrowed here like the band's zone. */
+    ['#studioRail .sh-rail-tools', 'Backup and sync']
   ];
   const plan = [];
   for (const [sel, label] of take) {

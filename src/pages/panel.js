@@ -227,6 +227,12 @@ delegate(document, 'submit', '[data-pn-form]', async (e, form) => {
   try {
     if (form.dataset.pnForm === 'redeem') {
       await g.redeemCode(code);
+      /* The code carries a 7-day trial, and redeeming it is what spends
+         the code, so the trial starts here, as in gate-ui.js's signed-in
+         box. redeem_invite() never writes trial_started_at, and with the
+         purchases switch ON a member with no trial is walled by the
+         thing the code opened (see startCodeTrial() in cloud.js). */
+      if (c.startCodeTrial) await c.startCodeTrial();
       await c.runGate();
     } else {
       const t = await g.verifyCode(code);

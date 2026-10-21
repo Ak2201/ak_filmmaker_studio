@@ -16,8 +16,13 @@
      2. a signed-in visitor's BUY goes straight to the checkout page
      3. the pricing_view count, once, when the plans scroll into view
      4. the scheduled price rise from price_notice(): it ADDS the coming
-        figure beside the build-stamped one and never replaces it, and the
-        band stays hidden unless the server reports a rise it will execute
+        figure beside the build-stamped one, and the band stays hidden
+        unless the server reports a rise it will execute
+     4b. the price TODAY: once a rise has fired the build-stamped figures
+        are the old ones, so where the server's current price_paise
+        differs, the cards, the table head and the per-day figures are
+        rewritten to it (the markup is still the fallback when the call
+        fails, and scripts-off readers see the stamp)
      5. purchases off: the page is marked, the trial promise goes, and no
         rise band is drawn (a countdown on a studio that is not selling is
         urgency nobody enforces)
@@ -35,7 +40,7 @@ import './marketing.js';
 import '../styles/pricing.css';
 import { bumpEvent, bumpOnce, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
 import * as StartAuth from '../lib/start-auth.js';
-import { stashPlan, buyHref, risingTiers, priceRiseBand, foundingLeft } from '../lib/start-model.js';
+import { stashPlan, buyHref, risingTiers, priceRiseBand, foundingLeft, timeLeft, currentPrices, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
 
 const root = document.documentElement;
 const byId = (id) => document.getElementById(id);
@@ -133,6 +138,51 @@ function renderPriceRise(notice) {
   band.hidden = false;
 }
 
+/* ---- 4b. the price today ------------------------------------------------
+   LIST_PRICE is stamped at build time and is the price BEFORE any rise.
+   The rise fires on a date OR on the buyer that fills the cap, so no
+   rebuild can be timed for it, and checkout quotes effective_price(). This
+   brings the page to the same figure. Each card is found by its tier and
+   rewritten in place (never by matching the old value across the page:
+   ₹599→₹999 then ₹999→₹1,999 would chain); the table head's cells are in
+   the cards' order, which the generator writes from one list. The one
+   page-wide swap is the cheapest plan's "from about ₹X a day", done once,
+   and only in text that says "a day". */
+function firstText(node) {
+  for (const c of node.childNodes) if (c.nodeType === 3 && c.nodeValue.trim()) return c;
+  return null;
+}
+function renderPricesNow(notice) {
+  const now = currentPrices(notice);
+  if (!now.length) return;
+  const byTier = new Map(now.map((p) => [p.id, p]));
+  const cards = [...document.querySelectorAll('.pr-tiers li[data-tier]')];
+  const heads = [...document.querySelectorAll('.pr-th-price')];
+  cards.forEach((li, i) => {
+    const p = byTier.get(li.dataset.tier);
+    if (!p) return;
+    const price = li.querySelector('.pr-price');
+    const t = price && firstText(price);
+    if (t && t.nodeValue.trim() !== p.price) {
+      const was = t.nodeValue.trim();
+      t.nodeValue = p.price;
+      const th = heads.length === cards.length ? heads[i] : null;
+      if (th && th.textContent.trim() === was) th.textContent = p.price;
+    }
+    const keep = li.querySelector('.pr-keep');
+    if (keep) keep.textContent = keep.textContent.replace(/₹\d+\.\d{2}/, p.day);
+  });
+  const fromNow = fromDayNow(notice);
+  const fromWas = stampedFromDay(document.body ? document.body.textContent : '');
+  if (!fromNow || !fromWas || fromNow === fromWas) return;
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (n.parentElement && n.parentElement.closest('.pr-tiers, script, style')) continue;
+    if (/ a day\b/.test(n.nodeValue)) n.nodeValue = swapFigure(n.nodeValue, fromWas, fromNow);
+  }
+  document.title = swapFigure(document.title, fromWas, fromNow);
+}
+
 /* ---- 5 and 6. purchases off, trials off --------------------------------
    marketing.js already swaps the words (data-open-text / data-off-text)
    and fills in the trial's length; what is left here is what has to
@@ -142,6 +192,7 @@ function hideTrial() {
 }
 try {
   Promise.all([purchasesRequired(), priceNotice()]).then(([req, notice]) => {
+    renderPricesNow(notice);                  // a true figure whether or not purchases are on
     if (req === false) { root.dataset.purchases = 'off'; hideTrial(); return; }
     renderPriceRise(notice);
   }, () => {});

@@ -128,6 +128,42 @@ eq(A.sceneParts({ intExt: 'EXT', location: 'Engineering college — front block'
   ok(/paired by position only/.test(A.describeMatch(rm2).join(' ')), 'a position guess is reported');
 }
 
+/* A row LINKED to its heading (scene.scriptElId) is paired by that link,
+   whatever its number or position says. The failure: a repeated place,
+   a heading inserted above (so positions no longer match the numbers)
+   and the rows reordered on the Breakdown — the content tiers paired
+   each kitchen row with the OTHER kitchen's text, labelled 'heading'. */
+{
+  const ids = (list) => list.map((e, i) => ({ id: 'h' + i, ...e }));
+  const els = ids([
+    el('scene', 'EXT. ROAD - DAY'), el('action', 'A bus passes.'),
+    el('scene', 'INT. KITCHEN - DAY'), el('action', 'MEENA, 30s, cooks.'),
+    el('scene', 'EXT. GARDEN - DAY'), el('action', 'Leaves.'),
+    el('scene', 'INT. KITCHEN - DAY'), el('action', 'RAVI, 40s, loads a gun.')
+  ]);
+  const rows = [
+    { id: 'C', number: '3', intExt: 'INT', location: 'KITCHEN', dayNight: 'DAY', scriptElId: 'h6' },
+    { id: 'A', number: '1', intExt: 'INT', location: 'KITCHEN', dayNight: 'DAY', scriptElId: 'h2' },
+    { id: 'B', number: '2', intExt: 'EXT', location: 'GARDEN', dayNight: 'DAY', scriptElId: 'h4' },
+    { id: 'D', number: '4', intExt: 'EXT', location: 'ROAD', dayNight: 'DAY', scriptElId: 'h0' }
+  ];
+  const m = A.matchScenes(rows, els);
+  eq(m.pairs.map((p) => p.slice && p.slice.elements[0].text),
+    ['RAVI, 40s, loads a gun.', 'MEENA, 30s, cooks.', 'Leaves.', 'A bus passes.'], 'a linked row is paired by its scriptElId, not by number or order');
+  ok(m.pairs.every((p) => A.isConfident(p.how)), 'a linked pair is confident');
+  eq(m.unmatchedHeadings.length, 0, 'every heading claimed');
+  // A link to a heading that is gone falls back to the content tiers.
+  const stale = A.matchScenes([{ id: 'Z', number: '', intExt: 'EXT', location: 'ROAD', dayNight: 'DAY', scriptElId: 'gone' }], els);
+  eq(stale.pairs[0].slice && stale.pairs[0].slice.elements[0].text, 'A bus passes.', 'a stale link still matches by content');
+  // Two rows claiming one heading: the first keeps it, the second goes to content.
+  const dup = A.matchScenes([
+    { id: 'P', number: '', intExt: 'EXT', location: 'GARDEN', dayNight: 'DAY', scriptElId: 'h4' },
+    { id: 'Q', number: '', intExt: 'EXT', location: 'ROAD', dayNight: 'DAY', scriptElId: 'h4' }
+  ], els);
+  eq(dup.pairs.map((p) => p.slice && p.slice.elements[0].text), ['Leaves.', 'A bus passes.'], 'a doubled link is honoured once');
+  eq(A.sliceScript(els).map((s) => s.id), ['h0', 'h2', 'h4', 'h6'], "a slice carries its heading element's id");
+}
+
 /* ADD ALL's undo removes exactly what it added. */
 {
   const S = await import('../src/lib/scenes.js');

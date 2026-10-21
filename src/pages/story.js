@@ -71,7 +71,7 @@ import '../styles/pdf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
-import { saveOnInput, preservingFocus } from '../lib/autosave.js';
+import { saveOnInput, preservingFocus, flushAutosave } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import Scenes from '../lib/scenes.js';
 import Pitch from '../lib/pitch-deck.js';
@@ -1233,15 +1233,42 @@ const sampleStory = IO.sampleStory;
 
 async function useSample(id) {
   const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
+  flushAutosave();   // a keystroke still on its debounce counts as work, and must not land on the sample later
   const cur = story();
-  if (!isEmpty(cur) && !await askDanger('Replace the story on this page with the ' + sm.title + ' sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
-  const s = await sampleStory(sm.id);
+  if (IO.sampleReplacesWork(cur) && !await askDanger(IO.sampleQuestion(sm.title, 'this page'))) return;
+  // The Story Bible's conflict answers and the market fields stay the
+  // writer's (IO.sampleOver); re-read so an edit made while the
+  // confirm was open is the one kept.
+  const s = IO.sampleOver(story(), await sampleStory(sm.id));
   s.frameworkChosen = true;   // the sample's outline is laid out under its own format
   mode = 'tag'; started = true; litBeat = '';
   pathStep = s.outline.length ? 'outline' : 'synopsis';
   landStep = pathStep;
   undoBuild = null; lastSend = null;
   history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
+  commit(s);
+}
+
+/* Build's one-level undo, from the toast or the button. Both stay
+   live after later edits (the toast never times out), so an undo that
+   would overwrite synopsis text or highlights made since the build
+   asks first (IO.buildUndoClean). Tension scores are not part of the
+   snapshot and are left as they are. */
+async function undoTheBuild() {
+  if (!undoBuild) return;
+  const mine = undoBuild;
+  // The synopsis field saves on a 600ms debounce. Flush it rather than
+  // only reading the textarea: a save still pending when the undo
+  // commits would fire afterwards and write the later text back over
+  // the restored synopsis, quietly undoing the undo.
+  flushAutosave();
+  const now = story();
+  if (!IO.buildUndoClean(mine, now) && !await askDanger(IO.buildUndoQuestion)) return;
+  if (undoBuild !== mine) return;   // a newer build, a clear or a sample replaced it meanwhile
+  const s = story();
+  Story.restoreSynopsis(s, mine.snap);
+  undoBuild = null;
+  if (!s.source.trim()) mode = 'edit';
   commit(s);
 }
 
@@ -1356,18 +1383,14 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     if (n) { commit(s); StudioUI.toast(`${n} step${n === 1 ? '' : 's'} filed under the nearest ${Story.frameworkById(s.framework).short} beat.`); }
   } else if (act === 'build') {
     if (s.source.trim() && !await askDanger('Rebuild the synopsis from the outline? The synopsis on this page is replaced; highlights you made by hand are kept where their words still appear. You can undo this once.')) return;
-    undoBuild = Story.buildSynopsisFromOutline(s, s.framework);
+    const snap = Story.buildSynopsisFromOutline(s, s.framework);
+    undoBuild = IO.buildUndo(snap, s);
     mode = 'tag';
     commit(s);
-    StudioUI.toast('Synopsis built from the outline — every step tagged with its beat.', { action: 'UNDO', onAction: () => {
-      if (!undoBuild) return; const back = story(); Story.restoreSynopsis(back, undoBuild); undoBuild = null; commit(back);
-    } });
+    undoBuild = IO.buildUndo(snap, story());   // what the build left, as stored
+    StudioUI.toast('Synopsis built from the outline — every step tagged with its beat.', { action: 'UNDO', onAction: () => undoTheBuild() });
   } else if (act === 'build-undo') {
-    if (!undoBuild) return;
-    Story.restoreSynopsis(s, undoBuild);
-    undoBuild = null;
-    if (!s.source.trim()) mode = 'edit';
-    commit(s);
+    undoTheBuild();
   } else if (act === 'send') {
     sendToScreenplay();
   } else if (act === 'send-undo') {

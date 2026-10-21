@@ -518,10 +518,10 @@ const EXPECTED = {
      that followed the UI revamp and the plan features. The pricing
      pass's `finish` row (the Pro line reworded) was absorbed by the
      17 Oct 2026 recapture after the one-frame navigation pass. */
-  invite: { payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.' },
+  invite: { payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },
   admin: {},
   vault: {},
-  purchase: {}   // the once/pay/payment/yours rows retired 21 Oct 2026: the "Before you pay" terms (one payment for one year; the refund is yours) say them again
+  purchase: { production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },   // the once/pay/payment/yours rows retired 21 Oct 2026: the "Before you pay" terms (one payment for one year; the refund is yours) say them again
 };
 
 

@@ -178,13 +178,29 @@ export function planPipeline(opts = {}) {
 function stepScenes(ctx) {
   if (!headingsOf(ctx.elements).length) return { status: 'skipped', wrote: 0, count: listScenes().length, detail: 'The script has no scene headings yet, so there is nothing to break down.' };
   const before = new Set(listScenes().map((s) => s.id));
-  const res = runBreakdown({ elements: ctx.elements, numbering: ctx.numbering });
+  /* fillOnly: a linked row keeps the place, time and number somebody
+     typed on the Breakdown, and a script that would send rows to the
+     bin (or bring them back) is left for the scene sync, which says so
+     with its own Undo — binning takes a scene's shots and sheets with
+     it, and that is not filling a blank. */
+  const res = runBreakdown({ elements: ctx.elements, numbering: ctx.numbering, fillOnly: true });
   const a = res.applied;
+  if (a.refused) {
+    const why = [];
+    if (a.wouldBin) why.push(a.wouldBin === 1 ? '1 scene on the Breakdown has lost its heading in this script' : a.wouldBin + ' scenes on the Breakdown have lost their heading in this script');
+    if (a.wouldRestore) why.push(plural(a.wouldRestore, 'heading') + ' would bring a scene back from the bin');
+    return {
+      status: 'skipped', wrote: 0, count: res.totals.scenes,
+      detail: 'Nothing was changed: ' + why.join(', and ') + '. Manual breakdown on the Breakdown sorts that out (the bin keeps every scene, restorable); then run this again.'
+    };
+  }
   const addedIds = res.scenes.map((s) => s.id).filter((id) => !before.has(id));
-  const wrote = addedIds.length + a.castTagged + a.scenesLinked;
+  const renumbered = Math.max(0, a.scenesUpdated - a.scenesLinked);
+  const wrote = addedIds.length + a.castTagged + a.scenesUpdated;
   const bits = [];
   if (addedIds.length) bits.push(plural(addedIds.length, 'scene') + ' added');
   if (a.scenesLinked) bits.push(a.scenesLinked === 1 ? '1 scene linked to its heading' : a.scenesLinked + ' scenes linked to their headings');
+  if (renumbered) bits.push(renumbered === 1 ? '1 scene given its locked number' : renumbered + ' scenes given their locked numbers');
   if (a.castTagged) bits.push(plural(a.castTagged, 'cast tag'));
   return {
     status: wrote ? 'done' : 'nothing', wrote, count: res.totals.scenes,
@@ -358,8 +374,8 @@ const RUN = {
  * Run every step in order. `onStep(step, index, steps)` is called as a
  * step starts (status 'running') and again when it ends. `only` limits
  * the run to some step ids. Resolves to
- *   { steps: [{ id, label, status, wrote, count, detail, undo }],
- *     summary, wrote, undo() }
+ *   { steps: [{ id, label, status, wrote, count, detail, changed, undo }],
+ *     summary, wrote, undoable, undo() }
  * `undo()` reverses the whole run (last step first) and reports how
  * many steps it reversed. Nothing about the run is stored.
  */
@@ -387,6 +403,7 @@ export async function runPipeline(opts = {}) {
     delete r.surgical;
     Object.assign(st, r);
     const changed = keys.filter((k) => before.get(k) !== after.get(k));
+    st.changed = changed.length;
     st.undo = !changed.length ? () => false : () => {
       const clean = changed.every((k) => read(k) === after.get(k));
       if (clean) { for (const k of changed) put(k, before.get(k)); return true; }
@@ -399,6 +416,9 @@ export async function runPipeline(opts = {}) {
   return {
     steps,
     wrote: steps.reduce((n, s) => n + (s.wrote || 0), 0),
+    /* Undo is offered whenever a step changed a key, whatever it
+       counted as written: a count can miss a write, a key cannot. */
+    undoable: steps.some((s) => s.changed > 0),
     summary: summarizeRun(steps),
     undo() {
       if (undone) return 0;

@@ -409,6 +409,12 @@ for (const w of [1280, 390]) {
   ok(over1 <= 0, `19 the checklist fits at ${w}px`, over1);
   await page.click('.mn-sheet [data-mn="close"]');
   await page.waitForTimeout(300);
+  /* The run's Undo outlives the sheet: closing it leaves a toast that
+     stays, with the Undo on it. */
+  const keptUndo = page.locator('.toast', { has: page.locator('.toast-action', { hasText: 'Undo the run' }) }).last();
+  ok(await keptUndo.isVisible().catch(() => false), `19 closing the checklist keeps the run's Undo in a toast (${w}px)`);
+  await keptUndo.locator('.toast-close').click().catch(() => {});
+  await page.waitForTimeout(200);
   await page.click('#scTop [role="tab"][data-tab="analysis"]');
   const drawn = await page.waitForSelector('#analysis .sa .pc-curve-svg', { timeout: 8000 }).then(() => true, () => false);
   ok(drawn, `19 the Script analysis tab draws the tension curve (${w}px)`);

@@ -193,9 +193,32 @@ export async function openPipeline(opts = {}) {
     h('p.pl-intro', { text: 'Reading the script from the first page to the last. Only blank places are filled — nothing you have written or edited is overwritten.' }),
     bar, list, live
   ]);
-  await sheet({ title: 'Break down everything', body, kind: 'pipeline', returnTo: opts.returnTo });
+  /* The run's Undo must outlive the sheet. Closed by any route (the
+     close button, Escape, the scrim, "Enhance with AI"), a run that can
+     still be undone leaves a toast that stays until it is pressed or
+     dismissed — "one Undo takes the whole run back" stays true. */
+  let res = null;
+  let closed = false;
+  let undone = false;
+  const undoBtn = button({ label: 'Undo this run', icon: 'restart_alt', variant: 'ghost', action: 'pipeline-undo', disabled: true });
+  const doUndo = () => {
+    if (undone || !res) return;
+    undone = true;
+    const n = res.undo();
+    undoBtn.disabled = true;
+    call(opts.onChange, null);
+    StudioUI.toast(n ? 'The run is undone: everything it filled in is back to blank.' : 'Nothing to undo.', { type: 'info' });
+  };
+  const offerUndo = () => {
+    if (undone || !res || !res.undoable) return;
+    StudioUI.toast('Break down everything: the run is kept.', { type: 'info', action: 'Undo the run', onAction: doUndo });
+  };
+  await sheet({
+    title: 'Break down everything', body, kind: 'pipeline', returnTo: opts.returnTo,
+    onClose: () => { closed = true; offerUndo(); }
+  });
   let done = 0;
-  const res = await M.runPipeline({
+  res = await M.runPipeline({
     elements, numbering,
     onStep: (st) => {
       paintRow(list, st);
@@ -204,16 +227,14 @@ export async function openPipeline(opts = {}) {
   });
   body.dataset.pipeline = 'done';
   call(opts.onChange, res);
-  const undoBtn = button({ label: 'Undo this run', icon: 'restart_alt', variant: 'ghost', action: 'pipeline-undo', disabled: !res.wrote });
+  undoBtn.disabled = !res.undoable;
   undoBtn.addEventListener('click', () => {
-    const n = res.undo();
-    undoBtn.disabled = true;
-    call(opts.onChange, null);
-    StudioUI.toast(n ? 'The run is undone: everything it filled in is back to blank.' : 'Nothing to undo.', { type: 'info' });
+    doUndo();
     closeSheet().catch(() => {});
   });
   body.append(summaryBlock(res, opts, undoBtn));
   live.textContent = res.summary.text;
+  if (closed) offerUndo();     // the sheet went while the run was working
   return res;
 }
 

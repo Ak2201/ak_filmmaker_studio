@@ -103,6 +103,18 @@ seed(dragon.elements, { [CALC_KEY]: CALC });
   eq(Scenes.listScenes()[1].shootDay, 99, 'a moved day survives');
   eq(JSON.parse(mem.get(CALC_KEY)).ci_1_days, '7', 'an edited budget day survives');
 
+  /* a place, time and number typed on a linked row survive a re-run
+     (the scenes step fills blanks; it does not re-read the heading) */
+  const row0 = Scenes.listScenes()[0];
+  Scenes.updateScene(row0.id, { location: 'MY OWN PLACE', dayNight: 'NIGHT', number: '1A' });
+  const s3 = snapshot();
+  const fourth = await run();
+  const kept = Scenes.listScenes().find((x) => x.id === row0.id);
+  eq([kept.location, kept.dayNight, kept.number], ['MY OWN PLACE', 'NIGHT', '1A'], 'a re-run keeps the place, time and number typed on a linked scene');
+  eq(fourth.wrote, 0, 're-run after a scene edit: wrote 0');
+  ok(snapshot() === s3, 're-run after a scene edit: storage byte-identical');
+  eq(fourth.undoable, false, 're-run that changed nothing offers no Undo');
+
   /* undo of the FIRST run, after the edits: surgical, edits kept */
   res.undo();
   eq(Shots.listShots().map((s) => s.id), [], 'surgical undo: the rule shots (and the edited one, which the run made) are gone');
@@ -117,6 +129,7 @@ seed(dragon.elements, { [CALC_KEY]: CALC });
   const before = snapshot();
   const res = await run();
   ok(res.wrote > 0, 'fresh run wrote something');
+  eq(res.undoable, true, 'a run that changed storage offers Undo');
   ok(snapshot() !== before, 'storage changed');
   const n = res.undo();
   ok(n >= 5, 'undo reversed the writing steps (' + n + ')');
@@ -164,6 +177,30 @@ seed(FIVE);
   ok(Scenes.listScenes().filter((s) => s.id !== b.id).every((s) => shootDayOf(s) > 4), 'proposed days follow the last day in use');
   eq(step(res, 'budget').status, 'nothing', 'no estimate lines: the budget step has nothing to do');
   eq(loadCharacters().map((c) => c.name).sort(), ['MEENA', 'RAVI'], 'speakers in two scenes join the bible');
+}
+
+/* ---- 6b. a revised draft: rows that lost their heading are never binned
+   by the pipeline (binning takes shots and sheets with it) ------------ */
+seed(dragon.elements);
+{
+  await run({ only: ['scenes', 'shots'] });
+  const was = Scenes.listScenes().length;
+  const doc = JSON.parse(mem.get(SCRIPT_KEY));
+  let k = 0;
+  doc.elements = doc.elements.map((e, i) => {
+    const out = { ...e, id: 'r' + i };
+    if (e.type === 'scene' && String(e.text).trim() && (k++ % 2)) out.text = e.text + ' X';
+    return out;
+  });
+  mem.set(SCRIPT_KEY, JSON.stringify(doc));
+  const before = snapshot();
+  const res = await run({ only: ['scenes'] });
+  const st = step(res, 'scenes');
+  eq(st.status, 'skipped', 'revised draft: the scenes step refuses rather than bin');
+  ok(/lost their heading/.test(st.detail || ''), 'revised draft: the step says why — ' + st.detail);
+  eq(Scenes.listScenes().length, was, 'revised draft: no row added, none binned');
+  ok(snapshot() === before, 'revised draft: storage untouched');
+  eq(res.undoable, false, 'revised draft: nothing to undo');
 }
 
 /* ---- 7. no headings ------------------------------------------------- */

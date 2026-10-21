@@ -4,7 +4,8 @@
    Two dialogs, both on the shared .cm-overlay / .cm-card:
 
      refundDialog({ payment, request })   REFUND on a ledger row, or
-                  APPROVE on a customer's request. Amount (rupees, full
+                  APPROVE on a customer's request. Amount (in the
+                  PAYMENT's currency, §55: rupees or US dollars; full
                   by default), a reason that is REQUIRED, and the plain
                   warning that a refund ends the plan it bought. The
                   button is disabled while the call is in flight and the
@@ -20,7 +21,8 @@
    No inline handlers; Escape cancels; focus is held by modal-focus.js.
    ============================================================ */
 import { h } from '../lib/dom.js';
-import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
+import Billing, { parseRupees, planName } from '../lib/billing.js';
+import { fmtMinor, parseMinor } from '../lib/price-model.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import '../styles/refunds.css';
 
@@ -36,7 +38,11 @@ function open(card, labelId) {
 
 export function refundDialog({ payment, request = null }) {
   return new Promise((resolve) => {
-    const paid = payment.amount_paise;
+    const paid = payment.amount_paise;            // minor units of payment.currency (§55)
+    const cur = payment.currency === 'USD' ? 'USD' : 'INR';
+    const fmt = (m) => fmtMinor(m, cur);
+    /* rupees through the one rupee parser rule; dollars through parseMinor */
+    const parse = (t) => (cur === 'USD' ? parseMinor(t, 'USD') : parseRupees(t));
     const who = payment.email || 'this customer';
     const reasonDefault = request ? `${categoryText(request.category)}${request.message ? ': ' + request.message : ''}`.slice(0, 500) : '';
     const err = h('p.gt-error', { role: 'alert', hidden: true });
@@ -46,8 +52,8 @@ export function refundDialog({ payment, request = null }) {
     const go = h('button.btn.danger', { type: 'submit', text: 'REFUND' });
     const cancel = h('button.btn', { type: 'button', 'data-rf': 'cancel', text: 'CANCEL' });
     const form = h('form', { novalidate: true }, [
-      h('label', { for: 'rfAmount', text: 'Amount to refund (₹)' }), amount,
-      h('p#rfAmountHint.gt-meta', { text: `Up to ${fmtPaise(paid)}, which is what was paid. Leave it as it is to refund in full.` }),
+      h('label', { for: 'rfAmount', text: cur === 'USD' ? 'Amount to refund ($, US dollars)' : 'Amount to refund (₹)' }), amount,
+      h('p#rfAmountHint.gt-meta', { text: `Up to ${fmt(paid)}, which is what was paid${cur === 'USD' ? ', in US dollars' : ''}. Leave it as it is to refund in full.` }),
       h('label', { for: 'rfReason', text: 'Reason (required, kept with the refund)' }), reason,
       h('p.rf-warn', { text: `This ends ${who}’s ${planName(payment.plan_id)} plan today, even for a partial amount, and it cannot be undone from here. Razorpay returns the money to the customer’s original payment method.` }),
       err,
@@ -55,7 +61,7 @@ export function refundDialog({ payment, request = null }) {
     ]);
     const card = h('div.cm-card.gt-card', {}, [
       h('h2#rfHeading', { text: request ? 'Approve and refund?' : 'Refund this payment?' }),
-      h('p.rf-facts', { text: `${who} · ${planName(payment.plan_id)} · paid ${fmtPaise(paid)}${payment.razorpay_payment_id ? ' · ' + payment.razorpay_payment_id : ''}` }),
+      h('p.rf-facts', { text: `${who} · ${planName(payment.plan_id)} · paid ${fmt(paid)}${payment.razorpay_payment_id ? ' · ' + payment.razorpay_payment_id : ''}` }),
       request ? h('p.rf-facts', { text: `They asked: ${categoryText(request.category)}${request.message ? ' — “' + request.message + '”' : ''}` }) : null,
       form
     ].filter(Boolean));
@@ -70,8 +76,8 @@ export function refundDialog({ payment, request = null }) {
       if (busy) return;
       const fail = (t) => { err.textContent = t; err.hidden = false; };
       const raw = amount.value.trim();
-      const paise = parseRupees(raw);
-      if (paise === null || paise < 1 || paise > paid) { fail(`The amount is between ₹0.01 and ${fmtPaise(paid)}.`); amount.focus(); return; }
+      const paise = parse(raw);
+      if (paise === null || paise < 1 || paise > paid) { fail(`The amount is between ${fmt(1)} and ${fmt(paid)}.`); amount.focus(); return; }
       const why = reason.value.trim();
       if (!why) { fail('Write the reason. It is kept with the refund.'); reason.focus(); return; }
       busy = true; err.hidden = true;

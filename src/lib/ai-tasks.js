@@ -45,7 +45,11 @@
      genre-comps      story.js fields genre/audience/budgetTier/comps, via commit
      scene-notes      scenes.js readerNote + cutCandidate on content-matched rows
      breakdown-tags   scenes.js tagMany (adds only), undo = untagMany
-   beat-critique and tension-notes are reads: they write nothing.
+     audience-test    audience-store.js, one document in the script blob's
+                      documents (a partial run's checkpoint as it lands,
+                      the kept run on Accept), through the page's save
+   beat-critique, tension-notes, audience-quick (the story test) and
+   audience-ask (a question to one viewer) are reads: they write nothing.
 
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
@@ -68,6 +72,8 @@ let BoardM = null;        // ./board-frames.js (pure)
 let DriveM = null;        // ./drive.js
 let DriveImg = null;      // ./drive-board.js (the live gate facts)
 let SA = null;            // ./script-analysis-model.js (pure)
+let AudM = null;          // ./audience-model.js (pure)
+let AudS = null;          // ./audience-store.js
 let readyP = null;
 
 function loadAll() {
@@ -77,10 +83,11 @@ function loadAll() {
       import('./scenes.js'), import('./script.js'), import('./shots.js'),
       import('./screenplay-analysis.js'), import('./scriptgen.js'), import('./coverage-store.js'),
       import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
-      import('./drive-board.js'), import('./script-analysis-model.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa]) => {
+      import('./drive-board.js'), import('./script-analysis-model.js'),
+      import('./audience-model.js'), import('./audience-store.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa, am, aus]) => {
       AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
-      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa;
+      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa; AudM = am; AudS = aus;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -1553,9 +1560,350 @@ const tensionTask = {
   }
 };
 
+/* ============================================================
+   AUDIENCE TEST — list. ctx { getDoc, save, elements?, title?,
+                               panel?, format?, getStory?, after?, progress? }
+   ------------------------------------------------------------
+   docs/AUDIENCE-TEST-PLAN.md. A simulated panel reads the script in
+   coverage's parts (AI.runAudienceTest), checkpointed and resumable
+   exactly as coverage is: each part's checkpoint is stored as it
+   lands (audience-store.js, inside the script blob), which is the one
+   write a Skip does not undo, on purpose — it is what stops a stopped
+   run billing twice. The items are the viewers' verdicts and the
+   panel-wide rows; Accept keeps ONE document whose prose holds the
+   ticked rows and whose curves are whole. Undo is exact.
+
+   THE PANEL is ctx.panel when the caller passes one (checked with
+   normalisePanel, and refused in its own sentence when it is too
+   small), else the panel of this draft's unfinished run — so Resume
+   screens to the same viewers — else the default panel derived from
+   the project's format and the story's genre and audience. Custom
+   viewers are never saved on their own (plan §3): they live in the
+   ctx and, if a run is kept, in its document.
+
+   A REFINE re-runs only the verdicts: every part is already in the
+   last checkpoint, so runAudienceTest() skips straight to them, and
+   the follow-up rides in the verdict request as `refine`. A follow-up
+   that names one viewer is answered in that viewer's voice
+   (audience-model viewerRefine) — the same request and schema; for a
+   question that wants an answer rather than a re-run, 'audience-ask'
+   below asks one viewer in one small request.
+   ============================================================ */
+function audienceFormat(c) {
+  const f = formatOf(c);
+  if (f === 'short' || f === 'feature') return f;
+  try { const p = Store.currentProject && Store.currentProject(); if (p && p.format === 'short') return 'short'; } catch (e) { /* default */ }
+  return 'feature';
+}
+
+/** The panel for this ctx and draft: { panel, problem, resumed }. */
+function audiencePanel(c, sig) {
+  if (Array.isArray(c.panel)) return { ...AudM.normalisePanel(c.panel), resumed: false };
+  const store = AudS.audienceStore(() => call(c.getDoc), () => call(c.save));
+  const part = store.partialFor(sig);
+  const cp = part && part.audience.checkpoint;
+  if (cp && Array.isArray(cp.panel)) {
+    const n = AudM.normalisePanel(cp.panel);
+    if (!n.problem) return { ...n, resumed: true };
+  }
+  let s = null;
+  try { s = storyOf(c) || {}; } catch (e) { s = {}; }
+  return { panel: AudM.defaultPanel({ format: audienceFormat(c), genre: s.genre || '', audience: s.audience || '' }), problem: '', resumed: false };
+}
+
+const audienceTask = {
+  id: 'audience-test',
+  label: 'Audience test',
+  kind: 'list',
+  editable: false,
+  identity(ctx) { try { return 'audience:' + AI.scriptSignature(scriptElements(resolve(ctx))); } catch (e) { return 'audience'; } },
+  input(ctx) {
+    const c = resolve(ctx);
+    const els = scriptElements(c);
+    const sig = AI.scriptSignature(els);
+    const { panel, problem, resumed } = audiencePanel(c, sig);
+    if (problem) return problem;
+    const plan = AI.planAudienceTest(els, panel.length);
+    if (!plan.batches.length) return 'This script has no scene headings yet, so there is nothing to screen.';
+    const store = AudS.audienceStore(() => call(c.getDoc), () => call(c.save));
+    const part = store.partialFor(sig);
+    const cp0 = part && part.audience.checkpoint;
+    const cp = cp0 && cp0.batchCount === plan.batches.length && cp0.panelSig === AI.panelSignature(panel) ? cp0 : null;
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    const first = AI.buildAudiencePartPrompt({
+      panel, scenes: plan.batches[0].map((i) => plan.scenes[i]), part: 1, parts: plan.batches.length,
+      title, context: BP.blueprintContext()
+    });
+    const who = panel.map((p) => '· ' + p.label + ' — ' + p.who).join('\n');
+    const tokens = plan.cost.tokensIn + plan.cost.tokensOut;
+    return 'The panel — ' + plural(panel.length, 'simulated viewer', 'simulated viewers')
+      + (resumed ? ', the same panel as the unfinished run' : '') + ':\n' + who
+      + '\n\nThe whole screenplay — ' + plural(plan.scenes.length, 'scene', 'scenes') + ' — in '
+      + plural(plan.batches.length, 'part', 'parts') + ', then one request for the panel’s verdict. About '
+      + plural(cp ? plan.batches.length - cp.parts.length + 1 : plan.cost.requests, 'request', 'requests')
+      + (cp ? ' (' + cp.parts.length + ' of ' + plan.batches.length + ' parts are already screened and are not sent again)' : '')
+      + ', roughly ' + tokens.toLocaleString('en-IN') + ' tokens.'
+      + '\n\n' + AudM.SIMULATED_LINE + '\n\nThe first part sends:\n\n'
+      + (first.length > 6000 ? first.slice(0, 6000) + '\n…' : first);
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const els = scriptElements(c).map((e) => ({ ...e }));
+    const sig = AI.scriptSignature(els);
+    const { panel, problem } = audiencePanel(c, sig);
+    if (problem) fail(problem);
+    const panelSig = AI.panelSignature(panel);
+    const store = AudS.audienceStore(() => call(c.getDoc), () => call(c.save));
+    const mem = last.get('audience-test');
+    const fits = (cp) => cp && cp.sig === sig && cp.panelSig === panelSig;
+    let prior = null;
+    if (refine && mem && fits(mem.checkpoint)) prior = mem.checkpoint;
+    else {
+      const part = store.partialFor(sig);
+      prior = part && fits(part.audience.checkpoint) ? part.audience.checkpoint : null;
+      if (!prior && mem && fits(mem.checkpoint)) prior = mem.checkpoint;
+    }
+    let checkpoint = prior;
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    const res = await AI.runAudienceTest({
+      elements: els, panel, title, prior,
+      context: withRefineContext(BP.blueprintContext(), refine),
+      /* A follow-up addressed to one viewer ("festival programmer, why
+         did you stay?") is answered in that viewer's voice: one more
+         line on the same verdict request, same schema (viewerRefine). */
+      refine: [refineText(refine), refine ? AudM.viewerRefine(refine.instructions, panel) : ''].filter(Boolean).join('\n\n')
+    }, {
+      signal, onStatus,
+      onCheckpoint: (cp) => { checkpoint = cp; store.storeCheckpoint(cp); call(c.progress); }
+    });
+    return remember('audience-test', { items: AudM.resultItems(res), note: AudM.resultNote(res)
+      + '\nRead ' + plural(res.scenes, 'scene', 'scenes') + ' in ' + plural(res.requests, 'request', 'requests') + '.' },
+    { sig, checkpoint, res });
+  },
+  apply(selected, ctx, result) {
+    const c = resolve(ctx);
+    const mem = recall('audience-test', result);
+    if (!mem || !mem.res) fail('There is no audience test to keep. Run it first.');
+    const keep = new Set((selected || []).map((it) => it.id));
+    const store = AudS.audienceStore(() => call(c.getDoc), () => call(c.save));
+    const out = store.storeResult(JSON.parse(JSON.stringify(mem.res)), keep);
+    if (!out) fail('The script could not be reached, so nothing was saved.');
+    call(c.after, out.doc);
+    return () => { out.undo(); call(c.after, null); };
+  }
+};
+
+/* ============================================================
+   AUDIENCE TEST — STORY (quick mode) — read.
+   ctx { getStory?, format?, panel?, title? }
+   ------------------------------------------------------------
+   docs/AUDIENCE-TEST-PLAN.md §1 and §4, phase 4. The same panel reads
+   the Story page's synopsis and beat sheet in ONE request
+   (AI.runAudienceQuick), scored per beat, so the story can be tested
+   before a page of screenplay exists.
+
+   A READ, ON PURPOSE. There may be no script yet, so there is no
+   script blob to keep a document in, and the story record has no
+   field for it — keeping one would need a new field in fms_story_v1
+   (a contract with saved work) for something the writer can re-run
+   for one request. So it writes nothing: the answer is resultText()
+   prose and the note, and the last run is remembered for this visit
+   only, which is what 'audience-ask' reads when there is no kept
+   screenplay run.
+
+   THE BEATS are the framework's beats in order, numbered by their
+   place in it: each one's written steps (an unplaced step joins the
+   beat it is nearest to), else the passages tagged to it. With no
+   beat sheet the synopsis is read in passages. Neither → a sentence.
+   ============================================================ */
+function storyBeats(s) {
+  const o = StoryM.outlineByBeat(s);
+  const near = new Map();
+  for (const u of o.unplaced) {
+    if (!u.suggest) continue;
+    if (!near.has(u.suggest.id)) near.set(u.suggest.id, []);
+    near.get(u.suggest.id).push(u);
+  }
+  let marks = [];
+  try { marks = StoryM.matrix(s, o.fw.id); } catch (e) { marks = []; }
+  return o.beats.map((r, i) => {
+    const steps = r.steps.concat(near.get(r.beat.id) || []).map((x) => String(x.text || '').trim()).filter(Boolean);
+    const tagged = steps.length ? [] : ((marks[i] && marks[i].marks) || []).map((m) => String(m.text || '').trim()).filter(Boolean);
+    return { n: String(i + 1), label: r.beat.label || r.beat.id, text: steps.concat(tagged).join(' ') };
+  });
+}
+
+function quickJob(c) {
+  let s = null;
+  try { s = storyOf(c) || {}; } catch (e) { s = {}; }
+  const beats = s && Array.isArray(s.outline) ? storyBeats(s) : [];
+  const synopsis = String((s && s.source) || '');
+  const { units, unit } = AudM.quickUnits({ beats, synopsis });
+  const fmt = audienceFormat(c);
+  const pn = Array.isArray(c.panel)
+    ? AudM.normalisePanel(c.panel)
+    : { panel: AudM.defaultPanel({ format: fmt, genre: s.genre || '', audience: s.audience || '' }), problem: '' };
+  let title = c.title;
+  if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+  return { beats, synopsis, units, unit, panel: pn.panel, problem: pn.problem, title };
+}
+
+/** The read the Desk shows: the prose, then whatever of the note the
+    prose does not already say (the simulated line is in both). */
+function quickText(res) {
+  const text = AudM.resultText(res);
+  const extra = AudM.resultNote(res).split('\n').filter((l) => l && !text.includes(l));
+  return text + (extra.length ? '\n\n' + extra.join('\n') : '')
+    + '\n\nNothing was saved. Run it again after you change the story.';
+}
+
+const audienceQuickTask = {
+  id: 'audience-quick',
+  label: 'Audience test — story',
+  kind: 'read',
+  editable: false,
+  identity(ctx) {
+    try { return 'audience-quick:' + AI.storySignature(quickJob(resolve(ctx)).units); } catch (e) { return 'audience-quick'; }
+  },
+  input(ctx) {
+    const c = resolve(ctx);
+    const job = quickJob(c);
+    if (!job.units.length) return AudM.QUICK_EMPTY;
+    if (job.problem) return job.problem;
+    const who = job.panel.map((p) => '· ' + p.label + ' — ' + p.who).join('\n');
+    const prompt = AI.buildAudienceQuickPrompt({ ...job, context: BP.blueprintContext() });
+    const tokens = Math.ceil((prompt.length + AudM.QUICK_SYSTEM.length) / 4)
+      + Math.ceil(AudM.partMaxTokens(job.panel.length, job.units.length) / 2);
+    const what = job.unit === 'Beat'
+      ? 'The synopsis and the beat sheet — ' + plural(job.units.length, 'beat', 'beats') + ' with something written under them'
+      : 'The synopsis, in ' + plural(job.units.length, 'passage', 'passages') + ' (there is no beat sheet yet)';
+    return 'The panel — ' + plural(job.panel.length, 'simulated viewer', 'simulated viewers') + ':\n' + who
+      + '\n\n' + what + ', in one request. Roughly ' + tokens.toLocaleString('en-IN') + ' tokens.'
+      + '\n\n' + AudM.SIMULATED_LINE + '\n\nWhat is sent:\n\n'
+      + (prompt.length > 6000 ? prompt.slice(0, 6000) + '\n…' : prompt);
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const job = quickJob(c);
+    if (!job.units.length) fail(AudM.QUICK_EMPTY);
+    if (job.problem) fail(job.problem);
+    const extra = refine ? AudM.viewerRefine(refine.instructions, job.panel) : '';
+    const res = await AI.runAudienceQuick({
+      panel: job.panel, beats: job.beats, synopsis: job.synopsis, title: job.title,
+      context: withRefineContext(BP.blueprintContext(), refine),
+      refine: [refineText(refine), extra].filter(Boolean).join('\n\n')
+    }, { onStatus, signal });
+    return remember('audience-quick', { text: quickText(res) }, { res });
+  }
+};
+
+/* ============================================================
+   ASK A VIEWER — read. ctx { viewer?, question?, result?, getDoc?,
+                              title? }
+   ------------------------------------------------------------
+   Plan §10 item 4. One question to one simulated viewer of a run
+   already made, in ONE request (AI.askAudienceViewer) that carries
+   that viewer's record — their curve, moments, walkout and verdict —
+   and not the pages. Writes nothing.
+
+   WHICH RUN: ctx.result when the caller hands one over, else the
+   newest of the kept screenplay run (audience-store latest(), from
+   ctx.getDoc or the stored script) and the runs made in this visit
+   (the full test and the story test, from their remembered results).
+
+   THE QUESTION is ctx.question, typed into the box under the first
+   line, and the box is editable, so a pill needs no form of its own.
+   The viewer is ctx.viewer, unless the question names another one
+   (by id or label). A chat refinement is a further question to the
+   same viewer, through the same refine block every task uses.
+   ============================================================ */
+const ASK_HEAD = 'Your question to ';
+const ASK_RULE = '\n---\n';
+
+function askSource(c) {
+  if (c.result && Array.isArray(c.result.panel) && Array.isArray(c.result.order)) return c.result;
+  const cands = [];
+  try {
+    const doc = typeof c.getDoc === 'function' ? c.getDoc() : ScriptM.loadScript();
+    const kept = AudS.audienceStore(() => doc, () => {}).latest();
+    if (kept) cands.push(kept.audience);
+  } catch (e) { /* no script */ }
+  for (const id of ['audience-test', 'audience-quick']) {
+    const m = last.get(id);
+    if (m && m.res) cands.push(m.res);
+  }
+  let best = null;
+  for (const r of cands) if (!best || String(r.at || '') > String(best.at || '')) best = r;
+  return best;
+}
+
+function askViewer(c, res, question) {
+  if (!res) return null;
+  return AudM.viewerNamed(question, res.panel) || res.panel.find((p) => p.id === c.viewer) || null;
+}
+
+/* What the writer typed: the box's text above the rule, minus the
+   first line when it is still the heading the Desk put there. */
+function askQuestion(input, c) {
+  let t = String(input ?? '');
+  const cut = t.indexOf(ASK_RULE);
+  if (cut >= 0) t = t.slice(0, cut);
+  const lines = t.split('\n');
+  if (lines[0].startsWith(ASK_HEAD)) lines.shift();
+  const q = lines.join('\n').trim();
+  return q || String(c.question || '').trim();
+}
+
+const audienceAskTask = {
+  id: 'audience-ask',
+  label: 'Ask a viewer',
+  kind: 'read',
+  chips: ['Why did you feel that?', 'What would have kept you watching?', 'Which moment stayed with you?'],
+  identity(ctx) {
+    const c = resolve(ctx);
+    try { const r = askSource(c); return 'audience-ask:' + (r ? r.sig + '@' + r.at : '') + ':' + (c.viewer || ''); } catch (e) { return 'audience-ask'; }
+  },
+  input(ctx) {
+    const c = resolve(ctx);
+    const res = askSource(c);
+    if (!res) return 'There is no audience test to ask about yet. Run one on Script analysis, or on the Story page, first.';
+    const q = String(c.question || '').trim();
+    const p = askViewer(c, res, q);
+    const who = p ? p.label : 'one of the viewers (name them in the question)';
+    const L = [ASK_HEAD + who + ' — type it below. Name another viewer to ask them instead.', q, ASK_RULE.trim()];
+    L.push('The panel: ' + res.panel.map((x) => x.label).join(', ') + '.');
+    L.push('Sent with your question: ' + (p ? p.label + '’s' : 'that viewer’s') + ' own scores, moments and verdict from the run'
+      + (res.at ? ' of ' + String(res.at).slice(0, 10) : '') + ' — not your pages. One request.');
+    L.push('', AudM.SIMULATED_LINE);
+    return L.join('\n');
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const res = askSource(c);
+    if (!res) fail('There is no audience test to ask about yet. Run one first.');
+    /* A chat follow-up with the box left empty is itself the question. */
+    const asks = refine && Array.isArray(refine.instructions) ? refine.instructions.filter((x) => String(x || '').trim()) : [];
+    const question = askQuestion(input, c) || String(asks[asks.length - 1] || '').trim();
+    if (!question) fail('Type the question you want to ask first.');
+    const p = askViewer(c, res, question);
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    const out = await AI.askAudienceViewer({
+      result: res, viewer: p ? p.id : '', question, title, refine: refineText(refine), headings: res.headings
+    }, { onStatus, signal });
+    return { text: AudM.askText(out, { res, viewer: out.viewer, question, model: out.model }) };
+  }
+};
+
 /* ---- registration ------------------------------------------- */
 const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
-  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask, tensionTask];
+  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask, tensionTask, audienceTask,
+  audienceQuickTask, audienceAskTask];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once

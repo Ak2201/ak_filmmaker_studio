@@ -1,0 +1,65 @@
+{
+  "_about": "The Audience test's preset viewers (docs/AUDIENCE-TEST-PLAN.md §3). A viewer is defined by VIEWING HABITS AND TASTE only — what they watch, where, how often, what they reward and what loses them. Never by religion, caste, ethnicity or politics; never a real person, critic or star. `id` is written into saved Audience test documents inside the script blob, so an id is never renamed once shipped (add a new one instead). `who` and `cares` are sent to the model as written. Order here is the feature film's default panel order; src/lib/audience-model.js derives the short film's order and fills {genre}.",
+  "personas": [
+    {
+      "id": "family-theatre",
+      "label": "Family weekend viewer",
+      "who": "Goes to a Tamil theatrical release with the family about twice a month, and picks the film the whole family can sit through.",
+      "cares": "Rewards warmth, clear stakes, songs that earn their place and an ending that lands. Loses patience with long stretches nobody in the row can follow, and is uncomfortable with gratuitous violence."
+    },
+    {
+      "id": "mass-fan",
+      "label": "Mass-film fan",
+      "who": "Books the first day, first show for big star vehicles and watches the trailer ten times before release.",
+      "cares": "Rewards elevation moments, a hero introduction, punch dialogue and an interval block that sends people out buzzing. Gets restless when the lead is passive or the second half sags."
+    },
+    {
+      "id": "ott-binger",
+      "label": "OTT binger",
+      "who": "Watches most films on a phone or laptop through streaming apps, often at 1.25x, usually alone and late.",
+      "cares": "Rewards a strong first ten minutes and scenes that each change something. Reaches for the skip button on slow openings, repeated information and songs that pause the story."
+    },
+    {
+      "id": "genre-fan",
+      "label": "Genre fan",
+      "who": "Follows {genre} films closely, in Tamil and in other languages, and knows the conventions well.",
+      "cares": "Rewards a fresh turn on a familiar convention and a set-up that pays off. Spots borrowed twists early and loses interest when the film does exactly what the genre always does."
+    },
+    {
+      "id": "festival",
+      "label": "Festival programmer",
+      "who": "Watches around three hundred films a year to choose a festival line-up, many of them shorts and debuts.",
+      "cares": "Rewards a distinct voice, restraint and specificity of place and people. Is unmoved by spectacle for its own sake and by endings that explain themselves."
+    },
+    {
+      "id": "distributor",
+      "label": "Distributor",
+      "who": "Buys and releases films for theatres and streaming, and reads every story as a trailer, a poster and an opening weekend.",
+      "cares": "Rewards a premise that can be said in a sentence, a hook in the first act and clear moments to cut a trailer from. Worries about a film that is hard to sell in one line or that loses its audience halfway."
+    },
+    {
+      "id": "teen",
+      "label": "17-year-old",
+      "who": "Watches more clips and reels than whole films, goes to the theatre with friends for the big ones.",
+      "cares": "Rewards energy, humour that feels current and characters their own age who sound real. Calls out dialogue that feels old-fashioned or preachy, and checks their phone when a scene drags."
+    },
+    {
+      "id": "non-tamil",
+      "label": "Subtitle viewer",
+      "who": "Watches Tamil films with English subtitles and does not speak Tamil.",
+      "cares": "Rewards stories that carry through image and situation. Gets lost when a scene depends on wordplay, on local references nobody explains, or on many characters introduced at once."
+    },
+    {
+      "id": "parent",
+      "label": "Parent of young kids",
+      "who": "Watches after ten at night once the children are asleep, usually tired and easily interrupted.",
+      "cares": "Rewards clarity and momentum. Gives up when confused about who someone is or why something happened, and does not come back."
+    },
+    {
+      "id": "critic",
+      "label": "Film-society regular",
+      "who": "Reads screenplays, runs a weekly film club and writes about films for a small readership.",
+      "cares": "Rewards craft: earned turns, subtext, characters who choose. Punishes convenience, coincidence, cliché and dialogue that announces what the audience can already see."
+    }
+  ]
+}

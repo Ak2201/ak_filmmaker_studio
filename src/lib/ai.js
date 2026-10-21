@@ -60,6 +60,9 @@ import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
 import { sliceScript } from './screenplay-analysis.js';
 import { cueName as cueOf } from './screenplay-analysis.js';
+/* The Audience test's pure half (prompts, schemas, checks, curves);
+   it imports nothing from here, so the one slicer stays one. */
+import * as Audience from './audience-model.js';
 import Providers, {
   PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
@@ -2389,6 +2392,290 @@ export async function runCoverage(job, { onStatus, onCheckpoint, signal, batchCh
     truncated: !!syn.truncated,
     model: syn.model
   };
+}
+
+/* ------------------------------------------------------------
+   THE AUDIENCE TEST
+   ------------------------------------------------------------
+   docs/AUDIENCE-TEST-PLAN.md §4. A panel of simulated viewers reads
+   the script in coverage's own parts (planCoverage — the one slicer,
+   the one batching), then one request turns their curves into
+   verdicts. Everything that is not the request — the panel, the
+   prompts, the schemas, every check on a reply, the merged curves —
+   is in src/lib/audience-model.js, which is pure and imports nothing
+   from here. This is only the composition around callModel().
+
+   ONE REQUEST PER PART, NOT ONE PER VIEWER. Each part sends the
+   whole panel with the scenes and gets every viewer's reaction back
+   in one structured reply, so a feature costs what coverage costs.
+
+   THE PANEL'S ONLY MEMORY IS WHAT IT SAID. The state lines and the
+   walkouts of every part read so far are merged (mergeParts) and
+   sent with the next part. A viewer who walked out is not on the
+   next part's panel, and when the whole panel has walked out the
+   remaining parts are not sent at all — nobody is watching them.
+
+   RESUMABLE EXACTLY AS COVERAGE IS. `onCheckpoint` gets the parts
+   read so far after every part, before the next one is spent, and a
+   `prior` checkpoint resumes from there. A checkpoint is used only
+   for the SAME draft (scriptSignature), the same number of parts and
+   the SAME panel (panelSignature) — a part read by another panel is
+   another screening, and splicing the two would be a curve nobody
+   watched.
+
+   NOTHING IS WRITTEN HERE. The checkpoint is handed to the caller,
+   which stores it (src/lib/audience-store.js) through the page's own
+   save; the result is returned for a person to keep or not.
+   ------------------------------------------------------------ */
+
+/** A fingerprint of the panel: who is on it and how each is described.
+    The script's own FNV, over one pseudo-element per viewer. */
+export function panelSignature(panel) {
+  return scriptSignature((panel || []).map((p) => ({ type: String(p && p.id), text: String((p && p.who) || '') + '\u0003' + String((p && p.cares) || '') })));
+}
+
+/** The part prompt, with the blueprint context rendered the way every
+    other job prints it. Exported for the Desk's input view, so what
+    the writer is shown is what is sent. */
+export function buildAudiencePartPrompt(job) {
+  const context = Array.isArray(job && job.context) ? contextBlock(job.context) : str(job && job.context, 20000);
+  return Audience.buildPartPrompt({ ...job, context });
+}
+export const buildAudienceSynthPrompt = (job) => Audience.buildSynthPrompt(job);
+export const AUDIENCE_SYSTEM = Audience.AUDIENCE_SYSTEM;
+const AUDIENCE_SYNTH_SYSTEM = Audience.AUDIENCE_SYSTEM
+  + '\n\nThe screening is over. This request is the panel\'s verdicts, from the scores and notes they gave.';
+
+/** The plan and its cost, for the Desk's input line: coverage's parts
+    with the panel's share of each reply. */
+export function planAudienceTest(elements, panelSize, { batchChars } = {}) {
+  const plan = planCoverage(elements, { batchChars });
+  return { ...plan, cost: Audience.planAudience(plan, panelSize) };
+}
+
+const zeroDropped = () => ({ scenes: 0, quotes: 0, viewers: 0, scores: 0 });
+
+/**
+ * The whole run, resumable.
+ *   job { elements, panel, title?, context?, refine?, prior? }
+ * `context` is the blueprint context (coverage's shape) and rides in
+ * every part; `refine` is the Desk's follow-up text and rides in the
+ * verdict request, which is the one a refine re-sends (every part is
+ * already in the checkpoint). `prior` is a checkpoint
+ * ({ sig, batchCount, panelSig, panel, parts, model }).
+ *
+ * Resolves to audience-model's buildResult() plus { requests, scenes,
+ * truncated, headings: [{ n, heading }] } (headings are kept with the
+ * result; the other three are the run's own). Throws AIError ('aborted' on Stop) with every finished
+ * part already handed to onCheckpoint.
+ */
+export async function runAudienceTest(job, { onStatus, onCheckpoint, signal, batchChars } = {}) {
+  const plan = planCoverage(job && job.elements, { batchChars });
+  if (!plan.batches.length) {
+    throw new AIError('There are no scene headings in the script yet, so there is nothing to screen.', 'noscenes');
+  }
+  const { panel, problem } = Audience.normalisePanel(job.panel);
+  if (problem) throw new AIError(problem, 'nopanel');
+  const sig = scriptSignature(job.elements);
+  const panelSig = panelSignature(panel);
+  const p0 = job.prior;
+  const prior = p0 && p0.sig === sig && p0.panelSig === panelSig && Array.isArray(p0.parts)
+    && p0.batchCount === plan.batches.length && p0.parts.length <= plan.batches.length ? p0 : null;
+  const state = { sig, batchCount: plan.batches.length, panelSig, panel, parts: prior ? prior.parts.slice() : [], model: prior ? prior.model || '' : '' };
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  const checkpoint = () => {
+    if (!onCheckpoint) return;
+    try { onCheckpoint({ ...state, parts: state.parts.slice() }); } catch (e) { console.warn('[ai] checkpoint', e); }
+  };
+  const stopped = () => new AIError('Stopped. The parts already screened are kept, and Resume carries on from there.', 'aborted');
+  const checkers = new Map(plan.scenes.map((s) => [String(s.n), quoteChecker(s.text)]));
+  const isQuote = (q, n) => { const c = checkers.get(String(n)); return !!(c && c(q)); };
+  const whole = { panel, scenes: plan.scenes };
+  const parts = plan.batches.length;
+  let sent = 0;
+  let truncated = false;
+
+  for (let b = state.parts.length; b < parts; b++) {
+    if (signal && signal.aborted) throw stopped();
+    const sofar = Audience.mergeParts(state.parts, whole);
+    const walkedOut = Object.keys(sofar.walkouts);
+    const watching = panel.filter((p) => !sofar.walkouts[p.id]);
+    const scenes = plan.batches[b].map((i) => plan.scenes[i]);
+    const read = plan.batches.slice(0, b).reduce((n, x) => n + x.length, 0);
+    if (!watching.length) {
+      /* The whole panel has left. The part is recorded as screened to
+         an empty room, so the checkpoint still counts every part. */
+      state.parts.push({ viewers: {}, dropped: zeroDropped() });
+      checkpoint();
+      continue;
+    }
+    const line = 'Part ' + (b + 1) + ' of ' + parts + ' — the panel has read ' + read + (read === 1 ? ' scene' : ' scenes');
+    say(line + '…');
+    let r;
+    try {
+      r = await callModel({
+        system: Audience.AUDIENCE_SYSTEM,
+        user: buildAudiencePartPrompt({ panel, scenes, part: b + 1, parts, title: job.title,
+          states: sofar.states, walkedOut, context: job.context }),
+        schema: Audience.partSchema(),
+        maxTokens: Audience.partMaxTokens(watching.length, scenes.length),
+        effort: 'medium',
+        onStatus, signal,
+        progress: (text) => {
+          const n = (text.match(/"viewer"/g) || []).length;
+          return line + (n ? ' — ' + Math.min(n, watching.length) + ' of ' + watching.length + ' viewers answered' : '…');
+        }
+      });
+    } catch (e) {
+      if (e && e.kind === 'aborted') throw stopped();
+      throw e;
+    }
+    sent++;
+    if (r.truncated) truncated = true;
+    const got = Audience.readPart(r.parsed, { panel, sceneNs: scenes.map((s) => s.n), isQuote, walkedOut });
+    if (!Object.keys(got.viewers).length) {
+      throw new AIError('The reply for part ' + (b + 1) + ' held no reactions from the panel, so nothing from it was kept.'
+        + (state.parts.length ? ' The parts already screened are kept, and Resume tries this one again.' : ''), 'malformed');
+    }
+    state.parts.push(got);
+    state.model = r.model;
+    checkpoint();
+  }
+
+  if (signal && signal.aborted) throw stopped();
+  const run = Audience.mergeParts(state.parts, whole);
+  say('The panel is giving its verdicts…');
+  let syn;
+  try {
+    syn = await callModel({
+      system: AUDIENCE_SYNTH_SYSTEM,
+      user: Audience.buildSynthPrompt({ panel, run, scenes: plan.scenes, title: job.title, refine: job.refine }),
+      schema: Audience.synthSchema(),
+      maxTokens: Math.min(16000, 3000 + panel.length * 600),
+      effort: 'medium',
+      onStatus, signal,
+      progress: (text) => 'The panel is giving its verdicts — ' + Math.min((text.match(/"verdict"/g) || []).length, panel.length) + ' of ' + panel.length
+    });
+  } catch (e) {
+    if (e && e.kind === 'aborted') throw stopped();
+    throw e;
+  }
+  sent++;
+  if (syn.truncated) truncated = true;
+  const synth = Audience.readSynth(syn.parsed, { panel, run });
+  if (!Object.keys(synth.verdicts).length) {
+    throw new AIError('The reply held no verdicts from the panel, so nothing was kept. The parts already screened are kept, and Resume asks for the verdicts again.', 'malformed');
+  }
+  const res = Audience.buildResult({ panel, run, synth, model: syn.model || state.model, sig, at: new Date().toISOString() });
+  /* Each scene's heading AS THE TEST READ IT, beside `order`, so a kept
+     run can say which scene it scored after the draft has moved on —
+     the Script analysis chart places and names scenes by these, not by
+     whatever this draft's numbering happens to be (quick mode stores
+     its beats the same way). */
+  const headings = plan.scenes.map((s) => ({ n: String(s.n), heading: String(s.heading || '') }));
+  return { ...res, requests: sent, scenes: plan.scenes.length, truncated, headings };
+}
+
+/* ---- quick mode: the story in one request -------------------
+   Plan §4 "Quick mode", phase 4. The Story page's synopsis and beat
+   sheet (audience-model quickUnits) go to the same panel in ONE
+   request, scored per beat. No parts, so no checkpoint and no
+   Resume: Stop costs the one request and keeps nothing. A quote is
+   checked against the beat it names and the synopsis — the writer's
+   words either way — with the same quoteChecker coverage uses.
+
+     job { panel, beats [{ n?, label, text }], synopsis, title?,
+           context?, refine? }
+
+   Resolves to buildResult() with `unit` set, plus { requests: 1,
+   beats, truncated }. Throws AIError: 'nocontent' when the story has
+   nothing to screen, 'nopanel', 'malformed' for a reply with no
+   usable reactions, 'aborted' on Stop. */
+export function buildAudienceQuickPrompt(job) {
+  const context = Array.isArray(job && job.context) ? contextBlock(job.context) : str(job && job.context, 20000);
+  return Audience.buildQuickPrompt({ ...job, context });
+}
+
+/** A fingerprint of what a quick run read: the units, as pseudo-elements. */
+export function storySignature(units) {
+  return 'story:' + scriptSignature((units || []).map((u) => ({ type: String(u.n), text: String(u.heading) + '\u0003' + String(u.text) })));
+}
+
+export async function runAudienceQuick(job, { onStatus, signal } = {}) {
+  const { units, unit } = Audience.quickUnits({ beats: job && job.beats, synopsis: job && job.synopsis });
+  if (!units.length) throw new AIError(Audience.QUICK_EMPTY, 'nocontent');
+  const { panel, problem } = Audience.normalisePanel(job.panel);
+  if (problem) throw new AIError(problem, 'nopanel');
+  const synopsis = String(job.synopsis ?? '');
+  const checkers = new Map(units.map((u) => [String(u.n), quoteChecker([u.text, synopsis])]));
+  const isQuote = (q, n) => { const c = checkers.get(String(n)); return !!(c && c(q)); };
+  const word = unit === 'Beat' ? 'beats' : 'passages';
+  const line = 'The panel is reading the story — ' + units.length + ' ' + word;
+  if (onStatus) { try { onStatus(line + '…'); } catch (e) { /* UI */ } }
+  let r;
+  try {
+    r = await callModel({
+      system: Audience.QUICK_SYSTEM,
+      user: buildAudienceQuickPrompt({ panel, units, unit, synopsis, title: job.title, context: job.context, refine: job.refine }),
+      schema: Audience.quickSchema(),
+      maxTokens: Math.min(16000, Audience.partMaxTokens(panel.length, units.length) + panel.length * 300),
+      effort: 'medium',
+      onStatus, signal,
+      progress: (text) => line + ' — ' + Math.min((text.match(/"viewer"/g) || []).length, panel.length) + ' of ' + panel.length + ' viewers answered'
+    });
+  } catch (e) {
+    if (e && e.kind === 'aborted') throw new AIError('Stopped. Nothing was kept; Run sends the story again.', 'aborted');
+    throw e;
+  }
+  const run = Audience.readQuick(r.parsed, { panel, units, isQuote });
+  if (!Object.values(run.curves).some((c) => c.some((x) => x != null))) {
+    throw new AIError('The reply held no reactions from the panel, so nothing is shown.', 'malformed');
+  }
+  const res = Audience.buildResult({ panel, run, synth: run.synth, model: r.model, sig: storySignature(units), at: new Date().toISOString(), unit });
+  return { ...res, requests: 1, beats: units.length, truncated: !!r.truncated, headings: units.map((u) => ({ n: u.n, heading: u.heading })) };
+}
+
+/* ---- ask one viewer -----------------------------------------
+   Plan §10 item 4. One request, built from ONE viewer's record in a
+   finished result (audience-model buildAskPrompt) — never the pages —
+   answered in that viewer's voice; a cited scene the run does not
+   have is dropped and counted (readAsk).
+
+     job { result (buildResult, or a stored document's `audience`),
+           viewer? (id), question, title?, refine?, headings? }
+
+   The viewer is `viewer` when given, else whoever the question names
+   (viewerNamed). Resolves to { answer, cites, dropped, viewer,
+   model }. */
+export async function askAudienceViewer(job, { onStatus, signal } = {}) {
+  const res = job && job.result;
+  if (!res || !Array.isArray(res.panel) || !Array.isArray(res.order)) {
+    throw new AIError('There is no audience test to ask about yet. Run one first.', 'nocontent');
+  }
+  const question = str(job.question, 1200);
+  if (!question) throw new AIError('Type the question you want to ask first.', 'nocontent');
+  const named = res.panel.find((p) => p.id === job.viewer) || Audience.viewerNamed(question, res.panel);
+  if (!named) {
+    throw new AIError('Name the viewer you are asking — one of: ' + res.panel.map((p) => p.label).join(', ') + '.', 'nocontent');
+  }
+  let r;
+  try {
+    r = await callModel({
+      system: Audience.ASK_SYSTEM,
+      user: Audience.buildAskPrompt({ res, viewer: named.id, question, title: job.title, refine: job.refine, headings: job.headings }),
+      schema: Audience.askSchema(),
+      maxTokens: 2000,
+      effort: 'low',
+      onStatus, signal,
+      progress: () => named.label + ' is answering…'
+    });
+  } catch (e) {
+    if (e && e.kind === 'aborted') throw new AIError('Stopped. Nothing was changed.', 'aborted');
+    throw e;
+  }
+  const ans = Audience.readAsk(r.parsed, { res });
+  if (!ans.answer) throw new AIError('The reply held no answer, so nothing is shown.', 'malformed');
+  return { ...ans, viewer: named.id, model: r.model };
 }
 
 /* ------------------------------------------------------------

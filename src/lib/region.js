@@ -205,7 +205,27 @@ export function setProjectRegion(r, id) {
   return after;
 }
 
+/* ---- India-only material, hidden for a film made elsewhere ------
+   REGION-CONTENT (docs/US-MARKET-PLAN.md §E). One attribute on <html>,
+   `data-no-india`, present while the open film's prefs say
+   showIndiaContent is false; base.css hides the Tamil/Tanglish glosses,
+   the reading-language switch and anything marked [data-india-only]
+   under it. HIDDEN, never removed: every data-key and fragment target
+   stays in the DOM, and switching the film back to India shows them
+   again without a reload. Reads only (no write on load), so the idle-
+   write check holds. Re-stamped when the film, its region or the
+   device's market changes. */
+export function markIndiaContent() {
+  const show = currentProjectPrefs().showIndiaContent;
+  try { document.documentElement.toggleAttribute('data-no-india', !show); } catch (e) { /* no DOM (Node) */ }
+  return show;
+}
+if (typeof document !== 'undefined') {
+  markIndiaContent();
+  ['current:changed', 'region:project', 'region:changed'].forEach((ev) => Store.subscribe(ev, markIndiaContent));
+}
+
 export default {
   REGION_KEY, REGIONS, region, chosenRegion, detectRegion, setRegion, isIndia,
-  currentProjectPrefs, regionForNewProject, setProjectRegion
+  currentProjectPrefs, regionForNewProject, setProjectRegion, markIndiaContent
 };

@@ -33,7 +33,7 @@ import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { LINK_KINDS, guessKind, linkText } from '../lib/links.js';
 import { listScenes } from '../lib/scenes.js';
-import { isIndia } from '../lib/region.js';
+import { isIndia, currentProjectPrefs } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
 import {
   blueprintSays, projectFormat, TABS, tabFromHash as tabOf, tabForKey, shownItems, TOOL_LINK, fmtChecked, hostOf,
@@ -339,7 +339,7 @@ function certificationPanel(build) {
      three different procedures, and writing a plausible-looking
      checklist for one of them from memory is exactly the kind of
      confident wrongness this file's sources exist to prevent. */
-  if (!isIndia()) {
+  if (!currentProjectPrefs().showIndiaContent) {
     sec.append(h('h2.dv-h2', { text: 'Certification flags' }));
     sec.append(h('p.dv-blurb', {
       text: 'These checks read a script against Indian certification law — the CBFC\u2019s examining '

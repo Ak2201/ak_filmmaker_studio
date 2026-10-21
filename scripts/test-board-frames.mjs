@@ -49,7 +49,7 @@ register('data:text/javascript,' + encodeURIComponent(`
         'export const rawSet = (k, v) => { m.set(k, String(v)); return true; };' +
         'export const rawRemove = (k) => { m.delete(k); return true; };' +
         'export const flushStorage = () => Promise.resolve();' +
-        'export default {};'), shortCircuit: true };
+        'export default { subscribe: () => () => {} };'), shortCircuit: true };
     if (spec.endsWith('.css'))
       return { url: 'data:text/javascript,export default {}', shortCircuit: true };
     return next(spec, ctx);
@@ -297,6 +297,27 @@ ok(new Set(B.ASPECTS.map((a) => a.id)).size === B.ASPECTS.length, 'aspect ids ar
   eq([res4.made.length, res4.failed.length, up4], [3, 7, 4], 'bulk: a stop at 4 of 10 reports 7 not uploaded, and tries no more (review fix)');
   ok(/7 pictures did not upload \(reconnect\)/.test(B.bulkSummary(res4)), 'bulk: the summary counts the skipped ones — ' + B.bulkSummary(res4));
   eq(B.bulkSummary({}), 'Nothing to upload.', 'bulk: an empty run says so');
+}
+
+/* ---- drive-image.js: one download per picture in flight ---------- */
+{
+  const DI = await import('../src/ui/drive-image.js');
+  const real = Drive.default.downloadFileBlob;
+  let calls = 0, release;
+  const gate = new Promise((r) => { release = r; });
+  Drive.default.downloadFileBlob = async (id) => { calls++; await gate; return new Blob([PNG], { type: 'image/png' }); };
+  const a = DI.driveImageBlob('DEDUPE1'), b = DI.driveImageBlob('DEDUPE1');
+  release();
+  const [ba, bb] = await Promise.all([a, b]);
+  eq(calls, 1, 'drive-image: two simultaneous requests for one picture download it once');
+  ok(ba === bb && ba.type === 'image/png', 'drive-image: both get the same Blob');
+  await DI.driveImageBlob('DEDUPE1');
+  eq(calls, 1, 'drive-image: a held picture is not downloaded again');
+  let n = 0;
+  Drive.default.downloadFileBlob = async () => { if (++n === 1) throw Object.assign(new Error('boom'), { status: 500 }); return new Blob([PNG], { type: 'image/png' }); };
+  await rejects(DI.driveImageBlob('DEDUPE2'), (e) => e.status === 500, 'drive-image: a failed download rejects');
+  ok((await DI.driveImageBlob('DEDUPE2')).type === 'image/png' && n === 2, 'drive-image: a failure is not cached; the next ask retries');
+  Drive.default.downloadFileBlob = real;
 }
 
 console.log(`test:board-frames — ${pass} passed, ${fail} failed`);

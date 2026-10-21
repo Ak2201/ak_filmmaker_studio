@@ -138,6 +138,9 @@ function openProject() {
    re-renders on its own events, and a re-mount must not drop the
    last keystroke. */
 let flushLast = null;
+/* And lets go of its global listeners and observers (renders do not
+   reuse the section, so each mount's must not outlive it). */
+let detachLast = null;
 /* The body module, once it has loaded: a later mount renders from it in the
    same tick instead of showing the placeholder and swapping. */
 let bodyMod = null;
@@ -150,6 +153,12 @@ let bodyMod = null;
 export function mountStageGuide(host, { stage } = {}) {
   if (!host || !STAGE_IDS.includes(stage)) return null;
   if (flushLast) { try { flushLast(); } catch (e) { /* nothing pending */ } flushLast = null; }
+  if (detachLast) { try { detachLast(); } catch (e) { /* already gone */ } detachLast = null; }
+  const ac = new AbortController();
+  const { signal } = ac;
+  let inst = null;
+  let io = null;
+  detachLast = () => { ac.abort(); if (io) io.disconnect(); if (inst && inst.abort) inst.abort(); };
 
   const project = openProject();
   const fmt = formatKey(project && project.format);
@@ -164,13 +173,13 @@ export function mountStageGuide(host, { stage } = {}) {
      the hidden guide; story does this itself (screenplay also does, harmlessly). */
   if (stage !== 'story') {
     const sync = () => {
-      if (!section.isConnected) { removeEventListener('hashchange', sync); return; }
+      if (!section.isConnected) { ac.abort(); return; }
       const on = location.hash === '#guide';
       if (section.hidden === on) section.hidden = !on;
       if (on) section.scrollIntoView({ behavior: 'instant', block: 'start' });
     };
     sync();
-    addEventListener('hashchange', sync);
+    addEventListener('hashchange', sync, { signal });
   }
 
   /* No project: the section stays (it is a nav target) with its heading
@@ -198,7 +207,7 @@ export function mountStageGuide(host, { stage } = {}) {
   section.append(body);
   if (bodyMod) {
     try {
-      const inst = bodyMod.renderGuide(body, { stage, format: fmt, items, fields: cover, stepper: true });
+      inst = bodyMod.renderGuide(body, { stage, format: fmt, items, fields: cover, stepper: true });
       flushLast = inst && inst.flush;
       return section;
     } catch (e) { console.warn('[stage-guide] sync render failed', e); }
@@ -210,8 +219,8 @@ export function mountStageGuide(host, { stage } = {}) {
     started = true;
     import('./stage-guide-body.js').then((m) => {
       bodyMod = m;
-      if (!body.isConnected) return;
-      const inst = m.renderGuide(body, { stage, format: fmt, items, fields: cover, stepper: true });
+      if (!body.isConnected || signal.aborted) return;
+      inst = m.renderGuide(body, { stage, format: fmt, items, fields: cover, stepper: true });
       flushLast = inst && inst.flush;
     }).catch((e) => {
       started = false;
@@ -230,7 +239,7 @@ export function mountStageGuide(host, { stage } = {}) {
   /* Near the screen, or asked for by the hash, or the tab shown. */
   const wanted = () => (location.hash || '') === '#guide';
   if (wanted() || typeof IntersectionObserver === 'undefined') { start(); return section; }
-  const io = new IntersectionObserver((entries) => {
+  io = new IntersectionObserver((entries) => {
     if (entries.some((e) => e.isIntersecting)) { io.disconnect(); start(); }
   }, { rootMargin: '600px 0px' });
   io.observe(section);
@@ -238,7 +247,7 @@ export function mountStageGuide(host, { stage } = {}) {
     if (!section.isConnected) { removeEventListener('hashchange', onHash); return; }
     if (wanted()) { io.disconnect(); removeEventListener('hashchange', onHash); start(); }
   };
-  addEventListener('hashchange', onHash);
+  addEventListener('hashchange', onHash, { signal });
   return section;
 }
 

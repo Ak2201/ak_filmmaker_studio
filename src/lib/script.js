@@ -903,81 +903,13 @@ export function toFountain(doc, meta = {}) {
 }
 
 /* ---- Final Draft (.fdx) export ------------------------------
-   The inverse of PARSER 3 in script-import.js, and the reason it
-   lives beside toFountain rather than in the typesetter: it is a
-   description of the elements, not of a page. Element types map one
-   to one onto Final Draft's paragraph types — that is the point of a
-   typed element list — and a dual-dialogue pair goes out the way
-   Final Draft writes one, as a single <Paragraph> holding a
-   <DualDialogue> with both speeches inside it.
-
-   A parenthetical is stored without its brackets and Final Draft
-   stores it with them, so they go on here and come off on import. */
-const FDX_TYPE_OUT = {
-  scene: 'Scene Heading', action: 'Action', character: 'Character',
-  paren: 'Parenthetical', dialogue: 'Dialogue', transition: 'Transition', shot: 'Shot'
-};
-const xmlEsc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
-}[m]));
-
-function fdxParagraph(el, pad, number) {
-  let text = String(el.text ?? '').trim();
-  if (el.type === 'paren' && !/^\(.*\)$/.test(text)) text = '(' + text + ')';
-  const num = number ? ' Number="' + xmlEsc(number) + '"' : '';
-  return pad + '<Paragraph Type="' + (FDX_TYPE_OUT[el.type] || 'Action') + '"' + num + '>'
-    + '<Text>' + xmlEsc(text) + '</Text></Paragraph>';
-}
-
-export function toFDX(doc, meta = {}) {
-  const els = (doc && doc.elements) || [];
-  const pairs = new Map(dualPairs(els).map((p) => [p.left[0], p]));
-  /* Locked numbers travel as Final Draft's own Number attribute, which
-     the importer reads back. Unlocked, a number is only the heading's
-     position, so none is written: writing it would freeze it. */
-  const nums = isNumberingLocked(doc && doc.numbering) ? sceneNumbers(els, doc.numbering).byId : null;
-  const out = [
-    '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>',
-    '<FinalDraft DocumentType="Script" Template="No" Version="5">',
-    '  <Content>'
-  ];
-  for (let i = 0; i < els.length; i++) {
-    const pair = pairs.get(i);
-    if (pair) {
-      out.push('    <Paragraph>', '      <DualDialogue>');
-      for (let k = pair.left[0]; k <= pair.right[1]; k++) {
-        if (String(els[k].text ?? '').trim()) out.push(fdxParagraph(els[k], '        '));
-      }
-      out.push('      </DualDialogue>', '    </Paragraph>');
-      i = pair.right[1];
-      continue;
-    }
-    if (!String(els[i].text ?? '').trim()) continue;
-    out.push(fdxParagraph(els[i], '    ', nums && els[i].type === 'scene' ? nums.get(els[i].id) : ''));
-  }
-  out.push('  </Content>');
-
-  /* The title page: Final Draft keeps it as its own <Content>, centred
-     lines then the contact block bottom left. Read back by the
-     importer, which takes the first line as the title. */
-  const tp = doc && hasTitlePage(doc.titlePage) ? doc.titlePage : null;
-  const title = String((tp && tp.title) || meta.title || '').trim() || 'Untitled';
-  const centred = [title.toUpperCase()];
-  if (tp) {
-    if (tp.credit.trim() || tp.author.trim()) centred.push('', tp.credit.trim() || 'Written by', '', tp.author.trim());
-    if (tp.source.trim()) centred.push('', tp.source.trim());
-  } else if (meta.author) centred.push('', 'Written by', '', String(meta.author));
-  const para = (t, align) => '      <Paragraph Alignment="' + align + '" Type="Action">'
-    + '<Text>' + xmlEsc(t) + '</Text></Paragraph>';
-  out.push('  <TitlePage>', '    <Content>');
-  centred.forEach((t) => out.push(para(t, 'Center')));
-  if (tp) {
-    for (const line of [tp.draft, tp.date].map((s) => s.trim()).filter(Boolean)) out.push(para(line, 'Right'));
-    for (const line of tp.contact.split('\n').map((s) => s.trim()).filter(Boolean)) out.push(para(line, 'Left'));
-  }
-  out.push('    </Content>', '  </TitlePage>', '</FinalDraft>');
-  return out.join('\n') + '\n';
-}
+   MOVED to src/lib/screenplay-fdx.js (21 Oct 2026), which writes the
+   whole document Final Draft writes — title page, element settings on
+   US Letter, header page numbers, SmartType, locked scene numbers and
+   pages, revision marks — rather than only the paragraphs. It is
+   loaded at the press, so this module (on most pages' first paint)
+   no longer carries an exporter nobody on those pages calls. There is
+   ONE writer; do not grow a second one here. */
 
 /** A filename stem. Same shape as the short blueprint's `slugTitle()`. */
 export function slugify(s, fallback) {
@@ -1004,5 +936,5 @@ export default {
   elementLines, totalLines, pageCount, formatPages, formatRuntime, wordCount,
   dualPairs, canPairDual, contdOffer, withContd, cueSpeaker, CONTD_RE, EXTENSIONS,
   TITLE_FIELDS, normaliseTitlePage, hasTitlePage,
-  toFountain, toFDX, slugify, projectTitle
+  toFountain, slugify, projectTitle
 };

@@ -1839,10 +1839,13 @@ const exportMeta = () => exportMetaOf(doc, Script.projectTitle());
 delegate(document, 'click', '[data-action="export-pdf"]', () => exportPDF(false));
 delegate(document, 'click', '[data-action="export-pdf-numbered"]', () => exportPDF(true));
 
-delegate(document, 'click', '[data-action="export-fdx"]', () => {
+delegate(document, 'click', '[data-action="export-fdx"]', async () => {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
+  let F;
+  try { F = await import('../lib/screenplay-fdx.js'); }
+  catch (e) { say('The Final Draft exporter could not be loaded. Check the connection and try again.'); return; }
   const title = Script.projectTitle();
-  download(Script.toFDX(doc, { title }), Script.slugify(title, 'screenplay') + '.fdx', 'application/xml');
+  download(F.toFDX(doc, { title }), Script.slugify(title, 'screenplay') + '.fdx', F.FDX_MIME);
 });
 
 delegate(document, 'click', '[data-action="export-docx"]', async () => {

@@ -322,7 +322,7 @@ const FILE_ITEMS = [
   { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
   { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
   { label: 'Export Word (.docx)', action: 'sc-docx', hint: 'to edit in Word', icon: 'description' },
-  { label: 'Export Final Draft (.fdx)', action: 'sc-fdx', hint: 'opens in Final Draft', icon: 'description' },
+  { label: 'Export Final Draft (.fdx)', action: 'sc-fdx', hint: 'US Letter, opens in Final Draft', icon: 'description' },
   { label: 'Export Fountain (.fountain)', action: 'sc-fountain', hint: 'plain text, any app', icon: 'description' },
   { label: 'Drafts & history', href: 'drafts.html', icon: 'history' },
   { label: 'Title page', href: 'drafts.html#title', icon: 'menu_book' }
@@ -1153,16 +1153,23 @@ async function exportDOCX() {
 delegate(document, 'click', '[data-action="sc-docx"]', () => { exportDOCX(); });
 
 /* Final Draft and Fountain: the two interchange formats every other
-   screenwriting tool reads. Both writers live in script.js beside the
-   importers that read them back, so a round trip stays one model. */
+   screenwriting tool reads, and both come back through script-import.js.
+   Fountain's writer is small and lives in script.js; Final Draft's is
+   the whole document (src/lib/screenplay-fdx.js) and is loaded at the
+   press, so no page pays for it on first paint. */
 function exportText(ext, type, write) {
   if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
   const title = Script.projectTitle();
   saveFile(Script.slugify(title, 'screenplay') + ext, write(doc, { title }), type);
 }
-delegate(document, 'click', '[data-action="sc-fdx"]', () => {
-  exportText('.fdx', 'application/xml', Script.toFDX);
-});
+async function exportFDX() {
+  if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
+  let F;
+  try { F = await import('../lib/screenplay-fdx.js'); }
+  catch (e) { say('The Final Draft exporter could not be loaded. Check the connection and try again.'); return; }
+  exportText('.fdx', F.FDX_MIME, F.toFDX);
+}
+delegate(document, 'click', '[data-action="sc-fdx"]', () => { exportFDX(); });
 delegate(document, 'click', '[data-action="sc-fountain"]', () => {
   exportText('.fountain', 'text/plain', Script.toFountain);
 });

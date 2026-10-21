@@ -29,13 +29,14 @@
    jump to that tab. Nothing is hidden from anybody.
    ============================================================ */
 import { h } from '../lib/dom.js';
-import { INR } from '../lib/money.js';
+/* rs prints in the budget's own currency (budget-costs-model.js); it was a
+   second copy of the rupee formatter here, which a dollar budget exposed. */
+import { rs } from '../lib/budget-costs-model.js';
 import C from '../lib/costs.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Impact from '../lib/schedule-impact.js';
 import { button, statCard, statStrip, emptyState } from './kit/index.js';
 
-const rs = (n) => (n < 0 ? '−₹ ' : '₹ ') + INR.format(Math.round(Math.abs(n || 0)));
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const stat = (value, text) => statCard({ label: text, value });
 /* Kit builders, local to these two tabs: a panel, a kit table in its

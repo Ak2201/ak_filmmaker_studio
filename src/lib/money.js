@@ -81,4 +81,45 @@ export const INR = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
     because adding them would require a rate nobody has. */
 export const USD = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
+/* ---- a budget in dollars (21 Oct 2026, BUDGET-USD) ---------------
+   A film made outside India budgets in US dollars. The two calls below
+   take the budget's currency and, for anything but 'USD', ARE parseNum
+   and the rupee figures above, so an Indian budget reads and prints
+   exactly as it always did. The dollar half follows the same
+   whole-string rule: a suffix counts only when the entire string is a
+   number and that suffix, so "1.5k" is 1500, "2m" is 2,000,000,
+   "$2,000" is 2000, and "500 per roll" or "3 mins" fall through to the
+   number at the front. Indian suffixes are not dollar suffixes: in a
+   dollar budget "1.5l" is 1.5, never 150,000. Nothing here converts
+   between the two currencies. Named exports only, and the default
+   export below is unchanged. */
+
+/** Parse a figure a person typed into a budget in `currency`. */
+export function parseAmount(s, currency) {
+  if (currency !== 'USD') return parseNum(s);
+  if (!s) return 0;
+  s = String(s).toLowerCase().replace(/[,\s$]/g, '').replace(/^usd?/, '').replace(/usd$/, '');
+  const parts = s.match(/^(\d*\.?\d+)(million|mn|m|thousand|thou|k)?$/);
+  if (parts) {
+    const suffix = parts[2] || '';
+    return parseFloat(parts[1]) * (/^m/.test(suffix) ? 1000000 : suffix ? 1000 : 1);
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+/** A budget figure in `currency`: exact and grouped by default
+    ('₹ 54,000', '$12,500', a real minus for a negative), or the
+    glance-sized magnitude when `short` (fmtINR's '₹ 1.5 L', or
+    '$1.25M', '$45k'). */
+export function fmtMoney(n, currency, short) {
+  if (currency !== 'USD' && short) return fmtINR(n);
+  const v = Math.abs(n || 0);
+  const sign = n < 0 ? '−' : '';
+  if (currency !== 'USD') return sign + '₹ ' + INR.format(Math.round(v));
+  if (short && v >= 1000000) return sign + '$' + (v / 1000000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  if (short && v >= 1000) return sign + '$' + Math.round(v / 1000) + 'k';
+  return sign + '$' + USD.format(Math.round(v));
+}
+
 export default { parseNum, fmtINR, INR, USD };

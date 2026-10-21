@@ -31,7 +31,7 @@ import { h } from '../lib/dom.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
 import { costSections, costKpis, costAside, initCosts } from '../ui/budget-costs.js';
 import { pageHeader, button, notice } from '../ui/kit/index.js';
-import { rateProvenance } from '../lib/budget-model.js';
+import { rateProvenance, budgetCurrency } from '../lib/budget-model.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 
 const app = document.getElementById('app');
@@ -40,6 +40,10 @@ const app = document.getElementById('app');
 
 function render() {
   const main = h('main#main.hue-plan');
+  /* A budget in US dollars (budgetCurrency(), the rule in costs.js)
+     reads US rental figures instead of the Chennai card; a rupee
+     budget's words are exactly what they were. */
+  const usd = budgetCurrency() === 'USD';
 
   /* THE HEAD is the kit's page header (eyebrow, Space Grotesk title,
      deck, standing actions on the right) wearing `bd-head` as well:
@@ -54,7 +58,8 @@ function render() {
     eyebrow: 'Budget & People · what it costs',
     title: 'Budget',
     sub: 'A line-item estimate that reads your schedule. Days come from the '
-       + 'stripboard if you have built one, rates from the Chennai tables if '
+       + 'stripboard if you have built one, rates from the '
+       + (usd ? 'US rental list prices' : 'Chennai tables') + ' if '
        + 'you want them, and every figure stays editable. Then, once you are '
        + 'shooting: petty cash, crew payments and the cost report against it.',
     actions: [
@@ -83,9 +88,10 @@ function render() {
     class: 'bd-notes',
     title: 'Where the numbers come from',
     body: h('div', {}, [
-      h('p', { text: rateProvenance() }),
+      h('p', { text: rateProvenance(usd ? 'USD' : 'INR') }),
       h('p', {}, [
-        'The full rate tables — camera, crew, post, equipment — are in the ',
+        usd ? 'The Chennai rate tables, in rupees and for reference only, are in the '
+            : 'The full rate tables — camera, crew, post, equipment — are in the ',
         h('a', { href: 'library.html#equipment', text: 'craft library' }),
         '. Shoot days come from the ',
         h('a', { href: 'stripboard.html#stripboard', text: 'stripboard' }),

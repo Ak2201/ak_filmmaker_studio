@@ -13,6 +13,7 @@ import Store from '../../lib/store.js';
 import PlanGate from '../../lib/plan-gate.js';
 import { STAGES, journey, guideJourney } from '../../lib/journey.js';
 import { h } from '../../lib/dom.js';
+import { button, buttonGroup } from '../../ui/kit/index.js';
 import { isSampleTitle } from '../../lib/samples.js';
 import { PROJECT_HOME_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
 import { applyProjectFilters as applyProjectFiltersTo, projectBlob } from '../../lib/hub-model.js';
@@ -63,11 +64,17 @@ function projectCard(p, currentId, openJourney) {
     'data-action': 'switch-project', 'data-id': p.id,
     'aria-label': 'Switch to project ' + p.title
   }, [
-    h('div.pc-actions', {}, [
-      h('button', { 'data-action': 'rename-project', 'data-id': p.id, 'aria-label': 'Rename project', title: 'Rename', text: '✎' }),
-      h('button', { 'data-action': 'duplicate-project', 'data-id': p.id, 'aria-label': 'Duplicate project', title: 'Duplicate', text: '⎘' }),
-      h('button', { 'data-action': 'delete-project', 'data-id': p.id, 'aria-label': 'Delete project', title: 'Delete', text: '×' })
-    ]),
+    /* The kit's icon tray (CLAUDE.md row 48: one button language). The
+       glyphs it replaced (✎ ⎘ ×) printed in the mono face at micro size. */
+    (() => {
+      const tray = buttonGroup([
+        button({ iconOnly: true, size: 'sm', variant: 'ghost', icon: 'edit_note', label: 'Rename project', title: 'Rename', action: 'rename-project', attrs: { 'data-id': p.id } }),
+        button({ iconOnly: true, size: 'sm', variant: 'ghost', icon: 'content_copy', label: 'Duplicate project', title: 'Duplicate', action: 'duplicate-project', attrs: { 'data-id': p.id } }),
+        button({ iconOnly: true, size: 'sm', variant: 'ghost', icon: 'delete', label: 'Delete project', title: 'Delete', action: 'delete-project', attrs: { 'data-id': p.id, class: 'pc-del' } })
+      ], { label: 'Project actions' });
+      tray.classList.add('pc-actions');
+      return tray;
+    })(),
     active && h('span.pc-pulse', { 'aria-hidden': 'true' }),
     h('div.pc-format', {
       text: (FORMAT_LABELS[p.format] || String(p.format).toUpperCase()) +
@@ -83,11 +90,10 @@ function projectCard(p, currentId, openJourney) {
     h('div.pc-meta', {}, [
       h('span.pc-stat', { text: pct + '% · edited ' + fmtRelDate(p.updatedAt) }),
       h('span.pc-foot', {}, [
-        h('button.pc-share', { type: 'button', 'data-action': 'share-project', 'data-id': p.id, 'aria-label': 'Share project', title: 'Share', text: '↗ SHARE' }),
-        h('a.pc-open', {
-          href: PROJECT_HOME_URL, 'data-action': 'open-project', 'data-id': p.id,
-          'aria-label': 'Open ' + p.title + ' on its dashboard', text: 'open project →'
-        })
+        button({ size: 'sm', variant: 'ghost', icon: 'share', label: 'Share', title: 'Share', action: 'share-project',
+          attrs: { class: 'pc-share', 'data-id': p.id, 'aria-label': 'Share project' } }),
+        button({ href: PROJECT_HOME_URL, size: 'sm', variant: active ? 'primary' : 'secondary', label: 'Open project', iconAfter: 'arrow_forward', action: 'open-project',
+          attrs: { class: 'pc-open', 'data-id': p.id, 'aria-label': 'Open ' + p.title + ' on its dashboard' } })
       ])
     ])
   ]);

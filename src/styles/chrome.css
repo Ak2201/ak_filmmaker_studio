@@ -1548,8 +1548,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   top: var(--s3);
   right: var(--s3);
   z-index: 2;   /* above .pc-format, which paints later at z 1 and covered the buttons */
-  display: flex;
-  gap: var(--s1);
+  /* the kit's .k-btn-group draws the tray; a floating one sits on the elevated surface */
+  background: var(--surface-elevated);
+  box-shadow: var(--sk-card-shadow, none);
   opacity: 0;
   transition: opacity var(--speed) var(--ease);
 }
@@ -1562,19 +1563,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   .project-card .pc-actions,
   .project-card .pc-share { opacity: 1; }
 }
-.project-card .pc-actions button {
-  width: var(--s6);
-  height: var(--s6);
-  padding: 0;
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  color: var(--ink-muted);
-  cursor: pointer;
-}
-.project-card .pc-actions button:hover { color: var(--accent-deep); border-color: var(--accent); }
+.project-card .pc-actions .k-btn { color: var(--ink-muted); }
+.project-card .pc-actions .k-btn:hover { color: var(--ink); }
+.project-card .pc-actions .pc-del:hover { background: var(--danger-wash); color: var(--danger-deep); }
 /* Share and open, in the meta row's flow rather than over it. */
 .project-card .pc-foot {
   display: inline-flex;
@@ -1582,30 +1573,17 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   gap: var(--s3);
   margin-left: auto;
 }
-.project-card .pc-open {
-  color: var(--accent-deep);
-  font-weight: 700;
-  text-decoration: none;
-}
-.project-card .pc-open:hover { text-decoration: underline; }
-.project-card .pc-share {
-  padding: var(--s1) var(--s3);
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: var(--sk-radius, var(--radius));
-  color: var(--ink-muted);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 700;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity var(--speed) var(--ease), color var(--speed) var(--ease),
-              border-color var(--speed) var(--ease);
-}
+/* Share and Open are kit buttons (k-btn ghost / secondary, primary on the
+   open project); only their placement and Share's fade live here. On
+   hover a closed card's Open lights up to the brand, as the active one is. */
+.project-card .pc-share { color: var(--ink-muted); opacity: 0; }
 .project-card:hover .pc-share,
 .project-card:focus-within .pc-share { opacity: 1; }
-.project-card .pc-share:hover { color: var(--accent-deep); border-color: var(--accent); }
+.project-card:hover .pc-open.k-btn--secondary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
+}
 .project-card.new-card {
   align-items: center;
   justify-content: center;

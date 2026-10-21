@@ -90,32 +90,48 @@
   flex: 1 1 14rem;
   max-width: 20rem;
   min-width: 0;
-  padding: var(--s3) var(--s4);
+  height: var(--h-field);
+  padding: 0 var(--s4);
   background: var(--paper-sunk);
-  border-radius: var(--sk-radius, var(--radius));
+  border-radius: var(--sk-field-radius, var(--radius));
 }
 .projects-section .projects-search::placeholder { color: var(--ink-muted); opacity: 1; }
 .projects-section .projects-search:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+/* The format filter wears the kit's segmented control (.k-seg in kit.css):
+   a rail-coloured tray, the selected segment in the brand. It was a white
+   fill, the one white control on the page. */
 .projects-section .projects-filter {
   flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--s1);
-  padding: var(--s1);
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule);
-  border-radius: var(--sk-radius, var(--radius));
+  align-items: stretch;
+  gap: var(--s-half);
+  height: var(--h-field);
+  padding: var(--s-half);
+  box-sizing: border-box;
+  background: var(--surface-rail);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-btn-radius, var(--radius));
 }
 .projects-section .projects-filter button {
-  padding: var(--s2) var(--s4);
-  border: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--s4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--ink-muted);
-  font-weight: 700;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
 }
-.projects-section .projects-filter button:hover { color: var(--ink); background: transparent; }
+.projects-section .projects-filter button:hover { color: var(--ink); background: var(--surface-card); }
+.projects-section .projects-filter button:focus-visible { outline: var(--focus); outline-offset: 1px; }
 .projects-section .projects-filter button.active {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
+  font-weight: 600;
 }
 .projects-section .projects-sort-wrap { position: relative; display: flex; }
 .projects-section .projects-sort-wrap::after {
@@ -129,17 +145,24 @@
   transform: translateY(-70%) rotate(45deg);
   pointer-events: none;
 }
+/* The sort is a native select dressed as a kit secondary button. */
 .projects-section .projects-sort {
   appearance: none;
   -webkit-appearance: none;
-  padding: var(--s2) calc(var(--s4) * 2 + 4px) var(--s2) var(--s4);
-  background: var(--paper-sunk);
-  color: var(--ink-muted);
-  border: 1px solid var(--rule);
-  border-radius: var(--sk-radius, var(--radius));
-  font-weight: 700;
+  height: var(--h-field);
+  padding: 0 calc(var(--s4) * 2 + 4px) 0 var(--s4);
+  background: var(--surface-card);
+  color: var(--ink);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.projects-section .projects-sort:hover { color: var(--ink); }
+.projects-section .projects-sort:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+.projects-section .projects-sort:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 @media (max-width: 720px) {
   .projects-section .projects-search { flex-basis: 100%; }
   .projects-section .projects-filter { flex: 1 1 auto; }
@@ -206,12 +229,7 @@
   border-top: 1px solid var(--rule);
   font-size: var(--t-small);
 }
-.projects-section .project-card .pc-open {
-  color: var(--ink-muted);
-  transition: color var(--speed) var(--ease);
-}
-.projects-section .project-card.active .pc-open,
-.projects-section .project-card:hover .pc-open { color: var(--accent-deep); }
+/* .pc-open is a kit button now (chrome.css); nothing to restate here. */
 
 /* The pulsing dot of the open project. It shares the corner with the
    rename / duplicate / delete controls, which appear on hover and

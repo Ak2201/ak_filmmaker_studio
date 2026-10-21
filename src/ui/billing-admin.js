@@ -363,7 +363,7 @@ function usdBlock() {
     list.append(form);
   }
   box.append(list);
-  box.append(h('p.gt-meta', { text: 'Typed in US dollars for a year. Blank means not sold in dollars (only while the switch is off). The smallest dollar price is $1.00. A next price must be a rise, on the date the rupee rise is scheduled (set it under Growth).' }));
+  box.append(h('p.gt-meta', { text: 'Typed in US dollars for a year. Blank means not sold in dollars (only while the switch is off). The smallest dollar price is one dollar (Razorpay’s minimum charge). A next price must be a rise, on the date the rupee rise is scheduled (set it under Growth).' }));
   return box;
 }
 

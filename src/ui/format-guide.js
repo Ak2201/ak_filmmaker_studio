@@ -39,6 +39,7 @@ import { h, delegate } from '../lib/dom.js';
 import { learn } from './learn.js';
 import { WRITE_PREFS_KEY, readWritePrefs, writeWritePrefs, readGuideDismissed, saveGuideDismissed } from '../lib/write-prefs.js';
 import '../styles/format-guide.css';
+import { currentProjectPrefs } from '../lib/region.js';
 
 export const PREFS_KEY = WRITE_PREFS_KEY;
 const LEVELS = COPY.levels.map((l) => l.id);
@@ -253,6 +254,14 @@ function jumpTo(index) {
 
 /* ---- (d) the first-scene tour ------------------------------- */
 const STEPS = COPY.tour.steps;
+/* A step may carry `askElsewhere`: the same question without the
+   India-only aside (Tanglish), for a film made outside India
+   (docs/US-MARKET-PLAN.md §E). Read when the step is drawn. */
+function askFor(step) {
+  let india = true;
+  try { india = currentProjectPrefs().showIndiaContent !== false; } catch (e) { /* India */ }
+  return !india && step.askElsewhere ? step.askElsewhere : step.ask;
+}
 const tour = { active: false, finished: false, lastRow: null };
 
 /** The invitation, in the dock: Coach, never seen, an empty script. */
@@ -311,7 +320,7 @@ function renderTour() {
   box.append(
     h('p.fg-tour-eyebrow', { text: `${COPY.tour.eyebrow} · step ${k + 1} of ${STEPS.length}` }),
     h('h3.fg-tour-title', { text: step.title }),
-    h('p.fg-tour-ask', { 'aria-live': 'polite', text: step.ask }),
+    h('p.fg-tour-ask', { 'aria-live': 'polite', text: askFor(step) }),
     h('ol.fg-tour-dots', { 'aria-hidden': 'true' },
       STEPS.map((s, j) => h('li' + (j < k ? '.is-done' : j === k ? '.is-now' : '')))),
     h('div.fg-tour-acts', {}, [

@@ -265,6 +265,52 @@ eq(sl.map((l) => l.scales), [true, false, null], 'estimateLines carries scales (
 const srep = C.costReport({ lines: sl });
 eq(srep.depts.flatMap((d) => d.lines).filter((l) => !l.unbudgeted).map((l) => l.scales).sort(), [false, null, true].sort(), 'report lines pass scales through');
 
+/* ---- reset never re-issues a line id (audit bug 20) ----------
+   ci_3 is the ARRI with spend, a crew line, a department move and a
+   locked version. Reset, then a new estimate whose third row is
+   Catering. Counting from 1 again (the old resetCalc) binds the camera
+   spend to Catering; starting above the high-water mark leaves it
+   "not on a budget line", which is what costs.js promises. */
+{
+  reset();
+  const L = await import('../src/lib/budget-line-ids.js');
+  const before = { ci_1_item: 'Director', ci_1_days: '10', ci_1_rate: '5000',
+    ci_2_item: '', ci_2_days: '', ci_2_rate: '',
+    ci_3_item: '', ci_3_custom: 'ARRI Alexa 35', ci_3_days: '10', ci_3_rate: '25000' };
+  C.addExpense({ category: 'misc', amount: '40000', line: 'ci_3' });
+  C.setLineDept('ci_3', 'camera');
+  C.setCrew('c-dop', { fee: '1 lakh', line: 'ci_4' });
+  const snap = C.snapshotBudget({ lines: C.estimateLines(before) });
+  C.lockVersion({ name: 'v1', snapshot: snap });
+  const costs = C.readAll();
+  eq(L.highestLineIndex(before, costs), 4, 'high-water reads the calc blob AND every cost reference (crew on ci_4)');
+  eq(L.highestLineIndex({}, { versions: [{ lines: [{ id: 'ci_9' }] }] }), 9, 'a locked version alone sets the mark');
+  eq(L.highestLineIndex({}, {}), 0, 'nothing used yet → 0');
+  eq(L.highestLineIndex('junk', null), 0, 'junk blobs read as nothing');
+  const rowAt = (start, n, item) => ({ [`ci_${start + n}_custom`]: item, [`ci_${start + n}_days`]: '10', [`ci_${start + n}_rate`]: '2000' });
+  const catering = (start) => ({ ...rowAt(start, 1, 'Tea'), ...rowAt(start, 2, 'Lunch'), ...rowAt(start, 3, 'Catering') });
+  const lineOf = (calc, name) => C.costReport({ lines: C.estimateLines(calc, costs.lines), expenses: costs.expenses })
+    .depts.flatMap((d) => d.lines).find((l) => l.name === name);
+  // The bug, reproduced: row 3 after a count-from-zero reset IS ci_3.
+  const old = lineOf(catering(0), 'Catering');
+  ok(old.actual === 40000 && old.dept === 'camera', 'reproduced: counting from 1 binds the ARRI spend and dept to Catering');
+  // The fix: rows start above the mark.
+  const base = L.highestLineIndex(before, costs);
+  const fixed = catering(base);
+  const cat = lineOf(fixed, 'Catering');
+  eq([cat.id, cat.actual, cat.dept], ['ci_7', 0, 'food'], 'after reset Catering is a fresh id with no inherited spend or dept');
+  const loose = C.costReport({ lines: C.estimateLines(fixed, costs.lines), expenses: costs.expenses })
+    .depts.flatMap((d) => d.lines).find((l) => l.unbudgeted);
+  eq(loose && loose.actual, 40000, 'the camera spend shows as not on a budget line, never dropped');
+  const cmp = C.compareVersion(C.readAll().versions[0], C.estimateLines(fixed));
+  ok(JSON.stringify(cmp).includes('ARRI Alexa 35'), 'the comparison still names the removed ARRI line');
+  // Reload draws the span the blob holds, not 1..max.
+  eq(L.rowSpan(fixed), { start: 5, count: 5 }, 'a post-reset blob draws from its lowest row');
+  eq(L.rowSpan(before), { start: 1, count: 5 }, 'an existing blob from ci_1 draws exactly as before');
+  eq(L.rowSpan({ ci_1_item: '', ci_12_rate: '1' }), { start: 1, count: 12 }, 'existing ids are all kept on screen');
+  eq(L.rowSpan({}), { start: 1, count: 5 }, 'a new estimate starts at ci_1');
+}
+
 reset();
 console.log(`test:costs — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

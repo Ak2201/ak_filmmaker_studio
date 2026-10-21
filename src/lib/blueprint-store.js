@@ -60,8 +60,15 @@ export function writeFields(ns, patch) {
   const key = blobKey(ns);
   const blob = readBlob(key);
   for (const k of keys) blob[k] = patch[k];
-  try { localStorage.setItem(key, JSON.stringify(blob)); return true; }
-  catch (e) { return false; /* the proxy reports a refused write */ }
+  /* READ BACK. The storage proxy never throws: a refused write returns
+     undefined like any other and says so with storage:error, so a bare
+     `return true` here told characters.js to blank a field whose text
+     the blueprint never stored. The tiered read answers the in-flight
+     value for an overflowed write, so a write that went through compares
+     equal. */
+  const s = JSON.stringify(blob);
+  try { localStorage.setItem(key, s); return localStorage.getItem(key) === s; }
+  catch (e) { return false; }
 }
 
 export default { BLOBS, blobKey, readFields, readAll, writeFields };

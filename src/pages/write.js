@@ -78,7 +78,7 @@ import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk an
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
 import { basicShotDivision } from '../lib/shot-rules.js';
 import { matchScenes } from '../lib/screenplay-analysis.js';
-import { addThem as handoffAddScenes, newHeadings, sceneSyncLater } from '../ui/handoff.js';
+import { addThem as handoffAddScenes, newHeadings, sceneSyncLater, offerPipeline } from '../ui/handoff.js';
 import '../styles/write-shots.css';
 /* Phase 2 of docs/SCREENPLAY-WRITER-PLAN.md: the keyboard (presets,
    Return/Tab flow), SmartType, the navigator and the shortcut sheets.
@@ -235,7 +235,7 @@ const app = document.getElementById('app');
    stored: it is not the user's work, and a second copy of "where I
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
-mountWriteExtrasB({ getDoc: () => doc });   // hand-off banner, alternates, Tanglish
+mountWriteExtrasB({ getDoc: () => doc, save: () => persistNow() });   // hand-off banner, alternates, Tanglish
 mountRevisionTools({
   getDoc: () => doc,
   persistNow: () => persistNow(),
@@ -2045,6 +2045,8 @@ delegate(document, 'click', '[data-action="import-commit"]', async () => {
   resetImport();
   render();
   say(importDoneMessage(done));
+  /* Everything starts from the script: offer the whole breakdown. */
+  offerPipeline().catch((e) => console.warn('[write] pipeline offer', e));
 });
 
 /* ---- drop a script anywhere ---------------------------------

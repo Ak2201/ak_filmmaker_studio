@@ -45,7 +45,7 @@
      genre-comps      story.js fields genre/audience/budgetTier/comps, via commit
      scene-notes      scenes.js readerNote + cutCandidate on content-matched rows
      breakdown-tags   scenes.js tagMany (adds only), undo = untagMany
-   beat-critique is a read: it writes nothing.
+   beat-critique and tension-notes are reads: they write nothing.
 
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
@@ -67,6 +67,7 @@ let Extras = null;        // ./breakdown-extras.js
 let BoardM = null;        // ./board-frames.js (pure)
 let DriveM = null;        // ./drive.js
 let DriveImg = null;      // ./drive-board.js (the live gate facts)
+let SA = null;            // ./script-analysis-model.js (pure)
 let readyP = null;
 
 function loadAll() {
@@ -76,10 +77,10 @@ function loadAll() {
       import('./scenes.js'), import('./script.js'), import('./shots.js'),
       import('./screenplay-analysis.js'), import('./scriptgen.js'), import('./coverage-store.js'),
       import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
-      import('./drive-board.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di]) => {
+      import('./drive-board.js'), import('./script-analysis-model.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa]) => {
       AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
-      BoardM = bf; DriveM = dr; DriveImg = di;
+      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -1496,9 +1497,65 @@ const boardTask = {
   }
 };
 
+/* ============================================================
+   TENSION NOTES — read. ctx { elements?, getDoc?, title? }
+   ------------------------------------------------------------
+   The Script analysis tab's AI action. The model is sent the RULES'
+   read of the script (script-analysis-model.js analyseScript: per
+   scene its number, heading, length, estimated tension and speakers;
+   per character where they enter and leave), not the pages, and asked
+   for notes on where tension builds, sags and releases and on the main
+   arcs. A note that names a scene not in the script is dropped and
+   counted. Writes nothing.
+   ============================================================ */
+function tensionRead(c) {
+  const els = scriptElements(c);
+  let format = 'feature';
+  try { const p = Store.currentProject && Store.currentProject(); if (p && p.format === 'short') format = 'short'; } catch (e) { /* default */ }
+  let story = null;
+  try { story = StoryM.loadStory(); } catch (e) { story = null; }
+  return { els, a: SA.analyseScript({ elements: els, scenes: ScenesM.listScenes(), story, format }) };
+}
+
+const tensionTask = {
+  id: 'tension-notes',
+  label: 'Notes on tension and arcs',
+  kind: 'read',
+  editable: false,
+  identity(ctx) { try { return 'tension-notes:' + AI.scriptSignature(scriptElements(resolve(ctx))); } catch (e) { return 'tension-notes'; } },
+  input(ctx) {
+    const c = resolve(ctx);
+    const { a } = tensionRead(c);
+    if (!a.scenes.length) return 'This script has no scene headings yet, so there is nothing to read.';
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    return 'The rules’ read of the script — not its pages — in one request:\n\n' + SA.buildTensionNotesPrompt(a, { title });
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const c = resolve(ctx);
+    const { a } = tensionRead(c);
+    if (!a.scenes.length) fail('This script has no scene headings yet, so there is nothing to read.');
+    let title = c.title;
+    if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
+    const { parsed, model } = await AI.callModelForTask({
+      system: 'You are a script reader. You comment on how tension and the main characters’ arcs move across a screenplay, from a measured outline of it. You name scenes by the numbers given and do not invent plot.',
+      user: SA.buildTensionNotesPrompt(a, { title, refine: refineText(refine) }),
+      schema: SA.tensionNotesSchema(),
+      maxTokens: 6000,
+      effort: 'medium',
+      onStatus, signal,
+      progress: (sofar) => 'Reading the tension curve — ' + (sofar.match(/"note"/g) || []).length + ' notes so far'
+    });
+    const res = SA.readTensionNotes(parsed, a);
+    if (!res.notes.length && !res.summary) fail('The reply held no usable notes, so nothing is shown.');
+    return { text: SA.tensionNotesText(res) + (model ? '\n\nRead by ' + model + '.' : '') };
+  }
+};
+
 /* ---- registration ------------------------------------------- */
 const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
-  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask];
+  genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask, tensionTask];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once

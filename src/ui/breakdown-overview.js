@@ -144,9 +144,17 @@ function startBlock({ scriptPages, hasScript, hasScenes }) {
   if (hasScript) {
     row.append(
       /* Once the script is broken down the result is the page and a
-         re-run is the secondary act; before, the run IS the page. */
+         re-run is the secondary act; before, the run IS the page.
+         "Break down everything" is the whole run by rules, one Undo
+         (src/lib/script-pipeline.js); Manual breakdown is the run plus
+         the shot and story reviews. */
       button({
-        variant: hasScenes ? 'secondary' : 'primary', pill: !hasScenes, action: 'run-breakdown', class: hasScenes ? '' : 'bd-cta',
+        variant: hasScenes ? 'secondary' : 'primary', pill: !hasScenes, action: 'run-pipeline', class: hasScenes ? '' : 'bd-cta',
+        icon: 'auto_awesome', label: 'Break down everything',
+        title: `Scenes, cast, characters, locations, props, shots, days and budget days from my script (${formatPages(scriptPages)} pages)`
+      }),
+      button({
+        variant: 'secondary', action: 'run-breakdown',
         label: 'Manual breakdown',
         title: hasScenes ? 'Break down the whole script again' : `Break down my script (${formatPages(scriptPages)} pages)`
       }),
@@ -181,7 +189,9 @@ export function renderOverview(scenes, status = '') {
   const how = h('p.bd-sub', {
     text: 'A breakdown lists everything each scene needs — who is in it, where it happens, '
       + 'inside or outside, day or night, and how long it runs — so a production can '
-      + 'plan the shoot. Manual breakdown reads your script from the first page to the last, '
+      + 'plan the shoot. Break down everything does the whole run at once by rules — scenes, cast, characters, locations, '
+      + 'suggested props, a shot division, proposed shooting days and the budget\u2019s days — filling only what is blank, with one Undo. '
+      + 'Manual breakdown reads your script from the first page to the last, '
       + 'fills in every scene, character and location, then proposes shots and a story outline by rules. '
       + 'Breakdown with AI does the same and asks your own model for the shots and the story. '
       + 'Either way you review each proposal before anything is kept, and it can be run again whenever the script changes.'
@@ -205,6 +215,14 @@ export function renderOverview(scenes, status = '') {
     return wrap;
   }
   wrap.append(statusLine);
+  if (hasScript) {
+    /* Already broken down, the whole run still fills what is blank:
+       shots for new scenes, days for unscheduled ones, budget days. */
+    wrap.append(h('div.bdo-everything', {}, [
+      h('p.bdo-everything-copy', { text: 'Fill in whatever is still blank — shots, shooting days, budget days, new characters — from the script, by rules.' }),
+      button({ label: 'Break down everything', icon: 'auto_awesome', variant: 'secondary', size: 'sm', action: 'run-pipeline' })
+    ]));
+  }
 
   const sum = summarize({ elements: els });
   const nav = h('div.bdo-seg', { role: 'tablist', 'aria-label': 'Breakdown summary' },

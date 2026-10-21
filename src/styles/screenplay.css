@@ -1101,3 +1101,20 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   border-radius: var(--radius-sm) var(--radius-sm) var(--radius-sm) 0;
 }
 @media print { .sc-sheet .wr-el .sc-peer-caret { display: none; } }
+
+/* ============================================================
+   TWO VIEWS — Write | Script analysis (the section menu, self-managed)
+   The strip rides in the top bar, so it is pinned with it: the strip's
+   own sticky, gutter and ground give way to the bar's.
+   ============================================================ */
+.sc-views { flex: 1 1 100%; display: flex; align-items: center; min-width: 0; padding: var(--s1) var(--s4) 0; background: var(--surface-canvas); }
+.sc-views .tabs { position: static; margin: 0; padding: var(--s1) 0; border-bottom: 0; background: transparent; flex: 1 1 auto; min-width: 0; }
+.sc-views .tabs-tab { min-height: 2rem; }
+.sc-main > #analysis { grid-area: page; min-width: 0; }
+/* The analysis view is a reading room: the writing tools step aside. */
+.sc-main[data-view="analysis"] { grid-template-areas: "top" "page"; grid-template-columns: minmax(0, 1fr); }
+.sc-main[data-view="analysis"] > :is(#screenplay, .sc-done, #beatsPanel, .sc-beats-scrim, #scChips),
+.sc-main[data-view="analysis"] #scTop :is(.sc-tools, .sc-tip, #scRuntime, .sc-meta) { display: none; }
+@media (max-width: 719px) {
+  .sc-views { padding: var(--s1) var(--s3) 0; }
+}

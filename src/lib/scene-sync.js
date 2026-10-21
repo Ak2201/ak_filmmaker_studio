@@ -169,6 +169,11 @@ export function measureEighths(elements, scenes) {
  *                without it every unmatched heading is new.
  *   opts.bin     the bin's entries (listBin())
  *   opts.numbering  the script's `numbering` (locked scene numbers), or none
+ *   opts.keepLinked  true: a row already linked to a heading that is still
+ *                there keeps its heading-derived fields as they are
+ *                (a person may have renamed the place on the Breakdown);
+ *                only a locked number still follows the lock. The
+ *                script pipeline's "fill the blanks" run uses this.
  * Returns {
  *   add:     [{ headingId, text, after, before, row }]  row = blankScene patch
  *   update:  [{ id, patch }]
@@ -215,7 +220,7 @@ export function reconcile(elements, scenes, opts = {}) {
     const h = byId.get(s.scriptElId);
     if (h && !claimed.has(h.id)) {
       claimed.set(h.id, s.id);
-      const p = (!prev || prev.get(h.id) !== h.text) ? fieldPatch(h.text, s) : {};
+      const p = !opts.keepLinked && (!prev || prev.get(h.id) !== h.text) ? fieldPatch(h.text, s) : {};
       addPatch(s.id, lockPatch(h.id, s, p));
     } else lost.push(s);
   }
@@ -425,9 +430,19 @@ export function applySync(plan) {
   return out;
 }
 
-/** reconcile() + applySync() against what is stored now. */
+/** reconcile() + applySync() against what is stored now.
+ *  opts.keepLinked  see reconcile().
+ *  opts.fillOnly    keepLinked, AND a plan that would bin or restore a
+ *                   row is not applied at all: `{ plan, result, refused:
+ *                   true }` with an empty result. Binning moves a scene's
+ *                   shots, sheets and edit notes with it, which a "fill
+ *                   the blanks" run must never do behind somebody's back. */
 export function syncScript(elements, opts = {}) {
-  const plan = reconcile(elements, Scenes.listScenes(), { prev: opts.prev, bin: Bin.listBin(), numbering: opts.numbering });
+  const keepLinked = !!(opts.keepLinked || opts.fillOnly);
+  const plan = reconcile(elements, Scenes.listScenes(), { prev: opts.prev, bin: Bin.listBin(), numbering: opts.numbering, keepLinked });
+  if (opts.fillOnly && (plan.bin.length || plan.restore.length)) {
+    return { plan, refused: true, result: { added: [], binned: [], restored: [], updated: 0 } };
+  }
   return { plan, result: applySync(plan) };
 }
 

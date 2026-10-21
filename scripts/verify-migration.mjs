@@ -2052,7 +2052,11 @@ for (const spec of PAGES) {
   const accountedCoverage = ((total - missingWords.length) / total) * 100;
   // An allowlist entry that no longer fires is stale; say so rather
   // than letting the list rot into a set of permanent excuses.
-  const staleAllowances = Object.keys(allowed).filter((w) => !gone.includes(w));
+  // A word CLOCK or COUNTDOWN has taken out of both sides today cannot
+  // fire, so it is not stale either: on 21 Oct 2026 the festival
+  // countdown reached 11 and the preprod step-count allowance for "11"
+  // (20 Oct) failed the run on two pages nobody had touched.
+  const staleAllowances = Object.keys(allowed).filter((w) => !varying(w) && !gone.includes(w));
 
   const row = {
     page: spec.name,

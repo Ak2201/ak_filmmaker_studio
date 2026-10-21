@@ -298,7 +298,14 @@ try {
   trialOffer().then((t) => {
     if (!t) return;
     const offer = byId('mkOffer');
-    if (t.trial_enabled === false) { if (offer && !SIGNED_IN && root.dataset.purchases !== 'off') offer.hidden = true; return; }
+    if (t.trial_enabled === false) {
+      if (!SIGNED_IN && root.dataset.purchases !== 'off') {
+        if (offer) offer.hidden = true;
+        /* every trial line and the answers that describe a trial (pricing.js also hides its own strip) */
+        $$('[data-trial]').forEach((n) => { n.hidden = true; });
+      }
+      return;
+    }
     const len = trialLength(t.trial_minutes);
     if (len) $$('[data-trial-length]').forEach((n) => { n.textContent = len; });
   }, () => {});

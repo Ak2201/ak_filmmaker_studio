@@ -161,6 +161,7 @@
 }
 .bud-est .calc-row .calc-note { font-family: var(--f-mono); font-size: var(--t-micro); line-height: var(--lh-snug); color: var(--brand-deep); }
 .bud-est .calc-row .calc-note:empty { display: none; }
+.bud-est .calc-row .calc-note a { color: inherit; text-decoration: underline; }
 
 /* The narrow row, compact: the item across, days beside rate, the
    subtotal as one labelled line. The custom-name label is spoken,
@@ -331,6 +332,9 @@
 .bd-notes .k-notice-body { display: grid; gap: var(--s2); }
 .bd-notes p { margin: 0; }
 .bd-notes a { color: var(--brand-deep); }
+/* The rate sources, named with their links and dates (budget.js). */
+.bd-notes .bud-sources { margin: 0; padding-left: var(--s4); display: grid; gap: var(--s1); font-size: var(--t-small); color: var(--ink-muted); }
+.bd-notes .bud-sources li { overflow-wrap: anywhere; }
 
 /* ============================================================
    THE COST TABS (src/ui/budget-costs.js, budget-impact.js)

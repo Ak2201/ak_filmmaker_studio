@@ -67,7 +67,7 @@ function renderNotExtension() {
 function renderGatekeeper() {
   const main = h('main#main.pn-main');
   main.append(head('Step 1 of 3', 'Enter Invite / Screening Pass Code',
-    BRAND.name + ' is invite-only. A screening pass opens one film read-only, without an account. No code? Sign in with Google and ask for an invite.'));
+    'Have an invite or screening pass code? Enter it here. A screening pass opens one film read-only, without an account. No code? Sign in with Google to start your trial or buy a plan.'));
   const form = h('form.gt-code', { 'data-pn-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'pnCode', text: 'Code' }));
   form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));

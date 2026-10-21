@@ -79,7 +79,7 @@ export function parseMinor(s, currency = 'USD') {
 
 /**
  * What the shop can honestly print for `currency`, from the server's
- * price_notice(currency) answer (§31, §53). Never throws.
+ * price_notice(currency) answer (§31, §55). Never throws.
  *
  *   { currency, charge, fallback, plans }
  *     currency  what the cards print: 'USD' only when EVERY active paid

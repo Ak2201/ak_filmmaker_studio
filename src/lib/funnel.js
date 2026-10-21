@@ -91,7 +91,7 @@ export async function addLead(email, consentText, source = 'start') {
  *  thing costs. */
 export async function priceNotice(currency) {
   if (!configured()) return null;
-  /* price_notice(text) (§31/§53) for a currency: the same rupee keys plus
+  /* price_notice(text) (§31/§55) for a currency: the same rupee keys plus
      that currency's display figures and `usd_checkout`. */
   try { return await rpc('price_notice', currency ? { p_currency: currency } : {}); } catch (e) { return null; }
 }

@@ -7,7 +7,7 @@
      1. who is asking — the caller's Supabase JWT, verified by asking
         Auth for the user; the body is trusted for nothing but the plan
         id, the period, a promo CODE (schema section 20), the CURRENCY
-        ('INR' or 'USD', schema §54 — never an amount) and (optionally)
+        ('INR' or 'USD', schema §55 — never an amount) and (optionally)
         which organisation they own;
      2. create_pending_payment() — the PRICE COMES FROM THE DATABASE,
         never from the request: an upgrade is priced as the difference
@@ -21,12 +21,12 @@
         attach_razorpay_order(). The browser gets back only what
         Checkout needs: order id, amount, currency, the PUBLIC key id.
 
-   CURRENCY (schema §54). The browser may ask for 'USD'; the database
+   CURRENCY (schema §55). The browser may ask for 'USD'; the database
    prices it from the owner's dollar figures and refuses it (400) while
    billing_settings.usd_checkout is off. The Razorpay order is created in
    the row's currency, and the amount is minor units of it. A rupee order
    is sent WITHOUT p_currency, so this function also works against a
-   database where §54 has not run yet (the five-argument form).
+   database where §55 has not run yet (the five-argument form).
 
    Secrets (set with `supabase secrets set`, never in the repo):
      RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET

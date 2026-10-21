@@ -1,13 +1,17 @@
 -- ============================================================
--- 54. CHARGING IN US DOLLARS — an order in INR or USD, priced by the server
+-- 55. CHARGING IN US DOLLARS — an order in INR or USD, priced by the server
 -- ------------------------------------------------------------
--- 21 Oct 2026, branch us/pricing-server, docs/US-MARKET-PLAN.md §C (the
--- contract reserved "§53"; §53 was taken the same day by the billing audit
--- fixes, so this is §54). Run AFTER §53: it restates §53's quote_for,
--- create_pending_payment, activation_refusal, activate_payment and
--- begin_refund, §31's price_notice(text), §46's admin_set_plan_price, §42's
+-- 21 Oct 2026, branch us/pricing-server, docs/US-MARKET-PLAN.md §C. The
+-- contract first reserved "§53"; §53 (billing audit fixes) and §55 (the
+-- plan caps lock) were taken on develop the same day, so this is §55.
+-- Run AFTER §53 and §55: it restates §53's paid_credit_paise, quote_for,
+-- quote_order, create_pending_payment, activation_refusal, activate_payment
+-- and begin_refund (keeping every §53 fix: credit per organisation, a
+-- refusal after capture RECORDED, an unanswered refund handing back its
+-- key), §31's price_notice(text), §46's admin_set_plan_price, §42's
 -- admin_customer, §35's claim_refund_email, §21's payments_referral_after
--- and §16/§21's admin console reads.
+-- and §16's admin console reads. §55 touched only the four enforce_*_limit
+-- triggers, none of which is restated here.
 --
 -- WHAT THE OWNER DECIDED: visitors in India see and pay rupees, everybody
 -- else sees and pays US dollars, and the OWNER types the dollar amounts in
@@ -26,7 +30,7 @@
 -- still says charged_currency 'INR'. admin_set_usd_checkout(true) refuses
 -- while any active paid plan lacks a dollar price of at least $1.00, and it
 -- should only be pressed once Razorpay has approved International payments
--- on the account (docs/BILLING.md §23) — Razorpay refuses a USD order
+-- on the account (docs/BILLING.md §24) — Razorpay refuses a USD order
 -- otherwise, after the row exists, and the buyer sees "Razorpay did not
 -- create the order".
 --
@@ -48,44 +52,44 @@
 -- five named arguments; they resolve to the new create_pending_payment with
 -- p_currency defaulting to 'INR'. rzp-verify / rzp-webhook / rzp-refund
 -- call functions whose arguments did not change. Redeploy all four from
--- current source after this runs (docs/BILLING.md §23).
+-- current source after this runs (docs/BILLING.md §24).
 --
---   54.0  preconditions
---   54.1  columns: usd_checkout, payments.currency CHECK, international,
+--   55.0  preconditions
+--   55.1  columns: usd_checkout, payments.currency CHECK, international,
 --         card_country, refunds.currency (stamped from the payment)
---   54.2  effective_price_minor(plan, currency)
---   54.3  paid_credit_minor(user, account, currency); paid_credit_paise kept
---   54.4  quote_for(user, plan, code, account, currency)
---   54.5  promo_reason_sentence: 'currency'
---   54.6  quote_order(plan, code, currency) — a new overload, no default
---   54.7  create_pending_payment(…, p_currency default 'INR')
---   54.8  activation_refusal / activate_payment: currency, international card
---   54.9  begin_refund: the payment's currency; claim_refund_email: currency
---   54.10 referral credits stay rupee-only
---   54.11 price_notice(text): charged_currency, usd_checkout
---   54.12 admin_set_plan_price: a dollar price is CHARGED; owner only
---   54.13 admin_set_usd_checkout(on)
---   54.14 the console's reads: overview per currency, ledger, Customer 360
---   54.15 grants
---   54.16 CHECKS TO RUN LIVE (read-only)
+--   55.2  effective_price_minor(plan, currency)
+--   55.3  paid_credit_minor(user, account, currency); paid_credit_paise kept
+--   55.4  quote_for(user, plan, code, account, currency)
+--   55.5  promo_reason_sentence: 'currency'
+--   55.6  quote_order(plan, code, currency) — a new overload, no default
+--   55.7  create_pending_payment(…, p_currency default 'INR')
+--   55.8  activation_refusal / activate_payment: currency, international card
+--   55.9  begin_refund: the payment's currency; claim_refund_email: currency
+--   55.10 referral credits stay rupee-only
+--   55.11 price_notice(text): charged_currency, usd_checkout
+--   55.12 admin_set_plan_price: a dollar price is CHARGED; owner only
+--   55.13 admin_set_usd_checkout(on)
+--   55.14 the console's reads: overview per currency, ledger, Customer 360
+--   55.15 grants
+--   55.16 CHECKS TO RUN LIVE (read-only)
 -- ============================================================
 
--- 54.0 PRECONDITIONS ------------------------------------------------------
+-- 55.0 PRECONDITIONS ------------------------------------------------------
 do $$
 begin
   if to_regprocedure('public.buyer_target_account(uuid,uuid)') is null then
-    raise exception 'Section 54 needs section 53 (buyer_target_account) first.';
+    raise exception 'Section 55 needs section 53 (buyer_target_account) first.';
   end if;
   if to_regclass('public.plan_prices') is null then
-    raise exception 'Section 54 needs section 31 (plan_prices) first.';
+    raise exception 'Section 55 needs section 31 (plan_prices) first.';
   end if;
   if to_regprocedure('public.admin_audit_write(text,text,text,jsonb,jsonb,text)') is null
      or to_regprocedure('public.require_role(text[])') is null then
-    raise exception 'Section 54 needs sections 40 and 45 (admin_audit_write, require_role) first.';
+    raise exception 'Section 55 needs sections 40 and 45 (admin_audit_write, require_role) first.';
   end if;
 end $$;
 
--- 54.1 COLUMNS --------------------------------------------------------------
+-- 55.1 COLUMNS --------------------------------------------------------------
 alter table public.billing_settings add column if not exists usd_checkout boolean not null default false;
 
 -- payments.currency has existed since §16 with default 'INR' and no check;
@@ -137,7 +141,7 @@ drop trigger if exists refunds_currency_stamp on public.refunds;
 create trigger refunds_currency_stamp before insert or update of payment_id, currency on public.refunds
   for each row execute function public.refunds_currency_stamp();
 
--- 54.2 THE PRICE IN A CURRENCY ------------------------------------------------
+-- 55.2 THE PRICE IN A CURRENCY ------------------------------------------------
 /** What one plan costs in one currency, in minor units, or null when it is
  *  not for sale in that currency. INR is effective_price() (§30) and nothing
  *  else. USD is the owner's plan_prices row: amount_minor before the plan's
@@ -163,7 +167,7 @@ as $$
 $$;
 revoke execute on function public.effective_price_minor(text, text) from public, anon, authenticated;
 
--- 54.3 THE UNUSED YEAR, IN A CURRENCY -------------------------------------------
+-- 55.3 THE UNUSED YEAR, IN A CURRENCY -------------------------------------------
 /** §53's credit for one organisation, expressed in p_currency. A year paid
  *  in the other currency is converted at the ratio of THAT plan's list
  *  prices in the two currencies — value × price(plan, want) / price(plan,
@@ -215,7 +219,7 @@ as $$
 $$;
 revoke execute on function public.paid_credit_paise(uuid, uuid) from public, anon, authenticated;
 
--- 54.4 quote_for: one function, one more argument ---------------------------------
+-- 55.4 quote_for: one function, one more argument ---------------------------------
 -- A fifth argument with a default cannot sit beside the four-argument form
 -- (every four-argument call would be ambiguous), so that one goes, exactly as
 -- §53 did to the three-argument one. It is internal (revoked from everyone).
@@ -327,7 +331,7 @@ begin
     when pc.max_uses is not null and pc.uses + held >= pc.max_uses         then 'exhausted'
     when pc.plan_ids is not null and not (pl.id = any (pc.plan_ids))       then 'not_for_plan'
     when p_user is not null and pc.owner_user_id = p_user                  then 'own_code'
-    -- §54: a flat amount off is a rupee amount; it is never read as cents
+    -- §55: a flat amount off is a rupee amount; it is never read as cents
     when cur <> 'INR' and pc.amount_off_paise is not null                  then 'currency'
   end;
   if reason is not null then
@@ -341,7 +345,7 @@ end;
 $fn$;
 revoke execute on function public.quote_for(uuid, text, text, uuid, text) from public, anon, authenticated;
 
--- 54.5 promo_reason_sentence ------------------------------------------------------
+-- 55.5 promo_reason_sentence ------------------------------------------------------
 create or replace function public.promo_reason_sentence(p_reason text)
 returns text language sql immutable as $$
   select case p_reason
@@ -356,7 +360,7 @@ returns text language sql immutable as $$
     else 'That code cannot be used.' end;
 $$;
 
--- 54.6 quote_order ----------------------------------------------------------------
+-- 55.6 quote_order ----------------------------------------------------------------
 /** The cards' quote, unchanged (§21, §53): rupees, the organisation holding
  *  the plan. Restated only so it names the new quote_for explicitly. */
 create or replace function public.quote_order(p_plan text, p_code text default null)
@@ -382,7 +386,7 @@ as $$
   select public.quote_for(auth.uid(), p_plan, p_code, null, p_currency);
 $$;
 
--- 54.7 create_pending_payment ---------------------------------------------------------
+-- 55.7 create_pending_payment ---------------------------------------------------------
 -- The five-argument form goes so that the old rzp-order's five NAMED
 -- arguments resolve to this one, with p_currency defaulting to 'INR'.
 drop function if exists public.create_pending_payment(uuid, text, text, uuid, text);
@@ -432,7 +436,7 @@ end;
 $fn$;
 revoke execute on function public.create_pending_payment(uuid, text, text, uuid, text, text) from public, anon, authenticated;
 
--- 54.8 activation: the credit in the order's currency; the card's origin ---------------
+-- 55.8 activation: the credit in the order's currency; the card's origin ---------------
 create or replace function public.activation_refusal(p_pay public.payments, p_account uuid)
 returns text
 language plpgsql
@@ -447,7 +451,7 @@ begin
     if pc.max_uses is not null and pc.uses >= pc.max_uses then return 'exhausted'; end if;
   end if;
   -- §52's slack: the credit shrinks by the minute; an order is good for an hour.
-  -- §54: counted in the order's own currency (a credit that can no longer be
+  -- §55: counted in the order's own currency (a credit that can no longer be
   -- converted counts as gone).
   if coalesce(p_pay.credit_paise, 0) > 0
      and p_pay.credit_paise > coalesce(public.paid_credit_minor(p_pay.user_id, p_account, p_pay.currency), 0)
@@ -496,7 +500,7 @@ begin
   select * into pay from public.payments p where p.razorpay_order_id = p_order_id for update;
   if pay.id is null then raise exception 'No payment with that order id' using errcode = '22023'; end if;
   if pay.status = 'paid' then
-    -- §54: the later of verify and the webhook may carry the card's origin
+    -- §55: the later of verify and the webhook may carry the card's origin
     -- when the first did not; it only ever fills a blank
     if (pay.international is null and intl is not null) or (pay.card_country is null and ctry is not null) then
       update public.payments p set international = coalesce(p.international, intl), card_country = coalesce(p.card_country, ctry)
@@ -508,7 +512,7 @@ begin
   if pay.status <> 'created' and pay.status <> 'failed' then
     raise exception 'Payment is %', pay.status using errcode = '22023';
   end if;
-  -- §54: the money must be in the currency the order was priced in
+  -- §55: the money must be in the currency the order was priced in
   if rcur is not null and rcur <> pay.currency then
     raise exception 'Razorpay reports a payment in % for an order recorded in %', rcur, pay.currency using errcode = '22023';
   end if;
@@ -545,7 +549,7 @@ end;
 $fn$;
 revoke execute on function public.activate_payment(text, text, jsonb) from public, anon, authenticated;
 
--- 54.9 REFUNDS IN THE PAYMENT'S CURRENCY ----------------------------------------------
+-- 55.9 REFUNDS IN THE PAYMENT'S CURRENCY ----------------------------------------------
 -- §53's begin_refund, word for word, except: p_amount is in minor units of
 -- the PAYMENT's currency (it always was; the messages said paise), and the
 -- answer names the currency for rzp-refund and the console.
@@ -657,7 +661,7 @@ $fn$;
 revoke execute on function public.claim_refund_email(text, text) from public, anon, authenticated;
 grant  execute on function public.claim_refund_email(text, text) to service_role;
 
--- 54.10 REFERRAL CREDITS STAY RUPEE-ONLY ------------------------------------------------
+-- 55.10 REFERRAL CREDITS STAY RUPEE-ONLY ------------------------------------------------
 -- §21's trigger, with one guard: a referral reward is a rupee sum owed to an
 -- Indian referrer, and a percentage of a dollar payment is cents, so a USD
 -- order earns its referrer nothing. (The FRIEND's percentage off works in
@@ -694,7 +698,7 @@ end;
 $fn$;
 revoke execute on function public.payments_referral_after() from public, anon, authenticated;
 
--- 54.11 price_notice(text) ------------------------------------------------------------------
+-- 55.11 price_notice(text) ------------------------------------------------------------------
 /** §31's overload, the same keys with the same meanings, and two changes:
  *
  *    charged_currency  'USD' when dollars were asked for, usd_checkout is
@@ -703,7 +707,7 @@ revoke execute on function public.payments_referral_after() from public, anon, a
  *                      plan's display_minor IS the amount charged.
  *    usd_checkout      the switch, as a boolean (new key).
  *
- *  And one fix: a plan_prices row of 0 ("not sold in dollars", §54) is
+ *  And one fix: a plan_prices row of 0 ("not sold in dollars", §55) is
  *  treated like no row — the plan falls back to its rupee figures —
  *  rather than displaying "$0". The rupee keys are still always present. */
 create or replace function public.price_notice(p_currency text)
@@ -762,7 +766,7 @@ as $$
   ) from pending g, want w, sw x;
 $$;
 
--- 54.12 admin_set_plan_price: a dollar price is a CHARGED price -------------------------------
+-- 55.12 admin_set_plan_price: a dollar price is a CHARGED price -------------------------------
 /** §46's body (owner only, audited), with the dollar rules:
  *    - USD is CHARGED once usd_checkout is on, so it is a real price: 0
  *      ("not sold in dollars") or at least 100 cents ($1.00, Razorpay's
@@ -854,11 +858,11 @@ begin
 end;
 $fn$;
 
--- 54.13 THE SWITCH ------------------------------------------------------------------------
+-- 55.13 THE SWITCH ------------------------------------------------------------------------
 /** Turn charging in US dollars on or off. Owner only, audited. ON is refused
  *  while any active paid plan lacks a dollar price of at least $1.00. It
  *  cannot see whether Razorpay has approved International payments on the
- *  account — that is the owner's step before pressing it (BILLING §23).
+ *  account — that is the owner's step before pressing it (BILLING §24).
  *  Answers price_notice('USD'), the same read the public makes. */
 create or replace function public.admin_set_usd_checkout(p_on boolean)
 returns jsonb
@@ -891,7 +895,7 @@ begin
 end;
 $fn$;
 
--- 54.14 THE CONSOLE'S READS -------------------------------------------------------------------
+-- 55.14 THE CONSOLE'S READS -------------------------------------------------------------------
 /** §16's overview. paid_total_paise and paid_30d_paise now mean RUPEES ONLY
  *  (every payment so far was INR, so no number moves today); the dollar
  *  side is in paid_by_currency, never added to the rupees. */
@@ -1112,7 +1116,7 @@ begin
 end;
 $fn$;
 
--- 54.15 GRANTS ----------------------------------------------------------------------------
+-- 55.15 GRANTS ----------------------------------------------------------------------------
 revoke execute on function public.quote_order(text, text)                                  from public;
 revoke execute on function public.quote_order(text, text, text)                            from public;
 revoke execute on function public.price_notice(text)                                       from public;
@@ -1132,7 +1136,7 @@ grant  execute on function public.admin_customer(uuid)                          
 
 notify pgrst, 'reload schema';
 
--- 54.16 CHECKS TO RUN LIVE (read-only) ------------------------------------------------------
+-- 55.16 CHECKS TO RUN LIVE (read-only) ------------------------------------------------------
 -- select pg_get_function_identity_arguments('public.quote_for'::regproc);
 --   -> p_user uuid, p_plan text, p_code text, p_account uuid, p_currency text
 -- select count(*) from pg_proc where proname = 'create_pending_payment';            -> 1 (six arguments)

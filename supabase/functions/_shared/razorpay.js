@@ -22,7 +22,7 @@
    ₹499 is 49900 paise and $19.50 is 1950 cents. The plans table stores
    paise and plan_prices stores cents, so the number the admin saves is
    the number Razorpay charges, with no rounding in between. Since schema
-   §54 an order is in INR or USD, and every *_paise column holds minor
+   §55 an order is in INR or USD, and every *_paise column holds minor
    units OF ITS ROW'S currency (the names were kept; see that section).
    ============================================================ */
 
@@ -97,7 +97,7 @@ export function fmtPaise(paise) {
   return '₹' + whole + (p ? '.' + String(p).padStart(2, '0') : '');
 }
 
-/* ---- two currencies (schema §54) ------------------------------------
+/* ---- two currencies (schema §55) ------------------------------------
    An order is in rupees or US dollars; the server prices both. These
    print and parse an amount in its own currency. fmtPaise / parseRupees
    above stay exactly as they were, because the client imports them. */
@@ -200,7 +200,7 @@ export function promoLabel(code) {
    gone), which left a buyer charged with no plan. The order matters, so
    it lives here, where scripts/test-billing.mjs can watch it:
 
-     1. the amount (and, since §54, the currency) must match the order
+     1. the amount (and, since §55, the currency) must match the order
                                          -> else nothing is captured
      2. payment_can_activate(order)      -> else nothing is captured, and
                                             Razorpay releases the hold
@@ -210,7 +210,7 @@ export function promoLabel(code) {
    Returns { kind: 'mismatch' | 'refused' | 'captured' | 'pending', … }. */
 export async function settleAuthorized({ entity, amountPaise, currency = null, canActivate, capture }) {
   if (Number(entity?.amount) !== Number(amountPaise)) return { kind: 'mismatch' };
-  // §54: an order priced in one currency is never captured in another
+  // §55: an order priced in one currency is never captured in another
   if (currency && entity?.currency && String(entity.currency).toUpperCase() !== String(currency).toUpperCase()) return { kind: 'mismatch' };
   let verdict = null;
   try { verdict = await canActivate(); } catch { verdict = null; }

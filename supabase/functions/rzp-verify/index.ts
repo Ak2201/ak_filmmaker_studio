@@ -25,6 +25,12 @@
    admin_resend_receipt() is called AS THE CALLER, so only an
    administrator gets past it, and then the same claim-and-send runs.
 
+   CURRENCY (schema §55). An order is in INR or USD and its amounts are
+   minor units of that currency. The capture names the ROW's currency,
+   settleAuthorized() refuses an authorisation in any other one, and
+   activate_payment() checks the entity's currency again and records
+   whether the card was issued abroad (`international`, `card.country`).
+
    Secrets: RESEND_API_KEY and MAIL_FROM (docs/BILLING.md §14). Without
    them nothing is claimed and nothing is sent.
    ============================================================ */
@@ -111,7 +117,7 @@ Deno.serve(async (req) => {
     }
     if (entity.status === 'authorized') {
       const settled = await settleAuthorized({
-        entity, amountPaise: pay.amount_paise,
+        entity, amountPaise: pay.amount_paise, currency: pay.currency || 'INR',
         canActivate: async () => {
           const { data: verdict, error: verr } = await svc.rpc('payment_can_activate', { p_order_id: body.razorpay_order_id });
           if (verr) throw new Error(verr.message);
@@ -126,7 +132,7 @@ Deno.serve(async (req) => {
           return cap.ok ? await cap.json().catch(() => null) : null;
         }
       });
-      if (settled.kind === 'mismatch') return json(400, { error: 'The payment amount does not match the order. Nothing was collected; Razorpay releases the hold.' });
+      if (settled.kind === 'mismatch') return json(400, { error: 'The payment amount or currency does not match the order. Nothing was collected; Razorpay releases the hold.' });
       if (settled.kind === 'refused') {
         return json(409, { ok: false, refused: settled.reason, error: `${settled.sentence || 'This order can no longer be applied.'} Nothing was collected; Razorpay releases the hold on your money within a few days.` });
       }

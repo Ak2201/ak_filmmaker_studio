@@ -161,7 +161,10 @@ for (const id of IDS) {
       ok(new RegExp(`data-start-buy="${id}" data-plan="${id}"`).test(html) && html.includes(`href="purchase.html?plan=${id}"`), `${tag}${id}: the buy link carries the plan`);
     }
     ok(/id="offer"[^>]*\shidden/.test(html), tag + 'the price-rise band is in the markup and hidden until the server announces a rise');
-    ok(/one payment/.test(html) && !/per month|\/mo\b|monthly|billed yearly|annually/i.test(html), tag + 'worded as sold: one payment, no subscription wording');
+    ok(/one payment/.test(html) && /a year/.test(html) && !/per month|\/mo\b|monthly|billed yearly|annually|auto-?renew(s|al)? on/i.test(html), tag + 'worded as sold: one payment for a year, nothing that reads as a recurring charge');
+    /* §52: a plan is a year, marketed by the day. Every card prints its own
+       per-day figure as a stamp, so the arithmetic is plans.js's, never typed. */
+    for (const id of PAID) ok(html.includes('{{fms:price.' + id + '.day}}'), `${tag}${id}: the card prints its per-day cost as {{fms:price.${id}.day}}`);
 
     /* THE COMPARISON TABLE, read back out of the HTML and compared with the
        matrix JSON read here (not through the generator's own helpers). */

@@ -55,8 +55,9 @@ export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode
 //   'held' (authorized and the capture does not go through: no plan, 202 pending)
 export const signFor = async (order, payment) => createHmac('sha256', RZP.secret).update(`${order}|${payment}`).digest('hex');
 const PLAN_RANK = { free: 0, starter: 1, indie: 2, pro: 3 };
-/* Section 18: a plan is for good. applyPlan() writes plan_until null;
-   accountPlan() has always read null as "no end". */
+/* Section 52: a plan is a YEAR. applyPlan() stacks 365 days onto the time
+   left on the same plan; a grant (days 0) is still for good, and
+   accountPlan() has always read a null plan_until as "no end". */
 function accountPlan(a) { return !a || a.plan === 'free' ? 'free' : (!a.plan_until || Date.parse(a.plan_until) > Date.now()) ? a.plan : 'free'; }
 function userPlan(uid) {
   const owned = F.db.accounts.filter((a) => a.owner_id === uid);
@@ -174,20 +175,27 @@ function accountForBuyer(uid) {
   F.db.accountMembers.push({ account_id: a.id, invited_email: u ? u.email : '', user_id: uid, role: 'owner', status: 'active' });
   return a;
 }
-function applyPlan(a, plan) {
+/* public.apply_plan (§52): days <= 0 is for good; otherwise a renewal of
+   the plan still running stacks onto its end. Returns the new plan_until. */
+function applyPlan(a, plan, days = 0, period = 'year') {
   const lim = (F.db.plans.find((p) => p.id === plan) || {}).limits || {};
-  a.plan = plan; a.plan_period = 'lifetime'; a.plan_until = null;
   a.seat_limit = Math.max(1, cap(lim, 'seats') ?? 1000);
-  return null;
+  if (!(days > 0)) { a.plan = plan; a.plan_period = period === 'grant' ? 'grant' : 'lifetime'; a.plan_until = null; return null; }
+  const running = a.plan === plan && a.plan_until && Date.parse(a.plan_until) > Date.now();
+  const until = new Date((running ? Date.parse(a.plan_until) : Date.now()) + days * DAY).toISOString();
+  a.plan = plan; a.plan_period = period === 'grant' ? 'grant' : 'year'; a.plan_until = until;
+  return until;
 }
 function activate(orderId, paymentId, raw) {
   const pay = F.db.payments.find((x) => x.razorpay_order_id === orderId);
   if (!pay) throw Object.assign(new Error('No payment with that order id'), { code: '22023' });
   if (pay.status === 'paid') return { already: true, pay };
   const a = accountForBuyer(pay.user_id);
-  // section 21: a plan is applied only when it is HIGHER than the organisation's
-  if ((PLAN_RANK[pay.plan_id] ?? 0) > (PLAN_RANK[accountPlan(a)] ?? 0)) applyPlan(a, pay.plan_id);
-  Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, ends_at: null, raw });
+  // section 52: applied when it is the same plan (a renewal) or a higher one
+  const applied = (PLAN_RANK[pay.plan_id] ?? 0) >= (PLAN_RANK[accountPlan(a)] ?? 0);
+  const until = applied ? applyPlan(a, pay.plan_id, 365) : null;
+  Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, period: 'year', plan_applied: applied,
+    starts_at: until ? new Date(Date.parse(until) - 365 * DAY).toISOString() : null, ends_at: until, raw });
   // section 20: a code is spent at activation, once
   if (pay.promo_code) { const c = F.db.promos.find((x) => x.code === pay.promo_code); if (c) c.uses++; }
   afterPaid(pay);
@@ -238,7 +246,12 @@ function endPlanByRefund(pay) {
   if (pay.status === 'refunded') return;
   pay.status = 'refunded';
   const a = F.db.accounts.find((x) => x.id === pay.account_id);
-  if (a && a.plan === pay.plan_id) a.plan_until = new Date(Date.now() - 1000).toISOString();
+  if (a && a.plan === pay.plan_id) {
+    /* §52: the year this payment bought comes off; other years stay */
+    const span = pay.starts_at && pay.ends_at ? Date.parse(pay.ends_at) - Date.parse(pay.starts_at) : 0;
+    const left = span > 0 && a.plan_until ? Date.parse(a.plan_until) - span : 0;
+    a.plan_until = new Date(left > Date.now() ? left : Date.now() - 1000).toISOString();
+  }
   /* section 34: the trigger at commit — no other plan left, so the trial
      restarts now, for the configured length and scope, source 'refund'. */
   if (userPlan(pay.user_id) === 'free') {
@@ -284,9 +297,16 @@ function afterPaid(pay) {
       status: 'owed', created_at: new Date().toISOString(), paid_at: null, paid_note: null });
   }
 }
-/* section 21: what a user has already paid for full-time access */
+/* section 52: the UNUSED part of each paid year of the plan held now */
 export function paidCredit(uid) {
-  return F.db.payments.filter((x) => x.user_id === uid && x.status === 'paid' && x.period === 'lifetime').reduce((n, x) => n + x.amount_paise, 0);
+  const a = F.db.accounts.find((x) => x.owner_id === uid);
+  const now = Date.now();
+  return Math.floor(F.db.payments.filter((x) => x.user_id === uid && x.status === 'paid' && x.period === 'year' && x.plan_applied !== false
+      && a && x.plan_id === a.plan && x.starts_at && x.ends_at && Date.parse(x.ends_at) > now)
+    .reduce((n, x) => {
+      const s = Date.parse(x.starts_at), e = Date.parse(x.ends_at);
+      return n + (x.amount_paise + (x.credit_paise || 0)) * Math.max(0, Math.min(1, (e - Math.max(now, s)) / (e - s)));
+    }, 0));
 }
 /* section 21: public.quote_for(user, plan, code). `user` null = signed out. */
 export function quoteOrder(planId, rawCode, user = null) {
@@ -296,20 +316,27 @@ export function quoteOrder(planId, rawCode, user = null) {
      guard, the amount due and the floor. */
   const price = pl ? effectivePrice(pl.id) : null;
   if (!pl || !(price > 0)) throw Object.assign(new Error('That plan is not for sale'), { code: '22023' });
-  let credit = 0, cur = 'free';
+  let credit = 0, cur = 'free', renewal = false, curUntil = null;
   if (user) {
     cur = userPlan(user.id);
-    if (cur !== 'free' && (PLAN_RANK[pl.id] ?? 0) <= (PLAN_RANK[cur] ?? 0)) {
+    if (cur !== 'free') {
+      const held = F.db.accounts.find((a) => a.owner_id === user.id && accountPlan(a) === cur);
+      curUntil = held ? held.plan_until ?? null : null;
       const curName = (F.db.plans.find((p) => p.id === cur) || {}).name || cur;
-      throw Object.assign(new Error(cur === pl.id ? `You already have ${pl.name} — for good. There is nothing to pay.`
-        : `You are on ${curName} already; ${pl.name} is a lower plan, and paying to have less is not something we sell.`), { code: '22023', hint: cur === pl.id ? 'same_plan' : 'downgrade' });
+      if (cur === pl.id) {
+        if (!curUntil) throw Object.assign(new Error(`You have ${pl.name} for good. There is nothing to renew.`), { code: '22023', hint: 'same_plan' });
+        renewal = true;
+      } else if ((PLAN_RANK[pl.id] ?? 0) < (PLAN_RANK[cur] ?? 0)) {
+        throw Object.assign(new Error(`Your ${curName} year runs until ${curUntil ? new Date(curUntil).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'its end'}. A lower plan can be bought when it ends.`),
+          { code: '22023', hint: 'downgrade' });
+      } else credit = paidCredit(user.id);
     }
-    credit = paidCredit(user.id);
   }
   let due = price - credit;
   if (due < 100) due = Math.min(price, 100);
   const code = normalisePromo(rawCode) || null;
   const base = { plan_id: pl.id, list_paise: price, credit_paise: price - due, due_paise: due, amount_paise: due, discount_paise: 0, code, ok: true, reason: null, sentence: null,
+    period: 'year', days: 365, renewal, current_until: curUntil,
     upgrade_from: credit > 0 ? cur : null, upgrade_from_name: credit > 0 ? (F.db.plans.find((p) => p.id === cur) || {}).name : null, paid_paise: credit,
     /* Null once the rise has fired, so a card can never advertise a
        change that has already happened (30.8). */
@@ -585,11 +612,11 @@ function rpc(name, args, user, route) {
     case 'admin_grant_plan': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       const a = accountForBuyer(args.p_user);
-      applyPlan(a, args.p_plan);   // p_days is ignored: for good
+      const until = applyPlan(a, args.p_plan, Number(args.p_days) || 0, 'grant');   // §52: days honoured; 0 is for good
       F.db.payments.push({ id: 'pay' + F.db.payments.length, user_id: args.p_user, account_id: a.id, plan_id: args.p_plan, period: 'grant', amount_paise: 0,
-        status: 'granted', note: args.p_note || null, created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: null });
+        status: 'granted', note: args.p_note || null, created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: until });
       if (!F.db.members.has(args.p_user)) F.db.members.set(args.p_user, { role: 'user', disabled_at: null });
-      return json(route, 200, null);
+      return json(route, 200, until);
     }
     case 'quote_order': {
       try { return json(route, 200, quoteOrder(args.p_plan, args.p_code, user)); }
@@ -987,7 +1014,9 @@ export async function handle(route) {
     F.db.calls.push(`fn:rzp-order ${body.plan} ${body.period}`);
     if (F.db.members.get(user.id)?.disabled_at) return json(route, 403, { error: 'This account has been disabled by an administrator' });
     if (!plan) return json(route, 400, { error: 'That plan is not for sale' });
-    if (body.period === 'month' || body.period === 'year') return json(route, 400, { error: 'Plans are bought once, for good — not by the month or the year' });
+    /* §52: a year at a time; an older client's 'lifetime' is read as a year */
+    if (body.period == null || body.period === 'lifetime') body.period = 'year';
+    if (body.period !== 'year') return json(route, 400, { error: 'Plans are bought a year at a time; there is no monthly period.' });
     if (!effectivePrice(plan.id)) return json(route, 400, { error: 'That plan is not for sale' });
     // section 20: the code is re-quoted here, never priced by the client
     // section 21: priced for THIS buyer — the difference, and a downgrade refused

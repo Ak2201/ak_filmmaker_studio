@@ -61,17 +61,26 @@ export function basicAuth(keyId, keySecret) {
   return 'Basic ' + btoa(`${keyId}:${keySecret}`);
 }
 
-/** FULL-TIME ACCESS (schema section 18): a plan is bought once and kept
- *  for good. There is one period, and it never ends. The month/year
- *  model this replaced lived in PERIOD_DAYS and periodEnd(); both are
- *  gone, so nothing can compute an expiry by accident. */
-export const PERIODS = ['lifetime'];
+/** A YEAR AT A TIME (schema section 52, owner 21 Oct 2026): a plan is
+ *  bought for 365 days and renewed by buying it again (the database stacks
+ *  the new year onto the time left). Nothing is charged automatically.
+ *  Section 18's "for good" ended with it; a grant can still be for good,
+ *  but nothing is SOLD that way. */
+export const PERIODS = ['year'];
+export const PLAN_DAYS = 365;
+
+/** What a year costs a day, in paise (rounded to the paisa): the figure
+ *  the pricing pages lead with. 59900 -> 164 ("₹1.64 a day"). */
+export function perDayPaise(paise) {
+  const n = Number(paise);
+  return Number.isFinite(n) && n > 0 ? Math.round(n / PLAN_DAYS) : null;
+}
 
 /** The one price of a plan, in paise, or null when it is not for sale.
  *  `plan` is a row of the plans table; `price_paise` is section 18's
  *  column, with the yearly figure as the fallback for a row read before
  *  that section ran. */
-export function priceFor(plan, period = 'lifetime') {
+export function priceFor(plan, period = 'year') {
   if (!plan || !PERIODS.includes(period)) return null;
   const v = Number.isInteger(plan.price_paise) ? plan.price_paise : plan.yearly_paise;
   return Number.isInteger(v) && v > 0 ? v : null;

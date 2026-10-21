@@ -40,7 +40,7 @@ function palette() {
   const css = readFileSync(join(root, 'src', 'styles', 'tokens.css'), 'utf8');
   const block = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
   const out = {};
-  for (const [, name, value] of block.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
+  for (const [, name, value] of block.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))\s*;/g)) {
     out[name] = value;
   }
   // The legacy names alias the semantic layer (--paper: var(--bg-primary)),
@@ -59,7 +59,7 @@ function palette() {
 const C = palette();
 
 const NAME = JSON.parse(readFileSync(new URL('../src/data/brand.json', import.meta.url), 'utf8')).name;
-const HOOK = ['Pay once. No subscription.', 'Works offline — your work stays in your browser.'];
+const HOOK = ['Less than a tea a day.', 'A year of the studio — and it works offline.'];
 const SUB  = 'Write the screenplay · Plan the shoot · Run the set';
 const FONT = `'Catamaran', 'Liberation Sans', 'DejaVu Sans', Arial, sans-serif`;
 

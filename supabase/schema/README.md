@@ -18,12 +18,13 @@ order they were AUTHORED, not the order they are applied (see run order below).
 | `schema-49-co-editing.sql` | §49 | The co-editing switch: `billing_settings.co_editing_enabled`, `co_editing_enabled()`, `admin_set_co_editing_enabled()` (owner). Needs §40, §45. **RAN LIVE 19 Oct 2026.** Safe before it runs: a missing function reads as OFF. |
 | `schema-50-refund-seat-trial.sql` | §50 | Refunds need the finance (or owner) role in the database too; a refund request reads refunded only once processed, and cannot be declined while a refund is in flight; seats follow the current plan; a declined invite request keeps blocking `start_trial()` after a re-ask. Needs §45. **RAN LIVE 19 Oct 2026.** |
 | `schema-51-security-followups.sql` | §51 | The security audit's follow-ups: a limited promo code is reserved when an order opens and never counted past its cap; upgrade credit counts only organisations still owned and only payments that applied a plan (`payments.plan_applied`, backfilled); a credited payment is not refunded under an upgrade; support cannot disable an administrator; no cross-user `user_plan`/`user_limits`/`is_entitled`/`is_studio_member`/`account_plan`; screening passes only for owned films; the collaborator cap holds on a move; films are not handed to other users; **`claim_share()` works again** (it failed 42702 on every call) and a link's grant follows the link; owners cannot rewrite a collaborator's comment; `sh_owner_all` dropped; no anonymous trials; deleting a team or removing a member never takes a member's films; a deleted member's address leaves their referral code. Needs §40, §45, §46, §50. **RAN LIVE 19 Oct 2026.** sha256 `860ed0741bad08c196d40d00602c4fb5481290519017691a30529bb4ac63ac44`. |
+| `schema-52-yearly-plans.sql` | §52 | Plans are a YEAR (reverses §18): `apply_plan` stacks a renewal, upgrade credit is the unused part of the year, a downgrade waits for the year to end, a refund takes off that payment's own year, `admin_grant_plan` honours days (0 = for good); a one-time backfill gives every paid-for-good buyer a year from the switch (`billing_settings.yearly_switch_at`). Needs §50, §51. **NOT YET RUN LIVE.** sha256 `6c1a80996bc1d6df5d321ad4dc1e7830c61812d36e27a52b0a7f74f42318945f`. |
 | `patches/2026-10-10-billing_status.sql` | — | Hand-extracted `billing_status()` for pasting into the SQL editor. |
 
 ## Run order
-`supabase-schema.sql` (§1–§39) → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51. Every file
+`supabase-schema.sql` (§1–§39) → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52. Every file
 is re-runnable ON ITS OWN, at its place in that order. §50 goes with a redeploy of `rzp-refund`
-(`docs/BILLING.md` §20); §51 with a redeploy of `rzp-verify` (`docs/BILLING.md` §21).
+(`docs/BILLING.md` §20); §51 with a redeploy of `rzp-verify` (`docs/BILLING.md` §21); §52 with a redeploy of all four functions (`docs/BILLING.md` §22).
 
 **Never replay an EARLIER file over a later database.** Re-running is safe only for the newest
 section. `supabase-schema.sql` (and §40, §42) still contain the pre-§46 admin writers, so running

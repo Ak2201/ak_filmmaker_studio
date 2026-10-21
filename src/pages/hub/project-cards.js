@@ -280,7 +280,7 @@ function renderProjects() {
     out.append(note);
     PlanGate.offerFor(['new_projects']).then((o) => {
       if (!o || !note.isConnected) return;
-      note.replaceChildren(lead + ' ', h('a', { href: o.href, text: PlanGate.offerText(o) }), ' adds films of your own — one payment.');
+      note.replaceChildren(lead + ' ', h('a', { href: o.href, text: PlanGate.offerText(o) }), ' a year adds films of your own.');
     }).catch(() => { /* the plain sentence stands */ });
   }
   commit();

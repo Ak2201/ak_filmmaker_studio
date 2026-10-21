@@ -45,6 +45,7 @@ import { h, commitMain } from '../lib/dom.js';
 import { pageHeader } from '../ui/kit/page-header.js';
 import { listPriceBlock } from '../ui/list-prices.js';
 import { trialLength } from '../lib/trial-time.js';
+import { perDay, LIST_PRICE } from '../lib/plans.js';
 /* §33's trial_offer(): ANON-callable, one narrow public fact (is the
    trial on, and how long is it). The signed-out half of this page needs
    it to name the length, and billing_status() cannot answer without a
@@ -239,7 +240,7 @@ function render() {
        sign-in itself. */
     {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'One payment, access for good — no trial first if you already know you want it.');
+        'A year of full access, from about ' + perDay(LIST_PRICE.starter) + ' a day — no trial first if you already know you want it.');
       /* The prices on this page (src/ui/list-prices.js), not a link away. */
       buy.append(listPriceBlock());
       buy.append(h('div.iv-actions', {}, [
@@ -263,7 +264,7 @@ function render() {
        real ways on — buy, or sign out. */
     const used = lastStatus.trial_used === true;
     const sec = section('through', used ? 'Your trial' : 'The studio', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
-      'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for good.');
+      'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for a year.');
     /* The same prices and the same button a new signup gets: this branch
        used to offer one bare SEE PLANS, one hop more than a stranger.
        Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
@@ -344,9 +345,9 @@ function render() {
     {
       const buy = trialOffer
         ? section('buy', 'Or', 'Buy a plan and come straight in.',
-            'One payment, access for good — and the only thing that keeps the studio open once a trial has run out.')
+            'A year of full access, from about ' + perDay(LIST_PRICE.starter) + ' a day — and the only thing that keeps the studio open once a trial has run out.')
         : section('buy', used ? 'Your trial' : 'Plans', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
-            'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. One payment, access for good.');
+            'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. A plan opens it again for a year.');
       buy.append(listPriceBlock());
       buy.append(h('div.iv-actions', {}, [
         h('a.btn' + (trialOffer ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS AND BUY' })

@@ -202,7 +202,8 @@ try {
        The table's 'free' row is the no-plan state and is never drawn. */
     ok(p.length === 3 && p.map((x) => x[0]).join() === 'starter,indie,pro', 'three cards, the paid tiers in order, and no Free card: ' + p.map((x) => x[0]).join(', '));
     ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'the card shows the table’s ONE price (₹7,999)');
-    ok((await page.textContent('#plan')).includes('yours for good'), 'and says it is bought once, for good');
+    { const t = await page.textContent('#plan');
+      ok(/a year/.test(t) && /≈ ₹21\.92 a day/.test(t) && /nothing renews by itself/.test(t), 'and says it is a year, priced by the day (₹7,999 ÷ 365 ≈ ₹21.92), nothing renewing by itself'); }
     ok(!(await page.$('[data-plan-action="period"]')), 'there is no period switch — section 18 withdrew the subscription model');
     ok(!(await page.$('#plan .is-current')) && !/Baseline/.test(await page.textContent('#plan')), 'with nothing bought, no card is "Your plan" and none is a "Baseline"');
     ok(!(await page.textContent('#plan')).includes('Your usage'), 'and no usage against a free tier\'s caps (there is no free tier)');
@@ -212,15 +213,28 @@ try {
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 }).then(() => ok(true, 'the Indie card becomes the current plan'), () => ok(false, 'the Indie card becomes the current plan'));
     const order = F.db.calls.find((c) => c.startsWith('fn:rzp-order'));
-    ok(order === 'fn:rzp-order indie lifetime', 'rzp-order was asked for indie, for good');
+    ok(order === 'fn:rzp-order indie year', 'rzp-order was asked for indie, for a year');
     const last = await page.evaluate(() => window.__rzpLast);
     ok(last && last.amount === 799900 && last.currency === 'INR' && last.key === 'rzp_test_fake', 'Checkout opened with the table’s amount in paise and the public key id');
     ok(F.db.calls.includes('fn:rzp-verify ok'), 'rzp-verify accepted a genuine signature');
     const pay = F.db.payments.find((x) => x.plan_id === 'indie');
     ok(pay && pay.status === 'paid' && pay.razorpay_payment_id, 'the ledger reads paid with the payment id');
     const acc = F.db.accounts.find((a) => a.owner_id === USERS['tok-amy'].id);
-    ok(acc && acc.plan === 'indie' && acc.plan_until === null, 'Amy owns an organisation on Indie with no end date');
-    { const t = await page.textContent('#plan'); ok(!/Until|Lapsed|RENEW|EXTEND/.test(t) && /Nothing to renew/.test(t), 'the card says there is nothing to renew, and prints no expiry'); }
+    { const left = acc && acc.plan_until ? (Date.parse(acc.plan_until) - Date.now()) / 86400e3 : 0;
+      ok(acc && acc.plan === 'indie' && left > 364.9 && left <= 365, 'Amy owns an organisation on Indie for one year (' + left.toFixed(2) + ' days left)'); }
+    ok(pay && pay.period === 'year' && pay.ends_at === acc.plan_until && Date.parse(pay.ends_at) - Date.parse(pay.starts_at) === 365 * 86400e3, 'the payment records the year it bought');
+    await page.waitForFunction(() => /Valid until/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
+      .then(() => ok(true, 'the current card says until when it is valid'), () => ok(false, 'the current card says until when it is valid'));
+    await page.waitForFunction(() => /RENEW INTERMEDIATE — ADD A YEAR/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
+      .then(() => ok(true, 'and offers to renew: another year, bought by hand'), () => ok(false, 'and offers to renew: another year, bought by hand'));
+    /* §52: renewing early stacks the new year onto the end of the one running */
+    await page.click('#plan .is-current [data-plan-action="buy"]');
+    await page.waitForFunction(() => /RENEW INTERMEDIATE/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    { const paid = F.db.payments.filter((x) => x.plan_id === 'indie' && x.status === 'paid');
+      const left = (Date.parse(acc.plan_until) - Date.now()) / 86400e3;
+      ok(paid.length === 2 && paid[1].amount_paise === 799900 && left > 729.9 && left <= 730, 'renewing early charges the full year and stacks it: ' + left.toFixed(2) + ' days left');
+      ok(paid[1].starts_at === paid[0].ends_at, 'the renewal\'s year starts where the first one ends'); }
     ok(!(await page.$('.pl-card[data-plan="starter"] [data-plan-action="buy"]')), 'a lower tier offers no button once Indie is held');
     ok((await page.textContent('#plan .bd-h2')).includes('Intermediate'), 'the section title names the plan and the organisation');
     /* (h) Nothing about the purchase lands in localStorage. The plan is
@@ -544,18 +558,23 @@ try {
     const amy = USERS['tok-amy'].id;
     F.db.members.set(amy, { role: 'user', disabled_at: null });
     const at = new Date(Date.now() - 3 * 86400e3).toISOString();
-    F.db.accounts.push({ id: 'acc_amy', name: 'Amy’s Studio', owner_id: amy, plan: 'starter', plan_until: null, plan_period: 'lifetime', seat_limit: 1, created_at: at });
-    F.db.payments.push({ id: 'payS', user_id: amy, account_id: 'acc_amy', plan_id: 'starter', period: 'lifetime', amount_paise: 299900, list_paise: 299900, discount_paise: 0, credit_paise: 0,
-      currency: 'INR', razorpay_order_id: 'order_s', razorpay_payment_id: 'pay_s', status: 'paid', created_at: at, paid_at: at });
+    /* §52: the credit is the UNUSED part of the year. A year that has not
+       begun yet (a renewal stacked after the one running) is unused in
+       full, which keeps the arithmetic exact while the proof runs. */
+    const s0 = new Date(Date.now() + 86400e3).toISOString(), e0 = new Date(Date.now() + 366 * 86400e3).toISOString();
+    F.db.accounts.push({ id: 'acc_amy', name: 'Amy’s Studio', owner_id: amy, plan: 'starter', plan_until: e0, plan_period: 'year', seat_limit: 1, created_at: at });
+    F.db.payments.push({ id: 'payS', user_id: amy, account_id: 'acc_amy', plan_id: 'starter', period: 'year', amount_paise: 299900, list_paise: 299900, discount_paise: 0, credit_paise: 0,
+      currency: 'INR', razorpay_order_id: 'order_s', razorpay_payment_id: 'pay_s', status: 'paid', created_at: at, paid_at: at, starts_at: s0, ends_at: e0 });
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
     await page.goto(BASE + 'purchase.html');
     await page.waitForSelector('#plan .pl-card[data-plan="indie"] .pl-upgrade', { timeout: 10000 })
       .then(() => ok(true, 'a Starter holder sees an upgrade line on the Indie card'), () => ok(false, 'a Starter holder sees an upgrade line on the Indie card'));
-    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-upgrade')) === 'Upgrade to Intermediate — ₹5,000 (you paid ₹2,999 for Basic)', 'it reads "Upgrade to Intermediate — ₹5,000 (you paid ₹2,999 for Basic)"');
+    { const want = 'Upgrade to Intermediate — ₹5,000 today: the ₹2,999 left on your Basic year counts toward it, and Intermediate\'s own year starts now.';
+      ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-upgrade')) === want, 'it reads "' + want + '"'); }
     const p = await prices(page);
     ok(p.find((x) => x[0] === 'indie')[1] === '₹5,000' && p.find((x) => x[0] === 'pro')[1] === '₹17,000', 'the cards price the DIFFERENCE from quote_order (Indie ₹5,000, Pro ₹17,000)');
     ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
-    ok(!(await page.$('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]')), 'the plan already held offers no button');
+    ok(/RENEW BASIC — ADD A YEAR/.test(await page.textContent('#plan .pl-card[data-plan="starter"]')), 'the plan already held offers a renewal, not a purchase of what you have');
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 })
       .then(() => ok(true, 'the upgrade goes through and Indie is the current plan'), () => ok(false, 'the upgrade goes through and Indie is the current plan'));
@@ -563,9 +582,11 @@ try {
     ok(last && last.amount === 500000, 'Checkout opened at the difference (500000 paise), not the list');
     const row = F.db.payments.find((x) => x.plan_id === 'indie' && x.status === 'paid');
     ok(row && row.credit_paise === 299900 && row.list_paise === 799900 && row.amount_paise === 500000, 'the ledger row carries list, credit and the amount paid');
-    await page.waitForFunction(() => /you paid ₹7,999 for Intermediate/.test((document.querySelector('#plan .pl-card[data-plan="pro"] .pl-upgrade') || {}).textContent || ''), null, { timeout: 10000 })
-      .then(() => ok(true, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'), () => ok(false, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'));
-    ok((await prices(page)).find((x) => x[0] === 'pro')[1] === '₹12,000', 'Pro now costs ₹12,000 (1999900 − 799900)');
+    await page.waitForFunction(() => /left on your Intermediate year/.test((document.querySelector('#plan .pl-card[data-plan="pro"] .pl-upgrade') || {}).textContent || ''), null, { timeout: 10000 })
+      .then(() => ok(true, 'the Pro card re-quotes against the Intermediate year just begun'), () => ok(false, 'the Pro card re-quotes against the Intermediate year just begun'));
+    { const t = (await prices(page)).find((x) => x[0] === 'pro')[1];
+      const paise = Math.round(Number(t.replace(/[^\d.]/g, '')) * 100);
+      ok(paise >= 1200000 && paise <= 1200100, 'Pro now costs about ₹12,000: 1999900 less the unused part of a ₹7,999 year that began seconds ago (' + t + ')'); }
     const refused = await page.evaluate(async ([sb]) => {
       const r = await fetch(sb + '/functions/v1/rzp-order', { method: 'POST', headers: { Authorization: 'Bearer tok-amy', 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: 'starter', period: 'lifetime' }) });
       return { status: r.status, body: await r.json() };

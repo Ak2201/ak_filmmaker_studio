@@ -1,12 +1,12 @@
 {
   "_": "Copy and structure of pricing.html, read by scripts/make-marketing-pages.mjs (which writes the committed HTML). `groups` maps EVERY plan-matrix.json feature row that any paid plan has to one comparison group; the table is built from plan-matrix.json at generation time, so a cell cannot say what the matrix does not, and `npm run test:marketing` fails when a row is in no group, in two groups, or a key here is not a matrix row. A key given as an array is ONE table row for matrix rows that are the same feature to a buyer (the import capability and the import module were two rows reading \"Screenplay import\" and \"Import Screenplay\"); the label is the first one's, and they must agree on every paid plan. Fields ending in Html are our own trusted markup (an em, a stamped span); everything else is escaped. No price, no plan name and no figure is typed here: those are stamped at build time from src/lib/plans.js and src/data/plan-matrix.json. No social proof of any kind.",
   "meta": {
-    "title": "Pricing: pay once, yours for good",
-    "description": "Three plans, each bought once in Indian rupees with no subscription and no renewal. Compare what Basic, Intermediate and Pro include, feature by feature."
+    "title": "Pricing: a year of the studio from {{fms:price.from.day}} a day",
+    "description": "Three plans, each bought for one year in Indian rupees. Nothing renews by itself: buy the next year when you want it. Compare what Basic, Intermediate and Pro include, feature by feature."
   },
   "hero": {
-    "h1": "Pay once. Make the film.",
-    "sub": "Three plans, and each one includes everything in the plan below it. Every plan is a single payment in Indian rupees: no subscription, no renewal, nothing to cancel. Nothing in a plan is sold as an add-on."
+    "h1": "Less than the price of a tea a day.",
+    "sub": "Three plans, and each one includes everything in the plan below it. A plan is one year of the studio for one payment in Indian rupees, from about {{fms:price.from.day}} a day. Nothing renews by itself and there is nothing to cancel. Nothing in a plan is sold as an add-on."
   },
   "trial": {
     "h": "Not sure yet? Try the whole studio free",
@@ -16,9 +16,9 @@
   },
   "plans": {
     "h": "Pick the stage you need",
-    "lede": "Every plan is bought once, never renews and never lapses. Move up a plan later by paying the difference.",
-    "once": "one payment",
-    "keep": "Yours for good, no renewal",
+    "lede": "Every plan runs for one year from the day you buy it. Buy it again to add another year; move up a plan mid-year and the unused part of your year is credited.",
+    "once": "a year",
+    "keep": "about {{day}} a day",
     "tags": { "starter": "Writer", "indie": "Director", "pro": "Production house" },
     "pickFlag": "Recommended for filmmakers",
     "pick": "indie",
@@ -26,7 +26,7 @@
     "buySignIn": "Sign in",
     "alt": "or start the free trial first",
     "altOpen": "or open the studio",
-    "noteHtml": "One-time list prices in Indian rupees, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first."
+    "noteHtml": "Yearly list prices in Indian rupees, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first."
   },
   "offer": {
     "h": "The price goes up, and the date is already set.",

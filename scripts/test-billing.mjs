@@ -47,12 +47,19 @@ ok(R.timingSafeEqualHex('abcd', 'ABCD'), 'equal hex, either case');
 ok(!R.timingSafeEqualHex('abcd', 'abc'), 'different lengths are unequal');
 ok(!R.timingSafeEqualHex('', ''), 'two empty strings are NOT equal (an unset signature never passes)');
 
-/* ---- one price, for good (section 18) ---- */
-eq(R.PERIODS, ['lifetime'], 'the only period is lifetime');
-ok(!('periodEnd' in R) && !('PERIOD_DAYS' in R), 'nothing can compute an expiry any more');
+/* ---- one price, for a year (section 52) ---- */
+eq(R.PERIODS, ['year'], 'the only period sold is a year');
+eq(R.PLAN_DAYS, 365, 'a year is 365 days');
+ok(!('periodEnd' in R), 'the client never computes an expiry; the database does (apply_plan)');
+eq(R.perDayPaise(59900), 164, '₹599 a year is ₹1.64 a day');
+eq(R.perDayPaise(79900), 219, '₹799 a year is ₹2.19 a day');
+eq(R.perDayPaise(99900), 274, '₹999 a year is ₹2.74 a day');
+eq(R.fmtPaise(R.perDayPaise(59900)), '₹1.64', 'and prints as ₹1.64');
+eq(R.perDayPaise(0), null, 'nothing a day for a price that is not for sale');
 const plan = { id: 'indie', price_paise: 799900, monthly_paise: 49900, yearly_paise: 499000 };
 eq(R.priceFor(plan), 799900, 'the price is price_paise, not a period column');
-eq(R.priceFor(plan, 'lifetime'), 799900, 'asked for explicitly');
+eq(R.priceFor(plan, 'year'), 799900, 'asked for explicitly');
+eq(R.priceFor(plan, 'lifetime'), null, '"for good" is not sold any more');
 eq(R.priceFor(plan, 'month'), null, 'a month is not a thing that is sold');
 eq(R.priceFor({ id: 'starter', yearly_paise: 299900 }), 299900, 'a row read before §18 ran falls back to the yearly figure');
 eq(R.priceFor({ id: 'free', price_paise: 0 }), null, 'a zero price is not for sale');

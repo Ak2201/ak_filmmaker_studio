@@ -180,7 +180,7 @@ export function guard(key, what) {
   const say = (o) => {
     try {
       const ui = typeof window !== 'undefined' && window.StudioUI;
-      if (ui && ui.toast) ui.toast(label + ' is not part of ' + where + '.' + (o ? ' It comes with ' + offerText(o) + ' — one payment.' : ''), {
+      if (ui && ui.toast) ui.toast(label + ' is not part of ' + where + '.' + (o ? ' It comes with ' + offerText(o) + ' a year.' : ''), {
         type: 'info', action: o ? 'SEE ' + o.name.toUpperCase() : 'SEE PLANS', onAction: () => { location.href = o ? o.href : 'purchase.html'; } });
     } catch (e) { /* no chrome on this page: the refusal stands, silently */ }
   };
@@ -290,6 +290,8 @@ async function _refreshOnce() {
                                  : (st.trial_active && plan === 'free') ? 'trial' : 'paid')
                               : (st.trial_enabled === false ? 'off' : 'expired'),
           endsAt: st.trial_ends_at || null,
+          /* §52: when the plan's year ends (null: a grant for good, or no plan) */
+          planUntil: st.plan_until || null,
           used: st.trial_used === true,
           trialEnabled: st.trial_enabled !== false,
           /* §33: the length a trial started NOW would get, for the
@@ -412,7 +414,7 @@ export async function offerFor(ids) {
   const list = [].concat(ids || []).filter(Boolean);
   const p = await lowestPlanWith(list);
   if (!p) return null;
-  const paise = Billing.priceFor(p, 'lifetime');
+  const paise = Billing.priceFor(p, 'year');
   const name = p.name || Billing.planName(p.id);
   const q = new URLSearchParams({ plan: p.id });
   if (list.length === 1) q.set('for', list[0]);
@@ -442,8 +444,8 @@ function includedLine(ids, cta) {
   lowestPlanWith(ids).then((p) => {
     if (!p) return;
     const name = p.name || Billing.planName(p.id);
-    const paise = Billing.priceFor(p, 'lifetime');
-    line.textContent = 'Included in the ' + name + ' plan' + (paise > 0 ? ' — ' + Billing.fmtPaise(paise) + ', one payment.' : '.');
+    const paise = Billing.priceFor(p, 'year');
+    line.textContent = 'Included in the ' + name + ' plan' + (paise > 0 ? ' — ' + Billing.fmtPaise(paise) + ' a year, about ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day.' : '.');
     if (cta) {
       const q = new URLSearchParams({ plan: p.id });
       if (ids.length === 1) q.set('for', ids[0]);
@@ -599,17 +601,17 @@ function wallPlans() {
     const paid = (plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
       .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
     for (const p of paid) {
-      const paise = Billing.priceFor(p, 'lifetime');
+      const paise = Billing.priceFor(p, 'year');
       if (!(paise > 0)) continue;
       const name = p.name || Billing.planName(p.id);
       ul.append(h('li', {}, [h('a.pg-wall-plan', { href: 'purchase.html?plan=' + encodeURIComponent(p.id) }, [
         h('strong', { text: name }),
-        h('span.pg-wall-price', { text: Billing.fmtPaise(paise) }),
+        h('span.pg-wall-price', { text: Billing.fmtPaise(paise) + ' a year · ≈ ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day' }),
         p.blurb ? h('span.pg-wall-blurb', { text: p.blurb }) : null
       ].filter(Boolean))]));
     }
     if (ul.children.length) {
-      ul.append(h('li.pg-wall-once', { text: 'One payment each. Nothing renews, and your work is already here.' }));
+      ul.append(h('li.pg-wall-once', { text: 'A year each, paid once. Nothing renews by itself, and your work is already here.' }));
       ul.hidden = false;
     }
   }).catch(() => { /* the SEE PLANS button stands alone */ });
@@ -628,9 +630,9 @@ async function startTrialFromWall(btn) {
   try {
     const r = await Billing.startTrial();
     if (!r || !r.started) {
-      say({ used: 'You have already had your trial on this account. A plan opens the studio for good.',
+      say({ used: 'You have already had your trial on this account. A plan opens the studio for a year.',
             paid: 'You have already bought a plan — try reloading the page.',
-            disabled: 'Trials are not open at the moment. A plan opens the studio for good.' }[r && r.reason] || 'That did not start. Please try again.');
+            disabled: 'Trials are not open at the moment. A plan opens the studio for a year.' }[r && r.reason] || 'That did not start. Please try again.');
       btn.disabled = false; btn.textContent = was;
       return;
     }

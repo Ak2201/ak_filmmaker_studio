@@ -20,9 +20,10 @@
    having rather than a lie worth shipping.
 
    DELIBERATELY NOT ON THESE POSTERS:
-   - a price. Pay-once is true and durable; a rupee figure is not,
-     because the launch prices are scheduled to rise and a post is
-     forever. "Pay once. No subscription." says the honest half.
+   - a price. A rupee figure is not durable, because the launch
+     prices are scheduled to rise and a post is forever. "Less than a
+     cup of tea a day" holds at every tier before and after the rise
+     (the dearest is about ₹5.48 a day), and nothing renews by itself.
    - any testimonial or user count. testimonials.json is empty by
      design and inventing social proof is both prohibited here and
      trivially disproved.
@@ -202,7 +203,7 @@ const p3 = frame(`
     'Rates, crew terms, CBFC rules and festival deadlines',
     'for films shot here. Tamil dialogue, English slugs.'
   ])}
-  ${text(80, 1148, 'Pay once. No subscription.', { size: 50, weight: 800 })}
+  ${text(80, 1148, 'A year for less than a tea a day.', { size: 50, weight: 800 })}
   ${text(80, 1204, 'Nothing to install. Your work stays in your browser.', { size: 30, weight: 500, fill: MUTED })}
   ${footer(1278)}`);
 
@@ -404,7 +405,7 @@ function featurePoster(spec) {
   return frame(`
     ${text(80, 150, eyebrow, { size: 30, weight: 800, fill: hue, spacing: 7 })}
     ${titleSvg}${ledeSvg}${rowsSvg}
-    ${text(80, 1206, 'Works offline · Pay once · Nothing to install', { size: 30, weight: 600, fill: MUTED })}
+    ${text(80, 1206, 'Works offline · Nothing renews by itself · Nothing to install', { size: 30, weight: 600, fill: MUTED })}
     ${footer(1278)}`);
 }
 

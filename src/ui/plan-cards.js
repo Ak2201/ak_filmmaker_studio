@@ -17,11 +17,14 @@
    "no plan" state — but it is never drawn here as a choice, on
    purchase.html or invite.html. A trial is not a plan and is not sold.
 
-   FULL-TIME ACCESS (schema section 18). A plan is bought once and kept
-   for good, so there is no period switch, no "until", no renew and no
-   extend: the current tier's card simply says so, and only HIGHER
-   tiers offer a button. The period the host receives is always
-   'lifetime'.
+   A YEAR AT A TIME (schema section 52, owner 21 Oct 2026). A plan lasts
+   365 days; the price is per year and the card leads with what that
+   costs a DAY (₹599 → ≈ ₹1.64). The current tier's card says until when
+   and offers RENEW (another year, stacked onto the time left — nothing
+   is ever charged automatically); HIGHER tiers offer an upgrade credited
+   with the unused part of the year; a lower tier waits for the year to
+   end. A plan GRANTED for good says so and has nothing to renew. The
+   period the host receives is always 'year'.
 
    PROMO CODES (schema section 20). "Have a code?" under the row: APPLY
    asks quote_order() for every plan the row can sell, and a card whose
@@ -38,7 +41,7 @@
 import { reveal } from '../lib/motion.js';
 import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
-import Billing, { fmtPaise, priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
+import Billing, { fmtPaise, priceFor, perDayPaise, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
 import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
@@ -46,7 +49,10 @@ import { meter } from './kit/meter.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
 
-const period = 'lifetime';     // the only period there is
+const period = 'year';         // the only period sold (schema §52)
+/* "21 Oct 2027", for "valid until". */
+const day = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); };
+const daysTo = (iso) => Math.ceil((new Date(iso) - Date.now()) / 86400000);
 let busyPlan = '';
 let statusText = '';
 let hooks = { onBuy: null, rerender: null, onSuccess: null };
@@ -224,7 +230,13 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const q = pq || uq;
     const name = p.name || planName(p.id);
     const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);
-    const canBuy = p.id !== 'free' && price !== null && higher;
+    /* §52: the plan held, bought for a year, can be renewed (a grant for
+       good — no plan_until — has nothing to renew). */
+    const until = isCurrent && st ? st.plan_until : null;
+    const renew = isCurrent && !!until;
+    /* the plan whose year has run out: buying it again is a renewal too */
+    const lapsedHere = !!(st && st.lapsed && st.bought_plan === p.id);
+    const canBuy = p.id !== 'free' && price !== null && (higher || renew);
     /* A tier BELOW the one held: on a phone it collapses to its name, its
        price and "Included in your plan" and drops under the buyer's own
        (plans.css), so the first full card a buyer reads is theirs. */
@@ -244,11 +256,12 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     card.append(h('div.pl-price-block', {}, [
       h('p.pl-price', {}, [
         h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : fmtPaise(q ? q.amount_paise : price) }),
+        price === null ? null : h('span.pl-per', { text: q && q.credit_paise > 0 ? ' now' : ' a year' }),
         q ? h('s.pl-list', { text: fmtPaise(q.list_paise), 'aria-label': 'list price ' + fmtPaise(q.list_paise) }) : null
       ].filter(Boolean)),
-      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : 'One-time payment · yours for good' })
+      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${fmtPaise(perDayPaise(price))} a day · 1 year, nothing renews by itself` })
     ]));
-    if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${fmtPaise(q.amount_paise)} (you paid ${fmtPaise(q.paid_paise || q.credit_paise)} for ${q.upgrade_from_name || planName(q.upgrade_from)})` }));
+    if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${fmtPaise(q.amount_paise)} today: the ${fmtPaise(q.credit_paise)} left on your ${q.upgrade_from_name || planName(q.upgrade_from)} year counts toward it, and ${name}'s own year starts now.` }));
     if (pq && pq.discount_paise > 0) card.append(h('p.pl-save', { text: `${fmtPaise(pq.discount_paise)} off with ${pq.code}` }));
 
     /* ACTION. A button only where there is something to buy: a higher
@@ -261,12 +274,20 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       buyable.push(p.id);
       const disabled = busyPlan !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
       const first = !current || current === 'free';
-      const label = busyPlan === p.id ? 'OPENING…' : first ? 'BUY ' + name.toUpperCase() : 'UPGRADE TO ' + name.toUpperCase();
+      const label = busyPlan === p.id ? 'OPENING…'
+        : renew || lapsedHere ? 'RENEW ' + name.toUpperCase() + ' — ADD A YEAR'
+        : first ? 'BUY ' + name.toUpperCase() + ' — 1 YEAR' : 'UPGRADE TO ' + name.toUpperCase();
       act.append(h('button.k-btn.k-btn--lg.k-btn--block' + (buyable.length === 1 ? '.k-btn--primary' : '.k-btn--secondary'), {
         type: 'button', 'data-plan-action': 'buy', 'data-plan': p.id, disabled, text: label }));
+      if (renew) {
+        const left = daysTo(until);
+        act.append(h('p.pl-until' + (left <= 30 ? '.is-soon' : ''), { text: left <= 30
+          ? `Ends in ${left} day${left === 1 ? '' : 's'} (${day(until)}). Renew to keep full access; the new year starts when this one ends.`
+          : `Valid until ${day(until)}. Renewing adds a year after that date.` }));
+      }
     } else if (isCurrent && p.id !== 'free') {
       act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'YOUR CURRENT PLAN' }));
-      act.append(h('p.pl-until', { text: 'Yours, for good. Nothing to renew.' }));
+      act.append(h('p.pl-until', { text: 'Granted to you for good. Nothing to renew.' }));
     } else if (current && !higher) {
       act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--ghost.pl-cta-held', { type: 'button', disabled: true, text: 'INCLUDED IN YOUR PLAN' }));
     }
@@ -318,8 +339,8 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   /* The fine print, together: what kind of payment, the refund terms and
      the upgrade credit (refund.html §4, schema section 21), the legal. */
   wrap.append(h('div.pl-fine', {}, [
-    h('p.pl-note', { text: 'One payment, full access for good — nothing recurs and nothing expires. Paid through Razorpay in INR; an invoice arrives from Razorpay by e-mail.' }),
-    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a plan is final — which is why the trial comes first. Move up later and pay only the difference.' }),
+    h('p.pl-note', { text: 'Each plan is a year of full access, paid once in INR through Razorpay. Nothing renews or is charged automatically: when the year is ending, renew from this page and the new year starts where the old one stops.' }),
+    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final — which is why the trial comes first. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
       'By paying you agree to the ',
       h('a', { href: 'terms.html', text: 'Terms of Service' }),

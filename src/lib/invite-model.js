@@ -135,7 +135,7 @@ export function anonTrialFrom(t) {
 /** The sentence for a start_trial() refusal verdict. */
 export function trialRefusal(reason) {
   return {
-    used: 'You have already had your trial on this account. A plan opens the studio for good.',
+    used: 'You have already had your trial on this account. A plan opens the studio for a year.',
     paid: 'You have already bought a plan — you should be in. Try reloading.',
     disabled: 'Trials are not open at the moment.'
   }[reason] || 'That did not start. Please try again.';

@@ -2546,3 +2546,29 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       number, which verify strips from both sides. A digit that can be a
       countdown cannot be allowed by row: re-baselined on 21 Oct instead.
 
+55. **Yearly plans, marketed by the day (21 Oct 2026).** The owner changed
+    the model from "pay once, yours for good" to one year per payment, same
+    rows (₹599 / ₹799 / ₹999), renewed by buying again, the 31 Oct rise kept,
+    and existing buyers given a year from the switch.
+    - **Schema §52** (`schema-52-yearly-plans.sql`, 23 checks in
+      `scripts/schema-tests/yearly.sql`, seeded with the pre-§52 functions so
+      the backfill has something to switch). The machinery was already there —
+      `account_plan()` reads `plan_until`, `billing_status()` returns it —
+      §18 had only switched it off.
+    - **Client.** Cards print "₹599 a year · ≈ ₹1.64 a day", "Valid until …",
+      RENEW on the plan held, an upgrade line naming the unused year; the rail
+      warns in the last 14 days; settings, invoice, receipts and the console
+      ledger say a year. `Billing.perDayPaise` was missing from the default
+      export, which `prove:billing` caught as a lock line falling back.
+    - **Marketing.** Pricing, home and FAQ lead with the per-day figure from
+      build stamps (the FAQ JSON-LD resolves them too, since it is itself a
+      stamp value); the about page keeps to brand stamps, so it says "less than
+      a cup of tea a day", true at every tier before and after the rise.
+      og.png, posters and captions follow; `make-og.mjs` learnt to read rgba
+      tokens (it had failed since the Swiss palette).
+    - **Legal.** Terms §4/§5 and the refund policy dated 21 Oct 2026, each with
+      a "What changed"; the three refund exceptions unchanged.
+    - **Gate.** test:all (schema 1270), verify (two EXPECTED rows for the
+      removed "pay once" words on invite and purchase), prove:billing 298
+      (renewal stacks, credit against a year that has not begun is exact),
+      prove:gate 230, prove:growth, prove:legal, prove:scroll — all green.

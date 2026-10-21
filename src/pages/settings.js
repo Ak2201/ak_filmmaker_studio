@@ -625,7 +625,7 @@ function renderDrive() {
     /* Which plan has it, and what it costs (PlanGate.offerFor). */
     PlanGate.offerFor(['drive_backup']).then((o) => {
       if (!o) return;
-      note.textContent = 'Google Drive backup comes with ' + PlanGate.offerText(o) + ' — one payment. You can still '
+      note.textContent = 'Google Drive backup comes with ' + PlanGate.offerText(o) + ' a year. You can still '
         + 'export a backup file from Backup in the top bar.';
       see.href = o.href;
       see.textContent = 'See ' + o.name;

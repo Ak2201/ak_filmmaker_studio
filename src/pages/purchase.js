@@ -182,7 +182,7 @@ function planSection() {
   ]);
   if (buyer && !(st && st.lapsed)) {
     ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Active']),
-      h('span', { text: ' Bought once, yours for good. Move up any time and pay only the difference.' })]));
+      h('span', { text: st && st.plan_until ? ' Valid until ' + new Date(st.plan_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '. Renew any time to add a year; move up and what is left of this year counts.' : ' Granted to you for good.' })]));
   }
   if (st) {
     const tl = trialLine(st);
@@ -238,7 +238,7 @@ function render() {
   main.append(pageHeader({ eyebrow: ['Studio', 'Purchase'], title: 'Purchase', class: 'bd-head' }));
   const body = h('div.pu-body');
   body.append(h('p.bd-deck.pu-deck', { text: purchasesOff(billing.st) ? 'Nothing is for sale at the moment, and every part of the studio is open.'
-    : 'Choose a plan, pay once, and find your invoices and refund requests in the same place.' }));
+    : 'Choose a plan for a year, and find your invoices and refund requests in the same place.' }));
   body.append(planSection());
   for (const x of afterSections()) body.append(x);
   main.append(body);

@@ -518,10 +518,10 @@ const EXPECTED = {
      that followed the UI revamp and the plan features. The pricing
      pass's `finish` row (the Pro line reworded) was absorbed by the
      17 Oct 2026 recapture after the one-frame navigation pass. */
-  invite: {},
+  invite: { payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.' },
   admin: {},
   vault: {},
-  purchase: {}
+  purchase: { once: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', pay: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', yours: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.' }
 };
 
 

@@ -141,8 +141,12 @@ const waitTrial = (page, up = true, timeout = 10000) => page.waitForFunction((u)
   return (!!b && !b.hidden && !!b.querySelector('[role="timer"]')) === u;
 }, up, { timeout });
 
-async function newContext(browser, { tok = null } = {}) {
-  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
+async function newContext(browser, { tok = null, timezoneId = null, locale = null } = {}) {
+  /* THE VISITOR IS IN INDIA unless a block says otherwise
+     (docs/US-MARKET-PLAN.md §B): the shop's currency follows the time
+     zone, and a CI runner in UTC with en-US would otherwise be shown
+     dollars on every card this proof reads in rupees. */
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 }, timezoneId: timezoneId || 'Asia/Kolkata', locale: locale || 'en-IN' });
   await ctx.route(SB + '/**', handle);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
   /* THE CHECKOUT LOGO. billing.js passes Razorpay an absolute
@@ -1391,6 +1395,107 @@ try {
     for (const f of ['shoot.html', 'edit.html', 'deliverables.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
     ok(!(await T.page.$('[data-tab-lock]')), 'Pro: no section is locked anywhere on contacts.html');
     allErrors.push(...T.errors); await T.ctx.close();
+  }
+
+  /* ---- (usd) THE CURRENCY (docs/US-MARKET-PLAN.md §B-§D, schema §55) ----
+     India sees rupees, everyone else the owner's dollar figures; what is
+     CHARGED is the server's to say (usd_checkout), and every card says it. */
+  console.log('(usd) dollars for a visitor outside India');
+  F.reset(); RZP.mode = 'pay';
+  const waitText = (page, sel, re, label) => page.waitForFunction(([s, r]) => new RegExp(r).test((document.querySelector(s) || {}).textContent || ''), [sel, re.source], { timeout: 10000 })
+    .then(() => ok(true, label), async () => ok(false, label + ' — read: ' + ((await page.textContent(sel).catch(() => '')) || '').replace(/\s+/g, ' ').slice(0, 120)));
+  {
+    const { ctx, page, errors } = await newContext(browser, { timezoneId: 'America/New_York', locale: 'en-US' });
+    await page.goto(BASE + 'pricing.html');
+    await waitText(page, '.pr-tiers [data-tier="starter"] [data-price]', /^\$19$/, 'pricing.html in New York: Basic reads $19 (the owner\'s dollar figure)');
+    await waitText(page, '[data-price-charge="starter"]', /Charged as ₹2,999 at checkout/, 'and says what is charged: the rupee amount, while dollar checkout is off');
+    await waitText(page, '.pr-tiers [data-tier="starter"] [data-price-day]', /^\$0\.05$/, 'the per-day figure is derived in dollars ($19 ÷ 365)');
+    ok(await page.evaluate(() => { const sw = document.querySelector('[data-price-switch]'); return !!sw && !sw.hidden && sw.querySelector('[data-price-cur="USD"]').getAttribute('aria-pressed') === 'true'; }), 'the "Show prices in" switch is shown, on US dollars');
+    ok(await page.evaluate(() => [...document.querySelectorAll('[data-charge="USD"]')].every((n) => n.hidden) && [...document.querySelectorAll('[data-charge="INR"]')].some((n) => !n.hidden)), 'the "paid in US dollars" sentences stay hidden: nothing is charged in dollars yet');
+    await page.click('[data-price-cur="INR"]');
+    await waitText(page, '.pr-tiers [data-tier="starter"] [data-price]', /^₹2,999$/, 'pressing ₹ INR shows the rupee price again');
+    const prefs = await page.evaluate(() => ({ p: localStorage.getItem('fms_studio_prefs_v1'), r: localStorage.getItem('fms_region_v1') }));
+    ok(prefs.p && JSON.parse(prefs.p).payCurrency === 'INR' && prefs.r === null, 'the pick is payCurrency in fms_studio_prefs_v1, and fms_region_v1 is untouched');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const mark = F.db.calls.length;
+    const { ctx, page, errors } = await newContext(browser, {});
+    await page.goto(BASE + 'pricing.html');
+    await page.waitForTimeout(1500);
+    ok((await page.textContent('.pr-tiers [data-tier="starter"] [data-price]')).trim() === '₹2,999', 'pricing.html in Kolkata: Basic reads ₹2,999');
+    ok(!F.db.calls.slice(mark).includes('rpc:price_notice USD'), 'and the dollar figures are never asked for');
+    allErrors.push(...errors); await ctx.close();
+  }
+  F.db.members.set(USERS['tok-ben'].id, { role: 'user', disabled_at: null });
+  {
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben', timezoneId: 'America/New_York', locale: 'en-US' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-price strong', /^\$19$/, 'purchase.html in New York: the Basic card reads $19');
+    await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-charge', /Charged as ₹2,999 at checkout/, 'and the card says the charge is ₹2,999, in rupees');
+    await waitText(page, '#plan .pu-currency-line', /Razorpay charges the rupee price/, 'the line beside the switch says rupees are charged');
+    ok(!!(await page.$('#plan [data-action="pu-currency"][data-value="USD"][aria-pressed="true"]')), 'the purchase page has the visible ₹ INR / $ USD switch, on dollars');
+    await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'starter', null, { timeout: 15000 }).catch(() => {});
+    const last = await page.evaluate(() => window.__rzpLast);
+    ok(F.db.calls.includes('currency:rzp-order INR') && last && last.currency === 'INR' && last.amount === 299900, 'BUY ordered in rupees (the charge), never the dollar display figure');
+    const pay = F.db.payments.find((x) => x.user_id === USERS['tok-ben'].id);
+    ok(pay && pay.currency === 'INR' && pay.amount_paise === 299900 && pay.status === 'paid', 'the payment is ₹2,999 in INR');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
+    await page.goto(BASE + 'admin.html#tiers');
+    await page.waitForSelector('#usdPrices form[data-usd-plan="starter"]', { timeout: 15000 });
+    ok(!(await page.$eval('#ba_starter_usd', (e) => e.disabled)) && (await page.inputValue('#ba_starter_usd')) === '19', 'the owner sees Basic\'s dollar price ($19) in an editable field');
+    ok(await page.$eval('#ba_starter_usdnext', (e) => e.disabled), 'the dollar next price is disabled while no rise is scheduled');
+    await page.fill('#ba_starter_usd', '25');
+    await page.click('#usdPrices form[data-usd-plan="starter"] button[type="submit"]');
+    await page.click('button:has-text("Save price")');
+    await page.waitForFunction(() => /Saved\./.test((document.querySelector('#usdPrices') || {}).textContent || ''), null, { timeout: 8000 }).catch(() => {});
+    ok(F.db.planPrices.starter.amount_minor === 2500 && F.db.calls.includes('rpc:admin_set_plan_price starter USD 2500 -'), 'admin_set_plan_price received $25 as 2500 cents, in USD');
+    await page.click('#baUsdSwitch');
+    await page.click('button:has-text("Turn on")');
+    await page.waitForFunction(() => document.querySelector('#baUsdSwitch') && document.querySelector('#baUsdSwitch').checked, null, { timeout: 8000 }).catch(() => {});
+    ok(F.db.settings.usd_checkout === true && F.db.calls.includes('rpc:admin_set_usd_checkout true'), 'the owner turned "Charge in US dollars" on, through admin_set_usd_checkout');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* an admin who is not the owner sees the fields disabled, and a note */
+    F.db.members.set(USERS['tok-admin'].id, { role: 'admin', disabled_at: null, consoleRole: 'finance' });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
+    await page.goto(BASE + 'admin.html#tiers');
+    await page.waitForSelector('#usdPrices form[data-usd-plan="starter"]', { state: 'attached', timeout: 15000 });
+    ok(await page.$eval('#ba_starter_usd', (e) => e.disabled) && await page.$eval('#baUsdSwitch', (e) => e.disabled), 'a finance admin: the dollar fields and the switch are disabled');
+    ok(/Only the owner can change dollar prices/.test(await page.textContent('#usdPrices')), 'and a note says only the owner can change them');
+    allErrors.push(...errors); await ctx.close();
+    F.db.members.set(USERS['tok-admin'].id, { role: 'admin', disabled_at: null });
+  }
+  F.db.members.set(USERS['tok-dan'].id, { role: 'user', disabled_at: null });
+  {
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-dan', timezoneId: 'America/New_York', locale: 'en-US' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-price strong', /^\$25$/, 'dollar checkout on: the Basic card reads the owner\'s new $25');
+    await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-charge', /Charged in US dollars/, 'and says it is charged in US dollars');
+    await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'starter', null, { timeout: 15000 }).catch(() => {});
+    const last = await page.evaluate(() => window.__rzpLast);
+    ok(last && last.currency === 'USD' && last.amount === 2500, 'Checkout opened in USD for 2500 cents');
+    const pay = F.db.payments.find((x) => x.user_id === USERS['tok-dan'].id);
+    ok(pay && pay.currency === 'USD' && pay.amount_paise === 2500 && pay.status === 'paid', 'the payment row is $25 in USD (minor units of its own currency)');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
+    await page.goto(BASE + 'admin.html#billing');
+    await page.waitForSelector('#billing .ba-ledger', { state: 'attached', timeout: 15000 });
+    const led = await page.textContent('#billing .ba-ledger');
+    ok(/\$25/.test(led) && /₹2,999/.test(led), 'the ledger prints each payment in its own currency ($25 and ₹2,999)');
+    const stats = await page.textContent('#billing .ba-grid');
+    ok(/plus \$25/.test(stats), 'the totals keep rupees and dollars apart (rupees, plus $25)');
+    allErrors.push(...errors); await ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

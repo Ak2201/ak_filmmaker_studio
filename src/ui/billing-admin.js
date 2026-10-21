@@ -342,11 +342,11 @@ function usdBlock() {
     ? 'On: a visitor shown dollars is charged the dollar price. Rupee buyers are unchanged.'
     : 'Off: visitors outside India see the dollar prices and are told they will be charged the rupee price.' })]));
   const plans = S.plans.filter((p) => p.id !== 'free' && p.active && Number(p.price_paise) > 0);
-  const list = h('div.ba-plans');
+  const list = h('div.ba-plans.ba-usd-list');
   for (const p of plans) {
     const f = usdFigures(n, p.id);
     const at = p.next_price_at || null;
-    const form = h('form.ba-plan.ba-usd-plan', { 'data-ba-form': 'usd-price', 'data-plan': p.id, 'data-at': at || '' });
+    const form = h('form.ba-usd-plan', { 'data-ba-form': 'usd-price', 'data-usd-plan': p.id, 'data-at': at || '' });
     form.append(h('div.ba-plan-head', {}, [h('strong', { text: p.name || planName(p.id) }),
       h('span.gt-meta', { text: f.amount ? 'now ' + fmtMinor(f.amount, 'USD') + (f.next ? ' · rises to ' + fmtMinor(f.next, 'USD') : '') : 'not sold in dollars' })]));
     const dis = !U.owner || U.busy ? '' : null;
@@ -546,7 +546,7 @@ delegate(document, 'change', '[data-ba-action="refund-switch"]', async (e, el) =
 delegate(document, 'submit', '[data-ba-form="usd-price"]', async (e, form) => {
   e.preventDefault();
   if (!S.usd.owner || S.usd.busy) return;
-  const id = form.dataset.plan;
+  const id = form.dataset.usdPlan;
   const f = new FormData(form);
   const raw = String(f.get('usd') || '').trim();
   const rawNext = String(f.get('usdnext') || '').trim();

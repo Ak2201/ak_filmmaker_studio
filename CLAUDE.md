@@ -18,6 +18,12 @@ or silently broken a page.
 > for risky logic, never cut validation, data-loss handling, security or
 > accessibility. Where it and this file disagree, THIS file wins — above all,
 > keep the long why-comments the traps below depend on.
+>
+> **Karpathy guidelines apply too (owner, 21 Oct 2026):**
+> `.claude/skills/karpathy-guidelines/SKILL.md` (vendored, MIT): surface
+> assumptions and ask, minimum code, surgical diffs, a verifiable check for
+> every change. Where it and this file meet, this file's invariants win; its
+> "write a test that reproduces it" is this repo's verify / prove gate.
 
 ## What this is
 

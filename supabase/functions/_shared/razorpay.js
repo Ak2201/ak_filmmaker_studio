@@ -138,3 +138,51 @@ export function promoLabel(code) {
   if (Number.isInteger(code.amount_off_paise)) return `${fmtPaise(code.amount_off_paise)} off`;
   return '';
 }
+
+/* ---- capture only what will be applied (schema §53, audit bug 8) -------
+   rzp-verify reads the payment back; when it is only AUTHORIZED it is
+   rzp-verify that collects the money. It used to capture first and let
+   activate_payment refuse afterwards (a promo code used up, a credit
+   gone), which left a buyer charged with no plan. The order matters, so
+   it lives here, where scripts/test-billing.mjs can watch it:
+
+     1. the amount must match the order  -> else nothing is captured
+     2. payment_can_activate(order)      -> else nothing is captured, and
+                                            Razorpay releases the hold
+     3. only then POST /capture
+
+   `canActivate` and `capture` are the two network calls, passed in.
+   Returns { kind: 'mismatch' | 'refused' | 'captured' | 'pending', … }. */
+export async function settleAuthorized({ entity, amountPaise, canActivate, capture }) {
+  if (Number(entity?.amount) !== Number(amountPaise)) return { kind: 'mismatch' };
+  let verdict = null;
+  try { verdict = await canActivate(); } catch { verdict = null; }
+  // Not knowing is not a yes: the authorisation keeps, and the webhook
+  // (or the buyer's next press) tries again.
+  if (!verdict) return { kind: 'pending' };
+  if (verdict.ok !== true) return { kind: 'refused', reason: verdict.reason ?? null, sentence: verdict.sentence ?? null };
+  let capped = null;
+  try { capped = await capture(); } catch { capped = null; }
+  return capped && capped.status === 'captured' ? { kind: 'captured', entity: capped } : { kind: 'pending' };
+}
+
+/* ---- a refund's answer, or the lack of one (schema §53, audit bug 9) ----
+   Only an ANSWER from Razorpay may be recorded as 'failed', because
+   'failed' lets the console try again under a NEW idempotency key. A call
+   that threw, a 5xx, or a 2xx with no refund in it says nothing about
+   whether the refund was made: that is 'unknown', the intent row stays
+   'initiated', and begin_refund hands the same row (the same key) to the
+   retry. */
+export function refundOutcome({ threw = false, status = 0, body = null } = {}) {
+  if (threw) return 'unknown';
+  if (status >= 200 && status < 300) return body && body.id ? 'created' : 'unknown';
+  if (status >= 400 && status < 500 && body && body.error) return 'refused';
+  return 'unknown';
+}
+
+/** The refund made under our receipt (the refunds row id), from Razorpay's
+ *  GET /payments/{id}/refunds answer ({ items: [...] }), or null. */
+export function refundByReceipt(list, receipt) {
+  const items = Array.isArray(list) ? list : Array.isArray(list?.items) ? list.items : [];
+  return (receipt && items.find((x) => x && x.receipt === receipt)) || null;
+}

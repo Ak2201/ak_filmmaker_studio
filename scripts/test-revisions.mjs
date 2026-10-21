@@ -601,5 +601,35 @@ const at = (els, id) => els.findIndex((e) => e.id === id);
   }
 }
 
+/* ================================================================
+   6. LOCKED PAGES — an OMITTED row that overflowed onto the locked page
+   ================================================================
+   A deleted scene's OMITTED row that did not fit at the foot of a page
+   sat at the top of the next one. pageStarts() records that page as
+   beginning at the heading after it (the OMITTED row has no id), so a
+   lock taken with no edit must still give the same pages — not a
+   lone 'OMITTED' page lettered 1A in front of them. Swept over the
+   length of page 1, so the case where it fits at the foot is held too. */
+{
+  let fired = 0;
+  for (let n = 18; n <= 30; n++) {
+    const E = [el('scene', 'INT. A - DAY', 'sa')];
+    for (let i = 0; i < n; i++) E.push(el('action', 'Line ' + i + '.', 'a' + i));
+    E.push(el('scene', 'INT. B - DAY', 'sb'), el('scene', 'INT. C - DAY', 'sc'), el('action', 'C acts.', 'ca'));
+    const numbering = lockNumbering(E);
+    const cut = E.filter((x) => x.id !== 'sb');
+    const plain = { elements: cut, numbering };
+    const before = Typeset.paginateDoc(plain);
+    const omitTop = before.length > 1 && before[1][0] && before[1][0].omitted === true;
+    if (omitTop) fired++;
+    const locked = { elements: cut, numbering: { ...numbering, pages: Typeset.lockPages(plain, '2026-10-21T00:00:00.000Z') } };
+    const after = Typeset.paginateDoc(locked);
+    eq(after.length, before.length, 'n=' + n + ': locking the pages with no edit keeps the page count');
+    eq(Typeset.pageNumbersDoc(locked, after), before.map((_, i) => String(i + 1)), 'n=' + n + ': and numbers them 1 to N, no lettered page');
+    eq(after.map((pg) => pg.filter((r) => r.omitted).length), before.map((pg) => pg.filter((r) => r.omitted).length), 'n=' + n + ': the OMITTED row stays on the page it was locked on');
+  }
+  ok(fired > 0, 'the sweep reaches the case where OMITTED tops page 2', { fired });
+}
+
 console.log(`test:revisions — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

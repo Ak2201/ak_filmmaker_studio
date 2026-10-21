@@ -125,6 +125,37 @@ eq(dayIds(1), ['s2', 's1', 's3'], 'down from the top');
 L.undoPlace(rec);
 eq(dayIds(1), ['s1', 's2', 's3'], 'undo a nudge');
 
+/* ---- a stale undo refuses rather than overwrite later work ------
+   Undo toasts carry an action, so they never time out and they stack.
+   An UNDO pressed on an OLD move used to write that move's whole
+   before-lists back, wiping every reorder made since. undoPlace()
+   now restores only while the board still looks as that move left
+   it (undoIsCurrent), and answers false, writing nothing, otherwise. */
+seed();
+const moveA = L.placeScene('s1', 2, { before: 's4' });   // day 2: s1 s4
+L.placeScene('s4', 2, { index: 0 });                     // the AD reorders day 2: s4 s1
+const beforeStale = mem.get('fms_locations_v1');
+const scenesBeforeStale = mem.get('fms_scenes_v1');
+eq(L.undoIsCurrent(moveA), false, 'a move the board has since changed is no longer current');
+eq(L.undoPlace(moveA), false, 'and its undo is refused');
+eq(mem.get('fms_locations_v1'), beforeStale, '…and the later reorder of day 2 survives');
+eq(mem.get('fms_scenes_v1'), scenesBeforeStale, '…and the scene stays on the day it is on');
+seed();
+const moveB = L.placeScene('s1', 2, { before: 's4' });
+L.clearDayOrders();                                      // "Clear days" / "Schedule by location"
+for (const s of Scenes.listScenes()) Scenes.updateScene(s.id, { shootDay: 0 });
+eq(L.undoPlace(moveB), false, 'an undo after the days were cleared is refused');
+eq([Scenes.listScenes().find((s) => s.id === 's1').shootDay, L.dayOrder(1), L.dayOrder(2)], [0, [], []], '…and writes no old schedule back');
+seed();
+const moveC = L.placeScene('s1', 2, { before: 's4' });
+L.placeScene('s2', 1, { index: 0 });                     // a move on the OTHER source-day list
+eq(L.undoPlace(moveC), false, 'a later change to the source day also makes the undo stale');
+seed();
+const moveD = L.placeScene('s2', 1, { index: 0 });
+eq(L.undoIsCurrent(moveD), true, 'the latest move is current');
+eq(L.undoPlace(moveD), true, 'the latest move still undoes');
+eq(dayIds(1), ['s1', 's2', 's3'], '…all the way back');
+
 /* ---- stale and missing ids ------------------------------------ */
 seed();
 L.setDayOrder(1, ['s3', 'gone', 's1']);

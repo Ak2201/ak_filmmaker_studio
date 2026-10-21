@@ -84,11 +84,23 @@ export const filmByline = (f) => ' ' + [f.year && `(${f.year})`, f.director, f.f
 
 /* ---- the scheduled price rise ------------------------------------ */
 export const inr = (paise) => '₹' + Math.round(Number(paise || 0) / 100).toLocaleString('en-IN');
+/* THE DAY IS INDIA'S, NOT THE READER'S. The rise instant is 23:59 IST
+   on its day (2026-10-31T18:29Z), and effective_price() turns at that
+   instant for everybody. Formatted in the browser's own zone, a reader
+   in Singapore saw "1 November" — and on 1 November they were already
+   paying the new price. So the date is always the Asia/Kolkata day,
+   which is the one the server's clock means. */
+export const RISE_ZONE = 'Asia/Kolkata';
 export const onDate = (iso) => {
   const d = new Date(iso);
   if (isNaN(d)) return '';
-  try { return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' }); }
-  catch (e) { return d.toDateString(); }
+  try { return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', timeZone: RISE_ZONE }); }
+  catch (e) {
+    /* no Intl zone data: shift to IST by hand (no DST there) */
+    const ist = new Date(d.getTime() + 330 * 60000);
+    return ist.getUTCDate() + ' ' + ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+      'September', 'October', 'November', 'December'][ist.getUTCMonth()];
+  }
 };
 export function timeLeft(ms) {
   if (!(ms > 0)) return '';
@@ -129,6 +141,50 @@ export function priceRiseBand(notice, now) {
   };
 }
 
+/* ---- the price TODAY ---------------------------------------------
+   The build stamps LIST_PRICE (plans.js: the price BEFORE any rise) into
+   the cards, the comparison table and every "from about ₹X a day". Once
+   effective_price() turns — on the date, or on the buyer that fills the
+   cap, so no rebuild can be timed for it — price_notice() still reports
+   each plan's CURRENT price_paise while next_price_* go null. These
+   helpers are what lets the page say that figure instead of the stale
+   one. plans.js cannot be imported here (CORE; the startlib trap), so
+   perDayOf() restates its per-day arithmetic in paise, and
+   test:marketing asserts the two agree for every whole rupee figure. */
+export const PLAN_DAYS = 365;
+/** ₹ a day for a year's price in paise: "₹1.64". Same rounding as
+ *  plans.js perDay() (nearest paisa). */
+export const perDayOf = (paise) => '₹' + (Math.round((Number(paise) || 0) / PLAN_DAYS) / 100).toFixed(2);
+
+/** Each PAID plan's current figures from a notice:
+ *  [{ id, paise, price: '₹999', day: '₹2.74' }]. Only plans with a real
+ *  positive price_paise; anything else leaves the markup alone. */
+export function currentPrices(notice) {
+  if (!notice || !Array.isArray(notice.plans)) return [];
+  return notice.plans
+    .filter((p) => p && typeof p.id === 'string' && p.id && p.id !== 'free'
+      && typeof p.price_paise === 'number' && Number.isFinite(p.price_paise) && p.price_paise > 0)
+    .map((p) => ({ id: p.id, paise: p.price_paise, price: inr(p.price_paise), day: perDayOf(p.price_paise) }));
+}
+/** The cheapest current plan's per-day figure, or '' when unknown. */
+export function fromDayNow(notice) {
+  const ps = currentPrices(notice);
+  if (!ps.length) return '';
+  return perDayOf(Math.min(...ps.map((p) => p.paise)));
+}
+/* The stamped "from (about) ₹X a day" figure in a piece of text, or ''. */
+const FROM_DAY = /\bfrom (?:about )?(₹\d+\.\d{2}) a day\b/;
+export const stampedFromDay = (text) => { const m = FROM_DAY.exec(String(text || '')); return m ? m[1] : ''; };
+/** `text` with every whole occurrence of the figure `was` replaced by
+ *  `now`. Whole means not followed by another digit, so ₹599 never
+ *  rewrites the front of ₹5990. */
+export function swapFigure(text, was, now) {
+  const s = String(text);
+  if (!was || was === now) return s;
+  const esc = was.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return s.replace(new RegExp(esc + '(?![\\d.,]*\\d)', 'g'), now);
+}
+
 /** Which text a [data-open-text]/[data-off-text] node shows: signed in
  *  wins over purchases off; '' means leave the markup's own words. */
 export function swappedText({ openText, offText }, { signedIn, off }) {
@@ -138,5 +194,5 @@ export function swappedText({ openText, offText }, { signedIn, off }) {
 export default {
   INVITE_PLAN_KEY, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,
-  priceRiseBand, swappedText
+  priceRiseBand, swappedText, RISE_ZONE, PLAN_DAYS, perDayOf, currentPrices, fromDayNow, stampedFromDay, swapFigure
 };

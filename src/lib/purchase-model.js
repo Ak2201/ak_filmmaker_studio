@@ -90,10 +90,16 @@ export function plansPendingHeading({ missing, error }) {
   return missing ? 'Plans are not set up on this project yet.' : error ? 'The plans did not load.' : 'Loading the plans…';
 }
 
-/** The line for a refunded plan that has lapsed. */
+/** The line for a plan that has lapsed (its year ran out, or a refund).
+ *  billing_status() sends plan_until only while the plan is held, so for
+ *  a lapsed one it is null — and `new Date(null)` is the epoch: every
+ *  lapsed buyer was told their plan "ended on Jan 1, 1970". The date is
+ *  said only when there is a real one. */
 export function lapsedLine(st) {
   const refunded = Array.isArray(st.payments) && st.payments.some((p) => p && p.status === 'refunded' && p.plan_id === st.bought_plan);
-  return `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
+  const ends = st.plan_until ? Date.parse(st.plan_until) : NaN;
+  const when = Number.isFinite(ends) ? ' on ' + new Date(ends).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '';
+  return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
 }
 
 /** §33 — WHERE THE TRIAL STANDS, or null when there is nothing to say.

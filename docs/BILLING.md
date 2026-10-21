@@ -1410,9 +1410,9 @@ Four findings from the 21 Oct 2026 audit, each proved by a check in
 **Owner steps.**
 1. Run §53 in the SQL editor — after §52 — verifying the checksum first:
    `shasum -a 256 supabase/schema/schema-53-audit-fixes.sql` must equal the
-   sha256 in `supabase/schema/README.md` and the editor's contents (never
+   sha256 in `docs/LIVE-STEPS-2026-10-21.md` §6 (the README carries none) and the editor's contents (never
    paste schema SQL without a checksum).
-2. Redeploy the two functions with the CLI (never the dashboard editor; both
+2. Redeploy with the CLI (all four while §52's redeploy is still pending; otherwise just the two) (never the dashboard editor; both
    import `../_shared/razorpay.js`):
    `npx --yes supabase@latest functions deploy rzp-verify rzp-refund --project-ref conhlrulxfwkhsnymakz`.
    Run §53 FIRST. The functions deployed now keep working against §53 (they

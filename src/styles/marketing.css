@@ -93,6 +93,7 @@ html.mk-modal-open { overflow: hidden; }
 
 .mk-link {
   display: inline-flex; align-items: center; gap: var(--s1);
+  min-height: 32px;   /* a target of at least 24px (WCAG 2.5.8): bare text measured 22 */
   color: var(--hue-lift, var(--brand-deep)); font-weight: 600; text-decoration: none;
 }
 .mk-link:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -293,7 +294,7 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 /* ---- the footer ------------------------------------------------ */
 .mk-foot { background: var(--surface-rail); border-top: 1px solid var(--border-hair); padding-block: var(--s8) var(--s6); }
 .mk-foot-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s6) var(--s5); }
-.mk-foot a { color: var(--ink-body); font-size: var(--t-small); text-decoration: none; }
+.mk-foot a { color: var(--ink-body); font-size: var(--t-small); text-decoration: none; display: inline-flex; align-items: center; min-height: 28px; }
 .mk-foot a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .mk-foot-base { display: flex; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; margin-top: var(--s7); padding-top: var(--s5); border-top: 1px solid var(--border-hair); }
 .mk-foot-note, .mk-foot-copy { margin: 0; max-width: none; font-size: var(--t-tiny); color: var(--ink-muted); }

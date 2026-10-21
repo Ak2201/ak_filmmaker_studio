@@ -13,6 +13,7 @@
       "sym": "edit_note",
       "h2": "Write the screenplay",
       "body": "A screenplay writer for Tamil, Tanglish and English. The format sets itself as you type, drafts are numbered, and every scene heading becomes a scene the rest of the studio can use.",
+      "bodyElsewhere": "A screenplay writer in the standard format. It sets itself as you type, drafts are numbered, and every scene heading becomes a scene the rest of the studio can use.",
       "cta": {
         "label": "Explore writing",
         "page": "writing"
@@ -47,6 +48,7 @@
       "sym": "videocam",
       "h2": "Run the production",
       "body": "Move a scene to another day on the stripboard, and the day-out-of-days follows. Build that day’s call sheet from the board and print it or send it on WhatsApp. The budget is in rupees and starts from dated Chennai rates.",
+      "bodyElsewhere": "Move a scene to another day on the stripboard, and the day-out-of-days follows. Build that day’s call sheet from the board and print it or send it on WhatsApp. The budget is line by line and follows the money once the shoot begins.",
       "cta": {
         "label": "Explore production",
         "page": "call-sheets"
@@ -65,7 +67,9 @@
   "facts": [
     {
       "value": "Tamil, Tanglish, English",
-      "label": "Dialogue in the language you write"
+      "label": "Dialogue in the language you write",
+      "valueElsewhere": "Fountain, FDX, Word, PDF",
+      "labelElsewhere": "Screenplay formats you can bring in"
     },
     {
       "value": "11",

@@ -103,6 +103,7 @@ import { pageHeader, button } from '../ui/kit/index.js';
 import { createResumeCards } from './hub/resume-cards.js';
 import { shelvesMarkup } from './hub/shelves.js';
 import { welcomeCard } from './hub/first-run.js';
+import { chosenRegion, detectRegion } from '../lib/region.js';   // a new film's region: regionForNewProject(), inlined (project-setup.js says why)
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
   setProjectFilter, setProjectSearch, setProjectSort,
@@ -517,9 +518,9 @@ function refocusProjectControl(action, id) {
 function duplicateProject(id) {
   const p = Store.getProject(id);
   if (!p) return;
-  /* The favourite film and the subtitle ride on the project ENTRY, not
-     in any scoped blob, so the key loop below cannot carry them. */
-  const copy = Store.createProject({ title: p.title + ' (copy)', format: p.format, fav: p.fav, subtitle: p.subtitle });
+  /* The favourite film, the subtitle and the region ride on the project
+     ENTRY, not in any scoped blob, so the key loop below cannot carry them. */
+  const copy = Store.createProject({ title: p.title + ' (copy)', format: p.format, fav: p.fav, subtitle: p.subtitle, region: p.region });
   copyProjectData(id, copy.id);
   Store.updateProject(copy.id, { title: copy.title });
   StudioUI.toastSuccess('Project duplicated.');
@@ -637,7 +638,7 @@ function submitProjectModal(e) {
     logActivity('studio', 'Project renamed: "' + titleValue + '"', '#projects');
     StudioUI.toastSuccess('Renamed to "' + titleValue + '"');
   } else {
-    Store.createProject({ title: titleValue, format, adopt: true });  // unfiled work moves in: store.js adoptUnfiled()
+    Store.createProject({ title: titleValue, format, region: chosenRegion() || detectRegion(), adopt: true });  // unfiled work moves in: store.js adoptUnfiled()
     logActivity('studio', 'Project created: "' + titleValue + '" (' + format + ')', '#projects');
     StudioUI.toastSuccess('Project "' + titleValue + '" created.');
   }

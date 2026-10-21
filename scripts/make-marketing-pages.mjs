@@ -84,6 +84,17 @@ export const priceSpans = (html) => String(html)
 export const chargeVariants = (inrHtml, usdHtml) => (usdHtml
   ? `<span data-charge="INR">${inrHtml}</span><span data-charge="USD" hidden>${usdHtml}</span>`
   : inrHtml);
+/** The line a visitor OUTSIDE India reads instead (REGION-CONTENT,
+ *  docs/US-MARKET-PLAN.md §E). A text field `x` may carry `xElsewhere`
+ *  beside it (an array field, a parallel array); the page is still
+ *  written with the India line, so crawlers and no-JS visitors read what
+ *  they always did, and marketing.js swaps the text in for a visitor
+ *  whose region is not India. Answers the attribute, or ''. */
+export const alt = (o, k, i) => {
+  const v = o && o[k + 'Elsewhere'];
+  const t = Array.isArray(v) ? v[i] : (i === undefined ? v : null);
+  return typeof t === 'string' && t.trim() ? ` data-mk-intl="${esc(t)}"` : '';
+};
 
 /** Material Symbols mark. Always aria-hidden: the label beside it is the name. */
 const sym = (name, cls = '') => `<span class="sym${cls ? ' ' + cls : ''}" aria-hidden="true" translate="no">${esc(name)}</span>`;
@@ -289,7 +300,7 @@ export function renderPage(id, { site, pages }) {
   const hero = `<section class="mk-hero mk-hero--media ${stage.hue}" id="top" aria-labelledby="mkH1">
   <div class="mk-wrap mk-hero-in mk-hero-grid">
     <h1 class="mk-h1" id="mkH1">${esc(p.hero.h1)}</h1>
-    <p class="mk-sub">${esc(p.hero.sub)}</p>
+    <p class="mk-sub"${alt(p.hero, 'sub')}>${esc(p.hero.sub)}</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(u.getStarted)}</a>
     </div>
@@ -316,10 +327,10 @@ export function renderPage(id, { site, pages }) {
   <div class="mk-wrap mk-split">
     <div class="mk-split-text">
       <h2 class="mk-h2" id="mkValueH">${esc(p.value.h2)}</h2>
-${p.value.body.map((t) => `      <p class="mk-body">${esc(t)}</p>`).join('\n')}
+${p.value.body.map((t, i) => `      <p class="mk-body"${alt(p.value, 'body', i)}>${esc(t)}</p>`).join('\n')}
     </div>
     <ul class="mk-facts mk-facts--side" id="facts" aria-label="${esc(u.factsHeading)}">
-${p.facts.map((f) => `      <li><b class="mk-fact-n">${esc(f.value)}</b><span class="mk-fact-l">${esc(f.label)}</span></li>`).join('\n')}
+${p.facts.map((f) => `      <li><b class="mk-fact-n"${alt(f, 'value')}>${esc(f.value)}</b><span class="mk-fact-l"${alt(f, 'label')}>${esc(f.label)}</span></li>`).join('\n')}
     </ul>
   </div>
 </section>`;
@@ -329,7 +340,7 @@ ${p.facts.map((f) => `      <li><b class="mk-fact-n">${esc(f.value)}</b><span cl
     <h2 class="mk-h2" id="mkHowH">${esc(u.howHeading)}</h2>
     <div class="mk-how ${stage.hue}" data-steps="${p.steps.length}">
       <ol class="mk-steps" role="tablist" aria-label="${esc(u.howLabel)}" aria-orientation="vertical">
-${p.steps.map((s, i) => `        <li role="presentation"><button class="mk-step" type="button" role="tab" id="mkStep${i + 1}" aria-controls="mkSlot" aria-selected="${i === 0 ? 'true' : 'false'}" tabindex="${i === 0 ? '0' : '-1'}" data-step="${i + 1}"><span class="mk-step-n" aria-hidden="true">${i + 1}</span><span class="mk-step-t">${esc(s.title)}</span><span class="mk-step-b">${esc(s.body)}</span></button></li>`).join('\n')}
+${p.steps.map((s, i) => `        <li role="presentation"><button class="mk-step" type="button" role="tab" id="mkStep${i + 1}" aria-controls="mkSlot" aria-selected="${i === 0 ? 'true' : 'false'}" tabindex="${i === 0 ? '0' : '-1'}" data-step="${i + 1}"><span class="mk-step-n" aria-hidden="true">${i + 1}</span><span class="mk-step-t"${alt(s, "title")}>${esc(s.title)}</span><span class="mk-step-b"${alt(s, 'body')}>${esc(s.body)}</span></button></li>`).join('\n')}
       </ol>
       <div class="mk-slot" id="mkSlot" role="tabpanel" aria-labelledby="mkStep1">
 ${p.steps.map((s, i) => `        <figure class="mk-still${i === 0 ? ' is-on' : ''}" data-step="${i + 1}"${i === 0 ? '' : ' aria-hidden="true"'}><img src="${still(i + 1)}" width="1280" height="720" alt="${esc(s.title)}" loading="lazy" decoding="async"></figure>`).join('\n')}
@@ -634,7 +645,7 @@ export function renderHome({ site, pages, home }) {
   <div class="mk-wrap mk-hero-in st-hero-grid">
     <div class="st-hero-copy">
       <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
-      <p class="mk-sub">${priceSpans(esc(home.hero.sub))}</p>
+      <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
       <div class="mk-cta-row">
         <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.hero.cta)}</a>
       </div>
@@ -653,7 +664,7 @@ export function renderHome({ site, pages, home }) {
   const facts = `<section class="st-facts-band" id="facts" aria-label="${esc(home.factsLabel)}">
   <div class="mk-wrap">
     <ul class="st-facts">
-${home.facts.map((f) => `      <li><b class="st-fact-n">${esc(f.value)}</b><span class="st-fact-l">${esc(f.label)}</span></li>`).join('\n')}
+${home.facts.map((f) => `      <li><b class="st-fact-n"${alt(f, 'value')}>${esc(f.value)}</b><span class="st-fact-l"${alt(f, 'label')}>${esc(f.label)}</span></li>`).join('\n')}
     </ul>
   </div>
 </section>`;
@@ -663,7 +674,7 @@ ${home.facts.map((f) => `      <li><b class="st-fact-n">${esc(f.value)}</b><span
     const copy = `    <div class="st-copy">
       <span class="st-glyph">${sym(s.sym)}</span>
       <h2 class="mk-h2" id="st-h-${esc(s.id)}">${esc(s.h2)}</h2>
-      <p class="mk-body">${esc(s.body)}</p>${s.cta ? `
+      <p class="mk-body"${alt(s, 'body')}>${esc(s.body)}</p>${s.cta ? `
       <a class="mk-link" href="${esc(pages[s.cta.page].file)}">${esc(s.cta.label)}${sym('arrow_forward')}</a>` : ''}
     </div>`;
     let mediaHtml;

@@ -6,8 +6,9 @@
 
      1. who is asking — the caller's Supabase JWT, verified by asking
         Auth for the user; the body is trusted for nothing but the plan
-        id, the period, a promo CODE (schema section 20) and
-        (optionally) which organisation they own;
+        id, the period, a promo CODE (schema section 20), the CURRENCY
+        ('INR' or 'USD', schema §54 — never an amount) and (optionally)
+        which organisation they own;
      2. create_pending_payment() — the PRICE COMES FROM THE DATABASE,
         never from the request: an upgrade is priced as the difference
         from what this buyer already paid (section 21), the code is
@@ -20,13 +21,20 @@
         attach_razorpay_order(). The browser gets back only what
         Checkout needs: order id, amount, currency, the PUBLIC key id.
 
+   CURRENCY (schema §54). The browser may ask for 'USD'; the database
+   prices it from the owner's dollar figures and refuses it (400) while
+   billing_settings.usd_checkout is off. The Razorpay order is created in
+   the row's currency, and the amount is minor units of it. A rupee order
+   is sent WITHOUT p_currency, so this function also works against a
+   database where §54 has not run yet (the five-argument form).
+
    Secrets (set with `supabase secrets set`, never in the repo):
      RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
    SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the
    platform. docs/BILLING.md is the runbook.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { basicAuth, PERIODS, receiptFor, normalisePromo } from '../_shared/razorpay.js';
+import { basicAuth, PERIODS, receiptFor, normalisePromo, orderCurrency } from '../_shared/razorpay.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -54,7 +62,7 @@ Deno.serve(async (req) => {
   if (whoErr || !who?.user) return json(401, { error: 'Sign in first.' });
   const user = who.user;
 
-  let body: { plan?: string; period?: string; account_id?: string; code?: string } = {};
+  let body: { plan?: string; period?: string; account_id?: string; code?: string; currency?: string } = {};
   try { body = await req.json(); } catch { /* empty body */ }
   const plan = String(body.plan ?? '');
   /* 'lifetime' is what a page cached from before §52 still sends; it is a
@@ -63,12 +71,15 @@ Deno.serve(async (req) => {
   const period = asked === 'lifetime' ? 'year' : asked;
   const code = normalisePromo(body.code) || null;
   if (!PERIODS.includes(period)) return json(400, { error: 'Plans are bought a year at a time; there is no monthly period.' });
+  const currency = orderCurrency(body.currency);
+  if (!currency) return json(400, { error: 'Orders are in rupees (INR) or US dollars (USD).' });
 
   // 2. the intent, priced by the database (the code re-quoted there; a
   //    refused code is a 22023 whose message is the sentence to show)
   const svc = createClient(url, serviceKey);
   const { data: pend, error: pendErr } = await svc.rpc('create_pending_payment', {
-    p_user: user.id, p_plan: plan, p_period: period, p_account: body.account_id ?? null, p_code: code
+    p_user: user.id, p_plan: plan, p_period: period, p_account: body.account_id ?? null, p_code: code,
+    ...(currency === 'INR' ? {} : { p_currency: currency })
   });
   if (pendErr) return json(pendErr.code === '42501' ? 403 : 400, { error: pendErr.message });
   const row = Array.isArray(pend) ? pend[0] : pend;
@@ -90,11 +101,14 @@ Deno.serve(async (req) => {
   }
   await svc.rpc('attach_razorpay_order', { p_payment: row.payment_id, p_order_id: order.id });
 
+  const list = row.list_paise ?? row.amount_paise, discount = row.discount_paise ?? 0, credit = row.credit_paise ?? 0;
   return json(200, {
     order_id: order.id, amount: order.amount, currency: order.currency, key_id: keyId,
     plan, period, plan_name: row.plan_name, payment_id: row.payment_id,
-    list_paise: row.list_paise ?? row.amount_paise, discount_paise: row.discount_paise ?? 0, promo_code: row.promo_code ?? null,
-    credit_paise: row.credit_paise ?? 0,   // section 21: what an upgrade took off for plans already paid for
+    // minor units of `currency` (paise or cents); the _paise names are kept for older pages
+    list_paise: list, discount_paise: discount, promo_code: row.promo_code ?? null,
+    credit_paise: credit,   // section 21: what an upgrade took off for plans already paid for
+    amount_minor: row.amount_paise, list_minor: list, discount_minor: discount, credit_minor: credit,
     prefill: { email: user.email ?? '', name: user.user_metadata?.full_name ?? '' }
   });
 });

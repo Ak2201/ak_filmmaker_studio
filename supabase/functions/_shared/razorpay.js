@@ -18,9 +18,12 @@
    strings leaks how many leading characters matched, one byte of
    timing per character.
 
-   AMOUNTS ARE PAISE. Razorpay's API takes the smallest unit, so ₹499
-   is 49900. The plans table stores paise too, so the number the admin
-   saves is the number Razorpay charges, with no rounding in between.
+   AMOUNTS ARE MINOR UNITS. Razorpay's API takes the smallest unit, so
+   ₹499 is 49900 paise and $19.50 is 1950 cents. The plans table stores
+   paise and plan_prices stores cents, so the number the admin saves is
+   the number Razorpay charges, with no rounding in between. Since schema
+   §54 an order is in INR or USD, and every *_paise column holds minor
+   units OF ITS ROW'S currency (the names were kept; see that section).
    ============================================================ */
 
 const enc = new TextEncoder();
@@ -94,6 +97,57 @@ export function fmtPaise(paise) {
   return '₹' + whole + (p ? '.' + String(p).padStart(2, '0') : '');
 }
 
+/* ---- two currencies (schema §54) ------------------------------------
+   An order is in rupees or US dollars; the server prices both. These
+   print and parse an amount in its own currency. fmtPaise / parseRupees
+   above stay exactly as they were, because the client imports them. */
+export const CURRENCIES = ['INR', 'USD'];
+const SYMBOL = { INR: '₹', USD: '$' };
+const GROUPING = { INR: 'en-IN', USD: 'en-US' };
+
+/** The order's currency from a request body: 'INR' when absent, the
+ *  canonical code for 'inr' / 'usd', and null for anything else (the
+ *  caller answers 400 rather than guess). */
+export function orderCurrency(v) {
+  if (v === undefined || v === null || v === '') return 'INR';
+  const c = String(v).trim().toUpperCase();
+  return CURRENCIES.includes(c) ? c : null;
+}
+
+/** Minor units for display in their currency: (59900) -> "₹599",
+ *  (59950) -> "₹599.50", (1900, 'USD') -> "$19", (1950, 'USD') -> "$19.50",
+ *  with Indian grouping for rupees and US grouping for dollars. */
+export function fmtMinor(minor, currency = 'INR') {
+  const cur = String(currency || 'INR').toUpperCase();
+  const n = Math.round(Number(minor) || 0);
+  const neg = n < 0, a = Math.abs(n);
+  const whole = Math.floor(a / 100), frac = a % 100;
+  const body = whole.toLocaleString(GROUPING[cur] || 'en-US') + (frac ? '.' + String(frac).padStart(2, '0') : '');
+  return (neg ? '-' : '') + (SYMBOL[cur] ? SYMBOL[cur] + body : cur + ' ' + body);
+}
+
+/** What a year costs a day, in minor units of the same currency (the same
+ *  rounding as perDayPaise): 1900 cents -> 5 ("$0.05 a day"). */
+export function perDayMinor(minor) {
+  return perDayPaise(minor);
+}
+
+/** "$19.50" / "19.5" / "1,999" -> minor units of `currency`, or null. A
+ *  string carrying the OTHER currency's symbol is refused, so "₹19"
+ *  typed into a dollar field is not read as $19. For the console. */
+export function parseMinor(s, currency = 'INR') {
+  const cur = String(currency || 'INR').toUpperCase();
+  if (!CURRENCIES.includes(cur)) return null;
+  let t = String(s ?? '').trim();
+  for (const [c, sym] of Object.entries(SYMBOL)) {
+    if (c !== cur && (t.includes(sym) || new RegExp('\\b' + c + '\\b', 'i').test(t))) return null;
+  }
+  t = t.replace(new RegExp('\\b' + cur + '\\b', 'i'), '').split(SYMBOL[cur]).join('').replace(/[,\s]/g, '');
+  const m = t.match(/^(\d+)(?:\.(\d{1,2}))?$/);
+  if (!m) return null;
+  return Number(m[1]) * 100 + (m[2] ? Number(m[2].padEnd(2, '0')) : 0);
+}
+
 /** "₹499" / "499" / "499.50" -> paise, or null. For the admin form. */
 export function parseRupees(s) {
   const m = String(s ?? '').replace(/[₹,\s]/g, '').match(/^(\d+)(?:\.(\d{1,2}))?$/);
@@ -146,15 +200,18 @@ export function promoLabel(code) {
    gone), which left a buyer charged with no plan. The order matters, so
    it lives here, where scripts/test-billing.mjs can watch it:
 
-     1. the amount must match the order  -> else nothing is captured
+     1. the amount (and, since §54, the currency) must match the order
+                                         -> else nothing is captured
      2. payment_can_activate(order)      -> else nothing is captured, and
                                             Razorpay releases the hold
      3. only then POST /capture
 
    `canActivate` and `capture` are the two network calls, passed in.
    Returns { kind: 'mismatch' | 'refused' | 'captured' | 'pending', … }. */
-export async function settleAuthorized({ entity, amountPaise, canActivate, capture }) {
+export async function settleAuthorized({ entity, amountPaise, currency = null, canActivate, capture }) {
   if (Number(entity?.amount) !== Number(amountPaise)) return { kind: 'mismatch' };
+  // §54: an order priced in one currency is never captured in another
+  if (currency && entity?.currency && String(entity.currency).toUpperCase() !== String(currency).toUpperCase()) return { kind: 'mismatch' };
   let verdict = null;
   try { verdict = await canActivate(); } catch { verdict = null; }
   // Not knowing is not a yes: the authorisation keeps, and the webhook

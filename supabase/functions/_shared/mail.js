@@ -26,9 +26,14 @@
 
    Brand values come from ./brand.js, which test:billing holds equal to
    src/data/brand.json.
+
+   AMOUNTS ARE PRINTED IN THEIR OWN CURRENCY (schema §54): an invoice row
+   and a claim_refund_email() row both carry `currency`, and the amount is
+   minor units of it — cents for a dollar sale, paise for a rupee one. A
+   row from before §54 has no currency on the refund claim and is INR.
    ============================================================ */
 import { BRAND } from './brand.js';
-import { fmtPaise } from './razorpay.js';
+import { fmtMinor } from './razorpay.js';
 import { REFUND_TERMS } from './terms.js';
 
 export { REFUND_TERMS };
@@ -68,7 +73,7 @@ export function receiptMail(inv) {
   return message(inv.buyer_email, `Payment received: ${inv.plan_name} plan (${inv.number})`, [
     ['Invoice', inv.number],
     ['Plan', `${inv.plan_name}, 1 year${inv.ends_at ? ' (valid until ' + dateIST(inv.ends_at) + ')' : ''}. Nothing renews automatically.`],
-    ['Amount paid', fmtPaise(inv.amount_paise)],
+    ['Amount paid', fmtMinor(inv.amount_paise, inv.currency || 'INR')],
     ['Date', dateIST(inv.paid_at || inv.issued_at)],
     ['Razorpay payment ID', inv.razorpay_payment_id]
   ], [
@@ -83,18 +88,19 @@ export function receiptMail(inv) {
 export function refundMail(r) {
   if (!r) return null;
   const done = r.status === 'processed';
-  return message(r.buyer_email, done ? `Refund processed: ${fmtPaise(r.amount_paise)}` : 'Your refund could not be completed', [
-    ['Refund amount', fmtPaise(r.amount_paise)],
+  const amount = fmtMinor(r.amount_paise, r.currency || 'INR');
+  return message(r.buyer_email, done ? `Refund processed: ${amount}` : 'Your refund could not be completed', [
+    ['Refund amount', amount],
     ['Plan', r.plan_name],
     ['Invoice', r.invoice_number],
     ['Razorpay refund ID', r.razorpay_refund_id]
   ], done ? [
     `Hi ${r.buyer_name || 'there'},`,
-    `Your refund of ${fmtPaise(r.amount_paise)} has been processed and is on its way to your original payment method. Razorpay refunds usually arrive in 5 to 7 working days.`,
+    `Your refund of ${amount} has been processed and is on its way to your original payment method. Razorpay refunds usually arrive in 5 to 7 working days.`,
     `The year of the ${r.plan_name || ''} plan this payment bought has been taken off your account. If no paid time is left, your account has been given a fresh free trial, as the refund policy describes.`
   ] : [
     `Hi ${r.buyer_name || 'there'},`,
-    `Your refund of ${fmtPaise(r.amount_paise)} could not be completed by the payment provider. No money has left your account for it, and we are looking into it.`,
+    `Your refund of ${amount} could not be completed by the payment provider. No money has left your account for it, and we are looking into it.`,
     'We will write again once it has gone through.'
   ]);
 }

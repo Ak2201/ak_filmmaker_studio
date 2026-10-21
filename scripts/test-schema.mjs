@@ -292,6 +292,18 @@ console.log('✓ §53 loads (and re-runs cleanly)');
 runChecks('audit-53.sql');
 /* --- end §53 --- */
 
+/* --- §54 (charging in US dollars) --- on §53, loaded twice (it drops the
+   four-argument quote_for, the five-argument create_pending_payment and two
+   functions whose return type grew), after audit-53.sql so §53's checks ran
+   against §53's own bodies. --- */
+for (const f of ['supabase/schema/schema-54-usd-checkout.sql', 'supabase/schema/schema-54-usd-checkout.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §54 loads (and re-runs cleanly)');
+runChecks('usd-checkout.sql');
+/* --- end §54 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

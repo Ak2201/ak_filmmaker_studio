@@ -181,6 +181,24 @@ ok(calls[0].init.headers['Idempotency-Key'] === 'refund-r1-processed', 'refund i
   const iAtt = orderSrc.indexOf('attachOrder({'), i200 = orderSrc.indexOf('return json(200');
   ok(iAtt > 0 && i200 > iAtt && /if \(!att\.ok\) return json\(502/.test(orderSrc.slice(iAtt, i200)) && !/await svc\.rpc\('attach_razorpay_order'/.test(orderSrc),
     'rzp-order checks the attach (attachOrder) and answers 502 before it returns the order to Checkout');
+  // A failed order create marks the pending row by ITS OWN id, which frees
+  // the promo hold quote_for counts; mark_payment_failed(null) matched nothing.
+  {
+    const calls = [];
+    const fake = { from: (t) => ({ update: (p) => { const c = { t, p, eq: [] }; calls.push(c); const q = { eq: (k, v) => { c.eq.push([k, v]); return q; }, then: (res) => res({ error: null }) }; return q; } }) };
+    await R.failPending(fake, 'pay_1', { error: { description: 'bad' } });
+    eq(calls.map((c) => [c.t, c.p.status, c.p.raw?.error?.description, c.eq]), [['payments', 'failed', 'bad', [['id', 'pay_1'], ['status', 'created']]]], 'failPending: the row is marked failed by its id, and only while still created');
+    calls.length = 0;
+    await R.failPending(fake, 'pay_2', null);
+    ok(calls.length === 1 && !('raw' in calls[0].p), 'failPending: no order body keeps the row\'s raw');
+    let threw = false;
+    try { await R.failPending({ from: () => { throw new Error('down'); } }, 'pay_3', null); } catch { threw = true; }
+    ok(!threw, 'failPending never throws out to the 502');
+    const iFail = orderSrc.indexOf('if (!r.ok || !order?.id)');
+    ok(iFail > 0 && /failPending\(svc, row\.payment_id, order\)/.test(orderSrc.slice(iFail, iAtt)) && !/mark_payment_failed/.test(orderSrc),
+      'rzp-order marks a failed order create by the row id, not mark_payment_failed(null)');
+    ok(/abandon: \(\) => failPending\(svc, row\.payment_id/.test(orderSrc), 'the attach refusal reuses the same mark');
+  }
   const verifySrc = (await import('node:fs')).readFileSync(new URL('../supabase/functions/rzp-verify/index.ts', import.meta.url), 'utf8');
   ok(/settleAuthorized\(/.test(verifySrc) && /payment_can_activate/.test(verifySrc) && !/\/capture`/.test(verifySrc.slice(0, verifySrc.indexOf('payment_can_activate'))),
     'rzp-verify routes the authorised branch through settleAuthorized, asking payment_can_activate before any /capture');

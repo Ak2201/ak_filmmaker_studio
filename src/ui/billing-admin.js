@@ -41,7 +41,7 @@
    No inline handlers; delegate() on [data-ba-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
+import Billing, { client as billingClient, fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
 import { refundDialog, declineDialog, categoryText } from './refund-admin.js';
 import { ask } from './dialog.js';
 import { studioRole } from './admin-customer.js';
@@ -52,6 +52,23 @@ import { check as kCheck } from './kit/field.js';
 import { notice as kNotice } from './kit/notice.js';
 import '../styles/plans.css';
 import '../styles/refunds.css';
+
+/* §31 / §55, OWNER ONLY (the server refuses anybody else, 42501). One
+   plan's DOLLAR price and, while the plan has a rise scheduled, the
+   dollar figure it rises to; cents. `at` is the plan's own next_price_at
+   (one date per plan). And "Charge in US dollars", refused while any plan
+   on sale lacks a dollar price. Both resolve to price_notice('USD').
+   Here rather than on Billing.admin (CORE) so only the console pays for
+   them in its first paint. */
+async function usdRpc(name, args) {
+  const sb = await billingClient();
+  const { data, error } = await sb.rpc(name, args);
+  if (error) throw error;
+  return data;
+}
+const setUsdPrice = (planId, amountMinor, nextMinor, at) => usdRpc('admin_set_plan_price', {
+  p_plan: planId, p_currency: 'USD', p_amount_minor: amountMinor, p_next_minor: nextMinor ?? null, p_at: at || null });
+const setUsdCheckout = (on) => usdRpc('admin_set_usd_checkout', { p_on: !!on });
 
 /* usd: price_notice('USD') (null: not answered), whether this admin is the
    owner, and whether §55 is on this database (the switch key present). */
@@ -563,7 +580,7 @@ delegate(document, 'submit', '[data-ba-form="usd-price"]', async (e, form) => {
   if (!go) return;
   S.usd.busy = true; rerender();
   try {
-    S.usd.notice = await Billing.admin.setPlanPrice(id, 'USD', amount, next, at) || S.usd.notice;
+    S.usd.notice = await setUsdPrice(id, amount, next, at) || S.usd.notice;
     S.usd.saved = id;
     setTimeout(() => { S.usd.saved = ''; clearNote('Saved.'); }, 2500);
   } catch (err) { toast(err.message || 'The dollar price was not saved.', 'error'); }
@@ -579,7 +596,7 @@ delegate(document, 'change', '[data-ba-action="usd-switch"]', async (e, el) => {
   if (!go) return;
   S.usd.busy = true; rerender();
   try {
-    S.usd.notice = await Billing.admin.setUsdCheckout(want) || S.usd.notice;
+    S.usd.notice = await setUsdCheckout(want) || S.usd.notice;
     toast(want ? 'Dollar checkout is on.' : 'Dollar checkout is off. Every order is in rupees.', 'success');
   } catch (err) { toast(err.message || 'The switch was not changed.', 'error'); }
   S.usd.busy = false; rerender();

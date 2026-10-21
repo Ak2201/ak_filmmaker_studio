@@ -10,12 +10,16 @@ let bad = 0, n = 0;
 const ok = (name, c) => { n++; if (!c) { bad++; console.error('FAIL', name); } };
 const eq = (name, a, b) => ok(name + ' (got ' + JSON.stringify(a) + ')', JSON.stringify(a) === JSON.stringify(b));
 
-/* ---- the startlib rule: import-free, and in the startlib chunk ---- */
+/* ---- the startlib rule: import-free, and in a chunk of its own ----
+   (`region`, not `startlib`: startlib is on every page, and a chunk
+   carries every export any importer calls, so the shop's helpers would
+   ride into every first paint. us/market, 22 Oct 2026.) */
 const core = read('src/lib/region-core.js');
 const ast = acorn.parse(core, { ecmaVersion: 'latest', sourceType: 'module' });
 ok('region-core.js imports nothing', !ast.body.some((s) => s.type === 'ImportDeclaration'
   || ((s.type === 'ExportNamedDeclaration' || s.type === 'ExportAllDeclaration') && s.source)));
-ok('vite.config.js puts region-core.js in startlib', /\|region-core\)\\\.js\$\/\.test\(id\)\) return 'startlib'/.test(read('vite.config.js')));
+ok('vite.config.js puts region-core.js in its own region chunk', /region-core\\\.js\$\/\.test\(id\)\) return 'region'/.test(read('vite.config.js')));
+ok('vite.config.js keeps region-core.js out of startlib', !/\|region-core\)\\\.js\$\/\.test\(id\)\) return 'startlib'/.test(read('vite.config.js')));
 
 /* ---- normalise ---------------------------------------------------- */
 eq('IN', R.normaliseRegion('in'), 'IN');

@@ -43,7 +43,11 @@ export { PLAN_ORDER, planName };
 export const planRank = (id) => Math.max(0, PLAN_ORDER.indexOf(id));
 
 const cloud = () => window.StudioCloud || null;
-async function client() {
+/* Exported for the console's owner-only writers (billing-admin.js
+   setUsdPrice / setUsdCheckout), which live on the admin page rather than
+   in this CORE file so the first paint of every other page does not
+   carry them (scripts/budget.json, us/market 22 Oct 2026). */
+export async function client() {
   const c = cloud();
   if (!c || !c.ensureClient) throw new Error('Cloud is not available on this page.');
   const sb = await c.ensureClient();
@@ -388,25 +392,6 @@ export const admin = {
   /** §30.9. Support's lever: give one person more time. Unlike
    *  start_trial() this does not refuse a second trial — an
    *  administrator asking for one has already decided. */
-  /** §31 / §55, OWNER ONLY (the server refuses anybody else, 42501). One
-   *  plan's DOLLAR price and, while the plan has a rise scheduled, the
-   *  dollar figure it rises to; cents. `at` is the plan's own
-   *  next_price_at (one date per plan). Resolves to price_notice('USD'). */
-  async setPlanPrice(planId, currency, amountMinor, nextMinor, at) {
-    const sb = await client();
-    const { data, error } = await sb.rpc('admin_set_plan_price', {
-      p_plan: planId, p_currency: currency, p_amount_minor: amountMinor, p_next_minor: nextMinor ?? null, p_at: at || null });
-    if (error) throw error;
-    return data;
-  },
-  /** §55, OWNER ONLY. "Charge in US dollars": refused while any plan on
-   *  sale lacks a dollar price. Resolves to price_notice('USD'). */
-  async setUsdCheckout(on) {
-    const sb = await client();
-    const { data, error } = await sb.rpc('admin_set_usd_checkout', { p_on: !!on });
-    if (error) throw error;
-    return data;
-  },
   async grantTrial(userId, minutes, note) {
     const sb = await client();
     const { data, error } = await sb.rpc('admin_grant_trial', { p_user: userId, p_minutes: minutes, p_note: note || null });

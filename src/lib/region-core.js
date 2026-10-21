@@ -9,8 +9,11 @@
    IMPORT-FREE ON PURPOSE. start.html, pricing.html and the other public
    pages need the visitor guess to pick a currency, and they must not
    ship the app (the startlib trap in CLAUDE.md). vite.config.js puts
-   this file in the `startlib` chunk. The day it imports anything, that
-   stops being safe and nothing fails — keep it that way.
+   this file in a chunk of its own, `region` — not `startlib`, which is
+   on every page and would then carry the shop's guess and currency
+   helpers into the Library's first paint (it did, on us/market, 22 Oct
+   2026: 1.6 KB over scripts/budget.json). The day it imports anything,
+   that stops being safe and nothing fails — keep it that way.
 
    THE TWO VALUES ARE 'IN' AND 'INT'. 'INT' is what `fms_region_v1`
    has held since 9 Oct 2026 (src/lib/region.js), so it is a value in a

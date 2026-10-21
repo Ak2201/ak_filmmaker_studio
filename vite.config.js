@@ -872,9 +872,16 @@ export default defineConfig({
              209 KB comes back. trial-time.js (11 Oct 2026) joined them: the
              trial's length in hours is said the same way on the landing
              page and in the app, and it is pure for the same reason.
-             region-core.js (21 Oct 2026) too: the visitor's region guess
-             picks the currency on the public pages (docs/US-MARKET-PLAN.md). */
-          if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time|prefs|ports|region-core)\.js$/.test(id)) return 'startlib';
+             region-core.js (21 Oct 2026) is pure for the same reason but
+             has its OWN chunk, `region`: startlib is on every page, and a
+             chunk carries every export ANY importer calls. Once the public
+             pages and purchase.js called pricingCurrency() and the visitor
+             guess (us/market, 22 Oct 2026), startlib grew 1.6 KB on every
+             page and the Library went over scripts/budget.json. CORE calls
+             nothing from region-core, so in a chunk of its own it is
+             fetched only by the pages that use it. */
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time|prefs|ports)\.js$/.test(id)) return 'startlib';
+          if (/\/src\/lib\/region-core\.js$/.test(id)) return 'region';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account|cloud-api)\.js$/;
           /* kit/ (14 Oct 2026): the component builders are pure and small, and
              dialog.js (CORE) already draws with them — one shared copy. */

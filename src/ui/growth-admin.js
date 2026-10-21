@@ -32,6 +32,7 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
+import { fmtMinor } from '../lib/price-model.js';
 import Growth, { isMissing } from '../lib/growth.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
@@ -42,7 +43,7 @@ import { funnel as funnelChart } from './admin-charts.js';
 import { cohorts as fetchCohorts } from '../lib/admin-api.js';
 
 let rerender = () => {};
-const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, members: [], missing: {}, saved: '', granted: '' };
+const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '' };
 
 /* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
    every form on the console from its defaults 2.5s after a save, under
@@ -76,6 +77,10 @@ async function load() {
     /* §30. The same read the signed-out landing page makes, on
        purpose — see the note on Billing.priceNotice(). */
     S.prices = await settle('prices', Billing.priceNotice);
+    /* The dollar side of the same rise (§31 / §55), READ ONLY here: the
+       owner types dollar prices under Purchases → Tiers & grants. One
+       date per plan; the dollar figure follows it. */
+    S.usd = await Billing.priceNotice('USD').catch(() => null);
     /* The one-person trial grant needs somebody to pick. The gate's
        console already lists members and billing-admin.js already
        borrows that list for its own grant form — a third RPC that
@@ -325,7 +330,7 @@ function priceRiseBlock(sec) {
     const ul = h('ul.gr-list');
     for (const p of rising) {
       ul.append(h('li', {}, [
-        h('span', { text: `${p.name || planName(p.id)}: ${fmtPaise(p.price_paise)} → ${fmtPaise(p.next_price_paise)} on ${fmtWhen(p.next_price_at)}  ` }),
+        h('span', { text: `${p.name || planName(p.id)}: ${fmtPaise(p.price_paise)} → ${fmtPaise(p.next_price_paise)} on ${fmtWhen(p.next_price_at)}${usdRiseText(p.id)}  ` }),
         h('button.btn', { type: 'button', 'data-gra-action': 'price-cancel', 'data-plan': p.id, text: 'CANCEL THE RISE' })
       ]));
     }
@@ -647,16 +652,30 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
       S.prices = await Billing.admin.setNextPrice(r.id, r.next_paise, at.toISOString());
     }
     if (!anyRise) S.prices = await Billing.priceNotice();
+    await refreshUsd();
     S.saved = 'pricerise'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
   } catch (err) { toast(err.message || 'The price rise was not scheduled.', 'error'); await load(); }
 });
+
+/** " · in dollars $19 → $29", or " · in dollars $19, no dollar rise
+ *  set", or '' when the plan is not sold in dollars. Read from
+ *  price_notice('USD'); nothing typed here. */
+function usdRiseText(planId) {
+  const row = S.usd && Array.isArray(S.usd.plans) ? S.usd.plans.find((x) => x && x.id === planId) : null;
+  if (!row || row.display_currency !== 'USD' || !(row.display_minor > 0)) return '';
+  return row.display_next_minor > 0
+    ? ` · in dollars ${fmtMinor(row.display_minor, 'USD')} → ${fmtMinor(row.display_next_minor, 'USD')}`
+    : ` · in dollars ${fmtMinor(row.display_minor, 'USD')}, no dollar rise set (Tiers & grants)`;
+}
+const refreshUsd = async () => { S.usd = await Billing.priceNotice('USD').catch(() => S.usd); };
 
 delegate(document, 'click', '[data-gra-action="price-cancel"]', async (e, el) => {
   const id = el.dataset.plan;
   if (!await askDanger('Cancel the scheduled rise for this plan?\n\nThe price stays where it is and the landing page stops saying it will change.')) return;
   try {
     S.prices = await Billing.admin.setNextPrice(id, null, null);
+    await refreshUsd();
     rerender();
   } catch (err) { toast(err.message || 'The rise was not cancelled.', 'error'); }
 });

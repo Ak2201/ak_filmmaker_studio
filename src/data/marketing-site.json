@@ -42,7 +42,7 @@
     "viewPricing": "View plans & pricing"
   },
   "signup": {
-    "heading": "Create a free account",
+    "heading": "Sign in to start your trial",
     "offer": "Try every module on the sample films free for <span data-trial-length>a limited time</span>. No card required.",
     "offerOff": "The studio is open: sign in with Google and every module is yours to use, saved in your browser.",
     "offerIn": "You are already signed in.",

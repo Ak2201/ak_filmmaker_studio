@@ -2572,3 +2572,42 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       removed "pay once" words on invite and purchase), prove:billing 298
       (renewal stacks, credit against a year that has not begun is exact),
       prove:gate 230, prove:growth, prove:legal, prove:scroll — all green.
+
+56. **Ponytail installed, the whole repo audited (21 Oct 2026).** The owner
+    pointed at Ponytail (github.com/DietrichGebert/ponytail, MIT): the
+    smallest complete change, a test for risky logic, never cut
+    validation, data-loss handling, security or accessibility. Its skill
+    is vendored at `.claude/skills/ponytail/` (CLAUDE.md wins where they
+    disagree; the long why-comments stay).
+    - **Audit.** Eight agents in four areas (data and sync, trust boundary,
+      views, build and lean), each finding attacked by a skeptic: 21 kept
+      (1 must, 10 should, 10 nice), 2 disproved. Report:
+      https://claude.ai/artifact/XGt7KJMdwNKKXFYkEXPCkP.
+    - **Fixed, each with a test that fails before and passes after:**
+      - a push no longer rolls the local edit clock BACK (`markRemoteSeen`):
+        a save that landed mid-upsert used to be pushed with the older
+        stamp, so another device's older edit beat continuous typing;
+      - a copy received from the server is not salvaged (fingerprint `h` in
+        the meta row), so a collaborator's arrivals no longer push the one
+        offline copy worth keeping out of the 12-slot ring;
+      - a write storage refused no longer fires `saved` (store.js), so sync
+        never pushes the old value under a new stamp;
+      - `writeFields` reads back, so `takeSlot` never blanks a character
+        field the blueprint did not store;
+      - `rzp-order` refuses (502) when it cannot record the order, and marks
+        the pending row failed (`attachOrder` in `_shared/razorpay.js`);
+      - **§54** (`schema-54-cap-locks.sql`, NOT YET RUN LIVE): the four
+        plan-cap triggers take an advisory transaction lock before they
+        count, proved by a real two-connection race in `test:schema`;
+      - Stage Guides built on each render no longer leak their global
+        listeners (an AbortController per mount); Drive pictures share one
+        in-flight download per file;
+      - scriptgen's write-before-Accept `run*` exports are gone (no caller in
+        the tree), `acorn` is a declared devDependency, `test:ai-desk` is in
+        `test:all`.
+    - **Left for later (Nice):** capping automatic drafts, locations.js
+      passing unknown fields through (the trap shots.js fixed), the 1-hour
+      promo hold on a failed order, the retired status bar's code, and
+      duplicate helpers (download-a-Blob ×9, uid ×9, fmtDate, escapers,
+      slug), all listed in the report.
+

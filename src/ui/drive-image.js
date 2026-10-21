@@ -55,9 +55,7 @@ async function fill(el) {
   if (!Drive.hasToken()) { reconnectBox(el); return; }
   el.replaceChildren(h('p.drv-img-note', { role: 'status', text: 'Loading the drawing from Drive…' }));
   try {
-    const blob = await Drive.downloadFileBlob(id);
-    if (!blob || !/^image\//.test(blob.type || 'image/')) throw new Error('Drive returned something that is not a picture.');
-    keep(id, blob);
+    await download(id);
     if (el.isConnected) fill(el);
   } catch (e) {
     if (!el.isConnected) return;
@@ -74,6 +72,26 @@ async function fill(el) {
   }
 }
 
+/* One download per picture, however many frames ask at once: a render
+   draws a shot's first frame twice (card and slate) and a re-render
+   during the fetch asks again. The promise is shared until it settles
+   (the ensureClient() race, CLAUDE.md). */
+const loading = new Map();    // fileId → the download in flight
+function download(id) {
+  if (blobs.has(id)) return Promise.resolve(blobs.get(id));
+  if (loading.has(id)) return loading.get(id);
+  const p = Promise.resolve().then(() => Drive.downloadFileBlob(id)).then((blob) => {
+    if (!blob || !/^image\//.test(blob.type || 'image/')) throw new Error('Drive returned something that is not a picture.');
+    keep(id, blob);
+    return blob;
+  });
+  loading.set(id, p);
+  /* Set before it can settle, deleted after: a failure is retried next time. */
+  const done = () => { if (loading.get(id) === p) loading.delete(id); };
+  p.then(done, done);
+  return p;
+}
+
 function keep(id, blob) {
   if (!urls.has(id)) urls.set(id, URL.createObjectURL(blob));
   blobs.set(id, blob);
@@ -85,12 +103,8 @@ export const cachedImageUrl = (fileId) => urls.get(fileId) || '';
 
 /** A frame picture as a Blob: the one already held, else one download
     with the Drive token (rejects with no token; never opens a window). */
-export async function driveImageBlob(fileId) {
-  if (blobs.has(fileId)) return blobs.get(fileId);
-  const blob = await Drive.downloadFileBlob(fileId);
-  if (!blob || !/^image\//.test(blob.type || 'image/')) throw new Error('Drive returned something that is not a picture.');
-  keep(fileId, blob);
-  return blob;
+export function driveImageBlob(fileId) {
+  return download(fileId);
 }
 
 /** A frame's picture, from Drive. Fills itself; never a broken <img>. */

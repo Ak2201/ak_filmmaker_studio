@@ -17,8 +17,8 @@
    starts, and `resume()` is just "keep going from the cursor".
 
    NOTHING RUNS ON ITS OWN. There is no timer and no retry loop in
-   here. `runNextBatch()` does exactly one batch and returns; the
-   page decides whether to call it again. A module that keeps
+   here. `draftBatch()` + `applyBatch()` do exactly one batch and
+   return; the page decides whether to call them again. A module that keeps
    spending money after the user walked away would be a bug with a
    bill attached.
 
@@ -185,33 +185,6 @@ export function slugFor(scene) {
 }
 
 /* ============================================================
-   STAGE 1 — BEATS
-   ============================================================ */
-export async function runBeats(patch, { onStatus, signal } = {}) {
-  const job = { ...load(), ...patch };
-  const AI = await ai();
-  const vocab = await beatVocabulary();
-  const res = await AI.draftBeatSheet({
-    synopsis: job.synopsis,
-    format: job.format,
-    lang: job.lang,
-    beats: vocab
-  }, { onStatus, signal });
-
-  // Keep the vocabulary's order, not the reply's. The fifteen beats
-  // are a sequence; a reply that returns them shuffled must not
-  // shuffle the writer's document.
-  job.beats = vocab
-    .map((b) => ({ id: b.id, label: b.label, happens: res.byBeat.get(b.id) || '' }))
-    .filter((b) => b.happens);
-  job.logline = res.logline || job.logline;
-  job.model = res.model || job.model;
-  job.stage = 'beats';
-  save(job);
-  return { job, truncated: res.truncated, missing: vocab.length - job.beats.length };
-}
-
-/* ============================================================
    STAGE 2 — SCENES
    ------------------------------------------------------------
    Commits to the scene model. `replaceScenes` is the caller's
@@ -222,8 +195,8 @@ export async function runBeats(patch, { onStatus, signal } = {}) {
 /* The Desk (src/ui/ai-desk.js) shows a proposal BEFORE anything is
    written, so the stage is split: draftScenes() asks the model and
    writes nothing; applyScenes() commits the rows the writer kept and
-   hands back an undo. runScenes() is the two in a row, unchanged for
-   every caller that wants the old one-press behaviour. */
+   hands back an undo. There is no one-press "ask and write" path: every
+   caller drafts, shows, and applies only what the writer kept. */
 export async function draftScenes(patch, { onStatus, signal, extra = '' } = {}) {
   const job = { ...load(), ...patch };
   if (!job.beats.length) throw new GenError('Draft the beat sheet first.', 'nobeats');
@@ -291,12 +264,6 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
   save(job);
   const undo = () => { Scenes.saveScenes(prevScenes); save(prevJob); };
   return { job, scenes: rows.length, undo };
-}
-
-export async function runScenes(patch, { onStatus, signal, replaceScenes = false } = {}) {
-  const d = await draftScenes(patch, { onStatus, signal });
-  const r = applyScenes(patch, d.proposals, { replaceScenes, model: d.model });
-  return { job: r.job, truncated: d.truncated, scenes: r.scenes };
 }
 
 /* ============================================================
@@ -425,22 +392,6 @@ export function applyBatch(draft, keep = null) {
     done: job.cursor >= job.scenes.length,
     undo
   };
-}
-
-/**
- * Write the next batch and commit it — draftBatch() then applyBatch()
- * with every scene kept, for the bulk "write all the rest" path.
- *
- * Resolves to { job, wrote, truncated, done }. `done` means the
- * cursor reached the end — there is nothing left to run.
- * Throws AIError on anything the user can act on; the cursor is
- * NOT advanced when it throws, so a retry redoes that batch only.
- */
-export async function runNextBatch({ onStatus, signal } = {}) {
-  const d = await draftBatch({ onStatus, signal });
-  if (d.done) return { job: load(), wrote: 0, truncated: false, done: true };
-  const r = applyBatch(d, null);
-  return { job: r.job, wrote: r.wrote, skipped: r.skipped, truncated: r.truncated, done: r.done };
 }
 
 /** Pages written so far, and whether that number is arithmetic or an

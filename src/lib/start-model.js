@@ -116,12 +116,18 @@ export function risingTiers(notice) {
   if (!notice || !Array.isArray(notice.plans)) return [];
   return notice.plans
     .filter((p) => p && p.id && p.next_price_paise && p.next_price_at)
-    .map((p) => ({ id: p.id, text: inr(p.next_price_paise) + ' from ' + onDate(p.next_price_at) }));
+    .map((p) => ({ id: p.id, text: inr(p.next_price_paise) + ' a year after ' + onDate(p.next_price_at) + ' (IST)' }));
 }
 
 /** The band's facts, or null when there is nothing honest to announce:
  *  the cheapest PAID tier that is rising carries the headline, and a
- *  rise already fired (`now` past its instant) draws no band. */
+ *  rise already fired (`now` past its instant) draws no band.
+ *
+ *  Worded as a FOUNDING PRICE, not a countdown (launch study, 21 Oct
+ *  2026): what it costs now, what it costs after, the seat condition
+ *  when the server publishes one, and what a purchase made today buys.
+ *  The rise instant is 23:59 IST on its day, so "until <day>" and
+ *  "after <day>" are both true of it. No urgency words. */
 export function priceRiseBand(notice, now) {
   if (!notice || !Array.isArray(notice.plans)) return null;
   const rise = notice.plans.find((p) => p && p.id && p.id !== 'free' && p.next_price_paise && p.next_price_at);
@@ -133,12 +139,21 @@ export function priceRiseBand(notice, now) {
   const capped = Number.isFinite(seatsTotal) && seatsTotal > 0;
   return {
     ends,
-    line: inr(rise.price_paise) + ' today. ' + inr(rise.next_price_paise) + ' from ' + onDate(rise.next_price_at)
-      + (capped ? ' — or once ' + seatsTotal.toLocaleString('en-IN') + ' people have joined, whichever comes first.' : '.'),
+    line: 'Founding price ' + inr(rise.price_paise) + ' a year until ' + onDate(rise.next_price_at) + ' (IST). '
+      + inr(rise.next_price_paise) + ' a year after that'
+      + (capped ? ', or once ' + seatsTotal.toLocaleString('en-IN') + ' people have bought a plan, whichever comes first.' : '.')
+      + ' A plan bought now is a full year at the price you paid, and nothing renews by itself.',
     seats: capped && Number.isFinite(seatsTaken)
-      ? seatsTaken.toLocaleString('en-IN') + ' of ' + seatsTotal.toLocaleString('en-IN') + ' taken'
+      ? seatsTaken.toLocaleString('en-IN') + ' of ' + seatsTotal.toLocaleString('en-IN') + ' founding places taken'
       : ''
   };
+}
+
+/** The band's quiet second chip: how long the founding price holds, in
+ *  minutes at the finest ('' once it has passed). */
+export function foundingLeft(ms) {
+  const t = timeLeft(ms);
+  return t ? t.replace(/ left$/, '') + ' more at the founding price' : '';
 }
 
 /* ---- the price TODAY ---------------------------------------------
@@ -194,5 +209,5 @@ export function swappedText({ openText, offText }, { signedIn, off }) {
 export default {
   INVITE_PLAN_KEY, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,
-  priceRiseBand, swappedText, RISE_ZONE, PLAN_DAYS, perDayOf, currentPrices, fromDayNow, stampedFromDay, swapFigure
+  priceRiseBand, foundingLeft, swappedText, RISE_ZONE, PLAN_DAYS, perDayOf, currentPrices, fromDayNow, stampedFromDay, swapFigure
 };

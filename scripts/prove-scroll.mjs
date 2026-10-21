@@ -416,8 +416,15 @@ const probe = async () => {
 const landFragment = async (page, id) => {
   /* a click on an in-page link, as a person makes it: assigning the
      hash it already has would not scroll at all */
+  /* The jump to the top and the click go in SEPARATE tasks. In one task,
+     coming from far down a page with `scroll-behavior: smooth`, Chromium
+     cancels the click's smooth scroll and the page stays at the top
+     (measured on start.html at 390: scrollY 4, target 3,440px down) —
+     a sequence no person can produce, since a click always arrives in a
+     later task than the scroll before it. */
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await page.waitForTimeout(100);
   await page.evaluate((i) => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
     const a = document.createElement('a');
     a.href = '#' + i;
     a.hidden = true;

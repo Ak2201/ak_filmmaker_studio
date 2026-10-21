@@ -1,4 +1,8 @@
-# Live steps, 21 Oct 2026 — §52 (yearly plans)
+# Live steps, 21 Oct 2026 — §52 (yearly plans), §53 (audit fixes), §54 (cap locks)
+
+**Order: §52 → §53 → §54 in the SQL editor, THEN one redeploy of all four
+functions (step 2b). Never the other way round: the new `rzp-verify` calls
+`payment_can_activate` and `unapplied_sentence`, which only §53 creates.**
 
 One piece of SQL and one redeploy on the live project (`conhlrulxfwkhsnymakz`).
 The client on `develop` already sells plans by the year; **do not release it to
@@ -55,3 +59,70 @@ and offer RENEW on the current plan.
 > reply to this e-mail.
 
 (Send from the support address; never sign with the owner's name.)
+
+## 5. Copy that ships WITH §52, never ahead of it
+
+These sentences describe the yearly model. §52 ran live on 21 Oct 2026, but
+until `rzp-order`, `rzp-verify`, `rzp-webhook` and `rzp-refund` are redeployed
+the functions still charge the old way, so release them to `main` only after
+that redeploy:
+
+- `priceRiseBand()` in `src/lib/start-model.js`: "A plan bought now is a
+  full year at the price you paid, and nothing renews by itself."
+- `buyTerms()` in `src/pages/purchase.js`: "A plan is one payment for one
+  year. Nothing renews by itself."
+- `src/data/pricing-compare.json` `offer.line` / `offer.fine` and
+  `plans.lede` (the yearly term and the mid-year credit).
+- `src/data/marketing-faq.json` "Can I move up a plan later?" (the unused
+  part of the year is credited; moving down waits for the year to end).
+
+## 6. §53 — the billing audit fixes (run after §52, before the redeploy)
+
+What it is: `docs/BILLING.md` §23. Upgrade credit is the target organisation's,
+a payment refused after capture is recorded and refundable, a refund Razorpay
+never answered is retried with the same idempotency key, a lapsed year keeps
+its end date.
+
+```bash
+shasum -a 256 supabase/schema/schema-53-audit-fixes.sql
+# ee7596e634777c0bed3933fd60471572decbae359abd6c9af6dae5623f19aba3
+```
+
+(`supabase/schema/README.md` carries no checksum; this line is the reference.
+Recompute it if the file changes.) Paste base64, decode in the page, compare
+the SHA-256 of the editor's contents with the line above, then Run (section 0).
+
+Read back (all read-only):
+
+```sql
+select pg_get_function_identity_arguments('public.quote_for'::regproc);
+  -- p_user uuid, p_plan text, p_code text, p_account uuid
+select count(*) from pg_proc where proname = 'paid_credit_paise';   -- 1
+select public.unapplied_sentence('credit_gone');                    -- a sentence
+select conname from pg_constraint
+ where conname = 'payments_unapplied_reason_check';                 -- one row
+```
+
+## 6b. §54 — cap locks (optional here, but also unrun)
+
+`schema-54-cap-locks.sql` makes the plan caps hold under parallel inserts. It
+has no function dependency, so it can go in the same sitting, after §53.
+
+```bash
+shasum -a 256 supabase/schema/schema-54-cap-locks.sql
+# 389995891dd35ea30206b8d011a3858511b29b2d6056ddc4d3688320ec72a1e4
+```
+
+## 2b. The redeploy, once §52 and §53 have run
+
+One command covers the §52 redeploy still pending and §53's `rzp-verify` and
+`rzp-refund` changes (step 2 above, run once, after §53):
+
+```bash
+npx --yes supabase@latest functions deploy rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz
+```
+
+Then probe: each of the three JWT functions answers 401 "Missing authorization
+header" to an unauthenticated POST, and `rzp-webhook` answers 401 "bad
+signature" to a POST from a terminal (a browser fetch fails on CORS and proves
+nothing).

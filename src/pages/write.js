@@ -2362,7 +2362,7 @@ async function genRun(all) {
   render();
   try {
     for (;;) {
-      /* runNextBatch() is these two halves; they are called apart so
+      /* One batch is these two halves; they are called apart so
          the page's unsaved edit is flushed after the (slow) draft and
          before the commit, and `doc` reloaded after it — see flushDoc. */
       const d = await Scriptgen.draftBatch({ onStatus: genSay, signal: genAbort.signal });

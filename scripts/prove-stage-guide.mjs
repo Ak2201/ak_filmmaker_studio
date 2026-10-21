@@ -465,6 +465,42 @@ check('(4) breakdown.html#guide: an overflowing strip says so', await (async () 
   await page.waitForTimeout(900);
   return page.evaluate(() => { const ol = document.querySelector('#guide .stp-list'); return ol.scrollWidth <= ol.clientWidth + 1 || /right/.test(ol.getAttribute('data-more') || ''); });
 })(), true);
+/* (5) A page re-renders and mounts a fresh guide each time (breakdown's
+   ~30 actions call render()). The old one must let go of its global
+   listeners, or each render leaks a detached guide tree for the visit. */
+await devSeed('feature', FKEY, {});
+const live = await page.evaluate(async () => {
+  const types = new Set(['storage', 'visibilitychange', 'pagehide', 'hashchange']);
+  const set = new Set();
+  const add = EventTarget.prototype.addEventListener, rem = EventTarget.prototype.removeEventListener;
+  const tag = (t, type, fn) => (t === window ? 'w' : 'd') + type + '|' + (fn && (fn.__id || (fn.__id = Math.random())));
+  EventTarget.prototype.addEventListener = function (type, fn, opt) {
+    if ((this === window || this === document) && types.has(type)) {
+      const k = tag(this, type, fn);
+      const sig = opt && typeof opt === 'object' && opt.signal;
+      if (!(sig && sig.aborted)) { set.add(k); if (sig) sig.addEventListener('abort', () => set.delete(k)); }
+    }
+    return add.call(this, type, fn, opt);
+  };
+  EventTarget.prototype.removeEventListener = function (type, fn, opt) {
+    if ((this === window || this === document) && types.has(type)) set.delete(tag(this, type, fn));
+    return rem.call(this, type, fn, opt);
+  };
+  const m = await import('/src/ui/stage-guide.js');
+  const host = document.querySelector('main') || document.body;
+  const once = async () => {
+    const old = document.getElementById('guide'); if (old) old.remove();
+    m.mountStageGuide(host, { stage: 'production' });
+    for (let i = 0; i < 200 && !document.querySelector('#guide .sg-steps'); i++) await new Promise((r) => setTimeout(r, 25));
+  };
+  await once(); await once();
+  const after2 = set.size;
+  for (let i = 0; i < 20; i++) await once();
+  return { after2, after22: set.size, guides: document.querySelectorAll('#guide').length, body: !!document.querySelector('#guide .sg-steps') };
+});
+check('(5) 20 more mounts add no global listeners', live.after22, live.after2);
+check('(5) one guide, drawn', [live.guides, live.body], [1, true]);
+
 check('no page errors', errors, []);
 await vite.close();
 await browser.close();

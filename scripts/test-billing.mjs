@@ -146,5 +146,59 @@ ok((await M.sendRefundOnce(svc, 'rfnd_1', 'processed', env, { fetch: fakeFetch()
 eq(JSON.parse(calls[0].init.body).subject.startsWith('Refund processed'), true, '... the processed one');
 ok(calls[0].init.headers['Idempotency-Key'] === 'refund-r1-processed', 'refund idempotency key carries the status');
 
+/* ---- rzp-verify captures only what will be applied (§53, audit bug 8) ---- */
+{
+  const order = [];
+  const can = (v) => async () => { order.push('can'); return v; };
+  const cap = (v) => async () => { order.push('capture'); return v; };
+  const ent = { amount: 59900, status: 'authorized' };
+  let out = await R.settleAuthorized({ entity: ent, amountPaise: 59900, canActivate: can({ ok: false, reason: 'exhausted', sentence: 'used up' }), capture: cap({ status: 'captured' }) });
+  eq(out.kind, 'refused', 'an order activation would refuse is not captured');
+  eq(order, ['can'], '... the check runs and /capture is never called');
+  ok(out.reason === 'exhausted' && out.sentence === 'used up', '... and the buyer is told why');
+  order.length = 0;
+  out = await R.settleAuthorized({ entity: ent, amountPaise: 59900, canActivate: can({ ok: true }), capture: cap({ status: 'captured', id: 'pay_1' }) });
+  ok(out.kind === 'captured' && out.entity.id === 'pay_1', 'an order that will apply is captured');
+  eq(order, ['can', 'capture'], '... the check comes BEFORE the capture');
+  order.length = 0;
+  out = await R.settleAuthorized({ entity: ent, amountPaise: 79900, canActivate: can({ ok: true }), capture: cap({ status: 'captured' }) });
+  ok(out.kind === 'mismatch' && order.length === 0, 'an amount that does not match is neither checked nor captured');
+  order.length = 0;
+  out = await R.settleAuthorized({ entity: ent, amountPaise: 59900, canActivate: async () => { order.push('can'); throw new Error('down'); }, capture: cap({ status: 'captured' }) });
+  ok(out.kind === 'pending' && !order.includes('capture'), 'a check that cannot be asked is not a yes: nothing is captured');
+  out = await R.settleAuthorized({ entity: ent, amountPaise: 59900, canActivate: can({ ok: true }), capture: async () => { throw new Error('down'); } });
+  eq(out.kind, 'pending', 'a capture that throws is pending, not captured');
+  const verifySrc = (await import('node:fs')).readFileSync(new URL('../supabase/functions/rzp-verify/index.ts', import.meta.url), 'utf8');
+  ok(/settleAuthorized\(/.test(verifySrc) && /payment_can_activate/.test(verifySrc) && !/\/capture`/.test(verifySrc.slice(0, verifySrc.indexOf('payment_can_activate'))),
+    'rzp-verify routes the authorised branch through settleAuthorized, asking payment_can_activate before any /capture');
+  ok(/unapplied_reason/.test(verifySrc), 'rzp-verify reports a payment recorded without its plan instead of "ok"');
+}
+
+/* ---- rzp-refund: only an answer may be recorded as failed (§53, audit bug 9) ---- */
+eq(R.refundOutcome({ threw: true }), 'unknown', 'a call that threw is unknown, never failed');
+eq(R.refundOutcome({ status: 200, body: { id: 'rfnd_1', status: 'pending' } }), 'created', 'a 200 with a refund is created');
+eq(R.refundOutcome({ status: 200, body: null }), 'unknown', 'a 200 whose body did not parse is unknown');
+eq(R.refundOutcome({ status: 400, body: { error: { description: 'The amount exceeds' } } }), 'refused', 'a 4xx with an error is a refusal');
+eq(R.refundOutcome({ status: 502, body: { error: { description: 'bad gateway' } } }), 'unknown', 'a 5xx is unknown: the refund may have been made');
+eq(R.refundOutcome({ status: 400, body: null }), 'unknown', 'a 4xx with no body is unknown');
+eq(R.refundByReceipt({ items: [{ id: 'rfnd_a', receipt: 'x' }, { id: 'rfnd_b', receipt: 'rid-1' }] }, 'rid-1')?.id, 'rfnd_b', 'the refund made under our receipt is found');
+eq(R.refundByReceipt({ items: [{ id: 'rfnd_a', receipt: 'x' }] }, 'rid-1'), null, 'none under our receipt -> null');
+eq(R.refundByReceipt(null, 'rid-1'), null, 'no list -> null');
+{
+  const refundSrc = (await import('node:fs')).readFileSync(new URL('../supabase/functions/rzp-refund/index.ts', import.meta.url), 'utf8');
+  ok(/refundOutcome\(/.test(refundSrc) && /refundByReceipt\(/.test(refundSrc), 'rzp-refund classifies the answer and looks for the refund by receipt');
+  ok(!/Razorpay could not be reached\.' \} \};\s*\}\s*\/\/ 4\./.test(refundSrc), 'rzp-refund no longer turns a thrown call into a recorded failure');
+}
+
 console.log(`${fail ? '✗' : '✓'} billing: ${pass} passed, ${fail} failed`);
+
+/* ---- the client half: purchase-model, buy(), the plan cards ----
+   In its own process, because it registers a module loader (a store.js
+   stub, an import.meta.env for billing.js) that this file must not run
+   under. */
+{
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync(process.execPath, [new URL('./test-billing-client.mjs', import.meta.url).pathname], { stdio: 'inherit' });
+  if (r.status !== 0) fail++;
+}
 process.exit(fail ? 1 : 0);

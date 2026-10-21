@@ -482,5 +482,100 @@ eq(S.clipSourceHost('javascript://example.com/%0aalert(1)'), '', 'clipSourceHost
 eq(S.clipSourceHost('data:text/html,<b>x</b>'), '', 'clipSourceHost: a data: URL is not a link');
 eq(S.clipSourceHost(''), '', 'clipSourceHost: no URL, no link');
 
+/* ---- a sample over the writer's work; Build's undo (audit bugs 21, 22) ---- */
+{
+  const IO = (await import('../src/lib/story-io.js')).default;
+  // Only the Conflict card and the market fields filled in: the start-card
+  // test calls that empty, and a sample used to wipe all of it unasked.
+  const cur = S.blankStory();
+  cur.conflicts = ['inner']; cur.conflictLine = 'She cannot forgive herself.';
+  cur.genre = 'Thriller'; cur.audience = 'Adults'; cur.budgetTier = 'low'; cur.comps = ['Drishyam'];
+  const smp = await IO.sampleStory();
+  const out = IO.sampleOver(cur, smp);
+  eq(IO.KEPT_ON_SAMPLE.map((k) => out[k]), IO.KEPT_ON_SAMPLE.map((k) => cur[k]), 'sampleOver keeps the conflict answers, genre, audience, budget tier and comps');
+  eq(out.source, smp.source, 'sampleOver takes the sample\'s synopsis');
+  eq(out.outline.length, smp.outline.length, 'sampleOver takes the sample\'s outline');
+  const blankOut = IO.sampleOver(S.blankStory(), { ...smp, genre: 'Fantasy' });
+  eq(blankOut.genre, 'Fantasy', 'sampleOver: a blank kept field takes the sample\'s value');
+  out.comps.push('x'); eq(cur.comps, ['Drishyam'], 'sampleOver copies, never shares, a kept array');
+  ok(!IO.sampleReplacesWork(cur), 'kept fields alone ask no question (nothing they hold is replaced)');
+  const t = S.blankStory(); t.tension = { b1: 7 };
+  ok(IO.sampleReplacesWork(t), 'hand-set tension alone is work a sample replaces — it asks');
+  const l = S.blankStory(); l.outlineLockedAt = '2026-10-21T00:00:00Z';
+  ok(IO.sampleReplacesWork(l), 'an outline lock is work a sample replaces');
+  const i = S.blankStory(); i.idea = 'x';
+  ok(IO.sampleReplacesWork(i), 'an idea is work a sample replaces');
+
+  // Build, keep writing, then press the still-live UNDO.
+  const st = S.blankStory();
+  st.outline = [{ id: 's1', beat: 'setup', text: 'A girl finds a dragon.' }, { id: 's2', beat: 'climax', text: 'They fly.' }];
+  st.source = 'My own draft.';
+  const snap = S.buildSynopsisFromOutline(st, st.framework);
+  const undo = IO.buildUndo(snap, st);
+  ok(IO.buildUndoClean(undo, st), 'straight after a build the undo loses nothing');
+  const later = JSON.parse(JSON.stringify(st));
+  later.source += '\n\nThree new paragraphs the writer typed after the build.';
+  ok(!IO.buildUndoClean(undo, later), 'synopsis typed after the build makes the undo ask first');
+  const tagged = JSON.parse(JSON.stringify(st));
+  tagged.marks.push({ id: 'mx', text: 'They fly.', beat: 'climax', start: 0, end: 9 });
+  ok(!IO.buildUndoClean(undo, tagged), 'a highlight made after the build makes the undo ask first');
+  const scored = JSON.parse(JSON.stringify(st)); scored.tension = { climax: 9 };
+  ok(IO.buildUndoClean(undo, scored), 'a tension score is not in the snapshot, so it does not make the undo ask');
+  ok(!IO.buildUndoClean(null, st), 'no undo, nothing clean to undo');
+  S.restoreSynopsis(st, undo.snap);
+  eq(st.source, 'My own draft.', 'the undo still puts back the pre-build synopsis');
+}
+
+
+/* Review of bugs 21 and 22: the second sample loader, and a synopsis
+   save still on its debounce when the Build undo commits. */
+{
+  const IO = (await import('../src/lib/story-io.js')).default;
+  const q = IO.sampleQuestion('Dragon', 'the Story page');
+  ok(/highlights and tension scores/.test(q) && /conflict answers, genre, audience and comps are kept/.test(q),
+    'the sample confirmation names what is replaced and what is kept');
+
+  // Both loaders must share the guard, the merge and the wording; the
+  // blueprints' story kit used to ask only when isEmptyStory() was
+  // false and saved the bare sample over the writer's conflict answers.
+  const { readFileSync } = await import('node:fs');
+  const src = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+  const fnBody = (text, name) => { const i = text.indexOf('async function ' + name + '('); return i < 0 ? '' : text.slice(i, text.indexOf('\n}\n', i)); };
+  for (const f of ['src/ui/story-kit.js', 'src/pages/story.js']) {
+    const body = fnBody(src(f), 'useSample');
+    ok(/IO\.sampleReplacesWork\(/.test(body), f + ': useSample asks on sampleReplacesWork()');
+    ok(/IO\.sampleOver\(/.test(body), f + ': useSample keeps the writer\'s fields through sampleOver()');
+    ok(/IO\.sampleQuestion\(/.test(body), f + ': useSample asks the shared confirmation');
+    ok(!/isEmptyStory\(/.test(body), f + ': useSample no longer guards on isEmptyStory() alone');
+  }
+  const undoBody = fnBody(src('src/pages/story.js'), 'undoTheBuild');
+  ok(undoBody.indexOf('flushAutosave()') > -1 && undoBody.indexOf('flushAutosave()') < undoBody.indexOf('restoreSynopsis'),
+    'undoTheBuild flushes pending typing before it restores');
+
+  // The race itself, on the real autosave module with a minimal DOM.
+  const listeners = {};
+  const on = (type, fn) => { (listeners[type] = listeners[type] || []).push(fn); };
+  globalThis.document = { addEventListener: on, contains: () => true, visibilityState: 'visible' };
+  globalThis.addEventListener = globalThis.addEventListener || on;
+  const AS = await import('../src/lib/autosave.js');
+  let stored = 'built synopsis';
+  const ta = { tagName: 'TEXTAREA', value: '', closest: () => ta };
+  AS.saveOnInput('textarea', (el) => { stored = el.value; }, 30);
+  const type = (v) => { ta.value = v; for (const fn of listeners.input || []) fn({ target: ta }); };
+  const tick = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  type('typed after the build');          // no flush: the old order
+  stored = 'pre-build synopsis';          // the undo commits
+  await tick(60);
+  eq(stored, 'typed after the build', 'repro: a pending save fires after the undo and writes over it');
+
+  type('typed after the build, again');   // flush first: the fixed order
+  AS.flushAutosave();
+  eq(stored, 'typed after the build, again', 'the flush puts the pending text in storage, where the undo compares it');
+  stored = 'pre-build synopsis';
+  await tick(60);
+  eq(stored, 'pre-build synopsis', 'after a flush no pending save can land on the restored synopsis');
+}
+
 console.log(`${fail ? '✗' : '✓'} story model + docx: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

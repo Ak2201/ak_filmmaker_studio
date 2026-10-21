@@ -321,6 +321,13 @@ export function orderedDayScenes(day, scenes) {
  * Returns what undo needs: the scene, both days and both lists as
  * they were, or null when the scene does not exist. Undoing is
  * `undoPlace(record)`, which puts the same bytes back.
+ *
+ * The record also holds both lists as this move LEFT them (toAfter,
+ * fromAfter), because a restore is a whole-list overwrite and is only
+ * safe while nothing has changed since. Undo toasts carry an action,
+ * so they never time out and they stack; an UNDO pressed on an old
+ * move used to write that move's before-lists back and silently wipe
+ * every reorder, "Clear days" and re-schedule made after it.
  */
 export function placeScene(sceneId, day, at = {}) {
   const scenes = listScenes();
@@ -348,15 +355,36 @@ export function placeScene(sceneId, day, at = {}) {
   }
   if (toDay) setDayOrder(toDay, target);
   record.index = index;
+  record.toAfter = toDay ? dayOrder(toDay) : [];
+  record.fromAfter = fromDay && fromDay !== toDay ? dayOrder(fromDay) : [];
   return record;
 }
 
-/** Reverse one placeScene(). Same path back: the day through
-    updateScene(), the two lists restored byte for byte. */
-export function undoPlace(record) {
+const sameList = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
+
+/** Does the board still look exactly as this placeScene() left it —
+    the scene on the day it was put on, and both lists untouched since?
+    Only then is undoPlace() a restore rather than an overwrite of
+    later work. Records live only in memory (a toast's closure, the
+    pipeline's list), and placeScene() always writes the after-lists. */
+export function undoIsCurrent(record) {
   if (!record || !record.sceneId) return false;
   const scene = listScenes().find((s) => s.id === record.sceneId);
-  if (!scene) return false;
+  if (!scene || shootDayOf(scene) !== record.toDay) return false;
+  if (record.toAfter && record.toDay && !sameList(dayOrder(record.toDay), record.toAfter)) return false;
+  if (record.fromAfter && record.fromDay && record.fromDay !== record.toDay
+      && !sameList(dayOrder(record.fromDay), record.fromAfter)) return false;
+  return true;
+}
+
+/** Reverse one placeScene(). Same path back: the day through
+    updateScene(), the two lists restored byte for byte. Refuses —
+    false, nothing written — when the board has changed since that
+    move (undoIsCurrent), so a stale UNDO cannot throw away later
+    reordering or bring back a schedule that was cleared. */
+export function undoPlace(record) {
+  if (!undoIsCurrent(record)) return false;
+  const scene = listScenes().find((s) => s.id === record.sceneId);
   if (shootDayOf(scene) !== record.fromDay) updateScene(record.sceneId, { shootDay: record.fromDay });
   if (record.toDay) setDayOrder(record.toDay, record.toOrder);
   if (record.fromDay && record.fromDay !== record.toDay) setDayOrder(record.fromDay, record.fromOrder);

@@ -15,6 +15,23 @@ eq('Rs. 25000', parseNum('Rs. 25000'), 25000);
 eq('5 thousand', parseNum('5 thousand'), 5000);
 eq('bank', parseNum('bank'), 0);
 eq('empty', parseNum(''), 0);
+// Plurals and rate tails (audit bug 19): whole-string still, so the
+// "per roll" trap above must keep holding.
+eq('2 lakhs', parseNum('2 lakhs'), 200000);
+eq('1.5 Lakhs', parseNum('1.5 Lakhs'), 150000);
+eq('2 crores', parseNum('2 crores'), 20000000);
+eq('12 lacs', parseNum('12 lacs'), 1200000);
+eq('10 thousands', parseNum('10 thousands'), 10000);
+eq('25k/day', parseNum('25k/day'), 25000);
+eq('2 lakh per day', parseNum('2 lakh per day'), 200000);
+eq('1500/day', parseNum('1500/day'), 1500);
+eq('INR 5000', parseNum('INR 5000'), 5000);
+eq('5000 INR', parseNum('5000 INR'), 5000);
+eq('1500 per roll again', parseNum('1500 per roll'), 1500);
+eq('1 km per day', parseNum('1 km per day'), 1);
+eq('10 crew per day', parseNum('10 crew per day'), 10);
+eq('2 kits per day', parseNum('2 kits per day'), 2);
+eq('3 rolls', parseNum('3 rolls'), 3);
 eq('fmt 0', fmtINR(0), '₹ 0');
 eq('fmt 4600', fmtINR(4600), '₹ 5k');
 eq('fmt lakh', fmtINR(150000), '₹ 1.5 L');

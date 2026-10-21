@@ -427,5 +427,67 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
   ok(locs.every((l) => l.startsWith('https://' + brandHost + '/')), 'every sitemap <loc> names the brand host');
 }
 
+/* ---- the price-rise date and the price today (start-model.js) -------
+   Two audit bugs. The rise instant is 23:59 IST on its day; formatted in
+   the reader's own zone it named the NEXT day east of India. And once the
+   rise fires the build-stamped LIST_PRICE figures are stale while checkout
+   charges effective_price(), so the page must take price_notice()'s
+   current price_paise. Pure checks; the DOM half is asserted by reading
+   pricing.js / start.js for the call. */
+{
+  const SM = await import(path.join(ROOT, 'src/lib/start-model.js'));
+  const P = await import(path.join(ROOT, 'src/lib/plans.js'));
+  const RISE_AT = '2026-10-31T18:29:00Z';
+  const keepTZ = process.env.TZ;
+  for (const tz of ['Asia/Singapore', 'Pacific/Auckland', 'America/Los_Angeles', 'Asia/Kolkata', 'UTC']) {
+    process.env.TZ = tz;
+    ok(SM.onDate(RISE_AT) === '31 October', `onDate names the IST day under TZ=${tz} (got ${SM.onDate(RISE_AT)})`);
+  }
+  process.env.TZ = 'Asia/Singapore';
+  ok(new Date(RISE_AT).getDate() === 1, 'the Singapore case really is 1 November locally (the test exercises the bug)');
+  const notice = { seats_total: 100, seats_taken: 1, plans: [
+    { id: 'free', price_paise: 0 },
+    { id: 'starter', price_paise: 59900, next_price_paise: 99900, next_price_at: RISE_AT },
+    { id: 'indie', price_paise: 79900, next_price_paise: 149900, next_price_at: RISE_AT },
+    { id: 'pro', price_paise: 99900, next_price_paise: 199900, next_price_at: RISE_AT }] };
+  const band = SM.priceRiseBand(notice, Date.parse('2026-10-21T00:00:00Z'));
+  ok(band && /from 31 October/.test(band.line) && !/November/.test(band.line), 'the band names 31 October in Singapore');
+  ok(SM.risingTiers(notice).every((t) => / from 31 October$/.test(t.text)), 'each tier names 31 October in Singapore');
+  if (keepTZ === undefined) delete process.env.TZ; else process.env.TZ = keepTZ;
+
+  let agree = true;
+  for (let r = 1; r <= 5000; r++) if (SM.perDayOf(r * 100) !== P.perDay(r)) { agree = false; break; }
+  ok(agree, "start-model perDayOf(paise) agrees with plans.js perDay(rupees) for every whole rupee to 5000");
+  ok(SM.PLAN_DAYS === P.PLAN_DAYS, 'one year is the same number of days in both');
+  for (const id of ['starter', 'indie', 'pro']) ok(SM.inr(P.LIST_PRICE[id] * 100) === P.inr(P.LIST_PRICE[id]), `${id}: inr() matches the build stamp's format`);
+
+  /* before the rise: the current prices ARE the stamp, so nothing moves */
+  const before = SM.currentPrices(notice);
+  ok(before.map((p) => p.id).join() === 'starter,indie,pro', 'currentPrices: the paid plans only, in order');
+  ok(before.every((p) => p.price === P.inr(P.LIST_PRICE[p.id]) && p.day === P.perDay(P.LIST_PRICE[p.id])), 'before the rise the current figures equal the stamp');
+  ok(SM.fromDayNow(notice) === P.perDay(599), 'before the rise the from-figure is the stamp');
+  /* after the rise: price_notice() returns the new price_paise and no next_* */
+  const fired = { plans: [
+    { id: 'free', price_paise: 0, next_price_paise: null, next_price_at: null },
+    { id: 'starter', price_paise: 99900, next_price_paise: null, next_price_at: null },
+    { id: 'indie', price_paise: 149900, next_price_paise: null, next_price_at: null },
+    { id: 'pro', price_paise: 199900, next_price_paise: null, next_price_at: null }] };
+  ok(SM.priceRiseBand(fired, Date.now()) === null && SM.risingTiers(fired).length === 0, 'after the rise nothing is announced');
+  const after = Object.fromEntries(SM.currentPrices(fired).map((p) => [p.id, p]));
+  ok(after.starter.price === '₹999' && after.starter.day === '₹2.74', 'after the rise Basic reads ₹999, ₹2.74 a day');
+  ok(after.indie.price === '₹1,499' && after.pro.price === '₹1,999', 'after the rise the other tiers read their new figure');
+  ok(SM.fromDayNow(fired) === '₹2.74', 'after the rise the from-figure is the new cheapest');
+  ok(SM.currentPrices({ plans: [{ id: 'starter', price_paise: null }, { id: 'pro', price_paise: '99900' }] }).length === 0, 'a missing or non-numeric price leaves the markup alone');
+  ok(SM.currentPrices(null).length === 0 && SM.fromDayNow(null) === '', 'no notice: nothing');
+  ok(SM.stampedFromDay('A year of the studio from about ₹1.64 a day, nothing') === '₹1.64', 'stampedFromDay reads "from about ₹X a day"');
+  ok(SM.stampedFromDay('Pricing: a year of the studio from ₹1.64 a day') === '₹1.64', 'stampedFromDay reads "from ₹X a day"');
+  ok(SM.swapFigure('from about ₹1.64 a day', '₹1.64', '₹2.74') === 'from about ₹2.74 a day', 'swapFigure rewrites the figure');
+  ok(SM.swapFigure('₹1.645 and ₹1.64.', '₹1.64', '₹2.74') === '₹1.645 and ₹2.74.', 'swapFigure leaves a longer number alone');
+  const pjs2 = read('src/pages/pricing.js');
+  ok(/currentPrices\(notice\)/.test(pjs2) && /renderPricesNow\(notice\);\s*\/\/[^\n]*\n\s*if \(req === false\)/.test(pjs2), 'pricing.js rewrites the cards from the current price, before the purchases-off return');
+  ok(/\.pr-th-price/.test(pjs2) && /\.pr-keep/.test(pjs2), 'pricing.js corrects the table head and the per-day figure too');
+  ok(/priceNotice\(\)\.then[\s\S]*fromDayNow\(notice\)/.test(read('src/pages/start.js')), 'start.js corrects the hero\'s from-figure');
+}
+
 console.log(`\ntest:marketing: ${pass} passed, ${fail} failed${FIXTURE ? ' (fixture copy; media existence NOT checked)' : ''}`);
 process.exit(fail ? 1 : 0);

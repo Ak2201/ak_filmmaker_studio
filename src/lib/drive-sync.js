@@ -354,15 +354,37 @@ async function _doPull(opts) {
     }
     /* A restore FROM an older revision leaves this device holding
        something the head does not have, so it records the head it
-       read rather than the revision it restored — the next push
-       then goes through cleanly and the old content becomes the
-       new head, which is what the user asked for. */
+       read rather than the revision it restored — and then PUSHES,
+       here, so the old content becomes the new head, which is what
+       the user asked for.
+
+       This used to stop at the first half and say "the next push
+       then goes through cleanly". There was no next push: the
+       restore writes through rawSet with _applying set, so no
+       'saved' fires, and stamping syncedAt = now made the device
+       read as clean — every later reconcile said "Up to date" while
+       Drive's head still held the content the user had just
+       rejected, and a push from another device would have pulled
+       it straight back over the restore (audit bug 26).
+
+       So a revision restore records syncedAt as null — "this device
+       holds something the head has not seen" — and only the push's
+       own success records it level. If the upload fails (network,
+       the hour ran out), the null survives and the next reconcile
+       pushes instead of reporting a match. _doPush is called
+       directly because we are already inside the queue. */
     _incomplete = false;
+    const fromRevision = !!opts.revisionId;
     writeState({
       revisionId: remote.headRevisionId || null,
       link: remote.webViewLink || st.link || null,
-      syncedAt: new Date().toISOString()
+      syncedAt: fromRevision ? null : new Date().toISOString()
     });
+    if (fromRevision) {
+      const p = await _doPush();
+      if (p.ok) setStatus(DRIVE_STATES.SYNCED, res.message || 'Restored from Drive');
+      return { ok: true, result: res, push: p };
+    }
     setStatus(DRIVE_STATES.SYNCED, res.message || 'Restored from Drive');
     return { ok: true, result: res };
   } catch (e) {
@@ -629,6 +651,19 @@ async function autoConnectIfGranted() {
   if (!Drive.isConfigured()) return;
   if (!Drive.hasToken()) return;      // nothing adopted — the button's job
   _autoConnectTried = true;
+  /* Already connected AND Supabase owns sync: Drive is the manual
+     backup the header promises, so a sign-in reconciles nothing. The
+     boot path already said so — but it returns before the timer that
+     adopts the token runs, and this path never asked, so every load
+     inside the token hour pushed or restore-PULLED the Drive file
+     over whatever Supabase had just delivered (audit bug 27). A
+     first connection (no file pointer yet) still goes through
+     connect(): writing the backup once is the point of it. */
+  if (isConnected() && ownsSync()) {
+    setStatus(DRIVE_STATES.MANUAL,
+      'Cloud sync is signed in, so Drive stays a manual backup here.');
+    return;
+  }
   try {
     /* Already connected means the file exists and this is a later
        load: reconcile, never a second create. */

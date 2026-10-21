@@ -280,6 +280,18 @@ console.log('✓ §52 loads (and re-runs cleanly)');
 runChecks('yearly.sql');
 /* --- end §52 --- */
 
+/* --- §53 (the billing audit fixes) --- on §52, loaded twice (it drops the
+   old quote_for / paid_credit_paise forms, which a re-run must survive),
+   after yearly.sql so §52's checks ran against §52's own bodies. Every
+   check in audit-53.sql failed against §52 before §53 was written. --- */
+for (const f of ['supabase/schema/schema-53-audit-fixes.sql', 'supabase/schema/schema-53-audit-fixes.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §53 loads (and re-runs cleanly)');
+runChecks('audit-53.sql');
+/* --- end §53 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

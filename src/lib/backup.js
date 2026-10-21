@@ -83,9 +83,8 @@ export const PROJECT_KEYS = {
   costs:             'fms_costs_v1'
 };
 
-/* Deliberately NOT per project: the theme is a device preference
-   and the Supabase config is account-level. Both are global in
-   store.js too.
+/* Deliberately NOT per project: the theme is a device preference,
+   global in store.js too.
 
    DELIBERATELY NOT HERE AT ALL, and each absence is load-bearing:
      fms_ai_key_v1          a credential. A key inside a file a
@@ -97,10 +96,21 @@ export const PROJECT_KEYS = {
                             device. Restored elsewhere it would
                             make that machine push its own studio
                             into this machine's backup file. See
-                            the header of drive-sync.js. */
+                            the header of drive-sync.js.
+     fms_supabase_cfg_v1    a DESTINATION, the same kind of value as
+                            the Drive pointer. It was here while
+                            people typed their own project in; it is
+                            a build setting with an admin-only
+                            override now (cloud.js setCfg), and a
+                            file carrying it re-pointed this
+                            browser's sign-in, sync and site-gate
+                            reads at whatever project the file
+                            named, with nothing on screen saying so.
+                            An older file that still carries
+                            `sync_config` is ignored on the way in
+                            (FOREIGN_GLOBALS below), v1 and v2. */
 export const GLOBAL_KEYS = {
   studio_prefs: 'fms_studio_prefs_v1',
-  sync_config:  'fms_supabase_cfg_v1',
   /* The Write page's per-device writer prefs (guide level, tour done,
      and the keyboard preset a later phase adds to the same object).
      Travels with a backup like the theme does: a writer restoring a
@@ -125,7 +135,6 @@ const V1_KEYS = {
   short_prefs:       PROJECT_KEYS.short_prefs,
   library_prefs:     PROJECT_KEYS.library_prefs,
   studio_prefs:      GLOBAL_KEYS.studio_prefs,
-  sync_config:       GLOBAL_KEYS.sync_config,
   activity_log:      PROJECT_KEYS.activity_log
 };
 
@@ -463,10 +472,18 @@ function stripDeviceOnly(global) {
   if (p && typeof p === 'object') DEVICE_ONLY_PREFS.forEach((f) => { delete p[f]; });
 }
 
+/* Field names older files carry in `global` that this build will not
+   write back. Iteration is over GLOBAL_KEYS, so these are skipped
+   already; the list exists so the removal is said out loud and the
+   field is dropped from the parsed object rather than left lying in
+   it for the next reader. */
+const FOREIGN_GLOBALS = ['sync_config'];
+
 function applyGlobalsAndNotes(all) {
   // Globals and notes are studio-wide; last write wins, as before.
-  if (all.global) {
+  if (all.global && typeof all.global === 'object') {
     stripDeviceOnly(all.global);
+    FOREIGN_GLOBALS.forEach((f) => { delete all.global[f]; });
     Object.keys(GLOBAL_KEYS).forEach((n) => {
       if (all.global[n] === undefined) return;
       let v = all.global[n];
@@ -509,7 +526,17 @@ function applyV2(all, shape, opts) {
     return { ok: false, added: 0, replaced: 0, message: null };
   }
 
-  const taken = Store.listProjects().map((p) => p.id);
+  /* EVERY namespace, not the open one. buildBackup() exports
+     listAllProjects(), so an incoming id that this device files under
+     ANOTHER namespace is that same project, not a stranger. Checked
+     against listProjects() alone it was no clash: land() asked
+     createProject() for the id, createProject() (which checks every
+     namespace) quietly minted a uuid, and each Drive pull added one
+     more same-titled copy while the original never caught up — so the
+     next push sent the stale copy back over the other device's edits.
+     `visible` is what this namespace can see; `taken` is the device. */
+  const visible = Store.listProjects().map((p) => p.id);
+  const taken = Store.listAllProjects().map((p) => p.id);
   let added = 0, replaced = 0;
 
   /* rawSet answers false when both tiers refuse (quota, or a stub the
@@ -532,13 +559,21 @@ function applyV2(all, shape, opts) {
          device catching up with itself, so the incoming copy of a
          project it already has REPLACES that project's buckets
          rather than arriving beside it as a duplicate. */
-      Store.updateProject(meta.id, {
-        title:  meta.title || undefined,
-        format: meta.format || undefined,
-        fav:    meta.fav || undefined,
-        subtitle: meta.subtitle || undefined,
-        region: meta.region === 'IN' || meta.region === 'INT' ? meta.region : undefined
-      });
+      /* Filed under another namespace only: the buckets are keyed by
+         id alone, so they are replaced the same way, and the entry
+         keeps its `ns` — a pull must not move a project between the
+         device and an account (that is adoption, and adoption is a
+         person's choice). updateProject() is namespace-scoped on
+         purpose, so the title waits for that namespace's own pull. */
+      if (visible.indexOf(meta.id) >= 0) {
+        Store.updateProject(meta.id, {
+          title:  meta.title || undefined,
+          format: meta.format || undefined,
+          fav:    meta.fav || undefined,
+          subtitle: meta.subtitle || undefined,
+          region: meta.region === 'IN' || meta.region === 'INT' ? meta.region : undefined
+        });
+      }
       writeBucket(meta.id, bucket);
       replaced++;
       return;

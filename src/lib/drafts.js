@@ -17,7 +17,8 @@
    the drafts page). Pure otherwise — no storage, no DOM.
    ============================================================ */
 import {
-  makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage, pageCount
+  makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage, pageCount,
+  isNumberingLocked
 } from './script.js';
 
 /* FNV-1a over the things that make two scripts different. Text, type and
@@ -117,14 +118,46 @@ export function updateDraft(doc, id, { note } = {}) {
 export function restoreDraft(doc, id) {
   const rev = (doc.revisions || []).find((r) => r.id === id);
   if (!rev) return false;
-  doc.elements = restoreElements(rev);
+  const restored = restoreElements(rev);
+  /* A locked numbering keys on element ids, and restoreElements() has
+     just renewed every one. It used to be deleted here, which threw
+     away the scene lock, every OMITTED number and the page lock — the
+     numbers the call sheets and sides were printed with — under a
+     dialog that said nothing was lost. Each snapshot line records the
+     id it had in the live script (`liveId`, makeRevision()), so the
+     lock is RE-KEYED through it instead. An entry no restored line
+     answers to stays in the record: a heading the draft lacks is an
+     omitted scene, which is what a lock says of a deleted one, and a
+     heading from a draft older than `liveId` gets its number back by
+     its words (sceneNumbers() step 2). */
+  if (isNumberingLocked(doc.numbering)) {
+    const map = new Map();
+    (rev.elements || []).forEach((e, i) => {
+      if (e && e.liveId && restored[i] && !map.has(e.liveId)) map.set(e.liveId, restored[i].id);
+    });
+    doc.numbering = rekeyNumbering(doc.numbering, map);
+  } else {
+    delete doc.numbering;
+  }
+  doc.elements = restored;
   if (rev.titlePage) {
     if (hasTitlePage(rev.titlePage)) doc.titlePage = normaliseTitlePage(rev.titlePage);
     else delete doc.titlePage;
   }
-  // A locked numbering keys on element ids, which have just been renewed.
-  delete doc.numbering;
   return true;
+}
+
+/** The lock with every id that `map` (old id → new id) knows replaced.
+    PURE — returns a new object. */
+function rekeyNumbering(numbering, map) {
+  const to = (id) => (id && map.has(id) ? map.get(id) : id);
+  const ids = {};
+  for (const [k, e] of Object.entries(numbering.ids || {})) ids[to(k)] = { ...e };
+  const out = { ...numbering, ids };
+  if (numbering.pages && Array.isArray(numbering.pages.starts)) {
+    out.pages = { ...numbering.pages, starts: numbering.pages.starts.map((st) => ({ ...st, id: st.id ? to(st.id) : st.id })) };
+  }
+  return out;
 }
 
 /** True when the working copy differs from the latest draft. With no

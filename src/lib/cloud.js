@@ -238,7 +238,7 @@ export function getSyncStatus() {
   return {
     state:   _syncState,
     detail:  _syncDetail,
-    pending: _readQueue().length,
+    pending: _myQueue().length,
     online:  typeof navigator === 'undefined' ? true : navigator.onLine
   };
 }
@@ -271,7 +271,7 @@ export function gateDetail(reason) {
    to the cloud actually succeeds. */
 let _planLimitHeld = false;
 function idleSync() {
-  const q = _readQueue().length;
+  const q = _myQueue().length;
   if (!session)  return setSync(SYNC_STATES.OFF, isConfigured() ? 'Signed out — local only' : 'Local only');
   if (!syncEnabled()) return setSync(SYNC_STATES.OFF, 'Cloud sync is off on this device');
   if (_gateState === 'closed') return setSync(_gateReason === 'unreachable' ? SYNC_STATES.ERROR : SYNC_STATES.OFF, gateDetail(_gateReason));
@@ -284,7 +284,7 @@ function idleSync() {
        that offline sent the owner looking at their Wi-Fi for a plan
        limit (20 Oct 2026). */
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return setSync(SYNC_STATES.OFFLINE, waiting);
-    const refused = _readQueue().filter((o) => o.code);
+    const refused = _myQueue().filter((o) => o.code);
     if (refused.length) return setSync(SYNC_STATES.ERROR, refusalSentence(refused[0].code, refused.length));
     return setSync(SYNC_STATES.IDLE, waiting);
   }
@@ -315,14 +315,44 @@ function markLocalWrite(pid, scope, ts) {
   m[_metaId(pid, scope)] = row;
   _writeMeta(m);
 }
-function markRemoteSeen(pid, scope, ts, alsoLocal) {
+/* `alsoLocal` says the two copies now agree, so the local clock may
+   take the remote one — but THE LOCAL CLOCK ONLY MOVES FORWARD. A push
+   returns after its await; a save that landed during that flight has
+   already set `local` to its own (later) time, and resetting it to the
+   push's older stamp made the next push carry the newer content under
+   the older time, so a collaborator's later edit beat all of it. The
+   one exception is a clock in the future (skewed, or an older bad
+   stamp), which is still pulled back, as before. `raw`, when given, is
+   the copy the server now holds: its fingerprint lets salvage() tell a
+   copy this device merely received from one with unsent work in it. */
+function markRemoteSeen(pid, scope, ts, alsoLocal, raw) {
   if (!pid || !scope) return;
   const m = _readMeta();
   const row = m[_metaId(pid, scope)] || {};
   row.remote = ts || Date.now();
-  if (alsoLocal) row.local = row.remote;
+  if (alsoLocal && !(row.local > row.remote && row.local <= Date.now())) row.local = row.remote;
+  if (raw != null) row.h = _fingerprint(raw);
   m[_metaId(pid, scope)] = row;
   _writeMeta(m);
+}
+/* FNV-1a over the string. Not a security hash: it only has to tell
+   "the copy the server gave us" from "anything else". */
+function _fingerprint(s) {
+  let h = 0x811c9dc5;
+  s = String(s);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return s.length + '-' + h.toString(16);
+}
+/* True when `localRaw` is exactly the copy last exchanged with the
+   server and nothing was written here since: replacing it loses
+   nothing, so it must not take a slot in the salvage ring. Without
+   this, every live arrival from a collaborator salvaged the PREVIOUS
+   server copy, and about twelve of them pushed out the one offline
+   copy the ring was holding. No fingerprint (older meta, a backup
+   restore written raw) means unknown, and unknown is salvaged. */
+function _isServerCopy(pid, scope, localRaw) {
+  const row = _readMeta()[_metaId(pid, scope)];
+  return !!row && row.h != null && !(row.local > row.remote) && row.h === _fingerprint(localRaw);
 }
 
 /* When this device last touched a scope, in epoch ms.
@@ -643,9 +673,13 @@ async function takeBack() {
    and already in. The import is lazy so billing.js stays out of the
    first paint of every page that never redeems a code.
 
-   EXPORTED because there are TWO redemption paths and they are not the
-   same code: this one, for a code HELD in the browser and spent on the
-   next sign-in, and gate-ui.js's box for somebody already signed in.
+   EXPORTED because there are THREE redemption paths and they are not
+   the same code: this one, for a code HELD in the browser and spent on
+   the next sign-in; the pending TICKET a signed-out code box leaves for
+   runGate() to redeem on the way back from Google (missed until the
+   21 Oct 2026 audit — the held-code branch is skipped once the ticket
+   has made them a member); and gate-ui.js's box (and the extension
+   panel's form) for somebody already signed in.
    The second was missed on the first pass and prove:gate caught it —
    a signed-in person who typed a code became a member with no trial,
    which with the purchases switch ON is a member who is not entitled. */
@@ -682,10 +716,23 @@ async function runGate() {
   }
   if ((!st.registered || st.disabled) && await Gate.hasPendingTicket()) {
     try {
-      await Gate.redeemPending();
+      const wasRegistered = !!st.registered;
+      const redeemed = await Gate.redeemPending();
       st = await Gate.status();
       _gateStatus = st;
-      if (st.registered) toast('Invite code accepted — your studio will sync to this account.', 'success', 4000);
+      if (st.registered) {
+        toast('Invite code accepted — your studio will sync to this account.', 'success', 4000);
+        /* The third redemption path (audit, 21 Oct 2026): a code typed
+           SIGNED OUT is verified into a pending ticket, and this branch
+           redeems it on the way back from Google. Without the trial the
+           member is registered and not entitled — and the held-code
+           branch below, the one that did start it, is skipped because
+           `st.registered` is now true. Only when a ticket was actually
+           spent (a row back, or the status flipped to member): no
+           ticket, no code, no trial. start_trial() itself refuses a
+           second one, so this cannot stack. */
+        if (redeemed || !wasRegistered) await startCodeTrial();
+      }
     } catch (e) {
       toast(e.message || 'That invite code could not be redeemed.', 'error', 6000);
     }
@@ -814,6 +861,11 @@ async function _createClient() {
     const { data, error: sessErr } = await supabase.auth.getSession();
     if (sessErr) {
       _sessionError = sessErr.message || String(sessErr);
+      /* A refresh that failed on the NETWORK is not a sign-out: auth-js
+         keeps the stored token and returns a null session, and boot()
+         must not read that as "the stored account is stale". */
+      _sessionErrorRetryable = !!((typeof mod.isAuthRetryableFetchError === 'function' && mod.isAuthRetryableFetchError(sessErr))
+        || sessErr.name === 'AuthRetryableFetchError');
       try { console.error('[cloud] getSession:', _sessionError); } catch (e) {}
     }
     session = data.session;
@@ -1038,6 +1090,7 @@ export function readRedirect() { return _redirect; }
 /* Whatever auth-js said when it declined to produce a session, kept so
    the failure branch can report the truth instead of a likely cause. */
 let _sessionError = null;
+let _sessionErrorRetryable = false;
 /** Why the SDK never became a client, if it did not. */
 let _sdkError = null;
 export function sdkError() { return _sdkError; }
@@ -1205,7 +1258,7 @@ export function isSigningIn() { return _signingIn; }
 const SAVE_CAP_MS = 10000;
 async function saveBeforeSignOut() {
   if (!supabase || !session) return true;
-  const flush = (syncAllowed() && _readQueue().length) ? _flushQueue() : Promise.resolve();
+  const flush = (syncAllowed() && _myQueue().length) ? _flushQueue() : Promise.resolve();
   const drive = import('./drive-sync.js').then(async (D) => {
     if (!D.isConnected()) return { ok: true };
     return D.push();
@@ -1221,7 +1274,7 @@ async function saveBeforeSignOut() {
     if (d && d.ok === false && d.reason === 'error') driveFailed = true;
   } catch (e) { driveFailed = true; }
   try { if (progress && progress.dismiss) progress.dismiss(); } catch (e) { /* ignore */ }
-  const left = syncAllowed() ? _readQueue().length : 0;
+  const left = syncAllowed() ? _myQueue().length : 0;
   if (!left && !driveFailed) return true;   // (a timeout with nothing queued is fine too)
   return !!(await ask({
     title: 'Some changes have not reached the cloud',
@@ -1416,6 +1469,58 @@ export async function pullProjectList() {
   Store.notify('projects:changed', { reason: 'cloud-pull' });
 }
 
+/* ONE SERVER ROW AGAINST THE LOCAL COPY — the decision pullProjectData
+   makes per scope, lifted out so a queued upsert can ask the same
+   question about its own row before it sends (see _pushScope). Returns
+   what happened: 'same' (identical, nothing written), 'kept' (local is
+   the later write and goes up instead), 'applied' (remote won; the
+   local copy was salvaged first), 'merged' / 'merged-kept' (a merged
+   scope: whether the merge also differs from the server and so goes
+   up), or null for a scope this build does not know. */
+function _applyRemoteRow(projectId, row) {
+  const localKey = KEY_BY_SCOPE[row.scope];
+  if (!localKey) return null;                     // scope this build doesn't know
+  const nsKey    = localKey + '__' + projectId;
+  const remoteTs = Date.parse(row.updated_at || '') || 0;
+  const localRaw = Store.rawGet(nsKey);
+  const nextRaw  = JSON.stringify(row.data || {});
+
+  const pullMerge = mergerFor(projectId, row.scope);
+  if (pullMerge && localRaw != null && localRaw !== '{}') {
+    const localWins = localClock(projectId, row.scope) > remoteTs;
+    const merged = pullMerge(localRaw, row.data || {}, localWins);
+    const remoteCanon = pullMerge('{}', row.data || {}, false, true);
+    noteBase(projectId, row.scope, row.data || {});
+    let wrote = false;
+    if (merged !== localRaw) {
+      salvageDropped(projectId, row.scope, localRaw, merged);
+      _applyingRemote = true;
+      try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
+      wrote = true;
+    }
+    markRemoteSeen(projectId, row.scope, remoteTs, merged === remoteCanon);
+    if (merged !== remoteCanon) { _debouncedPush(projectId, row.scope, 250); return wrote ? 'merged-kept' : 'merged'; }
+    return wrote ? 'applied' : 'same';
+  }
+
+  if (localRaw === nextRaw) {                     // identical — write nothing
+    markRemoteSeen(projectId, row.scope, remoteTs);
+    return 'same';
+  }
+  if (localRaw != null && localClock(projectId, row.scope) > remoteTs) {
+    // Local is the later write. Keep it, and send it up.
+    markRemoteSeen(projectId, row.scope, remoteTs);
+    _debouncedPush(projectId, row.scope, 250);
+    return 'kept';
+  }
+  // Remote wins. Keep a copy of whatever it displaces.
+  if (localRaw != null && localRaw !== '{}' && !_isServerCopy(projectId, row.scope, localRaw)) salvage(projectId, row.scope, localRaw);
+  _applyingRemote = true;
+  try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
+  markRemoteSeen(projectId, row.scope, remoteTs, true, nextRaw);
+  return 'applied';
+}
+
 /* Pull one project's scopes, resolving each one by last-write-wins.
 
    The old version of this function had a comment admitting it "always
@@ -1445,49 +1550,9 @@ export async function pullProjectData(projectId) {
   let applied = 0, kept = 0;
   const scopes = [];
   for (const row of data) {
-    const localKey = KEY_BY_SCOPE[row.scope];
-    if (!localKey) continue;                      // scope this build doesn't know
-    const nsKey    = localKey + '__' + projectId;
-    const remoteTs = Date.parse(row.updated_at || '') || 0;
-    const localRaw = Store.rawGet(nsKey);
-    let nextRaw    = JSON.stringify(row.data || {});
-
-    const pullMerge = mergerFor(projectId, row.scope);
-    if (pullMerge && localRaw != null && localRaw !== '{}') {
-      const localWins = localClock(projectId, row.scope) > remoteTs;
-      const merged = pullMerge(localRaw, row.data || {}, localWins);
-      const remoteCanon = pullMerge('{}', row.data || {}, false, true);
-      noteBase(projectId, row.scope, row.data || {});
-      if (merged !== localRaw) {
-        salvageDropped(projectId, row.scope, localRaw, merged);
-        _applyingRemote = true;
-        try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
-        applied++;
-        scopes.push(row.scope);
-      }
-      markRemoteSeen(projectId, row.scope, remoteTs, merged === remoteCanon);
-      if (merged !== remoteCanon) { kept++; _debouncedPush(projectId, row.scope, 250); }
-      continue;
-    }
-
-    if (localRaw === nextRaw) {                   // identical — write nothing
-      markRemoteSeen(projectId, row.scope, remoteTs);
-      continue;
-    }
-    if (localRaw != null && localClock(projectId, row.scope) > remoteTs) {
-      // Local is the later write. Keep it, and send it up.
-      kept++;
-      markRemoteSeen(projectId, row.scope, remoteTs);
-      _debouncedPush(projectId, row.scope, 250);
-      continue;
-    }
-    // Remote wins. Keep a copy of whatever it displaces.
-    if (localRaw != null && localRaw !== '{}') salvage(projectId, row.scope, localRaw);
-    _applyingRemote = true;
-    try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
-    markRemoteSeen(projectId, row.scope, remoteTs, true);
-    applied++;
-    scopes.push(row.scope);
+    const r = _applyRemoteRow(projectId, row);
+    if (r === 'applied' || r === 'merged-kept') { applied++; scopes.push(row.scope); }
+    if (r === 'kept' || r === 'merged-kept' || r === 'merged') kept++;
   }
   if (applied || kept) {
     /* `scopes` names what was WRITTEN here, so an open page holding one of
@@ -1537,7 +1602,7 @@ function reportSyncError(scope, code) {
   } catch (e) { /* a report must never disturb a save */ }
 }
 
-async function _pushScope(projectId, scope) {
+async function _pushScope(projectId, scope, opts) {
   if (!supabase || !session) {
     _enqueue({ kind: 'upsert', projectId, scope });
     idleSync();
@@ -1556,7 +1621,48 @@ async function _pushScope(projectId, scope) {
   if (raw == null) return;
   let json = {};
   try { json = JSON.parse(raw); } catch (e) { return; }
-  const stamp = new Date().toISOString();
+
+  /* A QUEUED EDIT ASKS THE SERVER FIRST (audit, 21 Oct 2026). The
+     upsert below is unconditional, so a tab that sat offline through
+     somebody else's later edit used to come back online and overwrite
+     it: the 'online' listener and the 30 s timer flush with no pull
+     first, and every receiver then let the "newer" row win and
+     replaced its own later copy. A queued op is late by definition, so
+     it reads its own row and lets _applyRemoteRow decide exactly as a
+     pull would; only a server copy OLDER than this device's edit is
+     replaced. A live, debounced save is under a second old and does
+     not pay for the extra read. */
+  if (opts && opts.queued) {
+    const { data: rows, error: readErr } = await supabase
+      .from('project_data')
+      .select('scope,data,updated_at')
+      .eq('project_id', projectId)
+      .eq('scope', scope);
+    if (readErr) {
+      // Could not ask: stays queued, exactly as a failed upsert would.
+      _enqueue({ kind: 'upsert', projectId, scope });
+      throw readErr;
+    }
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    const remoteTs = row ? (Date.parse(row.updated_at || '') || 0) : 0;
+    if (row && remoteTs > localClock(projectId, scope)) {
+      const r = _applyRemoteRow(projectId, row);
+      if (r === 'applied' || r === 'merged-kept') Store.notify('cloud:synced', { projectId, applied: 1, kept: 0, scopes: [scope] });
+      _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope && _ownsOp(o));
+      idleSync();
+      return;
+    }
+  }
+
+  /* STAMPED WITH THE EDIT, NOT THE SEND. updated_at is what every other
+     device's last-write-wins compares against, and the server keeps it
+     as sent (project_data_stamp forces only updated_by). Stamping the
+     moment of upload made the OLDEST edit win whenever it went up late.
+     The edit clock is this scope's localClock(); one in the future
+     (a skewed clock, an older bad stamp) or missing falls back to now. */
+  const edited = localClock(projectId, scope);
+  const sentAt = Date.now();
+  const stamp = new Date(edited > 0 && edited <= sentAt ? edited : sentAt).toISOString();
   _lastPushedAt.set(baseKey(projectId, scope), stamp);
   setSync(SYNC_STATES.SYNCING, 'Saving to your account…');
   const { error } = await supabase.from('project_data').upsert({
@@ -1576,7 +1682,7 @@ async function _pushScope(projectId, scope) {
       /* Refused, not unreachable: say why, and let the queue back off. */
       _enqueue({ kind: 'upsert', projectId, scope, code });
       idleSync();
-      tellRefusal(code, _readQueue().filter((o) => o.code).length);
+      tellRefusal(code, _myQueue().filter((o) => o.code).length);
       throw error;
     }
     _enqueue({ kind: 'upsert', projectId, scope });
@@ -1585,11 +1691,12 @@ async function _pushScope(projectId, scope) {
                        : 'Saved here — will upload when you are back online');
     throw error;
   }
-  // Both clocks now agree on the value this device just sent.
-  markRemoteSeen(projectId, scope, Date.parse(stamp), true);
+  // Both clocks now agree on the value this device just sent (unless a
+  // save landed during the upsert, which markRemoteSeen keeps).
+  markRemoteSeen(projectId, scope, Date.parse(stamp), true, raw);
   /* The value just sent is the newest one, so a queued (perhaps refused)
      copy of this scope has nothing left to say. */
-  _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope);
+  _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope && _ownsOp(o));
   idleSync();
 }
 
@@ -1715,19 +1822,48 @@ function _readQueue() {
 function _writeQueue(arr) {
   Store.rawSet(QUEUE_KEY, JSON.stringify(arr));
 }
+/* EVERY OP NAMES THE ACCOUNT THAT QUEUED IT (audit, 21 Oct 2026).
+   The queue is one raw key for the whole browser and survives sign-out
+   on purpose ("they will go up the next time you sign in") — which, on
+   a shared browser, used to mean the next account to sign in. B's
+   flush pushed A's project meta as a new project OWNED BY B and
+   upserted A's screenplay into it. An op now carries `uid`, and only
+   the session that owns it sends it; the rest wait for their own
+   account. An op queued with no session, or written before this field
+   existed, has no uid: it is sent only for a project the OPEN
+   namespace can see (Store.listProjects() — never listAllProjects(),
+   which spans every account on the device). A legacy delete is the
+   one exception, kept as it was: its project is already gone from
+   every list, and RLS lets only the owner delete. */
+const _opUid = (o) => (o && typeof o.uid === 'string') ? o.uid : '';
+function _ownsOp(o) {
+  const me = session && session.user ? session.user.id : '';
+  if (!me) return false;
+  if (_opUid(o)) return _opUid(o) === me;
+  if (o.kind === 'delete') return true;
+  const pid = o.projectId || (o.project && o.project.id);
+  return !!pid && Store.listProjects().some((p) => p.id === pid);
+}
+/* The part of the queue the signed-in account can send: what the status
+   line counts and sign-out waits for. Signed out, the whole queue. */
+function _myQueue() {
+  const q = _readQueue();
+  return session ? q.filter(_ownsOp) : q;
+}
+const _sameOp = (a, b) => a.kind === b.kind && a.projectId === b.projectId && a.scope === b.scope && _opUid(a) === _opUid(b);
 function _enqueue(op) {
   const q = _readQueue();
-  // dedupe — drop existing same (kind, projectId, scope)
+  const uid = op.uid !== undefined ? op.uid : (session && session.user ? session.user.id : '');
+  const next = Object.assign({}, op, { ts: Date.now() });
+  if (uid) next.uid = uid; else delete next.uid;
+  // dedupe — drop existing same (kind, projectId, scope, owner)
   const filtered = q.filter(o =>
-    !(o.kind === op.kind &&
-      o.projectId === op.projectId &&
-      o.scope === op.scope &&
-      JSON.stringify(o.project) === JSON.stringify(op.project))
+    !(_sameOp(o, next) &&
+      JSON.stringify(o.project) === JSON.stringify(next.project))
   );
   /* A refusal carries its back-off across re-queues, so saving again
      does not reset the clock and retry a known "no" at once. */
-  const prev = q.find(o => o.kind === op.kind && o.projectId === op.projectId && o.scope === op.scope);
-  const next = Object.assign({}, op, { ts: Date.now() });
+  const prev = q.find(o => _sameOp(o, next));
   if (op.code) {
     next.tries = ((prev && prev.tries) || 0) + 1;
     next.nextAt = Date.now() + BACKOFF_MS[Math.min(next.tries, BACKOFF_MS.length) - 1];
@@ -1790,11 +1926,18 @@ async function _flushOnce() {
   const done = [];      // ops this pass handled, success or not
   const keep = [];      // ops to stay queued, with what was learned
   let sent = 0, refused = 0, firstCode = '';
-  for (const op of q) {
+  const me = session.user.id;
+  for (let op of q) {
     if (op.kind !== 'delete' && op.projectId && !known.has(op.projectId) && !(op.project && known.has(op.project.id))) { done.push(op); continue; }
+    // Another account's change: not ours to send. It waits for them.
+    if (!_ownsOp(op)) { keep.push(op); done.push(op); continue; }
+    /* An owner-less op this account may send is adopted by it, so the
+       copy a failed push re-queues (stamped with this uid) and the one
+       kept here are the same op, not two. */
+    if (!_opUid(op)) { done.push(op); op = Object.assign({}, op, { uid: me }); }
     if (op.nextAt && op.nextAt > now) { keep.push(op); done.push(op); continue; }
     try {
-      if (op.kind === 'upsert') await _pushScope(op.projectId, op.scope);
+      if (op.kind === 'upsert') await _pushScope(op.projectId, op.scope, { queued: true });
       else if (op.kind === 'meta') await _pushProjectMeta(op.project);
       else if (op.kind === 'delete') await _deleteProjectInCloud(op.projectId);
       sent++;
@@ -1814,13 +1957,13 @@ async function _flushOnce() {
   /* Write back what this pass learned WITHOUT dropping anything queued
      while it ran (a push that failed re-queues itself; a new save can
      land mid-flush): entries this pass never saw are kept as they are. */
-  const same = (a, b) => a.kind === b.kind && a.projectId === b.projectId && a.scope === b.scope;
+  const same = _sameOp;
   const added = _readQueue().filter((o) => !done.some((d) => same(d, o)) && !keep.some((k) => same(k, o)));
   _writeQueue(keep.concat(added));
-  if (sent && !keep.length && !added.length) {
+  if (sent && !keep.some(_ownsOp) && !added.some(_ownsOp)) {
     toast('Synced ' + sent + ' waiting change' + (sent === 1 ? '' : 's'), 'success', 1800);
   }
-  if (refused) tellRefusal(firstCode, keep.filter((o) => o.code).length);
+  if (refused) tellRefusal(firstCode, keep.filter((o) => o.code && _ownsOp(o)).length);
   idleSync();
 }
 window.addEventListener('online',  () => { idleSync(); setTimeout(_flushQueue, 500); });
@@ -1967,14 +2110,14 @@ function _onRemoteData(payload) {
     _debouncedPush(row.project_id, row.scope, 250);
     return;
   }
-  if (localRaw != null && localRaw !== '{}') salvage(row.project_id, row.scope, localRaw);
+  if (localRaw != null && localRaw !== '{}' && !_isServerCopy(row.project_id, row.scope, localRaw)) salvage(row.project_id, row.scope, localRaw);
   _applyingRemote = true;
   try {
     Store.rawSet(nsKey, nextRaw);
   } finally {
     _applyingRemote = false;
   }
-  markRemoteSeen(row.project_id, row.scope, remoteTs, true);
+  markRemoteSeen(row.project_id, row.scope, remoteTs, true, nextRaw);
   // Re-render visible inputs if blueprint exposes a reload hook
   if (typeof window.loadAll === 'function') {
     try { window.loadAll(); } catch (e) {}
@@ -2547,8 +2690,22 @@ async function boot() {
        Only when `supabase` exists. If the cloud is not configured in
        this browser at all we cannot tell a signed-out user from an
        unreachable one, and clearing on that guess would hide an
-       account's projects from the person who wrote them. */
-    Store.setAccount(null, { reload: false });
+       account's projects from the person who wrote them.
+
+       AND NOT WHEN THE NULL MEANS "UNREACHABLE" (audit, 21 Oct 2026).
+       A built client is not proof of a sign-out: on set with no
+       signal, an access token over an hour old makes getSession()
+       try a refresh, which fails with AuthRetryableFetchError, and
+       auth-js answers `{ session: null }` while KEEPING the token. The
+       site gate's offline grace (graceOk) admits that visitor — and
+       clearing here then opened the device's own studio on the next
+       page, hid every `ns:[uid]` project, and put whatever they wrote
+       offline outside the account. A definite end (a refused refresh,
+       a revoked session) is non-retryable, and auth-js removes the
+       token for it, so it still lands below. */
+    const unreachable = _sessionErrorRetryable
+      || (typeof navigator !== 'undefined' && navigator.onLine === false);
+    if (!unreachable) Store.setAccount(null, { reload: false });
   }
   idleSync();
   // Always handle ?share= if present, even before sign-in

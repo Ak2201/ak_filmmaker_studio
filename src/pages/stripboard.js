@@ -1186,20 +1186,41 @@ function describeMove(rec) {
   return moveSentence(rec, scene, rec.toDay ? Locations.orderedDayScenes(rec.toDay).length : 0);
 }
 
+/* Only the LATEST move can be undone. A toast with an action never
+   times out, so without this every move left its own UNDO on screen,
+   and pressing an old one wrote that move's whole before-lists back
+   over everything done since. The previous move toast is dismissed
+   when a new move, a clear or a re-schedule happens; undoPlace() also
+   refuses a record the board no longer matches, for the toast that is
+   still somehow on screen. */
+let moveToast = null;
+function dropMoveToast() {
+  if (moveToast) { try { moveToast.dismiss(); } catch (e) { /* already gone */ } }
+  moveToast = null;
+}
+
 function afterMove(rec, opts = {}) {
   if (!rec) return;
   const said = describeMove(rec);
   announce(said);
   focusStrip(rec.sceneId, opts.focus);
-  toast(said, {
+  dropMoveToast();
+  const mine = toast(said, {
     action: 'UNDO',
     onAction: () => {
-      Locations.undoPlace(rec);
+      if (moveToast === mine) moveToast = null;
+      if (!Locations.undoPlace(rec)) {
+        const msg = 'The board has changed since that move, so it was not undone. Nothing was changed.';
+        toast(msg);
+        announce(msg);
+        return;
+      }
       render();
       announce('Undone.');
       focusStrip(rec.sceneId, opts.focus);
     }
   });
+  moveToast = mine;
 }
 
 /* role="status" rather than toggling aria-live on something that
@@ -1427,6 +1448,7 @@ delegate(document, 'click', '[data-action="sb-auto"]', async () => {
     + 'Re-schedule every scene by location?'
   )) return;
 
+  dropMoveToast();
   const { plan, days } = scheduleByLocation(scenes);
   for (const p of plan) Scenes.updateScene(p.id, { shootDay: p.day });
   // A fresh schedule starts in script order within each day.
@@ -1440,6 +1462,7 @@ delegate(document, 'click', '[data-action="sb-clear"]', async () => {
   const scenes = Scenes.listScenes().filter((s) => shootDayOf(s));
   if (!scenes.length) { toast('No strip has a shoot day yet, so there is nothing to clear.'); return; }
   if (!await askDanger(`Clear the shoot day from ${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}? The scenes themselves are untouched.`)) return;
+  dropMoveToast();
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.
   Locations.clearDayOrders();
@@ -1498,8 +1521,9 @@ delegate(document, 'click', '[data-action="csv-dood"]', () => {
     doodCsv(rows, days, { dateOf: csvDates(scenes), prefs: filmPrefs() }), 'text/csv;charset=utf-8');
 });
 
+/* Returns the toast's handle ({ dismiss }) or null. */
 function toast(message, opts) {
-  try { StudioUI.toast(message, Object.assign({ type: 'info' }, opts || {})); } catch (e) { /* chrome may not be up */ }
+  try { return StudioUI.toast(message, Object.assign({ type: 'info' }, opts || {})) || null; } catch (e) { /* chrome may not be up */ return null; }
 }
 
 render();

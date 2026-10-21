@@ -71,6 +71,7 @@ let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  ✗ ' + msg); } };
 const eq = (a, b, msg) => ok(JSON.stringify(a) === JSON.stringify(b), `${msg} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 const before = mem.size;
+let taskReg = null;            // the Desk tasks, registered once (phase 4)
 
 /* ---- the presets ------------------------------------------------ */
 const ids = M.PERSONAS.map((p) => p.id);
@@ -748,6 +749,7 @@ restoreFetch();
   const StoryM = await import('../src/lib/story.js');
   const reg = new Map();
   await Tasks.registerAll((t) => reg.set(t.id, t));
+  taskReg = reg;                 // registerAll registers once; the section below reuses it
   ok(['audience-test', 'audience-quick', 'audience-ask'].every((id) => Tasks.TASK_IDS.includes(id)), 'tasks: the three audience tasks are registered');
   const quick = reg.get('audience-quick');
   const askT = reg.get('audience-ask');
@@ -817,6 +819,114 @@ restoreFetch();
   ok(!qlog[0].user.includes('addressed to'), 'task test: a refine naming nobody adds nothing');
   const aout3 = await askT.run(askT.input({ viewer: 'distributor', getDoc: () => doc }).replace('\n---', 'Trailer?\n---'), { ctx: { viewer: 'distributor', getDoc: () => doc } });
   ok(/Sc 1 — the key/.test(aout3.text), 'task ask: the newest run this visit is the full test, cited by scene');
+  undo();
+}
+
+/* ---- Accept keeps what was shown, and what is there now --------
+   Three Desk tasks beside the audience ones, tested in this harness
+   because it is the one that already loads ai-tasks.js:
+     · coverage: Accept on v1 after a refine made v2 keeps v1's report
+       (the ids are positional, so v2 filtered by v1's ticks is a mix);
+     · dialogue pass: Accept refuses when the speech changed after Run
+       (the merge base would be the stale original);
+     · gen-batch: Accept hands the page's unsaved copy over (`before`)
+       BEFORE the batch commits, and write.js reloads its copy after,
+       so the next page save does not write the old script over the
+       generated pages. */
+{
+  const Script = await import('../src/lib/script.js');
+  const Gen = await import('../src/lib/scriptgen.js');
+  const reg = taskReg;
+  let covRound = 0;
+  const undo = installFakeFetch(async (req) => {
+    const u = req.user;
+    if (/--- SCENE \S+ ---/.test(u)) {
+      const ns = [...u.matchAll(/--- SCENE (\S+) ---/g)].map((m) => m[1]);
+      return { scenes: ns.map((n) => ({ scene: n, summary: 'Scene ' + n + '.' })), evidence: [] };
+    }
+    if (/Write the coverage/.test(u)) {
+      covRound++;
+      const V = 'V' + covRound;
+      const pt = (note) => ({ scene: '1', quote: 'Meena pours tea at the stall.', note });
+      return {
+        logline: V + ' logline.',
+        premise: { assessment: V + ' premise.', points: [pt(V + ' first premise note'), pt(V + ' second premise note')] },
+        structure: { assessment: V, actBreaks: [], points: [] },
+        character: { protagonist: 'MEENA', want: 'w', need: 'n', assessment: V, points: [] },
+        dialogue: { assessment: V, points: [] },
+        pacing: { assessment: V, points: [] },
+        marketability: { assessment: V, points: [] },
+        verdict: covRound === 1 ? 'pass' : 'recommend',
+        verdictWhy: V + ' why.'
+      };
+    }
+    if (/--- THE SPEECH TO WORK ON ---/.test(u)) return { keep: 'It is plain.', options: [{ text: 'The bus is late.', note: 'Shorter.' }] };
+    throw new Error('fake-ai: unrecognised prompt');
+  });
+  AI.setProvider('anthropic'); AI.setKey(AKEYS.anthropic);
+
+  const els = [
+    { id: 'k1', type: 'scene', text: 'INT. TEA STALL - DAY' },
+    { id: 'k2', type: 'action', text: 'Meena pours tea at the stall.' },
+    { id: 'k3', type: 'character', text: 'MEENA' },
+    { id: 'k4', type: 'dialogue', text: 'The bus is late again, like every single day.' }
+  ];
+
+  /* coverage */
+  const cdoc = { elements: els.map((e) => ({ ...e })), documents: [] };
+  const cctx = { getDoc: () => cdoc, save: () => {}, title: 'Tea' };
+  const cov = reg.get('coverage');
+  const v1 = await cov.run('', { ctx: cctx });
+  const v2 = await cov.run('', { ctx: cctx, refine: { previous: v1, instructions: ['again'] } });
+  ok(/V1 first/.test(v1.items[0].text) && /V2 first/.test(v2.items[0].text), 'coverage: two versions, each its own report');
+  cov.apply([v1.items[0]], cctx, v1);
+  const kept = cdoc.documents.find((d) => d.coverage && d.coverage.status === 'done');
+  const keptPts = kept ? kept.coverage.result.report.premise.points.map((p) => p.note) : null;
+  eq(keptPts, ['V1 first premise note'], 'coverage: Accept on v1 keeps v1\'s ticked point, not v2\'s at that index');
+  eq(kept && kept.coverage.result.report.verdict, 'pass', 'coverage: Accept on v1 keeps v1\'s verdict');
+
+  /* dialogue pass */
+  const ddoc = { elements: els.map((e) => ({ ...e })), documents: [] };
+  let dsaves = 0;
+  const dctx = { getDoc: () => ddoc, save: () => { dsaves++; }, render: () => {}, elId: 'k4' };
+  const dlg = reg.get('dialogue-pass');
+  const r1 = await dlg.run(dlg.input(dctx), { ctx: dctx });
+  ddoc.elements[3].text = 'The bus is late. I typed this after Run.';
+  let de = null;
+  try { dlg.apply(r1.proposed, dctx, r1); } catch (e) { de = e; }
+  ok(de && /changed since the pass ran/.test(de.message), 'dialogue: Accept after the speech changed refuses with a sentence');
+  eq([ddoc.elements[3].text, dsaves], ['The bus is late. I typed this after Run.', 0], 'dialogue: …and writes nothing over the newer text');
+  const r2 = await dlg.run(dlg.input(dctx), { ctx: dctx });
+  const dundo = dlg.apply(r2.proposed, dctx, r2);
+  ok(ddoc.elements[3].text === 'The bus is late.' && typeof dundo === 'function', 'dialogue: an unchanged speech is still written');
+
+  /* gen-batch: the page's copy and the batch both survive */
+  Script.saveScript({ elements: [{ id: 'p1', type: 'action', text: 'Stored line.' }], revisions: [], documents: [] });
+  Gen.save({ ...Gen.load(), stage: 'pages', cursor: 0, scenes: [{ sceneId: 'g1', slug: 'INT. FORT - NIGHT', synopsis: 'She goes in.' }] });
+  let pageDoc = Script.loadScript();
+  pageDoc.elements[0].text = 'Stored line, edited and not yet saved.';
+  const order = [];
+  const gctx = {
+    before: () => { order.push('before'); Script.saveScript(pageDoc); },
+    after: (job) => { order.push('after'); if (job !== null) pageDoc = Script.loadScript(); }
+  };
+  const draft = { cursor: 0, batch: [{ sceneId: 'g1', slug: 'INT. FORT - NIGHT' }],
+    byScene: { g1: [{ type: 'scene', text: 'INT. FORT - NIGHT' }, { type: 'action', text: 'Dark stone.' }] }, model: 'm' };
+  reg.get('gen-batch').apply([{ id: 'g1', draft }], gctx);
+  Script.saveScript(pageDoc);                         // the page's next save (a Coverage checkpoint, say)
+  const after = Script.loadScript().elements.map((e) => e.text);
+  eq(order, ['before', 'after'], 'gen-batch: the page flushes before the commit and reloads after it');
+  eq(after, ['Stored line, edited and not yet saved.', 'INT. FORT - NIGHT', 'Dark stone.'], 'gen-batch: the unsaved edit and the batch both survive the page\'s next save');
+
+  /* write.js wires it: the pill flushes and reloads, and the bulk run
+     commits between a flush and a reload (no bare runNextBatch). */
+  const W = readFileSync(new URL('../src/pages/write.js', import.meta.url), 'utf8');
+  const pill = W.slice(W.indexOf("tasks: ['gen-batch']"), W.indexOf("tasks: ['gen-batch']") + 400);
+  ok(/before: flushDoc/.test(pill) && /after: \(\) => \{ reloadDoc\(\);/.test(pill), 'write.js: the gen-batch pill passes before: flushDoc and reloads doc in after');
+  ok(!/Scriptgen\.runNextBatch\(/.test(W) && /flushDoc\(\);\s*res = Scriptgen\.applyBatch\(d, null\);\s*reloadDoc\(\);/.test(W), 'write.js: the bulk run flushes, commits and reloads');
+  /* Nothing a Desk task drafts is written before Accept: scriptgen
+     offers draft/apply halves only, never a one-call ask-and-write. */
+  eq(Object.keys(Gen).filter((k) => /^run/.test(k)), [], 'scriptgen: no run* export asks the model and writes in one call');
   undo();
 }
 

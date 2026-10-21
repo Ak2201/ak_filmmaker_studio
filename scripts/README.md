@@ -24,7 +24,7 @@ Two builds matter: `npm run build` is the gated build (what the hosts run),
 `dist-verify/` for the proofs that must not share `dist/`.
 
 In `package.json` but in neither `test:all`, `ship` nor CI (run by hand):
-`test:ai-desk`, `prove:stage-guide`, `prove:board-frames`, `test:videos:online`
+`prove:stage-guide`, `prove:board-frames`, `test:videos:online`
 (needs the network), `density`, `live-checks`, `smoke`, `demo`, `thumbs`,
 `shots`, `record:marketing`, `make:marketing` (its drift check
 `test:marketing` IS in `test:all`). In `ship` but not CI: `prove:tamil`,
@@ -66,7 +66,8 @@ Worth knowing:
   `src/data/marketing-*.json`; `--fixture` runs it against
   `fixtures/marketing-pages.fixture.json` (media existence check skipped).
 - `test:usage-names` is `make-usage-names-sql.mjs --check` (see section 5).
-- `test:ai-desk` (`test-ai-desk.mjs`) is NOT in `test:all`.
+- `test:ai-desk` (`test-ai-desk.mjs`) is the last step of `test:all`: the
+  AI Desk's line diff and partial-accept merge, in Node.
 
 ## 3. check-*.mjs — static checks over the source (no browser)
 

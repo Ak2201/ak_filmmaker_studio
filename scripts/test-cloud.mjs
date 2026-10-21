@@ -390,6 +390,68 @@ const T09 = Date.parse('2026-10-20T09:00:00Z');
   ok(iRedeem >= 0 && iTrial > iRedeem && iGate > iTrial, "panel.js's redeem branch calls startCodeTrial() after redeemCode() and before runGate()");
 }
 
+/* ================================================================
+   PONYTAIL (data) — a push resets the local clock to an older time
+   ================================================================ */
+{
+  projects = [{ id: 'pR', title: 'R', format: 'feature', ns: ['uA'], updatedAt: '2026-10-01T00:00:00Z' }];
+  accountNs = 'uA'; currentPid = 'pR';
+  openGate();
+  const ups = [];
+  let delay = 0;
+  dbHandler = (table, ops) => {
+    const up = ops.find(([k]) => k === 'upsert');
+    if (table === 'project_data' && up) { ups.push(up[1]); return wait(delay).then(() => ({ data: null, error: null })); }
+    return emptyDb(table, ops);
+  };
+  await load({ uid: 'uA' });
+  raw.delete(META_KEY);
+  raw.set('fms_scenes_v1__pR', JSON.stringify({ scenes: [{ id: 'r1', slug: 'first edit' }] }));
+  delay = 300;
+  Store_save('fms_scenes_v1');                 // t0
+  await wait(850);                             // the push is in flight now
+  raw.set('fms_scenes_v1__pR', JSON.stringify({ scenes: [{ id: 'r1', slug: 'typed during the upsert' }] }));
+  const t1 = Date.now();
+  Store_save('fms_scenes_v1');                 // a save that lands mid-flight
+  await wait(400);                             // the first upsert has returned
+  const row = JSON.parse(raw.get(META_KEY) || '{}')['pR::scenes'] || {};
+  ok(row.local >= t1, 'a push returning after a newer save leaves the local clock at that save (local ' + row.local + ', save ' + t1 + ')');
+  delay = 0;
+  await wait(900);                             // the second, debounced push
+  const last = ups[ups.length - 1] || {};
+  ok(ups.length >= 2 && last.data && last.data.scenes[0].slug === 'typed during the upsert', 'the newer content goes up — ' + JSON.stringify(ups.map((u) => [u.updated_at, u.data])));
+  ok(Date.parse(last.updated_at) >= t1, 'and is stamped with ITS edit, not the first one — got ' + last.updated_at);
+}
+
+/* ================================================================
+   PONYTAIL (data) — received copies push the offline copy out of
+   the salvage ring
+   ================================================================ */
+{
+  projects = [{ id: 'pV', title: 'V', format: 'feature', ns: ['uA'], updatedAt: '2026-10-01T00:00:00Z' }];
+  accountNs = 'uA'; currentPid = 'pV';
+  openGate();
+  let serverRow = null;
+  dbHandler = (table, ops) => (table === 'project_data' && ops.some(([k]) => k === 'select'))
+    ? { data: serverRow ? [serverRow] : [], error: null } : emptyDb(table, ops);
+  const C = await load({ uid: 'uA' });
+  raw.set('fms_scenes_v1__pV', JSON.stringify({ scenes: [{ id: 'v', slug: 'a week of offline work' }] }));
+  raw.set(META_KEY, JSON.stringify({ 'pV::scenes': { local: T09 } }));
+  raw.set(SALVAGE_KEY, '[]');
+  for (let i = 0; i < 14; i++) {
+    serverRow = { scope: 'scenes', data: { scenes: [{ id: 'v', slug: 'collaborator copy ' + i }] }, updated_at: new Date(T10 + i * 1000).toISOString() };
+    await C.pullProjectData('pV');
+  }
+  const ring = JSON.parse(raw.get(SALVAGE_KEY) || '[]');
+  ok(ring.some((r) => r.data.includes('a week of offline work')), 'the offline copy is still in the salvage ring after 13 received copies');
+  eq(ring.length, 1, 'a copy this device only received from the server is not salvaged');
+  // A copy written here without a clock (a backup restore, raw) is still salvaged.
+  raw.set('fms_scenes_v1__pV', JSON.stringify({ scenes: [{ id: 'v', slug: 'restored from a file' }] }));
+  serverRow = { scope: 'scenes', data: { scenes: [{ id: 'v', slug: 'collaborator copy 14' }] }, updated_at: new Date(T10 + 14000).toISOString() };
+  await C.pullProjectData('pV');
+  ok(JSON.parse(raw.get(SALVAGE_KEY) || '[]').some((r) => r.data.includes('restored from a file')), 'a local copy that differs from the last server copy is still salvaged');
+}
+
 function Store_save(key) { F.Store.notify('saved', { key }); }
 
 console.log(`test:cloud — ${pass} passed, ${fail} failed`);

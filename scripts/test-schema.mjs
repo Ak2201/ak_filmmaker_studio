@@ -292,17 +292,65 @@ console.log('✓ §53 loads (and re-runs cleanly)');
 runChecks('audit-53.sql');
 /* --- end §53 --- */
 
-/* --- §54 (charging in US dollars) --- on §53, loaded twice (it drops the
-   four-argument quote_for, the five-argument create_pending_payment and two
-   functions whose return type grew), after audit-53.sql so §53's checks ran
-   against §53's own bodies. --- */
-for (const f of ['supabase/schema/schema-54-usd-checkout.sql', 'supabase/schema/schema-54-usd-checkout.sql']) {
+/* --- §54 (the plan caps lock before they count) --- on §50/§51/§53, loaded
+   twice. cap-locks.sql proves each body locks and still refuses; the race
+   itself needs TWO connections, so it is driven here: session A inserts a
+   Free owner's one allowed project and holds its transaction open, session
+   B inserts a second one meanwhile. Unlocked (§53), B counts 0 because A
+   has not committed, and both land; locked, B waits for A, counts 1 and is
+   refused with P0402. --- */
+for (const f of ['supabase/schema/schema-54-cap-locks.sql', 'supabase/schema/schema-54-cap-locks.sql']) {
   r = psql(['-f', f]);
   if (r.status !== 0) fail(`${f} did not load cleanly`, r);
 }
 console.log('✓ §54 loads (and re-runs cleanly)');
-runChecks('usd-checkout.sql');
+runChecks('cap-locks.sql');
+{
+  const U = '00000000-0000-4000-8000-000000005410';
+  const prev = psql(['-tAc', 'select coalesce((select purchase_required from public.billing_settings where id), false)']).stdout.trim();
+  r = psql(['-c', `insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values ('${U}', 's54-race@example.com', now(), '{}');
+                   insert into public.studio_members (user_id, role) values ('${U}', 'user');
+                   update public.billing_settings set purchase_required = true where id;`]);
+  if (r.status !== 0) fail('§54 race: setup failed', r);
+  const { spawn } = await import('node:child_process');
+  const psqlAsync = (sql) => new Promise((done) => {
+    const base = ['psql', '-X', '-v', 'ON_ERROR_STOP=1', '-q', '-d', DB, '-c', sql];
+    const cmd = os.userInfo().username === 'root' && !process.env.PGHOST ? ['runuser', '-u', 'postgres', '--', ...base] : base;
+    const c = spawn(cmd[0], cmd.slice(1), { cwd: ROOT });
+    let stderr = '';
+    c.stderr.on('data', (d) => { stderr += d; });
+    c.on('close', (status) => done({ status, stderr }));
+  });
+  const one = (title, hold) => `begin; select t.claims('${U}');
+    insert into public.projects (owner_id, title) values ('${U}', '${title}');
+    ${hold ? 'select pg_sleep(2);' : ''} commit;`;
+  const a = psqlAsync(one('Race A', true));
+  await new Promise((res) => setTimeout(res, 700));
+  const b = psqlAsync(one('Race B', false));
+  const [ra, rb] = await Promise.all([a, b]);
+  const n = Number(psql(['-tAc', `select count(*) from public.projects where owner_id = '${U}'`]).stdout.trim());
+  psql(['-c', `delete from public.projects where owner_id = '${U}'; update public.billing_settings set purchase_required = ${prev === 't'} where id;`]);
+  total++;
+  if (ra.status === 0 && rb.status !== 0 && /syncs up to 1 project/.test(rb.stderr) && n === 1) {
+    console.log('  ✓ 54. two parallel inserts on a one-project plan: the second waits, counts 1 and is refused (P0402); 1 project');
+  } else {
+    failed++;
+    fail(`§54 race: A exit ${ra.status}, B exit ${rb.status}, ${n} project(s) synced (want 0, refused, 1)\n${ra.stderr}\n${rb.stderr}`);
+  }
+}
 /* --- end §54 --- */
+
+/* --- §55 (charging in US dollars) --- on §54, loaded twice (it drops the
+   four-argument quote_for, the five-argument create_pending_payment and two
+   functions whose return type grew), after cap-locks.sql so §54's checks ran
+   against §54's own bodies. --- */
+for (const f of ['supabase/schema/schema-55-usd-checkout.sql', 'supabase/schema/schema-55-usd-checkout.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §55 loads (and re-runs cleanly)');
+runChecks('usd-checkout.sql');
+/* --- end §55 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

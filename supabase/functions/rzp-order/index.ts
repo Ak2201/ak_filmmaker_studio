@@ -34,7 +34,7 @@
    platform. docs/BILLING.md is the runbook.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { basicAuth, PERIODS, receiptFor, normalisePromo, orderCurrency } from '../_shared/razorpay.js';
+import { basicAuth, PERIODS, receiptFor, normalisePromo, orderCurrency, attachOrder } from '../_shared/razorpay.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -99,7 +99,13 @@ Deno.serve(async (req) => {
     await svc.rpc('mark_payment_failed', { p_order_id: null, p_raw: order });
     return json(502, { error: 'Razorpay did not create the order.', detail: order?.error?.description ?? null });
   }
-  await svc.rpc('attach_razorpay_order', { p_payment: row.payment_id, p_order_id: order.id });
+  // The row must know the order before Checkout sees it (attachOrder).
+  const att = await attachOrder({
+    attach: () => svc.rpc('attach_razorpay_order', { p_payment: row.payment_id, p_order_id: order.id }),
+    abandon: () => svc.from('payments').update({ status: 'failed', raw: { attach_failed: order.id } })
+      .eq('id', row.payment_id).eq('status', 'created')
+  });
+  if (!att.ok) return json(502, { error: 'Could not record the order. Nothing was charged; try again.' });
 
   const list = row.list_paise ?? row.amount_paise, discount = row.discount_paise ?? 0, credit = row.credit_paise ?? 0;
   return json(200, {

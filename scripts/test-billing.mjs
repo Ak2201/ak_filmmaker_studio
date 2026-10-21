@@ -168,6 +168,19 @@ ok(calls[0].init.headers['Idempotency-Key'] === 'refund-r1-processed', 'refund i
   ok(out.kind === 'pending' && !order.includes('capture'), 'a check that cannot be asked is not a yes: nothing is captured');
   out = await R.settleAuthorized({ entity: ent, amountPaise: 59900, canActivate: can({ ok: true }), capture: async () => { throw new Error('down'); } });
   eq(out.kind, 'pending', 'a capture that throws is pending, not captured');
+  /* rzp-order: an attach that fails is a refusal, never an order handed out */
+  const steps = [];
+  let att = await R.attachOrder({ attach: async () => { steps.push('attach'); return { data: null, error: null }; }, abandon: async () => { steps.push('abandon'); } });
+  ok(att.ok === true && steps.join() === 'attach', 'attachOrder: a clean attach is ok and abandons nothing');
+  steps.length = 0;
+  att = await R.attachOrder({ attach: async () => { steps.push('attach'); return { data: null, error: { message: 'timeout' } }; }, abandon: async () => { steps.push('abandon'); } });
+  ok(att.ok === false && att.error.message === 'timeout' && steps.join() === 'attach,abandon', 'attachOrder: an rpc { error } is a refusal and the pending row is marked');
+  att = await R.attachOrder({ attach: async () => { throw new Error('down'); }, abandon: async () => { throw new Error('also down'); } });
+  ok(att.ok === false, 'attachOrder: an attach that throws is a refusal, even when the mark throws too');
+  const orderSrc = (await import('node:fs')).readFileSync(new URL('../supabase/functions/rzp-order/index.ts', import.meta.url), 'utf8');
+  const iAtt = orderSrc.indexOf('attachOrder({'), i200 = orderSrc.indexOf('return json(200');
+  ok(iAtt > 0 && i200 > iAtt && /if \(!att\.ok\) return json\(502/.test(orderSrc.slice(iAtt, i200)) && !/await svc\.rpc\('attach_razorpay_order'/.test(orderSrc),
+    'rzp-order checks the attach (attachOrder) and answers 502 before it returns the order to Checkout');
   const verifySrc = (await import('node:fs')).readFileSync(new URL('../supabase/functions/rzp-verify/index.ts', import.meta.url), 'utf8');
   ok(/settleAuthorized\(/.test(verifySrc) && /payment_can_activate/.test(verifySrc) && !/\/capture`/.test(verifySrc.slice(0, verifySrc.indexOf('payment_can_activate'))),
     'rzp-verify routes the authorised branch through settleAuthorized, asking payment_can_activate before any /capture');

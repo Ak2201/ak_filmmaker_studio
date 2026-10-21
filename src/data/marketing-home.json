@@ -2,7 +2,7 @@
   "_about": "Copy for the rebuilt home page (start.html), rendered by scripts/make-marketing-pages.mjs. Every claim is checkable in this repo. No price, no date, no social proof. A figure is a {{fms:...}} stamp (dragon.*) filled by the fms-start-figures plugin in vite.config.js, never typed.",
   "hero": {
     "h1": "From first draft to final call sheet",
-    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place, saved in your own browser. A year of the studio from about {{fms:price.from.day}} a day, nothing renews by itself, and it keeps working when the signal drops.",
+    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place. Every keystroke is written to your own browser first, and sync is yours to switch off. A year of the studio from about {{fms:price.from.day}} a day, nothing renews by itself, and it keeps working when the signal drops.",
     "note": "Every tool is open on a sample feature, {{fms:dragon.scenes}} scenes long, so you can look around before you write.",
     "cta": "Get started",
     "mediaLabel": "A scene of the sample feature, broken down on the page"
@@ -57,7 +57,7 @@
       "id": "local-first",
       "sym": "lock",
       "h2": "Local-first: your work stays yours",
-      "body": "Everything you write is saved in your own browser first, and the studio installs like an app. It works on set without a signal for up to 14 days after you last signed in on that device. Sync and a backup to your own Google Drive are there if you want a second copy.",
+      "body": "Everything you write is saved in your own browser first, and the studio installs like an app. Once you sign in, your films also sync so they reach your other devices; switch sync off in Settings and the browser copy stays either way. It works on set without a signal for up to 14 days after you last signed in on that device, then needs a connection once to check your sign-in. A backup to your own Google Drive is there if you want a second copy.",
       "cta": null,
       "video": null
     }

@@ -17,6 +17,11 @@
 
 @media print {
 
+  /* A4 for an Indian film. On a film whose paper is US Letter
+     (region INT, docs/US-MARKET-PLAN.md §A4) pdf.js swaps the size
+     for the length of a plain print, keeping THESE margins
+     (PLAIN_PRINT_MARGIN there; test:paperwork holds the two equal).
+     A PDF export injects its own setup either way. */
   @page { size: A4; margin: 16mm 14mm; }
 
   html, body {

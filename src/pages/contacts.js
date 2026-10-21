@@ -38,13 +38,19 @@ import Locations from '../lib/locations.js';
 import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
 import {
-  hueOf, prettyDate, slugOf, unitCounts, deptOptions, reachProblem as reachProblemOf, scheduleOf, sheetScenes,
+  hueOf, prettyDate as prettyDateIn, slugOf, unitCounts, deptOptions, reachProblem as reachProblemOf, scheduleOf, sheetScenes,
   eighthsOf, placesOf, sheetDateOf, lightOf, lightNote, wrapOf, lateScenes, lateText, ROUTE_FIELDS, pinText,
   pinRefusal, roundedPin, calledOf, groupCalled, callLabel, factsOf as factsFor, personOf, waRuns, dayName, nextSheetPatch
 } from '../lib/contacts-model.js';
 import WA from '../lib/callsheet-text.js';
 import { askDanger } from '../ui/dialog.js';
 import { pageHeader, statStrip, button, badge, panel } from '../ui/kit/index.js';
+
+/* The call sheet's dates follow the FILM's style (an Indian film
+   "12 February 2024", a US one "February 12, 2024"): it is paperwork, printed
+   and sent. Derived per call, stored nowhere. */
+const filmPrefs = () => PDF.filmPrefs();
+const prettyDate = (iso) => prettyDateIn(iso, filmPrefs());
 
 const app = document.getElementById('app');
 
@@ -745,7 +751,7 @@ function renderRouteDoc(onSheet) {
 
 /* calledOf, groupCalled and personOf are src/lib/contacts-model.js's;
    the sheet's facts are too, given the film's title from pdf.js. */
-const factsOf = (sheet, scenes) => factsFor(sheet, scenes, PDF.projectTitle());
+const factsOf = (sheet, scenes) => factsFor(sheet, scenes, PDF.projectTitle(), filmPrefs());
 
 const canShare = () => typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 

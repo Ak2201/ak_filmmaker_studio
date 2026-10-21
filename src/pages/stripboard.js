@@ -77,10 +77,10 @@ import Contacts from '../lib/contacts.js';
 import { sheetsForDay } from '../lib/shootday.js';
 import Board from '../lib/board-stats.js';
 import {
-  CAST, GROUPINGS, shootDayOf, castOf, locationOf, shootDays, groupScenes as groupBy, localDate, todayISO,
+  CAST, GROUPINGS, shootDayOf, castOf, locationOf, shootDays, groupScenes as groupBy, localDate as localDateIn, dayMonth, todayISO,
   daysNote as daysNoteFor, runtimeNote, screenTimeByDay, uncoveredMoves, nextUncoveredMove,
   doodRows as doodRowsFor, LONG, describeMove as moveSentence, scheduleByLocation,
-  sceneHeadings, latestDraft, lockPreset, boardSummary
+  sceneHeadings, latestDraft, lockPreset, boardSummary, boardCsv, doodCsv
 } from '../lib/stripboard-model.js';
 import {
   pageHeader, statStrip, statCard, meter, button, badge, chip, todBadge, todKey, doodCode,
@@ -89,6 +89,12 @@ import {
 
 const app = document.getElementById('app');
 const castCat = ELEMENT_CATEGORIES.find((c) => c.id === CAST) || { id: CAST, label: 'Cast', hue: 'feature' };
+
+/* The board's dates follow the FILM's style (an Indian film reads
+   "Mon, 27 Oct 2025", a US one "Mon, Oct 27, 2025"): the board is
+   paperwork and prints. Derived on every call, stored nowhere. */
+const filmPrefs = () => PDF.filmPrefs();
+const localDate = (iso) => localDateIn(iso, filmPrefs());
 
 /* View state. Not persisted — see the header. */
 const view = { group: 'script', matrix: false };
@@ -404,6 +410,9 @@ function renderControls() {
   const exportMenu = actionMenu('Export', [
     { label: 'Stripboard as PDF',      action: 'pdf-board', hint: 'landscape' },
     { label: 'Day Out of Days as PDF', action: 'pdf-dood',  hint: 'landscape' },
+    '---',
+    { label: 'Stripboard as CSV',      action: 'csv-board', hint: 'shoot order' },
+    { label: 'Day Out of Days as CSV', action: 'csv-dood',  hint: 'cast × days' },
     '---',
     { label: 'Print this page',        action: 'sb-print' }
   ], { align: 'right' });
@@ -786,7 +795,7 @@ function renderDood(scenes) {
     const th = h('th.sb-grid-day' + (iso && iso === today ? '.is-col-today' : ''), { scope: 'col', title: dated ? `Day ${d} · ${dated}` : `Day ${d}` }, [
       h('span.sb-grid-dnum', { text: 'D' + d })
     ]);
-    if (dated) th.append(h('span.sb-grid-ddate', { text: dated.split(' ').slice(0, 2).join(' ') }));
+    if (dated) th.append(h('span.sb-grid-ddate', { text: dayMonth(iso, filmPrefs()) }));
     hr.append(th);
   });
   hr.append(
@@ -1476,6 +1485,41 @@ delegate(document, 'click', '[data-action="pdf-dood"]', () => {
 });
 
 delegate(document, 'click', '[data-action="sb-print"]', () => window.print());
+
+/* ---- CSV -----------------------------------------------------
+   The board in SHOOT order (each day as the AD ordered it, the
+   unscheduled strips last) and the day out of days as a cast × days
+   grid, built by stripboard-model.js the way the breakdown builds its
+   element index. Same plan capability as the PDFs: an export. */
+const csvDates = (scenes) => new Map(Locations.calendarDays(scenes).map((d) => [d.day, d.date]));
+/* The download, by hand: story-io.js has the same five lines and
+   brings story.js and the samples with it — 11KB of this page's first
+   paint for a click. The filename is the film's, as the breakdown's is. */
+const fileSlug = () => (PDF.projectTitle() || 'film').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'film';
+function saveFile(name, body, type) {
+  const url = URL.createObjectURL(new Blob([body], { type }));
+  const a = h('a', { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+delegate(document, 'click', '[data-action="csv-board"]', () => {
+  const scenes = Scenes.listScenes();
+  if (!scenes.length) { toast('Nothing to export yet.'); return; }
+  saveFile(fileSlug() + '-stripboard.csv',
+    boardCsv(groupBy(scenes, 'day'), { dateOf: csvDates(scenes), prefs: filmPrefs() }), 'text/csv;charset=utf-8');
+});
+
+delegate(document, 'click', '[data-action="csv-dood"]', () => {
+  const scenes = Scenes.listScenes();
+  const days = shootDays(scenes);
+  const rows = scenes.length ? doodRows(scenes, days) : [];
+  if (!rows.length || !days.length) { toast('Nothing to export yet — schedule a scene with cast on a shoot day first.'); return; }
+  saveFile(fileSlug() + '-day-out-of-days.csv',
+    doodCsv(rows, days, { dateOf: csvDates(scenes), prefs: filmPrefs() }), 'text/csv;charset=utf-8');
+});
 
 /* Returns the toast's handle ({ dismiss }) or null. */
 function toast(message, opts) {

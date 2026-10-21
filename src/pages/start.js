@@ -36,18 +36,19 @@
    3. The landing_view count (once per session; Do Not Track and the
       opt-out are honoured inside funnel.js), and the opt-out button the
       privacy page promises.
-   5. The "from about ₹1.64 a day" figures in the visitor's currency
-      (docs/US-MARKET-PLAN.md §B): a visitor outside India is shown the
-      owner's dollar figure from price_notice('USD'). Only then is the
-      server asked anything; an Indian visitor's page fetches nothing for
-      it. No answer: the stamped rupees stand. The charge currency is
-      said on pricing.html and at checkout, where the price is.
+   5. The "from about ₹X a day" figures, true today and in the visitor's
+      currency (docs/US-MARKET-PLAN.md §B). price_notice() brings the
+      rupee stamp to the server's current price once a scheduled rise has
+      fired; a visitor outside India is then shown the owner's dollar
+      figure from price_notice('USD'). No answer: the stamped rupees
+      stand. The charge currency is said on pricing.html and at checkout,
+      where the price is.
    ============================================================ */
 import './marketing.js';
 import '../styles/start.css';
 import { bumpOnce, optOut, priceNotice } from '../lib/funnel.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
-import { takeAuthError, isAppPage, deviceRegion } from '../lib/start-model.js';
+import { takeAuthError, isAppPage, deviceRegion, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
 import { pricingCurrency, readPayCurrency, guessVisitorRegion } from '../lib/region-core.js';
 import { shopView, fromDay } from '../lib/price-model.js';
 
@@ -103,14 +104,33 @@ bumpOnce('landing_view');
 const noCount = byId('noCount');
 if (noCount) noCount.addEventListener('click', () => { optOut(); noCount.textContent = noCount.dataset.done; noCount.disabled = true; });
 
-/* ---- 5. the visitor's currency ------------------------------------- */
+/* ---- 5. the price today, in the visitor's currency --------------------
+   The hero and the closing note say "from about ₹X a day", stamped from
+   LIST_PRICE, which is the price BEFORE any scheduled rise. The rise
+   fires on its date or on the buyer that fills the cap, so the stamp can
+   go stale with no rebuild; price_notice() always carries each plan's
+   CURRENT price_paise. Each figure is a [data-price-day="from"] span
+   (make-marketing-pages.mjs priceSpans()), rewritten by what it is; the
+   title, which cannot carry a span, is swapped by its stamped figure. A
+   visitor shown dollars then gets the owner's dollar figure from
+   price_notice('USD'), and only when every plan has one. The call failing
+   leaves the markup as it was (pricing.js does the same for its cards). */
+function sayFrom(fig) {
+  if (!fig) return;
+  for (const n of document.querySelectorAll('[data-price-day="from"]')) n.textContent = fig;
+  const was = stampedFromDay(TITLE0);
+  if (was) document.title = swapFigure(TITLE0, was, fig);
+}
+const TITLE0 = document.title;
 try {
-  if (pricingCurrency({ override: readPayCurrency(), chosen: deviceRegion(), guess: guessVisitorRegion() }) === 'USD') {
-    priceNotice('USD').then((notice) => {
-      const view = shopView('USD', notice);
-      const day = view.currency === 'USD' ? fromDay(view) : '';
-      if (!day) return;
-      for (const n of document.querySelectorAll('[data-price-day="from"]')) n.textContent = day;
+  const usdAsk = pricingCurrency({ override: readPayCurrency(), chosen: deviceRegion(), guess: guessVisitorRegion() }) === 'USD'
+    ? priceNotice('USD') : null;
+  priceNotice().then((notice) => {
+    sayFrom(fromDayNow(notice));
+    if (!usdAsk) return;
+    usdAsk.then((usd) => {
+      const view = shopView('USD', usd);
+      if (view.currency === 'USD') sayFrom(fromDay(view));
     }, () => {});
-  }
+  }, () => {});
 } catch (e) { /* the stamped rupees stand */ }

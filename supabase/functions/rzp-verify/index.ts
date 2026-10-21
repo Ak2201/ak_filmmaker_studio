@@ -29,7 +29,7 @@
    them nothing is claimed and nothing is sent.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { verifyPaymentSignature, basicAuth } from '../_shared/razorpay.js';
+import { verifyPaymentSignature, basicAuth, settleAuthorized } from '../_shared/razorpay.js';
 import { sendReceiptOnce } from '../_shared/mail.js';
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -89,7 +89,17 @@ Deno.serve(async (req) => {
      activate_payment's amount check runs); authorized -> capture it for
      exactly the recorded amount, then activate; anything else -> no plan
      here, and the webhook's payment.captured activates it later if the
-     money does arrive. A plan is never granted on a signature alone. */
+     money does arrive. A plan is never granted on a signature alone.
+
+     ASK BEFORE CAPTURING (§53, audit bug 8). activate_payment can refuse
+     an order whose promo code was used up, or whose upgrade credit has
+     gone, since it was priced. It used to be asked only AFTER the money
+     was collected, and the buyer was left charged with no plan.
+     settleAuthorized() asks payment_can_activate() first and does not
+     capture a refused order, so Razorpay releases the hold. One captured
+     anyway (auto-capture, or a race in between) is recorded by
+     activate_payment as paid with no plan and unapplied_reason set, and
+     the buyer can be refunded from Settings or the console. */
   let entity: any = null;
   if (pay.status !== 'paid') {
     const rzpAuth = basicAuth(keyId, keySecret);
@@ -100,14 +110,27 @@ Deno.serve(async (req) => {
       return json(202, { ok: false, pending: true, error: PENDING });
     }
     if (entity.status === 'authorized') {
-      if (Number(entity.amount) !== Number(pay.amount_paise)) return json(400, { error: 'The payment amount does not match the order. Nothing was collected; Razorpay releases the hold.' });
-      const cap = await fetch(`https://api.razorpay.com/v1/payments/${pid}/capture`, {
-        method: 'POST',
-        headers: { Authorization: rzpAuth, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(pay.amount_paise), currency: pay.currency || 'INR' })
-      }).catch(() => null);
-      const capped = cap && cap.ok ? await cap.json().catch(() => null) : null;
-      if (capped && capped.status === 'captured') entity = capped;
+      const settled = await settleAuthorized({
+        entity, amountPaise: pay.amount_paise,
+        canActivate: async () => {
+          const { data: verdict, error: verr } = await svc.rpc('payment_can_activate', { p_order_id: body.razorpay_order_id });
+          if (verr) throw new Error(verr.message);
+          return verdict;
+        },
+        capture: async () => {
+          const cap = await fetch(`https://api.razorpay.com/v1/payments/${pid}/capture`, {
+            method: 'POST',
+            headers: { Authorization: rzpAuth, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: Number(pay.amount_paise), currency: pay.currency || 'INR' })
+          });
+          return cap.ok ? await cap.json().catch(() => null) : null;
+        }
+      });
+      if (settled.kind === 'mismatch') return json(400, { error: 'The payment amount does not match the order. Nothing was collected; Razorpay releases the hold.' });
+      if (settled.kind === 'refused') {
+        return json(409, { ok: false, refused: settled.reason, error: `${settled.sentence || 'This order can no longer be applied.'} Nothing was collected; Razorpay releases the hold on your money within a few days.` });
+      }
+      if (settled.kind === 'captured') entity = settled.entity;
     }
     if (entity.status !== 'captured') return json(202, { ok: false, pending: true, error: PENDING });
   }
@@ -117,9 +140,17 @@ Deno.serve(async (req) => {
     p_raw: { source: 'verify', ...body, ...(entity ? { payment: entity } : {}) }
   });
   if (error) return json(400, { error: error.message });
+  // the money moved either way, so the receipt goes either way
   background(sendReceiptOnce(svc, body.razorpay_order_id, mailEnv()).then((m) => {
     if (!m.ok && m.reason !== 'not-configured') console.warn('[rzp-verify] receipt', m.reason, m.detail ?? '');
   }));
+  // §53: captured, recorded, and no plan applied — say so, never "ok"
+  const { data: rec } = await svc.from('payments').select('unapplied_reason, promo_code').eq('razorpay_order_id', body.razorpay_order_id).maybeSingle();
+  if (rec?.unapplied_reason) {
+    const { data: sentence } = await svc.rpc('unapplied_sentence', { p_reason: rec.unapplied_reason, p_code: rec.promo_code ?? null });
+    return json(409, { ok: false, refused: rec.unapplied_reason, refundable: true,
+      error: `${sentence || 'The plan was not applied.'} Your payment is recorded; ask for a refund from Settings, or write to us.` });
+  }
   const row = Array.isArray(data) ? data[0] : data;
   return json(200, { ok: true, plan: row?.plan_id, ends_at: row?.ends_at, account_id: row?.account_id, already: !!row?.already });
 });

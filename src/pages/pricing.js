@@ -16,8 +16,13 @@
      2. a signed-in visitor's BUY goes straight to the checkout page
      3. the pricing_view count, once, when the plans scroll into view
      4. the scheduled price rise from price_notice(): it ADDS the coming
-        figure beside the build-stamped one and never replaces it, and the
-        band stays hidden unless the server reports a rise it will execute
+        figure beside the build-stamped one, and the band stays hidden
+        unless the server reports a rise it will execute
+     4b. the price TODAY: once a rise has fired the build-stamped figures
+        are the old ones, so where the server's current price_paise
+        differs, the cards, the table head and the per-day figures are
+        rewritten to it (the markup is still the fallback when the call
+        fails, and scripts-off readers see the stamp)
      5. purchases off: the page is marked, the trial promise goes, and no
         rise band is drawn (a countdown on a studio that is not selling is
         urgency nobody enforces)
@@ -46,7 +51,7 @@ import './marketing.js';
 import '../styles/pricing.css';
 import { bumpEvent, bumpOnce, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
 import * as StartAuth from '../lib/start-auth.js';
-import { stashPlan, buyHref, risingTiers, priceRiseBand, timeLeft, deviceRegion } from '../lib/start-model.js';
+import { stashPlan, buyHref, risingTiers, priceRiseBand, timeLeft, deviceRegion, currentPrices, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion } from '../lib/region-core.js';
 import { shopView, fmtMinor, perDayIn, fromDay, chargeCaption, currencySentence, riseMoney } from '../lib/price-model.js';
 
@@ -179,6 +184,9 @@ function applyView(view, want, answered) {
     n.textContent = usd && r ? chargeCaption(view, r.inrMinor) : '';
     n.hidden = !n.textContent;
   }
+  const fromUsd = usd ? fromDay(view) : '';
+  const titleWas = stampedFromDay(TITLE0);
+  document.title = fromUsd && titleWas ? swapFigure(TITLE0, titleWas, fromUsd) : titleInr;
   const dollarsCharged = view.charge === 'USD';
   for (const n of document.querySelectorAll('[data-charge]')) n.hidden = (n.dataset.charge === 'USD') !== dollarsCharged;
   const sw = document.querySelector('[data-price-switch]');
@@ -212,6 +220,40 @@ document.addEventListener('click', (e) => {
   notices(want).then((n) => show(want, n, purchasesOff)).catch(() => {});
 });
 
+/* ---- 4b. the price today ------------------------------------------------
+   LIST_PRICE is stamped at build time and is the price BEFORE any rise.
+   The rise fires on a date OR on the buyer that fills the cap, so no
+   rebuild can be timed for it, and checkout quotes effective_price(). This
+   brings the page's RUPEE figures to the same price. Every price in
+   visible text sits in a span that says what it is (data-price="<tier>",
+   data-price-day="<tier>|from", make-marketing-pages.mjs priceSpans()), so
+   each is rewritten by what it is, never by matching the old value across
+   the page (₹599→₹999 then ₹999→₹1,999 would chain). The rupee figure is
+   kept on the span (data-inr), which is what applyView() restores when the
+   visitor is shown rupees; the title, which cannot carry a span, is
+   rebuilt from the build's own title. */
+const TITLE0 = document.title;
+let titleInr = TITLE0;
+function setInr(node, text) { node.dataset.inr = text; node.textContent = text; }
+function renderPricesNow(notice) {
+  const now = currentPrices(notice);
+  if (!now.length) return;
+  const byTier = new Map(now.map((p) => [p.id, p]));
+  for (const n of document.querySelectorAll('[data-price]')) {
+    const p = byTier.get(n.dataset.price);
+    if (p) setInr(n, p.price);
+  }
+  const fromNow = fromDayNow(notice);
+  for (const n of document.querySelectorAll('[data-price-day]')) {
+    const id = n.dataset.priceDay;
+    const fig = id === 'from' ? fromNow : (byTier.get(id) || {}).day;
+    if (fig) setInr(n, fig);
+  }
+  const fromWas = stampedFromDay(TITLE0);
+  if (fromNow && fromWas) titleInr = swapFigure(TITLE0, fromWas, fromNow);
+  document.title = titleInr;
+}
+
 /* ---- 5 and 6. purchases off, trials off --------------------------------
    marketing.js already swaps the words (data-open-text / data-off-text)
    and fills in the trial's length; what is left here is what has to
@@ -222,8 +264,9 @@ function hideTrial() {
 try {
   const want = wanted();
   Promise.all([purchasesRequired(), notices(want)]).then(([req, n]) => {
-    purchasesOff = req === false;
-    if (purchasesOff) { root.dataset.purchases = 'off'; hideTrial(); }
+    const notice = n.notice;
+    renderPricesNow(notice);                  // a true rupee figure whether or not purchases are on
+    if (req === false) { purchasesOff = true; root.dataset.purchases = 'off'; hideTrial(); }
     show(want, n, purchasesOff);
   }, () => {});
 } catch (e) { /* never breaks the page */ }

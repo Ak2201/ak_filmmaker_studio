@@ -1373,3 +1373,52 @@ markets them by the day: `perDay()` in `src/lib/plans.js` (₹1.64 / ₹2.19 /
 
 Not built: an expiry reminder e-mail. It needs a scheduled job and Resend; the
 in-app notices cover it until then.
+
+## 23. The billing audit fixes (schema §53, 21 Oct 2026). NOT YET RUN LIVE.
+
+Four findings from the 21 Oct 2026 audit, each proved by a check in
+`scripts/schema-tests/audit-53.sql` that failed against §52 first.
+
+- **Upgrade credit belongs to one organisation (bug 10).** Up to §52 the
+  credit added up every organisation the buyer owned, so Pro for an empty
+  organisation was priced as an upgrade from another one's Basic year, and
+  that year kept running. Now `buyer_target_account()` picks where the plan
+  lands (the one named; else the one holding the best plan; else the newest),
+  the quote reads that organisation's plan and end date, the credit counts
+  only its payments, and `create_pending_payment` stores it on the order. A
+  renewal with no organisation named now stacks onto the year it renews.
+- **A payment refused after capture is refundable (bug 8).** `rzp-verify`
+  asks `payment_can_activate()` BEFORE it captures an authorised payment; a
+  used-up promo code or a vanished credit is not captured at all, and
+  Razorpay releases the hold. One captured anyway (dashboard auto-capture, or
+  a race) is recorded `paid` with its Razorpay id, `plan_applied = false` and
+  `payments.unapplied_reason`; the buyer can ask for a refund from Settings,
+  the console can refund it, a dashboard refund is matched, and refunding it
+  takes no time off a plan another payment bought.
+- **No answer from Razorpay is not a failed refund (bug 9).** `rzp-refund`
+  records `failed` only when Razorpay answered with a refusal. A call that
+  threw, a 5xx or an empty 2xx is looked up by receipt; with no match the
+  refunds row stays `initiated` and the console says to check the dashboard.
+  Pressing REFUND again after a minute gets the SAME row back from
+  `begin_refund`, so the retry carries the same `X-Refund-Idempotency` key and
+  cannot refund twice. The `refund.processed` webhook finds that row by its
+  receipt instead of making a second "dashboard" row.
+- **A lapsed year says when it ended (bug 5, server half).** `billing_status()`
+  returns `plan_until` when `lapsed` is true (it returned null, and the plan
+  page printed 1 Jan 1970).
+
+**Owner steps.**
+1. Run §53 in the SQL editor — after §52 — verifying the checksum first:
+   `shasum -a 256 supabase/schema/schema-53-audit-fixes.sql` must equal the
+   sha256 in `supabase/schema/README.md` and the editor's contents (never
+   paste schema SQL without a checksum).
+2. Redeploy the two functions with the CLI (never the dashboard editor; both
+   import `../_shared/razorpay.js`):
+   `npx --yes supabase@latest functions deploy rzp-verify rzp-refund --project-ref conhlrulxfwkhsnymakz`.
+   Run §53 FIRST. The functions deployed now keep working against §53 (they
+   call nothing whose arguments changed), but the new `rzp-verify` calls
+   `payment_can_activate`, and against a §52 database an authorised payment
+   would be answered "still being confirmed" (and left uncaptured) until §53
+   exists.
+3. Read back with the checks at 53.5 in the section file.
+

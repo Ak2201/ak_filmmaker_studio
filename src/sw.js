@@ -184,11 +184,79 @@ async function precacheAll(cache) {
 // ------------------------------------------------------------
 // ACTIVATE — drop every cache from an earlier build.
 // ------------------------------------------------------------
+/* EXCEPT AN OFFLINE SHOOT PACK THAT HAS NOT MOVED OVER YET.
+
+   The pack's name carries BUILD like every other cache, so a deploy
+   used to sweep it with the rest — and the pack is the only place the
+   clean `/shoot` a bookmark holds is ever stored. One load with signal
+   the morning after a deploy (skipWaiting: the new worker activates at
+   once) and `/shoot` offline was the hub, the exact failure the pack
+   exists to prevent, with nothing telling the crew.
+
+   So activate RE-PACKS first: the pages an older pack holds (its
+   typed `.html` keys) go through packPages() into this build's pack,
+   fresh from the network, assets and clean address included. Only
+   when every one of them made it is the old pack deleted. Activated
+   without signal, the old pack is KEPT — stale bytes beat the hub —
+   and the next same-origin navigation with signal tries again
+   (carryPack below), so it does not wait for the next deploy.
+
+   THE CARRY IS NOT IN ACTIVATE'S waitUntil. Every fetch the new
+   worker handles waits until it is `activated`, so a carry inside
+   activate held the first load after a deploy behind half a dozen
+   sequential network fetches — and on weak signal, where requests hang
+   rather than fail, behind nothing at all, for minutes, which is the
+   on-set morning the pack exists for. Activate sweeps everything but
+   the packs and claims; the carry runs after, joined by the next
+   navigation's waitUntil, and each of its fetches gives up after
+   CARRY_FETCH_MS. A timeout is "no signal": the old pack stays. */
+const PACK_PREFIX = 'studio-pack-';
+let packCarry = null;          // the in-flight carry, shared by activate and navigations
+let packPending = true;        // until a carry finds no older pack (re-checked once per worker start)
+const CARRY_FETCH_MS = 8000;   // one carry fetch on lie-fi: past this it is "no signal"
+
+/** Move every older pack into PACK. Resolves with the names of the
+    old packs that could NOT be moved (and so must be kept). */
+function carryPack() {
+  if (!packPending) return Promise.resolve(new Set());
+  if (packCarry) return packCarry;
+  packCarry = (async () => {
+    const old = (await caches.keys()).filter((k) => k.startsWith(PACK_PREFIX) && k !== PACK);
+    if (!old.length) { packPending = false; return new Set(); }
+    const pages = new Set();
+    for (const name of old) {
+      const cache = await caches.open(name);
+      for (const req of await cache.keys()) {
+        const u = new URL(req.url);
+        if (u.origin === self.location.origin && /\.html$/.test(u.pathname)) pages.add(u.href);
+      }
+    }
+    /* packPages() THROWS when the network does (no signal): keep the
+       old pack. A page the host answered with a non-ok status is gone
+       from the site, and retrying it on every navigation would be a
+       request loop for a page that will never come back, so that
+       counts as moved. */
+    /* A page that moved without every one of its files did not move:
+       its old pack still has them, so keep it rather than delete the
+       only copy of the script the page needs offline. */
+    try {
+      const results = pages.size ? await packPages([...pages], { timeout: CARRY_FETCH_MS }) : [];
+      if (results.some((r) => r.ok && r.missing)) return new Set(old);
+    } catch (e) { return new Set(old); }
+    await Promise.all(old.map((n) => caches.delete(n)));
+    packPending = false;
+    return new Set();
+  })().finally(() => { packCarry = null; });
+  return packCarry;
+}
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => !KEEP.has(k)).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => !KEEP.has(k) && !k.startsWith(PACK_PREFIX)).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      // Started, not awaited: the next navigation's waitUntil joins it (packCarry is shared).
+      .then(() => { carryPack().catch(() => {}); })
   );
 });
 
@@ -211,6 +279,8 @@ self.addEventListener('fetch', (event) => {
   // 3. HTML — stale-while-revalidate.
   if (sameOrigin && isHTML(request)) {
     event.respondWith(staleWhileRevalidate(request));
+    // An older shoot pack kept by an offline activate: move it now, with signal.
+    if (packPending) event.waitUntil(carryPack().catch(() => {}));
     return;
   }
 
@@ -313,15 +383,31 @@ self.addEventListener('message', (event) => {
    ------------------------------------------------------------ */
 const PACK_ASSET = /\b(?:src|href)="([^"]+\.(?:js|css|json|woff2|svg|png|webmanifest))"/g;
 
-async function packPages(urls) {
+/* fetch(), or — given a timeout — fetch() that rejects once `ms` pass,
+   aborting the request too. Raced as well as aborted, so a request that
+   ignores the signal still cannot hold the caller. */
+function fetchWithin(input, init, ms) {
+  if (!ms) return fetch(input, init);
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  let timer;
+  const late = new Promise((_, reject) => {
+    timer = setTimeout(() => { if (ctl) ctl.abort(); reject(new TypeError('timed out: ' + input)); }, ms);
+  });
+  return Promise.race([fetch(input, Object.assign({}, init, ctl ? { signal: ctl.signal } : {})), late])
+    .finally(() => clearTimeout(timer));
+}
+
+async function packPages(urls, opts = {}) {
+  const ms = opts.timeout || 0;
   const cache = await caches.open(PACK);
+  const precache = await caches.open(PRECACHE);
   const out = [];
   for (const raw of [].concat(urls || [])) {
     let url;
     try { url = new URL(raw, SCOPE); } catch (e) { continue; }
     if (url.origin !== self.location.origin || !/\.html$/.test(url.pathname)) continue;
     const typed = url.href;
-    const res = await fetch(typed, { cache: 'reload' });
+    const res = await fetchWithin(typed, { cache: 'reload' }, ms);
     if (!res.ok) { out.push({ url: typed, ok: false }); continue; }
     const body = await res.clone().text();
     await cache.put(typed, await clean(res));
@@ -329,7 +415,7 @@ async function packPages(urls) {
     const cleanUrl = typed.replace(/\.html$/, '');
     let cleanOk = false;
     try {
-      const alt = await fetch(cleanUrl, { cache: 'reload' });
+      const alt = await fetchWithin(cleanUrl, { cache: 'reload' }, ms);
       if (alt.ok && (await alt.clone().text()) === body) {
         await cache.put(cleanUrl, await clean(alt));
         cleanOk = true;
@@ -338,14 +424,20 @@ async function packPages(urls) {
 
     const assets = [...new Set([...body.matchAll(PACK_ASSET)].map((m) => new URL(m[1], typed).href))]
       .filter((a) => new URL(a).origin === self.location.origin);
-    let files = 1;
+    let files = 1, missing = 0;
     await Promise.all(assets.map(async (a) => {
+      /* Held by this build's precache or pack: enough. Held anywhere
+         else (an older pack, which the carry is about to delete): copy
+         it in, or the delete takes the only offline copy with it. */
+      if (await precache.match(a) || await cache.match(a)) { files++; return; }
       const have = await caches.match(a);
-      if (have && !have.redirected) { files++; return; }
-      const r = await fetch(a).catch(() => null);
-      if (r && r.ok) { await cache.put(a, await clean(r)); files++; }
+      if (have && !have.redirected) { await cache.put(a, await clean(have)); files++; return; }
+      const r = await fetchWithin(a, undefined, ms).catch(() => null);
+      /* Only a request that never answered is missing; a file the host
+         no longer serves is gone, and waiting for it would retry forever. */
+      if (r && r.ok) { await cache.put(a, await clean(r)); files++; } else if (!r) missing++;
     }));
-    out.push({ url: typed, ok: true, clean: cleanOk, files });
+    out.push({ url: typed, ok: true, clean: cleanOk, files, missing });
   }
   return out;
 }

@@ -56,7 +56,8 @@ const words = (t) => (String(t || '').match(/[\p{L}\p{N}'’-]+/gu) || []).lengt
  *  script with text above its first heading every scene was sent the
  *  previous scene's pages. `number` is a scene number the file carried
  *  on the heading element (.fdx), else ''; `index` is the heading's
- *  position among the headings. */
+ *  position among the headings; `id` is the heading element's own id
+ *  (what a linked scene row stores as `scriptElId`), else ''. */
 export function sliceScript(elements) {
   const out = [];
   let cur = null;
@@ -64,7 +65,7 @@ export function sliceScript(elements) {
     const text = String((el && el.text) ?? '').trim();
     if (!text) continue;
     if (el.type === 'scene') {
-      cur = { heading: text, number: String(el.sceneNumber || '').trim(), index: out.length, elements: [] };
+      cur = { heading: text, number: String(el.sceneNumber || '').trim(), index: out.length, id: String(el.id || ''), elements: [] };
       out.push(cur);
       continue;
     }
@@ -82,6 +83,14 @@ export function sliceScript(elements) {
    time synonyms fold the way the importer folds them (MORNING to DAY).
 
    Matching runs in tiers, each only over what the tier above left:
+     0. 'heading'   the row is LINKED to the heading (scene.scriptElId is
+                    the heading element's id, kept by the hand-off and
+                    Run breakdown). An exact link beats every reading of
+                    content: two kitchens, a heading inserted above them
+                    and the rows dragged on the Breakdown otherwise pair
+                    each kitchen row with the other kitchen's pages. A
+                    link to a heading that is gone falls through; a
+                    heading two rows claim goes to the first of them;
      1. 'heading'   INT/EXT, place and time all agree;
      2. 'location'  the place agrees (the row's time or INT/EXT was
                     edited, or never set);
@@ -161,6 +170,14 @@ export function matchScenes(scenes, elements) {
   const how = new Array(rows.length).fill(null);
   const link = (i, j, label) => { sceneTo[i] = j; headTo[j] = i; how[i] = label; };
   const headNo = (j) => (hp[j].number || slices[j].number || String(j + 1)).toUpperCase();
+
+  // Tier 0: the exact link.
+  const byElId = new Map();
+  slices.forEach((sl, j) => { if (sl.id && !byElId.has(sl.id)) byElId.set(sl.id, j); });
+  rows.forEach((s, i) => {
+    const j = s && s.scriptElId ? byElId.get(String(s.scriptElId)) : undefined;
+    if (j !== undefined && headTo[j] < 0) link(i, j, 'heading');
+  });
 
   const tier = (label, keyOf) => {
     const groups = new Map();

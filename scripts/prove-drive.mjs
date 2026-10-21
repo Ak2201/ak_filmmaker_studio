@@ -30,7 +30,8 @@
          "(imported)" duplicates
      (h) the hub's file import still MERGES — same file, same
          applier, the other mode
-     (i) revisions list and a restore from one
+     (i) revisions list and a restore from one, which is uploaded
+         as the new head (the Node half is test:drive-sync)
      (j) Supabase ownership turns live sync off and leaves manual on
      (k) an idle connected page writes nothing to localStorage
 
@@ -508,6 +509,18 @@ console.log('\n--- revisions, and restoring one ---');
   check('the studio came back as it was',
     await page.evaluate((ids) => JSON.parse(window.StudioStore.rawGet('fms_scenes_v1__' + ids.a)).logline, ids),
     'ALPHA-ONE');
+  /* Audit bug 26: the restore has to BECOME the head, not merely
+     land here while the device reads as level with the newer head. */
+  check('the restore was uploaded as the new head',
+    await page.evaluate((ids) => {
+      const f = Object.values(window.__drive.files)[0];
+      return JSON.parse(f.body).projects !== undefined
+        && f.body.indexOf('ALPHA-ONE') >= 0 && f.body.indexOf('ALPHA-THREE') < 0;
+    }, ids), true);
+  check('four revisions now exist (the restore is the newest)',
+    (await page.evaluate(() => window.StudioDrive.listVersions())).length, 4);
+  check('a reconcile after the restore has nothing to do',
+    (await page.evaluate(() => window.StudioDrive.reconcile())).did, 'nothing');
   check('no page errors', page.__errors, []);
   await ctx.close();
 }

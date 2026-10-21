@@ -85,8 +85,36 @@ let pickedDone = false;
 let picked = { id: '', why: '' };
 /* The code as typed, the quotes it earned (plan id -> quote_order()
    answer), a sentence when it was refused, and whether the box is open. */
-const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false, cur: '' };
+const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false, at: null, cur: '' };
 const appliedQuote = (planId) => { const q = promo.quotes[planId]; return q && q.ok && q.code ? q : null; };
+/* WHAT BILLING LOOKED LIKE, as one string: the plan held, until when,
+   and how many payments are paid. A quote is only true of the state it
+   was asked in, and a payment the studio has not yet confirmed is only
+   confirmed when this moves. */
+const billingKey = (st) => st ? `${st.plan || ''}|${st.plan_until || ''}|${((st.payments || []).filter((p) => p && p.status === 'paid')).length}` : '';
+let lastSt = null;
+/* A PAYMENT CHECKOUT TOOK THAT THE STUDIO HAS NOT CONFIRMED (billing.js
+   afterPayment(): 202 pending, or no answer). Until billing moves off
+   the state it was taken in, no BUY button is live and the plan's says
+   so — the old billing still offers the plan just paid for, and a second
+   press was a second year charged (§52 stacks it). */
+let confirming = { id: '', at: '' };
+/* Drop the quotes a code earned and ask again, once the row is drawn:
+   the server prices it for the billing there is NOW (an upgrade credit,
+   a use of the code spent). The typed code stays, so a link's code is
+   not lost to a sign-in or a purchase landing after it was applied. */
+function requote() {
+  const had = promo.code;
+  promo.code = ''; promo.quotes = {}; promo.error = ''; promo.at = null;
+  if (!had) return;
+  setTimeout(() => {
+    const input = document.getElementById('plPromoCode');
+    const form = input && input.closest('form');
+    if (!form || !form.isConnected || input.disabled || !input.value) return;
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }, 0);
+}
 
 /* UPGRADE BY PAYING THE DIFFERENCE (schema section 21). For somebody who
    has already paid, the server prices a higher tier as its list price
@@ -233,10 +261,24 @@ let staggered = false;
 /** `st` is billing_status() or null (signed out / unknown). */
 export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false, shop = null } = {}) {
   hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender, onSuccess: onSuccess || hooks.onSuccess };
+  lastSt = st;
+  const nowKey = billingKey(st);
+  if (confirming.id && nowKey !== confirming.at) {
+    /* billing moved: the payment landed (or something else changed and
+       the cards are drawn from the truth again) */
+    if (st && st.plan === confirming.id) { justBought = confirming.id; statusText = ''; }
+    confirming = { id: '', at: '' };
+  }
+  /* A promo quote taken under another billing state (before a purchase,
+     say: no upgrade credit then, a use of the code since) prices the
+     card wrongly and hides the upgrade line, while the order re-quotes
+     on the server. Drop it and ask again (requote()). */
+  if (promo.code && promo.at !== nowKey) requote();
   shopNow = shop;
   /* A code quoted in one currency is not a price in the other: switching
-     the currency drops the applied code (the box says to apply it again). */
-  if (promo.code && promo.cur && promo.cur !== orderCur()) { promo.code = ''; promo.quotes = {}; promo.error = ''; }
+     the currency drops the applied quotes and asks again in the new one
+     (requote() keeps the typed code). */
+  if (promo.code && promo.cur && promo.cur !== orderCur()) requote();
   const usd = !!(shop && shop.currency === 'USD');
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? st.plan : null;
@@ -308,9 +350,10 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     if (canBuy) {
       if (!buyable.length) nextCard = card;
       buyable.push(p.id);
-      const disabled = busyPlan !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
+      const disabled = busyPlan !== '' || confirming.id !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
       const first = !current || current === 'free';
       const label = busyPlan === p.id ? 'OPENING…'
+        : confirming.id === p.id ? 'PAYMENT RECEIVED — CONFIRMING…'
         : renew || lapsedHere ? 'RENEW ' + name.toUpperCase() + ' — ADD A YEAR'
         : first ? 'BUY ' + name.toUpperCase() + ' — 1 YEAR' : 'UPGRADE TO ' + name.toUpperCase();
       act.append(h('button.k-btn.k-btn--lg.k-btn--block' + (buyable.length === 1 ? '.k-btn--primary' : '.k-btn--secondary'), {
@@ -617,9 +660,12 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
     await hooks.onBuy(el.dataset.plan, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); }, q ? q.code : null, q ? qCur(q) : orderCur());
     statusText = '';
     justBought = el.dataset.plan;
+    /* The quotes were taken before this purchase; see planCards(). */
+    requote();
     if (hooks.onSuccess) { try { hooks.onSuccess(justBought); } catch (e) { /* redirect is a convenience */ } }
   } catch (err) {
     statusText = err && err.message ? err.message : 'The payment did not complete.';
+    if (err && err.afterPayment && err.unconfirmed) confirming = { id: el.dataset.plan, at: billingKey(lastSt) };
   } finally {
     busyPlan = '';
     if (hooks.rerender) hooks.rerender();
@@ -644,7 +690,7 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
     const answers = await Promise.all(ids.map((id) => Billing.quote(id, code, promo.cur).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: err.message || 'The code could not be checked.' }])));
     const quotes = Object.fromEntries(answers);
     const okIds = ids.filter((id) => quotes[id] && quotes[id].ok && quotes[id].code);
-    if (okIds.length) { promo.quotes = quotes; promo.code = code; }
+    if (okIds.length) { promo.quotes = quotes; promo.code = code; promo.at = billingKey(lastSt); }
     else {
       /* Every plan refused it. Prefer the reason that is about the CODE
          over "not for this plan", which only says which card. */

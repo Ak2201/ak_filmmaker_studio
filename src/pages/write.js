@@ -356,6 +356,28 @@ function persistBeforeLeaving() {
   saveOwed = false;
   Script.saveScript(doc);
 }
+/* THE SCRIPT WRITTEN AROUND THIS PAGE. The synopsis-to-script batches
+   (scriptgen.js applyBatch, from the Desk's 'gen-batch' and from the
+   bulk run) read the script from storage, append and save — they do
+   not see `doc`. Left alone, `doc` stays the copy from before the
+   batch, and the next save on this page (a Coverage checkpoint, the
+   hand-off banner, a keystroke) writes it over every generated page,
+   while the job's cursor says they are written so Resume never writes
+   them again. So: hand the page's own unsaved edit to storage just
+   BEFORE the batch commits (it then lands on top of it), and take the
+   stored copy as `doc` just AFTER. Flushing after instead would write
+   the old copy over the batch, which is the bug itself. */
+function flushDoc() {
+  if (!saveTimer && !saveOwed) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  saveOwed = false;
+  Script.saveScript(doc);
+}
+function reloadDoc() {
+  doc = Script.loadScript();
+  smart.invalidate();
+}
 addEventListener('pagehide', persistBeforeLeaving);
 addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') persistBeforeLeaving();
@@ -1150,7 +1172,8 @@ function renderGenPages() {
       aiPill({
         label: 'Next ' + Math.min(Scriptgen.BATCH_SIZE, p.left) + ' scenes, in the Desk', tasks: ['gen-batch'],
         ctx: () => ({
-          after: () => { gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); }
+          before: flushDoc,
+          after: () => { reloadDoc(); gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); }
         })
       }),
       h('button.btn', {
@@ -2339,9 +2362,17 @@ async function genRun(all) {
   render();
   try {
     for (;;) {
-      const res = await Scriptgen.runNextBatch({
-        onStatus: genSay, signal: genAbort.signal
-      });
+      /* One batch is these two halves; they are called apart so
+         the page's unsaved edit is flushed after the (slow) draft and
+         before the commit, and `doc` reloaded after it — see flushDoc. */
+      const d = await Scriptgen.draftBatch({ onStatus: genSay, signal: genAbort.signal });
+      let res;
+      if (d.done) res = { job: Scriptgen.load(), done: true };
+      else {
+        flushDoc();
+        res = Scriptgen.applyBatch(d, null);
+        reloadDoc();
+      }
       gen = res.job;
       // Re-render between batches: the progress bar is the only honest
       // report of how far a run that might still fail has actually got.

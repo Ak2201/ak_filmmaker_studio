@@ -564,7 +564,24 @@ export function renderStep(step, extra, ns) {
   // An empty slot; video-slots.js fills it only if an approved video joins
   // this step (videos.json is never written into the step JSON).
   if (ns && step.id) section.append(videoSlot(stepKey(ns, step.id)));
+  paperRawInputs(section);
   return section;
+}
+
+/* The raw blocks' one-line answers (Step 04's Want / Need / Lie / Wound,
+   the antagonist, the mentor) sit beside textareas that are paper, so
+   they are paper too. A number, a date, money or a hex stays dark:
+   read off the key and the placeholder, because raw markup carries no
+   kind. Adds a class; touches no key and no value. */
+const NOT_PROSE_KEY = /(_hex|_date|_days|_age|_budget|budget|_total|_atl|_btl|_post|_blocks|_month|_crew)$/;
+const NOT_PROSE_HINT = /\bdate\b|DD \/|₹|\bdays?\b/i;
+export function paperRawInputs(root) {
+  for (const el of root.querySelectorAll('input[data-key]')) {
+    const t = (el.getAttribute('type') || 'text').toLowerCase();
+    if (t !== 'text' || el.classList.contains('paper-field')) continue;
+    if (NOT_PROSE_KEY.test(el.dataset.key) || NOT_PROSE_HINT.test(el.placeholder || '')) continue;
+    paperField(el);
+  }
 }
 
 /** Render a list of steps into `host`, replacing its contents. */

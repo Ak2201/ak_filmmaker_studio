@@ -554,11 +554,18 @@ function renderTitlePage(project) {
       : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs, hint }));
   }
   /* A title page is writing: its text fields are paper (owner, 20 Oct
-     2026). The genre select stays a control. */
-  grid.querySelectorAll('input').forEach(paperField);
+     2026). The genre select stays a control, and a date, a count, a
+     runtime or a budget stays dark — the same rule the blueprint keeps. */
+  for (const el of grid.querySelectorAll('input[data-key]')) {
+    if (!TP_NOT_PROSE.has(el.dataset.key)) paperField(el);
+  }
   sec.append(grid);
   return sec;
 }
+
+/* Title page keys that are a date, a number or money, not writing. */
+const TP_NOT_PROSE = new Set(['meta_started', 'meta_runtime', 'v2_start', 'v2_shoot',
+  'v2_budget', 'p3_start', 'p3_days', 'p4_lock']);
 
 /* ---- the five stage cards ----------------------------------------
    State is derived by journey.js stageStates(); this only arranges it.

@@ -83,14 +83,33 @@
 :root .paper-scope.paper-scope.paper-scope textarea:hover { border-color: var(--paper-page-muted); }
 :root input.paper-field.paper-field.paper-field:hover { border-color: transparent; border-bottom-color: var(--paper-page-muted); }
 
-/* --focus is a shorthand and invalid here; the ring is the page's ink. */
+/* --focus is a shorthand and invalid here. The ring is the violet
+   accent, which reads on the paper AND on the dark ground it sits on
+   (an ink ring 2px outside the field is ~1:1 against the canvas), and
+   the field's own rule darkens to the ink so the page itself changes. */
 :root .paper-field.paper-field.paper-field:focus,
 :root .paper-field.paper-field.paper-field:focus-visible,
 :root .paper-scope.paper-scope.paper-scope textarea:focus,
 :root .paper-scope.paper-scope.paper-scope textarea:focus-visible {
-  outline: 2px solid var(--paper-page-ink);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
-  border-color: var(--paper-page-rule);
+  border-color: var(--paper-page-ink);
+}
+
+/* The screenplay fields keep the script's own sizes: the slug line is
+   bold, and all five read --t-small (widgets.css) — paper changes the
+   page they sit on, not the format. */
+:root .scene-block input.slug.paper-field.paper-field.paper-field { font-weight: 700; }
+:root .scene-block :is(input.slug, textarea.action).paper-field.paper-field.paper-field,
+:root .dialogue-block :is(input.character, textarea.line, input.parenthetical).paper-field.paper-field.paper-field {
+  font-size: var(--t-small);
+}
+/* …and widgets.css's coarse-pointer floor (no iOS zoom on focus). */
+@media (pointer: coarse) {
+  :root .scene-block :is(input.slug, textarea.action).paper-field.paper-field.paper-field,
+  :root .dialogue-block :is(input.character, textarea.line, input.parenthetical).paper-field.paper-field.paper-field {
+    font-size: max(16px, var(--t-small));
+  }
 }
 
 /* Read-only (a locked outline step): still a page, visibly not one you

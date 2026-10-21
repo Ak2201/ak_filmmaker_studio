@@ -1619,7 +1619,17 @@ function measureChrome() {
        top IS the published value is under the band, not part of it;
        it is collected separately and added to what a fragment jump has
        to clear (--sh-cover-h), never to where things park. */
-    if (Math.abs(top - published) <= 1) { parked += Math.round(r.height); continue; }
+    /* BUT NEVER THE BAND ITSELF. The position test cannot tell the
+       two apart once the phone band is pinned at `top: 0` (14 Oct
+       2026) and 0 is what was published: rotate a phone from
+       landscape, where the band is not pinned and 0 is correct, to
+       portrait, and the band's top equals the published 0, so it was
+       filed as parked, `band` stayed 0, nothing changed and nothing
+       ever would — the tab strip pinned under the 56px band until a
+       reload. The band is known by identity, so only what parks on it
+       goes through the position test. */
+    const isBand = el.classList.contains('sh-bar') || !!el.querySelector('.sh-bar');
+    if (!isBand && Math.abs(top - published) <= 1) { parked += Math.round(r.height); continue; }
     band = Math.max(band, Math.round(top + r.height));
   }
   const cover = band + parked;

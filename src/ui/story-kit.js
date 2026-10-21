@@ -493,8 +493,12 @@ async function undoCopyBeats() {
 async function useSample(id) {
   const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
   const cur = Story.loadStory();
-  if (!IO.isEmptyStory(cur) && !await askDanger('Replace the story on the Story page with the ' + sm.title + ' sample? Your idea, logline, outline and synopsis there are replaced. The Idea Vault is kept.')) return;
-  const s = await IO.sampleStory(sm.id);
+  // The same guard, merge and wording as story.html's own start cards
+  // (IO.sampleReplacesWork / IO.sampleOver): the conflict answers and
+  // the market fields stay the writer's, and tension scores or an
+  // outline lock count as work worth a question.
+  if (IO.sampleReplacesWork(cur) && !await askDanger(IO.sampleQuestion(sm.title, 'the Story page'))) return;
+  const s = IO.sampleOver(Story.loadStory(), await IO.sampleStory(sm.id));
   Story.saveStory(s);
   refreshStoryKit();
   StudioUI.toast('The ' + sm.title + ' sample story is on the Story page.');

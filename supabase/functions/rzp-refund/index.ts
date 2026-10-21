@@ -21,8 +21,17 @@
         X-Refund-Idempotency header; notes carry the reason and the
         admin's e-mail.
      4. record_refund() — 'pending' or 'processed' as Razorpay says;
-        'failed' (with the error) when it refused, which leaves the
-        payment and any request untouched and allows a retry. A linked
+        'failed' (with the error) ONLY when Razorpay answered with a
+        refusal, which leaves the payment and any request untouched and
+        allows a retry.
+     NO ANSWER IS NOT A REFUSAL (§53, audit bug 9). A call that threw,
+        a 5xx, or a 2xx with no refund in it may have made the refund.
+        Recording that as 'failed' let the retry go out under a NEW
+        idempotency key and refund twice. Now Razorpay is asked which
+        refunds the payment has, by our receipt (the refunds row id); a
+        match is recorded as itself, and no match leaves the row
+        'initiated'. begin_refund hands that row back to a retry made a
+        minute or more later, so the retry carries the SAME key. A linked
         request reads 'refunded' only once the refund is processed;
         while it is pending the request is 'approved' (section 50).
 
@@ -41,7 +50,7 @@
    provided by the platform. docs/BILLING.md is the runbook.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { basicAuth } from '../_shared/razorpay.js';
+import { basicAuth, refundOutcome, refundByReceipt } from '../_shared/razorpay.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -94,24 +103,38 @@ Deno.serve(async (req) => {
   if (!intent?.refund_id) return json(500, { error: 'Could not record the refund.' });
 
   // 3. Razorpay
-  let rz: any = null, ok = false;
+  const rzpAuth = basicAuth(keyId, keySecret);
+  const pid = encodeURIComponent(intent.razorpay_payment_id);
+  let rz: any = null, outcome = 'unknown';
   try {
-    const r = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(intent.razorpay_payment_id)}/refund`, {
+    const r = await fetch(`https://api.razorpay.com/v1/payments/${pid}/refund`, {
       method: 'POST',
-      headers: { Authorization: basicAuth(keyId, keySecret), 'Content-Type': 'application/json', 'X-Refund-Idempotency': intent.refund_id },
+      headers: { Authorization: rzpAuth, 'Content-Type': 'application/json', 'X-Refund-Idempotency': intent.refund_id },
       body: JSON.stringify({
         amount: intent.amount_paise, speed: 'normal', receipt: intent.refund_id,
         notes: { reason: reason.slice(0, 200), refunded_by: admin.email ?? admin.id, payment_id: paymentId, request_id: body.request_id ?? '' }
       })
     });
     rz = await r.json().catch(() => null);
-    ok = r.ok && !!rz?.id;
-  } catch (e) {
-    rz = { error: { description: 'Razorpay could not be reached.' } };
+    outcome = refundOutcome({ status: r.status, body: rz });
+  } catch {
+    outcome = refundOutcome({ threw: true });
+  }
+  if (outcome === 'unknown') {
+    // Did the refund happen? Ask by our receipt before saying anything.
+    const listed = await fetch(`https://api.razorpay.com/v1/payments/${pid}/refunds?count=100`, { headers: { Authorization: rzpAuth } })
+      .then((x) => (x.ok ? x.json() : null)).catch(() => null);
+    const found = refundByReceipt(listed, intent.refund_id);
+    if (found) { rz = found; outcome = 'created'; }
+    else {
+      // Nothing recorded as failed: the row stays 'initiated' and blocks a
+      // second refund; a retry after a minute reuses its key (begin_refund).
+      return json(502, { error: 'Razorpay did not answer clearly, so this refund is not marked failed. Check the payment in the Razorpay dashboard; pressing REFUND again in a minute retries the SAME refund and cannot pay twice.', unknown: true, refund_id: intent.refund_id });
+    }
   }
 
   // 4. what happened, recorded
-  if (!ok) {
+  if (outcome === 'refused') {
     const why = rz?.error?.description ?? 'Razorpay refused the refund.';
     await svc.rpc('record_refund', { p_refund: intent.refund_id, p_payment_rzp: intent.razorpay_payment_id, p_rzp_refund: null, p_status: 'failed', p_amount: intent.amount_paise, p_error: why, p_raw: rz });
     return json(502, { error: why });

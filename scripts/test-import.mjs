@@ -488,5 +488,78 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   ok(!S.toFDX({ elements: a }, { title: 'T' }).includes('Number='), 'fdx export: unlocked numbers are positions and are not written');
 }
 
+
+/* ---- audit bugs 13, 14, 15: lines the round trip used to lose -----
+   13: a styled Word paragraph (or a dialogue line under a cue in a
+       .txt) that LOOKS like page furniture — "1987.", "Revised" — was
+       dropped as a page number / revision header before its style was
+       read. 14: an all-caps dialogue line before a parenthetical inside
+       one glued Fountain speech became a second cue. 15: a line break
+       the writer typed inside a Word element came back as a space. */
+{
+  const S = await import('../src/lib/script.js');
+  const X = await import('../src/lib/screenplay-docx.js');
+  const D = await import('../src/lib/docx-text.js');
+  const SE = await import('../src/lib/screenplay-export.js');
+  let n = 0;
+  const E = (type, text) => ({ id: 'ab' + (++n), type, text });
+  const shape = (els) => els.map((e) => e.type + ':' + e.text);
+  const viaDocx = async (doc) => {
+    const bytes = X.toDOCX(doc, { title: 'T' });
+    const r = await D.extractDocxParagraphs(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length));
+    return I.parseScript(I.docxScreenplayText(r.paras).text, 't.docx');
+  };
+
+  // 13 — styled paragraphs are never furniture
+  const furn = [E('scene', 'INT. A - DAY'), E('character', 'MANI'), E('dialogue', '1987.'), E('action', 'Revised'),
+    E('character', 'RAVI'), E('dialogue', '12'), E('character', 'MANI'), E('dialogue', '3)')];
+  const fb = await viaDocx({ elements: furn });
+  eq(shape(fb.elements), shape(furn), '13: docx round trip keeps styled "1987.", "Revised", "12" and "3)"');
+  ok(!fb.warnings.some((w) => /page number/.test(w)), '13: and reports no page numbers it did not skip');
+  // the same lines through the studio's own .txt export
+  const tb = I.parseScript(SE.toText({ elements: furn }, { title: 'T' }), 't.txt');
+  eq(shape(tb.elements), shape(furn), '13: txt round trip keeps "1987." under its cue and the action "Revised"');
+  // and real furniture in a .txt is still furniture
+  const pn = I.parseScript('INT. A - DAY\n\nRain.\n\f\n                                                            2.\n\n' + ' '.repeat(50) + 'REVISED\n\nMore rain.', 'p.txt');
+  eq(shape(pn.elements), ['scene:INT. A - DAY', 'action:Rain.', 'action:More rain.'], '13: a page number and a header at the page edge are still skipped');
+  ok(pn.warnings.some((w) => /revision/i.test(w)), '13: a skipped revision header is reported');
+
+  // 14 — a shouted line inside a speech stays dialogue
+  const hey = [E('scene', 'INT. A - DAY'), E('character', 'RAVI'), E('dialogue', 'HEY'), E('paren', 'beat'), E('dialogue', 'Get over here.')];
+  const hb = I.parseScript(S.toFountain({ elements: hey }, { title: 'T', date: '2026-10-06' }), 'h.fountain');
+  eq(shape(hb.elements), shape(hey), '14: fountain round trip keeps "HEY" as RAVI\'s dialogue');
+  const stop = I.parseScript('INT. A - DAY\n\nMANI\nSTOP\nYou heard me.', 's.fountain');
+  eq(shape(stop.elements), ['scene:INT. A - DAY', 'character:MANI', 'dialogue:STOP\nYou heard me.'], '14: "STOP" over a mixed-case line in one speech is dialogue');
+  // a pasted script with no blank lines still splits its cues
+  const pasted = I.parseScript('INT. A - DAY\n\nRain falls.\nRAVI\nHello there.\nMANI\nHi.', 'p.fountain');
+  eq(pasted.elements.filter((e) => e.type === 'character').map((e) => e.text), ['RAVI', 'MANI'], '14: cues inside an action block with no blank lines are still found');
+  const shout = I.parseScript('INT. A - DAY\n\nRAVI\nHEY\n(beat)\nGet over here.\nEXT. B - NIGHT', 'm.fountain');
+  eq(shape(shout.elements), ['scene:INT. A - DAY', 'character:RAVI', 'dialogue:HEY', 'paren:beat', 'dialogue:Get over here.', 'scene:EXT. B - NIGHT'],
+    '14: a speech split by a glued heading still keeps a capitalised line under its cue as dialogue');
+  const bareRev = I.parseScript('INT. A - DAY\n\nThe plan, one word on it:\n\nRevised\n\nHe tears it up.', 'r.txt');
+  eq(bareRev.elements.map((e) => e.text), ['INT. A - DAY', 'The plan, one word on it:', 'Revised', 'He tears it up.'], '13: a bare "Revised" in the body of a .txt is action');
+  const glued = I.parseScript('INT. A - DAY\n\nRAVI\nHello there.\n@MANI\nHi.', 'g.fountain');
+  eq(glued.elements.filter((e) => e.type === 'character').map((e) => e.text), ['RAVI', 'MANI'], '14: a forced @cue inside a speech still opens a new speech');
+
+  // a conversation pasted with a blank line only after the heading keeps every speaker
+  const conv = I.parseScript('INT. A - DAY\n\nRAVI\nHi.\nMANI\nHello.', 'c.fountain');
+  eq(shape(conv.elements), ['scene:INT. A - DAY', 'character:RAVI', 'dialogue:Hi.', 'character:MANI', 'dialogue:Hello.'],
+    '14: a glued conversation under a cue still splits at the second cue (MANI is not swallowed)');
+  const conv2 = I.parseScript('INT. A - DAY\n\nRAVI\n(quiet)\nHi.\nMANI\nHello.', 'c2.fountain');
+  eq(conv2.elements.filter((e) => e.type === 'character').map((e) => e.text), ['RAVI', 'MANI'], '14: and after a parenthetical too');
+  const afterParen = I.parseScript('INT. A - DAY\n\nRAVI\n(beat)\nHEY\n(quiet)\nGo.', 'ap.fountain');
+  eq(shape(afterParen.elements), ['scene:INT. A - DAY', 'character:RAVI', 'paren:beat', 'dialogue:HEY', 'paren:quiet', 'dialogue:Go.'],
+    '14: a shouted line straight after a parenthetical is dialogue, not a cue');
+  // 13 — under a Word style the style decides: a colour revision line is kept as the writer's
+  const colour = [E('scene', 'INT. A - DAY'), E('action', 'Blue Rev. 03/04')];
+  const cb = await viaDocx({ elements: colour });
+  eq(shape(cb.elements), shape(colour), '13: a styled "Blue Rev. 03/04" paragraph is kept, not dropped as a header');
+
+  // 15 — a typed line break inside a Word element survives
+  const br = [E('scene', 'INT. A - DAY'), E('action', 'He waits.\nThen he waits more.'), E('character', 'RAVI'), E('dialogue', 'One.\nTwo.')];
+  const bb = await viaDocx({ elements: br });
+  eq(shape(bb.elements), shape(br), '15: docx round trip keeps the line breaks inside an element');
+}
+
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -269,6 +269,14 @@ try {
       .then(() => ok(true, 'a payment Razorpay has authorized but not captured says it is still being confirmed'), () => ok(false, 'a payment Razorpay has authorized but not captured says it is still being confirmed'));
     ok(F.db.calls.includes('fn:rzp-verify pending') && !F.db.payments.some((x) => x.plan_id === 'pro' && x.status === 'paid'), 'and a valid signature alone activated nothing');
     ok(F.db.accounts.find((a) => a.owner_id === USERS['tok-amy'].id).plan === 'indie', 'Amy is still on Indie');
+    /* Money was authorized: the same BUY must not come back over the
+       billing read before it (it did, and a second press charged a
+       second year). The card holds on "confirming" until billing moves;
+       a reload is a fresh look, and is how this proof buys again. */
+    ok(await page.$eval('.pl-card[data-plan="pro"] [data-plan-action="buy"]', (b) => b.disabled && /CONFIRMING/.test(b.textContent)).catch(() => false),
+      'after an unconfirmed payment the Pro BUY stays held on "confirming"');
+    await page.reload();
+    await page.waitForSelector('.pl-card[data-plan="pro"] [data-plan-action="buy"]:not([disabled])', { timeout: 15000 }).catch(() => {});
     RZP.capture = 'authorized';
     await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'pro', null, { timeout: 15000 })

@@ -302,10 +302,17 @@ export function paginate(elements, opts = {}) {
     /* An OMITTED row anchored here stands where its scene stood, which
        is BEFORE this element: on the page before a locked break, not at
        the top of the locked page (whose lines it would push into an
-       A-page that nothing on it earned). */
+       A-page that nothing on it earned). When it did NOT fit there it
+       has already begun a page of its own, and that page IS the locked
+       one: pageStarts() recorded it as starting at this element, because
+       an OMITTED row has no id. Breaking again would set the OMITTED row
+       alone on a lettered page (1A) the moment the pages were locked,
+       with no edit — so a page holding only OMITTED rows takes no
+       locked break. */
     if (omitBefore.size && el && omitBefore.has(el.id)) omitBefore.get(el.id).forEach(placeOmitted);
     if ((breakBefore || breakAfter) && el && printedText(el)) {
-      if ((pendingBreak || (breakBefore && breakBefore.has(el.id))) && page.length) flush();
+      if ((pendingBreak || (breakBefore && breakBefore.has(el.id)))
+        && page.length && !page.every((r) => r.omitted === true)) flush();
       pendingBreak = false;
     }
     let pieces = 0;          // page breaks inside this element

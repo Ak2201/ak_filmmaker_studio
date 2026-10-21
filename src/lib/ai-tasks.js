@@ -270,13 +270,17 @@ const coverageTask = {
          run stops or fails part way); nothing else is written. */
       onCheckpoint: (cp) => { checkpoint = cp; store.storeCheckpoint(cp); call(c.progress); }
     });
-    last.set('coverage', { sig, checkpoint, res });
+    /* Remembered on the result, not only in `last`: a refine adds a
+       v2 beside v1, and Accept on v1 must keep v1's report. The ids
+       are positional (`premise:p0`), so filtering the newest report
+       with an older version's ticks keeps whatever sits at those
+       indexes there — a verdict and notes nobody reviewed. */
     const items = coverageItems(res.report || {});
-    return { items, note: coverageNote(res) };
+    return remember('coverage', { items, note: coverageNote(res) }, { sig, checkpoint, res });
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('coverage');
+    const mem = recall('coverage', result);
     if (!mem || !mem.res) fail('There is no coverage to keep. Run it first.');
     const keep = new Set((selected || []).map((it) => it.id));
     const res = JSON.parse(JSON.stringify(mem.res));
@@ -388,6 +392,14 @@ const dialogueTask = {
     const els = d && Array.isArray(d.elements) ? d.elements : null;
     const el = els && els.find((e) => String(e.id) === String(mem.elId));
     if (!el) fail('That speech is no longer in the script, so nothing was changed.');
+    /* The merge is built on the speech as it was at Run. Docked at
+       1100px and wider the editor stays live beside the Desk, so the
+       writer can keep typing in this speech; writing the merge then
+       would replace every word typed since, and an unticked hunk
+       would put back the OLD line rather than the current one. */
+    if (result && typeof result.original === 'string' && String(el.text ?? '') !== result.original) {
+      fail('This speech has changed since the pass ran, so nothing was changed. Run the pass again on the current text.');
+    }
     const before = { text: el.text, aiPass: el.aiPass ? { ...el.aiPass } : undefined };
     if (String(text) === String(el.text)) return null;
     el.aiPass = { at: new Date().toISOString(), model: mem.model || '', was: el.aiPass ? el.aiPass.was : el.text };
@@ -570,17 +582,19 @@ const storyMapTask = {
     }
     const res = await AI.draftBeatMap({ synopsis: s.source, framework }, { onStatus, signal });
     const labelOf = new Map(fw.beats.map((b) => [String(b.id), b.label]));
-    last.set('story-map', { fwId: fw.id, rows: res.rows });
     const items = res.rows.map((r, i) => ({
       id: 'r' + i, beat: r.beat, row: r,
       text: (labelOf.get(String(r.beat)) || r.beat) + ': “' + r.quote + '”',
       detail: [r.rationale, Number.isFinite(r.tension) ? 'tension ' + r.tension : ''].filter(Boolean).join(' · ')
     }));
-    return { items, note: res.truncated ? 'The reply was cut short, so some beats may be missing.' : '' };
+    /* Pinned to the version, as coverage is: a row index read back
+       from a newer run's rows is a different passage. */
+    return remember('story-map', { items, note: res.truncated ? 'The reply was cut short, so some beats may be missing.' : '' },
+      { fwId: fw.id, rows: res.rows });
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result) {
     const c = resolve(ctx);
-    const mem = last.get('story-map');
+    const mem = recall('story-map', result);
     if (!mem) fail('There is no mapping to keep. Run it first.');
     const rows = (selected || []).map((it) => it.row || mem.rows[Number(String(it.id).slice(1))]).filter(Boolean);
     const s = storyOf(c);
@@ -935,7 +949,7 @@ const genScenesTask = {
 };
 
 /* ============================================================
-   SYNOPSIS → SCRIPT, STAGE 3 — list, ONE BATCH. ctx { after?() }
+   SYNOPSIS → SCRIPT, STAGE 3 — list, ONE BATCH. ctx { before?(), after?() }
    ------------------------------------------------------------
    draftBatch() drafts the next BATCH_SIZE scenes at the job's cursor
    and writes nothing; the items are those scenes (heading and first
@@ -1011,8 +1025,15 @@ const genBatchTask = {
     const chosen = (selected || []).filter(Boolean);
     const draft = (chosen[0] && chosen[0].draft) || (last.get('gen-batch') || {}).draft;
     if (!draft) fail('There is no batch to keep. Run it first.');
-    /* applyBatch throws GenError 'stale' with a sentence the writer can
-       act on; the Desk shows it and writes nothing. */
+    /* applyBatch reads the script from STORAGE and writes it back, so
+       a page that holds its own copy with an edit not yet saved (a
+       debounced keystroke) hands it over first through `before`, or
+       the batch lands on the stored copy and the page's next save
+       writes the old copy over the batch. The page then reloads its
+       copy in `after`. applyBatch throws GenError 'stale' with a
+       sentence the writer can act on; the Desk shows it and writes
+       nothing. */
+    call(c.before);
     const r = Gen.applyBatch(draft, chosen.map((it) => it.id));
     call(c.after, r.job);
     return () => { r.undo(); call(c.after, null); };

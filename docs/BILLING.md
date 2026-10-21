@@ -1332,7 +1332,7 @@ reference project_id is ambiguous") on every call — and §51 repairs it.
 6. Do not run `node scripts/deploy-billing.mjs --sql` against this project: it
    now refuses (§45 has run), because replaying §16 onward would undo §46–§51.
 
-## 22. Plans are a year, renewed by buying again (schema §52, 21 Oct 2026). NOT YET RUN LIVE.
+## 22. Plans are a year, renewed by buying again (schema §52, 21 Oct 2026). RAN LIVE 21 Oct 2026.
 
 The owner reversed §18 ("a plan, for good"). A paid plan now lasts **365 days**.
 The prices are the same rows — Basic ₹599, Intermediate ₹799, Pro ₹999 — read
@@ -1361,13 +1361,13 @@ markets them by the day: `perDay()` in `src/lib/plans.js` (₹1.64 / ₹2.19 /
   until it is redeployed; `create_pending_payment` records that as a year.
 
 **Owner steps** (`docs/LIVE-STEPS-2026-10-21.md` is the step-by-step).
-1. Run §52 in the SQL editor — after §51 — verifying the checksum first:
+1. DONE 21 Oct 2026: run §52 in the SQL editor — after §51 — verifying the checksum first:
    `shasum -a 256 supabase/schema/schema-52-yearly-plans.sql` must read
    `6c1a80996bc1d6df5d321ad4dc1e7830c61812d36e27a52b0a7f74f42318945f`.
 2. Redeploy all four functions with the CLI (receipt wording and periods):
    `npx --yes supabase@latest functions deploy rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz`.
 3. Read back with the checks at 52.9 in the section file.
-4. Tell the existing buyers (draft in the live-steps file).
+4. Tell the existing buyers (draft in the live-steps file) — NOT NEEDED while the app is unpublished (owner, 21 Oct 2026): the accounts the backfill moved were the owner's own test accounts, and the two 8 Oct payments are Razorpay test mode. Two other `pro` accounts remain `for good`/`lifetime` (probably console grants; unchecked).
 5. Only then release the client to `main`: a client that sells "a year"
    against a database that still grants "for good" would mis-sell.
 

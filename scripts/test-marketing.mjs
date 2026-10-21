@@ -396,7 +396,7 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 {
   const js = read('src/pages/marketing.js');
   const imports = [...js.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region)\.js$/];   // visitor-region: reaches only region-core.js (pure, startlib)
+  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region)\.js$/];   // visitor-region: import-free, public pages only
   const stray = imports.filter((i) => !allowed.some((a) => a.test(i)));
   ok(stray.length === 0, 'marketing.js imports only the light allowlist (the startlib rule)' + (stray.length ? ': ' + stray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(js), 'marketing.js builds no markup from strings');

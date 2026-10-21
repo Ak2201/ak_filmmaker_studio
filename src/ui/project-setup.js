@@ -20,15 +20,26 @@ import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { listStudies, favouriteSlug } from '../lib/studies.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
-import { regionForNewProject } from '../lib/region.js';
+import { chosenRegion, detectRegion } from '../lib/region.js';
 
 const PROJECT_HOME_URL = 'dashboard.html';
 
 /* Where the film is being made (docs/US-MARKET-PLAN.md §A3). It decides
    the film's paperwork (rupees, A4 and Indian dates, or dollars, US
    Letter and US dates) and whether the India-only material shows. The
-   sheet starts on regionForNewProject(): the device's stated market,
+   sheet starts on newFilmRegion() (= region.js regionForNewProject()): the device's stated market,
    else the browser's own guess. Changed later on the dashboard. */
+/* region.js regionForNewProject(), inlined: the device's stated choice,
+   else detectRegion() — the same answer, since detectRegion() always
+   returns IN or INT. Not the call itself, because regionForNewProject()
+   reaches region-core.js newProjectRegion(), whose last-resort fallback
+   (guessVisitorRegion) would then be bundled into the `startlib` chunk
+   that EVERY page loads, and the Library had about 500 bytes of first
+   paint to spare under scripts/budget.json (22 Oct 2026). */
+export function newFilmRegion() {
+  try { return chosenRegion() || detectRegion(); } catch (e) { return 'IN'; }
+}
+
 const REGION_CHOICES = {
   IN:  { label: 'India' },
   INT: { label: 'Elsewhere' }
@@ -167,8 +178,7 @@ export function openProjectSetup(opts) {
   opts = opts || {};
   if (!PlanGate.allowed('new_projects')) return false;
   if (!overlay) build();
-  let reg = 'IN';
-  try { reg = regionForNewProject(); } catch (e) { /* the studio's default */ }
+  const reg = newFilmRegion();
   state = { format: FORMATS[opts.format] ? opts.format : 'feature', region: REGION_CHOICES[reg] ? reg : 'IN', dirty: false };
   overlay.querySelector('#psTitle').value = FORMATS[state.format].title;
   overlay.querySelector('#psHeading').innerHTML = 'Start your <em>' + FORMATS[state.format].label.toLowerCase() + '.</em>';

@@ -12,13 +12,13 @@ const ok = (name, c) => { n++; if (!c) { bad++; console.error('FAIL', name); } }
 
 /* ---- a new film carries a region; a duplicate keeps it ------------ */
 const setup = read('src/ui/project-setup.js');
-ok('project-setup imports regionForNewProject', /import \{ regionForNewProject \} from '\.\.\/lib\/region\.js'/.test(setup));
-ok('project-setup starts the sheet on regionForNewProject()', /regionForNewProject\(\)/.test(setup));
+ok('project-setup starts the sheet on the device choice, else detectRegion() (= regionForNewProject())', /return chosenRegion\(\) \|\| detectRegion\(\);/.test(setup) && /const reg = newFilmRegion\(\);/.test(setup));
+ok('nothing in the app calls regionForNewProject() (it bundles the shop guess into startlib)', ![setup, read('src/pages/hub.js')].some((t) => /regionForNewProject\(\)/.test(t.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))));
 ok('project-setup passes region to createProject', /Store\.createProject\(\{[^}]*region: state\.region/.test(setup));
 ok('project-setup asks where the film is made', /WHERE IS THIS FILM BEING MADE\?/.test(setup) && /psRegion_/.test(setup));
 const hub = read('src/pages/hub.js');
 ok('hub duplicate copies region', /createProject\(\{ title: p\.title \+ ' \(copy\)'[^}]*region: p\.region/.test(hub));
-ok('hub project modal creates with regionForNewProject()', /createProject\(\{ title: titleValue, format, region: regionForNewProject\(\)/.test(hub));
+ok('hub project modal creates with the device choice, else detectRegion()', /createProject\(\{ title: titleValue, format, region: chosenRegion\(\) \|\| detectRegion\(\)/.test(hub));
 
 /* ---- setProjectRegion runs on a click only ------------------------ */
 for (const f of ['src/pages/dashboard.js', 'src/pages/settings.js']) {
@@ -111,7 +111,7 @@ ok('marketing.js reads the region through visitor-region.js, never region.js', m
 const vr = read('src/lib/visitor-region.js');
 const vast = acorn.parse(vr, { ecmaVersion: 'latest', sourceType: 'module' });
 const vimports = vast.body.filter((s) => s.type === 'ImportDeclaration').map((s) => s.source.value);
-ok('visitor-region.js imports region-core.js alone', JSON.stringify(vimports) === JSON.stringify(['./region-core.js']));
+ok('visitor-region.js imports nothing (its guess must not land in startlib)', vimports.length === 0);
 ok('visitor-region.js never writes storage', !/setItem|removeItem/.test(vr));
 const V = await import('../src/lib/visitor-region.js');
 const st = (v) => ({ getItem: (k) => (k === 'fms_region_v1' ? v : null) });
@@ -121,6 +121,19 @@ ok('a New York visitor reads the Elsewhere lines', V.visitorRegion({ storage: st
 ok('a Chennai visitor reads the India lines', V.visitorRegion({ storage: st(null), env: inEnv }) === 'IN');
 ok('the device\u2019s stated market wins over the guess (INT in India)', V.visitorRegion({ storage: st('INT'), env: inEnv }) === 'INT');
 ok('the device\u2019s stated market wins over the guess (IN abroad)', V.visitorRegion({ storage: st('IN'), env: usEnv }) === 'IN');
+{
+  const zones = ['Asia/Kolkata', 'Asia/Calcutta', 'America/New_York', 'Europe/London', 'Asia/Dubai', 'UTC', 'GMT', 'Etc/GMT+5', '', 'Asia/Colombo'];
+  const langs = [[], ['en'], ['en-IN'], ['ta-IN', 'en'], ['en-US'], ['zh-Hans-CN'], ['es-419']];
+  const offs = [null, -330, 0, 300];
+  let same = 0, all = 0;
+  for (const timeZone of zones) for (const languages of langs) for (const offset of offs) {
+    all++;
+    const env = { timeZone, languages, offset };
+    if (V.guessHere({ ...env }) === R.guessVisitorRegion({ ...env })) same++;
+    else console.error('  differs:', JSON.stringify(env));
+  }
+  ok('visitor-region.js guessHere() answers as region-core guessVisitorRegion() (' + same + '/' + all + ')', same === all);
+}
 ok('a storage that throws falls to the guess', V.visitorRegion({ storage: { getItem() { throw new Error('x'); } }, env: usEnv }) === 'INT');
 ok('marketing.js swaps only data-mk-intl text, as text', /el\.textContent = el\.getAttribute\('data-mk-intl'\)/.test(mk) && !/innerHTML/.test(mk));
 ok('marketing.js reads the region, never writes it', !/setItem\(\s*'fms_region_v1'/.test(mk));

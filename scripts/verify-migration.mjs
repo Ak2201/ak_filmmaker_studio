@@ -444,7 +444,15 @@ const EXPECTED = {
      their plan cannot use. These words were the key section's copy
      (the key-stays-on-this-device disclosure, the provider picker,
      the console.anthropic.com link, Forget key). */
-  settings: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
+  /* REGION-CONTENT (22 Oct 2026, docs/US-MARKET-PLAN.md): Settings →
+     Region said "there is one checkout and it settles in rupees either
+     way", which stops being true once dollar checkout exists (§C). The
+     deck now says the purchase page names the price's currency and the
+     charge's, which is true before and after the owner's switch. */
+  settings: {
+    checkout: 'Region deck no longer claims one rupee checkout (US-MARKET-PLAN §C)',
+    settles: 'Region deck no longer claims one rupee checkout (US-MARKET-PLAN §C)'
+  },
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 

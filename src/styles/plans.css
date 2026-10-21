@@ -105,6 +105,10 @@
 .ba-field.is-wide { grid-column: 1 / -1; }
 .ba-actions { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
 .ba-saved { font-size: var(--t-small); color: var(--ok-deep); }
+/* Prices in US dollars (billing-admin.js usdBlock, the owner's editor) */
+.ba-usd { display: grid; gap: var(--s3); margin-bottom: var(--s5); }
+.ba-usd-switch { display: grid; gap: var(--s1); }
+.ba-usd-switch .gt-meta { margin: 0; }
 .ba-grant { display: grid; gap: var(--s2); max-width: 36rem; margin-top: var(--s3); }
 .ba-grant .btn { justify-self: start; }
 

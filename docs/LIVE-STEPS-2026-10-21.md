@@ -55,3 +55,19 @@ and offer RENEW on the current plan.
 > reply to this e-mail.
 
 (Send from the support address; never sign with the owner's name.)
+
+## 5. Copy that ships WITH §52, never ahead of it
+
+These sentences describe the yearly model. §52 ran live on 21 Oct 2026, but
+until `rzp-order`, `rzp-verify`, `rzp-webhook` and `rzp-refund` are redeployed
+the functions still charge the old way, so release them to `main` only after
+that redeploy:
+
+- `priceRiseBand()` in `src/lib/start-model.js`: "A plan bought now is a
+  full year at the price you paid, and nothing renews by itself."
+- `buyTerms()` in `src/pages/purchase.js`: "A plan is one payment for one
+  year. Nothing renews by itself."
+- `src/data/pricing-compare.json` `offer.line` / `offer.fine` and
+  `plans.lede` (the yearly term and the mid-year credit).
+- `src/data/marketing-faq.json` "Can I move up a plan later?" (the unused
+  part of the year is credited; moving down waits for the year to end).

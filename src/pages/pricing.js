@@ -35,7 +35,7 @@ import './marketing.js';
 import '../styles/pricing.css';
 import { bumpEvent, bumpOnce, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
 import * as StartAuth from '../lib/start-auth.js';
-import { stashPlan, buyHref, risingTiers, priceRiseBand, timeLeft } from '../lib/start-model.js';
+import { stashPlan, buyHref, risingTiers, priceRiseBand, foundingLeft } from '../lib/start-model.js';
 
 const root = document.documentElement;
 const byId = (id) => document.getElementById(id);
@@ -121,7 +121,7 @@ function renderPriceRise(notice) {
   if (seatsChip && rise.seats) { seatsChip.textContent = rise.seats; seatsChip.hidden = false; }
   const leftChip = byId('offerLeft');
   const tick = () => {
-    const t = timeLeft(ends - Date.now());
+    const t = foundingLeft(ends - Date.now());
     if (!t) { band.hidden = true; return; }           // it fired while the page was open
     if (leftChip) { leftChip.textContent = t; leftChip.hidden = false; }
   };

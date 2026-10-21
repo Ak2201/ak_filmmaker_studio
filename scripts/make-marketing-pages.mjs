@@ -484,12 +484,13 @@ ${body}
     <div class="pr-faq-head">
       <h2 class="mk-h2" id="prFaqH">${esc(c.faq.h)}</h2>
       <p class="mk-body pr-lede">${esc(c.faq.lede)}</p>
-    </div>
+${c.faq.contact ? `      <p class="mk-body pr-lede pr-contact">${esc(c.faq.contact.before)} <a class="mk-link" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(c.faq.contact.after)}</p>
+` : ''}    </div>
     <div class="pr-acc-list">
 ${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
         <summary><span>${esc(g.group)}</span>${sym('expand_more')}</summary>
         <dl class="pr-qa">
-${g.items.map((it) => `          <dt>${esc(it.q)}</dt>\n          <dd>${esc(it.a)}</dd>`).join('\n')}
+${g.items.map((it) => { const t = it.trial ? ' data-trial' : ''; return `          <dt${t}>${esc(it.q)}</dt>\n          <dd${t}>${esc(it.a)}</dd>`; }).join('\n')}
         </dl>
       </details>`).join('\n')}
     </div>
@@ -570,7 +571,11 @@ export function validateHome(home, { site, pages }) {
     if (last) { if (s.cta || s.video) w('the fifth stage has no CTA and no video'); }
     else {
       if (!s.cta || !pages[s.cta.page] || !s.cta.label) w('stage ' + (i + 1) + ': cta.page must be a product page id');
-      if (!s.video || !site.stepCounts[s.video]) w('stage ' + (i + 1) + ': video must be a product page id');
+      /* A stage's clip is a product page's, or one of the recorder's
+         cross-page clips (record-marketing-media.mjs SPACES.chain: the
+         scene chain end to end), which no single product page owns. */
+      const HOME_CLIPS = ['chain'];
+      if (!s.video || !(site.stepCounts[s.video] || HOME_CLIPS.includes(s.video))) w('stage ' + (i + 1) + ': video must be a product page id or one of ' + HOME_CLIPS.join(', '));
       if (!site.stages.some((g) => g.id === s.id)) w('stage ' + (i + 1) + ': id ' + s.id + ' is not a stage in marketing-site.json');
     }
   });
@@ -579,6 +584,17 @@ export function validateHome(home, { site, pages }) {
   if (!home.pricing || !home.pricing.pill || !home.pricingTeaser) w('the closing needs pricingTeaser and pricing.pill');
   if (!home.optOut || !home.optOut.label || !home.optOut.done) w('optOut needs label and done (privacy.html promises the control)');
   if (!home.closing || !home.closing.h2 || !home.closing.sub || !home.closing.cta) w('closing needs h2, sub and cta');
+  /* the trial line beside the price: its LENGTH is never typed, marketing.js
+     fills [data-trial-length] from trial_offer() and hides [data-trial]
+     when trials are switched off */
+  const tr = home.trial;
+  if (!tr || !tr.html || !tr.open || !/<span data-trial-length>[^<]+<\/span>/.test(tr.html)) w('trial needs html (with a <span data-trial-length> fallback) and open');
+  else if (/\d/.test(tr.html.replace(/<[^>]*>/g, ''))) w('trial.html types a number; the length comes from the server');
+  const ex = home.exports;
+  if (!ex || !ex.h2 || !ex.body || !Array.isArray(ex.items) || ex.items.length !== 3 || ex.items.some((i) => !i.sym || !i.title || !i.text)) w('exports needs h2, body and three {sym, title, text}');
+  const an = home.answers;
+  if (!an || !an.h2 || !Array.isArray(an.items) || an.items.length !== 4 || an.items.some((i) => !i.sym || !i.q || !(i.a || i.aHtml))) w('answers needs h2 and four {sym, q, a|aHtml}');
+  if (!an || !an.contact || !an.contact.before || !an.contact.after) w('answers.contact needs before and after');
   return bad;
 }
 
@@ -598,6 +614,7 @@ export function renderHome({ site, pages, home }) {
       <div class="mk-cta-row">
         <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.hero.cta)}</a>
       </div>
+      <p class="st-note" data-trial data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.trial.open)}">${home.trial.html}</p>
       <p class="st-note">${esc(home.hero.note)}</p>
     </div>
     <figure class="mk-player st-hero-media" aria-label="${esc(home.hero.mediaLabel)}">
@@ -669,6 +686,40 @@ ${home.stages.map(row).join('\n')}
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(home.pricing.pill)}</a>
     </div>
     <p class="st-note st-closing-note">${esc(home.pricingTeaser)}</p>
+    <p class="st-note st-closing-note" data-trial data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.trial.open)}">${home.trial.html}</p>
+  </div>
+</section>`;
+
+  /* What comes out (every format listed is a download the studio has
+     today), then the four questions the launch study's panel asked
+     first, answered, and the support address. Both reuse the shared
+     card classes in marketing.css: three export cards in .mk-cards, four
+     answers in .mk-stages (4 / 2 / 1 columns). */
+  const exportsSec = `<section class="mk-sec mk-band-a" id="exports" aria-labelledby="stExH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stExH">${esc(home.exports.h2)}</h2>
+    <p class="mk-body">${esc(home.exports.body)}</p>
+    <div class="mk-cards">
+${home.exports.items.map((it) => `      <article class="mk-card">
+        <span class="mk-card-icon">${sym(it.sym)}</span>
+        <h3 class="mk-h3">${esc(it.title)}</h3>
+        <p class="mk-card-p">${esc(it.text)}</p>
+      </article>`).join('\n')}
+    </div>
+  </div>
+</section>`;
+
+  const answersSec = `<section class="mk-sec mk-band-b" id="answers" aria-labelledby="stAnH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stAnH">${esc(home.answers.h2)}</h2>
+    <div class="mk-stages">
+${home.answers.items.map((it) => `      <article class="mk-card"${it.trial ? ' data-trial' : ''}>
+        <span class="mk-card-icon">${sym(it.sym)}</span>
+        <h3 class="mk-h3">${esc(it.q)}</h3>
+        <p class="mk-card-p">${it.aHtml || esc(it.a)}</p>
+      </article>`).join('\n')}
+    </div>
+    <p class="st-note">${esc(home.answers.contact.before)} <a class="mk-link" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(home.answers.contact.after)}</p>
   </div>
 </section>`;
 
@@ -720,6 +771,8 @@ ${header(site, pages, 'home')}
 ${hero}
 ${facts}
 ${explorer}
+${exportsSec}
+${answersSec}
 ${closing}
   <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></div>
 </main>

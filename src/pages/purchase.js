@@ -38,6 +38,7 @@ import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.j
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
 import PlanGate from '../lib/plan-gate.js';
+import { SUPPORT_EMAIL } from '../lib/brand.js';
 import {
   linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK, planHeading, plansPendingHeading, lapsedLine, trialStatus
 } from '../lib/purchase-model.js';
@@ -118,6 +119,35 @@ function trialLine(st) {
   ]);
 }
 
+/* BEFORE YOU PAY — what one payment buys and when a refund IS given,
+   drawn right under the buy buttons (launch study, 21 Oct 2026: "purchases
+   are final" with no visible exceptions was a reason to wait). The three
+   exceptions are refund.html §4's, in its own headings and order; the
+   one-year line is refund.html §2 and §52 (nothing auto-renews). If
+   refund.html changes, change this, REFUND_TERMS in
+   supabase/functions/_shared/terms.js and plan-cards.js's fine print
+   together. No trial length is typed here: it is the console's to set. */
+function buyTerms() {
+  const li = (head, text) => h('li', {}, [h('strong', { text: head }), ' \u2014 ' + text]);
+  return h('aside.pu-terms', { 'aria-labelledby': 'puTermsH' }, [
+    h('h3.pu-h3', { id: 'puTermsH', text: 'Before you pay' }),
+    h('p.pu-terms-lead', { text: 'A plan is one payment for one year. Nothing renews by itself, so there is nothing to cancel: if you do not want another year, do nothing.' }),
+    h('p.pu-terms-sub', { text: 'A refund is given in these cases. They are not discretionary: if one applies, the refund is yours.' }),
+    h('ul.pu-terms-list', {}, [
+      li('A duplicate or erroneous charge', 'charged more than once for the same order, or an amount you did not agree to at checkout: the extra payment is refunded in full.'),
+      li('Charged but not delivered', 'the payment went through but the plan was never activated on your account: you choose, the plan you paid for or a full refund.'),
+      li('Where the law requires it', 'wherever the law of India, including the Consumer Protection Act, 2019, requires a refund.')
+    ]),
+    h('p.pu-terms-sub', {}, [
+      'Otherwise a plan, once bought and activated, is final. To ask, e-mail ',
+      h('a', { href: 'mailto:' + SUPPORT_EMAIL, text: SUPPORT_EMAIL }),
+      ' from the e-mail address on your account, with the payment ID from your receipt or invoice. ',
+      h('a', { href: 'refund.html#the-exceptions', text: 'The full policy' }),
+      '.'
+    ])
+  ]);
+}
+
 /* What a plan actually does: DECK, in purchase-model.js. A plan decides
    which STAGES open (plan-matrix.json), and the trial's end walls the
    studio. Nothing written is ever deleted. */
@@ -138,6 +168,7 @@ function planSection() {
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
     sec.append(listPriceBlock());
+    sec.append(buyTerms());
     if (LINK_CODE) {
       sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
     }
@@ -199,10 +230,15 @@ function planSection() {
     h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
     h('p.bd-sub', { text: DECK })
   ]));
-  sec.append(planCards(billing.plans, st, {
+  const cards = planCards(billing.plans, st, {
     onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
-  }));
+  });
+  /* the terms go straight under the row of buy buttons, above the code
+     box and the comparison table, so they are read before a press */
+  const row = cards.querySelector('.pl-row');
+  if (row) row.after(buyTerms()); else cards.prepend(buyTerms());
+  sec.append(cards);
   const growth = memberGrowthPanels(st, { rerender: render });
   if (growth) sec.append(growth);
   const extras = planExtras(st);

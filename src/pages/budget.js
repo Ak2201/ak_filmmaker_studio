@@ -31,7 +31,7 @@ import { h } from '../lib/dom.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
 import { costSections, costKpis, costAside, initCosts } from '../ui/budget-costs.js';
 import { pageHeader, button, notice } from '../ui/kit/index.js';
-import { rateProvenance } from '../lib/budget-model.js';
+import { rateProvenance, rateSources, cardNote } from '../lib/budget-model.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 
 const app = document.getElementById('app');
@@ -84,6 +84,19 @@ function render() {
     title: 'Where the numbers come from',
     body: h('div', {}, [
       h('p', { text: rateProvenance() }),
+      /* THE SOURCES, by name and link, with the day each was read.
+         rateProvenance() counts; this says who. Read from
+         rates.chennai.checks.json, never typed here. */
+      h('ul.bud-sources', {}, [
+        h('li', { text: 'The 2024-25 card (every line marked "indicative"): ' + cardNote() }),
+        ...rateSources().map((s) => h('li', {}, [
+          h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer', text: s.name }),
+          ' — ' + s.kind + (s.place ? ', ' + s.place : '') + '. Read on ' + s.checked
+            + (s.checkedRows ? ' for ' + s.checkedRows + ' checked figure' + (s.checkedRows === 1 ? '' : 's') : '')
+            + (s.corroborating ? (s.checkedRows ? ' and ' : ' for ') + s.corroborating + ' comparison figure' + (s.corroborating === 1 ? '' : 's') + ', not used as a rate' : '')
+            + '. ' + (s.note || '')
+        ]))
+      ]),
       h('p', {}, [
         'The full rate tables — camera, crew, post, equipment — are in the ',
         h('a', { href: 'library.html#equipment', text: 'craft library' }),

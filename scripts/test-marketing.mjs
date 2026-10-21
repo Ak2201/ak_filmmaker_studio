@@ -209,8 +209,8 @@ for (const id of IDS) {
     const faq = JSON.parse(read('src/data/marketing-faq.json'));
     const acc = [...html.matchAll(/<details class="pr-acc" name="([^"]+)" id="faq-\d">/g)];
     ok(acc.length === 3 && new Set(acc.map((a) => a[1])).size === 1 && acc.length === faq.length, tag + 'FAQ is three <details name=...> accordions (single-open)');
-    const nQ = (html.match(/<dt>/g) || []).length;
-    ok(nQ === faq.reduce((n, g) => n + g.items.length, 0) && (html.match(/<dd>/g) || []).length === nQ, tag + 'every question in marketing-faq.json is in the markup, answered');
+    const nQ = (html.match(/<dt( data-trial)?>/g) || []).length;
+    ok(nQ === faq.reduce((n, g) => n + g.items.length, 0) && (html.match(/<dd( data-trial)?>/g) || []).length === nQ, tag + 'every question in marketing-faq.json is in the markup, answered');
     ok(!/<details[^>]*\sopen[\s>]/.test(html), tag + 'the accordions start collapsed');
 
     /* icons the page draws are in the font subset */

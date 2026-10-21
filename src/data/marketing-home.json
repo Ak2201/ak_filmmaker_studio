@@ -46,18 +46,18 @@
       "id": "production",
       "sym": "videocam",
       "h2": "Run the production",
-      "body": "A budget in rupees that starts from dated Chennai rates, and a call sheet for each shoot day that you can print or send on WhatsApp.",
+      "body": "Move a scene to another day on the stripboard, and the day-out-of-days follows. Build that day’s call sheet from the board and print it or send it on WhatsApp. The budget is in rupees and starts from dated Chennai rates.",
       "cta": {
         "label": "Explore production",
         "page": "call-sheets"
       },
-      "video": "call-sheets"
+      "video": "chain"
     },
     {
       "id": "local-first",
       "sym": "lock",
       "h2": "Local-first: your work stays yours",
-      "body": "Everything you write is saved in your own browser first, and the studio installs like an app that opens and keeps working without a signal, for 14 days after you last signed in on that device. Sync and a backup to your own Google Drive are there if you switch them on.",
+      "body": "Everything you write is saved in your own browser first, and the studio installs like an app. It works on set without a signal for up to 14 days after you last signed in on that device. Sync and a backup to your own Google Drive are there if you want a second copy.",
       "cta": null,
       "video": null
     }
@@ -73,7 +73,7 @@
     },
     {
       "value": "Fountain, FDX, Word, PDF",
-      "label": "Screenplay formats you can bring in"
+      "label": "Screenplay formats in and out"
     },
     {
       "value": "1 scene list",
@@ -102,7 +102,7 @@
       {
         "sym": "cloud_off",
         "title": "Keeps working when the signal drops",
-        "text": "Install it like an app. Open it and keep writing with no connection, up to 14 days after your last sign-in."
+        "text": "Install it like an app. It works on set without a signal for up to 14 days after you last signed in on that device."
       },
       {
         "sym": "backup",
@@ -117,5 +117,60 @@
   "optOut": {
     "label": "Don't count this visit",
     "done": "This visit is not counted"
+  },
+  "trial": {
+    "html": "Try every module on the sample films free for <span data-trial-length>a limited time</span> before you buy. No card required.",
+    "open": "You are signed in: your plan or trial is on the Purchase page."
+  },
+  "exports": {
+    "h2": "Your work comes out in open formats",
+    "body": "Nothing you write is locked in here. Each of these is a download you can open without the studio.",
+    "items": [
+      {
+        "sym": "edit_note",
+        "title": "The screenplay",
+        "text": "PDF, Word (.docx), Final Draft (.fdx) and Fountain, from the Screenplay Writer's File menu. Fountain, Final Draft, Word, text and PDF scripts come in through Import."
+      },
+      {
+        "sym": "table_chart",
+        "title": "Spreadsheets (CSV)",
+        "text": "The breakdown's element index, the table read, script notes, the shot list, and the budget, actuals and expenses, plus the edit log and dialogue list on Pro. Each is a CSV for Excel or Google Sheets, on the plans that include that tool."
+      },
+      {
+        "sym": "backup",
+        "title": "Your whole studio",
+        "text": "A backup file of every project, downloaded whenever you like and restored from the same menu. On Intermediate and Pro you can also back up to your own Google Drive."
+      }
+    ]
+  },
+  "answers": {
+    "h2": "Four questions to ask before you sign in",
+    "items": [
+      {
+        "sym": "login",
+        "q": "Why sign in with Google if my work is local?",
+        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan or free trial before it opens. Once you are in, your projects also sync to the studio's cloud to reach your other devices. You can switch sync off in Settings, and the copy in your browser stays either way."
+      },
+      {
+        "sym": "cloud_off",
+        "q": "Why does offline stop after 14 days?",
+        "a": "It works on set without a signal for up to 14 days after you last signed in on that device. After that it needs a connection once, to check your sign-in and your plan again. Nothing you wrote is deleted while it waits."
+      },
+      {
+        "sym": "timer",
+        "q": "How long is the free trial?",
+        "trial": true,
+        "aHtml": "Today's trial: <span data-trial-length>its length is set by the studio and shown in the sign-up window</span>. It opens every module on the sample films, needs no card, and does not hold a price: a plan costs what it costs on the day you buy it."
+      },
+      {
+        "sym": "storage",
+        "q": "What leaves my browser, and when?",
+        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan or trial and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
+      }
+    ],
+    "contact": {
+      "before": "Something else? Talk to the team at",
+      "after": "A person reads every message, and payment and refund questions are answered within two working days."
+    }
   }
 }

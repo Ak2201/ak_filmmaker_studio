@@ -83,3 +83,21 @@
 .gr-stat-figure { font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; }
 .gr-intro { background: var(--paper-sunk); }
 .pu-ref { margin: 0; overflow-wrap: anywhere; }
+
+/* ---- before you pay: one year, and when a refund is given ---------- */
+.pu-terms {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4) var(--s5);
+  background: var(--paper-raised);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
+  max-width: var(--measure-text, 72ch);
+}
+.pu-terms > * { margin: 0; }
+.pu-terms-lead { color: var(--ink); }
+.pu-terms-sub { color: var(--ink-muted); }
+.pu-terms-list { display: grid; gap: var(--s2); padding-inline-start: var(--s5); color: var(--ink-muted); }
+.pu-terms-list strong { color: var(--ink); font-weight: 600; }
+.pu-terms a { overflow-wrap: anywhere; }
+@media (max-width: 719px) { .pu-terms { padding: var(--s4); } }

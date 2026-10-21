@@ -25,7 +25,7 @@ import { h, delegate } from '../lib/dom.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
-  rateHint, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
+  rateHintParts, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
   scheduleFacts, scheduleHint, songDaysHint
 } from '../lib/budget-model.js';
 import { askDanger } from './dialog.js';
@@ -207,8 +207,19 @@ function updateCalc() {
     const eqEl = row.querySelector('[data-role="calc-eq"]');
     if (eqEl) eqEl.textContent = days > 0 && rate > 0 ? `${INR.format(days)} d × ${fmtINRExact(rate)}` : '';
 
+    /* The hint names where the figure came from; a re-checked one
+       links the page it was read off (rateHintParts). Rebuilt only
+       when it changes, so typing a rate does not churn the link. */
     const noteEl = row.querySelector('[data-role="card-rate"]');
-    noteEl.textContent = rateHint(name);
+    const hint = rateHintParts(name);
+    const sig = hint.text + '|' + (hint.source ? hint.source.url : '');
+    if (noteEl.dataset.sig !== sig) {
+      noteEl.dataset.sig = sig;
+      noteEl.replaceChildren(...(hint.text ? [hint.text] : []), ...(hint.source ? [
+        ' · ',
+        h('a', { href: hint.source.url, target: '_blank', rel: 'noopener noreferrer', text: 'source' })
+      ] : []));
+    }
 
     if (sub > 0) count++;
     total += sub;
@@ -384,11 +395,29 @@ function renderCalculator() {
     h('div.k-panel-body.bud-est-body', {}, [
       h('p.hint', {
         text: 'Add line items, set days × daily rate, get a running total. ' +
-              'Saves to your browser only. Click PRINT to keep a hard copy.'
+              'Saves in this browser, and with the rest of the project when you are ' +
+              'signed in and syncing. Click PRINT to keep a hard copy.'
+        /* It said "Saves to your browser only", which stopped being true
+           when fms_library_calc_v1 got the `library` sync scope (cloud.js
+           SCOPE_BY_KEY): for a signed-in member it reaches the project's
+           server copy like every other module. */
         /* The copy has said "Click PRINT" since the legacy page, and the
            page had no PRINT button — the legacy one lived on the library
            toolbar and did not move with the estimator. print.css already
            lays the calculator out for paper, so the button is the fix. */
+      }),
+      /* WHO SEES IT. The estimate (`library` scope) and the cost tabs
+         (`costs`) are project_data rows, and pd_select admits anyone
+         has_project_access(…, 'view') admits: the owner, an unexpired
+         collaborator at ANY role (a view link included) and the
+         owner/admin of the project's account; pd_write needs 'edit'.
+         screening_open() returns story/feature/short/scenes only. Said
+         here because a budget is the one module people assume is
+         private and is not. */
+      h('p.hint.bud-who', {
+        text: 'Once it syncs, anyone you share this project with can see the budget, '
+            + 'a view-only link included; only an edit link lets them change it. '
+            + 'A screening pass does not show it.'
       }),
       // Column captions for the desk layout. Each field carries its
       // own <label> too, so this strip is decoration to a screen

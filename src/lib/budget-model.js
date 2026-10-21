@@ -118,10 +118,10 @@ const CHECKED_BY_ITEM = (() => {
    library already labels these NOT UPDATED; the estimator was
    showing the figure alone, which is the same fact told less
    honestly. */
-const STALE_ITEMS = new Set(
+const STALE_ITEMS = new Map(
   (rateChecks.rows || [])
     .filter((r) => r.confidence === 'stale')
-    .map((r) => norm(r.item))
+    .map((r) => [norm(r.item), r])
 );
 
 /* THE PRESET NAMES ARE NOT THE TABLE'S NAMES — "Canon C500 II" against
@@ -173,27 +173,81 @@ export function bandGap(card, checked) {
    rather than over it. The estimator is the page people actually
    type numbers into, and it was the one replacing. */
 export function rateHint(name) {
-  if (!name) return '';
+  return rateHintParts(name).text;
+}
+
+/* WHERE A HINT CAME FROM, AND WHEN — said on the line, not only in the
+   notice above the table.
+
+   The hint used to carry a date and no source: "Checked 2026-09-29:
+   ₹25,000/day" says when, and leaves the reader to guess who. A figure
+   somebody will budget on has to name the page it was read off, so a
+   checked line names the vendor and links the exact URL the overlay
+   records. A line with no check says "indicative, not re-checked"
+   rather than only "2024-25", because a year on its own reads as a
+   date somebody verified, and nobody did. The sources themselves —
+   names, URLs, dates — are rates.chennai.checks.json's; nothing here
+   restates one. */
+const SOURCES = rateChecks.sources || {};
+
+/** The rate hint for a line, as { text, source }: `source` is
+    { name, url, checked } when the figure was re-checked on a published
+    page, else null. `text` is what rateHint() returns. */
+export function rateHintParts(name) {
+  const none = { text: '', source: null };
+  if (!name) return none;
   const key = rowKey(name);
   const card = RATE_BY_ITEM.get(name);
   const checked = CHECKED_BY_ITEM.get(key);
 
   if (checked) {
-    const head = `Checked ${checked.checked}: ${checked.raw}`;
-    if (!card) return head;
-    const both = `${head} · card ${rates.asOf} said ${card.raw}`;
+    const src = SOURCES[checked.source] || null;
+    const source = src && src.url ? { name: src.name, url: src.url, checked: checked.checked } : null;
+    const head = `Checked ${checked.checked}${src ? ' at ' + src.name : ''}: ${checked.raw}`;
+    if (!card) return { text: head, source };
+    const both = `${head} · ${rates.asOf} card (indicative) said ${card.raw}`;
     const gap = bandGap(card, checked);
-    return gap
-      ? `${both} — about ${gap}x more. The checked figure is one vendor's list `
-        + `price and may be body-only; budget the band until you have confirmed `
-        + `what it includes.`
-      : both;
+    return {
+      source,
+      text: gap
+        ? `${both} — about ${gap}x more. The checked figure is one vendor's list `
+          + `price and may be body-only; budget the band until you have confirmed `
+          + `what it includes.`
+        : both
+    };
   }
 
-  if (!card) return '';
-  return STALE_ITEMS.has(key)
-    ? `Rate card ${rates.asOf}: ${card.raw} · no current Chennai rate found`
-    : `Rate card ${rates.asOf}: ${card.raw}`;
+  if (!card) return none;
+  const stale = STALE_ITEMS.get(key);
+  return {
+    source: null,
+    text: stale
+      ? `Rate card ${rates.asOf}, indicative: ${card.raw} · looked for on `
+        + `${stale.checked || rateChecks.lastChecked}, no current Chennai rate found`
+      : `Rate card ${rates.asOf}, indicative, not re-checked: ${card.raw}`
+  };
+}
+
+/** The published pages the re-check read, for the notice above the
+    estimator: only the sources a rate row actually cites (the overlay
+    also lists a news report behind the wage table, which no rate line
+    uses). Each with the confidence it was used at. */
+export function rateSources() {
+  const used = new Map();
+  for (const r of rateChecks.rows || []) {
+    if (!r.source || !SOURCES[r.source]) continue;
+    const e = used.get(r.source) || { ...SOURCES[r.source], id: r.source, checkedRows: 0, corroborating: 0 };
+    if (r.confidence === 'checked') e.checkedRows++;
+    if (r.confidence === 'corroborating') e.corroborating++;
+    used.set(r.source, e);
+  }
+  return [...used.values()];
+}
+
+/** The 2024-25 card's own account of itself, as plain text (the JSON
+    note carries <strong> for the library's table). */
+export function cardNote() {
+  return String(rates.note || '').replace(/<[^>]+>/g, '');
 }
 
 /** Exact, Indian grouping: ₹ 54,000 / ₹ 1,25,00,000. fmtINR() rounds
@@ -333,6 +387,6 @@ export function rateProvenance() {
 
 export default {
   CALC_KEY, PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
-  bandGap, rateHint, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
+  bandGap, rateHint, rateHintParts, rateSources, cardNote, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
   scheduleFacts, scheduleHint, songDaysHint, rateProvenance, versionCount
 };

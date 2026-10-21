@@ -16,7 +16,17 @@
    file is missing, a size cap is exceeded, or two stills of one
    page are the same picture.
 
-   Env: PW_CHROMIUM  path to a Chromium executable (optional; by
+   One more, not a product page: chain.webm (+ chain.webp,
+   chain-1..4.webp), the scene chain end to end on the Dragon sample:
+   a strip moved to another shoot day on the stripboard, the day out of
+   days that follows it, a new call sheet for that day built from the
+   board, and the WhatsApp message built from the sheet (launch study,
+   21 Oct 2026, item 5). It shows only what the code does: see the
+   note above SPACES.chain.
+
+   Env: MEDIA_DIST  the build to drive (default dist/; dist-verify
+                     is the open build `npm run build:verify` writes)
+        PW_CHROMIUM  path to a Chromium executable (optional; by
                      default Playwright's own, see
                      PLAYWRIGHT_BROWSERS_PATH)
         ONLY         comma list of ids, to redo a few
@@ -33,7 +43,7 @@ import { chromium } from 'playwright';
 import sharp from 'sharp';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DIST = join(ROOT, 'dist');
+const DIST = join(ROOT, process.env.MEDIA_DIST || 'dist');
 const OUT = join(ROOT, 'public', 'marketing');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ico': 'image/x-icon' };
 
@@ -44,7 +54,7 @@ const DEMO_SECONDS = 9;                  // length kept after trimming
 const FPS = 12;
 const W = 1280, H = 720;
 
-if (!existsSync(join(DIST, 'index.html'))) { console.error('dist/ is missing: run `npm run build:open` first.'); process.exit(1); }
+if (!existsSync(join(DIST, 'index.html'))) { console.error(DIST + ' is missing: run `npm run build:open` first.'); process.exit(1); }
 if (/name="fms-site-gate"[^>]*content="invite"|data-site-gate="invite"/.test(readFileSync(join(DIST, 'index.html'), 'utf8'))) {
   console.error('dist/ looks like the GATED build; run `npm run build:open`.'); process.exit(1);
 }
@@ -388,6 +398,69 @@ const SPACES = {
   }
 };
 
+/* THE CHAIN — one clip across two pages, in ONE browser page so the
+   moved day is still moved when the call sheets open (same storage).
+   `seconds` overrides DEMO_SECONDS: two pages do not fit in nine.
+   The Dragon sample has one call sheet, Day 1. So the clip moves a
+   strip that is NOT on it (Day 3 -> Day 2), and then presses "New call
+   sheet", which builds the first day no sheet covers — Day 2 — with that
+   day's scenes ticked from the stripboard (nextSheetPatch), the moved
+   scene among them. An existing sheet keeps the scenes ticked on it;
+   the clip never shows one doing otherwise. */
+async function moveOneStrip(d) {
+  await d.page.waitForSelector('.sb-strip .sb-day-sel', { timeout: 12000 });
+  const sels = d.page.locator('.sb-strip .sb-day-sel').filter({ visible: true });
+  const n = await sels.count();
+  for (let i = 0; i < n; i++) {
+    const sel = sels.nth(i);
+    if ((await sel.inputValue().catch(() => '')) !== '3') continue;
+    await d.scrollTo(sel, 260);
+    await d.glide(sel);
+    await sleep(500);
+    await sel.selectOption('2');                 // placeScene() underneath, as a person would
+    await sleep(1400);
+    return true;
+  }
+  throw new Error('no strip on Day 3 to move');
+}
+async function toCallSheets(d) {
+  await d.page.goto(BASE + 'contacts.html#call-sheets', { waitUntil: 'load' });
+  await d.page.waitForSelector('.ct-sheet-title', { timeout: 12000 });
+  await sleep(1200);
+  await d.scroll(40, 200);                       // input ends fragments.js's re-landing
+}
+async function newDaySheet(d) {
+  await d.click(d.page.locator('[data-action="sheet-add"]').filter({ visible: true }).first(), 1200);
+  await d.scrollTo(d.page.locator('.ct-sheet').last().locator('.ct-gl-scenes'), 140);
+  await sleep(700);
+}
+async function toMessage(d) {
+  await d.scrollTo(d.page.locator('.ct-sheet').last().locator('.ct-wa-preview'), 160);
+  await sleep(500);
+  await d.glide(d.page.locator('.ct-sheet').last().locator('.ct-send-wa'));
+  await sleep(900);
+}
+SPACES.chain = {
+  url: 'stripboard.html', ready: '#tab-stripboard.is-on', seconds: 18,
+  async demo(d) {
+    await d.pause(600);
+    await moveOneStrip(d);
+    await d.scrollTop();
+    await d.click(d.page.locator('#tab-dood'), 1500);
+    await d.scroll(240, 1000);
+    await toCallSheets(d);
+    await newDaySheet(d);
+    await d.pause(800);
+    await toMessage(d);
+  },
+  stills: [
+    async (d) => { await moveOneStrip(d); },                                                         // 1 a strip moved from Day 3 to Day 2
+    async (d) => { await d.scrollTop(); await d.click(d.page.locator('#tab-dood'), 1000); await d.scroll(240, 400); }, // 2 the day out of days, following
+    async (d) => { await toCallSheets(d); await newDaySheet(d); },                                    // 3 a new Day 2 sheet, its scenes from the board
+    async (d) => { await toMessage(d); }                                                              // 4 that sheet as a WhatsApp message
+  ]
+};
+
 /* ---------- media plumbing ---------- */
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
 
@@ -397,8 +470,8 @@ async function toWebp(png, max, label) {
   return buf;
 }
 
-function ffmpegEncode(src, dst, ss, size, crf) {
-  const args = ['-y', '-v', 'error', '-ss', String(ss), '-t', String(DEMO_SECONDS), '-i', src, '-an',
+function ffmpegEncode(src, dst, ss, size, crf, seconds = DEMO_SECONDS) {
+  const args = ['-y', '-v', 'error', '-ss', String(ss), '-t', String(seconds), '-i', src, '-an',
     '-vf', `fps=${FPS},scale=${size[0]}:${size[1]}:flags=lanczos`,
     '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', String(crf), '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2', '-pix_fmt', 'yuv420p', dst];
   execFileSync('ffmpeg', args, { stdio: ['ignore', 'inherit', 'inherit'] });
@@ -462,7 +535,7 @@ for (const id of ids) {
   try {
     let done = false;
     for (const [size, crf] of [[[1280, 720], 36], [[1280, 720], 42], [[1280, 720], 48], [[960, 540], 40], [[960, 540], 48], [[854, 480], 50]]) {
-      ffmpegEncode(vpath, webm, Math.max(0, startAt).toFixed(2), size, crf);
+      ffmpegEncode(vpath, webm, Math.max(0, startAt).toFixed(2), size, crf, S.seconds || DEMO_SECONDS);
       if (statSync(webm).size <= VIDEO_MAX) { done = true; break; }
     }
     if (!done) note(`${id}: video still over ${kb(VIDEO_MAX)} at the smallest setting`);
@@ -506,7 +579,7 @@ server.close();
 try { rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* tmp */ }
 
 /* ---------- verify and print the size table ---------- */
-const COUNTS = { writing: 4, story: 3, storyboard: 4, breakdown: 5, catalog: 3, 'shot-list': 3, schedule: 5, budget: 4, 'call-sheets': 3, 'cast-crew': 3, sides: 3 };
+const COUNTS = { writing: 4, story: 3, storyboard: 4, breakdown: 5, catalog: 3, 'shot-list': 3, schedule: 5, budget: 4, 'call-sheets': 3, 'cast-crew': 3, sides: 3, chain: 4 };
 let total = 0;
 console.log('\nfile                         size');
 for (const id of ids) {

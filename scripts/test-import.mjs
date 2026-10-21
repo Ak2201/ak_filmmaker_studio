@@ -468,5 +468,25 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   ok(I.ACCEPT.includes('.docx'), 'docx: the file picker offers .docx');
 }
 
+/* ---- .fdx export carries LOCKED scene numbers, and only those ----
+   Final Draft keeps a shooting script's numbers in the Number
+   attribute; without it a locked 12A came back as a position. */
+{
+  const S = await import('../src/lib/script.js');
+  let n = 0;
+  const E = (type, text) => ({ id: 'fx' + (++n), type, text });
+  const a = [E('scene', 'INT. A - DAY'), E('action', 'x'), E('scene', 'EXT. B - NIGHT'), E('action', 'y')];
+  const numbering = S.lockNumbering(a);
+  const b = [a[0], a[1], E('scene', 'INT. C - DAY'), E('action', 'z'), a[2], a[3]];
+  const fdx = S.toFDX({ elements: b, numbering }, { title: 'T' });
+  eq([...fdx.matchAll(/Type="Scene Heading" Number="([^"]+)"/g)].map((m) => m[1]), ['1', '1A', '2'],
+    'fdx export: locked numbers ride on Number, an inserted scene as 1A');
+  const back = I.parseScript(fdx, 'x.fdx');
+  eq(back.elements.filter((e) => e.type === 'scene').map((e) => e.sceneNumber), ['1', '1A', '2'],
+    'fdx export -> import: the locked numbers come back as the file\'s own');
+  eq(back.numbering.fromFile, 3, 'fdx export -> import: all three read from the file, none by position');
+  ok(!S.toFDX({ elements: a }, { title: 'T' }).includes('Number='), 'fdx export: unlocked numbers are positions and are not written');
+}
+
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

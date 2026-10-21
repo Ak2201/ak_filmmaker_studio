@@ -30,6 +30,10 @@ const FORMATS = {
 
 let overlay = null;
 let state = { format: 'feature', dirty: false };
+/* True from the first CREATE until the page leaves: the wait for the
+   cloud push below is up to 3s, and a second press in it made a
+   second project. */
+let busy = false;
 
 function build() {
   const films = listStudies();
@@ -101,18 +105,33 @@ function selectedFilm() {
   return r ? r.value : '';
 }
 
+function showError(text) {
+  const err = overlay.querySelector('#psError');
+  err.textContent = text;
+  err.hidden = false;
+}
+
 function submit() {
+  if (busy) return;
   const title = overlay.querySelector('#psTitle');
   const name = title.value.trim();
   if (!name) {
-    overlay.querySelector('#psError').hidden = false;
+    showError('Give your project a name.');
     title.focus();
     return;
   }
   if (!PlanGate.allowed('new_projects')) { close(); return; }
+  busy = true;
+  const btn = overlay.querySelector('#psSubmit');
+  if (btn) btn.disabled = true;
   const fav = selectedFilm();
   const p = Store.createProject({ title: name, format: state.format, fav: fav || undefined, adopt: true });
-  if (!p) return;
+  if (!p) {
+    busy = false;
+    if (btn) btn.disabled = false;
+    showError('The project could not be created. Try again.');
+    return;
+  }
   /* Signed in, the new project's cloud push is in flight: give it a
      moment so a plan-limit refusal is heard (cloud.js carries it to
      the project home), then go. Signed out, settle() resolves at once. */
@@ -130,6 +149,8 @@ export function openProjectSetup(opts) {
   overlay.querySelector('#psTitle').value = FORMATS[state.format].title;
   overlay.querySelector('#psHeading').innerHTML = 'Start your <em>' + FORMATS[state.format].label.toLowerCase() + '.</em>';
   overlay.querySelector('#psError').hidden = true;
+  busy = false;
+  { const btn = overlay.querySelector('#psSubmit'); if (btn) btn.disabled = false; }
   const fr = overlay.querySelector('#psFormat_' + state.format);
   if (fr) fr.checked = true;
   let fav = '';

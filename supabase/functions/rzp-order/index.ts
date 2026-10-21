@@ -26,7 +26,7 @@
    platform. docs/BILLING.md is the runbook.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { basicAuth, PERIODS, receiptFor, normalisePromo, attachOrder } from '../_shared/razorpay.js';
+import { basicAuth, PERIODS, receiptFor, normalisePromo, attachOrder, failPending } from '../_shared/razorpay.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -85,14 +85,14 @@ Deno.serve(async (req) => {
   });
   const order = await r.json().catch(() => null);
   if (!r.ok || !order?.id) {
-    await svc.rpc('mark_payment_failed', { p_order_id: null, p_raw: order });
+    // By the row's own id: there is no order id to find it by (failPending).
+    await failPending(svc, row.payment_id, order);
     return json(502, { error: 'Razorpay did not create the order.', detail: order?.error?.description ?? null });
   }
   // The row must know the order before Checkout sees it (attachOrder).
   const att = await attachOrder({
     attach: () => svc.rpc('attach_razorpay_order', { p_payment: row.payment_id, p_order_id: order.id }),
-    abandon: () => svc.from('payments').update({ status: 'failed', raw: { attach_failed: order.id } })
-      .eq('id', row.payment_id).eq('status', 'created')
+    abandon: () => failPending(svc, row.payment_id, { attach_failed: order.id })
   });
   if (!att.ok) return json(502, { error: 'Could not record the order. Nothing was charged; try again.' });
 

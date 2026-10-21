@@ -151,8 +151,17 @@ function readAll() {
   const empty = { days: {}, recces: {}, media: [], order: {} };
   if (!raw) return empty;
   try {
-    const parsed = JSON.parse(raw) || {};
+    const got = JSON.parse(raw);
+    const parsed = isPlainObject(got) ? got : {};
+    // PASSTHROUGH, the shots.js pattern (item 53). Every writer here is
+    // `writeAll({ ...readAll(), x })`, so a top-level field this build
+    // does not know (written by a NEWER build in another tab, or synced
+    // in from one — the way `order` and the day records once arrived)
+    // must ride along in what readAll() returns, or the first save from
+    // this tab wipes it. The known collections are restated after the
+    // spread, shape-guaranteed; everything else is carried untouched.
     const out = {
+      ...parsed,
       days:   isPlainObject(parsed.days)   ? parsed.days   : {},
       recces: isPlainObject(parsed.recces) ? parsed.recces : {},
       media:  Array.isArray(parsed.media)  ? parsed.media  : [],
@@ -161,8 +170,9 @@ function readAll() {
     // The day-level records (see DAY RECORDS below). Carried only when
     // present, so a blob that never used them reads and writes back
     // byte-identical to the shape it had before they existed.
-    for (const name of DAY_RECORDS) if (isPlainObject(parsed[name])) out[name] = parsed[name];
-    if (isPlainObject(parsed.prefs)) out.prefs = parsed.prefs;
+    // A known record that is not an object is dropped, as before the
+    // passthrough, so the readers below never see one.
+    for (const name of [...DAY_RECORDS, 'prefs']) if (!isPlainObject(parsed[name])) delete out[name];
     return out;
   } catch (e) {
     return empty;

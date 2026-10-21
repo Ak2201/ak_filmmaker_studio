@@ -57,6 +57,30 @@ export function unionRevisions(a = [], b = []) {
 
 const COALESCE_MS = 10 * 60 * 1000;
 
+/* THE CAP ON AUTOMATIC DRAFTS. Every arrival more than ten minutes after
+   the last one adds a whole-script draft, nothing else ever trims
+   `revisions`, and the blob is pushed whole on every save — so two
+   writers sharing a long script grew it by a full copy per conflict
+   window, for good. Only the drafts THIS module names are capped, and
+   they are recognised by the name the page gives them (ARRIVAL_PREFIX,
+   which screenplay.js reads from here so the two cannot drift). A draft
+   the writer named, or renamed on drafts.html, never matches and is
+   never touched; "Your version" drafts are the writer's own lines and
+   are left alone too. The newest ARRIVAL_KEEP stay. */
+export const ARRIVAL_PREFIX = 'From another device, ';
+const ARRIVAL_KEEP = 10;
+const isArrival = (r) => String((r && r.name) || '').startsWith(ARRIVAL_PREFIX);
+
+function capArrivals(revs) {
+  const arrivals = revs.filter(isArrival);
+  if (arrivals.length <= ARRIVAL_KEEP) return revs;
+  // Newest by date; the list is not always in date order (keepBoth appends).
+  const keep = new Set(arrivals
+    .slice().sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')))
+    .slice(0, ARRIVAL_KEEP));
+  return revs.filter((r) => !isArrival(r) || keep.has(r));
+}
+
 /** The writer's copy, with the arrival kept as a draft named `label`, and
     every draft either side had. Returns a NEW doc.
     `replaceId`: the draft this page made from the LAST arrival. If it is
@@ -70,9 +94,9 @@ export function keepBoth(mine, fresh, label, { replaceId = null, now = Date.now(
   const i = replaceId ? revs.findIndex((r) => r.id === replaceId) : -1;
   if (i >= 0 && now - (Date.parse(revs[i].date) || 0) < COALESCE_MS) {
     revs[i] = { ...draft, id: replaceId };
-    return { ...mine, revisions: unionRevisions(revs) };
+    return { ...mine, revisions: capArrivals(unionRevisions(revs)) };
   }
-  return { ...mine, revisions: revs.concat(draft) };
+  return { ...mine, revisions: capArrivals(revs.concat(draft)) };
 }
 
 /** The arrival on screen, with the writer's copy kept as a draft named
@@ -81,7 +105,7 @@ export function takeTheirs(mine, fresh, label) {
   const draft = makeRevision((mine && mine.elements) || [], label);
   return {
     ...fresh,
-    revisions: unionRevisions(mine && mine.revisions, fresh.revisions).concat(draft)
+    revisions: capArrivals(unionRevisions(mine && mine.revisions, fresh.revisions).concat(draft))
   };
 }
 

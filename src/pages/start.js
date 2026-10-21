@@ -36,12 +36,20 @@
    3. The landing_view count (once per session; Do Not Track and the
       opt-out are honoured inside funnel.js), and the opt-out button the
       privacy page promises.
+   5. The "from about ₹1.64 a day" figures in the visitor's currency
+      (docs/US-MARKET-PLAN.md §B): a visitor outside India is shown the
+      owner's dollar figure from price_notice('USD'). Only then is the
+      server asked anything; an Indian visitor's page fetches nothing for
+      it. No answer: the stamped rupees stand. The charge currency is
+      said on pricing.html and at checkout, where the price is.
    ============================================================ */
 import './marketing.js';
 import '../styles/start.css';
-import { bumpOnce, optOut } from '../lib/funnel.js';
+import { bumpOnce, optOut, priceNotice } from '../lib/funnel.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
-import { takeAuthError, isAppPage } from '../lib/start-model.js';
+import { takeAuthError, isAppPage, deviceRegion } from '../lib/start-model.js';
+import { pricingCurrency, readPayCurrency, guessVisitorRegion } from '../lib/region-core.js';
+import { shopView, fromDay } from '../lib/price-model.js';
 
 const byId = (id) => document.getElementById(id);
 
@@ -94,3 +102,15 @@ bumpOnce('landing_view');
    It sets the same session flag Do Not Track would, and says it has. */
 const noCount = byId('noCount');
 if (noCount) noCount.addEventListener('click', () => { optOut(); noCount.textContent = noCount.dataset.done; noCount.disabled = true; });
+
+/* ---- 5. the visitor's currency ------------------------------------- */
+try {
+  if (pricingCurrency({ override: readPayCurrency(), chosen: deviceRegion(), guess: guessVisitorRegion() }) === 'USD') {
+    priceNotice('USD').then((notice) => {
+      const view = shopView('USD', notice);
+      const day = view.currency === 'USD' ? fromDay(view) : '';
+      if (!day) return;
+      for (const n of document.querySelectorAll('[data-price-day="from"]')) n.textContent = day;
+    }, () => {});
+  }
+} catch (e) { /* the stamped rupees stand */ }

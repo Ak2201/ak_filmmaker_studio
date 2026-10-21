@@ -66,6 +66,25 @@ const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8
 /** Escape text for an HTML text node or a double-quoted attribute. */
 export const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/* PRICES THE PAGE CAN RE-QUOTE (docs/US-MARKET-PLAN.md, PRICING-CLIENT).
+   The build stamps RUPEES, so a crawler and a reader with scripts off see
+   the figure that is charged today. A visitor outside India is shown the
+   owner's DOLLAR figures at runtime (src/pages/pricing.js, start.js read
+   price_notice('USD')), so every price stamp in VISIBLE text is wrapped in
+   a span the script can find by what it is, never by parsing "₹599" back
+   out of the page: data-price="<tier>" for a year, data-price-day="<tier>"
+   or "from" for a day. Head tags (title, meta) keep plain rupee stamps. */
+export const priceSpans = (html) => String(html)
+  .replace(/\{\{fms:price\.(from|starter|indie|pro)\.day\}\}/g, (all, id) => `<span data-price-day="${id}">${all}</span>`)
+  .replace(/\{\{fms:price\.(starter|indie|pro)\}\}/g, (all, id) => `<span data-price="${id}">${all}</span>`);
+/** Copy that is true only for one CHARGE currency ("paid in Indian
+ *  rupees"): both variants in the markup, the dollar one hidden until the
+ *  server says dollars are charged (usd_checkout). Crawlers and scripts-off
+ *  readers get the rupee sentence, which is what is charged today. */
+export const chargeVariants = (inrHtml, usdHtml) => (usdHtml
+  ? `<span data-charge="INR">${inrHtml}</span><span data-charge="USD" hidden>${usdHtml}</span>`
+  : inrHtml);
+
 /** Material Symbols mark. Always aria-hidden: the label beside it is the name. */
 const sym = (name, cls = '') => `<span class="sym${cls ? ' ' + cls : ''}" aria-hidden="true" translate="no">${esc(name)}</span>`;
 
@@ -422,14 +441,14 @@ export function renderPricing({ site, pages, compare, faq }) {
   const hero = `<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1">
   <div class="mk-wrap mk-hero-in">
     <h1 class="mk-h1" id="mkH1">${esc(c.hero.h1)}</h1>
-    <p class="mk-sub">${esc(c.hero.sub)}</p>
+    <p class="mk-sub">${priceSpans(chargeVariants(esc(c.hero.sub), c.hero.subUsd && esc(c.hero.subUsd)))}</p>
   </div>
 </section>`;
 
   const card = (id, i) => {
     const pick = id === c.plans.pick;
     const buy = `<a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
-    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${stamp('price', id)}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}')}</span></span><ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="${esc(c.plans.altOpen)}">${esc(c.plans.alt)}</a></li>`;
+    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span><ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="${esc(c.plans.altOpen)}">${esc(c.plans.alt)}</a></li>`;
   };
 
   const plans = `<section class="mk-sec mk-band-b pr-plans" id="pricing" aria-labelledby="prPlansH">
@@ -451,11 +470,16 @@ export function renderPricing({ site, pages, compare, faq }) {
       <p class="pr-fine">${esc(c.offer.fine)}</p>
     </div>
 
+    <div class="pr-cur" data-price-switch hidden>
+      <p class="pr-cur-line" id="prCurLine" role="status" aria-live="polite"></p>
+      <div class="pr-cur-seg" role="group" aria-label="${esc(c.plans.currencyLabel)}">${['INR', 'USD'].map((v) => `<button type="button" class="pr-cur-btn" data-price-cur="${v}" aria-pressed="false">${v === 'INR' ? '&#8377; INR' : '$ USD'}</button>`).join('')}</div>
+    </div>
+
     <ul class="pr-tiers" id="tiersIndividual">
 ${PAID.map(card).join('\n')}
     </ul>
     <p class="pr-fine" id="authMsg" role="status" aria-live="polite"></p>
-    <p class="pr-note">${c.plans.noteHtml}</p>
+    <p class="pr-note">${chargeVariants(c.plans.noteHtml, c.plans.noteUsdHtml)}</p>
   </div>
 </section>`;
 
@@ -473,7 +497,7 @@ ${g.keys.map((k) => { const r = rowOf(Array.isArray(k) ? k[0] : k); return `    
     <table class="pr-table">
       <caption class="mk-vh">${esc(c.compare.caption)}</caption>
       <colgroup><col class="pr-col-what">${PAID.map(() => '<col>').join('')}</colgroup>
-      <thead><tr><th scope="col">${esc(c.compare.what)}</th>${PAID.map((p) => `<th scope="col"><span class="pr-th-name">${stamp('plan', p)}</span><span class="pr-th-price">${stamp('price', p)}</span></th>`).join('')}</tr></thead>
+      <thead><tr><th scope="col">${esc(c.compare.what)}</th>${PAID.map((p) => `<th scope="col"><span class="pr-th-name">${stamp('plan', p)}</span><span class="pr-th-price">${priceSpans(stamp('price', p))}</span></th>`).join('')}</tr></thead>
 ${body}
     </table>
   </div>
@@ -489,7 +513,7 @@ ${body}
 ${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
         <summary><span>${esc(g.group)}</span>${sym('expand_more')}</summary>
         <dl class="pr-qa">
-${g.items.map((it) => `          <dt>${esc(it.q)}</dt>\n          <dd>${esc(it.a)}</dd>`).join('\n')}
+${g.items.map((it) => `          <dt>${esc(it.q)}</dt>\n          <dd>${priceSpans(chargeVariants(esc(it.a), it.aUsd && esc(it.aUsd)))}</dd>`).join('\n')}
         </dl>
       </details>`).join('\n')}
     </div>
@@ -594,7 +618,7 @@ export function renderHome({ site, pages, home }) {
   <div class="mk-wrap mk-hero-in st-hero-grid">
     <div class="st-hero-copy">
       <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
-      <p class="mk-sub">${esc(home.hero.sub)}</p>
+      <p class="mk-sub">${priceSpans(esc(home.hero.sub))}</p>
       <div class="mk-cta-row">
         <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.hero.cta)}</a>
       </div>
@@ -668,7 +692,7 @@ ${home.stages.map(row).join('\n')}
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.closing.cta)}</a>
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(home.pricing.pill)}</a>
     </div>
-    <p class="st-note st-closing-note">${esc(home.pricingTeaser)}</p>
+    <p class="st-note st-closing-note">${priceSpans(esc(home.pricingTeaser))}</p>
   </div>
 </section>`;
 

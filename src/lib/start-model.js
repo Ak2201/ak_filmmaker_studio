@@ -98,21 +98,37 @@ export function timeLeft(ms) {
   return Math.max(1, mins) + 'm left';
 }
 
+/* THE DEVICE'S MARKET, read raw. `fms_region_v1` ('IN' | 'INT') is
+   written by Settings → Region (src/lib/region.js, which a public page
+   may not import); it is the second voice in pricingCurrency() after the
+   buyer's own pick. Read only, never written here. */
+export const REGION_KEY = 'fms_region_v1';
+export function deviceRegion() {
+  try { return localStorage.getItem(REGION_KEY) || ''; } catch (e) { return ''; }
+}
+
+/* HOW A RISE IS PRINTED. Rupees by default (the notice's own paise); a
+   page showing dollars passes `money` = { now(p), next(p) }, each a
+   string or '' for "nothing to say" (price-model.js builds it from
+   price_notice('USD')). A plan whose `next` is '' is not rising in the
+   currency on screen. */
+const RUPEES = { now: (p) => inr(p.price_paise), next: (p) => inr(p.next_price_paise) };
+
 /** The plans in a notice that carry a coming price, each with the text
  *  drawn beside its current one. */
-export function risingTiers(notice) {
+export function risingTiers(notice, money = RUPEES) {
   if (!notice || !Array.isArray(notice.plans)) return [];
   return notice.plans
-    .filter((p) => p && p.id && p.next_price_paise && p.next_price_at)
-    .map((p) => ({ id: p.id, text: inr(p.next_price_paise) + ' from ' + onDate(p.next_price_at) }));
+    .filter((p) => p && p.id && p.next_price_paise && p.next_price_at && money.next(p))
+    .map((p) => ({ id: p.id, text: money.next(p) + ' from ' + onDate(p.next_price_at) }));
 }
 
 /** The band's facts, or null when there is nothing honest to announce:
  *  the cheapest PAID tier that is rising carries the headline, and a
  *  rise already fired (`now` past its instant) draws no band. */
-export function priceRiseBand(notice, now) {
+export function priceRiseBand(notice, now, money = RUPEES) {
   if (!notice || !Array.isArray(notice.plans)) return null;
-  const rise = notice.plans.find((p) => p && p.id && p.id !== 'free' && p.next_price_paise && p.next_price_at);
+  const rise = notice.plans.find((p) => p && p.id && p.id !== 'free' && p.next_price_paise && p.next_price_at && money.next(p));
   if (!rise) return null;
   const ends = new Date(rise.next_price_at).getTime();
   if (!(ends > now)) return null;
@@ -121,7 +137,7 @@ export function priceRiseBand(notice, now) {
   const capped = Number.isFinite(seatsTotal) && seatsTotal > 0;
   return {
     ends,
-    line: inr(rise.price_paise) + ' today. ' + inr(rise.next_price_paise) + ' from ' + onDate(rise.next_price_at)
+    line: money.now(rise) + ' today. ' + money.next(rise) + ' from ' + onDate(rise.next_price_at)
       + (capped ? ' — or once ' + seatsTotal.toLocaleString('en-IN') + ' people have joined, whichever comes first.' : '.'),
     seats: capped && Number.isFinite(seatsTaken)
       ? seatsTaken.toLocaleString('en-IN') + ' of ' + seatsTotal.toLocaleString('en-IN') + ' taken'
@@ -136,7 +152,7 @@ export function swappedText({ openText, offText }, { signedIn, off }) {
 }
 
 export default {
-  INVITE_PLAN_KEY, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
+  INVITE_PLAN_KEY, REGION_KEY, deviceRegion, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,
   priceRiseBand, swappedText
 };

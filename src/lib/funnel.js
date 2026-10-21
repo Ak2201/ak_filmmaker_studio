@@ -89,9 +89,11 @@ export async function addLead(email, consentText, source = 'start') {
  *  Not gated on optedOut(): this is a price list, not a count. Someone
  *  who has asked not to be counted still deserves to be told what the
  *  thing costs. */
-export async function priceNotice() {
+export async function priceNotice(currency) {
   if (!configured()) return null;
-  try { return await rpc('price_notice', {}); } catch (e) { return null; }
+  /* price_notice(text) (§31/§53) for a currency: the same rupee keys plus
+     that currency's display figures and `usd_checkout`. */
+  try { return await rpc('price_notice', currency ? { p_currency: currency } : {}); } catch (e) { return null; }
 }
 
 /** §32's purchases_required(): true, false, or null when it is not

@@ -229,7 +229,7 @@ for (const id of IDS) {
   }
   const pjs = read('src/pages/pricing.js');
   const pimports = [...pjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const pallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/pricing\.css$/, /^\.\.\/lib\/(funnel|start-auth|start-model)\.js$/];
+  const pallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/pricing\.css$/, /^\.\.\/lib\/(funnel|start-auth|start-model|region-core|price-model)\.js$/];
   const pstray = pimports.filter((i) => !pallowed.some((a) => a.test(i)));
   ok(pstray.length === 0, 'pricing.js imports only the light allowlist (the startlib rule)' + (pstray.length ? ': ' + pstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(pjs), 'pricing.js builds no markup from strings');
@@ -282,7 +282,7 @@ for (const id of IDS) {
   ok([...scss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate/.test(v)).every((v) => /var\(--motion\)/.test(v)), 'every translate in start.css is multiplied by --motion');
   const sjs = read('src/pages/start.js');
   const simports = [...sjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const sallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model)\.js$/];
+  const sallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model|region-core|price-model)\.js$/];
   const sstray = simports.filter((i) => !sallowed.some((a) => a.test(i)));
   ok(sstray.length === 0, 'start.js imports only the light allowlist (the startlib rule)' + (sstray.length ? ': ' + sstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(sjs), 'start.js builds no markup from strings');
@@ -355,6 +355,9 @@ for (const id of IDS) {
   ok(cstray.length === 0, 'company.js imports only the light allowlist (the startlib rule)' + (cstray.length ? ': ' + cstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=|localStorage|sessionStorage|fetch\(/.test(cjs), 'company.js builds no markup from strings, stores nothing and fetches nothing');
   ok(!/^import/m.test(read('src/lib/contact-model.js')), 'contact-model.js imports nothing (pure)');
+  /* The public pages' currency (docs/US-MARKET-PLAN.md): both helpers must
+     stay import-free, or a public page drags the app in behind them. */
+  for (const f of ['src/lib/price-model.js', 'src/lib/start-model.js']) ok(!/^\s*(import|export\s+[^;]*\bfrom\b)/m.test(read(f)), f + ' imports nothing (pure)');
   /* 404.html wears the frame too (header and footer, no contents list),
      and is not a paper surface: legal.css is dark and has no paper rules. */
   {

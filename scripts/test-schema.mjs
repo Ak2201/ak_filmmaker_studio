@@ -340,6 +340,18 @@ runChecks('cap-locks.sql');
 }
 /* --- end §54 --- */
 
+/* --- §55 (charging in US dollars) --- on §54, loaded twice (it drops the
+   four-argument quote_for, the five-argument create_pending_payment and two
+   functions whose return type grew), after cap-locks.sql so §54's checks ran
+   against §54's own bodies. --- */
+for (const f of ['supabase/schema/schema-55-usd-checkout.sql', 'supabase/schema/schema-55-usd-checkout.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §55 loads (and re-runs cleanly)');
+runChecks('usd-checkout.sql');
+/* --- end §55 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

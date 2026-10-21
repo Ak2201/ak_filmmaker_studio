@@ -203,6 +203,80 @@ eq(R.refundByReceipt(null, 'rid-1'), null, 'no list -> null');
   ok(!/Razorpay could not be reached\.' \} \};\s*\}\s*\/\/ 4\./.test(refundSrc), 'rzp-refund no longer turns a thrown call into a recorded failure');
 }
 
+/* ---- two currencies (schema §55, docs/US-MARKET-PLAN.md §C5) ---- */
+eq(R.CURRENCIES, ['INR', 'USD'], 'an order is in INR or USD, nothing else');
+eq(R.orderCurrency(undefined), 'INR', 'no currency in the body is a rupee order');
+eq(R.orderCurrency(''), 'INR', 'an empty currency is a rupee order');
+eq(R.orderCurrency(' usd '), 'USD', 'usd, any case, is USD');
+eq(R.orderCurrency('EUR'), null, 'any other currency is refused (rzp-order answers 400)');
+eq(R.orderCurrency(840), null, 'a number is not a currency');
+eq(R.fmtMinor(59900), '₹599', 'fmtMinor: rupees by default');
+eq(R.fmtMinor(59950, 'INR'), '₹599.50', 'fmtMinor: with paise');
+eq(R.fmtMinor(1234500, 'INR'), '₹12,345', 'fmtMinor: Indian grouping for rupees');
+eq(R.fmtMinor(1250000000, 'INR'), '₹1,25,00,000', 'fmtMinor: lakh and crore grouping');
+eq(R.fmtMinor(1900, 'USD'), '$19', 'fmtMinor: whole dollars');
+eq(R.fmtMinor(1950, 'usd'), '$19.50', 'fmtMinor: dollars and cents, any case');
+eq(R.fmtMinor(123456700, 'USD'), '$1,234,567', 'fmtMinor: US grouping for dollars');
+eq(R.fmtMinor(5, 'USD'), '$0.05', 'fmtMinor: five cents');
+eq(R.fmtMinor(59900, 'INR'), R.fmtPaise(59900), 'fmtMinor agrees with fmtPaise on rupees');
+eq(R.fmtPaise(1950), '₹19.50', 'fmtPaise is unchanged (the client imports it)');
+eq(R.perDayMinor(1900), 5, 'perDayMinor: $19 a year is $0.05 a day');
+eq(R.perDayMinor(59900), R.perDayPaise(59900), 'perDayMinor rounds exactly as perDayPaise');
+eq(R.perDayMinor(0), null, 'perDayMinor: nothing a day for a price that is not for sale');
+eq(R.parseMinor('$19.50', 'USD'), 1950, 'parseMinor: $19.50 -> 1950 cents');
+eq(R.parseMinor('19.5', 'USD'), 1950, 'parseMinor: one decimal is tens of cents');
+eq(R.parseMinor('USD 1,999', 'USD'), 199900, 'parseMinor: a code and grouping');
+eq(R.parseMinor('₹19', 'USD'), null, 'parseMinor: a rupee figure in a dollar field is refused, never read as $19');
+eq(R.parseMinor('$19', 'INR'), null, 'parseMinor: and the other way round');
+eq(R.parseMinor('₹599.50', 'INR'), 59950, 'parseMinor: rupees');
+eq(R.parseMinor('19.505', 'USD'), null, 'parseMinor: three decimals is not a price');
+eq(R.parseMinor('19 dollars', 'USD'), null, 'parseMinor: words are not a price');
+eq(R.parseMinor('', 'USD'), null, 'parseMinor: empty is null');
+eq(R.parseMinor('19', 'EUR'), null, 'parseMinor: no third currency');
+eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
+{
+  const order = [];
+  const ent = { amount: 2400, currency: 'USD', status: 'authorized' };
+  let out = await R.settleAuthorized({ entity: ent, amountPaise: 2400, currency: 'INR',
+    canActivate: async () => { order.push('can'); return { ok: true }; }, capture: async () => { order.push('capture'); return { status: 'captured' }; } });
+  ok(out.kind === 'mismatch' && order.length === 0, 'settleAuthorized: an authorisation in another currency is neither checked nor captured');
+  out = await R.settleAuthorized({ entity: ent, amountPaise: 2400, currency: 'usd',
+    canActivate: async () => ({ ok: true }), capture: async () => ({ status: 'captured', id: 'pay_u' }) });
+  ok(out.kind === 'captured', 'settleAuthorized: the same currency (any case) is captured');
+  out = await R.settleAuthorized({ entity: { amount: 59900, status: 'authorized' }, amountPaise: 59900,
+    canActivate: async () => ({ ok: true }), capture: async () => ({ status: 'captured' }) });
+  ok(out.kind === 'captured', 'settleAuthorized: a caller that names no currency behaves as before');
+}
+{
+  const usdInv = { ...inv, amount_paise: 2400, currency: 'USD' };
+  const um = M.receiptMail(usdInv);
+  ok(um.text.includes('$24') && !um.text.includes('₹'), 'a dollar receipt prints dollars, and no rupee sign');
+  ok(M.receiptMail(inv).text.includes('₹799'), 'an invoice with no currency (before §55) is rupees');
+  const ur = M.refundMail({ status: 'processed', amount_paise: 1950, currency: 'USD', buyer_email: 'b@x.com', plan_name: 'Basic' });
+  ok(ur.subject === 'Refund processed: $19.50' && ur.text.includes('Your refund of $19.50'), 'a dollar refund mail prints $19.50');
+  ok(M.refundMail({ status: 'processed', amount_paise: 79900, buyer_email: 'b@x.in' }).subject === 'Refund processed: ₹799', 'a refund claim with no currency is rupees');
+}
+{
+  const fs = await import('node:fs');
+  const src = (f) => fs.readFileSync(new URL(`../supabase/functions/${f}`, import.meta.url), 'utf8');
+  const order = src('rzp-order/index.ts'), verify = src('rzp-verify/index.ts'), refund = src('rzp-refund/index.ts');
+  ok(/orderCurrency\(body\.currency\)/.test(order) && /json\(400/.test(order.slice(order.indexOf('orderCurrency(body.currency)'))),
+    'rzp-order reads the currency from the body through orderCurrency, and answers 400 for any other');
+  ok(/currency === 'INR' \? \{\} : \{ p_currency: currency \}/.test(order),
+    'rzp-order sends p_currency only for dollars, so a rupee order works on a database without §55');
+  ok(/currency: row\.currency/.test(order) && /amount: row\.amount_paise/.test(order),
+    'rzp-order creates the Razorpay order in the ROW\'s currency and amount, never the body\'s');
+  ok(!/body\.amount/.test(order), 'rzp-order never reads an amount from the request');
+  ok(/amount_minor: row\.amount_paise/.test(order), 'rzp-order answers the _minor mirrors beside the _paise keys');
+  ok(/currency: pay\.currency \|\| 'INR'/.test(verify) && /settleAuthorized\(\{[\s\S]*?currency: pay\.currency/.test(verify),
+    'rzp-verify captures in the payment\'s currency and has settleAuthorized check it');
+  ok(/body\.amount_minor \?\? body\.amount_paise/.test(refund) && /currency: intent\.currency/.test(refund),
+    'rzp-refund takes amount_minor (or the older amount_paise) and answers the payment\'s currency');
+  const sql = fs.readFileSync(new URL('../supabase/schema/schema-55-usd-checkout.sql', import.meta.url), 'utf8');
+  ok(!/\b(?:1900|2900|3900)\b/.test(sql.replace(/^\s*--.*$/gm, '')), 'schema §55 hard-codes no dollar price (the owner types them)');
+  ok(/admin_set_usd_checkout/.test(sql) && /require_role\(array\['owner'\]\)/.test(sql), 'schema §55: the switch exists and is owner only');
+}
+
 console.log(`${fail ? '✗' : '✓'} billing: ${pass} passed, ${fail} failed`);
 
 /* ---- the client half: purchase-model, buy(), the plan cards ----

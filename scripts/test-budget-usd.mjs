@@ -146,6 +146,7 @@ eq(BCM.shownCurrency(), 'USD', 'costContext reads the budget currency');
 eq(BCM.rs(1234), '$1,234', 'rs prints dollars');
 eq(BCM.amountOf('1.5k'), 1500, 'amountOf parses dollars');
 eq(BCM.sym(), '$', 'labels say $');
+eq(BCM.rupees(1234), '₹ 1,234', 'a published FEFSI figure stays in rupees in a dollar budget');
 reset(); film('IN');
 BCM.costContext();
 eq(BCM.rs(-1234), '−₹ 1,234', 'rs prints rupees exactly as before');

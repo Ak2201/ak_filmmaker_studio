@@ -36,7 +36,7 @@ import Store from '../lib/store.js';
 // Money is formatted and parsed in the budget's own currency (budget-costs-model.js).
 import C from '../lib/costs.js';
 import { DEPARTMENTS } from '../lib/contacts.js';
-import { rs, glance, amountOf, sym, pct, today, label, costContext, crewAccountFor, wageHintRows } from '../lib/budget-costs-model.js';
+import { rs, rupees, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows } from '../lib/budget-costs-model.js';
 import wages from '../data/wages.fefsi.json';
 import { askDanger } from './dialog.js';
 import { button, badge, statCard, statStrip, emptyState, notice, meter } from './kit/index.js';
@@ -346,11 +346,17 @@ function renderCrewCard(ctx, c) {
   const id = c.id;
   const hints = wageHintRows(ctx, c.department);
   const picked = C.wageRows(wages, ctx.overrides).find((r) => r.id === rec.wageRow);
+  /* In a dollar budget the published FEFSI figure is still rupees: it is
+     shown as rupees and never offered as the fee. Only the person's own
+     figure (typed in the budget's currency) is. */
+  const usd = shownCurrency() === 'USD';
+  const own = !!(picked && picked.overridden.includes('bata'));
   let hintText = '';
   if (picked) {
     hintText = picked.bata
-      ? (picked.overridden.includes('bata') ? 'Your figure for ' + picked.craft + ': ' + rs(picked.bata) + '/day.'
-        : picked.craft + ': ' + rs(picked.bata) + '/day — reported for the 2022 MoU, EXPIRED. Confirm with your union.')
+      ? (own ? 'Your figure for ' + picked.craft + ': ' + rs(picked.bata) + '/day.'
+        : picked.craft + ': ' + rupees(picked.bata) + '/day — reported for the 2022 MoU, EXPIRED. Confirm with your union.'
+          + (usd ? ' A Chennai rupee figure, not offered as a dollar fee.' : ''))
       : 'No published figure for ' + picked.craft + '. Set your own on the wage table tab.';
   }
   const daysHint = acct.daysSource === 'entered'
@@ -366,8 +372,8 @@ function renderCrewCard(ctx, c) {
     ]),
     h('div.cx-quick-row', {}, [
       field('Wage-table hint', select({ 'data-cx-field': 'crew', 'data-k': 'wageRow', 'data-id': id, 'data-fk': 'cr:' + id + ':wr' },
-        [['', 'None'], ...hints.map((r) => [r.id, r.craft])], rec.wageRow), hintText || 'Optional. A starting point only — there is no current union floor.'),
-      picked && picked.bata && rec.feeType === 'day'
+        [['', 'None'], ...hints.map((r) => [r.id, r.craft])], rec.wageRow), hintText || (usd ? 'Optional. Your own figure from the wage table tab; no US crew rate is offered.' : 'Optional. A starting point only — there is no current union floor.')),
+      picked && picked.bata && rec.feeType === 'day' && (own || !usd)
         ? h('div.cx-field.cx-usefee', {}, [button({ label: 'Use ' + rs(picked.bata) + ' as the fee', size: 'sm', attrs: { 'data-cx': 'use-wage', 'data-id': id, 'data-v': String(picked.bata), 'data-fk': 'cr:' + id + ':use' } })])
         : null
     ]),
@@ -511,7 +517,9 @@ function topSheetDoc(ctx, screen) {
     h('h2.cx-doc-title', { text: rs(ts.grand) }),
     h('p.cx-doc-sub', { text: (ts.grand >= 100000 ? '≈' + glance(ts.grand) + ' · ' : '') + 'Prepared ' + today() + ' from ' + ctx.lines.length + ' estimate line' + (ctx.lines.length === 1 ? '' : 's') + '.' }),
     screen ? scroll(table) : table,
-    h('p.cx-hint', { text: 'Rates are a starting point, not quotes: the Chennai card is 2024-25 and crew rates have no current union floor.' })
+    h('p.cx-hint', { text: shownCurrency() === 'USD'
+      ? 'Rates are a starting point, not quotes: the US figures are one rental house\'s list prices, and no crew rate is offered.'
+      : 'Rates are a starting point, not quotes: the Chennai card is 2024-25 and crew rates have no current union floor.' })
   ]);
 }
 
@@ -549,7 +557,7 @@ function renderWages(ctx) {
   ]);
   const tb = h('tbody');
   for (const r of rows) {
-    const pub = r.published.bata ? rs(r.published.bata) + ' (reported, expired)' : 'not published';
+    const pub = r.published.bata ? rupees(r.published.bata) + ' (reported, expired)' : 'not published';
     const inp = (k, v, ph, mode) => frame(h('input', {
       type: 'text', inputmode: mode || null, autocomplete: 'off', value: r.overridden.includes(k) && v !== null ? String(v) : '', placeholder: ph,
       'data-cx-field': 'wage', 'data-k': k, 'data-id': r.id, 'data-fk': 'w:' + r.id + ':' + k, 'aria-label': k + ' for ' + r.craft

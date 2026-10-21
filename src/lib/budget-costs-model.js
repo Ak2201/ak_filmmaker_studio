@@ -28,7 +28,10 @@ export const sym = () => (shown === 'USD' ? '$' : '₹');
     figure is exactly what it always was. */
 export const rs = (n) => (shown === 'USD'
   ? fmtMoney(n, 'USD')
-  : (n < 0 ? '−₹ ' : '₹ ') + INR.format(Math.round(Math.abs(n || 0))));
+  : rupees(n));
+/** A RUPEE figure whatever the budget is in: the FEFSI wage table's
+    published bata is a rupee figure and must never wear a dollar sign. */
+export const rupees = (n) => (n < 0 ? '−₹ ' : '₹ ') + INR.format(Math.round(Math.abs(n || 0)));
 /** The glance-sized magnitude (fmtINR for rupees). */
 export const glance = (n) => (shown === 'USD' ? fmtMoney(n, 'USD', true) : fmtINR(n));
 /** Parse a typed figure in the budget's currency (parseNum for rupees). */
@@ -81,4 +84,4 @@ export function wageHintRows(ctx, department) {
   return own.length ? [rows[0], ...own] : rows;
 }
 
-export default { rs, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows };
+export default { rs, rupees, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows };

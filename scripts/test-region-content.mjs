@@ -107,7 +107,21 @@ for (const x of variants) {
 const mk = read('src/pages/marketing.js');
 const mast = acorn.parse(mk, { ecmaVersion: 'latest', sourceType: 'module' });
 const mimports = mast.body.filter((s) => s.type === 'ImportDeclaration').map((s) => s.source.value);
-ok('marketing.js imports region-core.js, never region.js', mimports.includes('../lib/region-core.js') && !mimports.includes('../lib/region.js'));
+ok('marketing.js reads the region through visitor-region.js, never region.js', mimports.includes('../lib/visitor-region.js') && !mimports.includes('../lib/region.js'));
+const vr = read('src/lib/visitor-region.js');
+const vast = acorn.parse(vr, { ecmaVersion: 'latest', sourceType: 'module' });
+const vimports = vast.body.filter((s) => s.type === 'ImportDeclaration').map((s) => s.source.value);
+ok('visitor-region.js imports region-core.js alone', JSON.stringify(vimports) === JSON.stringify(['./region-core.js']));
+ok('visitor-region.js never writes storage', !/setItem|removeItem/.test(vr));
+const V = await import('../src/lib/visitor-region.js');
+const st = (v) => ({ getItem: (k) => (k === 'fms_region_v1' ? v : null) });
+const usEnv = { timeZone: 'America/New_York', languages: ['en-US'], offset: 240 };
+const inEnv = { timeZone: 'Asia/Kolkata', languages: ['en-IN'], offset: -330 };
+ok('a New York visitor reads the Elsewhere lines', V.visitorRegion({ storage: st(null), env: usEnv }) === 'INT');
+ok('a Chennai visitor reads the India lines', V.visitorRegion({ storage: st(null), env: inEnv }) === 'IN');
+ok('the device\u2019s stated market wins over the guess (INT in India)', V.visitorRegion({ storage: st('INT'), env: inEnv }) === 'INT');
+ok('the device\u2019s stated market wins over the guess (IN abroad)', V.visitorRegion({ storage: st('IN'), env: usEnv }) === 'IN');
+ok('a storage that throws falls to the guess', V.visitorRegion({ storage: { getItem() { throw new Error('x'); } }, env: usEnv }) === 'INT');
 ok('marketing.js swaps only data-mk-intl text, as text', /el\.textContent = el\.getAttribute\('data-mk-intl'\)/.test(mk) && !/innerHTML/.test(mk));
 ok('marketing.js reads the region, never writes it', !/setItem\(\s*'fms_region_v1'/.test(mk));
 

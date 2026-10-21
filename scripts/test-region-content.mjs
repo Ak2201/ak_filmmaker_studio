@@ -20,17 +20,17 @@ const hub = read('src/pages/hub.js');
 ok('hub duplicate copies region', /createProject\(\{ title: p\.title \+ ' \(copy\)'[^}]*region: p\.region/.test(hub));
 ok('hub project modal creates with the device choice, else detectRegion()', /createProject\(\{ title: titleValue, format, region: chosenRegion\(\) \|\| detectRegion\(\)/.test(hub));
 
-/* ---- setProjectRegion runs on a click only ------------------------ */
+/* ---- the film's region is set on a click only -------------------- */
 for (const f of ['src/pages/dashboard.js', 'src/pages/settings.js']) {
   const src = read(f);
-  const calls = [...src.matchAll(/setProjectRegion\(/g)].map((m) => m.index)
+  const calls = [...src.matchAll(/setFilmRegion\(/g)].map((m) => m.index)
     .filter((i) => !/import \{[^}]*$/.test(src.slice(Math.max(0, i - 200), i)));
-  ok(f + ' calls setProjectRegion', calls.length > 0);
+  ok(f + ' calls setFilmRegion', calls.length > 0);
   for (const i of calls) {
     const before = src.slice(0, i);
     const d = before.lastIndexOf('delegate(');
     const fn = before.lastIndexOf('\nfunction ');
-    ok(f + ': setProjectRegion at ' + i + ' sits in a click handler', d > fn && /^delegate\([^,]+,\s*'click'/.test(before.slice(d)));
+    ok(f + ': setFilmRegion at ' + i + ' sits in a click handler', d > fn && /^delegate\([^,]+,\s*'click'/.test(before.slice(d)));
   }
 }
 
@@ -54,7 +54,7 @@ ok('alt-lines marks its Tamil controls data-india-only', (read('src/ui/alt-lines
 ok('dictation hides the Tamil option for a film made elsewhere', /'data-india-only': v === 'ta-IN'/.test(read('src/ui/dictation.js')));
 ok('tamil typing is off for a film made elsewhere', /isTamilTyping = \(\) => on && here\(\)/.test(read('src/ui/tamil-type.js')));
 const dv = read('src/pages/deliverables.js');
-ok('deliverables reads the film, not isIndia()', /currentProjectPrefs\(\)/.test(dv) && !/\bisIndia\b/.test(dv));
+ok('deliverables reads the film, not isIndia()', /filmRegion\(\)/.test(dv) && !/\bisIndia\b/.test(dv));
 ok('deliverables keeps the certification section and says why it is empty', /if \(!prefs\.showIndiaContent\)[\s\S]{0,1600}return sec;/.test(dv));
 
 /* ---- the prefs each surface reads --------------------------------- */
@@ -63,6 +63,36 @@ ok('an IN film shows it on an International device', R.projectPrefs({ region: 'I
 ok('a pre-region film follows the device (IN)', R.projectPrefs({}, 'IN').showIndiaContent === true);
 ok('a pre-region film follows the device (INT)', R.projectPrefs({}, 'INT').showIndiaContent === false);
 ok('a pre-region film keeps India paperwork', R.projectPrefs({}, 'INT').currency === 'INR');
+
+/* ---- film-region.js restates projectPrefs / setProjectRegion ------ */
+{
+  const fr = read('src/lib/film-region.js');
+  const body = /export function showIndia\(entry, deviceRegion\) \{([\s\S]*?)\n\}/.exec(fr);
+  ok('film-region.js has showIndia()', !!body);
+  const own = (v) => (v === 'IN' || v === 'INT' ? v : '');
+  // eslint-disable-next-line no-new-func
+  const showIndia = new Function('own', 'entry', 'deviceRegion', body[1]).bind(null, own);
+  let same = 0, all = 0;
+  for (const entry of [{}, { region: 'IN' }, { region: 'INT' }, { region: '' }, { region: 'bogus' }, null]) {
+    for (const dev of ['IN', 'INT']) {
+      all++;
+      if (showIndia(entry, dev) === R.projectPrefs(entry, dev).showIndiaContent) same++;
+      else console.error('  differs:', JSON.stringify(entry), dev);
+    }
+  }
+  ok('showIndia() answers as region-core projectPrefs().showIndiaContent (' + same + '/' + all + ')', same === all);
+  const imports = acorn.parse(fr, { ecmaVersion: 'latest', sourceType: 'module' }).body
+    .filter((x) => x.type === 'ImportDeclaration').map((x) => x.source.value);
+  ok('film-region.js imports store.js and region.js only (no region-core: startlib)', JSON.stringify(imports.sort()) === JSON.stringify(['./region.js', './store.js']));
+  const rj = read('src/lib/region.js');
+  const strip = (t) => t.replace(/\s+/g, ' ');
+  for (const line of ["if ((before.region || '') === want) return before;",
+    "const after = Store.updateProject(pid, { region: want || undefined });"]) {
+    ok('setFilmRegion() writes as setProjectRegion(): ' + line, strip(fr).includes(strip(line)) && strip(rj).includes(strip(line)));
+  }
+  ok('setFilmRegion() notifies region:project', /Store\.notify\('region:project', \{ id: pid, region: want \}\)/.test(fr));
+  ok('no CORE module imports film-region.js', !/film-region/.test(read('vite.config.js')));
+}
 
 /* ---- the format tour ---------------------------------------------- */
 for (const s of json('src/data/format-rules.json').tour.steps) {

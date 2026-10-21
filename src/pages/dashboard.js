@@ -65,7 +65,7 @@ import { statStrip, badge, meter, button, buttonGroup, eyebrow as kEyebrow, pane
 import { readFields, writeFields, blobKey } from '../lib/blueprint-store.js';
 import { coverFields, coverNs } from '../lib/cover-fields.js';
 import { paperField } from '../ui/paper-field.js';
-import { currentProjectPrefs, setProjectRegion } from '../lib/region.js';
+import { filmRegion, setFilmRegion } from '../lib/film-region.js';   // = region.js currentProjectPrefs / setProjectRegion; film-region.js says why
 import '../ui/india-content.js';   // the India-only switch follows this film's region
 
 import { formatEighths } from '../lib/scenes.js';
@@ -568,9 +568,9 @@ function renderTitlePage(project) {
 
 /* Where the film is being made (docs/US-MARKET-PLAN.md §A3). On the
    project's ENTRY, beside its title and format — no data-key, no new
-   storage key. Set on a click only (setProjectRegion), never on load. */
+   storage key. Set on a click only (setFilmRegion), never on load. */
 function renderRegionRow(project) {
-  const pp = currentProjectPrefs(project.id);
+  const pp = filmRegion(project.id);
   const now = pp.explicit ? pp.region : '';
   const opt = (id, label, title) => button({
     label, title, size: 'sm', variant: now === id ? 'primary' : 'secondary', action: 'tp-region',
@@ -592,7 +592,7 @@ function renderRegionRow(project) {
 delegate(app, 'click', '[data-action="tp-region"]', (e, el) => {
   const p = Store.currentProject();
   if (!p) return;
-  if (!setProjectRegion(el.getAttribute('data-region'), p.id)) { StudioUI.toastError('The film\u2019s region could not be changed.'); return; }
+  if (!setFilmRegion(el.getAttribute('data-region'), p.id)) { StudioUI.toastError('The film\u2019s region could not be changed.'); return; }
   render();
 });
 

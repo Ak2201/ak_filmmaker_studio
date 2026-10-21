@@ -94,7 +94,8 @@ import { h, delegate, commitMain } from '../lib/dom.js';
 import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
 import { aiPill } from '../ui/ai-pill.js';
-import { REGIONS, region, chosenRegion, detectRegion, setRegion, currentProjectPrefs, setProjectRegion } from '../lib/region.js';
+import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
+import { filmRegion, setFilmRegion } from '../lib/film-region.js';   // = region.js currentProjectPrefs / setProjectRegion; film-region.js says why
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
 import Account from '../lib/account.js';   // CORE: auth.js imports it too
@@ -303,11 +304,11 @@ function renderRegion() {
      device's mode because the two are different questions: the device
      decides what the map offers, the film decides its paperwork and
      whether its pages show the India-only material. Set on a click only
-     (setProjectRegion); a film that predates regions reads as India
+     (setFilmRegion); a film that predates regions reads as India
      paperwork with its content following this device. */
   const proj = Store.currentProject();
   if (proj) {
-    const pp = currentProjectPrefs();
+    const pp = filmRegion();
     const filmNow = pp.explicit ? pp.region : '';
     sec.append(choices('This film', 'data-project-region-choice', filmNow, [
       { value: 'IN', label: 'India', title: 'Rupees, A4 and Indian dates on the paperwork, with the India-only checks.' },
@@ -1180,7 +1181,7 @@ delegate(document, 'click', '[data-region-choice]', (e, el) => {
    on the `region:project` notice, so a redraw of this page is enough. */
 delegate(document, 'click', '[data-project-region-choice]', (e, el) => {
   const want = el.getAttribute('data-project-region-choice');
-  const after = setProjectRegion(want);
+  const after = setFilmRegion(want);
   if (!after) { StudioUI.toastError('The film’s region could not be changed.'); return; }
   render();
 });

@@ -3,9 +3,9 @@
    ------------------------------------------------------------
    REGION-CONTENT (docs/US-MARKET-PLAN.md §E). One attribute on <html>,
    `data-no-india`, present while the open film's prefs say
-   showIndiaContent is false (src/lib/region-core.js projectPrefs: the
-   film's own region, or the device's market for a film that predates
-   regions). india-content.css hides, under it:
+   showIndiaContent is false (src/lib/film-region.js, the rule of
+   region-core.js projectPrefs(): the film's own region, or the device's
+   market for a film that predates regions). india-content.css hides, under it:
 
      [data-india-only]          anything a module marks (the Tamil
                                 preview, Tanglish help, Tamil dictation)
@@ -31,20 +31,20 @@
    ============================================================ */
 import '../styles/india-content.css';
 import Store from '../lib/store.js';
-import { currentProjectPrefs } from '../lib/region.js';
+import { filmRegion } from '../lib/film-region.js';
 
 /** Stamp or clear `data-no-india` for the open film. Answers whether
  *  India-only material shows. */
 export function markIndiaContent() {
   let show = true;
-  try { show = currentProjectPrefs().showIndiaContent !== false; } catch (e) { /* India */ }
+  try { show = filmRegion().showIndiaContent !== false; } catch (e) { /* India */ }
   try { document.documentElement.toggleAttribute('data-no-india', !show); } catch (e) { /* no DOM */ }
   return show;
 }
 
 /** True when the open film shows India-only material. */
 export const indiaContentShown = () => {
-  try { return currentProjectPrefs().showIndiaContent !== false; } catch (e) { return true; }
+  try { return filmRegion().showIndiaContent !== false; } catch (e) { return true; }
 };
 
 if (typeof document !== 'undefined') {

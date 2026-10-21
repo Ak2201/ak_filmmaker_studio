@@ -33,7 +33,7 @@ import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { LINK_KINDS, guessKind, linkText } from '../lib/links.js';
 import { listScenes } from '../lib/scenes.js';
-import { currentProjectPrefs } from '../lib/region.js';
+import { filmRegion } from '../lib/film-region.js';   // = region.js currentProjectPrefs(); film-region.js says why
 import { loadScript } from '../lib/script.js';
 import {
   blueprintSays, projectFormat, TABS, tabFromHash as tabOf, tabForKey, shownItems, TOOL_LINK, fmtChecked, hostOf,
@@ -339,7 +339,7 @@ function certificationPanel(build) {
      three different procedures, and writing a plausible-looking
      checklist for one of them from memory is exactly the kind of
      confident wrongness this file's sources exist to prevent. */
-  const prefs = currentProjectPrefs();
+  const prefs = filmRegion();
   if (!prefs.showIndiaContent) {
     /* The film's own region decides when it has one (REGION-CONTENT);
        a film that predates regions follows the device, as before. */

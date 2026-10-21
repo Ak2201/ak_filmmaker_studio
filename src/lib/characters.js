@@ -62,6 +62,7 @@ import { DIALOGUE_WPS } from './screenplay-analysis.js';
 import { readFields, writeFields } from './blueprint-store.js';
 import Store from './store.js';
 import BIBLE from '../data/story-bible.json';
+import { newId } from './record-id.js';
 
 export const CHARACTERS_KEY = 'fms_characters_v1';
 
@@ -74,10 +75,7 @@ export const CHARACTER_FIELDS = ['age', 'want', 'need', 'arc', 'voice',
 export const ROLES = BIBLE.characterRoles.map((r) => r.id);
 export const roleLabel = (id) => (BIBLE.characterRoles.find((r) => r.id === id) || {}).label || '';
 
-const uid = () =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'ch_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+const uid = () => newId('ch');
 
 /** A name as the join compares it. */
 export const normName = (s) => cueSpeaker(s);

@@ -29,6 +29,7 @@
    ============================================================ */
 import RULES from '../data/cbfc-rules.json';
 import { matchScenes } from './screenplay-analysis.js';
+import { escapeRe as esc } from './script-replace.js';
 
 export const RATINGS = RULES.ratings.map((r) => r.id);
 export const DISCLAIMER = RULES.disclaimer;
@@ -49,7 +50,6 @@ export const higherRating = (a, b) => (ratingRank(b) > ratingRank(a) ? b : a);
    word. A trailing * takes any ending; a space is any run of white
    space, so a phrase broken across a line still matches. */
 const WORDCH = '[\\p{L}\\p{M}\\p{N}]';
-const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function termSource(term) {
   const t = String(term || '').trim();
   if (!t) return '';

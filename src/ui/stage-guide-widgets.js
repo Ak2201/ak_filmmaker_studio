@@ -35,7 +35,7 @@
      and the festival tracker (its own key, fms_festivals_v1). The
      report says so.
    ============================================================ */
-import { h } from '../lib/dom.js';
+import { h, esc } from '../lib/dom.js';
 import { paperTextarea } from './paper-field.js';
 import { parseNum, fmtINR } from '../lib/money.js';
 import shortData from '../data/steps.short.json';
@@ -390,7 +390,6 @@ export function scriptWidget(ctx) {
    had on the blueprint (the guide renames ids to keep the page's own
    unique); `get(key)` is the field's current value. */
 const num = (n) => String(n);
-const escapeText = (s) => String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 
 const PACING = [
   ['01', 'Open', 30, 130, 1], ['02', 'Theme', 75, 110, 1], ['03', 'Setup', 125, 95, 1],
@@ -453,7 +452,7 @@ function drawCharMap(q, get) {
     s += `<text class="char-role" x="${p.x}" y="${p.y - 6}">${p.label}</text>`;
     const nameCls = p.name ? (key === 'protagonist' ? 'char-name protagonist' : 'char-name') : 'char-name empty';
     const shown = p.name ? (p.name.length > 14 ? p.name.slice(0, 14) + '…' : p.name) : '— empty —';
-    s += `<text class="${nameCls}" x="${p.x}" y="${p.y + 16}">${escapeText(shown)}</text>`;
+    s += `<text class="${nameCls}" x="${p.x}" y="${p.y + 16}">${esc(shown)}</text>`;
   }
   svg.innerHTML = s;
 }

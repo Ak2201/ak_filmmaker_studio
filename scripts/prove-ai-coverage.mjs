@@ -16,6 +16,13 @@
      · a voice-check rewrite lands in `alts`, never in `text`
      · the logline workshop (in the Desk) replaces nothing until a
        variant is accepted, and Undo restores the writer's line
+     · the AUDIENCE TEST from Script analysis (screenplay.html#analysis,
+       the 'audience-test' Desk task): nothing sent before Run; Stop
+       mid-run keeps the parts screened as a checkpoint; Resume sends
+       only the rest and the verdict request; nothing is stored as a
+       result before Accept; Accept draws the panel's curve over the
+       tension chart; Undo puts the partial back exactly; a stored run
+       from another draft is labelled "from an earlier draft", not hidden
      · no horizontal overflow at 390 and 1280, in both themes
 
    Run:  npm run build:verify && npm run prove:ai-coverage
@@ -85,6 +92,10 @@ function makeScript(nScenes) {
 /* ---- the fake API ----------------------------------------------- */
 const requests = [];
 let failPart2Once = false;
+/* The audience test's part 2 is HELD until the proof presses Stop, so
+   the Stop lands mid-run on a request in flight, deterministically. */
+let holdAudPart2 = false;
+let releaseAud = null;
 function answer(user) {
   const scenes = [...user.matchAll(/--- SCENE (\S+) ---/g)].map((m) => m[1]);
   if (scenes.length) {
@@ -134,6 +145,43 @@ function answer(user) {
       variants: [1, 2, 3, 4, 5].map((i) => ({ text: 'Variant ' + i + ': to feed his mother, a son must leave her.', angle: 'angle ' + i }))
     };
   }
+  /* The audience test (src/lib/audience-model.js): a part names the
+     panel by id and its scenes as "=== SCENE n — heading ===". Viewer
+     2 walks out at scene 5; viewer 1 carries one fabricated quote per
+     part, which must be stripped and counted. */
+  const panelIds = (from, to) => {
+    const a = user.indexOf(from);
+    if (a < 0) return [];
+    const b = user.indexOf(to, a);
+    return [...user.slice(a, b < 0 ? undefined : b).matchAll(/^- ([a-z0-9-]+) \| /gm)].map((m) => m[1]);
+  };
+  const audScenes = [...user.matchAll(/^=== SCENE (\S+) — /gm)].map((m) => m[1]);
+  if (audScenes.length && /THE PANEL \(id \| who/.test(user)) {
+    const ids = panelIds('THE PANEL (id', 'THE SCENES IN THIS PART');
+    return {
+      viewers: ids.map((id, k) => {
+        const out = k === 1 && audScenes.includes('5') ? '5' : '';
+        const scored = out ? audScenes.slice(0, audScenes.indexOf(out) + 1) : audScenes;
+        return {
+          viewer: id,
+          scores: scored.map((n) => ({ scene: n, score: ((k + Number(n)) % 5) - 2 })),
+          moments: [
+            { scene: audScenes[0], kind: 'hooked', quote: 'Anbu counts coins on the floor.', note: 'The coins got me.' },
+            k === 0 ? { scene: audScenes[0], kind: 'lost', quote: 'Naan kandippa jeyippen da', note: 'Fabricated.' } : null
+          ].filter(Boolean),
+          state: 'Still watching after scene ' + scored[scored.length - 1] + '.',
+          walkedOutAt: out
+        };
+      })
+    };
+  }
+  if (/^The test screening of/m.test(user)) {
+    const ids = panelIds('THE PANEL:', 'SCORES PER SCENE');
+    return {
+      verdicts: ids.map((id) => ({ viewer: id, verdict: 'recommend', hooked: '1', lost: '', voice: 'I would watch it again.' })),
+      panel: [{ scene: '5', note: 'The panel split early.' }]
+    };
+  }
   return { ok: true };
 }
 
@@ -148,6 +196,14 @@ async function route(r) {
   if (failPart2Once && /This is part 2 of/.test(user)) {
     failPart2Once = false;
     return r.fulfill({ status: 529, contentType: 'application/json', body: JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }) });
+  }
+  if (holdAudPart2 && /— part 2 of/.test(user) && /THE PANEL \(id/.test(user)) {
+    holdAudPart2 = false;
+    await new Promise((res) => { releaseAud = res; });
+    /* By now the page has aborted the request; answering it is a no-op
+       or a throw, and either is the point. */
+    try { await r.fulfill({ status: 200, contentType: 'text/event-stream', body: provider === 'anthropic' ? anthropicSSE(answer(user)) : geminiSSE(answer(user)) }); } catch (e) { /* aborted */ }
+    return;
   }
   const json = answer(user);
   return r.fulfill({ status: 200, contentType: 'text/event-stream', body: provider === 'anthropic' ? anthropicSSE(json) : geminiSSE(json) });
@@ -384,6 +440,143 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink',
   const ov2 = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check(tag + 'no horizontal overflow on the logline step', ov2 <= 0, ov2);
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'logline-' + width + '-' + theme + '.png'), fullPage: true });
+
+
+  /* ---- screenplay.html#analysis: the audience test ---------------- */
+  {
+    const docsOf = () => page.evaluate(() => JSON.parse(localStorage.getItem('fms_script_v1')).documents
+      .filter((d) => d.audience).map((d) => ({ id: d.id, status: d.audience.status, parts: d.audience.checkpoint ? d.audience.checkpoint.parts.length : null, sig: d.audience.sig, json: JSON.stringify(d) })));
+    await page.goto(BASE + '/screenplay.html#analysis', { waitUntil: 'networkidle' });
+    const APILL = '.sa-head-acts .ai-pill';
+    await page.waitForSelector(APILL, { timeout: 15000 });
+    await page.waitForTimeout(400);
+    check(tag + 'audience: no curve is drawn before a test is kept', await page.locator('.sa-aud-block').count() === 0);
+    const openAudience = async () => {
+      await page.locator(APILL).first().scrollIntoViewIfNeeded().catch(() => {});
+      await page.locator(APILL).first().click();
+      await page.locator('.ai-pill-menu [data-task="audience-test"]').click();
+      await page.waitForFunction(() => {
+        const d = document.querySelector('aside.ai-desk');
+        return d && !d.hidden && d.getBoundingClientRect().width > 0 && d.querySelector('.ai-desk-input');
+      }, null, { timeout: 10000 });
+      await page.waitForTimeout(300);
+    };
+    requests.length = 0;
+    await openAudience();
+    check(tag + 'audience: the Script analysis pill opens the Desk on Audience test', /Audience test/.test(await deskSays(page, '.ai-desk-title')));
+    const ain = await page.locator('aside.ai-desk .ai-desk-input').inputValue();
+    check(tag + 'audience: "What goes in" names the panel, the parts and the simulated line',
+      /8 simulated viewers/.test(ain) && /in 3 parts/.test(ain) && /Simulated by a model, not by real viewers/.test(ain) && /The first part sends/.test(ain), ain.slice(0, 200));
+    check(tag + 'audience: opening the Desk sent nothing', requests.length === 0, requests.length);
+
+    /* Run, and Stop while part 2 is in flight */
+    holdAudPart2 = true;
+    await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+    for (let i = 0; i < 150 && !releaseAud; i++) await page.waitForTimeout(100);
+    check(tag + 'audience: part 2 went out after part 1', !!releaseAud && requests.length === 2 && /— part 1 of 3/.test(requests[0].user), requests.map((r) => r.user.slice(0, 40)));
+    await page.click('aside.ai-desk [data-action="ai-desk-stop"]');
+    await page.waitForFunction(() => !document.querySelector('aside.ai-desk [data-action="ai-desk-stop"]'), null, { timeout: 15000 }).catch(() => {});
+    if (releaseAud) { releaseAud(); releaseAud = null; }
+    await page.waitForTimeout(300);
+    check(tag + 'audience: Stop says it stopped', /Stopped/.test(await page.locator('aside.ai-desk').textContent()));
+    const cp = await docsOf();
+    check(tag + 'audience: Stop leaves part 1 as a checkpoint in the script blob', cp.length === 1 && cp[0].status === 'partial' && cp[0].parts === 1, cp.map((d) => [d.status, d.parts]));
+    check(tag + 'audience: no curve is drawn from a partial run', await page.locator('.sa-aud-block').count() === 0);
+    await page.click('aside.ai-desk [data-action="ai-desk-skip"]');
+    await page.waitForTimeout(300);
+
+    /* Resume: parts 2 and 3 and the verdict, never part 1 again */
+    requests.length = 0;
+    await openAudience();
+    const ain2 = await page.locator('aside.ai-desk .ai-desk-input').inputValue();
+    check(tag + 'audience: the Desk says part 1 is not sent again', /1 of 3 parts are already screened/.test(ain2) && /same panel as the unfinished run/.test(ain2), ain2.slice(0, 260));
+    await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+    await page.waitForSelector('aside.ai-desk .ai-desk-item input[type="checkbox"]', { timeout: 20000 });
+    check(tag + 'audience: Resume sent parts 2 and 3 and the verdict request only',
+      requests.length === 3 && !requests.some((r) => /— part 1 of/.test(r.user)) && /^The test screening of/m.test(requests[2].user), requests.map((r) => r.user.slice(0, 40)));
+    check(tag + 'audience: the key went in a header, never in a URL',
+      requests.every((r) => r.key === KEY[provider] && !r.url.includes(KEY[provider]) && !/[?&]key=/.test(r.url)));
+    const anote = await deskSays(page, '.ai-desk-note');
+    check(tag + 'audience: the note says simulated and counts the stripped quotes', /Simulated by a model/.test(anote) && /3 quotes were removed/.test(anote), anote);
+    const arows = await page.locator('aside.ai-desk .ai-desk-item').count();
+    check(tag + 'audience: one row per viewer and the panel rows (' + arows + ')', arows >= 9, arows);
+    const pre = await docsOf();
+    check(tag + 'audience: nothing is stored as a result before Accept', pre.length === 1 && pre[0].status === 'partial' && pre[0].parts === 3, pre.map((d) => [d.status, d.parts]));
+    const partialJSON = pre[0] && pre[0].json;
+
+    /* Accept: one finished document, and the curve on the chart */
+    await page.click('aside.ai-desk [data-action="ai-desk-accept-all"]');
+    await page.waitForSelector('.sa-aud-block', { timeout: 15000 });
+    const done = await docsOf();
+    check(tag + 'audience: Accept turns the partial into one finished document', done.length === 1 && done[0].status === 'done' && done[0].id === pre[0].id, done.map((d) => [d.status, d.id]));
+    const doneJSON = done[0] && done[0].json;
+    const keys = await page.evaluate(() => Object.keys(localStorage).filter((k) => /audience/i.test(k)));
+    check(tag + 'audience: no new storage key', keys.length === 0, keys);
+    const mean = await page.locator('.sa-aud-mean').getAttribute('d');
+    check(tag + 'audience: the panel mean is a second line over the tension curve', !!mean && mean.length > 20 && await page.locator('.pc-line').count() === 1, (mean || '').slice(0, 40));
+    check(tag + 'audience: the simulated line is on the chart', /Simulated by a model, not by real viewers/.test(await page.locator('.sa-aud-block').textContent()));
+    check(tag + 'audience: the walkout is marked on the axis', await page.locator('.sa-walk').count() === 1
+      && /walked out at Sc 5/.test(await page.locator('.sa-walk').first().getAttribute('title')));
+    await page.waitForTimeout(500);
+    check(tag + 'audience: a run of THIS draft is not labelled earlier', await page.locator('.sa-aud-draft').evaluate((e) => e.hidden));
+    const vpath = page.locator('.sa-aud-viewer').first();
+    check(tag + 'audience: viewer lines start off', (await vpath.getAttribute('visibility')) === 'hidden');
+    await page.locator('.sa-aud-chip input').first().check();
+    check(tag + 'audience: ticking a viewer draws their line', (await vpath.getAttribute('visibility')) === 'visible');
+    await page.locator('.sa-aud-scrub').focus();
+    await page.keyboard.press('Home');
+    const readRows = await page.locator('.sa-aud-read .sa-aud-row').count();
+    const at = await page.locator('.sa-aud-read .sa-aud-at').textContent();
+    const moment = await page.locator('.sa-aud-read .sa-aud-moment').first().textContent();
+    check(tag + 'audience: focusing the chart reads out every viewer at a scene', readRows === 8 && /^Sc 1/.test(at) && /Hooked: The coins got me/.test(moment), [readRows, at, moment]);
+    for (let k = 0; k < 6; k++) await page.keyboard.press('ArrowRight');
+    const gone = await page.locator('.sa-aud-read .sa-aud-row.is-gone').count();
+    check(tag + 'audience: past the walkout, the viewer who left is shown as gone', gone === 1 && /^Sc 7/.test(await page.locator('.sa-aud-read .sa-aud-at').textContent()), gone);
+    const box = await page.locator('.sa-aud-scrub').boundingBox();
+    await page.mouse.move(box.x + box.width * 0.98, box.y + box.height / 2);
+    check(tag + 'audience: hovering the end of the chart reads the last scene', /^Sc 40/.test(await page.locator('.sa-aud-read .sa-aud-at').textContent()));
+    const aov = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    check(tag + 'audience: no horizontal overflow on Script analysis with the curve', aov <= 0, aov);
+    if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'audience-' + width + '-' + theme + '.png'), fullPage: true });
+
+    /* Undo: the partial comes back exactly, and the curve goes */
+    await page.locator('.toast-action', { hasText: 'Undo' }).last().click();
+    await page.waitForTimeout(800);
+    const undone = await docsOf();
+    check(tag + 'audience: Undo puts the partial back byte for byte', undone.length === 1 && undone[0].json === partialJSON, undone.map((d) => [d.status, d.parts]));
+    check(tag + 'audience: Undo takes the curve off the chart', await page.locator('.sa-aud-block').count() === 0);
+
+    /* A kept run from another draft is labelled, never hidden. The
+       document is put back and the script edited with the editor page
+       CLOSED, so nothing in its memory writes over either. (Closed
+       without beforeunload: the leave prompt rightly warns about a
+       script with no draft, and that warning is not what this tests.) */
+    await page.close({ runBeforeUnload: false });
+    const p2 = await ctx.newPage();
+    p2.on('pageerror', (e) => errors.push(e.message));
+    await p2.route(/^https:\/\/(api\.anthropic\.com|generativelanguage\.googleapis\.com)\//, route);
+    await p2.route(SB + '/**', handle);
+    await p2.route((u) => !u.href.startsWith(BASE) && !u.href.startsWith(SB) && !/anthropic\.com|googleapis\.com\/v1beta/.test(u.href), (r) => r.abort());
+    await p2.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
+    await p2.evaluate((json) => {
+      const b = JSON.parse(localStorage.getItem('fms_script_v1'));
+      b.documents = b.documents.filter((d) => !d.audience).concat([JSON.parse(json)]);
+      b.elements[1].text += ' A new line in a later draft.';
+      localStorage.setItem('fms_script_v1', JSON.stringify(b));
+    }, doneJSON);
+    requests.length = 0;
+    await p2.goto(BASE + '/screenplay.html#analysis', { waitUntil: 'networkidle' });
+    await p2.waitForSelector('.sa-aud-block', { timeout: 15000 });
+    await p2.waitForFunction(() => { const e = document.querySelector('.sa-aud-draft'); return e && !e.hidden; }, null, { timeout: 10000 }).catch(() => {});
+    check(tag + 'audience: a run of an earlier draft is drawn and labelled "from an earlier draft"',
+      await p2.locator('.sa-aud-draft').evaluate((e) => !e.hidden && e.textContent === 'from an earlier draft') && !!(await p2.locator('.sa-aud-mean').getAttribute('d')));
+    const still = await p2.evaluate(() => JSON.parse(localStorage.getItem('fms_script_v1')).documents.filter((d) => d.audience).map((d) => JSON.stringify(d)));
+    check(tag + 'audience: opening the tab deleted and rewrote nothing', still.length === 1 && still[0] === doneJSON, still.length);
+    check(tag + 'audience: drawing the stored run sent nothing', requests.length === 0, requests.length);
+    const ov3 = await p2.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    check(tag + 'audience: no horizontal overflow with the earlier-draft label', ov3 <= 0, ov3);
+    if (SHOTS) await p2.screenshot({ path: path.join(SHOTS, 'audience-earlier-' + width + '.png'), fullPage: true });
+  }
 
   check(tag + 'no page errors', errors.length === 0, errors);
   await ctx.close();

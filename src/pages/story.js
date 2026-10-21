@@ -864,8 +864,23 @@ function renderAI(s) {
   const sec = h('div.st-ai');
   sec.append(h('h2.bd-h2', { text: 'Map the beats with AI' }));
   sec.append(h('p.bd-sub', { text: 'The model quotes the passage it thinks performs each beat. A quote that is not word for word in your synopsis is dropped and counted, and a passage you already tagged in this framework is never moved.' }));
+  /* Quick mode of the Audience test (docs/AUDIENCE-TEST-PLAN.md phase
+     4): the AI Desk's 'audience-quick' task reads the synopsis and the
+     beat sheet in one request and scores per beat. A read — it keeps
+     nothing — and the task itself answers "nothing to screen yet" in
+     a sentence, so the pill shows whenever there is a synopsis or a
+     written step. Its ctx is functions, so the Desk always reads the
+     story as it is now. 'audience-ask' sits beside it in the menu: a
+     follow-up question to one viewer of the last run. */
+  const hasSteps = (s.outline || []).some((x) => String(x.text || '').trim());
+  const audience = (s.source.trim() || hasSteps) ? aiPill({
+    label: 'Audience test — story',
+    tasks: [{ id: 'audience-quick', label: 'Audience test — story' }, { id: 'audience-ask', label: 'Ask a viewer' }],
+    ctx: { getStory: story, format: projectFormat }
+  }) : null;
   if (!s.source.trim()) {
     sec.append(h('p.st-muted', { text: 'No synopsis yet. Write, paste or import one first; the model reads only what is on this page.' }));
+    if (audience) sec.append(h('div.st-ai-row', {}, [audience]));
     return sec;
   }
   /* The AI Desk's 'story-map' task: the same draftBeatMap(), shown as a
@@ -876,7 +891,7 @@ function renderAI(s) {
     label: 'Map ' + fw.short + ' beats', tasks: ['story-map'],
     ctx: { identity: 'map:' + fw.id, getStory: story, commit, say: (m) => StudioUI.toast(m, { type: 'info' }) }
   });
-  if (pill) sec.append(h('div.st-ai-row', {}, [pill]));
+  if (pill || audience) sec.append(h('div.st-ai-row', {}, [pill, audience].filter(Boolean)));
   return sec;
 }
 

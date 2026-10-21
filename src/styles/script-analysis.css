@@ -60,6 +60,90 @@
 .sa-verdict { margin: 0; color: var(--ink-body); font-size: var(--t-ui); }
 .sa-verdict b { color: var(--ink); }
 
+/* ---- the audience test over the curve (docs/AUDIENCE-TEST-PLAN.md §7)
+   A second reading on its own −2..+2 scale, so it takes a second axis
+   on the right. The mean is the --visualize hue — a token already in
+   the palette, apart from the violet tension line and the amber/red of
+   the scene dots; viewer lines are the same hue, thin and faint, off
+   until the writer ticks one. No colour is new. */
+.pc-chart.sa-chart-aud { grid-template-columns: auto minmax(0, 1fr) auto; }
+.sa-aud-axis { text-align: left; color: var(--visualize-deep); }
+.sa-aud-zero { stroke: var(--visualize); stroke-width: 1px; stroke-dasharray: 1 5; opacity: .5; vector-effect: non-scaling-stroke; }
+.sa-aud-mean { fill: none; stroke: var(--visualize); stroke-width: 2.5px; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sa-aud-viewer { fill: none; stroke: var(--visualize); stroke-width: 1px; opacity: .55; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sa-key-aud::before { width: 18px; border-top: 2px solid var(--visualize); }
+/* With no tension curve to sit on (plan §6: a kept run is never hidden),
+   the audience chart is the plot and its own right-hand scale. */
+.pc-chart.sa-chart-aud-only { grid-template-columns: minmax(0, 1fr) auto; }
+/* Viewer lines are one hue, so each has its own dash pattern, and its
+   chip carries the same pattern as a swatch: the key ties line to name.
+   Hovering or focusing a chip brings its line forward (.is-hi). */
+.sa-aud-viewer.is-s1 { stroke-dasharray: 8 4; }
+.sa-aud-viewer.is-s2 { stroke-dasharray: 2 3; }
+.sa-aud-viewer.is-s3 { stroke-dasharray: 10 3 2 3; }
+.sa-aud-viewer.is-s4 { stroke-dasharray: 4 4; }
+.sa-aud-viewer.is-s5 { stroke-dasharray: 14 4 2 4 2 4; }
+.sa-aud-viewer.is-hi { opacity: 1; stroke-width: 2.5px; }
+.sa-aud-swatch { flex: none; width: 22px; height: 2px; background: var(--visualize); }
+.sa-aud-swatch.is-s1 { background: repeating-linear-gradient(to right, var(--visualize) 0 8px, transparent 8px 12px); }
+.sa-aud-swatch.is-s2 { background: repeating-linear-gradient(to right, var(--visualize) 0 2px, transparent 2px 5px); }
+.sa-aud-swatch.is-s3 { background: repeating-linear-gradient(to right, var(--visualize) 0 10px, transparent 10px 13px, var(--visualize) 13px 15px, transparent 15px 18px); }
+.sa-aud-swatch.is-s4 { background: repeating-linear-gradient(to right, var(--visualize) 0 4px, transparent 4px 8px); }
+.sa-aud-swatch.is-s5 { background: repeating-linear-gradient(to right, var(--visualize) 0 14px, transparent 14px 18px, var(--visualize) 18px 20px, transparent 20px 24px); }
+
+/* walkouts sit ON the scene axis: a mark under the plot's bottom edge */
+.sa-walks { position: absolute; left: 0; right: 0; bottom: 0; height: 0; pointer-events: none; }
+.sa-walk {
+  position: absolute; top: 0; width: 10px; height: 10px; margin-left: -5px;
+  background: var(--status-danger);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.sa-walk-n {
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  font-family: var(--f-mono); font-size: var(--t-micro); line-height: 1.2; color: var(--ink-muted);
+}
+
+/* the scrubber: one slider over the whole plot */
+.sa-aud-scrub { position: absolute; inset: 0; cursor: crosshair; touch-action: pan-y; border-radius: inherit; }
+.sa-aud-scrub:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.sa-aud-cursor { position: absolute; top: 0; bottom: 0; width: 1px; margin-left: -0.5px; background: var(--visualize); opacity: .8; pointer-events: none; }
+.sa-aud-cursor[hidden] { display: none; }
+
+.sa-aud-block { margin-top: var(--s3); padding: var(--s3); display: grid; gap: var(--s2); background: var(--surface-rail); border: 1px solid var(--border-hair); border-radius: var(--sk-field-radius, var(--radius)); min-width: 0; }
+.sa-aud-block > * { min-width: 0; margin: 0; }
+.sa-aud-meta { color: var(--ink-body); font-size: var(--t-small); overflow-wrap: anywhere; }
+.sa-aud-meta b { color: var(--ink); }
+.sa-aud-draft {
+  display: inline-block; margin-left: var(--s2); padding: 0 var(--s1h);
+  border: 1px solid var(--status-warning); border-radius: var(--radius-pill);
+  color: var(--ink); font-size: var(--t-micro); font-family: var(--f-mono); text-transform: uppercase; letter-spacing: .04em;
+}
+.sa-aud-draft[hidden] { display: none; }
+.sa-aud-who { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
+.sa-aud-chip {
+  display: inline-flex; align-items: center; gap: var(--s1h); min-width: 0; max-width: 100%;
+  padding: var(--s-half) var(--s2); border: 1px solid var(--border-hair); border-radius: var(--radius-pill);
+  font-size: var(--t-tiny); color: var(--ink-body); cursor: pointer;
+}
+.sa-aud-chip span { overflow-wrap: anywhere; }
+.sa-aud-chip input { margin: 0; accent-color: var(--visualize); }
+.sa-aud-chip:has(input:checked) { border-color: var(--visualize); color: var(--ink); }
+.sa-aud-hint { margin: 0; font-size: var(--t-tiny); color: var(--ink-muted); }
+.sa-aud-read { min-width: 0; }
+.sa-aud-at { margin: 0 0 var(--s1); color: var(--ink-body); font-size: var(--t-small); overflow-wrap: anywhere; }
+.sa-aud-at b { color: var(--ink); font-family: var(--f-mono); }
+.sa-aud-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.sa-aud-row { display: grid; grid-template-columns: minmax(8rem, 13rem) 3rem minmax(0, 1fr); gap: var(--s2); align-items: baseline; font-size: var(--t-tiny); color: var(--ink-body); }
+.sa-aud-row.is-gone { color: var(--ink-muted); }
+.sa-aud-name { color: var(--ink); overflow-wrap: anywhere; }
+.sa-aud-row.is-gone .sa-aud-name { color: var(--ink-muted); }
+.sa-aud-score { font-family: var(--f-mono); text-align: right; }
+.sa-aud-score.is-up { color: var(--ok-deep); }
+.sa-aud-score.is-down { color: var(--danger-deep, var(--ink)); }
+.sa-aud-moment { min-width: 0; overflow-wrap: anywhere; }
+.sa-aud-moment b { color: var(--ink); font-weight: 600; }
+.sa-aud-moment q { margin-left: var(--s1); font-family: var(--f-script); color: var(--ink); }
+
 @media (max-width: 1099px) {
   .sa-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -71,4 +155,7 @@
   .sa-cast-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s1) var(--s2); }
   .sa-track { grid-column: 1 / -1; }
   .sa-wide { min-width: 0; }
+  .sa-aud-row { grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--s2); }
+  .sa-aud-moment { grid-column: 1 / -1; }
+  .sa-aud-moment.is-quiet:empty { display: none; }
 }

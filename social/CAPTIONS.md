@@ -29,18 +29,18 @@ The 40px one is what people actually see in feed.
 FilmMakerStudio · Filmmaking
 ```
 
-**Bio** (128 characters):
+**Bio** (138 characters; Instagram allows 150):
 
 ```
 Learn filmmaking by making one.
 Script · schedule · budget · call sheets — one desk, in your browser.
-Chennai-made. Pay once.
+Chennai-made. Less than a tea a day.
 ```
 
 Alternates:
 
 - *Beginner-first:* You have never made a film. Start one tonight. 11 steps from an idea to a short that's ready to submit. Made in Chennai.
-- *Tool-first:* A working desk for independent filmmakers. Story → screenplay → schedule → set → delivery. Works offline. Pay once, no subscription.
+- *Tool-first:* A working desk for independent filmmakers. Story → screenplay → schedule → set → delivery. Works offline. A year for less than a cup of tea a day, nothing renews by itself.
 
 **Link:** `https://filmmakerstudio.in/start` — point at `/start`, **not** the
 root. The root sits behind the invite gate and bounces a stranger straight
@@ -81,7 +81,7 @@ Post these first, in this order: announce → explain → convert.
 > Made for a first film in Tamil Nadu — Chennai rates, crew terms, CBFC rules,
 > festival deadlines. Tamil dialogue, English slugs.
 >
-> Pay once. No subscription.
+> A year for less than a cup of tea a day. Nothing renews by itself.
 
 ---
 

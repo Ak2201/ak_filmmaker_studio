@@ -63,7 +63,7 @@ export function buildInvoice(inv) {
         h('th.inv-amt', { text: 'Rate' }), h('th.inv-amt', { text: 'Amount' })])]),
       h('tbody', {}, [h('tr', {}, [
         h('td', {}, [h('div', { text: `${BRAND.name} — ${inv.plan_name} plan` }),
-          h('div.inv-sub', { text: 'One-time purchase · no renewal or subscription' })]),
+          h('div.inv-sub', { text: '1-year plan · paid once, no automatic renewal' })]),
         h('td.inv-amt', { text: '1' }), h('td.inv-amt', { text: amt }), h('td.inv-amt', { text: amt })])]),
       h('tfoot', {}, [h('tr', {}, [h('th', { colspan: '3', text: 'Total paid' }), h('th.inv-amt', { text: amt })])])
     ]),

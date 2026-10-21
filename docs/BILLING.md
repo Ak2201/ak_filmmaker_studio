@@ -1332,3 +1332,44 @@ reference project_id is ambiguous") on every call — and §51 repairs it.
 6. Do not run `node scripts/deploy-billing.mjs --sql` against this project: it
    now refuses (§45 has run), because replaying §16 onward would undo §46–§51.
 
+## 22. Plans are a year, renewed by buying again (schema §52, 21 Oct 2026). NOT YET RUN LIVE.
+
+The owner reversed §18 ("a plan, for good"). A paid plan now lasts **365 days**.
+The prices are the same rows — Basic ₹599, Intermediate ₹799, Pro ₹999 — read
+as a year, and the §30 rise on 31 Oct applies to the yearly price. The site
+markets them by the day: `perDay()` in `src/lib/plans.js` (₹1.64 / ₹2.19 /
+₹2.74) and the build stamps `{{fms:price.<id>.day}}` / `{{fms:price.from.day}}`.
+
+- **Nothing renews by itself.** No mandate, no subscription. Buying the SAME
+  plan again is a renewal: full price, no credit, and the new year starts where
+  the running one ends (`apply_plan` stacks). The card says "Valid until …",
+  turns to "Ends in N days" inside 30 days, and the rail shows PLAN ENDS IN in
+  the last 14 (`trial-band.js`).
+- **Upgrade** starts the higher plan's year today; the unused part of the
+  current year is credit (`paid_credit_paise`: value × time left / length).
+  **Downgrade** is refused while a year runs (hint `downgrade`) and allowed,
+  with no credit, after it ends.
+- **A refund takes off that payment's own year** (`ends_at − starts_at`), so
+  refunding a renewal leaves the first year; §34's fresh trial follows only
+  when no paid time is left.
+- **Grants are unchanged.** The console grants for good (`p_days` 0); a timed
+  grant honours its days.
+- **The backfill (owner's decision):** every account holding a paid plan for
+  good on the strength of a real payment gets one year from the instant §52
+  runs (`billing_settings.yearly_switch_at`, once). Grants stay for good.
+- **Order in between is safe.** The deployed `rzp-order` sends `'lifetime'`
+  until it is redeployed; `create_pending_payment` records that as a year.
+
+**Owner steps** (`docs/LIVE-STEPS-2026-10-21.md` is the step-by-step).
+1. Run §52 in the SQL editor — after §51 — verifying the checksum first:
+   `shasum -a 256 supabase/schema/schema-52-yearly-plans.sql` must read
+   `6c1a80996bc1d6df5d321ad4dc1e7830c61812d36e27a52b0a7f74f42318945f`.
+2. Redeploy all four functions with the CLI (receipt wording and periods):
+   `npx --yes supabase@latest functions deploy rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz`.
+3. Read back with the checks at 52.9 in the section file.
+4. Tell the existing buyers (draft in the live-steps file).
+5. Only then release the client to `main`: a client that sells "a year"
+   against a database that still grants "for good" would mis-sell.
+
+Not built: an expiry reminder e-mail. It needs a scheduled job and Resend; the
+in-app notices cover it until then.

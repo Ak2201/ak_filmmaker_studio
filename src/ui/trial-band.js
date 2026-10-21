@@ -23,6 +23,12 @@
    region speaks only at ten minutes, one minute and expiry. Urgency
    in the last ten minutes is colour only; the words never change.
 
+   THE YEAR'S END TOO (schema section 52). A plan is a year now, renewed
+   by buying it again, and nothing is charged automatically — so the same
+   block says "PLAN ENDS IN 9 days · RENEW" in the last RENEW_DAYS of a
+   paid year (never for a grant, which has no end). In days, not seconds:
+   a renewal is a decision, not a countdown. Nothing is stored.
+
    THE CLOCK IS NOT THE AUTHORITY. This only renders. When the time is
    up it asks plan-gate to re-read billing_status() and the SERVER
    decides; the wall follows from that answer, not from this timer.
@@ -46,6 +52,25 @@ let lastSecs = null;  // for announcing a threshold only when it is CROSSED
 const now = () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now());
 
 const URGENT_SECS = 600;
+const RENEW_DAYS = 14;
+
+/** In the last RENEW_DAYS of a paid year, the rail block says so. True
+ *  when it drew. */
+function paintRenew() {
+  const block = railBlock();
+  const cp = PlanGate.currentPlan ? PlanGate.currentPlan() : null;
+  if (!block || !cp || cp.reason !== 'paid' || !cp.planUntil) return false;
+  const left = Math.ceil((Date.parse(cp.planUntil) - now()) / 86400000);
+  if (!(left >= 0 && left <= RENEW_DAYS)) return false;
+  block.dataset.mode = 'renew';
+  block.replaceChildren(
+    h('span.sh-rail-trial-label', { text: 'PLAN ENDS IN' }),
+    h('span.sh-rail-trial-time', { text: left === 0 ? 'today' : left + (left === 1 ? ' day' : ' days') }),
+    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'RENEW — ADD A YEAR' }));
+  block.hidden = false;
+  block.classList.toggle('is-urgent', left <= 3);
+  return true;
+}
 
 /** The block shell.js built at the foot of the rail (null on a page with no shell). */
 const railBlock = () => document.querySelector('#studioRail .sh-rail-trial');
@@ -110,7 +135,7 @@ function warnVisibly(secs) {
     try {
       const ui = window.StudioUI;
       if (!ui || !ui.toast) return;
-      ui.toast(lead + (o && o.price ? ' Plans from ' + o.price + ', one payment.' : '') + ' Everything you did stays.', {
+      ui.toast(lead + (o && o.price ? ' Plans from ' + o.price + ' a year.' : '') + ' Everything you did stays.', {
         type: 'info', action: 'SEE PLANS', onAction: () => { location.href = 'purchase.html'; } });
     } catch (e) { /* no chrome: the rail still counts */ }
   };
@@ -134,6 +159,7 @@ function paint(ends) {
   const text = countdown(ms);
   const block = railBlock();
   if (block) {
+    if (block.dataset.mode === 'renew') { block.replaceChildren(); delete block.dataset.mode; }
     fillRail(block);
     block.hidden = false;
     const chip = takeChip();
@@ -154,7 +180,7 @@ function paint(ends) {
 
 function release() {
   const block = railBlock();
-  if (block) { block.hidden = true; block.replaceChildren(); block.classList.remove('is-urgent'); }
+  if (block) { block.hidden = true; block.replaceChildren(); block.classList.remove('is-urgent'); delete block.dataset.mode; }
   const chip = chipEl();
   if (chip) chip.remove();
   if (tick) { clearInterval(tick); tick = null; }
@@ -190,6 +216,7 @@ export function renderTrialBand() {
   const ends = PlanGate.trialEndsAt();
   if (!ends || ends.getTime() <= now()) {
     release();
+    if (paintRenew()) return;
     /* Time is up here but the server still said "trial" when it was
        last asked — the request raced the clock. Ask again shortly,
        once, rather than leaving the page open until the 4-minute poll. */

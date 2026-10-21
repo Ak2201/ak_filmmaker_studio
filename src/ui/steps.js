@@ -19,6 +19,7 @@
 import { videoSlot } from './video-slots.js';
 import { stepKey } from '../lib/video-keys.js';
 import { h, fromHTML, delegate } from '../lib/dom.js';
+import { paperTextarea, paperField, paperScope } from './paper-field.js';
 import SIDECAR from '../data/steps.tanglish.json';
 import PRIORITY from '../data/steps.priority.json';
 import COPY from '../data/steps.copy.json';
@@ -389,8 +390,10 @@ function renderAsk(a) {
       id, type: a.inputType || 'text', 'data-key': a.key,
       placeholder: a.placeholder, readonly: a.readonly
     });
+    // A prose answer is paper; a number, a date or a figure stays dark.
+    if (!a.inputType || a.inputType === 'text') paperField(field);
   } else {
-    field = h('textarea', {
+    field = paperTextarea({
       id, 'data-key': a.key, placeholder: a.placeholder,
       rows: a.rows, readonly: a.readonly
     });
@@ -453,7 +456,10 @@ function applyCopy(ns, step) {
 
 export function renderStep(step, extra, ns) {
   step = applyCopy(ns, step);
-  const section = h('section.step', { id: step.id });
+  /* Every textarea in a step is paper (owner, 20 Oct 2026), including
+     the raw blocks' markup — the Save the Cat beat table — and rows a
+     table adds later; src/ui/paper-field.js. */
+  const section = paperScope(h('section.step', { id: step.id }));
   if (step.vol === 2) section.classList.add('vol-2');
 
   /* The spine mark goes in the HEADER, between the title and the
@@ -558,7 +564,24 @@ export function renderStep(step, extra, ns) {
   // An empty slot; video-slots.js fills it only if an approved video joins
   // this step (videos.json is never written into the step JSON).
   if (ns && step.id) section.append(videoSlot(stepKey(ns, step.id)));
+  paperRawInputs(section);
   return section;
+}
+
+/* The raw blocks' one-line answers (Step 04's Want / Need / Lie / Wound,
+   the antagonist, the mentor) sit beside textareas that are paper, so
+   they are paper too. A number, a date, money or a hex stays dark:
+   read off the key and the placeholder, because raw markup carries no
+   kind. Adds a class; touches no key and no value. */
+const NOT_PROSE_KEY = /(_hex|_date|_days|_age|_budget|budget|_total|_atl|_btl|_post|_blocks|_month|_crew)$/;
+const NOT_PROSE_HINT = /\bdate\b|DD \/|₹|\bdays?\b/i;
+export function paperRawInputs(root) {
+  for (const el of root.querySelectorAll('input[data-key]')) {
+    const t = (el.getAttribute('type') || 'text').toLowerCase();
+    if (t !== 'text' || el.classList.contains('paper-field')) continue;
+    if (NOT_PROSE_KEY.test(el.dataset.key) || NOT_PROSE_HINT.test(el.placeholder || '')) continue;
+    paperField(el);
+  }
 }
 
 /** Render a list of steps into `host`, replacing its contents. */

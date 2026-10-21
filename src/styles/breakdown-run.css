@@ -158,3 +158,8 @@
 .bd-script .so-part { margin-block: var(--space-6, 2rem); }
 .bd-script .bd-h3 { font-size: 1.15rem; margin-block: 1.25rem .5rem; }
 .bd-script .bd-h4 { font-size: 1rem; margin-block: 1rem .4rem; }
+
+/* "Break down everything" once the script is broken down: a quiet row
+   above the summary (the whole run fills only what is still blank). */
+.bdo-everything { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s4); margin: 0 0 var(--s4); padding: var(--s3) var(--s4); border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); background: var(--surface-card); }
+.bdo-everything-copy { margin: 0; flex: 1 1 18rem; color: var(--ink-muted); font-size: var(--t-small); line-height: 1.45; }

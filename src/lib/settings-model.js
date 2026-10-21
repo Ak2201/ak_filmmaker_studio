@@ -91,7 +91,7 @@ export function planSummary(cp, { off, signedIn, trialEndsAt }) {
   else if (cp.reason === 'trial') {
     const end = trialEndsAt();
     line = 'Free trial' + (end ? ' · ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
-  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + ' · yours for good.';
+  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + (cp.planUntil ? ' · valid until ' + new Date(cp.planUntil).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '. Renew from Plan & purchases to add a year.' : ' · granted for good.');
   else if (cp.reason === 'granted') line = 'Access given to you by the studio.';   // its planName is the free plan's
   else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';

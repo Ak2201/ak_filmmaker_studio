@@ -26,6 +26,7 @@
      rerender(box)   redraw this card after a structural change
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { paperTextarea } from './paper-field.js';
 import { ask } from './dialog.js';
 import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, blankCharacter, projectFormat } from '../lib/characters.js';
 import { learn as learnBox } from './learn.js';
@@ -124,13 +125,13 @@ function fieldBlock(f, view, o) {
   } else if (f.kind === 'line') {
     const isName = f.key === 'name';
     const raw = isName ? (view.nameRaw !== undefined ? view.nameRaw : view.name) : (f.key === 'aliases' ? (view.aliases || []).join(', ') : view[f.key]);
-    input = h('input#' + id + '.cc-input', {
+    input = h('input#' + id + '.cc-input.paper-field', {
       type: 'text', 'data-ch-field': f.key, ...keyAttr(view.backed && view.backed[f.key], o), placeholder: f.placeholder || '', autocomplete: 'off',
       readonly: isName && (view.derived || o.nameEditable === false) ? '' : null
     });
     input.value = raw || '';
   } else {
-    input = h('textarea#' + id + '.cc-input', { rows: f.rows || 2, 'data-ch-field': f.key, ...keyAttr(view.backed && view.backed[f.key], o), placeholder: f.placeholder || '' });
+    input = paperTextarea('#' + id + '.cc-input', { rows: f.rows || 2, 'data-ch-field': f.key, ...keyAttr(view.backed && view.backed[f.key], o), placeholder: f.placeholder || '' });
     input.value = view[f.key] || '';
   }
   const bk = o.dataKeys && view.backed && view.backed[f.key];
@@ -145,9 +146,9 @@ function tiesBlock(f, view, o, id) {
   if (dl) wrap.append(dl);
   const rows = h('div.cc-tie-rows', { 'aria-labelledby': id + '-l' });
   (view.relationships || []).forEach((r, i) => {
-    const who = h('input.cc-input', { type: 'text', 'data-ch-rel': 'who', placeholder: 'Who', list: dl ? id + '-names' : null, 'aria-label': 'Relationship ' + (i + 1) + ': who' });
+    const who = h('input.cc-input.paper-field', { type: 'text', 'data-ch-rel': 'who', placeholder: 'Who', list: dl ? id + '-names' : null, 'aria-label': 'Relationship ' + (i + 1) + ': who' });
     who.value = r.who;
-    const how = h('input.cc-input', { type: 'text', 'data-ch-rel': 'how', placeholder: 'How — sister, rival, owes him money…', 'aria-label': 'Relationship ' + (i + 1) + ': how' });
+    const how = h('input.cc-input.paper-field', { type: 'text', 'data-ch-rel': 'how', placeholder: 'How — sister, rival, owes him money…', 'aria-label': 'Relationship ' + (i + 1) + ': how' });
     how.value = r.how;
     rows.append(h('div.cc-tie', { 'data-ch-rel-row': String(i) }, [who, how,
       h('button.btn.cc-x', { type: 'button', 'data-ch-action': 'tie-del', 'data-i': String(i), 'aria-label': 'Remove relationship ' + (i + 1), text: 'REMOVE' })]));
@@ -166,7 +167,7 @@ function extrasBlock(view, o) {
   const body = h('div.cc-body');
   view.extras.forEach((x) => {
     const id = 'cc-' + safe(view.id) + '-x-' + x.key;
-    const ta = h('textarea#' + id + '.cc-input', { rows: 2, 'data-ch-extra': x.key, 'data-ns': x.ns, ...(o.dataKeys ? { 'data-key': x.key } : {}), placeholder: x.placeholder || '' });
+    const ta = paperTextarea('#' + id + '.cc-input', { rows: 2, 'data-ch-extra': x.key, 'data-ns': x.ns, ...(o.dataKeys ? { 'data-key': x.key } : {}), placeholder: x.placeholder || '' });
     ta.value = x.value || '';
     body.append(h('div.cc-field', {}, [h('label.cc-lab', { for: id, text: x.label }), ta]));
   });

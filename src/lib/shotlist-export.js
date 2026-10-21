@@ -20,7 +20,13 @@
    angle, the movement, the lens and one line of what we see, with
    a box to tick. The totals at the foot are the ones that get
    read out in the production meeting — how many setups, over how
-   many scenes, over how many pages.
+   many scenes, over how many pages, how many minutes.
+
+   COLUMNS AND LAYOUT (20 Oct 2026). The screen's column menu is
+   the export's column list: `columns` (Shots.SHOT_COLUMNS ids)
+   picks what the PDF table and the CSV carry, and `layout` turns
+   the PDF into a storyboard sheet of four or six panels a page.
+   With neither, both renderers are exactly what they always were.
 
    NO COLOURS, NO SHAPES here. The rules live in
    styles/visualize.css under `body.pdf-shotlist`.
@@ -28,6 +34,7 @@
 import { h } from './dom.js';
 import Scenes, { formatEighths, totalEighths } from './scenes.js';
 import Shots, { SHOT_SIZES } from './shots.js';
+import { aspectOf } from './board-frames.js';
 
 export const ALL = 'all';
 
@@ -71,7 +78,8 @@ export function summarise(scope) {
   const withShots = gs.filter((g) => g.shots.length).length;
   const eighths = totalEighths(gs.map((g) => g.scene).filter(Boolean));
   const done = gs.reduce((n, g) => n + g.shots.filter((s) => s.done).length, 0);
-  return { groups: gs.length, scenes: gs.length, withShots, shots, done, eighths };
+  const minutes = gs.reduce((n, g) => n + Shots.minutesOf(g.shots).total, 0);
+  return { groups: gs.length, scenes: gs.length, withShots, shots, done, eighths, minutes };
 }
 
 export function subtitleFor(scope) {
@@ -94,17 +102,24 @@ export function labelFor(scope) {
 
 /* ------------------------------------------------------------
    RENDERER 1 — the document
+   ------------------------------------------------------------
+   opts = {
+     columns  the shot-list columns to print (Shots.SHOT_COLUMNS ids;
+              the screen's column menu passes its own choice). Absent
+              means every column, which is what the sheet always was.
+     layout   'list' (the table), 'grid4' or 'grid6' (a storyboard
+              sheet: four or six panels to a page, a frame each).
+     imageFor (frame) => an image URL already held by this page visit,
+              or ''. The page passes the Drive pictures it has on
+              screen; the builder never fetches anything itself.
+   }
    ------------------------------------------------------------ */
-const COLUMNS = [
-  ['Shot', 'vz-pr-c-no'],
-  ['Size', 'vz-pr-c-spec'],
-  ['Angle', 'vz-pr-c-spec'],
-  ['Move', 'vz-pr-c-spec'],
-  ['Lens', 'vz-pr-c-spec'],
-  ['Light / rig', 'vz-pr-c-spec'],
-  ['What we see', 'vz-pr-c-desc'],
-  ['✓', 'vz-pr-c-done']
+export const LAYOUTS = [
+  { id: 'list',  label: 'List' },
+  { id: 'grid4', label: '4-grid' },
+  { id: 'grid6', label: '6-grid' }
 ];
+export const layoutOf = (id) => (LAYOUTS.some((l) => l.id === id) ? id : 'list');
 
 /** Rig and camera in one cell: "Gimbal · Cam A". Both read off the shot
     and the map; a camera deleted from the map prints nothing. */
@@ -113,20 +128,40 @@ function rigText(shot, cams) {
   return [String(shot.rig || '').trim(), cam ? cam.name : ''].filter(Boolean).join(' · ');
 }
 
-function sceneBlock(group) {
+/* Every printable column: its head, its cell class and its text. */
+const PRINT_COLS = {
+  size:        ['Size', 'vz-pr-c-spec', (s) => sizeLabel(s.size)],
+  angle:       ['Angle', 'vz-pr-c-spec', (s) => s.angle],
+  movement:    ['Move', 'vz-pr-c-spec', (s) => s.movement],
+  lens:        ['Lens', 'vz-pr-c-spec', (s) => s.lens || '—'],
+  rig:         ['Light / rig', 'vz-pr-c-spec', (s, cams, cols) =>
+    (cols.includes('setup') ? String(s.rig || '').trim() : rigText(s, cams)) || '—'],
+  setup:       ['Setup', 'vz-pr-c-spec', (s, cams) => Shots.setupOf(s, cams) || '—'],
+  mins:        ['Min', 'vz-pr-c-min', (s) => { const m = Shots.shotMinutes(s); return m ? String(m) : '—'; }],
+  description: ['What we see', 'vz-pr-c-desc', (s) => s.description || '—'],
+  done:        ['✓', 'vz-pr-c-done', (s) => (s.done ? '✓' : '☐')]
+};
+
+function sceneMeta(group) {
+  const t = Shots.formatMinutes(Shots.minutesOf(group.shots).total);
+  return (group.scene ? formatEighths(group.scene.eighths) + ' pages · ' : '')
+    + (group.shots.length ? plural(group.shots.length, 'setup', 'setups') : 'no setups')
+    + (t ? ' · ' + t : '');
+}
+
+function sceneHead(group) {
+  const scene = group.scene;
+  return h('div.vz-pr-head', {}, [
+    h('span.vz-pr-no', { text: scene ? (scene.number || '—') : '!' }),
+    h('span.vz-pr-slug', { text: scene ? slugOf(scene) : 'Scene deleted in the breakdown' }),
+    h('span.vz-pr-meta', { text: sceneMeta(group) })
+  ]);
+}
+
+function sceneBlock(group, cols) {
   const scene = group.scene;
   const block = h('section.vz-pr-scene');
-
-  block.append(h('div.vz-pr-head', {}, [
-    h('span.vz-pr-no', { text: scene ? (scene.number || '—') : '!' }),
-    h('span.vz-pr-slug', {
-      text: scene ? slugOf(scene) : 'Scene deleted in the breakdown'
-    }),
-    h('span.vz-pr-meta', {
-      text: (scene ? formatEighths(scene.eighths) + ' pages · ' : '')
-          + (group.shots.length ? plural(group.shots.length, 'setup', 'setups') : 'no setups')
-    })
-  ]));
+  block.append(sceneHead(group));
 
   if (scene && scene.synopsis) {
     block.append(h('p.vz-pr-syn', { text: scene.synopsis }));
@@ -139,7 +174,8 @@ function sceneBlock(group) {
 
   const table = h('table.vz-pr-table');
   const head = h('tr');
-  COLUMNS.forEach(([label, cls]) => head.append(h('th.' + cls, { scope: 'col', text: label })));
+  head.append(h('th.vz-pr-c-no', { scope: 'col', text: 'Shot' }));
+  cols.forEach((id) => head.append(h('th.' + PRINT_COLS[id][1], { scope: 'col', text: PRINT_COLS[id][0] })));
   table.append(h('thead', {}, [head]));
 
   const body = h('tbody');
@@ -147,17 +183,60 @@ function sceneBlock(group) {
   group.shots.forEach((shot, i) => {
     const row = h('tr');
     row.append(h('td.vz-pr-c-no', { text: shot.number || String(i + 1) }));
-    row.append(h('td.vz-pr-c-spec', { text: sizeLabel(shot.size) }));
-    row.append(h('td.vz-pr-c-spec', { text: shot.angle }));
-    row.append(h('td.vz-pr-c-spec', { text: shot.movement }));
-    row.append(h('td.vz-pr-c-spec', { text: shot.lens || '—' }));
-    row.append(h('td.vz-pr-c-spec', { text: rigText(shot, cams) || '—' }));
-    row.append(h('td.vz-pr-c-desc', { text: shot.description || '—' }));
-    row.append(h('td.vz-pr-c-done', { text: shot.done ? '✓' : '☐' }));
+    cols.forEach((id) => row.append(h('td.' + PRINT_COLS[id][1], { text: PRINT_COLS[id][2](shot, cams, cols) })));
     body.append(row);
   });
   table.append(body);
   block.append(table);
+  return block;
+}
+
+/** The panels of a storyboard sheet for one scene: a panel per frame,
+    and one per shot that has no frame yet (an empty box to draw in). */
+export function panelsOf(group, byShot = Shots.framesByShot()) {
+  const out = [];
+  group.shots.forEach((shot, i) => {
+    const frames = byShot.get(shot.id) || [];
+    if (!frames.length) out.push({ shot, i, frame: null, n: 0 });
+    frames.forEach((frame, n) => out.push({ shot, i, frame, n }));
+  });
+  return out;
+}
+
+function panel({ shot, i, frame, n }, cols, imageFor, cams) {
+  const label = (shot.number || String(i + 1)) + (frame ? String.fromCharCode(97 + n) : '');
+  const spec = ['size', 'angle', 'movement', 'lens', 'setup', 'mins']
+    .filter((id) => cols.includes(id))
+    .map((id) => PRINT_COLS[id][2](shot, cams, cols))
+    .filter((t) => t && t !== '—');
+  const pic = frame && imageFor ? imageFor(frame) : '';
+  const box = h('div.vz-pr-pic', { 'data-aspect': frame ? aspectOf(frame.aspect) : '16:9' });
+  if (pic) box.append(h('img', { src: pic, alt: 'Frame ' + label }));
+  else if (frame && frame.ref && !/^drive:/.test(String(frame.ref))) box.append(h('p.vz-pr-ref', { text: String(frame.ref) }));
+  const lines = [];
+  const action = frame ? Shots.frameAction(frame) : '';
+  if (action) lines.push(['Action', action]);
+  if (frame && frame.dialogue) lines.push(['Dialogue', frame.dialogue]);
+  if (frame && frame.camera) lines.push(['Camera', frame.camera]);
+  if (!lines.length && cols.includes('description') && shot.description) lines.push(['', shot.description]);
+  return h('div.vz-pr-panel', {}, [
+    box,
+    h('div.vz-pr-cap', {}, [
+      h('strong.vz-pr-cap-no', { text: label }),
+      h('span.vz-pr-cap-spec', { text: spec.join(' · ') }),
+      cols.includes('done') ? h('span.vz-pr-cap-done', { text: shot.done ? '✓' : '☐' }) : null
+    ].filter(Boolean)),
+    ...lines.map(([k, v]) => h('p.vz-pr-line', {}, [k ? h('b', { text: k + ' ' }) : null, h('span', { text: v })].filter(Boolean)))
+  ]);
+}
+
+function gridBlock(group, cols, layout, imageFor) {
+  const block = h('section.vz-pr-scene.vz-pr-board');
+  block.append(sceneHead(group));
+  const cams = group.scene ? Shots.sceneCameras(group.scene.id) : [];
+  const grid = h('div.vz-pr-grid.vz-pr-' + layout);
+  for (const p of panelsOf(group)) grid.append(panel(p, cols, imageFor, cams));
+  block.append(grid);
   return block;
 }
 
@@ -166,8 +245,10 @@ function sceneBlock(group) {
  * `div.vz-print`; visualize.js appends it for the duration of one
  * print job and removes it again.
  */
-export function buildDocument(scope) {
-  const root = h('div.vz-print');
+export function buildDocument(scope, opts = {}) {
+  const cols = Shots.cleanColumns(opts.columns || Shots.SHOT_COLUMNS.map((c) => c.id));
+  const layout = layoutOf(opts.layout);
+  const root = h('div.vz-print.vz-print-' + layout);
   const gs = groups(scope);
 
   if (!gs.length || !gs.some((g) => g.shots.length)) {
@@ -183,16 +264,20 @@ export function buildDocument(scope) {
        does not, because the user asked for that one scene and an
        empty sheet is the honest answer. */
     if (!group.shots.length && (!scope || scope === ALL)) continue;
-    root.append(sceneBlock(group));
+    root.append(layout === 'list' || !group.shots.length
+      ? sceneBlock(group, cols)
+      : gridBlock(group, cols, layout, opts.imageFor));
   }
 
   const s = summarise(scope);
+  const time = Shots.formatMinutes(s.minutes);
   root.append(h('div.vz-pr-total', {}, [
     h('span', { text: plural(s.shots, 'setup', 'setups') }),
     h('span', { text: plural(s.withShots, 'scene', 'scenes') + ' covered' }),
     h('span', { text: formatEighths(s.eighths) + ' pages' }),
-    h('span', { text: s.done + ' in the can' })
-  ]));
+    h('span', { text: s.done + ' in the can' }),
+    time ? h('span', { text: time + ' estimated' }) : null
+  ].filter(Boolean)));
   return root;
 }
 
@@ -212,23 +297,55 @@ const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
 
 export const CSV_HEADER = [
   'Scene', 'Slug', 'Int/Ext', 'Time', 'Location', 'Scene pages',
-  'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'Lighting / rig', 'Camera', 'What we see', 'Status', 'Drafted by'
+  'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'Lighting / rig', 'Camera', 'What we see', 'Status', 'Drafted by',
+  // Added after the first sixteen, never between them: a template that
+  // maps the old columns by position must keep reading them.
+  'Setup', 'Minutes'
 ];
 
-export function toCSV(scope) {
-  const rows = [CSV_HEADER];
+/* The CSV's shot columns, by Shots.SHOT_COLUMNS id. Setup brings the
+   camera column with it: the two halves of "where the camera is". */
+const CSV_COLS = {
+  size: [['Size'], (s) => [sizeLabel(s.size)]],
+  angle: [['Angle'], (s) => [s.angle]],
+  movement: [['Movement'], (s) => [s.movement]],
+  lens: [['Lens'], (s) => [s.lens]],
+  rig: [['Lighting / rig'], (s) => [s.rig]],
+  setup: [['Setup', 'Camera'], (s, cams) => [Shots.setupOf(s, cams), (Shots.camOf(s, cams) || {}).name || '']],
+  mins: [['Minutes'], (s) => { const m = Shots.shotMinutes(s); return [m ? String(m) : '']; }],
+  description: [['What we see'], (s) => [s.description]],
+  done: [['Status'], (s) => [s.done ? 'in the can' : 'to shoot']]
+};
+const SCENE_HEAD = CSV_HEADER.slice(0, 7);
+
+/** The CSV. With no `columns` (what the page exports) it is one fixed
+    schema, CSV_HEADER: the old sixteen columns in their old places, then
+    Setup and Minutes; it never varies with a device's column prefs. With
+    `columns`: the scene columns, the shot number, the
+    chosen columns in table order, and who drafted it. */
+export function toCSV(scope, opts = {}) {
+  const pick = opts.columns ? Shots.cleanColumns(opts.columns) : null;
+  const rows = [pick ? [...SCENE_HEAD, ...pick.flatMap((id) => CSV_COLS[id][0]), 'Drafted by'] : CSV_HEADER];
   for (const group of groups(scope)) {
     const scene = group.scene;
     const cams = scene ? Shots.sceneCameras(scene.id) : [];
     for (const [i, shot] of group.shots.entries()) {
-      rows.push([
+      const lead = [
         scene ? (scene.number || '') : 'orphan',
         scene ? slugOf(scene) : 'Scene deleted in the breakdown',
         scene ? scene.intExt : '',
         scene ? scene.dayNight : '',
         scene ? scene.location : '',
         scene ? formatEighths(scene.eighths) : '',
-        shot.number || String(i + 1),
+        shot.number || String(i + 1)
+      ];
+      const by = shot.ai ? 'AI draft' : 'you';
+      if (pick) {
+        rows.push([...lead, ...pick.flatMap((id) => CSV_COLS[id][1](shot, cams)), by]);
+        continue;
+      }
+      rows.push([
+        ...lead,
         sizeLabel(shot.size),
         shot.angle,
         shot.movement,
@@ -237,7 +354,9 @@ export function toCSV(scope) {
         (Shots.camOf(shot, cams) || {}).name || '',
         shot.description,
         shot.done ? 'in the can' : 'to shoot',
-        shot.ai ? 'AI draft' : 'you'
+        by,
+        Shots.setupOf(shot, cams),
+        (() => { const m = Shots.shotMinutes(shot); return m ? String(m) : ''; })()
       ]);
     }
   }
@@ -246,7 +365,42 @@ export function toCSV(scope) {
   return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
+/* ------------------------------------------------------------
+   RENDERER 3 — the frame pictures, for a ZIP
+   ------------------------------------------------------------
+   Only frames whose ref is `drive:<fileId>` have a picture to send:
+   a link is somebody else's file and a description has no bytes.
+   The page downloads each file (src/ui/drive-image.js) and zips them
+   with src/lib/zip-write.js; this only says WHICH files and what each
+   is called inside the archive — scene folder, shot and frame letter,
+   in board order, so the ZIP sorts the way the board reads.
+   ------------------------------------------------------------ */
+const safePart = (v) => String(v ?? '').trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
+const DRIVE_ID = /^drive:([A-Za-z0-9_-]{8,})$/;
+
+export function frameFiles(scope, byShot = Shots.framesByShot()) {
+  const out = [];
+  const used = new Set();
+  for (const group of groups(scope)) {
+    const folder = group.scene ? 'scene-' + safePart(group.scene.number || group.scene.id) : 'scene-deleted';
+    group.shots.forEach((shot, i) => {
+      (byShot.get(shot.id) || []).forEach((frame, n) => {
+        const m = String(frame.ref || '').trim().match(DRIVE_ID);
+        if (!m) return;
+        let stem = folder + '/shot-' + safePart(shot.number || String(i + 1)) + String.fromCharCode(97 + (n % 26));
+        while (used.has(stem)) stem += '_';
+        used.add(stem);
+        out.push({ fileId: m[1], frameId: frame.id, stem });
+      });
+    });
+  }
+  return out;
+}
+
+/** The extension a picture's MIME type is saved under. */
+export const extFor = (mime) => ({ 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' })[String(mime || '').toLowerCase()] || '.jpg';
+
 export default {
-  ALL, groups, summarise, subtitleFor, labelFor, slugOf,
-  buildDocument, toCSV, CSV_HEADER
+  ALL, groups, summarise, subtitleFor, labelFor, slugOf, LAYOUTS, layoutOf, panelsOf,
+  buildDocument, toCSV, CSV_HEADER, frameFiles, extFor
 };

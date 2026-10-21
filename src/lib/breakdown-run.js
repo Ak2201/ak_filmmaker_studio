@@ -162,21 +162,28 @@ export function summarize({ elements } = {}) {
 }
 
 /** Run the whole breakdown: the two writes, then the summary.
+ *  `fillOnly` (the script pipeline): linked rows keep their own fields,
+ *  and a sync that would bin or restore a row writes nothing at all
+ *  (`applied.refused`, with `wouldBin` / `wouldRestore`) — see
+ *  scene-sync.js syncScript().
  *  Returns { scenes, characters, locations, totals, applied }. */
-export function runBreakdown({ elements, numbering } = {}) {
+export function runBreakdown({ elements, numbering, fillOnly = false } = {}) {
   const script = elements ? null : loadScript();
   const els = elements || script.elements;
   const numb = numbering !== undefined ? numbering : (script ? script.numbering : undefined);
 
   // 1. every heading a scene row
-  const { plan, result } = syncScript(els, { numbering: numb });
+  const { plan, result, refused } = syncScript(els, { numbering: numb, fillOnly });
   // 2. cast, from cues only
-  const tags = plan.empty ? [] : tagMany(castTags(listScenes(), els));
+  const tags = plan.empty || refused ? [] : tagMany(castTags(listScenes(), els));
 
   const applied = {
     empty: !!plan.empty,
+    refused: !!refused,
+    wouldBin: refused ? plan.bin.length : 0,
+    wouldRestore: refused ? plan.restore.length : 0,
     scenesAdded: result.added.length,
-    scenesLinked: plan.update.filter((u) => u.patch && u.patch.scriptElId).length,
+    scenesLinked: refused ? 0 : plan.update.filter((u) => u.patch && u.patch.scriptElId).length,
     scenesUpdated: result.updated,
     restored: result.restored.length,
     binned: result.binned.length,

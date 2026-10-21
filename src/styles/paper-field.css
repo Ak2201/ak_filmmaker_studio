@@ -1,0 +1,138 @@
+/* ============================================================
+   PAPER FIELDS — a writing input is a page
+   ------------------------------------------------------------
+   Owner, 20 Oct 2026: "wherever I am giving input, it should be white
+   space with font in black colour", in the screenplay's face. The app
+   stays dark; only a field somebody WRITES in (the idea, the logline,
+   a beat, a character, a blueprint answer, a rung of the ladder)
+   becomes the screenplay's paper page. Settings, search, numbers,
+   money, dates, selects and admin forms stay dark on purpose.
+
+   ONE TOKEN FAMILY: --paper-page* (tokens.css), the same light surface
+   the Screenplay Writer and the breakdown's paper read. No literal
+   colour lives here, and the face is var(--f-script) and never a
+   restated stack — the Tamil face has to stay LAST (CLAUDE.md, the
+   --f-script trap), and a copy of the stack is a copy that drifts.
+
+   Two ways in, both from src/ui/paper-field.js:
+     .paper-field   on the control itself (paperTextarea / paperField)
+     .paper-scope   on a container: every <textarea> inside it is
+                    paper, including rows a table adds later and the
+                    raw blueprint blocks (the Save the Cat beat table)
+                    that are markup in JSON rather than h() calls.
+
+   The selectors are TRIPLED and rooted (:root .paper-field ×3, 0,4,0)
+   because the sheets already paint these same controls dark from
+   higher than one class: modules.css and chrome.css from
+   `:root input:not([type=…])` (0,2,1), kit-scope.css from
+   `:root .k-scope input[type="text"]` (0,3,1). Anything less loses, and
+   a tie goes to whichever sheet loaded last (CLAUDE.md: "when two rules
+   tie, order decides"). The one rule that out-ranks even this —
+   blueprint-kit.css's `.step :is(…)` field rule, (0,6,1) — stands aside
+   with :not(.paper-field):not(.paper-scope textarea) instead.
+   ============================================================ */
+
+:root .paper-field.paper-field.paper-field,
+:root .paper-scope.paper-scope.paper-scope textarea {
+  color-scheme: light;
+  background: var(--paper-page);
+  color: var(--paper-page-ink);
+  caret-color: var(--paper-page-ink);
+  border: 1px solid var(--paper-page-rule);
+  border-radius: var(--sk-field-radius, var(--radius));
+  font-family: var(--f-script);
+  font-size: var(--t-base);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+/* A long field reads as a page: a screenplay-ish margin, single
+   spacing a little opened for a reader, and the page's own shadow. */
+:root textarea.paper-field.paper-field.paper-field,
+:root .paper-scope.paper-scope.paper-scope textarea {
+  padding: var(--s4) var(--s5);
+  line-height: var(--lh-body);
+  box-shadow: var(--paper-page-shadow);
+}
+
+/* A one-line field is the same paper with a single rule under it. */
+:root input.paper-field.paper-field.paper-field {
+  border-color: transparent;
+  border-bottom-color: var(--paper-page-rule);
+  padding: var(--s2) var(--s3);
+  line-height: 1.3;
+}
+
+/* Inside a table cell the shadow is noise: a grid of fifteen shadowed
+   pages is not a beat sheet. The paper and the rule stay. */
+:root td .paper-field.paper-field.paper-field,
+:root .paper-scope.paper-scope.paper-scope td textarea { box-shadow: none; padding: var(--s2) var(--s3); }
+
+:root .paper-field.paper-field.paper-field::placeholder,
+:root .paper-scope.paper-scope.paper-scope textarea::placeholder { color: var(--paper-page-muted); opacity: 1; }
+
+:root .paper-field.paper-field.paper-field::selection,
+:root .paper-scope.paper-scope.paper-scope textarea::selection {
+  background: color-mix(in srgb, var(--accent-primary) 30%, var(--paper-page));
+  color: var(--paper-page-ink);
+}
+
+:root .paper-field.paper-field.paper-field:hover,
+:root .paper-scope.paper-scope.paper-scope textarea:hover { border-color: var(--paper-page-muted); }
+:root input.paper-field.paper-field.paper-field:hover { border-color: transparent; border-bottom-color: var(--paper-page-muted); }
+
+/* --focus is a shorthand and invalid here. The ring is the violet
+   accent, which reads on the paper AND on the dark ground it sits on
+   (an ink ring 2px outside the field is ~1:1 against the canvas), and
+   the field's own rule darkens to the ink so the page itself changes. */
+:root .paper-field.paper-field.paper-field:focus,
+:root .paper-field.paper-field.paper-field:focus-visible,
+:root .paper-scope.paper-scope.paper-scope textarea:focus,
+:root .paper-scope.paper-scope.paper-scope textarea:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-color: var(--paper-page-ink);
+}
+
+/* The screenplay fields keep the script's own sizes: the slug line is
+   bold, and all five read --t-small (widgets.css) — paper changes the
+   page they sit on, not the format. */
+:root .scene-block input.slug.paper-field.paper-field.paper-field { font-weight: 700; }
+:root .scene-block :is(input.slug, textarea.action).paper-field.paper-field.paper-field,
+:root .dialogue-block :is(input.character, textarea.line, input.parenthetical).paper-field.paper-field.paper-field {
+  font-size: var(--t-small);
+}
+/* …and widgets.css's coarse-pointer floor (no iOS zoom on focus). */
+@media (pointer: coarse) {
+  :root .scene-block :is(input.slug, textarea.action).paper-field.paper-field.paper-field,
+  :root .dialogue-block :is(input.character, textarea.line, input.parenthetical).paper-field.paper-field.paper-field {
+    font-size: max(16px, var(--t-small));
+  }
+}
+
+/* Read-only (a locked outline step): still a page, visibly not one you
+   can write on — a dashed rule, never a dimmer ink. */
+:root .paper-field.paper-field.paper-field[readonly],
+:root .paper-scope.paper-scope.paper-scope textarea[readonly] { border-style: dashed; }
+
+/* The kit wraps an input in .k-control, which paints its own dark box
+   and focus ring around it. Around paper that is a frame on a page. */
+.k-control:has(> .paper-field) {
+  height: auto;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.k-control:has(> .paper-field):hover,
+.k-control:has(> .paper-field):focus-within { border-color: transparent; box-shadow: none; }
+
+@media print {
+  :root .paper-field.paper-field.paper-field,
+  :root .paper-scope.paper-scope.paper-scope textarea {
+    background: var(--print-paper);
+    color: var(--print-ink);
+    box-shadow: none;
+  }
+}

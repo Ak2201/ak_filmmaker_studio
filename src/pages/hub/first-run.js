@@ -109,7 +109,7 @@ export function welcomeCard() {
   const card = h('section.section.tw-section#welcomePlan', { role: 'status', 'aria-label': 'Welcome' }, [
     h('div.section-inner', {}, [
       h('h2', { text: name ? 'You’re on ' + name + '. Welcome in.' : 'Welcome in.' }),
-      h('p.deck', { text: 'Your plan is active — one payment, yours for good. Your invoice is listed on the Purchase page.' }),
+      h('p.deck', { text: 'Your plan is active for a year. Your invoice, and the date it ends, are on the Purchase page.' }),
       h('div.eps-actions', {}, [
         h('button.btn.primary', { 'data-action': 'new-project', text: 'START YOUR FILM' }),
         h('a.btn', { href: 'purchase.html', text: 'SEE WHAT UNLOCKED' }),

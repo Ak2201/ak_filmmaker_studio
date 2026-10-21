@@ -65,6 +65,19 @@ export function tourActive() {
   return !!(t && t.active);
 }
 
+/* ---- how the shot list is looked at (visualize.html) ---------------
+   `shotView` inside the EXISTING device blob: list or board, the
+   visible columns, grouping, frames per row, the PDF layout. How this
+   device looks at the work, never the work — so it is not in the
+   project's shot key, and it is written on a click only (verify's
+   idle-write check). Read back shape-checked; anything odd is dropped. */
+export function readShotView() {
+  const v = readDevicePrefs().shotView;
+  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+}
+export const saveShotView = (view) => updateDevicePrefs({ shotView: view && typeof view === 'object' ? view : undefined });
+
 export default {
-  readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive
+  readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive,
+  readShotView, saveShotView
 };

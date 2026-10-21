@@ -581,7 +581,7 @@ function openProjectModal(editId, format) {
        "plan" to blame, so the sentence says trial. */
     const trial = PlanGate.currentPlan().reason === 'trial';
     const lead = trial ? 'Your free trial is for the sample films.' : 'New projects are not part of your plan.';
-    const say = (o) => StudioUI.toastInfo(lead + (o ? ' ' + PlanGate.offerText(o) + ' adds films of your own — one payment.' : ' A plan adds films of your own.'), {
+    const say = (o) => StudioUI.toastInfo(lead + (o ? ' ' + PlanGate.offerText(o) + ' a year adds films of your own.' : ' A plan adds films of your own.'), {
       action: o ? 'See ' + o.name : 'See plans',
       onAction: () => { location.href = o ? o.href : 'purchase.html'; }
     });

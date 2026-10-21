@@ -42,6 +42,14 @@ export const EDU_PRICE = { student: 399, cohort: 2999, edu: 9999 };
  *  mean "not for sale" check the number, not this string. */
 export const inr = (n) => '\u20B9' + Number(n || 0).toLocaleString('en-IN');
 
+/* A PLAN IS A YEAR (schema section 52, owner 21 Oct 2026), and the pages
+   lead with what that costs a DAY: ₹599 / 365 = ₹1.64. Whole rupees in,
+   "₹1.64" out (two decimals, always: "₹2.19 a day", never "₹2.2"). The
+   server's twin for paise is perDayPaise() in _shared/razorpay.js, and
+   both round to the nearest paisa, so the two can never disagree. */
+export const PLAN_DAYS = 365;
+export const perDay = (n) => '\u20B9' + (Math.round((Number(n) || 0) * 100 / PLAN_DAYS) / 100).toFixed(2);
+
 /* matrixFeatures() lives in src/lib/plan-matrix.js. This file is in the
    CORE chunk (billing.js imports it), and importing the matrix JSON here
    put the whole matrix into every page's first paint the moment anything

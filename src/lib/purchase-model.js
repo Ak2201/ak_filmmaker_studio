@@ -11,6 +11,7 @@
 import Billing from './billing.js';
 import { session } from './prefs.js';
 import { timeLeft } from './trial-time.js';
+import { perDay, LIST_PRICE } from './plans.js';
 
 /* ---- the plan they came to buy ------------------------------------ */
 
@@ -76,7 +77,7 @@ export const FREE_LINE = 'The studio is free to use right now — nothing to buy
 /* What a plan actually does. Names from planName(), never typed. */
 export const DECK = 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
   + Billing.planName('indie') + ' to prepare it, ' + Billing.planName('pro') + ' to shoot and finish it — and sets how much syncs to the cloud. '
-  + 'One payment, yours for good. Nothing you write is ever deleted, on any plan or none.';
+  + 'A year at a time, from about ' + perDay(LIST_PRICE.starter) + ' a day; nothing renews by itself. Nothing you write is ever deleted, on any plan or none.';
 
 /** The plan section's heading for a signed-in account with plans loaded. */
 export function planHeading(st) {
@@ -91,7 +92,8 @@ export function plansPendingHeading({ missing, error }) {
 
 /** The line for a refunded plan that has lapsed. */
 export function lapsedLine(st) {
-  return `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). Choose a plan to keep using the studio.`;
+  const refunded = Array.isArray(st.payments) && st.payments.some((p) => p && p.status === 'refunded' && p.plan_id === st.bought_plan);
+  return `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
 }
 
 /** §33 — WHERE THE TRIAL STANDS, or null when there is nothing to say.

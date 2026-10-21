@@ -410,12 +410,8 @@ const EXPECTED = {
   visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   write: {},
   plan: {},
-  breakdown: /* emptied by the 14 Oct 2026 gate re-baseline (P3b's two buttons) */ {
-    /* 20 Oct 2026: the Elements tab said "Derived from the tags above",
-       and since the paper Scene Breakdown the tags are on another tab,
-       not above it. "From the tags on each scene" now. */
-    above: 'Elements copy no longer points at a section above it'
-  },
+  breakdown: /* emptied by the 21 Oct 2026 re-baseline (Elements copy: "from the tags on each scene") */ {},
+
   feature: {},
   short: {},
   /* The library prints the glossary's term count ("N TERMS"); Phase 6 of the
@@ -435,22 +431,9 @@ const EXPECTED = {
      deck no longer says "and so does the studio" (the hero says the
      stages go in any order); the title page's sub dropped the internal
      "the same answers the Feature Blueprint keeps for its cover". */
-  dashboard: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {
-    /* 20 Oct 2026: the pre-production path leaves out a step whose module
-       no plan sells (the lookbook's "Vision & look"), so its step count
-       printed here went from 11 to 10. A derived count, not lost copy. */
-    '11': 'pre-production path step count, one step fewer without the lookbook'
-  },
-  /* 20 Oct 2026: "Vision & look" left the pre-production path because the
-     lookbook module is off for every plan and its button landed on a page
-     that says Not available. These were that step's words. */
-  preprod: {
-    '11': 'step count, one step fewer without the lookbook',
-    board: 'the lookbook step left the path', colours: 'the lookbook step left the path',
-    few: 'the lookbook step left the path', frames: 'the lookbook step left the path',
-    pin: 'the lookbook step left the path', references: 'the lookbook step left the path',
-    through: 'the lookbook step left the path', vision: 'the lookbook step left the path'
-  },
+  dashboard: /* emptied by the 21 Oct 2026 re-baseline (paper, pipeline, shot list) */ {},
+  preprod: /* emptied by the 21 Oct 2026 re-baseline: the lookbook step left the path */ {},
+
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is
      built only when it is opened. */
@@ -535,10 +518,10 @@ const EXPECTED = {
      that followed the UI revamp and the plan features. The pricing
      pass's `finish` row (the Pro line reworded) was absorbed by the
      17 Oct 2026 recapture after the one-frame navigation pass. */
-  invite: {},
+  invite: { payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.' },
   admin: {},
   vault: {},
-  purchase: {}
+  purchase: { once: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', pay: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', yours: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.' }
 };
 
 
@@ -841,6 +824,14 @@ const server = http.createServer((req, res) => {
         + 'family is at ' + (lastMono + 1) + ' — it will claim Latin too: ' + d.trim());
     }
   }
+  /* The paper writing fields (src/styles/paper-field.css, 20 Oct 2026)
+     set Courier on every story and blueprint input, so they are the
+     widest user of this stack. They must READ it, never restate it: a
+     restated stack is one nobody re-orders when this one is fixed. */
+  const paper = fs.readFileSync(path.join(ROOT, 'src', 'styles', 'paper-field.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  if (!/font-family:\s*var\(--f-script\)/.test(paper)) bad.push('paper-field.css does not read var(--f-script)');
+  if (/Courier|Tamil/i.test(paper)) bad.push('paper-field.css restates a font family instead of reading var(--f-script)');
   if (bad.length) {
     console.error('\n✗ --f-script font order is wrong:');
     bad.forEach((b) => console.error('  ' + b));

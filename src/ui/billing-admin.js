@@ -15,9 +15,10 @@
                   (a comp, a bank transfer) — recorded as a payment of
                   ₹0 so the ledger stays whole.
 
-   FULL-TIME ACCESS (schema section 18): a plan is bought or granted
-   once and kept for good. There are no days to type, no "until", no
-   lapsing column; the ledger's Access column says "for good".
+   A YEAR AT A TIME (schema section 52; section 18 had made plans for
+   good): a bought plan runs 365 days and the ledger's Access column says
+   "1 year · ends <date>". A GRANT from this console is still for good
+   (no days to type), and reads "for good".
 
    PROMO CODES (schema section 20): a fourth block between the tiers
    and the grant — every code with its discount, its plans, uses
@@ -150,7 +151,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     list.append(form);
   }
   sec.append(list);
-  sec.append(h('p.gt-meta', { text: 'Price in ₹, paid once, for good. A blank limit is unlimited.' }));
+  sec.append(h('p.gt-meta', { text: 'Price in ₹ for a year (schema §52). A blank limit is unlimited.' }));
   }
 
   // Promo codes (section 20)
@@ -233,7 +234,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     h('div.ba-field.is-wide', {}, [h('label', { for: 'baGrantNote', text: 'Why (bank transfer, comp…)' }), h('input', { id: 'baGrantNote', name: 'note', type: 'text', maxlength: 300 })])
   ]));
   g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'GRANT' }), S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
-  g.append(h('p.gt-meta', { text: 'For good; admits a non-member; recorded as a ₹0 payment.' }));
+  g.append(h('p.gt-meta', { text: 'For good (a grant has no end date); admits a non-member; recorded as a ₹0 payment.' }));
   sec.append(g);
   }
 
@@ -252,7 +253,7 @@ export function billingAdminSection(section, st, { part } = {}) {
         h('td', { text: fmtDate(p.paid_at || p.created_at) }),
         h('td', {}, [h('span', { text: p.email }), p.account_name ? h('br') : null, p.account_name ? h('span.gt-meta', { text: p.account_name }) : null].filter(Boolean)),
         h('td', { text: planName(p.plan_id) }),
-        h('td', { text: p.period === 'lifetime' || p.period === 'grant' ? 'for good' : p.period + (p.ends_at ? ' · ends ' + fmtDate(p.ends_at) : '') }),
+        h('td', { text: p.ends_at ? (p.period === 'grant' ? 'grant' : '1 year') + ' · ends ' + fmtDate(p.ends_at) : 'for good' }),
         h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) + (p.credit_paise > 0 ? ` (upgrade; ${fmtPaise(p.credit_paise)} already paid)` : '') }),
         h('td', { text: p.promo_code ? `${p.promo_code} (${fmtPaise(p.discount_paise || 0)} off)` : '—' }),
         h('td', { text: p.status + (inflight ? ' · refund ' + inflight.status : '') + (p.note ? ' — ' + p.note : '') }),
@@ -353,7 +354,7 @@ delegate(document, 'submit', '[data-ba-form="grant"]', async (e, form) => {
   const who = f.get('who');
   if (!who) { toast('Choose who the grant is for.', 'error'); return; }
   try {
-    await Billing.admin.grantPlan(who, f.get('plan'), 0, f.get('note'));   // p_days is ignored by section 18
+    await Billing.admin.grantPlan(who, f.get('plan'), 0, f.get('note'));   // 0 days: a grant is for good (§52 honours days; this form offers none)
     S.granted = 'Granted — full access, for good.';
     await load();
   } catch (err) { toast(err.message || 'The grant did not go through.', 'error'); }

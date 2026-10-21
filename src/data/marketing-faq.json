@@ -3,8 +3,8 @@
     "group": "Billing",
     "items": [
       {
-        "q": "Is it really one payment, with no subscription?",
-        "a": "Yes. A plan is bought once, never renews and never lapses, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay."
+        "q": "Is it a subscription?",
+        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay."
       },
       {
         "q": "Can I get a refund?",

@@ -126,6 +126,7 @@ import { mountHandoffs } from '../ui/blueprint-handoffs.js';
 import { mountWraps } from '../ui/blueprint-wrap.js';
 import { ask, askDanger, tell } from '../ui/dialog.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI (the Desk loads at a click)
+import { paperScope } from '../ui/paper-field.js';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -676,6 +677,9 @@ function renderPage(app) {
 
   const main = document.createElement('main');
   main.id = 'main';
+  /* Every textarea on the blueprint is paper (owner, 20 Oct 2026):
+     the steps, the treatment ladder, rows a table adds later. */
+  paperScope(main);
 
   main.append(fromHTML(MASTER_COVER_HTML));
 

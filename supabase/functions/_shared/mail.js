@@ -67,13 +67,13 @@ export function receiptMail(inv) {
   const link = site('purchase');
   return message(inv.buyer_email, `Payment received: ${inv.plan_name} plan (${inv.number})`, [
     ['Invoice', inv.number],
-    ['Plan', `${inv.plan_name} (one-time purchase, no renewal)`],
+    ['Plan', `${inv.plan_name}, 1 year${inv.ends_at ? ' (valid until ' + dateIST(inv.ends_at) + ')' : ''}. Nothing renews automatically.`],
     ['Amount paid', fmtPaise(inv.amount_paise)],
     ['Date', dateIST(inv.paid_at || inv.issued_at)],
     ['Razorpay payment ID', inv.razorpay_payment_id]
   ], [
     `Hi ${inv.buyer_name || 'there'},`,
-    `Thank you for your purchase. Your ${inv.plan_name} plan is active on your account now.`,
+    `Thank you for your purchase. Your ${inv.plan_name} plan is active on your account now, for a year. When it is close to ending, buy the next year from your plan page; nothing is charged automatically.`,
     { html: `You can download the invoice as a PDF from <a href="${link}">your plan page</a> at any time.`,
       text: `You can download the invoice as a PDF from your plan page at any time: ${link}` }
   ]);
@@ -91,7 +91,7 @@ export function refundMail(r) {
   ], done ? [
     `Hi ${r.buyer_name || 'there'},`,
     `Your refund of ${fmtPaise(r.amount_paise)} has been processed and is on its way to your original payment method. Razorpay refunds usually arrive in 5 to 7 working days.`,
-    `The ${r.plan_name || 'plan'} plan this payment bought has ended, and your account has been given a fresh free trial, as the refund policy describes.`
+    `The year of the ${r.plan_name || ''} plan this payment bought has been taken off your account. If no paid time is left, your account has been given a fresh free trial, as the refund policy describes.`
   ] : [
     `Hi ${r.buyer_name || 'there'},`,
     `Your refund of ${fmtPaise(r.amount_paise)} could not be completed by the payment provider. No money has left your account for it, and we are looking into it.`,

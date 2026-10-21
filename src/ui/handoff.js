@@ -326,9 +326,69 @@ export function sceneSyncLater() {
   }, SYNC_DELAY);
 }
 
-/** Wire the banner. `opts.getDoc` returns the page's in-memory script. */
+/* ---- after an import: "Break down everything" -----------------
+   Owner, 20 Oct 2026: everything starts from the script. Once a script
+   is imported here, the hand-off offers the whole run
+   (src/lib/script-pipeline.js, drawn by src/ui/pipeline-checklist.js):
+   scenes, cast, characters, locations, props, shots, proposed days and
+   the budget's days, by rules, blanks only, one Undo. The offer is a
+   banner in the page and a press; nothing runs by itself. Both modules
+   are dynamic imports, so a page that never imports carries neither. */
+let saveDoc = () => {};
+let afterPipeline = () => {};
+
+export async function offerPipeline() {
+  const section = document.getElementById('screenplay');
+  if (!section) return null;
+  let P;
+  try { P = await import('./pipeline-checklist.js'); }
+  catch (e) { console.warn('[handoff] pipeline', e); return null; }
+  const doc = getDoc();
+  const scenes = doc ? headingsOf(doc.elements).length : 0;
+  if (!scenes) return null;
+  const old = document.getElementById('pl-offer');
+  const banner = P.pipelineOffer({
+    scenes,
+    onRun: () => {
+      const b = document.getElementById('pl-offer');
+      if (b) b.remove();
+      runPipelineHere(P);
+    },
+    onDismiss: () => { const b = document.getElementById('pl-offer'); if (b) b.remove(); }
+  });
+  if (old) old.replaceWith(banner);
+  else {
+    const bar = section.querySelector('.wr-bar');
+    if (bar) bar.after(banner); else section.prepend(banner);
+  }
+  return banner;
+}
+
+/** Run it now, with the page's script and save path. */
+export async function runPipelineHere(P) {
+  const mod = P || await import('./pipeline-checklist.js');
+  try { saveDoc(); } catch (e) { /* the run reads the doc in memory anyway */ }
+  return mod.openPipeline({
+    getElements: () => { const d = getDoc(); return d ? d.elements : []; },
+    getNumbering: () => { const d = getDoc(); return d ? d.numbering : undefined; },
+    getDoc: () => getDoc(),
+    save: () => saveDoc(),
+    onChange: (res) => {
+      // The run linked and added rows itself: the next sync starts from here.
+      try { const d = getDoc(); if (d && Array.isArray(d.elements)) syncPrev = headingMap(d.elements); } catch (e) { /* no doc */ }
+      safeRender();
+      try { afterPipeline(res); } catch (e) { /* the page's repaint */ }
+    }
+  });
+}
+
+/** Wire the banner. `opts.getDoc` returns the page's in-memory script;
+    `opts.save` is the page's save (the coverage pass stores through it);
+    `opts.afterPipeline(result)` repaints after a run or its Undo. */
 export function mountHandoff(opts = {}) {
   if (typeof opts.getDoc === 'function') getDoc = opts.getDoc;
+  if (typeof opts.save === 'function') saveDoc = opts.save;
+  if (typeof opts.afterPipeline === 'function') afterPipeline = opts.afterPipeline;
   // The baseline the first sync compares against: the script as loaded.
   try { const d = getDoc(); if (d && Array.isArray(d.elements)) syncPrev = headingMap(d.elements); } catch (e) { /* no doc yet */ }
   /* A sync still waiting on the writer's pause runs on the way out,
@@ -366,4 +426,4 @@ export function mountHandoff(opts = {}) {
   safeRender();
 }
 
-export default { mountHandoff, newHeadings, addThem, sceneSyncLater, syncNow };
+export default { mountHandoff, newHeadings, addThem, sceneSyncLater, syncNow, offerPipeline, runPipelineHere };

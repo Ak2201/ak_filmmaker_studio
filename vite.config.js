@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sampleFigures } from './src/lib/sample-figures.js';
-import { PLAN_ORDER, planName, LIST_PRICE, EDU_PRICE, inr } from './src/lib/plans.js';
+import { PLAN_ORDER, planName, LIST_PRICE, EDU_PRICE, inr, perDay } from './src/lib/plans.js';
 import { loadMatrixModule } from './scripts/make-plan-features-sql.mjs';
 
 /* ============================================================
@@ -343,6 +343,10 @@ function startFigures() {
            into the HTML is a claim the server can contradict an hour
            later. */
         for (const id of PLAN_ORDER) values['price.' + id] = inr(LIST_PRICE[id]);
+        /* Section 52: a plan is a year, and the pages lead with the day.
+           price.<id>.day is "₹1.64"; price.from.day is the cheapest plan's. */
+        for (const id of PLAN_ORDER) if (LIST_PRICE[id] > 0) values['price.' + id + '.day'] = perDay(LIST_PRICE[id]);
+        values['price.from.day'] = perDay(Math.min(...PLAN_ORDER.map((id) => LIST_PRICE[id]).filter((n) => n > 0)));
         /* The education track's display figures (EDU_PRICE, plans.js):
            price.student / price.cohort / price.edu. Nothing charges them. */
         for (const [k, v] of Object.entries(EDU_PRICE)) values['price.' + k] = inr(v);
@@ -442,6 +446,8 @@ function marketingFigures() {
         const values = { ...Object.fromEntries(Object.entries(fig).map(([k, v]) => ['dragon.' + k, v])),
                          ...Object.fromEntries(PLAN_ORDER.map((id) => ['plan.' + id, planName(id)])) };
         for (const id of PLAN_ORDER) values['price.' + id] = inr(LIST_PRICE[id]);
+        for (const id of PLAN_ORDER) if (LIST_PRICE[id] > 0) values['price.' + id + '.day'] = perDay(LIST_PRICE[id]);
+        values['price.from.day'] = perDay(Math.min(...PLAN_ORDER.map((id) => LIST_PRICE[id]).filter((n) => n > 0)));
         for (const [k, v] of Object.entries(EDU_PRICE)) values['price.' + k] = inr(v);
         const FEATURE = json('steps.feature.json');
         values['short.steps'] = (json('steps.short.json').steps || []).length;
@@ -477,7 +483,10 @@ function marketingFigures() {
              as the visible prices) and the FAQPage, built from the static
              accordion markup so it cannot drift from it. */
           const plain = (t) => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+            .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim()
+            /* the answers carry stamps ({{fms:price.from.day}}); resolve them here,
+               because jsonld is itself a value and is not expanded again */
+            .replace(/\{\{fms:([a-zA-Z.]+)\}\}/g, (all, key) => (key in values ? String(values[key]) : all));
           const faq = [...html.matchAll(/<dt>([\s\S]*?)<\/dt>\s*<dd>([\s\S]*?)<\/dd>/g)]
             .map((m) => ({ '@type': 'Question', name: plain(m[1]), acceptedAnswer: { '@type': 'Answer', text: plain(m[2]) } }));
           if (!faq.length) fail('no <dt>/<dd> FAQ markup found to build FAQPage JSON-LD from.');

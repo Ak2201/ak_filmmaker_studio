@@ -57,9 +57,12 @@ Deno.serve(async (req) => {
   let body: { plan?: string; period?: string; account_id?: string; code?: string } = {};
   try { body = await req.json(); } catch { /* empty body */ }
   const plan = String(body.plan ?? '');
-  const period = String(body.period ?? 'lifetime');
+  /* 'lifetime' is what a page cached from before §52 still sends; it is a
+     year now, so the purchase goes through rather than failing. */
+  const asked = String(body.period ?? 'year');
+  const period = asked === 'lifetime' ? 'year' : asked;
   const code = normalisePromo(body.code) || null;
-  if (!PERIODS.includes(period)) return json(400, { error: 'Plans are bought once, for good; there is no monthly or yearly period.' });
+  if (!PERIODS.includes(period)) return json(400, { error: 'Plans are bought a year at a time; there is no monthly period.' });
 
   // 2. the intent, priced by the database (the code re-quoted there; a
   //    refused code is a 22023 whose message is the sentence to show)

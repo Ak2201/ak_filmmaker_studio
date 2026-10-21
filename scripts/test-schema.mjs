@@ -267,6 +267,19 @@ console.log('✓ §51 loads (and re-runs cleanly)');
 runChecks('security-51.sql');
 /* --- end §51 --- */
 
+/* --- §52 (yearly plans) --- the seed is made with the pre-§52 functions
+   (a buyer for good, a grant for good) so the backfill has work; loaded
+   twice to prove the backfill runs once. --- */
+r = psql(['-f', 'scripts/schema-tests/yearly-seed.sql']);
+if (r.status !== 0) fail('yearly-seed.sql did not load', r);
+for (const f of ['supabase/schema/schema-52-yearly-plans.sql', 'supabase/schema/schema-52-yearly-plans.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §52 loads (and re-runs cleanly)');
+runChecks('yearly.sql');
+/* --- end §52 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

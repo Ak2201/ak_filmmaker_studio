@@ -2497,3 +2497,78 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       tokens with a sticky contents column at 1100px and up and a disclosure
       below; print stays black on white. `legal.js` loads stylesheets and
       the icon-font check only — no `marketing.js`, which counts visits.
+
+54. **Script-first studio, phases 0–3 (20–21 Oct 2026).** The owner asked
+    for writing fields that read like a script page, a script import that
+    drives the whole breakdown before any AI, an AI script-analysis space,
+    a best-in-class shot list and storyboard, and (later) Drive-only
+    storage. Plan: `/root/.claude/plans/…` summarised in
+    `docs/DRIVE-STORAGE.md` for the storage half.
+    - **Phase 0 (Drive spike).** `spike-drive.html` + `src/dev/drive-spike.js`,
+      dev only, never built: the experiments `drive.file` has to pass for a
+      shared project folder. Waiting on the owner's two-account run; phases
+      4–6 (Drive-only storage, test-shoot photos, cutover) start from its
+      answers.
+    - **Phase 1 (paper fields).** `src/ui/paper-field.js` + `paper-field.css`:
+      writing inputs are `--paper-page` with black `var(--f-script)`; the app
+      stays dark. `paperScope()` covers blueprint steps (raw JSON blocks
+      included); dates, money, numbers and search stay dark (`NOT_PROSE_KEY`
+      in steps.js, `TP_NOT_PROSE` on the dashboard). Focus is a violet ring
+      plus an ink border (the ink ring alone sat on the dark ground at ~1:1).
+      `test:paper` fails a writing file that builds a bare textarea.
+    - **Phase 2 (pipeline + analysis).** `src/lib/script-pipeline.js` runs
+      scenes, characters, locations, prop suggestions, shots, proposed days,
+      budget days and analysis, each filling blanks only, with an in-memory
+      undo that survives closing the sheet (an Undo toast). The scenes step
+      runs `runBreakdown` with `fillOnly`, so a location typed on a linked
+      row is never overwritten, and it never bins rows silently.
+      "Enhance with AI" chains the Desk tasks (new `tension-notes`), the
+      user's own key, nothing written before Accept. Script analysis is a
+      tab on screenplay.html (`script-analysis-model.js`): tension against
+      the framework convention, pacing, structure by page, cast lines,
+      coverage. `test:pipeline`, `test:analysis`, prove:script case 19.
+    - **Phase 3 (shot list + storyboard).** `shots.js` `readAll()` now
+      carries unknown fields through a save (an older tab no longer wipes a
+      newer build's fields). Shot `mins`/`setup`/`numLocked`, frame
+      `action`/`dialogue`/`camera`. List ⇄ Board, a Columns menu that also
+      shapes PDF exports (the CSV keeps its fixed header), setup grouping,
+      time per scene and per shoot day, drag/keyboard reorder that
+      renumbers only plain ordinals and never a typed number, frames per
+      row, bulk picture drop (one frame each, one Undo), PDF list/4/6
+      grids, image ZIP. View prefs ride `fms_studio_prefs_v1` as `shotView`.
+    - A ten-agent review workflow (review → skeptic → fixer per phase) found
+      12 confirmed problems, 2 of them blockers (typed scene locations
+      overwritten; typed shot numbers renumbered), all fixed with
+      regression tests before the merge.
+    - **The gate's "11".** On 20 Oct the lookbook step left the preprod
+      path and verify missed the word "11"; an EXPECTED row for it went
+      stale the next day because "11" was then also a festival COUNTDOWN
+      number, which verify strips from both sides. A digit that can be a
+      countdown cannot be allowed by row: re-baselined on 21 Oct instead.
+
+55. **Yearly plans, marketed by the day (21 Oct 2026).** The owner changed
+    the model from "pay once, yours for good" to one year per payment, same
+    rows (₹599 / ₹799 / ₹999), renewed by buying again, the 31 Oct rise kept,
+    and existing buyers given a year from the switch.
+    - **Schema §52** (`schema-52-yearly-plans.sql`, 23 checks in
+      `scripts/schema-tests/yearly.sql`, seeded with the pre-§52 functions so
+      the backfill has something to switch). The machinery was already there —
+      `account_plan()` reads `plan_until`, `billing_status()` returns it —
+      §18 had only switched it off.
+    - **Client.** Cards print "₹599 a year · ≈ ₹1.64 a day", "Valid until …",
+      RENEW on the plan held, an upgrade line naming the unused year; the rail
+      warns in the last 14 days; settings, invoice, receipts and the console
+      ledger say a year. `Billing.perDayPaise` was missing from the default
+      export, which `prove:billing` caught as a lock line falling back.
+    - **Marketing.** Pricing, home and FAQ lead with the per-day figure from
+      build stamps (the FAQ JSON-LD resolves them too, since it is itself a
+      stamp value); the about page keeps to brand stamps, so it says "less than
+      a cup of tea a day", true at every tier before and after the rise.
+      og.png, posters and captions follow; `make-og.mjs` learnt to read rgba
+      tokens (it had failed since the Swiss palette).
+    - **Legal.** Terms §4/§5 and the refund policy dated 21 Oct 2026, each with
+      a "What changed"; the three refund exceptions unchanged.
+    - **Gate.** test:all (schema 1270), verify (two EXPECTED rows for the
+      removed "pay once" words on invite and purchase), prove:billing 298
+      (renewal stacks, credit against a year that has not begun is exact),
+      prove:gate 230, prove:growth, prove:legal, prove:scroll — all green.

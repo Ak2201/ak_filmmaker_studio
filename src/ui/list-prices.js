@@ -7,7 +7,7 @@
    lazy matrix chunk. purchase.html and invite.html draw it.
    ============================================================ */
 import { h } from '../lib/dom.js';
-import { PLAN_ORDER, LIST_PRICE, inr, planName } from '../lib/plans.js';
+import { PLAN_ORDER, LIST_PRICE, inr, perDay, planName } from '../lib/plans.js';
 import '../styles/list-prices.css';
 
 /* THE PRICES, FOR SOMEBODY NOT SIGNED IN. invite.html and purchase.html
@@ -25,13 +25,13 @@ export function listPriceBlock() {
   for (const id of ids) {
     const line = h('span.pl-list-line');
     lines[id] = line;
-    ul.append(h('li', {}, [h('strong', { text: planName(id) }), h('span.pl-list-price', { text: inr(LIST_PRICE[id]) }), line]));
+    ul.append(h('li', {}, [h('strong', { text: planName(id) }), h('span.pl-list-price', { text: inr(LIST_PRICE[id]) + ' a year · ≈ ' + perDay(LIST_PRICE[id]) + ' a day' }), line]));
   }
   import('../lib/plan-matrix.js').then((m) => {
     for (const id of ids) { const t = m.MATRIX.lines && m.MATRIX.lines[id]; if (t && lines[id]) lines[id].textContent = t; }
   }).catch(() => { /* the names and prices stand */ });
   return h('div.pl-list-wrap', {}, [ul,
-    h('p.pl-note', { text: 'One payment each, in Indian rupees, confirmed at checkout. Nothing renews. Each plan includes everything in the one before it.' })]);
+    h('p.pl-note', { text: 'A year each, in Indian rupees, confirmed at checkout. Nothing renews by itself: you buy the next year when you want it. Each plan includes everything in the one before it.' })]);
 }
 
 export default { listPriceBlock };

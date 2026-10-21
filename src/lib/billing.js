@@ -28,9 +28,9 @@ import Store from './store.js';
 import { BRAND } from './brand.js';
 import { bumpEvent } from './funnel.js';
 import { PLAN_ORDER, planName } from './plans.js';
-import { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
+import { fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
-export { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
+export { fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
 
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 /** Public. The secret never leaves the edge functions. */
@@ -143,16 +143,17 @@ async function invoke(name, body) {
 }
 
 /**
- * Buy `planId`, for good (schema section 18: one payment, no period).
+ * Buy `planId` for a year (schema section 52: renewing stacks a year onto
+ * the time left; nothing is charged automatically).
  * Resolves to { plan, account_id } once the server has verified and
  * activated; rejects with code 'dismissed' if the buyer closed
  * Checkout. `onStatus(text)` narrates for the UI. `code` is a promo
  * code (section 20): the server re-quotes it and a refused one comes
  * back as an edge error with the sentence to show.
  */
-export async function buy(planId, period = 'lifetime', { accountId = null, onStatus = () => {}, code = null } = {}) {
+export async function buy(planId, period = 'year', { accountId = null, onStatus = () => {}, code = null } = {}) {
   if (!paymentsConfigured()) throw new BillingError('Payments are not switched on for this studio yet.', 'notconfigured');
-  if (!PERIODS.includes(period)) throw new BillingError('Plans are bought once, for good.', 'period');
+  if (!PERIODS.includes(period)) throw new BillingError('Plans are bought a year at a time.', 'period');
   bumpEvent('checkout_start');   // §29 daily count, fire-and-forget
   onStatus('Preparing your order…');
   const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId, code: normalisePromo(code) || null }), loadCheckout()]);
@@ -180,7 +181,7 @@ export async function buy(planId, period = 'lifetime', { accountId = null, onSta
          more place the old address survives. 192px square is what
          Razorpay draws it at. */
       image: `https://${BRAND.host}/icons/icon-192.png`,
-      description: `${order.plan_name || planName(planId)} · full access, one payment${order.promo_code ? ' · code ' + order.promo_code : ''}`,
+      description: `${order.plan_name || planName(planId)} · 1 year, full access${order.promo_code ? ' · code ' + order.promo_code : ''}`,
       prefill: order.prefill || {},
       notes: { plan: planId, period, promo_code: order.promo_code || '' },
       ...(themeColour() ? { theme: { color: themeColour() } } : {}),
@@ -414,4 +415,4 @@ export const admin = {
   }
 };
 
-export default { startTrial, priceNotice, requestRefund, myRefundStatus, refundRequestsEnabled, isRefundsMissing, REFUND_CATEGORIES, listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
+export default { startTrial, priceNotice, requestRefund, myRefundStatus, refundRequestsEnabled, isRefundsMissing, REFUND_CATEGORIES, listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };

@@ -7,6 +7,7 @@
    under the Story editor, so it is reachable in one click.
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { paperTextarea } from './paper-field.js';
 import { BRAND } from '../lib/brand.js';
 import * as Story from '../lib/story.js';
 import { button, badge, emptyState, panel } from './kit/index.js';
@@ -21,7 +22,7 @@ export function renderVault(s) {
   sec.append(h('p.bd-sub', { text: 'The Chrome extension’s “Send to ' + BRAND.name + '” lands here with the page it came from; you can also add one by hand.' }));
   const add = h('div.st-vault-add');
   add.append(h('label.st-label', { for: 'stClip', text: 'Add a clipping' }));
-  add.append(h('textarea#stClip.st-text.k-textarea', { rows: 3 }));
+  add.append(paperTextarea('#stClip.st-text.k-textarea', { rows: 3 }));
   add.append(button({ label: 'Add to vault', variant: 'primary', icon: 'add', attrs: { 'data-st': 'clip-add' } }));
   sec.append(panel({ class: 'st-vault-panel', body: [add] }));
   const items = Story.listVault();

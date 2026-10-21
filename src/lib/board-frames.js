@@ -240,9 +240,60 @@ export const DEFAULT_ASPECT = '16:9';
 /** A stored aspect, or the default for '' and anything unknown. */
 export const aspectOf = (id) => (ASPECTS.some((a) => a.id === id) ? id : DEFAULT_ASPECT);
 
+/* ---- many pictures at once ------------------------------------------
+   A drop of several images onto a shot (or a multi-pick) is ONE FRAME
+   PER IMAGE, uploaded ONE AT A TIME through the same single-frame path
+   (frame-upload.js uploadToFrame). Sequential on purpose: Drive is the
+   writer's own quota and token, a token that lapses mid-run fails the
+   rest the same way, and each frame is either fully made or not made.
+
+   Pure orchestration, so it runs in Node with the I/O passed in:
+     addFrame(file, i)       → the new frame record (written by the caller)
+     uploadOne(file, frame)  → { ok, id?, why? } (or throws)
+     removeFrame(frame)      → undo an empty frame whose upload failed
+     onProgress(i, n, file)  → before each upload
+   Files that are not pictures are refused before any frame is made. */
+export async function runBulkUpload(files, io = {}) {
+  const list = Array.from(files || []);
+  const accepted = [], refused = [];
+  for (const file of list) {
+    const why = uploadProblem(file);
+    if (why) refused.push({ file, why }); else accepted.push(file);
+  }
+  const made = [], failed = [];
+  for (const [i, file] of accepted.entries()) {
+    if (io.onProgress) io.onProgress(i, accepted.length, file);
+    const frame = io.addFrame(file, i);
+    let r = null;
+    try { r = await io.uploadOne(file, frame); }
+    catch (e) { r = { ok: false, why: String((e && e.message) || e || 'unknown error') }; }
+    if (r && r.ok) made.push({ frame, id: r.id || '' });
+    else {
+      if (io.removeFrame) io.removeFrame(frame);
+      failed.push({ file, why: (r && r.why) || 'not saved' });
+      if (r && r.stop) {           // the gate closed: the rest would fail the same way
+        const why = (r && r.why) || 'not saved';
+        for (const rest of accepted.slice(i + 1)) failed.push({ file: rest, why, skipped: true });
+        break;
+      }
+    }
+  }
+  return { made, refused, failed };
+}
+
+/** The one sentence a bulk run ends on. */
+export function bulkSummary({ made = [], refused = [], failed = [] } = {}) {
+  const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+  const parts = [];
+  if (made.length) parts.push(n(made.length, 'picture', 'pictures') + ' saved to your Google Drive, one frame each');
+  if (refused.length) parts.push(n(refused.length, 'file was', 'files were') + ' not a picture the studio can read');
+  if (failed.length) parts.push(n(failed.length, 'picture', 'pictures') + ' did not upload (' + String(failed[0].why).slice(0, 80) + ')');
+  return parts.length ? parts.join('; ') + '.' : 'Nothing to upload.';
+}
+
 export default {
   MAX_FRAMES, STYLES, DEFAULT_STYLE, styleOf, matchStyle, boardGate, shotLabel, isDrawnRef,
   boardJobs, jobLine, boardInput, parseBoardInput, styleFromRefine, framePrompt, frameFileName,
   UPLOAD_EDGE, UPLOAD_QUALITY, UPLOAD_MAX_BYTES, UPLOAD_TYPES, fitWithin, uploadProblem,
-  ASPECTS, DEFAULT_ASPECT, aspectOf
+  ASPECTS, DEFAULT_ASPECT, aspectOf, runBulkUpload, bulkSummary
 };

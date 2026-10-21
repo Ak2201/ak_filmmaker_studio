@@ -215,7 +215,7 @@ that one.
 >    **`rzp-verify`** (`docs/BILLING.md` §21).
 >
 > §32–§39 ran live on 12 Oct and §40–§47 on 13 Oct (`docs/HANDOFF.md` §4,
-> `supabase/schema/README.md`). The next free section is §52.
+> `supabase/schema/README.md`). The next free section is §53 (§52 ran live 21 Oct 2026).
 > The only unfinished piece of what follows is the Resend setup behind §35. The notes below
 > are the record of how each batch was run.
 

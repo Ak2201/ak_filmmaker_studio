@@ -172,8 +172,14 @@ export function runBreakdown({ elements, numbering, fillOnly = false } = {}) {
   const els = elements || script.elements;
   const numb = numbering !== undefined ? numbering : (script ? script.numbering : undefined);
 
-  // 1. every heading a scene row
-  const { plan, result, refused } = syncScript(els, { numbering: numb, fillOnly });
+  /* 1. every heading a scene row. keepLinked: there is no record here
+     of the headings at the last sync (handoff.js keeps one, in memory),
+     so without it EVERY linked row read as changed and had the place,
+     INT/EXT and time typed on the Breakdown reset to its heading, with
+     no undo. A heading edited in the Screenplay Writer still reaches
+     its row through the hand-off, which has that record; a locked
+     number still follows the lock. */
+  const { plan, result, refused } = syncScript(els, { numbering: numb, fillOnly, keepLinked: true });
   // 2. cast, from cues only
   const tags = plan.empty || refused ? [] : tagMany(castTags(listScenes(), els));
 

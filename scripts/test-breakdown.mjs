@@ -143,6 +143,22 @@ eq(r2.totals, r1.totals, 'and the totals are the same');
   eq(r.characters.find((c) => c.name === 'RAVI').scenes, ['1', '3', '5'], 'RAVI now in scene 5 too');
 }
 
+/* ---- a typed location on a linked row survives a re-run -------
+   The Breakdown leaves the location and the INT/EXT and time selects
+   editable on a linked row; Run breakdown used to reset all three to
+   the heading (no `prev`, so every linked row counted as changed). */
+{
+  const list = Scenes.listScenes();
+  const row = list.find((s) => s.scriptElId === 'e0');
+  Object.assign(row, { location: "Anbu's house, Mylapore", intExt: 'EXT', dayNight: 'NIGHT' });
+  Scenes.saveScenes(list);
+  const r = runBreakdown();
+  const back = r.scenes.find((s) => s.scriptElId === 'e0');
+  eq([back.location, back.intExt, back.dayNight], ["Anbu's house, Mylapore", 'EXT', 'NIGHT'], 'Run breakdown keeps what was typed on a linked row');
+  eq(r.applied.scenesUpdated, 0, 'and reports no row updated');
+  eq(r.scenes.length, 5, 'no row added or binned');
+}
+
 /* ---- no headings is no script, not a wipe -------------------- */
 {
   seedScript([E('action', 'Just an idea so far.')]);

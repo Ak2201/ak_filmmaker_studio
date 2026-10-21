@@ -419,9 +419,13 @@ export function renderGuide(body, { stage, format, items, fields, stepper }) {
   };
   const onStorage = (e) => { if (e.key && e.key.indexOf(blobKey(spec.ns)) === 0) pull(); };
   const onVisible = () => { if (document.visibilityState === 'visible') pull(); };
-  addEventListener('storage', onStorage);
-  document.addEventListener('visibilitychange', onVisible);
-  addEventListener('pagehide', flush);
+  /* A page re-renders and builds a fresh guide each time; abort() is how
+     the old one lets go of these, or every render leaks a detached tree. */
+  const ac = new AbortController();
+  const { signal } = ac;
+  addEventListener('storage', onStorage, { signal });
+  document.addEventListener('visibilitychange', onVisible, { signal });
+  addEventListener('pagehide', flush, { signal });
 
   /* Chrome initialises at import time, when this was not on the page:
      glossary popovers and aria labels are wired after render. */
@@ -431,7 +435,7 @@ export function renderGuide(body, { stage, format, items, fields, stepper }) {
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[stage-guide] chrome', e); }
 
-  return { root, flush, load, pull, stage };
+  return { root, flush, load, pull, stage, abort: () => ac.abort() };
 }
 
 export default { renderGuide };

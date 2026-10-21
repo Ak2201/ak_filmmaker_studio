@@ -36,12 +36,14 @@
    3. The landing_view count (once per session; Do Not Track and the
       opt-out are honoured inside funnel.js), and the opt-out button the
       privacy page promises.
+   5. The "from about ₹X a day" figure brought to the server's current
+      price once a scheduled rise has fired (price_notice()).
    ============================================================ */
 import './marketing.js';
 import '../styles/start.css';
-import { bumpOnce, optOut } from '../lib/funnel.js';
+import { bumpOnce, optOut, priceNotice } from '../lib/funnel.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
-import { takeAuthError, isAppPage } from '../lib/start-model.js';
+import { takeAuthError, isAppPage, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
 
 const byId = (id) => document.getElementById(id);
 
@@ -94,3 +96,25 @@ bumpOnce('landing_view');
    It sets the same session flag Do Not Track would, and says it has. */
 const noCount = byId('noCount');
 if (noCount) noCount.addEventListener('click', () => { optOut(); noCount.textContent = noCount.dataset.done; noCount.disabled = true; });
+
+/* ---- 5. the price today ----------------------------------------------
+   The hero and the closing note say "from about ₹X a day", stamped from
+   LIST_PRICE, which is the price BEFORE any scheduled rise. The rise
+   fires on its date or on the buyer that fills the cap, so the stamp can
+   go stale with no rebuild; price_notice() always carries each plan's
+   CURRENT price_paise. Where the cheapest one's per-day figure differs,
+   the stamp is rewritten in the text that says "a day". The call failing
+   leaves the markup as it was (pricing.js does the same for its cards). */
+try {
+  priceNotice().then((notice) => {
+    const now = fromDayNow(notice);
+    const was = stampedFromDay(document.body ? document.body.textContent : '');
+    if (!now || !was || now === was) return;
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      if (n.parentElement && n.parentElement.closest('script, style')) continue;
+      if (/ a day\b/.test(n.nodeValue)) n.nodeValue = swapFigure(n.nodeValue, was, now);
+    }
+    document.title = swapFigure(document.title, was, now);
+  }, () => {});
+} catch (e) { /* never breaks the page */ }

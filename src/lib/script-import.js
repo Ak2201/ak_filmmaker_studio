@@ -143,6 +143,9 @@ const CONTINUED = /^\s*\(?\s*(?:CONTINUED|CONT['’]?D)\s*:?\s*(?:\(\s*\d+\s*\)|
    furniture, never a character. A bare "Revised plans lie on the
    table." is NOT matched — the colour or a date has to be there. */
 const REV_HEADER = /^(?:(?:white|blue|pink|yellow|green|goldenrod|buff|salmon|cherry|tan|gray|grey|ivory)\s+rev(?:\.|ision|ised)?\b.{0,30}|rev(?:\.|ision|ised)\s+\d[\d/.\-\s]*|revised\s{0,4}(?:\d+[.)]?)?)$/i;
+/* The one branch of REV_HEADER that is also an ordinary line of action
+   ("Revised", "Revised 2.") — parseText drops it only at a page edge. */
+const REV_BARE = /^revised\s{0,4}(?:\d+[.)]?)?$/i;
 
 const TAMIL = /[஀-௿]/;
 /* A Tamil cue is not uppercase Latin, so "no lowercase letters" proves
@@ -355,9 +358,11 @@ function emitMixed(lines, push, warnings) {
     if (buf.length) push(mode === 'speech' ? 'dialogue' : 'action', buf.join('\n'));
     buf = [];
   };
+  let held = false;                  // the line before this one was a cue or a parenthetical
   for (let j = 0; j < lines.length; j++) {
     const t = lines[j].trim();
-    if (cueAt(lines, j)) {
+    if (opensSpeech(lines, j, held)) {
+      held = true;
       flush();
       const raw = t.replace(/^@/, '');
       const dual = /\^\s*$/.test(raw);
@@ -365,13 +370,32 @@ function emitMixed(lines, push, warnings) {
       mode = 'speech';
       continue;
     }
+    held = false;
     if (SLUG_RE.test(t)) { flush(); push('scene', t); mode = 'action'; continue; }
-    if (mode === 'speech' && /^\(.*\)$/.test(t)) { flush(); push('paren', t); continue; }
+    if (mode === 'speech' && /^\(.*\)$/.test(t)) { flush(); push('paren', t); held = true; continue; }
     buf.push(t);
   }
   flush();
   warnings.push('A block with no blank lines in it held cues and dialogue; they were split apart by their shape.');
   return true;
+}
+
+/** Does line j open a new speech, given whether the line before it was
+    a cue or a parenthetical (`held`)? A cue needs speech under it and a
+    parenthetical is followed by dialogue, so the line straight after
+    either is never a second cue unless it is @-forced: "RAVI / HEY /
+    (beat)" and "MANI / STOP / You heard me." keep HEY and STOP as
+    dialogue — exactly how our own export glues a speech, since Fountain
+    has no mark that forces dialogue. A cue-shaped line LATER in the
+    speech still opens one, so a conversation pasted with no blank lines
+    ("RAVI / Hi. / MANI / Hello.") keeps both speakers.
+    What this cannot tell apart, and does not claim to: a shouted line
+    in the MIDDLE of a glued speech with mixed-case or a parenthetical
+    under it — "RAVI / Hello there. / HEY / (beat) / Go." — reads HEY as
+    a cue. Fountain cannot say otherwise without a blank line or an @. */
+function opensSpeech(lines, j, held) {
+  if (!cueAt(lines, j)) return false;
+  return !held || lines[j].trim().startsWith('@');
 }
 
 /** A speech block, or — when it holds a second cue or a heading with no
@@ -380,7 +404,9 @@ function emitSpeech(b, cueLine, push) {
   const lines = b.map((l, k) => (k === 0 ? cueLine : l));
   let inner = false;
   for (let j = 1; j < lines.length; j++) {
-    if (cueAt(lines, j) || SLUG_RE.test(lines[j].trim())) { inner = true; break; }
+    const t = lines[j].trim();
+    const held = j === 1 || /^\(.*\)$/.test(lines[j - 1].trim());
+    if (opensSpeech(lines, j, held) || SLUG_RE.test(t)) { inner = true; break; }
   }
   if (inner) {
     const w = [];
@@ -489,17 +515,48 @@ function parseText(raw) {
      are all furniture. They are dropped, but each leaves a `pb` marker so
      a speech the break cut in two can be put back together. */
   const rows = [];
+  /* A line that is the next line of the same Word paragraph (a break
+     the writer typed inside one element) rides as `cont`, so close()
+     gives the break back instead of a space. */
+  const conts = (raw && Array.isArray(raw.docxCont)) ? raw.docxCont : null;
+  /* The row right before this one with no blank between, or null. */
+  const lastRow = () => { const r = rows[rows.length - 1]; return r && !r.pb ? r : null; };
+  /* Is this line at a page edge — the first thing after a page break
+     (blank lines aside), or the top of the file? */
+  const atPageEdge = () => {
+    for (let k = rows.length - 1; k >= 0; k--) { if (rows[k]) return !!rows[k].pb; }
+    return true;
+  };
   text.split('\n').forEach((line, i) => {
     if (line.includes('\f')) { rows.push({ pb: true }); line = line.replace(/\f/g, ''); if (!line.trim()) { rows.push(null); return; } }
     const t = line.trim();
     if (!t) { rows.push(null); return; }                // a blank is a separator
-    if (PAGE_NO.test(line)) { skipped.pageNumbers++; rows.push({ pb: true }); return; }
-    if (MORE_LINE.test(line)) { skipped.more++; rows.push({ pb: true }); return; }
-    if (CONTINUED.test(line)) { skipped.continued++; rows.push({ pb: true }); return; }
-    if (REV_HEADER.test(t)) { skipped.revisions++; rows.push({ pb: true }); return; }
     const indent = line.match(/^ */)[0].length;
     const forced = styled ? styled[i + skip] || '' : '';
-    rows.push(forced ? { indent, text: t, forced } : { indent, text: t });
+    /* A STYLED paragraph has said what it is, so a Dialogue "1987." or
+       an Action "Revised" is the writer's line, never a page number or
+       a revision header: the style decides outright (see DOCX_TYPE).
+       Only (MORE) and CONTINUED are still furniture under a style. */
+    if (!forced) {
+      /* "12" or "1987." directly under a cue or a parenthetical, further
+         left than it, or under a line of the same speech, is dialogue —
+         a page number sits on its own after a break or a blank line. */
+      const prev = lastRow();
+      const underCue = prev && indent < prev.indent && (isUpperish(prev.text) || /^\(.*\)$/.test(prev.text));
+      const inSpeech = prev && prev.indent === indent && indent >= 6 && indent < 30 && !SLUG_RE.test(prev.text);
+      if (PAGE_NO.test(line) && !underCue && !inSpeech) { skipped.pageNumbers++; rows.push({ pb: true }); return; }
+    }
+    if (MORE_LINE.test(line)) { skipped.more++; rows.push({ pb: true }); return; }
+    if (CONTINUED.test(line)) { skipped.continued++; rows.push({ pb: true }); return; }
+    /* A bare "Revised" is a header only where a header sits — at the
+       top of a page and in from the margin; anywhere else it is a line
+       of the script. With a colour or a date it is header-shaped anywhere. */
+    if (!forced && REV_HEADER.test(t) && (!REV_BARE.test(t) || (indent >= 20 && atPageEdge()))) {
+      skipped.revisions++; rows.push({ pb: true }); return;
+    }
+    const row = forced ? { indent, text: t, forced } : { indent, text: t };
+    if (forced && conts && conts[i + skip]) row.cont = true;
+    rows.push(row);
   });
 
   /* Re-origin on the slug lines, then every column below is read
@@ -543,7 +600,10 @@ function parseText(raw) {
   };
   const close = () => {
     if (!open) return;
-    const text = open.lines.join(' ').replace(/\s+/g, ' ').trim();
+    /* Wrapped lines rejoin with a space; a break the writer typed
+       inside one Word paragraph (`seps` '\n') is given back. */
+    const text = open.lines.map((l, k) => (k ? open.seps[k] : '') + l.replace(/\s+/g, ' ').trim())
+      .join('').replace(/ *\n */g, '\n').trim();
     const o = open;
     open = null;
     /* (CONT'D) is the page break's own mark on a cue. When the same
@@ -574,10 +634,11 @@ function parseText(raw) {
        element even mid-block. Same kind continues it, which is
        how a wrapped paragraph comes back as one paragraph. */
     if (open && (open.type !== type || row.dual)) close();
-    if (!open) open = { type, lines: [], dual: !!row.dual, contd: false, breakBefore: pendingBreak };
+    if (!open) open = { type, lines: [], seps: [], dual: !!row.dual, contd: false, breakBefore: pendingBreak };
     pendingBreak = false;
     // (CONT'D) belongs to a cue; on any other line it is the writer's words.
     if (type === 'character' && CUE_TAIL_ONLY_CONTD.test(row.text)) open.contd = true;
+    open.seps.push(row.cont ? '\n' : ' ');
     open.lines.push(type === 'character' ? row.text.replace(CUE_TAIL_ONLY_CONTD, '') : row.text);
     prevType = type;
     /* A cue is always one line. Anything after it is the speech. */
@@ -587,6 +648,9 @@ function parseText(raw) {
 
   if (skipped.pageNumbers) {
     warnings.push(skipped.pageNumbers + ' page number line(s) were recognised and skipped.');
+  }
+  if (skipped.revisions) {
+    warnings.push(skipped.revisions + ' revision header line(s) were recognised and skipped.');
   }
   if (skipped.more || skipped.continued) {
     warnings.push((skipped.more + skipped.continued) + ' page-break line(s) — (MORE) and CONTINUED — '
@@ -1251,15 +1315,21 @@ function leadTwips(line, indL, tabs) {
 export function docxScreenplayText(paras) {
   const out = [];
   const types = [];                  // parallel to out: the styled type of each line, or ''
-  const push = (line, type = '') => { out.push(line); types.push(type); };
+  const cont = [];                   // parallel to out: true on a styled paragraph's second line on
+  const push = (line, type = '', more = false) => { out.push(line); types.push(type); cont.push(more); };
   let styled = 0, total = 0;
   for (const p of paras || []) {
     if (p.pageBreak) push('\f');
     const type = docxStyleType(p.style);
     const right = !type && (p.jc === 'right' || p.jc === 'end');
-    const lines = String(p.text || '').split('\n')
+    let lines = String(p.text || '').split('\n')
       .map((l) => ({ col: type ? COLUMN[type] : right ? COLUMN.transition : Math.round(leadTwips(l, p.indL, p.tabs) / 144), t: l.replace(/\t/g, '    ').trim() }))
       .filter((l) => l.t);
+    /* A styled heading, cue, parenthetical, transition or shot is ONE
+       line however Word broke it, or PARSER 2 reads two of them. */
+    if (type && type !== 'action' && type !== 'dialogue' && lines.length > 1) {
+      lines = [{ col: lines[0].col, t: lines.map((l) => l.t).join(' ') }];
+    }
     if (!lines.length) continue;
     total++;
     if (type) styled++;
@@ -1268,12 +1338,14 @@ export function docxScreenplayText(paras) {
       let t = caps ? l.toUpperCase() : l;
       if (type === 'paren' && i === 0 && !t.startsWith('(')) t = '(' + t;
       if (type === 'paren' && i === lines.length - 1 && !t.endsWith(')')) t += ')';
-      push(' '.repeat(col) + t, type);
+      // A break the writer typed inside a styled Action or Dialogue is kept (docxCont).
+      push(' '.repeat(col) + t, type, !!type && i > 0);
     });
     push('');
   }
   const text = new String(out.join('\n'));
   text.docxTypes = types;
+  text.docxCont = cont;
   return { text, styled, total };
 }
 

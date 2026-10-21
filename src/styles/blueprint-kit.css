@@ -129,7 +129,9 @@
   color: var(--ink-body);
 }
 :root .step .ask-label::before { content: none; }
-:root .step :is(textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]), select) {
+/* A writing field is paper (src/styles/paper-field.css, 20 Oct 2026):
+   these dark field rules stand aside for it rather than out-rank it. */
+:root .step :is(textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]), select):not(.paper-field):not(.paper-scope textarea) {
   background: var(--surface-rail);
   border: 1px solid var(--border-default);
   border-radius: var(--sk-field-radius, var(--radius));
@@ -139,14 +141,14 @@
   line-height: var(--lh-body);
 }
 :root .step :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]), select) { min-height: var(--h-field); padding-block: 0; }
-:root .step :is(textarea, input, select):hover { border-color: var(--border-strong); }
-:root .step :is(textarea, input, select):focus,
-:root .step :is(textarea, input, select):focus-visible {
+:root .step :is(textarea, input, select):not(.paper-field):not(.paper-scope textarea):hover { border-color: var(--border-strong); }
+:root .step :is(textarea, input, select):not(.paper-field):not(.paper-scope textarea):focus,
+:root .step :is(textarea, input, select):not(.paper-field):not(.paper-scope textarea):focus-visible {
   outline: 0;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 1px var(--border-focus);
 }
-:root .step :is(textarea, input)::placeholder { color: var(--ink-muted); }
+:root .step :is(textarea, input):not(.paper-field):not(.paper-scope textarea)::placeholder { color: var(--ink-muted); }
 :root .step select option { background: var(--surface-elevated); color: var(--ink); }
 :root .step .word-counter, :root .step .row-counter { font-family: var(--f-mono); }
 :root .step .row-counter { background: var(--brand-wash); color: var(--brand-deep); border: 1px solid var(--info-line); }

@@ -924,6 +924,9 @@ restoreFetch();
   const pill = W.slice(W.indexOf("tasks: ['gen-batch']"), W.indexOf("tasks: ['gen-batch']") + 400);
   ok(/before: flushDoc/.test(pill) && /after: \(\) => \{ reloadDoc\(\);/.test(pill), 'write.js: the gen-batch pill passes before: flushDoc and reloads doc in after');
   ok(!/Scriptgen\.runNextBatch\(/.test(W) && /flushDoc\(\);\s*res = Scriptgen\.applyBatch\(d, null\);\s*reloadDoc\(\);/.test(W), 'write.js: the bulk run flushes, commits and reloads');
+  /* Nothing a Desk task drafts is written before Accept: scriptgen
+     offers draft/apply halves only, never a one-call ask-and-write. */
+  eq(Object.keys(Gen).filter((k) => /^run/.test(k)), [], 'scriptgen: no run* export asks the model and writes in one call');
   undo();
 }
 

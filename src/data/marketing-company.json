@@ -95,7 +95,7 @@
         { "sym": "cloud_off", "title": "It works offline", "text": "The studio installs like an app and keeps working without a connection. It works on set without a signal for up to 14 days after you last signed in on that device." },
         { "sym": "backup", "title": "Sync and backup when you want them", "text": "You enter the studio by signing in with Google. Syncing your films between devices comes with a studio membership, and a backup to your own Google Drive is there if you switch it on." },
         { "sym": "lock", "title": "Nothing you write is deleted", "text": "If a part of the studio is closed to your plan, what you wrote in it stays and reappears when your plan includes it. You can download your work at any time: the screenplay as PDF, Word, Final Draft or Fountain, the breakdown, shot list and budget as CSV, and every project in one backup file." },
-        { "sym": "currency_rupee", "title": "Yearly plans in rupees", "text": "A plan is one year for one payment in Indian rupees, less than a cup of tea a day. Nothing renews by itself, so there is nothing to cancel." }
+        { "sym": "payments", "title": "Yearly plans, one payment", "text": "A plan is one year for one payment, priced in Indian rupees in India and in US dollars elsewhere, and checkout shows the currency you will be charged in before you pay. Nothing renews by itself, so there is nothing to cancel." }
       ]
     },
     "sign": "The {{brand:name}} team",

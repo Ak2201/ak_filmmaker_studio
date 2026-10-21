@@ -30,12 +30,14 @@
 /**
  * Parse a rate or day count a person typed, in Indian notation.
  * Accepts "25,000", "Rs. 25000", "25k", "1.5 lakh", "2 cr", "₹3L",
- * and "5 thousand" (feature.js's copy took it; the others did not).
+ * and "5 thousand" (feature.js's copy took it; the others did not),
+ * plurals ("2 lakhs", "1.5 crores"), "INR 5000", and a rate tail
+ * after the figure ("25k/day", "2 lakh per day").
  * @returns {number} rupees, or 0 for anything unparseable.
  */
 export function parseNum(s) {
   if (!s) return 0;
-  s = String(s).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '');
+  s = String(s).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '').replace(/^inr\.?|inr$/g, '');
   // Anchoring is necessary but NOT sufficient, which is the part that
   // is easy to lose. /(lakh|lac|l)$/ is anchored and still fires on
   // "1500 per roll", because the last letter of "roll" is an l — so a
@@ -46,12 +48,22 @@ export function parseNum(s) {
   // followed by it and nothing else. A rate with words in it falls
   // through to the number at the front, so "1500 per roll" is 1500
   // and "3 days" is 3, while "crew 500" stays 0 (no leading number).
-  const parts = s.match(/^(\d*\.?\d+)(crore|cr|lakh|lac|l|thousand|thou|k)?$/);
+  //
+  // The suffix list takes the PLURAL too — "2 lakhs", "1.5 crores",
+  // "12 lacs", "10 thousands" are how Indian English writes them, and
+  // without the `s` they fell through to the bare 2, 1.5, 12, 10: a
+  // figure 100,000x too small and no warning. ("crs" is not offered:
+  // the `rs` strip above has already eaten it.) And a suffix may carry
+  // a RATE tail — "/day" or "per day" — which names the unit and not
+  // the magnitude: "25k/day" is 25,000, not 25. The tail is only taken
+  // whole, after the number and its suffix, so "1500 per roll" is still
+  // 1500 and "1 lens day" is still 1.
+  const parts = s.match(/^(\d*\.?\d+)(crores?|cr|lakhs?|lacs?|l|thousands?|thou|k)?(?:(?:\/|per)[a-z]+)?$/);
   if (parts) {
     const suffix = parts[2] || '';
-    const m = /^(crore|cr)$/.test(suffix)          ? 10000000
-            : /^(lakh|lac|l)$/.test(suffix)        ? 100000
-            : /^(thousand|thou|k)$/.test(suffix)   ? 1000
+    const m = /^(crores?|cr)$/.test(suffix)         ? 10000000
+            : /^(lakhs?|lacs?|l)$/.test(suffix)     ? 100000
+            : /^(thousands?|thou|k)$/.test(suffix)  ? 1000
             : 1;
     return parseFloat(parts[1]) * m;
   }

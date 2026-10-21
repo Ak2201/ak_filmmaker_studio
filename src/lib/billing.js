@@ -133,7 +133,12 @@ async function invoke(name, body) {
     // supabase-js wraps a non-2xx as FunctionsHttpError with the Response on `context`.
     let detail = '';
     try { const j = await error.context?.json?.(); detail = (j && j.error) || ''; } catch (e) { /* no body */ }
-    throw new BillingError(detail || error.message || 'The payment service did not answer.', 'edge');
+    const err = new BillingError(detail || error.message || 'The payment service did not answer.', 'edge');
+    /* Whether the SERVER said this (a sentence in the body) or nothing
+       came back at all — a dropped connection, a gateway timeout. After
+       a payment the two mean different things; see buy(). */
+    err.answered = !!detail;
+    throw err;
   }
   // §51: rzp-verify answers 202 { pending } when Razorpay has authorized but
   // not yet captured the money — not a failure, and not a reason to pay again.
@@ -208,16 +213,55 @@ export async function buy(planId, period = 'year', { accountId = null, onStatus 
   });
 
   onStatus('Confirming with the studio…');
-  const result = await invoke('rzp-verify', {
-    razorpay_order_id: response.razorpay_order_id,
-    razorpay_payment_id: response.razorpay_payment_id,
-    razorpay_signature: response.razorpay_signature
-  });
+  let result;
+  try {
+    result = await invoke('rzp-verify', {
+      razorpay_order_id: response.razorpay_order_id,
+      razorpay_payment_id: response.razorpay_payment_id,
+      razorpay_signature: response.razorpay_signature
+    });
+  } catch (err) {
+    throw afterPayment(err, planId);
+  }
   bumpEvent('purchase');
   Store.notify('billing:changed', result);
   // Paying grants entry: a non-member is a member now. Ask the gate again.
   try { const c = cloud(); if (c && c.runGate) await c.runGate(); } catch (e) { /* the status call will say */ }
   return result;
+}
+
+/* MONEY HAS MOVED AND THE STUDIO HAS NOT SAID YES. Checkout returned a
+   payment, then rzp-verify answered 202 { pending } (authorized, capture
+   not yet seen), failed on the network, or refused. Rejecting the buy
+   like any other failure put the same BUY button back over billing
+   read BEFORE the payment — nothing refreshed it, because the notify
+   and the gate run sat after the await that threw — while the webhook
+   activated the first payment in the background. A second press was a
+   second order at full price, stacked as a second year (§52): the
+   payment.failed note below calls that an invitation to pay twice.
+
+   So the error says it came AFTER a payment (`afterPayment`), and
+   whether the outcome is still UNKNOWN (`unconfirmed`: pending, or no
+   answer at all) as against a sentence the server gave. The cards hold
+   the plan on "confirming" for an unconfirmed one. Billing is re-read
+   now and three more times as the webhook has time to land, so the
+   page moves on by itself when the plan arrives. */
+const RECHECK_MS = [0, 5000, 15000, 45000];
+function afterPayment(err, planId) {
+  const e = err instanceof BillingError ? err : new BillingError((err && err.message) || 'The payment service did not answer.', 'edge');
+  e.afterPayment = true;
+  e.plan = planId;
+  e.unconfirmed = e.code === 'pending' || !e.answered;
+  if (e.unconfirmed && e.code !== 'pending') {
+    e.message = 'Your payment went through, but the studio could not confirm it yet. Do not pay again — this page will update when it is confirmed. If it does not, write to us and quote the payment.';
+  }
+  for (const ms of RECHECK_MS) {
+    setTimeout(() => {
+      try { Store.notify('billing:changed', null); } catch (x) { /* nobody listening */ }
+      try { const c = cloud(); if (c && c.runGate) c.runGate(); } catch (x) { /* the status call will say */ }
+    }, ms);
+  }
+  return e;
 }
 
 /* Checkout is Razorpay's iframe, so it takes a literal rather than a

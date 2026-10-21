@@ -80,5 +80,54 @@ const a = JSON.stringify(Typeset.paginateDoc(dd)), b = JSON.stringify(Typeset.pa
 ok(a === b && a.length > 10, 'same draft, same pages');
 ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
 
+/* Restore keeps a locked numbering. restoreElements() renews every id,
+   and the lock keys on ids, so it used to be DELETED — the scene lock,
+   every OMITTED number and the page lock gone, under a dialog that said
+   "nothing is lost". Each snapshot line records the id it had live
+   (`liveId`); the lock is re-keyed through it. */
+{
+  const E = [];
+  for (let s = 1; s <= 5; s++) {
+    E.push(blankElement({ type: 'scene', text: 'INT. ROOM ' + s + ' - DAY' }));
+    E.push(blankElement({ type: 'action', text: 'Scene ' + s + ' happens.' }));
+  }
+  const ld = { elements: E, revisions: [], documents: [] };
+  ld.numbering = Script.lockNumbering(E);                 // 1..5
+  // Delete scene 3 (OMITTED), insert one after 4 (4A).
+  ld.elements = E.filter((x) => x.text !== 'INT. ROOM 3 - DAY');
+  const i4 = ld.elements.findIndex((x) => x.text === 'Scene 4 happens.') + 1;
+  ld.elements.splice(i4, 0, blankElement({ type: 'scene', text: 'INT. NEW - NIGHT' }));
+  ld.numbering = Script.settleNumbering(ld.elements, ld.numbering);
+  ld.numbering.pages = Typeset.lockPages(ld, '2026-10-21T00:00:00.000Z');
+  const numsOf = (d) => {
+    const r = Script.sceneNumbers(d.elements, d.numbering);
+    return { heads: d.elements.filter((x) => x.type === 'scene').map((x) => r.byId.get(x.id)), omitted: r.omitted.map((o) => o.number) };
+  };
+  const want = numsOf(ld);
+  eq(want, { heads: ['1', '2', '4', '4A', '5'], omitted: ['3'] }, 'fixture: 1 2 4 4A 5, 3 omitted');
+  const pagesBefore = Typeset.pageNumbersDoc(ld);
+  const dl = D.saveNewDraft(ld);
+  ld.elements[1].text = 'Scratch edit.';
+  ok(D.restoreDraft(ld, dl.id), 'restore the latest draft over a locked script');
+  ok(ld.numbering && ld.numbering.locked === true, 'the scene lock survives the restore');
+  eq(numsOf(ld), want, 'every heading keeps its locked number and 3 is still OMITTED');
+  ok(Object.keys(ld.numbering.ids).every((k) => !ld.elements.some((x) => x.id === k) || ld.elements.find((x) => x.id === k).type === 'scene'), 'the record keys on the restored ids');
+  ok(ld.numbering.pages && ld.numbering.pages.locked === true, 'the page lock survives too');
+  ok(ld.numbering.pages.starts.every((st) => !st.id || ld.elements.some((x) => x.id === st.id)), 'and its starts name restored elements');
+  eq(Typeset.pageNumbersDoc(ld), pagesBefore, 'the pages read as they did when locked');
+  // A draft from before this lock: its headings come back by their words.
+  const unl = { elements: els('INT. A - DAY', 'x', 'INT. B - DAY', 'y'), revisions: [], documents: [] };
+  const dOld = D.saveNewDraft(unl);
+  unl.numbering = Script.lockNumbering(unl.elements);
+  unl.revisions[0].elements.forEach((e) => { delete e.liveId; });
+  D.restoreDraft(unl, dOld.id);
+  eq(numsOf(unl), { heads: ['1', '2'], omitted: [] }, 'a draft with no liveId: numbers matched by heading text');
+  // Unlocked stays unlocked.
+  const free = { elements: els('INT. A - DAY', 'x'), revisions: [], documents: [] };
+  const dFree = D.saveNewDraft(free);
+  D.restoreDraft(free, dFree.id);
+  ok(!('numbering' in free), 'no lock, none invented');
+}
+
 console.log(fails ? fails + ' FAILED of ' + n : 'drafts: all ' + n + ' checks passed');
 process.exit(fails ? 1 : 0);

@@ -28,6 +28,8 @@ import {
   rateHint, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
   scheduleFacts, scheduleHint, songDaysHint
 } from '../lib/budget-model.js';
+import { readAll as readCosts } from '../lib/costs.js';
+import { highestLineIndex, rowSpan } from '../lib/budget-line-ids.js';
 import { askDanger } from './dialog.js';
 import { revealTarget } from './tabs.js';
 import { button, badge, sym } from './kit/index.js';
@@ -238,8 +240,14 @@ function saveCalc() {
 function loadCalc() {
   try {
     const data = readCalcData();   // throws on a corrupt blob, which the catch below swallows
-    const max = maxRowIndex(data);
-    const targetRows = Math.max(max, 5);
+    // Rows are drawn from the blob's LOWEST row number, not from 1: after
+    // a reset the rows start above every id ever used (see resetCalc), and
+    // drawing empty rows 1..n here would hand those ids out again. A blob
+    // that starts at ci_1 — every estimate saved before this — draws as
+    // it always did. maxRowIndex is still the top of the span.
+    const span = rowSpan(data, 5);
+    const targetRows = Math.max(span.count, maxRowIndex(data) - span.start + 1);
+    calcCount = span.start - 1;
     // addCalcRow(n) builds n rows and recalculates ONCE. Calling it in a loop
     // ran a full DOM sweep + a localStorage write per row on every page load.
     // persist:false because the rows are EMPTY at this point and the saved
@@ -284,10 +292,16 @@ function loadCalc() {
 
 async function resetCalc() {
   if (!await askDanger('Clear all calculator rows?')) return;
+  // A row number is a line's identity in fms_costs_v1 (expenses, crew,
+  // department moves, locked versions). Counting from 1 again would bind
+  // the old camera spend to whatever new item lands in row 3, so the new
+  // rows start above every id either blob names. Read BEFORE clearing.
+  let high = 0;
+  try { high = highestLineIndex(readCalcData(), readCosts()); } catch (e) { high = calcCount; }
   clearCalcData();
   const wrap = document.getElementById('calcRows');
   if (wrap) wrap.replaceChildren();
-  calcCount = 0;
+  calcCount = Math.max(high, calcCount);
   addCalcRow(5);
 }
 

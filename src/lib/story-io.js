@@ -72,6 +72,59 @@ export function blueprintBeats(ns, bp = readBlueprint(ns)) {
 export const isEmptyStory = (s) => !String(s.source || '').trim() && !(s.marks || []).length &&
   !(s.outline || []).length && !String(s.idea || '').trim() && !String(s.logline || '').trim();
 
+/* The Story Bible's conflict answers and the market fields (genre,
+   audience, budget tier, comps) are the writer's, not the story's
+   draft: a sample loaded over them used to wipe them with no question
+   asked, because isEmptyStory() — the start-card test — never looks
+   at them. They are now KEPT across a sample (the writer's value wins
+   wherever it says anything; the sample's fills a blank), so the only
+   things a sample replaces are the ones its confirmation names. */
+export const KEPT_ON_SAMPLE = ['conflicts', 'conflictLine', 'genre', 'audience', 'budgetTier', 'comps'];
+const said = (v) => (Array.isArray(v) ? v.length > 0 : String(v == null ? '' : v).trim() !== '');
+
+/** `sample` with the writer's kept fields from `cur` laid over it. */
+export function sampleOver(cur, sample) {
+  const out = { ...sample };
+  for (const k of KEPT_ON_SAMPLE) {
+    if (cur && said(cur[k])) out[k] = JSON.parse(JSON.stringify(cur[k]));
+  }
+  return out;
+}
+
+/** Whether loading a sample would replace anything the writer made:
+ *  the start-card test, plus the tension scores and an outline lock,
+ *  which the sample replaces too. The kept fields are not counted —
+ *  a sample does not touch them. */
+export const sampleReplacesWork = (s) => !isEmptyStory(s) ||
+  Object.keys(s.tension || {}).length > 0 || !!String(s.outlineLockedAt || '').trim();
+
+/** The one confirmation both sample loaders ask (story.html's start
+ *  cards and the blueprints' story kit): it names exactly what
+ *  sampleOver() replaces and what it keeps. `where` is "this page" or
+ *  "the Story page". */
+export const sampleQuestion = (title, where) => 'Replace the story on ' + where + ' with the ' + title +
+  ' sample? Your idea, logline, outline, synopsis, highlights and tension scores there are replaced. ' +
+  'Your conflict answers, genre, audience and comps are kept, and so is the Idea Vault.';
+
+/* ---- the Build undo ------------------------------------------- */
+
+/* Build's undo is one level and its toast never times out (an
+   actionable toast must not), so it can be pressed long after the
+   build — and restoreSynopsis() puts back the pre-build synopsis and
+   marks whatever was typed or tagged since. The undo therefore
+   carries what the build MADE, and the page asks before an undo that
+   would throw later work away. */
+export const buildUndo = (snapshot, s) => ({ snap: snapshot,
+  built: { source: String(s.source || ''), marks: JSON.stringify(s.marks || []) } });
+
+/** True when the synopsis and marks are still exactly what the build
+ *  made — an undo now loses nothing written since. */
+export const buildUndoClean = (undo, s) => !!undo &&
+  undo.built.source === String(s.source || '') && undo.built.marks === JSON.stringify(s.marks || []);
+
+/** The confirm an undo asks when the synopsis has moved on. */
+export const buildUndoQuestion = 'Undo the build? The synopsis and highlights go back to how they were before it, and everything you have typed or tagged in the synopsis since the build is lost.';
+
 /* ---- reading a file ------------------------------------------ */
 
 /* A PDF comes back laid out as on the page: hard line breaks at the
@@ -166,6 +219,7 @@ export function exportOutline(s) {
 
 export default {
   FEATURE_KEY, SHORT_KEY, BLUEPRINT_BEATS, readBlueprint, blueprintField, blueprintBeatText, blueprintBeats,
-  isEmptyStory, reflow, readSynopsisFile, replaceQuestion, importedSentence, sampleStory,
+  isEmptyStory, KEPT_ON_SAMPLE, sampleOver, sampleReplacesWork, sampleQuestion, buildUndo, buildUndoClean, buildUndoQuestion,
+  reflow, readSynopsisFile, replaceQuestion, importedSentence, sampleStory,
   projectTitle, slug, download, canExportSynopsis, canExportOutline, exportSynopsis, exportOutline
 };

@@ -315,14 +315,44 @@ function markLocalWrite(pid, scope, ts) {
   m[_metaId(pid, scope)] = row;
   _writeMeta(m);
 }
-function markRemoteSeen(pid, scope, ts, alsoLocal) {
+/* `alsoLocal` says the two copies now agree, so the local clock may
+   take the remote one — but THE LOCAL CLOCK ONLY MOVES FORWARD. A push
+   returns after its await; a save that landed during that flight has
+   already set `local` to its own (later) time, and resetting it to the
+   push's older stamp made the next push carry the newer content under
+   the older time, so a collaborator's later edit beat all of it. The
+   one exception is a clock in the future (skewed, or an older bad
+   stamp), which is still pulled back, as before. `raw`, when given, is
+   the copy the server now holds: its fingerprint lets salvage() tell a
+   copy this device merely received from one with unsent work in it. */
+function markRemoteSeen(pid, scope, ts, alsoLocal, raw) {
   if (!pid || !scope) return;
   const m = _readMeta();
   const row = m[_metaId(pid, scope)] || {};
   row.remote = ts || Date.now();
-  if (alsoLocal) row.local = row.remote;
+  if (alsoLocal && !(row.local > row.remote && row.local <= Date.now())) row.local = row.remote;
+  if (raw != null) row.h = _fingerprint(raw);
   m[_metaId(pid, scope)] = row;
   _writeMeta(m);
+}
+/* FNV-1a over the string. Not a security hash: it only has to tell
+   "the copy the server gave us" from "anything else". */
+function _fingerprint(s) {
+  let h = 0x811c9dc5;
+  s = String(s);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return s.length + '-' + h.toString(16);
+}
+/* True when `localRaw` is exactly the copy last exchanged with the
+   server and nothing was written here since: replacing it loses
+   nothing, so it must not take a slot in the salvage ring. Without
+   this, every live arrival from a collaborator salvaged the PREVIOUS
+   server copy, and about twelve of them pushed out the one offline
+   copy the ring was holding. No fingerprint (older meta, a backup
+   restore written raw) means unknown, and unknown is salvaged. */
+function _isServerCopy(pid, scope, localRaw) {
+  const row = _readMeta()[_metaId(pid, scope)];
+  return !!row && row.h != null && !(row.local > row.remote) && row.h === _fingerprint(localRaw);
 }
 
 /* When this device last touched a scope, in epoch ms.
@@ -1484,10 +1514,10 @@ function _applyRemoteRow(projectId, row) {
     return 'kept';
   }
   // Remote wins. Keep a copy of whatever it displaces.
-  if (localRaw != null && localRaw !== '{}') salvage(projectId, row.scope, localRaw);
+  if (localRaw != null && localRaw !== '{}' && !_isServerCopy(projectId, row.scope, localRaw)) salvage(projectId, row.scope, localRaw);
   _applyingRemote = true;
   try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
-  markRemoteSeen(projectId, row.scope, remoteTs, true);
+  markRemoteSeen(projectId, row.scope, remoteTs, true, nextRaw);
   return 'applied';
 }
 
@@ -1661,8 +1691,9 @@ async function _pushScope(projectId, scope, opts) {
                        : 'Saved here — will upload when you are back online');
     throw error;
   }
-  // Both clocks now agree on the value this device just sent.
-  markRemoteSeen(projectId, scope, Date.parse(stamp), true);
+  // Both clocks now agree on the value this device just sent (unless a
+  // save landed during the upsert, which markRemoteSeen keeps).
+  markRemoteSeen(projectId, scope, Date.parse(stamp), true, raw);
   /* The value just sent is the newest one, so a queued (perhaps refused)
      copy of this scope has nothing left to say. */
   _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope && _ownsOp(o));
@@ -2079,14 +2110,14 @@ function _onRemoteData(payload) {
     _debouncedPush(row.project_id, row.scope, 250);
     return;
   }
-  if (localRaw != null && localRaw !== '{}') salvage(row.project_id, row.scope, localRaw);
+  if (localRaw != null && localRaw !== '{}' && !_isServerCopy(row.project_id, row.scope, localRaw)) salvage(row.project_id, row.scope, localRaw);
   _applyingRemote = true;
   try {
     Store.rawSet(nsKey, nextRaw);
   } finally {
     _applyingRemote = false;
   }
-  markRemoteSeen(row.project_id, row.scope, remoteTs, true);
+  markRemoteSeen(row.project_id, row.scope, remoteTs, true, nextRaw);
   // Re-render visible inputs if blueprint exposes a reload hook
   if (typeof window.loadAll === 'function') {
     try { window.loadAll(); } catch (e) {}

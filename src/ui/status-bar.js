@@ -75,7 +75,12 @@ export function syncLine(st) {
     case 'synced':
     case 'idle':    return q ? { text: waiting, tone: 'warn' } : { text: 'Synced', tone: 'ok' };
     case 'offline': return { text: q ? waiting + ' (offline)' : 'Offline', tone: 'warn' };
-    case 'error':   return { text: q ? waiting : 'Not synced', tone: 'err' };
+    /* A refusal (cloud.js refusalSentence) names its cause in the detail;
+       the short line says only that it is kept here, and the pill's
+       title carries the whole sentence. */
+    case 'error':   return /^Not synced/.test(st.detail || '')
+      ? { text: 'Not synced' + (q ? ' \u00b7 ' + q + ' kept here' : ''), tone: 'err', detail: st.detail }
+      : { text: q ? waiting : 'Not synced', tone: 'err', detail: st.detail };
     default:        return { text: 'Local only', tone: 'off' };
   }
 }

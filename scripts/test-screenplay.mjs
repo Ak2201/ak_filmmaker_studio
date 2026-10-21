@@ -272,6 +272,8 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
 {
   const S = await import('../src/lib/script.js');
   const X = await import('../src/lib/screenplay-export.js');
+  // The .fdx writer left script.js for its own lazily loaded module (test:fdx).
+  const { toFDX } = await import('../src/lib/screenplay-fdx.js');
   const { readFileSync } = await import('node:fs');
   const { DOMParser } = await import('linkedom');
   globalThis.DOMParser = DOMParser;
@@ -343,7 +345,7 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   ok(/\nMEENA \^\n/.test(df), 'Fountain marks the second cue with ^');
   const dfBack = parseScript(df, 'x.fountain').elements;
   eq(dfBack.map((e) => [e.type, e.text, !!e.dual]), dual.map((e) => [e.type, e.text, !!e.dual]), 'Fountain round trip keeps the pair');
-  const fdx = S.toFDX({ elements: [...shotScript.slice(0, 3), ...dual.slice(1)] }, { title: 'Kettle' });
+  const fdx = toFDX({ elements: [...shotScript.slice(0, 3), ...dual.slice(1)] }, { title: 'Kettle' });
   ok(/<Paragraph>\s*<DualDialogue>[\s\S]*<\/DualDialogue>\s*<\/Paragraph>/.test(fdx) && /Type="Shot"/.test(fdx), '.fdx export writes a DualDialogue and a Shot');
   const fdxBack = parseScript(fdx, 'x.fdx');
   eq(fdxBack.elements.map((e) => [e.type, e.text, !!e.dual]), [...shotScript.slice(0, 3), ...dual.slice(1)].map((e) => [e.type, e.text, !!e.dual]), '.fdx export -> import round-trips shots and the pair');
@@ -389,7 +391,7 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   const tpBack = parseScript(tpF, 'x.fountain');
   eq(tpBack.titlePage && tpBack.titlePage.contact, 'a@example.com\n+91 98400 00000', 'Fountain import reads a run-on title-page value');
   eq(tpBack.elements.map((e) => e.type), shotScript.map((e) => e.type), 'and the run-on line does not fall into the script');
-  const tpFdx = parseScript(S.toFDX({ elements: shotScript, titlePage: { ...withTp.titlePage, draft: 'Second Draft' } }), 'x.fdx').titlePage;
+  const tpFdx = parseScript(toFDX({ elements: shotScript, titlePage: { ...withTp.titlePage, draft: 'Second Draft' } }), 'x.fdx').titlePage;
   ok(tpFdx && tpFdx.title === 'DRAGON' && tpFdx.author === 'A. Writer' && tpFdx.draft === 'Second Draft' && tpFdx.contact === 'a@example.com\n+91 98400 00000', '.fdx title page round-trips: ' + JSON.stringify(tpFdx));
 
   /* ---- page view and PDF: one paginator ---- */

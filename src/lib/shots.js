@@ -122,6 +122,22 @@ export function blankShot(patch = {}) {
     // rebuilt from blankShot() must not quietly lose it. Never both:
     // a shot is typed, AI-drafted or rules-drafted.
     rules: false,
+    /* Three fields from the shot-list revamp (20 Oct 2026). All spread
+       under every stored row by listShots(), so a shot written before
+       they existed reads back with the defaults and nothing migrates —
+       the shotState / songId pattern.
+         mins       the time estimate for the setup, in minutes, as typed
+                    ('' = no estimate). Read through shotMinutes(), never
+                    parsed anywhere else.
+         setup      the camera setup the shot is grouped under, in the
+                    crew's words. '' means "whatever the camera link says":
+                    setupOf() falls back to the blocking camera's name, so
+                    the default is derived, never copied.
+         numLocked  the number is the writer's and auto-numbering leaves it
+                    alone. Typing a number locks it. */
+    mins: '',
+    setup: '',
+    numLocked: false,
     ...patch
   };
 }
@@ -248,9 +264,29 @@ export function blankFrame(patch = {}) {
        by listFrames(), so an older frame reads back '' and needs no
        migration or new key — the shotState pattern. */
     aspect: '',
+    /* The board panel's three lines (20 Oct 2026), Boords-style. Spread
+       under every stored row like `aspect`. `action` is what happens in
+       the frame; a frame written before it existed kept that in
+       `caption`, so frameAction() reads `caption` while `action` is
+       empty, and the first edit MOVES it (setFrameAction) rather than
+       copying it — one representation, not two. */
+    action: '',
+    dialogue: '',
+    camera: '',
     ...patch
   };
 }
+
+/** What happens in the frame: `action`, or the older `caption` it replaced. */
+export function frameAction(frame) {
+  if (!frame) return '';
+  const a = String(frame.action ?? '');
+  return a !== '' ? a : String(frame.caption ?? '');
+}
+
+/** The patch that writes a frame's action: the caption it may still be
+    held in is cleared in the same write, so the text lives in one field. */
+export const actionPatch = (value) => ({ action: String(value ?? ''), caption: '' });
 
 /** A lookbook board. Entries live ON the board rather than in a flat
     list keyed by board index — indices renumber when a board moves,
@@ -281,10 +317,21 @@ function readAll() {
   try { raw = localStorage.getItem(SHOTS_KEY); } catch (e) { /* private mode */ }
   if (!raw) return { shots: [], frames: [], boards: [], blocks: [] };
   try {
-    const parsed = JSON.parse(raw) || {};
+    const got = JSON.parse(raw);
+    const parsed = got && typeof got === 'object' && !Array.isArray(got) ? got : {};
     // An empty array is truthy — the trap that once gave returning users
     // a table with no rows and no way to add one. Check Array.isArray.
+    //
+    // PASSTHROUGH. Every writer here does `{ ...readAll(), x }`, so a
+    // top-level field this build does not know (written by a NEWER build
+    // in another tab, or synced in from one) must ride along in what
+    // readAll() returns, or the first save from this tab wipes it. The
+    // four collections are restated after the spread, shape-guaranteed;
+    // everything else is carried through untouched. Records keep their
+    // unknown fields the same way: the list readers spread the stored
+    // row OVER the blank one, never pick fields out of it.
     return {
+      ...parsed,
       shots:  Array.isArray(parsed.shots)  ? parsed.shots  : [],
       frames: Array.isArray(parsed.frames) ? parsed.frames : [],
       boards: Array.isArray(parsed.boards) ? parsed.boards : [],
@@ -370,6 +417,177 @@ export function moveShot(id, delta) {
   [shots[i], shots[j]] = [shots[j], shots[i]];
   saveShots(shots);
   return shots;
+}
+
+/* The shot list's optional columns, in table order. The number is
+   always shown; everything else can be hidden from the screen, and the
+   same choice drives the PDF and CSV columns (shotlist-export.js). Ids
+   are view state, never stored on a shot. */
+export const SHOT_COLUMNS = [
+  { id: 'size',        label: 'Size' },
+  { id: 'angle',       label: 'Angle' },
+  { id: 'movement',    label: 'Move' },
+  { id: 'lens',        label: 'Lens' },
+  { id: 'rig',         label: 'Light / rig' },
+  { id: 'setup',       label: 'Setup' },
+  { id: 'mins',        label: 'Minutes' },
+  { id: 'description', label: 'What we see' },
+  { id: 'done',        label: 'Status' }
+];
+/* Every column the old sheet carried shows by default, rig included: a
+   device with no saved view must not hide notes somebody already typed. */
+export const DEFAULT_COLUMNS = ['size', 'angle', 'movement', 'lens', 'rig', 'setup', 'mins', 'description', 'done'];
+/** A column list, cleaned: known ids only, in table order. */
+export function cleanColumns(ids) {
+  const want = new Set(Array.isArray(ids) ? ids : DEFAULT_COLUMNS);
+  return SHOT_COLUMNS.map((c) => c.id).filter((id) => want.has(id));
+}
+
+/* ---- order, numbering and time ---------------------------------- */
+
+/** Put one scene's shots in the order `ids` gives. The scene's shots keep
+    the SLOTS they held in the flat array (so nothing crosses a scene
+    boundary, the reason moveShot() swaps within a scene); ids that are
+    not this scene's are ignored, and any of the scene's shots missing
+    from `ids` follow in their old order. Returns the scene's shots. */
+export function reorderShots(sceneId, ids) {
+  const shots = listShots();
+  const slots = [];
+  const mine = [];
+  shots.forEach((s, i) => { if (s.sceneId === sceneId) { slots.push(i); mine.push(s); } });
+  const byId = new Map(mine.map((s) => [s.id, s]));
+  const next = [];
+  const seen = new Set();
+  for (const id of ids || []) {
+    const s = byId.get(id);
+    if (s && !seen.has(id)) { next.push(s); seen.add(id); }
+  }
+  for (const s of mine) if (!seen.has(s.id)) next.push(s);
+  if (next.every((s, i) => s === mine[i])) return mine;
+  slots.forEach((slot, i) => { shots[slot] = next[i]; });
+  saveShots(shots);
+  return next;
+}
+
+/** A number the writer chose rather than one the list handed out: locked
+    on purpose, or anything that is not a plain ordinal ("4A", "12B",
+    "INS"). A number typed before `numLocked` existed is therefore safe
+    from autoNumber() as long as it says something an ordinal cannot. */
+export function isLockedNumber(shot) {
+  if (!shot) return false;
+  if (shot.numLocked) return true;
+  const n = String(shot.number ?? '').trim();
+  return n !== '' && !/^\d+$/.test(n);
+}
+
+/** PURE. The numbers autoNumber() would write, as [id, number] for every
+    shot it changes. Unlocked shots count 1, 2, 3… in list order, skipping
+    any number a locked shot of the scene already holds, so the two never
+    collide. */
+export function autoNumbers(list) {
+  const taken = new Set(list.filter(isLockedNumber).map((s) => String(s.number).trim().toUpperCase()));
+  const out = [];
+  let n = 0;
+  for (const s of list) {
+    if (isLockedNumber(s)) continue;
+    do { n++; } while (taken.has(String(n)));
+    if (String(s.number ?? '') !== String(n)) out.push([s.id, String(n)]);
+  }
+  return out;
+}
+
+/** PURE. True when the list already reads as autoNumber() would leave it,
+    blanks aside: every unlocked shot with a number holds its ordinal. A
+    move renumbers only such a scene; a scene numbered by hand (12, 13,
+    14 across the script, or 1, 2, 5 after a delete) is left as typed. */
+export function isAutoOrdered(list) {
+  const byId = new Map(list.map((s) => [s.id, s]));
+  return autoNumbers(list).every(([id]) => String((byId.get(id) || {}).number ?? '').trim() === '');
+}
+/** The same question for one scene of the stored list. */
+export const sceneAutoOrdered = (sceneId) => isAutoOrdered(listShots().filter((s) => s.sceneId === sceneId));
+
+/** Renumber one scene's unlocked shots in their current order. Writes
+    only when something changes; returns how many numbers moved. */
+export function autoNumber(sceneId) {
+  const shots = listShots();
+  const changes = autoNumbers(shots.filter((s) => s.sceneId === sceneId));
+  if (!changes.length) return 0;
+  const to = new Map(changes);
+  saveShots(shots.map((s) => (to.has(s.id) ? { ...s, number: to.get(s.id) } : s)));
+  return changes.length;
+}
+
+/** A shot's time estimate in minutes, or 0. A whole-string match, the
+    money.js rule: "12", "7.5", "20 min", "1h 30", "1:30" (h:mm) read;
+    anything with other words in it reads 0 rather than a guess. */
+export function shotMinutes(shot) {
+  const t = String((shot && shot.mins) ?? '').trim().toLowerCase();
+  if (!t) return 0;
+  let m = t.match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?)?$/);
+  if (m) return Number(m[1]);
+  m = t.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?)(?:\s*(\d+)\s*(m|min|mins|minutes?)?)?$/);
+  if (m) return Number(m[1]) * 60 + (m[3] ? Number(m[3]) : 0);
+  m = t.match(/^(\d+):([0-5]\d)$/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  return 0;
+}
+
+/** Total minutes over a list of shots, and how many carry an estimate. */
+export function minutesOf(shots) {
+  let total = 0, timed = 0;
+  for (const s of shots || []) {
+    const m = shotMinutes(s);
+    if (m > 0) { total += m; timed++; }
+  }
+  return { total: Math.round(total * 10) / 10, timed, count: (shots || []).length };
+}
+
+/** "1 h 25 min", "45 min", "" for nothing. Rounded to the minute. */
+export function formatMinutes(total) {
+  const m = Math.round(Number(total) || 0);
+  if (m <= 0) return '';
+  const hrs = Math.floor(m / 60), rest = m % 60;
+  return hrs ? hrs + ' h' + (rest ? ' ' + rest + ' min' : '') : rest + ' min';
+}
+
+/** Minutes per shoot day: { day → { total, timed, count, scenes } }, read
+    off each scene's own `shootDay` (the stripboard's assignment; 0 is
+    unscheduled and is left out). Derived on every call, never stored. */
+export function minutesByDay(scenes, shots = listShots()) {
+  const out = new Map();
+  for (const scene of scenes || []) {
+    const d = parseInt(scene && scene.shootDay, 10);
+    if (!(d > 0)) continue;
+    const mine = shots.filter((s) => s.sceneId === scene.id);
+    const m = minutesOf(mine);
+    const cur = out.get(d) || { total: 0, timed: 0, count: 0, scenes: 0 };
+    out.set(d, { total: Math.round((cur.total + m.total) * 10) / 10, timed: cur.timed + m.timed, count: cur.count + m.count, scenes: cur.scenes + 1 });
+  }
+  return out;
+}
+
+/** The setup a shot is grouped under: its own `setup`, else the name of
+    the blocking camera it is linked to, else ''. */
+export function setupOf(shot, cameras) {
+  const own = String((shot && shot.setup) || '').trim();
+  if (own) return own;
+  const cam = camOf(shot, cameras);
+  return cam ? cam.name : '';
+}
+
+/** PURE. A scene's shots grouped by setup, in order of first appearance;
+    shots with no setup are one last group with label ''. */
+export function groupBySetup(shots, cameras) {
+  const groups = new Map();
+  for (const s of shots || []) {
+    const k = setupOf(s, cameras);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(s);
+  }
+  const named = [...groups].filter(([k]) => k !== '').map(([label, list]) => ({ label, shots: list }));
+  if (groups.has('')) named.push({ label: '', shots: groups.get('') });
+  return named;
 }
 
 /** A shot's status as the coverage table prints it. Derived from the one
@@ -737,6 +955,9 @@ export default {
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
   addBlock, updateBlock, removeBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
+  SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,
+  reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, minutesOf, formatMinutes,
+  minutesByDay, setupOf, groupBySetup, frameAction, actionPatch,
   shotsByScene, takeSceneOut, putSceneBack,
   blankFrame, listFrames, saveFrames, addFrame, updateFrame, removeFrame,
   moveFrame, framesByShot,

@@ -423,6 +423,149 @@ for (const width of [1280, 390]) {
   finally { await ctx.close(); }
 }
 
+/* =================================================================
+   (e) MANY PICTURES AT ONCE (frame-upload.js uploadManyToFrames)
+   "Pictures" with three files picked → three new frames on that shot,
+   each its own Drive file, uploaded one at a time; one Undo removes all
+   three and deletes the files. Then two pictures and a PDF DROPPED on a
+   shot → two frames, the PDF refused.
+   ================================================================= */
+{
+  console.log('(e) bulk pictures, Drive with a token');
+  F.reset(); resetFakes();
+  const tok = aiScenario('pro', 'tok-amy');
+  const { ctx, page, errors } = await context({ tok, width: 1280, driveToken: true });
+  try {
+    await seed(page, { drive: true, empty: true });
+    await page.goto(BASE + '/visualize.html#storyboard', { waitUntil: 'networkidle' });
+    await settle(page, true);
+    const png = await page.evaluate(async () => {
+      const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+      const x = c.getContext('2d'); x.fillStyle = 'gray'; x.fillRect(0, 0, 320, 180);
+      const b = await new Promise((r) => c.toBlob(r, 'image/png'));
+      return Array.from(new Uint8Array(await b.arrayBuffer()));
+    });
+    const col = '.vz-shotcol:has(.vz-frame[data-frame="frEmpty"])';
+    const shotId = await page.getAttribute(col, 'data-shot');
+    const before = (await shotsDoc(page)).frames.filter((f) => f.shotId === shotId).length;
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser', { timeout: 5000 }),
+      page.click(col + ' [data-action="vz-frame-bulk"]')
+    ]);
+    ok(chooser.isMultiple(), 'the Pictures picker takes several files');
+    await chooser.setFiles(['a', 'b', 'c'].map((n) => ({ name: n + '.png', mimeType: 'image/png', buffer: Buffer.from(png) })));
+    for (let i = 0; i < 80 && D.uploads.length < 3; i++) await page.waitForTimeout(100);
+    await page.waitForTimeout(600);
+    ok(D.uploads.length === 3, 'three files went to Drive', D.uploads.length);
+    let doc = await shotsDoc(page);
+    const mine = doc.frames.filter((f) => f.shotId === shotId);
+    ok(mine.length === before + 3, 'one new frame per picture', { before, after: mine.length });
+    const ids = D.uploads.map((u) => 'drive:' + u.id);
+    ok(ids.every((r) => mine.some((f) => f.ref === r)), 'each new frame keeps its own drive:<fileId>');
+    ok(JSON.stringify(doc).length < 6000, 'and no picture bytes in storage', JSON.stringify(doc).length);
+    ok(await page.isVisible('.toast:has-text("3 pictures saved") .toast-action'), 'one toast for the run, with Undo');
+    await page.click('.toast:has-text("3 pictures saved") .toast-action');
+    await page.waitForTimeout(600);
+    doc = await shotsDoc(page);
+    ok(doc.frames.filter((f) => f.shotId === shotId).length === before, 'Undo removes the three frames');
+    ok(D.deletes.length === 3, 'and deletes the three files from Drive', D.deletes);
+
+    /* A drop: two pictures and a PDF onto the same shot. */
+    const n0 = D.uploads.length;
+    await page.evaluate(async ({ sel, bytes }) => {
+      const dt = new DataTransfer();
+      const u8 = new Uint8Array(bytes);
+      dt.items.add(new File([u8], 'd1.png', { type: 'image/png' }));
+      dt.items.add(new File(['%PDF-1.4'], 'notes.pdf', { type: 'application/pdf' }));
+      dt.items.add(new File([u8], 'd2.png', { type: 'image/png' }));
+      const el = document.querySelector(sel);
+      el.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+      el.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    }, { sel: col, bytes: png });
+    for (let i = 0; i < 80 && D.uploads.length < n0 + 2; i++) await page.waitForTimeout(100);
+    await page.waitForTimeout(600);
+    ok(D.uploads.length === n0 + 2, 'a drop of two pictures and a PDF uploads two', D.uploads.length - n0);
+    ok((await shotsDoc(page)).frames.filter((f) => f.shotId === shotId).length === before + 2, 'two new frames from the drop');
+    const said = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | '));
+    ok(/1 file was not a picture/.test(said), 'and the PDF is named as refused', said);
+    ok(await overflow(page) <= 0, 'no sideways overflow');
+    ok(errors.length === 0, 'no page errors', errors);
+  } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
+  finally { await ctx.close(); }
+}
+
+/* =================================================================
+   (f) THE SHOT LIST'S NUMBERS AND LAYOUT (phase 3 review fixes)
+   A scene numbered by hand (12, 13, 14) keeps its numbers through a
+   move; a scene in auto order renumbers; locking a blank number stamps
+   the number the row shows; unlocking a "12B" offers Undo. At 1280 the
+   list fits, "What we see" is the wide column and Light / rig shows.
+   ================================================================= */
+{
+  console.log('(f) shot list numbers and layout @1280');
+  F.reset(); resetFakes();
+  const { ctx, page, errors } = await context({ width: 1280 });
+  try {
+    await seed(page);
+    await page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith('fms_shots_v1'));
+      const d = JSON.parse(localStorage.getItem(k));
+      d.shots = [
+        { id: 'h1', sceneId: 'scA', number: '12', size: 'EWS', rig: 'Key from window', description: 'The chai shop at noon, Ravi behind the counter wiping the glasses one at a time.' },
+        { id: 'h2', sceneId: 'scA', number: '13', size: 'MCU' },
+        { id: 'h3', sceneId: 'scA', number: '14B' },
+        { id: 'o1', sceneId: 'scB', number: '1' }, { id: 'o2', sceneId: 'scB', number: '2' }, { id: 'o3', sceneId: 'scB', number: '' }
+      ];
+      localStorage.setItem(k, JSON.stringify(d));
+    });
+    await page.goto(BASE + '/visualize.html#shot-list', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    const nums = async (scene) => (await shotsDoc(page)).shots.filter((x) => x.sceneId === scene).map((x) => x.id + '=' + x.number);
+    await page.click('[data-shot="h1"] [data-action="vz-shot-down"]');
+    await page.waitForTimeout(300);
+    ok(JSON.stringify(await nums('scA')) === JSON.stringify(['h2=13', 'h1=12', 'h3=14B']), 'a move in a scene numbered by hand keeps every typed number', await nums('scA'));
+    await page.click('[data-shot="o1"] [data-action="vz-shot-down"]');
+    await page.waitForTimeout(300);
+    ok(JSON.stringify(await nums('scB')) === JSON.stringify(['o2=1', 'o1=2', 'o3=3']), 'a move in a scene in auto order renumbers it', await nums('scB'));
+    // Lock a blank: clear o3's number first, then lock it.
+    await page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith('fms_shots_v1'));
+      const d = JSON.parse(localStorage.getItem(k));
+      d.shots.find((x) => x.id === 'o3').number = '';
+      localStorage.setItem(k, JSON.stringify(d));
+    });
+    await page.goto(BASE + '/visualize.html#shot-list', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    await page.click('[data-shot="o3"] [data-action="vz-shot-lock"]');
+    await page.waitForTimeout(300);
+    const o3 = (await shotsDoc(page)).shots.find((x) => x.id === 'o3');
+    ok(o3.numLocked === true && o3.number === '3', 'locking a blank number stamps the number the row shows', o3);
+    await page.click('[data-shot="h3"] [data-action="vz-shot-lock"]');
+    await page.waitForTimeout(300);
+    ok((await shotsDoc(page)).shots.find((x) => x.id === 'h3').number !== '14B', 'unlocking 14B hands it to the list');
+    ok(await page.isVisible('.toast:has-text("14B") .toast-action'), 'with an Undo toast');
+    await page.click('.toast:has-text("14B") .toast-action');
+    await page.waitForTimeout(300);
+    ok(JSON.stringify(await nums('scA')) === JSON.stringify(['h2=13', 'h1=12', 'h3=14B']), 'Undo puts the scene\'s numbers back', await nums('scA'));
+    const lay = await page.evaluate(() => {
+      const wrap = document.querySelector('[data-scene="scA"] .vz-table-wrap') || document.querySelector('.vz-table-wrap');
+      const desc = document.querySelector('[data-shot="h1"] .vz-desc');
+      const sel = document.querySelector('[data-shot="h1"] .vz-c-size select');
+      const widths = [...document.querySelectorAll('[data-shot="h1"] td')].map((t) => t.getBoundingClientRect().width);
+      return { fits: wrap.scrollWidth <= wrap.clientWidth, desc: desc.getBoundingClientRect().width, clip: desc.scrollHeight - desc.clientHeight,
+        widest: Math.max(...widths) === (desc.closest('td').getBoundingClientRect().width), rig: !!document.querySelector('[data-shot="h1"] .vz-rig'),
+        size: sel.options[sel.selectedIndex].text, title: sel.title };
+    });
+    ok(lay.fits, 'the list fits its panel at 1280 with every default column', lay);
+    ok(lay.desc >= 200 && lay.widest && lay.clip <= 1, '"What we see" is the widest column and shows its whole text', lay);
+    ok(lay.rig, 'Light / rig shows by default', lay);
+    ok(lay.size === 'EWS' && /extreme wide/.test(lay.title), 'the size select shows its code, the words in its title', lay);
+    ok(await overflow(page) <= 0, 'no sideways overflow');
+    ok(errors.length === 0, 'no page errors', errors);
+  } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
+  finally { await ctx.close(); }
+}
+
 await browser.close();
 server.close();
 console.log(`\nprove:board-frames — ${pass} passed, ${fail} failed`);

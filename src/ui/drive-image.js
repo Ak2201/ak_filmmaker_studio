@@ -30,6 +30,7 @@ import { button } from './kit/index.js';
 export { boardFacts, currentBoardGate, onDriveReconnect, reconnectDrive };
 
 const urls = new Map();       // fileId → object URL, for this page visit
+const blobs = new Map();      // fileId → the Blob behind it (an image ZIP reads these)
 
 const tokenGone = (e) => !!e && (e.status === 401
   || /click|token|popup|unauthori[sz]ed/i.test(String((e && e.message) || e)));
@@ -56,7 +57,7 @@ async function fill(el) {
   try {
     const blob = await Drive.downloadFileBlob(id);
     if (!blob || !/^image\//.test(blob.type || 'image/')) throw new Error('Drive returned something that is not a picture.');
-    urls.set(id, URL.createObjectURL(blob));
+    keep(id, blob);
     if (el.isConnected) fill(el);
   } catch (e) {
     if (!el.isConnected) return;
@@ -71,6 +72,25 @@ async function fill(el) {
       );
     }
   }
+}
+
+function keep(id, blob) {
+  if (!urls.has(id)) urls.set(id, URL.createObjectURL(blob));
+  blobs.set(id, blob);
+}
+
+/** The object URL of a picture this page visit already holds, or ''.
+    The PDF storyboard sheet prints these; it never fetches. */
+export const cachedImageUrl = (fileId) => urls.get(fileId) || '';
+
+/** A frame picture as a Blob: the one already held, else one download
+    with the Drive token (rejects with no token; never opens a window). */
+export async function driveImageBlob(fileId) {
+  if (blobs.has(fileId)) return blobs.get(fileId);
+  const blob = await Drive.downloadFileBlob(fileId);
+  if (!blob || !/^image\//.test(blob.type || 'image/')) throw new Error('Drive returned something that is not a picture.');
+  keep(fileId, blob);
+  return blob;
 }
 
 /** A frame's picture, from Drive. Fills itself; never a broken <img>. */
@@ -110,4 +130,4 @@ function wire() {
   });
 }
 
-export default { boardFacts, currentBoardGate, driveImage, refreshDriveImages, reconnectDrive, onDriveReconnect };
+export default { boardFacts, currentBoardGate, driveImage, refreshDriveImages, reconnectDrive, onDriveReconnect, cachedImageUrl, driveImageBlob };

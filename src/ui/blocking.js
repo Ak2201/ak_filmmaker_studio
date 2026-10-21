@@ -498,7 +498,7 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
   const fr = mine.flatMap((s) => (byShot.get(s.id) || []).map((f) => ({ f, s })));
   sheet.append(sbCol('Frames · ' + fr.length, fr.length
     ? h('ol.vz-sb-frames', {}, fr.map(({ f, s }) =>
-      h('li', {}, [h('strong', { text: 'Shot ' + (s.number || '?') + ' ' }), h('span', { text: f.caption || f.ref || 'untitled frame' })])))
+      h('li', {}, [h('strong', { text: 'Shot ' + (s.number || '?') + ' ' }), h('span', { text: Shots.frameAction(f) || f.ref || 'untitled frame' })])))
     : h('p.bd-none', { text: 'No frames drawn for this scene.' })));
 
   // The maps, read-only.

@@ -205,9 +205,9 @@ function projectsMarkup() {
           </div>
           <div class="projects-sort-wrap">
             <select class="projects-sort" id="projectsSort" data-action="sort-projects" aria-label="Sort projects by">
-              <option value="recent">↻ RECENT</option>
+              <option value="recent">Recent</option>
               <option value="alpha">A → Z</option>
-              <option value="oldest">OLDEST</option>
+              <option value="oldest">Oldest</option>
             </select>
           </div>
         </div>

@@ -610,6 +610,11 @@ function buildRail() {
   /* The live trial clock, at the foot of the rail. Built HIDDEN and
      empty; trial-band.js fills and shows it only while a trial runs. */
   foot.append(h('div.sh-rail-trial', { hidden: true }));
+  /* Backup and the sync state sit just above the account (owner,
+     21 Oct 2026): they are about where YOUR work is kept, so they live
+     with you rather than in the band. buildStudioTools() fills this; on
+     the doorway it stays empty. */
+  foot.append(h('div.sh-rail-tools', { role: 'group', 'aria-label': 'Backup and sync' }));
   /* The account, and nothing else (owner, 19 Oct 2026): the Google photo
      or the initials when signed in (copied from the account pill, which
      auth.js keeps), a person glyph otherwise. It opens the account menu:
@@ -1054,13 +1059,17 @@ function buildStudioTools(bar) {
     host.append(tools);
   }
   const doorway = CURRENT === 'invite.html';   // the doorway keeps Sign in only
+  /* Backup and sync go to the rail's foot when there is a rail; the
+     band keeps them only on a page without one. */
+  const railTools = document.querySelector('#studioRail .sh-rail-tools');
   if (!doorway) {
     try { mountProjectSwitcher(tools); } catch (e) { /* a control is not a reason to lose the band */ }
-    try { mountBackupMenu(tools); } catch (e) { /* ditto */ }
+    try { mountBackupMenu(railTools || tools, { rail: !!railTools }); } catch (e) { /* ditto */ }
   }
   if (!doorway && !document.querySelector('.sh-sync')) {
-    try { tools.append(buildSyncPill()); } catch (e) { /* ditto */ }
+    try { (railTools || tools).append(buildSyncPill(!!railTools)); } catch (e) { /* ditto */ }
   }
+  if (railTools) for (const el of railTools.children) el.setAttribute('data-rail-home', '');
   const ui = (typeof window !== 'undefined' && window.StudioUI) || null;
   if (ui) {
     try { if (ui.mountAppearanceMenu) ui.mountAppearanceMenu(tools); } catch (e) { /* ditto */ }
@@ -1092,11 +1101,15 @@ const ZONE_ORDER = ['.ps-btn', '[data-tb-backup]', '[data-theme-toggle]', '.sh-s
    switch live. On a phone the words go (the dot and the cloud stay,
    the words are its accessible name); the dock repeats them. */
 const SYNC_ICON = { ok: 'cloud_done', busy: 'cloud_sync', warn: 'cloud_upload', err: 'sync_problem', off: 'cloud_off' };
-function buildSyncPill() {
+function buildSyncPill(inRail) {
   const led = h('span.sh-sync-led', { 'aria-hidden': 'true' });
-  const icon = iconSpan('sh-sync-icon', { sym: SYNC_ICON.off });
-  const text = h('span.sh-sync-text');
-  const pill = h('a.sh-sync', { href: 'settings.html#account' }, [led, icon, text]);
+  /* In the rail it is one rail item: the cloud, the dot on its corner,
+     and the words as the rail's tooltip (still the link's text). */
+  const icon = iconSpan(inRail ? 'sh-rail-icon.sh-sync-icon' : 'sh-sync-icon', { sym: SYNC_ICON.off });
+  const text = h(inRail ? 'span.sh-rail-label.sh-sync-text' : 'span.sh-sync-text');
+  const pill = inRail
+    ? h('a.sh-rail-item.sh-rail-util.sh-sync', { href: 'settings.html#account' }, [icon, led, text])
+    : h('a.sh-sync', { href: 'settings.html#account' }, [led, icon, text]);
   const paint = (st) => {
     const l = syncLine(st);
     if (text.textContent !== l.text) text.textContent = l.text;
@@ -1127,6 +1140,9 @@ function gatherTools(bar, tools) {
   let moved = false;
   for (const sel of ZONE_ORDER) {
     const el = document.querySelector(sel);
+    /* backup and sync live in the rail (and visit the phone's Tools sheet
+       from there): never gathered into the band */
+    if (el && (el.closest('#studioRail') || el.hasAttribute('data-rail-home'))) continue;
     if (el && el.parentElement !== tools) { tools.append(el); moved = true; }
   }
   if (!moved) {

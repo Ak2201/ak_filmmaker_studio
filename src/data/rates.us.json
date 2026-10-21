@@ -1,0 +1,75 @@
+{
+  "_about": "US rental figures for a budget in dollars (BUDGET-USD, 21 Oct 2026). Read by src/lib/budget-model.js and shown on budget.html only when the budget is in US dollars, where the Chennai card is shown for a rupee budget. RULES FOR EDITING: every row carries the vendor's own published prices, the page they came from and the day they were read; the per-day band is DERIVED from those prices (the 7-day price over 7 days is the low end, the 3-day price over 3 days the high end), never typed. These are ONE mail-order rental house's list prices for the kit it names, without damage coverage, tax or shipping. They are not union rates, not a market survey and not a quote. No inflation multiplier is applied. An item with no sourced figure has no row and the page shows nothing for it rather than an invented number. Crew day rates have no row at all: we found no published US figure we could cite without quoting a union agreement, so none is offered.",
+  "currency": "USD",
+  "label": "US rental list prices",
+  "lastChecked": "2026-10-21",
+  "sources": {
+    "lensrentals": {
+      "name": "Lensrentals",
+      "kind": "Mail-order rental house (Memphis, TN); published list prices, no damage coverage",
+      "url": "https://www.lensrentals.com/"
+    }
+  },
+  "rows": [
+    {
+      "item": "ARRI Alexa Mini",
+      "listed": "ARRI ALEXA Mini Body",
+      "unit": "day",
+      "prices": { "3": 732, "7": 1045 },
+      "source": "lensrentals",
+      "url": "https://www.lensrentals.com/rent/arri-alexa-mini-body",
+      "lastChecked": "2026-10-21",
+      "note": "Body only. The same house lists a full PL kit at $1,220 for 3 days."
+    },
+    {
+      "item": "ARRI Alexa Mini LF",
+      "listed": "ARRI ALEXA Mini LF Body",
+      "unit": "day",
+      "prices": { "3": 1589, "7": 2270 },
+      "source": "lensrentals",
+      "url": "https://www.lensrentals.com/rent/arri-alexa-mini-lf-body",
+      "lastChecked": "2026-10-21",
+      "note": "Body only."
+    },
+    {
+      "item": "ARRI Alexa 35",
+      "listed": "ARRI ALEXA 35 Body w/ Power Adapter",
+      "unit": "day",
+      "prices": { "3": 2426, "7": 3466 },
+      "source": "lensrentals",
+      "url": "https://www.lensrentals.com/rent/arri-alexa-35-body-w-power-adapter",
+      "lastChecked": "2026-10-21",
+      "note": "Body with power adapter."
+    },
+    {
+      "item": "RED Komodo",
+      "listed": "RED KOMODO 6K",
+      "unit": "day",
+      "prices": { "3": 182, "7": 260 },
+      "source": "lensrentals",
+      "url": "https://www.lensrentals.com/rent/red-komodo-6k",
+      "lastChecked": "2026-10-21",
+      "note": "Body as listed by the vendor."
+    },
+    {
+      "item": "Sony FX6",
+      "listed": "Sony FX6 Full-Frame Cinema Camera",
+      "unit": "day",
+      "prices": { "3": 273, "7": 390 },
+      "source": "lensrentals",
+      "url": "https://www.lensrentals.com/rent/sony-fx6-full-frame-cinema-camera",
+      "lastChecked": "2026-10-21",
+      "note": "Body as listed by the vendor."
+    },
+    {
+      "item": "Aputure 600D Pro",
+      "listed": "Aputure LS 600d Pro Daylight LED Gold Mount Kit",
+      "unit": "day",
+      "prices": { "3": 164, "7": 215 },
+      "source": "lensrentals",
+      "url": "https://www.lensrentals.com/rent/aputure-ls-600d-pro-daylight-led-gold-mount-kit",
+      "lastChecked": "2026-10-21",
+      "note": "Light with its gold-mount kit."
+    }
+  ]
+}

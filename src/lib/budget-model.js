@@ -22,10 +22,15 @@ import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 import Scenes, { formatEighths, totalEighths } from './scenes.js';
 import * as Songs from './songs.js';
-import { parseNum, INR } from './money.js';
-import C, { norm, rowKey, CALC_KEY } from './costs.js';
+import { parseNum, INR, USD, fmtMoney } from './money.js';
+import C, {
+  norm, rowKey, CALC_KEY, CALC_CURRENCY, calcHasContent, resolveCurrency, projectCurrency,
+  budgetCurrency as costsBudgetCurrency
+} from './costs.js';
+import { normaliseCurrency } from './region-core.js';
+import usRates from '../data/rates.us.json';
 
-export { CALC_KEY };
+export { CALC_KEY, CALC_CURRENCY };
 export const PRESET_ITEMS = rates.presets;
 
 /* ---- storage ------------------------------------------------- */
@@ -38,10 +43,56 @@ export function readCalcData() {
   return JSON.parse(readText(CALC_KEY, null) || '{}');
 }
 
-/** Write the rows. A failed write is swallowed, as it always was. */
+/** Write the rows. A failed write is swallowed, as it always was.
+    The budget's currency (`ci_currency`, see THE BUDGET'S CURRENCY in
+    costs.js) rides along: a caller that did not name one keeps the
+    stored word, and the first write that puts a figure into an empty
+    estimate fixes it from the film. A legacy estimate (money, no word)
+    is left without one, which reads as INR. */
 export function saveCalcData(data) {
-  writeJSON(CALC_KEY, data);
+  writeJSON(CALC_KEY, withCurrency(data));
 }
+
+function withCurrency(data) {
+  if (!data || typeof data !== 'object' || normaliseCurrency(data[CALC_CURRENCY])) return data;
+  let prev = {};
+  try { prev = readCalcData() || {}; } catch (e) { prev = {}; }
+  const kept = normaliseCurrency(prev[CALC_CURRENCY]);
+  if (kept) return { ...data, [CALC_CURRENCY]: kept };
+  if (!calcHasContent(data) || calcHasContent(prev)) return data;
+  return { ...data, [CALC_CURRENCY]: resolveCurrency({ calc: prev, costs: C.readAll(), project: projectCurrency() }) };
+}
+
+/** The open budget's currency: 'INR' | 'USD'. Reading never writes. */
+export const budgetCurrency = costsBudgetCurrency;
+
+/** Relabel the budget (BOTH records) as `cur`. The figures are not
+    touched: nothing in the studio converts between currencies. A
+    press only (the budget page's switch), never on load. */
+export function setBudgetCurrency(cur) {
+  const want = normaliseCurrency(cur);
+  if (!want) return false;
+  let data = {};
+  try { data = readCalcData() || {}; } catch (e) { return false; }
+  writeJSON(CALC_KEY, { ...data, [CALC_CURRENCY]: want });
+  C.setSettings({ currency: want });
+  return true;
+}
+
+/** The sentence when the budget's currency is not the film's, or ''.
+    Only for a budget with money in it: an empty one simply follows the
+    film. */
+export function currencyMismatch(budgetCur, filmCur, hasMoney) {
+  if (!hasMoney || !budgetCur || !filmCur || budgetCur === filmCur) return '';
+  return budgetCur === 'INR'
+    ? 'This budget is in ₹, the film is set to US. Nothing was converted.'
+    : 'This budget is in $, the film is set to India. Nothing was converted.';
+}
+
+/** A figure in the budget's currency, exact. INR is fmtINRExact, unchanged. */
+export const fmtExact = (n, cur) => (cur === 'USD' ? fmtMoney(n, 'USD') : fmtINRExact(n));
+/** The currency's sign, for labels: '₹' or '$'. */
+export const currencySign = (cur) => (cur === 'USD' ? '$' : '₹');
 
 /** Forget every row (the estimator's Reset). */
 export function clearCalcData() {
@@ -172,8 +223,8 @@ export function bandGap(card, checked) {
    already, because it renders the check rows BESIDE the card row
    rather than over it. The estimator is the page people actually
    type numbers into, and it was the one replacing. */
-export function rateHint(name) {
-  return rateHintParts(name).text;
+export function rateHint(name, currency) {
+  return rateHintParts(name, currency).text;
 }
 
 /* WHERE A HINT CAME FROM, AND WHEN — said on the line, not only in the
@@ -192,9 +243,19 @@ const SOURCES = rateChecks.sources || {};
 
 /** The rate hint for a line, as { text, source }: `source` is
     { name, url, checked } when the figure was re-checked on a published
-    page, else null. `text` is what rateHint() returns. */
-export function rateHintParts(name) {
+    page, else null. `text` is what rateHint() returns. A `currency` of 'USD'
+    answers from the US bands instead. */
+export function rateHintParts(name, currency) {
   const none = { text: '', source: null };
+  if (currency === 'USD') {
+    /* A dollar budget reads the US bands (rates.us.json), never the
+       Chennai card: the line names its rental house and links it. */
+    const text = usRateHint(name);
+    if (!text) return none;
+    const row = US_BY_ITEM.get(norm(name));
+    const src = row && ((usRates.sources || {})[row.source] || null);
+    return { text, source: src && src.url ? { name: src.name, url: src.url, checked: row.lastChecked } : null };
+  }
   if (!name) return none;
   const key = rowKey(name);
   const card = RATE_BY_ITEM.get(name);
@@ -248,6 +309,37 @@ export function rateSources() {
     note carries <strong> for the library's table). */
 export function cardNote() {
   return String(rates.note || '').replace(/<[^>]+>/g, '');
+}
+
+/* ---- the US figures (src/data/rates.us.json) --------------------
+   Shown in place of the Chennai card when the budget is in dollars.
+   Each row is one rental house's published 3-day and 7-day prices;
+   the per-day RANGE is derived from them here (7-day ÷ 7 is the low
+   end, 3-day ÷ 3 the high), never typed, and the hint prints both the
+   range and the prices it came from. No row, no hint: an item with no
+   sourced US figure shows nothing rather than a converted rupee one. */
+const US_BY_ITEM = new Map((usRates.rows || []).map((r) => [norm(r.item), r]));
+const usd = (n) => '$' + USD.format(Math.round(n));
+
+/** The per-day range of a US row, or null when its prices are missing. */
+export function usBand(row) {
+  const p = (row && row.prices) || {};
+  const week = Number(p['7']);
+  const three = Number(p['3']);
+  if (!(week > 0) || !(three > 0)) return null;
+  return { low: Math.round(week / 7), high: Math.round(three / 3) };
+}
+
+/** The hint for a line in a dollar budget, or ''. */
+export function usRateHint(name) {
+  if (!name) return '';
+  const row = US_BY_ITEM.get(norm(name));
+  const band = usBand(row);
+  if (!band) return '';
+  const src = ((usRates.sources || {})[row.source] || {}).name || row.source;
+  return `US range ${usd(band.low)} – ${usd(band.high)}/day · ${src} list price, checked `
+    + `${row.lastChecked}: ${usd(row.prices['3'])} for 3 days, ${usd(row.prices['7'])} for 7 `
+    + `(${row.listed}, no damage coverage). One rental house, not a quote.`;
 }
 
 /** Exact, Indian grouping: ₹ 54,000 / ₹ 1,25,00,000. fmtINR() rounds
@@ -366,7 +458,8 @@ export function versionCount() {
     against a Chennai rental house: the estimator shows those with their
     own date, so a blanket "all 2024-25" above it contradicted the hints
     underneath it. (rates.json calls it `asOf`, not `year`.) */
-export function rateProvenance() {
+export function rateProvenance(currency) {
+  if (currency === 'USD') return usRateProvenance();
   const rows = rateChecks.rows || [];
   const checked = rows.filter((r) => r.confidence === 'checked').length;
   const stale = rows.filter((r) => r.confidence === 'stale').length;
@@ -385,8 +478,23 @@ export function rateProvenance() {
            + `them is editable.`;
 }
 
+/** The provenance line for a dollar budget — counted from the file. */
+export function usRateProvenance() {
+  const rows = (usRates.rows || []).filter((r) => usBand(r));
+  const names = [...new Set(rows.map((r) => ((usRates.sources || {})[r.source] || {}).name || r.source))];
+  let s = 'This budget is in US dollars, so the Chennai card is not used. ';
+  s += rows.length
+    ? `${rows.length} preset${rows.length === 1 ? ' carries' : 's carry'} a US range, worked out from `
+      + `${names.join(' and ')}'s published 3-day and 7-day rental prices (no damage coverage), `
+      + `checked ${usRates.lastChecked}. The others, and every crew role, have no sourced US `
+      + `figure, so their lines show none. `
+    : 'No preset carries a sourced US figure yet, so the lines show none. ';
+  return s + 'They are a starting point for a line, not a quote — every one of them is editable.';
+}
+
 export default {
-  CALC_KEY, PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
+  CALC_KEY, CALC_CURRENCY, PRESET_ITEMS, budgetCurrency, setBudgetCurrency, currencyMismatch, fmtExact, currencySign,
+  usBand, usRateHint, usRateProvenance, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
   bandGap, rateHint, rateHintParts, rateSources, cardNote, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
   scheduleFacts, scheduleHint, songDaysHint, rateProvenance, versionCount
 };

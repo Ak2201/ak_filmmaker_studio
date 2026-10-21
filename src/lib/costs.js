@@ -63,7 +63,9 @@
    to the department, not to the person.
    ============================================================ */
 import rates from '../data/rates.chennai.2024.json';
-import { parseNum } from './money.js';
+import { parseNum, parseAmount } from './money.js';
+import { normaliseCurrency, projectRegion, currencyForRegion } from './region-core.js';
+import Store from './store.js';
 
 export const COSTS_KEY = 'fms_costs_v1';
 export const CALC_KEY = 'fms_library_calc_v1';
@@ -216,8 +218,15 @@ export function readAll() {
 /** Read-modify-write ONE collection: the others are left exactly as
     they were, the lesson of contacts.js's two collections. */
 function writePart(name, value) {
-  const all = readAll();
-  all[name] = value;
+  const before = readAll();
+  const all = { ...before, [name]: value };
+  /* The first money written here fixes the cost tabs' currency (see
+     THE BUDGET'S CURRENCY below), so a later change of the film's
+     region cannot relabel rupees as dollars. A blob that already held
+     money before this field existed has none, and reads as INR. */
+  if (!normaliseCurrency(all.settings.currency) && costsHasContent(all) && !costsHasContent(before)) {
+    all.settings = { ...all.settings, currency: resolveCurrency({ calc: readCalc(), costs: before, project: projectCurrency() }) };
+  }
   try { localStorage.setItem(COSTS_KEY, JSON.stringify(all)); return true; } catch (e) { return false; }
 }
 
@@ -405,11 +414,12 @@ export function setLineScales(lineId, value) {
 }
 export function getSettings() {
   const s = readAll().settings;
-  return { contingencyPct: Math.min(100, Math.max(0, Number(s.contingencyPct) || 0)) };
+  return { contingencyPct: Math.min(100, Math.max(0, Number(s.contingencyPct) || 0)), currency: normaliseCurrency(s.currency) };
 }
 export function setSettings(patch) {
   const s = { ...readAll().settings, ...patch };
   if ('contingencyPct' in patch) s.contingencyPct = Math.min(100, Math.max(0, num(patch.contingencyPct)));
+  if ('currency' in patch) { s.currency = normaliseCurrency(patch.currency); if (!s.currency) delete s.currency; }
   writePart('settings', s);
 }
 export function setWageOverride(rowId, patch) {
@@ -525,6 +535,9 @@ export const deptForCategory = (cat) => CATEGORY_DEPT[cat] || 'other';
     Every row that names an item or carries a figure, in row order. */
 export function estimateLines(calc, lineMeta = {}) {
   const blob = isObj(calc) ? calc : {};
+  // A dollar estimate's "2m" is two million; a rupee one is parsed as it always was.
+  const cur = normaliseCurrency(blob[CALC_CURRENCY]) || 'INR';
+  const amt = (s) => parseAmount(s, cur);
   const ns = new Set();
   for (const k of Object.keys(blob)) { const m = k.match(/^ci_(\d+)_/); if (m) ns.add(+m[1]); }
   const out = [];
@@ -532,8 +545,8 @@ export function estimateLines(calc, lineMeta = {}) {
     const g = (f) => String(blob[`ci_${n}_${f}`] || '').trim();
     const item = g('item');
     const name = g('custom') || (item && item !== 'Other (custom)' ? item : '');
-    const days = parseNum(g('days'));
-    const rate = parseNum(g('rate'));
+    const days = amt(g('days'));
+    const rate = amt(g('rate'));
     if (!name && !rate && !days) continue;
     const id = 'ci_' + n;
     const meta = lineMeta[id] || {};
@@ -548,6 +561,59 @@ export function estimateLines(calc, lineMeta = {}) {
 export function readCalc() {
   try { return JSON.parse(localStorage.getItem(CALC_KEY) || '{}') || {}; } catch (e) { return {}; }
 }
+
+/* ---- THE BUDGET'S CURRENCY (BUDGET-USD, 21 Oct 2026) -------------
+   A budget is in rupees or in US dollars, and that is a fact about
+   the BUDGET, stored inside the two records it already has — no new
+   key: `ci_currency` in the estimator's blob (fms_library_calc_v1;
+   every `ci_<n>_…` reader matches a digit after `ci_`, so none of
+   them sees it) and `settings.currency` in fms_costs_v1.
+
+   It is set ONCE, from the film's region (the currency currentProjectPrefs() would give), by
+   the first write that puts money in the record — saveCalcData() in
+   budget-model.js and writePart() above. After that a change of the
+   film's region never converts or relabels it; only the budget page's
+   deliberate switch does, and that changes the label alone.
+
+   A record with money in it and no field is a budget from before the
+   field existed. It is INR, read back exactly as it always was. */
+export const CALC_CURRENCY = 'ci_currency';
+
+/** Does the estimator's blob hold anything a person typed? */
+export const calcHasContent = (calc) => isObj(calc) && Object.keys(calc).some((k) =>
+  /^ci_\d+_/.test(k) && String(calc[k] == null ? '' : calc[k]).trim() !== '');
+
+/** Does the costs record hold any money (expenses, floats, payments, crew)? */
+export const costsHasContent = (all) => !!all &&
+  ((all.expenses || []).length + (all.floats || []).length + (all.payments || []).length > 0
+    || (isObj(all.crew) && Object.keys(all.crew).length > 0));
+
+/** The budget's currency, pure: the estimator's stored word, then the
+    cost record's, then INR for a budget that has money and no word
+    (written before the field), then the film's currency for an empty
+    one. */
+export function resolveCurrency({ calc, costs, project } = {}) {
+  const a = normaliseCurrency(isObj(calc) ? calc[CALC_CURRENCY] : '');
+  if (a) return a;
+  const b = normaliseCurrency(costs && isObj(costs.settings) ? costs.settings.currency : '');
+  if (b) return b;
+  if (calcHasContent(calc) || costsHasContent(costs)) return 'INR';
+  return normaliseCurrency(project) || 'INR';
+}
+
+/** The open film's currency, from its region entry — what
+    currentProjectPrefs().currency answers for an open film, worked out
+    from region-core.js and the Store so this file does not import
+    region.js. INR with no film open, or when it cannot say. */
+export function projectCurrency() {
+  try {
+    const entry = Store.currentProject && Store.currentProject();
+    return entry ? currencyForRegion(projectRegion(entry)) : 'INR';
+  } catch (e) { return 'INR'; }
+}
+
+/** The open budget's currency, read from storage. Reading never writes. */
+export const budgetCurrency = () => resolveCurrency({ calc: readCalc(), costs: readAll(), project: projectCurrency() });
 
 /** The GST inside a tax-inclusive amount. */
 export function gstSplit(amount, pct) {
@@ -850,7 +916,7 @@ export default {
   readAll, listExpenses, addExpense, updateExpense, removeExpense, restoreExpense,
   listFloats, addFloat, removeFloat, listCrew, getCrew, setCrew, removeCrew,
   listPayments, addPayment, removePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,
-  estimateLines, readCalc, gstSplit, paymentCost, floatBalances, derivedDays, crewAccount,
+  estimateLines, readCalc, CALC_CURRENCY, calcHasContent, costsHasContent, resolveCurrency, projectCurrency, budgetCurrency, gstSplit, paymentCost, floatBalances, derivedDays, crewAccount,
   costReport, budgetKpis, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,
   deptOf, defaultDept, sectionOf, deptForContact, deptForCategory, castNames, toCSV
 };

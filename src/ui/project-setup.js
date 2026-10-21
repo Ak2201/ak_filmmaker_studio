@@ -6,7 +6,7 @@
    open it, and so does every "new project" control — one creation
    path, so what a project starts with cannot differ by button.
 
-   Creating goes through Store.createProject({title, format, fav,
+   Creating goes through Store.createProject({title, format, fav, region,
    adopt:true}) and lands on the project home, dashboard.html (the project is open by
    then). The plan's new_projects limit is checked here as well as at
    the callers, because this is the one place that creates.
@@ -20,8 +20,19 @@ import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { listStudies, favouriteSlug } from '../lib/studies.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import { regionForNewProject } from '../lib/region.js';
 
 const PROJECT_HOME_URL = 'dashboard.html';
+
+/* Where the film is being made (docs/US-MARKET-PLAN.md §A3). It decides
+   the film's paperwork (rupees, A4 and Indian dates, or dollars, US
+   Letter and US dates) and whether the India-only material shows. The
+   sheet starts on regionForNewProject(): the device's stated market,
+   else the browser's own guess. Changed later on the dashboard. */
+const REGION_CHOICES = {
+  IN:  { label: 'India' },
+  INT: { label: 'Elsewhere' }
+};
 
 const FORMATS = {
   feature:     { label: 'Feature film', title: 'My feature film' },
@@ -29,7 +40,7 @@ const FORMATS = {
 };
 
 let overlay = null;
-let state = { format: 'feature', dirty: false };
+let state = { format: 'feature', region: 'IN', dirty: false };
 /* True from the first CREATE until the page leaves: the wait for the
    cloud push below is up to 3s, and a second press in it made a
    second project. */
@@ -68,6 +79,16 @@ function build() {
           ])))
       ]),
 
+      h('fieldset.ps-format.ps-region', {}, [
+        h('legend', { text: 'WHERE IS THIS FILM BEING MADE?' }),
+        h('div.ps-format-row', { role: 'radiogroup', 'aria-label': 'Where is this film being made?' }, Object.keys(REGION_CHOICES).map((k) =>
+          h('label.ps-format-opt', { for: 'psRegion_' + k }, [
+            h('input', { type: 'radio', name: 'psRegion', id: 'psRegion_' + k, value: k }),
+            h('span', { text: REGION_CHOICES[k].label })
+          ]))),
+        h('p.ps-hint', { text: 'India keeps rupees, A4 and the India-only checks. Elsewhere uses dollars, US Letter and US dates on the paperwork. You can change it later on the dashboard.' })
+      ]),
+
       h('fieldset.ps-films', {}, [
         h('legend', { text: 'YOUR FAVOURITE FILM' }),
         h('p.ps-hint', { text: 'Pick one. We’ll explain every step with it, so the ideas land on a film you already know.' }),
@@ -92,6 +113,7 @@ function build() {
   overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
   form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
   form.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'psRegion') { state.region = REGION_CHOICES[e.target.value] ? e.target.value : state.region; return; }
     if (!e.target || e.target.name !== 'psFormat') return;
     const prev = state.format;
     state.format = e.target.value;
@@ -125,7 +147,7 @@ function submit() {
   const btn = overlay.querySelector('#psSubmit');
   if (btn) btn.disabled = true;
   const fav = selectedFilm();
-  const p = Store.createProject({ title: name, format: state.format, fav: fav || undefined, adopt: true });
+  const p = Store.createProject({ title: name, format: state.format, fav: fav || undefined, region: state.region, adopt: true });
   if (!p) {
     busy = false;
     if (btn) btn.disabled = false;
@@ -145,7 +167,9 @@ export function openProjectSetup(opts) {
   opts = opts || {};
   if (!PlanGate.allowed('new_projects')) return false;
   if (!overlay) build();
-  state = { format: FORMATS[opts.format] ? opts.format : 'feature', dirty: false };
+  let reg = 'IN';
+  try { reg = regionForNewProject(); } catch (e) { /* the studio's default */ }
+  state = { format: FORMATS[opts.format] ? opts.format : 'feature', region: REGION_CHOICES[reg] ? reg : 'IN', dirty: false };
   overlay.querySelector('#psTitle').value = FORMATS[state.format].title;
   overlay.querySelector('#psHeading').innerHTML = 'Start your <em>' + FORMATS[state.format].label.toLowerCase() + '.</em>';
   overlay.querySelector('#psError').hidden = true;
@@ -153,6 +177,8 @@ export function openProjectSetup(opts) {
   { const btn = overlay.querySelector('#psSubmit'); if (btn) btn.disabled = false; }
   const fr = overlay.querySelector('#psFormat_' + state.format);
   if (fr) fr.checked = true;
+  const rr = overlay.querySelector('#psRegion_' + state.region);
+  if (rr) rr.checked = true;
   let fav = '';
   try { fav = favouriteSlug(); } catch (e) { /* the first film below */ }
   const radios = Array.from(overlay.querySelectorAll('input[name="psFilm"]'));

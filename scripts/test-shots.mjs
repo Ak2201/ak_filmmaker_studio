@@ -256,6 +256,14 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   eq(M.listShots().find((s) => s.id === a1.id).number, '4A', 'autoNumber leaves 4A alone');
   eq(M.autoNumbers([{ id: 'x', number: '1' }, { id: 'y', number: '2' }]), [], 'nothing to change, nothing returned');
   eq(M.autoNumber('B'), 0, 'scene B already reads 1, 2');
+  // A move renumbers only a scene already in auto order (review fix):
+  // hand-typed 12, 13, 14 or a gap 1, 2, 5 read as the writer's own.
+  ok(!M.isAutoOrdered([{ id: 'a', number: '12' }, { id: 'b', number: '13' }, { id: 'c', number: '14' }]), 'isAutoOrdered: 12, 13, 14 typed by hand is not auto order');
+  ok(!M.isAutoOrdered([{ id: 'a', number: '1' }, { id: 'b', number: '2' }, { id: 'c', number: '5' }]), 'isAutoOrdered: a gap is not auto order');
+  ok(M.isAutoOrdered([{ id: 'a', number: '1' }, { id: 'b', number: '' }, { id: 'c', number: '4A' }]), 'isAutoOrdered: ordinals, blanks and a 4A are');
+  ok(M.sceneAutoOrdered('B'), 'sceneAutoOrdered reads the stored scene');
+  ok(M.DEFAULT_COLUMNS.includes('rig'), 'DEFAULT_COLUMNS shows Light / rig (review fix)');
+  eq(M.cleanColumns(M.DEFAULT_COLUMNS), M.DEFAULT_COLUMNS, 'DEFAULT_COLUMNS is in table order');
 
   // Time.
   const mins = (v) => M.shotMinutes({ mins: v });
@@ -289,7 +297,10 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   M.addShot('S1', { description: 'He waits, "late"', lens: '35mm', mins: '12', setup: 'Wide' });
   M.addShot('S1', { description: 'Close', done: true });
   const full = X.toCSV('all').split('\r\n');
-  eq(full[0], X.CSV_HEADER.map((c) => '"' + c + '"').join(','), 'no columns: the CSV header is exactly the old one');
+  eq(full[0], X.CSV_HEADER.map((c) => '"' + c + '"').join(','), 'no columns: the CSV header is CSV_HEADER');
+  eq(X.CSV_HEADER.slice(0, 16), ['Scene', 'Slug', 'Int/Ext', 'Time', 'Location', 'Scene pages', 'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'Lighting / rig', 'Camera', 'What we see', 'Status', 'Drafted by'], 'the old sixteen columns keep their old positions (review fix)');
+  eq(X.CSV_HEADER.slice(16), ['Setup', 'Minutes'], 'new columns are appended after them');
+  ok(full[1].endsWith('"you","Wide","12"'), 'fixed-schema row carries setup and minutes at the end — ' + full[1]);
   eq(full.length, 4, 'two rows and the trailing CRLF');
   const pick = X.toCSV('all', { columns: ['description', 'mins', 'lens', 'bogus'] }).split('\r\n');
   eq(pick[0], '"Scene","Slug","Int/Ext","Time","Location","Scene pages","Shot","Lens","Minutes","What we see","Drafted by"', 'columns: scene head, shot, chosen columns in TABLE order, unknown dropped');

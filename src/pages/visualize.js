@@ -129,7 +129,8 @@ function picker(options, value, attr, name, label) {
     const id = typeof o === 'string' ? o : o.id;
     const text = typeof o === 'string' ? o : o.label;
     const opt = h('option', { value: id, text });
-    if (id === value) opt.selected = true;
+    if (o && o.title) opt.title = o.title;
+    if (id === value) { opt.selected = true; if (o && o.title) s.title = o.title; }
     s.append(opt);
   });
   return h('div.k-control.k-select.k-control--cell', {}, [s]);
@@ -394,7 +395,7 @@ function columnMenu() {
       sym('tune'), h('span', { text: 'Columns' }), h('span.vz-colmenu-n.k-mono', { text: String(view.cols.length) })
     ]),
     h('div.vz-colmenu-panel', { role: 'group', 'aria-label': 'Columns to show and export' }, [
-      h('p.vz-colmenu-note', { text: 'The shot number always shows. The PDF and CSV print the same columns.' }),
+      h('p.vz-colmenu-note', { text: 'The shot number always shows. The PDF prints the same columns; the CSV always carries every column.' }),
       ...SHOT_COLUMNS.map((c) => check({
         label: c.label, checked: view.cols.includes(c.id), class: 'vz-colmenu-item',
         attrs: { 'data-action': 'vz-col', 'data-col': c.id }
@@ -510,7 +511,9 @@ function renderSceneBlock(group, dayMins = new Map()) {
    cell carries its column's words as data-label, which the phone card
    prints over the field (visualize.css §1b). */
 const COLDEFS = {
-  size:        { label: 'Size', cls: 'vz-c-size', cell: (s) => picker(SHOT_SIZES, s.size, 'data-shot-field', 'size', 'Shot size') },
+  /* The size reads as its code (EWS, MCU…), which is what a crew says
+     and what fits a cell; the full words are the option's title. */
+  size:        { label: 'Size', cls: 'vz-c-size', cell: (s) => picker(SHOT_SIZES.map((o) => ({ id: o.id, label: o.id, title: o.label })), s.size, 'data-shot-field', 'size', 'Shot size') },
   angle:       { label: 'Angle', cls: 'vz-c-angle', cell: (s) => picker(SHOT_ANGLES, s.angle, 'data-shot-field', 'angle', 'Camera angle') },
   movement:    { label: 'Move', cls: 'vz-c-move', cell: (s) => picker(SHOT_MOVEMENTS, s.movement, 'data-shot-field', 'movement', 'Camera movement') },
   lens:        { label: 'Lens', cls: 'vz-c-lens', cell: (s) => cellInput(field('input.vz-lens', {
@@ -1438,7 +1441,8 @@ async function exportShotlist(scope, kind, layout = 'list') {
 
   if (kind === 'csv') {
     const tail = scope === Sheet.ALL ? 'shot_division' : 'shot_division_scene';
-    download(Sheet.toCSV(scope, { columns }), fileStem() + '_' + tail + '.csv', 'text/csv');
+    // One fixed schema, whatever the column menu hides (see toCSV).
+    download(Sheet.toCSV(scope), fileStem() + '_' + tail + '.csv', 'text/csv');
     say('Exported ' + summary.shots + ' setups as CSV.');
     return;
   }
@@ -1646,9 +1650,10 @@ delegate(document, 'click', '[data-action="vz-per-row"]', (e, el) => {
 });
 
 /* ---- order and numbers -----------------------------------------
-   Every move goes through one path: reorder, then auto-number the
-   scene (Shots.autoNumber leaves locked numbers, and ones like 4A,
-   alone), then repaint with the focus back on the moved shot. */
+   Every move goes through one path: reorder, then — only if the scene
+   was already in auto order — auto-number it (Shots.autoNumber leaves
+   locked numbers, and ones like 4A, alone; a scene numbered by hand is
+   never renumbered by a move, only by the Renumber button), then repaint with the focus back on the moved shot. */
 const sceneOfShot = (id) => (Shots.listShots().find((s) => s.id === id) || {}).sceneId;
 function announce(id) {
   const list = Shots.listShots();
@@ -1662,8 +1667,11 @@ function announce(id) {
 function moveShotBy(id, delta, focusAction) {
   const scene = sceneOfShot(id);
   if (scene === undefined) return;
+  // Renumber only a scene that was in auto order before the move; a
+  // scene numbered by hand keeps every number it was given.
+  const ordered = Shots.sceneAutoOrdered(scene);
   Shots.moveShot(id, delta);
-  Shots.autoNumber(scene);
+  if (ordered) Shots.autoNumber(scene);
   render();
   if (focusAction === 'vz-shot-grip') {
     const g = document.querySelector('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-grip"]');
@@ -1685,12 +1693,29 @@ delegate(document, 'click', '[data-action="vz-shot-lock"]', (e, el) => {
   const shot = Shots.listShots().find((s) => s.id === id);
   if (!shot) return;
   const locked = Shots.isLockedNumber(shot);
+  const typed = String(shot.number || '').trim();
   /* Unlocking a number like "4A" hands it back to the list: it takes
-     the next ordinal at once, or it would still read as the writer's own. */
-  const ordinal = /^\d*$/.test(String(shot.number || '').trim());
-  Shots.updateShot(id, locked && !ordinal ? { numLocked: false, number: '' } : { numLocked: !locked });
+     the next ordinal at once, or it would still read as the writer's own
+     — with an Undo, because the typed number is otherwise gone. */
+  const ordinal = /^\d*$/.test(typed);
+  const before = Shots.listShots().filter((s) => s.sceneId === shot.sceneId)
+    .map((s) => [s.id, { number: s.number, numLocked: !!s.numLocked }]);
+  if (!locked && !typed) {
+    /* Locking a blank stamps the number the row shows, so the lock holds
+       a real number rather than a placeholder autoNumber could repeat. */
+    const mine = Shots.listShots().filter((s) => s.sceneId === shot.sceneId);
+    Shots.updateShot(id, { numLocked: true, number: String(mine.findIndex((s) => s.id === id) + 1) });
+  } else {
+    Shots.updateShot(id, locked && !ordinal ? { numLocked: false, number: '' } : { numLocked: !locked });
+  }
   if (locked) Shots.autoNumber(shot.sceneId);
   render('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-lock"]');
+  if (locked && !ordinal && StudioUI.toast) {
+    StudioUI.toast('Shot ' + typed + ' unlocked and renumbered', {
+      action: 'Undo',
+      onAction: () => { for (const [sid, was] of before) Shots.updateShot(sid, was); render(); }
+    });
+  }
 });
 /* The grip: the arrow keys move the shot one place (a list reads ↑ ↓,
    a board of cards ← → as well). Drag is below. */
@@ -1758,8 +1783,9 @@ function endDrag(commit) {
   const at = ids.indexOf(d.target.dataset.shot);
   if (at < 0) return;
   ids.splice(at + (d.after ? 1 : 0), 0, d.id);
+  const ordered = Shots.sceneAutoOrdered(d.scene);
   Shots.reorderShots(d.scene, ids);
-  Shots.autoNumber(d.scene);
+  if (ordered) Shots.autoNumber(d.scene);
   render();
   const g = document.querySelector('[data-shot="' + CSS.escape(d.id) + '"] [data-action="vz-shot-grip"]');
   if (g) g.focus();

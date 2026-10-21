@@ -297,7 +297,10 @@ const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
 
 export const CSV_HEADER = [
   'Scene', 'Slug', 'Int/Ext', 'Time', 'Location', 'Scene pages',
-  'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'Lighting / rig', 'Camera', 'What we see', 'Status', 'Drafted by'
+  'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'Lighting / rig', 'Camera', 'What we see', 'Status', 'Drafted by',
+  // Added after the first sixteen, never between them: a template that
+  // maps the old columns by position must keep reading them.
+  'Setup', 'Minutes'
 ];
 
 /* The CSV's shot columns, by Shots.SHOT_COLUMNS id. Setup brings the
@@ -315,8 +318,10 @@ const CSV_COLS = {
 };
 const SCENE_HEAD = CSV_HEADER.slice(0, 7);
 
-/** The CSV. With no `columns` it is exactly the sheet it always was
-    (CSV_HEADER); with them: the scene columns, the shot number, the
+/** The CSV. With no `columns` (what the page exports) it is one fixed
+    schema, CSV_HEADER: the old sixteen columns in their old places, then
+    Setup and Minutes; it never varies with a device's column prefs. With
+    `columns`: the scene columns, the shot number, the
     chosen columns in table order, and who drafted it. */
 export function toCSV(scope, opts = {}) {
   const pick = opts.columns ? Shots.cleanColumns(opts.columns) : null;
@@ -349,7 +354,9 @@ export function toCSV(scope, opts = {}) {
         (Shots.camOf(shot, cams) || {}).name || '',
         shot.description,
         shot.done ? 'in the can' : 'to shoot',
-        by
+        by,
+        Shots.setupOf(shot, cams),
+        (() => { const m = Shots.shotMinutes(shot); return m ? String(m) : ''; })()
       ]);
     }
   }

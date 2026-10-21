@@ -271,7 +271,11 @@ export async function runBulkUpload(files, io = {}) {
     else {
       if (io.removeFrame) io.removeFrame(frame);
       failed.push({ file, why: (r && r.why) || 'not saved' });
-      if (r && r.stop) break;      // the gate closed: the rest would fail the same way
+      if (r && r.stop) {           // the gate closed: the rest would fail the same way
+        const why = (r && r.why) || 'not saved';
+        for (const rest of accepted.slice(i + 1)) failed.push({ file: rest, why, skipped: true });
+        break;
+      }
     }
   }
   return { made, refused, failed };

@@ -138,17 +138,32 @@
 .vz-table td { vertical-align: top; }
 .vz-table th, .vz-table td { padding-inline: var(--s2); }
 /* A column per field (the Columns menu shows and hides them). */
-.vz-table .vz-c-no    { width: 6.5rem; min-width: 6.5rem; }
-.vz-table .vz-c-size  { width: 8rem; min-width: 8rem; }
-.vz-table .vz-c-angle { width: 7rem; min-width: 7rem; }
-.vz-table .vz-c-move  { width: 6.5rem; min-width: 6.5rem; }
-.vz-table .vz-c-lens  { width: 6rem; min-width: 6rem; }
-.vz-table .vz-c-rig   { width: 8rem; min-width: 8rem; }
-.vz-table .vz-c-setup { width: 8rem; min-width: 8rem; }
+/* The short fields are sized to what they hold (the size select shows
+   its code); "What we see" is the one prose column and takes whatever
+   width is left, and its box grows to its text instead of clipping. */
+.vz-table .vz-c-no    { width: 5.5rem; min-width: 5.5rem; }
+.vz-table .vz-c-size  { width: 5rem; min-width: 5rem; }
+.vz-table .vz-c-angle { width: 6.5rem; min-width: 6.5rem; }
+.vz-table .vz-c-move  { width: 6.25rem; min-width: 6.25rem; }
+.vz-table .vz-c-lens  { width: 5rem; min-width: 5rem; }
+.vz-table .vz-c-rig   { width: 7rem; min-width: 7rem; }
+.vz-table .vz-c-setup { width: 7rem; min-width: 7rem; }
 .vz-table .vz-c-setup .k-control + .k-control { margin-top: var(--s1); }
-.vz-table .vz-c-mins  { width: 4.25rem; min-width: 4.25rem; }
-.vz-table .vz-c-desc  { min-width: 11rem; }
-.vz-table .vz-c-done  { width: 6.5rem; min-width: 6.5rem; }
+.vz-table .vz-c-mins  { width: 3.75rem; min-width: 3.75rem; }
+.vz-table .vz-c-desc  { width: auto; min-width: 14rem; }
+.vz-table .vz-c-done  { width: 3.5rem; min-width: 3.5rem; }
+@supports (field-sizing: content) {
+  .vz-table .vz-desc { field-sizing: content; min-height: 3lh; }
+}
+/* On the desktop table the Done header names the box, so the label
+   beside it is kept for readers and hidden for the eye; the phone card
+   (below 721px) prints it. */
+@media screen and (min-width: 721px) {
+  .vz-table .vz-c-done .vz-done-check > span {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+}
 .vz-table th.vz-c-ctrl, .vz-table td.vz-c-ctrl { width: 1%; }
 .vz-cov .vz-c-ctrl .k-btn-group { flex-wrap: nowrap; }
 .vz-no-row { display: flex; align-items: center; gap: var(--s1); }

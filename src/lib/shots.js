@@ -434,7 +434,9 @@ export const SHOT_COLUMNS = [
   { id: 'description', label: 'What we see' },
   { id: 'done',        label: 'Status' }
 ];
-export const DEFAULT_COLUMNS = ['size', 'angle', 'movement', 'lens', 'setup', 'mins', 'description', 'done'];
+/* Every column the old sheet carried shows by default, rig included: a
+   device with no saved view must not hide notes somebody already typed. */
+export const DEFAULT_COLUMNS = ['size', 'angle', 'movement', 'lens', 'rig', 'setup', 'mins', 'description', 'done'];
 /** A column list, cleaned: known ids only, in table order. */
 export function cleanColumns(ids) {
   const want = new Set(Array.isArray(ids) ? ids : DEFAULT_COLUMNS);
@@ -493,6 +495,17 @@ export function autoNumbers(list) {
   }
   return out;
 }
+
+/** PURE. True when the list already reads as autoNumber() would leave it,
+    blanks aside: every unlocked shot with a number holds its ordinal. A
+    move renumbers only such a scene; a scene numbered by hand (12, 13,
+    14 across the script, or 1, 2, 5 after a delete) is left as typed. */
+export function isAutoOrdered(list) {
+  const byId = new Map(list.map((s) => [s.id, s]));
+  return autoNumbers(list).every(([id]) => String((byId.get(id) || {}).number ?? '').trim() === '');
+}
+/** The same question for one scene of the stored list. */
+export const sceneAutoOrdered = (sceneId) => isAutoOrdered(listShots().filter((s) => s.sceneId === sceneId));
 
 /** Renumber one scene's unlocked shots in their current order. Writes
     only when something changes; returns how many numbers moved. */
@@ -943,7 +956,7 @@ export default {
   addBlock, updateBlock, removeBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,
-  reorderShots, isLockedNumber, autoNumbers, autoNumber, shotMinutes, minutesOf, formatMinutes,
+  reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, minutesOf, formatMinutes,
   minutesByDay, setupOf, groupBySetup, frameAction, actionPatch,
   shotsByScene, takeSceneOut, putSceneBack,
   blankFrame, listFrames, saveFrames, addFrame, updateFrame, removeFrame,

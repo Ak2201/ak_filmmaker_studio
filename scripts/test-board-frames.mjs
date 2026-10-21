@@ -288,7 +288,14 @@ ok(new Set(B.ASPECTS.map((a) => a.id)).size === B.ASPECTS.length, 'aspect ids ar
     addFrame: (file, i) => ({ id: 'h' + i }), removeFrame: () => {},
     uploadOne: async () => ({ ok: false, why: 'Drive needs reconnecting', stop: true })
   });
-  eq([res3.made.length, res3.failed.length], [0, 1], 'bulk: a closed gate stops the run after the first');
+  eq([res3.made.length, res3.failed.length], [0, 2], 'bulk: a closed gate stops the run after the first, and the rest count as not uploaded');
+  let up4 = 0;
+  const res4 = await B.runBulkUpload(Array.from({ length: 10 }, (_, i) => pic(i + '.jpg')), {
+    addFrame: (file, i) => ({ id: 'k' + i }), removeFrame: () => {},
+    uploadOne: async () => (++up4 === 4 ? { ok: false, why: 'reconnect', stop: true } : { ok: true, id: 'F' + up4 })
+  });
+  eq([res4.made.length, res4.failed.length, up4], [3, 7, 4], 'bulk: a stop at 4 of 10 reports 7 not uploaded, and tries no more (review fix)');
+  ok(/7 pictures did not upload \(reconnect\)/.test(B.bulkSummary(res4)), 'bulk: the summary counts the skipped ones — ' + B.bulkSummary(res4));
   eq(B.bulkSummary({}), 'Nothing to upload.', 'bulk: an empty run says so');
 }
 

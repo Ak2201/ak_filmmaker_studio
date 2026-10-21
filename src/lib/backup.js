@@ -536,7 +536,8 @@ function applyV2(all, shape, opts) {
         title:  meta.title || undefined,
         format: meta.format || undefined,
         fav:    meta.fav || undefined,
-        subtitle: meta.subtitle || undefined
+        subtitle: meta.subtitle || undefined,
+        region: meta.region === 'IN' || meta.region === 'INT' ? meta.region : undefined
       });
       writeBucket(meta.id, bucket);
       replaced++;
@@ -547,7 +548,8 @@ function applyV2(all, shape, opts) {
       title:  (meta.title || 'Imported Project') + (clash ? ' (imported)' : ''),
       format: meta.format,
       fav:    meta.fav,
-      subtitle: meta.subtitle
+      subtitle: meta.subtitle,
+      region: meta.region     // createProject() keeps 'IN' / 'INT' only
     });
     writeBucket(created.id, bucket);
     taken.push(created.id);

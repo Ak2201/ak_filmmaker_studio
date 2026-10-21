@@ -672,6 +672,12 @@ export function createProject(meta) {
   if (isFavSlug(meta.fav)) project.fav = meta.fav;
   /* The subtitle is the same kind of field: optional, on the entry. */
   if (isSubtitle(meta.subtitle)) project.subtitle = meta.subtitle.trim();
+  /* The film's region (docs/US-MARKET-PLAN.md §A): 'IN' or 'INT', on the
+     entry like fav and subtitle — no new key. Absent means the
+     pre-region default (src/lib/region-core.js projectRegion()). The
+     caller decides the value (region.js regionForNewProject()); store.js
+     imports nothing from region.js, so it only checks the spelling. */
+  if (meta.region === 'IN' || meta.region === 'INT') project.region = meta.region;
   arr0.push(project);
   saveAllProjects(arr0);
   _invalidateCurrent();

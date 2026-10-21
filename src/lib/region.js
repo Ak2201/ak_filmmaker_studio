@@ -4,8 +4,16 @@
    One fact about this browser: is the person at it making a film in
    India, or somewhere this studio has no verified figures for? It
    decides which modules the map offers and which India-specific
-   numbers a page is willing to print. It decides NOTHING about money:
-   there is one checkout and it settles in rupees.
+   numbers a page is willing to print.
+
+   US MARKET (21 Oct 2026, docs/US-MARKET-PLAN.md). Two more questions
+   now sit beside the device's market, and their pure halves live in
+   src/lib/region-core.js (import-free, so the landing page can have
+   them): a PROJECT's region (a `region` field on its entry, deciding
+   its paperwork — currency, paper, dates) and the PRICING currency
+   (INR in India, USD elsewhere, the buyer may switch). This file
+   re-exports all of it and adds the two writers that need the store:
+   setRegion() below for the device, setProjectRegion() for a film.
 
    DETECTION IS PRIVACY-PRESERVING BY CONSTRUCTION, not by policy.
    `Intl.DateTimeFormat().resolvedOptions().timeZone` is a string the
@@ -79,6 +87,13 @@
    device scope, same registries (none).
    ============================================================ */
 import Store, { rawGet, rawSet, rawRemove } from './store.js';
+import { normaliseRegion, projectPrefs, newProjectRegion } from './region-core.js';
+
+export {
+  REGION_IDS, CURRENCIES, PAPERS, normaliseRegion, normaliseCurrency, guessVisitorRegion,
+  currencyForRegion, regionPrefs, projectRegion, projectPrefs, newProjectRegion,
+  pricingCurrency, readPayCurrency, writePayCurrency, formatPaperDate
+} from './region-core.js';
 
 export const REGION_KEY = 'fms_region_v1';
 
@@ -99,8 +114,17 @@ const IN_ZONES = /^Asia\/(Kolkata|Calcutta)$/;
    signal: Sri Lanka shares +5:30. */
 const IST_OFFSET = -330;
 
-/** The guess, from nothing but what the browser already knows.
- *  Pure: no storage, no network, no side effect. */
+/** The MAP's guess, from nothing but what the browser already knows.
+ *  Pure: no storage, no network, no side effect.
+ *
+ *  Deliberately NOT region-core.js guessVisitorRegion() (the SHOP's
+ *  guess, docs/US-MARKET-PLAN.md §B). The two agree in every case but
+ *  one: a zone that carries no location (UTC, Etc/*) beside a language
+ *  with an Indian region subtag — International here, India there.
+ *  Delegating cost about 650 bytes of first paint on every page, and on
+ *  21 Oct 2026 the Library page had 376 to spare under
+ *  scripts/budget.json. Fold them together with a deliberate budget
+ *  recapture, not as a side effect. */
 export function detectRegion() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -144,4 +168,44 @@ export function setRegion(r) {
   return now;
 }
 
-export default { REGION_KEY, REGIONS, region, chosenRegion, detectRegion, setRegion, isIndia };
+/* ---- a project's region (docs/US-MARKET-PLAN.md §A) ------------- */
+
+/** The prefs for the open (or named) project: currency, paper, date
+ *  style, and whether India-only material shows. Derived, stored
+ *  nowhere. With no project open, the device's market decides. */
+export function currentProjectPrefs(id) {
+  const entry = id ? Store.getProject(id) : Store.currentProject();
+  return projectPrefs(entry || { region: region() }, region());
+}
+
+/** The region a project created now should carry: the device's choice,
+ *  else the guess. project-setup.js passes it to createProject(). */
+export function regionForNewProject() {
+  return newProjectRegion({ chosen: chosenRegion(), guess: detectRegion() });
+}
+
+/**
+ * Set a project's region ('IN' | 'INT'), on its entry in
+ * fms_studio_projects_v1 beside title, format, fav and subtitle — no
+ * new key. '' removes the field, which puts the film back on the
+ * pre-region default (paperwork IN, content by the device). Answers
+ * the updated entry, or null (no such project, or an unknown value).
+ * Notifies `region:project` when it moved. A click only.
+ */
+export function setProjectRegion(r, id) {
+  const pid = id || Store.currentProjectId();
+  if (!pid) return null;
+  const want = normaliseRegion(r);
+  if (r && !want) return null;
+  const before = Store.getProject(pid);
+  if (!before) return null;
+  if ((before.region || '') === want) return before;
+  const after = Store.updateProject(pid, { region: want || undefined });
+  if (after) Store.notify('region:project', { id: pid, region: want || '' });
+  return after;
+}
+
+export default {
+  REGION_KEY, REGIONS, region, chosenRegion, detectRegion, setRegion, isIndia,
+  currentProjectPrefs, regionForNewProject, setProjectRegion
+};

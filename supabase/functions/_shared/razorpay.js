@@ -166,6 +166,25 @@ export async function settleAuthorized({ entity, amountPaise, canActivate, captu
   return capped && capped.status === 'captured' ? { kind: 'captured', entity: capped } : { kind: 'pending' };
 }
 
+/* ---- the order is only handed out once the row knows it (audit) -------
+   attach_razorpay_order() is the ONLY writer of payments.razorpay_order_id,
+   and rzp-verify and the webhook find the row by that id alone. supabase-js
+   rpc() returns { error } rather than throwing, so an attach that failed
+   used to be ignored and Checkout opened on an order no row named: the
+   buyer could pay and get no plan, with nothing to match the money to.
+   An attach that fails (or throws) is a refusal: `abandon` marks the row
+   (best effort; never throws out of here) and the caller answers 502, so
+   the Razorpay order is never paid and simply expires.
+   `attach` and `abandon` are the two database calls, passed in.
+   Returns { ok: true } or { ok: false, error }. */
+export async function attachOrder({ attach, abandon }) {
+  let res;
+  try { res = await attach(); } catch (e) { res = { error: e || new Error('attach threw') }; }
+  if (!res?.error) return { ok: true };
+  try { await abandon(); } catch { /* the 502 matters more than the mark */ }
+  return { ok: false, error: res.error };
+}
+
 /* ---- a refund's answer, or the lack of one (schema §53, audit bug 9) ----
    Only an ANSWER from Razorpay may be recorded as 'failed', because
    'failed' lets the console try again under a NEW idempotency key. A call

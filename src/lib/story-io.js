@@ -16,7 +16,7 @@
    into the story is an explicit click in story-kit.js.
    ============================================================ */
 import Store from './store.js';   // must evaluate before anything reads localStorage
-import { h } from './dom.js';
+import { download } from './dom.js';
 import * as Story from './story.js';
 import { sampleById, DEFAULT_SAMPLE } from './samples.js';
 
@@ -193,14 +193,8 @@ export function projectTitle() {
 export function slug() {
   return (projectTitle() || 'story').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'story';
 }
-export function download(name, body, type) {
-  const url = URL.createObjectURL(new Blob([body], { type }));
-  const a = h('a', { href: url, download: name });
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
+/* download() lives in dom.js now, shared with the pages that had a copy. */
+export { download };
 
 export const canExportSynopsis = (s) => !!String(s.source || '').trim();
 export const canExportOutline = (s) => !!((s.outline || []).length || (s.marks || []).length || String(s.logline || '').trim());

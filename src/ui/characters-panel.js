@@ -35,7 +35,7 @@
    (its hash), not on every keystroke in the screenplay: a cue typed
    on the Screenplay tab is on this list the next time you look.
    ============================================================ */
-import { h, delegate } from '../lib/dom.js';
+import { h, delegate, download } from '../lib/dom.js';
 import StudioUI from './chrome.js';
 import PDF from '../lib/pdf.js';
 import { listContacts } from '../lib/contacts.js';
@@ -252,10 +252,7 @@ function downloadTableReadCSV() {
   const read = tableRead((doc && doc.elements) || [], rosterOf(doc));
   if (!read.rows.length) { StudioUI.toast('Nobody speaks yet — there is nothing to export.', { type: 'info' }); return; }
   const base = (PDF.projectTitle() || 'film').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'film';
-  const url = URL.createObjectURL(new Blob([tableReadCSV(read)], { type: 'text/csv;charset=utf-8' }));
-  const a = h('a', { href: url, download: base + '-table-read.csv' });
-  document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  download(base + '-table-read.csv', tableReadCSV(read), 'text/csv;charset=utf-8');
 }
 
 function printTableRead() {

@@ -849,14 +849,6 @@ export function pathStepForBlueprint(format, id) {
   return '';
 }
 
-/** The blueprint items the Story Guide must leave out because a path
-    step already asks them: Set of "<ns>:<id>" for this format. */
-export function absorbedItems(format) {
-  const out = new Set();
-  for (const p of pathFor(format)) for (const a of p.absorbs) { const x = parseAbsorb(a); if (x) out.add(x.ns + ':' + x.id); }
-  return out;
-}
-
 /* ---- the Story Bible, as far as the path needs to know -------- */
 
 const projectIsShort = () => {
@@ -1140,19 +1132,6 @@ export function docStarter(story, kind, { title = '' } = {}) {
   else if (syn) L.push(synopsisText(s).trim());
   else if (idea) L.push(idea);
   return L.join('\n').trim() + '\n';
-}
-
-/** Link a sample story's steps to the sample's scene rows: each step
- *  naming a scene id that exists gives that scene its beat, when the
- *  scene has none. Mutates `scenes`; used once, when the hub seeds the
- *  Dragon sample. */
-export function beatScenesFromOutline(story, scenes) {
-  let n = 0;
-  for (const st of (story && story.outline) || []) {
-    const sc = st.sceneId && (scenes || []).find((x) => x.id === st.sceneId);
-    if (sc && !sc.beatId && resolveBeatKey(st.beat)) { sc.beatId = st.beat; n++; }
-  }
-  return n;
 }
 
 /* ---- Idea Vault --------------------------------------------- */

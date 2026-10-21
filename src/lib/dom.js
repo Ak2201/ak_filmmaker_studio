@@ -105,3 +105,17 @@ export function coalesce(fn, ms = 60) {
 export function normalise(s) {
   return String(s ?? '').replace(/\s+/g, ' ').trim();
 }
+
+/** Save `body` (a string or a Blob part) as a file called `name`: the
+    anchor is attached for the click and the URL revoked 2s later. Moved
+    here from story-io.js so pages that had an identical copy share it;
+    copies with a different revoke timing or a detached anchor were left
+    alone rather than changed in passing. */
+export function download(name, body, type) {
+  const url = URL.createObjectURL(new Blob([body], { type }));
+  const a = h('a', { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}

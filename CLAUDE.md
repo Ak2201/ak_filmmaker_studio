@@ -13,6 +13,12 @@ Read this before changing anything. It is short on purpose; the parts that look
 like fussy rules is there because breaking it has already cost a user their work
 or silently broken a page.
 
+> **Ponytail applies (owner, 21 Oct 2026):** `.claude/skills/ponytail/SKILL.md`
+> (vendored, MIT): the smallest complete change, reuse before writing, a test
+> for risky logic, never cut validation, data-loss handling, security or
+> accessibility. Where it and this file disagree, THIS file wins — above all,
+> keep the long why-comments the traps below depend on.
+
 ## What this is
 
 Browser-based tools for filmmakers — a hub, two step-by-step blueprints, a

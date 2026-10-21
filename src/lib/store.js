@@ -1104,17 +1104,21 @@ export function installStorageProxy() {
     const orig = k;
     k = scopedKey(k);
     const ok = _writeTiered(k, v);
-    if (k !== orig) {
+    /* Only a write that went through is a save. 'saved' is what cloud.js
+       and drive-sync.js stamp and push on, and a refused write left the
+       OLD value on disk: pushing that under a fresh clock made a stale
+       copy beat another device's newer edit there. */
+    if (k !== orig && ok) {
       touch();
       // Tell the UI a save happened (debounced display in src/ui/chrome.js)
       notify('saved', { key: orig });
     }
     /* A REFUSED WRITE IS NOT A SAVED ONE, and `setItem` returns
        undefined by specification, so there is no return value for a
-       caller to have checked even if one wanted to. The event above
-       says a save happened; this one says it did not, and chrome.js
-       turns it into something the writer can actually see. Silence
-       here is how a full studio looks exactly like a working one. */
+       caller to have checked even if one wanted to. This event says the
+       save did not happen, and chrome.js turns it into something the
+       writer can actually see. Silence here is how a full studio looks
+       exactly like a working one. */
     if (!ok) notify('storage:error', { key: orig, scoped: k });
     return undefined;
   };

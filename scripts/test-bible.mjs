@@ -56,6 +56,16 @@ eq(BP.readFields('feature', ['s3_ext']), { s3_ext: '' }, 'a corrupt blob reads a
 BP.writeFields('feature', { s3_ext: 'x' });
 eq(blob('feature'), { s3_ext: 'x' }, '…and the next write recovers it');
 
+/* ---- a refused write is reported (the proxy never throws) -------- */
+reset();
+{
+  const real = localStorage.setItem;
+  localStorage.setItem = () => undefined;        // the proxy refusing: no throw, nothing stored
+  ok(BP.writeFields('feature', { s3_ext: 'never stored' }) === false, 'writeFields reports a refused write as false');
+  localStorage.setItem = real;
+}
+ok(BP.writeFields('feature', { s3_ext: 'stored' }) === true, '…and a write that went through as true');
+
 /* ---- the key map is real ---------------------------------------- */
 {
   const keysIn = (file) => {

@@ -20,7 +20,9 @@
         by a body class, so the size and margins are injected as a
         one-off <style> for the duration of the job and removed
         again. Landscape for a stripboard, US Letter with a 1.5in
-        gutter for a screenplay, A4 for everything else.
+        gutter for a screenplay, and for everything else the FILM's
+        paper: A4 for an Indian film, US Letter for one made
+        elsewhere (region.js currentProjectPrefs().paper).
      2. A MASTHEAD. What a document needs and a web page does not:
         which film, which document, how big, as of when.
 
@@ -62,54 +64,20 @@ import { BRAND } from './brand.js';
    never held back. Fails open, like every plan check. */
 import PlanGate from './plan-gate.js';
 import { bumpUsage } from './usage.js';
+/* The film's paper and date style (docs/US-MARKET-PLAN.md §A4). region.js
+   is CORE already (navmodel imports it), so this costs no first paint;
+   paper-date.js says why the date is not region-core's formatPaperDate. */
+import { region } from './region.js';
+import { paperDate, paperPrefsOf } from './paper-date.js';
+import { SETUPS, LETTER_OF, DOCUMENTS, paperSetupName, resolveSetup as resolveFor } from './paper-setups.js';
 
-/* ------------------------------------------------------------
-   PAGE SETUPS
-   ------------------------------------------------------------ */
-export const SETUPS = {
-  a4:         { size: 'A4',           margin: '18mm 14mm' },
-  landscape:  { size: 'A4 landscape', margin: '13mm 12mm' },
-  /* US Letter, 1in top/right/bottom and a 1.5in left gutter — the
-     geometry a script is read and punched in, everywhere. */
-  screenplay: { size: 'Letter',       margin: '25.4mm 25.4mm 22mm 38.1mm' },
-  /* The same sheet for a shooting script, whose scene numbers sit IN
-     the margins — and Chrome clips whatever a PDF page paints there.
-     So the page margins shrink to 0.75in and 0.4in and write.css pads
-     the document back out by the difference (`pdf-sn`): the text block
-     lands on exactly the same 1.5in gutter, and the numbers are
-     inside the printable area instead of cut off. */
-  'screenplay-wide': { size: 'Letter', margin: '25.4mm 10.16mm 22mm 19.05mm' },
-  sheet:      { size: 'A4',           margin: '15mm 13mm' }
-};
+/* The page setups and the documents live in ./paper-setups.js (pure,
+   so the choice of paper is testable in Node); re-exported here, where
+   every caller already looks for them. */
+export { SETUPS, LETTER_OF, DOCUMENTS, paperSetupName };
 
-/* ------------------------------------------------------------
-   THE DOCUMENTS
-   ------------------------------------------------------------
-   One entry per document-shaped output in the studio. `scope` is
-   the key; it becomes a `pdf-<scope>` body class that pdf.css
-   keys its rules off. `classes` are body classes a page already
-   owns and already styles — reports.css and contacts.css wrote
-   theirs long before this module existed, and re-implementing
-   them here would be two representations of one thing.
-   ------------------------------------------------------------ */
-export const DOCUMENTS = {
-  blueprint:  { setup: 'a4',         label: 'Blueprint' },
-  overview:   { setup: 'a4',         label: 'Studio overview' },
-  // The screenplay carries its own title page, which is the masthead
-  // a script is allowed to have. A second one above it is not.
-  screenplay: { setup: 'screenplay', label: 'Screenplay', masthead: false },
-  callsheet:  { setup: 'sheet',      label: 'Call sheet' },
-  sides:      { setup: 'a4',         label: 'Sides',    classes: ['rp-print-sides'] },
-  reports:    { setup: 'a4',         label: 'Production reports', classes: ['rp-print-reports'] },
-  board:      { setup: 'landscape',  label: 'Stripboard' },
-  // One industry breakdown sheet per scene; each sheet is its own heading.
-  bdsheets:   { setup: 'a4',         label: 'Breakdown sheets', masthead: false },
-  dood:       { setup: 'landscape',  label: 'Day Out of Days' },
-  // An invoice is its own letterhead.
-  invoice:    { setup: 'a4',         label: 'Invoice', masthead: false },
-  // The deck is its own cover, so no masthead above it.
-  pitch:      { setup: 'landscape',  label: 'Pitch deck', masthead: false }
-};
+/** The page setup a job uses, for the open film unless `prefs` says. */
+export const resolveSetup = (opts = {}, prefs = null) => resolveFor(opts, prefs || filmPrefs());
 
 /** The open project's title, for the band and the filename. */
 export function projectTitle() {
@@ -131,9 +99,19 @@ function cleanTitle(s) {
     .slice(0, 120) || 'Document';
 }
 
-const today = () => new Date().toLocaleDateString(undefined, {
-  year: 'numeric', month: 'short', day: 'numeric'
-});
+/** The open film's paper and date style ({ paper, dateStyle }), or the
+ *  studio default (A4, Indian dates) when the store cannot answer — a
+ *  page with no project still prints. The paperwork pages (stripboard,
+ *  reports, contacts) ask this rather than region.js
+ *  currentProjectPrefs(); paper-date.js says why. */
+export function filmPrefs() {
+  try { return paperPrefsOf(Store.currentProject && Store.currentProject(), region()); }
+  catch (e) { return { paper: 'A4', dateStyle: 'IN' }; }
+}
+
+/** The masthead's "as of" date, in the film's style: "21 Oct 2026" on
+ *  an Indian film, "Oct 21, 2026" on a US one. */
+const today = (prefs) => paperDate(new Date(), prefs, 'medium');
 
 function pageStyle(setup) {
   return `@page { size: ${setup.size}; margin: ${setup.margin}; }\n`;
@@ -168,13 +146,17 @@ export function stage(opts = {}) {
   if (active) unstage();
 
   const doc = DOCUMENTS[opts.scope] || DOCUMENTS.blueprint;
-  const setup = SETUPS[opts.setup || doc.setup] || SETUPS.a4;
+  const prefs = filmPrefs();
+  const { setup } = resolveSetup(opts, prefs);
+  // pdf.css keys its few Letter-only rules off this (Letter is shorter).
+  const onLetter = /^Letter/.test(setup.size);
   const project = opts.project || projectTitle();
   const label = opts.label || doc.label;
   const title = cleanTitle(opts.title || (project + ' — ' + label));
 
   const classes = ['pdf-print', 'pdf-' + (opts.scope || 'blueprint')]
     .concat(doc.classes || [])
+    .concat(onLetter ? ['pdf-letter'] : [])
     .concat(opts.classes || []);
 
   const state = {
@@ -201,7 +183,7 @@ export function stage(opts = {}) {
     : (doc.masthead !== false);
   if (wantsMasthead) {
     const host = document.getElementById('main') || document.body;
-    state.band = masthead({ project, label, subtitle: opts.subtitle || '', date: today() });
+    state.band = masthead({ project, label, subtitle: opts.subtitle || '', date: today(prefs) });
     host.insertBefore(state.band, host.firstChild);
   }
 
@@ -232,6 +214,10 @@ export function unstage() {
      label     what the running header calls this document
      subtitle  a line for the footer (which scenes, which day)
      project   override the project name in the header
+     setup     the setup FAMILY (a4, landscape, sheet, screenplay…);
+               a4 / landscape / sheet print on Letter for a film whose
+               paper is Letter (resolveSetup)
+     paper     'A4' | 'Letter' — override the film's paper for one job
      classes   extra body classes for a page's own print rules
      before()  build or mark whatever this document needs
      after()   put it back
@@ -272,7 +258,7 @@ export function exportPDF(opts = {}) {
   return true;
 }
 
-const StudioPDF = { exportPDF, stage, unstage, projectTitle, DOCUMENTS, SETUPS };
+const StudioPDF = { exportPDF, stage, unstage, projectTitle, filmPrefs, resolveSetup, paperSetupName, DOCUMENTS, SETUPS, LETTER_OF };
 if (typeof window !== 'undefined') window.StudioPDF = StudioPDF;
 
 export default StudioPDF;

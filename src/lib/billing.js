@@ -43,11 +43,11 @@ export { PLAN_ORDER, planName };
 export const planRank = (id) => Math.max(0, PLAN_ORDER.indexOf(id));
 
 const cloud = () => window.StudioCloud || null;
-/* Exported for the console's owner-only writers (billing-admin.js
-   setUsdPrice / setUsdCheckout), which live on the admin page rather than
-   in this CORE file so the first paint of every other page does not
-   carry them (scripts/budget.json, us/market 22 Oct 2026). */
-export async function client() {
+/* The console's owner-only dollar writers (setUsdPrice / setUsdCheckout)
+   live in billing-admin.js over admin-api.js's usdCall, not in this CORE
+   file, so the first paint of every other page does not carry them
+   (scripts/budget.json, us/market 22 Oct 2026). */
+async function client() {
   const c = cloud();
   if (!c || !c.ensureClient) throw new Error('Cloud is not available on this page.');
   const sb = await c.ensureClient();

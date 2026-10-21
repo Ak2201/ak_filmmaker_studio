@@ -41,9 +41,10 @@
    No inline handlers; delegate() on [data-ba-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import Billing, { client as billingClient, fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
+import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
 import { refundDialog, declineDialog, categoryText } from './refund-admin.js';
 import { ask } from './dialog.js';
+import { usdCall } from '../lib/admin-api.js';
 import { studioRole } from './admin-customer.js';
 import { fmtMinor, parseMinor } from '../lib/price-model.js';
 import { field as kField } from './kit/field.js';
@@ -60,12 +61,7 @@ import '../styles/refunds.css';
    on sale lacks a dollar price. Both resolve to price_notice('USD').
    Here rather than on Billing.admin (CORE) so only the console pays for
    them in its first paint. */
-async function usdRpc(name, args) {
-  const sb = await billingClient();
-  const { data, error } = await sb.rpc(name, args);
-  if (error) throw error;
-  return data;
-}
+const usdRpc = (name, args) => usdCall(window.StudioCloud || null, name, args);
 const setUsdPrice = (planId, amountMinor, nextMinor, at) => usdRpc('admin_set_plan_price', {
   p_plan: planId, p_currency: 'USD', p_amount_minor: amountMinor, p_next_minor: nextMinor ?? null, p_at: at || null });
 const setUsdCheckout = (on) => usdRpc('admin_set_usd_checkout', { p_on: !!on });

@@ -33,7 +33,7 @@ import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { LINK_KINDS, guessKind, linkText } from '../lib/links.js';
 import { listScenes } from '../lib/scenes.js';
-import { isIndia, currentProjectPrefs } from '../lib/region.js';
+import { currentProjectPrefs } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
 import {
   blueprintSays, projectFormat, TABS, tabFromHash as tabOf, tabForKey, shownItems, TOOL_LINK, fmtChecked, hostOf,
@@ -339,14 +339,23 @@ function certificationPanel(build) {
      three different procedures, and writing a plausible-looking
      checklist for one of them from memory is exactly the kind of
      confident wrongness this file's sources exist to prevent. */
-  if (!currentProjectPrefs().showIndiaContent) {
+  const prefs = currentProjectPrefs();
+  if (!prefs.showIndiaContent) {
+    /* The film's own region decides when it has one (REGION-CONTENT);
+       a film that predates regions follows the device, as before. */
     sec.append(h('h2.dv-h2', { text: 'Certification flags' }));
     sec.append(h('p.dv-blurb', {
       text: 'These checks read a script against Indian certification law — the CBFC\u2019s examining '
-          + 'guidelines, the COTPA tobacco warnings, the AWBI\u2019s animal permission. Your studio is '
-          + 'set to International, so they are off: they would cite a regulator that has no say over '
+          + 'guidelines, the COTPA tobacco warnings, the AWBI\u2019s animal permission. '
+          + (prefs.explicit
+            ? 'This film is set to be made outside India, so they are off: '
+            : 'Your studio is set to International, so they are off: ')
+          + 'they would cite a regulator that has no say over '
           + 'your film. Nothing equivalent is offered for other countries yet, because getting it wrong '
-          + 'would be worse than leaving it out. Switch to India in Settings if you are certifying here.'
+          + 'would be worse than leaving it out. '
+          + (prefs.explicit
+            ? 'Set the film to India on the dashboard\u2019s Title page card if you are certifying here.'
+            : 'Switch to India in Settings if you are certifying here.')
     }));
     return sec;
   }

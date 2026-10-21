@@ -45,7 +45,7 @@ for (const s of samples) eq(M.parseAmount(s), M.parseNum(s), `parseAmount(${JSON
 const usd = [
   ['$2,000', 2000], ['2000', 2000], ['1.5k', 1500], ['1.5K', 1500], ['2m', 2000000], ['2 mn', 2000000],
   ['1.25 million', 1250000], ['5 thousand', 5000], ['US$ 750', 750], ['750 USD', 750], ['usd750', 750],
-  ['500 per roll', 500], ['3 mins', 3], ['1.5l', 1.5], ['2cr', 2], ['crew 500', 0], ['', 0], [null, 0], ['$37.50', 37.5]
+  ['500 per roll', 500], ['3 mins', 3], ['1.5k/day', 1500], ['$500 per day', 500], ['2 thousands', 2000], ['1 lens day', 1], ['1.5l', 1.5], ['2cr', 2], ['crew 500', 0], ['', 0], [null, 0], ['$37.50', 37.5]
 ];
 for (const [s, want] of usd) eq(M.parseAmount(s, 'USD'), want, `parseAmount(${JSON.stringify(s)}, USD)`);
 
@@ -64,7 +64,8 @@ eq(M.fmtMoney(820, 'USD', true), '$820', 'a short hundreds');
 // The four rupee exports did not move.
 const moneySrc = readFileSync(new URL('../src/lib/money.js', import.meta.url), 'utf8');
 ok(moneySrc.includes("export default { parseNum, fmtINR, INR, USD };"), 'money.js default export is unchanged');
-ok(moneySrc.includes("const parts = s.match(/^(\\d*\\.?\\d+)(crore|cr|lakh|lac|l|thousand|thou|k)?$/);"), 'the lakh/crore whole-string rule is untouched');
+ok(moneySrc.includes("const parts = s.match(/^(\\d*\\.?\\d+)(crores?|cr|lakhs?|lacs?|l|thousands?|thou|k)?(?:(?:\\/|per)[a-z]+)?$/);"), 'the lakh/crore whole-string rule is untouched');
+ok(moneySrc.indexOf('BUDGET-USD') > moneySrc.indexOf('export const USD'), 'the dollar half sits after every rupee export');
 
 /* ---- the budget's currency ------------------------------------- */
 eq(C.resolveCurrency({ calc: {}, costs: {}, project: 'USD' }), 'USD', 'an empty budget follows the film');

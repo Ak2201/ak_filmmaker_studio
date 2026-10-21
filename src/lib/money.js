@@ -111,7 +111,9 @@ export function parseAmount(s, currency) {
   if (currency !== 'USD') return parseNum(s);
   if (!s) return 0;
   s = String(s).toLowerCase().replace(/[,\s$]/g, '').replace(/^usd?/, '').replace(/usd$/, '');
-  const parts = s.match(/^(\d*\.?\d+)(million|mn|m|thousand|thou|k)?$/);
+  // Same shape as parseNum's: the plural, and a rate tail taken whole
+  // after the number and its suffix ("1.5k/day", "500 per day").
+  const parts = s.match(/^(\d*\.?\d+)(millions?|mn|m|thousands?|thou|k)?(?:(?:\/|per)[a-z]+)?$/);
   if (parts) {
     const suffix = parts[2] || '';
     return parseFloat(parts[1]) * (/^m/.test(suffix) ? 1000000 : suffix ? 1000 : 1);

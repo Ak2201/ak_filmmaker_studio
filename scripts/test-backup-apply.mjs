@@ -30,9 +30,9 @@ const NS = process.env.FMS_TEST_NS;
 if (NS === undefined) {
   /* The parent: one child per namespace, the device's and an account's. */
   let failed = 0;
-  for (const ns of ['', 'acct-u']) {
+  for (const [ns, proxy] of [['', ''], ['acct-u', ''], ['', '1']]) {
     const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], {
-      env: Object.assign({}, process.env, { FMS_TEST_NS: ns }), encoding: 'utf8'
+      env: Object.assign({}, process.env, { FMS_TEST_NS: ns, FMS_TEST_PROXY: proxy }), encoding: 'utf8'
     });
     process.stdout.write(r.stdout || '');
     process.stderr.write(r.stderr || '');
@@ -58,6 +58,51 @@ register('data:text/javascript,' + encodeURIComponent(`
 `), import.meta.url);
 
 const mem = new Map();
+
+if (process.env.FMS_TEST_PROXY) {
+  /* THE PROXY CHILD: a refused write is not a save. A real Storage
+     prototype, so store.js installs its proxy; the small tier refuses
+     one key the way a full quota does. 'saved' is what cloud.js and
+     drive-sync.js stamp and push on, so it must not fire for a write
+     that left the old value on disk. */
+  const refuse = new Set();
+  globalThis.Storage = class Storage {
+    getItem(k) { return mem.has(k) ? mem.get(k) : null; }
+    setItem(k, v) { if (refuse.has(k)) { const e = new Error('quota'); e.name = 'QuotaExceededError'; throw e; } mem.set(k, String(v)); }
+    removeItem(k) { mem.delete(k); }
+    key(i) { return [...mem.keys()][i] ?? null; }
+    get length() { return mem.size; }
+  };
+  globalThis.localStorage = new globalThis.Storage();
+  globalThis.document = {
+    readyState: 'complete', body: null,
+    addEventListener() {}, getElementById() { return null; }, querySelectorAll() { return []; }
+  };
+  mem.set('fms_studio_projects_v1', JSON.stringify([{ id: 'here', title: 'Mine', format: 'feature', ns: [''] }]));
+  mem.set('fms_studio_current_project_v1', 'here');
+  const Store = (await import('../src/lib/store.js')).default;
+  let fail = 0, pass = 0;
+  const ok = (c, m) => { if (c) pass++; else { fail++; console.log('  ✗ [proxy] ' + m); } };
+  const seen = [];
+  Store.subscribe('saved', (d) => seen.push('saved:' + d.key));
+  Store.subscribe('storage:error', (d) => seen.push('error:' + d.key));
+  localStorage.setItem('fms_scenes_v1', '{"scenes":[1]}');
+  ok(mem.get('fms_scenes_v1__here') === '{"scenes":[1]}' && seen.join() === 'saved:fms_scenes_v1', 'a write that goes through is a save — got ' + seen.join());
+  seen.length = 0;
+  /* Both tiers full: no IndexedDB here, so the big tier answers
+     'unavailable' once asked, and the small tier refuses the key. */
+  const Overflow = (await import('../src/lib/overflow.js')).default;
+  await Overflow.hydrate();
+  ok(Overflow.state() === 'unavailable', 'the overflow tier is unavailable in this child — got ' + Overflow.state());
+  refuse.add('fms_scenes_v1__here');
+  localStorage.setItem('fms_scenes_v1', '{"scenes":[2]}');
+  ok(mem.get('fms_scenes_v1__here') === '{"scenes":[1]}', 'the refused write left the old value');
+  ok(!seen.includes('saved:fms_scenes_v1'), "a refused write does not fire 'saved' — got " + seen.join());
+  ok(seen.includes('error:fms_scenes_v1'), 'it fires storage:error — got ' + seen.join());
+  console.log(fail ? `\n[proxy] ${fail} failed, ${pass} passed` : `✓ backup apply [proxy]: ${pass} checks`);
+  process.exit(fail ? 1 : 0);
+}
+
 globalThis.localStorage = {
   getItem: (k) => (mem.has(k) ? mem.get(k) : null),
   setItem: (k, v) => { mem.set(k, String(v)); },

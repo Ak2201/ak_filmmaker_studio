@@ -1,5 +1,5 @@
 /* ============================================================
-   MOTION, landing-only — scroll progress, parallax, marquee, glow,
+   MOTION, landing-only — parallax, marquee, glow,
    aurora. Split from motion.js so the app pages, which import motion.js
    through the CORE motion-app.js, do not carry these in first paint.
    Same rules: no storage, every distance x --motion, off under
@@ -11,27 +11,6 @@ const motionScale = () => {
   const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion'));
   return Number.isFinite(v) ? v : 1;
 };
-
-/* ---- scroll progress ------------------------------------------- */
-export function scrollProgress() {
-  if (document.querySelector('.mo-progress') || prefersReducedMotion()) return null;
-  const bar = document.createElement('div');
-  bar.className = 'mo-progress';
-  bar.setAttribute('aria-hidden', 'true');
-  document.body.append(bar);
-  let raf = 0;
-  const upd = () => {
-    raf = 0;
-    const max = document.documentElement.scrollHeight - innerHeight;
-    const p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
-    bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
-  };
-  const on = () => { if (!raf) raf = requestAnimationFrame(upd); };
-  addEventListener('scroll', on, { passive: true });
-  addEventListener('resize', on, { passive: true });
-  upd();
-  return bar;
-}
 
 /* ---- parallax: vertical only, capped at 40px x --motion --------- */
 export function parallax(el, { speed = 0.08 } = {}) {

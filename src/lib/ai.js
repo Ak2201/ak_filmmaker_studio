@@ -1917,7 +1917,6 @@ export function quoteChecker(source) {
     return hay.includes(forCompare(q));
   };
 }
-export const normaliseForQuote = forCompare;
 
 /* ---- the script, as numbered scenes ------------------------
    The ONE slicer (sliceScript) and the one plain-text rendering
@@ -1992,7 +1991,6 @@ const DEFAULT_AUDIENCE = 'a Tamil theatrical and OTT audience';
 const audienceOf = (job) => str(job && job.audience, 200) || DEFAULT_AUDIENCE;
 
 const ASPECTS = ['premise', 'structure', 'character', 'dialogue', 'pacing', 'marketability'];
-export const COVERAGE_ASPECTS = ASPECTS.slice();
 export const VERDICTS = ['pass', 'consider', 'recommend'];
 
 const COVERAGE_SYSTEM = [
@@ -2441,7 +2439,6 @@ export function buildAudiencePartPrompt(job) {
   const context = Array.isArray(job && job.context) ? contextBlock(job.context) : str(job && job.context, 20000);
   return Audience.buildPartPrompt({ ...job, context });
 }
-export const buildAudienceSynthPrompt = (job) => Audience.buildSynthPrompt(job);
 export const AUDIENCE_SYSTEM = Audience.AUDIENCE_SYSTEM;
 const AUDIENCE_SYNTH_SYSTEM = Audience.AUDIENCE_SYSTEM
   + '\n\nThe screening is over. This request is the panel\'s verdicts, from the scores and notes they gave.';

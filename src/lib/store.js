@@ -818,12 +818,6 @@ export function setProjectFav(slug, id) {
 const SUBTITLE_MAX = 80;
 function isSubtitle(v) { return typeof v === 'string' && v.trim().length > 0 && v.length <= SUBTITLE_MAX * 2; }
 
-/** The open (or named) project's subtitle, or ''. */
-export function projectSubtitle(id) {
-  const p = id ? getProject(id) : currentProject();
-  return p && typeof p.subtitle === 'string' ? p.subtitle : '';
-}
-
 /** Set the open project's subtitle. '' clears it. */
 export function setProjectSubtitle(text, id) {
   const pid = id || currentProjectId();

@@ -110,11 +110,6 @@ export function gateHolder() {
    opens the consent window itself and hands back the final redirect,
    https://<extension-id>.chromiumapp.org/#access_token=…, which must be
    on the Supabase project's Redirect URLs list (docs/EXTENSION.md). */
-export function extensionRedirectUrl() {
-  const c = ext();
-  return c && c.identity ? c.identity.getRedirectURL() : '';
-}
-
 export async function extensionGoogleTokens(supabaseUrl, scopes) {
   const c = ext();
   if (!c || !c.identity) throw new Error('chrome.identity is not available here.');

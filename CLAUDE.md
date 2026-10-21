@@ -24,6 +24,27 @@ or silently broken a page.
 > assumptions and ask, minimum code, surgical diffs, a verifiable check for
 > every change. Where it and this file meet, this file's invariants win; its
 > "write a test that reproduces it" is this repo's verify / prove gate.
+>
+> **gstack is recommended, not required (owner, 21 Oct 2026):** Garry Tan's
+> skill suite (https://github.com/garrytan/gstack, MIT) — `/review`,
+> `/investigate`, `/qa`, `/cso`, the `/plan-*-review`s and the rest. It is a
+> GLOBAL install, not vendored here; a cloud container loses it when it is
+> recycled. To install, with its telemetry, update check and outside Codex
+> reviews OFF (the owner's choice):
+>
+> ```bash
+> git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
+> cd ~/.claude/skills/gstack && for kv in "telemetry off" "update_check false" \
+>   "codex_reviews disabled" "auto_upgrade false" "routing_declined true"; do
+>   bin/gstack-config set $kv; done && ./setup --no-team --no-browser
+> ```
+>
+> In a cloud container the browser skills use the preinstalled Chromium:
+> `GSTACK_CHROMIUM_PATH=/opt/pw-browsers/chromium GSTACK_CHROMIUM_NO_SANDBOX=1`.
+> **Releases still go through `docs/BRANCHING.md`**: `/ship` and
+> `/land-and-deploy` do not replace the develop → gate → main release, and do
+> not bump a VERSION or CHANGELOG this repo does not keep. Where gstack and
+> this file disagree, this file wins.
 
 ## What this is
 

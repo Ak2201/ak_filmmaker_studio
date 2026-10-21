@@ -1104,7 +1104,7 @@ function buildSyncPill() {
       pill.dataset.tone = l.tone;
       icon.textContent = SYNC_ICON[l.tone] || SYNC_ICON.off;
     }
-    const name = 'Sync: ' + l.text + '. Open account settings';
+    const name = 'Sync: ' + (l.detail && l.detail !== l.text ? l.detail : l.text) + '. Open account settings';
     if (pill.getAttribute('aria-label') !== name) { pill.setAttribute('aria-label', name); pill.title = name; }
   };
   const cloud = () => (typeof window !== 'undefined' && window.StudioCloud) || null;

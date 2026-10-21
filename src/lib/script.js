@@ -921,16 +921,21 @@ const xmlEsc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
 }[m]));
 
-function fdxParagraph(el, pad) {
+function fdxParagraph(el, pad, number) {
   let text = String(el.text ?? '').trim();
   if (el.type === 'paren' && !/^\(.*\)$/.test(text)) text = '(' + text + ')';
-  return pad + '<Paragraph Type="' + (FDX_TYPE_OUT[el.type] || 'Action') + '">'
+  const num = number ? ' Number="' + xmlEsc(number) + '"' : '';
+  return pad + '<Paragraph Type="' + (FDX_TYPE_OUT[el.type] || 'Action') + '"' + num + '>'
     + '<Text>' + xmlEsc(text) + '</Text></Paragraph>';
 }
 
 export function toFDX(doc, meta = {}) {
   const els = (doc && doc.elements) || [];
   const pairs = new Map(dualPairs(els).map((p) => [p.left[0], p]));
+  /* Locked numbers travel as Final Draft's own Number attribute, which
+     the importer reads back. Unlocked, a number is only the heading's
+     position, so none is written: writing it would freeze it. */
+  const nums = isNumberingLocked(doc && doc.numbering) ? sceneNumbers(els, doc.numbering).byId : null;
   const out = [
     '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>',
     '<FinalDraft DocumentType="Script" Template="No" Version="5">',
@@ -948,7 +953,7 @@ export function toFDX(doc, meta = {}) {
       continue;
     }
     if (!String(els[i].text ?? '').trim()) continue;
-    out.push(fdxParagraph(els[i], '    '));
+    out.push(fdxParagraph(els[i], '    ', nums && els[i].type === 'scene' ? nums.get(els[i].id) : ''));
   }
   out.push('  </Content>');
 

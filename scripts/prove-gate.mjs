@@ -1208,6 +1208,63 @@ try {
     ok(await O.page.evaluate(() => localStorage.getItem('fms_sitegate_verified_v1')) == null, '(s) and the stamp is cleared with the sign-out');
     allErrors.push(...O.errors); await O.ctx.close();
   }
+
+  /* (t) A REFUSED CHANGE IS NOT "OFFLINE" (owner, 20 Oct 2026). The pill
+     read "4 changes waiting (offline)" on a connected machine, for ever:
+     idleSync() called any queue offline and the flush retried a refusal
+     every 30 seconds without saying why. */
+  {
+    console.log('(t) a refused change is named, backed off, and clears');
+    F.reset();
+    const T = await newContext(browser, { tok: 'tok-admin' });
+    await T.page.goto(BASE + 'index.html');
+    ok(await waitGate(T.page, 'open'), '(t) a member is in');
+    const qread = () => T.page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_cloud_queue_v1') || '[]'));
+    const status = () => T.page.evaluate(() => window.StudioCloud.getSyncStatus());
+    const pill = () => T.page.evaluate(() => { const p = document.querySelector('.sh-sync, [data-sync-pill]'); return p ? (p.textContent || '').trim() + ' | ' + (p.getAttribute('aria-label') || '') : ''; });
+    const save = (v) => T.page.evaluate((val) => {
+      const S = window.StudioStore;
+      if (!S.currentProjectId()) { const p = S.createProject({ title: 'Queue Film', format: 'feature' }); S.setCurrentProject(p.id); }
+      localStorage.setItem('fms_scenes_v1', JSON.stringify([{ id: 's1', heading: 'INT. ROOM - DAY', note: val }]));
+    }, v);
+    F.db.refuseData = 'P0402';
+    await save('one');
+    await T.page.waitForFunction(() => JSON.parse(localStorage.getItem('fms_studio_cloud_queue_v1') || '[]').some((o) => o.code), null, { timeout: 8000 }).catch(() => {});
+    let q = await qread(), st = await status();
+    ok(q.length > 0 && q.every((o) => o.code === 'P0402' && o.nextAt > Date.now()), '(t) the refused change is queued WITH its code and a back-off: ' + JSON.stringify(q.map((o) => [o.scope, o.code, o.tries])));
+    ok(st.state === 'error' && /plan/i.test(st.detail) && !/offline/i.test(st.detail), '(t) the status names the plan limit, not "offline": ' + st.state + ' / ' + st.detail);
+    ok(!/offline/i.test(await pill()), '(t) the band pill does not say offline: ' + await pill());
+    const before = F.db.calls.filter((c) => c.startsWith('write:project_data')).length;
+    await T.page.evaluate(() => window.StudioCloud.flushQueue());
+    await T.page.waitForTimeout(600);
+    ok(F.db.calls.filter((c) => c.startsWith('write:project_data')).length === before, '(t) a flush inside the back-off does not ask again');
+    /* The cause goes away and the back-off runs out: it clears by itself. */
+    F.db.refuseData = null;
+    await T.page.evaluate(() => {
+      const q = JSON.parse(localStorage.getItem('fms_studio_cloud_queue_v1') || '[]').map((o) => Object.assign(o, { nextAt: 0 }));
+      localStorage.setItem('fms_studio_cloud_queue_v1', JSON.stringify(q));
+      return window.StudioCloud.flushQueue();
+    });
+    await T.page.waitForTimeout(600);
+    q = await qread(); st = await status();
+    ok(q.length === 0 && st.state === 'synced', '(t) once accepted, the queue empties and the pill reads Synced: ' + q.length + ' / ' + st.state + ' / ' + st.detail);
+    /* Really offline: THEN it says so, and it flushes on the way back. */
+    /* setOffline flips navigator.onLine, but the fake's route handler would
+       still answer; drop its traffic too, as a dead network would. */
+    const dead = (r) => r.abort('internetdisconnected');
+    await T.ctx.route(SB + '/**', dead);
+    await T.ctx.setOffline(true);
+    await save('two');
+    await T.page.waitForTimeout(2500);
+    q = await qread(); st = await status();
+    ok(q.length > 0 && q.every((o) => !o.code) && st.state === 'offline', '(t) offline, the change waits without a refusal code and the state is offline: ' + st.state + ' / ' + st.detail);
+    await T.ctx.unroute(SB + '/**', dead);
+    await T.ctx.setOffline(false);
+    await T.page.waitForFunction(() => window.StudioCloud.getSyncStatus().pending === 0, null, { timeout: 8000 }).catch(() => {});
+    st = await status();
+    ok(st.pending === 0 && st.state === 'synced', '(t) back online, it flushes and reads Synced: ' + st.pending + ' / ' + st.state);
+    allErrors.push(...T.errors); await T.ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

@@ -277,7 +277,17 @@ function idleSync() {
   if (_gateState === 'closed') return setSync(_gateReason === 'unreachable' ? SYNC_STATES.ERROR : SYNC_STATES.OFF, gateDetail(_gateReason));
   if (_gateState === 'lost')   return setSync(SYNC_STATES.ERROR, 'Paused — this account is active on another device');
   if (_planLimitHeld) return setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
-  if (q)         return setSync(SYNC_STATES.OFFLINE, q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload');
+  if (q) {
+    const waiting = q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload';
+    /* "Offline" only when the browser says so. A queue on a connected
+       machine is either about to flush or being REFUSED, and calling
+       that offline sent the owner looking at their Wi-Fi for a plan
+       limit (20 Oct 2026). */
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return setSync(SYNC_STATES.OFFLINE, waiting);
+    const refused = _readQueue().filter((o) => o.code);
+    if (refused.length) return setSync(SYNC_STATES.ERROR, refusalSentence(refused[0].code, refused.length));
+    return setSync(SYNC_STATES.IDLE, waiting);
+  }
   setSync(SYNC_STATES.SYNCED, 'Everything is in your account');
 }
 
@@ -1561,6 +1571,14 @@ async function _pushScope(projectId, scope) {
     reportSyncError(scope, error.code);
     // The local copy is already on disk and stays there. All a failed
     // push costs is the upload, which the queue retries.
+    const code = refusalCode(error);
+    if (code) {
+      /* Refused, not unreachable: say why, and let the queue back off. */
+      _enqueue({ kind: 'upsert', projectId, scope, code });
+      idleSync();
+      tellRefusal(code, _readQueue().filter((o) => o.code).length);
+      throw error;
+    }
     _enqueue({ kind: 'upsert', projectId, scope });
     setSync(navigator.onLine ? SYNC_STATES.ERROR : SYNC_STATES.OFFLINE,
       navigator.onLine ? 'Saved here — could not reach your account'
@@ -1569,6 +1587,9 @@ async function _pushScope(projectId, scope) {
   }
   // Both clocks now agree on the value this device just sent.
   markRemoteSeen(projectId, scope, Date.parse(stamp), true);
+  /* The value just sent is the newest one, so a queued (perhaps refused)
+     copy of this scope has nothing left to say. */
+  _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope);
   idleSync();
 }
 
@@ -1625,7 +1646,9 @@ async function _pushProjectMeta(project) {
     }
     console.warn('[push meta]', error);
     _enqueue({ kind: 'meta', project });
-    return;
+    /* Thrown so a queue flush knows this attempt failed and why; the
+       direct caller wraps it in track(), which swallows it. */
+    throw error;
   }
   /* A new project got in: the cap no longer holds this account. */
   _planLimitHeld = false;
@@ -1678,7 +1701,8 @@ function planLimitToast(message, opts) {
 
 async function _deleteProjectInCloud(projectId) {
   if (!supabase || !session) return;
-  await supabase.from('projects').delete().eq('id', projectId);
+  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+  if (error) throw error;
 }
 
 // ============================================================
@@ -1700,29 +1724,108 @@ function _enqueue(op) {
       o.scope === op.scope &&
       JSON.stringify(o.project) === JSON.stringify(op.project))
   );
-  filtered.push(Object.assign({}, op, { ts: Date.now() }));
+  /* A refusal carries its back-off across re-queues, so saving again
+     does not reset the clock and retry a known "no" at once. */
+  const prev = q.find(o => o.kind === op.kind && o.projectId === op.projectId && o.scope === op.scope);
+  const next = Object.assign({}, op, { ts: Date.now() });
+  if (op.code) {
+    next.tries = ((prev && prev.tries) || 0) + 1;
+    next.nextAt = Date.now() + BACKOFF_MS[Math.min(next.tries, BACKOFF_MS.length) - 1];
+  } else if (prev && prev.code && prev.nextAt > Date.now()) {
+    Object.assign(next, { code: prev.code, tries: prev.tries, nextAt: prev.nextAt });
+  }
+  filtered.push(next);
   _writeQueue(filtered);
 }
-async function _flushQueue() {
+function _dequeue(match) {
   const q = _readQueue();
-  if (!q.length || !supabase || !session || !syncAllowed()) return;
-  const remaining = [];
+  const kept = q.filter((o) => !match(o));
+  if (kept.length !== q.length) _writeQueue(kept);
+}
+
+/* A REFUSAL is the server answering "no" (a Postgres or PostgREST code:
+   a CHECK, RLS, a plan limit, a bad reference). A network failure has no
+   such code. Only a refusal is remembered on the queued op, backed off
+   and named in the status; a network failure is simply retried. */
+const REFUSAL_CODE = /^(?:\d{2}[0-9A-Z]{3}|P\d{4}|PGRST\d+)$/;
+function refusalCode(e) {
+  const c = e && e.code != null ? String(e.code) : '';
+  return REFUSAL_CODE.test(c) ? c : '';
+}
+/* 1 minute, 5 minutes, then every 30: a refused change is asked again
+   in case the cause went away (a plan was bought, a section ran), not
+   every 30 seconds for ever. */
+const BACKOFF_MS = [60e3, 5 * 60e3, 30 * 60e3];
+export function refusalSentence(code, n = 1) {
+  const c = String(code || '');
+  const many = n + ' change' + (n === 1 ? '' : 's');
+  if (c === 'P0402') return 'Not synced \u2014 your plan\u2019s limit is reached (' + many + ' kept on this device)';
+  if (c === '42501') return 'Not synced \u2014 this account can\u2019t write to that project (' + many + ' kept on this device)';
+  if (c === '23514') return 'Not synced \u2014 the server doesn\u2019t accept this kind of change yet (' + many + ' kept on this device)';
+  return 'Not synced \u2014 the server refused ' + many + ' (' + c + '); they are kept on this device';
+}
+let _refusalToldAt = 0;
+function tellRefusal(code, n) {
+  if (_refusalToldAt) return;                     // once a page load
+  _refusalToldAt = Date.now();
+  if (code === 'P0402') { planLimitToast('Your work is saved on this device, but your plan doesn\u2019t allow syncing it.', { carry: false }); return; }
+  if (window.StudioUI && StudioUI.toast) StudioUI.toast(refusalSentence(code, n), { type: 'error' });
+}
+
+let _flushing = null;
+function _flushQueue() {
+  if (_flushing) return _flushing;
+  _flushing = (async () => {
+    try { await _flushOnce(); } finally { _flushing = null; }
+  })();
+  return _flushing;
+}
+async function _flushOnce() {
+  const q = _readQueue();
+  if (!q.length || !supabase || !session || !syncAllowed()) { idleSync(); return; }
+  /* A project that is no longer on this device has nothing to upload
+     (a delete op is the exception: it is the one that removes it). */
+  const known = new Set(Store.listAllProjects().map((p) => p.id));
+  const now = Date.now();
+  const done = [];      // ops this pass handled, success or not
+  const keep = [];      // ops to stay queued, with what was learned
+  let sent = 0, refused = 0, firstCode = '';
   for (const op of q) {
+    if (op.kind !== 'delete' && op.projectId && !known.has(op.projectId) && !(op.project && known.has(op.project.id))) { done.push(op); continue; }
+    if (op.nextAt && op.nextAt > now) { keep.push(op); done.push(op); continue; }
     try {
       if (op.kind === 'upsert') await _pushScope(op.projectId, op.scope);
       else if (op.kind === 'meta') await _pushProjectMeta(op.project);
       else if (op.kind === 'delete') await _deleteProjectInCloud(op.projectId);
+      sent++;
+      done.push(op);
     } catch (e) {
-      remaining.push(op);
+      const code = refusalCode(e);
+      const tries = (op.tries || 0) + 1;
+      done.push(op);
+      if (code) {
+        refused++; firstCode = firstCode || code;
+        keep.push(Object.assign({}, op, { code, tries, nextAt: now + BACKOFF_MS[Math.min(tries, BACKOFF_MS.length) - 1] }));
+      } else {
+        keep.push(Object.assign({}, op, { code: undefined, tries, nextAt: undefined }));
+      }
     }
   }
-  _writeQueue(remaining);
-  if (q.length && !remaining.length) {
-    toast('Synced ' + q.length + ' offline change' + (q.length === 1 ? '' : 's'), 'success', 1800);
+  /* Write back what this pass learned WITHOUT dropping anything queued
+     while it ran (a push that failed re-queues itself; a new save can
+     land mid-flush): entries this pass never saw are kept as they are. */
+  const same = (a, b) => a.kind === b.kind && a.projectId === b.projectId && a.scope === b.scope;
+  const added = _readQueue().filter((o) => !done.some((d) => same(d, o)) && !keep.some((k) => same(k, o)));
+  _writeQueue(keep.concat(added));
+  if (sent && !keep.length && !added.length) {
+    toast('Synced ' + sent + ' waiting change' + (sent === 1 ? '' : 's'), 'success', 1800);
   }
+  if (refused) tellRefusal(firstCode, keep.filter((o) => o.code).length);
   idleSync();
 }
 window.addEventListener('online',  () => { idleSync(); setTimeout(_flushQueue, 500); });
+/* A queue found at load is flushed once the session is known (attach),
+   and on this timer; a refused op waits out its own back-off. */
 window.addEventListener('offline', () => {
   if (session) setSync(SYNC_STATES.OFFLINE, 'Offline — still saving to this device');
 });

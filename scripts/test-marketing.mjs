@@ -229,7 +229,7 @@ for (const id of IDS) {
   }
   const pjs = read('src/pages/pricing.js');
   const pimports = [...pjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const pallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/pricing\.css$/, /^\.\.\/lib\/(funnel|start-auth|start-model)\.js$/];
+  const pallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/pricing\.css$/, /^\.\.\/lib\/(funnel|start-auth|start-model|region-core|price-model)\.js$/];
   const pstray = pimports.filter((i) => !pallowed.some((a) => a.test(i)));
   ok(pstray.length === 0, 'pricing.js imports only the light allowlist (the startlib rule)' + (pstray.length ? ': ' + pstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(pjs), 'pricing.js builds no markup from strings');
@@ -282,7 +282,7 @@ for (const id of IDS) {
   ok([...scss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate/.test(v)).every((v) => /var\(--motion\)/.test(v)), 'every translate in start.css is multiplied by --motion');
   const sjs = read('src/pages/start.js');
   const simports = [...sjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const sallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model)\.js$/];
+  const sallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model|region-core|price-model)\.js$/];
   const sstray = simports.filter((i) => !sallowed.some((a) => a.test(i)));
   ok(sstray.length === 0, 'start.js imports only the light allowlist (the startlib rule)' + (sstray.length ? ': ' + sstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(sjs), 'start.js builds no markup from strings');
@@ -355,6 +355,9 @@ for (const id of IDS) {
   ok(cstray.length === 0, 'company.js imports only the light allowlist (the startlib rule)' + (cstray.length ? ': ' + cstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=|localStorage|sessionStorage|fetch\(/.test(cjs), 'company.js builds no markup from strings, stores nothing and fetches nothing');
   ok(!/^import/m.test(read('src/lib/contact-model.js')), 'contact-model.js imports nothing (pure)');
+  /* The public pages' currency (docs/US-MARKET-PLAN.md): both helpers must
+     stay import-free, or a public page drags the app in behind them. */
+  for (const f of ['src/lib/price-model.js', 'src/lib/start-model.js']) ok(!/^\s*(import|export\s+[^;]*\bfrom\b)/m.test(read(f)), f + ' imports nothing (pure)');
   /* 404.html wears the frame too (header and footer, no contents list),
      and is not a paper surface: legal.css is dark and has no paper rules. */
   {
@@ -485,7 +488,14 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
   ok(SM.swapFigure('₹1.645 and ₹1.64.', '₹1.64', '₹2.74') === '₹1.645 and ₹2.74.', 'swapFigure leaves a longer number alone');
   const pjs2 = read('src/pages/pricing.js');
   ok(/currentPrices\(notice\)/.test(pjs2) && /renderPricesNow\(notice\);\s*\/\/[^\n]*\n\s*if \(req === false\)/.test(pjs2), 'pricing.js rewrites the cards from the current price, before the purchases-off return');
-  ok(/\.pr-th-price/.test(pjs2) && /\.pr-keep/.test(pjs2), 'pricing.js corrects the table head and the per-day figure too');
+  /* The table head and each card's per-day line carry price spans
+     (priceSpans()), and pricing.js rewrites spans by what they are. */
+  {
+    const ph = read('pricing.html');
+    ok(/<span class="pr-th-price"><span data-price="(starter|indie|pro)">/.test(ph) && /<span class="pr-keep">[^<]*<span data-price-day="(starter|indie|pro)">/.test(ph),
+      'pricing.html wraps the table head\'s price and each per-day line in a price span');
+    ok(/querySelectorAll\('\[data-price\]'\)/.test(pjs2) && /querySelectorAll\('\[data-price-day\]'\)/.test(pjs2), 'pricing.js corrects the table head and the per-day figure too (by span)');
+  }
   ok(/priceNotice\(\)\.then[\s\S]*fromDayNow\(notice\)/.test(read('src/pages/start.js')), 'start.js corrects the hero\'s from-figure');
 }
 

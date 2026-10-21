@@ -80,9 +80,20 @@ export async function status() {
  * for display; the order re-quotes server-side and the client never
  * sends a price.
  */
-export async function quote(planId, code) {
+export async function quote(planId, code, currency) {
   const sb = await client();
-  const { data, error } = await sb.rpc('quote_order', { p_plan: planId, p_code: normalisePromo(code) || null });
+  const args = { p_plan: planId, p_code: normalisePromo(code) || null };
+  /* §55 (docs/US-MARKET-PLAN.md §C3): the 3-arg quote_order prices a
+     currency. A database without §55 answers PGRST202 for it, and the
+     2-arg rupee quote is then the honest answer (the order is in rupees
+     too, because rzp-order is priced by the same database). The answer
+     carries `currency`; an older one has none and is rupees. */
+  if (currency === 'USD') {
+    const r = await sb.rpc('quote_order', { ...args, p_currency: 'USD' });
+    if (!r.error) return r.data || null;
+    if (r.error.code !== 'PGRST202') throw r.error;
+  }
+  const { data, error } = await sb.rpc('quote_order', args);
   if (error) throw error;
   return data || null;
 }
@@ -154,14 +165,17 @@ async function invoke(name, body) {
  * activated; rejects with code 'dismissed' if the buyer closed
  * Checkout. `onStatus(text)` narrates for the UI. `code` is a promo
  * code (section 20): the server re-quotes it and a refused one comes
- * back as an edge error with the sentence to show.
+ * back as an edge error with the sentence to show. `currency` is the
+ * ORDER's currency, 'INR' or 'USD' (§55): the client chooses the
+ * currency and never the amount, and sends 'USD' only once the server
+ * has said dollars are charged (price-model.js orderCurrency()).
  */
-export async function buy(planId, period = 'year', { accountId = null, onStatus = () => {}, code = null } = {}) {
+export async function buy(planId, period = 'year', { accountId = null, onStatus = () => {}, code = null, currency = 'INR' } = {}) {
   if (!paymentsConfigured()) throw new BillingError('Payments are not switched on for this studio yet.', 'notconfigured');
   if (!PERIODS.includes(period)) throw new BillingError('Plans are bought a year at a time.', 'period');
   bumpEvent('checkout_start');   // §29 daily count, fire-and-forget
   onStatus('Preparing your order…');
-  const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId, code: normalisePromo(code) || null }), loadCheckout()]);
+  const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId, code: normalisePromo(code) || null, currency: currency === 'USD' ? 'USD' : 'INR' }), loadCheckout()]);
   if (!order || !order.order_id) throw new BillingError('No order came back.', 'edge');
 
   onStatus('Opening the payment form…');
@@ -344,9 +358,12 @@ export async function startTrial() {
  *  disagree. `seats_total` and `seats_taken` are null when no rise is
  *  pending; the server publishes the buyer count only while a countdown
  *  is on screen explaining what it means. */
-export async function priceNotice() {
+export async function priceNotice(currency) {
   const sb = await client();
-  const { data, error } = await sb.rpc('price_notice');
+  /* price_notice(text) (§31, §55): the same keys plus one currency's
+     display figures and `usd_checkout`. The zero-argument call is §30's
+     and stays exactly as it was. */
+  const { data, error } = await sb.rpc('price_notice', currency ? { p_currency: currency } : undefined);
   if (error) throw error;
   return data || null;
 }
@@ -371,6 +388,25 @@ export const admin = {
   /** §30.9. Support's lever: give one person more time. Unlike
    *  start_trial() this does not refuse a second trial — an
    *  administrator asking for one has already decided. */
+  /** §31 / §55, OWNER ONLY (the server refuses anybody else, 42501). One
+   *  plan's DOLLAR price and, while the plan has a rise scheduled, the
+   *  dollar figure it rises to; cents. `at` is the plan's own
+   *  next_price_at (one date per plan). Resolves to price_notice('USD'). */
+  async setPlanPrice(planId, currency, amountMinor, nextMinor, at) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_set_plan_price', {
+      p_plan: planId, p_currency: currency, p_amount_minor: amountMinor, p_next_minor: nextMinor ?? null, p_at: at || null });
+    if (error) throw error;
+    return data;
+  },
+  /** §55, OWNER ONLY. "Charge in US dollars": refused while any plan on
+   *  sale lacks a dollar price. Resolves to price_notice('USD'). */
+  async setUsdCheckout(on) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_set_usd_checkout', { p_on: !!on });
+    if (error) throw error;
+    return data;
+  },
   async grantTrial(userId, minutes, note) {
     const sb = await client();
     const { data, error } = await sb.rpc('admin_grant_trial', { p_user: userId, p_minutes: minutes, p_note: note || null });

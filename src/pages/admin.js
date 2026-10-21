@@ -82,6 +82,8 @@ import { pageHeader, button, panel } from '../ui/kit/index.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain, coalesce } from '../lib/dom.js';
 import { fmtPaise, RAZORPAY_KEY_ID } from '../lib/billing.js';
+import { fmtMinor } from '../lib/price-model.js';
+const usdRevenue = (o) => { const u = o && o.paid_by_currency && o.paid_by_currency.USD; return u && u.count > 0 ? u : null; };
 import { kpi, pill, emptyState, errorState, skeleton, relTime, stampDensity, syncDrawerFromHash } from '../ui/admin-kit.js';
 import * as kit from '../ui/admin-kit.js';
 import * as charts from '../ui/admin-charts.js';
@@ -292,6 +294,11 @@ function overviewTab() {
     kpi({ label: 'Pending requests', value: n(d.requests_pending), href: '#requests', attention: d.requests_pending > 0 }),
     kpi({ label: 'Paying accounts', value: b ? n(paying) : '…', href: '#billing' }),
     kpi({ label: 'Revenue', value: b ? fmtPaise(b.overview.paid_total_paise || 0) : '…', sub: b ? `${fmtPaise(b.overview.paid_30d_paise || 0)} in 30 days` : '', href: '#billing' }),
+    /* §55: paid_*_paise are rupees only; dollars are their own tile, never
+       added to the rupees (no exchange rate is used anywhere). Drawn only
+       once a dollar payment exists. */
+    b && usdRevenue(b.overview) ? kpi({ label: 'Revenue in dollars', value: fmtMinor(usdRevenue(b.overview).total_minor || 0, 'USD'),
+      sub: `${fmtMinor(usdRevenue(b.overview).d30_minor || 0, 'USD')} in 30 days · ${n(usdRevenue(b.overview).count)} payments`, href: '#billing' }) : null,
     trials,
     kpi({ label: 'Purchases required', value: pr === null ? '—' : pr ? 'On' : 'Off', href: '#purchasesRequired' }),
     hk('Failed receipts', 'receipts', (v) => v.awaiting_recent, { sub: 'last 7 days', href: '#health' }),

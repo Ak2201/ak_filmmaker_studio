@@ -110,13 +110,29 @@ export function timeLeft(ms) {
   return Math.max(1, mins) + 'm left';
 }
 
+/* THE DEVICE'S MARKET, read raw. `fms_region_v1` ('IN' | 'INT') is
+   written by Settings → Region (src/lib/region.js, which a public page
+   may not import); it is the second voice in pricingCurrency() after the
+   buyer's own pick. Read only, never written here. */
+export const REGION_KEY = 'fms_region_v1';
+export function deviceRegion() {
+  try { return localStorage.getItem(REGION_KEY) || ''; } catch (e) { return ''; }
+}
+
+/* HOW A RISE IS PRINTED. Rupees by default (the notice's own paise); a
+   page showing dollars passes `money` = { now(p), next(p) }, each a
+   string or '' for "nothing to say" (price-model.js builds it from
+   price_notice('USD')). A plan whose `next` is '' is not rising in the
+   currency on screen. */
+const RUPEES = { now: (p) => inr(p.price_paise), next: (p) => inr(p.next_price_paise) };
+
 /** The plans in a notice that carry a coming price, each with the text
  *  drawn beside its current one. */
-export function risingTiers(notice) {
+export function risingTiers(notice, money = RUPEES) {
   if (!notice || !Array.isArray(notice.plans)) return [];
   return notice.plans
-    .filter((p) => p && p.id && p.next_price_paise && p.next_price_at)
-    .map((p) => ({ id: p.id, text: inr(p.next_price_paise) + ' a year after ' + onDate(p.next_price_at) + ' (IST)' }));
+    .filter((p) => p && p.id && p.next_price_paise && p.next_price_at && money.next(p))
+    .map((p) => ({ id: p.id, text: money.next(p) + ' a year after ' + onDate(p.next_price_at) + ' (IST)' }));
 }
 
 /** The band's facts, or null when there is nothing honest to announce:
@@ -127,10 +143,11 @@ export function risingTiers(notice) {
  *  2026): what it costs now, what it costs after, the seat condition
  *  when the server publishes one, and what a purchase made today buys.
  *  The rise instant is 23:59 IST on its day, so "until <day>" and
- *  "after <day>" are both true of it. No urgency words. */
-export function priceRiseBand(notice, now) {
+ *  "after <day>" are both true of it. No urgency words. `money` picks
+ *  the figures (rupees by default, dollars from price-model riseMoney). */
+export function priceRiseBand(notice, now, money = RUPEES) {
   if (!notice || !Array.isArray(notice.plans)) return null;
-  const rise = notice.plans.find((p) => p && p.id && p.id !== 'free' && p.next_price_paise && p.next_price_at);
+  const rise = notice.plans.find((p) => p && p.id && p.id !== 'free' && p.next_price_paise && p.next_price_at && money.next(p));
   if (!rise) return null;
   const ends = new Date(rise.next_price_at).getTime();
   if (!(ends > now)) return null;
@@ -139,8 +156,8 @@ export function priceRiseBand(notice, now) {
   const capped = Number.isFinite(seatsTotal) && seatsTotal > 0;
   return {
     ends,
-    line: 'Founding price ' + inr(rise.price_paise) + ' a year until ' + onDate(rise.next_price_at) + ' (IST). '
-      + inr(rise.next_price_paise) + ' a year after that'
+    line: 'Founding price ' + money.now(rise) + ' a year until ' + onDate(rise.next_price_at) + ' (IST). '
+      + money.next(rise) + ' a year after that'
       + (capped ? ', or once ' + seatsTotal.toLocaleString('en-IN') + ' people have bought a plan, whichever comes first.' : '.')
       + ' A plan bought now is a full year at the price you paid, and nothing renews by itself.',
     seats: capped && Number.isFinite(seatsTaken)
@@ -207,7 +224,7 @@ export function swappedText({ openText, offText }, { signedIn, off }) {
 }
 
 export default {
-  INVITE_PLAN_KEY, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
+  INVITE_PLAN_KEY, REGION_KEY, deviceRegion, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,
   priceRiseBand, foundingLeft, swappedText, RISE_ZONE, PLAN_DAYS, perDayOf, currentPrices, fromDayNow, stampedFromDay, swapFigure
 };

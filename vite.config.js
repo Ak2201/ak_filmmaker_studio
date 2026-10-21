@@ -482,7 +482,11 @@ function marketingFigures() {
           /* JSON-LD: a Product with one Offer per plan (INR, the same LIST_PRICE
              as the visible prices) and the FAQPage, built from the static
              accordion markup so it cannot drift from it. */
-          const plain = (t) => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+          /* the dollar variant of a sentence (data-charge="USD", hidden until
+             usd_checkout is on) is not what is charged today: the structured
+             data says what the visible rupee page says. It is always the
+             LAST thing in its <dd> (chargeVariants), so cut to the end. */
+          const plain = (t) => t.replace(/<span data-charge="USD" hidden>[\s\S]*$/, '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
             .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim()
             /* the answers carry stamps ({{fms:price.from.day}}); resolve them here,
                because jsonld is itself a value and is not expanded again */

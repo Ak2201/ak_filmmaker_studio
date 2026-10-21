@@ -27,15 +27,35 @@
    which re-checks the admin role; the table itself is closed to the
    browser, so the list comes from admin_list_promo_codes().
 
+   PRICES IN US DOLLARS (docs/US-MARKET-PLAN.md §D, schema §55): at the
+   top of the tiers block, the owner types each tier's DOLLAR price and,
+   while the plan has a rise scheduled, the dollar figure it rises to (the
+   date is the plan's own, shown read-only: one date per plan). Saved
+   through admin_set_plan_price(plan, 'USD', cents, next, next_price_at),
+   and the "Charge in US dollars" switch through admin_set_usd_checkout.
+   Both are OWNER ONLY: an admin with another role sees the fields
+   disabled and a note saying so, and the server refuses them anyway
+   (42501). The current figures are read from price_notice('USD'), the
+   same read the public makes; no dollar amount is typed in this file.
+
    No inline handlers; delegate() on [data-ba-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
 import { refundDialog, declineDialog, categoryText } from './refund-admin.js';
+import { ask } from './dialog.js';
+import { studioRole } from './admin-customer.js';
+import { fmtMinor, parseMinor } from '../lib/price-model.js';
+import { field as kField } from './kit/field.js';
+import { button as kButton } from './kit/button.js';
+import { check as kCheck } from './kit/field.js';
+import { notice as kNotice } from './kit/notice.js';
 import '../styles/plans.css';
 import '../styles/refunds.css';
 
-const S = { loaded: false, busy: false, error: '', plans: [], payments: [], overview: {}, members: [], saved: '', granted: '', promos: [], promoMade: '', refunds: null, rreqs: null, rrEnabled: false, rrBusy: false };
+/* usd: price_notice('USD') (null: not answered), whether this admin is the
+   owner, and whether §55 is on this database (the switch key present). */
+const S = { usd: { notice: null, owner: false, busy: false, saved: '' }, loaded: false, busy: false, error: '', plans: [], payments: [], overview: {}, members: [], saved: '', granted: '', promos: [], promoMade: '', refunds: null, rreqs: null, rrEnabled: false, rrBusy: false };
 
 /* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
    every form on the console from its defaults 2.5s after a save, under
@@ -48,6 +68,14 @@ let rerender = () => {};
 const LIMIT_FIELDS = [
   ['projects', 'Cloud projects'], ['collaborators', 'Collaborators / film'], ['shares', 'Live share links'], ['seats', 'Org seats']
 ];
+/* An amount in the ROW's currency (§55: every *_paise column holds minor
+   units of that row's `currency`; a row without one is rupees). */
+const money = (minor, row) => fmtMinor(minor || 0, row && row.currency === 'USD' ? 'USD' : 'INR');
+/* "Intl card": Razorpay said the card was issued abroad (§55 C4). Recorded
+   and shown, never blocked or re-priced. */
+const intlBadge = (p) => (p && p.international === true
+  ? h('span.st-badge.ba-intl', { title: p.card_country ? 'Card issued in ' + p.card_country : 'Card issued outside India', text: 'Intl card' + (p.card_country ? ' · ' + p.card_country : '') })
+  : null);
 const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
 
 async function load() {
@@ -65,6 +93,12 @@ async function load() {
       const [refunds, rreqs, on] = await Promise.all([Billing.admin.listRefunds(), Billing.admin.listRefundRequests(), Billing.refundRequestsEnabled()]);
       S.refunds = refunds; S.rreqs = rreqs; S.rrEnabled = on;
     } catch (e) { S.refunds = null; S.rreqs = null; }
+    /* The dollar prices (§31 / §55). Never holds up the rest: a database
+       without §55 answers without `usd_checkout`, and the block says so. */
+    try {
+      const [notice, role] = await Promise.all([Billing.priceNotice('USD').catch(() => null), studioRole().catch(() => null)]);
+      S.usd.notice = notice; S.usd.owner = role === 'owner';
+    } catch (e) { S.usd.notice = null; }
     // The grant form needs people to pick from; the gate's console already
     // lists members, so borrow that list rather than add a fourth RPC.
     try {
@@ -104,17 +138,22 @@ export function billingAdminSection(section, st, { part } = {}) {
   /* The console's one stat tile (admin.css .ad-stat), not a second kind. */
   const grid = h('div.ad-stats.ba-grid');
   const stat = (v, l, sub) => grid.append(h('div.ad-stat', {}, [h('span.ad-stat-n', { text: v }), h('span.ad-stat-l', { text: l }), sub ? h('span.ad-stat-sub', { text: sub }) : null].filter(Boolean)));
-  stat(fmtPaise(o.paid_30d_paise || 0), 'paid, last 30 days');
-  stat(fmtPaise(o.paid_total_paise || 0), 'paid, all time');
+  /* §55: paid_*_paise are RUPEES ONLY; dollars are in paid_by_currency
+     and never added to them (no exchange rate is used anywhere). */
+  const usdPaid = o.paid_by_currency && o.paid_by_currency.USD;
+  stat(fmtPaise(o.paid_30d_paise || 0), 'paid, last 30 days', usdPaid && usdPaid.count ? 'rupees · plus ' + fmtMinor(usdPaid.d30_minor || 0, 'USD') : null);
+  stat(fmtPaise(o.paid_total_paise || 0), 'paid, all time', usdPaid && usdPaid.count ? 'rupees · plus ' + fmtMinor(usdPaid.total_minor || 0, 'USD') + ' (' + usdPaid.count + ' in dollars)' : null);
   stat(String(o.payments_30d || 0), 'payments, 30 days');
   stat(String(['starter', 'indie', 'pro'].reduce((t, p) => t + (by[p] || 0), 0)), 'on a paid plan', ['starter', 'indie', 'pro'].map((p) => `${by[p] || 0} ${planName(p)}`).join(' · '));
   stat(String(S.payments.filter((p) => p.status === 'granted').length), 'granted by hand');
   stat(String(o.refunds || 0), 'refunds');
+  if (Number.isInteger(o.intl_cards)) stat(String(o.intl_cards), 'paid with a card issued abroad');
   sec.append(grid);
   }
 
   // The plans
   if (want('tiers')) {
+  sec.append(usdBlock());
   sec.append(h('h3.gt-h3', { text: 'Plans & prices' }));
   const list = h('div.ba-plans');
   for (const p of S.plans) {
@@ -254,12 +293,13 @@ export function billingAdminSection(section, st, { part } = {}) {
         h('td', {}, [h('span', { text: p.email }), p.account_name ? h('br') : null, p.account_name ? h('span.gt-meta', { text: p.account_name }) : null].filter(Boolean)),
         h('td', { text: planName(p.plan_id) }),
         h('td', { text: p.ends_at ? (p.period === 'grant' ? 'grant' : '1 year') + ' · ends ' + fmtDate(p.ends_at) : 'for good' }),
-        h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) + (p.credit_paise > 0 ? ` (upgrade; ${fmtPaise(p.credit_paise)} already paid)` : '') }),
-        h('td', { text: p.promo_code ? `${p.promo_code} (${fmtPaise(p.discount_paise || 0)} off)` : '—' }),
+        h('td', {}, [h('span', { text: p.status === 'granted' ? '₹0 (grant)' : money(p.amount_paise, p) + (p.credit_paise > 0 ? ` (upgrade; ${money(p.credit_paise, p)} already paid)` : '') }),
+          intlBadge(p)].filter(Boolean)),
+        h('td', { text: p.promo_code ? `${p.promo_code} (${money(p.discount_paise || 0, p)} off)` : '—' }),
         h('td', { text: p.status + (inflight ? ' · refund ' + inflight.status : '') + (p.note ? ' — ' + p.note : '') }),
         h('td', {}, [h('code.gt-codeval', { text: p.razorpay_payment_id || p.razorpay_order_id || '—' })]),
         S.refunds ? h('td', {}, [p.status === 'paid' && p.razorpay_payment_id && p.amount_paise > 0 && !inflight
-          ? h('button.btn.danger', { type: 'button', 'data-ba-action': 'refund', 'data-id': p.id, 'aria-label': `Refund ${p.email}, ${planName(p.plan_id)}, ${fmtPaise(p.amount_paise)}`, text: 'REFUND' })
+          ? h('button.btn.danger', { type: 'button', 'data-ba-action': 'refund', 'data-id': p.id, 'aria-label': `Refund ${p.email}, ${planName(p.plan_id)}, ${money(p.amount_paise, p)}`, text: 'REFUND' })
           : null].filter(Boolean)) : null
       ].filter(Boolean)));
     }
@@ -271,6 +311,60 @@ export function billingAdminSection(section, st, { part } = {}) {
   if (want('payments') && S.rreqs) sec.append(refundBlock());
   if (want('payments')) sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-ba-action': 'reload', text: 'REFRESH' }));
   return sec;
+}
+
+/* ---- prices in US dollars (§D) ------------------------------------ */
+/** The dollar figures a plan has: { amount, next } in cents, each null
+ *  when not set. display_minor is the dollar price only when the notice
+ *  says the display currency IS dollars (a plan with no dollar row falls
+ *  back to its rupees there). */
+export function usdFigures(notice, planId) {
+  const row = notice && Array.isArray(notice.plans) ? notice.plans.find((p) => p && p.id === planId) : null;
+  if (!row || row.display_currency !== 'USD') return { amount: null, next: null };
+  return {
+    amount: Number.isInteger(row.display_minor) && row.display_minor > 0 ? row.display_minor : null,
+    next: Number.isInteger(row.display_next_minor) && row.display_next_minor > 0 ? row.display_next_minor : null
+  };
+}
+const dollars = (cents) => (Number.isInteger(cents) && cents > 0 ? (cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100)) : '');
+function usdBlock() {
+  const U = S.usd;
+  const n = U.notice;
+  const known = !!n && typeof n.usd_checkout === 'boolean';   // §55's key, present to be believed
+  const on = known && n.usd_checkout === true;
+  const box = h('div.ba-usd', { id: 'usdPrices' });
+  box.append(h('h3.gt-h3', { text: 'Prices in US dollars' }));
+  if (!n) { box.append(h('p.gt-meta', { text: 'The dollar prices could not be read (price_notice did not answer).' })); return box; }
+  if (!U.owner) box.append(kNotice({ tone: 'info', body: 'Only the owner can change dollar prices or the US dollar checkout. The fields below are shown for reference and are disabled.' }));
+  if (!known) box.append(kNotice({ tone: 'warn', body: 'This database has not run schema §55, so dollar prices are display figures only and every order is charged in rupees.' }));
+  const sw = kCheck({ label: 'Charge in US dollars', checked: on, attrs: { id: 'baUsdSwitch', 'data-ba-action': 'usd-switch', disabled: !U.owner || !known || U.busy ? '' : null } });
+  box.append(h('div.ba-usd-switch', {}, [sw, h('p.gt-meta', { text: on
+    ? 'On: a visitor shown dollars is charged the dollar price. Rupee buyers are unchanged.'
+    : 'Off: visitors outside India see the dollar prices and are told they will be charged the rupee price.' })]));
+  const plans = S.plans.filter((p) => p.id !== 'free' && p.active && Number(p.price_paise) > 0);
+  const list = h('div.ba-plans.ba-usd-list');
+  for (const p of plans) {
+    const f = usdFigures(n, p.id);
+    const at = p.next_price_at || null;
+    const form = h('form.ba-usd-plan', { 'data-ba-form': 'usd-price', 'data-usd-plan': p.id, 'data-at': at || '' });
+    form.append(h('div.ba-plan-head', {}, [h('strong', { text: p.name || planName(p.id) }),
+      h('span.gt-meta', { text: f.amount ? 'now ' + fmtMinor(f.amount, 'USD') + (f.next ? ' · rises to ' + fmtMinor(f.next, 'USD') : '') : 'not sold in dollars' })]));
+    const dis = !U.owner || U.busy ? '' : null;
+    form.append(h('div.ba-fields', {}, [
+      kField({ label: 'USD price ($, a year)', id: `ba_${p.id}_usd`, name: 'usd', value: dollars(f.amount), placeholder: 'not sold in dollars', attrs: { inputmode: 'decimal', disabled: dis } }),
+      kField({ label: 'USD next price ($)', id: `ba_${p.id}_usdnext`, name: 'usdnext', value: dollars(f.next), placeholder: at ? 'no dollar rise' : 'no rise scheduled',
+        attrs: { inputmode: 'decimal', disabled: !at || dis !== null ? '' : null } }),
+      kField({ label: 'Rise date (the plan’s own)', id: `ba_${p.id}_usdat`, name: 'at', value: at ? fmtDate(at) : 'none scheduled', attrs: { readonly: '', disabled: '' } })
+    ]));
+    form.append(h('div.ba-actions', {}, [
+      kButton({ label: 'Save ' + (p.name || planName(p.id)) + ' in dollars', variant: 'primary', type: 'submit', disabled: !U.owner || U.busy }),
+      U.saved === p.id ? h('span.ba-saved', { role: 'status', text: 'Saved.' }) : null
+    ].filter(Boolean)));
+    list.append(form);
+  }
+  box.append(list);
+  box.append(h('p.gt-meta', { text: 'Typed in US dollars for a year. Blank means not sold in dollars (only while the switch is off). The smallest dollar price is one dollar (Razorpay’s minimum charge). A next price must be a rise, on the date the rupee rise is scheduled (set it under Growth).' }));
+  return box;
 }
 
 /* The switch, and the requests customers have filed. A refund itself
@@ -292,7 +386,7 @@ function refundBlock() {
     tb.append(h('tr', { 'data-rreq': r.id }, [
       h('td', { text: fmtDate(r.created_at) }),
       h('td', { text: r.email }),
-      h('td', { text: `${planName(r.plan_id)} · ${fmtPaise(r.amount_paise)}` + (r.payment_status !== 'paid' ? ` · ${r.payment_status}` : '') }),
+      h('td', { text: `${planName(r.plan_id)} · ${money(r.amount_paise, r.currency ? r : S.payments.find((x) => x.id === r.payment_id))}` + (r.payment_status !== 'paid' ? ` · ${r.payment_status}` : '') }),
       h('td', {}, [h('strong', { text: categoryText(r.category) }), r.message ? h('p.rf-msg', { text: r.message }) : null].filter(Boolean)),
       h('td', {}, [h('span.rf-pill.is-' + r.status, { text: r.status }), r.admin_note ? h('p.rf-msg', { text: r.admin_note }) : null].filter(Boolean)),
       h('td', {}, open ? [h('div.rf-btns', {}, [
@@ -307,8 +401,8 @@ function refundBlock() {
 }
 
 const refundToast = (out) => toast(out.status === 'processed'
-  ? `Refunded ${fmtPaise(out.amount_paise)} to ${out.email || 'the customer'}. Their plan has ended.`
-  : `Refund of ${fmtPaise(out.amount_paise)} sent to Razorpay for ${out.email || 'the customer'}. It is pending; their plan ends when Razorpay confirms.`, 'success');
+  ? `Refunded ${money(out.amount_paise, out)} to ${out.email || 'the customer'}. Their plan has ended.`
+  : `Refund of ${money(out.amount_paise, out)} sent to Razorpay for ${out.email || 'the customer'}. It is pending; their plan ends when Razorpay confirms.`, 'success');
 
 export function wireBillingAdmin(render) { rerender = render || (() => {}); }
 /** What the console's Overview reads: the money, once loaded. Null until then. */
@@ -447,6 +541,48 @@ delegate(document, 'change', '[data-ba-action="refund-switch"]', async (e, el) =
     toast(S.rrEnabled ? 'Customers can now request refunds from Settings.' : 'Refund requests are off. Customers no longer see the form.', 'success');
   } catch (err) { S.rrEnabled = !el.checked; toast(err.message || 'The switch was not changed.', 'error'); }
   S.rrBusy = false; rerender();
+});
+
+delegate(document, 'submit', '[data-ba-form="usd-price"]', async (e, form) => {
+  e.preventDefault();
+  if (!S.usd.owner || S.usd.busy) return;
+  const id = form.dataset.usdPlan;
+  const f = new FormData(form);
+  const raw = String(f.get('usd') || '').trim();
+  const rawNext = String(f.get('usdnext') || '').trim();
+  const amount = raw === '' ? 0 : parseMinor(raw, 'USD');
+  if (amount === null) { toast(`"${raw}" is not a dollar amount.`, 'error'); return; }
+  const next = rawNext === '' ? null : parseMinor(rawNext, 'USD');
+  if (next === null && rawNext !== '') { toast(`"${rawNext}" is not a dollar amount.`, 'error'); return; }
+  const at = next === null ? null : (form.dataset.at || null);
+  const name = planName(id);
+  const go = await ask({ title: `Change ${name}’s dollar price?`,
+    body: amount ? `${name} will be ${fmtMinor(amount, 'USD')} a year in dollars` + (next ? `, rising to ${fmtMinor(next, 'USD')} on the plan’s rise date.` : '.') + ' It is charged in dollars only while “Charge in US dollars” is on.'
+      : `${name} will not be sold in dollars.`,
+    confirm: 'Save price' });
+  if (!go) return;
+  S.usd.busy = true; rerender();
+  try {
+    S.usd.notice = await Billing.admin.setPlanPrice(id, 'USD', amount, next, at) || S.usd.notice;
+    S.usd.saved = id;
+    setTimeout(() => { S.usd.saved = ''; clearNote('Saved.'); }, 2500);
+  } catch (err) { toast(err.message || 'The dollar price was not saved.', 'error'); }
+  S.usd.busy = false; rerender();
+});
+delegate(document, 'change', '[data-ba-action="usd-switch"]', async (e, el) => {
+  const want = el.checked;
+  el.checked = !want;                     // nothing moves until the owner says yes
+  if (!S.usd.owner || S.usd.busy) return;
+  const go = await ask(want
+    ? { title: 'Charge in US dollars?', body: 'Visitors shown dollar prices will be charged in US dollars. Razorpay must have International payments enabled on the account first, or those payments will fail.', confirm: 'Turn on' }
+    : { title: 'Stop charging in US dollars?', body: 'Visitors outside India will still see dollar prices, and will be charged the rupee price at checkout.', confirm: 'Turn off' });
+  if (!go) return;
+  S.usd.busy = true; rerender();
+  try {
+    S.usd.notice = await Billing.admin.setUsdCheckout(want) || S.usd.notice;
+    toast(want ? 'Dollar checkout is on.' : 'Dollar checkout is off. Every order is in rupees.', 'success');
+  } catch (err) { toast(err.message || 'The switch was not changed.', 'error'); }
+  S.usd.busy = false; rerender();
 });
 
 delegate(document, 'click', '[data-ba-action="reload"]', () => load());

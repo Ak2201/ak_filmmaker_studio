@@ -11,7 +11,8 @@
    asks first: it writes to a customer.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import { fmtPaise, admin as billingAdmin } from '../lib/billing.js';
+import { admin as billingAdmin } from '../lib/billing.js';
+import { fmtMinor } from '../lib/price-model.js';
 import { ask } from './dialog.js';
 import { listInvoices } from '../lib/admin-api.js';
 import '../styles/motion.css';
@@ -45,7 +46,7 @@ function table(kind, withBuyer) {
   for (const r of S[kind].rows) {
     body.append(h('tr', {}, [
       h('td', { text: r.number }), h('td', { text: dateOf(r.issued_at) }), withBuyer ? h('td', { text: r.buyer_email || r.buyer_name }) : null,
-      h('td', { text: r.plan_name }), h('td', { text: fmtPaise(r.amount_paise) }),
+      h('td', { text: r.plan_name }), h('td', { text: fmtMinor(r.amount_paise, r.currency === 'USD' ? 'USD' : 'INR') }),
       withBuyer ? h('td', { text: r.emailed_at ? 'Sent ' + dateOf(r.emailed_at) : 'Not sent' }) : null,
       h('td', {}, [h('button.btn', { type: 'button', 'data-action': 'invoice-pdf', 'data-kind': kind, 'data-id': r.id, 'aria-label': 'Download PDF for ' + r.number, text: 'DOWNLOAD PDF' }),
         withBuyer && r.buyer_email && r.razorpay_order_id

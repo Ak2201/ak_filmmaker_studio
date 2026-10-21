@@ -39,7 +39,7 @@ import { h, delegate } from '../lib/dom.js';
 import { learn } from './learn.js';
 import { WRITE_PREFS_KEY, readWritePrefs, writeWritePrefs, readGuideDismissed, saveGuideDismissed } from '../lib/write-prefs.js';
 import '../styles/format-guide.css';
-import { currentProjectPrefs } from '../lib/region.js';
+import { indiaContentShown } from './india-content.js';
 
 export const PREFS_KEY = WRITE_PREFS_KEY;
 const LEVELS = COPY.levels.map((l) => l.id);
@@ -258,9 +258,7 @@ const STEPS = COPY.tour.steps;
    India-only aside (Tanglish), for a film made outside India
    (docs/US-MARKET-PLAN.md §E). Read when the step is drawn. */
 function askFor(step) {
-  let india = true;
-  try { india = currentProjectPrefs().showIndiaContent !== false; } catch (e) { /* India */ }
-  return !india && step.askElsewhere ? step.askElsewhere : step.ask;
+  return !indiaContentShown() && step.askElsewhere ? step.askElsewhere : step.ask;
 }
 const tour = { active: false, finished: false, lastRow: null };
 

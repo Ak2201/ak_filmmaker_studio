@@ -32,7 +32,7 @@
    when the button is pressed again.
    ============================================================ */
 import { h } from '../lib/dom.js';
-import { currentProjectPrefs } from '../lib/region.js';
+import { indiaContentShown as here } from './india-content.js';
 
 const SR = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition || null)
@@ -46,9 +46,8 @@ const LANGS = [
 
 let lang = 'en-IN';
 /* Tamil is India-only material (docs/US-MARKET-PLAN.md §E): for a film
-   made elsewhere its option is hidden (data-india-only, base.css) and a
+   made elsewhere its option is hidden (data-india-only, india-content.css) and a
    Tamil pick left over from an India film falls back to English. */
-const here = () => { try { return currentProjectPrefs().showIndiaContent !== false; } catch (e) { return true; } };
 const langNow = () => (lang === 'ta-IN' && !here() ? 'en-IN' : lang);
 let rec = null;
 let target = null;        // the textarea being dictated into

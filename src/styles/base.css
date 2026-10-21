@@ -160,13 +160,6 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 }
 
 [hidden] { display: none !important; }
-/* India-only material for a film made elsewhere (region.js
-   markIndiaContent; docs/US-MARKET-PLAN.md §E). HIDDEN, never removed:
-   every data-key and fragment target stays in the DOM. The Tamil glosses
-   and the reading-language switch stay for a reader who already chose
-   Tanglish, or they could never switch back. */
-:root[data-no-india] :is([data-india-only], [data-action="sc-tamil"]),
-:root[data-no-india]:not([data-lang="tl"]) :is(.tn, .tanglish, .lang-switch) { display: none !important; }
 
 
 /* ============================================================

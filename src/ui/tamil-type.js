@@ -46,7 +46,7 @@
 import { readPrefs, writePrefs } from './format-guide.js';
 import { wordBefore, tamilCandidates } from '../lib/tanglish.js';
 import StudioUI from './chrome.js';
-import { currentProjectPrefs } from '../lib/region.js';
+import { indiaContentShown as here } from './india-content.js';
 
 const ROW_TYPES = ['t-dialogue', 't-paren'];
 const COMMIT_PUNCT = /^[.,?!;:)"'”’…-]$/;
@@ -62,7 +62,6 @@ let skip = null;       // { ta, start } — Esc'd: leave this word alone
    is treated as off for it, and the stored preference is left alone,
    so an India film on the same device keeps the writer's choice.
    docs/US-MARKET-PLAN.md §E, REGION-CONTENT. */
-const here = () => { try { return currentProjectPrefs().showIndiaContent !== false; } catch (e) { return true; } };
 
 export const isTamilTyping = () => on && here();
 

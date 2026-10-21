@@ -49,6 +49,7 @@ import { h } from '../lib/dom.js';
 import StudioUI from './chrome.js';
 import { wordIndex, suggest, wordBefore, toTamil, hasLatin } from '../lib/tanglish.js';
 import { mountTamilType, isTamilTyping, setTamilTyping, TAMIL_EVENT } from './tamil-type.js';
+import './india-content.js';   // hides the [data-india-only] controls below for a film made elsewhere
 
 let getDoc = () => null;
 

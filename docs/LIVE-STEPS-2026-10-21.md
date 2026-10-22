@@ -16,9 +16,11 @@ the database still grants "for good".
 | §52 | RUN LIVE (21 Oct); `billing_settings.yearly_switch_at` is set |
 | §53 | **RUN LIVE 22 Oct**, editor checksum matched; read-back: `quote_for` takes `p_account`, one `paid_credit_paise`, the three new functions exist, `payments_unapplied_reason_check` exists, `unapplied_sentence('credit_gone')` answers |
 | §54 | **RUN LIVE 22 Oct**, checksum matched; read-back: `enforce_project_limit`, `enforce_share_limit`, `enforce_collaborator_limit`, `enforce_seat_limit` all contain the `fms:cap:` lock (all four were false before) |
-| Functions redeploy (§2b) | **DONE 22 Oct 07:57 UTC**, from `develop` at `6f0f02b`: `rzp-order`, `rzp-verify`, `rzp-webhook` v8, `rzp-refund` v2, all ACTIVE. Probed: the three JWT functions answer 401 "Missing authorization header", `rzp-webhook` 401 "bad signature". The new payment logic is NOT yet exercised: that needs the real purchase and refund (launch list item 5) |
+| §55 | **RUN LIVE 22 Oct**, checksum `cedcdde2…8da7` matched; read-back: all 6 functions (`has_budget_access`, `set_budget_private`, `budget_privacy`, `projects_guard_budget_private`, `is_budget_scope`, `has_scope_access`), `projects.budget_private` and its trigger present |
+| §56 | **RUN LIVE 22 Oct**, checksum `8cde6c71…5734` matched; read-back (presence only, not the 56.16 checks): the 5 new functions, `billing_settings.usd_checkout`, `payments.currency`, `refunds.currency`, the `refunds_currency_stamp` trigger present; `quote_for` now takes `p_currency`; `price_notice('USD')` answers. No USD order has been exercised |
+| Functions redeploy (§2b) | **DONE 22 Oct 07:57 UTC, from `develop` at `6f0f02b` (BEFORE §55/§56; redeploy again from current `develop`, BILLING §24 step 2; checkout keeps working in between, the old `rzp-order` resolves to INR)**: `rzp-order`, `rzp-verify`, `rzp-webhook` v8, `rzp-refund` v2, all ACTIVE. Probed: the three JWT functions answer 401 "Missing authorization header", `rzp-webhook` 401 "bad signature". The new payment logic is NOT yet exercised: that needs the real purchase and refund (launch list item 5) |
 
-The redeploy is done, so the code can be released to `main` once the Razorpay live-mode steps (secrets, webhook, Vercel key, callback URLs) and Resend are set.
+Redeploy once more from current `develop` (§56 landed after the morning deploy), then the code can be released to `main` once the Razorpay live-mode steps (secrets, webhook, Vercel key, callback URLs) and Resend are set. For USD: Razorpay International payments enabled and the dollar prices typed (BILLING §24 steps 3 and 4).
 
 ## 0. The paste rule
 

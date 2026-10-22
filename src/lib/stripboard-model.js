@@ -301,11 +301,27 @@ export function boardSummary(scenes) {
    month, so a sheet opened on the other side of the world cannot read
    10/11 as the wrong day). Nothing here is stored. */
 export const CSV_BOM = '\uFEFF';
-const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+/* Two things a spreadsheet does to a cell whatever its quotes say.
+   (1) It runs a cell that opens with = + - @ (or a tab / CR) as a
+   FORMULA: a synopsis or a cast name typed that way is prefixed with an
+   apostrophe, the OWASP guard the console's leads CSV uses. Numbers are
+   written as numbers and are not touched.
+   (2) It reads "3/8" as the 8th of March, so a page count is never
+   written as a fraction: see Pages / Eighths below. */
+const csvCell = (v) => {
+  const t = String(v ?? '');
+  const safe = typeof v === 'string' && /^[=+\-@\t\r]/.test(t) ? "'" + t : t;
+  return '"' + safe.replace(/"/g, '""') + '"';
+};
+/** A page count a spreadsheet keeps as a number: decimal pages, at most
+ *  three places (an eighth is 0.125). */
+export const csvPages = (eighths) => { const n = Number(eighths) || 0; return n > 0 ? Math.round(n / 8 * 1000) / 1000 : 0; };
 const csvText = (rows) => CSV_BOM + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 const isoOf = (dateOf, d) => String((dateOf && (dateOf.get ? dateOf.get(d) : dateOf[d])) || '').slice(0, 10);
 
-export const BOARD_CSV_HEADER = ['Shoot day', 'Date', 'Order', 'Scene', 'I/E', 'Set', 'D/N', 'Pages', 'Cast', 'Synopsis'];
+/* Pages is decimal (1.5, 0.375) and Eighths the whole count (12, 3): an
+   eighths fraction like "3/8" is read as a DATE by Excel, quoted or not. */
+export const BOARD_CSV_HEADER = ['Shoot day', 'Date', 'Order', 'Scene', 'I/E', 'Set', 'D/N', 'Pages', 'Eighths', 'Cast', 'Synopsis'];
 
 /**
  * The stripboard as CSV: one row per scene, in SHOOT order — `groups`
@@ -323,7 +339,7 @@ export function boardCsv(groups, { dateOf = null, prefs = null } = {}) {
     (g.scenes || []).forEach((s, i) => {
       rows.push([
         day || '', date, day ? i + 1 : '', s.number || '', s.intExt || '', locationOf(s), s.dayNight || '',
-        formatEighths(s.eighths), castOf(s).join(', '), String(s.synopsis || '').replace(/\s+/g, ' ').trim()
+        csvPages(s.eighths), Number(s.eighths) > 0 ? Number(s.eighths) : 0, castOf(s).join(', '), String(s.synopsis || '').replace(/\s+/g, ' ').trim()
       ]);
     });
   }

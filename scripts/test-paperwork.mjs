@@ -173,7 +173,14 @@ ok(rows[1].startsWith('"1","Oct 21, 2026","1","2","EXT","ROAD, CHENNAI","NIGHT"'
 ok(rows[2].startsWith('"2","Oct 22, 2026","1","3"'), 'board CSV: day 2 opens with scene 3 at order 1');
 ok(rows[3].includes('"Ravi says ""no"" and leaves"'), 'board CSV: a quote is doubled, a newline flattened — got ' + rows[3]);
 ok(rows[3].includes('"RAVI, மீனா"'), 'board CSV: Tamil cast survives');
-ok(rows[3].includes('"1 4/8"'), 'board CSV: pages in eighths — got ' + rows[3]);
+ok(rows[3].includes('"1.5","12"'), 'board CSV: pages as a decimal and the eighths as a count — got ' + rows[3]);
+ok(rows[2].includes('"0.375","3"'), 'board CSV: 3/8 of a page is 0.375, never a fraction Excel reads as a date — got ' + rows[2]);
+ok(!/"\d+\/8"|"\d+ \d\/8"/.test(board), 'board CSV: no eighths fraction anywhere');
+{
+  const g2 = [{ key: 1, scenes: [{ number: '9', eighths: 8, synopsis: '=HYPERLINK(1)', elements: { cast: ['@ANU'] } }] }];
+  const r = S.boardCsv(g2, {}).slice(1).split('\r\n')[1];
+  ok(r.includes(`"'=HYPERLINK(1)"`) && r.includes(`"'@ANU"`), 'board CSV: a cell that opens like a formula is defused — got ' + r);
+}
 ok(rows[4].startsWith('"","","","4"'), 'board CSV: an unscheduled scene has no day, date or order — got ' + rows[4]);
 const boardIN = S.boardCsv(groups, { dateOf, prefs: IN });
 ok(boardIN.includes('"21 Oct 2026"'), 'board CSV: Indian dates on an Indian film');

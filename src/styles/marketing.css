@@ -100,6 +100,12 @@ html.mk-modal-open { overflow: hidden; }
 .mk-link .sym { font-size: 1.2em; transition: transform .18s var(--ease); }
 .mk-link:hover .sym { transform: translateX(calc(3px * var(--motion))); }
 .mk-link--lg { font-size: var(--t-lg); margin-top: var(--s5); }
+/* a link inside running text: underlined at rest, because colour alone
+   (1.06-1.41:1 against the body ink) cannot tell it apart (WCAG 1.4.1),
+   and inline rather than an inline-flex box, which broke the sentence and
+   left a lone comma on its own line at 390px. Doubled class so it outranks
+   any later single-class .mk-link rule. */
+.mk-link.mk-link--inline { display: inline; min-height: 0; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---- the header ------------------------------------------------ */
 .mk-sentinel { position: absolute; top: 0; left: 0; width: 1px; height: 24px; pointer-events: none; }
@@ -132,7 +138,10 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 .mk-nav-item[data-open] .mk-nav-prod .sym { transform: rotate(180deg); }
 .mk-nav-login { display: none; }
 .mk-top-end { display: flex; align-items: center; gap: var(--s2); margin-left: auto; flex: none; }
-.mk-burger {
+/* doubled class: marketing.js gives it role="button", and base.css's touch
+   rule `[role="button"] { display: inline-flex }` would otherwise tie and
+   win on order, showing the burger on a wide touch screen */
+.mk-burger.mk-burger {
   display: none; place-items: center; width: 44px; height: 44px; border-radius: var(--radius-pill);
   color: var(--ink); text-decoration: none;
 }
@@ -328,9 +337,9 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
   .mk-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 899px) {
-  .mk-burger { display: grid; }
+  .mk-burger.mk-burger { display: grid; }
   .mk-end-login { display: none; }
-  .mk-nav-login { display: inline-flex; }
+  .mk-nav-login { display: inline-flex; order: -1; }   /* first in the phone sheet, not below the fold */
   .mk-nav {
     display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch;
     gap: var(--s1); padding: var(--s4) var(--gutter) var(--s6); box-sizing: border-box;
@@ -338,6 +347,7 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
     background: var(--surface-canvas); border-bottom: 1px solid var(--border-hair);
   }
   .mk-top[data-menu] .mk-nav { display: flex; }
+  html:has(.mk-top[data-menu]) { overflow: hidden; }   /* the page behind the open sheet stays put */
   /* doubled: marketing.js gives it role="button", and base.css's touch
      rule `[role="button"] { display: inline-flex }` ties with a single
      class and wins on order, so on a real phone the dead Product toggle

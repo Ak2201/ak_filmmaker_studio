@@ -292,7 +292,14 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-ol-steps { margin: var(--s3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--s3); }
 .st-ol-step { display: grid; gap: var(--s1); padding-top: var(--s2); border-top: 1px solid var(--rule-hair); min-width: 0; }
 .st-ol-n { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
-.st-ol-text { resize: vertical; }
+/* A step box grows with what is written in it: fixed at two rows, 59 of
+   68 sample steps cut their text off. Two lines minimum (plus the paper
+   field's vertical padding and 1px rules), twelve maximum, then it scrolls.
+   Browsers without field-sizing are sized by paperGrow() in paper-field.js. */
+.st-ol-text {
+  resize: vertical; field-sizing: content; box-sizing: border-box;
+  min-height: calc(2lh + 2 * var(--s4) + 2px); max-height: calc(12lh + 2 * var(--s4) + 2px);
+}
 .st-ol-ctl, .st-ol-actions, .st-build { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .st-ol-actions { margin-top: var(--s3); }
 .st-ol-ctl .st-retag { width: auto; flex: 0 1 16rem; min-width: 0; }
@@ -427,3 +434,6 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
   .st-stats .k-stat:not(.is-empty) .k-stat-note:not(.is-warn):not(.is-danger) { display: none; }
 }
 
+
+/* the empty state's sample buttons: they sat 2px apart */
+.st-sample-picks { display: flex; flex-wrap: wrap; gap: var(--s2); }

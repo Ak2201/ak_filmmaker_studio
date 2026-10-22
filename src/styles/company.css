@@ -61,6 +61,8 @@ select.co-input { appearance: auto; }
 }
 .co-mail { margin: 0; display: grid; gap: var(--s1); }
 .co-mail-l { font-size: var(--t-small); color: var(--ink-muted); }
+.co-mail-a { min-width: 0; max-width: 100%; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; justify-self: start; }
+.co-copy { justify-self: start; }
 .co-mail-v { font-family: var(--f-mono, monospace); font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; user-select: all; }
 .co-note { display: grid; gap: var(--s2); padding-top: var(--s5); border-top: 1px solid var(--border-default); }
 .co-note-h { margin: 0; font-family: var(--sk-display, var(--f-display)); font-size: var(--t-base); font-weight: 600; color: var(--ink); }

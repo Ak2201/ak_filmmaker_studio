@@ -36,6 +36,12 @@ import PlanGate from '../lib/plan-gate.js';
 import { hasKey } from '../lib/ai-providers.js';
 import { ask } from './dialog.js';
 import { h, delegate } from '../lib/dom.js';
+/* The pill's own sheet travels with the pill. screenplay.html and
+   breakdown.html draw pills without importing ai.css (it reached them
+   only once the Desk opened), so their locked pill had no frame at all
+   between bordered toolbar buttons (UI review, 22 Oct 2026). CSS only:
+   this adds no model code to a first paint (test:ai-lazy). */
+import '../styles/ai.css';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const opts = new WeakMap();
@@ -83,10 +89,14 @@ function paint(el) {
   el.classList.toggle('is-locked', locked);
   if (locked) el.setAttribute('aria-disabled', 'true');
   else el.removeAttribute('aria-disabled');
+  /* The suffix is its own nowrap span so a long label never leaves
+     "· Pro" alone on a second line; the text content is unchanged. */
   el.replaceChildren(
     glyph(locked ? 'lock' : 'sparkle'),
-    h('span.ai-pill-label', { text: o.label + (locked ? ' · Pro' : '') })
+    h('span.ai-pill-label', {}, locked ? [o.label, h('span.ai-pill-suffix', { text: '\u00a0·\u00a0Pro' })] : [o.label])
   );
+  if (locked) el.title = 'Included in Pro';
+  else el.removeAttribute('title');
   if (o.tasks.length > 1 && !locked) el.setAttribute('aria-haspopup', 'menu');
   else el.removeAttribute('aria-haspopup');
 }

@@ -168,14 +168,18 @@ function planSection() {
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
     sec.append(listPriceBlock());
-    sec.append(buyTerms());
-    if (LINK_CODE) {
-      sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
-    }
+    /* The action straight under the prices, before the refund terms: at
+       390px it sat two screens down, under the whole policy (UI review,
+       22 Oct 2026). The terms still come before any payment, which is
+       on the next page, after sign-in. */
     sec.append(h('div.pu-actions', {}, [
       h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Sign in to buy' }),
       h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
     ]));
+    if (LINK_CODE) {
+      sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
+    }
+    sec.append(buyTerms());
     const x1 = planExtras(null); if (x1) sec.append(x1);
     return sec;
   }

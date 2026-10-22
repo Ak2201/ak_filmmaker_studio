@@ -86,10 +86,17 @@
 }
 
 /* ---- the hub's first-week checklist -------------------------------- */
+/* The "N of 6 done" label ends the section head; the head's own bottom
+   margin (and, under 900px, its padding) put 80px between that label and
+   this meter, so the two read as unrelated. The meter sits right under
+   its label here (UI review, 22 Oct 2026). */
+.tw-section .section-head { margin-bottom: var(--s2); padding-bottom: 0; }
+/* The track is --border-strong: --paper-sunk on the canvas measured
+   about 1.07:1, so an empty meter was no meter at all. */
 .tw-meter {
   height: 6px;
   margin: 0 0 var(--s4);
-  background: var(--paper-sunk);
+  background: var(--border-strong);
   border-radius: var(--radius-pill);
   overflow: hidden;
 }

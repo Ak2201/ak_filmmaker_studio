@@ -490,6 +490,21 @@
   border-color: var(--rule);
 }
 .ai-pill.is-locked:hover { border-color: var(--ink-muted); }
+/* Locked, it sits in toolbars between bordered k-btn--sm controls, so it
+   takes their frame and their height rather than reading as loose text
+   (UI review, 22 Oct 2026). The doubled class beats a toolbar's own
+   button reset, which is declared later than this sheet. */
+.ai-pill.ai-pill.is-locked {
+  border: 1px solid var(--border-hair);
+  min-height: var(--h-compact);
+  /* In a column (the settings section, a gate wrapper) it keeps its own
+     width instead of stretching like a text field (flex column or grid). */
+  align-self: flex-start;
+  justify-self: start;
+}
+.ai-pill.ai-pill.is-locked:hover { border-color: var(--border-strong); }
+/* " · Pro" never wraps onto a line of its own. */
+.ai-pill-suffix { white-space: nowrap; }
 .ai-pill.is-locked:active { transform: none; }
 
 @media (pointer: coarse) {

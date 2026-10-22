@@ -198,21 +198,25 @@ function renderKey() {
   /* Titled after the provider in use rather than after one of them.
      A page headed "The Anthropic API key" above a Gemini key bar is
      a page that is wrong about the only thing it is for. */
+  /* LOCKED: nobody can type a key their plan cannot use. The section
+     keeps its id so settings.html#ai still lands somewhere, and
+     re-renders on 'plan:changed' (subscribed below), so a plan that
+     arrives after first paint swaps the pill for the key section.
+     Its title and deck are chosen by state: the unlocked deck promises
+     a provider switch "below", which a locked section does not draw. */
+  if (!PlanGate.aiUnlocked()) {
+    const locked = section('ai', 'This device · never synced', 'AI tools.',
+      'AI tools run on your own ' + providerLabel() + ' API key (' + apiName() + ', or another provider). '
+        + 'Each tool shows what it will send and waits for your click. They come with Pro.');
+    locked.append(h('p.st-note', { text: 'Your key would be kept on this device only.' }));
+    locked.append(aiPill({ label: 'Unlock AI tools' }));
+    return locked;
+  }
   const sec = section('ai', 'This device · never synced',
     'Your ' + providerLabel() + ' API key.',
     'The AI tools in the studio run on ' + apiName() + ' with your own key — one key for '
       + 'every tool, on this browser. Each tool shows what it will send and waits '
       + 'for your click. You can switch provider below; each one keeps its own key.');
-
-  /* LOCKED: nobody can type a key their plan cannot use. The section
-     keeps its heading so settings.html#ai still lands somewhere, and
-     re-renders on 'plan:changed' (subscribed below), so a plan that
-     arrives after first paint swaps the pill for the key section. */
-  if (!PlanGate.aiUnlocked()) {
-    sec.append(h('p.st-note', { text: 'AI tools come with Pro. Your key would be kept on this device only.' }));
-    sec.append(aiPill({ label: 'Unlock AI tools' }));
-    return sec;
-  }
 
   /* The module's own arrangement of the bar, the gate, the form and
      the disclosure. The disclosure body is this page's, because what
@@ -826,10 +830,15 @@ function renderAccountMine() {
   const slot = h('div#accountBlockHost');
   const make = AuthUI['renderAccountBlock'];   // not a named import: that export belongs to another lane and may not exist yet
   let block = null;
-  if (typeof make === 'function') { try { block = make(); } catch (e) { block = null; } }
+  /* Signed out, the shared block is a caps menu row ("SIGN IN") beside
+     this page's own k-btn sign-in under Cloud sync: two styles for one
+     action (UI review, 22 Oct 2026). Signed out, this page draws the
+     same primary button as the cloud-sync panel instead. */
+  if (signedIn && typeof make === 'function') { try { block = make(); } catch (e) { block = null; } }
   if (block) slot.append(block);
   else if (signedIn) slot.append(h('p', { text: 'Signed in as ' + ((c.getUserEmail && c.getUserEmail()) || 'your Google account') + '.' }));
   else if (c && c.isConfigured && c.isConfigured()) {
+    slot.append(h('p.hint', { text: 'You are not signed in. Your projects are saved on this device either way.' }));
     slot.append(h('p', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
   } else {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));

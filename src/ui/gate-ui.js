@@ -68,8 +68,8 @@ export function takeoverDialog(info = {}) {
       h('p.gt-meta', { text: [where && `That session: ${where}`, info.lastSeen && `last seen ${since(info.lastSeen)}`].filter(Boolean).join(' · ') || ' ' }),
       h('p.gt-meta', { text: 'Cancelling keeps you working on this device exactly as before — only syncing to your account pauses.' }),
       h('div.gt-actions', {}, [
-        h('button.btn.primary', { type: 'button', 'data-gt': 'take', text: 'TAKE OVER SESSION' }),
-        h('button.btn', { type: 'button', 'data-gt': 'cancel', text: 'CANCEL' })
+        h('button.k-btn.k-btn--primary', { type: 'button', 'data-gt': 'take', text: 'Take over session' }),
+        h('button.k-btn.k-btn--secondary', { type: 'button', 'data-gt': 'cancel', text: 'Cancel' })
       ])
     ]);
     const m = h('div.cm-overlay.show.gt-overlay', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'gtHeading' }, [card]);
@@ -117,7 +117,13 @@ export function inviteSection(section, st) {
   const form = h('form.gt-code', { 'data-gate-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'gtCode', text: 'Invite or screening pass code' }));
   form.append(h('input#gtCode.gt-input', { type: 'text', inputmode: 'text', autocapitalize: 'characters', spellcheck: 'false',
-    placeholder: 'XXXX-XXXX-XXXX', maxlength: 40, 'data-gate-field': 'code', 'aria-describedby': 'gtCodeHint', value: formatCode(codeTyped) }));
+    placeholder: 'XXXX-XXXX-XXXX', maxlength: 40, 'data-gate-field': 'code',
+    /* A refused code is tied to the field, not only announced: the
+       error's id joins the description and the field says it is invalid.
+       Typing clears both (the input delegate below). */
+    'aria-describedby': codeError ? 'gtCodeHint gtCodeErr' : 'gtCodeHint',
+    'aria-invalid': codeError ? 'true' : null,
+    value: formatCode(codeTyped) }));
   form.append(h('p#gtCodeHint.gt-meta', { text: 'Spaces and dashes are ignored. A screening pass opens the screening room instead.' }));
   /* IT SAYS CONTINUE WITH GOOGLE AGAIN, AND THIS TIME IT IS TRUE.
      The label was changed away from those words once, correctly, because
@@ -128,8 +134,14 @@ export function inviteSection(section, st) {
      back. The old objection (an empty submit was a dead click) still
      stands and is still answered: submitCode() refuses an empty box with
      a sentence rather than doing nothing. */
-  form.append(h('button.btn.primary', { type: 'submit', disabled: codeBusy, text: codeBusy ? 'CHECKING…' : (signedIn ? 'REDEEM CODE' : 'CONTINUE WITH GOOGLE') }));
-  if (codeError) form.append(h('p.gt-error', { role: 'alert', text: codeError }));
+  /* Signed out it is named for BOTH halves of what it does, because the
+     trial card above already has a "Continue with Google" button that
+     does something else, and two controls must not share a name. The
+     wrapper keeps the kit button its own width inside the form's grid. */
+  form.append(h('div.gt-code-actions', {}, [
+    h('button.k-btn.k-btn--primary', { type: 'submit', disabled: codeBusy, text: codeBusy ? 'Checking…' : (signedIn ? 'Redeem code' : 'Redeem code and continue with Google') })
+  ]));
+  if (codeError) form.append(h('p#gtCodeErr.gt-error', { role: 'alert', text: codeError }));
   sec.append(form);
   /* The other route, when this box is drawn somewhere other than the
      doorway itself. invite.html renders the request block beside it,
@@ -151,7 +163,10 @@ async function submitCode(form) {
       ? 'Enter the code you were given, or choose a plan or the free trial above.'
       : 'Enter the code you were given. With no code, sign in with Google and choose a plan or a free trial.';
     rerender();
-    form.querySelector('[data-gate-field="code"]').focus();
+    /* The redraw replaced the form, so the field is looked up again: the
+       old reference is detached and focusing it moved nothing. */
+    const field = document.getElementById('gtCode') || form.querySelector('[data-gate-field="code"]');
+    if (field) field.focus();
     return;
   }
   codeError = '';
@@ -551,6 +566,15 @@ delegate(document, 'input', '[data-gate-field="code"]', (e, el) => {
   // Show the normalised form as it is typed (FR-101), keeping the caret at the end.
   const f = formatCode(el.value);
   if (f !== el.value) el.value = f;
+  /* Typing answers the error: the field stops saying it is invalid. */
+  if (codeError) {
+    codeError = '';
+    codeTyped = el.value;
+    el.removeAttribute('aria-invalid');
+    el.setAttribute('aria-describedby', 'gtCodeHint');
+    const err = document.getElementById('gtCodeErr');
+    if (err) err.remove();
+  }
 });
 /* A row that names a person opens the Customer 360 drawer
    (#people?user=<id>, src/ui/admin-customer.js). Loaded on demand: this

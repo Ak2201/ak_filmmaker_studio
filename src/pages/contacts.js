@@ -28,6 +28,7 @@ import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { revealTarget } from '../ui/tabs.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
@@ -822,6 +823,7 @@ function renderSend(sheet, contacts, scenes) {
 }
 
 /* ---- render -------------------------------------------------- */
+let firstRender = true;
 function render() {
   const contacts = Contacts.listContacts();
   const sheets = Contacts.listCallSheets();
@@ -829,15 +831,21 @@ function render() {
 
   const main = h('main', { id: 'main' });
   main.append(renderHeader(contacts, sheets));
-  /* Call sheets lead once there is a unit to call; with nobody on the
-     list yet, the directory is the first thing to do and comes first. */
+  /* ONE tab order, whatever the data: Unit directory, then Call sheets.
+     It used to flip once a contact existed, so the tabs swapped places
+     under the reader. Call sheets still OPEN first once there is a unit
+     to call — chosen through tabs.js on the first render (no hash is
+     written), and a hash in the address always wins. */
   const people = renderPeople(contacts);
   const sheetsEl = renderSheets(sheets, contacts, scenes);
-  if (contacts.length) main.append(sheetsEl, people);
-  else main.append(people, sheetsEl);
+  main.append(people, sheetsEl);
 
   app.replaceChildren(main);
   mountShell();
+  if (firstRender) {
+    firstRender = false;
+    if (contacts.length && !location.hash) revealTarget('call-sheets');
+  }
   wireActionBar();
   try {
     StudioUI.autoAriaLabels();

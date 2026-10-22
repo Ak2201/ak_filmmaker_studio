@@ -54,7 +54,9 @@
 
    THE API
      buildSectionMenu({ groups, active, ariaLabel, orientation,
-                        onSelect, sectionsLabel }) -> HTMLElement (nav.tabs)
+                        onSelect, sectionsLabel, sectionsButton }) -> HTMLElement (nav.tabs)
+        sectionsButton: a strip that may overflow also gets the Sections
+          button (shown by tabs.css only while it is narrow and overflows).
         orientation 'strip' (the default) | 'side' (opt-in: Settings and
           the Console only, via tabs.js).
         onSelect(id): when given, the menu is SELF-MANAGED: it wires its
@@ -190,6 +192,63 @@ function fillList(list, hints, groups, active) {
   return labelled;
 }
 
+/* ---- what the strip is doing: overflowing, scrolled, pinned -------
+   Three classes on a STRIP (never the side column), read by tabs.css:
+     is-scrollable   the row is wider than the strip. Below 1100px that
+                     shows the Sections button, when the strip has one:
+                     Budget at 390 showed 2 of 9 tabs and nothing said
+                     there were seven more.
+     can-scroll-end  there is more to the right: the end fades, so a tab
+                     boundary landing exactly on the edge (Pre-Production
+                     at 1440: two steps fully off-screen) still reads as
+                     "more".
+     is-stuck        pinned under the band: the row gets a full-width
+                     canvas backdrop, so the page does not scroll visibly
+                     past a fit-content strip.
+   Classes on the strip itself: tabs.js's observers watch section[id]
+   nodes and data-tab-* attributes, so writing them feeds nothing. One
+   ResizeObserver for all strips, one scroll listener per strip, and one
+   rAF-throttled window scroll/resize listener for the pin. */
+const strips = new Set();
+let stripRO = null;
+let pinBound = false;
+let pinRaf = 0;
+function markScroll(nav) {
+  const over = nav.scrollWidth > nav.clientWidth + 1;
+  nav.classList.toggle('is-scrollable', over);
+  nav.classList.toggle('can-scroll-end', over && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+}
+function markStuck(nav) {
+  const cs = getComputedStyle(nav);
+  const top = parseFloat(cs.top);
+  nav.classList.toggle('is-stuck', cs.position === 'sticky' && Number.isFinite(top)
+    && window.scrollY > 0 && nav.getBoundingClientRect().top <= top + 0.5);
+}
+function markAll() {
+  pinRaf = 0;
+  for (const nav of strips) {
+    if (!nav.isConnected) { strips.delete(nav); if (stripRO) stripRO.unobserve(nav); continue; }
+    markScroll(nav); markStuck(nav);
+  }
+}
+function watchStrip(nav) {
+  if (typeof window === 'undefined') return;
+  strips.add(nav);
+  nav.addEventListener('scroll', () => markScroll(nav), { passive: true });
+  if (typeof ResizeObserver === 'function') {
+    if (!stripRO) stripRO = new ResizeObserver((es) => { for (const e of es) if (e.target.isConnected) markScroll(e.target); });
+    stripRO.observe(nav);
+  }
+  if (!pinBound) {
+    pinBound = true;
+    const later = () => { if (!pinRaf) pinRaf = requestAnimationFrame(markAll); };
+    window.addEventListener('scroll', later, { passive: true });
+    window.addEventListener('resize', later, { passive: true });
+  }
+  /* RO rides the render loop; a timer runs when it does not */
+  setTimeout(() => { if (nav.isConnected) { markScroll(nav); markStuck(nav); } }, 300);
+}
+
 const sideNow = () => typeof matchMedia === 'function' && matchMedia(SIDE_MQ).matches;
 let mqBound = false;
 function bindOrientation() {
@@ -202,7 +261,7 @@ function bindOrientation() {
 }
 
 /* ---- build ----------------------------------------------------- */
-export function buildSectionMenu({ groups, active, ariaLabel = 'Sections', orientation, onSelect, sectionsLabel = 'Sections' } = {}) {
+export function buildSectionMenu({ groups, active, ariaLabel = 'Sections', orientation, onSelect, sectionsLabel = 'Sections', sectionsButton = false } = {}) {
   const g = normalise(groups);
   const items = flat(g);
   /* The strip unless a caller asks for the column: the side menu is
@@ -213,7 +272,12 @@ export function buildSectionMenu({ groups, active, ariaLabel = 'Sections', orien
   const labelled = fillList(list, hints, g, active);
   const nav = h('nav.tabs' + (side ? '.tabs-side' : '') + (labelled ? '.tabs-grouped' : ''), { 'aria-label': ariaLabel });
   let btn = null;
-  if (side) {
+  /* The side menu always carries the Sections button (tabs.css shows it
+     below 1100px). A strip carries it when the caller asks
+     (`sectionsButton`, tabs.js): tabs.css shows it only while the strip
+     is narrow AND overflows, so a strip whose tabs run off the edge is
+     never the only way to them. */
+  if (side || sectionsButton) {
     btn = h('button.tabs-sections', { type: 'button', 'aria-haspopup': 'dialog', 'aria-expanded': 'false' }, [
       iconSpan('tabs-sections-i', { sym: 'menu' }), h('span.tabs-sections-l', { text: sectionsLabel })
     ]);
@@ -267,8 +331,9 @@ export function buildSectionMenu({ groups, active, ariaLabel = 'Sections', orien
         }
       });
     });
-    bindOrientation();
+    if (side) bindOrientation();
   }
+  if (!side) watchStrip(nav);
   return nav;
 }
 
@@ -307,6 +372,9 @@ export function updateSectionMenu(nav, groups, active) {
   if (active != null && active !== st.active) changed = true;
   st.groups = g;
   if (active != null) { st.active = active; for (const b of nav.querySelectorAll('[role="tab"]')) setOn(b, b.dataset.tab === active); }
+  /* a label that grew or a row that came or went can change the overflow
+     without resizing a strip already at its max-width */
+  if (changed && strips.has(nav)) markScroll(nav);
   return changed;
 }
 

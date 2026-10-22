@@ -444,7 +444,15 @@ const EXPECTED = {
      their plan cannot use. These words were the key section's copy
      (the key-stays-on-this-device disclosure, the provider picker,
      the console.anthropic.com link, Forget key). */
-  settings: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
+  settings: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {
+    /* UI/UX batch 1 (22 Oct 2026): the empty Activity log said "Start a
+       film and begin filling things in" while a film was open; it now
+       says "Nothing saved in this browser yet. Edits you save show up
+       here." (src/ui/activity-log.js). */
+    begin: 'empty activity-log copy reworded (a film is already open)',
+    filling: 'empty activity-log copy reworded (a film is already open)',
+    things: 'empty activity-log copy reworded (a film is already open)'
+  },
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 

@@ -25,6 +25,7 @@
    (and the address bar, through history.replaceState).
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { button } from './kit/button.js';
 import '../styles/stepper.css';
 
 const idx = (panels, id) => panels.findIndex((p) => p.id === id);
@@ -40,11 +41,19 @@ export function stepFooter(panels, id, { countText = null } = {}) {
   if (i < 0) return null;
   const prev = panels[i - 1], next = panels[i + 1];
   if (!prev && !next) return null;
-  const go = (p, text, cls) => h('button.btn' + cls, { type: 'button', 'data-stepper-go': p.id, text });
+  /* The kit's button (secondary Back, primary Next), in sentence case:
+     the labels were upper-cased here, and a screen reader spells or
+     shouts capitals. `btn` / `primary` stay on as hooks only, because
+     the story and stage-guide proofs click `.stp-nav .btn.primary`;
+     chrome.css keeps the legacy .btn paint off a .k-btn. */
+  const go = (p, text, primary) => button({
+    label: text, variant: primary ? 'primary' : 'secondary',
+    class: primary ? 'btn primary' : 'btn', attrs: { 'data-stepper-go': p.id }
+  });
   return h('div.st-step-nav.stp-nav', {}, [
-    prev ? go(prev, '← BACK: ' + String(prev.label).toUpperCase(), '') : null,
+    prev ? go(prev, '← Back: ' + String(prev.label), false) : null,
     h('span.stp-count', { text: countText ? countText(i, panels) : 'Step ' + (i + 1) + ' of ' + panels.length }),
-    next ? go(next, 'NEXT: ' + String(next.label).toUpperCase() + ' →', '.primary') : null
+    next ? go(next, 'Next: ' + String(next.label) + ' →', true) : null
   ].filter(Boolean));
 }
 

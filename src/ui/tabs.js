@@ -255,7 +255,9 @@ const isSide = (sections) => (page() === 'admin' || page() === 'settings') && se
 function buildStrip(sections, activeId) {
   const strip = buildSectionMenu({
     groups: itemsFromSections(sections, labelFor, page()), active: activeId,
-    ariaLabel: 'Sections', orientation: isSide(sections) ? 'side' : 'strip'
+    ariaLabel: 'Sections', orientation: isSide(sections) ? 'side' : 'strip',
+    /* a strip that overflows below 1100px shows it (section-menu.js) */
+    sectionsButton: true
   });
   watchHeight(strip);
   return strip;

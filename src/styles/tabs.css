@@ -286,6 +286,41 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
   .tabs:not(.tabs-side) .tabs-tab { min-height: 44px; }
 }
 
+/* ---- a strip that hides tabs says so (section-menu.js markScroll) ----
+   The segmented strip carries the Sections button too (tabs.js asks for
+   it), hidden unless the strip is narrow (under 1100px) AND its row
+   overflows. At any width, while there is more to the right, the end
+   fades into the strip's own ground: a sticky 48px veil after the last
+   tab, pinned to the visible right edge, with a negative margin so it
+   adds nothing to the row's width. */
+.tabs:not(.tabs-side) .tabs-sections { display: none; }
+@media (max-width: 1099px) {
+  .tabs.is-scrollable:not(.tabs-side) .tabs-sections { display: inline-flex; }
+}
+.tabs.can-scroll-end:not(.tabs-side)::after {
+  content: '';
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  flex: none;
+  align-self: stretch;
+  width: 48px;
+  margin-left: -48px;
+  background: linear-gradient(to right, transparent, var(--paper));
+  pointer-events: none;
+}
+
+/* ---- PINNED, the strip's row is opaque edge to edge --------------
+   The strip is fit-content wide, so once stuck under the band the
+   page's cards and selects scrolled visibly past on either side of it
+   (story.html: a 603px strip in a 1440 window). While stuck ONLY, a
+   canvas spread as wide as the window, clipped to the row's height,
+   with a hairline one pixel under it. The unpinned look is unchanged. */
+.tabs.is-stuck:not(.tabs-side) {
+  box-shadow: 0 0 0 100vmax var(--surface-canvas), 0 1px 0 100vmax var(--border-hair);
+  clip-path: inset(0 -100vmax -1px);
+}
+
 /* ---- the strip is the column's container's business below ----- */
 .st-body > .tabs { margin-inline: 0; }
 @media (max-width: 719px) { .tabs { --tabs-gutter: var(--s4); } }

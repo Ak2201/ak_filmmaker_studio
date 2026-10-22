@@ -1452,12 +1452,49 @@ delegate(document, 'click', '[data-action="sb-auto"]', async () => {
 delegate(document, 'click', '[data-action="sb-clear"]', async () => {
   const scenes = Scenes.listScenes().filter((s) => shootDayOf(s));
   if (!scenes.length) { toast('No strip has a shoot day yet, so there is nothing to clear.'); return; }
-  if (!await askDanger(`Clear the shoot day from ${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}? The scenes themselves are untouched.`)) return;
+  const n = scenes.length;
+  if (!await askDanger({
+    title: `Clear the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}?`,
+    body: 'Every strip goes back to unscheduled and the per-day order is lost. The scenes themselves are untouched.',
+    confirm: 'Clear days'
+  })) return;
   dropMoveToast();
+  /* The undo's snapshot, in memory only (no new key): each cleared
+     scene's day and every per-day order list, read through the same
+     models that write them. */
+  const days = scenes.map((s) => ({ id: s.id, day: shootDayOf(s) }));
+  const orders = Locations.listDayOrder();
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.
   Locations.clearDayOrders();
   render();
+  const said = `Cleared the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}.`;
+  announce(said);
+  /* Actionable, so it stays until dismissed (see the toast note in
+     chrome.js), and it is the board's latest undo: the next move, clear
+     or re-schedule dismisses it through dropMoveToast(). It refuses if
+     any of those strips has been given a day since, as undoPlace() does,
+     rather than write the old schedule over newer work. */
+  const mine = toast(said, {
+    action: 'UNDO',
+    onAction: () => {
+      if (moveToast === mine) moveToast = null;
+      const now = new Map(Scenes.listScenes().map((s) => [s.id, s]));
+      const moved = days.some((d) => now.has(d.id) && shootDayOf(now.get(d.id)))
+        || Object.keys(Locations.listDayOrder()).length;
+      if (moved) {
+        const msg = 'The board has changed since the clear, so it was not undone. Nothing was changed.';
+        toast(msg);
+        announce(msg);
+        return;
+      }
+      days.forEach((d) => { if (now.has(d.id)) Scenes.updateScene(d.id, { shootDay: d.day }); });
+      Object.entries(orders).forEach(([day, ids]) => Locations.setDayOrder(day, ids));
+      render();
+      announce('Undone. The shoot days are back.');
+    }
+  });
+  moveToast = mine;
 });
 
 /* ---- PDF -----------------------------------------------------

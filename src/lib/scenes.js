@@ -23,6 +23,7 @@
 import Store from './store.js';
 import { binScene } from './scene-bin.js';
 import { formatEighths } from './sample-figures.js';
+import { newId } from './record-id.js';
 
 export const SCENES_KEY = 'fms_scenes_v1';
 
@@ -64,10 +65,14 @@ export const ELEMENT_CATEGORIES = [
   { id: 'special',   label: 'Special Equipment', hue: 'el-special', mark: '▢' }
 ];
 
-const uid = () =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+const uid = () => newId('s');
+
+/** "INT KITCHEN — NIGHT": a scene's heading as the shoot day and the edit
+    log print it. shoot-model.js and edit-model.js both re-export this one. */
+export function slug(s) {
+  const parts = [s.intExt, s.location || 'NO LOCATION'].filter(Boolean).join(' ');
+  return parts + (s.dayNight ? ' — ' + s.dayNight : '');
+}
 
 /** A scene with every field present, so callers never guard for undefined. */
 export function blankScene(patch = {}) {

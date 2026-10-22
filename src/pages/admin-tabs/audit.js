@@ -23,7 +23,7 @@
    Also exported for the Overview: ensureRecent() / recentState() — the
    last 15 rows, loaded once and shared.
    ============================================================ */
-import { h, delegate } from '../../lib/dom.js';
+import { h, delegate, download } from '../../lib/dom.js';
 import { timeline, diff, dataTable, emptyState, errorState, skeleton, pill, hashParts, absTime } from '../../ui/admin-kit.js';
 import { callRpc, humanAction } from './rpc.js';
 import { BLANK, isFiltered, argsFor, filtersFromParams, linkParams, filtersFromForm, actorLabel, rowTarget as targetOf, rowTone as toneOf, loadedLine, csvText, csvFileName } from '../../lib/admin-audit-model.js';
@@ -200,13 +200,7 @@ function clearAll() {
 
 function exportCsv(rows = S.rows) {
   if (!rows.length) return;
-  const blob = new Blob([csvText(rows)], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = h('a', { href: url, download: csvFileName() });
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  download(csvFileName(), csvText(rows), 'text/csv;charset=utf-8');
 }
 
 /* ---- handlers: delegated, once, on document ---------------------- */

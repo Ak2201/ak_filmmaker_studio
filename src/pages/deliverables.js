@@ -28,7 +28,7 @@ import '../styles/deliverables-tools.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h, delegate } from '../lib/dom.js';
+import { h, delegate, download } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { LINK_KINDS, guessKind, linkText } from '../lib/links.js';
@@ -537,14 +537,6 @@ function dialoguePrintSheet(dl) {
 
 function fileBase() {
   return fileBaseOf(PDF.projectTitle());
-}
-function download(name, body, type) {
-  const url = URL.createObjectURL(new Blob([body], { type }));
-  const a = h('a', { href: url, download: name });
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 /* ---- the page ------------------------------------------------ */

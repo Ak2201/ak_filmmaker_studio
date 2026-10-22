@@ -30,6 +30,7 @@
    No inline handlers; delegate() on [data-ba-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
 import { refundDialog, declineDialog, categoryText } from './refund-admin.js';
 import '../styles/plans.css';
@@ -48,7 +49,6 @@ let rerender = () => {};
 const LIMIT_FIELDS = [
   ['projects', 'Cloud projects'], ['collaborators', 'Collaborators / film'], ['shares', 'Live share links'], ['seats', 'Org seats']
 ];
-const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
 
 async function load() {
   S.busy = true; S.error = ''; rerender();

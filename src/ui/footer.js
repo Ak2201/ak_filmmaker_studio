@@ -67,7 +67,6 @@ export const SUPPORT_WHATSAPP = (() => {
   const d = WA_RAW.replace(/[\s()+-]/g, '');
   return /^\d{8,15}$/.test(d) ? d : '';
 })();
-export const whatsAppConfigured = () => !!SUPPORT_WHATSAPP;
 export function whatsAppHref(text = 'Hi, I need help with ' + BRAND.name + '.') {
   if (!SUPPORT_WHATSAPP) return '';
   return 'https://wa.me/' + SUPPORT_WHATSAPP + (text ? '?text=' + encodeURIComponent(text) : '');

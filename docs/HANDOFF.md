@@ -2,6 +2,30 @@
 
 Last reviewed: 2026-10-19
 
+> **2026-10-21 — jury review of the public pages** (third-party `/jury` skill from
+> `juliobsz/skills`, run from a scratch folder; nothing installed in the repo. Its
+> `shoot.mjs`/`audit.mjs` only drive local Chromium and a localhost static server; it also
+> fetches a hash-pinned axe-core from a CDN, which the sandbox blocked, so axe did not run).
+> Evidence from `build:open`, signed out, throttled phone (4x CPU, slow 4G); a fresh critic
+> per page scored from screenshots and measurements only. **Scores at the time (its strict
+> scale, "jury estimate" adds about 1.1):** landing 6.55, `invite.html` 6.2, `purchase.html`
+> 5.9 (signed-out view: a buyer's plan cards were not on screen). That run was on `e7a7f0b`;
+> `develop` moved 469 commits meanwhile, so the numbers describe the OLD pages.
+> **Re-measured on `34256af`:** skip link present, no layout shift (0.000 desktop and phone),
+> LCP 0.2 s desktop / 1.8 s phone. **Fixed in this pass:** link targets under 24px (`.mk-link`
+> and the footer links in `marketing.css`, which measured 17-22px); the landing meta
+> description was 163 characters (now 160, changed in `marketing-home.json` and regenerated:
+> `start.html` is generated, a hand edit fails `test:marketing`); `privacy`, `terms` and
+> `refund` had no canonical link.
+> **Not real, do not chase:** the audit's "TTF fonts, 581 KB" (its bare Node request is served
+> TTF by Google Fonts; browsers get WOFF2) and "0 h1 / no `<main>`" on JS-rendered app pages
+> (the rendered h1 is present). **Red on `develop` before this pass, not touched by it:**
+> `npm run verify` reports the Story page's first paint at 1540.6 KB against a 1514.0 KB budget.
+> **Owner decisions, none made for you:** hover on most buttons changes colour only (the hero
+> CTA also moves); the product picture on `invite`/`purchase` (none today); server-rendering
+> `<h1>`/`<main>` on the gated JS pages (an SEO risk only). `/awwwards` (builds a site from one
+> line) was not used: it would fight the token/skin/brand rules in `CLAUDE.md`.
+
 > **2026-10-19, later (what landed today) — `CLAUDE.md` rows 39–48, `docs/HISTORY.md` item 52.**
 > - Rail: the status bar is retired; one account avatar (Google photo) opens a
 >   menu holding Settings, Plan & purchases, Help and sign in/out.

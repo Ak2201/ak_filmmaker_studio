@@ -79,6 +79,7 @@
     "test:testimonials": "node scripts/check-testimonials.mjs",
     "shots": "node scripts/make-shots.mjs",
     "record:marketing": "node scripts/record-marketing-media.mjs",
+    "make:sample-pdf": "node scripts/make-sample-pdf.mjs",
     "test:brand": "node scripts/check-brand.mjs",
     "test:marketing": "node scripts/test-marketing.mjs",
     "test:contact": "node scripts/test-contact.mjs",

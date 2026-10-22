@@ -617,8 +617,8 @@ function brandPlugin() {
    page's data JSON is its own chunk.
    ============================================================ */
 
-/* The app's version, from package.json, as a BUILD constant: the status bar
-   (src/ui/status-bar.js) prints it, and nothing fetches it at run time. */
+/* The app's version, from package.json, as a BUILD constant: Settings
+   (src/pages/settings.js) prints it, and nothing fetches it at run time. */
 const APP_VERSION = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version || '';
 
 /* ============================================================

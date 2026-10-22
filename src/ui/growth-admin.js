@@ -31,6 +31,7 @@
    [data-gra-form].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
 import Growth, { isMissing } from '../lib/growth.js';
 import '../styles/plans.css';
@@ -50,7 +51,6 @@ const S = { state: 'idle', error: '', settings: null, credits: null, prices: nul
 function clearNote(text) {
   for (const n of document.querySelectorAll('.ba-saved')) if (n.textContent === text) n.remove();
 }
-const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
 /* The price-rise sentence names a DAY, not a timestamp: "from 31
    October" is what a buyer can hold us to, and printing 18:29 UTC
    beside it invites an argument about the minute. */

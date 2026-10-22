@@ -48,6 +48,7 @@
    time a shot is deleted and inflates a denominator forever.
    ============================================================ */
 import Store from './store.js';   // load-bearing: namespaces localStorage
+import { newId as uid } from './record-id.js';
 
 export const SHOTS_KEY = 'fms_shots_v1';
 
@@ -83,11 +84,6 @@ export const SHOT_MOVEMENTS = [
 export const BOARD_SUGGESTIONS = [
   'Palette', 'Light', 'Texture', 'Wardrobe', 'Location', 'Camera', 'Sound'
 ];
-
-const uid = (p) =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : p + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 
 /** A shot with every field present, so callers never guard for undefined. */
 export function blankShot(patch = {}) {

@@ -30,6 +30,7 @@
    timezone is how it ends up an hour out.
    ============================================================ */
 import Store from './store.js';
+import { newId } from './record-id.js';
 
 export const CONTACTS_KEY = 'fms_contacts_v1';
 
@@ -41,10 +42,7 @@ export const DEPARTMENTS = [
   'Costume', 'Makeup', 'Production', 'Post'
 ];
 
-const uid = () =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+const uid = () => newId('c');
 
 /** A contact with every field present, so callers never guard for undefined. */
 export function blankContact(patch = {}) {

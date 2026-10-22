@@ -17,6 +17,7 @@
    ============================================================ */
 import { ELEMENT_CATEGORIES, formatEighths } from './scenes.js';
 import { pairScenes, suggestElements, cueName } from './screenplay-analysis.js';
+import { escapeRe as escRe } from './script-replace.js';
 
 /* The order the boxes sit on an industry breakdown sheet: the people
    first (cast, stunts, background), then what the art and effects
@@ -40,7 +41,6 @@ export function paperScenes(scenes, elements) {
    is written as candidates, "Ragavan's father" may be cued RAGAVAN'S
    FATHER. Case is folded at match time. */
 const strip = (name) => String(name || '').replace(/\s*\(\s*\d+\s*\)\s*$/, '').trim();
-const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** What to look for in this scene's text: its tags, and (optionally)
  *  the script's suggestions that are not tagged yet. Longest first, so

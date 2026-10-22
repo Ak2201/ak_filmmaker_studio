@@ -513,6 +513,10 @@
   /* Secondary ink on the page (5.74:1); --print-rule is a hairline. */
   --print-muted: #666666;
   --print-wash:  #f0f0f0;
+  /* The brand on paper (the receipt PDF's rule, PAID badge and total):
+     violet deep enough to read on white (7.1:1), used sparingly so a
+     mono printer still prints a clean document. */
+  --print-accent: #6d28d9;
   /* Revised-page stock for the optional page tint on a revised PDF. */
   --print-rev-white:     #ffffff;
   --print-rev-blue:      #dde9fb;

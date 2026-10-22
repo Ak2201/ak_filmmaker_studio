@@ -58,7 +58,7 @@ import { renderTrialBand } from './trial-band.js';
 import { syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked, allowed, isDisabledEverywhere } from '../lib/plan-gate.js';
-import { BRAND } from '../lib/brand.js';
+import { monogram } from '../lib/brand.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -538,13 +538,6 @@ function buildPageNav(toolbar) {
    it is the link's accessible name, and the gate reads innerHTML, so
    the words are still on the page while the column is icons only. */
 
-/** "FS" — the first and last capitals of the product name (brand.json),
-    never typed, so a rename re-letters the tile. */
-function monogram() {
-  const caps = String(BRAND.name || '').match(/\p{Lu}/gu) || [];
-  if (!caps.length) return String(BRAND.name || 'S').slice(0, 1).toUpperCase();
-  return caps.length === 1 ? caps[0] : caps[0] + caps[caps.length - 1];
-}
 
 function railGlobal(g) {
   /* A shelf is "here" on its own page and on the pages of its

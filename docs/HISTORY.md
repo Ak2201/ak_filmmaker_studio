@@ -2711,3 +2711,27 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `?stay=1` blueprints, some Settings and console tabs, print preview,
       the motion layer under a real browser) are listed in the report for the
       next pass.
+
+60. **The receipt PDF, redone (22 Oct 2026).** The owner asked to change the
+    receipt and chose three things: a branded design, the plan's year on it,
+    and one page. The title stays "Bill of Supply" (the GST-correct name for an
+    unregistered supplier; the owner did not pick the rename).
+    - **Schema §57** (`schema-57-invoice-year.sql`, 5 checks in
+      `scripts/schema-tests/invoice-year.sql`, seeded before it so the backfill
+      has work). The year was on the payment since §52 and not on the invoice.
+      §35's `invoices_payment_facts()` BEFORE INSERT trigger already copied the
+      payment's facts, so it now copies `starts_at` / `ends_at` too;
+      `issue_invoice()` is untouched. A payment that applied no plan carries no
+      year. An invoice keeps the year it SOLD even after a refund takes that
+      year off the account.
+    - **The PDF.** Monogram tile and name over one violet rule
+      (`--print-accent`, new in the `--print-*` family), the PAID badge and the
+      total in the same violet and nothing else; Supplier, Billed to and Payment
+      details side by side; "Plan valid 22 Oct 2026 – 22 Oct 2027"; "1-year plan
+      · about ₹2.19 a day · nothing renews by itself"; the refund terms one line.
+      Rendered with `page.pdf()` for INR with a year, INR without and USD: one
+      A4 page each. The first render printed the title near-white (a page `h1`
+      ink reached into the document) and squeezed the notes to a reading
+      measure; both are reset inside `.inv-doc`.
+    - `monogram()` moved from shell.js to brand.js so the rail and the receipt
+      share one derivation of "FS".

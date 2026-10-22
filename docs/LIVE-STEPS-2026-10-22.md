@@ -40,3 +40,29 @@ select has_function_privilege('anon', 'public.set_budget_private(uuid, boolean)'
 ## 3. Live check (two accounts)
 
 `docs/SECURITY-RLS.md`, "§55 KEEP THE BUDGET PRIVATE", live checks 1–4.
+
+
+---
+
+# §57 — the year on the invoice (receipt PDF)
+
+**Order: after §56, in the SQL editor. No edge function redeploy.** Safe either
+way: until §57 runs, invoices carry no `valid_from` / `valid_until` and the
+receipt PDF simply leaves the "Plan valid" row out.
+
+```bash
+shasum -a 256 supabase/schema/schema-57-invoice-year.sql
+# 32f9a589cc1fc7c40041ba3a84c74c14583bd470263d6f83f9ace9ec1e07b4b0
+```
+
+Run it (re-runnable: the backfill only fills an invoice whose year is still
+empty), then read back:
+
+```sql
+select number, valid_from, valid_until from public.invoices order by issued_at desc limit 5;  -- each paid year carries its dates
+select count(*) filter (where valid_until is null) as no_year, count(*) as all_invoices
+  from public.invoices;                                                                        -- no_year: only payments that applied no plan
+```
+
+Then download one receipt from Plan & purchases: it should read "Plan valid
+<date> – <date>" and fit on one page.

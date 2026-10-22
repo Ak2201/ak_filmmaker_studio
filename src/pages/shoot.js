@@ -58,12 +58,12 @@ function filmPrefs() { try { return paperPrefsOf(Store.currentProject(), region(
 function niceDate(iso) {
   const m = DAY_ISO.exec(String(iso || ''));
   const prefs = m && filmPrefs();
-  return prefs ? paperDate(m[0], prefs, 'weekdayLong') : niceDateHere(iso);
+  return prefs && prefs.dateStyle ? paperDate(m[0], prefs, 'weekdayLong') : niceDateHere(iso);
 }
 function shortDate(iso) {
   const m = DAY_ISO.exec(String(iso || ''));
   const prefs = m && filmPrefs();
-  return prefs ? paperDate(m[0], prefs, 'dayMonth') : shortDateHere(iso);
+  return prefs && prefs.dateStyle ? paperDate(m[0], prefs, 'dayMonth') : shortDateHere(iso);
 }
 import { mountStageGuide } from '../ui/stage-guide.js';
 import Shots from '../lib/shots.js';

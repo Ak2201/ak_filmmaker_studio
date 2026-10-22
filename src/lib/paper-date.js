@@ -41,7 +41,14 @@ function asDate(d) {
   return Number.isNaN(t.getTime()) ? null : t;
 }
 
-const localeOf = (prefs) => (prefs && prefs.dateStyle === 'US' ? 'en-US' : 'en-IN');
+/* 'US' and 'IN' are the two styles a film can ASK for. A film with no
+   region of its own (every film made before regions existed) asks for
+   neither: dateStyle '' keeps the device's own locale, which is what its
+   paperwork printed before (US-MARKET-PLAN §A3: "nothing changes for
+   it"). Callers whose old output was a fixed table check
+   `prefs.dateStyle` and keep their table. No prefs at all reads as the
+   studio default, Indian. */
+const localeOf = (prefs) => (!prefs ? 'en-IN' : prefs.dateStyle === 'US' ? 'en-US' : prefs.dateStyle === 'IN' ? 'en-IN' : undefined);
 
 const OPTS = {
   medium: { day: 'numeric', month: 'short', year: 'numeric' },
@@ -87,14 +94,18 @@ const isRegion = (v) => isInt(v) || ['IN', 'INDIA'].includes(String(v == null ? 
 /**
  * { paper, dateStyle } for one film's entry in fms_studio_projects_v1 —
  * exactly projectPrefs(entry, device)'s two fields (region-core.js):
- * a film with no region prints A4 and Indian dates; an INT film Letter
- * and US dates; `entry.paper` ('A4' | 'Letter') overrides the paper.
- * With NO entry (no project open), the device's market decides, as
- * currentProjectPrefs() does.
+ * a film with no region prints A4; an INT film Letter and US dates;
+ * `entry.paper` ('A4' | 'Letter') overrides the paper. DATES differ from
+ * projectPrefs() in one case on purpose: a film that carries no region
+ * (explicit false) gets dateStyle '' — the date style it had before
+ * regions existed — and only a film stamped 'IN' is forced to Indian
+ * dates. With NO entry (no project open), the device's market decides
+ * the paper; the dates are the device's unless that market is INT.
  */
 export function paperPrefsOf(entry, deviceRegion) {
   const e = entry || { region: deviceRegion };
+  const explicit = !!entry && isRegion(entry.region);
   const intl = isRegion(e.region) && isInt(e.region);
   const paper = e.paper === 'A4' || e.paper === 'Letter' ? e.paper : (intl ? 'Letter' : 'A4');
-  return { paper, dateStyle: intl ? 'US' : 'IN' };
+  return { paper, dateStyle: intl ? 'US' : explicit ? 'IN' : '' };
 }

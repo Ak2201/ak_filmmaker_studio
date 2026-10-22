@@ -92,7 +92,11 @@ const ENTRIES = [null, undefined, {}, { region: 'IN' }, { region: 'INT' }, { reg
 for (const e of ENTRIES) for (const dev of ['IN', 'INT', '']) {
   // With no entry, both answer for the device's market (currentProjectPrefs()).
   const want = projectPrefs(e || { region: dev }, dev);
-  eq(paperPrefsOf(e, dev), { paper: want.paper, dateStyle: want.dateStyle }, `paperPrefsOf = projectPrefs (${JSON.stringify(e)}, device ${dev || 'none'})`);
+  // One deliberate difference (review fix, 22 Oct 2026): a film with no
+  // region of its own keeps the device's date style ('') rather than being
+  // switched to Indian dates — "nothing changes for it" (§A3).
+  const style = want.dateStyle === 'US' ? 'US' : (e && want.explicit ? 'IN' : '');
+  eq(paperPrefsOf(e, dev), { paper: want.paper, dateStyle: style }, `paperPrefsOf = projectPrefs (${JSON.stringify(e)}, device ${dev || 'none'})`);
 }
 
 /* ---- dates in the film's style ------------------------------------ */
@@ -111,6 +115,12 @@ eq(paperDate('nope', US), '', 'not a date');
 eq(paperDate('', US), '', 'empty');
 eq(paperDate('2026-10-21', null), '21 Oct 2026', 'no prefs reads as Indian, the studio default');
 eq(S.localDate('2025-10-27'), 'Mon 27 Oct 2025', 'no prefs: the board date is byte-identical to before');
+// A film with no region of its own (dateStyle '') prints what it printed before regions existed.
+const OLD = { paper: 'A4', dateStyle: '' };
+eq(S.localDate('2025-10-27', OLD), 'Mon 27 Oct 2025', 'a regionless film: the board date is byte-identical to before');
+eq(S.dayMonth('2025-10-27', OLD), 'Mon 27', 'a regionless film: the column head is what it was');
+eq(paperDate('2026-10-21', OLD), new Date(2026, 9, 21, 12).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }),
+  'a regionless film: the masthead date is the device\'s, as before');
 eq(S.localDate('2025-10-27', IN), 'Mon, 27 Oct 2025', 'board date, Indian film');
 eq(S.localDate('2025-10-27', US), 'Mon, Oct 27, 2025', 'board date, US film');
 eq(S.localDate('soon', US), '', 'not a date');

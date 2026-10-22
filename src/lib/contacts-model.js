@@ -45,7 +45,7 @@ export function prettyDate(iso, prefs) {
   if (!m) return iso || 'Date not set';
   /* With the film's prefs, in its style: "12 February 2024" on an
      Indian film, "February 12, 2024" on a US one (US-MARKET-PLAN §A4). */
-  if (prefs) return paperDate(m[0], prefs, 'long');
+  if (prefs && prefs.dateStyle) return paperDate(m[0], prefs, 'long');
   return Number(m[3]) + ' ' + (MONTHS[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
 }
 

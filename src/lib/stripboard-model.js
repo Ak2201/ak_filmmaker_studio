@@ -128,7 +128,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function localDate(str, prefs) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
   if (!m) return '';
-  if (prefs) return paperDate(m[0], prefs, 'weekday');
+  if (prefs && prefs.dateStyle) return paperDate(m[0], prefs, 'weekday');
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
   return WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
 }
@@ -137,6 +137,8 @@ export function localDate(str, prefs) {
 export function dayMonth(str, prefs) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
   if (!m) return '';
+  // A film with no region keeps the head it always had ("Mon 27").
+  if (!(prefs && prefs.dateStyle)) return localDate(m[0]).split(' ').slice(0, 2).join(' ');
   return paperDate(m[0], prefs, 'dayMonth');
 }
 /** Today as 'YYYY-MM-DD', in the device's own day. */

@@ -161,7 +161,7 @@ export function shortDate(iso, long, prefs) {
      one-liner and the DPR): "Wednesday, 21 October 2026" / "Wed, 21 Oct"
      on an Indian film, "Wednesday, October 21, 2026" / "Wed, Oct 21" on
      a US one. Without, the device's locale, as before. */
-  if (prefs) return paperDate(m[0], prefs, long ? 'weekdayLong' : 'weekdayShort');
+  if (prefs && prefs.dateStyle) return paperDate(m[0], prefs, long ? 'weekdayLong' : 'weekdayShort');
   return d.toLocaleDateString(undefined, long
     ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
     : { weekday: 'short', day: 'numeric', month: 'short' });

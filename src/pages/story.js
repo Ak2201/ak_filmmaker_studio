@@ -1463,7 +1463,7 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     Story.removeMark(s, el.getAttribute('data-mark'));
     commit(s);
   } else if (act === 'clear') {
-    if (!await askDanger({ title: 'Clear the synopsis, every highlight and every tension score?', body: 'The idea, the logline, the step outline and the Idea Vault are kept.', confirm: 'Clear synopsis' })) return;
+    if (!await askDanger({ title: 'Clear the synopsis, every highlight and every tension score?', body: 'The idea, the logline, the step outline and the Idea Vault are kept.', confirm: 'Clear synopsis', danger: true })) return;
     s.source = ''; s.sourceName = ''; s.marks = []; s.tension = {};
     mode = null; litBeat = ''; undoBuild = null;
     commit(s);

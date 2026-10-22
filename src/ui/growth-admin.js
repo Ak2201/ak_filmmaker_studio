@@ -405,9 +405,9 @@ function affiliateBlock(sec) {
       h('td', { text: Number.isInteger(a.percent_off) ? `${a.percent_off}% off` : Number.isInteger(a.amount_off_paise) ? `${fmtPaise(a.amount_off_paise)} off` : '—' }),
       h('td', { text: `${Number(a.commission_pct)}%` }),
       h('td', { text: String(a.orders) }),
-      h('td', { text: fmtPaise(Number(a.revenue_paise)) }),
-      h('td', { text: fmtPaise(Number(a.discount_paise)) }),
-      h('td', {}, [h('strong', { text: fmtPaise(Number(a.commission_due_paise)) })]),
+      h('td', { text: byCurrency(a.revenue_paise, a.usd_revenue_minor) }),
+      h('td', { text: byCurrency(a.discount_paise, a.usd_discount_minor) }),
+      h('td', {}, [h('strong', { text: byCurrency(a.commission_due_paise, a.usd_commission_due_minor) })]),
       h('td', { text: String(a.refunded) }),
       h('td', { text: fmtDate(a.last_order_at) }),
       h('td', {}, [h('button.btn', { type: 'button', 'data-gra-action': 'aff-orders', 'data-code': a.code, text: S.openAff === a.code ? 'HIDE ORDERS' : 'ORDERS' })])
@@ -415,14 +415,24 @@ function affiliateBlock(sec) {
     if (S.openAff === a.code) {
       const orders = S.affOrders || [];
       tb.append(h('tr', {}, [h('td', { colspan: 10 }, [orders.length
-        ? h('ul.gr-list', {}, orders.map((o) => h('li' + (o.status === 'refunded' ? '.is-off' : ''), { text: `${fmtDate(o.paid_at)} — ${o.email || '—'} · ${planName(o.plan_id)} · paid ${fmtPaise(o.amount_paise)}${o.discount_paise ? ` (${fmtPaise(o.discount_paise)} off)` : ''}${o.status === 'refunded' ? ' · refunded' : ''}` })))
+        ? h('ul.gr-list', {}, orders.map((o) => h('li' + (o.status === 'refunded' ? '.is-off' : ''), { text: `${fmtDate(o.paid_at)} — ${o.email || '—'} · ${planName(o.plan_id)} · paid ${fmtMinor(o.amount_paise, orderCur(o))}${o.discount_paise ? ` (${fmtMinor(o.discount_paise, orderCur(o))} off)` : ''}${o.status === 'refunded' ? ' · refunded' : ''}` })))
         : h('p.gt-meta', { text: S.affOrders ? 'No orders yet.' : 'Loading…' })])]));
     }
   }
   table.append(tb);
   sec.append(h('div.gt-scroll', {}, [table]));
   const due = rows.reduce((n, a) => n + Number(a.commission_due_paise || 0), 0);
-  sec.append(h('p.gt-meta', { text: `Commission due across all affiliates: ${fmtPaise(due)}.` }));
+  const dueUsd = rows.reduce((n, a) => n + Number(a.usd_commission_due_minor || 0), 0);
+  sec.append(h('p.gt-meta', { text: `Commission due across all affiliates: ${byCurrency(due, dueUsd)}.` }));
+}
+
+/* §55: an affiliate code can sell in both currencies. The report keeps the
+   rupee columns and adds a dollar side; the two are never added together. */
+const orderCur = (o) => (o && o.currency === 'USD' ? 'USD' : 'INR');
+function byCurrency(inrPaise, usdCents) {
+  const inr = fmtPaise(Number(inrPaise || 0));
+  const usd = Number(usdCents || 0);
+  return usd > 0 ? `${inr} + ${fmtMinor(usd, 'USD')}` : inr;
 }
 
 const FUNNEL_LABEL = { landing_view: 'Start page visits', pricing_view: 'Reached pricing', invite_request: 'Invite requests', signup: 'Sign-ups', checkout_start: 'Checkouts started', purchase: 'Purchases' };

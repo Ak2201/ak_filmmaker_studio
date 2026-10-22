@@ -293,7 +293,7 @@ function overviewTab() {
     kpi({ label: 'Members', value: n(d.members_active), sub: `${n(d.members_admin)} admin`, href: '#people' }),
     kpi({ label: 'Pending requests', value: n(d.requests_pending), href: '#requests', attention: d.requests_pending > 0 }),
     kpi({ label: 'Paying accounts', value: b ? n(paying) : '…', href: '#billing' }),
-    kpi({ label: 'Revenue', value: b ? fmtPaise(b.overview.paid_total_paise || 0) : '…', sub: b ? `${fmtPaise(b.overview.paid_30d_paise || 0)} in 30 days` : '', href: '#billing' }),
+    kpi({ label: b && usdRevenue(b.overview) ? 'Revenue in rupees' : 'Revenue', value: b ? fmtPaise(b.overview.paid_total_paise || 0) : '…', sub: b ? `${fmtPaise(b.overview.paid_30d_paise || 0)} in 30 days` : '', href: '#billing' }),
     /* §55: paid_*_paise are rupees only; dollars are their own tile, never
        added to the rupees (no exchange rate is used anywhere). Drawn only
        once a dollar payment exists. */

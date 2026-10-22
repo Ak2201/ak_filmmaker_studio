@@ -613,3 +613,17 @@ p.cx-hint { margin: 0; }
 .bud-learn-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s1) var(--s4); margin-block: var(--s3); }
 .bud-learn-row > .learn { margin: 0; }
 .bud-learn-row > .learn[open] { flex-basis: 100%; }
+
+/* KEEP THE BUDGET PRIVATE (schema §55; src/ui/budget-privacy-ui.js).
+   The owner's switch sits under the "who sees it" line; the viewer's
+   locked state replaces the estimate and each cost tab. */
+.bud-privacy {
+  display: grid;
+  gap: var(--s1);
+  margin: 0 0 var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.bud-privacy .bud-private-hint { margin: 0; }
+.bud-locked { margin-block: var(--s4); }

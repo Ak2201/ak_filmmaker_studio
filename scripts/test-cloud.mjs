@@ -452,6 +452,91 @@ const T09 = Date.parse('2026-10-20T09:00:00Z');
   ok(JSON.parse(raw.get(SALVAGE_KEY) || '[]').some((r) => r.data.includes('restored from a file')), 'a local copy that differs from the last server copy is still salvaged');
 }
 
+/* ================================================================
+   §55 — a PRIVATE budget on a view link is not pushed, not queued
+   ================================================================ */
+{
+  projects = [{ id: 'pP', title: 'P', format: 'feature', ns: ['uV'], updatedAt: '2026-10-01T00:00:00Z' }];
+  accountNs = 'uV'; currentPid = 'pP';
+  openGate();
+  let privacy = { data: { private: true, visible: false, can_change: false }, error: null };
+  dbHandler = (table, ops) => {
+    if (table === 'rpc:budget_privacy') return privacy;
+    if (table === 'project_data' && ops.some(([k]) => k === 'upsert')) return { data: null, error: { code: '42501', message: 'new row violates row-level security policy' } };
+    return emptyDb(table, ops);
+  };
+  raw.set('fms_costs_v1__pP', JSON.stringify({ expenses: [{ id: 'x', amount: 500 }] }));
+  raw.set('fms_scenes_v1__pP', JSON.stringify({ scenes: [{ id: 's', slug: 'kept' }] }));
+  raw.delete(QUEUE_KEY);
+  /* Every earlier case's module copy is still subscribed to 'saved'; only this one may answer. */
+  const fresh = () => { for (const k of Object.keys(subs)) delete subs[k]; };
+  fresh();
+  const C = await load({ uid: 'uV' });
+  const st = await C.budgetPrivacy('pP');
+  ok(st.known && st.private && !st.visible && !st.canChange, 'budget_privacy() reads private + not visible — ' + JSON.stringify(st));
+  calls.length = 0;
+  Store_save('fms_costs_v1');
+  await wait(900);
+  eq(writes('project_data').length, 0, 'a viewer’s costs are not sent when the budget is private');
+  eq(queue().filter((o) => o.scope === 'costs').length, 0, 'and nothing is queued to retry');
+  ok(raw.get('fms_costs_v1__pP').includes('"amount":500'), 'the viewer’s local copy is untouched');
+  // A legacy queued op for the private scope is dropped on flush, not retried.
+  raw.set(QUEUE_KEY, JSON.stringify([{ kind: 'upsert', projectId: 'pP', scope: 'library', uid: 'uV', ts: Date.now() }]));
+  calls.length = 0;
+  await C.flushQueue();
+  eq(writes('project_data').length, 0, 'a queued library op is not sent');
+  eq(queue().length, 0, 'and leaves the queue');
+  // Not cached yet, the owner flips it mid-session: the 42501 is asked about once and dropped.
+  fresh();
+  const C2 = await load({ uid: 'uV' });
+  privacy = { data: { private: false, visible: true, can_change: false }, error: null };
+  await C2.budgetPrivacy('pP', { force: true });
+  privacy = { data: { private: true, visible: false, can_change: false }, error: null };
+  raw.delete(QUEUE_KEY);
+  Store_save('fms_library_calc_v1');
+  raw.set('fms_library_calc_v1__pP', JSON.stringify({ calc_item_1: 'Camera' }));
+  Store_save('fms_library_calc_v1');
+  await wait(900);
+  eq(queue().filter((o) => o.scope === 'library').length, 0, 'a 42501 on a budget that turned private is not queued');
+  // Section 55 absent: PGRST202 reads as not private, and costs go up as before.
+  privacy = { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } };
+  fresh();
+  const C3 = await load({ uid: 'uV' });
+  const st3 = await C3.budgetPrivacy('pP', { force: true });
+  ok(!st3.known && !st3.private && st3.visible && st3.missing, 'PGRST202 reads as unknown / not private — ' + JSON.stringify(st3));
+  dbHandler = (table, ops) => table === 'rpc:budget_privacy' ? privacy : emptyDb(table, ops);
+  calls.length = 0;
+  Store_save('fms_costs_v1');
+  await wait(900);
+  ok(writes('project_data').some((c) => JSON.stringify(c.ops).includes('"costs"')), 'without §55 the costs scope syncs exactly as before');
+  // The owner's toggle reads the answer back.
+  privacy = { data: { private: true, visible: true, can_change: true }, error: null };
+  dbHandler = (table, ops) => table === 'rpc:budget_privacy' ? privacy
+    : table === 'rpc:set_budget_private' ? { data: true, error: null } : emptyDb(table, ops);
+  const r = await C3.setBudgetPrivate('pP', true);
+  ok(r.ok && r.state.private && r.state.canChange, 'setBudgetPrivate() reports what the server reads back — ' + JSON.stringify(r));
+  dbHandler = (table, ops) => table === 'rpc:set_budget_private' ? { data: null, error: { code: '42501', message: 'Only the film’s owner' } }
+    : table === 'rpc:budget_privacy' ? { data: { private: false, visible: true, can_change: false }, error: null } : emptyDb(table, ops);
+  const r2 = await C3.setBudgetPrivate('pP', true);
+  ok(!r2.ok && r2.error === '42501' && !r2.state.private, 'a refused toggle says so and the state stays off — ' + JSON.stringify(r2));
+  // A set that worked but whose read-back failed is a success, and the switch stays.
+  dbHandler = (table, ops) => table === 'rpc:budget_privacy' ? { data: { private: false, visible: true, can_change: true }, error: null } : emptyDb(table, ops);
+  await C3.budgetPrivacy('pP', { force: true });
+  dbHandler = (table, ops) => table === 'rpc:set_budget_private' ? { data: true, error: null }
+    : table === 'rpc:budget_privacy' ? { data: null, error: { code: '503', message: 'upstream' } } : emptyDb(table, ops);
+  const r3 = await C3.setBudgetPrivate('pP', true);
+  ok(r3.ok && r3.state.known && r3.state.private && r3.state.canChange, 'a successful set with a failed read-back is reported as done and keeps the switch — ' + JSON.stringify(r3));
+  // A flaky re-read does not unlock a viewer's known private state.
+  dbHandler = (table, ops) => table === 'rpc:budget_privacy' ? { data: { private: true, visible: false, can_change: false }, error: null } : emptyDb(table, ops);
+  await C3.budgetPrivacy('pP', { force: true });
+  dbHandler = (table, ops) => table === 'rpc:budget_privacy' ? { data: null, error: { code: '500', message: 'boom' } } : emptyDb(table, ops);
+  const st4 = await C3.budgetPrivacy('pP', { force: true });
+  ok(st4.known && st4.private && !st4.visible, 'a transient failure keeps the known private state — ' + JSON.stringify(st4));
+  dbHandler = (table, ops) => table === 'rpc:budget_privacy' ? { data: null, error: { code: 'PGRST202', message: 'gone' } } : emptyDb(table, ops);
+  const st5 = await C3.budgetPrivacy('pP', { force: true });
+  ok(!st5.known && st5.missing, 'but a missing function (§55 absent) does replace it — ' + JSON.stringify(st5));
+}
+
 function Store_save(key) { F.Store.notify('saved', { key }); }
 
 console.log(`test:cloud — ${pass} passed, ${fail} failed`);

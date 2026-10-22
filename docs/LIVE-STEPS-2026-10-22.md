@@ -13,7 +13,7 @@ page, and compare the checksum before pressing Run.
 
 ```bash
 shasum -a 256 supabase/schema/schema-55-budget-private.sql
-# d60372cd2f3a067c1c9162a8baa9ed1dda6d60e333cf64dfb6bd8f22a2128087
+# cedcdde22953a0463ce2fd9f7530bb72f55216db41dae5d4d673c443dfcb8da7
 ```
 
 ## 1. Run §55

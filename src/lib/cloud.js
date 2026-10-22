@@ -21,6 +21,7 @@
    ============================================================ */
 import Store from './store.js';
 import { mergeScriptRaw } from './script-merge.js';
+import { readPrivacy, skipScope, isBudgetScope, UNKNOWN as PRIVACY_UNKNOWN } from './budget-privacy.js';
 /* One constant, for the scope string, so sign-in and the Drive client
    cannot drift apart about what was consented to. drive.js imports
    nothing from here, so this is not a cycle, and vite.config folds
@@ -1610,6 +1611,15 @@ async function _pushScope(projectId, scope, opts) {
   }
   const localKey = KEY_BY_SCOPE[scope];
   if (!localKey) return;
+  /* A PRIVATE BUDGET IS NOT SHARED WITH THIS ACCOUNT (schema §55). A
+     view or comment collaborator's copy of 'library' / 'costs' is not
+     sent: RLS would refuse it, and the queue would ask again for ever.
+     The local copy is left exactly where it is. */
+  if (skipScope(_budgetPrivacy.get(projectId), scope)) {
+    _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope && _ownsOp(o));
+    idleSync();
+    return 'skipped';
+  }
   const raw = Store.rawGet(localKey + '__' + projectId);
   /* A null read is not an empty document. It is a key that was never
      written, or — worse — a stub whose bytes sit in an overflow tier
@@ -1673,6 +1683,17 @@ async function _pushScope(projectId, scope, opts) {
     updated_by: session.user.id
   }, { onConflict: 'project_id,scope' });
   if (error) {
+    /* A budget scope refused by RLS may be a budget the owner has just
+       made private. Ask once; if so this is "not shared with you", not
+       a change to queue. */
+    if (String(error.code) === '42501' && isBudgetScope(scope)) {
+      const st = await budgetPrivacy(projectId, { force: true });
+      if (skipScope(st, scope)) {
+        _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope && _ownsOp(o));
+        idleSync();
+        return 'skipped';
+      }
+    }
     console.warn('[push scope]', error);
     reportSyncError(scope, error.code);
     // The local copy is already on disk and stays there. All a failed
@@ -1937,8 +1958,9 @@ async function _flushOnce() {
     if (!_opUid(op)) { done.push(op); op = Object.assign({}, op, { uid: me }); }
     if (op.nextAt && op.nextAt > now) { keep.push(op); done.push(op); continue; }
     try {
-      if (op.kind === 'upsert') await _pushScope(op.projectId, op.scope, { queued: true });
-      else if (op.kind === 'meta') await _pushProjectMeta(op.project);
+      if (op.kind === 'upsert') {
+        if (await _pushScope(op.projectId, op.scope, { queued: true }) === 'skipped') { done.push(op); continue; }
+      } else if (op.kind === 'meta') await _pushProjectMeta(op.project);
       else if (op.kind === 'delete') await _deleteProjectInCloud(op.projectId);
       sent++;
       done.push(op);
@@ -1988,6 +2010,8 @@ export async function attachToCurrentProject() {
   if (!pid) return;
   // 0. The co-editing switch decides how the script scope is applied.
   await coEditingEnabled();
+  // 0b. Whether this film's budget is shared with this account (§55).
+  await budgetPrivacy(pid, { force: true });
   // 1. Pull latest data
   await pullProjectData(pid);
   // 2. Subscribe to changes
@@ -2026,6 +2050,70 @@ export async function coEditingEnabled() {
   return _coEdit;
 }
 export const coEditingKnown = () => _coEdit === true;
+
+/* KEEP THE BUDGET PRIVATE (schema §55). budget_privacy(p_project)
+   answers {private, visible, can_change} for a film this account can
+   see, null for one it cannot (or one never synced), and PGRST202
+   before §55 has run. src/lib/budget-privacy.js turns every one of
+   those into one state; anything unknown is "not private", which is
+   how the database behaved before §55. Kept in memory per film for the
+   page load, refreshed on every attach and after a toggle. Never
+   throws, stores nothing on disk.
+   → { known, private, visible, canChange, missing } */
+const _budgetPrivacy = new Map();
+export async function budgetPrivacy(pid, opts) {
+  if (!pid || !session) return PRIVACY_UNKNOWN;
+  if (!(opts && opts.force) && _budgetPrivacy.has(pid)) return _budgetPrivacy.get(pid);
+  let st = PRIVACY_UNKNOWN;
+  try {
+    const client = await ensureClient();
+    if (client && session) st = readPrivacy(await client.rpc('budget_privacy', { p_project: pid }));
+  } catch (e) { st = PRIVACY_UNKNOWN; }
+  const before = _budgetPrivacy.get(pid);
+  /* A FLAKY READ DOES NOT UNLOCK A KNOWN STATE. Only a real answer, or
+     "the function is absent" (§55 not run), replaces what is known; a
+     network error, a 5xx or a malformed reply keeps it. Otherwise one bad
+     re-attach showed a viewer their stale local budget again, sent their
+     budget pushes back to the 42501 path, and hid the owner's switch. */
+  if (!st.known && !st.missing && before && before.known) return before;
+  _budgetPrivacy.set(pid, st);
+  if (!before || before.private !== st.private || before.visible !== st.visible || before.canChange !== st.canChange || before.known !== st.known) {
+    Store.notify('cloud:budget-privacy', { projectId: pid, state: st });
+  }
+  return st;
+}
+/* The owner's switch. → { ok, state, error } — never throws. The
+   server refuses anyone but projects.owner_id (42501); the state after
+   is READ BACK rather than assumed, so the page shows what is true. */
+export async function setBudgetPrivate(pid, on) {
+  if (!pid || !session) return { ok: false, state: PRIVACY_UNKNOWN, error: 'signed-out' };
+  let error = null;
+  let set = null;
+  try {
+    const client = await ensureClient();
+    if (!client) return { ok: false, state: PRIVACY_UNKNOWN, error: 'no-client' };
+    const res = await client.rpc('set_budget_private', { p_project: pid, p_private: !!on });
+    error = res && res.error ? res.error : null;
+    if (!error && res && typeof res.data === 'boolean') set = res.data;
+  } catch (e) { error = e; }
+  if (error) console.warn('[budget privacy]', error.code || '', error.message || error);
+  /* set_budget_private RETURNS the new value, and that is the truth about
+     the toggle. The read-back is only for the rest of the state; when it
+     fails after a successful set, the last known state is kept with the
+     returned value, rather than an UNKNOWN that would hide the switch and
+     report a change the server made as "nothing changed". */
+  const ok = !error && set === !!on;
+  let state = await budgetPrivacy(pid, { force: true });
+  if (ok && !(state.known && state.private === set)) {
+    const prev = _budgetPrivacy.get(pid);
+    if (prev && prev.known) {
+      state = Object.assign({}, prev, { private: set });
+      _budgetPrivacy.set(pid, state);
+      Store.notify('cloud:budget-privacy', { projectId: pid, state });
+    }
+  }
+  return { ok, state, error: error ? String(error.code || error.message || error) : (ok ? null : 'unconfirmed') };
+}
 
 /* PRESENCE — who else has this project's screenplay open. A PRIVATE
    channel 'pr:<project id>', because presence on a public channel is
@@ -2522,6 +2610,7 @@ const StudioCloud = {
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
   pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence, coEditingEnabled,
+  budgetPrivacy, setBudgetPrivate,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,
   listSalvage, restoreSalvage,

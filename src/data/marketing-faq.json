@@ -63,7 +63,7 @@
     "items": [
       {
         "q": "Where is my screenplay stored?",
-        "a": "In your own browser, on your device, first. Once you are signed in, your films also sync to the studio's cloud so they reach your other devices, and row-level security limits each project to you and the people you share it with (a view link can read it, an edit link can change it). You can switch sync off in Settings; the browser copy stays either way."
+        "a": "In your own browser, on your device, first. Once you are signed in, your films also sync to the studio's cloud so they reach your other devices, and row-level security limits each project to you and the people you share it with (a view link can read it, an edit link can change it). Anyone you share a project with can see its budget, unless you keep the budget private; then only you and people with an edit link can see the estimate, petty cash, crew payments and cost report. Figures typed into a blueprint's budget questions are not covered by that switch. You can switch sync off in Settings; the browser copy stays either way."
       },
       {
         "q": "Why do I sign in with Google if my work is local?",

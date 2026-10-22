@@ -41,6 +41,7 @@ import wages from '../data/wages.fefsi.json';
 import { askDanger } from './dialog.js';
 import { button, badge, statCard, statStrip, emptyState, notice, meter } from './kit/index.js';
 import { renderSchedule, renderVersions, impactActions, impactForms, bindImpact } from './budget-impact.js';
+import { mountBudgetPrivacy, isBudgetLocked, lockedNote } from './budget-privacy-ui.js';
 
 /* rs, pct, today and label are src/lib/budget-costs-model.js's. */
 
@@ -689,8 +690,26 @@ function refresh() {
   const fk = active && active.dataset ? active.dataset.fk : '';
   const sel = active && typeof active.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd] : null;
   const open = new Set([...document.querySelectorAll('.cx-sec details[open]:not(.cx-crew)')].map((d) => d.closest('.cx-sec').id + ':' + [...d.parentElement.children].indexOf(d)));
+  /* A PRIVATE BUDGET (schema §55) on a view or comment link: every
+     cost tab says so, and the strip and the aside draw nothing — a row
+     of ₹ 0 would read as a real, empty budget. The local copy is not
+     touched (budget-privacy-ui.js). */
+  if (isBudgetLocked()) {
+    const kp0 = document.getElementById('bdKpis');
+    if (kp0) { kp0.replaceChildren(); kp0.hidden = true; }
+    const aside0 = document.getElementById('bdPetty');
+    if (aside0) { aside0.replaceChildren(); aside0.hidden = true; }
+    for (const s of SECTIONS) {
+      const el = document.getElementById(s.id);
+      if (el) el.replaceChildren(lockedNote());
+    }
+    return;
+  }
   const ctx = context();
   const kp = document.getElementById('bdKpis');
+  if (kp && kp.hidden) kp.hidden = false;
+  const asideShown = document.getElementById('bdPetty');
+  if (asideShown && asideShown.hidden) asideShown.hidden = false;
   if (kp) kp.replaceChildren(...renderKpis(ctx));
   const aside = document.getElementById('bdPetty');
   if (aside) aside.replaceChildren(...renderAside(ctx));
@@ -820,6 +839,7 @@ function commitField(el) {
 export function initCosts(root) {
   bindImpact({ refresh, toast });
   refresh();
+  mountBudgetPrivacy(root, () => refresh());
   delegate(root, 'click', '[data-cx]', (e, el) => {
     const fn = ACTIONS[el.dataset.cx];
     if (!fn) return;

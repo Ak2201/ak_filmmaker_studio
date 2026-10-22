@@ -1319,21 +1319,22 @@ call and one is a privilege grant:
 ## §55 KEEP THE BUDGET PRIVATE — WRITTEN 22 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
 
 `supabase/schema/schema-55-budget-private.sql`; checks in
-`scripts/schema-tests/budget-private.sql` (37, under `npm run test:schema`).
+`scripts/schema-tests/budget-private.sql` (44, under `npm run test:schema`).
 
 **The rule.** `projects.budget_private` (not null, default false) is a
 per-film switch. While it is true, the two budget scopes of
 `project_data` — `library` (`fms_library_calc_v1`, the estimate) and
-`costs` (`fms_costs_v1`) — are readable and writable only by a caller
-`has_project_access(pid, 'edit')` admits: the owner, an unexpired `edit`
-collaborator, and an owner/admin of the organisation the film is in
-(they already have full access to it, §6). `view` and `comment`
+`costs` (`fms_costs_v1`) — are readable and writable only by the owner
+and an unexpired `edit` collaborator (`has_budget_access()`). That is
+deliberately narrower than `has_project_access(pid, 'edit')`: an
+owner/admin of the organisation the film is in keeps every other scope
+(§6) but not a private budget (55.40–55.43). `view` and `comment`
 collaborators see zero rows for those scopes — not an error — and keep
 every other scope. While it is false nothing differs from before §55.
 
 **Where it is enforced.** One function, `has_scope_access(pid, scope,
 min_role)`: a budget scope (`is_budget_scope()`) on a private film needs
-`edit`; anything else is `has_project_access(pid, min_role)` unchanged.
+`has_budget_access()`; anything else is `has_project_access(pid, min_role)` unchanged.
 It sits behind:
 
 - `pd_select` and `pd_write` on `project_data`. `pd_select` is also what
@@ -1362,7 +1363,18 @@ function hands `project_data` rows to a collaborator.
 
 **Not covered, on purpose (the spec names two scopes):** budget figures a
 user has typed into some OTHER scope — a cost in a scene note, a rate on a
-contact, the DPR inside `locations` — stay readable by a viewer.
+contact, the DPR inside `locations` — stay readable by a viewer. So do the
+blueprints' OWN budget questions: `v2s11_total` / `_atl` / `_btl` /
+`_post` / `_cont` / `_largest` / `_expday` in `feature` and `s10_budget`
+in `short`. RLS gates rows, not keys inside a row, and `screening_open()`
+returns `feature` and `short` to a screening pass, so those answers reach
+a pass holder too (55.38, 55.39). The budget page's copy and the FAQ say
+so; hiding them would need a key-stripping read path for pull, Realtime
+and the screening room.
+
+**Regression probe.** Replaying `supabase-schema.sql` (§1/§9/§10) after
+§55 silently restores the unguarded `pd_*` / `cm_*` policies. §55.8 ends
+with a read that must answer 5; 55.37 and 55.44 assert the same locally.
 `library_prefs` (`fms_library_prefs_v1`) is not a budget scope.
 
 **Live checks to run** (two real accounts, after §55):

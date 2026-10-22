@@ -340,6 +340,17 @@ runChecks('cap-locks.sql');
 }
 /* --- end §54 --- */
 
+/* --- §55 (keep the budget private) --- on everything above, loaded twice
+   (it adds a column, a trigger and restates five policies). Every
+   pre-existing check has already run against the unrestated policies. --- */
+for (const f of ['supabase/schema/schema-55-budget-private.sql', 'supabase/schema/schema-55-budget-private.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §55 loads (and re-runs cleanly)');
+runChecks('budget-private.sql');
+/* --- end §55 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

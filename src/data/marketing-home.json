@@ -68,8 +68,8 @@
     {
       "value": "Tamil, Tanglish, English",
       "label": "Dialogue in the language you write",
-      "valueElsewhere": "Fountain, FDX, Word, PDF",
-      "labelElsewhere": "Screenplay formats you can bring in"
+      "valueElsewhere": "US Letter",
+      "labelElsewhere": "Call sheets, reports and the day out of days, with US dates"
     },
     {
       "value": "11",

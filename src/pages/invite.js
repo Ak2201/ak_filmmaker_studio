@@ -208,9 +208,9 @@ function render() {
     const sec = section('through', 'Through', 'You’re in, with a code.',
       'Code ' + formatCode(getCodePass().code) + ' opened this browser. Your work is saved here; an account would back it up and let you pick it up elsewhere.');
     sec.append(h('div.iv-actions', {}, [
-      h('a.btn.primary', { href: 'index.html', text: 'GO TO THE STUDIO' }),
-      h('button.btn', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN WITH GOOGLE' }),
-      h('button.btn', { type: 'button', 'data-iv-action': 'forget-code', text: 'FORGET THIS CODE' })
+      h('a.k-btn.k-btn--primary', { href: 'index.html', text: 'Go to the studio' }),
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'google', text: 'Sign in with Google' }),
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-iv-action': 'forget-code', text: 'Forget this code' })
     ]));
     body.append(sec);
   } else if (!signedIn && getCodePass()) {
@@ -220,8 +220,8 @@ function render() {
     const sec = section('through', 'Your code', 'Sign in to spend your code.',
       'Code ' + formatCode(getCodePass().code) + ' is held in this browser. Sign in with Google and it is redeemed on your account, with the free trial it carries. Nothing on this device changes.');
     sec.append(h('div.iv-actions', {}, [
-      h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' }),
-      h('button.btn', { type: 'button', 'data-iv-action': 'forget-code', text: 'FORGET THIS CODE' })
+      h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Continue with Google' }),
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-iv-action': 'forget-code', text: 'Forget this code' })
     ]));
     sec.append(legalLine('By continuing you agree to the '));
     body.append(sec);
@@ -250,7 +250,7 @@ function render() {
       const t = section('trial', 'Free trial', 'Start your free trial.',
         'The whole studio, on the Dragon and The Dark Knight sample films' + (len ? ', for ' + len : '') + '. No card, nothing to install. Sign in and it begins.');
       t.append(h('div.iv-actions', {}, [
-        h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })
+        h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Continue with Google' })
       ]));
       t.append(legalLine('By continuing you agree to the '));
       body.append(t);
@@ -264,8 +264,8 @@ function render() {
       /* The prices on this page (src/ui/list-prices.js), not a link away. */
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
-        h('a.btn', { href: 'pricing.html#compare', text: 'COMPARE EVERY FEATURE' })
+        h('a.k-btn.k-btn--primary', { href: 'purchase.html', text: 'See plans and buy' }),
+        h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
       ]));
       body.append(buy);
     }
@@ -290,8 +290,8 @@ function render() {
        Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
     sec.append(prices());
     sec.append(h('div.iv-actions', {}, [
-      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
-      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+      h('a.k-btn.k-btn--primary', { href: 'purchase.html', text: 'See plans and buy' }),
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ]));
     body.append(sec);
     /* A held or typed code can still be entered here: the box was only
@@ -310,16 +310,16 @@ function render() {
         ? 'Projects you open sync to this account, and the Chrome extension signs in with it too.'
         : 'The studio is open to everyone who signs in. Your work is saved on this device; syncing it to your account needs an invite or a plan.'));
     sec.append(h('div.iv-actions', {}, [
-      h('a.btn.primary', { href: returnHref || 'index.html', 'data-iv-action': 'enter', text: 'GO TO THE STUDIO' }),
-      h('a.btn', { href: 'settings.html#account', text: 'ACCOUNT SETTINGS' }),
+      h('a.k-btn.k-btn--primary', { href: returnHref || 'index.html', 'data-iv-action': 'enter', text: 'Go to the studio' }),
+      h('a.k-btn.k-btn--secondary', { href: 'settings.html#account', text: 'Account settings' }),
       /* Every state of this page that has a session has a way out of it. */
-      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ]));
     body.append(sec);
   } else if (g.state === 'lost') {
     const sec = section('lost', 'Elsewhere', 'Active on another device.',
       'Take the session back to sync here; the other window pauses. Or leave it — this device keeps saving locally.');
-    sec.append(h('div.iv-actions', {}, [h('button.btn.primary', { type: 'button', 'data-iv-action': 'takeover', text: 'TAKE OVER SESSION' })]));
+    sec.append(h('div.iv-actions', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'takeover', text: 'Take over session' })]));
     body.append(sec);
   } else {
     /* CLOSED — signed in, not a member. Since 12 Oct 2026 this is where
@@ -351,7 +351,7 @@ function render() {
       const t = section('trial', 'Free trial', 'Start your free trial.',
         'Open the Dragon and The Dark Knight samples — two whole films, each with its script, its breakdown, its schedule and its call sheets — and read them from the inside, for ' + len + '. No card, nothing to fill in.');
       t.append(h('div.iv-actions', {}, [
-        h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
+        h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
       ]));
       t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
       body.append(t);
@@ -370,7 +370,7 @@ function render() {
             'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. A plan opens it again for a year.');
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.btn' + (trialOffer ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS AND BUY' })
+        h('a.k-btn' + (trialOffer ? '.k-btn--secondary' : '.k-btn--primary'), { href: 'purchase.html', text: 'See plans and buy' })
       ]));
       body.append(buy);
     }
@@ -402,9 +402,9 @@ function render() {
     /* A check that could not be made is retryable; the others are not. */
     const retryable = isRetryable(g.reason, readGateWhyRaw());
     out.append(h('div.iv-actions', {}, [
-      retryable ? h('button.btn.primary', { type: 'button', 'data-iv-action': 'retry', text: 'TRY AGAIN' }) : null,
-      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
-      h('a.btn', { href: 'start.html', text: 'ABOUT THE STUDIO' })
+      retryable ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'retry', text: 'Try again' }) : null,
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' }),
+      h('a.k-btn.k-btn--secondary', { href: 'start.html', text: 'About the studio' })
     ]));
     body.append(out);
   }
@@ -435,7 +435,7 @@ document.addEventListener('click', (e) => {
 /* The gate's check can fail for the network's reasons (a timeout, an
    unreachable server). Ask again, then draw what it says. */
 async function retryGate(btn) {
-  btn.disabled = true; btn.textContent = 'CHECKING…';
+  btn.disabled = true; btn.textContent = 'Checking…';
   try { const c = cloud(); if (c && c.runGate) await c.runGate(); } catch (e) { /* the page says what it finds */ }
   clearGateWhy();
   render();
@@ -462,7 +462,7 @@ async function startTrial(btn) {
   const msg = document.getElementById('trialMsg');
   const say = (t, bad) => { if (msg) { msg.textContent = t; msg.classList.toggle('iv-bad', !!bad); } };
   const was = btn.textContent;
-  btn.disabled = true; btn.textContent = 'STARTING…';
+  btn.disabled = true; btn.textContent = 'Starting…';
   try {
     const r = await Billing.startTrial();
     if (!r || !r.started) {

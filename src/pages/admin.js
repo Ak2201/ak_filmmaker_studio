@@ -132,12 +132,16 @@ function block(id) {
   if (BLOCK_TITLE[id]) el.append(h('h3.gt-h3', { text: BLOCK_TITLE[id] }));
   return el;
 }
-/** The signed-out / not-admin / no-cloud states: one short block. */
-function state(id, title, line, actions) {
-  return panel({ tag: 'section', id, class: 'ad-state', eyebrow: 'Console', body: [
+/** The signed-out / not-admin / no-cloud states: one short block. No
+ *  eyebrow: the page title right above it already says "Console", and a
+ *  second CONSOLE under it was the same word twice (UI review, 22 Oct
+ *  2026). `after` is an optional line under the actions. */
+function state(id, title, line, actions, after) {
+  return panel({ tag: 'section', id, class: 'ad-state', body: [
     h('h2.ad-state-h', { text: title }),
     line ? h('p.ad-meta', { text: line }) : null,
-    actions && actions.length ? h('div.ad-actions', {}, actions) : null
+    actions && actions.length ? h('div.ad-actions', {}, actions) : null,
+    after || null
   ].filter(Boolean) });
 }
 
@@ -480,14 +484,17 @@ function render() {
   if (!c || !c.isConfigured()) {
     body = h('div.ad-body', {}, [state('local', 'No cloud, no console', 'This build carries no Supabase project (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).')]);
   } else if (!signedIn) {
+    /* A filmmaker who lands here by accident is told where their films
+       are, rather than being asked for an administrator's account. */
     body = h('div.ad-body', {}, [state('signin', 'Sign in', 'Use an administrator’s Google account.',
-      [button({ label: 'CONTINUE WITH GOOGLE', variant: 'primary', pill: true, attrs: { 'data-auth-action': 'google' } })])]);
+      [button({ label: 'Continue with Google', variant: 'primary', attrs: { 'data-auth-action': 'google' } })],
+      h('p.ad-meta', {}, ['For studio administrators. Looking for your films? ', h('a', { href: 'index.html', text: 'Go to the Studio' }), '.']))]);
   } else if (!st) {
     body = h('div.ad-body', {}, [state('checking', 'Checking…', '')]);
   } else if (!isAdmin) {
     body = h('div.ad-body', {}, [state('denied', 'Administrators only',
       'Signed in as ' + (c.getUserEmail() || 'this account') + '. Access is granted by the studio’s owner.',
-      [button({ label: 'BACK TO THE STUDIO', href: 'index.html' })])]);
+      [button({ label: 'Back to the studio', href: 'index.html' })])]);
   } else {
     if (ov.phase === 'idle') loadOverview();
     const sections = {

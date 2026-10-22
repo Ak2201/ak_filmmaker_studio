@@ -33,9 +33,9 @@ function samplePages(data = dragonData) { return sampleFigures(data).pages; }
 
 /* One button per registered sample; labels come from the registry. */
 function sampleButtons(prefix, primary) {
-  return SAMPLES.map((sm, i) => h('button.btn' + (primary && i === 0 ? '.primary' : ''), {
+  return SAMPLES.map((sm, i) => h('button.k-btn' + (primary && i === 0 ? '.k-btn--primary' : '.k-btn--secondary'), {
     type: 'button', 'data-action': 'sample-project', 'data-sample': sm.id,
-    title: sm.blurb, text: prefix + sm.label.toUpperCase()
+    title: sm.blurb, text: prefix + sm.label
   }));
 }
 
@@ -64,19 +64,19 @@ function renderFirstRun() {
       h('div.door-tag', {}, [h('span.door-num-circle', { text: 'I' }), ' A FULL-LENGTH STORY']),
       h('h3', {}, ['Feature', h('br'), h('span.light', { text: 'film.' })]),
       h('p.door-sub', { text: 'A story you tell over an hour or more. We walk you from the first spark to the finished film, one stage at a time.' }),
-      h('button.door-cta', { type: 'button', 'data-action': 'start-feature' }, [h('span', { text: 'START A FEATURE' }), h('span.arrow', { text: '→' })])
+      h('button.door-cta', { type: 'button', 'data-action': 'start-feature' }, [h('span', { text: 'Start a feature' }), h('span.arrow', { text: '→' })])
     ]),
     h('div.door.shorts', {}, [
       h('div.door-tag', {}, [h('span.door-num-circle', { text: 'II' }), ' UNDER 30 MINUTES']),
       h('h3', {}, ['Short', h('br'), h('span.light', { text: 'film.' })]),
       h('p.door-sub', { text: 'The quickest way to make something real. A tighter story, a smaller crew, a film you can finish and show.' }),
-      h('button.door-cta', { type: 'button', 'data-action': 'start-short' }, [h('span', { text: 'START A SHORT' }), h('span.arrow', { text: '→' })])
+      h('button.door-cta', { type: 'button', 'data-action': 'start-short' }, [h('span', { text: 'Start a short' }), h('span.arrow', { text: '→' })])
     ]),
     h('div.door.library', {}, [
       h('div.door-tag', {}, [h('span.door-num-circle', { text: 'III' }), ' LEARN FIRST']),
       h('h3', {}, ['Learning', h('br'), h('span.light', { text: 'library.' })]),
       h('p.door-sub', { text: 'Not ready to start? Read how films you know were built: ' + films.length + ' films, ' + directors.length + ' directors and ' + rules.length + ' rules of thumb. No project needed.' }),
-      h('a.door-cta', { href: 'library.html' }, [h('span', { text: 'OPEN THE LIBRARY' }), h('span.arrow', { text: '→' })])
+      h('a.door-cta', { href: 'library.html' }, [h('span', { text: 'Open the library' }), h('span.arrow', { text: '→' })])
     ])
   ]);
   panel.append(doors);
@@ -85,7 +85,7 @@ function renderFirstRun() {
      module shelves being off does not empty the Library. */
   /* The sample is the secondary way in: a filled studio to look at
      before being asked to name a film. */
-  panel.append(h('div.eps-actions', {}, sampleButtons('OR OPEN A SAMPLE FILM: ', false)));
+  panel.append(h('div.eps-actions', {}, sampleButtons('Or open a sample film: ', false)));
   panel.append(h('div.eps-fine', {
     text: 'A sample is a real project you can edit or delete: a feature, its pages of script (Dragon has ' + samplePages()
         + '), the ' + dragonData.scenes.length + ' scenes broken down from them, a crew and a budget. '
@@ -111,9 +111,9 @@ export function welcomeCard() {
       h('h2', { text: name ? 'You’re on ' + name + '. Welcome in.' : 'Welcome in.' }),
       h('p.deck', { text: 'Your plan is active for a year. Your invoice, and the date it ends, are on the Purchase page.' }),
       h('div.eps-actions', {}, [
-        h('button.btn.primary', { 'data-action': 'new-project', text: 'START YOUR FILM' }),
-        h('a.btn', { href: 'purchase.html', text: 'SEE WHAT UNLOCKED' }),
-        h('button.btn', { type: 'button', 'data-fr-action': 'dismiss-welcome', text: 'DISMISS' })
+        h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'new-project', text: 'Start your film' }),
+        h('a.k-btn.k-btn--secondary', { href: 'purchase.html', text: 'See what unlocked' }),
+        h('button.k-btn.k-btn--secondary', { type: 'button', 'data-fr-action': 'dismiss-welcome', text: 'Dismiss' })
       ])
     ])
   ]);
@@ -127,18 +127,18 @@ document.addEventListener('click', (e) => {
 /* The free trial's hub: the sample, and the way up. There is no free
    PLAN (owner, 11 Oct 2026), so it does not call this one. */
 function renderSampleOnly() {
-  const see = h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' });
+  const see = h('a.k-btn.k-btn--secondary', { href: 'purchase.html', text: 'See plans' });
   /* The way up, named and priced once the plan rows answer. */
   PlanGate.offerFor(['new_projects']).then((o) => {
     if (!o) return;
     see.href = o.href;
-    see.textContent = ('Own film: ' + PlanGate.offerText(o)).toUpperCase();
-  }).catch(() => { /* SEE PLANS stands */ });
+    see.textContent = 'Own film: ' + PlanGate.offerText(o);
+  }).catch(() => { /* "See plans" stands */ });
   return h('div.empty-projects-state', {}, [
     h('div.eps-title', { text: 'Open a sample film.' }),
     h('div.eps-deck', { text: 'Your free trial opens the sample projects — scenes, a crew, a budget and a schedule to explore in every module. A plan adds films of your own.' }),
     h('div.iv-actions', {}, [
-      ...sampleButtons('OPEN ', true),
+      ...sampleButtons('Open ', true),
       see
     ])
   ]);

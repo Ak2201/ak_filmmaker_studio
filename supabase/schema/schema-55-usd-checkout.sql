@@ -70,6 +70,7 @@
 --   55.12 admin_set_plan_price: a dollar price is CHARGED; owner only
 --   55.13 admin_set_usd_checkout(on)
 --   55.14 the console's reads: overview per currency, ledger, Customer 360
+--   55.14b affiliate report per currency; refund reads carry the currency
 --   55.15 grants
 --   55.16 CHECKS TO RUN LIVE (read-only)
 -- ============================================================
@@ -288,8 +289,15 @@ begin
       else
         credit := public.paid_credit_minor(p_user, tgt, cur);
         if credit is null then
-          raise exception 'Your current year cannot be credited in US dollars. Pay in rupees to have it taken off the price.'
-            using errcode = '22023', hint = 'currency';
+          -- Worded by the order's currency: a rupee quote that cannot convert a
+          -- dollar year must not tell the buyer to "pay in rupees".
+          if cur = 'USD' then
+            raise exception 'Your current year cannot be credited in US dollars. Pay in rupees to have it taken off the price.'
+              using errcode = '22023', hint = 'currency';
+          else
+            raise exception 'Your current year was paid in another currency and cannot be credited in rupees at the moment. Write to us and we will apply it by hand.'
+              using errcode = '22023', hint = 'currency';
+          end if;
         end if;
       end if;
     end if;
@@ -818,6 +826,18 @@ begin
       raise exception '% cannot stop being sold in dollars while checkout in US dollars is on. Turn that switch off first.', pl.name
         using errcode = '22023';
     end if;
+    -- A dollar year still running on this plan is credited on an upgrade at
+    -- the plan's own price ratio (paid_credit_minor). Withdrawing the dollar
+    -- price would leave that ratio with no denominator and refuse every
+    -- upgrade, in rupees too. Keep the price until those years have ended.
+    if p_amount_minor = 0 and exists (
+         select 1 from public.payments x
+          where x.plan_id = pl.id and x.currency = 'USD' and x.status = 'paid'
+            and x.period = 'year' and x.plan_applied is not false
+            and x.ends_at is not null and x.ends_at > now()) then
+      raise exception '% has dollar years still running, and an upgrade credits them at this price. Keep a dollar price until they end.', pl.name
+        using errcode = '22023', hint = 'usd_years';
+    end if;
     if p_amount_minor = 0 and p_next_minor is not null then
       raise exception 'A plan not sold in dollars has no dollar price to rise to.' using errcode = '22023';
     end if;
@@ -1116,6 +1136,125 @@ begin
 end;
 $fn$;
 
+-- 55.14b MONEY READS THAT STILL ADDED CENTS TO PAISE ----------------------------------------
+/** §23's affiliate report. A percent-off code works on a dollar order, so
+ *  one code's ledger can hold both currencies, and summing amount_paise
+ *  across them added cents to paise. The existing columns now mean RUPEES
+ *  ONLY (every order so far was INR, so no figure moves today) and the
+ *  dollar side is its own four columns. orders counts every paid order,
+ *  in either currency. The return type changed, so this is a drop. */
+drop function if exists public.admin_affiliate_report();
+create or replace function public.admin_affiliate_report()
+returns table (code text, note text, commission_pct numeric, active boolean, percent_off int, amount_off_paise int,
+               orders int, revenue_paise bigint, discount_paise bigint, commission_due_paise bigint,
+               refunded int, last_order_at timestamptz,
+               usd_orders int, usd_revenue_minor bigint, usd_discount_minor bigint, usd_commission_due_minor bigint)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select c.code, c.note, c.commission_pct, c.active, c.percent_off, c.amount_off_paise,
+           count(p.id) filter (where p.status = 'paid')::int,
+           coalesce(sum(p.amount_paise) filter (where p.status = 'paid' and p.currency = 'INR'), 0)::bigint,
+           coalesce(sum(p.discount_paise) filter (where p.status = 'paid' and p.currency = 'INR'), 0)::bigint,
+           floor(coalesce(sum(p.amount_paise) filter (where p.status = 'paid' and p.currency = 'INR'), 0) * c.commission_pct / 100)::bigint,
+           count(p.id) filter (where p.status = 'refunded')::int,
+           max(p.paid_at) filter (where p.status = 'paid'),
+           count(p.id) filter (where p.status = 'paid' and p.currency = 'USD')::int,
+           coalesce(sum(p.amount_paise) filter (where p.status = 'paid' and p.currency = 'USD'), 0)::bigint,
+           coalesce(sum(p.discount_paise) filter (where p.status = 'paid' and p.currency = 'USD'), 0)::bigint,
+           floor(coalesce(sum(p.amount_paise) filter (where p.status = 'paid' and p.currency = 'USD'), 0) * c.commission_pct / 100)::bigint
+      from public.promo_codes c
+      left join public.payments p on p.promo_code = c.code
+     where c.commission_pct is not null
+     group by c.code
+     order by c.active desc, 8 desc, c.code;
+end;
+$fn$;
+
+/** §23's order list, with each row's currency (amounts are minor units of it). */
+drop function if exists public.admin_affiliate_orders(text);
+create or replace function public.admin_affiliate_orders(p_code text)
+returns table (paid_at timestamptz, email text, plan_id text, list_paise int, discount_paise int, amount_paise int, status text, currency text)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select p.paid_at, u.email::text, p.plan_id, p.list_paise, p.discount_paise, p.amount_paise, p.status, p.currency
+      from public.payments p
+      left join auth.users u on u.id = p.user_id
+     where p.promo_code = upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g'))
+       and p.status in ('paid', 'refunded')
+     order by p.paid_at desc nulls last
+     limit 500;
+end;
+$fn$;
+
+/** §27's member read, word for word, with the payment's currency on the
+ *  payment object: Settings prints the amount in it. */
+create or replace function public.my_refund_status()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare me uuid := auth.uid(); pay public.payments; q public.refund_requests; en boolean; busy boolean;
+begin
+  if me is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  en := public.refund_requests_enabled();
+  select * into pay from public.payments p
+   where p.user_id = me and p.status = 'paid' and p.amount_paise > 0
+   order by p.paid_at desc nulls last, p.created_at desc limit 1;
+  select * into q from public.refund_requests r where r.user_id = me order by r.created_at desc limit 1;
+  busy := pay.id is not null and (
+       exists (select 1 from public.refunds f where f.payment_id = pay.id and f.status in ('initiated','pending','processed'))
+    or exists (select 1 from public.refund_requests r where r.payment_id = pay.id and r.status in ('pending','approved')));
+  return jsonb_build_object(
+    'enabled', en,
+    'eligible', en and pay.id is not null,
+    'can_request', en and pay.id is not null and not busy,
+    'payment', case when pay.id is null then null else jsonb_build_object('id', pay.id, 'plan_id', pay.plan_id, 'amount_paise', pay.amount_paise,
+                'amount_minor', pay.amount_paise, 'currency', pay.currency, 'paid_at', pay.paid_at) end,
+    'latest', case when q.id is null then null else jsonb_build_object('id', q.id, 'status', q.status, 'category', q.category, 'message', q.message,
+                'admin_note', q.admin_note, 'created_at', q.created_at, 'decided_at', q.decided_at, 'payment_id', q.payment_id) end
+  );
+end;
+$fn$;
+
+/** §27's console list, with the payment's currency on each row, so the
+ *  console need not find the payment in its latest 200 ledger rows. */
+drop function if exists public.admin_list_refund_requests(text);
+create or replace function public.admin_list_refund_requests(p_status text default null)
+returns table (id uuid, email text, payment_id uuid, plan_id text, amount_paise int, razorpay_payment_id text, payment_status text,
+               category text, message text, status text, admin_note text, created_at timestamptz, decided_at timestamptz, currency text)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select q.id, u.email::text, q.payment_id, p.plan_id, p.amount_paise, p.razorpay_payment_id, p.status,
+           q.category, q.message, q.status, q.admin_note, q.created_at, q.decided_at, p.currency
+      from public.refund_requests q
+      join public.payments p on p.id = q.payment_id
+      join auth.users u on u.id = q.user_id
+     where p_status is null or q.status = p_status
+     order by (q.status = 'pending') desc, q.created_at desc
+     limit 500;
+end;
+$fn$;
+
 -- 55.15 GRANTS ----------------------------------------------------------------------------
 revoke execute on function public.quote_order(text, text)                                  from public;
 revoke execute on function public.quote_order(text, text, text)                            from public;
@@ -1125,6 +1264,10 @@ revoke execute on function public.admin_set_usd_checkout(boolean)               
 revoke execute on function public.admin_billing_overview()                                 from public, anon;
 revoke execute on function public.admin_list_payments(int)                                 from public, anon;
 revoke execute on function public.admin_customer(uuid)                                     from public, anon;
+revoke execute on function public.admin_affiliate_report()                                 from public, anon;
+revoke execute on function public.admin_affiliate_orders(text)                             from public, anon;
+revoke execute on function public.my_refund_status()                                       from public, anon;
+revoke execute on function public.admin_list_refund_requests(text)                         from public, anon;
 grant  execute on function public.quote_order(text, text)                                  to anon, authenticated;
 grant  execute on function public.quote_order(text, text, text)                            to anon, authenticated;
 grant  execute on function public.price_notice(text)                                       to anon, authenticated;
@@ -1133,6 +1276,10 @@ grant  execute on function public.admin_set_usd_checkout(boolean)               
 grant  execute on function public.admin_billing_overview()                                 to authenticated;
 grant  execute on function public.admin_list_payments(int)                                 to authenticated;
 grant  execute on function public.admin_customer(uuid)                                     to authenticated;
+grant  execute on function public.admin_affiliate_report()                                 to authenticated;
+grant  execute on function public.admin_affiliate_orders(text)                             to authenticated;
+grant  execute on function public.my_refund_status()                                       to authenticated;
+grant  execute on function public.admin_list_refund_requests(text)                         to authenticated;
 
 notify pgrst, 'reload schema';
 

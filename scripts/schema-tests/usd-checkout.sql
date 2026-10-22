@@ -328,3 +328,28 @@ select t.ok((public.admin_set_usd_checkout(false) ->> 'charged_currency') = 'INR
 select t.ok(t.err55($$select public.quote_order('starter', null, 'USD')$$) = '22023:currency_closed', 'and a dollar quote is refused again');
 commit;
 select t.reset();
+
+-- ============================================================
+-- review fixes: the money reads that still mixed currencies
+-- ============================================================
+select t.ok(pg_get_function_result('public.admin_affiliate_report'::regproc) like '%usd_revenue_minor bigint%usd_commission_due_minor bigint%',
+  'admin_affiliate_report has a dollar side of its own');
+select t.ok(pg_get_function_result('public.admin_affiliate_orders'::regproc) like '%currency text%',
+  'admin_affiliate_orders names each order''s currency');
+select t.ok(pg_get_function_result('public.admin_list_refund_requests'::regproc) like '%currency text%',
+  'admin_list_refund_requests names each payment''s currency');
+begin;
+select t.claims('00000000-0000-4000-8000-000000005503');
+select t.ok((public.my_refund_status() -> 'payment' ->> 'currency') = 'INR',
+  'my_refund_status: the payment carries its currency');
+rollback;
+select t.reset();
+-- a dollar year still running keeps its plan's dollar price (the credit ratio needs it)
+begin;
+insert into public.payments (user_id, plan_id, period, amount_paise, currency, status, paid_at, starts_at, ends_at)
+values ('00000000-0000-4000-8000-000000005504', 'pro', 'year', 3900, 'USD', 'paid', now(), now(), now() + interval '1 year');
+select t.claims('00000000-0000-4000-8000-000000005510');
+select t.ok(t.err55($$select public.admin_set_plan_price('pro', 'USD', 0)$$) = '22023:usd_years',
+  'a plan with dollar years running cannot be withdrawn from dollars');
+rollback;
+select t.reset();

@@ -49,6 +49,7 @@
    those grows an id of its own, tagging it is one field in the JSON.
    ============================================================ */
 import nav from '../data/navigation.json';
+import PATHS from '../data/story-paths.json';
 import { region } from './region.js';
 import { STAY_PAGES, STAGE_PAGES, homeStage, stageLead, stageAllLocked } from './nav-stage.js';
 
@@ -64,6 +65,48 @@ export function inRegion(entry, r) {
   const want = entry && entry.region;
   if (!want) return true;
   return String(want).toUpperCase() === (r || region());
+}
+
+/* ---- A MODULE'S SECTIONS, and A PAGE'S LIST (owner, 22 Oct 2026) ----
+   The rail's flyout and a page's tab strip are the same list. A page
+   panel that is not a module of its own (Reports' DPR, Budget's Top
+   sheet, the Story path's steps) is a SECTION of the module that owns
+   it: `sections` in navigation.json, or `sectionsFrom: "story-paths"`
+   for the Story path, whose steps live in story-paths.json and are not
+   typed twice. A section is not a module: it has no plan id, is not
+   counted, and is gated with its module. */
+export function moduleSections(m) {
+  if (!m) return [];
+  if (m.sectionsFrom === 'story-paths') {
+    return (PATHS.feature || []).map((st) => ({ id: 'path-' + st.id, label: st.label, sym: st.sym || '', purpose: '' }));
+  }
+  return Array.isArray(m.sections) ? m.sections : [];
+}
+
+/** Every entry the rail lists for one page, in the rail's order: each
+ *  stage module whose href is on `file`, followed by its sections. A
+ *  module with no fragment is the page itself; its id is the page's
+ *  stem, which is the tab id where the page has a tab for it
+ *  (screenplay.html's "screenplay"). */
+export function pageEntries(file) {
+  const f = String(file || '').toLowerCase().replace(/\.html$/, '') + '.html';
+  const stem = f.replace(/\.html$/, '');
+  const out = [];
+  for (const p of phases()) for (const m of p.modules || []) {
+    if (!m.href || m.status === 'planned') continue;
+    const [pf, frag] = m.href.split('#');
+    if (pf.toLowerCase() !== f) continue;
+    out.push({ id: frag || stem, label: m.label, sym: m.sym || '', purpose: m.purpose || '', moduleId: m.id, isPage: !frag });
+    for (const sec of moduleSections(m)) {
+      out.push({ id: sec.id, label: sec.label, sym: sec.sym || '', purpose: sec.purpose || '', moduleId: m.id, sub: true });
+    }
+  }
+  return out;
+}
+
+/** The entry for one tab id on one page, or null. */
+export function pageEntry(file, id) {
+  return pageEntries(file).find((e) => e.id === id) || null;
 }
 
 /** The five stages, with their region-hidden modules removed. Every

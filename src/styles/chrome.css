@@ -4516,6 +4516,16 @@ html {
   font-weight: 600;
 }
 .sh-fly-icon { font-size: 16px; line-height: 1; text-align: center; color: var(--hue-deep, var(--ink-muted)); overflow: hidden; }
+/* A module's sections (navigation.json `sections`): the page's tabs that
+   are not modules, indented under their module so the flyout reads as the
+   page strip does. Quieter than a module row, never a second accent. */
+.sh-fly-mod.is-sub {
+  min-height: var(--h-compact);
+  padding-left: calc(var(--s2) + 20px);
+  color: var(--ink-muted);
+  font-size: var(--t-tiny);
+}
+.sh-fly-mod.is-sub .sh-fly-icon { font-size: 14px; }
 .sh-fly-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sh-fly-flag,
 .sh-fly-mod > .pg-flag {

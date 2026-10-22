@@ -30,9 +30,11 @@
    retired; behind ?stay=1 it shows only the sections navmodel's
    STAY_PAGES names (AI coverage, Write from a synopsis).
 
-   LABELS. `data-tab-label` on the section wins; then the label of the
-   navigation.json module whose fragment is this section's id; then
-   the section's own heading, without its final full stop.
+   LABELS. A section the rail lists (navmodel.js pageEntries: a
+   module's fragment, or one of its `sections`) takes the rail's label,
+   icon, hint and ORDER, so the rail's flyout and the strip are one
+   list. Otherwise `data-tab-label` on the section, then the section's
+   own heading, without its final full stop.
 
    RE-APPLIED on DOM changes: settings.html and admin.html replace
    `main` on every render, breakdown.html fills its sections when a
@@ -55,8 +57,7 @@
    ARIA: role=tablist (.tabs-list inside the nav) / tab / tabpanel, arrow
    keys, Home and End.
    ============================================================ */
-import nav from '../data/navigation.json';
-import { stayEntry } from '../lib/navmodel.js';
+import { stayEntry, pageEntries } from '../lib/navmodel.js';
 import { buildSectionMenu, updateSectionMenu, itemsFromSections } from './section-menu.js';
 import '../styles/tabs.css';
 
@@ -64,19 +65,22 @@ const TABBED = new Set(['settings', 'admin', 'library', 'breakdown', 'stripboard
 
 const page = () => (typeof location === 'undefined' ? '' : (location.pathname.split('/').pop() || 'index.html').toLowerCase().replace(/\.html$/, '').replace(/^$/, 'index'));
 
-function navLabel(id) {
-  const here = page() + '.html';
-  for (const p of nav.phases) for (const m of p.modules) {
-    if (!m.href) continue;
-    const [f, frag] = m.href.split('#');
-    if (f.toLowerCase() === here && frag === id) return m.label;
-  }
-  return '';
+/* THE RAIL'S LIST IS THE STRIP'S LIST (owner, 22 Oct 2026). A section
+   the rail names — a module's fragment or one of its `sections` in
+   navigation.json (navmodel.js pageEntries) — takes the rail's label,
+   icon and hint, and the strip follows the rail's order. A page's own
+   data-tab-label / -icon / -hint only speak for a section the rail
+   does not list (Settings, the console, the Library). */
+const entryFor = (id) => pageEntries(page() + '.html').find((e) => e.id === id) || null;
+function navOrder(sections) {
+  const order = pageEntries(page() + '.html').map((e) => e.id);
+  const at = (s) => { const i = order.indexOf(s.id); return i < 0 ? order.length : i; };
+  return sections.map((s, i) => [s, i]).sort((a, b) => (at(a[0]) - at(b[0])) || (a[1] - b[1])).map(([s]) => s);
 }
 function labelFor(sec) {
+  const e = entryFor(sec.id);
+  if (e) return e.label;
   if (sec.dataset.tabLabel) return sec.dataset.tabLabel;
-  const n = navLabel(sec.id);
-  if (n) return n;
   const hd = sec.querySelector('h2, h3, .bd-h2');
   const t = hd ? hd.textContent.trim().replace(/[.:]\s*$/, '') : '';
   return t || sec.id;
@@ -131,7 +135,9 @@ function findTabs() {
   }
   const byParent = new Map();
   for (const s of all) { const p = s.parentElement; byParent.set(p, (byParent.get(p) || []).concat(s)); }
-  for (const [parent, list] of byParent) if (list.length >= 2) return { parent, sections: list, out };
+  /* `first` is the first in the DOM, where the strip is inserted; the
+     sections themselves are in the rail's order. */
+  for (const [parent, list] of byParent) if (list.length >= 2) return { parent, sections: navOrder(list), first: list[0], out };
   return { parent: null, sections: [], out, rest: all };
 }
 
@@ -256,9 +262,26 @@ export function revealTarget(id) {
    menu (a column at 1100px and over, the scrolling strip plus a Sections
    sheet below); every other page is the segmented bar. */
 const isSide = (sections) => (page() === 'admin' || page() === 'settings') && sections.length >= 3;
+/* the section menu's groups, with the rail's icon and hint on every
+   section the rail lists */
+function stripGroups(sections) {
+  let groups = itemsFromSections(sections, labelFor, page());
+  if (!pageEntries(page() + '.html').length) return groups;
+  /* A page the rail lists reads in the rail's order, ungrouped: a
+     section-icons `group` would gather same-named groups together and
+     reorder the strip away from the flyout. */
+  groups = [{ label: '', items: groups.flatMap((g) => g.items) }];
+  for (const it of groups[0].items) {
+    const e = entryFor(it.id);
+    if (!e) continue;
+    if (e.sym) it.icon = e.sym;
+    if (e.purpose) it.hint = e.purpose;
+  }
+  return groups;
+}
 function buildStrip(sections, activeId) {
   const strip = buildSectionMenu({
-    groups: itemsFromSections(sections, labelFor, page()), active: activeId,
+    groups: stripGroups(sections), active: activeId,
     ariaLabel: 'Sections', orientation: isSide(sections) ? 'side' : 'strip',
     /* a strip that overflows below 1100px shows it (section-menu.js) */
     sectionsButton: true
@@ -293,7 +316,7 @@ function watchHeight(strip) {
 
 export function apply() {
   if (typeof document === 'undefined' || !TABBED.has(page())) return;
-  const { parent, sections, out, rest } = findTabs();
+  const { parent, sections, first, out, rest } = findTabs();
   const old = document.querySelector(OWN);
   if (!parent) {
     /* Fewer than two tabs left (a module went off): the one that remains
@@ -301,7 +324,7 @@ export function apply() {
        section show() itself hid is touched. */
     for (const s of rest || []) if (s.hidden && s.getAttribute('role') === 'tabpanel') s.hidden = false;
     if (old) old.remove(); signature = ''; document.querySelectorAll('.tabs-has-side').forEach((p) => p.classList.remove('tabs-has-side')); return; }
-  const groups = itemsFromSections(sections, labelFor, page());
+  const groups = stripGroups(sections);
   const sig = JSON.stringify(groups);
   const fromHash = currentFromHash(sections);
   const keep = sections.some((s) => s.id === active) ? active : '';
@@ -309,7 +332,7 @@ export function apply() {
   const side = isSide(sections);
   if (!old || old.parentElement !== parent || old.classList.contains('tabs-side') !== side) {
     if (old) old.remove();
-    parent.insertBefore(buildStrip(sections, want), sections[0]);
+    parent.insertBefore(buildStrip(sections, want), first || sections[0]);
     signature = sig;
   } else if (sig !== signature) {
     /* a count, a lock or a label moved: patch the rows, keep the strip

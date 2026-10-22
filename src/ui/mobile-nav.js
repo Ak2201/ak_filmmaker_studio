@@ -35,7 +35,7 @@
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
-import { phases, globals, shelves } from '../lib/navmodel.js';
+import { phases, globals, shelves, moduleSections } from '../lib/navmodel.js';
 import { projectRows, projectList, formatLabel } from './project-switcher.js';
 import { markLocked } from '../lib/plan-gate.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
@@ -261,6 +261,18 @@ function modRow(m, here) {
   return el;
 }
 
+function subRow(m, x) {
+  const file = m.href.split('#')[0];
+  const el = h('a.mn-mod.is-sub', { href: file + '#' + x.id }, [
+    iconSpan('mn-mod-icon', { sym: x.sym }),
+    h('span.mn-mod-text', {}, [h('span.mn-mod-label', { text: x.label })])
+  ]);
+  el.dataset.moduleId = m.id;   // markLocked: gated with its module
+  const tab = (location.hash || '').replace(/^#/, '').split('?')[0];
+  if (fileOf(file) === CURRENT && tab === x.id) { el.classList.add('is-here'); el.setAttribute('aria-current', 'page'); }
+  return el;
+}
+
 function group(p, here, cls) {
   const sec = h('section.mn-group' + cls, { 'data-mn-phase': p.id, 'aria-labelledby': 'mn-g-' + p.id });
   sec.append(h('h3.mn-group-h', { id: 'mn-g-' + p.id }, [
@@ -272,6 +284,8 @@ function group(p, here, cls) {
     if (m.group && m.group !== sub) sec.append(h('p.mn-sub', { text: m.group }));
     sub = m.group || null;
     sec.append(modRow(m, here));
+    /* the module's sections, as the rail's flyout lists them */
+    if (m.status !== 'planned' && m.href) for (const x of moduleSections(m)) sec.append(subRow(m, x));
   }
   return sec;
 }

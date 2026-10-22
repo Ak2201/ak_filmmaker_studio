@@ -12,13 +12,13 @@ const ok = (name, c) => { n++; if (!c) { bad++; console.error('FAIL', name); } }
 
 /* ---- a new film carries a region; a duplicate keeps it ------------ */
 const setup = read('src/ui/project-setup.js');
-ok('project-setup starts the sheet on the device choice, else detectRegion() (= regionForNewProject())', /return chosenRegion\(\) \|\| detectRegion\(\);/.test(setup) && /const reg = newFilmRegion\(\);/.test(setup));
-ok('nothing in the app calls regionForNewProject() (it bundles the shop guess into startlib)', ![setup, read('src/pages/hub.js')].some((t) => /regionForNewProject\(\)/.test(t.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))));
+ok('project-setup starts the sheet on regionForNewProject() (the device choice, else the visitor guess)', /return regionForNewProject\(\);/.test(setup) && /const reg = newFilmRegion\(\);/.test(setup));
+ok('regionForNewProject() falls back on the VISITOR guess (§A3, §B), not the map\'s', /newProjectRegion\(\{ chosen: chosenRegion\(\), guess: visitorGuess\(\) \}\)/.test(read('src/lib/region.js')));
 ok('project-setup passes region to createProject', /Store\.createProject\(\{[^}]*region: state\.region/.test(setup));
 ok('project-setup asks where the film is made', /WHERE IS THIS FILM BEING MADE\?/.test(setup) && /psRegion_/.test(setup));
 const hub = read('src/pages/hub.js');
 ok('hub duplicate copies region', /createProject\(\{ title: p\.title \+ ' \(copy\)'[^}]*region: p\.region/.test(hub));
-ok('hub project modal creates with the device choice, else detectRegion()', /createProject\(\{ title: titleValue, format, region: chosenRegion\(\) \|\| detectRegion\(\)/.test(hub));
+ok('hub project modal creates with regionForNewProject(), as project-setup does', /createProject\(\{ title: titleValue, format, region: regionForNewProject\(\)/.test(hub));
 
 /* ---- the film's region is set on a click only -------------------- */
 for (const f of ['src/pages/dashboard.js', 'src/pages/settings.js']) {

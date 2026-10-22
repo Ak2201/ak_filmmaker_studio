@@ -20,7 +20,7 @@ import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { listStudies, favouriteSlug } from '../lib/studies.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
-import { chosenRegion, detectRegion } from '../lib/region.js';
+import { regionForNewProject } from '../lib/region.js';
 
 const PROJECT_HOME_URL = 'dashboard.html';
 
@@ -29,15 +29,12 @@ const PROJECT_HOME_URL = 'dashboard.html';
    Letter and US dates) and whether the India-only material shows. The
    sheet starts on newFilmRegion() (= region.js regionForNewProject()): the device's stated market,
    else the browser's own guess. Changed later on the dashboard. */
-/* region.js regionForNewProject(), inlined: the device's stated choice,
-   else detectRegion() — the same answer, since detectRegion() always
-   returns IN or INT. Not the call itself, because regionForNewProject()
-   reaches region-core.js newProjectRegion(), whose last-resort fallback
-   (guessVisitorRegion) would then be bundled into the `startlib` chunk
-   that EVERY page loads, and the Library had about 500 bytes of first
-   paint to spare under scripts/budget.json (22 Oct 2026). */
+/* region.js regionForNewProject(): the device's stated choice, else the
+   visitor guess (§B), as the contract says. It is no longer inlined:
+   region-core.js has its own `region` chunk now and guessVisitorRegion()
+   is already in it for the shop, so calling it here costs no bytes. */
 export function newFilmRegion() {
-  try { return chosenRegion() || detectRegion(); } catch (e) { return 'IN'; }
+  try { return regionForNewProject(); } catch (e) { return 'IN'; }
 }
 
 const REGION_CHOICES = {

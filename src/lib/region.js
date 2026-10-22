@@ -87,7 +87,7 @@
    device scope, same registries (none).
    ============================================================ */
 import Store, { rawGet, rawSet, rawRemove } from './store.js';
-import { normaliseRegion, projectPrefs, newProjectRegion } from './region-core.js';
+import { normaliseRegion, projectPrefs, newProjectRegion, guessVisitorRegion as visitorGuess } from './region-core.js';
 
 export {
   REGION_IDS, CURRENCIES, PAPERS, normaliseRegion, normaliseCurrency, guessVisitorRegion,
@@ -179,9 +179,12 @@ export function currentProjectPrefs(id) {
 }
 
 /** The region a project created now should carry: the device's choice,
- *  else the guess. project-setup.js passes it to createProject(). */
+ *  else the VISITOR guess (§B, guessVisitorRegion — the shop's, so a
+ *  film and the prices agree about a UTC-clocked browser set to en-IN).
+ *  project-setup.js and the hub's new-project modal both pass it to
+ *  createProject(). */
 export function regionForNewProject() {
-  return newProjectRegion({ chosen: chosenRegion(), guess: detectRegion() });
+  return newProjectRegion({ chosen: chosenRegion(), guess: visitorGuess() });
 }
 
 /**

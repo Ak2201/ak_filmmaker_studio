@@ -111,7 +111,7 @@ eq('not a date', R.formatPaperDate('soon', US), '');
 const store = read('src/lib/store.js');
 ok('createProject keeps region IN/INT', /meta\.region === 'IN' \|\| meta\.region === 'INT'\) project\.region = meta\.region/.test(store));
 const backup = read('src/lib/backup.js');
-ok('backup restore carries region (replace)', /region: meta\.region === 'IN' \|\| meta\.region === 'INT' \? meta\.region : undefined/.test(backup));
+ok('backup restore carries region (replace), and only a region the file states', /\.\.\.\(meta\.region === 'IN' \|\| meta\.region === 'INT' \? \{ region: meta\.region \} : \{\}\)/.test(backup));
 ok('backup restore carries region (create)', /region: meta\.region\s/.test(backup));
 const region = read('src/lib/region.js');
 for (const name of ['setProjectRegion', 'currentProjectPrefs', 'regionForNewProject', 'detectRegion', 'setRegion'])

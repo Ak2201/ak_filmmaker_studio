@@ -2214,6 +2214,16 @@ for (const spec of PAGES) {
     console.log('  ' + spec.name.padEnd(14) + String(m.files.length).padStart(6) + '  ' + kb(m.bytes)
       + '  ' + (b && Number.isFinite(b.bytes) ? kb(b.bytes) : '     (none)') + '  ' + (leaks.join(', ') || '-'));
   }
+  /* A page over budget prints WHAT it loaded, file by file: the same page
+     has measured 26 KB heavier on the CI runner than on a laptop, and a
+     total alone cannot say which chunk arrived there and nowhere else. */
+  for (const spec of PAGES) {
+    const m = measuredBudget[spec.name];
+    const b = (BUDGET.pages || {})[spec.name];
+    if (!m || !b || !Number.isFinite(b.bytes) || m.bytes <= b.bytes) continue;
+    console.log(`\n  ${spec.name} is over budget; its first-paint files:`);
+    for (const f of [...m.files].sort()) console.log('    ' + f);
+  }
   /* The anti-rot half of knownLazyFetches: an allowance that no page
      fired is stale, and a stale allowance is a check that has quietly
      stopped checking. Fix the leak, delete the row, in one commit. */

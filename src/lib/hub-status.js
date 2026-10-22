@@ -13,7 +13,7 @@
    ============================================================ */
 import Store from './store.js';
 import { parseAmount } from './money.js';
-import { normaliseCurrency, currencyForRegion, projectRegion } from './region-core.js';
+import { openBudgetCurrency } from './budget-currency.js';
 import { NOTE_PREFIX } from './backup.js';
 import { STAGES, guideJourney, nextGuideStep } from './journey.js';
 import { readText, keys as storedKeys } from './prefs.js';
@@ -144,31 +144,6 @@ export function computeShortStatus() {
     stepsDone,
     lastEditedStep: next ? next.id : null
   };
-}
-
-/* The budget's currency, read the way costs.js resolveCurrency() reads it
-   (the estimator's ci_currency, then the cost record's settings.currency,
-   INR for a budget with money and no word, the film's own currency for an
-   empty one). Restated rather than imported because costs.js is the
-   budget page's module and would drag itself into the hub and the
-   dashboard; test:budget-usd holds the two to the same answers. */
-export function calcCurrency(calc, costs, entry) {
-  const a = normaliseCurrency(calc && calc.ci_currency);
-  if (a) return a;
-  const b = normaliseCurrency(costs && costs.settings && costs.settings.currency);
-  if (b) return b;
-  const hasCalc = calc && Object.keys(calc).some((k) => /^ci_\d+_/.test(k) && String(calc[k] == null ? '' : calc[k]).trim() !== '');
-  const hasCosts = costs && ((costs.expenses || []).length + (costs.floats || []).length + (costs.payments || []).length > 0
-    || (costs.crew && typeof costs.crew === 'object' && Object.keys(costs.crew).length > 0));
-  if (hasCalc || hasCosts) return 'INR';
-  try { return entry ? currencyForRegion(projectRegion(entry)) : 'INR'; } catch (e) { return 'INR'; }
-}
-
-/** The open budget's currency, from storage. Reading never writes. */
-export function openBudgetCurrency(calc) {
-  let entry = null;
-  try { entry = Store.currentProject ? Store.currentProject() : null; } catch (e) { /* no store */ }
-  return calcCurrency(calc || readStoredObject(LIB_CALC_KEY), readStoredObject('fms_costs_v1'), entry);
 }
 
 export function computeLibraryStatus() {

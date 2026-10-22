@@ -15,7 +15,7 @@
    ============================================================ */
 import { BLUEPRINT, guideProgress, journey, stageStates, suggestNext, lastWorked } from './journey.js';
 import { parseAmount, fmtMoney } from './money.js';
-import { openBudgetCurrency } from './hub-status.js';
+import { openBudgetCurrency } from './budget-currency.js';
 import Scenes, { totalEighths } from './scenes.js';
 import Locations from './locations.js';
 import Contacts from './contacts.js';

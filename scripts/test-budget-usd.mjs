@@ -217,6 +217,7 @@ ok(!/[0-9]+[,.]?[0-9]*\s*(lakh|cr)/i.test(B.rateProvenance('USD')), 'the US prov
 /* ---- the hub and dashboard read the budget's currency like the budget page ---- */
 {
   const H = await import('../src/lib/hub-status.js');
+  const BC = await import('../src/lib/budget-currency.js');
   const cases = [
     [{}, null, { region: 'INT' }], [{}, null, { region: 'IN' }], [{}, null, {}], [{}, null, null],
     [{ ci_1_rate: '5' }, null, { region: 'INT' }], [{ ci_currency: 'USD', ci_1_rate: '5' }, null, { region: 'IN' }],
@@ -224,7 +225,7 @@ ok(!/[0-9]+[,.]?[0-9]*\s*(lakh|cr)/i.test(B.rateProvenance('USD')), 'the US prov
   ];
   for (const [calc, costs, entry] of cases) {
     const proj = entry ? (entry.region === 'INT' ? 'USD' : 'INR') : '';
-    eq(H.calcCurrency(calc, costs, entry), C.resolveCurrency({ calc, costs, project: proj }),
+    eq(BC.calcCurrency(calc, costs, entry), C.resolveCurrency({ calc, costs, project: proj }),
       `calcCurrency agrees with resolveCurrency for ${JSON.stringify([calc, costs, entry])}`);
   }
   reset(); film('INT');

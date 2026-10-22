@@ -461,8 +461,8 @@ function includedLine(ids, cta) {
     let PM = null, view = null;
     if (want === 'USD') {
       try {
-        const [pm, funnel] = await Promise.all([import('./price-model.js'), import('./funnel.js')]);
-        const v = pm.shopView('USD', await funnel.priceNotice('USD'));
+        const [pm, notice] = await Promise.all([import('./price-model.js'), Billing.priceNotice('USD').catch(() => null)]);
+        const v = pm.shopView('USD', notice);
         const r = v.currency === 'USD' && v.plans[p.id];
         if (r && r.minor > 0) {
           PM = pm; view = v;

@@ -111,7 +111,7 @@ ok((await order())[0] === 'HOSTEL ROOM', '4  ArrowLeft moves it back');
 
 /* 5 drag on the grid */
 const grip = await page.$('[data-scene="sc4"] .bd-sl-grip');
-const target = await page.$('[data-scene="sc1"]');
+const target = await page.$('.bd-sl[data-scene="sc1"]');
 const g = await grip.boundingBox(), t = await target.boundingBox();
 await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
 await page.mouse.down();
@@ -126,7 +126,7 @@ ok((await order())[0] === 'ROOFTOP', '5  a drag onto the first card\'s leading h
 await page.click('[data-scene="sc3"] [data-action="sl-card-open"]');
 await page.waitForTimeout(300);
 ok(await page.$$eval('.bd-scene.bd-sl', (r) => r.length) === 4, '6  Edit goes back to the table');
-ok(await page.$eval('[data-scene="sc3"]', (r) => r.classList.contains('is-open')), '6  with that scene open');
+ok(await page.$eval('.bd-sl[data-scene="sc3"]', (r) => r.classList.contains('is-open')), '6  with that scene open');
 ok(await page.evaluate(() => document.activeElement && document.activeElement.matches('.bd-slug') && document.activeElement.closest('[data-scene]').dataset.scene === 'sc3'), '6  and its location field focused');
 
 /* 7 phone width, fresh load */

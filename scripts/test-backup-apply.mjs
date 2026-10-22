@@ -161,6 +161,19 @@ applyBackup(JSON.parse(JSON.stringify(file)), { mode: 'restore', confirm: () => 
 eq(all().length, 2, 'a second pull of the same file still mints nothing');
 eq(buildBackup().projects.length, 2, 'and the next push carries two projects, not three');
 
+/* ---- a pull from an older build leaves this device's region alone ---- */
+Store.updateProject('here', { region: 'INT' });
+{
+  const old = JSON.parse(JSON.stringify(file));
+  for (const p of old.projects) delete p.region;   // an older build writes no region
+  applyBackup(old, { mode: 'restore', confirm: () => true });
+  eq(all().find((p) => p.id === 'here').region, 'INT', 'a pull whose entry has no region keeps the film\'s region');
+  const said = JSON.parse(JSON.stringify(file));
+  said.projects.find((p) => p.id === 'here').region = 'IN';
+  applyBackup(said, { mode: 'restore', confirm: () => true });
+  eq(all().find((p) => p.id === 'here').region, 'IN', 'a pull that states a region carries it');
+}
+
 /* ---- merge: the hub's import of the same file ----------------- */
 const r2 = applyBackup(JSON.parse(JSON.stringify(file)), { mode: 'merge', confirm: () => true });
 ok(r2.ok, 'a merge applies');

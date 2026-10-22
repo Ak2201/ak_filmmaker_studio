@@ -147,6 +147,9 @@
 <section class="legal-changes" id="changes" aria-labelledby="changes-h">
   <h2 id="changes-h">What changed on 21 October 2026</h2>
   <ul>
+    <li>Section 4: prices are shown in Indian Rupees in India and in US dollars elsewhere,
+    the currency you are charged in is shown at checkout before you pay, and conversion fees
+    charged by your bank or card issuer are theirs, not ours.</li>
     <li>Section 4: a paid plan is now bought for <strong>one year</strong>, not for good. Nothing
     renews or is charged automatically; buying the plan again adds another year, and an
     upgrade credits the unused part of your current year.</li>
@@ -227,8 +230,11 @@ use the Service.</p>
   starts where the current one ends). The app shows the date your plan runs until. When a
   plan ends, nothing you have written is deleted; the parts of the Service that need a plan
   close until you buy one again. What a plan includes can change over time (section 12).</li>
-  <li><strong>Prices and taxes.</strong> Prices are in Indian Rupees (INR) and include any
-  applicable taxes unless stated otherwise.
+  <li><strong>Prices, currencies and taxes.</strong> We show prices in Indian Rupees (INR) to
+  visitors in India and in US dollars (USD) to visitors elsewhere. Which one you see is
+  worked out in your browser from your device&rsquo;s time zone and language settings, never
+  from your IP address, and you can switch between the two on the purchase page. Prices
+  include any applicable taxes unless stated otherwise.
   <!-- NO GSTIN SENTENCE, DELIBERATELY. src/data/brand.json carries gstin: "" and
        says why: the seller is an individual not registered for GST, so what buyers
        receive is a Bill of Supply rather than a tax invoice (schema section 28).
@@ -239,16 +245,25 @@ use the Service.</p>
        If registration ever happens, put the number back HERE and in brand.json in
        the SAME change, and switch the invoice to tax-invoice mode. A GSTIN on the
        terms but not on the invoice is worse than neither. -->
-  The amount charged is always in rupees. Where we show a price in another currency for
-  convenience, the rupee amount you will be charged is shown beside it before you pay. We
+  <strong>The currency you will be charged in, and the amount, are shown at checkout before
+  you pay.</strong> Until we open payment in US dollars, every charge is in rupees: where we
+  show a dollar price, the rupee amount you will be charged is shown beside it. Once
+  dollar payment is open, a dollar price is charged in dollars. We set each plan&rsquo;s price in
+  each currency ourselves; one is not converted from the other at an exchange rate. If you
+  pay in a currency other than your card&rsquo;s or your bank account&rsquo;s, your bank or
+  card issuer may convert the amount and add its own foreign-transaction or conversion fee.
+  Those fees are set and kept by your bank, not charged or received by us, and are not part
+  of our price. Cards issued outside India are accepted for rupee payments. We
   may change prices for future purchases; when a rise is scheduled we show the new price
   and the date it takes effect, and a change never affects a plan you have already
   bought.</li>
   <li><strong>Promo and referral codes.</strong> A code you enter at checkout can lower the
   price; the discount is worked out by our server and shown before you pay. A code applies
-  to the order it is entered for, can expire or be limited in uses, and has no cash value.
+  to the order it is entered for, can expire or be limited in uses, and has no cash value. A code that takes a fixed rupee
+  amount off works only when you pay in rupees; a percentage code works in either
+  currency.
   Once you have bought a plan you get a referral code of your own: a friend who buys with it
-  gets the discount shown, and you earn a credit when their payment is confirmed. You cannot
+  gets the discount shown, and you earn a credit when their payment, in rupees, is confirmed. You cannot
   use your own code. A credit is voided if the friend&rsquo;s payment is refunded before it is
   paid out; we pay credits out ourselves, by bank transfer or UPI, and will ask you for the
   details we need.</li>
@@ -256,11 +271,13 @@ use the Service.</p>
   own terms. We never see your full card number, CVV, UPI PIN or banking password; what
   Razorpay does send us is described in the <a href="/privacy">Privacy Policy</a>.</li>
   <li><strong>Invoice and receipt.</strong> For every purchase we issue an invoice (a Bill of
-  Supply), which you can download from your plan page at any time, and we e-mail a receipt
+  Supply) in the currency you paid in, which you can download from your plan page at any time, and we e-mail a receipt
   to your account&rsquo;s address. Razorpay may also send its own payment confirmation.</li>
   <li><strong>Upgrades.</strong> You may upgrade to a higher plan at any time by paying
   the price shown in the app for the upgrade, which is the higher plan&rsquo;s yearly price less
-  the unused part of the year you paid for on the plan you hold. The higher plan&rsquo;s year
+  the unused part of the year you paid for on the plan you hold. If you paid for that year
+  in the other currency, its unused part is valued from that plan&rsquo;s own prices in the two
+  currencies, never at an exchange rate. The higher plan&rsquo;s year
   starts on the day you upgrade. You cannot move down to a lower plan while a year of a
   higher one is running; you can buy any plan once it has ended.</li>
   <li><strong>Organisations.</strong> A plan applies to the organisation (team account)

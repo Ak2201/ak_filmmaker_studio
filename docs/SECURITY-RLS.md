@@ -1315,3 +1315,71 @@ call and one is a privilege grant:
 - The corporate-domain account is signed in with no `studio_members`
   row, so the gate holds it outside — fail-closed, working as designed.
   It needs a row, or an invite, before it can sync.
+
+## §55 KEEP THE BUDGET PRIVATE — WRITTEN 22 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-55-budget-private.sql`; checks in
+`scripts/schema-tests/budget-private.sql` (44, under `npm run test:schema`).
+
+**The rule.** `projects.budget_private` (not null, default false) is a
+per-film switch. While it is true, the two budget scopes of
+`project_data` — `library` (`fms_library_calc_v1`, the estimate) and
+`costs` (`fms_costs_v1`) — are readable and writable only by the owner
+and an unexpired `edit` collaborator (`has_budget_access()`). That is
+deliberately narrower than `has_project_access(pid, 'edit')`: an
+owner/admin of the organisation the film is in keeps every other scope
+(§6) but not a private budget (55.40–55.43). `view` and `comment`
+collaborators see zero rows for those scopes — not an error — and keep
+every other scope. While it is false nothing differs from before §55.
+
+**Where it is enforced.** One function, `has_scope_access(pid, scope,
+min_role)`: a budget scope (`is_budget_scope()`) on a private film needs
+`has_budget_access()`; anything else is `has_project_access(pid, min_role)` unchanged.
+It sits behind:
+
+- `pd_select` and `pd_write` on `project_data`. `pd_select` is also what
+  Realtime's `postgres_changes` evaluates per subscriber, so the live feed
+  is covered by the same line. (A DELETE event carries only the primary
+  key, `(project_id, scope)`, and Realtime does not filter those; it says
+  a budget row was removed, never what was in it.)
+- `cm_select`, `cm_insert` and `cm_update` on `comments`, because a
+  thread names the field it is on and a suggestion carries the value.
+
+**Who may flip it.** Only `projects.owner_id`. `proj_update` lets an
+`edit` collaborator write the row and RLS gates rows, never columns, so a
+policy could not stop an editor changing the switch; the BEFORE UPDATE
+trigger `projects_guard_budget_private` raises 42501 for anyone but the
+owner or a privileged caller (service role / SQL editor). The client path
+is `set_budget_private(p_project uuid, p_private boolean)`, authenticated
+only, 42501 for a non-owner AND for a film that does not exist (one
+answer, no id oracle), 22023 for null.
+
+**Every other read of `project_data`, checked 22 Oct 2026:**
+`screening_open()` returns only story/feature/short/scenes (55.33 proves
+it still does); the admin export (§45), Customer 360 (§42), sync limits
+(§44) and usage cohorts (§43) are administrator-only and read the owner's
+own films; presence (§48) carries no project data. No security-definer
+function hands `project_data` rows to a collaborator.
+
+**Not covered, on purpose (the spec names two scopes):** budget figures a
+user has typed into some OTHER scope — a cost in a scene note, a rate on a
+contact, the DPR inside `locations` — stay readable by a viewer. So do the
+blueprints' OWN budget questions: `v2s11_total` / `_atl` / `_btl` /
+`_post` / `_cont` / `_largest` / `_expday` in `feature` and `s10_budget`
+in `short`. RLS gates rows, not keys inside a row, and `screening_open()`
+returns `feature` and `short` to a screening pass, so those answers reach
+a pass holder too (55.38, 55.39). The budget page's copy and the FAQ say
+so; hiding them would need a key-stripping read path for pull, Realtime
+and the screening room.
+
+**Regression probe.** Replaying `supabase-schema.sql` (§1/§9/§10) after
+§55 silently restores the unguarded `pd_*` / `cm_*` policies. §55.8 ends
+with a read that must answer 5; 55.37 and 55.44 assert the same locally.
+`library_prefs` (`fms_library_prefs_v1`) is not a budget scope.
+
+**Live checks to run** (two real accounts, after §55):
+1. Owner turns the switch on for a film shared `view` with account B.
+2. As B: `GET /rest/v1/project_data?project_id=eq.<id>&select=scope` lists
+   no `library` / `costs`; `scenes` is still there.
+3. As B: `POST /rest/v1/rpc/set_budget_private` → 403 / 42501.
+4. Owner turns it off; step 2 lists both again.

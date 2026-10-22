@@ -9,14 +9,33 @@
    the DOM, and nothing here writes; every write is still a costs.js
    call the view makes.
    ============================================================ */
-import { INR } from './money.js';
+import { INR, fmtINR, fmtMoney, parseAmount } from './money.js';
 import C from './costs.js';
 import { listContacts, listCallSheets } from './contacts.js';
 import { calendarDays } from './locations.js';
 import wages from '../data/wages.fefsi.json';
 
-/** A rupee figure, exact, with a real minus for a negative. */
-export const rs = (n) => (n < 0 ? '−₹ ' : '₹ ') + INR.format(Math.round(Math.abs(n || 0)));
+/* The budget's currency, as of the last costContext() — which every
+   render calls first, so the formatters below always print the
+   currency of the figures they are printing. 'INR' until then. */
+let shown = 'INR';
+/** The currency the cost tabs are showing: 'INR' | 'USD'. */
+export const shownCurrency = () => shown;
+/** The currency's sign, for field labels: '₹' or '$'. */
+export const sym = () => (shown === 'USD' ? '$' : '₹');
+
+/** A budget figure, exact, with a real minus for a negative. A rupee
+    figure is exactly what it always was. */
+export const rs = (n) => (shown === 'USD'
+  ? fmtMoney(n, 'USD')
+  : rupees(n));
+/** A RUPEE figure whatever the budget is in: the FEFSI wage table's
+    published bata is a rupee figure and must never wear a dollar sign. */
+export const rupees = (n) => (n < 0 ? '−₹ ' : '₹ ') + INR.format(Math.round(Math.abs(n || 0)));
+/** The glance-sized magnitude (fmtINR for rupees). */
+export const glance = (n) => (shown === 'USD' ? fmtMoney(n, 'USD', true) : fmtINR(n));
+/** Parse a typed figure in the budget's currency (parseNum for rupees). */
+export const amountOf = (s) => parseAmount(s, shown);
 /** A percentage, or a dash for none. */
 export const pct = (n) => (n === null || n === undefined ? '—' : n + '%');
 /** Today as the wall-clock 'YYYY-MM-DD' a date field holds. */
@@ -30,6 +49,7 @@ export const label = (list, id) => (list.find((x) => x.id === id) || {}).label |
 /** Everything a render reads, read once. */
 export function costContext() {
   let contacts = [], sheets = [], days = [];
+  shown = C.budgetCurrency();
   try { contacts = listContacts(); } catch (e) { /* none */ }
   try { sheets = listCallSheets(); } catch (e) { /* none */ }
   try { days = calendarDays(); } catch (e) { /* none */ }
@@ -64,4 +84,4 @@ export function wageHintRows(ctx, department) {
   return own.length ? [rows[0], ...own] : rows;
 }
 
-export default { rs, pct, today, label, costContext, crewAccountFor, wageHintRows };
+export default { rs, rupees, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows };

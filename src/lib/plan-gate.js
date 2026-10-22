@@ -441,23 +441,10 @@ export function labelFor(id) {
 function includedLine(ids, cta) {
   const top = Billing.planRank(plan) >= Billing.PLAN_ORDER.length - 1;
   const line = h('p.pg-lock-plan', { text: top ? '' : PAID_FALLBACK });
-  lowestPlanWith(ids).then((p) => {
-    if (!p) return;
-    const name = p.name || Billing.planName(p.id);
-    const paise = Billing.priceFor(p, 'year');
-    line.textContent = 'Included in the ' + name + ' plan' + (paise > 0 ? ' — ' + Billing.fmtPaise(paise) + ' a year, about ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day.' : '.');
-    if (cta) {
-      const q = new URLSearchParams({ plan: p.id });
-      if (ids.length === 1) q.set('for', ids[0]);
-      cta.href = 'purchase.html?' + q.toString();
-    }
-    const c = window.StudioCloud;
-    if (!cta || !c || !c.getSession || !c.getSession()) return;
-    Billing.quote(p.id, null).then((q) => {
-      if (!q || !q.ok || !(q.amount_paise > 0)) return;
-      cta.textContent = 'UPGRADE FOR ' + Billing.fmtPaise(q.amount_paise) + (q.credit_paise > 0 ? ' MORE' : '');
-    }).catch(() => { /* the plain button stands */ });
-  }).catch(() => { /* the fallback stands */ });
+  /* The price line and the button's figure, in the visitor's currency
+     (lock-price.js, loaded here only, never in first paint). */
+  lowestPlanWith(ids).then((p) => p && import('./lock-price.js').then((m) => m.fillLock(p, ids, line, cta)))
+    .catch(() => { /* the fallback stands */ });
   return line;
 }
 

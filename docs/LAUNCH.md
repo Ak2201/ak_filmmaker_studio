@@ -197,6 +197,19 @@ that one.
 
 ## 4. Run the schema sections that have never run
 
+> **NOT YET RUN LIVE (22 Oct 2026) — run BEFORE promoting the release that carries them, in order, each checksummed:**
+>
+> 1. **§55** `schema-55-budget-private.sql` — keep the budget private (RLS on the
+>    `library` / `costs` scopes). No function redeploy. sha256 in `supabase/schema/README.md`.
+> 2. **§56** `schema-56-usd-checkout.sql` — dollar checkout outside India
+>    (`docs/US-MARKET-PLAN.md`, `docs/BILLING.md` §24, `docs/LIVE-STEPS-2026-10-21-usd.md`).
+>    Then redeploy ALL FOUR functions with the CLI, enable USD / international payments on
+>    Razorpay, type the dollar prices in the console, and only then `admin_set_usd_checkout(true)`.
+>    Rupee checkout keeps working at every step in between; a client without §56 falls back to rupees.
+>
+> §53 and §54 ran live on 22 Oct 2026 and the four functions were redeployed that day
+> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §57.
+
 > **RAN LIVE 19 Oct 2026 (§36 re-run, §48–§51), each checksummed and probed over PostgREST** —
 > §48 `can_join_presence` and §49 `co_editing_enabled` answer, `claim_share` now answers 42501
 > "Sign in required" instead of failing 42702, anonymous `start_trial` is refused; §50 has no
@@ -215,7 +228,7 @@ that one.
 >    **`rzp-verify`** (`docs/BILLING.md` §21).
 >
 > §32–§39 ran live on 12 Oct and §40–§47 on 13 Oct (`docs/HANDOFF.md` §4,
-> `supabase/schema/README.md`). The next free section is §53 (§52 ran live 21 Oct 2026).
+> `supabase/schema/README.md`). (§52 ran live 21 Oct 2026; see the block above for §53 onward.)
 > The only unfinished piece of what follows is the Resend setup behind §35. The notes below
 > are the record of how each batch was run.
 

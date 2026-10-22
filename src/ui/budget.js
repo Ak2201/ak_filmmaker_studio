@@ -22,15 +22,16 @@
    is a migration, not a rename.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import { parseNum, fmtINR, INR } from '../lib/money.js';
+import { parseAmount, fmtMoney, fmtINR, INR } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
-  rateHintParts, fmtINRExact, itemNameOf, totalCaption, useDaysMessage,
-  scheduleFacts, scheduleHint, songDaysHint
+  rateHintParts, itemNameOf, totalCaption, useDaysMessage,
+  scheduleFacts, scheduleHint, songDaysHint,
+  budgetCurrency, setBudgetCurrency, currencyMismatch, fmtExact, currencySign
 } from '../lib/budget-model.js';
-import { readAll as readCosts } from '../lib/costs.js';
+import C, { readAll as readCosts, calcHasContent, costsHasContent, projectCurrency } from '../lib/costs.js';
 import { highestLineIndex, rowSpan } from '../lib/budget-line-ids.js';
-import { askDanger } from './dialog.js';
+import { ask, askDanger } from './dialog.js';
 import { revealTarget } from './tabs.js';
 import { button, badge, sym } from './kit/index.js';
 
@@ -63,6 +64,15 @@ import { button, badge, sym } from './kit/index.js';
    ============================================================ */
 /* The key, the presets and the rate hint live in src/lib/budget-model.js. */
 let calcCount = 0;
+
+/* THE BUDGET'S CURRENCY, read once per render (budgetCurrency() in
+   budget-model.js; the rule is in costs.js). 'INR' draws, parses and
+   prints exactly what this page always did; 'USD' swaps the sign, the
+   parser (money.js parseAmount) and the rate hints (rates.us.json). */
+let cur = 'INR';
+const sign = () => currencySign(cur);
+const money = (n) => fmtExact(n, cur);
+const amount = (s) => parseAmount(s, cur);
 
 /** The item this row is actually about: custom name wins, then preset. */
 function rowItemName(row) {
@@ -112,10 +122,10 @@ function buildCalcRow(idx) {
   ]);
 
   const rateCell = h('div.calc-cell', {}, [
-    h('label.calc-label', { for: ids.rate, text: 'Rate (₹ per day)' }),
+    h('label.calc-label', { for: ids.rate, text: 'Rate (' + sign() + ' per day)' }),
     frame(h('input', {
       id: ids.rate, type: 'text', inputmode: 'decimal',
-      'data-key': ids.rate, placeholder: '₹/day', autocomplete: 'off'
+      'data-key': ids.rate, placeholder: sign() + '/day', autocomplete: 'off'
     }), true),
     h('span.calc-note', { 'data-role': 'card-rate' })
   ]);
@@ -125,7 +135,7 @@ function buildCalcRow(idx) {
   // the others, so the phone layout never shows a bare number box.
   const totalCell = h('div.calc-cell', {}, [
     h('span.calc-label', { text: 'Subtotal' }),
-    h('span.total-cell.k-mono', { id: `ci_${idx}_subtotal`, text: '₹ 0' }),
+    h('span.total-cell.k-mono', { id: `ci_${idx}_subtotal`, text: money(0) }),
     /* days × rate, spelled out: the phone's card drops the column
        captions, so the sum behind the figure is said once, here.
        Derived from the two fields every update; hidden when empty and
@@ -191,12 +201,12 @@ function updateCalc() {
   let count = 0;
 
   document.querySelectorAll('#calcRows .calc-row').forEach((row) => {
-    const days = parseNum(row.querySelector('[data-key$="_days"]').value);
-    const rate = parseNum(row.querySelector('[data-key$="_rate"]').value);
+    const days = amount(row.querySelector('[data-key$="_days"]').value);
+    const rate = amount(row.querySelector('[data-key$="_rate"]').value);
     const sub = days * rate;
 
     const subEl = row.querySelector('.total-cell');
-    subEl.textContent = fmtINRExact(sub);
+    subEl.textContent = money(sub);
 
     // The item the row is about is now part of the row's meaning:
     // it names the subtotal for assistive tech and shows the rate
@@ -204,16 +214,16 @@ function updateCalc() {
     const name = rowItemName(row);
     row.dataset.item = name;
     subEl.setAttribute('aria-label',
-      name ? `Subtotal for ${name}: ${fmtINRExact(sub)}` : `Subtotal: ${fmtINRExact(sub)}`);
+      name ? `Subtotal for ${name}: ${money(sub)}` : `Subtotal: ${money(sub)}`);
 
     const eqEl = row.querySelector('[data-role="calc-eq"]');
-    if (eqEl) eqEl.textContent = days > 0 && rate > 0 ? `${INR.format(days)} d × ${fmtINRExact(rate)}` : '';
+    if (eqEl) eqEl.textContent = days > 0 && rate > 0 ? `${INR.format(days)} d × ${money(rate)}` : '';
 
     /* The hint names where the figure came from; a re-checked one
        links the page it was read off (rateHintParts). Rebuilt only
        when it changes, so typing a rate does not churn the link. */
     const noteEl = row.querySelector('[data-role="card-rate"]');
-    const hint = rateHintParts(name);
+    const hint = rateHintParts(name, cur);
     const sig = hint.text + '|' + (hint.source ? hint.source.url : '');
     if (noteEl.dataset.sig !== sig) {
       noteEl.dataset.sig = sig;
@@ -233,9 +243,9 @@ function updateCalc() {
 
   const out = document.getElementById('calcTotal');
   if (!out) return;
-  const caption = totalCaption(total, count, fmtINR);
+  const caption = totalCaption(total, count, cur === 'USD' ? (n) => fmtMoney(n, 'USD', true) : fmtINR);
   out.replaceChildren(
-    document.createTextNode(fmtINRExact(total) + ' '),
+    document.createTextNode(money(total) + ' '),
     h('span', { text: caption })
   );
 }
@@ -310,6 +320,10 @@ async function resetCalc() {
   let high = 0;
   try { high = highestLineIndex(readCalcData(), readCosts()); } catch (e) { high = calcCount; }
   clearCalcData();
+  /* A cleared estimate is a new budget, and a new budget follows the
+     film. When that moves its currency, every label on the page is
+     wrong, so the page is drawn again rather than patched. */
+  if (budgetCurrency() !== cur) { location.reload(); return; }
   const wrap = document.getElementById('calcRows');
   if (wrap) wrap.replaceChildren();
   calcCount = Math.max(high, calcCount);
@@ -399,6 +413,28 @@ function renderScheduleLink() {
   ]);
 }
 
+/* THE CURRENCY NOTE — only when the budget's currency is not the
+   film's AND the budget has money in it (an empty budget simply
+   follows the film). A budget is never converted or relabelled by a
+   change of region; this is the one deliberate way to relabel it, and
+   it changes the LABEL only: 25,000 stays 25,000. Returns null (which
+   h() skips) when there is nothing to say, so a rupee budget on an
+   Indian film draws exactly what it always did. */
+function currencyNote() {
+  const film = projectCurrency();
+  let hasMoney = false;
+  try { hasMoney = calcHasContent(readCalcData()) || costsHasContent(C.readAll()); } catch (e) { hasMoney = false; }
+  const text = currencyMismatch(cur, film, hasMoney);
+  if (!text) return null;
+  return h('div.bud-cur', { role: 'note' }, [
+    h('p.hint', { text }),
+    button({
+      label: 'Label this budget in ' + currencySign(film), icon: 'sync_alt', size: 'sm', variant: 'ghost',
+      action: 'budget-currency', attrs: { 'data-cur': film }
+    })
+  ]);
+}
+
 function renderCalculator() {
   const head = h('div.k-panel-head', {}, [
     h('h3.k-panel-title', { text: 'Quick Cost Estimator' }),
@@ -425,21 +461,30 @@ function renderCalculator() {
          has_project_access(…, 'view') admits: the owner, an unexpired
          collaborator at ANY role (a view link included) and the
          owner/admin of the project's account; pd_write needs 'edit'.
-         screening_open() returns story/feature/short/scenes only. Said
-         here because a budget is the one module people assume is
+         screening_open() returns story/feature/short/scenes only.
+         Schema §55 adds the owner's "Keep the budget private" switch
+         (budget-privacy-ui.js puts it right after this line): on, the
+         two budget scopes need the owner or an edit link (not even an
+         organisation admin). The blueprint's budget answers sit in the
+         'feature' / 'short' scopes, which a screening pass does open,
+         so the sentence says they are not covered. Said here because a budget is the one module people assume is
          private and is not. */
       h('p.hint.bud-who', {
         text: 'Once it syncs, anyone you share this project with can see the budget, '
-            + 'a view-only link included; only an edit link lets them change it. '
-            + 'A screening pass does not show it.'
+            + 'a view-only link included, and only an edit link lets them change it, '
+            + 'unless you keep the budget private: then only you and people with an '
+            + 'edit link can see it. A screening pass does not show it. Figures typed '
+            + 'into the blueprint\u2019s budget questions are not part of this page '
+            + 'and stay visible to anyone you share the film with, a screening pass included.'
       }),
+      currencyNote(),
       // Column captions for the desk layout. Each field carries its
       // own <label> too, so this strip is decoration to a screen
       // reader and is hidden from it rather than read twice.
       h('div.calc-row.head', { 'aria-hidden': 'true' }, [
         h('span', { text: 'Item' }),
         h('span', { text: 'Days' }),
-        h('span', { text: 'Rate (₹/day)' }),
+        h('span', { text: 'Rate (' + sign() + '/day)' }),
         h('span', { text: 'Subtotal' })
       ]),
       h('div#calcRows'),
@@ -454,7 +499,7 @@ function renderCalculator() {
     h('div.calc-grand', {}, [
       h('span.lab', { text: 'GRAND TOTAL' }),
       h('span#calcTotal.total', { 'aria-live': 'polite' }, [
-        '₹ 0 ', h('span', { text: 'across 0 line items' })
+        money(0) + ' ', h('span', { text: 'across 0 line items' })
       ])
     ])
   ]);
@@ -471,6 +516,7 @@ function renderCalculator() {
 
 /** The estimator and the schedule link, as one block. */
 export function renderBudget() {
+  cur = budgetCurrency();
   const frag = document.createDocumentFragment();
   frag.append(renderScheduleLink());
   frag.append(renderCalculator());
@@ -497,6 +543,18 @@ export const BUDGET_ACTIONS = {
   'add-5': () => focusNewRow(addCalcRow(5)),
   reset: resetCalc,
   print: () => window.print(),
+  'budget-currency': async (el) => {
+    const want = el && el.dataset ? el.dataset.cur : '';
+    if (!want || want === cur) return;
+    const ok = await ask({
+      title: 'Label this budget in ' + currencySign(want) + '?',
+      body: 'Every figure keeps its number and only the currency sign changes: '
+        + money(25000) + ' becomes ' + fmtExact(25000, want) + '. Nothing is converted. A figure typed with a suffix (1.5L, 2cr, 2m, 1.5k) is written out in full first, so it keeps its number.',
+      confirm: 'Relabel'
+    });
+    if (!ok || !setBudgetCurrency(want)) return;
+    location.reload();
+  },
   'use-shoot-days': (el) => {
     const days = parseInt(el && el.dataset ? el.dataset.days : '', 10);
     if (!Number.isFinite(days) || days <= 0) return;

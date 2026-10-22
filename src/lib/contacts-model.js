@@ -16,6 +16,8 @@ import Locations from './locations.js';
 import Sun from './sun.js';
 import DPR from './dpr.js';
 import Geo from './recce-geo.js';
+/* Pure and import-free: the paperwork's date style (docs/US-MARKET-PLAN.md §A4). */
+import { paperDate } from './paper-date.js';
 
 /* A hue per department, so the rule down the side of a card carries
    data instead of decorating. Six hues, nine departments: the three
@@ -38,9 +40,12 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
 
 /** '2026-09-28' → '28 September 2026'. No Date object: a shoot day is a
     wall-clock date, and parsing it into an instant moves it a timezone. */
-export function prettyDate(iso) {
+export function prettyDate(iso, prefs) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
   if (!m) return iso || 'Date not set';
+  /* With the film's prefs, in its style: "12 February 2024" on an
+     Indian film, "February 12, 2024" on a US one (US-MARKET-PLAN §A4). */
+  if (prefs && prefs.dateStyle) return paperDate(m[0], prefs, 'long');
   return Number(m[3]) + ' ' + (MONTHS[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
 }
 
@@ -217,7 +222,7 @@ export const callLabel = (sheet, c) =>
 
 /** The sheet's facts, looked up now, for callsheet-text.js. `film` is
     the project's title (the view asks pdf.js for it). */
-export function factsOf(sheet, scenes, film) {
+export function factsOf(sheet, scenes, film, prefs) {
   const onSheet = sheetScenes(sheet, scenes);
   const sched = scheduleOf(sheet, scenes);
   const places = placesOf(onSheet);
@@ -231,7 +236,7 @@ export function factsOf(sheet, scenes, film) {
     film,
     title: sheet.title || 'Shoot day',
     dayNumber: sched.day || 0,
-    date: date ? prettyDate(date) : '',
+    date: date ? prettyDate(date, prefs) : '',
     generalCall: sheet.generalCall,
     wrap: sheet.wrap,
     location: sheet.location || (places[0] ? places[0].name : ''),

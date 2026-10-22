@@ -59,12 +59,14 @@ import { mountShell } from '../ui/shell.js';
 import { h, commitMain, delegate } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
-import { statStrip, badge, meter, button, eyebrow as kEyebrow, panel as kPanel, askText, pageHeader, field } from '../ui/kit/index.js';
+import { statStrip, badge, meter, button, buttonGroup, eyebrow as kEyebrow, panel as kPanel, askText, pageHeader, field } from '../ui/kit/index.js';
 /* The Title page: the Story stage's cover fields, the blueprint's own keys
    (src/lib/cover-fields.js), written through the merge-write. */
 import { readFields, writeFields, blobKey } from '../lib/blueprint-store.js';
 import { coverFields, coverNs } from '../lib/cover-fields.js';
 import { paperField } from '../ui/paper-field.js';
+import { filmRegion, setFilmRegion } from '../lib/film-region.js';   // = region.js currentProjectPrefs / setProjectRegion; film-region.js says why
+import '../ui/india-content.js';   // the India-only switch follows this film's region
 
 import { formatEighths } from '../lib/scenes.js';
 import { formatPages } from '../lib/script.js';
@@ -560,8 +562,39 @@ function renderTitlePage(project) {
     if (!TP_NOT_PROSE.has(el.dataset.key)) paperField(el);
   }
   sec.append(grid);
+  sec.append(renderRegionRow(project));
   return sec;
 }
+
+/* Where the film is being made (docs/US-MARKET-PLAN.md §A3). On the
+   project's ENTRY, beside its title and format — no data-key, no new
+   storage key. Set on a click only (setFilmRegion), never on load. */
+function renderRegionRow(project) {
+  const pp = filmRegion(project.id);
+  const now = pp.explicit ? pp.region : '';
+  const opt = (id, label, title) => button({
+    label, title, size: 'sm', variant: now === id ? 'primary' : 'secondary', action: 'tp-region',
+    attrs: { 'data-region': id, 'aria-pressed': now === id ? 'true' : 'false' }
+  });
+  return h('div.db-tp-region', {}, [
+    h('span.db-tp-region-label', { id: 'tpRegionLabel', text: 'Where is this film being made?' }),
+    buttonGroup([
+      opt('IN', 'India', 'Rupees, A4 and Indian dates on the paperwork, with the India-only checks.'),
+      opt('INT', 'Elsewhere', 'US dollars, US Letter and US dates on the paperwork; the India-only material is hidden.')
+    ], { label: 'Where is this film being made?' }),
+    h('p.db-tp-region-note', { text: !pp.explicit
+      ? 'Not set: this film started before films had a region, so its paperwork stays in rupees on A4 and its India-only material follows this device. Pick one to set it.'
+      : pp.region === 'IN'
+        ? 'India: rupees, A4 and Indian dates on the paperwork, with the certification checks and the Tamil help.'
+        : 'Elsewhere: US dollars, US Letter and US dates on the paperwork. The India-only material is hidden on this film\u2019s pages, never deleted.' })
+  ]);
+}
+delegate(app, 'click', '[data-action="tp-region"]', (e, el) => {
+  const p = Store.currentProject();
+  if (!p) return;
+  if (!setFilmRegion(el.getAttribute('data-region'), p.id)) { StudioUI.toastError('The film\u2019s region could not be changed.'); return; }
+  render();
+});
 
 /* Title page keys that are a date, a number or money, not writing. */
 const TP_NOT_PROSE = new Set(['meta_started', 'meta_runtime', 'v2_start', 'v2_shoot',

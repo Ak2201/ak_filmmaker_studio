@@ -41,9 +41,30 @@ import Shoot from '../lib/shootday.js';
 import Contacts from '../lib/contacts.js';
 import DPR from '../lib/dpr.js';
 import {
-  slug, STATE_WORD, incompleteScenes, needsFacts, niceDate, shortDate, placesOf, lightFor,
+  slug, STATE_WORD, incompleteScenes, needsFacts, niceDate as niceDateHere, shortDate as shortDateHere, placesOf, lightFor,
   timelinePlan, clockOf, lateExteriors, timesCells, wrapNote
 } from '../lib/shoot-model.js';
+import Store from '../lib/store.js';
+import { region } from '../lib/region.js';
+import { paperDate, paperPrefsOf } from '../lib/paper-date.js';
+
+/* The day's date in the FILM's style (docs/US-MARKET-PLAN.md §A4): an
+   Indian film reads "Wednesday, 21 October 2026" and "21 Oct", a US one
+   "Wednesday, October 21, 2026" and "Oct 21". The model's own two stay
+   as they were for a page that cannot ask (no store), and as the
+   fallback here. Derived per call, stored nowhere. */
+const DAY_ISO = /^(\d{4})-(\d{2})-(\d{2})/;
+function filmPrefs() { try { return paperPrefsOf(Store.currentProject(), region()); } catch (e) { return null; } }
+function niceDate(iso) {
+  const m = DAY_ISO.exec(String(iso || ''));
+  const prefs = m && filmPrefs();
+  return prefs && prefs.dateStyle ? paperDate(m[0], prefs, 'weekdayLong') : niceDateHere(iso);
+}
+function shortDate(iso) {
+  const m = DAY_ISO.exec(String(iso || ''));
+  const prefs = m && filmPrefs();
+  return prefs && prefs.dateStyle ? paperDate(m[0], prefs, 'dayMonth') : shortDateHere(iso);
+}
 import { mountStageGuide } from '../ui/stage-guide.js';
 import Shots from '../lib/shots.js';
 import { pageHeader, statCard, statStrip, meter, button, chip, field, panel } from '../ui/kit/index.js';

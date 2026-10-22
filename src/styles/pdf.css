@@ -428,6 +428,14 @@
   body.pdf-callsheet .ct-sheets { padding: 0; }
   body.pdf-callsheet .ct-doc-table { break-inside: auto; }
   body.pdf-callsheet .ct-doc-table tr { break-inside: avoid; }
+  /* US Letter is 18mm shorter than A4 (sheet-letter claws 5mm back
+     from the margins), so on a Letter film the gaps between the
+     sheet's blocks close one step more: the rows and the type stay
+     as they are, the white space between them gives. */
+  body.pdf-callsheet.pdf-letter .ct-doc .ct-doc-facts,
+  body.pdf-callsheet.pdf-letter .ct-doc .ct-doc-table { margin-bottom: var(--s3); }
+  body.pdf-callsheet.pdf-letter .ct-doc .ct-doc-title { margin-bottom: var(--s2); }
+  body.pdf-callsheet.pdf-letter .ct-doc .ct-doc-notes { margin-top: var(--s2); }
 
   /* ----------------------------------------------------------
      SIDES AND REPORTS — reports.css owns these two, off the

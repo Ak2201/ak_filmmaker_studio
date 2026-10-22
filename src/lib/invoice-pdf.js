@@ -22,7 +22,7 @@ import { h } from './dom.js';
 import { BRAND } from './brand.js';
 import { exportPDF } from './pdf.js';
 import { amountInWords } from './invoice.js';
-import { fmtPaise } from '../../supabase/functions/_shared/razorpay.js';
+import { fmtMinor } from './price-model.js';
 import { REFUND_TERMS } from '../../supabase/functions/_shared/terms.js';
 
 const dateOf = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
@@ -33,7 +33,10 @@ const fact = (k, v) => (v ? h('tr', {}, [h('th', { scope: 'row', text: k }), h('
 
 export function buildInvoice(inv) {
   const gst = String(BRAND.gstin || '').trim();
-  const amt = fmtPaise(inv.amount_paise);
+  /* §56: amount_paise holds minor units of the invoice's `currency`
+     (copied from the payment); an invoice without one is rupees. */
+  const cur = inv.currency === 'USD' ? 'USD' : 'INR';
+  const amt = fmtMinor(inv.amount_paise, cur);
   const refundUrl = `https://${BRAND.host}/refund`;
   const seller = [h('strong', { text: BRAND.name }), line(BRAND.address), line(BRAND.supportEmail),
     line(BRAND.host), gst ? line('GSTIN ' + gst) : null].filter(Boolean);
@@ -44,6 +47,7 @@ export function buildInvoice(inv) {
     fact('Date of issue', dateOf(inv.issued_at)),
     fact('Payment date', inv.paid_at ? dateOf(inv.paid_at) : ''),
     fact('Payment method', 'Paid online via Razorpay'),
+    fact('Currency', cur === 'USD' ? 'US dollars (USD)' : 'Indian rupees (INR)'),
     fact('Razorpay payment ID', inv.razorpay_payment_id),
     fact('Razorpay order ID', inv.razorpay_order_id)
   ].filter(Boolean);
@@ -67,7 +71,7 @@ export function buildInvoice(inv) {
         h('td.inv-amt', { text: '1' }), h('td.inv-amt', { text: amt }), h('td.inv-amt', { text: amt })])]),
       h('tfoot', {}, [h('tr', {}, [h('th', { colspan: '3', text: 'Total paid' }), h('th.inv-amt', { text: amt })])])
     ]),
-    h('p.inv-words', { text: 'Amount in words: ' + amountInWords(inv.amount_paise) }),
+    h('p.inv-words', { text: 'Amount in words: ' + amountInWords(inv.amount_paise, cur) }),
     h('p.inv-note', { text: gst ? 'Bill of Supply.' : 'Bill of Supply — supplier not registered under GST. No tax is charged.' }),
     h('div.inv-terms', {}, [
       h('h2', { text: 'Refund policy' }),

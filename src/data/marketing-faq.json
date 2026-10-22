@@ -4,7 +4,8 @@
     "items": [
       {
         "q": "Is it a subscription?",
-        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay."
+        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay.",
+        "aUsd": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay."
       },
       {
         "q": "Can I get a refund?",
@@ -63,7 +64,7 @@
     "items": [
       {
         "q": "Where is my screenplay stored?",
-        "a": "In your own browser, on your device, first. Once you are signed in, your films also sync to the studio's cloud so they reach your other devices, and row-level security limits each project to you and the people you share it with (a view link can read it, an edit link can change it). You can switch sync off in Settings; the browser copy stays either way."
+        "a": "In your own browser, on your device, first. Once you are signed in, your films also sync to the studio's cloud so they reach your other devices, and row-level security limits each project to you and the people you share it with (a view link can read it, an edit link can change it). Anyone you share a project with can see its budget, unless you keep the budget private; then only you and people with an edit link can see the estimate, petty cash, crew payments and cost report. Figures typed into a blueprint's budget questions are not covered by that switch. You can switch sync off in Settings; the browser copy stays either way."
       },
       {
         "q": "Why do I sign in with Google if my work is local?",

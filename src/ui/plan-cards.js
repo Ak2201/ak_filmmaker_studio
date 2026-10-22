@@ -26,6 +26,15 @@
    end. A plan GRANTED for good says so and has nothing to renew. The
    period the host receives is always 'year'.
 
+   THE CURRENCY (docs/US-MARKET-PLAN.md §B/§C). The host passes `shop`, a
+   price-model.js view: India sees the rows' rupees; everybody else the
+   owner's dollar figures from price_notice('USD'). The CHARGE is said on
+   every card — a dollar card charged in rupees prints the rupee amount
+   ("Charged as ₹599 at checkout"), because hiding the amount taken until
+   checkout is drip pricing. Quotes (a promo code, an upgrade credit) are
+   asked in the ORDER currency and printed in whatever currency they came
+   back in; BUY sends that same currency to rzp-order, never an amount.
+
    PROMO CODES (schema section 20). "Have a code?" under the row: APPLY
    asks quote_order() for every plan the row can sell, and a card whose
    quote came back ok reprices itself — the discounted figure large,
@@ -41,10 +50,11 @@
 import { reveal } from '../lib/motion.js';
 import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
-import Billing, { fmtPaise, priceFor, perDayPaise, cap, planName, normalisePromo } from '../lib/billing.js';
+import Billing, { priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
 import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
+import { fmtMinor, perDayIn, orderCurrency, chargeCaption } from '../lib/price-model.js';
 import { meter } from './kit/meter.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
@@ -56,6 +66,15 @@ const daysTo = (iso) => Math.ceil((new Date(iso) - Date.now()) / 86400000);
 let busyPlan = '';
 let statusText = '';
 let hooks = { onBuy: null, rerender: null, onSuccess: null };
+/* The price view the host passed (price-model.js shopView), kept for the
+   page so BUY and the quotes use the currency the cards were drawn in. */
+let shopNow = null;
+const orderCur = () => orderCurrency(shopNow);
+/* A quote's figure in the quote's own currency (§56 answers *_minor and
+   `currency`; an older server answers *_paise only, and that is rupees). */
+const qCur = (q) => (q && q.currency === 'USD' ? 'USD' : 'INR');
+const qAmt = (q, k) => (q ? (Number.isInteger(q[k + '_minor']) ? q[k + '_minor'] : q[k + '_paise']) : 0);
+const qFmt = (q, k) => fmtMinor(qAmt(q, k), qCur(q));
 /* The plan just bought, in this module's memory for the page. Set when
    onBuy resolves; drawn above the row as "You're on <plan>". */
 let justBought = '';
@@ -66,7 +85,7 @@ let pickedDone = false;
 let picked = { id: '', why: '' };
 /* The code as typed, the quotes it earned (plan id -> quote_order()
    answer), a sentence when it was refused, and whether the box is open. */
-const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false, at: null };
+const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false, at: null, cur: '' };
 const appliedQuote = (planId) => { const q = promo.quotes[planId]; return q && q.ok && q.code ? q : null; };
 /* WHAT BILLING LOOKED LIKE, as one string: the plan held, until when,
    and how many payments are paid. A quote is only true of the state it
@@ -104,14 +123,15 @@ function requote() {
    arithmetic is the server's — this only shows it. A promo quote
    already includes the credit, so it wins when both exist. */
 const upg = { key: '', quotes: {}, busy: false };
-const upgradeQuote = (planId) => { const q = upg.quotes[planId]; return q && q.ok && q.credit_paise > 0 ? q : null; };
+const upgradeQuote = (planId) => { const q = upg.quotes[planId]; return q && q.ok && qAmt(q, 'credit') > 0 ? q : null; };
 function loadUpgradeQuotes(st, ids) {
   const paid = ((st && st.payments) || []).filter((p) => p.status === 'paid').length;
   if (!st || st.plan === 'free' || !paid || !ids.length) { upg.key = ''; upg.quotes = {}; return; }
-  const key = `${st.plan}:${paid}:${ids.join(',')}`;
+  const cur = orderCur();
+  const key = `${st.plan}:${paid}:${ids.join(',')}:${cur}`;
   if (upg.key === key || upg.busy) return;
-  upg.busy = true; upg.key = key;
-  Promise.all(ids.map((id) => Billing.quote(id, null).then((q) => [id, q], () => [id, null])))
+  upg.busy = true; upg.key = key; upg.quotes = {};
+  Promise.all(ids.map((id) => Billing.quote(id, null, cur).then((q) => [id, q], () => [id, null])))
     .then((answers) => { upg.quotes = Object.fromEntries(answers); })
     .finally(() => { upg.busy = false; if (hooks.rerender) hooks.rerender(); });
 }
@@ -239,7 +259,7 @@ function limitList(limits) {
 let staggered = false;
 
 /** `st` is billing_status() or null (signed out / unknown). */
-export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false } = {}) {
+export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false, shop = null } = {}) {
   hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender, onSuccess: onSuccess || hooks.onSuccess };
   lastSt = st;
   const nowKey = billingKey(st);
@@ -254,6 +274,12 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
      card wrongly and hides the upgrade line, while the order re-quotes
      on the server. Drop it and ask again (requote()). */
   if (promo.code && promo.at !== nowKey) requote();
+  shopNow = shop;
+  /* A code quoted in one currency is not a price in the other: switching
+     the currency drops the applied quotes and asks again in the new one
+     (requote() keeps the typed code). */
+  if (promo.code && promo.cur && promo.cur !== orderCur()) requote();
+  const usd = !!(shop && shop.currency === 'USD');
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? st.plan : null;
   const listed = listedIn(plans);
@@ -282,7 +308,13 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
        price and "Included in your plan" and drops under the buyer's own
        (plans.css), so the first full card a buyer reads is theirs. */
     const below = !!current && current !== 'free' && !isCurrent && !higher;
-    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (below ? '.is-below' : '') + (pq ? '.has-promo' : '') + (q && q.credit_paise > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id, 'aria-label': name + (isCurrent ? ' — your plan' : '') });
+    const credit = q ? qAmt(q, 'credit') : 0;
+    /* What this card prints with no quote: the dollar display figure for a
+       visitor shown dollars, else the row's rupees. */
+    const usdRow = usd && price !== null ? shop.plans[p.id] : null;
+    const listMinor = usdRow ? usdRow.minor : price;
+    const listCur = usdRow ? 'USD' : 'INR';
+    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (below ? '.is-below' : '') + (pq ? '.has-promo' : '') + (credit > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id, 'data-currency': q ? qCur(q) : listCur, 'aria-label': name + (isCurrent ? ' — your plan' : '') });
 
     /* HEAD: what it is called and who it is for. The badge row keeps its
        height on every card so the prices line up across the row. */
@@ -294,16 +326,21 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     ]));
 
     /* PRICE: the figure on one line, what kind of payment it is under it. */
+    /* Under the figure: what a day costs, and what is CHARGED. A quote is
+       the charge itself, so it says its own currency. */
+    const charged = q ? (qCur(q) === 'USD' ? 'Charged in US dollars' : 'Charged in Indian rupees')
+      : usdRow ? chargeCaption(shop, usdRow.inrMinor != null ? usdRow.inrMinor : price) : 'Charged in Indian rupees';
     card.append(h('div.pl-price-block', {}, [
       h('p.pl-price', {}, [
-        h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : fmtPaise(q ? q.amount_paise : price) }),
-        price === null ? null : h('span.pl-per', { text: q && q.credit_paise > 0 ? ' now' : ' a year' }),
-        q ? h('s.pl-list', { text: fmtPaise(q.list_paise), 'aria-label': 'list price ' + fmtPaise(q.list_paise) }) : null
+        h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : q ? qFmt(q, 'amount') : fmtMinor(listMinor, listCur) }),
+        price === null ? null : h('span.pl-per', { text: credit > 0 ? ' now' : ' a year' }),
+        q ? h('s.pl-list', { text: qFmt(q, 'list'), 'aria-label': 'list price ' + qFmt(q, 'list') }) : null
       ].filter(Boolean)),
-      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${fmtPaise(perDayPaise(price))} a day · 1 year, nothing renews by itself` })
-    ]));
-    if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${fmtPaise(q.amount_paise)} today: the ${fmtPaise(q.credit_paise)} left on your ${q.upgrade_from_name || planName(q.upgrade_from)} year counts toward it, and ${name}'s own year starts now.` }));
-    if (pq && pq.discount_paise > 0) card.append(h('p.pl-save', { text: `${fmtPaise(pq.discount_paise)} off with ${pq.code}` }));
+      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, 'list'), qCur(q)) : perDayIn(listMinor, listCur)} a day · 1 year, nothing renews by itself` }),
+      price === null ? null : h('p.pl-price-cap.pl-charge', { text: charged })
+    ].filter(Boolean)));
+    if (credit > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${qFmt(q, 'amount')} today: the ${qFmt(q, 'credit')} left on your ${q.upgrade_from_name || planName(q.upgrade_from)} year counts toward it, and ${name}'s own year starts now.` }));
+    if (pq && qAmt(pq, 'discount') > 0) card.append(h('p.pl-save', { text: `${qFmt(pq, 'discount')} off with ${pq.code}` }));
 
     /* ACTION. A button only where there is something to buy: a higher
        tier. The current tier says so instead, and a lower one offers
@@ -381,7 +418,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   /* The fine print, together: what kind of payment, the refund terms and
      the upgrade credit (refund.html §4, schema section 21), the legal. */
   wrap.append(h('div.pl-fine', {}, [
-    h('p.pl-note', { text: 'Each plan is a year of full access, paid once in INR through Razorpay. Nothing renews or is charged automatically: when the year is ending, renew from this page and the new year starts where the old one stops.' }),
+    h('p.pl-note', { text: `Each plan is a year of full access, paid once in ${orderCur() === 'USD' ? 'US dollars' : 'Indian rupees'} through Razorpay. Nothing renews or is charged automatically: when the year is ending, renew from this page and the new year starts where the old one stops.` }),
     h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final — which is why the trial comes first. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
       'By paying you agree to the ',
@@ -618,7 +655,9 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
   if (hooks.rerender) hooks.rerender();
   try {
     const q = appliedQuote(el.dataset.plan);
-    await hooks.onBuy(el.dataset.plan, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); }, q ? q.code : null);
+    /* The ORDER currency: the quote's, when a code is applied (it was
+       asked in the order currency), else what the cards say is charged. */
+    await hooks.onBuy(el.dataset.plan, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); }, q ? q.code : null, q ? qCur(q) : orderCur());
     statusText = '';
     justBought = el.dataset.plan;
     /* The quotes were taken before this purchase; see planCards(). */
@@ -642,13 +681,13 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   if (promo.busy || busyPlan) return;
   const typed = String(new FormData(form).get('code') || '');
   const code = normalisePromo(typed);
-  promo.typed = typed; promo.error = ''; promo.quotes = {}; promo.code = ''; promo.open = true;
+  promo.typed = typed; promo.error = ''; promo.quotes = {}; promo.code = ''; promo.open = true; promo.cur = orderCur();
   if (!code) { if (hooks.rerender) hooks.rerender(); return; }
   promo.busy = true;
   if (hooks.rerender) hooks.rerender();
   try {
     const ids = [...document.querySelectorAll('.pl-card [data-plan-action="buy"]')].map((b) => b.dataset.plan);
-    const answers = await Promise.all(ids.map((id) => Billing.quote(id, code).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: err.message || 'The code could not be checked.' }])));
+    const answers = await Promise.all(ids.map((id) => Billing.quote(id, code, promo.cur).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: err.message || 'The code could not be checked.' }])));
     const quotes = Object.fromEntries(answers);
     const okIds = ids.filter((id) => quotes[id] && quotes[id].ok && quotes[id].code);
     if (okIds.length) { promo.quotes = quotes; promo.code = code; promo.at = billingKey(lastSt); }

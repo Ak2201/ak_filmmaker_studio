@@ -553,6 +553,14 @@ async function wheels(page, vp) {
     if (bar) { const r = bar.getBoundingClientRect(); if (r.height > 1 && r.bottom > 0) out.push({ label: 'the band', x: Math.round(r.left + r.width * 0.35), y: Math.round(r.top + r.height / 2) }); }
     return out;
   });
+  /* A fragment landing (story.html#guide, which feature.html and
+     short.html redirect to) is GUARDED by fragments.js for 2.5s: a drift
+     under half a screen is put back, and any reader input stands the
+     guard down. Our scrollTo below is not input, so on a short page whose
+     target sits at the bottom the guard snapped it back and the wheel ran
+     at the end of the page. Press a key that does nothing, as a reader's
+     first touch would, so the page is the reader's before we measure. */
+  await page.keyboard.press('Shift');
   for (const s of spots) {
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await page.waitForTimeout(80);

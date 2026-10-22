@@ -210,12 +210,11 @@ async function worker() {
     page.on('pageerror', (e) => errors.push(e.message));
     try {
       await page.goto(BASE + job.href, { waitUntil: 'networkidle', timeout: 45000 });
-      /* The shell loads some band controls on IDLE (video-help.js, up to
-         8s later). Wait for an idle period of our own — queued after the
-         shell's — and for what it imported, or a slow load reads as a
-         different band. */
-      await page.evaluate(() => new Promise((r) => (window.requestIdleCallback
-        ? requestIdleCallback(() => r(), { timeout: 9000 }) : setTimeout(r, 1500))));
+      /* The shell defers some band controls (video-help.js) to the first
+         real interaction, or 8s. Waiting for idle raced that timer, so a
+         slow load read as a different band. Make the interaction happen,
+         then wait for what it imported: every load sees the same band. */
+      await page.mouse.move(2, 2);
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(500);
       results.push({ ...job, ...(await page.evaluate(probe)), errors });

@@ -28,10 +28,21 @@
         urgency nobody enforces)
      6. trials switched off: the trial strip and each card's "or start the
         free trial first" go, because offering one would be untrue
+     7. THE CURRENCY (docs/US-MARKET-PLAN.md §B): India sees rupees, every
+        other visitor the owner's dollar figures from price_notice('USD').
+        The build stamped rupees, so this only ever RE-QUOTES spans the
+        generator marked (data-price, data-price-day) and never parses a
+        figure back out of the page. A dollar card that is charged in
+        rupees says the rupee amount (data-price-charge); the sentences
+        that name the charge currency swap only when the server says
+        dollars are charged (data-charge). No answer: rupees stay, and
+        the line says so. The "Show prices in" switch records the
+        visitor's own pick (payCurrency in fms_studio_prefs_v1), on a
+        press only.
 
    WHAT IT MAY IMPORT. The same light leaves as marketing.js and start.js:
-   funnel.js (plain fetch), trial-time.js, start-auth.js, and
-   start-model.js, which is import-free. NOT store.js, chrome.js, cloud.js,
+   funnel.js (plain fetch), trial-time.js, start-auth.js, and the
+   import-free start-model.js, region-core.js and price-model.js. NOT store.js, chrome.js, cloud.js,
    gate.js, plan-gate.js, plans.js or billing.js: each is, or drags in, the
    ~209 KB `studio` chunk. prove:growth asserts no supabase-* and no
    studio-* chunk is fetched here, and test:marketing checks this list.
@@ -40,7 +51,9 @@ import './marketing.js';
 import '../styles/pricing.css';
 import { bumpEvent, bumpOnce, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
 import * as StartAuth from '../lib/start-auth.js';
-import { stashPlan, buyHref, risingTiers, priceRiseBand, foundingLeft, timeLeft, currentPrices, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
+import { stashPlan, buyHref, risingTiers, priceRiseBand, foundingLeft, timeLeft, deviceRegion, currentPrices, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
+import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion } from '../lib/region-core.js';
+import { shopView, fmtMinor, perDayIn, fromDay, chargeCaption, currencySentence, riseMoney } from '../lib/price-model.js';
 
 const root = document.documentElement;
 const byId = (id) => document.getElementById(id);
@@ -106,9 +119,16 @@ function el(tag, attrs, text) {
   if (text != null) n.textContent = text;
   return n;
 }
-function renderPriceRise(notice) {
+let riseTimer = 0;
+function renderPriceRise(notice, view) {
+  /* drawn again when the currency changes: clear the last drawing first */
+  for (const n of document.querySelectorAll('.pr-price-next')) n.remove();
+  const band0 = byId('offer');
+  if (band0) band0.hidden = true;
+  clearInterval(riseTimer);
   if (!notice || !Array.isArray(notice.plans)) return;
-  for (const p of risingTiers(notice)) {
+  const money = riseMoney(view) || undefined;
+  for (const p of risingTiers(notice, money)) {
     let li;
     try { li = document.querySelector(`.pr-tiers li[data-tier="${CSS.escape(p.id)}"]`); } catch (e) { li = null; }
     const price = li && li.querySelector('.pr-price');
@@ -117,7 +137,7 @@ function renderPriceRise(notice) {
   }
   const band = byId('offer');
   if (!band) return;
-  const rise = priceRiseBand(notice, Date.now());     // null: nothing rising, or it has already fired
+  const rise = priceRiseBand(notice, Date.now(), money);     // null: nothing rising, or it has already fired
   if (!rise) return;
   const ends = rise.ends;
   const line = byId('offerLine');
@@ -133,54 +153,105 @@ function renderPriceRise(notice) {
   tick();
   /* Minutes, not seconds: a ticking second counter on a three-week
      deadline is pressure theatre. */
-  setInterval(tick, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+  riseTimer = setInterval(tick, 60000);
   band.hidden = false;
+  bandTick = tick;
 }
+let bandTick = null;
+document.addEventListener('visibilitychange', () => { if (!document.hidden && bandTick) bandTick(); });
+
+/* ---- 7. the currency ------------------------------------------------ */
+const wanted = () => pricingCurrency({ override: readPayCurrency(), chosen: deviceRegion(), guess: guessVisitorRegion() });
+/* The build's rupee text, kept the first time a span is re-quoted so a
+   switch back to rupees restores exactly what was stamped. */
+function setPrice(node, text) {
+  if (node.dataset.inr == null) node.dataset.inr = node.textContent;
+  node.textContent = text == null ? node.dataset.inr : text;
+}
+function applyView(view, want, answered) {
+  const usd = view.currency === 'USD';
+  for (const n of document.querySelectorAll('[data-price]')) {
+    const r = view.plans[n.dataset.price];
+    setPrice(n, usd && r ? fmtMinor(r.minor, 'USD') : null);
+  }
+  for (const n of document.querySelectorAll('[data-price-day]')) {
+    const id = n.dataset.priceDay;
+    const r = view.plans[id];
+    setPrice(n, !usd ? null : id === 'from' ? (fromDay(view) || null) : r ? perDayIn(r.minor, 'USD') : null);
+  }
+  for (const n of document.querySelectorAll('[data-price-charge]')) {
+    const r = view.plans[n.dataset.priceCharge];
+    n.textContent = usd && r ? chargeCaption(view, r.inrMinor) : '';
+    n.hidden = !n.textContent;
+  }
+  const fromUsd = usd ? fromDay(view) : '';
+  const titleWas = stampedFromDay(TITLE0);
+  document.title = fromUsd && titleWas ? swapFigure(TITLE0, titleWas, fromUsd) : titleInr;
+  const dollarsCharged = view.charge === 'USD';
+  for (const n of document.querySelectorAll('[data-charge]')) n.hidden = (n.dataset.charge === 'USD') !== dollarsCharged;
+  const sw = document.querySelector('[data-price-switch]');
+  /* The switch only where the server answers at all: with no cloud
+     project (or offline) there are no dollar figures to switch to. */
+  if (sw) {
+    sw.hidden = !answered;
+    for (const b of sw.querySelectorAll('[data-price-cur]')) b.setAttribute('aria-pressed', String(b.dataset.priceCur === want));
+    const line = byId('prCurLine');
+    if (line) line.textContent = currencySentence(view);
+  }
+}
+/* price_notice('USD') carries the rupee keys as well, so one call serves
+   both the dollar cards and the rise band; if it is not answered, the
+   zero-argument rupee notice still feeds the band. */
+async function notices(want) {
+  const usd = want === 'USD' ? await priceNotice('USD') : null;
+  return { usd, notice: usd || await priceNotice() };
+}
+function show(want, { usd, notice }, off) {
+  const view = shopView(want, usd);
+  applyView(view, want, !!notice);
+  if (!off) renderPriceRise(notice, view);
+}
+let purchasesOff = false;
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-price-cur]');
+  if (!b || b.getAttribute('aria-pressed') === 'true') return;
+  writePayCurrency(b.dataset.priceCur);     // the visitor's own pick, on a press
+  const want = b.dataset.priceCur;
+  notices(want).then((n) => show(want, n, purchasesOff)).catch(() => {});
+});
 
 /* ---- 4b. the price today ------------------------------------------------
    LIST_PRICE is stamped at build time and is the price BEFORE any rise.
    The rise fires on a date OR on the buyer that fills the cap, so no
    rebuild can be timed for it, and checkout quotes effective_price(). This
-   brings the page to the same figure. Each card is found by its tier and
-   rewritten in place (never by matching the old value across the page:
-   ₹599→₹999 then ₹999→₹1,999 would chain); the table head's cells are in
-   the cards' order, which the generator writes from one list. The one
-   page-wide swap is the cheapest plan's "from about ₹X a day", done once,
-   and only in text that says "a day". */
-function firstText(node) {
-  for (const c of node.childNodes) if (c.nodeType === 3 && c.nodeValue.trim()) return c;
-  return null;
-}
+   brings the page's RUPEE figures to the same price. Every price in
+   visible text sits in a span that says what it is (data-price="<tier>",
+   data-price-day="<tier>|from", make-marketing-pages.mjs priceSpans()), so
+   each is rewritten by what it is, never by matching the old value across
+   the page (₹599→₹999 then ₹999→₹1,999 would chain). The rupee figure is
+   kept on the span (data-inr), which is what applyView() restores when the
+   visitor is shown rupees; the title, which cannot carry a span, is
+   rebuilt from the build's own title. */
+const TITLE0 = document.title;
+let titleInr = TITLE0;
+function setInr(node, text) { node.dataset.inr = text; node.textContent = text; }
 function renderPricesNow(notice) {
   const now = currentPrices(notice);
   if (!now.length) return;
   const byTier = new Map(now.map((p) => [p.id, p]));
-  const cards = [...document.querySelectorAll('.pr-tiers li[data-tier]')];
-  const heads = [...document.querySelectorAll('.pr-th-price')];
-  cards.forEach((li, i) => {
-    const p = byTier.get(li.dataset.tier);
-    if (!p) return;
-    const price = li.querySelector('.pr-price');
-    const t = price && firstText(price);
-    if (t && t.nodeValue.trim() !== p.price) {
-      const was = t.nodeValue.trim();
-      t.nodeValue = p.price;
-      const th = heads.length === cards.length ? heads[i] : null;
-      if (th && th.textContent.trim() === was) th.textContent = p.price;
-    }
-    const keep = li.querySelector('.pr-keep');
-    if (keep) keep.textContent = keep.textContent.replace(/₹\d+\.\d{2}/, p.day);
-  });
-  const fromNow = fromDayNow(notice);
-  const fromWas = stampedFromDay(document.body ? document.body.textContent : '');
-  if (!fromNow || !fromWas || fromNow === fromWas) return;
-  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-    if (n.parentElement && n.parentElement.closest('.pr-tiers, script, style')) continue;
-    if (/ a day\b/.test(n.nodeValue)) n.nodeValue = swapFigure(n.nodeValue, fromWas, fromNow);
+  for (const n of document.querySelectorAll('[data-price]')) {
+    const p = byTier.get(n.dataset.price);
+    if (p) setInr(n, p.price);
   }
-  document.title = swapFigure(document.title, fromWas, fromNow);
+  const fromNow = fromDayNow(notice);
+  for (const n of document.querySelectorAll('[data-price-day]')) {
+    const id = n.dataset.priceDay;
+    const fig = id === 'from' ? fromNow : (byTier.get(id) || {}).day;
+    if (fig) setInr(n, fig);
+  }
+  const fromWas = stampedFromDay(TITLE0);
+  if (fromNow && fromWas) titleInr = swapFigure(TITLE0, fromWas, fromNow);
+  document.title = titleInr;
 }
 
 /* ---- 5 and 6. purchases off, trials off --------------------------------
@@ -191,10 +262,12 @@ function hideTrial() {
   document.querySelectorAll('[data-trial], [data-trial-link]').forEach((n) => { n.hidden = true; });
 }
 try {
-  Promise.all([purchasesRequired(), priceNotice()]).then(([req, notice]) => {
-    renderPricesNow(notice);                  // a true figure whether or not purchases are on
-    if (req === false) { root.dataset.purchases = 'off'; hideTrial(); return; }
-    renderPriceRise(notice);
+  const want = wanted();
+  Promise.all([purchasesRequired(), notices(want)]).then(([req, n]) => {
+    const notice = n.notice;
+    renderPricesNow(notice);                  // a true rupee figure whether or not purchases are on
+    if (req === false) { purchasesOff = true; root.dataset.purchases = 'off'; hideTrial(); }
+    show(want, n, purchasesOff);
   }, () => {});
 } catch (e) { /* never breaks the page */ }
 try {

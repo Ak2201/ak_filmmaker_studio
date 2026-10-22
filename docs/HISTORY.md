@@ -2596,7 +2596,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
         field the blueprint did not store;
       - `rzp-order` refuses (502) when it cannot record the order, and marks
         the pending row failed (`attachOrder` in `_shared/razorpay.js`);
-      - **§54** (`schema-54-cap-locks.sql`, NOT YET RUN LIVE): the four
+      - **§54** (`schema-54-cap-locks.sql`, RUN LIVE 22 Oct 2026; the file's own header still says not run, left alone because editing it changes the checksum): the four
         plan-cap triggers take an advisory transaction lock before they
         count, proved by a real two-connection race in `test:schema`;
       - Stage Guides built on each render no longer leak their global
@@ -2617,3 +2617,35 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       that differ on purpose (revoke timing, a BOM, other id shapes,
       CORE/landing bundles) were KEPT and named in each commit.
 
+57. **The US / international market wave (21–22 Oct 2026).** The owner asked
+    for the US market and for location pricing: India sees and pays rupees,
+    everyone else dollars, at amounts the owner types in the console. Built
+    as a multi-agent workflow on `us/*` branches against one contract,
+    `docs/US-MARKET-PLAN.md`, then merged as `us/release`.
+    - **Region:** `src/lib/region-core.js` (pure, `startlib`) guesses the
+      visitor's region from the time zone and language, never a network
+      call. A film carries `region` ('IN' | 'INT') on its project entry and
+      the buyer's pick is `payCurrency` inside `fms_studio_prefs_v1`: no new
+      key. A film with no region keeps exactly the output it had.
+    - **Charging (§56, `schema-56-usd-checkout.sql`, NOT run live):** the
+      client sends only a currency; INR is priced from `plans`, USD from the
+      owner's `plan_prices`. Dollar checkout is OFF until the owner turns it
+      on (`admin_set_usd_checkout`). An international card on a rupee order
+      is RECORDED (`payments.international`, `card_country`) and shown in
+      the console, never blocked (owner, 22 Oct 2026). Refunds, receipts,
+      invoices and the affiliate report are per currency, never summed.
+      It was written as §54, then §55; both numbers were taken on develop
+      while it was being built (cap locks, budget privacy).
+    - **Product:** one Final Draft writer (`screenplay-fdx.js`, lazy) with a
+      round-trip test; a dollar budget with sourced US rate bands
+      (`rates.us.json`), the budget's currency fixed by its first figure;
+      Letter / A4 and date style follow the film; stripboard and DOOD CSV;
+      India-only content (CBFC, Tamil hints) hidden for INT films and INT
+      visitors, never removed from the DOM.
+    - **Legal:** terms, privacy (a US / California section, later sections
+      renumbered, ids kept) and refund wording match the code; the refund
+      policy's substance is unchanged (owner's call).
+    - **Review:** three reviewers found 18 defects (affiliate totals adding
+      cents to paise, a refund panel in the wrong currency, dashboard cards
+      ignoring the budget currency, a relabel that changed numbers, a Drive
+      pull deleting a film's region, …); all 18 fixed and tested.

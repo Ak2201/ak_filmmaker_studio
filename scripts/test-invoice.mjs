@@ -28,6 +28,10 @@ eq(invoiceNumber('2026-27', 1234567), 'FMS/2026-27/1234567', 'overflow is not tr
 
 eq(amountInWords(59900), 'Rupees Five Hundred Ninety-Nine only', 'words: ₹599');
 eq(amountInWords(149900), 'Rupees One Thousand Four Hundred Ninety-Nine only', 'words: ₹1,499');
+eq(amountInWords(1900, 'USD'), 'US Dollars Nineteen only', 'words: $19 (§56, a dollar invoice)');
+eq(amountInWords(1950, 'USD'), 'US Dollars Nineteen and Fifty Cents only', 'words: $19.50');
+eq(amountInWords(129900, 'USD'), 'US Dollars One Thousand Two Hundred Ninety-Nine only', 'words: $1,299 (international grouping)');
+eq(amountInWords(59900, 'INR'), 'Rupees Five Hundred Ninety-Nine only', 'words: an explicit INR is the rupee form');
 eq(amountInWords(49950), 'Rupees Four Hundred Ninety-Nine and Fifty Paise only', 'words: paise');
 eq(amountInWords(100), 'Rupees One only', 'words: ₹1');
 eq(amountInWords(12345678900), 'Rupees Twelve Crore Thirty-Four Lakh Fifty-Six Thousand Seven Hundred Eighty-Nine only', 'words: crore and lakh');

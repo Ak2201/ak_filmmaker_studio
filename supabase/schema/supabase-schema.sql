@@ -317,6 +317,9 @@ create policy proj_delete on public.projects
   for delete using (owner_id = auth.uid());
 
 -- ----- project_data ----------------------------------------------
+-- SUPERSEDED BY §55 (schema-55-budget-private.sql): pd_select / pd_write is restated there through
+-- has_scope_access(), so a private budget stays hidden. Replaying this block after §55
+-- silently puts the unguarded policy back; §55.8's live checks read pg_policy for it.
 drop policy if exists pd_select on public.project_data;
 create policy pd_select on public.project_data
   for select using (public.has_project_access(project_id, 'view'));
@@ -384,6 +387,9 @@ create policy sh_owner_write on public.shares
   );
 
 -- ----- comments --------------------------------------------------
+-- SUPERSEDED BY §55 (schema-55-budget-private.sql): cm_select / cm_insert is restated there through
+-- has_scope_access(), so a private budget stays hidden. Replaying this block after §55
+-- silently puts the unguarded policy back; §55.8's live checks read pg_policy for it.
 drop policy if exists cm_select on public.comments;
 create policy cm_select on public.comments
   for select using (public.has_project_access(project_id, 'view'));
@@ -401,6 +407,9 @@ create policy cm_insert on public.comments
 -- could therefore re-point their own comment at any project whose uuid
 -- they knew — including one their access had since been revoked, since
 -- the INSERT policy's has_project_access() check never runs on UPDATE.
+-- SUPERSEDED BY §55 (schema-55-budget-private.sql): cm_update is restated there through
+-- has_scope_access(), so a private budget stays hidden. Replaying this block after §55
+-- silently puts the unguarded policy back; §55.8's live checks read pg_policy for it.
 drop policy if exists cm_update on public.comments;
 create policy cm_update on public.comments
   for update using (
@@ -1516,6 +1525,9 @@ create policy sh_owner_write on public.shares
 -- 9.4 comments — same treatment for the two that inlined the owner
 --     lookup. cm_select already went through has_project_access and
 --     is left alone.
+-- SUPERSEDED BY §55 (schema-55-budget-private.sql): cm_update is restated there through
+-- has_scope_access(), so a private budget stays hidden. Replaying this block after §55
+-- silently puts the unguarded policy back; §55.8's live checks read pg_policy for it.
 drop policy if exists cm_update on public.comments;
 create policy cm_update on public.comments
   for update using (
@@ -1626,6 +1638,9 @@ create policy proj_update on public.projects
 -- proj_update, present on cm_update the whole time. Section 9
 -- recreated this policy and left it without one, which was a chance to
 -- fix it that was missed rather than a regression introduced.
+-- SUPERSEDED BY §55 (schema-55-budget-private.sql): cm_update is restated there through
+-- has_scope_access(), so a private budget stays hidden. Replaying this block after §55
+-- silently puts the unguarded policy back; §55.8's live checks read pg_policy for it.
 drop policy if exists cm_update on public.comments;
 create policy cm_update on public.comments
   for update

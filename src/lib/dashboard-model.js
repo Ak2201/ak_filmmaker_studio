@@ -14,7 +14,8 @@
    the shape the dashboard's renderers read.
    ============================================================ */
 import { BLUEPRINT, guideProgress, journey, stageStates, suggestNext, lastWorked } from './journey.js';
-import { parseNum, fmtINR, INR } from './money.js';
+import { parseAmount, fmtMoney } from './money.js';
+import { openBudgetCurrency } from './hub-status.js';
 import Scenes, { totalEighths } from './scenes.js';
 import Locations from './locations.js';
 import Contacts from './contacts.js';
@@ -63,12 +64,13 @@ export function readBlob(key) {
 
 /* Two figures, because a number card is 190px wide and eight digits in
    the display face wrap onto two lines there. The card face gets the
-   glanceable magnitude; the exact rupee figure goes in the note under
-   it, so nothing is hidden. */
-const fmtShort = fmtINR;
-
+   glanceable magnitude; the exact figure goes in the note under it, so
+   nothing is hidden. Both are in the BUDGET's currency (ci_currency),
+   parsed with the budget page's own parser, so the card and the page
+   agree about the same stored strings. */
 export function budgetStatus() {
   const calc = readBlob(LIB_CALC_KEY);
+  const currency = openBudgetCurrency(calc);
   const rows = {};
   for (const k of Object.keys(calc)) {
     const m = /^ci_(\d+)_(\w+)$/.exec(k);
@@ -78,13 +80,13 @@ export function budgetStatus() {
   }
   let lines = 0, total = 0;
   for (const row of Object.values(rows)) {
-    const sub = parseNum(row.days) * parseNum(row.rate);
+    const sub = parseAmount(row.days, currency) * parseAmount(row.rate, currency);
     if (sub > 0) { lines++; total += sub; }
   }
   return {
-    lines, total,
-    short: total ? fmtShort(total) : '₹ 0',
-    exact: '₹ ' + INR.format(Math.round(total))
+    lines, total, currency,
+    short: total ? fmtMoney(total, currency, true) : (currency === 'USD' ? '$0' : '₹ 0'),
+    exact: fmtMoney(total, currency)
   };
 }
 

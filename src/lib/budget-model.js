@@ -22,7 +22,7 @@ import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 import Scenes, { formatEighths, totalEighths } from './scenes.js';
 import * as Songs from './songs.js';
-import { parseNum, INR, USD, fmtMoney } from './money.js';
+import { parseNum, parseAmount, INR, USD, fmtMoney } from './money.js';
 import C, {
   norm, rowKey, CALC_KEY, CALC_CURRENCY, calcHasContent, resolveCurrency, projectCurrency,
   budgetCurrency as costsBudgetCurrency
@@ -66,15 +66,37 @@ function withCurrency(data) {
 /** The open budget's currency: 'INR' | 'USD'. Reading never writes. */
 export const budgetCurrency = costsBudgetCurrency;
 
-/** Relabel the budget (BOTH records) as `cur`. The figures are not
-    touched: nothing in the studio converts between currencies. A
+/** The estimator's rows as they must read under `want` to keep their
+    NUMBERS. A row is the string a person typed, and the two parsers
+    disagree about suffixes ("1.5L" is 1,50,000 in rupees and 1.5 in
+    dollars; "2m" the reverse), so a figure whose value would move is
+    rewritten as the plain number it meant under the old currency. A
+    figure both parsers read alike ("25,000", "$2,000" aside) is left as
+    typed. Pure. */
+export function relabelRows(data, from, want) {
+  const out = { ...data };
+  for (const k of Object.keys(out)) {
+    if (!/^ci_\d+_(days|rate)$/.test(k)) continue;
+    const s = out[k] == null ? '' : String(out[k]);
+    if (!s.trim()) continue;
+    const was = parseAmount(s, from);
+    if (was !== parseAmount(s, want)) out[k] = String(Math.round(was * 100) / 100);
+  }
+  return out;
+}
+
+/** Relabel the budget (BOTH records) as `cur`. Every figure keeps its
+    NUMBER: nothing in the studio converts between currencies, and a
+    figure typed with a currency's own suffix is written out as the
+    number it meant (relabelRows), so the sign is all that changes. A
     press only (the budget page's switch), never on load. */
 export function setBudgetCurrency(cur) {
   const want = normaliseCurrency(cur);
   if (!want) return false;
   let data = {};
   try { data = readCalcData() || {}; } catch (e) { return false; }
-  writeJSON(CALC_KEY, { ...data, [CALC_CURRENCY]: want });
+  const from = resolveCurrency({ calc: data, costs: C.readAll(), project: projectCurrency() });
+  writeJSON(CALC_KEY, { ...relabelRows(data, from, want), [CALC_CURRENCY]: want });
   C.setSettings({ currency: want });
   return true;
 }

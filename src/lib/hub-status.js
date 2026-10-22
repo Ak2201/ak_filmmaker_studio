@@ -11,8 +11,9 @@
    The open project's journey is a PARAMETER (`openJourney`), not a
    closure over the page: the page computes it once per render.
    ============================================================ */
-import { currentProject } from './store.js';
-import { parseNum } from './money.js';
+import Store from './store.js';
+import { parseAmount } from './money.js';
+import { normaliseCurrency, currencyForRegion, projectRegion } from './region-core.js';
 import { NOTE_PREFIX } from './backup.js';
 import { STAGES, guideJourney, nextGuideStep } from './journey.js';
 import { readText, keys as storedKeys } from './prefs.js';
@@ -29,7 +30,7 @@ export function stageLabelOf(id, complete) {
 /** The feature's stage line: the open feature project's journey when
  *  there is one, else the guide's own reading of this blob. */
 export function featureStageLabel(data, openJourney) {
-  const cur = currentProject();
+  const cur = Store.currentProject();
   if (cur && cur.format !== 'short' && openJourney) {
     return stageLabelOf(openJourney.current, openJourney.complete);
   }
@@ -145,8 +146,34 @@ export function computeShortStatus() {
   };
 }
 
+/* The budget's currency, read the way costs.js resolveCurrency() reads it
+   (the estimator's ci_currency, then the cost record's settings.currency,
+   INR for a budget with money and no word, the film's own currency for an
+   empty one). Restated rather than imported because costs.js is the
+   budget page's module and would drag itself into the hub and the
+   dashboard; test:budget-usd holds the two to the same answers. */
+export function calcCurrency(calc, costs, entry) {
+  const a = normaliseCurrency(calc && calc.ci_currency);
+  if (a) return a;
+  const b = normaliseCurrency(costs && costs.settings && costs.settings.currency);
+  if (b) return b;
+  const hasCalc = calc && Object.keys(calc).some((k) => /^ci_\d+_/.test(k) && String(calc[k] == null ? '' : calc[k]).trim() !== '');
+  const hasCosts = costs && ((costs.expenses || []).length + (costs.floats || []).length + (costs.payments || []).length > 0
+    || (costs.crew && typeof costs.crew === 'object' && Object.keys(costs.crew).length > 0));
+  if (hasCalc || hasCosts) return 'INR';
+  try { return entry ? currencyForRegion(projectRegion(entry)) : 'INR'; } catch (e) { return 'INR'; }
+}
+
+/** The open budget's currency, from storage. Reading never writes. */
+export function openBudgetCurrency(calc) {
+  let entry = null;
+  try { entry = Store.currentProject ? Store.currentProject() : null; } catch (e) { /* no store */ }
+  return calcCurrency(calc || readStoredObject(LIB_CALC_KEY), readStoredObject('fms_costs_v1'), entry);
+}
+
 export function computeLibraryStatus() {
   const calc = readStoredObject(LIB_CALC_KEY);
+  const currency = openBudgetCurrency(calc);
   const seenRows = {};
   Object.keys(calc).forEach(k => {
     const m = k.match(/^ci_(\d+)_(\w+)$/);
@@ -162,12 +189,12 @@ export function computeLibraryStatus() {
     // "bank". library.js was fixed years-of-commits ago and this copy
     // never was, so the hub's budget figure and the calculator's
     // could disagree about identical data. One parser now, in lib.
-    const days = parseNum(r.days);
-    const rate = parseNum(r.rate);
+    const days = parseAmount(r.days, currency);
+    const rate = parseAmount(r.rate, currency);
     const sub = days * rate;
     if (sub > 0) { count++; total += sub; }
   });
-  return { count, total };
+  return { count, total, currency };
 }
 
 /** Bytes the reset list and the private notes hold, through the proxy

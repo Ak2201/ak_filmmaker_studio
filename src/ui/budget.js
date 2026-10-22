@@ -541,7 +541,7 @@ export const BUDGET_ACTIONS = {
     const ok = await ask({
       title: 'Label this budget in ' + currencySign(want) + '?',
       body: 'Every figure keeps its number and only the currency sign changes: '
-        + money(25000) + ' becomes ' + fmtExact(25000, want) + '. Nothing is converted.',
+        + money(25000) + ' becomes ' + fmtExact(25000, want) + '. Nothing is converted. A figure typed with a suffix (1.5L, 2cr, 2m, 1.5k) is written out in full first, so it keeps its number.',
       confirm: 'Relabel'
     });
     if (!ok || !setBudgetCurrency(want)) return;

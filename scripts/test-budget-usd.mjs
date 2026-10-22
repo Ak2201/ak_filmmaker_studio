@@ -104,7 +104,7 @@ eq(B.currencyMismatch('INR', 'USD', false), '', 'an empty budget has no mismatch
 eq(B.currencyMismatch('INR', 'INR', true), '', 'agreeing currencies say nothing');
 ok(B.setBudgetCurrency('INR'), 'the deliberate switch');
 eq(JSON.parse(mem.get(CALC)).ci_currency, 'INR', 'relabels the estimate');
-eq(JSON.parse(mem.get(CALC)).ci_1_rate, '2m', 'and touches no figure');
+eq(M.parseAmount(JSON.parse(mem.get(CALC)).ci_1_rate, 'INR'), 2000000, 'and keeps the figure\'s number ("2m" is written out, since ₹ would read it as 2)');
 eq(C.getSettings().currency, 'INR', 'and relabels the cost record');
 ok(!B.setBudgetCurrency('EUR'), 'an unknown currency is refused');
 
@@ -190,6 +190,52 @@ eq(B.rateHint('ARRI Alexa Mini', 'INR'), B.rateHint('ARRI Alexa Mini'), 'a rupee
 eq(B.rateProvenance('INR'), B.rateProvenance(), 'the rupee provenance line is unchanged');
 ok(B.rateProvenance('USD').includes(us.rows.length + ' presets carry a US range'), 'the US provenance line is counted from the file');
 ok(!/[0-9]+[,.]?[0-9]*\s*(lakh|cr)/i.test(B.rateProvenance('USD')), 'the US provenance line quotes no rupee figure');
+
+
+/* ---- the relabel keeps every NUMBER (review fix, 22 Oct 2026) ------ */
+{
+  const rows = { ci_1_item: 'DOP', ci_1_days: '10', ci_1_rate: '1.5L', ci_2_days: '2', ci_2_rate: '2cr', ci_3_days: '1', ci_3_rate: '25,000', ci_4_rate: '' };
+  const out = B.relabelRows(rows, 'INR', 'USD');
+  eq(M.parseAmount(out.ci_1_rate, 'USD'), 150000, '1.5L relabelled to $ keeps 1,50,000');
+  eq(M.parseAmount(out.ci_2_rate, 'USD'), 20000000, '2cr relabelled to $ keeps 2,00,00,000');
+  eq(out.ci_3_rate, '25,000', 'a figure both parsers agree on is left as typed');
+  eq(out.ci_1_item, 'DOP', 'the item is not touched');
+  eq(out.ci_4_rate, '', 'an empty field stays empty');
+  const back = B.relabelRows({ ci_1_days: '1', ci_1_rate: '2m', ci_2_rate: '1.5k' }, 'USD', 'INR');
+  eq(M.parseAmount(back.ci_1_rate, 'INR'), 2000000, '2m relabelled to ₹ keeps 2,000,000');
+  eq(M.parseAmount(back.ci_2_rate, 'INR'), 1500, '1.5k relabelled to ₹ keeps 1,500 either way');
+  reset(); film('IN');
+  mem.set(CALC, JSON.stringify({ ci_1_days: '10', ci_1_rate: '1.5L' }));
+  const before = C.estimateLines(JSON.parse(mem.get(CALC))).reduce((n, l) => n + l.estimate, 0);
+  ok(B.setBudgetCurrency('USD'), 'setBudgetCurrency answers true');
+  const after = C.estimateLines(JSON.parse(mem.get(CALC))).reduce((n, l) => n + l.estimate, 0);
+  eq(after, before, 'the stored total is the same number after the relabel');
+  eq(JSON.parse(mem.get(CALC)).ci_currency, 'USD', 'and the label moved');
+  reset();
+}
+
+/* ---- the hub and dashboard read the budget's currency like the budget page ---- */
+{
+  const H = await import('../src/lib/hub-status.js');
+  const cases = [
+    [{}, null, { region: 'INT' }], [{}, null, { region: 'IN' }], [{}, null, {}], [{}, null, null],
+    [{ ci_1_rate: '5' }, null, { region: 'INT' }], [{ ci_currency: 'USD', ci_1_rate: '5' }, null, { region: 'IN' }],
+    [{}, { settings: { currency: 'USD' }, expenses: [] }, { region: 'IN' }], [{}, { settings: {}, expenses: [{ amount: 5 }] }, { region: 'INT' }]
+  ];
+  for (const [calc, costs, entry] of cases) {
+    const proj = entry ? (entry.region === 'INT' ? 'USD' : 'INR') : '';
+    eq(H.calcCurrency(calc, costs, entry), C.resolveCurrency({ calc, costs, project: proj }),
+      `calcCurrency agrees with resolveCurrency for ${JSON.stringify([calc, costs, entry])}`);
+  }
+  reset(); film('INT');
+  mem.set(CALC, JSON.stringify({ ci_currency: 'USD', ci_1_days: '1', ci_1_rate: '2m' }));
+  const l = H.computeLibraryStatus();
+  eq([l.total, l.currency], [2000000, 'USD'], 'the hub\'s Library card parses a dollar budget with the dollar parser');
+  reset(); film('IN');
+  mem.set(CALC, JSON.stringify({ ci_1_days: '2', ci_1_rate: '1.5L' }));
+  eq(H.computeLibraryStatus().total, 300000, 'and a rupee budget exactly as before');
+  reset();
+}
 
 console.log(`test:budget-usd — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

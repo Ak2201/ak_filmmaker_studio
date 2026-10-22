@@ -199,13 +199,21 @@ export function ask(opts = {}, extra) {
     yes.addEventListener('click', () => finish(result(true)));
     no.addEventListener('click', () => finish(result(false)));
     actions(card, [no, yes]);
-    return { cancelValue: result(false), focus: field || yes };
+    /* A destructive dialog opens on Cancel. Focus on the red button made
+       one Enter the whole decision ("Clear days" wiped a schedule that
+       way). With a type-to-confirm field the field is the safeguard and
+       keeps the focus; a plain confirm still opens on its yes. */
+    return { cancelValue: result(false), focus: field || (opts.danger ? no : yes) };
   });
 }
 
 /** confirm() for something that destroys: the confirm button is red. */
 export function askDanger(opts = {}, extra) {
-  return ask(opts, { danger: true, ...(extra || {}) });
+  /* ask() merges `extra` only into a STRING message, so the object form
+     (askDanger({ title, body, confirm }), most of the callers) lost
+     danger: true and drew a plain primary confirm with the focus on it. */
+  if (typeof opts === 'string') return ask(opts, { danger: true, ...(extra || {}) });
+  return ask({ ...opts, ...(extra || {}), danger: true });
 }
 
 /** alert(), in the app. */

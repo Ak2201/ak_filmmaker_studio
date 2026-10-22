@@ -26,7 +26,7 @@ export function renderActivityLog(host) {
   const list = h('div.activity-list', { id: 'activityList' });
   if (!arr.length) {
     list.append(h('div.activity-empty', {
-      text: 'No activity yet. Start a film and begin filling things in. Activity updates whenever you save.'
+      text: 'Nothing saved in this browser yet. Edits you save show up here.'
     }));
   }
   arr.forEach((e) => {
@@ -40,6 +40,9 @@ export function renderActivityLog(host) {
   });
   const refresh = h('button.mini-btn', { type: 'button', text: '↻ REFRESH' });
   const clear = h('button.mini-btn.danger', { type: 'button', text: 'CLEAR LOG' });
+  /* Nothing to clear is not an action: an empty log's CLEAR LOG stays
+     visible (the row keeps its shape) but cannot be pressed. */
+  clear.disabled = !arr.length;
   refresh.addEventListener('click', () => renderActivityLog(host));
   clear.addEventListener('click', async () => {
     const ok = await ask({

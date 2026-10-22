@@ -131,6 +131,16 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-wash);
 }
+/* THE KEYBOARD RING ON A FIELD. The rule above is (0,1,1) and beats the
+   bare `:focus-visible` ring below and in chrome.css (0,1,0), so every
+   input, select and checkbox reached by Tab showed only a 4%-alpha wash
+   (WCAG 2.4.7). Same specificity, later in the sheet, so it wins; it
+   names :focus-visible only, so a mouse press on a select or a checkbox
+   still draws no ring. */
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: var(--focus);
+  outline-offset: 1px;
+}
 button { background: none; border: 0; padding: 0; cursor: pointer; }
 
 /* One visible focus treatment for everything reachable by key.
@@ -293,6 +303,12 @@ label, summary, input, select, textarea {
     transform: translate(-50%, -50%);
   }
 }
+/* A GLOSSARY TERM IS A WORD IN A SENTENCE, not a control beside one.
+   It carries role="button", so the coarse-pointer floor above made it a
+   44px inline-flex box and broke the line around it ("beat    by beat").
+   Targets inline in a sentence are exempt from WCAG 2.5.8. The doubled
+   class outranks the floor whatever order the sheets load in. */
+:root .glossary-term.glossary-term { display: inline; min-height: 0; min-width: 0; }
 
 /* ============================================================
    TEXT THAT DOES NOT BREAK THE LAYOUT

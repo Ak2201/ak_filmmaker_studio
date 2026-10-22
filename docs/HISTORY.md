@@ -2596,7 +2596,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
         field the blueprint did not store;
       - `rzp-order` refuses (502) when it cannot record the order, and marks
         the pending row failed (`attachOrder` in `_shared/razorpay.js`);
-      - **§54** (`schema-54-cap-locks.sql`, NOT YET RUN LIVE): the four
+      - **§54** (`schema-54-cap-locks.sql`, RUN LIVE 22 Oct 2026; the file's own header still says not run, left alone because editing it changes the checksum): the four
         plan-cap triggers take an advisory transaction lock before they
         count, proved by a real two-connection race in `test:schema`;
       - Stage Guides built on each render no longer leak their global

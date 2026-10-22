@@ -10,14 +10,14 @@
       "files": 40
     },
     "library": {
-      "bytes": 1368000,
-      "measured": 1239973,
-      "files": 24
+      "bytes": 1507328,
+      "measured": 1369726,
+      "files": 29
     },
     "breakdown": {
-      "bytes": 1084416,
-      "measured": 985187,
-      "files": 40
+      "bytes": 1199104,
+      "measured": 1089795,
+      "files": 48
     },
     "stripboard": {
       "bytes": 967680,

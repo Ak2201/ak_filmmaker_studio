@@ -72,7 +72,7 @@ and `fms_studio_prefs_v1` are already in their registries (the projects list,
   not synced either. `cloud.js` writes only `title` and `format` to
   `projects`, so a collaborator's device reads the film as having no region
   (`'IN'` paperwork, device content). Closing this needs a `projects.region`
-  column, which is NOT part of §55 and is a later section. Do not send a
+  column, which is NOT part of §56 and is a later section. Do not send a
   `region` column from `cloud.js` before that section exists (the
   "code ahead of the database" trap).
 
@@ -170,14 +170,14 @@ in both currencies.
 
 ---
 
-## C. Charging — schema section **§55**
+## C. Charging — schema section **§56**
 
 `git fetch origin` on 21 Oct 2026 showed that `origin/develop`, `origin/main` and every
-local branch end at `schema-52-yearly-plans.sql`. **§55 is the next free
+local branch end at `schema-52-yearly-plans.sql`. **§56 is the next free
 number** and it is reserved for this work:
-`supabase/schema/schema-55-usd-checkout.sql`. Fetch again before you NUMBER it.
+`supabase/schema/schema-56-usd-checkout.sql`. Fetch again before you NUMBER it.
 If 53 has been taken by then, take the next number and say so.
-**Update (rerun, 21 Oct 2026):** `origin/develop` now has §53 (audit fixes) and §54 (cap locks), so this wave's section is **§55**.
+**Update (rerun, 21 Oct 2026):** `origin/develop` now has §53 (audit fixes) and §54 (cap locks), so this wave's section is **§56**.
 
 ### C1. Principles
 
@@ -214,7 +214,7 @@ plan_prices                     unchanged; USD amount_minor 0 = "not sold in dol
 
 ### C3. Functions (every signature that changes)
 
-| Function | §55 signature | Rule |
+| Function | §56 signature | Rule |
 | --- | --- | --- |
 | `effective_price_minor` | **new** `(p_plan text, p_currency text) → int` | INR returns `effective_price(p_plan)`. USD returns `plan_prices.amount_minor`, or `next_amount_minor` once the plan's rise has fired (the rule `price_notice(text)` already uses for `display_minor`). Null or ≤0 means not for sale in that currency. |
 | `paid_credit_minor` | **new** `(p_user uuid, p_currency text) → int` | §52's unused-part-of-the-year credit, expressed in `p_currency`. A payment in another currency is converted at the ratio of THAT plan's list prices: `value × effective_price_minor(plan, p_currency) / effective_price_minor(plan, pay.currency)`. **No FX rate is ever used.** `paid_credit_paise(p_user)` is kept, as `paid_credit_minor(p_user,'INR')`. |
@@ -258,7 +258,7 @@ set a policy later. The same flag is recorded on USD orders.
   console (`'$19.50'` gives 1950). `fmtPaise` and `parseRupees` stay
   unchanged, because the client imports them.
 - `_shared/mail.js`: receipts and refund mails print `fmtMinor(amount, currency)`.
-- **Deploy order:** §55 SQL first (with a checksum, as always), then redeploy
+- **Deploy order:** §56 SQL first (with a checksum, as always), then redeploy
   all four functions from current source. Then, only after Razorpay has
   **International payments** enabled on the account (an owner step in the
   Razorpay dashboard), the owner turns `usd_checkout` on in the console.
@@ -316,7 +316,7 @@ starts from `us/foundation`.
   that work when it lands.
 
 ### PRICING-SERVER (the database and edge functions)
-Owns: `supabase/schema/schema-55-usd-checkout.sql` (new),
+Owns: `supabase/schema/schema-56-usd-checkout.sql` (new),
 `supabase/schema/README.md` (one row), `scripts/schema-tests/usd-checkout.sql`
 (new) and its line in `scripts/test-schema.mjs`, `supabase/functions/**`
 (rzp-order, rzp-verify, rzp-webhook, rzp-refund, `_shared/razorpay.js`,

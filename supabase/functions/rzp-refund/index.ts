@@ -35,7 +35,7 @@
         request reads 'refunded' only once the refund is processed;
         while it is pending the request is 'approved' (section 50).
 
-   CURRENCY (schema §55). A refund is in the currency of the payment it
+   CURRENCY (schema §56). A refund is in the currency of the payment it
    refunds, and Razorpay refunds in the original currency; begin_refund()
    names it (`currency`) and the refunds row is stamped with it. The
    amount is minor units of that currency, and the answer says which.
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { /* empty body */ }
   const paymentId = String(body.payment_id ?? '');
   const reason = String(body.reason ?? '').trim();
-  // minor units of the PAYMENT's currency (schema §55): paise for a rupee
+  // minor units of the PAYMENT's currency (schema §56): paise for a rupee
   // payment, cents for a dollar one. `amount_paise` is the name older
   // console builds send; `amount_minor` says the same thing.
   const given = body.amount_minor ?? body.amount_paise;

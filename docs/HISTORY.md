@@ -2596,7 +2596,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
         field the blueprint did not store;
       - `rzp-order` refuses (502) when it cannot record the order, and marks
         the pending row failed (`attachOrder` in `_shared/razorpay.js`);
-      - **§54** (`schema-54-cap-locks.sql`, NOT YET RUN LIVE): the four
+      - **§54** (`schema-54-cap-locks.sql`, RUN LIVE 22 Oct 2026; the file's own header still says not run, left alone because editing it changes the checksum): the four
         plan-cap triggers take an advisory transaction lock before they
         count, proved by a real two-connection race in `test:schema`;
       - Stage Guides built on each render no longer leak their global
@@ -2605,9 +2605,15 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       - scriptgen's write-before-Accept `run*` exports are gone (no caller in
         the tree), `acorn` is a declared devDependency, `test:ai-desk` is in
         `test:all`.
-    - **Left for later (Nice):** capping automatic drafts, locations.js
-      passing unknown fields through (the trap shots.js fixed), the 1-hour
-      promo hold on a failed order, the retired status bar's code, and
-      duplicate helpers (download-a-Blob ×9, uid ×9, fmtDate, escapers,
-      slug), all listed in the report.
+    - **The 10 Nice findings, fixed the same day:** automatic "From another
+      device" drafts capped at the newest 10 (by `ARRIVAL_PREFIX`; named
+      and "Your version" drafts never touched); `locations.js` `readAll`
+      passes unknown fields through like `shots.js`; a failed Razorpay
+      create marks its row failed at once (`failPending`); the retired
+      status bar's mount code and 13 unreferenced exports removed; one
+      `download()` in dom.js, one `fmtDate`, `esc` and `escapeRe`, one
+      `newId(prefix)` in `src/lib/record-id.js` for the ten models whose
+      id shape was identical, one `slug()`. About 470 lines gone. Copies
+      that differ on purpose (revoke timing, a BOM, other id shapes,
+      CORE/landing bundles) were KEPT and named in each commit.
 

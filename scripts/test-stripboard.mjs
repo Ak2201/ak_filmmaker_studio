@@ -189,6 +189,20 @@ eq(L.listDayOrder(), {}, 'no lists left');
 eq(dayIds(1), ['s1', 's2', 's3'], 'script order again');
 eq([L.dayDate(1), L.getRecce('L1').address, L.listMedia().length], ['2026-11-02', 'here', 1], 'dates, recces and media untouched');
 
+/* ---- a field this build does not know survives a save ---------
+   The shots.js passthrough (item 53): a newer build, in another tab or
+   synced in, may add a top-level field to fms_locations_v1; an older
+   tab's save must carry it through, not rebuild the blob without it.
+   A known record that is not an object is still dropped. */
+seed();
+mem.set('fms_locations_v1', JSON.stringify({ days: {}, recces: {}, media: [], order: {}, futureThing: { a: [1, 2] }, prefs: 'not an object' }));
+L.setDayDate(3, '2026-11-09');
+{
+  const after = JSON.parse(mem.get('fms_locations_v1'));
+  eq(after.futureThing, { a: [1, 2] }, 'an unknown top-level field survives a save');
+  eq([after.days[3], 'prefs' in after], ['2026-11-09', false], 'the save landed, and a non-object prefs is still dropped');
+}
+
 /* ---- a corrupt order collection ------------------------------- */
 seed();
 mem.set('fms_locations_v1', JSON.stringify({ days: {}, recces: {}, media: [], order: [1, 2] }));

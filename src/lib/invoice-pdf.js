@@ -33,7 +33,7 @@ const fact = (k, v) => (v ? h('tr', {}, [h('th', { scope: 'row', text: k }), h('
 
 export function buildInvoice(inv) {
   const gst = String(BRAND.gstin || '').trim();
-  /* §55: amount_paise holds minor units of the invoice's `currency`
+  /* §56: amount_paise holds minor units of the invoice's `currency`
      (copied from the payment); an invoice without one is rupees. */
   const cur = inv.currency === 'USD' ? 'USD' : 'INR';
   const amt = fmtMinor(inv.amount_paise, cur);

@@ -181,6 +181,24 @@ ok(calls[0].init.headers['Idempotency-Key'] === 'refund-r1-processed', 'refund i
   const iAtt = orderSrc.indexOf('attachOrder({'), i200 = orderSrc.indexOf('return json(200');
   ok(iAtt > 0 && i200 > iAtt && /if \(!att\.ok\) return json\(502/.test(orderSrc.slice(iAtt, i200)) && !/await svc\.rpc\('attach_razorpay_order'/.test(orderSrc),
     'rzp-order checks the attach (attachOrder) and answers 502 before it returns the order to Checkout');
+  // A failed order create marks the pending row by ITS OWN id, which frees
+  // the promo hold quote_for counts; mark_payment_failed(null) matched nothing.
+  {
+    const calls = [];
+    const fake = { from: (t) => ({ update: (p) => { const c = { t, p, eq: [] }; calls.push(c); const q = { eq: (k, v) => { c.eq.push([k, v]); return q; }, then: (res) => res({ error: null }) }; return q; } }) };
+    await R.failPending(fake, 'pay_1', { error: { description: 'bad' } });
+    eq(calls.map((c) => [c.t, c.p.status, c.p.raw?.error?.description, c.eq]), [['payments', 'failed', 'bad', [['id', 'pay_1'], ['status', 'created']]]], 'failPending: the row is marked failed by its id, and only while still created');
+    calls.length = 0;
+    await R.failPending(fake, 'pay_2', null);
+    ok(calls.length === 1 && !('raw' in calls[0].p), 'failPending: no order body keeps the row\'s raw');
+    let threw = false;
+    try { await R.failPending({ from: () => { throw new Error('down'); } }, 'pay_3', null); } catch { threw = true; }
+    ok(!threw, 'failPending never throws out to the 502');
+    const iFail = orderSrc.indexOf('if (!r.ok || !order?.id)');
+    ok(iFail > 0 && /failPending\(svc, row\.payment_id, order\)/.test(orderSrc.slice(iFail, iAtt)) && !/mark_payment_failed/.test(orderSrc),
+      'rzp-order marks a failed order create by the row id, not mark_payment_failed(null)');
+    ok(/abandon: \(\) => failPending\(svc, row\.payment_id/.test(orderSrc), 'the attach refusal reuses the same mark');
+  }
   const verifySrc = (await import('node:fs')).readFileSync(new URL('../supabase/functions/rzp-verify/index.ts', import.meta.url), 'utf8');
   ok(/settleAuthorized\(/.test(verifySrc) && /payment_can_activate/.test(verifySrc) && !/\/capture`/.test(verifySrc.slice(0, verifySrc.indexOf('payment_can_activate'))),
     'rzp-verify routes the authorised branch through settleAuthorized, asking payment_can_activate before any /capture');
@@ -203,7 +221,7 @@ eq(R.refundByReceipt(null, 'rid-1'), null, 'no list -> null');
   ok(!/Razorpay could not be reached\.' \} \};\s*\}\s*\/\/ 4\./.test(refundSrc), 'rzp-refund no longer turns a thrown call into a recorded failure');
 }
 
-/* ---- two currencies (schema §55, docs/US-MARKET-PLAN.md §C5) ---- */
+/* ---- two currencies (schema §56, docs/US-MARKET-PLAN.md §C5) ---- */
 eq(R.CURRENCIES, ['INR', 'USD'], 'an order is in INR or USD, nothing else');
 eq(R.orderCurrency(undefined), 'INR', 'no currency in the body is a rupee order');
 eq(R.orderCurrency(''), 'INR', 'an empty currency is a rupee order');
@@ -251,7 +269,7 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
   const usdInv = { ...inv, amount_paise: 2400, currency: 'USD' };
   const um = M.receiptMail(usdInv);
   ok(um.text.includes('$24') && !um.text.includes('₹'), 'a dollar receipt prints dollars, and no rupee sign');
-  ok(M.receiptMail(inv).text.includes('₹799'), 'an invoice with no currency (before §55) is rupees');
+  ok(M.receiptMail(inv).text.includes('₹799'), 'an invoice with no currency (before §56) is rupees');
   const ur = M.refundMail({ status: 'processed', amount_paise: 1950, currency: 'USD', buyer_email: 'b@x.com', plan_name: 'Basic' });
   ok(ur.subject === 'Refund processed: $19.50' && ur.text.includes('Your refund of $19.50'), 'a dollar refund mail prints $19.50');
   ok(M.refundMail({ status: 'processed', amount_paise: 79900, buyer_email: 'b@x.in' }).subject === 'Refund processed: ₹799', 'a refund claim with no currency is rupees');
@@ -263,7 +281,7 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
   ok(/orderCurrency\(body\.currency\)/.test(order) && /json\(400/.test(order.slice(order.indexOf('orderCurrency(body.currency)'))),
     'rzp-order reads the currency from the body through orderCurrency, and answers 400 for any other');
   ok(/currency === 'INR' \? \{\} : \{ p_currency: currency \}/.test(order),
-    'rzp-order sends p_currency only for dollars, so a rupee order works on a database without §55');
+    'rzp-order sends p_currency only for dollars, so a rupee order works on a database without §56');
   ok(/currency: row\.currency/.test(order) && /amount: row\.amount_paise/.test(order),
     'rzp-order creates the Razorpay order in the ROW\'s currency and amount, never the body\'s');
   ok(!/body\.amount/.test(order), 'rzp-order never reads an amount from the request');
@@ -272,9 +290,9 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
     'rzp-verify captures in the payment\'s currency and has settleAuthorized check it');
   ok(/body\.amount_minor \?\? body\.amount_paise/.test(refund) && /currency: intent\.currency/.test(refund),
     'rzp-refund takes amount_minor (or the older amount_paise) and answers the payment\'s currency');
-  const sql = fs.readFileSync(new URL('../supabase/schema/schema-55-usd-checkout.sql', import.meta.url), 'utf8');
-  ok(!/\b(?:1900|2900|3900)\b/.test(sql.replace(/^\s*--.*$/gm, '')), 'schema §55 hard-codes no dollar price (the owner types them)');
-  ok(/admin_set_usd_checkout/.test(sql) && /require_role\(array\['owner'\]\)/.test(sql), 'schema §55: the switch exists and is owner only');
+  const sql = fs.readFileSync(new URL('../supabase/schema/schema-56-usd-checkout.sql', import.meta.url), 'utf8');
+  ok(!/\b(?:1900|2900|3900)\b/.test(sql.replace(/^\s*--.*$/gm, '')), 'schema §56 hard-codes no dollar price (the owner types them)');
+  ok(/admin_set_usd_checkout/.test(sql) && /require_role\(array\['owner'\]\)/.test(sql), 'schema §56: the switch exists and is owner only');
 }
 
 console.log(`${fail ? '✗' : '✓'} billing: ${pass} passed, ${fail} failed`);

@@ -620,3 +620,17 @@ p.cx-hint { margin: 0; }
 .bud-est-body > .bud-cur { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0; padding: var(--s2) var(--s4); border-top: 1px solid var(--border-hair); background: var(--warn-wash); }
 .bud-est-body > .bud-cur > .hint { margin: 0; padding: 0; flex: 1 1 18rem; color: var(--ink); }
 @media print { .bud-cur .k-btn { display: none !important; } }
+
+/* KEEP THE BUDGET PRIVATE (schema §55; src/ui/budget-privacy-ui.js).
+   The owner's switch sits under the "who sees it" line; the viewer's
+   locked state replaces the estimate and each cost tab. */
+.bud-privacy {
+  display: grid;
+  gap: var(--s1);
+  margin: 0 0 var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.bud-privacy .bud-private-hint { margin: 0; }
+.bud-locked { margin-block: var(--s4); }

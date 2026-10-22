@@ -87,8 +87,8 @@ export async function status() {
 export async function quote(planId, code, currency) {
   const sb = await client();
   const args = { p_plan: planId, p_code: normalisePromo(code) || null };
-  /* §55 (docs/US-MARKET-PLAN.md §C3): the 3-arg quote_order prices a
-     currency. A database without §55 answers PGRST202 for it, and the
+  /* §56 (docs/US-MARKET-PLAN.md §C3): the 3-arg quote_order prices a
+     currency. A database without §56 answers PGRST202 for it, and the
      2-arg rupee quote is then the honest answer (the order is in rupees
      too, because rzp-order is priced by the same database). The answer
      carries `currency`; an older one has none and is rupees. */
@@ -170,7 +170,7 @@ async function invoke(name, body) {
  * Checkout. `onStatus(text)` narrates for the UI. `code` is a promo
  * code (section 20): the server re-quotes it and a refused one comes
  * back as an edge error with the sentence to show. `currency` is the
- * ORDER's currency, 'INR' or 'USD' (§55): the client chooses the
+ * ORDER's currency, 'INR' or 'USD' (§56): the client chooses the
  * currency and never the amount, and sends 'USD' only once the server
  * has said dollars are charged (price-model.js orderCurrency()).
  */
@@ -364,7 +364,7 @@ export async function startTrial() {
  *  is on screen explaining what it means. */
 export async function priceNotice(currency) {
   const sb = await client();
-  /* price_notice(text) (§31, §55): the same keys plus one currency's
+  /* price_notice(text) (§31, §56): the same keys plus one currency's
      display figures and `usd_checkout`. The zero-argument call is §30's
      and stays exactly as it was. */
   const { data, error } = await sb.rpc('price_notice', currency ? { p_currency: currency } : undefined);

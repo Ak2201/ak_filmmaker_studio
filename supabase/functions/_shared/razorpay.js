@@ -22,7 +22,7 @@
    ₹499 is 49900 paise and $19.50 is 1950 cents. The plans table stores
    paise and plan_prices stores cents, so the number the admin saves is
    the number Razorpay charges, with no rounding in between. Since schema
-   §55 an order is in INR or USD, and every *_paise column holds minor
+   §56 an order is in INR or USD, and every *_paise column holds minor
    units OF ITS ROW'S currency (the names were kept; see that section).
    ============================================================ */
 
@@ -97,7 +97,7 @@ export function fmtPaise(paise) {
   return '₹' + whole + (p ? '.' + String(p).padStart(2, '0') : '');
 }
 
-/* ---- two currencies (schema §55) ------------------------------------
+/* ---- two currencies (schema §56) ------------------------------------
    An order is in rupees or US dollars; the server prices both. These
    print and parse an amount in its own currency. fmtPaise / parseRupees
    above stay exactly as they were, because the client imports them. */
@@ -200,7 +200,7 @@ export function promoLabel(code) {
    gone), which left a buyer charged with no plan. The order matters, so
    it lives here, where scripts/test-billing.mjs can watch it:
 
-     1. the amount (and, since §55, the currency) must match the order
+     1. the amount (and, since §56, the currency) must match the order
                                          -> else nothing is captured
      2. payment_can_activate(order)      -> else nothing is captured, and
                                             Razorpay releases the hold
@@ -210,7 +210,7 @@ export function promoLabel(code) {
    Returns { kind: 'mismatch' | 'refused' | 'captured' | 'pending', … }. */
 export async function settleAuthorized({ entity, amountPaise, currency = null, canActivate, capture }) {
   if (Number(entity?.amount) !== Number(amountPaise)) return { kind: 'mismatch' };
-  // §55: an order priced in one currency is never captured in another
+  // §56: an order priced in one currency is never captured in another
   if (currency && entity?.currency && String(entity.currency).toUpperCase() !== String(currency).toUpperCase()) return { kind: 'mismatch' };
   let verdict = null;
   try { verdict = await canActivate(); } catch { verdict = null; }
@@ -240,6 +240,24 @@ export async function attachOrder({ attach, abandon }) {
   if (!res?.error) return { ok: true };
   try { await abandon(); } catch { /* the 502 matters more than the mark */ }
   return { ok: false, error: res.error };
+}
+
+/* ---- a pending row whose order will never be paid ----
+   The one way rzp-order gives up on a 'created' row: by ITS OWN id. The
+   order-create failure used to call mark_payment_failed with a null order
+   id, and `razorpay_order_id = null` matches nothing, so the row stayed
+   'created' — and quote_for counts other buyers' 'created' rows from the
+   last hour as held uses of a limited promo code, so one failed order
+   made a max_uses = 1 code read 'exhausted' to everybody for an hour.
+   'failed' frees that hold and is the record the comment promised.
+   Only a row still 'created' moves. Best effort: never throws, because
+   the 502 the caller is about to send matters more than the mark. */
+export async function failPending(svc, paymentId, raw) {
+  try {
+    // A null `raw` keeps what the row had, as mark_payment_failed's coalesce did.
+    const patch = raw == null ? { status: 'failed' } : { status: 'failed', raw };
+    await svc.from('payments').update(patch).eq('id', paymentId).eq('status', 'created');
+  } catch { /* the 502 matters more than the mark */ }
 }
 
 /* ---- a refund's answer, or the lack of one (schema §53, audit bug 9) ----

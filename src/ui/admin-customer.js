@@ -196,7 +196,7 @@ function trialSection(d) {
   ]));
 }
 
-/* §55: an amount is in minor units of ITS row's currency (rupees when
+/* §56: an amount is in minor units of ITS row's currency (rupees when
    the row says none); a refund row carries the payment's. */
 const money = (minor, row) => fmtMinor(minor || 0, row && row.currency === 'USD' ? 'USD' : 'INR');
 function payRow(p, invoices) {
@@ -209,7 +209,7 @@ function payRow(p, invoices) {
       h('strong', { text: p.plan_id ? planName(p.plan_id) : 'Payment' }),
       pill(humanise(p.status), PAY_TONE[p.status] || 'neutral'),
       h('span.cu-amt', { text: money(p.amount_paise, p) }),
-      /* "Intl card" (§55 C4): Razorpay said the card was issued abroad.
+      /* "Intl card" (§56 C4): Razorpay said the card was issued abroad.
          Recorded and shown; never blocked or re-priced. */
       p.international === true ? pill('Intl card' + (p.card_country ? ' · ' + p.card_country : ''), 'neutral') : null
     ].filter(Boolean)),

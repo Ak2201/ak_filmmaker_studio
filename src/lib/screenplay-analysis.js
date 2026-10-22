@@ -37,6 +37,7 @@
    Calibrated so that an ordinary mixed page lands near sixty seconds.
    ============================================================ */
 import lexicon from '../data/element-lexicon.json';
+import { escapeRe as escRe } from './script-replace.js';
 
 export const DIALOGUE_WPS = 2.6;
 export const ACTION_WPS = 3.5;
@@ -502,7 +503,6 @@ export function castMatrix(scenes, elements) {
 
 /* ---- FR-603: suggested elements ------------------------------ */
 
-const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const phraseRe = (list) => new RegExp('\\b(' + [...list].sort((a, b) => b.length - a.length).map(escRe).join('|') + ')\\b', 'gi');
 /* Every lexicon list is a category; `cast` and `soundCaps` are not lists of words. */
 const LEX_CATS = Object.keys(lexicon).filter((k) => Array.isArray(lexicon[k]));

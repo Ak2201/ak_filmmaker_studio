@@ -15,7 +15,7 @@
    and that line is saved only when the writer types in it.
    ============================================================ */
 import { flushStorage, currentProject, currentProjectId, subscribe } from '../lib/store.js';
-import { incomingAction, keepBoth, takeTheirs, scriptSignature } from '../lib/script-incoming.js';
+import { incomingAction, keepBoth, takeTheirs, scriptSignature, ARRIVAL_PREFIX } from '../lib/script-incoming.js';
 import { mergeScript } from '../lib/script-merge.js';
 import { ask, askDanger } from '../ui/dialog.js';
 import '../styles/base.css';
@@ -219,7 +219,7 @@ function onIncomingScript(live) {
      rather than adding one per save, and the save waits for the usual
      debounce, so two people typing do not trade copies as fast as the
      network allows. Only the newest offer to swap stays on screen. */
-  doc = keepBoth(doc, arrived, 'From another device, ' + clock(), { replaceId: incomingDraftId });
+  doc = keepBoth(doc, arrived, ARRIVAL_PREFIX + clock(), { replaceId: incomingDraftId });
   incomingDraftId = doc.revisions[doc.revisions.length - 1]?.id || null;
   persist();
   refreshDraftLabel();

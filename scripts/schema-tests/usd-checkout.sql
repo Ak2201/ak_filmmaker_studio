@@ -1,7 +1,7 @@
 -- ============================================================
 -- SECTION 55 CHECKS — charging in US dollars
 -- ------------------------------------------------------------
--- Runs after §55's checks and §55's load. Own people (…55xx). Rupee
+-- Runs after §56's checks and §56's load. Own people (…55xx). Rupee
 -- prices are §52's (599 / 799 / 999); the dollar prices are set here
 -- through the console function, as the owner would.
 --

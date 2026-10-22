@@ -66,6 +66,7 @@ import rates from '../data/rates.chennai.2024.json';
 import { parseNum, parseAmount } from './money.js';
 import { normaliseCurrency, projectRegion, currencyForRegion } from './region-core.js';
 import Store from './store.js';
+import { newId as uid } from './record-id.js';
 
 export const COSTS_KEY = 'fms_costs_v1';
 export const CALC_KEY = 'fms_library_calc_v1';
@@ -117,11 +118,6 @@ export const GROUPS = [
 ];
 const DEPT = new Map(DEPTS.map((d) => [d.id, d]));
 export const deptOf = (id) => DEPT.get(id) || DEPT.get('other');
-
-const uid = (p) =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : p + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 
 const num = (v) => {
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;

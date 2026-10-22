@@ -30,11 +30,9 @@
    The documents array after an undo is byte-identical to before.
    ============================================================ */
 import { resultText } from './audience-model.js';
+import { newId } from './record-id.js';
 
-function newDocId() {
-  return (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID()
-    : 'w_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-}
+const newDocId = () => newId('w');
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 

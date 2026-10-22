@@ -60,7 +60,7 @@ eq('caption, charged in dollars', M.chargeCaption(v, 59900), 'Charged in US doll
 v = M.shopView('USD', notice({ usd_checkout: 'true', charged_currency: 'USD' }));
 ok('usd_checkout is believed only as a boolean (the entitlement() lesson)', v.charge === 'INR');
 v = M.shopView('USD', (() => { const x = notice({ charged_currency: 'USD' }); delete x.usd_checkout; return x; })());
-ok('a notice without usd_checkout (no §55) is charged in rupees', v.charge === 'INR');
+ok('a notice without usd_checkout (no §56) is charged in rupees', v.charge === 'INR');
 v = M.shopView('USD', notice({ usd_checkout: true, charged_currency: 'INR' }));
 ok('switch on but the server still says INR: rupees', v.charge === 'INR');
 

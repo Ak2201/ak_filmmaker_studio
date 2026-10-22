@@ -102,7 +102,7 @@ export async function customerCall(cloud, name, args) {
   return data;
 }
 
-/* ---- §55 dollar prices, owner only (src/ui/billing-admin.js) ------- */
+/* ---- §56 dollar prices, owner only (src/ui/billing-admin.js) ------- */
 
 /** Throws the server's error object as given (the caller reads its
     code and message), exactly as billing-admin.js's own helper did. */

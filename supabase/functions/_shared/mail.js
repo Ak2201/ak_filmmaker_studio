@@ -27,10 +27,10 @@
    Brand values come from ./brand.js, which test:billing holds equal to
    src/data/brand.json.
 
-   AMOUNTS ARE PRINTED IN THEIR OWN CURRENCY (schema §55): an invoice row
+   AMOUNTS ARE PRINTED IN THEIR OWN CURRENCY (schema §56): an invoice row
    and a claim_refund_email() row both carry `currency`, and the amount is
    minor units of it — cents for a dollar sale, paise for a rupee one. A
-   row from before §55 has no currency on the refund claim and is INR.
+   row from before §56 has no currency on the refund claim and is INR.
    ============================================================ */
 import { BRAND } from './brand.js';
 import { fmtMinor } from './razorpay.js';

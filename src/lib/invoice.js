@@ -55,7 +55,7 @@ function words(n) {
   if (n) parts.push(below1000(n));
   return parts.join(' ');
 }
-/* A dollar invoice (schema §55) counts the international way: million,
+/* A dollar invoice (schema §56) counts the international way: million,
    thousand, hundred. 1950 cents -> "US Dollars Nineteen and Fifty Cents only". */
 function intlWords(n) {
   if (n === 0) return 'Zero';

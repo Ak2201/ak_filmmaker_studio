@@ -15,7 +15,9 @@
      capitals: renaming "Ravi" to "Arun" must also turn the cue RAVI into
      ARUN, not "Arun", or every cue of the character breaks. */
 
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** A string as a literal inside a RegExp. Shared by the other text matchers
+   (cbfc, breakdown-paper, screenplay-analysis); this module imports nothing. */
+export const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** The search as a RegExp, or null when there is nothing to search. */
 export function searchRegExp(query, opts = {}) {

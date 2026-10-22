@@ -1374,7 +1374,7 @@ markets them by the day: `perDay()` in `src/lib/plans.js` (₹1.64 / ₹2.19 /
 Not built: an expiry reminder e-mail. It needs a scheduled job and Resend; the
 in-app notices cover it until then.
 
-## 23. The billing audit fixes (schema §53, 21 Oct 2026). NOT YET RUN LIVE.
+## 23. The billing audit fixes (schema §53, 21 Oct 2026). RUN LIVE 22 Oct 2026; all four functions redeployed the same day.
 
 Four findings from the 21 Oct 2026 audit, each proved by a check in
 `scripts/schema-tests/audit-53.sql` that failed against §52 first.
@@ -1420,14 +1420,14 @@ Four findings from the 21 Oct 2026 audit, each proved by a check in
    `payment_can_activate`, and against a §52 database an authorised payment
    would be answered "still being confirmed" (and left uncaptured) until §53
    exists.
-3. Read back with the checks at 53.5 in the section file.
+3. Read back with the checks at 53.5 in the section file. (Read back live 22 Oct 2026: all four passed.)
 
 
-## 24. Charging in US dollars (schema §55, 21 Oct 2026). NOT YET RUN LIVE.
+## 24. Charging in US dollars (schema §56, 21 Oct 2026). NOT YET RUN LIVE.
 
 The owner's decision (docs/US-MARKET-PLAN.md §C): visitors in India pay
 rupees, everyone else pays US dollars, and the owner types the dollar
-amounts in the console. §55 is the database and edge-function half; the
+amounts in the console. §56 is the database and edge-function half; the
 pages that show and take a dollar price are PRICING-CLIENT's.
 
 - **The client chooses the currency, never the amount.** An order is `INR`
@@ -1478,18 +1478,18 @@ pages that show and take a dollar price are PRICING-CLIENT's.
   number moves today); dollars are in `paid_by_currency.USD`.
 
 **Owner steps, in this order.**
-1. Run §55 in the SQL editor, after §53 and §54, verifying the checksum
-   first: `shasum -a 256 supabase/schema/schema-55-usd-checkout.sql` must
+1. Run §56 in the SQL editor, after §53 and §54, verifying the checksum
+   first: `shasum -a 256 supabase/schema/schema-56-usd-checkout.sql` must
    equal the sha256 in `supabase/schema/README.md` AND the editor's contents
    (base64 across the clipboard; never paste schema SQL without a checksum).
-   Read back with the checks at 55.16 in the section file.
+   Read back with the checks at 56.16 in the section file.
 2. Redeploy all four functions with the CLI (never the dashboard editor:
    they import `../_shared/`), from current source:
    `npx --yes supabase@latest functions deploy rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz`.
    Between steps 1 and 2 checkout keeps working: the deployed `rzp-order`
    sends five named arguments, which resolve to the new
    `create_pending_payment` with `p_currency` defaulting to INR. The new
-   functions are also safe on a database without §55 for rupee orders, but
+   functions are also safe on a database without §56 for rupee orders, but
    run the SQL first.
 3. In the Razorpay dashboard, apply for and enable **International
    payments** (and USD as a currency) on the account. Razorpay refuses a USD

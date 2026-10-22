@@ -31,6 +31,7 @@
    [data-gra-form].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
 import { fmtMinor } from '../lib/price-model.js';
 import Growth, { isMissing } from '../lib/growth.js';
@@ -51,7 +52,6 @@ const S = { state: 'idle', error: '', settings: null, credits: null, prices: nul
 function clearNote(text) {
   for (const n of document.querySelectorAll('.ba-saved')) if (n.textContent === text) n.remove();
 }
-const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
 /* The price-rise sentence names a DAY, not a timestamp: "from 31
    October" is what a buyer can hold us to, and printing 18:29 UTC
    beside it invites an argument about the minute. */
@@ -77,7 +77,7 @@ async function load() {
     /* §30. The same read the signed-out landing page makes, on
        purpose — see the note on Billing.priceNotice(). */
     S.prices = await settle('prices', Billing.priceNotice);
-    /* The dollar side of the same rise (§31 / §55), READ ONLY here: the
+    /* The dollar side of the same rise (§31 / §56), READ ONLY here: the
        owner types dollar prices under Purchases → Tiers & grants. One
        date per plan; the dollar figure follows it. */
     S.usd = await Billing.priceNotice('USD').catch(() => null);
@@ -426,7 +426,7 @@ function affiliateBlock(sec) {
   sec.append(h('p.gt-meta', { text: `Commission due across all affiliates: ${byCurrency(due, dueUsd)}.` }));
 }
 
-/* §55: an affiliate code can sell in both currencies. The report keeps the
+/* §56: an affiliate code can sell in both currencies. The report keeps the
    rupee columns and adds a dollar side; the two are never added together. */
 const orderCur = (o) => (o && o.currency === 'USD' ? 'USD' : 'INR');
 function byCurrency(inrPaise, usdCents) {

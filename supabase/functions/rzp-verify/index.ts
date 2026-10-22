@@ -25,7 +25,7 @@
    admin_resend_receipt() is called AS THE CALLER, so only an
    administrator gets past it, and then the same claim-and-send runs.
 
-   CURRENCY (schema §55). An order is in INR or USD and its amounts are
+   CURRENCY (schema §56). An order is in INR or USD and its amounts are
    minor units of that currency. The capture names the ROW's currency,
    settleAuthorized() refuses an authorisation in any other one, and
    activate_payment() checks the entity's currency again and records

@@ -5,7 +5,7 @@
 
      refundDialog({ payment, request })   REFUND on a ledger row, or
                   APPROVE on a customer's request. Amount (in the
-                  PAYMENT's currency, §55: rupees or US dollars; full
+                  PAYMENT's currency, §56: rupees or US dollars; full
                   by default), a reason that is REQUIRED, and the plain
                   warning that a refund ends the plan it bought. The
                   button is disabled while the call is in flight and the
@@ -38,7 +38,7 @@ function open(card, labelId) {
 
 export function refundDialog({ payment, request = null }) {
   return new Promise((resolve) => {
-    const paid = payment.amount_paise;            // minor units of payment.currency (§55)
+    const paid = payment.amount_paise;            // minor units of payment.currency (§56)
     const cur = payment.currency === 'USD' ? 'USD' : 'INR';
     const fmt = (m) => fmtMinor(m, cur);
     /* rupees through the one rupee parser rule; dollars through parseMinor */

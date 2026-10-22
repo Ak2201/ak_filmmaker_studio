@@ -587,7 +587,7 @@ function rpc(name, args, user, route) {
          is published ONLY while a rise is still pending — a scarcity
          number with nothing to be scarce about is the thing section 30
          refuses to ship. With p_currency (§31's price_notice(text), as
-         §55 restates it): the display figures in that currency,
+         §56 restates it): the display figures in that currency,
          `usd_checkout`, and charged_currency 'USD' only when the switch
          is on and every plan on sale has a dollar price. */
       F.db.calls.push('rpc:price_notice' + (args.p_currency ? ' ' + args.p_currency : ''));
@@ -706,7 +706,7 @@ function rpc(name, args, user, route) {
       return json(route, 200, until);
     }
     case 'quote_order': {
-      /* §55's 3-arg overload when p_currency is sent; the 2-arg is §21's */
+      /* §56's 3-arg overload when p_currency is sent; the 2-arg is §21's */
       if ('p_currency' in args) {
         if (F.db.noUsdSchema) return pgErr(route, 'PGRST202', 'Could not find the function public.quote_order(p_code, p_currency, p_plan) in the schema cache');
         F.db.calls.push(`rpc:quote_order ${args.p_plan} ${args.p_currency}`);
@@ -863,7 +863,7 @@ function rpc(name, args, user, route) {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       const paid = F.db.payments.filter((x) => x.status === 'paid');
       const by = {}; for (const a of F.db.accounts) { const k = accountPlan(a); by[k] = (by[k] || 0) + 1; }
-      /* §55: paid_*_paise are rupees only; the dollar side is in paid_by_currency */
+      /* §56: paid_*_paise are rupees only; the dollar side is in paid_by_currency */
       const inr = paid.filter((x) => (x.currency || 'INR') === 'INR');
       const byCur = Object.fromEntries(['INR', 'USD'].map((c) => { const r = paid.filter((x) => (x.currency || 'INR') === c); const t = r.reduce((n, x) => n + x.amount_paise, 0); return [c, { total_minor: t, d30_minor: t, count: r.length }]; }));
       return json(route, 200, { paid_30d_paise: inr.reduce((n, x) => n + x.amount_paise, 0), paid_total_paise: inr.reduce((n, x) => n + x.amount_paise, 0),
@@ -1118,7 +1118,7 @@ export async function handle(route) {
     if (!effectivePrice(plan.id)) return json(route, 400, { error: 'That plan is not for sale' });
     // section 20: the code is re-quoted here, never priced by the client
     // section 21: priced for THIS buyer — the difference, and a downgrade refused
-    /* §55: the client chooses the currency and never the amount */
+    /* §56: the client chooses the currency and never the amount */
     const currency = body.currency == null ? 'INR' : String(body.currency);
     if (!['INR', 'USD'].includes(currency)) return json(route, 400, { error: 'Orders are in rupees (INR) or US dollars (USD).' });
     F.db.calls.push(`currency:rzp-order ${currency}`);

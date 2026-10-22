@@ -7,7 +7,7 @@
      1. who is asking — the caller's Supabase JWT, verified by asking
         Auth for the user; the body is trusted for nothing but the plan
         id, the period, a promo CODE (schema section 20), the CURRENCY
-        ('INR' or 'USD', schema §55 — never an amount) and (optionally)
+        ('INR' or 'USD', schema §56 — never an amount) and (optionally)
         which organisation they own;
      2. create_pending_payment() — the PRICE COMES FROM THE DATABASE,
         never from the request: an upgrade is priced as the difference
@@ -21,12 +21,12 @@
         attach_razorpay_order(). The browser gets back only what
         Checkout needs: order id, amount, currency, the PUBLIC key id.
 
-   CURRENCY (schema §55). The browser may ask for 'USD'; the database
+   CURRENCY (schema §56). The browser may ask for 'USD'; the database
    prices it from the owner's dollar figures and refuses it (400) while
    billing_settings.usd_checkout is off. The Razorpay order is created in
    the row's currency, and the amount is minor units of it. A rupee order
    is sent WITHOUT p_currency, so this function also works against a
-   database where §55 has not run yet (the five-argument form).
+   database where §56 has not run yet (the five-argument form).
 
    Secrets (set with `supabase secrets set`, never in the repo):
      RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
@@ -34,7 +34,7 @@
    platform. docs/BILLING.md is the runbook.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { basicAuth, PERIODS, receiptFor, normalisePromo, orderCurrency, attachOrder } from '../_shared/razorpay.js';
+import { basicAuth, PERIODS, receiptFor, normalisePromo, orderCurrency, attachOrder, failPending } from '../_shared/razorpay.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -96,14 +96,14 @@ Deno.serve(async (req) => {
   });
   const order = await r.json().catch(() => null);
   if (!r.ok || !order?.id) {
-    await svc.rpc('mark_payment_failed', { p_order_id: null, p_raw: order });
+    // By the row's own id: there is no order id to find it by (failPending).
+    await failPending(svc, row.payment_id, order);
     return json(502, { error: 'Razorpay did not create the order.', detail: order?.error?.description ?? null });
   }
   // The row must know the order before Checkout sees it (attachOrder).
   const att = await attachOrder({
     attach: () => svc.rpc('attach_razorpay_order', { p_payment: row.payment_id, p_order_id: order.id }),
-    abandon: () => svc.from('payments').update({ status: 'failed', raw: { attach_failed: order.id } })
-      .eq('id', row.payment_id).eq('status', 'created')
+    abandon: () => failPending(svc, row.payment_id, { attach_failed: order.id })
   });
   if (!att.ok) return json(502, { error: 'Could not record the order. Nothing was charged; try again.' });
 

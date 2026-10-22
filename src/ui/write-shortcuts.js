@@ -256,6 +256,4 @@ export function closeNavigator(restore) {
   if (restore && back && back.isConnected && back.focus) back.focus();
 }
 
-export const navigatorOpen = () => !!nav;
-
 export default { configure, keysPanel, publishSheet, printKeysheet, openNavigator, closeNavigator, ctrlDigitsFree };

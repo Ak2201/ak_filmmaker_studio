@@ -1,4 +1,4 @@
-# Live steps — §55 (charging in US dollars)
+# Live steps — §56 (charging in US dollars)
 
 One piece of SQL, one redeploy and two Razorpay/console steps on the live
 project (`conhlrulxfwkhsnymakz`). The long form is `docs/BILLING.md` §24.
@@ -10,11 +10,11 @@ Never paste SQL through the clipboard as text. Paste base64, decode it in the
 page, and compare the checksum before pressing Run.
 
 ```bash
-shasum -a 256 supabase/schema/schema-55-usd-checkout.sql
-# must equal the sha256 on the §55 row of supabase/schema/README.md
+shasum -a 256 supabase/schema/schema-56-usd-checkout.sql
+# must equal the sha256 on the §56 row of supabase/schema/README.md
 ```
 
-## 1. Run §55
+## 1. Run §56
 
 After §53 and §54. It is re-runnable.
 

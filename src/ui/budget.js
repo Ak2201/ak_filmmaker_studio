@@ -461,13 +461,21 @@ function renderCalculator() {
          has_project_access(…, 'view') admits: the owner, an unexpired
          collaborator at ANY role (a view link included) and the
          owner/admin of the project's account; pd_write needs 'edit'.
-         screening_open() returns story/feature/short/scenes only. Said
-         here because a budget is the one module people assume is
+         screening_open() returns story/feature/short/scenes only.
+         Schema §55 adds the owner's "Keep the budget private" switch
+         (budget-privacy-ui.js puts it right after this line): on, the
+         two budget scopes need the owner or an edit link (not even an
+         organisation admin). The blueprint's budget answers sit in the
+         'feature' / 'short' scopes, which a screening pass does open,
+         so the sentence says they are not covered. Said here because a budget is the one module people assume is
          private and is not. */
       h('p.hint.bud-who', {
         text: 'Once it syncs, anyone you share this project with can see the budget, '
-            + 'a view-only link included; only an edit link lets them change it. '
-            + 'A screening pass does not show it.'
+            + 'a view-only link included, and only an edit link lets them change it, '
+            + 'unless you keep the budget private: then only you and people with an '
+            + 'edit link can see it. A screening pass does not show it. Figures typed '
+            + 'into the blueprint\u2019s budget questions are not part of this page '
+            + 'and stay visible to anyone you share the film with, a screening pass included.'
       }),
       currencyNote(),
       // Column captions for the desk layout. Each field carries its

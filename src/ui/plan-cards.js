@@ -70,7 +70,7 @@ let hooks = { onBuy: null, rerender: null, onSuccess: null };
    page so BUY and the quotes use the currency the cards were drawn in. */
 let shopNow = null;
 const orderCur = () => orderCurrency(shopNow);
-/* A quote's figure in the quote's own currency (§55 answers *_minor and
+/* A quote's figure in the quote's own currency (§56 answers *_minor and
    `currency`; an older server answers *_paise only, and that is rupees). */
 const qCur = (q) => (q && q.currency === 'USD' ? 'USD' : 'INR');
 const qAmt = (q, k) => (q ? (Number.isInteger(q[k + '_minor']) ? q[k + '_minor'] : q[k + '_paise']) : 0);

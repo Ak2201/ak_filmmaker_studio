@@ -52,6 +52,28 @@ ok(I.unionRevisions([{ id: 'x', date: '2' }], [{ id: 'x', date: '2' }, { id: 'y'
   ok(I.keepBoth(both, fresh, 'x', { replaceId: 'gone' }).revisions.length === both.revisions.length + 1, 'an unknown draft id adds a draft');
 }
 
+// The automatic "From another device" drafts are capped at the newest ten;
+// a draft the writer named (even one that looks automatic in every other
+// way) and "Your version" drafts are never touched.
+{
+  ok(I.ARRIVAL_PREFIX === 'From another device, ', 'the prefix is the name the page has always given arrivals');
+  const day = (n) => '2026-10-' + String(n).padStart(2, '0') + 'T10:00:00.000Z';
+  const auto = Array.from({ length: 12 }, (_, i) => ({ id: 'a' + i, name: 'From another device, 10:' + i, date: day(i + 1), elements: [] }));
+  const named = [{ id: 'w1', name: 'Draft 1', date: day(1), elements: [] }, { id: 'w2', name: 'From Meera', date: day(2), elements: [] }, { id: 'y1', name: 'Your version, 09:00', date: day(1), elements: [] }];
+  const start = { elements: mine.elements, revisions: [...named, ...auto] };
+  const out = I.keepBoth(start, fresh, I.ARRIVAL_PREFIX + '11:00');
+  const ids = out.revisions.map((r) => r.id);
+  const arrivals = out.revisions.filter((r) => r.name.startsWith(I.ARRIVAL_PREFIX));
+  ok(arrivals.length === 10, 'only the newest ten arrival drafts stay (got ' + arrivals.length + ')');
+  ok(arrivals.some((r) => r.name === I.ARRIVAL_PREFIX + '11:00'), 'the arrival just kept is one of them');
+  ok(!ids.includes('a0') && !ids.includes('a1') && !ids.includes('a2') && ids.includes('a3') && ids.includes('a11'), 'the oldest arrivals are the ones dropped');
+  ok(['w1', 'w2', 'y1', 'r2'].every((id) => ids.includes(id)), 'writer-named drafts, "Your version" and the other side\'s drafts all survive');
+  const t = I.takeTheirs(start, fresh, 'Your version, 11:01');
+  ok(t.revisions.filter((r) => r.name.startsWith(I.ARRIVAL_PREFIX)).length === 10 && ['w1', 'w2', 'y1'].every((id) => t.revisions.some((r) => r.id === id)), 'Use theirs applies the same cap and keeps every named draft');
+  const few = I.keepBoth({ elements: mine.elements, revisions: named }, fresh, I.ARRIVAL_PREFIX + '11:02');
+  ok(few.revisions.length === named.length + fresh.revisions.length + 1, 'under the cap nothing is dropped');
+}
+
 // A page saving the copy it loaded before a newer one synced in does not
 // stamp its stale lines as the newest edit (script.js stampChanged).
 {

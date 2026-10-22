@@ -49,6 +49,7 @@
 import './store.js';
 import catalogue from '../data/festivals.json';
 import checks from '../data/festivals.checks.json';
+import { newId } from './record-id.js';
 
 export const FESTIVALS_KEY = 'fms_festivals_v1';
 
@@ -69,10 +70,7 @@ export const statusMeta = (id) => STATUS_BY_ID.get(id) || STATUSES[0];
 
 export const CURRENCIES = ['USD', 'INR'];
 
-const uid = () =>
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'fs_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+const uid = () => newId('fs');
 
 /* ---- the catalogue, as the tracker needs to read it ---------
    Two files, one reading. festivals.json is the 2023 blueprint's

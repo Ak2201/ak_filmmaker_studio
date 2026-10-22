@@ -1397,7 +1397,7 @@ try {
     allErrors.push(...T.errors); await T.ctx.close();
   }
 
-  /* ---- (usd) THE CURRENCY (docs/US-MARKET-PLAN.md §B-§D, schema §55) ----
+  /* ---- (usd) THE CURRENCY (docs/US-MARKET-PLAN.md §B-§D, schema §56) ----
      India sees rupees, everyone else the owner's dollar figures; what is
      CHARGED is the server's to say (usd_checkout), and every card says it. */
   console.log('(usd) dollars for a visitor outside India');

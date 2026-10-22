@@ -17,7 +17,7 @@
    schema section 20 activate_payment() compares its `amount` with the
    row's — which, with a promo code, is the DISCOUNTED amount. A
    mismatch is refused (22023) and logged; the row stays 'created'.
-   Since schema §55 the same goes for the entity's `currency` against
+   Since schema §56 the same goes for the entity's `currency` against
    the order's (INR or USD), and activate_payment() records the card's
    `international` flag and `card.country` from this entity — a later
    delivery fills them in if rzp-verify got there first without them.

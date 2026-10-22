@@ -251,12 +251,11 @@ function cutsShell(data, scenes) {
   loadCuts = () => (cutsMod ? fill(cutsMod) : load());
   if (cutsMod) { fill(cutsMod); return sec; }
   const load = () => import('../ui/edit-cuts.js').then(fill).catch(() => { /* a section, never the page */ });
-  if (typeof IntersectionObserver === 'function') {
-    const io = new IntersectionObserver((hits) => {
-      if (hits.some((x) => x.isIntersecting)) { io.disconnect(); load(); }
-    }, { rootMargin: '600px 0px' });
-    io.observe(sec);
-  } else load();
+  /* Loaded straight after render, not when scrolled near: filling it on
+     arrival added ~1,600px under the reader's hand and moved the end of
+     the page (prove:scroll "jump", 22 Oct 2026). It is still its own
+     5 KB chunk, so first paint is unchanged. */
+  load();
   return sec;
 }
 

@@ -294,8 +294,39 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
    tab, pinned to the visible right edge, with a negative margin so it
    adds nothing to the row's width. */
 .tabs:not(.tabs-side) .tabs-sections { display: none; }
+/* On a strip the button sits at the END (order after every tab, pinned
+   to the right edge), so the first tabs keep their places and the
+   button reads as "and more"; the side menu's narrow form keeps it
+   first. While it shows, it is the hint, so the fade steps aside. */
+.tabs:not(.tabs-side) .tabs-sections {
+  order: 1;
+  left: auto;
+  right: 0;
+  margin-right: 0;
+  margin-left: var(--s1);
+  box-shadow: calc(-1 * var(--s2)) 0 var(--s2) 0 var(--paper);
+}
+/* Once the icon face is in, the strip's copy is the icon alone, a tap
+   target square (as the band's SECTIONS is on a phone): with the word it
+   was 113px of a 324px strip and left one tab in view. The word stays
+   its accessible name. */
+html.sym-ready .tabs:not(.tabs-side) .tabs-sections {
+  width: var(--tap-min, 44px);
+  min-width: var(--tap-min, 44px);
+  padding: 0;
+  justify-content: center;
+}
+html.sym-ready .tabs:not(.tabs-side) .tabs-sections-l {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 @media (max-width: 1099px) {
   .tabs.is-scrollable:not(.tabs-side) .tabs-sections { display: inline-flex; }
+  .tabs.is-scrollable:not(.tabs-side)::after { display: none; }
 }
 .tabs.can-scroll-end:not(.tabs-side)::after {
   content: '';

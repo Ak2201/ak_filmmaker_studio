@@ -213,8 +213,21 @@ const strips = new Set();
 let stripRO = null;
 let pinBound = false;
 let pinRaf = 0;
+/* The button is measured OUT of the overflow test. Counted in, it was a
+   latch: a strip that overflowed once (a 300px window, or a measure taken
+   before the fonts settled) showed the 113px button, and the button's own
+   width then kept the row overflowing for good, so a 2-tab strip that fits
+   at 390 (plan, stripboard, contacts) stayed scrollable with its last tab
+   clipped behind it. The tabs alone decide; the button follows. */
+function buttonRoom(nav) {
+  const b = state.get(nav)?.btn;
+  if (!b || !b.offsetParent) return 0;
+  const cs = getComputedStyle(b);
+  const gap = parseFloat(getComputedStyle(nav).columnGap) || 0;
+  return b.offsetWidth + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0) + gap;
+}
 function markScroll(nav) {
-  const over = nav.scrollWidth > nav.clientWidth + 1;
+  const over = nav.scrollWidth - buttonRoom(nav) > nav.clientWidth + 1;
   nav.classList.toggle('is-scrollable', over);
   nav.classList.toggle('can-scroll-end', over && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
 }

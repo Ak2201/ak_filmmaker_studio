@@ -212,12 +212,16 @@ function intoStrip(tab) {
   if (!strip || strip.scrollWidth <= strip.clientWidth + 1) return;
   const s = strip.getBoundingClientRect();
   const t = tab.getBoundingClientRect();
-  /* the Sections button is pinned over the strip's left end: a tab
+  /* the Sections button is pinned over one end of the strip (the left
+     on the side menu's narrow form, the right on a strip): a tab
      scrolled in under it is not in */
   const lead = strip.querySelector('.tabs-sections');
-  const edge = s.left + (lead && lead.offsetParent ? lead.offsetWidth : 0);
+  const b = lead && lead.offsetParent ? lead.getBoundingClientRect() : null;
+  const atEnd = !!b && b.left > s.left + s.width / 2;
+  const edge = s.left + (b && !atEnd ? b.width : 0);
+  const end = s.right - (atEnd ? b.width : 0);
   if (t.left < edge) strip.scrollLeft -= edge - t.left + 16;
-  else if (t.right > s.right) strip.scrollLeft += t.right - s.right + 16;
+  else if (t.right > end) strip.scrollLeft += t.right - end + 16;
 }
 
 /** Make the element with this id visible, if a hidden tab is all that

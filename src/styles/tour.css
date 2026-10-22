@@ -165,3 +165,48 @@
 .tour-invite-line { margin: 0; flex: 1 1 18rem; color: var(--ink); }
 .tour-invite-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
 @media print { .tour-invite { display: none !important; } }
+
+/* ONE BUTTON LANGUAGE (item 48). tour.js draws the checklist's, the
+   popover's and the invitation's actions as legacy `.btn` — mono caps
+   from chrome.css's `:root .btn` — on the same Home page whose other
+   actions are kit `k-btn`. These rules give those three hosts the kit's
+   values (the same tokens and --sk-* variables as kit.css and
+   kit-scope.css, so they cannot drift in value). Led by `:root` and two
+   classes so they out-rank `:root .btn` without !important (the
+   ordering trap in CLAUDE.md). The touch floor in base.css still
+   applies: no min-height is reset here. */
+:root :is(.tw-actions, .tour-actions, .tour-invite-actions) .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1h);
+  height: var(--h-control);
+  padding: 0 var(--s3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  background: var(--surface-card);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+:root :is(.tw-actions, .tour-actions, .tour-invite-actions) .btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+:root :is(.tw-actions, .tour-actions, .tour-invite-actions) .btn:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+:root :is(.tw-actions, .tour-actions, .tour-invite-actions) .btn.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
+  font-weight: 600;
+}
+:root :is(.tw-actions, .tour-actions, .tour-invite-actions) .btn.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--brand-on); }

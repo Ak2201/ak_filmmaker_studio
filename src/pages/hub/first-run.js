@@ -64,19 +64,19 @@ function renderFirstRun() {
       h('div.door-tag', {}, [h('span.door-num-circle', { text: 'I' }), ' A FULL-LENGTH STORY']),
       h('h3', {}, ['Feature', h('br'), h('span.light', { text: 'film.' })]),
       h('p.door-sub', { text: 'A story you tell over an hour or more. We walk you from the first spark to the finished film, one stage at a time.' }),
-      h('button.door-cta', { type: 'button', 'data-action': 'start-feature' }, [h('span', { text: 'START A FEATURE' }), h('span.arrow', { text: '→' })])
+      h('button.door-cta', { type: 'button', 'data-action': 'start-feature' }, [h('span', { text: 'Start a feature' }), h('span.arrow', { text: '→' })])
     ]),
     h('div.door.shorts', {}, [
       h('div.door-tag', {}, [h('span.door-num-circle', { text: 'II' }), ' UNDER 30 MINUTES']),
       h('h3', {}, ['Short', h('br'), h('span.light', { text: 'film.' })]),
       h('p.door-sub', { text: 'The quickest way to make something real. A tighter story, a smaller crew, a film you can finish and show.' }),
-      h('button.door-cta', { type: 'button', 'data-action': 'start-short' }, [h('span', { text: 'START A SHORT' }), h('span.arrow', { text: '→' })])
+      h('button.door-cta', { type: 'button', 'data-action': 'start-short' }, [h('span', { text: 'Start a short' }), h('span.arrow', { text: '→' })])
     ]),
     h('div.door.library', {}, [
       h('div.door-tag', {}, [h('span.door-num-circle', { text: 'III' }), ' LEARN FIRST']),
       h('h3', {}, ['Learning', h('br'), h('span.light', { text: 'library.' })]),
       h('p.door-sub', { text: 'Not ready to start? Read how films you know were built: ' + films.length + ' films, ' + directors.length + ' directors and ' + rules.length + ' rules of thumb. No project needed.' }),
-      h('a.door-cta', { href: 'library.html' }, [h('span', { text: 'OPEN THE LIBRARY' }), h('span.arrow', { text: '→' })])
+      h('a.door-cta', { href: 'library.html' }, [h('span', { text: 'Open the library' }), h('span.arrow', { text: '→' })])
     ])
   ]);
   panel.append(doors);

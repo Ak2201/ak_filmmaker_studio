@@ -281,7 +281,7 @@ export function adminSection(section, st, { part } = {}) {
       try { const el = fn(); if (el) sec.append(el); } catch (e) { console.warn('[gate-ui] requests block', e); }
     }
   }
-  sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gate-action': 'reload', text: 'REFRESH' }));
+  sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gate-action': 'reload', text: 'Refresh' }));
   return sec;
 }
 

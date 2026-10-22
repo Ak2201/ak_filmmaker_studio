@@ -990,6 +990,19 @@ function renderActivitySection() {
     'A timeline of your recent edits. Updates whenever you save. Click an entry to jump back.');
   const host = h('div.st-activity');
   renderActivityLog(host);
+  /* ONE BUTTON LANGUAGE (item 48): activity-log.js draws its two actions
+     as mono-caps `.mini-btn` ('↻ REFRESH', 'CLEAR LOG'), which the
+     k-scope sheet does not cover. Restate them as kit small buttons in
+     sentence case. The log redraws itself on Refresh and Clear, so this
+     re-applies on each redraw; it touches only class and label, and the
+     click listeners activity-log.js bound stay on the same elements. */
+  const kitActions = () => host.querySelectorAll('.activity-actions .mini-btn').forEach((b) => {
+    const danger = b.classList.contains('danger');
+    b.className = 'k-btn k-btn--sm ' + (danger ? 'k-btn--danger' : 'k-btn--secondary');
+    b.textContent = danger ? 'Clear log' : 'Refresh';
+  });
+  kitActions();
+  new MutationObserver(kitActions).observe(host, { childList: true });
   sec.append(host);
   return sec;
 }

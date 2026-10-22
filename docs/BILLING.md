@@ -1423,7 +1423,7 @@ Four findings from the 21 Oct 2026 audit, each proved by a check in
 3. Read back with the checks at 53.5 in the section file. (Read back live 22 Oct 2026: all four passed.)
 
 
-## 24. Charging in US dollars (schema §56, 21 Oct 2026). RUN LIVE 22 Oct 2026; functions not yet redeployed from this source.
+## 24. Charging in US dollars (schema §56, 21 Oct 2026). RUN LIVE 22 Oct 2026; all four functions redeployed from this source (13:35 UTC).
 
 The owner's decision (docs/US-MARKET-PLAN.md §C): visitors in India pay
 rupees, everyone else pays US dollars, and the owner types the dollar

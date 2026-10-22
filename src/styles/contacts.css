@@ -740,9 +740,16 @@
   color: var(--ink-muted);
 }
 
-/* On a phone the four figures stay two across but drop their notes, so
-   the unit list starts on the first screen (impeccable pass, 19 Oct 2026). */
+/* On a phone the four figures stay two across. Their notes used to be
+   dropped here (19 Oct 2026); that left bare numbers with no unit, so
+   they show again (UI review, 22 Oct 2026). */
 @media (max-width: 719px) {
   .ct-kpis .k-stat { padding: var(--s2); }
-  .ct-kpis .k-stat-note { display: none; }
+  /* The notes stay: they carry the units ("people", "days"). */
+
+  /* No fixed-height scroll boxes on a phone: a 22rem box inside the page
+     traps the thumb and cuts rows in half. The lists run at full length. */
+  .ct-pick-list,
+  .ct-send-list,
+  .ct-wa-preview { max-height: none; overflow-y: visible; }
 }

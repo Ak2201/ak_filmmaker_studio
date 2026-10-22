@@ -41,7 +41,7 @@ import {
   dialogueData, dialogueMeta, dialogueWho, dialogueSubtitle, fileBase as fileBaseOf
 } from '../lib/deliverables-model.js';
 import { guideHref } from '../lib/blueprint-route.js';
-import { pageHeader, statCard, statStrip, badge } from '../ui/kit/index.js';
+import { pageHeader, statCard, statStrip, badge, button } from '../ui/kit/index.js';
 /* pdf.js, cbfc.js and cbfc-rules.json are only needed by the certification
    and dialogue tabs, so they load on demand, not in first paint. */
 let PDF = null, Cbfc = null, CBFC_RULES = null, lazyP = null;
@@ -212,20 +212,19 @@ function festivalBlock(reqs, format) {
     const feature = format === 'feature';
     sec.append(h('p.dv-blurb', {
       text: feature
-        ? 'No festivals tracked yet. The submission tracker lives on the Short Film Blueprint’s '
-          + 'festival step and keeps this project’s festivals whatever its format — add a '
-          + 'feature’s festivals there and each one appears here with the format it asks for.'
+        ? 'No festivals tracked yet. Every format keeps its festivals in the Short Film Blueprint’s tracker.'
         : 'No festivals tracked yet. Add them on the short film’s festival step and each one '
           + 'appears here with the format it asks for.'
     }));
-    sec.append(h('a.btn', {
-      /* A stage guide shows the OPEN project's format, so on a feature
-         guideHref('short', …) opened the Feature questions for post and
-         no tracker. The retired short page, kept behind ?stay=1, is the
-         one place a feature can reach the short film's festival step. */
-      href: feature ? 'short.html?stay=1#step-10' : (guideHref('short', 'step-10') || 'edit.html#guide'),
-      text: feature ? 'OPEN THE SUBMISSION TRACKER (SHORT FILM BLUEPRINT)' : 'OPEN THE SUBMISSION TRACKER'
-    }));
+    /* A stage guide shows the OPEN project's format, so on a feature
+       guideHref('short', …) opened the Feature questions for post and
+       no tracker. The retired short page, kept behind ?stay=1, is the
+       one place a feature can reach the short film's festival step. */
+    sec.append(h('p.dv-fest-go', {}, [button({
+      label: feature ? 'Add festivals' : 'Open the submission tracker',
+      iconAfter: 'arrow_forward',
+      href: feature ? 'short.html?stay=1#step-10' : (guideHref('short', 'step-10') || 'edit.html#guide')
+    })]));
     return sec;
   }
   sec.append(h('p.dv-blurb', {
@@ -487,9 +486,9 @@ function dialoguePanel(build) {
     stat(String(dl.reels), 'reels, estimated')
   ], 'Dialogue list figures'));
   sec.append(h('div.dv-dl-actions', {}, [
-    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-csv', text: 'DOWNLOAD CSV' }),
-    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-srt', text: 'DOWNLOAD SRT SKELETON' }),
-    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-print', text: 'PRINT OR SAVE AS PDF' })
+    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-csv', text: 'Download CSV' }),
+    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-srt', text: 'Download SRT skeleton' }),
+    h('button.k-btn', { type: 'button', 'data-dv-action': 'dl-print', text: 'Print or save as PDF' })
   ]));
   const notes = h('ul.dv-dl-notes');
   notes.append(h('li', { text: 'The CSV opens in Excel or Google Sheets with Tamil script intact (UTF-8). The English column is empty, for the translator.' }));

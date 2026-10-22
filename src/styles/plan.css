@@ -280,7 +280,9 @@
   font: inherit;
   font-size: var(--t-small);
 }
-.pl-sel { font-family: var(--f-mono); font-size: var(--t-micro); }
+/* One height for the text fields and the Permission select beside them. */
+.pl-input,
+.pl-sel { min-height: 2.5rem; }
 .pl-notes { resize: vertical; line-height: var(--lh-snug); min-height: 3em; }
 .pl-input:focus-visible,
 .pl-sel:focus-visible,
@@ -424,6 +426,11 @@
   .pl-media .bd-icon { margin-left: 0; }
   .pl-media-bar .pl-sel { flex: 1 1 9rem; }
   .pl-loose, .pl-orphans { padding: var(--s3) var(--s4); }
+  /* The day card's chips already name the location; at phone width the
+     table keeps Sc, Time, Pages and What happens so it fits. */
+  .pl-table .pl-ie,
+  .pl-table .pl-where { display: none; }
+  .pl-table td.pl-what { min-width: 0; }
 }
 
 /* ------------------------------------------------------------

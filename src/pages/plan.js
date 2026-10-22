@@ -226,11 +226,14 @@ function dateInput(entry) {
 }
 
 function dayTable(entry) {
-  const table = h('table.scene-table.pl-table');
+  /* .scene-table scrolls sideways when it must, so it is focusable and
+     named for a keyboard reader. Below 720px plan.css drops I/E and
+     Location (the card's chips already say where) so it rarely does. */
+  const table = h('table.scene-table.pl-table', { tabindex: '0', 'aria-label': 'Scenes on shoot day ' + entry.day });
   const thead = h('thead');
   const hr = h('tr');
-  ['Sc', 'I/E', 'Location', 'Time', 'Pages', 'What happens'].forEach((label) =>
-    hr.append(h('th', { scope: 'col', text: label })));
+  [['Sc'], ['I/E', 'pl-ie'], ['Location', 'pl-where'], ['Time'], ['Pages'], ['What happens']].forEach(([label, cls]) =>
+    hr.append(h('th', { scope: 'col', text: label, ...(cls ? { class: cls } : {}) })));
   thead.append(hr);
 
   const tbody = h('tbody');
@@ -460,9 +463,10 @@ function pinField(recce) {
 
 function textField(name, value, placeholder) {
   const el = h('input.pl-input', {
-    type: 'text', placeholder, 'data-recce-field': name,
-    'aria-label': placeholder
+    type: 'text', placeholder, 'data-recce-field': name
   });
+  /* No aria-label: the wrapping label.pl-field names it. A placeholder
+     as the accessible name hid the visible label (WCAG 2.5.3). */
   el.value = value || '';
   return el;
 }

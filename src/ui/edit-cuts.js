@@ -15,6 +15,7 @@ import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
 import Scenes from '../lib/scenes.js';
 import Edit, { formatTimecode } from '../lib/editlog.js';
+import { button } from './kit/index.js';
 
 let render = () => {};
 
@@ -76,11 +77,12 @@ function cutCard(cut, scenes, label, linksBlock) {
   scenes.forEach((s) => sel.append(h('option', { value: s.id, text: 'Sc ' + (s.number || '—') + ' · ' + (s.location || 'No location') })));
   f.append(sel);
   f.append(h('input', { type: 'text', name: 'text', placeholder: 'Note — trim the pause, swap the take', 'aria-label': 'Note for ' + cut.name }));
-  f.append(h('button.mini-btn', { type: 'submit', text: 'ADD NOTE' }));
+  f.append(button({ label: 'Add note', type: 'submit', size: 'sm' }));
   art.append(f);
-  art.append(h('button.btn', {
-    type: 'button', 'data-edit-action': 'cut-copy', 'data-cut': cut.id,
-    text: 'COPY NOTES', title: 'This cut’s notes as plain text for an email'
+  art.append(button({
+    label: 'Copy notes', icon: 'content_copy', size: 'sm', variant: 'ghost',
+    title: 'This cut’s notes as plain text for an email',
+    attrs: { 'data-edit-action': 'cut-copy', 'data-cut': cut.id }
   }));
   return art;
 }
@@ -96,7 +98,7 @@ function fillCuts(sec, data, scenes, api) {
   const f = h('form.el-cut-add', { 'data-edit-form': 'cut' });
   f.append(h('input', { type: 'text', name: 'name', placeholder: 'New cut — Assembly, Rough cut v1', 'aria-label': 'Name of the new cut' }));
   f.append(h('input', { type: 'date', name: 'date', value: new Date().toISOString().slice(0, 10), 'aria-label': 'Date of the new cut' }));
-  f.append(h('button.mini-btn', { type: 'submit', text: 'ADD CUT' }));
+  f.append(button({ label: 'Add cut', type: 'submit', size: 'sm' }));
   sec.append(f);
 
   const days = [...new Set(scenes.map((s) => Number(s.shootDay) || 0).filter((n) => n > 0))].sort((a, b) => a - b);

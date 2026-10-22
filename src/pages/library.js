@@ -543,10 +543,26 @@ function searchSource() {
 /* ---- the Library index: every shelf and what is on it ----------
    The hub's master index listed the library's sections, films and
    directors; it lives here now, derived from the same arrays. */
+/* What an index card's list counts, so its number never reads as a
+   contradiction of the shelf card's ("12 tools" beside "14 on this
+   shelf" — the 14 were the book's sections, overview and close
+   included). A shelf with a rail lists its sections. */
+const INDEX_UNIT = {
+  films: ['film', 'films'], directors: ['archetype', 'archetypes'], rules: ['rule', 'rules'],
+  equipment: ['rate table', 'rate tables'], watch: ['step', 'steps']
+};
+const indexCount = (id, n) => {
+  const u = INDEX_UNIT[id] || ['section', 'sections'];
+  return n + ' ' + (n === 1 ? u[0] : u[1]);
+};
+
 function renderContents() {
   const secs = libraryContents(openShelves().map((s) => ({
     id: s.id, title: s.tocTitle, desc: s.tocDesc,
-    items: s.rail ? s.rail().map((it) => ({ id: it.id, title: it.label })) : undefined
+    items: s.rail ? s.rail().map((it) => ({ id: it.id, title: it.label }))
+      /* The rules shelf had no list, so it was the one card with no count. */
+      : s.id === 'rules' ? rules.map((r) => ({ id: ruleId(r.n), title: r.text }))
+      : undefined
   })), searchSource());
   return h('div#library-index.lib-contents', {}, [
     h('div.section-head', {}, [
@@ -566,7 +582,7 @@ function renderContents() {
       return h('div.lib-contents-card', {}, [
         head,
         h('details', {}, [
-          h('summary', { text: `${s.items.length} on this shelf` }),
+          h('summary', { text: indexCount(s.id, s.items.length) }),
           h('ul', {}, s.items.map((it) => h('li', {}, [h('a', { href: `#${it.id}`, text: it.title })])))
         ])
       ]);

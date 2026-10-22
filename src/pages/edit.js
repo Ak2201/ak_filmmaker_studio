@@ -136,10 +136,26 @@ function sceneRow(row) {
     'aria-label': 'Editor’s note for scene ' + (s.number || '')
   });
   note.value = row.edit.note || '';
-  art.append(note);
+
+  /* THE FORMS FOLD AWAY. The note, the dailies links and the pick-up
+     line used to be open on every card — about 355px a scene, so a
+     36-scene film was a 13,000px page of empty fields. They sit in one
+     disclosure per scene now; the summary says what is inside, the DOM
+     is all still there (a closed <details> keeps its body), and the
+     open/closed state is memory only (moreOpen), kept across renders. */
+  const more = h('details.el-more', { 'data-scene': s.id });
+  if (moreOpen.has(s.id)) more.open = true;
+  const nLinks = row.edit.links.length;
+  const has = [row.edit.note ? 'note written' : '', nLinks ? nLinks + (nLinks === 1 ? ' link' : ' links') : '']
+    .filter(Boolean).join(' · ');
+  more.append(h('summary.el-more-head', {}, [
+    h('span', { text: 'Note, dailies and pick-ups' }),
+    has ? h('span.el-more-meta.k-mono', { text: has }) : null
+  ].filter(Boolean)));
+  more.append(note);
 
   /* Where this scene's dailies / review live — addresses only. */
-  art.append(linksBlock(row.edit.links, { scope: 'scene', id: s.id, name: 'dailies for scene ' + (s.number || ''), head: 'Dailies' }));
+  more.append(linksBlock(row.edit.links, { scope: 'scene', id: s.id, name: 'dailies for scene ' + (s.number || ''), head: 'Dailies' }));
 
   /* Pick-ups owed on this scene, and a line to add one. */
   const mine = row.pickups;
@@ -153,8 +169,9 @@ function sceneRow(row) {
     type: 'text', name: 'what', placeholder: 'Add a pick-up — an insert, a line, a wide',
     'aria-label': 'New pick-up for scene ' + (s.number || '')
   }));
-  add.append(h('button.mini-btn', { type: 'submit', text: 'ADD' }));
-  art.append(add);
+  add.append(button({ label: 'Add pick-up', type: 'submit', size: 'sm' }));
+  more.append(add);
+  art.append(more);
 
   return art;
 }
@@ -203,7 +220,7 @@ function linksBlock(links, { scope, id, name, head }) {
   const f = h('form.el-link-add', { 'data-edit-form': 'link', 'data-link-scope': scope, 'data-link-id': id });
   f.append(h('input', { type: 'url', name: 'url', placeholder: 'Paste a link (Drive, Frame.io…)', 'aria-label': 'Link to ' + name }));
   f.append(h('input', { type: 'text', name: 'label', placeholder: 'Label (optional)', 'aria-label': 'Label for the link to ' + name }));
-  f.append(h('button.mini-btn', { type: 'submit', text: 'ADD LINK' }));
+  f.append(button({ label: 'Add link', type: 'submit', size: 'sm' }));
   box.append(f);
   return box;
 }
@@ -215,10 +232,23 @@ function linksBlock(links, { scope, id, name, head }) {
    must resolve before any data or script arrives (CLAUDE.md, "A nav
    target must not depend on data existing"). */
 let cutsMod = null;
+let loadCuts = null;      // the current shell's loader, for the "New cut version" CTA
+let wantCutName = false;  // the CTA was pressed: focus the new cut's name once it exists
+function focusCutName() {
+  const input = document.querySelector('#cuts [data-edit-form="cut"] input[name="name"]');
+  if (!input) return false;
+  wantCutName = false;
+  input.focus();
+  return true;
+}
 function cutsShell(data, scenes) {
   const sec = h('section.el-cuts', { id: 'cuts', 'aria-label': 'Cut versions' });
   sec.append(h('h2.el-h2', { text: 'Cut versions' }));
-  const fill = (m) => { cutsMod = m; m.fillCuts(sec, data, scenes, { render, linksBlock }); };
+  const fill = (m) => {
+    cutsMod = m; m.fillCuts(sec, data, scenes, { render, linksBlock });
+    if (wantCutName) requestAnimationFrame(focusCutName);
+  };
+  loadCuts = () => (cutsMod ? fill(cutsMod) : load());
   if (cutsMod) { fill(cutsMod); return sec; }
   const load = () => import('../ui/edit-cuts.js').then(fill).catch(() => { /* a section, never the page */ });
   if (typeof IntersectionObserver === 'function') {
@@ -242,7 +272,7 @@ function renderEmpty(reason) {
   main.append(pageHeader({ eyebrow: ['Post', 'Edit log'], title: 'Edit Log', class: 'bd-head' }));
   main.append(h('div.el-list', { id: 'log' }, [
     h('p.bd-deck.el-empty-why', { text: reason }),
-    h('p', {}, [h('a.btn', { href: 'breakdown.html#scenes', text: 'Open the Scene List →' })])
+    h('p', {}, [button({ label: 'Open the Scene List', iconAfter: 'arrow_forward', href: 'breakdown.html#scenes' })])
   ]));
   return main;
 }
@@ -397,7 +427,7 @@ function render(focus) {
         + 'Nothing here is stored — it is read from the shoot day’s marks and the shot list.'
       : 'What the set got, against what the cut needs. The marks come from the shoot day, '
         + 'the setups from the shot list; only the cut column and the notes are written here.',
-    actions: [button({ label: 'New cut version', icon: 'add', variant: 'primary', href: '#cuts' })]
+    actions: [button({ label: 'New cut version', icon: 'add', variant: 'primary', href: '#cuts', attrs: { 'data-edit-action': 'cut-new' } })]
   }));
 
   /* The numbers. Pages, because that is the unit the schedule and
@@ -505,7 +535,7 @@ function render(focus) {
   main.append(body);
   main.append(cutsShell(data, scenes));
   main.append(h('p.bd-onward', {}, [
-    h('a.btn', { href: 'deliverables.html#checklist', text: 'Next: Deliverables →' })
+    button({ label: 'Next: Deliverables', iconAfter: 'arrow_forward', href: 'deliverables.html#checklist' })
   ]));
 
   app.replaceChildren(main);
@@ -515,6 +545,9 @@ function render(focus) {
 function after(focus) {
   if (focus) {
     const node = document.querySelector(focus);
+    /* A field inside a closed scene disclosure cannot take focus. */
+    const fold = node && node.closest('details.el-more');
+    if (fold && !fold.open) fold.open = true;
     if (node) node.focus();
   }
   /* The blueprint's post-production questions, answered here (src/ui/stage-guide.js). */
@@ -537,8 +570,25 @@ function after(focus) {
 
 /* ---- events — delegated, no inline handlers ------------------ */
 
+/* Which scene disclosures are open: memory only, never stored. */
+const moreOpen = new Set();
+document.addEventListener('toggle', (e) => {
+  const d = e.target;
+  if (!d || !d.matches || !d.matches('details.el-more')) return;
+  const id = d.getAttribute('data-scene');
+  if (d.open) moreOpen.add(id); else moreOpen.delete(id);
+}, true);
+
 delegate(document, 'click', '[data-edit-action]', (e, el) => {
   const act = el.getAttribute('data-edit-action');
+  if (act === 'cut-new') {
+    /* The link still lands on #cuts (fragments.js scrolls); the name of
+       the new cut takes the focus once the section's code is in. */
+    wantCutName = true;
+    if (document.querySelector('#cuts [data-edit-form="cut"]')) requestAnimationFrame(focusCutName);
+    else if (loadCuts) loadCuts();
+    return;
+  }
   if (act === 'filter') {
     filter = el.getAttribute('data-filter') || 'all';
     render('[data-edit-action="filter"][data-filter="' + filter + '"]');

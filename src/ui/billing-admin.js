@@ -90,7 +90,6 @@ const money = (minor, row) => fmtMinor(minor || 0, row && row.currency === 'USD'
 const intlBadge = (p) => (p && p.international === true
   ? h('span.st-badge.ba-intl', { title: p.card_country ? 'Card issued in ' + p.card_country : 'Card issued outside India', text: 'Intl card' + (p.card_country ? ' · ' + p.card_country : '') })
   : null);
-const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
 
 async function load() {
   S.busy = true; S.error = ''; rerender();

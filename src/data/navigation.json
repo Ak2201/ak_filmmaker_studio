@@ -98,7 +98,8 @@
           "href": "story.html",
           "pageLabel": "Story",
           "icon": "≈",
-          "sym": "format_list_numbered"
+          "sym": "format_list_numbered",
+          "sectionsFrom": "story-paths"
         },
         {
           "id": "idea-vault",
@@ -142,7 +143,15 @@
           "status": "built",
           "href": "screenplay.html",
           "icon": "☰",
-          "sym": "description"
+          "sym": "description",
+          "sections": [
+            {
+              "id": "analysis",
+              "label": "Script analysis",
+              "sym": "assessment",
+              "purpose": "Pacing, structure, cast lines and coverage of the screenplay"
+            }
+          ]
         },
         {
           "id": "revisions",
@@ -207,7 +216,15 @@
           "href": "breakdown.html#breakdown",
           "icon": "⊞",
           "sym": "grid_view",
-          "group": "Breakdown"
+          "group": "Breakdown",
+          "sections": [
+            {
+              "id": "overview",
+              "label": "Whole script",
+              "sym": "description",
+              "purpose": "The script at a glance"
+            }
+          ]
         },
         {
           "id": "scene-list",
@@ -277,7 +294,15 @@
           "href": "visualize.html#shot-list",
           "icon": "▶",
           "sym": "view_list",
-          "group": "Visualise"
+          "group": "Visualise",
+          "sections": [
+            {
+              "id": "draft",
+              "label": "Draft a shot division",
+              "sym": "edit_note",
+              "purpose": "Have a shot division drafted for you"
+            }
+          ]
         },
         {
           "id": "storyboard",
@@ -287,7 +312,21 @@
           "href": "visualize.html#storyboard",
           "icon": "⊟",
           "sym": "dashboard",
-          "group": "Visualise"
+          "group": "Visualise",
+          "sections": [
+            {
+              "id": "blocking",
+              "label": "Blocking",
+              "sym": "grid_view",
+              "purpose": "A top-down map per setup: actors, cameras and their marks"
+            },
+            {
+              "id": "scene-board",
+              "label": "Scene board",
+              "sym": "dashboard",
+              "purpose": "One scene on one surface: script, shots, frames and blocking"
+            }
+          ]
         },
         {
           "id": "lookbook",
@@ -367,7 +406,63 @@
           "href": "budget.html",
           "icon": "₹",
           "sym": "currency_rupee",
-          "group": "Budget & People"
+          "group": "Budget & People",
+          "sections": [
+            {
+              "id": "estimate",
+              "label": "Estimate",
+              "sym": "calculate",
+              "purpose": "The estimate, built from your scenes and the rate tables"
+            },
+            {
+              "id": "schedule",
+              "label": "Schedule impact",
+              "sym": "timeline",
+              "purpose": "What a shoot day costs, and what cutting a scene would really save"
+            },
+            {
+              "id": "versions",
+              "label": "Versions",
+              "sym": "history",
+              "purpose": "Lock the budget as it stands and compare later changes against it"
+            },
+            {
+              "id": "expenses",
+              "label": "Petty cash",
+              "sym": "receipt_long",
+              "purpose": "Petty cash, as it is spent"
+            },
+            {
+              "id": "crew",
+              "label": "Crew payments",
+              "sym": "groups",
+              "purpose": "What each crew member has been paid"
+            },
+            {
+              "id": "actuals",
+              "label": "Cost report",
+              "sym": "fact_check",
+              "purpose": "Estimate against what was spent"
+            },
+            {
+              "id": "topsheet",
+              "label": "Top sheet",
+              "sym": "table_chart",
+              "purpose": "The budget on one page"
+            },
+            {
+              "id": "wages",
+              "label": "Wage table",
+              "sym": "currency_rupee",
+              "purpose": "Wages by role and day"
+            },
+            {
+              "id": "export",
+              "label": "Export",
+              "sym": "upload_file",
+              "purpose": "Take the budget out as a file"
+            }
+          ]
         },
         {
           "id": "contacts",
@@ -387,7 +482,27 @@
           "href": "reports.html#reports",
           "icon": "⌗",
           "sym": "assessment",
-          "group": "Budget & People"
+          "group": "Budget & People",
+          "sections": [
+            {
+              "id": "dpr",
+              "label": "DPR",
+              "sym": "fact_check",
+              "purpose": "The daily progress report"
+            },
+            {
+              "id": "oneliner",
+              "label": "One-liner",
+              "sym": "list",
+              "purpose": "One line per scene"
+            },
+            {
+              "id": "kit",
+              "label": "Equipment",
+              "sym": "photo_camera",
+              "purpose": "Equipment lists by department"
+            }
+          ]
         }
       ],
       "sym": "checklist",
@@ -457,7 +572,21 @@
           "status": "built",
           "href": "deliverables.html#checklist",
           "icon": "☑",
-          "sym": "inventory_2"
+          "sym": "inventory_2",
+          "sections": [
+            {
+              "id": "certification",
+              "label": "Certification",
+              "sym": "verified",
+              "purpose": "Checks the script against the certification rules before you submit"
+            },
+            {
+              "id": "dialogue-list",
+              "label": "Dialogue list",
+              "sym": "subtitles",
+              "purpose": "Every spoken line, numbered, ready for the translator"
+            }
+          ]
         }
       ],
       "sym": "tune",

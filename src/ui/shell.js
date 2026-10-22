@@ -53,7 +53,7 @@ import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
 import { mountProjectSwitcher } from './project-switcher.js';
 import { mountBackupMenu } from './topbar-backup.js';
-import { moduleGroups, guideStops, phases, globals, stayEntry, stagePageEntry, homeStage, stageLead } from '../lib/navmodel.js';
+import { moduleGroups, guideStops, phases, globals, stayEntry, stagePageEntry, homeStage, stageLead, moduleSections } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
 import { syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
@@ -683,9 +683,24 @@ function buildFly(p) {
     if (m.group && m.group !== sub) list.append(h('p.sh-fly-sub', { text: m.group }));
     sub = m.group || null;
     list.append(flyRow(m));
+    /* its sections, indented under it: the page's tabs that are not
+       modules of their own, so this list is the page strip's list */
+    if (m.status !== 'planned' && m.href) for (const sec of moduleSections(m)) list.append(flySubRow(m, sec));
   }
   fly.append(list);
   return fly;
+}
+
+/* A section of a module: a link to the page's tab, gated with its
+   module (data-module-id is the parent's, so markLocked hides or flags
+   it with the parent). */
+function flySubRow(m, sec) {
+  const row = h('a.sh-fly-mod.is-sub', { href: m.href.split('#')[0] + '#' + sec.id });
+  row.dataset.moduleId = m.id;
+  row.dataset.section = sec.id;
+  row.append(iconSpan('sh-fly-icon', { sym: sec.sym }), h('span.sh-fly-label', { text: sec.label }));
+  if (sec.purpose) row.title = sec.purpose;
+  return row;
 }
 
 function flyRow(m) {
@@ -1190,6 +1205,22 @@ function gatherTools(bar, tools) {
    are, not a navigation. */
 
 let current = null;         // the last resolution we displayed
+
+/* The flyout row for where you are: a SECTION row when the address names
+   one of this page's sections (reports.html#dpr), else the module's own
+   row. Run on every hash change, since a section is not a location the
+   crumb resolves exactly. */
+function markFlyHere(loc) {
+  const tab = (location.hash || '').replace(/^#/, '').split('?')[0];
+  const sub = tab ? [...document.querySelectorAll('.sh-fly-mod.is-sub')].find((r) =>
+    r.dataset.section === tab && pageFile((r.getAttribute('href') || '').split('#')[0]) === CURRENT) : null;
+  document.querySelectorAll('.sh-fly-mod').forEach((m) => {
+    const here = sub ? m === sub
+      : !m.classList.contains('is-sub') && !!(loc && loc.module && m.dataset.moduleId === loc.module.id);
+    m.classList.toggle('is-here', here);
+    if (here) m.setAttribute('aria-current', 'page'); else m.removeAttribute('aria-current');
+  });
+}
 let crumbEl = null;
 
 function paintLocation(loc) {
@@ -1215,11 +1246,7 @@ function paintLocation(loc) {
     else a.removeAttribute('aria-current');
   });
   /* …and the module, in its flyout. */
-  document.querySelectorAll('.sh-fly-mod').forEach((m) => {
-    const here = !!(loc.module && m.dataset.moduleId === loc.module.id);
-    m.classList.toggle('is-here', here);
-    if (here) m.setAttribute('aria-current', 'page'); else m.removeAttribute('aria-current');
-  });
+  markFlyHere(loc);
   /* On a phone the stages are one sideways-scrolling line (chrome.css),
      so the one you are in may start off-screen. Bring it in. Only the
      strip's own scroll position moves — never the page's. */
@@ -2004,6 +2031,7 @@ function wire() {
   window.addEventListener('hashchange', () => {
     const loc = resolveLocation();
     if (loc.exact || !current || !current.exact) goTo(loc);
+    markFlyHere(current || loc);
   });
 
   let raf = 0;

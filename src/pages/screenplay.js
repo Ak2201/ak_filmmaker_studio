@@ -50,6 +50,7 @@ import { installLineLanding } from '../ui/script-find.js';
 import { mountReplaceBar } from '../ui/script-replace-bar.js';
 import { mountPresence } from '../ui/presence.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
+import { pageEntry } from '../lib/navmodel.js';
 import { buildSectionMenu } from '../ui/section-menu.js';   // Write | Script analysis
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
@@ -349,8 +350,12 @@ const HELP_ITEMS = [
    (no history entry per switch). The analysis is built only when its
    view is open (src/ui/script-analysis.js, a dynamic import), so the
    editor's first paint carries none of it. Not a navigation.json
-   module: it is a view of this page. */
-const VIEWS = [{ id: 'screenplay', label: 'Write', icon: 'edit_note' }, { id: 'analysis', label: 'Script analysis', icon: 'assessment' }];
+   module: it is a SECTION of the Screenplay Writer there, so the rail's
+   flyout and this strip read one label and one icon (pageEntries). */
+const VIEWS = ['screenplay', 'analysis'].map((id) => {
+  const e = pageEntry('screenplay.html', id) || {};
+  return { id, label: e.label || (id === 'analysis' ? 'Script analysis' : 'Screenplay Writer'), icon: e.sym || '', hint: e.purpose || '' };
+});
 const viewFromHash = () => (location.hash === '#analysis' ? 'analysis' : 'screenplay');
 let view = viewFromHash();
 let viewMenu = null;

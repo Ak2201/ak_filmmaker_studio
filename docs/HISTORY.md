@@ -2649,3 +2649,34 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       cents to paise, a refund panel in the wrong currency, dashboard cards
       ignoring the budget currency, a relabel that changed numbers, a Drive
       pull deleting a film's region, …); all 18 fixed and tested.
+
+58. **One list: the rail and the page agree (22 Oct 2026).** The owner's
+    screenshots showed the Pre-Production flyout and Breakdown's tab strip
+    listing different things. An audit of every page found four kinds of
+    drift: order (the strip kept DOM order: Breakdown, Plan, Reports and
+    Contacts all read differently), labels ("Unit directory" against
+    "Cast & Crew", "Write" against "Screenplay Writer", "Checklist" against
+    "Deliverables"), icons and hints (two sources: section-icons.json and
+    navigation.json), and tabs the rail did not list at all (Whole script;
+    DPR, One-liner, Equipment; Draft, Blocking, Scene board; Budget's nine;
+    Story's four steps; Script analysis; Certification and Dialogue list).
+    - The owner chose to put those in the rail. A new MODULE would have
+      pulled in plan-matrix, the §36 generator, test:plans and the launcher
+      counts, so each is a `sections` entry of the module that owns it,
+      gated with it. Story's steps are derived from story-paths.json, not
+      typed twice; their icons moved there from story-model.js.
+    - `pageEntries()` in navmodel.js is the one derivation; tabs.js, the
+      rail flyout (indented sub-rows, the current one marked from the
+      hash), the phone's Go to sheet, Screenplay's and Deliverables' own
+      strips all read it. A strip on a page the rail lists is no longer
+      grouped by section-icons `group`, which had reordered Reports.
+    - Default tabs follow the rail's first entry (Reports opens on Screen
+      Time, Contacts on Cast & Crew); every rail link carries its hash.
+    - `prove:nav` compares each strip with its flyout rows (shown or not:
+      Story's strip is hidden on an empty project). Run against the build
+      from before this change it fails nine pages; against this one it
+      passes. Verify: four EXPECTED rows for old hint words and an icon
+      name. One test:schema run failed once in security-51 and passed on
+      the rerun and in test:all. prove:nav's older "tools differs by
+      arrival" check on story.html still races the deferred video-help
+      control (2 of 4 runs here); that is not this change.

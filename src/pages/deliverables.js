@@ -29,6 +29,7 @@ import '../styles/deliverables-tools.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate, download } from '../lib/dom.js';
+import { pageEntry } from '../lib/navmodel.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { LINK_KINDS, guessKind, linkText } from '../lib/links.js';
@@ -273,7 +274,10 @@ function tabStrip() {
     nav.append(h('button.dv-tab' + (on ? '.is-on' : ''), {
       type: 'button', role: 'tab', id: 'dv-tab-' + t.id,
       'aria-selected': String(on), 'aria-controls': t.id === 'checklist' ? 'dv-panel-checklist' : t.id,
-      tabindex: on ? '0' : '-1', 'data-dv-action': 'tab', 'data-tab': t.id, text: t.label
+      tabindex: on ? '0' : '-1', 'data-dv-action': 'tab', 'data-tab': t.id,
+      /* the rail's label for this tab (navigation.json: the Deliverables
+         module and its sections), so the flyout and the strip agree */
+      text: (pageEntry('deliverables.html', t.id) || t).label
     }));
   });
   return nav;

@@ -16,6 +16,7 @@
    write is still the page calling Story.saveStory().
    ============================================================ */
 import Store from './store.js';
+import PATHS from '../data/story-paths.json';
 import * as Story from './story.js';
 import Scenes from './scenes.js';
 import Pitch from './pitch-deck.js';
@@ -65,9 +66,10 @@ export function blueprintLogline(format) {
 export const EXTRAS = [
   { id: 'pitch', label: 'Pitch deck' }
 ];
-export const STEP_ICON = {
-  idea: 'lightbulb', bible: 'menu_book', outline: 'list', synopsis: 'description'
-};
+/* A step's symbol lives on the step in story-paths.json, where the
+   rail's flyout reads it too (navmodel.js moduleSections), so the two
+   lists cannot drift. */
+export const STEP_ICON = Object.fromEntries([...PATHS.feature, ...PATHS.short].map((p) => [p.id, p.sym || '']));
 export const EXTRA_META = {
   pitch: { icon: 'slideshow', hint: 'A pitch deck built from the story so far.' }
 };

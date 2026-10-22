@@ -399,8 +399,8 @@ const EXPECTED = {
      Unscheduled card said "0 strips · all placed", claiming a finished
      schedule that does not exist. It prints a dash and "no scenes yet"
      now, so the words left the empty page the baseline was taken on. */
-  stripboard: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
-  reports: {},
+  stripboard: { 'laid': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
+  reports: { "day's": 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
   contacts: {},
   /* AI Desk (12 Oct 2026): the key lives in Settings only and AI is
      reached through one AI pill (PLAN.md §4). keyGate() used to draw
@@ -409,8 +409,8 @@ const EXPECTED = {
      below was that form's copy and nothing else on the page. */
   visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
   write: {},
-  plan: {},
-  breakdown: /* emptied by the 21 Oct 2026 re-baseline (Elements copy: "from the tags on each scene") */ {},
+  plan: { 'shoots': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
+  breakdown: { 'accept': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'across': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'code': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'highlighter': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'ignore': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'ink': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'marked': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'rest': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
 
   feature: {},
   short: {},

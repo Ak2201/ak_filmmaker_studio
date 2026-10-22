@@ -179,8 +179,30 @@ const probe = () => {
     const got = getComputedStyle(de).getPropertyValue('--accent').trim();
     accentOk = want && got === want ? 'yes' : 'NO (' + got + ' vs ' + want + ')';
   }
+  /* THE RAIL'S LIST AND THE PAGE'S STRIP (owner, 22 Oct 2026): the
+     visible tabs, in order, against the visible flyout rows that point
+     at a tab of this page, in order. A row for the page itself (Budget,
+     Story) or for an action (Import Screenplay) points at no tab and is
+     not compared; a tab with no row, or a row with no tab, is. */
+  const file = !seg ? 'index.html' : /\.html$/.test(seg) ? seg : seg + '.html';
+  const word = (e) => { const l = e.querySelector('.tabs-tab-l, .sm-label'); const c = (l || e).cloneNode(true); c.querySelectorAll('.sym, [aria-hidden="true"], .sm-badge, .tabs-badge').forEach((x) => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
+  const tabEls = [...document.querySelectorAll('main [role="tab"], .tabs [role="tab"], .dv-tabs [role="tab"]')]
+    /* shown or not: Story's step strip is hidden on an empty project, and
+       its rows are still the list the page offers */
+    .filter((e, i, a) => a.indexOf(e) === i && !e.closest('#studioRail'));
+  const tabId = (e) => e.dataset.tab || (e.getAttribute('aria-controls') || '').replace(/^dv-panel-/, '') || (e.getAttribute('href') || '').replace(/^.*#/, '');
+  const tabIds = new Set(tabEls.map(tabId));
+  const stem = file.replace(/\.html$/, '');
+  const onPage = [...document.querySelectorAll('#studioRail .sh-fly-mod[href]')].filter((a) => !a.hidden && !a.closest('[data-pg-gone]'))
+    .filter((a) => { const [f] = (a.getAttribute('href') || '').split('#'); return f.toLowerCase().replace(/^\.?\//, '') === file; });
+  const railRows = onPage.map((a) => ({ id: (a.getAttribute('href').split('#')[1] || stem), label: word(a) }))
+    .filter((r) => tabIds.has(r.id));
+  /* a page no flyout lists (the Library, Settings, the Pre-Production
+     path) has no rail list to agree with */
+  const lists = onPage.length ? { strip: tabEls.map((e) => word(e) + '#' + tabId(e)).join(' | '), rail: railRows.map((r) => r.label + '#' + r.id).join(' | ') } : null;
   return {
-    file: !seg ? 'index.html' : /\.html$/.test(seg) ? seg : seg + '.html',
+    file,
+    lists,
     phase: de.getAttribute('data-phase'),
     rail: [...document.querySelectorAll('.sh-rail-stage.is-active')].map((a) => a.dataset.phase).join(',') || null,
     crumbStage: txt('.sh-where-phase .sh-where-text'),
@@ -277,6 +299,18 @@ for (const file of [...byFile.keys()].sort()) {
     ok: failures.some((f) => f.startsWith(file + ':')) ? 'FAIL' : 'ok'
   });
 }
+/* ---- one list: the rail's flyout and the page's strip -------- */
+{
+  const seen = new Set();
+  for (const r of results) {
+    if (r.error || r.vp.width !== WIDTHS[0].width || r.file !== fileOf(r.href) || seen.has(r.file) || !r.lists) continue;
+    seen.add(r.file);
+    if (!r.lists.strip) continue;   // a page with no strip has nothing to agree with
+    if (r.lists.strip !== r.lists.rail) fail(r.file, `the tab strip and the rail's flyout list different things:\n      strip: ${r.lists.strip}\n      rail : ${r.lists.rail}`);
+  }
+  console.log(`rail vs strip: ${seen.size} pages compared`);
+}
+
 /* ---- one frame ACROSS pages ---------------------------------
    The same header in the same place on every studio page: an h1 that
    starts at one x, in one size and weight, per width. Screenplay keeps

@@ -51,10 +51,10 @@ import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
-import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS } from '../lib/price-model.js';
+import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
-  linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK, planHeading, plansPendingHeading, lapsedLine, trialStatus
+  linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
 } from '../lib/purchase-model.js';
 
 const app = document.getElementById('app');
@@ -197,7 +197,9 @@ function buyTerms() {
   ]);
 }
 
-/* What a plan actually does: DECK, in purchase-model.js. A plan decides
+/* The deck says the per-day figure in the currency the cards are drawn in. */
+const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : ''); };
+/* What a plan actually does: deckFor(), in purchase-model.js. A plan decides
    which STAGES open (plan-matrix.json), and the trial's end walls the
    studio. Nothing written is ever deleted. */
 
@@ -205,14 +207,14 @@ function planSection() {
   const c = cloud();
   const signedIn = !!(c && c.getSession && c.getSession());
   if (!c || !c.isConfigured()) {
-    const sec = section('plan', 'Plan', 'No cloud, no plan.', DECK);
+    const sec = section('plan', 'Plan', 'No cloud, no plan.', deck());
     sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
     const x0 = planExtras(null); if (x0) sec.append(x0);
     return sec;
   }
   if (!signedIn) {
     const sec = section('plan', 'Plan', 'Sign in to buy a plan.',
-      DECK + ' A plan belongs to an account, so you sign in with Google first — you come straight back to this page.');
+      deck() + ' A plan belongs to an account, so you sign in with Google first — you come straight back to this page.');
     /* The prices HERE, not one page away (start.html#pricing), which
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
@@ -230,7 +232,7 @@ function planSection() {
     return sec;
   }
   if (!billing.plans) {
-    const sec = section('plan', 'Plan', plansPendingHeading(billing), DECK);
+    const sec = section('plan', 'Plan', plansPendingHeading(billing), deck());
     if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
     sec.append(h('div.pu-actions', {}, [
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-pu-action': 'retry', disabled: billing.loading ? true : null, text: billing.loading ? 'Loading…' : 'Try again' })
@@ -278,7 +280,7 @@ function planSection() {
   /* THE PLANS: a heading, what a plan does, and the row. */
   sec.append(h('div.pu-plans-head', {}, [
     h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
-    h('p.bd-sub', { text: DECK })
+    h('p.bd-sub', { text: deck() })
   ]));
   sec.append(currencyBlock());
   const view = currentView();

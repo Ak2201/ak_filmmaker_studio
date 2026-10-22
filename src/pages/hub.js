@@ -103,7 +103,8 @@ import { pageHeader, button } from '../ui/kit/index.js';
 import { createResumeCards } from './hub/resume-cards.js';
 import { shelvesMarkup } from './hub/shelves.js';
 import { welcomeCard } from './hub/first-run.js';
-import { regionForNewProject } from '../lib/region.js';   // a new film's region, the same derivation as project-setup.js
+import { chosenRegion } from '../lib/region.js';
+import { guessVisitorRegion } from '../lib/region-core.js';   // a new film's region: project-setup.js newFilmRegion(), restated (it says why)
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
   setProjectFilter, setProjectSearch, setProjectSort,
@@ -638,7 +639,7 @@ function submitProjectModal(e) {
     logActivity('studio', 'Project renamed: "' + titleValue + '"', '#projects');
     StudioUI.toastSuccess('Renamed to "' + titleValue + '"');
   } else {
-    Store.createProject({ title: titleValue, format, region: regionForNewProject(), adopt: true });  // unfiled work moves in: store.js adoptUnfiled()
+    Store.createProject({ title: titleValue, format, region: chosenRegion() || guessVisitorRegion(), adopt: true });  // unfiled work moves in: store.js adoptUnfiled()
     logActivity('studio', 'Project created: "' + titleValue + '" (' + format + ')', '#projects');
     StudioUI.toastSuccess('Project "' + titleValue + '" created.');
   }

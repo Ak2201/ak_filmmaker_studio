@@ -20,7 +20,8 @@ import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { listStudies, favouriteSlug } from '../lib/studies.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
-import { regionForNewProject } from '../lib/region.js';
+import { chosenRegion } from '../lib/region.js';
+import { guessVisitorRegion } from '../lib/region-core.js';
 
 const PROJECT_HOME_URL = 'dashboard.html';
 
@@ -29,12 +30,17 @@ const PROJECT_HOME_URL = 'dashboard.html';
    Letter and US dates) and whether the India-only material shows. The
    sheet starts on newFilmRegion() (= region.js regionForNewProject()): the device's stated market,
    else the browser's own guess. Changed later on the dashboard. */
-/* region.js regionForNewProject(): the device's stated choice, else the
-   visitor guess (§B), as the contract says. It is no longer inlined:
-   region-core.js has its own `region` chunk now and guessVisitorRegion()
-   is already in it for the shop, so calling it here costs no bytes. */
+/* region.js regionForNewProject(), inlined: the device's stated choice,
+   else the VISITOR guess (§A3, §B: guessVisitorRegion, the shop's, so a
+   UTC-clocked en-IN browser gets an Indian film and rupee prices alike).
+   Not the call itself: a CORE function that another chunk calls is kept
+   in CORE with its imports, and regionForNewProject() would make every
+   page fetch the `region` chunk (1.6 KB on the Library, which had 269
+   bytes to spare under scripts/budget.json on 22 Oct 2026). This file
+   and hub.js are lazy, so importing region-core.js here costs no first
+   paint. */
 export function newFilmRegion() {
-  try { return regionForNewProject(); } catch (e) { return 'IN'; }
+  try { return chosenRegion() || guessVisitorRegion(); } catch (e) { return 'IN'; }
 }
 
 const REGION_CHOICES = {

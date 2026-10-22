@@ -1055,3 +1055,7 @@
   margin-top: var(--s4);
 }
 .db-tp-grid .k-field { min-width: 0; align-content: start; }   /* a hint under one field must not pull its neighbours' inputs down */
+/* Where the film is being made: a label, the two choices, one line. */
+.db-tp-region { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-top: var(--s4); }
+.db-tp-region-label { font-size: var(--t-small); color: var(--ink-muted); }
+.db-tp-region-note { flex-basis: 100%; margin: 0; font-size: var(--t-small); color: var(--ink-muted); max-width: var(--measure); }

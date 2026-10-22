@@ -614,6 +614,13 @@ p.cx-hint { margin: 0; }
 .bud-learn-row > .learn { margin: 0; }
 .bud-learn-row > .learn[open] { flex-basis: 100%; }
 
+/* The currency note (src/ui/budget.js currencyNote()): drawn only when a
+   budget with money in it is not in the film's currency. A warning wash
+   with the page's own ink; the deliberate relabel sits beside it. */
+.bud-est-body > .bud-cur { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0; padding: var(--s2) var(--s4); border-top: 1px solid var(--border-hair); background: var(--warn-wash); }
+.bud-est-body > .bud-cur > .hint { margin: 0; padding: 0; flex: 1 1 18rem; color: var(--ink); }
+@media print { .bud-cur .k-btn { display: none !important; } }
+
 /* KEEP THE BUDGET PRIVATE (schema §55; src/ui/budget-privacy-ui.js).
    The owner's switch sits under the "who sees it" line; the viewer's
    locked state replaces the estimate and each cost tab. */

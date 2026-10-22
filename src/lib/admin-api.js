@@ -102,6 +102,20 @@ export async function customerCall(cloud, name, args) {
   return data;
 }
 
+/* ---- §56 dollar prices, owner only (src/ui/billing-admin.js) ------- */
+
+/** Throws the server's error object as given (the caller reads its
+    code and message), exactly as billing-admin.js's own helper did. */
+export async function usdCall(cloud, name, args) {
+  const c = cloud;
+  if (!c || !c.ensureClient) throw new Error(NO_CLOUD);
+  const sb = await c.ensureClient();
+  if (!sb) throw new Error(NO_PROJECT);
+  const { data, error } = await sb.rpc(name, args);
+  if (error) throw error;
+  return data;
+}
+
 /* ---- Growth: cohorts (src/ui/growth-admin.js) ---------------------- */
 
 /** admin_cohorts(p_weeks); throws the server's error as it came. */
@@ -168,4 +182,4 @@ export async function probeFunction(base, fn) {
   } finally { clearTimeout(timer); }
 }
 
-export default { reasonOf, slotCall, describeError, callRpc, controlsCall, customerCall, cohorts, listInvoices, functionsBase, probeFunction };
+export default { reasonOf, slotCall, describeError, callRpc, controlsCall, customerCall, usdCall, cohorts, listInvoices, functionsBase, probeFunction };

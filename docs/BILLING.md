@@ -1422,3 +1422,84 @@ Four findings from the 21 Oct 2026 audit, each proved by a check in
    exists.
 3. Read back with the checks at 53.5 in the section file. (Read back live 22 Oct 2026: all four passed.)
 
+
+## 24. Charging in US dollars (schema §56, 21 Oct 2026). NOT YET RUN LIVE.
+
+The owner's decision (docs/US-MARKET-PLAN.md §C): visitors in India pay
+rupees, everyone else pays US dollars, and the owner types the dollar
+amounts in the console. §56 is the database and edge-function half; the
+pages that show and take a dollar price are PRICING-CLIENT's.
+
+- **The client chooses the currency, never the amount.** An order is `INR`
+  or `USD`. INR is priced as before (`plans`, `effective_price()`); USD from
+  `plan_prices` (`effective_price_minor(plan, 'USD')`: `amount_minor`, or
+  `next_amount_minor` once the plan's one rise date has passed). `rzp-order`
+  takes `currency` in the body (anything other than INR/USD is a 400), sends
+  `p_currency` only for dollars, and creates the Razorpay order in the row's
+  currency and amount.
+- **OFF until the owner turns it on.** `billing_settings.usd_checkout`
+  defaults to false. While it is off a dollar quote or order is refused
+  (22023, hint `currency_closed`) and `price_notice('USD')` says
+  `charged_currency: 'INR'`, exactly as today. `admin_set_usd_checkout(true)`
+  is owner only, audited, and refused while any plan on sale lacks a dollar
+  price of at least $1.00.
+- **Dollar prices are charged prices.** `admin_set_plan_price(plan, 'USD', …)`
+  is owner only and audited; 1–99 cents is refused (0 means "not sold in
+  dollars", and is refused while the switch is on); a next price is still a
+  rise on the plan's own date. Rupees keep their two authors
+  (`admin_set_plan`, `admin_set_next_price`).
+- **Promo codes are priced server-side in both currencies.** A percentage
+  works in either; a flat rupee amount off answers `reason: 'currency'` on a
+  dollar order and is never read as cents. Gift codes are unchanged; referral
+  rewards are earned only on rupee payments (the friend's percentage still
+  applies in dollars).
+- **No exchange rate, ever.** An upgrade credited for a year paid in the
+  other currency is converted at that plan's own two list prices; if the plan
+  has no price in one of them, the dollar quote refuses and says to pay in
+  rupees.
+- **Minor units, columns unchanged.** Every `*_paise` column holds minor
+  units of its row's `currency` (paise or cents). JSON answers carry `_minor`
+  keys beside the `_paise` ones, with the same values.
+- **International cards are recorded, never blocked.** `activate_payment`
+  stores Razorpay's `international` flag and `card.country` in
+  `payments.international` / `card_country` (a later delivery only fills a
+  blank) and refuses a payment reported in a currency other than the
+  order's. `rzp-verify` will not capture an authorisation in the wrong
+  currency. The console's ledger, Customer 360 and
+  `admin_billing_overview().intl_cards` show them.
+- **Invoices, refunds and mails use the paid currency.** `issue_invoice`
+  copies the payment's currency (one invoice series, `bill_of_supply` until
+  the owner and an accountant decide on export-of-services; see
+  US-MARKET-PLAN §F.4). A refund is stamped with its payment's currency by a
+  trigger; `begin_refund` and `rzp-refund` answer `currency`; receipts and
+  refund mails print `fmtMinor(amount, currency)` ($19.50, ₹599).
+- **The console's totals never add cents to paise.** `paid_total_paise` and
+  `paid_30d_paise` are rupees only now (every payment so far was INR, so no
+  number moves today); dollars are in `paid_by_currency.USD`.
+
+**Owner steps, in this order.**
+1. Run §56 in the SQL editor, after §53 and §54, verifying the checksum
+   first: `shasum -a 256 supabase/schema/schema-56-usd-checkout.sql` must
+   equal the sha256 in `supabase/schema/README.md` AND the editor's contents
+   (base64 across the clipboard; never paste schema SQL without a checksum).
+   Read back with the checks at 56.16 in the section file.
+2. Redeploy all four functions with the CLI (never the dashboard editor:
+   they import `../_shared/`), from current source:
+   `npx --yes supabase@latest functions deploy rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz`.
+   Between steps 1 and 2 checkout keeps working: the deployed `rzp-order`
+   sends five named arguments, which resolve to the new
+   `create_pending_payment` with `p_currency` defaulting to INR. The new
+   functions are also safe on a database without §56 for rupee orders, but
+   run the SQL first.
+3. In the Razorpay dashboard, apply for and enable **International
+   payments** (and USD as a currency) on the account. Razorpay refuses a USD
+   order without it, after the payments row exists, and the buyer sees
+   "Razorpay did not create the order".
+4. Type the dollar prices in `admin.html#purchases` → Tiers & grants (once
+   PRICING-CLIENT has shipped the fields; until then
+   `admin_set_plan_price(plan, 'USD', cents)` as the owner). §31's seed
+   ($19 / $29 / $39) is only a starting figure.
+5. Only then turn on "Charge in US dollars" (`admin_set_usd_checkout(true)`).
+   It answers `price_notice('USD')`, which should now say
+   `charged_currency: 'USD'`. Make one USD test-mode purchase and one refund
+   before taking a live dollar payment.

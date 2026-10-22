@@ -46,6 +46,9 @@ import { pageHeader } from '../ui/kit/page-header.js';
 import { listPriceBlock } from '../ui/list-prices.js';
 import { trialLength } from '../lib/trial-time.js';
 import { perDay, LIST_PRICE } from '../lib/plans.js';
+import { shopView, fromDay } from '../lib/price-model.js';
+import { pricingCurrency, readPayCurrency, chosenRegion, guessVisitorRegion } from '../lib/region.js';
+import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
 /* §33's trial_offer(): ANON-callable, one narrow public fact (is the
    trial on, and how long is it). The signed-out half of this page needs
    it to name the length, and billing_status() cannot answer without a
@@ -64,6 +67,23 @@ import {
 } from '../lib/invite-model.js';
 
 const app = document.getElementById('app');
+
+/* The visitor's shop currency (docs/US-MARKET-PLAN.md §B), the same
+   derivation as purchase.html: the buyer's own pick, the device's stated
+   market, the guess. Rupees until (and unless) price_notice('USD')
+   answers; nothing here writes. `shopNow` is null for a rupee visitor. */
+let shopNow = null;
+function refreshShop() {
+  let want = 'INR';
+  try { want = pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() }); } catch (e) { want = 'INR'; }
+  if (want !== 'USD') return;
+  publicPriceNotice('USD').then((notice) => {
+    const v = shopView('USD', notice);
+    if (v.currency === 'USD') { shopNow = v; render(); }
+  }).catch(() => { /* rupees stand */ });
+}
+const prices = () => listPriceBlock(shopNow);
+const fromAbout = () => (shopNow && fromDay(shopNow)) || perDay(LIST_PRICE.starter);
 const cloud = () => window.StudioCloud || null;
 
 function section(id, eyebrow, title, deck) {
@@ -240,9 +260,9 @@ function render() {
        sign-in itself. */
     {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A year of full access, from about ' + perDay(LIST_PRICE.starter) + ' a day — no trial first if you already know you want it.');
+        'A year of full access, from about ' + fromAbout() + ' a day — no trial first if you already know you want it.');
       /* The prices on this page (src/ui/list-prices.js), not a link away. */
-      buy.append(listPriceBlock());
+      buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
         h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
         h('a.btn', { href: 'pricing.html#compare', text: 'COMPARE EVERY FEATURE' })
@@ -268,7 +288,7 @@ function render() {
     /* The same prices and the same button a new signup gets: this branch
        used to offer one bare SEE PLANS, one hop more than a stranger.
        Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
-    sec.append(listPriceBlock());
+    sec.append(prices());
     sec.append(h('div.iv-actions', {}, [
       h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
@@ -345,10 +365,10 @@ function render() {
     {
       const buy = trialOffer
         ? section('buy', 'Or', 'Buy a plan and come straight in.',
-            'A year of full access, from about ' + perDay(LIST_PRICE.starter) + ' a day — and the only thing that keeps the studio open once a trial has run out.')
+            'A year of full access, from about ' + fromAbout() + ' a day — and the only thing that keeps the studio open once a trial has run out.')
         : section('buy', used ? 'Your trial' : 'Plans', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
             'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. A plan opens it again for a year.');
-      buy.append(listPriceBlock());
+      buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
         h('a.btn' + (trialOffer ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS AND BUY' })
       ]));
@@ -608,3 +628,4 @@ addEventListener('hashchange', render);
 Store.subscribe('gate:changed', render);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(render, 0));
 render();
+refreshShop();

@@ -14,6 +14,8 @@ import Locations from './locations.js';
 import DPR from './dpr.js';
 import { loadStory } from './story.js';
 import { resolveBeat, actsOf, qualify } from './beat-outline.js';
+/* Pure and import-free: the paperwork's date style (docs/US-MARKET-PLAN.md §A4). */
+import { paperDate } from './paper-date.js';
 
 /* Hue = data. A bucket's colour says WHICH bucket, and the same
    bucket is the same colour in the card and in the table. Nothing
@@ -151,10 +153,15 @@ export function openDay(want, days, pick) {
 /* "2026-11-02" → "Mon 2 Nov". Built from the parts: `new Date(iso)`
    reads a bare date as UTC midnight and prints yesterday west of
    Greenwich. Anything that is not a date prints as typed. */
-export function shortDate(iso, long) {
+export function shortDate(iso, long, prefs) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
   if (!m) return String(iso || '');
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  /* With the film's prefs, in ITS style (these print on the sides, the
+     one-liner and the DPR): "Wednesday, 21 October 2026" / "Wed, 21 Oct"
+     on an Indian film, "Wednesday, October 21, 2026" / "Wed, Oct 21" on
+     a US one. Without, the device's locale, as before. */
+  if (prefs && prefs.dateStyle) return paperDate(m[0], prefs, long ? 'weekdayLong' : 'weekdayShort');
   return d.toLocaleDateString(undefined, long
     ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
     : { weekday: 'short', day: 'numeric', month: 'short' });
@@ -181,16 +188,16 @@ export function calcLine(sum) {
   return bits.length ? bits.join(' · ') + '.' : 'Type the call and wrap times and the day’s length works itself out.';
 }
 
-export function kitTitle(day, tally) {
-  return `Day ${day}` + (Locations.dayDate(day) ? ' · ' + shortDate(Locations.dayDate(day), true) : '')
+export function kitTitle(day, tally, prefs) {
+  return `Day ${day}` + (Locations.dayDate(day) ? ' · ' + shortDate(Locations.dayDate(day), true, prefs) : '')
     + ` · ${plural(tally.items, 'item', 'items')} · ${tally.picked} picked up · ${tally.back} returned`;
 }
 
 /** The subtitle of a day PDF: the whole shoot for the one-liner, else the day. */
-export function dayPdfSubtitle(scope, day, shootDays, pages) {
+export function dayPdfSubtitle(scope, day, shootDays, pages, prefs) {
   return scope === 'oneliner'
     ? plural(shootDays, 'shoot day', 'shoot days') + ' · ' + pages + ' pages'
-    : 'Day ' + day + (Locations.dayDate(day) ? ' · ' + shortDate(Locations.dayDate(day), true) : '');
+    : 'Day ' + day + (Locations.dayDate(day) ? ' · ' + shortDate(Locations.dayDate(day), true, prefs) : '');
 }
 
 export const PACK_LABEL = { 'shoot.html': 'Shoot day', 'contacts.html': 'Call sheets', 'reports.html': 'Reports, sides and DPR' };

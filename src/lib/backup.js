@@ -570,7 +570,11 @@ function applyV2(all, shape, opts) {
           title:  meta.title || undefined,
           format: meta.format || undefined,
           fav:    meta.fav || undefined,
-          subtitle: meta.subtitle || undefined
+          subtitle: meta.subtitle || undefined,
+          /* Only a region the incoming copy STATES. An older build drops
+             the field when it writes, and passing `region: undefined`
+             would delete this device's region on the pull. */
+          ...(meta.region === 'IN' || meta.region === 'INT' ? { region: meta.region } : {})
         });
       }
       writeBucket(meta.id, bucket);
@@ -582,7 +586,8 @@ function applyV2(all, shape, opts) {
       title:  (meta.title || 'Imported Project') + (clash ? ' (imported)' : ''),
       format: meta.format,
       fav:    meta.fav,
-      subtitle: meta.subtitle
+      subtitle: meta.subtitle,
+      region: meta.region     // createProject() keeps 'IN' / 'INT' only
     });
     writeBucket(created.id, bucket);
     taken.push(created.id);

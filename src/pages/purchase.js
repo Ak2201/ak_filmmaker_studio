@@ -15,6 +15,16 @@
 
    ENTITLEMENT FAILS OPEN and this page does not change that: it is
    where a plan is bought, so it is never walled.
+
+   THE CURRENCY (docs/US-MARKET-PLAN.md §B). India sees rupees, everybody
+   else the owner's dollar figures, read from price_notice('USD') with a
+   plain fetch (funnel.js) so a signed-out visitor still fetches no SDK.
+   Which one: the buyer's own pick (the "Show prices in" switch, kept as
+   `payCurrency` inside fms_studio_prefs_v1 — no new key — and written
+   only on a press), then the device's chosen market (Settings → Region),
+   then the guess from the browser's time zone. The switch never touches
+   fms_region_v1: choosing a currency must not hide the CBFC tab. What is
+   CHARGED is the server's to say (usd_checkout), and the page says it.
    ============================================================ */
 import Store from '../lib/store.js';   /* FIRST — invariant 6. */
 import '../styles/base.css';
@@ -28,7 +38,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud */
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h, commitMain } from '../lib/dom.js';
+import { h, commitMain, delegate } from '../lib/dom.js';
 import { pageHeader } from '../ui/kit/page-header.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageTiles } from '../ui/plan-cards.js';
@@ -39,8 +49,12 @@ import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
 import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
+import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
+import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
+import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
+import { segmented } from '../ui/kit/segmented.js';
 import {
-  linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK, planHeading, plansPendingHeading, lapsedLine, trialStatus
+  linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
 } from '../lib/purchase-model.js';
 
 const app = document.getElementById('app');
@@ -76,6 +90,41 @@ function applyLinkCode() {
 }
 
 let billing = { plans: null, st: null, error: '', missing: false, loading: false };
+
+/* ---- the currency ---------------------------------------------------- */
+const wantCurrency = () => pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() });
+const shop = { want: wantCurrency(), view: null, loading: false, seq: 0 };
+async function refreshShop() {
+  const seq = ++shop.seq;
+  if (shop.want !== 'USD') { shop.view = rupeeView('INR'); shop.loading = false; render(); return; }
+  shop.loading = true;
+  render();
+  let notice = null;
+  try { notice = await publicPriceNotice('USD'); } catch (e) { notice = null; }
+  if (seq !== shop.seq) return;          // the buyer switched again meanwhile
+  shop.view = shopView('USD', notice);
+  shop.loading = false;
+  render();
+}
+/* The switch and the one sentence that says what is shown and what is
+   charged. While the dollar figures load, the cards stay on rupees and
+   the line says so; a BUY pressed then orders in rupees, which is what
+   the card it was pressed on says. */
+function currencyBlock() {
+  const view = shop.view || rupeeView(shop.want);
+  return h('div.pu-currency', {}, [
+    h('p.pu-currency-line', { role: 'status', text: shop.loading ? 'Loading the dollar prices…' : currencySentence(view) }),
+    segmented({ label: 'Show prices in', options: CURRENCY_OPTIONS, value: shop.want, name: 'pu-currency', action: 'pu-currency', quiet: true })
+  ]);
+}
+const currentView = () => (shop.loading ? rupeeView('INR') : shop.view || rupeeView('INR'));
+delegate(document, 'click', '[data-action="pu-currency"]', (e, btn) => {
+  const want = btn.dataset.value;
+  if (want === shop.want || (want !== 'INR' && want !== 'USD')) return;
+  writePayCurrency(want);                // the buyer's own pick, on a press only
+  shop.want = want;
+  refreshShop();
+});
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.pu-sec', { id });
@@ -148,7 +197,9 @@ function buyTerms() {
   ]);
 }
 
-/* What a plan actually does: DECK, in purchase-model.js. A plan decides
+/* The deck says the per-day figure in the currency the cards are drawn in. */
+const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : ''); };
+/* What a plan actually does: deckFor(), in purchase-model.js. A plan decides
    which STAGES open (plan-matrix.json), and the trial's end walls the
    studio. Nothing written is ever deleted. */
 
@@ -156,18 +207,19 @@ function planSection() {
   const c = cloud();
   const signedIn = !!(c && c.getSession && c.getSession());
   if (!c || !c.isConfigured()) {
-    const sec = section('plan', 'Plan', 'No cloud, no plan.', DECK);
+    const sec = section('plan', 'Plan', 'No cloud, no plan.', deck());
     sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
     const x0 = planExtras(null); if (x0) sec.append(x0);
     return sec;
   }
   if (!signedIn) {
     const sec = section('plan', 'Plan', 'Sign in to buy a plan.',
-      DECK + ' A plan belongs to an account, so you sign in with Google first — you come straight back to this page.');
+      deck() + ' A plan belongs to an account, so you sign in with Google first — you come straight back to this page.');
     /* The prices HERE, not one page away (start.html#pricing), which
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
-    sec.append(listPriceBlock());
+    sec.append(currencyBlock());
+    sec.append(listPriceBlock(currentView()));
     sec.append(buyTerms());
     if (LINK_CODE) {
       sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
@@ -180,7 +232,7 @@ function planSection() {
     return sec;
   }
   if (!billing.plans) {
-    const sec = section('plan', 'Plan', plansPendingHeading(billing), DECK);
+    const sec = section('plan', 'Plan', plansPendingHeading(billing), deck());
     if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
     sec.append(h('div.pu-actions', {}, [
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-pu-action': 'retry', disabled: billing.loading ? true : null, text: billing.loading ? 'Loading…' : 'Try again' })
@@ -228,10 +280,13 @@ function planSection() {
   /* THE PLANS: a heading, what a plan does, and the row. */
   sec.append(h('div.pu-plans-head', {}, [
     h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
-    h('p.bd-sub', { text: DECK })
+    h('p.bd-sub', { text: deck() })
   ]));
+  sec.append(currencyBlock());
+  const view = currentView();
   const cards = planCards(billing.plans, st, {
-    onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
+    shop: view,
+    onBuy: (planId, period, onStatus, code, currency) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, currency: currency || orderCurrency(view) }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
   });
   /* the terms go straight under the row of buy buttons, above the code
@@ -302,3 +357,4 @@ if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshBilling, 0
 Store.subscribe('cloud:booted', () => refreshBilling());
 render();
 refreshBilling();
+refreshShop();

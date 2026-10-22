@@ -31,7 +31,8 @@
 import { h, delegate } from '../lib/dom.js';
 import { registerDrawer, openDrawer, closeDrawer, pill, kpi, meter, timeline, errorState, skeleton, absTime, relTime } from './admin-kit.js';
 import { ask, askDanger } from './dialog.js';
-import Billing, { fmtPaise, planName } from '../lib/billing.js';
+import Billing, { planName } from '../lib/billing.js';
+import { fmtMinor } from '../lib/price-model.js';
 import { trialLength } from '../lib/trial-time.js';
 import { errorSentence } from '../lib/gate.js';
 import { customerCall } from '../lib/admin-api.js';
@@ -195,22 +196,28 @@ function trialSection(d) {
   ]));
 }
 
+/* §56: an amount is in minor units of ITS row's currency (rupees when
+   the row says none); a refund row carries the payment's. */
+const money = (minor, row) => fmtMinor(minor || 0, row && row.currency === 'USD' ? 'USD' : 'INR');
 function payRow(p, invoices) {
   const hasInvoice = invoices.some((i) => i.payment_id === p.id);
   const issue = can('invoice') && p.status === 'paid' && Number(p.amount_paise) > 0 && !hasInvoice
-    ? h('button.btn.cu-mini', { type: 'button', 'data-cu-act': 'invoice', 'data-id': p.id, 'aria-label': 'Issue an invoice for ' + fmtPaise(p.amount_paise), text: 'ISSUE INVOICE' })
+    ? h('button.btn.cu-mini', { type: 'button', 'data-cu-act': 'invoice', 'data-id': p.id, 'aria-label': 'Issue an invoice for ' + money(p.amount_paise, p), text: 'ISSUE INVOICE' })
     : null;
   return h('li.cu-row', {}, [
     h('div.cu-row-main', {}, [
       h('strong', { text: p.plan_id ? planName(p.plan_id) : 'Payment' }),
       pill(humanise(p.status), PAY_TONE[p.status] || 'neutral'),
-      h('span.cu-amt', { text: fmtPaise(p.amount_paise) + (p.currency && p.currency !== 'INR' ? ' ' + p.currency : '') })
-    ]),
+      h('span.cu-amt', { text: money(p.amount_paise, p) }),
+      /* "Intl card" (§56 C4): Razorpay said the card was issued abroad.
+         Recorded and shown; never blocked or re-priced. */
+      p.international === true ? pill('Intl card' + (p.card_country ? ' · ' + p.card_country : ''), 'neutral') : null
+    ].filter(Boolean)),
     h('div.cu-row-sub', {}, [
       when(p.paid_at || p.created_at),
       p.period ? ' · ' + humanise(p.period) : '',
       p.promo_code ? ' · code ' + p.promo_code : '',
-      Number(p.discount_paise) ? ' · ' + fmtPaise(p.discount_paise) + ' off' : '',
+      Number(p.discount_paise) ? ' · ' + money(p.discount_paise, p) + ' off' : '',
       p.razorpay_payment_id ? h('code.cu-code', { title: 'Razorpay payment id', text: p.razorpay_payment_id }) : null,
       hasInvoice ? ' · invoiced' : ''
     ]),
@@ -228,7 +235,7 @@ function invoicesSection(d) {
   const inv = d.invoices || [];
   return section('invoices', 'Invoices', inv.length
     ? h('ul.cu-rows', {}, inv.map((i) => h('li.cu-row', {}, [
-      h('div.cu-row-main', {}, [h('strong', { text: i.number }), h('span.cu-amt', { text: fmtPaise(i.amount_paise) })]),
+      h('div.cu-row-main', {}, [h('strong', { text: i.number }), h('span.cu-amt', { text: money(i.amount_paise, i) })]),
       h('div.cu-row-sub', {}, [i.plan_name || '', ' · ', when(i.issued_at), i.emailed_at ? ' · e-mailed ' : ' · not e-mailed', i.emailed_at ? when(i.emailed_at) : null])
     ])))
     : none('No invoices.'), { count: inv.length });
@@ -247,7 +254,7 @@ function refundsSection(d) {
   }
   if (rf.length) {
     wrap.append(h('h4.cu-h4', { text: 'Refunds' }), h('ul.cu-rows', {}, rf.map((r) => h('li.cu-row', {}, [
-      h('div.cu-row-main', {}, [h('strong', { text: fmtPaise(r.amount_paise) }), pill(humanise(r.status), STATUS_TONE[r.status] || 'neutral')]),
+      h('div.cu-row-main', {}, [h('strong', { text: money(r.amount_paise, r.currency ? r : (d.payments || []).find((x) => x.id === r.payment_id)) }), pill(humanise(r.status), STATUS_TONE[r.status] || 'neutral')]),
       h('div.cu-row-sub', {}, [when(r.created_at), r.reason ? ' · ' + r.reason : ''])
     ]))));
   }
@@ -259,7 +266,7 @@ function referralSection(d) {
   return section('referral', 'Referral', h('div.cu-stack', {}, [
     facts([['Code', r.code ? h('code.cu-code', { text: r.code }) : 'None']]),
     cr.length ? h('ul.cu-rows', {}, cr.map((c) => h('li.cu-row', {}, [
-      h('div.cu-row-main', {}, [h('strong', { text: fmtPaise(c.amount_paise) }), pill(humanise(c.status), c.status === 'paid' ? 'ok' : 'warn')]),
+      h('div.cu-row-main', {}, [h('strong', { text: money(c.amount_paise, null) }), pill(humanise(c.status), c.status === 'paid' ? 'ok' : 'warn')]),
       h('div.cu-row-sub', {}, [when(c.created_at), c.paid_at ? [' · paid ', when(c.paid_at)] : ''])])))
       : none('No referral credits.')
   ]), { count: cr.length });
@@ -557,7 +564,7 @@ async function deleteTotally() {
 async function issueInvoice(paymentId) {
   const p = ((cur.data || {}).payments || []).find((x) => x.id === paymentId);
   if (!p) return;
-  if (!await ask({ title: 'Issue an invoice for ' + fmtPaise(p.amount_paise) + '?', body: 'A Bill of Supply is numbered now from the gapless series for this financial year. A number is never reused, so this cannot be undone.', confirm: 'Issue invoice' })) return;
+  if (!await ask({ title: 'Issue an invoice for ' + money(p.amount_paise, p) + '?', body: 'A Bill of Supply is numbered now from the gapless series for this financial year. A number is never reused, so this cannot be undone.', confirm: 'Issue invoice' })) return;
   try { const inv = await rpc('admin_issue_invoice', { p_payment: paymentId }); await afterWrite('Invoice ' + ((inv && inv.number) || '') + ' issued.'); }
   catch (e) { toast(sentence(e), 'error'); }
 }

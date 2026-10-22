@@ -118,7 +118,7 @@
       { "type": "action",     "title": "2 · Action",        "ask": "What do we see? Describe it in the present tense, the way a camera would find it. Press Return when it is done." },
       { "type": "character",  "title": "3 · Character",     "ask": "Who speaks first? Make this line a Character and type their name in capitals.", "convert": "Make this line a Character" },
       { "type": "paren",      "title": "4 · Parenthetical", "ask": "How do they say it? A word or two in brackets — (quietly). Return after the name gives you dialogue, so switch it first.", "convert": "Make this line a Parenthetical" },
-      { "type": "dialogue",   "title": "5 · Dialogue",      "ask": "What do they say? Write it the way they would say it — Tanglish is welcome here.", "convert": "Make this line Dialogue" },
+      { "type": "dialogue",   "title": "5 · Dialogue",      "ask": "What do they say? Write it the way they would say it — Tanglish is welcome here.", "askElsewhere": "What do they say? Write it the way they would say it.", "convert": "Make this line Dialogue" },
       { "type": "transition", "title": "6 · Transition",    "ask": "How do we leave? Make the next line a Transition and type CUT TO:.", "convert": "Make this line a Transition" }
     ]
   },

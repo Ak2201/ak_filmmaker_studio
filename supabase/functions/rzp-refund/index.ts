@@ -12,7 +12,7 @@
         browser showed, and begin_refund() re-checks the actor's role.
      2. begin_refund() — under a row lock on the payment: it must be
         'paid' (captured), not refunded and with no refund in flight,
-        the amount between 1 paisa and what was paid (default: all), a
+        the amount between 1 minor unit and what was paid (default: all), a
         reason given, and a request (if one is named) still open. It
         writes the intent as an 'initiated' refunds row BEFORE Razorpay
         is called, so a crash leaves a record, never a refund without one.
@@ -34,6 +34,11 @@
         minute or more later, so the retry carries the SAME key. A linked
         request reads 'refunded' only once the refund is processed;
         while it is pending the request is 'approved' (section 50).
+
+   CURRENCY (schema §56). A refund is in the currency of the payment it
+   refunds, and Razorpay refunds in the original currency; begin_refund()
+   names it (`currency`) and the refunds row is stamped with it. The
+   amount is minor units of that currency, and the answer says which.
 
    WHO ENDS THE PLAN. record_refund() calls mark_payment_refunded() when
    the status is 'processed'; the refund.processed WEBHOOK calls
@@ -84,14 +89,18 @@ Deno.serve(async (req) => {
   const { error: roleErr } = await asUser.rpc('require_role', { p_roles: ['finance'] });
   if (roleErr) return json(403, { error: roleErr.message || 'Administrators only.' });
 
-  let body: { payment_id?: string; amount_paise?: number | null; reason?: string; request_id?: string | null } = {};
+  let body: { payment_id?: string; amount_paise?: number | null; amount_minor?: number | null; reason?: string; request_id?: string | null } = {};
   try { body = await req.json(); } catch { /* empty body */ }
   const paymentId = String(body.payment_id ?? '');
   const reason = String(body.reason ?? '').trim();
-  const amount = body.amount_paise == null ? null : Number(body.amount_paise);
+  // minor units of the PAYMENT's currency (schema §56): paise for a rupee
+  // payment, cents for a dollar one. `amount_paise` is the name older
+  // console builds send; `amount_minor` says the same thing.
+  const given = body.amount_minor ?? body.amount_paise;
+  const amount = given == null ? null : Number(given);
   if (!paymentId) return json(400, { error: 'Which payment?' });
   if (!reason) return json(400, { error: 'A reason is required.' });
-  if (amount !== null && (!Number.isInteger(amount) || amount < 1)) return json(400, { error: 'The amount is a whole number of paise, at least 1.' });
+  if (amount !== null && (!Number.isInteger(amount) || amount < 1)) return json(400, { error: 'The amount is a whole number of minor units of the payment\'s currency (paise or cents), at least 1.' });
 
   // 2. the intent, checked and written under a lock
   const svc = createClient(url, serviceKey);
@@ -145,5 +154,7 @@ Deno.serve(async (req) => {
     p_amount: rz.amount ?? intent.amount_paise, p_error: status === 'failed' ? 'Razorpay marked the refund failed.' : null, p_raw: rz
   });
   if (recErr) console.error('[rzp-refund] record', recErr.message);   // the webhook will settle it
-  return json(200, { ok: true, refund_id: rz.id, status, amount_paise: rz.amount ?? intent.amount_paise, email: intent.email, plan_ended: status === 'processed' });
+  const refunded = rz.amount ?? intent.amount_paise;
+  return json(200, { ok: true, refund_id: rz.id, status, amount_paise: refunded, amount_minor: refunded,
+    currency: intent.currency ?? rz.currency ?? 'INR', email: intent.email, plan_ended: status === 'processed' });
 });

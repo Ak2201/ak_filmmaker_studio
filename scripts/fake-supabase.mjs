@@ -353,6 +353,37 @@ export function quoteOrder(planId, rawCode, user = null) {
   return { ...base, amount_paise: amt, discount_paise: due - amt, kind: c.kind || 'promo', percent_off: c.percent_off ?? null, amount_off_paise: c.amount_off_paise ?? null };
 }
 
+/* ---- section 55: an order in US dollars (docs/US-MARKET-PLAN.md §C) ----
+   plan_prices as { <plan>: { amount_minor, next_amount_minor } } for USD,
+   and billing_settings.usd_checkout. The dollar price follows the plan's
+   one rise date. A dollar quote is the rupee quote's arithmetic at the
+   ratio of THAT plan's list prices (paid_credit_minor: no FX rate is ever
+   used); an amount-off (rupee) code answers ok:false reason 'currency'. */
+export function effectivePriceMinor(planId, currency) {
+  if (currency !== 'USD') return effectivePrice(planId);
+  const pl = F.db.plans.find((x) => x.id === planId);
+  const pp = F.db.planPrices[planId];
+  if (!pl || !pp || !(pp.amount_minor > 0)) return null;
+  const fired = pl.next_price_paise != null && effectivePrice(planId) !== pl.price_paise;
+  return fired && pp.next_amount_minor ? pp.next_amount_minor : pp.amount_minor;
+}
+export function quoteOrderIn(planId, rawCode, user = null, currency = 'INR') {
+  const q = quoteOrder(planId, rawCode, user);
+  const mirror = (o, cur) => ({ ...o, currency: cur, list_minor: o.list_paise, credit_minor: o.credit_paise, due_minor: o.due_paise, amount_minor: o.amount_paise, discount_minor: o.discount_paise });
+  if (currency !== 'USD') return mirror(q, 'INR');
+  if (!F.db.settings.usd_checkout) throw Object.assign(new Error('Checkout in US dollars is not open yet. You can pay in rupees.'), { code: '22023', hint: 'currency_closed' });
+  const usd = effectivePriceMinor(planId, 'USD');
+  if (!(usd >= 100)) throw Object.assign(new Error('That plan is not sold in US dollars at the moment. You can pay in rupees.'), { code: '22023', hint: 'currency' });
+  const r = usd / q.list_paise;
+  const credit = Math.round(q.credit_paise * r);
+  let due = usd - credit; if (due < 100) due = Math.min(usd, 100);
+  const c = q.code && F.db.promos.find((x) => x.code === q.code);
+  const base = { ...q, list_paise: usd, credit_paise: usd - due, due_paise: due, amount_paise: due, discount_paise: 0, paid_paise: credit };
+  if (q.ok && c && c.amount_off_paise != null) return mirror({ ...base, ok: false, reason: 'currency', sentence: 'This code takes a rupee amount off, so it works only when you pay in rupees.' }, 'USD');
+  if (q.ok && c && c.percent_off != null) { const amt = Math.max(100, Math.round(due * (100 - c.percent_off) / 100)); return mirror({ ...base, amount_paise: amt, discount_paise: due - amt }, 'USD'); }
+  return mirror({ ...base, ok: q.ok, reason: q.reason, sentence: q.sentence }, 'USD');
+}
+
 export const USERS = {
   'tok-admin': { id: '00000000-0000-4000-8000-00000000000a', email: 'admin@example.com' },
   'tok-amy':   { id: '00000000-0000-4000-8000-0000000000a1', email: 'amy@example.com' },
@@ -425,7 +456,12 @@ export function freshDb() {
                    `delete F.db.settings.purchase_required` is a database
                    that has not run §32: billing_status() then carries
                    no key at all. */
-                purchase_required: true },
+                purchase_required: true,
+                /* section 55: charging in US dollars, off until the owner turns it on */
+                usd_checkout: false },
+    /* section 31's plan_prices for USD (cents), §31's seed figures; the
+       owner replaces them from the console (admin_set_plan_price). */
+    planPrices: { starter: { amount_minor: 1900, next_amount_minor: null }, indie: { amount_minor: 2900, next_amount_minor: null }, pro: { amount_minor: 3900, next_amount_minor: null } },
     /* A features map laid OVER whatever billing_status() computes,
        and the answer effective_features() gives while it is set. Null
        (the default) = no override and no effective_features() answer
@@ -550,19 +586,70 @@ function rpc(name, args, user, route) {
       /* 30.7. Anon-callable; one narrow fact per plan. The buyer count
          is published ONLY while a rise is still pending — a scarcity
          number with nothing to be scarce about is the thing section 30
-         refuses to ship. */
+         refuses to ship. With p_currency (§31's price_notice(text), as
+         §56 restates it): the display figures in that currency,
+         `usd_checkout`, and charged_currency 'USD' only when the switch
+         is on and every plan on sale has a dollar price. */
+      F.db.calls.push('rpc:price_notice' + (args.p_currency ? ' ' + args.p_currency : ''));
       const anyRising = F.db.plans.some((p) => p.next_price_paise != null && effectivePrice(p.id) === p.price_paise);
-      return json(route, 200, {
+      const want = args.p_currency ? String(args.p_currency).toUpperCase() : null;
+      const usdComplete = F.db.plans.filter((p) => p.active && p.price_paise > 0).every((p) => (effectivePriceMinor(p.id, 'USD') || 0) >= 100);
+      const out = {
         seats_total: anyRising ? (F.db.settings.price_rises_after_buyers ?? null) : null,
         seats_taken: anyRising ? paidBuyers() : null,
         plans: [...F.db.plans].filter((p) => p.active).sort((a, b) => a.sort - b.sort).map((p) => {
           const now = effectivePrice(p.id);
           const pending = p.next_price_paise != null && now === p.price_paise;
-          return { id: p.id, name: p.name, price_paise: now,
+          const row = { id: p.id, name: p.name, price_paise: now,
             next_price_paise: pending ? p.next_price_paise : null,
             next_price_at: pending ? p.next_price_at : null, rising: pending };
+          if (!want) return row;
+          const pp = want === 'USD' ? F.db.planPrices[p.id] : null;
+          const has = !!(pp && pp.amount_minor > 0);
+          return { ...row, display_currency: has ? 'USD' : 'INR', display_minor: has ? effectivePriceMinor(p.id, 'USD') : now,
+            display_next_minor: has && pending ? (pp.next_amount_minor || null) : null };
         })
-      });
+      };
+      if (want) Object.assign(out, { currency: want, usd_checkout: !!F.db.settings.usd_checkout,
+        charged_currency: want === 'USD' && F.db.settings.usd_checkout && usdComplete ? 'USD' : 'INR' });
+      return json(route, 200, out);
+    }
+    case 'studio_role': {
+      if (!isAdmin(user)) return json(route, 200, null);
+      return json(route, 200, (F.db.members.get(user.id) || {}).consoleRole || 'owner');
+    }
+    case 'admin_set_plan_price': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      { const cr = (F.db.members.get(user.id) || {}).consoleRole; if (cr && cr !== 'owner') return pgErr(route, '42501', `Your role (${cr}) cannot do this. It needs the owner role.`); }
+      F.db.calls.push(`rpc:admin_set_plan_price ${args.p_plan} ${args.p_currency} ${args.p_amount_minor} ${args.p_next_minor ?? '-'}`);
+      const cur = String(args.p_currency || '').toUpperCase();
+      if (cur === 'INR') return pgErr(route, '22023', 'The rupee price is set with admin_set_plan() and its rise with admin_set_next_price().');
+      const pl = F.db.plans.find((x) => x.id === args.p_plan);
+      if (!pl) return pgErr(route, '22023', `No such plan "${args.p_plan}"`);
+      const amt = args.p_amount_minor;
+      if (!Number.isInteger(amt) || amt < 0) return pgErr(route, '22023', 'A price is a whole number of minor units (cents), and not negative.');
+      if (amt >= 1 && amt <= 99) return pgErr(route, '22023', 'A dollar price is charged, and the smallest charge is $1.00 (100 cents). Use 0 for "not sold in dollars".');
+      if (amt === 0 && F.db.settings.usd_checkout && pl.active && pl.price_paise > 0) return pgErr(route, '22023', `${pl.name} cannot stop being sold in dollars while checkout in US dollars is on. Turn that switch off first.`);
+      const next = args.p_next_minor ?? null;
+      if (next != null) {
+        if (next <= amt) return pgErr(route, '22023', `The new price (${next}) must be ABOVE the current one (${amt}).`);
+        if (!pl.next_price_at) return pgErr(route, '22023', `No rise is scheduled for ${pl.name}. There is ONE date per plan.`);
+        if (args.p_at && args.p_at !== pl.next_price_at) return pgErr(route, '22023', 'A currency cannot rise on a date of its own.');
+      } else if (args.p_at) return pgErr(route, '22023', 'A date with no new price changes nothing.');
+      F.db.planPrices[pl.id] = { amount_minor: amt, next_amount_minor: next };
+      return rpc('price_notice', { p_currency: cur }, user, route);
+    }
+    case 'admin_set_usd_checkout': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      { const cr = (F.db.members.get(user.id) || {}).consoleRole; if (cr && cr !== 'owner') return pgErr(route, '42501', `Your role (${cr}) cannot do this. It needs the owner role.`); }
+      F.db.calls.push(`rpc:admin_set_usd_checkout ${args.p_on}`);
+      if (typeof args.p_on !== 'boolean') return pgErr(route, '22023', 'On or off?');
+      if (args.p_on) {
+        const missing = F.db.plans.filter((p) => p.active && p.price_paise > 0 && !((effectivePriceMinor(p.id, 'USD') || 0) >= 100)).map((p) => p.name);
+        if (missing.length) return pgErr(route, '22023', `Every plan on sale needs a dollar price of at least $1.00 before dollars can be charged. Missing: ${missing.join(', ')}.`);
+      }
+      F.db.settings.usd_checkout = args.p_on;
+      return rpc('price_notice', { p_currency: 'USD' }, user, route);
     }
     case 'admin_set_next_price': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
@@ -619,6 +706,13 @@ function rpc(name, args, user, route) {
       return json(route, 200, until);
     }
     case 'quote_order': {
+      /* §56's 3-arg overload when p_currency is sent; the 2-arg is §21's */
+      if ('p_currency' in args) {
+        if (F.db.noUsdSchema) return pgErr(route, 'PGRST202', 'Could not find the function public.quote_order(p_code, p_currency, p_plan) in the schema cache');
+        F.db.calls.push(`rpc:quote_order ${args.p_plan} ${args.p_currency}`);
+        try { return json(route, 200, quoteOrderIn(args.p_plan, args.p_code, user, String(args.p_currency).toUpperCase())); }
+        catch (e) { return json(route, 400, { code: e.code || '22023', message: e.message, details: null, hint: e.hint || null }); }
+      }
       try { return json(route, 200, quoteOrder(args.p_plan, args.p_code, user)); }
       catch (e) { return json(route, 400, { code: e.code || '22023', message: e.message, details: null, hint: e.hint || null }); }
     }
@@ -769,7 +863,11 @@ function rpc(name, args, user, route) {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       const paid = F.db.payments.filter((x) => x.status === 'paid');
       const by = {}; for (const a of F.db.accounts) { const k = accountPlan(a); by[k] = (by[k] || 0) + 1; }
-      return json(route, 200, { paid_30d_paise: paid.reduce((n, x) => n + x.amount_paise, 0), paid_total_paise: paid.reduce((n, x) => n + x.amount_paise, 0),
+      /* §56: paid_*_paise are rupees only; the dollar side is in paid_by_currency */
+      const inr = paid.filter((x) => (x.currency || 'INR') === 'INR');
+      const byCur = Object.fromEntries(['INR', 'USD'].map((c) => { const r = paid.filter((x) => (x.currency || 'INR') === c); const t = r.reduce((n, x) => n + x.amount_paise, 0); return [c, { total_minor: t, d30_minor: t, count: r.length }]; }));
+      return json(route, 200, { paid_30d_paise: inr.reduce((n, x) => n + x.amount_paise, 0), paid_total_paise: inr.reduce((n, x) => n + x.amount_paise, 0),
+        paid_by_currency: byCur, intl_cards: F.db.payments.filter((x) => ['paid', 'refunded'].includes(x.status) && x.international === true).length,
         payments_30d: paid.length, active_by_plan: by, lapsing_14d: 0, refunds: F.db.payments.filter((x) => x.status === 'refunded').length });
     }
     /* ---- section 27: refund requests ---- */
@@ -1020,17 +1118,21 @@ export async function handle(route) {
     if (!effectivePrice(plan.id)) return json(route, 400, { error: 'That plan is not for sale' });
     // section 20: the code is re-quoted here, never priced by the client
     // section 21: priced for THIS buyer — the difference, and a downgrade refused
+    /* §56: the client chooses the currency and never the amount */
+    const currency = body.currency == null ? 'INR' : String(body.currency);
+    if (!['INR', 'USD'].includes(currency)) return json(route, 400, { error: 'Orders are in rupees (INR) or US dollars (USD).' });
+    F.db.calls.push(`currency:rzp-order ${currency}`);
     let q;
-    try { q = quoteOrder(plan.id, body.code, user); } catch (e) { F.db.calls.push(`fn:rzp-order refused ${e.hint || ''}`); return json(route, 400, { error: e.message }); }
+    try { q = quoteOrderIn(plan.id, body.code, user, currency); } catch (e) { F.db.calls.push(`fn:rzp-order refused ${e.hint || ''}`); return json(route, 400, { error: e.message }); }
     F.db.calls.push(`fn:rzp-order code ${q.code || '-'} ${q.ok ? 'ok' : q.reason}`);
     if (!q.ok) return json(route, 400, { error: q.sentence });
     const amount = q.amount_paise;
     const id = 'pay' + F.db.payments.length;
     const order_id = 'order_' + Math.random().toString(36).slice(2, 10);
-    F.db.payments.push({ id, user_id: user.id, account_id: body.account_id || null, plan_id: plan.id, period: body.period, amount_paise: amount, currency: 'INR',
+    F.db.payments.push({ id, user_id: user.id, account_id: body.account_id || null, plan_id: plan.id, period: body.period, amount_paise: amount, currency,
       list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code, credit_paise: q.credit_paise,
       razorpay_order_id: order_id, razorpay_payment_id: null, status: 'created', created_at: new Date().toISOString() });
-    return json(route, 200, { order_id, amount, currency: 'INR', key_id: RZP.keyId, plan: plan.id, period: body.period, plan_name: plan.name, payment_id: id,
+    return json(route, 200, { order_id, amount, amount_minor: amount, currency, key_id: RZP.keyId, plan: plan.id, period: body.period, plan_name: plan.name, payment_id: id,
       list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code, credit_paise: q.credit_paise, prefill: { email: user.email } });
   }
   if (url.pathname === '/functions/v1/rzp-verify' && req.method() === 'POST') {

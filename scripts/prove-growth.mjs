@@ -222,8 +222,10 @@ async function route(r) {
   return handle(r);
 }
 
+/* Every context is a visitor in India (the shop's currency follows the
+   time zone, docs/US-MARKET-PLAN.md §B), so a UTC runner reads rupees. */
 async function context(browser, { user = null, width = 1280 } = {}) {
-  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width, height: 900 } });
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width, height: 900 }, timezoneId: 'Asia/Kolkata' });
   await ctx.route(SB + '/**', route);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
   await ctx.addInitScript(([k, v, uid]) => {
@@ -562,7 +564,7 @@ try {
     await o.page.evaluate(() => document.getElementById('pricing').scrollIntoView()); await o.page.waitForTimeout(600);
     ok(EVENTS.filter((e) => e === 'pricing_view').length === 0, '"Don\'t count this visit" stops further counts');
     await o.ctx.close();
-    const d = await browser.newContext({ serviceWorkers: 'block' });
+    const d = await browser.newContext({ serviceWorkers: 'block', timezoneId: 'Asia/Kolkata' });
     await d.route(SB + '/**', route); await d.addInitScript(() => Object.defineProperty(Navigator.prototype, 'globalPrivacyControl', { get: () => true }));
     const dp = await d.newPage(); EVENTS.length = 0;
     await dp.goto(BASE + 'start.html'); await dp.waitForLoadState('networkidle'); await dp.waitForTimeout(500);
@@ -675,7 +677,7 @@ if (fs.existsSync(path.join(ROOT, 'dist-verify', 'screening.html'))) {
   await new Promise((r) => setTimeout(r, 2500));
   const b2 = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
   try {
-    const ctx = await b2.newContext({ serviceWorkers: 'block' });
+    const ctx = await b2.newContext({ serviceWorkers: 'block', timezoneId: 'Asia/Kolkata' });
     await ctx.route(SB + '/**', route);
     const page = await ctx.newPage();
     viewCalls = 0;

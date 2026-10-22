@@ -75,9 +75,13 @@ export const purchasesOff = (st) => !!(st && st.purchase_required === false);
 export const FREE_LINE = 'The studio is free to use right now — nothing to buy.';
 
 /* What a plan actually does. Names from planName(), never typed. */
-export const DECK = 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
+/** The plan section's deck, with the per-day figure in the currency the
+ *  cards beside it are drawn in (`fromFigure`, price-model fromDay(view));
+ *  without one, the rupee figure. */
+export const deckFor = (fromFigure) => 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
   + Billing.planName('indie') + ' to prepare it, ' + Billing.planName('pro') + ' to shoot and finish it — and sets how much syncs to the cloud. '
-  + 'A year at a time, from about ' + perDay(LIST_PRICE.starter) + ' a day; nothing renews by itself. Nothing you write is ever deleted, on any plan or none.';
+  + 'A year at a time, from about ' + (fromFigure || perDay(LIST_PRICE.starter)) + ' a day; nothing renews by itself. Nothing you write is ever deleted, on any plan or none.';
+export const DECK = deckFor('');
 
 /** The plan section's heading for a signed-in account with plans loaded. */
 export function planHeading(st) {

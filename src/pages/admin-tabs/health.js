@@ -38,7 +38,7 @@ import { h, delegate } from '../../lib/dom.js';
 import { kpi, pill, checklist, emptyState, errorState, skeleton, dataTable, hashParts, absTime, relTime } from '../../ui/admin-kit.js';
 import { ask } from '../../ui/dialog.js';
 import StudioUI from '../../ui/chrome.js';
-import { fmtPaise } from '../../lib/billing.js';
+import { fmtMinor } from '../../lib/price-model.js';
 import { callRpc, duration } from './rpc.js';
 import { functionsBase, probeFunction } from '../../lib/admin-api.js';
 import {
@@ -248,7 +248,7 @@ function receiptsCard() {
     columns: [
       { key: 'number', label: 'Invoice' },
       { key: 'buyer_email', label: 'Buyer' },
-      { key: 'amount_paise', label: 'Amount', align: 'end', render: (r) => fmtPaise(r.amount_paise) },
+      { key: 'amount_paise', label: 'Amount', align: 'end', render: (r) => fmtMinor(r.amount_paise, r.currency === 'USD' ? 'USD' : 'INR') },
       { key: 'issued_at', label: 'Issued', render: (r) => h('time', { datetime: r.issued_at, title: absTime(r.issued_at), text: relTime(r.issued_at) }) },
       { key: 'id', label: '', render: (r) => h('button.btn', { type: 'button', 'data-action': 'receipt-resend', 'data-id': r.id, 'aria-label': 'Resend the receipt for ' + r.number, text: 'RESEND' }) }
     ],

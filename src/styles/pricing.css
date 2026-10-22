@@ -101,6 +101,22 @@
 .pr-price-next { display: block; margin-top: var(--s2); font-family: var(--f-body); font-size: var(--t-small); font-weight: 600; color: var(--ink-muted); letter-spacing: 0; }
 .pr-once { font-size: var(--t-small); font-weight: 600; color: var(--ink-body); }
 .pr-keep { font-weight: 400; color: var(--ink-muted); }
+/* A dollar card charged in rupees says the rupee amount under the price
+   (src/pages/pricing.js, data-price-charge). */
+.pr-charge { display: block; font-size: var(--t-small); font-weight: 600; color: var(--ink-body); }
+.pr-charge[hidden] { display: none; }
+/* "Show prices in ₹ INR / $ USD": the visitor's own pick, above the cards. */
+.pr-cur { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); margin: 0 0 var(--s5); }
+.pr-cur[hidden] { display: none; }
+.pr-cur-line { margin: 0; max-width: 60ch; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
+.pr-cur-seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--border-strong); border-radius: var(--sk-field-radius, var(--radius)); background: var(--surface-card); }
+.pr-cur-btn {
+  min-height: 36px; padding: 0 var(--s4); border: 0; border-radius: var(--radius-sm); background: transparent;
+  font: inherit; font-size: var(--t-small); font-weight: 700; color: var(--ink-body); cursor: pointer;
+}
+.pr-cur-btn:hover { color: var(--ink); background: var(--surface-elevated); }
+.pr-cur-btn[aria-pressed="true"] { background: var(--brand); color: var(--brand-on); }
+.pr-cur-btn:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
 .pr-inc { list-style: none; margin: var(--s2) 0 var(--s3); padding: var(--s4) 0 0; width: 100%; flex: 1; display: grid; gap: var(--s2); align-content: start; border-top: 1px solid var(--border-hair); }
 .pr-inc li {
   position: relative; max-width: none; padding-left: var(--s5); font-size: var(--t-small); line-height: 1.5; color: var(--ink-body);

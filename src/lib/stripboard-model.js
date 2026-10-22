@@ -18,6 +18,8 @@ import { formatEighths, totalEighths } from './scenes.js';
 import Locations from './locations.js';
 import * as Songs from './songs.js';
 import DPR from './dpr.js';
+/* Pure and import-free: the paperwork's date style (docs/US-MARKET-PLAN.md §A4). */
+import { paperDate } from './paper-date.js';
 
 export const CAST = 'cast';
 
@@ -118,12 +120,26 @@ export function groupScenes(scenes, mode, { songsById = {}, dayOrders = () => Lo
 /* ---- dates ----------------------------------------------------- */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-/** 'YYYY-MM-DD' as "Mon 27 Oct 2025"; '' when it is not a date. */
-export function localDate(str) {
+/** 'YYYY-MM-DD' as "Mon 27 Oct 2025"; '' when it is not a date.
+ *  With the film's `prefs` (region.js currentProjectPrefs()), in its
+ *  style instead: "Mon, 27 Oct 2025" for an Indian film, "Mon, Oct 27,
+ *  2025" for a US one — the board prints these, so they follow the
+ *  paperwork. */
+export function localDate(str, prefs) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
   if (!m) return '';
+  if (prefs && prefs.dateStyle) return paperDate(m[0], prefs, 'weekday');
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
   return WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+/** The day and month alone, for a narrow column head: "27 Oct" on an
+ *  Indian film, "Oct 27" on a US one. '' when it is not a date. */
+export function dayMonth(str, prefs) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
+  if (!m) return '';
+  // A film with no region keeps the head it always had ("Mon 27").
+  if (!(prefs && prefs.dateStyle)) return localDate(m[0]).split(' ').slice(0, 2).join(' ');
+  return paperDate(m[0], prefs, 'dayMonth');
 }
 /** Today as 'YYYY-MM-DD', in the device's own day. */
 export const todayISO = (d = new Date()) =>
@@ -273,4 +289,79 @@ export function boardSummary(scenes) {
   return `${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'} · `
        + `${formatEighths(totalEighths(scenes))} pages · `
        + `${days} ${days === 1 ? 'shoot day' : 'shoot days'}`;
+}
+
+/* ---- CSV ----------------------------------------------------------
+   The breakdown's conventions (src/lib/element-index.js toCSV): every
+   cell quoted, a quote doubled (RFC 4180), CRLF line ends with one
+   after the last row, a header first. Unlike that one, the byte-order
+   mark is part of the text here, so Excel opens a Tamil name as Tamil
+   and a test can hold it. Dates go through paperDate (paper-date.js) in
+   the film's style ('medium': "21 Oct 2026" / "Oct 21, 2026" — a spelled
+   month, so a sheet opened on the other side of the world cannot read
+   10/11 as the wrong day). Nothing here is stored. */
+export const CSV_BOM = '\uFEFF';
+/* Two things a spreadsheet does to a cell whatever its quotes say.
+   (1) It runs a cell that opens with = + - @ (or a tab / CR) as a
+   FORMULA: a synopsis or a cast name typed that way is prefixed with an
+   apostrophe, the OWASP guard the console's leads CSV uses. Numbers are
+   written as numbers and are not touched.
+   (2) It reads "3/8" as the 8th of March, so a page count is never
+   written as a fraction: see Pages / Eighths below. */
+const csvCell = (v) => {
+  const t = String(v ?? '');
+  const safe = typeof v === 'string' && /^[=+\-@\t\r]/.test(t) ? "'" + t : t;
+  return '"' + safe.replace(/"/g, '""') + '"';
+};
+/** A page count a spreadsheet keeps as a number: decimal pages, at most
+ *  three places (an eighth is 0.125). */
+export const csvPages = (eighths) => { const n = Number(eighths) || 0; return n > 0 ? Math.round(n / 8 * 1000) / 1000 : 0; };
+const csvText = (rows) => CSV_BOM + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+const isoOf = (dateOf, d) => String((dateOf && (dateOf.get ? dateOf.get(d) : dateOf[d])) || '').slice(0, 10);
+
+/* Pages is decimal (1.5, 0.375) and Eighths the whole count (12, 3): an
+   eighths fraction like "3/8" is read as a DATE by Excel, quoted or not. */
+export const BOARD_CSV_HEADER = ['Shoot day', 'Date', 'Order', 'Scene', 'I/E', 'Set', 'D/N', 'Pages', 'Eighths', 'Cast', 'Synopsis'];
+
+/**
+ * The stripboard as CSV: one row per scene, in SHOOT order — `groups`
+ * is groupScenes(scenes, 'day'), so each day's strips come in the order
+ * the AD put them, and the unscheduled group (key Infinity) comes last
+ * with no day, no date and no order.
+ *   opts.dateOf  Map | object, day number → 'YYYY-MM-DD'
+ *   opts.prefs   the film's prefs (dates); omitted, Indian style
+ */
+export function boardCsv(groups, { dateOf = null, prefs = null } = {}) {
+  const rows = [BOARD_CSV_HEADER];
+  for (const g of groups || []) {
+    const day = Number.isFinite(g.key) && g.key > 0 ? g.key : 0;
+    const date = day ? paperDate(isoOf(dateOf, day), prefs, 'medium') : '';
+    (g.scenes || []).forEach((s, i) => {
+      rows.push([
+        day || '', date, day ? i + 1 : '', s.number || '', s.intExt || '', locationOf(s), s.dayNight || '',
+        csvPages(s.eighths), Number(s.eighths) > 0 ? Number(s.eighths) : 0, castOf(s).join(', '), String(s.synopsis || '').replace(/\s+/g, ' ').trim()
+      ]);
+    });
+  }
+  return csvText(rows);
+}
+
+/**
+ * The day out of days as CSV: cast down the side, one column per shoot
+ * day ("Day 3 · Oct 21, 2026" when the day is dated), the marks in the
+ * cells exactly as the grid shows them (SW W H WF SWF, blank when not
+ * needed), then the grid's three totals. `rows` is doodRows(); `days`
+ * the shoot days it was built for.
+ */
+export function doodCsv(rows, days, { dateOf = null, prefs = null } = {}) {
+  const head = ['Cast'].concat((days || []).map((d) => {
+    const date = paperDate(isoOf(dateOf, d), prefs, 'medium');
+    return 'Day ' + d + (date ? ' · ' + date : '');
+  }), ['Days worked', 'Days on hold', 'Total days']);
+  const out = [head];
+  for (const r of rows || []) {
+    const byDay = new Map((r.cells || []).map((c) => [c.day, c.mark]));
+    out.push([r.name].concat((days || []).map((d) => byDay.get(d) || ''), [r.work, r.hold, r.span]));
+  }
+  return csvText(out);
 }

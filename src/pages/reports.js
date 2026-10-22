@@ -50,8 +50,15 @@ import { getTargetMin, setTargetMin } from '../lib/editlog.js';
 import {
   IE_HUE, DN_HUE, NO_LOCATION, catById, sceneNumbers, tally, byCategory, mix, plural, slugOf, locationCount,
   selectionLabel as selectionText, readFrom, runtimeGroups, fmtDelta, deltaLabel, runtimeNotes, dayFromSearch,
-  openDay, shortDate, dprStatValues, calcLine, kitTitle, dayPdfSubtitle, offlineRowText
+  openDay, shortDate as shortDateIn, dprStatValues, calcLine, kitTitle as kitTitleIn, dayPdfSubtitle as dayPdfSubtitleIn, offlineRowText
 } from '../lib/reports-model.js';
+
+/* Every date these documents print follows the FILM's style (Indian or
+   US, docs/US-MARKET-PLAN.md §A4) — derived per call, stored nowhere. */
+const filmPrefs = () => PDF.filmPrefs();
+const shortDate = (iso, long) => shortDateIn(iso, long, filmPrefs());
+const kitTitle = (day, tally) => kitTitleIn(day, tally, filmPrefs());
+const dayPdfSubtitle = (scope, day, shootDays, pages) => dayPdfSubtitleIn(scope, day, shootDays, pages, filmPrefs());
 import '../styles/runtime.css';
 
 const app = document.getElementById('app');

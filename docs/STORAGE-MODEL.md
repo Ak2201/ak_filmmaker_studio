@@ -144,6 +144,26 @@ is done (`CLAUDE.md`, invariant 1, says so and names the scripted proofs).
 | `fms_note_*` | device | private notes are keyed by field name only. They are not separated per *project* either and never have been — two projects share a note on the same field. Separating them means renaming an open-ended key family, plus both backup importers, which is a migration of its own and not one to hide inside another change |
 | `fms_studio_cloud_queue_v1`, `fms_studio_sync_meta_v1`, `fms_studio_sync_salvage_v1` | device | all three are keyed by project id inside their value, and project ids do not collide across namespaces |
 
+## Region (21 Oct 2026) — two fields, no new key
+
+`docs/US-MARKET-PLAN.md` §A is the contract. Three facts, three homes, and
+none of them a new key:
+
+- **The device's market** is `fms_region_v1` ('IN' | 'INT'), unchanged since
+  9 Oct 2026: device-wide, read raw, in NO registry (the header of
+  `src/lib/region.js` says why each absence is deliberate).
+- **A film's region** is a `region` field ('IN' | 'INT') on its entry in
+  `fms_studio_projects_v1`, beside `title`, `format`, `fav` and `subtitle`.
+  An entry without it is a film from before regions: paperwork stays
+  A4 / INR / Indian dates and its India-only content follows the device —
+  nothing moves. The backup carries it (export writes whole entries; the
+  applier passes it on create and on replace); Supabase sync does NOT
+  (only title and format reach `projects`, as for fav and subtitle).
+- **The buyer's currency pick** is a `payCurrency` field ('INR' | 'USD')
+  inside `fms_studio_prefs_v1` (already `GLOBAL_KEYS.studio_prefs` and in
+  `ALL_KEYS`), merged in on a click by `writePayCurrency()` in
+  `src/lib/region-core.js`, never on load.
+
 ## What is NOT verified
 
 - **The cloud half of this file has not been observed live.** The schema

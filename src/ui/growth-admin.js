@@ -33,6 +33,7 @@
 import { h, delegate } from '../lib/dom.js';
 import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
+import { fmtMinor } from '../lib/price-model.js';
 import Growth, { isMissing } from '../lib/growth.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
@@ -43,7 +44,7 @@ import { funnel as funnelChart } from './admin-charts.js';
 import { cohorts as fetchCohorts } from '../lib/admin-api.js';
 
 let rerender = () => {};
-const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, members: [], missing: {}, saved: '', granted: '' };
+const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '' };
 
 /* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
    every form on the console from its defaults 2.5s after a save, under
@@ -76,6 +77,10 @@ async function load() {
     /* §30. The same read the signed-out landing page makes, on
        purpose — see the note on Billing.priceNotice(). */
     S.prices = await settle('prices', Billing.priceNotice);
+    /* The dollar side of the same rise (§31 / §56), READ ONLY here: the
+       owner types dollar prices under Purchases → Tiers & grants. One
+       date per plan; the dollar figure follows it. */
+    S.usd = await Billing.priceNotice('USD').catch(() => null);
     /* The one-person trial grant needs somebody to pick. The gate's
        console already lists members and billing-admin.js already
        borrows that list for its own grant form — a third RPC that
@@ -325,7 +330,7 @@ function priceRiseBlock(sec) {
     const ul = h('ul.gr-list');
     for (const p of rising) {
       ul.append(h('li', {}, [
-        h('span', { text: `${p.name || planName(p.id)}: ${fmtPaise(p.price_paise)} → ${fmtPaise(p.next_price_paise)} on ${fmtWhen(p.next_price_at)}  ` }),
+        h('span', { text: `${p.name || planName(p.id)}: ${fmtPaise(p.price_paise)} → ${fmtPaise(p.next_price_paise)} on ${fmtWhen(p.next_price_at)}${usdRiseText(p.id)}  ` }),
         h('button.btn', { type: 'button', 'data-gra-action': 'price-cancel', 'data-plan': p.id, text: 'CANCEL THE RISE' })
       ]));
     }
@@ -400,9 +405,9 @@ function affiliateBlock(sec) {
       h('td', { text: Number.isInteger(a.percent_off) ? `${a.percent_off}% off` : Number.isInteger(a.amount_off_paise) ? `${fmtPaise(a.amount_off_paise)} off` : '—' }),
       h('td', { text: `${Number(a.commission_pct)}%` }),
       h('td', { text: String(a.orders) }),
-      h('td', { text: fmtPaise(Number(a.revenue_paise)) }),
-      h('td', { text: fmtPaise(Number(a.discount_paise)) }),
-      h('td', {}, [h('strong', { text: fmtPaise(Number(a.commission_due_paise)) })]),
+      h('td', { text: byCurrency(a.revenue_paise, a.usd_revenue_minor) }),
+      h('td', { text: byCurrency(a.discount_paise, a.usd_discount_minor) }),
+      h('td', {}, [h('strong', { text: byCurrency(a.commission_due_paise, a.usd_commission_due_minor) })]),
       h('td', { text: String(a.refunded) }),
       h('td', { text: fmtDate(a.last_order_at) }),
       h('td', {}, [h('button.btn', { type: 'button', 'data-gra-action': 'aff-orders', 'data-code': a.code, text: S.openAff === a.code ? 'HIDE ORDERS' : 'ORDERS' })])
@@ -410,14 +415,24 @@ function affiliateBlock(sec) {
     if (S.openAff === a.code) {
       const orders = S.affOrders || [];
       tb.append(h('tr', {}, [h('td', { colspan: 10 }, [orders.length
-        ? h('ul.gr-list', {}, orders.map((o) => h('li' + (o.status === 'refunded' ? '.is-off' : ''), { text: `${fmtDate(o.paid_at)} — ${o.email || '—'} · ${planName(o.plan_id)} · paid ${fmtPaise(o.amount_paise)}${o.discount_paise ? ` (${fmtPaise(o.discount_paise)} off)` : ''}${o.status === 'refunded' ? ' · refunded' : ''}` })))
+        ? h('ul.gr-list', {}, orders.map((o) => h('li' + (o.status === 'refunded' ? '.is-off' : ''), { text: `${fmtDate(o.paid_at)} — ${o.email || '—'} · ${planName(o.plan_id)} · paid ${fmtMinor(o.amount_paise, orderCur(o))}${o.discount_paise ? ` (${fmtMinor(o.discount_paise, orderCur(o))} off)` : ''}${o.status === 'refunded' ? ' · refunded' : ''}` })))
         : h('p.gt-meta', { text: S.affOrders ? 'No orders yet.' : 'Loading…' })])]));
     }
   }
   table.append(tb);
   sec.append(h('div.gt-scroll', {}, [table]));
   const due = rows.reduce((n, a) => n + Number(a.commission_due_paise || 0), 0);
-  sec.append(h('p.gt-meta', { text: `Commission due across all affiliates: ${fmtPaise(due)}.` }));
+  const dueUsd = rows.reduce((n, a) => n + Number(a.usd_commission_due_minor || 0), 0);
+  sec.append(h('p.gt-meta', { text: `Commission due across all affiliates: ${byCurrency(due, dueUsd)}.` }));
+}
+
+/* §56: an affiliate code can sell in both currencies. The report keeps the
+   rupee columns and adds a dollar side; the two are never added together. */
+const orderCur = (o) => (o && o.currency === 'USD' ? 'USD' : 'INR');
+function byCurrency(inrPaise, usdCents) {
+  const inr = fmtPaise(Number(inrPaise || 0));
+  const usd = Number(usdCents || 0);
+  return usd > 0 ? `${inr} + ${fmtMinor(usd, 'USD')}` : inr;
 }
 
 const FUNNEL_LABEL = { landing_view: 'Start page visits', pricing_view: 'Reached pricing', invite_request: 'Invite requests', signup: 'Sign-ups', checkout_start: 'Checkouts started', purchase: 'Purchases' };
@@ -647,16 +662,30 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
       S.prices = await Billing.admin.setNextPrice(r.id, r.next_paise, at.toISOString());
     }
     if (!anyRise) S.prices = await Billing.priceNotice();
+    await refreshUsd();
     S.saved = 'pricerise'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
   } catch (err) { toast(err.message || 'The price rise was not scheduled.', 'error'); await load(); }
 });
+
+/** " · in dollars $19 → $29", or " · in dollars $19, no dollar rise
+ *  set", or '' when the plan is not sold in dollars. Read from
+ *  price_notice('USD'); nothing typed here. */
+function usdRiseText(planId) {
+  const row = S.usd && Array.isArray(S.usd.plans) ? S.usd.plans.find((x) => x && x.id === planId) : null;
+  if (!row || row.display_currency !== 'USD' || !(row.display_minor > 0)) return '';
+  return row.display_next_minor > 0
+    ? ` · in dollars ${fmtMinor(row.display_minor, 'USD')} → ${fmtMinor(row.display_next_minor, 'USD')}`
+    : ` · in dollars ${fmtMinor(row.display_minor, 'USD')}, no dollar rise set (Tiers & grants)`;
+}
+const refreshUsd = async () => { S.usd = await Billing.priceNotice('USD').catch(() => S.usd); };
 
 delegate(document, 'click', '[data-gra-action="price-cancel"]', async (e, el) => {
   const id = el.dataset.plan;
   if (!await askDanger('Cancel the scheduled rise for this plan?\n\nThe price stays where it is and the landing page stops saying it will change.')) return;
   try {
     S.prices = await Billing.admin.setNextPrice(id, null, null);
+    await refreshUsd();
     rerender();
   } catch (err) { toast(err.message || 'The rise was not cancelled.', 'error'); }
 });

@@ -55,8 +55,22 @@ function words(n) {
   if (n) parts.push(below1000(n));
   return parts.join(' ');
 }
-export function amountInWords(paise) {
+/* A dollar invoice (schema §56) counts the international way: million,
+   thousand, hundred. 1950 cents -> "US Dollars Nineteen and Fifty Cents only". */
+function intlWords(n) {
+  if (n === 0) return 'Zero';
+  const parts = [];
+  const million = Math.floor(n / 1e6); n %= 1e6;
+  const thousand = Math.floor(n / 1e3); n %= 1e3;
+  if (million) parts.push(intlWords(million) + ' Million');
+  if (thousand) parts.push(below1000(thousand) + ' Thousand');
+  if (n) parts.push(below1000(n));
+  return parts.join(' ');
+}
+/** `minor` is in minor units of `currency` (paise, or cents for 'USD'). */
+export function amountInWords(paise, currency = 'INR') {
   const p = Math.max(0, Math.round(Number(paise) || 0));
   const r = Math.floor(p / 100), ps = p % 100;
+  if (currency === 'USD') return `US Dollars ${intlWords(r)}${ps ? ' and ' + below100(ps) + ' Cents' : ''} only`;
   return `Rupees ${words(r)}${ps ? ' and ' + below100(ps) + ' Paise' : ''} only`;
 }

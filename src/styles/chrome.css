@@ -143,7 +143,7 @@ a:focus-visible { outline-offset: 3px; }
    BUTTONS & LINKS — one scale. The old files had .btn at three
    sizes and .tb-link duplicating .nav-link; they collapse here.
    ------------------------------------------------------------ */
-.btn,
+.btn:where(:not(.k-btn)),
 .tb-link,
 .nav-link,
 .mini-btn,
@@ -171,15 +171,17 @@ a:focus-visible { outline-offset: 3px; }
 
    --chrome-ink is also the same value as --paper in the paper theme,
    so getting this wrong is not a slightly-off button, it is an
-   invisible one. Chrome now opts IN. */
-.btn,
+   invisible one. Chrome now opts IN.
+   `:where(:not(.k-btn))` here and on the type and primary rules: a kit
+   button that carries .btn only as a proof's hook keeps the kit's look. */
+.btn:where(:not(.k-btn)),
 .tb-link {
   background: transparent;
   color: var(--ink);
   border: 1px solid var(--rule);
   padding: var(--s2) var(--s3);
 }
-.btn:hover,
+.btn:where(:not(.k-btn)):hover,
 .tb-link:hover { background: var(--ink); color: var(--paper); }
 
 /* The chrome surfaces are dark in every theme, so their buttons take
@@ -202,12 +204,15 @@ a:focus-visible { outline-offset: 3px; }
 }
 
 
-.btn.primary {
+/* `:where(:not(.k-btn))`: a kit button that also carries .btn / .primary
+   as a hook for a proof (stepper.js's Back / Next) keeps the kit's paint.
+   Zero specificity, so nothing that already beat these rules changes. */
+.btn.primary:where(:not(.k-btn)) {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-on);
 }
-.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn.primary:where(:not(.k-btn)):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 /* Destructive actions must not read as the page's primary call to
    action. RESET shipped as .btn.primary — a filled accent button, the
@@ -256,16 +261,22 @@ a:focus-visible { outline-offset: 3px; }
   line-height: 1;
 }
 
-/* .mini-btn lives inside the document as well as the chrome, so
-   it takes the paper palette, not the chrome palette. */
+/* .mini-btn lives inside the document as well as the chrome. It was
+   --ink on --paper, a light-theme leftover that made it a near-white
+   slab on the dark ground — the brightest object on every card it sat
+   on. It reads the kit's secondary button now (card fill, hairline,
+   ink), and .danger the kit's danger button, at rest as well as on
+   hover, so a destructive mini button no longer looks like a harmless
+   one until the pointer arrives. */
 .mini-btn {
-  background: var(--ink);
-  color: var(--paper);
-  border: 1px solid transparent;
+  background: var(--surface-card);
+  color: var(--ink);
+  border: 1px solid var(--border-default);
   padding: var(--s2) var(--s3);
 }
-.mini-btn:hover { background: var(--accent); color: var(--accent-on); }
-.mini-btn.danger:hover { background: var(--danger); }
+.mini-btn:hover { background: var(--surface-hover); border-color: var(--border-strong); color: var(--ink); }
+.mini-btn.danger { background: var(--danger-wash); border-color: var(--danger-line); color: var(--danger); }
+.mini-btn.danger:hover { background: var(--danger-wash); border-color: var(--danger); color: var(--danger-deep); }
 
 .row-actions,
 .editor-actions,
@@ -4505,6 +4516,16 @@ html {
   font-weight: 600;
 }
 .sh-fly-icon { font-size: 16px; line-height: 1; text-align: center; color: var(--hue-deep, var(--ink-muted)); overflow: hidden; }
+/* A module's sections (navigation.json `sections`): the page's tabs that
+   are not modules, indented under their module so the flyout reads as the
+   page strip does. Quieter than a module row, never a second accent. */
+.sh-fly-mod.is-sub {
+  min-height: var(--h-compact);
+  padding-left: calc(var(--s2) + 20px);
+  color: var(--ink-muted);
+  font-size: var(--t-tiny);
+}
+.sh-fly-mod.is-sub .sh-fly-icon { font-size: 14px; }
 .sh-fly-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sh-fly-flag,
 .sh-fly-mod > .pg-flag {

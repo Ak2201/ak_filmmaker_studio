@@ -769,9 +769,12 @@ function renderElements() {
   const side = h('aside.bdx-side' + (EX.sheet ? '.is-open' : ''), { 'aria-label': 'Element index', id: 'bdxSide', tabindex: '-1',
     ...(EX.sheet ? { role: 'dialog', 'aria-modal': 'true' } : {}) });
   const cats = h('ul.bdx-cats');
-  cats.append(h('li', {}, [h('button.bdx-cat.bdx-cat-all', { type: 'button', 'data-action': 'ex-cat', 'data-cat': '', 'aria-pressed': String(!EX.cat) }, [
+  /* The badge counts ELEMENTS, the unit the cards and the stats count;
+     the tag count (one element tagged on many scenes) is in the title. */
+  cats.append(h('li', {}, [h('button.bdx-cat.bdx-cat-all', { type: 'button', 'data-action': 'ex-cat', 'data-cat': '', 'aria-pressed': String(!EX.cat),
+    title: grand.elements + (grand.elements === 1 ? ' element, ' : ' elements, ') + grand.tags + (grand.tags === 1 ? ' tag' : ' tags') }, [
     h('span.bdx-cat-name', { text: 'All categories' }),
-    h('span.bdx-cat-n', { text: String(grand.tags) })
+    h('span.bdx-cat-n', { text: String(grand.elements) })
   ])]));
   for (const c of totals) {
     cats.append(h('li', {}, [h(`button.bdx-cat.hue-${c.hue}`, {
@@ -781,7 +784,7 @@ function renderElements() {
     }, [
       h('span.bdx-cat-dot', { 'aria-hidden': 'true' }),
       h('span.bdx-cat-name', { text: c.label }),
-      h('span.bdx-cat-n', { text: String(c.tags) })
+      h('span.bdx-cat-n', { text: String(c.elements) })
     ])]));
   }
   side.append(
@@ -807,10 +810,10 @@ function renderElements() {
   const phoneBar = h('div.bdx-phone', {}, [
     button({ label: 'Index, batch tag and export', icon: 'tune', action: 'ex-sheet', class: 'bdx-sheet-open', attrs: { 'aria-controls': 'bdxSide', 'aria-expanded': String(EX.sheet) } }),
     h('div.bdx-pchips.k-chip-row', { role: 'group', 'aria-label': 'Filter by category' },
-      [{ id: '', label: 'All', tags: grand.tags, hue: '' }].concat(totals.filter((c) => c.tags)).map((c) =>
+      [{ id: '', label: 'All', tags: grand.tags, elements: grand.elements, hue: '' }].concat(totals.filter((c) => c.tags)).map((c) =>
         h('button.bdx-pchip' + (c.hue ? '.hue-' + c.hue : ''), { type: 'button', 'data-action': 'ex-cat', 'data-cat': c.id, 'aria-pressed': String(EX.cat === c.id) }, [
           h('span.bdx-pchip-name', { text: c.label }),
-          h('span.bdx-pchip-n', { text: String(c.tags) })
+          h('span.bdx-pchip-n', { text: String(c.elements) })
         ])))
   ]);
   const list = h('div.bdx-list');

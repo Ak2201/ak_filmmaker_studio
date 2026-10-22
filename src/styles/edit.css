@@ -140,6 +140,35 @@
   font-size: var(--t-small);
 }
 
+/* The scene's forms, folded (edit.js sceneRow): note, dailies, pick-up. */
+.el-more[open] { display: grid; gap: var(--s2); }
+.el-more-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s3);
+  min-height: var(--tap-min);
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.el-more-head::-webkit-details-marker { display: none; }
+.el-more-head::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--ink-muted);
+  border-bottom: 1.5px solid var(--ink-muted);
+  transform: rotate(-45deg);
+  transition: transform var(--speed) var(--ease);
+}
+.el-more[open] > .el-more-head::before { transform: rotate(45deg); }
+.el-more-head:hover { color: var(--ink); }
+.el-more-head:focus-visible { outline: var(--focus); outline-offset: 2px; border-radius: var(--sk-field-radius, var(--radius)); }
+.el-more-meta { font-size: var(--t-tiny); color: var(--ink-muted); }
+
 /* ---- pick-ups --------------------------------------------------- */
 .el-pickups { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
 .el-pickup {
@@ -205,7 +234,8 @@
 .el-run {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  /* flex-start: bottom-aligned, the label sat ~90px under an empty top. */
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--s3) var(--s5);
   margin: 0 0 var(--s4);

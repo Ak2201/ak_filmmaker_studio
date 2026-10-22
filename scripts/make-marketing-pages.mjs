@@ -519,7 +519,7 @@ ${body}
     <div class="pr-faq-head">
       <h2 class="mk-h2" id="prFaqH">${esc(c.faq.h)}</h2>
       <p class="mk-body pr-lede">${esc(c.faq.lede)}</p>
-${c.faq.contact ? `      <p class="mk-body pr-lede pr-contact">${esc(c.faq.contact.before)} <a class="mk-link" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(c.faq.contact.after)}</p>
+${c.faq.contact ? `      <p class="mk-body pr-lede pr-contact">${esc(c.faq.contact.before)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(c.faq.contact.after)}</p>
 ` : ''}    </div>
     <div class="pr-acc-list">
 ${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
@@ -755,7 +755,7 @@ ${home.answers.items.map((it) => `      <article class="mk-card"${it.trial ? ' d
         <p class="mk-card-p">${it.aHtml || esc(it.a)}</p>
       </article>`).join('\n')}
     </div>
-    <p class="st-note">${esc(home.answers.contact.before)} <a class="mk-link" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(home.answers.contact.after)}</p>
+    <p class="st-note">${esc(home.answers.contact.before)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(home.answers.contact.after)}</p>
   </div>
 </section>`;
 
@@ -963,7 +963,7 @@ ${field('message', f.message, `<textarea class="co-input co-area" id="co-message
     </div>
     <aside class="co-aside" aria-labelledby="coAsideH">
       <h2 class="mk-h3" id="coAsideH">${esc(c.aside.h2)}</h2>
-      <p class="co-mail"><span class="co-mail-l">${esc(c.aside.emailLabel)}</span><span class="co-mail-v" id="coEmail" translate="no">{{brand:email}}</span></p>
+      <p class="co-mail"><span class="co-mail-l">${esc(c.aside.emailLabel)}</span><a class="co-mail-a" href="mailto:{{brand:email}}"><span class="co-mail-v" id="coEmail" translate="no">{{brand:email}}</span></a><button type="button" class="mk-btn mk-btn--ghost co-copy" id="coCopy" hidden>${sym('content_copy')}<span>Copy address</span></button></p>
       <div class="co-note">
         <h3 class="co-note-h">${esc(c.aside.refundH)}</h3>
         <p>${esc(c.aside.refundBody)}</p>

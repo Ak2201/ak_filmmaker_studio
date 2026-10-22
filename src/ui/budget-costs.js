@@ -611,8 +611,16 @@ function renderKpis(ctx) {
     statCard({ label: 'Total budget', value: glance(k.approved), note: k.contingency.pct ? 'Estimate + ' + k.contingency.pct + '% contingency' : 'Estimate, no contingency', class: 'bd-kpi' }),
     statCard({ label: 'Actual spent', value: glance(k.actual), note: k.approved ? k.pctUsed + '% of the budget used' : 'Nothing to measure against', class: 'bd-kpi' }),
     statCard({ label: k.over ? 'Over budget' : 'Remaining', value: (k.over ? '−' : '') + glance(Math.abs(k.remaining)), note: k.over ? 'Spent beyond the budget' : 'Left to spend', noteTone: k.over ? 'danger' : null, class: 'bd-kpi' + (k.over ? ' over' : '') }),
-    statCard({ label: 'Contingency', value: k.contingency.pct + '%', note: k.contingency.pool ? glance(k.contingency.pool) + ' pool, ' + glance(k.contingency.left) + ' left' : 'Set it on the top sheet', class: 'bd-kpi' })
+    contingencyCard(k)
   ];
+}
+
+/* The contingency % is typed on the cost report (#actuals), not the top
+   sheet, so the empty note says so and links there. */
+function contingencyCard(k) {
+  const card = statCard({ label: 'Contingency', value: k.contingency.pct + '%', note: k.contingency.pool ? glance(k.contingency.pool) + ' pool, ' + glance(k.contingency.left) + ' left' : 'Set it on the ', class: 'bd-kpi' });
+  if (!k.contingency.pool) card.querySelector('.k-stat-note').append(h('a', { href: '#actuals', text: 'cost report' }));
+  return card;
 }
 
 /** The header strip's shell, for the page to put above the tabs. */

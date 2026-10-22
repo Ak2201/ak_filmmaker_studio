@@ -102,7 +102,7 @@ import { actionMenu } from '../ui/actionbar.js';
 import Store from '../lib/store.js';
 import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
-import { paperTextarea } from '../ui/paper-field.js';   // writing fields are paper (owner, 20 Oct 2026)
+import { paperTextarea, paperGrow } from '../ui/paper-field.js';   // writing fields are paper (owner, 20 Oct 2026)
 
 const app = document.getElementById('app');
 
@@ -714,7 +714,7 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false) 
   const li = h('li.st-ol-step', { 'data-step-row': st.id });
   const fid = 'stStep_' + st.id;
   li.append(h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }));
-  const ta = paperTextarea('#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null });
+  const ta = paperGrow(paperTextarea('#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null }));
   ta.value = st.text;
   li.append(ta);
   if (locked) return li;
@@ -1013,7 +1013,7 @@ function draw() {
   if (IO.canExportSynopsis(s) || IO.canExportOutline(s)) bar.append(exportMenu(s));   // nothing to export: no menu of two dead rows
   /* Destructive, so last and quiet: never weighted like the exports. */
   if (s.source.trim() || s.marks.length) {
-    bar.append(button({ label: 'Start over', variant: 'danger', size: 'sm', class: 'st-start-over', attrs: { 'data-st': 'clear' } }));
+    bar.append(button({ label: 'Clear synopsis…', variant: 'danger', size: 'sm', class: 'st-start-over', attrs: { 'data-st': 'clear' } }));
   }
   main.insertBefore(pageHeader({
     class: 'bd-head',
@@ -1463,7 +1463,7 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     Story.removeMark(s, el.getAttribute('data-mark'));
     commit(s);
   } else if (act === 'clear') {
-    if (!await askDanger('Clear the synopsis, every highlight and every tension score on this page? The idea, the logline, the step outline and the Idea Vault are kept.')) return;
+    if (!await askDanger({ title: 'Clear the synopsis, every highlight and every tension score?', body: 'The idea, the logline, the step outline and the Idea Vault are kept.', confirm: 'Clear synopsis', danger: true })) return;
     s.source = ''; s.sourceName = ''; s.marks = []; s.tension = {};
     mode = null; litBeat = ''; undoBuild = null;
     commit(s);

@@ -517,10 +517,11 @@ const COLDEFS = {
   angle:       { label: 'Angle', cls: 'vz-c-angle', cell: (s) => picker(SHOT_ANGLES, s.angle, 'data-shot-field', 'angle', 'Camera angle') },
   movement:    { label: 'Move', cls: 'vz-c-move', cell: (s) => picker(SHOT_MOVEMENTS, s.movement, 'data-shot-field', 'movement', 'Camera movement') },
   lens:        { label: 'Lens', cls: 'vz-c-lens', cell: (s) => cellInput(field('input.vz-lens', {
-    type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off', 'data-shot-field': 'lens', 'aria-label': 'Lens'
+    type: 'text', placeholder: '35mm', list: 'vzLenses', autocomplete: 'off', 'data-shot-field': 'lens', 'aria-label': 'Lens',
+    ...(s.lens ? { title: s.lens } : {})
   }, s.lens), true) },
   rig:         { label: 'Light / rig', cls: 'vz-c-rig', cell: (s) => cellInput(field('input.vz-rig', {
-    type: 'text', placeholder: 'Key from window', list: 'vzRigs', autocomplete: 'off', 'data-shot-field': 'rig', 'aria-label': 'Lighting or rig'
+    type: 'text', placeholder: 'e.g. key from window', list: 'vzRigs', autocomplete: 'off', 'data-shot-field': 'rig', 'aria-label': 'Lighting or rig'
   }, s.rig), true) },
   /* Setup is free text whose default is the blocking camera's name
      (Shots.setupOf), shown as the placeholder; the camera itself is a
@@ -529,7 +530,7 @@ const COLDEFS = {
   setup:       { label: 'Setup', cls: 'vz-c-setup', cell: (s, cams) => {
     const cam = Shots.camOf(s, cams);
     const out = [cellInput(field('input.vz-setup', {
-      type: 'text', placeholder: cam ? cam.name : 'Setup A', autocomplete: 'off',
+      type: 'text', placeholder: cam ? cam.name : 'e.g. A', autocomplete: 'off',
       'data-shot-field': 'setup', 'aria-label': 'Camera setup'
     }, s.setup), true)];
     if (cams.length) {
@@ -1165,9 +1166,12 @@ function renderFrame(frame, shot, i, total, cams) {
 
   /* The frame's shape: the slate takes it from [data-aspect] on the
      card (visualize.css), so a 2.39:1 film boards in 2.39:1. */
-  const aspect = h('select.k-input.vz-frame-aspect', { 'data-frame-field': 'aspect', 'aria-label': 'Frame shape' });
+  const aspect = h('select.vz-frame-aspect', { 'data-frame-field': 'aspect', 'aria-label': 'Frame shape' });
   for (const a of ASPECTS) aspect.append(h('option', { value: a.id, text: a.label, selected: a.id === aspectOf(frame.aspect) }));
-  card.append(h('label.vz-frame-shape', {}, [h('span.vz-frame-shape-lab', { text: 'Shape' }), aspect]));
+  /* In the kit's select frame, so it is a field's height beside the
+     other fields rather than a bare 20px select. */
+  card.append(h('label.vz-frame-shape', {}, [h('span.vz-frame-shape-lab', { text: 'Shape' }),
+    h('div.k-control.k-select.vz-frame-aspect-box', {}, [aspect])]));
 
   card.append(h('div.vz-frame-acts', {}, [
     button({ label: driveFileIdOf(String(frame.ref || '').trim()) ? 'Replace picture' : 'Upload picture', icon: 'upload', size: 'sm',

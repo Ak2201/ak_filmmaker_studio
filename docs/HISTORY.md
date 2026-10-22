@@ -2649,3 +2649,65 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       cents to paise, a refund panel in the wrong currency, dashboard cards
       ignoring the budget currency, a relabel that changed numbers, a Drive
       pull deleting a film's region, …); all 18 fixed and tested.
+
+58. **One list: the rail and the page agree (22 Oct 2026).** The owner's
+    screenshots showed the Pre-Production flyout and Breakdown's tab strip
+    listing different things. An audit of every page found four kinds of
+    drift: order (the strip kept DOM order: Breakdown, Plan, Reports and
+    Contacts all read differently), labels ("Unit directory" against
+    "Cast & Crew", "Write" against "Screenplay Writer", "Checklist" against
+    "Deliverables"), icons and hints (two sources: section-icons.json and
+    navigation.json), and tabs the rail did not list at all (Whole script;
+    DPR, One-liner, Equipment; Draft, Blocking, Scene board; Budget's nine;
+    Story's four steps; Script analysis; Certification and Dialogue list).
+    - The owner chose to put those in the rail. A new MODULE would have
+      pulled in plan-matrix, the §36 generator, test:plans and the launcher
+      counts, so each is a `sections` entry of the module that owns it,
+      gated with it. Story's steps are derived from story-paths.json, not
+      typed twice; their icons moved there from story-model.js.
+    - `pageEntries()` in navmodel.js is the one derivation; tabs.js, the
+      rail flyout (indented sub-rows, the current one marked from the
+      hash), the phone's Go to sheet, Screenplay's and Deliverables' own
+      strips all read it. A strip on a page the rail lists is no longer
+      grouped by section-icons `group`, which had reordered Reports.
+    - Default tabs follow the rail's first entry (Reports opens on Screen
+      Time, Contacts on Cast & Crew); every rail link carries its hash.
+    - `prove:nav` compares each strip with its flyout rows (shown or not:
+      Story's strip is hidden on an empty project). Run against the build
+      from before this change it fails nine pages; against this one it
+      passes. Verify: four EXPECTED rows for old hint words and an icon
+      name. One test:schema run failed once in security-51 and passed on
+      the rerun and in test:all. prove:nav's older "tools differs by
+      arrival" check on story.html still races the deferred video-help
+      control (2 of 4 runs here); that is not this change.
+
+59. **UI/UX review, fixed and confirmed (22 Oct 2026).** The owner asked for
+    the veluthoor ui-ux-design-review-agent to be run, its findings fixed and
+    each fix confirmed, as a workflow. By the owner's choice its RUBRIC was run
+    by Claude agents on the real built pages (1440 and 390, sample and empty)
+    instead of the script itself, which would have sent ten truncated files to
+    Gemini; its palette/animation/layout reports were not applied. Six
+    reviewers raised 74 findings; triage kept 49 (2 report-only, 23 dropped
+    with reasons, no blocker or high among them); four fixers worked in
+    worktrees on `uiux/batch-1..4`, files never shared; two verifiers per
+    batch tried to refute each fix and re-measured before and after; three
+    batches needed their one retry; **49 of 49 confirmed by both**. Full
+    record: `docs/UI-UX-REVIEW-2026-10-22.md`.
+    - The shared measuring tool lived in the session scratchpad
+      (`review-shot.mjs`): screenshots plus contrast, overflow, 390 tap
+      targets, unnamed controls, console errors. Verifiers used the same one,
+      which is what makes a before and an after comparable.
+    - **A fix can expose an old bug the gate never saw.** Folding the edit
+      log's per-scene forms took the page from 13,772px to 8,621px, and the
+      Cut versions section's scroll-time lazy fill (always ~1,600px) crossed
+      `prove:scroll`'s 15% jump rule. Measured on the pre-merge build first,
+      then fixed by loading the 5 KB chunk after render.
+    - Merge conflicts were all two sessions adding to the same place; the
+      one to watch was `budget-costs.js`, where batch 4's line reintroduced
+      the rupee-only `fmtINR` import that the US-market work had replaced
+      with the currency-aware `glance()`. Grep a merge for re-added
+      `fmtINR` / `₹` after any batch that predates the currency work.
+    - The completeness critic's coverage gaps (screening.html, the
+      `?stay=1` blueprints, some Settings and console tabs, print preview,
+      the motion layer under a real browser) are listed in the report for the
+      next pass.

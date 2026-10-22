@@ -50,6 +50,7 @@ import { installLineLanding } from '../ui/script-find.js';
 import { mountReplaceBar } from '../ui/script-replace-bar.js';
 import { mountPresence } from '../ui/presence.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
+import { pageEntry } from '../lib/navmodel.js';
 import { buildSectionMenu } from '../ui/section-menu.js';   // Write | Script analysis
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
@@ -349,8 +350,12 @@ const HELP_ITEMS = [
    (no history entry per switch). The analysis is built only when its
    view is open (src/ui/script-analysis.js, a dynamic import), so the
    editor's first paint carries none of it. Not a navigation.json
-   module: it is a view of this page. */
-const VIEWS = [{ id: 'screenplay', label: 'Write', icon: 'edit_note' }, { id: 'analysis', label: 'Script analysis', icon: 'assessment' }];
+   module: it is a SECTION of the Screenplay Writer there, so the rail's
+   flyout and this strip read one label and one icon (pageEntries). */
+const VIEWS = ['screenplay', 'analysis'].map((id) => {
+  const e = pageEntry('screenplay.html', id) || {};
+  return { id, label: e.label || (id === 'analysis' ? 'Script analysis' : 'Screenplay Writer'), icon: e.sym || '', hint: e.purpose || '' };
+});
 const viewFromHash = () => (location.hash === '#analysis' ? 'analysis' : 'screenplay');
 let view = viewFromHash();
 let viewMenu = null;
@@ -509,7 +514,9 @@ function buildTop() {
      height either way, so the first view is a sentence, not a blank band
      that reads as broken, and the first click shifts nothing. */
   tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() }, [
-    h('span.sc-tip-what', { text: 'Click a line on the page to see what it is for and where Enter and Tab go.' })
+    h('span.sc-tip-what', { text: (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+      ? 'Tap a line on the page to see what it is for.'   // no Tab key on a touch screen
+      : 'Click a line on the page to see what it is for and where Enter and Tab go.' })
   ]);
   return h('div#scTop.sc-top', {}, [
     buildViews(),
@@ -544,7 +551,11 @@ function render() {
   sheet.append(h('div.wr-bar.sc-hostbar', {}, [h('div.wr-export')]));
   sheet.append(editor.renderPage({ pageView: true }));
   hintNode = h('p.sc-hint', {}, [
-    h('span', { text: 'Start with INT. or EXT. — Enter moves on, Tab switches. ' }),
+    /* A touch screen has no Tab key (and .sc-tip-keys hides there): the
+       chips below are how a line changes type. */
+    h('span', { text: (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+      ? 'Start with INT. or EXT. Tap a chip below to change the line type. '
+      : 'Start with INT. or EXT. — Enter moves on, Tab switches. ' }),
     h('a', { href: '#import', 'data-action': 'sc-import', text: 'Import Screenplay' })
   ]);
   sheet.append(hintNode);
@@ -571,6 +582,7 @@ function render() {
   if (guide) guide.hidden = location.hash !== '#guide';
 
   watchTopBar();
+  watchChips();
   mountShell();
   wireActionBar();
   try { StudioUI.autoAriaLabels(); } catch (e) { console.warn('[script] chrome', e); }
@@ -648,6 +660,30 @@ function watchTopBar() {
     topRO.observe(bar);
   }
   setTimeout(publish, 300);   // RO rides the render loop; a timer does not
+}
+
+/* The line-type chip bar's height, MEASURED, published as --sc-chips-h
+   on <html> (outside the observed element, so no loop) for the page's
+   scroll-padding-bottom in screenplay.css: without it the line being
+   typed sat under the chips (and, on a phone, the bottom bar). The same
+   shape as --mab-h: a ResizeObserver, plus a delayed re-measure, because
+   RO callbacks ride the render loop and timers do not. */
+let chipsRO = null;
+function watchChips() {
+  const chips = document.getElementById('scChips');
+  if (!chips) return;
+  const publish = () => {
+    const px = Math.round(chips.getBoundingClientRect().height) + 'px';
+    const de = document.documentElement;
+    if (de.style.getPropertyValue('--sc-chips-h') !== px) de.style.setProperty('--sc-chips-h', px);
+  };
+  publish();
+  if (typeof ResizeObserver === 'function') {
+    if (chipsRO) chipsRO.disconnect();
+    chipsRO = new ResizeObserver(publish);
+    chipsRO.observe(chips);
+  }
+  setTimeout(publish, 300);
 }
 
 /* ---- the hint strip ----------------------------------------------

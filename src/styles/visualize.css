@@ -143,9 +143,11 @@
    width is left, and its box grows to its text instead of clipping. */
 .vz-table .vz-c-no    { width: 5.5rem; min-width: 5.5rem; }
 .vz-table .vz-c-size  { width: 5rem; min-width: 5rem; }
-.vz-table .vz-c-angle { width: 6.5rem; min-width: 6.5rem; }
-.vz-table .vz-c-move  { width: 6.25rem; min-width: 6.25rem; }
-.vz-table .vz-c-lens  { width: 5rem; min-width: 5rem; }
+.vz-table .vz-c-angle { width: 7.5rem; min-width: 7.5rem; }
+.vz-table .vz-c-move  { width: 7.5rem; min-width: 7.5rem; }
+/* Wide enough for "100mm macro", "handheld", "overhead": the room
+   comes out of the flexible "What we see" column. */
+.vz-table .vz-c-lens  { width: 9rem; min-width: 9rem; }
 .vz-table .vz-c-rig   { width: 7rem; min-width: 7rem; }
 .vz-table .vz-c-setup { width: 7rem; min-width: 7rem; }
 .vz-table .vz-c-setup .k-control + .k-control { margin-top: var(--s1); }
@@ -416,7 +418,7 @@
 .vz-frame[data-aspect="9:16"]   .vz-frame-slate { aspect-ratio: 9 / 16; width: min(100%, 13.5rem); margin-inline: auto; }
 .vz-frame-shape { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-micro); color: var(--ink-muted); }
 .vz-frame-shape-lab { font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; }
-.vz-frame-aspect { width: auto; max-width: 100%; }
+.vz-frame-aspect-box { width: auto; max-width: 100%; }
 
 /* A drawn frame: the picture fills the slate, the shot's marks sit on
    top of it. The picture comes from the writer's Drive (drive-image.js);

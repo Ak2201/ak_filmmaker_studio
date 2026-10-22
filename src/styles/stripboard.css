@@ -490,6 +490,26 @@ body.pdf-print .sb-lock-host { display: none !important; }
 .sb-grid td.sb-cell { padding-inline: var(--s1); }
 .sb-grid .sb-grid-tot { font-weight: 600; color: var(--ink); }
 .sb-grid .sb-grid-hold { color: var(--warn-deep); }
+/* The three totals stay put on the right while the days scroll under
+   them, the mirror of the cast column on the left: at 1440 a long
+   shoot pushed Total off the edge of the scroller entirely, and the
+   totals are what the grid is read for. Each column is a fixed width so
+   the next one in knows its offset. Same surfaces as
+   .k-table--sticky-first. */
+.sb-grid .sb-grid-tot {
+  position: sticky;
+  z-index: 1;
+  width: var(--sb-tot-w);
+  min-width: var(--sb-tot-w);
+  max-width: var(--sb-tot-w);
+  background: var(--sk-card-bg);
+}
+.sb-grid { --sb-tot-w: 3.5rem; }
+.sb-grid .sb-grid-tot:nth-last-child(1) { right: 0; }
+.sb-grid .sb-grid-tot:nth-last-child(2) { right: var(--sb-tot-w); }
+.sb-grid .sb-grid-tot:nth-last-child(3) { right: calc(var(--sb-tot-w) * 2); box-shadow: -1px 0 0 var(--border-default); }
+.sb-grid thead .sb-grid-tot { z-index: 2; background: var(--surface-rail); }
+.sb-grid tbody tr:hover .sb-grid-tot { background: var(--surface-hover); }
 
 .sb-note {
   margin: var(--s3) 0 0;
@@ -552,21 +572,22 @@ body.pdf-print .sb-lock-host { display: none !important; }
 .sb-dc-tot { display: grid; justify-items: end; flex: 0 0 auto; text-align: right; }
 .sb-dc-wh { font-family: var(--f-mono); font-size: var(--t-small); font-weight: 700; color: var(--dood-w-ink); white-space: nowrap; }
 .sb-dc-h { color: var(--warn-deep); }
-/* The day row: one line that scrolls inside the card, never the page. */
+/* The day row WRAPS inside the card. It used to be one line that
+   scrolled sideways, with no cue and no tab stop, so a phone showed
+   days 1-7 of 18 and a part worked on day 12 read as empty cells under
+   a header that said "6 W". Every day is on screen now. */
 .sb-dc-days {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
   gap: var(--s1);
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
+  overflow: visible;
   padding-bottom: var(--s-half);
-  overscroll-behavior-x: contain;
 }
 .sb-dc-day {
   display: grid;
   justify-items: center;
   gap: var(--s-half);
-  flex: 0 0 auto;
-  min-width: 2.75rem;
+  min-width: 0;
   padding: var(--s1) var(--s1h);
   background: var(--surface-canvas);
   border: 1px solid var(--border-hair);
@@ -639,6 +660,12 @@ body.pdf-print .sb-dood .sb-dood-scroll { display: block !important; }
   .sb-dood:not(.is-matrix) .sb-dood-scroll { display: none; }
 
   .sb-cal-day { grid-template-columns: 1fr; }
+
+  /* Group by: five choices do not fit one 330px row, and the kit's
+     scroller hides its bar, so "Shoot day" was clipped with no cue.
+     Two columns that wrap, here only; kit.css is untouched. */
+  .sb-seg { display: grid; width: 100%; }
+  .sb-seg .k-seg { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
 }
 
 /* ---- the figures on a phone (impeccable pass, 19 Oct 2026) ----------

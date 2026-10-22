@@ -147,7 +147,7 @@
   "checklist": {
     "label": "YOUR FIRST WEEK",
     "title": "Find your way round.",
-    "deck": "A few things to try. The ticks are read from the open film every time this page draws — nothing here is stored.",
+    "deck": "A few things to try. Start or open a film and these tick themselves off: the ticks are read from the film you have open every time this page draws — nothing here is stored.",
     "items": [
       {
         "id": "story",

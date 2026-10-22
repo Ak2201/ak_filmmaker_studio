@@ -196,6 +196,10 @@
 .sc-tip-what { flex: 1 1 18rem; min-width: 0; color: var(--ink-body); }
 .sc-tip-keys { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sc-tip .learn { flex: 1 1 100%; }
+/* At desk widths the "What is…?" disclosure stays on the description's
+   row: on a row of its own it grew the strip past its reserved height,
+   and the first click on a line pushed the whole script down 18px. */
+@media (min-width: 720px) { .sc-tip .learn { flex: 0 1 auto; margin-left: auto; } }
 
 /* Hosts other modules look for inside #screenplay; the ⋯ menu drives
    them. Hidden, and so is the format dock's own bar and the dictation
@@ -685,6 +689,15 @@
   .sc-chips .sc-chip { min-height: 0; height: var(--h-compact); padding: 0 var(--s3); }
 }
 @media print { .sc-linebar, .sc-chips { display: none; } }
+/* What covers the bottom of the window while writing: the chip bar
+   (measured: --sc-chips-h, screenplay.js watchChips) and, on a phone, the
+   bottom bar under it (--mab-h). The scroll padding keeps a focused or
+   typed line clear of both (WCAG 2.4.11); the editor scrolls 'nearest'. */
+html:has(#scChips) { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--ssb-h, 0px) + var(--sc-chips-h, 0px) + var(--s3)); }
+@media (min-width: 720px) {
+  /* floating: it also sits var(--s3) above the bottom edge */
+  html:has(#scChips) { scroll-padding-bottom: calc(var(--ssb-h, 0px) + var(--sc-chips-h, 0px) + 2 * var(--s3)); }
+}
 
 /* ============================================================
    THE PHONE: one column, and a chip bar above the keyboard
@@ -701,6 +714,8 @@
   .sc-tip-keys { white-space: normal; }
   .sc-sheet { padding: var(--s3) var(--s3) var(--s5); }
   .sc-sheet .wr-page { --wr-em: 16px; padding: var(--s3); border-radius: var(--radius-sm); }
+  /* a page, not a strip: the blank first-run page was 70px and the hint spilled past it */
+  .sc-sheet .wr-page { min-height: 60vh; }
   .sc-sheet .wr-text { line-height: 1.35; }
   /* Still ON the paper (and saying so with its own ground, for the AA
      walk), inset to the page's edges rather than the sheet's. */

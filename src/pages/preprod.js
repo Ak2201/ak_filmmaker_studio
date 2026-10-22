@@ -90,10 +90,10 @@ function stepPanel(s) {
   if (s.id === 'ready') {
     sec.append(readinessList());
     sec.append(h('div.pp-act', {}, [
-      button({ href: 'contacts.html#call-sheets', label: 'MAKE THE CALL SHEET →', variant: 'primary' }),
+      button({ href: 'contacts.html#call-sheets', label: 'Make the call sheet →', variant: 'primary' }),
       /* Only while the Shoot Day is on for some plan: switched off for every
          plan, its page says Not available. */
-      isDisabledEverywhere('shoot-day') ? null : button({ href: 'shoot.html', label: 'OPEN THE SHOOT DAY →' })
+      isDisabledEverywhere('shoot-day') ? null : button({ href: 'shoot.html', label: 'Open the Shoot Day →' })
     ].filter(Boolean)));
   }
   else if (s.missing.length) {
@@ -103,7 +103,7 @@ function stepPanel(s) {
     sec.append(h('p.pp-facts', { text: 'Nothing left in this step.' }));
   }
   if (s.id !== 'ready') {
-    sec.append(h('div.pp-act', {}, [button({ href: s.tool.href, label: s.tool.label.toUpperCase() + ' →', variant: s.state === 'done' ? 'secondary' : 'primary' })]));
+    sec.append(h('div.pp-act', {}, [button({ href: s.tool.href, label: s.tool.label + ' →', variant: s.state === 'done' ? 'secondary' : 'primary' })]));
   }
   const foot = stepFooter(steps, s.id);
   if (foot) sec.append(foot);

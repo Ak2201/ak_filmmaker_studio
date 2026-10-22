@@ -16,9 +16,9 @@ the database still grants "for good".
 | §52 | RUN LIVE (21 Oct); `billing_settings.yearly_switch_at` is set |
 | §53 | **RUN LIVE 22 Oct**, editor checksum matched; read-back: `quote_for` takes `p_account`, one `paid_credit_paise`, the three new functions exist, `payments_unapplied_reason_check` exists, `unapplied_sentence('credit_gone')` answers |
 | §54 | **RUN LIVE 22 Oct**, checksum matched; read-back: `enforce_project_limit`, `enforce_share_limit`, `enforce_collaborator_limit`, `enforce_seat_limit` all contain the `fms:cap:` lock (all four were false before) |
-| Functions redeploy (§2b) | **NOT DONE.** `rzp-order`, `rzp-verify`, `rzp-webhook`, `rzp-refund` still run pre-§52/§53 code until deployed from the owner's terminal |
+| Functions redeploy (§2b) | **DONE 22 Oct 07:57 UTC**, from `develop` at `6f0f02b`: `rzp-order`, `rzp-verify`, `rzp-webhook` v8, `rzp-refund` v2, all ACTIVE. Probed: the three JWT functions answer 401 "Missing authorization header", `rzp-webhook` 401 "bad signature". The new payment logic is NOT yet exercised: that needs the real purchase and refund (launch list item 5) |
 
-Do not release to `main` until the redeploy is done.
+The redeploy is done, so the code can be released to `main` once the Razorpay live-mode steps (secrets, webhook, Vercel key, callback URLs) and Resend are set.
 
 ## 0. The paste rule
 

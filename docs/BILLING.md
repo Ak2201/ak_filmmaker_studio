@@ -1374,7 +1374,7 @@ markets them by the day: `perDay()` in `src/lib/plans.js` (₹1.64 / ₹2.19 /
 Not built: an expiry reminder e-mail. It needs a scheduled job and Resend; the
 in-app notices cover it until then.
 
-## 23. The billing audit fixes (schema §53, 21 Oct 2026). RUN LIVE 22 Oct 2026; the functions are NOT yet redeployed.
+## 23. The billing audit fixes (schema §53, 21 Oct 2026). RUN LIVE 22 Oct 2026; all four functions redeployed the same day.
 
 Four findings from the 21 Oct 2026 audit, each proved by a check in
 `scripts/schema-tests/audit-53.sql` that failed against §52 first.

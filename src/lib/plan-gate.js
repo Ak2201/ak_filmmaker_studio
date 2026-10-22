@@ -65,7 +65,6 @@ import { h } from './dom.js';
 import { bumpUsage } from './usage.js';
 import Billing from './billing.js';   // same chunk on every page; a dynamic import here moved nothing
 import { trialLength } from './trial-time.js';
-import { pricingCurrency, readPayCurrency, chosenRegion, guessVisitorRegion } from './region.js';   // CORE already (navmodel)
 import '../styles/plan-gate.css';
 
 export const CAPABILITIES = [
@@ -442,44 +441,10 @@ export function labelFor(id) {
 function includedLine(ids, cta) {
   const top = Billing.planRank(plan) >= Billing.PLAN_ORDER.length - 1;
   const line = h('p.pg-lock-plan', { text: top ? '' : PAID_FALLBACK });
-  lowestPlanWith(ids).then(async (p) => {
-    if (!p) return;
-    const name = p.name || Billing.planName(p.id);
-    const paise = Billing.priceFor(p, 'year');
-    line.textContent = 'Included in the ' + name + ' plan' + (paise > 0 ? ' — ' + Billing.fmtPaise(paise) + ' a year, about ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day.' : '.');
-    if (cta) {
-      const q = new URLSearchParams({ plan: p.id });
-      if (ids.length === 1) q.set('for', ids[0]);
-      cta.href = 'purchase.html?' + q.toString();
-    }
-    /* A dollar visitor (§B: their pick, the device's market, the guess)
-       sees the plan in dollars, and the button quotes in the currency the
-       checkout will CHARGE, exactly as purchase.html does. The price
-       model loads only for them, at this point, never in first paint. */
-    let want = 'INR';
-    try { want = pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() }); } catch (e) { want = 'INR'; }
-    let PM = null, view = null;
-    if (want === 'USD') {
-      try {
-        const [pm, notice] = await Promise.all([import('./price-model.js'), Billing.priceNotice('USD').catch(() => null)]);
-        const v = pm.shopView('USD', notice);
-        const r = v.currency === 'USD' && v.plans[p.id];
-        if (r && r.minor > 0) {
-          PM = pm; view = v;
-          line.textContent = 'Included in the ' + name + ' plan — ' + pm.fmtMinor(r.minor, 'USD') + ' a year, about ' + pm.perDayIn(r.minor, 'USD') + ' a day'
-            + (v.charge === 'USD' ? '.' : ', charged in rupees.');
-        }
-      } catch (e) { /* the rupee line stands */ }
-    }
-    const c = window.StudioCloud;
-    if (!cta || !c || !c.getSession || !c.getSession()) return;
-    const orderCur = PM ? PM.orderCurrency(view) : 'INR';
-    Billing.quote(p.id, null, orderCur).then((q) => {
-      if (!q || !q.ok || !(q.amount_paise > 0)) return;
-      const amount = PM ? PM.fmtMinor(q.amount_minor != null ? q.amount_minor : q.amount_paise, q.currency === 'USD' ? 'USD' : 'INR') : Billing.fmtPaise(q.amount_paise);
-      cta.textContent = 'UPGRADE FOR ' + amount + (q.credit_paise > 0 ? ' MORE' : '');
-    }).catch(() => { /* the plain button stands */ });
-  }).catch(() => { /* the fallback stands */ });
+  /* The price line and the button's figure, in the visitor's currency
+     (lock-price.js, loaded here only, never in first paint). */
+  lowestPlanWith(ids).then((p) => p && import('./lock-price.js').then((m) => m.fillLock(p, ids, line, cta)))
+    .catch(() => { /* the fallback stands */ });
   return line;
 }
 

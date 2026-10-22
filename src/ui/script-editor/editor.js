@@ -159,6 +159,16 @@ export function mountEditor(host, opts) {
     if (typeof node.setSelectionRange === 'function' && typeof node.value === 'string') {
       try { node.setSelectionRange(node.value.length, node.value.length); } catch (e) { /* select */ }
     }
+    keepInView(node);
+  }
+  /* The line being typed stays clear of the chip bar and the phone's
+     bottom bar (WCAG 2.4.11). html's scroll-padding-bottom (screenplay.css,
+     from the measured --sc-chips-h and --mab-h) says how much the bottom
+     covers; 'nearest' is a no-op when the line is already clear. INSTANT,
+     never 'auto': the page has scroll-behavior: smooth, and 'auto' means
+     "use it", so every keystroke would start an animation. */
+  function keepInView(node) {
+    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   }
 
   /* ---- sizing (fallback only; see rows.js) ---------------------
@@ -413,6 +423,7 @@ export function mountEditor(host, opts) {
     el.text = ta.value;
     inference.onInput(i, ta);
     autosize(ta);
+    keepInView(ta);
     o.refreshCounters();
     persist();
     smart.noteEdit(el);

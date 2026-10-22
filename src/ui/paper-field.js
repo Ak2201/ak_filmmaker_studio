@@ -46,4 +46,30 @@ export function paperScope(el) {
   return el;
 }
 
-export default { paperField, paperTextarea, paperScope, PAPER_CLASS, PAPER_SCOPE };
+/* A paper textarea that grows with its text. CSS `field-sizing: content`
+   does it where it exists (the sheet that asks for it also sets the min
+   and max); where it does not, this sets height from scrollHeight on
+   every input and once after the element is laid out. Writes only
+   style.height: no value, no class the gate reads, no storage. */
+const GROW_CSS = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('field-sizing', 'content');
+let growBound = false;
+function fit(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + (el.offsetHeight - el.clientHeight) + 'px';
+}
+/** Make a textarea grow with its content. Returns it (null-safe). */
+export function paperGrow(el) {
+  if (!el || GROW_CSS) return el;
+  el.dataset.paperGrow = '';
+  if (!growBound && typeof document !== 'undefined') {
+    growBound = true;
+    document.addEventListener('input', (e) => {
+      const t = e.target;
+      if (t && t.matches && t.matches('textarea[data-paper-grow]')) fit(t);
+    });
+  }
+  requestAnimationFrame(() => { if (el.isConnected) fit(el); });
+  return el;
+}
+
+export default { paperField, paperTextarea, paperScope, paperGrow, PAPER_CLASS, PAPER_SCOPE };

@@ -130,3 +130,9 @@
 .st-optout-btn { min-height: 44px; padding: 0 var(--s4); border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: var(--t-tiny); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .st-optout-btn:hover:not(:disabled) { color: var(--ink); }
 .st-optout-btn:disabled { text-decoration: none; cursor: default; }
+
+/* the line under the export cards had no rule of its own and sat flush on them */
+.mk-ex-foot { margin-top: var(--s5); }
+/* the answers: one long answer stretched every card in its row to its height,
+   leaving the short ones with a block of empty space */
+#answers .mk-stages { align-items: start; }

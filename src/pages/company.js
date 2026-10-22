@@ -24,6 +24,25 @@ import { validateContact, contactMailto } from '../lib/contact-model.js';
 
 const form = document.getElementById('coForm');
 if (form) wireContact(form);
+wireCopy();
+
+/* The address is a mailto: link; this is the other half, for a webmail
+   reader whose browser has no mail app to open. Hidden in the markup and
+   shown only where the Clipboard API exists, so a button never appears
+   that cannot work. Reports through the form's own live region. */
+function wireCopy() {
+  const btn = document.getElementById('coCopy');
+  const addr = document.getElementById('coEmail');
+  const status = document.getElementById('coStatus');
+  if (!btn || !addr || !(navigator.clipboard && navigator.clipboard.writeText)) return;
+  btn.hidden = false;
+  btn.addEventListener('click', () => {
+    navigator.clipboard.writeText(addr.textContent.trim()).then(
+      () => { if (status) status.textContent = 'Address copied: ' + addr.textContent.trim(); },
+      () => { if (status) status.textContent = 'Could not copy. Select the address above and copy it.'; },
+    );
+  });
+}
 
 function wireContact(form) {
   const FIELDS = ['name', 'email', 'topic', 'message'];

@@ -132,9 +132,15 @@ if (prod && item) {
   });
 }
 if (burger && top) {
+  /* a toggle, not a link: the href stays as the no-JS fallback, and Space
+     toggles it instead of scrolling the page */
+  burger.setAttribute('role', 'button');
   burger.addEventListener('click', (e) => {
     e.preventDefault();
     setMenu(!top.hasAttribute('data-menu'));
+  });
+  burger.addEventListener('keydown', (e) => {
+    if (e.key === ' ') { e.preventDefault(); burger.click(); }
   });
 }
 document.addEventListener('click', (e) => {

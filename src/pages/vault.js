@@ -9,6 +9,10 @@
    `fms_story_v1`. This page WRITES a story only for "ADD TO SYNOPSIS",
    which appends the clipping to the synopsis exactly as the Story
    page's own button does.
+
+   STICKY NOTES (owner, 23 Oct 2026) share the array, and this page is
+   their board (src/ui/idea-vault.js): the note controls are handled by
+   src/ui/notes-actions.js, and this page adds the filters and the drag.
    ============================================================ */
 import '../lib/store.js';          /* FIRST — it patches Storage.prototype. */
 import '../styles/base.css';
@@ -19,6 +23,7 @@ import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/story.css';
 import '../styles/vault.css';
+import '../styles/notes.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
@@ -27,8 +32,12 @@ import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import { renderVault } from '../ui/idea-vault.js';
 import { appendClipToSynopsis, removeClip, restoreClip } from '../lib/vault-model.js';
 import { pageHeader } from '../ui/kit/index.js';
+import { bindNoteActions, changed, flushTyping } from '../ui/notes-actions.js';
+import { COLORS } from '../lib/notes-model.js';
 
 const app = document.getElementById('app');
+const view = { filter: 'all', color: '' };   // in memory: the board's filter
+bindNoteActions();
 
 function render() {
   const s = Story.loadStory();
@@ -37,10 +46,10 @@ function render() {
     class: 'bd-head vault-head',
     eyebrow: ['Story', 'Idea Vault'],
     title: 'Idea Vault',
-    sub: 'Everything you collect for this film, in one place. Pin a clipping to a beat, or add it to the synopsis when it earns its place.'
+    sub: 'Everything you collect for this film, in one place: sticky notes and clippings. Pin one to a beat or a scene, or add it to the synopsis when it earns its place.'
   }));
   const sec = h('section.st-sec', { id: 'vault', 'data-tab-label': 'Idea Vault' });
-  sec.append(renderVault(s));
+  sec.append(renderVault(s, view));
   main.append(sec);
   app.replaceChildren(main);
   mountShell();
@@ -69,6 +78,73 @@ delegate(document, 'click', '[data-st]', (e, el) => {
 delegate(document, 'change', '[data-st-field="clip-beat"]', (e, el) => {
   Story.updateVault(el.getAttribute('data-clip'), { beat: el.value });
 });
+
+/* ---- the board: filters, redraws, the drag ----------------------- */
+delegate(document, 'click', '[data-action="vault-filter"]', (e, el) => {
+  view.filter = el.getAttribute('data-value') || 'all';
+  render();
+});
+delegate(document, 'change', '[data-vault-color]', (e, el) => {
+  view.color = COLORS.includes(el.value) ? el.value : '';
+  render();
+});
+
+/* A note write redraws the board, unless somebody is typing in it; the
+   focus goes back to the control the change came from. */
+document.addEventListener('notes:changed', (e) => {
+  const d = e.detail || {};
+  if (d.redraw === false) return;
+  render();
+  if (d.focus) {
+    const el = document.getElementById(d.focus)
+      || document.querySelector('[data-board-item="' + CSS.escape(d.focus) + '"] [data-nt="grip"]')
+      || document.querySelector('[data-board-item="' + CSS.escape(d.focus) + '"] .nt-text');
+    if (el) el.focus({ preventScroll: true });
+  }
+});
+
+/* Drag a note by its grip onto another card: it lands BEFORE that card
+   (after it, past the card's middle). One write, on the drop. The
+   arrow keys on the grip are notes-actions.js's. */
+let drag = null;
+delegate(document, 'pointerdown', '[data-nt="grip"]', (e, el) => {
+  if (e.button !== 0) return;
+  const card = el.closest('[data-board-item]');
+  if (!card) return;
+  e.preventDefault();
+  flushTyping();
+  el.setPointerCapture && el.setPointerCapture(e.pointerId);
+  drag = { id: card.getAttribute('data-board-item'), card, grip: el, target: null, after: false };
+  card.classList.add('is-dragging');
+});
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const t = under && under.closest('[data-board-item]');
+  document.querySelectorAll('.is-drop-before').forEach((x) => x.classList.remove('is-drop-before'));
+  if (!t || t === drag.card) { drag.target = null; return; }
+  const r = t.getBoundingClientRect();
+  drag.target = t;
+  drag.after = e.clientX > r.left + r.width / 2;
+  if (!drag.after) t.classList.add('is-drop-before');
+});
+function endDrag(commitIt) {
+  if (!drag) return;
+  const d = drag; drag = null;
+  d.card.classList.remove('is-dragging');
+  document.querySelectorAll('.is-drop-before').forEach((x) => x.classList.remove('is-drop-before'));
+  if (!commitIt || !d.target) return;
+  const items = Story.listVault();
+  const from = items.findIndex((x) => x.id === d.id);
+  let to = items.findIndex((x) => x.id === d.target.getAttribute('data-board-item'));
+  if (from < 0 || to < 0) return;
+  if (d.after) to += 1;
+  if (from < to) to -= 1;    // the note leaves its own place first
+  if (Story.moveInVault(d.id, to)) changed({ focus: d.id });
+}
+document.addEventListener('pointerup', () => endDrag(true));
+document.addEventListener('pointercancel', () => endDrag(false));
+document.addEventListener('keydown', (e) => { if (drag && e.key === 'Escape') endDrag(false); });
 
 /* Clips sent from the extension: those queued while this page was
    closed, and any that arrive while it is open (the side panel). */

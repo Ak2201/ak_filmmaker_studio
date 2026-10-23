@@ -29,6 +29,14 @@ once and not yet looked at.
   with no `scriptElId` takes a hand-typed number ("12A" is fine;
   duplicates save and are flagged). To renumber a bound scene, change
   its heading in Write.
+- **A short film that chose another beat sheet before 23 Oct 2026 shows
+  its old steps in Unassigned.** A short is always the five beats now
+  (owner: "use only 5 beats"). Every step is kept with its text and its
+  old beat; each waits in the Unassigned bin until it is filed under one of
+  the five. Nothing is deleted. The story's `framework` field reads
+  `short_five` after the next save (it is the view, not the work), so a
+  project later switched to Feature picks its old beat sheet again to see
+  those steps where they were.
 
 ## ~~Open 19 Oct 2026: the gated site cannot be OPENED from scratch offline~~ FIXED 19 Oct 2026
 

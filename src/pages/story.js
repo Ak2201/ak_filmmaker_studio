@@ -103,6 +103,7 @@ import Store from '../lib/store.js';
 import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
 import { paperTextarea, paperGrow } from '../ui/paper-field.js';   // writing fields are paper (owner, 20 Oct 2026)
+import { notesButton, notesPin } from '../ui/notes-button.js';   // sticky notes beside the path (owner, 23 Oct 2026)
 
 const app = document.getElementById('app');
 
@@ -137,7 +138,11 @@ const pathNow = () => Story.pathFor(fmt());
 const stepNow = (id) => Story.pathStepById(id, fmt());
 const suggestedFw = () => Story.suggestedFramework(fmt());
 const progress = (s) => Story.pathProgress(s, { scenes: scenes(), format: fmt() });
-const blueprint = () => IO.readBlueprint('feature');
+const blueprint = () => IO.readBlueprint(fmt());
+/* The samples are feature films laid out under Save the Cat!, so a short
+   film is never offered one (owner, 23 Oct 2026: a short keeps to the
+   short-film flow). */
+const samplesHere = () => (fmt() === 'short' ? [] : SAMPLES);
 const bpIdea = () => blueprintIdea(fmt());
 const bpLogline = () => blueprintLogline(fmt());
 
@@ -172,9 +177,9 @@ function renderModes() {
   const card = (eyebrow, title, body, control) =>
     h('div.st-mode', {}, [h('p.bd-eyebrow', { text: eyebrow }), h('h2.st-mode-title', { text: title }),
       h('p.st-mode-body', { text: body }), control]);
-  sec.append(card('Sample', 'Start from a sample.',
+  if (samplesHere().length) sec.append(card('Sample', 'Start from a sample.',
     'A sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
-    h('div.st-sample-picks', {}, SAMPLES.map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Use ' + sm.label })))));
+    h('div.st-sample-picks', {}, samplesHere().map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Use ' + sm.label })))));
   sec.append(card('New', 'Start with the idea.',
     'A guided path in four steps: the idea and its logline, the people and the world, a beat sheet, then the synopsis built from it. Every step is on this page; start anywhere.',
     h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'new', text: 'Start the path' })));
@@ -309,8 +314,8 @@ function renderWaysIn() {
   return h('div.st-offer.st-ways', { role: 'group', 'aria-label': 'Three ways in' }, [
     h('p.st-offer-text', {}, [
       h('span.st-example-k', { text: 'Three ways in: ' }),
-      'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file. '
-      + 'Or open the sample film to see a finished one.'
+      'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file.'
+      + (samplesHere().length ? ' Or open the sample film to see a finished one.' : '')
     ]),
     h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'ways-idea', text: 'Start from an idea' }),
     h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' }),
@@ -318,7 +323,7 @@ function renderWaysIn() {
       h('span', { text: 'Import a .docx or .txt' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis from a .docx, .txt or .pdf file' })
     ]),
-    ...SAMPLES.map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Open ' + sm.label }))
+    ...samplesHere().map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Open ' + sm.label }))
   ]);
 }
 
@@ -400,6 +405,10 @@ function watchBlueprintInput() {
   document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.st-bp .step-check li')) note(e); });
 }
 watchBlueprintInput();
+
+/* A sticky note sent into the synopsis from the notes dock: redraw so
+   the synopsis shows it (src/ui/notes-actions.js says which). */
+document.addEventListener('notes:changed', (e) => { if (e.detail && e.detail.story) render(); });
 
 /* One blueprint step of a path step's absorbs, as a host of its own: the
    Idea step asks blueprint step 01 and step 02 in two closed boxes, the
@@ -582,7 +591,9 @@ function renderOutline(s) {
   const locked = !!s.outlineLockedAt;
   const sec = h('section#path-outline.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Beat Sheet' }, stepHead('outline', 'Beat Sheet',
     'What happens, beat by beat: one or two lines a step, numbered as you go. Add, reorder and move steps between beats as the story finds its shape.'));
-  if (!s.frameworkChosen) {
+  if (short) {
+    sec.append(h('p.st-using', { text: 'A short film keeps to the ' + fw.label + ': ' + fw.beats.map((b) => b.label).join(', ') + '.' }));
+  } else if (!s.frameworkChosen) {
     sec.append(h('p.st-using', {}, [
       'Using ' + fw.label + ' until you choose a beat sheet. ',
       h('button.st-link', { type: 'button', 'data-st': 'open-fw', text: 'Choose one' })
@@ -609,7 +620,7 @@ function renderOutline(s) {
       ? `${todo} step${todo === 1 ? '' : 's'} to send · ${sent} already ha${sent === 1 ? 's' : 've'} a scene`
       : 'Write a step or two, then send them: one placeholder scene each, so the Breakdown and the Stripboard have the shape of the story before a page is written.' })
   ].filter(Boolean));
-  sec.append(h('div.st-bs-head', {}, [renderFwPicker(s), h('div.st-bs-actions', {}, [lockRow, sendRow])]));
+  sec.append(h('div.st-bs-head', {}, [short ? null : renderFwPicker(s), h('div.st-bs-actions', {}, [lockRow, sendRow])]));
 
   if (locked) {
     sec.append(h('p.st-locked', { role: 'status' }, [
@@ -622,7 +633,10 @@ function renderOutline(s) {
     h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
     ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} unassigned` : '')
   ]));
-  const bp = fw.id === 'save_the_cat' && fmt() === 'feature' ? blueprint() : null;
+  /* The blueprint's own beat answers beside the beats: the feature's
+     step 08 under Save the Cat!, the short's step 04 under its five. */
+  const bpNs = short ? 'short' : 'feature';
+  const bp = fw.id === IO.BLUEPRINT_BEATS[bpNs].fw ? blueprint() : null;
   const beatOpts = (sel) => {
     const opts = [h('option', { value: '', text: 'Move to beat…' })];
     fw.beats.forEach((b) => opts.push(h('option', { value: Story.qualifyBeat(fw.id, b.id), text: b.label, selected: Story.qualifyBeat(fw.id, b.id) === sel })));
@@ -634,13 +648,14 @@ function renderOutline(s) {
     const li = h('li.st-ol-beat' + (r.steps.length ? '' : '.is-empty'), { 'data-beat-card': r.key });
     const head = h('div.st-ol-head', {}, [
       h('h3.st-ol-name', { text: r.beat.label }),
+      notesPin({ beat: r.key, label: r.beat.label }),
       h('span.st-beat-at', { text: (r.act !== act ? 'Act ' + r.act + ' · ' : '') + '~' + pct(r.beat.at) })
     ]);
     act = r.act;
     li.append(head);
     li.append(h('p.st-beat-prompt', { text: r.beat.prompt }));
     if (bp) {
-      const v = IO.blueprintBeatText('feature', r.beat.id, bp);
+      const v = IO.blueprintBeatText(bpNs, r.beat.id, bp);
       if (v) li.append(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your beat note: ' }), '“' + v + '”']));
     }
     if (r.steps.length) {
@@ -676,7 +691,9 @@ function renderOutline(s) {
     un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under a beat of ' + fw.short + '.' }));
     sec.append(un);
   } else {
-    un.append(h('p.st-muted', { text: 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
+    un.append(h('p.st-muted', { text: short
+      ? 'These steps were written under another beat sheet before this film kept to the five beats. They are kept as they are; file each one under one of the five.'
+      : 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
     if (o.unplaced.some((u) => u.suggest) && !locked) {
       un.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'file-all', text: 'File all by position' }));
     }
@@ -1001,6 +1018,7 @@ function draw() {
   /* The header's actions: import, the two exports, start over. One
      import control on screen at a time: the card's, while it shows. */
   const bar = h('div.st-bar');
+  bar.append(notesButton());
   if (!cards) {
     bar.append(h('label.k-btn.k-btn--secondary.st-import', {}, [
       h('span', { text: 'Import' }),
@@ -1232,6 +1250,7 @@ async function importFile(file) {
 const sampleStory = IO.sampleStory;
 
 async function useSample(id) {
+  if (!samplesHere().length) return;   // a short film is never handed a feature's outline (a ?sample= link included)
   const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
   flushAutosave();   // a keystroke still on its debounce counts as work, and must not land on the sample later
   const cur = story();

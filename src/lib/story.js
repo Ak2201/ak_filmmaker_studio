@@ -40,6 +40,7 @@ import FRAMEWORKS from '../data/frameworks.json';
 import BIBLE from '../data/story-bible.json';
 import PATHS from '../data/story-paths.json';
 import { readFields } from './blueprint-store.js';
+import { moveItem } from './notes-model.js';
 
 export const STORY_KEY = 'fms_story_v1';
 export const VAULT_KEY = 'fms_idea_vault_v1';
@@ -783,9 +784,13 @@ export const pathStepById = (id, format = 'feature') => pathFor(format).find((p)
     writer chooses one in Scene order. */
 export const suggestedFramework = (format) => (pathFormat(format) === 'short' ? 'short_five' : 'save_the_cat');
 /** The framework in force: the writer's choice once made, else the
-    format's suggestion. */
+    format's suggestion. A SHORT FILM IS ALWAYS THE FIVE BEATS (owner,
+    23 Oct 2026: "use only 5 beats"): no picker, no Save the Cat. A short
+    that chose another beat sheet before keeps every step with its old
+    beat; they wait in the Unassigned bin (docs/KNOWN-ISSUES.md). */
 export const effectiveFramework = (story, format) =>
-  (story && story.frameworkChosen ? frameworkById(story.framework).id : suggestedFramework(format));
+  (pathFormat(format) === 'short' ? 'short_five'
+    : story && story.frameworkChosen ? frameworkById(story.framework).id : suggestedFramework(format));
 
 /** The step a RETIRED step id or number lands on now (story-paths.json
     `aliases`: 2 logline, 3 structure, 6 screenplay, 8 setups, 9 timeline,
@@ -1170,6 +1175,30 @@ export function updateVault(id, patch) {
   const it = items.find((x) => x.id === id);
   if (!it) return false;
   Object.assign(it, patch);
+  return saveVault(items);
+}
+/* Sticky notes (src/lib/notes-model.js) live in the same array. Each
+   write re-reads it first, so a note added in another tab survives. */
+/** Put a ready record (a note from makeNote) at the top of the vault. */
+export function addNoteToVault(note) {
+  if (!note || !note.id || typeof note.snippet !== 'string') return null;
+  const items = listVault();
+  if (items.some((x) => x.id === note.id)) return null;
+  items.unshift(note);
+  return saveVault(items) === false ? null : note;
+}
+/** Move record `id` to board position `to`. */
+export function moveInVault(id, to) {
+  const items = listVault();
+  const out = moveItem(items, id, to);
+  return out === items ? false : saveVault(out);
+}
+/** Undo a removal: the record back at its old position, every field kept. */
+export function restoreToVault(item, at = 0) {
+  if (!item || !item.id) return false;
+  const items = listVault();
+  if (items.some((x) => x.id === item.id)) return false;
+  items.splice(Math.max(0, Math.min(items.length, at | 0)), 0, item);
   return saveVault(items);
 }
 export function removeFromVault(id) {

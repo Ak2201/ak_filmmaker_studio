@@ -2735,3 +2735,38 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       measure; both are reset inside `.inv-doc`.
     - `monogram()` moved from shell.js to brand.js so the rail and the receipt
       share one derivation of "FS".
+
+61. **Sticky notes, and a short film that keeps to the short (23 Oct 2026).**
+    The owner asked for Celtx-style sticky notes "I can use while writing the
+    scene order or synopsis", and for a short film to follow only the
+    short-film flow, "5 beats, nothing other than that". Choices: notes beside
+    the Beat Sheet and Synopsis, the Scene List, the Screenplay Writer and on a
+    board; colours, pin to a beat or a scene, drag to reorder, send into the
+    text; the short keeps its four steps with the beats locked.
+    - **No new key.** A note is a record in the Idea Vault array
+      (`fms_idea_vault_v1`, already scoped, backed up, reset and synced):
+      `{ id, kind: 'note', snippet, color, beat, sceneId, at }`.
+      `src/lib/notes-model.js` is pure; `story.js` gained `addNoteToVault`,
+      `moveInVault`, `restoreToVault`, each re-reading the array first. The
+      array order is the board order. `test:notes` (30), `prove:notes` (25).
+    - **The dock** (`src/ui/notes-dock.js`, lazy) sits on the right at 1100px
+      and up and `main` narrows beside it (the AI Desk's frame; the Desk steps
+      aside when it opens), a bottom sheet below that. `notes-button.js` puts a
+      Notes button in the Story header, the Scene List toolbar and the
+      Screenplay toolbar, and fills `notesPin()` slots with a chip on a pinned
+      beat or scene. Gated like the Idea Vault (`guard('idea-vault')`).
+      Controls carry `data-nt`, never `data-st` (Story and the Scene List read
+      that). "Add to the scene" and "Add to synopsis" undo from the toast; in
+      the Screenplay Writer a note is copied, never inserted, because script
+      types change only through `setElementType`.
+    - **The board** is vault.html: notes and clippings in one grid, filters
+      (All, Notes, Pinned, Clippings, a colour), drag by the grip or arrow keys
+      on it. Moves are offered on the unfiltered board only.
+    - **Five note stocks** in tokens.css (`--note-*`, ≥ 12:1 for the ink).
+    - **The short film.** `effectiveFramework()` is always `short_five` for a
+      short: no picker, the five beats, the short blueprint's step-04 answers
+      beside them (the feature-only condition was removed). Steps written under
+      another beat sheet are kept and wait in Unassigned. No sample (both are
+      Save the Cat! features) and no feature wording; the Save the Cat video
+      left `step:short/step-04`. The rail's Story flyout reads the open
+      project's path (`navmodel.js` had read `PATHS.feature` every time).

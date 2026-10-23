@@ -239,8 +239,10 @@ eq(B.firstScenes(oe).map((f) => f.headingId), ['n1_0', 'n3_0', 'n2_0'], 'markers
   const b0 = S.frameworkById('save_the_cat').beats[0].id;
   const linked = deriveBeats([], null, { story: st, format: 'feature', scenes: [{ number: '1', beatId: 'save_the_cat:' + b0 }] });
   eq(linked.rows.find((r) => r.beat.id === b0).linked, true, 'a scene filed under save_the_cat counts as linked');
-  const chosen = deriveBeats([], null, { story: { ...st, frameworkChosen: true }, format: 'short' });
-  eq(chosen.fw.id, 'three_act', "the writer's own choice wins over the format's suggestion");
+  const chosen = deriveBeats([], null, { story: { ...st, frameworkChosen: true }, format: 'feature' });
+  eq(chosen.fw.id, 'three_act', "the writer's own choice wins over the format's suggestion on a feature");
+  const shortChosen = deriveBeats([], null, { story: { ...st, frameworkChosen: true }, format: 'short' });
+  eq(shortChosen.fw.id, 'short_five', 'a short film is always the five beats (owner, 23 Oct 2026)');
 }
 
 console.log(`test:beats — ${pass} passed, ${fail} failed`);

@@ -55,6 +55,7 @@ import { pageHeader, statStrip, statCard, button, chip, badge, todBadge, segment
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { measureEighths } from '../lib/scene-sync.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
+import { notesButton, notesPin } from '../ui/notes-button.js';   // sticky notes beside the scene order (owner, 23 Oct 2026)
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -302,7 +303,8 @@ function renderScene(scene, i, total) {
         type: 'text', value: scene.location, placeholder: 'Location — where are we?',
         'data-scene-field': 'location', 'aria-label': 'Scene location'
       }),
-      h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' })
+      h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' }),
+      notesPin({ sceneId: scene.id, label: 'scene ' + (scene.number || i + 1) })
     ]),
     select(INT_EXT, scene.intExt, 'intExt', 'Interior or exterior'),
     select(DAY_NIGHT, scene.dayNight, 'dayNight', 'Time of day'),
@@ -438,7 +440,8 @@ function renderSceneCard(scene, i) {
       h('span.bd-card-no', { text: n }),
       h('span.bd-card-ie', { text: scene.intExt }),
       todBadge(scene.dayNight, { icon: false }),
-      h('span.bd-card-len', { text: formatEighths(scene.eighths), title: 'Length in pages' })
+      h('span.bd-card-len', { text: formatEighths(scene.eighths), title: 'Length in pages' }),
+      notesPin({ sceneId: scene.id, label: 'scene ' + n })
     ]),
     h('h3.bd-card-slug', { text: scene.location || 'No location yet' }),
     h('p.bd-card-syn' + (scene.synopsis ? '' : '.is-none'), { text: scene.synopsis || 'No synopsis yet' }),
@@ -474,7 +477,8 @@ function renderSceneBar(scenes) {
       label: 'Show the scenes as', name: 'sl-view', action: 'sl-view', quiet: true, value: SL.view, class: 'bd-sl-view',
       options: [{ value: 'table', label: 'Table', icon: 'table_rows' }, { value: 'cards', label: 'Cards', icon: 'view_module' }]
     }),
-    h('span.bd-sl-count', { role: 'status', 'aria-live': 'polite', title: KEYS_HINT, text: scenes.length + ' scenes' })
+    h('span.bd-sl-count', { role: 'status', 'aria-live': 'polite', title: KEYS_HINT, text: scenes.length + ' scenes' }),
+    notesButton()
   ]);
   const bulk = h('div.bd-sl-bulk', { hidden: !SL.sel.size, role: 'group', 'aria-label': 'Selected scenes' }, [
     h('strong.bd-sl-bulk-n', { text: SL.sel.size + ' selected' }),
@@ -1831,3 +1835,6 @@ function wireScriptParts(bb, ch) {
 delegate(document, 'click', '[data-action=run-breakdown-script]', () => manualFlow('#script'));
 
 render();
+
+/* A sticky note sent into a scene's synopsis from the notes dock. */
+document.addEventListener('notes:changed', (e) => { if (e.detail && e.detail.scene) render(); });

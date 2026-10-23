@@ -231,3 +231,9 @@
 .nt-board-adds .st-vault-panel { margin-bottom: 0; }
 .nt-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
 .nt-filters .bd-sel { width: auto; max-width: 14rem; }
+
+/* A phone's Screenplay toolbar has no room for the word: icon and count
+   only there (prove:scroll measured 5px of sideways scroll at 390). */
+@media (max-width: 719.98px) {
+  .sc-tools .nt-open > span:not(.nt-count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}

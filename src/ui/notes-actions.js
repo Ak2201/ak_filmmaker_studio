@@ -13,7 +13,7 @@
 import { delegate } from '../lib/dom.js';
 import * as Story from '../lib/story.js';
 import * as Scenes from '../lib/scenes.js';
-import { projectFormat } from '../lib/story-model.js';
+import Store from '../lib/store.js';
 import { makeNote, pinPatch, COLORS, isNote } from '../lib/notes-model.js';
 import { appendClipToSynopsis } from '../lib/vault-model.js';
 import { toast } from './kit/index.js';
@@ -39,6 +39,11 @@ export function pinOptions() {
   } catch (e) { /* no scenes */ }
   return { beats, scenes, beatTitle };
 }
+
+/* The open project's format, read from its entry (story-model.js has the
+   same one-liner, but importing it pulls the character and screen-time
+   models onto every page that shows a note). */
+const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
 
 const find = (id) => Story.listVault().find((x) => x.id === id);
 

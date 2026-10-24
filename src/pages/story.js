@@ -104,6 +104,7 @@ import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.j
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
 import { paperTextarea, paperGrow } from '../ui/paper-field.js';   // writing fields are paper (owner, 20 Oct 2026)
 import { notesButton, notesPin } from '../ui/notes-button.js';   // sticky notes beside the path (owner, 23 Oct 2026)
+import { mountStoryPresence } from '../ui/story-presence.js';   // who else is on the shared beat sheet (§48/§49)
 
 const app = document.getElementById('app');
 
@@ -770,10 +771,94 @@ function renderSynopsisStep(s) {
     ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
     : '' }));
   if (s.source.trim()) sec.append(synopsisFigures(s));
+  { const kept = renderSourceConflicts(s); if (kept) sec.append(kept); }   // texts kept when two copies met
   sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
   sec.append(renderPacing(s));
   put(sec, earlierLadder('synopsis', 'Treatment: from synopsis to one-pager to treatment (treatment ladder, rungs 2–4)', [], { boxId: 'st-treatment' }));
   return sec;
+}
+
+/* ---- texts kept when two copies of the synopsis met -----------
+   With co-editing on, two people who both changed the synopsis prose
+   cannot be merged by sentence: the arriving text became the synopsis
+   and the one written here was kept (story-merge.js). Each is offered
+   back, word for word, until it is used or dismissed. */
+function renderSourceConflicts(s) {
+  const kept = Story.sourceConflicts(s);
+  if (!kept.length) return null;
+  const box = h('section.st-kept', { 'aria-label': 'Other versions of the synopsis' });
+  box.append(h('h3.bd-h2', { text: kept.length === 1 ? 'Another version of the synopsis' : 'Other versions of the synopsis' }));
+  box.append(h('p.st-muted', { text: 'You and a collaborator both changed the synopsis at the same time. Theirs is the synopsis now; the text below was kept so nothing is lost. Use it, or dismiss it.' }));
+  for (const c of kept) {
+    const when = Number(c.at) ? new Date(Number(c.at)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    box.append(h('div.st-kept-item', { 'data-kept': c.id }, [
+      when ? h('p.st-kept-when', { text: 'Kept ' + when }) : null,
+      h('p.st-kept-text', { text: c.text }),
+      h('div.st-kept-ctl', {}, [
+        button({ label: 'Use this text', variant: 'secondary', size: 'sm', attrs: { 'data-st-kept': 'use', 'data-kept-id': c.id } }),
+        button({ label: 'Dismiss', variant: 'ghost', size: 'sm', attrs: { 'data-st-kept': 'dismiss', 'data-kept-id': c.id } })
+      ])
+    ].filter(Boolean)));
+  }
+  return box;
+}
+delegate(document, 'click', '[data-st-kept]', (e, el) => {
+  const id = el.getAttribute('data-kept-id');
+  flushAutosave();   // a keystroke still on its debounce belongs to the synopsis being replaced
+  const s = story();
+  if (el.getAttribute('data-st-kept') === 'use') {
+    if (!Story.useSourceConflict(s, id)) return;
+    commit(s);
+    StudioUI.toast('That version is the synopsis now. The one it replaced is kept below.');
+    return;
+  }
+  const gone = Story.dismissSourceConflict(s, id);
+  if (!gone) return;
+  commit(s);
+  StudioUI.toast('Dismissed.', {
+    action: 'Undo',
+    onAction: () => { const back = story(); back.sourceConflicts = [...(back.sourceConflicts || []), gone]; commit(back); }
+  });
+});
+
+/* ---- a copy arriving from the account -------------------------
+   story.html used to ignore `cloud:synced`, so a field on screen kept
+   the text it was drawn with, and the next keystroke in it saved that
+   stale copy over the one that had just arrived. Now an arrival for the
+   story (or a whole-project pull that wrote it) redraws the page: any
+   keystroke still on its debounce is saved FIRST (into the arrived
+   copy, where a stamped step wins the next merge), then render() puts
+   the focus and the caret back where they were (preservingFocus). */
+function onStoryArrival(p) {
+  if (!p || (p.projectId && p.projectId !== Store.currentProjectId())) return;
+  const ours = p.scope ? p.scope === 'story'
+    : Array.isArray(p.scopes) ? p.scopes.includes('story') : true;
+  if (!ours) return;
+  flushAutosave();
+  render();
+}
+try { Store.subscribe('cloud:synced', (p) => setTimeout(() => onStoryArrival(p), 0)); } catch (e) { /* no subscribe */ }
+
+/* Who else is on the beat sheet (src/ui/story-presence.js): only signed
+   in with co-editing on; inert otherwise. Numbers are this page's own. */
+const stepNumbers = () => {
+  const s = story();
+  const o = Story.outlineByBeat(s, s.framework);
+  const m = new Map();
+  o.beats.forEach((r) => r.steps.forEach((x) => m.set(x.id, x.n)));
+  o.unplaced.forEach((x) => m.set(x.id, x.n));
+  return m;
+};
+let storyPresence = null;
+function drawPresence() {
+  if (!storyPresence) {
+    storyPresence = mountStoryPresence({
+      host: () => document.querySelector('#main .bd-head'),
+      stepN: (id) => stepNumbers().get(id) || 0,
+      rowOf: (id) => document.querySelector(`[data-step-row="${CSS.escape(id)}"]`)
+    });
+  }
+  storyPresence.draw();
 }
 
 /* ---- the heatmap (FR-505) -------------------------------------
@@ -1084,6 +1169,7 @@ function after() {
     if (spot && el && el.contains(spot)) { reland = ''; relandSpot = spot.id; landStepView(spot, { exact: true }); }
     else landStepView(el);
   }
+  drawPresence();   // the rows are new: re-mark who is on which step
 }
 
 

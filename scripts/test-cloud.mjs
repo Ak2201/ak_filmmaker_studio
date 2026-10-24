@@ -537,6 +537,70 @@ const T09 = Date.parse('2026-10-20T09:00:00Z');
   ok(!st5.known && st5.missing, 'but a missing function (§55 absent) does replace it — ' + JSON.stringify(st5));
 }
 
+/* ================================================================
+   THE SHARED BEAT SHEET — the story scope merges only with §49 on
+   ================================================================ */
+{
+  const T1 = Date.parse('2026-10-24T09:00:00Z'), T2 = Date.parse('2026-10-24T11:00:00Z'), T3 = Date.parse('2026-10-24T12:00:00Z');
+  const step = (id, text, u) => ({ id, beat: 'save_the_cat:catalyst', text, u });
+  const LOCAL = JSON.stringify({ v: 1, source: 'S', outline: [step('a', 'Shared step', 1), step('mine', 'Written here', 100)], marks: [] });
+  const SERVER = { v: 1, source: 'S', outline: [step('a', 'Shared step', 1), step('theirs', 'Written there', 200)], marks: [] };
+  const storyCase = async (coEdit) => {
+    projects = [{ id: 'pK', title: 'K', format: 'feature', ns: ['uA'], updatedAt: '2026-10-24T09:00:00Z' }];
+    accountNs = 'uA'; currentPid = 'pK';
+    openGate();
+    raw.set('fms_story_v1__pK', LOCAL);
+    raw.set(META_KEY, JSON.stringify({ 'pK::story': { local: T1, remote: T1 } }));
+    raw.set(SALVAGE_KEY, '[]');
+    raw.delete(QUEUE_KEY);
+    dbHandler = (table, ops) => {
+      if (table === 'rpc:co_editing_enabled') return { data: coEdit, error: null };
+      if (table === 'project_data' && ops.some(([k]) => k === 'select') && !ops.some(([k]) => k === 'upsert'))
+        return { data: [{ scope: 'story', data: SERVER, updated_at: new Date(T2).toISOString() }], error: null };
+      return emptyDb(table, ops);
+    };
+    for (const k of Object.keys(subs)) delete subs[k];
+    const C = await load({ uid: 'uA' });
+    await C.pullProjectData('pK');
+    return { C, ids: (JSON.parse(raw.get('fms_story_v1__pK') || '{}').outline || []).map((s) => s.id) };
+  };
+  const off = await storyCase(false);
+  eq(off.ids, ['a', 'theirs'], 'switch OFF: the story is last write wins — the newer server copy replaces this one');
+  ok((raw.get(SALVAGE_KEY) || '').includes('Written here'), 'switch OFF: the displaced local story is in the salvage ring, as before');
+  const on = await storyCase(true);
+  eq(on.ids, ['a', 'mine', 'theirs'], 'switch ON: the two copies of the story merge step by step');
+  ok(on.C.coEditingKnown() === true, 'switch ON: coEditingKnown() says so');
+
+  /* A base that outlives the page: a copy RECEIVED and not edited since
+     lets a later page tell their delete from a step new here. */
+  const received = JSON.stringify(SERVER);
+  const reload = async (withRh) => {
+    raw.set('fms_story_v1__pK', received);
+    const meta = { 'pK::story': { local: T2, remote: T2 } };
+    if (withRh) {
+      // what markReceived() records: let a pull of the same copy write it
+      raw.set(META_KEY, JSON.stringify(meta));
+      dbHandler = (table, ops) => table === 'rpc:co_editing_enabled' ? { data: true, error: null }
+        : (table === 'project_data' && ops.some(([k]) => k === 'select')) ? { data: [{ scope: 'story', data: SERVER, updated_at: new Date(T2).toISOString() }], error: null }
+        : emptyDb(table, ops);
+      for (const k of Object.keys(subs)) delete subs[k];
+      const C0 = await load({ uid: 'uA' });
+      await C0.pullProjectData('pK');
+      ok(JSON.parse(raw.get(META_KEY))['pK::story'].rh, 'a copy received from the server is fingerprinted (rh)');
+    } else raw.set(META_KEY, JSON.stringify(meta));
+    const DELETED = { ...SERVER, outline: [SERVER.outline[0]] };   // they removed 'theirs'
+    dbHandler = (table, ops) => table === 'rpc:co_editing_enabled' ? { data: true, error: null }
+      : (table === 'project_data' && ops.some(([k]) => k === 'select')) ? { data: [{ scope: 'story', data: DELETED, updated_at: new Date(T3).toISOString() }], error: null }
+      : emptyDb(table, ops);
+    for (const k of Object.keys(subs)) delete subs[k];
+    const C = await load({ uid: 'uA' });       // a new page: no in-memory base
+    await C.pullProjectData('pK');
+    return (JSON.parse(raw.get('fms_story_v1__pK') || '{}').outline || []).map((s) => s.id);
+  };
+  eq(await reload(true), ['a'], 'a new page whose copy is the one last received honours their delete');
+  eq(await reload(false), ['a', 'theirs'], 'without that proof, a new page deletes nothing');
+}
+
 function Store_save(key) { F.Store.notify('saved', { key }); }
 
 console.log(`test:cloud — ${pass} passed, ${fail} failed`);

@@ -41,6 +41,7 @@ import BIBLE from '../data/story-bible.json';
 import PATHS from '../data/story-paths.json';
 import { readFields } from './blueprint-store.js';
 import { moveItem } from './notes-model.js';
+import { anchorMarks } from './story-anchor.js';   // pure: story-merge.js (in cloud.js, CORE) shares it
 
 export const STORY_KEY = 'fms_story_v1';
 export const VAULT_KEY = 'fms_idea_vault_v1';
@@ -130,7 +131,76 @@ export function loadStory() {
 
 export function saveStory(story) {
   story.updatedAt = Date.now();
+  stampChangedStory(story);
   return write(STORY_KEY, story);
+}
+
+/* ---- edit stamps, for the shared beat sheet -------------------
+   With the co-editing switch on (schema §49) two copies of the story
+   are MERGED (src/lib/story-merge.js): a step and a mark are merged by
+   id, and the later `u` (the time it was last changed) wins. The
+   writers below stamp what they touch; the save stamps anything else
+   that changed since the stored copy, so a writer that forgets to
+   stamp (or a page outside this file) still counts. Same rule as
+   src/lib/script.js stampChanged: an unchanged item keeps its stamp,
+   and an item whose STORED copy carries a later stamp is a page saving
+   the copy it read before a newer one synced in — stamping it now
+   would make the stale text beat the real edit, so it is left alone. */
+const touch = (x) => { if (x) x.u = Math.max(Number(x.u) || 0, Date.now()); return x; };
+const unstamped = (x) => { const { u, ...rest } = x || {}; return JSON.stringify(rest); };
+function stampChangedStory(story) {
+  const prev = read(STORY_KEY, null);
+  const now = Date.now();
+  const pass = (list, before) => {
+    const old = new Map((Array.isArray(before) ? before : []).map((x) => [x && x.id, x]));
+    for (const x of Array.isArray(list) ? list : []) {
+      if (!x || !x.id) continue;
+      const p = old.get(x.id);
+      const changed = !p || unstamped(p) !== unstamped(x);
+      if (changed && p && (Number(x.u) || 0) < (Number(p.u) || 0)) continue;
+      if (changed) { if (!(Number(x.u) >= now - 5000)) x.u = Math.max(Number(x.u) || 0, now); }
+      else if (p.u && !x.u) x.u = p.u;
+    }
+  };
+  pass(story.outline, prev && prev.outline);
+  pass(story.marks, prev && prev.marks);
+}
+
+/* ---- texts kept when two copies of the synopsis met ------------
+   When two people both changed the synopsis prose, the merge keeps the
+   arriving text and puts this device's into `sourceConflicts` (a field
+   of this blob, not a key of its own): [{ id, at, u, text }]. The
+   Synopsis step offers each one back. */
+export const sourceConflicts = (story) =>
+  (Array.isArray(story && story.sourceConflicts) ? story.sourceConflicts : [])
+    .filter((c) => c && typeof c.id === 'string' && typeof c.text === 'string' && c.text.trim() && c.text !== story.source);
+
+/** Make a kept text the synopsis. The text it replaces is kept in its
+ *  place, so the choice can be made back. Returns true when it swapped. */
+export function useSourceConflict(story, id) {
+  const list = Array.isArray(story.sourceConflicts) ? story.sourceConflicts : [];
+  const i = list.findIndex((c) => c && c.id === id);
+  if (i < 0) return false;
+  const was = String(story.source || '');
+  const chosen = list[i];
+  list.splice(i, 1);
+  story.source = chosen.text;
+  if (was.trim() && !list.some((c) => c && c.text === was)) {
+    const at = Date.now();
+    list.push({ id: 'sc-' + uid(), at, u: at, text: was });
+  }
+  story.sourceConflicts = list;
+  return true;
+}
+
+/** Let a kept text go. Returns the removed entry (for an Undo), or null. */
+export function dismissSourceConflict(story, id) {
+  const list = Array.isArray(story.sourceConflicts) ? story.sourceConflicts : [];
+  const i = list.findIndex((c) => c && c.id === id);
+  if (i < 0) return null;
+  const [gone] = list.splice(i, 1);
+  story.sourceConflicts = list;
+  return gone;
 }
 
 /* ---- marks --------------------------------------------------- */
@@ -138,7 +208,7 @@ export function saveStory(story) {
 export function addMark(story, { start, end, fw, beat, origin = 'manual', rationale = '' }) {
   const text = story.source.slice(start, end);
   if (!text.trim()) return null;
-  const m = { id: uid(), start, end, text, tags: {}, origin, rationale };
+  const m = { id: uid(), start, end, text, tags: {}, origin, rationale, u: Date.now() };
   if (fw && beat) m.tags[fw] = beat;
   story.marks.push(m);
   story.marks.sort((a, b) => a.start - b.start);
@@ -149,6 +219,7 @@ export function tagMark(story, markId, fw, beat) {
   const m = story.marks.find((x) => x.id === markId);
   if (!m) return false;
   if (beat) m.tags[fw] = beat; else delete m.tags[fw];
+  touch(m);
   return true;
 }
 
@@ -163,19 +234,7 @@ export function removeMark(story, markId) {
  *  live offsets and a `detached` flag; the stored marks are not touched,
  *  so a passage cut by mistake comes back when it is pasted back. */
 export function anchor(story) {
-  const src = story.source || '';
-  return story.marks.map((m) => {
-    if (src.slice(m.start, m.end) === m.text) return { ...m, detached: false };
-    let best = -1, bestDist = Infinity, at = src.indexOf(m.text);
-    while (at !== -1) {
-      const d = Math.abs(at - m.start);
-      if (d < bestDist) { best = at; bestDist = d; }
-      at = src.indexOf(m.text, at + 1);
-    }
-    return best < 0
-      ? { ...m, detached: true }
-      : { ...m, start: best, end: best + m.text.length, detached: false };
-  });
+  return anchorMarks(story.source || '', story.marks);
 }
 
 /** Where a mark sits in the story, 0..1, by its midpoint. */
@@ -490,6 +549,7 @@ function ensureOutline(story) {
    end of the array — the array order matters only WITHIN a beat,
    because the display groups by beat. */
 function placeStep(list, step, at) {
+  touch(step);   // placed (added, or filed under another beat) is an edit
   const same = [];
   list.forEach((x, i) => { if (x.beat === step.beat) same.push(i); });
   if (Number.isInteger(at) && at >= 0 && at < same.length) list.splice(same[at], 0, step);
@@ -511,9 +571,11 @@ export function addOutlineStep(story, { beat, text = '', at } = {}) {
 export function updateOutlineStep(story, id, patch = {}) {
   const st = ensureOutline(story).find((x) => x.id === id);
   if (!st) return null;
+  const was = unstamped(st);
   if (typeof patch.text === 'string') st.text = patch.text;
   if (patch.beat && parseBeat(patch.beat)) st.beat = String(patch.beat);
   if ('sceneId' in patch) { if (patch.sceneId) st.sceneId = String(patch.sceneId); else delete st.sceneId; }
+  if (unstamped(st) !== was) touch(st);
   return st;
 }
 
@@ -551,6 +613,7 @@ export function moveOutlineStep(story, id, { delta, beat, at } = {}) {
     if (j < 0 || j >= same.length) return false;
     const k = same[j];
     [list[i], list[k]] = [list[k], list[i]];
+    touch(st);
     return true;
   }
   if (Number.isInteger(at) && at !== me) {

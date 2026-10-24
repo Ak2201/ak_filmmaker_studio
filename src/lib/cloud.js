@@ -21,6 +21,7 @@
    ============================================================ */
 import Store from './store.js';
 import { mergeScriptRaw } from './script-merge.js';
+import { mergeStoryRaw } from './story-merge.js';
 import { readPrivacy, skipScope, isBudgetScope, UNKNOWN as PRIVACY_UNKNOWN } from './budget-privacy.js';
 /* One constant, for the scope string, so sign-in and the Drive client
    cannot drift apart about what was consented to. drive.js imports
@@ -161,25 +162,36 @@ const MERGE_BY_SCOPE = { write_goals: mergeWriteGoals };
    line (a line coming back beats a line lost). */
 const _base = new Map();
 const baseKey = (pid, scope) => pid + '::' + scope;
+/* THE SCOPES CO-EDITING MERGES, and the list inside each whose items
+   are merged by id (what salvageDropped compares). The story joined the
+   script on 24 Oct 2026: the beat sheet's steps merge by id
+   (src/lib/story-merge.js), behind the same switch. Off, both stay
+   newer-wins exactly as before. */
+const COEDIT = { script: mergeScriptRaw, story: mergeStoryRaw };
+const COEDIT_ITEMS = { script: 'elements', story: 'outline' };
+const coEdits = (scope) => _coEdit === true && Object.prototype.hasOwnProperty.call(COEDIT, scope);
 function mergerFor(projectId, scope) {
-  if (scope === 'script') {
+  if (COEDIT[scope]) {
     if (_coEdit !== true) return null;
+    const merge = COEDIT[scope];
     /* `noBase` gives the arrival's own canonical form, to compare the
        merge against: merged against the base, '{}' reads every line the
        base has as cut here, and every arrival looked different. */
     return (localRaw, remote, _localWins, noBase) =>
-      mergeScriptRaw(localRaw, remote, noBase ? null : (_base.get(baseKey(projectId, scope)) || null));
+      merge(localRaw, remote, noBase ? null
+        : (_base.get(baseKey(projectId, scope)) || receivedBase(projectId, scope, localRaw) || null));
   }
   return MERGE_BY_SCOPE[scope] || null;
 }
-const noteBase = (pid, scope, data) => { if (scope === 'script') _base.set(baseKey(pid, scope), data); };
-/* A merge that leaves out a line this device had keeps the whole local
-   copy in the salvage list first, as a replace does. */
+const noteBase = (pid, scope, data) => { if (COEDIT[scope]) _base.set(baseKey(pid, scope), data); };
+/* A merge that leaves out a line (or a step) this device had keeps the
+   whole local copy in the salvage list first, as a replace does. */
 function salvageDropped(pid, scope, localRaw, merged) {
-  if (scope !== 'script') return;
+  const list = COEDIT_ITEMS[scope];
+  if (!list) return;
   try {
-    const kept = new Set((JSON.parse(merged).elements || []).map((e) => e && e.id));
-    if ((JSON.parse(localRaw).elements || []).some((e) => e && e.id && !kept.has(e.id))) salvage(pid, scope, localRaw);
+    const kept = new Set((JSON.parse(merged)[list] || []).map((e) => e && e.id));
+    if ((JSON.parse(localRaw)[list] || []).some((e) => e && e.id && !kept.has(e.id))) salvage(pid, scope, localRaw);
   } catch (e) { /* not JSON: nothing to compare */ }
 }
 /* Self-echo by our OWN last push, not by user id, once co-editing is on:
@@ -354,6 +366,31 @@ function _fingerprint(s) {
 function _isServerCopy(pid, scope, localRaw) {
   const row = _readMeta()[_metaId(pid, scope)];
   return !!row && row.h != null && !(row.local > row.remote) && row.h === _fingerprint(localRaw);
+}
+/* A BASE THAT OUTLIVES THE PAGE, for the scopes named here (the story;
+   the script keeps exactly its old rule). `_base` is in memory, so a
+   page that has just opened has none — and for the story that made a
+   collaborator's synopsis edit read as "both changed" (a kept copy of
+   your OLD text on every visit) and brought back every step they had
+   deleted. `rh` fingerprints the copy last RECEIVED from the server
+   (never one this device pushed: a writer who was offline never saw
+   that, the reason `_base` refuses it too). While the stored copy is
+   still exactly that one and nothing was written here since, it IS the
+   copy both sides last agreed on, and serves as the base. */
+const RECEIVED_BASE = new Set(['story']);
+function markReceived(pid, scope, raw) {
+  if (!RECEIVED_BASE.has(scope) || raw == null) return;
+  const m = _readMeta();
+  const row = m[_metaId(pid, scope)];
+  if (!row) return;
+  row.rh = _fingerprint(raw);
+  _writeMeta(m);
+}
+function receivedBase(pid, scope, localRaw) {
+  if (!RECEIVED_BASE.has(scope) || localRaw == null) return null;
+  const row = _readMeta()[_metaId(pid, scope)];
+  if (!row || row.rh == null || row.local > row.remote || row.rh !== _fingerprint(localRaw)) return null;
+  try { return JSON.parse(localRaw); } catch (e) { return null; }
 }
 
 /* When this device last touched a scope, in epoch ms.
@@ -1500,6 +1537,7 @@ function _applyRemoteRow(projectId, row) {
       wrote = true;
     }
     markRemoteSeen(projectId, row.scope, remoteTs, merged === remoteCanon);
+    if (merged === remoteCanon) markReceived(projectId, row.scope, merged);
     if (merged !== remoteCanon) { _debouncedPush(projectId, row.scope, 250); return wrote ? 'merged-kept' : 'merged'; }
     return wrote ? 'applied' : 'same';
   }
@@ -1519,6 +1557,7 @@ function _applyRemoteRow(projectId, row) {
   _applyingRemote = true;
   try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
   markRemoteSeen(projectId, row.scope, remoteTs, true, nextRaw);
+  markReceived(projectId, row.scope, nextRaw);
   return 'applied';
 }
 
@@ -2164,7 +2203,7 @@ function _onRemoteData(payload) {
   if (!row || !row.scope) return;
   if (session && row.updated_by === session.user.id) {          // self echo
     // …or this person on another device, which co-editing merges.
-    if (!(row.scope === 'script' && _coEdit === true)) return;
+    if (!coEdits(row.scope)) return;
     if (isOwnPush(row)) return;
   }
   const localKey = KEY_BY_SCOPE[row.scope];
@@ -2187,6 +2226,7 @@ function _onRemoteData(payload) {
       Store.notify('cloud:synced', { projectId: row.project_id, scope: row.scope });
     }
     markRemoteSeen(row.project_id, row.scope, remoteTs, merged === remoteCanon);
+    if (merged === remoteCanon) markReceived(row.project_id, row.scope, merged);
     if (merged !== remoteCanon) _debouncedPush(row.project_id, row.scope, 250);
     return;
   }
@@ -2206,6 +2246,7 @@ function _onRemoteData(payload) {
     _applyingRemote = false;
   }
   markRemoteSeen(row.project_id, row.scope, remoteTs, true, nextRaw);
+  markReceived(row.project_id, row.scope, nextRaw);
   // Re-render visible inputs if blueprint exposes a reload hook
   if (typeof window.loadAll === 'function') {
     try { window.loadAll(); } catch (e) {}
@@ -2609,7 +2650,10 @@ const StudioCloud = {
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
-  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence, coEditingEnabled,
+  /* coEditingKnown was exported but missing here, so a page asking
+     window.StudioCloud (screenplay.js, story.js) always read the switch
+     as OFF; prove:presence faked it onto this object and never saw. */
+  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence, coEditingEnabled, coEditingKnown,
   budgetPrivacy, setBudgetPrivate,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,

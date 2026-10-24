@@ -43,6 +43,7 @@ eq(P({ text: long, sceneId: 's', synced: Sync.norm(long) }, { synopsis: cut }), 
 eq(P({ text: 'B', sceneId: 's', synced: 'B', syncedWas: 'A' }, { synopsis: 'A' }), 'push', 'a scene holding the baseline before: behind, pushed (never pulled)');
 eq(P({ text: 'C', sceneId: 's', synced: 'B', syncedWas: 'A' }, { synopsis: 'A' }), 'push', 'behind, and the step moved on again: still pushed');
 eq(P({ text: 'B', sceneId: 's', synced: 'B', syncedWas: 'A' }, { synopsis: 'D' }), 'pull', 'a scene holding new words: pulled as before');
+eq(P({ text: 'B', sceneId: 's', synced: 'B', syncedWas: 'A' }, { synopsis: 'A' }, { caughtUp: true }), 'pull', 'once this page saw the scene catch up, the older words are an edit: pulled');
 eq(P({ text: long + ' more', sceneId: 's', synced: Sync.norm(long) }, { synopsis: cut }), 'push', 'an edit to the step of a 280-cut pair pushes');
 eq(P({ text: long, sceneId: 's', synced: Sync.norm(long) }, { synopsis: 'Rewritten.' }), 'pull', 'an edit to the scene of a 280-cut pair pulls');
 eq(Sync.planBeat({ sceneId: 's', beat: 'f:a' }, { beatId: 'f:a' }), 'adopt', 'beat: no baseline, adopt');
@@ -165,6 +166,22 @@ eq([r.pulled, byStep(b.id).text, sceneOf(b.id).synopsis], [0, long + ' Ravi refu
 eq(byStep(b.id).u, uArrived, 'arrival: the step is not restamped (no push back)');
 before = snapshot();
 ok(!S.reconcileStepScenes(api).wrote && snapshot() === before, 'arrival: settled in one pass');
+
+/* A REVERT ON THIS PAGE IS AN EDIT (QA round 2): once the scene was seen
+   at the new baseline, the words before it are pulled into the step,
+   never pushed over (and so never lost on reload, nor to Ctrl+Z). */
+{
+  const was = Sync.norm(long);
+  Scenes.updateScene(sceneOf(b.id).id, { synopsis: was });
+  r = S.reconcileStepScenes(api);
+  eq([r.pushed, r.pulled, byStep(b.id).text, sceneOf(b.id).synopsis], [0, 1, was, was], 'revert: a scene set back to the baseline before is pulled, not overwritten');
+  { const s = S.loadStory(); S.updateOutlineStep(s, b.id, { text: 'Version B.' }); S.saveStory(s); }
+  r = S.reconcileStepScenes(api);
+  eq([r.pushed, byStep(b.id).syncedWas], [1, was], 'revert: a step edit pushed (the baseline before is kept)');
+  Scenes.updateScene(sceneOf(b.id).id, { synopsis: was });
+  r = S.reconcileStepScenes(api);
+  eq([r.pushed, r.pulled, r.conflicts.length, byStep(b.id).text, sceneOf(b.id).synopsis], [0, 1, 0, was, was], 'revert: then the scene put back to the old words: pulled');
+}
 
 /* a LOCKED outline: a scene edit is shown, never written into the step */
 {

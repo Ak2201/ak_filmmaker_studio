@@ -291,6 +291,16 @@ export function blankScript() {
    `Array.isArray` on all three lists. An empty array is truthy and a
    stored `null` is not an array; both have already cost this project a
    page that rendered zero rows with no way to add one. */
+/** Is this heading id in the script right now? A scene row restored
+    from the bin while its heading is gone comes back unlinked, or the
+    next sync on the Write page would bin it again (the Breakdown's bin
+    and the Story page's "Send again" both ask). */
+export function headingInScript(id) {
+  if (!id) return false;
+  try { return loadScript().elements.some((el) => el && el.id === id && el.type === 'scene' && String(el.text || '').trim()); }
+  catch (e) { return false; }
+}
+
 export function loadScript() {
   let raw = null;
   try { raw = localStorage.getItem(SCRIPT_KEY); } catch (e) { /* private mode */ }

@@ -75,7 +75,8 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput, preservingFocus, flushAutosave } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import Scenes from '../lib/scenes.js';
-import { listBin } from '../lib/scene-bin.js';
+import { listBin, restoreFromBin } from '../lib/scene-bin.js';
+import { headingInScript } from '../lib/script.js';   // a restored scene whose heading went drops the link
 import { COLORS, COLOR_LABEL } from '../lib/notes-model.js';
 import Pitch from '../lib/pitch-deck.js';
 import {
@@ -763,7 +764,7 @@ function stepSyncNote(st, locked = false) {
   if (l.action === 'gone') {
     return h('p.ss-note', { role: 'status', 'data-ss-step': st.id }, [
       h('span', { text: l.binned ? 'Its scene is in the bin.' : 'Its scene is no longer in the scene list.' }),
-      locked ? null : button({ label: 'Send again', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'resend', 'data-step': st.id } })
+      locked ? null : button({ label: l.binned ? 'Restore it' : 'Send again', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'resend', 'data-step': st.id } })
     ].filter(Boolean));
   }
   return null;
@@ -890,6 +891,15 @@ function onStoryArrival(p) {
   render();
 }
 try { Store.subscribe('cloud:synced', (p) => setTimeout(() => onStoryArrival(p), 0)); } catch (e) { /* no subscribe */ }
+/* …and BEFORE an arrival is merged (cloud.js, synchronously): a
+   keystroke on its debounce is saved, stamped, first. Saved after the
+   merge, it landed on a step the arrival had just deleted, the field
+   went from under the caret, and the typing was gone (QA round 2). */
+try {
+  Store.subscribe('cloud:incoming', (p) => {
+    if (p && p.scope === 'story' && (!p.projectId || p.projectId === Store.currentProjectId())) flushAutosave();
+  });
+} catch (e) { /* no subscribe */ }
 
 /* Who else is on the beat sheet (src/ui/story-presence.js): only signed
    in with co-editing on; inert otherwise. Numbers are this page's own. */
@@ -1482,6 +1492,22 @@ delegate(document, 'click', '[data-ss]', (e, el) => {
   flushAutosave();   // a keystroke on its debounce is part of "mine"
   if (act === 'resend') {
     const s = story();
+    /* ITS OWN SCENE, IF THE BIN STILL HOLDS IT. A new scene beside a
+       restorable one left two scenes for one step once the old one came
+       back, and the restored one silently unlinked (QA round 2). So the
+       binned scene comes back, link and all, and catches up with the
+       step; only a scene that is gone for good is sent again. */
+    const st = s.outline.find((x) => x.id === id);
+    const entry = st && st.sceneId ? listBin().find((x) => x.scene && x.scene.row && x.scene.row.id === st.sceneId) : null;
+    if (entry) {
+      const heading = entry.scene.row.scriptElId;
+      const back = restoreFromBin(entry.id, heading && !headingInScript(heading) ? { patch: { scriptElId: '' } } : {});
+      if (!back) return;
+      syncScenes();
+      render();
+      StudioUI.toast(`Scene ${back.number || ''} is back from the bin, with everything that was attached to it.`, { type: 'success' });
+      return;
+    }
     const ids = Story.sendOutlineToScenes(s, Scenes, { fwId: s.framework, only: [id] });
     if (!ids.length) { StudioUI.toast('That step has no text to send yet.'); return; }
     lastSend = ids;
@@ -1805,12 +1831,18 @@ syncScenes();   // a scene edited on the Scene List since the last visit reaches
 render();
 /* Back to this tab after editing elsewhere (the Scene List in another
    tab): read again, so a field on screen never saves an older copy. */
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
+function catchUp() {
   flushAutosave();
   syncScenes();
   render();   // preservingFocus keeps a field being typed in, and its caret
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') catchUp();
 });
+/* …and while BOTH windows stay visible, side by side: a write there to
+   the story, the scenes or the bin redraws this page at once, so no
+   field here is left holding the words from before (QA round 2). */
+Store.onWriteElsewhere(['fms_story_v1', 'fms_scenes_v1', 'fms_scene_bin_v1'], catchUp);
 /* The plan state arrives after first paint: when it says the pitch deck is
    off for everybody, its menu row goes and its section stays hidden. */
 {

@@ -28,7 +28,8 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Scenes from '../lib/scenes.js';
-import { loadStory, stepsByScene, stepColor, followSceneBeat } from '../lib/story.js';
+import { loadStory, stepsByScene, stepColor, followSceneBeat, effectiveFramework } from '../lib/story.js';
+import Store from '../lib/store.js';
 import Outline from '../lib/beat-outline.js';
 import { revealTarget } from './tabs.js';
 import StudioUI from './chrome.js';
@@ -46,9 +47,15 @@ let ctx = null;
 let LINKS = new Map();
 const els = () => (ctx && ctx.getDoc() && ctx.getDoc().elements) || [];
 
+/* The beat sheet the Story page shows: the FORMAT's for a short film
+   (always the five beats), never the raw stored `framework`, which a
+   short that chose another sheet before 23 Oct still holds (QA round 2:
+   the board offered Save the Cat! and dragged the short's step out of
+   its five beats). The beats panel and the Story page read the same. */
+const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
 function current() {
   const story = loadStory();
-  const o = Outline.outline({ story, scenes: Scenes.listScenes(), elements: els() });
+  const o = Outline.outline({ story, scenes: Scenes.listScenes(), elements: els(), fwId: effectiveFramework(story, projectFormat()) });
   return { story, o, cov: Outline.coverage(o) };
 }
 

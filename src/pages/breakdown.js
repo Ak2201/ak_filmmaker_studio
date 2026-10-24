@@ -41,7 +41,7 @@ import {
   sceneFieldValue, songFieldValue, runSaid
 } from '../lib/breakdown-model.js';
 import '../styles/breakdown-run.css';
-import { flushStorage } from '../lib/store.js';
+import { flushStorage, onWriteElsewhere } from '../lib/store.js';
 import { runBreakdown } from '../lib/breakdown-run.js';
 import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, setFlowHooks, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
@@ -1243,7 +1243,7 @@ function binScenes(ids) {
 function undoBin(entryIds, message) {
   StudioUI.toast(message, {
     type: 'success', action: 'UNDO',
-    onAction: () => { Bin.restoreMany(entryIds); render(); }
+    onAction: () => { Bin.restoreMany(entryIds); syncSteps(); render(); }   // a step edited meanwhile reaches it now
   });
 }
 /* The moved scene keeps focus on the same arrow, or on the other one
@@ -1515,6 +1515,7 @@ delegate(document, 'click', '[data-action="bin-restore"]', (e, el) => {
   if (!entry) return;
   const linked = entry.scene.row.scriptElId;
   const row = Bin.restoreFromBin(id, linked && !headingInScript(linked) ? { patch: { scriptElId: '' } } : {});
+  syncSteps();   // its Beat Sheet step, edited while the scene was in the bin, reaches it now
   render();
   if (row) StudioUI.toast(`Scene ${row.number || ''} is back, with everything that was attached to it.`, { type: 'success' });
 });
@@ -1923,11 +1924,18 @@ delegate(document, 'click', '[data-ss]', (e, el) => {
    redrawn too, with its focus and caret kept (preservingFocus): left
    as it was, it still showed the text from before, and the next
    keystroke saved that over the other tab's edit. */
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
+function catchUp() {
   syncSteps();
   preservingFocus(render);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') catchUp();
 });
+/* …and while BOTH windows stay visible, side by side, where
+   visibilitychange never fires: a write there to the story, the scenes
+   or the bin redraws this page at once (QA round 2 — the stale field
+   was saved over the other window's edit, and the sync carried it on). */
+onWriteElsewhere(['fms_story_v1', 'fms_scenes_v1', 'fms_scene_bin_v1'], catchUp);
 
 syncSteps();   // a step edited on the Story page since the last visit reaches its scene
 render();

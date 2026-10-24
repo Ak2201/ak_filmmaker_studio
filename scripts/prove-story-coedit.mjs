@@ -31,6 +31,10 @@
      8  "Step removed" Undo after an arrival already kept that step:
         no second copy of the id, here, on the server or on the other
         page
+     9  a step A added and B deleted stays deleted on both pages and
+        the server, and the pushes stop (no ping-pong)
+    10  B typing in a step A deleted, inside the 600ms debounce, when
+        the arrival lands: the step, the typing and the caret survive
 
        npm run build:open && npm run prove:story-coedit
    ============================================================ */
@@ -358,6 +362,47 @@ try {
     ok((await storyOn(A)).outline.find((x) => x.id === 'sb').text === 'Ravi wins the street over. (B edits)', '8  and B\'s text stands');
     await settle(A); await pull(B); await settle(B, 800);
     ok(count(serverStory()) === 1 && count(await storyOn(B)) === 1, '8  one copy on the server and on B', [count(serverStory()), count(await storyOn(B))]);
+    await A.ctx.close(); await B.ctx.close();
+  }
+
+  /* ---- 9 a step deleted by the writer who did not add it ----------- */
+  console.log('9  B deletes the step A added: it stays deleted, no push ping-pong');
+  {
+    const { A, B } = await twoWriters(true);
+    await addStep(A, 'save_the_cat:catalyst', 'A adds S'); await settle(A);
+    const sId = ((await storyOn(A)).outline.find((x) => x.text === 'A adds S') || {}).id;
+    await pull(B); await settle(B);
+    ok(stepTexts(await storyOn(B)).includes('A adds S'), '9  B received the step', stepTexts(await storyOn(B)));
+    await B.page.click(`[data-st="step-del"][data-step="${sId}"]`); await settle(B);
+    PUSHES.length = 0;
+    const rounds = [];
+    for (let i = 0; i < 3; i++) {
+      await pull(A); await settle(A);
+      await pull(B); await settle(B);
+      rounds.push([stepTexts(await storyOn(A)).includes('A adds S'), stepTexts(await storyOn(B)).includes('A adds S'), stepTexts(serverStory()).includes('A adds S')]);
+    }
+    ok(rounds.every((r) => JSON.stringify(r) === '[false,false,false]'), '9  A drops it, B and the server agree, every round', rounds);
+    ok(PUSHES.filter((x) => x.scope === 'story').length === 0, '9  and nobody pushes the story again once they agree', PUSHES.filter((x) => x.scope === 'story').length);
+    ok(!(await A.page.$$eval('textarea[data-st-field="step-text"]', (t) => t.map((x) => x.value))).includes('A adds S'), '9  A\'s page no longer shows it');
+    ok(!JSON.stringify(await storyOn(A)).includes('_sync') && !JSON.stringify(await storyOn(B)).includes('_sync'), '9  neither stored copy carries the sync note');
+    await A.ctx.close(); await B.ctx.close();
+  }
+
+  /* ---- 10 typing on its debounce when an arrival deletes the step --- */
+  console.log('10 B is typing in a step A deleted, inside the 600ms debounce');
+  {
+    const { A, B } = await twoWriters(true);
+    await A.page.click('[data-st="step-del"][data-step="sb"]'); await settle(A);
+    await B.page.focus('textarea[data-step="sb"]'); await B.page.keyboard.press('Control+End'); await B.page.keyboard.type(' typing');
+    await pull(B);                               // inside the debounce
+    await B.page.waitForTimeout(200);
+    await B.page.keyboard.type('!');
+    await B.page.waitForTimeout(300);
+    const act = await B.page.evaluate(() => { const el = document.activeElement; return [el.tagName, el.getAttribute('data-step'), el.value]; });
+    ok(JSON.stringify(act) === JSON.stringify(['TEXTAREA', 'sb', 'Ravi wins the street over. typing!']), '10 the field stays under the caret, with every keystroke', act);
+    await B.page.locator('h1').first().click(); await settle(B);
+    ok(stepTexts(await storyOn(B)).includes('Ravi wins the street over. typing!'), '10 B keeps the step with its typing', stepTexts(await storyOn(B)));
+    ok(stepTexts(serverStory()).includes('Ravi wins the street over. typing!'), '10 and the server has it', stepTexts(serverStory()));
     await A.ctx.close(); await B.ctx.close();
   }
 

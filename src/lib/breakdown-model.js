@@ -151,14 +151,9 @@ export function binTotalsBits(t) {
   if (t.sheets) bits.push(`${t.sheets} call-sheet place${t.sheets === 1 ? '' : 's'}`);
   return bits;
 }
-/** Is this heading id in the script right now? A row restored while
-    its heading is gone comes back unlinked, or the next sync on the
-    Write page would bin it again. */
-export function headingInScript(id) {
-  if (!id) return false;
-  try { return loadScript().elements.some((el) => el && el.id === id && el.type === 'scene' && String(el.text || '').trim()); }
-  catch (e) { return false; }
-}
+/* headingInScript() lives in script.js now: the Story page's "Send
+   again" restores a binned scene by the same rule. */
+export { headingInScript } from './script.js';
 
 /* ---- typed values --------------------------------------------- */
 /** A scene field's value as stored, from what the control holds. */

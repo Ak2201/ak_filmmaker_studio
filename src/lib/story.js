@@ -875,6 +875,20 @@ const setBase = (st, text) => {
 const outlineLocked = (story) => !!String((story && story.outlineLockedAt) || '').trim();
 const lockedPlan = (story, act) => (act === 'pull' && outlineLocked(story) ? 'conflict' : act);
 const writeRows = (api, rows) => (api.writeRawScenes ? api.writeRawScenes(rows) : api.saveScenes(rows));
+/* THE SCENE CAUGHT UP, ON THIS PAGE. stepId -> the baseline this page
+   has seen the scene agree with. `syncedWas` only means "the scene is
+   behind" until then: once the scene was seen at the new baseline, a
+   scene holding the older words was edited back to them, here, and is
+   pulled (step-scene-sync.js plan()). In memory on purpose — it is what
+   THIS document saw, and a stored copy would travel to a collaborator
+   whose scene is still behind. A page that has just opened has none,
+   so an arrival is still read as behind until its first reconcile. */
+const CAUGHT_UP = new Map();
+const caughtUp = (st) => !!st && typeof st.synced === 'string' && CAUGHT_UP.get(st.id) === Sync.norm(st.synced);
+const noteCaughtUp = (st, sc) => {
+  if (st && sc && typeof st.synced === 'string' && Sync.sceneAgrees(sc.synopsis, st.synced)) CAUGHT_UP.set(st.id, Sync.norm(st.synced));
+};
+const planOf = (story, st, sc) => lockedPlan(story, Sync.plan(st, sc, { caughtUp: caughtUp(st) }));
 
 /** What each linked step's pair needs, READ ONLY (a render may call it):
  *  Map stepId -> { action, sceneId, binned }. */
@@ -883,7 +897,7 @@ export function linkStates(story, scenes, api = {}) {
   const bin = binnedIds(api);
   const out = new Map();
   for (const st of (story && story.outline) || []) {
-    const action = lockedPlan(story, Sync.plan(st, st && st.sceneId ? byId.get(st.sceneId) : null));
+    const action = planOf(story, st, st && st.sceneId ? byId.get(st.sceneId) : null);
     if (action) out.set(st.id, { action, sceneId: st.sceneId, binned: bin.has(st.sceneId) });
   }
   return out;
@@ -909,7 +923,7 @@ export function reconcileStepScenes(api) {
     if (!st.sceneId) continue;
     const i = byId.has(st.sceneId) ? byId.get(st.sceneId) : -1;
     const sc = i >= 0 ? rows[i] : null;
-    const act = lockedPlan(story, Sync.plan(st, sc));
+    const act = planOf(story, st, sc);
     if (act === 'gone') {
       if (!bin) bin = binnedIds(api);
       res.gone.push({ stepId: st.id, sceneId: st.sceneId, binned: bin.has(st.sceneId) });
@@ -922,6 +936,7 @@ export function reconcileStepScenes(api) {
     const b = Sync.planBeat(st, rows[i]);
     if (b === 'push') { setRow(i, { beatId: st.beat }); st.syncedBeat = st.beat; storyDirty = true; }
     else if (b === 'adopt' && st.syncedBeat !== st.beat) { st.syncedBeat = st.beat; storyDirty = true; }
+    noteCaughtUp(st, rows[i]);
   }
   if (scenesDirty) writeRows(api, rows);
   if (storyDirty) saveStory(story);
@@ -943,6 +958,7 @@ export function resolveStepScene(api, stepId, use) {
   const snap = { stepId, sceneId: st.sceneId, text: st.text, synced: st.synced, syncedWas: st.syncedWas, synopsis: rows[i].synopsis };
   if (use === 'scene') { st.text = String(rows[i].synopsis || ''); setBase(st, rows[i].synopsis); }
   else { rows[i] = { ...rows[i], synopsis: Sync.norm(st.text) }; setBase(st, st.text); writeRows(api, rows); }
+  noteCaughtUp(st, rows[i]);
   saveStory(story);
   return snap;
 }

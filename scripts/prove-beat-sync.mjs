@@ -192,12 +192,52 @@ await page.waitForTimeout(400);
 check('step side: "Send mine to the scene"', [(await step('s1')).text, (await scene('sc1')).synopsis], ['Mine.', 'Mine.']);
 check('settled: no choice left on the row', await page.evaluate(() => !!document.querySelector('[data-step-row="s1"] .ss-note')), false);
 
-/* ---- Send again for the binned scene --------------------------------- */
+/* ---- "Restore it" for the binned scene: ITS scene comes back --------- */
+check('bin: the binned scene’s button says it restores', await page.evaluate(() => document.querySelector('[data-step-row="s3"] [data-ss="resend"]').textContent.trim()), 'Restore it');
 await page.click('[data-step-row="s3"] [data-ss="resend"]');
 await page.waitForTimeout(400);
 const s3 = await step('s3');
-check('resend: a new scene with the step’s whole text', [s3.sceneId !== 'sc3', (await scene(s3.sceneId) || {}).synopsis], [true, 'Ravi fights back.']);
-check('resend: only that step was sent', (await scenes()).length, 3);
+const binLeft = () => page.evaluate(() => (JSON.parse(localStorage.getItem('fms_scene_bin_v1') || '{}').entries || []).length);
+check('resend: the binned scene itself is back, still linked (no second scene)', [s3.sceneId, (await scene('sc3') || {}).synopsis, (await scenes()).length, await binLeft()], ['sc3', 'Ravi fights back.', 3, 0]);
+
+/* ---- a step edited while its scene is in the bin, then Restore -------- */
+const binSc1 = async (stepText) => {
+  await go('index.html');
+  await page.evaluate((t) => {
+    const s = JSON.parse(localStorage.getItem('fms_story_v1'));
+    Object.assign(s.outline.find((x) => x.id === 's1'), { text: t, synced: 'One.' });
+    delete s.outline.find((x) => x.id === 's1').syncedWas;
+    localStorage.setItem('fms_story_v1', JSON.stringify(s));
+    const d = JSON.parse(localStorage.getItem('fms_scenes_v1'));
+    const i = d.scenes.findIndex((x) => x.id === 'sc1');
+    const row = { ...d.scenes[i], synopsis: 'One.' };
+    d.scenes.splice(i, 1);
+    localStorage.setItem('fms_scenes_v1', JSON.stringify(d));
+    localStorage.setItem('fms_scene_bin_v1', JSON.stringify({ entries: [{
+      id: 'binS1', binnedAt: new Date().toISOString(), reason: 'hand', heading: '',
+      scene: { index: i, row }, shots: [], frames: [], blocks: [], sheets: [], edit: null
+    }] }));
+  }, stepText);
+};
+await binSc1('One, edited while binned.');
+await go('breakdown.html#scenes');
+await page.evaluate(() => document.querySelector('[data-bin="binS1"] [data-action="bin-restore"]').click());
+await page.waitForTimeout(500);
+await page.click('#scene-sc1 [data-action="sl-toggle"]');
+check('restore: the scene takes the step’s newer text at once (row and field)', [
+  (await scene('sc1')).synopsis,
+  await page.inputValue('#scene-sc1 textarea[data-scene-field="synopsis"]')
+], ['One, edited while binned.', 'One, edited while binned.']);
+/* …and the bin's UNDO toast does the same */
+await page.click('#scene-sc1 [data-action="scene-del"]');
+await page.waitForTimeout(400);
+await page.evaluate(() => {   // the step edited elsewhere while the scene is in the bin
+  const s = JSON.parse(localStorage.getItem('fms_story_v1'));
+  s.outline.find((x) => x.id === 's1').text = 'One, edited during the undo window.';
+  localStorage.setItem('fms_story_v1', JSON.stringify(s));
+});
+await undo();
+check('undo bin: the scene back from the bin takes the step’s newer text at once', (await scene('sc1') || {}).synopsis, 'One, edited during the undo window.');
 
 /* ---- a field left focused across a tab switch ------------------------- */
 await go('index.html');
@@ -235,6 +275,64 @@ await tabB.keyboard.type(' Scene note.');
 await tabB.waitForTimeout(1000);
 check('tab switch: the next keystroke keeps the other tab’s edit', (await step('s1')).text, 'Original line. The step writer adds a whole new paragraph of beat. Scene note.');
 await tabB.close();
+
+/* ---- two windows side by side, BOTH visible (no visibilitychange) ---- */
+const seedOne = async () => {
+  await go('index.html');
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('fms_story_v1'));
+    const st = s.outline.find((x) => x.id === 's1');
+    Object.assign(st, { text: 'One.', synced: 'One.' }); delete st.syncedWas;
+    localStorage.setItem('fms_story_v1', JSON.stringify(s));
+    const d = JSON.parse(localStorage.getItem('fms_scenes_v1'));
+    d.scenes.find((x) => x.id === 'sc1').synopsis = 'One.';
+    localStorage.setItem('fms_scenes_v1', JSON.stringify(d));
+  });
+};
+{
+  await seedOne();
+  const winA = await ctx.newPage();
+  winA.on('pageerror', (e) => errors.push(e.message));
+  await winA.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+  await winA.waitForTimeout(700);
+  await winA.click('#scene-sc1 [data-action="sl-toggle"]');
+  await winA.focus('#scene-sc1 textarea[data-scene-field="synopsis"]');
+  await go('story.html#path-outline');
+  await page.fill('#stStep_s1', 'One. The step writer adds a long new beat in the other window.');
+  await page.waitForTimeout(1200);
+  check('two windows: the open scene field is redrawn with the step’s edit, still focused', await winA.evaluate(() => {
+    const t = document.querySelector('#scene-sc1 textarea[data-scene-field="synopsis"]');
+    return [t && t.value, document.activeElement === t, document.visibilityState];
+  }), ['One. The step writer adds a long new beat in the other window.', true, 'visible']);
+  await winA.keyboard.press('End');
+  await winA.keyboard.type(' Scene note.');
+  await winA.waitForTimeout(1200);
+  check('two windows: the stale field never saves over the step window’s edit', [(await step('s1')).text, (await scene('sc1')).synopsis],
+    ['One. The step writer adds a long new beat in the other window. Scene note.', 'One. The step writer adds a long new beat in the other window. Scene note.']);
+  await winA.close();
+}
+{
+  await seedOne();
+  const winA = await ctx.newPage();
+  winA.on('pageerror', (e) => errors.push(e.message));
+  await winA.goto(url('story.html#path-outline'), { waitUntil: 'networkidle' });
+  await winA.waitForTimeout(700);
+  await winA.focus('#stStep_s1');
+  await go('breakdown.html#scenes');
+  await page.click('#scene-sc1 [data-action="sl-toggle"]');
+  await page.fill('#scene-sc1 textarea[data-scene-field="synopsis"]', 'One. Rewritten in the scene window.');
+  await page.waitForTimeout(1200);
+  check('two windows: the open step field is redrawn with the scene’s edit, still focused', await winA.evaluate(() => {
+    const t = document.querySelector('#stStep_s1');
+    return [t && t.value, document.activeElement === t];
+  }), ['One. Rewritten in the scene window.', true]);
+  await winA.keyboard.press('Control+End');   // the end of the text, not of a wrapped line
+  await winA.keyboard.type(' More.');
+  await winA.waitForTimeout(1200);
+  check('two windows: the stale step field never saves over the scene window’s edit', [(await scene('sc1')).synopsis, (await step('s1')).text],
+    ['One. Rewritten in the scene window. More.', 'One. Rewritten in the scene window. More.']);
+  await winA.close();
+}
 
 /* ---- a locked outline: shown, never rewritten ------------------------- */
 await go('index.html');
@@ -301,6 +399,46 @@ check('phone: the scene list with a choice fits', await page.evaluate(() => [!!d
   }
   check('sample: steps and scenes drawn, and no conflict box on either page', notes, [[true, 0], [true, 0]]);
   await c2.close();
+}
+
+/* ---- a short film whose stored beat sheet is still Save the Cat! -----
+   (docs/KNOWN-ISSUES.md: a short that chose another sheet before 23 Oct
+   keeps it stored until the Story page next saves). The board shows the
+   five beats, and a scene moved there keeps its step inside them. */
+{
+  const c3 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p3 = await c3.newPage();
+  p3.on('pageerror', (e) => errors.push(e.message));
+  await p3.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await p3.waitForTimeout(700);
+  await p3.click('[data-action="sample-project"]');
+  await p3.waitForTimeout(1500);
+  const sc0 = await p3.evaluate(() => {
+    const all = JSON.parse(localStorage.getItem('fms_studio_projects_v1'));
+    for (const p of (Array.isArray(all) ? all : (all.projects || []))) p.format = 'short';
+    localStorage.setItem('fms_studio_projects_v1', JSON.stringify(all));
+    const s = JSON.parse(localStorage.getItem('fms_story_v1'));
+    const d = JSON.parse(localStorage.getItem('fms_scenes_v1'));
+    s.framework = 'save_the_cat'; s.frameworkChosen = true;
+    for (const o of s.outline) delete o.sceneId;
+    s.outline.unshift({ id: 'q1', beat: 'short_five:setup', text: 'Short setup step.', sceneId: d.scenes[0].id, synced: 'Short setup step.', syncedBeat: 'short_five:setup', u: 1 });
+    d.scenes[0].synopsis = 'Short setup step.'; d.scenes[0].beatId = 'short_five:setup';
+    localStorage.setItem('fms_story_v1', JSON.stringify(s));
+    localStorage.setItem('fms_scenes_v1', JSON.stringify(d));
+    return d.scenes[0].id;
+  });
+  await p3.goto(url('breakdown.html#script'), { waitUntil: 'networkidle' });
+  const pick = `[data-bb-scene="${sc0}"] select[data-bb-field="beat"]`;
+  await p3.waitForSelector(pick, { state: 'attached', timeout: 10000 }).catch(() => {});
+  const opts = await p3.evaluate((sel) => [...document.querySelectorAll(sel + ' option')].map((o) => o.value).filter(Boolean), pick);
+  check('short film: the board offers only the five beats', [opts.length, opts.every((v) => v.startsWith('short_five:'))], [5, true]);
+  await p3.evaluate((sel) => { const x = document.querySelector(sel); if (!x) return; x.value = 'short_five:turn'; x.dispatchEvent(new Event('change', { bubbles: true })); }, pick);
+  await p3.waitForTimeout(600);
+  check('short film: a scene moved on the board takes its step to that beat, inside the five', await p3.evaluate((id) => [
+    JSON.parse(localStorage.getItem('fms_scenes_v1')).scenes.find((x) => x.id === id).beatId,
+    JSON.parse(localStorage.getItem('fms_story_v1')).outline.find((x) => x.id === 'q1').beat
+  ], sc0), ['short_five:turn', 'short_five:turn']);
+  await c3.close();
 }
 
 check('no page errors', errors, []);

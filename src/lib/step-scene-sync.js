@@ -28,8 +28,13 @@
    before it (`syncedWas`): that is the scene behind, and it is pushed —
    never read as "the scene changed", which pulled the old text back
    over the newer step and sent the two pages round in a loop.
+   ONLY UNTIL THIS PAGE HAS SEEN THE SCENE CATCH UP (`opts.caughtUp`,
+   which story.js keeps in memory per page): after that, a scene holding
+   the older words again was EDITED back to them here (a revert, or
+   Ctrl+Z in the Scene List), and is pulled like any other edit (QA
+   round 2: the revert was pushed over, silently).
 
-   plan(step, scene) ->
+   plan(step, scene, { caughtUp }?) ->
      'same'      nothing to carry (the baseline may still need writing)
      'push'      the step changed; the scene still holds the baseline
      'pull'      the scene changed; the step still holds the baseline
@@ -58,7 +63,7 @@ export const sceneAgrees = (synopsis, text) => {
 
 const hasBase = (step) => typeof (step && step.synced) === 'string';
 
-export function plan(step, scene) {
+export function plan(step, scene, opts = {}) {
   if (!step || !step.sceneId) return null;
   if (!scene) return 'gone';
   const text = norm(step.text), syn = norm(scene.synopsis);
@@ -72,7 +77,7 @@ export function plan(step, scene) {
   /* The scene still holds the baseline, its old cut, or the baseline
      before it: it was not edited, so it takes the step's text. */
   const behind = syn === base || syn === oldCut(base)
-    || (typeof step.syncedWas === 'string' && sceneAgrees(syn, step.syncedWas));
+    || (!opts.caughtUp && typeof step.syncedWas === 'string' && sceneAgrees(syn, step.syncedWas));
   if (behind) return 'push';
   if (stepSame) return 'pull';
   return 'conflict';

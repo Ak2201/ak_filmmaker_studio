@@ -7,8 +7,11 @@
    page offers the other's text and Undo puts BOTH back. A step's
    colour shows on the step and on its scene (table and index cards),
    and stays on a locked outline. An old pair (the 280-character cut)
-   is adopted without rewriting either side; a binned scene says so;
-   a phone has no sideways scroll.
+   gives its scene the full text, so a later scene edit never shrinks
+   the step; a binned scene says so; a field left focused across a tab
+   switch is redrawn, never saved stale; a locked outline is never
+   rewritten and still shows a differing scene; a freshly loaded sample
+   offers no conflict; a phone has no sideways scroll.
 
        npm run build:open && npm run prove:beat-sync
        (PROVE_DIST=dist-verify after build:verify, like the others)
@@ -84,14 +87,20 @@ await page.evaluate(({ LONG, CUT, K1, K2, K3 }) => {
   }] }));
 }, { LONG, CUT, K1: K('catalyst'), K2: K('midpoint'), K3: K('finale') });
 
-/* ---- the old pair is adopted, and nothing else is written ------------ */
+/* ---- the old pair: the scene gets the full text, once ---------------- */
+const NLONG = LONG.replace(/\s+/g, ' ');
+await go('breakdown.html#scenes');
+check('old cut: the scene now holds the step’s whole text', (await scene('sc2')).synopsis, NLONG);
+check('old cut: the step keeps its whole text and gains the baseline', [(await step('s2')).text === LONG, (await step('s2')).synced === NLONG], [true, true]);
+await page.click('#scene-sc2 [data-action="sl-toggle"]');
+await page.fill('#scene-sc2 textarea[data-scene-field="synopsis"]', 'The big ' + NLONG.slice(4));
+await page.waitForTimeout(1000);
+check('old cut: a later scene edit keeps the whole step (nothing cut away)', (await step('s2')).text, 'The big ' + NLONG.slice(4));
 await go('story.html#path-outline');
-check('adopt: the old 280-cut scene keeps its synopsis', (await scene('sc2')).synopsis, CUT);
-check('adopt: the step keeps its whole text and gains the baseline', [(await step('s2')).text === LONG, (await step('s2')).synced === LONG.replace(/\s+/g, ' ')], [true, true]);
-check('adopt: no choice is offered on the old pair', await page.evaluate(() => !!document.querySelector('[data-step-row="s2"] .ss-note')), false);
+check('old cut: no choice is offered on the old pair', await page.evaluate(() => !!document.querySelector('[data-step-row="s2"] .ss-note')), false);
 const settled = await raw();
 await go('story.html#path-outline');
-check('adopt: a second visit writes nothing', JSON.stringify(await raw()) === JSON.stringify(settled), true);
+check('old cut: a second visit writes nothing', JSON.stringify(await raw()) === JSON.stringify(settled), true);
 
 /* ---- a binned scene -------------------------------------------------- */
 check('bin: the step says its scene is in the bin', await page.evaluate(() => {
@@ -190,6 +199,75 @@ const s3 = await step('s3');
 check('resend: a new scene with the step’s whole text', [s3.sceneId !== 'sc3', (await scene(s3.sceneId) || {}).synopsis], [true, 'Ravi fights back.']);
 check('resend: only that step was sent', (await scenes()).length, 3);
 
+/* ---- a field left focused across a tab switch ------------------------- */
+await go('index.html');
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('fms_story_v1'));
+  Object.assign(s.outline.find((x) => x.id === 's1'), { text: 'Original line.', synced: 'Original line.' });
+  localStorage.setItem('fms_story_v1', JSON.stringify(s));
+  const d = JSON.parse(localStorage.getItem('fms_scenes_v1'));
+  d.scenes.find((x) => x.id === 'sc1').synopsis = 'Original line.';
+  localStorage.setItem('fms_scenes_v1', JSON.stringify(d));
+});
+const tabB = await ctx.newPage();
+tabB.on('pageerror', (e) => errors.push(e.message));
+const setHidden = (pg, hidden) => pg.evaluate((hd) => {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hd ? 'hidden' : 'visible') });
+  Object.defineProperty(document, 'hidden', { configurable: true, get: () => hd });
+  document.dispatchEvent(new Event('visibilitychange'));
+}, hidden);
+await tabB.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+await tabB.waitForTimeout(700);
+await tabB.click('#scene-sc1 [data-action="sl-toggle"]');
+await tabB.focus('#scene-sc1 textarea[data-scene-field="synopsis"]');
+await setHidden(tabB, true);
+await go('story.html#path-outline');
+await page.fill('#stStep_s1', 'Original line. The step writer adds a whole new paragraph of beat.');
+await page.waitForTimeout(1000);
+await setHidden(tabB, false);
+await tabB.waitForTimeout(300);
+check('tab switch: the focused field shows the other tab’s edit, still focused', await tabB.evaluate(() => {
+  const t = document.querySelector('#scene-sc1 textarea[data-scene-field="synopsis"]');
+  return [t && t.value, document.activeElement === t];
+}), ['Original line. The step writer adds a whole new paragraph of beat.', true]);
+await tabB.keyboard.press('End');
+await tabB.keyboard.type(' Scene note.');
+await tabB.waitForTimeout(1000);
+check('tab switch: the next keystroke keeps the other tab’s edit', (await step('s1')).text, 'Original line. The step writer adds a whole new paragraph of beat. Scene note.');
+await tabB.close();
+
+/* ---- a locked outline: shown, never rewritten ------------------------- */
+await go('index.html');
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('fms_story_v1'));
+  s.outlineLockedAt = '2026-10-01T00:00:00.000Z';
+  Object.assign(s.outline.find((x) => x.id === 's1'), { text: 'Locked line.', synced: 'Locked line.' });
+  localStorage.setItem('fms_story_v1', JSON.stringify(s));
+  const d = JSON.parse(localStorage.getItem('fms_scenes_v1'));
+  d.scenes.find((x) => x.id === 'sc1').synopsis = 'Locked line.';
+  localStorage.setItem('fms_scenes_v1', JSON.stringify(d));
+});
+await go('breakdown.html#scenes');
+await page.click('#scene-sc1 [data-action="sl-toggle"]');
+await page.fill('#scene-sc1 textarea[data-scene-field="synopsis"]', 'Scene side edit');
+await page.waitForTimeout(1000);
+check('locked: a scene edit leaves the locked step alone', [(await step('s1')).text, !!(await story()).outlineLockedAt], ['Locked line.', true]);
+await go('breakdown.html#scenes');
+check('locked: the scene row says it differs, and sends nothing into the step', await page.evaluate(() => {
+  const n = document.querySelector('#scene-sc1 .ss-note');
+  return n ? [...n.querySelectorAll('button')].map((b) => b.textContent.trim()) : null;
+}), ['Use the step’s text']);
+await go('story.html#path-outline');
+check('locked: the Story row shows the differing scene, offering only "Send mine"', await page.evaluate(() => {
+  const n = document.querySelector('[data-step-row="s1"] .ss-note');
+  return n ? [n.querySelector('span').textContent, [...n.querySelectorAll('button')].map((b) => b.textContent.trim())] : null;
+}), ['The scene’s synopsis differs: “Scene side edit”', ['Send mine to the scene']]);
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('fms_story_v1'));
+  s.outlineLockedAt = '';
+  localStorage.setItem('fms_story_v1', JSON.stringify(s));
+});
+
 /* ---- a phone: no sideways scroll ------------------------------------- */
 await page.setViewportSize({ width: 390, height: 844 });
 await go('index.html');
@@ -205,6 +283,25 @@ await go('story.html#path-outline');
 check('phone: the step row with a choice fits', await page.evaluate(() => [!!document.querySelector('[data-step-row="s1"] .ss-note'), document.documentElement.scrollWidth <= innerWidth]), [true, true]);
 await go('breakdown.html#scenes');
 check('phone: the scene list with a choice fits', await page.evaluate(() => [!!document.querySelector('#scene-sc1 .ss-note'), document.documentElement.scrollWidth <= innerWidth]), [true, true]);
+
+/* ---- a freshly loaded sample: no conflict on either page -------------- */
+{
+  const c2 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p2 = await c2.newPage();
+  p2.on('pageerror', (e) => errors.push(e.message));
+  await p2.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await p2.waitForTimeout(700);
+  await p2.click('[data-action="sample-project"]');
+  await p2.waitForTimeout(1500);
+  const notes = [];
+  for (const pg of ['story.html#path-outline', 'breakdown.html#scenes']) {
+    await p2.goto(url(pg), { waitUntil: 'networkidle' });
+    await p2.waitForTimeout(800);
+    notes.push(await p2.evaluate(() => [document.querySelectorAll('[data-step-row], .bd-sl').length > 0, document.querySelectorAll('.ss-note').length]));
+  }
+  check('sample: steps and scenes drawn, and no conflict box on either page', notes, [[true, 0], [true, 0]]);
+  await c2.close();
+}
 
 check('no page errors', errors, []);
 console.log(failed ? `✗ beat-sync proof: ${passed} passed, ${failed} failed` : `✓ beat-sync proof: ${passed} passed, 0 failed`);

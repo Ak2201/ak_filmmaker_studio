@@ -748,22 +748,23 @@ function renderOutline(s) {
 }
 
 /* A sent step whose scene changed too, or went to the bin: the choice,
-   on the row. Nothing is written until one is pressed. */
-function stepSyncNote(st) {
+   on the row. Nothing is written until one is pressed. A LOCKED
+   outline still says so, and offers only what leaves the step as it is. */
+function stepSyncNote(st, locked = false) {
   const l = links.get(st.id);
   if (!l) return null;
   if (l.action === 'conflict') {
     return h('p.ss-note', { role: 'status', 'data-ss-step': st.id }, [
       h('span', { text: 'The scene’s synopsis differs: “' + clip(sceneText.get(l.sceneId) || '', 160) + '”' }),
-      button({ label: 'Use the scene’s text', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-scene', 'data-step': st.id } }),
+      locked ? null : button({ label: 'Use the scene’s text', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-scene', 'data-step': st.id } }),
       button({ label: 'Send mine to the scene', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-step', 'data-step': st.id } })
-    ]);
+    ].filter(Boolean));
   }
   if (l.action === 'gone') {
     return h('p.ss-note', { role: 'status', 'data-ss-step': st.id }, [
       h('span', { text: l.binned ? 'Its scene is in the bin.' : 'Its scene is no longer in the scene list.' }),
-      button({ label: 'Send again', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'resend', 'data-step': st.id } })
-    ]);
+      locked ? null : button({ label: 'Send again', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'resend', 'data-step': st.id } })
+    ].filter(Boolean));
   }
   return null;
 }
@@ -776,9 +777,9 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false) 
   const ta = paperGrow(paperTextarea('#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null }));
   ta.value = st.text;
   li.append(ta);
-  if (locked) return li;
-  const note = stepSyncNote(st);
+  const note = stepSyncNote(st, locked);
   if (note) li.append(note);
+  if (locked) return li;
   const ctl = h('div.st-ol-ctl');
   /* The five label colours, the sticky notes' own (one press sets,
      pressing the lit one clears). What they mean is the writer's. */
@@ -838,7 +839,7 @@ function renderSourceConflicts(s) {
   if (!kept.length) return null;
   const box = h('section.st-kept', { 'aria-label': 'Other versions of the synopsis' });
   box.append(h('h3.bd-h2', { text: kept.length === 1 ? 'Another version of the synopsis' : 'Other versions of the synopsis' }));
-  box.append(h('p.st-muted', { text: 'You and a collaborator both changed the synopsis at the same time. Theirs is the synopsis now; the text below was kept so nothing is lost. Use it, or dismiss it.' }));
+  box.append(h('p.st-muted', { text: 'Two versions of the synopsis met. One is the synopsis now; the text below was kept so nothing is lost. Use it, or dismiss it.' }));
   for (const c of kept) {
     const when = Number(c.at) ? new Date(Number(c.at)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
     box.append(h('div.st-kept-item', { 'data-kept': c.id }, [
@@ -1561,7 +1562,9 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     Story.removeOutlineStep(s, id);
     commit(s);
     StudioUI.toast('Step removed.', { action: 'UNDO', onAction: () => {
-      const back = story(); back.outline.splice(Math.min(i, back.outline.length), 0, gone); commit(back);
+      const back = story();
+      if (back.outline.some((x) => x.id === gone.id)) return;   // it is back already (a copy that arrived kept it)
+      back.outline.splice(Math.min(i, back.outline.length), 0, gone); commit(back);
     } });
   } else if (act === 'step-file') {
     if (Story.fileUnplaced(s, s.framework, [el.getAttribute('data-step')])) commit(s);

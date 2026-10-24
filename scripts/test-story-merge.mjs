@@ -201,5 +201,16 @@ delete base.framework2;
   ok(gone && !S.sourceConflicts(k).length, '9  Dismiss lets it go and hands it back for an Undo');
 }
 
+/* 10 one id, one step: a copy holding a step twice (an Undo that put a
+   step back after an arrival had already kept it) merges to one */
+{
+  const theirs = clone(base);
+  theirs.outline.splice(1, 0, st('b', 'The chain arrives.', 1));
+  theirs.outline[2] = st('b', 'The chain arrives. (B edits)', 9);
+  const m = M.mergeStory(clone(base), theirs, base);
+  eq(m.outline.map((x) => x.id), ['a', 'b', 'c'], '10 a duplicated step id arrives once');
+  eq(m.outline[1].text, 'The chain arrives. (B edits)', '10 and the later stamp is the one kept');
+}
+
 console.log(`${fail ? '✗' : '✓'} test-story-merge: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

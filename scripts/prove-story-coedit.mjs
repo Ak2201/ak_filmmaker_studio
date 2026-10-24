@@ -24,6 +24,13 @@
      5  switch OFF: the same two new steps — one of them is lost to the
         page that pulls last (last write wins, exactly as before)
      6  no page errors
+     7  a step edit whose story row arrives BEFORE its scenes row (two
+        rows, two arrivals; the scenes push held back): the other page
+        keeps the new text and is never sent back the old one, the
+        server holds the new text, no story push repeats — ON and OFF
+     8  "Step removed" Undo after an arrival already kept that step:
+        no second copy of the id, here, on the server or on the other
+        page
 
        npm run build:open && npm run prove:story-coedit
    ============================================================ */
@@ -63,6 +70,7 @@ const PID = '5a5a5a5a-1111-4222-8333-444444444444';
 const ADMIN = USERS['tok-admin'].id, AMY = USERS['tok-amy'].id;
 let ROWS = new Map();          // scope -> { scope, data, updated_at, updated_by }
 let COEDIT = true;
+let HOLD = new Set(); const HELD = []; const PUSHES = [];   // section 7: a scope whose upserts lag
 const json = (r, status, body) => r.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 const eqp = (url, col) => { const v = url.searchParams.get(col); return v && v.startsWith('eq.') ? v.slice(3) : null; };
 async function route(r) {
@@ -80,6 +88,8 @@ async function route(r) {
     }
     let body = null; try { body = JSON.parse(req.postData() || 'null'); } catch (e) { body = null; }
     for (const row of [].concat(body || [])) {
+      if (row && row.project_id === PID) PUSHES.push({ scope: row.scope, by: row.updated_by, data: row.data });
+      if (row && row.project_id === PID && HOLD.has(row.scope)) { HELD.push(row); continue; }
       if (row && row.project_id === PID) ROWS.set(row.scope, { scope: row.scope, data: row.data, updated_at: row.updated_at, updated_by: row.updated_by });
     }
     return json(r, 201, []);
@@ -145,11 +155,14 @@ const SEED = {
   ]
 };
 
-async function twoWriters(coedit) {
+async function twoWriters(coedit, { story = SEED, scenes = null } = {}) {
   F.reset();
   F.db.settings.purchase_required = false;
   F.db.members.set(AMY, { role: 'user', disabled_at: null });
-  ROWS = new Map([['story', { scope: 'story', data: SEED, updated_at: new Date(Date.now() - 60000).toISOString(), updated_by: ADMIN }]]);
+  const old = new Date(Date.now() - 60000).toISOString();
+  ROWS = new Map([['story', { scope: 'story', data: story, updated_at: old, updated_by: ADMIN }],
+    ...(scenes ? [['scenes', { scope: 'scenes', data: scenes, updated_at: old, updated_by: ADMIN }]] : [])]);
+  HOLD = new Set(); HELD.length = 0; PUSHES.length = 0;
   COEDIT = coedit;
   const A = await person('tok-admin');
   const B = await person('tok-amy');
@@ -232,6 +245,12 @@ try {
   ok((s3.sourceConflicts || []).some((c) => c.text === 'Ravi loses the shop, and wins it back.'), '3  and the one written here is kept, word for word', s3.sourceConflicts);
   const kept = await A.page.$$eval('.st-kept-text', (n) => n.map((x) => x.textContent));
   ok(kept.includes('Ravi loses the shop, and wins it back.'), '3  the Synopsis step offers it back', kept);
+  await settle(A);
+  await pull(B);
+  await B.page.goto(BASE + 'story.html#path-synopsis', { waitUntil: 'load' });
+  await B.page.waitForTimeout(600);
+  const wording = await B.page.$eval('.st-kept .st-muted', (n) => n.textContent).catch(() => '');
+  ok(wording && !/theirs|yours|mine/i.test(wording), '3  the writer whose text won is not told "theirs is the synopsis now"', wording);
   await A.page.click('[data-st-kept="use"]');
   await A.page.waitForTimeout(300);
   const s3b = await storyOn(A);
@@ -253,6 +272,8 @@ try {
   const nB = await A.page.$eval('[data-step-row="sb"] .st-ol-n', (n) => n.textContent).catch(() => '');
   ok(line && !line.hidden && line.text === 'Also here: Amy Rao (editing step ' + nB.replace(/\D+/g, '') + ').', '4  "Also here", with the step they are editing by this page\'s number', { line, nB });
   ok(await A.page.$eval('[data-step-row="sb"]', (r) => r.classList.contains('st-peer-row') && r.dataset.peer === 'Amy Rao'), '4  their step is marked with their name');
+  const mark = await A.page.$eval('[data-step-row="sb"] .st-ol-n', (n) => getComputedStyle(n, '::after').content);
+  ok(mark === '" · Amy Rao"', '4  and the step number reads "Step N · Amy Rao", never a bare " · "', mark);
   await A.page.focus(firstStep);
   await A.page.keyboard.type('!');
   await A.page.waitForTimeout(2300);
@@ -280,6 +301,63 @@ try {
        _isServerCopy() counts as "the server has it" although B's copy
        replaced it unseen. The existing rule, recorded here, not changed. */
     ok(!both(b) && JSON.stringify(b) === JSON.stringify(a), '5  and both pages end on that one copy', { a, b });
+    await A.ctx.close(); await B.ctx.close();
+  }
+
+  /* ---- 7 the story row ahead of its scenes row ---------------------- */
+  for (const on of [true, false]) {
+    console.log('7  story row before scenes row, co-editing ' + (on ? 'ON' : 'OFF'));
+    const T1 = 'The chain opens across the road.', T2 = T1 + ' Ravi refuses to sell.';
+    const story = JSON.parse(JSON.stringify(SEED));
+    Object.assign(story.outline[0], { sceneId: 'sc1', synced: T1, syncedBeat: 'save_the_cat:catalyst' });
+    const scenes = { scenes: [{ id: 'sc1', number: '1', intExt: 'INT', dayNight: 'DAY', location: 'SHOP', synopsis: T1, beatId: 'save_the_cat:catalyst', eighths: 8, elements: {} }] };
+    const { A, B } = await twoWriters(on, { story, scenes });
+    const sc = (P) => P.page.evaluate(() => ((JSON.parse(localStorage.getItem('fms_scenes_v1') || '{}').scenes || [])[0] || {}).synopsis);
+    ok(await sc(B) === T1, '7  both pages start with the scene', await sc(B));
+    HOLD = new Set(['scenes']);
+    await A.page.focus('textarea[data-step="sa"]');
+    await A.page.keyboard.press('End');
+    await A.page.keyboard.type(' Ravi refuses to sell.');
+    await A.page.locator('h1').first().click();
+    await settle(A, 2500);
+    ok(stepTexts(serverStory())[0] === T2 && await sc(A) === T2, '7  A\'s step and scene hold the new text; only the story row reached the server', [stepTexts(serverStory())[0], await sc(A)]);
+    PUSHES.length = 0;
+    const seen = [];
+    for (let round = 1; round <= 3; round++) {
+      await pull(B); await settle(B, 2000);
+      seen.push(stepTexts(await storyOn(B))[0]);
+      await pull(A); await settle(A, 2000);
+    }
+    ok(seen.every((t) => t === T2), '7  B keeps the new step text on every pull', seen);
+    ok(await sc(B) === T2, '7  and B\'s scene catches up from the step', await sc(B));
+    const storyPushes = PUSHES.filter((x) => x.scope === 'story').map((x) => x.data.outline[0].text);
+    ok(!storyPushes.includes(T1), '7  nobody pushes the old text back', storyPushes);
+    ok(stepTexts(serverStory())[0] === T2, '7  the server keeps the new text', stepTexts(serverStory())[0]);
+    ok(storyPushes.length <= 1, '7  no story push repeats', storyPushes.length);
+    HOLD = new Set();
+    for (const r of HELD.splice(0)) ROWS.set(r.scope, { scope: r.scope, data: r.data, updated_at: r.updated_at, updated_by: r.updated_by });
+    await pull(B); await settle(B, 1500); await pull(A); await settle(A, 1500);
+    ok(stepTexts(await storyOn(A))[0] === T2 && stepTexts(await storyOn(B))[0] === T2 && await sc(B) === T2, '7  once the scenes row lands, both settle on the new text',
+      [stepTexts(await storyOn(A))[0], stepTexts(await storyOn(B))[0], await sc(B)]);
+    await A.ctx.close(); await B.ctx.close();
+  }
+
+  /* ---- 8 Undo a removal the merge already undid -------------------- */
+  console.log('8  "Step removed" Undo after an arrival kept the step');
+  {
+    const { A, B } = await twoWriters(true);
+    await A.page.click('[data-st="step-del"][data-step="sb"]'); await settle(A);
+    await B.page.focus('textarea[data-step="sb"]'); await B.page.keyboard.press('End'); await B.page.keyboard.type(' (B edits)');
+    await B.page.locator('h1').first().click(); await settle(B);
+    await pull(A); await settle(A);
+    const count = (s) => (s.outline || []).filter((x) => x.id === 'sb').length;
+    ok(count(await storyOn(A)) === 1, '8  the merge kept B\'s edited step', (await storyOn(A)).outline);
+    await A.page.click('.toast-host button:has-text("UNDO")');
+    await A.page.waitForTimeout(500);
+    ok(count(await storyOn(A)) === 1 && await A.page.$$eval('[data-step-row="sb"]', (n) => n.length) === 1, '8  Undo adds no second copy of the step', (await storyOn(A)).outline);
+    ok((await storyOn(A)).outline.find((x) => x.id === 'sb').text === 'Ravi wins the street over. (B edits)', '8  and B\'s text stands');
+    await settle(A); await pull(B); await settle(B, 800);
+    ok(count(serverStory()) === 1 && count(await storyOn(B)) === 1, '8  one copy on the server and on B', [count(serverStory()), count(await storyOn(B))]);
     await A.ctx.close(); await B.ctx.close();
   }
 

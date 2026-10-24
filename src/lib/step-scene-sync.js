@@ -9,12 +9,25 @@
    side is offered the other's text.
 
    THE BASELINE lives on the step: `synced` is the text (whitespace
-   collapsed) both sides last agreed on, `syncedBeat` the beat. A step
-   sent before the baseline existed has neither, and is ADOPTED: the
-   baseline is recorded and nothing else is written. The old send cut
-   the synopsis to 280 characters ("…" on the end), so a scene still
-   holding that cut of its step counts as agreeing with it, then and
-   after.
+   collapsed) both sides last agreed on, `syncedBeat` the beat, and
+   `syncedWas` the baseline before the last one. A step sent before the
+   baseline existed has none of them:
+     - its scene holds the same text: ADOPTED, the baseline is recorded
+       and nothing else is written;
+     - its scene holds the old send's 280-character cut of it ("…" on
+       the end): PUSHED, so the scene gets the full text before anybody
+       edits the cut (an edit to the cut, pulled, would shrink the step
+       to it);
+     - anything else (a sample's step prose, a breakdown's "Sc 1 — SLUG"
+       line): APART, left out of the sync. They never agreed, so neither
+       side's text is offered over the other's.
+
+   A SCENE BEHIND, not edited. The story and the scenes are two rows, so
+   a collaborator's step edit can arrive here before the scene it was
+   pushed to. The step then holds its new baseline and the scene the one
+   before it (`syncedWas`): that is the scene behind, and it is pushed —
+   never read as "the scene changed", which pulled the old text back
+   over the newer step and sent the two pages round in a loop.
 
    plan(step, scene) ->
      'same'      nothing to carry (the baseline may still need writing)
@@ -22,6 +35,7 @@
      'pull'      the scene changed; the step still holds the baseline
      'conflict'  both changed, differently
      'adopt'     an older pair with no baseline that agrees
+     'apart'     an older pair with no baseline that never agreed
      'gone'      the scene is in the bin, or missing
    and null for a step that links nothing.
 
@@ -47,14 +61,19 @@ const hasBase = (step) => typeof (step && step.synced) === 'string';
 export function plan(step, scene) {
   if (!step || !step.sceneId) return null;
   if (!scene) return 'gone';
-  const text = step.text, syn = scene.synopsis;
-  if (!hasBase(step)) return sceneAgrees(syn, text) ? 'adopt' : 'conflict';
-  const base = step.synced;
-  const stepSame = norm(text) === norm(base);
-  const sceneSame = sceneAgrees(syn, base);
-  if (stepSame && sceneSame) return 'same';
-  if (norm(syn) === norm(text)) return 'same';        // both moved to the same words
-  if (sceneSame) return 'push';
+  const text = norm(step.text), syn = norm(scene.synopsis);
+  if (!hasBase(step)) {
+    if (syn === text) return 'adopt';
+    return syn === oldCut(text) ? 'push' : 'apart';
+  }
+  const base = norm(step.synced);
+  const stepSame = text === base;
+  if (syn === text) return 'same';                     // in step (or both moved to the same words)
+  /* The scene still holds the baseline, its old cut, or the baseline
+     before it: it was not edited, so it takes the step's text. */
+  const behind = syn === base || syn === oldCut(base)
+    || (typeof step.syncedWas === 'string' && sceneAgrees(syn, step.syncedWas));
+  if (behind) return 'push';
   if (stepSame) return 'pull';
   return 'conflict';
 }

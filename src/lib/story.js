@@ -151,7 +151,7 @@ const touch = (x) => { if (x) x.u = Math.max(Number(x.u) || 0, Date.now()); retu
 /* The sync baseline (`synced`, `syncedBeat`, see reconcileStepScenes)
    is bookkeeping, not an edit: recording it must not give an old text a
    new stamp that beats a collaborator's real edit in the next merge. */
-const unstamped = (x) => { const { u, synced, syncedBeat, ...rest } = x || {}; return JSON.stringify(rest); };
+const unstamped = (x) => { const { u, synced, syncedBeat, syncedWas, ...rest } = x || {}; return JSON.stringify(rest); };
 function stampChangedStory(story) {
   const prev = read(STORY_KEY, null);
   const now = Date.now();
@@ -780,7 +780,7 @@ export function sendOutlineToScenes(story, api, { fwId = story.framework, only =
     if (!sc || !sc.id) continue;
     created.push(sc.id);
     const real = story.outline.find((x) => x.id === s.id);
-    if (real) { real.sceneId = sc.id; real.synced = text; real.syncedBeat = real.beat; }
+    if (real) { real.sceneId = sc.id; real.synced = text; delete real.syncedWas; real.syncedBeat = real.beat; }
   }
   if (created.length && api.listScenes && api.saveScenes) {
     const fresh = new Set(created);
@@ -819,7 +819,7 @@ export function undoSendOutline(story, ids, api) {
     api.removeScene(id);
     n++;
   }
-  for (const st of story.outline || []) if (st.sceneId && gone.has(st.sceneId)) { delete st.sceneId; delete st.synced; delete st.syncedBeat; }
+  for (const st of story.outline || []) if (st.sceneId && gone.has(st.sceneId)) { delete st.sceneId; delete st.synced; delete st.syncedWas; delete st.syncedBeat; }
   return n;
 }
 
@@ -861,6 +861,19 @@ const binnedIds = (api) => {
   catch (e) { return new Set(); }
 };
 const sceneRows = (api) => (api.rawScenes ? api.rawScenes() : api.listScenes());
+/* A new baseline keeps the one before it (`syncedWas`): a scene still
+   holding that is BEHIND, not edited (step-scene-sync.js plan()). */
+const setBase = (st, text) => {
+  const t = Sync.norm(text);
+  if (st.synced === t) return false;
+  if (typeof st.synced === 'string') st.syncedWas = st.synced; else delete st.syncedWas;
+  st.synced = t;
+  return true;
+};
+/* A LOCKED outline is final: nothing the sync does rewrites one of its
+   steps. A scene changed under it is shown as differing instead. */
+const outlineLocked = (story) => !!String((story && story.outlineLockedAt) || '').trim();
+const lockedPlan = (story, act) => (act === 'pull' && outlineLocked(story) ? 'conflict' : act);
 const writeRows = (api, rows) => (api.writeRawScenes ? api.writeRawScenes(rows) : api.saveScenes(rows));
 
 /** What each linked step's pair needs, READ ONLY (a render may call it):
@@ -870,7 +883,7 @@ export function linkStates(story, scenes, api = {}) {
   const bin = binnedIds(api);
   const out = new Map();
   for (const st of (story && story.outline) || []) {
-    const action = Sync.plan(st, st && st.sceneId ? byId.get(st.sceneId) : null);
+    const action = lockedPlan(story, Sync.plan(st, st && st.sceneId ? byId.get(st.sceneId) : null));
     if (action) out.set(st.id, { action, sceneId: st.sceneId, binned: bin.has(st.sceneId) });
   }
   return out;
@@ -896,16 +909,16 @@ export function reconcileStepScenes(api) {
     if (!st.sceneId) continue;
     const i = byId.has(st.sceneId) ? byId.get(st.sceneId) : -1;
     const sc = i >= 0 ? rows[i] : null;
-    const act = Sync.plan(st, sc);
+    const act = lockedPlan(story, Sync.plan(st, sc));
     if (act === 'gone') {
       if (!bin) bin = binnedIds(api);
       res.gone.push({ stepId: st.id, sceneId: st.sceneId, binned: bin.has(st.sceneId) });
       continue;
     }
     if (act === 'conflict') { res.conflicts.push({ stepId: st.id, sceneId: st.sceneId }); }
-    else if (act === 'push') { setRow(i, { synopsis: Sync.norm(st.text) }); st.synced = Sync.norm(st.text); storyDirty = true; res.pushed++; }
-    else if (act === 'pull') { st.text = String(sc.synopsis || ''); st.synced = Sync.norm(sc.synopsis); storyDirty = true; res.pulled++; }
-    else if (st.synced !== Sync.norm(st.text)) { st.synced = Sync.norm(st.text); storyDirty = true; }   // same / adopt: the baseline only
+    else if (act === 'push') { setRow(i, { synopsis: Sync.norm(st.text) }); if (setBase(st, st.text)) storyDirty = true; res.pushed++; }
+    else if (act === 'pull') { st.text = String(sc.synopsis || ''); setBase(st, sc.synopsis); storyDirty = true; res.pulled++; }
+    else if (act !== 'apart' && setBase(st, st.text)) storyDirty = true;   // same / adopt: the baseline only
     const b = Sync.planBeat(st, rows[i]);
     if (b === 'push') { setRow(i, { beatId: st.beat }); st.syncedBeat = st.beat; storyDirty = true; }
     else if (b === 'adopt' && st.syncedBeat !== st.beat) { st.syncedBeat = st.beat; storyDirty = true; }
@@ -923,12 +936,13 @@ export function resolveStepScene(api, stepId, use) {
   const story = loadStory();
   const st = story.outline.find((x) => x.id === stepId);
   if (!st || !st.sceneId) return null;
+  if (use === 'scene' && outlineLocked(story)) return null;   // a locked step keeps its text
   const rows = sceneRows(api);
   const i = rows.findIndex((r) => r && r.id === st.sceneId);
   if (i < 0) return null;
-  const snap = { stepId, sceneId: st.sceneId, text: st.text, synced: st.synced, synopsis: rows[i].synopsis };
-  if (use === 'scene') { st.text = String(rows[i].synopsis || ''); st.synced = Sync.norm(rows[i].synopsis); }
-  else { rows[i] = { ...rows[i], synopsis: Sync.norm(st.text) }; st.synced = Sync.norm(st.text); writeRows(api, rows); }
+  const snap = { stepId, sceneId: st.sceneId, text: st.text, synced: st.synced, syncedWas: st.syncedWas, synopsis: rows[i].synopsis };
+  if (use === 'scene') { st.text = String(rows[i].synopsis || ''); setBase(st, rows[i].synopsis); }
+  else { rows[i] = { ...rows[i], synopsis: Sync.norm(st.text) }; setBase(st, st.text); writeRows(api, rows); }
   saveStory(story);
   return snap;
 }
@@ -944,6 +958,7 @@ export function restoreStepScene(api, snap) {
   if (st) {
     st.text = snap.text;
     if (typeof snap.synced === 'string') st.synced = snap.synced; else delete st.synced;
+    if (typeof snap.syncedWas === 'string') st.syncedWas = snap.syncedWas; else delete st.syncedWas;
     saveStory(story);
   }
   return true;
@@ -958,7 +973,7 @@ export function followSceneBeat(sceneId, key, { fwId } = {}) {
   const story = loadStory();
   const st = stepsByScene(story).get(sceneId);
   const p = parseBeat(key);
-  if (!st || !p || p.fw !== frameworkById(fwId || story.framework).id || !resolveBeatKey(key) || st.beat === key) return false;
+  if (!st || !p || outlineLocked(story) || p.fw !== frameworkById(fwId || story.framework).id || !resolveBeatKey(key) || st.beat === key) return false;
   moveOutlineStep(story, st.id, { beat: key });
   st.syncedBeat = st.beat;
   saveStory(story);

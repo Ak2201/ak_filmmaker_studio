@@ -56,7 +56,13 @@ export function mountStoryPresence(o) {
       line.hidden = !t;
       if (line.textContent !== t) line.textContent = t;
     }
-    for (const row of marked) { row.classList.remove('st-peer-row'); delete row.dataset.peer; }
+    /* The name goes on the step number too: the mark is its ::after,
+       and attr() reads the pseudo-element's own element, not the row. */
+    const num = (row) => row.querySelector('.st-ol-n');
+    for (const row of marked) {
+      row.classList.remove('st-peer-row'); delete row.dataset.peer;
+      const n = num(row); if (n) delete n.dataset.peer;
+    }
     marked = [];
     const byStep = new Map();
     for (const p of people) if (p.step) byStep.set(p.step, (byStep.get(p.step) || []).concat(p.name));
@@ -65,6 +71,7 @@ export function mountStoryPresence(o) {
       if (!row) continue;
       row.classList.add('st-peer-row');
       row.dataset.peer = names.join(', ');
+      const n = num(row); if (n) n.dataset.peer = row.dataset.peer;
       marked.push(row);
     }
   }

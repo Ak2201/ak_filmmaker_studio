@@ -81,6 +81,7 @@ export function mergeElements(L, R, B) {
   const out = [];
   const placed = new Set();
   for (const r of R) {
+    if (placed.has(r.id)) continue;               // one id, one element: a copy holding it twice is put right
     const e = keep(r.id);
     if (e) { out.push(e); placed.add(r.id); }
   }

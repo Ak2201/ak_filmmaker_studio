@@ -1,9 +1,10 @@
 /* ============================================================
    BEAT STEP <-> SCENE SYNC, and beat colours — in Node
    ------------------------------------------------------------
-   src/lib/step-scene-sync.js is pure: every plan() case, the adopt
-   rule for pairs sent before the baseline existed (the old 280-cut
-   counts as agreeing), the beat rule. Then story.js against the real
+   src/lib/step-scene-sync.js is pure: every plan() case, the rules for
+   pairs sent before the baseline existed (agreeing: adopted; the old
+   280-cut: the full text pushed; anything else: apart), a scene BEHIND
+   a baseline that arrived (pushed, never pulled), the beat rule. Then story.js against the real
    scenes.js and scene-bin.js over an in-memory localStorage: the send
    writes the whole text, reconcileStepScenes() carries an edit either
    way and writes NOTHING when the two agree, a conflict is left alone,
@@ -33,12 +34,15 @@ eq(P({ text: 'Ravi opens the shop', sceneId: 's', synced: 'Ravi opens the shop' 
 eq(P({ text: 'A', sceneId: 's', synced: 'B' }, { synopsis: 'C' }), 'conflict', 'both changed: conflict');
 eq(P({ text: 'A', sceneId: 's', synced: 'B' }, { synopsis: 'A' }), 'same', 'both changed to the same words: same');
 eq(P({ text: 'A', sceneId: 's' }, { synopsis: 'A' }), 'adopt', 'no baseline, agreeing: adopt');
-eq(P({ text: 'A', sceneId: 's' }, { synopsis: 'B' }), 'conflict', 'no baseline, differing: conflict (nothing is guessed)');
+eq(P({ text: 'A', sceneId: 's' }, { synopsis: 'B' }), 'apart', 'no baseline, differing: apart (they never agreed; nothing is offered over either)');
 const long = 'word '.repeat(90).trim();   // 449 characters
 const cut = long.slice(0, 277).trimEnd() + '…';
 eq(Sync.oldCut(long), cut, 'oldCut is the old send’s cut');
-eq(P({ text: long, sceneId: 's' }, { synopsis: cut }), 'adopt', 'an old 280-cut pair adopts');
-eq(P({ text: long, sceneId: 's', synced: Sync.norm(long) }, { synopsis: cut }), 'same', 'and stays agreeing after');
+eq(P({ text: long, sceneId: 's' }, { synopsis: cut }), 'push', 'an old 280-cut pair: the scene gets the full text');
+eq(P({ text: long, sceneId: 's', synced: Sync.norm(long) }, { synopsis: cut }), 'push', 'and so does one adopted before that rule (the scene still holds the cut)');
+eq(P({ text: 'B', sceneId: 's', synced: 'B', syncedWas: 'A' }, { synopsis: 'A' }), 'push', 'a scene holding the baseline before: behind, pushed (never pulled)');
+eq(P({ text: 'C', sceneId: 's', synced: 'B', syncedWas: 'A' }, { synopsis: 'A' }), 'push', 'behind, and the step moved on again: still pushed');
+eq(P({ text: 'B', sceneId: 's', synced: 'B', syncedWas: 'A' }, { synopsis: 'D' }), 'pull', 'a scene holding new words: pulled as before');
 eq(P({ text: long + ' more', sceneId: 's', synced: Sync.norm(long) }, { synopsis: cut }), 'push', 'an edit to the step of a 280-cut pair pushes');
 eq(P({ text: long, sceneId: 's', synced: Sync.norm(long) }, { synopsis: 'Rewritten.' }), 'pull', 'an edit to the scene of a 280-cut pair pulls');
 eq(Sync.planBeat({ sceneId: 's', beat: 'f:a' }, { beatId: 'f:a' }), 'adopt', 'beat: no baseline, adopt');
@@ -98,7 +102,8 @@ S.restoreStepScene(api, snap2);
 eq([byStep(a.id).text, sceneOf(a.id).synopsis], ['Mine.', 'Theirs.'], 'restore: the scene’s text back too');
 S.resolveStepScene(api, a.id, 'step');
 
-/* the old 280-cut pair: adopted without touching either side */
+/* the old 280-cut pair: the scene gets the full text, so an edit to it
+   later can never shrink the step to the cut (QA round 1, T1) */
 {
   const s = S.loadStory();
   const st = s.outline.find((x) => x.id === b.id);
@@ -106,12 +111,88 @@ S.resolveStepScene(api, a.id, 'step');
   S.saveStory(s);
   Scenes.updateScene(st.sceneId, { synopsis: cut });
 }
-const synBefore = sceneOf(b.id).synopsis, textBefore = byStep(b.id).text;
+const textBefore = byStep(b.id).text;
 r = S.reconcileStepScenes(api);
-eq([sceneOf(b.id).synopsis, byStep(b.id).text, r.pushed, r.pulled], [synBefore, textBefore, 0, 0], 'adopt: neither side is rewritten');
-eq(byStep(b.id).synced, Sync.norm(long), 'adopt: only the baseline is recorded');
+eq([sceneOf(b.id).synopsis, byStep(b.id).text, r.pushed, r.pulled], [Sync.norm(long), textBefore, 1, 0], 'old cut: the scene gets the full text, the step is untouched');
+eq(byStep(b.id).synced, Sync.norm(long), 'old cut: the baseline is the full text');
+Scenes.updateScene(sceneOf(b.id).id, { synopsis: 'The big ' + sceneOf(b.id).synopsis });
+S.reconcileStepScenes(api);
+eq(byStep(b.id).text, 'The big ' + Sync.norm(long), 'old cut: a later scene edit keeps the whole step');
+{ const s = S.loadStory(); S.updateOutlineStep(s, b.id, { text: long }); S.saveStory(s); }
+S.reconcileStepScenes(api);
+/* and one adopted under the earlier rule (baseline set, scene still the cut) */
+{
+  const s = S.loadStory();
+  s.outline.find((x) => x.id === b.id).synced = Sync.norm(long);
+  S.saveStory(s);
+  Scenes.updateScene(sceneOf(b.id).id, { synopsis: cut });
+}
+S.reconcileStepScenes(api);
+eq(sceneOf(b.id).synopsis, Sync.norm(long), 'old cut, already adopted: the scene is put right');
 before = snapshot();
-ok(!S.reconcileStepScenes(api).wrote && snapshot() === before, 'adopt: then nothing more is written');
+ok(!S.reconcileStepScenes(api).wrote && snapshot() === before, 'old cut: then nothing more is written');
+
+/* a pair that never agreed (a sample's prose, a breakdown's "Sc 1 — SLUG"
+   step): apart. Nothing written, no conflict, either way (QA round 1). */
+{
+  const s = S.loadStory();
+  const st = s.outline.find((x) => x.id === b.id);
+  delete st.synced; delete st.syncedWas; st.text = 'Sc 2 — INT. SHOP — DAY: the shelves. (Ravi)';
+  S.saveStory(s);
+}
+before = snapshot();
+r = S.reconcileStepScenes(api);
+eq([r.conflicts.length, r.pushed, r.pulled], [0, 0, 0], 'apart: no conflict, nothing carried');
+ok(!('synced' in byStep(b.id)) && sceneOf(b.id).synopsis === Sync.norm(long), 'apart: neither side touched, no baseline');
+eq(S.linkStates(S.loadStory(), Scenes.listScenes(), api).get(b.id).action, 'apart', 'linkStates: apart (no note)');
+{ const s = S.loadStory(); S.updateOutlineStep(s, b.id, { text: long }); S.saveStory(s); }
+S.reconcileStepScenes(api);
+eq(byStep(b.id).synced, Sync.norm(long), 'apart: once they agree, adopted');
+
+/* a step baseline that ARRIVED ahead of its scene (two rows, two
+   arrivals): the scene is behind and takes the step's text; the step
+   is never put back (QA round 1, the push loop). */
+{
+  const s = S.loadStory();
+  const st = s.outline.find((x) => x.id === b.id);
+  // what a collaborator's push leaves on the step: text = baseline = NEW, the baseline before = the scene's
+  st.syncedWas = st.synced; st.text = long + ' Ravi refuses to sell.'; st.synced = Sync.norm(st.text);
+  S.saveStory(s);
+}
+const uArrived = byStep(b.id).u;
+r = S.reconcileStepScenes(api);
+eq([r.pulled, byStep(b.id).text, sceneOf(b.id).synopsis], [0, long + ' Ravi refuses to sell.', Sync.norm(long + ' Ravi refuses to sell.')], 'arrival: the scene catches up, the step keeps the new text');
+eq(byStep(b.id).u, uArrived, 'arrival: the step is not restamped (no push back)');
+before = snapshot();
+ok(!S.reconcileStepScenes(api).wrote && snapshot() === before, 'arrival: settled in one pass');
+
+/* a LOCKED outline: a scene edit is shown, never written into the step */
+{
+  const s = S.loadStory(); s.outlineLockedAt = '2026-10-01T00:00:00.000Z'; S.saveStory(s);
+  const textNow = byStep(b.id).text;
+  Scenes.updateScene(sceneOf(b.id).id, { synopsis: 'Scene side edit' });
+  r = S.reconcileStepScenes(api);
+  eq([byStep(b.id).text, r.pulled, r.conflicts.map((x) => x.stepId)], [textNow, 0, [b.id]], 'lock: the step keeps its text; shown as differing');
+  eq(S.linkStates(S.loadStory(), Scenes.listScenes(), api).get(b.id).action, 'conflict', 'lock: linkStates says so');
+  eq(S.resolveStepScene(api, b.id, 'scene'), null, 'lock: "use the scene’s text" is refused');
+  eq(byStep(b.id).text, textNow, 'lock: the step is unchanged');
+  const sid = sceneOf(b.id).id, beat0 = byStep(b.id).beat;
+  ok(!S.followSceneBeat(sid, K('finale')), 'lock: a scene re-filed on the board does not move its step');
+  eq(byStep(b.id).beat, beat0, 'lock: the step stays under its beat');
+  ok(S.resolveStepScene(api, b.id, 'step'), 'lock: "send mine to the scene" still works');
+  eq(sceneOf(b.id).synopsis, Sync.norm(textNow), 'lock: the scene has the step’s text');
+  const s2 = S.loadStory(); s2.outlineLockedAt = ''; S.saveStory(s2);
+}
+
+/* the samples: every linked step is apart or agreeing, no conflict */
+for (const name of ['dragon', 'darkknight']) {
+  const story = JSON.parse((await import('node:fs')).readFileSync(new URL(`../src/data/sample.${name}.story.json`, import.meta.url), 'utf8')).story;
+  const prefix = story.outline.find((st) => st.sceneId).sceneId.replace(/-sc-.*$/, '');
+  const scenes = JSON.parse((await import('node:fs')).readFileSync(new URL(`../src/data/sample.${name}.json`, import.meta.url), 'utf8')).scenes
+    .map((sc) => ({ ...sc, id: prefix + '-sc-' + sc.number }));   // the id the sample loader gives each (hub-sample.js)
+  const acts = [...S.linkStates(story, scenes, {}).values()].map((l) => l.action);
+  ok(acts.length > 0 && !acts.includes('conflict'), `sample ${name}: ${acts.length} linked steps, none a conflict (${[...new Set(acts)]})`);
+}
 
 /* the beat follows */
 { const s = S.loadStory(); S.moveOutlineStep(s, a.id, { beat: K('fun_and_games') }); S.saveStory(s); }
@@ -131,7 +212,7 @@ r = S.reconcileStepScenes(api);
 eq(r.gone.map((g) => [g.stepId, g.binned]), [[b.id, true]], 'gone: a binned scene is reported, in the bin');
 eq(S.linkStates(S.loadStory(), Scenes.listScenes(), api).get(b.id), { action: 'gone', sceneId: byStep(b.id).sceneId, binned: true }, 'linkStates: gone, binned');
 { const s = S.loadStory(); eq(S.sendOutlineToScenes(s, api, { only: [b.id] }).length, 1, 'Send again: a new scene'); S.saveStory(s); }
-eq(sceneOf(b.id).synopsis, long, 'Send again: the whole text');
+eq(sceneOf(b.id).synopsis, Sync.norm(byStep(b.id).text), 'Send again: the whole text');
 
 /* colours */
 {

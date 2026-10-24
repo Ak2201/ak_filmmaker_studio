@@ -279,12 +279,12 @@ const SYNC_API = { ...Scenes, listBin: Bin.listBin };
 function syncSteps() {
   try { return reconcileStepScenes(SYNC_API); } catch (e) { console.warn('[breakdown] step sync', e); return null; }
 }
-let LINK = { byScene: new Map(), states: new Map() };
+let LINK = { byScene: new Map(), states: new Map(), locked: false };
 function readLinks(scenes) {
   try {
     const story = loadStory();
-    LINK = { byScene: stepsByScene(story), states: linkStates(story, scenes, SYNC_API) };
-  } catch (e) { LINK = { byScene: new Map(), states: new Map() }; }
+    LINK = { byScene: stepsByScene(story), states: linkStates(story, scenes, SYNC_API), locked: !!String(story.outlineLockedAt || '').trim() };
+  } catch (e) { LINK = { byScene: new Map(), states: new Map(), locked: false }; }
 }
 const clipText = (t, n) => { const x = String(t || ''); return x.length > n ? x.slice(0, n - 1) + '…' : x; };
 /** "Beat: Midpoint", with the step's colour beside it; null when neither. */
@@ -306,8 +306,9 @@ function sceneSyncNote(scene) {
   return h('p.ss-note', { role: 'status', 'data-ss-scene': scene.id }, [
     h('span', { text: 'The beat step differs: “' + clipText(st.text, 160) + '”' }),
     button({ label: 'Use the step’s text', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-step', 'data-step': st.id } }),
-    button({ label: 'Send mine to the step', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-scene', 'data-step': st.id } })
-  ]);
+    LINK.locked ? null   // a locked Beat Sheet is final: nothing is sent into it
+      : button({ label: 'Send mine to the step', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-scene', 'data-step': st.id } })
+  ].filter(Boolean));
 }
 
 function renderScene(scene, i, total) {
@@ -1663,7 +1664,7 @@ delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
 // typed: on `change` alone, a reload or a closed tab took everything
 // since the field was entered (UX audit H10). saveOnInput() debounces
 // the store write and flushes it on pagehide / hidden.
-import { saveOnInput } from '../lib/autosave.js';
+import { saveOnInput, preservingFocus } from '../lib/autosave.js';
 import { ask, askDanger, askText } from '../ui/dialog.js';
 const sceneValue = (el) => sceneFieldValue(el.dataset.sceneField, el.value);
 /* A number is a string that is not empty: an empty one is never saved
@@ -1917,11 +1918,15 @@ delegate(document, 'click', '[data-ss]', (e, el) => {
     action: 'Undo', onAction: () => { restoreStepScene(SYNC_API, snap); render(); }
   });
 });
-/* Back to this tab after the Story page changed a step in another one. */
+/* Back to this tab after the Story page changed a step (and so its
+   scene) in another one. A field left focused across the switch is
+   redrawn too, with its focus and caret kept (preservingFocus): left
+   as it was, it still showed the text from before, and the next
+   keystroke saved that over the other tab's edit. */
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   syncSteps();
-  if (!(document.activeElement && /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement.tagName))) render();
+  preservingFocus(render);
 });
 
 syncSteps();   // a step edited on the Story page since the last visit reaches its scene

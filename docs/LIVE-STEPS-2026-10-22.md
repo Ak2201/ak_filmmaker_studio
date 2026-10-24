@@ -66,3 +66,11 @@ select count(*) filter (where valid_until is null) as no_year, count(*) as all_i
 
 Then download one receipt from Plan & purchases: it should read "Plan valid
 <date> – <date>" and fit on one page.
+
+## Shared beat sheet (24 Oct 2026): nothing to run
+
+No schema section. The beat sheet (cloud scope `story`) merges step by step
+only while the existing co-editing switch is on (§49, `co_editing_enabled()`,
+Settings → console). With it off, the story stays "the newer copy wins", as
+before. The fix that exposes `coEditingKnown` also means the Screenplay Writer
+now merges an arriving copy on the open page when the switch is on.

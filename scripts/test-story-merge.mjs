@@ -38,6 +38,18 @@ delete base.framework2;
   eq(m.outline.map((x) => [x.id, x.color || '', x.synced || '']), [['a', 'pink', 'Ravi opens the shop.'], ['b', 'blue', ''], ['c', '', '']], '1b colours and the sync baseline merge with their steps');
   eq(m.outline[0].sceneId, 's1', '1b the link survives the merge');
 }
+{
+  /* 1c one writer recolours a step while the other rewords it: both survive */
+  const base = { outline: [{ id: 'a', beat: 'f:x', text: 'Hi', u: 1 }] };
+  const A = { outline: [{ id: 'a', beat: 'f:x', text: 'Hi', color: 'pink', u: 2 }] };
+  const B = { outline: [{ id: 'a', beat: 'f:x', text: 'Hi there', u: 3 }] };
+  for (const [l, r, name] of [[A, B, 'A local'], [B, A, 'B local']]) {
+    const m = M.mergeStory(l, r, base, { now: 9 });
+    eq([m.outline[0].text, m.outline[0].color || ''], ['Hi there', 'pink'], '1c colour and rewording both survive (' + name + ')');
+  }
+  const C = { outline: [{ id: 'a', beat: 'f:x', text: 'Hi there', color: 'blue', u: 3 }] };
+  eq(M.mergeStory(A, C, base, { now: 9 }).outline[0].color, 'blue', '1c both recoloured: the later step wins its colour');
+}
 
 /* 1 different steps, two people */
 {

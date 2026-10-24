@@ -12,7 +12,9 @@
                    copy has is NEW there, unless `base` (the copy both
                    last agreed on) proves the other side deleted it and
                    it was not edited since. No base, nothing is deleted.
-                   Order follows the copy that arrived.
+                   Order follows the copy that arrived. A step's colour
+                   merges on its own (one side recoloured, the other
+                   reworded: both survive).
      marks         the same rule, by id; then each is re-found in the
                    merged synopsis (story-anchor.js, the logic of
                    story.js anchor()) and the list is sorted by start.
@@ -142,6 +144,23 @@ export function mergeStory(local, remote, base, { now = Date.now() } = {}) {
 
   if ('outline' in L || 'outline' in R) {
     out.outline = mergeElements(items(L.outline), items(R.outline), hasBase ? items(B.outline) : null);
+    /* A step's COLOUR is the writer's label, not part of its text, so it
+       merges on its own: when the copy that won the step kept the base's
+       colour and the other copy changed it, the change survives. Without
+       this, one writer colouring a step while the other fixed its
+       wording lost the colour with no sign (QA, 24 Oct 2026). */
+    if (hasBase) {
+      const byId = (list) => new Map(items(list).filter((x) => x && x.id).map((x) => [x.id, x]));
+      const lm = byId(L.outline), rm = byId(R.outline), bm = byId(B.outline);
+      out.outline = out.outline.map((st) => {
+        const b = bm.get(st.id), l = lm.get(st.id), r = rm.get(st.id);
+        if (!b || !l || !r) return st;
+        const bc = b.color || '', sc = st.color || '';
+        if (sc !== bc) return st;                       // the winner recoloured it: that stands
+        const changed = [l.color || '', r.color || ''].filter((c) => c !== bc);
+        return changed.length === 1 ? { ...st, color: changed[0] } : st;
+      });
+    }
   }
 
   if ('marks' in L || 'marks' in R) {

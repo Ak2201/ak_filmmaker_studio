@@ -29,6 +29,14 @@ once and not yet looked at.
   with no `scriptElId` takes a hand-typed number ("12A" is fine;
   duplicates save and are flagged). To renumber a bound scene, change
   its heading in Write.
+- **Two writers changing the synopsis prose at the same moment are not
+  merged by sentence.** With co-editing on, the arriving text is kept and
+  the other is saved on the Synopsis step ("Use this text" / "Dismiss").
+  Steps, marks and a step's colour merge on their own.
+- **A beat step and a scene that never held the same text are left apart.**
+  The Dragon and Dark Knight samples and steps the breakdown wrote have
+  scenes whose synopsis was never the step's text; neither side is offered
+  over the other. Once the two texts are made the same, the pair syncs.
 - **A short film that chose another beat sheet before 23 Oct 2026 shows
   its old steps in Unassigned.** A short is always the five beats now
   (owner: "use only 5 beats"). Every step is kept with its text and its

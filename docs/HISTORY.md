@@ -2770,3 +2770,33 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       Save the Cat! features) and no feature wording; the Save the Cat video
       left `step:short/step-04`. The rail's Story flyout reads the open
       project's path (`navmodel.js` had read `PATHS.feature` every time).
+
+62. **The Celtx gaps: beat colours, beat ↔ scene sync, a shared beat sheet
+    (23–24 Oct 2026).** The owner asked to finish what Celtx has before the
+    script that the studio did not: colouring beats, beats kept in step with
+    their scenes, and editing the beat sheet together. Built by a multi-agent
+    workflow (two builders, then two rounds of three testers, a skeptic per
+    finding and a fixer); 17 findings confirmed and fixed, 2 judged by design.
+    - **Colours.** `setStepColor` (story.js), names from `notes-model.js`
+      `COLORS`, `--note-*` tokens. Stored on the step only; the Scene List row,
+      the index card and the beat board chip derive it (`stepsByScene`).
+    - **Beat ↔ scene sync.** Pure `src/lib/step-scene-sync.js` `plan()` over a
+      `synced` baseline on the step (and `syncedBeat`, `syncedWas`): push, pull,
+      conflict, adopt, apart, gone. `reconcileStepScenes()` writes only when
+      something differs. The send writes the full text. A conflict shows on both
+      pages with a choice and an Undo for both sides; a binned scene offers
+      Restore / Send again; a locked outline is never rewritten; a pair that
+      never agreed (the samples, old breakdown steps) is left apart. Both pages
+      redraw on a write in another tab or window (`onWriteElsewhere`), so a
+      stale field never saves over a newer edit.
+    - **Shared beat sheet.** Pure `src/lib/story-merge.js` (steps and marks via
+      `mergeElements`, a step's colour merged on its own, the prose by `pick3`
+      with both texts kept in `sourceConflicts`, every unknown field carried).
+      cloud.js has one `COEDIT` table for `script` and `story`, still behind
+      §49's switch; a push carries `_sync` so a delete by the other writer stays
+      deleted. story.html handles arrivals (`cloud:incoming` flushes typing
+      first) and shows presence (`src/ui/story-presence.js`). Found on the way:
+      `coEditingKnown` was missing from `window.StudioCloud`, so the Screenplay
+      Writer never merged on the page even with the switch on.
+    - Tests: `test:step-sync`, `test:story-merge`, `test:cloud`, `test:presence`;
+      proofs `prove:beat-sync`, `prove:story-coedit`.

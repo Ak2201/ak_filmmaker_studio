@@ -40,7 +40,8 @@ import FRAMEWORKS from '../data/frameworks.json';
 import BIBLE from '../data/story-bible.json';
 import PATHS from '../data/story-paths.json';
 import { readFields } from './blueprint-store.js';
-import { moveItem } from './notes-model.js';
+import { moveItem, COLORS } from './notes-model.js';
+import Sync from './step-scene-sync.js';   // pure: what one linked step and scene should do
 import { anchorMarks } from './story-anchor.js';   // pure: story-merge.js (in cloud.js, CORE) shares it
 
 export const STORY_KEY = 'fms_story_v1';
@@ -147,7 +148,10 @@ export function saveStory(story) {
    the copy it read before a newer one synced in — stamping it now
    would make the stale text beat the real edit, so it is left alone. */
 const touch = (x) => { if (x) x.u = Math.max(Number(x.u) || 0, Date.now()); return x; };
-const unstamped = (x) => { const { u, ...rest } = x || {}; return JSON.stringify(rest); };
+/* The sync baseline (`synced`, `syncedBeat`, see reconcileStepScenes)
+   is bookkeeping, not an edit: recording it must not give an old text a
+   new stamp that beats a collaborator's real edit in the next merge. */
+const unstamped = (x) => { const { u, synced, syncedBeat, ...rest } = x || {}; return JSON.stringify(rest); };
 function stampChangedStory(story) {
   const prev = read(STORY_KEY, null);
   const now = Date.now();
@@ -752,27 +756,31 @@ const beatPos = (key) => { const r = resolveBeatKey(key); return r ? r.beat.at :
  *  which is what undoSendOutline() takes.
  *
  *  `api` is scenes.js's default export (or anything shaped like it):
- *  listScenes, addScene, and saveScenes for the placement. */
-export function sendOutlineToScenes(story, api, { fwId = story.framework } = {}) {
+ *  listScenes, addScene, and saveScenes for the placement. `only` (step
+ *  ids) sends just those — "Send again" on one step whose scene went. */
+export function sendOutlineToScenes(story, api, { fwId = story.framework, only = null } = {}) {
   const existing = api.listScenes ? api.listScenes() : [];
   const live = new Set(existing.map((s) => s.id));
   const todo = stepsInOrder(story, fwId)
-    .filter((s) => String(s.text || '').trim() && !(s.sceneId && live.has(s.sceneId)));
+    .filter((s) => String(s.text || '').trim() && !(s.sceneId && live.has(s.sceneId)))
+    .filter((s) => !only || only.includes(s.id));
   if (!todo.length) return [];
   const nums = existing.map((s) => parseInt(s.number, 10)).filter(Number.isFinite);
   let num = nums.length ? Math.max(...nums) : 0;
   const created = [];
   for (const s of todo) {
-    const text = String(s.text).trim().replace(/\s+/g, ' ');
+    /* The WHOLE text (whitespace collapsed), so the two sides can be
+       equal and stay in step (reconcileStepScenes). The Scene List
+       shortens it on screen only. It used to be cut to 280 characters. */
+    const text = Sync.norm(s.text);
     const sc = api.addScene({
       number: String(++num), intExt: 'INT', dayNight: 'DAY', location: '',
-      synopsis: text.length > 280 ? text.slice(0, 277).trimEnd() + '…' : text,
-      beatId: s.beat, eighths: 8
+      synopsis: text, beatId: s.beat, eighths: 8
     });
     if (!sc || !sc.id) continue;
     created.push(sc.id);
     const real = story.outline.find((x) => x.id === s.id);
-    if (real) real.sceneId = sc.id;
+    if (real) { real.sceneId = sc.id; real.synced = text; real.syncedBeat = real.beat; }
   }
   if (created.length && api.listScenes && api.saveScenes) {
     const fresh = new Set(created);
@@ -811,8 +819,150 @@ export function undoSendOutline(story, ids, api) {
     api.removeScene(id);
     n++;
   }
-  for (const st of story.outline || []) if (st.sceneId && gone.has(st.sceneId)) delete st.sceneId;
+  for (const st of story.outline || []) if (st.sceneId && gone.has(st.sceneId)) { delete st.sceneId; delete st.synced; delete st.syncedBeat; }
   return n;
+}
+
+/* ---- beat colours ----------------------------------------------
+   Five free label colours, the sticky notes' own set (notes-model.js
+   COLORS: a name, never a hex). The colour lives on the STEP only; the
+   Scene List and the beat board show it on the step's scene by looking
+   the step up (stepsByScene), never by copying it onto the scene. */
+
+/** A step's colour name, or '' for none. */
+export const stepColor = (st) => (st && COLORS.includes(st.color) ? st.color : '');
+
+/** Set (or, with '' or an unknown name, clear) a step's colour. Returns the step or null. */
+export function setStepColor(story, id, color) {
+  const st = ensureOutline(story).find((x) => x.id === id);
+  if (!st) return null;
+  if (COLORS.includes(color)) st.color = color; else delete st.color;
+  return st;
+}
+
+/** sceneId -> the step that links it, built once per render. */
+export function stepsByScene(story) {
+  const m = new Map();
+  for (const st of (story && story.outline) || []) if (st && st.sceneId && !m.has(st.sceneId)) m.set(st.sceneId, st);
+  return m;
+}
+
+/* ---- the beat step <-> scene sync (src/lib/step-scene-sync.js) --
+   A sent step and its scene stay in step both ways while the other side
+   still holds what they last agreed on (the step's `synced`); both
+   changed, nothing is written and each page offers the other's text.
+   `api` is scenes.js's default export (listScenes / saveScenes, and
+   rawScenes / writeRawScenes when present, so rows nobody touched keep
+   their bytes) plus `listBin` from scene-bin.js, which only decides the
+   words "in the bin". */
+
+const binnedIds = (api) => {
+  try { return new Set((api.listBin ? api.listBin() : []).map((e) => e && e.scene && e.scene.row && e.scene.row.id).filter(Boolean)); }
+  catch (e) { return new Set(); }
+};
+const sceneRows = (api) => (api.rawScenes ? api.rawScenes() : api.listScenes());
+const writeRows = (api, rows) => (api.writeRawScenes ? api.writeRawScenes(rows) : api.saveScenes(rows));
+
+/** What each linked step's pair needs, READ ONLY (a render may call it):
+ *  Map stepId -> { action, sceneId, binned }. */
+export function linkStates(story, scenes, api = {}) {
+  const byId = new Map((scenes || []).map((s) => [s.id, s]));
+  const bin = binnedIds(api);
+  const out = new Map();
+  for (const st of (story && story.outline) || []) {
+    const action = Sync.plan(st, st && st.sceneId ? byId.get(st.sceneId) : null);
+    if (action) out.set(st.id, { action, sceneId: st.sceneId, binned: bin.has(st.sceneId) });
+  }
+  return out;
+}
+
+/** Carry every agreed change across, once: push a changed step's text
+ *  (and beat) to its scene, pull a changed scene's synopsis into its
+ *  step, and record the baseline of an older pair. ONE read of each
+ *  side, and a write only when something differs — so a second call
+ *  writes nothing (verify's idle-write check). Returns
+ *  { conflicts:[{stepId, sceneId}], gone:[{stepId, sceneId, binned}], pushed, pulled, wrote }. */
+export function reconcileStepScenes(api) {
+  const res = { conflicts: [], gone: [], pushed: 0, pulled: 0, wrote: false };
+  if (!api || !api.listScenes) return res;
+  const story = loadStory();
+  if (!story.outline.some((st) => st.sceneId)) return res;
+  const rows = sceneRows(api);
+  const byId = new Map(rows.map((r, i) => [r && r.id, i]));
+  let storyDirty = false, scenesDirty = false;
+  let bin = null;
+  const setRow = (i, patch) => { rows[i] = { ...rows[i], ...patch }; scenesDirty = true; };
+  for (const st of story.outline) {
+    if (!st.sceneId) continue;
+    const i = byId.has(st.sceneId) ? byId.get(st.sceneId) : -1;
+    const sc = i >= 0 ? rows[i] : null;
+    const act = Sync.plan(st, sc);
+    if (act === 'gone') {
+      if (!bin) bin = binnedIds(api);
+      res.gone.push({ stepId: st.id, sceneId: st.sceneId, binned: bin.has(st.sceneId) });
+      continue;
+    }
+    if (act === 'conflict') { res.conflicts.push({ stepId: st.id, sceneId: st.sceneId }); }
+    else if (act === 'push') { setRow(i, { synopsis: Sync.norm(st.text) }); st.synced = Sync.norm(st.text); storyDirty = true; res.pushed++; }
+    else if (act === 'pull') { st.text = String(sc.synopsis || ''); st.synced = Sync.norm(sc.synopsis); storyDirty = true; res.pulled++; }
+    else if (st.synced !== Sync.norm(st.text)) { st.synced = Sync.norm(st.text); storyDirty = true; }   // same / adopt: the baseline only
+    const b = Sync.planBeat(st, rows[i]);
+    if (b === 'push') { setRow(i, { beatId: st.beat }); st.syncedBeat = st.beat; storyDirty = true; }
+    else if (b === 'adopt' && st.syncedBeat !== st.beat) { st.syncedBeat = st.beat; storyDirty = true; }
+  }
+  if (scenesDirty) writeRows(api, rows);
+  if (storyDirty) saveStory(story);
+  res.wrote = scenesDirty || storyDirty;
+  return res;
+}
+
+/** Settle a conflict. use = 'scene' (the step takes the scene's text)
+ *  or 'step' (the scene takes the step's). Returns the undo snapshot
+ *  (both sides as they were) or null. */
+export function resolveStepScene(api, stepId, use) {
+  const story = loadStory();
+  const st = story.outline.find((x) => x.id === stepId);
+  if (!st || !st.sceneId) return null;
+  const rows = sceneRows(api);
+  const i = rows.findIndex((r) => r && r.id === st.sceneId);
+  if (i < 0) return null;
+  const snap = { stepId, sceneId: st.sceneId, text: st.text, synced: st.synced, synopsis: rows[i].synopsis };
+  if (use === 'scene') { st.text = String(rows[i].synopsis || ''); st.synced = Sync.norm(rows[i].synopsis); }
+  else { rows[i] = { ...rows[i], synopsis: Sync.norm(st.text) }; st.synced = Sync.norm(st.text); writeRows(api, rows); }
+  saveStory(story);
+  return snap;
+}
+
+/** Undo resolveStepScene(): both sides back exactly as they were. */
+export function restoreStepScene(api, snap) {
+  if (!snap) return false;
+  const story = loadStory();
+  const st = story.outline.find((x) => x.id === snap.stepId);
+  const rows = sceneRows(api);
+  const i = rows.findIndex((r) => r && r.id === snap.sceneId);
+  if (i >= 0 && rows[i].synopsis !== snap.synopsis) { rows[i] = { ...rows[i], synopsis: snap.synopsis }; writeRows(api, rows); }
+  if (st) {
+    st.text = snap.text;
+    if (typeof snap.synced === 'string') st.synced = snap.synced; else delete st.synced;
+    saveStory(story);
+  }
+  return true;
+}
+
+/** A scene re-filed under another beat (the beat board): its step
+ *  follows — but only to a beat of the beat sheet the outline uses now;
+ *  any other beat (or none) leaves the step where it is. `fwId` is the
+ *  beat sheet the caller shows (the format's, for a short film). Returns true
+ *  when the step moved. */
+export function followSceneBeat(sceneId, key, { fwId } = {}) {
+  const story = loadStory();
+  const st = stepsByScene(story).get(sceneId);
+  const p = parseBeat(key);
+  if (!st || !p || p.fw !== frameworkById(fwId || story.framework).id || !resolveBeatKey(key) || st.beat === key) return false;
+  moveOutlineStep(story, st.id, { beat: key });
+  st.syncedBeat = st.beat;
+  saveStory(story);
+  return true;
 }
 
 /* ---- the path (derived, never stored) ------------------------ */

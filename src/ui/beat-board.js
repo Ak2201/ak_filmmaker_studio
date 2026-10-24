@@ -28,11 +28,12 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Scenes from '../lib/scenes.js';
-import { loadStory } from '../lib/story.js';
+import { loadStory, stepsByScene, stepColor, followSceneBeat } from '../lib/story.js';
 import Outline from '../lib/beat-outline.js';
 import { revealTarget } from './tabs.js';
 import StudioUI from './chrome.js';
 import '../styles/beat-board.css';
+import '../styles/beat-color.css';   // a scene's Beat Sheet step colour (owner, 24 Oct 2026)
 
 /* Act hues, from the CATEGORY family (.hue-*), never a phase class:
    an act is a category here, not a stage of the studio. */
@@ -40,6 +41,9 @@ const ACT_HUE = { 1: 'hue-plan', 2: 'hue-feature', 3: 'hue-shoot' };
 const hueOf = (act) => ACT_HUE[act] || 'hue-library';
 
 let ctx = null;
+/* sceneId -> its Beat Sheet step, looked up once per render: the colour
+   lives on the step, never on the scene. */
+let LINKS = new Map();
 const els = () => (ctx && ctx.getDoc() && ctx.getDoc().elements) || [];
 
 function current() {
@@ -89,8 +93,9 @@ function beatSelect(o, sp) {
 
 function sceneCard(o, sp) {
   const s = sp.scene;
-  return h('li.bb-scene', {
-    draggable: 'true', 'data-bb-scene': s.id,
+  const color = stepColor(LINKS.get(s.id));
+  return h('li.bb-scene' + (color ? '.bc-strip.bc-' + color : ''), {
+    draggable: 'true', 'data-bb-scene': s.id, 'data-step-color': color || null,
     'aria-label': sceneTitle(s)
   }, [
     h('span.bb-scene-head', { text: sceneTitle(s) }),
@@ -199,6 +204,7 @@ function navigator(o) {
 export function renderOutline() {
   const section = h('section.wr-section.bb', { id: 'outline', 'data-tab-label': 'Outline' });
   const { story, o, cov } = current();
+  LINKS = stepsByScene(story);
   section.append(
     h('h2.bd-h2', { text: 'Outline' }),
     h('p.bd-sub', {
@@ -284,6 +290,9 @@ function setBeat(sceneId, key) {
   const s = Scenes.listScenes().find((x) => x.id === sceneId);
   if (!s || s.beatId === key) return;
   Scenes.updateScene(sceneId, { beatId: key });
+  /* Its Beat Sheet step follows — only to a beat of the beat sheet this
+     board shows (story.js followSceneBeat); any other beat leaves it. */
+  try { followSceneBeat(sceneId, key, { fwId: current().o.fw.id }); } catch (e) { /* no story */ }
   refresh();
 }
 

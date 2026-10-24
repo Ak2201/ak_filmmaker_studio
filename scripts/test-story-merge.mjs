@@ -30,6 +30,15 @@ const base = {
 };
 delete base.framework2;
 
+/* 1b a step's colour and its scene-sync baseline travel with the step */
+{
+  const mine = clone(base); Object.assign(mine.outline[0], { color: 'pink', sceneId: 's1', synced: 'Ravi opens the shop.', syncedBeat: 'save_the_cat:catalyst', u: 10 });
+  const theirs = clone(base); theirs.outline[1] = { ...st('b', 'The chain arrives, loud.', 12), color: 'blue' };
+  const m = M.mergeStory(mine, theirs, base);
+  eq(m.outline.map((x) => [x.id, x.color || '', x.synced || '']), [['a', 'pink', 'Ravi opens the shop.'], ['b', 'blue', ''], ['c', '', '']], '1b colours and the sync baseline merge with their steps');
+  eq(m.outline[0].sceneId, 's1', '1b the link survives the merge');
+}
+
 /* 1 different steps, two people */
 {
   const mine = clone(base); mine.outline[0] = st('a', 'Ravi opens the shop at dawn.', 10);

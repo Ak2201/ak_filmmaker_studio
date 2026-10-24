@@ -56,6 +56,10 @@ import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk lo
 import { measureEighths } from '../lib/scene-sync.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 import { notesButton, notesPin } from '../ui/notes-button.js';   // sticky notes beside the scene order (owner, 23 Oct 2026)
+import {
+  loadStory, stepsByScene, stepColor, linkStates, reconcileStepScenes, resolveStepScene, restoreStepScene, resolveBeatKey
+} from '../lib/story.js';
+import '../styles/beat-color.css';   // a beat step's colour on its scene (owner, 24 Oct 2026)
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -264,6 +268,48 @@ function rowCounts(scene) {
   }
   return wrap.childNodes.length ? wrap : null;
 }
+/* ---- the Beat Sheet step behind a scene --------------------------
+   A scene sent from the Story page's Beat Sheet is linked by the STEP
+   (step.sceneId); the scene stores nothing about it. Its colour and its
+   beat are looked up once per render (LINK), never copied onto the
+   scene. While the two agree, an edit on either side reaches the other
+   (story.js reconcileStepScenes); when both changed, the row offers the
+   step's text. */
+const SYNC_API = { ...Scenes, listBin: Bin.listBin };
+function syncSteps() {
+  try { return reconcileStepScenes(SYNC_API); } catch (e) { console.warn('[breakdown] step sync', e); return null; }
+}
+let LINK = { byScene: new Map(), states: new Map() };
+function readLinks(scenes) {
+  try {
+    const story = loadStory();
+    LINK = { byScene: stepsByScene(story), states: linkStates(story, scenes, SYNC_API) };
+  } catch (e) { LINK = { byScene: new Map(), states: new Map() }; }
+}
+const clipText = (t, n) => { const x = String(t || ''); return x.length > n ? x.slice(0, n - 1) + '…' : x; };
+/** "Beat: Midpoint", with the step's colour beside it; null when neither. */
+function beatTag(scene) {
+  const st = LINK.byScene.get(scene.id);
+  const color = stepColor(st);
+  const r = resolveBeatKey(scene.beatId);
+  if (!color && !r) return null;
+  return h('span.bc-beat', { 'data-step-color': color || null }, [
+    color ? h('span.bc-swatch.bc-' + color, { 'aria-hidden': 'true' }) : null,
+    h('span', { text: r ? 'Beat: ' + r.beat.label : 'From the Beat Sheet' })
+  ]);
+}
+/** The choice when the scene's synopsis and its step's text both changed. */
+function sceneSyncNote(scene) {
+  const st = LINK.byScene.get(scene.id);
+  const l = st && LINK.states.get(st.id);
+  if (!l || l.action !== 'conflict') return null;
+  return h('p.ss-note', { role: 'status', 'data-ss-scene': scene.id }, [
+    h('span', { text: 'The beat step differs: “' + clipText(st.text, 160) + '”' }),
+    button({ label: 'Use the step’s text', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-step', 'data-step': st.id } }),
+    button({ label: 'Send mine to the step', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-scene', 'data-step': st.id } })
+  ]);
+}
+
 function renderScene(scene, i, total) {
   /* The id is the command palette's target (breakdown.html#scene-…):
      tabs.js picks the tab that holds it and the fragment resolver
@@ -271,8 +317,9 @@ function renderScene(scene, i, total) {
      the page (UX audit M17). */
   const open = SL.open.has(scene.id);
   const status = sceneStatus(scene);
-  const card = h('article.bd-scene.bd-sl' + (open ? '.is-open' : ''), {
-    'data-scene': scene.id, id: 'scene-' + scene.id,
+  const color = stepColor(LINK.byScene.get(scene.id));
+  const card = h('article.bd-scene.bd-sl' + (open ? '.is-open' : '') + (color ? '.bc-' + color : ''), {
+    'data-scene': scene.id, id: 'scene-' + scene.id, 'data-step-color': color || null,
     'data-ie': scene.intExt, 'data-dn': scene.dayNight, 'data-st': status.id,
     'data-find': searchText(scene)
   });
@@ -304,6 +351,8 @@ function renderScene(scene, i, total) {
         'data-scene-field': 'location', 'aria-label': 'Scene location'
       }),
       h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' }),
+      beatTag(scene),
+      sceneSyncNote(scene),
       notesPin({ sceneId: scene.id, label: 'scene ' + (scene.number || i + 1) })
     ]),
     select(INT_EXT, scene.intExt, 'intExt', 'Interior or exterior'),
@@ -426,8 +475,9 @@ function renderSceneCard(scene, i) {
   const off = filterActive();
   const hue = TOD_HUE[scene.dayNight];
   const cast = castSummary(scene);
-  const card = h('article.bd-sl.bd-card' + (hue ? '.hue-' + hue : ''), {
-    'data-scene': scene.id, id: 'scene-' + scene.id, role: 'listitem',
+  const color = stepColor(LINK.byScene.get(scene.id));
+  const card = h('article.bd-sl.bd-card' + (hue ? '.hue-' + hue : '') + (color ? '.bc-strip.bc-' + color : ''), {
+    'data-scene': scene.id, id: 'scene-' + scene.id, role: 'listitem', 'data-step-color': color || null,
     'data-ie': scene.intExt, 'data-dn': scene.dayNight, 'data-st': status.id,
     'data-find': searchText(scene)
   });
@@ -445,6 +495,8 @@ function renderSceneCard(scene, i) {
     ]),
     h('h3.bd-card-slug', { text: scene.location || 'No location yet' }),
     h('p.bd-card-syn' + (scene.synopsis ? '' : '.is-none'), { text: scene.synopsis || 'No synopsis yet' }),
+    beatTag(scene),
+    sceneSyncNote(scene),
     h('div.bd-card-foot', {}, [
       h('span.bd-card-cast' + (cast ? '' : '.is-none'), { text: cast || 'No cast tagged', title: (scene.elements.cast || []).join(', ') || 'No cast tagged yet' }),
       badge({ label: status.label, tone: STATUS_TONE[status.id], dot: true, class: 'bd-sl-status is-' + status.id })
@@ -1000,6 +1052,7 @@ let STATUS = '';
 function render(focus) {
   scriptDoc = null;   // the Script Breakdown tab re-reads the script on every render
   const scenes = Scenes.listScenes();
+  readLinks(scenes);   // each scene's Beat Sheet step: one lookup per render
   const main = h('main', { id: 'main' });
   main.append(renderHeader(scenes));
 
@@ -1622,6 +1675,7 @@ saveOnInput('[data-scene-field]', (el) => {
   if (key === 'number' && !value) return;
   Scenes.updateScene(sceneIdOf(el), { [key]: value });
   if (key === 'number') refreshNumberMarks();
+  if (key === 'synopsis') syncSteps();   // its Beat Sheet step follows while it still agrees
 });
 delegate(document, 'change', '[data-scene-field]', (e, el) => {
   const key = el.dataset.sceneField;
@@ -1640,6 +1694,7 @@ delegate(document, 'change', '[data-scene-field]', (e, el) => {
     return;
   }
   Scenes.updateScene(id, { [key]: sceneValue(el) });
+  if (key === 'synopsis') { syncSteps(); patchSceneSync(id); return; }
   /* Eighths change the card's page figure and the header's totals,
      and nothing else on the page. `change` fires as focus LEAVES the
      field, usually on Tab, so a full render here threw away the field
@@ -1834,7 +1889,43 @@ function wireScriptParts(bb, ch) {
 }
 delegate(document, 'click', '[data-action=run-breakdown-script]', () => manualFlow('#script'));
 
+/* Settle a conflict from the scene's side; Undo puts BOTH back. Redrawn
+   in place (the row's note and synopsis line), so the focus stays. */
+function patchSceneSync(id) {
+  readLinks(Scenes.listScenes());
+  const scene = Scenes.listScenes().find((x) => x.id === id);
+  for (const row of document.querySelectorAll('[data-scene="' + CSS.escape(id) + '"]')) {
+    const old = row.querySelector('.ss-note');
+    const next = scene ? sceneSyncNote(scene) : null;
+    if (old && next) old.replaceWith(next);
+    else if (old) old.remove();
+    else if (next) {
+      const foot = row.querySelector('.bd-card-foot');
+      const where = row.querySelector('.bd-sl-where');
+      if (foot) foot.before(next); else if (where) where.append(next);
+    }
+    const syn = row.querySelector('.bd-sl-syn, .bd-card-syn');
+    if (syn && scene) syn.textContent = scene.synopsis || 'No synopsis yet';
+  }
+}
+delegate(document, 'click', '[data-ss]', (e, el) => {
+  const act = el.getAttribute('data-ss');
+  const snap = resolveStepScene(SYNC_API, el.getAttribute('data-step'), act === 'use-scene' ? 'scene' : 'step');
+  if (!snap) return;
+  render();
+  StudioUI.toast(act === 'use-step' ? 'The scene has the step’s text now.' : 'The step has this scene’s text now.', {
+    action: 'Undo', onAction: () => { restoreStepScene(SYNC_API, snap); render(); }
+  });
+});
+/* Back to this tab after the Story page changed a step in another one. */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  syncSteps();
+  if (!(document.activeElement && /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement.tagName))) render();
+});
+
+syncSteps();   // a step edited on the Story page since the last visit reaches its scene
 render();
 
 /* A sticky note sent into a scene's synopsis from the notes dock. */
-document.addEventListener('notes:changed', (e) => { if (e.detail && e.detail.scene) render(); });
+document.addEventListener('notes:changed', (e) => { if (e.detail && e.detail.scene) { syncSteps(); render(); } });

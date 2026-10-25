@@ -1,0 +1,239 @@
+/* ============================================================
+   STICKY NOTES — the dock (notes-dock.js), the card (note-card.js),
+   the chips on beats and scenes (notes-button.js) and the board
+   (vault.html, idea-vault.js)
+   ------------------------------------------------------------
+   A note is paper in one of five --note-* stocks with --note-ink; the
+   controls under it sit on the app's own dark surface, so every kit
+   button and select keeps the contrast it was measured at. Shapes are
+   --sk-*, every move is × --motion, no literal colour.
+   ============================================================ */
+
+/* ---- the card --------------------------------------------------- */
+.nt-list, .nt-board { list-style: none; margin: 0; padding: 0; }
+.nt-list { display: grid; gap: var(--s3); }
+
+.nt-card {
+  --nt-stock: var(--note-yellow);
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  border-radius: var(--sk-radius, var(--radius));
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  background: var(--surface-card);
+  overflow: hidden;
+  box-shadow: var(--paper-page-shadow);
+  transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+.nt-yellow { --nt-stock: var(--note-yellow); }
+.nt-pink   { --nt-stock: var(--note-pink); }
+.nt-blue   { --nt-stock: var(--note-blue); }
+.nt-green  { --nt-stock: var(--note-green); }
+.nt-violet { --nt-stock: var(--note-violet); }
+
+.nt-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3) 0;
+  background: var(--nt-stock);
+  color: var(--note-ink);
+}
+.nt-date { margin-inline-start: auto; font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--note-muted); }
+
+/* The text: paper on the note's stock. Tripled like paper-field.css so
+   it out-ranks the paper rule it refines (same specificity, later). */
+:root .nt-card .nt-text.nt-text.nt-text {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 6.5em;
+  resize: vertical;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--nt-stock);
+  color: var(--note-ink);
+  caret-color: var(--note-ink);
+  padding: var(--s2) var(--s3) var(--s3);
+  font-size: var(--t-small);
+}
+:root .nt-card .nt-text.nt-text.nt-text:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: -3px; }
+
+.nt-pin {
+  margin: 0;
+  width: 100%;
+  border-radius: 0;
+  border-inline: 0;
+  border-bottom: 0;
+}
+.nt-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s2);
+  background: var(--surface-elevated);
+}
+
+/* ---- colour dots ------------------------------------------------ */
+.nt-colors { display: flex; gap: var(--s1); }
+.nt-dot {
+  inline-size: 18px;
+  block-size: 18px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--paper-page-rule);
+  cursor: pointer;
+}
+@media (pointer: coarse) { .nt-dot { inline-size: 28px; block-size: 28px; } }
+.nt-dot-yellow { background: var(--note-yellow); }
+.nt-dot-pink   { background: var(--note-pink); }
+.nt-dot-blue   { background: var(--note-blue); }
+.nt-dot-green  { background: var(--note-green); }
+.nt-dot-violet { background: var(--note-violet); }
+.nt-dot[aria-pressed="true"], .nt-dot[aria-checked="true"] {
+  box-shadow: 0 0 0 2px var(--surface-canvas), 0 0 0 4px var(--accent-primary);
+}
+.nt-dot:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
+
+/* ---- the new-note box ------------------------------------------ */
+.nt-add { display: grid; gap: var(--s2); }
+.nt-add .nt-new { width: 100%; box-sizing: border-box; }
+.nt-add-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+
+.nt-ctx, .nt-empty, .nt-foot { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
+
+/* ---- the grip (board) ------------------------------------------- */
+.nt-grip {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--note-muted);
+  cursor: grab;
+  touch-action: none;
+  min-inline-size: 24px;
+  min-block-size: 24px;
+}
+@media (pointer: coarse) { .nt-grip { min-inline-size: 44px; min-block-size: 44px; } }
+.nt-grip:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); }
+.nt-card.is-dragging { opacity: .55; }
+.nt-card.is-drop-before { box-shadow: inset 4px 0 0 var(--accent-primary), var(--paper-page-shadow); }
+
+/* ---- the dock --------------------------------------------------- */
+.nt-dock {
+  position: fixed;
+  z-index: calc(var(--z-overlay) - 1);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  inset: auto 0 var(--mab-h, 0px) 0;
+  height: min(80dvh, 680px);
+  background: var(--sk-card-bg, var(--surface-card));
+  color: var(--ink);
+  border-top: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius)) var(--sk-radius, var(--radius)) 0 0;
+  box-shadow: var(--shadow-panel);
+  transition: transform var(--speed) var(--ease), opacity var(--speed) var(--ease);
+}
+.nt-dock[hidden] { display: none; }
+.nt-dock:focus { outline: none; }
+@starting-style {
+  .nt-dock:not([hidden]) { opacity: 0; transform: translateY(calc(24px * var(--motion))); }
+}
+@media (min-width: 1100px) {
+  .nt-dock {
+    inset: var(--sh-chrome-h, 0px) 0 0 auto;
+    width: min(380px, 34vw);
+    height: auto;
+    border-top: 0;
+    border-radius: 0;
+    border-inline-start: var(--sk-card-line-w, 1px) solid var(--rule);
+  }
+  @starting-style {
+    .nt-dock:not([hidden]) { transform: translateX(calc(32px * var(--motion))); }
+  }
+  html.nt-dock-open main { margin-inline-end: var(--nt-dock-w, 0px); }
+  html.nt-dock-open.nt-dock-open .toast-host { right: calc(var(--nt-dock-w, 0px) + var(--s4)); }
+}
+.nt-dock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: var(--sk-deco-rule-w, 1px) solid var(--rule);
+}
+.nt-dock-title { margin: 0; font-family: var(--f-display); font-size: var(--t-lg); }
+.nt-dock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: var(--s4);
+  padding: var(--s4);
+}
+
+/* ---- the header button and the pinned chips --------------------- */
+.nt-open .nt-count:empty { display: none; }
+.nt-open .nt-count {
+  min-inline-size: 1.5em;
+  padding: 0 var(--s1);
+  border-radius: var(--radius-pill);
+  background: var(--surface-elevated);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  text-align: center;
+}
+.nt-slot:empty { display: none; }
+.nt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px var(--s2);
+  border: 1px solid var(--paper-page-rule);
+  border-radius: var(--radius-pill);
+  background: var(--note-yellow);
+  color: var(--note-ink);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  cursor: pointer;
+}
+.nt-chip .sym { font-size: 14px; }
+.nt-chip:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
+@media (pointer: coarse) { .nt-chip { min-block-size: 44px; } }
+
+/* ---- the board (vault.html) ------------------------------------- */
+.nt-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--s4);
+  align-items: start;
+}
+.nt-filters { margin-block: var(--s4); }
+.nt-board .st-clip { margin: 0; }
+
+@media print {
+  .nt-dock, .nt-open, .nt-slot, .nt-acts, .nt-pin, .nt-colors, .nt-grip { display: none !important; }
+  .nt-card { box-shadow: none; border-color: var(--print-ink); }
+}
+
+.nt-board-adds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--s4);
+  align-items: start;
+}
+.nt-board-adds .st-vault-panel { margin-bottom: 0; }
+.nt-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.nt-filters .bd-sel { width: auto; max-width: 14rem; }
+
+/* A phone's Screenplay toolbar has no room for the word: icon and count
+   only there (prove:scroll measured 5px of sideways scroll at 390). */
+@media (max-width: 719.98px) {
+  .sc-tools .nt-open > span:not(.nt-count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}

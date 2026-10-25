@@ -358,7 +358,8 @@ eq(S.blankStory().frameworkChosen, false, 'a blank story has chosen no scene ord
 eq(S.suggestedFramework('feature'), 'save_the_cat', 'a feature is laid out against Save the Cat until one is chosen');
 eq(S.suggestedFramework('short'), 'short_five', 'a short film against the Short Five');
 eq(S.effectiveFramework(S.blankStory(), 'short'), 'short_five', 'an unchosen story reads as the format’s suggestion');
-eq(S.effectiveFramework({ ...S.blankStory(), framework: 'story_circle', frameworkChosen: true }, 'short'), 'story_circle', 'a chosen one wins');
+eq(S.effectiveFramework({ ...S.blankStory(), framework: 'story_circle', frameworkChosen: true }, 'feature'), 'story_circle', 'a chosen one wins on a feature');
+eq(S.effectiveFramework({ ...S.blankStory(), framework: 'save_the_cat', frameworkChosen: true }, 'short'), 'short_five', 'a short film is always the five beats (owner, 23 Oct 2026), whatever it chose before');
 {
   mem.set(S.STORY_KEY, JSON.stringify({ v: 1, source: '', marks: [], tension: {}, framework: 'three_act' }));
   eq(S.loadStory().frameworkChosen, false, 'a story saved with the default and nothing laid out against it has chosen none');

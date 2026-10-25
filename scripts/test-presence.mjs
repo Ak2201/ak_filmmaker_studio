@@ -55,5 +55,25 @@ ok(/^Ann and Cal are writing/.test(P.editingWarning([{ name: 'Ann', editing: tru
 ok(/^A, B and C are/.test(P.editingWarning(['A', 'B', 'C'].map((name) => ({ name, editing: true })))), 'three people');
 eq(P.editingWarning([]), '', 'nobody: no warning');
 
+/* One channel carries both pages: a Story tab is not in the script, and the reverse. */
+{
+  const raw = {
+    me: [{ name: 'Me', at: 1 }],
+    cal: [{ name: 'Cal', elId: 'e1', at: 5 }, { name: 'Cal', page: 'story', step: 's2', editing: true, at: 9 }],
+    ann: [{ name: 'Ann', page: 'story', step: '', at: 3 }],
+    old: [{ name: 'Old build', elId: 'e2', at: 2 }]
+  };
+  const seen = { cal: Date.now() };
+  eq(P.presencePeople(raw, 'me', seen, Date.now(), 'script').map((p) => [p.name, p.elId]), [['Cal', 'e1'], ['Old build', 'e2']],
+    'the script counts only script tabs (a tab that names no page is the script)');
+  const story = P.presencePeople(raw, 'me', seen, Date.now(), 'story');
+  eq(story.map((p) => [p.name, p.step, p.editing]), [['Ann', '', false], ['Cal', 's2', true]], 'the Story page counts only Story tabs, with their step');
+  eq(P.presencePeople(raw, 'me', seen, Date.now()).length, 3, 'no page given: every tab, as before');
+  eq(P.storyPresenceLine(story, (id) => (id === 's2' ? 3 : 0)), 'Also here: Ann, Cal (editing step 3).', 'the Story line names the step by this page\'s number');
+  eq(P.storyPresenceLine([{ name: 'Cal', step: 'gone', editing: false }], () => 0), 'Also here: Cal.', 'a step this page does not have is not named');
+  eq(P.storyPresenceLine([{ name: 'Cal', step: 's1', editing: false }], () => 1), 'Also here: Cal (on step 1).', 'on a step, not typing');
+  eq(P.storyPresenceLine([], () => 0), '', 'nobody: no line');
+}
+
 console.log((fail ? '✗' : '✓') + ' test-presence: ' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

@@ -51,6 +51,7 @@
 import nav from '../data/navigation.json';
 import PATHS from '../data/story-paths.json';
 import { region } from './region.js';
+import Store from './store.js';
 import { STAY_PAGES, STAGE_PAGES, homeStage, stageLead, stageAllLocked } from './nav-stage.js';
 
 /* STAY_PAGES and STAGE_PAGES moved to nav-stage.js (pure, so journey.js
@@ -74,11 +75,15 @@ export function inRegion(entry, r) {
    it: `sections` in navigation.json, or `sectionsFrom: "story-paths"`
    for the Story path, whose steps live in story-paths.json and are not
    typed twice. A section is not a module: it has no plan id, is not
-   counted, and is gated with its module. */
+   counted, and is gated with its module.
+   The Story path is the OPEN PROJECT'S: a short film lists the short's
+   steps, never the feature's (owner, 23 Oct 2026: a short keeps to the
+   short-film flow). */
+const pathKey = () => { try { const p = Store.currentProject && Store.currentProject(); return p && p.format === 'short' ? 'short' : 'feature'; } catch (e) { return 'feature'; } };
 export function moduleSections(m) {
   if (!m) return [];
   if (m.sectionsFrom === 'story-paths') {
-    return (PATHS.feature || []).map((st) => ({ id: 'path-' + st.id, label: st.label, sym: st.sym || '', purpose: '' }));
+    return (PATHS[pathKey()] || PATHS.feature || []).map((st) => ({ id: 'path-' + st.id, label: st.label, sym: st.sym || '', purpose: '' }));
   }
   return Array.isArray(m.sections) ? m.sections : [];
 }

@@ -162,8 +162,7 @@
       "channel": null,
       "minutes": null,
       "for": [
-        "step:feature/step-08",
-        "step:short/step-04"
+        "step:feature/step-08"
       ],
       "why": "Walks through all 15 beats; matches step 08 directly.",
       "fit": 5,

@@ -45,7 +45,8 @@ const els = (d) => (d && Array.isArray(d.elements) ? d.elements : []);
 const stamp = (e) => Number(e && e.u) || 0;
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-function pick3(local, remote, base, hasBase) {
+/* Exported for story-merge.js, which merges the story's scalars the same way. */
+export function pick3(local, remote, base, hasBase) {
   if (same(local, remote)) return remote;
   if (hasBase) {
     const lc = !same(local, base), rc = !same(remote, base);
@@ -80,6 +81,7 @@ export function mergeElements(L, R, B) {
   const out = [];
   const placed = new Set();
   for (const r of R) {
+    if (placed.has(r.id)) continue;               // one id, one element: a copy holding it twice is put right
     const e = keep(r.id);
     if (e) { out.push(e); placed.add(r.id); }
   }

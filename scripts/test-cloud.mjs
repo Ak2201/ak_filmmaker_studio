@@ -537,6 +537,163 @@ const T09 = Date.parse('2026-10-20T09:00:00Z');
   ok(!st5.known && st5.missing, 'but a missing function (§55 absent) does replace it — ' + JSON.stringify(st5));
 }
 
+/* ================================================================
+   THE SHARED BEAT SHEET — the story scope merges only with §49 on
+   ================================================================ */
+{
+  const T1 = Date.parse('2026-10-24T09:00:00Z'), T2 = Date.parse('2026-10-24T11:00:00Z'), T3 = Date.parse('2026-10-24T12:00:00Z');
+  const step = (id, text, u) => ({ id, beat: 'save_the_cat:catalyst', text, u });
+  const LOCAL = JSON.stringify({ v: 1, source: 'S', outline: [step('a', 'Shared step', 1), step('mine', 'Written here', 100)], marks: [] });
+  const SERVER = { v: 1, source: 'S', outline: [step('a', 'Shared step', 1), step('theirs', 'Written there', 200)], marks: [] };
+  const storyCase = async (coEdit) => {
+    projects = [{ id: 'pK', title: 'K', format: 'feature', ns: ['uA'], updatedAt: '2026-10-24T09:00:00Z' }];
+    accountNs = 'uA'; currentPid = 'pK';
+    openGate();
+    raw.set('fms_story_v1__pK', LOCAL);
+    raw.set(META_KEY, JSON.stringify({ 'pK::story': { local: T1, remote: T1 } }));
+    raw.set(SALVAGE_KEY, '[]');
+    raw.delete(QUEUE_KEY);
+    dbHandler = (table, ops) => {
+      if (table === 'rpc:co_editing_enabled') return { data: coEdit, error: null };
+      if (table === 'project_data' && ops.some(([k]) => k === 'select') && !ops.some(([k]) => k === 'upsert'))
+        return { data: [{ scope: 'story', data: SERVER, updated_at: new Date(T2).toISOString() }], error: null };
+      return emptyDb(table, ops);
+    };
+    for (const k of Object.keys(subs)) delete subs[k];
+    const C = await load({ uid: 'uA' });
+    await C.pullProjectData('pK');
+    return { C, ids: (JSON.parse(raw.get('fms_story_v1__pK') || '{}').outline || []).map((s) => s.id) };
+  };
+  const off = await storyCase(false);
+  eq(off.ids, ['a', 'theirs'], 'switch OFF: the story is last write wins — the newer server copy replaces this one');
+  ok((raw.get(SALVAGE_KEY) || '').includes('Written here'), 'switch OFF: the displaced local story is in the salvage ring, as before');
+  const on = await storyCase(true);
+  eq(on.ids, ['a', 'mine', 'theirs'], 'switch ON: the two copies of the story merge step by step');
+  ok(on.C.coEditingKnown() === true, 'switch ON: coEditingKnown() says so');
+
+  /* A base that outlives the page: a copy RECEIVED and not edited since
+     lets a later page tell their delete from a step new here. */
+  const received = JSON.stringify(SERVER);
+  const reload = async (withRh) => {
+    raw.set('fms_story_v1__pK', received);
+    const meta = { 'pK::story': { local: T2, remote: T2 } };
+    if (withRh) {
+      // what markReceived() records: let a pull of the same copy write it
+      raw.set(META_KEY, JSON.stringify(meta));
+      dbHandler = (table, ops) => table === 'rpc:co_editing_enabled' ? { data: true, error: null }
+        : (table === 'project_data' && ops.some(([k]) => k === 'select')) ? { data: [{ scope: 'story', data: SERVER, updated_at: new Date(T2).toISOString() }], error: null }
+        : emptyDb(table, ops);
+      for (const k of Object.keys(subs)) delete subs[k];
+      const C0 = await load({ uid: 'uA' });
+      await C0.pullProjectData('pK');
+      ok(JSON.parse(raw.get(META_KEY))['pK::story'].rh, 'a copy received from the server is fingerprinted (rh)');
+    } else raw.set(META_KEY, JSON.stringify(meta));
+    const DELETED = { ...SERVER, outline: [SERVER.outline[0]] };   // they removed 'theirs'
+    dbHandler = (table, ops) => table === 'rpc:co_editing_enabled' ? { data: true, error: null }
+      : (table === 'project_data' && ops.some(([k]) => k === 'select')) ? { data: [{ scope: 'story', data: DELETED, updated_at: new Date(T3).toISOString() }], error: null }
+      : emptyDb(table, ops);
+    for (const k of Object.keys(subs)) delete subs[k];
+    const C = await load({ uid: 'uA' });       // a new page: no in-memory base
+    await C.pullProjectData('pK');
+    return (JSON.parse(raw.get('fms_story_v1__pK') || '{}').outline || []).map((s) => s.id);
+  };
+  eq(await reload(true), ['a'], 'a new page whose copy is the one last received honours their delete');
+  eq(await reload(false), ['a', 'theirs'], 'without that proof, a new page deletes nothing');
+}
+
+/* ================================================================
+   QA ROUND 2 — a step deleted by the collaborator who did not add it
+   stays deleted (no push ping-pong), and a keystroke on its debounce
+   is saved BEFORE an arrival is merged
+   ================================================================ */
+{
+  const T1 = Date.parse('2026-10-24T09:00:00Z'), T2 = Date.parse('2026-10-24T10:00:00Z'), T3 = Date.parse('2026-10-24T11:00:00Z');
+  const step = (id, text, u) => ({ id, beat: 'save_the_cat:catalyst', text, u });
+  const BASE = { v: 1, source: 'S', outline: [step('a', 'Shared step', 1)], marks: [] };
+  const MINE = { ...BASE, outline: [step('a', 'Shared step', 1), step('S', 'Added here', 50)] };
+  let upserted = null, serverRow = null;
+  const device = async () => {
+    projects = [{ id: 'pD', title: 'D', format: 'feature', ns: ['uA'], updatedAt: '2026-10-24T09:00:00Z' }];
+    accountNs = 'uA'; currentPid = 'pD';
+    openGate();
+    upserted = null; serverRow = null;
+    raw.set('fms_story_v1__pD', JSON.stringify(MINE));
+    raw.set(META_KEY, JSON.stringify({ 'pD::story': { local: T1, remote: 0 } }));
+    raw.set(SALVAGE_KEY, '[]');
+    raw.delete(QUEUE_KEY);
+    dbHandler = (table, ops) => {
+      if (table === 'rpc:co_editing_enabled') return { data: true, error: null };
+      const up = ops.find(([k]) => k === 'upsert');
+      if (table === 'project_data' && up) { if (up[1].project_id === 'pD') upserted = up[1]; return { data: null, error: null }; }
+      if (table === 'project_data' && ops.some(([k]) => k === 'select')) return { data: serverRow ? [serverRow] : [], error: null };
+      return emptyDb(table, ops);
+    };
+    for (const k of Object.keys(subs)) delete subs[k];
+    const C = await load({ uid: 'uA' });
+    raw.set(QUEUE_KEY, JSON.stringify([{ kind: 'upsert', projectId: 'pD', scope: 'story', uid: 'uA', ts: T1 }]));
+    await C.flushQueue();                          // A pushes the step it added
+    return C;
+  };
+  const ids = () => (JSON.parse(raw.get('fms_story_v1__pD') || '{}').outline || []).map((x) => x.id);
+  let C = await device();
+  const mine = upserted && upserted.data && upserted.data._sync;
+  ok(!!(mine && mine.id) && mine.seen == null, 'a co-edited push names itself, and has received nothing yet — ' + JSON.stringify(mine));
+  ok(!('_sync' in JSON.parse(raw.get('fms_story_v1__pD'))), 'the local copy never carries the sync note');
+  // B received that push, deleted S and pushed: its row says it had seen A's push
+  serverRow = { scope: 'story', data: { ...BASE, _sync: { id: 'pushB1', seen: mine && mine.id } }, updated_at: new Date(T2).toISOString() };
+  await C.pullProjectData('pD');
+  eq(ids(), ['a'], 'their delete of a step added HERE sticks once their copy was built on my push');
+  ok(!raw.get('fms_story_v1__pD').includes('_sync'), 'the arrival’s sync note is stripped before it is stored');
+  upserted = null;
+  await C.pullProjectData('pD');
+  await wait(400);                               // a merge that differs pushes 250ms later
+  eq([ids(), upserted], [['a'], null], 'and nothing is pushed back: the two copies agree (no ping-pong)');
+  // A's next push says it received B's
+  raw.set('fms_story_v1__pD', JSON.stringify({ ...BASE, source: 'S, edited' }));
+  raw.set(META_KEY, JSON.stringify({ 'pD::story': { local: T3, remote: T2 } }));
+  raw.set(QUEUE_KEY, JSON.stringify([{ kind: 'upsert', projectId: 'pD', scope: 'story', uid: 'uA', ts: T3 }]));
+  await C.flushQueue();
+  eq(upserted && upserted.data._sync && upserted.data._sync.seen, 'pushB1', 'a later push names the push it received last');
+  // the control: a copy NOT built on my push (an older build, a writer who never saw it) deletes nothing
+  C = await device();
+  serverRow = { scope: 'story', data: { ...BASE, _sync: { id: 'pushB2', seen: 'somebody-else' } }, updated_at: new Date(T2).toISOString() };
+  await C.pullProjectData('pD');
+  eq(ids(), ['a', 'S'], 'a copy that never saw my push does not delete what I added');
+  C = await device();
+  serverRow = { scope: 'story', data: BASE, updated_at: new Date(T2).toISOString() };
+  await C.pullProjectData('pD');
+  eq(ids(), ['a', 'S'], 'nor does one with no sync note at all');
+
+  /* typing on its debounce is saved before the merge reads the copy */
+  const RECEIVED = { v: 1, source: 'S', outline: [step('a', 'Shared step', 1), step('sb', 'Ravi wins the street over.', 2)], marks: [] };
+  const reloadWith = async (typing) => {
+    raw.set('fms_story_v1__pD', JSON.stringify(RECEIVED));
+    raw.set(META_KEY, JSON.stringify({ 'pD::story': { local: T1, remote: T1 } }));
+    dbHandler = (table, ops) => table === 'rpc:co_editing_enabled' ? { data: true, error: null }
+      : (table === 'project_data' && ops.some(([k]) => k === 'select')) ? { data: [{ scope: 'story', data: RECEIVED, updated_at: new Date(T1).toISOString() }], error: null }
+      : emptyDb(table, ops);
+    for (const k of Object.keys(subs)) delete subs[k];
+    const D = await load({ uid: 'uA' });
+    await D.pullProjectData('pD');             // the received copy is fingerprinted: it is a base
+    const order = [];
+    if (typing) F.Store.subscribe('cloud:incoming', (p) => {   // what story.html does: flush the debounce
+      order.push(p.scope);
+      const cur = JSON.parse(raw.get('fms_story_v1__pD'));
+      cur.outline.find((x) => x.id === 'sb').text += ' typing';
+      cur.outline.find((x) => x.id === 'sb').u = Date.now();
+      raw.set('fms_story_v1__pD', JSON.stringify(cur));
+    });
+    dbHandler = (table, ops) => table === 'rpc:co_editing_enabled' ? { data: true, error: null }
+      : (table === 'project_data' && ops.some(([k]) => k === 'select')) ? { data: [{ scope: 'story', data: { ...RECEIVED, outline: [RECEIVED.outline[0]] }, updated_at: new Date(T2).toISOString() }], error: null }
+      : emptyDb(table, ops);
+    await D.pullProjectData('pD');             // the collaborator deleted sb
+    return { order, story: JSON.parse(raw.get('fms_story_v1__pD')) };
+  };
+  const typed = await reloadWith(true);
+  eq(typed.order, ['story'], 'an arrival says cloud:incoming before it reads the local copy');
+  eq((typed.story.outline.find((x) => x.id === 'sb') || {}).text, 'Ravi wins the street over. typing', 'so the step being typed in survives their delete, with the typing');
+}
+
 function Store_save(key) { F.Store.notify('saved', { key }); }
 
 console.log(`test:cloud — ${pass} passed, ${fail} failed`);

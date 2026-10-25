@@ -363,6 +363,19 @@ console.log('✓ §56 loads (and re-runs cleanly)');
 runChecks('usd-checkout.sql');
 /* --- end §56 --- */
 
+/* --- §57 (the year on the invoice) --- the seed is a purchase made
+   before §57, so the backfill has an invoice with no year; loaded twice
+   to prove the backfill and the trigger restatement re-run cleanly. --- */
+r = psql(['-f', 'scripts/schema-tests/invoice-year-seed.sql']);
+if (r.status !== 0) fail('invoice-year-seed.sql did not load', r);
+for (const f of ['supabase/schema/schema-57-invoice-year.sql', 'supabase/schema/schema-57-invoice-year.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §57 loads (and re-runs cleanly)');
+runChecks('invoice-year.sql');
+/* --- end §57 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

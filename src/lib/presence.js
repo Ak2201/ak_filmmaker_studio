@@ -51,12 +51,17 @@ export function initials(name) {
  *   selfKey   this user's key (left out: you know you are here)
  *   lastSeen  { [key]: ms } when this page last saw that person's `at` change
  *   now       ms
+ *   page      'script' | 'story' — only tabs on that page; '' = every tab
  * → [{ key, name, elId, pos, editing }]   pos: the caret's offset in that
  *   line, or null when the other page did not say (an older build)
  */
-export function presencePeople(raw, selfKey, lastSeen = {}, now = Date.now()) {
+export function presencePeople(raw, selfKey, lastSeen = {}, now = Date.now(), page = '') {
   const out = [];
-  for (const [key, metas] of Object.entries(raw || {})) {
+  for (const [key, all] of Object.entries(raw || {})) {
+    /* One channel per project carries both pages: a tab says which it is
+       on (`page`; none is the screenplay, which never said). Given a
+       page, only that page's tabs count. */
+    const metas = page && Array.isArray(all) ? all.filter((m) => ((m && m.page) || 'script') === page) : all;
     if (key === selfKey || !Array.isArray(metas) || !metas.length) continue;
     const latest = metas.reduce((a, b) => ((Number(b && b.at) || 0) > (Number(a && a.at) || 0) ? b : a), metas[0]) || {};
     const seen = Number(lastSeen[key]) || 0;
@@ -65,6 +70,7 @@ export function presencePeople(raw, selfKey, lastSeen = {}, now = Date.now()) {
       name: String(latest.name || 'A collaborator').slice(0, 80),
       elId: typeof latest.elId === 'string' ? latest.elId : '',
       pos: Number.isInteger(latest.pos) && latest.pos >= 0 ? latest.pos : null,
+      step: typeof latest.step === 'string' ? latest.step : '',
       editing: !!latest.editing && seen > 0 && now - seen < EDIT_WINDOW_MS
     });
   }
@@ -94,4 +100,18 @@ export function editingWarning(people) {
     + 'Saves replace each other, so agree who writes, or take turns.';
 }
 
-export default { EDIT_WINDOW_MS, displayNameOf, initials, presencePeople, noteSeen, editingWarning };
+/** The Story page's line: who else has the beat sheet open, and the step
+ *  each is on. `stepN(id)` is the step's number on THIS page (the number
+ *  is derived, so each page counts its own), or 0 for a step it does not
+ *  have. '' when nobody else is here.
+ *  → "Also here: Cal Collab (editing step 3), Asha Rao." */
+export function storyPresenceLine(people, stepN = () => 0) {
+  const bits = (people || []).map((p) => {
+    const n = p.step ? Number(stepN(p.step)) || 0 : 0;
+    if (!n) return p.name;
+    return p.name + ' (' + (p.editing ? 'editing' : 'on') + ' step ' + n + ')';
+  });
+  return bits.length ? 'Also here: ' + bits.join(', ') + '.' : '';
+}
+
+export default { EDIT_WINDOW_MS, displayNameOf, initials, presencePeople, noteSeen, editingWarning, storyPresenceLine };

@@ -21,6 +21,7 @@
    ============================================================ */
 import Store from './store.js';
 import { mergeScriptRaw } from './script-merge.js';
+import { mergeStoryRaw } from './story-merge.js';
 import { readPrivacy, skipScope, isBudgetScope, UNKNOWN as PRIVACY_UNKNOWN } from './budget-privacy.js';
 /* One constant, for the scope string, so sign-in and the Drive client
    cannot drift apart about what was consented to. drive.js imports
@@ -161,25 +162,74 @@ const MERGE_BY_SCOPE = { write_goals: mergeWriteGoals };
    line (a line coming back beats a line lost). */
 const _base = new Map();
 const baseKey = (pid, scope) => pid + '::' + scope;
-function mergerFor(projectId, scope) {
-  if (scope === 'script') {
+/* THE SCOPES CO-EDITING MERGES, and the list inside each whose items
+   are merged by id (what salvageDropped compares). The story joined the
+   script on 24 Oct 2026: the beat sheet's steps merge by id
+   (src/lib/story-merge.js), behind the same switch. Off, both stay
+   newer-wins exactly as before. */
+const COEDIT = { script: mergeScriptRaw, story: mergeStoryRaw };
+const COEDIT_ITEMS = { script: 'elements', story: 'outline' };
+const coEdits = (scope) => _coEdit === true && Object.prototype.hasOwnProperty.call(COEDIT, scope);
+/* WHAT THE SENDER HAD SEEN (QA round 2). The base above is never this
+   device's own push, so a step added HERE and pushed was never "agreed"
+   here: when the collaborator who received it deleted it, this device
+   read their copy as "a step new on my side", kept it and pushed it
+   back, and the two pushed each other's copy for ever. So a co-edited
+   push now carries `_sync: { id, seen }` inside its data: `id` names
+   this push, `seen` the push this device RECEIVED last (every arrival
+   strips `_sync` before anything reads the row). An arrival whose
+   sender had received exactly this device's last push was built on it,
+   and that push is the base it merges against. Named, never compared
+   as clocks: a stamp is an edit time, and a later stamp does not mean
+   its writer saw an earlier push. An arrival without it (an older
+   build, a writer who was offline and never saw the push) keeps the
+   rule above: nothing this device added is read as deleted there. */
+const SYNC_META = '_sync';
+const _receivedId = new Map();   // baseKey -> the id of the last co-edited push RECEIVED for that scope
+const _pushedCopy = new Map();   // baseKey -> { id, data }: this device's last push of a co-edited scope
+const newPushId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+function unwrapRow(row) {
+  const d = row && row.data;
+  if (!d || typeof d !== 'object' || Array.isArray(d) || !Object.prototype.hasOwnProperty.call(d, SYNC_META)) return { data: d || {}, id: null, seen: null };
+  const { [SYNC_META]: meta, ...data } = d;
+  const str = (x) => (typeof x === 'string' && x ? x : null);
+  return { data, id: str(meta && meta.id), seen: str(meta && meta.seen) };
+}
+function agreedPush(pid, scope, seen) {
+  const p = _pushedCopy.get(baseKey(pid, scope));
+  return p && seen && seen === p.id ? p.data : null;
+}
+function mergerFor(projectId, scope, seen = null) {
+  if (COEDIT[scope]) {
     if (_coEdit !== true) return null;
+    const merge = COEDIT[scope];
     /* `noBase` gives the arrival's own canonical form, to compare the
        merge against: merged against the base, '{}' reads every line the
        base has as cut here, and every arrival looked different. */
     return (localRaw, remote, _localWins, noBase) =>
-      mergeScriptRaw(localRaw, remote, noBase ? null : (_base.get(baseKey(projectId, scope)) || null));
+      merge(localRaw, remote, noBase ? null
+        : (agreedPush(projectId, scope, seen) || _base.get(baseKey(projectId, scope)) || receivedBase(projectId, scope, localRaw) || null));
   }
   return MERGE_BY_SCOPE[scope] || null;
 }
-const noteBase = (pid, scope, data) => { if (scope === 'script') _base.set(baseKey(pid, scope), data); };
-/* A merge that leaves out a line this device had keeps the whole local
-   copy in the salvage list first, as a replace does. */
+const noteBase = (pid, scope, data, pushId) => {
+  if (!COEDIT[scope]) return;
+  _base.set(baseKey(pid, scope), data);
+  if (pushId) _receivedId.set(baseKey(pid, scope), pushId);
+};
+/* AN ARRIVAL IS ABOUT TO BE READ AGAINST THE LOCAL COPY: a page with a
+   keystroke still on its debounce saves it NOW (story.html listens), so
+   the merge sees the stamped edit. Saved after the merge, it landed on a
+   step the arrival had already deleted, and the typing was lost. */
+const announceIncoming = (projectId, scope) => { try { Store.notify('cloud:incoming', { projectId, scope }); } catch (e) { /* a page's listener must not stop a sync */ } };
+/* A merge that leaves out a line (or a step) this device had keeps the
+   whole local copy in the salvage list first, as a replace does. */
 function salvageDropped(pid, scope, localRaw, merged) {
-  if (scope !== 'script') return;
+  const list = COEDIT_ITEMS[scope];
+  if (!list) return;
   try {
-    const kept = new Set((JSON.parse(merged).elements || []).map((e) => e && e.id));
-    if ((JSON.parse(localRaw).elements || []).some((e) => e && e.id && !kept.has(e.id))) salvage(pid, scope, localRaw);
+    const kept = new Set((JSON.parse(merged)[list] || []).map((e) => e && e.id));
+    if ((JSON.parse(localRaw)[list] || []).some((e) => e && e.id && !kept.has(e.id))) salvage(pid, scope, localRaw);
   } catch (e) { /* not JSON: nothing to compare */ }
 }
 /* Self-echo by our OWN last push, not by user id, once co-editing is on:
@@ -354,6 +404,31 @@ function _fingerprint(s) {
 function _isServerCopy(pid, scope, localRaw) {
   const row = _readMeta()[_metaId(pid, scope)];
   return !!row && row.h != null && !(row.local > row.remote) && row.h === _fingerprint(localRaw);
+}
+/* A BASE THAT OUTLIVES THE PAGE, for the scopes named here (the story;
+   the script keeps exactly its old rule). `_base` is in memory, so a
+   page that has just opened has none — and for the story that made a
+   collaborator's synopsis edit read as "both changed" (a kept copy of
+   your OLD text on every visit) and brought back every step they had
+   deleted. `rh` fingerprints the copy last RECEIVED from the server
+   (never one this device pushed: a writer who was offline never saw
+   that, the reason `_base` refuses it too). While the stored copy is
+   still exactly that one and nothing was written here since, it IS the
+   copy both sides last agreed on, and serves as the base. */
+const RECEIVED_BASE = new Set(['story']);
+function markReceived(pid, scope, raw) {
+  if (!RECEIVED_BASE.has(scope) || raw == null) return;
+  const m = _readMeta();
+  const row = m[_metaId(pid, scope)];
+  if (!row) return;
+  row.rh = _fingerprint(raw);
+  _writeMeta(m);
+}
+function receivedBase(pid, scope, localRaw) {
+  if (!RECEIVED_BASE.has(scope) || localRaw == null) return null;
+  const row = _readMeta()[_metaId(pid, scope)];
+  if (!row || row.rh == null || row.local > row.remote || row.rh !== _fingerprint(localRaw)) return null;
+  try { return JSON.parse(localRaw); } catch (e) { return null; }
 }
 
 /* When this device last touched a scope, in epoch ms.
@@ -1483,15 +1558,17 @@ function _applyRemoteRow(projectId, row) {
   if (!localKey) return null;                     // scope this build doesn't know
   const nsKey    = localKey + '__' + projectId;
   const remoteTs = Date.parse(row.updated_at || '') || 0;
+  const { data: rowData, id: pushId, seen } = unwrapRow(row);
+  if (coEdits(row.scope)) announceIncoming(projectId, row.scope);
   const localRaw = Store.rawGet(nsKey);
-  const nextRaw  = JSON.stringify(row.data || {});
+  const nextRaw  = JSON.stringify(rowData);
 
-  const pullMerge = mergerFor(projectId, row.scope);
+  const pullMerge = mergerFor(projectId, row.scope, seen);
   if (pullMerge && localRaw != null && localRaw !== '{}') {
     const localWins = localClock(projectId, row.scope) > remoteTs;
-    const merged = pullMerge(localRaw, row.data || {}, localWins);
-    const remoteCanon = pullMerge('{}', row.data || {}, false, true);
-    noteBase(projectId, row.scope, row.data || {});
+    const merged = pullMerge(localRaw, rowData, localWins);
+    const remoteCanon = pullMerge('{}', rowData, false, true);
+    noteBase(projectId, row.scope, rowData, pushId);
     let wrote = false;
     if (merged !== localRaw) {
       salvageDropped(projectId, row.scope, localRaw, merged);
@@ -1500,6 +1577,7 @@ function _applyRemoteRow(projectId, row) {
       wrote = true;
     }
     markRemoteSeen(projectId, row.scope, remoteTs, merged === remoteCanon);
+    if (merged === remoteCanon) markReceived(projectId, row.scope, merged);
     if (merged !== remoteCanon) { _debouncedPush(projectId, row.scope, 250); return wrote ? 'merged-kept' : 'merged'; }
     return wrote ? 'applied' : 'same';
   }
@@ -1519,6 +1597,8 @@ function _applyRemoteRow(projectId, row) {
   _applyingRemote = true;
   try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
   markRemoteSeen(projectId, row.scope, remoteTs, true, nextRaw);
+  markReceived(projectId, row.scope, nextRaw);
+  if (coEdits(row.scope)) noteBase(projectId, row.scope, rowData, pushId);   // this copy IS the one received
   return 'applied';
 }
 
@@ -1675,10 +1755,14 @@ async function _pushScope(projectId, scope, opts) {
   const stamp = new Date(edited > 0 && edited <= sentAt ? edited : sentAt).toISOString();
   _lastPushedAt.set(baseKey(projectId, scope), stamp);
   setSync(SYNC_STATES.SYNCING, 'Saving to your account…');
+  /* A co-edited push names itself and what it received last (SYNC_META, above). */
+  const tagged = coEdits(scope) && json && typeof json === 'object' && !Array.isArray(json);
+  const pushId = tagged ? newPushId() : null;
+  const sent = tagged ? { ...json, [SYNC_META]: { id: pushId, seen: _receivedId.get(baseKey(projectId, scope)) || null } } : json;
   const { error } = await supabase.from('project_data').upsert({
     project_id: projectId,
     scope: scope,
-    data: json,
+    data: sent,
     updated_at: stamp,
     updated_by: session.user.id
   }, { onConflict: 'project_id,scope' });
@@ -1715,6 +1799,7 @@ async function _pushScope(projectId, scope, opts) {
   // Both clocks now agree on the value this device just sent (unless a
   // save landed during the upsert, which markRemoteSeen keeps).
   markRemoteSeen(projectId, scope, Date.parse(stamp), true, raw);
+  if (pushId) _pushedCopy.set(baseKey(projectId, scope), { id: pushId, data: json });
   /* The value just sent is the newest one, so a queued (perhaps refused)
      copy of this scope has nothing left to say. */
   _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope && _ownsOp(o));
@@ -2164,22 +2249,24 @@ function _onRemoteData(payload) {
   if (!row || !row.scope) return;
   if (session && row.updated_by === session.user.id) {          // self echo
     // …or this person on another device, which co-editing merges.
-    if (!(row.scope === 'script' && _coEdit === true)) return;
+    if (!coEdits(row.scope)) return;
     if (isOwnPush(row)) return;
   }
   const localKey = KEY_BY_SCOPE[row.scope];
   if (!localKey) return;
   const nsKey    = localKey + '__' + row.project_id;
   const remoteTs = Date.parse(row.updated_at || '') || Date.now();
+  const { data: rowData, id: pushId, seen } = unwrapRow(row);
+  if (coEdits(row.scope)) announceIncoming(row.project_id, row.scope);
   const localRaw = Store.rawGet(nsKey);
-  const nextRaw  = JSON.stringify(row.data || {});
+  const nextRaw  = JSON.stringify(rowData);
   if (localRaw === nextRaw) return;
 
-  const merge = mergerFor(row.project_id, row.scope);
+  const merge = mergerFor(row.project_id, row.scope, seen);
   if (merge && localRaw != null && localRaw !== '{}') {
-    const merged = merge(localRaw, row.data || {}, localClock(row.project_id, row.scope) > remoteTs);
-    const remoteCanon = merge('{}', row.data || {}, false, true);
-    noteBase(row.project_id, row.scope, row.data || {});
+    const merged = merge(localRaw, rowData, localClock(row.project_id, row.scope) > remoteTs);
+    const remoteCanon = merge('{}', rowData, false, true);
+    noteBase(row.project_id, row.scope, rowData, pushId);
     if (merged !== localRaw) {
       salvageDropped(row.project_id, row.scope, localRaw, merged);
       _applyingRemote = true;
@@ -2187,6 +2274,7 @@ function _onRemoteData(payload) {
       Store.notify('cloud:synced', { projectId: row.project_id, scope: row.scope });
     }
     markRemoteSeen(row.project_id, row.scope, remoteTs, merged === remoteCanon);
+    if (merged === remoteCanon) markReceived(row.project_id, row.scope, merged);
     if (merged !== remoteCanon) _debouncedPush(row.project_id, row.scope, 250);
     return;
   }
@@ -2206,6 +2294,8 @@ function _onRemoteData(payload) {
     _applyingRemote = false;
   }
   markRemoteSeen(row.project_id, row.scope, remoteTs, true, nextRaw);
+  markReceived(row.project_id, row.scope, nextRaw);
+  if (coEdits(row.scope)) noteBase(row.project_id, row.scope, rowData, pushId);   // this copy IS the one received
   // Re-render visible inputs if blueprint exposes a reload hook
   if (typeof window.loadAll === 'function') {
     try { window.loadAll(); } catch (e) {}
@@ -2609,7 +2699,10 @@ const StudioCloud = {
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
-  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence, coEditingEnabled,
+  /* coEditingKnown was exported but missing here, so a page asking
+     window.StudioCloud (screenplay.js, story.js) always read the switch
+     as OFF; prove:presence faked it onto this object and never saw. */
+  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence, coEditingEnabled, coEditingKnown,
   budgetPrivacy, setBudgetPrivate,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,

@@ -67,6 +67,7 @@ import '../styles/print.css';
 import '../styles/ai.css';
 import '../styles/story.css';
 import '../styles/pdf.css';
+import '../styles/beat-color.css';   // a step's label colour (owner, 24 Oct 2026)
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
@@ -74,6 +75,9 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput, preservingFocus, flushAutosave } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import Scenes from '../lib/scenes.js';
+import { listBin, restoreFromBin } from '../lib/scene-bin.js';
+import { headingInScript } from '../lib/script.js';   // a restored scene whose heading went drops the link
+import { COLORS, COLOR_LABEL } from '../lib/notes-model.js';
 import Pitch from '../lib/pitch-deck.js';
 import {
   projectFormat, storyFormat, pageStory, pct, safeScenes, blueprintIdea, blueprintLogline,
@@ -103,6 +107,8 @@ import Store from '../lib/store.js';
 import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
 import PacingView from '../ui/story-pacing-view.js';   // #pacing: the curve, the intensity, the beat deck — derived
 import { paperTextarea, paperGrow } from '../ui/paper-field.js';   // writing fields are paper (owner, 20 Oct 2026)
+import { notesButton, notesPin } from '../ui/notes-button.js';   // sticky notes beside the path (owner, 23 Oct 2026)
+import { mountStoryPresence } from '../ui/story-presence.js';   // who else is on the shared beat sheet (§48/§49)
 
 const app = document.getElementById('app');
 
@@ -124,6 +130,8 @@ let started = false;      // the start cards were answered this visit
 let undoBuild = null;     // one level: the synopsis before the last build
 let lastSend = null;      // the scene ids the last send created
 let focusStep = '';       // an outline step whose field takes focus next
+let links = new Map();    // stepId -> { action, sceneId, binned } (Story.linkStates), set once per draw
+let sceneText = new Map();   // sceneId -> synopsis, set once per draw
 
 /* The story as the page sees it: the framework in force is the writer's
    choice once made, else the format's suggestion — never a toolbar
@@ -137,14 +145,28 @@ const pathNow = () => Story.pathFor(fmt());
 const stepNow = (id) => Story.pathStepById(id, fmt());
 const suggestedFw = () => Story.suggestedFramework(fmt());
 const progress = (s) => Story.pathProgress(s, { scenes: scenes(), format: fmt() });
-const blueprint = () => IO.readBlueprint('feature');
+const blueprint = () => IO.readBlueprint(fmt());
+/* The samples are feature films laid out under Save the Cat!, so a short
+   film is never offered one (owner, 23 Oct 2026: a short keeps to the
+   short-film flow). */
+const samplesHere = () => (fmt() === 'short' ? [] : SAMPLES);
 const bpIdea = () => blueprintIdea(fmt());
 const bpLogline = () => blueprintLogline(fmt());
 
 /* ---- persistence ---------------------------------------------- */
 
+/* A sent step and its scene stay in step both ways (story.js
+   reconcileStepScenes): run after every save of the story, on the first
+   draw and when a copy arrives. It writes only when something differs,
+   so running it again — or on a save of its own — settles at once. */
+const SYNC_API = { ...Scenes, listBin };
+function syncScenes() {
+  try { return Story.reconcileStepScenes(SYNC_API); } catch (e) { console.warn('[story] scene sync', e); return null; }
+}
+
 function commit(s, { rerender = true } = {}) {
   Story.saveStory(s);
+  syncScenes();
   if (rerender) render();
 }
 
@@ -162,6 +184,7 @@ document.addEventListener('pointerup', () => {
 }, true);
 function commitField(s) {
   Story.saveStory(s);
+  syncScenes();
   if (pointerDown) held = true; else render();
 }
 
@@ -172,9 +195,9 @@ function renderModes() {
   const card = (eyebrow, title, body, control) =>
     h('div.st-mode', {}, [h('p.bd-eyebrow', { text: eyebrow }), h('h2.st-mode-title', { text: title }),
       h('p.st-mode-body', { text: body }), control]);
-  sec.append(card('Sample', 'Start from a sample.',
+  if (samplesHere().length) sec.append(card('Sample', 'Start from a sample.',
     'A sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
-    h('div.st-sample-picks', {}, SAMPLES.map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Use ' + sm.label })))));
+    h('div.st-sample-picks', {}, samplesHere().map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Use ' + sm.label })))));
   sec.append(card('New', 'Start with the idea.',
     'A guided path in four steps: the idea and its logline, the people and the world, a beat sheet, then the synopsis built from it. Every step is on this page; start anywhere.',
     h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'new', text: 'Start the path' })));
@@ -309,8 +332,8 @@ function renderWaysIn() {
   return h('div.st-offer.st-ways', { role: 'group', 'aria-label': 'Three ways in' }, [
     h('p.st-offer-text', {}, [
       h('span.st-example-k', { text: 'Three ways in: ' }),
-      'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file. '
-      + 'Or open the sample film to see a finished one.'
+      'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file.'
+      + (samplesHere().length ? ' Or open the sample film to see a finished one.' : '')
     ]),
     h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'ways-idea', text: 'Start from an idea' }),
     h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' }),
@@ -318,7 +341,7 @@ function renderWaysIn() {
       h('span', { text: 'Import a .docx or .txt' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis from a .docx, .txt or .pdf file' })
     ]),
-    ...SAMPLES.map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Open ' + sm.label }))
+    ...samplesHere().map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Open ' + sm.label }))
   ]);
 }
 
@@ -400,6 +423,10 @@ function watchBlueprintInput() {
   document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.st-bp .step-check li')) note(e); });
 }
 watchBlueprintInput();
+
+/* A sticky note sent into the synopsis from the notes dock: redraw so
+   the synopsis shows it (src/ui/notes-actions.js says which). */
+document.addEventListener('notes:changed', (e) => { if (e.detail && e.detail.story) render(); });
 
 /* One blueprint step of a path step's absorbs, as a host of its own: the
    Idea step asks blueprint step 01 and step 02 in two closed boxes, the
@@ -580,9 +607,14 @@ function renderOutline(s) {
   const o = Story.outlineByBeat(s, s.framework);
   const fw = o.fw;
   const locked = !!s.outlineLockedAt;
+  const sceneRows = scenes();
+  links = Story.linkStates(s, sceneRows, SYNC_API);   // one lookup per draw: each sent step's pair
+  sceneText = new Map(sceneRows.map((x) => [x.id, x.synopsis || '']));
   const sec = h('section#path-outline.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Beat Sheet' }, stepHead('outline', 'Beat Sheet',
     'What happens, beat by beat: one or two lines a step, numbered as you go. Add, reorder and move steps between beats as the story finds its shape.'));
-  if (!s.frameworkChosen) {
+  if (short) {
+    sec.append(h('p.st-using', { text: 'A short film keeps to the ' + fw.label + ': ' + fw.beats.map((b) => b.label).join(', ') + '.' }));
+  } else if (!s.frameworkChosen) {
     sec.append(h('p.st-using', {}, [
       'Using ' + fw.label + ' until you choose a beat sheet. ',
       h('button.st-link', { type: 'button', 'data-st': 'open-fw', text: 'Choose one' })
@@ -609,7 +641,7 @@ function renderOutline(s) {
       ? `${todo} step${todo === 1 ? '' : 's'} to send · ${sent} already ha${sent === 1 ? 's' : 've'} a scene`
       : 'Write a step or two, then send them: one placeholder scene each, so the Breakdown and the Stripboard have the shape of the story before a page is written.' })
   ].filter(Boolean));
-  sec.append(h('div.st-bs-head', {}, [renderFwPicker(s), h('div.st-bs-actions', {}, [lockRow, sendRow])]));
+  sec.append(h('div.st-bs-head', {}, [short ? null : renderFwPicker(s), h('div.st-bs-actions', {}, [lockRow, sendRow])]));
 
   if (locked) {
     sec.append(h('p.st-locked', { role: 'status' }, [
@@ -622,7 +654,10 @@ function renderOutline(s) {
     h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
     ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} unassigned` : '')
   ]));
-  const bp = fw.id === 'save_the_cat' && fmt() === 'feature' ? blueprint() : null;
+  /* The blueprint's own beat answers beside the beats: the feature's
+     step 08 under Save the Cat!, the short's step 04 under its five. */
+  const bpNs = short ? 'short' : 'feature';
+  const bp = fw.id === IO.BLUEPRINT_BEATS[bpNs].fw ? blueprint() : null;
   const beatOpts = (sel) => {
     const opts = [h('option', { value: '', text: 'Move to beat…' })];
     fw.beats.forEach((b) => opts.push(h('option', { value: Story.qualifyBeat(fw.id, b.id), text: b.label, selected: Story.qualifyBeat(fw.id, b.id) === sel })));
@@ -634,13 +669,14 @@ function renderOutline(s) {
     const li = h('li.st-ol-beat' + (r.steps.length ? '' : '.is-empty'), { 'data-beat-card': r.key });
     const head = h('div.st-ol-head', {}, [
       h('h3.st-ol-name', { text: r.beat.label }),
+      notesPin({ beat: r.key, label: r.beat.label }),
       h('span.st-beat-at', { text: (r.act !== act ? 'Act ' + r.act + ' · ' : '') + '~' + pct(r.beat.at) })
     ]);
     act = r.act;
     li.append(head);
     li.append(h('p.st-beat-prompt', { text: r.beat.prompt }));
     if (bp) {
-      const v = IO.blueprintBeatText('feature', r.beat.id, bp);
+      const v = IO.blueprintBeatText(bpNs, r.beat.id, bp);
       if (v) li.append(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your beat note: ' }), '“' + v + '”']));
     }
     if (r.steps.length) {
@@ -676,7 +712,9 @@ function renderOutline(s) {
     un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under a beat of ' + fw.short + '.' }));
     sec.append(un);
   } else {
-    un.append(h('p.st-muted', { text: 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
+    un.append(h('p.st-muted', { text: short
+      ? 'These steps were written under another beat sheet before this film kept to the five beats. They are kept as they are; file each one under one of the five.'
+      : 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
     if (o.unplaced.some((u) => u.suggest) && !locked) {
       un.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'file-all', text: 'File all by position' }));
     }
@@ -710,15 +748,47 @@ function renderOutline(s) {
   return sec;
 }
 
+/* A sent step whose scene changed too, or went to the bin: the choice,
+   on the row. Nothing is written until one is pressed. A LOCKED
+   outline still says so, and offers only what leaves the step as it is. */
+function stepSyncNote(st, locked = false) {
+  const l = links.get(st.id);
+  if (!l) return null;
+  if (l.action === 'conflict') {
+    return h('p.ss-note', { role: 'status', 'data-ss-step': st.id }, [
+      h('span', { text: 'The scene’s synopsis differs: “' + clip(sceneText.get(l.sceneId) || '', 160) + '”' }),
+      locked ? null : button({ label: 'Use the scene’s text', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-scene', 'data-step': st.id } }),
+      button({ label: 'Send mine to the scene', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'use-step', 'data-step': st.id } })
+    ].filter(Boolean));
+  }
+  if (l.action === 'gone') {
+    return h('p.ss-note', { role: 'status', 'data-ss-step': st.id }, [
+      h('span', { text: l.binned ? 'Its scene is in the bin.' : 'Its scene is no longer in the scene list.' }),
+      locked ? null : button({ label: l.binned ? 'Restore it' : 'Send again', variant: 'secondary', size: 'sm', attrs: { 'data-ss': 'resend', 'data-step': st.id } })
+    ].filter(Boolean));
+  }
+  return null;
+}
+
 function renderStepRow(st, opts, first, last, unplaced = false, locked = false) {
-  const li = h('li.st-ol-step', { 'data-step-row': st.id });
+  const color = Story.stepColor(st);
+  const li = h('li.st-ol-step' + (color ? '.bc-strip.bc-' + color : ''), { 'data-step-row': st.id, 'data-color': color || null });
   const fid = 'stStep_' + st.id;
   li.append(h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }));
   const ta = paperGrow(paperTextarea('#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null }));
   ta.value = st.text;
   li.append(ta);
+  const note = stepSyncNote(st, locked);
+  if (note) li.append(note);
   if (locked) return li;
   const ctl = h('div.st-ol-ctl');
+  /* The five label colours, the sticky notes' own (one press sets,
+     pressing the lit one clears). What they mean is the writer's. */
+  ctl.append(h('div.st-ol-colors', { role: 'group', 'aria-label': 'Colour for step ' + st.n },
+    COLORS.map((c) => h('button.nt-dot.nt-dot-' + c, {
+      type: 'button', 'data-st': 'step-color', 'data-step': st.id, 'data-color': c,
+      'aria-pressed': String(color === c), 'aria-label': COLOR_LABEL[c], title: color === c ? COLOR_LABEL[c] + ' (press to clear)' : COLOR_LABEL[c]
+    }))));
   if (!unplaced) {
     ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-up', 'data-step': st.id, disabled: first, 'aria-label': 'Move step ' + st.n + ' up', text: 'Up' }));
     ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-down', 'data-step': st.id, disabled: last, 'aria-label': 'Move step ' + st.n + ' down', text: 'Down' }));
@@ -753,10 +823,104 @@ function renderSynopsisStep(s) {
     ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
     : '' }));
   if (s.source.trim()) sec.append(synopsisFigures(s));
+  { const kept = renderSourceConflicts(s); if (kept) sec.append(kept); }   // texts kept when two copies met
   sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
   sec.append(renderPacing(s));
   put(sec, earlierLadder('synopsis', 'Treatment: from synopsis to one-pager to treatment (treatment ladder, rungs 2–4)', [], { boxId: 'st-treatment' }));
   return sec;
+}
+
+/* ---- texts kept when two copies of the synopsis met -----------
+   With co-editing on, two people who both changed the synopsis prose
+   cannot be merged by sentence: the arriving text became the synopsis
+   and the one written here was kept (story-merge.js). Each is offered
+   back, word for word, until it is used or dismissed. */
+function renderSourceConflicts(s) {
+  const kept = Story.sourceConflicts(s);
+  if (!kept.length) return null;
+  const box = h('section.st-kept', { 'aria-label': 'Other versions of the synopsis' });
+  box.append(h('h3.bd-h2', { text: kept.length === 1 ? 'Another version of the synopsis' : 'Other versions of the synopsis' }));
+  box.append(h('p.st-muted', { text: 'Two versions of the synopsis met. One is the synopsis now; the text below was kept so nothing is lost. Use it, or dismiss it.' }));
+  for (const c of kept) {
+    const when = Number(c.at) ? new Date(Number(c.at)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    box.append(h('div.st-kept-item', { 'data-kept': c.id }, [
+      when ? h('p.st-kept-when', { text: 'Kept ' + when }) : null,
+      h('p.st-kept-text', { text: c.text }),
+      h('div.st-kept-ctl', {}, [
+        button({ label: 'Use this text', variant: 'secondary', size: 'sm', attrs: { 'data-st-kept': 'use', 'data-kept-id': c.id } }),
+        button({ label: 'Dismiss', variant: 'ghost', size: 'sm', attrs: { 'data-st-kept': 'dismiss', 'data-kept-id': c.id } })
+      ])
+    ].filter(Boolean)));
+  }
+  return box;
+}
+delegate(document, 'click', '[data-st-kept]', (e, el) => {
+  const id = el.getAttribute('data-kept-id');
+  flushAutosave();   // a keystroke still on its debounce belongs to the synopsis being replaced
+  const s = story();
+  if (el.getAttribute('data-st-kept') === 'use') {
+    if (!Story.useSourceConflict(s, id)) return;
+    commit(s);
+    StudioUI.toast('That version is the synopsis now. The one it replaced is kept below.');
+    return;
+  }
+  const gone = Story.dismissSourceConflict(s, id);
+  if (!gone) return;
+  commit(s);
+  StudioUI.toast('Dismissed.', {
+    action: 'Undo',
+    onAction: () => { const back = story(); back.sourceConflicts = [...(back.sourceConflicts || []), gone]; commit(back); }
+  });
+});
+
+/* ---- a copy arriving from the account -------------------------
+   story.html used to ignore `cloud:synced`, so a field on screen kept
+   the text it was drawn with, and the next keystroke in it saved that
+   stale copy over the one that had just arrived. Now an arrival for the
+   story (or a whole-project pull that wrote it) redraws the page: any
+   keystroke still on its debounce is saved FIRST (into the arrived
+   copy, where a stamped step wins the next merge), then render() puts
+   the focus and the caret back where they were (preservingFocus). */
+function onStoryArrival(p) {
+  if (!p || (p.projectId && p.projectId !== Store.currentProjectId())) return;
+  const ours = p.scope ? (p.scope === 'story' || p.scope === 'scenes')
+    : Array.isArray(p.scopes) ? (p.scopes.includes('story') || p.scopes.includes('scenes')) : true;
+  if (!ours) return;
+  flushAutosave();
+  syncScenes();   // an arrived step edit reaches its scene, and the reverse; settles in one pass
+  render();
+}
+try { Store.subscribe('cloud:synced', (p) => setTimeout(() => onStoryArrival(p), 0)); } catch (e) { /* no subscribe */ }
+/* …and BEFORE an arrival is merged (cloud.js, synchronously): a
+   keystroke on its debounce is saved, stamped, first. Saved after the
+   merge, it landed on a step the arrival had just deleted, the field
+   went from under the caret, and the typing was gone (QA round 2). */
+try {
+  Store.subscribe('cloud:incoming', (p) => {
+    if (p && p.scope === 'story' && (!p.projectId || p.projectId === Store.currentProjectId())) flushAutosave();
+  });
+} catch (e) { /* no subscribe */ }
+
+/* Who else is on the beat sheet (src/ui/story-presence.js): only signed
+   in with co-editing on; inert otherwise. Numbers are this page's own. */
+const stepNumbers = () => {
+  const s = story();
+  const o = Story.outlineByBeat(s, s.framework);
+  const m = new Map();
+  o.beats.forEach((r) => r.steps.forEach((x) => m.set(x.id, x.n)));
+  o.unplaced.forEach((x) => m.set(x.id, x.n));
+  return m;
+};
+let storyPresence = null;
+function drawPresence() {
+  if (!storyPresence) {
+    storyPresence = mountStoryPresence({
+      host: () => document.querySelector('#main .bd-head'),
+      stepN: (id) => stepNumbers().get(id) || 0,
+      rowOf: (id) => document.querySelector(`[data-step-row="${CSS.escape(id)}"]`)
+    });
+  }
+  storyPresence.draw();
 }
 
 /* ---- the heatmap (FR-505) -------------------------------------
@@ -1001,6 +1165,7 @@ function draw() {
   /* The header's actions: import, the two exports, start over. One
      import control on screen at a time: the card's, while it shows. */
   const bar = h('div.st-bar');
+  bar.append(notesButton());
   if (!cards) {
     bar.append(h('label.k-btn.k-btn--secondary.st-import', {}, [
       h('span', { text: 'Import' }),
@@ -1066,6 +1231,7 @@ function after() {
     if (spot && el && el.contains(spot)) { reland = ''; relandSpot = spot.id; landStepView(spot, { exact: true }); }
     else landStepView(el);
   }
+  drawPresence();   // the rows are new: re-mark who is on which step
 }
 
 
@@ -1232,6 +1398,7 @@ async function importFile(file) {
 const sampleStory = IO.sampleStory;
 
 async function useSample(id) {
+  if (!samplesHere().length) return;   // a short film is never handed a feature's outline (a ?sample= link included)
   const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
   flushAutosave();   // a keystroke still on its debounce counts as work, and must not land on the sample later
   const cur = story();
@@ -1316,6 +1483,46 @@ function undoSend() {
   StudioUI.toast(`${n} placeholder scene${n === 1 ? '' : 's'} removed. Nothing else in the scene list was touched.`);
 }
 
+/* A step and its scene that both changed: take one side's text, with an
+   Undo that puts BOTH back. A step whose scene went: send just that one
+   again, through the same send. */
+delegate(document, 'click', '[data-ss]', (e, el) => {
+  const act = el.getAttribute('data-ss');
+  const id = el.getAttribute('data-step');
+  flushAutosave();   // a keystroke on its debounce is part of "mine"
+  if (act === 'resend') {
+    const s = story();
+    /* ITS OWN SCENE, IF THE BIN STILL HOLDS IT. A new scene beside a
+       restorable one left two scenes for one step once the old one came
+       back, and the restored one silently unlinked (QA round 2). So the
+       binned scene comes back, link and all, and catches up with the
+       step; only a scene that is gone for good is sent again. */
+    const st = s.outline.find((x) => x.id === id);
+    const entry = st && st.sceneId ? listBin().find((x) => x.scene && x.scene.row && x.scene.row.id === st.sceneId) : null;
+    if (entry) {
+      const heading = entry.scene.row.scriptElId;
+      const back = restoreFromBin(entry.id, heading && !headingInScript(heading) ? { patch: { scriptElId: '' } } : {});
+      if (!back) return;
+      syncScenes();
+      render();
+      StudioUI.toast(`Scene ${back.number || ''} is back from the bin, with everything that was attached to it.`, { type: 'success' });
+      return;
+    }
+    const ids = Story.sendOutlineToScenes(s, Scenes, { fwId: s.framework, only: [id] });
+    if (!ids.length) { StudioUI.toast('That step has no text to send yet.'); return; }
+    lastSend = ids;
+    commit(s);
+    StudioUI.toast('A new placeholder scene was added for this step.', { action: 'UNDO', onAction: undoSend });
+    return;
+  }
+  const snap = Story.resolveStepScene(SYNC_API, id, act === 'use-scene' ? 'scene' : 'step');
+  if (!snap) return;
+  render();
+  StudioUI.toast(act === 'use-scene' ? 'The step has the scene’s text now.' : 'The scene has this step’s text now.', {
+    action: 'Undo', onAction: () => { Story.restoreStepScene(SYNC_API, snap); render(); }
+  });
+});
+
 delegate(document, 'click', '[data-st]', async (e, el) => {
   const act = el.getAttribute('data-st');
   const s = story();
@@ -1364,6 +1571,13 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
   } else if (act === 'step-add') {
     const st = Story.addOutlineStep(s, { beat: el.getAttribute('data-beat') });
     if (st) { focusStep = st.id; commit(s); }
+  } else if (act === 'step-color') {
+    const id = el.getAttribute('data-step'), c = el.getAttribute('data-color');
+    const cur = Story.stepColor(s.outline.find((x) => x.id === id));
+    if (!Story.setStepColor(s, id, cur === c ? '' : c)) return;
+    commit(s);
+    const back = document.querySelector(`[data-st="step-color"][data-step="${CSS.escape(id)}"][data-color="${CSS.escape(c)}"]`);
+    if (back) back.focus({ preventScroll: true });
   } else if (act === 'step-up' || act === 'step-down') {
     if (Story.moveOutlineStep(s, el.getAttribute('data-step'), { delta: act === 'step-up' ? -1 : 1 })) commit(s);
   } else if (act === 'step-del') {
@@ -1374,7 +1588,9 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     Story.removeOutlineStep(s, id);
     commit(s);
     StudioUI.toast('Step removed.', { action: 'UNDO', onAction: () => {
-      const back = story(); back.outline.splice(Math.min(i, back.outline.length), 0, gone); commit(back);
+      const back = story();
+      if (back.outline.some((x) => x.id === gone.id)) return;   // it is back already (a copy that arrived kept it)
+      back.outline.splice(Math.min(i, back.outline.length), 0, gone); commit(back);
     } });
   } else if (act === 'step-file') {
     if (Story.fileUnplaced(s, s.framework, [el.getAttribute('data-step')])) commit(s);
@@ -1546,6 +1762,7 @@ saveOnInput('textarea[data-st-field="idea"], textarea[data-st-field="logline"]',
 }, 600);
 saveOnInput('textarea[data-st-field="step-text"]', (el) => {
   const s = story(); Story.updateOutlineStep(s, el.getAttribute('data-step'), { text: el.value }); Story.saveStory(s);
+  syncScenes();   // the step's scene follows while it still holds what they last agreed on
 }, 600);
 
 // Drag and drop onto the import card. A FILE dropped anywhere else on
@@ -1610,7 +1827,22 @@ if (START) history.replaceState(null, '', location.pathname + location.hash);
 }
 readHash();
 
+syncScenes();   // a scene edited on the Scene List since the last visit reaches its step
 render();
+/* Back to this tab after editing elsewhere (the Scene List in another
+   tab): read again, so a field on screen never saves an older copy. */
+function catchUp() {
+  flushAutosave();
+  syncScenes();
+  render();   // preservingFocus keeps a field being typed in, and its caret
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') catchUp();
+});
+/* …and while BOTH windows stay visible, side by side: a write there to
+   the story, the scenes or the bin redraws this page at once, so no
+   field here is left holding the words from before (QA round 2). */
+Store.onWriteElsewhere(['fms_story_v1', 'fms_scenes_v1', 'fms_scene_bin_v1'], catchUp);
 /* The plan state arrives after first paint: when it says the pitch deck is
    off for everybody, its menu row goes and its section stays hidden. */
 {

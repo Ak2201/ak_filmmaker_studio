@@ -513,6 +513,10 @@
   /* Secondary ink on the page (5.74:1); --print-rule is a hairline. */
   --print-muted: #666666;
   --print-wash:  #f0f0f0;
+  /* The brand on paper (the receipt PDF's rule, PAID badge and total):
+     violet deep enough to read on white (7.1:1), used sparingly so a
+     mono printer still prints a clean document. */
+  --print-accent: #6d28d9;
   /* Revised-page stock for the optional page tint on a revised PDF. */
   --print-rev-white:     #ffffff;
   --print-rev-blue:      #dde9fb;
@@ -532,6 +536,19 @@
   --paper-page-muted: #5b5b66;
   --paper-page-rule:  #d9d7ce;
   --paper-page-shadow: 0 1px 0 rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .45);
+
+  /* ---- sticky notes (src/lib/notes-model.js, owner 23 Oct 2026) --
+     Paper too: a note is something you write on. Five pastel stocks,
+     one ink. --paper-page-ink clears AA on every one (≥ 12:1), and
+     --paper-page-muted on every one (≥ 4.9:1). A note's colour is a
+     category the writer chose, so these are not phase hues. */
+  --note-yellow: #fbe9a8;
+  --note-pink:   #f8d3e1;
+  --note-blue:   #d2e4fa;
+  --note-green:  #d4efd6;
+  --note-violet: #e3d9fb;
+  --note-ink:    var(--paper-page-ink);
+  --note-muted:  var(--paper-page-muted);
 }
 
 /* The stamp chrome.js writes. Restates the scheme only — there is no

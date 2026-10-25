@@ -2711,3 +2711,92 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `?stay=1` blueprints, some Settings and console tabs, print preview,
       the motion layer under a real browser) are listed in the report for the
       next pass.
+
+60. **The receipt PDF, redone (22 Oct 2026).** The owner asked to change the
+    receipt and chose three things: a branded design, the plan's year on it,
+    and one page. The title stays "Bill of Supply" (the GST-correct name for an
+    unregistered supplier; the owner did not pick the rename).
+    - **Schema §57** (`schema-57-invoice-year.sql`, 5 checks in
+      `scripts/schema-tests/invoice-year.sql`, seeded before it so the backfill
+      has work). The year was on the payment since §52 and not on the invoice.
+      §35's `invoices_payment_facts()` BEFORE INSERT trigger already copied the
+      payment's facts, so it now copies `starts_at` / `ends_at` too;
+      `issue_invoice()` is untouched. A payment that applied no plan carries no
+      year. An invoice keeps the year it SOLD even after a refund takes that
+      year off the account.
+    - **The PDF.** Monogram tile and name over one violet rule
+      (`--print-accent`, new in the `--print-*` family), the PAID badge and the
+      total in the same violet and nothing else; Supplier, Billed to and Payment
+      details side by side; "Plan valid 22 Oct 2026 – 22 Oct 2027"; "1-year plan
+      · about ₹2.19 a day · nothing renews by itself"; the refund terms one line.
+      Rendered with `page.pdf()` for INR with a year, INR without and USD: one
+      A4 page each. The first render printed the title near-white (a page `h1`
+      ink reached into the document) and squeezed the notes to a reading
+      measure; both are reset inside `.inv-doc`.
+    - `monogram()` moved from shell.js to brand.js so the rail and the receipt
+      share one derivation of "FS".
+
+61. **Sticky notes, and a short film that keeps to the short (23 Oct 2026).**
+    The owner asked for Celtx-style sticky notes "I can use while writing the
+    scene order or synopsis", and for a short film to follow only the
+    short-film flow, "5 beats, nothing other than that". Choices: notes beside
+    the Beat Sheet and Synopsis, the Scene List, the Screenplay Writer and on a
+    board; colours, pin to a beat or a scene, drag to reorder, send into the
+    text; the short keeps its four steps with the beats locked.
+    - **No new key.** A note is a record in the Idea Vault array
+      (`fms_idea_vault_v1`, already scoped, backed up, reset and synced):
+      `{ id, kind: 'note', snippet, color, beat, sceneId, at }`.
+      `src/lib/notes-model.js` is pure; `story.js` gained `addNoteToVault`,
+      `moveInVault`, `restoreToVault`, each re-reading the array first. The
+      array order is the board order. `test:notes` (30), `prove:notes` (25).
+    - **The dock** (`src/ui/notes-dock.js`, lazy) sits on the right at 1100px
+      and up and `main` narrows beside it (the AI Desk's frame; the Desk steps
+      aside when it opens), a bottom sheet below that. `notes-button.js` puts a
+      Notes button in the Story header, the Scene List toolbar and the
+      Screenplay toolbar, and fills `notesPin()` slots with a chip on a pinned
+      beat or scene. Gated like the Idea Vault (`guard('idea-vault')`).
+      Controls carry `data-nt`, never `data-st` (Story and the Scene List read
+      that). "Add to the scene" and "Add to synopsis" undo from the toast; in
+      the Screenplay Writer a note is copied, never inserted, because script
+      types change only through `setElementType`.
+    - **The board** is vault.html: notes and clippings in one grid, filters
+      (All, Notes, Pinned, Clippings, a colour), drag by the grip or arrow keys
+      on it. Moves are offered on the unfiltered board only.
+    - **Five note stocks** in tokens.css (`--note-*`, ≥ 12:1 for the ink).
+    - **The short film.** `effectiveFramework()` is always `short_five` for a
+      short: no picker, the five beats, the short blueprint's step-04 answers
+      beside them (the feature-only condition was removed). Steps written under
+      another beat sheet are kept and wait in Unassigned. No sample (both are
+      Save the Cat! features) and no feature wording; the Save the Cat video
+      left `step:short/step-04`. The rail's Story flyout reads the open
+      project's path (`navmodel.js` had read `PATHS.feature` every time).
+
+62. **The Celtx gaps: beat colours, beat ↔ scene sync, a shared beat sheet
+    (23–24 Oct 2026).** The owner asked to finish what Celtx has before the
+    script that the studio did not: colouring beats, beats kept in step with
+    their scenes, and editing the beat sheet together. Built by a multi-agent
+    workflow (two builders, then two rounds of three testers, a skeptic per
+    finding and a fixer); 17 findings confirmed and fixed, 2 judged by design.
+    - **Colours.** `setStepColor` (story.js), names from `notes-model.js`
+      `COLORS`, `--note-*` tokens. Stored on the step only; the Scene List row,
+      the index card and the beat board chip derive it (`stepsByScene`).
+    - **Beat ↔ scene sync.** Pure `src/lib/step-scene-sync.js` `plan()` over a
+      `synced` baseline on the step (and `syncedBeat`, `syncedWas`): push, pull,
+      conflict, adopt, apart, gone. `reconcileStepScenes()` writes only when
+      something differs. The send writes the full text. A conflict shows on both
+      pages with a choice and an Undo for both sides; a binned scene offers
+      Restore / Send again; a locked outline is never rewritten; a pair that
+      never agreed (the samples, old breakdown steps) is left apart. Both pages
+      redraw on a write in another tab or window (`onWriteElsewhere`), so a
+      stale field never saves over a newer edit.
+    - **Shared beat sheet.** Pure `src/lib/story-merge.js` (steps and marks via
+      `mergeElements`, a step's colour merged on its own, the prose by `pick3`
+      with both texts kept in `sourceConflicts`, every unknown field carried).
+      cloud.js has one `COEDIT` table for `script` and `story`, still behind
+      §49's switch; a push carries `_sync` so a delete by the other writer stays
+      deleted. story.html handles arrivals (`cloud:incoming` flushes typing
+      first) and shows presence (`src/ui/story-presence.js`). Found on the way:
+      `coEditingKnown` was missing from `window.StudioCloud`, so the Screenplay
+      Writer never merged on the page even with the switch on.
+    - Tests: `test:step-sync`, `test:story-merge`, `test:cloud`, `test:presence`;
+      proofs `prove:beat-sync`, `prove:story-coedit`.

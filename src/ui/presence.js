@@ -84,7 +84,7 @@ export function mountPresence(o) {
   let sendTimer = 0, lastSent = 0;
 
   function draw() {
-    const people = presencePeople(raw, selfKey, lastSeen, Date.now());
+    const people = presencePeople(raw, selfKey, lastSeen, Date.now(), 'script');   // a Story tab on the same channel is not in the script
     const strip = o.strip();
     if (strip) {
       strip.hidden = !people.length;

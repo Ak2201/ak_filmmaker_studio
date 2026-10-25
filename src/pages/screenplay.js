@@ -27,6 +27,7 @@ import '../styles/print.css';
 import '../styles/write.css';
 import '../styles/pdf.css';
 import '../styles/screenplay.css';
+import { notesButton } from '../ui/notes-button.js';   // sticky notes beside the page (owner, 23 Oct 2026)
 import '../ui/format-guide.js';   // Check format (its dock bar is hidden; the menu drives it)
 
 import StudioUI from '../ui/chrome.js';
@@ -522,7 +523,7 @@ function buildTop() {
     buildViews(),
     meta,
     h('div.sc-tools', {}, [
-      h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot')]),
+      h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, notesButton({ label: 'Notes' }), h('span#scFocusSlot.sc-focus-slot')]),
       pos,
       h('div.sc-tools-r', {}, [fileMenu, menu, toolsBtn])
     ]),

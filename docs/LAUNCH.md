@@ -208,7 +208,7 @@ that one.
 >    Rupee checkout keeps working at every step in between; a client without §56 falls back to rupees.
 >
 > §53 and §54 ran live on 22 Oct 2026 and the four functions were redeployed that day
-> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §57.
+> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §58 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
 
 > **RAN LIVE 19 Oct 2026 (§36 re-run, §48–§51), each checksummed and probed over PostgREST** —
 > §48 `can_join_presence` and §49 `co_editing_enabled` answer, `claim_share` now answers 42501

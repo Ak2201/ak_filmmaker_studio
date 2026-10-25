@@ -535,7 +535,7 @@ const EXPECTED = {
      17 Oct 2026 recapture after the one-frame navigation pass. */
   invite: { payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },
   admin: {},
-  vault: {},
+  vault: { also: 'Sticky notes (23 Oct 2026): the Idea Vault became the board of notes and clippings; its intro and empty state were rewritten around notes, so the old clipping-only sentences left the page.', came: 'same change', can: 'same change', clipped: 'same change', hand: 'same change', lands: 'same change' },
   purchase: { production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },   // the once/pay/payment/yours rows retired 21 Oct 2026: the "Before you pay" terms (one payment for one year; the refund is yours) say them again
 };
 

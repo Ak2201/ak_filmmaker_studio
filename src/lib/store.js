@@ -1280,6 +1280,32 @@ export function migrateLegacy() {
   return null;
 }
 
+/* A WRITE IN ANOTHER WINDOW of this browser, to one of `keys` (base
+   names, e.g. 'fms_story_v1') of the OPEN project. `storage` fires in
+   every other document, never in the writer, so a page can redraw a
+   field still showing what it was drawn with: two windows side by side
+   are both visible, so visibilitychange never says so (QA round 2 —
+   the stale field saved over the other window's edit, and the beat
+   sync then carried it across). The callback is deferred a tick, so
+   the overflow cache (the listener above) has dropped its copy first. */
+export function onWriteElsewhere(keys, fn) {
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => {};
+  const want = new Set(keys || []);
+  const on = (e) => {
+    const k = e && e.key;
+    if (k === null) { setTimeout(fn, 0); return; }          // a clear() elsewhere: everything moved
+    if (!k) return;
+    const at = k.indexOf('__');
+    const base = at > 0 ? k.slice(0, at) : k;
+    if (!want.has(base)) return;
+    const pid = currentProjectId();
+    if (at > 0 && pid && k.slice(at + 2) !== pid) return;
+    setTimeout(fn, 0);
+  };
+  window.addEventListener('storage', on);
+  return () => window.removeEventListener('storage', on);
+}
+
 // ============================================================
 // PUB/SUB BUS
 // ============================================================
@@ -1504,6 +1530,7 @@ const StudioStore = {
 
   // bus
   subscribe,
+  onWriteElsewhere,
   notify,
 
   // bindings

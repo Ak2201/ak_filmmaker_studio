@@ -274,8 +274,23 @@ check('short: Characters & world shows its three cards, and no feature-only key'
   return [[...document.querySelectorAll('[data-sb-card]')].map((c) => c.getAttribute('data-sb-card')),
     k.filter((x) => /^(s4_(name|age|want|need|lie|wound|skill|flaw|arc)|s5_name|s5_want|s6_|s7_|s3_(ext|int|theme|phil)|lad_|comment_for_)/.test(x))];
 }), [['characters', 'world', 'conflict'], []]);
-check('short: the Beat Sheet defaults to the Short Five until one is chosen', await page.evaluate(() =>
+check('short: the Beat Sheet is the Short Five', await page.evaluate(() =>
   document.querySelector('#path-outline .st-using').textContent.includes('Short Film Five-Beat')), true);
+/* Owner, 23 Oct 2026: a short film keeps to the short-film flow — the
+   five beats only, no picker, no Save the Cat!, no feature sample. */
+check('short: no beat sheet picker, and the five beats only', await page.evaluate(() =>
+  [!!document.getElementById('st-fw-pick'), [...document.querySelectorAll('#path-outline [data-beat-card]')].map((c) => c.getAttribute('data-beat-card'))]),
+[false, ['short_five:setup', 'short_five:disturbance', 'short_five:escalation', 'short_five:turn', 'short_five:image']]);
+check('short: no sample offered, and no Save the Cat! on the page', await page.evaluate(() =>
+  [document.querySelectorAll('[data-st="sample"]').length, /Save the Cat/.test(document.querySelector('main').textContent)]), [0, false]);
+await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ b4_turn: 'TURN-ONCE' })), SKEY);
+await open('#path-outline');
+check('short: the blueprint’s own beat answer shows beside its beat', await page.evaluate(() => {
+  const c = document.querySelector('#path-outline [data-beat-card="short_five:turn"] .st-ol-bp');
+  return c ? c.textContent.includes('TURN-ONCE') : null;
+}), true);
+await page.evaluate((k) => localStorage.removeItem(k), SKEY);
+await open();
 await step('idea');
 await openBoxes('#path-idea');
 await page.fill('#path-idea [data-key="s1_seed"]', 'SEED-ONCE');

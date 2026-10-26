@@ -137,7 +137,7 @@ function intro(title, deck, extra) {
 function renderExpenses(ctx) {
   const fb = C.floatBalances(ctx.floats, ctx.expenses, ctx.nameOf);
   const out = [];
-  out.push(intro('Petty cash', 'Every rupee that leaves a pocket on the shoot, logged the day it goes. Issue floats to whoever carries cash, log what they spend, and the balance in each hand is worked out for you.'));
+  out.push(intro('Petty cash', (shownCurrency() === 'USD' ? 'Every dollar' : 'Every rupee') + ' that leaves a pocket on the shoot, logged the day it goes. Issue floats to whoever carries cash, log what they spend, and the balance in each hand is worked out for you.'));
   out.push(stats([
     stat(rs(fb.issued), 'floats issued'),
     stat(rs(fb.spent + fb.office), 'spent'),
@@ -538,10 +538,18 @@ function renderTopSheet(ctx) {
 /* ============================================================
    6. THE WAGE TABLE
    ============================================================ */
+/* The wage inputs' column headers, which are also their accessible
+   names: a label built from the field key read 'callHours for …'. */
+const WAGE_COLS = {
+  bata: () => 'Your batta (' + sym() + '/day)',
+  callHours: () => 'Call hours',
+  otRule: () => 'Overtime rule'
+};
+
 function renderWages(ctx) {
   const rows = C.wageRows(wages, ctx.overrides);
   const src = wages.sources || {};
-  const out = [intro('Crew wage table', 'A place to keep the daily bata your unit actually agreed, per craft, with the call hours and overtime rule beside it. The crew payments tab offers these as hints.')];
+  const out = [intro('Crew wage table', 'A place to keep the daily batta your unit actually agreed, per craft, with the call hours and overtime rule beside it. The crew payments tab offers these as hints.')];
   out.push(notice({
     tone: 'warn',
     class: 'cx-alert cx-expired',
@@ -554,21 +562,21 @@ function renderWages(ctx) {
   }));
   const table = h('table.cx-table.k-table.cx-wages', {}, [
     h('caption', { text: 'Per craft · valid ' + wages.validFrom + ' to ' + wages.validTo + ' · checked ' + wages.lastChecked }),
-    h('thead', {}, h('tr', {}, ['Craft', 'Published', 'Your bata (' + sym() + '/day)', 'Call hours', 'Overtime rule', ''].map((x) => h('th', { scope: 'col', text: x }))))
+    h('thead', {}, h('tr', {}, ['Craft', 'Published', WAGE_COLS.bata(), WAGE_COLS.callHours(), WAGE_COLS.otRule(), ''].map((x) => h('th', { scope: 'col', text: x }))))
   ]);
   const tb = h('tbody');
   for (const r of rows) {
     const pub = r.published.bata ? rupees(r.published.bata) + ' (reported, expired)' : 'not published';
     const inp = (k, v, ph, mode) => frame(h('input', {
       type: 'text', inputmode: mode || null, autocomplete: 'off', value: r.overridden.includes(k) && v !== null ? String(v) : '', placeholder: ph,
-      'data-cx-field': 'wage', 'data-k': k, 'data-id': r.id, 'data-fk': 'w:' + r.id + ':' + k, 'aria-label': k + ' for ' + r.craft
+      'data-cx-field': 'wage', 'data-k': k, 'data-id': r.id, 'data-fk': 'w:' + r.id + ':' + k, 'aria-label': WAGE_COLS[k]() + ' for ' + r.craft
     }));
     tb.append(h('tr', { class: r.overridden.length ? 'is-set' : null }, [
       h('th', { scope: 'row' }, [r.craft, r.department ? h('span.cx-hint', { text: ' ' + r.department }) : null]),
       h('td' + (r.published.bata ? '.k-mono' : ''), { text: pub }),
       h('td', {}, inp('bata', r.bata, '—', 'decimal')),
       h('td', {}, inp('callHours', r.callHours, '—', 'decimal')),
-      h('td', {}, inp('otRule', r.otRule, 'e.g. ½ bata per 2 h')),
+      h('td', {}, inp('otRule', r.otRule, 'e.g. ½ batta per 2 h')),
       h('td', {}, r.overridden.length ? button({ label: 'Clear your figures for ' + r.craft, icon: 'restart_alt', iconOnly: true, size: 'sm', variant: 'ghost', attrs: { 'data-cx': 'reset-wage', 'data-id': r.id, 'data-fk': 'w:' + r.id + ':reset' } }) : null)
     ]));
   }
@@ -794,9 +802,9 @@ const ACTIONS = {
   'reset-wage': (el) => { C.setWageOverride(el.dataset.id, { bata: '', callHours: '', otRule: '' }); refresh(); },
   'print-settlement': (el) => printDoc(settlementDoc(context(), el.dataset.id)),
   'print-top': () => printDoc(topSheetDoc(context(), false)),
-  'csv-budget': () => download('budget', C.budgetCSV(context().report)),
-  'csv-actuals': () => download('actuals', C.actualsCSV(context().report)),
-  'csv-expenses': () => { const ctx = context(); download('expenses', C.expensesCSV(ctx.expenses, ctx.lineName, ctx.nameOf)); }
+  'csv-budget': () => download('budget', C.budgetCSV(context().report, shownCurrency())),
+  'csv-actuals': () => download('actuals', C.actualsCSV(context().report, shownCurrency())),
+  'csv-expenses': () => { const ctx = context(); download('expenses', C.expensesCSV(ctx.expenses, ctx.lineName, ctx.nameOf, shownCurrency())); }
 };
 
 const FORMS = {

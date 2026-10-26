@@ -204,6 +204,14 @@ ok(/,-\d/.test(act), 'negative variance stays a bare number');
 eq(C.toCSV([['=SUM(A1)', 'a,b', 'say "hi"']]), '"\'=SUM(A1)","a,b","say ""hi"""\r\n', 'formula defused, commas and quotes escaped');
 const ex = C.expensesCSV([{ date: '2026-11-02', shootDay: 1, line: 'ci_7', category: 'food', amount: 1180, gstPct: 18, vendor: 'Saravana', gstin: '', paidBy: 'c-ravi', method: 'upi', note: '', receipt: '' }], () => 'Unit food', (id) => names[id]);
 ok(ex.includes('2026-11-02,1,Unit food,Food,1180,18,180,Saravana,,Ravi,UPI'), 'expense CSV row');
+// fix-money r1: a dollar budget's CSVs name the currency on every money
+// column; a rupee budget's headers are byte-identical to before.
+eq(C.budgetCSV(rep, 'USD').split('\r\n')[0], 'Account,Description,Amount,Units,Rate (USD),Subtotal (USD)', 'USD budget CSV names its currency');
+eq(C.budgetCSV(rep, 'INR'), C.budgetCSV(rep), 'an INR budget CSV is unchanged');
+eq(C.actualsCSV(rep, 'USD').split('\r\n')[0], 'Account,Description,Estimate (USD),Actual (incl. GST) (USD),Actual (excl. GST) (USD),GST (USD),TDS withheld (USD),Variance (USD),% used', 'USD actuals CSV names its currency');
+ok(C.actualsCSV(rep).startsWith('Account,Description,Estimate,Actual (incl. GST),'), 'INR actuals headers unchanged');
+ok(C.expensesCSV([], undefined, undefined, 'USD').startsWith('Date,Shoot day,Budget line,Category,Amount (incl. GST) (USD),GST %,GST (USD),'), 'USD expenses CSV names its currency');
+ok(C.expensesCSV([]).startsWith('Date,Shoot day,Budget line,Category,Amount (incl. GST),GST %,GST,'), 'INR expenses headers unchanged');
 
 /* ---- locked versions, scales ----------------------------------- */
 reset();

@@ -238,5 +238,10 @@ ok(!/[0-9]+[,.]?[0-9]*\s*(lakh|cr)/i.test(B.rateProvenance('USD')), 'the US prov
   reset();
 }
 
+// fix-money r1: the row's 'days × rate' line keeps a fractional day.
+eq(B.rowEquation(2.5, 25000, (n) => M.fmtMoney(n, 'INR')), '2.5 d × ₹ 25,000', 'a fractional day is not rounded in the equation');
+eq(B.rowEquation(3, 1500, (n) => M.fmtMoney(n, 'USD')), '3 d × $1,500', 'a whole day reads as before');
+eq(B.rowEquation(0, 1500, String), '', 'no days, no equation');
+
 console.log(`test:budget-usd — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

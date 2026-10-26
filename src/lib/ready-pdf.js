@@ -32,7 +32,7 @@ function budgetOf() {
     if (!lines.length) return null;
     const report = Costs.costReport({ lines, contingencyPct: Costs.getSettings().contingencyPct });
     const ts = Costs.topSheet(report);
-    return ts.grand > 0 ? { total: ts.grand, contingencyPct: ts.contingencyPct } : null;
+    return ts.grand > 0 ? { total: ts.grand, contingencyPct: ts.contingencyPct, currency: Costs.budgetCurrency() } : null;
   } catch (e) { return null; }
 }
 

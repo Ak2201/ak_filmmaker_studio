@@ -108,6 +108,7 @@ jobs:
       - run: npm run prove:presence
       # Keep the budget private (§55): the owner's switch, a viewer's private state.
       - run: npm run prove:budget-privacy
+      - run: npm run prove:budget-money
       - run: npm run prove:ai-desk
 
   proofs:

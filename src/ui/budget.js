@@ -22,10 +22,10 @@
    is a migration, not a rename.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import { parseAmount, fmtMoney, fmtINR, INR } from '../lib/money.js';
+import { parseAmount, fmtMoney, fmtINR } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
-  rateHintParts, itemNameOf, totalCaption, useDaysMessage,
+  rateHintParts, itemNameOf, totalCaption, useDaysMessage, rowEquation,
   scheduleFacts, scheduleHint, songDaysHint,
   budgetCurrency, setBudgetCurrency, currencyMismatch, fmtExact, currencySign
 } from '../lib/budget-model.js';
@@ -217,7 +217,7 @@ function updateCalc() {
       name ? `Subtotal for ${name}: ${money(sub)}` : `Subtotal: ${money(sub)}`);
 
     const eqEl = row.querySelector('[data-role="calc-eq"]');
-    if (eqEl) eqEl.textContent = days > 0 && rate > 0 ? `${INR.format(days)} d × ${money(rate)}` : '';
+    if (eqEl) eqEl.textContent = rowEquation(days, rate, money);
 
     /* The hint names where the figure came from; a re-checked one
        links the page it was read off (rateHintParts). Rebuilt only

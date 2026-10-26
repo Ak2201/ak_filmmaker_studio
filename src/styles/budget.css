@@ -440,7 +440,12 @@ p.cx-hint { margin: 0; }
   border-bottom: 1px solid var(--border-hair);
 }
 .cx-table.k-table .num { white-space: nowrap; }
+/* Row headers wrap on the cost report AND the top sheet: the kit's
+   nowrap pushed the top sheet's whole Estimate column off a 390px phone
+   ("Total below the line — production" would not break). */
 .cx-report.k-table tbody th[scope="row"] { min-width: 9rem; white-space: normal; }
+.cx-top.k-table tbody th[scope="row"],
+.cx-top.k-table tfoot th[scope="row"] { white-space: normal; }
 .cx-table.k-table .cx-dept-row > * {
   background: var(--surface-rail);
   font-weight: 600;

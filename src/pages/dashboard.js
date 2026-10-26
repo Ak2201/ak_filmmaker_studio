@@ -505,8 +505,11 @@ function renderHead(snap) {
       stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast', crewCastNote(snap)),
       stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots',
         snap.shots.length ? snap.shots.length + ' shots planned' : ''),
-      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Locked budget',
-        snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') : '')
+      // The live estimator's sum: nothing is locked, and contingency is
+      // not in it (the budget page's Total budget adds it). It once
+      // said 'Locked budget' while budget.html said 'Nothing locked yet'.
+      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Budget estimate',
+        snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') + ', before contingency' : '')
     ], { class: 'db-stats', label: 'This film in numbers' }));
   }
   return head;

@@ -142,6 +142,7 @@
     "prove:presence": "node scripts/prove-presence.mjs",
     "prove:story-coedit": "node scripts/prove-story-coedit.mjs",
     "prove:budget-privacy": "node scripts/prove-budget-privacy.mjs",
+    "prove:budget-money": "node scripts/prove-budget-money.mjs",
     "prove:tamil": "node scripts/prove-tamil.mjs",
     "prove:walk": "node scripts/prove-walk.mjs",
     "thumbs": "node scripts/make-video-thumbs.mjs",

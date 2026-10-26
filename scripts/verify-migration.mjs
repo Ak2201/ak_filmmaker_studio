@@ -425,7 +425,13 @@ const EXPECTED = {
      is headed by its shelf's kind (its menu group) now. The numerals that
      still appear elsewhere on the page (i, ii, v, x) are not missing. */
   library: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
-  budget: {},
+  budget: {
+    /* QA round 1, Budget & money (26 Oct 2026): the page spelled the
+       allowance two ways, "bata" on the wage table and "batta" in Petty
+       cash and account 2800. It is "batta" everywhere now; the stored
+       field and category ids did not change. */
+    bata: 'One spelling of the allowance on the budget page: batta'
+  },
   /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
      revamp's words (the journey strip folded into the stage cards). */
   /* Impeccable pass (19 Oct 2026): the map's "N OF N BUILT" never

@@ -56,6 +56,16 @@ eq(s.budget, { total: '₹ 25,00,000', contingencyPct: 10 }, 'the budget block')
 eq(s.permissions.rows.map((p) => [p.name, p.status]), [['Street', 'Asked, no answer yet'], ['Temple', 'Refused'], ['Roof', 'Not asked yet']], 'every place that is not approved, with its status');
 eq(s.title, 'Dragon', 'title');
 
+// A dollar budget prints dollars (fix-money r1): the sheet used to stamp
+// '₹' on the dollar total. The PDF's collector must pass the currency.
+eq(readySheet({ title: 'X', report, days, budget: { total: 3000, contingencyPct: 0, currency: 'USD' }, locations }).budget,
+  { total: '$3,000', contingencyPct: 0 }, 'a USD budget prints in dollars');
+eq(readySheet({ title: 'X', report, days, budget: { total: 3000, currency: 'INR' }, locations }).budget.total, '₹ 3,000', 'an INR budget still prints rupees');
+{
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/lib/ready-pdf.js', import.meta.url), 'utf8');
+  eq(/currency:\s*Costs\.budgetCurrency\(\)/.test(src), true, 'ready-pdf.js passes the budget currency to the sheet');
+}
 eq(readySheet({ title: 'X', report, days, budget: null, locations }).budget, null, 'no budget: the block is omitted');
 eq(readySheet({ title: 'X', report, days, budget: { total: 0 }, locations }).budget, null, 'a zero budget is no budget');
 const many = Array.from({ length: 20 }, (_, i) => ({ day: i + 1, date: '', scenes: [], eighths: 0, locations: [] }));

@@ -18,7 +18,7 @@
    no budget means no budget block, and no remark about it either.
    ============================================================ */
 import { formatEighths } from './sample-figures.js';
-import { INR } from './money.js';
+import { INR, fmtMoney } from './money.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -58,7 +58,8 @@ export function verdict(report) {
  * @param {object} a.report         readiness() result
  * @param {Array}  a.days           calendarDays() — { day, date, scenes, eighths, locations }
  * @param {number} a.unscheduled    scenes with no shoot day
- * @param {object|null} a.budget    { total, contingencyPct } or null when the estimator is empty
+ * @param {object|null} a.budget    { total, contingencyPct, currency? } or null when the estimator is empty;
+ *                                  `currency` is the budget's own (USD prints dollars, anything else rupees)
  * @param {Array}  a.locations      locationIndex() — { name, recce: { permission } }
  * @param {string} [a.asOf]         the printed date
  */
@@ -115,7 +116,7 @@ export function readySheet({ title, report, days = [], unscheduled = 0, budget =
       unscheduled: Math.max(0, Number(unscheduled) || 0)
     },
     budget: hasBudget
-      ? { total: rupees(budget.total), contingencyPct: Number(budget.contingencyPct) || 0 }
+      ? { total: fmtMoney(Math.round(Number(budget.total) || 0), budget.currency), contingencyPct: Number(budget.contingencyPct) || 0 }
       : null,
     permissions: { rows: pr.shown, more: pr.more, total: perms.length }
   };

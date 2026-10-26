@@ -855,14 +855,20 @@ const csvCell = (v) => {
 };
 export const toCSV = (rows) => rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 
+/* A money column names its currency in a DOLLAR budget, so a $ sheet
+   cannot be read as rupees. A rupee budget's headers are unchanged:
+   a film with no region exports exactly what it always did. */
+const moneyHead = (currency) => (h) => (currency === 'USD' ? h + ' (USD)' : h);
+
 /**
  * The budget as an account-numbered sheet: Account, Description,
  * Amount, Units, Rate, Subtotal — the column set Movie Magic Budgeting
  * and its imitators read. A department header row carries its total;
  * each line is `<acct>-<nn>`. Contingency and the grand total close it.
  */
-export function budgetCSV(report) {
-  const out = [['Account', 'Description', 'Amount', 'Units', 'Rate', 'Subtotal']];
+export function budgetCSV(report, currency) {
+  const m = moneyHead(currency);
+  const out = [['Account', 'Description', 'Amount', 'Units', m('Rate'), m('Subtotal')]];
   for (const d of report.depts) {
     const lines = d.lines.filter((l) => !l.unbudgeted);
     if (!lines.length) continue;
@@ -879,8 +885,9 @@ export function budgetCSV(report) {
 }
 
 /** Actuals, one row per budget line (unbudgeted spend included). */
-export function actualsCSV(report) {
-  const out = [['Account', 'Description', 'Estimate', 'Actual (incl. GST)', 'Actual (excl. GST)', 'GST', 'TDS withheld', 'Variance', '% used']];
+export function actualsCSV(report, currency) {
+  const m = moneyHead(currency);
+  const out = [['Account', 'Description', ...['Estimate', 'Actual (incl. GST)', 'Actual (excl. GST)', 'GST', 'TDS withheld', 'Variance'].map(m), '% used']];
   for (const d of report.depts) {
     d.lines.forEach((l, i) => {
       out.push([l.unbudgeted ? d.acct + '-UB' : d.acct + '-' + String(i + 1).padStart(2, '0'), l.name, l.estimate, l.actual, l.actualNet, l.gst, l.tds, l.variance, l.pctUsed === null ? '' : l.pctUsed]);
@@ -894,8 +901,9 @@ export function actualsCSV(report) {
 }
 
 /** Every expense, for the accountant. */
-export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x) {
-  const out = [['Date', 'Shoot day', 'Budget line', 'Category', 'Amount (incl. GST)', 'GST %', 'GST', 'Vendor', 'GSTIN', 'Paid by', 'Method', 'Note', 'Receipt']];
+export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x, currency) {
+  const m = moneyHead(currency);
+  const out = [['Date', 'Shoot day', 'Budget line', 'Category', m('Amount (incl. GST)'), 'GST %', m('GST'), 'Vendor', 'GSTIN', 'Paid by', 'Method', 'Note', 'Receipt']];
   for (const e of expenses) {
     const s = gstSplit(e.amount, e.gstPct);
     out.push([e.date, e.shootDay || '', e.line ? lineName(e.line) : '', (CATEGORIES.find((c) => c.id === e.category) || {}).label || e.category,

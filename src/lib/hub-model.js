@@ -11,7 +11,7 @@
    reached, through store.js's raw readers — exactly as before.
    ============================================================ */
 import Store from './store.js';
-import { fmtINR } from './money.js';
+import { fmtMoney } from './money.js';
 import { esc } from './dom.js';
 import { STAGES, stageOfStep } from './journey.js';
 import { readActivityLog, saveActivityLog, capLog } from './hub-activity.js';
@@ -163,7 +163,10 @@ export function detectActivity({ f, s, l }) {
     }
     if (now.lc > (last.lc || 0)) {
       arr.unshift({ ts: Date.now(), where: 'lib',
-        what: 'Equipment list: ' + (last.lc || 0) + ' → ' + now.lc + ' items (' + fmtINR(now.lt) + ')',
+        // The budget's own currency (hub-status.js returns it with the
+        // total): a dollar budget once logged as '₹ 9k'. And it is the
+        // line-item budget estimate, not an equipment list.
+        what: 'Budget estimate: ' + (last.lc || 0) + ' → ' + now.lc + ' lines (' + fmtMoney(now.lt, l.currency, true) + ')',
         url: 'budget.html#estimate' });
     }
   }

@@ -68,10 +68,16 @@ const COALESCE_MS = 10 * 60 * 1000;
    never touched; "Your version" drafts are the writer's own lines and
    are left alone too. The newest ARRIVAL_KEEP stay. */
 export const ARRIVAL_PREFIX = 'From another device, ';
+/** The same, for a copy saved by another WINDOW of this browser: calling
+    that "another device" named a device that does not exist (QA r2). */
+export const ARRIVAL_WINDOW_PREFIX = 'From another window, ';
 /** The name "Use theirs" gives the writer's own copy as it steps aside. */
 export const YOURS_PREFIX = 'Your version, ';
 const ARRIVAL_KEEP = 10;
-const isArrival = (r) => String((r && r.name) || '').startsWith(ARRIVAL_PREFIX);
+const isArrival = (r) => {
+  const n = String((r && r.name) || '');
+  return n.startsWith(ARRIVAL_PREFIX) || n.startsWith(ARRIVAL_WINDOW_PREFIX);
+};
 /** A copy this module kept by itself (an arrival, or "Your version") and
     the writer never numbered: a SIDE copy, not a draft. It is listed on
     drafts.html, but it is never the "current" draft, the one "changed
@@ -119,4 +125,19 @@ export function takeTheirs(mine, fresh, label) {
   };
 }
 
-export default { scriptSignature, incomingAction, unionRevisions, keepBoth, takeTheirs, isSideCopy, ARRIVAL_PREFIX, YOURS_PREFIX };
+/** The side copy in `fresh` that holds exactly the lines this page
+    saved (`savedEls`, [type, text] pairs), when `fresh` itself does not:
+    the other side was mid-edit, kept its own copy and filed this page's
+    as a draft. Null when this page's lines are on `fresh`'s page, or
+    were not filed. */
+export function displacedCopy(fresh, savedEls) {
+  if (!fresh || !Array.isArray(savedEls)) return null;
+  const key = (els) => JSON.stringify((els || []).map((e) => Array.isArray(e) ? e : [e.type, String(e.text ?? '')]));
+  const mine = key(savedEls);
+  if (key(fresh.elements) === mine) return null;
+  const revs = (fresh.revisions || []).filter(isSideCopy);
+  for (let i = revs.length - 1; i >= 0; i--) if (key(revs[i].elements) === mine) return revs[i];
+  return null;
+}
+
+export default { scriptSignature, incomingAction, displacedCopy, unionRevisions, keepBoth, takeTheirs, isSideCopy, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };

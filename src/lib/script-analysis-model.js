@@ -234,7 +234,10 @@ export function structureRead(rows, { fwId, story = null, scenes = [], elements 
       targetPage: total ? Math.max(1, Math.round(b.at * totalPages)) : null,
       scene: r ? r.number : '', sceneHeading: r ? r.heading : '', tensionThere: r ? (r.tension == null ? null : r.tension) : null,
       opensOn: linked ? linked.opensOn : null,
-      drift: linked && total ? Math.round(linked.opensOn - b.at * totalPages) : null
+      /* Against the SAME clamped page the Page column shows: a beat at
+         0% is "p. 1", and measuring from page 0 printed "p. 1 (+1)"
+         beside it (QA r2). */
+      drift: linked && total ? Math.round(linked.opensOn - Math.max(1, b.at * totalPages)) : null
     };
   });
   return { framework: { id: fw.id, label: fw.label, short: fw.short }, pages: round1(totalPages), beats, linked: opens.size };
@@ -343,3 +346,22 @@ export function tensionNotesText(res) {
 }
 
 export default { analyseScript, sceneRows, tensionRead, pacingRead, castRead, structureRead, pagesOf, buildTensionNotesPrompt, tensionNotesSchema, readTensionNotes, tensionNotesText };
+
+/* ---- labels the analysis prints ------------------------------------ */
+/* A cue or a heading, title-cased for reading. A short word with no
+   vowel is an initialism (HR, DJ, TV, DSP) and keeps its capitals —
+   title-casing made "HR MANAGER" read "Hr Manager" (QA r2); the honorifics
+   that look the same (MR, DR …) are words and are cased as words. */
+const HONORIFIC = new Set(['MR', 'MRS', 'MS', 'DR', 'ST', 'JR', 'SR']);
+export function readableName(s) {
+  return String(s || '').replace(/\p{L}[\p{L}\p{M}'’.]*/gu, (w) => {
+    const bare = w.replace(/[.'’]/g, '');
+    const up = bare.toUpperCase();
+    if (up === bare && bare.length <= 3 && /^[A-Z]+$/.test(bare) && !/[AEIOUY]/.test(bare) && !HONORIFIC.has(bare)) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  });
+}
+/** "Sc 4–9", or "Sc 23" for a character in one scene (not "Sc 23–23"). */
+export function sceneSpan(first, last) {
+  return 'Sc ' + (String(first) === String(last) ? first : first + '–' + last);
+}

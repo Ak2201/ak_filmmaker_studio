@@ -1034,16 +1034,26 @@ export function parseSlug(slug) {
     text = text.slice(ie[0].length).trim();
   }
 
-  // The time of day is what follows the last dash.
-  const dash = text.lastIndexOf(' - ') >= 0 ? text.lastIndexOf(' - ')
-    : Math.max(text.lastIndexOf(' — '), text.lastIndexOf(' – '));
-  if (dash >= 0) {
-    const tail2 = text.slice(dash + 3).trim().toUpperCase().replace(/[.]+$/, '');
-    const mapped = timeOf(tail2);
-    if (mapped) out.dayNight = mapped;
-    else out.guessedTime = true;
-    out.location = text.slice(0, dash).trim();
-    if (!mapped && tail2) out.location = text.trim();   // not a time — it was part of the place
+  /* The time of day is the LAST dash-separated part that IS a time,
+     not simply whatever follows the last dash. A heading routinely
+     carries a qualifier after the time — "NIGHT (1995)", "NIGHT -
+     FLASHBACK", "NIGHT (PRESENT DAY)" — and reading only the last part
+     filed every one of those night scenes as DAY with the time left
+     inside the place. A bracketed qualifier is dropped from the part
+     before it is read; anything after the time is the qualifier and
+     leaves the location. A dash with no spaces counts only as an em or
+     en dash ("KITCHEN—NIGHT") or a doubled hyphen ("--"): a single
+     hyphen inside a word ("CO-OP") is part of the place. */
+  const SEP = /(\s+-{1,2}\s+|\s*(?:—|–|--)\s*)/;
+  const parts = text.split(SEP);          // [seg, sep, seg, sep, seg …]
+  let found = -1;
+  for (let i = parts.length - 1; i >= 2; i -= 2) {
+    const seg = parts[i].replace(/\s*\([^()]*\)/g, '').trim().toUpperCase().replace(/[.]+$/, '');
+    const mapped = timeOf(seg);
+    if (mapped) { out.dayNight = mapped; found = i; break; }
+  }
+  if (found >= 0) {
+    out.location = parts.slice(0, found - 1).join('').trim();
   } else {
     out.location = text.trim();
     out.guessedTime = true;

@@ -104,5 +104,33 @@ for (const id of ids) {
   }
 }
 
+/* Every sample row is LINKED to its heading at creation (QA r2): an
+   unlinked row is never binned, so a heading changed before the first
+   sync left a ghost scene in the Breakdown for good. And a sample says
+   it is made in India, so India-only tools are offered on it. */
+{
+  await import('./node-seams.mjs');
+  const HS = await import('../src/lib/hub-sample.js');
+  const SA = await import('../src/lib/screenplay-analysis.js');
+  const Sync = await import('../src/lib/scene-sync.js');
+  const { SAMPLES } = await import('../src/lib/samples.js');
+  for (const meta of SAMPLES) {
+    const sample = { ...meta, data: (await meta.loadData()).default };
+    const pages = (await meta.loadScript()).default.elements;
+    const scenes = HS.sampleScenes(sample);
+    const els = HS.sampleScript(sample, pages).elements;
+    const n = HS.linkSampleScenes(scenes, els, SA);
+    ok(n === scenes.length && scenes.every((s) => s.scriptElId), `${meta.id}: every scene is linked to its heading at creation (${n}/${scenes.length})`);
+    ok(meta.region === 'IN', `${meta.id}: the sample is marked as made in India`);
+    // the 8th heading turned into action: its scene goes to the bin, as in any project
+    const heads = els.filter((e) => e.type === 'scene');
+    const eighth = heads[7];
+    const edited = els.map((e) => (e === eighth ? { ...e, type: 'action' } : e));
+    const plan = Sync.reconcile(edited, scenes, { prev: Sync.headingMap ? Sync.headingMap(els) : undefined });
+    const lost = scenes.find((s) => s.scriptElId === eighth.id);
+    ok(lost && plan.bin.some((b) => b.sceneId === lost.id), `${meta.id}: removing a heading bins its scene`);
+  }
+}
+
 console.log(`test-samples — ${pass} passed, ${fail} failed (${ids.join(', ')})`);
 if (fail) process.exit(1);

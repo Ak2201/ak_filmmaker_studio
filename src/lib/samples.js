@@ -28,6 +28,11 @@ export const SAMPLES = [
     label: 'Dragon (2025)',
     blurb: 'A Tamil campus-to-corporate drama, scene by scene.',
     format: 'feature',
+    /* Both samples are Chennai productions in rupees, so they say so:
+       with no region a sample followed the DEVICE, and on a device set
+       to International Tamil typing told the Dragon sample it was "set
+       to be made elsewhere" (QA r2). */
+    region: 'IN',
     loadData:   () => import('../data/sample.dragon.json'),
     loadScript: () => import('../data/sample.dragon.script.json'),
     loadStory:  () => import('../data/sample.dragon.story.json')
@@ -38,6 +43,7 @@ export const SAMPLES = [
     label: 'The Dark Knight (2008)',
     blurb: 'A crime epic, imagined as a Chennai unit’s production, in rupees.',
     format: 'feature',
+    region: 'IN',
     loadData:   () => import('../data/sample.darkknight.json'),
     loadScript: () => import('../data/sample.darkknight.script.json'),
     loadStory:  () => import('../data/sample.darkknight.story.json')

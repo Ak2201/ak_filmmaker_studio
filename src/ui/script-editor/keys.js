@@ -24,7 +24,7 @@
 import { delegate } from '../../lib/dom.js';
 import Keys from '../../lib/write-keys.js';
 import WriteKeys from '../write-shortcuts.js';
-import { elFocus } from './rows.js';
+import { elFocus, autosize } from './rows.js';
 
 /** Where Return would split this field, or null when it would not:
  *  the caret (or the selection) must start inside the text and stop
@@ -204,6 +204,93 @@ export function wireKeys(root, ed, o) {
       });
     } catch (e) { /* chrome may not be up */ }
   }
+  /* MOVING BETWEEN LINES BY KEYBOARD (QA r2). Each element is its own
+     textarea, so the browser's ↑ ↓ stop at its edges and Backspace /
+     Delete at an edge did nothing: writing by keyboard meant the mouse
+     on every line. As in every screenplay editor and word processor:
+     ↓ on the last visual line goes to the next element (↑ on the first
+     to the one before); Backspace at the start joins the line to the one
+     above, Delete at the end pulls the next one up. A join is one Undo
+     away, and keeps the joined line (its id, so its note) for it. */
+  const visualLines = (ta) => {
+    const cs = getComputedStyle(ta);
+    const lh = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) || 16) * 1.2;
+    const inner = ta.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+    return Math.max(1, Math.round(inner / lh));
+  };
+  const caretTo = (id, where) => {
+    const node = document.querySelector(elFocus(id));
+    if (!node) return;
+    ed.applyFocus(node);   // caret at the end
+    if (where === 'start') { try { node.setSelectionRange(0, 0); } catch (e) { /* select */ } }
+  };
+  delegate(root, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
+    if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (!['ArrowUp', 'ArrowDown', 'Backspace', 'Delete'].includes(e.key)) return;
+    let a, b;
+    try { a = ta.selectionStart; b = ta.selectionEnd; } catch (err) { return; }
+    if (a !== b) return;
+    const i = ed.indexOf(idOf(ta, 'el'));
+    const list = els();
+    if (i < 0) return;
+    const down = e.key === 'ArrowDown';
+    if (e.key === 'ArrowUp' || down) {
+      const j = down ? i + 1 : i - 1;
+      if (!list[j]) return;
+      const edge = down ? a === ta.value.length : a === 0;
+      if (edge || visualLines(ta) <= 1) {
+        e.preventDefault();
+        list[i].text = ta.value;
+        caretTo(list[j].id, down ? 'start' : 'end');
+        return;
+      }
+      /* A wrapped block: let the browser move first, and leave the
+         element only when it could not (the caret was on the edge line). */
+      setTimeout(() => {
+        if (document.activeElement === ta && ta.selectionStart === a && ta.selectionEnd === a) {
+          list[i].text = ta.value;
+          caretTo(list[j].id, down ? 'start' : 'end');
+        }
+      }, 0);
+      return;
+    }
+    if (ta.value === '') return;                 // the empty-line removal above has it
+    if (e.key === 'Backspace' && a === 0 && i > 0) { e.preventDefault(); list[i].text = ta.value; joinLines(i - 1); }
+    else if (e.key === 'Delete' && a === ta.value.length && i < list.length - 1) { e.preventDefault(); list[i].text = ta.value; joinLines(i); }
+  }, { signal });
+  /** Element i+1's text onto the end of element i; the caret at the seam. */
+  function joinLines(i) {
+    const list = els();
+    const keep = list[i], gone = list[i + 1];
+    if (!keep || !gone) return;
+    const row = document.querySelector(elFocus(gone.id));
+    if (row && row.value !== gone.text) gone.text = row.value;
+    const was = keep.text;
+    const seam = was.length;
+    keep.text = was + gone.text;
+    ed.removeElement(i + 1, () => keep);
+    const ta = document.querySelector(elFocus(keep.id));
+    if (ta) {
+      ta.value = keep.text;
+      autosize(ta);
+      ta.focus();
+      try { ta.setSelectionRange(seam, seam); } catch (e) { /* select */ }
+    }
+    try {
+      o.toast('Lines joined.', {
+        type: 'info', action: 'Undo',
+        onAction: () => {
+          const at = ed.indexOf(keep.id);
+          if (at < 0 || ed.indexOf(gone.id) >= 0) return;
+          keep.text = was;
+          els().splice(at + 1, 0, gone);
+          o.persistNow();
+          ed.rerender(elFocus(gone.id));
+        }
+      });
+    } catch (e) { /* chrome may not be up */ }
+  }
+
   /* Typing anything closes the run: the next removal starts a new one. */
   document.addEventListener('input', (e) => {
     if (removedRun.length && e.target && e.target.matches && e.target.matches('.wr-text')) {

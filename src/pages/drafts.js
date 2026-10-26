@@ -93,7 +93,27 @@ document.addEventListener('fms:drafts-changed', () => render());
 function onScriptElsewhere() {
   reload();
   const typing = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-tp-field]');
-  if (typing) refreshState(); else render();
+  if (typing) refreshState(); else renderKeeping();
+}
+/* The whole page is rebuilt on an arrival, and the Writer in another tab
+   saves on every pause in typing — so a reader on the Compare select or
+   a draft's button was dropped to <body> and moved up the page each time
+   (QA r2). The control in use is found again by what names it (its id,
+   else its tag and data- attributes) and the scroll put back. */
+function focusKey(el) {
+  if (!el || el === document.body || !el.closest || !el.closest('#main')) return null;
+  if (el.id) return '#' + CSS.escape(el.id);
+  const attrs = [...el.attributes].filter((x) => x.name.startsWith('data-') || x.name === 'name')
+    .map((x) => '[' + x.name + '="' + CSS.escape(x.value) + '"]').join('');
+  return attrs ? el.tagName.toLowerCase() + attrs : null;
+}
+function renderKeeping() {
+  const key = focusKey(document.activeElement);
+  const y = window.scrollY;
+  render();
+  window.scrollTo({ top: y, behavior: 'instant' });
+  const back = key && document.querySelector(key);
+  if (back && typeof back.focus === 'function') back.focus({ preventScroll: true });
 }
 onWriteElsewhere(['fms_script_v1'], onScriptElsewhere);
 subscribe('cloud:synced', (p) => {

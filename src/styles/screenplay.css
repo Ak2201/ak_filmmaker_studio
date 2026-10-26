@@ -1088,6 +1088,19 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-find-opts { grid-area: opts; }
   .sc-find-x { grid-area: x; }
   .sc-find-acts { grid-area: acts; }
+  /* #scTop scrolls away on a phone (above), and every search scrolls
+     to its match — so the field being typed in, the count and Replace
+     left the screen with the first keystroke (QA r2: the bar at
+     y=-783). While it is open the find bar alone is pinned under the
+     band; the match lands at the centre, clear of it. */
+  .sc-find:not([hidden]) {
+    position: fixed;
+    top: var(--sh-chrome-h, 0px);
+    inset-inline: 0;
+    z-index: 6;
+    background: var(--surface-rail);
+    border-bottom: 1px solid var(--border-hair);
+  }
 }
 .sc-find-count { min-width: 6.5em; color: var(--ink-muted); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 /* On the paper page: the page's own rule colour for a line with a

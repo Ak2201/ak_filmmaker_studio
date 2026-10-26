@@ -455,14 +455,17 @@ async function openSampleProject(id = DEFAULT_SAMPLE) {
   let story = null;
   try { story = (await sample.loadStory()).default.story; } catch (e) { /* no story */ }
 
-  const project = Store.createProject({ title: sample.title, format: sample.format });
+  const project = Store.createProject({ title: sample.title, format: sample.format, region: sample.region });
   // createProject() has already made this the current project, so the
   // storage proxy scopes every write below to it.
   const scenes   = sampleScenes(sample);
   // Each scene takes the beat of the outline step written for it.
   applyStoryBeats(scenes, story);
   const contacts = sampleContacts(sample);
-  writeSampleData(sample, { scenes, contacts, pages, story });
+  // Linked to their headings from the start (hub-sample.js linkSampleScenes).
+  let match = null;
+  try { match = await import('../lib/screenplay-analysis.js'); } catch (e) { /* the first sync links them instead */ }
+  writeSampleData(sample, { scenes, contacts, pages, story, match });
   Store.notify('projects:changed', { reason: 'sample', project });
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast(

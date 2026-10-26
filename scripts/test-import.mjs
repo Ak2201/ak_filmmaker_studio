@@ -329,6 +329,22 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(I.parseSlug('EST. SKYLINE - DAY').intExt, 'EXT', '9: EST is exterior');
   eq(I.parseSlug('INT. CAR - LATER').dayNight + '|' + I.parseSlug('INT. CAR - LATER').location, 'CONTINUOUS|CAR', '15: LATER is a time, not part of the place');
   eq(['MOMENTS LATER', 'SAME', 'EVENING', 'DAWN', 'DUSK', 'NOON', 'MIDNIGHT', 'MORNING'].map((w) => I.parseSlug('INT. X - ' + w).location), Array(8).fill('X'), '15: time words leave the location alone');
+  // A qualifier after the time is not the time, and leaves the place (QA r2).
+  for (const [h, loc, dn] of [
+    ['INT. HOUSE - NIGHT (1995)', 'HOUSE', 'NIGHT'],
+    ['EXT. ROAD - NIGHT - FLASHBACK', 'ROAD', 'NIGHT'],
+    ['INT. KITCHEN - NIGHT (FLASHBACK)', 'KITCHEN', 'NIGHT'],
+    ['EXT. BEACH - NIGHT (PRESENT DAY)', 'BEACH', 'NIGHT'],
+    ['INT. KITCHEN—NIGHT', 'KITCHEN', 'NIGHT'],
+    ['INT. KITCHEN -- NIGHT', 'KITCHEN', 'NIGHT'],
+    ['INT. SCHOOL ASSEMBLY HALL, ASHOK NAGAR - DAY (2014)', 'SCHOOL ASSEMBLY HALL, ASHOK NAGAR', 'DAY'],
+    ['INT. HOUSE - KITCHEN - NIGHT', 'HOUSE - KITCHEN', 'NIGHT'],
+    ['INT. CO-OP STORE - DUSK', 'CO-OP STORE', 'DUSK'],
+  ]) {
+    const p = I.parseSlug(h);
+    eq(p.location + '|' + p.dayNight + '|' + p.guessedTime, loc + '|' + dn + '|false', 'qualifier: ' + h);
+  }
+  eq(I.parseSlug('INT. HOUSE - FLASHBACK').location + '|' + I.parseSlug('INT. HOUSE - FLASHBACK').guessedTime, 'HOUSE - FLASHBACK|true', 'qualifier: no time at all stays in the place, flagged');
   eq(I.parseSlug('உள். வீடு - இரவு'), { number: '', intExt: 'INT', dayNight: 'NIGHT', location: 'வீடு', guessedTime: false }, '15: Tamil heading');
   eq(I.parseSlug('வெளி. தெரு - பகல்').intExt + I.parseSlug('வெளி. தெரு - பகல்').dayNight, 'EXTDAY', '15: வெளி / பகல்');
   eq(ty('உள். வீடு - இரவு\n\nமணி\nவணக்கம்.', 'x.fountain'), 'scene character dialogue', '15: a Tamil heading is recognised unforced');

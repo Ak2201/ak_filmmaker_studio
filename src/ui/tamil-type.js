@@ -67,7 +67,7 @@ export const isTamilTyping = () => on && here();
 
 export function setTamilTyping(next, { announce = true } = {}) {
   if (next && !here()) {
-    if (announce) StudioUI.toast('Tamil typing is for films made in India. This film is set to be made elsewhere; change that on the dashboard\u2019s Title page card.', { type: 'info' });
+    if (announce) StudioUI.toast('Tamil typing is for films made in India, and this film is not marked as made in India; change that on the dashboard\u2019s Title page card.', { type: 'info' });
     return false;
   }
   on = !!next;

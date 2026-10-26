@@ -631,6 +631,237 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.setViewportSize({ width: 1280, height: 900 });
 }
 
+/* ---- 21 QA round 2 (26 Oct 2026): headings, windows, keys, find, import --
+   Each assertion failed before its fix. */
+{
+  const fresh = async (title, els, extra = {}) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+    await page.evaluate(({ title, els, extra }) => {
+      const S = window.StudioStore;
+      const p = S.createProject({ title: title + ' ' + Date.now(), format: 'feature', ...extra });
+      S.setCurrentProject(p.id);
+      if (els) S.rawSet('fms_script_v1__' + p.id, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+    }, { title, els, extra });
+  };
+  const stored = () => page.evaluate(() => {
+    const S = window.StudioStore; const id = S.currentProjectId();
+    return { script: JSON.parse(S.rawGet('fms_script_v1__' + id) || 'null'), scenes: ((JSON.parse(S.rawGet('fms_scenes_v1__' + id) || 'null') || {}).scenes || []) };
+  });
+  const FOUR = [
+    { id: 'e1', type: 'scene', text: 'INT. FLAT - NIGHT' }, { id: 'e2', type: 'action', text: 'Ravi paces.' },
+    { id: 'e3', type: 'character', text: 'RAVI' }, { id: 'e4', type: 'dialogue', text: 'Not tonight.' }
+  ];
+  const toasts = (pg, re) => pg.$$eval('.toast', (ts, src) => ts.filter((t) => new RegExp(src).test(t.textContent)).length, re);
+
+  /* a) a qualifier after the time: NIGHT (1995) is a NIGHT scene in HOUSE */
+  await fresh('Proof Night');
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.click('#wr-page .wr-text');
+  await page.keyboard.type('INT. HOUSE - NIGHT (1995)');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('The lights are out.');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Alt+1');
+  await page.keyboard.type('EXT. ROAD - NIGHT - FLASHBACK');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Rain.');
+  await page.waitForTimeout(3000);
+  let s = await stored();
+  ok(JSON.stringify(s.scenes.map((x) => [x.intExt, x.location, x.dayNight])) === JSON.stringify([['INT', 'HOUSE', 'NIGHT'], ['EXT', 'ROAD', 'NIGHT']]),
+    '21a a qualifier after the time is not the time and leaves the location', s.scenes.map((x) => [x.intExt, x.location, x.dayNight]));
+
+  /* b) two windows editing one after the other: no conflict, no side copies */
+  await fresh('Proof Seq', FOUR);
+  const tabB = await ctx.newPage();
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await tabB.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.bringToFront();
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' A-edit');
+  await page.waitForTimeout(1500);
+  await tabB.bringToFront();
+  await tabB.click('[data-el="e4"] .wr-text');
+  await tabB.keyboard.press('End');
+  await tabB.keyboard.type(' B-edit');
+  await tabB.waitForTimeout(3000);
+  s = await stored();
+  const conflictA = await toasts(page, 'another window'), conflictB = await toasts(tabB, 'another window');
+  ok(conflictA === 0 && conflictB === 0, '21b one window after the other: no "saved in another window" toast in either', { conflictA, conflictB });
+  ok(!(s.script.revisions || []).some((r) => /^From another/.test(r.name)), '21b and no side copies in Drafts', (s.script.revisions || []).map((r) => r.name));
+  ok(s.script.elements[1].text === 'Ravi paces. A-edit' && s.script.elements[3].text === 'Not tonight. B-edit', '21b both edits are stored', s.script.elements.map((e) => e.text));
+  const aShows = await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value));
+  ok(aShows[3] === 'Not tonight. B-edit' && aShows[1] === 'Ravi paces. A-edit', '21b the first window simply loads the newer copy', aShows);
+
+  /* c) both at once: a window whose lines leave its screen is told where they went */
+  await fresh('Proof Race', FOUR);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await tabB.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await tabB.click('[data-el="e4"] .wr-text');
+  await tabB.keyboard.press('End');
+  await Promise.all([page.keyboard.type(' AAA'), tabB.keyboard.type(' BBB')]);
+  await page.waitForTimeout(5000);
+  const aNow = (await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).join('|');
+  const told = await toasts(page, 'kept its own version');
+  ok(/AAA/.test(aNow) || told === 1, '21c the first writer\'s lines stay on screen, or a toast says where they went', { aNow, told });
+  const yoursKept = (await toasts(page, 'Yours is kept')) + (await toasts(tabB, 'Yours is kept'));
+  ok(yoursKept <= 1, '21c the two windows do not trade "Yours is kept" toasts', yoursKept);
+  s = await stored();
+  const sides = (s.script.revisions || []).filter((r) => /^From another/.test(r.name));
+  ok(sides.every((r) => /^From another window/.test(r.name)), '21c a copy from another window is named for a window, not a device', sides.map((r) => r.name));
+  const anyAAA = s.script.elements.some((e) => /AAA/.test(e.text)) || sides.some((r) => r.elements.some((e) => /AAA/.test(e.text)));
+  ok(anyAAA, '21c and nothing typed is lost', s.script);
+
+  /* d) Analysis: viewing writes nothing; an arrival refreshes it */
+  await tabB.close();
+  await fresh('Proof Analysis', FOUR);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(800);
+  const writesTo = () => page.evaluate(() => window.__writes.filter((w) => w.k.startsWith('fms_script_v1')).length);
+  const w0 = await writesTo();
+  await page.click('#scTop [role="tab"][data-tab="analysis"]');
+  await page.waitForSelector('#analysis .k-stat-value', { timeout: 8000 });
+  await page.waitForTimeout(400);
+  ok(await writesTo() === w0, '21d opening Script analysis saves nothing', [w0, await writesTo()]);
+  const scenesStat = () => page.$eval('#analysis .k-stat-value', (n) => n.textContent);
+  const before = await scenesStat();
+  await page.evaluate(() => {
+    const S = window.StudioStore; const pid = S.currentProjectId(); const k = 'fms_script_v1__' + pid;
+    const b = JSON.parse(S.rawGet(k));
+    b.elements.push({ id: 'e5', type: 'scene', text: 'EXT. ROOF - DAY' }, { id: 'e6', type: 'action', text: 'Wind.' });
+    S.rawSet(k, JSON.stringify(b)); S.notify('cloud:synced', { projectId: pid, scope: 'script' });
+  });
+  await page.waitForTimeout(800);
+  ok(before === '1' && await scenesStat() === '2', '21d an arriving copy refreshes the open analysis', [before, await scenesStat()]);
+  await page.click('#scTop [role="tab"][data-tab="screenplay"]').catch(() => {});
+
+  /* e) the keyboard moves between lines, and joins them */
+  await fresh('Proof Keys', FOUR);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  const at = () => page.evaluate(() => { const a = document.activeElement; return [a.closest('[data-el]')?.dataset.el, a.selectionStart]; });
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowDown');
+  ok(JSON.stringify(await at()) === JSON.stringify(['e3', 0]), '21e ArrowDown on the last line goes to the next element', await at());
+  await page.keyboard.press('ArrowUp');
+  ok((await at())[0] === 'e2', '21e ArrowUp on the first line goes to the one before', await at());
+  await page.click('[data-el="e4"] .wr-text');
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Backspace');
+  await page.waitForTimeout(300);
+  let t = (await stored()).script.elements.map((e) => e.text);
+  ok(JSON.stringify(t) === JSON.stringify(['INT. FLAT - NIGHT', 'Ravi paces.', 'RAVINot tonight.']) && JSON.stringify(await at()) === JSON.stringify(['e3', 4]),
+    '21e Backspace at the start joins the line to the one above, caret at the seam', [t, await at()]);
+  await page.click('.toast:has-text("Lines joined") .toast-action');
+  await page.waitForTimeout(300);
+  t = (await stored()).script.elements.map((e) => e.text);
+  ok(JSON.stringify(t) === JSON.stringify(['INT. FLAT - NIGHT', 'Ravi paces.', 'RAVI', 'Not tonight.']), '21e Undo puts the joined line back', t);
+  await page.click('[data-el="e1"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(300);
+  t = (await stored()).script.elements.map((e) => e.text);
+  ok(t[0] === 'INT. FLAT - NIGHTRavi paces.' && t.length === 3, '21e Delete at the end pulls the next line up', t);
+
+  /* f) the import dialog keeps focus */
+  await fresh('Proof Import');
+  await page.goto(url('screenplay.html#import'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
+  const inDlg = () => page.evaluate(() => !!document.activeElement.closest('#scImport'));
+  ok(await inDlg(), '21f the dialog opens with focus inside it (empty project)', await page.evaluate(() => document.activeElement.tagName));
+  let stayed = true;
+  for (let k = 0; k < 7; k++) { await page.keyboard.press('Tab'); if (!(await inDlg())) stayed = false; }
+  ok(stayed, '21f Tab cycles inside the dialog');
+  await page.keyboard.press('Escape');
+  await fresh('Proof Import2', FOUR);
+  await page.goto(url('screenplay.html#import'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.fill('#scImpPaste', 'INT. CAVE - NIGHT\n\nDark.');
+  await page.click('[data-action="sc-imp-paste"]');
+  await page.waitForSelector('[data-action="sc-imp-mode"]');
+  await page.focus('[data-action="sc-imp-mode"][aria-checked="true"]');
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(100);
+  const radio = await page.evaluate(() => [document.querySelector('[data-mode="replace"]').getAttribute('aria-checked'), document.activeElement.dataset.mode]);
+  ok(JSON.stringify(radio) === JSON.stringify(['true', 'replace']), '21f ArrowRight moves and chooses in the placement radio pair', radio);
+  await page.keyboard.press('Escape');
+
+  /* g) on a phone, the find bar stays on screen while you type */
+  await fresh('Proof Find', Array.from({ length: 60 }, (_, i) => ({ id: 'f' + i, type: i % 2 ? 'action' : 'scene', text: i % 2 ? (i === 51 ? 'Ragavan waits.' : 'Rain on the glass.') : 'INT. ROOM ' + i + ' - DAY' })));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.focus('[data-el="f1"] .wr-text');
+  await page.keyboard.press('Control+Shift+H');
+  await page.waitForSelector('#scFindQ');
+  await page.keyboard.type('Ragavan');
+  await page.waitForTimeout(400);
+  const fb = await page.evaluate(() => { const b = document.getElementById('scFind').getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), y: Math.round(scrollY) }; });
+  ok(fb.y > 0 && fb.top >= 0 && fb.bottom <= 844, '21g the find bar stays in view after the jump to the match (390px)', fb);
+  await page.keyboard.press('Escape');
+
+  /* h) the phone Tools sheet leaves Tamil typing out for a film made elsewhere */
+  await fresh('Proof Intl', FOUR, { region: 'INT' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.click('.sc-tools-r .sc-tools-sheet-btn');
+  await page.waitForTimeout(400);
+  const tamilRow = await page.$$eval('[data-sc-act="sc-tamil"]', (bs) => bs.filter((b) => b.getClientRects().length).length);
+  ok(tamilRow === 0, '21h the phone Tools sheet does not offer Tamil typing outside India', tamilRow);
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  /* i) drafts.html keeps the control in use when the Writer saves elsewhere */
+  await fresh('Proof DraftsFocus', FOUR);
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.click('[data-dr="new"]'); await page.click('.lp-card [data-lp="go"]'); await page.waitForTimeout(300);
+  await page.click('[data-dr="new"]'); await page.click('.lp-card [data-lp="go"]'); await page.waitForTimeout(300);
+  const tabW = await ctx.newPage();
+  await tabW.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.bringToFront();
+  const sel = await page.$('main select');
+  if (sel) {
+    await sel.focus();
+    const key = await page.evaluate(() => { const a = document.activeElement; return a.id || a.outerHTML.slice(0, 80); });
+    await tabW.bringToFront();
+    await tabW.click('[data-el="e2"] .wr-text');
+    await tabW.keyboard.press('End');
+    await tabW.keyboard.type(' more');
+    await tabW.waitForTimeout(2000);
+    await page.bringToFront();
+    const now = await page.evaluate(() => { const a = document.activeElement; return a.tagName === 'SELECT' ? (a.id || a.outerHTML.slice(0, 80)) : a.tagName; });
+    ok(now === key, '21i drafts.html keeps focus on the select in use after a save in the Writer', { key, now });
+  } else ok(false, '21i drafts.html has a Compare select with two drafts');
+  await tabW.close();
+
+  /* j) a refused save never reads "Autosaved" */
+  const qctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await qctx.addInitScript(() => { window.__origSet = Storage.prototype.setItem; if (location.pathname.includes('screenplay')) IDBFactory.prototype.open = function () { throw new Error('blocked'); }; });
+  const q = await qctx.newPage();
+  await q.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await q.evaluate((els) => {
+    const S = window.StudioStore; localStorage.clear();
+    const p = S.createProject({ title: 'Quota', format: 'feature' }); S.setCurrentProject(p.id);
+    S.rawSet('fms_script_v1__' + p.id, JSON.stringify({ elements: els }));
+  }, FOUR.slice(0, 2));
+  await q.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await q.waitForTimeout(600);
+  await q.evaluate(() => { let n = 0, size = 512 * 1024; while (size >= 64) { try { window.__origSet.call(localStorage, 'junk' + (n++), 'x'.repeat(size)); } catch (e) { size = Math.floor(size / 2); } } });
+  await q.click('[data-el="e2"] .wr-text');
+  await q.keyboard.press('End');
+  await q.keyboard.type(' He stops at the window and counts the cars below. '.repeat(3));
+  await q.waitForTimeout(2500);
+  const status = await q.$eval('.sc-status', (n) => n.textContent);
+  ok(!/Autosaved/.test(status) && /Not saved/.test(status), '21j a save refused for want of storage reads "Not saved", never "Autosaved"', status);
+  await qctx.close();
+}
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {

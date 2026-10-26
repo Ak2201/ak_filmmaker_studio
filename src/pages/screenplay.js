@@ -15,9 +15,10 @@
    and that line is saved only when the writer types in it.
    ============================================================ */
 import { flushStorage, currentProject, currentProjectId, subscribe, onWriteElsewhere } from '../lib/store.js';
-import { incomingAction, keepBoth, takeTheirs, scriptSignature, ARRIVAL_PREFIX, YOURS_PREFIX } from '../lib/script-incoming.js';
+import { incomingAction, keepBoth, takeTheirs, scriptSignature, displacedCopy, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX } from '../lib/script-incoming.js';
 import { mergeScript } from '../lib/script-merge.js';
 import { ask, askDanger } from '../ui/dialog.js';
+import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -117,16 +118,35 @@ function persist() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { saveTimer = null; persistNow(); }, SAVE_DELAY);
 }
+/* What this page last put in storage (or loaded from it), as a
+   signature. "Unsaved here" is `doc` differing from it, not "typed in
+   the last 2.5 s": the time window kept a page that had saved and gone
+   idle counting as mid-edit, so the next save from another window was
+   kept beside it as a conflict (QA r2: two toasts, two side copies, from
+   edits that never overlapped). */
+let savedSig = scriptSignature(doc);
+let savedEls = null;          // the elements this page last saved, if it saved since it last loaded
+/* A REFUSED save is not a save. The storage proxy swallows a quota
+   failure and says so with storage:error (CLAUDE.md item 57), so
+   saveScript() still returns true; without this the status line settled
+   on "Autosaved ✓" — and announced it — under the toast saying the
+   change was NOT saved. */
+let saveRefused = false;
+subscribe('storage:error', (p) => { if (p && String(p.key || '').startsWith(Script.SCRIPT_KEY)) saveRefused = true; });
 function persistNow() {
   clearTimeout(saveTimer);
   saveTimer = null;
   if (saving) { saveOwed = true; return; }
   saving = true;
   setStatus('Saving…');
+  saveRefused = false;
   Script.saveScript(doc);
+  savedSig = scriptSignature(doc);
+  savedEls = doc.elements.map((e) => [e.type, e.text]);
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
+    if (saveRefused) { savedSig = null; setStatus('Not saved: this browser is out of storage'); return; }
     setStatus('Autosaved ✓');
     refreshDraftLabel();
   };
@@ -138,6 +158,7 @@ function persistBeforeLeaving() {
   saveTimer = null;
   saveOwed = false;
   Script.saveScript(doc);
+  savedSig = scriptSignature(doc);
 }
 addEventListener('pagehide', persistBeforeLeaving);
 
@@ -192,6 +213,7 @@ function showDoc() {
     }
   }
   refreshDraftLabel();
+  refreshAnalysis();   // an open analysis follows the arrival, as the header counts do
 }
 function mergeIncoming(fresh) {
   const merged = mergeScript(doc, fresh, pageBase);
@@ -199,6 +221,7 @@ function mergeIncoming(fresh) {
   const differsThere = scriptSignature(merged) !== scriptSignature(fresh);
   doc = merged;
   notePageBase(fresh);
+  if (!differsThere) { savedSig = scriptSignature(doc); savedEls = null; }
   if (changedHere) showDoc();
   if (differsThere) persistNow();   // this writer's part goes up too
 }
@@ -214,16 +237,29 @@ function dropTheirsOffer() {
 }
 function onIncomingScript(live, where = 'device') {
   const fresh = Script.loadScript();
-  const dirty = !!(saveTimer || saving || saveOwed) || Date.now() - lastTypedAt < 2500;
+  const dirty = !!(saveTimer || saving || saveOwed) || scriptSignature(doc) !== savedSig;
   if (coEditOn()) { dropTheirsOffer(); mergeIncoming(fresh); return; }
   notePageBase(fresh);
   const act = incomingAction({ mine: doc, fresh, dirty });
   if (act === 'same') { dropTheirsOffer(); return; }
   if (act === 'load') {
     dropTheirsOffer();
+    /* The other side was mid-edit when this page's save reached it, so
+       it kept ITS copy and filed this one as a side copy. Loading it is
+       right — this page has nothing unsaved — but the lines this writer
+       saved are leaving the screen, and that has to be said (QA r2:
+       they vanished silently after a toast had said "Yours is kept"). */
+    const gone = savedEls && displacedCopy(fresh, savedEls);
+    savedEls = null;
     doc = fresh;
+    savedSig = scriptSignature(doc);
     showDoc();
-    if (!live && where === 'device') say('Updated with the newer copy from your other device.');   // the live path already said so
+    if (gone) {
+      try {
+        StudioUI.toast((where === 'window' ? 'Another window' : 'Another device')
+          + ' kept its own version of this script, which is now on screen. What you saved here is in Drafts as “' + gone.name + '”.', { type: 'info' });
+      } catch (e) { /* chrome may not be up */ }
+    } else if (!live && where === 'device') say('Updated with the newer copy from your other device.');   // the live path already said so
     return;
   }
   const arrived = fresh;
@@ -232,7 +268,9 @@ function onIncomingScript(live, where = 'device') {
      rather than adding one per save, and the save waits for the usual
      debounce, so two people typing do not trade copies as fast as the
      network allows. Only the newest offer to swap stays on screen. */
-  doc = keepBoth(doc, arrived, ARRIVAL_PREFIX + clock(), { replaceId: incomingDraftId });
+  const prefix = where === 'window' ? ARRIVAL_WINDOW_PREFIX : ARRIVAL_PREFIX;
+  doc = keepBoth(doc, arrived, prefix + clock(), { replaceId: incomingDraftId });
+  savedEls = null;
   incomingDraftId = doc.revisions[doc.revisions.length - 1]?.id || null;
   persist();
   refreshDraftLabel();
@@ -241,7 +279,7 @@ function onIncomingScript(live, where = 'device') {
     const offer = StudioUI.toast((where === 'window'
       ? 'This script was saved in another window while you were writing here.'
       : 'Another device saved a different version of this script while you were writing.')
-      + ' Yours is kept; theirs is in Drafts as “From another device”.', {
+      + ' Yours is kept; theirs is in Drafts as “' + prefix.replace(/,\s*$/, '') + '”.', {
       type: 'info', action: 'Use theirs',
       onAction: () => {
         if (theirsToast !== offer) return;   // withdrawn: a newer copy came since
@@ -418,7 +456,11 @@ function setView(id, moveHash) {
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
-  if (view === 'analysis') { persistNow(); refreshAnalysis(); }
+  /* Only a change still waiting goes out first: viewing the analysis
+     changes nothing, and an unconditional save rewrote the whole blob
+     on every switch — which another window took for a new copy (QA r2:
+     a false conflict and a side copy from a tab that typed nothing). */
+  if (view === 'analysis') { if (saveTimer || saveOwed) persistNow(); refreshAnalysis(); }
   else if (curId) editor.focusEl(curId);
 }
 
@@ -1256,7 +1298,7 @@ let impDialog = null;
    fragment still names a visible element. */
 
 function closeImport() {
-  if (impDialog) { impDialog.remove(); impDialog = null; }
+  if (impDialog) { releaseFocus(impDialog); impDialog.remove(); impDialog = null; }
   imp = null;
   if (location.hash === '#import') history.replaceState(null, '', location.pathname + location.search);
   if (curId) editor.focusEl(curId);
@@ -1286,6 +1328,7 @@ function drawImport() {
         ['append', 'Add after what is written'], ['replace', 'Replace the screenplay (a draft is saved first)']
       ].map(([m, label]) => h('button.k-seg-btn' + ((imp.replace ? 'replace' : 'append') === m ? '.is-on' : ''), {
         type: 'button', role: 'radio', 'aria-checked': String((imp.replace ? 'replace' : 'append') === m),
+        tabindex: (imp.replace ? 'replace' : 'append') === m ? '0' : '-1',
         'data-action': 'sc-imp-mode', 'data-mode': m, text: label
       }))));
     }
@@ -1294,7 +1337,7 @@ function drawImport() {
       button({ label: 'Back', variant: 'ghost', action: 'sc-imp-back' })
     ]));
   }
-  const dlg = h('div#scImport.sc-imp', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import Screenplay' }, [
+  const card = [
     h('div.sc-imp-card', { id: 'import' }, [
       h('div.sc-imp-head', {}, [
         h('span.sc-imp-icon', {}, [sym('upload_file')]),
@@ -1303,12 +1346,38 @@ function drawImport() {
       ]),
       body
     ])
-  ]);
-  if (impDialog) impDialog.replaceWith(dlg);
-  else document.body.append(dlg);
+  ];
+  /* aria-modal is a promise that nothing behind is reachable (QA r2:
+     Tab walked out of the card into the rail, and on an empty project
+     the dialog opened with focus on <body>). ONE element for the life
+     of the dialog, so the trap holds across a redraw, and focus is put
+     inside it again once the page behind has finished rendering. */
+  const fresh = !impDialog;
+  const dlg = impDialog || h('div#scImport.sc-imp', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import Screenplay' });
+  dlg.replaceChildren(...card);
+  if (fresh) { document.body.append(dlg); holdFocus(dlg); }
   impDialog = dlg;
-  (dlg.querySelector('textarea, button.k-btn--primary') || dlg).focus?.();
+  const into = () => {
+    if (impDialog !== dlg || dlg.contains(document.activeElement)) return;
+    (dlg.querySelector('textarea, button.k-btn--primary') || dlg.querySelector('button'))?.focus?.();
+  };
+  const want = focusMode;
+  focusMode = null;
+  if (want) dlg.querySelector('[data-mode="' + want + '"]')?.focus?.();
+  else into();
+  requestAnimationFrame(() => setTimeout(into, 0));
 }
+let focusMode = null;   // the radio that keeps focus across a redraw
+/* The two placement choices are a radio group: the arrow keys move and
+   choose, as for any radio pair. */
+delegate(document, 'keydown', '[data-action="sc-imp-mode"]', (e, btn) => {
+  if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key) || !imp) return;
+  e.preventDefault();
+  const m = btn.dataset.mode === 'replace' ? 'append' : 'replace';
+  imp.replace = m === 'replace';
+  focusMode = m;
+  drawImport();
+});
 function openImport() { if (!PlanGate.guard('script_import')) return; if (!impDialog) { imp = null; drawImport(); } }
 
 async function takeScript(text, name) {
@@ -1328,7 +1397,7 @@ async function takeScript(text, name) {
 delegate(document, 'click', '[data-action="sc-import"]', (e) => { e.preventDefault(); openImport(); });
 delegate(document, 'click', '[data-action="sc-imp-close"]', closeImport);
 delegate(document, 'click', '[data-action="sc-imp-back"]', () => { imp = null; drawImport(); });
-delegate(document, 'click', '[data-action="sc-imp-mode"]', (e, btn) => { imp.replace = btn.dataset.mode === 'replace'; drawImport(); });
+delegate(document, 'click', '[data-action="sc-imp-mode"]', (e, btn) => { imp.replace = btn.dataset.mode === 'replace'; focusMode = btn.dataset.mode; drawImport(); });
 delegate(document, 'change', 'input[data-action="sc-imp-file"]', async (e, input) => {
   const file = input.files && input.files[0];
   if (!file) return;

@@ -3,5 +3,5 @@
    never removed: every data-key and fragment target stays in the DOM.
    The Tamil glosses and the reading-language switch stay for a reader
    who already chose Tanglish, or they could never switch back. */
-:root[data-no-india] :is([data-india-only], [data-action="sc-tamil"]),
+:root[data-no-india] :is([data-india-only], [data-action="sc-tamil"], [data-sc-act="sc-tamil"]),
 :root[data-no-india]:not([data-lang="tl"]) :is(.tn, .tanglish, .lang-switch) { display: none !important; }

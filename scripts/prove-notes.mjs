@@ -248,6 +248,10 @@ check('board: the new note’s colour row is one Tab stop', await page.evaluate(
 await page.focus('[data-nt="new-color"][data-for="ntBoardNew"][aria-checked="true"]');
 await page.keyboard.press('ArrowRight');
 check('board: an arrow key moves the colour choice', await active(), ['BUTTON', 'new-color', 'pink']);
+await page.fill('#ntBoardNew', '');
+await page.click('[data-nt="add"][data-for="ntBoardNew"]');
+await page.waitForTimeout(300);
+check('board: "Add note" with an empty box says what to do', await page.evaluate(() => /Write the note in the box first/.test(document.body.innerText)), true);
 await page.fill('#ntBoardNew', 'Board one');
 await page.click('[data-nt="add"][data-for="ntBoardNew"]');
 await page.waitForTimeout(300);

@@ -187,7 +187,8 @@ export function bindNoteActions() {
       const f = el.getAttribute('data-for');
       const ta = document.getElementById(f);
       const note = makeNote(ta && ta.value, { color: newColor(f), ...pinPatch(el.getAttribute('data-pin')) });
-      if (!note) { if (ta) ta.focus(); return; }
+      /* An empty box used to do nothing and say nothing (QA, 26 Oct 2026). */
+      if (!note) { if (ta) ta.focus(); toast('Write the note in the box first, then press Add note.'); return; }
       if (Story.addNoteToVault(note)) { if (ta) ta.value = ''; changed({ focus: f, added: note.id }); }
       else toast('The note could not be saved: this browser’s storage refused it.', { type: 'error' });
     } else if (act === 'color') {

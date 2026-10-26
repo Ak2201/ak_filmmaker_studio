@@ -207,9 +207,9 @@ Pre-production teal, Production pink, Post magenta.
 rather than repeat the same line eighteen times.
 
 **★ marks the two to lead with.** Auto-tagging (06) suggests a scene's
-elements from its own text, and the budget (10) starts from Chennai rates
-with a source and a checked date on each figure; both are checkable in the
-product. Say what they do, never that nothing else does it: no competitor
+elements from its own text, and the budget (10) starts from indicative Chennai
+rate bands, and the few figures re-read against a public page show that
+page and the day it was read; both are checkable in the product. Say what they do, never that nothing else does it: no competitor
 claim goes in a caption unless the owner has read the source that day
 (playbook §4.8). If you want the run front-loaded, move those two earlier
 than their stage order suggests.

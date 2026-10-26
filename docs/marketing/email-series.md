@@ -66,7 +66,8 @@ paragraph: a studio in your browser that takes a film from story to
 screenplay, breakdown, schedule, budget and call sheets, then on to the shoot
 day and delivery. It is built for how Tamil and Indian units actually work:
 Tamil dialogue with English slug lines, budgets in rupees that start from
-Chennai rates and show where each figure came from, and call sheets you can
+an indicative Chennai rate card (the figures re-checked against a public page
+say which page and when), and call sheets you can
 send as a WhatsApp message.
 
 The quickest way to see it is the free trial: {TRIAL_LENGTH} of

@@ -40,7 +40,9 @@ not templates it sends verbatim.
    `seller` and `address` empty on purpose, so decide what you may publish.
    Harvey's gate does NOT catch square-bracket placeholders.
 2. `[VIDEO LINK]` — record the 60-second script-to-call-sheet demo first.
-3. `{TRIAL_LENGTH}` — never typed from here. A student who presses START
+3. `[TRIAL LENGTH]` — never typed from here, and replace it BY HAND on
+   approval: like the other square-bracket fields, Harvey's gate does not
+   catch it. A student who presses START
    gets the length `trial_offer()` reads that day (`trial_hours`); a student
    given an invite code gets that code's `code_trial_days` (console). Read
    whichever you are offering on the day you send, and write it in words.
@@ -49,7 +51,7 @@ not templates it sends verbatim.
    with the Pro trial plan; otherwise "the tools on two sample films". A
    whole-studio trial still keeps one film in the cloud, no share links and
    no collaborators, so do not promise a class can share or co-write on it.
-4. The claims (Chennai crew rates with sources, CBFC checklists, work lives
+4. The claims (a Chennai rate card to start from, 8 figures re-checked, CBFC checklists, work lives
    in the browser first) — confirm each is true of the build you point
    schools to. There is no union rate floor, so never say "union rates".
    CBFC checklists are on Pro; breakdown, stripboard and budget on
@@ -73,9 +75,9 @@ Subject: Script to call sheet for your {{company}} short-film module
 ```
 Hi {{first_name}},
 
-I build FilmMakerStudio, a browser tool that takes a screenplay through breakdown, stripboard, call sheet and budget, starting from Chennai crew rates with sources and with CBFC checklists built in. Nothing to install, and student work lives in their own browser first.
+I build FilmMakerStudio, a browser tool that takes a screenplay through breakdown, stripboard, call sheet and budget, starting from a Chennai rate card and with CBFC checklists built in. Nothing to install, and student work lives in their own browser first.
 
-I'm looking for one or two film departments to try it on a real semester project. I'd give every student in your class a free {TRIAL_LENGTH} trial code, and I'd join a short call to set it up.
+I'm looking for one or two film departments to try it on a real semester project. I'd give every student in your class a free [TRIAL LENGTH] trial code, and I'd join a short call to set it up.
 
 Would a pilot like that suit a class you teach at {{company}}?
 

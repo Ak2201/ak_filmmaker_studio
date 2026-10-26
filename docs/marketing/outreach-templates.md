@@ -31,9 +31,10 @@ to breakdown, schedule, budget and call sheets, built for Tamil and Indian
 units (Tamil dialogue with English slugs, rupee budgets from Chennai rates,
 call sheets on WhatsApp).
 
-Would you like a year of the Pro plan, free, to try on a real project? There
-is no obligation to post anything. If you do review it, say what you really
-think, including what is missing.
+Would you like an invite code to try it on a real project? There is no
+obligation to post anything. If you do post about it, please say you were
+given the access free (the platform's paid-partnership or gifted label and
+a spoken line), and say what you really think, including what is missing.
 
 If it fits your channel, there is also an affiliate code for your audience
 (details below), but that is a separate question.
@@ -71,7 +72,7 @@ Either of us can end this any time; commission already earned is still paid.
 | --- | --- |
 | Story, screenplay, breakdown, stripboard, budget, call sheets, shoot day, deliverables in one browser studio | "Replaces Final Draft / Celtx / StudioBinder" |
 | Tamil dialogue with English slug lines; an opt-in Type Tamil mode turns romanised dialogue into Tamil script, word by word | "Converts your whole script to Tamil" / "types Tamil for you" |
-| Budgets in rupees starting from Chennai rates, with sources | "Union rates" / "FEFSI-approved" |
+| Budgets in rupees starting from the Chennai 2024-25 rate card, 8 figures re-checked and dated | "Union rates" / "FEFSI-approved" |
 | Imports Fountain, Final Draft, Word, text, real-text PDF; exports PDF, Word, Final Draft, Fountain | "Imports scanned PDFs" |
 | Works offline once installed | "Never needs the internet" |
 | Your work lives in your browser first; Drive backup on Intermediate and Pro | "Nothing ever leaves your computer" |

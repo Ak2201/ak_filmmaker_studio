@@ -60,14 +60,14 @@ Screenplay Writer; page count updates.
 
 ### M3 — Budget in rupees (static, 4:5)
 
-Image: a real budget screen from the Dragon sample, figures with their
-source and checked date visible.
+Image: a real budget screen from the Dragon sample, with a re-checked
+line (its source and date) and an "indicative" line both visible.
 
-- **Primary:** Budget your short film in rupees, starting from Chennai rates. Every figure shows where it came from and when it was checked.
+- **Primary:** Budget your short film in rupees, starting from the Chennai 2024-25 rate card, every line marked indicative, with 8 figures re-checked and dated.
 - **Headline:** A budget that starts from real rates
 - **Description:** Intermediate: {INDIE_YEAR} for a year
 - **Link:** `/start?src=meta-t1d&utm_campaign=test1`
-- **Check:** Budget is Intermediate. Never say "union rates" (no union floor exists); say "Chennai rates" or "market rates, with sources".
+- **Check:** Budget is Intermediate. Never say "union rates" (no union floor exists); say "the Chennai rate card". Never "every figure is sourced": only the `checked` rows in `rates.chennai.checks.json` are (8 today).
 
 ### M4 — Nothing renews by itself (static)
 
@@ -148,7 +148,7 @@ Talking points the creator may use, all true:
 - It takes a film from story and screenplay to breakdown, schedule, budget,
   call sheets, the shoot day and deliverables.
 - Tamil dialogue with English slug lines; budgets in rupees from Chennai
-  rates with a source on each figure; call sheets as a WhatsApp message.
+  rate card (8 figures re-checked and dated); call sheets as a WhatsApp message.
 - Imports Fountain, Final Draft, Word, text and real-text PDFs; exports PDF,
   Word, Final Draft and Fountain.
 - Works offline once installed; backs up to your own Google Drive on

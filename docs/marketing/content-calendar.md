@@ -20,8 +20,8 @@ caption when it is not Basic.
 
 Every guide you share carries the channel's `src`
 (`/guide-script-breakdown?src=ig-story&utm_campaign=wk3`): guide pages send
-no `landing_view` of their own, and the tag rides along to `/start` in the
-same tab (playbook §3). Instagram tags (`ig-*`) all count as `instagram`.
+its own `landing_view` under that bucket the moment it is opened, once per
+tab (`marketing.js`; playbook §3), and the bucket rides along to `/start`. Instagram tags (`ig-*`) all count as `instagram`.
 
 | Week | Mon | Wed | Fri | Stories / long-form | Other channels that week |
 | --- | --- | --- | --- | --- | --- |

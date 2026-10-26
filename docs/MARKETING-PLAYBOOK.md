@@ -67,7 +67,9 @@ India's CCPA dark-pattern guidelines, or both.
    Day, Edit Log, Deliverables and the AI tools are **Pro**. Breakdown,
    auto-tagging, cast matrix, screen time, storyboard, shot list, stripboard,
    Day Out of Days, budget, contacts, sides, reports, Google Drive backup and
-   the Chrome extension are **Intermediate and up**. Story, Idea Vault,
+   the Chrome extension are **Intermediate and up** (name the extension
+   only once it is live in the Chrome Web Store, §6 step 4; until then it
+   cannot be installed, so it is not named). Story, Idea Vault,
    screenplay, drafts, import and PDF exports are on **every plan (Basic and
    up)**. The pricing page's table is generated from
    `src/data/plan-matrix.json`; when in doubt, read it there. A module whose
@@ -84,7 +86,7 @@ India's CCPA dark-pattern guidelines, or both.
 
 | Order | Who | What they need that the product really has | Plan they fit |
 | --- | --- | --- | --- |
-| 1 | **Tamil independent and short filmmakers**, first or second film, Chennai, Coimbatore, Madurai, the diaspora | Tamil dialogue with English slug lines, and an opt-in Type Tamil mode (romanised Tamil in a dialogue line is offered in Tamil script, word by word); budgets in rupees starting from Chennai rates with a source and a checked date on each figure; call sheets as a WhatsApp message (Pro); CBFC and OTT delivery checklists (Pro, Deliverables) | Intermediate (prepare the shoot) or Pro (run it) |
+| 1 | **Tamil independent and short filmmakers**, first or second film, Chennai, Coimbatore, Madurai, the diaspora | Tamil dialogue with English slug lines, and an opt-in Type Tamil mode (romanised Tamil in a dialogue line is offered in Tamil script, word by word); budgets in rupees starting from the Chennai 2024-25 rate card (every line marked indicative), with 8 figures re-checked against a vendor's page and dated (count them in `src/data/rates.chennai.checks.json`, rows marked `checked`); call sheets as a WhatsApp message (Pro); CBFC and OTT delivery checklists (Pro, Deliverables) | Intermediate (prepare the shoot) or Pro (run it) |
 | 2 | **Other Indian independents** (Malayalam, Telugu, Kannada, Hindi) | The same planning chain in rupees. Be honest: the Tamil-specific help is Tamil only | Intermediate |
 | 3 | **Film and Viscom students** | A real tool for the diploma film, plus the learning Library; a student price through the `STUDENT50` code | Intermediate at the student price |
 | 4 | **Small production houses and line producers** | Budget against actuals, production reports, call sheets, the shoot day, deliverables | Pro |
@@ -107,8 +109,8 @@ dearest risen price is about ₹5.48 a day). Recheck it if prices change.
 1. **From script to call sheet without retyping.** Import a screenplay
    (Fountain, Final Draft, Word, text or PDF) and the scenes, characters and
    locations flow into the breakdown, the stripboard and the call sheet.
-2. **Built for Tamil units.** Tamil dialogue, English slugs, Chennai rates
-   with sources, CBFC and OTT delivery checklists and call sheets on
+2. **Built for Tamil units.** Tamil dialogue, English slugs, a Chennai rate
+   card to start from, CBFC and OTT delivery checklists and call sheets on
    WhatsApp (the last two on Pro).
 3. **Your work stays yours.** It lives in your browser first, works offline
    on set, backs up to your own Google Drive on the plans that include it,
@@ -187,9 +189,13 @@ the trial started), `plan_view_in_app` (the purchase page, signed in),
 `checkout_start` and `purchase` all carry the tab's bucket. Three things
 still hold:
 
-- **Guide pages and the switching guides send no `landing_view` of their
-  own.** They capture `?src=`, so a click through to `/start` in the same tab
-  counts under that bucket. Untagged guide traffic is read in Search Console.
+- **A visit counts `landing_view` once per tab, on whichever public page it
+  starts**: `start.js` sends it on `/start`, `marketing.js` on every other
+  public page (pricing, product pages, guides, the switching guides, trust,
+  about, contact). It carries the bucket of the link that page was opened
+  with. So guide arrivals ARE visits in §7.2, and a tagged guide link counts
+  under its bucket on arrival, not only after a click through to `/start`.
+  Search Console is only for untagged organic queries (§4.8).
 - The per-source table exists only once §58 has run live (§6 step 3); until
   then the totals still count and the table stays empty.
 - Visitors with Do Not Track or Global Privacy Control send nothing.
@@ -355,13 +361,20 @@ fails every rule, the money stops at ₹2,100.
 - **List** 20 Tamil and Indian filmmaking channels (craft tutorials,
   short-film makers, film-school vlogs, gear reviewers). Size matters less
   than whether their audience makes films.
-- **Offer**: a full year of Pro, free (a console e-mail grant), to review
-  honestly, and an **affiliate code** for their audience: a viewer discount
+- **Offer**: an **invite code** (its trial is the code's `code_trial_days`,
+  read in the console on the day) to try it on a real project, and an
+  **affiliate code** for their audience: a viewer discount
   (suggest 10–15%) and a commission on revenue (suggest 20–25%; the owner
   decides). Make it on Billing → Promo codes with "Commission %" filled in.
 - **Brief**: `outreach-templates.md` has the message and the one-page brief
   (what they may claim, what they must not, the final-sale wording,
   disclosure).
+- **A free year of Pro for a review is NOT offered until the owner confirms
+  it is not a "gift licence"** (owner decision, 26 Oct 2026: no gift
+  licences). If the owner approves it, it is a material connection: the
+  creator must disclose it in any post (the platform's paid-partnership or
+  gifted label and a spoken line), the same as the affiliate code. The
+  trial from an invite code needs the same disclosure if they post.
 - **Tag**: `src=creator-<handle>` (bucket `partner`) plus their code as
   `ref`. The console counts all creators as one `partner` row; each
   creator's own figures are their code's revenue in Growth → Affiliates.
@@ -423,8 +436,8 @@ rules). It names no trial length: a pressed trial is `{TRIAL_LENGTH}` from
   each one's self-promotion rule before posting anything with a link).
 - **Weekly**: 3 answers. Tag every link, guide links included:
   `/guide-call-sheet?src=reddit`, `/start?src=quora&utm_campaign=<topic>`.
-  Guide pages send no `landing_view` of their own (§3); the tag rides along
-  to `/start` in the same tab.
+  A guide page counts its own `landing_view` under the link's bucket (§3),
+  so a tagged answer is counted the moment it is opened.
 
 ### 4.8 SEO: the guide pages
 
@@ -527,7 +540,7 @@ rise waits for none of them.
 | **Day 3** | With a 3-day trial, the first trials from Day 0 end today. Read `trial_start` → `checkout_start` → `purchase`. Reply personally to anyone who wrote in. Story: a question box "what stopped you?" |
 | **Day 4** | Reel: call sheet to WhatsApp (Pro). Directory listings (§4.9). Follow up the Day 1 creators once. |
 | **Day 5** | Post: the trust post ("where your script lives", linking `trust.html`). Second WhatsApp share in groups where you have already contributed. |
-| **Day 6** | Reel: budget in rupees with sources. Write down the week's numbers (§7.2) and the three most-asked questions. |
+| **Day 6** | Reel: budget in rupees from the Chennai rate card (say which figures are re-checked). Write down the week's numbers (§7.2) and the three most-asked questions. |
 | **Day 7** | Weekly review (§7.4). Decide: start Meta Test 1 next week only if `landing_view` → `trial_start` is working from organic sources (any trials at all under `instagram` or `whatsapp`). Fix the top question on the page or the FAQ before spending. |
 
 ## 6. Console steps only the owner can make

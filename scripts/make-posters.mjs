@@ -81,6 +81,11 @@ const OFF = new Set(J('src/data/plan-matrix.json').features
 const F = {
   stages: nav.phases.length,
   films: J('src/data/films.json').length,
+  /* Only rows the overlay marks 'checked' were read off a Chennai
+     vendor's page on a stated date; every other line prints as the
+     2024-25 card, "indicative". Counted, so a poster never says "every
+     figure is sourced" (it was not true: review round 2). */
+  checkedRates: J('src/data/rates.chennai.checks.json').rows.filter((r) => r.confidence === 'checked').length,
   rules: (() => { const r = J('src/data/rules.json'); return Array.isArray(r) ? r.length : NaN; })(),
   stageNames: nav.phases.map((p) => p.name || p.id)
 };
@@ -212,7 +217,7 @@ const p3 = frame(`
     'craft notes on story beats, open while you work.'
   ])}
   ${block(2, 'Made for Chennai', [
-    'Chennai rates with sources, CBFC checklists and',
+    'A Chennai rate card to start from, CBFC checklists and',
     'festival deadlines. Tamil dialogue, English slugs.'
   ])}
   ${text(80, 1148, 'A year for less than a tea a day.', { size: 50, weight: 800 })}
@@ -373,8 +378,8 @@ const FEATURES = [
     rows: ['Shot list: how close, how it moves', 'Storyboard: a frame per shot', 'Reorder, print, export the list'] },
 
   { phase: 'preprod', cites: ['budget'], title: ['What it costs,', 'line by line.'],
-    lede: ['Starts from Chennai rates instead of a blank', 'page, and every figure shows its source.'],
-    rows: ['Crew, cast, equipment, locations, post', 'Sourced rates with the date they were checked', 'No invented numbers, no inflation guesses'] },
+    lede: ['Starts from the Chennai 2024-25 rate card,', 'each line marked indicative, not a blank page.'],
+    rows: ['Crew, cast, equipment, locations, post', `${F.checkedRates} figures re-checked and dated`, 'No invented numbers, no inflation guesses'] },
 
   { phase: 'preprod', cites: ['stripboard', 'dood', 'calendar'], title: ['Scenes into', 'shoot days.'],
     lede: ['Drag the strips into the order you will', 'actually shoot, and the rest follows.'],

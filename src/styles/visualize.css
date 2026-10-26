@@ -864,7 +864,9 @@
 .vz-sb-dialogue { margin-left: 6rem; max-width: 24rem; }
 .vz-sb-paren { margin-left: 9rem; }
 .vz-sb-scene { color: var(--ink); font-weight: 700; text-transform: uppercase; }
-.vz-sb-shots .k-panel-body { padding: 0; }
+/* Full bleed only for the table: the empty line keeps the panel padding
+   its Frames and Blocking neighbours have (it sat flush on the border). */
+.vz-sb-shots .k-panel-body:has(> .k-table-wrap) { padding: 0; }
 .vz-sb-shots .k-table-wrap { border: 0; border-radius: 0; }
 .vz-sb-table tr.is-done td { color: var(--ink-muted); }
 .vz-sb-frames { padding-left: 1.2rem; margin: 0; color: var(--ink-body); font-size: var(--t-small); }

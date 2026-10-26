@@ -400,19 +400,35 @@ export function removeShot(id) {
     element of the flat array would move it across a scene boundary
     and silently reassign it, so the swap is done against the previous
     or next shot OF THE SAME SCENE. */
-export function moveShot(id, delta) {
+export function moveShot(id, delta, keep) {
   const shots = listShots();
   const shot = shots.find((s) => s.id === id);
   if (!shot) return shots;
   const siblings = shots.filter((s) => s.sceneId === shot.sceneId);
   const at = siblings.indexOf(shot);
-  const swapWith = siblings[at + delta];
-  if (!swapWith) return shots;
-  const i = shots.indexOf(shot);
-  const j = shots.indexOf(swapWith);
-  [shots[i], shots[j]] = [shots[j], shots[i]];
-  saveShots(shots);
-  return shots;
+  if (!keep) {
+    const swapWith = siblings[at + delta];
+    if (!swapWith) return shots;
+    const i = shots.indexOf(shot);
+    const j = shots.indexOf(swapWith);
+    [shots[i], shots[j]] = [shots[j], shots[i]];
+    saveShots(shots);
+    return shots;
+  }
+  /* With a filter on (`keep` is what the screen shows), a move steps
+     over the hidden shots to the next VISIBLE one and lands beside it,
+     the way a drop does: swapping with a hidden neighbour moved
+     nothing on screen and silently renumbered two shots. The hidden
+     shots keep their order relative to each other. */
+  const step = delta < 0 ? -1 : 1;
+  let j = at + step;
+  while (siblings[j] && !keep(siblings[j])) j += step;
+  const target = siblings[j];
+  if (!target) return shots;
+  const order = siblings.filter((s) => s !== shot);
+  order.splice(order.indexOf(target) + (step > 0 ? 1 : 0), 0, shot);
+  reorderShots(shot.sceneId, order.map((s) => s.id));
+  return listShots();
 }
 
 /* The shot list's optional columns, in table order. The number is
@@ -815,13 +831,21 @@ export function addMark(blockId, kind, patch = {}) {
   const blocks = listBlocks();
   const block = blocks.find((b) => b.id === blockId);
   if (!block) return null;
-  const same = block.marks.filter((m) => m.kind === kind).length;
-  const label = kind === 'camera' ? (same ? 'Cam ' + String.fromCharCode(65 + same) : 'Cam A')
-    : kind === 'actor' ? 'Actor ' + (same + 1)
-    : kind === 'light' ? 'Light ' + (same + 1)
-    : kind === 'track' ? 'Track ' + (same + 1) : 'Mark ' + (same + 1);
+  /* The label and the spot are the first FREE ones, never a count: after
+     a delete a count hands out a label already in use and the spot of a
+     mark still on the map (the count-after-delete flaw shot numbers had). */
+  const labels = new Set(block.marks.map((m) => m.label));
+  const nameAt = (n) => (kind === 'camera' ? 'Cam ' + (n < 26 ? String.fromCharCode(65 + n) : n + 1)
+    : (kind === 'actor' ? 'Actor ' : kind === 'light' ? 'Light ' : kind === 'track' ? 'Track ' : 'Mark ') + (n + 1));
+  let n = 0;
+  while (labels.has(nameAt(n))) n++;
+  const label = nameAt(n);
   // New marks land staggered near the middle so each is easy to grab.
-  const at = clampPoint(22 + (block.marks.length % 5) * 14, 18 + (block.marks.length % 3) * 16);
+  const spot = (i) => clampPoint(22 + (i % 5) * 14, 18 + (i % 3) * 16);
+  const taken = new Set(block.marks.map((m) => m.x + ',' + m.y));
+  let i = 0;
+  while (i < 15 && taken.has(spot(i).x + ',' + spot(i).y)) i++;
+  const at = spot(i < 15 ? i : block.marks.length);
   const mark = cleanMark({ ...blankMark({ kind, label, ...at }), ...patch });
   block.marks.push(mark);
   saveBlocks(blocks);

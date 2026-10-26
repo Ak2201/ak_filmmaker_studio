@@ -631,6 +631,8 @@ function renderNow(focus) {
   WHEN.forEach((w) => whenSel.append(h('option', { value: w.id, text: w.label })));
   add.append(whenSel);
   add.append(h('button.k-btn.k-btn--sm', { type: 'submit', text: 'Add' }));
+  // Why an Add did nothing, said where the eye is (as the link form does).
+  add.append(h('p.dv-link-why', { id: 'dv-add-why', role: 'alert', hidden: '' }));
   panel.append(add);
   main.append(panel);
 
@@ -789,7 +791,13 @@ delegate(document, 'submit', '[data-dv-form="custom"]', (e, form) => {
   if (Deliverables.addCustom(input.value, when && when.value)) {
     render();
     if (StudioUI.toastSuccess) StudioUI.toastSuccess('Added to the list');
-  } else input.focus();
+  } else {
+    const why = form.querySelector('.dv-link-why');
+    if (why) { why.textContent = 'Type a name for the deliverable first.'; why.hidden = false; }
+    input.setAttribute('aria-invalid', 'true');
+    input.setAttribute('aria-describedby', 'dv-add-why');
+    input.focus();
+  }
 });
 
 render();

@@ -68,7 +68,7 @@ import { basicShotDivision } from '../lib/shot-rules.js';
 import {
   plural, slugOf, shotSpec, headerFigures, sceneSpread, COV_FILTERS, keepShot as keepFor,
   scenePlan, pickMeta, pickedSummary, uncoveredIds, basicJobs, addBasicShots, basicNoneMatched,
-  basicDoneStatus, aiDraftStatus, removeShotIds, shotDeleteQuestion, boardDeleteQuestion,
+  basicDoneStatus, aiDraftStatus, removeShotIds, draftSnapshot, shotDeleteQuestion, boardDeleteQuestion,
   frameBadge, rigLabel, framesIn, findEntry, restoreEntry, fileStem as stemOf
 } from '../lib/visualize-model.js';
 import {
@@ -593,7 +593,7 @@ function renderShotTable(shots, scene, shown = shots) {
     }
     /* Filtered rows keep their place in the FULL list, so the number
        placeholder and the up / down grips still mean the scene's order. */
-    for (const shot of mine) body.append(renderShotRow(shot, shots.indexOf(shot), shots.length, cams, cols, sortable && !!scene));
+    for (const shot of mine) body.append(renderShotRow(shot, shots.indexOf(shot), shots.length, cams, cols, sortable && !!scene, edgeOf(shot, shown)));
   }
   table.append(body);
   return h('div.k-table-wrap.vz-table-wrap', {
@@ -636,8 +636,13 @@ function numberCell(shot, i) {
   return no;
 }
 
+/** First / last among the rows ON SCREEN: with a filter on, a move
+    steps over hidden shots (Shots.moveShot's `keep`), so the arrows
+    are disabled by what is visible, not by the full list. */
+const edgeOf = (shot, shown) => ({ first: shown[0] === shot, last: shown[shown.length - 1] === shot });
+
 /** The grip (drag, or the arrow keys) and the row's buttons. */
-function rowControls(shot, i, total, sortable) {
+function rowControls(shot, i, total, sortable, edge = { first: i === 0, last: i === total - 1 }) {
   const n = shot.number || String(i + 1);
   const btns = [];
   if (sortable) {
@@ -645,14 +650,14 @@ function rowControls(shot, i, total, sortable) {
       label: 'Reorder shot ' + n + ': drag, or press the arrow keys', icon: 'drag_indicator', iconOnly: true, size: 'sm',
       variant: 'ghost', action: 'vz-shot-grip', class: 'vz-grip', title: 'Drag to reorder (or focus and press ↑ / ↓)'
     }));
-    btns.push(ctrlBtn('↑', 'vz-shot-up', 'Move this shot earlier', i === 0));
-    btns.push(ctrlBtn('↓', 'vz-shot-down', 'Move this shot later', i === total - 1));
+    btns.push(ctrlBtn('↑', 'vz-shot-up', 'Move this shot earlier', edge.first));
+    btns.push(ctrlBtn('↓', 'vz-shot-down', 'Move this shot later', edge.last));
   }
   btns.push(ctrlBtn('✕', 'vz-shot-del', 'Delete this shot', false, true));
   return h('div.row-ctrl.vz-c-ctrl', {}, [ctrlTray(btns, 'Shot ' + n)]);
 }
 
-function renderShotRow(shot, i, total, cams = [], cols = visibleCols(), sortable = true) {
+function renderShotRow(shot, i, total, cams = [], cols = visibleCols(), sortable = true, edge) {
   const row = h('tr.vz-row' + (shot.done ? '.is-done' : '') + (shot.ai || shot.rules ? '.is-ai' : ''), {
     'data-shot': shot.id
   });
@@ -664,7 +669,7 @@ function renderShotRow(shot, i, total, cams = [], cols = visibleCols(), sortable
     const made = c.cell(shot, cams, n);
     row.append(h('td.' + c.cls, { 'data-label': c.label }, Array.isArray(made) ? made : [made]));
   }
-  row.append(h('td.vz-c-ctrl', {}, [rowControls(shot, i, total, sortable)]));
+  row.append(h('td.vz-c-ctrl', {}, [rowControls(shot, i, total, sortable, edge)]));
   return row;
 }
 
@@ -690,13 +695,13 @@ function renderShotCards(shots, scene, shown = shots) {
     }
     const grid = h('div.vz-cards', { role: 'list', 'aria-label': 'Shots' + (scene ? ', scene ' + (scene.number || '') : '') });
     if (sortable) grid.dataset.sortScene = scene.id;
-    for (const shot of mine) grid.append(renderShotCard(shot, shots.indexOf(shot), shots.length, cams, cols, (byShot.get(shot.id) || [])[0], sortable));
+    for (const shot of mine) grid.append(renderShotCard(shot, shots.indexOf(shot), shots.length, cams, cols, (byShot.get(shot.id) || [])[0], sortable, edgeOf(shot, shown)));
     out.append(grid);
   }
   return out;
 }
 
-function renderShotCard(shot, i, total, cams, cols, frame, sortable) {
+function renderShotCard(shot, i, total, cams, cols, frame, sortable, edge) {
   const n = shot.number || String(i + 1);
   const card = h('article.vz-card' + (shot.done ? '.is-done' : ''), {
     'data-shot': shot.id, 'data-drop-shot': shot.id, role: 'listitem', 'aria-label': 'Shot ' + n
@@ -719,7 +724,7 @@ function renderShotCard(shot, i, total, cams, cols, frame, sortable) {
   if (cols.includes('mins')) { const m = Shots.formatMinutes(Shots.shotMinutes(shot)); if (m) meta.push(m); }
   if (meta.length) card.append(h('p.vz-card-meta.k-mono', { text: meta.join(' · ') }));
   if (cols.includes('description') && shot.description) card.append(h('p.vz-card-desc', { text: shot.description }));
-  card.append(h('div.vz-card-foot', {}, [rowControls(shot, i, total, sortable)]));
+  card.append(h('div.vz-card-foot', {}, [rowControls(shot, i, total, sortable, edge)]));
   return card;
 }
 
@@ -777,6 +782,7 @@ let aiStatus = '';
 let aiError = '';
 let aiRunning = false;
 let aiLastRun = [];            // shot ids from the most recent draft
+let aiLastSnap = null;         // what those shots looked like when drafted (draftSnapshot)
 
 /* THE AI HALF IS THE AI DESK'S 'shot-draft' TASK (src/lib/ai-tasks.js):
    the same draftShotDivision() over the ticked scenes, the same
@@ -787,6 +793,7 @@ let aiLastRun = [];            // shot ids from the most recent draft
    wrote back here, so "Undo the last draft" still names them. */
 function shotsDrafted(made) {
   aiLastRun = made || [];
+  aiLastSnap = draftSnapshot(aiLastRun);
   aiError = '';
   aiStatus = aiDraftStatus(aiLastRun.length);
   preservingFocus(render);
@@ -933,13 +940,14 @@ function renderStoryboard(scenes, shots, frames) {
     h('h2.bd-h2', { text: 'Storyboard' }),
     h('p.bd-sub', {
       text: 'A frame per drawing, hanging off the shot it draws. Grouped by scene, '
-          + 'in shot order — move a shot above and the board follows it.'
+          + 'in shot order — move a shot in the Shot List and the board follows it.'
     }),
     noImageNote('A frame holds a picture, a link or a description. Upload a picture or '
       + 'draw one with AI: either is saved to your own Google Drive, and the frame (and every '
       + 'backup file) keeps only a link to it, because an image would not fit in this '
       + 'browser and would not survive a backup. Or paste the URL of your drawing, or '
-      + 'write the frame in words. Words are often the better storyboard anyway.')
+      + 'write the frame in words. Words are often the better storyboard anyway.',
+    'Pictures are kept in your Google Drive.')
   );
   if (shots.length) wrap.append(renderDraw(scenes, shots, frames));
   /* Frames per row: how wide the board's cards sit on a desk. A phone
@@ -957,10 +965,13 @@ function renderStoryboard(scenes, shots, frames) {
   }
 
   if (!shots.length) {
-    wrap.append(h('p.bd-none', {
-      text: 'A frame draws a shot, so the shot list comes first. Add a shot above '
-          + 'and every shot gets a slot on the board.'
-    }));
+    /* The Shot List is another tab, and with no scenes it cannot add a
+       shot either, so the line names where the next step really is. */
+    wrap.append(scenes.length
+      ? h('p.bd-none', {}, ['A frame draws a shot, so the shot list comes first. Add a shot in the ',
+        h('a', { href: '#shot-list', text: 'Shot List' }), ' and every shot gets a slot on the board.'])
+      : h('p.bd-none', {}, ['A frame draws a shot, and a shot belongs to a scene, so the breakdown comes first. ',
+        h('a', { href: 'breakdown.html#scenes', text: 'Break the script into scenes' }), ', then add shots in the Shot List.']));
     return wrap;
   }
   if (!frames.length) {
@@ -1346,8 +1357,8 @@ function refView(ref) {
 }
 
 /* ---- shared bits --------------------------------------------- */
-function noImageNote(text) {
-  return notice({ class: 'vz-note', title: 'No image uploads.', icon: 'info', body: text });
+function noImageNote(text, title = 'No image uploads.') {
+  return notice({ class: 'vz-note', title, icon: 'info', body: text });
 }
 
 
@@ -1383,7 +1394,10 @@ function render(focus) {
      It writes nothing; an unknown topic id returns null and is filtered. */
   import('../ui/learn.js').then((m) => {
     const at = document.querySelector("#blocking > h2");
-    if (!at) return;
+    /* Several renders in a row (an arrow key held on a mark) each start
+       this import, and every promise lands in the same DOM: insert only
+       where the box is not already there, or they stack up. */
+    if (!at || at.parentElement.querySelector(':scope > details.learn[data-learn="blocking-diagram"]')) return;
     const boxes = ["blocking-diagram"].map((id) => m.learn(id)).filter(Boolean);
     if (boxes.length) at.after(...boxes);
   }).catch(() => { /* a nicety, never the page */ });
@@ -1533,15 +1547,17 @@ delegate(document, 'change', 'input[data-action="vz-ai-pick"]', (e, box) => {
   const id = box.dataset.scene;
   if (!id || !aiPicked) return;
   if (box.checked) aiPicked.add(id); else aiPicked.delete(id);
-  render();
+  // The render replaces the box: put the focus back on it, or each tick
+  // sends a keyboard user to the top of the page.
+  render('input[data-action="vz-ai-pick"][data-scene="' + CSS.escape(id) + '"]');
 });
 delegate(document, 'click', '[data-action="vz-ai-all"]', () => {
   aiPicked = new Set(Scenes.listScenes().map((s) => s.id));
-  render();
+  render('[data-action="vz-ai-all"]');
 });
 delegate(document, 'click', '[data-action="vz-ai-none"]', () => {
   aiPicked = new Set();
-  render();
+  render('[data-action="vz-ai-none"]');
 });
 
 /* The basic breakdown: the same picker, the same append-only write
@@ -1560,6 +1576,7 @@ delegate(document, 'click', '[data-action="vz-basic-run"]', async () => {
   const result = await basicShotDivision(jobs);
   const made = addBasicShots(result.byScene);
   aiLastRun = made;
+  aiLastSnap = draftSnapshot(made);
 
   if (!made.length) {
     aiStatus = '';
@@ -1580,10 +1597,12 @@ delegate(document, 'click', '[data-action="vz-ai-undo"]', async () => {
   if (!aiLastRun.length) return;
   if (!await askDanger('Remove the ' + aiLastRun.length + ' shots from the last draft?\n\n'
     + 'Only those shots are removed. Anything you wrote or edited since is kept.')) return;
-  removeShotIds(aiLastRun);
+  const { kept } = removeShotIds(aiLastRun, aiLastSnap);
   aiLastRun = [];
+  aiLastSnap = null;
   aiPicked = null;   // re-read: the scenes the draft covered are uncovered again
-  aiStatus = 'The last draft was removed.';
+  aiStatus = 'The last draft was removed.'
+    + (kept.length ? ' ' + plural(kept.length, 'shot you edited or drew a frame for was', 'shots you edited or drew frames for were') + ' kept.' : '');
   render();
 });
 
@@ -1674,7 +1693,7 @@ function moveShotBy(id, delta, focusAction) {
   // Renumber only a scene that was in auto order before the move; a
   // scene numbered by hand keeps every number it was given.
   const ordered = Shots.sceneAutoOrdered(scene);
-  Shots.moveShot(id, delta);
+  Shots.moveShot(id, delta, covFilter === 'all' ? undefined : keepShot);
   if (ordered) Shots.autoNumber(scene);
   render();
   if (focusAction === 'vz-shot-grip') {
@@ -1832,7 +1851,7 @@ delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => moveShotBy
 delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => moveShotBy(shotIdOf(el),  1, 'vz-shot-down'));
 delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
   const id = shotIdOf(el);
-  if (!await askDanger(shotDeleteQuestion(id))) return;
+  if (!await askDanger(shotDeleteQuestion(id), { confirm: 'Delete shot' })) return;
   Shots.removeShot(id);
   render();
 });
@@ -1976,7 +1995,7 @@ delegate(document, 'drop', '[data-drop-shot]', (e, el) => {
   addPictures(el.dataset.dropShot, Array.from(e.dataTransfer.files || []));
 });
 delegate(document, 'click', '[data-action="vz-frame-del"]',  async (e, el) => {
-  if (!await askDanger('Delete this frame? The shot it draws is untouched.')) return;
+  if (!await askDanger('Delete this frame? The shot it draws is untouched.', { confirm: 'Delete frame' })) return;
   Shots.removeFrame(frameIdOf(el));
   render();
 });
@@ -2006,7 +2025,7 @@ delegate(document, 'click', '[data-action="vz-board-up"]',   (e, el) => { Shots.
 delegate(document, 'click', '[data-action="vz-board-down"]', (e, el) => { Shots.moveBoard(boardIdOf(el),  1); render(); });
 delegate(document, 'click', '[data-action="vz-board-del"]',  async (e, el) => {
   const id = boardIdOf(el);
-  if (!await askDanger(boardDeleteQuestion(id))) return;
+  if (!await askDanger(boardDeleteQuestion(id), { confirm: 'Delete board' })) return;
   Shots.removeBoard(id);
   render();
 });

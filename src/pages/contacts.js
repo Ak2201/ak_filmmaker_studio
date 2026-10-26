@@ -278,7 +278,7 @@ function renderSheets(sheets, contacts, scenes) {
   }
 
   sheets.forEach((sheet) => wrap.append(renderSheet(sheet, contacts, scenes)));
-  wrap.append(button({ label: 'New call sheet', icon: 'add', action: 'sheet-add', class: 'ct-add' }));
+  wrap.append(button({ label: 'New shoot day', icon: 'add', action: 'sheet-add', class: 'ct-add' }));
   return wrap;
 }
 
@@ -930,6 +930,14 @@ delegate(document, 'click', '[data-action="sheet-add"]', () => {
   const patch = nextSheetPatch(Contacts.listCallSheets(), Locations.calendarDays(Scenes.listScenes()));
   Contacts.addCallSheet(patch || undefined);
   render();
+  /* The header's button is there on the Cast & Crew tab too: switch to
+     Call Sheets (and say so in the address, as a tab click does), or
+     the new sheet is made inside a hidden tab and the focus below lands
+     on nothing. */
+  if (revealTarget('call-sheets') && location.hash !== '#call-sheets') {
+    try { history.replaceState(history.state, '', location.pathname + location.search + '#call-sheets'); } catch (e) { /* ignore */ }
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }
   if (patch) StudioUI.toast(patch.title + ': ' + patch.sceneIds.length + (patch.sceneIds.length === 1 ? ' scene' : ' scenes') + ' ticked from the stripboard.');
   const last = document.querySelector('.ct-sheet:last-of-type .ct-sheet-title');
   if (last) last.focus();

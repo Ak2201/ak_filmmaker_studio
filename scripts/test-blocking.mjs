@@ -41,6 +41,21 @@ eq([a1.label, a2.label, c1.label, c2.label, k1.label], ['Actor 1', 'Actor 2', 'C
 const pts = [a1, a2, c1, c2, k1].map((m) => m.x + ',' + m.y);
 eq(new Set(pts).size, 5, 'new marks are staggered, none on top of another');
 ok([a1, a2, c1, c2, k1].every((m) => m.x >= 0 && m.x <= 100 && m.y >= 0 && m.y <= 70), 'all marks land inside the map');
+{
+  /* QA fix: after a delete, the next mark takes the first FREE label
+     and spot, never a count (which repeated "Actor 2" on top of Cam B). */
+  const bq = S.addBlock('scq');
+  const q = ['actor', 'actor', 'camera', 'camera'].map((k) => S.addMark(bq.id, k));
+  S.removeMark(bq.id, q[0].id);
+  const nx = S.addMark(bq.id, 'actor');
+  const marks = S.blocksOfScene('scq')[0].marks;
+  eq(marks.map((m) => m.label), ['Actor 2', 'Cam A', 'Cam B', 'Actor 1'], 'a mark after a delete takes the free label');
+  eq(new Set(marks.map((m) => m.x + ',' + m.y)).size, marks.length, 'and a free spot, not one a mark still holds');
+  S.removeMark(bq.id, q[2].id);
+  eq(S.addMark(bq.id, 'camera').label, 'Cam A', 'a free camera letter is reused');
+  eq(nx.x + ',' + nx.y, '22,18', 'the freed first spot is the one reused');
+  S.removeBlock(bq.id);
+}
 eq(S.addMark('nope', 'actor'), null, 'addMark on a missing block is null');
 eq(S.addMark(b1.id, 'actor', { label: 'Ravi' }).label, 'Ravi', 'an explicit label wins');
 

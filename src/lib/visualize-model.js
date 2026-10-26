@@ -137,17 +137,46 @@ export const aiDraftStatus = (n) => (n
   ? plural(n, 'shot', 'shots') + ' drafted by AI. Every one of them is marked and editable.'
   : '');
 
-/** Undo a draft: remove exactly those shots, keep everything else. */
-export function removeShotIds(ids) {
+/* What a drafted shot looked like when it was written, so the undo can
+   tell a shot nobody touched from one the writer has since edited. The
+   number is left out of the comparison: moving or deleting a sibling
+   renumbers a scene in auto order, and that is not the writer's edit. */
+const draftFace = (s) => { const { number, ...rest } = s; return JSON.stringify(s.numLocked ? s : rest); };
+export function draftSnapshot(ids) {
+  const want = new Set(ids);
+  return new Map(Shots.listShots().filter((s) => want.has(s.id)).map((s) => [s.id, draftFace(s)]));
+}
+
+/** Undo a draft: remove those shots, keep everything else — and keep a
+    drafted shot the writer has edited since (it differs from `snap`) or
+    has drawn a frame for, because the confirm promises that anything
+    written or edited since is kept. Since a shot with a frame stays,
+    no frame is ever left pointing at a removed shot. Returns
+    { removed, kept } as id lists. */
+export function removeShotIds(ids, snap) {
   const gone = new Set(ids);
-  Shots.saveShots(Shots.listShots().filter((s) => !gone.has(s.id)));
+  const framed = new Set(Shots.listFrames().map((f) => f.shotId));
+  const removed = [];
+  const kept = [];
+  for (const s of Shots.listShots()) {
+    if (!gone.has(s.id)) continue;
+    const edited = framed.has(s.id) || (snap && snap.has(s.id) && snap.get(s.id) !== draftFace(s));
+    (edited ? kept : removed).push(s.id);
+  }
+  const out = new Set(removed);
+  Shots.saveShots(Shots.listShots().filter((s) => !out.has(s.id)));
+  return { removed, kept };
 }
 
 /* ---- confirm sentences --------------------------------------------- */
 export function shotDeleteQuestion(id) {
   const shot = Shots.listShots().find((s) => s.id === id);
   const frames = Shots.listFrames().filter((f) => f.shotId === id).length;
-  const label = shot && shot.description ? ' "' + shot.description.slice(0, 40) + '"' : '';
+  const no = shot && String(shot.number || '').trim();
+  const text = shot ? String(shot.description || '').replace(/\s+/g, ' ').trim() : '';
+  // Cut on a word and say it was cut, never mid-word inside the quotes.
+  const cut = text.length > 40 ? text.slice(0, 41).replace(/\s+\S*$/, '').replace(/[\s,.;:—-]+$/, '') + '…' : text;
+  const label = (no ? ' ' + no : '') + (cut ? ' “' + cut + '”' : '');
   const also = frames ? ' Its ' + plural(frames, 'frame goes', 'frames go') + ' with it.' : '';
   return 'Delete shot' + label + '?' + also;
 }

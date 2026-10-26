@@ -41,6 +41,7 @@
    ============================================================ */
 import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
+import { formatEighths } from '../lib/scenes.js';
 import Shots, { BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockCallouts, blockScale, formatMetres } from '../lib/shots.js';
 import { button, buttonGroup, badge, intExtBadge, todBadge, field as kitField } from './kit/index.js';
 
@@ -432,7 +433,7 @@ function sbCol(title, body, cls) {
 
 export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, redraw) {
   rerender = redraw;
-  const wrap = h('section.vz-sceneboard', { id: 'scene-board', 'data-tab-icon': 'dashboard' });
+  const wrap = h('section.vz-sceneboard', { id: 'scene-board', 'data-tab-icon': 'article' });
   wrap.append(
     h('h2.bd-h2', { text: 'Scene board' }),
     h('p.bd-sub', {
@@ -455,7 +456,8 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
     badge({ label: scene.number || '—', tag: true, class: 'vz-scene-no' }),
     h('span.vz-scene-slug', { text: slugOf(scene) }),
     h('span.vz-scene-badges', {}, [intExtBadge(scene.intExt), todBadge(scene.dayNight)]),
-    h('span.vz-scene-count', { text: plural(Number(scene.eighths) || 0, 'eighth', 'eighths') })
+    // The length as every other view prints it ("2 2/8 pgs"), never raw eighths.
+    h('span.vz-scene-count', { text: formatEighths(Number(scene.eighths) || 0) + ' pgs' })
   ]));
   if (scene.synopsis) sheet.append(h('p.vz-sb-syn', { text: scene.synopsis }));
   if (scene.readerNote) sheet.append(h('p.vz-sb-syn', { text: 'Reader note: ' + scene.readerNote }));
@@ -682,9 +684,7 @@ delegate(document, 'keydown', '.vz-map.is-editable [data-mark], .vz-map.is-edita
   } else if (!end && (e.key === '[' || e.key === ']')) {
     Shots.updateMark(blockId, markId, { rot: m.rot + (e.key === ']' ? 15 : -15) });
   } else if (!end && (e.key === 'Delete' || e.key === 'Backspace')) {
-    Shots.removeMark(blockId, markId);
-    sel = { blockId, markId: '' };
-    rerender(`[data-block="${CSS.escape(blockId)}"] .vz-blk-tools .k-btn`);
+    removeMarkWithUndo(blockId, markId);
     e.preventDefault();
     return;
   } else return;
@@ -753,10 +753,12 @@ delegate(document, 'click', '[data-action="mk-move-clear"]', () => {
   Shots.updateMark(sel.blockId, sel.markId, { toX: null, toY: null });
   rerender(`[data-block="${CSS.escape(sel.blockId)}"] [data-mark="${CSS.escape(sel.markId)}"]`);
 });
-delegate(document, 'click', '[data-action="mk-del"]', () => {
-  const b = sel.blockId;
-  const was = Shots.listBlocks().find((x) => x.id === b)?.marks.find((x) => x.id === sel.markId);
-  Shots.removeMark(b, sel.markId);
+/* One way to remove a mark, whether by the Remove mark button or the
+   Delete key on the map: the key used to remove it silently, with no
+   toast and so no way back. */
+function removeMarkWithUndo(b, markId) {
+  const was = Shots.listBlocks().find((x) => x.id === b)?.marks.find((x) => x.id === markId);
+  Shots.removeMark(b, markId);
   sel = { blockId: b, markId: '' };
   rerender(`[data-block="${CSS.escape(b)}"] .vz-blk-tools .k-btn`);
   if (was) {
@@ -769,5 +771,6 @@ delegate(document, 'click', '[data-action="mk-del"]', () => {
       }
     });
   }
-});
+}
+delegate(document, 'click', '[data-action="mk-del"]', () => removeMarkWithUndo(sel.blockId, sel.markId));
 delegate(document, 'click', '[data-action="board-print"]', () => { window.print(); });

@@ -296,16 +296,18 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   Sc.saveScenes([{ id: 'S1', number: '1', intExt: 'INT', location: 'FLAT', dayNight: 'NIGHT', eighths: 8 }]);
   M.addShot('S1', { description: 'He waits, "late"', lens: '35mm', mins: '12', setup: 'Wide' });
   M.addShot('S1', { description: 'Close', done: true });
-  const full = X.toCSV('all').split('\r\n');
+  const raw = X.toCSV('all');
+  ok(raw.startsWith('\uFEFF"Scene"'), 'the CSV opens with a UTF-8 BOM, so Excel reads em-dashes and Tamil (QA fix)');
+  const full = raw.slice(1).split('\r\n');
   eq(full[0], X.CSV_HEADER.map((c) => '"' + c + '"').join(','), 'no columns: the CSV header is CSV_HEADER');
   eq(X.CSV_HEADER.slice(0, 16), ['Scene', 'Slug', 'Int/Ext', 'Time', 'Location', 'Scene pages', 'Shot', 'Size', 'Angle', 'Movement', 'Lens', 'Lighting / rig', 'Camera', 'What we see', 'Status', 'Drafted by'], 'the old sixteen columns keep their old positions (review fix)');
   eq(X.CSV_HEADER.slice(16), ['Setup', 'Minutes'], 'new columns are appended after them');
   ok(full[1].endsWith('"you","Wide","12"'), 'fixed-schema row carries setup and minutes at the end — ' + full[1]);
   eq(full.length, 4, 'two rows and the trailing CRLF');
-  const pick = X.toCSV('all', { columns: ['description', 'mins', 'lens', 'bogus'] }).split('\r\n');
+  const pick = X.toCSV('all', { columns: ['description', 'mins', 'lens', 'bogus'] }).slice(1).split('\r\n');
   eq(pick[0], '"Scene","Slug","Int/Ext","Time","Location","Scene pages","Shot","Lens","Minutes","What we see","Drafted by"', 'columns: scene head, shot, chosen columns in TABLE order, unknown dropped');
   ok(pick[1].endsWith('"35mm","12","He waits, ""late""","you"'), 'columns: values follow, quotes doubled — ' + pick[1]);
-  const st = X.toCSV('all', { columns: ['setup', 'done'] }).split('\r\n');
+  const st = X.toCSV('all', { columns: ['setup', 'done'] }).slice(1).split('\r\n');
   ok(/"Setup","Camera","Status"/.test(st[0]) && /"Wide","","to shoot"/.test(st[1]) && /"in the can"/.test(st[2]), 'setup brings camera; done prints the status');
   eq(X.summarise('all').minutes, 12, 'summarise counts the minutes');
   eq(X.layoutOf('grid6'), 'grid6', 'a known layout reads back');
@@ -325,6 +327,42 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   const zip = Z.zipStore([['scene-1/shot-1c.png', new Uint8Array([1, 2, 3])]]);
   ok(zip[0] === 0x50 && zip[1] === 0x4b && zip.length > 30, 'zipStore makes an archive of the picture bytes');
   mem.delete(M.SHOTS_KEY); mem.delete(Sc.SCENES_KEY);
+}
+
+/* ---- QA fixes: a filtered move, and the draft undo ------------ */
+{
+  const M = await import('../src/lib/shots.js');
+  const V = await import('../src/lib/visualize-model.js');
+  mem.delete(M.SHOTS_KEY);
+  const [a, b, c, d] = ['1', '2', '3', '4'].map((n) => M.addShot('Q', { number: n }));
+  M.updateShot(b.id, { done: true });
+  const todo = (s) => !s.done;
+  M.moveShot(c.id, -1, todo);
+  const order = () => M.listShots().filter((s) => s.sceneId === 'Q').map((s) => s.number);
+  eq(order(), ['3', '1', '2', '4'], 'a filtered move steps over the hidden shot to the next visible one');
+  M.moveShot(c.id, -1, todo);
+  eq(order(), ['3', '1', '2', '4'], 'nothing visible above: the move does nothing');
+  M.moveShot(a.id, 1, todo);
+  eq(order(), ['3', '2', '4', '1'], 'down past a hidden shot lands after the next visible one');
+  M.moveShot(d.id, 1);
+  eq(order(), ['3', '2', '1', '4'], 'unfiltered, a move is still the plain swap');
+
+  mem.delete(M.SHOTS_KEY);
+  const keep = M.addShot('Q', { description: 'mine' });
+  const made = ['x', 'y', 'z'].map((t) => M.addShot('Q', { description: t, rules: true }).id);
+  const snap = V.draftSnapshot(made);
+  M.updateShot(made[0], { description: 'MY OWN EDIT' });
+  M.addFrame(made[1], {});
+  M.updateShot(made[2], { number: '7' });          // a renumber is not an edit
+  const r = V.removeShotIds(made, snap);
+  eq(r, { removed: [made[2]], kept: [made[0], made[1]] }, 'undo keeps a drafted shot that was edited or framed since');
+  eq(M.listShots().map((s) => s.id), [keep.id, made[0], made[1]], 'only the untouched drafted shot goes');
+  const ids = new Set(M.listShots().map((s) => s.id));
+  ok(M.listFrames().every((f) => ids.has(f.shotId)), 'no frame is left pointing at a removed shot');
+  const q = M.addShot('Q', { number: '4', description: 'The front block held two beats after he leaves frame. Then more.' });
+  eq(V.shotDeleteQuestion(q.id), 'Delete shot 4 “The front block held two beats after he…”?', 'the delete confirm names the shot and cuts on a word with an ellipsis');
+  eq(V.shotDeleteQuestion(M.addShot('Q', { number: '5' }).id), 'Delete shot 5?', 'no description: still the shot number');
+  mem.delete(M.SHOTS_KEY);
 }
 
 console.log(`\ntest:shots — ${pass} passed, ${fail} failed`);

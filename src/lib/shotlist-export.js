@@ -361,8 +361,11 @@ export function toCSV(scope, opts = {}) {
     }
   }
   /* CRLF, because that is what the RFC says and what a spreadsheet
-     on a Windows desk opens without a dialog. */
-  return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+     on a Windows desk opens without a dialog. The BOM first, like every
+     other CSV in the studio: without it Excel opens the file in the
+     system code page and every em-dash in a slug and every Tamil
+     description comes out garbled. */
+  return '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
 /* ------------------------------------------------------------

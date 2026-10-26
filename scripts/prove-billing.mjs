@@ -1251,10 +1251,10 @@ try {
     /* pricing.html (the plans moved off start.html): no Free tier, no Free column, and the trial strip says 3 hours. */
     const S = await soloContext();
     await S.page.goto(BASE + 'pricing.html');
-    await S.page.waitForFunction(() => /3 hours/.test((document.querySelector('#pricing [data-trial] [data-trial-length]') || {}).textContent || ''), null, { timeout: 10000 }).catch(() => {});
+    await S.page.waitForFunction(() => /3-hour free trial/.test((document.querySelector('#pricing [data-trial] [data-trial-length]') || {}).textContent || ''), null, { timeout: 10000 }).catch(() => {});
     ok(!(await S.page.$('.pr-tiers li[data-tier="free"]')) && !!(await S.page.$('#pricing [data-trial]')), 'pricing.html: no Free tier, and a free-trial strip in its place');
     ok(!(await S.page.$$eval('.pr-table thead .pr-th-name', (t) => t.map((x) => x.textContent.trim()))).includes('Free'), 'pricing.html: no Free column in the comparison table');
-    ok(/3 hours/.test(await S.page.textContent('#pricing [data-trial] [data-trial-length]').catch(() => '')), 'pricing.html: the trial strip says "3 hours", from the anon trial_offer()');
+    ok(/3-hour free trial/.test(await S.page.textContent('#pricing [data-trial] [data-trial-length]').catch(() => '')), 'pricing.html: the trial strip says "3-hour free trial" (label mode), from the anon trial_offer()');
     allErrors.push(...S.errors); await S.ctx.close();
 
     /* the band, in hours */

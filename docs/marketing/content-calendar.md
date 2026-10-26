@@ -1,8 +1,8 @@
 # Content calendar — eight weeks
 
 Written 26 Oct 2026. NOT POSTED. Week 1 begins on Day 0 of the playbook
-(`docs/MARKETING-PLAYBOOK.md` §5: the day the 3-day whole-studio trial is
-live). If Day 0 is not a Monday, start at the Day 0 row and keep the order.
+(`docs/MARKETING-PLAYBOOK.md` §5: the day the 3-day trial is live; it opens
+the sample films, not the visitor's own). If Day 0 is not a Monday, start at the Day 0 row and keep the order.
 
 Three feed posts or reels a week (Mon / Wed / Fri), stories most days, one
 long-form item a week (a YouTube demo or a guide shared to groups). Every
@@ -14,6 +14,10 @@ questions 15%, the offer 5%. The offer appears at most once a week.
 
 Plan tags in brackets say which plan the shown tool needs; say it in the
 caption when it is not Basic.
+
+Every guide you share carries the channel's `src`
+(`/guide-script-breakdown?src=ig-story&utm_campaign=wk3`): guide pages send
+no funnel count of their own (playbook §3).
 
 | Week | Mon | Wed | Fri | Stories / long-form | Other channels that week |
 | --- | --- | --- | --- | --- | --- |

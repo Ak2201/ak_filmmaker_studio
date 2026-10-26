@@ -21,7 +21,7 @@ with the footer. Sign with the trading name; never the owner's name.
 | `{TRIAL_DAYS}` | `trial_offer().trial_hours / 24` (3 once the 26 Oct setting is made) |
 | `{BASIC_YEAR}`, `{INDIE_YEAR}`, `{PRO_YEAR}` | `price_notice()` current price per plan, in rupees |
 | `{FROM_DAY}` | the pricing page's "from about … a day" figure (derived, never typed) |
-| `{RISE_DATE}` | `price_notice()` `next_at`, written as a date in IST ("31 December 2026") |
+| `{RISE_DATE}` | `price_notice()` `plans[].next_price_at`, written as a date in IST ("31 December 2026"); null means the rise has fired, so drop the sentence |
 | `{FIRST_NAME}` | only if the person gave it; otherwise "Hello," |
 
 ## Footer (every message)
@@ -52,8 +52,9 @@ Tamil dialogue with English slug lines, budgets in rupees that start from
 Chennai rates and show where each figure came from, and call sheets you can
 send as a WhatsApp message.
 
-The quickest way to see it is the free trial: {TRIAL_DAYS} days of the whole
-studio, no card needed. It starts when you press start, not before.
+The quickest way to see it is the free trial: {TRIAL_DAYS} days with the
+tools open on two sample films, no card needed. It starts when you press
+start, not before.
 
 https://filmmakerstudio.in/start?src=email-1&utm_campaign=welcome
 
@@ -79,7 +80,7 @@ missing one is how a unit loses its first hour:
 5. Sunrise or sunset if you are chasing light, and the weather.
 
 We wrote a longer guide, with a worked example:
-https://filmmakerstudio.in/guide-call-sheet
+https://filmmakerstudio.in/guide-call-sheet?src=email-2&utm_campaign=welcome
 
 FilmMakerStudio
 ```
@@ -104,7 +105,8 @@ place reaches the others.
 Scanned or password-protected PDFs are refused with a reason rather than
 read badly. That is on purpose.
 
-Try it on your own script during the trial:
+See it working on the sample films during the trial; bringing in your own
+script needs a plan:
 https://filmmakerstudio.in/start?src=email-3&utm_campaign=import
 
 FilmMakerStudio
@@ -187,7 +189,7 @@ first week easier:
 3. Open the Dragon sample to see every tool filled in before you fill your
    own.
 
-You also have a referral code, on the Plan tab of Settings. A friend who uses it gets
+You also have a referral code, on the Purchase page under "Your referral code". A friend who uses it gets
 a discount, and you are credited a share of what they pay. Both figures are
 shown beside the code.
 

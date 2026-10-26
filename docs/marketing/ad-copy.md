@@ -10,9 +10,17 @@ from memory:
 | `{TRIAL}` | "3-day" when `trial_offer()` reads 4320 minutes; otherwise write "free" |
 | `{FROM_DAY}` | the pricing page's "from about … a day" (Basic's year ÷ 365, derived) |
 | `{BASIC_YEAR}` `{INDIE_YEAR}` `{PRO_YEAR}` | `price_notice()` current prices |
-| `{RISE_DATE}` | `price_notice()` `next_at`, as an IST date |
+| `{RISE_DATE}` | `price_notice()` `plans[].next_price_at`, as an IST date (null means the rise has fired: drop the line) |
 
 Every link carries its test cell's `src` from the playbook's §3 register.
+
+**What the trial is, in every ad:** {TRIAL} days on the two sample films, no
+card. A trial somebody starts with the button cannot open their own film
+(`start_trial()` stores scope `sample` for every signup trial; playbook
+§6.1). So an ad may SHOW a feature working on the visitor's own script (it
+is true of the plan), but the trial line says "try it on the sample films",
+never "whole studio" or "on your own film", until the owner's schema change
+in §6.1 has run and read back.
 
 **Never in any ad:** "pay once", "lifetime", "forever", "money-back",
 "loved by N filmmakers", star ratings, "#1", "only N left", a fake timer,
@@ -32,10 +40,10 @@ stripboard → open the call sheet → tap Send on WhatsApp.
 
 - **Primary:** Import your script. Get the breakdown, the shooting schedule and the call sheet without retyping a scene.
 - **Headline:** From script to call sheet
-- **Description:** {TRIAL} trial, whole studio, no card
+- **Description:** {TRIAL} trial on the sample films, no card
 - **CTA button:** Learn more
 - **Link:** `/start?src=meta-t1a&utm_campaign=test1` (cell C, other states: `src=meta-t1c`)
-- **Check:** import + breakdown + stripboard are Intermediate; call sheets are **Pro**. The trial shows all of them only with the trial plan set to Pro (playbook §6.1). If it is not, cut the call-sheet shot.
+- **Check:** import is every plan; breakdown + stripboard are Intermediate; call sheets are **Pro**. The trial shows them on the sample films; importing your own script needs a plan. Record the reel on a paid account (or the Dragon sample) and never caption it as the trial.
 
 ### M2 — Tamil on the page (reel, 20 s)
 
@@ -88,7 +96,7 @@ print a report.
 
 ### Retargeting (people who engaged with the account)
 
-- **R1 Primary:** Still thinking about it? The {TRIAL} trial opens the whole studio on your own film. It starts only when you press start.
+- **R1 Primary:** Still thinking about it? The {TRIAL} trial opens the tools on two sample films, no card. It starts only when you press start.
 - **R2 Primary:** Founding prices hold until {RISE_DATE}. A plan bought before then is a full year at that price. (Run only in the last 3 weeks before the date, and only once per person.)
 - **Link:** `/start?src=meta-rt&utm_campaign=rt1`
 
@@ -105,7 +113,7 @@ Three frames, sticker link on the last.
 
 1. "Your call sheet. On WhatsApp. In one tap." (screen recording)
 2. "Per person call times, map pin, scenes in order." (close-up)
-3. "{TRIAL} trial, whole studio. Link ↓" → `/start?src=ig-story&utm_campaign=<week>`
+3. "{TRIAL} trial on the sample films. Link ↓" → `/start?src=ig-story&utm_campaign=<week>`
 
 ---
 
@@ -120,7 +128,7 @@ shooting schedule.
 pages. Drag the scenes into shooting days.
 [15–25s] The call sheet builds from the same scenes, and goes out as a
 WhatsApp message, one call time per person.
-[25–30s] FilmMakerStudio. A {TRIAL} trial of the whole studio, no card.
+[25–30s] FilmMakerStudio. Try it free for {TRIAL} days on the sample films, no card.
 filmmakerstudio.in/start
 ```
 

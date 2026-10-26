@@ -138,7 +138,7 @@ if links or promotion are not allowed, do not post one, and ask the admin.
 ```
 I make a browser tool for planning films — script import, breakdown,
 stripboard, budget in rupees, call sheets as a WhatsApp message. It is built
-for Tamil units first. There is a {TRIAL} free trial of the whole studio,
+for Tamil units first. There is a {TRIAL} free trial on two sample films,
 no card. Happy to answer questions here or in DM.
 https://filmmakerstudio.in/start?src=wa-group&utm_campaign=share-v1
 ```
@@ -149,7 +149,7 @@ https://filmmakerstudio.in/start?src=wa-group&utm_campaign=share-v1
 A call sheet needs per-person call times, the location pin, the scenes in
 shooting order, who is needed and released when, and sunrise or sunset if
 you are chasing light. There is a longer write-up with an example here:
-https://filmmakerstudio.in/guide-call-sheet
+https://filmmakerstudio.in/guide-call-sheet?src=wa-group&utm_campaign=guide
 ```
 
 ### Own broadcast list (opt-in only)

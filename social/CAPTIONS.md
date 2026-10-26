@@ -65,13 +65,13 @@ Post these first, in this order: announce → explain → convert.
 > worked example, asks you the questions, and checks what you wrote. 11 steps
 > from the idea in your head to a short film that's ready to submit.
 >
-> Try the whole studio free for {TRIAL_DAYS} days. No card. Link in bio.
+> Try it free for {TRIAL_DAYS} days on the sample films. No card. Link in bio.
 
 ### poster-2.png — what it is
 
 > One desk, from idea to delivery.
 >
-> Story → Screenplay → Pre-production → Production → Post. 31 tools. Write the
+> Story → Screenplay → Pre-production → Production → Post. Write the
 > script, break it down, schedule the shoot, budget it, print call sheets, run
 > the set, track the cut.
 >
@@ -121,7 +121,7 @@ Pre-production teal, Production pink, Post magenta.
 ### feature-05.png — Import a script · Screenplay
 
 > Already written it somewhere else? Bring it in — Fountain, Final Draft, PDF
-> or plain text — and the whole studio opens around it. Scenes, characters,
+> or plain text — and every stage reads from it. Scenes, characters,
 > locations, all read out of your pages. No retyping.
 
 ### feature-06.png — Auto-Tagging · Pre-production ★
@@ -142,11 +142,11 @@ Pre-production teal, Production pink, Post magenta.
 > — the thing that decides who you can release early. Screen time worked out
 > from the pages, not guessed.
 
-### feature-09.png — Shot List, Storyboard, Lookbook · Pre-production
+### feature-09.png — Shot List, Storyboard · Pre-production
 
 > See it before you shoot it. Plan the shots with how close the camera is and
-> how it moves. Draw a frame for each. Collect the costume, set, colour and
-> light you want — all attached to the scene it belongs to.
+> how it moves. Draw a frame for each, attached to the scene it belongs to.
+> (Intermediate and up.)
 
 ### feature-10.png — Budget · Pre-production ★
 
@@ -180,9 +180,9 @@ Pre-production teal, Production pink, Post magenta.
 
 ### feature-15.png — The Library
 
-> Read a film, then take one apart. 122 terms in plain words, 22 films worth
-> studying, a real feature dissected scene by scene, and fifty rules of thumb
-> with the reasons behind them. Open from any page while you work.
+> Read before you write. Films worth studying and the directors behind them,
+> rules of thumb with the reasons, and craft notes on writing for emotional
+> impact and on story beats. Open from any page while you work.
 
 ---
 
@@ -212,8 +212,11 @@ A price card, if you make one, is a separate story or post with the figures
 read from `price_notice()` that day.
 
 **The door is the trial now, not an invite.** Since 26 Oct 2026 the offer
-is a free trial of the whole studio (3 days once the owner sets
-`trial_minutes` 4320, scope `full`, trial plan Pro; playbook §6.1). Fill
+is a free trial on the two sample films (3 days once the owner sets
+`trial_minutes` 4320; playbook §6.1). A trial somebody starts with the
+button cannot open their own film, whatever the console's scope says
+(`start_trial()` stores `sample` for every signup trial), so no caption says
+"whole studio" or "your own film" about the trial. Fill
 `{TRIAL_DAYS}` from `trial_offer()` the day you post, and do not post
 poster-1 until the trial is live. **`poster-1.png` itself still draws
 "Invite-only at launch."** (`scripts/make-posters.mjs`, line ~152): change
@@ -227,14 +230,16 @@ and contacts/sides/reports (12) are Intermediate; writing, drafts and import
 (03–05), story (01) and the Idea Vault (02) are Basic. Add "(Pro)" or
 "(Intermediate and up)" to the caption for those posters.
 
-**Two captions name tools that are switched off on every plan today**
-(`plans: []` in `src/data/plan-matrix.json`, so `isDisabledEverywhere()`
-hides them): the **Lookbook** in feature-09 and, in feature-15, the
-**glossary**, the **dissected feature** and the **case studies** (the Library
-still opens, without those shelves). Drop those phrases, or skip the poster,
-until the owner turns the module back on. Likewise do not mention the pitch
-deck, songs or media modules. And check poster-2's "31 tools" against what a
-plan really opens before posting it: the poster counts modules from the data,
-switched-off ones included.
+**Why feature-09, feature-15 and poster-2 were reworded (26 Oct 2026).**
+The Lookbook, the glossary, the dissected feature and the case studies are
+switched off on every plan (`plans: []` in `src/data/plan-matrix.json`, so
+`isDisabledEverywhere()` hides them), so their phrases came out of the
+captions; the Library still opens with its other shelves. Poster-2's caption
+lost "31 tools" because that count includes switched-off modules; it names
+no number now. **The poster IMAGES still carry the old wording**:
+`feature-09.png` is titled with the Lookbook, `feature-15.png` and
+`poster-2.png` may show the old counts. Regenerate them
+(`scripts/make-posters.mjs`) or skip them until they match. Do not mention
+the pitch deck, songs or media modules either.
 
 **Cadence:** 18 posts at 3–4 a week is roughly 4–5 weeks.

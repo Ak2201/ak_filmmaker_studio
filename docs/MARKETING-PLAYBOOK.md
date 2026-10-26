@@ -107,9 +107,9 @@ before anybody raises them:
   deadline.
 - **The countdown backfired.** 10 of 24 read it as pressure, 1 as a reason to
   buy. So the founding date is stated once, plainly, and never shouted.
-- **"How long is the trial?"** was the most asked question. The 3-day,
-  whole-studio trial answers it, so say the length wherever the trial is
-  offered (once it is live).
+- **"How long is the trial?"** was the most asked question. The 3-day trial
+  answers it, so say the length wherever the trial is offered (once it is
+  live), and say what it opens: the tools, on the two sample films.
 - **Writers want confidentiality in plain words**, crew are not the buyer,
   and non-Tamil personas wanted their own script. Do not promise Malayalam or
   Telugu tooling that does not exist.
@@ -120,13 +120,17 @@ before anybody raises them:
 
 | Piece | Truth to say | Where it lives |
 | --- | --- | --- |
-| **3-day trial, whole studio** | Every module, on your own films and the samples, for 3 days, no card — true once the trial plan is Pro (§6.1). Starts only when they press start (or redeem a code) | `trial_offer()`; console Growth → Trial |
+| **3-day trial, on the sample films** | The studio's tools, on the two sample films (The Dragon and The Dark Knight reconstructions), for 3 days, no card. A trial somebody starts by pressing the button **cannot** open their own film: `start_trial()` stores scope `sample` for every `signup` trial whatever the console's `trial_scope` says (§6.1). Starts only when they press start (or redeem a code) | `trial_offer()`; console Growth → Trial |
 | **Yearly plans** | Basic, Intermediate, Pro, one payment each for one year, nothing renews by itself | `price_notice()`; `pricing.html` |
 | **Founding prices** | Today's prices hold until **31 Dec 2026** (the server's `next_price_at`, once moved; §6 step 2) or until the founding places fill, whichever is first. A plan bought now is a full year at the price paid | `price_notice()` |
 | **Student band** | Code `STUDENT50` gives the student price on Intermediate. Verify a student ID or college e-mail by hand for bulk requests | Promo code (§20); the button on the plan cards |
-| **Referral codes** | Every paying member has a `REF-XXXXXX` code. The friend gets `referral_friend_pct` off (default 10%); the referrer is owed `referral_reward_pct` of what the friend paid (default 10%), paid by hand | `settings.html#plan`; console Growth |
+| **Referral codes** | Every paying member has a `REF-XXXXXX` code. The friend gets `referral_friend_pct` off (default 10%); the referrer is owed `referral_reward_pct` of what the friend paid (default 10%), paid by hand | The Purchase page ("Your referral code", `purchase.html`); console Growth |
 | **Affiliate codes** | A promo code with a commission %, for creators. Revenue and commission due are derived per code; paid by hand | Console Billing → Promo codes ("Commission %"); Growth shows the report |
 | **Upgrade mid-year** | The unused part of the year is credited against the higher plan | `apply_plan` (§52) |
+
+The panel's own COPY LINK is `/purchase?ref=CODE` with no `src`, so a
+member-shared link is counted as `direct` unless the member adds
+`&src=referral` (§3).
 
 Confirm `referral_friend_pct`, `referral_reward_pct` and that `STUDENT50`
 exists and is active on the console **before** any post names them.
@@ -141,7 +145,7 @@ live `price_notice()` values recorded in `CLAUDE.md`:
 | Basic (`starter`) | ₹599 | ≈ ₹1.64 | ₹999 | $19 → $29 |
 | Intermediate (`indie`) | ₹799 | ≈ ₹2.19 | ₹1,499 | $29 → $39 |
 | Pro (`pro`) | ₹999 | ≈ ₹2.74 | ₹1,999 | $39 → $49 |
-| Student (Intermediate + `STUDENT50`) | ₹399 | ≈ ₹1.09 | follows Intermediate | — |
+| Student (Intermediate + `STUDENT50`) | ₹399 (only with the fixed-amount code of §6 step 6) | ≈ ₹1.09 | an owner decision before 31 Dec (§6 step 6) | — |
 
 The USD column is the seed in `supabase-schema.sql` §56; the owner may have
 changed it on the console. `price_notice('USD')` is the only figure to quote.
@@ -151,8 +155,20 @@ changed it on the console. `price_notice('USD')` is the only figure to quote.
 The studio carries no ad pixel and no third-party script (by design; see
 `docs/LAUNCH.md` §8). Attribution is first-party: `src/lib/attribution.js`
 reads `?src=` (or `utm_source`) and `?ref=` on arrival, keeps them for the
-tab only (sessionStorage), and schema §58 counts every funnel step per
+tab only (sessionStorage), and schema §58 can count every funnel step per
 source. A `?ref=` code is carried to the purchase page's "Have a code?" box.
+
+**Not wired yet (26 Oct 2026): do not trust the per-source table until the
+Day 0 pre-flight item proves it.** `funnel.js` sends a source only when a
+caller passes one or `setFunnelSource()` has been called, and no page calls
+it yet: `start.js` counts `landing_view` with no source, and `marketing.js`
+keeps attribution under its own session key, not the funnel's. Until that is
+wired every count lands under `direct`, and Meta stop rule 4 (§4.2) would
+pause all spend at ₹1,500 every time. `signin_done` and `plan_view_in_app`
+(`countSignIn`, `countPlanViewInApp`) have no callers either, so those two
+steps stay at zero. The code change (call `setFunnelSource(attribution().src)`
+after `captureAttribution()`, and call the two counters) belongs to the
+attribution and site code, not to this file.
 
 **The link shape**
 
@@ -173,7 +189,11 @@ Rules for `src` (the console only shows what fits):
 - A day holds at most 200 distinct sources; a new one after that counts as
   `other`. Keep the list below short and reuse it.
 - Organic search and typed URLs arrive with no `src` and show as `direct`.
-  Guide pages are measured by their own `landing_view`, not by a tag.
+- **Guide pages are not counted by the funnel** (they send no
+  `landing_view`). Tag every product link out of a guide, tag every link to
+  a guide that you post yourself (`/guide-call-sheet?src=reddit`; the guide
+  captures it, and once `setFunnelSource` is wired a click through to
+  `/start` carries it), and read untagged guide traffic in Search Console.
 
 **The channel register** (add a row before you use a new tag)
 
@@ -195,7 +215,7 @@ Rules for `src` (the console only shows what fits):
 | Product Hunt | `producthunt` | `launch` | — |
 | Directories (AlternativeTo, SaaSHub, …) | `dir-<name>` | `listing` | — |
 | E-mail series (§ `email-series.md`) | `email-1` … `email-6` | `welcome` | — |
-| Referral (a member shares) | `referral` | — | their `REF-` code |
+| Referral (a member shares) | `referral` | — | their `REF-` code. The panel's copy link is `/purchase?ref=CODE` with no `src`: counted as `direct` unless the member adds `&src=referral` |
 
 Example, for a YouTube creator with the code `FILMKAADHAL20`:
 `https://filmmakerstudio.in/start?src=yt-filmkaadhal&utm_campaign=review-nov&ref=FILMKAADHAL20`
@@ -328,8 +348,9 @@ is done, or offer invite codes (which carry their own `code_trial_days`).
 - Subreddits to read first and follow the rules of: r/Filmmakers,
   r/Screenwriting, r/indiefilm, r/kollywood, r/IndianFilmmakers (check
   each one's self-promotion rule before posting anything with a link).
-- **Weekly**: 3 answers. Tag product links `src=reddit` / `src=quora`; leave
-  guide links untagged (they measure themselves).
+- **Weekly**: 3 answers. Tag every link, guide links included:
+  `/guide-call-sheet?src=reddit`, `/start?src=quora&utm_campaign=<topic>`.
+  Guide pages send no count of their own (§3).
 
 ### 4.8 SEO: the guide pages
 
@@ -373,16 +394,33 @@ page, generated like the rest of the public site. Linked here relative to
 
 ## 5. Launch week, day by day
 
-**Day 0 is the day the owner sets the 3-day, whole-studio trial live**
-(§6 step 1). Do not start Day 0 until every item in the pre-flight list is
-true.
+**Day 0 is the day the owner sets the 3-day trial live** (§6 step 1). Do
+not start Day 0 until every item in the pre-flight list is true.
+
+**Before anything else, whatever else is ready: §6 step 2 (the founding
+date) must be done before 2026-10-31T18:29Z.** Day 0 waits on a live
+Razorpay key, Resend, a real payment and redeployed functions; the price
+rise waits for none of them.
 
 **Pre-flight (all must be true)**
 
-- [ ] `trial_offer()` reads `trial_minutes: 4320`; scope `full` and trial plan `pro` are set (§6.1)
-- [ ] `price_notice()` reads a rise at `2026-12-31T18:29:00Z` (§6.2)
+- [ ] `trial_offer()` reads `trial_minutes: 4320` (§6.1)
+- [ ] A pressed trial on a fresh Google account: `select trial_scope from
+      public.studio_members where user_id = '<that uid>';` reads `sample`
+      (or `full` if a new section has changed `start_trial()`, §6.1), and
+      every line of copy matches it: `sample` means "on the sample films",
+      and no line says "whole studio" or "your own film". Only with `full`:
+      `billing_status().trial_scope` is `full` and that account can create
+      a new project
+- [ ] `price_notice()` reads a rise at `2026-12-31T18:29:00Z` (§6.2; due
+      before 31 Oct, not on Day 0)
 - [ ] §58 and §59 ran with a checksum and read back (§6.3); the console's
       funnel shows a "by source" table
+- [ ] **Per-source counting works**: open
+      `https://filmmakerstudio.in/start?src=preflight-test` in a private
+      window, then `select * from public.admin_funnel_by_source(current_date,
+      current_date);` shows a `landing_view` row for source `preflight-test`.
+      Do not start Meta Test 1 until that row appears (§3, "Not wired yet")
 - [ ] A LIVE Razorpay key is on, `RESEND_API_KEY` and `MAIL_FROM` are set,
       and one real ₹ payment and its receipt e-mail arrived (§6.5)
 - [ ] The four functions owed a redeploy since §52 are redeployed (probe each
@@ -395,7 +433,7 @@ true.
 
 | Day | Actions |
 | --- | --- |
-| **Day 0** (trial goes live) | Morning: §6.1, read back. Open `/start` and `/pricing` in a private window: the trial strip shows 3 days; the founding line shows 31 Dec. Start one trial yourself on a fresh Google account and walk the whole studio. Afternoon: post feed post 1 (announcement, `content-calendar.md` W1 Mon). Stories: "the trial is open, 3 days, whole studio". Send e-mail 1 to the consented leads list (only once Resend is live). |
+| **Day 0** (trial goes live) | Morning: §6.1, read back. Open `/start` and `/pricing` in a private window: the trial strip shows 3 days; the founding line shows 31 Dec. Start one trial yourself on a fresh Google account and walk the sample films. Afternoon: post feed post 1 (announcement, `content-calendar.md` W1 Mon). Stories: "the trial is open: 3 days on the sample films, no card". Send e-mail 1 to the consented leads list (only once Resend is live). |
 | **Day 1** | Reel: script import to stripboard (real recording). Share in your own WhatsApp broadcast (`wa-bcast`). Message 5 YouTube creators. Answer every comment and DM. Read the console: `landing_view`, `trial_start` by source. |
 | **Day 2** | Post: "What the trial opens" carousel. 3 Reddit/Quora answers with guide links. Send film-school e-mail 1 to 10 schools (Harvey, approval on). |
 | **Day 3** | First trials from Day 0 end today. Read `trial_start` → `checkout_start` → `purchase`. Reply personally to anyone who wrote in. Story: a question box "what stopped you?" |
@@ -411,31 +449,52 @@ SQL pasted into the editor follows the paste rule: base64 across the
 clipboard, decode in the page, compare the SHA-256 before pressing Run
 (`docs/LAUNCH.md` §4).
 
-1. **Trial: 3 days, whole studio.** `admin.html` → Growth → Trial: length
-   4320 minutes, scope "full", **and trial plan "Pro"**. (The setting is
-   `admin_set_billing_settings` with `{"trial_minutes": 4320, "trial_scope":
-   "full", "trial_plan": "pro"}`; it accepts 1 to 44,640 minutes.) The plan
-   matters: a "full" trial opens the features of `trial_plan`, and when that
-   is empty `billing_status()` falls back to **Intermediate** (`indie`), which
-   leaves out call sheets, Shoot Day, Edit Log, Deliverables and the AI tools.
-   Copy says "whole studio" only once the trial plan is Pro; otherwise it says
-   "the Intermediate plan". Read back: `select public.trial_offer();` as anon must
-   show `trial_minutes` 4320 and `trial_hours` 72, and a fresh trial
-   account's `billing_status().features` must include `"call-sheets": true`. The pages read this value;
-   no copy is edited to change it. Invite codes keep their own
-   `code_trial_days` — decide whether a code should still be worth 7 days.
-2. **Move the founding-price date to 31 Dec 2026.** On the console's price
+1. **Trial: 3 days.** `admin.html` → Growth → Trial: length 4320 minutes,
+   scope "full", trial plan "Pro" (`admin_set_billing_settings` with
+   `{"trial_minutes": 4320, "trial_scope": "full", "trial_plan": "pro"}`; it
+   accepts 1 to 44,640 minutes). Read back: `select public.trial_offer();` as
+   anon must show `trial_minutes` 4320 and `trial_hours` 72. The pages read
+   this value; no copy is edited to change it.
+
+   **What this setting does NOT do: it does not make a pressed trial
+   whole-studio.** `start_trial()` (`supabase-schema.sql`, restated in §50
+   and §51) stores `case when src = 'signup' then 'sample' else
+   coalesce(s.trial_scope, 'sample') end`, so every trial a visitor starts
+   with the button is scope `sample` whatever `trial_scope` says, and
+   `billing_status()` switches to `trial_plan`'s features only when the
+   member's scope is `full`. `trial_scope` and `trial_plan` govern code and
+   admin trials only; `docs/BILLING.md` records the sample scope of a signup
+   trial as deliberate. So the offer every piece of copy makes is **"3 days
+   on the two sample films, no card"**: a self-started trial cannot create a
+   project of its own.
+
+   **Owner decision, open:** a self-serve trial on the visitor's own film
+   needs a NEW schema section that changes `start_trial()` to use
+   `s.trial_scope` for `src = 'signup'`, run live with a checksum and read
+   back by the §5 pre-flight item, before Day 0 can start on that offer.
+   Until it has run and read back, no line of copy may say "whole studio",
+   "your own film" or "your own script" about the trial. Invite codes keep
+   their own `code_trial_days` — decide whether a code should still be worth
+   7 days.
+2. **Move the founding-price date to 31 Dec 2026. DO BEFORE
+   2026-10-31T18:29Z, whatever else is ready.** The live rise fires at that
+   instant by itself: `effective_price()` switches to the higher price with
+   nobody pressing anything, and every buyer after it is charged it. This
+   step does not wait for Day 0. On the console's price
    editor (Billing), set each plan's next price date to
    `2026-12-31T18:29:00Z` (23:59 IST on 31 Dec, the same minute of day the 31 Oct date used), keeping the next price
    figures. That goes through `admin_set_next_price(plan, paise, at)`, which
    writes the audit log and refuses a "rise" that is not a rise. Read back:
-   `select public.price_notice();` and `select public.price_notice('USD');`
-   — every plan's `next_at` reads the new instant, `rising` is true. If the
+   `select p->>'id', p->>'next_price_at', p->>'rising' from
+   jsonb_array_elements(public.price_notice()->'plans') p;` (and the same
+   with `price_notice('USD')`) — every plan's `next_price_at` reads the new
+   instant and `rising` is true. `next_price_at` reads null once a rise has
+   fired: null here means the rise already happened. If the
    console cannot reach it, a checksummed SQL `update public.plans set
    next_price_at = '2026-12-31 18:29:00+00' where id in
    ('starter','indie','pro') and next_price_paise is not null;` does the
    same without the audit row; note it in the audit by hand. Then delete or
-   edit any post that named 1 Nov.
+   edit any post that named 31 Oct.
 3. **Run the two new schema sections** — `schema-58-funnel-source.sql` (per-
    source funnel) then `schema-59-testimonials.sql` (consented testimonials)
    — each with a checksum, each read back with the query in its own header
@@ -449,7 +508,16 @@ clipboard, decode in the page, compare the SHA-256 before pressing Run
 5. **Set `RESEND_API_KEY` and `MAIL_FROM` before any real payment**
    (`docs/BILLING.md` §13 and §16). Until then a payment claims a receipt
    and the send fails. The e-mail series also waits for this.
-6. **Create the codes the copy names**: `STUDENT50` (50% on Intermediate),
+6. **Create the codes the copy names**: `STUDENT50` as a FIXED amount,
+   `{"amount_off_paise": 40000, "plan_ids": ["indie"]}`, not 50%:
+   `promo_price()` makes 50% of ₹799 a charge of ₹399.50 while the plan
+   cards print ₹399 (`EDU_PRICE.student` in `src/lib/plans.js`). Read it back
+   with `select public.quote_order('indie', 'STUDENT50');`: it must quote
+   39900 paise. After the rise (Intermediate ₹1,499) the same code would
+   charge ₹1,099 while the cards still print ₹399, so decide before 31 Dec:
+   keep ₹399 (set the code to 110000 off at the rise, and re-quote) or move
+   the student price (change `EDU_PRICE`, a code change, the same day).
+   Then
    one affiliate code per signed creator (Commission % filled in), one
    festival code per partner with `valid_until` = their real deadline. Read
    each back in the Promo codes list.

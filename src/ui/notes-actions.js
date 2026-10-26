@@ -37,10 +37,20 @@ export function pinOptions() {
   try {
     scenes = Scenes.listScenes().map((s, i) => ({
       value: 'scene:' + s.id,
-      label: (s.number || String(i + 1)) + '. ' + ([s.intExt, s.location].filter(Boolean).join(' ') || 'Untitled scene')
+      label: sceneLabel(s, i)
     }));
   } catch (e) { /* no scenes */ }
   return { beats, scenes, beatTitle };
+}
+
+/* A scene's pin row: its number and slug line. A scene with no location
+   yet (a Beat Sheet Send makes those) adds the start of its synopsis, or
+   every one read "1. INT", "2. INT" (QA r2). */
+export function sceneLabel(s, i) {
+  const slug = [s.intExt, s.location].filter(Boolean).join(' ');
+  const syn = String(s.synopsis || '').replace(/\s+/g, ' ').trim();
+  const gist = !s.location && syn ? (syn.length > 40 ? syn.slice(0, 39).trimEnd() + '…' : syn) : '';
+  return (s.number || String(i + 1)) + '. ' + ([slug, gist].filter(Boolean).join(' · ') || 'Untitled scene');
 }
 
 /* The open project's format, read from its entry (story-model.js has the
@@ -109,13 +119,20 @@ function removeWithUndo(id, el) {
   });
 }
 
-function move(id, delta) {
+/* `act` is the arrow pressed ('up' / 'down'): the focus stays on it on
+   the moved note, so Enter again moves it again; at an end, where that
+   arrow is disabled, on the other one. From the grip (no act) the grip. */
+function move(id, delta, act = '') {
   flushTyping();
   const items = Story.listVault();
   const at = items.findIndex((x) => x.id === id);
   if (at < 0) return false;
-  if (Story.moveInVault(id, at + delta)) { changed({ focus: id }); return true; }
-  return false;
+  if (!Story.moveInVault(id, at + delta)) return false;
+  const to = Story.listVault().findIndex((x) => x.id === id);
+  const end = (act === 'up' && to <= 0) || (act === 'down' && to >= items.length - 1);
+  const arrow = act && (end ? (act === 'up' ? 'down' : 'up') : act);
+  changed({ focus: id, control: arrow ? '[data-nt="' + arrow + '"][data-note="' + CSS.escape(id) + '"]:not([disabled])' : '' });
+  return true;
 }
 
 function toScene(id) {
@@ -197,8 +214,8 @@ export function bindNoteActions() {
         changed({ focus: id, control: '[data-nt="color"][data-note="' + CSS.escape(id) + '"][data-color="' + CSS.escape(c) + '"]' });
       }
     } else if (act === 'del') removeWithUndo(id, el);
-    else if (act === 'up') move(id, -1);
-    else if (act === 'down') move(id, 1);
+    else if (act === 'up') move(id, -1, 'up');
+    else if (act === 'down') move(id, 1, 'down');
     else if (act === 'to-synopsis') toSynopsis(id);
     else if (act === 'to-scene') toScene(id);
     else if (act === 'copy') copy(id);

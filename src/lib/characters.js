@@ -583,6 +583,26 @@ export function assignRole(list, view, role, { format = projectFormat(), confirm
   return { ok: true, rec, listChanged: true, moved: !!holder };
 }
 
+/** A new record for the "Add the protagonist" / "Add the antagonist"
+    buttons. When the blueprint already names someone for that role (a
+    virtual slot, typed into the slot card and not yet redrawn), the new
+    record IS that person: it takes the empty role and the slot's answers
+    stay in the blueprint, where its card reads them. Going through
+    assignRole instead treats the slot as a rival holder — it copies the
+    answers onto a second, role-less record and BLANKS the blueprint's
+    s4_* / s5_* keys, which are the Feature Blueprint's own answers. */
+export function recordForRole(list, role, name = '', format = projectFormat()) {
+  if (role && !String(name).trim() && virtualSlot(list, role, format)) {
+    const c = blankCharacter({ role });
+    list.push(c);
+    return c;
+  }
+  const c = blankCharacter({ name });
+  list.push(c);
+  if (role) assignRole(list, viewFor(list, c.id, c.name, format), role, { format, confirm: () => true });
+  return c;
+}
+
 /* ---- what the script says about each person (derived) ----------- */
 
 /** Per cue name: where the person first speaks. One pass.
@@ -627,7 +647,7 @@ export function rosterStats(roster, elements) {
 
 export default {
   CHARACTERS_KEY, CHARACTER_FIELDS, ROLES, roleLabel, SLOT_ROLES, UNIQUE_ROLES, slotSpec, slotOwner, isSlotOwner,
-  viewOf, viewFor, virtualSlot, virtualProtagonist, characterViews, buildRoster, setField, setExtra, assignRole, joinName, projectFormat,
+  viewOf, viewFor, virtualSlot, virtualProtagonist, characterViews, buildRoster, setField, setExtra, assignRole, recordForRole, joinName, projectFormat,
   firstAppearances, rosterStats, blankCharacter, parseAliases, loadCharacters, saveCharacters,
   cueSpeakers, ownerOf, mergeWithCues, adopt, renamePlan, applyPlan, renameCharacter,
   tableRead, tableReadCSV, speakingMinutes, normName

@@ -128,6 +128,7 @@ let relandSpot = '';      // …and the same, landed again once the blueprint ho
 let extra = '';           // 'pitch' (only while the console has it on) or 'guide' (by its address) when a section after the path is the one shown
 let started = false;      // the start cards were answered this visit
 let undoBuild = null;     // one level: the synopsis before the last build
+let buildToast = null;    // the build's UNDO toast, taken down when the build is undone another way
 let lastSend = null;      // the scene ids the last send created
 let focusStep = '';       // an outline step whose field takes focus next
 let links = new Map();    // stepId -> { action, sceneId, binned } (Story.linkStates), set once per draw
@@ -183,7 +184,10 @@ function commit(s, { rerender = true } = {}) {
    that button before its click arrives, so typing an idea and pressing
    NEXT took two presses. So a field's change saves at once and, while a
    pointer is down, holds the redraw until the click has landed. A Tab
-   away redraws at once; preservingFocus() puts the focus back. */
+   away redraws one task later, once the focus has ARRIVED on the next
+   control: redrawing inside the change replaced the control Tab was
+   moving to and left the keyboard on <body>. render() then finds that
+   control again in the new page (keepFocus). */
 let pointerDown = false, held = false;
 document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
 document.addEventListener('pointerup', () => {
@@ -193,7 +197,35 @@ document.addEventListener('pointerup', () => {
 function commitField(s) {
   Story.saveStory(s);
   syncScenes();
-  if (pointerDown) held = true; else render();
+  held = true;
+  if (!pointerDown) setTimeout(() => { if (held) { held = false; render(); } }, 0);
+}
+
+/* The control the keyboard is on, found again after a redraw replaced
+   it: the same element by its data-* attributes (a step's Move down by
+   its step id), else by its id, else a link by its address and its
+   words. preservingFocus() does this for a typed field only; a
+   button, a link or a select pressed from the keyboard went to <body>. */
+function focusSpot(el) {
+  if (!el || el === document.body || !app.contains(el)) return null;
+  const attrs = [...el.attributes].filter((a) => a.name.startsWith('data-'));
+  const tag = el.tagName.toLowerCase();
+  const sel = attrs.length ? tag + attrs.map((a) => '[' + a.name + '="' + CSS.escape(a.value) + '"]').join('')
+    : el.id ? '#' + CSS.escape(el.id)
+    : el.hasAttribute('href') ? 'a[href="' + CSS.escape(el.getAttribute('href')) + '"]' : '';
+  const words = el.textContent;
+  const same = attrs.length || el.id ? () => true : (x) => x.textContent === words;   // a link with no ids: told apart by its words
+  return { el, sel, same, index: sel ? [...app.querySelectorAll(sel)].filter(same).indexOf(el) : -1 };
+}
+function keepFocus(spot) {
+  if (!spot) return;
+  const a = document.activeElement;
+  if (a && a !== document.body && a.isConnected) return;   // the redraw put it somewhere already
+  /* A blueprint host is MOVED into the new page, not rebuilt, and moving
+     a node blurs the field inside it: give it its focus back. */
+  if (spot.el.isConnected) { spot.el.focus({ preventScroll: true }); return; }
+  const el = spot.sel && spot.index >= 0 ? [...app.querySelectorAll(spot.sel)].filter(spot.same)[spot.index] : null;
+  if (el) el.focus({ preventScroll: true });
 }
 
 /* ---- the ways in (FR-402) ------------------------------------ */
@@ -717,12 +749,12 @@ function renderOutline(s) {
   const un = h('section.st-unplaced' + (o.unplaced.length ? '' : '.is-empty'), { 'aria-label': 'Unassigned steps' });
   un.append(h('h3.st-ol-name', { text: 'Unassigned' + (o.unplaced.length ? ' · ' + o.unplaced.length : '') }));
   if (!o.unplaced.length) {
-    un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under a beat of ' + fw.short + '.' }));
+    un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under one of the ' + fw.short + ' beats.' }));
     sec.append(un);
   } else {
     un.append(h('p.st-muted', { text: short
       ? 'These steps were written under another beat sheet before this film kept to the five beats. They are kept as they are; file each one under one of the five.'
-      : 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
+      : 'These steps were written under another beat sheet. They are kept as they are; file them under one of the ' + fw.short + ' beats, or switch the beat sheet back to see them where they were.' }));
     if (o.unplaced.some((u) => u.suggest) && !locked) {
       un.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'file-all', text: 'File all by position' }));
     }
@@ -1149,7 +1181,8 @@ function render() {
   const was = document.activeElement;
   const wasId = was && was.id && /^(INPUT|TEXTAREA|SELECT)$/.test(was.tagName) && app.contains(was) ? was.id : '';
   const top0 = wasId ? was.getBoundingClientRect().top : 0;
-  try { preservingFocus(draw); } finally {
+  const spot = focusSpot(was);
+  try { preservingFocus(draw); keepFocus(spot); } finally {
     if (wasId) {
       const now = document.activeElement;
       if (now && now.id === wasId) {
@@ -1229,7 +1262,10 @@ function after() {
   if (focusStep) {
     const el = document.getElementById('stStep_' + focusStep);
     focusStep = '';
-    if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); }
+    /* Instant, never the page's smooth scroll: the glide was retargeted
+       by the redraw's own layout (the strip sticking, the hosts filling)
+       and ended at the foot of the page, the new step far above it. */
+    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center', behavior: 'instant' }); }
   }
   applyView();
   if (landStep) {
@@ -1443,6 +1479,7 @@ async function undoTheBuild() {
   const s = story();
   Story.restoreSynopsis(s, mine.snap);
   undoBuild = null;
+  if (buildToast) { buildToast.dismiss(); buildToast = null; }   // its UNDO has nothing left to do
   if (!s.source.trim()) mode = 'edit';
   commit(s);
 }
@@ -1562,6 +1599,9 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     }
     Story.setOutlineLock(s, act === 'lock');
     commit(s);
+    /* The pressed button is now its opposite (Locked / Lock the outline). */
+    const lb = document.querySelector('#stLockRow [data-st="' + (act === 'lock' ? 'unlock' : 'lock') + '"]');
+    if (lb) lb.focus({ preventScroll: true });
     StudioUI.toast(act === 'lock' ? 'Outline locked. Unlock any time to edit.' : 'Outline unlocked.');
   } else if (act === 'use-bp') {
     const f = el.getAttribute('data-field');
@@ -1571,6 +1611,10 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     s.framework = el.getAttribute('data-fw'); s.frameworkChosen = true; litBeat = '';
     fwPickOpen = false;   // chosen: the picker folds back into the Beat Sheet's head
     commit(s);
+    /* The pressed card is inside the folded picker: the keyboard goes to
+       the picker's own head, which says what is in use now. */
+    const sum = document.querySelector('#st-fw-pick > summary');
+    if (sum) sum.focus({ preventScroll: true });
     StudioUI.toast(`Beat sheet: ${Story.frameworkById(s.framework).label}.`);
   } else if (act === 'open-fw') {
     fwPickOpen = true;
@@ -1628,7 +1672,11 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     mode = 'tag';
     commit(s);
     undoBuild = IO.buildUndo(snap, story());   // what the build left, as stored
-    StudioUI.toast('Synopsis built from the outline — every step tagged with its beat.', { action: 'UNDO', onAction: () => undoTheBuild() });
+    if (buildToast) buildToast.dismiss();
+    buildToast = StudioUI.toast('Synopsis built from the outline — every step tagged with its beat.', { action: 'UNDO', onAction: () => {
+      if (!undoBuild) { StudioUI.toast('Nothing left to undo: that build was already undone or replaced.'); return; }
+      undoTheBuild();
+    } });
   } else if (act === 'build-undo') {
     undoTheBuild();
   } else if (act === 'send') {
@@ -1764,10 +1812,16 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
     Story.updateOutlineStep(s, el.getAttribute('data-step'), { text: el.value });
     commitField(s);
   } else if (f === 'step-beat') {
-    if (el.value && Story.moveOutlineStep(s, el.getAttribute('data-step'), { beat: el.value })) commit(s);
+    const id = el.getAttribute('data-step');
+    if (el.value && Story.moveOutlineStep(s, id, { beat: el.value })) {
+      commit(s);
+      /* The step's card was redrawn under its new beat: keep the keyboard on its select. */
+      const sel = document.querySelector(`select[data-st-field="step-beat"][data-step="${CSS.escape(id)}"]`);
+      if (sel) sel.focus({ preventScroll: true });
+    }
   } else if (f === 'tension') {
     Story.setTension(s, s.framework, el.getAttribute('data-beat'), el.value);
-    commit(s);
+    commitField(s);   // a Tab away must reach the next control (an arrow step keeps the field: render)
   } else if (f === 'retag') {
     Story.tagMark(s, el.getAttribute('data-mark'), s.framework, el.value);
     commit(s);

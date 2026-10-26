@@ -1256,8 +1256,12 @@ function syncTitleAcrossCovers() {
   const masterTitle = document.querySelector('[data-key="meta_title"]');
   const v1Title = document.querySelector('[data-key="v1_title"]');
   if (!masterTitle || !v1Title) return;
+  /* The twin keeps following while it was filled this way: re-checking
+     "empty" on each keystroke copied only the first letter. */
   const sync = (src, dest) => {
-    if (dest.value === '' && src.value) dest.value = src.value;
+    delete src.dataset.follows;
+    if (dest.dataset.follows === src.dataset.key) dest.value = src.value;
+    else if (dest.value === '' && src.value) { dest.value = src.value; dest.dataset.follows = src.dataset.key; }
   };
   masterTitle.addEventListener('input', () => sync(masterTitle, v1Title));
   v1Title.addEventListener('input', () => sync(v1Title, masterTitle));

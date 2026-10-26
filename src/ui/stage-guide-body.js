@@ -351,8 +351,12 @@ export function renderGuide(body, { stage, format, items, fields, stepper }) {
     queue(k, spec.read(el));
     /* feature.js syncTitleAcrossCovers(): fill the other title if empty. */
     const twin = k === 'meta_title' ? 'v1_title' : k === 'v1_title' ? 'meta_title' : null;
+    /* It keeps following while it was filled this way (data-follows):
+       re-checking "empty" on each keystroke copied only the first letter. */
+    delete el.dataset.follows;
     const t = twin && root.querySelector('[data-key="' + twin + '"]');
-    if (t && t.value === '' && el.value) { t.value = el.value; queue(twin, el.value); }
+    if (t && t.dataset.follows === k) { t.value = el.value; queue(twin, el.value); }
+    else if (t && t.value === '' && el.value) { t.value = el.value; queue(twin, el.value); t.dataset.follows = k; }
     const m = palette.exec(k);
     /* feature.js saves the hex mirrors with the colour; keep them in step. */
     if (m && root.querySelector('[data-key="palette_c' + m[1] + '_hex"]')) queue('palette_c' + m[1] + '_hex', el.value);

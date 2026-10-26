@@ -74,6 +74,9 @@
   opacity: 0; pointer-events: none; z-index: 2;
 }
 .pc-dot:hover .pc-dot-tip, .pc-dot:focus-visible .pc-dot-tip { opacity: 1; }
+/* Edge dots: the label grows inward from the dot, never past the chart. */
+.pc-dot.tip-start .pc-dot-tip { left: 0; transform: none; }
+.pc-dot.tip-end .pc-dot-tip { left: auto; right: 0; transform: none; }
 .pc-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin-top: var(--s3); font-size: var(--t-tiny); color: var(--ink-body); }
 .pc-key { display: inline-flex; align-items: center; gap: var(--s1h); }
 .pc-key::before { content: ''; display: inline-block; flex: none; }

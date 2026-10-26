@@ -327,6 +327,152 @@ check('#pitch (off for everybody) opens no Pitch deck step', (await shown()).inc
 await open('#logline');
 check('#logline opens the Idea step on its logline', [await shown(), await inViewEl('logline')], [['path-idea'], true]);
 
+/* ---- QA round 2 (Story & writing): data kept, focus kept --------------- */
+const act = () => page.evaluate(() => { const a = document.activeElement; return a ? a.tagName + (a.getAttribute('data-st') ? '[' + a.getAttribute('data-st') + ']' : '') + (a.getAttribute('data-st-field') ? '{' + a.getAttribute('data-st-field') + '}' : '') : 'none'; });
+const toasts = () => page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.querySelector('.toast-msg').textContent));
+const chars = () => page.evaluate(() => JSON.parse(localStorage.getItem('fms_characters_v1') || '[]'));
+await project('feature', 'Proof QA r2');
+await open('#path-bible');
+await page.fill('[data-sb-slot="protagonist"] [data-sb-key="s4_name"]', 'Ravi');
+await page.fill('[data-sb-slot="protagonist"] [data-sb-key="s4_want"]', 'To swim the strait');
+await page.keyboard.press('Tab');
+await page.waitForTimeout(300);
+check('bible: the add-role buttons are kit buttons in sentence case', await page.evaluate(() =>
+  [...document.querySelectorAll('[data-sb="add-role"], [data-sb="add-char"]')].map((b) => [b.classList.contains('k-btn'), b.textContent])),
+  [[true, 'Add the protagonist'], [true, 'Add the antagonist'], [true, 'Add']]);
+await page.click('[data-sb="add-role"][data-role="protagonist"]');
+await page.waitForTimeout(400);
+check('bible: "Add the protagonist" after answering the slot keeps the answers in the blueprint', await blob(FKEY).then((b) => [b.s4_name, b.s4_want]), ['Ravi', 'To swim the strait']);
+check('bible: …and makes ONE protagonist, the slot’s person (no empty card beside a role-less RAVI)', await page.evaluate(() =>
+  [...document.querySelectorAll('.sb-chars details.sb-char:not(.is-slot)')].map((d) => [d.querySelector('.sb-char-name').textContent, (d.querySelector('.sb-char-role') || {}).textContent || ''])), [['Ravi', 'Protagonist']]);
+await page.fill('[data-sb-newname]', 'Meera');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('bible: adding a character from the keyboard puts the focus on its card', await page.evaluate(() =>
+  !!(document.activeElement.closest('details.sb-char') && document.activeElement.getAttribute('data-ch-field') === 'name')), true);
+await page.fill('[data-sb-newname]', 'Meera');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('bible: a second character of the same name is added and said', [(await chars()).filter((c) => c.name === 'MEERA').length, (await toasts()).some((t) => /already a MEERA/.test(t))], [2, true]);
+
+/* Tab out of an edited field reaches the next control. */
+await open('#path-idea');
+await page.click('#stIdea');
+await page.keyboard.type('Hello there');
+await page.waitForTimeout(900);
+await page.keyboard.press('Tab');
+await page.waitForTimeout(300);
+check('story: Tab out of an edited Idea goes on to the next control, not <body>', (await act()) !== 'BODY', true);
+
+/* Beat Sheet: the beat select, Add a step, the lock and the picker keep the keyboard. */
+await open('#path-outline');
+await page.click('[data-st="step-add"][data-beat="save_the_cat:opening_image"]');
+await page.waitForTimeout(300);
+await page.keyboard.type('A first step');
+await page.click('[data-st="step-add"][data-beat="save_the_cat:opening_image"]');
+await page.waitForTimeout(300);
+await page.keyboard.type('A second step');
+await page.waitForTimeout(800);
+const sid = (await story()).outline[0].id;
+await page.focus(`select[data-st-field="step-beat"][data-step="${sid}"]`);
+await page.keyboard.press('ArrowDown');
+await page.waitForTimeout(400);
+check('beat sheet: moving a step to another beat from the keyboard keeps the focus on its select', await page.evaluate((id) =>
+  document.activeElement.matches(`select[data-st-field="step-beat"][data-step="${id}"]`), sid), true);
+await page.focus('#stLockRow [data-st="lock"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('beat sheet: Lock from the keyboard leaves the focus on the (now Locked) button', await act(), 'BUTTON[unlock]');
+await page.focus('#stLockRow [data-st="unlock"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+await page.click('[data-st="open-fw"]');
+await page.waitForTimeout(300);
+await page.focus('[data-st="pick-fw"][data-fw="three_act"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('beat sheet: picking a beat sheet from the keyboard leaves the focus on the picker', await page.evaluate(() => document.activeElement.matches('#st-fw-pick > summary')), true);
+await page.click('#st-fw-pick > summary');
+await page.waitForTimeout(200);
+await page.click('[data-st="pick-fw"][data-fw="save_the_cat"]');
+await page.waitForTimeout(400);
+check('beat sheet: the empty Unassigned box has no "Save the Cat!."', await page.evaluate(() => {
+  const t = document.querySelector('.st-unplaced') ? document.querySelector('.st-unplaced').textContent : '';
+  return [/Cat!\./.test(t), /one of the Save the Cat! beats/.test(t)];
+}), [false, true]);
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.locator('[data-st="step-add"][data-beat="save_the_cat:midpoint"]').scrollIntoViewIfNeeded();
+await page.waitForTimeout(400);
+await page.click('[data-st="step-add"][data-beat="save_the_cat:midpoint"]');
+await page.waitForTimeout(1500);
+check('beat sheet: Add a step leaves the new step’s box focused AND on screen', await page.evaluate(() => {
+  const a = document.activeElement; const r = a.getBoundingClientRect();
+  return [a.getAttribute('data-st-field'), r.top >= 0 && r.bottom <= innerHeight];
+}), ['step-text', true]);
+
+/* Synopsis: an import while a keystroke is pending asks first; build-undo takes its toast down. */
+await open('#path-synopsis');
+await page.click('#stSource');
+await page.keyboard.type('My own draft words');
+await page.setInputFiles('.st-bar .st-import input[type=file]', { name: 'syn.txt', mimeType: 'text/plain', buffer: Buffer.from('A swimmer crosses the strait at night and finds her brother on the far shore.') });
+await page.waitForTimeout(500);
+check('synopsis: importing while typing asks before replacing what was typed', await page.evaluate(() => !!document.querySelector('.dlg.k-modal')), true);
+await page.click('.dlg.k-modal .k-modal-actions .mbtn:not(.primary)');
+await page.waitForTimeout(1200);
+check('synopsis: …and "Cancel" keeps the typed draft, no "Imported" toast', [(await story()).source, (await toasts()).some((t) => /Imported/.test(t))], ['My own draft words', false]);
+await page.focus('[data-st="mode"][data-mode="tag"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('synopsis: the Write/Tag mode button keeps the focus', await act(), 'BUTTON[mode]');
+await page.click('[data-st="build"]');
+await page.waitForTimeout(300);
+await page.click('.dlg.k-modal .k-modal-actions .mbtn.primary');
+await page.waitForTimeout(500);
+check('synopsis: Build shows its UNDO toast', (await toasts()).some((t) => /built from the outline/.test(t)), true);
+await page.click('[data-st="build-undo"]');
+await page.waitForTimeout(300);
+if (await page.evaluate(() => !!document.querySelector('.dlg.k-modal'))) { await page.click('.dlg.k-modal .k-modal-actions .mbtn.primary'); await page.waitForTimeout(300); }
+await page.waitForTimeout(400);
+check('synopsis: "Undo the build" takes the build’s toast down (its UNDO would do nothing)', (await toasts()).some((t) => /built from the outline/.test(t)), false);
+
+/* The tension curve's last dot keeps its label inside the chart, at 390. */
+await project('feature', 'Proof Curve');
+await open();
+await page.click('[data-st="sample"]');
+await page.waitForTimeout(1500);
+await page.setViewportSize({ width: 390, height: 844 });
+await step('synopsis');
+const tipFits = await page.evaluate(() => {
+  const dots = [...document.querySelectorAll('#path-synopsis .pc-dot')];
+  if (!dots.length) return 'no dots';
+  const last = dots[dots.length - 1], first = dots[0];
+  last.focus();
+  const t = last.querySelector('.pc-dot-tip').getBoundingClientRect(), f = first.querySelector('.pc-dot-tip').getBoundingClientRect();
+  return [t.right <= innerWidth, f.left >= 0];
+});
+await page.setViewportSize({ width: 1280, height: 900 });
+check('pacing: the edge dots’ labels stay inside the window at 390px', tipFits, [true, true]);
+
+/* Dashboard Title page: the twin title follows the whole title, PROJECT TITLE is the name. */
+await project('feature', 'QA empty');
+await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
+await page.waitForTimeout(900);
+check('title page: PROJECT TITLE shows the project’s name', await page.inputValue('#tp_meta_title'), 'QA empty');
+await page.fill('#tp_meta_title', '');
+await page.click('#tp_meta_title');
+await page.keyboard.type('The Kettle');
+await page.waitForTimeout(300);
+check('title page: typing the Title fills Working title with the WHOLE title', [await page.inputValue('#tp_v1_title'), (await blob(FKEY)).v1_title], ['The Kettle', 'The Kettle']);
+await page.keyboard.press('Tab');
+await page.waitForTimeout(500);
+check('title page: leaving PROJECT TITLE renames the project, and Tab reaches the next field', await page.evaluate(() =>
+  [window.StudioStore.currentProject().title, document.activeElement.tagName !== 'BODY']), ['The Kettle', true]);
+await page.focus('[data-action="tp-region"][data-region="IN"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('title page: the region button keeps the focus after the press', await page.evaluate(() =>
+  document.activeElement.matches('[data-action="tp-region"][data-region="IN"]')), true);
+
 check('no page errors', errors, []);
 await browser.close();
 server.close();

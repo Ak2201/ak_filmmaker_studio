@@ -28,7 +28,7 @@
 import { h } from '../lib/dom.js';
 import { paperTextarea } from './paper-field.js';
 import { ask } from './dialog.js';
-import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, blankCharacter, projectFormat } from '../lib/characters.js';
+import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, recordForRole, projectFormat } from '../lib/characters.js';
 import { learn as learnBox } from './learn.js';
 import BIBLE from '../data/story-bible.json';
 import '../styles/story-bible.css';
@@ -317,13 +317,11 @@ export function onCardClick(btn, ctx) {
   return true;
 }
 
-/** A brand-new record for a role, for the "Add the protagonist" buttons. */
+/** A brand-new record for a role, for the "Add the protagonist" buttons
+    (characters.js recordForRole: a slot the blueprint already names is
+    claimed, never blanked). */
 export function newCharacter(list, role, name = '') {
-  const c = blankCharacter({ name });
-  list.push(c);
-  const view = viewFor(list, c.id, c.name);
-  if (role) assignRole(list, view, role, { confirm: () => true });
-  return c;
+  return recordForRole(list, role, name);
 }
 
 export default { noteButton, renderCharacterSections, onCardInput, onCardChange, onCardClick, flushCardEdits, learnFor, statsText, displayName, newCharacter };

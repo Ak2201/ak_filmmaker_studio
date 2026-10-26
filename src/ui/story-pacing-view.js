@@ -74,7 +74,10 @@ export function renderCurve(s) {
   const dots = h('div.pc-dots', { role: 'group', 'aria-label': 'Beats on the curve — press one to open its card' });
   pts.forEach((p) => {
     const cls = 'button.pc-dot' + (p.overridden ? '.is-set' : '') + (p.placed === 'tagged' ? '.is-tagged' : '') +
-      (p.tension >= Pacing.HIGH_TENSION ? '.is-high' : p.tension <= Story.PACING.lowTension ? '.is-low' : '');
+      (p.tension >= Pacing.HIGH_TENSION ? '.is-high' : p.tension <= Story.PACING.lowTension ? '.is-low' : '') +
+      /* The label is anchored to the side that has room: centred on the
+         last dots it ran past the chart ("15 Final Ima" at 390px). */
+      (p.at >= 0.7 ? '.tip-end' : p.at <= 0.3 ? '.tip-start' : '');
     const b = h(cls, {
       type: 'button', 'data-st': 'pc-beat', 'data-beat': p.beat.id,
       'aria-label': `Beat ${p.n}, ${p.beat.label}: tension ${p.tension} of 10` +

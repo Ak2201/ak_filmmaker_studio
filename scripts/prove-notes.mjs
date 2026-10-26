@@ -291,6 +291,66 @@ await page.waitForTimeout(300);
 check('board: a short film’s clipping pins to the Short Film Five-Beat', await page.evaluate(() =>
   [...new Set([...document.querySelectorAll('[data-st-field="clip-beat"] option')].slice(1).map((o) => o.value.split(':')[0]))]), ['short_five']);
 
+/* ---- QA round 2 (Story & writing) ----------------------------------- */
+const focusIs = (sel) => page.evaluate((s) => document.activeElement.matches(s), sel);
+const toastSaid = (re) => page.evaluate((r) => [...document.querySelectorAll('.toast .toast-msg')].some((t) => new RegExp(r).test(t.textContent)), re.source);
+await page.evaluate(() => { const S = window.StudioStore; localStorage.clear(); const p = S.createProject({ title: 'QA r2', format: 'feature' }); S.setCurrentProject(p.id); S.notify('projects:changed', { reason: 'test' });
+  localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes: [
+    { id: 'p1', number: '1', intExt: 'INT', dayNight: 'DAY', location: '', synopsis: 'Ravi dives into the black water at dawn and does not come up', eighths: 8, elements: {} },
+    { id: 'p2', number: '2', intExt: 'INT', dayNight: 'DAY', location: '', synopsis: 'Meera waits', eighths: 8, elements: {} }
+  ] })); });
+await go('story.html#path-outline');
+check('notes button: its name carries the count (no aria-label on the count) and it says whether the dock is open',
+  await page.evaluate(() => { const b = document.querySelector('.nt-open'); return [b.querySelector('.nt-count').hasAttribute('aria-label'), b.getAttribute('aria-expanded')]; }), [false, 'false']);
+await openDock();
+check('notes button: aria-expanded is true while the dock is open', await page.evaluate(() => document.querySelector('.nt-open').getAttribute('aria-expanded')), 'true');
+await page.fill('#ntDockNew', 'Into the synopsis');
+await page.click('.nt-dock [data-nt="add"]');
+await page.waitForTimeout(300);
+const r2 = (await vault())[0].id;
+check('pin list: scenes with no location yet are told apart by their synopsis', await page.evaluate(() =>
+  [...document.querySelectorAll('.nt-dock [data-nt-field="pin"] option')].map((o) => o.textContent).filter((t) => /^[12]\. /.test(t))),
+  ['1. INT · Ravi dives into the black water at dawn…', '2. INT · Meera waits']);
+await page.focus(`.nt-dock [data-nt="to-synopsis"][data-note="${r2}"]`);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+check('story: Escape after "Add to synopsis" gives the focus to the page’s Notes button, not <body>', await focusIs('.nt-open'), true);
+
+await go('vault.html');
+await page.focus('[data-st="clip-add"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('vault: an empty "Add to vault" focuses the box and says what to do', [await focusIs('#stClip'), await toastSaid(/clipping in the box first/)], [true, true]);
+for (const t of ['Clip one', 'Clip two', 'Clip three']) {
+  await page.fill('#stClip', t);
+  await page.focus('[data-st="clip-add"]');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+}
+check('vault: after Add the keyboard is back in the clipping box', await focusIs('#stClip'), true);
+const snips = async () => (await vault()).map((x) => x.snippet);
+const before = await snips();
+const mid = (await vault())[1].id;
+await page.focus(`[data-st="clip-del"][data-clip="${mid}"]`);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('vault: removing a clipping leaves the focus on the board, not <body>', await page.evaluate(() => !!document.activeElement.closest('[data-board-item], .st-clip-add, .vault-add') || document.activeElement.id === 'stClip'), true);
+await lastUndo().click();
+await page.waitForTimeout(300);
+check('vault: Undo puts the clipping back IN ITS PLACE', await snips(), before);
+await page.fill('#ntBoardNew', 'N1'); await page.click('[data-nt="add"][data-for="ntBoardNew"]'); await page.waitForTimeout(300);
+await page.fill('#ntBoardNew', 'N2'); await page.click('[data-nt="add"][data-for="ntBoardNew"]'); await page.waitForTimeout(300);
+const n2 = (await vault())[0].id;
+await page.focus(`[data-board-item="${n2}"] [data-nt="down"]`);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('board: "Move down" keeps the focus on the moved note’s Move down', await focusIs(`[data-nt="down"][data-note="${n2}"]`), true);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('board: …so Enter again moves it again', (await vault()).findIndex((x) => x.id === n2), 2);
+
 check('no page errors', errors, []);
 console.log(failed ? `✗ notes proof: ${passed} passed, ${failed} failed` : `✓ notes proof: ${passed} passed, 0 failed`);
 await browser.close();

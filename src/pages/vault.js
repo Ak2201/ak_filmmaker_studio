@@ -30,7 +30,6 @@ import { h, delegate } from '../lib/dom.js';
 import * as Story from '../lib/story.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import { renderVault } from '../ui/idea-vault.js';
-import { removeClip, restoreClip } from '../lib/vault-model.js';
 import { pageHeader } from '../ui/kit/index.js';
 import { bindNoteActions, changed, flushTyping, toSynopsis } from '../ui/notes-actions.js';
 import { COLORS, filterBoard } from '../lib/notes-model.js';
@@ -60,20 +59,33 @@ delegate(document, 'click', '[data-st]', (e, el) => {
   const act = el.getAttribute('data-st');
   if (act === 'clip-add') {
     const ta = document.getElementById('stClip');
-    if (Story.addToVault({ snippet: ta && ta.value })) render();
+    const it = Story.addToVault({ snippet: ta && ta.value });
+    /* Like the notes' Add: an empty box says what to do, and after an add
+       the keyboard stays in the box for the next clipping (QA r2). */
+    if (!it) { if (ta) ta.focus(); StudioUI.toast('Write or paste the clipping in the box first, then press Add to vault.'); return; }
+    changed({ focus: 'stClip', added: it.id });
   } else if (act === 'clip-use') {
     /* The note's own path, so a clipping gets the same Undo. */
     const cid = el.getAttribute('data-clip');
     toSynopsis(cid, { control: '[data-st="clip-use"][data-clip="' + CSS.escape(cid) + '"]' });
   } else if (act === 'clip-del') {
-    const gone = removeClip(el.getAttribute('data-clip'));
-    render();
-    if (gone) {
-      StudioUI.toast('Clipping removed.', {
-        action: 'UNDO',
-        onAction: () => { if (restoreClip(gone)) render(); }
-      });
-    }
+    /* The notes' removal (notes-actions.js removeWithUndo): the focus goes
+       to a neighbour, and Undo puts the clipping back IN ITS PLACE — it
+       used to go through addToVault, which puts a clipping first. */
+    const cid = el.getAttribute('data-clip');
+    const items = Story.listVault();
+    const at = items.findIndex((x) => x.id === cid);
+    if (at < 0) return;
+    const gone = items[at];
+    const card = el.closest('[data-board-item]');
+    const sib = card && (card.nextElementSibling || card.previousElementSibling);
+    const focus = (sib && sib.getAttribute('data-board-item')) || 'stClip';
+    Story.removeFromVault(cid);
+    changed({ focus });
+    StudioUI.toast('Clipping removed.', {
+      action: 'UNDO',
+      onAction: () => { if (Story.restoreToVault(gone, at)) changed({ focus: gone.id, control: '[data-st="clip-del"][data-clip="' + CSS.escape(gone.id) + '"]' }); }
+    });
   }
 });
 delegate(document, 'change', '[data-st-field="clip-beat"]', (e, el) => {

@@ -26,6 +26,9 @@ let dock = null, body = null, title = null, returnTo = null;
 let ctx = {};          // { beat, sceneId, label }: the context the dock opened on
 let open = false;
 
+/* Every header Notes button says whether the dock is open. */
+const markOpeners = () => document.querySelectorAll('.nt-open[data-notes-open]').forEach((b) => b.setAttribute('aria-expanded', String(open)));
+
 function pinOf(c) { return c.sceneId ? 'scene:' + c.sceneId : c.beat ? 'beat:' + c.beat : ''; }
 
 function draw(focusId, control) {
@@ -131,6 +134,7 @@ export function openNotes(c = {}, opener = null) {
   dock.hidden = false;
   open = true;
   document.documentElement.classList.add('nt-dock-open');
+  markOpeners();
   draw();
   measure();
   window.addEventListener('resize', measure);
@@ -145,7 +149,12 @@ export function closeNotes() {
   document.documentElement.classList.remove('nt-dock-open');
   window.removeEventListener('resize', measure);
   measure();
-  if (returnTo && returnTo.isConnected) returnTo.focus({ preventScroll: true });
+  markOpeners();
+  /* The page may have redrawn while the dock was open ("Add to synopsis"
+     redraws the Story page), so the opener can be a detached copy: give
+     the focus to the page's Notes button that replaced it, never <body>. */
+  const back = returnTo && returnTo.isConnected ? returnTo : document.querySelector('.nt-open[data-notes-open]');
+  if (back) back.focus({ preventScroll: true });
 }
 
 export const isOpen = () => open;

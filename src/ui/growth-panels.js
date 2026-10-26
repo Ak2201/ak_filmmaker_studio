@@ -20,8 +20,9 @@
    No inline handlers (CSP): delegate() on [data-gr-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { button } from './kit/index.js';
 import { fmtPaise } from '../lib/billing.js';
-import { BRAND_HOST } from '../lib/brand.js';
+import { BRAND, BRAND_HOST } from '../lib/brand.js';
 import Growth, { isMissing } from '../lib/growth.js';
 import '../styles/growth.css';
 
@@ -98,6 +99,34 @@ function referralPanel() {
   return box;
 }
 
+/* THE COMPACT SHARE (dashboard.html). The same my_referral() answer and
+   the same COPY control as the panel above, cut to one row: the code, a
+   copy of the link, and a WhatsApp share. `link` is the caller's — the
+   dashboard hands referralLink() (/purchase?ref=), the page that puts
+   the code in its "Have a code?" box. The
+   WhatsApp share is a plain wa.me link with the text in its query: no
+   SDK, no script, nothing loaded from WhatsApp. Null unless the code
+   exists and is switched on, so a member who has not bought, or a
+   database without §22, draws nothing. */
+export function referralShareMessage(d, link) {
+  const off = Number.isInteger(d && d.percent_off) && d.percent_off > 0 ? ' gets you ' + d.percent_off + '% off a plan' : '';
+  return 'I plan my films on ' + BRAND.name + '. My code ' + d.code + off + ': ' + link;
+}
+export function referralShare(d, link) {
+  if (!d || !d.eligible || d.active === false || !d.code || !link) return null;
+  const box = h('div.gr-panel.gr-share', { 'data-gr-panel': 'referral-share', id: 'referral' });
+  box.append(h('h2.gr-share-h', { text: 'Refer a friend' }));
+  const off = Number.isInteger(d.percent_off) && d.percent_off > 0 ? d.percent_off + '% off any plan' : 'a discount on any plan';
+  box.append(h('p.gr-meta', { text: 'A friend who buys with your code gets ' + off + '; you earn a credit once their payment is confirmed.' }));
+  box.append(h('div.gr-row', {}, [
+    h('code.gr-code', { text: d.code }),
+    button({ label: 'Copy link', icon: 'content_copy', size: 'sm', attrs: { 'data-gr-action': 'copy', 'data-copy': link, 'aria-label': 'Copy a link that carries your code' } }),
+    button({ label: 'WhatsApp', icon: 'share', size: 'sm', href: 'https://wa.me/?text=' + encodeURIComponent(referralShareMessage(d, link)),
+      attrs: { target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Share your code on WhatsApp' } })
+  ]));
+  return box;
+}
+
 /** Everything under the cards, in order. `st` is billing_status(). */
 export function memberGrowthPanels(st, { rerender: rr } = {}) {
   if (rr) rerender = rr;
@@ -126,4 +155,4 @@ delegate(document, 'click', '[data-gr-action="copy"]', async (e, el) => {
 });
 
 export { copyText };
-export default { memberGrowthPanels, refreshGrowthPanels };
+export default { memberGrowthPanels, refreshGrowthPanels, referralShare, referralShareMessage };

@@ -47,7 +47,7 @@ import { loadStory } from '../lib/story.js';
 import { listCallSheets } from '../lib/contacts.js';
 import { unscheduledScenes } from '../lib/locations.js';
 import data from '../data/tour.json';
-import { isDisabledEverywhere } from '../lib/plan-gate.js';
+import { isDisabledEverywhere, entitlement } from '../lib/plan-gate.js';
 import '../styles/tour.css';
 
 /* The tour's place (`fms_tour_v1`) is read and written by
@@ -112,6 +112,13 @@ export function firstWeekFacts({ match = sampleMatch } = {}) {
   facts.scheduled = scenes.length > 0 && unscheduled < scenes.length;
   facts.callsheet = sheets.length > 0;
   facts.shot = scenes.some((s) => s && s.shotState);
+  /* "Choose a plan": the account's own state, not the film's, so it is
+     read even on the sample. plan-gate.js knows it; signed out it is
+     'unknown' and the item is not listed at all. */
+  let reason = 'unknown';
+  try { reason = entitlement().reason; } catch (e) { reason = 'unknown'; }
+  facts.planListed = reason === 'trial' || reason === 'paid';
+  facts.plan = reason === 'paid';
   return facts;
 }
 
@@ -326,7 +333,7 @@ function renderChecklist() {
   const t = readTour();
   if (t.hideList) { if (listHost) { listHost.remove(); listHost = null; } return; }
   const facts = firstWeekFacts();
-  const items = CHECK_ITEMS;
+  const items = CHECK_ITEMS.filter((it) => it.during !== 'trial' || facts.planListed);
   const onSample = !!facts.onSample;
   const done = items.filter((it) => facts[it.id]).length;
 
@@ -394,6 +401,7 @@ export async function boot() {
     ready(draw);
     Store.subscribe('projects:changed', () => { draw(); refreshStep(); });
     Store.subscribe('current:changed', () => { draw(); refreshStep(); });
+    Store.subscribe('plan:changed', () => draw());   // the "Choose a plan" item follows the trial
     window.addEventListener('focus', draw);
   }
   const t = readTour();

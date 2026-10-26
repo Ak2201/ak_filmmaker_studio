@@ -1481,13 +1481,18 @@ needs the OWNER role (`require_role(array[]::text[])`), refuses a revoked row
    Read back first: `select tgname from pg_trigger where tgrelid = 'auth.users'::regclass
    and tgname = 'testimonials_on_user_delete'` → one row; `select confdeltype from
    pg_constraint where conname = 'testimonials_author_fkey'` → `n` (SET NULL).
+10. ALREADY OFF THE SITE, THEN DELETED. On a throwaway account D: approve, D revokes,
+   the owner presses TAKEN OFF THE SITE while D still exists (row kept, `author` set),
+   then delete D. `select count(*) from public.testimonials where id = <id>` → 0. (Such a
+   row is no longer on the takedown list, so the deletion is the only thing that would
+   ever remove its words.)
 
 **Why deletion is a revoke and not a cascade.** Until 26 Oct the author key was
 `ON DELETE CASCADE`: deleting an account removed its testimonial row, so a quote
 already copied onto the site lost the only record that it had to come down (it
 never reached the takedown list, and the consent row its `consentId` points to
-was gone). A `BEFORE DELETE` trigger on `auth.users` now deletes only rows never
-approved, stamps `revoked_at` on the rest, and the key sets `author` to null. The
+was gone). A `BEFORE DELETE` trigger on `auth.users` now deletes rows never
+approved and rows already marked off the site, stamps `revoked_at` on the rest, and the key sets `author` to null. The
 kept words exist only for the owner to find the copy; marking it off the site
 deletes them.
 

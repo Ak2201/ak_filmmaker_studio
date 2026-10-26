@@ -274,3 +274,27 @@ select t.ok((select author is null and revoked_at is not null and first_approved
   '59. deleting the auth.users row directly revokes it and keeps it for the takedown list');
 rollback;
 select t.reset();
+
+-- 9c. approve -> author revokes -> owner marks it off the site -> account
+-- deleted: the row is no longer on the takedown list, so nothing else would
+-- ever delete it. The account's deletion must take the words with it.
+begin;
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
+  ('00000000-0000-4000-8000-000000005908', 'tm-author6@example.com', now(), '{}');
+insert into public.studio_members (user_id, role) values ('00000000-0000-4000-8000-000000005908', 'user');
+select t.claims('00000000-0000-4000-8000-000000005908');
+select public.submit_testimonial('Approved, taken back, taken down, then the account went.', 'Author Six', 'Editor', 'A Film', t.tm_consent());
+select t.claims('00000000-0000-4000-8000-000000005903');
+select public.admin_set_testimonial_status(id, 'approved') from public.admin_list_testimonials('pending') where display_name = 'Author Six';
+select t.claims('00000000-0000-4000-8000-000000005908');
+select 1 from public.revoke_testimonial((select id from public.my_testimonials() where display_name = 'Author Six' limit 1));
+select t.claims('00000000-0000-4000-8000-000000005903');
+select 1 from public.admin_mark_testimonial_removed((select id from public.admin_list_testimonials('takedown') where display_name = 'Author Six' limit 1));
+select t.ok((select count(*) = 1 and bool_and(site_removed_at is not null and author is not null) from public.admin_list_testimonials(null) where display_name = 'Author Six'),
+  '59. fixture: marked off the site while the account still exists (row kept, author set)');
+select t.ok((public.admin_delete_user('00000000-0000-4000-8000-000000005908', 'tm-author6@example.com')) is not null, '59. fixture: the owner deletes Author Six''s account totally');
+select t.reset();
+select t.ok((select count(*) = 0 from public.testimonials where display_name = 'Author Six' or quote like 'Approved, taken back, taken down%'),
+  '59. approve -> revoke -> marked off the site -> account deleted: the row and its words are gone');
+rollback;
+select t.reset();

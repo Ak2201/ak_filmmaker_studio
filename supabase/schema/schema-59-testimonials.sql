@@ -32,8 +32,9 @@
 -- WHEN THE AUTHOR'S ACCOUNT IS DELETED (admin_delete_user, or the Supabase
 -- dashboard): a deleted account cannot press "take it back", so deletion
 -- IS the taking back. A trigger on auth.users, before the row goes:
---   never approved   the testimonial is deleted with the account (it was
---                    never shown, so there is nothing to take down);
+--   never approved, or already marked off the site
+--                    the testimonial is deleted with the account (there
+--                    is nothing on the site left to take down);
 --   approved once    revoked_at is stamped, so it leaves
 --                    public_testimonials() at once, can never be approved
 --                    again, and waits on the takedown list; then the
@@ -314,8 +315,10 @@ $fn$;
 -- 59.5b an account deleted: deletion is the taking back ----------------------
 /* BEFORE DELETE on auth.users, so it runs whichever way the account goes
    (admin_delete_user, the dashboard, the auth admin API). Never-approved
-   rows go with the account; ever-approved ones are revoked and kept for
-   the takedown list, and the foreign key then sets their author to null. */
+   rows, and rows already marked off the site, go with the account; the
+   rest (approved once, still possibly on the site) are revoked and kept
+   for the takedown list, and the foreign key then sets their author to
+   null. */
 create or replace function public.testimonials_on_user_delete()
 returns trigger
 language plpgsql
@@ -323,7 +326,12 @@ security definer
 set search_path = public, pg_temp
 as $fn$
 begin
-  delete from public.testimonials t where t.author = old.id and t.first_approved_at is null;
+  -- Never shown, or already taken off the site: nothing is left to find,
+  -- so the words go with the account. (A row marked off the site BEFORE
+  -- the account went is not on the takedown list, so nothing else would
+  -- ever delete it.)
+  delete from public.testimonials t
+   where t.author = old.id and (t.first_approved_at is null or t.site_removed_at is not null);
   update public.testimonials t set revoked_at = coalesce(t.revoked_at, now())
    where t.author = old.id;
   return old;

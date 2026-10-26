@@ -508,6 +508,19 @@ const phraseRe = (list) => new RegExp('\\b(' + [...list].sort((a, b) => b.length
 const LEX_CATS = Object.keys(lexicon).filter((k) => Array.isArray(lexicon[k]));
 export const SUGGEST_CATEGORIES = ['cast', ...LEX_CATS];
 const RE = Object.fromEntries(LEX_CATS.map((k) => [k, phraseRe(lexicon[k])]));
+/* "chairs" and "chair" are one element. The lexicon lists both forms, so
+   a plural folds onto its singular only when the singular is in the same
+   list: no guessing at English ("glass" is not a plural of "glas"). */
+const SINGULAR = Object.fromEntries(LEX_CATS.map((k) => {
+  const words = new Set(lexicon[k].map((w) => String(w).toLowerCase()));
+  const m = new Map();
+  for (const w of words) {
+    if (w.endsWith('es') && words.has(w.slice(0, -2))) m.set(w, w.slice(0, -2));
+    else if (w.endsWith('s') && words.has(w.slice(0, -1))) m.set(w, w.slice(0, -1));
+  }
+  return [k, m];
+}));
+const foldKey = (cat, k) => (SINGULAR[cat] && SINGULAR[cat].get(k)) || k;
 const CAPS_SOUND = new RegExp('\\b(' + lexicon.soundCaps.words.map(escRe).join('|') + ')\\b', 'g');
 
 /* A capital after a space, a hyphen, a slash or an opening bracket —
@@ -526,11 +539,11 @@ export function suggestElements(scene, slice) {
   if (!slice) return out;
   const have = {};
   for (const cat of Object.keys(out)) {
-    have[cat] = new Set(((scene.elements && scene.elements[cat]) || []).map((n) => String(n).trim().toLowerCase()));
+    have[cat] = new Set(((scene.elements && scene.elements[cat]) || []).map((n) => foldKey(cat, String(n).trim().toLowerCase())));
   }
   const seen = Object.fromEntries(SUGGEST_CATEGORIES.map((c) => [c, new Set()]));
   const add = (cat, name, from) => {
-    const k = name.trim().toLowerCase();
+    const k = foldKey(cat, name.trim().toLowerCase());
     if (!k || have[cat].has(k) || seen[cat].has(k)) return;
     // Cast match is on the cue form, so "Prakash" tagged covers "PRAKASH".
     if (cat === 'cast' && [...have.cast].some((x) => cueName(x) === cueName(name))) return;

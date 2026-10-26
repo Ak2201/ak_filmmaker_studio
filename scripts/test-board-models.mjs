@@ -49,6 +49,7 @@ eq(B.binEntryBits({}), ['nothing attached'], 'bin entry, empty');
 eq(B.binEntryBits({ shots: 1, frames: 2, day: 4 }), ['1 shot', '2 frames', 'Day 4'], 'bin entry bits');
 eq(B.binTotalsBits({ scenes: 1, sheets: 2 }), ['1 scene', '2 call-sheet places'], 'bin totals bits');
 eq(B.sceneFieldValue('eighths', '-3'), 0, 'eighths floor at 0'); eq(B.sceneFieldValue('eighths', '12'), 12, 'eighths');
+eq(B.sceneFieldValue('eighths', '500'), 80, 'eighths cap at the box max (80)'); eq(B.sceneFieldValue('eighths', '2.5'), 2, 'eighths are whole'); eq(B.EIGHTHS_MAX, 80, 'EIGHTHS_MAX is the box max');
 eq(B.sceneFieldValue('number', ' 4A '), '4A', 'number trimmed'); eq(B.sceneFieldValue('location', ' x '), ' x ', 'other field as typed');
 eq(B.songFieldValue('days', '1.5'), 1.5, 'song days'); eq(B.songFieldValue('dancers', 'x'), 0, 'song dancers');
 eq(B.runSaid({ applied: { empty: true }, totals: {}, characters: [] }), 'The script has no scene headings yet, so there was nothing to break down.', 'run, empty');

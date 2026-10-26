@@ -236,6 +236,11 @@ eq(wide.makeup.map((x) => x.name), ['blood'], 'makeup is suggested');
 eq(wide.special.map((x) => x.name), ['drone'], 'special equipment is suggested');
 eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'He wears a scarf and runs a business.')] }).vehicles, [], 'whole words only: scarf is not car, business is not bus');
 eq(A.suggestElements({ elements: {} }, { elements: [el('character', "RAGAVAN'S FATHER")] }).cast.map((x) => x.name), ["Ragavan's Father"], 'a cue with a possessive is title-cased without a capital after the apostrophe');
+{
+  const one = A.suggestElements({ elements: {} }, { elements: [el('action', 'Rows of folding chairs. A watchman folds a chair.')] });
+  eq(one.setdressing.filter((x) => /^chairs?$/.test(x.name)).length, 1, 'chair and chairs are one suggestion, not two');
+  eq(A.suggestElements({ elements: { setdressing: ['chair'] } }, { elements: [el('action', 'Rows of folding chairs.')] }).setdressing.filter((x) => /^chairs?$/.test(x.name)).length, 0, 'a tagged chair covers the chairs');
+}
 eq(['mary-jane', "o'brien", 'dr. kumar (old)'].map(A.titleCase), ['Mary-Jane', "O'Brien", 'Dr. Kumar (Old)'], 'title case: hyphens, O\' prefixes, brackets');
 eq(A.suggestAll(scenes, script).length, 3, 'suggestAll returns only scenes with suggestions');
 

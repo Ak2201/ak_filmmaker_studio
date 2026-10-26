@@ -157,8 +157,10 @@ export { headingInScript } from './script.js';
 
 /* ---- typed values --------------------------------------------- */
 /** A scene field's value as stored, from what the control holds. */
+/** The most a typed length can be: the box's own max (ten pages). */
+export const EIGHTHS_MAX = 80;
 export const sceneFieldValue = (key, raw) => key === 'eighths'
-  ? Math.max(0, parseInt(raw, 10) || 0)
+  ? Math.min(EIGHTHS_MAX, Math.max(0, parseInt(raw, 10) || 0))
   : key === 'number' ? raw.trim() : raw;
 /** A song field's value as stored, from what the control holds. */
 export function songFieldValue(key, raw) {

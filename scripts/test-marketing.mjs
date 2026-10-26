@@ -456,6 +456,9 @@ function leadContract(html, tag) {
   const form = (html.match(/<form\b[^>]*\bdata-lead-form\b[^>]*>[\s\S]*?<\/form>/) || [''])[0];
   ok(!!form, tag + 'has form[data-lead-form]');
   if (!form) return;
+  const sec = (html.match(/<section\b[^>]*\bid="news"[^>]*>/) || [''])[0];
+  ok(inputs.site.lead.live === true ? !/\shidden[\s>]/.test(sec) : /\shidden>/.test(sec),
+    tag + 'the lead section is hidden until site.lead.live is true (privacy.html must describe the list first)');
   const open = form.match(/<form\b[^>]*>/)[0];
   ok(!/\saction=/.test(open) && /\smethod="dialog"/.test(open), tag + 'the lead form has no action and method="dialog" (submits nowhere with scripts off)');
   const email = (form.match(/<input\b[^>]*\bname="email"[^>]*>/) || [''])[0];
@@ -507,15 +510,15 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
     for (const k of ['og:title', 'og:description', 'og:image', 'og:image:alt']) ok(new RegExp(`<meta property="${k}" content="[^"]+">`).test(html), tag + k);
     ok(/<meta name="twitter:card" content="summary_large_image">/.test(html) && /<meta name="description" content="[^"]{60,}">/.test(html), tag + 'twitter card and a meta description');
     const lds = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-    const parsed = lds.map((t) => { try { return JSON.parse(t.replace('{{fms:ld.offers}}', '[]')); } catch (e) { return null; } });
+    const parsed = lds.map((t) => { try { return JSON.parse(t); } catch (e) { return null; } });
     ok(parsed.length > 0 && parsed.every(Boolean), tag + 'every JSON-LD block parses');
     const types = parsed.filter(Boolean).map((o) => o['@type']);
     ok(types.includes('SoftwareApplication') && types.includes('BreadcrumbList'), tag + 'SoftwareApplication and BreadcrumbList JSON-LD: ' + types.join(', '));
-    ok(lds.some((t) => t.includes('"offers":{{fms:ld.offers}}')) && !lds.some((t) => /"price"/.test(t)), tag + 'offer prices come from the {{fms:ld.offers}} build stamp, never a literal');
+    ok(!lds.some((t) => /"offers"|"price"/.test(t)), tag + 'no offers or price in the JSON-LD (a build-time price goes stale at the server-held price rise)');
     if (file.startsWith('guide-')) ok(types.includes('Article') || types.includes('HowTo'), tag + 'Article or HowTo JSON-LD');
     /* the closing door: the trial (marked trial-only, its length a runtime
        fill) and the plans, which are true when no trial runs */
-    ok(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup data-trial-only>Start your <span data-trial-length>free trial<\/span><\/a>/.test(html), tag + 'the trial CTA goes to invite.html, is data-trial-only and wraps "free trial" in [data-trial-length]');
+    ok(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup data-trial data-trial-only>Start your <span data-trial-length>free trial<\/span><\/a>/.test(html), tag + 'the trial CTA goes to invite.html, is data-trial-only and wraps "free trial" in [data-trial-length]');
     ok(/<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\.html">/.test(html), tag + 'a plans CTA that stands when no trial runs');
     ok(!/\d+[- ]day (free )?trial/i.test(html.replace(/<[^>]+>/g, ' ')), tag + 'no trial length typed');
     ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b|users love/i.test(html), tag + 'no rating, testimonial or customer claim');
@@ -534,6 +537,8 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
   for (const p of v.pages) {
     const html = read(p.file);
     ok(/Facts checked on <time datetime="\d{4}-\d\d-\d\d">/.test(html) && /href="mailto:{{brand:email}}"/.test(html), p.file + ': says when the facts were checked and how to report a change');
+    /* a row taken from a search summary says so, beside the row and in the note */
+    for (const r of p.rows) if (r.method !== 'read') ok(html.includes(esc(inputs.versus.ui.summaryAfter)) && html.includes(esc(inputs.versus.ui.noteSummary)), p.file + ': "' + r.feature + '" is labelled as a search summary, not yet read');
     ok(html.includes(esc(v.ui.trademark)), p.file + ': carries the trademark note');
     const rows = ((html.match(/<tbody>[\s\S]*?<\/tbody>/) || [''])[0].match(/<tr>/g) || []);
     ok(rows.length === p.rows.length && p.rows.every((r) => html.includes(`href="${esc(r.source)}"`)), p.file + ': one table row per checked fact, each linking its source');
@@ -552,7 +557,7 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
   }
   for (const id of IDS) {
     const h = read(pages[id].file);
-    ok(/"@type":"SoftwareApplication"/.test(h) && /"@type":"BreadcrumbList"/.test(h) && h.includes('"offers":{{fms:ld.offers}}'), pages[id].file + ': SoftwareApplication + BreadcrumbList JSON-LD, offers from the build stamp');
+    ok(/"@type":"SoftwareApplication"/.test(h) && /"@type":"BreadcrumbList"/.test(h) && ![...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].some((m) => /"offers"|"price"/.test(m[1])), pages[id].file + ': SoftwareApplication + BreadcrumbList JSON-LD, no build-time price in it');
   }
   /* trial wording: every public mention of the trial's length is the runtime fill */
   for (const f of [HOME_FILE, PRICING_FILE, ...files]) {

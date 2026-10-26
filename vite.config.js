@@ -449,17 +449,6 @@ function marketingFigures() {
         for (const id of PLAN_ORDER) if (LIST_PRICE[id] > 0) values['price.' + id + '.day'] = perDay(LIST_PRICE[id]);
         values['price.from.day'] = perDay(Math.min(...PLAN_ORDER.map((id) => LIST_PRICE[id]).filter((n) => n > 0)));
         for (const [k, v] of Object.entries(EDU_PRICE)) values['price.' + k] = inr(v);
-        /* ld.offers: the Offer list inside a page's SoftwareApplication JSON-LD
-           (scripts/make-marketing-pages.mjs softwareLd()), from the SAME
-           LIST_PRICE as the visible {{fms:price.*}} stamps, so structured
-           data can never carry a stale typed price. A JSON array, inserted
-           raw into the script block. */
-        {
-          const BRJ = json('brand.json');
-          values['ld.offers'] = JSON.stringify(PLAN_ORDER.filter((id) => LIST_PRICE[id] > 0).map((id) => ({
-            '@type': 'Offer', name: planName(id), price: String(LIST_PRICE[id]), priceCurrency: 'INR',
-            availability: 'https://schema.org/InStock', url: 'https://' + BRJ.host + '/purchase.html?plan=' + id }))).replace(/</g, '\\u003c');
-        }
         const FEATURE = json('steps.feature.json');
         values['short.steps'] = (json('steps.short.json').steps || []).length;
         values['feature.steps'] = Object.values(FEATURE).reduce((n, v) => n + (Array.isArray(v) ? v.length : 0), 0);
@@ -512,7 +501,7 @@ function marketingFigures() {
               brand: { '@type': 'Brand', name: BR.name },
               offers: PAID.filter((id) => LIST_PRICE[id] > 0).map((id) => ({
                 '@type': 'Offer', name: planName(id), price: String(LIST_PRICE[id]), priceCurrency: 'INR',
-                availability: 'https://schema.org/InStock', url: ORIGIN + '/purchase.html?plan=' + id })) },
+                availability: 'https://schema.org/InStock', url: ORIGIN + '/purchase?plan=' + id /* clean URL: cleanUrls 308s the .html form */ })) },
             { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq }
           ];
           values.jsonld = ld.map((o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('\n');

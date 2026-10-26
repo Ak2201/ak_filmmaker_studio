@@ -10,8 +10,8 @@
     "subUsd": "Three plans, and each one includes everything in the plan below it. A plan is one year of the studio for one payment in US dollars, from about {{fms:price.from.day}} a day. Nothing renews by itself and there is nothing to cancel. Nothing in a plan is sold as an add-on."
   },
   "trial": {
-    "h": "Not sure yet? Try the whole studio free",
-    "bodyHtml": "Start with a <span data-trial-length>free trial</span> before you pay anything. No card required. Then keep the plan that fits.",
+    "h": "Not sure yet? Try every module on the sample films",
+    "bodyHtml": "Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, with a <span data-trial-length>free trial</span> before you pay anything. No card required. Then keep the plan that fits.",
     "cta": "Start the free trial",
     "ctaHtml": "Start the <span data-trial-length>free trial</span>",
     "ctaOpen": "Open the studio"

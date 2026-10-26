@@ -1,14 +1,17 @@
 {
-  "_about": "Copy for the comparison pages (compare-*.html) and the trust page (trust.html), read by scripts/make-marketing-pages.mjs. RULES. (1) Our column claims only what the code does today; `ours` names the file that proves each row, for whoever re-checks it (it is not printed). (2) The other product's column carries only public, checkable facts, each with the vendor's own `source` URL and the `checked` date it was read. A fact that could not be confirmed from the vendor's own pages is NOT a row: the row is omitted rather than guessed. HOW THESE WERE CHECKED on 26 Oct 2026: the vendor sites did not resolve from the sandbox this was written in, so each fact below was taken from search-result extracts of the vendor's OWN pages (celtx.com, support.celtx.com, finaldraft.com, kb.finaldraft.com) and nothing from review or aggregator sites; prices are deliberately not quoted, because they change and third-party listings disagreed. Re-read each source in a browser before relying on a row, and move `checked` when you do. (3) No superlatives, no 'better than', no disparagement: the table states facts side by side and lets the reader decide. (4) The names are other companies' trademarks, used only to describe their products; the page says so.",
+  "_about": "Copy for the comparison pages (compare-*.html) and the trust page (trust.html), read by scripts/make-marketing-pages.mjs. RULES. (1) Our column claims only what the code does today; `ours` names the file that proves each row, for whoever re-checks it (it is not printed). (2) The other product's column carries only public, checkable facts, each with the vendor's own `source` URL and the `checked` date it was read. A fact that could not be confirmed from the vendor's own pages is NOT a row: the row is omitted rather than guessed. HOW THESE WERE CHECKED on 26 Oct 2026: the vendor sites did not resolve from the sandbox this was written in, so each fact below was taken from search-result extracts of the vendor's OWN pages (celtx.com, support.celtx.com, finaldraft.com, kb.finaldraft.com) and nothing from review or aggregator sites; prices are deliberately not quoted, because they change and third-party listings disagreed. So every row carries `method: \"search-summary\"` and the page SAYS so beside the row and in the note: these facts have not yet been read on the vendor's page. OWNER STEP before these pages are promoted: open each of the eight source URLs in a browser, correct or drop the row, then set its `method` to \"read\" and move `checked` to that day (docs/LAUNCH.md section 8). (3) No superlatives, no 'better than', no disparagement: the table states facts side by side and lets the reader decide. (4) The names are other companies' trademarks, used only to describe their products; the page says so.",
   "checked": "2026-10-26",
   "ui": {
     "tableH": "The facts, side by side",
     "featureCol": "What you can check",
     "sourceLabel": "Source",
     "checkedLabel": "checked",
+    "summaryLabel": "from a search engine's summary of this page on",
+    "summaryAfter": "not yet read on the page itself",
     "alsoH": "Also in the studio",
     "alsoLede": "These are things the studio does that the table does not compare, because we have not checked the other product's side.",
     "noteBefore": "Facts checked on",
+    "noteSummary": "The facts about the other product were taken from search-engine summaries of its own pages, not yet read on those pages directly.",
     "noteAfter": "Products change; if something here is out of date, tell us at",
     "noteEnd": "and we will correct it.",
     "trademark": "Celtx and Final Draft are trademarks of their owners. Their names are used here only to describe their products; this site is not affiliated with or endorsed by either company.",
@@ -42,10 +45,10 @@
       "h1": "{{brand:name}} and Celtx, side by side",
       "sub": "Both are tools for writing a script and planning the shoot. This page puts the facts we could check next to each other, with a link to where each one came from.",
       "rows": [
-        { "feature": "How it is paid for", "us": "pricing", "them": "Subscription plans (Writer, Writer Pro, Team), billed monthly or yearly.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26" },
-        { "feature": "Renewal", "us": "renewal", "them": "Plans renew automatically at the end of each billing cycle and can be cancelled at any time.", "source": "https://support.celtx.com/hc/en-us/articles/1500001930602", "checked": "2026-10-26" },
-        { "feature": "Script files it imports", "us": "import", "them": "Fountain, Celtx, Final Draft (.fdx), Word (.doc, .docx), Rich Text, plain text, web page, and text-based PDF (scanned PDFs need OCR first).", "source": "https://support.celtx.com/hc/en-us/articles/215946588", "checked": "2026-10-26" },
-        { "feature": "Students and schools", "us": "edu", "them": "Lists Education plans on its pricing page.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26" }
+        { "feature": "How it is paid for", "us": "pricing", "them": "Subscription plans (Writer, Writer Pro, Team), billed monthly or yearly.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Renewal", "us": "renewal", "them": "Plans renew automatically at the end of each billing cycle and can be cancelled at any time.", "source": "https://support.celtx.com/hc/en-us/articles/1500001930602", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Script files it imports", "us": "import", "them": "Fountain, Celtx, Final Draft (.fdx), Word (.doc, .docx), Rich Text, plain text, web page, and text-based PDF (scanned PDFs need OCR first).", "source": "https://support.celtx.com/hc/en-us/articles/215946588", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Students and schools", "us": "edu", "them": "Lists Education plans on its pricing page.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26", "method": "search-summary" }
       ]
     },
     {
@@ -59,10 +62,10 @@
       "h1": "{{brand:name}} and Final Draft, side by side",
       "sub": "Final Draft is a desktop screenwriting program; {{brand:name}} is a browser studio that also plans the shoot. Here are the facts we could check, next to each other, with a link to where each one came from.",
       "rows": [
-        { "feature": "How it is paid for", "us": "pricing", "them": "A one-time purchase of a licence for the current version; owners of an earlier version can buy an upgrade.", "source": "https://finaldraft.com/pricing", "checked": "2026-10-26" },
-        { "feature": "Where it runs", "us": "platform", "them": "A desktop application for macOS and Windows; one licence activates on two computers.", "source": "https://www.finaldraft.com/store", "checked": "2026-10-26" },
-        { "feature": "Formats it exports", "us": "export", "them": "Final Draft (.fdx), a template (.fdxt), Rich Text (.rtf) and plain text (.txt), among others.", "source": "https://kb.finaldraft.com/hc/en-us/articles/27525594609684-How-do-I-export-a-Final-Draft-file-to-a-different-format-like-RTF-or-TXT", "checked": "2026-10-26" },
-        { "feature": "Students and schools", "us": "edu", "them": "Sells a student edition.", "source": "https://www.finaldraft.com/final-draft-edu", "checked": "2026-10-26" }
+        { "feature": "How it is paid for", "us": "pricing", "them": "A one-time purchase of a licence for the current version; owners of an earlier version can buy an upgrade.", "source": "https://finaldraft.com/pricing", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Where it runs", "us": "platform", "them": "A desktop application for macOS and Windows; one licence activates on two computers.", "source": "https://www.finaldraft.com/store", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Formats it exports", "us": "export", "them": "Final Draft (.fdx), a template (.fdxt), Rich Text (.rtf) and plain text (.txt), among others.", "source": "https://kb.finaldraft.com/hc/en-us/articles/27525594609684-How-do-I-export-a-Final-Draft-file-to-a-different-format-like-RTF-or-TXT", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Students and schools", "us": "edu", "them": "Sells a student edition.", "source": "https://www.finaldraft.com/final-draft-edu", "checked": "2026-10-26", "method": "search-summary" }
       ]
     }
   ],

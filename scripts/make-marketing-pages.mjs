@@ -467,7 +467,7 @@ export function renderPricing({ site, pages, compare, faq }) {
   const card = (id, i) => {
     const pick = id === c.plans.pick;
     const buy = `<a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
-    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span><ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-trial-only data-open-text="${esc(c.plans.altOpen)}">${esc(c.plans.alt)}</a></li>`;
+    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span><ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-trial data-trial-only data-open-text="${esc(c.plans.altOpen)}">${esc(c.plans.alt)}</a></li>`;
   };
 
   const plans = `<section class="mk-sec mk-band-b pr-plans" id="pricing" aria-labelledby="prPlansH">
@@ -1147,19 +1147,22 @@ ${items}
 
 /* ---- structured data, shared ------------------------------------------
    JSON-LD is written here with {{brand:...}} stamps (the fms-brand plugin
-   fills them) and ONE build stamp, {{fms:ld.offers}}: the Offer list,
-   built in vite.config.js marketingFigures() from the same LIST_PRICE the
-   visible price stamps read, so a price in the structured data can never
-   be a stale literal typed here. */
+   fills them). The SoftwareApplication carries NO offers, on purpose: a
+   price in structured data is fixed at build time, while the price that
+   is charged is the server's (price_notice(): the founding price rises on
+   a date the server holds). The visible figures are corrected at runtime;
+   JSON-LD cannot be, so on the day of the rise every page would tell a
+   search engine a price nobody is charged. The one Offer list left is
+   pricing.html's Product (vite.config.js marketingFigures()), and the
+   owner rebuilds after the rise lands (docs/LAUNCH.md section 8). */
 export const OG_ALT = '{{brand:name}}: {{brand:tagline}}';
-const OFFERS_TOKEN = '"__FMS_OFFERS__"';
 export const ldScripts = (objs) => objs.map((o) => '<script type="application/ld+json">'
-  + JSON.stringify(o).replace(/</g, '\\u003c').replace(OFFERS_TOKEN, '{{fms:ld.offers}}') + '</script>').join('\n');
+  + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('\n');
 const ORIGIN = 'https://{{brand:host}}';
 export const softwareLd = (slug) => ({
   '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: '{{brand:name}}',
   applicationCategory: 'MultimediaApplication', operatingSystem: 'Web browser',
-  url: ORIGIN + '/' + slug, description: '{{brand:tagline}}', offers: '__FMS_OFFERS__'
+  url: ORIGIN + '/' + slug, description: '{{brand:tagline}}'
 });
 export const crumbsLd = (items) => ({
   '@context': 'https://schema.org', '@type': 'BreadcrumbList',
@@ -1228,10 +1231,10 @@ function trialClose(g, h2, hue = '') {
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
     <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-trial-only>${g.ui.ctaTrialHtml}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-trial data-trial-only>${g.ui.ctaTrialHtml}</a>
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(g.ui.ctaPlans)}</a>
     </div>
-    <p class="mk-small mk-close-note" data-trial-only>${esc(g.ui.ctaNote)}</p>
+    <p class="mk-small mk-close-note" data-trial data-trial-only>${esc(g.ui.ctaNote)}</p>
   </div>
 </section>`;
 }
@@ -1279,6 +1282,10 @@ export function validateGuides(g, c) {
     for (const r of p.rows || []) {
       if (!c.us[r.us]) cw(p.id + ': row "' + r.feature + '" names an unknown us key ' + r.us);
       if (!r.them || !/^https:\/\//.test(r.source || '') || !/^\d{4}-\d\d-\d\d$/.test(r.checked || '')) cw(p.id + ': row "' + r.feature + '" needs them, an https source and a checked date (or omit the row)');
+      /* HOW it was checked is part of the fact: "read" (somebody opened the
+         vendor's page) or "search-summary" (taken from a search engine's
+         summary of it), and the page prints which. */
+      if (r.method !== 'read' && r.method !== 'search-summary') cw(p.id + ': row "' + r.feature + '" needs method "read" or "search-summary"');
     }
     if (/\b(better|best|worse|worst|superior|cheaper|faster)\b/i.test(JSON.stringify(p))) cw(p.id + ': no comparative superlatives');
   }
@@ -1442,7 +1449,7 @@ export function renderCompare(id, { site, pages, guides: g, versus: c }) {
   const rows = p.rows.map((r) => `          <tr>
             <th scope="row">${esc(r.feature)}</th>
             <td data-col="{{brand:name}}">${esc(c.us[r.us])}</td>
-            <td data-col="${esc(p.name)}">${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${esc(c.ui.checkedLabel)} ${longDay(r.checked)})</span></td>
+            <td data-col="${esc(p.name)}">${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${r.method === 'read' ? esc(c.ui.checkedLabel) + ' ' + longDay(r.checked) : esc(c.ui.summaryLabel) + ' ' + longDay(r.checked) + '; ' + esc(c.ui.summaryAfter)})</span></td>
           </tr>`).join('\n');
   return `${publicHead({ title: p.metaTitle, description: p.metaDescription, slug, ld })}
 ${genNote(COMPARE_COPY)}
@@ -1460,7 +1467,7 @@ ${rows}
         </tbody>
       </table>
     </div>
-    <p class="mk-small mk-checked" id="checked">${esc(c.ui.noteBefore)} <time datetime="${esc(c.checked)}">${longDay(c.checked)}</time>. ${esc(c.ui.noteAfter)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a> ${esc(c.ui.noteEnd)}</p>
+    <p class="mk-small mk-checked" id="checked">${esc(c.ui.noteBefore)} <time datetime="${esc(c.checked)}">${longDay(c.checked)}</time>.${p.rows.some((r) => r.method !== 'read') ? ' ' + esc(c.ui.noteSummary) : ''} ${esc(c.ui.noteAfter)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a> ${esc(c.ui.noteEnd)}</p>
   </div>
 </section>
 <section class="mk-sec mk-band-a" id="also" aria-labelledby="mkAlsoH">
@@ -1518,9 +1525,16 @@ ${pageTail(site, pages)}`;
    the privacy policy's leads paragraph (privacy.html#leads), a submit
    button, and p[data-lead-status][role=status]. method="dialog" and no
    action: with scripts off the form submits nowhere, so an address never
-   lands in a URL or a server log (the contact form's rule). */
+   lands in a URL or a server log (the contact form's rule).
+   HIDDEN until `lead.live` is true in marketing-site.json. privacy.html
+   (words in markup, owner-edited) does not yet describe a product-news
+   list: its only leads paragraph says the old launch-offers form was
+   removed. A form that collects an address under a notice saying no form
+   exists ships a wrong privacy notice, so the markup is in place for the
+   binding and stays out of sight until the owner has written that
+   paragraph (docs/LAUNCH.md section 8, owner step). */
 export function leadForm(lead, idp) {
-  return `<section class="mk-sec mk-band-a mk-lead" id="news" aria-labelledby="${idp}LeadH">
+  return `<section class="mk-sec mk-band-a mk-lead" id="news" aria-labelledby="${idp}LeadH"${lead.live === true ? '' : ' hidden'}>
   <div class="mk-wrap mk-lead-in">
     <div class="mk-lead-text">
       <h2 class="mk-h3" id="${idp}LeadH">${esc(lead.h)}</h2>

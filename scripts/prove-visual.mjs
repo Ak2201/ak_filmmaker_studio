@@ -216,6 +216,26 @@ const dv = await page.evaluate(() => {
 });
 ok(/name/.test(dv.why) && dv.invalid === 'true', '10 an empty Add says a name is needed', dv);
 
+/* ---- 11 / 12 the Edit Log: link rows, target length --------------- */
+await page.goto(url('edit.html#cuts'), { waitUntil: 'networkidle' });
+await settle(page);
+const align = await page.$$eval('form.el-link-add', (f) => f.map((x) => getComputedStyle(x).alignItems));
+ok(align.length > 0 && align.every((a) => a === 'center'), '11 the Add link button is centred on its inputs', align);
+await page.goto(url('edit.html'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.fill('[data-edit-target]', '120');
+await page.keyboard.press('Tab');
+await settle(page, 300);
+await page.fill('[data-edit-target]', '-30');
+await page.keyboard.press('Tab');
+await settle(page, 400);
+const tg = await page.evaluate(() => ({
+  value: document.querySelector('[data-edit-target]').value,
+  stored: JSON.parse(localStorage.getItem('fms_songs_v1') || '{}').targetMinutes,
+  said: [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | ')
+}));
+ok(tg.value === '120' && tg.stored === 120 && /1 to 600/.test(tg.said), '12 a negative target is refused, said, and the old one kept', tg);
+
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();
 server.close();

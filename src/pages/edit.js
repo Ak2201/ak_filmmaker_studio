@@ -35,7 +35,7 @@ import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
 import { formatDuration } from '../lib/screenplay-analysis.js';
-import { listSongs, durationSeconds, setTargetMinutes } from '../lib/songs.js';
+import { listSongs, durationSeconds, setTargetMinutes, getTargetMinutes } from '../lib/songs.js';
 import { targetRuntime } from '../lib/target-runtime.js';
 import { shootDayOf } from '../lib/locations.js';
 import {
@@ -661,6 +661,19 @@ saveOnInput('[data-edit-field]', (el) => {
 });
 
 delegate(document, 'change', '[data-edit-target]', (e, el) => {
+  /* A value the store refuses (negative, over 600) used to be written as
+     0, so the field went blank and a target already set was lost with no
+     word said. Refuse it here: keep the stored target and say why. An
+     empty field (or 0) still clears the target on purpose. */
+  const raw = String(el.value).trim();
+  const n = Math.round(Number(raw));
+  if (raw && n !== 0 && !(n >= 1 && n <= 600)) {
+    const kept = getTargetMinutes();
+    el.value = kept || '';
+    StudioUI.toastError('A target length is 1 to 600 minutes. '
+      + (kept ? 'It stays at ' + kept + ' min.' : 'Nothing was set.'));
+    return;
+  }
   setTargetMinutes(el.value);
   /* The person has now set the shared target, so the Edit Log's legacy
      value is retired: left in place, it was the fallback a cleared field

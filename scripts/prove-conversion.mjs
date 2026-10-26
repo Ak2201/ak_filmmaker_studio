@@ -10,12 +10,16 @@
          the DIFFERENCE the server quotes (quote_order, §21/§52) for a
          Basic holder; with no quote it names the plan and prints no figure
      (b) the project cap (P0402) toast names the next plan and the difference
-     (c) the dashboard's referral row: the code, a /start?ref= link, a
-         plain wa.me share; absent signed out
+     (b2) a cap notice REPLAYED at boot (before billing_status answers)
+         never names the plan the member already holds
+     (c) the dashboard's referral row: the code, a /purchase?ref= link that
+         fills the friend's "Have a code?" box, a plain wa.me share;
+         absent signed out
      (d) "Made with" on a staged PDF for a plan that keeps branding, the
          last child of <body>, shown in print; absent on Pro; removed on unstage
      (e) Settings → What's in my plan: the plan's modules, the next plan's
-         extras, the upgrade figure; absent signed out
+         extras, the upgrade figure; a full trial is not told it may remove
+         the PDF line; absent signed out
      (f) What's new: the drawer opens with every entry, "New" goes, the
          seen id lands in fms_studio_prefs_v1 (no new key), and stays gone
      (g) the first-week list's "Choose a plan": listed during a trial,
@@ -155,6 +159,26 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
+  console.log('(b2) a replayed cap notice never names the plan already held');
+  for (const delay of [0, 2500]) {
+    basicHolder();
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await ctx.route(SB + '/rest/v1/rpc/billing_status', async (r) => { await new Promise((ok2) => setTimeout(ok2, delay)); return handle(r); });
+    await ctx.addInitScript(() => {
+      if (!sessionStorage.getItem('__noticed')) {
+        sessionStorage.setItem('__noticed', '1');
+        sessionStorage.setItem('fms_plan_limit_notice', JSON.stringify({ m: 'Your Basic plan syncs up to 3 projects. Delete one or choose a bigger plan.', at: Date.now() }));
+      }
+    });
+    await page.goto(BASE + 'dashboard.html');
+    const shown = await waitToast(page, /syncs up to 3 projects/, 10000);
+    await page.waitForTimeout(delay + 4000);
+    const t = await toasts(page);
+    ok(shown && !/Basic raises it/.test(t) && !/₹2,999/.test(t), 'billing_status after ' + delay + 'ms: the replayed toast never says "Basic raises it": ' + JSON.stringify(t));
+    ok(/Intermediate/.test(t) || !/raises it|Upgrade to/.test(t), 'it names Intermediate, or no plan at all');
+    allErrors.push(...errors); await ctx.close();
+  }
+
   console.log('(c) the dashboard referral row');
   basicHolder();
   {
@@ -169,8 +193,14 @@ try {
         const wa = box.querySelector('a[href^="https://wa.me/"]');
         return { code: (box.querySelector('.gr-code') || {}).textContent, link: copy && copy.dataset.copy, wa: wa && wa.href, target: wa && wa.target, rel: wa && wa.rel };
       });
-      const want = 'https://' + BRAND.host + BRAND.path + '?ref=' + encodeURIComponent(r.code || '');
-      ok(!!r.code && r.link === want, 'COPY LINK carries the /start?ref= link footer.js builds: ' + r.link);
+      const want = 'https://' + BRAND.host + '/purchase?ref=' + encodeURIComponent(r.code || '');
+      ok(!!r.code && r.link === want, 'COPY LINK carries the /purchase?ref= link (the page that reads ?ref=): ' + r.link);
+      /* Follow it as a friend would: the code must arrive in the box. */
+      const f = await newContext({ tok: 'tok-ben' });
+      await f.page.goto(BASE + 'purchase.html' + new URL(r.link).search);
+      const filled = await f.page.waitForFunction((c) => { const i = document.getElementById('plPromoCode'); return !!i && i.value === c; }, r.code, { timeout: 15000 }).then(() => true, () => false);
+      ok(filled, 'following the copied link fills #plPromoCode with ' + r.code);
+      allErrors.push(...f.errors); await f.ctx.close();
       ok(!!r.wa && r.wa.startsWith('https://wa.me/?text=') && decodeURIComponent(r.wa.split('text=')[1]).includes(want), 'the WhatsApp share is a plain wa.me link whose text carries the link');
       ok(r.target === '_blank' && /noopener/.test(r.rel || ''), 'it opens a new tab, noopener');
     }
@@ -242,6 +272,19 @@ try {
       const box = await page.textContent('#plan-contents .st-pc-next').catch(() => '');
       ok(next && /Upgrade to Intermediate to get/.test(box) && /Stripboard/.test(box), 'the next plan’s extras, with the server’s difference: ' + JSON.stringify(box.slice(0, 200)));
     }
+    allErrors.push(...errors); await ctx.close();
+  }
+  F.reset();
+  for (const row of F.db.plans) if (row.id !== 'free') row.features = matrixFeatures(row.id);
+  F.db.settings.trial_minutes = 4320;
+  setTrial(AMY, { minutes: 4320, scope: 'full' });
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#plan-contents');
+    const shown = await page.waitForSelector('#plan-contents .st-pc-list', { timeout: 15000 }).then(() => true, () => false);
+    const txt = shown ? await page.textContent('#plan-contents') : '';
+    ok(shown && /trial/i.test(txt), 'a full-scope trial sees what the trial opens');
+    ok(shown && !/Remove branding/i.test(txt), 'and is NOT told it may remove the PDF line (every trial PDF prints it)');
     allErrors.push(...errors); await ctx.close();
   }
   {

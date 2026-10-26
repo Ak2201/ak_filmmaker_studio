@@ -98,6 +98,7 @@ import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/r
 import { filmRegion, setFilmRegion } from '../lib/film-region.js';   // = region.js currentProjectPrefs / setProjectRegion; film-region.js says why
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
+import { mayRemoveBranding } from '../ui/footer.js';   // CORE: the PDF line's own rule
 import Account from '../lib/account.js';   // CORE: auth.js imports it too
 import { syncLine, ago } from '../ui/status-bar.js';
 import Billing from '../lib/billing.js';   // CORE (the `studio` chunk), so this adds no chunk
@@ -1036,10 +1037,17 @@ function renderPlanContents() {
   const { MATRIX, PAID, labelOf, planHas } = matrixMod;
   const rows = MATRIX.features.filter((r) => !r.inverted && r.kind !== 'limit'
     && !(r.kind === 'module' && PlanGate.isDisabledEverywhere(r.key)));
-  const mine = rows.filter((r) => PlanGate.allowed(r.key));
+  /* Two capabilities have their OWN rule, stricter than the features
+     map: the PDF "Made with" line (footer.js mayRemoveBranding(), never
+     for a trial) and the AI tools (aiUnlocked(), fails closed). Reading
+     allowed() for them told a full-scope trial it could remove the line
+     every PDF it exported still printed. A trial lists modules only. */
+  const included = (r) => (r.key === 'remove_branding' ? mayRemoveBranding(cp)
+    : r.key === 'ai_tools' ? PlanGate.aiUnlocked() : PlanGate.allowed(r.key));
+  const mine = rows.filter((r) => (cp.plan !== 'free' || r.kind === 'module') && included(r));
   const at = PAID.indexOf(cp.plan);
   const next = at >= 0 ? PAID[at + 1] : null;
-  const extras = next ? rows.filter((r) => planHas(r, next) && !PlanGate.allowed(r.key)) : [];
+  const extras = next ? rows.filter((r) => planHas(r, next) && !included(r)) : [];
   const sec = section('plan-contents', 'Your plan', 'What’s in my plan.',
     cp.plan === 'free'
       ? 'What your trial opens right now. Choose a plan to keep working on your own film after it ends.'

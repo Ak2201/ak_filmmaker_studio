@@ -76,7 +76,6 @@ import PlanGate from '../lib/plan-gate.js';
 import { getDriveStatus, push as drivePush } from '../lib/drive-sync.js';
 import { dprSummary } from '../lib/dpr.js';
 import { planName } from '../lib/plans.js';
-import { brandURL } from '../ui/footer.js';           // CORE: the /start?ref= link every "Made with" line carries
 import { openChangelog, unseen as changelogUnseen } from '../ui/changelog.js';
 /* Every number on this page, derived: the snapshot, the dates, the
    readiness order, the activity lines (docs/ARCHITECTURE.md). */
@@ -790,7 +789,11 @@ function renderNoProject() {
    is simply absent. growth.js and the panel are fetched only once
    somebody is signed in, so the signed-out page (verify) loads neither.
    The answer is held in memory for this page, keyed by the account. */
-const ref = { uid: null, asked: false, data: null, panel: null };
+/* The link is growth-panels' referralLink(): /purchase?ref=, the page
+   that READS ?ref= into its "Have a code?" box. /start?ref= (the "Made
+   with" line's) carries the code nowhere until the attribution lane
+   holds it for the tab, so a friend would reach checkout empty-handed. */
+const ref = { uid: null, asked: false, data: null, panel: null, link: null };
 function sessionUid() {
   try { const c = window.StudioCloud; const s = c && c.getSession && c.getSession(); return (s && s.user && s.user.id) || null; } catch (e) { return null; }
 }
@@ -800,7 +803,7 @@ function wantReferral() {
   if (!uid || ref.asked) return;
   ref.asked = true;
   Promise.all([import('../lib/growth.js'), import('../ui/growth-panels.js')])
-    .then(([G, P]) => G.myReferral().then((d) => { if (ref.uid !== uid) return; ref.data = d || null; ref.panel = P.referralShare; render(); }))
+    .then(([G, P]) => G.myReferral().then((d) => { if (ref.uid !== uid) return; ref.data = d || null; ref.panel = P.referralShare; ref.link = P.referralLink; render(); }))
     .catch(() => { /* no §22, offline: no panel */ });
 }
 function renderMemberRow() {
@@ -813,7 +816,7 @@ function renderMemberRow() {
     isNew ? badge({ label: 'New', tone: 'info' }) : null
   ].filter(Boolean)));
   const d = ref.uid && ref.data;
-  const share = d && ref.panel ? ref.panel(d, brandURL(d.code)) : null;
+  const share = d && ref.panel ? ref.panel(d, ref.link(d.code)) : null;
   if (share) row.append(share);
   return row;
 }

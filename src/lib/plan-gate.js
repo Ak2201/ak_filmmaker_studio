@@ -498,15 +498,32 @@ export const nudgeAction = (o) => (!o ? 'SEE PLANS' : (o.more ? 'UPGRADE TO ' : 
 /** The lowest plan above this one whose cap on `key` (projects, shares,
  *  collaborators, seats) is higher than this plan's — the plan a P0402
  *  limit should name. Read from the plans rows, like offerFor(). */
+/* The plan has to be KNOWN before a limit can name the plan above it.
+   A P0402 notice replayed at boot (cloud.js replayPlanLimitNotice())
+   arrives before billing_status() has answered, while `plan` is still
+   '' — and rank('') is 0, so every paid plan looked like an upgrade and
+   a Basic holder was told "Basic raises it" at Basic's renewal price.
+   Wait for the in-flight (or next) refresh for a few seconds; if the
+   plan is still unknown, answer nothing and the plain toast stands. */
+async function planKnown(ms = 6000) {
+  const until = Date.now() + ms;
+  while (!plan && Date.now() < until) {
+    if (_refreshing) { try { await _refreshing; } catch (e) { /* below */ } continue; }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return !!plan;
+}
 export async function offerForLimit(key) {
+  if (!(await planKnown())) return null;
   const plans = (await Billing.listPlans()) || [];
   const mine = plans.find((p) => p && p.id === plan);
-  const have = mine ? Billing.cap(mine.limits, key) : null;
-  if (mine && have === null) return null;   // already unlimited: nothing above helps
+  if (!mine) return null;                    // the plan above an unknown row is a guess
+  const have = Billing.cap(mine.limits, key);
+  if (have === null) return null;            // already unlimited: nothing above helps
   const p = plans
     .filter((x) => x && x.active !== false && x.id !== 'free' && Billing.planRank(x.id) > Billing.planRank(plan))
     .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id))
-    .find((x) => { const c = Billing.cap(x.limits, key); return c === null || have === null || c > have; });
+    .find((x) => { const c = Billing.cap(x.limits, key); return c === null || c > have; });
   return p ? offerOf(p, []) : null;
 }
 /** The label a refused id goes by: a module's from navigation.json, a

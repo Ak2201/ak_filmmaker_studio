@@ -1924,7 +1924,15 @@ function planLimitToast(message, opts) {
   const msgEl = host && host.lastElementChild && host.lastElementChild.querySelector('.toast-msg');
   if (!key || !msgEl) return;
   import('./plan-gate.js')
-    .then((PG) => PG.quotedOffer([], { limit: key }))
+    .then((PG) => PG.quotedOffer([], { limit: key }).then((o) => {
+      /* The server's sentence names the plan it counted against; if
+         plan-gate knows a different one (a stale replay, a plan bought
+         since), the "next plan" would be computed from the wrong base. */
+      const said = (/^Your (.+?) plan /i.exec(message) || [])[1] || '';
+      const cur = PG.currentPlan();
+      const known = [cur.planName, cur.plan].filter(Boolean).map((x) => String(x).toLowerCase());
+      return o && said && known.length && !known.includes(said.toLowerCase()) ? null : o;
+    }))
     .then((o) => {
       if (!o || !msgEl.isConnected) return;
       msgEl.textContent += ' ' + (o.due ? (o.more ? 'Upgrade to ' + o.name + ' for ' + o.due + ' more.' : o.name + ' raises it, ' + o.due + ' a year.') : o.name + ' raises it.');

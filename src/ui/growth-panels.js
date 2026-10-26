@@ -102,8 +102,8 @@ function referralPanel() {
 /* THE COMPACT SHARE (dashboard.html). The same my_referral() answer and
    the same COPY control as the panel above, cut to one row: the code, a
    copy of the link, and a WhatsApp share. `link` is the caller's — the
-   dashboard hands the /start?ref= address footer.js builds for every
-   "Made with" line, so a friend lands on the public page first. The
+   dashboard hands referralLink() (/purchase?ref=), the page that puts
+   the code in its "Have a code?" box. The
    WhatsApp share is a plain wa.me link with the text in its query: no
    SDK, no script, nothing loaded from WhatsApp. Null unless the code
    exists and is switched on, so a member who has not bought, or a

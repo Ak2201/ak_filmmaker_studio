@@ -698,18 +698,27 @@ delegate(document, 'click', '[data-action="blk-add"]', () => {
   const b = Shots.addBlock(pickedScene);
   sel = { blockId: b.id, markId: '' };
   rerender(`[data-block="${CSS.escape(b.id)}"] .vz-blk-name`);
+  // The default name is a suggestion: select it so typing replaces it.
+  const nameBox = document.querySelector(`[data-block="${CSS.escape(b.id)}"] .vz-blk-name`);
+  if (nameBox && nameBox.select) nameBox.select();
 });
 delegate(document, 'click', '[data-action="blk-del"]', (e, el) => {
   const id = blockIdOf(el);
-  const was = Shots.listBlocks().find((b) => b.id === id);
+  const all = Shots.listBlocks();
+  const at = all.findIndex((b) => b.id === id);
+  const was = all[at];
   if (!was) return;
+  // Focus goes to a neighbouring setup's name, else the Add button.
+  const cards = [...document.querySelectorAll('.vz-blk[data-block]')];
+  const here = cards.findIndex((n) => n.dataset.block === id);
+  const near = cards[here + 1] || cards[here - 1] || null;
   Shots.removeBlock(id);
-  rerender();
+  rerender(near ? `[data-block="${CSS.escape(near.dataset.block)}"] .vz-blk-name` : '[data-action="blk-add"]');
   // Undo, not confirm: the toast carries the way back.
   try {
     StudioUI.toast('Deleted the setup “' + (was.name || 'setup') + '”.', {
       action: 'Undo',
-      onAction: () => { Shots.saveBlocks(Shots.listBlocks().concat([was])); rerender(); }
+      onAction: () => { Shots.restoreBlock(was, at); rerender(); }
     });
   } catch (err) { /* chrome may not be up */ }
 });
@@ -735,7 +744,19 @@ delegate(document, 'change', '[data-block-field]', (e, el) => {
 });
 delegate(document, 'change', '[data-mark-field]', (e, el) => {
   Shots.updateMark(sel.blockId, sel.markId, { [el.dataset.markField]: el.value });
-  rerender();
+  /* The label is drawn on the map and named on the selected group.
+     Patched in place: a full re-render on `change` destroys the element
+     Tab is moving to. */
+  const b = Shots.listBlocks().find((x) => x.id === sel.blockId);
+  const card = el.closest('.vz-blk');
+  const map = card && card.querySelector('.vz-map');
+  if (b && map) map.replaceWith(drawBlock(b, { editable: true }));
+  const grp = card && card.querySelector('.vz-blk-sel');
+  const m = b && b.marks.find((x) => x.id === sel.markId);
+  if (grp && m) {
+    const kindEl = grp.querySelector('.k-eyebrow-muted');
+    grp.setAttribute('aria-label', 'Selected: ' + (m.label || (kindEl ? kindEl.textContent : m.kind)));
+  }
 });
 delegate(document, 'click', '[data-action="mk-turn"]', (e, el) => {
   const m = Shots.listBlocks().find((b) => b.id === sel.blockId)?.marks.find((x) => x.id === sel.markId);

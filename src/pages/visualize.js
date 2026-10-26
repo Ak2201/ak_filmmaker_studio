@@ -416,6 +416,43 @@ function renderUncovered(scene) {
   ]);
 }
 
+/** The scene header's running-time span: one builder for the render and for
+    the in-place patch after a shot's minutes change. */
+function sceneTimeAttrs(time) {
+  return {
+    title: time.timed ? plural(time.timed, 'shot has', 'shots have') + ' a time estimate' : 'Type minutes on a shot to see the scene’s running time',
+    text: time.total ? Shots.formatMinutes(time.total) + (time.timed < time.count ? ' (' + time.timed + ' of ' + time.count + ' timed)' : '') : 'No time estimate'
+  };
+}
+
+/** Say, on the fields themselves, what the paperwork would otherwise
+    carry silently: a shot number two shots of a scene share, and a time
+    estimate the parser cannot read. Derived from the stored shots every
+    call and written as attributes only. */
+function flagShotProblems() {
+  const shots = Shots.listShots();
+  const byScene = new Map();
+  shots.forEach((s) => { if (!byScene.has(s.sceneId)) byScene.set(s.sceneId, []); byScene.get(s.sceneId).push(s); });
+  const dup = new Set();
+  byScene.forEach((list) => {
+    const d = Shots.duplicateNumbers(list);
+    list.forEach((s) => { if (d.has(String(s.number ?? '').trim().toUpperCase())) dup.add(s.id); });
+  });
+  const mark = (el, why) => {
+    if (why) { el.setAttribute('aria-invalid', 'true'); el.title = why; }
+    else if (el.getAttribute('aria-invalid') === 'true') { el.removeAttribute('aria-invalid'); el.removeAttribute('title'); }
+  };
+  shots.forEach((s) => {
+    const row = document.querySelectorAll('[data-shot="' + CSS.escape(s.id) + '"]');
+    row.forEach((r) => {
+      const no = r.querySelector('[data-shot-field="number"]');
+      if (no) mark(no, dup.has(s.id) ? 'Another shot in this scene already has this number.' : '');
+      const mn = r.querySelector('[data-shot-field="mins"]');
+      if (mn) mark(mn, Shots.minutesProblem(s.mins));
+    });
+  });
+}
+
 function renderSceneBlock(group, dayMins = new Map()) {
   const scene = group.scene;
   const cov = Shots.coverageOf(group.shots);
@@ -437,10 +474,7 @@ function renderSceneBlock(group, dayMins = new Map()) {
         text: [formatEighths(Number(scene.eighths) || 0) + ' pgs',
           plural(cov.setups, 'shot', 'shots'), cov.done + ' in the can'].join(' · ')
       }),
-      h('span.vz-scene-time.k-mono', {
-        title: time.timed ? plural(time.timed, 'shot has', 'shots have') + ' a time estimate' : 'Type minutes on a shot to see the scene’s running time',
-        text: time.total ? Shots.formatMinutes(time.total) + (time.timed < time.count ? ' (' + time.timed + ' of ' + time.count + ' timed)' : '') : 'No time estimate'
-      }),
+      h('span.vz-scene-time.k-mono', sceneTimeAttrs(time)),
       h('span.vz-scene-day', {}, [
         day ? h('a', { href: 'stripboard.html#stripboard', text: 'Day ' + day + ' on the stripboard' + (dayTotal ? ' · ' + dayTotal + ' that day' : '') })
           : h('span', { text: 'Not on the stripboard yet' })
@@ -1390,6 +1424,7 @@ function render(focus) {
   );
 
   app.replaceChildren(main);
+  flagShotProblems();
   /* Learn-in-place (src/ui/learn.js, loaded on demand so it stays out of first paint).
      It writes nothing; an unknown topic id returns null and is filtered. */
   import('../ui/learn.js').then((m) => {
@@ -1883,6 +1918,22 @@ delegate(document, 'change', '[data-shot-field]', (e, el) => {
      the list without the mouse. */
   if (el.type === 'checkbox') { render('[data-shot="' + CSS.escape(id) + '"] [data-shot-field="' + key + '"]'); return; }
   if (el.tagName === 'SELECT') { render(); return; }
+  if (key === 'number' || key === 'mins') {
+    flagShotProblems();
+    const bad = key === 'mins' ? Shots.minutesProblem(value)
+      : (el.getAttribute('aria-invalid') === 'true' ? 'Shot ' + String(value).trim() + ' is already used in this scene. The number is kept as typed.' : '');
+    if (bad && StudioUI.toastError) StudioUI.toastError(bad);
+  }
+  if (key === 'mins') {
+    // The scene's running time reads the minutes: patched in place.
+    const shot = Shots.listShots().find((x) => x.id === id);
+    const span = shot && document.querySelector('.vz-scene[data-scene="' + CSS.escape(shot.sceneId) + '"] .vz-scene-time');
+    if (span) {
+      const a = sceneTimeAttrs(Shots.minutesOf(Shots.listShots().filter((x) => x.sceneId === shot.sceneId)));
+      span.textContent = a.text;
+      span.title = a.title;
+    }
+  }
   if (key === 'number') {
     // The lock follows the typed number, patched in place (focus is leaving).
     const lock = document.querySelector('[data-shot="' + CSS.escape(id) + '"] [data-action="vz-shot-lock"]');
@@ -1996,8 +2047,15 @@ delegate(document, 'drop', '[data-drop-shot]', (e, el) => {
 });
 delegate(document, 'click', '[data-action="vz-frame-del"]',  async (e, el) => {
   if (!await askDanger('Delete this frame? The shot it draws is untouched.', { confirm: 'Delete frame' })) return;
-  Shots.removeFrame(frameIdOf(el));
-  render();
+  const fid = frameIdOf(el);
+  // Focus goes to a neighbouring frame's delete control, else the shot's + Frame.
+  const cards = [...document.querySelectorAll('.vz-frame[data-frame]')];
+  const here = cards.findIndex((n) => n.dataset.frame === fid);
+  const near = cards[here + 1] || cards[here - 1] || null;
+  const shotId = (el.closest('[data-shot]') || {}).dataset?.shot || '';
+  Shots.removeFrame(fid);
+  render(near ? '.vz-frame[data-frame="' + CSS.escape(near.dataset.frame) + '"] [data-action="vz-frame-del"]'
+    : (shotId ? '[data-shot="' + CSS.escape(shotId) + '"] [data-action="vz-frame-add"]' : '[data-action="vz-frame-add"]'));
 });
 /* The action field MOVES an older caption into `action` (Shots.actionPatch). */
 const framePatch = (el) => (el.dataset.frameField === 'action'

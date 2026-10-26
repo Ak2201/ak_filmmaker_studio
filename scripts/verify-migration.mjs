@@ -401,7 +401,7 @@ const EXPECTED = {
      now, so the words left the empty page the baseline was taken on. */
   stripboard: { 'laid': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
   reports: { "day's": 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', '0': 'QA round 2, Schedule & reports (26 Oct 2026): with no scenes the Reports stat strip prints dashes, as the stripboard and the Plan do, never "SCENES 0 · PAGES 0 · LOCATIONS 0" (item 48).' },
-  contacts: {},
+  contacts: { roster: 'Visual QA round 2 (26 Oct 2026): the Cast & Crew stat cards use the page’s own words (People, Cast, Departments, Call sheets), so the old roster / registry / base / slates labels left the page.', talent: 'same change', registry: 'same change', base: 'same change', slates: 'same change' },
   /* AI Desk (12 Oct 2026): the key lives in Settings only and AI is
      reached through one AI pill (PLAN.md §4). keyGate() used to draw
      the provider picker and key form here ("Drafting needs a key…");

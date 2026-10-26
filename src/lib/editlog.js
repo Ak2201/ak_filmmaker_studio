@@ -343,12 +343,19 @@ export function removeDayLink(day, linkId) {
 /* ---- cut versions: Assembly, Rough cut v1 … -------------------- */
 export function listCuts(data) { return (data || loadEdit()).cuts; }
 
+/** The user's own calendar day. toISOString() is the UTC day, which is
+    yesterday for an Indian user between midnight and 05:30. */
+export function localISO(now = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+
 export function addCut({ name, date, note } = {}) {
   const clean = String(name || '').trim();
   if (!clean) return null;
   const d = loadEdit();
   const ok = /^\d{4}-\d{2}-\d{2}$/.test(String(date || ''));
-  const c = blankCut({ name: clean, date: ok ? date : new Date().toISOString().slice(0, 10), note });
+  const c = blankCut({ name: clean, date: ok ? date : localISO(), note });
   d.cuts.push(c);
   writeAll(d);
   return c;
@@ -756,5 +763,5 @@ export default {
   dayLinks, addDayLink, removeDayLink,
   listCuts, addCut, updateCut, removeCut, restoreCut, addCutLink, removeCutLink,
   addCutNote, updateCutNote, removeCutNote, restoreCutNote, cutNotesText,
-  verdict, coverage, pickupText
+  verdict, coverage, pickupText, localISO
 };

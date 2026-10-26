@@ -200,7 +200,7 @@ const ct = await page.evaluate(() => ({
   focus: document.activeElement?.classList.contains('ct-sheet-title'), n: document.querySelectorAll('.ct-sheet').length,
   names: [...new Set([...document.querySelectorAll('[data-action="sheet-add"]')].map((b) => b.textContent.replace(/add/, '').trim()))]
 }));
-ok(ct.n === sheets0 + 1 && ct.hidden === false && ct.hash === '#call-sheets', '5  New shoot day switches to the Call Sheets tab', ct);
+ok(ct.n === sheets0 + 1 && ct.hidden === false && /^#(call-sheets|sheet-)/.test(ct.hash), '5  New shoot day switches to the Call Sheets tab', ct);
 ok(ct.focus, '5  and the new sheet\'s title has the focus', ct);
 ok(ct.names.length === 1, '5  the action has one name', ct.names);
 
@@ -235,6 +235,168 @@ const tg = await page.evaluate(() => ({
   said: [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | ')
 }));
 ok(tg.value === '120' && tg.stored === 120 && /1 to 600/.test(tg.said), '12 a negative target is refused, said, and the old one kept', tg);
+
+/* ---- round 2: focus kept, dates, labels, validation -------------- */
+const activeDesc = () => page.evaluate(() => {
+  const a = document.activeElement;
+  return { tag: a && a.tagName, field: a && (a.dataset.sheetField || a.dataset.markField || a.dataset.blockField || a.dataset.action || a.dataset.editAction || ''), name: a && a.getAttribute('name') };
+});
+
+// contacts: a call-sheet field saves and Tab moves ON, page stays put, no page error
+await page.goto(url('contacts.html#call-sheets'), { waitUntil: 'networkidle' });
+await settle(page);
+const errs0 = errors.length;
+await page.focus('.ct-sheet .ct-sheet-title');
+const y0 = await page.evaluate(() => scrollY);
+await page.keyboard.type(' Z');
+await page.keyboard.press('Tab');
+await settle(page, 300);
+const cf = await activeDesc();
+ok(cf.tag !== 'BODY' && cf.tag !== 'SECTION' && Math.abs((await page.evaluate(() => scrollY)) - y0) < 4 && errors.length === errs0,
+  '13 a call-sheet field keeps the focus moving on (not <body>), the page where it was, no page error', { cf, errs: errors.slice(errs0) });
+ok(/ Z/.test(await page.$eval('.ct-sheet .ct-doc-title', (n) => n.textContent)), '13 and the paper view caught up with the title');
+
+// contacts: remove / delete confirms name the action and focus survives
+await page.goto(url('contacts.html#contacts'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.click('.ct-person [data-action="contact-del"]');
+const personLabel = await confirmDanger();
+const pf = await page.evaluate(() => ({ body: document.activeElement === document.body, inList: !!document.activeElement.closest('.ct-person') || document.activeElement.dataset.action === 'contact-add' }));
+ok(personLabel === 'Remove person' && !pf.body && pf.inList, '14 removing a person: the red button says Remove person and focus lands on a neighbour', { personLabel, pf });
+await page.goto(url('contacts.html#call-sheets'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.click('.ct-sheet [data-action="sheet-del"]');
+const sheetLabel = await confirmDanger();
+const sf = await page.evaluate(() => ({ body: document.activeElement === document.body, ok: !!document.activeElement.closest('.ct-sheet') || document.activeElement.dataset.action === 'sheet-add' }));
+ok(sheetLabel === 'Delete call sheet' && !sf.body && sf.ok, '14 deleting a call sheet: Delete call sheet, focus kept', { sheetLabel, sf });
+await page.goto(url('contacts.html#contacts'), { waitUntil: 'networkidle' });
+await settle(page);
+const statLabels = await page.$$eval('.ct-kpis .k-stat-label, .ct-kpis [class*="label"]', (n) => n.map((x) => x.textContent.trim()));
+ok(['People', 'Cast', 'Departments', 'Call sheets'].every((l) => statLabels.some((t) => t.toLowerCase() === l.toLowerCase())), '15 the stat cards use the page\'s own words', statLabels);
+
+// contacts: New shoot day from the Cast tab brings the new title INTO view
+await page.evaluate(() => scrollTo(0, 300));
+await page.click('.k-page-head [data-action="sheet-add"], header [data-action="sheet-add"]');
+await settle(page, 600);
+const newVis = await page.evaluate(() => {
+  const r = document.activeElement.getBoundingClientRect();
+  return { cls: document.activeElement.className, top: r.top, h: innerHeight };
+});
+ok(/ct-sheet-title/.test(newVis.cls) && newVis.top >= 0 && newVis.top < newVis.h, '16 New shoot day from Cast & Crew scrolls the new sheet\'s title into view', newVis);
+
+// edit log: cut date is the local day, empty adds say why, spelling
+const tzCtx = await browser.newContext({ viewport: { width: 1440, height: 900 }, timezoneId: 'Asia/Kolkata' });
+await tzCtx.addInitScript(() => {
+  const Real = Date, at = new Real(Date.UTC(2026, 9, 26, 20, 0, 0));      // 01:30 IST on the 27th
+  // eslint-disable-next-line no-global-assign
+  Date = class extends Real { constructor(...a) { if (a.length) super(...a); else super(+at); } static now() { return +at; } };
+});
+const tzPage = await tzCtx.newPage();
+await tzPage.goto(url('index.html'), { waitUntil: 'networkidle' });
+await tzPage.click('[data-action="sample-project"][data-sample="dragon"]');
+await tzPage.waitForLoadState('networkidle');
+await settle(tzPage, 800);
+await tzPage.goto(url('edit.html#cuts'), { waitUntil: 'networkidle' });
+await settle(tzPage);
+ok(await tzPage.$eval('[data-edit-form="cut"] [name="date"]', (i) => i.value) === '2026-10-27', '17 the New cut date is the local day at 01:30 IST');
+await tzCtx.close();
+
+await page.goto(url('edit.html#cuts'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.click('[data-edit-form="cut"] button[type="submit"]');
+await settle(page, 300);
+const cutEmpty = await page.evaluate(() => ({ inv: document.querySelector('[data-edit-form="cut"] [name="name"]').getAttribute('aria-invalid'), said: [...document.querySelectorAll('.toast')].map((t) => t.textContent).join('|') }));
+ok(cutEmpty.inv === 'true' && /name/i.test(cutEmpty.said), '18 an empty Add cut says a name is needed', cutEmpty);
+await page.goto(url('edit.html'), { waitUntil: 'networkidle' });
+await settle(page);
+const pk = await page.evaluate(() => {
+  const f = document.querySelector('[data-edit-form="pickup"]');
+  if (!f) return null;
+  const d = f.closest('details'); if (d) d.open = true;
+  return true;
+});
+if (pk) {
+  await page.click('[data-edit-form="pickup"] button[type="submit"]');
+  await settle(page, 300);
+  const pkEmpty = await page.evaluate(() => ({ inv: document.querySelector('[data-edit-form="pickup"] input[name="what"]').getAttribute('aria-invalid'), said: [...document.querySelectorAll('.toast')].map((t) => t.textContent).join('|') }));
+  ok(pkEmpty.inv === 'true' && /first/i.test(pkEmpty.said), '18 an empty Add pick-up says why', pkEmpty);
+  await page.fill('[data-edit-form="pickup"] input[name="what"]', 'Insert of the key');
+  await page.click('[data-edit-form="pickup"] button[type="submit"]');
+  await settle(page, 300);
+  ok(/Pending pick-up/.test(await page.textContent('main')) && !/Pending pickup/.test(await page.textContent('main')), '19 one spelling: Pending pick-up');
+}
+
+// deliverables: adding keeps the focus in the box
+await page.goto(url('deliverables.html'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.fill('[data-dv-form="custom"] input[name="label"]', 'Hard drive to distributor');
+await page.keyboard.press('Enter');
+await settle(page, 400);
+ok(await page.evaluate(() => document.activeElement?.getAttribute('name')) === 'label', '20 adding a deliverable returns the focus to the box');
+
+// visualize: the shot list
+await page.goto(url('visualize.html#shot-list'), { waitUntil: 'networkidle' });
+await settle(page);
+const sc = await page.evaluate(() => {
+  const blocks = [...document.querySelectorAll('.vz-scene[data-scene]')].filter((b) => b.querySelectorAll('tr.vz-row [data-shot-field="mins"]').length >= 2);
+  return blocks[0] ? blocks[0].dataset.scene : null;
+});
+const inScene = (sel) => `.vz-scene[data-scene="${sc}"] tr.vz-row ${sel}`;
+await page.fill(`${inScene('[data-shot-field="mins"]')} >> nth=0`, '12');
+await page.keyboard.press('Tab');
+await settle(page, 300);
+const timeTxt = await page.$eval(`.vz-scene[data-scene="${sc}"] .vz-scene-time`, (n) => n.textContent);
+ok(/12 min/.test(timeTxt), '21 typing minutes updates the scene running time at once', timeTxt);
+await page.fill(`${inScene('[data-shot-field="mins"]')} >> nth=1`, 'abc');
+await page.keyboard.press('Tab');
+await settle(page, 300);
+ok(await page.$eval(`${inScene('[data-shot-field="mins"]')} >> nth=1`, (i) => i.getAttribute('aria-invalid')) === 'true', '22 unreadable minutes are flagged invalid', null);
+const n0 = await page.$eval(`${inScene('[data-shot-field="number"]')} >> nth=0`, (i) => i.value);
+await page.fill(`${inScene('[data-shot-field="number"]')} >> nth=1`, n0 || '1');
+await page.keyboard.press('Tab');
+await settle(page, 300);
+ok(await page.$eval(`${inScene('[data-shot-field="number"]')} >> nth=1`, (i) => i.getAttribute('aria-invalid')) === 'true', '23 a shot number another shot already has is flagged', n0);
+
+// visualize: storyboard frame delete keeps the focus
+await page.goto(url('visualize.html#storyboard'), { waitUntil: 'networkidle' });
+await settle(page);
+if (await page.$('[data-action="vz-frame-del"]')) {
+  await page.focus('[data-action="vz-frame-del"] >> nth=0');
+  await page.keyboard.press('Enter');
+  await confirmDanger();
+  ok(await page.evaluate(() => document.activeElement !== document.body), '24 deleting a frame leaves the focus on the page');
+}
+
+// visualize: blocking — names, focus, undo order, label Tab
+await page.goto(url('visualize.html#blocking'), { waitUntil: 'networkidle' });
+await settle(page);
+for (let i = 0; i < 3; i++) { await page.click('[data-action="blk-add"]'); await settle(page, 200); }
+const sel0 = await page.evaluate(() => { const i = document.activeElement; return { cls: i.className, s: i.selectionStart, e: i.selectionEnd, len: i.value.length }; });
+ok(/vz-blk-name/.test(sel0.cls) && sel0.s === 0 && sel0.e === sel0.len && sel0.len > 0, '25 a new setup\'s name is selected, so typing replaces it', sel0);
+const names = () => page.$$eval('#blocking .vz-blk-name', (n) => n.map((x) => x.value));
+const nm0 = await names();
+await page.click('#blocking .vz-blk >> nth=0 >> [data-action="blk-del"]');
+await settle(page, 300);
+ok(await page.evaluate(() => document.activeElement !== document.body), '26 deleting a setup leaves the focus on the page');
+await page.click('[data-action="blk-add"]');
+await settle(page, 200);
+const nm1 = await names();
+ok(new Set(nm1).size === nm1.length, '27 a new setup never repeats a name in use', nm1);
+await page.click('#blocking .vz-blk >> nth=0 >> [data-action="blk-del"]');
+await settle(page, 200);
+const afterDel = await names();
+await page.click('.toast [data-toast-action], .toast button:has-text("Undo")');
+await settle(page, 300);
+const restored = await names();
+ok(restored[0] === afterDel.length && false || restored.length === afterDel.length + 1 && restored.slice(1).join('|') === afterDel.join('|'), '28 Undo puts the setup back where it was', { afterDel, restored });
+await page.click('[data-action="blk-add-mark"][data-kind="actor"]');
+await settle(page, 200);
+await page.focus('.vz-blk-label');
+await page.keyboard.type('Hero');
+await page.keyboard.press('Tab');
+await settle(page, 300);
+ok(await page.evaluate(() => document.activeElement !== document.body && document.activeElement.dataset.action === 'mk-turn'), '29 a mark label keeps the focus moving on (to the turn buttons)', await activeDesc());
+ok(/Hero/.test(await page.$eval('.vz-map.is-editable', (m) => m.textContent)), '29 and the map shows the label');
 
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();

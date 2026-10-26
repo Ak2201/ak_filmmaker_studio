@@ -97,7 +97,7 @@ function fillCuts(sec, data, scenes, api) {
   data.cuts.forEach((c) => sec.append(cutCard(c, scenes, label, linksBlock)));
   const f = h('form.el-cut-add', { 'data-edit-form': 'cut' });
   f.append(h('input', { type: 'text', name: 'name', placeholder: 'New cut — Assembly, Rough cut v1', 'aria-label': 'Name of the new cut' }));
-  f.append(h('input', { type: 'date', name: 'date', value: new Date().toISOString().slice(0, 10), 'aria-label': 'Date of the new cut' }));
+  f.append(h('input', { type: 'date', name: 'date', value: Edit.localISO(), 'aria-label': 'Date of the new cut' }));
   f.append(button({ label: 'Add cut', type: 'submit', size: 'sm' }));
   sec.append(f);
 
@@ -121,7 +121,13 @@ function fillCuts(sec, data, scenes, api) {
 delegate(document, 'submit', '[data-edit-form="cut"]', (e, form) => {
   e.preventDefault();
   const c = Edit.addCut({ name: form.querySelector('[name="name"]').value, date: form.querySelector('[name="date"]').value });
-  if (!c) { form.querySelector('[name="name"]').focus(); return; }
+  if (!c) {
+    const nm = form.querySelector('[name="name"]');
+    nm.setAttribute('aria-invalid', 'true');
+    if (StudioUI.toastError) StudioUI.toastError('Type a name for the cut first (Assembly, Rough cut v1).');
+    nm.focus();
+    return;
+  }
   render('[data-cut="' + CSS.escape(c.id) + '"] input[name="tc"]');
 });
 
@@ -136,7 +142,12 @@ delegate(document, 'submit', '[data-edit-form="cutnote"]', (e, form) => {
     tc.focus();
     return;
   }
-  if (!text.value.trim()) { text.focus(); return; }
+  if (!text.value.trim()) {
+    text.setAttribute('aria-invalid', 'true');
+    if (StudioUI.toastError) StudioUI.toastError('Type the note first.');
+    text.focus();
+    return;
+  }
   Edit.addCutNote(cutId, { tc: tc.value, sceneId: form.querySelector('[name="sceneId"]').value, text: text.value });
   render('[data-edit-form="cutnote"][data-cut="' + CSS.escape(cutId) + '"] input[name="tc"]');
 });

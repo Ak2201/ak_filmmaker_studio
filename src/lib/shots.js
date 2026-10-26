@@ -534,15 +534,58 @@ export function autoNumber(sceneId) {
     money.js rule: "12", "7.5", "20 min", "1h 30", "1:30" (h:mm) read;
     anything with other words in it reads 0 rather than a guess. */
 export function shotMinutes(shot) {
-  const t = String((shot && shot.mins) ?? '').trim().toLowerCase();
+  const n = parseMinutes(shot && shot.mins);
+  return n == null ? 0 : n;
+}
+
+/** The longest estimate one setup may carry: a day. */
+export const MAX_SHOT_MINUTES = 1440;
+
+/** PURE. The minutes a typed estimate means: null for text it cannot read
+    (or for a negative or over-a-day figure), 0 for blank. */
+export function parseMinutes(text) {
+  const t = String(text ?? '').trim().toLowerCase();
   if (!t) return 0;
+  let n = null;
   let m = t.match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?)?$/);
-  if (m) return Number(m[1]);
-  m = t.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?)(?:\s*(\d+)\s*(m|min|mins|minutes?)?)?$/);
-  if (m) return Number(m[1]) * 60 + (m[3] ? Number(m[3]) : 0);
-  m = t.match(/^(\d+):([0-5]\d)$/);
-  if (m) return Number(m[1]) * 60 + Number(m[2]);
-  return 0;
+  if (m) n = Number(m[1]);
+  if (n == null) {
+    m = t.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?)(?:\s*(\d+)\s*(m|min|mins|minutes?)?)?$/);
+    if (m) n = Number(m[1]) * 60 + (m[3] ? Number(m[3]) : 0);
+  }
+  if (n == null) {
+    m = t.match(/^(\d+):([0-5]\d)$/);
+    if (m) n = Number(m[1]) * 60 + Number(m[2]);
+  }
+  return n != null && n <= MAX_SHOT_MINUTES ? n : null;
+}
+
+/** PURE. '' when a typed estimate reads (or is blank), else the reason. */
+export function minutesProblem(text) {
+  return parseMinutes(text) == null
+    ? 'Time estimates read as 12, 7.5, 1h 30 or 1:30, and no more than a day.'
+    : '';
+}
+
+/** PURE. The shot numbers more than one shot of this list holds (trimmed,
+    upper-cased), so a typed clash can be named before it reaches the
+    paperwork. Blank numbers never clash. */
+export function duplicateNumbers(list) {
+  const seen = new Set(), dup = new Set();
+  for (const s of list || []) {
+    const n = String((s && s.number) ?? '').trim().toUpperCase();
+    if (!n) continue;
+    if (seen.has(n)) dup.add(n); else seen.add(n);
+  }
+  return dup;
+}
+
+/** PURE. The first free "Setup N" among a scene's diagrams. */
+export function nextBlockName(blocks) {
+  const taken = new Set((blocks || []).map((b) => String((b && b.name) ?? '').trim().toLowerCase()));
+  let n = 1;
+  while (taken.has('setup ' + n)) n++;
+  return 'Setup ' + n;
 }
 
 /** Total minutes over a list of shots, and how many carry an estimate. */
@@ -805,8 +848,7 @@ export function blocksOfScene(sceneId) {
 
 export function addBlock(sceneId, patch = {}) {
   const blocks = listBlocks();
-  const n = blocks.filter((b) => b.sceneId === sceneId).length;
-  const block = blankBlock({ sceneId, name: 'Setup ' + (n + 1), ...patch });
+  const block = blankBlock({ sceneId, name: nextBlockName(blocks.filter((b) => b.sceneId === sceneId)), ...patch });
   blocks.push(block);
   saveBlocks(blocks);
   return block;
@@ -819,6 +861,15 @@ export function updateBlock(id, patch) {
   blocks[i] = { ...blocks[i], ...patch, id, marks: blocks[i].marks };   // marks go through the mark calls
   saveBlocks(blocks);
   return blocks[i];
+}
+
+/** Put a removed diagram back at its old place in the list (Undo). */
+export function restoreBlock(block, index) {
+  const blocks = listBlocks().filter((b) => b.id !== block.id);
+  const at = Number.isInteger(index) && index >= 0 && index <= blocks.length ? index : blocks.length;
+  blocks.splice(at, 0, block);
+  saveBlocks(blocks);
+  return blocks;
 }
 
 export function removeBlock(id) {
@@ -973,10 +1024,10 @@ export default {
   SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, BOARD_SUGGESTIONS,
   sceneCameras, camOf, shotsOfCamera,
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
-  addBlock, updateBlock, removeBlock, addMark, updateMark, removeMark,
+  addBlock, updateBlock, removeBlock, restoreBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,
-  reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, minutesOf, formatMinutes,
+  reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, parseMinutes, minutesProblem, MAX_SHOT_MINUTES, duplicateNumbers, nextBlockName, minutesOf, formatMinutes,
   minutesByDay, setupOf, groupBySetup, frameAction, actionPatch,
   shotsByScene, takeSceneOut, putSceneBack,
   blankFrame, listFrames, saveFrames, addFrame, updateFrame, removeFrame,

@@ -365,5 +365,38 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   mem.delete(M.SHOTS_KEY);
 }
 
+/* ---- visual QA round 2: formula cells, minutes, numbers, setup names ---- */
+{
+  const M = await import('../src/lib/shots.js');
+  const Sc = await import('../src/lib/scenes.js');
+  const X = await import('../src/lib/shotlist-export.js');
+  mem.delete(M.SHOTS_KEY);
+  Sc.saveScenes([{ id: 'S1', number: '1', intExt: 'INT', location: 'FLAT', dayNight: 'NIGHT', eighths: 8 }]);
+  M.addShot('S1', { description: '=HYPERLINK("http://x","click")' });
+  const cells = X.toCSV('all').slice(1).split('\r\n')[1];
+  ok(cells.includes('"\'=HYPERLINK(""http://x"",""click"")"'), 'a description starting with = is written as text, not a formula — ' + cells);
+  ok(!/(^|,)"=/.test(cells), 'no CSV cell opens with a bare =');
+  mem.delete(M.SHOTS_KEY);
+
+  eq(['', '12', '7.5', '1h 30', '1:30', '20 min'].map(M.minutesProblem), ['', '', '', '', '', ''], 'readable estimates raise no problem');
+  ok(['abc', '-5', '90000', '1:75'].every((t) => M.minutesProblem(t)), 'abc, -5, 90000 and 1:75 are named as problems');
+  eq(M.shotMinutes({ mins: '1h 30' }), 90, 'shotMinutes still reads 1h 30');
+  eq(M.shotMinutes({ mins: 'abc' }), 0, 'shotMinutes still reads unreadable text as 0');
+
+  eq([...M.duplicateNumbers([{ number: '1' }, { number: '2' }, { number: '3' }, { number: '1' }])], ['1'], 'duplicateNumbers names the shared number');
+  eq([...M.duplicateNumbers([{ number: '4a' }, { number: '4A' }, { number: '' }, { number: '' }])], ['4A'], 'case-insensitive; blanks never clash');
+
+  mem.delete(M.SHOTS_KEY);
+  const b1 = M.addBlock('S1'), b2 = M.addBlock('S1'), b3 = M.addBlock('S1');
+  eq([b1.name, b2.name, b3.name], ['Setup 1', 'Setup 2', 'Setup 3'], 'diagrams are Setup 1..3');
+  const idx = M.listBlocks().findIndex((b) => b.id === b1.id);
+  M.removeBlock(b1.id);
+  eq(M.addBlock('S1').name, 'Setup 1', 'a new diagram takes the first free name, not a repeat of Setup 2');
+  M.removeBlock(M.listBlocks().pop().id);
+  M.restoreBlock(b1, idx);
+  eq(M.listBlocks().map((b) => b.name), ['Setup 1', 'Setup 2', 'Setup 3'], 'restoreBlock puts the diagram back at its old place');
+  mem.delete(M.SHOTS_KEY);
+}
+
 console.log(`\ntest:shots — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

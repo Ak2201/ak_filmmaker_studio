@@ -224,7 +224,7 @@ function festivalBlock(reqs, format) {
     sec.append(h('p.dv-fest-go', {}, [button({
       label: feature ? 'Add festivals' : 'Open the submission tracker',
       iconAfter: 'arrow_forward',
-      href: feature ? 'short.html?stay=1#step-10' : (guideHref('short', 'step-10') || 'edit.html#guide')
+      href: 'short.html?stay=1#step-10'
     })]));
     return sec;
   }
@@ -789,7 +789,7 @@ delegate(document, 'submit', '[data-dv-form="custom"]', (e, form) => {
   const input = form.querySelector('input[name="label"]');
   const when = form.querySelector('select[name="when"]');
   if (Deliverables.addCustom(input.value, when && when.value)) {
-    render();
+    render('[data-dv-form="custom"] input[name="label"]');
     if (StudioUI.toastSuccess) StudioUI.toastSuccess('Added to the list');
   } else {
     const why = form.querySelector('.dv-link-why');

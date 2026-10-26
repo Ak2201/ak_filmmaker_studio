@@ -114,7 +114,7 @@ function sceneRow(row) {
   facts.append(gotBadge(row));
   facts.append(setupsLine(row));
   const openPk = row.pickups.filter((p) => !p.done).length;
-  if (openPk) facts.append(h('span.el-pending', { text: 'Pending pickup' + (openPk > 1 ? ' · ' + openPk : '') }));
+  if (openPk) facts.append(h('span.el-pending', { text: 'Pending pick-up' + (openPk > 1 ? ' · ' + openPk : '') }));
   facts.append(check({
     label: 'Audio synced', checked: row.edit.sync, class: 'el-sync' + (row.edit.sync ? ' is-synced' : ''),
     attrs: { 'data-edit-field': 'sync', 'data-scene': s.id, 'aria-label': 'Audio synced for scene ' + (s.number || '') }
@@ -598,7 +598,7 @@ delegate(document, 'click', '[data-edit-action]', (e, el) => {
     const id = el.getAttribute('data-scene');
     const prev = Edit.sceneEdit(id).cut;
     Edit.setSceneEdit(id, { cut: 'out' });
-    render();
+    render('[data-edit-field="cut"][data-scene="' + CSS.escape(id) + '"]');
     if (StudioUI.toast) StudioUI.toast('Scene marked cut out', {
       action: 'Undo', onAction: () => { Edit.setSceneEdit(id, { cut: prev }); render(); }
     });
@@ -608,7 +608,7 @@ delegate(document, 'click', '[data-edit-action]', (e, el) => {
     const id = el.getAttribute('data-scene');
     const sc = Scenes.listScenes().find((x) => x.id === id);
     if (Edit.addPickup(id, 'Pick-up: scene ' + ((sc && sc.number) || '') + ' was dropped on the day')) {
-      render();
+      render('[data-edit-field="cut"][data-scene="' + CSS.escape(id) + '"]');
       if (StudioUI.toast) StudioUI.toast('Pick-up added to the scene');
     }
     return;
@@ -695,7 +695,11 @@ delegate(document, 'submit', '[data-edit-form="pickup"]', (e, form) => {
   /* Back into the same scene's add line, so a run of pick-ups is
      typed without reaching for the mouse between them. */
   if (Edit.addPickup(id, input.value)) render('[data-edit-form="pickup"][data-scene="' + CSS.escape(id) + '"] input');
-  else input.focus();
+  else {
+    input.setAttribute('aria-invalid', 'true');
+    if (StudioUI.toastError) StudioUI.toastError('Type what the editor needs first.');
+    input.focus();
+  }
 });
 
 /* ---- links and cut versions ---------------------------------- */

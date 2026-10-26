@@ -293,7 +293,14 @@ export function buildDocument(scope, opts = {}) {
    a CSV is how a description containing a comma becomes two
    columns three months after anybody remembers writing this.
    ------------------------------------------------------------ */
-const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+/* A cell that opens with = + - @ is prefixed with an apostrophe, as the Edit
+   Log, Budget and Dialogue-list CSVs do: a description typed (or drafted,
+   or co-edited) as a formula must open in a spreadsheet as text. */
+const csvCell = (v) => {
+  let t = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+  return '"' + t.replace(/"/g, '""') + '"';
+};
 
 export const CSV_HEADER = [
   'Scene', 'Slug', 'Int/Ext', 'Time', 'Location', 'Scene pages',

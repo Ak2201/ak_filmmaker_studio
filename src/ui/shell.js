@@ -1608,7 +1608,12 @@ function measureChrome() {
     /* A row of chrome is at least a line of text tall. The floor is
        what keeps .reading-progress out of the sum — 2px, fixed, full
        width, and not a thing anything is hidden behind. */
-    if (r.height < 16 || r.width < vw * 0.5) continue;
+    /* The tab strip is the exception to "wide": at 1440 it is a 685px
+       strip beside the side-menu gutter, under half the viewport, so this
+       test dropped it and --sh-cover-h stayed the band alone: a tab landing
+       or a keyboard-focus scroll put the first lines under the strip. It
+       must still straddle the middle, below. */
+    if (r.height < 16 || (r.width < vw * 0.5 && !el.classList.contains('tabs'))) continue;
     /* AND NOT A SCREEN. plan-gate's .pg-lock is a fixed, full-width
        overlay parked at `top: var(--sh-chrome-h)`; with the band
        hidden (the paywall hides it) and no trial strip above it, it

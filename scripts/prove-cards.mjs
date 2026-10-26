@@ -198,6 +198,104 @@ const ph = await page.$eval('#bdSceneSearch', (i) => {
 });
 ok(ph.need <= ph.have, '8  the search placeholder fits its box', ph);
 
+/* 9 (breakdown QA round 2) keyboard focus, undo and reach on the Scene List and Auto-Tag */
+{
+  const q = await ctx.newPage();
+  q.on('pageerror', (e) => errors.push(e.message));
+  await q.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await q.evaluate(() => {
+    const S = window.StudioStore;
+    localStorage.clear();
+    const p = S.createProject({ title: 'Round2', format: 'feature' });
+    S.setCurrentProject(p.id);
+    const sc = (n, location, synopsis, extra) => ({ id: 'sc' + n, number: String(n), intExt: 'INT', dayNight: 'DAY', location, synopsis, eighths: 8, elements: {}, ...(extra || {}) });
+    localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes: [
+      sc(1, 'HOSTEL ROOM', 'Arun cannot sleep.', { elements: { props: ['Gold medal and box'] } }), sc(2, 'COLLEGE GATE', 'The first day.'), sc(3, 'CANTEEN', 'Tea.'), sc(4, 'ROOFTOP', 'Light goes.')
+    ] }));
+    const el = (id, type, text) => ({ id, type, text });
+    localStorage.setItem('fms_script_v1', JSON.stringify({ elements: [
+      el('h1', 'scene', 'INT. HOSTEL ROOM - DAY'), el('a1', 'action', 'A medal and a lamp and a pen on the desk. Behind the glass: ARREAR SUBJECTS, REGISTERED CANDIDATES.'),
+      el('h2', 'scene', 'INT. COLLEGE GATE - DAY'), el('a2', 'action', 'A lorry and a bicycle at the gate.')
+    ] }));
+  });
+  await q.goto(url('breakdown.html#suggest'), { waitUntil: 'networkidle' });
+  await q.waitForTimeout(400);
+  const chips = await q.$$eval('.bd-sug-scene[data-scene="sc1"] .bd-sug', (c) => c.map((x) => x.dataset.name));
+  ok(!chips.includes('medal') && chips.includes('lamp'), '9  a tagged "Gold medal and box" is not offered again as "medal"', chips);
+  ok(!(await q.$$eval('.bd-sug[data-cat="cast"]', (c) => c.map((x) => x.dataset.name))).includes('Arrear Subjects'), '9  capitals on a sign are not offered as cast');
+  const n0 = chips.length;
+  await q.focus('.bd-sug-scene[data-scene="sc1"] .bd-sug');
+  await q.keyboard.press('Enter');
+  await q.waitForTimeout(250);
+  ok(await q.evaluate(() => !!document.activeElement?.closest('.bd-sug-scene[data-scene="sc1"]') && document.activeElement.classList.contains('bd-sug')), '9  tagging a suggestion moves focus to the next chip, not <body>', await q.evaluate(() => document.activeElement?.tagName));
+  ok((await q.$$eval('.bd-sug-scene[data-scene="sc1"] .bd-sug', (c) => c.length)) === n0 - 1, '9  and the chip left the list');
+  await q.focus('.bd-sug-scene[data-scene="sc1"] .bd-sug-scene-all');
+  await q.keyboard.press('Enter');
+  await q.waitForTimeout(250);
+  ok(await q.evaluate(() => document.activeElement && document.activeElement !== document.body), '9  ADD THESE leaves focus on a control', await q.evaluate(() => document.activeElement?.tagName));
+  await q.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+  await q.waitForTimeout(300);
+  // Re-measure, type a length, Undo: the typed length survives
+  const rm = await q.$('[data-action="eighths-measure"]');
+  if (rm) {
+    await q.focus('[data-action="eighths-measure"]');
+    await q.keyboard.press('Enter');
+    await q.waitForTimeout(250);
+    ok(await q.evaluate(() => document.activeElement && document.activeElement !== document.body), '9  Re-measure leaves focus on a control');
+    await q.evaluate(() => { const o = JSON.parse(localStorage.getItem('fms_scenes_v1')); o.scenes[0].eighths = 33; localStorage.setItem('fms_scenes_v1', JSON.stringify(o)); });
+    await q.click('.toast [data-action], .toast button:has-text("Undo")');
+    await q.waitForTimeout(250);
+    ok(await q.evaluate(() => JSON.parse(localStorage.getItem('fms_scenes_v1')).scenes[0].eighths) === 33, '9  Undo of a re-measure keeps a length typed afterwards');
+  }
+  // bulk actions reach only the scenes the filter leaves on screen
+  await q.check('[data-scene="sc1"] [data-action="sl-pick"]');
+  await q.check('[data-scene="sc2"] [data-action="sl-pick"]');
+  await q.fill('#bdSceneSearch', 'HOSTEL');
+  await q.waitForTimeout(200);
+  ok(/2 selected \(1 hidden/.test(await q.$eval('.bd-sl-bulk-n', (n) => n.textContent)), '9  the bulk bar says a selected scene is hidden by the filter', await q.$eval('.bd-sl-bulk-n', (n) => n.textContent));
+  await q.selectOption('[data-sl-bulk="dayNight"]', 'NIGHT');
+  await q.waitForTimeout(200);
+  const dn = await q.evaluate(() => JSON.parse(localStorage.getItem('fms_scenes_v1')).scenes.map((s) => s.dayNight));
+  ok(dn[0] === 'NIGHT' && dn[1] === 'DAY', '9  a bulk change leaves the hidden selected scene alone', dn);
+  await q.fill('#bdSceneSearch', '');
+  // bin: the buttons name the action and focus stays in the list
+  await q.focus('[data-scene="sc3"] .bd-sl-toggle');
+  await q.keyboard.press('Enter');
+  await q.click('[data-scene="sc3"] [data-action="scene-del"]');
+  await q.waitForTimeout(250);
+  ok(await q.evaluate(() => document.activeElement && document.activeElement !== document.body), '9  Move to the bin leaves focus on a control', await q.evaluate(() => document.activeElement?.tagName));
+  await q.focus('.bd-bin-del');
+  await q.keyboard.press('Enter');
+  await q.waitForTimeout(200);
+  ok(await q.$eval('.mbtn.primary', (b) => b.textContent) === 'Delete for good', '9  the bin\'s delete dialog confirms with "Delete for good", not OK');
+  await q.click('.mbtn.primary');
+  await q.waitForTimeout(250);
+  ok(await q.evaluate(() => document.activeElement && document.activeElement !== document.body), '9  after Delete for good focus is not on <body>', await q.evaluate(() => document.activeElement?.tagName));
+  // the bar's labels are kit sentence case
+  ok(/^Expand all$/.test(await q.$eval('.bd-sl-expand', (b) => b.textContent.trim())) && /^Save this filter$/.test(await q.$eval('.bd-sl-save', (b) => b.textContent.trim())), '9  Expand all and Save this filter are sentence case');
+  // keyboard reorder: the grip stays where it was on screen
+  await q.evaluate(() => window.scrollTo(0, 0));
+  await q.focus('[data-scene="sc2"] .bd-sl-grip');
+  const top0 = await q.$eval('[data-scene="sc2"] .bd-sl-grip', (g) => g.getBoundingClientRect().top);
+  await q.keyboard.press('ArrowDown');
+  await q.waitForTimeout(250);
+  await q.keyboard.press('ArrowUp');
+  await q.waitForTimeout(250);
+  const top1 = await q.$eval('[data-scene="sc2"] .bd-sl-grip', (g) => g.getBoundingClientRect().top);
+  ok(Math.abs(top1 - top0) < 90, '9  keyboard reorder does not throw the moved row across the screen', { top0, top1 });
+  // a script mark stays an inline word on a touch screen (base.css's 44px floor made each a box)
+  const dump = await q.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage))));
+  const touch = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await touch.addInitScript((d) => { if (!sessionStorage.getItem('__seeded')) { for (const [k, v] of Object.entries(JSON.parse(d))) localStorage.setItem(k, v); sessionStorage.setItem('__seeded', '1'); } }, dump);
+  const tp = await touch.newPage();
+  await tp.goto(url('breakdown.html#breakdown'), { waitUntil: 'networkidle' });
+  await tp.waitForTimeout(500);
+  const marks = await tp.$$eval('.bdp-mark', (m) => m.map((x) => { const c = getComputedStyle(x); return { d: c.display, h: c.minHeight, w: c.minWidth }; }));
+  ok(marks.length > 0 && marks.every((m) => m.d === 'inline' && m.h === '0px' && m.w === '0px'), '9  on a touch screen a script mark is inline, not a 44px box', marks.slice(0, 2));
+  await touch.close();
+  await q.close();
+}
+
 /* 7 phone width, fresh load */
 const phone = await ctx.newPage();
 phone.on('pageerror', (e) => errors.push(e.message));

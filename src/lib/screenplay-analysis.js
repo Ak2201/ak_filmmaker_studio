@@ -433,10 +433,14 @@ export function cueName(t) {
 const key = (n) => cueName(n);
 
 /** Speaking parts introduced in capitals in action: "RAVI, 30s, ..." —
- *  a run of 2+ capital letters (words) followed by a comma or "(". */
+ *  a run of 2+ capital letters (words) followed by a comma or "(" AND an
+ *  age ("30s", "(40)", "mid-30s"). A run of capitals is as often a sign
+ *  or a banner ("ARREAR SUBJECTS, REGISTERED CANDIDATES", "DEPARTMENT
+ *  SYMPOSIUM, and under that…"), and offering those as cast put fake
+ *  characters into the cast count; a person's introduction names an age. */
 function capsIntros(text) {
   const out = [];
-  const re = /\b([A-Z][A-Z'’.-]{1,}(?:\s+[A-Z][A-Z'’.-]{1,}){0,2})\s*(?:,|\()/g;
+  const re = /\b([A-Z][A-Z'’.-]{1,}(?:\s+[A-Z][A-Z'’.-]{1,}){0,2})\s*(?:,|\()\s*(?=\d|(?:[Ee]arly|[Mm]id|[Ll]ate)\b)/g;
   let m;
   while ((m = re.exec(text))) {
     const name = m[1].trim();
@@ -544,14 +548,22 @@ export const titleCase = (s) => String(s)
 export function suggestElements(scene, slice) {
   const out = Object.fromEntries(SUGGEST_CATEGORIES.map((c) => [c, []]));
   if (!slice) return out;
-  const have = {};
+  const have = {}, haveWords = {};
+  /* A tagged "Gold medal and box" covers "medal", and "Students (180)"
+     covers "students": the suggestion's words, folded to the singular,
+     sit in a row inside a tagged name's. Exact-key alone offered 36
+     near-duplicates on the Dragon sample. */
+  const words = (cat, n) => String(n).toLowerCase().replace(/\(.*?\)/g, ' ').split(/[^\p{L}\p{N}'’]+/u).filter(Boolean).map((w) => foldKey(cat, w));
   for (const cat of Object.keys(out)) {
-    have[cat] = new Set(((scene.elements && scene.elements[cat]) || []).map((n) => foldKey(cat, String(n).trim().toLowerCase())));
+    const tagged = (scene.elements && scene.elements[cat]) || [];
+    have[cat] = new Set(tagged.map((n) => foldKey(cat, String(n).trim().toLowerCase())));
+    haveWords[cat] = tagged.map((n) => ' ' + words(cat, n).join(' ') + ' ');
   }
   const seen = Object.fromEntries(SUGGEST_CATEGORIES.map((c) => [c, new Set()]));
   const add = (cat, name, from) => {
     const k = foldKey(cat, name.trim().toLowerCase());
     if (!k || have[cat].has(k) || seen[cat].has(k)) return;
+    if (cat !== 'cast') { const w = ' ' + words(cat, name).join(' ') + ' '; if (haveWords[cat].some((t) => t.includes(w))) return; }
     // Cast match is on the cue form, so "Prakash" tagged covers "PRAKASH".
     if (cat === 'cast' && [...have.cast].some((x) => cueName(x) === cueName(name))) return;
     seen[cat].add(k);

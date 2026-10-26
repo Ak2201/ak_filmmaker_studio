@@ -510,6 +510,12 @@ export function wirePaperBreakdown() {
     if (location.hash !== '#breakdown') location.hash = 'breakdown';
     const bar = document.querySelector('#breakdown .bdp-bar');
     if (bar) { bar.scrollIntoView({ block: 'start', behavior: 'instant' }); const s = bar.querySelector('.bdp-pick'); if (s) s.focus({ preventScroll: true }); }
+    /* The tab is still hidden when the hash is set (tabs.js shows it on the
+       hashchange that follows), so the focus above lands on nothing and falls
+       to <body>. Once the tab is up, put it on the scene picker. */
+    const pick = () => { const s = document.querySelector('#breakdown .bdp-pick'); if (s && s.offsetParent && document.activeElement !== s) s.focus({ preventScroll: true }); };
+    addEventListener('hashchange', () => requestAnimationFrame(pick), { once: true });
+    setTimeout(pick, 120);
   });
   delegate(document, 'click', '[data-action="bdp-tosheet"]', () => {
     const f = document.querySelector('#breakdown .bdp-form');

@@ -101,6 +101,15 @@ const snap2 = S.resolveStepScene(api, a.id, 'step');
 eq([byStep(a.id).text, sceneOf(a.id).synopsis], ['Mine.', 'Mine.'], 'resolve: send mine to the scene');
 S.restoreStepScene(api, snap2);
 eq([byStep(a.id).text, sceneOf(a.id).synopsis], ['Mine.', 'Theirs.'], 'restore: the scene’s text back too');
+/* Undo keeps what was typed after the resolve (breakdown QA r2) */
+{
+  const sn = S.resolveStepScene(api, a.id, 'step');
+  Scenes.updateScene(sceneOf(a.id).id, { synopsis: 'Later edit by me.' });
+  S.reconcileStepScenes(api);
+  eq([byStep(a.id).text, sceneOf(a.id).synopsis], ['Later edit by me.', 'Later edit by me.'], 'later: the edit reached both sides');
+  eq(S.restoreStepScene(api, sn), false, 'later: Undo has nothing it may put back');
+  eq([byStep(a.id).text, sceneOf(a.id).synopsis], ['Later edit by me.', 'Later edit by me.'], 'later: Undo does not wipe the later writing');
+}
 S.resolveStepScene(api, a.id, 'step');
 
 /* the old 280-cut pair: the scene gets the full text, so an edit to it

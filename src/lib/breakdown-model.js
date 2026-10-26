@@ -103,6 +103,20 @@ export function rowMatches(f, row) {
   return (!q || row.find.includes(q)) && (!f.ie || row.ie === f.ie)
     && (!f.dn || row.dn === f.dn) && (!f.st || row.st === f.st);
 }
+/** The bulk bar's count. A selected scene the search or a filter has hidden
+ *  is said so, because the bar's actions leave it alone. */
+export const bulkText = (n, hidden) => n + ' selected' + (hidden ? ' (' + hidden + ' hidden by the filter)' : '');
+/** Put re-measured lengths back, but only on scenes that still hold the
+ *  measured value: a length typed after the re-measure is kept. */
+export function restoreEighths(scenes, to, from) {
+  let kept = 0;
+  const next = scenes.map((s) => {
+    if (!from.has(s.id)) return s;
+    if (s.eighths !== to.get(s.id)) { kept++; return s; }
+    return { ...s, eighths: from.get(s.id) };
+  });
+  return { scenes: next, kept };
+}
 /** The scene list's count line. */
 export const filterCountText = (shown, total) =>
   (shown === total ? total + (total === 1 ? ' scene' : ' scenes') : shown + ' of ' + total + ' scenes');

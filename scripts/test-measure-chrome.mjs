@@ -56,7 +56,8 @@ function page() {
     querySelector: () => null,
     getBoundingClientRect: () => {
       const top = parseFloat(style(el).top) || 0;
-      return { top, height: el.h, left: 0, right: vp.w, width: vp.w };
+      const left = el.left || 0, width = el.w || vp.w - left;
+      return { top, height: el.h, left, right: left + width, width };
     }
   });
   const nodes = [node(bar), node(tabs)];
@@ -67,7 +68,7 @@ function page() {
     'let lastBand = -1; let lastCover = -1;\n' + body + '\nreturn measureChrome;');
   const measure = run(window, document, getComputedStyle, () => {});
   const settle = () => { for (let i = 0; i < 4; i++) measure(); };
-  return { vp, bar, props, settle, chrome: () => props.get('--sh-chrome-h'), cover: () => props.get('--sh-cover-h') };
+  return { vp, bar, tabs, props, settle, chrome: () => props.get('--sh-chrome-h'), cover: () => props.get('--sh-cover-h') };
 }
 
 /* ---- a fresh portrait load ---------------------------------- */
@@ -102,6 +103,15 @@ function page() {
   const seen = new Set();
   for (let i = 0; i < 6; i++) { p.settle(); seen.add(p.chrome()); }
   eq([...seen].join(','), '0px', 'a strip at top: 0 with no pinned band does not flip the published value');
+}
+
+/* ---- a strip narrower than half the viewport (1440, side gutter) --- */
+{
+  const p = page();
+  p.vp.w = 1440; p.vp.h = 900; p.tabs.left = 88; p.tabs.w = 685;
+  p.settle();
+  eq(p.chrome(), '56px', 'desktop: the band is the band alone');
+  eq(p.cover(), '100px', 'desktop: a 685px strip under the band is still cleared by a landing');
 }
 
 console.log(`test:measure-chrome — ${pass} passed, ${fail} failed`);

@@ -242,6 +242,13 @@ eq(A.suggestElements({ elements: {} }, { elements: [el('character', "RAGAVAN'S F
   eq(one.setdressing.filter((x) => /^chairs?$/.test(x.name)).length, 1, 'chair and chairs are one suggestion, not two');
   eq(A.suggestElements({ elements: { setdressing: ['chair'] } }, { elements: [el('action', 'Rows of folding chairs.')] }).setdressing.filter((x) => /^chairs?$/.test(x.name)).length, 0, 'a tagged chair covers the chairs');
 }
+eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'Behind the glass: ARREAR SUBJECTS, REGISTERED CANDIDATES. The banner says DEPARTMENT SYMPOSIUM, and under that a date. MEENA, 40, waits. LATHA (mid-30s) smiles.')] }).cast.map((x) => x.name), ['Meena', 'Latha'], 'capitals on a sign or banner are not cast; a name with an age is');
+{
+  const has = A.suggestElements({ elements: { props: ['Gold medal and box', 'Desk lamp'], cast: ['Students (180)'], extras: ['Students (180)'] } },
+    { elements: [el('action', 'She holds the medal beside a lamp and a pen. Students cheer.')] });
+  eq(has.props.map((x) => x.name), ['pen'], 'a tagged "Gold medal and box" covers medal, "Desk lamp" covers lamp');
+  eq(has.extras.map((x) => x.name), [], '"Students (180)" covers students');
+}
 eq(['mary-jane', "o'brien", 'dr. kumar (old)'].map(A.titleCase), ['Mary-Jane', "O'Brien", 'Dr. Kumar (Old)'], 'title case: hyphens, O\' prefixes, brackets');
 eq(A.suggestAll(scenes, script).length, 3, 'suggestAll returns only scenes with suggestions');
 

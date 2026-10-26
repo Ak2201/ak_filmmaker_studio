@@ -47,6 +47,11 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-sl-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .bd-sl-bar .bd-sl-search { flex: 1 1 18rem; min-width: 0; width: auto; }
 .bd-sl-bar .bd-sl-filter { flex: 0 0 auto; width: auto; max-width: 100%; }
+/* The two labels that change length ("Expand all" / "Collapse all", "36 scenes" /
+   "0 of 36 scenes") hold their width, or Notes wraps onto a row of its own and
+   the list drops 30px under the reader. */
+.bd-sl-expand { min-width: 12ch; }
+.bd-sl-count { min-width: 16ch; text-align: right; }
 .bd-sl-count { margin-left: auto; font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
 .bd-sl-bulk {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2);

@@ -39,7 +39,7 @@ import {
   breakdownFigures, readNumberLock, numberKey, dupNumbers, daySlot, sceneStatus, STATUS_TONE,
   castSummary, searchText, PRESET_KEYS, filterActive as filterOn, describeFilter, presetMatches,
   rowMatches, filterCountText, applySuggestions, binEntryBits, binTotalsBits, headingInScript,
-  sceneFieldValue, EIGHTHS_MAX, songFieldValue, runSaid
+  sceneFieldValue, EIGHTHS_MAX, songFieldValue, runSaid, bulkText, restoreEighths
 } from '../lib/breakdown-model.js';
 import '../styles/breakdown-run.css';
 import { flushStorage, onWriteElsewhere } from '../lib/store.js';
@@ -529,7 +529,7 @@ function renderSceneBar(scenes) {
       [opt('', 'Any time', SL.dn)].concat(DAY_NIGHT.map((v) => opt(v, v, SL.dn)))),
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'st', 'aria-label': 'Filter by where the scene stands' },
       [['', 'Any status'], ['untagged', 'Untagged'], ['tagged', 'Tagged'], ['scheduled', 'Scheduled'], ['shot', 'Shot'], ['part', 'Part shot'], ['dropped', 'Dropped']].map(([v, l]) => opt(v, l, SL.st))),
-    SL.view === 'cards' ? null : button({ label: SL.open.size ? 'COLLAPSE ALL' : 'EXPAND ALL', action: 'sl-expand', class: 'bd-sl-expand' }),
+    SL.view === 'cards' ? null : button({ label: SL.open.size ? 'Collapse all' : 'Expand all', action: 'sl-expand', class: 'bd-sl-expand' }),
     segmented({
       label: 'Show the scenes as', name: 'sl-view', action: 'sl-view', quiet: true, value: SL.view, class: 'bd-sl-view',
       options: [{ value: 'table', label: 'Table', icon: 'table_rows' }, { value: 'cards', label: 'Cards', icon: 'view_module' }]
@@ -538,7 +538,7 @@ function renderSceneBar(scenes) {
     notesButton()
   ]);
   const bulk = h('div.bd-sl-bulk', { hidden: !SL.sel.size, role: 'group', 'aria-label': 'Selected scenes' }, [
-    h('strong.bd-sl-bulk-n', { text: SL.sel.size + ' selected' }),
+    h('strong.bd-sl-bulk-n', { text: bulkText(SL.sel.size, 0) }),
     h('select.bd-sel', { 'data-sl-bulk': 'intExt', 'aria-label': 'Set interior or exterior on the selected scenes' },
       [h('option', { value: '', text: 'Set INT / EXT…' })].concat(INT_EXT.map((v) => h('option', { value: v, text: v })))),
     h('select.bd-sel', { 'data-sl-bulk': 'dayNight', 'aria-label': 'Set time of day on the selected scenes' },
@@ -557,7 +557,7 @@ function renderPresets() {
   const on = filterActive();
   return h('div.bd-sl-presets', { role: 'group', 'aria-label': 'Saved filters (kept until you reload this page)' }, [
     button({
-      label: 'SAVE THIS FILTER', size: 'sm', action: 'sl-save', disabled: !on, class: 'bd-sl-save',
+      label: 'Save this filter', size: 'sm', action: 'sl-save', disabled: !on, class: 'bd-sl-save',
       title: on ? 'Name the current search and filters and keep them as a button (until you reload this page)' : 'Set a search or a filter first, then save it'
     })
   ].concat(SL.presets.map((p) => {
@@ -599,6 +599,19 @@ function updateGrips() {
   });
 }
 
+/** The bulk bar's count and its reach. The bar's actions touch only the
+ *  selected scenes the filter leaves on screen, and the count says how many
+ *  it leaves alone (a scene bin or INT/EXT change on rows nobody can see is
+ *  a change nobody meant). */
+const hiddenIds = () => new Set([...document.querySelectorAll('.bd-sl[data-scene][hidden]')].map((r) => r.dataset.scene));
+const bulkIds = () => { const hid = hiddenIds(); return [...SL.sel].filter((id) => !hid.has(id)); };
+function syncBulk() {
+  const bulk = document.querySelector('.bd-sl-bulk');
+  if (!bulk) return;
+  bulk.hidden = !SL.sel.size;
+  const n = bulk.querySelector('.bd-sl-bulk-n');
+  if (n) n.textContent = bulkText(SL.sel.size, SL.sel.size - bulkIds().length);
+}
 /** Hide the rows the filters rule out, in place. */
 function applySceneFilter() {
   let shown = 0, total = 0;
@@ -612,6 +625,7 @@ function applySceneFilter() {
   if (count) count.textContent = filterCountText(shown, total);
   const none = document.querySelector('.bd-sl-none');
   if (none) none.hidden = shown > 0;
+  syncBulk();
   updateGrips();
   refreshPresets();
 }
@@ -1062,6 +1076,13 @@ function refocus(node) {
 }
 function render(focus) {
   scriptDoc = null;   // the Script Breakdown tab re-reads the script on every render
+  /* The control the reader is on, and where it sits on screen. A render that
+     hands focus back to the SAME control (a moved scene's grip, the Expand
+     button) keeps it there: the new <main> is taller until tabs.js folds the
+     other tabs, so left alone the page landed two rows away, in the wrong
+     direction for the key pressed. */
+  const was = document.activeElement;
+  const wasTop = focus && was && was !== document.body && was.matches && was.matches(focus) ? was.getBoundingClientRect().top : null;
   const scenes = Scenes.listScenes();
   readLinks(scenes);   // each scene's Beat Sheet step: one lookup per render
   const main = h('main', { id: 'main' });
@@ -1168,7 +1189,29 @@ function render(focus) {
     StudioUI.wireGlossaryPopovers();
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[breakdown] chrome', e); }
+  /* Last, because the learn slots and the stage guide above grow the page
+     over the control, some of it a moment later: put it back where it was on
+     screen, now and for the next half second. A newer render, or the reader
+     taking the scroll (wheel, touch, a press), ends it. */
+  const mine = ++keepToken;
+  if (keepAbort) keepAbort.abort();
+  keepAbort = new AbortController();
+  if (focus && wasTop !== null && wasTop >= 0 && wasTop <= innerHeight) {
+    const node = document.querySelector(focus);
+    let live = true;
+    const stop = () => { live = false; };
+    for (const t of ['wheel', 'touchstart', 'pointerdown']) addEventListener(t, stop, { once: true, passive: true, signal: keepAbort.signal });
+    const settle = () => {
+      if (!live || mine !== keepToken || !node || !node.isConnected) return;
+      const d = node.getBoundingClientRect().top - wasTop;
+      if (Math.abs(d) > 1) scrollBy({ top: d, behavior: 'instant' });
+    };
+    settle();
+    requestAnimationFrame(() => requestAnimationFrame(settle));
+    for (const ms of [120, 300, 500]) setTimeout(settle, ms);
+  }
 }
+let keepToken = 0, keepAbort = null;
 const inScene = (id, sel) => '[data-scene="' + CSS.escape(id || '') + '"] ' + sel;
 
 /* ---- events — delegated, no inline handlers ----------------- */
@@ -1195,8 +1238,7 @@ delegate(document, 'click', '[data-action="sl-expand"]', () => {
 delegate(document, 'change', '[data-action="sl-pick"]', (e, el) => {
   const id = sceneIdOf(el);
   if (el.checked) SL.sel.add(id); else SL.sel.delete(id);
-  const bulk = document.querySelector('.bd-sl-bulk');
-  if (bulk) { bulk.hidden = !SL.sel.size; const n = bulk.querySelector('.bd-sl-bulk-n'); if (n) n.textContent = SL.sel.size + ' selected'; }
+  syncBulk();
 });
 delegate(document, 'click', '[data-action="sl-clear"]', () => { SL.sel.clear(); render(); });
 delegate(document, 'click', '[data-action="sl-preset"]', (e, el) => {
@@ -1236,18 +1278,18 @@ delegate(document, 'click', '[data-action="sl-save"]', async () => {
 delegate(document, 'input', '[data-action-key="sl-find"]', (e, el) => { SL.q = el.value; applySceneFilter(); });
 delegate(document, 'change', '[data-sl-filter]', (e, el) => { SL[el.dataset.slFilter] = el.value; applySceneFilter(); });
 delegate(document, 'change', '[data-sl-bulk]', (e, el) => {
-  if (!el.value || !SL.sel.size) return;
-  const key = el.dataset.slBulk, n = SL.sel.size;
-  for (const id of SL.sel) Scenes.updateScene(id, { [key]: el.value });
+  const ids = bulkIds();
+  if (!el.value || !ids.length) return;
+  const key = el.dataset.slBulk, n = ids.length;
+  for (const id of ids) Scenes.updateScene(id, { [key]: el.value });
   render();
   StudioUI.toast(n + (n === 1 ? ' scene' : ' scenes') + ' set to ' + el.value + '.', { type: 'success' });
 });
 delegate(document, 'click', '[data-action="sl-bulk-bin"]', () => {
-  const ids = [...SL.sel];
+  const ids = bulkIds();
   if (!ids.length) return;
   const gone = binScenes(ids);
-  SL.sel.clear();
-  render();
+  render('.bd-sl-search');
   undoBin(gone, ids.length + (ids.length === 1 ? ' scene' : ' scenes') + ' moved to the bin.');
 });
 /** Move scenes to the bin and return the bin entries that now hold them. */
@@ -1286,15 +1328,15 @@ function moveAndFocus(el, dir) {
 }
 delegate(document, 'click', '[data-action="scene-up"]',   (e, el) => moveAndFocus(el, -1));
 delegate(document, 'click', '[data-action="scene-down"]', (e, el) => moveAndFocus(el,  1));
-delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => binOne(sceneIdOf(el)));
-function binOne(id) {
+delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => binOne(sceneIdOf(el), neighbourRowId(el.closest('.bd-sl[data-scene]'))));
+function binOne(id, near) {
   const scene = Scenes.listScenes().find((x) => x.id === id);
   const label = scene && (scene.number || scene.location) ? ' ' + (scene.number || scene.location).toString().slice(0, 30) : '';
   // removeScene() goes through the bin (src/lib/scene-bin.js), so the
   // scene's shots, frames, call-sheet places and edit notes go with it
   // and come back with it — which is why this offers UNDO, not a prompt.
   const gone = binScenes([id]);
-  render();
+  render(near ? inScene(near, '.bd-sl-toggle, .bd-sl-grip') : '.bd-sl-search');   // not <body>
   undoBin(gone, 'Scene' + label + ' moved to the bin — its shots, frames and call-sheet places went with it.');
 }
 
@@ -1308,6 +1350,7 @@ function binOne(id) {
 const typing = (el) => !!el && !!el.closest && !!el.closest('textarea, select, [contenteditable=""], [contenteditable="true"], input:not([type="checkbox"]):not([type="radio"]):not([type="button"])');
 const visibleRows = () => [...document.querySelectorAll('.bd-sl[data-scene]')].filter((r) => !r.hidden);
 function neighbourRowId(row) {
+  if (!row) return null;
   const rows = visibleRows(), i = rows.indexOf(row);
   const n = rows[i + 1] || rows[i - 1];
   return n ? n.dataset.scene : null;
@@ -1330,8 +1373,7 @@ document.addEventListener('keydown', (e) => {
   if (row && e.key === 'Delete' && !e.shiftKey && !typing(t)) {
     e.preventDefault();
     const id = row.dataset.scene, near = neighbourRowId(row);
-    binOne(id);
-    refocus(near && document.querySelector(inScene(near, '.bd-sl-toggle')));
+    binOne(id, near);
     return;
   }
   if (e.key === 'n' && !e.shiftKey && !typing(t)) {
@@ -1551,43 +1593,65 @@ delegate(document, 'click', '[data-action="bin-delete"]', async (e, el) => {
   const id = binIdOf(el);
   const entry = Bin.listBin().find((x) => x.id === id);
   if (!entry) return;
-  if (!await askDanger(`Delete for good — ${Bin.describeEntry(entry)}?\n\nThis cannot be undone.`)) return;
+  if (!await askDanger(`Delete for good — ${Bin.describeEntry(entry)}?\n\nThis cannot be undone.`, { confirm: 'Delete for good' })) return;
+  const li = el.closest('[data-bin]'), near = li && (li.nextElementSibling || li.previousElementSibling);
   Bin.deleteBinEntry(id);
-  render();
+  // Focus goes to the next removed scene's Restore, else back up to the list.
+  render(near && near.dataset.bin ? '[data-bin="' + CSS.escape(near.dataset.bin) + '"] [data-action="bin-restore"]' : '.bd-sl-search');
 });
 delegate(document, 'click', '[data-action="bin-empty"]', async () => {
   const t = Bin.binTotals();
   if (!t.scenes) return;
   const bits = binTotalsBits(t);
-  if (!await askDanger(`Empty the bin? ${bits.join(', ')} will be deleted for good.\n\nThis cannot be undone.`)) return;
+  if (!await askDanger(`Empty the bin? ${bits.join(', ')} will be deleted for good.\n\nThis cannot be undone.`, { confirm: 'Empty bin' })) return;
   Bin.emptyBin();
-  render();
+  render('.bd-sl-search');
 });
+/* Where focus goes when a suggestion leaves the list: the next chip of its
+   scene (else the one before), else the neighbouring scene's ADD THESE. A
+   keyboard user otherwise starts again from the top of the page. */
+const sugScene = (id) => '.bd-sug-scene[data-scene="' + CSS.escape(id) + '"]';
+function sugNear(li, chip) {
+  if (chip) {
+    const chips = [...li.querySelectorAll('.bd-sug')], i = chips.indexOf(chip), n = chips[i + 1] || chips[i - 1];
+    if (n) return sugScene(li.dataset.scene) + ' [data-cat="' + CSS.escape(n.dataset.cat) + '"][data-name="' + CSS.escape(n.dataset.name) + '"]';
+  }
+  const o = li.nextElementSibling || li.previousElementSibling;
+  return o && o.dataset.scene ? sugScene(o.dataset.scene) + ' .bd-sug-scene-all' : '';
+}
 delegate(document, 'click', '[data-action="sug-add"]', (e, el) => {
+  const li = el.closest('.bd-sug-scene'), near = li ? sugNear(li, el) : '';
   Scenes.tagElement(sceneIdOf(el), el.dataset.cat, el.dataset.name);
-  render();
+  render(near || undefined);
 });
 delegate(document, 'click', '[data-action="sug-scene"]', (e, el) => {
+  const li = el.closest('.bd-sug-scene'), near = li ? sugNear(li, null) : '';
   const added = applySuggestions([sceneIdOf(el)]);
-  render();
+  render(near || '[data-action="sug-all"]');
   toastTagged(added, false);
 });
-delegate(document, 'click', '[data-action="eighths-measure"]', () => {
+const MEASURE_BTN = '[data-action="eighths-measure"]';
+delegate(document, 'click', MEASURE_BTN, () => {
   const changes = measureEighths(loadScript().elements, Scenes.listScenes());
   if (!changes.length) { StudioUI.toast('Every matched scene\u2019s length already agrees with the script.'); return; }
   const to = new Map(changes.map((c) => [c.sceneId, c.to]));
   const from = new Map(changes.map((c) => [c.sceneId, c.from]));
-  const set = (m) => Scenes.saveScenes(Scenes.listScenes().map((s) => (m.has(s.id) ? { ...s, eighths: m.get(s.id) } : s)));
-  set(to);
-  render();
+  Scenes.saveScenes(Scenes.listScenes().map((s) => (to.has(s.id) ? { ...s, eighths: to.get(s.id) } : s)));
+  render(MEASURE_BTN);
   StudioUI.toast(`Re-measured ${changes.length} scene${changes.length === 1 ? '' : 's'} from the script.`, {
     action: 'Undo',
-    onAction: () => { set(from); render(); StudioUI.toast('Put the earlier lengths back.'); }
+    onAction: () => {
+      // A length typed since the re-measure is not the measured one: it stays.
+      const r = restoreEighths(Scenes.listScenes(), to, from);
+      Scenes.saveScenes(r.scenes);
+      render(MEASURE_BTN);
+      StudioUI.toast(r.kept ? `Put the earlier lengths back, except ${r.kept} you changed since.` : 'Put the earlier lengths back.');
+    }
   });
 });
 delegate(document, 'click', '[data-action="sug-all"]', () => {
   const added = applySuggestions(null);
-  render();
+  render('[data-action="sug-all"], .bd-sug-scene-all');
   toastTagged(added, true);
 });
 /* ---- element index: filter, batch tag, export ---------------- */
@@ -1640,8 +1704,7 @@ const exSync = () => {
   if (status) status.textContent = n + ' of ' + tot + ' scenes selected';
   const go = document.querySelector('[data-action="ex-batch"]');
   if (go) go.disabled = !n;
-  const bulk = document.querySelector('.bd-sl-bulk');
-  if (bulk) { bulk.hidden = !n; const c = bulk.querySelector('.bd-sl-bulk-n'); if (c) c.textContent = n + ' selected'; }
+  syncBulk();
 };
 delegate(document, 'change', '[data-action="ex-pick"]', (e, el) => {
   if (el.checked) SL.sel.add(el.dataset.sceneId); else SL.sel.delete(el.dataset.sceneId);
@@ -1978,9 +2041,14 @@ delegate(document, 'click', '[data-ss]', (e, el) => {
   const act = el.getAttribute('data-ss');
   const snap = resolveStepScene(SYNC_API, el.getAttribute('data-step'), act === 'use-scene' ? 'scene' : 'step');
   if (!snap) return;
-  render();
+  const back = inScene(snap.sceneId, '.bd-sl-toggle, .bd-sl-grip');   // the note is gone once it agrees; the row stays
+  render(back);
   StudioUI.toast(act === 'use-step' ? 'The scene has the step’s text now.' : 'The step has this scene’s text now.', {
-    action: 'Undo', onAction: () => { restoreStepScene(SYNC_API, snap); render(); }
+    action: 'Undo', onAction: () => {
+      const did = restoreStepScene(SYNC_API, snap);
+      render(back);
+      if (!did) StudioUI.toast('Not undone: that text has been changed since, and the new writing stays.');
+    }
   });
 });
 /* Back to this tab after the Story page changed a step (and so its

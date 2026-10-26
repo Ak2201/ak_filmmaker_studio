@@ -203,5 +203,16 @@ eq(r2.totals, r1.totals, 'and the totals are the same');
   eq(rows[0].ie, { INT: 1, EXT: 1 }, 'byLocation INT/EXT');
 }
 
+/* ---- Undo of a re-measure keeps what was typed since (QA r2) ---- */
+{
+  const M = await import('../src/lib/breakdown-model.js');
+  const to = new Map([['a', 21], ['b', 8]]), from = new Map([['a', 20], ['b', 16]]);
+  const r = M.restoreEighths([{ id: 'a', eighths: 33 }, { id: 'b', eighths: 8 }, { id: 'c', eighths: 5 }], to, from);
+  eq(r.scenes.map((x) => x.eighths), [33, 16, 5], 'Undo puts back only a length still at the measured value; a typed 33 stays');
+  eq(r.kept, 1, 'and counts the one it kept');
+  eq(M.bulkText(3, 2), '3 selected (2 hidden by the filter)', 'the bulk bar names the selected scenes the filter hides');
+  eq(M.bulkText(3, 0), '3 selected', 'and says nothing when none are hidden');
+}
+
 console.log(fail ? `\n${fail} FAILED, ${pass} passed` : `breakdown: ${pass} checks passed`);
 process.exit(fail ? 1 : 0);

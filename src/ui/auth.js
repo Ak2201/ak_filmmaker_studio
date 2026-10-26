@@ -32,6 +32,7 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
    so this cannot cycle back into chrome.js the way an import of
    cloud.js would. It is in the same `studio` chunk already. */
 import Account from '../lib/account.js';
+import { errorSentence } from '../lib/gate.js';
 import { connectProject } from '../lib/chrome-auth.js';
 import '../styles/auth.css';
 
@@ -54,7 +55,9 @@ function toastOk(msg) {
   if (u && u.toastSuccess) u.toastSuccess(msg); else console.log('[auth]', msg);
 }
 
-const errText = (e) => (e && (e.message || e.error_description)) || String(e || 'Something went wrong.');
+/* The browser's own words for a dropped connection ("TypeError: Failed to
+   fetch") become the studio's one sentence for it (gate.js errorSentence). */
+const errText = (e) => errorSentence(e, (e && e.error_description) || String(e || 'Something went wrong.'));
 
 // ============================================================
 // SIGN-IN PILL

@@ -23,6 +23,7 @@
    console's first paint does not carry it). Same contract: render(ctx) ->
    Node, built synchronously; ctx.rerender() when state changes.
    ============================================================ */
+import { errorSentence } from '../../lib/gate.js';
 import { h } from '../../lib/dom.js';
 import { ask, askDanger, tell } from '../../ui/dialog.js';
 import { emptyState, errorState, skeleton, pill, dataTable, relTime, absTime } from '../../ui/admin-kit.js';
@@ -51,7 +52,7 @@ const S = {
 };
 
 const rpc = (name, args) => controlsCall(ctx && ctx.cloud, name, args);
-const why = (e) => (e && e.message) || 'The server did not say why.';
+const why = (e) => errorSentence(e, 'The server did not say why.');
 const redraw = () => { if (ctx && ctx.rerender) ctx.rerender(); };
 
 /* ---- loading ------------------------------------------------------ */

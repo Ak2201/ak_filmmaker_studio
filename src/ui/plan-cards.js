@@ -65,6 +65,20 @@ const day = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocal
 const daysTo = (iso) => Math.ceil((new Date(iso) - Date.now()) / 86400000);
 let busyPlan = '';
 let statusText = '';
+/* Which card the status belongs to: it is drawn under THAT card's
+   button, where the reader pressed. At the foot of the row it sat
+   1,000-3,500px below the button and nobody saw why nothing happened. */
+let statusPlan = '';
+/* After a redraw, put focus back where the reader was if the redraw
+   dropped it (the pressed control was rebuilt, or drawn disabled while
+   busy, so it could not keep focus). Only when focus fell to <body>:
+   a reader who has moved on is left where they are. */
+function refocus(sel) {
+  const a = document.activeElement;
+  if (a && a !== document.body && a.isConnected) return;
+  const el = document.querySelector(sel);
+  if (el && !el.disabled) try { el.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
+}
 let hooks = { onBuy: null, rerender: null, onSuccess: null };
 /* The price view the host passed (price-model.js shopView), kept for the
    page so BUY and the quotes use the currency the cards were drawn in. */
@@ -383,6 +397,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     } else if (current && !higher) {
       act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--ghost.pl-cta-held', { type: 'button', disabled: true, text: 'INCLUDED IN YOUR PLAN' }));
     }
+    if (statusText && statusPlan === p.id) act.append(h('p.pl-status', { role: 'status', text: statusText }));
     if (act.childNodes.length) card.append(act);
 
     /* WHAT YOU GET: the additions by stage, then the limits, then the
@@ -422,7 +437,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   }
   else if (picked.id) markPicked(row);
   loadUpgradeQuotes(st, buyable);
-  if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
+  if (statusText && !row.querySelector('.pl-status')) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   /* The offers sit side by side under the row: the code box and the
@@ -432,7 +447,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
      the upgrade credit (refund.html §4, schema section 21), the legal. */
   wrap.append(h('div.pl-fine', {}, [
     h('p.pl-note', { text: `Each plan is a year of full access, paid once in ${orderCur() === 'USD' ? 'US dollars' : 'Indian rupees'} through Razorpay. Nothing renews or is charged automatically: when the year is ending, renew from this page and the new year starts where the old one stops.` }),
-    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final — which is why the trial comes first. Move up any time: what is left of your year counts toward the new plan.' }),
+    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, if the plan is not activated on your account, or where Indian law requires it. Otherwise a year is final — which is why the trial comes first. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
       'By paying you agree to the ',
       h('a', { href: 'terms.html', text: 'Terms of Service' }),
@@ -607,7 +622,9 @@ function successCard(planId, plans) {
   }).catch(() => { /* the card still says what plan you are on */ });
   
   card.append(h('p.pl-note', {}, [
-    'Your invoice is on its way from Razorpay by e-mail, and ',
+    /* The receipt is the studio's own (an edge function, _shared/mail.js),
+       not Razorpay's. */
+    'Your receipt and invoice are on their way by e-mail, and ',
     h('a', { href: 'purchase.html#invoices', text: 'listed under Invoices on the Purchase page' }), '.'
   ]));
   card.append(h('div.iv-actions', {}, [h('a.k-btn.k-btn--primary', { href: 'index.html?welcome=plan', text: 'Start your film' })]));
@@ -664,7 +681,8 @@ export function usageTiles(st) {
 
 delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
   if (!hooks.onBuy || busyPlan) return;
-  busyPlan = el.dataset.plan; statusText = '';
+  const plan = el.dataset.plan;
+  busyPlan = plan; statusText = ''; statusPlan = plan;
   if (hooks.rerender) hooks.rerender();
   try {
     const q = appliedQuote(el.dataset.plan);
@@ -682,6 +700,7 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
   } finally {
     busyPlan = '';
     if (hooks.rerender) hooks.rerender();
+    refocus(`.pl-card [data-plan-action="buy"][data-plan="${plan}"]`);
   }
 });
 
@@ -695,7 +714,7 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   const typed = String(new FormData(form).get('code') || '');
   const code = normalisePromo(typed);
   promo.typed = typed; promo.error = ''; promo.quotes = {}; promo.code = ''; promo.open = true; promo.cur = orderCur();
-  if (!code) { if (hooks.rerender) hooks.rerender(); return; }
+  if (!code) { if (hooks.rerender) hooks.rerender(); refocus('#plPromoCode'); return; }
   promo.busy = true;
   if (hooks.rerender) hooks.rerender();
   try {
@@ -714,6 +733,7 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   } finally {
     promo.busy = false;
     if (hooks.rerender) hooks.rerender();
+    refocus('#plPromoCode');
   }
 });
 

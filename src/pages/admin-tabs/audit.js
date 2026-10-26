@@ -23,6 +23,7 @@
    Also exported for the Overview: ensureRecent() / recentState() — the
    last 15 rows, loaded once and shared.
    ============================================================ */
+import { errorSentence } from '../../lib/gate.js';
 import { h, delegate, download } from '../../lib/dom.js';
 import { timeline, diff, dataTable, emptyState, errorState, skeleton, pill, hashParts, absTime } from '../../ui/admin-kit.js';
 import { callRpc, humanAction } from './rpc.js';
@@ -57,7 +58,7 @@ async function load({ more = false } = {}) {
   } catch (e) {
     if (mine !== seq) return;
     if (!more) S.phase = 'error';
-    S.error = e.message || 'The server did not say why.';
+    S.error = errorSentence(e, 'The server did not say why.');
   }
   S.more = false;
   again();
@@ -75,7 +76,7 @@ export async function loadRecent(ctx) {
     const out = await callRpc(ctxRef && ctxRef.cloud, 'admin_list_audit', { p_limit: 15 });
     R.rows = Array.isArray(out && out.rows) ? out.rows : [];
     R.phase = 'ok'; R.error = ''; R.at = Date.now();
-  } catch (e) { R.phase = 'error'; R.error = e.message || 'The server did not say why.'; }
+  } catch (e) { R.phase = 'error'; R.error = errorSentence(e, 'The server did not say why.'); }
   R.busy = false;
   again();
 }

@@ -47,6 +47,8 @@ import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js'
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
+import { trialRefusal, trialOfferFrom } from '../lib/invite-model.js';
+import { errorSentence } from '../lib/gate.js';
 import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
@@ -130,6 +132,31 @@ function currencyBlock() {
   ]);
 }
 const currentView = () => (shop.loading ? rupeeView('INR') : shop.view || rupeeView('INR'));
+/* START THE TRIAL from here — the page Settings points a member to. The
+   same two steps as invite.html's button: start_trial() writes the
+   membership, then the gate is asked again. Nothing starts by itself. */
+let trialBusy = false;
+let trialMsg = '';
+delegate(document, 'click', '[data-action="pu-start-trial"]', async () => {
+  if (trialBusy) return;
+  trialBusy = true; trialMsg = ''; render();
+  try {
+    const r = await Billing.startTrial();
+    if (!r || !r.started) trialMsg = trialRefusal(r && r.reason);
+    else {
+      trialMsg = 'Your free trial has started.';
+      const c = cloud();
+      if (c && c.runGate) await c.runGate();
+      Store.notify('billing:changed', null);
+    }
+  } catch (e) {
+    trialMsg = errorSentence(e, 'That did not start. Please try again.');
+  }
+  trialBusy = false; render();
+  const b = document.querySelector('[data-action="pu-start-trial"]') || document.getElementById('puTrialMsg');
+  if (b && (!document.activeElement || document.activeElement === document.body)) { if (b.id === 'puTrialMsg') b.setAttribute('tabindex', '-1'); try { b.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } }
+});
+
 delegate(document, 'click', '[data-action="pu-currency"]', (e, btn) => {
   const want = btn.dataset.value;
   if (want === shop.want || (want !== 'INR' && want !== 'USD')) return;
@@ -165,12 +192,22 @@ async function refreshBilling() {
    this page said they were on a plan. The line reads billing_status()
    (this page's own copy) and the server's clock through plan-gate. */
 function trialLine(st) {
-  const t = trialStatus(st, () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()));
+  const t = trialStatus(st, () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()), !!trialOfferFrom(st));
   if (!t) return null;
   /* §33. Access given by e-mail with no plan: in, uncapped, nothing owed
      while it stands. Said instead of any trial wording. */
   if (t.kind === 'granted') return h('p.pl-status.pu-granted', { text: t.text });
   if (t.kind === 'active') return h('p.pl-status.pu-trial', { text: t.text });
+  if (t.kind === 'fresh') {
+    return h('div.pu-trial.pu-trial-fresh', {}, [
+      h('p.pl-status', { text: t.text }),
+      h('div.pu-actions', {}, [
+        h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'pu-start-trial', disabled: trialBusy, text: trialBusy ? 'Starting…' : 'Start your free trial' }),
+        h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
+      ]),
+      h('p.bd-sub#puTrialMsg', { role: 'status', 'aria-live': 'polite', text: trialMsg })
+    ]);
+  }
   return h('div.pu-trial.pu-trial-over', {}, [
     h('p.pl-status', { text: t.text }),
     /* The way out sits beside the way through: this is the one page

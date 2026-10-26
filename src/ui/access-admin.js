@@ -57,7 +57,7 @@ async function load() {
     try { S.plans = await Billing.listPlans(); } catch (e) { S.plans = []; }
     S.state = 'ready';
   } catch (e) {
-    S.error = e.message || 'The access console could not load.'; S.state = 'error';
+    S.error = sentence(e, 'The access console could not load.'); S.state = 'error';
   } finally { rerender(); }
 }
 const ready = () => { if (S.state === 'idle') load(); return S.state === 'ready'; };
@@ -168,7 +168,7 @@ delegate(document, 'change', '[data-acc-action="purchases-switch"]', async (e, e
     toast(want ? 'Purchases are required now.' : 'The studio is free to use now.');
     /* The admin's own tab: billing_status() changed under it. */
     Store.notify('billing:changed', {});
-  } catch (err) { toast(err.message || 'The switch was not saved.', 'error'); }
+  } catch (err) { toast(sentence(err, 'The switch was not saved.'), 'error'); }
   finally { S.busy = false; rerender(); }
 });
 
@@ -189,7 +189,7 @@ delegate(document, 'submit', '[data-acc-form="grant"]', async (e, form) => {
     S.grants = await Growth.admin.listEmailGrants();
     const note = S.note;
     setTimeout(() => { if (S.note === note) { S.note = ''; for (const n of document.querySelectorAll('.ba-saved')) if (n.textContent === note) n.remove(); } }, 4000);
-  } catch (err) { toast(err.message || 'Access was not given.', 'error'); }
+  } catch (err) { toast(sentence(err, 'Access was not given.'), 'error'); }
   finally { S.busy = false; rerender(); }
 });
 
@@ -205,7 +205,7 @@ delegate(document, 'click', '[data-acc-action="revoke"]', async (e, el) => {
     await Growth.admin.revokeEmailGrant(email);
     S.grants = await Growth.admin.listEmailGrants();
     toast('Access revoked for ' + email + '.');
-  } catch (err) { toast(err.message || 'Access was not revoked.', 'error'); }
+  } catch (err) { toast(sentence(err, 'Access was not revoked.'), 'error'); }
   rerender();
 });
 

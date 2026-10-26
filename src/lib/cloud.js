@@ -698,8 +698,8 @@ async function askTakeover(info) {
     if (!hasPort('takeoverDialog')) throw new Error('no takeover dialog');
     return await callPort('takeoverDialog', false, info);
   } catch (e) {
-    return await ask('Your account is currently active in another Chrome window. '
-      + 'Would you like to terminate that session and continue here?');
+    return await ask('Your account is currently active in another browser window or on another device. '
+      + 'Would you like to end that session and continue here?');
   }
 }
 

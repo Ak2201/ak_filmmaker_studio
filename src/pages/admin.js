@@ -99,6 +99,7 @@ import {
   payingCount, healthTile, refundBacklog, overviewMeta, orgSeats, userStanding, isLive
 } from '../lib/admin-model.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
+import { errorSentence } from '../lib/gate.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesRequiredNow } from '../ui/access-admin.js';
 import { coEditSwitchBlock } from '../ui/coedit-admin.js';
@@ -158,7 +159,7 @@ async function loadOverview() {
     const [data, accounts, users] = await Promise.all([g.admin.overview(), g.admin.listAccounts(), g.admin.listUsers()]);
     ov = { phase: 'ok', data: data || {}, accounts: accounts || [], users: users || [], error: '', loadedAt: Date.now() };
   } catch (e) {
-    ov = { ...ov, phase: 'error', error: e.message || 'The console could not load.' };
+    ov = { ...ov, phase: 'error', error: errorSentence(e, 'The console could not load.') };
   }
   renderSoon();
 }
@@ -446,6 +447,7 @@ function carryFields({ saved, focus }) {
 
 let drawerSynced = false;   // the hash's drawer is opened once, on the first admin render
 let st = null;   // the last studio_status(); null until asked
+let stError = '';   // why the last studio_status() failed ('' when it did not)
 let askedFor = '';
 let painted = false;      // render() got past the boot wait at least once
 let forceRender = false;  // the fallback below: draw even if cloud:booted never came
@@ -454,7 +456,7 @@ async function refreshStatus() {
   const c = cloud();
   if (!c || !c.gate || !c.getSession()) {
     const changed = st !== null || askedFor !== '' || ov.data;
-    st = null; askedFor = ''; ov = blankOverview();   // nobody's numbers outlive their session
+    st = null; stError = ''; askedFor = ''; ov = blankOverview();   // nobody's numbers outlive their session
     if (changed || !painted) renderSoon();
     return;
   }
@@ -462,7 +464,10 @@ async function refreshStatus() {
   /* Nothing new to say (same account, status already held, page already
      drawn): an auth or gate echo does not repaint. */
   if (askedFor === who && st) { if (!painted) renderSoon(); return; }
-  try { st = await c.gate.status(); askedFor = who; } catch (e) { st = null; }
+  /* A failed read is SAID, with a retry. It used to set st = null, which
+     render() reads as "still asking", so the page sat on Checking… for
+     good with no reason and no way on. */
+  try { st = await c.gate.status(); askedFor = who; stError = ''; } catch (e) { st = null; stError = errorSentence(e, 'The studio did not answer.'); }
   renderSoon();
 }
 
@@ -489,6 +494,9 @@ function render() {
     body = h('div.ad-body', {}, [state('signin', 'Sign in', 'Use an administrator’s Google account.',
       [button({ label: 'Continue with Google', variant: 'primary', attrs: { 'data-auth-action': 'google' } })],
       h('p.ad-meta', {}, ['For studio administrators. Looking for your films? ', h('a', { href: 'index.html', text: 'Go to the Studio' }), '.']))]);
+  } else if (!st && stError) {
+    body = h('div.ad-body', {}, [state('failed', 'The console could not be read', stError,
+      [button({ label: 'Try again', variant: 'primary', attrs: { 'data-ad-action': 'restatus' } })])]);
   } else if (!st) {
     body = h('div.ad-body', {}, [state('checking', 'Checking…', '')]);
   } else if (!isAdmin) {
@@ -544,6 +552,10 @@ const renderSoon = coalesce(render, 60);
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-ad-action="reload"]');
   if (el) { ov = { ...ov, phase: 'idle' }; loadOverview(); const c = makeCtx('overview'); healthTab.reload(c); auditTab.reloadRecent(c); }
+});
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-ad-action="restatus"]');
+  if (el) { stError = ''; renderSoon(); refreshStatus(); }
 });
 /* A link in the Overview that names a tab: go through ctx.go() so its params
    (an audit target, a drawer) land in the hash the way the tab expects. */

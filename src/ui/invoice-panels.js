@@ -73,10 +73,14 @@ function failed(kind) {
   ]);
 }
 
-/** Plan tab: null until there is something to show. */
+/** Plan tab: null until there is something to show. `st` is the
+ *  billing_status() reply, which carries NO `deployed` key — that is the
+ *  gate's studio_status(). Requiring it here meant my_invoices was never
+ *  asked and no buyer ever saw an invoice; a project without §28 already
+ *  reads as 'missing' below and draws nothing. */
 export function memberInvoicePanel(st, { rerender: rr } = {}) {
   if (rr) rerender = rr;
-  if (!st || !st.deployed) return null;
+  if (!st) return null;
   if (S.mine.state === 'idle') load('mine');
   if (S.mine.state === 'error') return h('div.inv-panel', {}, [h('h3.gt-h3', { text: 'Invoices' }), failed('mine')]);
   if (S.mine.state !== 'ready') return null;

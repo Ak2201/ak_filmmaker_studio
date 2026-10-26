@@ -670,7 +670,7 @@ try {
     const B = await newContext(browser, { tok: 'tok-amy' });
     await B.page.goto(BASE + 'story.html');
     await B.page.waitForSelector('.gt-overlay', { timeout: 8000 });
-    ok(/active in another Chrome window/i.test(await B.page.textContent('.gt-overlay')), 'browser B is asked before anything is taken over');
+    ok(/active in another browser window or on another device/i.test(await B.page.textContent('.gt-overlay')), 'browser B is asked before anything is taken over');
     await B.page.click('[data-gt="cancel"]');
     ok(await waitGate(B.page, 'lost'), 'Cancel pauses sync in B and takes nothing from A');
     await B.page.reload();
@@ -777,9 +777,25 @@ try {
     const snapshot = () => page.evaluate(() => JSON.stringify([Object.entries(localStorage).sort(), Object.entries(sessionStorage).sort()]));
     const before = await snapshot();
     const n0 = await page.evaluate(() => window.__writes.length);
+    /* QA r2, 26 Oct 2026: a refused pass rebuilt the form and left
+       focus on <body>; it returns to the code, marked invalid. */
+    await page.fill('#scCode', 'ZZZZ-ZZZZ-ZZZZ');
+    await page.press('#scCode', 'Enter');
+    await page.waitForSelector('.sc-error', { timeout: 8000 });
+    {
+      const f = await page.evaluate(() => ({ id: document.activeElement && document.activeElement.id,
+        inv: document.getElementById('scCode').getAttribute('aria-invalid'), by: document.getElementById('scCode').getAttribute('aria-describedby') }));
+      ok(f.id === 'scCode' && f.inv === 'true' && f.by === 'scError', 'a refused pass hands focus back to the code, marked invalid (' + JSON.stringify(f) + ')');
+    }
+    await page.fill('#scCode', 'PASSCODE2345');
     await page.fill('#scEmail', 'programmer@festival.example');
     await page.click('button[type="submit"]');
     await page.waitForSelector('.sc-room', { timeout: 8000 });
+    ok(await page.evaluate(() => document.activeElement && document.activeElement.matches('.sc-head h1')), 'an opened room takes focus to its title, not <body>');
+    {
+      const t = await page.textContent('.sc-room');
+      ok(!/(?:^|\D)1\s*(scenes|locations|shoot days)/i.test(t.replace(/\s+/g, ' ')), 'the deck says "1 scene", never "1 scenes"');
+    }
     const nRoom = await page.evaluate(() => window.__writes.length);
     const text = await page.textContent('.sc-room');
     ok(text.includes('Dragon') && text.includes('Inciting Incident') && text.includes('RAGAVAN'), 'beat sheet, character map and title are shown');

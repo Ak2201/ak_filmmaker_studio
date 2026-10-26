@@ -12,6 +12,7 @@ import Billing from './billing.js';
 import { session } from './prefs.js';
 import { timeLeft } from './trial-time.js';
 import { perDay, LIST_PRICE } from './plans.js';
+import { errorSentence } from './gate.js';
 
 /* ---- the plan they came to buy ------------------------------------ */
 
@@ -65,7 +66,7 @@ export async function loadBilling() {
     return { plans, st, error: '', missing: false, ok: true };
   } catch (e) {
     const missing = /does not exist|Could not find|PGRST/i.test(e.message || '');
-    return { plans: null, st: null, error: missing ? '' : (e.message || 'The plans did not load.'), missing, ok: false };
+    return { plans: null, st: null, error: missing ? '' : errorSentence(e, 'The plans did not load.'), missing, ok: false };
   }
 }
 
@@ -111,8 +112,11 @@ export function lapsedLine(st) {
  *  when a running trial needs it.
  *    { kind: 'granted', text }   access given by e-mail, no plan
  *    { kind: 'active',  text }   a trial is running
+ *    { kind: 'fresh',   text }   not entitled, and `canStart` (invite-model
+ *                                 trialOfferFrom(): the page asks it, so the
+ *                                 door, the wall and this page share one read)
  *    { kind: 'over',    text }   not entitled: the trial ended, or none */
-export function trialStatus(st, now) {
+export function trialStatus(st, now, canStart = false) {
   if (!st || st.plan !== 'free' || st.purchase_required === false) return null;
   if (st.granted === true) {
     return { kind: 'granted', text: 'Access given by the studio. An administrator has opened the whole studio to you — there is nothing to buy while this access stands. A plan is here if you want one of your own.' };
@@ -121,6 +125,11 @@ export function trialStatus(st, now) {
   if (st.trial_active === true && Number.isFinite(ends)) {
     const left = timeLeft(ends - now());
     return { kind: 'active', text: 'Your free trial has ' + left + ' left. A plan keeps the studio open after it ends.' };
+  }
+  if (st.entitled === false && canStart) {
+    /* A member who never had a trial: Settings sends them here to start
+       it ("Your free trial is waiting"), so this page offers it. */
+    return { kind: 'fresh', text: 'Your free trial is waiting. Start it now, or choose a plan below. Everything you wrote is still saved on this device.' };
   }
   if (st.entitled === false) {
     const when = Number.isFinite(ends) ? ' on ' + new Date(ends).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';

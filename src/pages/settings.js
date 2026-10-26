@@ -486,7 +486,7 @@ function renderStorage() {
   }));
 
   sec.append(h('p.st-note', {
-    text: 'To take a copy of every project, use Backup in the top bar (Export everything). '
+    text: 'To take a copy of every project, use Backup in the rail, above your avatar (Tools on a phone) and choose Export everything. '
         + 'Keep it somewhere safe \u2014 browsers can clear their storage without asking.'
   }));
 
@@ -638,7 +638,7 @@ function renderDrive() {
     'Back up to Google Drive.',
     'A copy of every project on this browser, in your own Google Drive. '
       + 'Drive keeps earlier versions, so you can go back. Your AI key is never '
-      + 'included. (Quick exports and imports are in Backup, in the top bar.)');
+      + 'included. (Quick exports and imports are in Backup, in the rail, above your avatar (Tools on a phone).)');
 
   /* The plan's `drive_backup` (src/data/plan-matrix.json: Intermediate
      and up). Locked: say so and offer the way up; the backup FILE stays
@@ -647,7 +647,7 @@ function renderDrive() {
     sec.dataset.planLocked = 'drive_backup';
     const note = h('p.st-note', {
       text: 'Google Drive backup is not part of your plan. You can still '
-          + 'export a backup file from Backup in the top bar.'
+          + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).'
     });
     const see = h('a.k-btn.k-btn--secondary', { href: 'purchase.html', text: 'See plans' });
     sec.append(note, h('div.st-drive-actions', {}, [see]));
@@ -655,7 +655,7 @@ function renderDrive() {
     PlanGate.offerFor(['drive_backup']).then((o) => {
       if (!o) return;
       note.textContent = 'Google Drive backup comes with ' + PlanGate.offerText(o) + ' a year. You can still '
-        + 'export a backup file from Backup in the top bar.';
+        + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).';
       see.href = o.href;
       see.textContent = 'See ' + o.name;
     }).catch(() => { /* the plain note stands */ });
@@ -665,7 +665,7 @@ function renderDrive() {
   if (!st.configured) {
     sec.append(h('p.st-note', {
       text: 'Google Drive backup is not available right now. You can still '
-          + 'export a backup file from Backup in the top bar.'
+          + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).'
     }));
     return sec;
   }
@@ -1066,7 +1066,7 @@ function renderDanger() {
   const c = window.StudioCloud;
   const signedIn = !!(c && c.getSession && c.getSession());
   const sec = section('danger', 'Danger zone', 'Erase what you have written.',
-    'These cannot be undone. Export a backup first (Backup, in the top bar) if you want to keep anything.');
+    'These cannot be undone. Export a backup first (Backup, in the rail, above your avatar (Tools on a phone)) if you want to keep anything.');
   sec.append(h('div.st-danger-row', {}, [
     /* Erase never signs out (CLAUDE.md item 29), and the dialog one click
        on says so: this line promised a sign-out that never happened. */

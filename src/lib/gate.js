@@ -93,6 +93,9 @@ export function errorSentence(err, fallback) {
       ? 'This device is offline. Connect to the internet and try again.'
       : 'The studio could not reach its server. Check the connection and try again.';
   }
+  /* supabase-js's own words for an edge function's non-2xx with no body
+     it could read: code, not a sentence. Say what was observed. */
+  if (/non-2xx status code/i.test(msg)) return fallback || 'The studio\u2019s server answered with an error. Try again in a moment.';
   return msg || fallback;
 }
 

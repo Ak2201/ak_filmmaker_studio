@@ -95,9 +95,22 @@ function section(id, eyebrow, title, deck) {
   return sec;
 }
 
+/* The trial offer, START button first. Drawn for a signed-in account
+   that may start one (trialOffer), whether or not it is a member yet. */
+function trialSection(section) {
+  const len = trialLength(trialOffer.minutes);
+  const t = section('trial', 'Free trial', 'Start your free trial.',
+    'Open the Dragon and The Dark Knight samples — two whole films, each with its script, its breakdown, its schedule and its call sheets — and read them from the inside, for ' + len + '. No card, nothing to fill in.');
+  t.append(h('div.iv-actions', {}, [
+    h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
+  ]));
+  t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
+  return t;
+}
+
 /* The deck under the title says which of the four situations this
    is, in one sentence, before the sections repeat it with controls. */
-function deckFor(c, g) {
+function deckFor(c, g, walled) {
   const configured = !!(c && c.isConfigured());
   const signedIn = configured && !!c.getSession();
   return deckSentence({
@@ -106,6 +119,8 @@ function deckFor(c, g) {
     codeHeld: configured && !signedIn && !!getCodePass(),
     trialsOff: configured && !signedIn && trialsOff(),
     state: g.state,
+    walled: !!walled,
+    trialHere: !!trialOffer,
     reason: g.reason,
     gateDetail: configured && c.gateDetail ? (r) => c.gateDetail(r) : null
   });
@@ -198,7 +213,10 @@ function render() {
      paragraph rather than the header's sub (which .bd-head hides). */
   main.append(pageHeader({ eyebrow: ['Studio', 'Come in'], title: 'Come in', class: 'bd-head' }));
   const body = h('div.iv-body');
-  body.append(h('p.bd-deck.iv-deck', { text: deckFor(c, g) }));
+  /* Through the gate but not entitled (§33): the deck must not say
+     "You are in" above a card that says they are not. */
+  const walled = g.state === 'open' && !openSite && !!lastStatus && lastStatus.entitled === false;
+  body.append(h('p.bd-deck.iv-deck', { text: deckFor(c, g, walled) }));
   const why = whySentence(c, signedIn, g.state);
   if (why) body.append(h('p.bd-sub.iv-why', { role: 'status', text: why }));
 
@@ -285,14 +303,21 @@ function render() {
        owner reported. It says what is true now, and offers the two
        real ways on — buy, or sign out. */
     const used = lastStatus.trial_used === true;
-    const sec = section('through', used ? 'Your trial' : 'The studio', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
-      'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for a year.');
+    /* A member who never started a trial is offered it here too, first:
+       Settings and the account menu send them to start it, and this
+       branch used to offer only plans (QA r2, 26 Oct 2026). */
+    if (trialOffer) body.append(trialSection(section));
+    const sec = trialOffer
+      ? section('through', 'Or', 'Buy a plan and come straight in.',
+          'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for a year.')
+      : section('through', used ? 'Your trial' : 'The studio', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
+          'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for a year.');
     /* The same prices and the same button a new signup gets: this branch
        used to offer one bare SEE PLANS, one hop more than a stranger.
        Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
     sec.append(prices());
     sec.append(h('div.iv-actions', {}, [
-      h('a.k-btn.k-btn--primary', { href: 'purchase.html', text: 'See plans and buy' }),
+      h('a.k-btn' + (trialOffer ? '.k-btn--secondary' : '.k-btn--primary'), { href: 'purchase.html', text: 'See plans and buy' }),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ]));
     body.append(sec);
@@ -348,16 +373,7 @@ function render() {
        conditional on a schema version. */
     const st = g.status;
     const used = !!(lastStatus && lastStatus.trial_used === true);
-    if (trialOffer) {
-      const len = trialLength(trialOffer.minutes);
-      const t = section('trial', 'Free trial', 'Start your free trial.',
-        'Open the Dragon and The Dark Knight samples — two whole films, each with its script, its breakdown, its schedule and its call sheets — and read them from the inside, for ' + len + '. No card, nothing to fill in.');
-      t.append(h('div.iv-actions', {}, [
-        h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
-      ]));
-      t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
-      body.append(t);
-    }
+    if (trialOffer) body.append(trialSection(section));
     /* PAYING GRANTS ENTRY (schema section 16). The plans themselves are
        NOT drawn here any more (owner, 12 Oct 2026: "all purchases only in
        the Purchase space"). purchase.html is exempt from the site gate, so

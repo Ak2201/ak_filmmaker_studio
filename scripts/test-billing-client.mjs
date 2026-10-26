@@ -25,6 +25,7 @@ register('data:text/javascript,' + encodeURIComponent(`
   const STORE = ${JSON.stringify(STORE)};
   export async function resolve(spec, ctx, next) {
     if (spec.endsWith('/store.js') || spec === './store.js') return { url: 'data:text/javascript,' + encodeURIComponent(STORE), shortCircuit: true };
+    if (spec.endsWith('/cloud.js')) return { url: 'data:text/javascript,export default {}', shortCircuit: true };
     if (spec.endsWith('.css')) return { url: 'data:text/javascript,export default {}', shortCircuit: true };
     return next(spec, ctx);
   }
@@ -190,6 +191,51 @@ const click = (el) => el.dispatchEvent(new DomEvent('click', { bubbles: true }))
   ok(!card('indie').classList.contains('has-promo') || !/399\.50/.test(priceOf('indie')), 'the stale quote is not drawn once billing moves');
   await tick(20);
   ok(/100/.test(priceOf('indie')), 'and the code is quoted again for the new billing — ' + priceOf('indie'));
+}
+
+/* ---- QA r2 (26 Oct 2026): account & business ---- */
+{
+  /* The buyer's invoices: memberInvoicePanel() is handed billing_status(),
+     which carries no `deployed` key (that is the gate's studio_status).
+     It used to require one, so my_invoices was never asked. */
+  const { memberInvoicePanel } = await import('../src/ui/invoice-panels.js');
+  let asked = 0;
+  answers.my_invoices = () => { asked++; return [{ id: 'i1', number: 'FMS/2026-27/000001', issued_at: '2026-10-20T10:00:00Z', plan_name: 'Basic', amount_paise: 299900, currency: 'INR' }]; };
+  const BST = { plan: 'starter', entitled: true, payments: [{ status: 'paid', plan_id: 'starter' }] };   // billing_status(): no `deployed`
+  let panel = memberInvoicePanel(BST, { rerender: () => {} });
+  await tick(5);
+  ok(asked === 1, 'a buyer\'s billing_status() reply asks my_invoices (asked ' + asked + ')');
+  panel = memberInvoicePanel(BST, { rerender: () => {} });
+  ok(panel && /Invoices/.test(panel.textContent) && panel.querySelector('[data-action="invoice-pdf"]'), 'and the Invoices panel is drawn with a DOWNLOAD PDF button');
+
+  /* A member who never had a trial is offered it on the page Settings
+     points to (purchase.html), not only told to choose a plan. */
+  const never = { plan: 'free', entitled: false, purchase_required: true, trial_enabled: true, trial_used: false, trial_active: false, payments: [] };
+  const IM = await import('../src/lib/invite-model.js');
+  const kind = (x) => PM.trialStatus(x, () => Date.now(), !!IM.trialOfferFrom(x)).kind;
+  eq(kind(never), 'fresh', 'never had a trial: the purchase page offers it');
+  eq(kind({ ...never, trial_used: true }), 'over', 'a used trial is over');
+  eq(kind({ ...never, payments: [{ status: 'refunded' }] }), 'over', 'a refunded buyer is not offered a trial');
+
+  /* invite.html's deck for a walled member does not say "You are in". */
+  const deck = IM.deckFor({ configured: true, signedIn: true, state: 'open', walled: true, trialHere: true });
+  ok(!/You are in/.test(deck) && /trial/.test(deck) && /Sync is off/.test(deck), 'a walled member\'s deck says they are not in yet — ' + deck);
+  eq(IM.deckFor({ configured: true, signedIn: true, state: 'open' }), 'You are in. Your projects sync to this account.', 'an entitled member is still told they are in');
+
+  /* The fine print names all three refund exceptions (refund.html §4). */
+  st = FREE; draw();
+  ok(/where Indian law requires it/.test(host.querySelector('.pl-promise').textContent), 'the card fine print names the legal exception too');
+
+  /* The raw browser words never reach a reader. */
+  const G = await import('../src/lib/gate.js');
+  eq(G.errorSentence({ message: 'TypeError: Failed to fetch' }, 'x'), 'The studio could not reach its server. Check the connection and try again.', 'a dropped connection is one sentence');
+  ok(!/non-2xx/.test(G.errorSentence({ message: 'Edge Function returned a non-2xx status code' }, 'The payment service answered with an error.')), 'supabase-js\'s non-2xx wording is not shown');
+  const AA = await import('../src/lib/admin-api.js');
+  ok(!/TypeError/.test(AA.reasonOf('admin_usage', { message: 'TypeError: Failed to fetch' })) && !/TypeError/.test(AA.describeError({ message: 'TypeError: Failed to fetch' }, 'x')), 'the console\'s slot and RPC errors say it too');
+  answers['rzp-order'] = { data: null, error: { message: 'Edge Function returned a non-2xx status code', context: { json: async () => { throw new Error('not JSON'); } } } };
+  let berr = null;
+  try { await Billing.buy('starter', 'year', {}); } catch (e) { berr = e; }
+  ok(berr && !/non-2xx/.test(berr.message), 'a 502 with an HTML body from rzp-order is said as a sentence — ' + (berr && berr.message));
 }
 
 console.log(`${fail ? '✗' : '✓'} billing (client): ${pass} passed, ${fail} failed`);

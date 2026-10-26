@@ -105,12 +105,14 @@ export function collectFrom({ bp = {}, story = null, scenes = [], script = null,
 
   const st = scenes.length ? screenTime(scenes, script.elements) : null;
   const numbers = [];
-  if (scenes.length) numbers.push([String(scenes.length), 'scenes']);
+  /* A count of one takes the singular: "1 scenes" read as a typo. */
+  const count = (n, one, many) => [String(n), n === 1 ? one : many];
+  if (scenes.length) numbers.push(count(scenes.length, 'scene', 'scenes'));
   if (st && st.total) numbers.push([formatDuration(st.total), 'estimated running time']);
   const days = new Set(scenes.map((s) => parseInt(s.shootDay, 10)).filter((n) => n > 0));
-  if (days.size) numbers.push([String(days.size), 'shoot days']);
+  if (days.size) numbers.push(count(days.size, 'shoot day', 'shoot days'));
   const locs = new Set(scenes.map((s) => txt(s.location).toLowerCase()).filter(Boolean));
-  if (locs.size) numbers.push([String(locs.size), 'locations']);
+  if (locs.size) numbers.push(count(locs.size, 'location', 'locations'));
 
   return {
     // Never the app's own name, which is what pdf.js falls back to for a

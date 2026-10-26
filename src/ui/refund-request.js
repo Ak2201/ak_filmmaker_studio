@@ -65,9 +65,13 @@ export function refundRequestPanel(opts = {}) {
   }
   if (S.error) box.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (d.can_request) {
-    const cat = h('select', { id: 'rfCategory', name: 'category', required: true }, Billing.REFUND_CATEGORIES.map(([v, t]) => h('option', { value: v, text: t })));
+    /* An empty first option: with none, the first ground ("I was charged
+       twice") was always selected, so an untouched form filed a
+       duplicate-charge claim the console then acted on. */
+    const cat = h('select', { id: 'rfCategory', name: 'category', required: true },
+      [h('option', { value: '', text: 'Choose a reason' })].concat(Billing.REFUND_CATEGORIES.map(([v, t]) => h('option', { value: v, text: t }))));
     const msg = h('textarea', { id: 'rfMessage', name: 'message', maxlength: 1000, placeholder: 'What happened? Include the date and anything that helps us find it.' });
-    if (S.draft.category) cat.value = S.draft.category;
+    cat.value = S.draft.category || '';
     msg.value = S.draft.message;
     const form = h('form.rf-form', { 'data-rf-form': 'request', novalidate: true }, [
       h('label', { for: 'rfCategory', text: 'Reason' }), cat,
@@ -83,6 +87,9 @@ export function refundRequestPanel(opts = {}) {
   return box;
 }
 
+/* After a refusal the form is redrawn; keep the reader on the field. */
+function focusField(id) { const el = document.getElementById(id); if (el) try { el.focus(); } catch (e) { /* not focusable */ } }
+
 /* The draft survives a re-render (see refreshRefundRequest). */
 delegate(document, 'input', '[data-rf-form="request"] textarea, [data-rf-form="request"] select', (e, el) => {
   S.draft[el.name] = el.value;
@@ -94,6 +101,7 @@ delegate(document, 'submit', '[data-rf-form="request"]', async (e, form) => {
   if (S.busy) return;
   const f = new FormData(form);
   const category = String(f.get('category') || ''), message = String(f.get('message') || '').trim();
+  if (!category) { S.error = 'Choose the reason for the refund.'; rerender(); focusField('rfCategory'); return; }
   if (category === 'other' && message.length < 5) { S.error = 'Tell us what happened, in a sentence or two.'; rerender(); return; }
   S.busy = true; S.error = ''; rerender();
   try {

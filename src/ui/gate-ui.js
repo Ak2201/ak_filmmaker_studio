@@ -63,8 +63,11 @@ export function takeoverDialog(info = {}) {
     const prev = document.activeElement;
     const where = browserOf(info.userAgent);
     const card = h('div.cm-card.gt-card', {}, [
-      h('h2#gtHeading', { text: 'Active in another window.' }),
-      h('p.gt-body', { text: 'Your account is currently active in another Chrome window. Would you like to terminate that session and continue here?' }),
+      /* Only what is known: the other session's user agent is shown on
+         the line below, so the body does not name a browser it never
+         checked ("Do not let a message GUESS"). */
+      h('h2#gtHeading', { text: 'Active somewhere else.' }),
+      h('p.gt-body', { text: 'Your account is currently active in another browser window or on another device. Would you like to end that session and continue here?' }),
       h('p.gt-meta', { text: [where && `That session: ${where}`, info.lastSeen && `last seen ${since(info.lastSeen)}`].filter(Boolean).join(' · ') || ' ' }),
       h('p.gt-meta', { text: 'Cancelling keeps you working on this device exactly as before — only syncing to your account pauses.' }),
       h('div.gt-actions', {}, [

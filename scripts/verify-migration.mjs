@@ -470,7 +470,11 @@ const EXPECTED = {
     /* Account QA (26 Oct 2026): the Danger zone card said erasing "signs
        you out"; it never did (CLAUDE.md item 29) and its own dialog says
        you stay signed in, so the sentence no longer promises a sign-out. */
-    signs: 'erase card no longer promises a sign-out that never happens'
+    signs: 'erase card no longer promises a sign-out that never happens',
+    /* Account QA r2 (26 Oct 2026): Backup moved from the band to the
+       rail on 21 Oct (CLAUDE.md item 41); four Settings lines still said
+       "Backup, in the top bar". They point to the rail now. */
+    bar: 'Backup is pointed to in the rail, not "the top bar" (item 41)'
   },
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.

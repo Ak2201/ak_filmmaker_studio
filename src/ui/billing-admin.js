@@ -40,6 +40,7 @@
 
    No inline handlers; delegate() on [data-ba-action].
    ============================================================ */
+import { errorSentence } from '../lib/gate.js';
 import { h, delegate } from '../lib/dom.js';
 import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
@@ -120,7 +121,7 @@ async function load() {
     } catch (e) { S.members = []; }
     S.loaded = true;
   } catch (e) {
-    S.error = e.message || 'The billing console could not load.';
+    S.error = errorSentence(e, 'The billing console could not load.');
   } finally {
     S.busy = false; rerender();
   }
@@ -296,6 +297,12 @@ export function billingAdminSection(section, st, { part } = {}) {
   if (!S.payments.length) sec.append(h('p.gt-meta', { text: 'No payments yet.' }));
   else {
     const table = h('table.gt-table.ba-ledger');
+    /* A refund removes that payment's own year (mark_payment_refunded
+       shortens accounts.plan_until) while the row keeps its ends_at, so
+       a refunded row printing "1 year · ends …" claimed access that is
+       gone. */
+    const accessCell = (p) => p.status === 'refunded' ? 'year removed (refunded)'
+      : p.ends_at ? (p.period === 'grant' ? 'grant' : '1 year') + ' · ends ' + fmtDate(p.ends_at) : 'for good';
     table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Plan', 'Access', 'Amount', 'Code', 'Status', 'Razorpay', ...(S.refunds ? [''] : [])].map((t) => h('th', { scope: 'col', text: t })))]));
     const tb = h('tbody');
     for (const p of S.payments) {
@@ -305,7 +312,7 @@ export function billingAdminSection(section, st, { part } = {}) {
         h('td', { text: fmtDate(p.paid_at || p.created_at) }),
         h('td', {}, [h('span', { text: p.email }), p.account_name ? h('br') : null, p.account_name ? h('span.gt-meta', { text: p.account_name }) : null].filter(Boolean)),
         h('td', { text: planName(p.plan_id) }),
-        h('td', { text: p.ends_at ? (p.period === 'grant' ? 'grant' : '1 year') + ' · ends ' + fmtDate(p.ends_at) : 'for good' }),
+        h('td', { text: accessCell(p) }),
         h('td', {}, [h('span', { text: p.status === 'granted' ? '₹0 (grant)' : money(p.amount_paise, p) + (p.credit_paise > 0 ? ` (upgrade; ${money(p.credit_paise, p)} already paid)` : '') }),
           intlBadge(p)].filter(Boolean)),
         h('td', { text: p.promo_code ? `${p.promo_code} (${money(p.discount_paise || 0, p)} off)` : '—' }),
@@ -452,7 +459,7 @@ delegate(document, 'submit', '[data-ba-form="plan"]', async (e, form) => {
     S.saved = id;
     await load();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The plan was not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The plan was not saved.'), 'error'); }
 });
 
 delegate(document, 'submit', '[data-ba-form="grant"]', async (e, form) => {
@@ -464,7 +471,7 @@ delegate(document, 'submit', '[data-ba-form="grant"]', async (e, form) => {
     await Billing.admin.grantPlan(who, f.get('plan'), 0, f.get('note'));   // 0 days: a grant is for good (§52 honours days; this form offers none)
     S.granted = 'Granted — full access, for good.';
     await load();
-  } catch (err) { toast(err.message || 'The grant did not go through.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The grant did not go through.'), 'error'); }
 });
 
 delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
@@ -509,14 +516,14 @@ delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
     S.promoDraft = {};
     await load();
     { const made = S.promoMade; setTimeout(() => { if (S.promoMade === made) S.promoMade = ''; clearNote(made); }, 2500); }
-  } catch (err) { toast(err.message || 'The code was not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The code was not saved.'), 'error'); }
 });
 
 delegate(document, 'click', '[data-ba-action="promo-toggle"]', async (e, el) => {
   try {
     await Billing.admin.setPromoCode(el.dataset.code, { active: el.dataset.active !== 'true' });
     await load();
-  } catch (err) { toast(err.message || 'The code was not changed.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The code was not changed.'), 'error'); }
 });
 
 delegate(document, 'click', '[data-ba-action="refund"]', async (e, el) => {
@@ -552,7 +559,7 @@ delegate(document, 'change', '[data-ba-action="refund-switch"]', async (e, el) =
   try {
     S.rrEnabled = await Billing.admin.setRefundRequestsEnabled(el.checked);
     toast(S.rrEnabled ? 'Customers can now request refunds from Settings.' : 'Refund requests are off. Customers no longer see the form.', 'success');
-  } catch (err) { S.rrEnabled = !el.checked; toast(err.message || 'The switch was not changed.', 'error'); }
+  } catch (err) { S.rrEnabled = !el.checked; toast(errorSentence(err, 'The switch was not changed.'), 'error'); }
   S.rrBusy = false; rerender();
 });
 
@@ -579,7 +586,7 @@ delegate(document, 'submit', '[data-ba-form="usd-price"]', async (e, form) => {
     S.usd.notice = await setUsdPrice(id, amount, next, at) || S.usd.notice;
     S.usd.saved = id;
     setTimeout(() => { S.usd.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The dollar price was not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The dollar price was not saved.'), 'error'); }
   S.usd.busy = false; rerender();
 });
 delegate(document, 'change', '[data-ba-action="usd-switch"]', async (e, el) => {
@@ -594,7 +601,7 @@ delegate(document, 'change', '[data-ba-action="usd-switch"]', async (e, el) => {
   try {
     S.usd.notice = await setUsdCheckout(want) || S.usd.notice;
     toast(want ? 'Dollar checkout is on.' : 'Dollar checkout is off. Every order is in rupees.', 'success');
-  } catch (err) { toast(err.message || 'The switch was not changed.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The switch was not changed.'), 'error'); }
   S.usd.busy = false; rerender();
 });
 

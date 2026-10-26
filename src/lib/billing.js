@@ -27,6 +27,7 @@
 import Store from './store.js';
 import { BRAND } from './brand.js';
 import { bumpEvent } from './funnel.js';
+import { errorSentence } from './gate.js';
 import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
@@ -148,7 +149,7 @@ async function invoke(name, body) {
     // supabase-js wraps a non-2xx as FunctionsHttpError with the Response on `context`.
     let detail = '';
     try { const j = await error.context?.json?.(); detail = (j && j.error) || ''; } catch (e) { /* no body */ }
-    const err = new BillingError(detail || error.message || 'The payment service did not answer.', 'edge');
+    const err = new BillingError(detail || errorSentence(error, 'The payment service answered with an error. Try again in a moment.'), 'edge');
     /* Whether the SERVER said this (a sentence in the body) or nothing
        came back at all — a dropped connection, a gateway timeout. After
        a payment the two mean different things; see buy(). */

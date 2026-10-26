@@ -306,6 +306,27 @@ try {
     await M.ctx.close();
   }
 
+  console.log('(d2) a failed status read says so, with Try again');
+  await fresh();
+  {
+    /* QA r2, 26 Oct 2026: studio_status() failing left the console on
+       "Checking…" for good, with no reason and no retry. */
+    const A = await newContext(browser, 'tok-admin');
+    let down = true;
+    await A.ctx.route(/\/rest\/v1\/rpc\/studio_status/, (r) => down
+      ? r.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Service unavailable' }) })
+      : r.fallback());
+    await A.page.goto(BASE + 'admin.html');
+    const failed = await A.page.waitForSelector('#failed', { timeout: 10000 }).then(() => true, () => false);
+    ok(failed, 'a failed studio_status() draws "could not be read", not Checking… forever');
+    ok(failed && /Service unavailable/.test(await A.page.textContent('#failed')), 'it says what the server answered');
+    down = false;
+    if (failed) await A.page.click('#failed [data-ad-action="restatus"]');
+    ok(await A.page.waitForSelector('#overview', { timeout: 10000 }).then(() => true, () => false), 'Try again asks once more and opens the console');
+    A.errors.length = 0;   // the 503 is the point of this section
+    await A.ctx.close();
+  }
+
   console.log('(e) 390px');
   await fresh();
   {

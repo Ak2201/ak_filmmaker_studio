@@ -53,7 +53,8 @@ async function rpc(name, args) {
    A source is one word from a FIXED LIST, counted per day beside the
    event name and nothing else. sourceBucket() maps whatever it is given
    onto that list ('insta' and 'Instagram' are 'instagram', 'newsletter'
-   is 'email') and ANYTHING NOT ON IT becomes 'other'. It does not tidy
+   is 'email', and a tagged family such as 'ig-bio' is 'instagram') and
+   ANYTHING NOT ON IT becomes 'other'. It does not tidy
    free text into the server's pattern: tidied, 'kasi.v@example.com' is
    'kasi-v-example-com', which passes ^[a-z0-9_-]{1,32}$ and names a
    person. The pattern on the server is a second fence, not the first.
@@ -82,16 +83,36 @@ const KNOWN_SOURCES = Object.freeze({
   reddit: 'reddit', threads: 'threads', pinterest: 'pinterest',
   producthunt: 'producthunt',
   email: 'email', mail: 'email', newsletter: 'email',
-  podcast: 'podcast', partner: 'partner', affiliate: 'partner', event: 'event', festival: 'event'
+  podcast: 'podcast', partner: 'partner', affiliate: 'partner', event: 'event', festival: 'event',
+  referral: 'referral', quora: 'quora', school: 'school', directory: 'directory', ads: 'ads'
+});
+/* PREFIX FAMILIES (the playbook's tags, docs/MARKETING-PLAYBOOK.md): a
+   tag like `ig-bio`, `school-loyola` or `meta-t1a` counts under the
+   token before its first '-'. ONLY THE FAMILY IS KEPT: the slug after
+   the dash (which school, which creator, which ad) never reaches a
+   count, because a per-school or per-creator row is a named party in
+   what must stay an aggregate. A token that is not a family here is
+   'other', even when it is an exact name above ('google-x' is other):
+   the families are a list, not a rule. */
+const PREFIX_SOURCES = Object.freeze({
+  ig: 'instagram', insta: 'instagram', fb: 'facebook', meta: 'ads', yt: 'youtube', wa: 'whatsapp',
+  school: 'school', fest: 'event', dir: 'directory', creator: 'partner', aff: 'partner', ref: 'referral'
 });
 /** The buckets a count can carry, for the console and the tests. */
-export const SOURCES = Object.freeze([...new Set(Object.values(KNOWN_SOURCES)), 'other']);
+export const SOURCES = Object.freeze([...new Set([...Object.values(KNOWN_SOURCES), ...Object.values(PREFIX_SOURCES)]), 'other']);
 /** '' for nothing; a name from the fixed list; 'other' for anything else. */
 export function sourceBucket(raw) {
   if (raw == null) return '';
   const s = String(raw).trim().toLowerCase();
   if (!s) return '';
-  return Object.prototype.hasOwnProperty.call(KNOWN_SOURCES, s) ? KNOWN_SOURCES[s] : 'other';
+  const own = Object.prototype.hasOwnProperty;
+  if (own.call(KNOWN_SOURCES, s)) return KNOWN_SOURCES[s];
+  const dash = s.indexOf('-');
+  if (dash > 0) {
+    const fam = s.slice(0, dash);
+    if (own.call(PREFIX_SOURCES, fam)) return PREFIX_SOURCES[fam];
+  }
+  return 'other';
 }
 /** This tab's source bucket, from attribution.js's record; '' when none. */
 export function funnelSource() {
@@ -184,7 +205,9 @@ export async function purchasesRequired() {
 }
 
 /** §33's trial_offer(): { trial_enabled, trial_minutes, trial_hours,
- *  purchase_required } for the landing page's "Free trial" card, or
+ *  purchase_required, and since §60 trial_scope ('sample' | 'full', what a
+ *  pressed trial opens; absent on an older server, so say nothing about
+ *  scope then) } for the landing page's "Free trial" card, or
  *  null when it is not known (unconfigured, offline, a database that
  *  has not run §33). NEVER THROWS; null leaves the markup's own words. */
 export async function trialOffer() {

@@ -50,8 +50,41 @@ const F = await import(file);
 // the bucket: a FIXED list, everything else 'other' (never a tidied copy of free text)
 const B = F.sourceBucket;
 ok(B('Google') === 'google' && B(' Insta ') === 'instagram' && B('newsletter') === 'email' && B('fb') === 'facebook', 'known sources and their aliases map onto the list');
-for (const x of ['kasi.v@zohocorp.com', 'someone@example.com', 'John Smith', '+91 98400 12345', '9840012345', 'https://evil.com/?u=bob', 'REF-AB12CD', 'news_letter-oct', 'a'.repeat(99), 'Ünïcode']) {
+for (const x of ['kasi.v@zohocorp.com', 'someone@example.com', 'John Smith', '+91 98400 12345', '9840012345', 'https://evil.com/?u=bob', 'news_letter-oct', 'a'.repeat(99), 'Ünïcode']) {
   ok(B(x) === 'other', `an unknown source ${JSON.stringify(x)} goes as 'other', not as itself`);
+}
+ok(B('REF-AB12CD') === 'referral', "a referral code as a source counts as 'referral', never as the code (the ref-* family)");
+// THE SOURCE BUCKET CONTRACT (the playbook tags links with it): every exact
+// name, every prefix family, and the slug after the dash never survives
+const EXACT = {
+  google: 'google', instagram: 'instagram', ig: 'instagram', insta: 'instagram', facebook: 'facebook', fb: 'facebook',
+  youtube: 'youtube', yt: 'youtube', x: 'x', twitter: 'x', linkedin: 'linkedin', whatsapp: 'whatsapp', wa: 'whatsapp',
+  telegram: 'telegram', reddit: 'reddit', threads: 'threads', pinterest: 'pinterest', producthunt: 'producthunt',
+  email: 'email', mail: 'email', newsletter: 'email', podcast: 'podcast', partner: 'partner', affiliate: 'partner',
+  event: 'event', festival: 'event', bing: 'bing', duckduckgo: 'duckduckgo', yahoo: 'yahoo',
+  referral: 'referral', quora: 'quora', school: 'school', directory: 'directory', ads: 'ads'
+};
+const bad = Object.entries(EXACT).filter(([k, v]) => B(k) !== v);
+ok(!bad.length, 'every exact name in the contract maps to its bucket' + (bad.length ? ' (wrong: ' + bad.map(([k]) => k).join(', ') + ')' : ''));
+const FAMILY = {
+  'ig-bio': 'instagram', 'insta-reel3': 'instagram', 'fb-group-chennai': 'facebook', 'meta-t1a': 'ads', 'yt-shorts': 'youtube',
+  'wa-status': 'whatsapp', 'school-loyola': 'school', 'fest-iffk': 'event', 'dir-saashub': 'directory',
+  'creator-rahul': 'partner', 'aff-kasi': 'partner', 'ref-ab12cd': 'referral', 'IG-Bio': 'instagram'
+};
+const badF = Object.entries(FAMILY).filter(([k, v]) => B(k) !== v);
+ok(!badF.length, 'every prefix family maps to its bucket' + (badF.length ? ' (wrong: ' + badF.map(([k]) => k).join(', ') + ')' : ''));
+ok(['google-ads', 'x-thread', 'reddit-r-film', 'tiktok', 'tiktok-1', '-ig', 'ig_bio', 'igbio', 'schools-x', 'preflight-test'].every((x) => B(x) === 'other'),
+  "a token that is not a family (even an exact name with a dash) is 'other'");
+{
+  const slugs = ['loyola', 'rahul', 'kasi', 'saashub', 'iffk', 't1a', 'chennai', 'ab12cd'];
+  const out = Object.keys(FAMILY).map(B);
+  ok(out.every((b) => !slugs.some((sl) => b.includes(sl))), 'the slug after the dash never survives into the bucket');
+}
+ok(F.SOURCES.every((b) => b.length <= 32) && Object.keys(FAMILY).concat(Object.keys(EXACT), ['x'.repeat(200), 'ig-' + 'y'.repeat(200)]).every((x) => B(x).length <= 32),
+  'every bucket is at most 32 characters');
+{
+  const want = [...new Set(Object.values(EXACT).concat(Object.values(FAMILY))), 'other'].sort();
+  ok(JSON.stringify([...F.SOURCES].sort()) === JSON.stringify(want), 'SOURCES is exactly the contract\'s buckets plus other');
 }
 ok(B('') === '' && B(null) === '' && B(undefined) === '' && B('   ') === '', 'nothing is no source');
 ok(F.SOURCES.includes('other') && F.SOURCES.every((b) => /^[a-z0-9_-]{1,32}$/.test(b) && !/[0-9]{7}/.test(b)), "every bucket on the list passes the server's CHECK");

@@ -30,7 +30,7 @@ import '../../styles/testimonial-prompt.css';
 const FILTERS = [
   { id: 'pending', label: 'Waiting' },
   { id: 'takedown', label: 'Remove from site' },
-  { id: 'approved', label: 'Published' },
+  { id: 'approved', label: 'Approved' },
   { id: 'rejected', label: 'Not published' },
   { id: 'revoked', label: 'Taken back' },
   { id: 'all', label: 'All' }
@@ -72,7 +72,7 @@ async function decide(id, status) {
   S.busy = id; again();
   try {
     await T.admin.setStatus(S.ctx && S.ctx.cloud, id, status);
-    toast(status === 'approved' ? 'Published.' : status === 'rejected' ? 'Marked not published.' : 'Back in the queue.', 'success');
+    toast(status === 'approved' ? 'Approved.' : status === 'rejected' ? 'Marked not published.' : 'Back in the queue.', 'success');
     await load();
   } catch (e) {
     toast((e && e.code === '42501') ? 'Only the owner can publish or reject a testimonial.' : (e && e.message) || 'Not saved.', 'error');
@@ -93,10 +93,10 @@ function card(r) {
     if (r.status === 'approved') acts.push(btn('COPY FOR THE SITE', 'copy'));
   }
   return h('li.ad-card', { 'data-testimonial': r.id }, [
-    h('div.us-bar', {}, [pill(statusWord(r), tone), h('span.ad-meta', { text: (r.author_email || 'unknown author') + ' · sent ' + absTime(r.created_at) })]),
+    h('div.us-bar', {}, [pill(statusWord(r), tone), h('span.ad-meta', { text: (r.author_deleted ? 'account deleted' : r.author_email || 'unknown author') + ' · sent ' + absTime(r.created_at) })]),
     h('blockquote', { text: '“' + p.quote + '”' }),
     h('p.ad-meta', { text: p.byline ? '— ' + p.byline : '' }),
-    h('details', {}, [h('summary', { text: 'Consent' }), h('p.ad-meta', { text: `Agreed ${absTime(r.consented_at)}: “${r.consent_text}”` + (revoked ? ` Taken back ${absTime(r.revoked_at)}.` : '') + (r.approved_at ? ` Published ${absTime(r.approved_at)}.` : '') + (r.site_removed_at ? ` Marked off the site ${absTime(r.site_removed_at)}.` : '') })]),
+    h('details', {}, [h('summary', { text: 'Consent' }), h('p.ad-meta', { text: `Agreed ${absTime(r.consented_at)}: “${r.consent_text}”` + (revoked ? (r.author_deleted ? ` Account deleted (taken back) ${absTime(r.revoked_at)}.` : ` Taken back ${absTime(r.revoked_at)}.`) : '') + ((r.first_approved_at || r.approved_at) ? ` First approved ${absTime(r.first_approved_at || r.approved_at)}.` : '') + (r.approved_at && r.first_approved_at && r.approved_at !== r.first_approved_at ? ` Approved again ${absTime(r.approved_at)}.` : '') + (r.site_removed_at ? ` Marked off the site ${absTime(r.site_removed_at)}.` : '') })]),
     acts.length ? h('div.ba-actions', {}, acts) : null
   ].filter(Boolean));
 }

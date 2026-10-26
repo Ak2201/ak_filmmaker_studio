@@ -188,3 +188,113 @@ do $$ begin
 exception when sqlstate 'P0429' then raise notice 'ok - 59. a sixth testimonial in a day -> P0429'; end $$;
 rollback;
 select t.reset();
+
+-- 8. approve -> un-approve -> revoke: still the owner's to take down
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
+  ('00000000-0000-4000-8000-000000005905', 'tm-author3@example.com', now(), '{}'),
+  ('00000000-0000-4000-8000-000000005906', 'tm-author4@example.com', now(), '{}');
+insert into public.studio_members (user_id, role) values
+  ('00000000-0000-4000-8000-000000005905', 'user'),
+  ('00000000-0000-4000-8000-000000005906', 'user');
+begin;
+select t.claims('00000000-0000-4000-8000-000000005905');
+select public.submit_testimonial('Approved, copied to the site, then pulled back.', 'Author Three', null, null, t.tm_consent());
+select t.claims('00000000-0000-4000-8000-000000005903');
+select public.admin_set_testimonial_status(id, 'approved') from public.admin_list_testimonials('pending') where display_name = 'Author Three';
+select t.ok((select first_approved_at is not null and first_approved_at = approved_at from public.admin_list_testimonials('approved') where display_name = 'Author Three'),
+  '59. approving sets first_approved_at');
+select public.admin_set_testimonial_status(id, 'rejected') from public.admin_list_testimonials('approved') where display_name = 'Author Three';
+select t.ok((select approved_at is null and first_approved_at is not null from public.admin_list_testimonials('rejected') where display_name = 'Author Three'),
+  '59. un-approving clears approved_at and keeps first_approved_at');
+select public.admin_set_testimonial_status(id, 'approved') from public.admin_list_testimonials('rejected') where display_name = 'Author Three';
+select t.ok((select first_approved_at < approved_at or first_approved_at = approved_at from public.admin_list_testimonials('approved') where display_name = 'Author Three'),
+  '59. approving again keeps the FIRST approval time');
+select public.admin_set_testimonial_status(id, 'pending') from public.admin_list_testimonials('approved') where display_name = 'Author Three';
+select t.claims('00000000-0000-4000-8000-000000005905');
+select 1 from public.revoke_testimonial((select id from public.my_testimonials() where display_name = 'Author Three' limit 1));
+select t.claims('00000000-0000-4000-8000-000000005903');
+select t.ok((select count(*) = 1 from public.admin_list_testimonials('takedown') where display_name = 'Author Three'),
+  '59. approve -> un-approve -> revoke: on the takedown list (the copy may be on the site)');
+select t.ok((select count(*) = 0 from public.admin_list_testimonials('takedown') where display_name = 'Author Two' or quote = 'A direct insert, still mine and pending.'),
+  '59. a row never approved is not on the takedown list');
+commit;
+
+-- 9. the author's account is deleted (admin_delete_user, and a plain delete)
+begin;
+select t.claims('00000000-0000-4000-8000-000000005906');
+select public.submit_testimonial('Approved, then the account was deleted.', 'Author Four', null, null, t.tm_consent());
+select public.submit_testimonial('Never approved, then the account was deleted.', 'Author Four', null, null, t.tm_consent());
+select t.claims('00000000-0000-4000-8000-000000005903');
+select public.admin_set_testimonial_status(id, 'approved') from public.admin_list_testimonials('pending') where quote = 'Approved, then the account was deleted.';
+commit;
+begin;
+select t.claims('00000000-0000-4000-8000-000000005901', 'anon');
+select t.ok((select count(*) = 1 from public.public_testimonials() where display_name = 'Author Four'), '59. fixture: Author Four''s approved quote is public');
+commit;
+begin;
+select t.claims('00000000-0000-4000-8000-000000005903');
+select t.ok((public.admin_delete_user('00000000-0000-4000-8000-000000005906', 'tm-author4@example.com')) is not null, '59. the owner deletes Author Four''s account totally');
+commit;
+begin;
+select t.claims('00000000-0000-4000-8000-000000005901', 'anon');
+select t.ok((select count(*) = 0 from public.public_testimonials() where display_name = 'Author Four'),
+  '59. a deleted account''s approved quote leaves the public list at once');
+commit;
+begin;
+select t.claims('00000000-0000-4000-8000-000000005903');
+select t.ok((select count(*) = 1 and bool_and(author is null and author_deleted and revoked_at is not null)
+               from public.admin_list_testimonials('takedown') where display_name = 'Author Four'),
+  '59. ... it is revoked, its author is gone, and it waits on the takedown list');
+select t.ok((select count(*) = 0 from public.admin_list_testimonials(null) where quote = 'Never approved, then the account was deleted.'),
+  '59. a never-approved testimonial goes with the account');
+do $$ begin
+  perform public.admin_set_testimonial_status((select id from public.admin_list_testimonials('takedown') where display_name = 'Author Four' limit 1), 'approved');
+  raise exception 'should have refused';
+exception when sqlstate '22023' then raise notice 'ok - 59. a deleted account''s testimonial cannot be approved again -> 22023'; end $$;
+select t.ok((select r.site_removed_at is not null from public.admin_mark_testimonial_removed((select id from public.admin_list_testimonials('takedown') where display_name = 'Author Four' limit 1)) r),
+  '59. the owner marks it off the site');
+select t.ok((select count(*) = 0 from public.admin_list_testimonials(null) where display_name = 'Author Four'),
+  '59. ... and then its words are deleted (kept only to find the copy)');
+commit;
+select t.ok((select count(*) >= 1 from public.admin_audit where action = 'testimonial_site_removed' and after ->> 'author_deleted' = 'true'),
+  '59. the audit row says the author was deleted, without the words');
+
+-- 9b. a plain delete (the dashboard) does the same
+begin;
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
+  ('00000000-0000-4000-8000-000000005907', 'tm-author5@example.com', now(), '{}');
+insert into public.studio_members (user_id, role) values ('00000000-0000-4000-8000-000000005907', 'user');
+select t.claims('00000000-0000-4000-8000-000000005907');
+select public.submit_testimonial('Approved, then deleted from the dashboard.', 'Author Five', null, null, t.tm_consent());
+select t.claims('00000000-0000-4000-8000-000000005903');
+select public.admin_set_testimonial_status(id, 'approved') from public.admin_list_testimonials('pending') where display_name = 'Author Five';
+select t.reset();
+delete from auth.users where id = '00000000-0000-4000-8000-000000005907';
+select t.ok((select author is null and revoked_at is not null and first_approved_at is not null from public.testimonials where display_name = 'Author Five'),
+  '59. deleting the auth.users row directly revokes it and keeps it for the takedown list');
+rollback;
+select t.reset();
+
+-- 9c. approve -> author revokes -> owner marks it off the site -> account
+-- deleted: the row is no longer on the takedown list, so nothing else would
+-- ever delete it. The account's deletion must take the words with it.
+begin;
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
+  ('00000000-0000-4000-8000-000000005908', 'tm-author6@example.com', now(), '{}');
+insert into public.studio_members (user_id, role) values ('00000000-0000-4000-8000-000000005908', 'user');
+select t.claims('00000000-0000-4000-8000-000000005908');
+select public.submit_testimonial('Approved, taken back, taken down, then the account went.', 'Author Six', 'Editor', 'A Film', t.tm_consent());
+select t.claims('00000000-0000-4000-8000-000000005903');
+select public.admin_set_testimonial_status(id, 'approved') from public.admin_list_testimonials('pending') where display_name = 'Author Six';
+select t.claims('00000000-0000-4000-8000-000000005908');
+select 1 from public.revoke_testimonial((select id from public.my_testimonials() where display_name = 'Author Six' limit 1));
+select t.claims('00000000-0000-4000-8000-000000005903');
+select 1 from public.admin_mark_testimonial_removed((select id from public.admin_list_testimonials('takedown') where display_name = 'Author Six' limit 1));
+select t.ok((select count(*) = 1 and bool_and(site_removed_at is not null and author is not null) from public.admin_list_testimonials(null) where display_name = 'Author Six'),
+  '59. fixture: marked off the site while the account still exists (row kept, author set)');
+select t.ok((public.admin_delete_user('00000000-0000-4000-8000-000000005908', 'tm-author6@example.com')) is not null, '59. fixture: the owner deletes Author Six''s account totally');
+select t.reset();
+select t.ok((select count(*) = 0 from public.testimonials where display_name = 'Author Six' or quote like 'Approved, taken back, taken down%'),
+  '59. approve -> revoke -> marked off the site -> account deleted: the row and its words are gone');
+rollback;
+select t.reset();

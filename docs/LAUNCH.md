@@ -219,14 +219,31 @@ that one.
 > 4. **§59** `schema-59-testimonials.sql` (26 Oct 2026) — testimonials with consent and revoke.
 >    Same checksum routine. Read back: `select relrowsecurity from pg_class where oid =
 >    'public.testimonials'::regclass` → true, and as anon `POST /rest/v1/rpc/public_testimonials`
->    → `[]`, and `admin_mark_testimonial_removed(uuid)` exists. A taken-back testimonial
+>    → `[]`, and `admin_mark_testimonial_removed(uuid)` exists, and
+>    `select tgname from pg_trigger where tgrelid = 'auth.users'::regclass and tgname =
+>    'testimonials_on_user_delete'` → one row, and
+>    `select confdeltype from pg_constraint where conname = 'testimonials_author_fkey'` → `n`
+>    (SET NULL: deleting an account revokes an approved testimonial instead of losing the
+>    takedown record). A taken-back testimonial
 >    that was on the site shows on the console Overview until you delete it from
 >    `src/data/testimonials.json`, redeploy, and press TAKEN OFF THE SITE. No function redeploy. Safe before it runs: the prompt never appears and the
 >    console's Testimonials tab says "section 59 has not run". Then the two-account checks in
 >    `docs/SECURITY-RLS.md` §59.
 >
+> 5. **§60** `schema-60-signup-trial-scope.sql` (26 Oct 2026) — a trial started by pressing
+>    START MY FREE TRIAL follows the console's trial scope (before, it was always the sample).
+>    Run AFTER §59, and BEFORE you set the console's trial scope to "The whole studio" for
+>    the 26 Oct decision (3 days = trial length 72 hours, scope full): until §60 runs, that
+>    setting widens only code trials. Same checksum routine; sha256
+>    `7f983a36d52f70613e378a42fbab152a1efc40afc325e334efb5c42c8d8c7e55` (the README row is the one to trust after any edit). Read back (§60.4 in the file):
+>    `select pg_get_functiondef('public.start_trial(text)'::regprocedure) like '%§60%'` → true,
+>    `… like '%then ''sample'' else%'` → false, `select public.trial_offer() ? 'trial_scope'`
+>    → true; after setting the console, `select trial_scope, trial_minutes from
+>    public.billing_settings` → `full`, `4320`. No function redeploy. Then the checks in
+>    `docs/SECURITY-RLS.md` §60.
+>
 > §53 and §54 ran live on 22 Oct 2026 and the four functions were redeployed that day
-> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §60 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
+> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §61 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
 
 > **RAN LIVE 19 Oct 2026 (§36 re-run, §48–§51), each checksummed and probed over PostgREST** —
 > §48 `can_join_presence` and §49 `co_editing_enabled` answer, `claim_share` now answers 42501

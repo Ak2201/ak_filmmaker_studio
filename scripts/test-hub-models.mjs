@@ -81,6 +81,15 @@ ok(T.readTourState(5).active === false, 'an array reads as a fresh tour');
   HM.detectActivity({ ...st, l: { count: 3, total: 150000 } });
   const inr = JSON.parse(seams.mem.get('fms_studio_activity_v1')).entries[0];
   ok(inr.what === 'Budget estimate: 2 → 3 lines (₹ 1.5 L)', 'a rupee estimate still reads in rupees: ' + inr.what);
+  // A hub load with nothing changed must not rewrite the log: the write
+  // goes through the scoped proxy, which marks the project edited.
+  let writes = 0;
+  const realSet = globalThis.localStorage.setItem;
+  globalThis.localStorage.setItem = (k, v) => { writes++; realSet(k, v); };
+  HM.detectActivity({ ...st, l: { count: 3, total: 150000 } });
+  HM.detectActivity({ ...st, l: { count: 3, total: 150000 } });
+  globalThis.localStorage.setItem = realSet;
+  ok(writes === 0, 'an unchanged snapshot writes nothing (' + writes + ' writes)');
 }
 
 console.log((fail ? '✗' : '✓') + ' hub models: ' + pass + ' passed, ' + fail + ' failed');

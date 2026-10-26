@@ -77,6 +77,7 @@ import { listProjects, currentProjectId } from '../lib/store.js';
 import { switchProject } from './project-switcher.js';
 import { markLocked, aiUnlocked, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { pageFile } from '../lib/page-file.js';
+import { snippetAround } from '../lib/text-snippet.js';
 import '../styles/palette.css';
 
 const MAX_ROWS = 60;
@@ -196,10 +197,9 @@ function scriptHits(needle) {
   for (const l of scriptLines) {
     const at = l.text.toLowerCase().indexOf(needle);
     if (at < 0) continue;
-    const from = Math.max(0, at - 24);
     out.push(entry({
       id: 'line:' + l.id,
-      label: (from ? '…' : '') + l.text.slice(from, at + needle.length + 48).trim(),
+      label: snippetAround(l.text, at, needle.length),
       sub: 'Screenplay · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
       group: 'Screenplay',
       hueClass: 'sh-ph-screenplay',

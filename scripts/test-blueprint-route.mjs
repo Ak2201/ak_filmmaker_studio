@@ -111,5 +111,16 @@ eq(Red.redirectIfBlueprint(loc('/feature', '#step-07')), true, 'enabled: redirec
 eq(calls, ['story.html?step=feature/step-07#guide'], 'location.replace got the guide href');
 delete gx.window.__FMS_BLUEPRINT_REDIRECT__;
 
+/* The installed app's shortcuts (public/manifest.webmanifest) must not
+   name the retired blueprint pages: feature.html and short.html both
+   redirect to the Story guide, so two shortcuts landed on one page. */
+{
+  const mf = JSON.parse(readFileSync(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8'));
+  const urls = (mf.shortcuts || []).map((x) => x.url.replace(/^\.\//, ''));
+  ok(urls.length > 0 && new Set(urls).size === urls.length, 'manifest shortcuts go to distinct pages: ' + urls);
+  for (const u of urls) ok(!/^(feature|short)\.html/.test(u), 'manifest shortcut ' + u + ' is not a retired blueprint (it redirects)');
+  for (const x of mf.shortcuts || []) ok(!/blueprint/i.test(x.name), 'manifest shortcut "' + x.name + '" does not say Blueprint');
+}
+
 console.log(fail ? `\n✗ ${fail} failed, ${pass} passed` : `✓ blueprint-route: ${pass} checks`);
 process.exit(fail ? 1 : 0);

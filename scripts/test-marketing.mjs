@@ -499,5 +499,18 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
   ok(/priceNotice\(\)\.then[\s\S]*fromDayNow\(notice\)/.test(read('src/pages/start.js')), 'start.js corrects the hero\'s from-figure');
 }
 
+/* ---- one verb per action ------------------------------------------
+   The header says Log in / Sign up; the modal it opens said "Sign in to
+   start your trial", the pricing buttons swapped to "Sign in", and the
+   plans CTA was "See the plans" on one page and "See plans" on two. The
+   LABELS agree now (prose may still say "sign in" as a verb). */
+for (const [file, html] of Object.entries(files)) {
+  if (!/\.html$/.test(file)) continue;
+  const labels = [...html.matchAll(/>\s*(Sign in[^<]*)</g)].map((m) => m[1].trim())
+    .concat([...html.matchAll(/data-off-text="(Sign in[^"]*)"/g)].map((m) => m[1]));
+  ok(labels.length === 0, file + ': no control or heading labelled "Sign in" [' + labels.join(' | ') + ']');
+  ok(!/See the plans/.test(html), file + ': the plans CTA reads "See plans"');
+}
+
 console.log(`\ntest:marketing: ${pass} passed, ${fail} failed${FIXTURE ? ' (fixture copy; media existence NOT checked)' : ''}`);
 process.exit(fail ? 1 : 0);

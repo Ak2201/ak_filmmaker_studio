@@ -236,6 +236,10 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 /* demo: one centred 16:9 player */
 .mk-player { width: 100%; max-width: 1040px; aspect-ratio: 16 / 9; }
 .mk-player video { display: block; width: 100%; height: 100%; background: var(--surface-card); }
+/* The player clips (overflow: hidden) and the video fills it, so the
+   video's own focus outline was drawn entirely inside the clipped band:
+   a keyboard user saw no ring at all. The ring goes on the player. */
+.mk-player:has(video:focus-visible) { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 /* how it works: the steps beside ONE shared slot */
 .mk-how { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(var(--s5), 5vw, var(--s8)); align-items: start; }

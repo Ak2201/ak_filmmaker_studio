@@ -136,6 +136,7 @@ export function greetingHTML(hour, projects, cur) {
  */
 export function detectActivity({ f, s, l }) {
   const log  = readActivityLog();
+  const was = JSON.stringify([log.entries, log.lastSnap]);
   const last = log.lastSnap || {};
   const now = {
     fp: f.pct, ft: f.title, fs: f.lastEditedStep,
@@ -172,6 +173,11 @@ export function detectActivity({ f, s, l }) {
   }
   log.entries = capLog(arr);
   log.lastSnap = now;
+  /* Nothing moved, nothing written. The write goes through the scoped
+     proxy, which touches the project's updatedAt and its sync clock, so
+     a rewrite of identical content made every hub load read as an edit
+     ("edited just now") and flashed "Saving…" when nobody had typed. */
+  if (JSON.stringify([log.entries, log.lastSnap]) === was) return;
   saveActivityLog(log);
 }
 

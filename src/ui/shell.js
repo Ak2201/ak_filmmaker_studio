@@ -1927,7 +1927,12 @@ function wire() {
   delegate(document, 'click', '[data-action="rail-account"]', (e, el) => openAcctMenu(el));
   /* Any choice in the account menu closes it; a click elsewhere or
      Escape does too. Arrow keys move between its rows. */
-  delegate(document, 'click', '.sh-acct-item', () => closeAcctMenu(false));
+  /* On WINDOW, which hears the click after every document-level handler:
+     closing first detached the row, so delegate()'s root.contains() check
+     failed for the row's own handler and 'Help & shortcuts' did nothing. */
+  window.addEventListener('click', (e) => {
+    if (e.target instanceof Element && e.target.closest('#shAcctMenu .sh-acct-item')) closeAcctMenu(false);
+  });
   document.addEventListener('click', (e) => {
     const m = document.getElementById('shAcctMenu');
     if (m && !m.contains(e.target) && !e.target.closest('.sh-rail-account')) closeAcctMenu(false);
@@ -2131,8 +2136,12 @@ export function mountShell() {
     const go = () => {
       if (done) return; done = true;
       EV.forEach((t) => window.removeEventListener(t, go, true));
-      import('./video-help.js').then((m) => m.mountHelp(document.querySelector('.sh-bar'), helpIds)).catch(() => {});
+      import('./video-help.js').then((m) => m.mountHelp(document.querySelector('.sh-bar'), helpIds)).catch(() => {})
+        .finally(() => document.documentElement.removeAttribute('data-vid-help-pending'));
     };
+    /* Marks the deferred import as not yet landed, so a check that reads
+       the band (prove:nav) can wait for it instead of guessing a delay. */
+    document.documentElement.setAttribute('data-vid-help-pending', '');
     EV.forEach((t) => window.addEventListener(t, go, { capture: true, passive: true }));
     setTimeout(go, 8000);
   }

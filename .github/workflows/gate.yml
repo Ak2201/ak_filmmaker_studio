@@ -152,3 +152,8 @@ jobs:
       - run: npm run prove:legal
         env:
           PROVE_DIST: dist-verify
+      # Keyboard paths: account-menu help, the phone Go-to sheet's focus,
+      # the public site's video ring and phone menu, the bottom bar.
+      - run: npm run prove:shell-a11y
+        env:
+          PROVE_DIST: dist-verify

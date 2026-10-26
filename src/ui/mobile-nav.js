@@ -323,12 +323,21 @@ export function openGoTo(phaseId) {
   for (const s of shelves()) body.append(group(s, here, s.hue ? '.hue-' + s.hue : ''));
 
   markLocked(body);   // PLAN flag on a module the plan does not include
+  /* A switched-off module (hidden, data-pg-gone) is not where anybody
+     is: bare library.html resolved to the Case Studies shelf, which the
+     plan gate hides, and focus() on a hidden row does nothing — so focus
+     stayed on the bar, outside this aria-modal sheet. */
+  const GONE = '[hidden], [data-pg-gone]';
+  for (const r of body.querySelectorAll('.mn-mod.is-here')) {
+    if (r.closest(GONE)) { r.classList.remove('is-here'); r.removeAttribute('aria-current'); }
+  }
   let target = null;
   open('goto', 'Go to', body, {
     focus: () => {
-      target = (phaseId && body.querySelector('[data-mn-phase="' + CSS.escape(phaseId) + '"]'))
+      target = (phaseId && body.querySelector('[data-mn-phase="' + CSS.escape(phaseId) + '"]:not([hidden])'))
         || body.querySelector('.mn-mod.is-here');
-      return (target && target.matches('a') ? target : target && target.querySelector('a')) || null;
+      const a = target && target.matches('a') ? target : target && target.querySelector('a');
+      return a && !a.closest(GONE) ? a : null;
     }
   });
   /* Where you are, in view: the whole group (its stage heading too),

@@ -159,6 +159,28 @@ document.addEventListener('keydown', (e) => {
   if (item && item.hasAttribute('data-open')) { setMega(false, { focus: true }); return; }
   if (top && top.hasAttribute('data-menu')) setMenu(false, { focus: true });
 });
+/* The open phone sheet keeps Tab to itself. #mkNav comes BEFORE the
+   burger in the DOM, so a plain Tab from the burger walked forward into
+   <main>, onto controls the full-screen sheet covers, and the menu's own
+   links were reachable only with Shift+Tab. The cycle is the burger, then
+   the sheet's visible links in the order they are drawn (the phone sheet
+   reorders Log in to the top). */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab' || !burger || !top || !top.hasAttribute('data-menu')) return;
+  const nav = byId('mkNav');
+  if (!nav) return;
+  const links = $$('a[href], button', nav)
+    .filter((a) => a.getClientRects().length && getComputedStyle(a).visibility !== 'hidden')
+    .map((a) => ({ a, r: a.getBoundingClientRect() }))
+    .sort((x, y) => (x.r.top - y.r.top) || (x.r.left - y.r.left))
+    .map((x) => x.a);
+  const ring = [burger, ...links];
+  if (ring.length < 2) return;
+  const i = ring.indexOf(document.activeElement);
+  const next = ring[(i < 0 ? 0 : i + (e.shiftKey ? -1 : 1) + ring.length) % ring.length];
+  e.preventDefault();
+  next.focus();
+});
 try { (wide.addEventListener ? wide.addEventListener.bind(wide, 'change') : wide.addListener.bind(wide))(() => { setMega(false); setMenu(false); }); } catch (e) { /* no media query events */ }
 
 /* ---- 4. the step slot ----------------------------------------------

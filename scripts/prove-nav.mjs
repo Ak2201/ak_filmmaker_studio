@@ -238,6 +238,9 @@ async function worker() {
          then wait for what it imported: every load sees the same band. */
       await page.mouse.move(2, 2);
       await page.waitForLoadState('networkidle');
+      /* and for the import itself to have landed: under load a fixed
+         500ms read some arrivals before the button was mounted */
+      await page.waitForFunction(() => !document.documentElement.hasAttribute('data-vid-help-pending'), null, { timeout: 15000 });
       await page.waitForTimeout(500);
       results.push({ ...job, ...(await page.evaluate(probe)), errors });
     } catch (e) {

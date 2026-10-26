@@ -47,6 +47,15 @@ const gateOff = [...offBlock.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]).sort();
 const matrixOff = matrix.features.filter((f) => f.kind === 'module' && !f.plans.length).map((f) => f.key).sort();
 ok('plan-gate OFF_BY_DEFAULT = matrix modules with plans: [] [' + gateOff + '] vs [' + matrixOff + ']', gateOff.join() === matrixOff.join());
 
+/* A group's one-line description (the palette subtitle, the rail title)
+   must not promise a module nobody can open: the Library's named case
+   studies, dissection and glossary long after all three were switched off. */
+for (const g of [...(nav.global || []), ...(nav.phases || []), ...(nav.shelves || [])]) {
+  if (!g || !g.purpose || !Array.isArray(g.modules)) continue;
+  const promised = g.modules.filter((m) => gateOff.includes(m.id) && g.purpose.toLowerCase().includes(m.label.toLowerCase().replace(/s$/, '')));
+  ok('"' + g.id + '" purpose names no switched-off module [' + promised.map((m) => m.id) + ']', promised.length === 0);
+}
+
 /* Every phase keeps at least one module that is not off for every plan,
    except the stages listed here, which the owner has switched off whole.
    None today: Post-production (edit-log, deliverables) was the one, and

@@ -47,6 +47,7 @@ import Store from '../lib/store.js';
 import { delegate } from '../lib/dom.js';
 import { BRAND, BRAND_HOST, BRAND_PATH } from '../lib/brand.js';
 import { setPort } from '../lib/ports.js';
+import { currentPlan } from '../lib/plan-gate.js';   // CORE, like this file
 import { brandingPrefOff, saveBrandingOff, tourActive } from '../lib/chrome-prefs.js';
 import '../styles/footer.css';
 
@@ -184,11 +185,41 @@ if (typeof window !== 'undefined') {
    Settings switch still governs only the deck, the call sheet and the
    screening room, which carry the line of their own. One builder: the
    same brandLine() the footer and the deck use. */
-export function pdfBrandLine() {
-  if (mayRemoveBranding()) return null;
+/* The plan as plan-gate holds it NOW, not the last 'plan:changed' this
+   file heard: a Pro member exporting in the first second must not get
+   the line because an event had not arrived yet. Until a plan is known
+   it is not gated, and the line prints — erring toward the brand. */
+function planNow() {
+  try { const cp = currentPlan(); if (cp && cp.gated) return cp; } catch (e) { /* below */ }
+  return lastPlan;
+}
+export function pdfBrandLine(plan = planNow()) {
+  if (mayRemoveBranding(plan)) return null;
   const p = brandLine({ className: 'made-with pdf-made-with' });
   p.id = 'pdf-made-with';
   return p;
+}
+
+/* ---- the same line on a PLAIN print ---------------------------------
+   The budget's top sheet and settlement, the budget page, the
+   stripboard's Print and the reports' one-view prints go through
+   window.print() with their own "only this prints" body class, not
+   through pdf.js stage(). They carry the same line by the same rule
+   (none on a plan that may remove it), for the length of that one
+   print: brandPrint() appends it as the last child of <body> and returns
+   the function that takes it off again (afterprint does too). footer.css
+   shows .pdf-made-plain above every page's print rule. A staged job has
+   its own already, so this adds nothing then. Call it right before
+   window.print(). */
+export function brandPrint() {
+  if (typeof document === 'undefined' || document.getElementById('pdf-made-with')) return () => {};
+  const line = pdfBrandLine();
+  if (!line) return () => {};
+  line.classList.add('pdf-made-plain');
+  document.body.append(line);
+  const off = () => { line.remove(); window.removeEventListener('afterprint', off); };
+  window.addEventListener('afterprint', off);
+  return off;
 }
 
 /* ---- Settings → Plan: the toggle and the help link ----------------- */
@@ -279,7 +310,7 @@ export function injectFooter() {
   return foot;
 }
 
-export default { injectFooter, brandLine, pdfBrandLine, brandingOn, mayRemoveBranding, setBrandingOff, planExtras, whatsAppLink, whatsAppHref, SUPPORT_WHATSAPP };
+export default { injectFooter, brandLine, pdfBrandLine, brandPrint, brandingOn, mayRemoveBranding, setBrandingOff, planExtras, whatsAppLink, whatsAppHref, SUPPORT_WHATSAPP };
 
 /* The pitch deck (src/lib/pitch-deck.js) closes on this line through a
    port, so the logic layer never imports the footer. Null when the

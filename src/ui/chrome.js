@@ -28,7 +28,7 @@ import Store from '../lib/store.js';
 import '../lib/sitegate.js';
 /* And the plan gate (src/lib/plan-gate.js): what a member's plan may
    SHOW, decided from billing_status() once the gate has answered. */
-import '../lib/plan-gate.js';
+import { limitKey, limitOffer, limitText } from '../lib/plan-gate.js';
 /* Counts which tools are used (src/lib/usage.js): opt-out, names only, sent once as the page is left. */
 import '../lib/usage.js';
 /* §30. The trial countdown. Here rather than in each page because it
@@ -1620,8 +1620,25 @@ function openShareDialog(projectId) {
       m.querySelector('#shUrl').value = url;
       renderShareList();
       StudioUI.toastSuccess('Share link created (' + role + ').');
-    } catch (e) { StudioUI.toastError(e.message || String(e)); }
+    } catch (e) { shareRefused(e); }
   });
+  /* The share-link cap (P0402, "Your Basic plan allows 3 live share
+     links…") names the plan that raises it and what it costs THIS
+     account, as the project cap does (plan-gate limitOffer, the server's
+     quote or no figure). Anything else keeps the server's own words. */
+  function shareRefused(e) {
+    const msg = (e && e.message) || String(e);
+    if (!(e && e.code === 'P0402' && limitKey(msg) === 'shares')) { StudioUI.toastError(msg); return; }
+    let href = 'purchase.html';
+    StudioUI.toastError(msg, { action: 'See plans', onAction: () => { location.href = href; } });
+    const host = document.getElementById('toastHostAlert');
+    const msgEl = host && host.lastElementChild && host.lastElementChild.querySelector('.toast-msg');
+    limitOffer(msg, 'shares').then((o) => {
+      if (!o || !msgEl || !msgEl.isConnected) return;
+      msgEl.textContent += ' ' + limitText(o);
+      href = o.href;
+    }, () => { /* the plain toast stands */ });
+  }
   m.querySelector('#shCopy').addEventListener('click', () => {
     const inp = m.querySelector('#shUrl');
     inp.select();

@@ -11,7 +11,8 @@
                           have paid for a plan; before that the same
                           spot carries one short "Refer a friend" line
                           saying so. COPY LINK hands a friend
-                          /purchase?ref=<code>, which purchase.js reads.
+                          /purchase?ref=<code>&src=referral, which
+                          purchase.js reads.
 
    Each panel loads its own data on first draw and keeps it in this
    module's memory for the page — never in storage. A section that has
@@ -46,9 +47,12 @@ export function refreshGrowthPanels() { for (const k of Object.keys(S)) S[k] = {
    code in the address; purchase.js reads it and puts it in the "Have a
    code?" box. `/purchase` rather than `/purchase.html`: the host answers
    the .html spelling with a 308 (CLAUDE.md, the cleanUrls trap), and a
-   shared link should not depend on a redirect keeping its query. */
+   shared link should not depend on a redirect keeping its query.
+   `src=referral` is the source bucket (funnel.js sourceBucket(): the
+   exact name `referral`), so a visit through a member's link counts as
+   a referral — the bucket only, never whose code it was. */
 export function referralLink(code) {
-  return 'https://' + BRAND_HOST + '/purchase?ref=' + encodeURIComponent(code);
+  return 'https://' + BRAND_HOST + '/purchase?ref=' + encodeURIComponent(code) + '&src=referral';
 }
 
 const stat = (label, value) => h('div.gr-stat', {}, [

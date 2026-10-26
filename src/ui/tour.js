@@ -47,7 +47,7 @@ import { loadStory } from '../lib/story.js';
 import { listCallSheets } from '../lib/contacts.js';
 import { unscheduledScenes } from '../lib/locations.js';
 import data from '../data/tour.json';
-import { isDisabledEverywhere, entitlement } from '../lib/plan-gate.js';
+import { isDisabledEverywhere, entitlement, currentPlan, trialEndsAt, serverNow } from '../lib/plan-gate.js';
 import '../styles/tour.css';
 
 /* The tour's place (`fms_tour_v1`) is read and written by
@@ -90,6 +90,9 @@ const projects = () => { try { return Store.listProjects() || []; } catch (e) { 
 const current = () => { try { return Store.currentProject() || null; } catch (e) { return null; } };
 
 /* ---- the checklist's facts, derived -------------------------------- */
+/* The first-week list's own horizon (its title says a week). Not a trial
+   length: that is the server's. */
+const WEEK_MS = 7 * 86400000;
 export function firstWeekFacts({ match = sampleMatch } = {}) {
   const open = current();
   const facts = { sample: !!match && projects().some((p) => match(p.title)) };
@@ -115,10 +118,24 @@ export function firstWeekFacts({ match = sampleMatch } = {}) {
   /* "Choose a plan": the account's own state, not the film's, so it is
      read even on the sample. plan-gate.js knows it; signed out it is
      'unknown' and the item is not listed at all. */
-  let reason = 'unknown';
-  try { reason = entitlement().reason; } catch (e) { reason = 'unknown'; }
-  facts.planListed = reason === 'trial' || reason === 'paid';
-  facts.plan = reason === 'paid';
+  /* TICKED only for a plan actually bought: reason 'paid' is any
+     entitled account that is not a trial or a grant, and a plan id of
+     'free' under it is an account let in without buying, which has
+     chosen nothing. LISTED for a bought plan, and for a trial that
+     ends inside this list's own week: the §30 grandfather backfill is a
+     trial too (a year long), and "Choose a plan" is not a first-week
+     task for somebody whose access runs for months. A grant, an ended
+     trial and an unknown state list nothing. */
+  let reason = 'unknown', bought = false, soon = false;
+  try {
+    reason = entitlement().reason;
+    const id = currentPlan().plan;
+    bought = reason === 'paid' && !!id && id !== 'free';
+    const ends = reason === 'trial' ? trialEndsAt() : null;
+    soon = !!ends && ends.getTime() - serverNow() <= WEEK_MS;
+  } catch (e) { reason = 'unknown'; }
+  facts.planListed = bought || soon;
+  facts.plan = bought;
   return facts;
 }
 

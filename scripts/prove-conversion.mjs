@@ -12,20 +12,29 @@
      (b) the project cap (P0402) toast names the next plan and the difference
      (b2) a cap notice REPLAYED at boot (before billing_status answers)
          never names the plan the member already holds
-     (c) the dashboard's referral row: the code, a /purchase?ref= link that
+     (b3) the share-link cap (P0402 from the share dialog) and the seat cap
+         (53400 on Settings → Account, owner only) name the next plan and
+         the difference, the same way
+     (c) the dashboard's referral row: the code, a /purchase?ref=…&src=referral link that
          fills the friend's "Have a code?" box, a plain wa.me share;
          absent signed out
      (d) "Made with" on a staged PDF for a plan that keeps branding, the
-         last child of <body>, shown in print; absent on Pro; removed on unstage
+         last child of <body>, shown in print; absent on Pro; removed on unstage;
+         and on the plain prints of the budget, stripboard and reports
+     (d2) What's new from the rail's avatar menu
      (e) Settings → What's in my plan: the plan's modules, the next plan's
          extras, the upgrade figure; a full trial is not told it may remove
-         the PDF line; absent signed out
+         the PDF line; an ended trial and a lapsed year list nothing and
+         offer a plan; a grant shows no section; absent signed out
      (f) What's new: the drawer opens with every entry, "New" goes, the
          seen id lands in fms_studio_prefs_v1 (no new key), and stays gone
      (g) the first-week list's "Choose a plan": listed during a trial,
-         ticked once paid, absent signed out
+         ticked once paid, absent signed out, absent for a year-long
+         (grandfathered) trial
      (h) the trial reminders: one toast at <= 24h and one at <= 2h left,
-         once per threshold per session; none with three days left
+         once per threshold per trial; none with three days left; none at
+         all for a 30-minute trial (a threshold the trial never exceeded
+         twice over is skipped)
      (i) no localStorage key outside the known registry was written
    ============================================================ */
 import fs from 'node:fs';
@@ -114,6 +123,12 @@ async function newContext({ tok = null, width = 1280 } = {}) {
 const toasts = (page) => page.evaluate(() => [...document.querySelectorAll('.toast-host')].map((n) => n.textContent).join(' | '));
 const waitToast = (page, re, timeout = 10000) => page.waitForFunction((src) => new RegExp(src).test([...document.querySelectorAll('.toast-host')].map((n) => n.textContent).join(' ')), re.source, { timeout }).then(() => true, () => false);
 const allErrors = [];
+/* PROVE_SHOTS=<dir>: a screenshot of each nudge, for a person to read. */
+const shot = async (page, name) => {
+  if (!process.env.PROVE_SHOTS) return;
+  fs.mkdirSync(process.env.PROVE_SHOTS, { recursive: true });
+  await page.screenshot({ path: path.join(process.env.PROVE_SHOTS, name + '.png') }).catch(() => {});
+};
 
 try {
   console.log('(a) the upgrade nudge on a plan wall');
@@ -154,6 +169,7 @@ try {
     await page.waitForTimeout(2500);
     await page.evaluate(() => window.StudioStore.createProject({ title: 'Fourth film', format: 'feature' }));
     const hit = await waitToast(page, /syncs up to 3 projects.*Upgrade to Intermediate for ₹5,000 more\./, 15000);
+    await shot(page, 'project-cap-toast');
     ok(hit, 'the cap toast says the cap, then "Upgrade to Intermediate for ₹5,000 more.": ' + JSON.stringify(await toasts(page)));
     ok(/See plans/i.test(await toasts(page)), 'and still offers See plans');
     allErrors.push(...errors); await ctx.close();
@@ -179,6 +195,67 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
+  console.log('(b3) the share-link and seat caps name the next plan and the difference');
+  basicHolder();
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await ctx.route(SB + '/rest/v1/shares*', (r) => (r.request().method() === 'POST'
+      ? r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'P0402', message: 'Your Basic plan allows 3 live share links. Revoke one, or upgrade.', details: null, hint: null }) })
+      : r.fulfill({ status: 200, contentType: 'application/json', body: '[]' })));
+    await page.goto(BASE + 'dashboard.html');
+    await page.waitForTimeout(2500);
+    await page.evaluate(() => window.StudioUI.openShareDialog('cloud0'));
+    await page.click('#shGen');
+    const hit = await waitToast(page, /allows 3 live share links.*Upgrade to Intermediate for ₹5,000 more\./, 15000);
+    await shot(page, 'share-cap-toast');
+    ok(hit, 'the share cap says the cap, then "Upgrade to Intermediate for ₹5,000 more.": ' + JSON.stringify(await toasts(page)));
+    ok(/See plans/i.test(await toasts(page)), 'with a See plans button');
+    allErrors.push(...errors.filter((e) => !/400|shares/.test(e))); await ctx.close();
+  }
+  {
+    basicHolder();
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    /* seat_limit 3 under Basic's plan cap of 1 (§50: the lower binds),
+       so the form is offered and the SERVER refuses "(1 of 1)". */
+    const acct = { id: 'acc_amy', name: 'Amy’s Studio', owner_id: AMY, plan: 'starter', seat_limit: 3 };
+    await ctx.route(SB + '/rest/v1/accounts*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r.request().method() === 'GET' ? [acct] : []) }));
+    await ctx.route(SB + '/rest/v1/account_members*', (r) => (r.request().method() === 'GET'
+      ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ invited_email: USERS['tok-amy'].email, user_id: AMY, role: 'owner', status: 'active', created_at: new Date().toISOString() }]) })
+      : r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '53400', message: 'Seat limit reached for this account (1 of 1). Add seats to invite more people.', details: null, hint: null }) })));
+    await page.goto(BASE + 'settings.html#team');
+    const ready = await page.waitForSelector('#acctEmail', { timeout: 15000 }).then(() => true, () => false);
+    ok(ready, 'the account panel offers an invite');
+    if (ready) {
+      await page.waitForTimeout(2500);   // the page's re-reads settle; a repaint keeps what is typed anyway
+      await page.fill('#acctEmail', 'friend@example.com');
+      /* The page redraws the panel on each of its own re-reads; press the
+         button that is there NOW rather than one a redraw may replace. */
+      await page.evaluate(() => document.querySelector('[data-acct-action="invite"]').click());
+      const said = await page.waitForFunction(() => /Seat limit reached.*Upgrade to Intermediate for ₹5,000 more\./.test((document.querySelector('.acct-error') || {}).textContent || ''), null, { timeout: 15000 }).then(() => true, () => false);
+      const box = await page.evaluate(() => { const e = document.querySelector('.acct-error'); const a = e && e.querySelector('a'); return { t: e ? e.textContent : '', href: a ? a.getAttribute('href') : '' }; });
+      await shot(page, 'seat-cap-refusal');
+      ok(said, 'the seat cap says the cap, then "Upgrade to Intermediate for ₹5,000 more.": ' + JSON.stringify(box.t));
+      ok(/^purchase\.html\?plan=indie/.test(box.href), 'with a link to Intermediate’s card: ' + box.href);
+    }
+    allErrors.push(...errors.filter((e) => !/400|account_members/.test(e))); await ctx.close();
+  }
+  {
+    /* A FULL account (1 of 1, the plan's cap): no form, and the seat line
+       names the plan that adds seats with the difference. */
+    basicHolder();
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    const acct = { id: 'acc_amy', name: 'Amy’s Studio', owner_id: AMY, plan: 'starter', seat_limit: 1 };
+    await ctx.route(SB + '/rest/v1/accounts*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r.request().method() === 'GET' ? [acct] : []) }));
+    await ctx.route(SB + '/rest/v1/account_members*', (r) => r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify(r.request().method() === 'GET' ? [{ invited_email: USERS['tok-amy'].email, user_id: AMY, role: 'owner', status: 'active', created_at: new Date().toISOString() }] : []) }));
+    await page.goto(BASE + 'settings.html#team');
+    const said = await page.waitForFunction(() => /Upgrade to Intermediate for ₹5,000 more\./.test((document.querySelector('.acct-seats.is-full') || {}).textContent || ''), null, { timeout: 15000 }).then(() => true, () => false);
+    await shot(page, 'seat-full-line');
+    ok(said, 'a full account’s seat line names Intermediate and the difference: ' + JSON.stringify(await page.textContent('.acct-seats').catch(() => '')));
+    ok(!(await page.$('#acctEmail')), 'and offers no invite form the database would refuse');
+    allErrors.push(...errors); await ctx.close();
+  }
+
   console.log('(c) the dashboard referral row');
   basicHolder();
   {
@@ -193,8 +270,8 @@ try {
         const wa = box.querySelector('a[href^="https://wa.me/"]');
         return { code: (box.querySelector('.gr-code') || {}).textContent, link: copy && copy.dataset.copy, wa: wa && wa.href, target: wa && wa.target, rel: wa && wa.rel };
       });
-      const want = 'https://' + BRAND.host + '/purchase?ref=' + encodeURIComponent(r.code || '');
-      ok(!!r.code && r.link === want, 'COPY LINK carries the /purchase?ref= link (the page that reads ?ref=): ' + r.link);
+      const want = 'https://' + BRAND.host + '/purchase?ref=' + encodeURIComponent(r.code || '') + '&src=referral';
+      ok(!!r.code && r.link === want, 'COPY LINK carries the /purchase?ref=…&src=referral link (the page that reads ?ref=; the source bucket "referral"): ' + r.link);
       /* Follow it as a friend would: the code must arrive in the box. */
       const f = await newContext({ tok: 'tok-ben' });
       await f.page.goto(BASE + 'purchase.html' + new URL(r.link).search);
@@ -257,6 +334,63 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
+  console.log('(d) the plain prints: budget, stripboard, reports');
+  /* window.print() is stubbed to report, at the moment it is called and
+     under print media, whether the line is the last child of <body> and
+     shown; the page's own print button (or its delegated action) runs. */
+  const plainPrint = async (page, action) => page.evaluate((act) => new Promise((done) => {
+    window.print = () => {
+      const el = document.getElementById('pdf-made-with');
+      done({ has: !!el, last: !!el && document.body.lastElementChild === el, shown: !!el && getComputedStyle(el).display !== 'none', text: el ? el.textContent : '' });
+    };
+    const [attr, name] = act.startsWith('cx:') ? ['cx', act.slice(3)] : ['action', act];
+    let b = document.querySelector('[data-' + attr + '="' + name + '"]');
+    let made = false;
+    if (!b) { b = document.createElement('button'); b.dataset[attr] = name; b.hidden = true; (document.getElementById('main') || document.body).prepend(b); made = true; }
+    b.click();
+    if (made) b.remove();
+    setTimeout(() => done({ has: false, last: false, shown: false, text: 'print() was never called' }), 3000);
+  }), action);
+  for (const [who, setup, want] of [['Basic', basicHolder, true], ['Pro', proHolder, false]]) {
+    setup();
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.StudioStore.createProject({ title: 'Print film', format: 'feature' }));
+    for (const [file, action] of [['budget.html', 'print'], ['budget.html', 'cx:print-top'], ['stripboard.html', 'sb-print'], ['reports.html', 'print-reports']]) {
+      await page.goto(BASE + file);
+      await page.waitForTimeout(3000);
+      await page.emulateMedia({ media: 'print' });
+      const st = await plainPrint(page, action);
+      await page.emulateMedia({ media: 'screen' });
+      if (want) ok(st.has && st.last && st.shown && st.text.startsWith('Made with ' + BRAND.name), who + ' / ' + file + ' ' + action + ': the line is the last child of <body>, shown in print: ' + JSON.stringify(st));
+      else ok(!st.has && st.text !== 'print() was never called', who + ' / ' + file + ' ' + action + ': no line (remove_branding is allowed): ' + JSON.stringify(st));
+      await page.waitForTimeout(1200);
+      ok(!(await page.$('#pdf-made-with')), who + ' / ' + file + ' ' + action + ': gone again after the print');
+    }
+    allErrors.push(...errors); await ctx.close();
+  }
+
+  console.log('(d2) What’s new from the avatar menu');
+  F.reset();
+  {
+    const { ctx, page, errors } = await newContext({});
+    await page.goto(BASE + 'stripboard.html');
+    await page.waitForSelector('#studioRail .sh-rail-account', { timeout: 10000 });
+    await page.click('#studioRail .sh-rail-account');
+    const row = await page.waitForSelector('#shAcctMenu [data-action="rail-whatsnew"]', { timeout: 5000 }).then(() => true, () => false);
+    ok(row, 'the account menu has a What’s new row');
+    if (row) {
+      await page.click('#shAcctMenu [data-action="rail-whatsnew"]');
+      const n = await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 }).then(() => page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length), () => 0);
+      ok(n === CHANGELOG.entries.length, 'it opens the changelog drawer with every entry (' + n + ')');
+      ok(!(await page.$('#shAcctMenu')), 'and the menu closes');
+      await page.keyboard.press('Escape');
+      ok(await page.evaluate(() => !!document.activeElement && document.activeElement.matches('.sh-rail-account')), 'Escape returns focus to the avatar');
+    }
+    allErrors.push(...errors); await ctx.close();
+  }
+
   console.log('(e) Settings: What’s in my plan');
   basicHolder();
   {
@@ -287,6 +421,38 @@ try {
     ok(shown && !/Remove branding/i.test(txt), 'and is NOT told it may remove the PDF line (every trial PDF prints it)');
     allErrors.push(...errors); await ctx.close();
   }
+  /* An ENDED trial (purchases required): no module list, the way back. */
+  let planShots = 0;
+  const planContents = async () => {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#plan-contents');
+    await page.waitForTimeout(4000);
+    await page.evaluate(() => { const s = document.getElementById('plan-contents'); if (s) s.scrollIntoView(); });
+    await shot(page, 'plan-contents-' + (++planShots));
+    const r = await page.evaluate(() => { const s = document.getElementById('plan-contents'); return s ? { text: s.textContent, lists: s.querySelectorAll('.st-pc-list').length, cta: !!s.querySelector('a[href="purchase.html"]') } : null; });
+    allErrors.push(...errors); await ctx.close();
+    return r;
+  };
+  F.reset();
+  for (const row of F.db.plans) if (row.id !== 'free') row.features = matrixFeatures(row.id);
+  F.db.settings.purchase_required = true;
+  setTrial(AMY, { minutes: 30, scope: 'full', startedAt: Date.now() - 3 * 3600e3 });
+  { const r = await planContents();
+    ok(!!r && /trial has ended/i.test(r.text) && r.lists === 0 && r.cta && !/opens right now/.test(r.text), 'an ended trial: "Your free trial has ended", no module list, Choose a plan: ' + JSON.stringify(r && r.text.slice(0, 160))); }
+  /* A LAPSED year: the plan ran out yesterday. */
+  basicHolder();
+  F.db.settings.purchase_required = true;
+  { const a = F.db.accounts.find((x) => x.id === 'acc_amy'); a.plan_until = new Date(Date.now() - 86400e3).toISOString(); F.db.payments[0].ends_at = a.plan_until; }
+  { const r = await planContents();
+    ok(!!r && /year (has )?ended/i.test(r.text) && r.lists === 0 && r.cta, 'a lapsed year: "Your plan’s year ended on …", no module list, Choose a plan: ' + JSON.stringify(r && r.text.slice(0, 160))); }
+  /* A GRANT: the studio's word, not a plan's: no section. */
+  F.reset();
+  for (const row of F.db.plans) if (row.id !== 'free') row.features = matrixFeatures(row.id);
+  F.db.settings.purchase_required = true;
+  F.db.members.set(AMY, { role: 'user', disabled_at: null, trial_started_at: null });
+  F.db.emailGrants.set(USERS['tok-amy'].email, { email: USERS['tok-amy'].email, role: 'user', plan: null, until: null, applied_user: AMY });
+  { const r = await planContents();
+    ok(r === null, 'a grant: no What’s in my plan (nothing to list, the plan card says the access): ' + JSON.stringify(r && r.text.slice(0, 120))); }
   {
     F.reset();
     const { ctx, page, errors } = await newContext({});
@@ -338,6 +504,9 @@ try {
   F.reset();
   { const it = await checklist(null);
     ok(it.length > 0 && !it.some((x) => x[0] === 'Choose a plan'), 'signed out it is not listed'); }
+  F.reset(); F.db.members.set(AMY, { role: 'user', disabled_at: null });   // no trial key: the §30 grandfather, a year
+  { const it = await checklist('tok-amy');
+    ok(it.length > 0 && !it.some((x) => x[0] === 'Choose a plan'), 'a grandfathered member (a year-long trial) is not asked to choose a plan'); }
 
   console.log('(h) the trial-ending reminders');
   const trialLeft = (minsLeft) => { F.reset(); F.db.settings.trial_minutes = 4320; setTrial(AMY, { minutes: 4320, scope: 'full', startedAt: Date.now() - (4320 - minsLeft) * 60000 }); };
@@ -377,6 +546,38 @@ try {
     await page.goto(BASE + 'stripboard.html');
     await page.waitForTimeout(4000);
     ok(!/free trial ends/.test(await toasts(page)), 'and the day’s reminder is not shown after it');
+    allErrors.push(...errors); await ctx.close();
+  }
+
+  /* A 30-MINUTE trial: neither threshold is ever reached twice over, so
+     starting one raises no "ends in under an hour" on the next page. */
+  F.reset(); F.db.settings.trial_minutes = 30; setTrial(AMY, { minutes: 30, scope: 'full', startedAt: Date.now() - 60000 });
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    await page.waitForTimeout(4000);
+    ok(!/free trial ends/.test(await toasts(page)), 'a 30-minute trial just started: no reminder: ' + JSON.stringify(await toasts(page)));
+    await page.goto(BASE + 'stripboard.html');
+    await page.waitForTimeout(3000);
+    ok(!/free trial ends/.test(await toasts(page)), 'nor on the next page');
+    allErrors.push(...errors); await ctx.close();
+  }
+  /* A 3-HOUR trial: too short for the day's reminder, long enough for
+     the two-hour one, which comes only once two hours are left. */
+  F.reset(); F.db.settings.trial_minutes = 180; setTrial(AMY, { minutes: 180, scope: 'full', startedAt: Date.now() - 60000 });
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    await page.waitForTimeout(4000);
+    ok(!/free trial ends/.test(await toasts(page)), 'a 3-hour trial just started: no reminder');
+    allErrors.push(...errors); await ctx.close();
+  }
+  F.reset(); F.db.settings.trial_minutes = 300; setTrial(AMY, { minutes: 300, scope: 'full', startedAt: Date.now() - 200 * 60000 });
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    ok(await waitToast(page, /Your free trial ends in about 2 hours/), 'a 5-hour trial with 100 minutes left: the two-hour reminder');
+    ok(!/about 24 hours|about 23 hours/.test(await toasts(page)), 'and never the day’s');
     allErrors.push(...errors); await ctx.close();
   }
 

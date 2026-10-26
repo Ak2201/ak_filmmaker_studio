@@ -83,7 +83,10 @@
    the last child of <body> for the length of one print job. Never on
    screen; on paper one small line after the document, so on its last
    page. The doubled class outranks every page's "only this element
-   prints" rule (body.pdf-bdsheets > *:not(#bdp-print) and the rest). */
+   prints" rule (body.pdf-bdsheets > *:not(#bdp-print) and the rest).
+   A plain print (pdf.js brandPrint(): the budget, stripboard and reports
+   prints) marks it .pdf-made-plain instead, tripled for the same reason
+   — body.cx-printing > :not(#cxPrint) and the reports' view rules. */
 .pdf-made-with { display: none; }
 
 /* ---- Settings → Plan extras ---------------------------------------- */
@@ -107,7 +110,8 @@
 .plan-extras .wa-link { color: var(--brand-deep); font-weight: 600; }
 
 @media print {
-  body.pdf-print.pdf-print > #pdf-made-with.pdf-made-with {
+  body.pdf-print.pdf-print > #pdf-made-with.pdf-made-with,
+  body > #pdf-made-with.pdf-made-plain.pdf-made-plain.pdf-made-plain {
     display: block !important;
     margin: 6mm 0 0;
     padding: 0;

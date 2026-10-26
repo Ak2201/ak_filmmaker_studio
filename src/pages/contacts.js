@@ -851,6 +851,14 @@ function render() {
   if (firstRender) {
     firstRender = false;
     if (contacts.length && !location.hash) revealTarget('call-sheets');
+    /* `?sheet=<id>` (Shoot Day's "View call sheet") lands on that day's
+       sheet, not the top of the list. Once, after the tab has opened. */
+    let want = '';
+    try { want = new URLSearchParams(location.search).get('sheet') || ''; } catch (e) { /* ignore */ }
+    if (want) requestAnimationFrame(() => requestAnimationFrame(() => {
+      const card = document.querySelector('.ct-sheet[data-sheet="' + CSS.escape(want) + '"]');
+      if (card) card.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }));
   }
   wireActionBar();
   try {
@@ -927,7 +935,9 @@ delegate(document, 'change', '[data-contact-field]', (e, el) => {
 });
 
 delegate(document, 'click', '[data-action="sheet-add"]', () => {
-  const patch = nextSheetPatch(Contacts.listCallSheets(), Locations.calendarDays(Scenes.listScenes()));
+  let want = null;
+  try { want = new URLSearchParams(location.search).get('day'); } catch (e) { /* ignore */ }
+  const patch = nextSheetPatch(Contacts.listCallSheets(), Locations.calendarDays(Scenes.listScenes()), want);
   Contacts.addCallSheet(patch || undefined);
   render();
   /* The header's button is there on the Cast & Crew tab too: switch to

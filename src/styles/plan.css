@@ -440,6 +440,7 @@
    editing chrome goes with it.
    ------------------------------------------------------------ */
 
+@media screen { .pl-print { display: none; } }
 @media print {
   .sh-rail,
   .sh-bar,
@@ -475,6 +476,11 @@
     border-radius: 0;
     padding-inline: 0;
   }
+  /* A one-line input clips and prints its placeholder; the mirror wraps
+     and prints only what was written. */
+  .pl-input { display: none !important; }
+  .pl-print { display: block; min-height: 1.3em; white-space: pre-wrap; overflow-wrap: anywhere;
+    color: var(--print-ink); border-bottom: 1px solid var(--print-rule); }
   .pl-day-no { background: var(--print-paper); color: var(--print-ink); border: 1px solid var(--print-ink); }
 }
 

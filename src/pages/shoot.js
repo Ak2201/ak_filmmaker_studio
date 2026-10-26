@@ -149,12 +149,12 @@ function noteBlock(scene) {
     return h('div.sd-note', {}, [
       h('p.sd-note-text', {}, [sym('sticky_note_2'), h('strong', { text: 'Floor note: ' }), h('span', { text: note })]),
       button({ label: 'Edit note', variant: 'ghost', size: 'sm', icon: 'edit_note',
-        attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Edit the floor note for scene ' + (scene.number || '') } })
+        attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Edit note, scene ' + (scene.number || '') } })
     ]);
   }
   return h('div.sd-note.is-empty', {}, [
     button({ label: 'Add floor note', variant: 'ghost', size: 'sm', icon: 'edit_note',
-      attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Add a floor note for scene ' + (scene.number || '') } })
+      attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Add floor note, scene ' + (scene.number || '') } })
   ]);
 }
 
@@ -182,7 +182,7 @@ function takesBlock(scene) {
   if (takes.length) {
     row.append(h('button.k-btn.k-btn--ghost.k-btn--sm.sd-take-undo', {
       type: 'button', 'data-shoot-action': 'untake', 'data-scene': scene.id,
-      'aria-label': 'Remove take ' + takes[takes.length - 1].n, text: 'Undo'
+      'aria-label': 'Undo take ' + takes[takes.length - 1].n, text: 'Undo'
     }));
   }
   box.append(row);
@@ -329,9 +329,9 @@ function render(focus) {
     sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one on the Plan’s calendar and the page can find it on the morning.',
     meta: isToday ? [h('span.sd-live', {}, [h('span.sd-dot.is-live', { 'aria-hidden': 'true' }), h('span', { text: 'Today' })])] : [],
     actions: [sheet
-      ? button({ label: 'View call sheet', icon: 'description', href: 'contacts.html#call-sheets',
+      ? button({ label: 'View call sheet', icon: 'description', href: 'contacts.html?sheet=' + encodeURIComponent(sheet.id) + '#call-sheets',
           attrs: { title: 'Open ' + (sheet.title || 'the call sheet') + ' on Call sheets' } })
-      : button({ label: 'Make the call sheet', icon: 'description', variant: 'ghost', href: 'contacts.html#call-sheets' })]
+      : button({ label: 'Make the call sheet', icon: 'description', variant: 'ghost', href: 'contacts.html?day=' + day.day + '#call-sheets' })]
   });
   const kpi = (label, value, of, fill, sub) => {
     const c = statCard({ label, value, unit: of || '', note: sub || '' });
@@ -528,9 +528,9 @@ function renderSun(day, scenes, ctx) {
   ]));
   panel.append(timeline(light, ctx));
   if (place.fallback && first && 'geolocation' in navigator) {
-    panel.append(h('button.btn.sd-sun-btn', {
-      type: 'button', 'data-shoot-action': 'locate', 'data-loc': first,
-      text: 'Pin ' + first + ' where this phone is'
+    panel.append(button({
+      label: 'Pin ' + first + ' where this phone is', variant: 'secondary', size: 'sm', class: 'sd-sun-btn',
+      attrs: { 'data-shoot-action': 'locate', 'data-loc': first }
     }));
   }
   node.append(panel, timesRow(day, ctx));
@@ -572,9 +572,12 @@ function timesRow(day, ctx) {
 }
 
 function after(focus) {
-  if (focus) {
-    const node = document.querySelector(focus);
-    if (node) node.focus();
+  /* `focus` is one selector or a list tried in order, so a control that
+     has left the page (a card marked while "Incomplete" is on) hands focus
+     to the next best one instead of letting it fall to <body>. */
+  for (const sel of [].concat(focus || [])) {
+    const node = document.querySelector(sel);
+    if (node) { node.focus(); break; }
   }
   /* The blueprint's production questions, answered here (src/ui/stage-guide.js). */
   mountStageGuide(document.getElementById('main'), { stage: 'production' });
@@ -655,7 +658,11 @@ delegate(document, 'click', '[data-shoot-action]', (e, el) => {
     Shoot.mark(id, el.getAttribute('data-state') || '');
     /* The same state's button on the same scene: its data-state has
        flipped, so it is found by scene and class, not by state. */
-    render('[data-shoot-action="mark"][data-scene="' + CSS.escape(id) + '"]' + (btn ? '.' + btn : ''));
+    render([
+      '[data-shoot-action="mark"][data-scene="' + CSS.escape(id) + '"]' + (btn ? '.' + btn : ''),
+      '.sd-card [data-shoot-action="mark"]' + (btn ? '.' + btn : ''),
+      '[data-shoot-action="filter"][data-filter="' + rosterFilter + '"]'
+    ]);
   }
 });
 

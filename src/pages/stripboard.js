@@ -744,6 +744,17 @@ function doodKey() {
   return k;
 }
 
+function doodExportMenu() {
+  const m = actionMenu('Export', [
+    { label: 'Day Out of Days as PDF', action: 'pdf-dood', hint: 'landscape' },
+    { label: 'Day Out of Days as CSV', action: 'csv-dood', hint: 'cast × days' },
+    '---',
+    { label: 'Print this page',        action: 'sb-print' }
+  ], { align: 'right' });
+  m.querySelector('.tb-menu-btn').classList.add('k-btn', 'k-btn--secondary');
+  return h('div.sb-dood-export.pdf-menu-host', {}, [m]);
+}
+
 function renderDood(scenes) {
   const wrap = h('section.sb-dood', { id: 'dood' });
   const days = shootDays(scenes);
@@ -757,7 +768,10 @@ function renderDood(scenes) {
             + 'assigned on the Stripboard tab — there is nothing to fill in here.'
       })
     ]),
-    rows.length && days.length ? doodKey() : null
+    rows.length && days.length ? doodKey() : null,
+    /* The board's Export menu sits in the other tab's controls, which
+       are hidden here, so this tab carries its own. */
+    rows.length && days.length ? doodExportMenu() : null
   ].filter(Boolean)));
 
   if (!rows.length) {
@@ -914,7 +928,7 @@ function render() {
         h('h2.bd-h2', { text: 'Day Out of Days' }),
         h('p.bd-sub', {
           text: 'Who is needed, and on which day. It builds itself from the cast '
-              + 'tags and the shoot days on the breakdown, so there is nothing to '
+              + 'tags and the shoot days on the Stripboard tab, so there is nothing to '
               + 'fill in here and nothing to show until there are scenes.'
         })
       ])

@@ -400,7 +400,7 @@ const EXPECTED = {
      schedule that does not exist. It prints a dash and "no scenes yet"
      now, so the words left the empty page the baseline was taken on. */
   stripboard: { 'laid': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
-  reports: { "day's": 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
+  reports: { "day's": 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', '0': 'QA round 2, Schedule & reports (26 Oct 2026): with no scenes the Reports stat strip prints dashes, as the stripboard and the Plan do, never "SCENES 0 · PAGES 0 · LOCATIONS 0" (item 48).' },
   contacts: {},
   /* AI Desk (12 Oct 2026): the key lives in Settings only and AI is
      reached through one AI pill (PLAN.md §4). keyGate() used to draw

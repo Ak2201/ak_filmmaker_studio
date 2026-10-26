@@ -624,6 +624,19 @@ body.pdf-print .sb-lock-host { display: none !important; }
   .sb-dood-cards, .sb-dood-switch { display: none !important; }
   .sb-dood .sb-dood-scroll { display: block !important; }
 }
+/* A plain print (Ctrl+P): the grid's scroll box clips on paper, and 18
+   days at their screen width are wider than the page — D7 to D18 were
+   lost. Release the box and share the width among the columns; the PDF
+   export (body.pdf-print) lays out its own landscape page. */
+@media print {
+  body:not(.pdf-print) .sb-dood-scroll { overflow: visible !important; }
+  body:not(.pdf-print) .sb-grid { table-layout: fixed; width: 100%; }
+  body:not(.pdf-print) .sb-grid .sb-grid-day,
+  body:not(.pdf-print) .sb-grid .sb-grid-tot { min-width: 0; padding-inline: 0; font-size: 7pt; position: static; }
+  body:not(.pdf-print) .sb-grid .sb-grid-ddate { font-size: 5.5pt; }
+  body:not(.pdf-print) .sb-grid .sb-grid-name { min-width: 0; width: 24%; position: static; }
+  body:not(.pdf-print) .sb-grid td.sb-cell { padding-inline: 0; }
+}
 body.pdf-print .sb-dood-cards,
 body.pdf-print .sb-dood-switch { display: none !important; }
 body.pdf-print .sb-dood .sb-dood-scroll { display: block !important; }

@@ -83,12 +83,15 @@ function renderHeader(scenes) {
        + 'moment you open it. Change a scene there and the reports change here '
        + '\u2014 there is nothing to regenerate, and nothing to keep in step.'
   });
+  /* No scenes: no figures claimed, the dashes the Stripboard and the Plan print. */
+  const none = !scenes.length;
+  const fig = (v) => (none ? '\u2014' : v);
   head.append(statStrip([
-    stat(String(scenes.length), scenes.length === 1 ? 'scene' : 'scenes'),
-    stat(formatEighths(eighths), 'pages'),
-    stat(formatEighths(night), 'night pages'),
-    stat(String(locationCount(scenes)), 'locations'),
-    stat(String(Scenes.elementIndex().length), 'elements')
+    stat(fig(String(scenes.length)), scenes.length === 1 ? 'scene' : 'scenes'),
+    stat(fig(formatEighths(eighths)), 'pages'),
+    stat(fig(formatEighths(night)), 'night pages'),
+    stat(fig(String(locationCount(scenes))), 'locations'),
+    stat(fig(String(Scenes.elementIndex().length)), 'elements')
   ], { label: 'The reports in figures' }));
   return head;
 }
@@ -221,7 +224,7 @@ function renderReports(scenes, numbers) {
       actionMenu('Export', [
         { label: 'Print the reports', action: 'print-reports' },
         { label: 'Save as PDF',       action: 'pdf-reports', hint: 'A4' }
-      ])
+      ], { kit: 'secondary' })
     ])
   );
 
@@ -335,7 +338,7 @@ function renderSides(scenes, numbers) {
       actionMenu('Export', [
         { label: 'Print the sides', action: 'print-sides' },
         { label: 'Save as PDF',     action: 'pdf-sides', hint: 'A4' }
-      ], { align: 'right' })
+      ], { align: 'right', kit: 'secondary' })
     ])
   );
 
@@ -724,7 +727,7 @@ function renderOneLiner(scenes) {
     actionMenu('Export', [
       { label: 'Print the one-liner', action: 'print-oneliner' },
       { label: 'Save as PDF',         action: 'pdf-oneliner', hint: 'A4' }
-    ])
+    ], { kit: 'secondary' })
   ]));
   const ol = DPR.oneLiner(scenes);
   const target = DPR.pageTarget();
@@ -816,7 +819,7 @@ function fillDPR(sec, scenes) {
     actionMenu('Export', [
       { label: 'Print the DPR', action: 'print-dpr' },
       { label: 'Save as PDF',   action: 'pdf-dpr', hint: 'A4' }
-    ], { align: 'right' })
+    ], { align: 'right', kit: 'secondary' })
   ]));
 
   const sheet = h('div.rp-dpr', { 'data-day': String(d.day) });
@@ -998,7 +1001,7 @@ function fillKit(sec, scenes) {
   tools.append(h('span.rp-spacer'), actionMenu('Export', [
     { label: 'Print the kit list', action: 'print-kit' },
     { label: 'Save as PDF',        action: 'pdf-kit', hint: 'A4' }
-  ], { align: 'right' }));
+  ], { align: 'right', kit: 'secondary' }));
   out.push(tools);
 
   const sheet = h('div.rp-kit', { 'data-day': String(day) });
@@ -1061,7 +1064,7 @@ function refill(id, focus) {
   else if (id === 'kit') fillKit(sec);
   try { StudioUI.autoAriaLabels(); } catch (e) { /* chrome may not be up */ }
   wireActionBar();
-  if (focus) { const el = sec.querySelector(focus); if (el) el.focus(); }
+  for (const sel of [].concat(focus || [])) { const el = sec.querySelector(sel); if (el) { el.focus(); break; } }
 }
 
 /* ---- render ------------------------------------------------- */
@@ -1160,6 +1163,8 @@ const markBlank = (el) => el.toggleAttribute('data-blank', !String(el.value || '
 delegate(document, 'input', '.rp-dpr .rp-in', (e, el) => markBlank(el));
 delegate(document, 'change', '[data-dpr-field]', (e, el) => {
   DPR.saveDPR(dprDay(), { [el.dataset.dprField]: el.value });
+  /* Setups is a count: a typed -3 is refused, and the box says so by clearing. */
+  if (el.dataset.dprField === 'setups') { el.value = DPR.getDPR(dprDay()).setups; markBlank(el); }
   refreshDPRNumbers();
 });
 delegate(document, 'change', '[data-dpr-delay]', (e, el) => {
@@ -1197,17 +1202,38 @@ delegate(document, 'change', '[data-kit-item]', (e, el) => {
 function addKit(dept) {
   const input = document.querySelector(`[data-kit-new="${dept}"]`);
   const name = input ? input.value.trim() : '';
-  if (!name) { if (input) input.focus(); return; }
+  if (!name) {
+    if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+    toast('Write an item first.');
+    return;
+  }
+  if (input) input.removeAttribute('aria-invalid');
   DPR.addKitItem(kitDay(), dept, { item: name });
   refill('kit', `[data-kit-new="${dept}"]`);
 }
 delegate(document, 'click', '[data-action="kit-add"]', (e, el) => addKit(el.dataset.dept));
+delegate(document, 'input', '[data-kit-new]', (e, el) => el.removeAttribute('aria-invalid'));
 delegate(document, 'keydown', '[data-kit-new]', (e, el) => {
   if (e.key === 'Enter') { e.preventDefault(); addKit(el.dataset.kitNew); }
 });
 delegate(document, 'click', '[data-action="kit-remove"]', (e, el) => {
-  DPR.removeKitItem(kitDay(), el.dataset.id);
-  refill('kit', '#rp-kit-day');
+  const day = kitDay();
+  const was = DPR.findKitItem(day, el.dataset.id);
+  DPR.removeKitItem(day, el.dataset.id);
+  /* Focus stays in the list: the neighbouring row's ×, else the department's add box. */
+  refill('kit', [
+    was && was.neighbour ? `[data-action="kit-remove"][data-id="${CSS.escape(was.neighbour)}"]` : '',
+    was ? `[data-kit-new="${was.dept}"]` : '',
+    '#rp-kit-day'
+  ].filter(Boolean));
+  if (was) toast('Removed ' + (was.item.item || 'the item') + '.', {
+    action: 'Undo',
+    onAction: () => {
+      DPR.restoreKitItem(day, was.dept, was.index, was.item);
+      refill('kit', `[data-action="kit-remove"][data-id="${CSS.escape(was.item.id)}"]`);
+      toast('Put ' + (was.item.item || 'the item') + ' back.');
+    }
+  });
 });
 delegate(document, 'click', '[data-action="kit-seed"]', () => {
   const n = DPR.seedKitFromCalc(kitDay());

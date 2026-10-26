@@ -408,5 +408,52 @@ eq([B.targetMinutes(110, 95), B.targetMinutes(0, 95), B.targetMinutes(0, 0)], [1
   eq(dd && [dd.count, dd.where], [2, 'plan.html#calendar'], 'readiness: undated days link to the Plan’s calendar, the only page that sets a date');
 }
 
+/* ---- schedule QA round 2 -------------------------------------- */
+{
+  const CM = await import('../src/lib/contacts-model.js');
+  seed();
+  const days = L.calendarDays(Scenes.listScenes());
+  const title = (p) => p && p.title;
+  eq([title(CM.nextSheetPatch([], days)), title(CM.nextSheetPatch([], days, 2)), title(CM.nextSheetPatch([], days, 9))],
+    ['Day 1', 'Day 2', 'Day 1'], 'a new call sheet is for the day asked for (?day=), else the first uncovered day');
+  eq(title(CM.nextSheetPatch([{ sceneIds: ['s4'] }], days, 2)), 'Day 1', 'a requested day that already has a sheet falls back to the first free day');
+
+  const LM = await import('../src/lib/launcher-model.js');
+  eq(LM.datedDayCount({ 1: '2026-11-02', 2: '2026-11-03', 18: '2026-12-01' }, new Set([1, 2])), 2,
+    'the dashboard counts dated days that still have scenes, not an orphan date');
+
+  /* DPR: a count is a non-negative whole number; a swapped pair is flagged, not shown as 23h 30m. */
+  const RM = await import('../src/lib/reports-model.js');
+  eq([D.cleanSetups('-3'), D.cleanSetups('abc'), D.cleanSetups(' 12 '), D.cleanSetups('0'), D.cleanSetups('')], ['', '', '12', '0', ''], 'cleanSetups');
+  seed();
+  D.saveDPR(1, { setups: '-3' });
+  eq(D.getDPR(1).setups, '', 'a negative setups count is not stored');
+  eq(RM.dprStatValues(D.dprSummary(1))[4][0], '—', 'and the strip does not print SETUPS -3');
+  D.saveDPR(1, { crewCall: '07:00', wrap: '19:00', lunchIn: '13:00', lunchOut: '12:30', firstShot: '06:30' });
+  const bad = D.dprSummary(1);
+  eq([bad.lunchMinutes, bad.callToFirstShot, bad.warnings.length], [null, null, 2], 'lunch ending before it starts and a first shot before call are left out and warned');
+  ok(/Check the two times/.test(RM.calcLine(bad)) && !/23h/.test(RM.calcLine(bad)), 'the DPR line says so and never prints 23h 30m');
+  D.saveDPR(1, { crewCall: '18:00', wrap: '06:00', lunchIn: '23:30', lunchOut: '00:15', firstShot: '19:00' });
+  const night = D.dprSummary(1);
+  eq([night.lunchMinutes, night.callToFirstShot, night.warnings.length], [45, 60, 0], 'a night shoot lunch across midnight is still fine');
+
+  /* Equipment: Undo puts a removed row back where it was. */
+  seed();
+  const k1 = D.addKitItem(1, 'camera', { item: 'A' }), k2 = D.addKitItem(1, 'camera', { item: 'B' }), k3 = D.addKitItem(1, 'camera', { item: 'C' });
+  const was = D.findKitItem(1, k2.id);
+  eq([was.dept, was.index, was.neighbour], ['camera', 1, k3.id], 'findKitItem names the place and the neighbour');
+  D.removeKitItem(1, k2.id);
+  D.restoreKitItem(1, was.dept, was.index, was.item);
+  eq(D.getKit(1).camera.map((x) => x.item), ['A', 'B', 'C'], 'restoreKitItem puts the row back in its place');
+  ok(!D.restoreKitItem(1, 'camera', 0, k1), 'restoring a row that is already there is a no-op');
+
+  const { readFileSync } = await import('node:fs');
+  const shootSrc = readFileSync(new URL('../src/pages/shoot.js', import.meta.url), 'utf8');
+  ok(!/button\.btn\.sd-sun-btn/.test(shootSrc), 'Shoot Day\u2019s pin button is a kit button, not the legacy .btn');
+  const PM = await import('../src/lib/plan-model.js');
+  eq([PM.prettyDate('2024-02-12'), PM.prettyDate('2024-02-12', { dateStyle: '' }), PM.prettyDate('2024-02-12', { dateStyle: 'US' })],
+    ['12 February 2024', '12 February 2024', 'February 12, 2024'], 'the Plan calendar date follows the film’s style; no region is unchanged');
+}
+
 console.log(`test:stripboard — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

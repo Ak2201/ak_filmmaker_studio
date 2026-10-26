@@ -173,7 +173,7 @@ export function dprStatValues(sum) {
     [sum.pagesShot + ' / ' + sum.pagesPlanned, 'pages shot'],
     [String(sum.part.length), 'part shot'],
     [String(sum.dropped.length), 'dropped'],
-    [sum.record.setups || '—', 'setups'],
+    [DPR.cleanSetups(sum.record.setups) || '—', 'setups'],
     [sum.delayMinutes ? DPR.formatMinutes(sum.delayMinutes) : '—', 'lost to delays']
   ];
 }
@@ -184,7 +184,9 @@ export function calcLine(sum) {
   if (sum.lunchMinutes != null) bits.push('lunch ' + DPR.formatMinutes(sum.lunchMinutes));
   if (sum.workMinutes != null && sum.lunchMinutes != null) bits.push('worked ' + DPR.formatMinutes(sum.workMinutes));
   if (sum.callToFirstShot != null) bits.push('call to first shot ' + DPR.formatMinutes(sum.callToFirstShot));
-  return bits.length ? bits.join(' · ') + '.' : 'Type the call and wrap times and the day’s length works itself out.';
+  const warn = (sum.warnings || []).join(' ');
+  const line = bits.length ? bits.join(' · ') + '.' : 'Type the call and wrap times and the day’s length works itself out.';
+  return warn ? line + ' ' + warn : line;
 }
 
 export function kitTitle(day, tally, prefs) {

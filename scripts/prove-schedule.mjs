@@ -29,6 +29,18 @@
     12  plan.html with no scenes prints dashes, as the stripboard does,
         never "0 shoot days · 0 dates set · 0 locations"
 
+    13  round 2: "Make the call sheet" carries the day and "View call sheet"
+        lands on that day's sheet; marking with "Incomplete" on keeps focus;
+        a swapped lunch / negative setups never print as figures; an
+        equipment removal has Undo and keeps focus; an empty Equipment add
+        says why; clearing an orphan date has Undo and keeps focus; the
+        dashboard's "days dated" is the Plan's count; the Reports strip,
+        and the DOOD intro, claim nothing on an empty project; the DOOD tab
+        has its own Export and prints every day; the cast matrix prints
+        every scene; the recce prints blanks blank and answers whole; the
+        Reports Export menus are kit buttons; Shoot Day's spoken names
+        contain their visible labels
+
        npm run build:open && npm run prove:schedule
    ============================================================ */
 import http from 'node:http';
@@ -80,6 +92,14 @@ await page.goto(url('plan.html'), { waitUntil: 'networkidle' });
 await settle(page);
 const planStats = await page.$$eval('.bd-head .k-stat .k-stat-value', (vs) => vs.slice(0, 3).map((v) => v.textContent));
 ok(planStats.length === 3 && planStats.every((v) => v === '—'), '12 an empty plan.html prints dashes, not zeros', planStats);
+await page.goto(url('reports.html'), { waitUntil: 'networkidle' });
+await settle(page);
+const rpStats = await page.$$eval('.bd-head .k-stat .k-stat-value', (vs) => vs.map((v) => v.textContent.trim()));
+ok(rpStats.length === 5 && rpStats.every((v) => v === '—'), '13 an empty reports.html strip prints dashes, not zeros', rpStats);
+await page.goto(url('stripboard.html#dood'), { waitUntil: 'networkidle' });
+await settle(page);
+const emptyDood = await page.$eval('#dood', (n) => n.innerText).catch(() => '');
+ok(/Stripboard tab/.test(emptyDood) && !/on the breakdown/.test(emptyDood), '13 the empty DOOD says days are set on the Stripboard tab', emptyDood.slice(0, 300));
 await page.goto(url('index.html'), { waitUntil: 'networkidle' });
 await page.click('[data-action="sample-project"][data-sample="dragon"]');
 await page.waitForLoadState('networkidle');
@@ -251,6 +271,145 @@ const strip = await pp.evaluate(() => {
 ok(strip && strip.stuck, '11 the strip pins at 390', strip);
 ok(strip && strip.mask === 'none', '11 a pinned strip carries no edge mask', strip);
 await phone.close();
+
+/* ---- 13 round 2 ------------------------------------------------ */
+const fire = (sel, ev = 'change') => page.$eval(sel, (n, e) => n.dispatchEvent(new Event(e, { bubbles: true })), ev);
+await writeScenes(`for (const s of scenes) { s.shotState = ''; }`);
+
+/* the call sheet link carries the day / the sheet */
+await page.goto(url('shoot.html?day=3'), { waitUntil: 'networkidle' });
+await settle(page);
+const make = await page.$$eval('.sd-hero a.k-btn', (as) => as.map((a) => [a.textContent.trim(), a.getAttribute('href')]));
+ok(make.some(([t, h]) => /Make the call sheet/.test(t) && /\?day=3#call-sheets$/.test(h)), '13 "Make the call sheet" on Day 3 carries ?day=3', make);
+await page.goto(url('contacts.html?day=3#call-sheets'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.click('[data-action="sheet-add"] >> visible=true');
+await settle(page, 300);
+const made = await page.evaluate(() => document.activeElement && document.activeElement.value);
+ok(/Day 3/.test(made || ''), '13 "New shoot day" after it makes the sheet for Day 3, not the first free day', made);
+await page.goto(url('shoot.html?day=14'), { waitUntil: 'networkidle' });
+await settle(page);
+const viewHref = await page.$$eval('.sd-hero a.k-btn', (as) => (as.find((a) => /View call sheet/.test(a.textContent)) || {}).getAttribute?.('href') || '');
+ok(/contacts\.html\?sheet=[^#]+#call-sheets$/.test(viewHref), '13 "View call sheet" names the sheet', viewHref);
+if (viewHref) {
+  await page.goto(url(viewHref), { waitUntil: 'networkidle' });
+  await settle(page, 700);
+  const sid = decodeURIComponent((viewHref.match(/sheet=([^#]+)/) || [])[1] || '');
+  const top = await page.evaluate((id) => { const c = document.querySelector('.ct-sheet[data-sheet="' + CSS.escape(id) + '"]'); return c ? Math.round(c.getBoundingClientRect().top) : null; }, sid);
+  ok(top !== null && top >= 0 && top < 400, '13 …and opens at that day\'s sheet, not the top of the list', top);
+}
+
+/* marking with "Incomplete" on keeps focus */
+await page.goto(url('shoot.html?day=3'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.click('.sd-fbtn[data-filter="incomplete"]');
+await settle(page, 200);
+await page.focus('.sd-card [data-shoot-action="mark"]');
+await page.keyboard.press('Enter');
+await settle(page, 300);
+const kept = await page.evaluate(() => document.activeElement && document.activeElement.tagName);
+ok(kept && kept !== 'BODY', '13 marking a scene with the Incomplete filter on keeps focus in the page', kept);
+
+/* spoken names contain the visible words (WCAG 2.5.3) */
+await page.click('.sd-take-add >> nth=0');
+await settle(page, 200);
+const names = await page.$$eval('.sd-take-undo, [data-shoot-action="note-edit"]', (bs) => bs.map((b) => [(b.lastElementChild ? b.lastElementChild.textContent : b.textContent).trim().toLowerCase(), (b.getAttribute('aria-label') || '').toLowerCase()]));
+ok(names.length > 1 && names.every(([t, a]) => a.includes(t)), '13 Undo / Add floor note / Edit note are spoken with their visible words', names);
+
+/* the DPR */
+await page.goto(url('reports.html?day=1#dpr'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.fill('#dpr-setups', '-3'); await fire('#dpr-setups');
+ok(await page.$eval('#dpr-setups', (i) => i.value) === '', '13 a typed -3 in Setups is refused', await page.$eval('#dpr-setups', (i) => i.value));
+ok(!/-3/.test(await page.$eval('#rp-dpr-derived', (n) => n.innerText)), '13 the strip never prints SETUPS -3');
+for (const [f, v] of [['crewCall', '07:00'], ['wrap', '19:00'], ['lunchIn', '13:00'], ['lunchOut', '12:30'], ['firstShot', '06:30']]) {
+  await page.fill(`[data-dpr-field="${f}"]`, v); await fire(`[data-dpr-field="${f}"]`);
+}
+const calc = await page.$eval('#rp-dpr-calc', (n) => n.textContent);
+ok(/Check the two times/.test(calc) && !/23h/.test(calc), '13 a swapped lunch / first shot is flagged, never 23h 30m', calc);
+ok(await page.$$eval('#dpr .tb-menu-btn', (bs) => bs.length > 0 && bs.every((b) => b.classList.contains('k-btn'))), '13 the DPR Export menu is a kit button');
+
+/* equipment */
+await page.goto(url('reports.html?day=1#kit'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.click('[data-action="kit-add"][data-dept="camera"]');
+ok(await page.$eval('[data-kit-new="camera"]', (i) => i.getAttribute('aria-invalid')) === 'true', '13 an empty Equipment add says why (aria-invalid)');
+for (const n of ['Tripod A', 'Tripod B', 'Tripod C']) {
+  await page.fill('[data-kit-new="camera"]', n);
+  await page.press('[data-kit-new="camera"]', 'Enter');
+  await settle(page, 150);
+}
+const rm = await page.$$('[data-action="kit-remove"]');
+const before = await page.$$eval('[data-action="kit-remove"]', (b) => b.length);
+await rm[rm.length - 2].focus();
+await page.keyboard.press('Enter');
+await settle(page, 300);
+const fk = await page.evaluate(() => { const a = document.activeElement; return a && (a.id || a.getAttribute('data-action') || a.tagName); });
+ok(fk && fk !== 'rp-kit-day' && fk !== 'BODY', '13 removing an item keeps focus in the list, not on the day picker', fk);
+await page.locator('.toast-action', { hasText: 'Undo' }).last().click();
+await settle(page, 300);
+ok(await page.$$eval('[data-action="kit-remove"]', (b) => b.length) === before, '13 Undo puts the removed item back');
+ok(await page.$$eval('#kit .tb-menu-btn', (bs) => bs.length > 0 && bs.every((b) => b.classList.contains('k-btn'))), '13 the Equipment Export menu is a kit button');
+
+/* the plan: an orphan date */
+await page.evaluate(() => {
+  const b = JSON.parse(localStorage.getItem('fms_locations_v1') || '{}');
+  b.days = b.days || {};
+  b.days['1'] = '2026-03-01'; b.days['2'] = '2026-03-02'; b.days['40'] = '2026-04-01';
+  localStorage.setItem('fms_locations_v1', JSON.stringify(b));
+});
+await page.goto(url('plan.html#calendar'), { waitUntil: 'networkidle' });
+await settle(page);
+const planDated = await page.$eval('.bd-head [data-pl-dated] .k-stat-value', (v) => v.textContent.trim());
+await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
+await settle(page, 800);
+const dashDated = await page.evaluate(() => { const m = document.body.innerText.match(/(\d+) days? dated/); return m ? m[1] : ''; });
+ok(planDated !== '' && dashDated === planDated, '13 the dashboard\'s "days dated" is the Plan\'s count (an orphan date is not counted)', [planDated, dashDated]);
+await page.goto(url('plan.html#calendar'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.focus('.pl-orphan[data-day="40"] [data-action="day-clear"]');
+await page.keyboard.press('Enter');
+await settle(page, 300);
+const fo = await page.evaluate(() => document.activeElement && document.activeElement.tagName);
+ok(fo && fo !== 'BODY', '13 clearing an orphan date keeps focus in the calendar', fo);
+await page.locator('.toast-action', { hasText: 'Undo' }).last().click();
+await settle(page, 300);
+ok(await page.$('.pl-orphan[data-day="40"]') !== null, '13 …and Undo puts the date back');
+
+/* print: the recce, the DOOD, the cast matrix */
+await page.goto(url('plan.html#locations'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.fill('.pl-input[data-recce-field="power"]', 'Mains on site, thirty metres from the van, and a generator on standby for the dusk window');
+await settle(page, 200);
+await page.emulateMedia({ media: 'print' });
+const rc = await page.evaluate(() => {
+  const ins = [...document.querySelectorAll('.pl-input')];
+  const mirrors = ins.map((i) => i.nextElementSibling).filter((m) => m && m.classList.contains('pl-print'));
+  const filled = mirrors.find((m) => /generator on standby/.test(m.textContent));
+  return { inputs: ins.length, shown: ins.filter((i) => getComputedStyle(i).display !== 'none').length, mirrors: mirrors.length,
+    mirrorsShown: mirrors.filter((m) => getComputedStyle(m).display === 'block').length, filled: !!filled, blanks: mirrors.filter((m) => !m.textContent).length };
+});
+ok(rc.inputs > 0 && rc.shown === 0 && rc.mirrors === rc.inputs && rc.mirrorsShown === rc.mirrors, '13 the recce prints a mirror, never a clipped input with a placeholder', rc);
+ok(rc.filled && rc.blanks > 0, '13 a filled answer prints whole and a blank one prints blank', rc);
+await page.emulateMedia({ media: 'screen' });
+
+await page.setViewportSize({ width: 700, height: 900 });
+await page.goto(url('stripboard.html#dood'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.setViewportSize({ width: 1440, height: 900 });
+ok(await page.$eval('#dood .tb-menu-btn', (b) => b.offsetParent !== null).catch(() => false), '13 the DOOD tab has its own Export menu');
+await page.setViewportSize({ width: 700, height: 900 });
+await page.emulateMedia({ media: 'print' });
+const dp = await page.$eval('.sb-dood-scroll', (n) => ({ ov: getComputedStyle(n).overflowX, sw: n.scrollWidth, cw: n.clientWidth, days: n.querySelectorAll('.sb-grid-day').length }));
+ok(dp.ov === 'visible' && dp.sw <= dp.cw + 1 && dp.days > 6, '13 printing the DOOD fits every day on the page', dp);
+await page.emulateMedia({ media: 'screen' });
+await page.goto(url('reports.html#cast-matrix'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.emulateMedia({ media: 'print' });
+const cmx = await page.$eval('#cast-matrix .rp-scroll', (n) => ({ ov: getComputedStyle(n).overflowX, sw: n.scrollWidth, cw: n.clientWidth, cols: n.querySelectorAll('thead th').length }));
+ok(cmx.ov === 'visible' && cmx.sw <= cmx.cw + 1 && cmx.cols > 20, '13 printing the cast matrix fits every scene column', cmx);
+await page.emulateMedia({ media: 'screen' });
+await page.setViewportSize({ width: 1440, height: 900 });
 
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();

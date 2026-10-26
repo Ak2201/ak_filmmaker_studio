@@ -80,6 +80,11 @@ export function span(a, b) {
   return y >= x ? y - x : y + 1440 - x;
 }
 
+/* Longest lunch / call-to-first-shot that is believable; past it the
+   pair is almost certainly swapped. Night shoots stay well inside. */
+const MAX_LUNCH = 4 * 60;
+const MAX_CALL_TO_FIRST = 12 * 60;
+
 export function formatMinutes(min) {
   if (min == null || !Number.isFinite(min)) return '—';
   const m = Math.max(0, Math.round(min));
@@ -120,11 +125,19 @@ export function blankDPR(patch = {}) {
   return { ...out, ...patch };
 }
 
+/** Setups is a count: a whole number from 0 up, or blank. A typed -3
+    (min=0 only steers the spinner) or "abc" is dropped, never stored. */
+export function cleanSetups(v) {
+  const n = parseInt(String(v == null ? '' : v).trim(), 10);
+  return Number.isFinite(n) && n >= 0 ? String(n) : '';
+}
+
 function cleanDPR(raw) {
   const d = blankDPR();
   if (!isPlainObject(raw)) return d;
   for (const f of DPR_TIMES) d[f.id] = str(raw[f.id]);
   for (const f of TEXT_FIELDS) d[f] = str(raw[f]);
+  d.setups = cleanSetups(d.setups);
   d.delays = (Array.isArray(raw.delays) ? raw.delays : []).filter(isPlainObject)
     .map((x) => ({ ...blankDelay(), ...x, reason: str(x.reason) || 'Other', minutes: str(x.minutes), note: str(x.note) }));
   d.incidents = (Array.isArray(raw.incidents) ? raw.incidents : []).filter(isPlainObject)
@@ -209,8 +222,16 @@ export function dprSummary(day, scenes) {
     : [];
   const rec = getDPR(day);
   const delayMinutes = rec.delays.reduce((n, x) => n + (parseInt(x.minutes, 10) || 0), 0);
-  const lunch = span(rec.lunchIn, rec.lunchOut);
+  /* span() wraps past midnight for call to wrap, which is right for a
+     night shoot. A lunch or a first shot is not a day-long thing: a
+     wrapped one over the limit is a swapped pair, not a real 23h 30m,
+     so it is left out of the figures and named in `warnings`. */
+  const warnings = [];
+  let lunch = span(rec.lunchIn, rec.lunchOut);
+  if (lunch != null && lunch > MAX_LUNCH) { lunch = null; warnings.push('Lunch ends before it starts, so it is left out. Check the two times.'); }
   const length = span(rec.crewCall, rec.wrap);
+  let toFirst = span(rec.crewCall, rec.firstShot);
+  if (toFirst != null && toFirst > MAX_CALL_TO_FIRST) { toFirst = null; warnings.push('First shot is before the crew call, so it is left out. Check the two times.'); }
   return {
     day: Number(day),
     date,
@@ -225,7 +246,8 @@ export function dprSummary(day, scenes) {
     lunchMinutes: lunch,
     dayMinutes: length,
     workMinutes: length == null ? null : length - (lunch || 0),
-    callToFirstShot: span(rec.crewCall, rec.firstShot),
+    callToFirstShot: toFirst,
+    warnings,
     record: rec
   };
 }
@@ -424,6 +446,28 @@ export function removeKitItem(day, id) {
   return saveKit(day, kit);
 }
 
+/** Where an item sits now: { dept, index, item }, or null. The page asks
+    before a removal so Undo can put the row back where it was. */
+export function findKitItem(day, id) {
+  const kit = getKit(day);
+  for (const dept of DEPT_IDS) {
+    const index = kit[dept].findIndex((x) => x.id === id);
+    if (index >= 0) return { dept, index, item: kit[dept][index], neighbour: (kit[dept][index + 1] || kit[dept][index - 1] || {}).id || '' };
+  }
+  return null;
+}
+
+/** Put a removed item back at its old place (the end when the list
+    is shorter now). A no-op when the id is already there. */
+export function restoreKitItem(day, dept, index, item) {
+  if (!DEPT_IDS.includes(dept) || !item) return false;
+  const kit = getKit(day);
+  if (kit[dept].some((x) => x.id === item.id)) return false;
+  kit[dept].splice(Math.min(Math.max(0, index), kit[dept].length), 0, item);
+  saveKit(day, kit);
+  return true;
+}
+
 /** Totals for one day's kit: items, and how many are out and back. */
 export function kitTally(kit) {
   let items = 0, picked = 0, back = 0;
@@ -571,13 +615,13 @@ export function oneLiner(scenes) {
 }
 
 export default {
-  toMinutes, laterWrap, span, formatMinutes,
+  toMinutes, laterWrap, span, formatMinutes, cleanSetups,
   DPR_TIMES, DELAY_REASONS, blankDPR, blankDelay, blankIncident, getDPR, saveDPR,
   addDelay, updateDelay, removeDelay, addIncident, updateIncident, removeIncident, dprSummary,
   BANNER_KINDS, AFTER_DAY, bannerLabel, blankBanner, listBanners, allBanners, addBanner, updateBanner,
   removeBanner, bannerText, layoutDay, impliedMoves,
   DEFAULT_PAGE_TARGET, DAY_HOURS, pageTarget, setPageTarget, dayLoad, estimateHours,
-  DEPARTMENTS, blankKitItem, getKit, saveKit, addKitItem, updateKitItem, removeKitItem, kitTally,
+  DEPARTMENTS, blankKitItem, getKit, saveKit, addKitItem, updateKitItem, removeKitItem, findKitItem, restoreKitItem, kitTally,
   classifyEquipment, calcLines, readCalcLines, seedKitFromCalc, copyKit, CALC_KEY,
   castNumbers, oneLiner
 };

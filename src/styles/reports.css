@@ -458,6 +458,7 @@
   font-size: var(--t-small);
 }
 .rp-in::placeholder { color: var(--ink-muted); }
+.rp-in[aria-invalid="true"] { border-color: var(--danger); }
 .rp-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
 .rp-h4 {
   margin: var(--s5) 0 var(--s2);
@@ -622,6 +623,16 @@
   .rp-ol .rp-ol-total.is-over td { background: var(--print-wash) !important; color: var(--print-ink) !important; }
   .rp-mark { color: var(--print-ink) !important; border-color: var(--print-ink) !important; }
   .rp-kit-dept { break-inside: avoid; }
+  /* A scroll box clips on paper: the cast matrix lost every scene past
+     the 14th. Release it, and let the matrix share the page width among
+     its columns (fixed layout, no minimum) instead of overflowing it. */
+  .rp-scroll { overflow: visible !important; }
+  .rp-matrix { table-layout: fixed; width: 100%; }
+  .rp-matrix th, .rp-matrix td { padding-inline: 0 !important; overflow: hidden; }
+  .rp-matrix th.rp-mx-col { min-width: 0; font-size: 6.5pt; }
+  .rp-matrix .rp-mx-cell { font-size: 6.5pt; }
+  .rp-matrix th.loc { width: 22%; padding-inline-end: var(--s2) !important; }
+  .rp-matrix th:nth-child(2), .rp-matrix td:nth-child(2) { width: 7%; }
 
   /* One view at a time, the same way the sides print. The PDF
      masthead is inserted into #main, so it is spared by id. */

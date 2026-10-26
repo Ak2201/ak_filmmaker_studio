@@ -482,7 +482,8 @@ export function freshDb() {
     events: [],
     /* section 59: testimonials, each { id, author, author_email, quote,
        display_name, role, film, consent_text, consented_at, revoked_at,
-       status, approved_by, approved_at, created_at, site_removed_at }. */
+       status, approved_by, approved_at, created_at, site_removed_at,
+       first_approved_at, author_deleted }. */
     testimonials: [],
     calls: []
   };
@@ -592,7 +593,8 @@ function rpc(name, args, user, route) {
          it would wipe the trial that was just written. */
       admit(user.id);
       setTrial(user.id, { minutes: mins, source: src, startedAt: Date.now(),
-        scope: src === 'signup' ? 'sample' : (F.db.settings.trial_scope || 'sample'),
+        /* §60: every trial follows the console's scope (a pressed one was always the sample) */
+        scope: F.db.settings.trial_scope || 'sample',
         role: (F.db.members.get(user.id) || {}).role || 'user' });
       accountForBuyer(user.id);
       let status = null;
@@ -777,7 +779,8 @@ function rpc(name, args, user, route) {
     /* section 33: the landing page's read, anon */
     case 'trial_offer':
       return json(route, 200, { trial_enabled: !!F.db.settings.trial_enabled, trial_minutes: F.db.settings.trial_minutes || 30,
-        trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100, purchase_required: purchasesRequired() });
+        trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100, purchase_required: purchasesRequired(),
+        /* §60 */ trial_scope: F.db.settings.trial_scope || 'sample' });
     case 'purchases_required':
       if (!('purchase_required' in F.db.settings)) return pgErr(route, 'PGRST202', 'Could not find the function public.purchases_required in the schema cache', 404);
       return json(route, 200, purchasesRequired());
@@ -1114,7 +1117,8 @@ function rpc(name, args, user, route) {
       const now = new Date().toISOString();
       const t = { id: 'tm' + (F.db.testimonials.length + 1) + '-0000-4000-8000-000000000000', author: user.id, author_email: user.email, quote: q, display_name: n,
         role: String(args.p_role || '').trim() || null, film: String(args.p_film || '').trim() || null, consent_text: c, consented_at: now, revoked_at: null,
-        status: 'pending', approved_by: null, approved_at: null, created_at: now, site_removed_at: null };
+        status: 'pending', approved_by: null, approved_at: null, created_at: now, site_removed_at: null,
+        first_approved_at: null, author_deleted: false };
       F.db.testimonials.push(t);
       return json(route, 200, tmOwn(t));
     }
@@ -1133,7 +1137,7 @@ function rpc(name, args, user, route) {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       const st = args.p_status || null;
       const pick = (t) => !st || (st === 'revoked' ? !!t.revoked_at
-        : st === 'takedown' ? !!(t.revoked_at && t.approved_at && !t.site_removed_at)
+        : st === 'takedown' ? !!(t.revoked_at && t.first_approved_at && !t.site_removed_at)
           : (t.status === st && !t.revoked_at));
       return json(route, 200, F.db.testimonials.filter(pick).slice().reverse());
     }
@@ -1158,6 +1162,7 @@ function rpc(name, args, user, route) {
       t.status = args.p_status;
       t.approved_by = args.p_status === 'approved' ? user.id : null;
       t.approved_at = args.p_status === 'approved' ? new Date().toISOString() : null;
+      t.first_approved_at = t.first_approved_at || t.approved_at;
       return json(route, 200, t);
     }
     default:

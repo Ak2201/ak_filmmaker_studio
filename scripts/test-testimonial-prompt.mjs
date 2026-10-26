@@ -61,7 +61,7 @@ ok(M.preview({ quote: 'x', display_name: 'Ann' }).byline === 'Ann', 'no role and
 const row = { id: '5b1e2c3d-0000-4000-8000-000000000001', quote: 'Q', display_name: 'Ann', role: 'Director', film: null, consented_at: '2026-10-20T08:00:00Z', status: 'approved', revoked_at: null };
 const e = M.siteEntry(row);
 ok(/^\d{4}-\d{2}-\d{2}$/.test(e.consentOn) && e.consentId === row.id && e.name === 'Ann' && !('film' in e), 'the site entry carries consentOn and consentId in testimonials.json\'s shape');
-ok(M.statusWord(row) === 'Published' && M.statusWord({ ...row, revoked_at: 'x' }) === 'Taken back' && M.statusWord({ status: 'pending' }) === 'Waiting for review', 'the state in words');
+ok(M.statusWord(row) === 'Approved' && M.statusWord({ ...row, revoked_at: 'x' }) === 'Taken back' && M.statusWord({ status: 'pending' }) === 'Waiting for review', 'the state in words');
 
 // the calls, against a stub cloud
 const stub = (answer) => ({ ensureClient: async () => ({ rpc: async (name, args) => answer(name, args) }) });
@@ -104,6 +104,8 @@ r = await askFake('admin_mark_testimonial_removed', { p_id: id }, 'tok-admin');
 ok(r.status === 200 && !!r.body.site_removed_at && !M.needsTakedown(r.body), 'fake: the owner marks it off the site');
 r = await askFake('admin_list_testimonials', { p_status: 'takedown' }, 'tok-admin');
 ok(r.body.length === 0, 'fake: ... and the takedown list is empty again');
+ok(M.needsTakedown({ revoked_at: 'x', approved_at: null, first_approved_at: 'y' }) && !M.needsTakedown({ revoked_at: 'x', approved_at: null, first_approved_at: null }),
+  'approved once, then un-approved, then taken back -> still needs taking down (first_approved_at)');
 await askFake('bump_event', { p_name: 'trial_start', p_source: 'google' });
 await askFake('bump_event', { p_name: 'trial_start' });
 r = await askFake('admin_funnel_by_source', {}, 'tok-admin');

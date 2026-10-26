@@ -122,7 +122,10 @@ export function preview(input = {}) {
 export function statusWord(r) {
   if (!r) return '';
   if (r.revoked_at) return 'Taken back';
-  return r.status === 'approved' ? 'Published' : r.status === 'rejected' ? 'Not published' : 'Waiting for review';
+  /* 'Approved', not 'Published': approval puts it on the public list, but
+     the site's own copy is made by hand later, so the author is not told
+     it is on the website before it is. */
+  return r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Not published' : 'Waiting for review';
 }
 
 /** An approved row in src/data/testimonials.json's shape, its consent
@@ -179,8 +182,11 @@ export const admin = {
   /* the owner's word that a taken-back testimonial is off the public site */
   markRemoved: (cloud, id) => rpc(cloud, 'admin_mark_testimonial_removed', { p_id: id })
 };
-/** Taken back after it was approved, and not yet marked off the site. */
-export const needsTakedown = (r) => !!(r && r.revoked_at && r.approved_at && !r.site_removed_at);
+/** Taken back (or its account deleted) after it was EVER approved, and not
+ *  yet marked off the site. first_approved_at is never cleared (§59), so an
+ *  approval later undone still counts; approved_at is the fallback for a
+ *  server that predates the column. */
+export const needsTakedown = (r) => !!(r && r.revoked_at && (r.first_approved_at || r.approved_at) && !r.site_removed_at);
 export { isMissing };
 
 export default { consentText, distinctDays, askDecision, validate, preview, statusWord, siteEntry, available, mine, submit, revoke, admin, needsTakedown, LIMITS, ASK_RULES };

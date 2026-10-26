@@ -35,6 +35,7 @@ import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
 import { fmtMinor } from '../lib/price-model.js';
 import Growth, { isMissing } from '../lib/growth.js';
+import { SOURCES } from '../lib/funnel.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
 import { ask, askDanger } from './dialog.js';
@@ -506,7 +507,10 @@ function bySourceBlock(sec) {
   if (S.missing.funnelBySource) { sec.append(h('p.gt-meta', { text: 'Counts by source are not available on this database yet (schema section 58 has not run).' })); return; }
   const { steps, sources } = pivotBySource(S.funnelBySource);
   if (!sources.length) { sec.append(h('p.gt-meta', { text: 'No counts in this window yet.' })); return; }
-  sec.append(h('p.gt-meta', { text: `A source is the ?ref= or ?utm_source= the visit arrived with, as a short label; "${NO_SOURCE}" is everything that arrived without one, and every count made before section 58. Daily totals only: nobody is identified.` }));
+  /* The names come from funnel.js's own list, so a bucket added there is
+     named here with no edit. A tag's slug (ig-bio, school-loyola) is never
+     counted, only its family. Referral codes are never a source. */
+  sec.append(h('p.gt-meta', { text: `A source is the ?src= or ?utm_source= the visit arrived with, counted as one name from a fixed list: ${SOURCES.join(', ')}. A tagged link counts under its family (ig-bio is instagram, school-anything is school), never under the part after the dash; anything else is "other". "${NO_SOURCE}" is everything that arrived without one, and every count made before section 58. Daily totals only: nobody is identified.` }));
   const table = h('table.gt-table', { 'data-funnel-by-source': '' });
   table.append(h('caption.visually-hidden', { text: 'Funnel counts by source' }));
   table.append(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Source' })].concat(steps.map((k) => h('th', { scope: 'col', text: FUNNEL_LABEL[k] || k }))))]));

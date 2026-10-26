@@ -23,6 +23,23 @@
 --   status        pending | approved | rejected — only the owner moves it.
 --   site_removed_at  set by the OWNER (admin_mark_testimonial_removed)
 --                 once a taken-back testimonial is off the public site.
+--   first_approved_at  the first time the owner approved it, NEVER cleared.
+--                 approved_at follows the status (an un-approved row has
+--                 none), but a row approved once may already be copied
+--                 onto the site, so the takedown list keys on this one:
+--                 approve -> reject -> revoke still lands there.
+--
+-- WHEN THE AUTHOR'S ACCOUNT IS DELETED (admin_delete_user, or the Supabase
+-- dashboard): a deleted account cannot press "take it back", so deletion
+-- IS the taking back. A trigger on auth.users, before the row goes:
+--   never approved   the testimonial is deleted with the account (it was
+--                    never shown, so there is nothing to take down);
+--   approved once    revoked_at is stamped, so it leaves
+--                    public_testimonials() at once, can never be approved
+--                    again, and waits on the takedown list; then the
+--                    foreign key sets author to NULL. Its words are kept
+--                    ONLY so the owner can find the copy on the site:
+--                    marking it off the site deletes the row.
 --
 -- WHAT "TAKE IT BACK" CAN AND CANNOT DO, said plainly because the consent
 -- sentence the author agrees to has to be true: the public site is static
@@ -66,7 +83,7 @@ $guard$;
 -- 59.1 the table -----------------------------------------------------------
 create table if not exists public.testimonials (
   id           uuid        primary key default gen_random_uuid(),
-  author       uuid        not null default auth.uid() references auth.users(id) on delete cascade,
+  author       uuid        default auth.uid() references auth.users(id) on delete set null,
   quote        text        not null check (length(btrim(quote)) between 20 and 600),
   display_name text        not null check (length(btrim(display_name)) between 1 and 80),
   role         text        check (role is null or length(role) <= 80),
@@ -80,6 +97,16 @@ create table if not exists public.testimonials (
   created_at   timestamptz not null default now()
 );
 alter table public.testimonials add column if not exists site_removed_at timestamptz;
+alter table public.testimonials add column if not exists first_approved_at timestamptz;
+update public.testimonials set first_approved_at = approved_at where first_approved_at is null and approved_at is not null;
+/* For a database that ran an earlier draft of this section (author NOT
+   NULL, ON DELETE CASCADE): the author may be null once the account is
+   gone, and the key no longer takes the row with it. The insert trigger
+   below still refuses a null author, so only a deletion can make one. */
+alter table public.testimonials alter column author drop not null;
+alter table public.testimonials drop constraint if exists testimonials_author_fkey;
+alter table public.testimonials add constraint testimonials_author_fkey
+  foreign key (author) references auth.users(id) on delete set null;
 create index if not exists testimonials_author_idx on public.testimonials (author, created_at desc);
 create index if not exists testimonials_status_idx on public.testimonials (status, created_at desc);
 alter table public.testimonials enable row level security;
@@ -188,15 +215,18 @@ $$;
 
 -- 59.5 the console ---------------------------------------------------------
 /* p_status: null (all), pending | approved | rejected (not taken back),
-   revoked (taken back), or takedown — taken back AFTER it was approved
-   and not yet marked off the site: the owner's to-do, which the
+   revoked (taken back, or its account deleted), or takedown — taken back
+   after it was EVER approved (first_approved_at, so an approval later
+   undone still counts: the copy may be on the site) and not yet marked
+   off the site: the owner's to-do, which the
    Overview counts. Dropped first: a re-run over an earlier draft whose
    return table had no site_removed_at would otherwise refuse (42P13). */
 drop function if exists public.admin_list_testimonials(text);
 create or replace function public.admin_list_testimonials(p_status text default null)
 returns table (id uuid, author uuid, author_email text, quote text, display_name text, role text, film text,
                consent_text text, consented_at timestamptz, revoked_at timestamptz, status text,
-               approved_by uuid, approved_at timestamptz, created_at timestamptz, site_removed_at timestamptz)
+               approved_by uuid, approved_at timestamptz, created_at timestamptz, site_removed_at timestamptz,
+               first_approved_at timestamptz, author_deleted boolean)
 language plpgsql
 security definer
 stable
@@ -206,12 +236,13 @@ begin
   if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
   return query
     select t.id, t.author, u.email::text, t.quote, t.display_name, t.role, t.film, t.consent_text, t.consented_at,
-           t.revoked_at, t.status, t.approved_by, t.approved_at, t.created_at, t.site_removed_at
+           t.revoked_at, t.status, t.approved_by, t.approved_at, t.created_at, t.site_removed_at,
+           t.first_approved_at, t.author is null
       from public.testimonials t
       left join auth.users u on u.id = t.author
      where p_status is null
         or (p_status = 'revoked' and t.revoked_at is not null)
-        or (p_status = 'takedown' and t.revoked_at is not null and t.approved_at is not null and t.site_removed_at is null)
+        or (p_status = 'takedown' and t.revoked_at is not null and t.first_approved_at is not null and t.site_removed_at is null)
         or (p_status not in ('revoked', 'takedown') and t.status = p_status and t.revoked_at is null)
      order by t.created_at desc
      limit 1000;
@@ -238,7 +269,8 @@ begin
   update public.testimonials t
      set status = p_status,
          approved_by = case when p_status = 'approved' then auth.uid() end,
-         approved_at = case when p_status = 'approved' then now() end
+         approved_at = case when p_status = 'approved' then now() end,
+         first_approved_at = coalesce(t.first_approved_at, case when p_status = 'approved' then now() end)
    where t.id = p_id
   returning * into r;
   perform public.admin_audit_write('testimonial_' || p_status, 'testimonial', p_id::text,
@@ -268,10 +300,39 @@ begin
   update public.testimonials t set site_removed_at = coalesce(t.site_removed_at, now())
    where t.id = p_id returning * into r;
   perform public.admin_audit_write('testimonial_site_removed', 'testimonial', p_id::text, null,
-    jsonb_build_object('site_removed_at', r.site_removed_at), null);
+    jsonb_build_object('site_removed_at', r.site_removed_at, 'author_deleted', r.author is null), null);
+  -- An account that no longer exists: the words were kept only so the
+  -- copy could be found. Off the site, they go. (The audit row keeps the
+  -- id and the time, not the words.)
+  if r.author is null then
+    delete from public.testimonials t where t.id = p_id;
+  end if;
   return r;
 end;
 $fn$;
+
+-- 59.5b an account deleted: deletion is the taking back ----------------------
+/* BEFORE DELETE on auth.users, so it runs whichever way the account goes
+   (admin_delete_user, the dashboard, the auth admin API). Never-approved
+   rows go with the account; ever-approved ones are revoked and kept for
+   the takedown list, and the foreign key then sets their author to null. */
+create or replace function public.testimonials_on_user_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  delete from public.testimonials t where t.author = old.id and t.first_approved_at is null;
+  update public.testimonials t set revoked_at = coalesce(t.revoked_at, now())
+   where t.author = old.id;
+  return old;
+end;
+$fn$;
+revoke execute on function public.testimonials_on_user_delete() from public, anon, authenticated;
+drop trigger if exists testimonials_on_user_delete on auth.users;
+create trigger testimonials_on_user_delete before delete on auth.users
+  for each row execute function public.testimonials_on_user_delete();
 
 -- 59.6 grants --------------------------------------------------------------
 revoke execute on function public.submit_testimonial(text, text, text, text, text) from public, anon;
@@ -299,6 +360,9 @@ notify pgrst, 'reload schema';
 --  where table_name = 'testimonials' and privilege_type = 'INSERT' order by 2;
 --    -> authenticated: consent_text, display_name, film, quote, role
 -- select count(*) from public.public_testimonials();   -> 0 until one is approved
+-- select tgname from pg_trigger where tgrelid = 'auth.users'::regclass and tgname = 'testimonials_on_user_delete';   -> one row
+-- select confdeltype from pg_constraint where conname = 'testimonials_author_fkey';   -> n (SET NULL, not CASCADE)
+-- select count(*) from public.testimonials where approved_at is not null and first_approved_at is null;   -> 0
 -- Scratch-database checks: scripts/schema-tests/testimonials.sql (npm run test:schema);
 -- the two-account RLS checks: docs/SECURITY-RLS.md §59.
 -- ============================================================

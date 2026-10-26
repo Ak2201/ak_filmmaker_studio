@@ -1427,7 +1427,7 @@ would raise 42P10 on every count (`npm run test:schema` replays §29 after §58)
 ## §59 TESTIMONIALS — WRITTEN 26 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
 
 `supabase/schema/schema-59-testimonials.sql`; checks in
-`scripts/schema-tests/testimonials.sql` (39, two authors, an owner, a support
+`scripts/schema-tests/testimonials.sql` (54, four authors, an owner, a support
 administrator and anon, under `npm run test:schema`).
 
 **The rule.** `testimonials` has RLS on. `authenticated` has SELECT on the table
@@ -1467,3 +1467,65 @@ needs the OWNER role (`require_role(array[]::text[])`), refuses a revoked row
    "taken back by the author and may still be on the site"; as a support admin
    `admin_mark_testimonial_removed(<id>)` → 42501; as the owner → `site_removed_at` set,
    and the takedown list is empty.
+8. APPROVE → UN-APPROVE → REVOKE (round-1 finding). As the owner approve B's row,
+   then set it to `rejected`; as B revoke it. `admin_list_testimonials('takedown')`
+   lists it (keyed on `first_approved_at`, which un-approving never clears).
+9. ACCOUNT DELETION. With an approved and a pending testimonial on a throwaway
+   account C, delete C (`admin_delete_user`, or the dashboard). Then: anon's
+   `public_testimonials` no longer lists C's quote; the owner's
+   `admin_list_testimonials('takedown')` lists it with `author` null,
+   `author_deleted` true and `revoked_at` set; the pending one is gone;
+   `admin_set_testimonial_status(<id>, 'approved')` → 22023. After the copy is off
+   the site, `admin_mark_testimonial_removed(<id>)` → the row is deleted, and the
+   audit row's `after` carries `author_deleted: true` and no words.
+   Read back first: `select tgname from pg_trigger where tgrelid = 'auth.users'::regclass
+   and tgname = 'testimonials_on_user_delete'` → one row; `select confdeltype from
+   pg_constraint where conname = 'testimonials_author_fkey'` → `n` (SET NULL).
+
+**Why deletion is a revoke and not a cascade.** Until 26 Oct the author key was
+`ON DELETE CASCADE`: deleting an account removed its testimonial row, so a quote
+already copied onto the site lost the only record that it had to come down (it
+never reached the takedown list, and the consent row its `consentId` points to
+was gone). A `BEFORE DELETE` trigger on `auth.users` now deletes only rows never
+approved, stamps `revoked_at` on the rest, and the key sets `author` to null. The
+kept words exist only for the owner to find the copy; marking it off the site
+deletes them.
+
+## §60 A PRESSED TRIAL FOLLOWS THE TRIAL SCOPE — WRITTEN 26 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-60-signup-trial-scope.sql`; checks in
+`scripts/schema-tests/signup-trial-scope.sql` (24, plus one in `scripts/test-schema.mjs`
+that the restated body is §51.12's with only the scope line changed).
+
+**The rule.** `start_trial()` (SECURITY DEFINER, `authenticated` only) writes
+`coalesce(billing_settings.trial_scope, 'sample')` for EVERY trial; before §60 a
+pressed (`signup`) trial was always `sample`. Nothing about who may start a trial
+moved: no grant to anon (42501), anonymous sessions 42501, disabled 42501,
+declined and a declined re-ask 42501, switched off `{reason: disabled}`, a second
+trial `{reason: used}`, anybody with a `paid_at` (refunded too) `{reason: paid}`,
+and `p_source` still ignored for a non-administrator. The scope is the console's
+setting, which only `admin_set_billing_settings` writes (owner/finance per §46);
+the client never sends it. `trial_offer()` (anon) gains `trial_scope`: a setting,
+nothing about a person.
+
+**What a full trial opens.** `billing_status()` (§53.4): `entitled` true while it
+runs, `features` = the `trial_plan` row's (Indie when unset), so `sample_only` is
+absent and `new_projects` allowed. `limits` are the free plan's — one film in the
+cloud, no shares, no collaborators — so the P0402 triggers still hold a trial to
+those caps. RLS is untouched.
+
+**Live checks to run** (after §60; two throwaway accounts that never had a trial):
+1. Read back: `select pg_get_functiondef('public.start_trial(text)'::regprocedure) like '%§60%'`
+   → true; anon `POST /rest/v1/rpc/trial_offer` → has `trial_scope`.
+2. Owner console: trial scope `full`, minutes 4320. As account A press START MY FREE
+   TRIAL (or `POST /rest/v1/rpc/start_trial {}`) → `started: true`;
+   `billing_status()` → `entitled` true, `trial_scope` `full`, `features` has no
+   `sample_only`; the hub offers a new project.
+3. As A again: `start_trial` → `{started: false, reason: used}`.
+4. As anon: `POST /rest/v1/rpc/start_trial {}` → 401/42501.
+5. As a fresh account B: `POST /rest/v1/rpc/start_trial {"p_source":"code"}` →
+   B's `trial_source` is `signup` and `trial_minutes` 4320 (the source is not forgeable).
+6. A declined requester (decline one in the console) → `start_trial` 42501.
+7. Owner console: scope back to `sample` → a fresh account's trial is `sample` and
+   `features.sample_only` is true (the old behaviour, by setting).
+

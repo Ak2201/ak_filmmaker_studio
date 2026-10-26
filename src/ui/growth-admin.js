@@ -74,6 +74,7 @@ async function load() {
     S.affiliates = await settle('affiliates', Growth.admin.affiliateReport);
     S.leads = await settle('leads', Growth.admin.leads);
     S.funnel = await settle('funnel', () => Growth.admin.funnel(S.from || null, S.to || null));
+    S.funnelBySource = await settle('funnelBySource', () => Growth.admin.funnelBySource(S.from || null, S.to || null));
     /* §30. The same read the signed-out landing page makes, on
        purpose — see the note on Billing.priceNotice(). */
     S.prices = await settle('prices', Billing.priceNotice);
@@ -435,7 +436,34 @@ function byCurrency(inrPaise, usdCents) {
   return usd > 0 ? `${inr} + ${fmtMinor(usd, 'USD')}` : inr;
 }
 
-const FUNNEL_LABEL = { landing_view: 'Start page visits', pricing_view: 'Reached pricing', invite_request: 'Invite requests', signup: 'Sign-ups', checkout_start: 'Checkouts started', purchase: 'Purchases' };
+const FUNNEL_LABEL = { landing_view: 'Start page visits', pricing_view: 'Reached pricing', invite_request: 'Invite requests', signup: 'Sign-ups',
+  signin_done: 'Signed in', sample_open: 'Opened the sample', trial_start: 'Trials started', plan_view_in_app: 'Viewed plans in the app',
+  checkout_start: 'Checkouts started', purchase: 'Purchases' };
+/* §58's step order (public.funnel_event_names()). A step the server
+   answers with that is not here still shows, after these. */
+export const FUNNEL_STEPS = ['landing_view', 'pricing_view', 'invite_request', 'signup', 'signin_done', 'sample_open', 'trial_start', 'plan_view_in_app', 'checkout_start', 'purchase'];
+export const NO_SOURCE = 'direct / none';
+/** admin_funnel_by_source() rows {name, source, total} pivoted: one row per
+ *  source ('' becomes NO_SOURCE), a count per step, sources ordered by their
+ *  start-page visits and then by everything they brought. Steps are those
+ *  with any count, in funnel order. Pure, for the console and its test. */
+export function pivotBySource(rows) {
+  const by = new Map();
+  const seen = new Set();
+  for (const r of rows || []) {
+    const n = Number(r && r.total) || 0;
+    if (!r || !n) continue;
+    const src = String(r.source || '') || NO_SOURCE;
+    if (!by.has(src)) by.set(src, { source: src, counts: {}, all: 0 });
+    const o = by.get(src);
+    o.counts[r.name] = (o.counts[r.name] || 0) + n;
+    o.all += n;
+    seen.add(r.name);
+  }
+  const steps = FUNNEL_STEPS.filter((k) => seen.has(k)).concat([...seen].filter((k) => !FUNNEL_STEPS.includes(k)));
+  const sources = [...by.values()].sort((a, b) => (b.counts.landing_view || 0) - (a.counts.landing_view || 0) || b.all - a.all || a.source.localeCompare(b.source));
+  return { steps, sources };
+}
 const csvCell = (v) => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t.replace(/"/g, '""') : t.replace(/"/g, '""'); };
 export function leadsCsv(rows) {
   return ['email,source,created_at,consent_text'].concat(rows.map((r) => [r.email, r.source, r.created_at, r.consent_text].map((c) => '"' + csvCell(c) + '"').join(','))).join('\r\n');
@@ -467,6 +495,23 @@ function funnelBlock(sec) {
     h('td', { text: FUNNEL_LABEL[r.name] || r.name }), h('td', { text: String(r.total) }),
     h('td', { text: top && r.name !== 'landing_view' ? `${Math.round((Number(r.total) / top) * 1000) / 10}%` : '—' })
   ]))));
+  sec.append(h('div.gt-scroll', {}, [table]));
+  bySourceBlock(sec);
+}
+
+/* §58: the same anonymous counts, by where the visit came from. A
+   database without §58 says so in one line; the totals above still draw. */
+function bySourceBlock(sec) {
+  sec.append(h('h4.gt-h3', { text: 'Funnel by source' }));
+  if (S.missing.funnelBySource) { sec.append(h('p.gt-meta', { text: 'Counts by source are not available on this database yet (schema section 58 has not run).' })); return; }
+  const { steps, sources } = pivotBySource(S.funnelBySource);
+  if (!sources.length) { sec.append(h('p.gt-meta', { text: 'No counts in this window yet.' })); return; }
+  sec.append(h('p.gt-meta', { text: `A source is the ?ref= or ?utm_source= the visit arrived with, as a short label; "${NO_SOURCE}" is everything that arrived without one, and every count made before section 58. Daily totals only: nobody is identified.` }));
+  const table = h('table.gt-table', { 'data-funnel-by-source': '' });
+  table.append(h('caption.visually-hidden', { text: 'Funnel counts by source' }));
+  table.append(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Source' })].concat(steps.map((k) => h('th', { scope: 'col', text: FUNNEL_LABEL[k] || k }))))]));
+  table.append(h('tbody', {}, sources.map((s) => h('tr', { 'data-source': s.source }, [h('th', { scope: 'row', text: s.source })]
+    .concat(steps.map((k) => h('td', { text: String(s.counts[k] || 0) })))))));
   sec.append(h('div.gt-scroll', {}, [table]));
 }
 

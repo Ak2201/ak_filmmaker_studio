@@ -6788,6 +6788,16 @@ security definer
 set search_path = public, pg_temp
 as $fn$
 begin
+  /* §58 widened the key to (day, name, source) and added
+     bump_event(text, text). A RE-RUN of this file after §58 must not
+     restate the §29 body, whose ON CONFLICT (day, name) names no unique
+     index any more (42P10 on every call, which the client swallows, so
+     every count would stop with no symptom). So: when the two-argument
+     form exists, hand over to it. */
+  if to_regprocedure('public.bump_event(text,text)') is not null then
+    execute 'select public.bump_event($1, null::text)' using p_name;
+    return;
+  end if;
   if p_name is null or p_name not in ('landing_view','pricing_view','invite_request','signup','checkout_start','purchase') then
     raise exception 'Unknown event.' using errcode = '22023';
   end if;
@@ -6817,11 +6827,17 @@ security definer
 stable
 set search_path = public, pg_temp
 as $fn$
+declare names text[] := array['landing_view','pricing_view','invite_request','signup','checkout_start','purchase'];
 begin
   if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  /* After §58 the step list is funnel_event_names(); a re-run of this file
+     must not shrink the console back to six steps. */
+  if to_regprocedure('public.funnel_event_names()') is not null then
+    execute 'select public.funnel_event_names()' into names;
+  end if;
   return query
     select n.name, coalesce(sum(e.count), 0)::bigint
-      from unnest(array['landing_view','pricing_view','invite_request','signup','checkout_start','purchase']) with ordinality as n(name, ord)
+      from unnest(names) with ordinality as n(name, ord)
       left join public.events e on e.name = n.name and e.day between coalesce(p_from, date '1970-01-01') and coalesce(p_to, date '2999-12-31')
      group by n.name, n.ord order by n.ord;
 end;

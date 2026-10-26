@@ -58,6 +58,8 @@ export const admin = {
   /* §29: the start page's launch-offer sign-ups and the daily funnel counts */
   leads: () => rpc('admin_list_leads').then((d) => d || []),
   funnel: (from = null, to = null) => rpc('admin_funnel', { p_from: from, p_to: to }).then((d) => d || []),
+  /* §58: the same counts per (step, source); '' is "no source" */
+  funnelBySource: (from = null, to = null) => rpc('admin_funnel_by_source', { p_from: from, p_to: to }).then((d) => d || []),
   affiliateOrders: (code) => rpc('admin_affiliate_orders', { p_code: normalisePromo(code) }).then((d) => d || []),
   /* §32: access given by e-mail. `plan` is a plans id or null for
      membership only; `days` null is "until I remove it". The server

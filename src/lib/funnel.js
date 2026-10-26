@@ -6,8 +6,9 @@
    `supabase-*` chunk is a budget failure). Both calls are fire-and-
    forget for counts: a counter that errors is a counter nobody misses.
 
-   What a count carries: an event NAME. Nothing else — the database
-   column set is (day, name, count). No id, no cookie, no localStorage.
+   What a count carries: an event NAME, and since §58 an optional SOURCE
+   bucket from a fixed list (below). Nothing else — the database column set is (day, name,
+   source, count). No id, no cookie, no localStorage.
 
    Who is not counted: Do-Not-Track, Global Privacy Control, and anyone
    who pressed "Don't count this visit" (sessionStorage only — a new
@@ -48,19 +49,96 @@ async function rpc(name, args) {
   try { return await r.json(); } catch (e) { return null; }
 }
 
-/** Fire and forget. Never throws, never awaits anything the caller needs. */
-export function bumpEvent(name) {
+/* ---- §58: where the visit came from, as an AGGREGATE bucket -----------
+   A source is one word from a FIXED LIST, counted per day beside the
+   event name and nothing else. sourceBucket() maps whatever it is given
+   onto that list ('insta' and 'Instagram' are 'instagram', 'newsletter'
+   is 'email') and ANYTHING NOT ON IT becomes 'other'. It does not tidy
+   free text into the server's pattern: tidied, 'kasi.v@example.com' is
+   'kasi-v-example-com', which passes ^[a-z0-9_-]{1,32}$ and names a
+   person. The pattern on the server is a second fence, not the first.
+
+   THE SOURCE OF A VISIT HAS ONE WRITER: src/lib/attribution.js
+   (captureAttribution(), run on the public pages) keeps { ref, src } for
+   the tab in sessionStorage under ATTRIB_KEY. funnelSource() reads that
+   record BY ITS KEY STRING, so this file still imports nothing, and reads
+   `src` only, never `ref`: a referral code (REF-XXXXXX) names one member,
+   which is exactly what an aggregate counter must not hold. If
+   attribution.js ever renames ATTRIB_KEY, change it here too (test:funnel
+   asserts the two agree whenever attribution.js exists).
+
+   IMPORT-FREE ON PURPOSE: this file is in the `startlib` chunk
+   (vite.config.js), which CORE and the landing page share. */
+export const ATTRIB_KEY = 'fms_attrib_session';
+const KNOWN_SOURCES = Object.freeze({
+  google: 'google', bing: 'bing', duckduckgo: 'duckduckgo', ddg: 'duckduckgo', yahoo: 'yahoo',
+  instagram: 'instagram', insta: 'instagram', ig: 'instagram',
+  facebook: 'facebook', fb: 'facebook',
+  youtube: 'youtube', yt: 'youtube',
+  twitter: 'x', x: 'x',
+  linkedin: 'linkedin',
+  whatsapp: 'whatsapp', wa: 'whatsapp',
+  telegram: 'telegram',
+  reddit: 'reddit', threads: 'threads', pinterest: 'pinterest',
+  producthunt: 'producthunt',
+  email: 'email', mail: 'email', newsletter: 'email',
+  podcast: 'podcast', partner: 'partner', affiliate: 'partner', event: 'event', festival: 'event'
+});
+/** The buckets a count can carry, for the console and the tests. */
+export const SOURCES = Object.freeze([...new Set(Object.values(KNOWN_SOURCES)), 'other']);
+/** '' for nothing; a name from the fixed list; 'other' for anything else. */
+export function sourceBucket(raw) {
+  if (raw == null) return '';
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return '';
+  return Object.prototype.hasOwnProperty.call(KNOWN_SOURCES, s) ? KNOWN_SOURCES[s] : 'other';
+}
+/** This tab's source bucket, from attribution.js's record; '' when none. */
+export function funnelSource() {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(ATTRIB_KEY) || 'null');
+    return v && typeof v === 'object' ? sourceBucket(v.src) : '';
+  } catch (e) { return ''; }
+}
+
+/* A server that has not run §58 has only bump_event(p_name): the two-
+   argument call answers 404 / PGRST202. Then the count goes again
+   without its source, and this page stops asking with one. */
+let twoArg = true;
+const isMissingRpc = (e) => !!e && (e.status === 404 || /PGRST202|Could not find|does not exist/i.test(String(e.message || '')));
+
+/** Fire and forget. Never throws, never awaits anything the caller needs.
+ *  `source` (optional) is bucketed; left out, the session's own is used. */
+export function bumpEvent(name, source) {
   if (!configured() || optedOut()) return;
-  try { rpc('bump_event', { p_name: name }).catch(() => {}); } catch (e) { /* */ }
+  const src = source === undefined ? funnelSource() : sourceBucket(source);
+  try {
+    if (src && twoArg) {
+      rpc('bump_event', { p_name: name, p_source: src }).catch((e) => {
+        if (!isMissingRpc(e)) return;
+        twoArg = false;
+        rpc('bump_event', { p_name: name }).catch(() => {});
+      });
+    } else {
+      rpc('bump_event', { p_name: name }).catch(() => {});
+    }
+  } catch (e) { /* */ }
 }
 
 /** Once per browser session per name. */
-export function bumpOnce(name) {
+export function bumpOnce(name, source) {
   if (!configured() || optedOut()) return;
   const k = 'fms_funnel_' + name;
   try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) { /* storage blocked: count once per load */ }
-  bumpEvent(name);
+  bumpEvent(name, source);
 }
+
+/* The four steps §58 added, named so a call site reads as what happened.
+   Each counts once per browser session, like the page views. */
+export const countSignIn = (source) => bumpOnce('signin_done', source);
+export const countSampleOpen = (source) => bumpOnce('sample_open', source);
+export const countTrialStart = (source) => bumpOnce('trial_start', source);
+export const countPlanViewInApp = (source) => bumpOnce('plan_view_in_app', source);
 
 /** The launch-offers form. Rejects with a sentence fit to show. */
 export async function addLead(email, consentText, source = 'start') {
@@ -114,4 +192,4 @@ export async function trialOffer() {
   try { const v = await rpc('trial_offer', {}); return v && typeof v === 'object' && typeof v.trial_enabled === 'boolean' ? v : null; } catch (e) { return null; }
 }
 
-export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired, trialOffer };
+export default { bumpEvent, bumpOnce, sourceBucket, funnelSource, SOURCES, countSignIn, countSampleOpen, countTrialStart, countPlanViewInApp, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired, trialOffer };

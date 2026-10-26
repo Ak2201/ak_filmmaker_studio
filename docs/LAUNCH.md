@@ -206,9 +206,27 @@ that one.
 >    Then redeploy ALL FOUR functions with the CLI, enable USD / international payments on
 >    Razorpay, type the dollar prices in the console, and only then `admin_set_usd_checkout(true)`.
 >    Rupee checkout keeps working at every step in between; a client without §56 falls back to rupees.
+> 3. **§58** `schema-58-funnel-source.sql` (26 Oct 2026) — funnel counts by source and four
+>    more steps (trial_start, sample_open, signin_done, plan_view_in_app). Hash the file
+>    (`shasum -a 256`), paste the base64 way, compare the editor's SHA-256, Run. Read back:
+>    `select oid::regprocedure from pg_proc where proname = 'bump_event'` lists BOTH
+>    `bump_event(text)` and `bump_event(text,text)`, and
+>    `select pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.events'::regclass`
+>    shows the key `(day, name, source)`. No function redeploy. If the base file
+>    (`supabase-schema.sql`) is ever re-run, re-run §58 after it. Safe before it runs: the
+>    client retries a refused two-argument count with one argument and the console says
+>    "section 58 has not run".
+> 4. **§59** `schema-59-testimonials.sql` (26 Oct 2026) — testimonials with consent and revoke.
+>    Same checksum routine. Read back: `select relrowsecurity from pg_class where oid =
+>    'public.testimonials'::regclass` → true, and as anon `POST /rest/v1/rpc/public_testimonials`
+>    → `[]`, and `admin_mark_testimonial_removed(uuid)` exists. A taken-back testimonial
+>    that was on the site shows on the console Overview until you delete it from
+>    `src/data/testimonials.json`, redeploy, and press TAKEN OFF THE SITE. No function redeploy. Safe before it runs: the prompt never appears and the
+>    console's Testimonials tab says "section 59 has not run". Then the two-account checks in
+>    `docs/SECURITY-RLS.md` §59.
 >
 > §53 and §54 ran live on 22 Oct 2026 and the four functions were redeployed that day
-> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §58 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
+> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §60 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
 
 > **RAN LIVE 19 Oct 2026 (§36 re-run, §48–§51), each checksummed and probed over PostgREST** —
 > §48 `can_join_presence` and §49 `co_editing_enabled` answer, `claim_share` now answers 42501

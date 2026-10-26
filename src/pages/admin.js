@@ -1,7 +1,7 @@
 /* ============================================================
    THE CONSOLE — the application as a whole, for its administrators
    ------------------------------------------------------------
-   ONE page, eleven tabs in four GROUPS (src/ui/tabs.js turns the
+   ONE page, twelve tabs in four GROUPS (src/ui/tabs.js turns the
    top-level sections into the strip, and draws each group under its
    heading — a vertical sub-navigation inside the content column at
    1100px and over, the single scrolling strip below; the hash picks
@@ -9,11 +9,11 @@
 
      Run      Overview · Launch & health · Audit log
      People   People · Support · Access & sharing (#requests)
-     Money    Purchases · Growth
+     Money    Purchases · Growth · Testimonials (schema §59)
      Product  Usage · Sync & storage · Controls
 
-   The six tabs that are NOT written here — health, audit, support,
-   usage, sync, controls — are one module each in src/pages/admin-tabs/,
+   The seven tabs that are NOT written here — health, audit, support,
+   usage, sync, controls, testimonials — are one module each in src/pages/admin-tabs/,
    registered in NEW_TABS below. A module exports
 
      render(ctx) -> Node          its content, built synchronously
@@ -93,6 +93,7 @@ import * as supportTab from './admin-tabs/support.js';
 import * as usageTab from './admin-tabs/usage.js';
 import * as syncTab from './admin-tabs/sync.js';
 import * as controlsTab from './admin-tabs/controls.js';
+import * as testimonialsTab from './admin-tabs/testimonials.js';
 import { fmtDate, fmtWhen, fmtTime, n } from '../lib/admin-format.js';
 import {
   TAB_DEFS, TABS, GROUP, META, BLOCK_TITLE, blankOverview, razorpayEnv as envOf, pendingCounts as countsOf, attentionItems,
@@ -117,7 +118,7 @@ const gate = () => (cloud() && cloud().gate) || null;
 
 /* THE REGISTRY. A tab that has its own module in ./admin-tabs/. To add
    one: a file there, an import above, a row here and in TAB_DEFS. */
-const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usage: usageTab, sync: syncTab, controls: controlsTab };
+const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usage: usageTab, sync: syncTab, controls: controlsTab, testimonials: testimonialsTab };
 /* The tab definitions (TAB_DEFS, TABS, GROUP, META) and each block's own
    heading (BLOCK_TITLE) are data: src/lib/admin-model.js. */
 
@@ -241,7 +242,11 @@ function attentionItem({ label, tone = 'warn', text, tab: to, params }) {
 
 /** The ranked list (src/lib/admin-model.js decides it), drawn as rows. */
 function attentionList(d, hs) {
-  return attentionItems(d, hs, pendingCounts().purchases).map(attentionItem);
+  /* §59: a testimonial taken back after it was published is the author
+     withdrawing consent while the site may still show it — ranked first. */
+  let tm = [];
+  try { tm = testimonialsTab.attention(makeCtx('testimonials')); } catch (e) { tm = []; }
+  return [...tm, ...attentionItems(d, hs, pendingCounts().purchases)].map(attentionItem);
 }
 
 function activityCard(ctx) {

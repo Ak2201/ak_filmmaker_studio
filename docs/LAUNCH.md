@@ -492,5 +492,8 @@ Meta Pixel is NOT installed, on purpose: it needs a `connect-src` /
 it cuts against "your work stays in your browser". If you want it, put it
 on `start.html` ONLY, never inside the studio. Start with retargeting
 people who opened the sample, ₹500–1,000 a day, and the message that is
-true and rare: pay once, no subscription, works offline, built for Tamil
-crews.
+true and rare: one payment for a year with nothing renewing by itself,
+works offline, built for Tamil crews. (It used to say "pay once, no
+subscription"; since §52, 21 Oct 2026, a plan is one year, so that line is
+no longer true. Read the trial length and the price-rise date from the
+console, trial_offer() and price_notice(), never from an old ad.)

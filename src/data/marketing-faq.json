@@ -22,7 +22,8 @@
       {
         "q": "How long is the free trial?",
         "trial": true,
-        "a": "Its length is a setting the studio controls, so it is never typed into this answer: the free-trial strip beside the plans and the sign-up window show the length running today. A trial opens every module on the sample films and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
+        "a": "Right now it is a free trial whose length is a studio setting, read live, so it is never typed into this answer. It needs no card. It does not hold a price: a plan costs what it costs on the day you buy it.",
+        "aHtml": "Right now it is a <span data-trial-length>free trial</span> whose length is a studio setting, read live, so it is never typed into this answer. It needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
       }
     ]
   },

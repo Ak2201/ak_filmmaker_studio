@@ -11,8 +11,9 @@
   },
   "trial": {
     "h": "Not sure yet? Try the whole studio free",
-    "bodyHtml": "Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card required. Then keep the plan that fits.",
+    "bodyHtml": "Start with a <span data-trial-length>free trial</span> before you pay anything. No card required. Then keep the plan that fits.",
     "cta": "Start the free trial",
+    "ctaHtml": "Start the <span data-trial-length>free trial</span>",
     "ctaOpen": "Open the studio"
   },
   "plans": {
@@ -30,6 +31,14 @@
     "noteHtml": "Yearly list prices in Indian rupees, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first.",
     "noteUsdHtml": "Yearly list prices in US dollars, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first.",
     "currencyLabel": "Show prices in"
+  },
+  "edu": {
+    "h": "Students and film schools",
+    "lead": "Film or Viscom student?",
+    "body": "Use code STUDENT50 at checkout for the student price on Intermediate. The discount shows on the card before you pay.",
+    "cta": "Use the student code",
+    "schools": "Film schools, clubs and workshops: write to us at",
+    "schoolsAfter": "for group access."
   },
   "offer": {
     "h": "Founding prices",

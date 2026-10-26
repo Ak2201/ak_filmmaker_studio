@@ -376,6 +376,36 @@ console.log('✓ §57 loads (and re-runs cleanly)');
 runChecks('invoice-year.sql');
 /* --- end §57 --- */
 
+/* --- §58 (funnel counts by source) --- it widens §29's events key, so a
+   counter bumped with the ONE-argument form before it loads must still be
+   there (with source '') after, and the one-argument form must keep
+   working on the new key. Loaded twice (it swaps a primary key and two
+   CHECKs, which a re-run must survive). --- */
+r = psql(['-c', `select public.bump_event('purchase')`]);
+if (r.status !== 0) fail('§58 seed: bump_event(text) before §58 failed', r);
+for (const f of ['supabase/schema/schema-58-funnel-source.sql', 'supabase/schema/schema-58-funnel-source.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+{
+  const n = psql(['-tAc', `select coalesce(sum(count), 0) from public.events where name = 'purchase' and source = ''`]).stdout.trim();
+  total++;
+  if (Number(n) >= 1) console.log('  ✓ 58. a counter written before §58 survives the new key, under no source');
+  else { failed++; fail(`§58: the pre-§58 purchase counter is gone (${n})`); }
+}
+console.log('✓ §58 loads (and re-runs cleanly)');
+runChecks('funnel-source.sql');
+/* --- end §58 --- */
+
+/* --- §59 (testimonials) --- on §40 and §45, loaded twice. --- */
+for (const f of ['supabase/schema/schema-59-testimonials.sql', 'supabase/schema/schema-59-testimonials.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §59 loads (and re-runs cleanly)');
+runChecks('testimonials.sql');
+/* --- end §59 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

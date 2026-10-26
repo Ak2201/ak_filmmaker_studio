@@ -1912,18 +1912,24 @@ function planLimitToast(message, opts) {
      plan-gate.js (CORE, already loaded) answers with the server's quote,
      or with the plan alone when there is none — never a guessed figure. */
   const key = /^Your .* plan syncs up to/i.test(message) ? 'projects' : /^Your .* plan allows .* share link/i.test(message) ? 'shares' : '';
-  const show = (o) => {
-    if (!(window.StudioUI && StudioUI.toast)) return;
-    StudioUI.toast(message + ' This film is saved on this device.' + (o ? ' ' + o.line : ''), {
-      type: 'error', action: 'See plans', onAction: () => { location.href = o ? o.href : 'purchase.html'; }
-    });
-  };
-  if (!key) { show(null); return; }
+  if (!(window.StudioUI && StudioUI.toast)) return;
+  /* The toast goes up NOW (the cap is news the moment it happens); the
+     plan and the figure are added to the same toast when they arrive,
+     and its button follows them to that plan's card. */
+  let href = 'purchase.html';
+  StudioUI.toast(message + ' This film is saved on this device.', {
+    type: 'error', action: 'See plans', onAction: () => { location.href = href; }
+  });
+  const host = document.getElementById('toastHostAlert');
+  const msgEl = host && host.lastElementChild && host.lastElementChild.querySelector('.toast-msg');
+  if (!key || !msgEl) return;
   import('./plan-gate.js')
-    .then((PG) => PG.quotedOffer([], { limit: key }).then((o) => (o ? {
-      line: o.due ? (o.more ? 'Upgrade to ' + o.name + ' for ' + o.due + ' more.' : o.name + ' raises it, ' + o.due + ' a year.') : o.name + ' raises it.',
-      href: o.href } : null)))
-    .then(show, () => show(null));
+    .then((PG) => PG.quotedOffer([], { limit: key }))
+    .then((o) => {
+      if (!o || !msgEl.isConnected) return;
+      msgEl.textContent += ' ' + (o.due ? (o.more ? 'Upgrade to ' + o.name + ' for ' + o.due + ' more.' : o.name + ' raises it, ' + o.due + ' a year.') : o.name + ' raises it.');
+      href = o.href;
+    }, () => { /* the plain toast stands */ });
 }
 
 async function _deleteProjectInCloud(projectId) {

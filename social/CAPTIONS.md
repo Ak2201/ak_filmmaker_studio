@@ -42,9 +42,12 @@ Alternates:
 - *Beginner-first:* You have never made a film. Start one tonight. 11 steps from an idea to a short that's ready to submit. Made in Chennai.
 - *Tool-first:* A working desk for independent filmmakers. Story → screenplay → schedule → set → delivery. Works offline. A year for less than a cup of tea a day, nothing renews by itself.
 
-**Link:** `https://filmmakerstudio.in/start` — point at `/start`, **not** the
-root. The root sits behind the invite gate and bounces a stranger straight
-back out; `/start` is the page built to sell.
+**Link:** `https://filmmakerstudio.in/start?src=ig-bio&utm_campaign=profile`
+— point at `/start`, **not** the root. The root sits behind the site gate and
+bounces a stranger straight back out; `/start` is the page built to sell. The
+`src` tag is how the console's per-source funnel counts the bio
+(`docs/MARKETING-PLAYBOOK.md` §3); a post or story link uses `ig-post`,
+`ig-reel` or `ig-story` instead.
 
 **Category:** Software, or Education. Not "Film".
 
@@ -62,7 +65,7 @@ Post these first, in this order: announce → explain → convert.
 > worked example, asks you the questions, and checks what you wrote. 11 steps
 > from the idea in your head to a short film that's ready to submit.
 >
-> Invite-only at launch. Link in bio.
+> Try the whole studio free for {TRIAL_DAYS} days. No card. Link in bio.
 
 ### poster-2.png — what it is
 
@@ -185,9 +188,9 @@ Pre-production teal, Production pink, Post magenta.
 
 ## Notes before you post
 
-**No call to action is baked into the captions.** Add "Link in bio" or
-"Invite-only at launch 👇" per post, so you can tune it rather than repeat
-the same line eighteen times.
+**No call to action is baked into the captions** (poster-1 aside). Add
+"Link in bio" or "Free trial, link in bio" per post, so you can tune it
+rather than repeat the same line eighteen times.
 
 **★ marks the two strongest.** Auto-tagging (06) and Chennai-rate budgeting
 (10) are the two things nothing else in this market does. If you want the run
@@ -198,12 +201,40 @@ bots. The ones worth having are local and specific — #chennaifilmmakers,
 #tamilcinema, #kollywood, #indiefilmindia — and you know that scene better
 than the data does.
 
-**No price appears on any poster.** Pay-once is true and durable; a rupee
-figure is not, because the launch prices are scheduled to rise and a post is
-forever. Add a price card separately once the offer is confirmed live.
+**No price appears on any poster.** A rupee figure is not durable: the
+founding prices are scheduled to rise (the date is the server's, read from
+`price_notice()`; the owner moved it to 31 Dec 2026), and a post is forever.
+What IS durable, and may go in any caption: **a plan is one payment for one
+year, nothing renews by itself**, and "less than a cup of tea a day", which
+holds at every tier before and after the rise. Never write "pay once",
+"lifetime" or "own it forever" — plans have been yearly since 21 Oct 2026.
+A price card, if you make one, is a separate story or post with the figures
+read from `price_notice()` that day.
 
-**Invite-only is a real constraint, not a tactic.** If these land before you
-have codes to hand out, you'll generate interest you cannot convert. Have the
-invite flow ready first.
+**The door is the trial now, not an invite.** Since 26 Oct 2026 the offer
+is a free trial of the whole studio (3 days once the owner sets
+`trial_minutes` 4320, scope `full`, trial plan Pro; playbook §6.1). Fill
+`{TRIAL_DAYS}` from `trial_offer()` the day you post, and do not post
+poster-1 until the trial is live. **`poster-1.png` itself still draws
+"Invite-only at launch."** (`scripts/make-posters.mjs`, line ~152): change
+that line to the trial and regenerate before posting it, or post poster-2
+first.
+
+**Say which plan a feature is on.** Call sheets, Shoot Day (13), Edit Log and
+Deliverables (14) and the AI tools are Pro; breakdown, auto-tagging (06),
+cast matrix (08), shot list and storyboard (09), budget (10), stripboard (11)
+and contacts/sides/reports (12) are Intermediate; writing, drafts and import
+(03–05), story (01) and the Idea Vault (02) are Basic. Add "(Pro)" or
+"(Intermediate and up)" to the caption for those posters.
+
+**Two captions name tools that are switched off on every plan today**
+(`plans: []` in `src/data/plan-matrix.json`, so `isDisabledEverywhere()`
+hides them): the **Lookbook** in feature-09 and, in feature-15, the
+**glossary**, the **dissected feature** and the **case studies** (the Library
+still opens, without those shelves). Drop those phrases, or skip the poster,
+until the owner turns the module back on. Likewise do not mention the pitch
+deck, songs or media modules. And check poster-2's "31 tools" against what a
+plan really opens before posting it: the poster counts modules from the data,
+switched-off ones included.
 
 **Cadence:** 18 posts at 3–4 a week is roughly 4–5 weeks.

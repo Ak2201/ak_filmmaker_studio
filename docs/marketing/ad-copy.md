@@ -7,20 +7,22 @@ from memory:
 
 | Placeholder | Read from |
 | --- | --- |
-| `{TRIAL}` | "3-day" when `trial_offer()` reads 4320 minutes; otherwise write "free" |
+| `{TRIAL_LENGTH}` | `trial_offer()` `trial_hours`, in words ("3-day" for 72); if you have not just read it, write "free" and no length |
+| `{TRIAL_OPENS}` | "the whole studio" only when `trial_offer()` reads `trial_scope: "full"` (schema §60 live) and the console's trial plan is Pro; otherwise "the tools on two sample films" |
 | `{FROM_DAY}` | the pricing page's "from about … a day" (Basic's year ÷ 365, derived) |
 | `{BASIC_YEAR}` `{INDIE_YEAR}` `{PRO_YEAR}` | `price_notice()` current prices |
 | `{RISE_DATE}` | `price_notice()` `plans[].next_price_at`, as an IST date (null means the rise has fired: drop the line) |
 
 Every link carries its test cell's `src` from the playbook's §3 register.
+All `meta-*` tags count as ONE console bucket, `ads`; a cell is judged on
+Meta Ads Manager's figures (playbook §4.2). `yt-ads` counts as `youtube`.
 
-**What the trial is, in every ad:** {TRIAL} days on the two sample films, no
-card. A trial somebody starts with the button cannot open their own film
-(`start_trial()` stores scope `sample` for every signup trial; playbook
-§6.1). So an ad may SHOW a feature working on the visitor's own script (it
-is true of the plan), but the trial line says "try it on the sample films",
-never "whole studio" or "on your own film", until the owner's schema change
-in §6.1 has run and read back.
+**What the trial is, in every ad:** a {TRIAL_LENGTH} trial of {TRIAL_OPENS},
+no card, starting only when the visitor presses start. The owner decided
+(26 Oct 2026) on 3 days of the whole studio; that is what an ad says only
+once the playbook §5 pre-flight has read it back. A whole-studio trial keeps
+the no-plan limits (one film in the cloud, no share links, no
+collaborators), so no ad promises sharing or a team on the trial.
 
 **Never in any ad:** "pay once", "lifetime", "forever", "money-back",
 "loved by N filmmakers", star ratings, "#1", "only N left", a fake timer,
@@ -40,10 +42,10 @@ stripboard → open the call sheet → tap Send on WhatsApp.
 
 - **Primary:** Import your script. Get the breakdown, the shooting schedule and the call sheet without retyping a scene.
 - **Headline:** From script to call sheet
-- **Description:** {TRIAL} trial on the sample films, no card
+- **Description:** {TRIAL_LENGTH} trial of {TRIAL_OPENS}, no card
 - **CTA button:** Learn more
 - **Link:** `/start?src=meta-t1a&utm_campaign=test1` (cell C, other states: `src=meta-t1c`)
-- **Check:** import is every plan; breakdown + stripboard are Intermediate; call sheets are **Pro**. The trial shows them on the sample films; importing your own script needs a plan. Record the reel on a paid account (or the Dragon sample) and never caption it as the trial.
+- **Check:** import is every plan; breakdown + stripboard are Intermediate; call sheets are **Pro**. A whole-studio trial with the Pro trial plan opens all three on the visitor's own script; a sample-scope trial shows them on the sample films only, and then the description must say so. Record the reel on a real account of the plan shown.
 
 ### M2 — Tamil on the page (reel, 20 s)
 
@@ -58,14 +60,14 @@ Screenplay Writer; page count updates.
 
 ### M3 — Budget in rupees (static, 4:5)
 
-Image: a real budget screen from the Dragon sample, figures with their
-source and checked date visible.
+Image: a real budget screen from the Dragon sample, with a re-checked
+line (its source and date) and an "indicative" line both visible.
 
-- **Primary:** Budget your short film in rupees, starting from Chennai rates. Every figure shows where it came from and when it was checked.
+- **Primary:** Budget your short film in rupees, starting from the Chennai 2024-25 rate card, every line marked indicative, with 8 figures re-checked and dated.
 - **Headline:** A budget that starts from real rates
 - **Description:** Intermediate: {INDIE_YEAR} for a year
 - **Link:** `/start?src=meta-t1d&utm_campaign=test1`
-- **Check:** Budget is Intermediate. Never say "union rates" (no union floor exists); say "Chennai rates" or "market rates, with sources".
+- **Check:** Budget is Intermediate. Never say "union rates" (no union floor exists); say "the Chennai rate card". Never "every figure is sourced": only the `checked` rows in `rates.chennai.checks.json` are (8 today).
 
 ### M4 — Nothing renews by itself (static)
 
@@ -82,7 +84,7 @@ print a report.
 
 - **Primary:** No signal on location? The studio keeps working offline, and your changes are still there when you are back.
 - **Headline:** Works when the signal does not
-- **Description:** {TRIAL} trial, no card
+- **Description:** {TRIAL_LENGTH} trial, no card
 - **Link:** `/start?src=meta-t1f&utm_campaign=test1`
 - **Check:** true after the first visit has cached the app (it installs like an app). Do not say "no internet needed to sign up".
 
@@ -96,9 +98,9 @@ print a report.
 
 ### Retargeting (people who engaged with the account)
 
-- **R1 Primary:** Still thinking about it? The {TRIAL} trial opens the tools on two sample films, no card. It starts only when you press start.
+- **R1 Primary:** Still thinking about it? The {TRIAL_LENGTH} trial opens {TRIAL_OPENS}, no card. It starts only when you press start.
 - **R2 Primary:** Founding prices hold until {RISE_DATE}. A plan bought before then is a full year at that price. (Run only in the last 3 weeks before the date, and only once per person.)
-- **Link:** `/start?src=meta-rt&utm_campaign=rt1`
+- **Link:** `/start?src=meta-rt&utm_campaign=rt1` (bucket `ads`)
 
 ### International variant (second wave, only after `usd_checkout` is on)
 
@@ -113,7 +115,7 @@ Three frames, sticker link on the last.
 
 1. "Your call sheet. On WhatsApp. In one tap." (screen recording)
 2. "Per person call times, map pin, scenes in order." (close-up)
-3. "{TRIAL} trial on the sample films. Link ↓" → `/start?src=ig-story&utm_campaign=<week>`
+3. "{TRIAL_LENGTH} trial, no card. Link ↓" → `/start?src=ig-story&utm_campaign=<week>` (bucket `instagram`)
 
 ---
 
@@ -128,11 +130,16 @@ shooting schedule.
 pages. Drag the scenes into shooting days.
 [15–25s] The call sheet builds from the same scenes, and goes out as a
 WhatsApp message, one call time per person.
-[25–30s] FilmMakerStudio. Try it free for {TRIAL} days on the sample films, no card.
+[25–30s] FilmMakerStudio. Try {TRIAL_OPENS} free for {TRIAL_LENGTH_DAYS}, no card.
 filmmakerstudio.in/start
 ```
 
-Link: `/start?src=yt-ads&utm_campaign=y1` (in the playbook's register).
+Fill `{TRIAL_LENGTH_DAYS}` as "3 days" when `trial_offer()` reads 72 hours,
+or drop "for {TRIAL_LENGTH_DAYS}". The brand name is read aloud from
+`src/data/brand.json` `name`, never retyped if it changes.
+
+Link: `/start?src=yt-ads&utm_campaign=y1` (bucket `youtube`; the ad's own
+figures are in Google Ads).
 
 ### Y2 — Creator integration (60–90 s, read by the creator in their words)
 
@@ -141,7 +148,7 @@ Talking points the creator may use, all true:
 - It takes a film from story and screenplay to breakdown, schedule, budget,
   call sheets, the shoot day and deliverables.
 - Tamil dialogue with English slug lines; budgets in rupees from Chennai
-  rates with a source on each figure; call sheets as a WhatsApp message.
+  rate card (8 figures re-checked and dated); call sheets as a WhatsApp message.
 - Imports Fountain, Final Draft, Word, text and real-text PDFs; exports PDF,
   Word, Final Draft and Fountain.
 - Works offline once installed; backs up to your own Google Drive on
@@ -155,7 +162,9 @@ The creator must say it is a paid partnership (YouTube's "includes paid
 promotion" box and a spoken line), and must not promise planned features or
 a refund.
 
-Link: `/start?src=yt-<creator>&utm_campaign=<video>&ref=<CODE>`.
+Link: `/start?src=creator-<handle>&utm_campaign=<video>&ref=<CODE>` (bucket
+`partner`; the creator's own figures are their code's revenue in Growth →
+Affiliates).
 
 ---
 

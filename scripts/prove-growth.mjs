@@ -645,6 +645,21 @@ try {
       await page.reload(); await page.waitForSelector('#plPromoCode', { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(600);
       ok(await page.inputValue('#plPromoCode').catch(() => '') === '', 'and a reload does not put it back');
     } else { skip('clearing the code box: there was no box'); skip('the reload after clearing'); }
+    /* The box's own REMOVE is the other way to say no, and it fires no
+       input event: a code the fake ACCEPTS (LAUNCH10) is what draws it. */
+    await page.goto(BASE + 'start.html?ref=launch10'); await page.waitForLoadState('networkidle');
+    await page.goto(BASE + 'purchase.html#plan');
+    const removable = await page.waitForSelector('[data-plan-action="promo-clear"]', { timeout: 10000 }).then(() => true, () => false);
+    ok(removable && /LAUNCH10 applied/.test(await page.textContent('#plPromoHint').catch(() => '') || ''), 'a held code the server accepts is applied on purchase.html, with REMOVE beside it');
+    if (removable) {
+      /* A DOM click: by now the gate's own dialog (gate-ui) may be drawn
+         over the page for this faked account, and what is proved here is
+         the REMOVE listener, not the pointer path past that overlay. */
+      await page.evaluate(() => document.querySelector('[data-plan-action="promo-clear"]').click()); await page.waitForTimeout(300);
+      ok(await page.evaluate(() => !/LAUNCH10/.test(sessionStorage.getItem('fms_attrib_session') || '')), 'REMOVE forgets the held code');
+      await page.reload(); await page.waitForSelector('#plPromoCode', { timeout: 10000 }).catch(() => {}); await page.waitForLoadState('networkidle'); await page.waitForTimeout(600);
+      ok(await page.inputValue('#plPromoCode').catch(() => '') === '', 'and a reload after REMOVE leaves the box empty: ' + JSON.stringify(await page.inputValue('#plPromoCode').catch(() => null)));
+    } else { skip('REMOVE: the accepted code drew no REMOVE button'); skip('the reload after REMOVE'); }
     allErrors.push(...errors); await ctx.close();
     F.db.settings.trial_minutes = wasMinutes; F.db.settings.trial_enabled = wasEnabled;
   }

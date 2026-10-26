@@ -349,10 +349,12 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-pu-action="retry"]');
   if (el) { el.disabled = true; el.textContent = 'LOADING…'; refreshBilling(); }
 });
-/* Emptying the box the link filled is a "no": the held code is forgotten
-   for the tab, so the next redraw or reload does not put it back. */
-delegate(document, 'input', '#plPromoCode', (e, el) => {
-  if (!LINK_CODE || el.value.trim()) return;
+/* Emptying the box the link filled, or pressing its REMOVE, is a "no":
+   the held code is forgotten for the tab, so the next redraw or reload
+   does not put it back. REMOVE fires no input event (plan-cards.js only
+   resets its promo state), so it needs its own listener. */
+function forgetLinkCode() {
+  if (!LINK_CODE) return;
   clearAttribRef();
   try {
     const u = new URL(location.href);
@@ -361,7 +363,12 @@ delegate(document, 'input', '#plPromoCode', (e, el) => {
       history.replaceState(history.state, '', u.pathname + u.search + u.hash);
     }
   } catch (err) { /* the address keeps it; the box stays as they left it */ }
-});
+}
+delegate(document, 'input', '#plPromoCode', (e, el) => { if (!el.value.trim()) forgetLinkCode(); });
+/* Capture phase: plan-cards.js's own REMOVE handler redraws the box, which
+   detaches the button, and a bubbling delegate() then finds it outside the
+   document and does nothing. */
+delegate(document, 'click', '[data-plan-action="promo-clear"]', forgetLinkCode, true);
 
 Store.subscribe('billing:changed', () => refreshBilling());
 /* §32: the switch moved while the page was open (plan-gate re-reads

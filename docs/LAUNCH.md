@@ -510,5 +510,38 @@ Meta Pixel is NOT installed, on purpose: it needs a `connect-src` /
 it cuts against "your work stays in your browser". If you want it, put it
 on `start.html` ONLY, never inside the studio. Start with retargeting
 people who opened the sample, ₹500–1,000 a day, and the message that is
-true and rare: pay once, no subscription, works offline, built for Tamil
-crews.
+true and rare: one payment for a year with nothing renewing by itself,
+works offline, built for Tamil crews. (It used to say "pay once, no
+subscription"; since §52, 21 Oct 2026, a plan is one year, so that line is
+no longer true. Read the trial length and the price-rise date from the
+console, trial_offer() and price_notice(), never from an old ad.)
+
+### Before the public guides and comparisons are promoted (26 Oct 2026)
+
+Three owner steps the public pages are waiting on. None is a file the
+code can finish for you.
+
+- **The product-news form stays HIDDEN until privacy.html describes it.**
+  start.html and pricing.html carry the `form[data-lead-form]` markup, but
+  the section is `hidden` while `lead.live` is `false` in
+  `src/data/marketing-site.json`. privacy.html's only leads paragraph (the
+  h3 with `id="leads"`) says the old launch-offers form was removed, so a
+  form collecting an address under it would be a wrong privacy notice.
+  Write (it is legal copy, words in markup) a dated paragraph for the
+  product-news list: what is stored (address, the consent sentence, date,
+  source page), the purpose (product news only), who can read it, how to
+  unsubscribe or have it deleted. Move `id="leads"` onto that paragraph's
+  heading, then set `lead.live` to `true`, `npm run make:marketing`, and
+  check the form in a browser.
+- **Re-read the comparison sources.** Every row on compare-celtx.html and
+  compare-final-draft.html was taken from a search engine's summary of the
+  vendor's own page (the vendor sites did not resolve from the sandbox it
+  was written in), and the page says so beside each row. Open each of the
+  eight `source` URLs in `src/data/marketing-compare.json`, correct or
+  delete the row, then set its `method` to `"read"` and its `checked` to
+  that day.
+- **Rebuild after the price rise lands.** pricing.html's Product JSON-LD
+  carries the build-time list prices (`LIST_PRICE` in `src/lib/plans.js`);
+  the visible figures follow `price_notice()` at runtime, structured data
+  cannot. When the server's price rises, update `LIST_PRICE` and rebuild.
+  The other public pages carry no offers in their JSON-LD on purpose.

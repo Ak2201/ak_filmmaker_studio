@@ -1,0 +1,127 @@
+{
+  "_about": "Copy for the comparison pages (compare-*.html) and the trust page (trust.html), read by scripts/make-marketing-pages.mjs. RULES. (1) Our column claims only what the code does today; `ours` names the file that proves each row, for whoever re-checks it (it is not printed). (2) The other product's column carries only public, checkable facts, each with the vendor's own `source` URL and the `checked` date it was read. A fact that could not be confirmed from the vendor's own pages is NOT a row: the row is omitted rather than guessed. HOW THESE WERE CHECKED on 26 Oct 2026: the vendor sites did not resolve from the sandbox this was written in, so each fact below was taken from search-result extracts of the vendor's OWN pages (celtx.com, support.celtx.com, finaldraft.com, kb.finaldraft.com) and nothing from review or aggregator sites; prices are deliberately not quoted, because they change and third-party listings disagreed. So every row carries `method: \"search-summary\"` and the page SAYS so beside the row and in the note: these facts have not yet been read on the vendor's page. OWNER STEP before these pages are promoted: open each of the eight source URLs in a browser, correct or drop the row, then set its `method` to \"read\" and move `checked` to that day (docs/LAUNCH.md section 8). (3) No superlatives, no 'better than', no disparagement: the table states facts side by side and lets the reader decide. (4) The names are other companies' trademarks, used only to describe their products; the page says so.",
+  "checked": "2026-10-26",
+  "ui": {
+    "tableH": "The facts, side by side",
+    "featureCol": "What you can check",
+    "sourceLabel": "Source",
+    "checkedLabel": "checked",
+    "summaryLabel": "from a search engine's summary of this page on",
+    "summaryAfter": "not yet read on the page itself",
+    "alsoH": "Also in the studio",
+    "alsoLede": "These are things the studio does that the table does not compare, because we have not checked the other product's side.",
+    "noteBefore": "Facts checked on",
+    "noteSummary": "The facts about the other product were taken from search-engine summaries of its own pages, not yet read on those pages directly.",
+    "noteAfter": "Products change; if something here is out of date, tell us at",
+    "noteEnd": "and we will correct it.",
+    "trademark": "Celtx and Final Draft are trademarks of their owners. Their names are used here only to describe their products; this site is not affiliated with or endorsed by either company.",
+    "ctaH": "Try the studio with your own script",
+    "plans": "See the plans"
+  },
+  "us": {
+    "pricing": "One payment for one year, in Indian rupees. Nothing renews by itself.",
+    "renewal": "Nothing renews by itself: when the year ends nothing is charged, and you buy the next year only if you want it.",
+    "platform": "Runs in a web browser and installs like an app on a computer, tablet or phone.",
+    "import": "Imports Fountain, Final Draft (.fdx), Word (.docx), plain text and text-based PDF. Scanned or encrypted PDFs are refused with a reason.",
+    "export": "Exports PDF, Word (.docx), Final Draft (.fdx) and Fountain from the Screenplay Writer's File menu.",
+    "edu": "Students get a student price on Intermediate with a code at checkout; film schools write to us for group access.",
+    "offline": "Your work is saved in your browser first and the studio keeps working without a signal for up to 14 days after you last signed in on that device."
+  },
+  "also": [
+    { "sym": "translate", "title": "Tamil typing in dialogue", "text": "Type Tamil in Roman letters and it is offered in Tamil script, inside dialogue and parentheticals only, so slug lines and action stay in English and the page count stays exact.", "ours": "src/lib/tanglish.js, src/ui/tamil-type.js" },
+    { "sym": "fact_check", "title": "Script to call sheet in one chain", "text": "Scene headings become scenes; the breakdown, stripboard, day out of days and call sheets all read those same scenes.", "ours": "src/lib/scenes.js, src/pages/stripboard.js, src/pages/contacts.js" },
+    { "sym": "payments", "title": "A budget in rupees", "text": "A line-by-line estimate that starts from dated Chennai rate bands, takes its days from your schedule and tracks spending against the plan.", "ours": "src/lib/budget-model.js, src/data/rates.chennai.2024.json" },
+    { "sym": "backup", "title": "Backup to your own Google Drive", "text": "On Intermediate and Pro, a backup file of your studio is written to your own Drive, which you can open, download or delete.", "ours": "src/lib/drive-sync.js, src/data/plan-matrix.json drive_backup" }
+  ],
+  "pages": [
+    {
+      "id": "celtx",
+      "file": "compare-celtx.html",
+      "name": "Celtx",
+      "label": "Compared with Celtx",
+      "card": "How each is paid for, which script files each imports, and what each offers students.",
+      "metaTitle": "{{brand:name}} and Celtx, side by side",
+      "metaDescription": "A side-by-side table of checkable facts about {{brand:name}} and Celtx: how each is priced, where it runs, which screenplay files it imports and what it offers students. Each Celtx fact links to Celtx's own page.",
+      "h1": "{{brand:name}} and Celtx, side by side",
+      "sub": "Both are tools for writing a script and planning the shoot. This page puts the facts we could check next to each other, with a link to where each one came from.",
+      "rows": [
+        { "feature": "How it is paid for", "us": "pricing", "them": "Subscription plans (Writer, Writer Pro, Team), billed monthly or yearly.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Renewal", "us": "renewal", "them": "Plans renew automatically at the end of each billing cycle and can be cancelled at any time.", "source": "https://support.celtx.com/hc/en-us/articles/1500001930602", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Script files it imports", "us": "import", "them": "Fountain, Celtx, Final Draft (.fdx), Word (.doc, .docx), Rich Text, plain text, web page, and text-based PDF (scanned PDFs need OCR first).", "source": "https://support.celtx.com/hc/en-us/articles/215946588", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Students and schools", "us": "edu", "them": "Lists Education plans on its pricing page.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26", "method": "search-summary" }
+      ]
+    },
+    {
+      "id": "final-draft",
+      "file": "compare-final-draft.html",
+      "name": "Final Draft",
+      "label": "Compared with Final Draft",
+      "card": "How each is paid for, where each runs, which formats each exports, and what each offers students.",
+      "metaTitle": "{{brand:name}} and Final Draft, side by side",
+      "metaDescription": "A side-by-side table of checkable facts about {{brand:name}} and Final Draft: how each is paid for, where it runs, which formats it exports and what it offers students. Each Final Draft fact links to Final Draft's own page.",
+      "h1": "{{brand:name}} and Final Draft, side by side",
+      "sub": "Final Draft is a desktop screenwriting program; {{brand:name}} is a browser studio that also plans the shoot. Here are the facts we could check, next to each other, with a link to where each one came from.",
+      "rows": [
+        { "feature": "How it is paid for", "us": "pricing", "them": "A one-time purchase of a licence for the current version; owners of an earlier version can buy an upgrade.", "source": "https://finaldraft.com/pricing", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Where it runs", "us": "platform", "them": "A desktop application for macOS and Windows; one licence activates on two computers.", "source": "https://www.finaldraft.com/store", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Formats it exports", "us": "export", "them": "Final Draft (.fdx), a template (.fdxt), Rich Text (.rtf) and plain text (.txt), among others.", "source": "https://kb.finaldraft.com/hc/en-us/articles/27525594609684-How-do-I-export-a-Final-Draft-file-to-a-different-format-like-RTF-or-TXT", "checked": "2026-10-26", "method": "search-summary" },
+        { "feature": "Students and schools", "us": "edu", "them": "Sells a student edition.", "source": "https://www.finaldraft.com/final-draft-edu", "checked": "2026-10-26", "method": "search-summary" }
+      ]
+    }
+  ],
+  "trust": {
+    "file": "trust.html",
+    "label": "Your work stays yours",
+    "metaTitle": "Your work stays yours: storage, exports and who can see a script",
+    "metaDescription": "Where {{brand:name}} keeps your screenplay, which open formats it exports, how Drive backup and offline work, who can read a project, and what you keep if the service ever stops.",
+    "h1": "Your work stays yours",
+    "sub": "A script is months of work. Here is, in plain words, where it is kept, how you get it out, and who can read it.",
+    "sections": [
+      {
+        "id": "formats", "sym": "download", "h2": "It comes out in open formats",
+        "body": [
+          "The screenplay exports as PDF, Word (.docx), Final Draft (.fdx) and Fountain from the Screenplay Writer's File menu. Fountain is plain text and Final Draft files open in most screenwriting programs, so a script written here can be carried on elsewhere.",
+          "The breakdown's element index, the shot list, script notes and the budget download as CSV for a spreadsheet, on the plans that include those tools. A backup file holds every project in your studio and restores into any browser from the same menu."
+        ],
+        "check": "Export a Fountain file on day one and open it in another app. That is the quickest way to see what travels."
+      },
+      {
+        "id": "local", "sym": "storage", "h2": "It is saved in your browser first",
+        "body": [
+          "Every change is written to your own browser's storage on your device before anything else happens. When you are signed in and sync is on, your projects also go to the studio's cloud so they reach your other devices. You can switch sync off in Settings; the copy in your browser stays either way.",
+          "Clearing your browser's site data removes that copy from that device, so keep a backup file or a Drive backup as well."
+        ]
+      },
+      {
+        "id": "drive", "sym": "backup", "h2": "A backup in your own Google Drive",
+        "body": [
+          "On Intermediate and Pro the studio can keep a backup file of your studio in your own Google Drive. It uses Google's drive.file permission, which lets it see only the files it created, never anything else in your Drive.",
+          "The file belongs to you: you can open, download or delete it from Drive at any time, and disconnecting Drive never deletes it."
+        ]
+      },
+      {
+        "id": "offline", "sym": "cloud_off", "h2": "It keeps working when the signal drops",
+        "body": [
+          "The studio installs like an app and caches itself, so you can write, move strips and print call sheets on set without a connection. It works offline for up to 14 days after you last signed in on that device; after that it needs a connection once to check your sign-in and plan. Nothing you wrote is deleted while it waits."
+        ]
+      },
+      {
+        "id": "who", "sym": "lock", "h2": "Who can read a script",
+        "body": [
+          "A synced project can be reached only by you and the people you give access to. The database checks every request against the signed-in account, so a share link you make (to view, comment or edit) is what lets someone else in, and it ends when it expires or you remove it.",
+          "Our administrators can see account and payment records, but the console does not show your project content. As the operator of the database we can technically reach synced content; we do not open it unless you ask us to help, you ask for your data, or the law requires it. The privacy policy lists every case."
+        ],
+        "link": { "href": "privacy.html#security-and-who-can-see-your-data", "label": "Read who can see your data" }
+      },
+      {
+        "id": "stops", "sym": "inventory_2", "h2": "If the service ever stops",
+        "body": [
+          "What you keep without us: the copy in your browser on each device you used, every file you exported (PDF, Word, Final Draft, Fountain, CSV) and every backup file or Drive backup you made. Those are yours and open without the studio.",
+          "What depends on us: signing in, sync between devices, and opening the studio itself once its offline window has passed. Our terms say that if we ever discontinue the service, we will give members reasonable notice and a way to export their synced data. So keep your own exports: they are the copy no company can take away."
+        ],
+        "link": { "href": "terms.html#availability-and-changes-to-the-service", "label": "Read the terms on availability" }
+      }
+    ],
+    "ctaH": "See it with your own script before you decide"
+  }
+}

@@ -128,7 +128,7 @@ function fontPreloads() {
         if (!ctx || !ctx.bundle) return;
         const where = String(ctx.path || ctx.filename || '');
         if (/panel\.html$/.test(where)) return;
-        if (!html.includes('id="app"') && !/(^|\/)(start|pricing|contact|about|product-[a-z-]+)\.html$/.test(where)) return;
+        if (!html.includes('id="app"') && !/(^|\/)(start|pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/.test(where)) return;
         const tags = [];
         for (const face of PRELOAD_FACES) {
           const a = Object.values(ctx.bundle).find((f) => f.type === 'asset' && /\.woff2$/.test(f.fileName)
@@ -430,7 +430,7 @@ function startFigures() {
    startFigures() into a shared function and add them here, rather than
    typing a second copy of that derivation.
    ============================================================ */
-const MARKETING_PAGE = /(^|[\\/])(pricing|contact|about|product-[a-z-]+)\.html$/;
+const MARKETING_PAGE = /(^|[\\/])(pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/;
 function marketingFigures() {
   const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
   const json = (p) => JSON.parse(readFileSync(resolve(__dirname, 'src/data/' + p), 'utf8'));
@@ -501,7 +501,7 @@ function marketingFigures() {
               brand: { '@type': 'Brand', name: BR.name },
               offers: PAID.filter((id) => LIST_PRICE[id] > 0).map((id) => ({
                 '@type': 'Offer', name: planName(id), price: String(LIST_PRICE[id]), priceCurrency: 'INR',
-                availability: 'https://schema.org/InStock', url: ORIGIN + '/purchase.html?plan=' + id })) },
+                availability: 'https://schema.org/InStock', url: ORIGIN + '/purchase?plan=' + id /* clean URL: cleanUrls 308s the .html form */ })) },
             { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq }
           ];
           values.jsonld = ld.map((o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('\n');
@@ -523,7 +523,7 @@ function marketingFigures() {
 function marketingInputs() {
   const out = {};
   for (const f of readdirSync(__dirname)) {
-    if (/^(pricing|contact|about|product-[a-z-]+)\.html$/.test(f)) out[f.replace(/\.html$/, '')] = resolve(__dirname, f);
+    if (/^(pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/.test(f)) out[f.replace(/\.html$/, '')] = resolve(__dirname, f);
   }
   return out;
 }

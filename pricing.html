@@ -12,10 +12,12 @@
 <meta property="og:description" content="Three plans, each bought for one year in Indian rupees. Nothing renews by itself: buy the next year when you want it. Compare what Basic, Intermediate and Pro include, feature by feature.">
 <meta property="og:url" content="https://{{brand:host}}/pricing">
 <meta property="og:image" content="https://{{brand:host}}/og.png">
+<meta property="og:image:alt" content="{{brand:name}}: {{brand:tagline}}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Pricing: a year of the studio from {{fms:price.from.day}} a day">
 <meta name="twitter:description" content="Three plans, each bought for one year in Indian rupees. Nothing renews by itself: buy the next year when you want it. Compare what Basic, Intermediate and Pro include, feature by feature.">
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
+<meta name="twitter:image:alt" content="{{brand:name}}: {{brand:tagline}}">
 <meta property="og:locale" content="en_IN">
 <meta name="theme-color" content="#0d0e13">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
@@ -75,6 +77,8 @@
         </div>
       </div>
       <a class="mk-nav-link" href="pricing.html" aria-current="page">Pricing</a>
+      <a class="mk-nav-link" href="guides.html">Guides</a>
+      <a class="mk-nav-link" href="guides.html#compare">Compare</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Log in</a>
     </nav>
     <div class="mk-top-end">
@@ -98,9 +102,9 @@
       <p class="mk-body pr-lede">Every plan runs for one year from the day you buy it. Buy it again to add another year; move up a plan mid-year and the unused part of your year is credited.</p>
     </div>
 
-    <aside class="pr-trial" data-trial aria-label="Not sure yet? Try the whole studio free">
-      <div class="pr-trial-text"><strong>Not sure yet? Try the whole studio free</strong><span class="pr-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card required. Then keep the plan that fits.</span></div>
-      <a class="mk-btn mk-btn--outline" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Start the free trial</a>
+    <aside class="pr-trial" data-trial aria-label="Not sure yet? Try every module on the sample films">
+      <div class="pr-trial-text"><strong>Not sure yet? Try every module on the sample films</strong><span class="pr-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, with a <span data-trial-length>free trial</span> before you pay anything. No card required. Then keep the plan that fits.</span></div>
+      <a class="mk-btn mk-btn--outline" href="invite.html" data-start-auth="google" data-trial-only data-open-text="Open the studio">Start the <span data-trial-length>free trial</span></a>
     </aside>
 
     <div class="pr-offer" id="offer" hidden role="note" aria-labelledby="offer-h">
@@ -116,12 +120,20 @@
     </div>
 
     <ul class="pr-tiers" id="tiersIndividual">
-      <li class="pr-tier" data-tier="starter"><span class="pr-tier-tag">Writer</span><strong class="pr-tier-name">{{fms:plan.starter}}</strong><p class="pr-tier-line">{{fms:tier.line.starter}}</p><b class="pr-price"><span data-price="starter">{{fms:price.starter}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="starter">{{fms:price.starter.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="starter" hidden></span><ul class="pr-inc">{{fms:tier.list.starter}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=starter" data-start-buy="starter" data-plan="starter" data-off-text="Sign in" data-open-text="Buy {{fms:plan.starter}}">Buy {{fms:plan.starter}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
-      <li class="pr-tier pr-pick" data-tier="indie"><p class="pr-pick-flag">Recommended for filmmakers</p><span class="pr-tier-tag">Director</span><strong class="pr-tier-name">{{fms:plan.indie}}</strong><p class="pr-tier-line">{{fms:tier.line.indie}}</p><b class="pr-price"><span data-price="indie">{{fms:price.indie}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="indie">{{fms:price.indie.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="indie" hidden></span><ul class="pr-inc">{{fms:tier.list.indie}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=indie" data-start-buy="indie" data-plan="indie" data-off-text="Sign in" data-open-text="Buy {{fms:plan.indie}}">Buy {{fms:plan.indie}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
-      <li class="pr-tier" data-tier="pro"><span class="pr-tier-tag">Production house</span><strong class="pr-tier-name">{{fms:plan.pro}}</strong><p class="pr-tier-line">{{fms:tier.line.pro}}</p><b class="pr-price"><span data-price="pro">{{fms:price.pro}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="pro">{{fms:price.pro.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="pro" hidden></span><ul class="pr-inc">{{fms:tier.list.pro}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=pro" data-start-buy="pro" data-plan="pro" data-off-text="Sign in" data-open-text="Buy {{fms:plan.pro}}">Buy {{fms:plan.pro}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-open-text="or open the studio">or start the free trial first</a></li>
+      <li class="pr-tier" data-tier="starter"><span class="pr-tier-tag">Writer</span><strong class="pr-tier-name">{{fms:plan.starter}}</strong><p class="pr-tier-line">{{fms:tier.line.starter}}</p><b class="pr-price"><span data-price="starter">{{fms:price.starter}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="starter">{{fms:price.starter.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="starter" hidden></span><ul class="pr-inc">{{fms:tier.list.starter}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=starter" data-start-buy="starter" data-plan="starter" data-off-text="Sign in" data-open-text="Buy {{fms:plan.starter}}">Buy {{fms:plan.starter}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-trial data-trial-only data-open-text="or open the studio">or start the free trial first</a></li>
+      <li class="pr-tier pr-pick" data-tier="indie"><p class="pr-pick-flag">Recommended for filmmakers</p><span class="pr-tier-tag">Director</span><strong class="pr-tier-name">{{fms:plan.indie}}</strong><p class="pr-tier-line">{{fms:tier.line.indie}}</p><b class="pr-price"><span data-price="indie">{{fms:price.indie}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="indie">{{fms:price.indie.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="indie" hidden></span><ul class="pr-inc">{{fms:tier.list.indie}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=indie" data-start-buy="indie" data-plan="indie" data-off-text="Sign in" data-open-text="Buy {{fms:plan.indie}}">Buy {{fms:plan.indie}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-trial data-trial-only data-open-text="or open the studio">or start the free trial first</a></li>
+      <li class="pr-tier" data-tier="pro"><span class="pr-tier-tag">Production house</span><strong class="pr-tier-name">{{fms:plan.pro}}</strong><p class="pr-tier-line">{{fms:tier.line.pro}}</p><b class="pr-price"><span data-price="pro">{{fms:price.pro}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="pro">{{fms:price.pro.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="pro" hidden></span><ul class="pr-inc">{{fms:tier.list.pro}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=pro" data-start-buy="pro" data-plan="pro" data-off-text="Sign in" data-open-text="Buy {{fms:plan.pro}}">Buy {{fms:plan.pro}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-trial data-trial-only data-open-text="or open the studio">or start the free trial first</a></li>
     </ul>
     <p class="pr-fine" id="authMsg" role="status" aria-live="polite"></p>
     <p class="pr-note"><span data-charge="INR">Yearly list prices in Indian rupees, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href="refund.html">Refund and Cancellation Policy</a>, which is why the free trial comes first.</span><span data-charge="USD" hidden>Yearly list prices in US dollars, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href="refund.html">Refund and Cancellation Policy</a>, which is why the free trial comes first.</span></p>
+    <aside class="pr-edu" id="students" aria-labelledby="prEduH">
+      <div class="pr-edu-text">
+        <h3 class="mk-h3" id="prEduH">Students and film schools</h3>
+        <p class="mk-small"><strong>Film or Viscom student?</strong> Use code STUDENT50 at checkout for the student price on Intermediate. The discount shows on the card before you pay.</p>
+        <p class="mk-small">Film schools, clubs and workshops: write to us at <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a> for group access.</p>
+      </div>
+      <a class="mk-btn mk-btn--outline" href="purchase.html?plan=indie">Use the student code</a>
+    </aside>
   </div>
 </section>
 <section class="mk-sec mk-band-a pr-compare" id="compare" aria-labelledby="prCompH">
@@ -194,6 +206,7 @@
       <h2 class="mk-h2" id="prFaqH">Questions about billing, plans and your data</h2>
       <p class="mk-body pr-lede">Short answers, in plain words. Anything not covered is a message away.</p>
       <p class="mk-body pr-lede pr-contact">Something else? Talk to the team at <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. A person reads every message, and payment and refund questions are answered within two working days.</p>
+      <p class="mk-body pr-lede"><a class="mk-link" href="trust.html">How your work is kept, and how it comes out<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a></p>
     </div>
     <div class="pr-acc-list">
       <details class="pr-acc" name="pr-faq" id="faq-1">
@@ -208,7 +221,7 @@
           <dt>Where do I find my invoices?</dt>
           <dd>On the Purchase page once you are signed in. It lists your plan, your invoices and a way to request a refund in the cases above.</dd>
           <dt data-trial>How long is the free trial?</dt>
-          <dd data-trial>Its length is a setting the studio controls, so it is never typed into this answer: the free-trial strip beside the plans and the sign-up window show the length running today. A trial opens every module on the sample films and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it.</dd>
+          <dd data-trial>Right now it is a <span data-trial-length>free trial</span> whose length is a studio setting, read live, so it is never typed into this answer. It opens every module on the sample films and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it.</dd>
         </dl>
       </details>
       <details class="pr-acc" name="pr-faq" id="faq-2">
@@ -254,6 +267,23 @@
         </dl>
       </details>
     </div>
+  </div>
+</section>
+<section class="mk-sec mk-band-a mk-lead" id="news" aria-labelledby="prLeadH" hidden>
+  <div class="mk-wrap mk-lead-in">
+    <div class="mk-lead-text">
+      <h2 class="mk-h3" id="prLeadH">Product news by e-mail</h2>
+      <p class="mk-small">A short note when something new ships or a plan changes. Nothing else, and never shared.</p>
+    </div>
+    <form class="mk-lead-form" data-lead-form method="dialog" aria-labelledby="prLeadH">
+      <label class="mk-lead-label" for="prLeadEmail">Your e-mail address</label>
+      <div class="mk-lead-row">
+        <input class="mk-lead-input" id="prLeadEmail" name="email" type="email" autocomplete="email" inputmode="email" maxlength="200" required>
+        <button class="mk-btn mk-btn--outline" type="submit">Send me news</button>
+      </div>
+      <label class="mk-lead-consent"><input type="checkbox" name="consent" value="yes"><span>Send me product news. Unsubscribe anytime. <a class="mk-link mk-link--inline" href="privacy.html#leads">How we keep your address</a></span></label>
+      <p class="mk-small mk-lead-status" data-lead-status role="status"></p>
+    </form>
   </div>
 </section>
 <section class="mk-sec mk-band-c mk-mid pr-close" id="start" aria-labelledby="mkMidH">
@@ -302,6 +332,9 @@
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Compare</a></li>
           <li><a href="contact.html">Contact us</a></li>
           <li><a href="privacy.html">Privacy</a></li>
           <li><a href="terms.html">Terms</a></li>
@@ -320,8 +353,8 @@
   <div class="mk-modal-scrim" data-close></div>
   <div class="mk-modal-card" tabindex="-1">
     <button class="mk-modal-x" type="button" data-close aria-label="Close"><span class="sym" aria-hidden="true" translate="no">close</span></button>
-    <h2 class="mk-modal-h" id="mkSignupTitle">Sign in to start your trial</h2>
-    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and every module is yours to use, saved in your browser." data-open-text="You are already signed in.">Try every module on the sample films free for <span data-trial-length>a limited time</span>. No card required.</p>
+    <h2 class="mk-modal-h" id="mkSignupTitle">Sign in to start your <span data-trial-length>free trial</span></h2>
+    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and every module is yours to use, saved in your browser." data-open-text="You are already signed in.">Try every module on the sample films with a <span data-trial-length>free trial</span>. No card required.</p>
     <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Continue with Google</a>
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">By continuing you agree to the <a href="terms.html">Terms</a> and the <a href="privacy.html">Privacy Policy</a>.</p>

@@ -79,7 +79,18 @@
     { "source": "/product-budget", "destination": "/product-budget.html" },
     { "source": "/product-call-sheets", "destination": "/product-call-sheets.html" },
     { "source": "/product-cast-crew", "destination": "/product-cast-crew.html" },
-    { "source": "/product-sides", "destination": "/product-sides.html" }
+    { "source": "/product-sides", "destination": "/product-sides.html" },
+    { "source": "/guides", "destination": "/guides.html" },
+    { "source": "/guide-call-sheet", "destination": "/guide-call-sheet.html" },
+    { "source": "/guide-tamil-screenplay-format", "destination": "/guide-tamil-screenplay-format.html" },
+    { "source": "/guide-short-film-budget", "destination": "/guide-short-film-budget.html" },
+    { "source": "/guide-script-breakdown", "destination": "/guide-script-breakdown.html" },
+    { "source": "/guide-cbfc-checklist", "destination": "/guide-cbfc-checklist.html" },
+    { "source": "/guide-ott-delivery", "destination": "/guide-ott-delivery.html" },
+    { "source": "/guide-festival-planner", "destination": "/guide-festival-planner.html" },
+    { "source": "/compare-celtx", "destination": "/compare-celtx.html" },
+    { "source": "/compare-final-draft", "destination": "/compare-final-draft.html" },
+    { "source": "/trust", "destination": "/trust.html" }
   ],
   "redirects": [
     { "source": "/script.html", "destination": "/screenplay", "permanent": true },

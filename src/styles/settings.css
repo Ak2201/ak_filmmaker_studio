@@ -341,6 +341,7 @@
 /* Not --warn as text: a fill is not a text colour, and --warn-deep
    is the one mixed to be read. See the AA notes in CLAUDE.md. */
 .acct-seats.is-full { color: var(--warn-deep); }
+.acct-seats a { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 
 .acct-list {
   list-style: none;
@@ -413,6 +414,7 @@
    FILL used as text — 3.3-4.4:1, the single mistake CLAUDE.md says
    accounted for most of the AA work. The wash carries the meaning;
    the ink carries the words. */
+.acct-error a { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .acct-error {
   color: var(--ink);
   background: var(--danger-wash);

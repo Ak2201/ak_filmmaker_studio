@@ -15,7 +15,7 @@ not in `package.json` it says so.
 | --- | --- |
 | `npm run test:all` | Every no-browser `test:*` check (about 60, in `package.json`'s order), starting with `test:undef`. Also run by CI's `tests` job (with a Postgres 16 service for `test:schema`). |
 | `npm run ship` | `test:all`, `build:open`, `verify`, the open-build proofs, `build` (gated), `test:ai-lazy`, the gated-build proofs, `build:extension` + `prove:extension`, `build:verify`, `prove:growth`, `prove:ai-coverage`. The full local release gate (`docs/BRANCHING.md`). |
-| `.github/workflows/gate.yml` | Three parallel jobs on PRs into `main`/`develop` and pushes to `develop`/`main`: **tests** (`test:all`), **verify** (`build:open`, `verify`, then `prove:adoption`, `prove:story-path`, `prove:dialogs`, `prove:script`, `prove:ai-desk`), **proofs** (`build`, `test:ai-lazy`, `prove:gate`, `prove:billing`, `prove:storage`, `prove:cloud-delete`, `prove:drive`, `prove:sw`, `build:extension`, `prove:extension`, `build:verify`, `prove:growth`, `prove:ai-coverage`, `prove:nav` with `PROVE_DIST=dist-verify`). |
+| `.github/workflows/gate.yml` | Three parallel jobs on PRs into `main`/`develop` and pushes to `develop`/`main`: **tests** (`test:all`), **verify** (`build:open`, `verify`, then `prove:adoption`, `prove:story-path`, `prove:dialogs`, `prove:script`, `prove:ai-desk`), **proofs** (`build`, `test:ai-lazy`, `prove:gate`, `prove:billing`, `prove:storage`, `prove:cloud-delete`, `prove:drive`, `prove:sw`, `build:extension`, `prove:extension`, `build:verify`, `prove:growth`, `prove:ai-coverage`, `prove:conversion`, `prove:nav` with `PROVE_DIST=dist-verify`). |
 | `.github/workflows/smoke.yml` | `scripts/smoke-production.mjs`, on a successful Vercel production deploy (or by hand). |
 
 Two builds matter: `npm run build` is the gated build (what the hosts run),
@@ -100,6 +100,7 @@ suspect is the proof (CLAUDE.md, item 20).
 | `prove:sw` | `prove-sw.mjs` | The service worker against a cleanUrls host (the redirected-response trap). |
 | `prove:extension` | `prove-extension.mjs` | The unpacked extension (`build:extension` first). |
 | `prove:growth` | `prove-growth.mjs` | Landing/growth funnel; no Supabase chunk on the start page. Open build. |
+| `prove:conversion` | `prove-conversion.mjs` | The in-app conversion surfaces against the fake Supabase: the upgrade nudge on a wall and on the project, share-link and seat caps (next plan, the server's difference), the referral row (`/purchase?ref=…&src=referral`), "Made with" on staged PDFs and the budget/stripboard/reports plain prints (none on Pro), What's new (dashboard and avatar menu), What's in my plan (trial, ended, lapsed, grant), the first-week "Choose a plan", the trial reminders (none for a short trial). Reads `dist-verify/` (`PROVE_DIST`); in CI after `build:verify`. |
 | `prove:ai-coverage` | `prove-ai-coverage.mjs` | Coverage screens; reads `dist-verify/`. |
 | `prove:ai-desk` | `prove-ai-desk.mjs` | The AI Desk through `fake-ai.mjs`. |
 | `prove:adoption` | `prove-adoption.mjs` | Work with no project is adopted into the next empty project. |

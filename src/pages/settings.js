@@ -1034,6 +1034,26 @@ const nextOffer = { key: '', o: null };
 function renderPlanContents() {
   const cp = PlanGate.currentPlan();
   if (!cp.gated || !cp.plan || PlanGate.purchasesOff()) return null;
+  /* THE ACCOUNT'S STATE DECIDES THE SECTION, the way plan-gate's wall
+     does (entitlement().reason), not the plan id alone: an ended trial,
+     a lapsed year and a grant all read as plan 'free', and the features
+     map allows whatever it does not name, so listing allowed() for them
+     told an account with nothing open that its trial opened every module
+     "right now". Nothing is open → no list, only the way back. A grant
+     is the studio's word, not a plan's: what it opens is the whole
+     studio while it stands (open_features()), which the Plan card above
+     already says. 'unknown' (billing_status() unread): nothing shown. */
+  const why = cp.reason;
+  if (why === 'unknown' || why === 'granted') return null;
+  if (cp.entitled === false) {
+    const ended = cp.planUntil && Date.parse(cp.planUntil) <= PlanGate.serverNow() ? new Date(cp.planUntil) : null;
+    const sec = section('plan-contents', 'Your plan', 'What’s in my plan.',
+      cp.lapsed || ended ? 'Your plan’s year ' + (ended ? 'ended on ' + ended.toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'has ended') + '. Nothing is open until you choose a plan; everything you made is kept.'
+        : why === 'off' || !cp.used ? 'No plan is active. Everything you made is kept; a plan opens the studio again.'
+        : 'Your free trial has ended. Nothing is open until you choose a plan; everything you made is kept.');
+    sec.append(h('p.st-plan-link', {}, [button({ href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward', label: 'Choose a plan' })]));
+    return sec;
+  }
   if (!matrixMod) {
     if (!matrixAsked) { matrixAsked = true; import('../lib/plan-matrix.js').then((m) => { matrixMod = m; if (!busy) render(); }, () => { /* no list */ }); }
     return null;
@@ -1052,9 +1072,13 @@ function renderPlanContents() {
   const at = PAID.indexOf(cp.plan);
   const next = at >= 0 ? PAID[at + 1] : null;
   const extras = next ? rows.filter((r) => planHas(r, next) && !included(r)) : [];
+  /* A sample-scope trial opens the sample films only (§33): its modules
+     are the ones it can show you there, and it says so. */
+  const sample = cp.plan === 'free' && PlanGate.sampleOnly();
   const sec = section('plan-contents', 'Your plan', 'What’s in my plan.',
     cp.plan === 'free'
-      ? 'What your trial opens right now. Choose a plan to keep working on your own film after it ends.'
+      ? (sample ? 'What your trial opens right now, on the sample films. Choose a plan to start a film of your own.'
+                : 'What your trial opens right now. Choose a plan to keep working on your own film after it ends.')
       : 'What the ' + (cp.planName || 'current') + ' plan includes, read from the plan itself.');
   const list = (rs, cls) => h('ul.st-pc-list' + (cls || ''), {}, rs.map((r) => h('li', { text: labelOf(r) })));
   const mods = mine.filter((r) => r.kind === 'module');

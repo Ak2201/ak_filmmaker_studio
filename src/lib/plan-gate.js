@@ -292,7 +292,12 @@ async function _refreshOnce() {
           endsAt: st.trial_ends_at || null,
           /* §52: when the plan's year ends (null: a grant for good, or no plan) */
           planUntil: st.plan_until || null,
+          /* §53: a bought year that has run out (the plan reads 'free'). */
+          lapsed: st.lapsed === true,
           used: st.trial_used === true,
+          /* 'signup' | 'code' | 'admin' | 'refund' (§30), or null: the
+             reminders below read it to know which length applies. */
+          trialSource: typeof st.trial_source === 'string' ? st.trial_source : null,
           trialEnabled: st.trial_enabled !== false,
           /* §33: the length a trial started NOW would get, for the
              wall's offer to somebody who never had one. */
@@ -323,36 +328,54 @@ async function _refreshOnce() {
 
 /* ---- the trial-ending reminders ----------------------------------
    The rail's clock (trial-band.js) is always there but easy to stop
-   seeing over a three-day trial, and its own toast comes only in the
-   last ten minutes. So one toast when a running trial has a day left
-   and one when it has two hours, each AT MOST ONCE PER THRESHOLD PER
-   BROWSER SESSION: the thresholds shown are kept in sessionStorage
-   (transient, never localStorage; a session tier that throws falls
-   back to this page's memory). Checked after every billing_status()
-   read — page load, focus and the four-minute poll — against the
-   SERVER's clock. Signed out nothing is known, so nothing shows (and
-   verify, which runs signed out, never sees it). The length is the
-   server's (trial_offer() / billing_status()); nothing here assumes
-   how long a trial is. */
+   seeing over a trial of several days, and its own toast comes only in
+   the last ten minutes. So one toast when a running trial has a day left
+   and one when it has two hours — each AT MOST ONCE PER THRESHOLD PER
+   TRIAL, and only for a trial LONGER THAN TWICE THE THRESHOLD. Without
+   that second rule a 30-minute trial (the console's default) was told
+   "ends in under an hour" on the first page after it started, which is
+   not a reminder but a start-up nag. Nothing here assumes how long a
+   trial is: the length is the server's — billing_status()'s
+   trial_minutes for a trial started by the button or a refund; a code
+   or console trial has its own length the server does not report, so
+   for those the longest time left this tab has SEEN stands in (a lower
+   bound, so it can only hold a reminder back, never fire one early).
+
+   What was shown, and for which trial (its end), is kept in
+   sessionStorage (transient, never localStorage; a session tier that
+   throws falls back to this page's memory). Checked after every
+   billing_status() read — page load, focus and the four-minute poll —
+   against the SERVER's clock. Signed out nothing is known, so nothing
+   shows (and verify, which runs signed out, never sees it). */
 const REMIND_KEY = 'fms_trial_reminded';
 const REMIND_AT = [2, 24];               // hours left, lowest first
-const remindedMem = new Set();
+let remindedMem = { e: '', s: [], m: 0 };
+/** The thresholds (hours) a trial of `lengthMs` gets a reminder at. Pure. */
+export const remindersFor = (lengthMs) => REMIND_AT.filter((hrs) => lengthMs > 2 * hrs * 3600000);
 function remindTrial() {
   if (typeof window === 'undefined' || /^(purchase|purchases|admin|screening|start|invite)$/.test(pageName())) return;
   const ends = trialEndsAt();
   if (!ends) return;
   const ms = ends.getTime() - serverNow();
   if (!(ms > 0)) return;
-  const th = REMIND_AT.find((hrs) => ms <= hrs * 3600000);
-  if (!th) return;
-  let seen = [...remindedMem];
-  try { const v = JSON.parse(sessionStorage.getItem(REMIND_KEY) || '[]'); if (Array.isArray(v)) seen = seen.concat(v); } catch (e) { /* memory only */ }
-  if (seen.includes(th)) return;
+  let rec = remindedMem;
+  try { const v = JSON.parse(sessionStorage.getItem(REMIND_KEY) || 'null'); if (v && typeof v === 'object' && Array.isArray(v.s)) rec = v; } catch (e) { /* memory only */ }
+  const e = ends.toISOString();
+  if (rec.e !== e) rec = { e, s: [], m: 0 };                   // another trial: its own reminders
+  const ent0 = entitlement();
+  const known = ent0.trialSource === 'code' || ent0.trialSource === 'admin' ? 0 : (ent0.trialMinutes || 0) * 60000;
+  const seenLeft = Math.max(Number(rec.m) || 0, ms);
+  const due = remindersFor(Math.max(known, seenLeft));
+  const th = due.find((hrs) => ms <= hrs * 3600000);
   /* Arriving with an hour left shows the two-hour notice only; the day's
      is spent with it, so it does not follow on the next page. */
-  const spent = REMIND_AT.filter((hrs) => hrs >= th);
-  spent.forEach((x) => remindedMem.add(x));
-  try { sessionStorage.setItem(REMIND_KEY, JSON.stringify([...new Set(seen.concat(spent))])); } catch (e) { /* memory only */ }
+  const shown = th && !rec.s.includes(th);
+  const next = { e, s: shown ? [...new Set(rec.s.concat(REMIND_AT.filter((hrs) => hrs >= th)))] : rec.s, m: seenLeft };
+  remindedMem = next;
+  if (JSON.stringify(next) !== JSON.stringify(rec)) {
+    try { sessionStorage.setItem(REMIND_KEY, JSON.stringify(next)); } catch (err) { /* memory only */ }
+  }
+  if (!shown) return;
   const hrs = Math.ceil(ms / 3600000);
   const when = ends.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   const left = ms < 3600000 ? 'in under an hour' : 'in about ' + hrs + (hrs === 1 ? ' hour' : ' hours');
@@ -360,7 +383,7 @@ function remindTrial() {
     const ui = window.StudioUI;
     if (ui && ui.toast) ui.toast('Your free trial ends ' + left + ' (' + when + '). Choose a plan to keep working; everything you made stays.', {
       type: 'info', action: 'CHOOSE A PLAN', onAction: () => { location.href = 'purchase.html'; } });
-  } catch (e) { /* no chrome on this page: the rail still counts */ }
+  } catch (err) { /* no chrome on this page: the rail still counts */ }
 }
 export function refresh() {
   /* TWO TRAPS, both of which left a free member ungated for good:
@@ -479,8 +502,8 @@ export const offerText = (o) => (o ? o.name + (o.price ? ', ' + o.price : '') : 
    offline, the RPC missing) means NO figure at all — the plan is named
    and the link goes to purchase.html — never the list price passed off
    as the difference. */
-export async function quotedOffer(ids, { limit } = {}) {
-  const o = limit ? await offerForLimit(limit) : await offerFor(ids);
+export async function quotedOffer(ids, { limit, at } = {}) {
+  const o = limit ? await offerForLimit(limit, { at }) : await offerFor(ids);
   if (!o) return null;
   let fig = null;
   try { fig = await (await import('./lock-price.js')).upgradeFigure(o.id); } catch (e) { fig = null; }
@@ -513,19 +536,54 @@ async function planKnown(ms = 6000) {
   }
   return !!plan;
 }
-export async function offerForLimit(key) {
+/* `at`: the cap the refusal itself reported. When it is not this plan's
+   cap, something else is binding (an account's own seat_limit sits under
+   the plan's), so a bigger plan would not help and none is named. */
+export async function offerForLimit(key, { at } = {}) {
   if (!(await planKnown())) return null;
   const plans = (await Billing.listPlans()) || [];
   const mine = plans.find((p) => p && p.id === plan);
   if (!mine) return null;                    // the plan above an unknown row is a guess
   const have = Billing.cap(mine.limits, key);
   if (have === null) return null;            // already unlimited: nothing above helps
+  if (Number.isInteger(at) && at !== have) return null;
   const p = plans
     .filter((x) => x && x.active !== false && x.id !== 'free' && Billing.planRank(x.id) > Billing.planRank(plan))
     .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id))
     .find((x) => { const c = Billing.cap(x.limits, key); return c === null || c > have; });
   return p ? offerOf(p, []) : null;
 }
+/* ---- a cap's refusal, with the plan that raises it -----------------
+   ONE reading of the server's cap sentences (schema §54 and §50) for
+   every place that shows one — the sync's project cap (cloud.js), the
+   share-link cap (chrome.js's share dialog) and the seat cap (Settings →
+   Account). limitKey() says which cap a sentence is about; limitOffer()
+   is quotedOffer() for that cap, refusing to answer when the sentence
+   names a plan other than the one this page knows (a stale replay, a
+   plan bought since: the "next plan" would be computed from the wrong
+   base); limitText() is the sentence added after the server's own. */
+export function limitKey(message, code) {
+  const m = String(message || '');
+  if (/^Your .* plan syncs up to/i.test(m)) return 'projects';
+  if (/^Your .* plan allows .* share link/i.test(m)) return 'shares';
+  if (code === '53400' || /^Seat limit reached/i.test(m)) return 'seats';
+  return '';
+}
+export async function limitOffer(message, key = limitKey(message)) {
+  if (!key) return null;
+  const m = String(message || '');
+  /* "(2 of 2)": the seat sentence reports the cap that refused it. */
+  const at = key === 'seats' ? Number((/\((\d+) of (\d+)\)/.exec(m) || [])[2]) : NaN;
+  const o = await quotedOffer([], { limit: key, at: Number.isInteger(at) ? at : undefined });
+  const said = (/^Your (.+?) plan /i.exec(m) || [])[1] || '';
+  const known = [planName, plan].filter(Boolean).map((x) => String(x).toLowerCase());
+  return o && said && known.length && !known.includes(said.toLowerCase()) ? null : o;
+}
+export function limitText(o) {
+  if (!o) return '';
+  return o.due ? (o.more ? 'Upgrade to ' + o.name + ' for ' + o.due + ' more.' : o.name + ' raises it, ' + o.due + ' a year.') : o.name + ' raises it.';
+}
+
 /** The label a refused id goes by: a module's from navigation.json, a
  *  capability's from CAPABILITIES. '' for anything unknown — which is
  *  how plan-cards.js refuses to print a made-up ?for= value. */
@@ -1053,4 +1111,4 @@ if (typeof window !== 'undefined') {
 /* journey.js asks this, without importing the module (it runs in Node tests). */
 if (typeof window !== 'undefined') window.StudioPlan = { allowed, isDisabledEverywhere };
 
-export default { isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, quotedOffer, nudgeText, nudgeAction, offerForLimit, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, pageGone, lockTabs, markLocked, CAPABILITIES };
+export default { isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, quotedOffer, nudgeText, nudgeAction, offerForLimit, limitKey, limitOffer, limitText, remindersFor, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, pageGone, lockTabs, markLocked, CAPABILITIES };

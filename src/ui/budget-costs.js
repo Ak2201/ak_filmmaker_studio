@@ -39,6 +39,7 @@ import { DEPARTMENTS } from '../lib/contacts.js';
 import { rs, rupees, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows } from '../lib/budget-costs-model.js';
 import wages from '../data/wages.fefsi.json';
 import { askDanger } from './dialog.js';
+import { brandPrint } from './footer.js';   // CORE: the "Made with" line on a plain print
 import { button, badge, statCard, statStrip, emptyState, notice, meter } from './kit/index.js';
 import { renderSchedule, renderVersions, impactActions, impactForms, bindImpact } from './budget-impact.js';
 import { mountBudgetPrivacy, isBudgetLocked, lockedNote } from './budget-privacy-ui.js';
@@ -771,7 +772,8 @@ function printDoc(doc) {
   if (!host) { host = h('div#cxPrint'); document.body.append(host); }
   host.replaceChildren(doc);
   document.body.classList.add('cx-printing');
-  const done = () => { document.body.classList.remove('cx-printing'); host.remove(); window.removeEventListener('afterprint', done); };
+  const unbrand = brandPrint();   // after the sheet, so it is the last child of <body>
+  const done = () => { document.body.classList.remove('cx-printing'); host.remove(); unbrand(); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
   window.print();
   // Browsers that print synchronously have fired afterprint already;

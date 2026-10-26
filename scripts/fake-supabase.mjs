@@ -7,6 +7,11 @@
    route handler for the project's origin. `F.db` is the live state;
    `F.reset()` starts a scenario clean.
 
+   SECTIONS 58 AND 59 are in here too: bump_event (one argument or two),
+   admin_funnel / admin_funnel_by_source over F.db.events, and the
+   testimonial RPCs over F.db.testimonials (an author's own, the owner's
+   approval, the public list of approved and unrevoked ones).
+
    SECTION 30 (the trial, and the price rise that fires itself) is in
    here too, and it is DRIVEN THE SAME WAY EVERYTHING ELSE IS: a proof
    reaches into `F.db` and says what it wants to be true. The knobs:
@@ -472,9 +477,22 @@ export function freshDb() {
     credits: [],
     // section 27: refunds, customer requests, the switch (off by default), and what the fake Razorpay was asked
     refunds: [], rreqs: [], rrEnabled: false, rzpRefunds: [],
+    /* section 58: the daily counters, now per source ('' = none) —
+       { day, name, source, count }. bump_event takes one argument or two. */
+    events: [],
+    /* section 59: testimonials, each { id, author, author_email, quote,
+       display_name, role, film, consent_text, consented_at, revoked_at,
+       status, approved_by, approved_at, created_at }. */
+    testimonials: [],
     calls: []
   };
 }
+
+/* ---- sections 58 and 59, as the browser reaches them --------------- */
+const FUNNEL_NAMES = ['landing_view', 'pricing_view', 'invite_request', 'signup', 'signin_done', 'sample_open', 'trial_start', 'plan_view_in_app', 'checkout_start', 'purchase'];
+const inWindow = (day, from, to) => (!from || day >= from) && (!to || day <= to);
+const TM_PUBLIC = (t) => ({ id: t.id, quote: t.quote, display_name: t.display_name, role: t.role, film: t.film, approved_at: t.approved_at });
+const tmOwn = (t) => { const { author_email, ...rest } = t; return rest; };
 
 const json = (route, status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 const pgErr = (route, code, message, status = 400) => json(route, status, { code, message, details: null, hint: null });
@@ -1062,6 +1080,72 @@ function rpc(name, args, user, route) {
       const d = F.db.data[p.id] || {};
       const scopes = {}; for (const k of ['story', 'feature', 'short', 'scenes']) if (d[k]) scopes[k] = d[k];
       return json(route, 200, [{ project_id: p.id, title: p.title, format: p.format, access_id: aid, expires_at: c.expires_at, scopes }]);
+    }
+    /* ---- section 58 ---- */
+    case 'bump_event': {
+      if (!FUNNEL_NAMES.includes(args.p_name)) return pgErr(route, '22023', 'Unknown event.');
+      const src = String(args.p_source == null ? '' : args.p_source).trim().toLowerCase();
+      if (src && !/^[a-z0-9_-]{1,32}$/.test(src)) return pgErr(route, '22023', 'A source is up to 32 of a-z, 0-9, _ and -.');
+      const day = new Date().toISOString().slice(0, 10);
+      const row = F.db.events.find((e) => e.day === day && e.name === args.p_name && e.source === src);
+      if (row) row.count++; else F.db.events.push({ day, name: args.p_name, source: src, count: 1 });
+      return route.fulfill({ status: 204, body: '' });
+    }
+    case 'admin_funnel': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, FUNNEL_NAMES.map((name) => ({ name, total: F.db.events.filter((e) => e.name === name && inWindow(e.day, args.p_from, args.p_to)).reduce((n, e) => n + e.count, 0) })));
+    }
+    case 'admin_funnel_by_source': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const m = new Map();
+      for (const e of F.db.events) {
+        if (!inWindow(e.day, args.p_from, args.p_to)) continue;
+        const k = e.name + '|' + e.source;
+        m.set(k, { name: e.name, source: e.source, total: (m.get(k) ? m.get(k).total : 0) + e.count });
+      }
+      return json(route, 200, [...m.values()].sort((a, b) => FUNNEL_NAMES.indexOf(a.name) - FUNNEL_NAMES.indexOf(b.name) || b.total - a.total));
+    }
+    /* ---- section 59 ---- */
+    case 'submit_testimonial': {
+      if (!user) return pgErr(route, '42501', 'Sign in to send a testimonial.', 401);
+      const q = String(args.p_quote || '').trim(), n = String(args.p_display_name || '').trim(), c = String(args.p_consent || '').trim();
+      if (q.length < 20 || q.length > 600 || !n || n.length > 80 || c.length < 20) return pgErr(route, '23514', 'new row for relation "testimonials" violates check constraint');
+      if (F.db.testimonials.filter((t) => t.author === user.id && Date.now() - Date.parse(t.created_at) < DAY).length >= 5) return pgErr(route, 'P0429', 'That is plenty for one day. Thank you.');
+      const now = new Date().toISOString();
+      const t = { id: 'tm' + (F.db.testimonials.length + 1) + '-0000-4000-8000-000000000000', author: user.id, author_email: user.email, quote: q, display_name: n,
+        role: String(args.p_role || '').trim() || null, film: String(args.p_film || '').trim() || null, consent_text: c, consented_at: now, revoked_at: null,
+        status: 'pending', approved_by: null, approved_at: null, created_at: now };
+      F.db.testimonials.push(t);
+      return json(route, 200, tmOwn(t));
+    }
+    case 'my_testimonials':
+      if (!user) return pgErr(route, '42501', 'permission denied for function my_testimonials', 401);
+      return json(route, 200, F.db.testimonials.filter((t) => t.author === user.id).slice().reverse().map(tmOwn));
+    case 'revoke_testimonial': {
+      const t = user && F.db.testimonials.find((x) => x.id === args.p_id && x.author === user.id);
+      if (!t) return pgErr(route, 'P0002', 'No such testimonial of yours.');
+      t.revoked_at = t.revoked_at || new Date().toISOString();
+      return json(route, 200, tmOwn(t));
+    }
+    case 'public_testimonials':
+      return json(route, 200, F.db.testimonials.filter((t) => t.status === 'approved' && !t.revoked_at).map(TM_PUBLIC));
+    case 'admin_list_testimonials': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const st = args.p_status || null;
+      return json(route, 200, F.db.testimonials.filter((t) => !st || (st === 'revoked' ? !!t.revoked_at : (t.status === st && !t.revoked_at))).slice().reverse());
+    }
+    case 'admin_set_testimonial_status': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const role = (F.db.members.get(user.id) || {}).consoleRole || 'owner';
+      if (role !== 'owner') return pgErr(route, '42501', `Your role (${role}) cannot do this. It needs the owner role.`);
+      if (!['pending', 'approved', 'rejected'].includes(args.p_status)) return pgErr(route, '22023', 'A testimonial is pending, approved or rejected.');
+      const t = F.db.testimonials.find((x) => x.id === args.p_id);
+      if (!t) return pgErr(route, 'P0002', 'No such testimonial.');
+      if (t.revoked_at) return pgErr(route, '22023', 'The author took this back. It cannot be published.');
+      t.status = args.p_status;
+      t.approved_by = args.p_status === 'approved' ? user.id : null;
+      t.approved_at = args.p_status === 'approved' ? new Date().toISOString() : null;
+      return json(route, 200, t);
     }
     default:
       return json(route, 200, []);

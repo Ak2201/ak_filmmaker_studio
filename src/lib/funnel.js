@@ -6,8 +6,9 @@
    `supabase-*` chunk is a budget failure). Both calls are fire-and-
    forget for counts: a counter that errors is a counter nobody misses.
 
-   What a count carries: an event NAME. Nothing else — the database
-   column set is (day, name, count). No id, no cookie, no localStorage.
+   What a count carries: an event NAME, and since §58 an optional SOURCE
+   bucket (below). Nothing else — the database column set is (day, name,
+   source, count). No id, no cookie, no localStorage.
 
    Who is not counted: Do-Not-Track, Global Privacy Control, and anyone
    who pressed "Don't count this visit" (sessionStorage only — a new
@@ -48,19 +49,77 @@ async function rpc(name, args) {
   try { return await r.json(); } catch (e) { return null; }
 }
 
-/** Fire and forget. Never throws, never awaits anything the caller needs. */
-export function bumpEvent(name) {
+/* ---- §58: where the visit came from, as an AGGREGATE bucket -----------
+   A source is a short label the attribution layer derives from ?ref= or
+   ?utm_source= ('google', 'instagram', 'newsletter-oct'), counted per day
+   beside the event name and nothing else. sourceBucket() reduces whatever
+   it is given to the server's own pattern, ^[a-z0-9_-]{1,32}$, or '' — so
+   an address, a URL or free text never leaves the browser as a source.
+
+   setFunnelSource() records the bucket for THIS browser session
+   (sessionStorage, like the once-per-session flags below; no
+   localStorage key), so a count fired later on another page — a trial
+   started on the hub, a purchase — carries the source the visit arrived
+   with. An explicit `source` argument wins over it.
+
+   IMPORT-FREE ON PURPOSE: this file is in the `startlib` chunk
+   (vite.config.js), which CORE and the landing page share. The caller
+   passes the source in; nothing here imports the attribution module. */
+const SOURCE_KEY = 'fms_funnel_src_v1';
+export function sourceBucket(raw) {
+  if (raw == null) return '';
+  const s = String(raw).toLowerCase().trim()
+    .replace(/[^a-z0-9_-]+/g, '-').replace(/-{2,}/g, '-')
+    .replace(/^[-_]+/, '').slice(0, 32).replace(/[-_]+$/, '');
+  return /^[a-z0-9_-]{1,32}$/.test(s) ? s : '';
+}
+export function setFunnelSource(raw) {
+  const b = sourceBucket(raw);
+  try { if (b) sessionStorage.setItem(SOURCE_KEY, b); } catch (e) { /* storage blocked: explicit sources still work */ }
+  return b;
+}
+export function funnelSource() {
+  try { return sourceBucket(sessionStorage.getItem(SOURCE_KEY)); } catch (e) { return ''; }
+}
+
+/* A server that has not run §58 has only bump_event(p_name): the two-
+   argument call answers 404 / PGRST202. Then the count goes again
+   without its source, and this page stops asking with one. */
+let twoArg = true;
+const isMissingRpc = (e) => !!e && (e.status === 404 || /PGRST202|Could not find|does not exist/i.test(String(e.message || '')));
+
+/** Fire and forget. Never throws, never awaits anything the caller needs.
+ *  `source` (optional) is bucketed; left out, the session's own is used. */
+export function bumpEvent(name, source) {
   if (!configured() || optedOut()) return;
-  try { rpc('bump_event', { p_name: name }).catch(() => {}); } catch (e) { /* */ }
+  const src = source === undefined ? funnelSource() : sourceBucket(source);
+  try {
+    if (src && twoArg) {
+      rpc('bump_event', { p_name: name, p_source: src }).catch((e) => {
+        if (!isMissingRpc(e)) return;
+        twoArg = false;
+        rpc('bump_event', { p_name: name }).catch(() => {});
+      });
+    } else {
+      rpc('bump_event', { p_name: name }).catch(() => {});
+    }
+  } catch (e) { /* */ }
 }
 
 /** Once per browser session per name. */
-export function bumpOnce(name) {
+export function bumpOnce(name, source) {
   if (!configured() || optedOut()) return;
   const k = 'fms_funnel_' + name;
   try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) { /* storage blocked: count once per load */ }
-  bumpEvent(name);
+  bumpEvent(name, source);
 }
+
+/* The four steps §58 added, named so a call site reads as what happened.
+   Each counts once per browser session, like the page views. */
+export const countSignIn = (source) => bumpOnce('signin_done', source);
+export const countSampleOpen = (source) => bumpOnce('sample_open', source);
+export const countTrialStart = (source) => bumpOnce('trial_start', source);
+export const countPlanViewInApp = (source) => bumpOnce('plan_view_in_app', source);
 
 /** The launch-offers form. Rejects with a sentence fit to show. */
 export async function addLead(email, consentText, source = 'start') {
@@ -114,4 +173,4 @@ export async function trialOffer() {
   try { const v = await rpc('trial_offer', {}); return v && typeof v === 'object' && typeof v.trial_enabled === 'boolean' ? v : null; } catch (e) { return null; }
 }
 
-export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired, trialOffer };
+export default { bumpEvent, bumpOnce, sourceBucket, setFunnelSource, funnelSource, countSignIn, countSampleOpen, countTrialStart, countPlanViewInApp, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired, trialOffer };

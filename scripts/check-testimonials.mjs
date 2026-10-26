@@ -11,7 +11,10 @@
        the section, carrying the quote / the title verbatim and the name
      - every such <li> in the markup is in the JSON (nothing invented
        in the page that the data file, with its consent date, lacks)
-     - every entry carries `consentOn` (YYYY-MM-DD): no consent, no entry
+     - every entry carries `consentOn` (YYYY-MM-DD): no consent, no entry;
+       one copied from the console (schema §59) also carries `consentId`,
+       the database row that holds the exact sentence agreed to, and it
+       must be that row's uuid
      - empty JSON: the section and both lists are `hidden` and empty;
        non-empty: the section is shown, and data-testimonials /
        data-films state the counts
@@ -56,6 +59,7 @@ if (sec && T && F) {
     ok(t && t.id && !ids.has(t.id), 'testimonial has a unique id: ' + JSON.stringify(t && t.id));
     ids.add(t && t.id);
     ok(/^\d{4}-\d{2}-\d{2}$/.test(String(t && t.consentOn || '')), `testimonial ${t && t.id} records consentOn (YYYY-MM-DD)`);
+    if (t && 'consentId' in t) ok(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(t.consentId)), `testimonial ${t.id} consentId is the §59 row's uuid`);
     ok(norm(t && t.quote) && norm(t && t.name), `testimonial ${t && t.id} has a quote and a name`);
     const li = sec.querySelector(`li[data-testimonial="${t.id}"]`);
     ok(!!li, `testimonial ${t.id} is in the markup`);

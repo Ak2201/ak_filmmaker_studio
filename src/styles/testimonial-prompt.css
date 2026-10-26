@@ -1,0 +1,49 @@
+/* The testimonial prompt (src/ui/testimonial-prompt.js) and the
+   member's own list in Settings. Tokens and skin variables only. */
+.tp-card {
+  background: var(--surface-card);
+  border: var(--sk-card-line-w, 1px) solid var(--border-strong);
+  border-radius: var(--sk-radius, var(--radius));
+  padding: var(--sk-card-pad, var(--s3) var(--s4));
+  display: grid;
+  gap: var(--s3);
+  max-width: 44rem;
+  margin: var(--s4) 0;
+}
+.tp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
+.tp-title { margin: 0; font: 600 var(--t-lg) / 1.3 var(--face-display); color: var(--ink); }
+.tp-lead, .tp-consent, .tp-mine-meta { margin: 0; color: var(--ink-muted); font-size: var(--t-small); line-height: 1.5; max-width: var(--measure-text, 70ch); }
+.tp-consent { color: var(--ink-body); border-left: var(--sk-card-line-w, 1px) solid var(--accent-primary); padding-left: var(--s3); }
+.tp-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.tp-form { display: grid; gap: var(--s3); }
+.tp-row { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.tp-preview {
+  margin: 0;
+  background: var(--surface-elevated);
+  border-radius: var(--sk-radius, var(--radius));
+  padding: var(--s3) var(--s4);
+}
+.tp-pv-label { font: 500 var(--t-micro) / 1.4 var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); margin-bottom: var(--s2); }
+.tp-preview blockquote { margin: 0; }
+.tp-pv-quote { margin: 0; color: var(--ink); font-size: var(--t-base); line-height: 1.5; overflow-wrap: anywhere; }
+.tp-pv-by { margin: var(--s2) 0 0; color: var(--ink-muted); font-size: var(--t-small); }
+.tp-error { margin: 0; color: var(--danger-deep); font-size: var(--t-small); }
+.tp-error:empty { display: none; }
+
+.tp-mine-h { margin: 0 0 var(--s2); font: 600 var(--t-base) / 1.3 var(--face-display); color: var(--ink); }
+.tp-mine { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: var(--s3); }
+.tp-mine-row {
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
+  padding: var(--s3);
+  display: grid;
+  gap: var(--s1);
+  justify-items: start;
+}
+.tp-mine-q { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.tp-mine-by, .tp-mine-st { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
+
+/* The console's Testimonials tab (src/pages/admin-tabs/testimonials.js). */
+.tm-admin { display: grid; gap: var(--s3); }
+.tm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.tm-list blockquote { margin: 0; color: var(--ink); overflow-wrap: anywhere; }

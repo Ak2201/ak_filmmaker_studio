@@ -1383,3 +1383,62 @@ with a read that must answer 5; 55.37 and 55.44 assert the same locally.
    no `library` / `costs`; `scenes` is still there.
 3. As B: `POST /rest/v1/rpc/set_budget_private` → 403 / 42501.
 4. Owner turns it off; step 2 lists both again.
+
+## §58 FUNNEL COUNTS BY SOURCE — WRITTEN 26 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-58-funnel-source.sql`; checks in
+`scripts/schema-tests/funnel-source.sql` (23, plus one in `scripts/test-schema.mjs`
+that a pre-§58 counter survives the new key, under `npm run test:schema`).
+
+**The rule.** `events` stays DAILY COUNTERS with no personal data. It gains one
+aggregate column, `source` (`''` or `^[a-z0-9_-]{1,32}$`, so no `@`, no `.`, no
+space: an e-mail address or a URL cannot be stored), and it joins the key —
+`(day, name, source)` — so a row is "how many, that day, from there". RLS stays
+on with NO grant to `anon` or `authenticated`: nobody reads or writes a raw row.
+The only ways in are `bump_event(name)` (unchanged for every deployed client) and
+`bump_event(name, source)` (new); both are SECURITY DEFINER with the name an
+allowlist and the source refused (22023) when it fails the pattern. A day holds
+at most 200 distinct sources; a new one past that counts as `other`. The only way
+out is `admin_funnel` / `admin_funnel_by_source`, administrators only (42501).
+
+**Live checks to run** (after §58):
+1. As anon: `POST /rest/v1/rpc/bump_event {"p_name":"landing_view"}` → 204;
+   `{"p_name":"landing_view","p_source":"google"}` → 204;
+   `{"p_name":"landing_view","p_source":"a@b.co"}` → 400 / 22023.
+2. As anon: `GET /rest/v1/events?select=*` → 401/42501 (permission denied), never rows.
+3. As a signed-in non-admin: `POST /rest/v1/rpc/admin_funnel_by_source {"p_from":null,"p_to":null}` → 42501.
+4. As the owner: the same call lists `landing_view` under `''` and under `google`.
+
+## §59 TESTIMONIALS — WRITTEN 26 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-59-testimonials.sql`; checks in
+`scripts/schema-tests/testimonials.sql` (33, two authors, an owner, a support
+administrator and anon, under `npm run test:schema`).
+
+**The rule.** `testimonials` has RLS on. `authenticated` has SELECT on the table
+and INSERT on five columns only — `quote, display_name, role, film,
+consent_text` — so a client that names `status`, `author`, `approved_by` or
+`consented_at` is refused 42501 by the grant before any policy runs; `author`
+defaults to `auth.uid()` and the insert policy checks it, and a trigger sets
+`consented_at` from the database clock. The select policy is `author =
+auth.uid()`: another member sees none of your rows. There is no UPDATE or DELETE
+grant. The author takes one back through `revoke_testimonial(id)` (SECURITY
+DEFINER, own rows only; somebody else's id is "not found", P0002), which hides it
+at once. `anon` has no grant on the table; it reads `public_testimonials()`,
+which returns only `id, quote, display_name, role, film, approved_at` of rows
+that are approved AND not revoked. The console reads `admin_list_testimonials()`
+(any administrator) and decides with `admin_set_testimonial_status()`, which
+needs the OWNER role (`require_role(array[]::text[])`), refuses a revoked row
+(22023) and writes `admin_audit`. At most 5 per author per day (P0429).
+
+**Live checks to run** (two real accounts A and B, after §59):
+1. As A: `POST /rest/v1/rpc/submit_testimonial` with a 20+ character quote → a
+   row with `status: pending`, `author` = A.
+2. As A: `POST /rest/v1/testimonials {"quote":"…","display_name":"A","consent_text":"…","status":"approved"}`
+   → 401/403 (42501: column privilege).
+3. As B: `GET /rest/v1/testimonials?select=id` → `[]`; `POST /rest/v1/rpc/revoke_testimonial {"p_id":"<A's id>"}` → P0002.
+4. As anon: `GET /rest/v1/testimonials` → 42501; `POST /rest/v1/rpc/public_testimonials` → `[]`.
+5. As a support-role admin: `admin_set_testimonial_status(<id>, 'approved')` → 42501.
+   As the owner: → approved; anon's `public_testimonials` now lists it, with no author or consent text.
+6. As A: `revoke_testimonial(<id>)` → anon's list is empty again at once; the owner's
+   approve on it → 22023.

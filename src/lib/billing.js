@@ -26,7 +26,7 @@
    ============================================================ */
 import Store from './store.js';
 import { BRAND } from './brand.js';
-import { bumpEvent } from './funnel.js';
+import { bumpEvent, countTrialStart } from './funnel.js';
 import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
@@ -347,6 +347,7 @@ export async function startTrial() {
   const sb = await client();
   const { data, error } = await sb.rpc('start_trial');
   if (error) throw error;
+  if (data && data.started === true) countTrialStart();   // §58 daily count, fire-and-forget
   return data || { started: false, reason: 'unknown' };
 }
 

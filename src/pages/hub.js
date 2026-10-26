@@ -79,6 +79,7 @@ import PlanGate    from '../lib/plan-gate.js';
    re-implementing them — a second copy of either is a second
    representation, and CLAUDE.md is explicit about the cost. */
 import { sampleScenes, applyStoryBeats, sampleContacts, writeSampleData, sampleDays, samplePages } from '../lib/hub-sample.js';
+import { countSampleOpen } from '../lib/funnel.js';   /* §58: an anonymous daily count, once per session */
 /* The page's derivations (the step lists, the greeting, the activity
    diff, the project copy) are src/lib/hub-model.js; the activity log is
    src/lib/hub-activity.js (docs/ARCHITECTURE.md: the view asks the
@@ -463,6 +464,7 @@ async function openSampleProject(id = DEFAULT_SAMPLE) {
   applyStoryBeats(scenes, story);
   const contacts = sampleContacts(sample);
   writeSampleData(sample, { scenes, contacts, pages, story });
+  countSampleOpen();
   Store.notify('projects:changed', { reason: 'sample', project });
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast(

@@ -49,7 +49,7 @@ import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
 import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
-import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
+import { priceNotice as publicPriceNotice, countPlanViewInApp } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
 import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
@@ -209,6 +209,7 @@ const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD
 function planSection() {
   const c = cloud();
   const signedIn = !!(c && c.getSession && c.getSession());
+  if (signedIn) countPlanViewInApp();   // once per tab (bumpOnce); a counter, never a gate
   if (!c || !c.isConfigured()) {
     const sec = section('plan', 'Plan', 'No cloud, no plan.', deck());
     sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
@@ -293,7 +294,7 @@ function planSection() {
   const view = currentView();
   const cards = planCards(billing.plans, st, {
     shop: view,
-    onBuy: (planId, period, onStatus, code, currency) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, currency: currency || orderCurrency(view) }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
+    onBuy: (planId, period, onStatus, code, currency) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
   });
   /* the terms go straight under the row of buy buttons, above the code

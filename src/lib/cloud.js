@@ -38,6 +38,7 @@ import { callPort, hasPort } from './ports.js';
    with no view to show it, the answer is no. */
 const ask = (q) => Promise.resolve(callPort('ask', false, q));
 import { bumpUsage } from './usage.js';
+import { countSignIn } from './funnel.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
 /* INSIDE THE CHROME EXTENSION (PRD FR-202) the gate's short-lived
@@ -2829,6 +2830,7 @@ async function boot() {
          load runs runGate(). */
       markGateLanding();
       notifyAuth('SIGNED_IN', session);
+      countSignIn();   // §58 daily count with the visit's source, once per tab
       toast('Signed in as ' + (getUserEmail() || 'your account') + '.', 'success', 2400);
     } else {
       /* Back from Google, and nothing survived. Two different faults

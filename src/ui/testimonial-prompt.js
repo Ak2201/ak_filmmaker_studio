@@ -50,7 +50,7 @@ import '../styles/testimonial-prompt.css';
 
 /** True only once src/pages/settings.js calls mountMyTestimonials() (see
  *  the header). While false, maybePromptTestimonial() draws nothing. */
-export const SETTINGS_ROUTE_WIRED = false;
+export const SETTINGS_ROUTE_WIRED = true;
 
 const cloud = () => window.StudioCloud || null;
 const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };

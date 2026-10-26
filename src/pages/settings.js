@@ -871,6 +871,10 @@ function renderAccountMine() {
   }
   sec.append(slot);
   if (signedIn) sec.append(renderIdentityFacts());
+  /* Your testimonials, and the route to take one back: the consent
+     sentence promises it lives here (testimonial-prompt.js). Filled
+     after the swap, so commitMain compares an empty host. */
+  if (signedIn) sec.append(h('div#myTestimonials'));
   return sec;
 }
 
@@ -1235,6 +1239,9 @@ function render() {
   /* Nine events redraw this page; commitMain skips the swap when nothing
      changed and keeps scroll and focus when it does. */
   if (!commitMain(app, main, mountShell)) return;
+
+  const tHost = document.getElementById('myTestimonials');
+  if (tHost) import('../ui/testimonial-prompt.js').then((m) => m.mountMyTestimonials(tHost)).catch(() => { /* §59 absent or offline: nothing to list */ });
 
   /* Chrome initialises at import time, when #app is still empty, so
      every page re-inits after its own render. Without this the

@@ -9,11 +9,11 @@
     "sourcesH": "Sources",
     "sourcesNote": "Read on the date shown. Rules and specifications change: check the source before you rely on it.",
     "relatedH": "More guides",
-    "ctaTrialHtml": "Start your <span data-trial-length>free trial</span>",
+    "ctaTrialHtml": "Start your <span data-trial-length=\"label\">free trial</span>",
     "ctaPlans": "See the plans",
-    "ctaNote": "The trial opens every module on the sample films. No card is needed to start.",
+    "ctaNote": "The trial needs no card.",
     "read": "Read the guide",
-    "compareRead": "Read the comparison",
+    "compareRead": "Read the switching guide",
     "breadcrumbHome": "Home",
     "breadcrumbGuides": "Guides",
     "closeH": "Do this in the studio"
@@ -25,12 +25,12 @@
     "h1": "Guides for making a film",
     "sub": "Practical notes on the paperwork between a script and a finished film, written for independent crews in India. Each one ends with how the studio does that job.",
     "guidesH": "The guides",
-    "compareH": "Compare",
-    "compareLede": "Facts about other tools, side by side with ours, each with a link to where it came from.",
+    "compareH": "Switching to the studio",
+    "compareLede": "Moving a screenplay from another tool: which files the studio imports, the import step by step, and what comes out again.",
     "trustH": "Your work stays yours",
     "trustText": "Where your script is kept, how it comes out in open formats, and who can read it.",
     "trustLink": "Read how your work is kept",
-    "closeH": "Try the studio on your own film"
+    "closeH": "See the studio before you decide"
   },
   "guides": [
     {

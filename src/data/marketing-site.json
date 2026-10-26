@@ -25,7 +25,7 @@
     "product": "Product",
     "pricing": "Pricing",
     "guides": "Guides",
-    "compare": "Compare",
+    "compare": "Switching",
     "login": "Log in",
     "signup": "Sign up",
     "menu": "Menu",
@@ -45,9 +45,9 @@
   },
   "signup": {
     "heading": "Sign in to start your trial",
-    "headingHtml": "Sign in to start your <span data-trial-length>free trial</span>",
-    "offer": "Try every module on the sample films with a <span data-trial-length>free trial</span>. No card required.",
-    "offerOff": "The studio is open: sign in with Google and every module is yours to use, saved in your browser.",
+    "headingHtml": "Sign in to start your <span data-trial-length=\"label\">free trial</span>",
+    "offer": "Try the studio with a <span data-trial-length=\"label\">free trial</span>. No card required.",
+    "offerOff": "The studio is open: sign in with Google and use it, with your work saved in your browser.",
     "offerIn": "You are already signed in.",
     "google": "Continue with Google",
     "googleIn": "Open the studio",
@@ -57,6 +57,11 @@
     "have": "Already have an account?",
     "haveLink": "Log in",
     "close": "Close"
+  },
+  "student": {
+    "_live": "false: no student promo code exists on the server yet, so the pricing page's students band asks the reader to write to us (contact.html) and names no code. Set true ONLY once the owner has created `code` in the console's promo codes and checked it with quote_order() in both currencies the page can show; the band then names the code and links purchase.html?plan=indie.",
+    "live": false,
+    "code": "STUDENT50"
   },
   "trustLink": "How your work is kept, and how it comes out",
   "lead": {
@@ -75,7 +80,7 @@
     "about": "About us",
     "trust": "Your work stays yours",
     "guides": "Guides",
-    "compare": "Compare",
+    "compare": "Switching to the studio",
     "contact": "Contact us",
     "privacy": "Privacy",
     "terms": "Terms",

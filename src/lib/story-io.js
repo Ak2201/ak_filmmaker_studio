@@ -132,6 +132,9 @@ export const buildUndoQuestion = 'Undo the build? The synopsis and highlights go
    into paragraphs and keep blank lines as paragraph breaks. */
 export const reflow = (t) => t.split(/\n\s*\n/).map((p) => p.split('\n').map((l) => l.trim()).filter(Boolean).join(' ')).filter(Boolean).join('\n\n');
 
+const TEXT_EXT = /\.(txt|md|text|markdown)$/;
+export const UNSUPPORTED = (name) => `${name} is not a file the synopsis can read. Use a .docx, .pdf, .txt or .md file.`;
+
 /** The prose in a .docx, .pdf or text file, normalised. Throws an
  *  Error whose message is the sentence to show. */
 export async function readSynopsisFile(file) {
@@ -149,8 +152,13 @@ export async function readSynopsisFile(file) {
       const res = await extractLayoutText(await file.arrayBuffer());
       if (res.fatal) throw new Error(res.fatal);
       out = reflow(res.text || '');
-    } else {
+    } else if (TEXT_EXT.test(lower) || (!/\.[a-z0-9]+$/.test(lower) && /^text\//.test(file.type || ''))) {
       out = await file.text();
+    } else {
+      /* A drop skips the file input's `accept`, so anything can land here:
+         a PNG read as text was 24,000 characters of bytes saved as the
+         synopsis (QA, 26 Oct 2026). Only the formats the card names. */
+      throw new Error(UNSUPPORTED(name));
     }
   } catch (e) {
     throw new Error((e && e.message) || 'That file could not be read.');

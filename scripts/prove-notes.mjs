@@ -166,6 +166,127 @@ check('phone: the dock fits the width and nothing scrolls sideways', await page.
   return [r.left >= 0 && r.right <= innerWidth + 0.5, document.documentElement.scrollWidth <= innerWidth];
 }), [true, true]);
 
+
+/* ---- QA, 26 Oct 2026: the Story & writing findings ------------------ */
+const lastUndo = () => page.locator('.toast button:has-text("UNDO")').last();
+const active = () => page.evaluate(() => { const a = document.activeElement; return a ? [a.tagName, a.getAttribute('data-nt') || a.getAttribute('data-st') || a.id || '', a.getAttribute('data-color') || ''] : null; });
+check('phone: Tab stays inside the notes sheet (it is modal below 1100px)', await (async () => {
+  const out = [];
+  for (let i = 0; i < 80; i++) { await page.keyboard.press('Tab'); out.push(await page.evaluate(() => !!document.activeElement.closest('.nt-dock'))); }
+  return out.every(Boolean);
+})(), true);
+await page.keyboard.press('Escape');
+await page.evaluate(() => { const S = window.StudioStore; localStorage.clear(); const p = S.createProject({ title: 'QA Proof', format: 'feature' }); S.setCurrentProject(p.id); S.notify('projects:changed', { reason: 'test' }); });
+await go('story.html#path-synopsis');
+check('phone: the synopsis step’s beat deck does not widen the page', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+
+await page.setViewportSize({ width: 1280, height: 900 });
+await go('breakdown.html#scenes');
+check('scene list: the Notes button is there before any scene exists', await page.locator('.nt-open').count(), 1);
+
+/* An undo of "Add to synopsis" takes out only what it added. */
+await go('story.html#path-outline');
+await openDock();
+await page.fill('#ntDockNew', 'Note A');
+await page.click('.nt-dock [data-nt="add"]');
+await page.waitForTimeout(300);
+const qa = (await vault())[0].id;
+await page.click(`.nt-dock [data-nt="to-synopsis"][data-note="${qa}"]`);
+await page.waitForTimeout(400);
+await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('fms_story_v1')); s.source += ' MORE WRITING.'; localStorage.setItem('fms_story_v1', JSON.stringify(s)); });
+await lastUndo().click();
+await page.waitForTimeout(400);
+check('story: Undo of "Add to synopsis" keeps writing typed after it', await page.evaluate(() => JSON.parse(localStorage.getItem('fms_story_v1')).source.trim()), 'MORE WRITING.');
+await page.keyboard.press('Escape');
+
+/* Beat Sheet steps: a move or a removal keeps the keyboard's place. */
+await page.click('[data-st="step-add"] >> nth=0');
+await page.waitForTimeout(300);
+await page.evaluate(() => document.activeElement && document.activeElement.blur());
+await page.waitForTimeout(300);
+await page.click('[data-st="step-add"] >> nth=0');
+await page.waitForTimeout(300);
+await page.evaluate(() => document.activeElement && document.activeElement.blur());
+await page.waitForTimeout(400);
+const firstStep = await page.getAttribute('[data-st="step-down"]:not([disabled])', 'data-step');
+await page.focus(`[data-st="step-down"][data-step="${firstStep}"]`);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('story: after "Down" the focus is on the moved step’s arrow', await page.evaluate(() => { const a = document.activeElement; return [/^step-(up|down)$/.test(a.getAttribute('data-st') || ''), a.getAttribute('data-step')]; }), [true, firstStep]);
+await page.focus(`[data-st="step-del"][data-step="${firstStep}"]`);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('story: after "Remove" the focus is on a neighbour, not <body>', await page.evaluate(() => /^step-(del|add)$/.test(document.activeElement.getAttribute('data-st') || '')), true);
+
+/* "Add to the scene": its undo keeps a later edit of that scene. */
+await page.evaluate(() => localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes: [
+  { id: 'sc1', number: '1', intExt: 'INT', dayNight: 'DAY', location: 'KITCHEN', synopsis: 'Breakfast.', eighths: 8, elements: {} }] })));
+await go('breakdown.html#scenes');
+await openDock();
+await page.selectOption(`.nt-dock [data-nt-field="pin"][data-note="${qa}"]`, 'scene:sc1');
+await page.waitForTimeout(400);
+await page.click(`.nt-dock [data-nt="to-scene"][data-note="${qa}"]`);
+await page.waitForTimeout(400);
+await page.evaluate(() => { const d = JSON.parse(localStorage.getItem('fms_scenes_v1')); d.scenes[0].synopsis += '\nLATER EDIT'; localStorage.setItem('fms_scenes_v1', JSON.stringify(d)); });
+await lastUndo().click();
+await page.waitForTimeout(400);
+check('scene list: Undo of "Add to the scene" keeps a later edit', (await scenes()).find((x) => x.id === 'sc1').synopsis, 'Breakfast.\nLATER EDIT');
+await page.keyboard.press('Escape');
+
+/* The board. */
+await go('vault.html');
+await page.fill('#stClip', 'A clipped line');
+await page.click('[data-st="clip-add"]');
+await page.waitForTimeout(300);
+check('board: a clipping pins to the beats the Story page draws (Save the Cat! on a feature)', await page.evaluate(() =>
+  [...document.querySelectorAll('[data-st-field="clip-beat"] option')].slice(1, 3).map((o) => o.value.split(':')[0])), ['save_the_cat', 'save_the_cat']);
+const clipId = (await vault()).find((x) => x.kind !== 'note').id;
+await page.click(`[data-st="clip-use"][data-clip="${clipId}"]`);
+await page.waitForTimeout(400);
+check('board: a clipping’s "Add to synopsis" offers Undo too, and keeps the focus', [await lastUndo().count(), (await active())[1]], [1, 'clip-use']);
+check('board: the new note’s colour row is one Tab stop', await page.evaluate(() => [...document.querySelectorAll('[data-nt="new-color"][data-for="ntBoardNew"]')].filter((b) => b.tabIndex === 0).length), 1);
+await page.focus('[data-nt="new-color"][data-for="ntBoardNew"][aria-checked="true"]');
+await page.keyboard.press('ArrowRight');
+check('board: an arrow key moves the colour choice', await active(), ['BUTTON', 'new-color', 'pink']);
+await page.fill('#ntBoardNew', 'Board one');
+await page.click('[data-nt="add"][data-for="ntBoardNew"]');
+await page.waitForTimeout(300);
+const one = (await vault()).find((x) => x.snippet === 'Board one').id;
+await page.focus(`[data-board-item="${one}"] [data-nt="color"][data-color="blue"]`);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('board: a colour change keeps the focus on the dot pressed', await active(), ['BUTTON', 'color', 'blue']);
+await page.click('[data-action="vault-filter"][data-value="pinned"]');
+await page.waitForTimeout(200);
+await page.fill('#ntBoardNew', 'Added while filtered');
+await page.click('[data-nt="add"][data-for="ntBoardNew"]');
+await page.waitForTimeout(400);
+check('board: a note added under a filter that hides it is shown (the filter goes off, and says so)', await page.evaluate(() =>
+  [[...document.querySelectorAll('[data-board-item] .nt-text')].some((t) => t.value === 'Added while filtered'), /filter is off/.test(document.body.innerText)]), [true, true]);
+await page.click('[data-action="vault-filter"][data-value="all"]');   // a no-op once the add turned the filter off
+await page.waitForTimeout(200);
+await page.click(`[data-board-item="${one}"] .nt-text`);
+await page.keyboard.press('Control+A');
+await page.keyboard.press('Backspace');
+await page.waitForTimeout(600);
+await page.keyboard.press('Tab');
+await page.waitForTimeout(300);
+check('board: emptying a note puts its text back on leaving, and says why', [await page.inputValue(`[data-board-item="${one}"] .nt-text`), await page.evaluate(() => /can’t be empty/.test(document.body.innerText))], ['Board one', true]);
+await page.focus(`[data-board-item="${one}"] [data-nt="del"]`);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('board: deleting a note from the keyboard keeps the focus on the board', await page.evaluate(() => !!document.activeElement.closest('[data-board-item], .nt-add')), true);
+
+/* A short film's clipping pins to the short's five beats, as its notes do
+   (a new project: no story saved, so the stored framework is the default). */
+await page.evaluate(() => { const S = window.StudioStore; const p = S.createProject({ title: 'QA Short', format: 'short' }); S.setCurrentProject(p.id); S.notify('projects:changed', { reason: 'test' }); });
+await go('vault.html');
+await page.fill('#stClip', 'A short clipping');
+await page.click('[data-st="clip-add"]');
+await page.waitForTimeout(300);
+check('board: a short film’s clipping pins to the Short Film Five-Beat', await page.evaluate(() =>
+  [...new Set([...document.querySelectorAll('[data-st-field="clip-beat"] option')].slice(1).map((o) => o.value.split(':')[0]))]), ['short_five']);
+
 check('no page errors', errors, []);
 console.log(failed ? `✗ notes proof: ${passed} passed, ${failed} failed` : `✓ notes proof: ${passed} passed, 0 failed`);
 await browser.close();

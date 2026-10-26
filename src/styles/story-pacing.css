@@ -115,6 +115,10 @@
 .pc-card {
   display: grid; gap: var(--s3); align-content: start;
   min-width: 0;
+  /* The containing block of its title's visually-hidden 'Beat N: '. With
+     none, each absolute span sat at its card's x outside the swipe deck
+     and widened the PAGE (4,547px at 390, QA 26 Oct 2026). */
+  position: relative;
   padding: var(--sk-card-pad);
   background: var(--sk-card-bg, var(--surface-card));
   border: 1px solid var(--sk-card-line, var(--border-hair));

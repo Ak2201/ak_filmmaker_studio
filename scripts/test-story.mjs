@@ -528,6 +528,19 @@ eq(S.clipSourceHost(''), '', 'clipSourceHost: no URL, no link');
 }
 
 
+/* QA 26 Oct 2026: a dropped file skips the input's accept list, so the
+   reader itself must refuse what it cannot read (a PNG was saved as the
+   synopsis, 24,000 characters of bytes). */
+{
+  const IO = (await import('../src/lib/story-io.js')).default;
+  const rd = async (name, type, body) => { try { return (await IO.readSynopsisFile(new File([body], name, { type }))).text; } catch (e) { return 'ERR:' + e.message; } };
+  eq(await rd('notes.txt', 'text/plain', 'A man.\r\nA dog.'), 'A man.\nA dog.', 'a .txt is read as text');
+  eq(await rd('notes.md', '', '# Idea'), '# Idea', 'a .md is read as text');
+  ok(/^ERR:poster\.png is not a file the synopsis can read/.test(await rd('poster.png', 'image/png', '\x89PNG\r\n')), 'a .png is refused, not read as text');
+  ok(/^ERR:old\.rtf is not/.test(await rd('old.rtf', 'application/rtf', '{\\rtf1 hello}')), 'an .rtf is refused, not imported as raw markup');
+  ok(/^ERR:/.test(await rd('script.doc', 'application/msword', 'x')), 'an old .doc is refused');
+}
+
 /* Review of bugs 21 and 22: the second sample loader, and a synopsis
    save still on its debounce when the Build undo commits. */
 {

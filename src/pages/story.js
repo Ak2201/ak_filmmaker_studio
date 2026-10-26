@@ -164,6 +164,14 @@ function syncScenes() {
   try { return Story.reconcileStepScenes(SYNC_API); } catch (e) { console.warn('[story] scene sync', e); return null; }
 }
 
+/* Focus the first enabled `acts` button on step `id`, else its text. */
+function refocusStep(id, acts) {
+  const q = (act) => document.querySelector(`[data-st="${act}"][data-step="${CSS.escape(id)}"]:not([disabled])`);
+  const el = acts.map(q).find(Boolean) || document.getElementById('stStep_' + id);
+  if (el) el.focus({ preventScroll: true });
+  return !!el;
+}
+
 function commit(s, { rerender = true } = {}) {
   Story.saveStory(s);
   syncScenes();
@@ -1579,14 +1587,30 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     const back = document.querySelector(`[data-st="step-color"][data-step="${CSS.escape(id)}"][data-color="${CSS.escape(c)}"]`);
     if (back) back.focus({ preventScroll: true });
   } else if (act === 'step-up' || act === 'step-down') {
-    if (Story.moveOutlineStep(s, el.getAttribute('data-step'), { delta: act === 'step-up' ? -1 : 1 })) commit(s);
+    const id = el.getAttribute('data-step');
+    if (Story.moveOutlineStep(s, id, { delta: act === 'step-up' ? -1 : 1 })) {
+      commit(s);
+      /* The redraw replaced the button: focus its twin on the moved step
+         (the other arrow once this one is disabled at an end), never <body>. */
+      refocusStep(id, [act, act === 'step-up' ? 'step-down' : 'step-up']);
+    }
   } else if (act === 'step-del') {
     const id = el.getAttribute('data-step');
     const i = s.outline.findIndex((x) => x.id === id);
     const gone = s.outline[i];
     if (!gone) return;
+    /* After the redraw: the next step's Remove, else the one before, else the beat's Add. */
+    const row = el.closest('[data-step-row]');
+    const sib = row && (row.nextElementSibling || row.previousElementSibling);
+    const near = sib && sib.getAttribute('data-step-row');
+    const card = el.closest('[data-beat-card]');
+    const beatKey = (card && card.getAttribute('data-beat-card')) || gone.beat || '';
     Story.removeOutlineStep(s, id);
     commit(s);
+    if (!(near && refocusStep(near, ['step-del']))) {
+      const add = document.querySelector(`[data-st="step-add"][data-beat="${CSS.escape(beatKey)}"]`);
+      if (add) add.focus({ preventScroll: true });
+    }
     StudioUI.toast('Step removed.', { action: 'UNDO', onAction: () => {
       const back = story();
       if (back.outline.some((x) => x.id === gone.id)) return;   // it is back already (a copy that arrived kept it)

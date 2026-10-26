@@ -9,12 +9,15 @@
      detail.story  true when the synopsis was written (the Story page redraws)
      detail.scene  a scene id whose synopsis was written (the Scene List redraws)
      detail.redraw false while somebody types, so a host keeps the caret
+     detail.focus   the id of an element, or of a note / clipping, to focus
+     detail.control a selector for the exact control to focus (the colour
+                    dot pressed, the pin select changed); tried first
    ============================================================ */
 import { delegate } from '../lib/dom.js';
 import * as Story from '../lib/story.js';
 import * as Scenes from '../lib/scenes.js';
 import Store from '../lib/store.js';
-import { makeNote, pinPatch, COLORS, isNote } from '../lib/notes-model.js';
+import { makeNote, pinPatch, COLORS, isNote, undoAppend } from '../lib/notes-model.js';
 import { appendClipToSynopsis } from '../lib/vault-model.js';
 import { toast } from './kit/index.js';
 
@@ -43,7 +46,7 @@ export function pinOptions() {
 /* The open project's format, read from its entry (story-model.js has the
    same one-liner, but importing it pulls the character and screen-time
    models onto every page that shows a note). */
-const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
+export const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
 
 const find = (id) => Story.listVault().find((x) => x.id === id);
 
@@ -70,19 +73,37 @@ export function flushTyping() {
   typing.clear();
 }
 
+function pickNewColor(el) {
+  const f = el.getAttribute('data-for');
+  document.querySelectorAll('[data-nt="new-color"][data-for="' + CSS.escape(f) + '"]').forEach((b) => {
+    b.setAttribute('aria-checked', String(b === el));
+    b.tabIndex = b === el ? 0 : -1;
+  });
+}
+
 function newColor(forId) {
   const on = document.querySelector('[data-nt="new-color"][data-for="' + CSS.escape(forId) + '"][aria-checked="true"]');
   const c = on && on.getAttribute('data-color');
   return COLORS.includes(c) ? c : COLORS[0];
 }
 
-function removeWithUndo(id) {
+/* Where the focus goes when a card leaves: the card after it, else the
+   one before, else the host's new-note box — never <body>. */
+function neighbourOf(el) {
+  const card = el && el.closest('[data-board-item], [data-note-card]');
+  const idOf = (c) => c && (c.getAttribute('data-board-item') || c.getAttribute('data-note-card'));
+  const next = card && (idOf(card.nextElementSibling) || idOf(card.previousElementSibling));
+  return next || (el && el.closest('.nt-dock') ? 'ntDockNew' : 'ntBoardNew');
+}
+
+function removeWithUndo(id, el) {
   const items = Story.listVault();
   const at = items.findIndex((x) => x.id === id);
   if (at < 0) return;
   const gone = items[at];
+  const focus = neighbourOf(el);
   Story.removeFromVault(id);
-  changed();
+  changed({ focus });
   toast(isNote(gone) ? 'Note deleted.' : 'Clipping removed.', {
     action: 'UNDO', onAction: () => { if (Story.restoreToVault(gone, at)) changed(); }
   });
@@ -105,20 +126,42 @@ function toScene(id) {
   if (!sc) { toast('That scene is no longer in the scene list.'); return; }
   const before = sc.synopsis || '';
   Scenes.updateScene(sc.id, { synopsis: (before.trim() ? before.replace(/\s+$/, '') + '\n' : '') + it.snippet });
-  changed({ scene: sc.id });
+  const after = sceneSynopsis(sc.id);
+  const control = '[data-nt="to-scene"][data-note="' + CSS.escape(id) + '"]';
+  changed({ scene: sc.id, focus: id, control });
+  /* The toast never times out, so the scene may have been edited since:
+     undoAppend() takes out only what this press added (QA, 26 Oct 2026:
+     the old undo put the synopsis back whole and lost a later edit). */
   toast('Added to scene ' + (sc.number || '') + '’s synopsis.', {
-    action: 'UNDO', onAction: () => { Scenes.updateScene(sc.id, { synopsis: before }); changed({ scene: sc.id }); }
+    action: 'UNDO', onAction: () => {
+      const back = undoAppend(sceneSynopsis(sc.id), before, after);
+      if (back === null) { toast(CHANGED_SINCE); return; }
+      Scenes.updateScene(sc.id, { synopsis: back });
+      changed({ scene: sc.id });
+    }
   });
 }
+const sceneSynopsis = (sid) => { const x = Scenes.listScenes().find((s) => s.id === sid); return x ? (x.synopsis || '') : ''; };
+const CHANGED_SINCE = 'Not undone: the added text has been edited since. Change it by hand.';
 
-function toSynopsis(id) {
+/** "Add to synopsis" for a note OR a clipping (the board's clip-use calls
+ *  this too, so both offer the same Undo). `control` is the button to
+ *  give the focus back to after the host redraws. */
+export function toSynopsis(id, { control = '' } = {}) {
   flushTyping();
   const before = Story.loadStory().source;
-  if (!appendClipToSynopsis(id)) return;
-  changed({ story: true });
+  if (!appendClipToSynopsis(id)) return false;
+  const after = Story.loadStory().source;
+  changed({ story: true, focus: id, control: control || '[data-nt="to-synopsis"][data-note="' + CSS.escape(id) + '"]' });
   toast('Added to the end of the synopsis.', {
-    action: 'UNDO', onAction: () => { const s = Story.loadStory(); s.source = before; Story.saveStory(s); changed({ story: true }); }
+    action: 'UNDO', onAction: () => {
+      const s = Story.loadStory();
+      const back = undoAppend(s.source, before, after);
+      if (back === null) { toast(CHANGED_SINCE); return; }
+      s.source = back; Story.saveStory(s); changed({ story: true });
+    }
   });
+  return true;
 }
 
 function copy(id) {
@@ -140,20 +183,19 @@ export function bindNoteActions() {
   delegate(document, 'click', '[data-nt]', (e, el) => {
     const act = el.getAttribute('data-nt');
     const id = el.getAttribute('data-note');
-    if (act === 'new-color') {
-      const f = el.getAttribute('data-for');
-      document.querySelectorAll('[data-nt="new-color"][data-for="' + CSS.escape(f) + '"]').forEach((b) => b.setAttribute('aria-checked', String(b === el)));
-    } else if (act === 'add') {
+    if (act === 'new-color') pickNewColor(el); else if (act === 'add') {
       const f = el.getAttribute('data-for');
       const ta = document.getElementById(f);
       const note = makeNote(ta && ta.value, { color: newColor(f), ...pinPatch(el.getAttribute('data-pin')) });
       if (!note) { if (ta) ta.focus(); return; }
-      if (Story.addNoteToVault(note)) { if (ta) ta.value = ''; changed({ focus: f }); }
+      if (Story.addNoteToVault(note)) { if (ta) ta.value = ''; changed({ focus: f, added: note.id }); }
       else toast('The note could not be saved: this browser’s storage refused it.', { type: 'error' });
     } else if (act === 'color') {
       const c = el.getAttribute('data-color');
-      if (COLORS.includes(c) && Story.updateVault(id, { color: c })) changed({ focus: id });
-    } else if (act === 'del') removeWithUndo(id);
+      if (COLORS.includes(c) && Story.updateVault(id, { color: c })) {
+        changed({ focus: id, control: '[data-nt="color"][data-note="' + CSS.escape(id) + '"][data-color="' + CSS.escape(c) + '"]' });
+      }
+    } else if (act === 'del') removeWithUndo(id, el);
     else if (act === 'up') move(id, -1);
     else if (act === 'down') move(id, 1);
     else if (act === 'to-synopsis') toSynopsis(id);
@@ -163,7 +205,31 @@ export function bindNoteActions() {
   delegate(document, 'input', '[data-nt-field="text"]', (e, el) => saveText(el.getAttribute('data-note'), el.value));
   delegate(document, 'change', '[data-nt-field="pin"]', (e, el) => {
     flushTyping();
-    if (Story.updateVault(el.getAttribute('data-note'), pinPatch(el.value))) changed({ focus: el.getAttribute('data-note') });
+    const nid = el.getAttribute('data-note');
+    if (Story.updateVault(nid, pinPatch(el.value))) changed({ focus: nid, control: '[data-nt-field="pin"][data-note="' + CSS.escape(nid) + '"]' });
+  });
+  /* A note cannot be empty (listVault and "Add to synopsis" need text),
+     so clearing one used to look saved and quietly came back on reload.
+     Leaving an emptied field now puts the text back and says why. */
+  delegate(document, 'focusout', '[data-nt-field="text"]', (e, el) => {
+    if (el.value.trim()) return;
+    const nid = el.getAttribute('data-note');
+    clearTimeout(typing.get(nid)); typing.delete(nid);
+    const it = find(nid);
+    if (!it) return;
+    el.value = it.snippet;
+    toast('A note can’t be empty, so its text is back. To remove the note, press Delete.');
+  });
+  /* The new note's colour row is a radio group: one Tab stop, and the
+     arrow keys move the choice (roving tabindex, set in note-card.js). */
+  delegate(document, 'keydown', '[data-nt="new-color"]', (e, el) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const row = [...document.querySelectorAll('[data-nt="new-color"][data-for="' + CSS.escape(el.getAttribute('data-for')) + '"]')];
+    const next = row[(row.indexOf(el) + step + row.length) % row.length];
+    pickNewColor(next);
+    next.focus();
   });
   /* The grip: arrow keys move the note one place. (Dragging is the
      board's own, src/ui/idea-vault.js.) */
@@ -175,4 +241,4 @@ export function bindNoteActions() {
   window.addEventListener('pagehide', flushTyping);
 }
 
-export default { bindNoteActions, pinOptions, flushTyping, changed };
+export default { bindNoteActions, pinOptions, flushTyping, changed, toSynopsis, projectFormat };

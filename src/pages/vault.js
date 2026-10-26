@@ -30,10 +30,10 @@ import { h, delegate } from '../lib/dom.js';
 import * as Story from '../lib/story.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import { renderVault } from '../ui/idea-vault.js';
-import { appendClipToSynopsis, removeClip, restoreClip } from '../lib/vault-model.js';
+import { removeClip, restoreClip } from '../lib/vault-model.js';
 import { pageHeader } from '../ui/kit/index.js';
-import { bindNoteActions, changed, flushTyping } from '../ui/notes-actions.js';
-import { COLORS } from '../lib/notes-model.js';
+import { bindNoteActions, changed, flushTyping, toSynopsis } from '../ui/notes-actions.js';
+import { COLORS, filterBoard } from '../lib/notes-model.js';
 
 const app = document.getElementById('app');
 const view = { filter: 'all', color: '' };   // in memory: the board's filter
@@ -62,8 +62,9 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     const ta = document.getElementById('stClip');
     if (Story.addToVault({ snippet: ta && ta.value })) render();
   } else if (act === 'clip-use') {
-    if (!appendClipToSynopsis(el.getAttribute('data-clip'))) return;
-    StudioUI.toast('Added to the end of the synopsis.');
+    /* The note's own path, so a clipping gets the same Undo. */
+    const cid = el.getAttribute('data-clip');
+    toSynopsis(cid, { control: '[data-st="clip-use"][data-clip="' + CSS.escape(cid) + '"]' });
   } else if (act === 'clip-del') {
     const gone = removeClip(el.getAttribute('data-clip'));
     render();
@@ -94,11 +95,24 @@ delegate(document, 'change', '[data-vault-color]', (e, el) => {
 document.addEventListener('notes:changed', (e) => {
   const d = e.detail || {};
   if (d.redraw === false) return;
+  /* A note added under a filter that hides it read as lost: show the
+     whole board again, and say so. */
+  let reset = false;
+  if (d.added && (view.filter !== 'all' || view.color)) {
+    const it = Story.listVault().find((x) => x.id === d.added);
+    let shown = it ? filterBoard([it], view.filter) : [];
+    if (view.color) shown = shown.filter((x) => (x.color || COLORS[0]) === view.color);
+    if (!shown.length) { view.filter = 'all'; view.color = ''; reset = true; }
+  }
   render();
+  if (reset) StudioUI.toast('Note added. The filter is off so you can see it.');
   if (d.focus) {
-    const el = document.getElementById(d.focus)
-      || document.querySelector('[data-board-item="' + CSS.escape(d.focus) + '"] [data-nt="grip"]')
-      || document.querySelector('[data-board-item="' + CSS.escape(d.focus) + '"] .nt-text');
+    const item = '[data-board-item="' + CSS.escape(d.focus) + '"] ';
+    const el = (d.control && document.querySelector(d.control))
+      || document.getElementById(d.focus)
+      || document.querySelector(item + '[data-nt="grip"]')
+      || document.querySelector(item + '.nt-text')
+      || document.querySelector(item + 'button, ' + item + 'select');
     if (el) el.focus({ preventScroll: true });
   }
 });

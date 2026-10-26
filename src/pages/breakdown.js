@@ -1083,7 +1083,9 @@ function render(focus) {
      included, for the reason above. */
   const tagging = h('div.bd-breakdown');
   if (!scenes.length) {
-    tagging.append(renderEmpty());
+    /* The notes are most use before there is a scene: the Notes button
+       renders here too, not only in the populated scene bar. */
+    tagging.append(h('div.bd-sl-bar.bd-sl-bar-empty', {}, [notesButton()]), renderEmpty());
   } else {
     DUPS = dupNumbers(scenes);
     NUM_LOCK = readNumberLock();

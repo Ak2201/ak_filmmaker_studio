@@ -54,6 +54,8 @@ eq(Sync.headingsOf(base()).map((h) => h.id), ['h1', 'h2', 'h3'], 'headingsOf: th
 eq(Sync.headingsOf([el('scene', '   '), el('action', 'x')]), [], 'an empty heading is not a heading');
 eq(Sync.headingFields('12 INT. OFFICE - DAY'), { location: 'OFFICE', intExt: 'INT', dayNight: 'DAY', number: '12' }, 'fields from a numbered heading');
 eq(Sync.headingFields('KITCHEN'), { location: 'KITCHEN' }, 'a bare place says nothing about INT/EXT or time');
+eq(Sync.headingFields('INT. KITCHEN - DAY\n\nMara pours tea.\n\nMARA\nNot now.').location, 'KITCHEN',
+  'a heading with line breaks in it reads only its first line (QA: a pasted scene became the location)');
 
 /* ---- a fresh script: everything is new --------------------------- */
 let plan = Sync.reconcile(base(), [], {});

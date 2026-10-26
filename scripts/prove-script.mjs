@@ -25,6 +25,12 @@
     19  an import offers "Break down everything"; the checklist runs every
         step, the summary counts what was made, and the Script analysis
         tab draws — at 1280 and 390
+    20  QA round: a multi-line paste is split into elements; the chips
+        follow Alt+digit; the line toolbar covers no text; a stale "Use
+        theirs" is withdrawn; an arrival is never the current draft; a
+        second Writer tab and an open drafts.html never save a stale
+        copy; Revised pages is on drafts.html; a restore bins the
+        scenes it lacks; the phone toolbar is one row with Notes' icon
 
        npm run build:open && npm run prove:script
    ============================================================ */
@@ -427,6 +433,203 @@ for (const w of [1280, 390]) {
   ok(await page.isVisible('#wr-page') && !/#analysis$/.test(page.url()), `19 Write brings the editor back (${w}px)`);
 }
 await page.setViewportSize({ width: 1280, height: 900 });
+
+/* ---- 20 QA round (26 Oct 2026): paste, other windows, drafts, toolbars ----
+   Each of these was a confirmed finding; each assertion failed before
+   its fix. */
+{
+  const fresh = async (title, els) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+    await page.evaluate(({ title, els }) => {
+      const S = window.StudioStore;
+      const p = S.createProject({ title: title + ' ' + Date.now(), format: 'feature' });
+      S.setCurrentProject(p.id);
+      if (els) S.rawSet('fms_script_v1__' + p.id, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+    }, { title, els });
+  };
+  const stored = () => page.evaluate(() => {
+    const S = window.StudioStore; const id = S.currentProjectId();
+    return { script: JSON.parse(S.rawGet('fms_script_v1__' + id) || 'null'), scenes: ((JSON.parse(S.rawGet('fms_scenes_v1__' + id) || 'null') || {}).scenes || []) };
+  });
+  const FOUR = [
+    { id: 'e1', type: 'scene', text: 'INT. FLAT - NIGHT' }, { id: 'e2', type: 'action', text: 'Ravi paces.' },
+    { id: 'e3', type: 'character', text: 'RAVI' }, { id: 'e4', type: 'dialogue', text: 'Not tonight.' }
+  ];
+
+  /* a) a multi-line paste into a heading is split into its elements */
+  await fresh('Proof Paste');
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.click('#wr-page .wr-text');
+  const cancelled = await page.evaluate(() => {
+    const ta = document.querySelector('#wr-page .wr-text');
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'INT. KITCHEN - DAY\n\nMara pours tea.\n\nMARA\nNot now.');
+    const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+    ta.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  });
+  await page.waitForTimeout(2600);
+  let s = await stored();
+  ok(cancelled, '20a a multi-line paste into a line is taken over from the browser');
+  ok(JSON.stringify(s.script.elements.map((e) => e.type + ':' + e.text)) === JSON.stringify(['scene:INT. KITCHEN - DAY', 'action:Mara pours tea.', 'character:MARA', 'dialogue:Not now.']),
+    '20a and split into heading, action, cue and dialogue', s.script.elements.map((e) => e.type + ':' + e.text));
+  ok(s.scenes.length === 1 && s.scenes[0].location === 'KITCHEN', '20a the Breakdown gets KITCHEN, not the whole scene', s.scenes.map((x) => x.location));
+
+  /* b) the chip bar follows the preset's digits: chip 4 is what Alt+4 sets */
+  const chips = await page.$$eval('#scChips .sc-chip', (cs) => cs.map((c) => c.dataset.type));
+  ok(chips[3] === 'paren' && chips[4] === 'dialogue' && chips.includes('shot'), '20b chips in Alt+digit order, Shot included', chips);
+
+  /* c) the line toolbar sits clear of the line above */
+  await fresh('Proof Bar', [{ id: 'h1', type: 'scene', text: 'INT. KITCHEN - DAY' }, { id: 'a1', type: 'action', text: 'Tea.' },
+    { id: 'h2', type: 'scene', text: 'EXT. ROOF OF THE TALL BUILDING ACROSS THE RIVER - NIGHT' }, { id: 'a2', type: 'action', text: 'Wind.' }]);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.click('[data-el="a2"] .wr-text');
+  await page.waitForTimeout(200);
+  const covered = await page.evaluate(() => {
+    const bar = document.querySelector('[data-el="a2"] > .sc-linebar').getBoundingClientRect();
+    return [...document.querySelectorAll('#wr-page .wr-text')].filter((t) => {
+      const b = t.getBoundingClientRect();
+      return !(b.right < bar.left || b.left > bar.right || b.bottom < bar.top || b.top > bar.bottom);
+    }).length;
+  });
+  ok(covered === 0, '20c the focused line\'s toolbar covers no line of text', covered);
+
+  /* d) a stale "Use theirs" goes when a newer copy loads */
+  await fresh('Proof Stale', FOUR);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  const deliver = (i, text) => page.evaluate(({ i, text }) => {
+    const S = window.StudioStore; const pid = S.currentProjectId(); const k = 'fms_script_v1__' + pid;
+    const b = JSON.parse(S.rawGet(k)); b.elements[i] = { ...b.elements[i], text };
+    S.rawSet(k, JSON.stringify(b)); S.notify('cloud:synced', { projectId: pid, scope: 'script' });
+  }, { i, text });
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' MINE.');
+  await deliver(3, 'THEIRS-1');
+  await page.waitForTimeout(400);
+  ok(await page.isVisible('.toast:has-text("Use theirs")'), '20d mid-edit arrival offers Use theirs');
+  await page.waitForTimeout(3500);
+  await page.evaluate(() => { const S = window.StudioStore; const k = 'fms_script_v1__' + S.currentProjectId(); const b = JSON.parse(S.rawGet(k)); b.elements[1].text = 'Ravi paces. MINE.'; S.rawSet(k, JSON.stringify(b)); });
+  await deliver(3, 'THEIRS-2 NEWEST');
+  await page.waitForTimeout(600);
+  const onScreen = await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value));
+  ok(onScreen[3] === 'THEIRS-2 NEWEST', '20d an idle arrival loads', onScreen);
+  ok(!(await page.isVisible('.toast:has-text("Use theirs")')), '20d and the older offer is withdrawn, so it cannot bring the old copy back');
+
+  /* e) the arrival is a side copy: not the current draft */
+  s = await stored();
+  ok(s.script.revisions.some((r) => /^From another device/.test(r.name)), '20e the arrival is kept as a draft');
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  const stateLine = await page.textContent('[data-dr-state]');
+  ok(!/From another device/.test(stateLine), '20e the drafts state line is not measured against the arrival', stateLine);
+  ok(!(await page.$('.dr-row.is-current')), '20e the arrival is not badged Current', await page.$$eval('.dr-row.is-current strong', (n) => n.map((x) => x.textContent)));
+
+  /* f) two Writer tabs: the second picks up the first's save */
+  await fresh('Proof Tabs', FOUR);
+  const tabB = await ctx.newPage();
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await tabB.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.bringToFront();
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' TAB-A EDIT.');
+  await page.waitForTimeout(2500);
+  await tabB.bringToFront();
+  await tabB.waitForTimeout(400);
+  const bLine = await tabB.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value)[1]);
+  ok(bLine === 'Ravi paces. TAB-A EDIT.', '20f the other tab shows the first tab\'s save', bLine);
+  await tabB.click('[data-el="e4"] .wr-text');
+  await tabB.keyboard.press('End');
+  await tabB.keyboard.type(' TAB-B.');
+  await tabB.waitForTimeout(2500);
+  s = await stored();
+  ok(s.script.elements[1].text === 'Ravi paces. TAB-A EDIT.' && s.script.elements[3].text === 'Not tonight. TAB-B.', '20f and its own save keeps both edits', s.script.elements.map((e) => e.text));
+
+  /* g) drafts.html open beside the Writer saves no stale copy */
+  await tabB.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.bringToFront();
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' TYPED IN WRITER.');
+  await page.waitForTimeout(2500);
+  await tabB.bringToFront();
+  await tabB.click('[data-dr="new"]');
+  await tabB.waitForSelector('.lp-card [data-lp="go"]');
+  await tabB.click('.lp-card [data-lp="go"]');
+  await tabB.waitForTimeout(600);
+  s = await stored();
+  ok(/TYPED IN WRITER\.$/.test(s.script.elements[1].text), '20g Save as new draft keeps the Writer\'s newer line', s.script.elements[1].text);
+  const d1 = s.script.revisions.find((r) => r.name === 'Draft 1');
+  ok(d1 && /TYPED IN WRITER\.$/.test(d1.elements[1].text), '20g and the draft is taken from it', d1 && d1.elements[1].text);
+  await tabB.fill('[data-tp-field="title"]', 'A Title');
+  await tabB.waitForTimeout(300);
+  await page.bringToFront();
+  await page.click('[data-el="e4"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' LATER.');
+  await page.waitForTimeout(2500);
+  await tabB.bringToFront();
+  await tabB.fill('[data-tp-field="title"]', 'A Title 2');
+  await tabB.waitForTimeout(900);
+  s = await stored();
+  ok(/LATER\.$/.test(s.script.elements[3].text) && s.script.titlePage && s.script.titlePage.title === 'A Title 2', '20g typing a title page does not undo a newer edit', [s.script.elements[3].text, s.script.titlePage]);
+
+  /* h) Revised pages is offered on drafts.html */
+  ok(!!(await tabB.$('[data-action="export-pdf-revised"]')), '20h drafts.html offers Save revised PDF');
+  await tabB.close();
+
+  /* i) restoring a draft takes the Breakdown with it */
+  await fresh('Proof Restore', [{ id: 'k', type: 'scene', text: 'INT. KITCHEN - DAY' }, { id: 'k2', type: 'action', text: 'Tea.' },
+    { id: 'r', type: 'scene', text: 'EXT. ROOF - NIGHT' }, { id: 'r2', type: 'action', text: 'Wind.' }]);
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.click('[data-dr="new"]');
+  await page.click('.lp-card [data-lp="go"]');
+  await page.waitForTimeout(400);
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.click('[data-el="r2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Alt+1');
+  await page.keyboard.type('INT. CAVE - NIGHT');
+  await page.waitForTimeout(3000);
+  s = await stored();
+  const before = s.scenes.map((x) => x.location);
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  await page.click('.dr-row [data-dr="restore"]');
+  await page.waitForSelector('.lp-card [data-lp="go"]');
+  await page.click('.lp-card [data-lp="go"]');
+  await page.waitForTimeout(800);
+  s = await stored();
+  ok(before.includes('CAVE') && !s.scenes.some((x) => x.location === 'CAVE') && s.scenes.length === 2,
+    '20i a scene the restored draft lacks leaves the Breakdown', { before, after: s.scenes.map((x) => x.location) });
+
+  /* j) the phone toolbar: one row, the type named in full, Notes shows its icon */
+  await fresh('Proof Phone', FOUR);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  const tb = await page.evaluate(() => {
+    const b = (s) => { const n = document.querySelector(s); return n ? n.getBoundingClientRect() : null; };
+    const name = document.querySelector('.sc-typename');
+    return {
+      sameRow: Math.round(b('.sc-tools-l').top) === Math.round(b('.sc-tools-r').top),
+      nameFits: name.scrollWidth <= name.clientWidth + 1,
+      ai: Math.round(b('.sc-tools .ai-pill').height), tools: Math.round(b('.sc-tools-r .sc-tools-sheet-btn').height),
+      icon: Math.round(b('.sc-tools .nt-open .k-sym').width), notesW: Math.round(b('.sc-tools .nt-open').width)
+    };
+  });
+  ok(tb.sameRow, '20j the phone toolbar is one row (the ⋯ button no longer wraps alone)', tb);
+  ok(tb.nameFits && tb.ai === tb.tools, '20j the type pill names the type in full; the AI pill is the row\'s height', tb);
+  ok(tb.icon > 8 && tb.notesW >= 44, '20j Notes shows its icon in a thumb-sized button', tb);
+  await page.setViewportSize({ width: 1280, height: 900 });
+}
 
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {

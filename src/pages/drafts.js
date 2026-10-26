@@ -38,7 +38,10 @@ import * as Script from '../lib/script.js';
 import * as Drafts from '../lib/drafts.js';
 import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
-import { mountRevisionTools, renderCompareTool, renderNumberingTool, presetCompare } from '../ui/write-revisions.js';
+import { mountRevisionTools, renderCompareTool, renderRevisedPagesTool, renderNumberingTool, presetCompare } from '../ui/write-revisions.js';
+import { subscribe, onWriteElsewhere, currentProjectId } from '../lib/store.js';
+import { exportMeta as exportMetaOf } from '../lib/write-model.js';
+import { formatPages, pageCount } from '../lib/script.js';
 /* What this page says about the drafts: src/lib/screenplay-drafts-model.js. */
 import { TITLE_LABELS, titlePlaceholder as titlePlaceholderFor } from '../lib/write-format.js';
 import {
@@ -50,9 +53,30 @@ const app = document.getElementById('app');
 const typesetter = () => import('../lib/screenplay-export.js');
 const pdfLib = () => import('../lib/pdf.js');
 
+/* THE PAGE'S COPY IS RE-READ BEFORE EVERY WRITE. It used to be read
+   once at load, and every save wrote that copy back whole — so a title
+   typed here, or "Save as new draft", put back a script the Writer (in
+   another tab) or a synced copy had since moved on from (QA: the newer
+   lines were lost, and the new draft was taken from the stale copy).
+   Typed title-page fields wait in `tpPatch` and are laid over the fresh
+   copy at the write. */
 let doc = Script.loadScript();
-const save = () => { Script.saveScript(doc); };
 let tpTimer = null;
+let tpPatch = null;                 // { field: value } typed, not yet saved
+const applyPatch = () => {
+  if (!tpPatch) return;
+  doc.titlePage = Script.normaliseTitlePage(doc.titlePage);
+  Object.assign(doc.titlePage, tpPatch);
+};
+/** The stored script, with anything typed here and not yet saved. */
+function reload() { doc = Script.loadScript(); applyPatch(); }
+const save = () => { Script.saveScript(doc); };
+/** Re-read, then write what is pending. Every action calls this first. */
+function fresh() {
+  clearTimeout(tpTimer); tpTimer = null;
+  reload();
+  if (tpPatch) { tpPatch = null; save(); }
+}
 
 const say = (m, type = 'info') => { try { StudioUI.toast(m, { type }); } catch (e) { /* no chrome yet */ } };
 
@@ -60,10 +84,22 @@ mountRevisionTools({
   getDoc: () => doc,
   persistNow: () => save(),
   render: () => render(),
-  exportPDF: () => {}
+  exportPDF: (extra) => exportRevisedPDF(extra)
 });
-const leave = installLeavePrompt({ getDoc: () => doc, persistNow: () => { clearTimeout(tpTimer); save(); } });
+const leave = installLeavePrompt({ getDoc: () => doc, persistNow: () => fresh() });
 document.addEventListener('fms:drafts-changed', () => render());
+/* A write elsewhere (the Writer in another tab, or a synced copy) is
+   shown here; a title field being typed in keeps its focus and value. */
+function onScriptElsewhere() {
+  reload();
+  const typing = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-tp-field]');
+  if (typing) refreshState(); else render();
+}
+onWriteElsewhere(['fms_script_v1'], onScriptElsewhere);
+subscribe('cloud:synced', (p) => {
+  if (!p || (p.projectId && p.projectId !== currentProjectId())) return;
+  if (p.scope === 'script' || (Array.isArray(p.scopes) && p.scopes.includes('script'))) onScriptElsewhere();
+});
 
 /* ---- title page: the same fields and labels as write.js ---------- */
 const titlePlaceholder = (f) => titlePlaceholderFor(f, Script.projectTitle());
@@ -92,10 +128,10 @@ function titlePageBlock() {
 delegate(document, 'input', '[data-tp-field]', (e, input) => {
   const f = input.dataset.tpField;
   if (!Script.TITLE_FIELDS.includes(f)) return;
-  doc.titlePage = Script.normaliseTitlePage(doc.titlePage);
-  doc.titlePage[f] = input.value;
+  tpPatch = { ...(tpPatch || {}), [f]: input.value };
+  applyPatch();
   clearTimeout(tpTimer);
-  tpTimer = setTimeout(() => { tpTimer = null; save(); refreshState(); }, 400);
+  tpTimer = setTimeout(() => { fresh(); refreshState(); }, 400);
 });
 
 /* ---- the list ---------------------------------------------------- */
@@ -155,7 +191,9 @@ function render() {
   }
 
   const drafts = Drafts.listDrafts(doc);
-  const last = drafts[0] || null;
+  /* The current draft is the newest REAL one: a side copy the sync kept
+     ("From another device") is listed but never Current (drafts.js). */
+  const last = Drafts.latestDraft(doc);
   const next = nextDraftName(doc);
 
   main.append(h('div.dr-bar', {}, [
@@ -170,10 +208,11 @@ function render() {
   if (!drafts.length) {
     main.append(emptyState({ icon: 'history', class: 'dr-empty', title: 'No drafts yet.', body: '“Save as new draft” makes ' + next + ' from the script as it is now.' }));
   } else {
-    main.append(h('ol.dr-list', { 'aria-label': 'Drafts, newest first' }, drafts.map((d, i) => row(d, i === 0))));
+    main.append(h('ol.dr-list', { 'aria-label': 'Drafts, newest first' }, drafts.map((d) => row(d, !!last && d.id === last.id))));
   }
 
   main.append(h('div#dr-compare', {}, [renderCompareTool()]));
+  main.append(h('div#dr-revised', {}, [renderRevisedPagesTool()].filter(Boolean)));
   /* The scene-number lock: the stripboard's "Manage numbering" lands
      here. Filtered — Element.append(null) prints "null". */
   main.append(h('div#numbering.dr-numbering', {}, [renderNumberingTool()].filter(Boolean)));
@@ -189,7 +228,7 @@ function refreshStateClass(main) {
 
 /* ---- actions ----------------------------------------------------- */
 delegate(document, 'click', '[data-dr="new"]', async () => {
-  save();
+  fresh();
   const name = nextDraftName(doc);
   const res = await choiceDialog({
     title: 'Save as ' + name,
@@ -198,6 +237,7 @@ delegate(document, 'click', '[data-dr="new"]', async () => {
     choices: [{ id: 'go', label: 'Save as ' + name, primary: true }, { id: 'cancel', label: 'Cancel' }]
   });
   if (res.id !== 'go') return;
+  fresh();   // the dialog took time: the script may have moved on
   const made = Drafts.saveNewDraft(doc, { note: res.value });
   save();
   say('Saved as ' + made.label + '.', 'success');
@@ -205,15 +245,16 @@ delegate(document, 'click', '[data-dr="new"]', async () => {
 });
 
 delegate(document, 'click', '[data-dr="update"]', async () => {
+  fresh();
   const last = Drafts.latestDraft(doc);
   if (!last) return;
-  save();
   const res = await choiceDialog({
     title: 'Update ' + last.label + '?',
     body: 'Its copy is replaced by the script as it is now. What it held before is not kept.',
     choices: [{ id: 'go', label: 'Update ' + last.label, primary: true }, { id: 'cancel', label: 'Cancel' }]
   });
   if (res.id !== 'go') return;
+  fresh();
   Drafts.updateDraft(doc, last.id);
   save();
   say('Updated ' + last.label + '.', 'success');
@@ -222,16 +263,33 @@ delegate(document, 'click', '[data-dr="update"]', async () => {
 
 delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   const id = btn.dataset.id;
+  fresh();
   const d = Drafts.listDrafts(doc).find((x) => x.id === id);
   if (!d) return;
-  save();
   const dirty = Drafts.changedSinceDraft(doc);
   const res = await choiceDialog(restoreDialogSpec(d, dirty, nextDraftName(doc)));
   if (res.id === 'cancel' || res.id === null) return;
+  fresh();
   if (res.id === 'save') Drafts.saveNewDraft(doc);
+  /* The Breakdown follows the restore, the way it follows a heading
+     deleted in the Writer (QA: a scene the restored script no longer
+     has stayed in the Breakdown). The baseline is the headings as they
+     stood: a heading that survives relinks by its words (scene-sync
+     rule 2), a gone one goes to the bin as a SCRIPT entry, so typing it
+     again brings it back. */
+  let Sync = null;   // loaded at the press: no first-paint cost here
+  try { Sync = await import('../lib/scene-sync.js'); } catch (e) { console.warn('[drafts] scene sync', e); }
+  fresh();
+  const prev = Sync ? Sync.headingMap(doc.elements) : null;
   Drafts.restoreDraft(doc, id);
   save();
-  say('Restored ' + d.label + ' as the working copy.', 'success');
+  let binned = 0;
+  try {
+    const r = Sync ? Sync.syncScript(doc.elements, { prev, numbering: doc.numbering }) : null;
+    binned = (r && r.result && r.result.binned.length) || 0;
+  } catch (e) { console.warn('[drafts] scene sync', e); }
+  say('Restored ' + d.label + ' as the working copy.'
+    + (binned ? ' ' + binned + (binned === 1 ? ' scene it does not have went' : ' scenes it does not have went') + ' to the Breakdown’s bin.' : ''), 'success');
   render();
 });
 
@@ -267,5 +325,32 @@ delegate(document, 'click', '[data-dr="pdf"]', async (e, btn) => {
     after: () => { if (node) { node.remove(); node = null; } }
   });
 });
+
+/* Revised pages: the working copy, an asterisk beside every line changed
+   since the chosen draft (write-revisions.js works out `extra.marks`).
+   The marks sit in the right margin, so it takes the wide setup the
+   scene numbers use, as write.html did. */
+async function exportRevisedPDF(extra = {}) {
+  if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
+  const main = document.getElementById('main');
+  if (!main) return;
+  let Typeset, PDF;
+  try { [Typeset, PDF] = [await typesetter(), (await pdfLib()).default]; }
+  catch (err) { say('The typesetter could not be loaded. Check the connection and try again.', 'error'); return; }
+  const meta = exportMetaOf(doc, Script.projectTitle());
+  let node = null;
+  PDF.exportPDF({
+    scope: 'screenplay',
+    setup: 'screenplay-wide',
+    classes: ['pdf-sn', 'pdf-revmarks'],
+    title: Script.projectTitle() + ' — Screenplay',
+    subtitle: [meta.revision, formatPages(pageCount(doc.elements)) + ' pages', extra.note].filter(Boolean).join(' · '),
+    before: () => {
+      node = Typeset.buildDocument(doc, { ...meta, sceneNumbers: Script.isNumberingLocked(doc.numbering), marks: extra.marks });
+      main.append(node);
+    },
+    after: () => { if (node) { node.remove(); node = null; } }
+  });
+}
 
 render();

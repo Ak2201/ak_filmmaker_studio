@@ -39,6 +39,17 @@ export function typeKeyHint(type, preset, known) {
   return digit ? '[Alt+' + digit + ']' : '';
 }
 
+/* The chip bar's short labels. The ORDER is the preset's Alt+digit
+   order (Keys.cycleOrder), so the 4th chip is what Alt+4 sets and the
+   chips agree with the type menu and the shortcuts (QA: the bar was a
+   fixed list with Dialogue before Paren and no Shot). */
+const CHIP_LABELS = { scene: 'Scene', action: 'Action', character: 'Character', paren: 'Paren',
+  dialogue: 'Dialogue', transition: 'Trans', shot: 'Shot' };
+/** [{ id, label }] for the chip bar, in the preset's digit order. */
+export function chipTypes(preset, known) {
+  return Keys.cycleOrder(preset, known).map((id) => ({ id, label: CHIP_LABELS[id] || typeName(id) }));
+}
+
 /** A type's name as the hint strip says it. */
 export const typeName = (t) => (Keys.TYPE_NAMES && Keys.TYPE_NAMES[t]) || t;
 
@@ -136,7 +147,22 @@ export function importReadText(name, plan) {
 
 /** What an import did, as the toast says it. */
 export const importDoneText = (done) =>
-  'Imported ' + done.elements + ' lines and ' + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '. Next: Screenplay Analysis.';
+  'Imported ' + done.elements + ' lines and ' + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '.'
+  + (done.binned > 0
+    ? ' The Breakdown’s earlier ' + (done.binned === 1 ? 'scene is' : done.binned + ' scenes are')
+      + ' in its bin, with their shots and notes; restore any you want from there.'
+    : '')
+  + ' Next: Screenplay Analysis.';
+
+/** The replace-import confirmation: what happens to the script AND to the
+    Breakdown (QA: it named only the draft, and the rows' work went to the
+    bin unannounced). `sceneCount` is the Breakdown's rows now. */
+export const importReplaceBody = (sceneCount) =>
+  'A draft of the current one is saved first, so it can be restored.'
+  + (sceneCount > 0
+    ? ' The Breakdown’s ' + (sceneCount === 1 ? 'scene goes' : sceneCount + ' scenes go')
+      + ' to its bin, with their shots and notes, and the imported scenes take their place.'
+    : '');
 
 /** The working-copy PDF's subtitle. */
 export const pdfSubtitle = (doc) =>

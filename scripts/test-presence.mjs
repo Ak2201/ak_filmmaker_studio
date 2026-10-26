@@ -54,6 +54,9 @@ eq(P.editingWarning([{ name: 'Cal', editing: true }, { name: 'Ann', editing: fal
 ok(/^Ann and Cal are writing/.test(P.editingWarning([{ name: 'Ann', editing: true }, { name: 'Cal', editing: true }])), 'two people');
 ok(/^A, B and C are/.test(P.editingWarning(['A', 'B', 'C'].map((name) => ({ name, editing: true })))), 'three people');
 eq(P.editingWarning([]), '', 'nobody: no warning');
+// co-editing on (§49): saves merge, so the warning must not say they replace each other
+ok(!/replace each other|take turns/.test(P.editingWarning([{ name: 'Cal', editing: true }], true)), 'co-edit: no take-turns advice');
+ok(/merge line by line/.test(P.editingWarning([{ name: 'Cal', editing: true }], true)), 'co-edit: says saves merge');
 
 /* One channel carries both pages: a Story tab is not in the script, and the reverse. */
 {

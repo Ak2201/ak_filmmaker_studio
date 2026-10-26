@@ -563,5 +563,26 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(shape(bb.elements), shape(br), '15: docx round trip keeps the line breaks inside an element');
 }
 
+/* ---- a paste into one line of the Writer (src/lib/script-paste.js) ----
+   QA: a multi-line paste into a heading made ONE element of the whole
+   scene. The editor parses it the way the Import paste box does. */
+{
+  const Paste = await import('../src/lib/script-paste.js');
+  const text = 'INT. KITCHEN - DAY\n\nMara pours tea.\n\nMARA\nNot now.';
+  ok(Paste.wantsSplit('scene', text) && Paste.wantsSplit('action', text), 'a multi-paragraph paste is split');
+  ok(Paste.wantsSplit('scene', 'A\nB') && !Paste.wantsSplit('action', 'one line\nnext line'), 'a one-line type takes no newline; action keeps its own line break');
+  ok(!Paste.wantsSplit('scene', 'INT. HALL - DAY'), 'a one-line paste is the browser\'s');
+  const parsed = I.parseScript(text, '').elements;
+  const plan = Paste.planPaste({ type: 'scene', before: '', after: '' }, parsed, text);
+  eq([plan.type + ':' + plan.text, ...plan.insert.map((e) => e.type + ':' + e.text)],
+    ['scene:INT. KITCHEN - DAY', 'action:Mara pours tea.', 'character:MARA', 'dialogue:Not now.'], 'the pasted scene becomes its elements');
+  const mid = Paste.planPaste({ type: 'action', before: 'He waits. ', after: ' Then sits.' }, parsed, text);
+  eq([mid.type + ':' + mid.text, ...mid.insert.map((e) => e.type + ':' + e.text)],
+    ['action:He waits.', 'scene:INT. KITCHEN - DAY', 'action:Mara pours tea.', 'character:MARA', 'dialogue:Not now.', 'action:Then sits.'],
+    'into the middle of a line: the line keeps its head, the tail follows the paste');
+  eq(Paste.planPaste({ type: 'scene', before: 'INT. ', after: '' }, [{ type: 'action', text: 'KITCHEN\n- DAY' }], 'KITCHEN\n- DAY').text,
+    'INT. KITCHEN - DAY', 'one piece into a heading: its line breaks fold to spaces');
+}
+
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

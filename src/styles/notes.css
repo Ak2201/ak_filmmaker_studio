@@ -233,7 +233,8 @@
 .nt-filters .bd-sel { width: auto; max-width: 14rem; }
 
 /* A phone's Screenplay toolbar has no room for the word: icon and count
-   only there (prove:scroll measured 5px of sideways scroll at 390). */
+   only there (prove:scroll measured 5px of sideways scroll at 390). The
+   ICON (.k-sym) is not the word: hiding it too left an empty box (QA). */
 @media (max-width: 719.98px) {
-  .sc-tools .nt-open > span:not(.nt-count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sc-tools .nt-open > span:not(.nt-count):not(.k-sym) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }

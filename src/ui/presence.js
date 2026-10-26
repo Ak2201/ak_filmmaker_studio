@@ -126,7 +126,7 @@ export function mountPresence(o) {
     }
     const warn = o.warn();
     if (warn) {
-      const t = editingWarning(people);
+      const t = editingWarning(people, !!(o.coEdit && o.coEdit()));
       warn.hidden = !t;
       if (warn.textContent !== t) warn.textContent = t;
     }

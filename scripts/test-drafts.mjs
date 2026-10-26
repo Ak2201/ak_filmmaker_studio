@@ -129,5 +129,24 @@ ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
   ok(!('numbering' in free), 'no lock, none invented');
 }
 
+/* A side copy the sync kept by itself is never the current draft (QA:
+   "From another device" became Current and Update overwrote it). */
+{
+  const Inc = await import('../src/lib/script-incoming.js');
+  const mine = { elements: els('INT. A - DAY', 'Mine.'), revisions: [], documents: [] };
+  const theirs = { elements: els('INT. A - DAY', 'Theirs.'), revisions: [] };
+  const kept = Inc.keepBoth(mine, theirs, Inc.ARRIVAL_PREFIX + '21:09');
+  eq(kept.revisions.length, 1, 'the arrival is kept as a revision');
+  ok(D.latestDraft(kept) === null, 'an arrival alone is not the current draft');
+  ok(D.changedSinceDraft(kept) === true, 'and the working copy reads as changed since no draft');
+  ok(D.listDrafts(kept).length === 1, 'the arrival is still listed');
+  const real = D.saveNewDraft(kept);
+  eq(real.name, 'Draft 1', 'the first real draft is Draft 1, not Draft 2');
+  const again = Inc.keepBoth(kept, theirs, Inc.ARRIVAL_PREFIX + '21:20');
+  ok(D.latestDraft(again).id === real.id, 'a later arrival does not displace the real current draft');
+  const yours = Inc.takeTheirs(again, theirs, Inc.YOURS_PREFIX + '21:21');
+  ok(D.latestDraft(yours).id === real.id, '"Your version" is a side copy too');
+}
+
 console.log(fails ? fails + ' FAILED of ' + n : 'drafts: all ' + n + ' checks passed');
 process.exit(fails ? 1 : 0);

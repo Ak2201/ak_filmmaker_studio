@@ -14,8 +14,8 @@
    script gets ONE blank line in memory so there is somewhere to type,
    and that line is saved only when the writer types in it.
    ============================================================ */
-import { flushStorage, currentProject, currentProjectId, subscribe } from '../lib/store.js';
-import { incomingAction, keepBoth, takeTheirs, scriptSignature, ARRIVAL_PREFIX } from '../lib/script-incoming.js';
+import { flushStorage, currentProject, currentProjectId, subscribe, onWriteElsewhere } from '../lib/store.js';
+import { incomingAction, keepBoth, takeTheirs, scriptSignature, ARRIVAL_PREFIX, YOURS_PREFIX } from '../lib/script-incoming.js';
 import { mergeScript } from '../lib/script-merge.js';
 import { ask, askDanger } from '../ui/dialog.js';
 import '../styles/base.css';
@@ -62,7 +62,7 @@ import { latestDraft } from '../lib/drafts.js';
 import {
   draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
   scriptStats, estimatedRuntime, splitRuntime as splitRuntimeOf, targetDeltaText, targetLabel,
-  targetPagesFor, scenePosText, shotsSummary, importReadText, importDoneText, pdfSubtitle
+  targetPagesFor, scenePosText, shotsSummary, importReadText, importDoneText, pdfSubtitle, chipTypes, importReplaceBody
 } from '../lib/screenplay-model.js';
 import { pageAnchors } from '../lib/write-format.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
@@ -202,17 +202,28 @@ function mergeIncoming(fresh) {
   if (changedHere) showDoc();
   if (differsThere) persistNow();   // this writer's part goes up too
 }
-function onIncomingScript(live) {
+/* An earlier "Use theirs" offer is about an arrival that a newer copy
+   has since replaced (QA: after a later copy LOADED, the old toast stayed
+   up — an actionable toast never times out — and pressing it put the
+   OLDER arrival back over the newest copy and pushed it). Every branch
+   that is not a fresh offer withdraws it. */
+function dropTheirsOffer() {
+  if (!theirsToast) return;
+  try { theirsToast.dismiss(); } catch (e) { /* already gone */ }
+  theirsToast = null;
+}
+function onIncomingScript(live, where = 'device') {
   const fresh = Script.loadScript();
   const dirty = !!(saveTimer || saving || saveOwed) || Date.now() - lastTypedAt < 2500;
-  if (coEditOn()) { mergeIncoming(fresh); return; }
+  if (coEditOn()) { dropTheirsOffer(); mergeIncoming(fresh); return; }
   notePageBase(fresh);
   const act = incomingAction({ mine: doc, fresh, dirty });
-  if (act === 'same') return;
+  if (act === 'same') { dropTheirsOffer(); return; }
   if (act === 'load') {
+    dropTheirsOffer();
     doc = fresh;
     showDoc();
-    if (!live) say('Updated with the newer copy from your other device.');   // the live path already said so
+    if (!live && where === 'device') say('Updated with the newer copy from your other device.');   // the live path already said so
     return;
   }
   const arrived = fresh;
@@ -227,15 +238,20 @@ function onIncomingScript(live) {
   refreshDraftLabel();
   try {
     if (theirsToast) theirsToast.dismiss();
-    theirsToast = StudioUI.toast('Another device saved a different version of this script while you were writing. Yours is kept; theirs is in Drafts as “From another device”.', {
+    const offer = StudioUI.toast((where === 'window'
+      ? 'This script was saved in another window while you were writing here.'
+      : 'Another device saved a different version of this script while you were writing.')
+      + ' Yours is kept; theirs is in Drafts as “From another device”.', {
       type: 'info', action: 'Use theirs',
       onAction: () => {
+        if (theirsToast !== offer) return;   // withdrawn: a newer copy came since
         theirsToast = null;
-        doc = takeTheirs(doc, arrived, 'Your version, ' + clock());
+        doc = takeTheirs(doc, arrived, YOURS_PREFIX + clock());
         persistNow();
         showDoc();
       }
     });
+    theirsToast = offer;
   } catch (e) { /* chrome may not be up */ }
 }
 subscribe('cloud:synced', (p) => {
@@ -243,6 +259,11 @@ subscribe('cloud:synced', (p) => {
   if (p.scope === 'script') onIncomingScript(true);
   else if (Array.isArray(p.scopes) && p.scopes.includes('script')) onIncomingScript(false);
 });
+/* The same script open in ANOTHER WINDOW of this browser saves straight
+   into storage too, and `cloud:synced` never fires for that (QA: tab B
+   kept its stale copy and its next save wiped tab A's edit, no draft
+   kept). Same decision as a synced copy: load it, or keep both. */
+onWriteElsewhere(['fms_script_v1'], () => onIncomingScript(false, 'window'));
 addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') persistBeforeLeaving();
 });
@@ -253,7 +274,12 @@ const knownTypes = () => ELEMENT_TYPE_IDS;
 WriteKeys.configure({
   get known() { return knownTypes(); },
   getPrefs: () => keyPrefs,
-  setPrefs: (patch) => { keyPrefs = Keys.saveWritePrefs(patch); return keyPrefs; }
+  setPrefs: (patch) => {
+    keyPrefs = Keys.saveWritePrefs(patch);
+    const chips = document.getElementById('scChips');   // a new preset reorders the chips
+    if (chips) { fillChips(chips); refreshDerivedUi(); }
+    return keyPrefs;
+  }
 });
 const idOf = (el, attr) => el.closest(`[data-${attr}]`)?.dataset[attr];
 const indexOfEl = (id) => doc.elements.findIndex((e) => e.id === id);
@@ -533,12 +559,13 @@ function buildTop() {
   ]);
 }
 
+function fillChips(chips) {
+  chips.replaceChildren(...chipTypes(keyPrefs.preset, knownTypes()).map(({ id, label }) =>
+    h('button.sc-chip', { type: 'button', 'data-action': 'sc-chip', 'data-type': id, text: label })));
+}
 function buildChips() {
   const chips = h('div#scChips.sc-chips', { role: 'toolbar', 'aria-label': 'Line type' });
-  [['scene', 'Scene'], ['action', 'Action'], ['character', 'Character'],
-    ['dialogue', 'Dialogue'], ['paren', 'Paren'], ['transition', 'Trans']].forEach(([id, label]) => {
-    chips.append(h('button.sc-chip', { type: 'button', 'data-action': 'sc-chip', 'data-type': id, text: label }));
-  });
+  fillChips(chips);
   return chips;
 }
 
@@ -1320,7 +1347,7 @@ delegate(document, 'click', '[data-action="sc-imp-paste"]', () => {
 delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   if (!imp) return;
   const blank = isBlankDoc();
-  if (imp.replace && !blank && !(await ask({ title: 'Replace the screenplay?', body: 'A draft of the current one is saved first, so it can be restored.', confirm: 'Replace' }))) return;
+  if (imp.replace && !blank && !(await ask({ title: 'Replace the screenplay?', body: importReplaceBody(Scenes.listScenes().length), confirm: 'Replace' }))) return;
   if (!imp) return;
   if (blank) doc.elements = [];
   const done = commitImportedScript(imp.plan, {
@@ -1343,6 +1370,7 @@ render();
 presence = mountPresence({
   strip: () => document.getElementById('scPeers'),
   warn: () => document.getElementById('scPeerWarn'),
+  coEdit: coEditOn,
   rowOf: (id) => editor.rowOf(id)
 });
 mountTamilType();

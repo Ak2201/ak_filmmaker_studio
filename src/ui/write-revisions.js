@@ -425,9 +425,16 @@ export function renderCompareTool() {
   const doc = ctx.getDoc();
   return doc && doc.revisions.length ? renderCompare(doc) : null;
 }
+/** The Revised pages panel on its own, for the Drafts page, where
+    write.html#revisions lands now (QA: the export was only on the
+    retired write.html). Null until there is a draft to mark against. */
+export function renderRevisedPagesTool() {
+  const doc = ctx.getDoc();
+  return doc && doc.revisions.length ? renderRevisedPages(doc) : null;
+}
 /** Preselect the two sides (a draft id, or 'live') and forget the last result. */
 export function presetCompare(from, to = LIVE) {
   cmpFrom = from; cmpTo = to; lastResult = null;
 }
 
-export default { mountRevisionTools, renderRevisionTools, renderCompareTool, presetCompare };
+export default { mountRevisionTools, renderRevisionTools, renderCompareTool, renderRevisedPagesTool, presetCompare };

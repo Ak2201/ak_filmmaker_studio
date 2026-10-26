@@ -1219,9 +1219,11 @@ export function parseScript(raw, filename) {
        Fountain. A list of the formats that exist, written out a
        second time, is a list that is wrong by the next format. */
     formatLabel: (FORMATS.find((f) => f.id === format) || {}).label || format,
-    meta: result.meta || {},
-    // The file's title page as the script model's fields, or null.
-    titlePage: titlePageFromMeta(result.meta),
+    meta: { ...((raw && raw.docxMeta) || {}), ...(result.meta || {}) },
+    // The file's title page as the script model's fields, or null. A
+    // .docx carries its own (docxTitleMeta), read before the text path
+    // cut the front matter off.
+    titlePage: titlePageFromMeta({ ...((raw && raw.docxMeta) || {}), ...(result.meta || {}) }),
     elements,
     scenes: rows,
     numbering,
@@ -1346,8 +1348,52 @@ export function docxScreenplayText(paras) {
   const text = new String(out.join('\n'));
   text.docxTypes = types;
   text.docxCont = cont;
+  const meta = docxTitleMeta(paras);
+  if (meta) text.docxMeta = meta;
   return { text, styled, total };
 }
+
+/* THE TITLE PAGE OF A .docx. The text path cuts everything before the
+   first page break off as front matter, which is right for the script
+   and lost the title page itself (QA: a .docx round trip dropped title,
+   author, contact and date, while .fdx and .fountain kept them). The
+   front matter is read here instead, the way src/lib/screenplay-docx.js
+   lays it out — and Final Draft's Word export lays it out the same:
+   "Title Page" paragraphs centred (title, credit, author, source), then
+   plain paragraphs, the contact on the left and the draft and date on
+   the right. Only with a "Title Page" style and a page break, so a
+   script that merely starts with a centred line is never read as one.
+   Returns titlePageFromMeta()'s input, or null. */
+const CREDIT_RE = /^(?:(?:written|screenplay|story|teleplay|adapted|original screenplay)\b.*\bby|by)$/i;
+const DATE_RE = /\d{1,4}[/.-]\d{1,2}|\b(?:19|20)\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i;
+function docxTitleMeta(paras) {
+  const list = paras || [];
+  const brk = list.findIndex((p) => p && p.pageBreak);
+  if (brk <= 0) return null;
+  const front = list.slice(0, brk).filter((p) => String(p.text || '').trim());
+  const centred = front.filter((p) => docxStyleName(p.style) === 'titlepage');
+  if (!centred.length) return null;
+  const lines = centred.map((p) => String(p.text).trim());
+  const meta = { title: lines[0] };
+  let i = 1;
+  if (lines[i] && CREDIT_RE.test(lines[i])) meta.credit = lines[i++];
+  if (lines[i]) meta.author = lines[i++];
+  if (lines.length > i) meta.source = lines.slice(i).join(' ');
+  const plain = front.filter((p) => docxStyleName(p.style) !== 'titlepage');
+  const contact = [];
+  for (const p of plain) {
+    const t = String(p.text).trim();
+    if (p.jc === 'right' || p.jc === 'end') {
+      const parts = t.split('\n').map((x) => x.trim()).filter(Boolean);
+      if (parts.length > 1) { meta.draft = parts[0]; meta.date = parts.slice(1).join(' '); }
+      else if (DATE_RE.test(t)) meta.date = t;
+      else meta.draft = t;
+    } else contact.push(t);
+  }
+  if (contact.length) meta.contact = contact.join('\n');
+  return meta;
+}
+const docxStyleName = (style) => String(style || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* A .docx is bytes too: src/lib/docx-text.js reads its paragraphs (no
    library, the same reasons as pdf-text.js), imported here dynamically

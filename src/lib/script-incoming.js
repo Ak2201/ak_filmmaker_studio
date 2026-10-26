@@ -68,8 +68,18 @@ const COALESCE_MS = 10 * 60 * 1000;
    never touched; "Your version" drafts are the writer's own lines and
    are left alone too. The newest ARRIVAL_KEEP stay. */
 export const ARRIVAL_PREFIX = 'From another device, ';
+/** The name "Use theirs" gives the writer's own copy as it steps aside. */
+export const YOURS_PREFIX = 'Your version, ';
 const ARRIVAL_KEEP = 10;
 const isArrival = (r) => String((r && r.name) || '').startsWith(ARRIVAL_PREFIX);
+/** A copy this module kept by itself (an arrival, or "Your version") and
+    the writer never numbered: a SIDE copy, not a draft. It is listed on
+    drafts.html, but it is never the "current" draft, the one "changed
+    since the last draft" is measured against or the one Update
+    overwrites (QA: an arrival became Current, and Update replaced the
+    only copy of the other device's lines). */
+export const isSideCopy = (r) => !!r && !(Number.isFinite(r.number) && r.number > 0)
+  && (isArrival(r) || String(r.name || '').startsWith(YOURS_PREFIX));
 
 function capArrivals(revs) {
   const arrivals = revs.filter(isArrival);
@@ -109,4 +119,4 @@ export function takeTheirs(mine, fresh, label) {
   };
 }
 
-export default { scriptSignature, incomingAction, unionRevisions, keepBoth, takeTheirs };
+export default { scriptSignature, incomingAction, unionRevisions, keepBoth, takeTheirs, isSideCopy, ARRIVAL_PREFIX, YOURS_PREFIX };

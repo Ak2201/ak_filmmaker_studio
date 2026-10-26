@@ -20,6 +20,7 @@ import {
   makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage, pageCount,
   isNumberingLocked
 } from './script.js';
+import { isSideCopy } from './script-incoming.js';
 
 /* FNV-1a over the things that make two scripts different. Text, type and
    the dual flag; ids are left out on purpose — a restored or snapshotted
@@ -67,13 +68,17 @@ export function listDrafts(doc) {
   return revs.map(describe).reverse();
 }
 
+/** The newest real draft. A side copy the sync kept by itself
+    ("From another device", "Your version" — script-incoming.js) is
+    listed, but is never the current draft. */
 export function latestDraft(doc) {
   const revs = (doc && Array.isArray(doc.revisions)) ? doc.revisions : [];
-  return revs.length ? describe(revs[revs.length - 1], revs.length - 1) : null;
+  for (let i = revs.length - 1; i >= 0; i--) if (!isSideCopy(revs[i])) return describe(revs[i], i);
+  return null;
 }
 
 const nextNumber = (doc) => (doc.revisions || [])
-  .reduce((m, r, i) => Math.max(m, Number.isFinite(r.number) && r.number > 0 ? r.number : i + 1), 0) + 1;
+  .reduce((m, r, i) => (isSideCopy(r) ? m : Math.max(m, Number.isFinite(r.number) && r.number > 0 ? r.number : i + 1)), 0) + 1;
 
 export function nextDraftNumber(doc) { return nextNumber(doc); }
 

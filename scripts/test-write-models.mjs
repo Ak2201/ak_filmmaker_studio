@@ -16,6 +16,7 @@ const W = await import('../src/lib/write-model.js');
 const S = await import('../src/lib/screenplay-model.js');
 const D = await import('../src/lib/screenplay-drafts-model.js');
 const P = await import('../src/lib/write-prefs.js');
+const Keys = (await import('../src/lib/write-keys.js')).default;
 
 let n = 0;
 const ok = (name, fn) => { fn(); n++; };
@@ -80,6 +81,10 @@ ok('screenplay model', () => {
   assert.equal(S.isBlankScript([{ text: ' ' }]), true);
   assert.equal(S.showStartHint([{ text: '' }, { text: '' }]), false);
   assert.equal(S.importDoneText({ elements: 2, scenes: 1 }), 'Imported 2 lines and 1 scene. Next: Screenplay Analysis.');
+  // QA: a replace import binned the Breakdown's rows and said nothing
+  assert.match(S.importDoneText({ elements: 4, scenes: 2, binned: 1 }), /earlier scene is in its bin/);
+  assert.match(S.importReplaceBody(3), /3 scenes go to its bin/);
+  assert.equal(S.importReplaceBody(0), 'A draft of the current one is saved first, so it can be restored.');
 });
 
 ok('drafts model', () => {
@@ -100,6 +105,15 @@ ok('write prefs read-merge-write', () => {
   assert.deepEqual(JSON.parse(localStorage.getItem('fms_write_prefs_v1')), { keys: 'x', focusDim: false });
   localStorage.setItem('fms_write_prefs_v1', '[1]');
   assert.deepEqual(P.readWritePrefs(), {});
+});
+
+ok('chipTypes follows the preset digits (QA: chip 4 was Dialogue while Alt+4 set Paren)', () => {
+  const known = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot'];
+  const ids = S.chipTypes('finaldraft', known).map((c) => c.id);
+  assert.deepEqual(ids, ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot']);
+  const dm = Keys.digitMap('finaldraft', known);
+  ids.forEach((id, i) => { if (dm[String(i + 1)]) assert.equal(dm[String(i + 1)], id, 'chip ' + (i + 1) + ' is Alt+' + (i + 1)); });
+  assert.equal(S.chipTypes('finaldraft', known).find((c) => c.id === 'transition').label, 'Trans');
 });
 
 console.log('✓ write models: ' + n + ' groups');

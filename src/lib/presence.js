@@ -91,13 +91,18 @@ export function noteSeen(raw, prevAt = {}, lastSeen = {}, now = Date.now()) {
   return { at, seen };
 }
 
-/** The sentence the warning strip says, or '' when nobody else types. */
-export function editingWarning(people) {
+/** The sentence the warning strip says, or '' when nobody else types.
+ *  `coEdit` is true when the co-editing switch (§49) is on: then saves
+ *  MERGE line by line, so the only clash left is the same line, and
+ *  "saves replace each other" would be untrue. */
+export function editingWarning(people, coEdit = false) {
   const busy = (people || []).filter((p) => p.editing).map((p) => p.name);
   if (!busy.length) return '';
   const who = busy.length === 1 ? busy[0] : busy.slice(0, -1).join(', ') + ' and ' + busy[busy.length - 1];
   return who + (busy.length === 1 ? ' is' : ' are') + ' writing in this script now. '
-    + 'Saves replace each other, so agree who writes, or take turns.';
+    + (coEdit
+      ? 'Your saves merge line by line; if you both change the same line, the later save keeps it.'
+      : 'Saves replace each other, so agree who writes, or take turns.');
 }
 
 /** The Story page's line: who else has the beat sheet open, and the step

@@ -650,7 +650,8 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
     for (const f of scopeSrc) {
       const text = read(f).replace(/<[^>]+>/g, ' ').replace(/\\"/g, '"').replace(/\s+/g, ' ');
       for (const s of text.split(/(?<=[.!?:"])\s+/)) {
-        if (!/\btrial\b/i.test(s)) continue;
+        /* the sample sentence sits under the trial line, so it is read the same way */
+        if (!/\b(?:trial|sample)\b/i.test(s)) continue;
         nTrial++;
         ok(!scope.test(s), f + ': a trial sentence claims a scope the page cannot check: "' + s.trim().slice(0, 160) + '"');
       }

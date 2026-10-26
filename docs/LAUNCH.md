@@ -522,6 +522,12 @@ and the logo.
 
 ## 8. Only then, ads
 
+**The marketing pass (26 Oct 2026) has its own owner steps, in order, in
+`docs/LIVE-STEPS-2026-10-26.md`** — the price-rise date first, before
+2026-10-31T18:29Z — and its channel plan, tagged links and copy in
+`docs/MARKETING-PLAYBOOK.md`. Every link you post carries a `?src=` tag from
+the playbook's table, so the console's funnel can say which channel sold.
+
 Meta Pixel is NOT installed, on purpose: it needs a `connect-src` /
 `script-src` change in both host configs, a privacy-policy paragraph, and
 it cuts against "your work stays in your browser". If you want it, put it

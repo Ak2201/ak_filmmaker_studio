@@ -1905,11 +1905,25 @@ function planLimitToast(message, opts) {
   }
   if (Date.now() - _planToastAt < 60000) return;   // once a minute, not once a keystroke
   _planToastAt = Date.now();
-  if (window.StudioUI && StudioUI.toast) {
-    StudioUI.toast(message + ' This film is saved on this device.', {
-      type: 'error', action: 'See plans', onAction: () => { location.href = 'purchase.html'; }
+  /* THE NEXT PLAN AND WHAT IT COSTS THIS ACCOUNT. Which cap was hit is
+     read off the server's own sentence (schema §54: "Your % plan syncs
+     up to % project%", "allows % live share link%"); a collaborator cap
+     is the film OWNER's plan, not this person's, so it names no plan.
+     plan-gate.js (CORE, already loaded) answers with the server's quote,
+     or with the plan alone when there is none — never a guessed figure. */
+  const key = /^Your .* plan syncs up to/i.test(message) ? 'projects' : /^Your .* plan allows .* share link/i.test(message) ? 'shares' : '';
+  const show = (o) => {
+    if (!(window.StudioUI && StudioUI.toast)) return;
+    StudioUI.toast(message + ' This film is saved on this device.' + (o ? ' ' + o.line : ''), {
+      type: 'error', action: 'See plans', onAction: () => { location.href = o ? o.href : 'purchase.html'; }
     });
-  }
+  };
+  if (!key) { show(null); return; }
+  import('./plan-gate.js')
+    .then((PG) => PG.quotedOffer([], { limit: key }).then((o) => (o ? {
+      line: o.due ? (o.more ? 'Upgrade to ' + o.name + ' for ' + o.due + ' more.' : o.name + ' raises it, ' + o.due + ' a year.') : o.name + ' raises it.',
+      href: o.href } : null)))
+    .then(show, () => show(null));
 }
 
 async function _deleteProjectInCloud(projectId) {

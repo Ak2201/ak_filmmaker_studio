@@ -57,4 +57,32 @@ export async function fillLock(p, ids, line, cta) {
   } catch (e) { /* the plain button stands */ }
 }
 
-export default { fillLock };
+/** What the signed-in buyer would PAY to move to `planId` now: the
+ *  server's own quote (quote_order(), schema §21: list price less what
+ *  the current plan's unused year is worth), in the currency the
+ *  checkout charges. { amount: '₹700', more: true } when a credit made
+ *  it a difference, more: false when it is the whole price; null when
+ *  signed out or the quote cannot be had — the caller then names the
+ *  plan and prints no figure, because a guessed difference is a wrong
+ *  number. Reads only. */
+export async function upgradeFigure(planId) {
+  const c = typeof window !== 'undefined' && window.StudioCloud;
+  if (!planId || !c || !c.getSession || !c.getSession()) return null;
+  let cur = 'INR';
+  try {
+    const want = pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() });
+    if (want === 'USD') {
+      const v = shopView('USD', await Billing.priceNotice('USD'));
+      cur = orderCurrency(v);
+    }
+  } catch (e) { cur = 'INR'; }
+  try {
+    const q = await Billing.quote(planId, null, cur);
+    if (!q || !q.ok || !(q.amount_paise > 0)) return null;
+    const usd = q.currency === 'USD';
+    const amount = usd ? fmtMinor(q.amount_minor != null ? q.amount_minor : q.amount_paise, 'USD') : Billing.fmtPaise(q.amount_paise);
+    return { amount, more: q.credit_paise > 0 };
+  } catch (e) { return null; }
+}
+
+export default { fillLock, upgradeFigure };

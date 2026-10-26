@@ -148,6 +148,7 @@
     "label": "YOUR FIRST WEEK",
     "title": "Find your way round.",
     "deck": "A few things to try. Start or open a film and these tick themselves off: the ticks are read from the film you have open every time this page draws — nothing here is stored.",
+    "_during": "An item with `during: trial` is listed only while a trial runs or once a plan is bought (plan-gate.js entitlement()), and ticks when the plan is paid for: derived, like the rest.",
     "items": [
       {
         "id": "story",
@@ -179,6 +180,12 @@
         "module": "shoot-day",
         "label": "Mark a scene on the shoot day",
         "href": "shoot.html"
+      },
+      {
+        "id": "plan",
+        "during": "trial",
+        "label": "Choose a plan",
+        "href": "purchase.html"
       }
     ]
   }

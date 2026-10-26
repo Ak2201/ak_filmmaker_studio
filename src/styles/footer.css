@@ -79,6 +79,12 @@
   text-underline-offset: 2px;
 }
 .site-foot-made { display: none; }
+/* The same line on every PDF (pdf.js stage(), footer.js pdfBrandLine):
+   the last child of <body> for the length of one print job. Never on
+   screen; on paper one small line after the document, so on its last
+   page. The doubled class outranks every page's "only this element
+   prints" rule (body.pdf-bdsheets > *:not(#bdp-print) and the rest). */
+.pdf-made-with { display: none; }
 
 /* ---- Settings → Plan extras ---------------------------------------- */
 .plan-extras {
@@ -101,6 +107,16 @@
 .plan-extras .wa-link { color: var(--brand-deep); font-weight: 600; }
 
 @media print {
+  body.pdf-print.pdf-print > #pdf-made-with.pdf-made-with {
+    display: block !important;
+    margin: 6mm 0 0;
+    padding: 0;
+    font-size: 8pt;
+    line-height: 1.3;
+    text-align: center;
+    break-inside: avoid;
+    break-before: avoid;
+  }
   .site-foot { display: none; }
   .made-with { color: var(--print-muted); }
   .made-with a { color: var(--print-ink); }

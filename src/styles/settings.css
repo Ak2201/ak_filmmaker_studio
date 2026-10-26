@@ -770,3 +770,23 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
 .st-rate { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: baseline; margin: var(--s3) 0 0; padding: var(--s2) var(--s3); background: var(--surface-canvas); border: 1px solid var(--border-hair); border-radius: var(--sk-radius); }
 .st-rate-k { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
 .st-rate-v { font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); }
+
+/* What's in my plan (settings.js renderPlanContents): two short lists in
+   columns that wrap, and the next plan's extras in a ruled box. */
+.st-pc-list {
+  margin: var(--s2) 0 0;
+  padding-left: 1.2em;
+  columns: 3 12rem;
+  column-gap: var(--s5);
+  font-size: var(--t-small);
+  color: var(--ink-body, var(--ink));
+}
+.st-pc-list > li { break-inside: avoid; padding-block: 2px; }
+.st-pc-next {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border-hair);
+}
+.st-pc-next > * { margin: 0; }

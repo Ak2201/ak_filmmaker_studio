@@ -76,6 +76,8 @@ import PlanGate from '../lib/plan-gate.js';
 import { getDriveStatus, push as drivePush } from '../lib/drive-sync.js';
 import { dprSummary } from '../lib/dpr.js';
 import { planName } from '../lib/plans.js';
+import { brandURL } from '../ui/footer.js';           // CORE: the /start?ref= link every "Made with" line carries
+import { openChangelog, unseen as changelogUnseen } from '../ui/changelog.js';
 /* Every number on this page, derived: the snapshot, the dates, the
    readiness order, the activity lines (docs/ARCHITECTURE.md). */
 import {
@@ -779,6 +781,51 @@ function renderNoProject() {
   return wrap;
 }
 
+/* ---- the member row: What's new, and the referral share ----------
+   One slim row under the page's own cards. What's new is always there
+   (src/ui/changelog.js; "New" is a READ of the prefs blob, written only
+   when the drawer opens). The referral share appears only for a
+   signed-in member whose code exists and is on (my_referral(), §22):
+   signed out, before a first purchase, or on a database without §22 it
+   is simply absent. growth.js and the panel are fetched only once
+   somebody is signed in, so the signed-out page (verify) loads neither.
+   The answer is held in memory for this page, keyed by the account. */
+const ref = { uid: null, asked: false, data: null, panel: null };
+function sessionUid() {
+  try { const c = window.StudioCloud; const s = c && c.getSession && c.getSession(); return (s && s.user && s.user.id) || null; } catch (e) { return null; }
+}
+function wantReferral() {
+  const uid = sessionUid();
+  if (uid !== ref.uid) { ref.uid = uid; ref.asked = false; ref.data = null; }
+  if (!uid || ref.asked) return;
+  ref.asked = true;
+  Promise.all([import('../lib/growth.js'), import('../ui/growth-panels.js')])
+    .then(([G, P]) => G.myReferral().then((d) => { if (ref.uid !== uid) return; ref.data = d || null; ref.panel = P.referralShare; render(); }))
+    .catch(() => { /* no §22, offline: no panel */ });
+}
+function renderMemberRow() {
+  wantReferral();
+  const row = h('div.db-member', { 'data-reveal': '' });
+  const isNew = changelogUnseen();
+  row.append(h('div.db-member-news', {}, [
+    button({ label: 'What’s new', icon: 'auto_awesome', size: 'sm', action: 'db-whatsnew',
+      attrs: { 'aria-label': isNew ? 'What’s new (new changes since you last looked)' : 'What’s new' } }),
+    isNew ? badge({ label: 'New', tone: 'info' }) : null
+  ].filter(Boolean)));
+  const d = ref.uid && ref.data;
+  const share = d && ref.panel ? ref.panel(d, brandURL(d.code)) : null;
+  if (share) row.append(share);
+  return row;
+}
+delegate(document, 'click', '[data-action="db-whatsnew"]', (e, el) => {
+  /* Opening marks it seen: take the "New" off in place. A redraw here
+     would replace the button the drawer hands focus back to. */
+  const tag = el.parentNode && el.parentNode.querySelector('.k-badge');
+  if (tag) tag.remove();
+  el.setAttribute('aria-label', 'What’s new');
+  openChangelog(el);
+});
+
 /* ============================================================
    RENDER
    ============================================================ */
@@ -807,6 +854,7 @@ function render() {
   if (!project) {
     main.append(
       renderNoProject(),
+      renderMemberRow(),
       /* The id, even here: a link into #readiness followed with no
          project open must land on the section that says why it is
          empty, not on nothing. */
@@ -838,7 +886,7 @@ function render() {
       renderFocus(snap), renderStages(snap),
       h('div.db-body', {}, [col, renderDesk(snap)])
     ]);
-    main.append(renderHead(snap), renderLauncher(), renderTitlePage(project), overview);
+    main.append(renderHead(snap), renderLauncher(), renderTitlePage(project), renderMemberRow(), overview);
   }
 
   /* The path line is applied whether or not the swap happened: a skipped
@@ -990,5 +1038,6 @@ delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {
 Store.subscribe('current:changed', () => render());
 Store.subscribe('project:meta', () => render());
 Store.subscribe('plan:changed', () => render());
+Store.subscribe('gate:changed', () => render());   // signed in or out: the referral row follows the account
 
 render();

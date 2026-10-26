@@ -180,14 +180,14 @@ export function guard(key, what) {
   const say = (o) => {
     try {
       const ui = typeof window !== 'undefined' && window.StudioUI;
-      if (ui && ui.toast) ui.toast(label + ' is not part of ' + where + '.' + (o ? ' It comes with ' + offerText(o) + ' a year.' : ''), {
-        type: 'info', action: o ? 'SEE ' + o.name.toUpperCase() : 'SEE PLANS', onAction: () => { location.href = o ? o.href : 'purchase.html'; } });
+      if (ui && ui.toast) ui.toast(label + ' is not part of ' + where + '.' + (o ? ' ' + nudgeText(o) : ''), {
+        type: 'info', action: nudgeAction(o), onAction: () => { location.href = o ? o.href : 'purchase.html'; } });
     } catch (e) { /* no chrome on this page: the refusal stands, silently */ }
   };
   /* The refusal is synchronous (the caller does nothing); only the
-     sentence waits for the plan rows, which are cached after the first
-     read. Unreadable rows: the plain sentence, as before. */
-  offerFor([key]).then(say, () => say(null));
+     sentence waits for the plan rows and the server's quote, both
+     cached or quick. Unreadable rows: the plain sentence, as before. */
+  quotedOffer([key]).then(say, () => say(null));
   return false;
 }
 
@@ -318,6 +318,49 @@ async function _refreshOnce() {
     Store.notify('plan:changed', currentPlan());
   }
   apply();
+  remindTrial();
+}
+
+/* ---- the trial-ending reminders ----------------------------------
+   The rail's clock (trial-band.js) is always there but easy to stop
+   seeing over a three-day trial, and its own toast comes only in the
+   last ten minutes. So one toast when a running trial has a day left
+   and one when it has two hours, each AT MOST ONCE PER THRESHOLD PER
+   BROWSER SESSION: the thresholds shown are kept in sessionStorage
+   (transient, never localStorage; a session tier that throws falls
+   back to this page's memory). Checked after every billing_status()
+   read — page load, focus and the four-minute poll — against the
+   SERVER's clock. Signed out nothing is known, so nothing shows (and
+   verify, which runs signed out, never sees it). The length is the
+   server's (trial_offer() / billing_status()); nothing here assumes
+   how long a trial is. */
+const REMIND_KEY = 'fms_trial_reminded';
+const REMIND_AT = [2, 24];               // hours left, lowest first
+const remindedMem = new Set();
+function remindTrial() {
+  if (typeof window === 'undefined' || /^(purchase|purchases|admin|screening|start|invite)$/.test(pageName())) return;
+  const ends = trialEndsAt();
+  if (!ends) return;
+  const ms = ends.getTime() - serverNow();
+  if (!(ms > 0)) return;
+  const th = REMIND_AT.find((hrs) => ms <= hrs * 3600000);
+  if (!th) return;
+  let seen = [...remindedMem];
+  try { const v = JSON.parse(sessionStorage.getItem(REMIND_KEY) || '[]'); if (Array.isArray(v)) seen = seen.concat(v); } catch (e) { /* memory only */ }
+  if (seen.includes(th)) return;
+  /* Arriving with an hour left shows the two-hour notice only; the day's
+     is spent with it, so it does not follow on the next page. */
+  const spent = REMIND_AT.filter((hrs) => hrs >= th);
+  spent.forEach((x) => remindedMem.add(x));
+  try { sessionStorage.setItem(REMIND_KEY, JSON.stringify([...new Set(seen.concat(spent))])); } catch (e) { /* memory only */ }
+  const hrs = Math.ceil(ms / 3600000);
+  const when = ends.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  const left = ms < 3600000 ? 'in under an hour' : 'in about ' + hrs + (hrs === 1 ? ' hour' : ' hours');
+  try {
+    const ui = window.StudioUI;
+    if (ui && ui.toast) ui.toast('Your free trial ends ' + left + ' (' + when + '). Choose a plan to keep working; everything you made stays.', {
+      type: 'info', action: 'CHOOSE A PLAN', onAction: () => { location.href = 'purchase.html'; } });
+  } catch (e) { /* no chrome on this page: the rail still counts */ }
 }
 export function refresh() {
   /* TWO TRAPS, both of which left a free member ungated for good:
@@ -413,7 +456,9 @@ async function lowestPlanWith(ids) {
 export async function offerFor(ids) {
   const list = [].concat(ids || []).filter(Boolean);
   const p = await lowestPlanWith(list);
-  if (!p) return null;
+  return p ? offerOf(p, list) : null;
+}
+function offerOf(p, list) {
   const paise = Billing.priceFor(p, 'year');
   const name = p.name || Billing.planName(p.id);
   const q = new URLSearchParams({ plan: p.id });
@@ -423,6 +468,47 @@ export async function offerFor(ids) {
 }
 /** "Intermediate, ₹799" — the short form a toast or a note prints. */
 export const offerText = (o) => (o ? o.name + (o.price ? ', ' + o.price : '') : '');
+
+/* ---- the upgrade nudge: the NEXT plan and what it costs YOU -------
+   offerFor() prints a plan's LIST price, which is the wrong number for
+   somebody who already holds a plan: §21/§52 price an upgrade as the
+   list price less the unused part of the current year. quotedOffer()
+   adds the server's own quote for this account (lock-price.js
+   upgradeFigure(), loaded lazily, never in first paint) as `due`, with
+   `more` true when a credit made it a difference. No quote (signed out,
+   offline, the RPC missing) means NO figure at all — the plan is named
+   and the link goes to purchase.html — never the list price passed off
+   as the difference. */
+export async function quotedOffer(ids, { limit } = {}) {
+  const o = limit ? await offerForLimit(limit) : await offerFor(ids);
+  if (!o) return null;
+  let fig = null;
+  try { fig = await (await import('./lock-price.js')).upgradeFigure(o.id); } catch (e) { fig = null; }
+  return { ...o, due: fig ? fig.amount : '', more: !!(fig && fig.more) };
+}
+/** The nudge as a sentence, from a quotedOffer() answer. */
+export function nudgeText(o) {
+  if (!o) return '';
+  if (o.due && o.more) return 'Upgrade to ' + o.name + ' for ' + o.due + ' more: the unused part of your plan is counted.';
+  if (o.due) return 'It comes with ' + o.name + ', ' + o.due + ' a year.';
+  return 'It comes with the ' + o.name + ' plan.';
+}
+/** The toast button that goes with nudgeText(). */
+export const nudgeAction = (o) => (!o ? 'SEE PLANS' : (o.more ? 'UPGRADE TO ' : 'SEE ') + o.name.toUpperCase());
+/** The lowest plan above this one whose cap on `key` (projects, shares,
+ *  collaborators, seats) is higher than this plan's — the plan a P0402
+ *  limit should name. Read from the plans rows, like offerFor(). */
+export async function offerForLimit(key) {
+  const plans = (await Billing.listPlans()) || [];
+  const mine = plans.find((p) => p && p.id === plan);
+  const have = mine ? Billing.cap(mine.limits, key) : null;
+  if (mine && have === null) return null;   // already unlimited: nothing above helps
+  const p = plans
+    .filter((x) => x && x.active !== false && x.id !== 'free' && Billing.planRank(x.id) > Billing.planRank(plan))
+    .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id))
+    .find((x) => { const c = Billing.cap(x.limits, key); return c === null || have === null || c > have; });
+  return p ? offerOf(p, []) : null;
+}
 /** The label a refused id goes by: a module's from navigation.json, a
  *  capability's from CAPABILITIES. '' for anything unknown — which is
  *  how plan-cards.js refuses to print a made-up ?for= value. */
@@ -504,8 +590,8 @@ function gonePanel() {
 /* ---- the wall (§30) ----------------------------------------------
    The trial ran out and nothing was bought. This is NOT the module
    lock above: that one says "this corner is on a higher tier" and
-   leaves the rest of the studio open. This says "the thirty minutes
-   are over".
+   leaves the rest of the studio open. This says "the trial is
+   over".
 
    It REUSES .pg-lock rather than introducing a second overlay — the
    positioning, the backdrop, the `main` hiding and the responsive
@@ -551,8 +637,11 @@ function wallPanel() {
     h('p.pg-lock-p', { text: off
       ? 'A plan opens the whole desk: your script, your breakdown, your schedule, your budget, your call sheets.'
       : fresh
-        ? 'Read Dragon — a complete Tamil feature — from the inside' + (len ? ' for ' + len : '') + ', free, then choose a plan for your own film.'
-        : 'You have been reading Dragon — a complete Tamil feature, scene by scene. A plan opens the same desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),
+        /* Neutral about WHAT the trial opens: the owner's console decides
+           that (trial_scope: the sample, or the whole studio), and the
+           length is the server's (trial_minutes), never typed here. */
+        ? 'Try the studio' + (len ? ' for ' + len : '') + ', free, then choose a plan for your own film.'
+        : 'A plan opens the desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),
     /* The promise the owner made, kept where it is visible rather than
        in a FAQ: nothing a person wrote is held hostage to a sale. */
     h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
@@ -598,7 +687,7 @@ function wallPlans() {
       ].filter(Boolean))]));
     }
     if (ul.children.length) {
-      ul.append(h('li.pg-wall-once', { text: 'A year each, paid once. Nothing renews by itself, and your work is already here.' }));
+      ul.append(h('li.pg-wall-once', { text: 'Each plan runs for a year. Nothing renews by itself, and your work is already here.' }));
       ul.hidden = false;
     }
   }).catch(() => { /* the SEE PLANS button stands alone */ });
@@ -947,4 +1036,4 @@ if (typeof window !== 'undefined') {
 /* journey.js asks this, without importing the module (it runs in Node tests). */
 if (typeof window !== 'undefined') window.StudioPlan = { allowed, isDisabledEverywhere };
 
-export default { isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, pageGone, lockTabs, markLocked, CAPABILITIES };
+export default { isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, quotedOffer, nudgeText, nudgeAction, offerForLimit, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, pageGone, lockTabs, markLocked, CAPABILITIES };

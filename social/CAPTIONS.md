@@ -12,8 +12,14 @@ node scripts/make-posters.mjs
 Every number on every poster is **counted from `src/data` at draw time**,
 and every feature named is a real module id checked against
 `navigation.json`. If a count is wrong, the data is wrong — the script
-refuses to draw `undefined` or `NaN`, and throws if a poster cites a
-module that does not exist.
+refuses to draw `undefined` or `NaN`, throws if a poster cites a module that
+does not exist, and throws if it cites one that is switched off on every
+plan (`plans: []` in `src/data/plan-matrix.json`).
+
+**Before posting anything here**, fill every `{PLACEHOLDER}` from the console
+that day: `{TRIAL_LENGTH}` and `{TRIAL_OPENS}` from `trial_offer()`,
+`{RISE_DATE}` from `price_notice()` (`docs/MARKETING-PLAYBOOK.md` §0 rules 3
+and 6). No date and no trial length is ever typed from this file.
 
 ---
 
@@ -34,12 +40,12 @@ FilmMakerStudio · Filmmaking
 ```
 Learn filmmaking by making one.
 Script · schedule · budget · call sheets — one desk, in your browser.
-Chennai-made. Less than a tea a day.
+Built for Tamil units. Less than a tea a day.
 ```
 
 Alternates:
 
-- *Beginner-first:* You have never made a film. Start one tonight. 11 steps from an idea to a short that's ready to submit. Made in Chennai.
+- *Beginner-first:* You have never made a film. Here is the desk: story, screenplay, schedule, budget and call sheets, in your browser. Built for Tamil units.
 - *Tool-first:* A working desk for independent filmmakers. Story → screenplay → schedule → set → delivery. Works offline. A year for less than a cup of tea a day, nothing renews by itself.
 
 **Link:** `https://filmmakerstudio.in/start?src=ig-bio&utm_campaign=profile`
@@ -47,7 +53,9 @@ Alternates:
 bounces a stranger straight back out; `/start` is the page built to sell. The
 `src` tag is how the console's per-source funnel counts the bio
 (`docs/MARKETING-PLAYBOOK.md` §3); a post or story link uses `ig-post`,
-`ig-reel` or `ig-story` instead.
+`ig-reel` or `ig-story` instead. Every `ig-*` tag shows in the console as
+ONE `instagram` row: the tag is for your own link notes, and the console
+does not split bio from post from story.
 
 **Category:** Software, or Education. Not "Film".
 
@@ -59,13 +67,13 @@ Post these first, in this order: announce → explain → convert.
 
 ### poster-1.png — the announcement
 
-> You have never made a film. Start one tonight.
+> You have never made a film. Here is the desk.
 >
-> A desk that walks you through it: every step explains the craft, shows a
-> worked example, asks you the questions, and checks what you wrote. 11 steps
-> from the idea in your head to a short film that's ready to submit.
+> Story, screenplay, breakdown, schedule, budget and call sheets, in your
+> browser, each reading the same scenes. Tamil dialogue with English slug
+> lines, budgets in rupees from Chennai rates.
 >
-> Try it free for {TRIAL_DAYS} days on the sample films. No card. Link in bio.
+> Try {TRIAL_OPENS} free for {TRIAL_LENGTH}. No card. Link in bio.
 
 ### poster-2.png — what it is
 
@@ -75,14 +83,18 @@ Post these first, in this order: announce → explain → convert.
 > script, break it down, schedule the shoot, budget it, print call sheets, run
 > the set, track the cut.
 >
-> Nothing to install. Works offline. Your work stays in your browser.
+> Nothing to install. Works offline. Your work lives in your browser first;
+> signed in, it syncs.
 
 ### poster-3.png — who it's for
 
 > Not a course to watch. A desk that walks you through it.
 >
-> Made for a first film in Tamil Nadu — Chennai rates, crew terms, CBFC rules,
-> festival deadlines. Tamil dialogue, English slugs.
+> Import the screenplay once and the breakdown, the stripboard and the call
+> sheet read the same scenes. A library of films, directors and rules of
+> thumb open beside you. Made for a first film in Tamil Nadu — Chennai rates
+> with sources, CBFC checklists, festival deadlines. Tamil dialogue, English
+> slugs.
 >
 > A year for less than a cup of tea a day. Nothing renews by itself.
 
@@ -102,9 +114,11 @@ Pre-production teal, Production pink, Post magenta.
 
 ### feature-02.png — Idea Vault · Story
 
-> Every film starts as links and screenshots in fourteen browser tabs. Clip
-> them as you browse and they land in this film's vault — pictures, links,
-> half-thoughts — kept with the project instead of lost in your history.
+> Every film starts as half-thoughts scattered across fourteen browser tabs.
+> Put them on sticky notes in this film's vault, pin each to a beat or a
+> scene, and drag them into order — kept with the project instead of lost
+> in your history. (With the Chrome extension, on Intermediate and up,
+> clippings from the web land here too.)
 
 ### feature-03.png — Script · Screenplay
 
@@ -120,8 +134,8 @@ Pre-production teal, Production pink, Post magenta.
 
 ### feature-05.png — Import a script · Screenplay
 
-> Already written it somewhere else? Bring it in — Fountain, Final Draft, PDF
-> or plain text — and every stage reads from it. Scenes, characters,
+> Already written it somewhere else? Bring it in — Fountain, Final Draft,
+> Word, PDF or plain text — and every stage reads from it. Scenes, characters,
 > locations, all read out of your pages. No retyping.
 
 ### feature-06.png — Auto-Tagging · Pre-production ★
@@ -180,9 +194,9 @@ Pre-production teal, Production pink, Post magenta.
 
 ### feature-15.png — The Library
 
-> Read before you write. Films worth studying and the directors behind them,
-> rules of thumb with the reasons, and craft notes on writing for emotional
-> impact and on story beats. Open from any page while you work.
+> Read a film, then write your own. Films worth studying and the directors
+> behind them, rules of thumb with the reasons, and craft notes on writing
+> for emotional impact and on story beats. Open from any page while you work.
 
 ---
 
@@ -192,9 +206,13 @@ Pre-production teal, Production pink, Post magenta.
 "Link in bio" or "Free trial, link in bio" per post, so you can tune it
 rather than repeat the same line eighteen times.
 
-**★ marks the two strongest.** Auto-tagging (06) and Chennai-rate budgeting
-(10) are the two things nothing else in this market does. If you want the run
-front-loaded, move those earlier than their stage order suggests.
+**★ marks the two to lead with.** Auto-tagging (06) suggests a scene's
+elements from its own text, and the budget (10) starts from Chennai rates
+with a source and a checked date on each figure; both are checkable in the
+product. Say what they do, never that nothing else does it: no competitor
+claim goes in a caption unless the owner has read the source that day
+(playbook §4.8). If you want the run front-loaded, move those two earlier
+than their stage order suggests.
 
 **No hashtags here on purpose.** Generic ones (#filmmaking #shortfilm) bring
 bots. The ones worth having are local and specific — #chennaifilmmakers,
@@ -202,8 +220,9 @@ bots. The ones worth having are local and specific — #chennaifilmmakers,
 than the data does.
 
 **No price appears on any poster.** A rupee figure is not durable: the
-founding prices are scheduled to rise (the date is the server's, read from
-`price_notice()`; the owner moved it to 31 Dec 2026), and a post is forever.
+founding prices are scheduled to rise on `{RISE_DATE}` (the server's date,
+read from `price_notice()` the day you post; the owner is moving it to the
+end of 2026, playbook §6 step 2), and a post is forever.
 What IS durable, and may go in any caption: **a plan is one payment for one
 year, nothing renews by itself**, and "less than a cup of tea a day", which
 holds at every tier before and after the rise. Never write "pay once",
@@ -211,35 +230,37 @@ holds at every tier before and after the rise. Never write "pay once",
 A price card, if you make one, is a separate story or post with the figures
 read from `price_notice()` that day.
 
-**The door is the trial now, not an invite.** Since 26 Oct 2026 the offer
-is a free trial on the two sample films (3 days once the owner sets
-`trial_minutes` 4320; playbook §6.1). A trial somebody starts with the
-button cannot open their own film, whatever the console's scope says
-(`start_trial()` stores `sample` for every signup trial), so no caption says
-"whole studio" or "your own film" about the trial. Fill
-`{TRIAL_DAYS}` from `trial_offer()` the day you post, and do not post
-poster-1 until the trial is live. **`poster-1.png` itself still draws
-"Invite-only at launch."** (`scripts/make-posters.mjs`, line ~152): change
-that line to the trial and regenerate before posting it, or post poster-2
-first.
+**The door is the trial now, not an invite.** The offer is a free trial,
+no card, starting only when the visitor presses start. The owner decided
+(26 Oct 2026) on 3 days of the whole studio; a caption says so only once
+`trial_offer()` reads it (`trial_scope` full, after schema §60, with the
+Pro trial plan; playbook §6.1). Otherwise `{TRIAL_OPENS}` is "the tools on
+two sample films". A whole-studio trial keeps the no-plan limits (one film
+in the cloud, no share links, no collaborators), so no caption promises
+sharing or a team on the trial. `poster-1.png` was regenerated on 26 Oct
+2026: it reads "Now open" and "Free trial · No card · Nothing renews by
+itself", with no length and no "invite-only".
 
 **Say which plan a feature is on.** Call sheets, Shoot Day (13), Edit Log and
 Deliverables (14) and the AI tools are Pro; breakdown, auto-tagging (06),
-cast matrix (08), shot list and storyboard (09), budget (10), stripboard (11)
-and contacts/sides/reports (12) are Intermediate; writing, drafts and import
-(03–05), story (01) and the Idea Vault (02) are Basic. Add "(Pro)" or
+cast matrix (08), shot list and storyboard (09), budget (10), stripboard (11),
+contacts/sides/reports (12) and the Chrome extension are Intermediate and up;
+writing, drafts and import (03–05), story (01) and the Idea Vault (02) are
+on every plan. Add "(Pro)" or
 "(Intermediate and up)" to the caption for those posters.
 
-**Why feature-09, feature-15 and poster-2 were reworded (26 Oct 2026).**
-The Lookbook, the glossary, the dissected feature and the case studies are
-switched off on every plan (`plans: []` in `src/data/plan-matrix.json`, so
-`isDisabledEverywhere()` hides them), so their phrases came out of the
-captions; the Library still opens with its other shelves. Poster-2's caption
-lost "31 tools" because that count includes switched-off modules; it names
-no number now. **The poster IMAGES still carry the old wording**:
-`feature-09.png` is titled with the Lookbook, `feature-15.png` and
-`poster-2.png` may show the old counts. Regenerate them
-(`scripts/make-posters.mjs`) or skip them until they match. Do not mention
-the pitch deck, songs or media modules either.
+**Switched-off modules are never named (26 Oct 2026).** The Lookbook, the
+glossary, the dissected feature, the case studies, the pitch deck, songs and
+media are switched off on every plan (`plans: []` in
+`src/data/plan-matrix.json`, so `isDisabledEverywhere()` hides them). Their
+phrases are out of the captions AND the images: `feature-09.png` (no
+Lookbook), `feature-15.png` (the open Library shelves only), `poster-2.png`
+(no tool count, which included switched-off modules), `poster-3.png` (no
+glossary, dissection or guided-steps count; the stage guides those counted
+are retired) and `poster-1.png` were regenerated from
+`scripts/make-posters.mjs`, which now refuses to cite a switched-off module.
+The other feature images were not redrawn: their wording did not change.
+The script draws in whatever sans the machine has (see its header), so
+look at a redraw before posting it.
 
 **Cadence:** 18 posts at 3–4 a week is roughly 4–5 weeks.

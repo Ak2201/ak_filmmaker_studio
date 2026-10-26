@@ -1,8 +1,11 @@
 # Content calendar — eight weeks
 
 Written 26 Oct 2026. NOT POSTED. Week 1 begins on Day 0 of the playbook
-(`docs/MARKETING-PLAYBOOK.md` §5: the day the 3-day trial is live; it opens
-the sample films, not the visitor's own). If Day 0 is not a Monday, start at the Day 0 row and keep the order.
+(`docs/MARKETING-PLAYBOOK.md` §5: the day the trial is live). Any line about
+the trial says `{TRIAL_LENGTH}` and `{TRIAL_OPENS}`, and any line about the
+founding price says `{RISE_DATE}`, each read from `trial_offer()` /
+`price_notice()` on the console the day you post (playbook §0 rules 3 and
+6), never typed from this file. If Day 0 is not a Monday, start at the Day 0 row and keep the order.
 
 Three feed posts or reels a week (Mon / Wed / Fri), stories most days, one
 long-form item a week (a YouTube demo or a guide shared to groups). Every
@@ -17,11 +20,12 @@ caption when it is not Basic.
 
 Every guide you share carries the channel's `src`
 (`/guide-script-breakdown?src=ig-story&utm_campaign=wk3`): guide pages send
-no funnel count of their own (playbook §3).
+no `landing_view` of their own, and the tag rides along to `/start` in the
+same tab (playbook §3). Instagram tags (`ig-*`) all count as `instagram`.
 
 | Week | Mon | Wed | Fri | Stories / long-form | Other channels that week |
 | --- | --- | --- | --- | --- | --- |
-| **1 — the trial opens** | `poster-1` announcement (regenerated without "Invite-only") + "the trial is open" | Reel: import a script → scenes appear [Basic import; breakdown Intermediate] | `poster-2` what it is | Story: "what is the first thing you would plan?" poll · YouTube: 3-min tour of the Dragon sample | Launch-week checklist (playbook §5); 5 creators; 10 schools |
+| **1 — the trial opens** | `poster-1` announcement + "the trial is open: {TRIAL_LENGTH} of {TRIAL_OPENS}, no card" | Reel: import a script → scenes appear [Basic import; breakdown Intermediate] | `poster-2` what it is | Story: "what is the first thing you would plan?" poll · YouTube: 3-min tour of the Dragon sample | Launch-week checklist (playbook §5); 5 creators; 10 schools |
 | **2 — writing** | Reel: Tamil dialogue, English slugs, page count [Basic] | Craft carousel: "Five lines every call sheet needs" (no product) | Reel: drafts — compare two drafts, restore one [Basic] | Story: Q&A box "ask about screenplay format" · Share `guide-tamil-screenplay-format` | Meta Test 1 starts if the Day 7 review said go |
 | **3 — breakdown** | Reel: auto-tag suggestions on a scene, accept and correct [Intermediate] | Craft: "How to break down a scene" using the Dragon sample | `feature-07` elements list [Intermediate] | YouTube: breakdown walkthrough, 5 min · Share `guide-script-breakdown` | Directory listings; 3 Reddit/Quora answers |
 | **4 — schedule** | Reel: stripboard drag into days, Day Out of Days updates [Intermediate] | Behind the build: why Shoot Day has a "part" mark — "we got some of it" is the commonest outcome of a day | `feature-11` stripboard poster | Story: "how many days was your last short?" poll | Meta Test 2 (winners only); Product Hunt prep |

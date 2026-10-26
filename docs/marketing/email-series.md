@@ -4,21 +4,38 @@
 
 1. `RESEND_API_KEY` and `MAIL_FROM` are set (`docs/BILLING.md` §13, §16) and
    one test message has arrived from `support@filmmakerstudio.in`;
-2. the recipient is on the leads list **with consent** (the launch-offers
-   form on `/start`, schema §29), or is a customer receiving a message about
-   their own account;
+2. the recipient is on the leads list **with consent**, or is a customer
+   receiving a message about their own account. The leads form exists but is
+   HIDDEN (`lead.live` is false in `src/data/marketing-site.json`) until
+   privacy.html carries the owner's leads paragraph; until it is live and
+   schema §29's `add_lead` answers, the list is empty and e-mails 1–5 have
+   nobody they may lawfully go to. A "stop" reply is honoured the same day,
+   by the owner: there is no console button for one lead, so delete that
+   row from `public.leads` in the SQL editor and add its hash to
+   `public.deleted_subjects` (schema §45.6; a tombstoned address is then
+   refused if the form is submitted again), and keep no copy elsewhere;
 3. every `{PLACEHOLDER}` below is filled from the server the day it is sent
-   (see the table), and the trial length matches `trial_offer()`.
+   (see the table): no date and no trial length is ever typed from this
+   file.
 
 Plain text only: no images, no tracking pixels, no open tracking. One link
-per message where possible, each tagged `src=email-<n>`. Every message ends
+per message where possible, each tagged `src=email` (console bucket `email`;
+playbook §3). The `utm_campaign` on each link names the message for your own
+notes only: it is never stored on the server, so the console shows all six
+e-mails as one `email` row. Every message ends
 with the footer. Sign with the trading name; never the owner's name.
 
 ## Fill-ins (read on the day of sending)
 
+`{IMPORT_TRIAL_LINE}` in e-mail 3 is "Bring your own script in during the
+trial:" when `{TRIAL_OPENS}` is the whole studio, and "See it working on the
+sample films during the trial; bringing in your own script needs a plan:"
+otherwise.
+
 | Placeholder | Source |
 | --- | --- |
-| `{TRIAL_DAYS}` | `trial_offer().trial_hours / 24` (3 once the 26 Oct setting is made) |
+| `{TRIAL_LENGTH}` | `trial_offer()` `trial_hours`, in words (72 hours is "3 days"); read on the day, never typed from here |
+| `{TRIAL_OPENS}` | "the whole studio" only when `trial_offer()` reads `trial_scope: "full"` and the console's trial plan is Pro (playbook §6.1); otherwise "the tools on two sample films" |
 | `{BASIC_YEAR}`, `{INDIE_YEAR}`, `{PRO_YEAR}` | `price_notice()` current price per plan, in rupees |
 | `{FROM_DAY}` | the pricing page's "from about … a day" figure (derived, never typed) |
 | `{RISE_DATE}` | `price_notice()` `plans[].next_price_at`, written as a date in IST ("31 December 2026"); null means the rise has fired, so drop the sentence |
@@ -52,11 +69,10 @@ Tamil dialogue with English slug lines, budgets in rupees that start from
 Chennai rates and show where each figure came from, and call sheets you can
 send as a WhatsApp message.
 
-The quickest way to see it is the free trial: {TRIAL_DAYS} days with the
-tools open on two sample films, no card needed. It starts when you press
-start, not before.
+The quickest way to see it is the free trial: {TRIAL_LENGTH} of
+{TRIAL_OPENS}, no card needed. It starts when you press start, not before.
 
-https://filmmakerstudio.in/start?src=email-1&utm_campaign=welcome
+https://filmmakerstudio.in/start?src=email&utm_campaign=welcome
 
 If something is unclear, reply to this e-mail. A person reads every reply.
 
@@ -80,7 +96,7 @@ missing one is how a unit loses its first hour:
 5. Sunrise or sunset if you are chasing light, and the weather.
 
 We wrote a longer guide, with a worked example:
-https://filmmakerstudio.in/guide-call-sheet?src=email-2&utm_campaign=welcome
+https://filmmakerstudio.in/guide-call-sheet?src=email&utm_campaign=tip
 
 FilmMakerStudio
 ```
@@ -105,9 +121,8 @@ place reaches the others.
 Scanned or password-protected PDFs are refused with a reason rather than
 read badly. That is on purpose.
 
-See it working on the sample films during the trial; bringing in your own
-script needs a plan:
-https://filmmakerstudio.in/start?src=email-3&utm_campaign=import
+{IMPORT_TRIAL_LINE}
+https://filmmakerstudio.in/start?src=email&utm_campaign=import
 
 FilmMakerStudio
 ```
@@ -141,7 +156,7 @@ trial first so you know what you are buying.
 
 Students: the code STUDENT50 gives the student price on Intermediate.
 
-https://filmmakerstudio.in/pricing?src=email-4&utm_campaign=plans
+https://filmmakerstudio.in/pricing?src=email&utm_campaign=plans
 
 FilmMakerStudio
 ```
@@ -164,7 +179,7 @@ The pricing page shows both figures and the date, read from the server.
 If you have been waiting, the trial is still the right first step. If the
 studio is not for you, ignore this e-mail; we will not send a countdown.
 
-https://filmmakerstudio.in/pricing?src=email-5&utm_campaign=founding
+https://filmmakerstudio.in/pricing?src=email&utm_campaign=founding
 
 FilmMakerStudio
 ```
@@ -186,8 +201,8 @@ first week easier:
 2. Back it up somewhere that is yours. The Backup button in the side rail
    downloads a file of your whole studio, and on Intermediate and Pro you
    can back up to your own Google Drive.
-3. Open the Dragon sample to see every tool filled in before you fill your
-   own.
+3. Open the Dragon sample to see the tools on your plan filled in before
+   you fill your own.
 
 You also have a referral code, on the Purchase page under "Your referral code". A friend who uses it gets
 a discount, and you are credited a share of what they pay. Both figures are

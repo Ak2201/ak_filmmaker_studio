@@ -5,9 +5,12 @@ the person. Never a mass send, never to a bought list. Sign with the trading
 name and your first name only if you choose to; `brand.json` keeps `seller`
 empty, so the owner's full name is never written.
 
-Fill before sending: `{TRIAL}` from `trial_offer()`, prices only from
-`price_notice()`, a code's discount only from the console. Every link is
-tagged per `docs/MARKETING-PLAYBOOK.md` §3.
+Fill before sending: `{TRIAL_LENGTH}` and `{TRIAL_OPENS}` from
+`trial_offer()` (playbook §0 rule 6), `{RISE_DATE}` and prices only from
+`price_notice()`, a code's discount only from the console, all read the day
+you send. Every link is tagged per `docs/MARKETING-PLAYBOOK.md` §3; the
+console shows the bucket (`creator-*` is `partner`, `school-*` is `school`,
+`fest-*` is `event`, `wa-*` is `whatsapp`), never the slug.
 
 For film schools, `docs/OUTREACH-FILM-SCHOOLS.md` is the source (three
 e-mails, Harvey, DPDP rules); a shorter first-contact version is below.
@@ -48,7 +51,7 @@ Here is how the code works, so it is all in writing:
   after the discount and after any refund.
 - I pay on the {DAY} of each month for the previous month, by bank transfer
   or UPI, with a statement of the orders (no buyer names).
-- Your link: https://filmmakerstudio.in/start?src=yt-{handle}&utm_campaign={video}&ref={CODE}
+- Your link: https://filmmakerstudio.in/start?src=creator-{handle}&utm_campaign={video}&ref={CODE}
 
 What I need from you:
 - Mark it as a paid partnership (the platform's box and a spoken line).
@@ -73,7 +76,7 @@ Either of us can end this any time; commission already earned is still paid.
 | Works offline once installed | "Never needs the internet" |
 | Your work lives in your browser first; Drive backup on Intermediate and Pro | "Nothing ever leaves your computer" |
 | One payment for one year; nothing renews by itself | "Pay once", "lifetime" |
-| A {TRIAL} trial, no card | A trial length you have not just checked |
+| A {TRIAL_LENGTH} free trial of {TRIAL_OPENS}, no card | A trial length you have not just checked, or "share it with your team" on the trial |
 | Founding prices until {RISE_DATE} | "Last chance", a countdown, "only N left" |
 
 ## 3. Film schools (short first contact)
@@ -106,7 +109,7 @@ Subject: A tool for your entrants, and a short talk
 
 Hi {first_name},
 
-{Festival} is one of the short-film calls our users plan around, so I
+{Festival} is in the studio's festival list, with its deadline, so I
 wanted to ask whether a small partnership would be useful.
 
 FilmMakerStudio is a browser studio for planning a film: screenplay,
@@ -123,8 +126,10 @@ unless you agree to the exact wording in writing.
 {signature}
 ```
 
-Remove "one of the short-film calls our users plan around" unless the
-festival really is in the product's festival list (`src/data/festivals*.json`).
+Write "is in the studio's festival list, with its deadline" only if the
+festival really is in `src/data/festivals.json`; otherwise open with
+"{Festival}'s short-film call is coming up". Never claim what users do: no
+usage is measured per festival.
 
 ## 5. WhatsApp groups
 
@@ -138,8 +143,8 @@ if links or promotion are not allowed, do not post one, and ask the admin.
 ```
 I make a browser tool for planning films — script import, breakdown,
 stripboard, budget in rupees, call sheets as a WhatsApp message. It is built
-for Tamil units first. There is a {TRIAL} free trial on two sample films,
-no card. Happy to answer questions here or in DM.
+for Tamil units first. There is a {TRIAL_LENGTH} free trial of
+{TRIAL_OPENS}, no card. Happy to answer questions here or in DM.
 https://filmmakerstudio.in/start?src=wa-group&utm_campaign=share-v1
 ```
 

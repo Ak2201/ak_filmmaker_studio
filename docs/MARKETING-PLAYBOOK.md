@@ -1,7 +1,8 @@
 # Marketing playbook — the owner's plan for finding paying filmmakers
 
-Written 26 Oct 2026. Status: a PLAN. Nothing in it has been posted, sent or
-spent. It replaces the marketing half of `docs/RELEASE-PLAN.md` §5 where the
+Written 26 Oct 2026; revised the same day for the source-bucket contract,
+the whole-studio trial decision and the switching guides. Status: a PLAN.
+Nothing in it has been posted, sent or spent. It replaces the marketing half of `docs/RELEASE-PLAN.md` §5 where the
 two disagree (that file still says "pay once" and "invite-only"; both are
 history since the yearly plans of 21 Oct and the trial decision of 26 Oct).
 
@@ -36,25 +37,44 @@ India's CCPA dark-pattern guidelines, or both.
    amount actually charged). The table in §2.2 is a snapshot for planning.
    Ads and captions in `docs/marketing/` use placeholders (`{BASIC_YEAR}`,
    `{FROM_DAY}`, `{RISE_DATE}`) so a stale figure cannot be copied by accident.
+   **The same goes for the founding date and the trial**: copy meant for
+   posting never types the date or the length. `{RISE_DATE}` is read from
+   `price_notice()` `plans[].next_price_at` (an IST date; null means the rise
+   has fired, so drop the line) and `{TRIAL_LENGTH}` from `trial_offer()`
+   `trial_hours` (72 hours is "3 days"), both on the console the day you
+   post. Only §6, the owner's own steps, names the decided values.
 4. **The charged amount is never hidden.** If a post shows a dollar figure,
    it also says what is charged today (rupees, until `usd_checkout` is on).
 5. **Plans are one year each.** Never "pay once", "lifetime", "own it
    forever". The true lines are: one payment for one year; nothing renews by
    itself; buy again to add a year; move up mid-year and the unused part is
    credited.
-6. **The trial length is a server setting.** Write "a 3-day trial" only once
-   `trial_offer()` answers `trial_minutes: 4320` (§6, step 1). Until then the
-   copy says "a free trial".
+6. **The trial is two server settings, and copy follows both.**
+   `{TRIAL_LENGTH}` is whatever `trial_offer()` answers that day; if you
+   have not just read it, write "a free trial" with no length. What the
+   trial opens is `{TRIAL_OPENS}`: "the whole studio" ONLY when
+   `trial_offer()` carries `trial_scope: "full"` (it gains that key with
+   schema §60; an older server sends none) and `trial_plan` is `pro`;
+   otherwise "the tools on the two sample films". A whole-studio trial still
+   keeps the no-plan limits (one film in the cloud, no share links, no
+   collaborators; local work is never capped), so never promise sharing or a
+   team on the trial.
 7. **Purchases are final** except a duplicate charge, a plan never activated,
    and refunds Indian law requires. Never "money-back guarantee".
 8. **No real person** in a sample, a screenshot or an ad without consent.
    The Dragon and The Dark Knight samples are reconstructions and say so.
 9. **Name only what is built and on the plan you name.** Call sheets, Shoot
    Day, Edit Log, Deliverables and the AI tools are **Pro**. Breakdown,
-   storyboard, shot list, stripboard, budget, cast and crew and sides are
-   **Intermediate**. Writing, story, drafts and import are **Basic**. The
-   pricing page's table is generated from `src/data/plan-matrix.json`; when in
-   doubt, read it there.
+   auto-tagging, cast matrix, screen time, storyboard, shot list, stripboard,
+   Day Out of Days, budget, contacts, sides, reports, Google Drive backup and
+   the Chrome extension are **Intermediate and up**. Story, Idea Vault,
+   screenplay, drafts, import and PDF exports are on **every plan (Basic and
+   up)**. The pricing page's table is generated from
+   `src/data/plan-matrix.json`; when in doubt, read it there. A module whose
+   `plans` is `[]` there is switched off on every plan and is never named:
+   today that is case studies, dissection, the glossary, the pitch deck, the
+   lookbook, media, songs and the Screenplay Analysis module (`script-breakdown`;
+   the Script analysis tab on the Screenplay Writer is not that module).
 10. **Disclose every paid relationship** (affiliates, sponsored posts), in
     the video and in the description, per platform rules and ASCI guidance.
 
@@ -68,7 +88,7 @@ India's CCPA dark-pattern guidelines, or both.
 | 2 | **Other Indian independents** (Malayalam, Telugu, Kannada, Hindi) | The same planning chain in rupees. Be honest: the Tamil-specific help is Tamil only | Intermediate |
 | 3 | **Film and Viscom students** | A real tool for the diploma film, plus the learning Library; a student price through the `STUDENT50` code | Intermediate at the student price |
 | 4 | **Small production houses and line producers** | Budget against actuals, production reports, call sheets, the shoot day, deliverables | Pro |
-| 5 | **International independents** (second wave) | Final Draft (.fdx) both ways, Fountain, Word, PDF; local-first storage; a yearly price far under the usual subscriptions | Basic or Intermediate. Dollar checkout is OFF until Razorpay International is approved (§6 step 7) |
+| 5 | **International independents** (second wave) | Final Draft (.fdx) both ways, Fountain, Word, PDF; local-first storage; one yearly payment that does not renew by itself | Basic or Intermediate. Dollar checkout is OFF until Razorpay International is approved (§6 step 7) |
 
 Not the target: studios that need enterprise contracts, union (SAG/IATSE/WGA)
 paperwork, or real-time co-writing at scale.
@@ -107,9 +127,9 @@ before anybody raises them:
   deadline.
 - **The countdown backfired.** 10 of 24 read it as pressure, 1 as a reason to
   buy. So the founding date is stated once, plainly, and never shouted.
-- **"How long is the trial?"** was the most asked question. The 3-day trial
-  answers it, so say the length wherever the trial is offered (once it is
-  live), and say what it opens: the tools, on the two sample films.
+- **"How long is the trial?"** was the most asked question. Say
+  `{TRIAL_LENGTH}` wherever the trial is offered (read that day), and say
+  what it opens: `{TRIAL_OPENS}` (rule 6).
 - **Writers want confidentiality in plain words**, crew are not the buyer,
   and non-Tamil personas wanted their own script. Do not promise Malayalam or
   Telugu tooling that does not exist.
@@ -120,9 +140,9 @@ before anybody raises them:
 
 | Piece | Truth to say | Where it lives |
 | --- | --- | --- |
-| **3-day trial, on the sample films** | The studio's tools, on the two sample films (The Dragon and The Dark Knight reconstructions), for 3 days, no card. A trial somebody starts by pressing the button **cannot** open their own film: `start_trial()` stores scope `sample` for every `signup` trial whatever the console's `trial_scope` says (§6.1). Starts only when they press start (or redeem a code) | `trial_offer()`; console Growth → Trial |
+| **Free trial, `{TRIAL_LENGTH}`, `{TRIAL_OPENS}`** | Decided 26 Oct 2026: 3 days of the whole studio, no card. True only once schema §60 has run (a pressed trial then follows the console's `trial_scope`) and the console reads `trial_scope` full and `trial_plan` pro (§6.1). Until both read back, a pressed trial is the tools on the two sample films (The Dragon and The Dark Knight reconstructions), and copy says so. Either way: no card, it starts only when they press start (or redeem a code), and a whole-studio trial keeps the no-plan limits (one film in the cloud, no share links, no collaborators) | `trial_offer()` (`trial_hours`, and `trial_scope` once §60 has run); console Growth → Trial |
 | **Yearly plans** | Basic, Intermediate, Pro, one payment each for one year, nothing renews by itself | `price_notice()`; `pricing.html` |
-| **Founding prices** | Today's prices hold until **31 Dec 2026** (the server's `next_price_at`, once moved; §6 step 2) or until the founding places fill, whichever is first. A plan bought now is a full year at the price paid | `price_notice()` |
+| **Founding prices** | Today's prices hold until `{RISE_DATE}` (the server's `next_price_at`; the owner is moving it to 31 Dec 2026, §6 step 2) or until the founding places fill, whichever is first. A plan bought now is a full year at the price paid | `price_notice()` |
 | **Student band** | Code `STUDENT50` gives the student price on Intermediate. Verify a student ID or college e-mail by hand for bulk requests | Promo code (§20); the button on the plan cards |
 | **Referral codes** | Every paying member has a `REF-XXXXXX` code. The friend gets `referral_friend_pct` off (default 10%); the referrer is owed `referral_reward_pct` of what the friend paid (default 10%), paid by hand | The Purchase page ("Your referral code", `purchase.html`); console Growth |
 | **Affiliate codes** | A promo code with a commission %, for creators. Revenue and commission due are derived per code; paid by hand | Console Billing → Promo codes ("Commission %"); Growth shows the report |
@@ -145,7 +165,7 @@ live `price_notice()` values recorded in `CLAUDE.md`:
 | Basic (`starter`) | ₹599 | ≈ ₹1.64 | ₹999 | $19 → $29 |
 | Intermediate (`indie`) | ₹799 | ≈ ₹2.19 | ₹1,499 | $29 → $39 |
 | Pro (`pro`) | ₹999 | ≈ ₹2.74 | ₹1,999 | $39 → $49 |
-| Student (Intermediate + `STUDENT50`) | ₹399 (only with the fixed-amount code of §6 step 6) | ≈ ₹1.09 | an owner decision before 31 Dec (§6 step 6) | — |
+| Student (Intermediate + `STUDENT50`) | ₹399 (only with the fixed-amount code of §6 step 6) | ≈ ₹1.09 | an owner decision before the rise (§6 step 6) | — |
 
 The USD column is the seed in `supabase-schema.sql` §56; the owner may have
 changed it on the console. `price_notice('USD')` is the only figure to quote.
@@ -154,71 +174,107 @@ changed it on the console. `price_notice('USD')` is the only figure to quote.
 
 The studio carries no ad pixel and no third-party script (by design; see
 `docs/LAUNCH.md` §8). Attribution is first-party: `src/lib/attribution.js`
-reads `?src=` (or `utm_source`) and `?ref=` on arrival, keeps them for the
-tab only (sessionStorage), and schema §58 can count every funnel step per
-source. A `?ref=` code is carried to the purchase page's "Have a code?" box.
+reads `?src=` (or `utm_source`), `utm_campaign` and `?ref=` on arrival and
+keeps them for the tab only (sessionStorage, key `fms_attrib_session`).
+`src/lib/funnel.js` `funnelSource()` reads that record and sends its
+**bucket** (below) with each daily count; schema §58 stores the count per
+bucket. A `?ref=` code is carried to the purchase page's "Have a code?" box.
 
-**Not wired yet (26 Oct 2026): do not trust the per-source table until the
-Day 0 pre-flight item proves it.** `funnel.js` sends a source only when a
-caller passes one or `setFunnelSource()` has been called, and no page calls
-it yet: `start.js` counts `landing_view` with no source, and `marketing.js`
-keeps attribution under its own session key, not the funnel's. Until that is
-wired every count lands under `direct`, and Meta stop rule 4 (§4.2) would
-pause all spend at ₹1,500 every time. `signin_done` and `plan_view_in_app`
-(`countSignIn`, `countPlanViewInApp`) have no callers either, so those two
-steps stay at zero. The code change (call `setFunnelSource(attribution().src)`
-after `captureAttribution()`, and call the two counters) belongs to the
-attribution and site code, not to this file.
+**What is counted, and where (26 Oct 2026).** `landing_view` on `/start`
+(once per tab), `signup`, `signin_done` (the OAuth return, `cloud.js`),
+`sample_open` (the hub), `trial_start` (`billing.js`, when the server says
+the trial started), `plan_view_in_app` (the purchase page, signed in),
+`checkout_start` and `purchase` all carry the tab's bucket. Three things
+still hold:
+
+- **Guide pages and the switching guides send no `landing_view` of their
+  own.** They capture `?src=`, so a click through to `/start` in the same tab
+  counts under that bucket. Untagged guide traffic is read in Search Console.
+- The per-source table exists only once §58 has run live (§6 step 3); until
+  then the totals still count and the table stays empty.
+- Visitors with Do Not Track or Global Privacy Control send nothing.
 
 **The link shape**
 
 ```
-https://filmmakerstudio.in/start?src=<channel>&utm_campaign=<name>
-https://filmmakerstudio.in/start?src=<channel>&utm_campaign=<name>&ref=<CODE>   (affiliates, referrals)
+https://filmmakerstudio.in/start?src=<tag>&utm_campaign=<note>
+https://filmmakerstudio.in/start?src=<tag>&utm_campaign=<note>&ref=<CODE>   (affiliates, referrals)
 ```
 
-Rules for `src` (the console only shows what fits):
+**Buckets: what the console shows for each tag.** The console never shows
+the tag you typed. It shows the BUCKET `sourceBucket()` maps it to: an exact
+name, or the family of the part before the first `-`. Anything that matches
+neither counts as `other`; no `src` at all shows as `direct`. **Slugs are not
+counted separately**: `school-loyola`, `school-psg` and `school` are all one
+`school` row, and `creator-filmkaadhal` is one `partner` row with every other
+creator. That is deliberate: a count may say how many came from schools, never
+which school or which creator (no per-person or per-school data in the
+counts).
 
-- lowercase letters, digits, `-` and `_`, at most 32 characters; anything
-  else is folded to `-` or cut. No spaces, no e-mail addresses.
-- **The console breaks down by `src` only.** `utm_campaign` is kept for the
-  tab and the launch-offers form but is not a column in the per-source
-  funnel. When you need to compare two ads, put the cell in `src`
-  (`meta-t1a`, `meta-t1b`), not only in `utm_campaign`.
+| You write `src=` | Console bucket |
+| --- | --- |
+| `google`, `bing`, `duckduckgo` (or `ddg`), `yahoo` | the same name |
+| `instagram`, `ig`, `insta`, `ig-<anything>`, `insta-<anything>` | `instagram` |
+| `facebook`, `fb`, `fb-<anything>` | `facebook` |
+| `meta-<anything>`, `ads` | `ads` |
+| `youtube`, `yt`, `yt-<anything>` | `youtube` |
+| `whatsapp`, `wa`, `wa-<anything>` | `whatsapp` |
+| `x`, `twitter` | `x` |
+| `linkedin`, `telegram`, `reddit`, `threads`, `pinterest`, `producthunt`, `podcast`, `quora` | the same name |
+| `email`, `mail`, `newsletter` | `email` |
+| `partner`, `affiliate`, `creator-<anything>`, `aff-<anything>` | `partner` |
+| `event`, `festival`, `fest-<anything>` | `event` |
+| `school`, `school-<anything>` | `school` |
+| `directory`, `dir-<anything>` | `directory` |
+| `referral`, `ref-<anything>` | `referral` |
+| anything else (`email-1`, `preflight-test`, `tiktok`, …) | `other` |
+
+Rules:
+
+- Lowercase, no spaces, no e-mail addresses. Use the tags in the register
+  below and nothing new without adding a row here first, or it reads `other`.
+- **`utm_campaign` is never stored on the server.** It stays in the visitor's
+  tab only. Use it as a reading aid for your OWN link notes (which link you
+  put where, in a sheet you keep), not as something the console can split.
 - The **first** source in a tab wins; the **latest** code wins.
-- A day holds at most 200 distinct sources; a new one after that counts as
-  `other`. Keep the list below short and reuse it.
 - Organic search and typed URLs arrive with no `src` and show as `direct`.
-- **Guide pages are not counted by the funnel** (they send no
-  `landing_view`). Tag every product link out of a guide, tag every link to
-  a guide that you post yourself (`/guide-call-sheet?src=reddit`; the guide
-  captures it, and once `setFunnelSource` is wired a click through to
-  `/start` carries it), and read untagged guide traffic in Search Console.
+- **What the console cannot tell apart, and where to read it instead:**
+  - Meta test cells (all `ads`): read each cell in Meta Ads Manager (landing
+    page views, spend), and compare against the console's `ads` row by day.
+  - YouTube in-stream ads vs your own channel (both `youtube`): the ad's
+    views and clicks are in Google Ads; run them in different weeks if the
+    split matters.
+  - One creator vs another (all `partner`): each creator has their own
+    affiliate code, so read revenue per code in Growth → Affiliates.
+  - One school or festival vs another: their cohort or festival promo code,
+    in Billing → Promo codes.
 
 **The channel register** (add a row before you use a new tag)
 
-| Channel | `src` | `utm_campaign` example | `ref` |
-| --- | --- | --- | --- |
-| Instagram bio | `ig-bio` | `profile` | — |
-| Instagram post / reel / story link | `ig-post`, `ig-reel`, `ig-story` | `wk1-callsheet` | — |
-| Meta ads (one per test cell) | `meta-t1a` … `meta-t1g` | `test1` | — |
-| YouTube in-stream ads | `yt-ads` | `y1` | — |
-| Meta retargeting | `meta-rt` | `rt1` | — |
-| YouTube creator | `yt-<creator>` | `review-nov` | the creator's affiliate code |
-| YouTube own channel | `yt-own` | `demo-import` | — |
-| WhatsApp groups (shared message) | `wa-group` | `share-v1` | — |
-| WhatsApp own broadcast | `wa-bcast` | `bcast-<n>` | — |
-| Film school (one per school) | `school-<slug>` | `pilot-<term>` | a cohort promo code if issued |
-| Festival / film society partner | `fest-<slug>` | `<fest>-2026` | the partner's code if agreed |
-| Reddit answer | `reddit` | `<subreddit>` | — |
-| Quora answer | `quora` | `<topic>` | — |
-| Product Hunt | `producthunt` | `launch` | — |
-| Directories (AlternativeTo, SaaSHub, …) | `dir-<name>` | `listing` | — |
-| E-mail series (§ `email-series.md`) | `email-1` … `email-6` | `welcome` | — |
-| Referral (a member shares) | `referral` | — | their `REF-` code. The panel's copy link is `/purchase?ref=CODE` with no `src`: counted as `direct` unless the member adds `&src=referral` |
+| Channel | `src` | Bucket | `utm_campaign` (your note only) | `ref` |
+| --- | --- | --- | --- | --- |
+| Instagram bio | `ig-bio` | `instagram` | `profile` | — |
+| Instagram post / reel / story link | `ig-post`, `ig-reel`, `ig-story` | `instagram` | `wk1-callsheet` | — |
+| Meta ads (one tag per test cell) | `meta-t1a` … `meta-t1g` | `ads` | `test1` | — |
+| Meta retargeting | `meta-rt` | `ads` | `rt1` | — |
+| YouTube in-stream ads | `yt-ads` | `youtube` | `y1` | — |
+| YouTube own channel | `yt-own` | `youtube` | `demo-import` | — |
+| YouTube / Instagram creator | `creator-<handle>` | `partner` | `review-nov` | the creator's affiliate code |
+| WhatsApp groups (shared message) | `wa-group` | `whatsapp` | `share-v1` | — |
+| WhatsApp own broadcast | `wa-bcast` | `whatsapp` | `bcast-<n>` | — |
+| Film school (one tag per school, for your notes) | `school-<slug>` | `school` | `pilot-<term>` | a cohort promo code if issued |
+| Festival / film society partner | `fest-<slug>` | `event` | `<fest>-2026` | the partner's code if agreed |
+| Reddit answer | `reddit` | `reddit` | `<subreddit>` | — |
+| Quora answer | `quora` | `quora` | `<topic>` | — |
+| Product Hunt | `producthunt` | `producthunt` | `launch` | — |
+| Directories (AlternativeTo, SaaSHub, …) | `dir-<name>` | `directory` | `listing` | — |
+| E-mail series (`email-series.md`) | `email` | `email` | `welcome`, `plans`, … (one per e-mail) | — |
+| Referral (a member shares) | `referral` | `referral` | — | their `REF-` code. The panel's copy link is `/purchase?ref=CODE` with no `src`: counted as `direct` unless the member adds `&src=referral` |
 
 Example, for a YouTube creator with the code `FILMKAADHAL20`:
-`https://filmmakerstudio.in/start?src=yt-filmkaadhal&utm_campaign=review-nov&ref=FILMKAADHAL20`
+`https://filmmakerstudio.in/start?src=creator-filmkaadhal&utm_campaign=review-nov&ref=FILMKAADHAL20`
+(console: `partner`; the creator's own figures: Growth → Affiliates, code
+`FILMKAADHAL20`).
 
 Test every new tagged link once in a private window: it should land on
 `/start` (not `/start.html`, which redirects) and the code should appear in
@@ -244,8 +300,12 @@ message cheaply before money amplifies it.
 
 ### 4.2 Meta ads (paid; a test with stop rules)
 
-No pixel, so optimise for **landing page views**, not purchases, and read
-purchases per `src` in the console.
+No pixel, so optimise for **landing page views**, not purchases. Every
+cell's tag (`meta-*`) lands in the console's one `ads` bucket (§3), so a
+CELL is judged on Meta Ads Manager's own figures (spend, landing page views,
+cost per landing view), and the console's `ads` row says whether the paid
+traffic as a whole goes on to `trial_start` and `purchase`. To compare two
+cells on trials, run them on different days, not side by side.
 
 **Test 1 — week 2 of the calendar, 7 days, ₹2,100 total (₹300/day)**
 
@@ -261,23 +321,29 @@ creatives: swap one in when a cell is paused, never more than one a day.
 
 **Stop rules (apply daily, write every change in a log with the date)**
 
-1. Do not judge a cell before ₹500 spent or 300 landing views.
-2. Pause a cell whose cost per landing view is twice the best cell's.
-3. Pause a cell with 0 `trial_start` after ₹700 spent.
-4. Pause **everything** if the console shows `landing_view` but no
-   `pricing_view` or `trial_start` from any `meta-*` source after ₹1,500:
-   the page or the tag is broken, not the audience.
+1. Do not judge a cell before ₹500 spent or 300 landing views (Ads
+   Manager).
+2. Pause a cell whose cost per landing view (Ads Manager) is twice the best
+   cell's.
+3. Pause the test's weakest cell if the console's `ads` row shows 0
+   `trial_start` after ₹700 spent across the test.
+4. Pause **everything** if the console's `ads` row shows `landing_view` but
+   no `pricing_view` or `trial_start` after ₹1,500: the page or the tag is
+   broken, not the audience. If `ads` shows NO `landing_view` while Ads
+   Manager reports landing page views, the tag is broken: fix the link
+   first.
 5. One change at a time. Never raise a budget and swap a creative the same
    day.
 
 **Test 2 — the following week, ₹3,500 (₹500/day) on the one or two winners**.
-Move up only if `trial_start` per ₹100 spent holds within 30% of Test 1.
+Move up only if the `ads` row's `trial_start` per ₹100 spent holds within
+30% of Test 1.
 
 **Scale** — +20% every 3 days while blended cost per purchase stays under
 **40% of the plan price bought** (Intermediate at ₹799 → at most about ₹320).
 Above that, stop and rework; do not scale a loss.
 
-**Retargeting** (`meta-rt`) — people who engaged with the Instagram account
+**Retargeting** (`meta-rt`, bucket `ads`) — people who engaged with the Instagram account
 or watched 50% of a reel (Meta-side audiences, no pixel). ₹200/day once the
 account has a few thousand engaged people.
 
@@ -296,6 +362,9 @@ fails every rule, the money stops at ₹2,100.
 - **Brief**: `outreach-templates.md` has the message and the one-page brief
   (what they may claim, what they must not, the final-sale wording,
   disclosure).
+- **Tag**: `src=creator-<handle>` (bucket `partner`) plus their code as
+  `ref`. The console counts all creators as one `partner` row; each
+  creator's own figures are their code's revenue in Growth → Affiliates.
 - **Payout**: monthly, by hand, from the Growth tab's affiliate report
   (revenue is already net of discount and refunds). Pay on a fixed date and
   tell them the date in writing first.
@@ -311,18 +380,21 @@ fails every rule, the money stops at ₹2,100.
   people who wrote in). Two messages a month at most: a release note and a
   tip. Every message says how to leave the list.
 - The share message is in `outreach-templates.md` (WhatsApp section), tagged
-  `src=wa-group`.
+  `src=wa-group` (bucket `whatsapp`).
 
 ### 4.5 Film schools
 
 Follow `docs/OUTREACH-FILM-SCHOOLS.md` (three e-mails, Harvey, the DPDP Act
-rules). Update its "7-day trial" line to the live trial length once §6 step 1
-is done, or offer invite codes (which carry their own `code_trial_days`).
+rules). It names no trial length: a pressed trial is `{TRIAL_LENGTH}` from
+`trial_offer()`, and an invite code is worth its own `code_trial_days`
+(console), so read whichever you offer on the day.
 
 - **Weekly**: 10 schools contacted (Harvey caps at 20 a day with approval on).
 - **Offer**: a faculty Pro grant to evaluate; `STUDENT50` for students; a
   20-minute online workshop "from a short-film script to a call sheet".
-- **Tag**: `src=school-<slug>` on every link sent to that school.
+- **Tag**: `src=school-<slug>` on every link sent to that school (bucket
+  `school`; the console does not split one school from another, so give a
+  school its own cohort code if you need its numbers).
 - Group access for a whole class is by invite codes and grants, set up by
   hand. There is no bulk education licence in the checkout; do not sell one.
 
@@ -335,7 +407,8 @@ is done, or offer invite codes (which carry their own `code_trial_days`).
   scheduling or budgeting a short.
 - Never claim endorsement, partnership or "official tool" unless the
   festival agrees **in writing**, and then use only their wording.
-- **Tag**: `src=fest-<slug>`.
+- **Tag**: `src=fest-<slug>` (bucket `event`; the partner's own code is what
+  tells one festival from another).
 - **Monthly**: 4 festival or society contacts.
 
 ### 4.7 Reddit and Quora answers
@@ -350,12 +423,13 @@ is done, or offer invite codes (which carry their own `code_trial_days`).
   each one's self-promotion rule before posting anything with a link).
 - **Weekly**: 3 answers. Tag every link, guide links included:
   `/guide-call-sheet?src=reddit`, `/start?src=quora&utm_campaign=<topic>`.
-  Guide pages send no count of their own (§3).
+  Guide pages send no `landing_view` of their own (§3); the tag rides along
+  to `/start` in the same tab.
 
 ### 4.8 SEO: the guide pages
 
-Lane B's build adds seven guides, two comparisons, a guides index and a trust
-page, generated like the rest of the public site. Linked here relative to
+The public site has seven guides, two switching guides, a guides index and
+a trust page, generated like the rest of the public site. Linked here relative to
 `docs/` (the live URL drops `.html`, e.g. `https://filmmakerstudio.in/guide-call-sheet`):
 
 | Page | Use it for |
@@ -368,16 +442,20 @@ page, generated like the rest of the public site. Linked here relative to
 | [`guide-cbfc-checklist.html`](../guide-cbfc-checklist.html) | Producers; always with "confirm with the regional office" |
 | [`guide-ott-delivery.html`](../guide-ott-delivery.html) | Post-production questions |
 | [`guide-festival-planner.html`](../guide-festival-planner.html) | Festival season; partner festivals |
-| [`compare-celtx.html`](../compare-celtx.html) | "Celtx alternative" searches |
-| [`compare-final-draft.html`](../compare-final-draft.html) | ".fdx", "Final Draft alternative" |
+| [`compare-celtx.html`](../compare-celtx.html) | "Switching from Celtx": what imports, what exports, what the move looks like |
+| [`compare-final-draft.html`](../compare-final-draft.html) | "Switching from Final Draft": `.fdx` in and out, the move step by step |
 | [`trust.html`](../trust.html) | The answer to "will my script be safe / what if you shut down" |
 
 - After they ship: resubmit `public/sitemap.xml` in Search Console (verify by
   DNS TXT; never touch `index.html`'s verification tag).
 - **Monthly**: read Search Console's queries; write one new guide only where
   a real query has impressions and no page.
-- Comparison pages must stay fair: re-check every competitor fact before
-  quoting it anywhere else, and mark it with the date checked.
+- The two switching guides state only OUR checkable facts. Competitor facts
+  sit in `src/data/marketing-compare.json` and a row is rendered only when
+  its status is `read` (the owner has read the vendor's own page and noted
+  the date). Today none is, so none renders, and no post, ad or reply may
+  quote a competitor's feature or price either: the same rule, applied to
+  everything you write by hand.
 
 ### 4.9 Product Hunt and directories
 
@@ -390,12 +468,13 @@ page, generated like the rest of the public site. Linked here relative to
 - **Directories** (one afternoon, week 3): AlternativeTo (as an alternative
   to Celtx, StudioBinder, Final Draft), SaaSHub, Futurepedia only if the AI
   tools are the angle (they are optional and bring-your-own-key: say so),
-  Indian startup directories. Tag `src=dir-<name>`.
+  Indian startup directories. Tag `src=dir-<name>` (bucket `directory`).
 
 ## 5. Launch week, day by day
 
-**Day 0 is the day the owner sets the 3-day trial live** (§6 step 1). Do
-not start Day 0 until every item in the pre-flight list is true.
+**Day 0 is the day the owner sets the trial live** (§6 step 1: 3 days of
+the whole studio, as decided). Do not start Day 0 until every item in the
+pre-flight list is true.
 
 **Before anything else, whatever else is ready: §6 step 2 (the founding
 date) must be done before 2026-10-31T18:29Z.** Day 0 waits on a live
@@ -404,23 +483,27 @@ rise waits for none of them.
 
 **Pre-flight (all must be true)**
 
-- [ ] `trial_offer()` reads `trial_minutes: 4320` (§6.1)
-- [ ] A pressed trial on a fresh Google account: `select trial_scope from
-      public.studio_members where user_id = '<that uid>';` reads `sample`
-      (or `full` if a new section has changed `start_trial()`, §6.1), and
-      every line of copy matches it: `sample` means "on the sample films",
-      and no line says "whole studio" or "your own film". Only with `full`:
-      `billing_status().trial_scope` is `full` and that account can create
-      a new project
-- [ ] `price_notice()` reads a rise at `2026-12-31T18:29:00Z` (§6.2; due
-      before 31 Oct, not on Day 0)
+- [ ] Schema §60 ran with a checksum and read back (its 60.4 query), so a
+      pressed trial follows the console's `trial_scope` (§6 step 3)
+- [ ] `select public.trial_offer();` as anon reads `trial_minutes` 4320,
+      `trial_hours` 72 and `trial_scope` `full` (§6.1); the console reads
+      `trial_plan` `pro`
+- [ ] A pressed trial on a fresh Google account: `billing_status()` reads
+      `trial_scope` `full`, `features` has `call-sheets` true, and the account
+      can create a project of its own. If any of these fails, every line of
+      copy says "on the two sample films" instead, and nothing says "whole
+      studio" or "your own film"
+- [ ] `price_notice()` reads the rise at the decided instant (§6.2; due
+      before 2026-10-31T18:29Z, not on Day 0)
 - [ ] §58 and §59 ran with a checksum and read back (§6.3); the console's
       funnel shows a "by source" table
 - [ ] **Per-source counting works**: open
-      `https://filmmakerstudio.in/start?src=preflight-test` in a private
-      window, then `select * from public.admin_funnel_by_source(current_date,
-      current_date);` shows a `landing_view` row for source `preflight-test`.
-      Do not start Meta Test 1 until that row appears (§3, "Not wired yet")
+      `https://filmmakerstudio.in/start?src=ig-bio` in a private window,
+      then `select * from public.admin_funnel_by_source(current_date,
+      current_date);` shows a `landing_view` row for source `instagram`.
+      Then start the fresh account's trial from that same tab and see
+      `trial_start` under `instagram` too. Do not start Meta Test 1 until both
+      rows appear
 - [ ] A LIVE Razorpay key is on, `RESEND_API_KEY` and `MAIL_FROM` are set,
       and one real ₹ payment and its receipt e-mail arrived (§6.5)
 - [ ] The four functions owed a redeploy since §52 are redeployed (probe each
@@ -428,19 +511,24 @@ rise waits for none of them.
 - [ ] Every tagged link in §3 you will use on Day 0–7 opened once in a
       private window
 - [ ] `STUDENT50` and the referral percentages are as the copy says
-- [ ] `poster-1.png` no longer says "Invite-only at launch" (regenerate;
-      see `social/CAPTIONS.md` notes)
+- [ ] Before any e-mail goes to a lead: the leads form is live (`lead.live`
+      in `src/data/marketing-site.json`, only after privacy.html carries the
+      owner's leads paragraph), §29 `add_lead` answers, and one test
+      submission shows its row with the consent sentence. Until then the
+      leads list is empty and e-mails 1–5 have nobody to go to
+- [ ] `social/poster-1.png` carries no "Invite-only" or "Launching soon" line
+      (regenerated 26 Oct 2026; re-check after any change)
 
 | Day | Actions |
 | --- | --- |
-| **Day 0** (trial goes live) | Morning: §6.1, read back. Open `/start` and `/pricing` in a private window: the trial strip shows 3 days; the founding line shows 31 Dec. Start one trial yourself on a fresh Google account and walk the sample films. Afternoon: post feed post 1 (announcement, `content-calendar.md` W1 Mon). Stories: "the trial is open: 3 days on the sample films, no card". Send e-mail 1 to the consented leads list (only once Resend is live). |
+| **Day 0** (trial goes live) | Morning: §6.1, read back. Open `/start` and `/pricing` in a private window: the trial strip shows the length `trial_offer()` reads; the founding line shows the date `price_notice()` reads. Start one trial yourself on a fresh Google account and open your own project in it. Afternoon: post feed post 1 (announcement, `content-calendar.md` W1 Mon). Stories: "the trial is open: {TRIAL_LENGTH} of {TRIAL_OPENS}, no card" (filled that morning). Send e-mail 1 to the consented leads list (only once Resend is live and the list has a consented row). |
 | **Day 1** | Reel: script import to stripboard (real recording). Share in your own WhatsApp broadcast (`wa-bcast`). Message 5 YouTube creators. Answer every comment and DM. Read the console: `landing_view`, `trial_start` by source. |
-| **Day 2** | Post: "What the trial opens" carousel. 3 Reddit/Quora answers with guide links. Send film-school e-mail 1 to 10 schools (Harvey, approval on). |
-| **Day 3** | First trials from Day 0 end today. Read `trial_start` → `checkout_start` → `purchase`. Reply personally to anyone who wrote in. Story: a question box "what stopped you?" |
+| **Day 2** | Post: "What the trial opens" carousel (`{TRIAL_OPENS}`, read that day). 3 Reddit/Quora answers with guide links. Send film-school e-mail 1 to 10 schools (Harvey, approval on). |
+| **Day 3** | With a 3-day trial, the first trials from Day 0 end today. Read `trial_start` → `checkout_start` → `purchase`. Reply personally to anyone who wrote in. Story: a question box "what stopped you?" |
 | **Day 4** | Reel: call sheet to WhatsApp (Pro). Directory listings (§4.9). Follow up the Day 1 creators once. |
 | **Day 5** | Post: the trust post ("where your script lives", linking `trust.html`). Second WhatsApp share in groups where you have already contributed. |
 | **Day 6** | Reel: budget in rupees with sources. Write down the week's numbers (§7.2) and the three most-asked questions. |
-| **Day 7** | Weekly review (§7.4). Decide: start Meta Test 1 next week only if `landing_view` → `trial_start` is working from organic sources (any trials at all from `ig-*` or `wa-*`). Fix the top question on the page or the FAQ before spending. |
+| **Day 7** | Weekly review (§7.4). Decide: start Meta Test 1 next week only if `landing_view` → `trial_start` is working from organic sources (any trials at all under `instagram` or `whatsapp`). Fix the top question on the page or the FAQ before spending. |
 
 ## 6. Console steps only the owner can make
 
@@ -449,40 +537,38 @@ SQL pasted into the editor follows the paste rule: base64 across the
 clipboard, decode in the page, compare the SHA-256 before pressing Run
 (`docs/LAUNCH.md` §4).
 
-1. **Trial: 3 days.** `admin.html` → Growth → Trial: length 4320 minutes,
-   scope "full", trial plan "Pro" (`admin_set_billing_settings` with
+1. **Trial: 3 days of the whole studio (owner decision, 26 Oct 2026).**
+   First run schema §60 (step 3): without it a pressed trial is always the
+   sample films, whatever the console says. Then `admin.html` → Growth →
+   Trial: length 4320 minutes, scope "full", trial plan "Pro"
+   (`admin_set_billing_settings` with
    `{"trial_minutes": 4320, "trial_scope": "full", "trial_plan": "pro"}`; it
-   accepts 1 to 44,640 minutes). Read back: `select public.trial_offer();` as
-   anon must show `trial_minutes` 4320 and `trial_hours` 72. The pages read
-   this value; no copy is edited to change it.
+   accepts 1 to 44,640 minutes). The trial plan matters: a full trial gets
+   the features of `trial_plan`, and with it unset that is Intermediate, so
+   no call sheets, Shoot Day, Edit Log, Deliverables or AI tools. Read back:
+   `select public.trial_offer();` as anon must show `trial_minutes` 4320,
+   `trial_hours` 72 and `trial_scope` `full`; then the §5 pre-flight's
+   fresh-account check. The pages read these values; no copy is edited to
+   change them, and posting copy fills `{TRIAL_LENGTH}` / `{TRIAL_OPENS}`
+   from them on the day.
 
-   **What this setting does NOT do: it does not make a pressed trial
-   whole-studio.** `start_trial()` (`supabase-schema.sql`, restated in §50
-   and §51) stores `case when src = 'signup' then 'sample' else
-   coalesce(s.trial_scope, 'sample') end`, so every trial a visitor starts
-   with the button is scope `sample` whatever `trial_scope` says, and
-   `billing_status()` switches to `trial_plan`'s features only when the
-   member's scope is `full`. `trial_scope` and `trial_plan` govern code and
-   admin trials only; `docs/BILLING.md` records the sample scope of a signup
-   trial as deliberate. So the offer every piece of copy makes is **"3 days
-   on the two sample films, no card"**: a self-started trial cannot create a
-   project of its own.
-
-   **Owner decision, open:** a self-serve trial on the visitor's own film
-   needs a NEW schema section that changes `start_trial()` to use
-   `s.trial_scope` for `src = 'signup'`, run live with a checksum and read
-   back by the §5 pre-flight item, before Day 0 can start on that offer.
-   Until it has run and read back, no line of copy may say "whole studio",
-   "your own film" or "your own script" about the trial. Invite codes keep
-   their own `code_trial_days` — decide whether a code should still be worth
-   7 days.
+   Two things this does that are worth knowing before you press it:
+   - A whole-studio trial keeps the no-plan LIMITS (§60's header:
+     `user_limits()` still reads the free plan's row): one film in the
+     cloud, no share links, no collaborators. Local work is never capped.
+     Copy never promises sharing or a team on the trial.
+   - `trial_scope` and `trial_plan` also govern code and admin trials, so
+     every redeemed invite code becomes a full-studio Pro trial for its own
+     `code_trial_days`. Decide whether a code should still be worth that
+     many days, and set `code_trial_days` accordingly.
 2. **Move the founding-price date to 31 Dec 2026. DO BEFORE
    2026-10-31T18:29Z, whatever else is ready.** The live rise fires at that
    instant by itself: `effective_price()` switches to the higher price with
    nobody pressing anything, and every buyer after it is charged it. This
    step does not wait for Day 0. On the console's price
    editor (Billing), set each plan's next price date to
-   `2026-12-31T18:29:00Z` (23:59 IST on 31 Dec, the same minute of day the 31 Oct date used), keeping the next price
+   `2026-12-31T18:29:00Z` (23:59 IST on 31 Dec 2026, the owner's decision of
+   26 Oct; the same minute of day the 31 Oct date used), keeping the next price
    figures. That goes through `admin_set_next_price(plan, paise, at)`, which
    writes the audit log and refuses a "rise" that is not a rise. Read back:
    `select p->>'id', p->>'next_price_at', p->>'rising' from
@@ -495,11 +581,15 @@ clipboard, decode in the page, compare the SHA-256 before pressing Run
    ('starter','indie','pro') and next_price_paise is not null;` does the
    same without the audit row; note it in the audit by hand. Then delete or
    edit any post that named 31 Oct.
-3. **Run the two new schema sections** — `schema-58-funnel-source.sql` (per-
-   source funnel) then `schema-59-testimonials.sql` (consented testimonials)
-   — each with a checksum, each read back with the query in its own header
-   (58.6 for §58). Code ships ahead of them and degrades silently until they
-   run; the per-source table simply stays empty.
+3. **Run the three new schema sections**, in order —
+   `schema-58-funnel-source.sql` (per-source funnel),
+   `schema-59-testimonials.sql` (consented testimonials), then
+   `schema-60-signup-trial-scope.sql` (a pressed trial follows
+   `trial_scope`) — each with a checksum, each read back with the query in
+   its own header (58.6 for §58, 60.4 for §60). Code ships ahead of them and
+   degrades silently until they run: the per-source table stays empty, and
+   `trial_offer()` carries no `trial_scope`, so the pages say nothing about
+   what the trial opens.
 4. **Publish the Chrome extension** per `docs/EXTENSION.md`: build, zip the
    contents of `dist-extension/`, submit to the Chrome Web Store, then add the
    store build's fixed redirect URL (`https://<extension-id>.chromiumapp.org/`)
@@ -514,7 +604,8 @@ clipboard, decode in the page, compare the SHA-256 before pressing Run
    cards print ₹399 (`EDU_PRICE.student` in `src/lib/plans.js`). Read it back
    with `select public.quote_order('indie', 'STUDENT50');`: it must quote
    39900 paise. After the rise (Intermediate ₹1,499) the same code would
-   charge ₹1,099 while the cards still print ₹399, so decide before 31 Dec:
+   charge ₹1,099 while the cards still print ₹399, so decide before the rise
+   (31 Dec 2026 once step 2 is done):
    keep ₹399 (set the code to 110000 off at the rise, and re-quote) or move
    the student price (change `EDU_PRICE`, a code change, the same day).
    Then
@@ -533,7 +624,8 @@ clipboard, decode in the page, compare the SHA-256 before pressing Run
 
 `admin.html` → Growth → Funnel: one row per step, summed (`admin_funnel`),
 and, once §58 has run, a **by source** table (`admin_funnel_by_source`):
-for each step, the count per `src`, with no source shown as `direct`.
+for each step, the count per BUCKET (§3), with no source shown as `direct`
+and an unknown tag as `other`.
 The ten steps are: `landing_view`, `pricing_view`, `invite_request`,
 `signup`, `signin_done`, `sample_open`, `trial_start`, `plan_view_in_app`,
 `checkout_start`, `purchase`. These are daily counters — how many, from
@@ -542,8 +634,8 @@ send nothing, so every count is a floor.
 
 Purchases per plan and refunds come from Billing; affiliate revenue and
 commission from Growth → Affiliates; referral credits from Growth →
-Referrals. Ad spend is in Meta Ads Manager; match it to `meta-*` sources by
-hand, weekly.
+Referrals. Ad spend is in Meta Ads Manager; match it to the `ads` bucket by
+hand, weekly (per cell, use Ads Manager's own figures).
 
 ### 7.2 The weekly numbers (write them in one sheet)
 
@@ -555,9 +647,9 @@ hand, weekly.
 | Activation | `sample_open` or real work in the trial (ask 5 triallists) | Most trials open a tool |
 | Trial → checkout | `checkout_start` ÷ `trial_start` (same week) | 15%+ |
 | Checkout → paid | `purchase` ÷ `checkout_start` | 50%+; lower means a payment problem, check Razorpay |
-| Paid cost per purchase | Meta spend ÷ `purchase` from `meta-*` | Under 40% of the plan price |
+| Paid cost per purchase | Meta spend ÷ `purchase` in the `ads` bucket | Under 40% of the plan price |
 | Plan mix | Basic / Intermediate / Pro from Billing | Read, do not steer |
-| Affiliate yield | purchases per creator code | Keep creators with any sale after 30 days |
+| Affiliate yield | purchases per creator code (Growth → Affiliates; the funnel's `partner` row is all creators together) | Keep creators with any sale after 30 days |
 
 Every bar is a guess to be replaced by the first month's real numbers. With
 small counts (fewer than ~30 at a step), read the raw numbers, not the
@@ -570,8 +662,9 @@ percentages.
 - `direct` grows with SEO and word of mouth; it cannot be split further
   without a pixel, by design.
 - Do not use the founding-place count in copy as pressure. If it is close to
-  full, say the plain fact once ("the founding price ends on 31 Dec or when
-  the founding places fill") and let the page show the live count.
+  full, say the plain fact once ("the founding price ends on {RISE_DATE} or
+  when the founding places fill", the date read from `price_notice()` that
+  day) and let the page show the live count.
 
 ### 7.4 The weekly review (30 minutes, same day each week)
 

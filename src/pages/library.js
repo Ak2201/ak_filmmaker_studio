@@ -385,8 +385,8 @@ function renderToolbar() {
 function renderFigures() {
   return h('div.lib-figures', {}, [
     /* Search is the palette's (one index for the whole studio); this is a door to it. */
-    h('button.lib-search.k-btn', { type: 'button', 'data-action': 'palette-open', 'aria-label': 'Search shelves, films, directors and rules' }, [
-      h('span.lib-search-text', { text: 'Search shelves, films, directors, rules' })
+    h('button.lib-search.k-btn', { type: 'button', 'data-action': 'palette-open', 'aria-label': 'Search the studio' }, [
+      h('span.lib-search-text', { text: 'Search the studio' })
     ])
   ]);
 }
@@ -460,7 +460,7 @@ function renderCover() {
     `A curated reference: ${N_FILMS} Tamil & Indian films analyzed for craft, ` +
     `${N_DIRECTORS} director archetypes, ${N_RULES} craft rules, equipment cost ` +
     `ranges (Chennai ${rates.asOf}), and a ${N_WATCHFILMS}-film watch list mapped ` +
-    `to every step of the blueprint.`;
+    `to the blueprint's steps, beside two craft-book shelves.`;
 
   /* ONE PAGE FRAME: the kit header every studio page opens with, h1 the
      page's name; the cover keeps the blurb and the contents under it. */

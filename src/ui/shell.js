@@ -1946,8 +1946,16 @@ function wire() {
     const m = document.getElementById('shAcctMenu');
     if (!m) return;
     if (e.key === 'Escape') { e.preventDefault(); closeAcctMenu(true); return; }
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    /* The menu sits at the end of <body>, so Tab would run out of it into
+       the footer under it. Tab closes it and carries on from the button. */
+    if (e.key === 'Tab') { closeAcctMenu(true); return; }
     const items = [...m.querySelectorAll('.sh-acct-item')];
+    if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      (e.key === 'Home' ? items[0] : items[items.length - 1]).focus();
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const i = items.indexOf(document.activeElement);
     const n = items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
     if (n) { e.preventDefault(); n.focus(); }
@@ -1955,6 +1963,9 @@ function wire() {
   window.addEventListener('resize', () => closeAcctMenu(false));
 
   delegate(document, 'click', '[data-action="rail-help"]', () => {
+    /* Close the menu first, here, so the sheet's opener is the Account
+       button and not a row that is about to be detached. */
+    closeAcctMenu(true);
     const ui = window.StudioUI;
     if (ui && ui.openShortcutSheet) ui.openShortcutSheet();
   });

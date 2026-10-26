@@ -152,6 +152,114 @@ async function ctxAt(width, height, extra = {}) {
   await ctx.close();
 }
 
+/* 6. QA round 2 (public site and shell): focus kept in the account menu,
+      the palette's scattered-letter matches, the dead #script links, the
+      phone sheets, the 404 button, the pricing gap. */
+{
+  /* with the Dragon sample open, through the hub's own button */
+  const { ctx, page } = await ctxAt(1440, 900);
+  await page.goto(BASE + 'index.html', { waitUntil: 'networkidle' });
+  const btn = await page.$('[data-action="sample-project"]');
+  if (btn) {
+    await btn.click();
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('fms_scenes_v1') || '{}').scenes?.length > 10, null, { timeout: 15000 }).catch(() => {});
+  } else {
+    await page.evaluate(() => { if (!StudioStore.currentProject()) StudioStore.createProject({ title: 'Proof', format: 'feature' }); });
+  }
+  await page.goto(BASE + 'dashboard.html', { waitUntil: 'networkidle' });
+
+  /* a. Help & shortcuts: Escape returns focus to the Account button */
+  await page.focus('#studioRail .sh-rail-account');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#shAcctMenu');
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#shortcutSheet.show');
+  await page.keyboard.press('Escape');
+  ok(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('sh-rail-account')),
+    'Escape on the shortcut sheet (opened from the account menu) returns focus to the Account button');
+
+  /* b. Tab and Shift+Tab close the menu; Home and End move inside it */
+  await page.focus('#studioRail .sh-rail-account');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#shAcctMenu');
+  await page.keyboard.press('End');
+  const last = await page.evaluate(() => { const i = [...document.querySelectorAll('#shAcctMenu .sh-acct-item')]; return i.indexOf(document.activeElement) === i.length - 1; });
+  await page.keyboard.press('Home');
+  const firstRow = await page.evaluate(() => document.activeElement === document.querySelector('#shAcctMenu .sh-acct-item'));
+  ok(last && firstRow, 'End and Home go to the last and first rows of the account menu');
+  await page.keyboard.press('Shift+Tab');
+  ok(await page.evaluate(() => !document.getElementById('shAcctMenu')), 'Shift+Tab from the account menu closes it (focus never lands under an open menu)');
+  await page.focus('#studioRail .sh-rail-account');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#shAcctMenu');
+  await page.keyboard.press('Tab');
+  ok(await page.evaluate(() => !document.getElementById('shAcctMenu')), 'Tab from the account menu closes it');
+
+  /* c. palette: scattered letters do not match; a tight abbreviation does */
+  const rows = async (q) => {
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => StudioUI.openPalette());
+    await page.waitForSelector('.pal-row, .pal-empty, [class*=pal]');
+    await page.keyboard.type(q);
+    await page.waitForTimeout(250);
+    return page.evaluate(() => [...document.querySelectorAll('.pal-row')].map((r) => (r.querySelector('.pal-row-group') || {}).textContent + '|' + (r.querySelector('.pal-row-label') || {}).textContent));
+  };
+  const pr = await rows('pricing');
+  ok(!pr.some((r) => /^(Scenes|Places)\|/i.test(r)), 'palette "pricing" matches no scene or place by scattered letters (' + pr.slice(0, 3).join('; ') + ')');
+  const sb = await rows('sbd');
+  ok(sb.some((r) => /stripboard/i.test(r)), 'palette "sbd" still finds Stripboard');
+
+  /* d. a character hit and the Go to Screenplay Analysis link open the analysis tab */
+  await page.keyboard.press('Escape');
+  await page.goto(BASE + 'dashboard.html', { waitUntil: 'networkidle' });
+  await rows('anbu');
+  const hasChar = await page.evaluate(() => !!document.querySelector('.pal-row'));
+  if (hasChar) {
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(800);
+    ok(/screenplay(\.html)?#analysis$/.test(page.url()), 'a palette character hit opens screenplay.html#analysis (' + page.url().replace(BASE, '') + ')');
+  } else ok(true, 'no character in this state (skipped)');
+  await page.goto(BASE + 'screenplay.html', { waitUntil: 'networkidle' });
+  const href = await page.evaluate(() => (document.querySelector('.sc-done a') || {}).getAttribute?.('href'));
+  ok(href === 'screenplay.html#analysis', 'the "Go to Screenplay Analysis" link points at the Script analysis tab (' + href + ')');
+  await page.goto(BASE + 'write.html#characters', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  ok(/screenplay(\.html)?#analysis$/.test(page.url()), 'an old write.html#characters link lands on the Script analysis tab (' + page.url().replace(BASE, '') + ')');
+
+  /* e. the library's search door says what it searches */
+  await page.goto(BASE + 'library.html', { waitUntil: 'networkidle' });
+  const door = await page.evaluate(() => (document.querySelector('.lib-search') || {}).textContent || '');
+  ok(/studio/i.test(door) && !/directors/i.test(door), 'the library search door is labelled for the studio palette (' + door.trim() + ')');
+  ok(/craft-book/i.test(await page.evaluate(() => document.body.innerText)) && !/mapped to every step/i.test(await page.evaluate(() => document.body.innerText)), 'the library cover no longer claims the watch list covers every step');
+  await ctx.close();
+}
+{
+  /* phone: Go to lists the Dashboard on a global page; one heading for the account control */
+  const { ctx, page } = await ctxAt(390, 844, { isMobile: true, hasTouch: true });
+  await page.goto(BASE + 'index.html', { waitUntil: 'networkidle' });
+  const sb = await page.$('[data-action="sample-project"]');
+  if (sb) { await sb.click(); await page.waitForTimeout(2500); }
+  await page.goto(BASE + 'library.html', { waitUntil: 'networkidle' });
+  await page.click('[data-mn-item="goto"]');
+  await page.waitForSelector('.mn-overlay');
+  ok(await page.evaluate(() => [...document.querySelectorAll('.mn-overlay .mn-global')].some((a) => /dashboard/.test(a.getAttribute('href') || ''))), 'phone Go to on library.html lists the Dashboard');
+  const heads = [];
+  for (const f of ['index.html', 'library.html', 'dashboard.html']) {
+    await page.goto('about:blank');
+    await page.goto(BASE + f, { waitUntil: 'networkidle' });
+    await page.click('[data-mn-item="tools"]');
+    await page.waitForSelector('.mn-overlay');
+    heads.push(await page.evaluate(() => { const g = [...document.querySelectorAll('.mn-tools-group')].find((x) => x.querySelector('#signInPill')); return g ? g.querySelector('.mn-group-h').textContent : 'none'; }));
+  }
+  ok(heads.every((x) => x === 'Account'), 'the sign-in control carries the heading "Account" on every page [' + heads + ']');
+  await page.goto(BASE + 'pricing.html', { waitUntil: 'networkidle' });
+  const gap = await page.evaluate(() => { const l = document.querySelector('.pr-lede'), t = document.querySelector('.pr-trial'); return t.getBoundingClientRect().top - l.getBoundingClientRect().bottom; });
+  ok(gap >= 16, 'pricing at 390: the lede and the trial card have room between them (' + Math.round(gap) + 'px)');
+  await ctx.close();
+}
+ok(/href="about\.html"[^>]*>About /.test(fs.readFileSync(path.join(DIST, '404.html'), 'utf8')), "the 404 page's About button opens about.html");
+
 await browser.close();
 server.close();
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));

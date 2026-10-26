@@ -295,11 +295,10 @@ export function openGoTo(phaseId) {
   const body = h('div.mn-body');
   // the app-scope destinations, as one row of tiles
   const top = h('nav.mn-globals', { 'aria-label': 'Studio' });
-  /* On a global page (library, settings, admin, purchase, the hub) the
-     desktop shell hides every project item; the sheet follows it. */
+  /* The rail lists Home and Dashboard on a global page too (17 Oct 2026),
+     so the sheet does as well: the open film is one tap from Library. */
   const globalPage = isGlobalMode();
   for (const g of globals()) {
-    if (globalPage && g.id === 'dashboard') continue;
     if (g.adminOnly && !isAdmin()) continue;   // the rail hides it too (shell.js syncAdminOnly)
     const a = h('a.mn-global', { href: g.href }, [iconSpan('mn-global-icon', g), h('span', { text: g.label })]);
     if (fileOf(g.href) === CURRENT && !(g.modules && g.modules.some((m) => m.id === here))) {
@@ -359,17 +358,20 @@ export function openTools() {
   const bar = document.querySelector('.sh-bar');
   const body = h('div.mn-body.mn-tools');
   const take = [
-    ['.sh-bar > .toolbar', 'This page'],
-    ['.sh-bar > .sh-tools', 'Account and appearance'],
+    ['.sh-bar > .toolbar', null],
+    ['.sh-bar > .sh-tools', 'Account'],
     /* Backup and sync live in the rail's foot (21 Oct 2026); the rail is
        never opened on a phone (the burger opens Go to), so they are
        borrowed here like the band's zone. */
     ['#studioRail .sh-rail-tools', 'Backup and sync']
   ];
   const plan = [];
-  for (const [sel, label] of take) {
+  for (const [sel, fixed] of take) {
     const node = bar && document.querySelector(sel);
     if (!node) continue;
+    /* The same sign-in control is "Account" wherever the band adopted it;
+       a page's own toolbar is "This page" only when the pill is not in it. */
+    const label = fixed || (node.querySelector('#signInPill') ? 'Account' : 'This page');
     const wrap = h('section.mn-tools-group', {}, [h('h3.mn-group-h', { text: label })]);
     body.append(wrap);
     plan.push({ node, parent: node.parentNode, next: node.nextSibling, wrap });

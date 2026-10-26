@@ -31,6 +31,10 @@
 /* the plans start close under the hero, so the prices are on the first
    screen; on a wide screen the heading and its lede share one row */
 .mk-sec.pr-plans { padding-top: var(--s7); }
+/* the head owns the space under it at every width (the lede's own margin
+   is overridden by the generic .mk-sub rule below 1100px) */
+.pr-head { margin-bottom: var(--s6); }
+.pr-head .pr-lede { margin-bottom: 0; }
 @media (min-width: 1100px) {
   .pr-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s7); align-items: end; margin-bottom: var(--s6); }
   .pr-head .mk-h2, .pr-head .pr-lede { margin-bottom: 0; }

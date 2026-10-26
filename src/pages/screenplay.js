@@ -632,7 +632,7 @@ function render() {
 
   const after = h('p.sc-done', {}, [
     h('span', { text: 'Screenplay done? ' }),
-    h('a', { href: 'breakdown.html#script', text: '→ Go to Screenplay Analysis' })
+    h('a', { href: 'screenplay.html#analysis', text: '→ Go to Screenplay Analysis' })
   ]);
   const aside = h('aside#beatsPanel.sc-beats', { 'aria-label': 'Beats', hidden: true }, [
     h('div.sc-beats-bar', {}, [

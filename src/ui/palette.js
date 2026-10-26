@@ -168,7 +168,10 @@ function score(item, q) {
       last = c; i++;
     }
   }
-  if (i === q.length) return 900 - gaps;
+  /* Letters scattered across several words are not a match: "pricing"
+     must not find a location by its p, r, i, c, i, n, g in order. A
+     tight abbreviation ("sbd", "stripboard": 7 gaps) stays inside this. */
+  if (i === q.length && gaps <= 2 * q.length + 2) return 900 - gaps;
   return 0;
 }
 
@@ -491,7 +494,7 @@ async function pullContent() {
         hueClass: 'hue-shoot',
         icon: '☺',
         person: true,
-        href: 'breakdown.html#script',
+        href: 'screenplay.html#analysis',
         keywords: ['character', 'cast', 'role'].concat(c.aliases || [])
       }));
     }

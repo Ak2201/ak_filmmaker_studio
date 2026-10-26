@@ -17,9 +17,23 @@
 --   quote, display_name, role, film      what would be shown.
 --   consent_text  the exact sentence the author agreed to, as shown.
 --   consented_at  set by the database at insert (a trigger), not sent.
---   revoked_at    set by revoke_testimonial(); a revoked row is never
---                 shown again and cannot be approved again.
+--   revoked_at    set by revoke_testimonial(); a revoked row drops out of
+--                 public_testimonials() at once and can never be approved
+--                 again.
 --   status        pending | approved | rejected — only the owner moves it.
+--   site_removed_at  set by the OWNER (admin_mark_testimonial_removed)
+--                 once a taken-back testimonial is off the public site.
+--
+-- WHAT "TAKE IT BACK" CAN AND CANNOT DO, said plainly because the consent
+-- sentence the author agrees to has to be true: the public site is static
+-- and draws testimonials from src/data/testimonials.json, which the owner
+-- edits by hand (the console's COPY FOR THE SITE). A revoke therefore
+-- cannot reach the site by itself. It does three things at once — hides
+-- the row from public_testimonials(), forbids publishing it again, and
+-- puts it on the console's Overview under "Needs attention" until the
+-- owner has taken the copy down and pressed TAKEN OFF THE SITE (which
+-- sets site_removed_at). The words the member agrees to say exactly that
+-- (src/lib/testimonials.js consentText()).
 --
 -- RLS. authenticated may INSERT (only quote, display_name, role, film,
 -- consent_text — a column grant, so naming status, author, approved_by or
@@ -65,6 +79,7 @@ create table if not exists public.testimonials (
   approved_at  timestamptz,
   created_at   timestamptz not null default now()
 );
+alter table public.testimonials add column if not exists site_removed_at timestamptz;
 create index if not exists testimonials_author_idx on public.testimonials (author, created_at desc);
 create index if not exists testimonials_status_idx on public.testimonials (status, created_at desc);
 alter table public.testimonials enable row level security;
@@ -135,7 +150,8 @@ as $$
   select * from public.testimonials where author = auth.uid() order by created_at desc;
 $$;
 
-/* Revoking hides it at once: public_testimonials() filters revoked_at. A
+/* Revoking drops it from public_testimonials() at once (the site's own
+   copy is the owner's to remove; see the header). A
    second revoke keeps the first time. Somebody else's id is "not found",
    the same answer as an id that does not exist. */
 create or replace function public.revoke_testimonial(p_id uuid)
@@ -171,10 +187,16 @@ as $$
 $$;
 
 -- 59.5 the console ---------------------------------------------------------
+/* p_status: null (all), pending | approved | rejected (not taken back),
+   revoked (taken back), or takedown — taken back AFTER it was approved
+   and not yet marked off the site: the owner's to-do, which the
+   Overview counts. Dropped first: a re-run over an earlier draft whose
+   return table had no site_removed_at would otherwise refuse (42P13). */
+drop function if exists public.admin_list_testimonials(text);
 create or replace function public.admin_list_testimonials(p_status text default null)
 returns table (id uuid, author uuid, author_email text, quote text, display_name text, role text, film text,
                consent_text text, consented_at timestamptz, revoked_at timestamptz, status text,
-               approved_by uuid, approved_at timestamptz, created_at timestamptz)
+               approved_by uuid, approved_at timestamptz, created_at timestamptz, site_removed_at timestamptz)
 language plpgsql
 security definer
 stable
@@ -184,12 +206,13 @@ begin
   if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
   return query
     select t.id, t.author, u.email::text, t.quote, t.display_name, t.role, t.film, t.consent_text, t.consented_at,
-           t.revoked_at, t.status, t.approved_by, t.approved_at, t.created_at
+           t.revoked_at, t.status, t.approved_by, t.approved_at, t.created_at, t.site_removed_at
       from public.testimonials t
       left join auth.users u on u.id = t.author
      where p_status is null
         or (p_status = 'revoked' and t.revoked_at is not null)
-        or (p_status <> 'revoked' and t.status = p_status and t.revoked_at is null)
+        or (p_status = 'takedown' and t.revoked_at is not null and t.approved_at is not null and t.site_removed_at is null)
+        or (p_status not in ('revoked', 'takedown') and t.status = p_status and t.revoked_at is null)
      order by t.created_at desc
      limit 1000;
 end;
@@ -224,6 +247,32 @@ begin
 end;
 $fn$;
 
+/* The owner's word that a taken-back testimonial is off the public site
+   (src/data/testimonials.json and anything made from it). Only a
+   taken-back row; owner only, like publishing; audited. Idempotent: the
+   first time is kept. */
+create or replace function public.admin_mark_testimonial_removed(p_id uuid)
+returns public.testimonials
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare r public.testimonials;
+begin
+  perform public.require_role(array[]::text[]);
+  select * into r from public.testimonials where id = p_id for update;
+  if r.id is null then raise exception 'No such testimonial.' using errcode = 'P0002'; end if;
+  if r.revoked_at is null then
+    raise exception 'Only a testimonial its author took back is marked off the site.' using errcode = '22023';
+  end if;
+  update public.testimonials t set site_removed_at = coalesce(t.site_removed_at, now())
+   where t.id = p_id returning * into r;
+  perform public.admin_audit_write('testimonial_site_removed', 'testimonial', p_id::text, null,
+    jsonb_build_object('site_removed_at', r.site_removed_at), null);
+  return r;
+end;
+$fn$;
+
 -- 59.6 grants --------------------------------------------------------------
 revoke execute on function public.submit_testimonial(text, text, text, text, text) from public, anon;
 revoke execute on function public.my_testimonials()                              from public, anon;
@@ -231,12 +280,14 @@ revoke execute on function public.revoke_testimonial(uuid)                      
 revoke execute on function public.public_testimonials()                          from public;
 revoke execute on function public.admin_list_testimonials(text)                  from public, anon;
 revoke execute on function public.admin_set_testimonial_status(uuid, text)       from public, anon;
+revoke execute on function public.admin_mark_testimonial_removed(uuid)           from public, anon;
 grant  execute on function public.submit_testimonial(text, text, text, text, text) to authenticated;
 grant  execute on function public.my_testimonials()                              to authenticated;
 grant  execute on function public.revoke_testimonial(uuid)                       to authenticated;
 grant  execute on function public.public_testimonials()                          to anon, authenticated;
 grant  execute on function public.admin_list_testimonials(text)                  to authenticated;
 grant  execute on function public.admin_set_testimonial_status(uuid, text)       to authenticated;
+grant  execute on function public.admin_mark_testimonial_removed(uuid)           to authenticated;
 
 notify pgrst, 'reload schema';
 

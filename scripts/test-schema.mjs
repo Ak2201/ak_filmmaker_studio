@@ -395,6 +395,29 @@ for (const f of ['supabase/schema/schema-58-funnel-source.sql', 'supabase/schema
 }
 console.log('✓ §58 loads (and re-runs cleanly)');
 runChecks('funnel-source.sql');
+{
+  /* THE REVERSE ORDER: §29 re-run AFTER §58 (the base file is re-runnable,
+     and a re-run restates bump_event(text) and admin_funnel). §29's
+     bodies hand over to §58's when it is there; without that, the
+     one-argument call would raise 42P10 on the wider key and every count
+     would stop silently. Only §29.2–§29.3 are replayed: the rest of the
+     base file is restated by later sections and is not this test. */
+  const from = full.indexOf('-- 29.2 bump_event');
+  const to = full.indexOf('revoke execute on function public.add_lead(text, text, text)');
+  if (from < 0 || to < from) fail('§58: could not find §29.2–§29.3 in supabase-schema.sql');
+  r = psql(['-f', '-'], { input: full.slice(from, to) });
+  if (r.status !== 0) fail('§58: replaying §29.2–§29.3 after §58 failed', r);
+  const q = (sql) => psql(['-tAc', sql]);
+  total += 2;
+  const one = q(`select public.bump_event('purchase'); select 'ok'`);
+  if (one.status === 0 && /ok/.test(one.stdout)) console.log('  ✓ 58. after a re-run of §29, bump_event(text) still counts (no 42P10)');
+  else { failed++; fail('§58: bump_event(text) broke after a re-run of §29', one); }
+  const steps = q(`select t.claims('00000000-0000-4000-8000-00000000000a'); select count(*) from public.admin_funnel(null, null)`).stdout.trim().split('\n').pop();
+  if (Number(steps) === 10) console.log('  ✓ 58. after a re-run of §29, admin_funnel still lists the ten steps');
+  else { failed++; fail(`§58: admin_funnel shrank to ${steps} steps after a re-run of §29`); }
+  r = psql(['-f', 'supabase/schema/schema-58-funnel-source.sql']);
+  if (r.status !== 0) fail('§58 did not re-load after the §29 replay', r);
+}
 /* --- end §58 --- */
 
 /* --- §59 (testimonials) --- on §40 and §45, loaded twice. --- */

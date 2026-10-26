@@ -8,14 +8,24 @@
 -- §29's events table is DAILY COUNTERS: (day, name, count), no user id,
 -- no e-mail, no IP, no session. This section keeps that promise and adds
 -- one aggregate dimension: WHERE THE VISIT CAME FROM, as a short bucket
--- the client derives from ?ref= / ?utm_source= (src/lib/attribution.js),
--- e.g. 'google', 'instagram', 'newsletter-oct'. It is part of the per-day
+-- the client derives from ?src= / ?utm_source= (src/lib/attribution.js
+-- records it; funnel.js maps it onto a FIXED list), e.g. 'google',
+-- 'instagram', 'email', 'other'. Never ?ref=: a referral code names one
+-- member. It is part of the per-day
 -- key, so a row is still "how many, that day, from there" — never who.
 --
 --   events.source  text NOT NULL DEFAULT ''  ('' = no source, every row
 --                  written before this section). CHECK: '' or
---                  ^[a-z0-9_-]{1,32}$ — no spaces, no '@', no '.', so an
---                  e-mail address or a URL cannot be stored in it.
+--                  ^[a-z0-9_-]{1,32}$ with no run of 7 or more digits —
+--                  no spaces, no '@', no '.', no phone number.
+--
+--   THE PATTERN ALONE DOES NOT KEEP PERSONAL DATA OUT, and nobody should
+--   read it as if it did: 'kasi-v-example-com' or 'john-smith' passes it.
+--   What keeps a person out of this column is the CLIENT sending only a
+--   name from a fixed list (src/lib/funnel.js sourceBucket(): google,
+--   instagram, youtube, ... and 'other' for anything else). The server's
+--   share is the charset, the length, the digit-run refusal, and the 200-
+--   a-day cap below, so a hand-made call cannot store free text either.
 --   primary key    (day, name) -> (day, name, source).
 --   names          + trial_start, sample_open, signin_done,
 --                  plan_view_in_app. Every §29 name is kept.
@@ -50,13 +60,11 @@
 -- 58.1 the column, its check, the wider names, the wider key -----------
 alter table public.events add column if not exists source text not null default '';
 
-do $c$
-begin
-  if not exists (select 1 from pg_constraint where conname = 'events_source_check' and conrelid = 'public.events'::regclass) then
-    alter table public.events add constraint events_source_check check (source = '' or source ~ '^[a-z0-9_-]{1,32}$');
-  end if;
-end
-$c$;
+/* Dropped and re-added rather than "add if missing", so a database that
+   ran an earlier draft of this section gets the digit-run refusal too. */
+alter table public.events drop constraint if exists events_source_check;
+alter table public.events add constraint events_source_check
+  check (source = '' or (source ~ '^[a-z0-9_-]{1,32}$' and source !~ '[0-9]{7}'));
 
 alter table public.events drop constraint if exists events_name_check;
 alter table public.events add constraint events_name_check check (name in (
@@ -109,8 +117,8 @@ begin
   if p_name is null or not (p_name = any(public.funnel_event_names())) then
     raise exception 'Unknown event.' using errcode = '22023';
   end if;
-  if s <> '' and s !~ '^[a-z0-9_-]{1,32}$' then
-    raise exception 'A source is up to 32 of a-z, 0-9, _ and -.' using errcode = '22023';
+  if s <> '' and (s !~ '^[a-z0-9_-]{1,32}$' or s ~ '[0-9]{7}') then
+    raise exception 'A source is up to 32 of a-z, 0-9, _ and -, with no long number in it.' using errcode = '22023';
   end if;
   if s <> '' and not exists (select 1 from public.events e where e.day = d and e.source = s)
      and (select count(distinct e.source) from public.events e where e.day = d) >= 200 then
@@ -186,7 +194,7 @@ notify pgrst, 'reload schema';
 -- 58.6 CHECKS TO RUN LIVE (read-only, as the owner in the SQL editor) ----
 -- select pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.events'::regclass order by conname;
 --   -> events_name_check lists ten names; events_pkey is (day, name, source);
---      events_source_check is '' or ^[a-z0-9_-]{1,32}$
+--      events_source_check is '' or ^[a-z0-9_-]{1,32}$ and no [0-9]{7}
 -- select oid::regprocedure from pg_proc where proname = 'bump_event';
 --   -> bump_event(text) AND bump_event(text,text)
 -- select * from public.admin_funnel_by_source(current_date - 7, current_date);

@@ -242,7 +242,11 @@ function attentionItem({ label, tone = 'warn', text, tab: to, params }) {
 
 /** The ranked list (src/lib/admin-model.js decides it), drawn as rows. */
 function attentionList(d, hs) {
-  return attentionItems(d, hs, pendingCounts().purchases).map(attentionItem);
+  /* §59: a testimonial taken back after it was published is the author
+     withdrawing consent while the site may still show it — ranked first. */
+  let tm = [];
+  try { tm = testimonialsTab.attention(makeCtx('testimonials')); } catch (e) { tm = []; }
+  return [...tm, ...attentionItems(d, hs, pendingCounts().purchases)].map(attentionItem);
 }
 
 function activityCard(ctx) {

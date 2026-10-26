@@ -97,13 +97,43 @@ r = await askFake('public_testimonials', {}, null);
 ok(r.body.length === 1 && !('author' in r.body[0]) && !('consent_text' in r.body[0]), 'fake: anon reads display fields only');
 await askFake('revoke_testimonial', { p_id: id }, 'tok-ben');
 r = await askFake('public_testimonials', {}, null);
-ok(r.body.length === 0, 'fake: a revoked one is hidden at once');
+ok(r.body.length === 0, 'fake: a revoked one leaves the public list at once');
+r = await askFake('admin_list_testimonials', { p_status: 'takedown' }, 'tok-admin');
+ok(r.body.length === 1 && r.body[0].id === id && M.needsTakedown(r.body[0]), 'fake: published then taken back -> on the owner\'s takedown list');
+r = await askFake('admin_mark_testimonial_removed', { p_id: id }, 'tok-admin');
+ok(r.status === 200 && !!r.body.site_removed_at && !M.needsTakedown(r.body), 'fake: the owner marks it off the site');
+r = await askFake('admin_list_testimonials', { p_status: 'takedown' }, 'tok-admin');
+ok(r.body.length === 0, 'fake: ... and the takedown list is empty again');
 await askFake('bump_event', { p_name: 'trial_start', p_source: 'google' });
 await askFake('bump_event', { p_name: 'trial_start' });
 r = await askFake('admin_funnel_by_source', {}, 'tok-admin');
 ok(r.body.some((x) => x.name === 'trial_start' && x.source === 'google' && x.total === 1) && r.body.some((x) => x.name === 'trial_start' && x.source === '' && x.total === 1), 'fake: bump_event one- and two-argument, by source');
 r = await askFake('bump_event', { p_name: 'landing_view', p_source: 'a@b.c' });
 ok(r.status >= 400 && r.body.code === '22023', 'fake: a bad source is refused');
+r = await askFake('bump_event', { p_name: 'landing_view', p_source: 'x9840012345' });
+ok(r.status >= 400 && r.body.code === '22023', 'fake: a source holding a phone number is refused');
+
+/* ---- THE PROMISES MUST BE TRUE ------------------------------------
+   The site's testimonials are copied in by hand, so a revoke cannot take
+   one off the site by itself. No sentence the author reads may say it
+   does (the consent text is STORED as what they agreed to). */
+const SRC = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+const UI = SRC('src/ui/testimonial-prompt.js'), TAB = SRC('src/pages/admin-tabs/testimonials.js');
+const FALSE_PROMISE = /remov\w* (it )?(from the site )?(at once|straight away|immediately)|removes it from the site|no longer shown anywhere|hidden at once/i;
+ok(!FALSE_PROMISE.test(M.consentText()), 'the consent sentence does not promise the site copy vanishes at once');
+ok(!FALSE_PROMISE.test(UI.replace(/\/\*[\s\S]*?\*\//g, '')), 'no sentence in the prompt or the Settings list promises it either');
+ok(!FALSE_PROMISE.test(TAB.replace(/\/\*[\s\S]*?\*\//g, '')), 'nor the console tab');
+ok(/told straight away/.test(M.consentText()), 'the consent sentence says what does happen: the studio is told');
+
+/* ---- THE REVOKE ROUTE BEFORE THE ASK --------------------------------
+   The card promises "take it back in Settings", so it may only be drawn
+   once Settings mounts the list. settings.js is another lane's file; the
+   flag in testimonial-prompt.js says whether it does, and must agree. */
+const wired = /export const SETTINGS_ROUTE_WIRED\s*=\s*true\b/.test(UI);
+const settingsMounts = /mountMyTestimonials\s*\(/.test(SRC('src/pages/settings.js'));
+ok(wired === settingsMounts, `SETTINGS_ROUTE_WIRED (${wired}) agrees with settings.js calling mountMyTestimonials() (${settingsMounts})`);
+ok(/if \(!routeWired \|\|/.test(UI), 'maybePromptTestimonial() draws nothing while the Settings route is not wired');
+ok(/maybePromptTestimonial\s*\(/.test(SRC('src/pages/hub.js')), 'the hub asks maybePromptTestimonial() after render (it stays inert until the flag flips)');
 void USERS;
 
 console.log(`${fail ? '✗' : '✓'} testimonial prompt: ${pass} passed, ${fail} failed`);

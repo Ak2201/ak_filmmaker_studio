@@ -6,8 +6,16 @@
    dismissible card (src/ui/testimonial-prompt.js), whether they would say
    something about it for the public site. Nothing is published by
    sending it: it waits for the owner (admin.html#testimonials), and the
-   author can take it back at any time from Settings, which hides it at
-   once (§59's public_testimonials() filters revoked rows).
+   author can take it back at any time from Settings.
+
+   WHAT TAKING IT BACK DOES, and so what every sentence here may claim:
+   the public site is static and its testimonials are copied in BY HAND
+   (src/data/testimonials.json). A revoke cannot reach that copy. It
+   drops the row from public_testimonials() at once, forbids publishing
+   it again, and puts it on the console Overview's "Needs attention"
+   until the owner has removed it from the site and marked it so (§59
+   site_removed_at). So the copy says the studio is TOLD at once and
+   takes it off the site, never that it vanishes from the site at once.
 
    WHEN TO ASK is askDecision(), pure, and every rule is a refusal:
      - not signed in, or §59 not on this database      -> never
@@ -38,7 +46,7 @@ const DAY = 86400000;
 /** The exact sentence the author agrees to. It is stored with the
  *  testimonial (consent_text), so it must say everything it allows. */
 export function consentText(name = BRAND.name) {
-  return `I agree that ${name} may show these words, with the name, role and film I gave, on its public website and in its marketing. Nothing is shown until the studio approves it, and I can take it back at any time in Settings, which removes it from the site.`;
+  return `I agree that ${name} may show these words, with the name, role and film I gave, on its public website and in its marketing. Nothing is shown until the studio approves it. I can take it back at any time in Settings: from then on it is not used again, and the studio is told straight away so that it takes the words off its website.`;
 }
 
 /** Distinct local calendar days among timestamps (ms, ISO strings or Dates). */
@@ -167,8 +175,12 @@ export async function submit(cloud, input) {
 export const revoke = (cloud, id) => rpc(cloud, 'revoke_testimonial', { p_id: id });
 export const admin = {
   list: (cloud, status = null) => rpc(cloud, 'admin_list_testimonials', { p_status: status }).then((d) => rows(d) || []),
-  setStatus: (cloud, id, status) => rpc(cloud, 'admin_set_testimonial_status', { p_id: id, p_status: status })
+  setStatus: (cloud, id, status) => rpc(cloud, 'admin_set_testimonial_status', { p_id: id, p_status: status }),
+  /* the owner's word that a taken-back testimonial is off the public site */
+  markRemoved: (cloud, id) => rpc(cloud, 'admin_mark_testimonial_removed', { p_id: id })
 };
+/** Taken back after it was approved, and not yet marked off the site. */
+export const needsTakedown = (r) => !!(r && r.revoked_at && r.approved_at && !r.site_removed_at);
 export { isMissing };
 
-export default { consentText, distinctDays, askDecision, validate, preview, statusWord, siteEntry, available, mine, submit, revoke, admin, LIMITS, ASK_RULES };
+export default { consentText, distinctDays, askDecision, validate, preview, statusWord, siteEntry, available, mine, submit, revoke, admin, needsTakedown, LIMITS, ASK_RULES };

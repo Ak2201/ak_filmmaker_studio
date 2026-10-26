@@ -482,7 +482,7 @@ export function freshDb() {
     events: [],
     /* section 59: testimonials, each { id, author, author_email, quote,
        display_name, role, film, consent_text, consented_at, revoked_at,
-       status, approved_by, approved_at, created_at }. */
+       status, approved_by, approved_at, created_at, site_removed_at }. */
     testimonials: [],
     calls: []
   };
@@ -1085,7 +1085,7 @@ function rpc(name, args, user, route) {
     case 'bump_event': {
       if (!FUNNEL_NAMES.includes(args.p_name)) return pgErr(route, '22023', 'Unknown event.');
       const src = String(args.p_source == null ? '' : args.p_source).trim().toLowerCase();
-      if (src && !/^[a-z0-9_-]{1,32}$/.test(src)) return pgErr(route, '22023', 'A source is up to 32 of a-z, 0-9, _ and -.');
+      if (src && (!/^[a-z0-9_-]{1,32}$/.test(src) || /[0-9]{7}/.test(src))) return pgErr(route, '22023', 'A source is up to 32 of a-z, 0-9, _ and -, with no long number in it.');
       const day = new Date().toISOString().slice(0, 10);
       const row = F.db.events.find((e) => e.day === day && e.name === args.p_name && e.source === src);
       if (row) row.count++; else F.db.events.push({ day, name: args.p_name, source: src, count: 1 });
@@ -1114,7 +1114,7 @@ function rpc(name, args, user, route) {
       const now = new Date().toISOString();
       const t = { id: 'tm' + (F.db.testimonials.length + 1) + '-0000-4000-8000-000000000000', author: user.id, author_email: user.email, quote: q, display_name: n,
         role: String(args.p_role || '').trim() || null, film: String(args.p_film || '').trim() || null, consent_text: c, consented_at: now, revoked_at: null,
-        status: 'pending', approved_by: null, approved_at: null, created_at: now };
+        status: 'pending', approved_by: null, approved_at: null, created_at: now, site_removed_at: null };
       F.db.testimonials.push(t);
       return json(route, 200, tmOwn(t));
     }
@@ -1132,7 +1132,20 @@ function rpc(name, args, user, route) {
     case 'admin_list_testimonials': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       const st = args.p_status || null;
-      return json(route, 200, F.db.testimonials.filter((t) => !st || (st === 'revoked' ? !!t.revoked_at : (t.status === st && !t.revoked_at))).slice().reverse());
+      const pick = (t) => !st || (st === 'revoked' ? !!t.revoked_at
+        : st === 'takedown' ? !!(t.revoked_at && t.approved_at && !t.site_removed_at)
+          : (t.status === st && !t.revoked_at));
+      return json(route, 200, F.db.testimonials.filter(pick).slice().reverse());
+    }
+    case 'admin_mark_testimonial_removed': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const role = (F.db.members.get(user.id) || {}).consoleRole || 'owner';
+      if (role !== 'owner') return pgErr(route, '42501', `Your role (${role}) cannot do this. It needs the owner role.`);
+      const t = F.db.testimonials.find((x) => x.id === args.p_id);
+      if (!t) return pgErr(route, 'P0002', 'No such testimonial.');
+      if (!t.revoked_at) return pgErr(route, '22023', 'Only a testimonial its author took back is marked off the site.');
+      t.site_removed_at = t.site_removed_at || new Date().toISOString();
+      return json(route, 200, t);
     }
     case 'admin_set_testimonial_status': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');

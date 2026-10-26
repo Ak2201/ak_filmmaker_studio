@@ -846,6 +846,24 @@ function init() {
     const pj = document.getElementById('projects');
     if (wc && pj && pj.parentNode) pj.before(wc);
   } catch (e) { /* the welcome is a convenience */ }
+  /* §59: the testimonial ask, after real use and only when signed in. A
+     lazy chunk, fetched only for a session; every rule (and the Settings
+     revoke route existing at all) is decided in testimonial-prompt.js. */
+  const askTestimonial = () => {
+    try {
+      const c = window.StudioCloud;
+      if (!(c && c.getSession && c.getSession())) return;
+      import('../ui/testimonial-prompt.js').then((m) => {
+        const pj = document.getElementById('projects');
+        if (!pj || !pj.parentNode) return;
+        let host = document.getElementById('hubTestimonialAsk');
+        if (!host) { host = h('div#hubTestimonialAsk'); pj.before(host); }
+        return m.maybePromptTestimonial(host).then((card) => { if (!card && !host.childNodes.length) host.remove(); });
+      }).catch(() => { /* a convenience, never a failure */ });
+    } catch (e) { /* ditto */ }
+  };
+  askTestimonial();
+  Store.subscribe('cloud:booted', askTestimonial);
 
   /* The "Today" line is not mounted (Celtx simplification, plan 7.2):
      #todayLine stays hidden in the markup, so nothing fetches its chunk.

@@ -47,6 +47,10 @@ do $$ begin
   raise exception 'should have refused';
 exception when sqlstate '22023' then raise notice 'ok - 58. a source with a space -> 22023'; end $$;
 do $$ begin
+  perform public.bump_event('landing_view', '91-9840012345');
+  raise exception 'should have refused';
+exception when sqlstate '22023' then raise notice 'ok - 58. a source holding a phone number (7+ digits in a row) -> 22023'; end $$;
+do $$ begin
   perform public.bump_event('landing_view', repeat('a', 33));
   raise exception 'should have refused';
 exception when sqlstate '22023' then raise notice 'ok - 58. a 33-character source -> 22023'; end $$;
@@ -90,6 +94,12 @@ do $$ begin
   raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 58. a signed-in user cannot select events -> 42501'; end $$;
 rollback;
+
+-- the table's own CHECK, as the table owner (past every function and grant)
+do $$ begin
+  insert into public.events (day, name, source, count) values (current_date, 'purchase', 'x9840012345', 1);
+  raise exception 'should have refused';
+exception when sqlstate '23514' then raise notice 'ok - 58. the CHECK refuses a 7-digit run even past the function -> 23514'; end $$;
 
 -- the bound: once a day holds 200 sources, a NEW one counts as 'other'
 begin;

@@ -23,6 +23,14 @@
    counts. The prompt's memory is `testimonialAsk` inside the existing
    device prefs blob (chrome-prefs.js), written on a click only.
 
+   THE REVOKE ROUTE MUST EXIST BEFORE THE ASK DOES. The consent sentence
+   promises "take it back at any time in Settings", so the card is never
+   drawn unless Settings mounts mountMyTestimonials(). settings.js belongs
+   to another lane, so this file cannot see that at run time: the flag
+   SETTINGS_ROUTE_WIRED below says it, and test:testimonial-prompt fails
+   whenever the flag and settings.js disagree. Whoever adds the Settings
+   call flips the flag in the same commit.
+
    No inline handlers: listeners are attached to the nodes this file
    builds. Nothing here talks to the backend except through
    src/lib/testimonials.js (test:layers V2).
@@ -39,6 +47,10 @@ import { readDevicePrefs, updateDevicePrefs } from '../lib/chrome-prefs.js';
 import { entitlement } from '../lib/plan-gate.js';
 import T, { askDecision, consentText, distinctDays, validate, preview, statusWord, LIMITS } from '../lib/testimonials.js';
 import '../styles/testimonial-prompt.css';
+
+/** True only once src/pages/settings.js calls mountMyTestimonials() (see
+ *  the header). While false, maybePromptTestimonial() draws nothing. */
+export const SETTINGS_ROUTE_WIRED = false;
 
 const cloud = () => window.StudioCloud || null;
 const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
@@ -75,8 +87,8 @@ function trialNow() {
 }
 
 /** Draw the card into `host` if, and only if, the rules say so. */
-export async function maybePromptTestimonial(host) {
-  if (!host || host.querySelector('.tp-card')) return null;
+export async function maybePromptTestimonial(host, { routeWired = SETTINGS_ROUTE_WIRED } = {}) {
+  if (!routeWired || !host || host.querySelector('.tp-card')) return null;
   const c = cloud();
   const signedIn = !!(c && c.getSession && c.getSession());
   const base = { signedIn, trial: trialNow(), state: readAsk(), ...useSignals() };
@@ -95,7 +107,7 @@ function buildCard() {
     h('h2.tp-title', { id: 'tpTitle', text: 'Would you say a few words about the studio?' }),
     button({ label: 'Close', icon: 'close', iconOnly: true, variant: 'ghost', size: 'sm', attrs: { 'data-tp': 'later' } })
   ]);
-  const lead = h('p.tp-lead', { text: 'You have been working here for a while. If it has helped, a sentence or two in your own words would help other filmmakers decide. Nothing is shown until the studio reviews it, and you can take it back at any time.' });
+  const lead = h('p.tp-lead', { text: 'You have been working here for a while. If it has helped, a sentence or two in your own words would help other filmmakers decide. Nothing is shown until the studio reviews it, and you can take it back at any time in Settings.' });
   const acts = h('div.tp-actions', {}, [
     button({ label: 'Write a few words', variant: 'primary', attrs: { 'data-tp': 'open' } }),
     button({ label: 'Not now', variant: 'ghost', attrs: { 'data-tp': 'later' } }),
@@ -153,7 +165,7 @@ function buildForm(card) {
     try {
       await T.submit(cloud(), v.value);
       saveAsk({ sentAt: new Date().toISOString() });
-      card.replaceChildren(notice({ tone: 'ok', title: 'Thank you.', body: 'It is with the studio for review. You can see it, or take it back, in Settings → Account → Your testimonials.', live: true }));
+      card.replaceChildren(notice({ tone: 'ok', title: 'Thank you.', body: 'It is with the studio for review. You can see it, or take it back, in Settings under Your testimonials.', live: true }));
       setTimeout(() => { if (card.isConnected) card.remove(); }, 12000);
     } catch (x) {
       err.textContent = (x && x.message) || 'It did not send. Try again in a moment.';
@@ -191,7 +203,7 @@ export async function mountMyTestimonials(host) {
     host.replaceChildren(...[
       h('h3.tp-mine-h', { text: 'Your testimonials' }),
       rows.length
-        ? h('p.tp-mine-meta', { text: 'Taking one back removes it from the site straight away, whatever its state.' })
+        ? h('p.tp-mine-meta', { text: 'Taking one back stops it being used, whatever its state. The studio is told straight away and takes it off the website.' })
         : h('p.tp-mine-meta', { text: 'You have not sent one. If the studio asks, you can say a few words; nothing is shown until it is reviewed.' }),
       rows.length ? list : null
     ].filter(Boolean));
@@ -205,14 +217,14 @@ export async function mountMyTestimonials(host) {
   host.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-tp-revoke]');
     if (!b || !host.contains(b)) return;
-    const ok = await ask({ title: 'Take this testimonial back?', body: 'It is removed from the site at once and will not be shown again. This cannot be undone; you can always write a new one.', confirm: 'TAKE IT BACK', danger: true });
+    const ok = await ask({ title: 'Take this testimonial back?', body: 'It will not be used again, and the studio is told straight away so that it takes the words off its website. This cannot be undone; you can always write a new one.', confirm: 'TAKE IT BACK', danger: true });
     if (!ok) return;
     b.disabled = true;
     try {
       const r = await T.revoke(cloud(), b.getAttribute('data-tp-revoke'));
       host._tpRows(host._tpRows().map((x) => (x.id === (r && r.id) ? r : x)));
       host._tpDraw();
-      toast('Taken back. It is no longer shown anywhere.', 'success');
+      toast('Taken back. The studio has been told and will take it off the website.', 'success');
     } catch (x) { b.disabled = false; toast((x && x.message) || 'It could not be taken back just now.', 'error'); }
   });
   draw();

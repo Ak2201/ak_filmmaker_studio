@@ -156,7 +156,28 @@ do $$ begin
   perform public.admin_set_testimonial_status((select id from public.admin_list_testimonials('revoked') where display_name = 'Author One' limit 1), 'approved');
   raise exception 'should have refused';
 exception when sqlstate '22023' then raise notice 'ok - 59. a revoked testimonial cannot be approved again -> 22023'; end $$;
+-- the owner's to-do: a published one taken back waits under takedown until marked off the site
+select t.ok((select count(*) = 1 from public.admin_list_testimonials('takedown') where display_name = 'Author One'),
+  '59. a published testimonial taken back is on the takedown list');
+do $$ begin
+  perform public.admin_mark_testimonial_removed((select id from public.admin_list_testimonials('approved') where display_name = 'Author Two' limit 1));
+  raise exception 'should have refused';
+exception when sqlstate '22023' then raise notice 'ok - 59. only a taken-back testimonial can be marked off the site -> 22023'; end $$;
 commit;
+begin;
+select t.claims('00000000-0000-4000-8000-000000005904');
+do $$ begin
+  perform public.admin_mark_testimonial_removed((select id from public.admin_list_testimonials('takedown') limit 1));
+  raise exception 'should have refused';
+exception when sqlstate '42501' then raise notice 'ok - 59. a support administrator cannot mark one off the site -> 42501'; end $$;
+rollback;
+begin;
+select t.claims('00000000-0000-4000-8000-000000005903');
+select t.ok((select site_removed_at is not null from public.admin_mark_testimonial_removed((select id from public.admin_list_testimonials('takedown') where display_name = 'Author One' limit 1))),
+  '59. the owner marks it off the site');
+select t.ok((select count(*) = 0 from public.admin_list_testimonials('takedown') where display_name = 'Author One'), '59. ... and it leaves the takedown list');
+commit;
+select t.ok((select count(*) >= 1 from public.admin_audit where action = 'testimonial_site_removed'), '59. marking it off the site is in the audit log');
 
 -- 7. the flood guard
 begin;

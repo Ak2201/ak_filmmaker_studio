@@ -606,14 +606,18 @@ try {
     ok(/"ref":"FOUNDER50"/.test(held || '') && /"src":"insta"/.test(held || ''), 'the code and the source are held for the tab: ' + held);
     ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /attrib|ref|utm|lead/i.test(k))), 'and nothing of it is in localStorage');
 
-    /* THE LEAD FORM. The page draws <form data-lead-form>; until it does,
-       the proof draws the same contract, which the delegated listener
-       must handle exactly as it would the page's own. */
+    /* THE LEAD FORM. The page draws <form data-lead-form> inside a
+       section that stays [hidden] while marketing-site.json lead.live is
+       false (the owner shows it after approving privacy.html#leads), so
+       the proof un-hides that section to exercise the real form; a page
+       without one gets the same contract drawn here, which the delegated
+       listener must handle exactly as it would the page's own. */
     await page.evaluate(() => {
-      if (document.querySelector('[data-lead-form]')) return;
+      const real = document.querySelector('[data-lead-form]');
+      if (real) { for (let n = real; n; n = n.parentElement) n.hidden = false; return; }
       const f = document.createElement('form');
       f.setAttribute('data-lead-form', '');
-      f.innerHTML = '<input type="email" name="email"><label><input type="checkbox" name="consent"> E-mail me launch offers. I can unsubscribe at any time.</label><button type="submit">Send</button><p data-lead-status></p>';
+      f.innerHTML = '<input type="email" name="email"><label><input type="checkbox" name="consent"> Send me product news. Unsubscribe anytime.</label><button type="submit">Send</button><p data-lead-status></p>';
       document.body.append(f);
     });
     const form = '[data-lead-form]';
@@ -624,7 +628,7 @@ try {
     await page.click(form + ' button[type="submit"]');
     await page.waitForFunction((sel) => /on the list/i.test((document.querySelector(sel + ' [data-lead-status]') || {}).textContent || ''), form, { timeout: 6000 }).catch(() => {});
     const lead = LEADS[0] || {};
-    ok(LEADS.length === 1 && lead.p_email === 'lead@example.com' && lead.p_source === 'instagram' && /launch offers/i.test(lead.p_consent || ''),
+    ok(LEADS.length === 1 && lead.p_email === 'lead@example.com' && lead.p_source === 'instagram' && /product news/i.test(lead.p_consent || ''),
       'with consent it posts to add_lead with the address, the ticked words and the link\'s source: ' + JSON.stringify({ e: lead.p_email, s: lead.p_source }));
     ok(await page.evaluate((sel) => { const s = document.querySelector(sel + ' [data-lead-status]'); return s.getAttribute('role') === 'status' && /on the list/i.test(s.textContent); }, form), 'the status line is role=status and says it worked');
     ok(/start/.test(page.url()), 'the page did not navigate');

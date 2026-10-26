@@ -637,6 +637,25 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
     }
     ok(n >= 3 * 6, 'the grammar check rendered every trial sentence at three lengths (' + n + ' renders, ' + seen.size + ' distinct sentences)');
     console.log("  trial grammar: " + n + " renders of " + seen.size + " distinct sentences");
+    /* NO TRIAL SENTENCE CLAIMS A SCOPE. What a trial opens is decided on
+       the server (start_trial() writes 'sample' for a pressed trial;
+       billing_status() maps 'sample' to the sample films only and 'full'
+       to trial_plan's features, which need not be every module), and
+       trial_offer() returns neither, so the page cannot check a scope at
+       runtime. A sentence that names the trial stays generic. */
+    const scope = /\b(?:every|all(?: the)?) (?:module|tool|feature)s?\b|\bwhole studio\b|\bfull studio\b|\bevery part of the studio\b/i;
+    let nTrial = 0;
+    const scopeSrc = [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, ...IDS.map((i) => pages[i].file), ...files,
+      'src/data/marketing-site.json', 'src/data/marketing-home.json', 'src/data/marketing-faq.json', 'src/data/marketing-guides.json', 'src/data/pricing-compare.json', 'src/data/marketing-compare.json'];
+    for (const f of scopeSrc) {
+      const text = read(f).replace(/<[^>]+>/g, ' ').replace(/\\"/g, '"').replace(/\s+/g, ' ');
+      for (const s of text.split(/(?<=[.!?:"])\s+/)) {
+        if (!/\btrial\b/i.test(s)) continue;
+        nTrial++;
+        ok(!scope.test(s), f + ': a trial sentence claims a scope the page cannot check: "' + s.trim().slice(0, 160) + '"');
+      }
+    }
+    ok(nTrial >= 10, 'the trial-scope check read the trial sentences (' + nTrial + ')');
     /* and the model itself, at the edges */
     ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 1440 }, 'label').text === '24-hour free trial', 'one day reads "24-hour free trial"');
     ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 4320 }, 'length').text === '3 days', 'length mode, 3 days');

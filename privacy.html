@@ -140,6 +140,9 @@
 <section class="legal-changes" id="changes" aria-labelledby="changes-h">
   <h2 id="changes-h">What changed on 21 October 2026</h2>
   <ul>
+    <li>On 26 October 2026: section 2 now counts the first public page a visit lands on, not
+    only the start page, and says that a count can name the kind of link that brought the visit;
+    and it describes the product-news e-mail form, what it keeps and how to leave the list.</li>
     <li>New section 9, for people in the United States: the California (CCPA/CPRA)
     categories of personal information we collect, that we do not sell or share it, how to
     ask for access or deletion, and that exercising a right never changes your price or your
@@ -300,10 +303,21 @@ The choice is kept on your device and takes effect from your next click; it also
 you are not signed in, nothing is counted.
 We send the totals once, as you leave or hide the page; we never send them in the background.</p>
 
+<!-- DRAFT, AWAITING THE OWNER'S APPROVAL (26 Oct 2026), together with
+     #leads below and the 26 October line under "What changed". The first
+     sentence used to read "We count visits to the start page and the
+     pricing section, ..."; since 26 Oct src/pages/marketing.js counts a
+     landing (bumpOnce('landing_view'), once per tab) on every public page,
+     not only start.html, and every count carries the source bucket of
+     funnel.js sourceBucket(). Do not release to main before the owner
+     approves these words. -->
 <h3 id="visit-counts">Visit counts and the old launch-offers list</h3>
-<p>We count visits to the start page and the pricing section, invite requests, sign-ups,
-checkouts started and purchases as plain daily totals, with no identifier, IP address or
-cookie attached, so a count cannot be traced to you. We honour Do Not Track and Global
+<p>We count the first of our public pages you land on in a visit (the start page, pricing, a
+guide, a product page or another public page), the pricing section coming into view, invite
+requests, sign-ups, checkouts started and purchases as plain daily totals. Each total can
+also say what kind of link brought the visit (for example &ldquo;instagram&rdquo; or
+&ldquo;school&rdquo;), never a person&rsquo;s or a school&rsquo;s name and never the rest of the link. No identifier, IP address or
+cookie is attached, so a count cannot be traced to you. We honour Do Not Track and Global
 Privacy Control, and the start page has a &ldquo;Don&rsquo;t count this visit&rdquo; button.</p>
 <p>Our start page used to have a &ldquo;Get launch offers&rdquo; form. It has been removed.
 If you used it, we still hold the address, the exact consent sentence you saw, and the date;
@@ -311,7 +325,7 @@ we use it only to write to you about {{brand:name}}&rsquo;s launch and offers, o
 administrator can read the list, and it is not shared. Ask us at {{brand:email}} and we
 will delete it.</p>
 
-<!-- DRAFT, AWAITING THE OWNER'S APPROVAL (26 Oct 2026). Written from the code:
+<!-- DRAFT, AWAITING THE OWNER'S APPROVAL (26 Oct 2026), with #visit-counts above. Written from the code:
      src/pages/marketing.js (the form) -> src/lib/funnel.js addLead() ->
      add_lead() and public.leads in supabase/schema/supabase-schema.sql §29.
      The form stays hidden (marketing-site.json lead.live false) until the
@@ -324,13 +338,16 @@ where you signed up &mdash; the page&rsquo;s name (for example &ldquo;pricing&rd
 link that brought you (for example &ldquo;instagram&rdquo;), never a person&rsquo;s or a
 school&rsquo;s name and never the rest of the link &mdash; and the time you sent it. No account,
 IP address or cookie is stored with it, and sending the same address again changes nothing.</p>
-<p><strong>Why:</strong> only to send you an occasional note when something new ships or a plan
-changes. <strong>Who can read it:</strong> only a {{brand:name}} administrator, in the console. The
-list is kept in our database (Supabase, section 4) and is never shared or sold.
-<strong>How long:</strong> until you unsubscribe or ask us to delete it.
-<strong>To unsubscribe or delete it:</strong> write to {{brand:email}} from that address, or reply to
-any product-news e-mail saying so, and we delete the address together with its consent sentence,
-its source word and its time.</p>
+<p><strong>Why:</strong> we use each address only for what the sentence you ticked said, which is
+why we keep that sentence. An address given on this form is used only to send you an occasional
+note when something new ships or a plan changes; an address from the old launch-offers form above
+is used only for launch and offers, as its own sentence said. Both are kept in the same list.
+<strong>Who sends it:</strong> no product-news e-mail is being sent yet. Before the first one goes
+out, this section will name the service that sends it. <strong>Who can read it:</strong> only a
+{{brand:name}} administrator, in the console. The list is kept in our database (Supabase, section 4)
+and is never shared or sold. <strong>How long:</strong> until you unsubscribe or ask us to delete it.
+<strong>To unsubscribe or delete it:</strong> write to {{brand:email}} from that address, and we
+delete the address together with its consent sentence, its source word and its time.</p>
 
 <h2 id="why-we-use-it">3. Why we use it</h2>
 <ul>

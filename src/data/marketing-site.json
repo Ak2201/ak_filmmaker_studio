@@ -46,8 +46,8 @@
   "signup": {
     "heading": "Sign in to start your trial",
     "headingHtml": "Sign in to start your <span data-trial-length=\"label\">free trial</span>",
-    "offer": "Try every module with a <span data-trial-length=\"label\">free trial</span>. No card required.",
-    "offerOff": "The studio is open: sign in with Google and every module is yours to use, saved in your browser.",
+    "offer": "Try the studio with a <span data-trial-length=\"label\">free trial</span>. No card required.",
+    "offerOff": "The studio is open: sign in with Google and use it, with your work saved in your browser.",
     "offerIn": "You are already signed in.",
     "google": "Continue with Google",
     "googleIn": "Open the studio",

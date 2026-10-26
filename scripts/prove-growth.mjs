@@ -624,7 +624,7 @@ try {
     await page.click(form + ' button[type="submit"]');
     await page.waitForFunction((sel) => /on the list/i.test((document.querySelector(sel + ' [data-lead-status]') || {}).textContent || ''), form, { timeout: 6000 }).catch(() => {});
     const lead = LEADS[0] || {};
-    ok(LEADS.length === 1 && lead.p_email === 'lead@example.com' && lead.p_source === 'insta' && /launch offers/i.test(lead.p_consent || ''),
+    ok(LEADS.length === 1 && lead.p_email === 'lead@example.com' && lead.p_source === 'instagram' && /launch offers/i.test(lead.p_consent || ''),
       'with consent it posts to add_lead with the address, the ticked words and the link\'s source: ' + JSON.stringify({ e: lead.p_email, s: lead.p_source }));
     ok(await page.evaluate((sel) => { const s = document.querySelector(sel + ' [data-lead-status]'); return s.getAttribute('role') === 'status' && /on the list/i.test(s.textContent); }, form), 'the status line is role=status and says it worked');
     ok(/start/.test(page.url()), 'the page did not navigate');

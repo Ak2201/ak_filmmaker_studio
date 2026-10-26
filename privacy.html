@@ -67,7 +67,7 @@
       </div>
       <a class="mk-nav-link" href="pricing.html">Pricing</a>
       <a class="mk-nav-link" href="guides.html">Guides</a>
-      <a class="mk-nav-link" href="guides.html#compare">Compare</a>
+      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Log in</a>
     </nav>
     <div class="mk-top-end">
@@ -300,7 +300,7 @@ The choice is kept on your device and takes effect from your next click; it also
 you are not signed in, nothing is counted.
 We send the totals once, as you leave or hide the page; we never send them in the background.</p>
 
-<h3 id="leads">Visit counts and the old launch-offers list</h3>
+<h3 id="visit-counts">Visit counts and the old launch-offers list</h3>
 <p>We count visits to the start page and the pricing section, invite requests, sign-ups,
 checkouts started and purchases as plain daily totals, with no identifier, IP address or
 cookie attached, so a count cannot be traced to you. We honour Do Not Track and Global
@@ -310,6 +310,27 @@ If you used it, we still hold the address, the exact consent sentence you saw, a
 we use it only to write to you about {{brand:name}}&rsquo;s launch and offers, only an
 administrator can read the list, and it is not shared. Ask us at {{brand:email}} and we
 will delete it.</p>
+
+<!-- DRAFT, AWAITING THE OWNER'S APPROVAL (26 Oct 2026). Written from the code:
+     src/pages/marketing.js (the form) -> src/lib/funnel.js addLead() ->
+     add_lead() and public.leads in supabase/schema/supabase-schema.sql §29.
+     The form stays hidden (marketing-site.json lead.live false) until the
+     owner approves these words. -->
+<h3 id="leads">Product news by e-mail</h3>
+<p>Some of our public pages can show a &ldquo;Product news by e-mail&rdquo; form. It sends nothing
+unless you type your address and tick its box. If you do, we keep four things: your e-mail
+address (in lower case), the exact consent sentence beside the box you ticked, one short word for
+where you signed up &mdash; the page&rsquo;s name (for example &ldquo;pricing&rdquo;) or the kind of
+link that brought you (for example &ldquo;instagram&rdquo;), never a person&rsquo;s or a
+school&rsquo;s name and never the rest of the link &mdash; and the time you sent it. No account,
+IP address or cookie is stored with it, and sending the same address again changes nothing.</p>
+<p><strong>Why:</strong> only to send you an occasional note when something new ships or a plan
+changes. <strong>Who can read it:</strong> only a {{brand:name}} administrator, in the console. The
+list is kept in our database (Supabase, section 4) and is never shared or sold.
+<strong>How long:</strong> until you unsubscribe or ask us to delete it.
+<strong>To unsubscribe or delete it:</strong> write to {{brand:email}} from that address, or reply to
+any product-news e-mail saying so, and we delete the address together with its consent sentence,
+its source word and its time.</p>
 
 <h2 id="why-we-use-it">3. Why we use it</h2>
 <ul>
@@ -598,7 +619,7 @@ signed-in members know in the app or by e-mail before it takes effect.</p>
           <li><a href="about.html">About us</a></li>
           <li><a href="trust.html">Your work stays yours</a></li>
           <li><a href="guides.html">Guides</a></li>
-          <li><a href="guides.html#compare">Compare</a></li>
+          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
           <li><a href="privacy.html">Privacy</a></li>
           <li><a href="terms.html">Terms</a></li>

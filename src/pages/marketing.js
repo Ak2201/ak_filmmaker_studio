@@ -32,7 +32,7 @@
    ============================================================ */
 import '../styles/base.css';
 import '../styles/marketing.css';
-import { bumpEvent, purchasesRequired, trialOffer, addLead } from '../lib/funnel.js';
+import { bumpEvent, bumpOnce, sourceBucket, purchasesRequired, trialOffer, addLead } from '../lib/funnel.js';
 import { captureAttribution, attribution } from '../lib/attribution.js';
 import { trialMode, trialCopy, validEmail, consentText } from '../lib/start-model.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
@@ -41,6 +41,18 @@ import { visitorRegion } from '../lib/visitor-region.js';
 
 /* First, before a script below can strip or rewrite the address. */
 try { captureAttribution(location); } catch (e) { /* never breaks the page */ }
+
+/* The landing count, on whichever public page a visit starts: a guide,
+   a switching guide, the trust page, a product page, pricing, about or
+   contact. Once per tab (bumpOnce keeps its mark in sessionStorage, the
+   same mark start.js uses, so moving on to start.html counts nothing
+   more); Do Not Track, Global Privacy Control and "Don't count this
+   visit" are honoured inside funnel.js. start.html counts its own in
+   start.js. After captureAttribution, so the count carries the link's
+   source bucket. */
+try {
+  if (!/(^|\/)start(\.html)?$/.test(location.pathname)) bumpOnce('landing_view');
+} catch (e) { /* a counter never breaks the page */ }
 
 const root = document.documentElement;
 const $ = (sel, from = document) => from.querySelector(sel);
@@ -455,7 +467,12 @@ document.addEventListener('submit', (e) => {
   const label = consent.closest('label') || (consent.id && form.querySelector('label[for="' + consent.id + '"]'));
   const words = consentText(label ? label.textContent : '');
   let source = pageSource();
-  try { source = attribution().src || source; } catch (err) { /* the page's name stands */ }
+  /* The link's source as its BUCKET (funnel.js sourceBucket: 'instagram',
+     'school', 'other'...), never the raw ?src= slug: a lead is an e-mail
+     address, and a slug beside it ('creator-<name>', 'school-<name>')
+     would tie the address to a person or a school. privacy.html#leads
+     says exactly this. */
+  try { source = sourceBucket(attribution().src) || source; } catch (err) { /* the page's name stands */ }
   const btn = form.querySelector('button[type="submit"], button:not([type])');
   form.dataset.busy = '1';
   if (btn) btn.disabled = true;

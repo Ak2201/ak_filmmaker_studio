@@ -450,6 +450,29 @@ ${modal(site)}
 
 /* ---- pricing.html ---------------------------------------------------- */
 
+/* The students band. It names a promo code ONLY while
+   marketing-site.json says that code is live on the server
+   (site.student.live): a band that tells a student to type a code the
+   server does not know is a promise checkout breaks. Until then it asks
+   the reader to write to us. Never a figure either way: the discount is
+   quoted at checkout, in the currency the order is in. */
+export function eduBand(site, e) {
+  const st = site.student || {};
+  const live = st.live === true && /^[A-Z0-9_-]{3,40}$/.test(st.code || '');
+  const body = live ? esc(e.bodyLive.replace('{code}', st.code)) : esc(e.body);
+  const cta = live
+    ? `<a class="mk-btn mk-btn--outline" href="purchase.html?plan=indie">${esc(e.ctaLive)}</a>`
+    : `<a class="mk-btn mk-btn--outline" href="contact.html">${esc(e.cta)}</a>`;
+  return `<aside class="pr-edu" id="students" aria-labelledby="prEduH">
+      <div class="pr-edu-text">
+        <h3 class="mk-h3" id="prEduH">${esc(e.h)}</h3>
+        <p class="mk-small"><strong>${esc(e.lead)}</strong> ${body}</p>
+        <p class="mk-small">${esc(e.schools)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a> ${esc(e.schoolsAfter)}</p>
+      </div>
+      ${cta}
+    </aside>`;
+}
+
 export function renderPricing({ site, pages, compare, faq }) {
   const c = compare;
   const u = site.ui;
@@ -499,14 +522,7 @@ ${PAID.map(card).join('\n')}
     </ul>
     <p class="pr-fine" id="authMsg" role="status" aria-live="polite"></p>
     <p class="pr-note">${chargeVariants(c.plans.noteHtml, c.plans.noteUsdHtml)}</p>
-    <aside class="pr-edu" id="students" aria-labelledby="prEduH">
-      <div class="pr-edu-text">
-        <h3 class="mk-h3" id="prEduH">${esc(c.edu.h)}</h3>
-        <p class="mk-small"><strong>${esc(c.edu.lead)}</strong> ${esc(c.edu.body)}</p>
-        <p class="mk-small">${esc(c.edu.schools)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a> ${esc(c.edu.schoolsAfter)}</p>
-      </div>
-      <a class="mk-btn mk-btn--outline" href="purchase.html?plan=indie">${esc(c.edu.cta)}</a>
-    </aside>
+    ${eduBand(site, c.edu)}
   </div>
 </section>`;
 
@@ -643,7 +659,7 @@ export function validateHome(home, { site, pages }) {
      fills [data-trial-length] from trial_offer() and hides [data-trial]
      when trials are switched off */
   const tr = home.trial;
-  if (!tr || !tr.html || !tr.open || !/<span data-trial-length>[^<]+<\/span>/.test(tr.html)) w('trial needs html (with a <span data-trial-length> fallback) and open');
+  if (!tr || !tr.html || !tr.open || !/<span data-trial-length="(label|length)">[^<]+<\/span>/.test(tr.html)) w('trial needs html (with a <span data-trial-length="label"> fallback) and open');
   else if (/\d/.test(tr.html.replace(/<[^>]*>/g, ''))) w('trial.html types a number; the length comes from the server');
   const ex = home.exports;
   if (!ex || !ex.h2 || !ex.body || !Array.isArray(ex.items) || ex.items.length !== 3 || ex.items.some((i) => !i.sym || !i.title || !i.text)) w('exports needs h2, body and three {sym, title, text}');
@@ -1257,7 +1273,7 @@ export function validateGuides(g, c) {
   if (g.guides.length !== 7) w('seven guides, has ' + g.guides.length);
   const ids = g.guides.map((x) => x.id);
   if (new Set(ids).size !== ids.length) w('guide ids repeat');
-  if (!/<span data-trial-length>free trial<\/span>/.test(g.ui.ctaTrialHtml || '')) w('ui.ctaTrialHtml must wrap "free trial" in <span data-trial-length>');
+  if (!/<span data-trial-length="label">free trial<\/span>/.test(g.ui.ctaTrialHtml || '')) w('ui.ctaTrialHtml must wrap "free trial" in <span data-trial-length="label">');
   for (const x of g.guides) {
     const t = (m) => w(x.id + ': ' + m);
     if (x.file !== 'guide-' + x.id + '.html') t('file must be guide-' + x.id + '.html');
@@ -1279,16 +1295,23 @@ export function validateGuides(g, c) {
   for (const p of c.pages) {
     if (p.file !== 'compare-' + p.id + '.html') cw(p.id + ': file must be compare-' + p.id + '.html');
     if (!Array.isArray(p.rows) || !p.rows.length) cw(p.id + ': rows missing');
+    for (const k of ['label', 'card', 'metaTitle', 'metaDescription', 'h1', 'sub', 'name']) if (!p[k]) cw(p.id + ': missing ' + k);
     for (const r of p.rows || []) {
       if (!c.us[r.us]) cw(p.id + ': row "' + r.feature + '" names an unknown us key ' + r.us);
       if (!r.them || !/^https:\/\//.test(r.source || '') || !/^\d{4}-\d\d-\d\d$/.test(r.checked || '')) cw(p.id + ': row "' + r.feature + '" needs them, an https source and a checked date (or omit the row)');
-      /* HOW it was checked is part of the fact: "read" (somebody opened the
-         vendor's page) or "search-summary" (taken from a search engine's
-         summary of it), and the page prints which. */
-      if (r.method !== 'read' && r.method !== 'search-summary') cw(p.id + ': row "' + r.feature + '" needs method "read" or "search-summary"');
+      /* Only "read" (a person opened the vendor's page and confirmed the
+         sentence on `checked`) is ever printed; "unread" waits for that. */
+      if (r.status !== 'read' && r.status !== 'unread') cw(p.id + ': row "' + r.feature + '" needs status "read" or "unread"');
     }
     if (/\b(better|best|worse|worst|superior|cheaper|faster)\b/i.test(JSON.stringify(p))) cw(p.id + ': no comparative superlatives');
   }
+  const sw = c.switching && c.switching.sections;
+  if (!Array.isArray(sw) || sw.length < 3) cw('switching needs three or more sections');
+  else {
+    sw.forEach((x, i) => { if (!x.h2 || !(x.body || x.list || x.steps) || !x.ours) cw('switching section ' + (i + 1) + ' needs h2, body/list/steps and ours'); });
+    if (!sw.some((x) => Array.isArray(x.steps) && x.steps.length >= 3)) cw('switching needs a section with three or more steps (the HowTo)');
+  }
+  if (!/^\d{4}-\d\d-\d\d$/.test(c.updated || '')) cw('updated must be an ISO day');
   if (!c.trust || !Array.isArray(c.trust.sections) || c.trust.sections.length < 5) cw('trust needs five or more sections');
   return bad;
 }
@@ -1396,7 +1419,7 @@ export function renderGuidesIndex({ site, pages, guides: g, versus: c }) {
   const ld = [
     { '@context': 'https://schema.org', '@type': 'CollectionPage', name: ix.h1, description: ix.metaDescription, url: ORIGIN + '/guides', inLanguage: 'en-IN',
       hasPart: [...g.guides.map((y) => ({ '@type': y.kind === 'HowTo' ? 'HowTo' : 'Article', name: y.label, url: ORIGIN + '/' + slugOfFile(y.file) })),
-                ...c.pages.map((p) => ({ '@type': 'WebPage', name: p.label, url: ORIGIN + '/' + slugOfFile(p.file) }))] },
+                ...c.pages.map((p) => ({ '@type': 'HowTo', name: p.label, url: ORIGIN + '/' + slugOfFile(p.file) }))] },
     crumbsLd([{ name: g.ui.breadcrumbHome, slug: 'start' }, { name: g.ui.breadcrumbGuides, slug: 'guides' }]),
     softwareLd('guides')
   ];
@@ -1438,47 +1461,75 @@ ${trialClose(g, ix.closeH)}
 ${pageTail(site, pages)}`;
 }
 
+/* A competitor fact is PRINTED only once a person has read it on the
+   vendor's own page (status "read"), with that page linked and the day
+   it was read beside it. Unread rows stay in marketing-compare.json for
+   the owner to check and never reach a page (test:marketing). */
+export const readRows = (p) => (p.rows || []).filter((r) => r.status === 'read' && /^https:\/\//.test(r.source || '') && /^\d{4}-\d\d-\d\d$/.test(r.checked || ''));
+
+/* compare-<id>.html: since 26 Oct 2026 a SWITCHING GUIDE (the URL is
+   kept). The shared sections are our own facts only (what imports, the
+   import step by step, what exports, the cost); the read rows, if any,
+   follow as a table. A HowTo in the JSON-LD, from the steps. */
 export function renderCompare(id, { site, pages, guides: g, versus: c }) {
   const p = c.pages.find((y) => y.id === id);
   const slug = slugOfFile(p.file);
+  const url = ORIGIN + '/' + slug;
+  const secs = c.switching.sections;
+  const steps = secs.find((x) => Array.isArray(x.steps)).steps;
   const ld = [
-    { '@context': 'https://schema.org', '@type': 'WebPage', name: p.h1, description: p.metaDescription, url: ORIGIN + '/' + slug, inLanguage: 'en-IN', dateModified: c.checked },
+    { '@context': 'https://schema.org', '@type': 'HowTo', name: p.h1, description: p.metaDescription, inLanguage: 'en-IN', dateModified: c.updated, url, image: ORIGIN + '/og.png',
+      step: steps.map((st, i) => ({ '@type': 'HowToStep', position: i + 1, name: st.name, text: st.text })) },
     crumbsLd([{ name: g.ui.breadcrumbHome, slug: 'start' }, { name: g.index.compareH, slug: 'guides' }, { name: p.label, slug }]),
     softwareLd(slug)
   ];
-  const rows = p.rows.map((r) => `          <tr>
-            <th scope="row">${esc(r.feature)}</th>
-            <td data-col="{{brand:name}}">${esc(c.us[r.us])}</td>
-            <td data-col="${esc(p.name)}">${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${r.method === 'read' ? esc(c.ui.checkedLabel) + ' ' + longDay(r.checked) : esc(c.ui.summaryLabel) + ' ' + longDay(r.checked) + '; ' + esc(c.ui.summaryAfter)})</span></td>
-          </tr>`).join('\n');
-  return `${publicHead({ title: p.metaTitle, description: p.metaDescription, slug, ld })}
-${genNote(COMPARE_COPY)}
-${header(site, pages, 'compare')}
-<main id="main" class="mk mk-compare">
-${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }])}
-<section class="mk-sec mk-band-b" id="table" aria-labelledby="mkTableH">
+  const read = readRows(p);
+  const table = read.length ? `
+<section class="mk-sec mk-band-a" id="table" aria-labelledby="mkTableH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="mkTableH">${esc(c.ui.tableH)}</h2>
     <div class="mk-table-wrap" role="region" aria-labelledby="mkTableH" tabindex="0">
       <table class="mk-table">
         <thead><tr><th scope="col">${esc(c.ui.featureCol)}</th><th scope="col">{{brand:name}}</th><th scope="col">${esc(p.name)}</th></tr></thead>
         <tbody>
-${rows}
+${read.map((r) => `          <tr>
+            <th scope="row">${esc(r.feature)}</th>
+            <td data-col="{{brand:name}}">${esc(c.us[r.us])}</td>
+            <td data-col="${esc(p.name)}">${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${esc(c.ui.checkedLabel)} <time datetime="${esc(r.checked)}">${longDay(r.checked)}</time>)</span></td>
+          </tr>`).join('\n')}
         </tbody>
       </table>
     </div>
-    <p class="mk-small mk-checked" id="checked">${esc(c.ui.noteBefore)} <time datetime="${esc(c.checked)}">${longDay(c.checked)}</time>.${p.rows.some((r) => r.method !== 'read') ? ' ' + esc(c.ui.noteSummary) : ''} ${esc(c.ui.noteAfter)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a> ${esc(c.ui.noteEnd)}</p>
+    <p class="mk-small mk-checked" id="checked">${esc(c.ui.noteBefore)} ${esc(c.ui.noteAfter)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a> ${esc(c.ui.noteEnd)}</p>
   </div>
-</section>
+</section>` : '';
+  const toc = secs.map((x, i) => `<li><a href="#g-${i + 1}">${esc(x.h2)}</a></li>`).join('');
+  return `${publicHead({ title: p.metaTitle, description: p.metaDescription, slug, ld })}
+${genNote(COMPARE_COPY)}
+${header(site, pages, 'compare')}
+<main id="main" class="mk mk-guide mk-compare">
+${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }],
+  `\n    <p class="mk-small mk-updated">${esc(c.ui.updatedLabel)} <time datetime="${esc(c.updated)}">${longDay(c.updated)}</time></p>`)}
+<section class="mk-sec mk-band-b mk-article" id="guide" aria-label="${esc(p.label)}">
+  <div class="mk-wrap mk-article-grid">
+    <nav class="mk-toc" aria-label="${esc(site.ui.labelNav)}">
+      <p class="mk-toc-h">${esc(site.ui.labelNav)}</p>
+      <ol>${toc}<li><a href="#also">${esc(c.ui.alsoH)}</a></li></ol>
+    </nav>
+    <div class="mk-prose">
+${secs.map(guideBlock).join('\n')}
+    </div>
+  </div>
+</section>${table}
 <section class="mk-sec mk-band-a" id="also" aria-labelledby="mkAlsoH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="mkAlsoH">${esc(c.ui.alsoH)}</h2>
     <p class="mk-body">${esc(c.ui.alsoLede)}</p>
     <div class="mk-stages">
-${c.also.map((a) => `      <article class="mk-card">
-        <span class="mk-card-icon">${sym(a.sym)}</span>
-        <h3 class="mk-h3">${esc(a.title)}</h3>
-        <p class="mk-card-p">${esc(a.text)}</p>
+${c.also.map((x) => `      <article class="mk-card">
+        <span class="mk-card-icon">${sym(x.sym)}</span>
+        <h3 class="mk-h3">${esc(x.title)}</h3>
+        <p class="mk-card-p">${esc(x.text)}</p>
       </article>`).join('\n')}
     </div>
     <p class="mk-cta-row mk-also-links"><a class="mk-link" href="trust.html">${esc(c.trust.label)}${sym('arrow_forward')}</a></p>

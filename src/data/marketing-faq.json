@@ -4,7 +4,7 @@
     "items": [
       {
         "q": "Is it a subscription?",
-        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay.",
+        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Payment is through Razorpay, and checkout confirms the currency and the exact amount before you pay.",
         "aUsd": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay."
       },
       {
@@ -22,8 +22,8 @@
       {
         "q": "How long is the free trial?",
         "trial": true,
-        "a": "Right now it is a free trial whose length is a studio setting, read live, so it is never typed into this answer. It opens every module on the sample films and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it.",
-        "aHtml": "Right now it is a <span data-trial-length>free trial</span> whose length is a studio setting, read live, so it is never typed into this answer. It opens every module on the sample films and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
+        "a": "Right now it is a free trial. Its length is a studio setting, read live, so it is never typed into this answer. It opens every module and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it.",
+        "aHtml": "Right now it is a <span data-trial-length=\"label\">free trial</span>. Its length is a studio setting, read live, so it is never typed into this answer. It opens every module and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
       }
     ]
   },

@@ -80,7 +80,7 @@
       </div>
       <a class="mk-nav-link" href="pricing.html">Pricing</a>
       <a class="mk-nav-link" href="guides.html">Guides</a>
-      <a class="mk-nav-link" href="guides.html#compare">Compare</a>
+      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Log in</a>
     </nav>
     <div class="mk-top-end">
@@ -112,7 +112,7 @@
     <span class="mk-card-icon"><span class="sym" aria-hidden="true" translate="no">storage</span></span>
     <h2 class="mk-h2" id="mkT-local">It is saved in your browser first</h2>
     <p class="mk-body">Every change is written to your own browser's storage on your device before anything else happens. When you are signed in and sync is on, your projects also go to the studio's cloud so they reach your other devices. You can switch sync off in Settings; the copy in your browser stays either way.</p>
-    <p class="mk-body">Clearing your browser's site data removes that copy from that device, so keep a backup file or a Drive backup as well.</p>
+    <p class="mk-body">That copy is read by the studio itself: it is not a file you can open in another program. Clearing your browser's site data removes it from that device, so keep a backup file or a Drive backup as well.</p>
   </div>
 </section>
 <section class="mk-sec mk-band-b" id="drive" aria-labelledby="mkT-drive">
@@ -127,7 +127,7 @@
   <div class="mk-wrap mk-prose">
     <span class="mk-card-icon"><span class="sym" aria-hidden="true" translate="no">cloud_off</span></span>
     <h2 class="mk-h2" id="mkT-offline">It keeps working when the signal drops</h2>
-    <p class="mk-body">The studio installs like an app and caches itself, so you can write, move strips and print call sheets on set without a connection. It works offline for up to 14 days after you last signed in on that device; after that it needs a connection once to check your sign-in and plan. Nothing you wrote is deleted while it waits.</p>
+    <p class="mk-body">The studio installs like an app and caches itself, so you can write, move strips and print call sheets on set without a connection. It keeps opening without a signal for up to 14 days after it last checked your sign-in online on that device; after that it needs a connection once to check your sign-in and plan. Until then your work is hidden, never deleted: it is still in your browser when the check succeeds.</p>
   </div>
 </section>
 <section class="mk-sec mk-band-b" id="who" aria-labelledby="mkT-who">
@@ -143,19 +143,19 @@
   <div class="mk-wrap mk-prose">
     <span class="mk-card-icon"><span class="sym" aria-hidden="true" translate="no">inventory_2</span></span>
     <h2 class="mk-h2" id="mkT-stops">If the service ever stops</h2>
-    <p class="mk-body">What you keep without us: the copy in your browser on each device you used, every file you exported (PDF, Word, Final Draft, Fountain, CSV) and every backup file or Drive backup you made. Those are yours and open without the studio.</p>
-    <p class="mk-body">What depends on us: signing in, sync between devices, and opening the studio itself once its offline window has passed. Our terms say that if we ever discontinue the service, we will give members reasonable notice and a way to export their synced data. So keep your own exports: they are the copy no company can take away.</p>
+    <p class="mk-body">What you keep without us: every file you exported (PDF, Word, Final Draft, Fountain, CSV) and every backup file or Drive backup you made. Those are files on your own device or in your own Drive, and the screenplay formats open in other programs.</p>
+    <p class="mk-body">What depends on us: signing in, sync between devices, and opening the studio itself, which is also the only way to read the copy in your browser. Without our server the studio opens for at most 14 days after its last online check; after that the browser copy stays on the device but stays hidden. Our terms say that if we ever discontinue the service, we will give members reasonable notice and a way to export their synced data. So keep your own exports: they are the copy no company can take away.</p>
     <a class="mk-link" href="terms.html#availability-and-changes-to-the-service">Read the terms on availability<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
   </div>
 </section>
 <section class="mk-sec mk-band-c mk-mid" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">See it with your own script before you decide</h2>
+    <h2 class="mk-h2" id="mkMidH">See the studio before you decide</h2>
     <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-trial data-trial-only>Start your <span data-trial-length>free trial</span></a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-trial data-trial-only>Start your <span data-trial-length="label">free trial</span></a>
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">See the plans</a>
     </div>
-    <p class="mk-small mk-close-note" data-trial data-trial-only>The trial opens every module on the sample films. No card is needed to start.</p>
+    <p class="mk-small mk-close-note" data-trial data-trial-only>The trial opens every module. No card is needed to start.</p>
   </div>
 </section>
 </main>
@@ -200,7 +200,7 @@
           <li><a href="about.html">About us</a></li>
           <li><a href="trust.html">Your work stays yours</a></li>
           <li><a href="guides.html">Guides</a></li>
-          <li><a href="guides.html#compare">Compare</a></li>
+          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
           <li><a href="privacy.html">Privacy</a></li>
           <li><a href="terms.html">Terms</a></li>
@@ -219,8 +219,8 @@
   <div class="mk-modal-scrim" data-close></div>
   <div class="mk-modal-card" tabindex="-1">
     <button class="mk-modal-x" type="button" data-close aria-label="Close"><span class="sym" aria-hidden="true" translate="no">close</span></button>
-    <h2 class="mk-modal-h" id="mkSignupTitle">Sign in to start your <span data-trial-length>free trial</span></h2>
-    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and every module is yours to use, saved in your browser." data-open-text="You are already signed in.">Try every module on the sample films with a <span data-trial-length>free trial</span>. No card required.</p>
+    <h2 class="mk-modal-h" id="mkSignupTitle">Sign in to start your <span data-trial-length="label">free trial</span></h2>
+    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and every module is yours to use, saved in your browser." data-open-text="You are already signed in.">Try every module with a <span data-trial-length="label">free trial</span>. No card required.</p>
     <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Continue with Google</a>
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">By continuing you agree to the <a href="terms.html">Terms</a> and the <a href="privacy.html">Privacy Policy</a>.</p>

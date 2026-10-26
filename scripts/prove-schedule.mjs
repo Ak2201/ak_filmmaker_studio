@@ -26,6 +26,8 @@
     10  the DPR / kit day picker is the kit's select
     11  at 390 a PINNED tab strip carries no edge mask (the page under
         it showed through both ends)
+    12  plan.html with no scenes prints dashes, as the stripboard does,
+        never "0 shoot days · 0 dates set · 0 locations"
 
        npm run build:open && npm run prove:schedule
    ============================================================ */
@@ -72,6 +74,12 @@ page.on('pageerror', (e) => errors.push(e.message));
 
 await page.goto(url('index.html'), { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
+await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+/* ---- 12 an empty plan claims nothing (before the sample) ------ */
+await page.goto(url('plan.html'), { waitUntil: 'networkidle' });
+await settle(page);
+const planStats = await page.$$eval('.bd-head .k-stat .k-stat-value', (vs) => vs.slice(0, 3).map((v) => v.textContent));
+ok(planStats.length === 3 && planStats.every((v) => v === '—'), '12 an empty plan.html prints dashes, not zeros', planStats);
 await page.goto(url('index.html'), { waitUntil: 'networkidle' });
 await page.click('[data-action="sample-project"][data-sample="dragon"]');
 await page.waitForLoadState('networkidle');

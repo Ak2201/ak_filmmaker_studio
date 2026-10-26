@@ -71,10 +71,13 @@ function renderHeader(scenes, days, locs, media) {
       button({ label: '\u2190 Stripboard & DOOD', variant: 'secondary', size: 'sm', href: 'stripboard.html#stripboard', class: 'pl-back-sb' })
     ]
   });
+  /* No scenes: a dash, as the stripboard prints, never a "0" that
+     claims an empty schedule has been counted (item 48). */
+  const none = !scenes.length;
   head.append(statStrip([
-    { value: String(days.length), label: days.length === 1 ? 'shoot day' : 'shoot days' },
-    { value: String(dated), label: dated === 1 ? 'date set' : 'dates set', attrs: { 'data-pl-dated': '' } },
-    { value: String(locs.length), label: locs.length === 1 ? 'location' : 'locations' },
+    { value: none ? '' : String(days.length), label: days.length === 1 ? 'shoot day' : 'shoot days', note: none ? 'no scenes yet' : '', class: 'pl-kpi-days' },
+    { value: none ? '' : String(dated), label: dated === 1 ? 'date set' : 'dates set', attrs: { 'data-pl-dated': '' } },
+    { value: none ? '' : String(locs.length), label: locs.length === 1 ? 'location' : 'locations' },
     /* The reference index is the Media module, off for every plan. */
     isDisabledEverywhere('media') ? null : { value: String(media.length), label: media.length === 1 ? 'reference' : 'references' }
   ].filter(Boolean), { label: 'The plan in figures' }));

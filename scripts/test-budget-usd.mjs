@@ -98,8 +98,8 @@ eq(JSON.parse(mem.get(CALC)).ci_currency, 'USD', 'a later save that does not nam
 eq(C.estimateLines(JSON.parse(mem.get(CALC)))[0].rate, 2000000, 'a dollar estimate parses "2m" as two million');
 film('IN');
 eq(B.budgetCurrency(), 'USD', 'moving the film to India does not relabel the budget');
-eq(B.currencyMismatch('USD', 'INR', true), 'This budget is in $, the film is set to India. Nothing was converted.', 'the mismatch is said');
-eq(B.currencyMismatch('INR', 'USD', true), 'This budget is in ₹, the film is set to US. Nothing was converted.', 'both ways');
+eq(B.currencyMismatch('USD', 'INR', true), 'This budget is in $, the film is set to India (rupees). Nothing was converted.', 'the mismatch is said');
+eq(B.currencyMismatch('INR', 'USD', true), 'This budget is in ₹, the film is set to Elsewhere (US dollars). Nothing was converted.', 'both ways');
 eq(B.currencyMismatch('INR', 'USD', false), '', 'an empty budget has no mismatch');
 eq(B.currencyMismatch('INR', 'INR', true), '', 'agreeing currencies say nothing');
 ok(B.setBudgetCurrency('INR'), 'the deliberate switch');

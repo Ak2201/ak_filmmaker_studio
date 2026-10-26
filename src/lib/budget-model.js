@@ -107,8 +107,8 @@ export function setBudgetCurrency(cur) {
 export function currencyMismatch(budgetCur, filmCur, hasMoney) {
   if (!hasMoney || !budgetCur || !filmCur || budgetCur === filmCur) return '';
   return budgetCur === 'INR'
-    ? 'This budget is in ₹, the film is set to US. Nothing was converted.'
-    : 'This budget is in $, the film is set to India. Nothing was converted.';
+    ? 'This budget is in ₹, the film is set to Elsewhere (US dollars). Nothing was converted.'
+    : 'This budget is in $, the film is set to India (rupees). Nothing was converted.';
 }
 
 /** A figure in the budget's currency, exact. INR is fmtINRExact, unchanged. */
@@ -368,6 +368,7 @@ export function usRateHint(name) {
     ≥ ₹1,000 to whole thousands, which is a lie in a budgeting tool. */
 export function fmtINRExact(n) {
   if (!n) return '₹ 0';
+  if (n < 0) return '−' + fmtINRExact(-n);
   return '₹ ' + INR.format(Math.round(n));
 }
 

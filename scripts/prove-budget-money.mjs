@@ -109,10 +109,54 @@ const ts = await page.evaluate(() => {
 });
 ok(ts && ts.scroll <= ts.client + 1 && ts.ws === 'normal', '5  at 390px the top sheet fits its scroller (row headers wrap)', ts);
 
+await open(page, 'budget.html#wages');
+const wcol = await page.evaluate(() => { const th = document.querySelector('.cx-wages tbody th'); return th && th.getBoundingClientRect().width; });
+ok(wcol && wcol < 200, '13 at 390px the wage table\'s Craft column leaves room for the other columns', wcol);
+
 await open(page, 'dashboard.html');
 const stat = await page.evaluate(() => (document.querySelector('.db-stats') || {}).textContent || '');
 ok(/Budget estimate/i.test(stat) && !/Locked budget/i.test(stat), '6  the dashboard calls the live estimate "Budget estimate"', stat.slice(0, 300));
 await phone.close();
+
+/* ---- QA round 2 ---- */
+const r2 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+page = await film(r2, null, { ci_1_item: 'Other (custom)', ci_1_custom: 'Camera', ci_1_days: '10', ci_1_rate: '4500' });
+await open(page, 'budget.html#estimate');
+const kpi = () => page.evaluate(() => (document.getElementById('bdKpis') || {}).textContent || '');
+ok(/45k/.test(await kpi()), '8a the header shows the priced estimate first');
+await page.click('[data-action="reset"]');
+await page.click('.dlg .modal-actions .k-btn--danger');
+await page.waitForTimeout(250);
+const afterReset = await page.evaluate(() => ({ kpi: document.getElementById('bdKpis').textContent, petty: (document.getElementById('bdPetty') || {}).textContent || '' }));
+ok(!/45k/.test(afterReset.kpi) && /Nothing priced yet/.test(afterReset.kpi), '8  Reset refreshes the header figures at once (and an empty budget claims nothing)', afterReset.kpi);
+
+// 9  a negative figure is flagged and counts as nothing
+await page.fill('#calcRows [data-key$="_days"]', '2');
+await page.fill('#calcRows [data-key$="_rate"]', '-5000');
+await page.waitForTimeout(500);
+const negs = await page.evaluate(() => ({ inv: document.querySelector('#calcRows [data-key$="_rate"]').getAttribute('aria-invalid'), total: document.getElementById('calcTotal').textContent, kpi: document.getElementById('bdKpis').textContent }));
+ok(negs.inv === 'true' && !/-/.test(negs.total) && !/-5000|Over budget/.test(negs.kpi), '9  a negative rate is flagged and counted as nothing', negs);
+
+// 10 deleting an expense keeps keyboard focus on the list
+await open(page, 'budget.html#expenses');
+for (const a of ['500', '700']) { await page.fill('[name="amount"]', a); await page.click('.cx-submit'); await page.waitForTimeout(150); }
+await page.focus('[data-cx="del-expense"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(250);
+const foc = await page.evaluate(() => document.activeElement && document.activeElement.tagName);
+ok(foc !== 'BODY', '10 deleting an expense does not drop focus to the page', foc);
+
+// 11 a typed but unusable amount is not told to "type the amount first"
+await page.fill('[name="amount"]', '-500');
+await page.click('.cx-submit');
+await page.waitForTimeout(300);
+const toastTxt = await page.evaluate(() => [...document.querySelectorAll('[role="alert"], .toast, .k-toast')].map((e) => e.textContent).join(' '));
+ok(/not an amount above zero/.test(toastTxt) && !/Type the amount first/.test(toastTxt), '11 an unusable amount says so', toastTxt);
+
+// 12 the budget's icon is not a rupee sign
+const rupeeIcon = await page.evaluate(() => [...document.querySelectorAll('[data-module-id="budget"] .sym, a[href^="budget"] .sym')].filter((e) => /currency_rupee/.test(e.textContent)).length);
+ok(rupeeIcon === 0, '12 no rupee glyph on the budget\'s rail entry', rupeeIcon);
+await r2.close();
 
 /* ---- a dollar film ---- */
 const desk = await browser.newContext({ viewport: { width: 1280, height: 900 } });

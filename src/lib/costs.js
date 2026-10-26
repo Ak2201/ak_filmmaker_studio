@@ -315,7 +315,7 @@ export function restoreVersion(row, index) {
   writePart('versions', list);
 }
 /** A locked version against the budget as it stands. PURE, mutates nothing. */
-export function compareVersion(version, lines = []) {
+export function compareVersion(version, lines = [], grandNow = null) {
   const v = cleanVersion(version);
   const now = (Array.isArray(lines) ? lines : []).map(cleanVersionLine).map((l) => ({ ...l, estimate: round2(l.days * l.rate) }));
   const nowIds = new Map(now.map((l) => [l.id, l]));
@@ -336,6 +336,8 @@ export function compareVersion(version, lines = []) {
   const tNow = round2(now.reduce((s, l) => s + l.estimate, 0));
   return {
     total: { then: tThen, now: tNow, delta: round2(tNow - tThen) },
+    // With contingency: the figure the card and the Lock button print.
+    grand: grandNow === null ? null : { then: v.grand, now: round2(grandNow), delta: round2(grandNow - v.grand) },
     depts,
     lines: {
       added: now.filter((l) => !thenIds.has(l.id)),
@@ -541,8 +543,10 @@ export function estimateLines(calc, lineMeta = {}) {
     const g = (f) => String(blob[`ci_${n}_${f}`] || '').trim();
     const item = g('item');
     const name = g('custom') || (item && item !== 'Other (custom)' ? item : '');
-    const days = amt(g('days'));
-    const rate = amt(g('rate'));
+    // A negative day count or rate is not a price: it counts as nothing
+    // (the estimator flags the field) rather than taking money off the budget.
+    const days = Math.max(0, amt(g('days')));
+    const rate = Math.max(0, amt(g('rate')));
     if (!name && !rate && !days) continue;
     const id = 'ci_' + n;
     const meta = lineMeta[id] || {};
@@ -804,7 +808,7 @@ export function budgetKpis(report) {
     approved, actual,
     pctUsed: approved > 0 ? Math.round((actual / approved) * 100) : 0,
     remaining: round2(approved - actual),
-    over: actual > approved + 0.005,
+    over: actual > Math.max(approved, 0) + 0.005,
     contingency: { pct: t.contingencyPct || 0, pool, used, left: round2(pool - used) }
   };
 }
@@ -812,7 +816,7 @@ export function budgetKpis(report) {
 /** THE TOP SHEET: the cost report folded to departments and groups. */
 export function topSheet(report) {
   const groups = GROUPS.map((g) => {
-    const depts = report.depts.filter((d) => d.group === g.id && (d.estimate || d.actual));
+    const depts = report.depts.filter((d) => d.group === g.id && d.estimate);
     return { ...g, depts, estimate: round2(depts.reduce((s, d) => s + d.estimate, 0)), actual: round2(depts.reduce((s, d) => s + d.actual, 0)) };
   });
   const atl = groups.find((g) => g.id === 'atl').estimate;

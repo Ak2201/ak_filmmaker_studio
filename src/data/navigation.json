@@ -405,7 +405,7 @@
           "status": "built",
           "href": "budget.html",
           "icon": "₹",
-          "sym": "currency_rupee",
+          "sym": "payments",
           "group": "Budget & People",
           "sections": [
             {
@@ -453,7 +453,7 @@
             {
               "id": "wages",
               "label": "Wage table",
-              "sym": "currency_rupee",
+              "sym": "payments",
               "purpose": "Wages by role and day"
             },
             {

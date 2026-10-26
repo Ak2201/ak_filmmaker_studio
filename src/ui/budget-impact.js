@@ -200,10 +200,11 @@ function versionCard(v, ctx) {
   ]);
   card.append(body);
   if (open) {
-    const cmp = C.compareVersion(v, ctx.lines);
+    const cmp = C.compareVersion(v, ctx.lines, ctx.report.totals.estimateWithContingency);
     const sign = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + rs(Math.abs(n)).replace(/^−/, '');
     body.append(h('div.cx-v-cmp', {}, [
       h('p', {}, [h('strong', { text: 'Estimate then ' + rs(cmp.total.then) + ', now ' + rs(cmp.total.now) + ' — ' + (cmp.total.delta ? sign(cmp.total.delta) : 'no change') + '.' })]),
+      cmp.grand && cmp.grand.delta ? h('p', {}, [h('strong', { text: 'With contingency then ' + rs(cmp.grand.then) + ', now ' + rs(cmp.grand.now) + ' — ' + sign(cmp.grand.delta) + '.' })]) : null,
       cmp.depts.length ? ktable(['Department', 'Then', 'Now', 'Change'], cmp.depts.map((d) => h('tr', {}, [
         h('th', { scope: 'row', text: d.label }), numTd(rs(d.then)), numTd(rs(d.now)), numTd(d.delta ? sign(d.delta) : '—')
       ])), 1) : null,

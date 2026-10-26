@@ -201,9 +201,17 @@ function updateCalc() {
   let count = 0;
 
   document.querySelectorAll('#calcRows .calc-row').forEach((row) => {
-    const days = amount(row.querySelector('[data-key$="_days"]').value);
-    const rate = amount(row.querySelector('[data-key$="_rate"]').value);
+    const dEl = row.querySelector('[data-key$="_days"]');
+    const rEl = row.querySelector('[data-key$="_rate"]');
+    const rawDays = amount(dEl.value);
+    const rawRate = amount(rEl.value);
+    // A negative figure is flagged and counts as nothing (costs.js reads it the same way).
+    dEl.setAttribute('aria-invalid', rawDays < 0 ? 'true' : 'false');
+    rEl.setAttribute('aria-invalid', rawRate < 0 ? 'true' : 'false');
+    const days = Math.max(0, rawDays);
+    const rate = Math.max(0, rawRate);
     const sub = days * rate;
+    row.toggleAttribute('data-blank', !sub && !rowItemName(row));
 
     const subEl = row.querySelector('.total-cell');
     subEl.textContent = money(sub);
@@ -328,6 +336,8 @@ async function resetCalc() {
   if (wrap) wrap.replaceChildren();
   calcCount = Math.max(high, calcCount);
   addCalcRow(5);
+  // The cost tabs, header figures and petty-cash lines read the cleared blob now.
+  document.dispatchEvent(new CustomEvent('budget:calc-cleared'));
 }
 
 /* ------------------------------------------------------------
@@ -497,7 +507,7 @@ function renderCalculator() {
       ])
     ]),
     h('div.calc-grand', {}, [
-      h('span.lab', { text: 'GRAND TOTAL' }),
+      h('span.lab', { text: 'ESTIMATE TOTAL' }),
       h('span#calcTotal.total', { 'aria-live': 'polite' }, [
         money(0) + ' ', h('span', { text: 'across 0 line items' })
       ])

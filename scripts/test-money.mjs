@@ -52,5 +52,8 @@ eq('fmt 12.35 Cr', fmtINR(123456789), '₹ 12.35 Cr');
 eq('usd short 999,600', fmtMoney(999600, 'USD', true), '$1M');
 eq('usd short 999,400', fmtMoney(999400, 'USD', true), '$999k');
 eq('usd short 1.25M', fmtMoney(1250000, 'USD', true), '$1.25M');
+// QA r2: a negative figure uses the page's own minus and grouping
+eq('fmt -5000', fmtINR(-5000), '−₹ 5k');
+eq('fmt -494000', fmtINR(-494000), '−₹ 4.94 L');
 if (bad) process.exit(1);
 console.log('test-money: all passed');

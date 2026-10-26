@@ -277,7 +277,7 @@ function renderActuals(ctx) {
     stat(rs(t.contingency), 'contingency ' + t.contingencyPct + '%'),
     stat(rs(t.actual), 'actual, with GST'),
     stat(rs(t.actualNet), 'actual, without GST'),
-    statCard({ label: t.variance < 0 ? 'over budget' : 'left', value: rs(t.variance), class: t.variance < 0 ? 'cx-stat-over' : null }),
+    statCard({ label: t.variance < 0 ? 'over budget' : 'left', value: rs(Math.abs(t.variance)), class: t.variance < 0 ? 'cx-stat-over' : null }),
     stat(pct(t.pctUsed), 'used')
   ]));
   if (!ctx.lines.length && !t.actual) {
@@ -616,9 +616,9 @@ function renderKpis(ctx) {
   const scenes = ctx.days.reduce((n, d) => n + d.scenes.length, 0);
   return [
     statCard({ label: 'Stripboard', value: String(days), unit: days === 1 ? 'day' : 'days', note: days ? scenes + ' scenes scheduled' : 'Nothing scheduled yet', class: 'bd-kpi' }),
-    statCard({ label: 'Total budget', value: glance(k.approved), note: k.contingency.pct ? 'Estimate + ' + k.contingency.pct + '% contingency' : 'Estimate, no contingency', class: 'bd-kpi' }),
+    statCard({ label: 'Total budget', value: glance(k.approved), note: !k.approved && !k.actual ? 'Nothing priced yet' : k.contingency.pct ? 'Estimate + ' + k.contingency.pct + '% contingency' : 'Estimate, no contingency', class: 'bd-kpi' }),
     statCard({ label: 'Actual spent', value: glance(k.actual), note: k.approved ? k.pctUsed + '% of the budget used' : 'Nothing to measure against', class: 'bd-kpi' }),
-    statCard({ label: k.over ? 'Over budget' : 'Remaining', value: (k.over ? '−' : '') + glance(Math.abs(k.remaining)), note: k.over ? 'Spent beyond the budget' : 'Left to spend', noteTone: k.over ? 'danger' : null, class: 'bd-kpi' + (k.over ? ' over' : '') }),
+    statCard({ label: k.over ? 'Over budget' : 'Remaining', value: glance(Math.abs(k.remaining)), note: k.over ? 'Spent beyond the budget' : !k.approved && !k.actual ? 'Nothing priced yet' : 'Left to spend', noteTone: k.over ? 'danger' : null, class: 'bd-kpi' + (k.over ? ' over' : '') }),
     contingencyCard(k)
   ];
 }
@@ -712,6 +712,11 @@ export function costSections() {
 function refresh() {
   const active = document.activeElement;
   const fk = active && active.dataset ? active.dataset.fk : '';
+  // Where the focused control sits among its siblings, in case it is deleted.
+  const secEl = active && active.closest ? active.closest('.cx-sec') : null;
+  const fkPre = fk ? fk.slice(0, fk.lastIndexOf(':') + 1) : '';
+  const fkAt = secEl && fkPre ? [...secEl.querySelectorAll('[data-fk^="' + CSS.escape(fkPre) + '"]')].indexOf(active) : -1;
+  const secId = secEl ? secEl.id : '';
   const sel = active && typeof active.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd] : null;
   const open = new Set([...document.querySelectorAll('.cx-sec details[open]:not(.cx-crew)')].map((d) => d.closest('.cx-sec').id + ':' + [...d.parentElement.children].indexOf(d)));
   /* A PRIVATE BUDGET (schema §55) on a view or comment link: every
@@ -752,6 +757,12 @@ function refresh() {
     if (back) {
       back.focus({ preventScroll: true });
       if (sel && typeof back.setSelectionRange === 'function') { try { back.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } }
+    } else if (secId) {
+      // The control was deleted: its neighbour, else the section's heading.
+      const sec = document.getElementById(secId);
+      const sibs = sec && fkAt >= 0 ? sec.querySelectorAll('[data-fk^="' + CSS.escape(fkPre) + '"]') : [];
+      const next = sibs.length ? sibs[Math.min(fkAt, sibs.length - 1)] : (sec && sec.querySelector('h2'));
+      if (next) { if (!sibs.length) next.tabIndex = -1; next.focus({ preventScroll: true }); }
     }
   }
 }
@@ -796,8 +807,8 @@ const ACTIONS = {
     refresh();
     if (gone) toast('Expense of ' + rs(gone.amount) + ' deleted.', { action: 'UNDO', onAction: () => { C.restoreExpense(gone, index); refresh(); } });
   },
-  'del-float': async (el) => { if (await askDanger('Delete this float? The balance in that person\'s hand is worked out again without it.')) { C.removeFloat(el.dataset.id); refresh(); } },
-  'del-payment': async (el) => { if (await askDanger('Delete this payment from the ledger?')) { C.removePayment(el.dataset.id); refresh(); } },
+  'del-float': async (el) => { if (await askDanger({ title: 'Delete this float?', body: 'The balance in that person\'s hand is worked out again without it.', confirm: 'Delete float' })) { C.removeFloat(el.dataset.id); refresh(); toast('Float deleted.'); } },
+  'del-payment': async (el) => { if (await askDanger({ title: 'Delete this payment?', body: 'It leaves the ledger and the balance is worked out again without it.', confirm: 'Delete payment' })) { C.removePayment(el.dataset.id); refresh(); toast('Payment deleted.'); } },
   'use-wage': (el) => { C.setCrew(el.dataset.id, { fee: Number(el.dataset.v) || 0, feeType: 'day' }); refresh(); toast('Fee set from the wage table — confirm it with the person and the union.'); },
   'reset-wage': (el) => { C.setWageOverride(el.dataset.id, { bata: '', callHours: '', otRule: '' }); refresh(); },
   'print-settlement': (el) => printDoc(settlementDoc(context(), el.dataset.id)),
@@ -812,7 +823,7 @@ const FORMS = {
   expense(form) {
     const f = new FormData(form);
     const amount = amountOf(f.get('amount'));
-    if (!(amount > 0)) { toast('Type the amount first — "1850", "1,850" and "1.85k" all work.', { type: 'error' }); form.querySelector('[name="amount"]').focus(); return; }
+    if (!(amount > 0)) { toast(String(f.get('amount') || '').trim() ? 'That is not an amount above zero — "1850", "1,850" and "1.85k" all work.' : 'Type the amount first — "1850", "1,850" and "1.85k" all work.', { type: 'error' }); form.querySelector('[name="amount"]').focus(); return; }
     const gstin = String(f.get('gstin') || '').trim();
     if (gstin && !C.gstinLooksValid(gstin)) toast('That GSTIN does not look like 15 characters of the usual shape — saved as typed; check it against the bill.', { type: 'error' });
     const paidBy = String(f.get('paidByName') || '').trim() || String(f.get('paidBy') || '');
@@ -881,6 +892,8 @@ export function initCosts(root) {
      the top sheet and the export follow it, a beat behind. */
   let t = 0;
   const later = () => { clearTimeout(t); t = setTimeout(refresh, 350); };
+  // Reset answers a dialog after the click's own refresh has run.
+  document.addEventListener('budget:calc-cleared', () => { clearTimeout(t); refresh(); });
   delegate(root, 'input', '.calc-row [data-key]', later);
   delegate(root, 'change', '.calc-row [data-key]', later);
   delegate(root, 'click', '[data-action]', later);

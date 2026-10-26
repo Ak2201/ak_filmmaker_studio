@@ -79,6 +79,8 @@ export function parseNum(s) {
 /** Abbreviated — lossy by design. Glanceable magnitude only. */
 export function fmtINR(n) {
   if (!n) return '₹ 0';
+  // The page's own minus (−₹ 5k), grouped by the same rules as a gain.
+  if (n < 0) return '−' + fmtINR(-n);
   // The unit is chosen AFTER rounding: chosen from the raw figure,
   // 99,600 printed '₹ 100k' and 99,99,999 '₹ 100 L', a number that had
   // already reached the next unit. Lakhs and crores both print two

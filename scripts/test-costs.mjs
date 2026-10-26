@@ -319,6 +319,28 @@ eq(srep.depts.flatMap((d) => d.lines).filter((l) => !l.unbudgeted).map((l) => l.
   eq(L.rowSpan({}), { start: 1, count: 5 }, 'a new estimate starts at ci_1');
 }
 
+/* ---- QA round 2 (Budget & money) ------------------------------ */
+{
+  reset();
+  // A negative days/rate is not a price: it counts as nothing.
+  const neg = C.estimateLines({ ci_1_custom: 'Discount', ci_1_days: '1', ci_1_rate: '-5000', ci_2_custom: 'Camera', ci_2_days: '2', ci_2_rate: '1000' });
+  eq(neg.map((l) => l.estimate), [0, 2000], 'a negative rate prices at 0, never off the budget');
+  const r0 = C.costReport({ lines: neg, expenses: [] });
+  eq(C.budgetKpis(r0).over, false, 'nothing spent is never over budget');
+  // The top sheet lists only departments that have an estimate.
+  const loose = C.costReport({ lines: C.estimateLines({ ci_1_custom: 'Camera', ci_1_days: '1', ci_1_rate: '1000' }),
+    expenses: [{ id: 'x1', amount: 2800, category: 'food', line: '' }] });
+  const food = C.topSheet(loose).groups.flatMap((g) => g.depts).filter((d) => !d.estimate);
+  eq(food.length, 0, 'the top sheet drops a department that has only unbudgeted spend');
+  // Comparing a locked version shows a contingency move.
+  const lines = C.estimateLines({ ci_1_custom: 'Camera', ci_1_days: '10', ci_1_rate: '1000' });
+  const snap = C.snapshotBudget({ lines, report: C.costReport({ lines, expenses: [], settings: { contingencyPct: 10 } }), days: 0 });
+  const v = C.lockVersion({ name: 'v1', note: '', snapshot: snap });
+  const cmp = C.compareVersion(v, lines, 12000);
+  eq([cmp.total.delta, cmp.grand.then, cmp.grand.now, cmp.grand.delta], [0, v.grand, 12000, 12000 - v.grand], 'a contingency move shows in the comparison');
+  reset();
+}
+
 reset();
 console.log(`test:costs — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

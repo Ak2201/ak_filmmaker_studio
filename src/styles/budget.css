@@ -639,3 +639,23 @@ p.cx-hint { margin: 0; }
 }
 .bud-privacy .bud-private-hint { margin: 0; }
 .bud-locked { margin-block: var(--s4); }
+
+/* The estimator on paper: it may break across pages (a long block
+   moved whole leaves page one blank), unpriced spare rows and the
+   screen-only hint stay off it, and the column captions print so
+   "10  4.5k" has labels. */
+@media print {
+  .calc-block.bud-est { break-inside: auto !important; }
+  .bud-est .calc-row[data-blank],
+  .bud-est .calc-actions,
+  .bud-est .bud-est-body > p.hint { display: none !important; }
+  .bud-est .calc-row.head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 2.4fr) minmax(4.5rem, .8fr) minmax(6rem, 1.1fr) minmax(7.5rem, 1fr);
+    background: none;
+  }
+}
+
+/* Wage table on a phone: the craft name wraps instead of taking the whole
+   scroller, so the published figure and the batta field are in reach. */
+.cx-wages tbody th[scope="row"] { width: 10rem; min-width: 7rem; max-width: 12rem; white-space: normal; overflow-wrap: anywhere; }

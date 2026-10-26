@@ -137,6 +137,7 @@
     "prove:script": "node scripts/prove-script.mjs",
     "prove:replace": "node scripts/prove-replace.mjs",
     "prove:cards": "node scripts/prove-cards.mjs",
+    "prove:schedule": "node scripts/prove-schedule.mjs",
     "prove:presence": "node scripts/prove-presence.mjs",
     "prove:story-coedit": "node scripts/prove-story-coedit.mjs",
     "prove:budget-privacy": "node scripts/prove-budget-privacy.mjs",

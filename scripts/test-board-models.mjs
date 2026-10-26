@@ -80,6 +80,20 @@ const rows = S.doodRows(board, [1, 2, 3, 4], [
 ]);
 eq(rows.map((r) => [r.name, r.work, r.hold, r.span, r.cells.map((c) => c.mark).join('/')]),
   [['Ravi', 3, 1, 4, 'SW/W/H/WF'], ['Meera', 1, 0, 1, 'SWF///']], 'day out of days');
+/* A day NUMBER with no scenes (Day 3 here, emptied on the board) has no
+   column; the total is the shoot days worked or held, W + H, never
+   last − first + 1, or a payroll day is counted that the grid shows
+   nowhere. The CSV's "Total days" carries the same figure. */
+{
+  const gap = S.doodRows(board, S.shootDays(board), [
+    { category: 'cast', name: 'Ravi', scenes: [board[0], board[1], board[2]] },
+    { category: 'cast', name: 'Asha', scenes: [board[1], board[2]] }
+  ]);
+  eq(gap.map((r) => [r.name, r.work, r.hold, r.span]), [['Ravi', 3, 0, 3], ['Asha', 2, 1, 3]], 'dood: an empty day number is not in the total');
+  ok(gap.every((r) => r.span === r.work + r.hold), 'dood: total = W + H on every row');
+  const csvLast = S.doodCsv(gap, S.shootDays(board)).trim().split(/\r?\n/).map((l) => l.split(',').pop().replace(/"/g, ''));
+  eq(csvLast.slice(1), ['3', '3'], 'dood CSV: Total days = W + H');
+}
 eq(S.localDate('2025-10-27'), 'Mon 27 Oct 2025', 'local date'); eq(S.localDate('soon'), '', 'not a date');
 eq(S.todayISO(new Date(2026, 0, 5)), '2026-01-05', 'today ISO');
 eq(S.daysNote(0, null), '', 'no days, no note'); eq(S.daysNote(2, null), 'scheduled · no dates yet', 'undated note');

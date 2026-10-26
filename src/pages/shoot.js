@@ -76,7 +76,11 @@ const app = document.getElementById('app');
    at is not a fact about the film, and `verify` asserts zero idle
    localStorage writes — a page that persisted its own scroll
    position would trip it, correctly. */
-let openDay = null;
+let openDay = (() => {
+  /* The one way in from outside: `?day=N`, which the DPR's "Mark scenes
+     on the shoot day" passes, as this page's "End of day → DPR" does. */
+  try { return Shoot.dayFromSearch(location.search); } catch (e) { return null; }
+})();
 let rosterFilter = 'all';   // 'all' | 'incomplete' — the roster's view, never stored
 /* The floor note being edited, and what has been typed into it so far.
    Memory only: a draft is not a fact about the film until Save, and a
@@ -200,7 +204,7 @@ function sceneCard(scene, ctx, next) {
   card.append(head);
   card.append(h('h3.sd-slug', { text: slug(scene) }));
   card.append(h('p.sd-line', {}, [
-    h('span.sd-pgs', { text: formatEighths(scene.eighths || 0) + ' pages' }),
+    h('span.sd-pgs', { text: formatEighths(scene.eighths || 0) + (Number(scene.eighths) === 8 ? ' page' : ' pages') }),
     scene.pageNumber ? h('span.sd-pgs', { text: 'p. ' + scene.pageNumber }) : null
   ].filter(Boolean)));
 
@@ -320,7 +324,7 @@ function render(focus) {
   const titleBox = pageHeader({
     class: 'sd-hero-t',
     level: 2,
-    eyebrow: ['Shoot', isToday ? 'Today' : null, 'Day ' + pad(day.day) + ' of ' + pad(all.length)].filter(Boolean),
+    eyebrow: ['Shoot', isToday ? 'Today' : null, Shoot.dayOfLabel(day, all, pad)].filter(Boolean),
     title: 'Day ' + pad(day.day) + '.',
     sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one on the Plan’s calendar and the page can find it on the morning.',
     meta: isToday ? [h('span.sd-live', {}, [h('span.sd-dot.is-live', { 'aria-hidden': 'true' }), h('span', { text: 'Today' })])] : [],
@@ -336,12 +340,15 @@ function render(focus) {
   };
   const total = day.scenes.length;
   const kpis = statStrip([
-    kpi('Scenes shot', String(day.done), '/ ' + total, total ? day.done / total : 0,
-      day.remaining ? day.remaining + ' left today' : 'none left today'),
-    kpi('Pages shot', day.pagesDone, '/ ' + day.pagesTotal, day.eighthsTotal ? day.eighthsDone / day.eighthsTotal : 0),
-    /* The whole film, not the day: shot or dropped over every scene. */
-    kpi('In the can', String(overall.done), '/ ' + overall.scenes, overall.scenes ? overall.done / overall.scenes : 0,
-      overall.pagesDone + ' of ' + overall.pagesTotal + ' pages, film total'),
+    /* SHOT means shot: a dropped scene is settled (it is not "left")
+       but it was never filmed, the same split the DPR makes. And
+       "today" only when it is — the same rule as the eyebrow. */
+    kpi('Scenes shot', String(day.shot), '/ ' + total, total ? day.shot / total : 0,
+      (day.remaining ? day.remaining + ' left' : 'none left') + (isToday ? ' today' : '')),
+    kpi('Pages shot', day.pagesShot, '/ ' + day.pagesTotal, day.eighthsTotal ? day.eighthsShot / day.eighthsTotal : 0),
+    /* The whole film, not the day: shot over every scene. */
+    kpi('In the can', String(overall.shot), '/ ' + overall.scenes, overall.scenes ? overall.shot / overall.scenes : 0,
+      overall.pagesShot + ' of ' + overall.pagesTotal + ' pages, film total'),
     kpi('Wrap estimate', wrap.time || '—', wrap.time && lit ? lit.light.zone : '', null,
       wrapNote(wrap.kind))
   ], { class: 'sd-kpis', label: 'Day figures' });
@@ -358,7 +365,7 @@ function render(focus) {
   const nav = h('nav.sd-days', { 'aria-label': 'Shoot days' });
   nav.append(h('div.sd-days-h', {}, [
     h('span.sd-k', { text: 'Shooting days' }),
-    h('span.sd-k.sd-days-of', { text: 'Day ' + pad(day.day) + ' / ' + pad(all.length) })
+    h('span.sd-k.sd-days-of', { text: Shoot.dayOfLabel(day, all, pad, ' / ') })
   ]));
   const track = h('div.sd-days-track');
   all.forEach((d) => {

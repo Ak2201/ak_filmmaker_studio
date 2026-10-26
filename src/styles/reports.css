@@ -446,7 +446,6 @@
   text-transform: uppercase;
   color: var(--ink-muted);
 }
-.rp-day-sel,
 .rp-in {
   min-width: 0;
   max-width: 100%;
@@ -459,7 +458,6 @@
   font-size: var(--t-small);
 }
 .rp-in::placeholder { color: var(--ink-muted); }
-.rp-day-sel:focus-visible,
 .rp-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
 .rp-h4 {
   margin: var(--s5) 0 var(--s2);
@@ -611,6 +609,15 @@
 @media print {
   .rp-x, .rp-kit-add, .rp-offline { display: none !important; }
   .rp-in, .rp-day-sel { border: 0 !important; background: none !important; color: var(--print-ink) !important; padding: 0 !important; }
+  /* A blank field prints blank. A placeholder is an EXAMPLE ("Clear,
+     34°, rain after 4pm"), and on a production report it reads as the
+     day's weather; an empty time input prints the browser's "--:--"
+     mask. `data-blank` is kept in step by reports.js. */
+  .rp-in::placeholder { color: transparent !important; }
+  .rp-in[data-blank] { color: transparent !important; }
+  .rp-in[data-blank]::-webkit-datetime-edit { visibility: hidden; }
+  .rp-day.k-control, .rp-day .k-control { border: 0 !important; background: none !important; }
+  .rp-day .k-select::after { display: none !important; }
   .rp-ol .rp-ol-head th { background: var(--print-wash) !important; color: var(--print-ink) !important; border-top-color: var(--print-ink) !important; }
   .rp-ol .rp-ol-total.is-over td { background: var(--print-wash) !important; color: var(--print-ink) !important; }
   .rp-mark { color: var(--print-ink) !important; border-color: var(--print-ink) !important; }

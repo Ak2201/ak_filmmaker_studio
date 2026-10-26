@@ -178,6 +178,32 @@ eq(cal[0].eighths, 24, 'and the pages are unchanged by it');
 const Shoot = await import('../src/lib/shootday.js');
 eq(ids(Shoot.detail(1).scenes), ['s3', 's1', 's2'], 'shootday.detail() — what shoot.html lists — sees the order');
 
+/* ---- a dropped scene is settled, never shot -------------------
+   shoot.html labels these "Scenes shot", "Pages shot" and "In the
+   can"; the DPR counts shot and dropped apart, and the two pages must
+   agree. `done` / `remaining` still count dropped as settled. */
+seed();
+Shoot.mark('s1', 'dropped');
+{
+  const d1 = Shoot.days().find((d) => d.day === 1);
+  eq([d1.done, d1.remaining, d1.shot, d1.eighthsShot], [1, 2, 0, 0], 'a dropped scene is done for the day, not shot');
+  const all = Shoot.overall();
+  eq([all.done, all.shot, all.pagesShot], [1, 0, '0'], 'overall: dropped is not in the can');
+  Shoot.mark('s2', 'shot');
+  const d1b = Shoot.days().find((d) => d.day === 1);
+  eq([d1b.shot, d1b.eighthsShot, Shoot.overall().shot], [1, 8, 1], 'a shot scene is shot');
+}
+
+/* ---- "Day N of M" never reads "Day 18 of 17" -------------------- */
+{
+  const gap = [{ day: 1 }, { day: 2 }, { day: 4 }];
+  eq([Shoot.dayOfLabel(gap[1], gap), Shoot.dayOfLabel(gap[2], gap), Shoot.dayOfLabel(gap[2], gap, String, ' / ')],
+    ['Day 2 of 3', 'Day 4 · 3 of 3', 'Day 4 · 3 / 3'], 'dayOfLabel: the position when the number has a gap before it');
+  const pad = (n) => String(n).padStart(2, '0');
+  eq(Shoot.dayOfLabel({ day: 5 }, [1, 2, 3, 4, 5, 6].map((day) => ({ day })), pad), 'Day 05 of 06', 'dayOfLabel: no gap, unchanged');
+  eq([Shoot.dayFromSearch('?day=7'), Shoot.dayFromSearch(''), Shoot.dayFromSearch('?day=x')], [7, null, null], 'dayFromSearch');
+}
+
 /* ---- clearDayOrders leaves the rest alone --------------------- */
 seed();
 L.setDayDate(1, '2026-11-02');

@@ -98,7 +98,7 @@ function readers(ctx) {
       const uncast = failing('cast-uncast');
       if (!contacts.length) return { state: 'todo', facts: ['Nobody added yet'], missing: ['Add the cast and crew'] };
       const missing = uncast.length ? ['Nobody cast as ' + first(uncast, 4).join(', ')] : [];
-      return { state: missing.length ? 'doing' : 'done', facts: [plural(contacts.length, 'person')], missing };
+      return { state: missing.length ? 'doing' : 'done', facts: [contacts.length === 1 ? '1 person' : contacts.length + ' people'], missing };
     },
     places() {
       const noRecce = failing('loc-recce'), refused = failing('loc-refused'), open = failing('loc-permission');

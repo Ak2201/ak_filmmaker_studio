@@ -192,6 +192,7 @@ ok(talk.seconds >= 22 && talk.seconds <= 30, `60 words of dialogue is ~25s at ~1
 eq(st.total, st.rows.reduce((n, r) => n + r.seconds, 0), 'total is the sum of the rows');
 eq(A.formatDuration(75), '1:15', 'mm:ss');
 eq(A.formatDuration(3725), '1h 02m', 'hours');
+eq([A.runtimeMinutes(8190), A.formatDuration(8190)], [136, '2h 16m'], 'runtimeMinutes rounds as formatDuration does (136.5 min is 136, never 137)');
 
 /* A realistic page: ~55 lines of mixed action and dialogue lands near a minute. */
 const page = [];

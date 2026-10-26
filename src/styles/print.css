@@ -149,12 +149,15 @@
      library build one (KNOWN-ISSUES §8 says so for the sign-in pill,
      which hangs off it). Selects are NOT in this list: breakdown's
      I/E and D/N and plan's day pickers print their chosen value,
-     which is data. The stripboard's per-strip day picker is the one
-     select that duplicates the day heading above it, so it goes.
+     which is data — the stripboard's per-strip day picker too: in
+     script order or by location it is the only place a strip's day
+     is printed (stripboard.css prints it as plain text, as the PDF
+     does). `a.k-btn` is the kit's LINK-button ("View call sheet",
+     "Stripboard & DOOD →"): a control, not data, as a.btn is.
      ---------------------------------------------------------- */
   body.has-sh-shell:not(:has(.toolbar)) main :is(
-    button, [role="button"], a.btn,
-    .tb-menu, .bd-icon, .bd-chip-x, .row-ctrl, .sb-day-sel
+    button, [role="button"], a.btn, a.k-btn,
+    .tb-menu, .bd-icon, .bd-chip-x, .row-ctrl
   ),
   body.has-sh-shell:not(:has(.toolbar)) .mobile-actionbar { display: none !important; }
 

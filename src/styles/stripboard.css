@@ -428,6 +428,14 @@ body:not(.sb-is-dragging) .sb-dropzone { opacity: 0.75; }
 /* Paper has no pointer. */
 @media print {
   .sb-grip, .sb-dropzone, .sb-hint, .sb-drop-line, .sb-drag-tag, .sb-implied { display: none !important; }
+  /* Settings, not data: their buttons are hidden by print.css, and a
+     "Group by" label beside nothing is noise. */
+  .sb-seg, .sb-target { display: none !important; }
+  /* The strip's day prints as its text, the way the PDF prints it:
+     the kit wrapper loses its box and its caret. */
+  .sb-day-ctl { width: auto !important; height: auto !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+  .sb-day-ctl::after { display: none !important; }
+  .sb-day-sel { padding: 0 !important; border: 0 !important; background: none !important; color: var(--print-ink) !important; }
   .sb-strip.has-grip { grid-template-columns: auto auto minmax(6rem, 1fr) auto auto auto; }
   .sb-strip.has-grip .sb-cast { padding-left: 0; }
 }

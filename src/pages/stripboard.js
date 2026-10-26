@@ -69,6 +69,7 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import PDF from '../lib/pdf.js';
+import { paperDate } from '../lib/paper-date.js';
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
 import * as Songs from '../lib/songs.js';
@@ -209,7 +210,7 @@ function fillRuntime(strip) {
     const target = T.targetRuntime().minutes;
     const est = A.default.runtimeEstimate(st, songs, { targetSeconds: target * 60 });
     if (!est.total) return;
-    const mins = Math.max(1, Math.round(est.total / 60));
+    const mins = Math.max(1, A.default.runtimeMinutes(est.total));
     const { note, tone } = runtimeNote(mins, target);
     strip.append(statCard({
       label: 'Est. runtime', value: String(mins), unit: 'min', note, noteTone: tone,
@@ -737,7 +738,7 @@ const doodRows = (scenes, days) => doodRowsFor(scenes, days, Scenes.elementIndex
 function doodKey() {
   const k = h('div.sb-dood-key', { role: 'group', 'aria-label': 'Day out of days key' });
   k.append(h('span.sb-legend-lab', { text: 'Key' }));
-  [['SW', 'Start work'], ['W', 'Work'], ['H', 'Hold'], ['WF', 'Work finish']].forEach(([c, t]) => {
+  [['SW', 'Start work'], ['W', 'Work'], ['H', 'Hold'], ['WF', 'Work finish'], ['SWF', 'One day only']].forEach(([c, t]) => {
     k.append(h('span.sb-dood-key-item', {}, [doodCode(c), h('span', { text: t })]));
   });
   return k;
@@ -753,7 +754,7 @@ function renderDood(scenes) {
       h('h2.bd-h2', { text: 'Day Out of Days' }),
       h('p.bd-sub', {
         text: 'Who is needed, and on which day. Built from the cast tags and the days '
-            + 'assigned above — there is nothing to fill in here.'
+            + 'assigned on the Stripboard tab — there is nothing to fill in here.'
       })
     ]),
     rows.length && days.length ? doodKey() : null
@@ -768,7 +769,7 @@ function renderDood(scenes) {
   }
   if (!days.length) {
     wrap.append(h('p.bd-none', {
-      text: 'No shoot days assigned yet. Give a strip a day above — or use "Schedule by location" — '
+      text: 'No shoot days assigned yet. Give a strip a day on the Stripboard tab — or use "Schedule by location" there — '
           + 'and the grid fills itself in.'
     }));
     return wrap;
@@ -995,7 +996,8 @@ function fillLock() {
       if (draft) host.replaceChildren(...[draft, lockButton()].filter(Boolean));
       return;
     }
-    const stamp = String(doc.numbering.at || '').slice(0, 10);
+    /* The film's date style, as every other date on this page. */
+    const stamp = paperDate(doc.numbering.at, filmPrefs(), 'medium');
     host.replaceChildren(...[
       draft,
       badge({
@@ -1081,7 +1083,7 @@ delegate(document, 'click', '[data-action="sb-lock"]', async () => {
         + 'From then on a scene inserted after 12 is 12A, a deleted scene stays on the page as '
         + 'OMITTED, and a moved scene keeps its number — so the strips, the sides and the call '
         + 'sheets keep pointing at the same scene.',
-    notice: { tone: 'info', title: 'Unlocking renumbers', body: 'It can be unlocked later from the revision tools, and unlocking renumbers every scene by position.' },
+    notice: { tone: 'info', title: 'Unlocking renumbers', body: 'It can be unlocked later here, with Unlock draft beside the lock, and unlocking renumbers every scene by position.' },
     confirm: 'Lock numbering',
     typeToConfirm: 'LOCK'
   });

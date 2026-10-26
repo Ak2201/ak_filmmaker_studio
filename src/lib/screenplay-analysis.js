@@ -411,6 +411,13 @@ export function formatDuration(sec) {
   return `${m}:${String(r).padStart(2, '0')}`;
 }
 
+/** Whole minutes, rounded the way formatDuration rounds (whole seconds,
+ *  then the minutes floored), so a figure printed "137 min" on one page
+ *  and "2h 16m" on another cannot come from the same estimate. */
+export function runtimeMinutes(sec) {
+  return Math.floor(Math.max(0, Math.round(sec)) / 60);
+}
+
 /* ---- names -------------------------------------------------- */
 
 /** A cue as a person: no extensions, no (CONT'D), upper case. */
@@ -587,4 +594,4 @@ export function suggestReport(scenes, elements) {
   return { rows, match };
 }
 
-export default { sliceScript, headingParts, sceneParts, matchScenes, isConfident, describeMatch, pairScenes, suggestReport, estimateSlice, screenTime, runtimeEstimate, formatDuration, cueName, castMatrix, suggestElements, suggestAll };
+export default { sliceScript, headingParts, sceneParts, matchScenes, isConfident, describeMatch, pairScenes, suggestReport, estimateSlice, screenTime, runtimeEstimate, formatDuration, runtimeMinutes, cueName, castMatrix, suggestElements, suggestAll };

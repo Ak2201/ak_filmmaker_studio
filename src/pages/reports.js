@@ -695,7 +695,9 @@ function dayPicker(id, days, day) {
     if (d.day === day) o.selected = true;
     sel.append(o);
   }
-  return h('span.rp-day', {}, [h('label.rp-day-lab', { for: id, text: 'Shoot day' }), sel]);
+  /* The kit's select, as the stripboard's day pickers are. */
+  return h('span.rp-day', {}, [h('label.rp-day-lab', { for: id, text: 'Shoot day' }),
+    h('span.k-control.k-select.rp-day-ctl', {}, [sel])]);
 }
 
 const noDays = (what) => h('p.bd-none', {}, [
@@ -809,7 +811,7 @@ function fillDPR(sec, scenes) {
   out.push(h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
     dayPicker('rp-dpr-day', days, d.day),
     /* Shoot Day switched off for everybody: no way there to offer. */
-    isDisabledEverywhere('shoot-day') ? null : button({ label: 'Mark scenes on the shoot day', href: 'shoot.html' }),
+    isDisabledEverywhere('shoot-day') ? null : button({ label: 'Mark scenes on the shoot day', href: 'shoot.html?day=' + d.day }),
     h('span.rp-spacer'),
     actionMenu('Export', [
       { label: 'Print the DPR', action: 'print-dpr' },
@@ -819,7 +821,7 @@ function fillDPR(sec, scenes) {
 
   const sheet = h('div.rp-dpr', { 'data-day': String(d.day) });
   sheet.append(h('h3.rp-dpr-title', {
-    text: `Day ${d.day} of ${days.length}` + (d.date ? ' · ' + shortDate(d.date, true) : ' · no date set')
+    text: Shoot.dayOfLabel(d, days) + (d.date ? ' · ' + shortDate(d.date, true) : ' · no date set')
         + (d.locations.length ? ' · ' + d.locations.join(', ') : '')
   }));
   sheet.append(h('div.k-stat-strip.rp-stats', { id: 'rp-dpr-derived' }, dprStats(sum)));
@@ -903,6 +905,7 @@ function fillDPR(sec, scenes) {
   notes.value = rec.notes;
   sheet.append(h('h4.rp-h4', {}, [h('label', { for: 'dpr-notes', text: 'Notes' })]), notes);
 
+  sheet.querySelectorAll('.rp-in').forEach((el) => el.toggleAttribute('data-blank', !String(el.value || '').trim()));
   out.push(sheet, offlineBlock());
   sec.replaceChildren(...out);
   paintOffline();
@@ -1151,6 +1154,10 @@ delegate(document, 'change', '[data-action="rp-day"]', (e, el) => {
 const dprDay = () => parseInt((document.querySelector('.rp-dpr[data-day]') || {}).dataset?.day, 10) || rpDay;
 const kitDay = () => parseInt((document.querySelector('.rp-kit[data-day]') || {}).dataset?.day, 10) || rpDay;
 
+/* `data-blank` marks an empty DPR field so print can leave it blank
+   rather than print its placeholder example or the time mask. */
+const markBlank = (el) => el.toggleAttribute('data-blank', !String(el.value || '').trim());
+delegate(document, 'input', '.rp-dpr .rp-in', (e, el) => markBlank(el));
 delegate(document, 'change', '[data-dpr-field]', (e, el) => {
   DPR.saveDPR(dprDay(), { [el.dataset.dprField]: el.value });
   refreshDPRNumbers();

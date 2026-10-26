@@ -104,6 +104,7 @@ jobs:
       - run: npm run prove:script
       - run: npm run prove:replace
       - run: npm run prove:cards
+      - run: npm run prove:schedule
       - run: npm run prove:presence
       # Keep the budget private (§55): the owner's switch, a viewer's private state.
       - run: npm run prove:budget-privacy

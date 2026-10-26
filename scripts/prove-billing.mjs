@@ -74,7 +74,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
-import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial } from './fake-supabase.mjs';
+import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial, EXT_RPC } from './fake-supabase.mjs';
 import { loadMatrixModule } from './make-plan-features-sql.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -1496,6 +1496,103 @@ try {
     const stats = await page.textContent('#billing .ba-grid');
     ok(/plus \$25/.test(stats), 'the totals keep rupees and dollars apart (rupees, plus $25)');
     allErrors.push(...errors); await ctx.close();
+  }
+
+  console.log('(qa) account & business, QA round 1 (26 Oct 2026)');
+  F.reset(); RZP.mode = 'pay';
+  {
+    /* A member who never had a trial and holds no plan: not entitled,
+       trial unused, purchases required. */
+    const amy = USERS['tok-amy'];
+    F.db.members.set(amy.id, { role: 'user', disabled_at: null });
+    clearTrial(amy.id);   // the member row's default is a running trial; this one never had one
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#account');
+    await page.waitForSelector('#you .am-actions', { timeout: 15000 }).catch(() => {});
+    await page.waitForFunction(() => /\S/.test((document.querySelector('.st-plan-line') || {}).textContent || '') && !/load when/i.test(document.querySelector('.st-plan-line').textContent), null, { timeout: 12000 }).catch(() => {});
+    const planLine = (await page.textContent('.st-plan-line').catch(() => '')).trim();
+    ok(/trial is waiting/i.test(planLine) && !/has ended/i.test(planLine), 'never had a trial: the plan card offers it, not "Your free trial has ended" — ' + planLine);
+    const card = await page.evaluate(() => ({
+      kit: document.querySelectorAll('#you .am-actions .k-btn').length,
+      old: document.querySelectorAll('#you .am-actions .am-item, #you a.am-item').length,
+      upper: [...document.querySelectorAll('#you .am-actions .k-btn')].some((b) => b.textContent.trim() === b.textContent.trim().toUpperCase())
+    }));
+    ok(card.kit === 3 && card.old === 0 && !card.upper, 'the account card is kit buttons in sentence case (' + JSON.stringify(card) + ')');
+    await page.waitForSelector('#you a.am-create', { timeout: 10000 }).catch(() => {});
+    ok((await page.getAttribute('#you a.am-create', 'href').catch(() => '')) === 'settings.html#team', '"Create a studio account" opens the Team tab, where the account is made');
+    const danger = await page.evaluate(() => [...document.querySelectorAll('.st-danger-row p')].map((p) => p.textContent).join(' | '));
+    ok(!/signs you out/i.test(danger) && /You stay signed in/.test(danger), 'the erase card says you stay signed in, as its dialog does: ' + danger);
+    /* THE TEAM TAB. It sat on "Reading the account…" for good: settings
+       re-renders, commitMain() keeps the identical page, and the panel
+       painted into the discarded copy. */
+    await page.goto(BASE + 'settings.html#team');
+    await page.waitForFunction(() => { const x = document.getElementById('acctHost'); return !!x && /\S/.test(x.textContent) && !/Reading the account/.test(x.textContent); }, null, { timeout: 15000 })
+      .then(() => ok(true, 'Settings › Team leaves "Reading the account…" and shows the panel'),
+            async () => ok(false, 'Settings › Team leaves "Reading the account…" — read: ' + (await page.textContent('#acctHost').catch(() => '(no #acctHost)'))));
+    await page.waitForTimeout(3000);
+    ok(await page.evaluate(() => document.querySelectorAll('#acctHost').length === 1 && !/Reading the account/.test(document.getElementById('acctHost').textContent)), 'and stays shown after the later re-renders');
+    /* purchase.html: the deck's per-day figure is the cheapest CARD's,
+       and the count and comparison tell the plans apart. */
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#plan .pl-card[data-plan="starter"] .pl-price-cap', { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    const pu = await page.evaluate(() => ({
+      deck: (document.querySelector('#plan .bd-sub') || {}).textContent || '',
+      cap: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-price-cap') || {}).textContent || '',
+      counts: [...document.querySelectorAll('#plan .pl-card .pl-features-n')].map((n) => n.textContent.trim()),
+      off: document.querySelectorAll('#plan td.is-off').length
+    }));
+    const cardDay = (pu.cap.match(/₹[\d,.]+/) || [''])[0];
+    ok(!!cardDay && pu.deck.includes('from about ' + cardDay + ' a day'), 'the deck quotes the Basic card\'s own per-day figure (' + cardDay + '), not the build-time one: ' + pu.deck.slice(0, 160));
+    ok(pu.counts.length === 3 && new Set(pu.counts).size === 3, 'with empty feature maps the three cards count different features, from the matrix: ' + pu.counts.join(' / '));
+    ok(pu.off > 0, 'and the comparison table marks what Basic lacks (' + pu.off + ' cells)');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* Signed out, in rupees: the list quotes price_notice's current price. */
+    const { ctx, page, errors } = await newContext(browser, {});
+    for (const pg of ['purchase.html', 'invite.html']) {
+      await page.goto(BASE + pg);
+      await page.waitForFunction(() => /₹2,999/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 })
+        .then(() => ok(true, pg + ' signed out: the rupee list reads the server\'s ₹2,999, not the build-time ₹599'),
+              async () => ok(false, pg + ' signed out: the rupee list reads ₹2,999 — read: ' + (await page.textContent('.pl-list-prices').catch(() => '')).slice(0, 120)));
+    }
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* Signed out at 390 in dollars: the name keeps its line. */
+    const ctx0 = await newContext(browser, { timezoneId: 'America/New_York', locale: 'en-US' });
+    await ctx0.page.setViewportSize({ width: 390, height: 900 });
+    await ctx0.page.goto(BASE + 'purchase.html');
+    await ctx0.page.waitForFunction(() => /Charged as/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
+    /* LINES of text, not the box: a grid item stretches to its row. */
+    const rows = await ctx0.page.$$eval('.pl-list-prices > li > strong', (ss) => ss.map((s) => { const rg = document.createRange(); rg.selectNodeContents(s); const tops = new Set([...rg.getClientRects()].map((r) => Math.round(r.top))); return { t: s.textContent, w: Math.round(s.getBoundingClientRect().width), lines: tops.size }; }));
+    const caption = await ctx0.page.textContent('.pl-list-prices').catch(() => '');
+    ok(/Charged as/.test(caption), 'the dollar list shows its long charge caption');
+    ok(rows.length === 3 && rows.every((r) => r.w > 20 && r.lines === 1), 'at 390 each plan name is on one line beside the wrapping price: ' + JSON.stringify(rows));
+    allErrors.push(...ctx0.errors); await ctx0.ctx.close();
+  }
+  {
+    /* The console's invoices: a sideways scroller at 390, and a failed
+       read reported as what it was. */
+    const inv = (n) => ({ id: 'inv' + n, number: 'FMS/26-27/000' + n, issued_at: '2026-10-0' + n + 'T10:00:00Z', buyer_email: 'buyer' + n + '@example.com', buyer_name: 'Buyer ' + n, plan_name: 'Basic', amount_paise: 299900, currency: 'INR', emailed_at: null, razorpay_order_id: 'order_' + n });
+    EXT_RPC.admin_list_invoices = () => [inv(1), inv(2), inv(3)];
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.setViewportSize({ width: 390, height: 900 });
+    await A.page.goto(BASE + 'admin.html#purchases');
+    await A.page.waitForSelector('#invoices table', { timeout: 15000 }).catch(() => {});
+    const m = await A.page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, wrapped: !!document.querySelector('#invoices .gt-scroll > table') }));
+    ok(m.wrapped && m.sw <= m.cw, 'admin.html#purchases at 390: the invoices table scrolls in its own box and the page does not (' + JSON.stringify(m) + ')');
+    allErrors.push(...A.errors); await A.ctx.close();
+    EXT_RPC.admin_list_invoices = () => { throw { code: '57014', message: 'canceling statement due to statement timeout', status: 503 }; };
+    const B = await newContext(browser, { tok: 'tok-admin' });
+    await B.page.goto(BASE + 'admin.html#purchases');
+    await B.page.waitForFunction(() => /did not load|not set up/.test((document.getElementById('invoices') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+    const t = await B.page.textContent('#invoices').catch(() => '');
+    ok(/did not load: canceling statement due to statement timeout/.test(t) && !/not set up/.test(t) && !!(await B.page.$('#invoices [data-action="invoice-retry"]')),
+      'a timed-out invoice read says what happened, with a retry — not "not set up (schema §28)": ' + t.replace(/\s+/g, ' ').slice(0, 140));
+    B.errors.length = 0; await B.ctx.close();
+    delete EXT_RPC.admin_list_invoices;
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

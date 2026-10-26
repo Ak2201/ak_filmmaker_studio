@@ -311,7 +311,11 @@ export function gateDetail(reason) {
     case 'revoked':     return 'Your invite was revoked — sync is paused';
     case 'notdeployed': return 'Signed in — invites are not open yet';
     case 'unreachable': return 'Could not reach the studio to check your invite — sync paused';
-    default:            return 'Signed in — awaiting an invite';
+    /* 'noinvite' and anything unnamed. The invite-request queue came off
+       the public door: the way in is a trial, a plan or a code, so
+       "awaiting an invite" told people to wait for something that was
+       not coming (QA, 26 Oct 2026). */
+    default:            return 'Signed in — sync starts with a free trial or a plan';
   }
 }
 
@@ -817,8 +821,8 @@ async function runGate() {
      signed in: redeem that code for this account, so "come in with the
      code, sign in later to sync" is one motion rather than a second
      form. A failure here is not a closed door — the code pass still
-     admits them to the site — so it is quiet; the pill says sync is
-     awaiting an invite, and invite.html still offers the box. */
+     admits them to the site — so it is quiet; the pill says sync starts
+     with a trial or a plan, and invite.html still offers the box. */
   const pass = getCodePass();
   if (!st.registered && !st.disabled && pass && pass.code) {
     try {

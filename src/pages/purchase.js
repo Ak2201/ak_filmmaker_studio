@@ -51,7 +51,7 @@ import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
-import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
+import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay, perDayIn } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
   linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
@@ -96,7 +96,19 @@ const wantCurrency = () => pricingCurrency({ override: readPayCurrency(), chosen
 const shop = { want: wantCurrency(), view: null, loading: false, seq: 0 };
 async function refreshShop() {
   const seq = ++shop.seq;
-  if (shop.want !== 'USD') { shop.view = rupeeView('INR'); shop.loading = false; render(); return; }
+  if (shop.want !== 'USD') {
+    shop.view = rupeeView('INR'); shop.loading = false; render();
+    /* Rupees ask price_notice() too, quietly (no "Loading…"): it carries
+       each plan's CURRENT price, and the signed-out list and the deck's
+       per-day figure would otherwise quote LIST_PRICE, the price before
+       any scheduled rise, beside a checkout that charges the new one. */
+    let rn = null;
+    try { rn = await publicPriceNotice(); } catch (e) { rn = null; }
+    if (seq !== shop.seq) return;
+    const v = shopView('INR', rn);
+    if (Object.keys(v.plans).length) { shop.view = v; render(); }
+    return;
+  }
   shop.loading = true;
   render();
   let notice = null;
@@ -198,7 +210,16 @@ function buyTerms() {
 }
 
 /* The deck says the per-day figure in the currency the cards are drawn in. */
-const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : ''); };
+/* The cheapest plan a day, from the SAME rows the cards beside it are
+   drawn from: a signed-in rupee view reads the plans rows (billing.plans),
+   anybody else the shop view (price_notice). LIST_PRICE only when neither
+   has answered: it is the price before any scheduled rise. */
+function rowsFromDay() {
+  const paise = (billing.plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
+    .map((p) => Billing.priceFor(p, 'year')).filter((n) => Number(n) > 0);
+  return paise.length ? perDayIn(Math.min(...paise), 'INR') : '';
+}
+const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : (rowsFromDay() || fromDay(v))); };
 /* What a plan actually does: deckFor(), in purchase-model.js. A plan decides
    which STAGES open (plan-matrix.json), and the trial's end walls the
    studio. Nothing written is ever deleted. */

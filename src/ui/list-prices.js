@@ -21,8 +21,9 @@ import '../styles/list-prices.css';
    lazy matrix chunk; until then the names and figures stand alone. */
 /* `view` (price-model.js shopView, optional): purchase.html passes the
    visitor's currency. A dollar view prints the owner's dollar figures from
-   price_notice('USD') and, on each line, what is CHARGED; invite.html
-   passes nothing and prints rupees, as before. */
+   price_notice('USD') and, on each line, what is CHARGED; a rupee view
+   from price_notice() prints its current rupees; no view (or a view with
+   no plans yet) prints LIST_PRICE. */
 export function listPriceBlock(view = null) {
   const usd = !!(view && view.currency === 'USD');
   const ids = PLAN_ORDER.filter((id) => id !== 'free' && LIST_PRICE[id] > 0);
@@ -31,8 +32,13 @@ export function listPriceBlock(view = null) {
   for (const id of ids) {
     const line = h('span.pl-list-line');
     lines[id] = line;
-    const r = usd ? view.plans[id] : null;
-    const text = r ? fmtMinor(r.minor, 'USD') + ' a year · ≈ ' + perDayIn(r.minor, 'USD') + ' a day · ' + chargeCaption(view, r.inrMinor)
+    /* The server's CURRENT price wins once price_notice() has answered,
+       in rupees as in dollars: LIST_PRICE is the price before any
+       scheduled rise (plans.js), and a list still quoting it after the
+       rise would contradict what checkout charges (QA, 26 Oct 2026). */
+    const r = view && view.plans ? view.plans[id] : null;
+    const text = usd && r ? fmtMinor(r.minor, 'USD') + ' a year · ≈ ' + perDayIn(r.minor, 'USD') + ' a day · ' + chargeCaption(view, r.inrMinor)
+      : !usd && r && r.minor > 0 ? fmtMinor(r.minor, 'INR') + ' a year · ≈ ' + perDayIn(r.minor, 'INR') + ' a day'
       : inr(LIST_PRICE[id]) + ' a year · ≈ ' + perDay(LIST_PRICE[id]) + ' a day';
     ul.append(h('li', {}, [h('strong', { text: planName(id) }), h('span.pl-list-price', { text }), line]));
   }

@@ -3,7 +3,10 @@
 .pl-list-prices { list-style: none; margin: 0 0 var(--s2); padding: 0; display: grid; gap: var(--s2); }
 .pl-list-prices > li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* The NAME keeps its one line and the price wraps beside it. `1fr auto`
+     let a long dollar caption ("… · Charged as ₹2,999 at checkout") take
+     the whole row at 390px and print the name one letter per line. */
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--s1) var(--s3);
   padding: var(--s3);
   border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule));
@@ -11,6 +14,6 @@
   background: var(--paper-raised);
 }
 .pl-list-prices strong { color: var(--ink); }
-.pl-list-price { font-weight: 700; color: var(--accent-deep); }
+.pl-list-price { font-weight: 700; color: var(--accent-deep); text-align: end; }
 .pl-list-line { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--t-small); }
 .pl-list-line:empty { display: none; }

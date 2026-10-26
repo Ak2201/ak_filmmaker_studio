@@ -466,7 +466,11 @@ const EXPECTED = {
        here." (src/ui/activity-log.js). */
     begin: 'empty activity-log copy reworded (a film is already open)',
     filling: 'empty activity-log copy reworded (a film is already open)',
-    things: 'empty activity-log copy reworded (a film is already open)'
+    things: 'empty activity-log copy reworded (a film is already open)',
+    /* Account QA (26 Oct 2026): the Danger zone card said erasing "signs
+       you out"; it never did (CLAUDE.md item 29) and its own dialog says
+       you stay signed in, so the sentence no longer promises a sign-out. */
+    signs: 'erase card no longer promises a sign-out that never happens'
   },
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.

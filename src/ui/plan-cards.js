@@ -205,6 +205,18 @@ function wantMatrix() {
   matrixAsked = true;
   import('../lib/plan-matrix.js').then((m) => { matrixMod = m; if (hooks.rerender) hooks.rerender(); }).catch(() => { /* the counts stand */ });
 }
+/* THE ROWS THE COUNT AND THE TABLE READ. When the rows do not tell the
+   plans apart (every features map still {}, so a missing key reads as
+   included), "32 of 32" on every card and a tick in every cell would
+   contradict the "Everything in X, plus:" list beside them, which
+   already falls back to the matrix. Same fallback, same source: the
+   matrix's own maps, once its lazy chunk is in (QA, 26 Oct 2026). */
+function effectiveRows(plans) {
+  const rows = plans || [];
+  const differ = rows.some((x) => x && x.id !== 'free' && x.features && Object.values(x.features).some((v) => v === false));
+  if (differ || !matrixMod) return rows;
+  return rows.map((x) => (x && x.id !== 'free' ? { ...x, features: matrixMod.matrixFeatures(x.id) } : x));
+}
 const paidSorted = (plans) => (plans || []).filter((x) => x && x.id !== 'free').sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
 /** The ids this plan adds, and the plan it adds them to (null = the first). */
 function addedIds(plans, p) {
@@ -282,7 +294,8 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   const usd = !!(shop && shop.currency === 'USD');
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? st.plan : null;
-  const listed = listedIn(plans);
+  const eff = effectiveRows(plans);
+  const listed = listedIn(eff);
   if (justBought) wrap.append(successCard(justBought, plans));
   if (!matrixMod) wantMatrix();
 
@@ -378,7 +391,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     { const adds = addsBlock(plans, p, listed); if (adds) body.append(adds); }
     body.append(h('p.pl-check-stage', { text: 'Limits' }), limitList(p.limits));
     card.append(body);
-    card.append(featureBlock(p, listed));
+    card.append(featureBlock(eff.find((x) => x && x.id === p.id) || p, listed));
     row.append(card);
   }
   /* The next step up wears the slow border trail (it is a class, so it
@@ -430,7 +443,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       '.'
     ])
   ]));
-  { const cmp = compareBlock(plans, current, listed); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
+  { const cmp = compareBlock(eff, current, listed); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   return wrap;
 }
 
@@ -447,8 +460,8 @@ function promoBox(buyable) {
   const input = h('input#plPromoCode.pl-promo-input', { type: 'text', name: 'code', inputmode: 'text', autocapitalize: 'characters', spellcheck: 'false',
     maxlength: 40, placeholder: 'e.g. LAUNCH10', 'aria-describedby': 'plPromoHint', value: promo.typed, disabled: promo.busy || busyPlan !== '' });
   form.append(input);
-  form.append(h('button.btn', { type: 'submit', disabled: promo.busy || busyPlan !== '', text: promo.busy ? 'CHECKING…' : promo.code ? 'RE-CHECK' : 'APPLY' }));
-  if (promo.code) form.append(h('button.btn', { type: 'button', 'data-plan-action': 'promo-clear', disabled: promo.busy || busyPlan !== '', text: 'REMOVE' }));
+  form.append(h('button.k-btn.k-btn--secondary', { type: 'submit', disabled: promo.busy || busyPlan !== '', text: promo.busy ? 'Checking…' : promo.code ? 'Re-check' : 'Apply' }));
+  if (promo.code) form.append(h('button.k-btn.k-btn--ghost', { type: 'button', 'data-plan-action': 'promo-clear', disabled: promo.busy || busyPlan !== '', text: 'Remove' }));
   det.append(form);
   const applied = buyable.filter((id) => appliedQuote(id));
   if (promo.error) det.append(h('p#plPromoHint.pl-promo-msg.is-error', { role: 'alert', text: promo.error }));
@@ -474,7 +487,7 @@ function eduCallout() {
       h('p.pl-edu-lead', {}, [h('strong', { text: 'Film or Viscom student?' })]),
       h('p.pl-edu-note', {}, ['Use code STUDENT50 for the student price on Intermediate. Film schools, clubs and workshops: ', mail, ' for group access.'])
     ]),
-    h('button.btn', { type: 'button', 'data-plan-action': 'edu-apply', disabled: promo.busy || busyPlan !== '', text: 'APPLY STUDENT50' })
+    h('button.k-btn.k-btn--secondary', { type: 'button', 'data-plan-action': 'edu-apply', disabled: promo.busy || busyPlan !== '', text: 'Apply STUDENT50' })
   ]);
 }
 
@@ -597,7 +610,7 @@ function successCard(planId, plans) {
     'Your invoice is on its way from Razorpay by e-mail, and ',
     h('a', { href: 'purchase.html#invoices', text: 'listed under Invoices on the Purchase page' }), '.'
   ]));
-  card.append(h('div.iv-actions', {}, [h('a.btn.primary', { href: 'index.html?welcome=plan', text: 'START YOUR FILM' })]));
+  card.append(h('div.iv-actions', {}, [h('a.k-btn.k-btn--primary', { href: 'index.html?welcome=plan', text: 'Start your film' })]));
   return card;
 }
 

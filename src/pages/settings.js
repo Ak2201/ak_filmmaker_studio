@@ -1068,7 +1068,9 @@ function renderDanger() {
   const sec = section('danger', 'Danger zone', 'Erase what you have written.',
     'These cannot be undone. Export a backup first (Backup, in the top bar) if you want to keep anything.');
   sec.append(h('div.st-danger-row', {}, [
-    h('p', { text: 'Removes every project, setting and saved key from this browser, and signs you out.' }),
+    /* Erase never signs out (CLAUDE.md item 29), and the dialog one click
+       on says so: this line promised a sign-out that never happened. */
+    h('p', { text: 'Removes every project, setting and saved key from this browser.' + (signedIn ? ' You stay signed in, and the copies in the cloud are not touched.' : '') }),
     h('button.k-btn.k-btn--danger', { type: 'button', 'data-action': 'erase-all', text: 'Erase everything on this device' })
   ]));
   if (signedIn) {

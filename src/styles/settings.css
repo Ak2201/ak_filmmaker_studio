@@ -715,19 +715,11 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
 }
 .st-fact dd { margin: 0; font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }
 #you .am-inline .am-actions { display: flex; flex-wrap: wrap; gap: var(--s2); padding-top: var(--s3); }
-#you .am-inline .am-actions .am-item {
-  justify-self: auto;
-  flex: 0 0 auto;
-  min-height: var(--h-control);
-  padding: 0 var(--s4);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--sk-btn-radius);
-  background: var(--surface-card);
-}
-#you .am-inline .am-actions .am-item:first-child { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
-#you .am-inline .am-actions .am-item.danger { margin: 0; padding-top: 0; width: auto; color: var(--danger); border-color: var(--danger-line); }
+/* kit buttons (k-btn); the gate links and "Create a studio account" sit
+   on their own line, at the start, like the rows they replaced */
+#you .am-inline .am-gate, #you .am-inline .am-create { justify-self: start; margin-block: var(--s2) 0; }
 @media (max-width: 720px) {
-  #you .am-inline .am-actions .am-item { flex: 1 1 100%; min-height: var(--tap-min); }
+  #you .am-inline .am-actions .k-btn { flex: 1 1 100%; min-height: var(--tap-min); }
 }
 /* the AI key: the eye, and the verified mark */
 .ai-key-row { display: flex; gap: var(--s2); align-items: stretch; }
@@ -760,11 +752,6 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
-}
-@media (hover: hover) {
-  #you .am-inline .am-actions .am-item:first-child:hover { background: var(--brand-hover); color: var(--brand-on); }
-  #you .am-inline .am-actions .am-item:hover { background: var(--surface-hover); color: var(--ink); }
-  #you .am-inline .am-actions .am-item.danger:hover { background: var(--danger-wash); color: var(--danger); }
 }
 .st-build { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
 .st-rate { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: baseline; margin: var(--s3) 0 0; padding: var(--s2) var(--s3); background: var(--surface-canvas); border: 1px solid var(--border-hair); border-radius: var(--sk-radius); }

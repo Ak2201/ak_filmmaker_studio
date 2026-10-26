@@ -78,6 +78,10 @@ export function createWatermark({ lines, ink, protect = [], onTamper, limit = 3 
       el.style.backgroundImage = `url("${tileUrl}")`;
       el.style.backgroundSize = `${tile.width / dpr}px ${tile.height / dpr}px`;
       el.style.backgroundRepeat = 'repeat';
+      /* Anchored to the VIEWPORT, as the canvas is, so the two layers draw
+         the same stamp in the same place: anchored to each block, the
+         copies sat offset and overlapped into unreadable text. */
+      el.style.backgroundAttachment = 'fixed';
     }
   }
 

@@ -31,6 +31,7 @@ import { ask, askDanger } from './dialog.js';
 
 let state = { phase: 'idle', data: null, error: '', busy: '' };
 let host  = null;
+let readFor = null;   // the account the last read was for
 
 function setState(patch) {
   state = Object.assign({}, state, patch);
@@ -215,23 +216,41 @@ function filmsBlock(d) {
 
 /* ---- paint -------------------------------------------------- */
 
+/* THE LIVE HOST. Settings rebuilds `main` on every auth, gate, plan and
+   fetch event, and commitMain() (dom.js) DISCARDS a rebuild that is
+   byte-identical to what is on the page. Each rebuild made a new
+   #acctHost and pointed `host` at it, so after a discarded one every
+   later paint went into a detached div and the panel on the page read
+   "Reading the account…" for good (QA, 26 Oct 2026). A host that is no
+   longer in the document gives way to the one that is. */
+function liveHost() {
+  if (host && host.isConnected) return host;
+  const onPage = typeof document !== 'undefined' && document.getElementById('acctHost');
+  if (onPage) host = onPage;
+  return host;
+}
+
 function paint() {
-  if (!host) return;
+  const el = liveHost();
+  if (el) paintInto(el);
+}
+
+function paintInto(el) {
   const c = window.StudioCloud;
   const myEmail = (c && c.getUserEmail && c.getUserEmail()) || '';
 
-  host.replaceChildren();
+  el.replaceChildren();
 
   if (state.error) {
-    host.append(h('p.acct-error', { role: 'alert', text: state.error }));
+    el.append(h('p.acct-error', { role: 'alert', text: state.error }));
   }
 
   if (state.phase === 'loading') {
-    host.append(h('p.st-note', { text: 'Reading the account…' }));
+    el.append(h('p.st-note', { text: 'Reading the account…' }));
     return;
   }
-  if (state.phase === 'none')  { host.append(renderCreate()); return; }
-  if (state.phase === 'ready') { host.append(renderMembers(state.data, myEmail)); return; }
+  if (state.phase === 'none')  { el.append(renderCreate()); return; }
+  if (state.phase === 'ready') { el.append(renderMembers(state.data, myEmail)); return; }
 }
 
 /* ---- load --------------------------------------------------- */
@@ -265,10 +284,17 @@ export function accountSection(section) {
       + 'the films in this account are there. Everything else on this page stays '
       + 'on this device.');
 
-  host = h('div#acctHost');
-  sec.append(host);
-  paint();
-  refresh();
+  /* Drawn from the state already held, so an unchanged rebuild is
+     byte-identical and commitMain() can skip it. Read once per account,
+     not once per render: re-reading on every render restarted
+     "Reading the account…" nine times on a load, and every action below
+     re-reads by itself. */
+  const fresh = h('div#acctHost');
+  sec.append(fresh);
+  host = fresh;
+  paintInto(fresh);
+  const who = (c.getUserEmail && c.getUserEmail()) || '';
+  if (state.phase === 'idle' || readFor !== who) { readFor = who; refresh(); }
   return sec;
 }
 

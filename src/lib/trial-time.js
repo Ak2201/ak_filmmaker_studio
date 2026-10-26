@@ -75,4 +75,18 @@ export function countdown(ms) {
   return Math.floor(secs / 60) + ':' + pad(secs % 60);
 }
 
-export default { minutesToHours, hoursToMinutes, trialLength, timeLeft, countdown };
+/** "1 second ago", "40 seconds ago", "1 minute ago", "2 hours ago",
+ *  "3 days ago": how long since a device was last seen (the takeover
+ *  prompt). Singular where it is one, and a bigger unit past an hour. */
+export function ago(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  const say = (n, unit) => n + ' ' + unit + (n === 1 ? '' : 's') + ' ago';
+  if (s < 60) return say(s, 'second');
+  const m = Math.round(s / 60);
+  if (m < 60) return say(m, 'minute');
+  const h = Math.round(s / 3600);
+  if (h < 24) return say(h, 'hour');
+  return say(Math.round(s / 86400), 'day');
+}
+
+export default { minutesToHours, hoursToMinutes, trialLength, timeLeft, countdown, ago };

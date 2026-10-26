@@ -21,6 +21,7 @@ import { h, delegate } from '../lib/dom.js';
 import { BRAND } from '../lib/brand.js';
 import { formatCode, normaliseCode, setCodePass, startInviteLink, errorSentence } from '../lib/gate.js';
 import '../lib/store.js';
+import { ago } from '../lib/trial-time.js';
 import '../styles/gate.css';
 import { askDanger, askText } from './dialog.js';
 
@@ -47,8 +48,7 @@ const toast = (msg, type, duration) => {
 /* ---- FR-203: the takeover prompt -------------------------------- */
 
 function since(ts) {
-  const s = Math.max(0, Math.round((Date.now() - Date.parse(ts)) / 1000));
-  return s < 60 ? `${s} seconds ago` : `${Math.round(s / 60)} minute${Math.round(s / 60) === 1 ? '' : 's'} ago`;
+  return ago((Date.now() - Date.parse(ts)) / 1000);
 }
 function browserOf(ua) {
   const u = String(ua || '');

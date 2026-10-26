@@ -71,16 +71,18 @@ const app = document.getElementById('app');
 /* The visitor's shop currency (docs/US-MARKET-PLAN.md §B), the same
    derivation as purchase.html: the buyer's own pick, the device's stated
    market, the guess. Rupees until (and unless) price_notice('USD')
-   answers; nothing here writes. `shopNow` is null for a rupee visitor. */
+   answers; nothing here writes. `shopNow` is null until price_notice()
+   answers. */
 let shopNow = null;
 function refreshShop() {
   let want = 'INR';
   try { want = pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() }); } catch (e) { want = 'INR'; }
-  if (want !== 'USD') return;
-  publicPriceNotice('USD').then((notice) => {
-    const v = shopView('USD', notice);
-    if (v.currency === 'USD') { shopNow = v; render(); }
-  }).catch(() => { /* rupees stand */ });
+  /* Rupees ask too: price_notice() carries each plan's CURRENT price, and
+     LIST_PRICE is only the price before any scheduled rise. */
+  publicPriceNotice(want === 'USD' ? 'USD' : undefined).then((notice) => {
+    const v = shopView(want === 'USD' ? 'USD' : 'INR', notice);
+    if ((want !== 'USD' || v.currency === 'USD') && Object.keys(v.plans).length) { shopNow = v; render(); }
+  }).catch(() => { /* the list prices stand */ });
 }
 const prices = () => listPriceBlock(shopNow);
 const fromAbout = () => (shopNow && fromDay(shopNow)) || perDay(LIST_PRICE.starter);

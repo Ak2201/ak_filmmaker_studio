@@ -329,7 +329,10 @@ function paintAccountBlock() {
      nothing else. */
   if (!_acct.data) {
     wrap.append(
-      h('a.am-item', { href: 'settings.html#account', text: '+ CREATE A STUDIO ACCOUNT' }),
+      /* The account is created in the TEAM tab (accountSection(), mounted
+         there as #account-people); #account is the tab this card is
+         already on, so the link used to go nowhere. */
+      h('a.k-btn.k-btn--secondary.k-btn--sm.am-create', { href: 'settings.html#team', text: 'Create a studio account' }),
       h('p.am-acct-note', { text: 'An account is how a film reaches somebody else.' })
     );
     return;
@@ -340,12 +343,12 @@ function paintAccountBlock() {
   const seat = seatWord(d.seats);
   const sub  = roleWord(d.role) + (seat ? ' · ' + seat : '');
 
-  /* settings.html#account resolves because accountSection() is
-     rendered whenever there is a session, and this menu only exists
-     when there is one. Worth stating: a nav target that depends on
-     data existing is a trap this codebase has already paid for. */
+  /* settings.html#team resolves because accountSection() is rendered
+     (in the Team tab) whenever there is a session, and this menu only
+     exists when there is one. Worth stating: a nav target that depends
+     on data existing is a trap this codebase has already paid for. */
   wrap.append(h('a.am-acct', {
-    href: 'settings.html#account',
+    href: 'settings.html#team',
     'aria-label': 'Account settings for ' + name + '. You are ' + roleWord(d.role) + '.'
   }, [
     h('span.am-acct-mark', { 'aria-hidden': 'true', text: initials(name) }),
@@ -420,12 +423,12 @@ export function renderAccountBlock() {
        the page actually does; a request already in flight still gets
        its own row and its own address. */
     gateRows.push(g.reason === 'pending'
-      ? h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' })
-      : h('a.am-item', { href: 'invite.html', text: '→ START YOUR FREE TRIAL' }));
+      ? h('a.k-btn.k-btn--secondary.k-btn--sm.am-gate', { href: 'invite.html#request', text: 'Your invite request' })
+      : h('a.k-btn.k-btn--secondary.k-btn--sm.am-gate', { href: 'invite.html', text: 'Start your free trial' }));
   }
   if (g.role === 'admin') {
-    gateRows.push(h('a.am-item', { href: 'admin.html',
-      text: waiting ? `→ CONSOLE · ${waiting} REQUEST${waiting === 1 ? '' : 'S'} WAITING` : '→ ADMIN CONSOLE' }));
+    gateRows.push(h('a.k-btn.k-btn--secondary.k-btn--sm.am-gate', { href: 'admin.html',
+      text: waiting ? `Console · ${waiting} request${waiting === 1 ? '' : 's'} waiting` : 'Admin console' }));
   }
   const block = h('div#amBlock.account-menu.am-inline.show', {}, [
     h('div.am-you', {}, [
@@ -442,11 +445,13 @@ export function renderAccountBlock() {
     ]),
     ...gateRows,
     /* The three actions are one row on the card at every width (a phone
-       wraps them to full-width buttons); the same buttons, one handler. */
+       wraps them to full-width buttons); the same buttons, one handler.
+       Kit buttons, sentence case: one button language on the page
+       (CLAUDE.md item 48), as the signed-out "Sign in" already was. */
     h('div.am-actions', {}, [
-      h('button.am-item', { type: 'button', 'data-auth-action': 'sync', text: '↻ SYNC NOW' }),
-      h('button.am-item', { type: 'button', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
-      h('button.am-item.danger', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+      h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'sync', text: 'Sync now' }),
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'settings', text: 'Cloud settings' }),
+      h('button.k-btn.k-btn--danger', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ]),
     h('p.am-foot', { text: 'Signing out leaves every project on this device.' })
   ]);

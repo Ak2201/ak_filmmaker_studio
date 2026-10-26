@@ -233,7 +233,7 @@ try {
     ok(!!closedB, 'the gate CLOSES for a non-member');
     ok(closedB && closedB.reason === 'noinvite', "reason 'noinvite'");
     const writesBefore = writes();
-    ok(closedB && /awaiting an invite/i.test(closedB.detail || ''), 'the sync status says why it is paused');
+    ok(closedB && /free trial or a plan/i.test(closedB.detail || '') && !/awaiting an invite/i.test(closedB.detail || ''), 'the sync status says why it is paused, and the way in — not an invite that is not coming: ' + (closedB && closedB.detail));
     ok(await urlBecomes(page, /invite\.html/), 'settings.html became invite.html — the site gate');
     /* THE DOOR LEADS WITH THE TRIAL NOW (owner, 12 Oct 2026), not with
        the request form. The form is off the public door: this waits for
@@ -786,6 +786,25 @@ try {
     ok(!text.includes('SECRET PHONE'), 'contacts never reach a pass holder');
     ok(await page.evaluate(() => !!document.querySelector('canvas[data-wm]') && [...document.querySelectorAll('.sc-block')].every((b) => b.style.backgroundImage.includes('data:image/png'))),
       'a canvas watermark is up and baked into every block');
+    /* QA, 26 Oct 2026: the block copy of the stamp was anchored to each
+       block and the canvas to the viewport, so inside every card the two
+       sat offset and overlapped; and the deck's beats and key scenes had
+       no screen layout ("Inciting IncidentA student…", "1. 1"). */
+    ok(await page.evaluate(() => [...document.querySelectorAll('.sc-block')].every((b) => getComputedStyle(b).backgroundAttachment === 'fixed')),
+      'the block watermark is anchored to the viewport, as the canvas is: one stamp, not two offset');
+    {
+      const deck = await page.evaluate(() => {
+        const li = document.querySelector('.sc-deck .pd-beats li');
+        const strong = li && li.querySelector('strong'), span = li && li.querySelector('span');
+        const sc = document.querySelector('.sc-deck ol.pd-scenes');
+        return {
+          beat: !!li && getComputedStyle(li).display === 'grid' && !!strong && !!span && span.getBoundingClientRect().top >= strong.getBoundingClientRect().bottom - 1,
+          scenes: sc ? getComputedStyle(sc).listStyleType : 'absent'
+        };
+      });
+      ok(deck.beat, 'the pitch deck sets each beat label above its text');
+      ok(deck.scenes === 'none' || deck.scenes === 'absent', 'key scenes carry one number, not the list marker beside it (' + deck.scenes + ')');
+    }
     ok(F.db.redemptions.some((r) => r.viewer_email === 'programmer@festival.example' && r.access_id), 'the open is logged with the typed e-mail and an access id');
     /* The watchdog answers a MutationObserver and a once-a-second tick,
        so each wait here is for ITS reaction — the canvas back in the

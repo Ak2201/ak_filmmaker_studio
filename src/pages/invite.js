@@ -55,6 +55,7 @@ import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
    session. Plain fetch, no SDK — funnel.js owns that pattern. */
 import { trialOffer as anonTrialOffer, purchasesRequired } from '../lib/funnel.js';
 import { resolveReturn, clearReturn } from '../lib/return-to.js';
+import { captureAttribution } from '../lib/attribution.js';
 import { inviteSection, wireGateUI, markDemoPending, enterAddress } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 import { getCodePass, setCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
@@ -84,6 +85,20 @@ function refreshShop() {
 }
 const prices = () => listPriceBlock(shopNow);
 const fromAbout = () => (shopNow && fromDay(shopNow)) || perDay(LIST_PRICE.starter);
+
+/* A ?ref= code from the link that brought this tab (an ad, a referral,
+   an affiliate), held by attribution.js in sessionStorage. It is a
+   PROMO / REFERRAL code, which this page's box (invite or screening pass
+   codes, gate.js) would refuse, so it is not typed into that box: it is
+   carried to purchase.html, whose "Have a code?" box fills it in once
+   signed in and lets the buyer clear it. This line says so, under each
+   "See plans and buy". */
+let HELD_REF = '';
+try { HELD_REF = captureAttribution(location).ref; } catch (e) { HELD_REF = ''; }
+const heldCodeLine = () => (HELD_REF
+  ? h('p.bd-sub.iv-ref', { text: 'You arrived with the code ' + HELD_REF + '. It is filled in at checkout, where you can see what it takes off or clear it.' })
+  : null);
+const buyHref = () => (HELD_REF ? 'purchase.html?ref=' + encodeURIComponent(HELD_REF) : 'purchase.html');
 const cloud = () => window.StudioCloud || null;
 
 function section(id, eyebrow, title, deck) {
@@ -264,9 +279,10 @@ function render() {
       /* The prices on this page (src/ui/list-prices.js), not a link away. */
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.k-btn.k-btn--primary', { href: 'purchase.html', text: 'See plans and buy' }),
+        h('a.k-btn.k-btn--primary', { href: buyHref(), text: 'See plans and buy' }),
         h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
       ]));
+      { const held = heldCodeLine(); if (held) buy.append(held); }
       body.append(buy);
     }
     /* Third, and no longer a door of its own: the box holds the code and
@@ -290,9 +306,10 @@ function render() {
        Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
     sec.append(prices());
     sec.append(h('div.iv-actions', {}, [
-      h('a.k-btn.k-btn--primary', { href: 'purchase.html', text: 'See plans and buy' }),
+      h('a.k-btn.k-btn--primary', { href: buyHref(), text: 'See plans and buy' }),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ]));
+    { const held = heldCodeLine(); if (held) sec.append(held); }
     body.append(sec);
     /* A held or typed code can still be entered here: the box was only
        drawn for somebody with no membership, which left a member whose
@@ -370,8 +387,9 @@ function render() {
             'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. A plan opens it again for a year.');
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.k-btn' + (trialOffer ? '.k-btn--secondary' : '.k-btn--primary'), { href: 'purchase.html', text: 'See plans and buy' })
+        h('a.k-btn' + (trialOffer ? '.k-btn--secondary' : '.k-btn--primary'), { href: buyHref(), text: 'See plans and buy' })
       ]));
+      { const held = heldCodeLine(); if (held) buy.append(held); }
       body.append(buy);
     }
     const code = inviteSection(section, st);

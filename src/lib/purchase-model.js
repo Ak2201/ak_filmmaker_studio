@@ -12,6 +12,7 @@ import Billing from './billing.js';
 import { session } from './prefs.js';
 import { timeLeft } from './trial-time.js';
 import { perDay, LIST_PRICE } from './plans.js';
+import { cleanRef, captureAttribution } from './attribution.js';
 
 /* ---- the plan they came to buy ------------------------------------ */
 
@@ -42,14 +43,23 @@ export function stashPlanFromAddress(search) {
 /* ---- the referral code in the address ----------------------------- */
 
 /** /purchase?ref=REF-XXXXXX (or `code`, typed by hand): the code,
- *  upper-cased, or '' — the same shape the server accepts. Held in
- *  memory by the page; nothing is stored. */
+ *  upper-cased, or '' — the same shape the server accepts
+ *  (attribution.js cleanRef, one test for both). */
 export function linkCode(search) {
   try {
     const q = new URLSearchParams(search);
-    const v = (q.get('ref') || q.get('code') || '').trim();
-    return /^[A-Za-z0-9_-]{3,40}$/.test(v) ? v.toUpperCase() : '';
+    return cleanRef(q.get('ref') || q.get('code'));
   } catch (e) { return ''; }
+}
+
+/** The code this visit should offer: one in this address, else the one
+ *  the tab has held since a link brought it here (attribution.js, which
+ *  survives the Google round trip in sessionStorage), else ''. */
+export function visitCode(loc) {
+  const here = linkCode((loc && loc.search) || '');
+  let held = '';
+  try { held = captureAttribution(loc).ref; } catch (e) { held = ''; }
+  return here || held;
 }
 
 /* ---- the plans ---------------------------------------------------- */
@@ -130,6 +140,6 @@ export function trialStatus(st, now) {
 }
 
 export default {
-  wantedPlan, clearPlanStash, stashPlanFromAddress, linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
+  wantedPlan, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
   planHeading, plansPendingHeading, lapsedLine, trialStatus
 };

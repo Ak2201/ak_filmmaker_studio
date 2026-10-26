@@ -46,6 +46,12 @@
          from the server's own instant — so it only ever decreases
          across a reload. Also: the landing page fetches neither a
          supabase-* nor a studio-* chunk
+     (m) ATTRIBUTION: start.html?ref=CODE&src=insta is held for the tab
+         (sessionStorage only) and fills purchase.html's code box after a
+         simulated sign-in; clearing the box forgets it. The lead form
+         ([data-lead-form]) needs consent and posts to add_lead with the
+         link's source. [data-trial-length] says "3-day" when
+         trial_offer() says 4320 minutes
 
    Run:  node scripts/prove-growth.mjs     (SKIP_BUILD=1 to reuse dist-growth)
    ============================================================ */
@@ -570,6 +576,92 @@ try {
     await dp.goto(BASE + 'start.html'); await dp.waitForLoadState('networkidle'); await dp.waitForTimeout(500);
     ok(EVENTS.length === 0, 'Global Privacy Control: nothing is counted');
     await d.close();
+  }
+
+  console.log('(m) attribution: ?ref= and ?src= to the checkout, the lead form, the trial length');
+  {
+    /* The owner's 26 Oct 2026 setting: a three-day trial, read from the
+       shared fake's trial_offer() — never typed into the page. */
+    const wasMinutes = F.db.settings.trial_minutes, wasEnabled = F.db.settings.trial_enabled;
+    F.db.settings.trial_minutes = 4320; F.db.settings.trial_enabled = true;
+    const { ctx, page, errors } = await context(browser);
+    /* A standalone label, as a page draws one ("free trial" is its
+       fallback), added before the page's own script runs so the
+       trial_offer() answer reaches it like any markup. */
+    await ctx.addInitScript(() => {
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState !== 'interactive' || document.getElementById('probeTrial')) return;
+        const s = document.createElement('span');
+        s.id = 'probeTrial'; s.setAttribute('data-trial-length', ''); s.textContent = 'free trial';
+        document.body.append(s);
+      });
+    });
+    LEADS.length = 0;
+    await page.goto(BASE + 'start.html?ref=founder50&src=Insta'); await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => /3-day/.test((document.getElementById('probeTrial') || {}).textContent || ''), null, { timeout: 6000 }).catch(() => {});
+    ok(await page.textContent('#probeTrial') === '3-day free trial', 'a [data-trial-length] label reads "3-day free trial" from trial_offer() = 4320 minutes');
+    const inSentence = await page.evaluate(() => [...document.querySelectorAll('[data-trial-length]')].filter((n) => n.id !== 'probeTrial').map((n) => n.textContent));
+    ok(inSentence.length > 0 && inSentence.every((t) => t === '3 days' || t === '3-day free trial'), 'and every one in the page says the same length: ' + JSON.stringify([...new Set(inSentence)]));
+    const held = await page.evaluate(() => sessionStorage.getItem('fms_attrib_session'));
+    ok(/"ref":"FOUNDER50"/.test(held || '') && /"src":"insta"/.test(held || ''), 'the code and the source are held for the tab: ' + held);
+    ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /attrib|ref|utm|lead/i.test(k))), 'and nothing of it is in localStorage');
+
+    /* THE LEAD FORM. The page draws <form data-lead-form>; until it does,
+       the proof draws the same contract, which the delegated listener
+       must handle exactly as it would the page's own. */
+    await page.evaluate(() => {
+      if (document.querySelector('[data-lead-form]')) return;
+      const f = document.createElement('form');
+      f.setAttribute('data-lead-form', '');
+      f.innerHTML = '<input type="email" name="email"><label><input type="checkbox" name="consent"> E-mail me launch offers. I can unsubscribe at any time.</label><button type="submit">Send</button><p data-lead-status></p>';
+      document.body.append(f);
+    });
+    const form = '[data-lead-form]';
+    await page.fill(form + ' input[name="email"]', 'lead@example.com');
+    await page.click(form + ' button[type="submit"]'); await page.waitForTimeout(400);
+    ok(LEADS.length === 0 && /tick/i.test(await page.textContent(form + ' [data-lead-status]')), 'without consent nothing is sent, and the status line says why');
+    await page.check(form + ' input[name="consent"]');
+    await page.click(form + ' button[type="submit"]');
+    await page.waitForFunction((sel) => /on the list/i.test((document.querySelector(sel + ' [data-lead-status]') || {}).textContent || ''), form, { timeout: 6000 }).catch(() => {});
+    const lead = LEADS[0] || {};
+    ok(LEADS.length === 1 && lead.p_email === 'lead@example.com' && lead.p_source === 'insta' && /launch offers/i.test(lead.p_consent || ''),
+      'with consent it posts to add_lead with the address, the ticked words and the link\'s source: ' + JSON.stringify({ e: lead.p_email, s: lead.p_source }));
+    ok(await page.evaluate((sel) => { const s = document.querySelector(sel + ' [data-lead-status]'); return s.getAttribute('role') === 'status' && /on the list/i.test(s.textContent); }, form), 'the status line is role=status and says it worked');
+    ok(/start/.test(page.url()), 'the page did not navigate');
+
+    /* A SIMULATED SIGN-IN in the same tab (sessionStorage is per tab):
+       the session the Google return would leave, then purchase.html with
+       no ?ref= in its address. */
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    await page.evaluate(([k, v, uid]) => { localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid); },
+      [`sb-${REF}-auth-token`, sessionFor('tok-amy'), USERS['tok-amy'].id]);
+    await page.goto(BASE + 'purchase.html#plan');
+    const boxed = await page.waitForSelector('#plPromoCode', { timeout: 10000 }).then(() => true, () => false);
+    await page.waitForLoadState('networkidle'); await page.waitForTimeout(600);
+    ok(boxed && await page.inputValue('#plPromoCode').catch(() => '') === 'FOUNDER50', "purchase.html's code box is filled from start.html's ?ref=, after sign-in: " + JSON.stringify(await page.inputValue('#plPromoCode').catch(() => null)));
+    if (boxed) {
+      await page.fill('#plPromoCode', '');
+      ok(await page.evaluate(() => !/FOUNDER50/.test(sessionStorage.getItem('fms_attrib_session') || '')), 'clearing the box forgets the held code');
+      await page.reload(); await page.waitForSelector('#plPromoCode', { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(600);
+      ok(await page.inputValue('#plPromoCode').catch(() => '') === '', 'and a reload does not put it back');
+    } else { skip('clearing the code box: there was no box'); skip('the reload after clearing'); }
+    /* The box's own REMOVE is the other way to say no, and it fires no
+       input event: a code the fake ACCEPTS (LAUNCH10) is what draws it. */
+    await page.goto(BASE + 'start.html?ref=launch10'); await page.waitForLoadState('networkidle');
+    await page.goto(BASE + 'purchase.html#plan');
+    const removable = await page.waitForSelector('[data-plan-action="promo-clear"]', { timeout: 10000 }).then(() => true, () => false);
+    ok(removable && /LAUNCH10 applied/.test(await page.textContent('#plPromoHint').catch(() => '') || ''), 'a held code the server accepts is applied on purchase.html, with REMOVE beside it');
+    if (removable) {
+      /* A DOM click: by now the gate's own dialog (gate-ui) may be drawn
+         over the page for this faked account, and what is proved here is
+         the REMOVE listener, not the pointer path past that overlay. */
+      await page.evaluate(() => document.querySelector('[data-plan-action="promo-clear"]').click()); await page.waitForTimeout(300);
+      ok(await page.evaluate(() => !/LAUNCH10/.test(sessionStorage.getItem('fms_attrib_session') || '')), 'REMOVE forgets the held code');
+      await page.reload(); await page.waitForSelector('#plPromoCode', { timeout: 10000 }).catch(() => {}); await page.waitForLoadState('networkidle'); await page.waitForTimeout(600);
+      ok(await page.inputValue('#plPromoCode').catch(() => '') === '', 'and a reload after REMOVE leaves the box empty: ' + JSON.stringify(await page.inputValue('#plPromoCode').catch(() => null)));
+    } else { skip('REMOVE: the accepted code drew no REMOVE button'); skip('the reload after REMOVE'); }
+    allErrors.push(...errors); await ctx.close();
+    F.db.settings.trial_minutes = wasMinutes; F.db.settings.trial_enabled = wasEnabled;
   }
 
   console.log('(l) the price rise: the band, the standing price, the countdown');

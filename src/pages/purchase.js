@@ -54,19 +54,22 @@ import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion,
 import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
-  linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
+  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
 } from '../lib/purchase-model.js';
+import { clearAttribRef } from '../lib/attribution.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
 
 /* A referral link (growth-panels.js referralLink) opens this page as
-   /purchase?ref=REF-XXXXXX. The code is read from the address and held in
-   memory for this visit only — nothing is stored, so it survives neither a
-   reload nor the Google round trip, which is why the signed-out line below
-   says what to do rather than promising it is remembered. `code` is accepted
-   too, for a link somebody typed by hand. Same shape the server accepts. */
-const LINK_CODE = linkCode(location.search);
+   /purchase?ref=REF-XXXXXX, and any public page's ?ref= (an ad, an
+   affiliate's link) is held for the TAB by attribution.js — sessionStorage,
+   no localStorage key — so the code survives the Google round trip and a
+   reload, and is put in the "Have a code?" box once signed in. `code` is
+   accepted in this page's own address too, for a link typed by hand. Same
+   shape the server accepts. The visitor can clear the box, and clearing
+   it forgets the held code (below), so it does not come back. */
+const LINK_CODE = visitCode(location);
 let linkCodeApplied = false;
 
 /* Put the linked code in the "Have a code?" box and press APPLY — through
@@ -229,7 +232,7 @@ function planSection() {
       h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
     ]));
     if (LINK_CODE) {
-      sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
+      sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the code ${LINK_CODE}. Sign in and it is filled in under \u201cHave a code?\u201d below the plan cards, with what it takes off; you can clear it there.` }));
     }
     sec.append(buyTerms());
     const x1 = planExtras(null); if (x1) sec.append(x1);
@@ -346,6 +349,26 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-pu-action="retry"]');
   if (el) { el.disabled = true; el.textContent = 'LOADING…'; refreshBilling(); }
 });
+/* Emptying the box the link filled, or pressing its REMOVE, is a "no":
+   the held code is forgotten for the tab, so the next redraw or reload
+   does not put it back. REMOVE fires no input event (plan-cards.js only
+   resets its promo state), so it needs its own listener. */
+function forgetLinkCode() {
+  if (!LINK_CODE) return;
+  clearAttribRef();
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.has('ref') || u.searchParams.has('code')) {
+      u.searchParams.delete('ref'); u.searchParams.delete('code');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    }
+  } catch (err) { /* the address keeps it; the box stays as they left it */ }
+}
+delegate(document, 'input', '#plPromoCode', (e, el) => { if (!el.value.trim()) forgetLinkCode(); });
+/* Capture phase: plan-cards.js's own REMOVE handler redraws the box, which
+   detaches the button, and a bubbling delegate() then finds it outside the
+   document and does nothing. */
+delegate(document, 'click', '[data-plan-action="promo-clear"]', forgetLinkCode, true);
 
 Store.subscribe('billing:changed', () => refreshBilling());
 /* §32: the switch moved while the page was open (plan-gate re-reads

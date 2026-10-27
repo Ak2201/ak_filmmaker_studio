@@ -1933,6 +1933,49 @@ document.addEventListener('visibilitychange', () => {
    the story, the scenes or the bin redraws this page at once, so no
    field here is left holding the words from before (QA round 2). */
 Store.onWriteElsewhere(['fms_story_v1', 'fms_scenes_v1', 'fms_scene_bin_v1'], catchUp);
+/* The beat-note line on each beat card ("Your beat note: …") is the
+   blueprint's own answer, read once when the card is drawn, and the
+   blueprint blob is not one of the keys above — so a note written in
+   another tab or arriving from the account stayed stale until reload.
+   Repaint just that line, in place. NEVER inside a card that holds the
+   focus (a step being typed in must keep its caret): that card waits for
+   the focus to leave it. */
+let beatNotesLate = false;
+function refreshBeatNotes() {
+  const s = story();
+  const short = fmt() === 'short';
+  const bpNs = short ? 'short' : 'feature';
+  const fw = Story.frameworkById(s.framework);
+  if (!fw || fw.id !== IO.BLUEPRINT_BEATS[bpNs].fw) return;
+  const bp = blueprint();
+  const was = document.activeElement;
+  beatNotesLate = false;
+  document.querySelectorAll('[data-beat-card]').forEach((li) => {
+    if (was && li.contains(was)) { beatNotesLate = true; return; }
+    const beat = fw.beats.find((b) => Story.qualifyBeat(fw.id, b.id) === li.getAttribute('data-beat-card'));
+    if (!beat) return;
+    const v = IO.blueprintBeatText(bpNs, beat.id, bp);
+    const cur = li.querySelector(':scope > .st-ol-bp');
+    if (!v) { if (cur) cur.remove(); return; }
+    const want = '\u201c' + v + '\u201d';
+    if (cur) { if (cur.lastChild && cur.lastChild.textContent !== want) cur.lastChild.textContent = want; return; }
+    const line = h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your beat note: ' }), want]);
+    const prompt = li.querySelector(':scope > .st-beat-prompt');
+    if (prompt) prompt.after(line); else li.append(line);
+  });
+}
+document.addEventListener('focusout', (e) => {
+  if (!beatNotesLate || !e.target.closest || !e.target.closest('[data-beat-card]')) return;
+  setTimeout(() => { if (!document.activeElement || !document.activeElement.closest('[data-beat-card]')) refreshBeatNotes(); }, 0);
+});
+Store.onWriteElsewhere([IO.FEATURE_KEY, IO.SHORT_KEY], refreshBeatNotes);
+try {
+  Store.subscribe('cloud:synced', (p) => setTimeout(() => {
+    if (!p || (p.projectId && p.projectId !== Store.currentProjectId())) return;
+    const sc = p.scope ? [p.scope] : Array.isArray(p.scopes) ? p.scopes : ['feature', 'short'];
+    if (sc.some((x) => x === 'feature' || x === 'short')) refreshBeatNotes();
+  }, 0));
+} catch (e) { /* no subscribe */ }
 /* The plan state arrives after first paint: when it says the pitch deck is
    off for everybody, its menu row goes and its section stays hidden. */
 {

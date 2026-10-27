@@ -27,7 +27,7 @@
 import { h } from './dom.js';
 import { BRAND, monogram } from './brand.js';
 import { exportPDF } from './pdf.js';
-import { amountInWords } from './invoice.js';
+import { amountInWords, coverLine } from './invoice.js';
 import { fmtMinor, perDayIn } from './price-model.js';
 import { REFUND_TERMS } from '../../supabase/functions/_shared/terms.js';
 
@@ -82,7 +82,7 @@ export function buildInvoice(inv) {
         h('th.inv-amt', { text: 'Rate' }), h('th.inv-amt', { text: 'Amount' })])]),
       h('tbody', {}, [h('tr', {}, [
         h('td', {}, [h('div', { text: `${BRAND.name} — ${inv.plan_name} plan` }),
-          h('div.inv-sub', { text: '1-year plan' + (day ? ' · about ' + day + ' a day' : '') + ' · nothing renews by itself' })]),
+          h('div.inv-sub', { text: coverLine(inv, day) })]),
         h('td.inv-amt', { text: '1' }), h('td.inv-amt', { text: amt }), h('td.inv-amt', { text: amt })])]),
       h('tfoot', {}, [h('tr', {}, [h('th', { colspan: '3', text: 'Total paid' }), h('th.inv-amt', { text: amt })])])
     ]),

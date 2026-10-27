@@ -294,3 +294,100 @@ them, and §62 changes nothing while they are one-time. The full runbook is
 7. **Legal.** The terms, refund and privacy pages need the auto-renew DRAFT
    passages approved before either mode is switched on for real buyers. Those
    passages are in another lane.
+
+## §63 renewal reminders
+
+Only matters once a mode is **auto-renew** (§62, step 6). Until then there is
+nothing to remind and the function answers `{"sent":0}`. Razorpay and the
+bank send their own pre-debit notice under the RBI e-mandate rules; ours is
+an extra courtesy, sent ONCE per billing cycle, about 48 hours before the
+charge. Runbook: `docs/BILLING.md` §27; checks: `docs/SECURITY-RLS.md` §63.
+
+1. **Run §63 after §62, with the checksum** (paste rule, step 1):
+
+   ```bash
+   shasum -a 256 supabase/schema/schema-63-renewal-reminders.sql
+   # 39984700e14ed247e9ef0255484fe020ad55e9923eae3fc3bfa2ec60e1fea54e
+   ```
+
+   Read it back:
+
+   ```sql
+   select column_name from information_schema.columns
+    where table_schema = 'public' and table_name = 'subscriptions' and column_name = 'reminded_for';   -- reminded_for
+   select has_function_privilege('authenticated', 'public.claim_renewal_reminders(interval,int)', 'execute');   -- f
+   ```
+
+   It adds one COLUMN and no table, so the purge patch
+   (`patches/purge-test-data-2026-10-27.sql`) needs no change and its
+   checksum stands.
+2. **Make a secret and set it on the function** (any long random string;
+   keep it in your password manager):
+
+   ```bash
+   openssl rand -hex 32        # the CRON_SECRET value
+   npx --yes supabase@latest secrets set CRON_SECRET=<that value> --project-ref conhlrulxfwkhsnymakz
+   ```
+
+   `RESEND_API_KEY` and `MAIL_FROM` must be set too (BILLING §13). Without
+   them the function answers 503 and **claims nothing**, so no reminder is
+   lost: the first run after Resend is set up sends what is due.
+3. **Deploy rzp-remind** with the CLI, WITHOUT JWT verification (a
+   scheduler has no session; the `x-cron-secret` header is the guard):
+
+   ```bash
+   npx --yes supabase@latest functions deploy rzp-remind --no-verify-jwt --project-ref conhlrulxfwkhsnymakz
+   ```
+
+   Probe it: `curl -i -X POST https://conhlrulxfwkhsnymakz.supabase.co/functions/v1/rzp-remind`
+   → **401** (no header). 503 means `CRON_SECRET` is not set; 404 means it
+   is not deployed. With the header → 200 `{"sent":0,"failed":0,"skipped":0}`
+   (or 503 if Resend is not configured).
+4. **Schedule it hourly — pick ONE of the two.** Both are safe together
+   (each cycle is claimed once in the database) but that is two things to
+   look after.
+
+   **(a) Supabase Cron (pg_cron + pg_net).** Dashboard → Integrations →
+   Cron → enable it (this installs `pg_cron`); Dashboard → Database →
+   Extensions → enable `pg_net`. Keep the secret in Vault so it is not in
+   `cron.job`'s command text. Then, in the SQL editor:
+
+   ```sql
+   select vault.create_secret('<the CRON_SECRET value>', 'fms_cron_secret');
+
+   select cron.schedule(
+     'fms-renewal-reminders',
+     '17 * * * *',
+     $$
+     select net.http_post(
+       url     := 'https://conhlrulxfwkhsnymakz.supabase.co/functions/v1/rzp-remind',
+       headers := jsonb_build_object(
+                    'Content-Type',  'application/json',
+                    'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'fms_cron_secret')),
+       body    := '{}'::jsonb,
+       timeout_milliseconds := 60000
+     );
+     $$
+   );
+   ```
+
+   Read back: `select jobname, schedule, active from cron.job;` →
+   `fms-renewal-reminders`, `17 * * * *`, `t`. After the hour:
+   `select status_code, content from net._http_response order by created desc limit 3;`
+   → 200. To stop it: `select cron.unschedule('fms-renewal-reminders');`.
+   To change the secret: `select vault.update_secret((select id from vault.secrets where name = 'fms_cron_secret'), '<new>');`
+   and set the function's `CRON_SECRET` to the same value.
+
+   **(b) GitHub Actions.** `.github/workflows/renewal-reminders.yml` runs at
+   minute 17 of every hour and can be run by hand (Actions → renewal-reminders
+   → Run workflow). Add two repository secrets (Settings → Secrets and
+   variables → Actions): `FMS_FUNCTIONS_URL` =
+   `https://conhlrulxfwkhsnymakz.supabase.co/functions/v1` and `CRON_SECRET`
+   = the same value as step 2. Without them the job prints a notice and
+   succeeds, so forks and CI stay green. GitHub runs scheduled workflows on
+   the DEFAULT branch only, and may delay them under load or disable them
+   after 60 days without repository activity; (a) has neither limit.
+5. **Check one.** In Razorpay TEST mode, with a test subscription whose
+   `current_end` is within 48 hours: the next run sends one e-mail ("Your
+   Pro pass renews on …"), the row's `reminded_for` equals its
+   `current_end`, and the run after sends nothing.

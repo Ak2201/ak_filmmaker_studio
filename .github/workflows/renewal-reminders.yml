@@ -1,0 +1,37 @@
+# The pre-charge reminder for auto-pay (schema §63; docs/BILLING.md §27).
+# Hourly, it POSTs to the rzp-remind edge function with the shared secret.
+# One of the two schedulers in docs/LIVE-STEPS-2026-10-27.md "§63 renewal
+# reminders": use THIS or pg_cron, not both (both would be safe — each
+# cycle is claimed once — but it is two things to look after).
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   FMS_FUNCTIONS_URL  https://<project-ref>.supabase.co/functions/v1
+#   CRON_SECRET        the same value as the function's CRON_SECRET secret
+# Without them (a fork, CI) the job prints a notice and succeeds.
+name: renewal-reminders
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST rzp-remind
+        env:
+          FMS_FUNCTIONS_URL: ${{ secrets.FMS_FUNCTIONS_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$FMS_FUNCTIONS_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::notice::FMS_FUNCTIONS_URL or CRON_SECRET is not set; no reminders sent."
+            exit 0
+          fi
+          curl -sS --fail-with-body --max-time 120 -X POST \
+            -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' -d '{}' \
+            "${FMS_FUNCTIONS_URL%/}/rzp-remind"
+          echo

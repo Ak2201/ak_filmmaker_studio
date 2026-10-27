@@ -230,6 +230,14 @@ function intoStrip(tab) {
   else if (t.right > end) strip.scrollLeft += t.right - end + 16;
 }
 
+/* ...and again once the strip turns scrollable and its Sections button
+   appears: the first scroll-in ran with that button still hidden, so the
+   active tab (a deep link to the last one at 390px) ended up under it. */
+document.addEventListener('sm:scrollable', (e) => {
+  const t = e.target && e.target.querySelector && e.target.querySelector('[role="tab"][aria-selected="true"]');
+  if (t) intoStrip(t);
+});
+
 /** Make the element with this id visible, if a hidden tab is all that
  *  stands between it and the reader: switch to the tab whose section
  *  holds it. Returns true when a tab was switched.

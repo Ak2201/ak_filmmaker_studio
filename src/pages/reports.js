@@ -152,6 +152,12 @@ function distCard(title, note, rows, hues, total) {
   return card;
 }
 
+/* A box that scrolls sideways on a phone must be reachable from the keyboard
+   (WCAG 2.1.1): focusable, a region, named by the table's caption. */
+const scrollBox = (table, label) => {
+  const cap = table.querySelector('caption');
+  return h('div.rp-scroll', { role: 'region', tabindex: '0', 'aria-label': label || (cap && cap.textContent.trim()) || 'Report table' }, [table]);
+};
 const th = (text, cls) => h('th' + (cls ? '.' + cls : ''), { scope: 'col', text });
 const td = (text, cls) => h('td' + (cls ? '.' + cls : ''), { text });
 
@@ -303,7 +309,7 @@ function sideBlock(scene, number) {
 function sidesBody(scenes, numbers) {
   const chosen = scenes.filter((s) => selected.has(s.id));
   if (!chosen.length) {
-    return [h('p.bd-none', {
+    return [h('p.bd-none.rp-noprint', {
       text: 'No scenes ticked. Tick the scenes being shot and they appear here, '
           + 'in script order, ready to print.'
     })];
@@ -446,7 +452,7 @@ function renderScreenTime(scenes, numbers) {
   const notes = Analysis.describeMatch(st.match);
   if (notes.length) sec.append(h('p.bd-match-note', { text: notes.join(' ') }));
   const table = h('table.scene-table.rp-table');
-  table.append(h('caption.rp-caption', { text: 'Estimated screen time per scene, against the page-a-minute rule.' }));
+  table.append(h('caption.rp-caption', { text: 'Estimated screen time per scene, against the page-a-minute rule. Times read m:ss under an hour, then hours and minutes.' }));
   table.append(h('thead', {}, [h('tr', {}, [th('Scene'), th('Slug line'), th('Estimate', 'numeric'), th('By pages', 'numeric'), th('Dialogue words', 'numeric'), th('Read from')])]));
   const body = h('tbody');
   for (const r of st.rows) {
@@ -460,7 +466,7 @@ function renderScreenTime(scenes, numbers) {
     ]));
   }
   table.append(body);
-  sec.append(h('div.rp-scroll', {}, [table]));
+  sec.append(scrollBox(table));
   return sec;
 }
 
@@ -535,7 +541,7 @@ function renderRuntime(st, scenes, numbers) {
       ]));
     }
     t.append(body);
-    box.append(h('div.rp-scroll', {}, [t]));
+    box.append(scrollBox(t));
   }
 
   if (est.groups.length) {
@@ -555,7 +561,7 @@ function renderRuntime(st, scenes, numbers) {
     est.groups.forEach((g) => body.append(row(g, g.label)));
     if (est.ungrouped) body.append(row(est.ungrouped, 'Not linked to a beat'));
     t.append(body);
-    box.append(h('div.rp-scroll', {}, [t]));
+    box.append(scrollBox(t));
   } else {
     box.append(h('p.bd-none', { text: 'No scene is linked to a story beat yet, so there is no per-act split. '
       + 'Link scenes to beats on the Write page’s Outline and each act appears here against its share of the target.' }));
@@ -573,7 +579,7 @@ function renderRuntime(st, scenes, numbers) {
       td(byBeat.total ? Math.round((g.seconds / byBeat.total) * 100) + '%' : '—', 'numeric')
     ])));
     t.append(body);
-    box.append(h('div.rp-scroll', {}, [t]));
+    box.append(scrollBox(t));
   }
   return box;
 }
@@ -587,7 +593,13 @@ function wireRuntime() {
   wireRuntime.done = true;
   delegate(document, 'change', '[data-rt-field]', (e, el) => {
     const f = el.getAttribute('data-rt-field');
-    if (f === 'target') { setTargetMinutes(el.value); if (getTargetMin()) setTargetMin(0); }   // retire the legacy fallback
+    if (f === 'target') {
+      /* A typed number the target cannot hold (0, -30, 99999, 2.5) is said, not erased or rounded in silence. */
+      const typed = String(el.value).trim();
+      const kept = setTargetMinutes(typed);
+      if (typed && String(kept) !== typed) toast(kept ? 'Target rounded to ' + kept + ' minutes.' : 'The target is 1 to 600 minutes, so nothing was set.');
+      if (getTargetMin()) setTargetMin(0);   // retire the legacy fallback
+    }
     else if (f === 'song-duration') updateSong(el.getAttribute('data-song'), { duration: el.value });
     else return;
     setTimeout(() => {
@@ -628,7 +640,7 @@ function renderCastMatrix(scenes, numbers) {
   if (notes.length) sec.append(h('p.bd-match-note', { text: 'Cues are read only from scenes matched to a heading. ' + notes.join(' ') }));
   const table = h('table.scene-table.rp-table.rp-matrix');
   table.append(h('caption.rp-caption', { text: `${plural(cm.characters.length, 'character', 'characters')} across ${plural(scenes.length, 'scene', 'scenes')}. \u25CF in the scene; the last row counts the cast each scene calls.` }));
-  const head = h('tr', {}, [th('Character'), th('Scenes', 'numeric')]);
+  const head = h('tr', {}, [th('Character', 'loc'), th('Scenes', 'numeric')]);
   cm.density.forEach((d) => head.append(h('th.rp-mx-col' + (d.high ? '.is-dense' : ''), { scope: 'col', text: numbers.get(d.scene.id) || d.scene.number || '\u2014' })));
   table.append(h('thead', {}, [head]));
   const body = h('tbody');
@@ -645,7 +657,7 @@ function renderCastMatrix(scenes, numbers) {
   const foot = h('tr', {}, [h('th.loc', { scope: 'row', text: 'Cast called' }), td('')]);
   cm.density.forEach((d) => foot.append(td(String(d.count), 'numeric' + (d.high ? ' is-dense' : ''))));
   table.append(body, h('tfoot', {}, [foot]));
-  sec.append(h('div.rp-scroll', {}, [table]));
+  sec.append(scrollBox(table));
 
   const cols = h('div.rp-mx-notes');
   const pairs = cm.interactions.slice(0, 8);
@@ -770,7 +782,7 @@ function renderOneLiner(scenes) {
     ol.unscheduled.forEach((r) => body.append(line(0, '', r)));
     table.append(body);
   }
-  sec.append(h('div.rp-scroll', {}, [table]));
+  sec.append(scrollBox(table));
   if (ol.legend.length) {
     const key = h('p.rp-ol-key');
     key.append(h('strong', { text: 'Cast: ' }));
@@ -853,7 +865,7 @@ function fillDPR(sec, scenes) {
     ]));
   }
   st.append(sb);
-  sheet.append(h('div.rp-scroll', {}, [st]));
+  sheet.append(scrollBox(st, 'Scenes for the day'));
   if (sum.pickups.length) {
     sheet.append(h('p.rp-card-note', {
       text: 'Also marked on this date, from other days: '
@@ -1036,7 +1048,7 @@ function fillKit(sec, scenes) {
         ]));
       }
       t.append(tb);
-      card.append(h('div.rp-scroll', {}, [t]));
+      card.append(scrollBox(t, dept.label + ' equipment'));
     } else {
       card.append(h('p.rp-card-note', { text: 'Nothing listed.' }));
     }
@@ -1127,9 +1139,15 @@ delegate(document, 'click', '[data-action="sides-none"]', () => {
   document.querySelectorAll('.rp-picker input[type="checkbox"]').forEach((b) => { b.checked = false; });
   refreshSides();
 });
-delegate(document, 'click', '[data-action="print-sides"]',   () => printOnly('rp-print-sides'));
+/* Nothing ticked is nothing to print: say so, as an empty Equipment add does. */
+const sidesTicked = () => {
+  if (Scenes.listScenes().some((s) => selected.has(s.id))) return true;
+  toast('Tick the scenes being shot first.');
+  return false;
+};
+delegate(document, 'click', '[data-action="print-sides"]',   () => { if (sidesTicked()) printOnly('rp-print-sides'); });
 delegate(document, 'click', '[data-action="print-reports"]', () => printOnly('rp-print-reports'));
-delegate(document, 'click', '[data-action="pdf-sides"]',     () => pdfSides());
+delegate(document, 'click', '[data-action="pdf-sides"]',     () => { if (sidesTicked()) pdfSides(); });
 delegate(document, 'click', '[data-action="pdf-reports"]',   () => pdfReports());
 
 /* ---- the shoot days: one-liner, DPR, kit -------------------- */

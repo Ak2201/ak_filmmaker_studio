@@ -384,7 +384,7 @@ function render(focus) {
       h('span.sd-day-n', {}, [
         h('span', { text: 'D' + d.day }),
         d.complete ? h('span.sd-day-m', { 'aria-label': 'wrapped', text: '✓' }) : null,
-        !d.complete && (today || cur) ? h('span.sd-day-m.is-cur', { text: today ? 'today' : 'current' }) : null
+        !d.complete && (today || cur) ? h('span.sd-day-m.is-cur', { text: today ? 'today' : 'next up' }) : null
       ].filter(Boolean))
     ].filter(Boolean)));
   });
@@ -667,6 +667,16 @@ delegate(document, 'click', '[data-shoot-action]', (e, el) => {
 });
 
 /* A note being typed survives a re-render caused by a tap elsewhere. */
+/* Escape leaves the note editor the way Cancel does (same click path, focus back on Add floor note). */
+delegate(document, 'keydown', '[data-shoot-note]', (e, el) => {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  const id = el.getAttribute('data-shoot-note');
+  const cancel = document.querySelector('[data-shoot-action="note-cancel"][data-scene="' + CSS.escape(id) + '"]');
+  if (!cancel) return;
+  e.preventDefault();
+  cancel.click();
+});
+
 delegate(document, 'input', '[data-shoot-note]', (e, el) => {
   noteDraft.set(el.getAttribute('data-shoot-note'), el.value);
 });

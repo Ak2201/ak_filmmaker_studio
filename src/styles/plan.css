@@ -482,6 +482,12 @@
   .pl-print { display: block; min-height: 1.3em; white-space: pre-wrap; overflow-wrap: anywhere;
     color: var(--print-ink); border-bottom: 1px solid var(--print-rule); }
   .pl-day-no { background: var(--print-paper); color: var(--print-ink); border: 1px solid var(--print-ink); }
+  /* A blank recce prints blank: the Notes placeholder is an EXAMPLE, the
+     select keeps no native chevron (it prints as a ruled line like the
+     other fields), and the pin hints are instructions for the screen. */
+  .pl-notes::placeholder { color: transparent !important; }
+  .pl-sel { appearance: none; -webkit-appearance: none; background-image: none; }
+  .pl-light-note { display: none !important; }
 }
 
 /* "Open" opens the reference; 18px tall on a phone. */

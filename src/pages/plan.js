@@ -46,7 +46,7 @@ import Scenes, { formatEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS } from '../lib/locations.js';
 import Geo from '../lib/recce-geo.js';
 import {
-  permOf, prettyDate, weekdayOf, plural, pagesOf, slugOf, dateClashes, datedCount, dayWhen,
+  permOf, prettyDate, weekdayOf, plural, pagesOf, slugOf, dateClashes, datesBehind, datedCount, dayWhen,
   orphanDateLabel, locationLight, lightTimes, lightFlagText, pinRefusal, dateReady, dateUnchanged,
   isOpenable, kindOptions, linkOptions, mediaLabel
 } from '../lib/plan-model.js';
@@ -163,7 +163,8 @@ function renderCalendar(scenes) {
     // only place it is visible is here. Counted once, read per card.
     const clashes = dateClashes(days);
     const grid = h('div.pl-days');
-    days.forEach((d) => grid.append(renderDay(d, clashes)));
+    const behind = datesBehind(days);
+    days.forEach((d) => grid.append(renderDay(d, clashes, behind)));
     wrap.append(grid);
   }
 
@@ -186,7 +187,7 @@ function renderCalendar(scenes) {
   return wrap;
 }
 
-function renderDay(entry, clashes) {
+function renderDay(entry, clashes, behind) {
   const card = h('article.pl-day', { 'data-day': String(entry.day) });
 
   card.append(h('div.pl-day-head', {}, [
@@ -195,7 +196,7 @@ function renderDay(entry, clashes) {
       h('span.pl-flabel', { text: 'Date' }),
       dateInput(entry)
     ]),
-    h('span.pl-day-when', { text: dayWhen(entry, clashes, prefsNow()) }),
+    h('span.pl-day-when', { text: dayWhen(entry, clashes, prefsNow(), behind) }),
     h('span.pl-day-meta', {
       text: plural(entry.scenes.length, 'scene', 'scenes') + ' · ' + pagesOf(entry.eighths)
     })
@@ -729,9 +730,10 @@ function commitDate(el, leaving) {
 function patchCalendarDates() {
   const days = Locations.calendarDays(Scenes.listScenes());
   const clashes = dateClashes(days);
+  const behind = datesBehind(days);
   days.forEach((d) => {
     const when = document.querySelector('.pl-day[data-day="' + d.day + '"] .pl-day-when');
-    if (when) when.textContent = dayWhen(d, clashes, prefsNow());
+    if (when) when.textContent = dayWhen(d, clashes, prefsNow(), behind);
   });
   const dated = datedCount(days);
   document.querySelectorAll('.bd-head [data-pl-dated]').forEach((st) => {

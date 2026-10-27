@@ -50,6 +50,10 @@
 .pp-check.is-gap .pp-check-mark { color: var(--warn-deep); }
 .pp-check-hint { display: block; color: var(--ink-muted); font-size: var(--t-tiny); }
 .pp-check a { font-size: var(--t-small); }
+/* "Fix →" is the row's one action: a bare anchor is not under base.css's 44px touch floor. */
+@media (pointer: coarse) {
+  .pp-check a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+}
 @media (max-width: 719px) {
   .pp-page { padding-inline: var(--s4); }
   .pp-step { padding: var(--s4); }

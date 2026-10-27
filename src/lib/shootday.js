@@ -338,4 +338,4 @@ export function timelineAt(hhmm, from, to) {
 
 export default { days, pickDay, detail, mark, overall, toISODate, dayFromSearch, dayOfLabel, sheetsForDay,
   cleanTakes, takesOf, takesLine, logTake, circleTake, undoTake, scenesLeft, wrapEstimate, timelineAt,
-  cleanNote, floorNoteOf, setFloorNote, sceneNeeds, phoneIn, nearestHelp };
+  cleanNote, floorNoteOf, setFloorNote, sceneNeeds, phoneIn, nearestHelp, FLOOR_NOTE_MAX };

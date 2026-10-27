@@ -210,7 +210,8 @@ function onMenuKey(e) {
      a menu opened with the mouse left focus on the button, and ↓ there
      did nothing. ↓ opens it on the first item, ↑ on the last. */
   const btn = e.target.closest && e.target.closest('.tb-menu-btn');
-  if (btn && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+  /* Alt+arrow is a page's own gesture (the stripboard's strip move), never "open the menu". */
+  if (btn && !e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
     const p = btn.parentElement && btn.parentElement.querySelector('.tb-menu-panel');
     if (!p) return;
     e.preventDefault();

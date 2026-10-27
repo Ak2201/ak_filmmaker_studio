@@ -64,15 +64,32 @@ export function dateClashes(days) {
   return clashes;
 }
 
+/* A later shoot day dated BEFORE an earlier one is almost always a typo
+   (2024-01-01 for 2024-02-01), and the stripboard's span, the strip on
+   Shoot Day and the one-liner all rest on the dates as typed. Day number
+   follows shooting order, so: day → the number of the earlier day whose
+   date is the latest one it falls behind. Dated days only, in day order. */
+export function datesBehind(days) {
+  const behind = new Map();
+  let top = null;
+  [...days].filter((d) => d.date).sort((a, b) => a.day - b.day).forEach((d) => {
+    if (top && d.date < top.date) behind.set(d.day, top.day);
+    else top = d;
+  });
+  return behind;
+}
+
 /** How many shoot days have a date. */
 export const datedCount = (days) => days.filter((d) => d.date).length;
 
 /** The line beside a day's date field: weekday, date, and a clash. */
-export function dayWhen(entry, clashes, prefs) {
+export function dayWhen(entry, clashes, prefs, behind) {
   if (!entry.date) return 'No date yet';
   const parts = [weekdayOf(entry.date), prettyDate(entry.date, prefs)].filter(Boolean);
   const shared = clashes && clashes.get(entry.date) > 1;
-  return parts.join(' · ') + (shared ? ' · shared with another day' : '');
+  const early = behind && behind.get(entry.day);
+  return parts.join(' · ') + (shared ? ' · shared with another day' : '')
+    + (early ? ' · dated before Day ' + early : '');
 }
 
 /** "Sunday · 12 January 2026", or the raw value when it is not a date. */

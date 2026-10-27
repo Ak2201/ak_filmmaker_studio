@@ -110,5 +110,7 @@ eq(S.phoneIn('Chennai 600 006'), '', 'a PIN code alone is not a phone number');
 eq(S.nearestHelp([{ name: 'A', recce: { hospital: 'GH 044 2530 5000', police: '' } }, { name: 'B', recce: {} }]),
   [{ name: 'A', rows: [{ kind: 'hospital', text: 'GH 044 2530 5000', tel: '04425305000' }] }], 'nearestHelp keeps only noted places and rows');
 
+ok(typeof S.default.FLOOR_NOTE_MAX === 'number' && S.default.FLOOR_NOTE_MAX === S.FLOOR_NOTE_MAX, 'the default export carries FLOOR_NOTE_MAX (shoot.js reads Shoot.FLOOR_NOTE_MAX for maxlength)');
+
 console.log(fail ? `\n✗ ${fail} failed, ${pass} passed` : `✓ takes: ${pass} checks`);
 process.exit(fail ? 1 : 0);

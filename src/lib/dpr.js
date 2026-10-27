@@ -84,6 +84,8 @@ export function span(a, b) {
    pair is almost certainly swapped. Night shoots stay well inside. */
 const MAX_LUNCH = 4 * 60;
 const MAX_CALL_TO_FIRST = 12 * 60;
+/* A shoot day past this is a 24-hour-clock slip (wrap 05:00 for 17:00), not a real 23h day. */
+const MAX_DAY = 18 * 60;
 
 export function formatMinutes(min) {
   if (min == null || !Number.isFinite(min)) return '—';
@@ -248,7 +250,9 @@ export function dprSummary(day, scenes) {
   const warnings = [];
   let lunch = span(rec.lunchIn, rec.lunchOut);
   if (lunch != null && lunch > MAX_LUNCH) { lunch = null; warnings.push('Lunch ends before it starts, so it is left out. Check the two times.'); }
-  const length = span(rec.crewCall, rec.wrap);
+  let length = span(rec.crewCall, rec.wrap);
+  if (length != null && length > MAX_DAY) { length = null; warnings.push('Wrap is before the crew call, so the day\u2019s length is left out. Check the two times.'); }
+  else if (length === 0) { length = null; warnings.push('Crew call and wrap are the same time, so the day\u2019s length is left out. Check the two times.'); }
   let toFirst = span(rec.crewCall, rec.firstShot);
   if (toFirst != null && toFirst > MAX_CALL_TO_FIRST) { toFirst = null; warnings.push('First shot is before the crew call, so it is left out. Check the two times.'); }
   return {

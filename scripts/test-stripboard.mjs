@@ -436,6 +436,13 @@ eq([B.targetMinutes(110, 95), B.targetMinutes(0, 95), B.targetMinutes(0, 0)], [1
   D.saveDPR(1, { crewCall: '18:00', wrap: '06:00', lunchIn: '23:30', lunchOut: '00:15', firstShot: '19:00' });
   const night = D.dprSummary(1);
   eq([night.lunchMinutes, night.callToFirstShot, night.warnings.length], [45, 60, 0], 'a night shoot lunch across midnight is still fine');
+  D.saveDPR(1, { crewCall: '06:00', wrap: '05:00', lunchIn: '', lunchOut: '', firstShot: '' });
+  const wrapped = D.dprSummary(1);
+  ok(wrapped.dayMinutes === null && wrapped.warnings.length === 1 && !/23h/.test(RM.calcLine(wrapped)) && /Check the two times/.test(RM.calcLine(wrapped)), 'a wrap before the call is not read as a 23h day: left out and warned');
+  D.saveDPR(1, { crewCall: '06:00', wrap: '06:00' });
+  ok(D.dprSummary(1).dayMinutes === null && D.dprSummary(1).warnings.length === 1, 'call equal to wrap is a zero-length day: left out and warned');
+  D.saveDPR(1, { crewCall: '06:00', wrap: '19:00' });
+  eq(D.dprSummary(1).dayMinutes, 13 * 60, 'a long but real 13h day still counts');
 
   /* Delay minutes: a whole number 0..1440 or blank, and the total adds what the box shows. */
   eq([D.cleanMinutes('-30'), D.cleanMinutes('1.5'), D.cleanMinutes('99999'), D.cleanMinutes('abc'), D.cleanMinutes(' 45 '), D.cleanMinutes('')], ['', '1', '', '', '45', ''], 'cleanMinutes');
@@ -476,6 +483,11 @@ eq([B.targetMinutes(110, 95), B.targetMinutes(0, 95), B.targetMinutes(0, 0)], [1
   const PM = await import('../src/lib/plan-model.js');
   eq([PM.prettyDate('2024-02-12'), PM.prettyDate('2024-02-12', { dateStyle: '' }), PM.prettyDate('2024-02-12', { dateStyle: 'US' })],
     ['12 February 2024', '12 February 2024', 'February 12, 2024'], 'the Plan calendar date follows the film’s style; no region is unchanged');
+  const dd = [{ day: 1, date: '2024-02-12' }, { day: 2, date: '2024-02-13' }, { day: 3, date: '2024-02-01' }, { day: 4, date: '2024-02-15' }, { day: 5, date: '' }];
+  const behind = PM.datesBehind(dd);
+  eq([...behind], [[3, 2]], 'a later day dated before an earlier one is flagged against that earlier day; in-order, later and undated days are not');
+  ok(/dated before Day 2/.test(PM.dayWhen({ day: 3, date: '2024-02-01' }, PM.dateClashes(dd), {}, behind)), 'the calendar note names the earlier day');
+  ok(!/before/.test(PM.dayWhen({ day: 4, date: '2024-02-15' }, PM.dateClashes(dd), {}, behind)), 'an in-order day carries no note');
 }
 
 console.log(`test:stripboard — ${pass} passed, ${fail} failed`);

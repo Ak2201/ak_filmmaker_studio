@@ -432,6 +432,9 @@ await settle(page, 300);
 await page.locator('.dlg button', { hasText: /^Clear days$/ }).click();
 await settle(page, 500);
 ok(await activeAction() === 'sb-clear', '14 focus returns to Clear days after the confirm', await activeAction());
+/* 19.5 nothing scheduled: the pages card says so in pages' words, never "eighths" */
+const pagesCard = await page.$eval('.sb-kpi-pages', (n) => n.innerText).catch(() => '');
+ok(!/eighths/i.test(pagesCard) && /no shoot days yet/i.test(pagesCard), '19.5 the Script pages card never prints \u201ceighths\u201d', pagesCard);
 
 await page.goto(url('preprod.html'), { waitUntil: 'networkidle' });
 await settle(page);
@@ -464,6 +467,160 @@ ok(await page.locator('#dpr input[data-field="note"]').count() === 0, '18 Remove
 await page.locator('.toast-action', { hasText: 'Undo' }).last().click();
 await settle(page, 300);
 ok(await page.locator('#dpr input[data-field="note"]').first().inputValue() === 'Rain stopped play', '18 Undo puts the delay back with its note');
+
+/* ---- 19 round 4 ------------------------------------------------ */
+{
+  const R = (n, label) => `19.${n} ${label}`;
+  /* 1 a later day dated before an earlier one is said on the calendar */
+  await page.goto(url('plan.html#calendar'), { waitUntil: 'networkidle' });
+  await settle(page);
+  const d3 = page.locator('input[aria-label="Calendar date for shoot day 3"]');
+  const was3 = await d3.inputValue();
+  const when0 = await page.$eval('.pl-day[data-day="3"] .pl-day-when', (n) => n.textContent);
+  await d3.fill('2024-02-01'); await d3.press('Tab'); await settle(page, 300);
+  const when3 = await page.$eval('.pl-day[data-day="3"] .pl-day-when', (n) => n.textContent);
+  ok(/dated before Day 2/.test(when3), R(1, 'a later shoot day dated before an earlier one says so'), when3);
+  await d3.fill(was3); await d3.press('Tab'); await settle(page, 300);
+  const back3 = await page.$eval('.pl-day[data-day="3"] .pl-day-when', (n) => n.textContent);
+  ok(back3 === when0, R(1, 'and the note goes when the date is put right'), { was3, when0, back3 });
+
+  /* 2, 3 stripboard focus: banner removal, Alt+arrow on a strip's handle */
+  await page.goto(url('stripboard.html#stripboard'), { waitUntil: 'networkidle' });
+  await settle(page);
+  await page.click('[data-action="sb-group"][data-value="day"]');
+  await settle(page, 300);
+  await page.locator('.sb-banner-menu .tb-menu-btn').first().click();
+  await page.locator('[data-action="sb-banner-add"][data-kind="note"]').first().click();
+  await settle(page, 300);
+  await page.locator('[data-action="sb-banner-remove"]').first().focus();
+  await page.keyboard.press('Enter');
+  await settle(page, 300);
+  const afterRm = await page.evaluate(() => { const a = document.activeElement; return { tag: a.tagName, menu: !!(a.closest && a.closest('.sb-banner-menu')) }; });
+  ok(afterRm.menu, R(2, 'removing a banner leaves focus on that day’s + Banner, not <body>'), afterRm);
+  const grip = page.locator('.sb-strip .tb-menu-btn').first();
+  await grip.focus();
+  await page.keyboard.press('Alt+ArrowUp');          /* the first strip is already at the top */
+  await settle(page, 200);
+  const opened = await page.evaluate(() => ({ open: document.querySelectorAll('.tb-menu-panel:not([hidden])').length, item: document.activeElement.classList.contains('tb-item') }));
+  ok(opened.open === 0 && !opened.item, R(3, 'Alt+↑ on a strip that cannot move opens no menu'), opened);
+
+  /* 6, 17, 16 Shoot Day: the note cap, Escape, the badge */
+  await page.goto(url('shoot.html?day=3'), { waitUntil: 'networkidle' });
+  await settle(page);
+  const badge = await page.$eval('.sd-day[data-day="1"] .sd-day-m.is-cur', (n) => n.textContent.trim()).catch(() => '');
+  ok(badge !== 'current', R(16, 'the strip’s badge never says “current” on a day that is not the selected one'), badge);
+  await page.locator('[data-shoot-action="note-edit"]').first().click();
+  await settle(page, 200);
+  const cap = await page.$eval('[data-shoot-note]', (t) => t.getAttribute('maxlength'));
+  ok(cap === '2000', R(6, 'the floor-note box enforces the 2,000 cap, not maxlength="undefined"'), cap);
+  await page.locator('[data-shoot-note]').first().fill('half a note');
+  await page.keyboard.press('Escape');
+  await settle(page, 300);
+  const esc = await page.evaluate(() => ({ open: !!document.querySelector('[data-shoot-note]'), act: document.activeElement.getAttribute('data-shoot-action') }));
+  ok(!esc.open && esc.act === 'note-edit', R(17, 'Escape closes the note editor and returns focus to Add floor note'), esc);
+
+  /* 7, 9, 10, 15 Reports */
+  await page.goto(url('reports.html#cast-matrix'), { waitUntil: 'networkidle' });
+  await settle(page, 600);
+  const boxes = await page.$$eval('#cast-matrix .rp-scroll, .rp-scroll', (ns) => ns.filter((n) => n.offsetParent).map((n) => [n.getAttribute('tabindex'), n.getAttribute('role'), (n.getAttribute('aria-label') || '').length > 0]));
+  ok(boxes.length > 0 && boxes.every((b) => b[0] === '0' && b[1] === 'region' && b[2]), R(9, 'a sideways-scrolling report table is a focusable, named region'), boxes);
+  await page.emulateMedia({ media: 'print' });
+  const names7 = await page.$$eval('.rp-matrix tbody th.loc', (ns) => ns.slice(0, 5).map((n) => Math.round(n.getBoundingClientRect().width)));
+  const head7 = await page.$eval('.rp-matrix thead th', (n) => Math.round(n.getBoundingClientRect().width));
+  await page.emulateMedia({ media: 'screen' });
+  ok(names7.length > 0 && names7.every((w) => w >= 100) && head7 >= 100, R(7, 'a printed cast matrix gives the character column room for a name'), { names7, head7 });
+
+  await page.goto(url('reports.html#sides'), { waitUntil: 'networkidle' });
+  await settle(page, 600);
+  await page.click('[data-action="sides-none"]');
+  await settle(page, 200);
+  await page.evaluate(() => { window.__prints = 0; window.print = () => { window.__prints++; }; });
+  await page.locator('#sides .tb-menu-btn').first().click();
+  await page.locator('[data-action="print-sides"]').first().click();
+  await settle(page, 300);
+  const toastText = await page.$$eval('.toast', (ns) => ns.map((n) => n.textContent).join(' | '));
+  ok(await page.evaluate(() => window.__prints) === 0 && /Tick the scenes/.test(toastText), R(10, 'Print the sides with nothing ticked prints nothing and says why'), toastText);
+  ok(await page.$eval('#rp-sides-out .bd-none', (n) => n.classList.contains('rp-noprint')).catch(() => false), R(10, 'the on-screen instruction is not part of the printout'));
+  await page.click('[data-action="sides-all"]');
+  await page.evaluate(() => document.body.classList.remove('rp-print-sides'));   /* a plain Ctrl+P, not the Export item */
+  await page.emulateMedia({ media: 'print' });
+  const brk = await page.$eval('#sides', (n) => getComputedStyle(n).breakBefore);
+  await page.emulateMedia({ media: 'screen' });
+  ok(brk === 'auto', R(11, 'Ctrl+P on the Sides tab does not push the sides to page 2 behind the stat strip'), brk);
+
+  await page.goto(url('reports.html#screentime'), { waitUntil: 'networkidle' });
+  await settle(page, 600);
+  await page.fill('#rt-target', '99999'); await fire('#rt-target');
+  await settle(page, 300);
+  ok(/1 to 600 minutes/.test(await page.$$eval('.toast', (ns) => ns.map((n) => n.textContent).join(' | '))), R(15, 'an out-of-range target says why it was not kept'));
+
+  /* 12 the recce prints blank */
+  await page.goto(url('plan.html'), { waitUntil: 'networkidle' });
+  await settle(page, 600);
+  await page.emulateMedia({ media: 'print' });
+  const rc = await page.evaluate(() => {
+    const n = document.querySelector('.pl-notes'), sel = document.querySelector('select.pl-sel'), note = document.querySelector('.pl-light-note');
+    return {
+      ph: n && getComputedStyle(n, '::placeholder').color,
+      app: sel && getComputedStyle(sel).appearance,
+      hint: note ? getComputedStyle(note).display : 'none'
+    };
+  });
+  await page.emulateMedia({ media: 'screen' });
+  ok(/rgba\(0, 0, 0, 0\)|transparent/.test(rc.ph || '') && rc.app === 'none' && rc.hint === 'none', R(12, 'a recce prints blank: no Notes placeholder, no select chevron, no screen-only map hint'), rc);
+
+  /* 14 a wrap before the call is not a 23-hour day */
+  await page.goto(url('reports.html?day=1#dpr'), { waitUntil: 'networkidle' });
+  await settle(page);
+  for (const [f, v] of [['crewCall', '06:00'], ['wrap', '05:00'], ['lunchIn', ''], ['lunchOut', ''], ['firstShot', '']]) {
+    await page.fill(`[data-dpr-field="${f}"]`, v); await fire(`[data-dpr-field="${f}"]`);
+  }
+  const calc14 = await page.$eval('#rp-dpr-calc', (n) => n.textContent);
+  ok(/Check the two times/.test(calc14) && !/23h/.test(calc14), R(14, 'call 06:00, wrap 05:00 is flagged, never a 23h 00m day'), calc14);
+
+  /* phone: 4 the active tab clears the Sections button; 8 the equipment table fits; 18 the select; 19 the Fix links */
+  const ph4 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, storageState: await ctx.storageState() });
+  const q = await ph4.newPage();
+  q.on('pageerror', (e) => errors.push(e.message));
+  await q.goto(url('reports.html#dpr'), { waitUntil: 'networkidle' });
+  await settle(q, 800);
+  const tabv = await q.evaluate(() => {
+    const t = document.querySelector('nav.tabs [aria-selected="true"], nav.tabs .is-on, nav.tabs [aria-current="page"]');
+    const b = document.querySelector('nav.tabs .tabs-sections');
+    if (!t || !b || !b.offsetParent) return { skip: true, t: !!t, b: !!b };
+    const r = t.getBoundingClientRect(), s = b.getBoundingClientRect();
+    return { overlap: Math.max(0, Math.min(r.right, s.right) - Math.max(r.left, s.left)), tab: [r.left, r.right], btn: [s.left, s.right] };
+  });
+  ok(!tabv.skip && tabv.overlap === 0, R(4, 'at 390 the selected Reports tab is clear of the Sections button'), tabv);
+
+  await q.goto(url('reports.html?day=1#kit'), { waitUntil: 'networkidle' });
+  await settle(q, 600);
+  await q.click('[data-action="kit-seed"]');
+  await settle(q, 400);
+  const kit = await q.evaluate(() => {
+    const t = document.querySelector('.rp-kit-table'), box = t && t.closest('.rp-scroll');
+    const tick = t && t.querySelector('.rp-kit-tick input');
+    const x = t && t.querySelector('[data-action="kit-remove"]');
+    return {
+      page: document.documentElement.scrollWidth, vw: window.innerWidth,
+      fits: box ? box.scrollWidth <= box.clientWidth + 1 : null,
+      tick: tick && Math.round(tick.getBoundingClientRect().width),
+      removeRight: x && Math.round(x.getBoundingClientRect().right)
+    };
+  });
+  ok(kit.page <= kit.vw && kit.fits === true && kit.tick >= 24 && kit.removeRight <= kit.vw, R(8, 'at 390 the equipment table fits its card: no page overflow, Back and Remove on screen, 24px+ tick boxes'), kit);
+
+  await q.goto(url('stripboard.html#stripboard'), { waitUntil: 'networkidle' });
+  await settle(q, 600);
+  const selw = await q.$eval('#sb-target', (n) => Math.round(n.getBoundingClientRect().width));
+  ok(selw >= 200, R(18, 'at 390 the pages-per-day select is wide enough for “4 7/8 pp · default”'), selw);
+
+  await q.goto(url('preprod.html#step-ready'), { waitUntil: 'networkidle' });
+  await settle(q, 600);
+  const fix = await q.$$eval('.pp-check a', (ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)));
+  ok(fix.length > 0 && fix.every((h) => h >= 44), R(19, 'the Fix → links are 44px tall on a touch screen'), fix);
+  await ph4.close();
+}
 
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();

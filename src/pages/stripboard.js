@@ -153,7 +153,7 @@ function renderHeader(scenes, rows) {
     statCard({
       label: 'Script pages', value: scenes.length ? formatEighths(eighths) : '—',
       unit: scenes.length ? (eighths === 8 ? 'page' : 'pages') : '',
-      note: pace ? `avg ${formatEighths(pace.avg)} pp / shoot day` : (scenes.length ? eighths + ' eighths' : ''),
+      note: pace ? `avg ${formatEighths(pace.avg)} pp / shoot day` : (scenes.length ? 'no shoot days yet' : ''),
       class: 'sb-kpi-pages'
     }),
     statCard({
@@ -1187,6 +1187,10 @@ delegate(document, 'click', '[data-action="sb-banner-remove"]', (e, el) => {
   if (!gone) return;
   DPR.removeBanner(day, gone.id);
   render();
+  /* The Remove button was rebuilt, so focus fell to <body>: land on the day's + Banner. */
+  const add = document.querySelector(`[data-action="sb-banner-add"][data-day="${day}"]`);
+  const addBtn = add && add.closest('.sb-banner-menu') && add.closest('.sb-banner-menu').querySelector('.tb-menu-btn');
+  if (addBtn) addBtn.focus();
   const said = `${DPR.bannerLabel(gone.kind)} removed from Day ${day}.`;
   announce(said);
   toast(said, { action: 'UNDO', onAction: () => { DPR.addBanner(day, gone); render(); announce('Undone.'); } });

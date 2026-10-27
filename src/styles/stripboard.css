@@ -97,6 +97,9 @@
 .sb-target-ctl,
 .sb-day-ctl,
 .sb-banner-pos { height: var(--h-compact); }
+.sb-target { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+/* "4 7/8 pp · default" is the longest option; at 390 the select was 165px and cut it. */
+.sb-target-ctl { min-width: 13rem; }
 .sb-day-sel.k-input { font-family: var(--f-mono); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------

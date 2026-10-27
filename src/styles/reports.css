@@ -393,7 +393,10 @@
   /* Sides start their own page when the whole document is printed —
      but not when the sides are the only thing being printed, or the
      job opens with a blank sheet. */
-  body:not(.rp-print-sides) #sides { break-before: page; }
+  body:not(.rp-print-sides) #main > section:not([hidden]):not(#sides) ~ #sides { break-before: page; }
+  /* (Only when another section is printed ahead of it: with the tabs'
+     other sections hidden, Ctrl+P on the Sides tab left page 1 holding
+     the stat strip alone.) */
 
   /* One view at a time. Set by printOnly() in reports.js, removed
      again after the dialog closes. */
@@ -407,7 +410,7 @@
    what verify measures. The matrix's dense columns are marked with a
    wash AND a heavier rule, and listed in words underneath, so density
    is never carried by colour alone. */
-.rp-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rp-scroll { position: relative; /* the visually-hidden header cells inside are absolute: without this they escape the box and widen the page */ max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .rp-stats { margin-block: var(--s4); }
 .bd-head > .k-stat-strip { grid-column: 1 / -1; margin-top: var(--s3); }
 /* The DPR's six figures as an even grid. As a wrapping flex row the
@@ -601,6 +604,13 @@
 .rp-kit-add .rp-in { flex: 1 1 auto; }
 
 @media (max-width: 719px) {
+  /* The equipment table fits a phone's card (324px at 390): Back and Remove
+     were off screen behind a sideways scroll with no cue. */
+  .rp-kit-table th, .rp-kit-table td { padding-inline: 2px; }
+  .rp-kit-table td .rp-in { min-width: 2.5rem; }
+  .rp-kit-table td:first-child .rp-in { min-width: 4.5rem; }
+  .rp-kit-table td:nth-child(2) .rp-in { min-width: 2.5rem; width: 2.5rem; }
+  .rp-kit-tick input { min-width: 36px; }
   .rp-row { grid-template-columns: minmax(0, 1fr) 5rem; }
   .rp-row .rp-in:nth-child(3) { grid-column: 1 / -1; }
   .rp-row.is-two { grid-template-columns: minmax(0, 1fr); }

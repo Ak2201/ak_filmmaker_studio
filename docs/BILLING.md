@@ -1703,3 +1703,36 @@ as §61 left them. A mode change applies to NEW purchases only.
   - Every `subscription.*` event goes to `mark_subscription_status`, which
     never undoes a terminal status.
   - `x-razorpay-event-id` is logged.
+
+## 27. Renewal reminders (schema §63, 27 Oct 2026). NOT YET RUN LIVE.
+
+One e-mail before each auto-pay charge, about 48 hours ahead, once per
+billing cycle. It is a courtesy beside Razorpay's own pre-debit notice and is
+never in the payment path.
+
+- **The claim.** `claim_renewal_reminders(p_within default '48 hours',
+  p_limit default 200)` (service role only) picks subscriptions that are
+  `active` or `authenticated`, not `cancel_at_period_end`, with `current_end`
+  in the future and within the window, an e-mail on the account, and
+  `reminded_for` distinct from `current_end`. It stamps `reminded_for =
+  current_end` on them in the same statement (`FOR UPDATE SKIP LOCKED`), so
+  two runs at once never send one twice, and returns `subscription_row_id,
+  email, name, product, plan_name, period, days, amount_minor, currency,
+  next_charge_at`. A charge moves `current_end`, so the next cycle is
+  claimable again with no reset.
+- **The release.** `release_renewal_reminder(row, for)` clears
+  `reminded_for` only while it still equals `for`, after a failed send.
+- **The sender.** `rzp-remind` (deploy with `--no-verify-jwt`): POST only,
+  `x-cron-secret` compared in constant time with the `CRON_SECRET` secret
+  (503 when unset, 401 when wrong). With no `RESEND_API_KEY` / `MAIL_FROM`
+  it answers 503 and claims NOTHING. Otherwise it claims, sends each with
+  `renewalReminderMail` (Resend Idempotency-Key `remind-<row>-<charge
+  date>`), releases each failure, and answers 200 `{sent, failed, skipped}`.
+  The mail names the amount, the plan and the date, and says "Cancel anytime
+  in Settings → Plan & purchases → Cancel auto-pay; nothing more is charged
+  after you cancel".
+- **The schedule.** Hourly, by Supabase Cron (pg_cron + pg_net, the secret in
+  Vault) or by `.github/workflows/renewal-reminders.yml` (secrets
+  `FMS_FUNCTIONS_URL`, `CRON_SECRET`; a no-op without them). The exact steps
+  and SQL are `docs/LIVE-STEPS-2026-10-27.md` "§63 renewal reminders".
+- sha256 `39984700e14ed247e9ef0255484fe020ad55e9923eae3fc3bfa2ec60e1fea54e`.

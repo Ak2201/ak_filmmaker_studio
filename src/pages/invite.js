@@ -71,7 +71,7 @@ import { stashPlan } from '../lib/start-model.js';
    retired; a paid week of the whole studio leads this page instead, with
    its price, its length, its deadline and its cap read from the server
    (billing.js passOffer(), pass-view.js) and never typed here. */
-import { passPhase, passFacts, mayBuyPass, passCta } from '../lib/pass-view.js';
+import { passPhase, passFacts, mayBuyPass, passCta, passTerms, passMode } from '../lib/pass-view.js';
 import { bindPassTimers, passClock } from '../lib/plan-gate.js';
 
 const app = document.getElementById('app');
@@ -92,7 +92,7 @@ function refreshShop() {
     if ((want !== 'USD' || v.currency === 'USD') && Object.keys(v.plans).length) { shopNow = v; render(); }
   }).catch(() => { /* the list prices stand */ });
 }
-const prices = () => listPriceBlock(shopNow);
+const prices = () => listPriceBlock(shopNow, Billing.cachedModes().plan);
 const fromAbout = () => (shopNow && fromDay(shopNow)) || perDay(LIST_PRICE.starter);
 
 /* A ?ref= code from the link that brought this tab (an ad, a referral,
@@ -142,6 +142,7 @@ function deckFor(c, g, walled) {
     trialsOff: configured && !signedIn && trialsOff(),
     pass: passPhaseNow(),
     passPrice: (passFacts(passOfferNow) || {}).price || '',
+    passShort: passTerms(passOfferNow).short,
     state: g.state,
     walled: !!walled,
     trialHere: !!trialOffer,
@@ -236,13 +237,18 @@ let passWanted = false;
 function passSection(signedIn) {
   const f = passFacts(passOfferNow);
   if (!f) return null;
-  const t = section('pass', 'Launch offer', 'Try the whole studio for ' + f.price + '.',
-    f.length + ' of the whole studio, every stage, on your own films, for ' + f.price + '. Once per account, paid once through Razorpay; nothing renews. Then choose a yearly plan, or don’t.');
+  /* The terms are the server's mode in offer-terms.js's words (§62). */
+  const terms = passTerms(passOfferNow);
+  const t = section('pass', 'Launch offer', terms.mode === 'renew' ? 'Try the whole studio.' : 'Try the whole studio for ' + f.price + '.',
+    'The whole studio, every stage, on your own films: ' + terms.line + '. Once per account, through Razorpay. ' + (terms.mode === 'renew'
+      ? 'Cancel in Settings, under Plan & purchases, and you keep the days already paid for.'
+      : 'Then choose a yearly plan, or don’t.'));
+  t.dataset.offerMode = terms.mode || 'unknown';
   t.append(passClock());
   t.append(h('div.iv-actions', {}, [
     signedIn
-      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'buy-pass', text: passCta(f) })
-      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-iv-action': 'pass-intent', text: passCta(f) })
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'buy-pass', text: passCta(terms.mode === 'renew' ? null : f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-iv-action': 'pass-intent', text: passCta(terms.mode === 'renew' ? null : f) })
   ]));
   if (signedIn) t.append(h('p.bd-sub', { id: 'passMsg', role: 'status', 'aria-live': 'polite', text: '' }));
   else t.append(legalLine('You sign in with Google first; the payment comes after. By continuing you agree to the '));
@@ -608,7 +614,7 @@ async function buyPass(btn) {
   const was = btn.textContent;
   btn.disabled = true;
   try {
-    await Billing.buyPass({ accountId: lastStatus && lastStatus.account_id, onStatus: (t) => { btn.textContent = t; } });
+    await Billing.buyPass({ accountId: lastStatus && lastStatus.account_id, shownMode: passMode(passOfferNow), onStatus: (t) => { btn.textContent = t; } });
     say('You are in for the week. Opening the studio…');
     const c = cloud();
     if (c && c.runGate) await c.runGate();
@@ -616,7 +622,7 @@ async function buyPass(btn) {
   } catch (e) {
     btn.disabled = false; btn.textContent = was;
     say((e && e.message) || 'The pass could not be bought just now. Please try again.', !(e && e.code === 'dismissed'));
-    if (e && (e.hint === 'closed' || e.code === 'closed')) loadPass(true);
+    if (e && (e.hint === 'closed' || e.code === 'closed' || e.hint === 'renew_off' || e.code === 'terms')) loadPass(true);
   }
 }
 
@@ -701,11 +707,13 @@ if (!(cloud() && cloud().getSession && cloud().getSession())) {
 }
 /* The pass offer is public (trial_offer().pass, anon): read signed in
    or out, and redrawn when it lands. Null leaves the page as it was. */
+let modesSeen = null;
 function loadPass(fresh = false) {
   Billing.passOffer({ fresh }).then((o) => {
-    const had = JSON.stringify(passOfferNow && passOfferNow.raw);
+    const had = JSON.stringify([passOfferNow && passOfferNow.raw, modesSeen]);
     passOfferNow = o;
-    if (JSON.stringify(o && o.raw) !== had) render();
+    modesSeen = Billing.cachedModes();   // §62: the price lines follow the server's modes
+    if (JSON.stringify([o && o.raw, modesSeen]) !== had) render();
   }).catch(() => { /* no offer */ });
 }
 async function loadPlans() {

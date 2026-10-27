@@ -1663,3 +1663,34 @@ administrator):
 10. As finance: `admin_set_billing_modes('once','once')`. A new
     `rzp-subscribe` is refused `renew_off`, and an existing running
     subscription still renews.
+
+## §63 RENEWAL REMINDERS — WRITTEN 27 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-63-renewal-reminders.sql`; checks in
+`scripts/schema-tests/renewal-reminders.sql` (21).
+
+**Surface.** One column, `subscriptions.reminded_for`, readable by the row's
+owner through §62's `sub_select_own` (it is a date and says nothing new).
+Two functions, `claim_renewal_reminders(interval, int)` and
+`release_renewal_reminder(uuid, timestamptz)`: SECURITY DEFINER, execute
+revoked from `public`, `anon` and `authenticated`, granted to `service_role`,
+and each calls `billing_require_service()` as well. The claim returns e-mail
+addresses, so it must never be reachable from a client.
+
+**The function.** `rzp-remind` runs with `--no-verify-jwt`; its only guard is
+the `x-cron-secret` header against `CRON_SECRET`, compared in constant time.
+An unset secret is a 503, never a pass. The secret lives in the function's
+secrets and in Vault (pg_cron) or a GitHub repository secret, never in a
+file or in `cron.job`'s command text.
+
+**Live checks to run** (after §63):
+1. `has_function_privilege` for `anon` / `authenticated` /
+   `service_role` on `claim_renewal_reminders(interval,int)` → f, f, t (63.4).
+2. As a signed-in member: `POST /rest/v1/rpc/claim_renewal_reminders` → 42501
+   (or 404 from PostgREST for a function the role cannot execute). As anon →
+   the same. Same for `release_renewal_reminder`.
+3. `curl -X POST …/functions/v1/rzp-remind` with no header → 401; with a
+   wrong header → 401; with the right one → 200 (or 503 while Resend is not
+   configured, and then no row's `reminded_for` changed).
+4. With a TEST subscription due within 48 hours: one run → one e-mail and
+   `reminded_for = current_end`; a second run → `sent: 0`.

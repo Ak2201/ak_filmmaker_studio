@@ -29,6 +29,12 @@
    paid year (never for a grant, which has no end). In days, not seconds:
    a renewal is a decision, not a countdown. Nothing is stored.
 
+   AUTO-PAY (schema §62). With a running auto-pay for the plan or pass
+   held, the same window says when it renews and at what amount
+   (offer-terms.js renewsText) and points at Settings, where it is
+   cancelled; the manual RENEW button is drawn only without one. A
+   cancelled auto-pay behaves exactly as a one-time purchase.
+
    THE LAUNCH PASS TOO (schema §61). A pass is Pro for a few days, so for
    its whole length the block says "PASS ENDS IN 5 days · CHOOSE A YEARLY
    PLAN" (hours on its last day), the same block the year's end uses.
@@ -45,6 +51,24 @@ import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { h } from '../lib/dom.js';
 import { countdown } from '../lib/trial-time.js';
+import { renewsText } from '../lib/offer-terms.js';
+
+/* "3 Nov" for the rail's narrow block. */
+const shortDay = (iso) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''; };
+/* The running auto-pay for `product`, or null. */
+const autopayFor = (cp, product) => (cp && cp.autopay && cp.autopay.live && cp.autopay.product === product ? cp.autopay : null);
+/** The rail block for a running auto-pay: when it renews, and the way to
+ *  Settings. Always true (it drew). */
+function paintAutopay(block, ap, fallbackIso) {
+  block.dataset.mode = 'autopay';
+  block.replaceChildren(
+    h('span.sh-rail-trial-label', { text: 'AUTO-PAY' }),
+    h('span.sh-rail-trial-time', { text: renewsText(shortDay(ap.nextChargeAt || ap.currentEnd || fallbackIso), ap.price) }),
+    h('a.sh-rail-trial-cta', { href: 'settings.html#autopay', text: 'MANAGE' }));
+  block.hidden = false;
+  block.classList.remove('is-urgent');
+  return true;
+}
 
 let tick = null;      // the one-second repaint
 let endTimer = null;  // the one-shot at expiry
@@ -68,6 +92,7 @@ function paintRenew() {
   if (!block || !cp || cp.reason !== 'paid' || !cp.planUntil) return false;
   const left = Math.ceil((Date.parse(cp.planUntil) - now()) / 86400000);
   if (!(left >= 0 && left <= RENEW_DAYS)) return false;
+  { const ap = autopayFor(cp, cp.plan); if (ap) return paintAutopay(block, ap, cp.planUntil); }
   block.dataset.mode = 'renew';
   block.replaceChildren(
     h('span.sh-rail-trial-label', { text: 'PLAN ENDS IN' }),
@@ -87,6 +112,8 @@ function paintPass() {
   const ms = ends.getTime() - now();
   if (!(ms > 0)) return false;
   const days = Math.ceil(ms / 86400000), hrs = Math.ceil(ms / 3600000);
+  { const cp = PlanGate.currentPlan ? PlanGate.currentPlan() : null; const ap = autopayFor(cp, 'pass');
+    if (ap) { paintAutopay(block, ap, ends.toISOString()); armExpiry(ends); return true; } }
   block.dataset.mode = 'pass';
   block.replaceChildren(
     h('span.sh-rail-trial-label', { text: 'PASS ENDS IN' }),
@@ -185,7 +212,7 @@ function paint(ends) {
   const text = countdown(ms);
   const block = railBlock();
   if (block) {
-    if (block.dataset.mode === 'renew' || block.dataset.mode === 'pass') { block.replaceChildren(); delete block.dataset.mode; }
+    if (block.dataset.mode === 'renew' || block.dataset.mode === 'pass' || block.dataset.mode === 'autopay') { block.replaceChildren(); delete block.dataset.mode; }
     fillRail(block);
     block.hidden = false;
     const chip = takeChip();

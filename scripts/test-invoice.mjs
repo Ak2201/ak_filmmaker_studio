@@ -1,5 +1,5 @@
 /* npm run test:invoice — the pure half of buyer invoices (src/lib/invoice.js). */
-import { gstinValid, financialYear, invoiceNumber, normaliseGstin, amountInWords } from '../src/lib/invoice.js';
+import { gstinValid, financialYear, invoiceNumber, normaliseGstin, amountInWords, coverLine } from '../src/lib/invoice.js';
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('  ✗ ' + m); } };
 const eq = (a, b, m) => ok(a === b, `${m} — got ${a}, want ${b}`);
@@ -38,5 +38,16 @@ eq(amountInWords(12345678900), 'Rupees Twelve Crore Thirty-Four Lakh Fifty-Six T
 eq(amountInWords(10000000000), 'Rupees Ten Crore only', 'words: round crore');
 eq(amountInWords(0), 'Rupees Zero only', 'words: zero');
 
+/* what the payment bought: a pass is a pass, a year is a year, and the
+   receipt makes no renewal claim either way (27 Oct 2026) */
+{
+  const pass7 = coverLine({ period: 'pass', valid_from: '2026-11-01T00:00:00Z', valid_until: '2026-11-08T00:00:00Z' }, '₹7.00');
+  const year = coverLine({ period: 'year', valid_from: '2026-11-01T00:00:00Z', valid_until: '2027-11-01T00:00:00Z' }, '₹1.64');
+  const cases = [[pass7 === '7-day pass', 'a week pass reads "7-day pass": ' + pass7],
+    [coverLine({ period: 'pass' }) === 'Week pass', 'a pass without dates reads "Week pass"'],
+    [year === '1-year plan · about ₹1.64 a day', 'a year keeps its per-day figure: ' + year],
+    [!/renew/i.test(pass7 + year), 'no renewal claim on a receipt']];
+  for (const [c, m] of cases) { if (c) pass++; else { fail++; console.log('  ✗ ' + m); } }
+}
 console.log(`invoice: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

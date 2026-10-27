@@ -35,7 +35,7 @@ import Account from '../lib/account.js';
 import { errorSentence } from '../lib/gate.js';
 import { connectProject } from '../lib/chrome-auth.js';
 import { passOffer, cachedPassOffer } from '../lib/billing.js';
-import { passPhase, passFacts, passCta } from '../lib/pass-view.js';
+import { passPhase, passFacts, passCta, passMode } from '../lib/pass-view.js';
 import '../styles/auth.css';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
@@ -432,7 +432,11 @@ export function renderAccountBlock() {
     /* The public free trial is retired (owner, 27 Oct 2026): while the
        launch pass is on sale the row names it, with the server's price;
        otherwise it is the generic way to the offer page. */
-    const passRow = () => (passPhase(cachedPassOffer()) === 'open' ? '→ ' + passCta(passFacts(cachedPassOffer())) : '→ SEE PLANS');
+    /* On auto-renew (§62) a price never stands without its terms, and a
+       menu row has no room for them: the row names the offer, not the
+       price, and the offer page says both. */
+    const passRow = () => (passPhase(cachedPassOffer()) === 'open'
+      ? '→ ' + passCta(passMode(cachedPassOffer()) === 'renew' ? null : passFacts(cachedPassOffer())) : '→ SEE PLANS');
     if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' }));
     else {
       const row = h('a.am-item', { href: 'invite.html', text: passRow() });

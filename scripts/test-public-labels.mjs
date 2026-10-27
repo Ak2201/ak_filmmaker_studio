@@ -9,7 +9,10 @@ const elements = nav.phases.flatMap((p) => p.modules).find((m) => m.id === 'elem
 ok('marketing "catalog" page is named like the app module', elements && mk.catalog.label === elements.label);
 const purchase = nav.global.find((g) => g.id === 'purchase');
 for (const f of ['src/ui/shell.js', 'src/lib/settings-model.js', 'src/pages/settings.js']) {
-  ok(f + ' calls purchase.html by its rail label "' + purchase.label + '"', !read(f).includes('Plan & purchases'));
+  /* Only where the words point at purchase.html: since 27 Oct 2026 (§62)
+     "Plan & purchases" is also the name of a Settings tab, which is fine. */
+  const named = read(f).split('\n').filter((l) => l.includes('Plan & purchases') && /purchase\.html|from Plan & purchases|in Plan & purchases/.test(l));
+  ok(f + ' calls purchase.html by its rail label "' + purchase.label + '"' + (named.length ? ': ' + named[0].trim().slice(0, 120) : ''), !named.length);
 }
 const chrome = read('src/ui/chrome.js');
 const sheet = chrome.slice(chrome.indexOf('const DEFAULT_SHORTCUTS'), chrome.indexOf('];', chrome.indexOf('const DEFAULT_SHORTCUTS')));

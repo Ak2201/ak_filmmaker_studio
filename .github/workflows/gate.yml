@@ -112,7 +112,7 @@ jobs:
       - run: npm run prove:ai-desk
       # Sticky notes, beat <-> scene sync and the shared beat sheet (HISTORY
       # 61-62), then the proofs that ran only by hand until the full-app QA
-      # (HISTORY 66). All read this job's gate-off dist/.
+      # (HISTORY 67). All read this job's gate-off dist/.
       - run: npm run prove:notes
       - run: npm run prove:beat-sync
       - run: npm run prove:story-coedit

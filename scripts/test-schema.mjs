@@ -534,6 +534,16 @@ runChecks('autorenew.sql');
   }
 }
 /* --- end §62 --- */
+/* --- §63 (renewal reminders) --- on §62 (a column on subscriptions and two
+   service-only functions), loaded twice. ABOVE the purge, which must stay
+   last. --- */
+for (const f of ['supabase/schema/schema-63-renewal-reminders.sql', 'supabase/schema/schema-63-renewal-reminders.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §63 loads (and re-runs cleanly)');
+runChecks('renewal-reminders.sql');
+/* --- end §63 --- */
 /* --- the clean-slate purge (supabase/schema/patches/purge-test-data-2026-10-27.sql)
    --- LAST, after every section (and §62's when it lands above this block):
    it COMMITS and leaves one sign-in, so nothing may run after it. It runs

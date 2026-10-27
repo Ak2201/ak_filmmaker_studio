@@ -15,6 +15,7 @@ import { perDay, LIST_PRICE } from './plans.js';
 import { errorSentence } from './gate.js';
 import { cleanRef, captureAttribution } from './attribution.js';
 import { passName, passDays } from './pass-view.js';
+import { offerTerms } from './offer-terms.js';
 
 /* ---- the plan they came to buy ------------------------------------ */
 
@@ -89,10 +90,12 @@ export const FREE_LINE = 'The studio is free to use right now — nothing to buy
 /* What a plan actually does. Names from planName(), never typed. */
 /** The plan section's deck, with the per-day figure in the currency the
  *  cards beside it are drawn in (`fromFigure`, price-model fromDay(view));
- *  without one, the rupee figure. */
-export const deckFor = (fromFigure) => 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
+ *  without one, the rupee figure. `mode` is the server's plan_mode (§62):
+ *  its terms come from offer-terms.js, and an unknown one says neither. */
+const deckTerms = (mode) => { const t = offerTerms(mode, '', 'year'); return t.short ? ' · ' + t.short : ''; };
+export const deckFor = (fromFigure, mode) => 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
   + Billing.planName('indie') + ' to prepare it, ' + Billing.planName('pro') + ' to shoot and finish it — and sets how much syncs to the cloud. '
-  + 'A year at a time, from about ' + (fromFigure || perDay(LIST_PRICE.starter)) + ' a day; nothing renews by itself. Nothing you write is ever deleted, on any plan or none.';
+  + 'A year at a time, from about ' + (fromFigure || perDay(LIST_PRICE.starter)) + ' a day' + deckTerms(mode) + '. Nothing you write is ever deleted, on any plan or none.';
 export const DECK = deckFor('');
 
 /** The plan section's heading for a signed-in account with plans loaded. */

@@ -410,7 +410,7 @@ add a form to a page that re-renders from a data load, keep its draft.
 
 ## Left open by the full-app QA (27 Oct 2026)
 
-HISTORY item 66. None is high severity. Each was confirmed by the testers and
+HISTORY item 67. None is high severity. Each was confirmed by the testers and
 declined by the fixer for the reason given (a product decision, an owner
 schema step, a redesign, or not reproduced). Delete an entry when it is fixed.
 

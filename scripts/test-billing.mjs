@@ -383,6 +383,61 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
   const rem = Ms.renewalReminderMail({ email: 'sub@example.com', plan_name: 'Pro', period: 'pass', days: 7, amount_minor: 9900, currency: 'INR', next_charge_at: '2026-11-03T10:00:00Z' });
   ok(rem.subject.includes('3 November 2026') && rem.text.includes('₹99') && rem.text.includes('Settings → Plan'), 'the pre-charge reminder names the date, the amount and where to cancel');
   eq(Ms.renewalReminderMail({ email: 'x@y.in' }), null, 'no next charge date, no reminder');
+
+  /* ---- §63: the reminder is sent, once per cycle ---- */
+  ok(rem.text.includes('Cancel anytime in Settings → Plan & purchases → Cancel auto-pay; nothing more is charged after you cancel')
+     && rem.subject.includes('₹99') && rem.text.includes('every 7 days') && rem.text.includes(Ms.REFUND_TERMS),
+    'the reminder says where to cancel and that nothing more is charged after, with the amount, the repeat and the refund terms');
+  const remRow = { subscription_row_id: 'sub-row-1', email: 'sub@example.com', name: 'Rina', product: 'starter', plan_name: 'Basic',
+    period: 'year', days: 365, amount_minor: 59900, currency: 'INR', next_charge_at: '2027-10-27T10:00:00+00:00' };
+  const ry = Ms.renewalReminderMail(remRow);
+  ok(ry.text.startsWith(FB.name) && ry.text.includes('Hi Rina,') && ry.text.includes('Basic plan') && ry.text.includes('₹599 on 27 October 2027')
+     && ry.text.includes('every year'), 'a claim row (name, plan_name, year) words a yearly reminder');
+  ok(Ms.renewalReminderMail({ ...remRow, currency: 'USD', amount_minor: 1900 }).text.includes('$19'), 'a dollar subscription is reminded in dollars');
+  ok(!Ms.renewalReminderMail({ ...remRow, name: '<b>x</b>' }).html.includes('<b>x</b>'), 'the name is escaped in the HTML');
+
+  eq(await Ms.checkCronSecret('s3cret-value', ''), 'unset', 'cron: no CRON_SECRET configured is "unset" (503), never a pass');
+  eq(await Ms.checkCronSecret('', ''), 'unset', 'cron: an empty header against an empty secret is still "unset"');
+  eq(await Ms.checkCronSecret('s3cret-value', 's3cret-value'), 'ok', 'cron: the right secret passes');
+  eq(await Ms.checkCronSecret('s3cret-valuE', 's3cret-value'), 'bad', 'cron: one changed character fails');
+  eq(await Ms.checkCronSecret('s3cret', 's3cret-value'), 'bad', 'cron: a prefix fails');
+  eq(await Ms.checkCronSecret('', 's3cret-value'), 'bad', 'cron: a missing header fails');
+
+  const rfake = (rows, fail = {}) => { const log = []; return { log, rpc: async (fn, args) => { log.push([fn, args]); return fail[fn] ? { data: null, error: { message: fail[fn] } } : { data: rows[fn] ?? null, error: null }; } }; };
+  const r0 = rfake({ claim_renewal_reminders: [remRow] });
+  const n0 = await Ms.sendRenewalReminders(r0, {});
+  ok(n0.reason === 'not-configured' && r0.log.length === 0, 'reminders: with no Resend key NOTHING is claimed (no cycle marked reminded without a mail)');
+  const sentTo = [];
+  const r1 = rfake({ claim_renewal_reminders: [remRow, { ...remRow, subscription_row_id: 'sub-row-2', email: 'b@x.in' }] });
+  const n1 = await Ms.sendRenewalReminders(r1, { RESEND_API_KEY: 'k', MAIL_FROM: 'f' },
+    { fetch: async (u, init) => { sentTo.push(init); return new Response('{"id":"e"}', { status: 200 }); } });
+  ok(n1.ok && n1.sent === 2 && n1.failed === 0 && r1.log[0][0] === 'claim_renewal_reminders' && r1.log[0][1].p_within === '48 hours'
+     && !r1.log.some(([fn]) => fn === 'release_renewal_reminder'), 'reminders: claimed first (48 hours), each sent, nothing released');
+  ok(sentTo[0].headers['Idempotency-Key'] === 'remind-sub-row-1-2027-10-27T10:00:00.000Z', 'reminders: Resend key is remind-<row>-<charge date>, one per cycle');
+  const r2 = rfake({ claim_renewal_reminders: [remRow, { ...remRow, subscription_row_id: 'sub-row-2' }] });
+  let k = 0;
+  const n2 = await Ms.sendRenewalReminders(r2, { RESEND_API_KEY: 'k', MAIL_FROM: 'f' },
+    { fetch: async () => new Response('x', { status: k++ ? 200 : 500 }) });
+  ok(!n2.ok && n2.sent === 1 && n2.failed === 1
+     && r2.log.filter(([fn]) => fn === 'release_renewal_reminder').length === 1
+     && r2.log.some(([fn, a]) => fn === 'release_renewal_reminder' && a.p_row === 'sub-row-1' && a.p_for === remRow.next_charge_at),
+    'reminders: a failed send releases ITS cycle (row + charge date) and the rest still go');
+  const r3 = rfake({}, { claim_renewal_reminders: 'boom' });
+  ok((await Ms.sendRenewalReminders(r3, { RESEND_API_KEY: 'k', MAIL_FROM: 'f' })).reason === 'claim', 'reminders: a claim error is reported, never thrown');
+  ok((await Ms.sendRenewalReminders(rfake({ claim_renewal_reminders: [] }), { RESEND_API_KEY: 'k', MAIL_FROM: 'f' })).sent === 0, 'reminders: nothing due, nothing sent');
+
+  const remind = fs.readFileSync(new URL('../supabase/functions/rzp-remind/index.ts', import.meta.url), 'utf8');
+  ok(/x-cron-secret/.test(remind) && /checkCronSecret\(/.test(remind) && /json\(503/.test(remind) && /json\(401/.test(remind) && /'POST only'/.test(remind),
+    'rzp-remind: POST only, x-cron-secret checked (503 unset, 401 wrong)');
+  ok(remind.indexOf('RESEND_API_KEY') < remind.indexOf('sendRenewalReminders(svc'), 'rzp-remind: refuses before claiming when mail is not configured');
+  const wf = fs.readFileSync(new URL('../.github/workflows/renewal-reminders.yml', import.meta.url), 'utf8');
+  ok(/cron: '17 \* \* \* \*'/.test(wf) && /workflow_dispatch/.test(wf) && /exit 0/.test(wf) && /x-cron-secret: \$CRON_SECRET/.test(wf),
+    'the workflow runs hourly at :17, can be run by hand, and no-ops without its secrets');
+  const s63 = fs.readFileSync(new URL('../supabase/schema/schema-63-renewal-reminders.sql', import.meta.url), 'utf8');
+  ok(/add column if not exists reminded_for timestamptz/.test(s63) && /skip locked/.test(s63)
+     && /grant  execute on function public\.claim_renewal_reminders\(interval, int\)\s+to service_role/.test(s63)
+     && !/claim_renewal_reminders[^;]*to (anon|authenticated)/.test(s63),
+    'schema §63: one column, a SKIP LOCKED claim, service role only');
   const cfake = (rows) => { const log = []; return { log, rpc: async (fn, args) => { log.push([fn, args]); return { data: rows[fn] ?? null, error: null }; } }; };
   const cs = cfake({ claim_charge_receipt_email: cinv });
   const cout = await Ms.sendChargeReceiptOnce(cs, 'pay_C1', { RESEND_API_KEY: 'k', MAIL_FROM: 'f' }, { fetch: async () => new Response('{"id":"e"}', { status: 200 }) });

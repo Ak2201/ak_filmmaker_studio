@@ -370,15 +370,83 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
     "figure": "Account QA round 4 (27 Oct 2026): the Storage note 'Large-item storage has not been checked yet, so its figure below is not shown.' is gone; a cold tier means nothing large is stored, which the figure says",
     "shown": "Account QA round 4 (27 Oct 2026): the Storage note 'Large-item storage has not been checked yet, so its figure below is not shown.' is gone; a cold tier means nothing large is stored, which the figure says",
   },
-  "shoot": {},
-  "story": {},
-  "edit": {},
-  "deliverables": {},
-  "screening": {},
-  "invite": {},
-  "admin": {},
-  "vault": {},
-  "purchase": {}
+  shoot: {},
+  /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
+
+     Two videos left the Idea step on 11 Oct 2026 (the step is for
+     making an idea; on a feature the only two pinned to
+     step:feature/step-01 were about the SYNOPSIS and about starting a
+     SCREENPLAY). Their words went with them — `akash` and `vijay`
+     from the channel "Akash Vijay", `tamil-scene` and `starting` from
+     its why line, `seed` from the other's — and they were allowed
+     here with that reason, which is what this list is for.
+
+     A parallel session then re-baselined for the same change
+     (`0be3674`). The oracle now records the page as it actually
+     reads, so those five words are not missing from anything, the
+     allowance never fires, and the anti-rot check would fail the run
+     for a stale allowance. Removing it is that mechanism working.
+
+     This is the third time the note above has been proved right in
+     the same way, and it is worth one more line: an allowance is
+     valid only until the next recapture, and you do not control who
+     makes that or when. */
+  /* "5 Qualities of Great Loglines" stopped rendering on the Logline
+     step when it was un-approved on 11 Oct 2026, and un-approving it
+     was the point: YouTube answers its id with oEmbed 403 and
+     playabilityStatus LOGIN_REQUIRED, so it is sign-in gated and can
+     never play in the anonymous youtube-nocookie embed this app uses.
+     A facade that opens an error is worse than no facade. (The other
+     dead one, gJxY0n8xwOo, is removed outright — 404 / ERROR — and
+     took no words off a baselined page with it.)
+
+     Two words, one page, one deliberate content change: the case an
+     allowance exists for. Note for whoever reads this next — the row
+     this replaced was removed an hour earlier because a parallel
+     session recaptured the oracle for a different content change. If
+     that happens again this row stops firing, the anti-rot check
+     fails the run, and the answer is to delete it, not to re-add the
+     words. */
+  /* Emptied 11 Oct 2026: the deliberate re-baseline after the full-app
+     sweep recaptured the oracle without that video's title, so the row
+     stopped firing — the case the note above says to delete it in. The
+     host move to filmmakerstudio.in recaptured it again the same day,
+     for the footer's printed address; neither recapture moved a
+     data-key. */
+  /* Emptied 12 Oct 2026, and the note it replaced called this exactly:
+     it held `editor` for the story crumb ("Story editor" -> "Story"),
+     written as "the first row since the last recapture; the anti-rot
+     check fails the run if it ever stops firing". The free-trial pass
+     recaptured the oracle a few hours later — for invite.html and
+     settings.html, nothing to do with that crumb — so the baseline now
+     records the page as it actually reads, the allowance never fires,
+     and the run failed for a stale allowance. Deleting it is that
+     mechanism working, for the fourth time on this list.
+
+     FOURTH TIME. The pattern is no longer worth re-deriving: an
+     allowance is valid only until the next recapture, and you do not
+     control who makes that or when. */
+  /* AI Desk (12 Oct 2026): the suggest-steps and mapping panels used
+     to draw keyGate()'s key form ("Suggesting steps needs a key…",
+     "Mapping…"); they are AI pills that open the Desk now, and
+     signed out the pill is locked. Every word below was that form's
+     copy. */
+  /* Impeccable pass (19 Oct 2026): the header's two disabled export
+     buttons ("Synopsis .txt", "Outline .md") are one Export menu now, and
+     on an empty story (the baseline's state) there is nothing to export,
+     so the menu is not drawn. ".txt" survives in the import copy. */
+  story: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
+  edit: {},
+  deliverables: {},
+  screening: {},
+  /* The conversion pass's rows were absorbed by the 12 Oct 2026 recapture
+     that followed the UI revamp and the plan features. The pricing
+     pass's `finish` row (the Pro line reworded) was absorbed by the
+     17 Oct 2026 recapture after the one-frame navigation pass. */
+  invite: { renews: 'Auto-renew (27 Oct 2026, schema §62): every price line takes its terms from offer-terms.js in the mode the server publishes; signed out with no server the mode is unknown, so the list prices claim neither one-time nor auto-renew and "nothing renews by itself" left the page.', payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },
+  admin: {},
+  vault: { also: 'Sticky notes (23 Oct 2026): the Idea Vault became the board of notes and clippings; its intro and empty state were rewritten around notes, so the old clipping-only sentences left the page.', came: 'same change', can: 'same change', clipped: 'same change', hand: 'same change', lands: 'same change' },
+  purchase: { renews: 'Auto-renew (27 Oct 2026, schema §62): every price line takes its terms from offer-terms.js in the mode the server publishes; signed out with no server the mode is unknown, so the list prices claim neither one-time nor auto-renew and "nothing renews by itself" left the page.', production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },   // the once/pay/payment/yours rows retired 21 Oct 2026: the "Before you pay" terms (one payment for one year; the refund is yours) say them again
 };
 /* The 26 Oct 2026 `currency` / `rupee` allowance (budget rail icon) was absorbed by the 27 Oct 2026 re-baseline. */
 

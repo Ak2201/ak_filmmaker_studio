@@ -492,7 +492,7 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
       return tr;
     })));
     shotBody = h('div.k-table-wrap', { role: 'region', tabindex: '0', 'aria-label': 'Shots in this scene' }, [t]);
-  } else shotBody = h('p.bd-none', { text: 'No shots yet for this scene.' });
+  } else shotBody = h('p.bd-none', { text: 'No shots yet for this scene. Add them in the Shot list tab.' });
   sheet.append(sbCol('Shots · ' + mine.length, shotBody, 'vz-sb-shots'));
 
   // The storyboard frames, in shot order.
@@ -501,7 +501,7 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
   sheet.append(sbCol('Frames · ' + fr.length, fr.length
     ? h('ol.vz-sb-frames', {}, fr.map(({ f, s }) =>
       h('li', {}, [h('strong', { text: 'Shot ' + (s.number || '?') + ' ' }), h('span', { text: Shots.frameAction(f) || f.ref || 'untitled frame' })])))
-    : h('p.bd-none', { text: 'No frames drawn for this scene.' })));
+    : h('p.bd-none', { text: 'No frames drawn for this scene. Draw them in the Storyboard tab.' })));
 
   // The maps, read-only.
   const blocks = Shots.blocksOfScene(scene.id);

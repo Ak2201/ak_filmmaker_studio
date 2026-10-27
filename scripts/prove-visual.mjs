@@ -398,6 +398,66 @@ await settle(page, 300);
 ok(await page.evaluate(() => document.activeElement !== document.body && document.activeElement.dataset.action === 'mk-turn'), '29 a mark label keeps the focus moving on (to the turn buttons)', await activeDesc());
 ok(/Hero/.test(await page.$eval('.vz-map.is-editable', (m) => m.textContent)), '29 and the map shows the label');
 
+/* ---- round 3 findings -------------------------------------------- */
+// R1 scene board: Shots table fits its panel at 1440, no mid-word breaks
+await page.goto(url('visualize.html#scene-board'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.selectOption('#scene-board select', 'dragon-sc-3').catch(() => {});
+await settle(page, 300);
+const sbw = await page.evaluate(() => {
+  const w = document.querySelector('.vz-sb-shots .k-table-wrap');
+  const c = [...document.querySelectorAll('.vz-sb-table tbody tr:first-child td')].slice(1, 5).map((td) => td.getBoundingClientRect().height);
+  return w ? { client: w.clientWidth, scroll: w.scrollWidth, h: c } : null;
+});
+ok(sbw && sbw.scroll <= sbw.client, 'R1 the scene board Shots table fits its panel at 1440', sbw);
+ok(await page.$eval('.vz-sb-table td:nth-child(3)', (td) => getComputedStyle(td).whiteSpace === 'nowrap'), 'R1 short columns do not wrap inside a word');
+const sceneIds = await page.$$eval('#scene-board select option', (o) => o.map((x) => x.value));
+let sbEmpty1 = '';
+for (const id of sceneIds) {
+  await page.selectOption('#scene-board select', id);
+  await settle(page, 150);
+  sbEmpty1 = await page.evaluate(() => [...document.querySelectorAll('.vz-sb-col .bd-none')].map((n) => n.textContent).join('|'));
+  if (/shots yet/.test(sbEmpty1) && /frames drawn/.test(sbEmpty1)) break;
+}
+ok(/Shot list tab/.test(sbEmpty1) && /Storyboard tab/.test(sbEmpty1), 'R6 empty Shots and Frames say where to add them', sbEmpty1);
+
+// R2 + R4 + R5 + R8 shot list
+await page.goto(url('visualize.html#shot-list'), { waitUntil: 'networkidle' });
+await settle(page);
+ok(await page.evaluate(() => /\d+ shots? across/.test(document.querySelector('.vz-tools-lab')?.textContent || '') && !/setup/i.test(document.querySelector('.vz-tools-lab')?.textContent || '')), 'R4 the toolbar counts shots, not setups');
+ok(await page.evaluate(() => [...document.querySelectorAll('.vz-scene-progress [role="meter"], .vz-scene-progress')].every((n) => !/setups? completed/.test(n.textContent + (n.getAttribute('aria-label') || '')))), 'R4 scene progress counts shots');
+ok(await page.$eval('[data-action="vz-shot-lock"]', (b) => /can change this number/.test(b.title)), 'R5 the unlocked tooltip is a sentence');
+ok(await page.evaluate(() => [...document.querySelectorAll('.pdf-menu-host .tb-menu-btn')].every((b) => b.classList.contains('k-btn'))), 'R8 export menus are kit buttons');
+await page.click('[data-action="vz-cov-filter"][data-value="todo"]');
+await settle(page, 300);
+await page.focus('[data-shot] [data-shot-field="done"] >> nth=0');
+await page.keyboard.press('Space');
+await settle(page, 300);
+ok(await page.evaluate(() => document.activeElement !== document.body && !!document.activeElement.closest('[data-shot], .vz-cov-filter')), 'R2 ticking a shot out of "To shoot" keeps the focus on the page', await activeDesc());
+await page.click('[data-action="vz-cov-filter"][data-value="all"]');
+await settle(page, 300);
+
+// R3 empty stat strip
+const emptyCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const ep = await emptyCtx.newPage();
+await ep.goto(url('visualize.html'), { waitUntil: 'networkidle' });
+await settle(ep, 600);
+const strip = await ep.evaluate(() => document.querySelector('.vz-stats')?.textContent || '');
+ok(strip === '' || !/0\s*\/\s*0/.test(strip), 'R3 no "0 / 0" scenes covered with no scenes', strip);
+await emptyCtx.close();
+
+// R7 contacts: each person row is named
+await page.goto(url('contacts.html#contacts'), { waitUntil: 'networkidle' });
+await settle(page);
+const ctR = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll('.ct-person')];
+  const labels = rows.map((r) => r.getAttribute('aria-label'));
+  const dels = rows.map((r) => r.querySelector('[data-action="contact-del"]').getAttribute('aria-label'));
+  return { n: rows.length, grouped: rows.every((r) => r.getAttribute('role') === 'group'), named: labels.filter(Boolean).length, uniqueDel: new Set(dels).size, role: document.querySelector('.ct-role').placeholder };
+});
+ok(ctR.n > 0 && ctR.grouped && ctR.named === ctR.n && ctR.uniqueDel > 1, 'R7 person rows are labelled groups and Remove names the person', ctR);
+ok(!/Ravi/.test(ctR.role), 'R9 the role placeholder offers roles only', ctR.role);
+
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();
 server.close();

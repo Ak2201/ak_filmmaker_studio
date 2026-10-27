@@ -196,12 +196,12 @@ function renderHeader(scenes, shots, frames, boards) {
   const stats = statStrip([
     { label: shots.length === 1 ? 'shot' : 'shots', value: shots.length,
       note: shots.length ? done + ' in the can' : null, noteTone: shots.length && done === shots.length ? 'ok' : null },
-    { label: 'scenes covered', value: covered + ' / ' + scenes.length },
+    { label: 'scenes covered', value: scenes.length ? covered + ' / ' + scenes.length : '—' },
     { label: frames.length === 1 ? 'frame' : 'frames', value: frames.length },
     // Only once a shot carries an estimate: never a placeholder figure.
     Shots.minutesOf(shots).total ? { label: 'estimated', value: Shots.formatMinutes(Shots.minutesOf(shots).total) } : null,
     lookbookOn ? { label: refs === 1 ? 'reference' : 'references', value: refs } : null,   // lookbook boards
-    lens ? { label: 'Primary lens', value: lens.lens, note: plural(lens.count, 'setup', 'setups') } : null
+    lens ? { label: 'Primary lens', value: lens.lens, note: plural(lens.count, 'shot', 'shots') } : null
   ].filter(Boolean), { class: 'vz-stats', label: 'Visualise in numbers' });
   head.append(stats);
   return head;
@@ -293,7 +293,7 @@ function renderShotList(scenes, shots) {
     const time = Shots.formatMinutes(Shots.minutesOf(shots).total);
     wrap.append(h('div.vz-tools.pdf-menu-host', {}, [
       h('span.vz-tools-lab', {
-        text: shots.length + (shots.length === 1 ? ' setup' : ' setups')
+        text: shots.length + (shots.length === 1 ? ' shot' : ' shots')
             + ' across ' + sceneSpread(shots)
             + ' scenes' + (time ? ' · ' + time + ' estimated' : '')
       }),
@@ -321,7 +321,7 @@ function renderShotList(scenes, shots) {
         class: 'vz-cov-compact', attrs: { 'aria-pressed': covCompact ? 'true' : 'false' },
         title: covCompact ? 'Show every field of each shot' : 'Show only the number, size, move, lens and status'
       }) : null,
-      actionMenu('Export the shot division', exportItems('all'), { align: 'right' })
+      actionMenu('Export the shot division', exportItems('all'), { align: 'right', kit: 'secondary' })
     ].filter(Boolean)));
   }
 
@@ -483,7 +483,7 @@ function renderSceneBlock(group, dayMins = new Map()) {
     if (cov.setups) {
       block.append(h('div.vz-scene-progress', {}, [
         meter({
-          label: cov.done + ' of ' + plural(cov.setups, 'setup', 'setups') + ' completed',
+          label: cov.done + ' of ' + plural(cov.setups, 'shot', 'shots') + ' completed',
           value: cov.done, max: cov.setups, show: false,
           tone: cov.done === cov.setups ? 'ok' : null, class: 'vz-scene-meter'
         })
@@ -533,7 +533,7 @@ function renderSceneBlock(group, dayMins = new Map()) {
         label: 'Renumber', icon: 'format_list_numbered', size: 'sm', variant: 'ghost', action: 'vz-shot-renumber',
         title: 'Number the shots 1, 2, 3 in this order. Locked numbers (and ones like 4A) are kept.'
       }));
-      row.append(actionMenu('Export this scene', exportItems(scene.id), { align: 'right' }));
+      row.append(actionMenu('Export this scene', exportItems(scene.id), { align: 'right', kit: 'secondary' }));
     }
     block.append(row);
   }
@@ -650,7 +650,7 @@ function numberCell(shot, i) {
         icon: locked ? 'lock' : 'lock_open', iconOnly: true, size: 'sm', variant: 'ghost',
         action: 'vz-shot-lock', class: 'vz-lock' + (locked ? ' is-locked' : ''),
         attrs: { 'aria-pressed': locked ? 'true' : 'false' },
-        title: locked ? 'Locked — Renumber and moves keep this number. Press to unlock.' : 'Unlocked — Renumber and moves number this shot in order. Press to lock.'
+        title: locked ? 'Locked — Renumber and moves keep this number. Press to unlock.' : 'Unlocked — Renumber and moves can change this number. Press to lock it.'
       })
     ])
   ]);
@@ -1496,7 +1496,7 @@ async function exportShotlist(scope, kind, layout = 'list') {
     const tail = scope === Sheet.ALL ? 'shot_division' : 'shot_division_scene';
     // One fixed schema, whatever the column menu hides (see toCSV).
     download(Sheet.toCSV(scope), fileStem() + '_' + tail + '.csv', 'text/csv');
-    say('Exported ' + summary.shots + ' setups as CSV.');
+    say('Exported ' + summary.shots + ' shots as CSV.');
     return;
   }
   if (kind === 'zip') { exportPictures(Sheet, scope); return; }
@@ -1916,7 +1916,20 @@ delegate(document, 'change', '[data-shot-field]', (e, el) => {
 
   /* The status box keeps the focus, so Space walks a camera report down
      the list without the mouse. */
-  if (el.type === 'checkbox') { render('[data-shot="' + CSS.escape(id) + '"] [data-shot-field="' + key + '"]'); return; }
+  if (el.type === 'checkbox') {
+    /* Under "To shoot" / "In the can" the ticked row leaves the list: the
+       focus goes to the next row's box (else the one before, else the
+       filter button) instead of falling to <body>. */
+    const row = el.closest('[data-shot]');
+    const rows = [...document.querySelectorAll('[data-shot]')].filter((r) => r.querySelector('[data-shot-field="' + key + '"]'));
+    const at = rows.indexOf(row);
+    const gone = !keepShot(Shots.listShots().find((s) => s.id === id) || {});
+    const sib = gone ? (rows[at + 1] || rows[at - 1]) : null;
+    render(gone
+      ? (sib ? '[data-shot="' + CSS.escape(sib.dataset.shot) + '"] [data-shot-field="' + key + '"]' : '[data-action="vz-cov-filter"][data-value="' + covFilter + '"]')
+      : '[data-shot="' + CSS.escape(id) + '"] [data-shot-field="' + key + '"]');
+    return;
+  }
   if (el.tagName === 'SELECT') { render(); return; }
   if (key === 'number' || key === 'mins') {
     flagShotProblems();

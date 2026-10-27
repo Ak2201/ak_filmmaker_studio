@@ -869,6 +869,13 @@
 .vz-sb-shots .k-panel-body:has(> .k-table-wrap) { padding: 0; }
 .vz-sb-shots .k-table-wrap { border: 0; border-radius: 0; }
 .vz-sb-table tr.is-done td { color: var(--ink-muted); }
+/* Short values (size, angle, move, lens, status) never break inside a word;
+   only "What we see" (6th column) wraps. At 1440 the shots panel gets the
+   widest of the three tracks so the table fits without scrolling sideways. */
+.vz-sb-table td:not(:nth-child(6)), .vz-sb-table th:not(:nth-child(6)) { white-space: nowrap; }
+@media (min-width: 1280px) {
+  .vz-sb { grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr); }
+}
 .vz-sb-frames { padding-left: 1.2rem; margin: 0; color: var(--ink-body); font-size: var(--t-small); }
 .vz-sb-frames strong { color: var(--ink); }
 .vz-sb-mapgrid { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }

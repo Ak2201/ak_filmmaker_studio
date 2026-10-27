@@ -125,7 +125,8 @@ function renderContact(contact) {
      tabs.js opens the tab that holds it and the resolver lands on the
      card, where a missing id used to land on the top of the page. */
   const card = h('article.ct-person.hue-' + hueOf(contact.department), {
-    'data-contact': contact.id, id: 'c-' + contact.id
+    'data-contact': contact.id, id: 'c-' + contact.id,
+    role: 'group', 'aria-label': contact.name || 'New person'
   });
 
   card.append(h('div.ct-person-bar', {}, [
@@ -134,12 +135,12 @@ function renderContact(contact) {
       'aria-label': 'Name'
     }, contact.name),
     field('input.ct-role', {
-      type: 'text', placeholder: 'Role or job — "Ravi", "1st AC", "Line Producer"',
+      type: 'text', placeholder: 'Role or job — "Director", "1st AC", "Line Producer"',
       'data-contact-field': 'role', 'aria-label': 'Role or job'
     }, contact.role),
     deptSelect(contact.department),
     h('div.ct-person-acts', {}, [
-      iconBtn('✕', 'contact-del', 'Remove this person', false, true)
+      iconBtn('✕', 'contact-del', 'Remove ' + (contact.name || 'this person'), false, true)
     ])
   ]));
 
@@ -930,6 +931,13 @@ delegate(document, 'change', '[data-contact-field]', (e, el) => {
   const id = contactIdOf(el);
   const key = el.dataset.contactField;
   Contacts.updateContact(id, { [key]: el.value });
+  // The row's spoken name follows the Name box.
+  if (key === 'name') {
+    const row = el.closest('.ct-person'), del = row && row.querySelector('[data-action="contact-del"]');
+    const nm = el.value.trim();
+    if (row) row.setAttribute('aria-label', nm || 'New person');
+    if (del) { del.setAttribute('aria-label', 'Remove ' + (nm || 'this person')); del.title = 'Remove ' + (nm || 'this person'); }
+  }
   // Department moves the card to another group, so the list has to
   // rebuild — and focus follows the card to its new group rather than
   // falling to <body> (UX audit M1). Everything else only has to

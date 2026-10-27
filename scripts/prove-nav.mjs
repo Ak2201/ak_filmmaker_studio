@@ -236,7 +236,13 @@ async function worker() {
          real interaction, or 8s. Waiting for idle raced that timer, so a
          slow load read as a different band. Make the interaction happen,
          then wait for what it imported: every load sees the same band. */
+      /* …but only once the shell has mounted: its listener is attached in
+         mountShell(), and a move made before that (story.html renders late)
+         was lost, leaving the button to the 8s timer — the "tools differs by
+         arrival" that came and went at 390px. */
+      await page.waitForFunction(() => !!document.querySelector('.sh-rail'), null, { timeout: 15000 }).catch(() => {});
       await page.mouse.move(2, 2);
+      await page.mouse.move(4, 4);
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(500);
       results.push({ ...job, ...(await page.evaluate(probe)), errors });

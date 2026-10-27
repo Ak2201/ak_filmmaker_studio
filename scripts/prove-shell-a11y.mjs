@@ -286,8 +286,15 @@ async function ctxAt(width, height, extra = {}) {
   const pr = await page.evaluate(() => { const l = document.querySelector('#mkNav .mk-nav-pricing').getBoundingClientRect(); return { bottom: l.bottom, vh: innerHeight }; });
   ok(pr.bottom <= pr.vh, 'pricing at 390: Pricing is visible in the open menu without scrolling (bottom ' + Math.round(pr.bottom) + ' of ' + pr.vh + ')');
   await page.goto(BASE + 'pricing.html', { waitUntil: 'networkidle' });
-  const gap = await page.evaluate(() => { const l = document.querySelector('.pr-lede'), t = document.querySelector('.pr-trial'); return t.getBoundingClientRect().top - l.getBoundingClientRect().bottom; });
-  ok(gap >= 16, 'pricing at 390: the lede and the trial card have room between them (' + Math.round(gap) + 'px)');
+  /* The trial card became the launch-pass strip (§61), drawn only while a
+     pass is on sale: measure the lede against whatever follows it on the page. */
+  const gap = await page.evaluate(() => {
+    const l = document.querySelector('.pr-lede');
+    let n = l.parentElement.nextElementSibling;
+    while (n && !n.getClientRects().length) n = n.nextElementSibling;
+    return { px: n ? n.getBoundingClientRect().top - l.getBoundingClientRect().bottom : null, next: n ? n.className : null };
+  });
+  ok(gap.px !== null && gap.px >= 16, 'pricing at 390: the lede and the block after it (' + gap.next + ') have room between them (' + Math.round(gap.px) + 'px)');
   await ctx.close();
 }
 ok(/href="about\.html"[^>]*>About /.test(fs.readFileSync(path.join(DIST, '404.html'), 'utf8')), "the 404 page's About button opens about.html");

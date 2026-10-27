@@ -270,11 +270,11 @@ function paintInto(host) {
   }
 
   if (state.phase === 'loading') {
-    el.append(h('p.st-note', { text: 'Reading the account…' }));
+    host.append(h('p.st-note', { text: 'Reading the account…' }));
     return;
   }
-  if (state.phase === 'none')  { el.append(renderCreate()); return; }
-  if (state.phase === 'ready') { el.append(renderMembers(state.data, myEmail)); return; }
+  if (state.phase === 'none')  { host.append(renderCreate()); return; }
+  if (state.phase === 'ready') { host.append(renderMembers(state.data, myEmail)); return; }
 }
 
 /* ---- load --------------------------------------------------- */

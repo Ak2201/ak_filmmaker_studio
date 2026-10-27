@@ -1613,7 +1613,7 @@ try {
     }
     {
       const fine = await page.textContent('.pl-promise');
-      ok(/charged twice or by mistake/.test(fine) && /not activated/.test(fine), 'the fine print names the refund exceptions');
+      ok(/where Indian law requires it/.test(fine), 'the fine print names all three refund exceptions');
     }
     /* invite.html: the trial is offered, and the deck does not say "You are in". */
     await page.goto(BASE + 'invite.html');

@@ -457,7 +457,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
      the upgrade credit (refund.html §4, schema section 21), the legal. */
   wrap.append(h('div.pl-fine', {}, [
     h('p.pl-note', { text: `Each plan is a year of full access, paid once in ${orderCur() === 'USD' ? 'US dollars' : 'Indian rupees'} through Razorpay. Nothing renews or is charged automatically: when the year is ending, renew from this page and the new year starts where the old one stops.` }),
-    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final. Move up any time: what is left of your year counts toward the new plan.' }),
+    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, if the plan is not activated on your account, or where Indian law requires it. Otherwise a year is final. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
       'By paying you agree to the ',
       h('a', { href: 'terms.html', text: 'Terms of Service' }),

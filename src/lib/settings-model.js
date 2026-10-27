@@ -104,12 +104,12 @@ export function planSummary(cp, { off, signedIn, trialEndsAt }) {
   } else if (cp.reason === 'paid' && cp.passActive) {
     /* §61: the launch pass is Pro for a few days, not a plan to renew. */
     line = passName(cp.passDays) + (cp.planUntil ? ' · ends ' + new Date(cp.planUntil).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '. The whole studio is open; a yearly plan keeps it open after.';
-  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + (cp.planUntil ? ' · valid until ' + new Date(cp.planUntil).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '. Renew from Plan & purchases to add a year.' : ' · granted for good.');
+  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + (cp.planUntil ? ' · valid until ' + new Date(cp.planUntil).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '. Renew from Purchase to add a year.' : ' · granted for good.');
   else if (cp.reason === 'granted') line = 'Access given to you by the studio.';   // its planName is the free plan's
   else if (cp.reason === 'expired' && cp.passUsed) line = 'Your launch pass has ended. A yearly plan opens the studio again.';
   else if (cp.reason === 'expired' && cp.paidBefore) line = 'Your plan has ended. Buying a plan again brings it back.';
   else if (cp.reason === 'expired' && cp.used) line = 'Your free trial has ended. A plan brings it back.';
-  else if (fresh) line = 'No plan yet. Choose one from Plan & purchases.';
+  else if (fresh) line = 'No plan yet. Choose one from Purchase.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
   /* One LED pill, read from the same facts as the line, so it can never
      say something the line does not. */

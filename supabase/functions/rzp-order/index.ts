@@ -28,6 +28,12 @@
    is sent WITHOUT p_currency, so this function also works against a
    database where §56 has not run yet (the five-argument form).
 
+   THE LAUNCH PASS (schema §61). period 'pass' is accepted; the plan id in
+   the body is ignored for it (the pass is billing_settings.pass_plan), the
+   amount and the days are the database's, and every refusal — switched
+   off, closed, not rupees, already used, already on a plan, a promo code —
+   comes back as 400 { error: <sentence>, reason: <the SQL hint> }.
+
    Secrets (set with `supabase secrets set`, never in the repo):
      RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
    SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the
@@ -70,7 +76,7 @@ Deno.serve(async (req) => {
   const asked = String(body.period ?? 'year');
   const period = asked === 'lifetime' ? 'year' : asked;
   const code = normalisePromo(body.code) || null;
-  if (!PERIODS.includes(period)) return json(400, { error: 'Plans are bought a year at a time; there is no monthly period.' });
+  if (!PERIODS.includes(period)) return json(400, { error: 'Plans are bought a year at a time, or as the launch pass; there is no monthly period.', reason: 'period' });
   const currency = orderCurrency(body.currency);
   if (!currency) return json(400, { error: 'Orders are in rupees (INR) or US dollars (USD).' });
 
@@ -81,7 +87,11 @@ Deno.serve(async (req) => {
     p_user: user.id, p_plan: plan, p_period: period, p_account: body.account_id ?? null, p_code: code,
     ...(currency === 'INR' ? {} : { p_currency: currency })
   });
-  if (pendErr) return json(pendErr.code === '42501' ? 403 : 400, { error: pendErr.message });
+  /* `reason` is the refusal's HINT (schema §56 and §61): for a pass
+     'disabled' | 'closed' | 'inr_only' | 'used' | 'has_plan' | 'code', for a
+     year 'currency' | 'currency_closed' | 'same_plan' | 'downgrade' or a
+     promo reason. The page branches on it; `error` is the sentence to show. */
+  if (pendErr) return json(pendErr.code === '42501' ? 403 : 400, { error: pendErr.message, reason: pendErr.hint ?? null });
   const row = Array.isArray(pend) ? pend[0] : pend;
   if (!row?.payment_id) return json(500, { error: 'Could not record the payment.' });
 

@@ -31,6 +31,14 @@
    and a claim_refund_email() row both carry `currency`, and the amount is
    minor units of it — cents for a dollar sale, paise for a rupee one. A
    row from before §56 has no currency on the refund claim and is INR.
+
+   A LAUNCH PASS IS WORDED AS ONE (schema §61). An invoice carries
+   `period` (copied from its payment) and its own valid_from / valid_until;
+   a refund claim carries the payment's period, starts_at and ends_at. A
+   pass prints "7-day pass (until …)" with the length and the date taken
+   from THOSE dates — nothing here knows how long a pass is — and its
+   refund says no trial follows (§61 keeps the §34 refund trial off a
+   pass). A row without a period is a year, as every row before §61 was.
    ============================================================ */
 import { BRAND } from './brand.js';
 import { fmtMinor } from './razorpay.js';
@@ -45,6 +53,19 @@ const site = (p = '') => `https://${BRAND.host}/${p}`;
 const dateIST = (iso) => {
   const d = new Date(iso);
   return isNaN(d) ? '' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
+};
+
+/** Whole days from one ISO date to another, or null when either is
+ *  missing or the span is not positive. */
+const spanDays = (from, until) => {
+  const a = new Date(from), b = new Date(until);
+  if (!from || !until || isNaN(a) || isNaN(b) || b <= a) return null;
+  return Math.round((b - a) / 86400000);
+};
+/** "7-day pass (until 3 November 2026)", from the row's own dates. */
+const passLabel = (from, until) => {
+  const n = spanDays(from, until);
+  return (n ? `${n}-day pass` : 'launch pass') + (until && dateIST(until) ? ` (until ${dateIST(until)})` : '');
 };
 
 /** One message as Resend wants it, or null when there is no recipient. */
@@ -70,9 +91,26 @@ function message(to, subject, rows, paras) {
 export function receiptMail(inv) {
   if (!inv) return null;
   const link = site('purchase');
+  // §57: the invoice's own year (valid_until); ends_at for an older caller
+  const until = inv.valid_until || inv.ends_at;
+  if (inv.period === 'pass') {
+    const label = passLabel(inv.valid_from, until);
+    return message(inv.buyer_email, `Payment received: ${inv.plan_name} ${label.replace(/ \(.*$/, '')} (${inv.number})`, [
+      ['Invoice', inv.number],
+      ['Plan', `${inv.plan_name}, ${label}. It ends by itself; nothing renews automatically.`],
+      ['Amount paid', fmtMinor(inv.amount_paise, inv.currency || 'INR')],
+      ['Date', dateIST(inv.paid_at || inv.issued_at)],
+      ['Razorpay payment ID', inv.razorpay_payment_id]
+    ], [
+      `Hi ${inv.buyer_name || 'there'},`,
+      `Thank you for your purchase. Your ${inv.plan_name} ${label} is active on your account now. It ends by itself and nothing is charged automatically. To keep going after it, choose a yearly plan from your plan page; your work stays where it is.`,
+      { html: `You can download the invoice as a PDF from <a href="${link}">your plan page</a> at any time.`,
+        text: `You can download the invoice as a PDF from your plan page at any time: ${link}` }
+    ]);
+  }
   return message(inv.buyer_email, `Payment received: ${inv.plan_name} plan (${inv.number})`, [
     ['Invoice', inv.number],
-    ['Plan', `${inv.plan_name}, 1 year${inv.ends_at ? ' (valid until ' + dateIST(inv.ends_at) + ')' : ''}. Nothing renews automatically.`],
+    ['Plan', `${inv.plan_name}, 1 year${until ? ' (valid until ' + dateIST(until) + ')' : ''}. Nothing renews automatically.`],
     ['Amount paid', fmtMinor(inv.amount_paise, inv.currency || 'INR')],
     ['Date', dateIST(inv.paid_at || inv.issued_at)],
     ['Razorpay payment ID', inv.razorpay_payment_id]
@@ -89,15 +127,19 @@ export function refundMail(r) {
   if (!r) return null;
   const done = r.status === 'processed';
   const amount = fmtMinor(r.amount_paise, r.currency || 'INR');
+  const pass = r.period === 'pass';
+  const label = pass ? passLabel(r.starts_at, r.ends_at) : '';
   return message(r.buyer_email, done ? `Refund processed: ${amount}` : 'Your refund could not be completed', [
     ['Refund amount', amount],
-    ['Plan', r.plan_name],
+    ['Plan', pass ? `${r.plan_name || ''} ${label}`.trim() : r.plan_name],
     ['Invoice', r.invoice_number],
     ['Razorpay refund ID', r.razorpay_refund_id]
   ], done ? [
     `Hi ${r.buyer_name || 'there'},`,
     `Your refund of ${amount} has been processed and is on its way to your original payment method. Razorpay refunds usually arrive in 5 to 7 working days.`,
-    `The year of the ${r.plan_name || ''} plan this payment bought has been taken off your account. If no paid time is left, your account has been given a fresh free trial, as the refund policy describes.`
+    pass
+      ? `The ${label.replace(/ \(.*$/, '')} this payment bought has been taken off your account. A refunded pass does not come with a free trial, and the pass is once per account.`
+      : `The year of the ${r.plan_name || ''} plan this payment bought has been taken off your account. If no paid time is left, your account has been given a fresh free trial, as the refund policy describes.`
   ] : [
     `Hi ${r.buyer_name || 'there'},`,
     `Your refund of ${amount} could not be completed by the payment provider. No money has left your account for it, and we are looking into it.`,

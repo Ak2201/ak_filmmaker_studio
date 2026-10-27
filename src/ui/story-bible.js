@@ -85,7 +85,7 @@ function bpField(f, film, fmt) {
   const ta = paperTextarea('#' + id + '.sb-input', { rows: f.rows || 2, 'data-sb-key': f.key, 'data-sb-ns': f.ns, 'data-key': f.key, placeholder: f.placeholder || '' });
   return h('div.sb-field', {}, [
     h('label.sb-lab', { for: id, text: f.label }),
-    noteButton(f.key, fmt),
+    noteButton(f.key, fmt, f.label),
     ...learnFor(f.learn, film),
     ta
   ]);
@@ -376,7 +376,7 @@ export function wireBible(opts = {}) {
     } else if (act === 'add-char') {
       const inp = document.querySelector('[data-sb-newname]');
       const name = inp ? inp.value.trim() : '';
-      if (!name) { if (inp) inp.focus(); return; }
+      if (!name) { if (inp) inp.focus(); StudioUI.toast('Type the character’s name first, then press Add.'); return; }
       /* The same name twice may be meant (two Ravis), so it is added —
          and said, since the cast matrix and auto-tag then hold two. */
       const twin = [...document.querySelectorAll('.sb-chars [data-ch-name]')]

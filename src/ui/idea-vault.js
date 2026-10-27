@@ -50,7 +50,7 @@ export function renderVault(s, view = { filter: 'all', color: '' }) {
 
   const add = h('div.st-vault-add');
   add.append(h('label.st-label', { for: 'stClip', text: 'Add a clipping' }));
-  add.append(paperTextarea('#stClip.st-text.k-textarea', { rows: 3 }));
+  add.append(paperTextarea('#stClip.st-text.k-textarea', { rows: 3, maxlength: String(Story.VAULT_MAX), placeholder: 'A quote, a link, a page of notes…' }));
   add.append(button({ label: 'Add to vault', variant: 'primary', icon: 'add', attrs: { 'data-st': 'clip-add' } }));
   sec.append(h('div.nt-board-adds', {}, [
     panel({ class: 'st-vault-panel nt-board-new', body: [noteAdd('ntBoardNew')] }),

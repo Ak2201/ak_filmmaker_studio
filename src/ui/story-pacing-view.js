@@ -238,7 +238,9 @@ export function renderStats(s, { scenes = [], elements = [], characters = 0 } = 
   const deck = Pacing.beatDeck({ story: s, scenes, elements });
   const n = deck.beats.length;
   const tagged = deck.beats.filter((b) => b.passage && !b.passage.inferred).length;
-  const peak = deck.beats.reduce((a, b) => (b.tension > a.tension ? b : a), deck.beats[0]);
+  /* A figure with nothing behind it prints a dash: the template's own
+     tension for the Finale is not the writer's film. */
+  const peak = !tagged ? null : deck.beats.reduce((a, b) => (b.tension > a.tension ? b : a), deck.beats[0]);
   const cards = [
     { label: 'Beats tagged', value: `${tagged} / ${n}`, note: tagged === n ? 'Every beat has a passage' : (n - tagged) + ' still to tag', noteTone: tagged === n ? 'ok' : '' },
     { label: 'Characters', value: characters ? String(characters) : '—', note: characters ? 'in the Story Bible' : 'add them in the Story Bible', class: characters ? '' : 'is-empty' },

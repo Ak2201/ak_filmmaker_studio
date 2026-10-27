@@ -327,6 +327,10 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-example-from { margin: var(--s1) 0 0; font-size: var(--t-small); color: var(--ink-muted); }
 .st-example-from a, .st-link { color: var(--accent-deep); }
 .st-link { all: unset; cursor: pointer; text-decoration: underline; color: var(--accent-deep); }
+/* A link standing on its own is a target (WCAG 2.5.8: 24px; 44px on touch);
+   one inside a sentence is exempt and must not stretch the line. */
+.st-link:not(p .st-link) { display: inline-block; min-block-size: 24px; line-height: 24px; }
+@media (pointer: coarse) { .st-link:not(p .st-link) { min-block-size: 44px; line-height: 44px; } }
 .st-link:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
 .st-using, .st-locked {
   margin: var(--s3) 0 0;

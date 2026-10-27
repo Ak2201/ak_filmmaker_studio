@@ -541,6 +541,24 @@ eq(S.clipSourceHost(''), '', 'clipSourceHost: no URL, no link');
   ok(/^ERR:/.test(await rd('script.doc', 'application/msword', 'x')), 'an old .doc is refused');
 }
 
+/* QA r3: a Windows-1252 .txt is decoded, not stored as U+FFFD. */
+{
+  const IO = (await import('../src/lib/story-io.js')).default;
+  const cp = Uint8Array.from([0x52,0x61,0x76,0x69,0x92,0x73,0x20,0x97,0x20,0x43,0x61,0x66,0xE9]);
+  const r = await IO.readSynopsisFile(new File([cp], 'cp1252.txt', { type: 'text/plain' }));
+  eq(r.text, 'Ravi\u2019s \u2014 Caf\u00E9', 'a cp1252 .txt keeps its curly quote, dash and accent');
+  const u8 = await IO.readSynopsisFile(new File([new TextEncoder().encode('Café \u2014 ok')], 'u8.txt', { type: 'text/plain' }));
+  eq(u8.text, 'Caf\u00E9 \u2014 ok', 'a UTF-8 .txt is untouched');
+  const bom = await IO.readSynopsisFile(new File([Uint8Array.from([0xEF,0xBB,0xBF,0x68,0x69])], 'b.txt', { type: 'text/plain' }));
+  eq(bom.text, 'hi', 'a UTF-8 BOM is dropped');
+  const u16 = await IO.readSynopsisFile(new File([Uint8Array.from([0xFF,0xFE,0x68,0,0x69,0])], 'w.txt', { type: 'text/plain' }));
+  eq(u16.text, 'hi', 'a UTF-16 .txt is read');
+  const NL = await import('../src/lib/note-label.js');
+  eq(NL.noteLabel(' Your   idea ✎'), 'Add a private note on: Your idea', 'a pencil names its field');
+  eq(NL.noteLabel(''), NL.NOTE_TITLE, 'no label falls back to the generic sentence');
+  eq(S.VAULT_MAX, 4000, 'the clipping limit is one constant');
+}
+
 /* Review of bugs 21 and 22: the second sample loader, and a synopsis
    save still on its debounce when the Build undo commits. */
 {

@@ -25,6 +25,7 @@
      save(now)       persist them (debounced unless `now`)
      rerender(box)   redraw this card after a structural change
    ============================================================ */
+import { NOTE_TITLE, noteLabel } from '../lib/note-label.js';
 import { h } from '../lib/dom.js';
 import { paperTextarea } from './paper-field.js';
 import { ask } from './dialog.js';
@@ -49,10 +50,10 @@ const keyAttr = (b, o) => (o && o.dataKeys && b ? { 'data-key': b.key } : {});
     blueprint's, so a note written there shows here. null when the key
     has none. */
 const NOTE_KEYS = new Set(BIBLE.notes || []);
-export function noteButton(key, format) {
+export function noteButton(key, format, label = '') {
   if (format === 'short' || !NOTE_KEYS.has(key)) return null;
   return h('button.comment-btn', {
-    type: 'button', title: 'Add a private note (saved on your device)', text: '✎',
+    type: 'button', title: NOTE_TITLE, 'aria-label': noteLabel(label), text: '✎',
     'data-key': 'comment_for_' + key, 'data-note-key': key
   });
 }
@@ -135,7 +136,7 @@ function fieldBlock(f, view, o) {
     input.value = view[f.key] || '';
   }
   const bk = o.dataKeys && view.backed && view.backed[f.key];
-  const note = bk ? noteButton(bk.key, projectFormat()) : null;
+  const note = bk ? noteButton(bk.key, projectFormat(), f.label) : null;
   return h('div.cc-field', {}, [...head, note, input]);
 }
 

@@ -79,8 +79,8 @@
 /* ---- colour dots ------------------------------------------------ */
 .nt-colors { display: flex; gap: var(--s1); }
 .nt-dot {
-  inline-size: 18px;
-  block-size: 18px;
+  inline-size: 24px;   /* WCAG 2.5.8 minimum target */
+  block-size: 24px;
   padding: 0;
   border-radius: var(--radius-pill);
   border: 1px solid var(--paper-page-rule);
@@ -229,6 +229,9 @@
   align-items: start;
 }
 .nt-board-adds .st-vault-panel { margin-bottom: 0; }
+/* The clipping form sits in a panel beside the note box: its own block
+   margin pushed its label ~12px below "New sticky note". */
+.nt-board-adds .st-vault-add { margin-block: 0; }
 .nt-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
 .nt-filters .bd-sel { width: auto; max-width: 14rem; }
 

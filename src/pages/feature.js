@@ -109,6 +109,7 @@ import {
   FOCUS_SECONDS, formatTime, timerAriaLabel, fieldLabelMap, humanise, isSpecialKey,
   buildFeatureMarkdown, buildPitchSlides, slideToHTML, buildPitchPptx
 } from '../lib/feature-model.js';
+import { NOTE_TITLE, noteLabel } from '../lib/note-label.js';
 import { mountComments, togglePanel as toggleFieldThread, hasNote, paintBadges }
   from '../ui/comments.js';
 import Blueprint from '../lib/blueprint-context.js';
@@ -1929,7 +1930,8 @@ function attachCommentButtons() {
     const btn = document.createElement('button');
     btn.className = 'comment-btn';
     btn.type = 'button';
-    btn.title = 'Add a private note (saved on your device)';
+    btn.title = NOTE_TITLE;
+    btn.setAttribute('aria-label', noteLabel(label.textContent));
     btn.textContent = '✎';
     btn.dataset.key = 'comment_for_' + key;
     btn.dataset.action = 'toggleCommentPanel';

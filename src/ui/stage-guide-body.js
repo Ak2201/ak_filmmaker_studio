@@ -42,6 +42,7 @@ import { readAll, writeFields, blobKey } from '../lib/blueprint-store.js';
 import {
   classify, extraRenderers, interludeSection, drawDerived
 } from './stage-guide-widgets.js';
+import { NOTE_TITLE, noteLabel } from '../lib/note-label.js';
 import { mountComments, togglePanel, hasNote, paintBadges } from './comments.js';
 import { showOnly, stepFooter, stepBar, wireStepper, landUnder } from './stepper.js';
 import '../styles/steps-stages.css';
@@ -269,7 +270,7 @@ export function renderGuide(body, { stage, format, items, fields, stepper }) {
       if (!field) return;
       const key = field.getAttribute('data-key');
       const btn = h('button.comment-btn', {
-        type: 'button', title: 'Add a private note (saved on your device)', text: '✎',
+        type: 'button', title: NOTE_TITLE, 'aria-label': noteLabel(label.textContent), text: '✎',
         'data-key': 'comment_for_' + key, 'data-action': 'toggleCommentPanel', 'data-note-key': key
       });
       label.appendChild(btn);

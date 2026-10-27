@@ -1412,6 +1412,7 @@ export function clipSourceHost(url) {
   try { return new URL(s).hostname; } catch (e) { return ''; }
 }
 
+export const VAULT_MAX = 4000;
 export function addToVault({ snippet, url = '', title = '', at = Date.now(), id } = {}) {
   const text = String(snippet || '').trim();
   if (!text) return null;
@@ -1419,7 +1420,7 @@ export function addToVault({ snippet, url = '', title = '', at = Date.now(), id 
   // The extension may deliver the same clip twice (a retry after the
   // side panel reloaded); its id makes the second delivery a no-op.
   if (id && items.some((x) => x.id === id)) return null;
-  const item = { id: id || uid(), snippet: text.slice(0, 4000), url: String(url).slice(0, 2000),
+  const item = { id: id || uid(), snippet: text.slice(0, VAULT_MAX), url: String(url).slice(0, 2000),
                  title: String(title).slice(0, 300), at, beat: '' };
   items.unshift(item);
   saveVault(items);

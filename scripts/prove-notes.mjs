@@ -118,6 +118,16 @@ await page.keyboard.press('Escape');
 
 /* ---- the board: order, keyboard move, drag, reload ------------------- */
 await go('vault.html');
+/* QA r3: the clipping box has a hint and the note box's limit; the two cards line up; dots are 24px. */
+check('vault: the clipping box has a placeholder and maxlength 4000', await page.evaluate(() => {
+  const t = document.getElementById('stClip'); return [!!t.placeholder, t.maxLength];
+}), [true, 4000]);
+check('vault: the two add cards start at the same height', await page.evaluate(() => {
+  const l = [...document.querySelectorAll('.nt-board-adds .st-vault-panel')].map((p) => Math.round(p.firstElementChild.firstElementChild.getBoundingClientRect().top - p.getBoundingClientRect().top));
+  return l.length === 2 && Math.abs(l[0] - l[1]) <= 1;
+}), true);
+check('vault: note colour dots are at least 24px', await page.evaluate(() =>
+  [...document.querySelectorAll('.nt-dot')].filter((d) => d.offsetWidth).every((d) => d.getBoundingClientRect().width >= 24 && d.getBoundingClientRect().height >= 24)), true);
 await page.fill('#ntBoardNew', 'Second thought');
 await page.click('[data-nt="add"][data-for="ntBoardNew"]');
 await page.waitForTimeout(300);

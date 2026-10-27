@@ -138,6 +138,18 @@ check('feature: the menu is a visible strip above the steps, not behind a disclo
   return [!!n && !n.hidden && n.getBoundingClientRect().height > 0, !!n && !n.closest('details'), document.querySelectorAll('.st-views, details.st-notes').length];
 }), [true, true, 0]);
 await openBoxes('#path-idea');
+/* QA r3: pencils name their field; a stat card makes no claim about an empty story;
+   stand-alone links are real targets. */
+check('feature: every note pencil names its own field', await page.evaluate(() => {
+  const l = [...document.querySelectorAll('#path-idea .comment-btn, #path-bible .comment-btn')].map((b) => b.getAttribute('aria-label'));
+  return [l.length > 1, new Set(l).size === l.length, l.every((x) => /^Add a private note on: \S/.test(x))];
+}), [true, true, true]);
+check('feature: peak tension is a dash until a beat is tagged', await page.evaluate(() => {
+  const c = [...document.querySelectorAll('.st-stats .k-stat')].find((e) => /Peak tension/.test(e.textContent));
+  return c ? c.querySelector('.k-stat-value').textContent : 'missing';
+}), '—');
+check('feature: a stand-alone .st-link is at least 24px high', await page.evaluate(() =>
+  [...document.querySelectorAll('.st-link')].filter((e) => !e.closest('p') && e.offsetHeight).every((e) => e.getBoundingClientRect().height >= 24)), true);
 await page.fill('#stIdea', 'A dragon who is afraid of fire.');
 await page.fill('#path-idea [data-key="s1_whatif"]', 'WHATIF-ONCE');
 await page.fill('#stLogline', 'A dragon must light the beacon.');
@@ -157,6 +169,9 @@ check('feature: the Idea step is ticked', await page.evaluate(() => !!document.q
 await step('bible');
 await page.fill('.sb [data-key="s3_theme"]', 'THEME-ONCE');
 await settle();
+await page.click('[data-sb="add-char"]');
+await page.waitForTimeout(300);
+check('feature: Add with no name says what to do', await page.evaluate(() => /name first/.test((document.querySelector('.toast-host') || {}).textContent || '')), true);
 check('feature: a Characters & world answer is stored under the blueprint’s key', (await blob(FKEY)).s3_theme, 'THEME-ONCE');
 
 /* choosing the beat sheet in the Beat Sheet's own picker */

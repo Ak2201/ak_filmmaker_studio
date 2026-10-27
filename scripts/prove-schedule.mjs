@@ -411,6 +411,60 @@ ok(cmx.ov === 'visible' && cmx.sw <= cmx.cw + 1 && cmx.cols > 20, '13 printing t
 await page.emulateMedia({ media: 'screen' });
 await page.setViewportSize({ width: 1440, height: 900 });
 
+/* ---- round 3 -------------------------------------------------- */
+const daysOf = async () => (await scenes()).map((s) => [s.id, Number(s.shootDay) || 0]);
+const activeAction = () => page.evaluate(() => document.activeElement?.getAttribute('data-action') || document.activeElement?.tagName);
+await page.goto(url('stripboard.html#stripboard'), { waitUntil: 'networkidle' });
+await settle(page, 1000);
+const days0 = await daysOf();
+await page.click('[data-action="sb-auto"]');
+await settle(page, 300);
+ok(await page.locator('.dlg button', { hasText: /^Re-schedule$/ }).count() === 1, '14 re-scheduling names its button, not OK');
+await page.locator('.dlg button', { hasText: /^Re-schedule$/ }).click();
+await settle(page, 500);
+ok(JSON.stringify(await daysOf()) !== JSON.stringify(days0), '14 re-scheduling rewrote the days');
+ok(await activeAction() === 'sb-auto', '14 focus returns to Schedule by location after the confirm', await activeAction());
+await page.locator('.toast-action', { hasText: 'UNDO' }).last().click();
+await settle(page, 400);
+ok(JSON.stringify(await daysOf()) === JSON.stringify(days0), '14 UNDO brings the hand-made schedule back');
+await page.click('[data-action="sb-clear"]');
+await settle(page, 300);
+await page.locator('.dlg button', { hasText: /^Clear days$/ }).click();
+await settle(page, 500);
+ok(await activeAction() === 'sb-clear', '14 focus returns to Clear days after the confirm', await activeAction());
+
+await page.goto(url('preprod.html'), { waitUntil: 'networkidle' });
+await settle(page);
+const sheetsState = await page.$eval('#step-sheets .pp-state', (n) => n.textContent.trim()).catch(() => '');
+ok(/not started|to do/i.test(sheetsState), '15 with every day cleared, Sides & call sheets is not Done', sheetsState);
+await page.emulateMedia({ media: 'print' });
+const printed = await page.$$eval('.pp-step', (ns) => ns.map((n) => getComputedStyle(n).display));
+await page.emulateMedia({ media: 'screen' });
+ok(printed.length >= 9 && printed.every((d) => d !== 'none'), '16 printing Pre-Production prints every step', printed);
+
+await page.evaluate((d) => {
+  const blob = JSON.parse(localStorage.getItem('fms_scenes_v1'));
+  const m = new Map(d); blob.scenes.forEach((s) => { s.shootDay = m.get(s.id) || 0; });
+  localStorage.setItem('fms_scenes_v1', JSON.stringify(blob));
+}, days0);
+await page.goto(url('reports.html?day=1#dpr'), { waitUntil: 'networkidle' });
+await settle(page, 800);
+await page.click('[data-action="dpr-delay-add"]');
+await settle(page, 200);
+const mins = page.locator('#dpr input[data-field="minutes"]').first();
+for (const [typed, shown] of [['-30', ''], ['99999', ''], ['1.5', '1']]) {
+  await mins.fill(typed); await mins.press('Tab'); await settle(page, 200);
+  ok(await mins.inputValue() === shown, `17 delay minutes "${typed}" shows "${shown}", what the total adds`, await mins.inputValue());
+}
+await page.locator('#dpr input[data-field="note"]').first().fill('Rain stopped play');
+await page.locator('#dpr input[data-field="note"]').first().press('Tab');
+await page.click('[data-action="dpr-delay-remove"]');
+await settle(page, 300);
+ok(await page.locator('#dpr input[data-field="note"]').count() === 0, '18 Remove takes the delay out');
+await page.locator('.toast-action', { hasText: 'Undo' }).last().click();
+await settle(page, 300);
+ok(await page.locator('#dpr input[data-field="note"]').first().inputValue() === 'Rain stopped play', '18 Undo puts the delay back with its note');
+
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();
 server.close();

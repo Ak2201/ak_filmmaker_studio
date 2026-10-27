@@ -1169,6 +1169,12 @@ delegate(document, 'change', '[data-dpr-field]', (e, el) => {
 });
 delegate(document, 'change', '[data-dpr-delay]', (e, el) => {
   DPR.updateDelay(dprDay(), el.dataset.dprDelay, { [el.dataset.field]: el.value });
+  /* Minutes is a count: a refused or trimmed value is written back, so the box
+     says what the total adds. */
+  if (el.dataset.field === 'minutes') {
+    const now = DPR.getDPR(dprDay()).delays.find((x) => x.id === el.dataset.dprDelay);
+    if (now) el.value = now.minutes;
+  }
   refreshDPRNumbers();
 });
 delegate(document, 'change', '[data-dpr-incident]', (e, el) => {
@@ -1182,13 +1188,29 @@ delegate(document, 'click', '[data-action="dpr-incident-add"]', () => {
   const x = DPR.addIncident(dprDay());
   refill('dpr', `[data-dpr-incident="${CSS.escape(x.id)}"]`);
 });
+/* Typed report text is lost by a stray click on Remove, so it is an Undo
+   toast, as the kit's removal is. */
+function undoRemoved(kind, name, restore, id, attr) {
+  toast('Removed the ' + kind + (name ? ' (' + name + ')' : '') + '.', {
+    action: 'Undo',
+    onAction: () => {
+      restore();
+      refill('dpr', `[data-${attr}="${CSS.escape(id)}"]`);
+      toast('Put the ' + kind + ' back.');
+    }
+  });
+}
 delegate(document, 'click', '[data-action="dpr-delay-remove"]', (e, el) => {
-  DPR.removeDelay(dprDay(), el.dataset.id);
+  const day = dprDay();
+  const was = DPR.removeDelay(day, el.dataset.id);
   refill('dpr', '[data-action="dpr-delay-add"]');
+  if (was) undoRemoved('delay', was.item.reason || 'delay', () => DPR.restoreDelay(day, was.index, was.item), was.item.id, 'dpr-delay');
 });
 delegate(document, 'click', '[data-action="dpr-incident-remove"]', (e, el) => {
-  DPR.removeIncident(dprDay(), el.dataset.id);
+  const day = dprDay();
+  const was = DPR.removeIncident(day, el.dataset.id);
   refill('dpr', '[data-action="dpr-incident-add"]');
+  if (was) undoRemoved('incident', was.item.what || 'incident', () => DPR.restoreIncident(day, was.index, was.item), was.item.id, 'dpr-incident');
 });
 
 delegate(document, 'change', '[data-kit-item]', (e, el) => {

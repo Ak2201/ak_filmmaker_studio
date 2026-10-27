@@ -1455,23 +1455,76 @@ document.addEventListener('contextmenu', (e) => {
    in one place are shot together, in script order, and each place
    becomes a day. It is a starting point, not a schedule — which is
    why it says so before it overwrites anything. */
+/* The undo of a schedule rewrite (Clear days, Schedule by location): in
+   memory only, no new key. `before` is every scene's day and every per-day
+   order list, read through the models that write them; `after` is what the
+   rewrite just left, so Undo can tell whether the board has changed since
+   and refuse rather than write the old schedule over newer work. */
+const snapshotSchedule = () => ({
+  days: Scenes.listScenes().map((s) => ({ id: s.id, day: shootDayOf(s) })),
+  orders: Locations.listDayOrder()
+});
+/* render() rebuilds the toolbar, so the control that opened the dialog is a
+   new element: hand focus back to it, as Escape does. */
+const refocus = (action) => {
+  const el = document.querySelector(`[data-action="${action}"]`);
+  if (el && typeof el.focus === 'function') el.focus();
+};
+function undoableToast(said, before, after, bannerAction, undone) {
+  announce(said);
+  /* Actionable, so it stays until dismissed (see the toast note in chrome.js),
+     and it is the board's latest undo: the next move, clear or re-schedule
+     dismisses it through dropMoveToast(). */
+  const mine = toast(said, {
+    action: 'UNDO',
+    onAction: () => {
+      if (moveToast === mine) moveToast = null;
+      const now = new Map(Scenes.listScenes().map((s) => [s.id, s]));
+      const moved = after.days.some((d) => now.has(d.id) && shootDayOf(now.get(d.id)) !== d.day)
+        || JSON.stringify(Locations.listDayOrder()) !== JSON.stringify(after.orders);
+      if (moved) {
+        const msg = 'The board has changed since, so it was not undone. Nothing was changed.';
+        toast(msg);
+        announce(msg);
+        return;
+      }
+      before.days.forEach((d) => { if (now.has(d.id)) Scenes.updateScene(d.id, { shootDay: d.day }); });
+      Locations.clearDayOrders();
+      Object.entries(before.orders).forEach(([day, ids]) => Locations.setDayOrder(day, ids));
+      render();
+      refocus(bannerAction);
+      announce(undone);
+    }
+  });
+  moveToast = mine;
+}
+
+/* Schedule by location: the first pass a 1st AD does by hand. Scenes
+   in one place are shot together, in script order, and each place
+   becomes a day. It is a starting point, not a schedule — which is
+   why it says so before it overwrites anything, and why the overwrite
+   can be undone. */
 delegate(document, 'click', '[data-action="sb-auto"]', async () => {
   const scenes = Scenes.listScenes();
   if (!scenes.length) return;
   const already = scenes.filter((s) => shootDayOf(s)).length;
-  if (already && !await ask(
-    `${already} ${already === 1 ? 'scene already has' : 'scenes already have'} a shoot day. `
-    + 'Re-schedule every scene by location?'
-  )) return;
+  if (already && !await askDanger({
+    title: `Re-schedule ${already === 1 ? 'the scene that has' : `the ${already} scenes that have`} a shoot day?`,
+    body: 'Every scene is moved to a day by location and the per-day order is lost. Undo brings the old schedule back.',
+    confirm: 'Re-schedule'
+  })) return;
 
   dropMoveToast();
+  const before = snapshotSchedule();
   const { plan, days } = scheduleByLocation(scenes);
   for (const p of plan) Scenes.updateScene(p.id, { shootDay: p.day });
   // A fresh schedule starts in script order within each day.
   Locations.clearDayOrders();
   view.group = 'day';
   render();
-  toast(`Scheduled into ${days} ${days === 1 ? 'day' : 'days'}, one per location.`);
+  refocus('sb-auto');
+  undoableToast(`Scheduled into ${days} ${days === 1 ? 'day' : 'days'}, one per location.`,
+    before, snapshotSchedule(), 'sb-auto', 'Undone. The old schedule is back.');
 });
 
 delegate(document, 'click', '[data-action="sb-clear"]', async () => {
@@ -1484,42 +1537,14 @@ delegate(document, 'click', '[data-action="sb-clear"]', async () => {
     confirm: 'Clear days'
   })) return;
   dropMoveToast();
-  /* The undo's snapshot, in memory only (no new key): each cleared
-     scene's day and every per-day order list, read through the same
-     models that write them. */
-  const days = scenes.map((s) => ({ id: s.id, day: shootDayOf(s) }));
-  const orders = Locations.listDayOrder();
+  const before = snapshotSchedule();
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.
   Locations.clearDayOrders();
   render();
-  const said = `Cleared the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}.`;
-  announce(said);
-  /* Actionable, so it stays until dismissed (see the toast note in
-     chrome.js), and it is the board's latest undo: the next move, clear
-     or re-schedule dismisses it through dropMoveToast(). It refuses if
-     any of those strips has been given a day since, as undoPlace() does,
-     rather than write the old schedule over newer work. */
-  const mine = toast(said, {
-    action: 'UNDO',
-    onAction: () => {
-      if (moveToast === mine) moveToast = null;
-      const now = new Map(Scenes.listScenes().map((s) => [s.id, s]));
-      const moved = days.some((d) => now.has(d.id) && shootDayOf(now.get(d.id)))
-        || Object.keys(Locations.listDayOrder()).length;
-      if (moved) {
-        const msg = 'The board has changed since the clear, so it was not undone. Nothing was changed.';
-        toast(msg);
-        announce(msg);
-        return;
-      }
-      days.forEach((d) => { if (now.has(d.id)) Scenes.updateScene(d.id, { shootDay: d.day }); });
-      Object.entries(orders).forEach(([day, ids]) => Locations.setDayOrder(day, ids));
-      render();
-      announce('Undone. The shoot days are back.');
-    }
-  });
-  moveToast = mine;
+  refocus('sb-clear');
+  undoableToast(`Cleared the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}.`,
+    before, snapshotSchedule(), 'sb-clear', 'Undone. The shoot days are back.');
 });
 
 /* ---- PDF -----------------------------------------------------

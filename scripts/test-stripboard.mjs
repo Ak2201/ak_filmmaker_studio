@@ -437,6 +437,29 @@ eq([B.targetMinutes(110, 95), B.targetMinutes(0, 95), B.targetMinutes(0, 0)], [1
   const night = D.dprSummary(1);
   eq([night.lunchMinutes, night.callToFirstShot, night.warnings.length], [45, 60, 0], 'a night shoot lunch across midnight is still fine');
 
+  /* Delay minutes: a whole number 0..1440 or blank, and the total adds what the box shows. */
+  eq([D.cleanMinutes('-30'), D.cleanMinutes('1.5'), D.cleanMinutes('99999'), D.cleanMinutes('abc'), D.cleanMinutes(' 45 '), D.cleanMinutes('')], ['', '1', '', '', '45', ''], 'cleanMinutes');
+  seed();
+  const dl = D.addDelay(1);
+  D.updateDelay(1, dl.id, { minutes: '-30' });
+  eq(D.getDPR(1).delays[0].minutes, '', 'a negative delay is not stored');
+  D.updateDelay(1, dl.id, { minutes: '99999' });
+  eq([D.getDPR(1).delays[0].minutes, D.dprSummary(1).delayMinutes], ['', 0], 'an absurd delay is not stored, so no 1666h total');
+  D.updateDelay(1, dl.id, { minutes: '1.5' });
+  eq(D.getDPR(1).delays[0].minutes, '1', 'a fractional delay is stored as the whole number the total adds');
+  /* Removing a delay or incident hands the row back, and restore puts it where it was. */
+  const d2 = D.addDelay(1, { reason: 'Light', minutes: '20' });
+  const gone = D.removeDelay(1, dl.id);
+  eq([gone.index, gone.item.id, D.getDPR(1).delays.length], [0, dl.id, 1], 'removeDelay returns the row and its place');
+  D.restoreDelay(1, gone.index, gone.item);
+  eq(D.getDPR(1).delays.map((x) => x.id), [dl.id, d2.id], 'restoreDelay puts it back at its index');
+  D.restoreDelay(1, 0, gone.item);
+  eq(D.getDPR(1).delays.length, 2, 'restoring twice adds nothing');
+  const inc = D.addIncident(1); D.updateIncident(1, inc.id, { what: 'Cut finger' });
+  const gi = D.removeIncident(1, inc.id);
+  D.restoreIncident(1, gi.index, gi.item);
+  eq(D.getDPR(1).incidents.map((x) => x.what), ['Cut finger'], 'an incident comes back with its text');
+
   /* Equipment: Undo puts a removed row back where it was. */
   seed();
   const k1 = D.addKitItem(1, 'camera', { item: 'A' }), k2 = D.addKitItem(1, 'camera', { item: 'B' }), k3 = D.addKitItem(1, 'camera', { item: 'C' });

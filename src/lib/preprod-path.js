@@ -21,6 +21,7 @@
    ============================================================ */
 import data from '../data/preprod-path.json';
 import Scenes from './scenes.js';
+import { shootDayOf } from './locations.js';
 import { readiness, sceneLabel } from './readiness.js';
 import { listContacts, listCallSheets } from './contacts.js';
 import { listSongs } from './songs.js';
@@ -134,6 +135,9 @@ function readers(ctx) {
       const sheets = listCallSheets();
       const noSheet = failing('day-callsheet');
       if (!known('day-callsheet')) return { state: 'todo', facts: ['Needs a schedule first'], missing: [] };
+      /* A call sheet belongs to a shoot day: with no scene on a day there is
+         nothing for it to be done for, whatever sheets are stored. */
+      if (!scenes.some((s) => shootDayOf(s))) return { state: 'todo', facts: ['Needs a schedule first'], missing: [] };
       const missing = noSheet.length ? ['No call sheet for ' + first(noSheet, 4).join(', ')] : [];
       return { state: !sheets.length ? 'todo' : missing.length ? 'doing' : 'done', facts: [plural(sheets.length, 'call sheet')], missing };
     },

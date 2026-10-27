@@ -132,6 +132,15 @@ export function cleanSetups(v) {
   return Number.isFinite(n) && n >= 0 ? String(n) : '';
 }
 
+/** Delay minutes: a whole number from 0 up to one day, or blank. A typed
+    -30, 99999 or "abc" is dropped, never stored; "1.5" is read as 1, and
+    the box is written back so what shows is what the total adds. */
+export const MAX_DELAY_MIN = 24 * 60;
+export function cleanMinutes(v) {
+  const n = parseInt(String(v == null ? '' : v).trim(), 10);
+  return Number.isFinite(n) && n >= 0 && n <= MAX_DELAY_MIN ? String(n) : '';
+}
+
 function cleanDPR(raw) {
   const d = blankDPR();
   if (!isPlainObject(raw)) return d;
@@ -139,7 +148,7 @@ function cleanDPR(raw) {
   for (const f of TEXT_FIELDS) d[f] = str(raw[f]);
   d.setups = cleanSetups(d.setups);
   d.delays = (Array.isArray(raw.delays) ? raw.delays : []).filter(isPlainObject)
-    .map((x) => ({ ...blankDelay(), ...x, reason: str(x.reason) || 'Other', minutes: str(x.minutes), note: str(x.note) }));
+    .map((x) => ({ ...blankDelay(), ...x, reason: str(x.reason) || 'Other', minutes: cleanMinutes(x.minutes), note: str(x.note) }));
   d.incidents = (Array.isArray(raw.incidents) ? raw.incidents : []).filter(isPlainObject)
     .map((x) => ({ ...blankIncident(), ...x, what: str(x.what), action: str(x.action) }));
   return d;
@@ -185,14 +194,24 @@ function listOp(field, blank) {
     },
     remove(day, id) {
       const d = getDPR(day);
+      const index = d[field].findIndex((x) => x.id === id);
       saveDPR(day, { [field]: d[field].filter((x) => x.id !== id) });
+      return index < 0 ? null : { item: d[field][index], index };
+    },
+    /* Undo of remove(): the row goes back where it was. */
+    restore(day, index, item) {
+      const d = getDPR(day);
+      if (d[field].some((x) => x.id === item.id)) return;
+      const list = d[field].slice();
+      list.splice(Math.min(index, list.length), 0, item);
+      saveDPR(day, { [field]: list });
     }
   };
 }
 const delayOps = listOp('delays', blankDelay);
 const incidentOps = listOp('incidents', blankIncident);
-export const addDelay = delayOps.add, updateDelay = delayOps.update, removeDelay = delayOps.remove;
-export const addIncident = incidentOps.add, updateIncident = incidentOps.update, removeIncident = incidentOps.remove;
+export const addDelay = delayOps.add, updateDelay = delayOps.update, removeDelay = delayOps.remove, restoreDelay = delayOps.restore;
+export const addIncident = incidentOps.add, updateIncident = incidentOps.update, removeIncident = incidentOps.remove, restoreIncident = incidentOps.restore;
 
 /** Local "YYYY-MM-DD" of an ISO instant — the day the mark was made. */
 function localDate(iso) {
@@ -617,7 +636,7 @@ export function oneLiner(scenes) {
 export default {
   toMinutes, laterWrap, span, formatMinutes, cleanSetups,
   DPR_TIMES, DELAY_REASONS, blankDPR, blankDelay, blankIncident, getDPR, saveDPR,
-  addDelay, updateDelay, removeDelay, addIncident, updateIncident, removeIncident, dprSummary,
+  addDelay, updateDelay, removeDelay, restoreDelay, addIncident, updateIncident, removeIncident, restoreIncident, cleanMinutes, dprSummary,
   BANNER_KINDS, AFTER_DAY, bannerLabel, blankBanner, listBanners, allBanners, addBanner, updateBanner,
   removeBanner, bannerText, layoutDay, impliedMoves,
   DEFAULT_PAGE_TARGET, DAY_HOURS, pageTarget, setPageTarget, dayLoad, estimateHours,

@@ -546,7 +546,7 @@ function railGlobal(g) {
   const on = g.href.toLowerCase() === CURRENT
     || (Array.isArray(g.modules) && g.id !== 'home' && g.modules.some((m) =>
       !String(m.href || '').includes('#') && String(m.href || '').toLowerCase() === CURRENT));
-  const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose });
+  const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose, 'aria-label': g.label });
   a.dataset.railId = g.id;
   a.append(iconSpan('sh-rail-icon', g),
            h('span.sh-rail-label', { text: g.label }));
@@ -760,7 +760,7 @@ function hideFly(now) {
    the stage's blurb, then each BUILT module's label and purpose. */
 function stageDescription(p) {
   const mods = (p.modules || [])
-    .filter((m) => m.status !== 'planned' && m.purpose)
+    .filter((m) => m.status !== 'planned' && m.purpose && !isDisabledEverywhere(m.id))
     .map((m) => m.label + ': ' + m.purpose);
   return [p.blurb || p.label, ...mods].join('. ') + '.';
 }
@@ -875,7 +875,7 @@ function openAcctMenu(btn) {
   const purchase = globals().find((g) => g.id === 'purchase');
   menu.append(h('div.sh-acct-list', {}, [
     row('a', { href: (settings && settings.href) || 'settings.html' }, 'settings', 'Settings'),
-    purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Plan & purchases') : null,
+    purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Purchase') : null,
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
     signedIn
       ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out')

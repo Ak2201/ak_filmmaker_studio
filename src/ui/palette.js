@@ -70,7 +70,7 @@
 /* navigation.json through navmodel.js, never directly: globals()
    and moduleGroups() apply the region filter, so a module hidden on
    the map is not quietly reachable from the palette. */
-import { moduleGroups, hueClassOf, globals } from '../lib/navmodel.js';
+import { moduleGroups, moduleSections, hueClassOf, globals } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId } from '../lib/store.js';
@@ -306,6 +306,27 @@ function navItems() {
         status: m.status,
         keywords: [p.label, p.blurb || '', m.status]
       }));
+      /* The tabs the rail flyout lists under this module (moduleSections:
+         Beat Sheet, DPR, Estimate...). One list, so a tab you can see in
+         the rail is a tab you can find here. Sections are gated with
+         their module, so the filter above already covers them. */
+      if (m.status === 'planned' || !m.href) continue;
+      const page = m.href.split('#')[0];
+      for (const sec of moduleSections(m)) {
+        out.push(entry({
+          id: 'sec:' + m.id + ':' + sec.id,
+          moduleId: m.id,
+          label: sec.label,
+          sub: m.label + (sec.purpose ? ' · ' + sec.purpose : ''),
+          group: p.label,
+          hueClass: hueClassOf(p),
+          icon: m.icon,
+          sym: sec.sym || m.sym,
+          href: page + '#' + sec.id,
+          status: m.status,
+          keywords: [p.label, m.label, 'tab', 'section']
+        }));
+      }
     }
   }
   return out;

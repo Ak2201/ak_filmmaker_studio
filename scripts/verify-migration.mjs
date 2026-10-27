@@ -347,223 +347,34 @@ const SKIN_FILES = fs
    fails the run, so it cannot rot into a permanent excuse; and if the
    list is growing, that is the signal to re-baseline deliberately with
    `npm run baseline` rather than to keep adding rows. */
-const EXPECTED = {
-  /* EMPTY, and emptied BY the re-baseline rather than by hand-waving.
-
-     It held four rows: `dragan` on the hub (the sample project renamed
-     to Dragon) and `vv` / `included` / `compasses` on feature (step 08's
-     copy corrected through the English-override sidecar). Every one was
-     a real, deliberate wording change, and every one was the right use
-     of this list at the time.
-
-     Recapturing the oracle makes them all redundant in the same moment:
-     the baseline now records the pages as they actually read, so those
-     words are not "missing" from anything and the allowances never fire.
-     The anti-rot half of this check would then fail the run for stale
-     allowances — which is the mechanism working, not a regression, and
-     is exactly what happened the last two times this file was emptied.
-
-     An entry here is a one-off divergence between a known-good page and
-     an older oracle. If you find yourself adding a third, the answer is
-     `npm run baseline` and a sentence in the commit saying so. */
-  /* The launcher prints "N modules" from navigation.json, so adding
-     one takes that number off the page and the word-set check
-     reports it as missing from a file nobody edited. Exactly the
-     collision the note in CLAUDE.md describes, firing for the first
-     time since the last re-baseline: Shoot Day took the map from 25
-     modules to 26.
-
-     An allowance rather than a re-baseline because it is the FIRST
-     row. The guidance is to recapture once two or three of these
-     have piled up — a baseline taken to absorb one derived digit
-     would bake in everything else that happened to be on screen
-     that minute. The anti-rot check will fail the run if this ever
-     stops firing, which is what stops it becoming a permanent
-     excuse.
-
-     AND THAT IS EXACTLY WHAT HAPPENED, one commit later and for an
-     unrelated reason: deriving the theme labels removed the word
-     `sepia` from all SIXTEEN pages, which is sixteen rows — well past
-     the two or three this note draws the line at — so the oracle was
-     recaptured. The recapture absorbed the module count with
-     everything else, the row above stopped firing, and the anti-rot
-     check failed the run exactly as designed. The row is gone; the
-     reason it existed is preserved here and in its own commit.
-
-     The lesson is not that the judgement above was wrong — it was
-     right for one digit. It is that an allowance is only ever valid
-     until the next recapture, whoever makes it and for whatever
-     reason. */
-  hub: {},
-  /* Impeccable pass (19 Oct 2026): on a board with no scenes the
-     Unscheduled card said "0 strips · all placed", claiming a finished
-     schedule that does not exist. It prints a dash and "no scenes yet"
-     now, so the words left the empty page the baseline was taken on. */
-  stripboard: { 'laid': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
-  reports: { "day's": 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', '0': 'QA round 2, Schedule & reports (26 Oct 2026): with no scenes the Reports stat strip prints dashes, as the stripboard and the Plan do, never "SCENES 0 · PAGES 0 · LOCATIONS 0" (item 48).' },
-  contacts: { roster: 'Visual QA round 2 (26 Oct 2026): the Cast & Crew stat cards use the page’s own words (People, Cast, Departments, Call sheets), so the old roster / registry / base / slates labels left the page.', talent: 'same change', registry: 'same change', base: 'same change', slates: 'same change' },
-  /* AI Desk (12 Oct 2026): the key lives in Settings only and AI is
-     reached through one AI pill (PLAN.md §4). keyGate() used to draw
-     the provider picker and key form here ("Drafting needs a key…");
-     signed out, verify now sees the locked pill instead. Every word
-     below was that form's copy and nothing else on the page. */
-  visualize: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {
-    above: 'Visualize QA (26 Oct 2026): the empty storyboard said \"Add a shot above and every shot gets a slot on the board\", but the Shot List is another tab and an empty project cannot add a shot; it now links to the breakdown (no scenes) or the Shot List tab, and the subtitle no longer says \"above\".', gets: 'Visualize QA (26 Oct 2026): the empty storyboard said \"Add a shot above and every shot gets a slot on the board\", but the Shot List is another tab and an empty project cannot add a shot; it now links to the breakdown (no scenes) or the Shot List tab, and the subtitle no longer says \"above\".', slot: 'Visualize QA (26 Oct 2026): the empty storyboard said \"Add a shot above and every shot gets a slot on the board\", but the Shot List is another tab and an empty project cannot add a shot; it now links to the breakdown (no scenes) or the Shot List tab, and the subtitle no longer says \"above\".'
-  },
-  write: {},
-  plan: { 'shoots': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', '0': 'QA round 1, Schedule & reports (26 Oct 2026): with no scenes the stat strip prints a dash, as the stripboard does, never "0 shoot days · 0 dates set · 0 locations" (item 48).' },
-  breakdown: { 'accept': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'across': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'code': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'highlighter': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'ignore': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'ink': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'marked': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.', 'rest': 'One list (22 Oct 2026): the tab strip takes its label, icon and hint from navigation.json, as the rail flyout does, so the old strip hints and icon names left the page.' },
-
-  feature: {},
-  short: {},
-  /* The library prints the glossary's term count ("N TERMS"); Phase 6 of the
-     script-to-screen work took it from 122 to 141, so the bare integer 122 left
-     the page. A derived count, not lost copy. The next glossary change moves it
-     again: re-baseline then, rather than adding a row each time. */
-  /* Impeccable pass (19 Oct 2026): the shelves were headed "SECTION I"
-     … "SECTION IX", numbering an order the reader does not need; each
-     is headed by its shelf's kind (its menu group) now. The numerals that
-     still appear elsewhere on the page (i, ii, v, x) are not missing. */
-  library: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
-  budget: {
-    /* QA round 1, Budget & money (26 Oct 2026): the page spelled the
-       allowance two ways, "bata" on the wage table and "batta" in Petty
-       cash and account 2800. It is "batta" everywhere now; the stored
-       field and category ids did not change. */
-    bata: 'One spelling of the allowance on the budget page: batta'
-  },
-  /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
-     revamp's words (the journey strip folded into the stage cards). */
-  /* Impeccable pass (19 Oct 2026): the map's "N OF N BUILT" never
-     varied for anyone and "N HOLD WORK" reads "N with work" now; its
-     deck no longer says "and so does the studio" (the hero says the
-     stages go in any order); the title page's sub dropped the internal
-     "the same answers the Feature Blueprint keeps for its cover". */
-  dashboard: /* emptied by the 21 Oct 2026 re-baseline (paper, pipeline, shot list) */ {},
-  preprod: /* emptied by the 21 Oct 2026 re-baseline: the lookbook step left the path */ {},
-
-  /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
-     for the AI pill in the toolbar, whose menu (Coverage report, …) is
-     built only when it is opened. */
-  screenplay: /* emptied by the 14 Oct 2026 re-baseline (Swiss foundation) */ {},
-  /* AI Desk (12 Oct 2026): settings.html#ai shows the key section
-     only on a plan with AI tools; locked (verify runs signed out) it
-     is a heading, one note and the locked pill — nobody types a key
-     their plan cannot use. These words were the key section's copy
-     (the key-stays-on-this-device disclosure, the provider picker,
-     the console.anthropic.com link, Forget key). */
-  /* REGION-CONTENT (22 Oct 2026, docs/US-MARKET-PLAN.md): Settings →
-     Region said "there is one checkout and it settles in rupees either
-     way", which stops being true once dollar checkout exists (§C). The
-     deck now says the purchase page names the price's currency and the
-     charge's, which is true before and after the owner's switch. */
-  settings: {
-    checkout: 'Region deck no longer claims one rupee checkout (US-MARKET-PLAN §C)',
-    settles: 'Region deck no longer claims one rupee checkout (US-MARKET-PLAN §C)',
-    /* UI/UX batch 1 (22 Oct 2026): the empty Activity log said "Start a
-       film and begin filling things in" while a film was open; it now
-       says "Nothing saved in this browser yet. Edits you save show up
-       here." (src/ui/activity-log.js). */
-    begin: 'empty activity-log copy reworded (a film is already open)',
-    filling: 'empty activity-log copy reworded (a film is already open)',
-    things: 'empty activity-log copy reworded (a film is already open)',
-    /* Account QA (26 Oct 2026): the Danger zone card said erasing "signs
-       you out"; it never did (CLAUDE.md item 29) and its own dialog says
-       you stay signed in, so the sentence no longer promises a sign-out. */
-    signs: 'erase card no longer promises a sign-out that never happens',
-    /* Account QA r2 (26 Oct 2026): Backup moved from the band to the
-       rail on 21 Oct (CLAUDE.md item 41); four Settings lines still said
-       "Backup, in the top bar". They point to the rail now. */
-    bar: 'Backup is pointed to in the rail, not "the top bar" (item 41)'
-  },
-  shoot: {},
-  /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
-
-     Two videos left the Idea step on 11 Oct 2026 (the step is for
-     making an idea; on a feature the only two pinned to
-     step:feature/step-01 were about the SYNOPSIS and about starting a
-     SCREENPLAY). Their words went with them — `akash` and `vijay`
-     from the channel "Akash Vijay", `tamil-scene` and `starting` from
-     its why line, `seed` from the other's — and they were allowed
-     here with that reason, which is what this list is for.
-
-     A parallel session then re-baselined for the same change
-     (`0be3674`). The oracle now records the page as it actually
-     reads, so those five words are not missing from anything, the
-     allowance never fires, and the anti-rot check would fail the run
-     for a stale allowance. Removing it is that mechanism working.
-
-     This is the third time the note above has been proved right in
-     the same way, and it is worth one more line: an allowance is
-     valid only until the next recapture, and you do not control who
-     makes that or when. */
-  /* "5 Qualities of Great Loglines" stopped rendering on the Logline
-     step when it was un-approved on 11 Oct 2026, and un-approving it
-     was the point: YouTube answers its id with oEmbed 403 and
-     playabilityStatus LOGIN_REQUIRED, so it is sign-in gated and can
-     never play in the anonymous youtube-nocookie embed this app uses.
-     A facade that opens an error is worse than no facade. (The other
-     dead one, gJxY0n8xwOo, is removed outright — 404 / ERROR — and
-     took no words off a baselined page with it.)
-
-     Two words, one page, one deliberate content change: the case an
-     allowance exists for. Note for whoever reads this next — the row
-     this replaced was removed an hour earlier because a parallel
-     session recaptured the oracle for a different content change. If
-     that happens again this row stops firing, the anti-rot check
-     fails the run, and the answer is to delete it, not to re-add the
-     words. */
-  /* Emptied 11 Oct 2026: the deliberate re-baseline after the full-app
-     sweep recaptured the oracle without that video's title, so the row
-     stopped firing — the case the note above says to delete it in. The
-     host move to filmmakerstudio.in recaptured it again the same day,
-     for the footer's printed address; neither recapture moved a
-     data-key. */
-  /* Emptied 12 Oct 2026, and the note it replaced called this exactly:
-     it held `editor` for the story crumb ("Story editor" -> "Story"),
-     written as "the first row since the last recapture; the anti-rot
-     check fails the run if it ever stops firing". The free-trial pass
-     recaptured the oracle a few hours later — for invite.html and
-     settings.html, nothing to do with that crumb — so the baseline now
-     records the page as it actually reads, the allowance never fires,
-     and the run failed for a stale allowance. Deleting it is that
-     mechanism working, for the fourth time on this list.
-
-     FOURTH TIME. The pattern is no longer worth re-deriving: an
-     allowance is valid only until the next recapture, and you do not
-     control who makes that or when. */
-  /* AI Desk (12 Oct 2026): the suggest-steps and mapping panels used
-     to draw keyGate()'s key form ("Suggesting steps needs a key…",
-     "Mapping…"); they are AI pills that open the Desk now, and
-     signed out the pill is locked. Every word below was that form's
-     copy. */
-  /* Impeccable pass (19 Oct 2026): the header's two disabled export
-     buttons ("Synopsis .txt", "Outline .md") are one Export menu now, and
-     on an empty story (the baseline's state) there is nothing to export,
-     so the menu is not drawn. ".txt" survives in the import copy. */
-  story: /* emptied by the 19 Oct 2026 re-baseline (retrospective pass) */ {},
-  edit: {},
-  deliverables: {},
-  screening: {},
-  /* The conversion pass's rows were absorbed by the 12 Oct 2026 recapture
-     that followed the UI revamp and the plan features. The pricing
-     pass's `finish` row (the Pro line reworded) was absorbed by the
-     17 Oct 2026 recapture after the one-frame navigation pass. */
-  invite: { payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },
-  admin: {},
-  vault: { also: 'Sticky notes (23 Oct 2026): the Idea Vault became the board of notes and clippings; its intro and empty state were rewritten around notes, so the old clipping-only sentences left the page.', came: 'same change', can: 'same change', clipped: 'same change', hand: 'same change', lands: 'same change' },
-  purchase: { production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },   // the once/pay/payment/yours rows retired 21 Oct 2026: the "Before you pay" terms (one payment for one year; the refund is yours) say them again
+const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline (Public site & shell: the stage descriptions, the shortcut sheet and the palette's section rows changed words on every page); a row now is one made after it */ {
+  "hub": {},
+  "stripboard": {},
+  "reports": {},
+  "contacts": {},
+  "visualize": {},
+  "write": {},
+  "plan": {},
+  "breakdown": {},
+  "feature": {},
+  "short": {},
+  "library": {},
+  "budget": {},
+  "dashboard": {},
+  "preprod": {},
+  "screenplay": {},
+  "settings": {},
+  "shoot": {},
+  "story": {},
+  "edit": {},
+  "deliverables": {},
+  "screening": {},
+  "invite": {},
+  "admin": {},
+  "vault": {},
+  "purchase": {}
 };
-/* Budget & money QA round 2 (26 Oct 2026): the budget's rail entry draws the
-   currency-neutral `payments` icon, since a dollar film's budget is not rupees.
-   An icon prints its ligature name, so `currency_rupee` left the rail on the
-   fifteen pages the baseline was captured on. Only these two words. */
-for (const pg of ['breakdown', 'stripboard', 'reports', 'contacts', 'visualize', 'screenplay', 'drafts', 'plan', 'dashboard', 'shoot', 'preprod', 'story', 'edit', 'deliverables', 'vault']) {
-  EXPECTED[pg] = { ...(EXPECTED[pg] || {}),
-    currency: 'Budget QA round 2: the budget rail icon is `payments`, not `currency_rupee`.',
-    rupee: 'same change' };
-}
-
+/* The 26 Oct 2026 `currency` / `rupee` allowance (budget rail icon) was absorbed by the 27 Oct 2026 re-baseline. */
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',

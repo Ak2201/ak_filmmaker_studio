@@ -1020,7 +1020,7 @@ function renderPlanCard() {
   }
   card.append(h('p.st-plan-link', {}, [button({
     href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward',
-    label: bought ? 'Manage plan' : 'Plan & purchases'
+    label: bought ? 'Manage plan' : 'Purchase'
   })]));
   sec.append(card);
   return sec;

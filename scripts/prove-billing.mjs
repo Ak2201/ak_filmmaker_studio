@@ -1669,6 +1669,63 @@ try {
     B.errors.length = 0; await B.ctx.close();
     delete EXT_RPC.admin_list_invoices;
   }
+  console.log('(qa4) account & business, QA round 4 (27 Oct 2026)');
+  F.reset(); RZP.mode = 'pay';
+  {
+    /* A Basic buyer: the receipt prints as the receipt, seats are not a
+       warning, the two headings differ, the storage note is not a
+       contradiction. */
+    const amy = USERS['tok-amy'].id;
+    F.db.members.set(amy, { role: 'user', disabled_at: null });
+    const at = new Date(Date.now() - 86400e3).toISOString(), until = new Date(Date.now() + 360 * 86400e3).toISOString();
+    F.db.accounts.push({ id: 'acc_amy4', name: 'Amy’s Studio', owner_id: amy, plan: 'starter', plan_until: until, plan_period: 'year', seat_limit: 1, created_at: at });
+    F.db.accountMembers.push({ account_id: 'acc_amy4', invited_email: USERS['tok-amy'].email, user_id: amy, role: 'owner', status: 'active' });
+    EXT_RPC.my_invoices = () => [{ id: 'iv1', number: 'FMS/2026-27/000001', issued_at: '2026-10-20T10:00:00Z', plan_name: 'Basic', amount_paise: 299900, currency: 'INR' }];
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#invoices [data-action="invoice-pdf"]', { timeout: 15000 }).catch(() => {});
+    await page.evaluate(() => { window.print = () => {}; });
+    const hasRule = () => page.evaluate(() => [...document.styleSheets].some((sh) => { try { return [...sh.cssRules].some((r) => /pdf-invoice/.test(r.cssText)); } catch (e) { return false; } }));
+    await page.click('#invoices [data-action="invoice-pdf"]').catch(() => {});
+    await page.waitForFunction(() => [...document.styleSheets].some((sh) => { try { return [...sh.cssRules].some((r) => /pdf-invoice/.test(r.cssText)); } catch (e) { return false; } }), null, { timeout: 10000 }).catch(() => {});
+    ok(await hasRule(), 'purchase.html: DOWNLOAD PDF brings pdf.css, so body.pdf-invoice hides the page and styles the receipt');
+    await page.waitForSelector('.pl-usage-tiles [data-usage="seats"]', { timeout: 10000 }).catch(() => {});
+    const seats = await page.evaluate(() => { const t = document.querySelector('.pl-usage-tiles [data-usage="seats"]'); return t ? { text: t.textContent, full: t.classList.contains('is-full'), warn: !!t.querySelector('[class*="warn"]') } : null; });
+    ok(seats && /1 of 1/.test(seats.text) && !/At the limit/.test(seats.text) && !seats.full && !seats.warn, 'a Basic buyer’s one seat reads "1 of 1" with no warning: ' + JSON.stringify(seats));
+    const heads = await page.evaluate(() => [...document.querySelectorAll('#plan h2, #plan h3')].map((x) => x.textContent.trim()));
+    ok(!heads.includes('Choose your plan'), 'the plans heading is not a second "Choose your plan": ' + JSON.stringify(heads.slice(0, 4)));
+    await page.goto(BASE + 'settings.html#backup');
+    await page.waitForSelector('.st-tiers', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const st = await page.evaluate(() => (document.querySelector('main') || document.body).textContent);
+    ok(/LARGE-ITEM STORAGE|Large-item storage/i.test(st) && !/has not been checked yet/.test(st), 'Settings > Storage does not say the large-item figure is hidden above the figure');
+    delete EXT_RPC.my_invoices;
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* Signed in, not a member: the pill does not say a code is the only way in. */
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForFunction(() => { const p = document.getElementById('signInPill'); return p && p.classList.contains('signed-in'); }, null, { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const pill = await page.evaluate(() => { const p = document.getElementById('signInPill'); return p ? p.textContent.trim() : null; });
+    ok(pill !== null && !/Invite needed/.test(pill), 'a signed-in non-member’s pill does not read "Invite needed": ' + pill);
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* The console: the rupee price is a year, the organisations table says plan names. */
+    F.db.accounts.push({ id: 'acc_ind4', name: 'Indie House', owner_id: USERS['tok-amy'].id, plan: 'indie', plan_until: new Date(Date.now() + 200 * 86400e3).toISOString(), plan_period: 'year', seat_limit: 3, created_at: new Date().toISOString() });
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#purchases');
+    await A.page.waitForSelector('label[for="ba_starter_price"]', { timeout: 15000 }).catch(() => {});
+    const lab = await A.page.textContent('label[for="ba_starter_price"]').catch(() => '');
+    ok(/a year/.test(lab) && !/once/.test(lab), 'admin.html#purchases: the rupee price is labelled a year, not "once": ' + lab);
+    await A.page.goto(BASE + 'admin.html#people');
+    await A.page.waitForFunction(() => /Indie House/.test(document.body.textContent), null, { timeout: 15000 }).catch(() => {});
+    const row = await A.page.evaluate(() => { const tr = [...document.querySelectorAll('tr')].find((r) => /Indie House/.test(r.textContent)); return tr ? [...tr.children].map((c) => c.textContent.trim()) : null; });
+    ok(row && row.includes('Intermediate') && !row.includes('indie'), 'admin.html#people: Organisations names the plan, not the id: ' + JSON.stringify(row));
+    allErrors.push(...A.errors); await A.ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

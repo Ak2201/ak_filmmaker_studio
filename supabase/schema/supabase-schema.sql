@@ -3303,7 +3303,7 @@ insert into public.plans (id, name, blurb, monthly_paise, yearly_paise, limits, 
      29900, 299900, '{"projects":3,"collaborators":2,"shares":3,"seats":1,"extension":true}', 1),
   ('indie',   'Indie',   'A small team taking a film through production.',
      79900, 799900, '{"projects":10,"collaborators":5,"shares":10,"seats":3,"extension":true}', 2),
-  ('pro',     'Pro',     'A production house. No caps.',
+  ('pro',     'Pro',     'A production house: no cap on films, links or collaborators.',
      199900, 1999900, '{"projects":null,"collaborators":null,"shares":null,"seats":10,"extension":true}', 3)
 on conflict (id) do nothing;
 

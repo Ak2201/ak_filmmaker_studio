@@ -86,6 +86,9 @@ const uuid = () => (globalThis.crypto && crypto.randomUUID
  *  browser's own ("Failed to fetch", "Load failed", "NetworkError…"),
  *  and that used to be printed verbatim (UX audit M16). A server's own
  *  refusal is already a sentence and passes through. */
+export const INVALID_CODE = 'That code is not valid \u2014 check it and try again.';
+export const INVALID_PASS = 'That screening pass is not valid. If it is an invite code, enter it on the invite page.';
+
 export function errorSentence(err, fallback) {
   const msg = (err && err.message) || '';
   if (/failed to fetch|failed to send a request|load failed|networkerror|network request failed/i.test(msg)) {
@@ -96,6 +99,13 @@ export function errorSentence(err, fallback) {
   /* supabase-js's own words for an edge function's non-2xx with no body
      it could read: code, not a sentence. Say what was observed. */
   if (/non-2xx status code/i.test(msg)) return fallback || 'The studio\u2019s server answered with an error. Try again in a moment.';
+  /* The server's two code refusals are bare sentences (no full stop) and
+     the same for every reason on purpose (no oracle). Give them the
+     neighbours' punctuation, and point a screening box that was handed
+     an invite code at where it belongs; said on every refusal, so it
+     tells a guesser nothing. */
+  if (/^That code is not valid\.?$/.test(msg)) return INVALID_CODE;
+  if (/^That screening pass is not valid\.?$/.test(msg)) return INVALID_PASS;
   return msg || fallback;
 }
 
@@ -333,7 +343,7 @@ export function createGate(getClient) {
   async function openScreening(code, viewerEmail) {
     try {
       const r = one(await rpc('screening_open', { p_code: normaliseCode(code), p_viewer_email: viewerEmail || null }));
-      if (!r) throw new GateError('That screening pass is not valid.', 'invalid');
+      if (!r) throw new GateError(INVALID_PASS, 'invalid');
       return { projectId: r.project_id, title: r.title, format: r.format, accessId: r.access_id,
                expiresAt: r.expires_at, scopes: r.scopes || {} };
     } catch (e) {

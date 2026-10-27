@@ -341,7 +341,8 @@ function planSection() {
 
   /* THE PLANS: a heading, what a plan does, and the row. */
   sec.append(h('div.pu-plans-head', {}, [
-    h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
+    /* 'Plans' for everyone: the status card above already says "Choose a plan." */
+    h('h3.pu-h3', { text: 'Plans' }),
     h('p.bd-sub', { text: deck() })
   ]));
   sec.append(currencyBlock());

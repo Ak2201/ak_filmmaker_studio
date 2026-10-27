@@ -186,7 +186,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     field('name', 'Name', h('input', { id: `ba_${p.id}_name`, name: 'name', type: 'text', maxlength: 40, value: p.name }));
     if (p.id !== 'free') {
       const price = Number.isInteger(p.price_paise) ? p.price_paise : p.yearly_paise;
-      field('price', 'Price (₹, once)', h('input', { id: `ba_${p.id}_price`, name: 'price', type: 'text', inputmode: 'decimal', value: price ? String(price / 100) : '', placeholder: 'not for sale' }));
+      field('price', 'Price (₹, a year)', h('input', { id: `ba_${p.id}_price`, name: 'price', type: 'text', inputmode: 'decimal', value: price ? String(price / 100) : '', placeholder: 'not for sale' }));
     }
     for (const [key, label] of LIMIT_FIELDS) {
       const v = p.limits && Number.isInteger(p.limits[key]) ? String(p.limits[key]) : '';

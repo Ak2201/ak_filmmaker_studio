@@ -24,6 +24,12 @@
    refund.html words it: final, with the three exceptions. A flat "no
    refunds" would contradict the published policy.
    ============================================================ */
+/* pdf.css is what hides the rest of the page and styles .inv-doc. Only
+   eleven page entries import it, and the two pages that sell plans
+   (purchase.html and the console) are not among them: without this line
+   their receipts printed the whole page with the invoice unstyled at the
+   end. The importer brings the sheet, wherever it is clicked. */
+import '../styles/pdf.css';
 import { h } from './dom.js';
 import { BRAND, monogram } from './brand.js';
 import { exportPDF } from './pdf.js';

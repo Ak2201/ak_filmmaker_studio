@@ -81,7 +81,7 @@ import StudioUI from '../ui/chrome.js';
 import { pageHeader, button, panel } from '../ui/kit/index.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain, coalesce } from '../lib/dom.js';
-import { fmtPaise, RAZORPAY_KEY_ID } from '../lib/billing.js';
+import { fmtPaise, RAZORPAY_KEY_ID, planName } from '../lib/billing.js';
 import { fmtMinor } from '../lib/price-model.js';
 const usdRevenue = (o) => { const u = o && o.paid_by_currency && o.paid_by_currency.USD; return u && u.count > 0 ? u : null; };
 import { kpi, pill, emptyState, errorState, skeleton, relTime, stampDensity, syncDrawerFromHash } from '../ui/admin-kit.js';
@@ -336,7 +336,7 @@ function organisationsBlock() {
     tb.append(h('tr', {}, [
       h('td', {}, [h('strong', { text: a.name || 'Untitled' })]),
       h('td', { text: a.owner_email || '—' }),
-      h('td', { text: a.plan || '—' }),
+      h('td', { text: a.plan ? planName(a.plan) : '—' }),
       h('td', { text: orgSeats(a) }),
       h('td', { text: n(a.projects) }),
       h('td', { text: fmtDate(a.created_at) })

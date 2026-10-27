@@ -632,6 +632,16 @@ function successCard(planId, plans) {
   return card;
 }
 
+/** Where a usage figure stands against its cap: 'full' (a warning),
+ *  'seats' (every seat taken, said neutrally) or null. Seats are not a
+ *  warning: Basic's one seat is the buyer's own, so it is taken on day
+ *  one with nothing wrong. Films, links and readers still warn. */
+export function capState(key, used, c) {
+  if (c === null || used < c) return null;
+  return key === 'seats' ? 'seats' : 'full';
+}
+const seatsNote = (c) => (c === 1 ? 'Your own seat' : 'Every seat in use');
+
 /** Usage against the current plan, for the settings page. */
 export function usageList(st) {
   if (!st) return null;
@@ -640,8 +650,9 @@ export function usageList(st) {
   const ul = h('ul.pl-usage');
   const line = (label, used, key) => {
     const c = cap(lim, key);
-    const full = c !== null && used >= c;
-    ul.append(h('li' + (full ? '.is-full' : ''), { text: `${label}: ${used}${c === null ? '' : ' of ' + c}${full ? ' — at the limit' : ''}` }));
+    const at = capState(key, used, c);
+    const full = at === 'full';
+    ul.append(h('li' + (full ? '.is-full' : ''), { text: `${label}: ${used}${c === null ? '' : ' of ' + c}${full ? ' — at the limit' : at ? ' — ' + seatsNote(c).toLowerCase() : ''}` }));
   };
   line('Cloud projects', u.projects || 0, 'projects');
   line('Live share links', u.shares || 0, 'shares');
@@ -659,7 +670,8 @@ export function usageTiles(st) {
   const lim = st.limits || {};
   const tile = (label, used, key) => {
     const c = cap(lim, key);
-    const full = c !== null && used >= c;
+    const at = capState(key, used, c);
+    const full = at === 'full';
     const el = h('div.pl-use' + (full ? '.is-full' : ''), { 'data-usage': key });
     el.append(h('p.pl-use-label', { text: label }));
     el.append(h('p.pl-use-fig', {}, [h('strong', { text: String(used) }), h('span', { text: c === null ? ' · unlimited' : ' of ' + c })]));
@@ -670,6 +682,7 @@ export function usageTiles(st) {
       el.append(m);
     }
     if (full) el.append(h('p.pl-use-note', { text: 'At the limit' }));
+    else if (at) el.append(h('p.pl-use-note', { text: seatsNote(c) }));
     return el;
   };
   return h('div.pl-usage-tiles', { role: 'group', 'aria-label': 'Your usage' }, [

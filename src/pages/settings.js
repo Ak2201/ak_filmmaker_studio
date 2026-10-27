@@ -438,11 +438,9 @@ function renderStorage() {
       + 'as screenplays are kept in a second, much larger store.');
 
   if (u.tier === 'unavailable') sec.append(tierDownCard());
-  else if (u.tier !== 'ready') {
-    sec.append(h('p.st-note', {
-      text: 'Large-item storage has not been checked yet, so its figure below is not shown.'
-    }));
-  }
+  /* No "not checked yet" note for a COLD tier: store.js opens the tier at
+     boot whenever any stub exists, so cold means nothing large is stored,
+     which the figure below already says. The note contradicted it. */
 
   const tiers = h('div.st-tiers');
 

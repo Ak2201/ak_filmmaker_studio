@@ -152,7 +152,9 @@ export function refreshSignInPill() {
      The address is still in the title and the menu. */
   if (g.state === 'closed') {
     pill.dataset.sync = g.reason === 'unreachable' ? 'error' : 'waiting';
-    lab.textContent = g.reason === 'pending' ? 'Invite pending' : 'Invite needed';
+    /* 'Get access', not 'Invite needed': a closed door is the offer page
+       now (trial, plans, a code), so a code is not the only way in. */
+    lab.textContent = g.reason === 'pending' ? 'Invite pending' : 'Get access';
     setAvatar(pill, '');
   } else {
     /* The pill is a plain link to Settings > Account now (11 Oct

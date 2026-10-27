@@ -1422,6 +1422,8 @@ export function addToVault({ snippet, url = '', title = '', at = Date.now(), id 
   if (id && items.some((x) => x.id === id)) return null;
   const item = { id: id || uid(), snippet: text.slice(0, VAULT_MAX), url: String(url).slice(0, 2000),
                  title: String(title).slice(0, 300), at, beat: '' };
+  // Cut is said, never silent: the board's card reads this flag.
+  if (text.length > VAULT_MAX) item.cut = true;
   items.unshift(item);
   saveVault(items);
   return item;

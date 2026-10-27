@@ -28,6 +28,7 @@ export const FILTERS = [
 function clipCard(it, fw) {
   const li = h('li.st-clip', { 'data-board-item': it.id });
   li.append(h('p.st-clip-text', { text: it.snippet }));
+  if (it.cut) li.append(h('p.nt-foot.st-clip-cut', { text: 'Shortened to ' + Story.VAULT_MAX.toLocaleString('en-US') + ' characters' }));
   const meta = h('div.st-clip-meta');
   const host = Story.clipSourceHost(it.url);   // http(s) only
   if (host) meta.append(h('a.st-clip-src', { href: it.url, target: '_blank', rel: 'noopener noreferrer', text: host }));

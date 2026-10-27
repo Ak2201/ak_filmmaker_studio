@@ -152,6 +152,11 @@ eq(S.addToVault({ snippet: 'again', id: 'clip1' }), null, 'a clip delivered twic
 eq(S.addToVault({ snippet: '   ' }), null, 'an empty clip is refused');
 ok(S.updateVault('clip1', { beat: 'three_act:midpoint' }) && S.listVault()[0].beat === 'three_act:midpoint', 'a clip can be pinned to a beat');
 ok(S.removeFromVault('clip1') && S.listVault().length === 0, 'a clip can be removed');
+const longClip = S.addToVault({ snippet: 'x'.repeat(S.VAULT_MAX + 50), id: 'clipLong' });
+ok(longClip.snippet.length === S.VAULT_MAX && longClip.cut === true && S.listVault()[0].cut === true, 'a clipping cut at the cap is marked cut, and the mark is kept');
+const exact = S.addToVault({ snippet: 'y'.repeat(S.VAULT_MAX), id: 'clipExact' });
+ok(exact.cut === undefined, 'a clipping that fits is not marked');
+S.removeFromVault('clipLong'); S.removeFromVault('clipExact');
 
 /* ---- the step outline (plan rev. 3 §1) --------------------- */
 // An old blob — written before the outline existed — loads blank.

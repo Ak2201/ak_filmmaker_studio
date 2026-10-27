@@ -534,6 +534,13 @@ runChecks('autorenew.sql');
   }
 }
 /* --- end §62 --- */
+/* --- the clean-slate purge (supabase/schema/patches/purge-test-data-2026-10-27.sql)
+   --- LAST, after every section (and §62's when it lands above this block):
+   it COMMITS and leaves one sign-in, so nothing may run after it. It runs
+   the patch file's own PART 2 and PART 3, cut out with the awk line the
+   owner checksums, and stands in for §62's tables when §62 is not loaded. --- */
+runChecks('purge.sql');
+/* --- end purge --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

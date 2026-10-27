@@ -506,6 +506,26 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   ok(!toFDX({ elements: a }, { title: 'T' }).includes('Number='), 'fdx export: unlocked numbers are positions and are not written');
 }
 
+/* ---- QA r3: Fountain keeps locked numbers; a heading gives its number up ---- */
+{
+  const S = await import('../src/lib/script.js');
+  let n = 0;
+  const E = (type, text) => ({ id: 'fq' + (++n), type, text });
+  const a = [E('scene', 'INT. A - DAY'), E('action', 'x'), E('scene', 'EXT. B - NIGHT'), E('action', 'y')];
+  const numbering = S.lockNumbering(a);
+  const b = [a[0], a[1], E('scene', 'INT. C - DAY'), E('action', 'z'), a[2], a[3]];
+  const f = S.toFountain({ elements: b, numbering }, { title: 'T', date: '2026-10-06' });
+  eq([...f.matchAll(/#([0-9A-Z]+)#$/gm)].map((m) => m[1]), ['1', '1A', '2'], 'fountain export: locked numbers go out as #n#');
+  eq(I.parseScript(f, 'x.fountain').scenes.map((r) => r.number), ['1', '1A', '2'], 'fountain export -> import: the locked numbers come back');
+  ok(!/#\d+#/.test(S.toFountain({ elements: a }, { title: 'T', date: '2026-10-06' })), 'fountain export: unlocked numbers are not written');
+
+  const p = I.parseScript('12. INT. KITCHEN - DAY\n\nA.\n\nINT. HALL - DAY 13\n\nB.\n\nINT. YARD - DAY #14#\n\nC.\n\n15 EXT. ROAD - NIGHT 15\n\nD.\n\nEXT. HIGHWAY 66 - DAY\n\nE.', 'x.fountain');
+  eq(p.elements.filter((e) => e.type === 'scene').map((e) => e.text),
+    ['INT. KITCHEN - DAY', 'INT. HALL - DAY', 'INT. YARD - DAY', 'EXT. ROAD - NIGHT', 'EXT. HIGHWAY 66 - DAY'],
+    'import: a heading\'s scene number comes out of its text (an address stays)');
+  eq(p.scenes.map((r) => r.number), ['12', '13', '14', '15', '5'], 'import: and the Breakdown rows keep those numbers');
+}
+
 
 /* ---- audit bugs 13, 14, 15: lines the round trip used to lose -----
    13: a styled Word paragraph (or a dialogue line under a cue in a

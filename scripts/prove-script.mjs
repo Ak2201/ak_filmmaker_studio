@@ -712,7 +712,7 @@ await page.setViewportSize({ width: 1280, height: 900 });
   ok(yoursKept <= 1, '21c the two windows do not trade "Yours is kept" toasts', yoursKept);
   s = await stored();
   const sides = (s.script.revisions || []).filter((r) => /^From another/.test(r.name));
-  ok(sides.every((r) => /^From another window/.test(r.name)), '21c a copy from another window is named for a window, not a device', sides.map((r) => r.name));
+  ok(sides.every((r) => /^Kept when two windows saved/.test(r.name)), '21c a copy from another window is named for windows, not a device, and not as if it were the other window\'s', sides.map((r) => r.name));
   const anyAAA = s.script.elements.some((e) => /AAA/.test(e.text)) || sides.some((r) => r.elements.some((e) => /AAA/.test(e.text)));
   ok(anyAAA, '21c and nothing typed is lost', s.script);
 
@@ -755,8 +755,8 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.keyboard.press('Backspace');
   await page.waitForTimeout(300);
   let t = (await stored()).script.elements.map((e) => e.text);
-  ok(JSON.stringify(t) === JSON.stringify(['INT. FLAT - NIGHT', 'Ravi paces.', 'RAVINot tonight.']) && JSON.stringify(await at()) === JSON.stringify(['e3', 4]),
-    '21e Backspace at the start joins the line to the one above, caret at the seam', [t, await at()]);
+  ok(JSON.stringify(t) === JSON.stringify(['INT. FLAT - NIGHT', 'Ravi paces.', 'RAVI Not tonight.']) && JSON.stringify(await at()) === JSON.stringify(['e3', 4]),
+    '21e Backspace at the start joins the line to the one above with a word gap, caret at the seam', [t, await at()]);
   await page.click('.toast:has-text("Lines joined") .toast-action');
   await page.waitForTimeout(300);
   t = (await stored()).script.elements.map((e) => e.text);
@@ -766,7 +766,7 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.keyboard.press('Delete');
   await page.waitForTimeout(300);
   t = (await stored()).script.elements.map((e) => e.text);
-  ok(t[0] === 'INT. FLAT - NIGHTRavi paces.' && t.length === 3, '21e Delete at the end pulls the next line up', t);
+  ok(t[0] === 'INT. FLAT - NIGHT Ravi paces.' && t.length === 3, '21e Delete at the end pulls the next line up, one word gap between (QA r3)', t);
 
   /* f) the import dialog keeps focus */
   await fresh('Proof Import');
@@ -860,6 +860,37 @@ await page.setViewportSize({ width: 1280, height: 900 });
   const status = await q.$eval('.sc-status', (n) => n.textContent);
   ok(!/Autosaved/.test(status) && /Not saved/.test(status), '21j a save refused for want of storage reads "Not saved", never "Autosaved"', status);
   await qctx.close();
+}
+
+/* ---- 22 QA round 3 (27 Oct 2026): touch targets, sheet rows, one button language --
+   Each assertion failed before its fix. */
+{
+  const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const t = await tctx.newPage();
+  await t.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await t.evaluate(() => {
+    const S = window.StudioStore; localStorage.clear();
+    const p = S.createProject({ title: 'Touch', format: 'feature' }); S.setCurrentProject(p.id);
+    S.rawSet('fms_script_v1__' + p.id, JSON.stringify({ elements: [
+      { id: 't1', type: 'scene', text: 'INT. FLAT - NIGHT' }, { id: 't2', type: 'action', text: 'Ravi paces.' },
+      { id: 't3', type: 'scene', text: 'EXT. ROAD - DAY' }, { id: 't4', type: 'action', text: 'Rain.' }] }));
+  });
+  await t.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await t.waitForSelector('.wx-handoff-acts .btn', { timeout: 5000 }).catch(() => {});
+  const hand = await t.$$eval('.wx-handoff-acts .btn', (bs) => bs.map((b) => Math.round(b.getBoundingClientRect().height)));
+  ok(hand.length > 0 && hand.every((x) => x >= 44), '22a the Breakdown hand-off buttons meet the 44px touch floor', hand);
+  const done = await t.$$eval('.sc-done a', (as) => as.map((a) => Math.round(a.getBoundingClientRect().height)));
+  ok(done.every((x) => x >= 44), '22a the link under the page meets the 44px touch floor', done);
+  await t.click('.sc-tools-r .sc-tools-sheet-btn');
+  await t.waitForTimeout(400);
+  const under = await t.$$eval('a.sc-sheet-row', (as) => as.filter((a) => a.getClientRects().length).map((a) => getComputedStyle(a).textDecorationLine));
+  ok(under.length > 0 && under.every((d) => d === 'none'), '22b the Tools sheet\'s link rows are not underlined', under);
+  await t.keyboard.press('Escape');
+  await t.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await t.click('[data-dr="new"]'); await t.click('.lp-card [data-lp="go"]'); await t.waitForTimeout(400);
+  const legacy = await t.$$eval('.wr-tool-row button', (bs) => ({ all: bs.length, legacy: bs.filter((b) => !b.classList.contains('k-btn')).map((b) => b.textContent) }));
+  ok(legacy.all > 0 && legacy.legacy.length === 0, '22c drafts.html\'s Compare / revised PDF / lock buttons are kit buttons', legacy);
+  await tctx.close();
 }
 
 /* ---- 13 overflow -------------------------------------------------------- */

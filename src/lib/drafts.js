@@ -178,14 +178,23 @@ export function changedSinceDraft(doc) {
 }
 
 /** The document a draft prints from: its snapshot, and its title page
-    (or the working one, for a draft that predates the snapshot). No
-    numbering: the snapshot's element ids are not the live ones. */
+    (or the working one, for a draft that predates the snapshot). A
+    draft saved while the numbers were LOCKED carries that lock, re-keyed
+    from the live ids to the snapshot's through `liveId` (as
+    restoreDraft does), so the pages that go to the floor print the
+    call sheet's numbers (QA r3). A draft from before the lock gets
+    none: those numbers were not issued when it was written. */
 export function draftDocument(doc, id) {
   const rev = (doc.revisions || []).find((r) => r.id === id);
   if (!rev) return null;
   const out = { elements: rev.elements.map((e) => ({ ...e })), revisions: [], documents: [] };
   const tp = rev.titlePage || doc.titlePage;
   if (hasTitlePage(tp)) out.titlePage = normaliseTitlePage(tp);
+  if (isNumberingLocked(doc.numbering) && String(doc.numbering.at || '') <= String(rev.date || '')) {
+    const map = new Map();
+    out.elements.forEach((e) => { if (e.liveId && !map.has(e.liveId)) map.set(e.liveId, e.id); });
+    out.numbering = rekeyNumbering(doc.numbering, map);
+  }
   return out;
 }
 

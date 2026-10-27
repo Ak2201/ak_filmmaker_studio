@@ -874,6 +874,11 @@ export function toFountain(doc, meta = {}) {
   const els = (doc && doc.elements) || [];
   // `^` only on a cue that really is the right half of a pair.
   const caret = new Set(dualPairs(els).map((p) => p.right[0]));
+  /* A LOCKED number goes out as Fountain's `#12A#`, which the importer
+     reads back (QA r3: the export dropped them, so a round trip
+     renumbered by position). Unlocked, the number is the position and
+     nothing is written, as before. */
+  const nums = isNumberingLocked(doc && doc.numbering) ? sceneNumbers(els, doc.numbering).byId : null;
 
   const body = [];
   let prev = null;
@@ -884,6 +889,7 @@ export function toFountain(doc, meta = {}) {
     const lines = fountainBlock(el.type, text);
     if (!lines.length) continue;
     if (caret.has(i)) lines[0] += ' ^';
+    if (nums && el.type === 'scene' && nums.get(el.id)) lines[0] += ' #' + nums.get(el.id) + '#';
     const glue = GLUED.has(el.type) && CUE_ISH.has(prev);
     if (body.length && !glue) body.push('');
     body.push(...lines);

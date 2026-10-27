@@ -337,11 +337,15 @@ delegate(document, 'click', '[data-dr="pdf"]', async (e, btn) => {
   const meta = draftPdfMeta(d, Script.projectTitle());
   const titles = draftPdfTitles(d, Script.projectTitle());
   let node = null;
+  /* A draft saved under locked numbers prints them in both margins, on
+     the wide setup, like the revised pages below (QA r3). */
+  const numbered = Script.isNumberingLocked(snap.numbering);
   PDF.exportPDF({
     scope: 'screenplay',
+    ...(numbered ? { setup: 'screenplay-wide', classes: ['pdf-sn'] } : {}),
     title: titles.title,
     subtitle: titles.subtitle,
-    before: () => { node = Typeset.buildDocument(snap, meta); main.append(node); },
+    before: () => { node = Typeset.buildDocument(snap, { ...meta, sceneNumbers: numbered }); main.append(node); },
     after: () => { if (node) { node.remove(); node = null; } }
   });
 });

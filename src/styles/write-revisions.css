@@ -43,7 +43,7 @@
 }
 .wr-tool-row .wr-field { flex: 1 1 14rem; }
 .wr-tool-row select { width: 100%; min-width: 0; }
-.wr-tool-row .btn { white-space: nowrap; }
+.wr-tool-row .k-btn { white-space: nowrap; }
 .wr-check {
   display: inline-flex;
   align-items: center;

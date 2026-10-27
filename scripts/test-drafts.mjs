@@ -115,11 +115,16 @@ ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
   ok(ld.numbering.pages && ld.numbering.pages.locked === true, 'the page lock survives too');
   ok(ld.numbering.pages.starts.every((st) => !st.id || ld.elements.some((x) => x.id === st.id)), 'and its starts name restored elements');
   eq(Typeset.pageNumbersDoc(ld), pagesBefore, 'the pages read as they did when locked');
+  // QA r3: a draft saved under the lock prints the lock's numbers; one from before it prints none.
+  const dn = D.draftDocument(ld, dl.id);
+  eq(numsOf(dn), want, 'a draft saved while locked prints the locked numbers (1 2 4 4A 5, 3 omitted)');
   // A draft from before this lock: its headings come back by their words.
   const unl = { elements: els('INT. A - DAY', 'x', 'INT. B - DAY', 'y'), revisions: [], documents: [] };
   const dOld = D.saveNewDraft(unl);
   unl.numbering = Script.lockNumbering(unl.elements);
   unl.revisions[0].elements.forEach((e) => { delete e.liveId; });
+  unl.revisions[0].date = '2026-01-01T00:00:00.000Z';   // saved well before the lock
+  ok(!D.draftDocument(unl, dOld.id).numbering, 'a draft saved before the lock prints no locked numbers');
   D.restoreDraft(unl, dOld.id);
   eq(numsOf(unl), { heads: ['1', '2'], omitted: [] }, 'a draft with no liveId: numbers matched by heading text');
   // Unlocked stays unlocked.

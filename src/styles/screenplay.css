@@ -510,6 +510,12 @@
   white-space: nowrap;
   box-shadow: none;
 }
+/* The compact height is a mouse size; a finger gets the 44px floor
+   base.css gives every other control (QA r3: these stayed 28px). */
+@media (pointer: coarse) {
+  .sc-sheet .wx-handoff-acts .btn { height: auto; min-height: var(--tap-min, 44px); }
+  .sc-done a { display: inline-flex; align-items: center; min-height: var(--tap-min, 44px); }
+}
 .sc-sheet .wx-handoff-acts .btn.wx-quiet { background: transparent; border-color: transparent; color: var(--ink-body); }
 .sc-sheet .wx-handoff-acts .btn.wx-quiet:hover { background: var(--surface-hover); color: var(--ink); }
 @media print { .sc-sheet > .wx-handoff { display: none; } }
@@ -651,6 +657,7 @@
 .sc-imp-x { align-self: start; color: var(--ink-muted); }
 .sc-imp-body { display: grid; gap: var(--s3); }
 .sc-imp-body > p { margin: 0; font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-body); }
+.sc-imp-warn { margin: 0; padding-inline-start: var(--s4); display: grid; gap: var(--s1); font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-muted); }
 .sc-imp-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: 0; }
 .sc-imp-modes { display: flex; flex-wrap: wrap; margin: 0; }
 .sc-imp-modes .k-seg-btn { flex: 1 1 12rem; white-space: normal; text-align: center; padding-block: var(--s1); }
@@ -883,6 +890,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 .sc-sheet-row {
   display: flex;
   align-items: center;
+  text-decoration: none;               /* the href rows are anchors (QA r3: underlined on the phone) */
   gap: var(--s3);
   width: 100%;
   min-height: var(--tap-min, 44px);

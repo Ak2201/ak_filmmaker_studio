@@ -1323,6 +1323,10 @@ function drawImport() {
     );
   } else {
     body.append(h('p', { text: importReadText(imp.name, imp.plan) }));
+    /* The reader's own notes, a page it could not read above all
+       (QA r3: a lost PDF page was said nowhere on this preview). */
+    const notes = (imp.plan.warnings || []).slice(0, 5);
+    if (notes.length) body.append(h('ul.sc-imp-warn', {}, notes.map((w) => h('li', { text: w }))));
     if (!isBlankDoc()) {
       body.append(h('div.sc-imp-modes.k-seg', { role: 'radiogroup', 'aria-label': 'Where it goes' }, [
         ['append', 'Add after what is written'], ['replace', 'Replace the screenplay (a draft is saved first)']

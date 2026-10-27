@@ -95,7 +95,8 @@ ok(I.unionRevisions([{ id: 'x', date: '2' }], [{ id: 'x', date: '2' }, { id: 'y'
   const theirs = I.keepBoth({ elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), el('b', 'Ravi paces. BBB')], revisions: [] },
     { elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), el('b', 'Ravi paces. AAA')], revisions: [] }, I.ARRIVAL_WINDOW_PREFIX + '18:32');
   const g = I.displacedCopy(theirs, savedEls);
-  ok(g && g.name === 'From another window, 18:32', 'a displaced save names the side copy that holds it');
+  ok(g && g.name === 'Kept when two windows saved, 18:32', 'a displaced save names the side copy that holds it, in words true for both windows (QA r3)');
+  ok(I.isSideCopy({ name: 'From another window, 18:32' }), 'a side copy kept under the old window name is still a side copy');
   ok(I.displacedCopy({ elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), el('b', 'Ravi paces. AAA')], revisions: theirs.revisions }, savedEls) === null, 'not displaced when the lines are on the page');
   ok(I.displacedCopy({ elements: [el('b', 'other')], revisions: [] }, savedEls) === null, 'not displaced when nobody filed them');
   ok(I.isSideCopy(g), 'a window arrival is a side copy, never the current draft');

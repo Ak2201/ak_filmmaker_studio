@@ -210,5 +210,10 @@ ok(build < 50, 'index build on the sample ' + build.toFixed(1) + 'ms');
 ok(per < 5, 'one suggestion on the sample ' + per.toFixed(2) + 'ms');
 console.log(`  smarttype on the sample: build ${build.toFixed(1)}ms, a suggestion ${per.toFixed(2)}ms`);
 
+/* ---- QA r3: split then join gives the line back -------------- */
+eq(K.joinedText('He walks in', 'and sits.'), { text: 'He walks in and sits.', seam: 11 }, 'join puts back the word gap a split trimmed');
+eq(K.joinedText('He walks', '.'), { text: 'He walks.', seam: 8 }, 'no gap before punctuation');
+eq(K.joinedText('', 'Rain.'), { text: 'Rain.', seam: 0 }, 'an empty first line joins with nothing');
+
 console.log(`test:keys — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

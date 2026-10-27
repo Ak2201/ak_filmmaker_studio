@@ -26,6 +26,7 @@
    the unlock, each at a click, each through the page's own save.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { button } from './kit/index.js';
 import '../styles/write-revisions.css';
 import StudioUI from './chrome.js';
 import Scenes from '../lib/scenes.js';
@@ -100,7 +101,7 @@ function renderCompare(doc) {
         h('select#wr-cmp-from', { 'data-rt': 'cmp-from' }, revOptions(doc, cmpFrom, false))]),
       h('label.wr-field', {}, [h('span', { text: 'To' }),
         h('select#wr-cmp-to', { 'data-rt': 'cmp-to' }, revOptions(doc, cmpTo, true))]),
-      h('button.btn.primary', { type: 'button', 'data-action': 'rev-compare', text: 'Compare' })
+      button({ label: 'Compare', variant: 'primary', action: 'rev-compare' })
     ]),
     h('div.wr-cmp-out', { id: 'wr-cmp-out', 'aria-live': 'polite' },
       lastResult && lastResult.from === cmpFrom && lastResult.to === cmpTo ? resultNodes(doc, lastResult) : [])
@@ -126,7 +127,7 @@ function renderRevisedPages(doc) {
         h('input#wr-marks-tint', { type: 'checkbox', 'data-rt': 'marks-tint', checked: marksTint }),
         h('span', { text: 'Tint revised pages in the colour' })
       ]),
-      h('button.btn', { type: 'button', 'data-action': 'export-pdf-revised', text: 'Save revised PDF' })
+      button({ label: 'Save revised PDF', action: 'export-pdf-revised' })
     ])
   );
   return box;
@@ -144,9 +145,7 @@ function renderNumbering(doc) {
             + 'in the pages as OMITTED, and no call sheet ends up pointing at the wrong scene.'
       }),
       h('div.wr-tool-row', {}, [
-        h('button.btn', {
-          type: 'button', 'data-action': 'numbers-lock', text: 'Lock scene numbers', disabled: heads === 0
-        })
+        button({ label: 'Lock scene numbers', action: 'numbers-lock', disabled: heads === 0 })
       ])
     );
     return box;
@@ -171,7 +170,7 @@ function renderNumbering(doc) {
           + 'renumbers every scene by position.'
     }),
     h('div.wr-tool-row', {}, [
-      h('button.btn', { type: 'button', 'data-action': 'numbers-unlock', text: 'Unlock and renumber…' })
+      button({ label: 'Unlock and renumber…', action: 'numbers-unlock' })
     ]),
     renderPagesLock(doc)
   ].filter(Boolean));
@@ -195,7 +194,7 @@ function renderPagesLock(doc) {
             + 'into 12A, 12B rather than pushing every later page on, and a page whose lines are '
             + 'all cut is folded into the one before it as 12-13, so a crew swaps in only the pages that changed.'
       }),
-      h('div.wr-tool-row', {}, [h('button.btn', { type: 'button', 'data-action': 'pages-lock', text: 'Lock page numbers' })])
+      h('div.wr-tool-row', {}, [button({ label: 'Lock page numbers', action: 'pages-lock' })])
     );
     return box;
   }
@@ -204,7 +203,7 @@ function renderPagesLock(doc) {
     h('span', { 'data-pages-summary': '', text: plural(lock.starts.length, 'page') + ' when locked.' })
   ]);
   box.append(summary, h('div.wr-tool-row', {}, [
-    h('button.btn', { type: 'button', 'data-action': 'pages-unlock', text: 'Unlock page numbers…' })
+    button({ label: 'Unlock page numbers…', action: 'pages-unlock' })
   ]));
   /* The A-pages and folded pages as they stand now, filled in once the
      typesetter has loaded. */

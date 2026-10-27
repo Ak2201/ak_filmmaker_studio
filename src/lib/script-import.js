@@ -994,9 +994,12 @@ const TIME_WORDS = [...DAY_NIGHT, ...Object.keys(TIME_SYNONYM)]
 // "… - DAY 12": a scene number after the time of day.
 const TAIL_AFTER_TIME = new RegExp('^(.*\\s[-—–]\\s*(?:' + TIME_WORDS + '))\\s+(\\d+[A-Za-z]?)\\s*$', 'i');
 
-export function parseSlug(slug) {
+/** A heading's scene number and the heading without it, as written
+    otherwise. The import keeps the number on the Breakdown row and the
+    heading reads clean, so a locked export does not print it twice. */
+export function splitSceneNumber(slug) {
   let text = String(slug || '').trim().replace(/\s+/g, ' ');
-  const out = { number: '', intExt: 'INT', dayNight: 'DAY', location: '', guessedTime: false };
+  let number = '';
 
   /* A leading or trailing scene number, as Final Draft writes it.
      The leading form is anchored by the INT/EXT that has to follow
@@ -1004,11 +1007,11 @@ export function parseSlug(slug) {
      office uses — 12A for an insert, A12 for one that came before
      12. */
   const lead = text.match(new RegExp('^(' + SCENE_NO + ')[.)]?[\\s]+(?=(INT|EXT|EST|I\\/E|உள்|வெளி))', 'i'));
-  if (lead) { out.number = lead[1]; text = text.slice(lead[0].length).trim(); }
+  if (lead) { number = lead[1]; text = text.slice(lead[0].length).trim(); }
 
   /* Fountain's own number: "INT. KITCHEN - DAY #12#" / "#12A#". */
   const fnt = text.match(/\s*#([A-Za-z0-9.\-]+)#\s*$/);
-  if (fnt) { if (!out.number) out.number = fnt[1]; text = text.slice(0, fnt.index).trim(); }
+  if (fnt) { if (!number) number = fnt[1]; text = text.slice(0, fnt.index).trim(); }
 
   /* A bare trailing number is a scene number only where it cannot be part
      of the place: after the time of day ("… - DAY 12"), or when the same
@@ -1017,12 +1020,19 @@ export function parseSlug(slug) {
      — they are the address, and the old rule ate them. */
   const after = text.match(TAIL_AFTER_TIME);
   if (after) {
-    if (!out.number) out.number = after[2];
+    if (!number) number = after[2];
     text = after[1].trim();
-  } else if (out.number) {
+  } else if (number) {
     const same = text.match(/\s+(\d+[A-Za-z]?)\s*$/);
-    if (same && same[1].toUpperCase() === out.number.toUpperCase()) text = text.slice(0, same.index).trim();
+    if (same && same[1].toUpperCase() === number.toUpperCase()) text = text.slice(0, same.index).trim();
   }
+  return { number, text };
+}
+
+export function parseSlug(slug) {
+  const split = splitSceneNumber(slug);
+  let text = split.text;
+  const out = { number: split.number, intExt: 'INT', dayNight: 'DAY', location: '', guessedTime: false };
 
   const ie = text.match(/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\s*\/\s*E|INT|EXT|EST|உள்|வெளி)(?![A-Za-z])\.?/i);
   if (ie) {
@@ -1184,6 +1194,14 @@ export function parseScript(raw, filename) {
   for (const el of elements) counts[el.type] = (counts[el.type] || 0) + 1;
 
   const { rows, guessed, numbering } = scenesFrom(elements);
+  /* The rows have their numbers now; the heading text gives its up
+     (QA r3: "12. INT. KITCHEN - DAY" stayed in the line and printed
+     beside the locked 12). Lock reads the rows' numbers, not the text. */
+  for (const el of elements) {
+    if (el.type !== 'scene') continue;
+    const cut = splitSceneNumber(el.text);
+    if (cut.number && cut.text) el.text = cut.text;
+  }
   const lines = totalLines(elements);
   const warnings = (result.warnings || []).slice();
   /* Anything the PDF extractor had to say comes first: it is about

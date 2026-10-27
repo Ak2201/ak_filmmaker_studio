@@ -266,8 +266,8 @@ export function wireKeys(root, ed, o) {
     const row = document.querySelector(elFocus(gone.id));
     if (row && row.value !== gone.text) gone.text = row.value;
     const was = keep.text;
-    const seam = was.length;
-    keep.text = was + gone.text;
+    const { text, seam } = Keys.joinedText(was, gone.text);
+    keep.text = text;
     ed.removeElement(i + 1, () => keep);
     const ta = document.querySelector(elFocus(keep.id));
     if (ta) {

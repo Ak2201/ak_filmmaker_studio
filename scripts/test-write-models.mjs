@@ -84,6 +84,12 @@ ok('screenplay model', () => {
   // QA: a replace import binned the Breakdown's rows and said nothing
   assert.match(S.importDoneText({ elements: 4, scenes: 2, binned: 1 }), /earlier scene is in its bin/);
   assert.match(S.importReplaceBody(3), /3 scenes go to its bin/);
+  // QA r3: singular counts read singular.
+  assert.equal(S.importDoneText({ elements: 1, scenes: 1, binned: 1 }),
+    'Imported 1 line and 1 scene. The Breakdown’s earlier scene is in its bin, with its shots and notes; restore any you want from there. Next: Screenplay Analysis.');
+  assert.match(S.importReplaceBody(1), /scene goes to its bin, with its shots/);
+  assert.match(S.importReplaceBody(3), /with their shots/);
+  assert.match(S.importReadText('', { format: 'fountain', elements: [{}], pages: 1, scenes: [] }), /: 1 line, /);
   assert.equal(S.importReplaceBody(0), 'A draft of the current one is saved first, so it can be restored.');
 });
 

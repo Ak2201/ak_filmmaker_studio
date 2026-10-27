@@ -141,16 +141,16 @@ export function shotsSummary(list) {
 /** What a file read as, in one line. */
 export function importReadText(name, plan) {
   return 'Read ' + (name ? '“' + name + '” ' : '') + 'as ' + (plan.formatLabel || plan.format) + ': '
-    + plan.elements.length + ' lines, ' + formatPages(plan.pages) + ' pages, '
+    + plan.elements.length + (plan.elements.length === 1 ? ' line, ' : ' lines, ') + formatPages(plan.pages) + ' pages, '
     + plan.scenes.length + (plan.scenes.length === 1 ? ' scene.' : ' scenes.');
 }
 
 /** What an import did, as the toast says it. */
 export const importDoneText = (done) =>
-  'Imported ' + done.elements + ' lines and ' + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '.'
+  'Imported ' + done.elements + (done.elements === 1 ? ' line and ' : ' lines and ') + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '.'
   + (done.binned > 0
     ? ' The Breakdown’s earlier ' + (done.binned === 1 ? 'scene is' : done.binned + ' scenes are')
-      + ' in its bin, with their shots and notes; restore any you want from there.'
+      + ' in its bin, with ' + (done.binned === 1 ? 'its' : 'their') + ' shots and notes; restore any you want from there.'
     : '')
   + ' Next: Screenplay Analysis.';
 
@@ -161,7 +161,7 @@ export const importReplaceBody = (sceneCount) =>
   'A draft of the current one is saved first, so it can be restored.'
   + (sceneCount > 0
     ? ' The Breakdown’s ' + (sceneCount === 1 ? 'scene goes' : sceneCount + ' scenes go')
-      + ' to its bin, with their shots and notes, and the imported scenes take their place.'
+      + ' to its bin, with ' + (sceneCount === 1 ? 'its' : 'their') + ' shots and notes, and the imported scenes take their place.'
     : '');
 
 /** The working-copy PDF's subtitle. */

@@ -69,14 +69,18 @@ const COALESCE_MS = 10 * 60 * 1000;
    are left alone too. The newest ARRIVAL_KEEP stay. */
 export const ARRIVAL_PREFIX = 'From another device, ';
 /** The same, for a copy saved by another WINDOW of this browser: calling
-    that "another device" named a device that does not exist (QA r2). */
-export const ARRIVAL_WINDOW_PREFIX = 'From another window, ';
+    that "another device" named a device that does not exist (QA r2).
+    NEUTRAL on purpose: both windows read this one draft, and for the
+    window whose own lines it holds, "from another window" was false
+    (QA r3). The old name is still recognised for drafts already kept. */
+export const ARRIVAL_WINDOW_PREFIX = 'Kept when two windows saved, ';
+const OLD_WINDOW_PREFIX = 'From another window, ';
 /** The name "Use theirs" gives the writer's own copy as it steps aside. */
 export const YOURS_PREFIX = 'Your version, ';
 const ARRIVAL_KEEP = 10;
 const isArrival = (r) => {
   const n = String((r && r.name) || '');
-  return n.startsWith(ARRIVAL_PREFIX) || n.startsWith(ARRIVAL_WINDOW_PREFIX);
+  return n.startsWith(ARRIVAL_PREFIX) || n.startsWith(ARRIVAL_WINDOW_PREFIX) || n.startsWith(OLD_WINDOW_PREFIX);
 };
 /** A copy this module kept by itself (an arrival, or "Your version") and
     the writer never numbered: a SIDE copy, not a draft. It is listed on

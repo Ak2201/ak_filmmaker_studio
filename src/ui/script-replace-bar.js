@@ -230,7 +230,13 @@ export function mountReplaceBar(o) {
     recomputeTimer = setTimeout(() => recompute(false), 150);
   }, { capture: true });
 
-  return { open, close, isOpen };
+  /* The script changed under the bar without a keystroke here — an
+     arrival from another window or device, a merge, "Use theirs" (QA
+     r4: the panel kept "1 of 2" and Replace all then acted on the new
+     text). The page calls this after it redraws. */
+  const refresh = () => { if (isOpen()) { clearTimeout(recomputeTimer); recompute(false); } };
+
+  return { open, close, isOpen, refresh };
 }
 
 export default { mountReplaceBar };

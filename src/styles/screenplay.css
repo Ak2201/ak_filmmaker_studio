@@ -32,6 +32,15 @@
 .sc-main > .sc-done { grid-area: after; }
 .sc-main > #beatsPanel { grid-area: beats; }
 .sc-main > #scChips { grid-area: chips; }
+/* The stage guide (#guide) sits in this unpadded grid: its header and
+   intro took x=0 at 390 and sat 16px left of its own steps, which pad
+   themselves by the skin's band padding, inline var(--s4) (QA r4). The
+   guide takes that padding and the steps give theirs back, so the
+   heading and every step start on one line. And the line-type chips
+   are for writing a line, not reading the guide. */
+.sc-main > #guide { padding-inline: var(--s4); }
+.sc-main > #guide .sg-steps > .step { margin-inline: calc(-1 * var(--s4)); }
+.sc-main:has(> #guide:not([hidden])) > #scChips { display: none; }
 
 /* ============================================================
    THE TOP BAR — three rows: meta strip, tools, the hint strip
@@ -936,7 +945,9 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-top { position: relative; top: auto; }
   /* The meta strip: crumb, then the counts. */
   .sc-meta { gap: var(--s1) var(--s3); padding-block: var(--s2); }
-  .sc-draftline { flex-basis: 100%; }
+  /* The faces wrap to their own line rather than squeezing the draft's
+     name to "NO NUMBERED DRAFT…" (QA r4). */
+  .sc-draftline { flex-basis: 100%; flex-wrap: wrap; row-gap: var(--s1); }
   /* the running-time button keeps a thumb-sized target; the counts
      beside it sit on its centre line */
   .sc-stats { align-items: center; }

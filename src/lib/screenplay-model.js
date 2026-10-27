@@ -15,6 +15,7 @@
 import Keys from './write-keys.js';
 import { latestDraft, changedSinceDraft } from './drafts.js';
 import { pageCount, formatPages, formatRuntime, wordCount } from './script.js';
+import { sceneLabel } from './caret-position.js';
 
 /* ---- the crumb ------------------------------------------------- */
 /** "Draft 3 · unsaved draft changes", or "No numbered draft yet" (the autosave is a separate status). */
@@ -83,9 +84,14 @@ export function scriptStats(elements) {
     the estimate is nothing: { text, minutes }. */
 export function estimatedRuntime(A, elements, pages) {
   const sec = A.sliceScript(elements).reduce((n, sl) => n + A.estimateSlice(sl).seconds, 0);
+  /* Whole minutes the way Script analysis rounds them (runtimeMinutes:
+     whole seconds, minutes floored). Math.round here put the writer a
+     minute ahead of the analysis tab for the same script — 2H 17M
+     against 2h 16m (QA r4). */
+  const mins = A.runtimeMinutes(sec);
   return {
-    text: sec ? formatRuntime(sec / 60) : formatRuntime(pages),
-    minutes: sec ? Math.round(sec / 60) : Math.round(pages)
+    text: sec ? formatRuntime(mins) : formatRuntime(pages),
+    minutes: sec ? mins : Math.round(pages)
   };
 }
 
@@ -121,9 +127,10 @@ export function targetPagesFor(target, projectFormat) {
 }
 
 /* ---- the position strip ---------------------------------------- */
-/** "Scene 4 of 31", "31 scenes", or "No scenes yet". */
-export function scenePosText(p, total) {
-  return p && p.scene ? 'Scene ' + p.scene + ' of ' + total
+/** "Scene 4 of 31" ("Scene 12A (13 of 37)" with locked numbers), "31
+    scenes", or "No scenes yet". */
+export function scenePosText(p, total, locked) {
+  return p && p.scene ? sceneLabel(p, total, locked)
     : total ? total + (total === 1 ? ' scene' : ' scenes') : 'No scenes yet';
 }
 

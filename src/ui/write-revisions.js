@@ -35,6 +35,7 @@ import {
   revisionColour, sceneNumbers, lockNumbering, isNumberingLocked, typeLabel
 } from '../lib/script.js';
 import { askDanger } from './dialog.js';
+import { issuedColour, issuedCount, revisionLabel, isSideCopy } from '../lib/script-incoming.js';
 
 const differ = () => import('../lib/script-diff.js');
 
@@ -55,8 +56,14 @@ function revLabel(doc, id) {
   if (id === LIVE) return 'The script now';
   const i = doc.revisions.findIndex((r) => r.id === id);
   if (i < 0) return '';
-  return revisionColour(i).name + ' — ' + doc.revisions[i].name;
+  return revisionLabel(doc.revisions, i);
 }
+/* The newest ISSUED draft: "Mark changes since" and the revised pages'
+   colour count issues, never the side copies an arrival kept (QA r4). */
+const latestIssuedId = (doc) => {
+  for (let i = doc.revisions.length - 1; i >= 0; i--) if (!isSideCopy(doc.revisions[i])) return doc.revisions[i].id;
+  return doc.revisions[doc.revisions.length - 1].id;
+};
 function revElements(doc, id) {
   if (id === LIVE) return doc.elements;
   const r = doc.revisions.find((x) => x.id === id);
@@ -78,10 +85,10 @@ export function renderRevisionTools() {
   return wrap;
 }
 
-function revOptions(doc, selected, withLive) {
-  const opts = doc.revisions.map((r, i) => h('option', {
-    value: r.id, text: revisionColour(i).name + ' — ' + r.name, selected: r.id === selected
-  }));
+function revOptions(doc, selected, withLive, issuedOnly) {
+  const opts = doc.revisions.map((r, i) => ((issuedOnly && isSideCopy(r) && issuedCount(doc.revisions)) ? null : h('option', {
+    value: r.id, text: revisionLabel(doc.revisions, i), selected: r.id === selected
+  }))).filter(Boolean);
   if (withLive) opts.push(h('option', { value: LIVE, text: 'The script now', selected: selected === LIVE }));
   return opts;
 }
@@ -111,7 +118,7 @@ function renderCompare(doc) {
 
 function renderRevisedPages(doc) {
   if (marksSince && !validRev(doc, marksSince)) marksSince = '';
-  const since = marksSince || doc.revisions[doc.revisions.length - 1].id;
+  const since = marksSince || latestIssuedId(doc);
   const box = h('section.wr-marks', { 'aria-labelledby': 'wr-marks-h' });
   box.append(
     h('h3.wr-tool-h', { id: 'wr-marks-h', text: 'Revised pages' }),
@@ -122,7 +129,7 @@ function renderRevisedPages(doc) {
     }),
     h('div.wr-tool-row', {}, [
       h('label.wr-field', {}, [h('span', { text: 'Mark changes since' }),
-        h('select#wr-marks-since', { 'data-rt': 'marks-since' }, revOptions(doc, since, false))]),
+        h('select#wr-marks-since', { 'data-rt': 'marks-since' }, revOptions(doc, since, false, true))]),
       h('label.wr-check', {}, [
         h('input#wr-marks-tint', { type: 'checkbox', 'data-rt': 'marks-tint', checked: marksTint }),
         h('span', { text: 'Tint revised pages in the colour' })
@@ -316,7 +323,7 @@ function wire() {
     const doc = ctx.getDoc();
     if (!doc || !doc.revisions.length) return;
     if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
-    const sinceId = marksSince && validRev(doc, marksSince) ? marksSince : doc.revisions[doc.revisions.length - 1].id;
+    const sinceId = marksSince && validRev(doc, marksSince) ? marksSince : latestIssuedId(doc);
     const since = doc.revisions.findIndex((r) => r.id === sinceId);
     let D;
     try { D = await differ(); } catch (e) { say('The revision marks could not be loaded. Check the connection and try again.', 'error'); return; }
@@ -329,12 +336,15 @@ function wire() {
     /* Which colour these pages are. If the script is exactly the latest
        snapshot, that snapshot IS this issue; otherwise this is the
        issue after it, not yet snapshotted. */
-    const latest = doc.revisions.length - 1;
+    const latestId = latestIssuedId(doc);
+    const latest = doc.revisions.findIndex((r) => r.id === latestId);
+    const count = issuedCount(doc.revisions);
     const issued = D.isUnchanged(D.diffElements(doc.revisions[latest].elements, doc.elements));
-    const colour = revisionColour(issued ? latest : latest + 1);
+    const colour = revisionColour(Math.max(0, issued ? count - 1 : count));
+    const sinceColour = issuedColour(doc.revisions, since);
     ctx.exportPDF({
       marks: { ids, label: colour.name + ' Revision', swatch: colour.swatch, tint: marksTint },
-      note: plural(ids.size, 'revised line') + ' since ' + revisionColour(since).name
+      note: plural(ids.size, 'revised line') + ' since ' + (sinceColour ? sinceColour.name : doc.revisions[since].name)
     });
   });
 

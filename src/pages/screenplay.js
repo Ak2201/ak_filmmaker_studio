@@ -55,7 +55,7 @@ import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk an
 import { pageEntry } from '../lib/navmodel.js';
 import { buildSectionMenu } from '../ui/section-menu.js';   // Write | Script analysis
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
-import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
+import { caretPosition, formatCaretPage, sceneTotal, lockedSceneNumber } from '../lib/caret-position.js';
 import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft } from '../lib/drafts.js';
@@ -198,22 +198,46 @@ let theirsToast = null;
 let incomingDraftId = null;   // the draft the last arrival made
 const clock = () => new Date().toTimeString().slice(0, 5);
 const inEditor = () => !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#wr-page'));
-function showDoc() {
+/* The line to put the caret on when the current one is gone from the
+   arriving copy: the nearest line above it still there, else below
+   (QA r4: another window deleted the caret's line and focus fell to
+   <body>). Read from the page as drawn, which is still the old copy. */
+function survivingNeighbour(id) {
+  const have = new Set(doc.elements.map((e) => e.id));
+  if (have.has(id)) return id;
+  const drawn = Array.from(document.querySelectorAll('#wr-page [data-el]')).map((n) => n.dataset.el);
+  const at = drawn.indexOf(id);
+  if (at >= 0) {
+    for (let i = at - 1; i >= 0; i--) if (have.has(drawn[i])) return drawn[i];
+    for (let i = at + 1; i < drawn.length; i++) if (have.has(drawn[i])) return drawn[i];
+  }
+  return doc.elements.length ? doc.elements[0].id : null;
+}
+/* `refocus`: put the caret back in the script even though focus is not
+   in it now — "Use theirs" is pressed in a toast that is then removed,
+   and focus fell to <body> (QA r4). */
+function showDoc({ refocus = false } = {}) {
   if (!doc.elements.length) doc.elements.push(blankElement({ type: 'scene' }));
   /* Keep the caret where it was, to the character: a merge redraws the
      page under a writer who may be mid-word. */
   const ta = inEditor() ? document.activeElement : null;
   const sel = ta && typeof ta.selectionStart === 'number' ? [ta.selectionStart, ta.selectionEnd] : null;
-  const keep = curId && doc.elements.some((e) => e.id === curId) && ta ? elFocus(curId) : null;
+  const target = curId && (ta || refocus) ? survivingNeighbour(curId) : null;
+  const same = target && target === curId;
+  if (target && !same) curId = target;
+  const keep = target ? elFocus(target) : null;
   renderPage(keep);
-  if (keep && sel) {
+  if (keep) {
     const now = document.querySelector(keep);
     if (now && typeof now.setSelectionRange === 'function') {
-      try { now.setSelectionRange(Math.min(sel[0], now.value.length), Math.min(sel[1], now.value.length)); } catch (e) { /* select */ }
+      const len = now.value.length;
+      try { now.setSelectionRange(same && sel ? Math.min(sel[0], len) : len, same && sel ? Math.min(sel[1], len) : len); } catch (e) { /* select */ }
     }
+    if (now && document.activeElement !== now) { try { now.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
   }
   refreshDraftLabel();
   refreshAnalysis();   // an open analysis follows the arrival, as the header counts do
+  if (replaceBar) replaceBar.refresh();   // the find count follows the new text
 }
 function mergeIncoming(fresh) {
   const merged = mergeScript(doc, fresh, pageBase);
@@ -260,6 +284,7 @@ function onIncomingScript(live, where = 'device') {
           + ' kept its own version of this script, which is now on screen. What you saved here is in Drafts as “' + gone.name + '”.', { type: 'info' });
       } catch (e) { /* chrome may not be up */ }
     } else if (!live && where === 'device') say('Updated with the newer copy from your other device.');   // the live path already said so
+    else if (where === 'window') say('Updated with the copy saved in your other window.');   // QA r4: it changed silently
     return;
   }
   const arrived = fresh;
@@ -286,7 +311,7 @@ function onIncomingScript(live, where = 'device') {
         theirsToast = null;
         doc = takeTheirs(doc, arrived, YOURS_PREFIX + clock());
         persistNow();
-        showDoc();
+        showDoc({ refocus: true });
       }
     });
     theirsToast = offer;
@@ -870,7 +895,7 @@ function putPos(k, text, show = !!text) {
 function refreshPos(deep) {
   const p = curId ? caretPosition(doc.elements, curId) : null;
   const total = p ? p.sceneCount : sceneTotal(doc.elements);
-  putPos('scene', scenePosText(p, total), true);
+  putPos('scene', scenePosText(p, total, p ? lockedSceneNumber(doc.elements, doc.numbering, p.sceneElId) : ''), true);
   putPos('page', p ? formatCaretPage(p) : '');
   const sid = p ? p.sceneElId : null;
   if (deep || sid !== posScene) {

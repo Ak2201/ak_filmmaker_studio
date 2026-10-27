@@ -800,8 +800,16 @@ const ENDS_IN_TO = /TO:$/;
 const TAMIL_CUE_SHAPE = (l) => /[஀-௿]/.test(l) && !/[a-z]/.test(l)
   && l.split(/\s+/).filter(Boolean).length <= 3 && l.length <= 30 && !/[.!?।…]$/.test(l);
 
+/* The importer reads *x*, **x** and _x_ as emphasis and takes the marks
+   off (QA r4). Text that would be read that way goes out ESCAPED, \* and
+   \_, which the importer turns back into the characters — so the
+   round trip keeps "5 *star* review" as typed. Mirrors `unmark` in
+   script-import.js. */
+const EMPHASIS_SHAPE = /(^|[^\\*])(\*{1,3})(?=[^\s*])[^*\n]*?[^\s*\\]\2(?!\*)|(^|[^\w\\])_(?=\S)[^_\n]*?[^\s\\]_(?!\w)/;
+const escapeEmphasis = (t) => (EMPHASIS_SHAPE.test(t) ? t.replace(/[*_]/g, '\\$&') : t);
+
 function fountainBlock(type, text) {
-  const t = text.trim();
+  const t = escapeEmphasis(text.trim());
   switch (type) {
     case 'scene': {
       const up = t.toUpperCase();

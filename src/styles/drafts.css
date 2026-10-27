@@ -46,6 +46,7 @@ main.dr-main {
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
 }
+.dr-swatch.is-side     { background: transparent; border-style: dashed; }
 .dr-swatch.c-white     { --rev-ink: var(--paper-raised); }
 .dr-swatch.c-blue      { --rev-ink: var(--shorts); }
 .dr-swatch.c-pink      { --rev-ink: var(--shoot); }

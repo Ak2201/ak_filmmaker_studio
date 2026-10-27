@@ -153,5 +153,22 @@ ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
   ok(D.latestDraft(yours).id === real.id, '"Your version" is a side copy too');
 }
 
+/* ---- QA r4: side copies take no place in the colour order ---- */
+{
+  const I = await import('../src/lib/script-incoming.js');
+  const WM = await import('../src/lib/write-model.js');
+  const c = { elements: els('INT. A - DAY', 'One.'), revisions: [], documents: [] };
+  D.saveNewDraft(c);
+  c.revisions.push({ ...Script.makeRevision(c.elements, I.ARRIVAL_PREFIX + '10:42') });
+  ok(I.isSideCopy(c.revisions[1]), 'the arrival is a side copy');
+  c.elements[1].text = 'Two.';
+  const d2 = D.saveNewDraft(c);
+  eq([d2.name, d2.colour && d2.colour.name], ['Draft 2', 'Blue'], 'Draft 2 is Blue with a side copy before it');
+  const side = D.listDrafts(c).find((d) => d.side);
+  ok(side && side.colour === null, 'a side copy has no revision colour');
+  eq(I.revisionLabel(c.revisions, 1), c.revisions[1].name, 'a side copy is labelled by name alone, never "Blue — …"');
+  eq(WM.currentRevision(c), 'Blue — Draft 2', 'the current revision counts issues only');
+}
+
 console.log(fails ? fails + ' FAILED of ' + n : 'drafts: all ' + n + ' checks passed');
 process.exit(fails ? 1 : 0);

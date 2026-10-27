@@ -620,5 +620,27 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
     'INT. KITCHEN - DAY', 'one piece into a heading: its line breaks fold to spaces');
 }
 
+/* ---- QA r4: Fountain says what it left out, and drops emphasis ---- */
+{
+  const S = await import('../src/lib/script.js');
+  const t = '# ACT ONE\n\n= synopsis\n\nINT. ROOM - DAY\n\n/* boneyard */\n\nHe **shouts** and _whispers_ and *leans*. 5 * 3, snake_case.\n\n[[a note]]\n\n===\n\nRAVI\nHi.\n';
+  const r = I.parseScript(t, 'a.fountain');
+  eq(r.elements[1].text, 'He shouts and whispers and leans. 5 * 3, snake_case.', 'fountain: emphasis marks come off, a lone * and a snake_case word stay');
+  ok(r.warnings.some((w) => /2 note or boneyard/.test(w)), 'fountain: dropped notes are reported');
+  ok(r.warnings.some((w) => /2 section or synopsis/.test(w)), 'fountain: dropped sections are reported');
+  ok(r.warnings.some((w) => /1 page break/.test(w)), 'fountain: dropped page breaks are reported');
+  const doc = [{ id: 'a', type: 'scene', text: 'INT. ROOM - DAY' }, { id: 'b', type: 'action', text: 'A 5 *star* review, file_name_here and _x_.' }];
+  const back = I.parseScript(S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' }), 'b.fountain');
+  eq(back.elements.find((e) => e.type === 'action').text, doc[1].text, 'fountain round trip keeps typed stars and underscores (escaped on the way out)');
+  /* PDF/.txt front matter fills the Title Page instead of vanishing. */
+  const C = ' '.repeat(28);
+  const txt = C + 'DRAGON TEST\n\n' + C + 'Written by\n\n' + C + 'Some Writer\n\f\nINT. ROOM - DAY\n\nHe sits.\n';
+  const tr = I.parseScript(txt, 'x.pdf');
+  eq(tr.titlePage && [tr.titlePage.title, tr.titlePage.credit, tr.titlePage.author], ['DRAGON TEST', 'Written by', 'Some Writer'], 'text: the title page before the first page break fills the Title Page');
+  ok(tr.warnings.some((w) => /read into the Title Page/.test(w)), 'text: the notice says the lines went to the Title Page');
+  const lone = I.parseScript(C + 'JUST A TITLE\n\f\nINT. ROOM - DAY\n\nHe sits.\n', 'y.pdf');
+  ok(lone.titlePage === null && lone.warnings.some((w) => /left out of the script as front matter/.test(w)), 'text: a front page with nothing to keep does not claim it was kept');
+}
+
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

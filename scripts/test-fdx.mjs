@@ -191,6 +191,18 @@ ok(/<Revisions ActiveSet="1"[^>]*>\s*<Revision FullRevision="No" ID="1" Mark="\*
 ok(!/RevisionID|<Revisions/.test(fdx), 'without marks, no revision is claimed');
 eq(shape(parseScript(rfdx, 'r.fdx').elements), shape(back.elements), 'marks do not change what comes back');
 
+/* ---- ScriptNote stays out of the script (QA r4) ------------------- */
+{
+  const noteFdx = '<?xml version="1.0" encoding="UTF-8"?><FinalDraft DocumentType="Script" Template="No" Version="5"><Content>'
+    + '<Paragraph Type="Scene Heading"><Text>INT. ROOM - DAY</Text></Paragraph>'
+    + '<Paragraph Type="Action"><Text>Line with</Text><Text> runs</Text><ScriptNote ID="1"><Paragraph><Text>a note</Text></Paragraph></ScriptNote></Paragraph>'
+    + '<Paragraph Type="Action"><ScriptNote ID="2"><Paragraph><Text>only a note</Text></Paragraph></ScriptNote></Paragraph>'
+    + '</Content></FinalDraft>';
+  const r = parseScript(noteFdx, 'n.fdx');
+  eq(r.elements.map((e) => e.text), ['INT. ROOM - DAY', 'Line with runs'], 'a ScriptNote is not read into the line, and a note-only paragraph is no line');
+  ok(r.warnings.some((w) => /2 Final Draft script note/.test(w)), 'the preview says the notes were left out — got ' + JSON.stringify(r.warnings));
+}
+
 /* ---- one writer, loaded at the press ------------------------------- */
 ok(!('toFDX' in S), 'script.js no longer carries a second .fdx writer');
 const srcFiles = [];

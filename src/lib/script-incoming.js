@@ -17,7 +17,7 @@
    draft (a `revisions` entry, the existing Drafts mechanism — no new
    key), so the writer can open it on drafts.html and take lines back.
    ============================================================ */
-import { makeRevision } from './script.js';
+import { makeRevision, revisionColour } from './script.js';
 
 /** What the script holds that the writer would miss, as one string. */
 export function scriptSignature(doc) {
@@ -91,6 +91,29 @@ const isArrival = (r) => {
 export const isSideCopy = (r) => !!r && !(Number.isFinite(r.number) && r.number > 0)
   && (isArrival(r) || String(r.name || '').startsWith(YOURS_PREFIX));
 
+/** The issue colour of revision i: its place among the ISSUED drafts
+    (side copies skipped), or null for a side copy, which is no issue.
+    Counting the whole list made the writer's Draft 2 Pink and handed
+    Blue to "From another device, 10:42" (QA r4). Derived, never stored. */
+export function issuedColour(revs, i) {
+  const list = Array.isArray(revs) ? revs : [];
+  if (!list[i] || isSideCopy(list[i])) return null;
+  let n = 0;
+  for (let k = 0; k < i; k++) if (!isSideCopy(list[k])) n++;
+  return revisionColour(n);
+}
+
+/** How many issued drafts the list holds (side copies not counted). */
+export const issuedCount = (revs) => (Array.isArray(revs) ? revs : []).filter((r) => !isSideCopy(r)).length;
+
+/** "Blue — Draft 2", or a side copy's own name with no colour. */
+export function revisionLabel(revs, i) {
+  const r = (revs || [])[i];
+  if (!r) return '';
+  const c = issuedColour(revs, i);
+  return c ? c.name + ' — ' + r.name : r.name;
+}
+
 function capArrivals(revs) {
   const arrivals = revs.filter(isArrival);
   if (arrivals.length <= ARRIVAL_KEEP) return revs;
@@ -144,4 +167,4 @@ export function displacedCopy(fresh, savedEls) {
   return null;
 }
 
-export default { scriptSignature, incomingAction, displacedCopy, unionRevisions, keepBoth, takeTheirs, isSideCopy, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };
+export default { scriptSignature, incomingAction, displacedCopy, unionRevisions, keepBoth, takeTheirs, isSideCopy, issuedColour, issuedCount, revisionLabel, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };

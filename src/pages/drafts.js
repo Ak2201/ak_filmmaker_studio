@@ -83,7 +83,9 @@ const say = (m, type = 'info') => { try { StudioUI.toast(m, { type }); } catch (
 mountRevisionTools({
   getDoc: () => doc,
   persistNow: () => save(),
-  render: () => render(),
+  /* The tool names the control to focus after its redraw (Lock scene
+     numbers → Unlock): it was ignored, and focus fell to <body> (QA r4). */
+  render: (sel) => renderFocusing(sel),
   exportPDF: (extra) => exportRevisedPDF(extra)
 });
 const leave = installLeavePrompt({ getDoc: () => doc, persistNow: () => fresh() });
@@ -109,6 +111,17 @@ function focusKey(el) {
 }
 function renderKeeping() {
   const key = focusKey(document.activeElement);
+  const y = window.scrollY;
+  render();
+  window.scrollTo({ top: y, behavior: 'instant' });
+  const back = key && document.querySelector(key);
+  if (back && typeof back.focus === 'function') back.focus({ preventScroll: true });
+}
+/* After an action redraws the list: focus goes back to the control
+   that started it (or the one that replaced it), not to <body> — the
+   opener a dialog returns focus to has been rebuilt by then (QA r4:
+   Save as new draft, Restore and Lock scene numbers all dropped it). */
+function renderFocusing(key) {
   const y = window.scrollY;
   render();
   window.scrollTo({ top: y, behavior: 'instant' });
@@ -158,12 +171,14 @@ delegate(document, 'input', '[data-tp-field]', (e, input) => {
 function row(d, isLatest) {
   const li = h('li.dr-row' + (isLatest ? '.is-current' : ''), { 'data-draft': d.id });
   li.append(
-    h('span.dr-swatch.c-' + d.colour.swatch, { title: d.colour.name + ' revision colour', 'aria-hidden': 'true' }),
+    d.colour
+      ? h('span.dr-swatch.c-' + d.colour.swatch, { title: d.colour.name + ' revision colour', 'aria-hidden': 'true' })
+      : h('span.dr-swatch.is-side', { title: 'A side copy: not an issued draft, so it has no revision colour', 'aria-hidden': 'true' }),
     h('div.dr-main', {}, [
       h('div.dr-name', {}, [
         h('strong', { text: d.label }),
         isLatest ? badge({ label: 'Current', tone: 'info', dot: true, class: 'dr-tag' }) : null,
-        h('span.dr-colour', { text: d.colour.name })
+        h('span.dr-colour', { text: d.colour ? d.colour.name : 'Side copy' })
       ]),
       h('div.dr-meta', { text: draftMetaText(d) }),
       d.note ? h('div.dr-note', { text: d.note }) : null
@@ -247,7 +262,8 @@ function refreshStateClass(main) {
 }
 
 /* ---- actions ----------------------------------------------------- */
-delegate(document, 'click', '[data-dr="new"]', async () => {
+delegate(document, 'click', '[data-dr="new"]', async (e, btn) => {
+  const opener = focusKey(btn);
   fresh();
   const name = nextDraftName(doc);
   const res = await choiceDialog({
@@ -261,10 +277,11 @@ delegate(document, 'click', '[data-dr="new"]', async () => {
   const made = Drafts.saveNewDraft(doc, { note: res.value });
   save();
   say('Saved as ' + made.label + '.', 'success');
-  render();
+  renderFocusing(opener);
 });
 
-delegate(document, 'click', '[data-dr="update"]', async () => {
+delegate(document, 'click', '[data-dr="update"]', async (e, btn) => {
+  const opener = focusKey(btn);
   fresh();
   const last = Drafts.latestDraft(doc);
   if (!last) return;
@@ -278,11 +295,12 @@ delegate(document, 'click', '[data-dr="update"]', async () => {
   Drafts.updateDraft(doc, last.id);
   save();
   say('Updated ' + last.label + '.', 'success');
-  render();
+  renderFocusing(opener);
 });
 
 delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   const id = btn.dataset.id;
+  const opener = focusKey(btn);
   fresh();
   const d = Drafts.listDrafts(doc).find((x) => x.id === id);
   if (!d) return;
@@ -310,7 +328,7 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   } catch (e) { console.warn('[drafts] scene sync', e); }
   say('Restored ' + d.label + ' as the working copy.'
     + (binned ? ' ' + binned + (binned === 1 ? ' scene it does not have went' : ' scenes it does not have went') + ' to the Breakdown’s bin.' : ''), 'success');
-  render();
+  renderFocusing(opener);
 });
 
 delegate(document, 'click', '[data-dr="compare"]', (e, btn) => {

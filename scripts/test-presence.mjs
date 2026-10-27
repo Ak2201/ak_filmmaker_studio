@@ -17,6 +17,10 @@ eq(P.displayNameOf({ email: 'arun.k@example.com' }), 'arun.k', 'then the e-mail 
 eq(P.displayNameOf(null), 'A collaborator', 'nothing known');
 eq(P.initials('Cal Collab'), 'CC', 'two words');
 eq(P.initials('meera'), 'M', 'one word');
+eq(P.initials('😀 Dev'), 'D', 'an emoji word is skipped, never split into a lone surrogate (QA r4)');
+ok(!/[\uD800-\uDFFF]/.test(P.initials('😀')) || P.initials('😀') === '😀', 'an emoji-only name keeps the whole character');
+eq(P.caretTag(P.displayNameOf({})), 'Collaborator', 'a nameless peer\'s caret reads Collaborator, not "A" (QA r4)');
+eq(P.caretTag('Cal Collab'), 'Cal', 'a caret tag is the first word');
 eq(P.initials('Anna Maria de Souza'), 'AS', 'first and last');
 eq(P.initials(''), '?', 'no name');
 

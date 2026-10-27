@@ -32,16 +32,30 @@ export function displayNameOf(user) {
   const n = String(m.full_name || m.name || '').trim();
   if (n) return n;
   const e = String((user && user.email) || m.email || '').trim();
-  return e ? e.split('@')[0] : 'A collaborator';
+  return e ? e.split('@')[0] : FALLBACK_NAME;
+}
+export const FALLBACK_NAME = 'A collaborator';
+
+/** "Cal Collab" → "CC"; "cal" → "C". Whole characters, from the words
+    that have a letter or digit in them: "😀 Dev" took the emoji's first
+    UTF-16 half and printed a broken glyph (QA r4); it is "D" now. */
+export function initials(name) {
+  const all = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const worded = all.filter((w) => /[\p{L}\p{N}]/u.test(w));
+  const parts = worded.length ? worded : all;
+  if (!parts.length) return '?';
+  const lead = (w) => { const m = w.match(/[\p{L}\p{N}]/u); return m ? m[0] : (Array.from(w)[0] || ''); };
+  const first = lead(parts[0]);
+  const last = parts.length > 1 ? lead(parts[parts.length - 1]) : '';
+  return (first + last).toUpperCase();
 }
 
-/** "Cal Collab" → "CC"; "cal" → "C". */
-export function initials(name) {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '?';
-  const first = parts[0][0] || '';
-  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : '';
-  return (first + last).toUpperCase();
+/** The name on someone's caret: their first word — but the fallback
+    for a nameless account is "Collaborator", never its article "A". */
+export function caretTag(name) {
+  const n = String(name || '').trim();
+  if (!n || n === FALLBACK_NAME) return 'Collaborator';
+  return n.split(/\s+/)[0];
 }
 
 /**

@@ -6,7 +6,8 @@
    new is stored beyond three OPTIONAL fields on such an entry: `number`
    (Draft 3), `note`, and `titlePage` (the title page as it was). `date`
    is the saved-at stamp. The colour is NOT stored: it is the entry's
-   position in the list, as it always was (revisionColour()).
+   position among the ISSUED drafts (issuedColour(): side copies take
+   no place in the colour order, and have no colour).
 
    "Changed since the last draft" is DERIVED: a stable hash of the
    working copy against a hash of the latest draft's snapshot, at the
@@ -20,7 +21,7 @@ import {
   makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage, pageCount,
   isNumberingLocked
 } from './script.js';
-import { isSideCopy } from './script-incoming.js';
+import { isSideCopy, issuedColour } from './script-incoming.js';
 
 /* FNV-1a over the things that make two scripts different. Text, type and
    the dual flag; ids are left out on purpose — a restored or snapshotted
@@ -43,9 +44,13 @@ const hashTitle = (tp) => (hasTitlePage(tp) ? JSON.stringify(normaliseTitlePage(
 
 /** One entry, normalised for display. Old revisions get a number from
     their position and keep their own name. */
-function describe(rev, index) {
+function describe(rev, index, revs) {
   const number = Number.isFinite(rev.number) && rev.number > 0 ? rev.number : index + 1;
-  const colour = revisionColour(index);
+  /* The colour is the draft's place among the ISSUED drafts; a side copy
+     has none (null) and is shown as one (QA r4). `revs` is the whole
+     list; without it (an old caller) the position is all there is. */
+  const side = isSideCopy(rev);
+  const colour = revs ? issuedColour(revs, index) : revisionColour(index);
   return {
     id: rev.id,
     index,
@@ -55,6 +60,7 @@ function describe(rev, index) {
     note: rev.note || '',
     savedAt: rev.date || '',
     colour,
+    side,
     pages: pageCount(rev.elements || []),
     lines: (rev.elements || []).length,
     hasTitlePage: !!rev.titlePage,
@@ -65,7 +71,7 @@ function describe(rev, index) {
 /** Newest first. */
 export function listDrafts(doc) {
   const revs = (doc && Array.isArray(doc.revisions)) ? doc.revisions : [];
-  return revs.map(describe).reverse();
+  return revs.map((r, i) => describe(r, i, revs)).reverse();
 }
 
 /** The newest real draft. A side copy the sync kept by itself
@@ -73,7 +79,7 @@ export function listDrafts(doc) {
     listed, but is never the current draft. */
 export function latestDraft(doc) {
   const revs = (doc && Array.isArray(doc.revisions)) ? doc.revisions : [];
-  for (let i = revs.length - 1; i >= 0; i--) if (!isSideCopy(revs[i])) return describe(revs[i], i);
+  for (let i = revs.length - 1; i >= 0; i--) if (!isSideCopy(revs[i])) return describe(revs[i], i, revs);
   return null;
 }
 
@@ -103,7 +109,7 @@ export function saveNewDraft(doc, { note = '' } = {}) {
   const entry = { id: makeRevision([], '').id, name: 'Draft ' + number, number, date: '', elements: [] };
   snapshot(doc, entry, note);
   doc.revisions.push(entry);
-  return describe(entry, doc.revisions.length - 1);
+  return describe(entry, doc.revisions.length - 1, doc.revisions);
 }
 
 /** Overwrite a draft's snapshot with the working copy. The spec's
@@ -114,7 +120,7 @@ export function updateDraft(doc, id, { note } = {}) {
   const entry = doc.revisions[i];
   if (!entry.number) entry.number = i + 1;   // an old entry gains its number only when rewritten
   snapshot(doc, entry, note);
-  return describe(entry, i);
+  return describe(entry, i, doc.revisions);
 }
 
 /** Put a draft's snapshot back as the working copy. The CALLER has

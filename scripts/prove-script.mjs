@@ -31,6 +31,10 @@
         second Writer tab and an open drafts.html never save a stale
         copy; Revised pages is on drafts.html; a restore bins the
         scenes it lacks; the phone toolbar is one row with Notes' icon
+    23  QA round 4: a >64 KB script saved in another window reaches the open
+        Writer; focus survives arrivals, "Use theirs" and the drafts actions;
+        the find count follows an arrival; menus skip CSS-hidden items; the
+        stage guide has its gutter
 
        npm run build:open && npm run prove:script
    ============================================================ */
@@ -168,12 +172,24 @@ ok(revs.length === 1 && revs[0].number === 1, '7  Draft 1 is saved inside the sc
 ok(/Draft 1/.test(await page.$eval('[data-sc="draft"]', (n) => n.textContent)), 'the top bar names Draft 1');
 
 /* ---- 8–10 leaving ------------------------------------------------------ */
+/* A link off the page. The one under the sheet used to go to the
+   Breakdown; since the naming pass it is screenplay.html#analysis, a view
+   of this page, which rightly asks nothing — so the proof leaves by a
+   link that does leave. */
+async function clickLeave() {
+  await page.evaluate(() => {
+    if (document.getElementById('proofLeave')) return;
+    const a = document.createElement('a'); a.id = 'proofLeave'; a.href = 'breakdown.html'; a.textContent = 'Breakdown';
+    document.getElementById('main').append(a);
+  });
+  await page.click('#proofLeave');
+}
 async function editAndLeave(text) {
   await page.click('#wr-page .wr-el:nth-child(2) .wr-text').catch(() => page.click('#wr-page .wr-text'));
   await page.keyboard.press('End');
   await page.keyboard.type(text);
   await settle();
-  await page.click('.sc-done a');
+  await clickLeave();
   await page.waitForSelector('.lp-card', { timeout: 3000 }).catch(() => {});
 }
 await editAndLeave(' Again.');
@@ -193,7 +209,7 @@ ok(revs.length === 2 && JSON.stringify(revs[1].elements.map((e) => e.text)) === 
   '9  Update Draft 2 overwrites it with the working copy, and adds none', revs.length);
 
 await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
-await page.click('.sc-done a');
+await clickLeave();
 await page.waitForURL(/breakdown\.html/, { timeout: 5000 }).catch(() => {});
 ok(/breakdown\.html/.test(page.url()) && !(await page.$('.lp-card')), '10 leaving with no changes asks nothing');
 
@@ -891,6 +907,168 @@ await page.setViewportSize({ width: 1280, height: 900 });
   const legacy = await t.$$eval('.wr-tool-row button', (bs) => ({ all: bs.length, legacy: bs.filter((b) => !b.classList.contains('k-btn')).map((b) => b.textContent) }));
   ok(legacy.all > 0 && legacy.legacy.length === 0, '22c drafts.html\'s Compare / revised PDF / lock buttons are kit buttons', legacy);
   await tctx.close();
+}
+
+/* ---- 23 QA round 4 (27 Oct 2026): big arrivals, focus, menus, guide ---
+   Each assertion failed before its fix. */
+{
+  const fresh = async (title, els) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+    await page.evaluate(({ title, els }) => {
+      const S = window.StudioStore;
+      const p = S.createProject({ title: title + ' ' + Date.now(), format: 'feature' });
+      S.setCurrentProject(p.id);
+      if (els) S.rawSet('fms_script_v1__' + p.id, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+    }, { title, els });
+    await page.evaluate(() => window.StudioStore.flushStorage && window.StudioStore.flushStorage());
+  };
+  /* another window of the same browser writes the script, through the store */
+  const writeElsewhere = (pg, fn) => pg.evaluate(async (src) => {
+    const S = window.StudioStore; const k = 'fms_script_v1__' + S.currentProjectId();
+    const d = JSON.parse(S.rawGet(k));
+    (0, eval)('(' + src + ')')(d);
+    S.rawSet(k, JSON.stringify(d));
+    if (S.flushStorage) await S.flushStorage();
+  }, fn.toString());
+  const readFresh = async () => {
+    const c = await ctx.newPage();
+    await c.goto(url('index.html'), { waitUntil: 'networkidle' });
+    const d = await c.evaluate(() => { const S = window.StudioStore; return JSON.parse(S.rawGet('fms_script_v1__' + S.currentProjectId())); });
+    await c.close();
+    return d;
+  };
+  const FOUR = [
+    { id: 'e1', type: 'scene', text: 'INT. FLAT - NIGHT' }, { id: 'e2', type: 'action', text: 'Ravi paces.' },
+    { id: 'e3', type: 'action', text: 'Ravi waits.' }, { id: 'e4', type: 'character', text: 'RAVI' },
+    { id: 'e5', type: 'dialogue', text: 'Not tonight.' }
+  ];
+  const BIG = FOUR.concat(Array.from({ length: 700 }, (_, i) => ({ id: 'b' + i, type: i % 5 ? 'action' : 'scene',
+    text: i % 5 ? 'The ceiling fans turn on their long stems while the rain keeps on at the window, line ' + i + '.' : 'INT. ROOM ' + i + ' - DAY' })));
+
+  /* a) a script over 64 KB saved in another window reaches the open Writer — even
+        a same-length edit, even after this Writer has saved the script itself */
+  await fresh('Proof Big', BIG);
+  const tabB = await ctx.newPage();
+  await tabB.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' A1.');
+  await page.waitForTimeout(2500);                                   // this Writer has now saved (its own write)
+  ok((await readFresh()).elements[1].text === 'Ravi paces. A1.', '23a the big script saves from the Writer');
+  await writeElsewhere(tabB, (d) => { d.elements[2].text = 'Ravi WAITS.'; });   // same length: same size stub
+  await page.waitForTimeout(3000);
+  const shown = await page.$eval('[data-el="e3"] .wr-text', (t) => t.value);
+  ok(shown === 'Ravi WAITS.', '23a the other window\'s same-length edit to a >64 KB script reaches the open Writer', shown);
+  const told = await page.$$eval('.toast', (ts) => ts.filter((t) => /your other window/.test(t.textContent)).length);
+  ok(told > 0, '23a and the Writer says it loaded the other window\'s copy');
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' A2.');
+  await page.waitForTimeout(2500);
+  const after = await readFresh();
+  ok(after.elements[2].text === 'Ravi WAITS.' && after.elements[1].text === 'Ravi paces. A1. A2.',
+    '23a the next keystroke keeps the other window\'s edit', [after.elements[1].text, after.elements[2].text]);
+  await tabB.goto(url('index.html'), { waitUntil: 'networkidle' });
+
+  /* b) the line the caret was in is deleted in the other window: the caret moves to a neighbour */
+  await fresh('Proof Gone', FOUR);
+  await tabB.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.click('[data-el="e3"] .wr-text');
+  await writeElsewhere(tabB, (d) => { d.elements.splice(2, 1); });
+  await page.waitForTimeout(1200);
+  const act = await page.evaluate(() => { const a = document.activeElement; const r = a && a.closest && a.closest('[data-el]'); return { tag: a && a.tagName, el: r && r.dataset.el }; });
+  ok(act.tag === 'TEXTAREA' && act.el === 'e2', '23b a line deleted elsewhere moves the caret to the line above, not to <body>', act);
+
+  /* c) the find panel's count follows an arrival */
+  await page.keyboard.press('Control+Shift+H');
+  await page.waitForSelector('#scFindQ');
+  await page.fill('#scFindQ', 'Ravi');
+  await page.waitForTimeout(300);
+  const c1 = await page.textContent('.sc-find-count');
+  await writeElsewhere(tabB, (d) => { d.elements.push({ id: 'z1', type: 'action', text: 'Ravi again.' }); });
+  await page.waitForTimeout(1200);
+  const c2 = await page.textContent('.sc-find-count');
+  ok(/of 2$/.test(c1) && /of 3$/.test(c2), '23c the find count is recomputed after an arrival', [c1, c2]);
+  await page.keyboard.press('Escape');
+
+  /* d) "Use theirs" puts the caret back in the script */
+  await fresh('Proof Theirs', FOUR);
+  await tabB.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.click('[data-el="e2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' MINE');
+  await writeElsewhere(tabB, (d) => { d.elements[2].text = 'Ravi waits. THEIRS'; });
+  const theirs = page.locator('.toast button', { hasText: 'Use theirs' });
+  await theirs.waitFor({ timeout: 4000 }).catch(() => {});
+  if (await theirs.count()) {
+    await theirs.first().focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500);
+  }
+  const act2 = await page.evaluate(() => { const a = document.activeElement; return { tag: a && a.tagName, inPage: !!(a && a.closest && a.closest('#wr-page')) }; });
+  ok(act2.tag === 'TEXTAREA' && act2.inPage, '23d after "Use theirs" focus is back in the script, not on <body>', act2);
+  await tabB.close();
+
+  /* e) drafts.html: the action buttons keep keyboard focus across the redraw */
+  await fresh('Proof Draft Focus', FOUR);
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.focus('[data-dr="new"]');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.lp-card [data-lp="go"]');
+  await page.click('.lp-card [data-lp="go"]');
+  await page.waitForTimeout(500);
+  const f1 = await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-dr'));
+  ok(f1 === 'new', '23e after Save as new draft focus is on the button again', f1);
+  await page.focus('.dr-row [data-dr="restore"]');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.lp-card [data-lp="go"]');
+  await page.click('.lp-card [data-lp="go"]');
+  await page.waitForTimeout(600);
+  const f2 = await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-dr'));
+  ok(f2 === 'restore', '23e after Restore focus is on the Restore button', f2);
+  await page.focus('[data-action="numbers-lock"]');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  const f3 = await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-action'));
+  ok(f3 === 'numbers-unlock', '23e after Lock scene numbers focus is on Unlock', f3);
+
+  /* f) the More menu: ↓ reaches the first VISIBLE item when Tamil typing is hidden */
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => document.documentElement.setAttribute('data-no-india', ''));
+  const more = await page.evaluateHandle(() => [...document.querySelectorAll('#scTop .tb-menu')].find((m) => m.querySelector('[data-action="sc-tamil"]')).querySelector('.tb-menu-btn'));
+  await more.focus();
+  await page.keyboard.press('ArrowDown');
+  const m1 = await page.evaluate(() => { const a = document.activeElement; return a && a.getAttribute('data-action'); });
+  await page.keyboard.press('Home');
+  const m2 = await page.evaluate(() => { const a = document.activeElement; return a && a.getAttribute('data-action'); });
+  ok(m1 === 'sc-dictate' && m2 === 'sc-dictate', '23f ↓ and Home land on the first visible item, not the hidden one', [m1, m2]);
+  await page.keyboard.press('Escape');
+
+  /* g) the stage guide has the steps' gutter, and no chip bar over it */
+  for (const w of [390, 1440]) {
+    await page.setViewportSize({ width: w, height: 860 });
+    await page.goto(url('screenplay.html#guide'), { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    const g = await page.evaluate(() => {
+      const eb = document.querySelector('#guide .sg-eyebrow');
+      const step = document.querySelector('#guide .sg-steps > .step');
+      const sl = step ? step.getBoundingClientRect().left + parseFloat(getComputedStyle(step).paddingLeft) : null;
+      const chips = document.getElementById('scChips');
+      return { eb: eb && Math.round(eb.getBoundingClientRect().left), step: sl == null ? null : Math.round(sl), main: Math.round(document.getElementById('main').getBoundingClientRect().left),
+        chips: chips ? getComputedStyle(chips).display : 'none' };
+    });
+    ok(g.eb >= g.main + 16 && (g.step == null || Math.abs(g.eb - g.step) <= 1) && g.chips === 'none',
+      `23g at ${w}px the guide heading sits on the steps' gutter, with no chip bar over it`, g);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
 }
 
 /* ---- 13 overflow -------------------------------------------------------- */

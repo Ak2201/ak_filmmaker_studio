@@ -122,4 +122,30 @@ ok('chipTypes follows the preset digits (QA: chip 4 was Dialogue while Alt+4 set
   assert.equal(S.chipTypes('finaldraft', known).find((c) => c.id === 'transition').label, 'Trans');
 });
 
+const Sc = await import('../src/lib/script.js');
+const CP = await import('../src/lib/caret-position.js');
+ok('with locked numbers the position names the locked number (QA r4)', () => {
+  const E = (id, type, text) => ({ id, type, text });
+  const els = [E('a', 'scene', 'INT. A - DAY'), E('a1', 'action', 'x'), E('b', 'scene', 'INT. B - DAY'), E('b1', 'action', 'y')];
+  const numbering = Sc.lockNumbering(els);
+  const after = [els[0], els[1], E('n', 'scene', 'INT. NEW ROOM - DAY'), E('n1', 'action', 'Inserted.'), els[2], els[3]];
+  const pos = CP.caretPosition(after, 'n1');
+  const locked = CP.lockedSceneNumber(after, numbering, pos.sceneElId);
+  assert.equal(locked, '1A');
+  assert.equal(S.scenePosText(pos, pos.sceneCount, locked), 'Scene 1A (2 of 3)');
+  const p2 = CP.caretPosition(after, 'b1');
+  assert.equal(S.scenePosText(p2, 3, CP.lockedSceneNumber(after, numbering, p2.sceneElId)), 'Scene 2 (3 of 3)');
+  assert.equal(CP.lockedSceneNumber(after, null, pos.sceneElId), '');
+  assert.equal(S.scenePosText(pos, 3, ''), 'Scene 2 of 3');
+});
+
+const SA = await import('../src/lib/screenplay-analysis.js');
+ok('the writer\'s runtime rounds as Script analysis does (QA r4)', () => {
+  const A = { ...SA, sliceScript: () => [{}], estimateSlice: () => ({ seconds: 8196 }) };
+  const est = S.estimatedRuntime(A, [], 0);
+  assert.equal(est.text, '2h 16m');
+  assert.equal(est.minutes, 136);
+  assert.equal(SA.formatDuration(8196), '2h 16m');
+});
+
 console.log('✓ write models: ' + n + ' groups');

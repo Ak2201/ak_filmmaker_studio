@@ -13,7 +13,7 @@
    counted the way a person counts them: headings with words in them,
    in order (an ordinal, not the locked scene number).
    ============================================================ */
-import { elementLines, LINES_PER_PAGE } from './script.js';
+import { elementLines, LINES_PER_PAGE, isNumberingLocked, sceneNumbers } from './script.js';
 
 /** The caret's place in the script, or null when it is in no line. */
 export function caretPosition(els, id) {
@@ -62,4 +62,23 @@ export function sceneTotal(els) {
   return (els || []).filter((e) => e && e.type === 'scene' && String(e.text || '').trim()).length;
 }
 
-export default { caretPosition, formatCaretPage, sceneTotal };
+/** The caret scene's LOCKED number ("12A") when the scene numbers are
+    locked, else ''. With numbers locked the ordinal is not the scene's
+    number: a scene inserted after 12 is the 13th heading and scene 12A
+    on the Breakdown, the stripboard and the PDF (QA r4). */
+export function lockedSceneNumber(els, numbering, sceneElId) {
+  if (!sceneElId || !isNumberingLocked(numbering)) return '';
+  return sceneNumbers(els || [], numbering).byId.get(sceneElId) || '';
+}
+
+/** "Scene 13 of 37", or with a locked number "Scene 12A (13 of 37)" —
+    the number every other view prints, and the place in the script. */
+export function sceneLabel(pos, total, locked) {
+  if (!pos || !pos.scene) return '';
+  const n = String(locked || '').trim();
+  return n && n !== String(pos.scene)
+    ? 'Scene ' + n + ' (' + pos.scene + ' of ' + total + ')'
+    : 'Scene ' + pos.scene + ' of ' + total;
+}
+
+export default { caretPosition, formatCaretPage, sceneTotal, lockedSceneNumber, sceneLabel };

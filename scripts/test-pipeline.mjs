@@ -224,5 +224,21 @@ seed([E('action', 'Notes to self. No scene yet.')]);
   eq(days, 2, 'proposeDays: two days');
 }
 
+/* ---- QA r4: the step details say what is true ------------------ */
+{
+  seed([
+    { type: 'scene', text: 'EXT. ROAD - DAY' }, { type: 'action', text: 'A jeep roars past. Ravi grabs a lantern.' },
+    { type: 'character', text: 'RAVI' }, { type: 'dialogue', text: 'Go.' },
+    { type: 'scene', text: 'INT. HUT - NIGHT' }, { type: 'action', text: 'Meena lights the lamp.' },
+    { type: 'character', text: 'MEENA' }, { type: 'dialogue', text: 'Wait.' }
+  ]);
+  const res = await run();
+  const ch = step(res, 'characters');
+  ok(!/already in the Story Bible/.test(ch.detail) && /none of the new ones speaks in more than one scene/.test(ch.detail),
+    'characters: an empty Bible is not claimed to hold them — got ' + JSON.stringify(ch.detail));
+  const pr = step(res, 'props');
+  ok(!/\b1 (vehicles|props|animals|stunts)\b/.test(pr.detail || ''), 'props: one of a kind is singular — got ' + JSON.stringify(pr.detail));
+}
+
 console.log(`\ntest:pipeline — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

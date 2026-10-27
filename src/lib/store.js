@@ -216,15 +216,32 @@ const _inflight = new Map();          // key -> latest value an overflowed write
    this cache (hydrating a still-cold tier first). A key removed or
    shrunk back into localStorage elsewhere drops its stale cache copy
    the same way. Nothing this document wrote itself (_gen) is touched. */
+/* QA r4 (a script over 64 KB saved in another window was overwritten
+   by the next keystroke here, with no draft kept). Two holes, both
+   closed below:
+     · the guard was "this document has EVER written k" (_gen.has), so
+       a Writer that had saved the script once never took another
+       window's copy into its cache again and read its own older bytes
+       for the rest of its life. Only a write of ours still IN FLIGHT
+       owns the key now, and a pulled copy is dropped if a newer local
+       write lands while it is being read (the generation moved);
+     · the pull is asynchronous and onWriteElsewhere() called the page
+       back on the next tick, before the bytes had arrived, so the page
+       compared the old copy with itself and decided nothing changed.
+       The pull is kept in _pulls and onWriteElsewhere waits for it. */
+const _pulls = new Map();             // key -> the read-back of another window's write, still settling
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('storage', (e) => {
     const k = e && e.key;
-    if (!k || k.indexOf(NEW_PREFIX) !== 0 || _gen.has(k)) return;
+    if (!k || k.indexOf(NEW_PREFIX) !== 0 || _inflight.has(k)) return;
+    const g = _gen.get(k);
+    const mine = () => _gen.get(k) === g && !_inflight.has(k);
     if (Overflow.isStub(e.newValue)) {
-      const pull = () => Overflow.readBack(k).then((v) => { if (v != null && !_gen.has(k)) Overflow.cache().set(k, v); });
-      const p = Overflow.state() === 'cold' ? Overflow.hydrate().then(pull) : pull();
-      if (p && p.catch) p.catch(() => {});
-    } else if (Overflow.cache().has(k)) {
+      const pull = () => Overflow.readBack(k).then((v) => { if (v != null && mine()) Overflow.cache().set(k, v); });
+      const p = Promise.resolve(Overflow.state() === 'cold' ? Overflow.hydrate().then(pull) : pull()).catch(() => {});
+      const done = p.then(() => { if (_pulls.get(k) === done) _pulls.delete(k); });
+      _pulls.set(k, done);
+    } else if (Overflow.cache().has(k) && mine()) {
       Overflow.cache().delete(k);
     }
   });
@@ -1287,7 +1304,8 @@ export function migrateLegacy() {
    are both visible, so visibilitychange never says so (QA round 2 —
    the stale field saved over the other window's edit, and the beat
    sync then carried it across). The callback is deferred a tick, so
-   the overflow cache (the listener above) has dropped its copy first. */
+   the overflow cache (the listener above) has dropped its copy first —
+   and, for an overflowed value, until its bytes have been read back. */
 export function onWriteElsewhere(keys, fn) {
   if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => {};
   const want = new Set(keys || []);
@@ -1300,7 +1318,10 @@ export function onWriteElsewhere(keys, fn) {
     if (!want.has(base)) return;
     const pid = currentProjectId();
     if (at > 0 && pid && k.slice(at + 2) !== pid) return;
-    setTimeout(fn, 0);
+    /* A large value's bytes are still being read back into this
+       document's cache (the listener above, which runs first): call the
+       page once they are there, or it reloads the copy it already had. */
+    setTimeout(() => { const p = _pulls.get(k); if (p) p.then(() => fn()); else fn(); }, 0);
   };
   window.addEventListener('storage', on);
   return () => window.removeEventListener('storage', on);

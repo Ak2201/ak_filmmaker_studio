@@ -236,8 +236,17 @@ function parseFountain(raw) {
   }
 
   const elements = [];
+  /* Fountain's emphasis — *italic*, **bold**, ***both***, _underline_ —
+     is markup, and the script model has no bold. Left in, the stars
+     printed in the script and in every export (QA r4). The marks come
+     off; an escaped \* or \_ stays as the character it escapes. */
+  let emphasis = 0;
+  const unmark = (t) => String(t)
+    .replace(/(^|[^\\*])(\*{1,3})(?=[^\s*])([^*\n]*?[^\s*\\])\2(?!\*)/g, (m, pre, st, body) => { emphasis++; return pre + body; })
+    .replace(/(^|[^\w\\])_(?=\S)([^_\n]*?[^\s\\])_(?!\w)/g, (m, pre, body) => { emphasis++; return pre + body; })
+    .replace(/\\([*_])/g, '$1');
   const push = (type, t, extra) => {
-    const clean = String(t).trim();
+    const clean = unmark(String(t).trim()).trim();
     if (!clean) return;
     elements.push(blankElement({ type, text: clean, ...(extra || {}) }));
   };
@@ -309,6 +318,13 @@ function parseFountain(raw) {
     if (emitMixed(b, push, warnings)) continue;
     push('action', b.join('\n'));
   }
+
+  /* Counted above and, until QA r4, never said: the preview read
+     "14 lines, 5 scenes" with the notes and sections simply gone. */
+  if (skipped.notes) warnings.push(skipped.notes + ' note or boneyard line(s) ([[ ]] and /* */) were left out — Fountain treats them as comments.');
+  if (skipped.sections) warnings.push(skipped.sections + ' section or synopsis line(s) (# and =) were left out of the script.');
+  if (skipped.pageBreaks) warnings.push(skipped.pageBreaks + ' page break(s) (===) were left out; pages are laid out again here.');
+  if (emphasis) warnings.push(emphasis + ' emphasis mark(s) (*, **, _) were removed; the script keeps the words.');
 
   return { elements, meta, warnings, skipped };
 }
@@ -478,6 +494,7 @@ function speech(b, cueLine, push) {
    ------------------------------------------------------------ */
 function parseText(raw) {
   const warnings = [];
+  const meta = {};
   const skipped = { pageNumbers: 0, more: 0, continued: 0, titlePage: 0, revisions: 0 };
   let text = String(raw || '').replace(/\r\n?/g, '\n');
   /* A Word file whose paragraphs wear screenplay styles has already
@@ -505,8 +522,16 @@ function parseText(raw) {
       skip = front.split('\n').length - 1;
       text = text.slice(ff);
       if (skipped.titlePage) {
+        /* The notice used to say the lines were "read as front matter"
+           while the plan carried `meta: {}`, so the title and the writer
+           were thrown away (QA r4). They fill the Title Page now, as a
+           .docx's and an .fdx's do — unless a .docx already read its own
+           (docxMeta, which wins) — and the notice says which happened. */
+        if (!(raw && raw.docxMeta)) Object.assign(meta, textTitleMeta(front));
+        const kept = !!titlePageFromMeta((raw && raw.docxMeta) || meta);
         warnings.push(skipped.titlePage + ' title-page line(s) before the first page break '
-          + 'were read as front matter, not as script.');
+          + (kept ? 'were read into the Title Page, not as script.'
+            : 'were left out of the script as front matter.'));
       }
     }
   }
@@ -656,7 +681,7 @@ function parseText(raw) {
     warnings.push((skipped.more + skipped.continued) + ' page-break line(s) — (MORE) and CONTINUED — '
       + 'were recognised and skipped; the speeches they interrupted were rejoined.');
   }
-  return { elements, meta: {}, warnings, skipped };
+  return { elements, meta, warnings, skipped };
 }
 
 /** Is what precedes the first form feed a title page? Only when it has
@@ -806,9 +831,32 @@ function fdxNumber(p) {
   return '';
 }
 
+/* A paragraph's OWN text. Final Draft keeps a private note as
+   <ScriptNote><Paragraph><Text>… INSIDE the paragraph it is pinned to,
+   so a descendant query for Text read the note into the line, joined
+   with no space ("Line with runsa note"), and a paragraph holding only
+   a note became an action line made of it (QA r4). A Text whose path
+   up to `p` crosses a ScriptNote is the note's, not the script's; it
+   is counted so the preview can say notes were left out. */
+function fdxText(p, skipped) {
+  let notes = 0;
+  for (const n of Array.from(p.querySelectorAll('ScriptNote'))) {
+    let up = n.parentNode, nested = false;
+    while (up && up !== p) { if (up.tagName === 'ScriptNote') { nested = true; break; } up = up.parentNode; }
+    if (!nested) notes++;
+  }
+  if (skipped && notes) skipped.notes = (skipped.notes || 0) + notes;
+  return Array.from(p.querySelectorAll('Text')).filter((t) => {
+    for (let up = t.parentNode; up && up !== p; up = up.parentNode) {
+      if (up.tagName === 'ScriptNote') return false;
+    }
+    return true;
+  }).map((t) => t.textContent).join('').trim();
+}
+
 function parseFDX(raw) {
   const warnings = [];
-  const skipped = { unknown: 0 };
+  const skipped = { unknown: 0, notes: 0 };
   const elements = [];
   const meta = {};
 
@@ -846,7 +894,7 @@ function parseFDX(raw) {
       let cues = 0;
       for (const q of Array.from(dd.children).filter((n) => n.tagName === 'Paragraph')) {
         const k = String(q.getAttribute('Type') || '').trim().toLowerCase();
-        const t = Array.from(q.querySelectorAll('Text')).map((x) => x.textContent).join('').trim();
+        const t = fdxText(q, skipped);
         if (!t) continue;
         const ty = FDX_TYPE[k] || 'action';
         if (!FDX_TYPE[k]) skipped.unknown++;
@@ -857,7 +905,7 @@ function parseFDX(raw) {
       continue;
     }
     const kind = String(p.getAttribute('Type') || '').trim().toLowerCase();
-    const text = Array.from(p.querySelectorAll('Text')).map((t) => t.textContent).join('').trim();
+    const text = fdxText(p, skipped);
     if (!text) continue;
     const type = FDX_TYPE[kind];
     if (!type) {
@@ -885,6 +933,9 @@ function parseFDX(raw) {
   if (skipped.unknown) {
     warnings.push(skipped.unknown + ' paragraph(s) of a kind this studio has no element for were kept as action.');
   }
+  if (skipped.notes) {
+    warnings.push(skipped.notes + ' Final Draft script note(s) were left out of the script text.');
+  }
   skipped.dual = duals;
   return { elements, meta, warnings, skipped };
 }
@@ -899,9 +950,12 @@ function fdxTitlePage(xml) {
   const meta = {};
   const tp = xml.querySelector('TitlePage');
   if (!tp) return meta;
-  const lines = Array.from(tp.querySelectorAll('Paragraph')).map((p) => ({
+  const lines = Array.from(tp.querySelectorAll('Paragraph')).filter((p) => {
+    for (let up = p.parentNode; up && up !== tp; up = up.parentNode) if (up.tagName === 'ScriptNote') return false;
+    return true;
+  }).map((p) => ({
     align: String(p.getAttribute('Alignment') || '').toLowerCase(),
-    text: Array.from(p.querySelectorAll('Text')).map((t) => t.textContent).join('').trim()
+    text: fdxText(p)
   })).filter((l) => l.text);
   if (!lines.length) return meta;
   const contact = [];
@@ -1417,6 +1471,28 @@ function docxTitleMeta(paras) {
       else if (DATE_RE.test(t)) meta.date = t;
       else meta.draft = t;
     } else contact.push(t);
+  }
+  if (contact.length) meta.contact = contact.join('\n');
+  return meta;
+}
+/* A plain-text (or PDF) title page, as the same fields: the first line
+   is the title, a "Written by" line the credit and the next one the
+   writer, "Based on…" the source, a dated line the date and a "draft"
+   line the draft; the rest is the contact block. */
+function textTitleMeta(front) {
+  const lines = String(front || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const meta = {};
+  if (!lines.length) return meta;
+  meta.title = lines[0];
+  const contact = [];
+  let expectAuthor = false;
+  for (const l of lines.slice(1)) {
+    if (!meta.credit && CREDIT_RE.test(l)) { meta.credit = l; expectAuthor = true; continue; }
+    if (expectAuthor && !meta.author) { meta.author = l; expectAuthor = false; continue; }
+    if (!meta.source && /^based on/i.test(l)) { meta.source = l; continue; }
+    if (!meta.draft && /\bdraft\b/i.test(l)) { meta.draft = l; continue; }
+    if (!meta['draft date'] && DATE_RE.test(l) && l.length <= 40) { meta['draft date'] = l; continue; }
+    contact.push(l);
   }
   if (contact.length) meta.contact = contact.join('\n');
   return meta;

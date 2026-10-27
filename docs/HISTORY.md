@@ -2876,3 +2876,39 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Guard: `npm run test:site` (`scripts/test-site-hygiene.mjs`, in CI after
     `build:verify`) reads the built markup and fails on any of the reel's
     tells; proved red by stripping the canonical, a noindex and llms.txt.
+
+65. **The launch week pass replaces the public free trial (27 Oct 2026).**
+    Owner decisions: a paid week of the whole studio (Pro), ₹49 today and
+    editable in the console (₹99 or any figure, quick-set buttons), once per
+    account, no credit toward a yearly plan, sold as a LAUNCH OFFER with a
+    real deadline and an optional real cap; when it ends the pass closes
+    entirely and only the yearly plans remain. Invite codes keep their free
+    trial. Built in three lanes on one contract, `src/lib/pass-offer.js`
+    (pure, startlib: the server's `pass` block, a countdown on the SERVER's
+    clock, fails closed).
+    - **Server (§61, `schema-61-week-pass.sql`).** Period `'pass'` on the
+      existing `pro` plan, priced from `billing_settings.pass_*`; `quote_pass`
+      refuses disabled / closed / inr_only / used / has_plan / code; a paid
+      pass is always activated even if the cap filled meanwhile; a yearly
+      purchase replaces a running pass from now (no credit, no stack); passes
+      stay out of founding seats, referral payouts and refund→trial;
+      `rzp-order` now returns `{error, reason}` for every refusal. **The free
+      trial is not switched off** (`trial_enabled` stays true, because
+      `trial_active()` carries the §30 grandfathered members); `start_trial()`
+      refuses a `signup` trial with `reason: 'pass'` while the pass is on.
+      57 schema checks in `week-pass.sql`.
+    - **App.** `pass-view.js` (state, may-buy, refusal sentences);
+      `buyPass()` / `passOffer()` in billing.js; invite.html leads with the
+      pass (signed out, the intent survives sign-in as `stashPlan('pass')`);
+      the wall offers the pass above the plans; pass-ending reminders at 24h
+      and 2h; "PASS ENDS IN" on the rail; a pass card on purchase.html; the
+      console's "Launch pass" block (live line, price with ₹49/₹99 quick-set,
+      days, plan, deadline in IST, cap, sold/left). `pass_buy` funnel step.
+    - **Public site.** One hidden launch band (`passBand()`) on start,
+      pricing, product, guide, switching and trust pages, filled at run time;
+      the static HTML holds no figure, date, count or clock (`test:marketing`
+      asserts it). Every public free-trial mention is gone; FAQ: "Is there a
+      free trial? No." Legal passages in terms §3/§4/§5/§7, refund and
+      privacy are DRAFTS awaiting the owner. Playbook, e-mails, captions and
+      posters rewritten around `{PASS_PRICE}` / `{PASS_ENDS}` / `{PASS_LEFT}`.
+    - Owner steps: `docs/LIVE-STEPS-2026-10-27.md`.

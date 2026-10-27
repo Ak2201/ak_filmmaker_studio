@@ -885,15 +885,19 @@ function passWallPanel(e) {
     h('h2.pg-lock-h', { text: e.used ? 'Your free trial is over.' : 'Choose how to come in.' }),
     h('p.pg-lock-p', { text: 'The whole studio for ' + f.price + ', ' + f.length + ', once per account. Or a yearly plan, below.' }),
     passClock(),
+    /* The pass's button straight under its price and clock: at 390px the
+       plans below would otherwise push it two screens down. */
+    h('div.pg-lock-actions', {}, [
+      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() })
+    ]),
+    h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' }),
     h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
     wallPlans(),
     h('div.pg-lock-actions', {}, [
-      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() }),
       h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' }),
       h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' }),
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
-    ]),
-    h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' })
+    ])
   ]);
   return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': 'Launch offer' }, [card]);
 }

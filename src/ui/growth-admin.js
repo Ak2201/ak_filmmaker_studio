@@ -54,7 +54,7 @@ import { funnel as funnelChart } from './admin-charts.js';
 import { cohorts as fetchCohorts } from '../lib/admin-api.js';
 
 let rerender = () => {};
-const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '', offer: null, pass: null, passSaved: '' };
+const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '', offer: null, pass: null, passSaved: '', passDraft: null };
 
 /* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
    every form on the console from its defaults 2.5s after a save, under
@@ -228,14 +228,17 @@ function passBlock(sec) {
   const [d0, t0] = istParts(ps.ends_at);
   f.append(h('div.gr-fields', {}, [
     h('div', {}, [h('label', { for: 'graPassPrice', text: 'Price (₹)' }),
-      h('input', { id: 'graPassPrice', name: 'price', type: 'text', inputmode: 'decimal', required: true, value: Number(ps.paise) > 0 ? String(ps.paise / 100) : '' }),
-      h('div.gr-row', {}, ['49', '99'].map((r) => h('button.btn', { type: 'button', 'data-gra-action': 'pass-price', 'data-rupees': r, 'aria-label': 'Set the price field to ₹' + r, text: '₹' + r })))]),
+      /* What the owner typed (or a quick-set filled) survives a redraw of
+         the console: other blocks load in after this one and redraw it. */
+      h('input', { id: 'graPassPrice', name: 'price', type: 'text', inputmode: 'decimal', required: true, value: S.passDraft != null ? S.passDraft : Number(ps.paise) > 0 ? String(ps.paise / 100) : '' })]),
     h('div', {}, [h('label', { for: 'graPassDays', text: 'Days' }), h('input', { id: 'graPassDays', name: 'days', type: 'number', min: 1, max: 31, step: 1, required: true, value: String(Number(ps.days) > 0 ? ps.days : 7) })]),
     h('div', {}, [h('label', { for: 'graPassPlan', text: 'Opens the features of' }), planSel]),
     h('div', {}, [h('label', { for: 'graPassDate', text: 'Offer ends on (IST)' }), h('input', { id: 'graPassDate', name: 'date', type: 'date', value: d0 })]),
     h('div', {}, [h('label', { for: 'graPassTime', text: 'At (IST)' }), h('input', { id: 'graPassTime', name: 'time', type: 'time', value: t0 || '23:59' })]),
     h('div', {}, [h('label', { for: 'graPassCap', text: 'Cap (passes, optional)' }), h('input', { id: 'graPassCap', name: 'cap', type: 'number', min: 1, step: 1, placeholder: 'no cap', value: Number.isInteger(ps.cap) ? String(ps.cap) : '' })])
   ]));
+  f.append(h('div.gr-row', {}, [h('span.gr-meta', { text: 'Set the price to' })].concat(['49', '99'].map((r) =>
+    h('button.btn', { type: 'button', 'data-gra-action': 'pass-price', 'data-rupees': r, 'aria-label': 'Set the price field to ₹' + r, text: '₹' + r })))));
   f.append(h('dl.gr-passfacts', {}, [
     h('dt', { text: 'Sold' }), h('dd', { text: Number.isInteger(ps.sold) ? String(ps.sold) : '—' }),
     h('dt', { text: 'Left' }), h('dd', { text: Number.isInteger(ps.cap) && ps.cap > 0 ? (Number.isInteger(ps.left) ? String(ps.left) : '—') : 'no cap' }),
@@ -783,8 +786,10 @@ delegate(document, 'submit', '[data-gra-form="trial"]', async (e, form) => {
 /* ---- the launch pass (§61) ---------------------------------------- */
 delegate(document, 'click', '[data-gra-action="pass-price"]', (e, el) => {
   const input = document.getElementById('graPassPrice');
+  S.passDraft = el.dataset.rupees;
   if (input) { input.value = el.dataset.rupees; input.focus(); }   // fills the field; nothing saves until SAVE
 });
+delegate(document, 'input', '#graPassPrice', (e, el) => { S.passDraft = el.value; });
 delegate(document, 'submit', '[data-gra-form="pass"]', async (e, form) => {
   e.preventDefault();
   const f = new FormData(form);
@@ -804,6 +809,7 @@ delegate(document, 'submit', '[data-gra-form="pass"]', async (e, form) => {
     await Billing.admin.setPass({ enabled, paise, days, plan: String(f.get('plan') || 'pro'), endsAt: endsAt || null, cap });
     /* Read back, never assumed: the line says what the server now sells. */
     S.pass = await Billing.admin.passStatus();
+    S.passDraft = null;
     S.passSaved = S.pass && S.pass.enabled ? `Saved. New orders now pay ${fmtPaise(S.pass.paise)}.` : 'Saved. The pass is off.';
     rerender();
     { const note = S.passSaved; setTimeout(() => { if (S.passSaved === note) S.passSaved = ''; clearNote(note); }, 6000); }

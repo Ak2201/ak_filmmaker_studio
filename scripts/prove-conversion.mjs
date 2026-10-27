@@ -581,6 +581,60 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
+
+  console.log('(h2) the launch pass: its reminders, its checklist item, the wall (schema §61)');
+  /* Amy on a 7-day pass with `hoursLeft` to go: Pro, plan_period 'pass',
+     and the paid pass payment whose span is the pass's length. */
+  const passLeft = (hoursLeft) => {
+    F.reset();
+    F.db.members.set(AMY, { role: 'user', disabled_at: null, trial_started_at: null });
+    const until = Date.now() + hoursLeft * 3600e3;
+    F.db.accounts.push({ id: 'acc_pass', name: "Amy's Studio", owner_id: AMY, plan: 'pro', plan_period: 'pass', plan_until: new Date(until).toISOString(), seat_limit: 10, created_at: new Date().toISOString() });
+    F.db.payments.push({ id: 'pay_pass', user_id: AMY, account_id: 'acc_pass', plan_id: 'pro', period: 'pass', amount_paise: 4900, currency: 'INR', status: 'paid', paid_at: new Date().toISOString(),
+      starts_at: new Date(until - 7 * 86400e3).toISOString(), ends_at: new Date(until).toISOString(), created_at: new Date().toISOString() });
+  };
+  passLeft(23);
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    ok(await waitToast(page, /Your 7-day pass ends in about 23 hours/), 'a pass with a day left: "Your 7-day pass ends in about 23 hours": ' + JSON.stringify(await toasts(page)));
+    ok(/Keep going with a yearly plan from about ₹[\d.]+ a day/.test(await toasts(page)) && /CHOOSE A PLAN/.test(await toasts(page)), 'with the yearly plans by the day (from the plan rows) and CHOOSE A PLAN');
+    ok(!/free trial/.test(await toasts(page)), 'and no trial wording');
+    allErrors.push(...errors); await ctx.close();
+  }
+  passLeft(6 * 24);
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    await page.waitForTimeout(4000);
+    ok(!/pass ends/.test(await toasts(page)), 'six days left: no reminder');
+    allErrors.push(...errors); await ctx.close();
+  }
+  passLeft(1.5);
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    ok(await waitToast(page, /Your 7-day pass ends in about 2 hours/), 'an hour and a half left: the two-hour reminder');
+    allErrors.push(...errors); await ctx.close();
+  }
+  passLeft(5 * 24);
+  { const it = await checklist('tok-amy'); const p = it.find((x) => x[0] === 'Choose a plan');
+    ok(!!p && !p[1], 'during a pass "Choose a plan" is listed and unticked (a pass is not a plan chosen)'); }
+  /* THE WALL: a member with no trial and no plan, while the pass is on sale */
+  F.reset();
+  F.db.members.set(AMY, { role: 'user', disabled_at: null, trial_started_at: null });
+  Object.assign(F.db.settings, { pass_enabled: true, pass_ends_at: new Date(Date.now() + 86400e3).toISOString() });
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
+    ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall').catch(() => '')), 'TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');
+    await page.waitForFunction(() => /^\d\d:\d\d:\d\d$|^1d /.test((document.querySelector('.pg-wall [data-pass-timer]') || {}).textContent || ''), null, { timeout: 5000 })
+      .then(() => ok(true, 'with the countdown to the server deadline'), () => ok(false, 'with the countdown to the server deadline'));
+    ok(!(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'and no free trial button');
+    allErrors.push(...errors); await ctx.close();
+  }
+
   console.log('(i) errors');
   ok(allErrors.length === 0, 'no page errors' + (allErrors.length ? ': ' + allErrors.slice(0, 5).join(' / ') : ''));
 } finally {

@@ -257,6 +257,18 @@ const H = await import('../src/lib/hub-status.js');
 eq(H.computeLibraryStatus().total, 10000, 'the hub counts a negative-times-negative line as nothing');
 const DM = await import('../src/lib/dashboard-model.js');
 eq(DM.budgetStatus().total, 10000, 'the dashboard counts it as nothing too');
+// fix-money r4: dashboard headline exact under a lakh; paise survive; USD drops India-only words.
+mem.set(CALC, JSON.stringify({ ci_1_days: '1', ci_1_rate: '1200' }));
+eq(DM.budgetStatus().short, '\u20b9 1,200', 'the dashboard headline is exact under a lakh');
+mem.set(CALC, JSON.stringify({ ci_1_days: '1', ci_1_rate: '99999' }));
+eq(DM.budgetStatus().short, '\u20b9 99,999', '99,999 is not "1 L"');
+mem.set(CALC, JSON.stringify({ ci_1_days: '1', ci_1_rate: '250000' }));
+eq(DM.budgetStatus().short, '\u20b9 2.5 L', 'a lakh and over is still abbreviated');
+eq([M.fmtGlance(12634.9, 'USD'), M.fmtGlance(250000, 'USD')], ['$12,634.90', '$250k'], 'dollar glance: cents under 100k');
+eq([BCM.rupees(100.5), BCM.rupees(0.4), BCM.rupees(100000.99), BCM.rupees(-2.25), BCM.rupees(1234)], ['\u20b9 100.50', '\u20b9 0.40', '\u20b9 1,00,000.99', '\u2212\u20b9 2.25', '\u20b9 1,234'], 'paise show only when there are paise');
+eq([C.categoriesFor('USD').find((x) => x.id === 'batta').label, C.methodsFor('USD').find((x) => x.id === 'upi').label, C.deptsFor('USD').find((x) => x.id === 'food').label], ['Per diem', 'Mobile pay', 'Food & per diem'], 'a dollar budget drops Batta, UPI and Food & batta');
+eq([C.categoriesFor('INR')[0].label, C.methodsFor('INR')[1].label, C.deptsFor('INR').find((x) => x.id === 'food').label], ['Batta', 'UPI', 'Food & batta'], 'a rupee budget keeps them');
+eq(C.categoriesFor('USD').map((x) => x.id), C.CATEGORIES.map((x) => x.id), 'ids (storage) never change');
 reset();
 
 console.log(`test:budget-usd — ${pass} passed, ${fail} failed`);

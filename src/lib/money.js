@@ -154,4 +154,9 @@ export function fmtMoney(n, currency, short) {
   return sign + '$' + (Number.isInteger(cents) ? USD.format(cents) : USD2.format(cents));
 }
 
+/** A headline figure: exact under 1 lakh (or $100k), abbreviated above.
+    '₹ 1,200' must not read '₹ 1k' beside a page that prints ₹ 1,200. */
+export const fmtGlance = (n, currency) => (Math.abs(n || 0) < 100000
+  ? fmtMoney(n, currency) : fmtMoney(n, currency, true));
+
 export default { parseNum, fmtINR, INR, USD };

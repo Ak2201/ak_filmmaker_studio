@@ -155,12 +155,12 @@ function renderExpenses(ctx) {
       field('Amount (' + sym() + ', bill total)', h('input.cx-amount', { name: 'amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', placeholder: 'e.g. 1,850 or 2k', required: true, 'data-fk': 'x:amount' })),
       field('Date', h('input', { name: 'date', type: 'date', value: sticky.date || today(), 'data-fk': 'x:date' }))
     ]),
-    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Category' }), chips('category', C.CATEGORIES, 'food', 'x:cat')]),
+    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Category' }), chips('category', C.categoriesFor(shownCurrency()), 'food', 'x:cat')]),
     h('div.cx-quick-row', {}, [
       field('Paid by', select({ name: 'paidBy', 'data-fk': 'x:paidBy' }, personOptions(ctx, 'Office / producer — no float'), sticky.paidBy)),
       field('Shoot day', select({ name: 'shootDay', 'data-fk': 'x:day' }, dayOptions(ctx), sticky.shootDay))
     ]),
-    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Paid with' }), chips('method', C.METHODS.slice(0, 3), sticky.method, 'x:method')]),
+    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Paid with' }), chips('method', C.methodsFor(shownCurrency()).slice(0, 3), sticky.method, 'x:method')]),
     field('Budget line', select({ name: 'line', 'data-fk': 'x:line' }, lineOptions(ctx), '')),
     h('details.cx-more', {}, [
       h('summary', { text: shownCurrency() === 'USD' ? 'Bill details — tax, vendor, receipt' : 'Bill details — GST, vendor, receipt' }),
@@ -186,7 +186,7 @@ function renderExpenses(ctx) {
     ]),
     h('div.cx-quick-row', {}, [
       field('Date', h('input', { name: 'date', type: 'date', value: today(), 'data-fk': 'f:date' })),
-      field('Method', select({ name: 'method', 'data-fk': 'f:method' }, C.METHODS.map((m) => [m.id, m.label]), 'cash'))
+      field('Method', select({ name: 'method', 'data-fk': 'f:method' }, C.methodsFor(shownCurrency()).map((m) => [m.id, m.label]), 'cash'))
     ]),
     field('Or a name not in contacts', h('input', { name: 'toName', type: 'text', autocomplete: 'off', 'data-fk': 'f:toName' })),
     h('div.cx-actions', {}, [button({ label: 'Issue float', icon: 'add', type: 'submit', attrs: { 'data-fk': 'f:submit' } })])
@@ -215,8 +215,8 @@ function renderExpenses(ctx) {
       h('summary', { text: ctx.floats.length + (ctx.floats.length === 1 ? ' float issued' : ' floats issued') }),
       h('ul.cx-log', {}, ctx.floats.slice().reverse().map((f) => h('li.cx-log-row', {}, [
         h('span.cx-log-amt.k-mono', { text: rs(f.amount) }),
-        h('span.cx-log-what', { text: 'to ' + ctx.nameOf(f.to) + (f.date ? ' · ' + f.date : '') + ' · ' + label(C.METHODS, f.method) }),
-        delBtn('del-float', f.id, 'Delete this float', 'fl:' + f.id)
+        h('span.cx-log-what', { text: 'to ' + ctx.nameOf(f.to) + (f.date ? ' · ' + f.date : '') + ' · ' + label(C.methodsFor(shownCurrency()), f.method) }),
+        delBtn('del-float', f.id, 'Delete the ' + rs(f.amount) + ' float to ' + ctx.nameOf(f.to), 'fl:' + f.id)
       ])))
     ]));
   }
@@ -241,10 +241,10 @@ function renderExpenses(ctx) {
       h('div.cx-day-head.k-panel-head', {}, [h('span.k-mono', { text: d || 'No date' }), h('span.cx-day-total.k-mono', { text: rs(total) })]),
       h('ul.cx-log', {}, rows.slice().reverse().map((e) => {
         const g = C.gstSplit(e.amount, e.gstPct);
-        const bits = [label(C.CATEGORIES, e.category)];
+        const bits = [label(C.categoriesFor(shownCurrency()), e.category)];
         if (e.line) bits.push(ctx.lineName(e.line));
         if (e.shootDay) bits.push('Day ' + e.shootDay);
-        bits.push((e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.METHODS, e.method));
+        bits.push((e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.methodsFor(shownCurrency()), e.method));
         if (e.gstPct) bits.push('GST ' + e.gstPct + '% ' + rs(g.tax));
         if (e.vendor) bits.push(e.vendor + (e.gstin ? ' (' + e.gstin + ')' : ''));
         return h('li.cx-log-row', {}, [
@@ -273,11 +273,12 @@ function renderActuals(ctx) {
       type: 'text', inputmode: 'decimal', value: String(t.contingencyPct), 'data-cx-field': 'contingency', 'data-fk': 'r:cont', autocomplete: 'off'
     }), 'Usually 10%. It is added on top of the estimate; spending past the estimate eats into it.')
   ]));
+  const usd = shownCurrency() === 'USD';
   out.push(stats([
     stat(rs(t.estimate), 'estimate'),
     stat(rs(t.contingency), 'contingency ' + t.contingencyPct + '%'),
-    stat(rs(t.actual), 'actual, with GST'),
-    stat(rs(t.actualNet), 'actual, without GST'),
+    stat(rs(t.actual), usd ? 'actual, with tax' : 'actual, with GST'),
+    stat(rs(t.actualNet), usd ? 'actual, without tax' : 'actual, without GST'),
     statCard({ label: t.variance < 0 ? 'over budget' : 'left', value: rs(Math.abs(t.variance)), class: t.variance < 0 ? 'cx-stat-over' : null }),
     stat(pct(t.pctUsed, t.actual), 'used')
   ]));
@@ -290,21 +291,21 @@ function renderActuals(ctx) {
       tone: 'danger',
       class: 'cx-alert',
       title: r.over.length + (r.over.length === 1 ? ' line is over budget' : ' lines are over budget'),
-      body: h('ul', {}, r.over.map((l) => h('li', { text: (l.unbudgeted ? C.deptOf(l.dept).label + ': ' : '') + l.name + ' — ' + rs(l.actual) + ' against ' + rs(l.estimate) + (l.unbudgeted ? ' (no line in the estimate)' : '') })))
+      body: h('ul', {}, r.over.map((l) => h('li', { text: (l.unbudgeted ? label(C.deptsFor(shownCurrency()), l.dept) + ': ' : '') + l.name + ' — ' + rs(l.actual) + ' against ' + rs(l.estimate) + (l.unbudgeted ? ' (no line in the estimate)' : '') })))
     }));
   }
   const table = h('table.cx-table.k-table.cx-report', {}, [
     h('caption', { text: 'By department and line' }),
     h('thead', {}, h('tr', {}, [
       h('th', { scope: 'col', text: 'Line' }), h('th', { scope: 'col', text: 'Department' }),
-      ...['Estimate', 'Actual', 'Excl. GST', 'Variance', 'Used'].map(numTh)
+      ...['Estimate', 'Actual', usd ? 'Excl. tax' : 'Excl. GST', 'Variance', 'Used'].map(numTh)
     ]))
   ]);
-  const deptOpts = C.DEPTS.map((d) => [d.id, d.acct + ' ' + d.label]);
+  const deptOpts = C.deptsFor(shownCurrency()).map((d) => [d.id, d.acct + ' ' + d.label]);
   for (const d of r.depts) {
     const tb = h('tbody.cx-dept');
     tb.append(h('tr.cx-dept-row', {}, [
-      h('th', { scope: 'rowgroup', colspan: '2' }, [h('span.k-mono.cx-acct', { text: d.acct }), ' · ' + d.label]),
+      h('th', { scope: 'rowgroup', colspan: '2' }, [h('span.k-mono.cx-acct', { text: d.acct }), ' · ' + label(C.deptsFor(shownCurrency()), d.id)]),
       numTd(rs(d.estimate)), numTd(rs(d.actual)), numTd(rs(d.actualNet)),
       numTd(rs(d.variance), { class: d.over ? 'is-over' : null }), numTd(pct(d.pctUsed, d.actual))
     ]));
@@ -399,7 +400,7 @@ function renderCrewCard(ctx, c) {
     h('h4.cx-h4', { text: 'Advances and payments' }),
     paid.length ? h('ul.cx-log', {}, paid.map((p) => h('li.cx-log-row', {}, [
       h('span.cx-log-amt.k-mono', { text: rs(p.amount) }),
-      h('span.cx-log-what', { text: (p.date || 'No date') + ' · ' + label(C.METHODS, p.method) + (p.note ? ' · ' + p.note : '') }),
+      h('span.cx-log-what', { text: (p.date || 'No date') + ' · ' + label(C.methodsFor(shownCurrency()), p.method) + (p.note ? ' · ' + p.note : '') }),
       delBtn('del-payment', p.id, 'Delete this payment of ' + rs(p.amount), 'pl:' + p.id)
     ]))) : h('p.cx-hint', { text: 'Nothing paid yet.' }),
     h('form.cx-pay', { 'data-cx-form': 'payment', 'data-id': id, 'aria-label': 'Record a payment to ' + (c.name || 'this person') }, [
@@ -408,7 +409,7 @@ function renderCrewCard(ctx, c) {
         field('Date', h('input', { name: 'date', type: 'date', value: today(), 'data-fk': 'pf:' + id + ':date' }))
       ]),
       h('div.cx-quick-row', {}, [
-        field('Method', select({ name: 'method', 'data-fk': 'pf:' + id + ':m' }, C.METHODS.map((m) => [m.id, m.label]), 'bank')),
+        field('Method', select({ name: 'method', 'data-fk': 'pf:' + id + ':m' }, C.methodsFor(shownCurrency()).map((m) => [m.id, m.label]), 'bank')),
         field('Note', h('input', { name: 'note', type: 'text', autocomplete: 'off', placeholder: 'advance, final settlement…', 'data-fk': 'pf:' + id + ':note' }))
       ]),
       h('div.cx-actions', {}, [
@@ -475,7 +476,7 @@ function settlementDoc(ctx, id) {
     h('table.cx-table', {}, [
       h('caption', { text: 'Paid' }),
       h('thead', {}, h('tr', {}, ['Date', 'Method', 'Note', 'Amount'].map((x, i) => h('th', { scope: 'col', class: i === 3 ? 'num' : null, text: x })))),
-      h('tbody', {}, paid.length ? paid.map((p) => h('tr', {}, [h('td', { text: p.date || '—' }), h('td', { text: label(C.METHODS, p.method) }), h('td', { text: p.note }), h('td.num', { text: rs(p.amount) })]))
+      h('tbody', {}, paid.length ? paid.map((p) => h('tr', {}, [h('td', { text: p.date || '—' }), h('td', { text: label(C.methodsFor(shownCurrency()), p.method) }), h('td', { text: p.note }), h('td.num', { text: rs(p.amount) })]))
         : [h('tr', {}, [h('td', { colspan: '4', text: 'Nothing paid yet.' })])]),
       h('tfoot', {}, [
         h('tr', {}, [h('th', { scope: 'row', colspan: '3', text: 'Total paid' }), h('td.num', { text: rs(acct.paid) })]),
@@ -506,7 +507,7 @@ function topSheetDoc(ctx, screen) {
   for (const g of ts.groups) {
     if (!g.depts.length) continue;
     const tb = h('tbody', {}, [h('tr.cx-dept-row', {}, [h('th', { scope: 'rowgroup', colspan: '3', text: g.label })])]);
-    for (const d of g.depts) tb.append(h('tr', {}, [h('td' + (screen ? '.k-mono' : ''), { text: d.acct }), h('th', { scope: 'row', text: d.label }), num(rs(d.estimate))]));
+    for (const d of g.depts) tb.append(h('tr', {}, [h('td' + (screen ? '.k-mono' : ''), { text: d.acct }), h('th', { scope: 'row', text: label(C.deptsFor(shownCurrency()), d.id) }), num(rs(d.estimate))]));
     tb.append(h('tr.cx-sub', {}, [h('td'), h('th', { scope: 'row', text: 'Total ' + g.label.toLowerCase() }), num(rs(g.estimate))]));
     table.append(tb);
   }
@@ -678,8 +679,8 @@ function renderAside(ctx) {
     body.push(h('div.bud-aside-sec', {}, [
       h('p.bud-aside-h', {}, [h('span.k-eyebrow', { text: 'Logged today' }), h('span.k-mono', { text: rs(sum) })]),
       h('ul.bud-aside-list', {}, todays.slice(-3).reverse().map((e) => h('li.bud-aside-row', {}, [
-        h('span.bud-aside-name', { text: label(C.CATEGORIES, e.category) + (e.vendor ? ' · ' + e.vendor : '') }),
-        h('span.bud-aside-sub', { text: (e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.METHODS, e.method) }),
+        h('span.bud-aside-name', { text: label(C.categoriesFor(shownCurrency()), e.category) + (e.vendor ? ' · ' + e.vendor : '') }),
+        h('span.bud-aside-sub', { text: (e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.methodsFor(shownCurrency()), e.method) }),
         h('span.bud-aside-amt.k-mono', { text: rs(e.amount) })
       ])))
     ]));
@@ -843,7 +844,7 @@ const FORMS = {
     refresh();
     const again = document.querySelector('[data-fk="x:amount"]');
     if (again) again.focus({ preventScroll: true });
-    toast(rs(row.amount) + ' logged under ' + label(C.CATEGORIES, row.category) + '.', { type: 'success', duration: 2000 });
+    toast(rs(row.amount) + ' logged under ' + label(C.categoriesFor(shownCurrency()), row.category) + '.', { type: 'success', duration: 2000 });
   },
   float(form) {
     const f = new FormData(form);

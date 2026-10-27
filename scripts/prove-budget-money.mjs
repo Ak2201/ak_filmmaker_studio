@@ -225,6 +225,37 @@ ok(rep.tab === '0' && rep.role === 'region' && rep.left < 340, '22 at 390px the 
 await r3b.close();
 
 ok(errors.length === 0, '7  no page errors', errors);
+/* ---- fix-money r4: names, clipping, rules, dashboard figure ---- */
+const r4 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+page = await film(r4, null, {
+  ci_1_item: 'Other (custom)', ci_1_custom: 'DOP', ci_1_days: '1', ci_1_rate: '1200',
+  ci_2_item: 'Other (custom)', ci_2_custom: 'Food', ci_2_days: '2', ci_2_rate: '500'
+});
+await page.evaluate(() => localStorage.setItem('fms_costs_v1', JSON.stringify({ settings: {}, lines: { ci_2: { dept: 'food' } } })));
+await open(page, 'budget.html#estimate');
+const names = await page.evaluate(() => [...document.querySelectorAll('.calc-row input, .calc-row select')].map((e) => (e.labels[0] || {}).textContent));
+ok(new Set(names).size === names.length, 'r4a every estimator field has a name unique to its row', names);
+await open(page, 'budget.html#actuals');
+const clip = await page.evaluate(() => [...document.querySelectorAll('[data-cx-field="line-dept"]')].map((s) => {
+  const o = s.options[s.selectedIndex]; const c = document.createElement('canvas').getContext('2d');
+  c.font = getComputedStyle(s).font; return { w: s.clientWidth, text: c.measureText(o.text).width };
+}));
+ok(clip.length > 0 && clip.every((c) => c.text + 32 <= c.w), 'r4b at 390px the department select shows its whole name', clip);
+await open(page, 'budget.html#topsheet');
+const rule = await page.evaluate(() => {
+  const tr = document.querySelector('table.cx-top tbody tr.cx-sub:last-child, table.cx-top tbody tr:last-child');
+  return tr && [...tr.children].map((c) => getComputedStyle(c).borderBottomWidth);
+});
+ok(rule && new Set(rule).size === 1, 'r4c a top-sheet row rule is the same under every cell', rule);
+await open(page, 'dashboard.html');
+const dstat = await page.evaluate(() => (document.querySelector('.db-stats') || {}).textContent || '');
+ok(/₹ 2,200/.test(dstat), 'r4d the dashboard shows the exact small budget, not ₹ 2k', dstat.slice(0, 300));
+await page.evaluate(() => localStorage.setItem('fms_library_calc_v1', JSON.stringify({ ci_currency: 'USD', ci_1_days: '1', ci_1_rate: '12' })));
+await open(page, 'budget.html#actuals');
+const usdTxt = await page.evaluate(() => document.getElementById('actuals').textContent);
+ok(!/GST|batta/i.test(usdTxt.replace(/Tax in the bill/, '')), 'r4e a dollar cost report has no GST or batta wording', usdTxt.match(/.{20}(GST|batta).{10}/i));
+await r4.close();
+
 await browser.close();
 server.close();
 console.log(failed ? `✗ prove:budget-money — ${failed} failed` : '✓ prove:budget-money — all passed');

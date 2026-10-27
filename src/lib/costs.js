@@ -116,6 +116,16 @@ export const GROUPS = [
   { id: 'post',  label: 'Below the line — post' },
   { id: 'other', label: 'Below the line — other' }
 ];
+/* A DOLLAR budget drops India-only words. Ids are storage and never move;
+   only the label a person reads changes, and only for USD. */
+const US_CATEGORY = { batta: 'Per diem' };
+const US_METHOD = { upi: 'Mobile pay' };
+const US_DEPT = { food: 'Food & per diem' };
+const relabel = (list, map, currency) => (currency === 'USD'
+  ? list.map((x) => (map[x.id] ? { ...x, label: map[x.id] } : x)) : list);
+export const categoriesFor = (currency) => relabel(CATEGORIES, US_CATEGORY, currency);
+export const methodsFor = (currency) => relabel(METHODS, US_METHOD, currency);
+export const deptsFor = (currency) => relabel(DEPTS, US_DEPT, currency);
 const DEPT = new Map(DEPTS.map((d) => [d.id, d]));
 export const deptOf = (id) => DEPT.get(id) || DEPT.get('other');
 
@@ -910,8 +920,8 @@ export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x, cu
   const out = [['Date', 'Shoot day', 'Budget line', 'Category', m('Amount (incl. GST)'), 'GST %', m('GST'), 'Vendor', 'GSTIN', 'Paid by', 'Method', 'Note', 'Receipt']];
   for (const e of expenses) {
     const s = gstSplit(e.amount, e.gstPct);
-    out.push([e.date, e.shootDay || '', e.line ? lineName(e.line) : '', (CATEGORIES.find((c) => c.id === e.category) || {}).label || e.category,
-      s.gross, e.gstPct, s.tax, e.vendor, e.gstin, e.paidBy ? nameOf(e.paidBy) : '', (METHODS.find((m) => m.id === e.method) || {}).label || e.method, e.note, e.receipt]);
+    out.push([e.date, e.shootDay || '', e.line ? lineName(e.line) : '', (categoriesFor(currency).find((c) => c.id === e.category) || {}).label || e.category,
+      s.gross, e.gstPct, s.tax, e.vendor, e.gstin, e.paidBy ? nameOf(e.paidBy) : '', (methodsFor(currency).find((m) => m.id === e.method) || {}).label || e.method, e.note, e.receipt]);
   }
   return toCSV(out);
 }
@@ -920,7 +930,7 @@ export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x, cu
 export const gstinLooksValid = (s) => /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(String(s || '').trim().toUpperCase());
 
 export default {
-  COSTS_KEY, CATEGORIES, METHODS, GST_RATES, TDS_RATES, DEPTS, GROUPS,
+  COSTS_KEY, CATEGORIES, METHODS, categoriesFor, methodsFor, deptsFor, GST_RATES, TDS_RATES, DEPTS, GROUPS,
   readAll, listExpenses, addExpense, updateExpense, removeExpense, restoreExpense,
   listFloats, addFloat, removeFloat, listCrew, getCrew, setCrew, removeCrew,
   listPayments, addPayment, removePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,

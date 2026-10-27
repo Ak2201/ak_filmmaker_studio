@@ -14,7 +14,7 @@
    the shape the dashboard's renderers read.
    ============================================================ */
 import { BLUEPRINT, guideProgress, journey, stageStates, suggestNext, lastWorked } from './journey.js';
-import { parseAmount, fmtMoney } from './money.js';
+import { parseAmount, fmtMoney, fmtGlance } from './money.js';
 import { openBudgetCurrency } from './budget-currency.js';
 import Scenes, { totalEighths } from './scenes.js';
 import Locations from './locations.js';
@@ -87,7 +87,7 @@ export function budgetStatus() {
   }
   return {
     lines, total, currency,
-    short: total ? fmtMoney(total, currency, true) : (currency === 'USD' ? '$0' : '₹ 0'),
+    short: total ? fmtGlance(total, currency) : (currency === 'USD' ? '$0' : '₹ 0'),
     exact: fmtMoney(total, currency)
   };
 }

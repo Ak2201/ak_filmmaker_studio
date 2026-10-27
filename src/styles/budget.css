@@ -453,6 +453,9 @@ p.cx-hint { margin: 0; }
 }
 .cx-acct { color: var(--brand-deep); }
 .cx-table.k-table .cx-sub > * { font-weight: 600; color: var(--ink-body); }
+/* The kit drops the last row's rule on td only, so a last row made of a
+   th and tds kept a rule under the label alone. One rule across the row. */
+.cx-table.k-table tbody tr:last-child th { border-bottom: 0; }
 .cx-table.k-table tfoot th, .cx-table.k-table tfoot td { font-weight: 600; color: var(--ink); border-bottom: 0; }
 .cx-table.k-table .cx-total > * {
   border-top: 1px solid var(--border-strong);
@@ -472,7 +475,8 @@ p.cx-hint { margin: 0; }
    columns give way until Estimate peeks into the 356px box (it began at
    x=361, so only names showed and nothing said the table scrolled). */
 @media (max-width: 720px) {
-  .cx-report .k-control { min-width: 0; width: 7.5rem; }
+  /* 7.5rem clipped '2800 Food & per diem' to '2800 Foo'. */
+  .cx-report .k-control { min-width: 0; width: 12rem; }
   .cx-report.k-table tbody th[scope="row"] { min-width: 6.5rem; }
 }
 .cx-wages .k-control { min-width: 7rem; }

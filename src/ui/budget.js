@@ -81,6 +81,10 @@ function rowItemName(row) {
   return itemNameOf(custom && custom.value, select && select.value);
 }
 
+/* Every row's fields read the same, so a screen reader hears 'Days' five
+   times; a visually hidden ', line N' names the row (idx is 1-based). */
+const rowHint = (idx) => h('span.visually-hidden', { text: ', line ' + idx });
+
 function buildCalcRow(idx) {
   const ids = {
     item:   `ci_${idx}_item`,
@@ -104,9 +108,9 @@ function buildCalcRow(idx) {
   };
 
   const itemCell = h('div.calc-cell', {}, [
-    h('label.calc-label', { for: ids.item, text: 'Item' }),
+    h('label.calc-label', { for: ids.item }, ['Item', rowHint(idx)]),
     frame(select),
-    h('label.calc-label', { for: ids.custom, text: 'Custom item name' }),
+    h('label.calc-label', { for: ids.custom }, ['Custom item name', rowHint(idx)]),
     frame(h('input', {
       id: ids.custom, type: 'text', 'data-key': ids.custom,
       placeholder: 'or type your own…', autocomplete: 'off'
@@ -114,7 +118,7 @@ function buildCalcRow(idx) {
   ]);
 
   const daysCell = h('div.calc-cell', {}, [
-    h('label.calc-label', { for: ids.days, text: 'Days' }),
+    h('label.calc-label', { for: ids.days }, ['Days', rowHint(idx)]),
     frame(h('input', {
       id: ids.days, type: 'text', inputmode: 'decimal',
       'data-key': ids.days, placeholder: 'Days', autocomplete: 'off'
@@ -122,7 +126,7 @@ function buildCalcRow(idx) {
   ]);
 
   const rateCell = h('div.calc-cell', {}, [
-    h('label.calc-label', { for: ids.rate, text: 'Rate (' + sign() + ' per day)' }),
+    h('label.calc-label', { for: ids.rate }, ['Rate (' + sign() + ' per day)', rowHint(idx)]),
     frame(h('input', {
       id: ids.rate, type: 'text', inputmode: 'decimal',
       'data-key': ids.rate, placeholder: sign() + '/day', autocomplete: 'off'

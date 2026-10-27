@@ -2986,3 +2986,36 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       keeps its old text until a schema section updates it).
     - CI now also runs `prove:notes`, `prove:beat-sync`, `prove:story-coedit`
       and the other proofs that had been left out.
+
+68. **Everything the repo could finish after the QA (28 Oct 2026).** The owner
+    asked for every pending item that the local repo can do, and decided four
+    things: finalize the legal DRAFTs; beat pages use the target length if set,
+    else the script as written; a film made outside India hides India-only
+    budget items; and build the three small extras. One workflow, eight lanes
+    in pairs, two skeptics per lane, one repair (lane B).
+    - **Legal.** privacy, terms and refund have no DRAFT left and are dated
+      28 October 2026. Every passage was checked against §59–§63 and the
+      code; what depends on a console switch or an unrun section is worded
+      conditionally ("while the launch pass is on offer", "we may also
+      e-mail you a reminder"). `test:marketing` now fails on a DRAFT marker
+      and on a "Last updated" date that differs from the "What changed"
+      heading. `lead.live` stays false: privacy #leads is final, so the owner
+      may flip it; `student.live` waits for STUDENT50 to exist.
+    - **Beat pages.** One pure `beatPageBasis()`; both the beats panel and
+      Script analysis name their basis in one line. A cold Script analysis
+      reads the target first (the repair).
+    - **Dollar budget.** `showIndia()` (the Tamil-typing rule) hides GST, TDS,
+      GSTIN and the FEFSI wage material; Batta and UPI display as Per diem and
+      Bank/card. Stored ids and values are unchanged. The CSV exports keep their
+      fixed header (KNOWN-ISSUES).
+    - **Cast Matrix and Screen Time** each have one Export menu: print, PDF
+      and CSV.
+    - **Clippings** cut at `VAULT_MAX` carry `cut: true` on the vault record
+      (no new key), and the card says so.
+    - **The beat-note line** follows a note written in another window or
+      synced, and never redraws under focus (it waits for blur).
+    - **QA leftovers.** Empty-state focus, plan.js plurals, the import copy,
+      an Undo for float and payment deletes, plus browser proofs for the
+      breakdown, the edit log and the estimator print.
+    - **§64** (`schema-64-pro-blurb.sql`) updates the live Pro blurb. It is an
+      owner step, with its checksum in `docs/LIVE-STEPS-2026-10-27.md`.

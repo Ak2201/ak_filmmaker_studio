@@ -290,7 +290,10 @@ function onIncomingScript(live, where = 'device') {
     if (gone) {
       try {
         StudioUI.toast((where === 'window' ? 'Another window' : 'Another device')
-          + ' kept its own version of this script, which is now on screen. What you saved here is in Drafts as “' + gone.name + '”.', { type: 'info' });
+          + ' kept its own version of this script, which is now on screen. What you saved here is in Drafts as “' + gone.name + '”.',
+          /* An action keeps it up until it is read: it says where somebody's
+             writing went, and a 3.2s notice left nothing to find later. */
+          { type: 'info', action: 'Open Drafts', onAction: () => { location.href = 'drafts.html'; } });
       } catch (e) { /* chrome may not be up */ }
     } else if (!live && where === 'device') say('Updated with the newer copy from your other device.');   // the live path already said so
     else if (where === 'window') say('Updated with the copy saved in your other window.');   // QA r4: it changed silently

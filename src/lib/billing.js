@@ -29,6 +29,7 @@ import { BRAND } from './brand.js';
 import { bumpEvent, countTrialStart, countPassBuy, trialOffer } from './funnel.js';
 import { passNow, passFacts, passRefusal } from './pass-view.js';
 import { offerTerms, readMode } from './offer-terms.js';
+import { fmtMinor } from './price-model.js';   // import-free
 import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
@@ -280,17 +281,10 @@ export async function buy(planId, period = 'year', { accountId = null, onStatus 
    figure ('once' says it does not renew; a server without §62 says only
    the price and the length). */
 function onceTerms(order, mode) {
-  const price = Number.isInteger(order.amount) ? fmtMinorShort(order.amount, order.currency) : '';
+  const price = Number.isInteger(order.amount) ? fmtMinor(order.amount, order.currency) : '';
   const t = offerTerms(mode, price, order.period === 'pass' ? 'pass' : 'year', order.days);
   return t.line || '1 year, full access';
 }
-/* "₹599" / "$12" — whole units unless there are paise / cents. */
-function fmtMinorShort(minor, currency) {
-  const v = minor / 100;
-  const n = Number.isInteger(v) ? String(v) : v.toFixed(2);
-  return (currency === 'USD' ? '$' : '₹') + n;
-}
-
 /* ---- auto-renew (§62) ---------------------------------------------
    A SUBSCRIPTION, for a product the owner has set to auto-renew. The
    same shape as an order, one step longer:
@@ -319,7 +313,7 @@ async function subscribe(planId, period, { accountId, onStatus, currency }) {
   });
   const [sub] = await Promise.all([ask, loadCheckout()]);
   if (!sub || !sub.subscription_id) throw new BillingError('No subscription came back.', 'edge');
-  const price = Number.isInteger(sub.amount) ? fmtMinorShort(sub.amount, sub.currency) : '';
+  const price = Number.isInteger(sub.amount) ? fmtMinor(sub.amount, sub.currency) : '';
   const terms = offerTerms('renew', price, sub.period === 'year' ? 'year' : 'pass', sub.days);
   onStatus('Opening the payment form…');
   const response = await new Promise((resolve, reject) => {
@@ -397,7 +391,7 @@ export function autopayOf(st) {
     period: a.period === 'year' || a.period === 'pass' ? a.period : (a.product === 'pass' ? 'pass' : 'year'),
     amountMinor: minor,
     currency: a.currency === 'USD' ? 'USD' : 'INR',
-    price: minor != null ? fmtMinorShort(minor, a.currency) : '',
+    price: minor != null ? fmtMinor(minor, a.currency) : '',
     currentEnd: a.current_end || null,
     nextChargeAt: a.next_charge_at || null,
     cancelAtEnd: a.cancel_at_period_end === true,

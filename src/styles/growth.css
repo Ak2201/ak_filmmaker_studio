@@ -24,6 +24,11 @@
 .gr-codes { margin: 0; padding: var(--s2) var(--s3); font-family: var(--f-mono); font-size: var(--t-small); white-space: pre-wrap; overflow-wrap: anywhere;
   background: var(--paper-sunk); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); max-height: 16rem; overflow: auto; }
 .gr-bars { display: grid; gap: var(--s1); }
+/* §62: the two one-time / auto-renew switches (radios, not .gr-row: the
+   console sizes a .gr-row input as a text field) */
+.gr-mode { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--s1); }
+.gr-mode legend { padding: 0; margin-bottom: var(--s1); font-size: var(--t-small); color: var(--ink-muted); }
+.gr-mode-opts { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); }
 .gr-check { display: inline-flex; gap: var(--s1); align-items: center; font-size: var(--t-small); color: var(--ink-body); }
 
 /* ---- the price rise (schema section 30) ---------------------------

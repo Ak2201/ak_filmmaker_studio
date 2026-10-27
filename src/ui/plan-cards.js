@@ -340,7 +340,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     /* AN UPGRADE WHILE A YEAR RUNS is paid once even on auto-renew (a
        subscription cannot carry the credit; quote_subscription says
        'upgrade'), so its card prints the credited one-time price. */
-    const upgradeOnce = mode === 'renew' && !!current && current !== 'free' && Billing.planRank(p.id) > Billing.planRank(current) && !!(st && st.plan_until);
+    const upgradeOnce = mode === 'renew' && !apBlocks && !!current && current !== 'free' && Billing.planRank(p.id) > Billing.planRank(current) && !!(st && st.plan_until);
     const q = pq || (mode === 'renew' && !upgradeOnce ? null : uq);
     const name = p.name || planName(p.id);
     const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);

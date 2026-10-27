@@ -270,7 +270,7 @@ function modeSwitch(name, label, value) {
   const id = (v) => 'graMode-' + name + '-' + v;
   return h('fieldset.gr-mode', { 'data-mode-for': name }, [
     h('legend', { text: label }),
-    h('div.gr-row', {}, ['once', 'renew'].map((v) => {
+    h('div.gr-mode-opts', {}, ['once', 'renew'].map((v) => {
       const r = h('input', { id: id(v), type: 'radio', name, value: v });
       r.checked = value === v;
       return h('label.gr-check', { for: id(v) }, [r, h('span', { text: MODE_LABEL[v] })]);
@@ -314,7 +314,6 @@ function subsBlock(sec) {
       { label: 'Amount', align: 'end', render: subAmount },
       { label: 'Status', render: (r) => r.status + (r.cancel_at_period_end ? ' · ends at period end' : '') },
       { label: 'Next charge', render: (r) => (subLive(r) && r.current_end ? fmtWhen(r.current_end) : r.current_end ? 'none · access to ' + fmtWhen(r.current_end) : '—') },
-      { label: 'Started', render: (r) => fmtWhen(r.created_at) },
       { label: '', render: (r) => (subLive(r) ? h('button.btn', { type: 'button', 'data-gra-action': 'sub-cancel', 'data-id': String(r.id), 'data-who': r.user_email || '', 'data-until': r.current_end || '', text: 'CANCEL' }) : '') }
     ]
   }));

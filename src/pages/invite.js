@@ -222,7 +222,7 @@ function passSection(signedIn) {
   if (!f) return null;
   /* The terms are the server's mode in offer-terms.js's words (§62). */
   const terms = passTerms(passOfferNow);
-  const t = section('pass', 'Launch offer', 'Try the whole studio for ' + f.price + '.',
+  const t = section('pass', 'Launch offer', terms.mode === 'renew' ? 'Try the whole studio.' : 'Try the whole studio for ' + f.price + '.',
     'The whole studio, every stage, on your own films: ' + terms.line + '. Once per account, through Razorpay. ' + (terms.mode === 'renew'
       ? 'Cancel in Settings, under Plan & purchases, and you keep the days already paid for.'
       : 'Then choose a yearly plan, or don’t.'));
@@ -230,8 +230,8 @@ function passSection(signedIn) {
   t.append(passClock());
   t.append(h('div.iv-actions', {}, [
     signedIn
-      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'buy-pass', text: passCta(f) })
-      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-iv-action': 'pass-intent', text: passCta(f) })
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'buy-pass', text: passCta(terms.mode === 'renew' ? null : f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-iv-action': 'pass-intent', text: passCta(terms.mode === 'renew' ? null : f) })
   ]));
   if (signedIn) t.append(h('p.bd-sub', { id: 'passMsg', role: 'status', 'aria-live': 'polite', text: '' }));
   else t.append(legalLine('You sign in with Google first; the payment comes after. By continuing you agree to the '));

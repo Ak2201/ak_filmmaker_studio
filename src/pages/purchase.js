@@ -123,16 +123,19 @@ function passCard(st, signedIn) {
   const f = passFacts(passOfferNow);
   if (!f) return null;
   const wanted = wantedPlan(location.search) === 'pass';
+  /* On auto-renew a price never stands without its terms: the heading
+     and the button name the offer, and the terms line carries the price. */
+  const renewing = passMode(passOfferNow) === 'renew';
   const card = h('section#pass.pu-pass' + (wanted ? '.is-wanted' : ''), { 'aria-labelledby': 'puPassH' }, [
     h('p.bd-eyebrow', { text: 'Launch offer' }),
-    h('h3.pu-h3', { id: 'puPassH', text: 'The whole studio for ' + f.price + ', ' + f.length + '.' }),
+    h('h3.pu-h3', { id: 'puPassH', text: renewing ? 'The whole studio, every stage.' : 'The whole studio for ' + f.price + ', ' + f.length + '.' }),
     /* the terms are the server's mode in offer-terms.js's words */
     h('p.pu-pass-terms', { 'data-offer-mode': passMode(passOfferNow) || 'unknown', text: passTerms(passOfferNow).line }),
     h('p.pu-pass-p', { text: passBody(f) }),
     passClock(),
     h('div.pu-actions', {}, [signedIn
-      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'OPENING…' : passCta(f) })
-      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(f) })]),
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'OPENING…' : passCta(renewing ? null : f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(renewing ? null : f) })]),
     pass.msg ? h('p.pl-status' + (pass.bad ? '.gt-error' : ''), { role: pass.bad ? 'alert' : 'status', text: pass.msg }) : null
   ]);
   return card;

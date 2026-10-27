@@ -1308,7 +1308,13 @@ function render() {
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [
-    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderAutopay(), renderPlanContents(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your activity and invites.' }),
+    /* PLAN & PURCHASES (27 Oct 2026): its own tab, because the public
+       copy and the legal draft name the cancel path as Settings → Plan &
+       purchases → Cancel auto-pay: the button is tap one, the dialog.js
+       confirm tap two. Id 'purchases', not 'plan' (#plan is an old
+       billing anchor that redirects to purchase.html). */
+    tabPane('purchases', 'Plan & purchases', 'You', [renderPlanCard(), renderAutopay(), renderPlanContents()], { icon: 'payments', hint: 'Your plan, auto-pay and what the plan opens.' }),
     tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
     tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
     tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),

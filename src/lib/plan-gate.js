@@ -892,7 +892,7 @@ function passWallPanel(e) {
     /* The pass's button straight under its price and clock: at 390px the
        plans below would otherwise push it two screens down. */
     h('div.pg-lock-actions', {}, [
-      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: 'TRY THE WHOLE STUDIO FOR ' + f.price + (passMode(wallPass) === 'renew' ? '' : ' · ' + f.length.toUpperCase()) })
+      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: passMode(wallPass) === 'renew' ? 'TRY THE WHOLE STUDIO' : 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() })
     ]),
     h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' }),
     h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),

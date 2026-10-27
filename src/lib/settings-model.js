@@ -95,6 +95,8 @@ export function planSummary(cp, { off, signedIn, trialEndsAt }) {
   else if (cp.reason === 'trial') {
     const end = trialEndsAt();
     line = 'Free trial' + (end ? ' · ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
+  } else if (cp.reason === 'paid' && cp.passActive && cp.autopay && cp.autopay.live && cp.autopay.product === 'pass') {
+    line = passName(cp.passDays) + ' · ' + renewsText(dayLabel(cp.autopay.nextChargeAt || cp.autopay.currentEnd || cp.planUntil), cp.autopay.price) + '. The whole studio is open.';
   } else if (cp.reason === 'paid' && cp.passActive) {
     /* §61: the launch pass is Pro for a few days, not a plan to renew. */
     line = passName(cp.passDays) + (cp.planUntil ? ' · ends ' + new Date(cp.planUntil).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '. The whole studio is open; a yearly plan keeps it open after.';

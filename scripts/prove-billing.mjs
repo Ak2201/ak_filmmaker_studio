@@ -1630,6 +1630,19 @@ try {
      The owner chooses, per product, one-time or auto-renew; the buyer is
      told. Every line is offer-terms.js's, from the server's mode. */
   console.log('(renew) one-time or auto-renew');
+  /* PROVE_SHOTS=<dir>: a full-page screenshot at 1440 and 390 of each
+     state below, for a person to look at. Off by default. */
+  const SHOTS = process.env.PROVE_SHOTS || '';
+  const shot = async (page, name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    for (const w of [1440, 390]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: path.join(SHOTS, `${name}-${w}.png`), fullPage: true }).catch(() => {});
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+  };
   const waitRe = (page, sel, re, label, timeout = 12000) => page.waitForFunction(([s, r]) => new RegExp(r).test((document.querySelector(s) || {}).textContent || ''), [sel, re.source], { timeout })
     .then(() => ok(true, label), async () => ok(false, label + ' — read: ' + ((await page.textContent(sel).catch(() => '')) || '').replace(/\s+/g, ' ').slice(0, 200)));
   const PASS_ON = () => Object.assign(F.db.settings, { pass_enabled: true, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: new Date(Date.now() + 3 * 86400e3).toISOString(), pass_cap: 500 });
@@ -1652,6 +1665,7 @@ try {
     await page.goto(BASE + 'purchase.html');
     await waitRe(page, '#pass .pu-pass-terms', /^₹49 for 7 days · one payment, nothing renews$/, 'one-time: the pass card reads "₹49 for 7 days · one payment, nothing renews"');
     await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 for a year · one payment, nothing renews$/, 'and the Intermediate card "₹7,999 for a year · one payment, nothing renews"');
+    await shot(page, 'purchase-once');
     await page.click('#pass [data-pu-action="buy-pass"]');
     await waitRe(page, '#pass, #plan', /pass is on|7-day pass/, 'the one-time pass is bought');
     ok(F.db.calls.includes('fn:rzp-order pro pass') && !F.db.calls.some((c) => c.startsWith('fn:rzp-subscribe')), 'through rzp-order, as today (no subscription)');
@@ -1666,6 +1680,7 @@ try {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
     await page.goto(BASE + 'purchase.html');
     await waitRe(page, '#pass .pu-pass-terms', /^₹49 every 7 days · renews until you cancel · cancel anytime$/, 'auto-renew: the pass card reads "₹49 every 7 days · renews until you cancel · cancel anytime"');
+    await shot(page, 'purchase-pass-renew');
     ok((await page.getAttribute('#pass .pu-pass-terms', 'data-offer-mode')) === 'renew', 'the mode on the card is the server\'s (renew)');
     ok(/Cancel in Settings/.test(await page.textContent('#pass .pu-pass-p').catch(() => '')), 'and says where it is cancelled');
     await page.click('#pass [data-pu-action="buy-pass"]');
@@ -1692,11 +1707,14 @@ try {
     await page.goto(BASE + 'settings.html#autopay');
     await waitRe(page, '#autopay', /Auto-pay on/, 'Settings has an Auto-pay card: Auto-pay on');
     await waitRe(page, '#autopay', /7-day pass · Renews .* · ₹49/, 'with the next charge date and the amount');
+    await shot(page, 'settings-autopay-on');
+    ok(!!(await page.$('section#purchases[data-tab-label="Plan & purchases"] #autopay')), 'the card sits in Settings → Plan & purchases (tap 1 is its button, tap 2 the confirm)');
     await page.click('#autopay [data-action="autopay-cancel"]');
     await page.waitForSelector('button.mbtn.primary', { timeout: 5000 }).catch(() => {});
     ok(/You keep access until .*\. Nothing more will be charged\./.test(await page.textContent('.dlg[role="dialog"]').catch(() => '')), 'the dialog says "You keep access until <date>. Nothing more will be charged."');
     await page.click('button.mbtn.primary');
     await waitRe(page, '#autopay', /Auto-pay off · access until /, 'after cancelling: "Auto-pay off · access until <date>"');
+    await shot(page, 'settings-autopay-off');
     ok(benSub.cancel_at_period_end === true && F.db.calls.includes('fn:rzp-cancel ' + benSub.id), 'rzp-cancel cancelled it at the end of the period');
     { const before = acc().plan_until; ok(chargeSubscription(benSub.id) === null && acc().plan_until === before, 'after a cancel no new charge is applied, and the days paid for are kept'); }
     allErrors.push(...errors); await ctx.close();
@@ -1708,6 +1726,7 @@ try {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
     await page.goto(BASE + 'purchase.html');
     await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 every year · renews until you cancel · cancel anytime$/, 'auto-renew: the Intermediate card reads "₹7,999 every year · renews until you cancel · cancel anytime"');
+    await shot(page, 'purchase-year-renew');
     ok(!(await page.$('#plan [data-plan-promo]')), 'no code box on auto-renew (a code has nowhere to ride on a subscription)');
     ok(/BUY INTERMEDIATE$/.test((await page.textContent('.pl-card[data-plan="indie"] [data-plan-action="buy"]').catch(() => '')).trim()), 'the button does not promise "1 YEAR"');
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
@@ -1719,6 +1738,7 @@ try {
     const left = () => (acc() && acc().plan_until ? (Date.parse(acc().plan_until) - Date.now()) / 86400e3 : 0);
     ok(sub && sub.status === 'active' && sub.amount_minor === 799900 && acc().plan === 'indie' && left() > 364.9 && left() <= 365, 'active at ₹7,999, Intermediate for a year (' + left().toFixed(2) + ')');
     await waitRe(page, '#plan .is-current', /Renews .* · ₹7,999/, 'the current card says when it renews and at what amount');
+    await shot(page, 'purchase-year-renewing');
     ok(!(await page.$('#plan [data-plan-action="buy"]')), 'and nothing more is bought while auto-pay runs');
     ok(/Auto-pay is on/.test(await page.textContent('#plan').catch(() => '')), 'the row says auto-pay is on and links to Settings');
     chargeSubscription(sub.id);
@@ -1731,6 +1751,8 @@ try {
     await page.goto(BASE + 'admin.html#growth');
     await page.waitForSelector('#growth form[data-gra-form="modes"]', { timeout: 15000 }).then(() => ok(true, 'the console draws the one-time / auto-renew switches'), () => ok(false, 'the console draws the one-time / auto-renew switches'));
     await waitRe(page, '#growth', /Live now: week pass Auto-renew · yearly plans Auto-renew\./, 'it reads what is live: both Auto-renew');
+    await page.evaluate(() => document.querySelector('#growth form[data-gra-form="modes"]').scrollIntoView());
+    await shot(page, 'console-modes');
     ok(/Applies to new purchases only; existing auto-pay keeps its price\./.test(await page.textContent('#growth form[data-gra-form="modes"]')), 'with the note: new purchases only, existing auto-pay keeps its price');
     await page.check('#graMode-pass_mode-once');
     await page.click('#growth form[data-gra-form="modes"] button[type="submit"]');

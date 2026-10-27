@@ -410,6 +410,19 @@ const cmx = await page.$eval('#cast-matrix .rp-scroll', (n) => ({ ov: getCompute
 ok(cmx.ov === 'visible' && cmx.sw <= cmx.cw + 1 && cmx.cols > 20, '13 printing the cast matrix fits every scene column', cmx);
 await page.emulateMedia({ media: 'screen' });
 await page.setViewportSize({ width: 1440, height: 900 });
+/* 14 Cast matrix and Screen time each have one Export menu (print, PDF, CSV), and the CSV downloads. */
+for (const [id, tag, csvName] of [['cast-matrix', 'castmatrix', 'cast-matrix.csv'], ['screentime', 'screentime', 'screen-time.csv']]) {
+  await page.goto(url('reports.html#' + id), { waitUntil: 'networkidle' });
+  await settle(page);
+  const acts = await page.$$eval(`#${id} [data-action]`, (ns) => ns.map((n) => n.getAttribute('data-action')));
+  ok(['print-', 'pdf-', 'csv-'].every((p) => acts.includes(p + tag)), `14 ${id} has print, PDF and CSV in its Export menu`, acts);
+  await page.click(`#${id} .tb-menu-btn`).catch(() => {});
+  const [dl] = await Promise.all([
+    page.waitForEvent('download', { timeout: 5000 }).catch(() => null),
+    page.click(`#${id} [data-action="csv-${tag}"]`, { force: true }).catch(() => {})
+  ]);
+  ok(!!dl && dl.suggestedFilename().endsWith(csvName), `14 ${id} CSV downloads as *-${csvName}`, dl && dl.suggestedFilename());
+}
 
 /* ---- round 3 -------------------------------------------------- */
 const daysOf = async () => (await scenes()).map((s) => [s.id, Number(s.shootDay) || 0]);

@@ -32,7 +32,7 @@ import '../styles/pdf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
-import { h, delegate } from '../lib/dom.js';
+import { h, delegate, download } from '../lib/dom.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import { pageHeader, statStrip, statCard, button } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
@@ -51,7 +51,7 @@ import { getTargetMin, setTargetMin } from '../lib/editlog.js';
 import {
   IE_HUE, DN_HUE, NO_LOCATION, catById, sceneNumbers, tally, byCategory, mix, plural, slugOf, locationCount,
   selectionLabel as selectionText, readFrom, runtimeGroups, fmtDelta, deltaLabel, runtimeNotes, dayFromSearch,
-  openDay, shortDate as shortDateIn, dprStatValues, calcLine, kitTitle as kitTitleIn, dayPdfSubtitle as dayPdfSubtitleIn, offlineRowText
+  openDay, shortDate as shortDateIn, dprStatValues, calcLine, kitTitle as kitTitleIn, dayPdfSubtitle as dayPdfSubtitleIn, offlineRowText, screenTimeCSV, castMatrixCSV
 } from '../lib/reports-model.js';
 
 /* Every date these documents print follows the FILM's style (Indian or
@@ -440,6 +440,13 @@ function renderScreenTime(scenes, numbers) {
     sec.append(h('p.bd-none', { text: 'No scenes yet. Import or write a script and the estimate appears here, scene by scene.' }));
     return sec;
   }
+  sec.append(h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
+    actionMenu('Export', [
+      { label: 'Print the screen time', action: 'print-screentime' },
+      { label: 'Save as PDF', action: 'pdf-screentime', hint: 'A4' },
+      { label: 'Download CSV', action: 'csv-screentime', hint: 'Spreadsheet' }
+    ], { kit: 'secondary' })
+  ]));
   const st = Analysis.screenTime(scenes, loadScript().elements);
   sec.append(h('div.k-stat-strip.rp-stats', {}, [
     stat(formatDuration(st.total), 'estimated running time'),
@@ -639,6 +646,13 @@ function renderCastMatrix(scenes, numbers) {
     sec.append(h('p.bd-none', { text: 'No cast yet. Tag cast on the breakdown or write character cues in the script, and the grid fills in.' }));
     return sec;
   }
+  sec.append(h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
+    actionMenu('Export', [
+      { label: 'Print the cast matrix', action: 'print-castmatrix' },
+      { label: 'Save as PDF', action: 'pdf-castmatrix', hint: 'Landscape' },
+      { label: 'Download CSV', action: 'csv-castmatrix', hint: 'Spreadsheet' }
+    ], { kit: 'secondary' })
+  ]));
   const notes = Analysis.describeMatch(cm.match);
   if (notes.length) sec.append(h('p.bd-match-note', { text: 'Cues are read only from scenes matched to a heading. ' + notes.join(' ') }));
   const table = h('table.scene-table.rp-table.rp-matrix');
@@ -1166,6 +1180,27 @@ delegate(document, 'click', '[data-action="print-kit"]',      () => printOnly('r
 delegate(document, 'click', '[data-action="pdf-oneliner"]', dayPdf('oneliner', 'One-liner', 'rp-print-oneliner'));
 delegate(document, 'click', '[data-action="pdf-dpr"]',      dayPdf('dpr', 'Daily production report', 'rp-print-dpr'));
 delegate(document, 'click', '[data-action="pdf-kit"]',      dayPdf('kit', 'Equipment', 'rp-print-kit'));
+
+/* Screen time and the cast matrix: print, PDF and CSV of what the tab shows. */
+const castFile = () => (PDF.projectTitle ? PDF.projectTitle() : 'film').replace(/[^\w\u0B80-\u0BFF-]+/g, '_').replace(/^_+|_+$/g, '') || 'film';
+delegate(document, 'click', '[data-action="print-screentime"]', () => printOnly('rp-print-screentime'));
+delegate(document, 'click', '[data-action="print-castmatrix"]', () => printOnly('rp-print-castmatrix'));
+delegate(document, 'click', '[data-action="pdf-screentime"]', () => PDF.exportPDF({
+  scope: 'screentime', label: 'Screen time', setup: 'a4', classes: ['rp-print-screentime'],
+  subtitle: plural(Scenes.listScenes().length, 'scene', 'scenes')
+}));
+delegate(document, 'click', '[data-action="pdf-castmatrix"]', () => PDF.exportPDF({
+  scope: 'castmatrix', label: 'Cast matrix', setup: 'landscape', classes: ['rp-print-castmatrix'],
+  subtitle: plural(Scenes.listScenes().length, 'scene', 'scenes')
+}));
+delegate(document, 'click', '[data-action="csv-screentime"]', () => {
+  const scenes = Scenes.listScenes();
+  download(castFile() + '-screen-time.csv', screenTimeCSV(Analysis.screenTime(scenes, loadScript().elements), sceneNumbers(scenes)), 'text/csv;charset=utf-8');
+});
+delegate(document, 'click', '[data-action="csv-castmatrix"]', () => {
+  const scenes = Scenes.listScenes();
+  download(castFile() + '-cast-matrix.csv', castMatrixCSV(Analysis.castMatrix(scenes, loadScript().elements), sceneNumbers(scenes)), 'text/csv;charset=utf-8');
+});
 
 delegate(document, 'change', '[data-action="rp-day"]', (e, el) => {
   rpDay = parseInt(el.value, 10) || rpDay;

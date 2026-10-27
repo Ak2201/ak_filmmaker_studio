@@ -505,6 +505,10 @@ function setView(id, moveHash) {
 async function refreshAnalysis() {
   if (view !== 'analysis' || !analysisHost) return;
   try {
+    /* The target loads lazily; a cold #analysis (or a return from Reports)
+       must read it BEFORE the beats are placed, or the basis is wrong. */
+    await loadTarget();
+    if (view !== 'analysis' || !analysisHost) return;
     if (!analysisMod) analysisMod = await import('../ui/script-analysis.js');
     analysisHost.replaceChildren(analysisMod.renderAnalysis({
       getDoc: () => doc, save: () => persistNow(),

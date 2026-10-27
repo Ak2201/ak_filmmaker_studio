@@ -612,6 +612,10 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
     eq(a.structure.beats.map((b) => b.targetPage), panel, `beats panel and analysis agree on every beat page (target ${tp})`);
     ok(a.structure.basis.basis === (tp ? 'target' : 'script'), 'analysis names its basis');
   }
+  eq(beatBasisText(beatPageBasis({ targetPages: 0, scriptPages: 0 })), 'No script pages yet, so the beats have nothing to be placed against', 'an empty script never claims "1 page"');
+  const sp0 = readFileSync(new URL('../src/pages/screenplay.js', import.meta.url), 'utf8');
+  const ra = sp0.slice(sp0.indexOf('async function refreshAnalysis'), sp0.indexOf('async function refreshAnalysis') + 500);
+  ok(ra.indexOf('await loadTarget()') > 0 && ra.indexOf('await loadTarget()') < ra.indexOf('renderAnalysis'), 'refreshAnalysis reads the target before it renders');
   const bp = readFileSync(new URL('../src/ui/beats-panel.js', import.meta.url), 'utf8');
   ok(/beatPageBasis\(\{ targetPages, scriptPages: written \}\)/.test(bp), 'beats-panel places beats through beatPageBasis');
   const sp = readFileSync(new URL('../src/pages/screenplay.js', import.meta.url), 'utf8');

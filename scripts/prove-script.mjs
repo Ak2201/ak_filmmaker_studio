@@ -147,6 +147,10 @@ after = await page.evaluate(() => window.__writes.length);
 ok(after === before, '5  four idle seconds write nothing', after - before);
 
 /* ---- 6 beats --------------------------------------------------------- */
+/* Beats land on the target when one is set, else on the script as written
+   (beat-basis.js), so a short proof script has no unwritten beat unless the
+   film's target runs far past it. */
+await page.evaluate(() => { const o = JSON.parse(localStorage.getItem('fms_songs_v1') || '{}'); o.targetMinutes = 300; localStorage.setItem('fms_songs_v1', JSON.stringify(o)); });
 await page.click('[data-action="sc-beats"]');
 await page.waitForSelector('#beatsPanel .bp-beat', { timeout: 5000 }).catch(() => {});
 const nBeats = await page.$$eval('#beatsPanel .bp-beat', (b) => b.length);
@@ -1081,6 +1085,17 @@ for (const w of [390, 1280]) {
     if (over > 0) console.log('        wide:', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1).slice(0, 6).map((e) => e.tagName + '.' + String(e.className).slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().right) + ' ' + (e.textContent || '').slice(0, 40)))));
     ok(over <= 0, `13 ${p} has no horizontal overflow at ${w}px`, over);
   }
+}
+/* 14 a cold #analysis reads the writer's target before it places the beats */
+{
+  await page.setViewportSize({ width: 1440, height: 860 });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.evaluate(() => { const o = JSON.parse(localStorage.getItem('fms_songs_v1') || '{}'); o.targetMinutes = 100; localStorage.setItem('fms_songs_v1', JSON.stringify(o)); });
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });   // a different document, so the next load is cold
+  await page.goto(url('screenplay.html#analysis'), { waitUntil: 'networkidle' });
+  await page.waitForSelector('.sa-basis', { timeout: 8000 }).catch(() => {});
+  const basis = await page.evaluate(() => document.querySelector('.sa-basis')?.textContent || '');
+  ok(basis === 'Beats placed against your 100-page target', '14 cold #analysis names the 100-page target', basis);
 }
 ok(errors.length === 0, '13 no page errors', errors.slice(0, 5));
 

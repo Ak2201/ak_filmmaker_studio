@@ -12,18 +12,20 @@
    PURE and import-free: no model, no storage. Stores nothing.
    ============================================================ */
 
-/** @returns {{pages:number, basis:'target'|'script'}} pages is whole, >= 1 */
+/** @returns {{pages:number, basis:'target'|'script', empty?:true}} pages is whole, >= 1 (the
+ *  arithmetic needs a span); empty marks a script with no pages, so no line claims "1 page". */
 export function beatPageBasis({ targetPages = 0, scriptPages = 0 } = {}) {
   const t = Number(targetPages);
   if (t > 0) return { pages: Math.max(1, Math.round(t)), basis: 'target' };
   const s = Number(scriptPages);
-  return { pages: Math.max(1, Math.round(s > 0 ? s : 0)), basis: 'script' };
+  return { pages: Math.max(1, Math.round(s > 0 ? s : 0)), basis: 'script', ...(s > 0 ? {} : { empty: true }) };
 }
 
 /** The one line each view prints under its beats. */
 export function beatBasisText(b) {
   return b.basis === 'target'
     ? 'Beats placed against your ' + b.pages + '-page target'
+    : b.empty ? 'No script pages yet, so the beats have nothing to be placed against'
     : 'Beats placed against the script as written, ' + b.pages + (b.pages === 1 ? ' page' : ' pages');
 }
 

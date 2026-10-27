@@ -9,7 +9,89 @@ Nothing in the database changes behaviour until the console switches the pass
 on: `pass_enabled` is false by default, so after §61 runs, every page and every
 order works exactly as it does today. Do the steps in this order.
 
-## 0. DO NOT set `trial_enabled` to false
+## 0. Clean slate before launch (one admin, no test data)
+
+**Owner decision, 27 Oct 2026:** the app never launched, so every account in
+the live database is a test account. Keep exactly ONE admin,
+`arunkumarmohanans@gmail.com`, and remove everything else. The script is
+`supabase/schema/patches/purge-test-data-2026-10-27.sql`; its header says
+exactly what goes and what stays. In short:
+
+- **goes, for everybody else:** the sign-in and all of its work (films and
+  their data, comments, shares, collaborator seats, accounts and team seats,
+  studio membership, console roles, device locks);
+- **goes, for everybody, the keeper included:** payments, refunds, refund
+  requests, invoices, invoice buyer details and the invoice counters (the
+  first real invoice is `FMS/<fy>/000001`), referral credits, e-mail grants,
+  and §62's subscriptions and `rzp_plans` if §62 has run. The keeper ends
+  with no plan and no trial;
+- **emptied:** funnel counts, usage and sync-error telemetry, leads, invite
+  codes (tickets, redemptions), promo codes, the invite-request queue,
+  testimonials, support tickets and notes, the console's notes on people,
+  the §47 tombstones, and the admin audit log;
+- **kept:** the keeper's own films and data; `plans`, `plan_prices`,
+  `billing_settings`, `site_announcement`, `feature_overrides` and every
+  function. A tester's name in their `updated_by` / `set_by` becomes null.
+
+Deleted, not anonymised like §47: these were test-mode payments, so no
+invoice was a real Bill of Supply. That is the ONLY reason the invoice
+numbering may restart. Never run this once a live payment exists.
+
+**When:** after step 3 (§61; §62 too if it is ready, the script works either
+way) and BEFORE step 7 (the live key), so it runs while no real money can
+have moved. It runs once.
+
+**Not touched, because it is not in the database:** each tester's browser
+`localStorage` (their films stay on their own devices; the keeper can clear
+their own browser with Settings → Erase), and any Drive backup file in a
+tester's own Drive. Supabase's own `auth.audit_log_entries` (the login
+history) also stays; it holds no app data.
+
+1. **Take a backup first.** Dashboard → Database → Backups. The purge cannot
+   be undone.
+2. **Checksums.** Run each part on its own, pasted base64 per the paste rule
+   (step 1), and compare the editor's SHA-256 with these before pressing Run.
+   Each part is cut out of the file byte-exact with the awk line:
+
+   ```bash
+   F=supabase/schema/patches/purge-test-data-2026-10-27.sql
+   shasum -a 256 $F
+   # 3c0f93a492e624315ea3d7950e801b3fa64efe15a5112603071ec81524fea94b  (whole file)
+   awk '/^-- @@ PART 1 BEGIN/,/^-- @@ PART 1 END/' $F | shasum -a 256
+   # c442776e217d6de59359a80bb835b7f14d7baa3d431f73ec3efea838ae747a6b  PREVIEW
+   awk '/^-- @@ PART 2 BEGIN/,/^-- @@ PART 2 END/' $F | shasum -a 256
+   # 8aa1d5728363e1fd5c837f0c663a64209a902f74559ae1515fcef001b8567838  PURGE
+   awk '/^-- @@ PART 3 BEGIN/,/^-- @@ PART 3 END/' $F | shasum -a 256
+   # 5d076d0f2849658b606e143e33bb554b97f5b4a8bbfa69028909f4abd1431c3e  READ-BACK
+   awk '/^-- @@ PART 2 BEGIN/,/^-- @@ PART 2 END/' $F | base64   # what you paste
+   ```
+
+3. **PREVIEW (PART 1).** Read-only, one result. Row 0 must say **1** (exactly
+   one sign-in with the keeper's e-mail) and row 1 shows its id. Row 2 (public
+   tables the script does not classify) must say **0**. If either is wrong,
+   stop: PART 2 would refuse anyway. The other rows count what will go, per
+   table; `null` means the table does not exist yet (§62 not run).
+4. **PURGE (PART 2).** One transaction. It refuses, and changes nothing,
+   unless exactly one keeper exists, `current_user` is `postgres` (the SQL
+   editor), and every public table is one it knows. It checks its own result
+   before `COMMIT` and rolls everything back on any surprise. Expect the
+   notice `PURGE done: one sign-in (…)`.
+5. **READ-BACK (PART 3).** One result: every row `ok = true`. That is one
+   sign-in, `admin_roles` = the keeper as owner, `studio_members` = the
+   keeper as admin, no account on a plan, 0 rows in every emptied table
+   (`n/a` for a §62 table that does not exist), and `price_notice()` still
+   answering. `paid_buyers()` then reads 0 (no buyer is left), so the
+   founding-seat count and a buyer-count price rise start from zero.
+6. **Optional: Razorpay's test dashboard.** The test orders, payments,
+   customers and refunds there are outside the database and harmless (test
+   mode). Delete them only if you want a clean dashboard too.
+
+`npm run test:schema` runs PART 2 and PART 3 of this same file (cut out with
+the same awk lines) on a scratch database after every section, with a keeper,
+three testers and a row in every user-linked table, and fails if any id or
+e-mail of a deleted person survives in any public column.
+
+## 0a. DO NOT set `trial_enabled` to false
 
 **Leave `billing_settings.trial_enabled` TRUE.** The free trial stops being
 OFFERED because `start_trial()` refuses a pressed trial while the pass is on.
@@ -56,7 +138,7 @@ from step 1. It is re-runnable. Then, in the SQL editor:
 ```sql
 select pass_enabled, pass_paise, pass_days, pass_plan, pass_ends_at, pass_cap
   from public.billing_settings;                                   -- false, 4900, 7, pro, null, null
-select trial_enabled from public.billing_settings;               -- true (step 0)
+select trial_enabled from public.billing_settings;               -- true (step 0a)
 select public.trial_offer() -> 'pass';                            -- {"open": false, "amount_paise": 4900, "days": 7, "plan": "pro", ...}
 select public.price_notice('INR') ? 'pass';                       -- true
 select pg_get_constraintdef(oid) from pg_constraint
@@ -150,9 +232,65 @@ button gets `reason: 'pass'`.
 The pass closes by itself at the deadline or the cap: `quote_pass` refuses
 `closed` and `trial_offer().pass.open` goes false. Nothing needs doing on the
 day. To end it early, switch it off in the console. Do not touch
-`trial_enabled` then either (step 0).
+`trial_enabled` then either (step 0a).
 
 ## 10. Release
 
 Through `docs/BRANCHING.md`, after steps 3 to 7 and with no DRAFT left in a
 legal page.
+
+## §62 auto-renew (Razorpay Subscriptions)
+
+Do these after steps 1 to 10. Both modes stay **one-time** until you switch
+them, and §62 changes nothing while they are one-time. The full runbook is
+`docs/BILLING.md` §26; the two-account checks are `docs/SECURITY-RLS.md` §62.
+
+1. **Razorpay.** Ask Razorpay to enable **Subscriptions**, with UPI Autopay
+   and card e-mandate, on the live account. It needs KYC and can take days.
+   Then add the `subscription.*` events to the existing webhook (BILLING §26
+   names them).
+2. **Run §62, with the checksum** (paste rule, step 1):
+
+   ```bash
+   shasum -a 256 supabase/schema/schema-62-autorenew.sql
+   # e37b186c48417310223aaa6e00f962b6f9dbd707849b9f05dbdb4bbabb5e29f2
+   ```
+
+   Then read it back:
+
+   ```sql
+   select pass_mode, plan_mode from public.billing_settings;          -- once, once
+   select public.trial_offer() -> 'pass' ->> 'mode', public.trial_offer() ->> 'plan_mode';   -- once, once
+   select relrowsecurity from pg_class where relname in ('subscriptions', 'rzp_plans');       -- t, t
+   select public.pass_sold();                                          -- the same as before
+   ```
+
+   If §61 is re-run later, re-run §62 after it, because §62 restates §61's
+   `pass_sold`, `pass_block`, `trial_offer`, `price_notice` and
+   `billing_status`.
+3. **Deploy the functions** with the CLI: the two new ones and all four
+   existing ones (`_shared/razorpay.js` and `_shared/mail.js` changed):
+
+   ```bash
+   npx --yes supabase@latest functions deploy rzp-subscribe rzp-cancel rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz
+   ```
+
+   Probe them: `rzp-subscribe` and `rzp-cancel` answer 401 without a JWT. A
+   404 means the function is not deployed.
+4. **Resend must be set up** (step 5) before any auto-pay charge.
+5. **TEST mode first.** Run `docs/SECURITY-RLS.md` §62 checks 2 to 10 with
+   the Razorpay test key: subscribe, renew, cancel, and one refunded charge.
+6. **Switch the modes** in the console (owner or finance). Until the console
+   switch ships, run this as the owner in the SQL editor while signed in:
+
+   ```sql
+   select public.admin_set_billing_modes('renew', null);   -- the pass only
+   select public.admin_set_billing_modes(null, 'renew');   -- the yearly plans
+   select public.admin_set_billing_modes('once', 'once');  -- back to one-time; running subscriptions keep renewing
+   ```
+
+   Read back with anon `trial_offer()`: `pass.mode` and `plan_mode` are what
+   the pages word the offer from.
+7. **Legal.** The terms, refund and privacy pages need the auto-renew DRAFT
+   passages approved before either mode is switched on for real buyers. Those
+   passages are in another lane.

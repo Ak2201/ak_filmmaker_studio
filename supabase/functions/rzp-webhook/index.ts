@@ -23,6 +23,15 @@
    delivery fills them in if rzp-verify got there first without them.
    Recorded, never blocked: an international card on a rupee order pays.
 
+   AUTO-RENEW (schema §62), register these events too:
+     subscription.charged   -> apply_subscription_charge() (idempotent on the
+                               payment id; price-locked) + the charge receipt
+     payment.captured with a subscription_id -> the same
+     subscription.authenticated / activated / pending / halted / cancelled /
+     completed (and paused, resumed, expired) -> mark_subscription_status(),
+                               which never takes a paid day away
+   The x-razorpay-event-id header is logged for every subscription event.
+
    Anything else is acknowledged and ignored. The body is read as TEXT
    first and verified as those exact bytes; parsing before verifying
    would change nothing here, but re-serialising would, and the order
@@ -37,8 +46,8 @@
    delivery into a 5xx.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { verifyWebhookSignature } from '../_shared/razorpay.js';
-import { sendReceiptOnce, sendRefundOnce } from '../_shared/mail.js';
+import { verifyWebhookSignature, statusForEvent, subscriptionOfPayment, isoFromUnix } from '../_shared/razorpay.js';
+import { sendReceiptOnce, sendRefundOnce, sendChargeReceiptOnce } from '../_shared/mail.js';
 
 const mailEnv = () => ({ RESEND_API_KEY: Deno.env.get('RESEND_API_KEY') ?? '', MAIL_FROM: Deno.env.get('MAIL_FROM') ?? '' });
 const logMail = (what: string) => (m: { ok: boolean; reason?: string; detail?: string }) => {
@@ -60,9 +69,41 @@ Deno.serve(async (req) => {
 
   const payment = evt?.payload?.payment?.entity;
   const refund = evt?.payload?.refund?.entity;
+  const subscription = evt?.payload?.subscription?.entity;
+  const eventId = req.headers.get('x-razorpay-event-id') ?? '';
+  /* §62: one subscription charge, from subscription.charged or a
+     payment.captured that names its subscription. Idempotent on the
+     payment id, so the two events (and rzp-verify) apply it once. A 22023
+     (an unknown subscription, a charge for another amount) cannot be
+     changed by a retry: logged, answered 200. Anything else is a 5xx. */
+  const charge = async (subId: string, pay: any) => {
+    const { data, error } = await svc.rpc('apply_subscription_charge', {
+      p_rzp_subscription_id: subId, p_rzp_payment_id: pay.id, p_amount_minor: Number(pay.amount), p_currency: pay.currency,
+      p_paid_at: isoFromUnix(pay.created_at), p_event: { source: 'webhook', event: evt.event, event_id: eventId, payment: pay, subscription: subscription ?? null }
+    });
+    if (error && error.code !== '22023') throw new Error('apply_subscription_charge: ' + error.message);
+    if (error) { console.warn('[rzp-webhook] charge', eventId, error.message, error.hint ?? ''); return; }
+    if (data && !data.applied) console.warn('[rzp-webhook] charge recorded, not applied', eventId, data.unapplied_reason);
+    logMail('charge receipt')(await sendChargeReceiptOnce(svc, pay.id, mailEnv()));
+  };
   try {
+    if (String(evt?.event || '').startsWith('subscription.')) {
+      if (eventId) console.log('[rzp-webhook] event', eventId, evt.event, subscription?.id ?? '');
+      if (!subscription?.id) return new Response('ok', { status: 200 });
+      if (evt.event === 'subscription.charged' && payment?.id) await charge(subscription.id, payment);
+      const status = statusForEvent(evt.event, subscription);
+      if (status) {
+        const { error } = await svc.rpc('mark_subscription_status', { p_rzp_subscription_id: subscription.id, p_status: status, p_payload: { event: evt.event, event_id: eventId, subscription } });
+        if (error && error.code !== '22023') throw new Error('mark_subscription_status: ' + error.message);
+        if (error) console.warn('[rzp-webhook] status', eventId, error.message);
+      }
+      return new Response('ok', { status: 200 });
+    }
     switch (evt?.event) {
       case 'payment.captured': {
+        // §62: a subscription's charge has no order of ours
+        const subId = subscriptionOfPayment(payment);
+        if (subId && payment?.id) { if (eventId) console.log('[rzp-webhook] event', eventId, evt.event, subId); await charge(subId, payment); break; }
         if (!payment?.order_id || !payment?.id) break;
         const { error } = await svc.rpc('activate_payment', { p_order_id: payment.order_id, p_payment_id: payment.id, p_raw: { source: 'webhook', event: evt.event, payment } });
         // 'No payment with that order id' means an order this studio did

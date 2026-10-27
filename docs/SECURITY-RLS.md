@@ -1592,3 +1592,74 @@ paid, one finance and one support administrator, Razorpay TEST mode):
    account's `rzp-order {"period":"pass"}` → 400 `{reason: "closed"}`.
 10. Finance: `admin_set_pass(false, …)` → anon `trial_offer().pass.open` false,
     and a fresh account's `start_trial` → `started: true` again.
+
+## §62 AUTO-RENEW (RAZORPAY SUBSCRIPTIONS) — WRITTEN 27 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-62-autorenew.sql`; checks in
+`scripts/schema-tests/autorenew.sql` (96), plus three in `scripts/test-schema.mjs`
+that the restated `billing_status`, `trial_offer` and `price_notice` are §61's
+bodies plus the lines marked §62.
+
+**Two new tables.** `subscriptions`: RLS on, one policy, `sub_select_own`
+(`user_id = auth.uid()`), for SELECT only. INSERT, UPDATE, DELETE and TRUNCATE
+are revoked from `anon` and `authenticated`, and `anon` has no SELECT at all.
+`rzp_plans`: RLS on with no policy, and every privilege revoked from `anon`
+and `authenticated` (service role only). The only writers are the SECURITY
+DEFINER functions and the edge functions under the service role.
+
+**What anon can reach.** Nothing new to call. `trial_offer()` and
+`price_notice(text)` gain two console settings: `pass.mode` and `plan_mode`
+(`'once'` or `'renew'`). No row, id or count.
+
+**What a member can reach.** `billing_status().autopay`: their OWN
+subscription's status, product, period, days, amount, currency, current_end,
+next_charge_at and cancel_at_period_end. `request_cancel_subscription()`:
+marks their OWN live subscription to stop at the period end (it can reach no
+other row). Everything else is revoked from `authenticated` and also calls
+`billing_require_service()`: `quote_subscription`,
+`create_pending_subscription`, `set_subscription_rzp_ids`, `rzp_plan_for`,
+`remember_rzp_plan`, `apply_subscription_charge`, `mark_subscription_status`,
+`claim_charge_receipt_email` and `undo_cancel_subscription`.
+
+**The console.** `admin_billing_modes()`, `admin_set_billing_modes()`,
+`admin_list_subscriptions()` and `admin_cancel_subscription()` refuse a
+non-administrator (42501), then `require_role(array['finance'])`: owner or
+finance, never support. A mode change (`set_billing_modes`) and a console
+cancel (`cancel_subscription`) are one `admin_audit` row each; reads and
+no-ops write none. `admin_list_subscriptions` carries the subscriber's e-mail,
+which finance can already see in the people list.
+
+**Money.** The amount is the database's at sign-up and is LOCKED on the row. A
+charge for any other amount or currency is refused (22023 `amount`). A charge
+is applied once per Razorpay payment id. No status (halted, cancelled,
+completed, expired) and no cancel ever shortens `plan_until`. A charge after a
+cancel is recorded paid and unapplied (`cancelled`), so it can be refunded.
+
+**Live checks to run** (after §62; Razorpay TEST mode with Subscriptions
+enabled; accounts A and B that never paid; one finance and one support
+administrator):
+1. Read back the 62.12 checks in the section file. anon `trial_offer()` →
+   `pass.mode` `once`, `plan_mode` `once`.
+2. With the modes `once`: as A, `rzp-subscribe {"product":"pass"}` → 400
+   `{reason: "renew_off"}`.
+3. As support: `POST /rest/v1/rpc/admin_set_billing_modes
+   {"p_pass_mode":"renew","p_plan_mode":"renew"}` → 403/42501. As A → 42501.
+   As anon → 401/42501. As finance → `{pass_mode: renew, plan_mode: renew}`,
+   one `set_billing_modes` audit row.
+4. As A: `rzp-subscribe {"product":"pass"}` → 200 with a `subscription_id`.
+   Again → 400 `{reason: "subscribed"}`. Complete Checkout with a test card.
+   After the webhook, A's `billing_status().autopay.status` is `active` and
+   `plan_until` is 7 days out.
+5. As B (signed in), `GET /rest/v1/subscriptions?select=*` → only B's rows (none).
+   As anon → 401/42501. As B, `PATCH /rest/v1/subscriptions` → 42501.
+6. As B: `POST /rest/v1/rpc/apply_subscription_charge` with A's ids → 42501.
+7. As A: `rzp-cancel {}` → 200 `{current_end}`. The Razorpay dashboard shows
+   the subscription cancelling at cycle end. A's `plan_until` is unchanged.
+8. As finance: `admin_list_subscriptions()` lists A's row with
+   `cancel_at_period_end` true. `rzp-cancel {"subscription_id": <B's row>}`
+   as B (not an admin) → 403.
+9. Refund A's charge from the console: A's 7 days come off, there is no
+   `trial_started_at`, and the subscription row is unchanged.
+10. As finance: `admin_set_billing_modes('once','once')`. A new
+    `rzp-subscribe` is refused `renew_off`, and an existing running
+    subscription still renews.

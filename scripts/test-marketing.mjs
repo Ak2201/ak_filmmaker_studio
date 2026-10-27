@@ -322,7 +322,7 @@ for (const id of IDS) {
     ok((html.match(/<h1[\s>]/g) || []).length === 1, tag + 'exactly one h1');
     ok(!/\sstyle="/.test(html) && !/\son[a-z]+="/i.test(html), tag + 'no inline style or handler (CSP)');
     ok(/<script type="module" src="\/src\/pages\/company\.js"><\/script>/.test(html), tag + 'loads company.js');
-    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html), tag + 'no inline script');
+    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '')), tag + 'no inline script');
     ok(!/\{\{(?!brand:)/.test(html), tag + 'no stamp other than {{brand:...}}');
     ok(!html.includes('₹'), tag + 'no bare rupee sign');
     ok(new RegExp(`<link rel="canonical" href="https://{{brand:host}}/${slug}">`).test(html), tag + 'canonical is the {{brand:host}} stamp');
@@ -512,6 +512,8 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
   const files = [...g.guides.map((x) => x.file), GUIDES_INDEX, ...v.pages.map((p) => p.file), TRUST_FILE];
   const icons = JSON.parse(read('src/data/section-icons.json')).icons;
   const nav = read('src/data/navigation.json');
+  /* llms.txt is generated from the public pages' own titles and descriptions */
+  ok(fs.existsSync(path.join(ROOT, 'public/llms.txt')) && fs.readFileSync(path.join(ROOT, 'public/llms.txt'), 'utf8') === built.files['public/llms.txt'], 'public/llms.txt equals the generator output (run npm run make:marketing)');
   for (const file of files) {
     const tag = file + ': ';
     const at = path.join(ROOT, file);

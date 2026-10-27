@@ -10,3 +10,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://filmmakerstudio.in/sitemap.xml
+# A plain-text map of the public pages for language-model crawlers:
+# https://filmmakerstudio.in/llms.txt

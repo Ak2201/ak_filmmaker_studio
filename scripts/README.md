@@ -65,6 +65,12 @@ Worth knowing:
 - `test-marketing.mjs` fails when the generated public pages drift from
   `src/data/marketing-*.json`; `--fixture` runs it against
   `fixtures/marketing-pages.fixture.json` (media existence check skipped).
+- `test-site-hygiene.mjs` (`test:site`) reads a BUILT site (`PROVE_DIST`,
+  default `dist-verify/`) and fails on the tells of an unfinished website:
+  no lang, an indexable page without a unique title / description /
+  canonical / og:image / one h1, a studio shell left indexable, an img
+  without alt, a source map, a vercel.app URL, robots.txt shutting out
+  search or AI crawlers, a missing sitemap / llms.txt / favicon.ico.
 - `test:usage-names` is `make-usage-names-sql.mjs --check` (see section 5).
 - `test:ai-desk` (`test-ai-desk.mjs`) is the last step of `test:all`: the
   AI Desk's line diff and partial-accept merge, in Node.

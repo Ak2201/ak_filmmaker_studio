@@ -148,7 +148,8 @@
     "prove:walk": "node scripts/prove-walk.mjs",
     "thumbs": "node scripts/make-video-thumbs.mjs",
     "smoke": "node scripts/smoke-production.mjs",
-    "test:accept": "node scripts/test-accept.mjs"
+    "test:accept": "node scripts/test-accept.mjs",
+    "test:site": "node scripts/test-site-hygiene.mjs"
   },
   "engines": {
     "node": ">=22.12"

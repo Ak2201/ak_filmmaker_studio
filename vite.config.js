@@ -653,6 +653,40 @@ function themeColor() {
   };
 }
 
+/* ============================================================
+   WHAT A CRAWLER MAY INDEX (27 Oct 2026)
+   ------------------------------------------------------------
+   A studio page (one with #app) is an empty shell in View Source: its
+   words are drawn by JS behind the site gate, and a signed-out visitor
+   is sent to start.html. Indexed, those shells are the "empty <div
+   id=root>" tell of an unfinished site. So every studio page gets
+   noindex here, in one place, unless it already says something about
+   robots (invite, purchase, screening carry their own). index.html is
+   the exception: it is the domain root, carries static words and a
+   canonical to /start, and stays indexable. Every page also gets an
+   apple-touch-icon, because Safari ignores the SVG icon. robots.txt is
+   unchanged: the shells stay crawlable, only not indexed.
+   ============================================================ */
+function indexing() {
+  return {
+    name: 'fms-indexing',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        const file = String((ctx && (ctx.filename || ctx.path)) || '').split(/[\\/]/).pop();
+        let out = html;
+        if (out.includes('id="app"') && file !== 'index.html' && !/<meta name="robots"/.test(out)) {
+          out = out.replace('</head>', '<meta name="robots" content="noindex">\n</head>');
+        }
+        if (!/rel="apple-touch-icon"/.test(out)) {
+          out = out.replace('</head>', '<link rel="apple-touch-icon" href="./icons/icon-192.png">\n</head>');
+        }
+        return out;
+      }
+    }
+  };
+}
+
 export default defineConfig({
   base: './',
   appType: 'mpa',
@@ -690,6 +724,7 @@ export default defineConfig({
     materialSymbols(),
     fontPreloads(),
     themeColor(),
+    indexing(),
     stepIndex(),
     brandPlugin(),
     studySlicePlugin(),

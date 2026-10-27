@@ -287,7 +287,10 @@ function render() {
   // The project list IS the hero: the section nests inside it.
   hero.querySelector('#heroProjects').replaceWith(projectsMarkup());
   main.append(hero);
-  app.append(toolbarMarkup(), main, modalMarkup());
+  /* replaceChildren, not append: index.html ships a static summary inside
+     #app for crawlers and View Source (the domain root is this page), and
+     the first render takes its place. */
+  app.replaceChildren(toolbarMarkup(), main, modalMarkup());
 }
 
 // ============================================================

@@ -128,11 +128,28 @@ export function describeEntry(entry) {
  *   opts.reason   'script' (its heading left the script) or 'hand'
  *   opts.heading  the heading text it had, for restore-by-retyping
  */
+/* WHERE A SCENE GOES BACK. A bare array index only holds when entries come
+   back newest-first (the later bins shifted everything under it). Each entry
+   also records `vindex`, its place in the list AS IF every scene still in the
+   bin were in it; a restore rebuilds that list from the rows plus the bin and
+   counts only the rows actually present before it, so any restore order lands
+   a scene among its neighbours. */
+function virtualIds(rows, entries) {
+  const ids = rows.filter(Boolean).map((s) => s.id);
+  for (const e of entries) {
+    const id = e && e.scene && e.scene.row && e.scene.row.id;
+    if (!id || ids.includes(id) || typeof e.scene.vindex !== 'number') continue;
+    ids.splice(Math.min(e.scene.vindex, ids.length), 0, id);
+  }
+  return ids;
+}
+
 export function binScene(sceneId, opts = {}) {
   const rows = rawScenes();
   const index = rows.findIndex((s) => s && s.id === sceneId);
   if (index < 0) return null;
   const row = rows[index];
+  const vindex = virtualIds(rows, readBin().entries).indexOf(sceneId);
   const shots = Shots.takeSceneOut(sceneId);
   const sheets = Contacts.takeSceneOut(sceneId);
   const edit = Edit.takeSceneOut(sceneId);
@@ -141,7 +158,7 @@ export function binScene(sceneId, opts = {}) {
     binnedAt: new Date().toISOString(),
     reason: opts.reason === 'script' ? 'script' : 'hand',
     heading: String(opts.heading || ''),
-    scene: { index, row },
+    scene: { index, row, vindex },
     shots: shots.shots,
     frames: shots.frames,
     blocks: shots.blocks,
@@ -187,7 +204,14 @@ export function restoreFromBin(entryId, opts = {}) {
   const sceneId = entry.scene.row.id;
   if (!rows.some((s) => s && s.id === sceneId)) {
     const row = opts.patch ? { ...entry.scene.row, ...opts.patch, id: sceneId } : entry.scene.row;
-    rows.splice(Math.min(entry.scene.index, rows.length), 0, row);
+    let at2 = Math.min(entry.scene.index, rows.length);
+    if (typeof entry.scene.vindex === 'number') {
+      const virt = virtualIds(rows, bin.entries);
+      const present = new Set(rows.filter(Boolean).map((s) => s.id));
+      const pos = virt.indexOf(sceneId);
+      if (pos >= 0) at2 = virt.slice(0, pos).filter((id) => present.has(id)).length;
+    }
+    rows.splice(at2, 0, row);
     writeRawScenes(rows);
   }
   Shots.putSceneBack({ shots: entry.shots, frames: entry.frames, blocks: entry.blocks });

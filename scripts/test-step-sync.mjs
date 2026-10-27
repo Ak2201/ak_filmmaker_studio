@@ -31,6 +31,7 @@ eq(P({ id: 'a', text: 'x', sceneId: 's' }, null), 'gone', 'a link to no scene: g
 eq(P({ text: 'Ravi  opens\nthe shop', sceneId: 's', synced: 'Ravi opens the shop' }, { synopsis: ' Ravi opens the shop ' }), 'same', 'whitespace is not a change');
 eq(P({ text: 'Ravi opens the shop at dawn', sceneId: 's', synced: 'Ravi opens the shop' }, { synopsis: 'Ravi opens the shop' }), 'push', 'the step changed: push');
 eq(P({ text: 'Ravi opens the shop', sceneId: 's', synced: 'Ravi opens the shop' }, { synopsis: 'Ravi sells the shop' }), 'pull', 'the scene changed: pull');
+eq(P({ text: 'Ravi opens the shop', sceneId: 's', synced: 'Ravi opens the shop' }, { synopsis: '' }), 'same', 'an emptied scene synopsis never pulls blank text over the step');
 eq(P({ text: 'A', sceneId: 's', synced: 'B' }, { synopsis: 'C' }), 'conflict', 'both changed: conflict');
 eq(P({ text: 'A', sceneId: 's', synced: 'B' }, { synopsis: 'A' }), 'same', 'both changed to the same words: same');
 eq(P({ text: 'A', sceneId: 's' }, { synopsis: 'A' }), 'adopt', 'no baseline, agreeing: adopt');

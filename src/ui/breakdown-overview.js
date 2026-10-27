@@ -104,6 +104,13 @@ function locationsView(sum) {
   return table(['Location', 'INT / EXT', 'Day / night', 'Scenes', 'Pages'], rows, 'Locations');
 }
 
+/** DAY / NIGHT, and a third figure only when other times (dusk, dawn,
+ *  continuous) exist, so the tile always adds up to the scene count. */
+export function dayNightCard(t, card) {
+  const day = t.dayNight.DAY || 0, night = t.dayNight.NIGHT || 0;
+  const other = Object.keys(t.dayNight).reduce((n, k) => n + (k === 'DAY' || k === 'NIGHT' ? 0 : t.dayNight[k] || 0), 0);
+  return other ? card(day + ' / ' + night + ' / ' + other, 'day / night / other') : card(day + ' / ' + night, 'day / night');
+}
 function totalsView(sum) {
   const t = sum.totals;
   const card = (value, label) => h('div.bd-stat', {}, [h('strong', { text: String(value) }), h('span', { text: label })]);
@@ -111,7 +118,7 @@ function totalsView(sum) {
     card(t.scenes, t.scenes === 1 ? 'scene' : 'scenes'),
     card(t.pages, 'pages'),
     card((t.intExt.INT || 0) + ' / ' + (t.intExt.EXT || 0), 'INT / EXT'),
-    card((t.dayNight.DAY || 0) + ' / ' + (t.dayNight.NIGHT || 0), 'day / night'),
+    dayNightCard(t, card),
     card(t.nightPages, 'night pages'),
     card(t.cast, 'cast'),
     card(t.locations, t.locations === 1 ? 'location' : 'locations'),

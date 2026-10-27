@@ -42,6 +42,8 @@ eq(B.describeFilter({ q: '', ie: '', dn: 'NIGHT', st: 'untagged' }), 'night · u
 eq(B.describeFilter({ q: '', ie: '', dn: '', st: '' }), 'every scene', 'describe the empty filter');
 ok(B.presetMatches({ q: 'gun', ie: 'ext' }, f), 'preset matches case- and space-blind');
 ok(B.rowMatches(f, { find: 'a gun here', ie: 'EXT', dn: 'DAY', st: 'tagged' }), 'row matches');
+ok(B.rowMatches({ q: 'night roof', ie: '', dn: '', st: '' }, { find: '2 ext roof the chase night meera', ie: 'EXT', dn: 'NIGHT', st: 'tagged' }), 'words from different fields match in any order');
+ok(!B.rowMatches({ q: 'roof dawn', ie: '', dn: '', st: '' }, { find: '2 ext roof the chase night', ie: 'EXT', dn: 'NIGHT', st: 'tagged' }), 'every word must appear');
 ok(!B.rowMatches(f, { find: 'a gun here', ie: 'INT', dn: 'DAY', st: 'tagged' }), 'row ruled out by INT/EXT');
 eq(B.filterCountText(3, 3), '3 scenes', 'count, all shown'); eq(B.filterCountText(1, 1), '1 scene', 'count, one');
 eq(B.filterCountText(2, 5), '2 of 5 scenes', 'count, filtered');

@@ -23,6 +23,8 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { apply as applyTabs } from '../ui/tabs.js';
 import { h, delegate } from '../lib/dom.js';
+import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
+import { COLOR_LABEL } from '../lib/notes-model.js';
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
@@ -296,7 +298,7 @@ function beatTag(scene) {
   const r = resolveBeatKey(scene.beatId);
   if (!color && !r) return null;
   return h('span.bc-beat', { 'data-step-color': color || null }, [
-    color ? h('span.bc-swatch.bc-' + color, { 'aria-hidden': 'true' }) : null,
+    color ? h('span.bc-swatch.bc-' + color, { role: 'img', 'aria-label': (COLOR_LABEL[color] || color) + ' beat colour', title: (COLOR_LABEL[color] || color) + ' beat colour' }) : null,
     h('span', { text: r ? 'Beat: ' + r.beat.label : 'From the Beat Sheet' })
   ]);
 }
@@ -548,7 +550,12 @@ function renderSceneBar(scenes) {
   ]);
   const names = h('datalist#bdElementNames');
   for (const el of Scenes.elementIndex()) names.append(h('option', { value: el.name }));
-  return h('div.bd-sl-tools', {}, [bar, renderPresets(), bulk, names]);
+  /* The bulk bar sits BESIDE the tools, not inside them: it is sticky, and a
+     sticky box only travels inside its parent, which is the toolbar that
+     scrolls away with the top of the list. */
+  const frag = document.createDocumentFragment();
+  frag.append(h('div.bd-sl-tools', {}, [bar, renderPresets(), names]), bulk);
+  return frag;
 }
 
 /* ---- saved filters (in memory) ------------------------------ */
@@ -993,7 +1000,7 @@ function renderSuggestions(scenes) {
         tags.append(elChip(c, '+ ' + sug.name, {
           tag: 'button', class: 'bd-sug',
           attrs: { type: 'button', 'data-action': 'sug-add', 'data-cat': cat, 'data-name': sug.name,
-            title: 'From: ' + sug.from, 'aria-label': `Tag ${sug.name} as ${c.label} — from: ${sug.from}` }
+            title: 'From: ' + sug.from, 'aria-label': `${c.label} + ${sug.name}` }
         }));
       }
     }
@@ -1240,7 +1247,7 @@ delegate(document, 'change', '[data-action="sl-pick"]', (e, el) => {
   if (el.checked) SL.sel.add(id); else SL.sel.delete(id);
   syncBulk();
 });
-delegate(document, 'click', '[data-action="sl-clear"]', () => { SL.sel.clear(); render(); });
+delegate(document, 'click', '[data-action="sl-clear"]', () => { SL.sel.clear(); render('.bd-sl-search'); });
 delegate(document, 'click', '[data-action="sl-preset"]', (e, el) => {
   const p = SL.presets.find((x) => x.id === el.closest('[data-preset]')?.dataset.preset);
   if (!p) return;
@@ -1254,10 +1261,18 @@ delegate(document, 'click', '[data-action="sl-preset-x"]', (e, el) => {
   const id = el.closest('[data-preset]')?.dataset.preset;
   const p = SL.presets.find((x) => x.id === id);
   if (!p) return;
+  const at = SL.presets.indexOf(p);
   SL.presets = SL.presets.filter((x) => x.id !== id);
   refreshPresets();
   document.querySelector('[data-action="sl-save"]:not([disabled]), .bd-sl-search')?.focus();
-  StudioUI.toast('Removed the saved filter \u201C' + p.name + '\u201D.', { type: 'success' });
+  StudioUI.toast('Removed the saved filter \u201C' + p.name + '\u201D.', {
+    type: 'success', action: 'UNDO',
+    onAction: () => {
+      if (SL.presets.some((x) => x.id === p.id)) return;
+      SL.presets.splice(Math.min(at, SL.presets.length), 0, p);
+      refreshPresets();
+    }
+  });
 });
 delegate(document, 'click', '[data-action="sl-save"]', async () => {
   if (!filterActive()) return;
@@ -1282,7 +1297,7 @@ delegate(document, 'change', '[data-sl-bulk]', (e, el) => {
   if (!el.value || !ids.length) return;
   const key = el.dataset.slBulk, n = ids.length;
   for (const id of ids) Scenes.updateScene(id, { [key]: el.value });
-  render();
+  render('[data-sl-bulk="' + key + '"]');
   StudioUI.toast(n + (n === 1 ? ' scene' : ' scenes') + ' set to ' + el.value + '.', { type: 'success' });
 });
 delegate(document, 'click', '[data-action="sl-bulk-bin"]', () => {
@@ -1320,6 +1335,9 @@ function retireUndos() {
    when that arrow is now disabled at the end of the list. */
 function moveAndFocus(el, dir) {
   const id = sceneIdOf(el);
+  /* Same rule as the drag handle: with a search or filter on, the rows on
+     screen are not the list, so a swap would trade places with a hidden scene. */
+  if (filterActive()) { StudioUI.toast(GRIP_OFF + '.', { type: 'info' }); return; }
   Scenes.moveScene(id, dir);
   const act = dir < 0 ? 'scene-up' : 'scene-down';
   render(inScene(id, '[data-action="' + act + '"]'));
@@ -1337,7 +1355,10 @@ function binOne(id, near) {
   // and come back with it — which is why this offers UNDO, not a prompt.
   const gone = binScenes([id]);
   render(near ? inScene(near, '.bd-sl-toggle, .bd-sl-grip') : '.bd-sl-search');   // not <body>
-  undoBin(gone, 'Scene' + label + ' moved to the bin — its shots, frames and call-sheet places went with it.');
+  const held = Bin.listBin().find((x) => x.id === gone[0]);
+  const bits = held ? binEntryBits(Bin.entryCounts(held)) : [];
+  const withIt = bits.length && bits[0] !== 'nothing attached' ? ' — ' + bits.join(', ') + ' went with it' : '';
+  undoBin(gone, 'Scene' + label + ' moved to the bin' + withIt + '.');
 }
 
 /* ---- keyboard flow (1.5) --------------------------------------
@@ -1674,7 +1695,7 @@ function exSheet(open) {
   const side = document.getElementById('bdxSide');
   if (side) {
     side.classList.toggle('is-open', open);
-    if (open) { side.setAttribute('role', 'dialog'); side.setAttribute('aria-modal', 'true'); } else { side.removeAttribute('role'); side.removeAttribute('aria-modal'); }
+    if (open) { side.setAttribute('role', 'dialog'); side.setAttribute('aria-modal', 'true'); holdFocus(side); } else { side.removeAttribute('role'); side.removeAttribute('aria-modal'); releaseFocus(side); }
   }
   document.documentElement.classList.toggle('bdx-locked', open);
   const btn = document.querySelector('.bdx-sheet-open');
@@ -1838,9 +1859,14 @@ function attachElement(el) {
   /* The render below rebuilds the select; without this it fell back to
      Cast and the next prop typed into the same scene became a cast member. */
   SL.cat.set(id, cat);
-  Scenes.tagElement(id, cat, name.value);
+  const typed = name.value.trim();
+  const added = Scenes.tagMany([{ sceneId: id, category: cat, name: typed }]);
   // Back into the same scene's field, for the next element.
   render(inScene(id, '[data-action-key="el-add"]'));
+  if (!added.length) {   // the box empties on re-render, so say why nothing changed
+    const c = ELEMENT_CATEGORIES.find((x) => x.id === cat);
+    StudioUI.toast(typed + ' is already on this scene\u2019s ' + (c ? c.label : cat) + '.', { type: 'info' });
+  }
 }
 delegate(document, 'keydown', '[data-action-key="el-add"]', (e, el) => {
   if (e.key !== 'Enter') return;
@@ -1950,6 +1976,20 @@ delegate(document, 'click', '[data-action=run-pipeline]', async (e, btn) => {
 delegate(document, 'click', '[data-action=sum-view]', (e, btn) => {
   setView(btn.dataset.view);
   render('#' + btn.id);
+});
+/* The sub-tabs are a tablist with a roving tabindex, so the arrows (and
+   Home / End) are the only way to the three that are tabindex -1. */
+delegate(document, 'keydown', '[data-action=sum-view]', (e, btn) => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const tabs = [...btn.parentElement.querySelectorAll('[data-action=sum-view]')];
+  const at = tabs.indexOf(btn);
+  const to = { ArrowRight: (at + 1) % tabs.length, ArrowDown: (at + 1) % tabs.length,
+    ArrowLeft: (at - 1 + tabs.length) % tabs.length, ArrowUp: (at - 1 + tabs.length) % tabs.length,
+    Home: 0, End: tabs.length - 1 }[e.key];
+  if (to === undefined) return;
+  e.preventDefault();
+  setView(tabs[to].dataset.view);
+  render('#' + tabs[to].id);
 });
 delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) => {
   const file = input.files && input.files[0];

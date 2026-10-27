@@ -99,8 +99,10 @@ export const presetMatches = (p, f) => PRESET_KEYS.every((k) => String(p[k] || '
 /** Does one row pass the filter? `row` is { find, ie, dn, st } — the
  *  row's search text, INT/EXT, time and status id. */
 export function rowMatches(f, row) {
-  const q = f.q.trim().toLowerCase();
-  return (!q || row.find.includes(q)) && (!f.ie || row.ie === f.ie)
+  /* Every typed word must appear somewhere in the row, in any order:
+     "roof night" spans the location and the time, which are not adjacent. */
+  const words = f.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return words.every((w) => row.find.includes(w)) && (!f.ie || row.ie === f.ie)
     && (!f.dn || row.dn === f.dn) && (!f.st || row.st === f.st);
 }
 /** The bulk bar's count. A selected scene the search or a filter has hidden

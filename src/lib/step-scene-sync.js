@@ -74,6 +74,10 @@ export function plan(step, scene, opts = {}) {
   const base = norm(step.synced);
   const stepSame = text === base;
   if (syn === text) return 'same';                     // in step (or both moved to the same words)
+  /* A scene whose synopsis was just emptied (often mid-edit, about to be
+     retyped) never blanks the step: that would erase the only other copy of
+     the writing with no way back. The pair simply differs until it is filled. */
+  if (!syn && text) return 'same';
   /* The scene still holds the baseline, its old cut, or the baseline
      before it: it was not edited, so it takes the step's text. */
   const behind = syn === base || syn === oldCut(base)

@@ -18,7 +18,7 @@ section#scenes .bd-breakdown { gap: 0; }
      and the phone card. */
   container: sl / inline-size;
   --sl-grip-w: 24px;
-  --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 1fr) 76px 100px 92px 92px 36px;
+  --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 1fr) 76px 100px 112px 92px 36px;   /* 112: the length box, "/8" and "2 2/8" (QA, 27 Oct 2026) */
 }
 @container sl (min-width: 62rem) {
   /* Sized for the worst values, not the usual ones (19 Oct 2026):
@@ -61,6 +61,13 @@ section#scenes .bd-breakdown { gap: 0; }
   border-radius: var(--sk-radius, var(--radius));
 }
 .bd-sl-bulk[hidden] { display: none; }
+/* Stays in view under the pinned band while rows far down the list are ticked. */
+.bd-sl-bulk {
+  position: sticky; top: calc(var(--scroll-offset, 0px) + var(--s2)); z-index: 2;
+  margin-bottom: var(--s3);
+  background-color: var(--surface-elevated);
+  background-image: linear-gradient(var(--accent-wash), var(--accent-wash));
+}
 .bd-sl-bulk .bd-sel { flex: 0 0 auto; width: auto; max-width: 100%; }
 .bd-sl-bulk-n { margin-right: auto; color: var(--accent-deep); font-size: var(--t-small); }
 .bd-sl-search,

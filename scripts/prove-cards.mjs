@@ -314,6 +314,174 @@ const cols = await phone.$$eval('.bd-card', (c) => new Set(c.map((x) => Math.rou
 ok(cols === 1, '7  one column of cards at 390', cols);
 ok(errors.length === 0, '7  no page errors', errors.slice(0, 5));
 
+/* 10 (breakdown QA round 3, 27 Oct 2026) */
+{
+  const r = await ctx.newPage();
+  r.on('pageerror', (e) => errors.push(e.message));
+  await r.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await r.evaluate(() => {
+    const S = window.StudioStore;
+    localStorage.clear();
+    const p = S.createProject({ title: 'Round3', format: 'feature' });
+    S.setCurrentProject(p.id);
+    const times = ['DAY', 'NIGHT', 'DUSK'];
+    const scenes = Array.from({ length: 30 }, (_, i) => ({
+      id: 'r' + (i + 1), number: String(i + 1), intExt: i % 2 ? 'EXT' : 'INT', dayNight: times[i % 3],
+      location: i === 1 ? 'ROOF' : i === 0 ? 'KITCHEN' : 'PLACE ' + (i + 1), synopsis: i === 1 ? 'Meera and the knife.' : 'Something happens ' + i,
+      eighths: i === 0 ? 18 : 8, elements: i === 0 ? { props: ['Knife'] } : {}
+    }));
+    localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes }));
+    const el = (id, type, text) => ({ id, type, text });
+    localStorage.setItem('fms_script_v1', JSON.stringify({ elements: [
+      el('h1', 'scene', 'INT. KITCHEN - DAY'), el('a1', 'action', 'A card on the table.'),
+      el('h2', 'scene', 'EXT. ROOF - DUSK'), el('a2', 'action', 'Wind.')
+    ] }));
+    localStorage.setItem('fms_story_v1', JSON.stringify({ outline: [{ id: 'st1', text: 'Something happens 0', synced: 'Something happens 0', sceneId: 'r1', color: 'pink', beat: 'opening-image', title: 'Setup' }] }));
+  });
+  const stored = () => r.evaluate(() => JSON.parse(localStorage.getItem('fms_scenes_v1')).scenes.map((s) => s.id));
+  await r.setViewportSize({ width: 1280, height: 900 });
+  await r.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(400);
+
+  // multi-word search spans fields
+  await r.fill('#bdSceneSearch', 'roof meera');
+  await r.waitForTimeout(150);
+  ok(JSON.stringify(await r.$$eval('.bd-sl[data-scene]:not([hidden])', (x) => x.map((n) => n.dataset.scene))) === '["r2"]', '10 a search of words from two fields finds the scene');
+  await r.fill('#bdSceneSearch', '');
+
+  // bin three, restore in the listed (not newest-first) order: scene order holds
+  for (const id of ['r2', 'r3', 'r4']) {
+    await r.focus(`[data-scene="${id}"] .bd-sl-toggle`);
+    await r.keyboard.press('Delete');
+    await r.waitForTimeout(150);
+  }
+  for (let i = 0; i < 3; i++) {
+    const want = ['r2', 'r3', 'r4'][i];
+    await r.click(`[data-bin]:has-text("Scene ${want.slice(1)} ") [data-action="bin-restore"], [data-bin]:has-text("${want.slice(1)} · ") [data-action="bin-restore"]`);
+    await r.waitForTimeout(150);
+  }
+  const ord = (await stored()).slice(0, 6).join(',');
+  ok(ord === 'r1,r2,r3,r4,r5,r6', '10 restoring binned scenes one at a time in any order keeps the scene order', ord);
+
+  // the bin toast names only what went with the scene
+  await r.focus('[data-scene="r8"] .bd-sl-toggle');
+  await r.keyboard.press('Delete');
+  await r.waitForTimeout(150);
+  const tt = await r.$$eval('.toast', (t) => t.map((x) => x.textContent).join('|'));
+  ok(/Scene 8 moved to the bin\./.test(tt) && !/call-sheet places went/.test(tt), '10 the bin toast claims nothing was attached when nothing was', tt);
+
+  // arrows are inert under a filter
+  await r.selectOption('[data-sl-filter="ie"]', 'INT');
+  await r.click('[data-scene="r1"] .bd-sl-toggle');
+  await r.waitForTimeout(150);
+  const before = await stored();
+  await r.click('[data-scene="r1"] [data-action="scene-down"]');
+  await r.waitForTimeout(150);
+  ok(JSON.stringify(await stored()) === JSON.stringify(before) && await r.isVisible('.toast:has-text("Reordering is off")'), '10 Move later does nothing under a filter, and says why');
+  await r.selectOption('[data-sl-filter="ie"]', '');
+
+  // attaching a duplicate says so
+  await r.selectOption('.bd-sl[data-scene="r1"] .bd-add-cat', 'props');
+  await r.fill('[data-scene="r1"] .bd-add-name', 'knife');
+  await r.press('[data-scene="r1"] .bd-add-name', 'Enter');
+  await r.waitForTimeout(150);
+  ok(await r.isVisible('.toast:has-text("already on this scene")'), '10 attaching an element the scene already has says so');
+
+  // bulk bar: focus stays on a control; sticky stays in view when far down the list
+  await r.check('[data-scene="r20"] [data-action="sl-pick"]');
+  await r.check('[data-scene="r21"] [data-action="sl-pick"]');
+  await r.evaluate(() => document.querySelector('[data-scene="r25"]').scrollIntoView({ block: 'center' }));
+  await r.waitForTimeout(250);
+  const bar = await r.$eval('.bd-sl-bulk', (b) => { const q = b.getBoundingClientRect(); return { top: Math.round(q.top), bottom: Math.round(q.bottom), h: innerHeight }; });
+  ok(bar.bottom > 0 && bar.top < bar.h, '10 the bulk bar stays in view while rows far down are ticked', bar);
+  await r.focus('[data-sl-bulk="intExt"]');
+  await r.selectOption('[data-sl-bulk="intExt"]', 'EXT');
+  await r.waitForTimeout(250);
+  ok(await r.evaluate(() => document.activeElement && document.activeElement !== document.body), '10 a bulk Set leaves focus on a control', await r.evaluate(() => document.activeElement?.tagName));
+  await r.focus('[data-action="sl-clear"]');
+  await r.keyboard.press('Enter');
+  await r.waitForTimeout(250);
+  ok(await r.evaluate(() => document.activeElement && document.activeElement !== document.body), '10 CLEAR SELECTION leaves focus on a control', await r.evaluate(() => document.activeElement?.tagName));
+
+  // a removed saved filter can be put back
+  await r.selectOption('[data-sl-filter="ie"]', 'EXT');
+  await r.click('[data-action="sl-save"]');
+  await r.fill('.dlg-field', 'Mine');
+  await r.keyboard.press('Enter');
+  await r.waitForTimeout(250);
+  if (await r.$('[data-action="sl-preset-x"]')) {
+    const n = await r.$$eval('[data-preset]', (x) => x.length);
+    await r.click('[data-action="sl-preset-x"]');
+    await r.waitForTimeout(150);
+    await r.locator('.toast button:has-text("UNDO")').last().click();
+    await r.waitForTimeout(150);
+    ok(await r.$$eval('[data-preset]', (x) => x.length) === n, '10 Removing a saved filter offers UNDO');
+  } else ok(false, '10 a saved filter could be made to test UNDO');
+  await r.selectOption('[data-sl-filter="ie"]', '');
+
+  // an emptied synopsis does not blank the Beat Sheet step
+  if (!(await r.isVisible('.bd-sl[data-scene="r1"] [data-scene-field="synopsis"]'))) await r.click('.bd-sl[data-scene="r1"] .bd-sl-toggle');
+  await r.fill('.bd-sl[data-scene="r1"] [data-scene-field="synopsis"]', '');
+  await r.waitForTimeout(1500);
+  const stepText = await r.evaluate(() => JSON.parse(localStorage.getItem('fms_story_v1')).outline[0].text);
+  ok(stepText === 'Something happens 0', '10 emptying a linked scene synopsis leaves the step text', stepText);
+
+  // beat colour has a name
+  const sw = await r.$eval('.bd-sl[data-scene="r1"] .bc-swatch', (e) => ({ l: e.getAttribute('aria-label'), h: e.getAttribute('aria-hidden') }));
+  ok(/Pink/.test(sw.l || '') && sw.h !== 'true', '10 a beat colour swatch carries its name', sw);
+
+  // Whole script: sub-tabs by keyboard, and the day / night tile adds up
+  await r.goto(url('breakdown.html#overview'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(400);
+  await r.focus('.bdo-seg-btn[aria-selected="true"]');
+  await r.keyboard.press('End');
+  await r.waitForTimeout(200);
+  ok(await r.evaluate(() => document.activeElement?.dataset.view) === 'totals' && await r.$eval('#bdo-tab-totals', (b) => b.getAttribute('aria-selected')) === 'true', '10 End on the Whole script tabs opens the last one');
+  await r.keyboard.press('ArrowLeft');
+  await r.waitForTimeout(200);
+  ok(await r.evaluate(() => document.activeElement?.dataset.view) === 'locations', '10 ArrowLeft moves to the one before');
+  await r.click('#bdo-tab-totals');
+  await r.waitForTimeout(200);
+  const tile = await r.$$eval('.bdo-totals .bd-stat', (c) => c.map((x) => x.textContent));
+  ok(tile.some((t) => /^\d+ \/ \d+ \/ \d+day \/ night \/ other$/.test(t)), '10 the day / night tile counts dusk and dawn too', tile);
+
+  // Auto-Tag chip: the name starts with what is printed
+  await r.goto(url('breakdown.html#suggest'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(400);
+  const chip = await r.$eval('.bd-sug', (c) => ({ l: c.getAttribute('aria-label'), t: c.textContent.replace(/\s+/g, ' ').trim().toLowerCase() })).catch(() => null);
+  ok(chip && chip.l.toLowerCase().replace(/\s+/g, '') === chip.t.replace(/\s+/g, ''), '10 an Auto-Tag chip is named by its printed words', chip);
+
+  // widths: the page figure is whole at 800 and 1100; the phone's tag row shows its category
+  for (const w of [721, 800, 1100]) {
+    await r.setViewportSize({ width: w, height: 900 });
+    await r.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+    await r.waitForTimeout(300);
+    const f = await r.$eval('[data-scene="r1"] .bd-pages', (e) => ({ sw: e.scrollWidth, cw: e.clientWidth }));
+    ok(f.sw <= f.cw, `10 the page figure is whole at ${w}px`, f);
+  }
+  await r.setViewportSize({ width: 390, height: 860 });
+  await r.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(300);
+  if (!(await r.isVisible('.bd-sl[data-scene="r1"] .bd-add-cat'))) await r.click('.bd-sl[data-scene="r1"] .bd-sl-toggle');
+  await r.waitForTimeout(250);
+  const cat = await r.$eval('.bd-sl[data-scene="r1"] .bd-add-cat', (e) => e.getBoundingClientRect().width);
+  ok(cat >= 100, '10 at 390 the tag category select shows its name', cat);
+
+  // the Elements sheet holds Tab
+  await r.goto(url('breakdown.html#elements'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(400);
+  await r.click('[data-action="ex-sheet"]');
+  await r.waitForTimeout(250);
+  let outside = 0;
+  for (let i = 0; i < 40; i++) {
+    await r.keyboard.press('Tab');
+    if (!(await r.evaluate(() => !!document.activeElement?.closest('#bdxSide')))) outside++;
+  }
+  ok(outside === 0, '10 Tab stays inside the open Element index sheet', outside);
+  await r.close();
+}
+ok(errors.length === 0, '10 no page errors', errors.slice(0, 5));
+
 await browser.close();
 server.close();
 console.log(failed ? `\n${failed} FAILED` : '\nprove:cards: all passed');

@@ -335,8 +335,8 @@ function paintAccountBlock() {
       /* The account is created in the TEAM tab (accountSection(), mounted
          there as #account-people); #account is the tab this card is
          already on, so the link used to go nowhere. */
-      h('a.k-btn.k-btn--secondary.k-btn--sm.am-create', { href: 'settings.html#team', text: 'Create a studio account' }),
-      h('p.am-acct-note', { text: 'An account is how a film reaches somebody else.' })
+      h('p.am-acct-note', { text: 'An account is how a film reaches somebody else.' }),
+      h('a.k-btn.k-btn--secondary.k-btn--sm.am-create', { href: 'settings.html#team', text: 'Create a studio account' })
     );
     return;
   }

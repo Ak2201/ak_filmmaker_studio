@@ -50,6 +50,7 @@
 import { reveal } from '../lib/motion.js';
 import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
+import { errorSentence } from '../lib/gate.js';
 import Billing, { priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
 import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
@@ -363,7 +364,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
         price === null ? null : h('span.pl-per', { text: credit > 0 ? ' now' : ' a year' }),
         q ? h('s.pl-list', { text: qFmt(q, 'list'), 'aria-label': 'list price ' + qFmt(q, 'list') }) : null
       ].filter(Boolean)),
-      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, 'list'), qCur(q)) : perDayIn(listMinor, listCur)} a day · 1 year, nothing renews by itself` }),
+      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, credit > 0 ? 'list' : 'amount'), qCur(q)) : perDayIn(listMinor, listCur)} a day · 1 year, nothing renews by itself` }),
       price === null ? null : h('p.pl-price-cap.pl-charge', { text: charged })
     ].filter(Boolean)));
     if (credit > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${qFmt(q, 'amount')} today: the ${qFmt(q, 'credit')} left on your ${q.upgrade_from_name || planName(q.upgrade_from)} year counts toward it, and ${name}'s own year starts now.` }));
@@ -719,7 +720,7 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   if (hooks.rerender) hooks.rerender();
   try {
     const ids = [...document.querySelectorAll('.pl-card [data-plan-action="buy"]')].map((b) => b.dataset.plan);
-    const answers = await Promise.all(ids.map((id) => Billing.quote(id, code, promo.cur).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: err.message || 'The code could not be checked.' }])));
+    const answers = await Promise.all(ids.map((id) => Billing.quote(id, code, promo.cur).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: errorSentence(err, 'The code could not be checked.') }])));
     const quotes = Object.fromEntries(answers);
     const okIds = ids.filter((id) => quotes[id] && quotes[id].ok && quotes[id].code);
     if (okIds.length) { promo.quotes = quotes; promo.code = code; promo.at = billingKey(lastSt); }

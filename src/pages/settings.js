@@ -174,6 +174,9 @@ function choices(label, attr, current, options) {
   const grp = h('div.st-group', { role: 'radiogroup', 'aria-label': label });
   grp.append(h('span.st-group-label', { text: label }));
   const row = h('div.st-choices');
+  /* Radio pattern: one Tab stop per group, on the chosen option (or the
+     first when nothing is chosen); arrow keys move and choose. */
+  const stop = options.some((o) => o.value === current) ? current : options[0] && options[0].value;
   options.forEach((o) => {
     const on = o.value === current;
     /* The kit's button as well as `.st-choice`: this is the studio's
@@ -184,6 +187,7 @@ function choices(label, attr, current, options) {
       type: 'button',
       role: 'radio',
       'aria-checked': String(on),
+      tabindex: o.value === stop ? '0' : '-1',
       title: o.title || o.label
     });
     b.setAttribute(attr, o.value);
@@ -193,6 +197,18 @@ function choices(label, attr, current, options) {
   grp.append(row);
   return grp;
 }
+
+document.addEventListener('keydown', (e) => {
+  const r = e.target && e.target.closest && e.target.closest('.st-choice[role="radio"]');
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!r || !step || e.altKey || e.ctrlKey || e.metaKey) return;
+  const all = [...r.closest('[role="radiogroup"]').querySelectorAll('.st-choice[role="radio"]')];
+  const next = all[(all.indexOf(r) + step + all.length) % all.length];
+  e.preventDefault();
+  if (next === r) return;
+  next.focus();
+  next.click();
+});
 
 /* ---- the key ------------------------------------------------ */
 function renderKey() {

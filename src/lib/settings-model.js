@@ -122,6 +122,12 @@ export function planSummary(cp, { off, signedIn, trialEndsAt }) {
 /** The answer after "Delete my cloud projects". */
 export function cloudDeleteReport(res) {
   const failed = (res && res.failed) || [];
+  if (res && res.readError) {
+    return { title: 'Could not read your cloud projects', body: 'Nothing was deleted and cloud sync was left as it was. ' + res.readError };
+  }
+  if (!failed.length && !(res && res.deleted)) {
+    return { title: 'No cloud projects to delete', body: 'You have no projects in the cloud. Cloud sync is paused.' };
+  }
   return {
     title: failed.length ? 'Some cloud projects were not deleted' : 'Cloud projects deleted',
     body: 'Deleted ' + ((res && res.deleted) || 0) + ' cloud project(s)' + (failed.length ? '; ' + failed.length + ' failed.' : '.') + ' Cloud sync is paused.'

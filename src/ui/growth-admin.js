@@ -555,6 +555,10 @@ export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
   const sec = section('growth', 'Growth', 'The trial, the price, referrals, affiliates, leads and the funnel.', '');
   if (S.state === 'idle') load();
+  if (S.state === 'error') {
+    sec.append(errorState({ title: 'Growth could not load', why: S.error, onRetry: () => { S.error = ''; S.state = 'idle'; rerender(); } }));
+    return sec;
+  }
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (S.state !== 'ready') { sec.append(h('p.gt-meta', { text: S.state === 'loading' ? 'Loading…' : '' })); return sec; }
   trialBlock(sec);
@@ -647,7 +651,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
   const lines = risePreview(rows, at, cap);
   /* The last gate before a public promise: the owner confirms the
      sentence itself, not "save changes?". */
-  if (lines.length && !await ask('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?')) return;
+  if (lines.length && !await ask('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?', { confirm: 'Schedule the rise' })) return;
   try {
     /* The cap first: it is one of the two triggers the sentence names,
        and a tier saved against a cap that failed to save would be

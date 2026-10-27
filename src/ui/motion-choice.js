@@ -30,6 +30,7 @@ export function mountMotionChoice(sec) {
     b.className = 'btn st-choice' + (on ? ' is-on' : '');
     b.setAttribute('role', 'radio');
     b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;   // roving: one Tab stop, arrow keys move (settings.js)
     b.setAttribute('data-motion-choice', v);
     const s = document.createElement('span');
     s.textContent = text;
@@ -40,6 +41,7 @@ export function mountMotionChoice(sec) {
         const m = x.getAttribute('data-motion-choice') === v;
         x.classList.toggle('is-on', m);
         x.setAttribute('aria-checked', String(m));
+        x.tabIndex = m ? 0 : -1;
       });
     });
     row.append(b);

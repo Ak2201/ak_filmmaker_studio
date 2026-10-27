@@ -88,7 +88,7 @@ const uuid = () => (globalThis.crypto && crypto.randomUUID
  *  refusal is already a sentence and passes through. */
 export function errorSentence(err, fallback) {
   const msg = (err && err.message) || '';
-  if (/failed to fetch|load failed|networkerror|network request failed/i.test(msg)) {
+  if (/failed to fetch|failed to send a request|load failed|networkerror|network request failed/i.test(msg)) {
     return (typeof navigator !== 'undefined' && navigator.onLine === false)
       ? 'This device is offline. Connect to the internet and try again.'
       : 'The studio could not reach its server. Check the connection and try again.';

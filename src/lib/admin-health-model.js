@@ -48,7 +48,7 @@ export function probeDetail(r, running) {
 
 /** One named check from the report, or null. */
 export const findCheck = (data, id) => (data && Array.isArray(data.checks) ? data.checks.find((c) => c.id === id) : null) || null;
-export const slotMsg = (v) => `Unknown: ${v.message || v.error}${v.error ? ` (${v.error})` : ''}`;
+export const slotMsg = (v) => !v ? 'Unknown: the report has no answer for this check.' : `Unknown: ${v.message || v.error}${v.error ? ` (${v.error})` : ''}`;
 
 /** Resend is not readable from SQL. What can be seen: invoices with no mail recorded. */
 export function resendInference(data, now = Date.now()) {
@@ -92,17 +92,17 @@ export function launchSteps(data, probes, env) {
   steps.push({ label: 'Razorpay is on a live key', state: env === 'LIVE' ? 'pass' : env === 'TEST' ? 'fail' : 'skip', note: env ? `The key id's prefix says ${env}.` : 'No key id in this build.' });
 
   const p = d.payments;
-  if (isErr(p)) steps.push({ label: 'A real payment has been captured', state: 'skip', note: slotMsg(p) });
+  if (!p || isErr(p)) steps.push({ label: 'A real payment has been captured', state: 'skip', note: slotMsg(p) });
   else steps.push({ label: 'A real payment has been captured', state: num(p.paid) > 0 ? 'pass' : 'fail', note: num(p.paid) > 0 ? `${p.paid} paid; the last ${p.last_paid_at ? relTime(p.last_paid_at) : 'at an unknown time'}. A paid row does not say whether it was test or live.` : 'No payment has been captured.' });
 
   const rf = d.refunds;
-  if (isErr(rf)) steps.push({ label: 'A refund has been exercised', state: 'skip', note: slotMsg(rf) });
+  if (!rf || isErr(rf)) steps.push({ label: 'A refund has been exercised', state: 'skip', note: slotMsg(rf) });
   else steps.push({ label: 'A refund has been exercised', state: rf.last_refund_processed_at ? 'pass' : 'fail', note: rf.last_refund_processed_at ? `The last processed ${relTime(rf.last_refund_processed_at)}.` : 'No refund has been processed.' });
 
   steps.push(byCheck('plan_features', 'Every paid plan has its features set (BILLING §19.3)'));
 
   const w = d.wall;
-  if (isErr(w)) steps.push({ label: 'No grandfathered member would be walled (BILLING §19.4)', state: 'skip', note: slotMsg(w) });
+  if (!w || isErr(w)) steps.push({ label: 'No grandfathered member would be walled (BILLING §19.4)', state: 'skip', note: slotMsg(w) });
   else steps.push({ label: 'No grandfathered member would be walled (BILLING §19.4)', state: num(w.grandfathered_walled) === 0 ? 'pass' : 'fail', note: `${w.grandfathered_walled} grandfathered member(s) would be walled.` });
   return steps;
 }

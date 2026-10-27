@@ -95,7 +95,7 @@ function renderEnter() {
      hides a header's sub). */
   main.append(pageHeader({ eyebrow: ['Studio', 'Screening Room'], title: 'Screening Room', class: 'bd-head' }));
   main.append(h('p.bd-deck.sc-enter-why', { text: 'You have been sent a film. Enter the screening pass you were given. It opens one project, read-only, for a limited time — no account needed.' }));
-  const form = h('form.sc-form', { 'data-sc-form': 'open', autocomplete: 'off' });
+  const form = h('form.sc-form', { 'data-sc-form': 'open', autocomplete: 'off', novalidate: true });
   form.append(h('label', { for: 'scCode', text: 'Screening pass' }));
   form.append(h('input#scCode.sc-code', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40,
     placeholder: 'XXXX-XXXX-XXXX', value: formatCode(typed ? typed.code : prefill),

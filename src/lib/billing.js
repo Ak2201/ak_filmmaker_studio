@@ -149,7 +149,13 @@ async function invoke(name, body) {
     // supabase-js wraps a non-2xx as FunctionsHttpError with the Response on `context`.
     let detail = '';
     try { const j = await error.context?.json?.(); detail = (j && j.error) || ''; } catch (e) { /* no body */ }
-    const err = new BillingError(detail || errorSentence(error, 'The payment service answered with an error. Try again in a moment.'), 'edge');
+    /* A 401 is the session not being accepted: retrying cannot work, so
+       the sentence says to sign in again rather than "try again". */
+    const status = error.context && error.context.status;
+    const fallback = status === 401
+      ? 'Your sign-in was not accepted. Sign out, sign in again, and then retry.'
+      : 'The payment service answered with an error. Try again in a moment.';
+    const err = new BillingError(detail || errorSentence(error, fallback), 'edge');
     /* Whether the SERVER said this (a sentence in the body) or nothing
        came back at all — a dropped connection, a gateway timeout. After
        a payment the two mean different things; see buy(). */

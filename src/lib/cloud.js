@@ -2667,9 +2667,11 @@ export async function deleteOwnedCloudProjects() {
   const sb = await ensureClient();
   if (!sb || !session) throw new Error('Sign in to delete your cloud projects.');
   const uid = session.user.id;
-  await setSyncEnabled(false);
+  /* The list is read BEFORE sync is paused: a read that fails attempts
+     nothing, so it neither pauses sync nor counts as a failed project. */
   const { data, error } = await sb.from('projects').select('id').eq('owner_id', uid);
-  if (error) return { ok: false, deleted: 0, failed: [{ id: '*', error: error.message || String(error) }] };
+  if (error) return { ok: false, deleted: 0, failed: [], readError: error.message || String(error) };
+  await setSyncEnabled(false);
   let deleted = 0;
   const failed = [];
   for (const row of data || []) {

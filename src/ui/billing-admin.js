@@ -46,6 +46,7 @@ import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
 import { refundDialog, declineDialog, categoryText } from './refund-admin.js';
 import { ask } from './dialog.js';
+import { errorState } from './admin-kit.js';
 import { usdCall } from '../lib/admin-api.js';
 import { studioRole } from './admin-customer.js';
 import { fmtMinor, parseMinor } from '../lib/price-model.js';
@@ -142,6 +143,10 @@ export function billingAdminSection(section, st, { part } = {}) {
       : section('billing', 'Billing', part ? 'Payments and refunds.' : 'Plans and payments.',
         part ? 'What has been paid, by whom, and the refund requests waiting for an answer.' : 'What each tier costs and allows, who has paid for what, and a way to grant a plan by hand. Prices change on the next purchase; nobody’s running plan is touched by an edit.');
   if (!S.loaded && !S.busy && !S.error) load();
+  if (S.error && !S.loaded) {
+    sec.append(errorState({ title: 'Purchases could not load', why: S.error, onRetry: () => load() }));
+    return sec;
+  }
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (!S.loaded) { sec.append(h('p.gt-meta', { text: S.busy ? 'Loading…' : '' })); return sec; }
 
@@ -151,7 +156,7 @@ export function billingAdminSection(section, st, { part } = {}) {
   const by = o.active_by_plan || {};
   /* The console's one stat tile (admin.css .ad-stat), not a second kind. */
   const grid = h('div.ad-stats.ba-grid');
-  const stat = (v, l, sub) => grid.append(h('div.ad-stat', {}, [h('span.ad-stat-n', { text: v }), h('span.ad-stat-l', { text: l }), sub ? h('span.ad-stat-sub', { text: sub }) : null].filter(Boolean)));
+  const stat = (v, l, sub) => grid.append(h('div.k-stat.ad-stat', {}, [h('span.k-stat-value.ad-stat-n', { text: v }), h('span.k-stat-label.ad-stat-l', { text: l }), sub ? h('span.k-stat-note.ad-stat-sub', { text: sub }) : null].filter(Boolean)));
   /* §56: paid_*_paise are RUPEES ONLY; dollars are in paid_by_currency
      and never added to them (no exchange rate is used anywhere). */
   const usdPaid = o.paid_by_currency && o.paid_by_currency.USD;

@@ -81,16 +81,59 @@ export function delegate(root, type, selector, handler, opts) {
    The signature is taken BEFORE `mount` (tabs.js, shell chrome) adds its
    own attributes, so it compares render()'s output only. */
 const lastPaint = new WeakMap();
+const FOCUSABLE = 'button, a[href], input, select, textarea, summary, [tabindex]';
+/** What a control IS, apart from where it sits: tag, role, name, data-*
+    attributes, label and text. A redraw replaces the node, so the id
+    that commitMain used to keep is not enough for the many buttons that
+    have none (the console's actions, the settings radios). */
+export function focusKey(el) {
+  const data = [...el.attributes].filter((a) => a.name.startsWith('data-')).map((a) => a.name + '=' + a.value).sort().join('&');
+  const label = el.getAttribute('aria-label') || '';
+  const nm = el.getAttribute('name') || '';
+  /* Text only names a control that has nothing else to be known by: a busy
+     button changes its words ("Creating…") and must still be itself. */
+  const text = data || label || nm ? '' : (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return [el.tagName, el.getAttribute('role') || '', nm, data, label, text].join('|');
+}
+/** Where the focused control sits among the controls that look identical. */
+export function focusSpot(app, el) {
+  if (!el || !app.contains(el) || el === app) return null;
+  const key = focusKey(el);
+  const same = [...app.querySelectorAll(FOCUSABLE)].filter((n) => focusKey(n) === key);
+  const at = same.indexOf(el);
+  return at < 0 ? null : { key, at };
+}
+/** True when focus was restored. A control that is disabled while busy
+    cannot take it yet, so the caller keeps the spot for the next paint. */
+export function restoreFocusSpot(app, spot) {
+  if (!spot) return false;
+  const same = [...app.querySelectorAll(FOCUSABLE)].filter((n) => focusKey(n) === spot.key);
+  const f = same[spot.at];
+  if (!f) return false;
+  try { f.focus({ preventScroll: true }); } catch (e) { return false; }
+  return document.activeElement === f;
+}
+const lostSpot = new WeakMap();
 export function commitMain(app, main, mount) {
   const sig = main.innerHTML;
   if (lastPaint.get(app) === sig && app.firstElementChild) return false;
   lastPaint.set(app, sig);
   const y = window.scrollY;
   const fid = document.activeElement && document.activeElement.id;
+  let spot = fid ? null : focusSpot(app, document.activeElement);
+  const lost = lostSpot.get(app);
+  const bare = !document.activeElement || document.activeElement === document.body;
+  const fromLost = !spot && bare && lost && Date.now() - lost.at < 15000;
+  if (fromLost) spot = lost.spot;   // focus fell while the control was busy
   app.replaceChildren(main);
   if (typeof mount === 'function') mount();
   if (window.scrollY !== y) window.scrollTo({ top: y, behavior: 'instant' });
   if (fid) { const f = document.getElementById(fid); if (f) try { f.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } }
+  else if (spot) {
+    if (restoreFocusSpot(app, spot)) lostSpot.delete(app);
+    else if (!fromLost) lostSpot.set(app, { spot, at: Date.now() });   // a retry never extends its own 15s
+  }
+  if (window.scrollY !== y) window.scrollTo({ top: y, behavior: 'instant' });
   return true;
 }
 

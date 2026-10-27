@@ -17,6 +17,7 @@
    No inline handlers (CSP): delegate() on [data-rf-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { errorSentence } from '../lib/gate.js';
 import Billing, { planName } from '../lib/billing.js';
 import { fmtMinor } from '../lib/price-model.js';
 import '../styles/refunds.css';
@@ -111,7 +112,7 @@ delegate(document, 'submit', '[data-rf-form="request"]', async (e, form) => {
     if (S.data) S.data = { ...S.data, can_request: false };
     toast('Request sent. We will answer on this page.', 'success');
   } catch (err) {
-    S.error = err.message || 'The request was not sent.';
+    S.error = errorSentence(err, 'The request was not sent.');
   }
   S.busy = false; S.state = 'idle';   // read the server's word again (the last answer stays drawn meanwhile)
   rerender();

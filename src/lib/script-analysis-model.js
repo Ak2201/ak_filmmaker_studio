@@ -35,6 +35,7 @@ import { sliceScript, estimateSlice, cueName } from './screenplay-analysis.js';
 import { lexicalTension, expectedAt, frameworkById, effectiveFramework, PACING } from './story.js';
 import { levelOf, HIGH_TENSION, tensionCurve, intensity, beatDeck } from './story-pacing.js';
 import { elementLines, LINES_PER_PAGE } from './script.js';
+import { beatPageBasis } from './beat-basis.js';
 
 const textOf = (el) => String((el && el.text) ?? '').trim();
 const words = (t) => (String(t).match(/\S+/g) || []).length;
@@ -218,15 +219,21 @@ export function castRead(rows) {
 /** Structure: each beat of the framework at its conventional page, and
  *  the scene that actually sits there. With a story whose scenes are
  *  linked to beats, beatDeck() says where each beat opens. */
-export function structureRead(rows, { fwId, story = null, scenes = [], elements = [] } = {}) {
+export function structureRead(rows, { fwId, story = null, scenes = [], elements = [], targetPages = 0 } = {}) {
   const fw = frameworkById(fwId);
   const total = rows.reduce((n, r) => n + r.eighths, 0);
-  const totalPages = total / 8;
+  /* The script's length is counted the way the beats panel counts it
+     (lines over LINES_PER_PAGE, every element), not the sum of the
+     scene rows' rounded eighths, or the two views disagree by a page. */
+  const scriptPages = elements.length ? elements.reduce((n, e) => n + elementLines(e), 0) / LINES_PER_PAGE : total / 8;
+  /* ONE rule (beat-basis.js): the target if set, else the script as written. */
+  const basis = beatPageBasis({ targetPages, scriptPages });
+  const totalPages = basis.pages;
   let deck = null;
   if (story) { try { deck = beatDeck({ story, scenes, elements, fwId: fw.id }); } catch (e) { deck = null; } }
   const opens = new Map(((deck && deck.beats) || []).filter((b) => b.opensOn).map((b) => [b.beat.id, b]));
   const beats = fw.beats.slice().sort((a, b) => a.at - b.at).map((b) => {
-    const at = b.at * total;
+    const at = basis.basis === 'target' ? b.at * totalPages * 8 : b.at * total;
     const r = rows.find((x) => at >= x.start && at < x.start + x.eighths) || rows[rows.length - 1] || null;
     const linked = opens.get(b.id) || null;
     return {
@@ -240,7 +247,7 @@ export function structureRead(rows, { fwId, story = null, scenes = [], elements 
       drift: linked && total ? Math.round(linked.opensOn - Math.max(1, b.at * totalPages)) : null
     };
   });
-  return { framework: { id: fw.id, label: fw.label, short: fw.short }, pages: round1(totalPages), beats, linked: opens.size };
+  return { framework: { id: fw.id, label: fw.label, short: fw.short }, pages: round1(scriptPages), basis, beats, linked: opens.size };
 }
 
 /**
@@ -248,7 +255,7 @@ export function structureRead(rows, { fwId, story = null, scenes = [], elements 
  * optional: without a story the framework is the format's suggestion
  * and the story curve is left out.
  */
-export function analyseScript({ elements = [], scenes = [], story = null, fwId = null, format = 'feature' } = {}) {
+export function analyseScript({ elements = [], scenes = [], story = null, fwId = null, format = 'feature', targetPages = 0 } = {}) {
   const rows = sceneRows(elements, scenes);
   const fw = frameworkById(fwId || effectiveFramework(story, format)).id;
   const eighths = rows.reduce((n, r) => n + r.eighths, 0);
@@ -264,7 +271,7 @@ export function analyseScript({ elements = [], scenes = [], story = null, fwId =
     tension: tensionRead(rows, fw),
     pacing: pacingRead(rows),
     cast: castRead(rows),
-    structure: structureRead(rows, { fwId: fw, story, scenes, elements }),
+    structure: structureRead(rows, { fwId: fw, story, scenes, elements, targetPages }),
     story: storyCurve
   };
 }

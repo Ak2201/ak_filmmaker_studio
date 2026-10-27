@@ -592,5 +592,31 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   eq(shape(t).filter((r) => r[0] === 'character').map((r) => r[1]), ['RAVI', 'MARY (WHISPERING)'], 'text round trip keeps cues, extension included');
 }
 
+
+/* ---- one rule for where beats land: the target, else the script as written ---- */
+{
+  const { beatPageBasis, beatBasisText } = await import('../src/lib/beat-basis.js');
+  const { analyseScript } = await import('../src/lib/script-analysis-model.js');
+  const { elementLines, LINES_PER_PAGE } = await import('../src/lib/script.js');
+  const { readFileSync } = await import('node:fs');
+  eq(beatPageBasis({ targetPages: 100, scriptPages: 106 }), { pages: 100, basis: 'target' }, 'a target wins over the script');
+  eq(beatPageBasis({ targetPages: 0, scriptPages: 105.6 }), { pages: 106, basis: 'script' }, 'no target: the script as written');
+  eq(beatBasisText({ pages: 100, basis: 'target' }), 'Beats placed against your 100-page target', 'target line');
+  eq(beatBasisText({ pages: 106, basis: 'script' }), 'Beats placed against the script as written, 106 pages', 'script line');
+  const dragon = JSON.parse(readFileSync(new URL('../src/data/sample.dragon.script.json', import.meta.url), 'utf8')).elements;
+  const written = dragon.reduce((n, x) => n + elementLines(x), 0) / LINES_PER_PAGE;
+  for (const tp of [0, 100]) {
+    const a = analyseScript({ elements: dragon, format: 'feature', targetPages: tp });
+    const span = beatPageBasis({ targetPages: tp, scriptPages: written }).pages;   // what deriveBeats uses
+    const panel = a.structure.beats.map((b) => Math.max(1, Math.round(b.at * span) || 1));
+    eq(a.structure.beats.map((b) => b.targetPage), panel, `beats panel and analysis agree on every beat page (target ${tp})`);
+    ok(a.structure.basis.basis === (tp ? 'target' : 'script'), 'analysis names its basis');
+  }
+  const bp = readFileSync(new URL('../src/ui/beats-panel.js', import.meta.url), 'utf8');
+  ok(/beatPageBasis\(\{ targetPages, scriptPages: written \}\)/.test(bp), 'beats-panel places beats through beatPageBasis');
+  const sp = readFileSync(new URL('../src/pages/screenplay.js', import.meta.url), 'utf8');
+  ok(!/\b110\b/.test(sp.slice(sp.indexOf('function targetPages'), sp.indexOf('function targetPages') + 300)), 'no invented 110-page default');
+}
+
 console.log(`${fail ? '✗' : '✓'} screenplay analysis: ${pass} passed, ${fail} failed (120 pages in ${ms}ms)`);
 process.exit(fail ? 1 : 0);

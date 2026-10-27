@@ -173,6 +173,8 @@
 .bp-target strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .bp-target-est { font-variant-numeric: tabular-nums; color: var(--ok-deep); }
 .bp-target.is-over .bp-target-est { color: var(--warn-deep); }
+/* One line naming what the beats are placed against (beat-basis.js). */
+.bp-basis { margin: 0; font-size: var(--t-micro); color: var(--ink-muted); }
 /* All / Linked / Pending: a view, full width, three equal cells. */
 .bp-filter.k-seg { display: flex; margin-top: var(--s1); }
 .bp-filter .k-seg-btn { flex: 1 1 0; min-width: 0; }

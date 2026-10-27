@@ -31,6 +31,7 @@ import { loadStory, frameworkById, effectiveFramework, matrix, qualifyBeat } fro
 import Store from '../lib/store.js';
 import Scenes from '../lib/scenes.js';
 import { elementLines, LINES_PER_PAGE } from '../lib/script.js';
+import { beatPageBasis, beatBasisText } from '../lib/beat-basis.js';
 import '../styles/beats-panel.css';
 
 const PHONE = '(max-width: 719.98px)';
@@ -52,7 +53,9 @@ export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneR
   const startLine = [];
   for (const e of list) { startLine.push(total); total += elementLines(e); }
   const written = total / LINES_PER_PAGE;
-  const span = Math.max(targetPages || 0, written, 1);
+  /* ONE rule (beat-basis.js): the target if set, else the script as written. */
+  const basis = beatPageBasis({ targetPages, scriptPages: written });
+  const span = basis.pages;
   const pageOf = (at) => Math.max(1, Math.round(at * span) || 1);
 
   let idx = currentId ? list.findIndex((e) => e.id === currentId) : -1;
@@ -102,7 +105,7 @@ export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneR
     if (!hit) r.written = false;
   }
   const linked = rows.filter((r) => r.linked).length;
-  return { fw, rows, curPage, written, span, linked, total: rows.length, percent: rows.length ? Math.round((linked / rows.length) * 100) : 0 };
+  return { fw, rows, curPage, written, span, basis, basisText: beatBasisText(basis), linked, total: rows.length, percent: rows.length ? Math.round((linked / rows.length) * 100) : 0 };
 }
 
 /* The kit meter without its label row; the line above it is the label. */
@@ -216,6 +219,7 @@ export function mountBeats(host, opts = {}) {
       ]),
       progressMeter(d),
       targetLine(tgt),
+      h('p.bp-basis', { text: d.basisText }),
       seg
     ].filter(Boolean)));   // append(null) would print "null"
     filterSeg = seg;

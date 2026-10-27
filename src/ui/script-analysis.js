@@ -28,6 +28,7 @@
 import '../styles/story-pacing.css';
 import '../styles/script-analysis.css';
 import { h } from '../lib/dom.js';
+import { beatBasisText } from '../lib/beat-basis.js';
 import { analyseScript, pagesOf, readableName, sceneSpan } from '../lib/script-analysis-model.js';
 import { smoothPath } from '../lib/story-pacing.js';
 import { formatDuration } from '../lib/screenplay-analysis.js';
@@ -476,7 +477,7 @@ function structurePanel(a) {
   return panel({
     eyebrow: ['Structure', s.framework.short],
     meta: s.pages + ' pages' + (s.linked ? ' · ' + plural(s.linked, 'beat') + ' linked to scenes' : ''),
-    body: [t, h('p.pc-note', { text: 'Where each beat of ' + s.framework.label + ' conventionally falls, as a page of this script, and the scene that is on that page. Link scenes to beats on the Story page and it also says where each beat really opens.' })]
+    body: [t, h('p.pc-note.sa-basis', { text: beatBasisText(s.basis) }), h('p.pc-note', { text: 'Where each beat of ' + s.framework.label + ' conventionally falls, as a page of this script, and the scene that is on that page. Link scenes to beats on the Story page and it also says where each beat really opens.' })]
   });
 }
 
@@ -536,7 +537,7 @@ export function renderAnalysis(opts = {}) {
   let story = null;
   try { story = loadStory(); } catch (e) { story = null; }
   const scenes = listScenes();
-  const a = analyseScript({ elements, scenes, story, format: format() });
+  const a = analyseScript({ elements, scenes, story, format: format(), targetPages: typeof opts.getTargetPages === 'function' ? opts.getTargetPages() : 0 });
   const ai = aiPill({
     label: 'AI',
     tasks: [{ id: 'tension-notes', label: 'Notes on tension and arcs' }, { id: 'coverage', label: 'Coverage report' }, { id: 'scene-notes', label: 'Scene notes' }, { id: 'audience-test', label: 'Audience test' }],

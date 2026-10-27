@@ -63,7 +63,7 @@ import { latestDraft } from '../lib/drafts.js';
 import {
   draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
   scriptStats, estimatedRuntime, splitRuntime as splitRuntimeOf, targetDeltaText, targetLabel,
-  targetPagesFor, scenePosText, shotsSummary, importReadText, importDoneText, pdfSubtitle, chipTypes, importReplaceBody
+  scenePosText, shotsSummary, importReadText, importDoneText, pdfSubtitle, chipTypes, importReplaceBody
 } from '../lib/screenplay-model.js';
 import { pageAnchors } from '../lib/write-format.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
@@ -509,6 +509,7 @@ async function refreshAnalysis() {
     analysisHost.replaceChildren(analysisMod.renderAnalysis({
       getDoc: () => doc, save: () => persistNow(),
       refresh: () => refreshAnalysis(),
+      getTargetPages: () => targetPages(),
       onBreakdown: true
     }));
   } catch (e) {
@@ -951,11 +952,11 @@ let estimateMin = 0;
 function loadTarget() {
   return targetLib().then((T) => { target = T.targetRuntime(); return target; }, () => target);
 }
-/* Where the beats should land: a page a minute against the target when
-   one is set; otherwise a feature's ~110 pages or a short's ~15. */
+/* The writer's target in pages (a page a minute), 0 when none is set.
+   Where the beats land is beat-basis.js's call: this target, else the
+   script as written. */
 function targetPages() {
-  if (target.minutes > 0) return target.minutes;   // read the project only when it decides
-  return targetPagesFor(target, (currentProject() || {}).format);
+  return target.minutes > 0 ? target.minutes : 0;
 }
 
 /* ---- the running-time panel: dialogue against action --------------

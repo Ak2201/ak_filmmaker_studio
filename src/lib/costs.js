@@ -119,7 +119,7 @@ export const GROUPS = [
 /* A DOLLAR budget drops India-only words. Ids are storage and never move;
    only the label a person reads changes, and only for USD. */
 const US_CATEGORY = { batta: 'Per diem' };
-const US_METHOD = { upi: 'Mobile pay' };
+const US_METHOD = { upi: 'Bank/card' };
 const US_DEPT = { food: 'Food & per diem' };
 const relabel = (list, map, currency) => (currency === 'USD'
   ? list.map((x) => (map[x.id] ? { ...x, label: map[x.id] } : x)) : list);

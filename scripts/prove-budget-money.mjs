@@ -256,6 +256,33 @@ const usdTxt = await page.evaluate(() => document.getElementById('actuals').text
 ok(!/GST|batta/i.test(usdTxt.replace(/Tax in the bill/, '')), 'r4e a dollar cost report has no GST or batta wording', usdTxt.match(/.{20}(GST|batta).{10}/i));
 await r4.close();
 
+/* ---- region: an INT film hides India-only budget material, an IN film is unchanged ---- */
+const rg = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const seen = (pg, sel) => pg.evaluate((q) => { const e = document.querySelector(q); return !!e && e.getClientRects().length > 0; }, sel);
+for (const [reg, abroad] of [['INT', true], ['IN', false]]) {
+  page = await film(rg, reg, { ci_currency: 'INR', ci_1_days: '1', ci_1_rate: '500' });
+  await open(page, 'budget.html#expenses');
+  const ex = await page.evaluate(() => ({
+    cat: [...document.querySelectorAll('#expenses input[name="category"]')].map((i) => [i.value, i.closest('label').textContent.trim()]),
+    meth: [...document.querySelectorAll('#expenses select[name="method"] option')].map((o) => [o.value, o.textContent]),
+    gst: !!document.querySelector('#expenses [name="gstPct"]'), gstin: !!document.querySelector('#expenses [name="gstin"]')
+  }));
+  const catLabel = (ex.cat.find((c) => c[0] === 'batta') || [])[1];
+  const upi = (ex.meth.find((c) => c[0] === 'upi') || [])[1];
+  ok(catLabel === (abroad ? 'Per diem' : 'Batta') && upi === (abroad ? 'Bank/card' : 'UPI'), `r5 ${reg} film labels the stored ids batta / upi as ${abroad ? 'Per diem / Bank/card' : 'Batta / UPI'}`, { catLabel, upi });
+  ok(ex.gst && ex.gstin, `r5 ${reg} film keeps the GST and GSTIN fields in the DOM (hidden, never removed)`, ex);
+  await page.evaluate(() => document.querySelector('#expenses details.cx-more').open = true);
+  ok((await seen(page, '#expenses [name="gstPct"]')) === !abroad && (await seen(page, '#expenses [name="gstin"]')) === !abroad, `r5 ${reg} film ${abroad ? 'hides' : 'shows'} GST and GSTIN`);
+  await open(page, 'budget.html#wages');
+  ok((await seen(page, '#wages .cx-expired')) === !abroad, `r5 ${reg} film ${abroad ? 'hides' : 'shows'} the FEFSI notice`);
+  ok((await seen(page, '#wages .cx-wages tbody td.k-mono, #wages .cx-wages tbody tr td:nth-child(2)')) === !abroad, `r5 ${reg} film ${abroad ? 'hides' : 'shows'} the published FEFSI column`);
+  await open(page, 'budget.html#actuals');
+  const act = await page.evaluate(() => document.getElementById('actuals').textContent);
+  ok(abroad ? !/GST|TDS|batta/i.test(act) : /GST/.test(act), `r5 ${reg} film's cost report ${abroad ? 'has no GST/TDS/batta wording' : 'still says GST'}`, act.match(/.{15}(GST|TDS|batta).{10}/i));
+  await page.close();
+}
+await rg.close();
+
 await browser.close();
 server.close();
 console.log(failed ? `✗ prove:budget-money — ${failed} failed` : '✓ prove:budget-money — all passed');

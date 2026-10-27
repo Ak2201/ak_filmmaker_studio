@@ -266,9 +266,19 @@ mem.set(CALC, JSON.stringify({ ci_1_days: '1', ci_1_rate: '250000' }));
 eq(DM.budgetStatus().short, '\u20b9 2.5 L', 'a lakh and over is still abbreviated');
 eq([M.fmtGlance(12634.9, 'USD'), M.fmtGlance(250000, 'USD')], ['$12,634.90', '$250k'], 'dollar glance: cents under 100k');
 eq([BCM.rupees(100.5), BCM.rupees(0.4), BCM.rupees(100000.99), BCM.rupees(-2.25), BCM.rupees(1234)], ['\u20b9 100.50', '\u20b9 0.40', '\u20b9 1,00,000.99', '\u2212\u20b9 2.25', '\u20b9 1,234'], 'paise show only when there are paise');
-eq([C.categoriesFor('USD').find((x) => x.id === 'batta').label, C.methodsFor('USD').find((x) => x.id === 'upi').label, C.deptsFor('USD').find((x) => x.id === 'food').label], ['Per diem', 'Mobile pay', 'Food & per diem'], 'a dollar budget drops Batta, UPI and Food & batta');
+eq([C.categoriesFor('USD').find((x) => x.id === 'batta').label, C.methodsFor('USD').find((x) => x.id === 'upi').label, C.deptsFor('USD').find((x) => x.id === 'food').label], ['Per diem', 'Bank/card', 'Food & per diem'], 'a dollar budget drops Batta, UPI and Food & batta');
 eq([C.categoriesFor('INR')[0].label, C.methodsFor('INR')[1].label, C.deptsFor('INR').find((x) => x.id === 'food').label], ['Batta', 'UPI', 'Food & batta'], 'a rupee budget keeps them');
 eq(C.categoriesFor('USD').map((x) => x.id), C.CATEGORIES.map((x) => x.id), 'ids (storage) never change');
+const RC = await import('../src/lib/region-core.js');
+BCM.setAbroadProbe(() => !RC.projectPrefs(Store.currentProject(), 'IN').showIndiaContent);
+/* Region rule: a film made outside India reads the India-free labels and
+   hides GST/TDS/FEFSI material, whatever currency its budget is in. */
+reset(); film('INT'); mem.set(CALC, JSON.stringify({ ci_currency: 'INR', ci_1_days: '1', ci_1_rate: '500' })); BCM.costContext();
+eq([BCM.filmAbroad(), BCM.labelCurrency(), BCM.plainTax(), BCM.shownCurrency()], [true, 'USD', true, 'INR'], 'INT film: abroad, plain labels, currency itself unchanged');
+eq(C.methodsFor(BCM.labelCurrency()).find((x) => x.id === 'upi').label, 'Bank/card', 'INT film: upi reads Bank/card');
+film('IN'); BCM.costContext();
+eq([BCM.filmAbroad(), BCM.labelCurrency(), BCM.plainTax()], [false, 'INR', false], 'IN film: exactly as before');
+eq(C.categoriesFor(BCM.labelCurrency())[0].label, 'Batta', 'IN film: Batta');
 reset();
 
 console.log(`test:budget-usd — ${pass} passed, ${fail} failed`);

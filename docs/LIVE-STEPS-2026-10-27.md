@@ -238,3 +238,59 @@ day. To end it early, switch it off in the console. Do not touch
 
 Through `docs/BRANCHING.md`, after steps 3 to 7 and with no DRAFT left in a
 legal page.
+
+## §62 auto-renew (Razorpay Subscriptions)
+
+Do these after steps 1 to 10. Both modes stay **one-time** until you switch
+them, and §62 changes nothing while they are one-time. The full runbook is
+`docs/BILLING.md` §26; the two-account checks are `docs/SECURITY-RLS.md` §62.
+
+1. **Razorpay.** Ask Razorpay to enable **Subscriptions**, with UPI Autopay
+   and card e-mandate, on the live account. It needs KYC and can take days.
+   Then add the `subscription.*` events to the existing webhook (BILLING §26
+   names them).
+2. **Run §62, with the checksum** (paste rule, step 1):
+
+   ```bash
+   shasum -a 256 supabase/schema/schema-62-autorenew.sql
+   # e37b186c48417310223aaa6e00f962b6f9dbd707849b9f05dbdb4bbabb5e29f2
+   ```
+
+   Then read it back:
+
+   ```sql
+   select pass_mode, plan_mode from public.billing_settings;          -- once, once
+   select public.trial_offer() -> 'pass' ->> 'mode', public.trial_offer() ->> 'plan_mode';   -- once, once
+   select relrowsecurity from pg_class where relname in ('subscriptions', 'rzp_plans');       -- t, t
+   select public.pass_sold();                                          -- the same as before
+   ```
+
+   If §61 is re-run later, re-run §62 after it, because §62 restates §61's
+   `pass_sold`, `pass_block`, `trial_offer`, `price_notice` and
+   `billing_status`.
+3. **Deploy the functions** with the CLI: the two new ones and all four
+   existing ones (`_shared/razorpay.js` and `_shared/mail.js` changed):
+
+   ```bash
+   npx --yes supabase@latest functions deploy rzp-subscribe rzp-cancel rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz
+   ```
+
+   Probe them: `rzp-subscribe` and `rzp-cancel` answer 401 without a JWT. A
+   404 means the function is not deployed.
+4. **Resend must be set up** (step 5) before any auto-pay charge.
+5. **TEST mode first.** Run `docs/SECURITY-RLS.md` §62 checks 2 to 10 with
+   the Razorpay test key: subscribe, renew, cancel, and one refunded charge.
+6. **Switch the modes** in the console (owner or finance). Until the console
+   switch ships, run this as the owner in the SQL editor while signed in:
+
+   ```sql
+   select public.admin_set_billing_modes('renew', null);   -- the pass only
+   select public.admin_set_billing_modes(null, 'renew');   -- the yearly plans
+   select public.admin_set_billing_modes('once', 'once');  -- back to one-time; running subscriptions keep renewing
+   ```
+
+   Read back with anon `trial_offer()`: `pass.mode` and `plan_mode` are what
+   the pages word the offer from.
+7. **Legal.** The terms, refund and privacy pages need the auto-renew DRAFT
+   passages approved before either mode is switched on for real buyers. Those
+   passages are in another lane.

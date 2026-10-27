@@ -39,6 +39,12 @@
    from THOSE dates — nothing here knows how long a pass is — and its
    refund says no trial follows (§61 keeps the §34 refund trial off a
    pass). A row without a period is a year, as every row before §61 was.
+
+   AUTO-RENEW (schema §62). A one-time purchase keeps its "nothing renews"
+   receipt above, word for word. A subscription CHARGE gets
+   chargeReceiptMail ("Renews on <date> at <amount>. Cancel anytime in
+   Settings → Plan."), a cancel gets cancelMail, and renewalReminderMail
+   is the builder for a pre-charge reminder.
    ============================================================ */
 import { BRAND } from './brand.js';
 import { fmtMinor } from './razorpay.js';
@@ -147,6 +153,89 @@ export function refundMail(r) {
   ]);
 }
 
+/* ---- auto-renew (schema §62) --------------------------------------------
+   A subscription CHARGE has its own invoice and its own receipt, claimed by
+   the Razorpay payment id (claim_charge_receipt_email) because a charge has
+   no order. The row is the invoice plus renews / renews_at / renew_minor /
+   renew_currency / every_days / sub_period. The receipt never says "nothing
+   renews" for a charge: it says when the next one is, at what amount, and
+   where to cancel — or, once a cancel was asked for, that nothing more will
+   be charged. */
+const everyLabel = (period, days) => {
+  if (period === 'year') return 'every year';
+  const d = Math.round(Number(days));
+  return d === 1 ? 'every day' : d > 1 ? `every ${d} days` : 'every period';
+};
+
+/** The receipt for one subscription charge. */
+export function chargeReceiptMail(inv) {
+  if (!inv) return null;
+  const link = site('purchase');
+  const until = inv.valid_until || inv.ends_at;
+  const pass = (inv.sub_period || inv.period) === 'pass';
+  const label = pass ? passLabel(inv.valid_from, until) : `1 year${until ? ' (valid until ' + dateIST(until) + ')' : ''}`;
+  const next = inv.renews && inv.renews_at && dateIST(inv.renews_at)
+    ? `Renews on ${dateIST(inv.renews_at)} at ${fmtMinor(inv.renew_minor ?? inv.amount_paise, inv.renew_currency || inv.currency || 'INR')}. Cancel anytime in Settings → Plan.`
+    : `Auto-pay is off. Nothing more will be charged${until && dateIST(until) ? `, and your access runs until ${dateIST(until)}` : ''}.`;
+  const what = pass ? `${inv.plan_name} ${label.replace(/ \(.*$/, '')}` : `${inv.plan_name} plan`;
+  return message(inv.buyer_email, `Payment received: ${what}, auto-pay (${inv.number})`, [
+    ['Invoice', inv.number],
+    ['Plan', `${inv.plan_name}, ${label}.`],
+    ['Amount paid', fmtMinor(inv.amount_paise, inv.currency || 'INR')],
+    ['Auto-pay', next],
+    ['Date', dateIST(inv.paid_at || inv.issued_at)],
+    ['Razorpay payment ID', inv.razorpay_payment_id]
+  ], [
+    `Hi ${inv.buyer_name || 'there'},`,
+    `Thank you. Your auto-pay charge for ${what} went through and the time is on your account now.`,
+    next,
+    { html: `You can download the invoice as a PDF from <a href="${link}">your plan page</a> at any time.`,
+      text: `You can download the invoice as a PDF from your plan page at any time: ${link}` }
+  ]);
+}
+
+/** The confirmation that auto-pay was cancelled. `c` is what
+ *  request_cancel_subscription / admin_cancel_subscription return
+ *  (email, product, period, amount_minor, currency, current_end) plus
+ *  optional plan_name, days and buyer_name. */
+export function cancelMail(c) {
+  if (!c) return null;
+  const until = c.current_end && dateIST(c.current_end);
+  const what = c.period === 'pass' ? `${c.plan_name || 'Pro'} pass` : `${c.plan_name || 'yearly'} plan`;
+  return message(c.email, 'Auto-pay cancelled', [
+    ['Plan', what],
+    ['Was', c.amount_minor ? `${fmtMinor(c.amount_minor, c.currency || 'INR')} ${everyLabel(c.period, c.days)}` : ''],
+    ['Access until', until || '']
+  ], [
+    `Hi ${c.buyer_name || 'there'},`,
+    `Your auto-pay for the ${what} is cancelled. Nothing more will be charged.`,
+    until ? `You keep everything you paid for: your access runs until ${until}. After that your work stays where it is, and you can buy again from your plan page whenever you like.`
+          : 'You keep everything you paid for. Your work stays where it is, and you can buy again from your plan page whenever you like.',
+    'Cancelling does not refund a charge already made; the refund policy below still applies to every charge.'
+  ]);
+}
+
+/** A reminder before the next charge (the app's own, beside the pre-debit
+ *  notice Razorpay sends under the RBI e-mandate rules). `r`: email,
+ *  buyer_name, plan_name, period, days, amount_minor, currency,
+ *  next_charge_at. Not sent by anything yet: a scheduled sender is an
+ *  owner option (docs/BILLING.md §26). */
+export function renewalReminderMail(r) {
+  if (!r || !r.next_charge_at || !dateIST(r.next_charge_at)) return null;
+  const what = r.period === 'pass' ? `${r.plan_name || 'Pro'} pass` : `${r.plan_name || 'yearly'} plan`;
+  const amount = fmtMinor(r.amount_minor, r.currency || 'INR');
+  return message(r.email, `Your ${what} renews on ${dateIST(r.next_charge_at)}`, [
+    ['Plan', what],
+    ['Next charge', `${amount} on ${dateIST(r.next_charge_at)}`],
+    ['Repeats', everyLabel(r.period, r.days)]
+  ], [
+    `Hi ${r.buyer_name || 'there'},`,
+    `Your auto-pay will charge ${amount} for the ${what} on ${dateIST(r.next_charge_at)}.`,
+    { html: `To stop it, cancel in Settings → Plan before then (<a href="${site('settings')}">${site('settings')}</a>). You keep the time already paid for.`,
+      text: `To stop it, cancel in Settings → Plan before then (${site('settings')}). You keep the time already paid for.` }
+  ]);
+}
+
 /** POST one message to Resend. Never throws. */
 export async function sendMail(msg, { apiKey, from, idempotencyKey, fetch: f = globalThis.fetch } = {}) {
   if (!msg) return { ok: false, reason: 'no-recipient' };
@@ -202,6 +291,37 @@ export async function sendRefundOnce(svc, rzpRefundId, status, env = {}, opts = 
     const out = await sendMail(refundMail(r), { apiKey, from, idempotencyKey: `refund-${r.refund_id}-${r.status}`, ...opts });
     if (!out.ok) await svc.rpc('release_refund_email', { p_refund: r.refund_id });
     return out;
+  } catch (e) {
+    return { ok: false, reason: 'error', detail: String(e && e.message || e) };
+  }
+}
+
+/** §62: the receipt for one subscription charge, by Razorpay payment id.
+ *  Claimed first, released on a failed send, like sendReceiptOnce. */
+export async function sendChargeReceiptOnce(svc, rzpPaymentId, env = {}, opts = {}) {
+  const { apiKey, from } = cfg(env);
+  if (!apiKey || !from) return { ok: false, reason: 'not-configured' };
+  try {
+    const { data, error } = await svc.rpc('claim_charge_receipt_email', { p_rzp_payment_id: rzpPaymentId });
+    if (error) return { ok: false, reason: 'claim', detail: error.message };
+    const inv = one(data);
+    if (!inv || !inv.id) return { ok: true, skipped: 'already-sent-or-no-invoice' };
+    const out = await sendMail(chargeReceiptMail(inv), { apiKey, from, idempotencyKey: 'receipt-' + inv.id, ...opts });
+    if (!out.ok) await svc.rpc('release_receipt_email', { p_invoice: inv.id });
+    return out;
+  } catch (e) {
+    return { ok: false, reason: 'error', detail: String(e && e.message || e) };
+  }
+}
+
+/** §62: the cancellation confirmation. There is no claim row: rzp-cancel
+ *  sends it only for the request that set the flag (already = false), and
+ *  Resend's Idempotency-Key covers a retry of that request. Never throws. */
+export async function sendCancelMail(c, env = {}, opts = {}) {
+  const { apiKey, from } = cfg(env);
+  if (!apiKey || !from) return { ok: false, reason: 'not-configured' };
+  try {
+    return await sendMail(cancelMail(c), { apiKey, from, idempotencyKey: 'cancel-' + (c && c.subscription_row_id), ...opts });
   } catch (e) {
     return { ok: false, reason: 'error', detail: String(e && e.message || e) };
   }

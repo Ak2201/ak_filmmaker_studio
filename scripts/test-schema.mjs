@@ -504,6 +504,36 @@ runChecks('week-pass.sql');
 }
 /* --- end §61 --- */
 
+/* --- §62 (auto-renew: Razorpay Subscriptions) --- on §61 (it restates
+   §61's pass_sold, pass_block, unapplied_sentence, trial_offer,
+   price_notice(text) and billing_status), loaded twice: it creates tables
+   and drops and re-adds a CHECK. --- */
+for (const f of ['supabase/schema/schema-62-autorenew.sql', 'supabase/schema/schema-62-autorenew.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §62 loads (and re-runs cleanly)');
+runChecks('autorenew.sql');
+{
+  /* Each restated function is §61's body plus the lines marked §62: in
+     'once' mode nothing else may differ. */
+  const body = (file, fn, end) => {
+    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const from = src.indexOf(`create or replace function public.${fn}(`);
+    const to = src.indexOf(end, from);
+    if (from < 0 || to < 0) fail(`§62: ${fn} not found in ${file}`);
+    return src.slice(from, to).split('\n').filter((l) => !/§62/.test(l)).join('\n')
+      // a marked line that ADDED a key to a call moved the closing paren onto it
+      .replace(/public\.pass_block\(\),\n/, 'public.pass_block())\n');
+  };
+  const pairs = [['billing_status', '$fn$;'], ['trial_offer', '$$;'], ['price_notice', '$$;']];
+  for (const [fn, end] of pairs) {
+    total++;
+    if (body('supabase/schema/schema-62-autorenew.sql', fn, end) === body('supabase/schema/schema-61-week-pass.sql', fn, end)) console.log(`  ✓ 62. ${fn}() is §61's body plus the lines marked §62`);
+    else { failed++; fail(`§62: ${fn}() differs from §61 beyond the lines marked §62`); }
+  }
+}
+/* --- end §62 --- */
 /* --- the clean-slate purge (supabase/schema/patches/purge-test-data-2026-10-27.sql)
    --- LAST, after every section (and §62's when it lands above this block):
    it COMMITS and leaves one sign-in, so nothing may run after it. It runs

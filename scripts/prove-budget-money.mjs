@@ -123,12 +123,12 @@ const r2 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 page = await film(r2, null, { ci_1_item: 'Other (custom)', ci_1_custom: 'Camera', ci_1_days: '10', ci_1_rate: '4500' });
 await open(page, 'budget.html#estimate');
 const kpi = () => page.evaluate(() => (document.getElementById('bdKpis') || {}).textContent || '');
-ok(/45k/.test(await kpi()), '8a the header shows the priced estimate first');
+ok(/45,000/.test(await kpi()), '8a the header shows the priced estimate first');
 await page.click('[data-action="reset"]');
 await page.click('.dlg .modal-actions .k-btn--danger');
 await page.waitForTimeout(250);
 const afterReset = await page.evaluate(() => ({ kpi: document.getElementById('bdKpis').textContent, petty: (document.getElementById('bdPetty') || {}).textContent || '' }));
-ok(!/45k/.test(afterReset.kpi) && /Nothing priced yet/.test(afterReset.kpi), '8  Reset refreshes the header figures at once (and an empty budget claims nothing)', afterReset.kpi);
+ok(!/45,000/.test(afterReset.kpi) && /Nothing priced yet/.test(afterReset.kpi), '8  Reset refreshes the header figures at once (and an empty budget claims nothing)', afterReset.kpi);
 
 // 9  a negative figure is flagged and counts as nothing
 await page.fill('#calcRows [data-key$="_days"]', '2');
@@ -165,6 +165,64 @@ await open(page, 'budget.html#expenses');
 const usdIntro = await page.evaluate(() => document.getElementById('expenses').textContent);
 ok(!/Every rupee/.test(usdIntro) && /Every dollar that leaves a pocket/.test(usdIntro), '4b a dollar budget\'s Petty cash does not say "Every rupee"');
 await desk.close();
+
+/* ---- QA round 3 (fix-money r3) ---- */
+const r3 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+page = await film(r3, 'INT', { ci_currency: 'USD', ci_1_item: 'Other (custom)', ci_1_custom: 'Camera', ci_1_days: '1', ci_1_rate: '1200' });
+await page.evaluate(() => localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes: [{ id: 's1', number: '1', heading: 'INT ROOM - DAY' }] })));
+const toasts = () => page.evaluate(() => [...document.querySelectorAll('[role="alert"], .toast, .k-toast')].map((e) => e.textContent).join(' '));
+await open(page, 'budget.html#export');
+const exp = await page.evaluate(() => document.getElementById('export').textContent);
+ok(/1 line in 1 account,/.test(exp) && !/1 accounts/.test(exp), '14 the export card says "1 account"', exp.slice(0, 200));
+ok(!/GSTIN|TDS/.test(exp), '15 a dollar budget\'s export copy is not India-only', exp.slice(0, 300));
+await open(page, 'budget.html#schedule');
+const sched = await page.evaluate(() => document.getElementById('schedule').textContent);
+ok(/The scene has no shoot day yet/.test(sched) && !/None of the 1 scene/.test(sched), '16 one scene with no day reads grammatically', sched.slice(0, 300));
+await open(page, 'budget.html#expenses');
+ok(!(await page.$('[name="gstin"]')), '15b a dollar budget has no GSTIN field');
+for (const a of ['3.75', '0.40']) { await page.fill('[name="amount"]', a); await page.click('.cx-submit'); await page.waitForTimeout(150); }
+const log = await page.evaluate(() => document.getElementById('expenses').textContent);
+ok(/\$3\.75/.test(log) && /\$0\.40/.test(log) && /\$4\.15/.test(log), '17 dollar petty cash keeps its cents', log.slice(0, 400));
+await page.selectOption('.cx-floats [name="to"]', { index: 0 }).catch(() => {});
+await page.fill('.cx-floats [name="toName"]', 'Ravi');
+await page.fill('.cx-floats [name="amount"]', 'abc');
+await page.click('.cx-floats button[type="submit"]');
+await page.waitForTimeout(300);
+const ft = await toasts();
+ok(/not an amount above zero/.test(ft) && !/needs a person and an amount/.test(ft), '18 a typed-but-unusable float amount says so', ft);
+await page.fill('.cx-floats [name="amount"]', '100');
+await page.click('.cx-floats button[type="submit"]');
+await page.waitForTimeout(300);
+await page.fill('[name="amount"] >> nth=0', '40');
+await page.click('.cx-submit');
+await page.waitForTimeout(300);
+const strip = await page.evaluate(() => document.getElementById('expenses').textContent);
+ok(/spent from floats/.test(strip) && /paid by the office/.test(strip), '19 the petty cash strip splits float spending from office-paid bills', strip.slice(0, 300));
+const hdr = await page.evaluate(() => document.getElementById('bdKpis').textContent);
+ok(!/Nothing to measure against/.test(hdr) || !/Spent beyond the budget/.test(hdr), '20 the header does not say both "nothing to measure" and "over budget"', hdr);
+await r3.close();
+const r3c = await browser.newContext({ viewport: { width: 390, height: 844 } });
+page = await film(r3c, 'INT', { ci_currency: 'USD' });
+await open(page, 'budget.html#expenses');
+await page.fill('[name="amount"]', '4000');
+await page.click('.cx-submit');
+await page.waitForTimeout(300);
+const hdr0 = await page.evaluate(() => document.getElementById('bdKpis').textContent);
+ok(/No budget set/.test(hdr0) && !/Estimate \+ \d+% contingency/.test(hdr0) && /Spent with no budget set/.test(hdr0), '20b spend with no estimate reads "No budget set" throughout', hdr0);
+await r3c.close();
+
+const r3b = await browser.newContext({ viewport: { width: 390, height: 844 } });
+page = await film(r3b, null, { ci_1_item: 'Other (custom)', ci_1_custom: 'Camera', ci_1_days: '1', ci_1_rate: '1200' });
+await open(page, 'budget.html');
+ok(/₹ 1,200/.test(await kpi()) && !/₹ 1k/.test(await kpi()), '21 a small budget shows its exact figure in the header', await kpi());
+await open(page, 'budget.html#actuals');
+const rep = await page.evaluate(() => {
+  const w = document.querySelector('#actuals .cx-scroll');
+  const th = [...w.querySelectorAll('thead th')].find((t) => t.textContent === 'Estimate');
+  return { tab: w.getAttribute('tabindex'), role: w.getAttribute('role'), left: th.getBoundingClientRect().left };
+});
+ok(rep.tab === '0' && rep.role === 'region' && rep.left < 340, '22 at 390px the cost report scrolls by keyboard and Estimate peeks into view', rep);
+await r3b.close();
 
 ok(errors.length === 0, '7  no page errors', errors);
 await browser.close();

@@ -33,11 +33,15 @@ export const rs = (n) => (shown === 'USD'
     published bata is a rupee figure and must never wear a dollar sign. */
 export const rupees = (n) => (n < 0 ? '−₹ ' : '₹ ') + INR.format(Math.round(Math.abs(n || 0)));
 /** The glance-sized magnitude (fmtINR for rupees). */
-export const glance = (n) => (shown === 'USD' ? fmtMoney(n, 'USD', true) : fmtINR(n));
+/* Under 1 lakh (or $100k) the exact figure: '₹ 1,200' read '₹ 1k' beside
+   a Top sheet saying ₹ 1,200, a 500-rupee lie in a headline card. */
+export const glance = (n) => (Math.abs(n || 0) < 100000 ? fmtMoney(n, shown)
+  : shown === 'USD' ? fmtMoney(n, 'USD', true) : fmtINR(n));
 /** Parse a typed figure in the budget's currency (parseNum for rupees). */
 export const amountOf = (s) => parseAmount(s, shown);
 /** A percentage, or a dash for none. */
-export const pct = (n) => (n === null || n === undefined ? '—' : n + '%');
+export const pct = (n, spent) => (n === null || n === undefined ? '—'
+  : n === 0 && spent > 0 ? '<1%' : n + '%');
 /** Today as the wall-clock 'YYYY-MM-DD' a date field holds. */
 export const today = () => {
   const d = new Date();

@@ -243,5 +243,21 @@ eq(B.rowEquation(2.5, 25000, (n) => M.fmtMoney(n, 'INR')), '2.5 d × ₹ 25,000'
 eq(B.rowEquation(3, 1500, (n) => M.fmtMoney(n, 'USD')), '3 d × $1,500', 'a whole day reads as before');
 eq(B.rowEquation(0, 1500, String), '', 'no days, no equation');
 
+// fix-money r3: cents survive, small totals are exact, a tiny spend is not 0%, negatives are not money.
+eq([M.fmtMoney(12.99, 'USD'), M.fmtMoney(0.5, 'USD'), M.fmtMoney(16.9, 'USD'), M.fmtMoney(4, 'USD'), M.fmtMoney(-3.75, 'USD')], ['$12.99', '$0.50', '$16.90', '$4', '\u2212$3.75'], 'a dollar bill keeps its cents; a whole figure prints as before');
+eq(M.fmtMoney(1250.5, 'INR'), '\u20b9 1,251', 'a rupee figure is still whole rupees');
+reset(); film('INT'); BCM.costContext();
+eq([BCM.glance(1200), BCM.glance(45000), BCM.glance(250000)], ['$1,200', '$45,000', '$250k'], 'the header shows a small dollar total exactly');
+reset(); film('IN'); BCM.costContext();
+eq([BCM.glance(1200), BCM.glance(1499), BCM.glance(250000)], ['\u20b9 1,200', '\u20b9 1,499', '\u20b9 2.5 L'], 'the header shows a small rupee total exactly, lakhs as before');
+eq([BCM.pct(0, 5000), BCM.pct(0, 0), BCM.pct(12, 5), BCM.pct(null)], ['<1%', '0%', '12%', '\u2014'], 'a non-zero spend that rounds to 0 reads <1%');
+reset(); film('IN');
+mem.set(CALC, JSON.stringify({ ci_1_days: '10', ci_1_rate: '1000', ci_2_days: '-5', ci_2_rate: '-1000' }));
+const H = await import('../src/lib/hub-status.js');
+eq(H.computeLibraryStatus().total, 10000, 'the hub counts a negative-times-negative line as nothing');
+const DM = await import('../src/lib/dashboard-model.js');
+eq(DM.budgetStatus().total, 10000, 'the dashboard counts it as nothing too');
+reset();
+
 console.log(`test:budget-usd — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -80,7 +80,9 @@ export function budgetStatus() {
   }
   let lines = 0, total = 0;
   for (const row of Object.values(rows)) {
-    const sub = parseAmount(row.days, currency) * parseAmount(row.rate, currency);
+    // A negative days or rate is not a price: costs.estimateLines() counts
+    // it as nothing, and two negatives must not multiply into money.
+    const sub = Math.max(0, parseAmount(row.days, currency)) * Math.max(0, parseAmount(row.rate, currency));
     if (sub > 0) { lines++; total += sub; }
   }
   return {

@@ -111,7 +111,7 @@ function card(spec, attrs, title, children, meta) {
   return el;
 }
 /** A kit table inside its scrolling wrapper. */
-const scroll = (table) => h('div.cx-scroll.k-table-wrap', {}, [table]);
+const scroll = (table) => h('div.cx-scroll.k-table-wrap', { tabindex: '0', role: 'region', 'aria-label': (table.querySelector('caption') || {}).textContent + ' (scrolls sideways)' }, [table]);
 const numTd = (text, extra) => h('td.num.k-num.k-mono', Object.assign({ text }, extra || {}));
 const numTh = (text) => h('th.num.k-num', { scope: 'col', text });
 /** The row delete: an icon-only ghost button with its spoken name. */
@@ -140,7 +140,8 @@ function renderExpenses(ctx) {
   out.push(intro('Petty cash', (shownCurrency() === 'USD' ? 'Every dollar' : 'Every rupee') + ' that leaves a pocket on the shoot, logged the day it goes. Issue floats to whoever carries cash, log what they spend, and the balance in each hand is worked out for you.'));
   out.push(stats([
     stat(rs(fb.issued), 'floats issued'),
-    stat(rs(fb.spent + fb.office), 'spent'),
+    stat(rs(fb.spent), 'spent from floats'),
+    ...(fb.office ? [stat(rs(fb.office), 'paid by the office, no float')] : []),
     stat(rs(fb.inHand), 'cash in hand'),
     stat(rs(fb.owedBack), 'owed back to people'),
     stat(String(ctx.expenses.length), ctx.expenses.length === 1 ? 'entry' : 'entries')
@@ -162,13 +163,13 @@ function renderExpenses(ctx) {
     h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Paid with' }), chips('method', C.METHODS.slice(0, 3), sticky.method, 'x:method')]),
     field('Budget line', select({ name: 'line', 'data-fk': 'x:line' }, lineOptions(ctx), '')),
     h('details.cx-more', {}, [
-      h('summary', { text: 'Bill details — GST, vendor, receipt' }),
+      h('summary', { text: shownCurrency() === 'USD' ? 'Bill details — tax, vendor, receipt' : 'Bill details — GST, vendor, receipt' }),
       h('div.cx-quick-row', {}, [
-        field('GST in the bill', select({ name: 'gstPct', 'data-fk': 'x:gst' }, C.GST_RATES.map((r) => [String(r), r ? r + '%' : 'No GST']), '0')),
+        field(shownCurrency() === 'USD' ? 'Tax in the bill' : 'GST in the bill', select({ name: 'gstPct', 'data-fk': 'x:gst' }, C.GST_RATES.map((r) => [String(r), r ? r + '%' : 'No GST']), '0')),
         field('Vendor', h('input', { name: 'vendor', type: 'text', autocomplete: 'off', 'data-fk': 'x:vendor' }))
       ]),
       h('div.cx-quick-row', {}, [
-        field('Vendor GSTIN', h('input', { name: 'gstin', type: 'text', autocomplete: 'off', maxlength: '15', placeholder: '15 characters', 'data-fk': 'x:gstin' })),
+        shownCurrency() === 'USD' ? null : field('Vendor GSTIN', h('input', { name: 'gstin', type: 'text', autocomplete: 'off', maxlength: '15', placeholder: '15 characters', 'data-fk': 'x:gstin' })),
         field('Receipt link', h('input', { name: 'receipt', type: 'url', autocomplete: 'off', placeholder: 'https://… (a photo in your Drive)', 'data-fk': 'x:receipt' }))
       ]),
       field('Paid by someone not in contacts', h('input', { name: 'paidByName', type: 'text', autocomplete: 'off', placeholder: 'a name — used instead of the list above', 'data-fk': 'x:paidByName' })),
@@ -278,7 +279,7 @@ function renderActuals(ctx) {
     stat(rs(t.actual), 'actual, with GST'),
     stat(rs(t.actualNet), 'actual, without GST'),
     statCard({ label: t.variance < 0 ? 'over budget' : 'left', value: rs(Math.abs(t.variance)), class: t.variance < 0 ? 'cx-stat-over' : null }),
-    stat(pct(t.pctUsed), 'used')
+    stat(pct(t.pctUsed, t.actual), 'used')
   ]));
   if (!ctx.lines.length && !t.actual) {
     out.push(emptyNote('Nothing to report yet. Price some lines in the estimate, then log what you spend — this compares the two.', '#estimate', 'Go to the estimate'));
@@ -305,7 +306,7 @@ function renderActuals(ctx) {
     tb.append(h('tr.cx-dept-row', {}, [
       h('th', { scope: 'rowgroup', colspan: '2' }, [h('span.k-mono.cx-acct', { text: d.acct }), ' · ' + d.label]),
       numTd(rs(d.estimate)), numTd(rs(d.actual)), numTd(rs(d.actualNet)),
-      numTd(rs(d.variance), { class: d.over ? 'is-over' : null }), numTd(pct(d.pctUsed))
+      numTd(rs(d.variance), { class: d.over ? 'is-over' : null }), numTd(pct(d.pctUsed, d.actual))
     ]));
     for (const l of d.lines) {
       const used = l.pctUsed === null ? 100 : Math.min(100, l.pctUsed);
@@ -315,7 +316,7 @@ function renderActuals(ctx) {
           : frame(select({ 'data-cx-field': 'line-dept', 'data-id': l.id, 'data-fk': 'ld:' + l.id, 'aria-label': 'Department for ' + l.name }, deptOpts, l.dept))),
         numTd(rs(l.estimate)), numTd(rs(l.actual)), numTd(rs(l.actualNet)),
         numTd(rs(l.variance), { class: l.over ? 'is-over' : null }),
-        h('td.num.k-num.k-mono', {}, [pct(l.pctUsed), meter({ value: used, max: 100, show: false, tone: l.over ? 'danger' : null, class: 'cx-bar', attrs: { 'aria-hidden': 'true' } })])
+        h('td.num.k-num.k-mono', {}, [pct(l.pctUsed, l.actual), meter({ value: used, max: 100, show: false, tone: l.over ? 'danger' : null, class: 'cx-bar', attrs: { 'aria-hidden': 'true' } })])
       ]));
     }
     table.append(tb);
@@ -325,12 +326,15 @@ function renderActuals(ctx) {
     h('tr.cx-total', {}, [
       h('th', { scope: 'row', colspan: '2', text: 'Total' }),
       numTd(rs(t.estimateWithContingency)), numTd(rs(t.actual)), numTd(rs(t.actualNet)),
-      numTd(rs(t.variance), { class: t.variance < 0 ? 'is-over' : null }), numTd(pct(t.pctUsed))
+      numTd(rs(t.variance), { class: t.variance < 0 ? 'is-over' : null }), numTd(pct(t.pctUsed, t.actual))
     ])
   ]));
   out.push(scroll(table));
   out.push(h('p.cx-hint.cx-taxnote', {
-    text: 'GST paid on bills: ' + rs(t.gst) + '. TDS withheld on crew payments: ' + rs(t.tds)
+    text: shownCurrency() === 'USD'
+      ? 'Tax paid on bills: ' + rs(t.gst) + '. Withheld on crew payments: ' + rs(t.tds)
+        + ' — counted in the actual because it is part of the fee. An expense is logged as the bill total, tax included; the tax share is worked out from its rate.'
+      : 'GST paid on bills: ' + rs(t.gst) + '. TDS withheld on crew payments: ' + rs(t.tds)
       + ' — owed to the income-tax department, and counted in the actual because it is part of the fee. '
       + 'An expense is logged as the bill total, tax included; the GST share is worked out from its rate.'
   }));
@@ -589,14 +593,15 @@ function renderWages(ctx) {
    7. EXPORT — CSV in the Movie Magic shape
    ============================================================ */
 function renderExport(ctx) {
+  const accounts = ctx.report.depts.filter((d) => d.lines.some((l) => !l.unbudgeted)).length;
   return [
     intro('Export', 'Spreadsheet files your accountant, line producer or budgeting software can open. The budget uses the account-number layout Movie Magic Budgeting reads — account, description, amount, units, rate, subtotal.'),
     h('div.cx-export', {}, [
-      card('div', {}, 'Budget', [h('p.cx-hint', { text: ctx.lines.length + ' line' + (ctx.lines.length === 1 ? '' : 's') + ' in ' + ctx.report.depts.filter((d) => d.lines.some((l) => !l.unbudgeted)).length + ' accounts, with contingency and the grand total.' }),
+      card('div', {}, 'Budget', [h('p.cx-hint', { text: ctx.lines.length + ' line' + (ctx.lines.length === 1 ? '' : 's') + ' in ' + accounts + ' account' + (accounts === 1 ? '' : 's') + ', with contingency and the grand total.' }),
         button({ label: 'Download budget CSV', icon: 'download', variant: 'primary', attrs: { 'data-cx': 'csv-budget', 'data-fk': 'ex:b' } })]),
-      card('div', {}, 'Actuals', [h('p.cx-hint', { text: 'Estimate, actual with and without GST, TDS, variance and % used, per line and department.' }),
+      card('div', {}, 'Actuals', [h('p.cx-hint', { text: shownCurrency() === 'USD' ? 'Estimate, actual with and without tax, variance and % used, per line and department.' : 'Estimate, actual with and without GST, TDS, variance and % used, per line and department.' }),
         button({ label: 'Download actuals CSV', icon: 'download', attrs: { 'data-cx': 'csv-actuals', 'data-fk': 'ex:a' } })]),
-      card('div', {}, 'Expense log', [h('p.cx-hint', { text: ctx.expenses.length + ' expense' + (ctx.expenses.length === 1 ? '' : 's') + ', with GST, vendor GSTIN and receipt links — for the books.' }),
+      card('div', {}, 'Expense log', [h('p.cx-hint', { text: ctx.expenses.length + ' expense' + (ctx.expenses.length === 1 ? '' : 's') + (shownCurrency() === 'USD' ? ', with tax, vendor and receipt links — for the books.' : ', with GST, vendor GSTIN and receipt links — for the books.') }),
         button({ label: 'Download expenses CSV', icon: 'download', attrs: { 'data-cx': 'csv-expenses', 'data-fk': 'ex:x' } })])
     ])
   ];
@@ -616,9 +621,9 @@ function renderKpis(ctx) {
   const scenes = ctx.days.reduce((n, d) => n + d.scenes.length, 0);
   return [
     statCard({ label: 'Stripboard', value: String(days), unit: days === 1 ? 'day' : 'days', note: days ? scenes + ' scenes scheduled' : 'Nothing scheduled yet', class: 'bd-kpi' }),
-    statCard({ label: 'Total budget', value: glance(k.approved), note: !k.approved && !k.actual ? 'Nothing priced yet' : k.contingency.pct ? 'Estimate + ' + k.contingency.pct + '% contingency' : 'Estimate, no contingency', class: 'bd-kpi' }),
-    statCard({ label: 'Actual spent', value: glance(k.actual), note: k.approved ? k.pctUsed + '% of the budget used' : 'Nothing to measure against', class: 'bd-kpi' }),
-    statCard({ label: k.over ? 'Over budget' : 'Remaining', value: glance(Math.abs(k.remaining)), note: k.over ? 'Spent beyond the budget' : !k.approved && !k.actual ? 'Nothing priced yet' : 'Left to spend', noteTone: k.over ? 'danger' : null, class: 'bd-kpi' + (k.over ? ' over' : '') }),
+    statCard({ label: 'Total budget', value: glance(k.approved), note: !k.approved ? (k.actual ? 'No budget set' : 'Nothing priced yet') : k.contingency.pct ? 'Estimate + ' + k.contingency.pct + '% contingency' : 'Estimate, no contingency', class: 'bd-kpi' }),
+    statCard({ label: 'Actual spent', value: glance(k.actual), note: k.approved ? pct(k.pctUsed, k.actual) + ' of the budget used' : 'Nothing to measure against', class: 'bd-kpi' }),
+    statCard({ label: k.over ? 'Over budget' : 'Remaining', value: glance(Math.abs(k.remaining)), note: k.over ? (k.approved ? 'Spent beyond the budget' : 'Spent with no budget set') : !k.approved && !k.actual ? 'Nothing priced yet' : 'Left to spend', noteTone: k.over ? 'danger' : null, class: 'bd-kpi' + (k.over ? ' over' : '') }),
     contingencyCard(k)
   ];
 }
@@ -818,12 +823,14 @@ const ACTIONS = {
   'csv-expenses': () => { const ctx = context(); download('expenses', C.expensesCSV(ctx.expenses, ctx.lineName, ctx.nameOf, shownCurrency())); }
 };
 
+const NOT_AMOUNT = 'That is not an amount above zero — "1850", "1,850" and "1.85k" all work.';
+
 const FORMS = {
   version(form) { impactForms.version(form, context()); },
   expense(form) {
     const f = new FormData(form);
     const amount = amountOf(f.get('amount'));
-    if (!(amount > 0)) { toast(String(f.get('amount') || '').trim() ? 'That is not an amount above zero — "1850", "1,850" and "1.85k" all work.' : 'Type the amount first — "1850", "1,850" and "1.85k" all work.', { type: 'error' }); form.querySelector('[name="amount"]').focus(); return; }
+    if (!(amount > 0)) { toast(String(f.get('amount') || '').trim() ? NOT_AMOUNT : 'Type the amount first — "1850", "1,850" and "1.85k" all work.', { type: 'error' }); form.querySelector('[name="amount"]').focus(); return; }
     const gstin = String(f.get('gstin') || '').trim();
     if (gstin && !C.gstinLooksValid(gstin)) toast('That GSTIN does not look like 15 characters of the usual shape — saved as typed; check it against the bill.', { type: 'error' });
     const paidBy = String(f.get('paidByName') || '').trim() || String(f.get('paidBy') || '');
@@ -842,14 +849,17 @@ const FORMS = {
     const f = new FormData(form);
     const to = String(f.get('toName') || '').trim() || String(f.get('to') || '');
     const amount = amountOf(f.get('amount'));
-    if (!to || !(amount > 0)) { toast('A float needs a person and an amount.', { type: 'error' }); return; }
+    if (!to || !(amount > 0)) {
+      toast(to && String(f.get('amount') || '').trim() ? NOT_AMOUNT : 'A float needs a person and an amount.', { type: 'error' });
+      return;
+    }
     C.addFloat({ to, amount, date: f.get('date'), method: f.get('method') });
     refresh();
   },
   payment(form) {
     const f = new FormData(form);
     const amount = amountOf(f.get('amount'));
-    if (!(amount > 0)) { toast('Type the amount paid.', { type: 'error' }); return; }
+    if (!(amount > 0)) { toast(String(f.get('amount') || '').trim() ? NOT_AMOUNT : 'Type the amount paid.', { type: 'error' }); return; }
     C.addPayment({ contactId: form.dataset.id, amount, date: f.get('date'), method: f.get('method'), note: f.get('note') });
     openCrew.add(form.dataset.id);
     refresh();

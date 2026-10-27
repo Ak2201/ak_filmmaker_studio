@@ -164,8 +164,9 @@ export function computeLibraryStatus() {
     // "bank". library.js was fixed years-of-commits ago and this copy
     // never was, so the hub's budget figure and the calculator's
     // could disagree about identical data. One parser now, in lib.
-    const days = parseAmount(r.days, currency);
-    const rate = parseAmount(r.rate, currency);
+    // Clamped as costs.estimateLines() clamps: a negative is not a price.
+    const days = Math.max(0, parseAmount(r.days, currency));
+    const rate = Math.max(0, parseAmount(r.rate, currency));
     const sub = days * rate;
     if (sub > 0) { count++; total += sub; }
   });

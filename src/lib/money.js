@@ -105,6 +105,8 @@ export const INR = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
     because adding them would require a rate nobody has. */
 export const USD = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
+const USD2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 /* ---- a budget in dollars (21 Oct 2026, BUDGET-USD) ---------------
    A film made outside India budgets in US dollars. The two calls below
    take the budget's currency and, for anything but 'USD', ARE parseNum
@@ -146,7 +148,10 @@ export function fmtMoney(n, currency, short) {
   // As fmtINR: the unit follows the ROUNDED figure ('$1M', not '$1000k').
   if (short && Math.round(v / 1000) >= 1000) return sign + '$' + Math.round(v / 10000) / 100 + 'M';
   if (short && Math.round(v) >= 1000) return sign + '$' + Math.round(v / 1000) + 'k';
-  return sign + '$' + USD.format(Math.round(v));
+  // Cents survive when there are cents: a $0.40 bill is not '$0'. A whole
+  // figure prints as it always did, so an estimate total is unchanged.
+  const cents = Math.round(v * 100) / 100;
+  return sign + '$' + (Number.isInteger(cents) ? USD.format(cents) : USD2.format(cents));
 }
 
 export default { parseNum, fmtINR, INR, USD };

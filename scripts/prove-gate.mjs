@@ -948,16 +948,26 @@ try {
         }
         if (pass && !sessionStorage.getItem('__passSeeded')) { sessionStorage.setItem('fms_sitegate_pass', '1'); sessionStorage.setItem('__passSeeded', '1'); }
         window.__t = { veil: null, content: null, boot: null };
+        /* A tab that has NOT passed must be seen veiled before the veil can
+           count as lifted: store.js's top-level await splits module
+           evaluation, so cloud.js (window.StudioCloud) can run a frame
+           before sitegate.js marks the page pending, and a tick in that
+           gap used to record a false "lifted at 0ms". Only a tab that had
+           already passed may lift without ever showing pending (optimistic
+           admission). */
+        window.__t.passedAtStart = !!sessionStorage.getItem('fms_sitegate_pass');
         const tick = () => {
           const de = document.documentElement; if (!de) return requestAnimationFrame(tick);
           const t = performance.now();
-          if (window.__t.veil == null && de.dataset.sitegate !== 'pending' && (window.__t.seen || window.StudioCloud)) window.__t.veil = t;
+          if (window.__t.veil == null && de.dataset.sitegate !== 'pending' && (window.__t.seen || (window.__t.passedAtStart && window.StudioCloud))) window.__t.veil = t;
           if (de.dataset.sitegate === 'pending') window.__t.seen = true;
-          const m = document.querySelector('main');
-          { const mm = document.querySelector('main'); if (window.StudioCloud && !/start|invite/.test(location.pathname) && de.dataset.sitegate == null && mm && (mm.textContent || '').trim().length > 20) { try { sessionStorage.setItem('__leak', '1'); } catch (e) { /* ignore */ } } }
+          /* index.html ships a static public summary (main.hub-static) for
+             crawlers; it is not the app's content, so it is skipped. */
+          const m = document.querySelector('main:not(.hub-static)');
+          { const mm = m; if (window.StudioCloud && !/start|invite/.test(location.pathname) && de.dataset.sitegate == null && mm && (mm.textContent || '').trim().length > 20) { try { sessionStorage.setItem('__leak', '1'); } catch (e) { /* ignore */ } } }
           if (window.__t.content == null && de.dataset.sitegate == null && m && (m.textContent || '').trim().length > 20) window.__t.content = t;
           if (window.__t.boot == null && window.StudioCloud && window.StudioCloud.isBooted && window.StudioCloud.isBooted()) window.__t.boot = t;
-          if (window.__t.content == null) requestAnimationFrame(tick);
+          if (window.__t.content == null || window.__t.veil == null) requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
       }, [tok ? `sb-${REF}-auth-token` : null, tok ? sessionFor(tok) : null, tok ? USERS[tok].id : null, seedPass]);

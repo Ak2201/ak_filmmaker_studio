@@ -150,7 +150,7 @@
     "smoke": "node scripts/smoke-production.mjs",
     "test:accept": "node scripts/test-accept.mjs",
     "test:site": "node scripts/test-site-hygiene.mjs",
-    "test:pass": "node scripts/test-pass-offer.mjs"
+    "test:pass": "node scripts/test-pass-offer.mjs && node scripts/test-pass-view.mjs"
   },
   "engines": {
     "node": ">=22.12"

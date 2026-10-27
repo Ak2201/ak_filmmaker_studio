@@ -38,3 +38,8 @@
   background: var(--paper-sunk); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
 .gr-preview:empty { display: none; }
 .gr-preview-line { margin: 0; color: var(--ink); font-size: var(--t-base); line-height: var(--lh-body); }
+
+/* The launch pass's read-only facts (growth-admin.js passBlock). */
+.gr-passfacts { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: var(--s1) var(--s3); font-size: var(--t-small); }
+.gr-passfacts dt { color: var(--ink-muted); }
+.gr-passfacts dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; }

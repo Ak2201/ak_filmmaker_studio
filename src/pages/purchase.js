@@ -54,9 +54,16 @@ import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion,
 import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
-  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
+  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus, passHeading
 } from '../lib/purchase-model.js';
 import { clearAttribRef } from '../lib/attribution.js';
+/* THE LAUNCH PASS (§61): a card above the yearly ones while it is on
+   sale and this account may buy it. Every figure is the server's
+   (trial_offer().pass through billing.js passOffer(); pass-view.js). */
+import { passPhase, passFacts, mayBuyPass, passCta, onPass } from '../lib/pass-view.js';
+import { stashPlan } from '../lib/start-model.js';
+import { bindPassTimers, passClock } from '../lib/plan-gate.js';
+import { wantedPlan } from '../lib/purchase-model.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -93,6 +100,55 @@ function applyLinkCode() {
 }
 
 let billing = { plans: null, st: null, error: '', missing: false, loading: false };
+
+/* ---- the launch pass ------------------------------------------------- */
+let passOfferNow = null;   // { raw, readAt } | null — null shows no pass at all
+const pass = { busy: false, msg: '', bad: false };
+function loadPass(fresh = false) {
+  Billing.passOffer({ fresh }).then((o) => {
+    const had = JSON.stringify(passOfferNow && passOfferNow.raw);
+    passOfferNow = o;
+    if (JSON.stringify(o && o.raw) !== had) render();
+  }).catch(() => {});
+}
+/** The pass card, or null: only while it is on sale ('open') and, signed
+ *  in, only for an account that may buy it (never had one, no yearly
+ *  plan). Signed out it begins with Google and holds the intent. */
+function passCard(st, signedIn) {
+  if (passPhase(passOfferNow) !== 'open') return null;
+  if (signedIn && !mayBuyPass(st)) return null;
+  const f = passFacts(passOfferNow);
+  if (!f) return null;
+  const wanted = wantedPlan(location.search) === 'pass';
+  const card = h('section#pass.pu-pass' + (wanted ? '.is-wanted' : ''), { 'aria-labelledby': 'puPassH' }, [
+    h('p.bd-eyebrow', { text: 'Launch offer' }),
+    h('h3.pu-h3', { id: 'puPassH', text: 'The whole studio for ' + f.price + ', ' + f.length + '.' }),
+    h('p.pu-pass-p', { text: 'Every stage, on your own films, for ' + f.length + '. Once per account, paid once in Indian rupees through Razorpay; nothing renews, and it is not taken off a yearly plan. When the ' + f.length + ' end, choose a yearly plan below, or don’t: your work stays.' }),
+    passClock(),
+    h('div.pu-actions', {}, [signedIn
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'OPENING…' : passCta(f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(f) })]),
+    pass.msg ? h('p.pl-status' + (pass.bad ? '.gt-error' : ''), { role: pass.bad ? 'alert' : 'status', text: pass.msg }) : null
+  ]);
+  return card;
+}
+async function buyPassHere(btn) {
+  if (pass.busy) return;
+  pass.busy = true; pass.msg = ''; pass.bad = false;
+  render();
+  try {
+    await Billing.buyPass({ accountId: billing.st && billing.st.account_id, onStatus: (t) => { pass.msg = t; render(); } });
+    pass.msg = 'Your pass is on. The whole studio is open.'; pass.bad = false;
+    refreshInvoices();
+  } catch (e) {
+    pass.msg = (e && e.message) || 'The pass could not be bought just now. Please try again.';
+    pass.bad = !(e && e.code === 'dismissed');
+    if (e && (e.hint === 'closed' || e.code === 'closed')) loadPass(true);
+  } finally {
+    pass.busy = false;
+    refreshBilling();
+  }
+}
 
 /* ---- the currency ---------------------------------------------------- */
 const wantCurrency = () => pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() });
@@ -222,6 +278,7 @@ function planSection() {
     /* The prices HERE, not one page away (start.html#pricing), which
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
+    { const pc = passCard(null, false); if (pc) sec.append(pc); }
     sec.append(currencyBlock());
     sec.append(listPriceBlock(currentView()));
     /* The action straight under the prices, before the refund terms: at
@@ -258,7 +315,10 @@ function planSection() {
     sec.dataset.purchases = 'off';
     return sec;
   }
-  const buyer = !!(st && st.plan !== 'free');
+  /* A running PASS is not a plan held (quote_for treats it as none, and a
+     yearly plan replaces it from the day it is bought). */
+  const passing = onPass(st) && !(st && st.lapsed);
+  const buyer = !!(st && st.plan !== 'free') && !passing;
   const sec = h('section#plan.pu-sec');
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
 
@@ -269,8 +329,12 @@ function planSection() {
   const strip = h('div.pu-current' + (buyer ? '.is-buyer' : ''));
   const ident = h('div.pu-current-id', {}, [
     h('p.bd-eyebrow', { text: buyer ? 'Your plan' : 'Plan' }),
-    h('h2.bd-h2', { text: planHeading(st) })
+    h('h2.bd-h2', { text: passing ? passHeading(st) : planHeading(st) })
   ]);
+  if (passing) {
+    ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Pass']),
+      h('span', { text: st.plan_until ? ' The whole studio until ' + new Date(st.plan_until).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '. A yearly plan bought now starts today and replaces the pass.' : '' })]));
+  }
   if (buyer && !(st && st.lapsed)) {
     ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Active']),
       h('span', { text: st && st.plan_until ? ' Valid until ' + new Date(st.plan_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '. Renew any time to add a year; move up and what is left of this year counts.' : ' Granted to you for good.' })]));
@@ -290,6 +354,7 @@ function planSection() {
     h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
     h('p.bd-sub', { text: deck() })
   ]));
+  { const pc = passCard(st, true); if (pc) sec.append(pc); }
   sec.append(currencyBlock());
   const view = currentView();
   const cards = planCards(billing.plans, st, {
@@ -342,11 +407,17 @@ function render() {
   for (const x of afterSections()) body.append(x);
   main.append(body);
   if (!commitMain(app, main, mountShell)) return;
+  if (passOfferNow && document.querySelector('[data-pass-timer]')) bindPassTimers(passOfferNow, { onEnd: render });
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[purchase] chrome', e); }
   applyLinkCode();
 }
 
 document.addEventListener('click', (e) => {
+  const bp = e.target.closest('[data-pu-action="buy-pass"]');
+  if (bp && !bp.disabled) { buyPassHere(bp); return; }
+  /* Before the Google hop: the landing page's per-tab plan stash, which
+     invite.html spends by leading with the pass (start-model.js). */
+  if (e.target.closest('[data-pu-action="pass-intent"]')) stashPlan('pass');
   const el = e.target.closest('[data-pu-action="retry"]');
   if (el) { el.disabled = true; el.textContent = 'LOADING…'; refreshBilling(); }
 });
@@ -386,3 +457,4 @@ Store.subscribe('cloud:booted', () => refreshBilling());
 render();
 refreshBilling();
 refreshShop();
+loadPass();

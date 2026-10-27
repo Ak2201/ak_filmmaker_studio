@@ -6,8 +6,8 @@
    pages.mjs writes them. This module adds only what cannot be static.
 
    WHAT IT MAY IMPORT. Stylesheets and the pure leaf libraries start.js
-   already uses (funnel.js, trial-time.js, invite-code.js in the `startlib`
-   chunk; start-auth.js, which reaches only auth-scope.js; visitor-region.js,
+   already uses (funnel.js, trial-time.js, invite-code.js, pass-offer.js
+   in the `startlib` chunk; start-auth.js, which reaches only auth-scope.js; visitor-region.js,
    which reaches only region-core.js). NOT store.js,
    chrome.js, cloud.js, gate.js, plan-gate.js, billing.js, dom.js or
    modal-focus.js: every one of those lives in (or drags in) the `studio`
@@ -21,6 +21,8 @@
      3. the Product mega-menu and the phone menu
      4. the step slot: one shared frame, the stills cross-fade
      5. the sign-up modal: Google through start-auth.js, the live offer line
+     5b. the LAUNCH PASS: the band, its countdown and every [data-pass-*]
+        slot, from trial_offer().pass through pass-offer.js
      6. an invite code in the address bar (held, stripped, announced) —
         the same hold start.js does, so a code link works from any page
      7. the demo loops, played while on screen
@@ -34,7 +36,8 @@ import '../styles/base.css';
 import '../styles/marketing.css';
 import { bumpEvent, bumpOnce, sourceBucket, purchasesRequired, trialOffer, addLead } from '../lib/funnel.js';
 import { captureAttribution, attribution } from '../lib/attribution.js';
-import { trialMode, trialCopy, validEmail, consentText } from '../lib/start-model.js';
+import { passCopy, validEmail, consentText } from '../lib/start-model.js';
+import * as PassOffer from '../lib/pass-offer.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { visitorRegion } from '../lib/visitor-region.js';
@@ -305,13 +308,9 @@ document.addEventListener('click', (e) => {
 });
 if (location.hash === '#signup' && !SIGNED_IN) openModal();
 
-/* The live offer line, read the way start.js reads it. The markup keeps
-   the trial wording (what a crawler and a failed request see). Signed in
-   wins over purchases-off; purchases off drops the promise of a trial,
-   because nothing starts one by itself and the studio is open; a trial
-   switched off removes the line; the trial's real length replaces "a
-   limited time". textContent only: nothing here builds markup from a
-   server string. */
+/* The live offer line. Signed in wins over purchases-off: the markup's
+   words are replaced by data-open-text / data-off-text. textContent
+   only: nothing here builds markup from a server string. */
 function swapWords(off) {
   for (const n of $$('[data-open-text], [data-off-text]')) {
     const t = SIGNED_IN && n.dataset.openText ? n.dataset.openText : (off ? n.dataset.offText : '');
@@ -322,29 +321,91 @@ function swapWords(off) {
 }
 swapWords(false);
 try {
-  purchasesRequired().then((req) => { if (req === false) { root.dataset.purchases = 'off'; swapWords(true); } }, () => {});
+  purchasesRequired().then((req) => { if (req === false) { root.dataset.purchases = 'off'; swapWords(true); launchPass.off(); } }, () => {});
 } catch (e) { /* never breaks the page */ }
-try {
-  trialOffer().then((t) => {
-    if (!t) return;
-    const offer = byId('mkOffer');
-    /* [data-trial-only] says nothing true once trials are off, whoever reads it */
-    if (t.trial_enabled === false) $$('[data-trial-only]').forEach((n) => { n.hidden = true; });
-    if (t.trial_enabled === false) {
-      if (!SIGNED_IN && root.dataset.purchases !== 'off') {
-        if (offer) offer.hidden = true;
-        /* every trial line and the answers that describe a trial (pricing.js also hides its own strip) */
-        $$('[data-trial]').forEach((n) => { n.hidden = true; });
-      }
+
+/* ---- 5b. THE LAUNCH PASS (27 Oct 2026) -------------------------------
+   The free trial is retired for the public. While the launch offer runs,
+   the pages sell a paid pass, and EVERY FIGURE IN IT IS THE SERVER'S:
+   trial_offer().pass = { open, amount_paise, days, plan, ends_at, cap,
+   left, now }, read through pass-offer.js (passState fails CLOSED: a
+   missing or malformed field is no offer at all) and said through
+   start-model.js passCopy(). The markup holds no price, no length, no
+   date and no count: every [data-pass-only] element is hidden there and
+   every slot is empty, so a crawler, verify and a reader with scripts off
+   see the [data-pass-off] fallback, which speaks of the yearly plans.
+
+   THE SCARCITY IS TRUE. The countdown runs to the server's deadline on
+   the server's clock (`now`, plus the local time elapsed since it was
+   read), so every visitor sees the same end and a visitor's own clock
+   cannot move it; nothing restarts per visit; at zero the band says the
+   offer has ended (the server now refuses it too, quote_pass 'closed'),
+   then hides itself and every [data-pass-only] thing; "N of CAP left" is
+   the real count of paid passes. No deadline: no timer. Purchases not
+   required: no pass (nothing is being sold).
+
+   ACCESSIBILITY. The ticking digits are aria-hidden; [data-pass-spoken]
+   carries the same deadline to the MINUTE and is rewritten only when the
+   minute changes, and it is not a live region, so a screen reader is
+   never interrupted every second. The one announcement is the "has
+   ended" line (role=status). No animation anywhere: it is text. */
+const launchPass = (function () {
+  const band = byId('mkPass');
+  let raw = null, readAt = 0, timer = 0, wasOpen = false, off = false, lastSpoken = '';
+  const setAll = (sel, text) => $$(sel).forEach((n) => { if (n.textContent !== text) n.textContent = text; });
+  function show(open) {
+    $$('[data-pass-only]').forEach((n) => { n.hidden = !open; });
+    $$('[data-pass-off]').forEach((n) => { n.hidden = open; });
+    if (open) root.dataset.pass = 'open'; else delete root.dataset.pass;
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = 0; } }
+  function ended() {
+    stop();
+    show(false);
+    if (!band || band.hidden) return;
+    /* the band says so once, then goes with everything else that named it */
+    $$('[data-pass-live], [data-pass-cta]', band).forEach((n) => { n.hidden = true; });
+    const e = $('[data-pass-ended]', band);
+    if (e) e.hidden = false;
+    setTimeout(() => { band.hidden = true; }, 8000);
+  }
+  function apply() {
+    const st = raw && !off ? PassOffer.passState(raw, Date.now(), readAt) : { state: 'none' };
+    const v = passCopy(st, PassOffer);
+    if (!v.open) {
+      if (wasOpen) ended(); else { stop(); show(false); }
+      wasOpen = false;
       return;
     }
-    /* "3 days" inside a sentence, "3-day free trial" where the markup's
-       own fallback is a label (start-model.js trialMode) */
-    $$('[data-trial-length]').forEach((n) => {
-      const c = trialCopy(t, trialMode(n.getAttribute('data-trial-length'), n.textContent));
-      if (c.text) n.textContent = c.text;
-    });
-  }, () => {});
+    wasOpen = true;
+    setAll('[data-pass-price]', v.price);
+    setAll('[data-pass-length]', v.length);
+    setAll('[data-pass-timer]', v.timer);
+    if (v.spoken !== lastSpoken) { lastSpoken = v.spoken; setAll('[data-pass-spoken]', v.spoken); }
+    $$('[data-pass-when]').forEach((n) => { n.hidden = !v.timer; });
+    setAll('[data-pass-left]', v.left);
+    $$('[data-pass-left-wrap]').forEach((n) => { n.hidden = !v.left; });
+    show(true);
+    if (band) band.hidden = false;
+    if (v.timer && !timer) timer = setInterval(apply, 1000);
+    if (!v.timer) stop();
+  }
+  return {
+    take(t) {
+      if (!t || typeof t !== 'object') return;
+      if (t.purchase_required === false) off = true;
+      raw = t.pass || null;
+      readAt = Date.now();
+      apply();
+    },
+    off() { off = true; apply(); }
+  };
+})();
+/* A signed-in visitor's pass button goes to the checkout page (the pass
+   card is there), not through the sign-up modal. */
+if (SIGNED_IN) for (const a of $$('[data-pass-cta]')) a.setAttribute('href', 'purchase.html');
+try {
+  trialOffer().then((t) => launchPass.take(t), () => {});
 } catch (e) { /* never breaks the page */ }
 
 /* ---- 6. an invite code in the address bar ---------------------------

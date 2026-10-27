@@ -162,11 +162,14 @@ const p1 = frame(`
   ${text(80, 985, esc(BRAND.tagline) + ' — all from one desk.', { size: 38, weight: 500, fill: BODY })}
   ${text(80, 1046, 'Story, screenplay, breakdown, schedule,', { size: 38, weight: 500, fill: BODY })}
   ${text(80, 1100, 'budget and call sheets, in your browser.', { size: 38, weight: 500, fill: BODY })}
-  ${/* NO TRIAL LENGTH and no "invite-only": the door is a free trial
-       (26 Oct 2026) whose length is a console setting, and a poster is
-       forever. "No card" and "nothing renews" are true of every plan
-       and every trial. */ ''}
-  ${text(80, 1192, 'Free trial · No card · Nothing renews by itself.', { size: 32, weight: 700, fill: MUTED })}
+  ${/* NO FREE TRIAL, NO PASS FIGURE and no "invite-only". The public free
+       trial is retired (27 Oct 2026); the launch pass that replaced it has a
+       price, a length and a deadline that are console settings and END, and
+       a poster is forever, so the poster names none of them (the caption
+       carries {PASS_PRICE} / {PASS_LENGTH} / {PASS_ENDS}, read that day).
+       "One payment for a year" and "nothing renews" are true of every plan,
+       before and after the founding-price rise. */ ''}
+  ${text(80, 1192, 'One payment for a year · Nothing renews by itself.', { size: 32, weight: 700, fill: MUTED })}
   ${footer()}`);
 
 /* ============ 2 — what it is ================================ */

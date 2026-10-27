@@ -14,7 +14,7 @@ prospects' names and addresses, which must never be committed here).
 ICP (Chennai, Coimbatore, Bengaluru film schools and production houses),
 IST quiet hours, 20 sends a day, approval required for every email.
 `~/harvey/skills/product_knowledge.md` is hand-written from this repo: what
-may be claimed, what may not (no free plan, no trial length,
+may be claimed, what may not (no free plan, no public free trial, no pass figure,
 no union rates, no social proof, no person's name). `harvey train` would
 overwrite it; don't run it.
 
@@ -25,8 +25,8 @@ a website, and Harvey's OSM search has no film category anyway. Use Serper
 like "film school Chennai", or DataForSEO listings.
 
 Still the owner's to do: a mailbox on a SECONDARY domain (`harvey gmail`),
-`harvey warmup` until READY, the postal address, the trial settings
-(`docs/MARKETING-PLAYBOOK.md` §6 step 1), then
+`harvey warmup` until READY, the postal address, the launch-pass settings
+(`docs/MARKETING-PLAYBOOK.md` §6 step 1) and the invite codes for classes, then
 `harvey discover --provider serper --estimate`, `harvey run`, and approve each
 draft in the dashboard (`harvey dashboard`).
 
@@ -42,15 +42,16 @@ not templates it sends verbatim.
 2. `[VIDEO LINK]` — record the 60-second script-to-call-sheet demo first.
 3. `[TRIAL LENGTH]` — never typed from here, and replace it BY HAND on
    approval: like the other square-bracket fields, Harvey's gate does not
-   catch it. A student who presses START
-   gets the length `trial_offer()` reads that day (`trial_hours`); a student
-   given an invite code gets that code's `code_trial_days` (console). Read
-   whichever you are offering on the day you send, and write it in words.
-   What the trial opens follows the playbook's §0 rule 6: "the whole
-   studio" only once `trial_offer()` reads `trial_scope` full (schema §60)
-   with the Pro trial plan; otherwise "the tools on two sample films". A
-   whole-studio trial still keeps one film in the cloud, no share links and
-   no collaborators, so do not promise a class can share or co-write on it.
+   catch it. There is no public free trial any more (27 Oct 2026): what a
+   school is offered is an INVITE CODE per class, and a code is worth its
+   own `code_trial_days` free trial (console), counted per student. Read it
+   on the day you send and write it in words. A student who comes in
+   without a code meets the launch pass instead (`{PASS_PRICE}` for
+   `{PASS_LENGTH}`, from `trial_offer()->'pass'`), never a free trial; tag
+   the link `?src=school-<college>` so the school row counts it. What a code
+   trial opens follows the console's trial scope and plan; a trial keeps
+   one film in the cloud, no share links and no collaborators, so do not
+   promise a class can share or co-write on it.
 4. The claims (a Chennai rate card to start from, 8 figures re-checked, CBFC checklists, work lives
    in the browser first) — confirm each is true of the build you point
    schools to. There is no union rate floor, so never say "union rates".

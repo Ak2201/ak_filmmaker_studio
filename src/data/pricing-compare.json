@@ -9,11 +9,11 @@
     "sub": "Three plans, and each one includes everything in the plan below it. A plan is one year of the studio for one payment in Indian rupees, from about {{fms:price.from.day}} a day. Nothing renews by itself and there is nothing to cancel. Nothing in a plan is sold as an add-on.",
     "subUsd": "Three plans, and each one includes everything in the plan below it. A plan is one year of the studio for one payment in US dollars, from about {{fms:price.from.day}} a day. Nothing renews by itself and there is nothing to cancel. Nothing in a plan is sold as an add-on."
   },
-  "trial": {
-    "h": "Not sure yet? Try the studio first",
-    "bodyHtml": "Try the studio with a <span data-trial-length=\"label\">free trial</span> before you pay anything. No card required. Then keep the plan that fits.",
-    "cta": "Start the free trial",
-    "ctaHtml": "Start the <span data-trial-length=\"label\">free trial</span>",
+  "pass": {
+    "h": "Not sure yet?",
+    "body": "{price} for {length}, the whole studio. Then choose a yearly plan, or don't.",
+    "label": "Launch offer",
+    "cta": "Try it for {price}",
     "ctaOpen": "Open the studio"
   },
   "plans": {
@@ -26,10 +26,10 @@
     "pick": "indie",
     "buy": "Buy {name}",
     "buySignIn": "Sign in",
-    "alt": "or start the free trial first",
+    "alt": "or try it first: {length} for {price}",
     "altOpen": "or open the studio",
-    "noteHtml": "Yearly list prices in Indian rupees, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first.",
-    "noteUsdHtml": "Yearly list prices in US dollars, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, which is why the free trial comes first.",
+    "noteHtml": "Yearly list prices in Indian rupees, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, so compare what each plan includes below before you buy.",
+    "noteUsdHtml": "Yearly list prices in US dollars, for one year from the day you buy, with nothing renewing by itself, paid through Razorpay and confirmed at checkout. The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, so compare what each plan includes below before you buy.",
     "currencyLabel": "Show prices in"
   },
   "edu": {
@@ -45,7 +45,7 @@
   "offer": {
     "h": "Founding prices",
     "line": "These are founding prices. They rise on a date the server holds, or once the founding places are taken, whichever comes first. A plan bought now is a full year at the price you paid.",
-    "fine": "The date and the count come from the server, so reloading this page never shows more time. A free trial does not hold a price: you pay the price on the day you buy, and nothing renews by itself."
+    "fine": "The date and the count come from the server, so reloading this page never shows more time. You pay the price of the day you buy, and nothing renews by itself."
   },
   "compare": {
     "h": "Compare every feature",

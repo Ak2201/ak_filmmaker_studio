@@ -1,10 +1,10 @@
 /* ============================================================
-   TEST — src/lib/attribution.js and start-model.js's trial copy, in Node
+   TEST — src/lib/attribution.js and start-model.js's launch-pass copy, in Node
    ------------------------------------------------------------
        node scripts/test-attribution.mjs   (or: npm run test:attribution)
    A link's ?ref= and source are held for the tab (sessionStorage, ONE
-   key, never localStorage); the trial's length is said from the server's
-   trial_offer(), never typed.
+   key, never localStorage); the launch pass is said from the server's
+   trial_offer().pass, never typed.
    ============================================================ */
 import fs from 'node:fs';
 
@@ -77,26 +77,36 @@ try { A.captureAttribution({ search: '?ref=CODE7' }); A.attribution(); A.capture
 ok(!threw, 'no storage and no location at all never throws');
 globalThis.sessionStorage = good;
 
-/* ---- the trial's length (start-model.js) ---------------------------- */
-const on = (m, extra = {}) => ({ trial_enabled: true, trial_minutes: m, ...extra });
-eq(S.trialCopy(on(4320), 'label'), { hide: false, text: '3-day free trial' }, '4320 minutes is a 3-day free trial');
-eq(S.trialCopy(on(4320), 'length'), { hide: false, text: '3 days' }, 'and "3 days" in a sentence');
-eq(S.trialCopy(on(30), 'label').text, '30-minute free trial', '30 minutes');
-eq(S.trialCopy(on(30)).text, '30 minutes', 'length is the default form');
-eq(S.trialCopy(on(1)).text, '1 minute', 'one minute is singular');
-eq(S.trialCopy(on(60), 'label').text, '1-hour free trial', 'an hour');
-eq(S.trialCopy(on(90)).text, '1.5 hours', 'an hour and a half');
-eq(S.trialCopy(on(1440)).text, '24 hours', 'one day reads as 24 hours, as trial-time.js says it');
-eq(S.trialCopy(on(10080), 'label').text, '7-day free trial', 'seven days');
-eq(S.trialCopy({ trial_enabled: true, trial_hours: 72 }, 'label').text, '3-day free trial', 'trial_hours when minutes are absent');
-eq(S.trialCopy(null, 'label'), { hide: false, text: '' }, 'no offer known: keep the fallback words');
-eq(S.trialCopy({ trial_enabled: false, trial_minutes: 4320 }, 'label'), { hide: true, text: '' }, 'trials off: hide, say nothing');
-eq(S.trialCopy(on(0), 'label'), { hide: false, text: '' }, 'no usable length: keep the fallback');
-eq(S.trialCopy(on('abc')), { hide: false, text: '' }, 'a garbage length: keep the fallback');
-eq(S.trialMode('label', 'a limited time'), 'label', 'an explicit mode wins');
-eq(S.trialMode('', 'free trial'), 'label', 'a fallback that is a label is a label');
-eq(S.trialMode('', 'a limited time'), 'length', 'a fallback inside a sentence is a length');
-eq(S.trialMode(null, ''), 'length', 'nothing at all is a length');
+/* ---- the launch pass, as the public pages say it (start-model.js) ----
+   The free trial is retired for the public (27 Oct 2026). Every figure
+   the pages print about the pass is the server's trial_offer().pass,
+   read through pass-offer.js; passCopy() says what each slot shows. */
+const PO = await import('../src/lib/pass-offer.js');
+const NOW = Date.parse('2026-10-27T12:00:00Z');
+const block = (extra = {}) => ({ open: true, amount_paise: 4900, days: 7, plan: 'pro', ends_at: '2026-10-31T18:29:00Z', cap: null, left: null, now: '2026-10-27T12:00:00Z', ...extra });
+const view = (raw, now = NOW, at = NOW) => S.passCopy(PO.passState(raw, now, at), PO);
+{
+  const v = view(block());
+  eq([v.open, v.price, v.length], [true, '₹49', '7 days'], 'an open pass: ₹49 for 7 days, from the server');
+  eq(v.timer, '4d 06:29:00', 'the countdown runs to the server deadline');
+  eq(v.spoken, '4 days 6 hours 29 minutes', 'and is spoken to the minute');
+  eq(v.left, '', 'no cap: no count');
+  eq(view(block(), NOW + 86400000 * 3, NOW + 86400000 * 3).timer, '4d 06:29:00', "a visitor's clock three days off reads the same deadline (server now + elapsed)");
+  eq(view(block(), NOW + 1000, NOW).timer, '4d 06:28:59', 'one second later it is one second less');
+  eq(view(block({ ends_at: null })).timer, '', 'no deadline: no timer');
+  eq(view(block({ ends_at: null })).open, true, 'and the pass still shows');
+  eq(view(block({ cap: 500, left: 312 })).left, '312 of 500 left', 'a cap: the real count left');
+  eq(view(block({ cap: 500, left: 0 })).open, false, 'a cap reached: nothing shown');
+  eq(view(block({ open: false })).open, false, 'closed: nothing shown');
+  eq(view(block({ now: '2026-10-31T18:29:00Z' })).open, false, 'at the deadline: nothing shown');
+  eq(view(block({ amount_paise: null })).open, false, 'a missing price: no offer (fails closed)');
+  eq(view(null), { open: false, price: '', length: '', timer: '', left: '', spoken: '' }, 'no pass block: nothing at all');
+  eq(view(block({ days: 1, amount_paise: 9950 })).price + ' / ' + view(block({ days: 1, amount_paise: 9950 })).length, '₹99.50 / 1 day', 'paise and one day');
+  eq(S.passCopy({ state: 'open', pass: PO.readPass(block()), msLeft: null }, null).open, false, 'no formatter module: nothing');
+  eq(S.spokenLeft(30 * 1000), '1 minute', 'under a minute is spoken as 1 minute, never 0');
+  eq(S.spokenLeft(0), '', 'no time: no words');
+  ok(!('trialCopy' in S) && !('trialMode' in S), 'the free-trial copy helpers are gone from start-model.js');
+}
 
 /* ---- purchase-model's linkCode shares the one test ------------------ */
 const P = fs.readFileSync(new URL('../src/lib/purchase-model.js', import.meta.url), 'utf8');

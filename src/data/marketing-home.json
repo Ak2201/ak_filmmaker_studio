@@ -5,6 +5,7 @@
     "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place. Every keystroke is written to your own browser first, and sync is yours to switch off. A year of the studio from about {{fms:price.from.day}} a day, nothing renews by itself, and it keeps working when the signal drops.",
     "note": "A sample feature, {{fms:dragon.scenes}} scenes long, shows the studio filled in, so you can look around before you write.",
     "cta": "Get started",
+    "ctaPass": "Try the whole studio for {price}",
     "mediaLabel": "A scene of the sample feature, broken down on the page"
   },
   "stages": [
@@ -122,9 +123,11 @@
     "label": "Don't count this visit",
     "done": "This visit is not counted"
   },
-  "trial": {
-    "html": "Try the studio with a <span data-trial-length=\"label\">free trial</span> before you buy. No card required.",
-    "open": "You are signed in: your plan or trial is on the Purchase page."
+  "pass": {
+    "_": "The line under the hero and the closing buttons. `note` shows only while the launch pass is open (its slots are filled from the server); `off` is what everybody else reads. `open` replaces both for a signed-in visitor.",
+    "note": "{length} of the whole studio for {price}, once per account, paid through Razorpay. It ends by itself; then choose a yearly plan, or don't.",
+    "off": "A plan is one payment for one year. Nothing renews by itself, and there is nothing to cancel.",
+    "open": "You are signed in: your plan is on the Purchase page."
   },
   "exports": {
     "h2": "Your work comes out in open formats",
@@ -142,7 +145,7 @@
       },
       {
         "sym": "backup",
-        "title": "Your whole studio",
+        "title": "Every project at once",
         "text": "A backup file of every project, downloaded whenever you like and restored from the same menu. On Intermediate and Pro you can also back up to your own Google Drive."
       }
     ],
@@ -154,7 +157,7 @@
       {
         "sym": "login",
         "q": "Why sign in with Google if my work is local?",
-        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan or free trial before it opens. Once you are in, your projects also sync to the studio's cloud to reach your other devices. You can switch sync off in Settings, and the copy in your browser stays either way."
+        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan before it opens. Once you are in, your projects also sync to the studio's cloud to reach your other devices. You can switch sync off in Settings, and the copy in your browser stays either way."
       },
       {
         "sym": "cloud_off",
@@ -163,14 +166,15 @@
       },
       {
         "sym": "timer",
-        "q": "How long is the free trial?",
-        "trial": true,
-        "aHtml": "Right now it is a <span data-trial-length=\"label\">free trial</span>. The length is a studio setting, read live, so it is never typed here. It needs no card and does not hold a price: a plan costs what it costs on the day you buy it."
+        "q": "Is there a free trial?",
+        "pass": true,
+        "a": "No. A plan is one payment for one year, and the Dragon sample shows the studio filled in before you buy.",
+        "aPass": "No. While the launch offer lasts, {length} of the whole studio is {price}, once per account. It ends by itself, and a plan after it costs what it costs on the day you buy it."
       },
       {
         "sym": "storage",
         "q": "What leaves my browser, and when?",
-        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan or trial and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
+        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
       }
     ],
     "contact": {

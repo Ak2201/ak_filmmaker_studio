@@ -224,6 +224,34 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 .mk-label-nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-body); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
 .mk-label-nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 
+/* ---- the launch band (27 Oct 2026) ------------------------------
+   The first thing in <main> on start, pricing and every product, guide,
+   switching and trust page; HIDDEN in the markup and shown by
+   marketing.js only while trial_offer().pass is open. It sits under the
+   fixed header (its own top padding is the header's height), so the
+   hero after it gives that height back. Text only: no animation, so
+   reduced motion has nothing to stop. */
+.mk-pass { padding-top: var(--mk-top-h); background: var(--surface-canvas); }
+.mk-pass-in {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); flex-wrap: wrap;
+  padding: var(--s3) var(--s5); box-sizing: border-box;
+  background: color-mix(in srgb, var(--accent-primary) 12%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
+  border-radius: var(--sk-radius, var(--radius-lg));
+}
+.mk-pass-line, .mk-pass-ended { margin: 0; max-width: none; min-width: 0; flex: 1 1 24rem; font-size: var(--t-small); line-height: 1.5; color: var(--ink-body); }
+.mk-pass-tag { margin-right: var(--s2); color: var(--brand-lift); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: var(--t-tiny); }
+.mk-pass-what { color: var(--ink); font-weight: 600; }
+.mk-pass-timer { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.mk-pass-sep { color: var(--ink-muted); }
+.mk-pass-left { white-space: nowrap; }
+.mk-pass-cta { flex: none; }
+.mk-pass:not([hidden]) + .mk-hero { padding-top: var(--s7); }
+@media (max-width: 560px) {
+  .mk-pass-in { padding: var(--s3) var(--s4); }
+  .mk-pass-cta { flex: 1 1 100%; }
+}
+
 /* value: text left, a still right */
 .mk-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(var(--s6), 6vw, var(--s9)); align-items: center; }
 .mk-frame, .mk-slot, .mk-player {

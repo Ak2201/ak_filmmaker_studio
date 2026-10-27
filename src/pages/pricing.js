@@ -23,11 +23,11 @@
         differs, the cards, the table head and the per-day figures are
         rewritten to it (the markup is still the fallback when the call
         fails, and scripts-off readers see the stamp)
-     5. purchases off: the page is marked, the trial promise goes, and no
-        rise band is drawn (a countdown on a studio that is not selling is
-        urgency nobody enforces)
-     6. trials switched off: the trial strip and each card's "or start the
-        free trial first" go, because offering one would be untrue
+     5. purchases off: the page is marked and no rise band is drawn (a
+        countdown on a studio that is not selling is urgency nobody
+        enforces); marketing.js keeps the launch pass hidden then
+     6. (the free trial's strip is gone: the public is offered the launch
+        pass instead, which marketing.js draws from trial_offer().pass)
      7. THE CURRENCY (docs/US-MARKET-PLAN.md §B): India sees rupees, every
         other visitor the owner's dollar figures from price_notice('USD').
         The build stamped rupees, so this only ever RE-QUOTES spans the
@@ -49,7 +49,7 @@
    ============================================================ */
 import './marketing.js';
 import '../styles/pricing.css';
-import { bumpEvent, bumpOnce, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
+import { bumpEvent, bumpOnce, priceNotice, purchasesRequired } from '../lib/funnel.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { stashPlan, buyHref, risingTiers, priceRiseBand, foundingLeft, timeLeft, deviceRegion, currentPrices, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion } from '../lib/region-core.js';
@@ -254,22 +254,18 @@ function renderPricesNow(notice) {
   document.title = titleInr;
 }
 
-/* ---- 5 and 6. purchases off, trials off --------------------------------
+/* ---- 5. purchases off -------------------------------------------------
    marketing.js already swaps the words (data-open-text / data-off-text)
-   and fills in the trial's length; what is left here is what has to
-   GO when nothing is offered. */
-function hideTrial() {
-  document.querySelectorAll('[data-trial], [data-trial-link]').forEach((n) => { n.hidden = true; });
-}
+   and owns the launch pass: its strip above the cards and each card's
+   "or try it first" are [data-pass-only], hidden in the markup and shown
+   only while trial_offer().pass is open AND purchases are required (a
+   pass on a studio that is not selling is a price nobody asks for). */
 try {
   const want = wanted();
   Promise.all([purchasesRequired(), notices(want)]).then(([req, n]) => {
     const notice = n.notice;
     renderPricesNow(notice);                  // a true rupee figure whether or not purchases are on
-    if (req === false) { purchasesOff = true; root.dataset.purchases = 'off'; hideTrial(); }
+    if (req === false) { purchasesOff = true; root.dataset.purchases = 'off'; }
     show(want, n, purchasesOff);
   }, () => {});
-} catch (e) { /* never breaks the page */ }
-try {
-  trialOffer().then((t) => { if (t && t.trial_enabled === false) hideTrial(); }, () => {});
 } catch (e) { /* never breaks the page */ }

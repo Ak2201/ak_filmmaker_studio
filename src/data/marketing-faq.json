@@ -20,10 +20,10 @@
         "a": "On the Purchase page once you are signed in. It lists your plan, your invoices and a way to request a refund in the cases above."
       },
       {
-        "q": "How long is the free trial?",
-        "trial": true,
-        "a": "Right now it is a free trial. Its length is a studio setting, read live, so it is never typed into this answer. It needs no card. It does not hold a price: a plan costs what it costs on the day you buy it.",
-        "aHtml": "Right now it is a <span data-trial-length=\"label\">free trial</span>. Its length is a studio setting, read live, so it is never typed into this answer. It needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
+        "q": "Is there a free trial?",
+        "pass": true,
+        "a": "No. A plan is one payment for one year, and you pay the price of the day you buy it. The Dragon sample shows the studio filled in first.",
+        "aPass": "No. While the launch offer lasts, {length} of the whole studio is {price}, once per account. It ends by itself and nothing renews; after it, a plan costs what it costs on the day you buy it."
       }
     ]
   },
@@ -44,7 +44,7 @@
       },
       {
         "q": "Is there a free plan?",
-        "a": "No. There is no free plan. Whether purchases are required, and whether a trial is running, are settings that can change, so the pricing page always shows what applies today."
+        "a": "No. There is no free plan. Whether purchases are required is a setting that can change, so the pricing page always shows what applies today."
       },
       {
         "q": "Where can I see exactly what each plan includes?",
@@ -52,7 +52,7 @@
       },
       {
         "q": "Do I need a plan to try the sample films?",
-        "a": "The Dragon sample project is there so you can see the studio filled in before you commit. What a visitor can open depends on whether a trial is running, which the sign-up window shows."
+        "a": "The Dragon sample project is there so you can see the studio filled in before you commit."
       },
       {
         "q": "Can I talk to a person before I buy?",
@@ -69,11 +69,11 @@
       },
       {
         "q": "Why do I sign in with Google if my work is local?",
-        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan or free trial before it opens. It is also what lets your projects sync between your devices and lets you connect your own Google Drive. Your work is written to your browser first either way."
+        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan before it opens. It is also what lets your projects sync between your devices and lets you connect your own Google Drive. Your work is written to your browser first either way."
       },
       {
         "q": "What leaves my browser, and when?",
-        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan or trial and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
+        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
       },
       {
         "q": "Does it work offline on a film set?",

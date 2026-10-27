@@ -60,19 +60,38 @@ India's CCPA dark-pattern guidelines, or both.
    `{PASS_LEFT}` = "`left` of `cap` left" (null cap: drop the line).
    If `pass.open` is false, nothing about the pass is posted. Only §6, the
    owner's own steps, names the decided values.
+   **Whether a purchase renews is a console setting too** (schema §62,
+   one-time or auto-renew, per product, for new purchases only), so it is
+   a placeholder as well, read the same morning:
+   `{PASS_TERMS}` = `trial_offer()->'pass'->>'mode'`, said the way
+   `src/lib/offer-terms.js` `offerTerms(mode, price, 'pass', days).short`
+   says it: "One payment · nothing renews" (`once`) or "Renews every 7 days
+   · cancel anytime" (`renew`);
+   `{PLAN_TERMS}` = `trial_offer()->>'plan_mode'`, the same way with
+   `'year'`: "One payment · nothing renews" or "Renews every year · cancel
+   anytime".
+   Mode missing or anything else: leave the line out (the site says neither
+   either). An auto-renew line ALWAYS carries "cancel anytime", in the same
+   sentence as the price.
 4. **The charged amount is never hidden.** If a post shows a dollar figure,
    it also says what is charged today (rupees, until `usd_checkout` is on).
 5. **Plans are one year each.** Never "pay once", "lifetime", "own it
-   forever". The true lines are: one payment for one year; nothing renews by
-   itself; buy again to add a year; move up mid-year and the unused part is
-   credited.
+   forever". The true lines in either mode: a plan is a year of the studio,
+   from `{FROM_DAY}` a day; move up mid-year and the unused part is credited;
+   and `{PLAN_TERMS}`. Never type "nothing renews" or "renews" yourself: it
+   is the console's word that day (rule 3). **Two angles exist ONLY while
+   `plan_mode` (or, for the pass, `pass.mode`) is `renew`**: "lock the
+   launch price while you stay" (a running auto-pay keeps the amount it
+   started at) and "cancel anytime, in two taps" (Settings → Plan &
+   purchases → Cancel auto-pay). On `once` they are false; never post them.
 6. **There is no public free trial; there is the launch pass.** Never
    write "free trial", "try free" or "no card" in public copy: the public
    tries the studio with a paid pass while the launch offer runs, and with
    no pass open the copy points at the yearly plans. The pass opens the Pro
    features ("the whole studio") for `{PASS_LENGTH}` from activation, once
-   per account, paid in rupees through Razorpay, and then ends by itself:
-   nothing renews. It is a purchase of its own: it is NOT credited against a
+   per account, paid in rupees through Razorpay, on `{PASS_TERMS}` (one-time,
+   it ends by itself; on auto-renew it renews every `{PASS_LENGTH}` at the
+   price signed up at until cancelled). It is a purchase of its own: it is NOT credited against a
    yearly plan, so never write "₹49 off your plan". It is final like a plan,
    with the same three refund exceptions, and a refunded pass gives no free
    trial. Say "the whole studio" only beside the pass. Invite codes still
@@ -109,7 +128,7 @@ India's CCPA dark-pattern guidelines, or both.
 | 2 | **Other Indian independents** (Malayalam, Telugu, Kannada, Hindi) | The same planning chain in rupees. Be honest: the Tamil-specific help is Tamil only | Intermediate |
 | 3 | **Film and Viscom students** | A real tool for the diploma film, plus the learning Library; a student price through the `STUDENT50` code | Intermediate at the student price |
 | 4 | **Small production houses and line producers** | Budget against actuals, production reports, call sheets, the shoot day, deliverables | Pro |
-| 5 | **International independents** (second wave) | Final Draft (.fdx) both ways, Fountain, Word, PDF; local-first storage; one yearly payment that does not renew by itself | Basic or Intermediate. Dollar checkout is OFF until Razorpay International is approved (§6 step 7) |
+| 5 | **International independents** (second wave) | Final Draft (.fdx) both ways, Fountain, Word, PDF; local-first storage; a year of the studio, `{PLAN_TERMS}` | Basic or Intermediate. Dollar checkout is OFF until Razorpay International is approved (§6 step 7) |
 
 Not the target: studios that need enterprise contracts, union (SAG/IATSE/WGA)
 paperwork, or real-time co-writing at scale.
@@ -162,9 +181,9 @@ before anybody raises them:
 
 | Piece | Truth to say | Where it lives |
 | --- | --- | --- |
-| **Launch pass, `{PASS_PRICE}` for `{PASS_LENGTH}`** | The whole studio (the Pro plan's features) for `{PASS_LENGTH}`, once per account, paid in rupees, ends by itself, not credited to a plan. A launch offer with a real end: `{PASS_ENDS}`, and `{PASS_LEFT}` if the owner set a cap. Bought on the offer page (`invite.html`) after Google sign-in, or on `purchase.html` | `trial_offer().pass` / `price_notice().pass`; console Growth → Launch pass (§61) |
+| **Launch pass, `{PASS_PRICE}` for `{PASS_LENGTH}`** | The whole studio (the Pro plan's features) for `{PASS_LENGTH}`, once per account, paid in rupees, `{PASS_TERMS}`, not credited to a plan. A launch offer with a real end: `{PASS_ENDS}`, and `{PASS_LEFT}` if the owner set a cap. Bought on the offer page (`invite.html`) after Google sign-in, or on `purchase.html` | `trial_offer().pass` / `price_notice().pass`; console Growth → Launch pass (§61) |
 | ~~Free trial~~ (retired for the public 27 Oct 2026; kept here as history) | Decided 26 Oct 2026: 3 days of the whole studio, no card. True only once schema §60 has run (a pressed trial then follows the console's `trial_scope`) and the console reads `trial_scope` full and `trial_plan` pro (§6.1). Until both read back, a pressed trial is the tools on the two sample films (The Dragon and The Dark Knight reconstructions), and copy says so. Either way: no card, it starts only when they press start (or redeem a code), and a whole-studio trial keeps the no-plan limits (one film in the cloud, no share links, no collaborators) | `trial_offer()` (`trial_hours`, and `trial_scope` once §60 has run); console Growth → Trial |
-| **Yearly plans** | Basic, Intermediate, Pro, one payment each for one year, nothing renews by itself | `price_notice()`; `pricing.html` |
+| **Yearly plans** | Basic, Intermediate, Pro, each a year of the studio, `{PLAN_TERMS}` (the console's `plan_mode`) | `price_notice()`; `pricing.html` |
 | **Founding prices** | Today's prices hold until `{RISE_DATE}` (the server's `next_price_at`; the owner is moving it to 31 Dec 2026, §6 step 2) or until the founding places fill, whichever is first. A plan bought now is a full year at the price paid | `price_notice()` |
 | **Student band** | Code `STUDENT50` gives the student price on Intermediate. Verify a student ID or college e-mail by hand for bulk requests | Promo code (§20); the button on the plan cards |
 | **Referral codes** | Every paying member has a `REF-XXXXXX` code. The friend gets `referral_friend_pct` off (default 10%); the referrer is owed `referral_reward_pct` of what the friend paid (default 10%), paid by hand | The Purchase page ("Your referral code", `purchase.html`); console Growth |

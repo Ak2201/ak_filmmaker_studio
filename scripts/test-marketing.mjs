@@ -177,7 +177,8 @@ for (const id of IDS) {
       ok(new RegExp(`data-start-buy="${id}" data-plan="${id}"`).test(html) && html.includes(`href="purchase.html?plan=${id}"`), `${tag}${id}: the buy link carries the plan`);
     }
     ok(/id="offer"[^>]*\shidden/.test(html), tag + 'the price-rise band is in the markup and hidden until the server announces a rise');
-    ok(/one payment/.test(html) && /a year/.test(html) && !/per month|\/mo\b|monthly|billed yearly|annually|auto-?renew(s|al)? on/i.test(html), tag + 'worded as sold: one payment for a year, nothing that reads as a recurring charge');
+    /* a year, never a month; whether it renews is a runtime slot (OFFER TERMS below) */
+    ok(/a year/.test(html) && !/per month|\/mo\b|monthly|billed yearly|annually|auto-?renew(s|al)? on/i.test(html), tag + 'worded as sold: a plan is a year, nothing that reads as a monthly charge');
     /* §52: a plan is a year, marketed by the day. Every card prints its own
        per-day figure as a stamp, so the arithmetic is plans.js's, never typed. */
     for (const id of PAID) ok(html.includes('{{fms:price.' + id + '.day}}'), `${tag}${id}: the card prints its per-day cost as {{fms:price.${id}.day}}`);
@@ -225,8 +226,8 @@ for (const id of IDS) {
     const faq = JSON.parse(read('src/data/marketing-faq.json'));
     const acc = [...html.matchAll(/<details class="pr-acc" name="([^"]+)" id="faq-\d">/g)];
     ok(acc.length === 3 && new Set(acc.map((a) => a[1])).size === 1 && acc.length === faq.length, tag + 'FAQ is three <details name=...> accordions (single-open)');
-    const nQ = (html.match(/<dt( data-pass-faq)?>/g) || []).length;
-    ok(nQ === faq.reduce((n, g) => n + g.items.length, 0) && (html.match(/<dd( data-pass-faq)?>/g) || []).length === nQ, tag + 'every question in marketing-faq.json is in the markup, answered');
+    const nQ = (html.match(/<dt( data-pass-faq| data-mode-faq)?>/g) || []).length;
+    ok(nQ === faq.reduce((n, g) => n + g.items.length, 0) && (html.match(/<dd( data-pass-faq| data-mode-faq)?>/g) || []).length === nQ, tag + 'every question in marketing-faq.json is in the markup, answered');
     ok(!/<details[^>]*\sopen[\s>]/.test(html), tag + 'the accordions start collapsed');
 
     /* icons the page draws are in the font subset */
@@ -417,7 +418,7 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 {
   const js = read('src/pages/marketing.js');
   const imports = [...js.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer)\.js$/];   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
+  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer|offer-terms)\.js$/];   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
   const stray = imports.filter((i) => !allowed.some((a) => a.test(i)));
   ok(stray.length === 0, 'marketing.js imports only the light allowlist (the startlib rule)' + (stray.length ? ': ' + stray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(js), 'marketing.js builds no markup from strings');
@@ -700,6 +701,74 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
     };
     walk(raw, '');
   }
+  /* ---- OFFER TERMS (27 Oct 2026) -------------------------------------
+     Whether a purchase renews is the console's choice (schema §62), so the
+     static page and the marketing JSON never say it either way. Renewal
+     wording lives only in
+       - [data-offer-terms] slots (EMPTY in the markup; marketing.js fills
+         them through src/lib/offer-terms.js from trial_offer()),
+       - [data-mode-answer="once"|"renew"] lines (HIDDEN in the markup,
+         shown by mode) and the FAQ question that has them, and
+       - a competitor's sourced cell ([data-them]).
+     Their sources in the JSON are the keys aOnce / aRenew / aRenewNote /
+     renewNote and a comparison row's `them`. */
+  {
+    const CLAIM = /\brenew|auto-?pay|subscription|one payment|nothing renews|charged automatically/i;
+    const CLAIM_KEYS = new Set(['aOnce', 'aRenew', 'aRenewNote', 'renewNote', 'them']);
+    const OT = await import(path.join(ROOT, 'src/lib/offer-terms.js'));
+    let nSlots = 0, nAnswers = 0;
+    for (const f of [...PUBLIC, 'index.html']) {
+      const html = noComments(read(f));
+      const exempt = [...elementsWith(html, 'data-mode-answer'), ...elementsWith(html, 'data-offer-terms'), ...elementsWith(html, 'data-them'),
+        ...[...html.matchAll(/<dt data-mode-faq>[^<]*<\/dt>/g)].map((m) => m[0])];
+      const rest = exempt.reduce((h, el) => h.split(el).join(''), html).replace(/\sdata-[a-z-]+(="[^"]*")?/g, '');
+      const hit = rest.match(new RegExp('.{0,60}(' + CLAIM.source + ').{0,60}', 'i'));
+      ok(!hit, f + ': no renewal claim outside the offer-terms slots and mode answers' + (hit ? ': "' + hit[0].trim() + '"' : ''));
+      ok(!/\{(planTerms|passTerms|planRenewNote)\}/.test(html), f + ': every offer-terms token became a slot');
+      const slots = [...html.matchAll(/<span data-offer-terms data-offer-product="(year|pass)"(?: data-offer-form="chip")?>([^<]*)<\/span>/g)];
+      nSlots += slots.length;
+      ok(slots.length === (html.match(/data-offer-terms/g) || []).length && slots.every((m) => m[2] === ''), f + ': every [data-offer-terms] slot is empty in the markup (the static page claims no mode)');
+      const tags = [...html.matchAll(/<[a-z]+\b[^>]*\sdata-mode-answer="([a-z]+)"[^>]*>/g)];
+      nAnswers += tags.length;
+      ok(tags.every((m) => ['neutral', 'once', 'renew'].includes(m[1]) && (m[1] === 'neutral' ? !/\shidden[\s>]/.test(m[0]) : /\shidden[\s>]/.test(m[0]))), f + ': a once / renew line is hidden in the markup, a neutral one is shown');
+      ok(!/<span class="[^"]*" data-offer-wrap(?! hidden)/.test(html), f + ': every terms chip is hidden until it has words');
+    }
+    ok(nSlots >= PUBLIC.length, `read ${nSlots} offer-terms slots and ${nAnswers} mode lines`);
+    /* the copy: renewal words only in the keys that feed those slots */
+    for (const f of JSONS) {
+      const walk = (o, at, parent) => {
+        if (typeof o === 'string') {
+          const k = at.split('.').pop();
+          if (/^_/.test(k) || CLAIM_KEYS.has(k) || (k === 'q' && parent && parent.modes)) return;
+          ok(!CLAIM.test(o), f + ' ' + at + ': no renewal claim in static copy (use {planTerms} / {passTerms}, or a mode answer): "' + o.slice(0, 90) + '"');
+          return;
+        }
+        if (o && typeof o === 'object') for (const [k, x] of Object.entries(o)) walk(x, at + '.' + k, o);
+      };
+      walk(JSON.parse(read(f)), '', null);
+    }
+    /* the FAQ: "Is it a subscription?" carries all three answers, two hidden */
+    {
+      const ph = noComments(read(PRICING_FILE));
+      const m = ph.match(/<dt data-mode-faq>Is it a subscription\?<\/dt>\s*<dd data-mode-faq>([\s\S]*?)<\/dd>/);
+      ok(m && /data-mode-answer="neutral"(?![^>]*hidden)/.test(m[1]) && /data-mode-answer="once"[^>]*hidden/.test(m[1]) && /data-mode-answer="renew"[^>]*hidden/.test(m[1]),
+        PRICING_FILE + ': "Is it a subscription?" has a shown neutral answer and both mode answers, hidden');
+      const fq = JSON.parse(read('src/data/marketing-faq.json')).flatMap((g) => g.items).find((i) => i.modes);
+      ok(fq && /cancel anytime/i.test(fq.aRenew) && !CLAIM.test(fq.a), 'marketing-faq.json: the renew answer says "cancel anytime", the neutral one claims no mode');
+    }
+    /* offer-terms.js: every renew string says "cancel anytime", once says it does not renew, unknown says neither */
+    for (const [price, period, days] of [['₹99', 'pass', 7], ['', 'pass', 7], ['₹599', 'year'], ['', 'year'], ['₹49', 'pass', 1]]) {
+      const rn = OT.offerTerms('renew', price, period, days), on = OT.offerTerms('once', price, period, days);
+      const un = [OT.offerTerms(undefined, price, period, days), OT.offerTerms('monthly', price, period, days), OT.offerTerms(null, price, period, days)];
+      const tag = `offerTerms(${period}${days ? ' ' + days : ''}${price ? ' ' + price : ''}): `;
+      ok(/cancel anytime/i.test(rn.line) && /cancel anytime/i.test(rn.short) && rn.renews === true, tag + 'renew says "cancel anytime" in the line and the chip');
+      ok(/nothing renews/i.test(on.line) && /nothing renews/i.test(on.short) && on.renews === false, tag + 'once says nothing renews');
+      ok(un.every((u) => u.short === '' && u.renews === null && !CLAIM.test(u.line)), tag + 'an unknown mode claims neither');
+    }
+    const mj = read('src/pages/marketing.js');
+    ok(/from '\.\.\/lib\/offer-terms\.js'/.test(mj) && /t\.plan_mode/.test(mj) && /raw\.mode/.test(mj) && /offerSlots\.take\(t\)/.test(mj), 'marketing.js fills the slots through offer-terms.js from trial_offer() plan_mode and pass.mode');
+  }
+
   /* exactly one pass strip on pricing.html, never a card */
   {
     const ph = noComments(read(PRICING_FILE));

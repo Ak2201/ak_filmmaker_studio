@@ -23,7 +23,11 @@
    - a price. A rupee figure is not durable, because the launch
      prices are scheduled to rise and a post is forever. "Less than a
      cup of tea a day" holds at every tier before and after the rise
-     (the dearest is about ₹5.48 a day), and nothing renews by itself.
+     (the dearest is about ₹5.48 a day).
+   - whether a purchase renews. That is the owner's console setting
+     (schema §62, one-time or auto-renew per product) and can change on
+     any day, so a poster says neither; the caption carries
+     {PLAN_TERMS} / {PASS_TERMS}, read from the console that day.
    - any testimonial or user count. testimonials.json is empty by
      design and inventing social proof is both prohibited here and
      trivially disproved.
@@ -167,9 +171,10 @@ const p1 = frame(`
        price, a length and a deadline that are console settings and END, and
        a poster is forever, so the poster names none of them (the caption
        carries {PASS_PRICE} / {PASS_LENGTH} / {PASS_ENDS}, read that day).
-       "One payment for a year" and "nothing renews" are true of every plan,
-       before and after the founding-price rise. */ ''}
-  ${text(80, 1192, 'One payment for a year · Nothing renews by itself.', { size: 32, weight: 700, fill: MUTED })}
+       "A year of the studio" and "less than a tea a day" are true of every
+       plan, before and after the founding-price rise, and in either
+       renewal mode. */ ''}
+  ${text(80, 1192, 'A year of the studio · Less than a tea a day.', { size: 32, weight: 700, fill: MUTED })}
   ${footer()}`);
 
 /* ============ 2 — what it is ================================ */
@@ -426,7 +431,7 @@ function featurePoster(spec) {
   return frame(`
     ${text(80, 150, eyebrow, { size: 30, weight: 800, fill: hue, spacing: 7 })}
     ${titleSvg}${ledeSvg}${rowsSvg}
-    ${text(80, 1206, 'Works offline · Nothing renews by itself · Nothing to install', { size: 30, weight: 600, fill: MUTED })}
+    ${text(80, 1206, 'Works offline · Saved in your browser · Nothing to install', { size: 30, weight: 600, fill: MUTED })}
     ${footer(1278)}`);
 }
 

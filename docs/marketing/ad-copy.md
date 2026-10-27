@@ -11,6 +11,8 @@ from memory:
 | `{PASS_LENGTH}` | `pass.days` in words ("7 days") |
 | `{PASS_ENDS}` | `pass.ends_at` as an IST date and time; null means no deadline, so drop the "ends" line |
 | `{PASS_LEFT}` | "`pass.left` of `pass.cap` left", only when a cap is set; otherwise drop it |
+| `{PASS_TERMS}` | `pass.mode` worded as `offer-terms.js` `offerTerms(mode, price, 'pass', days).short`: "One payment · nothing renews" (`once`) or "Renews every 7 days · cancel anytime" (`renew`); mode missing: drop it |
+| `{PLAN_TERMS}` | `trial_offer()->>'plan_mode'`, the same way with `'year'`: "One payment · nothing renews" or "Renews every year · cancel anytime"; mode missing: drop it |
 | `{FROM_DAY}` | the pricing page's "from about … a day" (Basic's year ÷ 365, derived) |
 | `{BASIC_YEAR}` `{INDIE_YEAR}` `{PRO_YEAR}` | `price_notice()` current prices |
 | `{RISE_DATE}` | `price_notice()` `plans[].next_price_at`, as an IST date (null means the rise has fired: drop the line) |
@@ -21,7 +23,7 @@ Meta Ads Manager's figures (playbook §4.2). `yt-ads` counts as `youtube`.
 
 **What the offer is, in every ad:** the launch pass, {PASS_PRICE} for
 {PASS_LENGTH} of the whole studio, once per account, paid through Razorpay,
-ending by itself with nothing renewing. There is no free trial for the
+{PASS_TERMS}. There is no free trial for the
 public any more (owner, 27 Oct 2026): never write "free", "free trial" or
 "no card". The pass is not credited against a yearly plan, so never
 "₹49 off". The deadline ({PASS_ENDS}) and the count ({PASS_LEFT}) are the
@@ -74,9 +76,9 @@ line (its source and date) and an "indicative" line both visible.
 - **Link:** `/start?src=meta-t1d&utm_campaign=test1`
 - **Check:** Budget is Intermediate. Never say "union rates" (no union floor exists); say "the Chennai rate card". Never "every figure is sourced": only the `checked` rows in `rates.chennai.checks.json` are (8 today).
 
-### M4 — Nothing renews by itself (static)
+### M4 — A year at a time, terms up front (static)
 
-- **Primary:** One payment, one year of the studio. Nothing renews by itself. Buy the next year only if you want it.
+- **Primary:** One year of the studio, from {FROM_DAY} a day. {PLAN_TERMS}. (Only while `plan_mode` is `renew`, add: "Your launch price is locked while you stay. Cancel anytime, in two taps.")
 - **Headline:** A year from {FROM_DAY} a day
 - **Description:** Founding prices until {RISE_DATE}
 - **Link:** `/pricing?src=meta-t1e&utm_campaign=test1`
@@ -103,7 +105,7 @@ print a report.
 
 ### Retargeting (people who engaged with the account)
 
-- **R1 Primary:** Still thinking about it? The launch offer is {PASS_PRICE} for {PASS_LENGTH} of the whole studio, once per account, and it ends {PASS_ENDS}. Nothing renews. (Run only while `pass.open` is true; add "{PASS_LEFT}" only with a cap.)
+- **R1 Primary:** Still thinking about it? The launch offer is {PASS_PRICE} for {PASS_LENGTH} of the whole studio, once per account, and it ends {PASS_ENDS}. {PASS_TERMS}. (Run only while `pass.open` is true; add "{PASS_LEFT}" only with a cap.)
 - **R2 Primary:** Founding prices hold until {RISE_DATE}. A plan bought before then is a full year at that price. (Run only in the last 3 weeks before the date, and only once per person.)
 - **Link:** `/start?src=meta-rt&utm_campaign=rt1` (bucket `ads`)
 
@@ -159,7 +161,7 @@ Talking points the creator may use, all true:
   Word, Final Draft and Fountain.
 - Works offline once installed; backs up to your own Google Drive on
   Intermediate and Pro.
-- A plan is one payment for one year, nothing renews by itself; founding
+- A plan is a year of the studio, {PLAN_TERMS}; founding
   prices until {RISE_DATE}.
 - "Use my code {CODE} for {DISCOUNT} off" — the discount the code really
   gives, read from the console.
@@ -183,7 +185,7 @@ Affiliates).
   delivery, each reading the same scenes. Built first for Tamil and Indian
   units — Tamil dialogue, rupee budgets from Chennai rates, CBFC and OTT
   checklists, call sheets on WhatsApp. Local-first, works offline, open-format
-  exports. Yearly plans with nothing renewing by itself.
+  exports. Yearly plans, {PLAN_TERMS}.
 - **Maker comment, what it does not do yet:** no live union paperwork, no
   Malayalam or Telugu-specific tools, dollar checkout not yet open, and it is
   made by a small team — which is why the exports are open formats.

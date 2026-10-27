@@ -250,6 +250,19 @@ internal identifier for your account, to match the payment to it. We keep:</p>
   <li>if you have a referral code, the credits it has earned and whether they have been
   paid out.</li>
 </ul>
+<!-- DRAFT, AWAITING THE OWNER -->
+<!-- Auto-renew (27 Oct 2026), written from the plan for schema section 62:
+     a Razorpay Subscription holds the mandate; we keep its identifiers and
+     status so a renewal charge can be matched and a cancel carried out. -->
+<p><strong>When a purchase is on auto-renew.</strong> The payment mandate (your UPI Autopay
+mandate, or your card or bank e-mandate) is held by Razorpay, not by us: we never see or keep
+your card details or your UPI credentials. We keep the Razorpay subscription identifier, its
+status (for example active or cancelled), the amount and interval you agreed to, the date of
+the next charge, and a record of each renewal charge as a payment of its own, as listed
+above, so that each charge can be matched to your account, invoiced and, in the cases the
+refund policy lists, refunded. When you cancel, we tell Razorpay to stop the mandate and keep
+the record that you did.</p>
+<!-- /DRAFT -->
 
 <h3>Receipts and refund e-mails</h3>
 <p>After a purchase we e-mail a receipt to your account&rsquo;s address, and we e-mail you
@@ -381,7 +394,8 @@ the purpose listed:</p>
   and storyboard pictures. Google&rsquo;s sign-in script is loaded from
   <code>accounts.google.com</code> when Drive needs it, and your profile picture is shown
   from Google&rsquo;s servers.</li>
-  <li><strong>Razorpay</strong> &mdash; payment processing and refunds. Its checkout is
+  <li><strong>Razorpay</strong> &mdash; payment processing and refunds<!-- DRAFT, AWAITING THE OWNER -->, and, for a
+  purchase on auto-renew, holding the payment mandate<!-- /DRAFT -->. Its checkout is
   loaded from Razorpay when you start a purchase.</li>
   <li><strong>Resend</strong> &mdash; delivering receipt and refund e-mails.</li>
   <li><strong>YouTube (Google)</strong> &mdash; only if you press play on one of the

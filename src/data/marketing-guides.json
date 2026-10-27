@@ -11,7 +11,7 @@
     "relatedH": "More guides",
     "ctaPass": "Try the whole studio for {price}",
     "ctaPlans": "See the plans",
-    "ctaPassNote": "{length}, once per account. It ends by itself and nothing renews.",
+    "ctaPassNote": "{length}, once per account. {passTerms}",
     "read": "Read the guide",
     "compareRead": "Read the switching guide",
     "breadcrumbHome": "Home",

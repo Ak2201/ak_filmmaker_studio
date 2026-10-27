@@ -61,8 +61,9 @@ What I need from you:
   the list. Please do not promise features that are not built yet, a free
   plan (there is none) or refunds (purchases are final except a duplicate
   charge, a plan never activated, and what Indian law requires).
-- Plans are one year each; nothing renews by itself. Please do not say
-  "pay once" or "lifetime".
+- Plans are one year each, {PLAN_TERMS}. Please do not say "pay once" or
+  "lifetime", and do not say whether a plan renews except as the pricing
+  page says it on the day.
 
 Either of us can end this any time; commission already earned is still paid.
 ```
@@ -77,7 +78,7 @@ Either of us can end this any time; commission already earned is still paid.
 | Imports Fountain, Final Draft, Word, text, real-text PDF; exports PDF, Word, Final Draft, Fountain | "Imports scanned PDFs" |
 | Works offline once installed | "Never needs the internet" |
 | Your work lives in your browser first; Drive backup on Intermediate and Pro | "Nothing ever leaves your computer" |
-| One payment for one year; nothing renews by itself | "Pay once", "lifetime" |
+| A year of the studio; {PLAN_TERMS} (read from the console that day) | "Pay once", "lifetime", "nothing renews" or "renews" typed from memory |
 | The launch pass: {PASS_PRICE} for {PASS_LENGTH} of the whole studio, once per account | "Free trial", "no card", a price or length you have not just checked, "₹49 off a plan" |
 | Founding prices until {RISE_DATE} | "Last chance", a countdown, "only N left" |
 

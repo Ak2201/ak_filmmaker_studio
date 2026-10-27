@@ -18,8 +18,8 @@
     "plans": "See the plans"
   },
   "us": {
-    "pricing": "One payment for one year. Nothing renews by itself. Checkout shows the currency and the exact amount you will be charged before you pay.",
-    "renewal": "Nothing renews by itself: when the year ends nothing is charged, and you buy the next year only if you want it.",
+    "pricing": "A year of the studio, at the price on the pricing page. {planTerms} Checkout shows the currency, the exact amount you will be charged and the plan's terms before you pay.",
+    "yearEnd": "Each plan card, and checkout, says what happens when the year ends, before you pay. {planTerms}",
     "platform": "Runs in a web browser and installs like an app on a computer, tablet or phone.",
     "import": "Imports Fountain, Final Draft (.fdx), Word (.docx), plain text and text-based PDF. Scanned or encrypted PDFs are refused with a reason.",
     "export": "Exports PDF, Word (.docx), Final Draft (.fdx) and Fountain from the Screenplay Writer's File menu.",
@@ -65,7 +65,7 @@
       {
         "h2": "What it costs",
         "body": [
-          "Importing a screenplay and the Screenplay Writer are on every plan. A plan is one payment for one year, and nothing renews by itself. Checkout shows the currency and the exact amount you will be charged before you pay."
+          "Importing a screenplay and the Screenplay Writer are on every plan. A plan is a year of the studio. {planTerms} Checkout shows the currency, the exact amount you will be charged and the plan's terms before you pay."
         ],
         "ours": "src/data/plan-matrix.json script_import, import-script, screenplay; src/lib/plans.js PLAN_DAYS"
       }
@@ -90,7 +90,7 @@
       "sub": "What the studio reads, what the move looks like and what comes out again. Everything here is about {{brand:name}}; for what Celtx can save, check Celtx's own help.",
       "rows": [
         { "feature": "How it is paid for", "us": "pricing", "them": "Subscription plans (Writer, Writer Pro, Team), billed monthly or yearly.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26", "status": "unread", "method": "search-summary" },
-        { "feature": "Renewal", "us": "renewal", "them": "Plans renew automatically at the end of each billing cycle and can be cancelled at any time.", "source": "https://support.celtx.com/hc/en-us/articles/1500001930602", "checked": "2026-10-26", "status": "unread", "method": "search-summary" },
+        { "feature": "When the year ends", "us": "yearEnd", "them": "Plans renew automatically at the end of each billing cycle and can be cancelled at any time.", "source": "https://support.celtx.com/hc/en-us/articles/1500001930602", "checked": "2026-10-26", "status": "unread", "method": "search-summary" },
         { "feature": "Script files it imports", "us": "import", "them": "Fountain, Celtx, Final Draft (.fdx), Word (.doc, .docx), Rich Text, plain text, web page, and text-based PDF (scanned PDFs need OCR first).", "source": "https://support.celtx.com/hc/en-us/articles/215946588", "checked": "2026-10-26", "status": "unread", "method": "search-summary" },
         { "feature": "Students and schools", "us": "edu", "them": "Lists Education plans on its pricing page.", "source": "https://www.celtx.com/pricing.html", "checked": "2026-10-26", "status": "unread", "method": "search-summary" }
       ]

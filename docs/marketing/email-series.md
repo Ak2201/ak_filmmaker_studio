@@ -72,8 +72,8 @@ say which page and when), and call sheets you can
 send as a WhatsApp message.
 
 The quickest way to see it on your own script is the launch pass:
-{PASS_PRICE} for {PASS_LENGTH} of the whole studio, once per account. It ends
-by itself and nothing renews. (With the pass closed, send instead: "The
+{PASS_PRICE} for {PASS_LENGTH} of the whole studio, once per account.
+{PASS_TERMS}. (With the pass closed, send instead: "The
 plans are on the pricing page, from about {FROM_DAY} a day.")
 
 https://filmmakerstudio.in/start?src=email&utm_campaign=welcome
@@ -146,9 +146,8 @@ Here are the plans, with nothing left for checkout to surprise you:
 - Pro, {PRO_YEAR} for a year: running it. Adds call sheets, the shoot day,
   the edit log, deliverables and the AI tools (with your own AI key).
 
-Each plan is one payment for one year. Nothing renews by itself: when the
-year ends, buy the next one if you want it. Moving up mid-year credits the
-unused part of your year.
+Each plan is a year of the studio: {PLAN_TERMS}. Moving up mid-year
+credits the unused part of your year.
 
 These are founding prices. They hold until {RISE_DATE}, or until the
 founding places are taken if that comes first. A plan bought before then is
@@ -233,8 +232,8 @@ Hello {FIRST_NAME},
 Your launch pass ended today. Nothing you wrote is gone: your projects are
 in your browser, and synced ones are kept on the server too.
 
-To keep working on them, a plan is one payment for one year, from about
-{FROM_DAY} a day, and nothing renews by itself. Founding prices hold until
+To keep working on them, a plan is a year of the studio, from about
+{FROM_DAY} a day: {PLAN_TERMS}. Founding prices hold until
 {RISE_DATE}.
 
 https://filmmakerstudio.in/pricing?src=email&utm_campaign=pass-end

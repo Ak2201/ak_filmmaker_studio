@@ -49,6 +49,14 @@
 .sc-deck .pd-title, .sc-deck .pd-name { margin: 0; color: var(--ink); }
 .sc-deck .pd-logline, .sc-deck .pd-body, .sc-deck li, .sc-deck .pd-world, .sc-deck .pd-theme { color: var(--ink-body); margin: 0; }
 .sc-deck ol { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s2); }
+/* The beat label over its text, and each key scene numbered ONCE (its own
+   number, not the list's marker beside it), as the print sheet lays them
+   out (pdf.css): without these, "Inciting IncidentA student…" ran on and
+   scene 1 read "1. 1". */
+.sc-deck .pd-beats li { display: grid; gap: var(--s1); }
+.sc-deck ol.pd-scenes { list-style: none; padding-left: 0; }
+.sc-deck .pd-scenes li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); }
+.sc-deck .pd-num { font-family: var(--f-mono); font-weight: 700; color: var(--ink-muted); }
 .sc-deck .pd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--s3); }
 .sc-deck .pd-numbers { display: flex; flex-wrap: wrap; gap: var(--s5); }
 .sc-deck .pd-numbers strong { display: block; font-family: var(--f-display); font-size: var(--t-2xl); color: var(--ink); }

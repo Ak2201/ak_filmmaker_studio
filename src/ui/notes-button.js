@@ -33,8 +33,13 @@ function counts(notes) {
 
 /** The header button: "Notes" with the project's note count. */
 export function notesButton({ size = 'sm', label = 'Notes' } = {}) {
-  const b = button({ label, icon: 'sticky_note_2', size, class: 'nt-open', attrs: { 'data-notes-open': '', title: 'Sticky notes for this film: open them beside the page' } });
-  b.append(h('span.nt-count', { 'data-notes-count': '', 'aria-label': 'notes' }));
+  /* The count is part of the name ("Notes 1"): an aria-label on the
+     count replaced the number with the word, so the name read "Notes
+     notes". aria-expanded says whether the dock is open (notes-dock.js
+     keeps it in step on every .nt-open). */
+  const b = button({ label, icon: 'sticky_note_2', size, class: 'nt-open', attrs: { 'data-notes-open': '', title: 'Sticky notes for this film: open them beside the page',
+    'aria-expanded': String(typeof document !== 'undefined' && document.documentElement.classList.contains('nt-dock-open')) } });
+  b.append(h('span.nt-count', { 'data-notes-count': '' }));
   queue();
   return b;
 }

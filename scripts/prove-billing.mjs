@@ -82,7 +82,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
-import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial, chargeSubscription, passSold } from './fake-supabase.mjs';
+import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial, chargeSubscription, passSold, EXT_RPC } from './fake-supabase.mjs';
 import { loadMatrixModule } from './make-plan-features-sql.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -276,8 +276,21 @@ try {
     ok(!F.db.payments.some((x) => x.plan_id === 'pro' && x.status === 'paid'), 'and nothing activated');
     ok(F.db.accounts.find((a) => a.owner_id === USERS['tok-amy'].id).plan === 'indie', 'Amy is still on Indie');
     RZP.mode = 'dismiss';
-    await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
+    /* By keyboard: QA r2 (26 Oct 2026) found focus fell to <body> and the
+       outcome was drawn at the foot of the row, far below the button. */
+    await page.focus('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
+    await page.keyboard.press('Enter');
     await page.waitForFunction(() => /cancelled/i.test((document.querySelector('.pl-status') || {}).textContent || ''), null, { timeout: 10000 }).then(() => ok(true, 'closing Checkout says the payment was cancelled'), () => ok(false, 'closing Checkout says the payment was cancelled'));
+    await page.waitForFunction(() => !document.querySelector('.pl-card [data-plan-action="buy"][disabled]'), null, { timeout: 5000 }).catch(() => {});
+    {
+      const f = await page.evaluate(() => {
+        const a = document.activeElement;
+        const s = [...document.querySelectorAll('.pl-status')].find((n) => /cancelled/i.test(n.textContent));
+        return { focus: a ? (a.dataset.plan || a.tagName) : '', inCard: !!(s && s.closest('.pl-card[data-plan="pro"]')) };
+      });
+      ok(f.focus === 'pro', 'focus returns to the Pro button after Checkout closes (' + f.focus + ')');
+      ok(f.inCard, 'and the outcome is said inside the Pro card, under its button');
+    }
     ok(F.db.payments.filter((x) => x.plan_id === 'pro').every((x) => x.status === 'created'), 'a dismissed order stays created, never paid');
 
     console.log('(d2) authorized is not captured (§51)');
@@ -363,8 +376,11 @@ try {
     await page.fill('#ba_indie_projects', '12');
     await page.click('form[data-plan="indie"] button[type="submit"]');
     await page.waitForSelector('.ba-saved', { timeout: 8000 });
+    /* .ba-saved can already be on the page from the render before this
+       save landed: wait for the fake's row itself (intermittent under load). */
+    for (let t = 0; t < 50 && F.db.plans.find((p) => p.id === 'indie').price_paise !== 59900; t++) await page.waitForTimeout(100);
     const indie = F.db.plans.find((p) => p.id === 'indie');
-    ok(indie.price_paise === 59900 && indie.limits.projects === 12, 'admin_set_plan received ₹599 as price_paise 59900 and projects 12');
+    ok(indie.price_paise === 59900 && indie.limits.projects === 12, 'admin_set_plan received ₹599 as price_paise 59900 and projects 12' + (indie.price_paise === 59900 && indie.limits.projects === 12 ? '' : ' — row: ' + JSON.stringify({ price: indie.price_paise, limits: indie.limits }) + ' toast: ' + (await page.evaluate(() => [...document.querySelectorAll('.toast-host')].map((n) => n.textContent).join(' | ')))));
     ok(indie.limits.seats === 3, 'untouched limits survived the save');
     // "Saved." clears itself with a re-render 2.5s on; fill the grant form after that, not under it.
     await page.waitForSelector('.ba-saved', { state: 'detached', timeout: 8000 });
@@ -777,10 +793,18 @@ try {
        paint of the panel (a read too early was a 1-in-3 failure). */
     const rfSettled = () => B.page.waitForFunction(() => {
       const p = document.querySelector('[data-rf-panel="request"]');
-      return !!(p && /Purchases are final/.test(p.textContent) && p.querySelector('a[href="refund.html"]') && document.querySelectorAll('#rfCategory option').length === 4);
+      return !!(p && /Purchases are final/.test(p.textContent) && p.querySelector('a[href="refund.html"]') && document.querySelectorAll('#rfCategory option').length === 5);
     }, null, { timeout: 12000 }).then(() => true, () => false);
     ok(await rfSettled(), 'it states the policy and links refund.html');
-    ok((await B.page.$$eval('#rfCategory option', (o) => o.map((x) => x.value))).join() === 'duplicate_charge,not_delivered,legal,other', 'the four reason categories are offered');
+    ok((await B.page.$$eval('#rfCategory option', (o) => o.map((x) => x.value))).join() === ',duplicate_charge,not_delivered,legal,other', 'the four reason categories are offered, after an empty "Choose a reason"');
+    /* QA r2, 26 Oct 2026: with no empty option the first ground was
+       always selected, so an untouched form filed "I was charged twice". */
+    ok((await B.page.inputValue('#rfCategory')) === '', 'the reason starts unchosen');
+    await B.page.click('[data-rf-form="request"] button[type="submit"]');
+    await B.page.waitForFunction(() => /Choose the reason/.test(document.querySelector('[data-rf-panel] .gt-error')?.textContent || ''), null, { timeout: 5000 })
+      .then(() => ok(true, 'an untouched form is refused with a sentence'), () => ok(false, 'an untouched form is refused with a sentence'));
+    ok(F.db.rreqs.length === 0, 'and no request was filed');
+    ok(await B.page.evaluate(() => document.activeElement && document.activeElement.id === 'rfCategory'), 'focus is on the reason to choose');
     await B.page.selectOption('#rfCategory', 'not_delivered');
     await B.page.fill('#rfMessage', 'Paid on 7 Oct, plan never showed.');
     await B.page.click('[data-rf-form="request"] button[type="submit"]');
@@ -811,6 +835,12 @@ try {
     await A.page.waitForFunction(() => /\brefunded\b/.test(document.querySelector('#refunds tr[data-rreq]')?.textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'the console list shows it refunded'), () => ok(false, 'the console list shows it refunded'));
     ok(!(await A.page.$('#billing .ba-ledger button[data-ba-action="refund"][aria-label^="Refund ben@example.com"]')), 'and the ledger offers no REFUND for that payment any more');
+    await A.page.click('#billing [data-ba-action="reload"]');
+    await A.page.waitForFunction(() => [...document.querySelectorAll('#billing .ba-ledger tbody tr')].some((r) => /ben@example\.com/.test(r.textContent) && /refunded/.test(r.textContent)), null, { timeout: 8000 }).catch(() => {});
+    {
+      const row = await A.page.evaluate(() => { const r = [...document.querySelectorAll('#billing .ba-ledger tbody tr')].find((x) => /ben@example\.com/.test(x.textContent) && /refunded/.test(x.textContent)); return r ? r.children[3].textContent : ''; });
+      ok(/year removed/.test(row) && !/ends/.test(row), 'the refunded row\u2019s Access cell says the year was removed, not "ends …" (' + row + ')');
+    }
     await B.page.reload();
     await B.page.waitForSelector('#plan .pl-card', { timeout: 10000 }); await B.page.waitForTimeout(500);
     ok(!(await B.page.$('[data-rf-panel]')), 'Ben’s block disappears once the payment is refunded (no captured, unrefunded payment)');
@@ -1516,6 +1546,207 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
+  console.log('(qa) account & business, QA round 1 (26 Oct 2026)');
+  F.reset(); RZP.mode = 'pay';
+  {
+    /* A member who never had a trial and holds no plan: not entitled,
+       trial unused, purchases required. */
+    const amy = USERS['tok-amy'];
+    F.db.members.set(amy.id, { role: 'user', disabled_at: null });
+    clearTrial(amy.id);   // the member row's default is a running trial; this one never had one
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#account');
+    await page.waitForSelector('#you .am-actions', { timeout: 15000 }).catch(() => {});
+    await page.waitForFunction(() => /\S/.test((document.querySelector('.st-plan-line') || {}).textContent || '') && !/load when/i.test(document.querySelector('.st-plan-line').textContent), null, { timeout: 12000 }).catch(() => {});
+    const planLine = (await page.textContent('.st-plan-line').catch(() => '')).trim();
+    ok(/No plan yet/i.test(planLine) && !/has ended/i.test(planLine), 'never had a trial, a pass or a plan: the plan card says "No plan yet", not "Your free trial has ended" — ' + planLine);
+    const card = await page.evaluate(() => ({
+      kit: document.querySelectorAll('#you .am-actions .k-btn').length,
+      old: document.querySelectorAll('#you .am-actions .am-item, #you a.am-item').length,
+      upper: [...document.querySelectorAll('#you .am-actions .k-btn')].some((b) => b.textContent.trim() === b.textContent.trim().toUpperCase())
+    }));
+    ok(card.kit === 3 && card.old === 0 && !card.upper, 'the account card is kit buttons in sentence case (' + JSON.stringify(card) + ')');
+    await page.waitForSelector('#you a.am-create', { timeout: 10000 }).catch(() => {});
+    ok((await page.getAttribute('#you a.am-create', 'href').catch(() => '')) === 'settings.html#team', '"Create a studio account" opens the Team tab, where the account is made');
+    const danger = await page.evaluate(() => [...document.querySelectorAll('.st-danger-row p')].map((p) => p.textContent).join(' | '));
+    ok(!/signs you out/i.test(danger) && /You stay signed in/.test(danger), 'the erase card says you stay signed in, as its dialog does: ' + danger);
+    /* THE TEAM TAB. It sat on "Reading the account…" for good: settings
+       re-renders, commitMain() keeps the identical page, and the panel
+       painted into the discarded copy. */
+    await page.goto(BASE + 'settings.html#team');
+    await page.waitForFunction(() => { const x = document.getElementById('acctHost'); return !!x && /\S/.test(x.textContent) && !/Reading the account/.test(x.textContent); }, null, { timeout: 15000 })
+      .then(() => ok(true, 'Settings › Team leaves "Reading the account…" and shows the panel'),
+            async () => ok(false, 'Settings › Team leaves "Reading the account…" — read: ' + (await page.textContent('#acctHost').catch(() => '(no #acctHost)'))));
+    await page.waitForTimeout(3000);
+    ok(await page.evaluate(() => document.querySelectorAll('#acctHost').length === 1 && !/Reading the account/.test(document.getElementById('acctHost').textContent)), 'and stays shown after the later re-renders');
+    /* purchase.html: the deck's per-day figure is the cheapest CARD's,
+       and the count and comparison tell the plans apart. */
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#plan .pl-card[data-plan="starter"] .pl-price-cap', { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    const pu = await page.evaluate(() => ({
+      deck: (document.querySelector('#plan .bd-sub') || {}).textContent || '',
+      cap: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-price-cap') || {}).textContent || '',
+      counts: [...document.querySelectorAll('#plan .pl-card .pl-features-n')].map((n) => n.textContent.trim()),
+      off: document.querySelectorAll('#plan td.is-off').length
+    }));
+    const cardDay = (pu.cap.match(/₹[\d,.]+/) || [''])[0];
+    ok(!!cardDay && pu.deck.includes('from about ' + cardDay + ' a day'), 'the deck quotes the Basic card\'s own per-day figure (' + cardDay + '), not the build-time one: ' + pu.deck.slice(0, 160));
+    ok(pu.counts.length === 3 && new Set(pu.counts).size === 3, 'with empty feature maps the three cards count different features, from the matrix: ' + pu.counts.join(' / '));
+    ok(pu.off > 0, 'and the comparison table marks what Basic lacks (' + pu.off + ' cells)');
+    allErrors.push(...errors); await ctx.close();
+  }
+  console.log('(qa2) account & business, QA round 2 (26 Oct 2026)');
+  F.reset(); RZP.mode = 'pay';
+  {
+    const amy = USERS['tok-amy'];
+    F.db.members.set(amy.id, { role: 'user', disabled_at: null });
+    clearTrial(amy.id);
+    EXT_RPC.my_invoices = () => [{ id: 'iv1', number: 'FMS/2026-27/000001', issued_at: '2026-10-20T10:00:00Z', plan_name: 'Basic', amount_paise: 299900, currency: 'INR' }];
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    /* Settings points to Plan & purchases to start the trial: purchase.html offers it. */
+    await page.goto(BASE + 'purchase.html');
+    ok(await page.waitForSelector('[data-action="pu-start-trial"]', { timeout: 15000 }).then(() => true, () => false), 'purchase.html offers "Start your free trial" to a member who never had one');
+    /* The buyer's invoices (billing_status() has no `deployed` key). */
+    ok(await page.waitForSelector('#invoices [data-action="invoice-pdf"]', { timeout: 10000 }).then(() => true, () => false), 'purchase.html#invoices lists the buyer\u2019s Bills of Supply with DOWNLOAD PDF');
+    ok(F.db.calls.includes('my_invoices'), 'my_invoices was asked');
+    /* The promo box keeps focus after a refused and an accepted code. */
+    await page.click('#plan .pl-promo > summary');
+    for (const code of ['nope99', 'launch10']) {
+      await page.fill('#plPromoCode', code);
+      await page.press('#plPromoCode', 'Enter');
+      await page.waitForFunction(() => { const i = document.getElementById('plPromoCode'); return i && !i.disabled; }, null, { timeout: 10000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const id = await page.evaluate(() => (document.activeElement && document.activeElement.id) || document.activeElement.tagName);
+      ok(id === 'plPromoCode', 'after ' + code + ' focus stays in the code field (' + id + ')');
+    }
+    {
+      const fine = await page.textContent('.pl-promise');
+      ok(/where Indian law requires it/.test(fine), 'the fine print names all three refund exceptions');
+    }
+    /* invite.html: the trial is offered, and the deck does not say "You are in". */
+    await page.goto(BASE + 'invite.html');
+    await page.waitForSelector('#through', { timeout: 15000 }).catch(() => {});
+    await page.waitForSelector('[data-iv-action="start-trial"]', { timeout: 10000 }).catch(() => {});
+    {
+      const iv = await page.evaluate(() => ({ deck: (document.querySelector('.iv-deck') || {}).textContent || '', trial: !!document.querySelector('[data-iv-action="start-trial"]') }));
+      ok(iv.trial, 'invite.html offers the trial to a member who never had one');
+      ok(!/You are in/.test(iv.deck), 'and its deck does not say "You are in" above "Choose a plan" — ' + iv.deck);
+    }
+    /* Settings points to Backup where it is: the rail, not a top bar. */
+    await page.goto(BASE + 'settings.html#danger');
+    await page.waitForSelector('#danger', { timeout: 15000 }).catch(() => {});
+    {
+      const t = await page.evaluate(() => ({ main: document.querySelector('main') ? document.querySelector('main').textContent : '', rail: !!document.querySelector('.sh-rail-tools') && /Backup/i.test(document.querySelector('.sh-rail-tools').textContent) }));
+      ok(!/top bar/i.test(t.main) && /above your avatar/.test(t.main), 'Settings points to Backup in the rail, never "the top bar"');
+      ok(t.rail, 'and Backup is in the rail');
+    }
+    delete EXT_RPC.my_invoices;
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* Signed out, in rupees: the list quotes price_notice's current price. */
+    const { ctx, page, errors } = await newContext(browser, {});
+    for (const pg of ['purchase.html', 'invite.html']) {
+      await page.goto(BASE + pg);
+      await page.waitForFunction(() => /₹2,999/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 })
+        .then(() => ok(true, pg + ' signed out: the rupee list reads the server\'s ₹2,999, not the build-time ₹599'),
+              async () => ok(false, pg + ' signed out: the rupee list reads ₹2,999 — read: ' + (await page.textContent('.pl-list-prices').catch(() => '')).slice(0, 120)));
+    }
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* Signed out at 390 in dollars: the name keeps its line. */
+    const ctx0 = await newContext(browser, { timezoneId: 'America/New_York', locale: 'en-US' });
+    await ctx0.page.setViewportSize({ width: 390, height: 900 });
+    await ctx0.page.goto(BASE + 'purchase.html');
+    await ctx0.page.waitForFunction(() => /Charged as/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
+    /* LINES of text, not the box: a grid item stretches to its row. */
+    const rows = await ctx0.page.$$eval('.pl-list-prices > li > strong', (ss) => ss.map((s) => { const rg = document.createRange(); rg.selectNodeContents(s); const tops = new Set([...rg.getClientRects()].map((r) => Math.round(r.top))); return { t: s.textContent, w: Math.round(s.getBoundingClientRect().width), lines: tops.size }; }));
+    const caption = await ctx0.page.textContent('.pl-list-prices').catch(() => '');
+    ok(/Charged as/.test(caption), 'the dollar list shows its long charge caption');
+    ok(rows.length === 3 && rows.every((r) => r.w > 20 && r.lines === 1), 'at 390 each plan name is on one line beside the wrapping price: ' + JSON.stringify(rows));
+    allErrors.push(...ctx0.errors); await ctx0.ctx.close();
+  }
+  {
+    /* The console's invoices: a sideways scroller at 390, and a failed
+       read reported as what it was. */
+    const inv = (n) => ({ id: 'inv' + n, number: 'FMS/26-27/000' + n, issued_at: '2026-10-0' + n + 'T10:00:00Z', buyer_email: 'buyer' + n + '@example.com', buyer_name: 'Buyer ' + n, plan_name: 'Basic', amount_paise: 299900, currency: 'INR', emailed_at: null, razorpay_order_id: 'order_' + n });
+    EXT_RPC.admin_list_invoices = () => [inv(1), inv(2), inv(3)];
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.setViewportSize({ width: 390, height: 900 });
+    await A.page.goto(BASE + 'admin.html#purchases');
+    await A.page.waitForSelector('#invoices table', { timeout: 15000 }).catch(() => {});
+    const m = await A.page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, wrapped: !!document.querySelector('#invoices .gt-scroll > table') }));
+    ok(m.wrapped && m.sw <= m.cw, 'admin.html#purchases at 390: the invoices table scrolls in its own box and the page does not (' + JSON.stringify(m) + ')');
+    allErrors.push(...A.errors); await A.ctx.close();
+    EXT_RPC.admin_list_invoices = () => { throw { code: '57014', message: 'canceling statement due to statement timeout', status: 503 }; };
+    const B = await newContext(browser, { tok: 'tok-admin' });
+    await B.page.goto(BASE + 'admin.html#purchases');
+    await B.page.waitForFunction(() => /did not load|not set up/.test((document.getElementById('invoices') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+    const t = await B.page.textContent('#invoices').catch(() => '');
+    ok(/did not load: canceling statement due to statement timeout/.test(t) && !/not set up/.test(t) && !!(await B.page.$('#invoices [data-action="invoice-retry"]')),
+      'a timed-out invoice read says what happened, with a retry — not "not set up (schema §28)": ' + t.replace(/\s+/g, ' ').slice(0, 140));
+    B.errors.length = 0; await B.ctx.close();
+    delete EXT_RPC.admin_list_invoices;
+  }
+  console.log('(qa4) account & business, QA round 4 (27 Oct 2026)');
+  F.reset(); RZP.mode = 'pay';
+  {
+    /* A Basic buyer: the receipt prints as the receipt, seats are not a
+       warning, the two headings differ, the storage note is not a
+       contradiction. */
+    const amy = USERS['tok-amy'].id;
+    F.db.members.set(amy, { role: 'user', disabled_at: null });
+    const at = new Date(Date.now() - 86400e3).toISOString(), until = new Date(Date.now() + 360 * 86400e3).toISOString();
+    F.db.accounts.push({ id: 'acc_amy4', name: 'Amy’s Studio', owner_id: amy, plan: 'starter', plan_until: until, plan_period: 'year', seat_limit: 1, created_at: at });
+    F.db.accountMembers.push({ account_id: 'acc_amy4', invited_email: USERS['tok-amy'].email, user_id: amy, role: 'owner', status: 'active' });
+    EXT_RPC.my_invoices = () => [{ id: 'iv1', number: 'FMS/2026-27/000001', issued_at: '2026-10-20T10:00:00Z', plan_name: 'Basic', amount_paise: 299900, currency: 'INR' }];
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#invoices [data-action="invoice-pdf"]', { timeout: 15000 }).catch(() => {});
+    await page.evaluate(() => { window.print = () => {}; });
+    const hasRule = () => page.evaluate(() => [...document.styleSheets].some((sh) => { try { return [...sh.cssRules].some((r) => /pdf-invoice/.test(r.cssText)); } catch (e) { return false; } }));
+    await page.click('#invoices [data-action="invoice-pdf"]').catch(() => {});
+    await page.waitForFunction(() => [...document.styleSheets].some((sh) => { try { return [...sh.cssRules].some((r) => /pdf-invoice/.test(r.cssText)); } catch (e) { return false; } }), null, { timeout: 10000 }).catch(() => {});
+    ok(await hasRule(), 'purchase.html: DOWNLOAD PDF brings pdf.css, so body.pdf-invoice hides the page and styles the receipt');
+    await page.waitForSelector('.pl-usage-tiles [data-usage="seats"]', { timeout: 10000 }).catch(() => {});
+    const seats = await page.evaluate(() => { const t = document.querySelector('.pl-usage-tiles [data-usage="seats"]'); return t ? { text: t.textContent, full: t.classList.contains('is-full'), warn: !!t.querySelector('[class*="warn"]') } : null; });
+    ok(seats && /1 of 1/.test(seats.text) && !/At the limit/.test(seats.text) && !seats.full && !seats.warn, 'a Basic buyer’s one seat reads "1 of 1" with no warning: ' + JSON.stringify(seats));
+    const heads = await page.evaluate(() => [...document.querySelectorAll('#plan h2, #plan h3')].map((x) => x.textContent.trim()));
+    ok(!heads.includes('Choose your plan'), 'the plans heading is not a second "Choose your plan": ' + JSON.stringify(heads.slice(0, 4)));
+    await page.goto(BASE + 'settings.html#backup');
+    await page.waitForSelector('.st-tiers', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const st = await page.evaluate(() => (document.querySelector('main') || document.body).textContent);
+    ok(/LARGE-ITEM STORAGE|Large-item storage/i.test(st) && !/has not been checked yet/.test(st), 'Settings > Storage does not say the large-item figure is hidden above the figure');
+    delete EXT_RPC.my_invoices;
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* Signed in, not a member: the pill does not say a code is the only way in. */
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForFunction(() => { const p = document.getElementById('signInPill'); return p && p.classList.contains('signed-in'); }, null, { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const pill = await page.evaluate(() => { const p = document.getElementById('signInPill'); return p ? p.textContent.trim() : null; });
+    ok(pill !== null && !/Invite needed/.test(pill), 'a signed-in non-member’s pill does not read "Invite needed": ' + pill);
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* The console: the rupee price is a year, the organisations table says plan names. */
+    F.db.accounts.push({ id: 'acc_ind4', name: 'Indie House', owner_id: USERS['tok-amy'].id, plan: 'indie', plan_until: new Date(Date.now() + 200 * 86400e3).toISOString(), plan_period: 'year', seat_limit: 3, created_at: new Date().toISOString() });
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#purchases');
+    await A.page.waitForSelector('label[for="ba_starter_price"]', { timeout: 15000 }).catch(() => {});
+    const lab = await A.page.textContent('label[for="ba_starter_price"]').catch(() => '');
+    ok(/a year/.test(lab) && !/once/.test(lab), 'admin.html#purchases: the rupee price is labelled a year, not "once": ' + lab);
+    await A.page.goto(BASE + 'admin.html#people');
+    await A.page.waitForFunction(() => /Indie House/.test(document.body.textContent), null, { timeout: 15000 }).catch(() => {});
+    const row = await A.page.evaluate(() => { const tr = [...document.querySelectorAll('tr')].find((r) => /Indie House/.test(r.textContent)); return tr ? [...tr.children].map((c) => c.textContent.trim()) : null; });
+    ok(row && row.includes('Intermediate') && !row.includes('indie'), 'admin.html#people: Organisations names the plan, not the id: ' + JSON.stringify(row));
+    allErrors.push(...A.errors); await A.ctx.close();
+  }
   /* ---- (pass) THE LAUNCH PASS (schema §61, owner 27 Oct 2026) ----------
      A paid week of the whole studio, sold as a launch offer with a real
      end. Every figure is the server's: the fake's billing_settings. */

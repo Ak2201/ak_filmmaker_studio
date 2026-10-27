@@ -293,7 +293,14 @@ export function buildDocument(scope, opts = {}) {
    a CSV is how a description containing a comma becomes two
    columns three months after anybody remembers writing this.
    ------------------------------------------------------------ */
-const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+/* A cell that opens with = + - @ is prefixed with an apostrophe, as the Edit
+   Log, Budget and Dialogue-list CSVs do: a description typed (or drafted,
+   or co-edited) as a formula must open in a spreadsheet as text. */
+const csvCell = (v) => {
+  let t = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+  return '"' + t.replace(/"/g, '""') + '"';
+};
 
 export const CSV_HEADER = [
   'Scene', 'Slug', 'Int/Ext', 'Time', 'Location', 'Scene pages',
@@ -361,8 +368,11 @@ export function toCSV(scope, opts = {}) {
     }
   }
   /* CRLF, because that is what the RFC says and what a spreadsheet
-     on a Windows desk opens without a dialog. */
-  return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+     on a Windows desk opens without a dialog. The BOM first, like every
+     other CSV in the studio: without it Excel opens the file in the
+     system code page and every em-dash in a slug and every Tamil
+     description comes out garbled. */
+  return '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
 /* ------------------------------------------------------------

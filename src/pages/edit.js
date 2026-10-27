@@ -35,7 +35,7 @@ import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
 import { formatDuration } from '../lib/screenplay-analysis.js';
-import { listSongs, durationSeconds, setTargetMinutes } from '../lib/songs.js';
+import { listSongs, durationSeconds, setTargetMinutes, getTargetMinutes } from '../lib/songs.js';
 import { targetRuntime } from '../lib/target-runtime.js';
 import { shootDayOf } from '../lib/locations.js';
 import {
@@ -114,7 +114,7 @@ function sceneRow(row) {
   facts.append(gotBadge(row));
   facts.append(setupsLine(row));
   const openPk = row.pickups.filter((p) => !p.done).length;
-  if (openPk) facts.append(h('span.el-pending', { text: 'Pending pickup' + (openPk > 1 ? ' · ' + openPk : '') }));
+  if (openPk) facts.append(h('span.el-pending', { text: 'Pending pick-up' + (openPk > 1 ? ' · ' + openPk : '') }));
   facts.append(check({
     label: 'Audio synced', checked: row.edit.sync, class: 'el-sync' + (row.edit.sync ? ' is-synced' : ''),
     attrs: { 'data-edit-field': 'sync', 'data-scene': s.id, 'aria-label': 'Audio synced for scene ' + (s.number || '') }
@@ -396,6 +396,7 @@ function csvDownload() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  if (StudioUI.toastSuccess) StudioUI.toastSuccess('Saved edit-log.csv');
 }
 
 function render(focus) {
@@ -598,7 +599,7 @@ delegate(document, 'click', '[data-edit-action]', (e, el) => {
     const id = el.getAttribute('data-scene');
     const prev = Edit.sceneEdit(id).cut;
     Edit.setSceneEdit(id, { cut: 'out' });
-    render();
+    render('[data-edit-field="cut"][data-scene="' + CSS.escape(id) + '"]');
     if (StudioUI.toast) StudioUI.toast('Scene marked cut out', {
       action: 'Undo', onAction: () => { Edit.setSceneEdit(id, { cut: prev }); render(); }
     });
@@ -608,7 +609,7 @@ delegate(document, 'click', '[data-edit-action]', (e, el) => {
     const id = el.getAttribute('data-scene');
     const sc = Scenes.listScenes().find((x) => x.id === id);
     if (Edit.addPickup(id, 'Pick-up: scene ' + ((sc && sc.number) || '') + ' was dropped on the day')) {
-      render();
+      render('[data-edit-field="cut"][data-scene="' + CSS.escape(id) + '"]');
       if (StudioUI.toast) StudioUI.toast('Pick-up added to the scene');
     }
     return;
@@ -661,6 +662,19 @@ saveOnInput('[data-edit-field]', (el) => {
 });
 
 delegate(document, 'change', '[data-edit-target]', (e, el) => {
+  /* A value the store refuses (negative, over 600) used to be written as
+     0, so the field went blank and a target already set was lost with no
+     word said. Refuse it here: keep the stored target and say why. An
+     empty field (or 0) still clears the target on purpose. */
+  const raw = String(el.value).trim();
+  const n = Math.round(Number(raw));
+  if (raw && n !== 0 && !(n >= 1 && n <= 600)) {
+    const kept = getTargetMinutes();
+    el.value = kept || '';
+    StudioUI.toastError('A target length is 1 to 600 minutes. '
+      + (kept ? 'It stays at ' + kept + ' min.' : 'Nothing was set.'));
+    return;
+  }
   setTargetMinutes(el.value);
   /* The person has now set the shared target, so the Edit Log's legacy
      value is retired: left in place, it was the fallback a cleared field
@@ -682,7 +696,11 @@ delegate(document, 'submit', '[data-edit-form="pickup"]', (e, form) => {
   /* Back into the same scene's add line, so a run of pick-ups is
      typed without reaching for the mouse between them. */
   if (Edit.addPickup(id, input.value)) render('[data-edit-form="pickup"][data-scene="' + CSS.escape(id) + '"] input');
-  else input.focus();
+  else {
+    input.setAttribute('aria-invalid', 'true');
+    if (StudioUI.toastError) StudioUI.toastError('Type what the editor needs first.');
+    input.focus();
+  }
 });
 
 /* ---- links and cut versions ---------------------------------- */

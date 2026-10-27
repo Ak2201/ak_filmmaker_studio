@@ -21,8 +21,10 @@ import { h, delegate } from '../lib/dom.js';
 import { BRAND } from '../lib/brand.js';
 import { formatCode, normaliseCode, setCodePass, startInviteLink, errorSentence } from '../lib/gate.js';
 import '../lib/store.js';
+import { ago } from '../lib/trial-time.js';
 import '../styles/gate.css';
 import { askDanger, askText } from './dialog.js';
+import { errorState } from './admin-kit.js';
 
 /* ---- the DEMO link: a pitch without a sign-in ----------------------
    An admin makes one standard invite code labelled "Demo" and copies
@@ -47,8 +49,7 @@ const toast = (msg, type, duration) => {
 /* ---- FR-203: the takeover prompt -------------------------------- */
 
 function since(ts) {
-  const s = Math.max(0, Math.round((Date.now() - Date.parse(ts)) / 1000));
-  return s < 60 ? `${s} seconds ago` : `${Math.round(s / 60)} minute${Math.round(s / 60) === 1 ? '' : 's'} ago`;
+  return ago((Date.now() - Date.parse(ts)) / 1000);
 }
 function browserOf(ua) {
   const u = String(ua || '');
@@ -63,8 +64,11 @@ export function takeoverDialog(info = {}) {
     const prev = document.activeElement;
     const where = browserOf(info.userAgent);
     const card = h('div.cm-card.gt-card', {}, [
-      h('h2#gtHeading', { text: 'Active in another window.' }),
-      h('p.gt-body', { text: 'Your account is currently active in another Chrome window. Would you like to terminate that session and continue here?' }),
+      /* Only what is known: the other session's user agent is shown on
+         the line below, so the body does not name a browser it never
+         checked ("Do not let a message GUESS"). */
+      h('h2#gtHeading', { text: 'Active somewhere else.' }),
+      h('p.gt-body', { text: 'Your account is currently active in another browser window or on another device. Would you like to end that session and continue here?' }),
       h('p.gt-meta', { text: [where && `That session: ${where}`, info.lastSeen && `last seen ${since(info.lastSeen)}`].filter(Boolean).join(' · ') || ' ' }),
       h('p.gt-meta', { text: 'Cancelling keeps you working on this device exactly as before — only syncing to your account pauses.' }),
       h('div.gt-actions', {}, [
@@ -273,6 +277,12 @@ export function adminSection(section, st, { part } = {}) {
     ? section('members', 'Members', 'Members.', '')
     : section('admin-console', 'Administrator', 'Invite requests, codes and sessions.', '');
   if (!admin.loaded && !admin.busy && !admin.error) { loadAdmin(); }
+  if (admin.error && !admin.loaded) {
+    /* A console that never loaded says WHAT failed and offers Retry, as the
+       Overview and Audit tabs do (admin-kit errorState), not a bare string. */
+    sec.append(errorState({ title: (part === 'members' ? 'Members' : 'Invite codes and requests') + ' could not load', why: admin.error, onRetry: () => loadAdmin() }));
+    return sec;
+  }
   if (admin.error) sec.append(h('p.gt-error', { role: 'alert', text: admin.error }));
   if (!admin.loaded) { sec.append(h('p.gt-meta', { text: admin.busy ? 'Loading…' : '' })); return sec; }
   if (want('requests')) requestsPart(sec);
@@ -390,7 +400,7 @@ function requestsPart(sec) {
      not apply to them. Say so where the code is made. */
   form.append(h('p.gt-meta', { text: 'A code is spent when its holder signs in, and buys them a 7-day trial; tier locks apply as usual.' }));
   if (admin.made) {
-    form.append(h('p.gt-made', {}, [h('span', { text: 'New code: ' }), h('code.gt-codeval', { text: formatCode(admin.made.code) }),
+    form.append(h('p.gt-made', { role: 'status' }, [h('span', { text: 'New code: ' }), h('code.gt-codeval', { text: formatCode(admin.made.code) }),
       h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'COPY CODE' })]));
     if (admin.made.pass_type === 'standard') {
       /* The same code as a link: the thing to send, where the code is
@@ -408,7 +418,7 @@ function requestsPart(sec) {
          form, because every link already sent to somebody points
          there and a code is a thing people paste into a group chat
          months later. */
-      form.append(h('p.gt-made', {}, [h('span', { text: 'Or share the link: ' }), h('code.gt-codeval.gt-link', { text: startInviteLink(admin.made.code) }),
+      form.append(h('p.gt-made', { role: 'status' }, [h('span', { text: 'Or share the link: ' }), h('code.gt-codeval.gt-link', { text: startInviteLink(admin.made.code) }),
         h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': admin.made.code, text: 'COPY LINK' })]));
     }
   }
@@ -427,7 +437,7 @@ function requestsPart(sec) {
   ]));
   demo.append(h('button.btn.primary', { type: 'button', 'data-gate-action': 'create-demo', text: 'CREATE DEMO LINK' }));
   if (admin.demo) {
-    demo.append(h('p.gt-made', {}, [h('span', { text: 'Demo link: ' }), h('code.gt-codeval.gt-link', { text: demoLink(admin.demo.code) }),
+    demo.append(h('p.gt-made', { role: 'status' }, [h('span', { text: 'Demo link: ' }), h('code.gt-codeval.gt-link', { text: demoLink(admin.demo.code) }),
       h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-demo', 'data-code': admin.demo.code, text: 'COPY DEMO LINK' })]));
   }
   sec.append(demo);
@@ -600,7 +610,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
   el.disabled = true;   // one click, one RPC
   try {
     if (act === 'revoke') {
-      if (!await askDanger('Revoke this code? Nobody can redeem or open it again. Accounts already made with it are not affected.')) return;
+      if (!await askDanger('Revoke this code? Nobody can redeem or open it again. Accounts already made with it are not affected.', { confirm: 'Revoke code' })) return;
       await g.admin.revokeCode(el.dataset.id); await loadAdmin();
     } else if (act === 'terminate') {
       await g.admin.terminate(el.dataset.id, false); await loadAdmin();

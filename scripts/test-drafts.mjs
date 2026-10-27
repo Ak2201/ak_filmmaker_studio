@@ -115,11 +115,16 @@ ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
   ok(ld.numbering.pages && ld.numbering.pages.locked === true, 'the page lock survives too');
   ok(ld.numbering.pages.starts.every((st) => !st.id || ld.elements.some((x) => x.id === st.id)), 'and its starts name restored elements');
   eq(Typeset.pageNumbersDoc(ld), pagesBefore, 'the pages read as they did when locked');
+  // QA r3: a draft saved under the lock prints the lock's numbers; one from before it prints none.
+  const dn = D.draftDocument(ld, dl.id);
+  eq(numsOf(dn), want, 'a draft saved while locked prints the locked numbers (1 2 4 4A 5, 3 omitted)');
   // A draft from before this lock: its headings come back by their words.
   const unl = { elements: els('INT. A - DAY', 'x', 'INT. B - DAY', 'y'), revisions: [], documents: [] };
   const dOld = D.saveNewDraft(unl);
   unl.numbering = Script.lockNumbering(unl.elements);
   unl.revisions[0].elements.forEach((e) => { delete e.liveId; });
+  unl.revisions[0].date = '2026-01-01T00:00:00.000Z';   // saved well before the lock
+  ok(!D.draftDocument(unl, dOld.id).numbering, 'a draft saved before the lock prints no locked numbers');
   D.restoreDraft(unl, dOld.id);
   eq(numsOf(unl), { heads: ['1', '2'], omitted: [] }, 'a draft with no liveId: numbers matched by heading text');
   // Unlocked stays unlocked.
@@ -127,6 +132,42 @@ ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
   const dFree = D.saveNewDraft(free);
   D.restoreDraft(free, dFree.id);
   ok(!('numbering' in free), 'no lock, none invented');
+}
+
+/* A side copy the sync kept by itself is never the current draft (QA:
+   "From another device" became Current and Update overwrote it). */
+{
+  const Inc = await import('../src/lib/script-incoming.js');
+  const mine = { elements: els('INT. A - DAY', 'Mine.'), revisions: [], documents: [] };
+  const theirs = { elements: els('INT. A - DAY', 'Theirs.'), revisions: [] };
+  const kept = Inc.keepBoth(mine, theirs, Inc.ARRIVAL_PREFIX + '21:09');
+  eq(kept.revisions.length, 1, 'the arrival is kept as a revision');
+  ok(D.latestDraft(kept) === null, 'an arrival alone is not the current draft');
+  ok(D.changedSinceDraft(kept) === true, 'and the working copy reads as changed since no draft');
+  ok(D.listDrafts(kept).length === 1, 'the arrival is still listed');
+  const real = D.saveNewDraft(kept);
+  eq(real.name, 'Draft 1', 'the first real draft is Draft 1, not Draft 2');
+  const again = Inc.keepBoth(kept, theirs, Inc.ARRIVAL_PREFIX + '21:20');
+  ok(D.latestDraft(again).id === real.id, 'a later arrival does not displace the real current draft');
+  const yours = Inc.takeTheirs(again, theirs, Inc.YOURS_PREFIX + '21:21');
+  ok(D.latestDraft(yours).id === real.id, '"Your version" is a side copy too');
+}
+
+/* ---- QA r4: side copies take no place in the colour order ---- */
+{
+  const I = await import('../src/lib/script-incoming.js');
+  const WM = await import('../src/lib/write-model.js');
+  const c = { elements: els('INT. A - DAY', 'One.'), revisions: [], documents: [] };
+  D.saveNewDraft(c);
+  c.revisions.push({ ...Script.makeRevision(c.elements, I.ARRIVAL_PREFIX + '10:42') });
+  ok(I.isSideCopy(c.revisions[1]), 'the arrival is a side copy');
+  c.elements[1].text = 'Two.';
+  const d2 = D.saveNewDraft(c);
+  eq([d2.name, d2.colour && d2.colour.name], ['Draft 2', 'Blue'], 'Draft 2 is Blue with a side copy before it');
+  const side = D.listDrafts(c).find((d) => d.side);
+  ok(side && side.colour === null, 'a side copy has no revision colour');
+  eq(I.revisionLabel(c.revisions, 1), c.revisions[1].name, 'a side copy is labelled by name alone, never "Blue — …"');
+  eq(WM.currentRevision(c), 'Blue — Draft 2', 'the current revision counts issues only');
 }
 
 console.log(fails ? fails + ' FAILED of ' + n : 'drafts: all ' + n + ' checks passed');

@@ -21,6 +21,7 @@
    Shown by the server's role, like everything on admin.html; every
    save is re-checked by the database. No inline handlers (CSP).
    ============================================================ */
+import { errorSentence } from '../lib/gate.js';
 import { h, delegate } from '../lib/dom.js';
 import Billing, { planName } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
@@ -33,7 +34,7 @@ export function wirePlanFeatures(render) { rerender = render || (() => {}); }
 async function load() {
   S.busy = true; S.error = ''; rerender();
   try { S.plans = await Billing.refreshPlans(); S.loaded = true; }
-  catch (e) { S.error = e.message || 'The plans could not be loaded.'; }
+  catch (e) { S.error = errorSentence(e, 'The plans could not be loaded.'); }
   finally { S.busy = false; rerender(); }
 }
 
@@ -103,7 +104,7 @@ delegate(document, 'submit', '[data-pf-form="features"]', async (e, form) => {
     await load();
     PlanGate.refresh();
     setTimeout(() => { S.saved = ''; rerender(); }, 2500);
-  } catch (err) { toast(err.message || 'The features were not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The features were not saved.'), 'error'); }
 });
 
 export default { planFeaturesSection, wirePlanFeatures };

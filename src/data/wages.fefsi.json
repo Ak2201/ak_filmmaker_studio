@@ -50,7 +50,7 @@
   },
   "general": {
     "id": "general",
-    "craft": "FEFSI member — general daily bata (as reported)",
+    "craft": "FEFSI member — general daily batta (as reported)",
     "bata": 1300,
     "unit": "day",
     "confidence": "reported",
@@ -60,7 +60,7 @@
   "rules": {
     "callHours": null,
     "otRule": null,
-    "note": "The 2022 MoU's call-time and overtime clauses were not found published. Set the ones your unit agreed on each row — call hours (a shift's length) and the overtime rule (e.g. half a bata per extra two hours) are yours to fill in."
+    "note": "The 2022 MoU's call-time and overtime clauses were not found published. Set the ones your unit agreed on each row — call hours (a shift's length) and the overtime rule (e.g. half a batta per extra two hours) are yours to fill in."
   },
   "rows": [
     { "id": "camera-assistant",   "craft": "Camera assistant",                 "department": "Camera",     "bata": null, "unit": "day", "callHours": null, "otRule": null },

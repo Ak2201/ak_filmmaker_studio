@@ -45,6 +45,7 @@ import Scenes from '../lib/scenes.js';
 import Pitch from '../lib/pitch-deck.js';
 import StudioUI from './chrome.js';
 import { ask, askDanger } from './dialog.js';
+import { flushAutosave } from '../lib/autosave.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 
 const pct = (x) => Math.round(x * 100) + '%';
@@ -172,8 +173,13 @@ export async function importSynopsis(file) {
   let r;
   try { r = await IO.readSynopsisFile(file); }
   catch (e) { StudioUI.toast(e.message, { type: 'error' }); return null; }
+  // A keystroke still on its debounce is a synopsis: save it now, so the
+  // replace question is asked about it — left pending, it skipped the
+  // question and then wrote the typed draft over the imported file.
+  flushAutosave();
+  if (Story.loadStory().source.trim() && !await ask(IO.replaceQuestion(r.name))) return null;
+  flushAutosave();   // typed while the question was open
   const s = Story.loadStory();
-  if (s.source.trim() && !await ask(IO.replaceQuestion(r.name))) return null;
   s.source = r.text;
   s.sourceName = r.name;
   Story.saveStory(s);

@@ -34,6 +34,7 @@
    Shared with the Overview (src/pages/admin.js): ensureHealth(),
    healthState(), reload().
    ============================================================ */
+import { errorSentence } from '../../lib/gate.js';
 import { h, delegate } from '../../lib/dom.js';
 import { kpi, pill, checklist, emptyState, errorState, skeleton, dataTable, hashParts, absTime, relTime } from '../../ui/admin-kit.js';
 import { ask } from '../../ui/dialog.js';
@@ -73,20 +74,20 @@ const cloud = () => (ctxRef && ctxRef.cloud) || window.StudioCloud || null;
 async function loadHealth() {
   if (H.phase !== 'ok') H.phase = 'loading'; H.busy = true;
   try { H.data = await callRpc(cloud(), 'admin_health'); H.phase = 'ok'; H.error = ''; H.at = Date.now(); }
-  catch (e) { H.phase = 'error'; H.error = e.message || 'The server did not say why.'; }
+  catch (e) { H.phase = 'error'; H.error = errorSentence(e, 'The server did not say why.'); }
   H.busy = false;
   again();
 }
 async function loadPreview() {
   if (W.phase !== 'ok') W.phase = 'loading';
   try { W.data = await callRpc(cloud(), 'admin_launch_preview'); W.phase = 'ok'; W.error = ''; }
-  catch (e) { W.phase = 'error'; W.error = e.message || 'The server did not say why.'; }
+  catch (e) { W.phase = 'error'; W.error = errorSentence(e, 'The server did not say why.'); }
   again();
 }
 async function loadInvoices() {
   if (I.phase !== 'ok') I.phase = 'loading';
   try { I.rows = (await callRpc(cloud(), 'admin_list_invoices')) || []; I.phase = 'ok'; I.error = ''; }
-  catch (e) { I.phase = 'error'; I.error = e.message || 'The server did not say why.'; }
+  catch (e) { I.phase = 'error'; I.error = errorSentence(e, 'The server did not say why.'); }
   again();
 }
 /** The newest audit row that turned purchase_required ON or OFF decides what the log says. */
@@ -96,7 +97,7 @@ async function loadThrow() {
     const out = await callRpc(cloud(), 'admin_list_audit', { p_action: 'set_billing_settings', p_target: 'billing_settings:global', p_limit: 50 });
     T.at = lastThrowAt(out && out.rows);
     T.phase = 'ok'; T.error = '';
-  } catch (e) { T.phase = 'error'; T.at = null; T.error = e.message || 'The server did not say why.'; }
+  } catch (e) { T.phase = 'error'; T.at = null; T.error = errorSentence(e, 'The server did not say why.'); }
   again();
 }
 function loadAll() { loadHealth(); loadPreview(); loadInvoices(); loadThrow(); }
@@ -385,7 +386,7 @@ delegate(document, 'click', '[data-action="receipt-resend"]', async (e, el) => {
     await callRpc(cloud(), 'admin_resend_receipt', { p_invoice: row.id });
     StudioUI.toast(`Receipt for ${row.number} queued again.`, { action: 'View in audit log', onAction: () => ctxRef && ctxRef.go('audit', { target: row.id }) });
     loadAll();
-  } catch (err) { StudioUI.toast(err.message, { type: 'error' }); }
+  } catch (err) { StudioUI.toast(errorSentence(err, 'That did not work.'), { type: 'error' }); }
 });
 
 async function setSwitch(on) {
@@ -399,7 +400,7 @@ async function setSwitch(on) {
   } catch (e) {
     /* The server's own sentence (the grandfathered refusal carries hint
        'grandfathered'), shown as a sentence on the card, not a toast. */
-    SW.msg = { tone: 'danger', text: e.message };
+    SW.msg = { tone: 'danger', text: errorSentence(e, 'That did not work.') };
   }
   SW.busy = false;
   loadAll();

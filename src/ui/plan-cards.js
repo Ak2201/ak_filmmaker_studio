@@ -69,6 +69,7 @@
 import { reveal } from '../lib/motion.js';
 import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
+import { errorSentence } from '../lib/gate.js';
 import Billing, { priceFor, cap, planName, normalisePromo, UPGRADE_ONCE } from '../lib/billing.js';
 import { ask } from './dialog.js';
 import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
@@ -88,6 +89,20 @@ const day = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocal
 const daysTo = (iso) => Math.ceil((new Date(iso) - Date.now()) / 86400000);
 let busyPlan = '';
 let statusText = '';
+/* Which card the status belongs to: it is drawn under THAT card's
+   button, where the reader pressed. At the foot of the row it sat
+   1,000-3,500px below the button and nobody saw why nothing happened. */
+let statusPlan = '';
+/* After a redraw, put focus back where the reader was if the redraw
+   dropped it (the pressed control was rebuilt, or drawn disabled while
+   busy, so it could not keep focus). Only when focus fell to <body>:
+   a reader who has moved on is left where they are. */
+function refocus(sel) {
+  const a = document.activeElement;
+  if (a && a !== document.body && a.isConnected) return;
+  const el = document.querySelector(sel);
+  if (el && !el.disabled) try { el.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
+}
 let hooks = { onBuy: null, rerender: null, onSuccess: null };
 /* The price view the host passed (price-model.js shopView), kept for the
    page so BUY and the quotes use the currency the cards were drawn in. */
@@ -228,6 +243,18 @@ function wantMatrix() {
   matrixAsked = true;
   import('../lib/plan-matrix.js').then((m) => { matrixMod = m; if (hooks.rerender) hooks.rerender(); }).catch(() => { /* the counts stand */ });
 }
+/* THE ROWS THE COUNT AND THE TABLE READ. When the rows do not tell the
+   plans apart (every features map still {}, so a missing key reads as
+   included), "32 of 32" on every card and a tick in every cell would
+   contradict the "Everything in X, plus:" list beside them, which
+   already falls back to the matrix. Same fallback, same source: the
+   matrix's own maps, once its lazy chunk is in (QA, 26 Oct 2026). */
+function effectiveRows(plans) {
+  const rows = plans || [];
+  const differ = rows.some((x) => x && x.id !== 'free' && x.features && Object.values(x.features).some((v) => v === false));
+  if (differ || !matrixMod) return rows;
+  return rows.map((x) => (x && x.id !== 'free' ? { ...x, features: matrixMod.matrixFeatures(x.id) } : x));
+}
 const paidSorted = (plans) => (plans || []).filter((x) => x && x.id !== 'free').sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
 /** The ids this plan adds, and the plan it adds them to (null = the first). */
 function addedIds(plans, p) {
@@ -315,7 +342,8 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   const usd = !!(shop && shop.currency === 'USD');
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? (onPass(st) ? 'free' : st.plan) : null;
-  const listed = listedIn(plans);
+  const eff = effectiveRows(plans);
+  const listed = listedIn(eff);
   wantModes();
   const mode = planMode();
   /* A running YEARLY auto-pay: rzp-subscribe refuses a second, so on
@@ -386,7 +414,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
         price === null ? null : h('span.pl-per', { text: credit > 0 ? ' now' : ' a year' }),
         q ? h('s.pl-list', { text: qFmt(q, 'list'), 'aria-label': 'list price ' + qFmt(q, 'list') }) : null
       ].filter(Boolean)),
-      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, 'list'), qCur(q)) : perDayIn(listMinor, listCur)} a day` }),
+      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, credit > 0 ? 'list' : 'amount'), qCur(q)) : perDayIn(listMinor, listCur)} a day` }),
       price === null ? null : h('p.pl-price-cap.pl-terms', { 'data-offer-mode': mode || 'unknown',
         /* the terms name the amount CHARGED: a dollar card charged in
            rupees says the rupees here, as the caption under it does */
@@ -433,6 +461,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     } else if (current && !higher) {
       act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--ghost.pl-cta-held', { type: 'button', disabled: true, text: 'INCLUDED IN YOUR PLAN' }));
     }
+    if (statusText && statusPlan === p.id) act.append(h('p.pl-status', { role: 'status', text: statusText }));
     if (act.childNodes.length) card.append(act);
 
     /* WHAT YOU GET: the additions by stage, then the limits, then the
@@ -441,7 +470,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     { const adds = addsBlock(plans, p, listed); if (adds) body.append(adds); }
     body.append(h('p.pl-check-stage', { text: 'Limits' }), limitList(p.limits));
     card.append(body);
-    card.append(featureBlock(p, listed));
+    card.append(featureBlock(eff.find((x) => x && x.id === p.id) || p, listed));
     row.append(card);
   }
   /* The next step up wears the slow border trail (it is a class, so it
@@ -472,7 +501,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   }
   else if (picked.id) markPicked(row);
   loadUpgradeQuotes(st, buyable);
-  if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
+  if (statusText && !row.querySelector('.pl-status')) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   /* The offers sit side by side under the row: the code box and the
@@ -484,7 +513,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
      the upgrade credit (refund.html §4, schema section 21), the legal. */
   wrap.append(h('div.pl-fine', {}, [
     h('p.pl-note', { text: fineTerms(mode) }),
-    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final. Move up any time: what is left of your year counts toward the new plan.' }),
+    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, if the plan is not activated on your account, or where Indian law requires it. Otherwise a year is final. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
       'By paying you agree to the ',
       h('a', { href: 'terms.html', text: 'Terms of Service' }),
@@ -495,7 +524,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       '.'
     ])
   ]));
-  { const cmp = compareBlock(plans, current, listed); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
+  { const cmp = compareBlock(eff, current, listed); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   return wrap;
 }
 
@@ -524,8 +553,8 @@ function promoBox(buyable) {
   const input = h('input#plPromoCode.pl-promo-input', { type: 'text', name: 'code', inputmode: 'text', autocapitalize: 'characters', spellcheck: 'false',
     maxlength: 40, placeholder: 'e.g. LAUNCH10', 'aria-describedby': 'plPromoHint', value: promo.typed, disabled: promo.busy || busyPlan !== '' });
   form.append(input);
-  form.append(h('button.btn', { type: 'submit', disabled: promo.busy || busyPlan !== '', text: promo.busy ? 'CHECKING…' : promo.code ? 'RE-CHECK' : 'APPLY' }));
-  if (promo.code) form.append(h('button.btn', { type: 'button', 'data-plan-action': 'promo-clear', disabled: promo.busy || busyPlan !== '', text: 'REMOVE' }));
+  form.append(h('button.k-btn.k-btn--secondary', { type: 'submit', disabled: promo.busy || busyPlan !== '', text: promo.busy ? 'Checking…' : promo.code ? 'Re-check' : 'Apply' }));
+  if (promo.code) form.append(h('button.k-btn.k-btn--ghost', { type: 'button', 'data-plan-action': 'promo-clear', disabled: promo.busy || busyPlan !== '', text: 'Remove' }));
   det.append(form);
   const applied = buyable.filter((id) => appliedQuote(id));
   if (promo.error) det.append(h('p#plPromoHint.pl-promo-msg.is-error', { role: 'alert', text: promo.error }));
@@ -557,7 +586,7 @@ function eduCallout() {
         ? h('p.pl-edu-note', {}, ['Use code ' + EDU_CODE + ' for the student price on Intermediate. Film schools, clubs and workshops: ', mail, ' for group access.'])
         : h('p.pl-edu-note', {}, ['Write to us and we will tell you what we can offer. Film schools, clubs and workshops: ', mail, ' for group access.'])
     ]),
-    EDU_LIVE ? h('button.btn', { type: 'button', 'data-plan-action': 'edu-apply', disabled: promo.busy || busyPlan !== '', text: 'APPLY ' + EDU_CODE }) : null
+    EDU_LIVE ? h('button.k-btn.k-btn--secondary', { type: 'button', 'data-plan-action': 'edu-apply', disabled: promo.busy || busyPlan !== '', text: 'Apply ' + EDU_CODE }) : null
   ]);
 }
 
@@ -677,12 +706,24 @@ function successCard(planId, plans) {
   }).catch(() => { /* the card still says what plan you are on */ });
   
   card.append(h('p.pl-note', {}, [
-    'Your invoice is on its way from Razorpay by e-mail, and ',
+    /* The receipt is the studio's own (an edge function, _shared/mail.js),
+       not Razorpay's. */
+    'Your receipt and invoice are on their way by e-mail, and ',
     h('a', { href: 'purchase.html#invoices', text: 'listed under Invoices on the Purchase page' }), '.'
   ]));
-  card.append(h('div.iv-actions', {}, [h('a.btn.primary', { href: 'index.html?welcome=plan', text: 'START YOUR FILM' })]));
+  card.append(h('div.iv-actions', {}, [h('a.k-btn.k-btn--primary', { href: 'index.html?welcome=plan', text: 'Start your film' })]));
   return card;
 }
+
+/** Where a usage figure stands against its cap: 'full' (a warning),
+ *  'seats' (every seat taken, said neutrally) or null. Seats are not a
+ *  warning: Basic's one seat is the buyer's own, so it is taken on day
+ *  one with nothing wrong. Films, links and readers still warn. */
+export function capState(key, used, c) {
+  if (c === null || used < c) return null;
+  return key === 'seats' ? 'seats' : 'full';
+}
+const seatsNote = (c) => (c === 1 ? 'Your own seat' : 'Every seat in use');
 
 /** Usage against the current plan, for the settings page. */
 export function usageList(st) {
@@ -692,8 +733,9 @@ export function usageList(st) {
   const ul = h('ul.pl-usage');
   const line = (label, used, key) => {
     const c = cap(lim, key);
-    const full = c !== null && used >= c;
-    ul.append(h('li' + (full ? '.is-full' : ''), { text: `${label}: ${used}${c === null ? '' : ' of ' + c}${full ? ' — at the limit' : ''}` }));
+    const at = capState(key, used, c);
+    const full = at === 'full';
+    ul.append(h('li' + (full ? '.is-full' : ''), { text: `${label}: ${used}${c === null ? '' : ' of ' + c}${full ? ' — at the limit' : at ? ' — ' + seatsNote(c).toLowerCase() : ''}` }));
   };
   line('Cloud projects', u.projects || 0, 'projects');
   line('Live share links', u.shares || 0, 'shares');
@@ -711,7 +753,8 @@ export function usageTiles(st) {
   const lim = st.limits || {};
   const tile = (label, used, key) => {
     const c = cap(lim, key);
-    const full = c !== null && used >= c;
+    const at = capState(key, used, c);
+    const full = at === 'full';
     const el = h('div.pl-use' + (full ? '.is-full' : ''), { 'data-usage': key });
     el.append(h('p.pl-use-label', { text: label }));
     el.append(h('p.pl-use-fig', {}, [h('strong', { text: String(used) }), h('span', { text: c === null ? ' · unlimited' : ' of ' + c })]));
@@ -722,6 +765,7 @@ export function usageTiles(st) {
       el.append(m);
     }
     if (full) el.append(h('p.pl-use-note', { text: 'At the limit' }));
+    else if (at) el.append(h('p.pl-use-note', { text: seatsNote(c) }));
     return el;
   };
   return h('div.pl-usage-tiles', { role: 'group', 'aria-label': 'Your usage' }, [
@@ -747,7 +791,7 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
     if (ap && ap.live && ap.product === 'pass') {
       const yes = await ask({ title: 'Stop the weekly auto-pay?', body: 'Buying a yearly plan stops your weekly auto-pay. Continue?', confirm: 'STOP IT AND CONTINUE', cancel: 'Not now' });
       if (!yes) return;
-      busyPlan = planId; statusText = 'Stopping the weekly auto-pay…';
+      busyPlan = planId; statusPlan = planId; statusText = 'Stopping the weekly auto-pay…';
       if (hooks.rerender) hooks.rerender();
       try { await Billing.cancelAutopay(); passStopped = true; }
       catch (err) {
@@ -757,7 +801,7 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
       }
     }
   }
-  busyPlan = planId; statusText = '';
+  busyPlan = planId; statusText = ''; statusPlan = planId;
   if (hooks.rerender) hooks.rerender();
   try {
     const q = appliedQuote(planId);
@@ -775,6 +819,7 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
   } finally {
     busyPlan = '';
     if (hooks.rerender) hooks.rerender();
+    refocus(`.pl-card [data-plan-action="buy"][data-plan="${planId}"]`);
   }
 });
 
@@ -788,12 +833,12 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   const typed = String(new FormData(form).get('code') || '');
   const code = normalisePromo(typed);
   promo.typed = typed; promo.error = ''; promo.quotes = {}; promo.code = ''; promo.open = true; promo.cur = orderCur();
-  if (!code) { if (hooks.rerender) hooks.rerender(); return; }
+  if (!code) { if (hooks.rerender) hooks.rerender(); refocus('#plPromoCode'); return; }
   promo.busy = true;
   if (hooks.rerender) hooks.rerender();
   try {
     const ids = [...document.querySelectorAll('.pl-card [data-plan-action="buy"]')].map((b) => b.dataset.plan);
-    const answers = await Promise.all(ids.map((id) => Billing.quote(id, code, promo.cur).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: err.message || 'The code could not be checked.' }])));
+    const answers = await Promise.all(ids.map((id) => Billing.quote(id, code, promo.cur).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: errorSentence(err, 'The code could not be checked.') }])));
     const quotes = Object.fromEntries(answers);
     const okIds = ids.filter((id) => quotes[id] && quotes[id].ok && quotes[id].code);
     if (okIds.length) { promo.quotes = quotes; promo.code = code; promo.at = billingKey(lastSt); }
@@ -807,6 +852,7 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   } finally {
     promo.busy = false;
     if (hooks.rerender) hooks.rerender();
+    refocus('#plPromoCode');
   }
 });
 

@@ -28,6 +28,11 @@
 .pp-sum .pp-meter { flex: 1 1 14rem; max-width: 22rem; }
 .pp-step { display: grid; gap: var(--s4); padding: var(--s5); background: var(--paper-raised); border: var(--sk-card-line-w, 1px) solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
 .pp-step[hidden] { display: none; }
+/* Print is the whole checklist: the tab layer hides nine of ten steps, and under a
+   "5 of 10 steps done" line that reads as an unfinished list. Doubled class so
+   base.css's `[hidden] { display: none !important }` is what hides them, so only
+   an !important of higher specificity can show them. */
+@media print { .pp-step[hidden] { display: grid !important; } }
 .pp-step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s3); }
 .pp-step-n { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent-deep); }
 .pp-step h2 { margin: 0; font-family: var(--f-display); font-size: var(--t-2xl); line-height: var(--lh-tight); }
@@ -45,6 +50,10 @@
 .pp-check.is-gap .pp-check-mark { color: var(--warn-deep); }
 .pp-check-hint { display: block; color: var(--ink-muted); font-size: var(--t-tiny); }
 .pp-check a { font-size: var(--t-small); }
+/* "Fix →" is the row's one action: a bare anchor is not under base.css's 44px touch floor. */
+@media (pointer: coarse) {
+  .pp-check a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+}
 @media (max-width: 719px) {
   .pp-page { padding-inline: var(--s4); }
   .pp-step { padding: var(--s4); }

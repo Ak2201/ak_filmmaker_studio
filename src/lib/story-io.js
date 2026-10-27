@@ -132,6 +132,31 @@ export const buildUndoQuestion = 'Undo the build? The synopsis and highlights go
    into paragraphs and keep blank lines as paragraph breaks. */
 export const reflow = (t) => t.split(/\n\s*\n/).map((p) => p.split('\n').map((l) => l.trim()).filter(Boolean).join(' ')).filter(Boolean).join('\n\n');
 
+/** Text from a file's bytes. UTF-8 first (a BOM is dropped by the
+ *  decoder); if any byte is not valid UTF-8 the file is almost certainly
+ *  Windows-1252 (Notepad, Word "Save as text"), so decode it that way
+ *  instead of storing U+FFFD for every curly quote. UTF-16 files carry a
+ *  BOM and are read as such. */
+export function decodeText(buf) {
+  const u = new Uint8Array(buf);
+  if (u[0] === 0xFF && u[1] === 0xFE) return new TextDecoder('utf-16le').decode(u);
+  if (u[0] === 0xFE && u[1] === 0xFF) return new TextDecoder('utf-16be').decode(u);
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(u); }
+  catch (e) { return fromCp1252(u); }
+}
+/* By hand, not TextDecoder('windows-1252'): some runtimes (Node's small
+   ICU) treat the label as Latin-1 and leave 0x80-0x9F as control codes,
+   which is exactly the curly quotes and dashes. */
+const CP1252_HIGH = '\u20AC\u0081\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u008D\u017D\u008F\u0090\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u009D\u017E\u0178';
+function fromCp1252(u) {
+  let out = '';
+  for (const b of u) out += b >= 0x80 && b < 0xA0 ? CP1252_HIGH[b - 0x80] : String.fromCharCode(b);
+  return out;
+}
+
+const TEXT_EXT = /\.(txt|md|text|markdown)$/;
+export const UNSUPPORTED = (name) => `${name} is not a file the synopsis can read. Use a .docx, .pdf, .txt or .md file.`;
+
 /** The prose in a .docx, .pdf or text file, normalised. Throws an
  *  Error whose message is the sentence to show. */
 export async function readSynopsisFile(file) {
@@ -149,8 +174,13 @@ export async function readSynopsisFile(file) {
       const res = await extractLayoutText(await file.arrayBuffer());
       if (res.fatal) throw new Error(res.fatal);
       out = reflow(res.text || '');
+    } else if (TEXT_EXT.test(lower) || (!/\.[a-z0-9]+$/.test(lower) && /^text\//.test(file.type || ''))) {
+      out = decodeText(await file.arrayBuffer());
     } else {
-      out = await file.text();
+      /* A drop skips the file input's `accept`, so anything can land here:
+         a PNG read as text was 24,000 characters of bytes saved as the
+         synopsis (QA, 26 Oct 2026). Only the formats the card names. */
+      throw new Error(UNSUPPORTED(name));
     }
   } catch (e) {
     throw new Error((e && e.message) || 'That file could not be read.');
@@ -163,8 +193,10 @@ export async function readSynopsisFile(file) {
 /** The confirm a replacing import asks, word for word on both pages. */
 export const replaceQuestion = (name) =>
   `Replace the synopsis on this page with ${name}? Highlights whose passages are not in the new text will show as detached.`;
-export const importedSentence = (r) =>
-  `Imported ${r.name} — ${r.text.split(/\s+/).length.toLocaleString()} words.`;
+export const importedSentence = (r) => {
+  const n = r.text.split(/\s+/).filter(Boolean).length;
+  return `Imported ${r.name} — ${n.toLocaleString()} word${n === 1 ? '' : 's'}.`;
+};
 
 /* ---- the sample ----------------------------------------------- */
 

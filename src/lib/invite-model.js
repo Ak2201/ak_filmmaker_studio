@@ -67,7 +67,7 @@ export function takeInvitePlan(signedIn) {
  *  `pass` is pass-view.js passPhase() ('open' | 'ended' | 'off') and
  *  `passPrice` its price ("₹49"): while the launch pass runs, or once the
  *  launch offer has ended, the free trial is not offered to the public. */
-export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, reason, gateDetail, pass = 'off', passPrice = '', passShort = '' }) {
+export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, walled, trialHere, reason, gateDetail, pass = 'off', passPrice = '', passShort = '' }) {
   if (!configured) return 'Invites are not available right now. Everything you write is saved in this browser.';
   if (!signedIn && codeHeld) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
   const passOpen = pass === 'open' && !!passPrice;
@@ -81,6 +81,11 @@ export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, reas
       : 'Buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
   }
   if (state === 'unknown') return 'Checking your invite…';
+  /* Through the gate but not entitled: not in yet, and nothing syncs. */
+  if (state === 'open' && walled) {
+    return (trialHere ? 'Start your free trial or choose a plan to come in.' : 'Choose a plan to come in.')
+      + ' Sync is off until then. Everything on this device is still here.';
+  }
   if (state === 'open') return 'You are in. Your projects sync to this account.';
   if (state === 'lost') return 'This account is active on another device, so sync is paused here.';
   /* CLOSED. Say what they can do, and keep the one thing they will

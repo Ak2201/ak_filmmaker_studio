@@ -297,7 +297,7 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
         <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}
         </div>
       </div>
-      <a class="mk-nav-link" href="pricing.html"${current === 'pricing' ? ' aria-current="page"' : ''}>${esc(u.pricing)}</a>
+      <a class="mk-nav-link mk-nav-pricing" href="pricing.html"${current === 'pricing' ? ' aria-current="page"' : ''}>${esc(u.pricing)}</a>
       <a class="mk-nav-link" href="guides.html"${current === 'guides' ? ' aria-current="page"' : ''}>${esc(u.guides)}</a>
       <a class="mk-nav-link" href="guides.html#compare"${current === 'compare' ? ' aria-current="page"' : ''}>${esc(u.compare)}</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>

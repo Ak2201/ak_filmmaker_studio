@@ -46,6 +46,7 @@
    No inline handlers (CSP): delegate() on [data-gra-action] and
    [data-gra-form].
    ============================================================ */
+import { errorSentence } from '../lib/gate.js';
 import { h, delegate } from '../lib/dom.js';
 import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
@@ -120,7 +121,7 @@ async function load() {
     } catch (e) { S.members = []; }
     S.state = 'ready';
   } catch (e) {
-    S.error = e.message || 'The growth console could not load.'; S.state = 'error';
+    S.error = errorSentence(e, 'The growth console could not load.'); S.state = 'error';
   } finally { rerender(); }
 }
 
@@ -730,7 +731,7 @@ async function loadCohorts() {
     COHORT.data = data; COHORT.phase = 'ok';
   } catch (e) {
     COHORT.phase = 'error';
-    COHORT.error = isMissing(e) ? 'The database has no admin_cohorts() yet \u2014 schema section 43 has not been run on it.' : (e && e.message) || 'The server did not say why.';
+    COHORT.error = isMissing(e) ? 'The database has no admin_cohorts() yet \u2014 schema section 43 has not been run on it.' : errorSentence(e, 'The server did not say why.');
   }
   rerender();
 }
@@ -788,6 +789,10 @@ export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
   const sec = section('growth', 'Growth', 'The launch pass, one-time or auto-renew, the trial, the price, referrals, affiliates, leads and the funnel.', '');
   if (S.state === 'idle') load();
+  if (S.state === 'error') {
+    sec.append(errorState({ title: 'Growth could not load', why: S.error, onRetry: () => { S.error = ''; S.state = 'idle'; rerender(); } }));
+    return sec;
+  }
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (S.state !== 'ready') { sec.append(h('p.gt-meta', { text: S.state === 'loading' ? 'Loading…' : '' })); return sec; }
   passBlock(sec);
@@ -826,7 +831,7 @@ delegate(document, 'submit', '[data-gra-form="referral"]', async (e, form) => {
     S.settings = await Growth.admin.setSettings(patch);
     S.saved = 'referral'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The referral terms were not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The referral terms were not saved.'), 'error'); }
 });
 
 /* ---- the trial (§30) ---------------------------------------------- */
@@ -850,7 +855,7 @@ delegate(document, 'submit', '[data-gra-form="trial"]', async (e, form) => {
     S.settings = await Growth.admin.setSettings(patch);
     S.saved = 'trial'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The trial terms were not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The trial terms were not saved.'), 'error'); }
 });
 
 /* ---- the launch pass (§61) ---------------------------------------- */
@@ -931,7 +936,7 @@ delegate(document, 'submit', '[data-gra-form="granttrial"]', async (e, form) => 
     S.granted = `Granted — ${trialLength(mins)}, starting now.`;
     rerender();
     { const note = S.granted; setTimeout(() => { if (S.granted === note) S.granted = ''; clearNote(note); }, 4000); }
-  } catch (err) { toast(err.message || 'The time was not granted.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The time was not granted.'), 'error'); }
 });
 
 /* ---- the price rise (§30) ------------------------------------------
@@ -948,7 +953,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
   const lines = risePreview(rows, at, cap);
   /* The last gate before a public promise: the owner confirms the
      sentence itself, not "save changes?". */
-  if (lines.length && !await ask('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?')) return;
+  if (lines.length && !await ask('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?', { confirm: 'Schedule the rise' })) return;
   try {
     /* The cap first: it is one of the two triggers the sentence names,
        and a tier saved against a cap that failed to save would be
@@ -967,7 +972,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
     await refreshUsd();
     S.saved = 'pricerise'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The price rise was not scheduled.', 'error'); await load(); }
+  } catch (err) { toast(errorSentence(err, 'The price rise was not scheduled.'), 'error'); await load(); }
 });
 
 /** " · in dollars $19 → $29", or " · in dollars $19, no dollar rise
@@ -989,7 +994,7 @@ delegate(document, 'click', '[data-gra-action="price-cancel"]', async (e, el) =>
     S.prices = await Billing.admin.setNextPrice(id, null, null);
     await refreshUsd();
     rerender();
-  } catch (err) { toast(err.message || 'The rise was not cancelled.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The rise was not cancelled.'), 'error'); }
 });
 
 delegate(document, 'submit', '[data-gra-form="payout"]', async (e, form) => {
@@ -1001,7 +1006,7 @@ delegate(document, 'submit', '[data-gra-form="payout"]', async (e, form) => {
     const n = await Growth.admin.markReferralPaid(ids, String(f.get('note') || '').trim());
     toast(`Marked ${n} credit${n === 1 ? '' : 's'} paid.`);
     await load();
-  } catch (err) { toast(err.message || 'The credits were not marked.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The credits were not marked.'), 'error'); }
 });
 
 delegate(document, 'click', '[data-gra-action="aff-orders"]', async (e, el) => {
@@ -1009,7 +1014,7 @@ delegate(document, 'click', '[data-gra-action="aff-orders"]', async (e, el) => {
   if (S.openAff === code) { S.openAff = ''; S.affOrders = null; rerender(); return; }
   S.openAff = code; S.affOrders = null; rerender();
   try { S.affOrders = await Growth.admin.affiliateOrders(code); }
-  catch (err) { S.affOrders = []; toast(err.message || 'The orders could not load.', 'error'); }
+  catch (err) { S.affOrders = []; toast(errorSentence(err, 'The orders could not load.'), 'error'); }
   rerender();
 });
 

@@ -98,7 +98,8 @@ export function renderSchedule(ctx) {
     return out;
   }
   if (!dayCount) {
-    out.push(empty('None of the ' + plural(scenes.length, 'scene', 'scenes') + ' has a shoot day yet. Assign days on the stripboard and the cost of a day appears here.',
+    out.push(empty((scenes.length === 1 ? 'The scene has no shoot day yet.' : 'None of the ' + scenes.length + ' scenes have a shoot day yet.')
+      + ' Assign days on the stripboard and the cost of a day appears here.',
       './stripboard.html#stripboard', 'Schedule on the stripboard'));
     return out;
   }
@@ -200,10 +201,11 @@ function versionCard(v, ctx) {
   ]);
   card.append(body);
   if (open) {
-    const cmp = C.compareVersion(v, ctx.lines);
+    const cmp = C.compareVersion(v, ctx.lines, ctx.report.totals.estimateWithContingency);
     const sign = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + rs(Math.abs(n)).replace(/^−/, '');
     body.append(h('div.cx-v-cmp', {}, [
       h('p', {}, [h('strong', { text: 'Estimate then ' + rs(cmp.total.then) + ', now ' + rs(cmp.total.now) + ' — ' + (cmp.total.delta ? sign(cmp.total.delta) : 'no change') + '.' })]),
+      cmp.grand && cmp.grand.delta ? h('p', {}, [h('strong', { text: 'With contingency then ' + rs(cmp.grand.then) + ', now ' + rs(cmp.grand.now) + ' — ' + sign(cmp.grand.delta) + '.' })]) : null,
       cmp.depts.length ? ktable(['Department', 'Then', 'Now', 'Change'], cmp.depts.map((d) => h('tr', {}, [
         h('th', { scope: 'row', text: d.label }), numTd(rs(d.then)), numTd(rs(d.now)), numTd(d.delta ? sign(d.delta) : '—')
       ])), 1) : null,

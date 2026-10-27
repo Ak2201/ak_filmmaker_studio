@@ -25,10 +25,11 @@
      save(now)       persist them (debounced unless `now`)
      rerender(box)   redraw this card after a structural change
    ============================================================ */
+import { NOTE_TITLE, noteLabel } from '../lib/note-label.js';
 import { h } from '../lib/dom.js';
 import { paperTextarea } from './paper-field.js';
 import { ask } from './dialog.js';
-import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, blankCharacter, projectFormat } from '../lib/characters.js';
+import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, recordForRole, projectFormat } from '../lib/characters.js';
 import { learn as learnBox } from './learn.js';
 import BIBLE from '../data/story-bible.json';
 import '../styles/story-bible.css';
@@ -49,10 +50,10 @@ const keyAttr = (b, o) => (o && o.dataKeys && b ? { 'data-key': b.key } : {});
     blueprint's, so a note written there shows here. null when the key
     has none. */
 const NOTE_KEYS = new Set(BIBLE.notes || []);
-export function noteButton(key, format) {
+export function noteButton(key, format, label = '') {
   if (format === 'short' || !NOTE_KEYS.has(key)) return null;
   return h('button.comment-btn', {
-    type: 'button', title: 'Add a private note (saved on your device)', text: '✎',
+    type: 'button', title: NOTE_TITLE, 'aria-label': noteLabel(label), text: '✎',
     'data-key': 'comment_for_' + key, 'data-note-key': key
   });
 }
@@ -135,7 +136,7 @@ function fieldBlock(f, view, o) {
     input.value = view[f.key] || '';
   }
   const bk = o.dataKeys && view.backed && view.backed[f.key];
-  const note = bk ? noteButton(bk.key, projectFormat()) : null;
+  const note = bk ? noteButton(bk.key, projectFormat(), f.label) : null;
   return h('div.cc-field', {}, [...head, note, input]);
 }
 
@@ -317,13 +318,11 @@ export function onCardClick(btn, ctx) {
   return true;
 }
 
-/** A brand-new record for a role, for the "Add the protagonist" buttons. */
+/** A brand-new record for a role, for the "Add the protagonist" buttons
+    (characters.js recordForRole: a slot the blueprint already names is
+    claimed, never blanked). */
 export function newCharacter(list, role, name = '') {
-  const c = blankCharacter({ name });
-  list.push(c);
-  const view = viewFor(list, c.id, c.name);
-  if (role) assignRole(list, view, role, { confirm: () => true });
-  return c;
+  return recordForRole(list, role, name);
 }
 
 export default { noteButton, renderCharacterSections, onCardInput, onCardChange, onCardClick, flushCardEdits, learnFor, statsText, displayName, newCharacter };

@@ -108,6 +108,10 @@ const HAS_IE = /^(?:[A-Z]?\d+[A-Z]?[.)]?\s+)?(INT|EXT|EST|I\s*\/\s*E)\b/i;
 
 /** The heading-derived fields of a row, as this heading says them. */
 export function headingFields(text) {
+  /* A heading is ONE line. A line break inside one (an old paste kept a
+     whole scene in a heading) is not part of the slug: only the first
+     line is read, so the rest never becomes the location. */
+  text = String(text || '').split('\n').find((l) => l.trim()) || '';
   const p = parseSlug(text);
   const out = { location: p.location };
   if (HAS_IE.test(String(text).trim())) out.intExt = p.intExt;

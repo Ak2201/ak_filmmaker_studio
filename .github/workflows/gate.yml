@@ -104,10 +104,24 @@ jobs:
       - run: npm run prove:script
       - run: npm run prove:replace
       - run: npm run prove:cards
+      - run: npm run prove:schedule
       - run: npm run prove:presence
       # Keep the budget private (§55): the owner's switch, a viewer's private state.
       - run: npm run prove:budget-privacy
+      - run: npm run prove:budget-money
       - run: npm run prove:ai-desk
+      # Sticky notes, beat <-> scene sync and the shared beat sheet (HISTORY
+      # 61-62), then the proofs that ran only by hand until the full-app QA
+      # (HISTORY 67). All read this job's gate-off dist/.
+      - run: npm run prove:notes
+      - run: npm run prove:beat-sync
+      - run: npm run prove:story-coedit
+      - run: npm run prove:visual
+      - run: npm run prove:board-frames
+      - run: npm run prove:stage-guide
+      - run: npm run prove:tamil
+      - run: npm run prove:account-r3
+      - run: npm run prove:walk
 
   proofs:
     name: proofs
@@ -156,6 +170,9 @@ jobs:
       - run: npm run prove:legal
         env:
           PROVE_DIST: dist-verify
+      # Keyboard paths: account-menu help, the phone Go-to sheet's focus,
+      # the public site's video ring and phone menu, the bottom bar.
+      - run: npm run prove:shell-a11y
       # The built markup a crawler gets: lang, titles, canonicals, one h1,
       # noindex on studio shells, robots/sitemap/llms.txt/favicon, no source maps.
       - run: npm run test:site

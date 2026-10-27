@@ -233,7 +233,7 @@ try {
     ok(!!closedB, 'the gate CLOSES for a non-member');
     ok(closedB && closedB.reason === 'noinvite', "reason 'noinvite'");
     const writesBefore = writes();
-    ok(closedB && /awaiting an invite/i.test(closedB.detail || ''), 'the sync status says why it is paused');
+    ok(closedB && /free trial or a plan/i.test(closedB.detail || '') && !/awaiting an invite/i.test(closedB.detail || ''), 'the sync status says why it is paused, and the way in — not an invite that is not coming: ' + (closedB && closedB.detail));
     ok(await urlBecomes(page, /invite\.html/), 'settings.html became invite.html — the site gate');
     /* THE DOOR LEADS WITH THE TRIAL NOW (owner, 12 Oct 2026), not with
        the request form. The form is off the public door: this waits for
@@ -670,7 +670,7 @@ try {
     const B = await newContext(browser, { tok: 'tok-amy' });
     await B.page.goto(BASE + 'story.html');
     await B.page.waitForSelector('.gt-overlay', { timeout: 8000 });
-    ok(/active in another Chrome window/i.test(await B.page.textContent('.gt-overlay')), 'browser B is asked before anything is taken over');
+    ok(/active in another browser window or on another device/i.test(await B.page.textContent('.gt-overlay')), 'browser B is asked before anything is taken over');
     await B.page.click('[data-gt="cancel"]');
     ok(await waitGate(B.page, 'lost'), 'Cancel pauses sync in B and takes nothing from A');
     await B.page.reload();
@@ -777,15 +777,50 @@ try {
     const snapshot = () => page.evaluate(() => JSON.stringify([Object.entries(localStorage).sort(), Object.entries(sessionStorage).sort()]));
     const before = await snapshot();
     const n0 = await page.evaluate(() => window.__writes.length);
+    /* QA r2, 26 Oct 2026: a refused pass rebuilt the form and left
+       focus on <body>; it returns to the code, marked invalid. */
+    await page.fill('#scCode', 'ZZZZ-ZZZZ-ZZZZ');
+    await page.press('#scCode', 'Enter');
+    await page.waitForSelector('.sc-error', { timeout: 8000 });
+    {
+      const f = await page.evaluate(() => ({ id: document.activeElement && document.activeElement.id,
+        inv: document.getElementById('scCode').getAttribute('aria-invalid'), by: document.getElementById('scCode').getAttribute('aria-describedby') }));
+      ok(f.id === 'scCode' && f.inv === 'true' && f.by === 'scError', 'a refused pass hands focus back to the code, marked invalid (' + JSON.stringify(f) + ')');
+    }
+    await page.fill('#scCode', 'PASSCODE2345');
     await page.fill('#scEmail', 'programmer@festival.example');
     await page.click('button[type="submit"]');
     await page.waitForSelector('.sc-room', { timeout: 8000 });
+    ok(await page.evaluate(() => document.activeElement && document.activeElement.matches('.sc-head h1')), 'an opened room takes focus to its title, not <body>');
+    {
+      const t = await page.textContent('.sc-room');
+      ok(!/(?:^|\D)1\s*(scenes|locations|shoot days)/i.test(t.replace(/\s+/g, ' ')), 'the deck says "1 scene", never "1 scenes"');
+    }
     const nRoom = await page.evaluate(() => window.__writes.length);
     const text = await page.textContent('.sc-room');
     ok(text.includes('Dragon') && text.includes('Inciting Incident') && text.includes('RAGAVAN'), 'beat sheet, character map and title are shown');
     ok(!text.includes('SECRET PHONE'), 'contacts never reach a pass holder');
     ok(await page.evaluate(() => !!document.querySelector('canvas[data-wm]') && [...document.querySelectorAll('.sc-block')].every((b) => b.style.backgroundImage.includes('data:image/png'))),
       'a canvas watermark is up and baked into every block');
+    /* QA, 26 Oct 2026: the block copy of the stamp was anchored to each
+       block and the canvas to the viewport, so inside every card the two
+       sat offset and overlapped; and the deck's beats and key scenes had
+       no screen layout ("Inciting IncidentA student…", "1. 1"). */
+    ok(await page.evaluate(() => [...document.querySelectorAll('.sc-block')].every((b) => getComputedStyle(b).backgroundAttachment === 'fixed')),
+      'the block watermark is anchored to the viewport, as the canvas is: one stamp, not two offset');
+    {
+      const deck = await page.evaluate(() => {
+        const li = document.querySelector('.sc-deck .pd-beats li');
+        const strong = li && li.querySelector('strong'), span = li && li.querySelector('span');
+        const sc = document.querySelector('.sc-deck ol.pd-scenes');
+        return {
+          beat: !!li && getComputedStyle(li).display === 'grid' && !!strong && !!span && span.getBoundingClientRect().top >= strong.getBoundingClientRect().bottom - 1,
+          scenes: sc ? getComputedStyle(sc).listStyleType : 'absent'
+        };
+      });
+      ok(deck.beat, 'the pitch deck sets each beat label above its text');
+      ok(deck.scenes === 'none' || deck.scenes === 'absent', 'key scenes carry one number, not the list marker beside it (' + deck.scenes + ')');
+    }
     ok(F.db.redemptions.some((r) => r.viewer_email === 'programmer@festival.example' && r.access_id), 'the open is logged with the typed e-mail and an access id');
     /* The watchdog answers a MutationObserver and a once-a-second tick,
        so each wait here is for ITS reaction — the canvas back in the

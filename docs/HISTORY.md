@@ -2954,3 +2954,35 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `<main>` had text, and index.html's static crawler summary has text
       before the gate marks the page pending; it skips `main.hub-static` now
       and keeps ticking until the veil is recorded.
+
+67. **Full-app QA, fixed and re-verified (25–27 Oct 2026).** The owner asked
+    for the whole app to be tested as QA, every bug fixed and re-verified, and
+    the result released to `main`. One Workflow script: 8 areas (Story,
+    Screenplay, Breakdown, Schedule & reports, Visualize & post, Budget &
+    money, Account & business, Public site & shell) × 2 testers with different
+    angles per round, 1–2 skeptics per finding, then one fixer per area in
+    turn in the main checkout. Four rounds (the cap; the fourth still found
+    new items, so it never ran dry).
+    - **Counts.** 422 confirmed (145 bugs, 167 UX, 110 polish; 18 high, 144
+      medium, 260 low), 49 refuted, 394 fixed, 29 declined with a reason
+      (`docs/KNOWN-ISSUES.md`, "Left open by the full-app QA"). Per round:
+      126, 135, 84, 77 confirmed. Every high was fixed; the two found in
+      round 4 (a >64 KB script arriving from another window was dropped and
+      then overwritten; the receipt PDF from the Purchase page printed the
+      whole page) were fixed in round 4 and are covered by `prove:script`
+      section 23 and `test:account-r4`, not by a fifth round of testers.
+    - **Shapes worth keeping.** Focus after a redraw goes to the control's
+      replacement, never `<body>`, and never with a scroll that moves the
+      page away (breakdown). Undo restores only what it wrote and refuses
+      when the text has moved on since (note → synopsis). A page that reads a
+      blob once and saves it later must re-read first (drafts.html). A fixed
+      delay in a proof is a race: wait for the signal (`prove:nav` waits for
+      `data-vid-help-pending` to clear, which is the Story-page flake fixed).
+    - **Copy.** The public header and footer say "Sign in", not "Log in";
+      the Catalog product is named "Elements" everywhere; the sign-up modal
+      says "Sign up to start your trial". The legal pages changed only in that
+      shared frame. The Pro plan's seed blurb reads "no cap on films, links or
+      collaborators" (the seed is `on conflict do nothing`, so the LIVE row
+      keeps its old text until a schema section updates it).
+    - CI now also runs `prove:notes`, `prove:beat-sync`, `prove:story-coedit`
+      and the other proofs that had been left out.

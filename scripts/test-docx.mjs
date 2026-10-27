@@ -86,6 +86,12 @@ eq(back.elements.map((e) => e.type + ':' + e.text), [
   'scene:INT. HOSTEL ROOM - NIGHT', 'action:Arun stares at the board & the clock.', 'character:ARUN', 'paren:quietly',
   'dialogue:நான் முடிப்பேன். I will finish this.', 'transition:CUT TO:', 'scene:EXT. ROOF - DAWN', 'shot:CLOSE ON THE KITE'
 ], 'export → import gives back every element, by type, without the title page');
+/* ...and the title page comes back as the title page (QA: it was cut as
+   front matter and lost, while .fdx and .fountain kept it). */
+eq(back.titlePage && [back.titlePage.title.toLowerCase(), back.titlePage.credit, back.titlePage.author, back.titlePage.draft, back.titlePage.date, back.titlePage.contact],
+  ['kite', 'Written by', 'A. Writer', 'First draft', '19 Oct 2026', 'a@example.com'], 'the .docx title page comes back');
+eq(I.parseScript(I.docxScreenplayText([{ text: 'INT. ROOM - DAY', style: 'Scene Heading' }, { text: 'Rain.', style: 'Action' }]).text, 'x.docx').titlePage,
+  null, 'no Title Page paragraphs: no title page is invented');
 
 /* The STYLE decides on the way back, not the words. Each of these reads
    as something else to PARSER 2's guess: a heading with no INT./EXT.,

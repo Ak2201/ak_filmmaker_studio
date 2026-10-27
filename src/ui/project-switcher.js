@@ -84,11 +84,15 @@ function label() {
     f.textContent = formatLabel(current.format); f.hidden = false;
     btn.classList.remove('is-empty');
     btn.title = 'Switch project (open: ' + (current.title || 'Untitled') + ')';
+    btn.setAttribute('aria-label', btn.title);
   } else {
-    t.textContent = list.length ? 'Pick a project' : 'No project — start one';
+    /* One wording for the text, the tooltip and the accessible name
+       (WCAG 2.5.3), short enough for the band pill's 12ch to 16ch. */
+    t.textContent = list.length ? 'Pick a project' : 'Start a project';
     f.hidden = true;
     btn.classList.add('is-empty');
-    btn.title = list.length ? 'Pick a project' : 'Start a project';
+    btn.title = t.textContent;
+    btn.setAttribute('aria-label', t.textContent);
   }
 }
 
@@ -155,7 +159,7 @@ function openPop() {
  *  used to draw its own copy. Idempotent. */
 export function mountProjectSwitcher(host) {
   if (!host || document.querySelector('.ps-btn')) return null;
-  btn = h('button.ps-btn', { type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': 'Switch project' });
+  btn = h('button.ps-btn', { type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': 'Pick a project' });
   btn.append(
     h('span.ps-fmt', { hidden: true }),
     h('span.ps-title'),

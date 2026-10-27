@@ -19,15 +19,19 @@ import { button } from './kit/index.js';
 import { isNote, hereFirst, notesFor, pinValue } from '../lib/notes-model.js';
 import { noteCard, noteAdd } from './note-card.js';
 import { bindNoteActions, pinOptions } from './notes-actions.js';
+import { holdFocus, releaseFocus } from './modal-focus.js';
 import '../styles/notes.css';
 
 let dock = null, body = null, title = null, returnTo = null;
 let ctx = {};          // { beat, sceneId, label }: the context the dock opened on
 let open = false;
 
+/* Every header Notes button says whether the dock is open. */
+const markOpeners = () => document.querySelectorAll('.nt-open[data-notes-open]').forEach((b) => b.setAttribute('aria-expanded', String(open)));
+
 function pinOf(c) { return c.sceneId ? 'scene:' + c.sceneId : c.beat ? 'beat:' + c.beat : ''; }
 
-function draw(focusId) {
+function draw(focusId, control) {
   if (!body) return;
   const pins = pinOptions();
   const items = Story.listVault();
@@ -54,7 +58,8 @@ function draw(focusId) {
   body.replaceChildren(...kids);
   title.textContent = 'Notes · ' + items.filter(isNote).length;
   if (focusId) {
-    const el = body.querySelector('#' + CSS.escape(focusId)) || body.querySelector('[data-note-card="' + CSS.escape(focusId) + '"] .nt-text');
+    const el = (control && body.querySelector(control))
+      || body.querySelector('#' + CSS.escape(focusId)) || body.querySelector('[data-note-card="' + CSS.escape(focusId) + '"] .nt-text');
     if (el) el.focus({ preventScroll: false });
   }
 }
@@ -84,15 +89,36 @@ function build() {
     if (!open) return;
     const d = e.detail || {};
     if (d.redraw === false) { title.textContent = 'Notes · ' + Story.listVault().filter(isNote).length; return; }
-    draw(d.focus);
+    draw(d.focus, d.control);
   });
   /* Another tab, or a sync, changed the vault. */
   window.addEventListener('storage', (e) => { if (open && (!e.key || /fms_idea_vault_v1/.test(e.key)) && !dock.contains(document.activeElement)) draw(); });
 }
 
+/* Below 1100px the dock is a bottom SHEET over the page, so it is modal
+   there like the phone's other sheets: Tab stays inside it (QA, 26 Oct
+   2026: it walked out onto controls hidden under the sheet). Beside the
+   page at 1100px and up it is not, on purpose: you write beside it. */
+let held = false;
+function sheetMode() {
+  const sheet = open && !window.matchMedia('(min-width: 1100px)').matches;
+  if (sheet === held) return;
+  held = sheet;
+  if (sheet) {
+    dock.setAttribute('role', 'dialog'); dock.setAttribute('aria-modal', 'true');
+    holdFocus(dock);
+  } else {
+    dock.removeAttribute('role'); dock.removeAttribute('aria-modal');
+    const a = document.activeElement;
+    releaseFocus(dock);           // gives focus back to the opener...
+    if (open && a && a.isConnected) a.focus({ preventScroll: true });   // ...unless the dock is still open beside the page
+  }
+}
+
 function measure() {
   const w = dock && !dock.hidden && window.matchMedia('(min-width: 1100px)').matches ? dock.offsetWidth : 0;
   document.documentElement.style.setProperty('--nt-dock-w', w + 'px');
+  if (dock) sheetMode();
 }
 
 /** Open the dock on a context: { beat: '<fw>:<id>' | sceneId, label }. */
@@ -108,6 +134,7 @@ export function openNotes(c = {}, opener = null) {
   dock.hidden = false;
   open = true;
   document.documentElement.classList.add('nt-dock-open');
+  markOpeners();
   draw();
   measure();
   window.addEventListener('resize', measure);
@@ -122,7 +149,12 @@ export function closeNotes() {
   document.documentElement.classList.remove('nt-dock-open');
   window.removeEventListener('resize', measure);
   measure();
-  if (returnTo && returnTo.isConnected) returnTo.focus({ preventScroll: true });
+  markOpeners();
+  /* The page may have redrawn while the dock was open ("Add to synopsis"
+     redraws the Story page), so the opener can be a detached copy: give
+     the focus to the page's Notes button that replaced it, never <body>. */
+  const back = returnTo && returnTo.isConnected ? returnTo : document.querySelector('.nt-open[data-notes-open]');
+  if (back) back.focus({ preventScroll: true });
 }
 
 export const isOpen = () => open;

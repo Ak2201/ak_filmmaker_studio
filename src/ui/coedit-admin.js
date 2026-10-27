@@ -70,7 +70,7 @@ delegate(document, 'click', '[data-coedit-action="retry"]', () => { S.state = 'i
 
 delegate(document, 'change', '[data-coedit-action="switch"]', async (e, el) => {
   const want = el.checked;
-  if (want && !(await ask('Turn co-editing on?\n\n' + COEDIT_ON + '\n\nIt applies to every project, from each page\'s next load. You can turn it off again here.'))) {
+  if (want && !(await ask('Turn co-editing on?\n\n' + COEDIT_ON + '\n\nIt applies to every project, from each page\'s next load. You can turn it off again here.', { confirm: 'Turn on' }))) {
     el.checked = false; return;
   }
   S.busy = true; rerender();

@@ -97,6 +97,9 @@
 .sb-target-ctl,
 .sb-day-ctl,
 .sb-banner-pos { height: var(--h-compact); }
+.sb-target { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+/* "4 7/8 pp · default" is the longest option; at 390 the select was 165px and cut it. */
+.sb-target-ctl { min-width: 13rem; }
 .sb-day-sel.k-input { font-family: var(--f-mono); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------
@@ -428,6 +431,14 @@ body:not(.sb-is-dragging) .sb-dropzone { opacity: 0.75; }
 /* Paper has no pointer. */
 @media print {
   .sb-grip, .sb-dropzone, .sb-hint, .sb-drop-line, .sb-drag-tag, .sb-implied { display: none !important; }
+  /* Settings, not data: their buttons are hidden by print.css, and a
+     "Group by" label beside nothing is noise. */
+  .sb-seg, .sb-target { display: none !important; }
+  /* The strip's day prints as its text, the way the PDF prints it:
+     the kit wrapper loses its box and its caret. */
+  .sb-day-ctl { width: auto !important; height: auto !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+  .sb-day-ctl::after { display: none !important; }
+  .sb-day-sel { padding: 0 !important; border: 0 !important; background: none !important; color: var(--print-ink) !important; }
   .sb-strip.has-grip { grid-template-columns: auto auto minmax(6rem, 1fr) auto auto auto; }
   .sb-strip.has-grip .sb-cast { padding-left: 0; }
 }
@@ -615,6 +626,19 @@ body.pdf-print .sb-lock-host { display: none !important; }
 @media print {
   .sb-dood-cards, .sb-dood-switch { display: none !important; }
   .sb-dood .sb-dood-scroll { display: block !important; }
+}
+/* A plain print (Ctrl+P): the grid's scroll box clips on paper, and 18
+   days at their screen width are wider than the page — D7 to D18 were
+   lost. Release the box and share the width among the columns; the PDF
+   export (body.pdf-print) lays out its own landscape page. */
+@media print {
+  body:not(.pdf-print) .sb-dood-scroll { overflow: visible !important; }
+  body:not(.pdf-print) .sb-grid { table-layout: fixed; width: 100%; }
+  body:not(.pdf-print) .sb-grid .sb-grid-day,
+  body:not(.pdf-print) .sb-grid .sb-grid-tot { min-width: 0; padding-inline: 0; font-size: 7pt; position: static; }
+  body:not(.pdf-print) .sb-grid .sb-grid-ddate { font-size: 5.5pt; }
+  body:not(.pdf-print) .sb-grid .sb-grid-name { min-width: 0; width: 24%; position: static; }
+  body:not(.pdf-print) .sb-grid td.sb-cell { padding-inline: 0; }
 }
 body.pdf-print .sb-dood-cards,
 body.pdf-print .sb-dood-switch { display: none !important; }

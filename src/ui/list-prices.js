@@ -35,8 +35,13 @@ export function listPriceBlock(view = null, mode = null) {
   for (const id of ids) {
     const line = h('span.pl-list-line');
     lines[id] = line;
-    const r = usd ? view.plans[id] : null;
-    const text = r ? offerTerms(mode, fmtMinor(r.minor, 'USD'), 'year').line + ' · ≈ ' + perDayIn(r.minor, 'USD') + ' a day · ' + chargeCaption(view, r.inrMinor)
+    /* The server's CURRENT price wins once price_notice() has answered,
+       in rupees as in dollars: LIST_PRICE is the price before any
+       scheduled rise (plans.js), and a list still quoting it after the
+       rise would contradict what checkout charges (QA, 26 Oct 2026). */
+    const r = view && view.plans ? view.plans[id] : null;
+    const text = usd && r ? offerTerms(mode, fmtMinor(r.minor, 'USD'), 'year').line + ' · ≈ ' + perDayIn(r.minor, 'USD') + ' a day · ' + chargeCaption(view, r.inrMinor)
+      : !usd && r && r.minor > 0 ? offerTerms(mode, fmtMinor(r.minor, 'INR'), 'year').line + ' · ≈ ' + perDayIn(r.minor, 'INR') + ' a day'
       : offerTerms(mode, inr(LIST_PRICE[id]), 'year').line + ' · ≈ ' + perDay(LIST_PRICE[id]) + ' a day';
     ul.append(h('li', {}, [h('strong', { text: planName(id) }), h('span.pl-list-price', { text }), line]));
   }

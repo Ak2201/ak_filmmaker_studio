@@ -143,16 +143,17 @@
    width is left, and its box grows to its text instead of clipping. */
 .vz-table .vz-c-no    { width: 5.5rem; min-width: 5.5rem; }
 .vz-table .vz-c-size  { width: 5rem; min-width: 5rem; }
-.vz-table .vz-c-angle { width: 7.5rem; min-width: 7.5rem; }
-.vz-table .vz-c-move  { width: 7.5rem; min-width: 7.5rem; }
-/* Wide enough for "100mm macro", "handheld", "overhead": the room
-   comes out of the flexible "What we see" column. */
-.vz-table .vz-c-lens  { width: 9rem; min-width: 9rem; }
+.vz-table .vz-c-angle { width: 7rem; min-width: 7rem; }
+.vz-table .vz-c-move  { width: 7rem; min-width: 7rem; }
+/* Wide enough for "100mm macro"; the angle and move pickers hold
+   "eye level" / "handheld" like Rig does. Every default column, the
+   description at its 200px box, fits the 1280 panel (prove:board-frames). */
+.vz-table .vz-c-lens  { width: 8rem; min-width: 8rem; }
 .vz-table .vz-c-rig   { width: 7rem; min-width: 7rem; }
 .vz-table .vz-c-setup { width: 7rem; min-width: 7rem; }
 .vz-table .vz-c-setup .k-control + .k-control { margin-top: var(--s1); }
 .vz-table .vz-c-mins  { width: 3.75rem; min-width: 3.75rem; }
-.vz-table .vz-c-desc  { width: auto; min-width: 14rem; }
+.vz-table .vz-c-desc  { width: auto; min-width: 13.75rem; }
 .vz-table .vz-c-done  { width: 3.5rem; min-width: 3.5rem; }
 @supports (field-sizing: content) {
   .vz-table .vz-desc { field-sizing: content; min-height: 3lh; }
@@ -168,6 +169,13 @@
 }
 .vz-table th.vz-c-ctrl, .vz-table td.vz-c-ctrl { width: 1%; }
 .vz-cov .vz-c-ctrl .k-btn-group { flex-wrap: nowrap; }
+/* On the desktop table the four row buttons (grip, up, down, delete) sit
+   two by two: in one row they took 140px and pushed the default columns
+   92px past the panel at 1280 (prove:board-frames). The row is already
+   three lines tall for "What we see", so the second line costs nothing. */
+@media screen and (min-width: 720.02px) {
+  .vz-cov td.vz-c-ctrl .k-btn-group { display: grid; grid-template-columns: repeat(2, max-content); }
+}
 .vz-no-row { display: flex; align-items: center; gap: var(--s1); }
 .vz-no-row .k-control { flex: 1 1 auto; min-width: 0; }
 .vz-lock .sym { font-size: 1rem; }
@@ -864,9 +872,18 @@
 .vz-sb-dialogue { margin-left: 6rem; max-width: 24rem; }
 .vz-sb-paren { margin-left: 9rem; }
 .vz-sb-scene { color: var(--ink); font-weight: 700; text-transform: uppercase; }
-.vz-sb-shots .k-panel-body { padding: 0; }
+/* Full bleed only for the table: the empty line keeps the panel padding
+   its Frames and Blocking neighbours have (it sat flush on the border). */
+.vz-sb-shots .k-panel-body:has(> .k-table-wrap) { padding: 0; }
 .vz-sb-shots .k-table-wrap { border: 0; border-radius: 0; }
 .vz-sb-table tr.is-done td { color: var(--ink-muted); }
+/* Short values (size, angle, move, lens, status) never break inside a word;
+   only "What we see" (6th column) wraps. At 1440 the shots panel gets the
+   widest of the three tracks so the table fits without scrolling sideways. */
+.vz-sb-table td:not(:nth-child(6)), .vz-sb-table th:not(:nth-child(6)) { white-space: nowrap; }
+@media (min-width: 1280px) {
+  .vz-sb { grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr); }
+}
 .vz-sb-frames { padding-left: 1.2rem; margin: 0; color: var(--ink-body); font-size: var(--t-small); }
 .vz-sb-frames strong { color: var(--ink); }
 .vz-sb-mapgrid { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }

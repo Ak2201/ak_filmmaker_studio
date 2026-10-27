@@ -22,10 +22,10 @@
    is a migration, not a rename.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import { parseAmount, fmtMoney, fmtINR, INR } from '../lib/money.js';
+import { parseAmount, fmtMoney, fmtINR } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
-  rateHintParts, itemNameOf, totalCaption, useDaysMessage,
+  rateHintParts, itemNameOf, totalCaption, useDaysMessage, rowEquation,
   scheduleFacts, scheduleHint, songDaysHint,
   budgetCurrency, setBudgetCurrency, currencyMismatch, fmtExact, currencySign
 } from '../lib/budget-model.js';
@@ -82,6 +82,10 @@ function rowItemName(row) {
   return itemNameOf(custom && custom.value, select && select.value);
 }
 
+/* Every row's fields read the same, so a screen reader hears 'Days' five
+   times; a visually hidden ', line N' names the row (idx is 1-based). */
+const rowHint = (idx) => h('span.visually-hidden', { text: ', line ' + idx });
+
 function buildCalcRow(idx) {
   const ids = {
     item:   `ci_${idx}_item`,
@@ -105,9 +109,9 @@ function buildCalcRow(idx) {
   };
 
   const itemCell = h('div.calc-cell', {}, [
-    h('label.calc-label', { for: ids.item, text: 'Item' }),
+    h('label.calc-label', { for: ids.item }, ['Item', rowHint(idx)]),
     frame(select),
-    h('label.calc-label', { for: ids.custom, text: 'Custom item name' }),
+    h('label.calc-label', { for: ids.custom }, ['Custom item name', rowHint(idx)]),
     frame(h('input', {
       id: ids.custom, type: 'text', 'data-key': ids.custom,
       placeholder: 'or type your own…', autocomplete: 'off'
@@ -115,7 +119,7 @@ function buildCalcRow(idx) {
   ]);
 
   const daysCell = h('div.calc-cell', {}, [
-    h('label.calc-label', { for: ids.days, text: 'Days' }),
+    h('label.calc-label', { for: ids.days }, ['Days', rowHint(idx)]),
     frame(h('input', {
       id: ids.days, type: 'text', inputmode: 'decimal',
       'data-key': ids.days, placeholder: 'Days', autocomplete: 'off'
@@ -123,7 +127,7 @@ function buildCalcRow(idx) {
   ]);
 
   const rateCell = h('div.calc-cell', {}, [
-    h('label.calc-label', { for: ids.rate, text: 'Rate (' + sign() + ' per day)' }),
+    h('label.calc-label', { for: ids.rate }, ['Rate (' + sign() + ' per day)', rowHint(idx)]),
     frame(h('input', {
       id: ids.rate, type: 'text', inputmode: 'decimal',
       'data-key': ids.rate, placeholder: sign() + '/day', autocomplete: 'off'
@@ -202,9 +206,17 @@ function updateCalc() {
   let count = 0;
 
   document.querySelectorAll('#calcRows .calc-row').forEach((row) => {
-    const days = amount(row.querySelector('[data-key$="_days"]').value);
-    const rate = amount(row.querySelector('[data-key$="_rate"]').value);
+    const dEl = row.querySelector('[data-key$="_days"]');
+    const rEl = row.querySelector('[data-key$="_rate"]');
+    const rawDays = amount(dEl.value);
+    const rawRate = amount(rEl.value);
+    // A negative figure is flagged and counts as nothing (costs.js reads it the same way).
+    dEl.setAttribute('aria-invalid', rawDays < 0 ? 'true' : 'false');
+    rEl.setAttribute('aria-invalid', rawRate < 0 ? 'true' : 'false');
+    const days = Math.max(0, rawDays);
+    const rate = Math.max(0, rawRate);
     const sub = days * rate;
+    row.toggleAttribute('data-blank', !sub && !rowItemName(row));
 
     const subEl = row.querySelector('.total-cell');
     subEl.textContent = money(sub);
@@ -218,7 +230,7 @@ function updateCalc() {
       name ? `Subtotal for ${name}: ${money(sub)}` : `Subtotal: ${money(sub)}`);
 
     const eqEl = row.querySelector('[data-role="calc-eq"]');
-    if (eqEl) eqEl.textContent = days > 0 && rate > 0 ? `${INR.format(days)} d × ${money(rate)}` : '';
+    if (eqEl) eqEl.textContent = rowEquation(days, rate, money);
 
     /* The hint names where the figure came from; a re-checked one
        links the page it was read off (rateHintParts). Rebuilt only
@@ -329,6 +341,8 @@ async function resetCalc() {
   if (wrap) wrap.replaceChildren();
   calcCount = Math.max(high, calcCount);
   addCalcRow(5);
+  // The cost tabs, header figures and petty-cash lines read the cleared blob now.
+  document.dispatchEvent(new CustomEvent('budget:calc-cleared'));
 }
 
 /* ------------------------------------------------------------
@@ -498,7 +512,7 @@ function renderCalculator() {
       ])
     ]),
     h('div.calc-grand', {}, [
-      h('span.lab', { text: 'GRAND TOTAL' }),
+      h('span.lab', { text: 'ESTIMATE TOTAL' }),
       h('span#calcTotal.total', { 'aria-live': 'polite' }, [
         money(0) + ' ', h('span', { text: 'across 0 line items' })
       ])

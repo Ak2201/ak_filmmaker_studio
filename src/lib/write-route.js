@@ -20,9 +20,9 @@ const ROUTES = {
   revisions: 'drafts.html',
   documents: 'drafts.html#title',
   /* The outline lives under the Story path's Beat Sheet now (owner,
-     19 Oct 2026); #script is Screenplay Analysis, switched off for all. */
+     19 Oct 2026); Screenplay Analysis is the Script analysis tab of the writer. */
   outline: 'story.html#path-outline',
-  characters: 'breakdown.html#script',
+  characters: 'screenplay.html#analysis',
   /* The AI coverage report and synopsis-to-script still live in
      write.js; they are reached through the escape, linked from the
      Script Breakdown and the Script page's ⋯ menu. */

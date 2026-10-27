@@ -18,7 +18,7 @@ section#scenes .bd-breakdown { gap: 0; }
      and the phone card. */
   container: sl / inline-size;
   --sl-grip-w: 24px;
-  --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 1fr) 76px 100px 92px 92px 36px;
+  --sl-cols: var(--sl-grip-w) 28px 48px minmax(0, 1fr) 76px 100px 112px 92px 36px;   /* 112: the length box, "/8" and "2 2/8" (QA, 27 Oct 2026) */
 }
 @container sl (min-width: 62rem) {
   /* Sized for the worst values, not the usual ones (19 Oct 2026):
@@ -47,6 +47,11 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-sl-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .bd-sl-bar .bd-sl-search { flex: 1 1 18rem; min-width: 0; width: auto; }
 .bd-sl-bar .bd-sl-filter { flex: 0 0 auto; width: auto; max-width: 100%; }
+/* The two labels that change length ("Expand all" / "Collapse all", "36 scenes" /
+   "0 of 36 scenes") hold their width, or Notes wraps onto a row of its own and
+   the list drops 30px under the reader. */
+.bd-sl-expand { min-width: 12ch; }
+.bd-sl-count { min-width: 16ch; text-align: right; }
 .bd-sl-count { margin-left: auto; font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
 .bd-sl-bulk {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2);
@@ -56,6 +61,13 @@ section#scenes .bd-breakdown { gap: 0; }
   border-radius: var(--sk-radius, var(--radius));
 }
 .bd-sl-bulk[hidden] { display: none; }
+/* Stays in view under the pinned band while rows far down the list are ticked. */
+.bd-sl-bulk {
+  position: sticky; top: calc(var(--scroll-offset, 0px) + var(--s2)); z-index: 2;
+  margin-bottom: var(--s3);
+  background-color: var(--surface-elevated);
+  background-image: linear-gradient(var(--accent-wash), var(--accent-wash));
+}
 .bd-sl-bulk .bd-sel { flex: 0 0 auto; width: auto; max-width: 100%; }
 .bd-sl-bulk-n { margin-right: auto; color: var(--accent-deep); font-size: var(--t-small); }
 .bd-sl-search,
@@ -143,7 +155,9 @@ section#scenes .bd-breakdown { gap: 0; }
   font-size: var(--t-tiny);
 }
 .bd-sl-len { display: flex; align-items: center; gap: var(--s1); min-width: 0; }
-.bd-sl-len input { width: 2.9rem; flex: 0 0 auto; text-align: right; }
+/* Two digits and the spinner have to fit: at 2.9rem with the field's
+   12px inline padding, 18 showed as "1" beside "2 2/8" (QA, 26 Oct 2026). */
+.bd-scene.bd-sl .bd-sl-len input { width: 3.75rem; padding-inline: var(--s1); flex: 0 0 auto; text-align: right; }
 .bd-sl-unit { color: var(--ink-muted); font-size: var(--t-micro); margin-left: -2px; }
 .bd-sl-len .bd-pages { color: var(--ink-muted); font-size: var(--t-micro); min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }   /* a figure is never broken or cut */
 .bd-sl-cast { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-small); color: var(--ink-body); }
@@ -156,6 +170,7 @@ section#scenes .bd-breakdown { gap: 0; }
 /* ---- the open scene -------------------------------------------- */
 .bd-sl-detail {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);   /* an auto track grew to the chips' min-content: 205px past a 390 phone */
   gap: var(--s3);
   padding: var(--s2) var(--s4) var(--s4) calc(var(--sl-grip-w) + 28px + 56px + var(--s2) * 3 + var(--s3));
 }

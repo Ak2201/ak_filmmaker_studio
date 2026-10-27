@@ -228,7 +228,12 @@ function buttonRoom(nav) {
 }
 function markScroll(nav) {
   const over = nav.scrollWidth - buttonRoom(nav) > nav.clientWidth + 1;
+  const was = nav.classList.contains('is-scrollable');
   nav.classList.toggle('is-scrollable', over);
+  /* The Sections button only shows once the strip is scrollable, so a tab
+     brought in before this moment was brought in without it in the way:
+     tell the owner of the active tab (tabs.js) to do it again. */
+  if (over && !was) nav.dispatchEvent(new CustomEvent('sm:scrollable', { bubbles: true }));
   nav.classList.toggle('can-scroll-end', over && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
 }
 function markStuck(nav) {

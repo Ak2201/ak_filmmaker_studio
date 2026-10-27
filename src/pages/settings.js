@@ -177,6 +177,9 @@ function choices(label, attr, current, options) {
   const grp = h('div.st-group', { role: 'radiogroup', 'aria-label': label });
   grp.append(h('span.st-group-label', { text: label }));
   const row = h('div.st-choices');
+  /* Radio pattern: one Tab stop per group, on the chosen option (or the
+     first when nothing is chosen); arrow keys move and choose. */
+  const stop = options.some((o) => o.value === current) ? current : options[0] && options[0].value;
   options.forEach((o) => {
     const on = o.value === current;
     /* The kit's button as well as `.st-choice`: this is the studio's
@@ -187,6 +190,7 @@ function choices(label, attr, current, options) {
       type: 'button',
       role: 'radio',
       'aria-checked': String(on),
+      tabindex: o.value === stop ? '0' : '-1',
       title: o.title || o.label
     });
     b.setAttribute(attr, o.value);
@@ -196,6 +200,18 @@ function choices(label, attr, current, options) {
   grp.append(row);
   return grp;
 }
+
+document.addEventListener('keydown', (e) => {
+  const r = e.target && e.target.closest && e.target.closest('.st-choice[role="radio"]');
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!r || !step || e.altKey || e.ctrlKey || e.metaKey) return;
+  const all = [...r.closest('[role="radiogroup"]').querySelectorAll('.st-choice[role="radio"]')];
+  const next = all[(all.indexOf(r) + step + all.length) % all.length];
+  e.preventDefault();
+  if (next === r) return;
+  next.focus();
+  next.click();
+});
 
 /* ---- the key ------------------------------------------------ */
 function renderKey() {
@@ -425,11 +441,9 @@ function renderStorage() {
       + 'as screenplays are kept in a second, much larger store.');
 
   if (u.tier === 'unavailable') sec.append(tierDownCard());
-  else if (u.tier !== 'ready') {
-    sec.append(h('p.st-note', {
-      text: 'Large-item storage has not been checked yet, so its figure below is not shown.'
-    }));
-  }
+  /* No "not checked yet" note for a COLD tier: store.js opens the tier at
+     boot whenever any stub exists, so cold means nothing large is stored,
+     which the figure below already says. The note contradicted it. */
 
   const tiers = h('div.st-tiers');
 
@@ -489,7 +503,7 @@ function renderStorage() {
   }));
 
   sec.append(h('p.st-note', {
-    text: 'To take a copy of every project, use Backup in the top bar (Export everything). '
+    text: 'To take a copy of every project, use Backup in the rail, above your avatar (Tools on a phone) and choose Export everything. '
         + 'Keep it somewhere safe \u2014 browsers can clear their storage without asking.'
   }));
 
@@ -641,7 +655,7 @@ function renderDrive() {
     'Back up to Google Drive.',
     'A copy of every project on this browser, in your own Google Drive. '
       + 'Drive keeps earlier versions, so you can go back. Your AI key is never '
-      + 'included. (Quick exports and imports are in Backup, in the top bar.)');
+      + 'included. (Quick exports and imports are in Backup, in the rail, above your avatar (Tools on a phone).)');
 
   /* The plan's `drive_backup` (src/data/plan-matrix.json: Intermediate
      and up). Locked: say so and offer the way up; the backup FILE stays
@@ -650,7 +664,7 @@ function renderDrive() {
     sec.dataset.planLocked = 'drive_backup';
     const note = h('p.st-note', {
       text: 'Google Drive backup is not part of your plan. You can still '
-          + 'export a backup file from Backup in the top bar.'
+          + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).'
     });
     const see = h('a.k-btn.k-btn--secondary', { href: 'purchase.html', text: 'See plans' });
     sec.append(note, h('div.st-drive-actions', {}, [see]));
@@ -658,7 +672,7 @@ function renderDrive() {
     PlanGate.offerFor(['drive_backup']).then((o) => {
       if (!o) return;
       note.textContent = 'Google Drive backup comes with ' + PlanGate.offerText(o) + ' a year. You can still '
-        + 'export a backup file from Backup in the top bar.';
+        + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).';
       see.href = o.href;
       see.textContent = 'See ' + o.name;
     }).catch(() => { /* the plain note stands */ });
@@ -668,7 +682,7 @@ function renderDrive() {
   if (!st.configured) {
     sec.append(h('p.st-note', {
       text: 'Google Drive backup is not available right now. You can still '
-          + 'export a backup file from Backup in the top bar.'
+          + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).'
     }));
     return sec;
   }
@@ -1011,7 +1025,7 @@ function renderPlanCard() {
   }
   card.append(h('p.st-plan-link', {}, [button({
     href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward',
-    label: bought ? 'Manage plan' : 'Plan & purchases'
+    label: bought ? 'Manage plan' : 'Purchase'
   })]));
   sec.append(card);
   return sec;
@@ -1224,9 +1238,11 @@ function renderDanger() {
   const c = window.StudioCloud;
   const signedIn = !!(c && c.getSession && c.getSession());
   const sec = section('danger', 'Danger zone', 'Erase what you have written.',
-    'These cannot be undone. Export a backup first (Backup, in the top bar) if you want to keep anything.');
+    'These cannot be undone. Export a backup first (Backup, in the rail, above your avatar (Tools on a phone)) if you want to keep anything.');
   sec.append(h('div.st-danger-row', {}, [
-    h('p', { text: 'Removes every project, setting and saved key from this browser, and signs you out.' }),
+    /* Erase never signs out (CLAUDE.md item 29), and the dialog one click
+       on says so: this line promised a sign-out that never happened. */
+    h('p', { text: 'Removes every project, setting and saved key from this browser.' + (signedIn ? ' You stay signed in, and the copies in the cloud are not touched.' : '') }),
     h('button.k-btn.k-btn--danger', { type: 'button', 'data-action': 'erase-all', text: 'Erase everything on this device' })
   ]));
   if (signedIn) {

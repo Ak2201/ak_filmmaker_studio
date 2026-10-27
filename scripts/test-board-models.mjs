@@ -42,6 +42,8 @@ eq(B.describeFilter({ q: '', ie: '', dn: 'NIGHT', st: 'untagged' }), 'night · u
 eq(B.describeFilter({ q: '', ie: '', dn: '', st: '' }), 'every scene', 'describe the empty filter');
 ok(B.presetMatches({ q: 'gun', ie: 'ext' }, f), 'preset matches case- and space-blind');
 ok(B.rowMatches(f, { find: 'a gun here', ie: 'EXT', dn: 'DAY', st: 'tagged' }), 'row matches');
+ok(B.rowMatches({ q: 'night roof', ie: '', dn: '', st: '' }, { find: '2 ext roof the chase night meera', ie: 'EXT', dn: 'NIGHT', st: 'tagged' }), 'words from different fields match in any order');
+ok(!B.rowMatches({ q: 'roof dawn', ie: '', dn: '', st: '' }, { find: '2 ext roof the chase night', ie: 'EXT', dn: 'NIGHT', st: 'tagged' }), 'every word must appear');
 ok(!B.rowMatches(f, { find: 'a gun here', ie: 'INT', dn: 'DAY', st: 'tagged' }), 'row ruled out by INT/EXT');
 eq(B.filterCountText(3, 3), '3 scenes', 'count, all shown'); eq(B.filterCountText(1, 1), '1 scene', 'count, one');
 eq(B.filterCountText(2, 5), '2 of 5 scenes', 'count, filtered');
@@ -49,6 +51,7 @@ eq(B.binEntryBits({}), ['nothing attached'], 'bin entry, empty');
 eq(B.binEntryBits({ shots: 1, frames: 2, day: 4 }), ['1 shot', '2 frames', 'Day 4'], 'bin entry bits');
 eq(B.binTotalsBits({ scenes: 1, sheets: 2 }), ['1 scene', '2 call-sheet places'], 'bin totals bits');
 eq(B.sceneFieldValue('eighths', '-3'), 0, 'eighths floor at 0'); eq(B.sceneFieldValue('eighths', '12'), 12, 'eighths');
+eq(B.sceneFieldValue('eighths', '500'), 80, 'eighths cap at the box max (80)'); eq(B.sceneFieldValue('eighths', '2.5'), 2, 'eighths are whole'); eq(B.EIGHTHS_MAX, 80, 'EIGHTHS_MAX is the box max');
 eq(B.sceneFieldValue('number', ' 4A '), '4A', 'number trimmed'); eq(B.sceneFieldValue('location', ' x '), ' x ', 'other field as typed');
 eq(B.songFieldValue('days', '1.5'), 1.5, 'song days'); eq(B.songFieldValue('dancers', 'x'), 0, 'song dancers');
 eq(B.runSaid({ applied: { empty: true }, totals: {}, characters: [] }), 'The script has no scene headings yet, so there was nothing to break down.', 'run, empty');
@@ -79,6 +82,20 @@ const rows = S.doodRows(board, [1, 2, 3, 4], [
 ]);
 eq(rows.map((r) => [r.name, r.work, r.hold, r.span, r.cells.map((c) => c.mark).join('/')]),
   [['Ravi', 3, 1, 4, 'SW/W/H/WF'], ['Meera', 1, 0, 1, 'SWF///']], 'day out of days');
+/* A day NUMBER with no scenes (Day 3 here, emptied on the board) has no
+   column; the total is the shoot days worked or held, W + H, never
+   last − first + 1, or a payroll day is counted that the grid shows
+   nowhere. The CSV's "Total days" carries the same figure. */
+{
+  const gap = S.doodRows(board, S.shootDays(board), [
+    { category: 'cast', name: 'Ravi', scenes: [board[0], board[1], board[2]] },
+    { category: 'cast', name: 'Asha', scenes: [board[1], board[2]] }
+  ]);
+  eq(gap.map((r) => [r.name, r.work, r.hold, r.span]), [['Ravi', 3, 0, 3], ['Asha', 2, 1, 3]], 'dood: an empty day number is not in the total');
+  ok(gap.every((r) => r.span === r.work + r.hold), 'dood: total = W + H on every row');
+  const csvLast = S.doodCsv(gap, S.shootDays(board)).trim().split(/\r?\n/).map((l) => l.split(',').pop().replace(/"/g, ''));
+  eq(csvLast.slice(1), ['3', '3'], 'dood CSV: Total days = W + H');
+}
 eq(S.localDate('2025-10-27'), 'Mon 27 Oct 2025', 'local date'); eq(S.localDate('soon'), '', 'not a date');
 eq(S.todayISO(new Date(2026, 0, 5)), '2026-01-05', 'today ISO');
 eq(S.daysNote(0, null), '', 'no days, no note'); eq(S.daysNote(2, null), 'scheduled · no dates yet', 'undated note');

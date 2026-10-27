@@ -429,17 +429,19 @@ StudioUI.flashFieldSaved = function (el) {
 const DEFAULT_SHORTCUTS = [
   { keys: ['?'],          label: 'Open this shortcut sheet' },
   { keys: ['Esc'],        label: 'Close any open dialog / dropdown' },
-  { keys: ['⌘/Ctrl', 'S'],label: 'Save current blueprint (in the Screenplay Writer: save a draft)' },
+  { keys: ['⌘/Ctrl', 'S'],label: 'Save a draft (in the Screenplay Writer)' },
   /* ⌘/Ctrl D (switch theme) is gone with the second theme
      (14 Oct 2026); the key is the browser's again. */
-  { keys: ['j'],          label: 'Next step (in any blueprint)' },
-  { keys: ['k'],          label: 'Previous step' },
+  /* j / k ("next / previous step") were listed here for the blueprints.
+     The blueprint pages are retired and the stage guides are hidden, so
+     the keys do nothing on a page people use; the handler stays for the
+     retired feature.html?stay=1, the sheet no longer promises it. */
   { keys: ['g g'],        label: 'Jump to top' },
   { keys: ['G'],          label: 'Jump to end' },
   /* There was a "⌘/Ctrl K — Focus search (hub)" row here too. K is the
      palette's on every page, the hub included; the hub's field moved
      to `/`, so the row was wrong and the two rows are one. */
-  { keys: ['/'],          label: 'Focus the search input on this page (the hub, the blueprints)' },
+  { keys: ['/'],          label: 'Focus the search box on this page, where it has one' },
   { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, places, script lines. Start with > for commands, # for a scene number, @ for a person' }
 ];
 /* A page may add its own section to the sheet — write.html prints its

@@ -161,7 +161,7 @@ for (const id of IDS) {
     }
     ok(!/testimonial|\brated\b|★|&#9733;|\bstars?\b|trusted by|\bcustomers?\b/i.test(html), tag + 'no rating, testimonial or customer claim');
     ok(/<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'footer links the three legal pages');
-    ok(/<a class="mk-nav-link" href="pricing\.html" aria-current="page">/.test(html), tag + 'the header marks Pricing as the current page');
+    ok(/<a class="mk-nav-link mk-nav-pricing" href="pricing\.html" aria-current="page">/.test(html), tag + 'the header marks Pricing as the current page');
     leadContract(html, tag);
     ok(/href="trust\.html"/.test(html), tag + 'links the trust page');
     ok(/<aside class="pr-pass" data-pass data-pass-only hidden[\s\S]*?data-pass-cta[\s\S]*?<\/aside>/.test(html), tag + 'the pass strip is pass-only, hidden, and its button is the pass CTA');
@@ -854,6 +854,20 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
   }
   ok(/priceNotice\(\)\.then[\s\S]*fromDayNow\(notice\)/.test(read('src/pages/start.js')), 'start.js corrects the hero\'s from-figure');
 }
+
+/* ---- one verb per action ------------------------------------------
+   The studio says "Sign in" everywhere, so the public header and modal do
+   too ("Sign up" stays: it is a different act). No control labelled "Log in",
+   and the phone menu puts Pricing straight after it (order, not DOM). */
+for (const [file, html] of Object.entries(files)) {
+  if (!/\.html$/.test(file)) continue;
+  const labels = [...html.matchAll(/>\s*(Log in[^<]*)</g)].map((m) => m[1].trim())
+    .concat([...html.matchAll(/data-off-text="(Log in[^"]*)"/g)].map((m) => m[1]));
+  ok(labels.length === 0, file + ': no control or heading labelled "Log in" [' + labels.join(' | ') + ']');
+  ok(!/See the plans/.test(html), file + ': the plans CTA reads "See plans"');
+}
+ok(/\.mk-nav-login \{[^}]*order: -2/.test(read('src/styles/marketing.css')) && /\.mk-nav-pricing \{ order: -1/.test(read('src/styles/marketing.css')), 'marketing.css: the phone menu orders Sign in, then Pricing, above the product groups');
+ok(/class="mk-nav-link mk-nav-pricing" href="pricing\.html"/.test(files[PRICING_FILE]), 'the header marks the Pricing link for the phone order');
 
 console.log(`\ntest:marketing: ${pass} passed, ${fail} failed${FIXTURE ? ' (fixture copy; media existence NOT checked)' : ''}`);
 process.exit(fail ? 1 : 0);

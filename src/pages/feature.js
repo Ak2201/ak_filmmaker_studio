@@ -109,6 +109,7 @@ import {
   FOCUS_SECONDS, formatTime, timerAriaLabel, fieldLabelMap, humanise, isSpecialKey,
   buildFeatureMarkdown, buildPitchSlides, slideToHTML, buildPitchPptx
 } from '../lib/feature-model.js';
+import { NOTE_TITLE, noteLabel } from '../lib/note-label.js';
 import { mountComments, togglePanel as toggleFieldThread, hasNote, paintBadges }
   from '../ui/comments.js';
 import Blueprint from '../lib/blueprint-context.js';
@@ -1256,8 +1257,12 @@ function syncTitleAcrossCovers() {
   const masterTitle = document.querySelector('[data-key="meta_title"]');
   const v1Title = document.querySelector('[data-key="v1_title"]');
   if (!masterTitle || !v1Title) return;
+  /* The twin keeps following while it was filled this way: re-checking
+     "empty" on each keystroke copied only the first letter. */
   const sync = (src, dest) => {
-    if (dest.value === '' && src.value) dest.value = src.value;
+    delete src.dataset.follows;
+    if (dest.dataset.follows === src.dataset.key) dest.value = src.value;
+    else if (dest.value === '' && src.value) { dest.value = src.value; dest.dataset.follows = src.dataset.key; }
   };
   masterTitle.addEventListener('input', () => sync(masterTitle, v1Title));
   v1Title.addEventListener('input', () => sync(v1Title, masterTitle));
@@ -1925,7 +1930,8 @@ function attachCommentButtons() {
     const btn = document.createElement('button');
     btn.className = 'comment-btn';
     btn.type = 'button';
-    btn.title = 'Add a private note (saved on your device)';
+    btn.title = NOTE_TITLE;
+    btn.setAttribute('aria-label', noteLabel(label.textContent));
     btn.textContent = '✎';
     btn.dataset.key = 'comment_for_' + key;
     btn.dataset.action = 'toggleCommentPanel';

@@ -138,6 +138,18 @@ check('feature: the menu is a visible strip above the steps, not behind a disclo
   return [!!n && !n.hidden && n.getBoundingClientRect().height > 0, !!n && !n.closest('details'), document.querySelectorAll('.st-views, details.st-notes').length];
 }), [true, true, 0]);
 await openBoxes('#path-idea');
+/* QA r3: pencils name their field; a stat card makes no claim about an empty story;
+   stand-alone links are real targets. */
+check('feature: every note pencil names its own field', await page.evaluate(() => {
+  const l = [...document.querySelectorAll('#path-idea .comment-btn, #path-bible .comment-btn')].map((b) => b.getAttribute('aria-label'));
+  return [l.length > 1, new Set(l).size === l.length, l.every((x) => /^Add a private note on: \S/.test(x))];
+}), [true, true, true]);
+check('feature: peak tension is a dash until a beat is tagged', await page.evaluate(() => {
+  const c = [...document.querySelectorAll('.st-stats .k-stat')].find((e) => /Peak tension/.test(e.textContent));
+  return c ? c.querySelector('.k-stat-value').textContent : 'missing';
+}), '—');
+check('feature: a stand-alone .st-link is at least 24px high', await page.evaluate(() =>
+  [...document.querySelectorAll('.st-link')].filter((e) => !e.closest('p') && e.offsetHeight).every((e) => e.getBoundingClientRect().height >= 24)), true);
 await page.fill('#stIdea', 'A dragon who is afraid of fire.');
 await page.fill('#path-idea [data-key="s1_whatif"]', 'WHATIF-ONCE');
 await page.fill('#stLogline', 'A dragon must light the beacon.');
@@ -157,11 +169,14 @@ check('feature: the Idea step is ticked', await page.evaluate(() => !!document.q
 await step('bible');
 await page.fill('.sb [data-key="s3_theme"]', 'THEME-ONCE');
 await settle();
+await page.click('[data-sb="add-char"]');
+await page.waitForTimeout(300);
+check('feature: Add with no name says what to do', await page.evaluate(() => /name first/.test((document.querySelector('.toast-host') || {}).textContent || '')), true);
 check('feature: a Characters & world answer is stored under the blueprint’s key', (await blob(FKEY)).s3_theme, 'THEME-ONCE');
 
 /* choosing the beat sheet in the Beat Sheet's own picker */
 await step('outline');
-await page.click('#path-outline [data-st="open-fw"]');
+await page.click('#path-outline #st-fw-pick > summary');
 await page.waitForTimeout(300);
 check('feature: "Choose one" opens the picker', await page.evaluate(() => document.getElementById('st-fw-pick').open), true);
 await page.click('.st-fw[data-fw="three_act"]');
@@ -326,6 +341,196 @@ await open('#pitch');
 check('#pitch (off for everybody) opens no Pitch deck step', (await shown()).includes('pitch'), false);
 await open('#logline');
 check('#logline opens the Idea step on its logline', [await shown(), await inViewEl('logline')], [['path-idea'], true]);
+
+/* ---- QA round 2 (Story & writing): data kept, focus kept --------------- */
+const act = () => page.evaluate(() => { const a = document.activeElement; return a ? a.tagName + (a.getAttribute('data-st') ? '[' + a.getAttribute('data-st') + ']' : '') + (a.getAttribute('data-st-field') ? '{' + a.getAttribute('data-st-field') + '}' : '') : 'none'; });
+const toasts = () => page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.querySelector('.toast-msg').textContent));
+const chars = () => page.evaluate(() => JSON.parse(localStorage.getItem('fms_characters_v1') || '[]'));
+await project('feature', 'Proof QA r2');
+await open('#path-bible');
+await page.fill('[data-sb-slot="protagonist"] [data-sb-key="s4_name"]', 'Ravi');
+await page.fill('[data-sb-slot="protagonist"] [data-sb-key="s4_want"]', 'To swim the strait');
+await page.keyboard.press('Tab');
+await page.waitForTimeout(300);
+check('bible: the add-role buttons are kit buttons in sentence case', await page.evaluate(() =>
+  [...document.querySelectorAll('[data-sb="add-role"], [data-sb="add-char"]')].map((b) => [b.classList.contains('k-btn'), b.textContent])),
+  [[true, 'Add the protagonist'], [true, 'Add the antagonist'], [true, 'Add']]);
+await page.click('[data-sb="add-role"][data-role="protagonist"]');
+await page.waitForTimeout(400);
+check('bible: "Add the protagonist" after answering the slot keeps the answers in the blueprint', await blob(FKEY).then((b) => [b.s4_name, b.s4_want]), ['Ravi', 'To swim the strait']);
+check('bible: …and makes ONE protagonist, the slot’s person (no empty card beside a role-less RAVI)', await page.evaluate(() =>
+  [...document.querySelectorAll('.sb-chars details.sb-char:not(.is-slot)')].map((d) => [d.querySelector('.sb-char-name').textContent, (d.querySelector('.sb-char-role') || {}).textContent || ''])), [['Ravi', 'Protagonist']]);
+await page.fill('[data-sb-newname]', 'Meera');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('bible: adding a character from the keyboard puts the focus on its card', await page.evaluate(() =>
+  !!(document.activeElement.closest('details.sb-char') && document.activeElement.getAttribute('data-ch-field') === 'name')), true);
+await page.fill('[data-sb-newname]', 'Meera');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('bible: a second character of the same name is added and said', [(await chars()).filter((c) => c.name === 'MEERA').length, (await toasts()).some((t) => /already a MEERA/.test(t))], [2, true]);
+
+/* Tab out of an edited field reaches the next control. */
+await open('#path-idea');
+await page.click('#stIdea');
+await page.keyboard.type('Hello there');
+await page.waitForTimeout(900);
+await page.keyboard.press('Tab');
+await page.waitForTimeout(300);
+check('story: Tab out of an edited Idea goes on to the next control, not <body>', (await act()) !== 'BODY', true);
+
+/* Beat Sheet: the beat select, Add a step, the lock and the picker keep the keyboard. */
+await open('#path-outline');
+await page.click('[data-st="step-add"][data-beat="save_the_cat:opening_image"]');
+await page.waitForTimeout(300);
+await page.keyboard.type('A first step');
+await page.click('[data-st="step-add"][data-beat="save_the_cat:opening_image"]');
+await page.waitForTimeout(300);
+await page.keyboard.type('A second step');
+await page.waitForTimeout(800);
+const sid = (await story()).outline[0].id;
+await page.focus(`select[data-st-field="step-beat"][data-step="${sid}"]`);
+await page.keyboard.press('ArrowDown');
+await page.waitForTimeout(400);
+check('beat sheet: moving a step to another beat from the keyboard keeps the focus on its select', await page.evaluate((id) =>
+  document.activeElement.matches(`select[data-st-field="step-beat"][data-step="${id}"]`), sid), true);
+await page.focus('#stLockRow [data-st="lock"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('beat sheet: Lock from the keyboard leaves the focus on the (now Locked) button', await act(), 'BUTTON[unlock]');
+await page.focus('#stLockRow [data-st="unlock"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+await page.evaluate(() => { document.getElementById('st-fw-pick').open = true; });
+await page.waitForTimeout(300);
+await page.focus('[data-st="pick-fw"][data-fw="three_act"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('beat sheet: picking a beat sheet from the keyboard leaves the focus on the picker', await page.evaluate(() => document.activeElement.matches('#st-fw-pick > summary')), true);
+await page.click('#st-fw-pick > summary');
+await page.waitForTimeout(200);
+await page.click('[data-st="pick-fw"][data-fw="save_the_cat"]');
+await page.waitForTimeout(400);
+check('beat sheet: the empty Unassigned box has no "Save the Cat!."', await page.evaluate(() => {
+  const t = document.querySelector('.st-unplaced') ? document.querySelector('.st-unplaced').textContent : '';
+  return [/Cat!\./.test(t), /one of the Save the Cat! beats/.test(t)];
+}), [false, true]);
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.locator('[data-st="step-add"][data-beat="save_the_cat:midpoint"]').scrollIntoViewIfNeeded();
+await page.waitForTimeout(400);
+await page.click('[data-st="step-add"][data-beat="save_the_cat:midpoint"]');
+await page.waitForTimeout(1500);
+check('beat sheet: Add a step leaves the new step’s box focused AND on screen', await page.evaluate(() => {
+  const a = document.activeElement; const r = a.getBoundingClientRect();
+  return [a.getAttribute('data-st-field'), r.top >= 0 && r.bottom <= innerHeight];
+}), ['step-text', true]);
+
+/* Synopsis: an import while a keystroke is pending asks first; build-undo takes its toast down. */
+await open('#path-synopsis');
+await page.click('#stSource');
+await page.keyboard.type('My own draft words');
+await page.setInputFiles('.st-bar .st-import input[type=file]', { name: 'syn.txt', mimeType: 'text/plain', buffer: Buffer.from('A swimmer crosses the strait at night and finds her brother on the far shore.') });
+await page.waitForTimeout(500);
+check('synopsis: importing while typing asks before replacing what was typed', await page.evaluate(() => !!document.querySelector('.dlg.k-modal')), true);
+await page.click('.dlg.k-modal .k-modal-actions .mbtn:not(.primary)');
+await page.waitForTimeout(1200);
+check('synopsis: …and "Cancel" keeps the typed draft, no "Imported" toast', [(await story()).source, (await toasts()).some((t) => /Imported/.test(t))], ['My own draft words', false]);
+await page.focus('[data-st="mode"][data-mode="tag"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('synopsis: the Write/Tag mode button keeps the focus', await act(), 'BUTTON[mode]');
+await page.click('[data-st="build"]');
+await page.waitForTimeout(300);
+await page.click('.dlg.k-modal .k-modal-actions .mbtn.primary');
+await page.waitForTimeout(500);
+check('synopsis: Build shows its UNDO toast', (await toasts()).some((t) => /built from the outline/.test(t)), true);
+await page.click('[data-st="build-undo"]');
+await page.waitForTimeout(300);
+if (await page.evaluate(() => !!document.querySelector('.dlg.k-modal'))) { await page.click('.dlg.k-modal .k-modal-actions .mbtn.primary'); await page.waitForTimeout(300); }
+await page.waitForTimeout(400);
+check('synopsis: "Undo the build" takes the build’s toast down (its UNDO would do nothing)', (await toasts()).some((t) => /built from the outline/.test(t)), false);
+
+/* The tension curve's last dot keeps its label inside the chart, at 390. */
+await project('feature', 'Proof Curve');
+await open();
+await page.click('[data-st="sample"]');
+await page.waitForTimeout(1500);
+await page.setViewportSize({ width: 390, height: 844 });
+await step('synopsis');
+const tipFits = await page.evaluate(() => {
+  const dots = [...document.querySelectorAll('#path-synopsis .pc-dot')];
+  if (!dots.length) return 'no dots';
+  const last = dots[dots.length - 1], first = dots[0];
+  last.focus();
+  const t = last.querySelector('.pc-dot-tip').getBoundingClientRect(), f = first.querySelector('.pc-dot-tip').getBoundingClientRect();
+  return [t.right <= innerWidth, f.left >= 0];
+});
+await page.setViewportSize({ width: 1280, height: 900 });
+check('pacing: the edge dots’ labels stay inside the window at 390px', tipFits, [true, true]);
+
+/* Dashboard Title page: the twin title follows the whole title, PROJECT TITLE is the name. */
+await project('feature', 'QA empty');
+await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
+await page.waitForTimeout(900);
+check('title page: PROJECT TITLE shows the project’s name', await page.inputValue('#tp_meta_title'), 'QA empty');
+await page.fill('#tp_meta_title', '');
+await page.click('#tp_meta_title');
+await page.keyboard.type('The Kettle');
+await page.waitForTimeout(300);
+check('title page: typing the Title fills Working title with the WHOLE title', [await page.inputValue('#tp_v1_title'), (await blob(FKEY)).v1_title], ['The Kettle', 'The Kettle']);
+await page.keyboard.press('Tab');
+await page.waitForTimeout(500);
+check('title page: leaving PROJECT TITLE renames the project, and Tab reaches the next field', await page.evaluate(() =>
+  [window.StudioStore.currentProject().title, document.activeElement.tagName !== 'BODY']), ['The Kettle', true]);
+await page.focus('[data-action="tp-region"][data-region="IN"]');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+check('title page: the region button keeps the focus after the press', await page.evaluate(() =>
+  document.activeElement.matches('[data-action="tp-region"][data-region="IN"]')), true);
+
+/* Round 4 fixes */
+/* a blank Project title is refused: the field goes back to the name */
+await page.fill('#tp_meta_title', '');
+await page.press('#tp_meta_title', 'Tab');
+await page.waitForTimeout(500);
+check('title page: a blanked PROJECT TITLE is put back at once, and stored so', [await page.inputValue('#tp_meta_title'), (await blob(FKEY)).meta_title], ['The Kettle', 'The Kettle']);
+check('title page: the Stage field has no placeholder repeating its hint', (await page.getAttribute('#tp_meta_stage', 'placeholder')) || '', '');
+
+await project('feature', 'QA r4');
+await open('#path-bible');
+check('story: the strip says no characters before one is added', await page.evaluate(() => /add them in the Story Bible/.test(document.querySelector('.st-stats').textContent)), true);
+await page.fill('#sb-newname', 'Maya');
+await page.click('[data-sb="add-char"]');
+await page.waitForTimeout(900);
+check('story: adding a character updates the strip without a reload', await page.evaluate(() => /1\s*in the Story Bible/.test(document.querySelector('.st-stats').textContent.replace(/\s+/g, ' '))), true);
+
+await step('outline');
+check('beat sheet: one bar while no beat sheet is chosen, offering Choose one', await page.evaluate(() => [
+  !!document.querySelector('#path-outline .st-fw-pick .st-using'), document.querySelectorAll('#path-outline .st-using').length,
+  document.querySelector('#path-outline .st-fw-change').textContent]), [true, 1, 'Choose one']);
+check('beat sheet: every beat’s Add a step names its beat', await page.evaluate(() => {
+  const n = [...document.querySelectorAll('#path-outline [data-st="step-add"]')].map((b) => b.getAttribute('aria-label'));
+  return [n.length > 1, new Set(n).size === n.length, n.every((x) => /^Add a step to \S/.test(x))];
+}), [true, true, true]);
+await step('synopsis');
+check('synopsis: every Tension field has its own accessible name', await page.evaluate(() => {
+  const n = [...document.querySelectorAll('#path-synopsis .st-beat-tlabel')].map((l) => l.getAttribute('aria-label'));
+  return [n.length > 1, new Set(n).size === n.length];
+}), [true, true]);
+
+/* 'Use this as my logline' over a written logline: replaced, with Undo */
+await step('idea');
+await openBoxes('#path-idea');
+await page.fill('#stLogline', 'First logline.');
+await page.waitForTimeout(500);
+await page.fill('[data-key="lad_1_logline"]', 'Rough draft.');
+await page.waitForTimeout(500);
+await page.click('[data-st="use-lad1"]');
+await page.waitForTimeout(600);
+check('idea: the earlier-version button replaces a written logline', (await story()).logline, 'Rough draft.');
+await page.click('.toast button:has-text("UNDO")').catch(() => {});
+await page.waitForTimeout(600);
+check('idea: …and the toast Undo puts the written logline back', (await story()).logline, 'First logline.');
 
 check('no page errors', errors, []);
 await browser.close();

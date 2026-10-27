@@ -1,6 +1,7 @@
 {
   "_": "The section menu's marks and its per-page grouping (src/ui/section-menu.js, src/ui/tabs.js). `icons` lists every Material Symbols name the menu may draw that a page sets by ATTRIBUTE (data-tab-icon on settings, the admin console, the library); `pages` is the same information for module pages that are not edited for it, keyed page -> section id -> { group, icon, hint }; a data-tab-* attribute on the section always wins. vite.config.js adds every name here to the icon font's icon_names= subset beside navigation.json's own, so a name used anywhere MUST be listed (in `icons` or in a `pages` entry) or it prints as a word. A legal-looking name that is not a real symbol makes Google serve the WHOLE 1.2MB face with a 200: check the font's size after adding one (it is ~15KB for ~60 names). The component kit (src/ui/kit/) draws its marks from `icons` too, so a kit icon must be listed there or it prints as a word.",
   "icons": [
+    "refresh",
     "payments",
     "find_replace",
     "view_module",

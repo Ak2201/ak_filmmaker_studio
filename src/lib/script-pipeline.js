@@ -78,6 +78,12 @@ export const STEPS = [
 ];
 const stepMeta = new Map(STEPS.map((s) => [s.id, s]));
 
+/* A category id as words, singular for one ("1 vehicle", not
+   "1 vehicles" — QA r4). Ids without an entry are already a mass noun. */
+const CAT_WORDS = { props: ['prop', 'props'], vehicles: ['vehicle', 'vehicles'], animals: ['animal', 'animals'],
+  stunts: ['stunt', 'stunts'], extras: ['background extra', 'background extras'], setdressing: ['set dressing', 'set dressing'],
+  special: ['special equipment', 'special equipment'] };
+const catCount = (k, n) => { const w = CAT_WORDS[k]; return n + ' ' + (w ? w[n === 1 ? 0 : 1] : k); };
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
@@ -214,7 +220,15 @@ function stepCharacters(ctx) {
   const fresh = freshSpeakers(ctx.elements, scenes);
   const want = fresh.filter((c) => c.scenes >= ADOPT_MIN_SCENES);
   const total = mergeWithCues(loadCharacters(), ctx.elements).filter((c) => c.cues > 0).length;
-  if (!want.length) return { status: 'nothing', wrote: 0, count: total, detail: plural(total, 'speaking character') + '; every recurring one is already in the Story Bible.' };
+  /* Say WHY nothing was added (QA r4): "every recurring one is already
+     in the Story Bible" was printed over an empty Bible whenever nobody
+     spoke in two scenes. */
+  if (!want.length) {
+    const why = !total ? 'No speaking characters yet.'
+      : fresh.length ? plural(total, 'speaking character') + '; none of the new ones speaks in more than one scene, so none was added.'
+        : plural(total, 'speaking character') + '; every one is already in the Story Bible.';
+    return { status: 'nothing', wrote: 0, count: total, detail: why };
+  }
   const list = loadCharacters();
   const made = [];
   for (const c of want) {
@@ -249,7 +263,7 @@ function stepProps(ctx) {
       n += list.length;
     }
   }
-  const top = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => v + ' ' + k);
+  const top = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => catCount(k, v));
   return { status: 'derived', wrote: 0, count: n, byCategory: byCat, detail: n ? plural(n, 'suggestion') + ' (' + top.join(', ') + ') to accept or ignore on the Breakdown — nothing is tagged until you do.' : 'Nothing in the action lines calls for an element yet.' };
 }
 

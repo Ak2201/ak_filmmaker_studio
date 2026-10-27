@@ -28,7 +28,7 @@
 import '../styles/story-pacing.css';
 import '../styles/script-analysis.css';
 import { h } from '../lib/dom.js';
-import { analyseScript, pagesOf } from '../lib/script-analysis-model.js';
+import { analyseScript, pagesOf, readableName, sceneSpan } from '../lib/script-analysis-model.js';
 import { smoothPath } from '../lib/story-pacing.js';
 import { formatDuration } from '../lib/screenplay-analysis.js';
 import { listScenes } from '../lib/scenes.js';
@@ -44,7 +44,7 @@ const NS = 'http://www.w3.org/2000/svg';
 const svgEl = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
 const pct = (x) => Math.round(x * 100) + '%';
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
-const title = (s) => String(s || '').toLowerCase().replace(/(^|[\s\-/(])(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
+const title = readableName;
 
 function format() {
   try { const p = currentProject(); return p && p.format === 'short' ? 'short' : 'feature'; } catch (e) { return 'feature'; }
@@ -495,7 +495,7 @@ function castPanel(a) {
     }
     list.append(h('li.sa-cast-row', {}, [
       h('span.sa-cast-name', { text: title(p.name) }),
-      h('span.sa-cast-n', { text: plural(p.scenes, 'scene') + ' · Sc ' + p.first + '–' + p.last }),
+      h('span.sa-cast-n', { text: plural(p.scenes, 'scene') + ' · ' + sceneSpan(p.first, p.last) }),
       strip
     ]));
   }

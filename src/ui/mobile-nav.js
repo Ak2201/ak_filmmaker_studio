@@ -295,11 +295,10 @@ export function openGoTo(phaseId) {
   const body = h('div.mn-body');
   // the app-scope destinations, as one row of tiles
   const top = h('nav.mn-globals', { 'aria-label': 'Studio' });
-  /* On a global page (library, settings, admin, purchase, the hub) the
-     desktop shell hides every project item; the sheet follows it. */
+  /* The rail lists Home and Dashboard on a global page too (17 Oct 2026),
+     so the sheet does as well: the open film is one tap from Library. */
   const globalPage = isGlobalMode();
   for (const g of globals()) {
-    if (globalPage && g.id === 'dashboard') continue;
     if (g.adminOnly && !isAdmin()) continue;   // the rail hides it too (shell.js syncAdminOnly)
     const a = h('a.mn-global', { href: g.href }, [iconSpan('mn-global-icon', g), h('span', { text: g.label })]);
     if (fileOf(g.href) === CURRENT && !(g.modules && g.modules.some((m) => m.id === here))) {
@@ -315,7 +314,7 @@ export function openGoTo(phaseId) {
     h('span', { text: 'Project: ' + (current ? (current.title || 'Untitled') + ' · ' + formatLabel(current.format) : 'none open') + ' · Switch' })
   ]));
   if (list.length) proj.append(...projectRows());
-  proj.append(h('a.ps-link', { href: 'index.html', text: list.length ? '+ New project' : 'No project — start one' }));
+  proj.append(h('a.ps-link', { href: 'index.html', text: list.length ? '+ New project' : 'Start a project' }));
   /* the band's project pill opens the sheet HERE, on a global page too */
   if (!globalPage || phaseId === 'project') body.append(proj);
   if (!globalPage) for (const p of phases()) body.append(group(p, here, '.sh-ph-' + p.hue));
@@ -323,12 +322,21 @@ export function openGoTo(phaseId) {
   for (const s of shelves()) body.append(group(s, here, s.hue ? '.hue-' + s.hue : ''));
 
   markLocked(body);   // PLAN flag on a module the plan does not include
+  /* A switched-off module (hidden, data-pg-gone) is not where anybody
+     is: bare library.html resolved to the Case Studies shelf, which the
+     plan gate hides, and focus() on a hidden row does nothing — so focus
+     stayed on the bar, outside this aria-modal sheet. */
+  const GONE = '[hidden], [data-pg-gone]';
+  for (const r of body.querySelectorAll('.mn-mod.is-here')) {
+    if (r.closest(GONE)) { r.classList.remove('is-here'); r.removeAttribute('aria-current'); }
+  }
   let target = null;
   open('goto', 'Go to', body, {
     focus: () => {
-      target = (phaseId && body.querySelector('[data-mn-phase="' + CSS.escape(phaseId) + '"]'))
+      target = (phaseId && body.querySelector('[data-mn-phase="' + CSS.escape(phaseId) + '"]:not([hidden])'))
         || body.querySelector('.mn-mod.is-here');
-      return (target && target.matches('a') ? target : target && target.querySelector('a')) || null;
+      const a = target && target.matches('a') ? target : target && target.querySelector('a');
+      return a && !a.closest(GONE) ? a : null;
     }
   });
   /* Where you are, in view: the whole group (its stage heading too),
@@ -350,17 +358,20 @@ export function openTools() {
   const bar = document.querySelector('.sh-bar');
   const body = h('div.mn-body.mn-tools');
   const take = [
-    ['.sh-bar > .toolbar', 'This page'],
-    ['.sh-bar > .sh-tools', 'Account and appearance'],
+    ['.sh-bar > .toolbar', null],
+    ['.sh-bar > .sh-tools', 'Account'],
     /* Backup and sync live in the rail's foot (21 Oct 2026); the rail is
        never opened on a phone (the burger opens Go to), so they are
        borrowed here like the band's zone. */
     ['#studioRail .sh-rail-tools', 'Backup and sync']
   ];
   const plan = [];
-  for (const [sel, label] of take) {
+  for (const [sel, fixed] of take) {
     const node = bar && document.querySelector(sel);
     if (!node) continue;
+    /* The same sign-in control is "Account" wherever the band adopted it;
+       a page's own toolbar is "This page" only when the pill is not in it. */
+    const label = fixed || (node.querySelector('#signInPill') ? 'Account' : 'This page');
     const wrap = h('section.mn-tools-group', {}, [h('h3.mn-group-h', { text: label })]);
     body.append(wrap);
     plan.push({ node, parent: node.parentNode, next: node.nextSibling, wrap });

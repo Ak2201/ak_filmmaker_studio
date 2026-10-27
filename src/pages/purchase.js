@@ -47,11 +47,13 @@ import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js'
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
+import { trialRefusal, trialOfferFrom } from '../lib/invite-model.js';
+import { errorSentence } from '../lib/gate.js';
 import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { priceNotice as publicPriceNotice, countPlanViewInApp } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
-import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
+import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay, perDayIn } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
   visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus, passHeading
@@ -170,7 +172,19 @@ const wantCurrency = () => pricingCurrency({ override: readPayCurrency(), chosen
 const shop = { want: wantCurrency(), view: null, loading: false, seq: 0 };
 async function refreshShop() {
   const seq = ++shop.seq;
-  if (shop.want !== 'USD') { shop.view = rupeeView('INR'); shop.loading = false; render(); return; }
+  if (shop.want !== 'USD') {
+    shop.view = rupeeView('INR'); shop.loading = false; render();
+    /* Rupees ask price_notice() too, quietly (no "Loading…"): it carries
+       each plan's CURRENT price, and the signed-out list and the deck's
+       per-day figure would otherwise quote LIST_PRICE, the price before
+       any scheduled rise, beside a checkout that charges the new one. */
+    let rn = null;
+    try { rn = await publicPriceNotice(); } catch (e) { rn = null; }
+    if (seq !== shop.seq) return;
+    const v = shopView('INR', rn);
+    if (Object.keys(v.plans).length) { shop.view = v; render(); }
+    return;
+  }
   shop.loading = true;
   render();
   let notice = null;
@@ -192,6 +206,31 @@ function currencyBlock() {
   ]);
 }
 const currentView = () => (shop.loading ? rupeeView('INR') : shop.view || rupeeView('INR'));
+/* START THE TRIAL from here — the page Settings points a member to. The
+   same two steps as invite.html's button: start_trial() writes the
+   membership, then the gate is asked again. Nothing starts by itself. */
+let trialBusy = false;
+let trialMsg = '';
+delegate(document, 'click', '[data-action="pu-start-trial"]', async () => {
+  if (trialBusy) return;
+  trialBusy = true; trialMsg = ''; render();
+  try {
+    const r = await Billing.startTrial();
+    if (!r || !r.started) trialMsg = trialRefusal(r && r.reason);
+    else {
+      trialMsg = 'Your free trial has started.';
+      const c = cloud();
+      if (c && c.runGate) await c.runGate();
+      Store.notify('billing:changed', null);
+    }
+  } catch (e) {
+    trialMsg = errorSentence(e, 'That did not start. Please try again.');
+  }
+  trialBusy = false; render();
+  const b = document.querySelector('[data-action="pu-start-trial"]') || document.getElementById('puTrialMsg');
+  if (b && (!document.activeElement || document.activeElement === document.body)) { if (b.id === 'puTrialMsg') b.setAttribute('tabindex', '-1'); try { b.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } }
+});
+
 delegate(document, 'click', '[data-action="pu-currency"]', (e, btn) => {
   const want = btn.dataset.value;
   if (want === shop.want || (want !== 'INR' && want !== 'USD')) return;
@@ -227,12 +266,22 @@ async function refreshBilling() {
    this page said they were on a plan. The line reads billing_status()
    (this page's own copy) and the server's clock through plan-gate. */
 function trialLine(st) {
-  const t = trialStatus(st, () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()));
+  const t = trialStatus(st, () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()), !!trialOfferFrom(st));
   if (!t) return null;
   /* §33. Access given by e-mail with no plan: in, uncapped, nothing owed
      while it stands. Said instead of any trial wording. */
   if (t.kind === 'granted') return h('p.pl-status.pu-granted', { text: t.text });
   if (t.kind === 'active') return h('p.pl-status.pu-trial', { text: t.text });
+  if (t.kind === 'fresh') {
+    return h('div.pu-trial.pu-trial-fresh', {}, [
+      h('p.pl-status', { text: t.text }),
+      h('div.pu-actions', {}, [
+        h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'pu-start-trial', disabled: trialBusy, text: trialBusy ? 'Starting…' : 'Start your free trial' }),
+        h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
+      ]),
+      h('p.bd-sub#puTrialMsg', { role: 'status', 'aria-live': 'polite', text: trialMsg })
+    ]);
+  }
   return h('div.pu-trial.pu-trial-over', {}, [
     h('p.pl-status', { text: t.text }),
     /* The way out sits beside the way through: this is the one page
@@ -279,7 +328,16 @@ function buyTerms() {
 }
 
 /* The deck says the per-day figure in the currency the cards are drawn in. */
-const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : '', Billing.cachedModes().plan); };
+/* The cheapest plan a day, from the SAME rows the cards beside it are
+   drawn from: a signed-in rupee view reads the plans rows (billing.plans),
+   anybody else the shop view (price_notice). LIST_PRICE only when neither
+   has answered: it is the price before any scheduled rise. */
+function rowsFromDay() {
+  const paise = (billing.plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
+    .map((p) => Billing.priceFor(p, 'year')).filter((n) => Number(n) > 0);
+  return paise.length ? perDayIn(Math.min(...paise), 'INR') : '';
+}
+const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : (rowsFromDay() || fromDay(v)), Billing.cachedModes().plan); };
 /* What a plan actually does: deckFor(), in purchase-model.js. A plan decides
    which STAGES open (plan-matrix.json), and the trial's end walls the
    studio. Nothing written is ever deleted. */
@@ -384,7 +442,8 @@ function planSection() {
 
   /* THE PLANS: a heading, what a plan does, and the row. */
   sec.append(h('div.pu-plans-head', {}, [
-    h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
+    /* 'Plans' for everyone: the status card above already says "Choose a plan." */
+    h('h3.pu-h3', { text: 'Plans' }),
     h('p.bd-sub', { text: deck() })
   ]));
   { const pc = passCard(st, true); if (pc) sec.append(pc); }

@@ -236,8 +236,17 @@ function parseFountain(raw) {
   }
 
   const elements = [];
+  /* Fountain's emphasis — *italic*, **bold**, ***both***, _underline_ —
+     is markup, and the script model has no bold. Left in, the stars
+     printed in the script and in every export (QA r4). The marks come
+     off; an escaped \* or \_ stays as the character it escapes. */
+  let emphasis = 0;
+  const unmark = (t) => String(t)
+    .replace(/(^|[^\\*])(\*{1,3})(?=[^\s*])([^*\n]*?[^\s*\\])\2(?!\*)/g, (m, pre, st, body) => { emphasis++; return pre + body; })
+    .replace(/(^|[^\w\\])_(?=\S)([^_\n]*?[^\s\\])_(?!\w)/g, (m, pre, body) => { emphasis++; return pre + body; })
+    .replace(/\\([*_])/g, '$1');
   const push = (type, t, extra) => {
-    const clean = String(t).trim();
+    const clean = unmark(String(t).trim()).trim();
     if (!clean) return;
     elements.push(blankElement({ type, text: clean, ...(extra || {}) }));
   };
@@ -309,6 +318,13 @@ function parseFountain(raw) {
     if (emitMixed(b, push, warnings)) continue;
     push('action', b.join('\n'));
   }
+
+  /* Counted above and, until QA r4, never said: the preview read
+     "14 lines, 5 scenes" with the notes and sections simply gone. */
+  if (skipped.notes) warnings.push(skipped.notes + ' note or boneyard line(s) ([[ ]] and /* */) were left out — Fountain treats them as comments.');
+  if (skipped.sections) warnings.push(skipped.sections + ' section or synopsis line(s) (# and =) were left out of the script.');
+  if (skipped.pageBreaks) warnings.push(skipped.pageBreaks + ' page break(s) (===) were left out; pages are laid out again here.');
+  if (emphasis) warnings.push(emphasis + ' emphasis mark(s) (*, **, _) were removed; the script keeps the words.');
 
   return { elements, meta, warnings, skipped };
 }
@@ -478,6 +494,7 @@ function speech(b, cueLine, push) {
    ------------------------------------------------------------ */
 function parseText(raw) {
   const warnings = [];
+  const meta = {};
   const skipped = { pageNumbers: 0, more: 0, continued: 0, titlePage: 0, revisions: 0 };
   let text = String(raw || '').replace(/\r\n?/g, '\n');
   /* A Word file whose paragraphs wear screenplay styles has already
@@ -505,8 +522,16 @@ function parseText(raw) {
       skip = front.split('\n').length - 1;
       text = text.slice(ff);
       if (skipped.titlePage) {
+        /* The notice used to say the lines were "read as front matter"
+           while the plan carried `meta: {}`, so the title and the writer
+           were thrown away (QA r4). They fill the Title Page now, as a
+           .docx's and an .fdx's do — unless a .docx already read its own
+           (docxMeta, which wins) — and the notice says which happened. */
+        if (!(raw && raw.docxMeta)) Object.assign(meta, textTitleMeta(front));
+        const kept = !!titlePageFromMeta((raw && raw.docxMeta) || meta);
         warnings.push(skipped.titlePage + ' title-page line(s) before the first page break '
-          + 'were read as front matter, not as script.');
+          + (kept ? 'were read into the Title Page, not as script.'
+            : 'were left out of the script as front matter.'));
       }
     }
   }
@@ -656,7 +681,7 @@ function parseText(raw) {
     warnings.push((skipped.more + skipped.continued) + ' page-break line(s) — (MORE) and CONTINUED — '
       + 'were recognised and skipped; the speeches they interrupted were rejoined.');
   }
-  return { elements, meta: {}, warnings, skipped };
+  return { elements, meta, warnings, skipped };
 }
 
 /** Is what precedes the first form feed a title page? Only when it has
@@ -806,9 +831,32 @@ function fdxNumber(p) {
   return '';
 }
 
+/* A paragraph's OWN text. Final Draft keeps a private note as
+   <ScriptNote><Paragraph><Text>… INSIDE the paragraph it is pinned to,
+   so a descendant query for Text read the note into the line, joined
+   with no space ("Line with runsa note"), and a paragraph holding only
+   a note became an action line made of it (QA r4). A Text whose path
+   up to `p` crosses a ScriptNote is the note's, not the script's; it
+   is counted so the preview can say notes were left out. */
+function fdxText(p, skipped) {
+  let notes = 0;
+  for (const n of Array.from(p.querySelectorAll('ScriptNote'))) {
+    let up = n.parentNode, nested = false;
+    while (up && up !== p) { if (up.tagName === 'ScriptNote') { nested = true; break; } up = up.parentNode; }
+    if (!nested) notes++;
+  }
+  if (skipped && notes) skipped.notes = (skipped.notes || 0) + notes;
+  return Array.from(p.querySelectorAll('Text')).filter((t) => {
+    for (let up = t.parentNode; up && up !== p; up = up.parentNode) {
+      if (up.tagName === 'ScriptNote') return false;
+    }
+    return true;
+  }).map((t) => t.textContent).join('').trim();
+}
+
 function parseFDX(raw) {
   const warnings = [];
-  const skipped = { unknown: 0 };
+  const skipped = { unknown: 0, notes: 0 };
   const elements = [];
   const meta = {};
 
@@ -846,7 +894,7 @@ function parseFDX(raw) {
       let cues = 0;
       for (const q of Array.from(dd.children).filter((n) => n.tagName === 'Paragraph')) {
         const k = String(q.getAttribute('Type') || '').trim().toLowerCase();
-        const t = Array.from(q.querySelectorAll('Text')).map((x) => x.textContent).join('').trim();
+        const t = fdxText(q, skipped);
         if (!t) continue;
         const ty = FDX_TYPE[k] || 'action';
         if (!FDX_TYPE[k]) skipped.unknown++;
@@ -857,7 +905,7 @@ function parseFDX(raw) {
       continue;
     }
     const kind = String(p.getAttribute('Type') || '').trim().toLowerCase();
-    const text = Array.from(p.querySelectorAll('Text')).map((t) => t.textContent).join('').trim();
+    const text = fdxText(p, skipped);
     if (!text) continue;
     const type = FDX_TYPE[kind];
     if (!type) {
@@ -885,6 +933,9 @@ function parseFDX(raw) {
   if (skipped.unknown) {
     warnings.push(skipped.unknown + ' paragraph(s) of a kind this studio has no element for were kept as action.');
   }
+  if (skipped.notes) {
+    warnings.push(skipped.notes + ' Final Draft script note(s) were left out of the script text.');
+  }
   skipped.dual = duals;
   return { elements, meta, warnings, skipped };
 }
@@ -899,9 +950,12 @@ function fdxTitlePage(xml) {
   const meta = {};
   const tp = xml.querySelector('TitlePage');
   if (!tp) return meta;
-  const lines = Array.from(tp.querySelectorAll('Paragraph')).map((p) => ({
+  const lines = Array.from(tp.querySelectorAll('Paragraph')).filter((p) => {
+    for (let up = p.parentNode; up && up !== tp; up = up.parentNode) if (up.tagName === 'ScriptNote') return false;
+    return true;
+  }).map((p) => ({
     align: String(p.getAttribute('Alignment') || '').toLowerCase(),
-    text: Array.from(p.querySelectorAll('Text')).map((t) => t.textContent).join('').trim()
+    text: fdxText(p)
   })).filter((l) => l.text);
   if (!lines.length) return meta;
   const contact = [];
@@ -994,9 +1048,12 @@ const TIME_WORDS = [...DAY_NIGHT, ...Object.keys(TIME_SYNONYM)]
 // "… - DAY 12": a scene number after the time of day.
 const TAIL_AFTER_TIME = new RegExp('^(.*\\s[-—–]\\s*(?:' + TIME_WORDS + '))\\s+(\\d+[A-Za-z]?)\\s*$', 'i');
 
-export function parseSlug(slug) {
+/** A heading's scene number and the heading without it, as written
+    otherwise. The import keeps the number on the Breakdown row and the
+    heading reads clean, so a locked export does not print it twice. */
+export function splitSceneNumber(slug) {
   let text = String(slug || '').trim().replace(/\s+/g, ' ');
-  const out = { number: '', intExt: 'INT', dayNight: 'DAY', location: '', guessedTime: false };
+  let number = '';
 
   /* A leading or trailing scene number, as Final Draft writes it.
      The leading form is anchored by the INT/EXT that has to follow
@@ -1004,11 +1061,11 @@ export function parseSlug(slug) {
      office uses — 12A for an insert, A12 for one that came before
      12. */
   const lead = text.match(new RegExp('^(' + SCENE_NO + ')[.)]?[\\s]+(?=(INT|EXT|EST|I\\/E|உள்|வெளி))', 'i'));
-  if (lead) { out.number = lead[1]; text = text.slice(lead[0].length).trim(); }
+  if (lead) { number = lead[1]; text = text.slice(lead[0].length).trim(); }
 
   /* Fountain's own number: "INT. KITCHEN - DAY #12#" / "#12A#". */
   const fnt = text.match(/\s*#([A-Za-z0-9.\-]+)#\s*$/);
-  if (fnt) { if (!out.number) out.number = fnt[1]; text = text.slice(0, fnt.index).trim(); }
+  if (fnt) { if (!number) number = fnt[1]; text = text.slice(0, fnt.index).trim(); }
 
   /* A bare trailing number is a scene number only where it cannot be part
      of the place: after the time of day ("… - DAY 12"), or when the same
@@ -1017,12 +1074,19 @@ export function parseSlug(slug) {
      — they are the address, and the old rule ate them. */
   const after = text.match(TAIL_AFTER_TIME);
   if (after) {
-    if (!out.number) out.number = after[2];
+    if (!number) number = after[2];
     text = after[1].trim();
-  } else if (out.number) {
+  } else if (number) {
     const same = text.match(/\s+(\d+[A-Za-z]?)\s*$/);
-    if (same && same[1].toUpperCase() === out.number.toUpperCase()) text = text.slice(0, same.index).trim();
+    if (same && same[1].toUpperCase() === number.toUpperCase()) text = text.slice(0, same.index).trim();
   }
+  return { number, text };
+}
+
+export function parseSlug(slug) {
+  const split = splitSceneNumber(slug);
+  let text = split.text;
+  const out = { number: split.number, intExt: 'INT', dayNight: 'DAY', location: '', guessedTime: false };
 
   const ie = text.match(/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\s*\/\s*E|INT|EXT|EST|உள்|வெளி)(?![A-Za-z])\.?/i);
   if (ie) {
@@ -1034,16 +1098,26 @@ export function parseSlug(slug) {
     text = text.slice(ie[0].length).trim();
   }
 
-  // The time of day is what follows the last dash.
-  const dash = text.lastIndexOf(' - ') >= 0 ? text.lastIndexOf(' - ')
-    : Math.max(text.lastIndexOf(' — '), text.lastIndexOf(' – '));
-  if (dash >= 0) {
-    const tail2 = text.slice(dash + 3).trim().toUpperCase().replace(/[.]+$/, '');
-    const mapped = timeOf(tail2);
-    if (mapped) out.dayNight = mapped;
-    else out.guessedTime = true;
-    out.location = text.slice(0, dash).trim();
-    if (!mapped && tail2) out.location = text.trim();   // not a time — it was part of the place
+  /* The time of day is the LAST dash-separated part that IS a time,
+     not simply whatever follows the last dash. A heading routinely
+     carries a qualifier after the time — "NIGHT (1995)", "NIGHT -
+     FLASHBACK", "NIGHT (PRESENT DAY)" — and reading only the last part
+     filed every one of those night scenes as DAY with the time left
+     inside the place. A bracketed qualifier is dropped from the part
+     before it is read; anything after the time is the qualifier and
+     leaves the location. A dash with no spaces counts only as an em or
+     en dash ("KITCHEN—NIGHT") or a doubled hyphen ("--"): a single
+     hyphen inside a word ("CO-OP") is part of the place. */
+  const SEP = /(\s+-{1,2}\s+|\s*(?:—|–|--)\s*)/;
+  const parts = text.split(SEP);          // [seg, sep, seg, sep, seg …]
+  let found = -1;
+  for (let i = parts.length - 1; i >= 2; i -= 2) {
+    const seg = parts[i].replace(/\s*\([^()]*\)/g, '').trim().toUpperCase().replace(/[.]+$/, '');
+    const mapped = timeOf(seg);
+    if (mapped) { out.dayNight = mapped; found = i; break; }
+  }
+  if (found >= 0) {
+    out.location = parts.slice(0, found - 1).join('').trim();
   } else {
     out.location = text.trim();
     out.guessedTime = true;
@@ -1174,6 +1248,14 @@ export function parseScript(raw, filename) {
   for (const el of elements) counts[el.type] = (counts[el.type] || 0) + 1;
 
   const { rows, guessed, numbering } = scenesFrom(elements);
+  /* The rows have their numbers now; the heading text gives its up
+     (QA r3: "12. INT. KITCHEN - DAY" stayed in the line and printed
+     beside the locked 12). Lock reads the rows' numbers, not the text. */
+  for (const el of elements) {
+    if (el.type !== 'scene') continue;
+    const cut = splitSceneNumber(el.text);
+    if (cut.number && cut.text) el.text = cut.text;
+  }
   const lines = totalLines(elements);
   const warnings = (result.warnings || []).slice();
   /* Anything the PDF extractor had to say comes first: it is about
@@ -1219,9 +1301,11 @@ export function parseScript(raw, filename) {
        Fountain. A list of the formats that exist, written out a
        second time, is a list that is wrong by the next format. */
     formatLabel: (FORMATS.find((f) => f.id === format) || {}).label || format,
-    meta: result.meta || {},
-    // The file's title page as the script model's fields, or null.
-    titlePage: titlePageFromMeta(result.meta),
+    meta: { ...((raw && raw.docxMeta) || {}), ...(result.meta || {}) },
+    // The file's title page as the script model's fields, or null. A
+    // .docx carries its own (docxTitleMeta), read before the text path
+    // cut the front matter off.
+    titlePage: titlePageFromMeta({ ...((raw && raw.docxMeta) || {}), ...(result.meta || {}) }),
     elements,
     scenes: rows,
     numbering,
@@ -1346,8 +1430,74 @@ export function docxScreenplayText(paras) {
   const text = new String(out.join('\n'));
   text.docxTypes = types;
   text.docxCont = cont;
+  const meta = docxTitleMeta(paras);
+  if (meta) text.docxMeta = meta;
   return { text, styled, total };
 }
+
+/* THE TITLE PAGE OF A .docx. The text path cuts everything before the
+   first page break off as front matter, which is right for the script
+   and lost the title page itself (QA: a .docx round trip dropped title,
+   author, contact and date, while .fdx and .fountain kept them). The
+   front matter is read here instead, the way src/lib/screenplay-docx.js
+   lays it out — and Final Draft's Word export lays it out the same:
+   "Title Page" paragraphs centred (title, credit, author, source), then
+   plain paragraphs, the contact on the left and the draft and date on
+   the right. Only with a "Title Page" style and a page break, so a
+   script that merely starts with a centred line is never read as one.
+   Returns titlePageFromMeta()'s input, or null. */
+const CREDIT_RE = /^(?:(?:written|screenplay|story|teleplay|adapted|original screenplay)\b.*\bby|by)$/i;
+const DATE_RE = /\d{1,4}[/.-]\d{1,2}|\b(?:19|20)\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i;
+function docxTitleMeta(paras) {
+  const list = paras || [];
+  const brk = list.findIndex((p) => p && p.pageBreak);
+  if (brk <= 0) return null;
+  const front = list.slice(0, brk).filter((p) => String(p.text || '').trim());
+  const centred = front.filter((p) => docxStyleName(p.style) === 'titlepage');
+  if (!centred.length) return null;
+  const lines = centred.map((p) => String(p.text).trim());
+  const meta = { title: lines[0] };
+  let i = 1;
+  if (lines[i] && CREDIT_RE.test(lines[i])) meta.credit = lines[i++];
+  if (lines[i]) meta.author = lines[i++];
+  if (lines.length > i) meta.source = lines.slice(i).join(' ');
+  const plain = front.filter((p) => docxStyleName(p.style) !== 'titlepage');
+  const contact = [];
+  for (const p of plain) {
+    const t = String(p.text).trim();
+    if (p.jc === 'right' || p.jc === 'end') {
+      const parts = t.split('\n').map((x) => x.trim()).filter(Boolean);
+      if (parts.length > 1) { meta.draft = parts[0]; meta.date = parts.slice(1).join(' '); }
+      else if (DATE_RE.test(t)) meta.date = t;
+      else meta.draft = t;
+    } else contact.push(t);
+  }
+  if (contact.length) meta.contact = contact.join('\n');
+  return meta;
+}
+/* A plain-text (or PDF) title page, as the same fields: the first line
+   is the title, a "Written by" line the credit and the next one the
+   writer, "Based on…" the source, a dated line the date and a "draft"
+   line the draft; the rest is the contact block. */
+function textTitleMeta(front) {
+  const lines = String(front || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const meta = {};
+  if (!lines.length) return meta;
+  meta.title = lines[0];
+  const contact = [];
+  let expectAuthor = false;
+  for (const l of lines.slice(1)) {
+    if (!meta.credit && CREDIT_RE.test(l)) { meta.credit = l; expectAuthor = true; continue; }
+    if (expectAuthor && !meta.author) { meta.author = l; expectAuthor = false; continue; }
+    if (!meta.source && /^based on/i.test(l)) { meta.source = l; continue; }
+    if (!meta.draft && /\bdraft\b/i.test(l)) { meta.draft = l; continue; }
+    if (!meta['draft date'] && DATE_RE.test(l) && l.length <= 40) { meta['draft date'] = l; continue; }
+    contact.push(l);
+  }
+  if (contact.length) meta.contact = contact.join('\n');
+  return meta;
+}
+const docxStyleName = (style) => String(style || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* A .docx is bytes too: src/lib/docx-text.js reads its paragraphs (no
    library, the same reasons as pdf-text.js), imported here dynamically

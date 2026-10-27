@@ -166,6 +166,10 @@
   min-width: 24px;
   height: 22px;
   padding: 0 var(--s1h);
+  /* SWF is three letters in a narrow day cell: it must not wrap out of
+     a box with a fixed height. */
+  white-space: nowrap;
+  flex: none;
   border: 1px solid var(--border-hair);
   border-radius: var(--radius-sm);
   background: transparent;

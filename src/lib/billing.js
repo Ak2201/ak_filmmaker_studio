@@ -26,6 +26,7 @@
    ============================================================ */
 import Store from './store.js';
 import { BRAND } from './brand.js';
+import { errorSentence } from './gate.js';
 import { bumpEvent, countTrialStart, countPassBuy, trialOffer } from './funnel.js';
 import { passNow, passFacts, passRefusal } from './pass-view.js';
 import { offerTerms, readMode } from './offer-terms.js';
@@ -151,7 +152,13 @@ async function invoke(name, body, { allowPending = false } = {}) {
     let detail = '';
     let hint = '';
     try { const j = await error.context?.json?.(); detail = (j && j.error) || ''; hint = (j && typeof j.reason === 'string' && j.reason) || (j && typeof j.hint === 'string' && j.hint) || ''; } catch (e) { /* no body */ }
-    const err = new BillingError(detail || error.message || 'The payment service did not answer.', 'edge');
+    /* A 401 is the session not being accepted: retrying cannot work, so
+       the sentence says to sign in again rather than "try again". */
+    const status = error.context && error.context.status;
+    const fallback = status === 401
+      ? 'Your sign-in was not accepted. Sign out, sign in again, and then retry.'
+      : 'The payment service answered with an error. Try again in a moment.';
+    const err = new BillingError(detail || errorSentence(error, fallback), 'edge');
     /* A refusal the server NAMED in `reason` (§61's pass: 'disabled' |
        'closed' | 'inr_only' | 'used' | 'has_plan' | 'code'; a year's:
        'currency', 'downgrade', …), for a caller that words it. */

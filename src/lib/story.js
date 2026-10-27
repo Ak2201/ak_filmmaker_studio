@@ -960,24 +960,35 @@ export function resolveStepScene(api, stepId, use) {
   else { rows[i] = { ...rows[i], synopsis: Sync.norm(st.text) }; setBase(st, st.text); writeRows(api, rows); }
   noteCaughtUp(st, rows[i]);
   saveStory(story);
+  // What each side holds NOW: Undo only takes back a side that still does.
+  snap.nowText = st.text;
+  snap.nowSynopsis = rows[i].synopsis;
   return snap;
 }
 
-/** Undo resolveStepScene(): both sides back exactly as they were. */
+/** Undo resolveStepScene(): both sides back as they were — each side only
+ *  while it still holds what the resolve wrote. Text typed in either place
+ *  since (the toast waits until it is pressed) is kept, never overwritten:
+ *  a side that changed stays, and so does its sync baseline. Returns true
+ *  when anything was put back. */
 export function restoreStepScene(api, snap) {
   if (!snap) return false;
   const story = loadStory();
   const st = story.outline.find((x) => x.id === snap.stepId);
   const rows = sceneRows(api);
   const i = rows.findIndex((r) => r && r.id === snap.sceneId);
-  if (i >= 0 && rows[i].synopsis !== snap.synopsis) { rows[i] = { ...rows[i], synopsis: snap.synopsis }; writeRows(api, rows); }
-  if (st) {
+  let did = false;
+  if (i >= 0 && rows[i].synopsis !== snap.synopsis && rows[i].synopsis === snap.nowSynopsis) {
+    rows[i] = { ...rows[i], synopsis: snap.synopsis }; writeRows(api, rows); did = true;
+  }
+  if (st && st.text === snap.nowText) {
     st.text = snap.text;
     if (typeof snap.synced === 'string') st.synced = snap.synced; else delete st.synced;
     if (typeof snap.syncedWas === 'string') st.syncedWas = snap.syncedWas; else delete st.syncedWas;
     saveStory(story);
+    did = true;
   }
-  return true;
+  return did;
 }
 
 /** A scene re-filed under another beat (the beat board): its step
@@ -1401,6 +1412,7 @@ export function clipSourceHost(url) {
   try { return new URL(s).hostname; } catch (e) { return ''; }
 }
 
+export const VAULT_MAX = 4000;
 export function addToVault({ snippet, url = '', title = '', at = Date.now(), id } = {}) {
   const text = String(snippet || '').trim();
   if (!text) return null;
@@ -1408,7 +1420,7 @@ export function addToVault({ snippet, url = '', title = '', at = Date.now(), id 
   // The extension may deliver the same clip twice (a retry after the
   // side panel reloaded); its id makes the second delivery a no-op.
   if (id && items.some((x) => x.id === id)) return null;
-  const item = { id: id || uid(), snippet: text.slice(0, 4000), url: String(url).slice(0, 2000),
+  const item = { id: id || uid(), snippet: text.slice(0, VAULT_MAX), url: String(url).slice(0, 2000),
                  title: String(title).slice(0, 300), at, beat: '' };
   items.unshift(item);
   saveVault(items);

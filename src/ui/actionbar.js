@@ -187,9 +187,14 @@ function closeMenus(except, restoreFocus) {
    ------------------------------------------------------------ */
 const MENU_ITEMS = '.tb-item, .tb-choice';
 
+/* An item a stylesheet hides (india-content.css drops "Tamil typing"
+   outside India with display:none, no [hidden]) is no stop either: it
+   was item 0, focus() on it did nothing, and ↓, Home and ↑ stuck on the
+   button (QA r4). Only called with the panel open, so a rendered item
+   has a box. */
 function menuItems(panel) {
   return Array.from(panel.querySelectorAll(MENU_ITEMS))
-    .filter((el) => !el.hidden && !el.disabled);
+    .filter((el) => !el.hidden && !el.disabled && el.getClientRects().length > 0);
 }
 
 function focusItem(panel, i) {
@@ -205,7 +210,8 @@ function onMenuKey(e) {
      a menu opened with the mouse left focus on the button, and ↓ there
      did nothing. ↓ opens it on the first item, ↑ on the last. */
   const btn = e.target.closest && e.target.closest('.tb-menu-btn');
-  if (btn && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+  /* Alt+arrow is a page's own gesture (the stripboard's strip move), never "open the menu". */
+  if (btn && !e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
     const p = btn.parentElement && btn.parentElement.querySelector('.tb-menu-panel');
     if (!p) return;
     e.preventDefault();

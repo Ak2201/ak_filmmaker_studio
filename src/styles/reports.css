@@ -393,7 +393,10 @@
   /* Sides start their own page when the whole document is printed —
      but not when the sides are the only thing being printed, or the
      job opens with a blank sheet. */
-  body:not(.rp-print-sides) #sides { break-before: page; }
+  body:not(.rp-print-sides) #main > section:not([hidden]):not(#sides) ~ #sides { break-before: page; }
+  /* (Only when another section is printed ahead of it: with the tabs'
+     other sections hidden, Ctrl+P on the Sides tab left page 1 holding
+     the stat strip alone.) */
 
   /* One view at a time. Set by printOnly() in reports.js, removed
      again after the dialog closes. */
@@ -407,7 +410,7 @@
    what verify measures. The matrix's dense columns are marked with a
    wash AND a heavier rule, and listed in words underneath, so density
    is never carried by colour alone. */
-.rp-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rp-scroll { position: relative; /* the visually-hidden header cells inside are absolute: without this they escape the box and widen the page */ max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .rp-stats { margin-block: var(--s4); }
 .bd-head > .k-stat-strip { grid-column: 1 / -1; margin-top: var(--s3); }
 /* The DPR's six figures as an even grid. As a wrapping flex row the
@@ -446,7 +449,6 @@
   text-transform: uppercase;
   color: var(--ink-muted);
 }
-.rp-day-sel,
 .rp-in {
   min-width: 0;
   max-width: 100%;
@@ -459,7 +461,7 @@
   font-size: var(--t-small);
 }
 .rp-in::placeholder { color: var(--ink-muted); }
-.rp-day-sel:focus-visible,
+.rp-in[aria-invalid="true"] { border-color: var(--danger); }
 .rp-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
 .rp-h4 {
   margin: var(--s5) 0 var(--s2);
@@ -602,6 +604,13 @@
 .rp-kit-add .rp-in { flex: 1 1 auto; }
 
 @media (max-width: 719px) {
+  /* The equipment table fits a phone's card (324px at 390): Back and Remove
+     were off screen behind a sideways scroll with no cue. */
+  .rp-kit-table th, .rp-kit-table td { padding-inline: 2px; }
+  .rp-kit-table td .rp-in { min-width: 2.5rem; }
+  .rp-kit-table td:first-child .rp-in { min-width: 4.5rem; }
+  .rp-kit-table td:nth-child(2) .rp-in { min-width: 2.5rem; width: 2.5rem; }
+  .rp-kit-tick input { min-width: 36px; }
   .rp-row { grid-template-columns: minmax(0, 1fr) 5rem; }
   .rp-row .rp-in:nth-child(3) { grid-column: 1 / -1; }
   .rp-row.is-two { grid-template-columns: minmax(0, 1fr); }
@@ -611,10 +620,29 @@
 @media print {
   .rp-x, .rp-kit-add, .rp-offline { display: none !important; }
   .rp-in, .rp-day-sel { border: 0 !important; background: none !important; color: var(--print-ink) !important; padding: 0 !important; }
+  /* A blank field prints blank. A placeholder is an EXAMPLE ("Clear,
+     34°, rain after 4pm"), and on a production report it reads as the
+     day's weather; an empty time input prints the browser's "--:--"
+     mask. `data-blank` is kept in step by reports.js. */
+  .rp-in::placeholder { color: transparent !important; }
+  .rp-in[data-blank] { color: transparent !important; }
+  .rp-in[data-blank]::-webkit-datetime-edit { visibility: hidden; }
+  .rp-day.k-control, .rp-day .k-control { border: 0 !important; background: none !important; }
+  .rp-day .k-select::after { display: none !important; }
   .rp-ol .rp-ol-head th { background: var(--print-wash) !important; color: var(--print-ink) !important; border-top-color: var(--print-ink) !important; }
   .rp-ol .rp-ol-total.is-over td { background: var(--print-wash) !important; color: var(--print-ink) !important; }
   .rp-mark { color: var(--print-ink) !important; border-color: var(--print-ink) !important; }
   .rp-kit-dept { break-inside: avoid; }
+  /* A scroll box clips on paper: the cast matrix lost every scene past
+     the 14th. Release it, and let the matrix share the page width among
+     its columns (fixed layout, no minimum) instead of overflowing it. */
+  .rp-scroll { overflow: visible !important; }
+  .rp-matrix { table-layout: fixed; width: 100%; }
+  .rp-matrix th, .rp-matrix td { padding-inline: 0 !important; overflow: hidden; }
+  .rp-matrix th.rp-mx-col { min-width: 0; font-size: 6.5pt; }
+  .rp-matrix .rp-mx-cell { font-size: 6.5pt; }
+  .rp-matrix th.loc { width: 22%; padding-inline-end: var(--s2) !important; }
+  .rp-matrix th:nth-child(2), .rp-matrix td:nth-child(2) { width: 7%; }
 
   /* One view at a time, the same way the sides print. The PDF
      masthead is inserted into #main, so it is spared by id. */

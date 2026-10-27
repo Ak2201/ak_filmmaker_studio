@@ -264,7 +264,18 @@ export function shortcutRows(prefs, known, ctrlDigits) {
   return { preset: p.label, rows };
 }
 
+/** Two lines joined by Backspace / Delete at the seam. Return trims the
+    space it splits at, so the join puts one back between two words —
+    or a split-then-join lost a gap ("He walks inand sits.", QA r3).
+    `seam` is where the caret goes: the end of the first line. */
+export function joinedText(was, next) {
+  const a = String(was ?? ''), b = String(next ?? '');
+  const gap = a && b && !/\s$/.test(a) && !/^[\s.,;:!?)\]…]/.test(b) ? ' ' : '';
+  return { text: a + gap + b, seam: a.length };
+}
+
 export default {
+  joinedText,
   WRITE_PREFS_KEY, PRESETS, DEFAULT_PRESET, SMARTTYPE, getPreset, resolveType, digitMap,
   cycleOrder, cycleNext, returnNext, returnTable, tabAction, parsePrefs, mergePrefs,
   loadWritePrefs, saveWritePrefs, resolveKey, digitOf, shortcutRows, HINTS, LEARN_TOPICS, TYPE_NAMES

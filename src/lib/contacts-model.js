@@ -269,13 +269,18 @@ export function waRuns(text) {
     scenes, the same reading as readiness.js's day-callsheet check — with
     that day's scenes ticked, its date and its places. Null when every day
     has a sheet (or nothing is scheduled), and the sheet starts blank.
+    `wantDay` (a day number) is preferred while that day has no sheet.
     It was always blank, titled "Shoot day <count + 1>": with Day 1 and
     Day 14 on sheets, "New shoot day" made a sheet called "Shoot day 3"
     that was not Day 3 and carried none of Day 2's scenes. */
-export function nextSheetPatch(sheets, days) {
+export function nextSheetPatch(sheets, days, wantDay) {
   const covered = new Set();
   (sheets || []).forEach((s) => (s.sceneIds || []).forEach((id) => covered.add(id)));
-  const d = (days || []).find((x) => !(x.scenes || []).some((sc) => covered.has(sc.id)));
+  const free = (x) => !(x.scenes || []).some((sc) => covered.has(sc.id));
+  /* A day asked for by number ("Make the call sheet" on Shoot Day 3
+     passes ?day=3) wins when it is still free; otherwise the first free day. */
+  const want = parseInt(wantDay, 10);
+  const d = (want && (days || []).find((x) => x.day === want && free(x))) || (days || []).find(free);
   if (!d) return null;
   return {
     title: 'Day ' + d.day,

@@ -3113,6 +3113,12 @@ html {
      strip); shell.js publishes both. The fallback is the band. */
   scroll-padding-top: calc(var(--sh-cover-h, var(--sh-chrome-h)) + var(--s3));
 }
+/* The same at the foot on a phone: the bottom action bar is fixed over
+   the last --mab-h of the window, and a control the browser scrolled into
+   view on Tab landed at the very bottom, underneath it (WCAG 2.4.11).
+   The Screenplay Writer's own rule (screenplay.css, html:has(#scChips))
+   is more specific and still wins there. */
+html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 /* ============================================================
    THE TRIAL TIMER
    ------------------------------------------------------------

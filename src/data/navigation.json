@@ -22,7 +22,7 @@
       "label": "Library",
       "icon": "◈",
       "href": "library.html",
-      "purpose": "Films, directors, rules, rates, case studies, dissection, glossary",
+      "purpose": "Films, directors, rules, two craft books, equipment rates, a watch list",
       "sym": "local_library",
       "hue": "library",
       "blurb": "The reference shelf: read a film, then take one apart",
@@ -311,7 +311,7 @@
           "status": "built",
           "href": "visualize.html#storyboard",
           "icon": "⊟",
-          "sym": "dashboard",
+          "sym": "photo_library",
           "group": "Visualise",
           "sections": [
             {
@@ -323,7 +323,7 @@
             {
               "id": "scene-board",
               "label": "Scene board",
-              "sym": "dashboard",
+              "sym": "article",
               "purpose": "One scene on one surface: script, shots, frames and blocking"
             }
           ]
@@ -405,7 +405,7 @@
           "status": "built",
           "href": "budget.html",
           "icon": "₹",
-          "sym": "currency_rupee",
+          "sym": "payments",
           "group": "Budget & People",
           "sections": [
             {
@@ -453,7 +453,7 @@
             {
               "id": "wages",
               "label": "Wage table",
-              "sym": "currency_rupee",
+              "sym": "payments",
               "purpose": "Wages by role and day"
             },
             {

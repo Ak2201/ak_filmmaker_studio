@@ -32,6 +32,7 @@ import { quotedOffer, limitOffer, limitText } from '../lib/plan-gate.js';   // C
 
 let state = { phase: 'idle', data: null, error: '', busy: '', nudge: null };
 let host  = null;
+let readFor = null;   // the account the last read was for
 
 function setState(patch) {
   state = Object.assign({}, state, patch);
@@ -325,10 +326,17 @@ export function accountSection(section) {
       + 'the films in this account are there. Everything else on this page stays '
       + 'on this device.');
 
-  host = h('div#acctHost');
-  sec.append(host);
-  paint();
-  refresh();
+  /* Drawn from the state already held, so an unchanged rebuild is
+     byte-identical and commitMain() can skip it. Read once per account,
+     not once per render: re-reading on every render restarted
+     "Reading the account…" nine times on a load, and every action below
+     re-reads by itself. */
+  const fresh = h('div#acctHost');
+  sec.append(fresh);
+  host = fresh;
+  paintInto(fresh);
+  const who = (c.getUserEmail && c.getUserEmail()) || '';
+  if (state.phase === 'idle' || readFor !== who) { readFor = who; refresh(); }
   return sec;
 }
 

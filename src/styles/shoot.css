@@ -534,3 +534,13 @@
 .sd-take.is-circled { color: var(--brand-deep); background: var(--brand-wash); border-color: var(--brand); font-weight: 700; }
 .sd-take:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 .sd-take-add, .sd-take-undo { min-height: 36px; }
+
+/* ------------------------------------------------------------
+   PRINT — paper has no clicks. print.css hides every button on a
+   module page; the day switcher's heading and the roster's "Filter"
+   label are the labels of those buttons, and printed alone they sit
+   over nothing. The day itself is in the hero's eyebrow.
+   ------------------------------------------------------------ */
+@media print {
+  .sd-days, .sd-filter { display: none !important; }
+}

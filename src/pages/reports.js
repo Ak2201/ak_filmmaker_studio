@@ -84,12 +84,15 @@ function renderHeader(scenes) {
        + 'moment you open it. Change a scene there and the reports change here '
        + '\u2014 there is nothing to regenerate, and nothing to keep in step.'
   });
+  /* No scenes: no figures claimed, the dashes the Stripboard and the Plan print. */
+  const none = !scenes.length;
+  const fig = (v) => (none ? '\u2014' : v);
   head.append(statStrip([
-    stat(String(scenes.length), scenes.length === 1 ? 'scene' : 'scenes'),
-    stat(formatEighths(eighths), 'pages'),
-    stat(formatEighths(night), 'night pages'),
-    stat(String(locationCount(scenes)), 'locations'),
-    stat(String(Scenes.elementIndex().length), 'elements')
+    stat(fig(String(scenes.length)), scenes.length === 1 ? 'scene' : 'scenes'),
+    stat(fig(formatEighths(eighths)), 'pages'),
+    stat(fig(formatEighths(night)), 'night pages'),
+    stat(fig(String(locationCount(scenes))), 'locations'),
+    stat(fig(String(Scenes.elementIndex().length)), 'elements')
   ], { label: 'The reports in figures' }));
   return head;
 }
@@ -150,6 +153,12 @@ function distCard(title, note, rows, hues, total) {
   return card;
 }
 
+/* A box that scrolls sideways on a phone must be reachable from the keyboard
+   (WCAG 2.1.1): focusable, a region, named by the table's caption. */
+const scrollBox = (table, label) => {
+  const cap = table.querySelector('caption');
+  return h('div.rp-scroll', { role: 'region', tabindex: '0', 'aria-label': label || (cap && cap.textContent.trim()) || 'Report table' }, [table]);
+};
 const th = (text, cls) => h('th' + (cls ? '.' + cls : ''), { scope: 'col', text });
 const td = (text, cls) => h('td' + (cls ? '.' + cls : ''), { text });
 
@@ -222,7 +231,7 @@ function renderReports(scenes, numbers) {
       actionMenu('Export', [
         { label: 'Print the reports', action: 'print-reports' },
         { label: 'Save as PDF',       action: 'pdf-reports', hint: 'A4' }
-      ])
+      ], { kit: 'secondary' })
     ])
   );
 
@@ -301,7 +310,7 @@ function sideBlock(scene, number) {
 function sidesBody(scenes, numbers) {
   const chosen = scenes.filter((s) => selected.has(s.id));
   if (!chosen.length) {
-    return [h('p.bd-none', {
+    return [h('p.bd-none.rp-noprint', {
       text: 'No scenes ticked. Tick the scenes being shot and they appear here, '
           + 'in script order, ready to print.'
     })];
@@ -336,7 +345,7 @@ function renderSides(scenes, numbers) {
       actionMenu('Export', [
         { label: 'Print the sides', action: 'print-sides' },
         { label: 'Save as PDF',     action: 'pdf-sides', hint: 'A4' }
-      ], { align: 'right' })
+      ], { align: 'right', kit: 'secondary' })
     ])
   );
 
@@ -446,7 +455,7 @@ function renderScreenTime(scenes, numbers) {
   const notes = Analysis.describeMatch(st.match);
   if (notes.length) sec.append(h('p.bd-match-note', { text: notes.join(' ') }));
   const table = h('table.scene-table.rp-table');
-  table.append(h('caption.rp-caption', { text: 'Estimated screen time per scene, against the page-a-minute rule.' }));
+  table.append(h('caption.rp-caption', { text: 'Estimated screen time per scene, against the page-a-minute rule. Times read m:ss under an hour, then hours and minutes.' }));
   table.append(h('thead', {}, [h('tr', {}, [th('Scene'), th('Slug line'), th('Estimate', 'numeric'), th('By pages', 'numeric'), th('Dialogue words', 'numeric'), th('Read from')])]));
   const body = h('tbody');
   for (const r of st.rows) {
@@ -460,7 +469,7 @@ function renderScreenTime(scenes, numbers) {
     ]));
   }
   table.append(body);
-  sec.append(h('div.rp-scroll', {}, [table]));
+  sec.append(scrollBox(table));
   return sec;
 }
 
@@ -535,7 +544,7 @@ function renderRuntime(st, scenes, numbers) {
       ]));
     }
     t.append(body);
-    box.append(h('div.rp-scroll', {}, [t]));
+    box.append(scrollBox(t));
   }
 
   if (est.groups.length) {
@@ -555,7 +564,7 @@ function renderRuntime(st, scenes, numbers) {
     est.groups.forEach((g) => body.append(row(g, g.label)));
     if (est.ungrouped) body.append(row(est.ungrouped, 'Not linked to a beat'));
     t.append(body);
-    box.append(h('div.rp-scroll', {}, [t]));
+    box.append(scrollBox(t));
   } else {
     box.append(h('p.bd-none', { text: 'No scene is linked to a story beat yet, so there is no per-act split. '
       + 'Link scenes to beats on the Write page’s Outline and each act appears here against its share of the target.' }));
@@ -573,7 +582,7 @@ function renderRuntime(st, scenes, numbers) {
       td(byBeat.total ? Math.round((g.seconds / byBeat.total) * 100) + '%' : '—', 'numeric')
     ])));
     t.append(body);
-    box.append(h('div.rp-scroll', {}, [t]));
+    box.append(scrollBox(t));
   }
   return box;
 }
@@ -587,7 +596,13 @@ function wireRuntime() {
   wireRuntime.done = true;
   delegate(document, 'change', '[data-rt-field]', (e, el) => {
     const f = el.getAttribute('data-rt-field');
-    if (f === 'target') { setTargetMinutes(el.value); if (getTargetMin()) setTargetMin(0); }   // retire the legacy fallback
+    if (f === 'target') {
+      /* A typed number the target cannot hold (0, -30, 99999, 2.5) is said, not erased or rounded in silence. */
+      const typed = String(el.value).trim();
+      const kept = setTargetMinutes(typed);
+      if (typed && String(kept) !== typed) toast(kept ? 'Target rounded to ' + kept + ' minutes.' : 'The target is 1 to 600 minutes, so nothing was set.');
+      if (getTargetMin()) setTargetMin(0);   // retire the legacy fallback
+    }
     else if (f === 'song-duration') updateSong(el.getAttribute('data-song'), { duration: el.value });
     else return;
     setTimeout(() => {
@@ -628,7 +643,7 @@ function renderCastMatrix(scenes, numbers) {
   if (notes.length) sec.append(h('p.bd-match-note', { text: 'Cues are read only from scenes matched to a heading. ' + notes.join(' ') }));
   const table = h('table.scene-table.rp-table.rp-matrix');
   table.append(h('caption.rp-caption', { text: `${plural(cm.characters.length, 'character', 'characters')} across ${plural(scenes.length, 'scene', 'scenes')}. \u25CF in the scene; the last row counts the cast each scene calls.` }));
-  const head = h('tr', {}, [th('Character'), th('Scenes', 'numeric')]);
+  const head = h('tr', {}, [th('Character', 'loc'), th('Scenes', 'numeric')]);
   cm.density.forEach((d) => head.append(h('th.rp-mx-col' + (d.high ? '.is-dense' : ''), { scope: 'col', text: numbers.get(d.scene.id) || d.scene.number || '\u2014' })));
   table.append(h('thead', {}, [head]));
   const body = h('tbody');
@@ -645,7 +660,7 @@ function renderCastMatrix(scenes, numbers) {
   const foot = h('tr', {}, [h('th.loc', { scope: 'row', text: 'Cast called' }), td('')]);
   cm.density.forEach((d) => foot.append(td(String(d.count), 'numeric' + (d.high ? ' is-dense' : ''))));
   table.append(body, h('tfoot', {}, [foot]));
-  sec.append(h('div.rp-scroll', {}, [table]));
+  sec.append(scrollBox(table));
 
   const cols = h('div.rp-mx-notes');
   const pairs = cm.interactions.slice(0, 8);
@@ -698,7 +713,9 @@ function dayPicker(id, days, day) {
     if (d.day === day) o.selected = true;
     sel.append(o);
   }
-  return h('span.rp-day', {}, [h('label.rp-day-lab', { for: id, text: 'Shoot day' }), sel]);
+  /* The kit's select, as the stripboard's day pickers are. */
+  return h('span.rp-day', {}, [h('label.rp-day-lab', { for: id, text: 'Shoot day' }),
+    h('span.k-control.k-select.rp-day-ctl', {}, [sel])]);
 }
 
 const noDays = (what) => h('p.bd-none', {}, [
@@ -725,7 +742,7 @@ function renderOneLiner(scenes) {
     actionMenu('Export', [
       { label: 'Print the one-liner', action: 'print-oneliner' },
       { label: 'Save as PDF',         action: 'pdf-oneliner', hint: 'A4' }
-    ])
+    ], { kit: 'secondary' })
   ]));
   const ol = DPR.oneLiner(scenes);
   const target = DPR.pageTarget();
@@ -768,7 +785,7 @@ function renderOneLiner(scenes) {
     ol.unscheduled.forEach((r) => body.append(line(0, '', r)));
     table.append(body);
   }
-  sec.append(h('div.rp-scroll', {}, [table]));
+  sec.append(scrollBox(table));
   if (ol.legend.length) {
     const key = h('p.rp-ol-key');
     key.append(h('strong', { text: 'Cast: ' }));
@@ -812,17 +829,17 @@ function fillDPR(sec, scenes) {
   out.push(h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
     dayPicker('rp-dpr-day', days, d.day),
     /* Shoot Day switched off for everybody: no way there to offer. */
-    isDisabledEverywhere('shoot-day') ? null : button({ label: 'Mark scenes on the shoot day', href: 'shoot.html' }),
+    isDisabledEverywhere('shoot-day') ? null : button({ label: 'Mark scenes on the shoot day', href: 'shoot.html?day=' + d.day }),
     h('span.rp-spacer'),
     actionMenu('Export', [
       { label: 'Print the DPR', action: 'print-dpr' },
       { label: 'Save as PDF',   action: 'pdf-dpr', hint: 'A4' }
-    ], { align: 'right' })
+    ], { align: 'right', kit: 'secondary' })
   ]));
 
   const sheet = h('div.rp-dpr', { 'data-day': String(d.day) });
   sheet.append(h('h3.rp-dpr-title', {
-    text: `Day ${d.day} of ${days.length}` + (d.date ? ' · ' + shortDate(d.date, true) : ' · no date set')
+    text: Shoot.dayOfLabel(d, days) + (d.date ? ' · ' + shortDate(d.date, true) : ' · no date set')
         + (d.locations.length ? ' · ' + d.locations.join(', ') : '')
   }));
   sheet.append(h('div.k-stat-strip.rp-stats', { id: 'rp-dpr-derived' }, dprStats(sum)));
@@ -851,7 +868,7 @@ function fillDPR(sec, scenes) {
     ]));
   }
   st.append(sb);
-  sheet.append(h('div.rp-scroll', {}, [st]));
+  sheet.append(scrollBox(st, 'Scenes for the day'));
   if (sum.pickups.length) {
     sheet.append(h('p.rp-card-note', {
       text: 'Also marked on this date, from other days: '
@@ -906,6 +923,7 @@ function fillDPR(sec, scenes) {
   notes.value = rec.notes;
   sheet.append(h('h4.rp-h4', {}, [h('label', { for: 'dpr-notes', text: 'Notes' })]), notes);
 
+  sheet.querySelectorAll('.rp-in').forEach((el) => el.toggleAttribute('data-blank', !String(el.value || '').trim()));
   out.push(sheet, offlineBlock());
   sec.replaceChildren(...out);
   paintOffline();
@@ -998,7 +1016,7 @@ function fillKit(sec, scenes) {
   tools.append(h('span.rp-spacer'), actionMenu('Export', [
     { label: 'Print the kit list', action: 'print-kit' },
     { label: 'Save as PDF',        action: 'pdf-kit', hint: 'A4' }
-  ], { align: 'right' }));
+  ], { align: 'right', kit: 'secondary' }));
   out.push(tools);
 
   const sheet = h('div.rp-kit', { 'data-day': String(day) });
@@ -1033,7 +1051,7 @@ function fillKit(sec, scenes) {
         ]));
       }
       t.append(tb);
-      card.append(h('div.rp-scroll', {}, [t]));
+      card.append(scrollBox(t, dept.label + ' equipment'));
     } else {
       card.append(h('p.rp-card-note', { text: 'Nothing listed.' }));
     }
@@ -1061,7 +1079,7 @@ function refill(id, focus) {
   else if (id === 'kit') fillKit(sec);
   try { StudioUI.autoAriaLabels(); } catch (e) { /* chrome may not be up */ }
   wireActionBar();
-  if (focus) { const el = sec.querySelector(focus); if (el) el.focus(); }
+  for (const sel of [].concat(focus || [])) { const el = sec.querySelector(sel); if (el) { el.focus(); break; } }
 }
 
 /* ---- render ------------------------------------------------- */
@@ -1124,9 +1142,15 @@ delegate(document, 'click', '[data-action="sides-none"]', () => {
   document.querySelectorAll('.rp-picker input[type="checkbox"]').forEach((b) => { b.checked = false; });
   refreshSides();
 });
-delegate(document, 'click', '[data-action="print-sides"]',   () => printOnly('rp-print-sides'));
+/* Nothing ticked is nothing to print: say so, as an empty Equipment add does. */
+const sidesTicked = () => {
+  if (Scenes.listScenes().some((s) => selected.has(s.id))) return true;
+  toast('Tick the scenes being shot first.');
+  return false;
+};
+delegate(document, 'click', '[data-action="print-sides"]',   () => { if (sidesTicked()) printOnly('rp-print-sides'); });
 delegate(document, 'click', '[data-action="print-reports"]', () => printOnly('rp-print-reports'));
-delegate(document, 'click', '[data-action="pdf-sides"]',     () => pdfSides());
+delegate(document, 'click', '[data-action="pdf-sides"]',     () => { if (sidesTicked()) pdfSides(); });
 delegate(document, 'click', '[data-action="pdf-reports"]',   () => pdfReports());
 
 /* ---- the shoot days: one-liner, DPR, kit -------------------- */
@@ -1154,12 +1178,24 @@ delegate(document, 'change', '[data-action="rp-day"]', (e, el) => {
 const dprDay = () => parseInt((document.querySelector('.rp-dpr[data-day]') || {}).dataset?.day, 10) || rpDay;
 const kitDay = () => parseInt((document.querySelector('.rp-kit[data-day]') || {}).dataset?.day, 10) || rpDay;
 
+/* `data-blank` marks an empty DPR field so print can leave it blank
+   rather than print its placeholder example or the time mask. */
+const markBlank = (el) => el.toggleAttribute('data-blank', !String(el.value || '').trim());
+delegate(document, 'input', '.rp-dpr .rp-in', (e, el) => markBlank(el));
 delegate(document, 'change', '[data-dpr-field]', (e, el) => {
   DPR.saveDPR(dprDay(), { [el.dataset.dprField]: el.value });
+  /* Setups is a count: a typed -3 is refused, and the box says so by clearing. */
+  if (el.dataset.dprField === 'setups') { el.value = DPR.getDPR(dprDay()).setups; markBlank(el); }
   refreshDPRNumbers();
 });
 delegate(document, 'change', '[data-dpr-delay]', (e, el) => {
   DPR.updateDelay(dprDay(), el.dataset.dprDelay, { [el.dataset.field]: el.value });
+  /* Minutes is a count: a refused or trimmed value is written back, so the box
+     says what the total adds. */
+  if (el.dataset.field === 'minutes') {
+    const now = DPR.getDPR(dprDay()).delays.find((x) => x.id === el.dataset.dprDelay);
+    if (now) el.value = now.minutes;
+  }
   refreshDPRNumbers();
 });
 delegate(document, 'change', '[data-dpr-incident]', (e, el) => {
@@ -1173,13 +1209,29 @@ delegate(document, 'click', '[data-action="dpr-incident-add"]', () => {
   const x = DPR.addIncident(dprDay());
   refill('dpr', `[data-dpr-incident="${CSS.escape(x.id)}"]`);
 });
+/* Typed report text is lost by a stray click on Remove, so it is an Undo
+   toast, as the kit's removal is. */
+function undoRemoved(kind, name, restore, id, attr) {
+  toast('Removed the ' + kind + (name ? ' (' + name + ')' : '') + '.', {
+    action: 'Undo',
+    onAction: () => {
+      restore();
+      refill('dpr', `[data-${attr}="${CSS.escape(id)}"]`);
+      toast('Put the ' + kind + ' back.');
+    }
+  });
+}
 delegate(document, 'click', '[data-action="dpr-delay-remove"]', (e, el) => {
-  DPR.removeDelay(dprDay(), el.dataset.id);
+  const day = dprDay();
+  const was = DPR.removeDelay(day, el.dataset.id);
   refill('dpr', '[data-action="dpr-delay-add"]');
+  if (was) undoRemoved('delay', was.item.reason || 'delay', () => DPR.restoreDelay(day, was.index, was.item), was.item.id, 'dpr-delay');
 });
 delegate(document, 'click', '[data-action="dpr-incident-remove"]', (e, el) => {
-  DPR.removeIncident(dprDay(), el.dataset.id);
+  const day = dprDay();
+  const was = DPR.removeIncident(day, el.dataset.id);
   refill('dpr', '[data-action="dpr-incident-add"]');
+  if (was) undoRemoved('incident', was.item.what || 'incident', () => DPR.restoreIncident(day, was.index, was.item), was.item.id, 'dpr-incident');
 });
 
 delegate(document, 'change', '[data-kit-item]', (e, el) => {
@@ -1193,17 +1245,38 @@ delegate(document, 'change', '[data-kit-item]', (e, el) => {
 function addKit(dept) {
   const input = document.querySelector(`[data-kit-new="${dept}"]`);
   const name = input ? input.value.trim() : '';
-  if (!name) { if (input) input.focus(); return; }
+  if (!name) {
+    if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+    toast('Write an item first.');
+    return;
+  }
+  if (input) input.removeAttribute('aria-invalid');
   DPR.addKitItem(kitDay(), dept, { item: name });
   refill('kit', `[data-kit-new="${dept}"]`);
 }
 delegate(document, 'click', '[data-action="kit-add"]', (e, el) => addKit(el.dataset.dept));
+delegate(document, 'input', '[data-kit-new]', (e, el) => el.removeAttribute('aria-invalid'));
 delegate(document, 'keydown', '[data-kit-new]', (e, el) => {
   if (e.key === 'Enter') { e.preventDefault(); addKit(el.dataset.kitNew); }
 });
 delegate(document, 'click', '[data-action="kit-remove"]', (e, el) => {
-  DPR.removeKitItem(kitDay(), el.dataset.id);
-  refill('kit', '#rp-kit-day');
+  const day = kitDay();
+  const was = DPR.findKitItem(day, el.dataset.id);
+  DPR.removeKitItem(day, el.dataset.id);
+  /* Focus stays in the list: the neighbouring row's ×, else the department's add box. */
+  refill('kit', [
+    was && was.neighbour ? `[data-action="kit-remove"][data-id="${CSS.escape(was.neighbour)}"]` : '',
+    was ? `[data-kit-new="${was.dept}"]` : '',
+    '#rp-kit-day'
+  ].filter(Boolean));
+  if (was) toast('Removed ' + (was.item.item || 'the item') + '.', {
+    action: 'Undo',
+    onAction: () => {
+      DPR.restoreKitItem(day, was.dept, was.index, was.item);
+      refill('kit', `[data-action="kit-remove"][data-id="${CSS.escape(was.item.id)}"]`);
+      toast('Put ' + (was.item.item || 'the item') + ' back.');
+    }
+  });
 });
 delegate(document, 'click', '[data-action="kit-seed"]', () => {
   const n = DPR.seedKitFromCalc(kitDay());

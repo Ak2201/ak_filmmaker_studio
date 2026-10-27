@@ -26,7 +26,7 @@
     "pricing": "Pricing",
     "guides": "Guides",
     "compare": "Switching",
-    "login": "Log in",
+    "login": "Sign in",
     "signup": "Sign up",
     "menu": "Menu",
     "mainNav": "Main",
@@ -56,7 +56,7 @@
     "termsLabel": "Terms",
     "privacyLabel": "Privacy Policy",
     "have": "Already have an account?",
-    "haveLink": "Log in",
+    "haveLink": "Sign in",
     "close": "Close"
   },
   "pass": {

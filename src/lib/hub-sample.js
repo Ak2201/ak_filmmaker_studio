@@ -211,9 +211,10 @@ export function sampleCalc(sample) {
  * the rest — private mode, a full quota — exactly as one try block
  * around the writes always did; the project itself still exists.
  */
-export function writeSampleData(sample, { scenes, contacts, pages, story }) {
+export function writeSampleData(sample, { scenes, contacts, pages, story, match }) {
   try {
     const put = (key, value) => { if (!writeText(key, JSON.stringify(value))) throw new Error('storage refused ' + key); };
+    if (match) linkSampleScenes(scenes, sampleScript(sample, pages).elements, match);
     put(FEATURE_KEY,  sampleBlueprint(sample, scenes));
     put(SCENES_KEY,   { scenes });
     put(CONTACTS_KEY, {
@@ -227,7 +228,23 @@ export function writeSampleData(sample, { scenes, contacts, pages, story }) {
   } catch (e) { /* private mode — the project itself still exists */ }
 }
 
+/** Give each sample scene its heading's id (`scriptElId`) at creation,
+    with the confident tiers scene-sync.js's rule 5 uses — `match` is
+    src/lib/screenplay-analysis.js (passed in, so this module stays light
+    and pure). The rows used to ship unlinked and were linked by the
+    first sync, so a heading changed BEFORE that sync left its row in
+    the Breakdown for good: unlinked rows are never binned (QA r2).
+    Mutates `scenes`; returns how many were linked. */
+export function linkSampleScenes(scenes, elements, { matchScenes, isConfident }) {
+  let n = 0;
+  const m = matchScenes(scenes, elements);
+  for (const p of m.pairs) {
+    if (p.slice && p.slice.id && isConfident(p.how) && !p.scene.scriptElId) { p.scene.scriptElId = p.slice.id; n++; }
+  }
+  return n;
+}
+
 export default {
-  sampleDays, samplePages, sampleScenes, applyStoryBeats, sampleBlueprint, sampleContacts,
+  linkSampleScenes, sampleDays, samplePages, sampleScenes, applyStoryBeats, sampleBlueprint, sampleContacts,
   sampleCallSheets, sampleLocations, sampleShots, sampleScript, sampleCalc, writeSampleData
 };

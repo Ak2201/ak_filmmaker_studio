@@ -231,6 +231,22 @@ mem.set(BP.blobKey('feature'), JSON.stringify({ s4_name: 'Ravi', s4_want: 'the r
   eq(l2[1].want, 'to leave', 'a second ally\'s want is on its record');
 }
 
+/* ---- "Add the protagonist" after the slot card was answered ------ */
+reset();
+mem.set(BP.blobKey('feature'), JSON.stringify({ s4_name: 'Ravi', s4_want: 'To swim the strait' }));
+{
+  const list = [];
+  const c = C.recordForRole(list, 'protagonist', '', 'feature');
+  eq([blob('feature').s4_name, blob('feature').s4_want], ['Ravi', 'To swim the strait'], 'adding the protagonist over an answered slot keeps the blueprint’s answers');
+  eq(list.map((x) => x.role), ['protagonist'], '…and makes ONE record, holding the role (no role-less copy beside an empty protagonist)');
+  const v = C.viewFor(list, c.id, '', 'feature');
+  eq([v.name, v.want], ['RAVI', 'To swim the strait'], '…whose card reads the slot’s answers');
+  reset();
+  const l2 = [];
+  C.recordForRole(l2, 'antagonist', 'Kumar', 'feature');
+  eq([l2.length, l2[0].role, blob('feature').s5_name], [1, 'antagonist', 'KUMAR'], 'a named add with an empty slot still moves the name into the blueprint');
+}
+
 /* ---- derived, never stored ---------------------------------------- */
 reset();
 {

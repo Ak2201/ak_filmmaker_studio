@@ -88,7 +88,7 @@
   "pricingTeaser": "A plan is a year of the studio, from about {{fms:price.from.day}} a day, and what a plan lists is in it: breakdown, scheduling and call sheets are not add-ons. See what each one includes.",
   "closing": {
     "h2": "Open the studio and write scene one",
-    "sub": "Sign in with Google to start. Your work stays in your browser, and every tool reads the same scenes.",
+    "sub": "Sign up with Google to start. Your work stays in your browser, and every tool reads the same scenes.",
     "cta": "Get started"
   },
   "meta": {
@@ -117,7 +117,7 @@
     ]
   },
   "pricing": {
-    "pill": "See the plans"
+    "pill": "See plans"
   },
   "optOut": {
     "label": "Don't count this visit",

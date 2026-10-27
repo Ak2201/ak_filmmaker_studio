@@ -55,7 +55,7 @@ import { button, sym, segmented, selectSegment } from './kit/index.js';
 import { revealTarget } from './tabs.js';
 import { isPaletteOpen } from './palette.js';
 import Goals, { GOAL_KINDS } from '../lib/write-goals.js';
-import { caretPosition, formatCaretPage, sceneTotal } from '../lib/caret-position.js';
+import { caretPosition, formatCaretPage, sceneTotal, lockedSceneNumber, sceneLabel } from '../lib/caret-position.js';
 import { readWritePrefs, writeWritePrefs } from '../lib/write-prefs.js';
 import '../styles/focus-mode.css';
 
@@ -223,7 +223,8 @@ function paintStripSoon() {
 }
 function paintStrip() {
   if (!strip || !on) return;
-  const els = (getDoc() || {}).elements || [];
+  const fdoc = getDoc() || {};
+  const els = fdoc.elements || [];
   const row = lastTa && lastTa.isConnected ? lastTa.closest('[data-el]') : null;
   const pos = row ? caretPosition(els, row.dataset.el) : null;
   let meta = null;
@@ -231,7 +232,7 @@ function paintStrip() {
   const total = pos ? pos.sceneCount : sceneTotal(els);
   const bits = [
     meta && meta.title,
-    pos && pos.scene ? 'Scene ' + pos.scene + ' of ' + total : (total ? total + (total === 1 ? ' scene' : ' scenes') : ''),
+    pos && pos.scene ? sceneLabel(pos, total, lockedSceneNumber(els, fdoc.numbering, pos.sceneElId)) : (total ? total + (total === 1 ? ' scene' : ' scenes') : ''),
     meta && meta.draft,
     meta && meta.status
   ].filter(Boolean);

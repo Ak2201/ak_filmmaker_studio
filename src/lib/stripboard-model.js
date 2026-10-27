@@ -235,7 +235,11 @@ export function doodRows(scenes, days, index) {
         scenes: item.scenes.length,
         work: working.size,
         hold,
-        span: first ? (last - first + 1) : 0,
+        /* The SHOOT days from first to last — W + H — never the day
+           NUMBERS: a day emptied on the stripboard keeps its number
+           and has no column, and counting it put a payroll day in the
+           total that the grid shows nowhere. */
+        span: working.size + hold,
         cells
       };
     })

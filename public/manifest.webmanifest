@@ -1,7 +1,7 @@
 {
   "name": "{{brand:name}}",
   "short_name": "Studio",
-  "description": "A working desk for screenwriting, pre-production and craft study.",
+  "description": "A working desk for a film: story, screenplay, pre-production, the shoot and the edit, with a craft library beside it.",
   "lang": "en",
   "dir": "ltr",
   "display": "standalone",
@@ -40,14 +40,14 @@
   ],
   "shortcuts": [
     {
-      "name": "Feature Film Blueprint",
-      "short_name": "Feature",
-      "url": "./feature.html"
+      "name": "Story",
+      "short_name": "Story",
+      "url": "./story.html"
     },
     {
-      "name": "Short Film Blueprint",
-      "short_name": "Short",
-      "url": "./short.html"
+      "name": "Screenplay Writer",
+      "short_name": "Screenplay",
+      "url": "./screenplay.html"
     },
     {
       "name": "The Filmmaker's Library",

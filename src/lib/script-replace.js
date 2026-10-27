@@ -13,7 +13,9 @@
      would treat every Tamil letter as a boundary.
    - Without Match case, a match written in capitals is replaced in
      capitals: renaming "Ravi" to "Arun" must also turn the cue RAVI into
-     ARUN, not "Arun", or every cue of the character breaks. */
+     ARUN, not "Arun", or every cue of the character breaks. A match
+     that only STARTS with a capital gives the replacement a capital first
+     letter ("Kitchen?" -> "Hall?"), the way a word processor does. */
 
 /** A string as a literal inside a RegExp. Shared by the other text matchers
    (cbfc, breakdown-paper, screenplay-analysis); this module imports nothing. */
@@ -50,7 +52,13 @@ const isCaps = (s) => /\p{L}/u.test(s) && s === s.toUpperCase() && s !== s.toLow
 /** The replacement for one matched string. */
 export function replacementFor(matched, replacement, opts = {}) {
   const r = String(replacement == null ? '' : replacement);
-  return !opts.matchCase && isCaps(matched) ? r.toUpperCase() : r;
+  if (opts.matchCase) return r;
+  if (isCaps(matched)) return r.toUpperCase();
+  // A match that opens with a capital ("Kitchen?" at the start of a line)
+  // keeps it, so a sentence does not start in lower case after a replace.
+  const first = String(matched).charAt(0);
+  if (first && first !== first.toLowerCase()) return r.charAt(0).toUpperCase() + r.slice(1);
+  return r;
 }
 
 /** Replace every match. Returns { changes: [{ id, before, after }], count }.

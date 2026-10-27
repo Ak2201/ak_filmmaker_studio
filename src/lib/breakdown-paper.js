@@ -154,3 +154,13 @@ export function headingOf(scene) {
 }
 
 export default { SHEET_ORDER, sheetCategories, categoryOf, paperScenes, needlesFor, markText, cueTag, cleanSelection, guessCategory, taggedAs, sheetData, headingOf };
+
+/** Where the tag menu's top goes, in viewport pixels: under the
+ *  selection if it fits, else above it, else pinned inside the window. */
+export function menuTop({ selTop, selBottom, menuH, vh }) {
+  const below = selBottom + 8;
+  if (below + menuH <= vh - 8) return below;
+  const above = selTop - 8 - menuH;
+  if (above >= 8) return above;
+  return Math.max(8, vh - 8 - menuH);
+}

@@ -68,8 +68,15 @@ export function basicAuth(keyId, keySecret) {
  *  bought for 365 days and renewed by buying it again (the database stacks
  *  the new year onto the time left). Nothing is charged automatically.
  *  Section 18's "for good" ended with it; a grant can still be for good,
- *  but nothing is SOLD that way. */
-export const PERIODS = ['year'];
+ *  but nothing is SOLD that way.
+ *
+ *  'pass' (schema §61, owner 27 Oct 2026) is the LAUNCH WEEK PASS: a short
+ *  paid stretch of one plan (Pro), sold once per person while the owner's
+ *  offer is open. The SERVER prices it and sets its length
+ *  (billing_settings.pass_paise / pass_days, through quote_pass), so
+ *  nothing here knows ₹49 or 7 days. PLAN_DAYS stays the YEAR: every
+ *  per-day figure is a year's price over 365. */
+export const PERIODS = ['year', 'pass'];
 export const PLAN_DAYS = 365;
 
 /** What a year costs a day, in paise (rounded to the paisa): the figure
@@ -82,9 +89,10 @@ export function perDayPaise(paise) {
 /** The one price of a plan, in paise, or null when it is not for sale.
  *  `plan` is a row of the plans table; `price_paise` is section 18's
  *  column, with the yearly figure as the fallback for a row read before
- *  that section ran. */
+ *  that section ran. A pass is never priced from a plan row: the server
+ *  prices it (§61), so priceFor(plan, 'pass') is null. */
 export function priceFor(plan, period = 'year') {
-  if (!plan || !PERIODS.includes(period)) return null;
+  if (!plan || period !== 'year') return null;
   const v = Number.isInteger(plan.price_paise) ? plan.price_paise : plan.yearly_paise;
   return Number.isInteger(v) && v > 0 ? v : null;
 }

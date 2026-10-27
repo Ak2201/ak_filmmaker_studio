@@ -1503,3 +1503,85 @@ pages that show and take a dollar price are PRICING-CLIENT's.
    It answers `price_notice('USD')`, which should now say
    `charged_currency: 'USD'`. Make one USD test-mode purchase and one refund
    before taking a live dollar payment.
+
+## 25. The launch week pass (schema §61, 27 Oct 2026). NOT YET RUN LIVE.
+
+The owner's decision: the public free trial is retired, and in its place a
+**launch offer** — a short paid pass of the whole studio (₹49 for 7 days
+today), once per person, with a real deadline and an optional real cap. The
+yearly plans do not change. `supabase/schema/schema-61-week-pass.sql`; checks
+in `scripts/schema-tests/week-pass.sql` (`npm run test:schema`).
+
+- **Not a new tier.** The pass is period `'pass'` on the plan
+  `billing_settings.pass_plan` names (`pro`), priced from
+  `billing_settings.pass_paise` and lasting `pass_days`. Six columns:
+  `pass_enabled` (default **false**), `pass_paise` (4900, ≥ 100),
+  `pass_days` (7, 1–31), `pass_plan` (`pro`, FK plans), `pass_ends_at`
+  (null = no deadline, no timer), `pass_cap` (null = no cap).
+- **One predicate.** `pass_open()` = enabled, before `pass_ends_at`, and
+  `pass_sold()` (paid, not refunded, period `pass`) under `pass_cap`.
+- **The public read.** `trial_offer()` and `price_notice(text)` (anon) both
+  carry `pass: {open, amount_paise, days, plan, ends_at, cap, left, now}`;
+  `left` is `cap − sold` (never below 0, null without a cap) and `now` is the
+  server clock the countdown runs on (`src/lib/pass-offer.js`). Switched off
+  it says `open: false` with the amount and days, which the client reads as no
+  offer. `billing_status()` gains `plan_period`, `pass_active`, `pass_used`.
+- **Buying.** `rzp-order` takes `period: 'pass'` (the plan in the body is
+  ignored). `create_pending_payment(…, 'pass')` refuses a promo code (hint
+  `code`), then `quote_pass(user, account, currency)` refuses with SQLSTATE
+  22023, the sentence as the message and the reason as the HINT:
+  `disabled` (switched off), `closed` (deadline passed, or the cap reached —
+  counted under `pg_advisory_xact_lock`, §54's pattern), `inr_only` (rupees
+  only, whatever `usd_checkout` says), `used` (a paid OR refunded pass
+  already — once per person), `has_plan` (a current plan that is not a pass,
+  grants included). `rzp-order` answers **400 `{ error: <sentence>, reason:
+  <hint> }`** (403 for a 42501), and since §61 every refusal carries
+  `reason`, the year's too (`currency`, `currency_closed`, `same_plan`,
+  `downgrade`, a promo reason).
+- **Activating.** `activate_payment` applies `apply_plan(acc, plan, 'pass',
+  pass_days)`; the payment's `starts_at`/`ends_at` are the week; it still
+  writes `studio_members`, so the site gate admits the buyer. A pass that was
+  already PAID when the cap filled is still activated. A pass ordered, then
+  overtaken by a yearly plan bought before it was paid, is refused at
+  `payment_can_activate` (`has_plan`, so `rzp-verify` does not capture and
+  Razorpay releases the hold) and, if captured anyway, recorded unapplied
+  with `unapplied_reason = 'has_plan'` and refundable.
+- **A year over a running pass.** `quote_for` and `activate_payment` treat a
+  running pass as no plan: no downgrade refusal, no upgrade credit, no
+  stacking. The year is priced in full, starts now and replaces the pass
+  (Pro after a Pro pass is 365 days, not 372). `paid_credit_minor` counts only
+  `'year'`, so no credit can come from a pass by any route.
+- **Refunds.** The ordinary three cases. `mark_payment_refunded` takes the
+  week off while the account is still on that pass (a year bought over it is
+  left whole); the §34 refund trial is NOT given for a pass; a refunded pass
+  still counts as used.
+- **Kept out.** `paid_buyers()` (founding seats and the price rise) and the
+  referral payout ignore passes.
+- **The trial.** While `pass_enabled`, `start_trial()` refuses a pressed
+  (`signup`) trial with `{started: false, reason: 'pass'}`. Code trials,
+  administrator trials and refund trials are unchanged. **Do not set
+  `trial_enabled = false`:** `trial_active()` reads it for every trial row,
+  and the §30 grandfathered members are a year of `admin` trial — they would
+  be walled at once.
+- **E-mails.** `invoices.period` (copied by §57's trigger) and the refund
+  claim's `period`/`starts_at`/`ends_at` let `_shared/mail.js` say
+  "Pro, 7-day pass (until 3 November 2026)" and "a refunded pass does not come
+  with a free trial", with the length and date read from the row. A year's
+  receipt now prints its `valid_until` (it read `ends_at`, which an invoice
+  does not have, so the date never printed).
+- **The console.** `admin_pass_status()` → `{enabled, paise, days, plan,
+  ends_at, cap, sold, left, open}` and `admin_set_pass(enabled, paise, days,
+  plan, ends_at, cap)` → the same shape; owner or finance (`require_role`),
+  audited as `set_pass`. A null enabled/price/days/plan keeps the current
+  value; a null deadline or cap clears it. Refused: under 100 paise, outside
+  1–31 days, a plan that is not a paid plan on sale, a cap under 1, and
+  turning it ON with a deadline already past. A price change applies to new
+  orders only.
+- **Funnel.** `events` and `funnel_event_names()` learn `pass_buy`
+  (`admin_funnel` lists eleven steps). Re-running §58 after §61 would drop it;
+  re-run §61 after any re-run of §58 (and of §56, §57 or §60, which it restates).
+
+**Owner steps** are `docs/LIVE-STEPS-2026-10-27.md`: §58–§61 with checksums,
+redeploy `rzp-order`, `rzp-verify` and `rzp-webhook` (the shared `razorpay.js`
+and `mail.js` changed; `rzp-refund` imports `razorpay.js` too, so deploy all
+four), Resend before ANY real payment, then the pass in the console.

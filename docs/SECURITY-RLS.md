@@ -1534,3 +1534,61 @@ those caps. RLS is untouched.
 7. Owner console: scope back to `sample` → a fresh account's trial is `sample` and
    `features.sample_only` is true (the old behaviour, by setting).
 
+
+## §61 THE LAUNCH WEEK PASS — WRITTEN 27 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-61-week-pass.sql`; checks in
+`scripts/schema-tests/week-pass.sql` (57), plus two in `scripts/test-schema.mjs`
+that the restated `create_pending_payment` and `start_trial` are their
+predecessors' bodies plus the lines marked §61.
+
+**What anon can reach.** Nothing new to call: `trial_offer()` and
+`price_notice(text)` (already anon) gain a `pass` block — the console's
+settings and one aggregate, `left` (cap minus paid passes; null without a
+cap). No user id, no e-mail, no row. `pass_sold()`, `pass_open()`,
+`pass_block()` and `quote_pass()` are revoked from public, anon and
+authenticated; they run only inside the SECURITY DEFINER functions above and
+inside `create_pending_payment` (service role).
+
+**Who can set it.** `admin_set_pass()` and `admin_pass_status()` are granted to
+`authenticated` only, refuse a non-administrator (42501 "Administrators only")
+and then `require_role(array['finance'])`: owner or finance, never support.
+Every change is one `admin_audit` row (`set_pass`, before and after); a
+refused call writes none.
+
+**Who can buy, and how often.** The amount, plan and days are the database's;
+the client sends only `period: 'pass'`. Once per person is `paid_at` on any
+`'pass'` payment (a refund does not reopen it). `has_plan`, `inr_only`, `code`,
+`disabled` and `closed` are refusals before any Razorpay order exists. The cap
+and the deadline are enforced in `quote_pass`, not in a page.
+
+**What it does not widen.** RLS policies are untouched. A pass's limits are
+the plan's (`user_limits()` reads `user_plan()`, which is the pass's plan while
+it runs), the same as a year of that plan. A pass ends by `plan_until`; work is
+never deleted. `trial_enabled` is not read differently, so the §30
+grandfathered members keep their entitlement.
+
+**Live checks to run** (after §61; two throwaway accounts A and B that never
+paid, one finance and one support administrator, Razorpay TEST mode):
+1. Read back the 61.16 checks in the section file. anon
+   `POST /rest/v1/rpc/trial_offer` → `pass.open` false, `amount_paise` 4900,
+   `days` 7.
+2. As the support administrator: `POST /rest/v1/rpc/admin_set_pass
+   {"p_enabled":true,"p_paise":4900,"p_days":7,"p_plan":"pro","p_ends_at":null,"p_cap":null}`
+   → 403/42501. As anon → 401/42501. As A (not an admin) → 42501.
+3. As the finance administrator, the same call with a deadline a week out and
+   cap 2 → `open: true`, `left: 2`; one `set_pass` row in `admin_audit`.
+4. As A (signed in): press START MY FREE TRIAL / `POST /rest/v1/rpc/start_trial {}`
+   → `{started: false, reason: "pass"}`.
+5. As A: buy the pass (test card) → `billing_status()` `pass_active` true,
+   `plan` pro, `plan_until` 7 days out; anon `trial_offer().pass.left` → 1.
+6. As A: `rzp-order {"period":"pass"}` again → 400 `{reason: "used"}`.
+   With `"currency":"USD"` as B → 400 `{reason: "inr_only"}`; with a code →
+   400 `{reason: "code"}`.
+7. As A: buy yearly Basic → full price, no credit; `plan` starter, 365 days.
+8. Refund B's pass after B buys one (console) → B's `plan` free, no
+   `trial_started_at` written; B's `rzp-order {"period":"pass"}` → `used`.
+9. Finance: set the deadline to a minute from now; after it passes, a fresh
+   account's `rzp-order {"period":"pass"}` → 400 `{reason: "closed"}`.
+10. Finance: `admin_set_pass(false, …)` → anon `trial_offer().pass.open` false,
+    and a fresh account's `start_trial` → `started: true` again.

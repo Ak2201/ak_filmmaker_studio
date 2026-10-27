@@ -393,13 +393,15 @@ const SUB_LIVE = ['created', 'authenticated', 'active', 'pending', 'halted'];
  *  running, or a cancelled one whose paid period has not ended. */
 export function subFor(uid) {
   const mine = F.db.subscriptions.filter((x) => x.user_id === uid).slice().reverse();
-  return mine.find((x) => SUB_LIVE.includes(x.status)) || mine.find((x) => x.current_end && Date.parse(x.current_end) > Date.now()) || null;
+  /* a 'created' row (Checkout never finished) is not shown, as live */
+  return mine.find((x) => x.status !== 'created' && SUB_LIVE.includes(x.status)) || mine.find((x) => x.status !== 'created' && x.current_end && Date.parse(x.current_end) > Date.now()) || null;
 }
-const subLiveFor = (uid) => F.db.subscriptions.some((x) => x.user_id === uid && SUB_LIVE.includes(x.status) && !x.cancel_at_period_end);
+/* subscription_is_live(): a cancelled-at-period-end one still counts until it ends */
+const subLiveFor = (uid) => F.db.subscriptions.some((x) => x.user_id === uid && SUB_LIVE.includes(x.status));
 function autopayOf(uid) {
   const x = subFor(uid);
   if (!x) return null;
-  return { status: x.status, product: x.product, period: x.period, amount_minor: x.amount_minor, currency: x.currency, current_end: x.current_end,
+  return { status: x.status, product: x.product, period: x.period, days: x.days, amount_minor: x.amount_minor, currency: x.currency, current_end: x.current_end,
     next_charge_at: SUB_LIVE.includes(x.status) && !x.cancel_at_period_end ? x.current_end : null, cancel_at_period_end: !!x.cancel_at_period_end };
 }
 /** apply_subscription_charge(): idempotent on the payment id. A pass
@@ -1414,12 +1416,15 @@ export async function handle(route) {
       if (currency === 'USD' && !F.db.settings.usd_checkout) return no('currency', 'Dollar checkout is not on.');
       const held = heldPlan(F.db.accounts.find((a) => a.owner_id === user.id));
       if ((PLAN_RANK[plan.id] ?? 0) < (PLAN_RANK[held] ?? 0)) return no('downgrade', 'A lower plan waits for your year to end.');
+      /* quote_subscription: a subscription cannot carry an upgrade credit */
+      if (held !== 'free' && (PLAN_RANK[plan.id] ?? 0) > (PLAN_RANK[held] ?? 0) && paidCredit(user.id) > 0) return no('upgrade', 'Your current year is still running. An upgrade is a single payment with that year credited; auto-pay can start when it ends.');
       amount = effectivePriceMinor(plan.id, currency); days = 365; period = 'year'; planId = plan.id;
     }
     const id = 'sub_' + Math.random().toString(36).slice(2, 10);
     F.db.subscriptions.push({ id, user_id: user.id, account_id: body.account_id || null, product, plan_id: planId, period, days, amount_minor: amount, currency,
       status: 'created', current_start: null, current_end: null, cancel_at_period_end: false, cancelled_at: null, created_at: new Date().toISOString() });
-    return json(route, 200, { subscription_id: id, key: RZP.keyId, amount, currency, description: product, period, days, prefill: { email: user.email } });
+    const pl = F.db.plans.find((p) => p.id === planId) || {};
+    return json(route, 200, { subscription_id: id, key: RZP.keyId, amount, currency, description: product, period, days, subscription_row_id: id, product, plan_name: pl.name, prefill: { email: user.email, name: '' } });
   }
   if (url.pathname === '/functions/v1/rzp-cancel' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });
@@ -1433,10 +1438,11 @@ export async function handle(route) {
     } else {
       x = F.db.subscriptions.filter((s) => s.user_id === user.id && SUB_LIVE.includes(s.status) && !s.cancel_at_period_end).pop();
     }
-    if (!x) return json(route, 400, { error: 'There is no auto-pay to cancel.' });
-    Object.assign(x, { cancel_at_period_end: true, cancelled_at: new Date().toISOString() });
+    if (!x) return json(route, 400, { error: 'There is no auto-pay to cancel.', reason: 'none' });
+    const already = !!x.cancel_at_period_end;
+    Object.assign(x, { cancel_at_period_end: true, cancelled_at: x.cancelled_at || new Date().toISOString() });
     F.db.calls.push(`fn:rzp-cancel ${x.id}${body.subscription_id ? ' admin' : ''}`);
-    return json(route, 200, { ok: true, current_end: x.current_end });
+    return json(route, 200, { ok: true, current_end: x.current_end, already });
   }
 
   /* ---- the two edge functions, as the browser reaches them ---- */

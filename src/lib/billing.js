@@ -184,7 +184,12 @@ async function invoke(name, body, { allowPending = false } = {}) {
  * currency and never the amount, and sends 'USD' only once the server
  * has said dollars are charged (price-model.js orderCurrency()).
  */
-export async function buy(planId, period = 'year', { accountId = null, onStatus = () => {}, code = null, currency = 'INR', description = '', shownMode = null } = {}) {
+/** The card's sentence for a yearly purchase that auto-renew cannot carry
+ *  (an upgrade credited with the year running, or a year bought right
+ *  after a weekly auto-pay was stopped): it is paid once. */
+export const UPGRADE_ONCE = 'This upgrade is paid once; auto-pay can start at your next renewal.';
+
+export async function buy(planId, period = 'year', { accountId = null, onStatus = () => {}, code = null, currency = 'INR', description = '', shownMode = null, passStopped = false } = {}) {
   if (!paymentsConfigured()) throw new BillingError('Payments are not switched on for this studio yet.', 'notconfigured');
   /* 'pass' is named here as well as in PERIODS: the shared list gains it
      with §61's edge functions, and this file must not refuse the pass in
@@ -202,7 +207,21 @@ export async function buy(planId, period = 'year', { accountId = null, onStatus 
     try { Store.notify('billing:changed', null); } catch (e) { /* nobody listening */ }
     throw new BillingError('The terms of this offer changed a moment ago. Read the card again before you pay; nothing was charged.', 'terms');
   }
-  if (mode === 'renew') return subscribe(planId, period, { accountId, onStatus, currency: isPass ? 'INR' : currency });
+  /* A SUBSCRIPTION CANNOT CARRY AN UPGRADE CREDIT (§62 quote_subscription
+     'upgrade'), and a weekly auto-pay just stopped still counts as live
+     until its period ends ('subscribed'): either way the year is bought
+     the one-time way (create_pending_payment works in either mode), and
+     the result says so (`paidOnce`). */
+  let paidOnce = false;
+  if (mode === 'renew') {
+    try { return await subscribe(planId, period, { accountId, onStatus, currency: isPass ? 'INR' : currency }); }
+    catch (e) {
+      if (isPass || !e || !(e.hint === 'upgrade' || (e.hint === 'subscribed' && passStopped))) throw e;
+      paidOnce = true;
+      onStatus(UPGRADE_ONCE);
+    }
+  }
+  const termsMode = paidOnce ? 'once' : mode;
   bumpEvent('checkout_start');   // §29 daily count, fire-and-forget
   onStatus('Preparing your order…');
   /* The pass takes no promo code and is sold in rupees only (quote_pass). */
@@ -233,7 +252,7 @@ export async function buy(planId, period = 'year', { accountId = null, onStatus 
          more place the old address survives. 192px square is what
          Razorpay draws it at. */
       image: `https://${BRAND.host}/icons/icon-192.png`,
-      description: description || `${order.plan_name || planName(planId)} · ${onceTerms(order, mode)}${order.promo_code ? ' · code ' + order.promo_code : ''}`,
+      description: description || `${order.plan_name || planName(planId)} · ${onceTerms(order, termsMode)}${order.promo_code ? ' · code ' + order.promo_code : ''}`,
       prefill: order.prefill || {},
       notes: { plan: planId, period, promo_code: order.promo_code || '' },
       ...(themeColour() ? { theme: { color: themeColour() } } : {}),
@@ -274,7 +293,7 @@ export async function buy(planId, period = 'year', { accountId = null, onStatus 
   Store.notify('billing:changed', result);
   // Paying grants entry: a non-member is a member now. Ask the gate again.
   try { const c = cloud(); if (c && c.runGate) await c.runGate(); } catch (e) { /* the status call will say */ }
-  return result;
+  return paidOnce && result && typeof result === 'object' ? { ...result, paidOnce: true } : result;
 }
 
 /* The one-time checkout's terms line: offerTerms() with the ORDER's own
@@ -322,9 +341,10 @@ async function subscribe(planId, period, { accountId, onStatus, currency }) {
     const rz = new window.Razorpay({
       key: sub.key || RAZORPAY_KEY_ID,
       subscription_id: sub.subscription_id,
+      recurring: true,
       name: BRAND.name,
       image: `https://${BRAND.host}/icons/icon-192.png`,
-      description: (period === 'pass' ? 'The whole studio · ' : planName(planId) + ' · ') + (terms.line || sub.description || ''),
+      description: (period === 'pass' ? 'The whole studio · ' : (sub.plan_name || planName(planId)) + ' · ') + (terms.line || sub.description || ''),
       prefill: sub.prefill || {},
       notes: { product, period },
       ...(themeColour() ? { theme: { color: themeColour() } } : {}),

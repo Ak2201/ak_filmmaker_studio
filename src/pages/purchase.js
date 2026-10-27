@@ -389,7 +389,7 @@ function planSection() {
   const view = currentView();
   const cards = planCards(billing.plans, st, {
     shop: view,
-    onBuy: (planId, period, onStatus, code, currency, shownMode) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, shownMode, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
+    onBuy: (planId, period, onStatus, code, currency, shownMode, passStopped) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, shownMode, passStopped, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
   });
   /* the terms go straight under the row of buy buttons, above the code

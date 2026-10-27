@@ -99,9 +99,25 @@ export const presetMatches = (p, f) => PRESET_KEYS.every((k) => String(p[k] || '
 /** Does one row pass the filter? `row` is { find, ie, dn, st } — the
  *  row's search text, INT/EXT, time and status id. */
 export function rowMatches(f, row) {
-  const q = f.q.trim().toLowerCase();
-  return (!q || row.find.includes(q)) && (!f.ie || row.ie === f.ie)
+  /* Every typed word must appear somewhere in the row, in any order:
+     "roof night" spans the location and the time, which are not adjacent. */
+  const words = f.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return words.every((w) => row.find.includes(w)) && (!f.ie || row.ie === f.ie)
     && (!f.dn || row.dn === f.dn) && (!f.st || row.st === f.st);
+}
+/** The bulk bar's count. A selected scene the search or a filter has hidden
+ *  is said so, because the bar's actions leave it alone. */
+export const bulkText = (n, hidden) => n + ' selected' + (hidden ? ' (' + hidden + ' hidden by the filter)' : '');
+/** Put re-measured lengths back, but only on scenes that still hold the
+ *  measured value: a length typed after the re-measure is kept. */
+export function restoreEighths(scenes, to, from) {
+  let kept = 0;
+  const next = scenes.map((s) => {
+    if (!from.has(s.id)) return s;
+    if (s.eighths !== to.get(s.id)) { kept++; return s; }
+    return { ...s, eighths: from.get(s.id) };
+  });
+  return { scenes: next, kept };
 }
 /** The scene list's count line. */
 export const filterCountText = (shown, total) =>
@@ -123,6 +139,18 @@ export function suggestionTags(scenes, elements, sceneIds) {
   }
   return tags;
 }
+/** The Auto-Tag count line. ADD ALL's category limit is said here, not
+ *  only in a comment, and the line names the categories it leaves to a
+ *  chip or a scene at a time. `labelOf` maps a category id to its label. */
+export function suggestCountText({ total, scenes, guessed, labelOf = (c) => c }) {
+  const rest = SUGGEST_CATEGORIES.filter((c) => !BULK_CATS.includes(c));
+  return `${total} suggestion${total === 1 ? '' : 's'} across ${scenes} scene${scenes === 1 ? '' : 's'}`
+    + ` \u00b7 ADD ALL takes ${BULK_CATS.map(labelOf).join(', ')}; ${rest.map(labelOf).join(', ')} are added one chip or one scene at a time`
+    + (guessed ? ` \u00b7 and it leaves out the ${guessed} paired by position only` : '');
+}
+/** `.sel` scoped under `[data-scene=id]`, EVERY comma alternative: a
+ *  bare "a, b" prefixed once leaves b unscoped and matches scene 1. */
+export const scopeSelector = (prefix, sel) => String(sel).split(',').map((x) => prefix + x.trim()).join(', ');
 /** Write the suggestions through the one tag writer; returns exactly the
  *  tags written, so an Undo removes those and nothing else. */
 export function applySuggestions(sceneIds) {
@@ -157,8 +185,10 @@ export { headingInScript } from './script.js';
 
 /* ---- typed values --------------------------------------------- */
 /** A scene field's value as stored, from what the control holds. */
+/** The most a typed length can be: the box's own max (ten pages). */
+export const EIGHTHS_MAX = 80;
 export const sceneFieldValue = (key, raw) => key === 'eighths'
-  ? Math.max(0, parseInt(raw, 10) || 0)
+  ? Math.min(EIGHTHS_MAX, Math.max(0, parseInt(raw, 10) || 0))
   : key === 'number' ? raw.trim() : raw;
 /** A song field's value as stored, from what the control holds. */
 export function songFieldValue(key, raw) {

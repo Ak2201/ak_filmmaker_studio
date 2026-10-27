@@ -51,8 +51,8 @@ const STORE    = 'blobs';
    door, and there are this many of them". The length is carried so
    the usage meter can account for overflowed data without reading
    any of it back — which also means the stub is not a fixed width:
-   ten characters of marker plus the decimal length, so 15 for a
-   300 KB value and wider for a larger one. Small enough that the
+   ten characters of marker, a content mark of up to seven and a colon,
+   then the decimal length, so about 23 for a 300 KB value. Small enough that the
    distinction never matters; stated because a note claiming a fixed
    twelve is a note somebody will one day rely on. */
 const STUB_PREFIX = '\u0001fms-idb\u0001';   // escape, not a literal:
@@ -63,8 +63,23 @@ const STUB_PREFIX = '\u0001fms-idb\u0001';   // escape, not a literal:
    into a field, which is all the sentinel needs to be. */
 
 export const isStub = (v) => typeof v === 'string' && v.startsWith(STUB_PREFIX);
-export const makeStub = (value) => STUB_PREFIX + String(value).length;
-export const stubLength = (v) => (isStub(v) ? Number(v.slice(STUB_PREFIX.length)) || 0 : 0);
+/* The stub carries a short CONTENT mark before the length (QA r4).
+   `storage` fires in other windows only when the localStorage value
+   CHANGES, and a stub of the length alone is the same string for every
+   same-length edit — replace one letter of a 270 KB script and no other
+   window ever heard of it. The length stays LAST, so a stub written
+   before this (marker + length) still reads its length. */
+const mark = (s) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36);
+};
+export const makeStub = (value) => { const s = String(value); return STUB_PREFIX + mark(s) + ':' + s.length; };
+export const stubLength = (v) => {
+  if (!isStub(v)) return 0;
+  const body = v.slice(STUB_PREFIX.length);
+  return Number(body.slice(body.lastIndexOf(':') + 1)) || 0;
+};
 
 /* 64 KB. Low enough that the one key that actually matters — a
    screenplay — is always on the big tier, high enough that the

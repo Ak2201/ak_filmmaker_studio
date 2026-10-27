@@ -130,9 +130,13 @@ export function firstWeekFacts({ match = sampleMatch } = {}) {
   try {
     reason = entitlement().reason;
     const id = currentPlan().plan;
-    bought = reason === 'paid' && !!id && id !== 'free';
+    /* A LAUNCH PASS (§61) is a few paid days, not a plan chosen: the item
+       is listed for its whole length (it is a week long by design) and
+       ticks only once a yearly plan is bought. */
+    const pass = !!currentPlan().passActive;
+    bought = reason === 'paid' && !!id && id !== 'free' && !pass;
     const ends = reason === 'trial' ? trialEndsAt() : null;
-    soon = !!ends && ends.getTime() - serverNow() <= WEEK_MS;
+    soon = pass || (!!ends && ends.getTime() - serverNow() <= WEEK_MS);
   } catch (e) { reason = 'unknown'; }
   facts.planListed = bought || soon;
   facts.plan = bought;

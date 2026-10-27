@@ -70,13 +70,14 @@
 /* navigation.json through navmodel.js, never directly: globals()
    and moduleGroups() apply the region filter, so a module hidden on
    the map is not quietly reachable from the palette. */
-import { moduleGroups, hueClassOf, globals } from '../lib/navmodel.js';
+import { moduleGroups, moduleSections, hueClassOf, globals } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId } from '../lib/store.js';
 import { switchProject } from './project-switcher.js';
 import { markLocked, aiUnlocked, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { pageFile } from '../lib/page-file.js';
+import { snippetAround } from '../lib/text-snippet.js';
 import '../styles/palette.css';
 
 const MAX_ROWS = 60;
@@ -167,7 +168,10 @@ function score(item, q) {
       last = c; i++;
     }
   }
-  if (i === q.length) return 900 - gaps;
+  /* Letters scattered across several words are not a match: "pricing"
+     must not find a location by its p, r, i, c, i, n, g in order. A
+     tight abbreviation ("sbd", "stripboard": 7 gaps) stays inside this. */
+  if (i === q.length && gaps <= 2 * q.length + 2) return 900 - gaps;
   return 0;
 }
 
@@ -196,10 +200,9 @@ function scriptHits(needle) {
   for (const l of scriptLines) {
     const at = l.text.toLowerCase().indexOf(needle);
     if (at < 0) continue;
-    const from = Math.max(0, at - 24);
     out.push(entry({
       id: 'line:' + l.id,
-      label: (from ? '…' : '') + l.text.slice(from, at + needle.length + 48).trim(),
+      label: snippetAround(l.text, at, needle.length),
       sub: 'Screenplay · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
       group: 'Screenplay',
       hueClass: 'sh-ph-screenplay',
@@ -303,6 +306,27 @@ function navItems() {
         status: m.status,
         keywords: [p.label, p.blurb || '', m.status]
       }));
+      /* The tabs the rail flyout lists under this module (moduleSections:
+         Beat Sheet, DPR, Estimate...). One list, so a tab you can see in
+         the rail is a tab you can find here. Sections are gated with
+         their module, so the filter above already covers them. */
+      if (m.status === 'planned' || !m.href) continue;
+      const page = m.href.split('#')[0];
+      for (const sec of moduleSections(m)) {
+        out.push(entry({
+          id: 'sec:' + m.id + ':' + sec.id,
+          moduleId: m.id,
+          label: sec.label,
+          sub: m.label + (sec.purpose ? ' · ' + sec.purpose : ''),
+          group: p.label,
+          hueClass: hueClassOf(p),
+          icon: m.icon,
+          sym: sec.sym || m.sym,
+          href: page + '#' + sec.id,
+          status: m.status,
+          keywords: [p.label, m.label, 'tab', 'section']
+        }));
+      }
     }
   }
   return out;
@@ -491,7 +515,7 @@ async function pullContent() {
         hueClass: 'hue-shoot',
         icon: '☺',
         person: true,
-        href: 'breakdown.html#script',
+        href: 'screenplay.html#analysis',
         keywords: ['character', 'cast', 'role'].concat(c.aliases || [])
       }));
     }

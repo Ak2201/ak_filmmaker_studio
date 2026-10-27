@@ -42,6 +42,7 @@ import { readAll, writeFields, blobKey } from '../lib/blueprint-store.js';
 import {
   classify, extraRenderers, interludeSection, drawDerived
 } from './stage-guide-widgets.js';
+import { NOTE_TITLE, noteLabel } from '../lib/note-label.js';
 import { mountComments, togglePanel, hasNote, paintBadges } from './comments.js';
 import { showOnly, stepFooter, stepBar, wireStepper, landUnder } from './stepper.js';
 import '../styles/steps-stages.css';
@@ -269,7 +270,7 @@ export function renderGuide(body, { stage, format, items, fields, stepper }) {
       if (!field) return;
       const key = field.getAttribute('data-key');
       const btn = h('button.comment-btn', {
-        type: 'button', title: 'Add a private note (saved on your device)', text: '✎',
+        type: 'button', title: NOTE_TITLE, 'aria-label': noteLabel(label.textContent), text: '✎',
         'data-key': 'comment_for_' + key, 'data-action': 'toggleCommentPanel', 'data-note-key': key
       });
       label.appendChild(btn);
@@ -351,8 +352,12 @@ export function renderGuide(body, { stage, format, items, fields, stepper }) {
     queue(k, spec.read(el));
     /* feature.js syncTitleAcrossCovers(): fill the other title if empty. */
     const twin = k === 'meta_title' ? 'v1_title' : k === 'v1_title' ? 'meta_title' : null;
+    /* It keeps following while it was filled this way (data-follows):
+       re-checking "empty" on each keystroke copied only the first letter. */
+    delete el.dataset.follows;
     const t = twin && root.querySelector('[data-key="' + twin + '"]');
-    if (t && t.value === '' && el.value) { t.value = el.value; queue(twin, el.value); }
+    if (t && t.dataset.follows === k) { t.value = el.value; queue(twin, el.value); }
+    else if (t && t.value === '' && el.value) { t.value = el.value; queue(twin, el.value); t.dataset.follows = k; }
     const m = palette.exec(k);
     /* feature.js saves the hex mirrors with the colour; keep them in step. */
     if (m && root.querySelector('[data-key="palette_c' + m[1] + '_hex"]')) queue('palette_c' + m[1] + '_hex', el.value);

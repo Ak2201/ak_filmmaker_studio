@@ -363,8 +363,11 @@ function startFigures() {
             fail('the pricing list\'s data-tier ids [' + ids.join(', ') + '] are not the PAID tiers of PLAN_ORDER ['
                  + PAID.join(', ') + '] from src/lib/plans.js — add, remove or reorder the <li>s to match. There is no free tier.');
           }
-          if ((html.replace(/<!--[\s\S]*?-->/g, '').match(/<li\b[^>]*\bdata-trial\b/g) || []).length !== 1) {
-            fail('the pricing list needs exactly one <li data-trial> — the free TRIAL is the first card, not a free plan.');
+          /* 27 Oct 2026: the free trial is retired for the public; the launch
+             PASS is never a tier, so a pricing list carries no pass card at
+             all (pricing.html draws it as one strip above the cards). */
+          if (/<li\b[^>]*\bdata-(trial|pass)\b/.test(html.replace(/<!--[\s\S]*?-->/g, ''))) {
+            fail('the pricing list carries a <li data-trial|data-pass> card: the launch pass is one strip above the cards, never a card or a plan.');
           }
           for (const [, id, body] of tiers) {
             if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
@@ -473,9 +476,15 @@ function marketingFigures() {
             fail('the plan cards\' data-tier ids [' + ids.join(', ') + '] are not the PAID tiers of PLAN_ORDER [' + PAID.join(', ')
                  + '] from src/lib/plans.js. There is no free tier.');
           }
-          if ((html.replace(/<!--[\s\S]*?-->/g, '').match(/<aside\b[^>]*\sdata-trial[\s>]/g) || []).length !== 1) {
-            fail('the pricing page needs exactly one <aside data-trial>: the free TRIAL is a strip above the cards, not a free plan.');
+          /* THE LAUNCH PASS (27 Oct 2026) is ONE strip above the cards, never
+             a card or a plan, and it is hidden in the markup: every figure in
+             it is a runtime slot marketing.js fills from trial_offer().pass. */
+          const bare = html.replace(/<!--[\s\S]*?-->/g, '');
+          const strips = bare.match(/<aside\b[^>]*\sdata-pass(?=[\s>])[^>]*>/g) || [];
+          if (strips.length !== 1 || !/\shidden(?=[\s>])/.test(strips[0]) || !/\sdata-pass-only(?=[\s>])/.test(strips[0])) {
+            fail('the pricing page needs exactly one <aside data-pass data-pass-only hidden>: the launch pass is a strip above the cards, shown only while the server says it is open.');
           }
+          if (/\sdata-trial[\s>=-]/.test(bare)) fail('a [data-trial*] slot is left on the pricing page: the public free trial is retired, the launch pass replaced it.');
           for (const [, id, body] of tiers) {
             if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
           }
@@ -918,7 +927,7 @@ export default defineConfig({
              page and the Library went over scripts/budget.json. CORE calls
              nothing from region-core, so in a chunk of its own it is
              fetched only by the pages that use it. */
-          if (/\/src\/lib\/(funnel|invite-code|auth-scope|attribution|motion|trial-time|prefs|ports)\.js$/.test(id)) return 'startlib';
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope|attribution|pass-offer|offer-terms|motion|trial-time|prefs|ports)\.js$/.test(id)) return 'startlib';
           if (/\/src\/lib\/region-core\.js$/.test(id)) return 'region';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account|cloud-api)\.js$/;
           /* kit/ (14 Oct 2026): the component builders are pure and small, and

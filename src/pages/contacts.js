@@ -76,10 +76,10 @@ function renderHeader(contacts, sheets) {
       : []
   });
   wrap.append(statStrip([
-    { label: 'Unit roster', value: contacts.length, note: contacts.length === 1 ? 'person on the unit' : 'people on the unit' },
-    { label: 'Talent registry', value: cast, note: 'in the cast' },
-    { label: 'Production base', value: depts, note: depts === 1 ? 'department' : 'departments' },
-    { label: 'Production slates', value: sheets.length, note: sheets.length === 1 ? 'call sheet built' : 'call sheets built' }
+    { label: 'People', value: contacts.length, note: contacts.length === 1 ? 'person on the unit' : 'people on the unit' },
+    { label: 'Cast', value: cast, note: 'in the cast' },
+    { label: 'Departments', value: depts, note: depts === 1 ? 'department' : 'departments' },
+    { label: 'Call sheets', value: sheets.length, note: sheets.length === 1 ? 'call sheet built' : 'call sheets built' }
   ], { class: 'ct-kpis', label: 'Unit figures' }));
   return wrap;
 }
@@ -125,7 +125,8 @@ function renderContact(contact) {
      tabs.js opens the tab that holds it and the resolver lands on the
      card, where a missing id used to land on the top of the page. */
   const card = h('article.ct-person.hue-' + hueOf(contact.department), {
-    'data-contact': contact.id, id: 'c-' + contact.id
+    'data-contact': contact.id, id: 'c-' + contact.id,
+    role: 'group', 'aria-label': contact.name || 'New person'
   });
 
   card.append(h('div.ct-person-bar', {}, [
@@ -134,12 +135,12 @@ function renderContact(contact) {
       'aria-label': 'Name'
     }, contact.name),
     field('input.ct-role', {
-      type: 'text', placeholder: 'Role or job — "Ravi", "1st AC", "Line Producer"',
+      type: 'text', placeholder: 'Role or job — "Director", "1st AC", "Line Producer"',
       'data-contact-field': 'role', 'aria-label': 'Role or job'
     }, contact.role),
     deptSelect(contact.department),
     h('div.ct-person-acts', {}, [
-      iconBtn('✕', 'contact-del', 'Remove this person', false, true)
+      iconBtn('✕', 'contact-del', 'Remove ' + (contact.name || 'this person'), false, true)
     ])
   ]));
 
@@ -278,7 +279,7 @@ function renderSheets(sheets, contacts, scenes) {
   }
 
   sheets.forEach((sheet) => wrap.append(renderSheet(sheet, contacts, scenes)));
-  wrap.append(button({ label: 'New call sheet', icon: 'add', action: 'sheet-add', class: 'ct-add' }));
+  wrap.append(button({ label: 'New shoot day', icon: 'add', action: 'sheet-add', class: 'ct-add' }));
   return wrap;
 }
 
@@ -321,7 +322,7 @@ function renderSchedLine(sheet, scenes) {
 }
 
 function renderSheet(sheet, contacts, scenes) {
-  const card = h('article.ct-sheet', { 'data-sheet': sheet.id });
+  const card = h('article.ct-sheet', { 'data-sheet': sheet.id, id: 'sheet-' + sheet.id });
   card.append(renderSheetEdit(sheet, contacts, scenes));
   card.append(renderSheetDoc(sheet, contacts, scenes));
   return card;
@@ -851,6 +852,14 @@ function render() {
   if (firstRender) {
     firstRender = false;
     if (contacts.length && !location.hash) revealTarget('call-sheets');
+    /* `?sheet=<id>` (Shoot Day's "View call sheet") lands on that day's
+       sheet, not the top of the list. Once, after the tab has opened. */
+    let want = '';
+    try { want = new URLSearchParams(location.search).get('sheet') || ''; } catch (e) { /* ignore */ }
+    if (want) requestAnimationFrame(() => requestAnimationFrame(() => {
+      const card = document.querySelector('.ct-sheet[data-sheet="' + CSS.escape(want) + '"]');
+      if (card) card.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }));
   }
   wireActionBar();
   try {
@@ -903,15 +912,32 @@ delegate(document, 'click', '[data-action="contact-del"]', async (e, el) => {
   const id = contactIdOf(el);
   const c = Contacts.listContacts().find((x) => x.id === id);
   const label = c && c.name ? ' ' + c.name : '';
-  if (!await askDanger('Remove' + label + '? They come off every call sheet too.')) return;
+  if (!await askDanger('Remove' + label + '? They come off every call sheet too.', { confirm: 'Remove person' })) return;
+  /* The card the focused ✕ sits on is about to go: name its neighbour
+     first (by id), or the Add button, so a keyboard user is not sent
+     back to <body>. */
+  const cards = [...document.querySelectorAll('.ct-person[data-contact]')];
+  const at = cards.findIndex((n) => n.dataset.contact === id);
+  const next = cards[at + 1] || cards[at - 1] || null;
+  const nextId = next ? next.dataset.contact : '';
   Contacts.removeContact(id);
   render();
+  const target = (nextId && document.querySelector('.ct-person[data-contact="' + CSS.escape(nextId) + '"] .ct-name'))
+    || document.querySelector('[data-action="contact-add"]');
+  if (target) target.focus({ preventScroll: true });
 });
 
 delegate(document, 'change', '[data-contact-field]', (e, el) => {
   const id = contactIdOf(el);
   const key = el.dataset.contactField;
   Contacts.updateContact(id, { [key]: el.value });
+  // The row's spoken name follows the Name box.
+  if (key === 'name') {
+    const row = el.closest('.ct-person'), del = row && row.querySelector('[data-action="contact-del"]');
+    const nm = el.value.trim();
+    if (row) row.setAttribute('aria-label', nm || 'New person');
+    if (del) { del.setAttribute('aria-label', 'Remove ' + (nm || 'this person')); del.title = 'Remove ' + (nm || 'this person'); }
+  }
   // Department moves the card to another group, so the list has to
   // rebuild — and focus follows the card to its new group rather than
   // falling to <body> (UX audit M1). Everything else only has to
@@ -927,21 +953,46 @@ delegate(document, 'change', '[data-contact-field]', (e, el) => {
 });
 
 delegate(document, 'click', '[data-action="sheet-add"]', () => {
-  const patch = nextSheetPatch(Contacts.listCallSheets(), Locations.calendarDays(Scenes.listScenes()));
-  Contacts.addCallSheet(patch || undefined);
+  let want = null;
+  try { want = new URLSearchParams(location.search).get('day'); } catch (e) { /* ignore */ }
+  const patch = nextSheetPatch(Contacts.listCallSheets(), Locations.calendarDays(Scenes.listScenes()), want);
+  const made = Contacts.addCallSheet(patch || undefined);
   render();
+  /* The header's button is there on the Cast & Crew tab too: switch to
+     Call Sheets (and say so in the address, as a tab click does), or
+     the new sheet is made inside a hidden tab and the focus below lands
+     on nothing. */
+  /* The address names the NEW SHEET, not the section: the fragment
+     resolver lands on whatever the hash names, and one that named the
+     section pulled the page back to its top after the focus had gone
+     to the sheet. */
+  if (revealTarget('call-sheets') && location.hash !== '#call-sheets') {
+    try { history.replaceState(history.state, '', location.pathname + location.search + '#sheet-' + made.id); } catch (e) { /* ignore */ }
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }
   if (patch) StudioUI.toast(patch.title + ': ' + patch.sceneIds.length + (patch.sceneIds.length === 1 ? ' scene' : ' scenes') + ' ticked from the stripboard.');
   const last = document.querySelector('.ct-sheet:last-of-type .ct-sheet-title');
-  if (last) last.focus();
+  if (last) {
+    last.focus({ preventScroll: true });
+    // `instant`: the page is smooth-scrolling and the sheet can be thousands of pixels down.
+    last.closest('.ct-sheet').scrollIntoView({ block: 'start', behavior: 'instant' });
+  }
 });
 
 delegate(document, 'click', '[data-action="sheet-del"]', async (e, el) => {
   const id = sheetIdOf(el);
   const s = Contacts.listCallSheets().find((x) => x.id === id);
   const label = s && s.title ? ' "' + s.title + '"' : '';
-  if (!await askDanger('Delete call sheet' + label + '? The people and the scenes stay.')) return;
+  if (!await askDanger('Delete call sheet' + label + '? The people and the scenes stay.', { confirm: 'Delete call sheet' })) return;
+  const cards = [...document.querySelectorAll('.ct-sheet[data-sheet]')];
+  const at = cards.findIndex((n) => n.dataset.sheet === id);
+  const next = cards[at + 1] || cards[at - 1] || null;
+  const nextId = next ? next.dataset.sheet : '';
   Contacts.removeCallSheet(id);
   render();
+  const target = (nextId && document.querySelector('.ct-sheet[data-sheet="' + CSS.escape(nextId) + '"] .ct-sheet-title'))
+    || document.querySelector('[data-action="sheet-add"]');
+  if (target) target.focus({ preventScroll: true });
 });
 
 /* Typing saves as it goes — a reload or a closed tab must not take
@@ -961,7 +1012,9 @@ saveOnInput('[data-sheet-field]', (el) => {
 
 delegate(document, 'change', '[data-sheet-field]', (e, el) => {
   Contacts.updateCallSheet(sheetIdOf(el), { [el.dataset.sheetField]: el.value });
-  refreshSheets();
+  /* Repaint what reads the field, not the section: rebuilding
+     #call-sheets on a blur removes the control Tab is moving to. */
+  syncDoc(el);
 });
 
 delegate(document, 'change', '[data-action-change="sheet-scene"]', (e, el) => {
@@ -994,6 +1047,8 @@ function syncDoc(el) {
   const scenes = Scenes.listScenes();
   const doc = card.querySelector('.ct-doc');
   if (doc) doc.replaceWith(renderSheetDoc(sheet, Contacts.listContacts(), scenes));
+  const glance = card.querySelector('.ct-glance');
+  if (glance) glance.replaceWith(renderDayCard(sheet, scenes));
   // Ticking a scene can move the sheet onto (or off) a schedule day.
   const line = card.querySelector('.ct-sched');
   if (line) line.replaceWith(renderSchedLine(sheet, scenes));

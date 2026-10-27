@@ -411,6 +411,13 @@ export function formatDuration(sec) {
   return `${m}:${String(r).padStart(2, '0')}`;
 }
 
+/** Whole minutes, rounded the way formatDuration rounds (whole seconds,
+ *  then the minutes floored), so a figure printed "137 min" on one page
+ *  and "2h 16m" on another cannot come from the same estimate. */
+export function runtimeMinutes(sec) {
+  return Math.floor(Math.max(0, Math.round(sec)) / 60);
+}
+
 /* ---- names -------------------------------------------------- */
 
 /** A cue as a person: no extensions, no (CONT'D), upper case. */
@@ -426,10 +433,14 @@ export function cueName(t) {
 const key = (n) => cueName(n);
 
 /** Speaking parts introduced in capitals in action: "RAVI, 30s, ..." —
- *  a run of 2+ capital letters (words) followed by a comma or "(". */
+ *  a run of 2+ capital letters (words) followed by a comma or "(" AND an
+ *  age ("30s", "(40)", "mid-30s"). A run of capitals is as often a sign
+ *  or a banner ("ARREAR SUBJECTS, REGISTERED CANDIDATES", "DEPARTMENT
+ *  SYMPOSIUM, and under that…"), and offering those as cast put fake
+ *  characters into the cast count; a person's introduction names an age. */
 function capsIntros(text) {
   const out = [];
-  const re = /\b([A-Z][A-Z'’.-]{1,}(?:\s+[A-Z][A-Z'’.-]{1,}){0,2})\s*(?:,|\()/g;
+  const re = /\b([A-Z][A-Z'’.-]{1,}(?:\s+[A-Z][A-Z'’.-]{1,}){0,2})\s*(?:,|\()\s*(?=\d|(?:[Ee]arly|[Mm]id|[Ll]ate)\b)/g;
   let m;
   while ((m = re.exec(text))) {
     const name = m[1].trim();
@@ -508,6 +519,19 @@ const phraseRe = (list) => new RegExp('\\b(' + [...list].sort((a, b) => b.length
 const LEX_CATS = Object.keys(lexicon).filter((k) => Array.isArray(lexicon[k]));
 export const SUGGEST_CATEGORIES = ['cast', ...LEX_CATS];
 const RE = Object.fromEntries(LEX_CATS.map((k) => [k, phraseRe(lexicon[k])]));
+/* "chairs" and "chair" are one element. The lexicon lists both forms, so
+   a plural folds onto its singular only when the singular is in the same
+   list: no guessing at English ("glass" is not a plural of "glas"). */
+const SINGULAR = Object.fromEntries(LEX_CATS.map((k) => {
+  const words = new Set(lexicon[k].map((w) => String(w).toLowerCase()));
+  const m = new Map();
+  for (const w of words) {
+    if (w.endsWith('es') && words.has(w.slice(0, -2))) m.set(w, w.slice(0, -2));
+    else if (w.endsWith('s') && words.has(w.slice(0, -1))) m.set(w, w.slice(0, -1));
+  }
+  return [k, m];
+}));
+const foldKey = (cat, k) => (SINGULAR[cat] && SINGULAR[cat].get(k)) || k;
 const CAPS_SOUND = new RegExp('\\b(' + lexicon.soundCaps.words.map(escRe).join('|') + ')\\b', 'g');
 
 /* A capital after a space, a hyphen, a slash or an opening bracket —
@@ -524,14 +548,22 @@ export const titleCase = (s) => String(s)
 export function suggestElements(scene, slice) {
   const out = Object.fromEntries(SUGGEST_CATEGORIES.map((c) => [c, []]));
   if (!slice) return out;
-  const have = {};
+  const have = {}, haveWords = {};
+  /* A tagged "Gold medal and box" covers "medal", and "Students (180)"
+     covers "students": the suggestion's words, folded to the singular,
+     sit in a row inside a tagged name's. Exact-key alone offered 36
+     near-duplicates on the Dragon sample. */
+  const words = (cat, n) => String(n).toLowerCase().replace(/\(.*?\)/g, ' ').split(/[^\p{L}\p{N}'’]+/u).filter(Boolean).map((w) => foldKey(cat, w));
   for (const cat of Object.keys(out)) {
-    have[cat] = new Set(((scene.elements && scene.elements[cat]) || []).map((n) => String(n).trim().toLowerCase()));
+    const tagged = (scene.elements && scene.elements[cat]) || [];
+    have[cat] = new Set(tagged.map((n) => foldKey(cat, String(n).trim().toLowerCase())));
+    haveWords[cat] = tagged.map((n) => ' ' + words(cat, n).join(' ') + ' ');
   }
   const seen = Object.fromEntries(SUGGEST_CATEGORIES.map((c) => [c, new Set()]));
   const add = (cat, name, from) => {
-    const k = name.trim().toLowerCase();
+    const k = foldKey(cat, name.trim().toLowerCase());
     if (!k || have[cat].has(k) || seen[cat].has(k)) return;
+    if (cat !== 'cast') { const w = ' ' + words(cat, name).join(' ') + ' '; if (haveWords[cat].some((t) => t.includes(w))) return; }
     // Cast match is on the cue form, so "Prakash" tagged covers "PRAKASH".
     if (cat === 'cast' && [...have.cast].some((x) => cueName(x) === cueName(name))) return;
     seen[cat].add(k);
@@ -574,4 +606,4 @@ export function suggestReport(scenes, elements) {
   return { rows, match };
 }
 
-export default { sliceScript, headingParts, sceneParts, matchScenes, isConfident, describeMatch, pairScenes, suggestReport, estimateSlice, screenTime, runtimeEstimate, formatDuration, cueName, castMatrix, suggestElements, suggestAll };
+export default { sliceScript, headingParts, sceneParts, matchScenes, isConfident, describeMatch, pairScenes, suggestReport, estimateSlice, screenTime, runtimeEstimate, formatDuration, runtimeMinutes, cueName, castMatrix, suggestElements, suggestAll };

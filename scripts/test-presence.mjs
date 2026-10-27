@@ -17,6 +17,10 @@ eq(P.displayNameOf({ email: 'arun.k@example.com' }), 'arun.k', 'then the e-mail 
 eq(P.displayNameOf(null), 'A collaborator', 'nothing known');
 eq(P.initials('Cal Collab'), 'CC', 'two words');
 eq(P.initials('meera'), 'M', 'one word');
+eq(P.initials('😀 Dev'), 'D', 'an emoji word is skipped, never split into a lone surrogate (QA r4)');
+ok(!/[\uD800-\uDFFF]/.test(P.initials('😀')) || P.initials('😀') === '😀', 'an emoji-only name keeps the whole character');
+eq(P.caretTag(P.displayNameOf({})), 'Collaborator', 'a nameless peer\'s caret reads Collaborator, not "A" (QA r4)');
+eq(P.caretTag('Cal Collab'), 'Cal', 'a caret tag is the first word');
 eq(P.initials('Anna Maria de Souza'), 'AS', 'first and last');
 eq(P.initials(''), '?', 'no name');
 
@@ -54,6 +58,9 @@ eq(P.editingWarning([{ name: 'Cal', editing: true }, { name: 'Ann', editing: fal
 ok(/^Ann and Cal are writing/.test(P.editingWarning([{ name: 'Ann', editing: true }, { name: 'Cal', editing: true }])), 'two people');
 ok(/^A, B and C are/.test(P.editingWarning(['A', 'B', 'C'].map((name) => ({ name, editing: true })))), 'three people');
 eq(P.editingWarning([]), '', 'nobody: no warning');
+// co-editing on (§49): saves merge, so the warning must not say they replace each other
+ok(!/replace each other|take turns/.test(P.editingWarning([{ name: 'Cal', editing: true }], true)), 'co-edit: no take-turns advice');
+ok(/merge line by line/.test(P.editingWarning([{ name: 'Cal', editing: true }], true)), 'co-edit: says saves merge');
 
 /* One channel carries both pages: a Story tab is not in the script, and the reverse. */
 {

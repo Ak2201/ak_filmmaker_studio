@@ -38,6 +38,11 @@
 export function parseNum(s) {
   if (!s) return 0;
   s = String(s).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '').replace(/^inr\.?|inr$/g, '');
+  // "/-" (or "/=") is the Indian "and no paise" mark — "Rs. 25,000/-".
+  // Left on, it broke the whole-string match below, so "25k/-" fell
+  // through to the bare 25 and "2.5L/-" to 2.5: 1,000x and 100,000x
+  // too small, silently. It names no unit, so it is simply dropped.
+  s = s.replace(/\/[-=]$/, '');
   // Anchoring is necessary but NOT sufficient, which is the part that
   // is easy to lose. /(lakh|lac|l)$/ is anchored and still fires on
   // "1500 per roll", because the last letter of "roll" is an l — so a
@@ -74,9 +79,16 @@ export function parseNum(s) {
 /** Abbreviated — lossy by design. Glanceable magnitude only. */
 export function fmtINR(n) {
   if (!n) return '₹ 0';
-  if (n >= 10000000) return '₹ ' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
-  if (n >= 100000)   return '₹ ' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
-  if (n >= 1000)     return '₹ ' + Math.round(n / 1000) + 'k';
+  // The page's own minus (−₹ 5k), grouped by the same rules as a gain.
+  if (n < 0) return '−' + fmtINR(-n);
+  // The unit is chosen AFTER rounding: chosen from the raw figure,
+  // 99,600 printed '₹ 100k' and 99,99,999 '₹ 100 L', a number that had
+  // already reached the next unit. Lakhs and crores both print two
+  // decimals, so both are counted in whole thousands.
+  const th = Math.round(n / 1000);
+  if (th >= 10000) return '₹ ' + Math.round(n / 100000) / 100 + ' Cr';
+  if (th >= 100)   return '₹ ' + th / 100 + ' L';
+  if (Math.round(n) >= 1000) return '₹ ' + Math.round(n / 1000) + 'k';
   return '₹ ' + Math.round(n);
 }
 
@@ -92,6 +104,8 @@ export const INR = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
     two; a dollar total and a rupee total are reported side by side,
     because adding them would require a rate nobody has. */
 export const USD = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+const USD2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /* ---- a budget in dollars (21 Oct 2026, BUDGET-USD) ---------------
    A film made outside India budgets in US dollars. The two calls below
@@ -131,9 +145,18 @@ export function fmtMoney(n, currency, short) {
   const v = Math.abs(n || 0);
   const sign = n < 0 ? '−' : '';
   if (currency !== 'USD') return sign + '₹ ' + INR.format(Math.round(v));
-  if (short && v >= 1000000) return sign + '$' + (v / 1000000).toFixed(2).replace(/\.?0+$/, '') + 'M';
-  if (short && v >= 1000) return sign + '$' + Math.round(v / 1000) + 'k';
-  return sign + '$' + USD.format(Math.round(v));
+  // As fmtINR: the unit follows the ROUNDED figure ('$1M', not '$1000k').
+  if (short && Math.round(v / 1000) >= 1000) return sign + '$' + Math.round(v / 10000) / 100 + 'M';
+  if (short && Math.round(v) >= 1000) return sign + '$' + Math.round(v / 1000) + 'k';
+  // Cents survive when there are cents: a $0.40 bill is not '$0'. A whole
+  // figure prints as it always did, so an estimate total is unchanged.
+  const cents = Math.round(v * 100) / 100;
+  return sign + '$' + (Number.isInteger(cents) ? USD.format(cents) : USD2.format(cents));
 }
+
+/** A headline figure: exact under 1 lakh (or $100k), abbreviated above.
+    '₹ 1,200' must not read '₹ 1k' beside a page that prints ₹ 1,200. */
+export const fmtGlance = (n, currency) => (Math.abs(n || 0) < 100000
+  ? fmtMoney(n, currency) : fmtMoney(n, currency, true));
 
 export default { parseNum, fmtINR, INR, USD };

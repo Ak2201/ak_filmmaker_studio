@@ -98,8 +98,8 @@ export function noteAdd(id, { pin = '' } = {}) {
   const dots = h('div.nt-colors', { role: 'radiogroup', 'aria-label': 'Colour for the new note' });
   COLORS.forEach((c, i) => dots.append(h('button.nt-dot.nt-dot-' + c, {
     type: 'button', role: 'radio', 'data-nt': 'new-color', 'data-color': c, 'data-for': id,
-    'aria-checked': String(i === 0), 'aria-label': COLOR_LABEL[c], title: COLOR_LABEL[c]
-  })));
+    'aria-checked': String(i === 0), tabindex: i === 0 ? '0' : '-1', 'aria-label': COLOR_LABEL[c], title: COLOR_LABEL[c]
+  })));   // a radio group is one Tab stop; the arrow keys move it (notes-actions.js)
   row.append(dots);
   row.append(button({ label: 'Add note', variant: 'primary', icon: 'add', size: 'sm', attrs: { 'data-nt': 'add', 'data-for': id, 'data-pin': pin } }));
   box.append(row);

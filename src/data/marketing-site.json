@@ -26,7 +26,7 @@
     "pricing": "Pricing",
     "guides": "Guides",
     "compare": "Switching",
-    "login": "Log in",
+    "login": "Sign in",
     "signup": "Sign up",
     "menu": "Menu",
     "mainNav": "Main",
@@ -44,9 +44,10 @@
     "viewPricing": "View plans & pricing"
   },
   "signup": {
-    "heading": "Sign in to start your trial",
-    "headingHtml": "Sign in to start your <span data-trial-length=\"label\">free trial</span>",
-    "offer": "Try the studio with a <span data-trial-length=\"label\">free trial</span>. No card required.",
+    "heading": "Sign in to get started",
+    "headingPass": "Sign in to try the whole studio for {price}",
+    "offer": "Sign in with Google, then choose a yearly plan. Each plan states its price and terms before you pay. {planTerms}",
+    "offerPass": "{length} of the whole studio for {price}, once per account. You pay on the next page, after you sign in.",
     "offerOff": "The studio is open: sign in with Google and use it, with your work saved in your browser.",
     "offerIn": "You are already signed in.",
     "google": "Continue with Google",
@@ -55,8 +56,22 @@
     "termsLabel": "Terms",
     "privacyLabel": "Privacy Policy",
     "have": "Already have an account?",
-    "haveLink": "Log in",
+    "haveLink": "Sign in",
     "close": "Close"
+  },
+  "pass": {
+    "_": "THE LAUNCH PASS (27 Oct 2026). The free trial is retired for the public; while the launch offer runs, the public pages offer a paid pass instead. {price} and {length} are RUNTIME SLOTS, filled by src/pages/marketing.js from trial_offer().pass through src/lib/pass-offer.js: the server owns the price, the length, the deadline and the cap, and the owner edits them in the console. NEVER type a figure, a date or a count here, in any marketing JSON or in a page (test:marketing fails on one). Everything that names the pass is hidden in the markup ([data-pass-only]) and shown only while the server says the pass is open; the fallback beside it ([data-pass-off]) speaks of the yearly plans, never of a free trial. The countdown is the server's deadline on the server's clock, the same for every visitor.",
+    "label": "Launch offer",
+    "line": "{length} of the whole studio for {price}",
+    "ends": "ends in",
+    "ended": "The launch offer has ended. The yearly plans are unchanged.",
+    "cta": "Try it for {price}",
+    "ctaFull": "Try the whole studio for {price}",
+    "note": "{length} of the whole studio for {price}, once per account. {passTerms}"
+  },
+  "terms": {
+    "_": "OFFER TERMS (27 Oct 2026). Whether a purchase renews is the owner's choice in the console, per product (pass_mode / plan_mode, schema §62), and it can change without a rebuild, so NO static sentence in the marketing JSON may say that a purchase renews or does not (test:marketing). The copy holds tokens instead: {planTerms} and {passTerms} are empty runtime slots that src/pages/marketing.js fills through src/lib/offer-terms.js (the one wording of renewal terms) from trial_offer(); {planRenewNote} is this renewNote, hidden, shown only while plan_mode is 'renew'. An unknown mode fills nothing, so the words around a token must be true either way. Never put a token in a meta description or a title.",
+    "renewNote": "Your price is locked while you stay, and cancelling takes two taps."
   },
   "student": {
     "_live": "false: no student promo code exists on the server yet, so the pricing page's students band asks the reader to write to us (contact.html) and names no code. Set true ONLY once the owner has created `code` in the console's promo codes and checked it with quote_order() in both currencies the page can show; the band then names the code and links purchase.html?plan=indie.",

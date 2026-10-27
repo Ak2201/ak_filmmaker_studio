@@ -41,6 +41,7 @@
    open sections stay where they are.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import StudioUI from './chrome.js';
 import { paperTextarea } from './paper-field.js';
 import { saveOnInput } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
@@ -84,7 +85,7 @@ function bpField(f, film, fmt) {
   const ta = paperTextarea('#' + id + '.sb-input', { rows: f.rows || 2, 'data-sb-key': f.key, 'data-sb-ns': f.ns, 'data-key': f.key, placeholder: f.placeholder || '' });
   return h('div.sb-field', {}, [
     h('label.sb-lab', { for: id, text: f.label }),
-    noteButton(f.key, fmt),
+    noteButton(f.key, fmt, f.label),
     ...learnFor(f.learn, film),
     ta
   ]);
@@ -228,8 +229,8 @@ function charactersBody(film, openIds = new Set()) {
   const has = (r) => roster.some((c) => c.role === r);
   if (!has('protagonist') || !has('antagonist')) {
     const row = h('div.sb-add-roles');
-    if (!has('protagonist')) row.append(h('button.btn.primary', { type: 'button', 'data-sb': 'add-role', 'data-role': 'protagonist', text: 'ADD THE PROTAGONIST' }));
-    if (!has('antagonist')) row.append(h('button.btn', { type: 'button', 'data-sb': 'add-role', 'data-role': 'antagonist', text: 'ADD THE ANTAGONIST' }));
+    if (!has('protagonist')) row.append(h('button.k-btn.k-btn--primary', { type: 'button', 'data-sb': 'add-role', 'data-role': 'protagonist', text: 'Add the protagonist' }));
+    if (!has('antagonist')) row.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-sb': 'add-role', 'data-role': 'antagonist', text: 'Add the antagonist' }));
     wrap.append(h('p.sb-note', { text: fmt === 'short' ? 'Start with the person the film is about.' : 'Start with the two people the story turns on.' }), row);
   }
   const listEl = h('div.sb-char-list');
@@ -249,7 +250,7 @@ function charactersBody(film, openIds = new Set()) {
     h('label.sb-lab', { for: 'sb-newname', text: 'Add another character' }),
     h('div.sb-new-row', {}, [
       h('input#sb-newname.sb-input', { type: 'text', 'data-sb-newname': '', placeholder: 'Name', autocomplete: 'off' }),
-      h('button.btn', { type: 'button', 'data-sb': 'add-char', text: 'ADD' })
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-sb': 'add-char', text: 'Add' })
     ])
   ]));
   return wrap;
@@ -375,12 +376,24 @@ export function wireBible(opts = {}) {
     } else if (act === 'add-char') {
       const inp = document.querySelector('[data-sb-newname]');
       const name = inp ? inp.value.trim() : '';
-      if (!name) { if (inp) inp.focus(); return; }
+      if (!name) { if (inp) inp.focus(); StudioUI.toast('Type the character’s name first, then press Add.'); return; }
+      /* The same name twice may be meant (two Ravis), so it is added —
+         and said, since the cast matrix and auto-tag then hold two. */
+      const twin = [...document.querySelectorAll('.sb-chars [data-ch-name]')]
+        .some((b) => b.getAttribute('data-ch-name').trim().toUpperCase() === name.toUpperCase());
       const c = newCharacter(chars(), '', name);
       saveChars(true);
       redrawCharacters();
       const box = document.querySelector(`details.sb-char[data-ch="${CSS.escape(c.id)}"]`);
-      if (box) { box.open = true; box.scrollIntoView({ block: 'nearest' }); }
+      if (box) {
+        box.open = true;
+        /* The redraw replaced the Add button: the keyboard goes to the
+           new character's card, not to <body>. */
+        const f = box.querySelector('[data-ch-field="name"]') || box.querySelector('summary');
+        if (f) f.focus({ preventScroll: true });
+        box.scrollIntoView({ block: 'nearest' });
+      }
+      if (twin) StudioUI.toast(`There is already a ${name.toUpperCase()} in your cast. This is a second card with the same name.`);
     }
   });
   delegate(document, 'keydown', '[data-sb-newname]', (e) => {

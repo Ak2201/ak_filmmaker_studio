@@ -440,7 +440,12 @@ p.cx-hint { margin: 0; }
   border-bottom: 1px solid var(--border-hair);
 }
 .cx-table.k-table .num { white-space: nowrap; }
+/* Row headers wrap on the cost report AND the top sheet: the kit's
+   nowrap pushed the top sheet's whole Estimate column off a 390px phone
+   ("Total below the line — production" would not break). */
 .cx-report.k-table tbody th[scope="row"] { min-width: 9rem; white-space: normal; }
+.cx-top.k-table tbody th[scope="row"],
+.cx-top.k-table tfoot th[scope="row"] { white-space: normal; }
 .cx-table.k-table .cx-dept-row > * {
   background: var(--surface-rail);
   font-weight: 600;
@@ -448,6 +453,9 @@ p.cx-hint { margin: 0; }
 }
 .cx-acct { color: var(--brand-deep); }
 .cx-table.k-table .cx-sub > * { font-weight: 600; color: var(--ink-body); }
+/* The kit drops the last row's rule on td only, so a last row made of a
+   th and tds kept a rule under the label alone. One rule across the row. */
+.cx-table.k-table tbody tr:last-child th { border-bottom: 0; }
 .cx-table.k-table tfoot th, .cx-table.k-table tfoot td { font-weight: 600; color: var(--ink); border-bottom: 0; }
 .cx-table.k-table .cx-total > * {
   border-top: 1px solid var(--border-strong);
@@ -463,6 +471,14 @@ p.cx-hint { margin: 0; }
 .cx-table.k-table tr.is-cut > * { background: var(--brand-wash); }
 .cx-table .k-control { height: var(--h-control); min-width: 9rem; }
 .cx-report .k-control { min-width: 12rem; }
+/* A phone shows the figures the tab exists for: the Line and Department
+   columns give way until Estimate peeks into the 356px box (it began at
+   x=361, so only names showed and nothing said the table scrolled). */
+@media (max-width: 720px) {
+  /* 7.5rem clipped '2800 Food & per diem' to '2800 Foo'. */
+  .cx-report .k-control { min-width: 0; width: 12rem; }
+  .cx-report.k-table tbody th[scope="row"] { min-width: 6.5rem; }
+}
 .cx-wages .k-control { min-width: 7rem; }
 .cx-flag.k-badge { margin-left: var(--s2); vertical-align: middle; }
 .cx-bar.k-meter { margin-top: var(--s1); min-width: 4rem; }
@@ -634,3 +650,23 @@ p.cx-hint { margin: 0; }
 }
 .bud-privacy .bud-private-hint { margin: 0; }
 .bud-locked { margin-block: var(--s4); }
+
+/* The estimator on paper: it may break across pages (a long block
+   moved whole leaves page one blank), unpriced spare rows and the
+   screen-only hint stay off it, and the column captions print so
+   "10  4.5k" has labels. */
+@media print {
+  .calc-block.bud-est { break-inside: auto !important; }
+  .bud-est .calc-row[data-blank],
+  .bud-est .calc-actions,
+  .bud-est .bud-est-body > p.hint { display: none !important; }
+  .bud-est .calc-row.head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 2.4fr) minmax(4.5rem, .8fr) minmax(6rem, 1.1fr) minmax(7.5rem, 1fr);
+    background: none;
+  }
+}
+
+/* Wage table on a phone: the craft name wraps instead of taking the whole
+   scroller, so the published figure and the batta field are in reach. */
+.cx-wages tbody th[scope="row"] { width: 10rem; min-width: 7rem; max-width: 12rem; white-space: normal; overflow-wrap: anywhere; }

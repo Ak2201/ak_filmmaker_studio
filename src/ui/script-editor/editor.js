@@ -39,6 +39,7 @@ import {
 } from './rows.js';
 import { wireKeys, splitAt } from './keys.js';
 import { createInference } from './inference.js';
+import { wantsSplit, planPaste } from '../../lib/script-paste.js';
 
 export { elFocus, PLACEHOLDER, CHUNK, iconBtn, field, setAttr, autosize } from './rows.js';
 
@@ -431,6 +432,42 @@ export function mountEditor(host, opts) {
     o.scheduleDerived();
   });
   on('focusout', '.wr-text[data-el-field="text"]', () => smart.close());
+
+  /* PASTE. A line is a textarea, so a native paste of several paragraphs
+     made ONE element of the lot — a heading holding a whole scene, and a
+     Breakdown row with that scene as its location (QA). A paste that
+     needs it (src/lib/script-paste.js) is split into elements with the
+     same parser the Import dialog's paste box uses, loaded at the paste.
+     The default is cancelled synchronously; the selection is read now,
+     because the parser arrives a tick later. */
+  on('paste', '.wr-text[data-el-field="text"]', (e, ta) => {
+    const raw = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    const i0 = indexOfEl(idOf(ta, 'el'));
+    if (i0 < 0 || !wantsSplit(els()[i0].type, raw)) return;
+    e.preventDefault();
+    const id = els()[i0].id;
+    const line = { type: els()[i0].type, before: ta.value.slice(0, ta.selectionStart), after: ta.value.slice(ta.selectionEnd) };
+    const text = raw.replace(/\r\n?/g, '\n');
+    import('../../lib/script-import.js')
+      .then((P) => { try { return P.parseScript(text, '').elements; } catch (err) { return null; } })
+      .catch(() => null)
+      .then((parsed) => {
+        const i = indexOfEl(id);
+        if (i < 0) return;
+        const plan = planPaste(line, parsed, text);
+        const el = els()[i];
+        if (plan.type !== el.type) { inference.noteTypeChange(el.id); el.type = plan.type; if (plan.type !== 'character') delete el.dual; }
+        el.text = plan.text;
+        const made = plan.insert.map((x) => blankElement({ type: x.type, text: x.text }));
+        els().splice(i + 1, 0, ...made);
+        if (smart && smart.invalidate) smart.invalidate();
+        persistNow();
+        render(elFocus((made[made.length - 1] || el).id));
+        o.refreshCounters();
+        o.scheduleDerived();
+        if (made.length) o.say('Pasted as ' + (made.length + 1) + ' lines.');
+      });
+  });
 
   /* A type change moves the element across the page, so the row's class
      changes — but re-rendering the whole section would cost the focus the

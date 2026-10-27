@@ -69,6 +69,7 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import PDF from '../lib/pdf.js';
+import { paperDate } from '../lib/paper-date.js';
 import { brandPrint } from '../ui/footer.js';   // CORE: the "Made with" line on a plain print
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
@@ -153,7 +154,7 @@ function renderHeader(scenes, rows) {
     statCard({
       label: 'Script pages', value: scenes.length ? formatEighths(eighths) : '—',
       unit: scenes.length ? (eighths === 8 ? 'page' : 'pages') : '',
-      note: pace ? `avg ${formatEighths(pace.avg)} pp / shoot day` : (scenes.length ? eighths + ' eighths' : ''),
+      note: pace ? `avg ${formatEighths(pace.avg)} pp / shoot day` : (scenes.length ? 'no shoot days yet' : ''),
       class: 'sb-kpi-pages'
     }),
     statCard({
@@ -210,7 +211,7 @@ function fillRuntime(strip) {
     const target = T.targetRuntime().minutes;
     const est = A.default.runtimeEstimate(st, songs, { targetSeconds: target * 60 });
     if (!est.total) return;
-    const mins = Math.max(1, Math.round(est.total / 60));
+    const mins = Math.max(1, A.default.runtimeMinutes(est.total));
     const { note, tone } = runtimeNote(mins, target);
     strip.append(statCard({
       label: 'Est. runtime', value: String(mins), unit: 'min', note, noteTone: tone,
@@ -738,10 +739,21 @@ const doodRows = (scenes, days) => doodRowsFor(scenes, days, Scenes.elementIndex
 function doodKey() {
   const k = h('div.sb-dood-key', { role: 'group', 'aria-label': 'Day out of days key' });
   k.append(h('span.sb-legend-lab', { text: 'Key' }));
-  [['SW', 'Start work'], ['W', 'Work'], ['H', 'Hold'], ['WF', 'Work finish']].forEach(([c, t]) => {
+  [['SW', 'Start work'], ['W', 'Work'], ['H', 'Hold'], ['WF', 'Work finish'], ['SWF', 'One day only']].forEach(([c, t]) => {
     k.append(h('span.sb-dood-key-item', {}, [doodCode(c), h('span', { text: t })]));
   });
   return k;
+}
+
+function doodExportMenu() {
+  const m = actionMenu('Export', [
+    { label: 'Day Out of Days as PDF', action: 'pdf-dood', hint: 'landscape' },
+    { label: 'Day Out of Days as CSV', action: 'csv-dood', hint: 'cast × days' },
+    '---',
+    { label: 'Print this page',        action: 'sb-print' }
+  ], { align: 'right' });
+  m.querySelector('.tb-menu-btn').classList.add('k-btn', 'k-btn--secondary');
+  return h('div.sb-dood-export.pdf-menu-host', {}, [m]);
 }
 
 function renderDood(scenes) {
@@ -754,10 +766,13 @@ function renderDood(scenes) {
       h('h2.bd-h2', { text: 'Day Out of Days' }),
       h('p.bd-sub', {
         text: 'Who is needed, and on which day. Built from the cast tags and the days '
-            + 'assigned above — there is nothing to fill in here.'
+            + 'assigned on the Stripboard tab — there is nothing to fill in here.'
       })
     ]),
-    rows.length && days.length ? doodKey() : null
+    rows.length && days.length ? doodKey() : null,
+    /* The board's Export menu sits in the other tab's controls, which
+       are hidden here, so this tab carries its own. */
+    rows.length && days.length ? doodExportMenu() : null
   ].filter(Boolean)));
 
   if (!rows.length) {
@@ -769,7 +784,7 @@ function renderDood(scenes) {
   }
   if (!days.length) {
     wrap.append(h('p.bd-none', {
-      text: 'No shoot days assigned yet. Give a strip a day above — or use "Schedule by location" — '
+      text: 'No shoot days assigned yet. Give a strip a day on the Stripboard tab — or use "Schedule by location" there — '
           + 'and the grid fills itself in.'
     }));
     return wrap;
@@ -914,7 +929,7 @@ function render() {
         h('h2.bd-h2', { text: 'Day Out of Days' }),
         h('p.bd-sub', {
           text: 'Who is needed, and on which day. It builds itself from the cast '
-              + 'tags and the shoot days on the breakdown, so there is nothing to '
+              + 'tags and the shoot days on the Stripboard tab, so there is nothing to '
               + 'fill in here and nothing to show until there are scenes.'
         })
       ])
@@ -996,7 +1011,8 @@ function fillLock() {
       if (draft) host.replaceChildren(...[draft, lockButton()].filter(Boolean));
       return;
     }
-    const stamp = String(doc.numbering.at || '').slice(0, 10);
+    /* The film's date style, as every other date on this page. */
+    const stamp = paperDate(doc.numbering.at, filmPrefs(), 'medium');
     host.replaceChildren(...[
       draft,
       badge({
@@ -1082,7 +1098,7 @@ delegate(document, 'click', '[data-action="sb-lock"]', async () => {
         + 'From then on a scene inserted after 12 is 12A, a deleted scene stays on the page as '
         + 'OMITTED, and a moved scene keeps its number — so the strips, the sides and the call '
         + 'sheets keep pointing at the same scene.',
-    notice: { tone: 'info', title: 'Unlocking renumbers', body: 'It can be unlocked later from the revision tools, and unlocking renumbers every scene by position.' },
+    notice: { tone: 'info', title: 'Unlocking renumbers', body: 'It can be unlocked later here, with Unlock draft beside the lock, and unlocking renumbers every scene by position.' },
     confirm: 'Lock numbering',
     typeToConfirm: 'LOCK'
   });
@@ -1172,6 +1188,10 @@ delegate(document, 'click', '[data-action="sb-banner-remove"]', (e, el) => {
   if (!gone) return;
   DPR.removeBanner(day, gone.id);
   render();
+  /* The Remove button was rebuilt, so focus fell to <body>: land on the day's + Banner. */
+  const add = document.querySelector(`[data-action="sb-banner-add"][data-day="${day}"]`);
+  const addBtn = add && add.closest('.sb-banner-menu') && add.closest('.sb-banner-menu').querySelector('.tb-menu-btn');
+  if (addBtn) addBtn.focus();
   const said = `${DPR.bannerLabel(gone.kind)} removed from Day ${day}.`;
   announce(said);
   toast(said, { action: 'UNDO', onAction: () => { DPR.addBanner(day, gone); render(); announce('Undone.'); } });
@@ -1440,23 +1460,76 @@ document.addEventListener('contextmenu', (e) => {
    in one place are shot together, in script order, and each place
    becomes a day. It is a starting point, not a schedule — which is
    why it says so before it overwrites anything. */
+/* The undo of a schedule rewrite (Clear days, Schedule by location): in
+   memory only, no new key. `before` is every scene's day and every per-day
+   order list, read through the models that write them; `after` is what the
+   rewrite just left, so Undo can tell whether the board has changed since
+   and refuse rather than write the old schedule over newer work. */
+const snapshotSchedule = () => ({
+  days: Scenes.listScenes().map((s) => ({ id: s.id, day: shootDayOf(s) })),
+  orders: Locations.listDayOrder()
+});
+/* render() rebuilds the toolbar, so the control that opened the dialog is a
+   new element: hand focus back to it, as Escape does. */
+const refocus = (action) => {
+  const el = document.querySelector(`[data-action="${action}"]`);
+  if (el && typeof el.focus === 'function') el.focus();
+};
+function undoableToast(said, before, after, bannerAction, undone) {
+  announce(said);
+  /* Actionable, so it stays until dismissed (see the toast note in chrome.js),
+     and it is the board's latest undo: the next move, clear or re-schedule
+     dismisses it through dropMoveToast(). */
+  const mine = toast(said, {
+    action: 'UNDO',
+    onAction: () => {
+      if (moveToast === mine) moveToast = null;
+      const now = new Map(Scenes.listScenes().map((s) => [s.id, s]));
+      const moved = after.days.some((d) => now.has(d.id) && shootDayOf(now.get(d.id)) !== d.day)
+        || JSON.stringify(Locations.listDayOrder()) !== JSON.stringify(after.orders);
+      if (moved) {
+        const msg = 'The board has changed since, so it was not undone. Nothing was changed.';
+        toast(msg);
+        announce(msg);
+        return;
+      }
+      before.days.forEach((d) => { if (now.has(d.id)) Scenes.updateScene(d.id, { shootDay: d.day }); });
+      Locations.clearDayOrders();
+      Object.entries(before.orders).forEach(([day, ids]) => Locations.setDayOrder(day, ids));
+      render();
+      refocus(bannerAction);
+      announce(undone);
+    }
+  });
+  moveToast = mine;
+}
+
+/* Schedule by location: the first pass a 1st AD does by hand. Scenes
+   in one place are shot together, in script order, and each place
+   becomes a day. It is a starting point, not a schedule — which is
+   why it says so before it overwrites anything, and why the overwrite
+   can be undone. */
 delegate(document, 'click', '[data-action="sb-auto"]', async () => {
   const scenes = Scenes.listScenes();
   if (!scenes.length) return;
   const already = scenes.filter((s) => shootDayOf(s)).length;
-  if (already && !await ask(
-    `${already} ${already === 1 ? 'scene already has' : 'scenes already have'} a shoot day. `
-    + 'Re-schedule every scene by location?'
-  )) return;
+  if (already && !await askDanger({
+    title: `Re-schedule ${already === 1 ? 'the scene that has' : `the ${already} scenes that have`} a shoot day?`,
+    body: 'Every scene is moved to a day by location and the per-day order is lost. Undo brings the old schedule back.',
+    confirm: 'Re-schedule'
+  })) return;
 
   dropMoveToast();
+  const before = snapshotSchedule();
   const { plan, days } = scheduleByLocation(scenes);
   for (const p of plan) Scenes.updateScene(p.id, { shootDay: p.day });
   // A fresh schedule starts in script order within each day.
   Locations.clearDayOrders();
   view.group = 'day';
   render();
-  toast(`Scheduled into ${days} ${days === 1 ? 'day' : 'days'}, one per location.`);
+  refocus('sb-auto');
+  undoableToast(`Scheduled into ${days} ${days === 1 ? 'day' : 'days'}, one per location.`,
+    before, snapshotSchedule(), 'sb-auto', 'Undone. The old schedule is back.');
 });
 
 delegate(document, 'click', '[data-action="sb-clear"]', async () => {
@@ -1469,42 +1542,14 @@ delegate(document, 'click', '[data-action="sb-clear"]', async () => {
     confirm: 'Clear days'
   })) return;
   dropMoveToast();
-  /* The undo's snapshot, in memory only (no new key): each cleared
-     scene's day and every per-day order list, read through the same
-     models that write them. */
-  const days = scenes.map((s) => ({ id: s.id, day: shootDayOf(s) }));
-  const orders = Locations.listDayOrder();
+  const before = snapshotSchedule();
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.
   Locations.clearDayOrders();
   render();
-  const said = `Cleared the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}.`;
-  announce(said);
-  /* Actionable, so it stays until dismissed (see the toast note in
-     chrome.js), and it is the board's latest undo: the next move, clear
-     or re-schedule dismisses it through dropMoveToast(). It refuses if
-     any of those strips has been given a day since, as undoPlace() does,
-     rather than write the old schedule over newer work. */
-  const mine = toast(said, {
-    action: 'UNDO',
-    onAction: () => {
-      if (moveToast === mine) moveToast = null;
-      const now = new Map(Scenes.listScenes().map((s) => [s.id, s]));
-      const moved = days.some((d) => now.has(d.id) && shootDayOf(now.get(d.id)))
-        || Object.keys(Locations.listDayOrder()).length;
-      if (moved) {
-        const msg = 'The board has changed since the clear, so it was not undone. Nothing was changed.';
-        toast(msg);
-        announce(msg);
-        return;
-      }
-      days.forEach((d) => { if (now.has(d.id)) Scenes.updateScene(d.id, { shootDay: d.day }); });
-      Object.entries(orders).forEach(([day, ids]) => Locations.setDayOrder(day, ids));
-      render();
-      announce('Undone. The shoot days are back.');
-    }
-  });
-  moveToast = mine;
+  refocus('sb-clear');
+  undoableToast(`Cleared the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}.`,
+    before, snapshotSchedule(), 'sb-clear', 'Undone. The shoot days are back.');
 });
 
 /* ---- PDF -----------------------------------------------------

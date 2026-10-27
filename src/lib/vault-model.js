@@ -1,5 +1,5 @@
 /* ============================================================
-   VAULT MODEL — the Idea Vault page's two compound actions
+   VAULT MODEL — the Idea Vault page's compound action
    ------------------------------------------------------------
    Moved out of src/pages/vault.js when the view and the logic were
    split (docs/ARCHITECTURE.md). The clippings and the story are
@@ -20,21 +20,4 @@ export function appendClipToSynopsis(id) {
   return true;
 }
 
-/** Remove clipping `id`; returns the removed record (for undo) or undefined. */
-export function removeClip(id) {
-  const gone = Story.listVault().find((x) => x.id === id);
-  Story.removeFromVault(id);
-  return gone;
-}
-
-/** Undo a removal: put the clipping back with its id, date and beat.
- *  @returns {boolean} whether it went back in. */
-export function restoreClip(gone) {
-  if (Story.addToVault({ snippet: gone.snippet, url: gone.url, title: gone.title, at: gone.at, id: gone.id })) {
-    if (gone.beat) Story.updateVault(gone.id, { beat: gone.beat });
-    return true;
-  }
-  return false;
-}
-
-export default { appendClipToSynopsis, removeClip, restoreClip };
+export default { appendClipToSynopsis };

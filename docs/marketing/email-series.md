@@ -1,4 +1,4 @@
-# E-mail series — six messages
+# E-mail series — eight messages
 
 **Status: NOT SENT.** Written 26 Oct 2026. Nothing here may go out until:
 
@@ -15,8 +15,8 @@
    `public.deleted_subjects` (schema §45.6; a tombstoned address is then
    refused if the form is submitted again), and keep no copy elsewhere;
 3. every `{PLACEHOLDER}` below is filled from the server the day it is sent
-   (see the table): no date and no trial length is ever typed from this
-   file.
+   (see the table): no date, no price and no pass length is ever typed
+   from this file.
 
 Plain text only: no images, no tracking pixels, no open tracking. One link
 per message where possible, each tagged `src=email` (console bucket `email`;
@@ -27,15 +27,16 @@ with the footer. Sign with the trading name; never the owner's name.
 
 ## Fill-ins (read on the day of sending)
 
-`{IMPORT_TRIAL_LINE}` in e-mail 3 is "Bring your own script in during the
-trial:" when `{TRIAL_OPENS}` is the whole studio, and "See it working on the
-sample films during the trial; bringing in your own script needs a plan:"
-otherwise.
+`{IMPORT_PASS_LINE}` in e-mail 3 is "Bring your own script in with the launch
+pass, {PASS_PRICE} for {PASS_LENGTH}:" while `trial_offer()->'pass'` reads
+`open` true, and "Bring your own script in on any plan:" otherwise.
 
 | Placeholder | Source |
 | --- | --- |
-| `{TRIAL_LENGTH}` | `trial_offer()` `trial_hours`, in words (72 hours is "3 days"); read on the day, never typed from here |
-| `{TRIAL_OPENS}` | "the whole studio" only when `trial_offer()` reads `trial_scope: "full"` and the console's trial plan is Pro (playbook §6.1); otherwise "the tools on two sample films" |
+| `{PASS_PRICE}` | `trial_offer()->'pass'` `amount_paise` ÷ 100, in rupees ("₹49"); read on the day. If `pass.open` is false, the e-mail leaves the pass out |
+| `{PASS_LENGTH}` | `pass.days` in words ("7 days") |
+| `{PASS_ENDS}` | `pass.ends_at` as an IST date and time; null means no deadline, so drop the "ends" line |
+| `{PASS_LEFT}` | "`pass.left` of `pass.cap` left", only when a cap is set; otherwise drop it |
 | `{BASIC_YEAR}`, `{INDIE_YEAR}`, `{PRO_YEAR}` | `price_notice()` current price per plan, in rupees |
 | `{FROM_DAY}` | the pricing page's "from about … a day" figure (derived, never typed) |
 | `{RISE_DATE}` | `price_notice()` `plans[].next_price_at`, written as a date in IST ("31 December 2026"); null means the rise has fired, so drop the sentence |
@@ -70,8 +71,10 @@ an indicative Chennai rate card (the figures re-checked against a public page
 say which page and when), and call sheets you can
 send as a WhatsApp message.
 
-The quickest way to see it is the free trial: {TRIAL_LENGTH} of
-{TRIAL_OPENS}, no card needed. It starts when you press start, not before.
+The quickest way to see it on your own script is the launch pass:
+{PASS_PRICE} for {PASS_LENGTH} of the whole studio, once per account.
+{PASS_TERMS}. (With the pass closed, send instead: "The
+plans are on the pricing page, from about {FROM_DAY} a day.")
 
 https://filmmakerstudio.in/start?src=email&utm_campaign=welcome
 
@@ -122,7 +125,7 @@ place reaches the others.
 Scanned or password-protected PDFs are refused with a reason rather than
 read badly. That is on purpose.
 
-{IMPORT_TRIAL_LINE}
+{IMPORT_PASS_LINE}
 https://filmmakerstudio.in/start?src=email&utm_campaign=import
 
 FilmMakerStudio
@@ -143,17 +146,17 @@ Here are the plans, with nothing left for checkout to surprise you:
 - Pro, {PRO_YEAR} for a year: running it. Adds call sheets, the shoot day,
   the edit log, deliverables and the AI tools (with your own AI key).
 
-Each plan is one payment for one year. Nothing renews by itself: when the
-year ends, buy the next one if you want it. Moving up mid-year credits the
-unused part of your year.
+Each plan is a year of the studio: {PLAN_TERMS}. Moving up mid-year
+credits the unused part of your year.
 
 These are founding prices. They hold until {RISE_DATE}, or until the
 founding places are taken if that comes first. A plan bought before then is
 a full year at the price you paid.
 
 Purchases are final, except a duplicate charge, a plan that was never
-activated on your account, and refunds Indian law requires. Please use the
-trial first so you know what you are buying.
+activated on your account, and refunds Indian law requires. Please look at
+the Dragon sample, and the plan table, first so you know what you are
+buying.
 
 Students: the code STUDENT50 gives the student price on Intermediate.
 
@@ -177,8 +180,8 @@ One plain fact, once: the founding prices end on {RISE_DATE}, or earlier if
 the founding places fill. After that the yearly price of each plan goes up.
 The pricing page shows both figures and the date, read from the server.
 
-If you have been waiting, the trial is still the right first step. If the
-studio is not for you, ignore this e-mail; we will not send a countdown.
+If the studio is not for you, ignore this e-mail; we will not send a
+countdown.
 
 https://filmmakerstudio.in/pricing?src=email&utm_campaign=founding
 
@@ -212,6 +215,49 @@ shown beside the code.
 Your invoices are on the Purchase page whenever you need them.
 
 Reply to this e-mail with anything that gets in your way.
+
+FilmMakerStudio
+```
+
+## E-mail 7 — the day a launch pass ends (win-back)
+
+Account e-mail, to a pass buyer who has not bought a plan, sent once on the
+day `billing_status()` shows the pass ended. Only once Resend is configured.
+
+**Subject:** Your film is where you left it
+
+```
+Hello {FIRST_NAME},
+
+Your launch pass ended today. Nothing you wrote is gone: your projects are
+in your browser, and synced ones are kept on the server too.
+
+To keep working on them, a plan is a year of the studio, from about
+{FROM_DAY} a day: {PLAN_TERMS}. Founding prices hold until
+{RISE_DATE}.
+
+https://filmmakerstudio.in/pricing?src=email&utm_campaign=pass-end
+
+If something stopped you, reply and tell us. A person reads every reply.
+
+FilmMakerStudio
+```
+
+## E-mail 8 — a week after the pass ended (once)
+
+Sent once, only if no plan was bought. No countdown, no second reminder.
+
+**Subject:** One thing from your week in the studio
+
+```
+Hello {FIRST_NAME},
+
+A week ago your launch pass ended. If the call sheet, the stripboard or the
+budget was the part you used, those are on Intermediate and Pro; the
+writing tools are on every plan. The pricing page lists exactly what each
+plan includes.
+
+https://filmmakerstudio.in/pricing?src=email&utm_campaign=pass-week
 
 FilmMakerStudio
 ```

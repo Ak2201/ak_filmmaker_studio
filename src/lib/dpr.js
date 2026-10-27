@@ -80,6 +80,13 @@ export function span(a, b) {
   return y >= x ? y - x : y + 1440 - x;
 }
 
+/* Longest lunch / call-to-first-shot that is believable; past it the
+   pair is almost certainly swapped. Night shoots stay well inside. */
+const MAX_LUNCH = 4 * 60;
+const MAX_CALL_TO_FIRST = 12 * 60;
+/* A shoot day past this is a 24-hour-clock slip (wrap 05:00 for 17:00), not a real 23h day. */
+const MAX_DAY = 18 * 60;
+
 export function formatMinutes(min) {
   if (min == null || !Number.isFinite(min)) return '—';
   const m = Math.max(0, Math.round(min));
@@ -120,13 +127,30 @@ export function blankDPR(patch = {}) {
   return { ...out, ...patch };
 }
 
+/** Setups is a count: a whole number from 0 up, or blank. A typed -3
+    (min=0 only steers the spinner) or "abc" is dropped, never stored. */
+export function cleanSetups(v) {
+  const n = parseInt(String(v == null ? '' : v).trim(), 10);
+  return Number.isFinite(n) && n >= 0 ? String(n) : '';
+}
+
+/** Delay minutes: a whole number from 0 up to one day, or blank. A typed
+    -30, 99999 or "abc" is dropped, never stored; "1.5" is read as 1, and
+    the box is written back so what shows is what the total adds. */
+export const MAX_DELAY_MIN = 24 * 60;
+export function cleanMinutes(v) {
+  const n = parseInt(String(v == null ? '' : v).trim(), 10);
+  return Number.isFinite(n) && n >= 0 && n <= MAX_DELAY_MIN ? String(n) : '';
+}
+
 function cleanDPR(raw) {
   const d = blankDPR();
   if (!isPlainObject(raw)) return d;
   for (const f of DPR_TIMES) d[f.id] = str(raw[f.id]);
   for (const f of TEXT_FIELDS) d[f] = str(raw[f]);
+  d.setups = cleanSetups(d.setups);
   d.delays = (Array.isArray(raw.delays) ? raw.delays : []).filter(isPlainObject)
-    .map((x) => ({ ...blankDelay(), ...x, reason: str(x.reason) || 'Other', minutes: str(x.minutes), note: str(x.note) }));
+    .map((x) => ({ ...blankDelay(), ...x, reason: str(x.reason) || 'Other', minutes: cleanMinutes(x.minutes), note: str(x.note) }));
   d.incidents = (Array.isArray(raw.incidents) ? raw.incidents : []).filter(isPlainObject)
     .map((x) => ({ ...blankIncident(), ...x, what: str(x.what), action: str(x.action) }));
   return d;
@@ -172,14 +196,24 @@ function listOp(field, blank) {
     },
     remove(day, id) {
       const d = getDPR(day);
+      const index = d[field].findIndex((x) => x.id === id);
       saveDPR(day, { [field]: d[field].filter((x) => x.id !== id) });
+      return index < 0 ? null : { item: d[field][index], index };
+    },
+    /* Undo of remove(): the row goes back where it was. */
+    restore(day, index, item) {
+      const d = getDPR(day);
+      if (d[field].some((x) => x.id === item.id)) return;
+      const list = d[field].slice();
+      list.splice(Math.min(index, list.length), 0, item);
+      saveDPR(day, { [field]: list });
     }
   };
 }
 const delayOps = listOp('delays', blankDelay);
 const incidentOps = listOp('incidents', blankIncident);
-export const addDelay = delayOps.add, updateDelay = delayOps.update, removeDelay = delayOps.remove;
-export const addIncident = incidentOps.add, updateIncident = incidentOps.update, removeIncident = incidentOps.remove;
+export const addDelay = delayOps.add, updateDelay = delayOps.update, removeDelay = delayOps.remove, restoreDelay = delayOps.restore;
+export const addIncident = incidentOps.add, updateIncident = incidentOps.update, removeIncident = incidentOps.remove, restoreIncident = incidentOps.restore;
 
 /** Local "YYYY-MM-DD" of an ISO instant — the day the mark was made. */
 function localDate(iso) {
@@ -209,8 +243,18 @@ export function dprSummary(day, scenes) {
     : [];
   const rec = getDPR(day);
   const delayMinutes = rec.delays.reduce((n, x) => n + (parseInt(x.minutes, 10) || 0), 0);
-  const lunch = span(rec.lunchIn, rec.lunchOut);
-  const length = span(rec.crewCall, rec.wrap);
+  /* span() wraps past midnight for call to wrap, which is right for a
+     night shoot. A lunch or a first shot is not a day-long thing: a
+     wrapped one over the limit is a swapped pair, not a real 23h 30m,
+     so it is left out of the figures and named in `warnings`. */
+  const warnings = [];
+  let lunch = span(rec.lunchIn, rec.lunchOut);
+  if (lunch != null && lunch > MAX_LUNCH) { lunch = null; warnings.push('Lunch ends before it starts, so it is left out. Check the two times.'); }
+  let length = span(rec.crewCall, rec.wrap);
+  if (length != null && length > MAX_DAY) { length = null; warnings.push('Wrap is before the crew call, so the day\u2019s length is left out. Check the two times.'); }
+  else if (length === 0) { length = null; warnings.push('Crew call and wrap are the same time, so the day\u2019s length is left out. Check the two times.'); }
+  let toFirst = span(rec.crewCall, rec.firstShot);
+  if (toFirst != null && toFirst > MAX_CALL_TO_FIRST) { toFirst = null; warnings.push('First shot is before the crew call, so it is left out. Check the two times.'); }
   return {
     day: Number(day),
     date,
@@ -225,7 +269,8 @@ export function dprSummary(day, scenes) {
     lunchMinutes: lunch,
     dayMinutes: length,
     workMinutes: length == null ? null : length - (lunch || 0),
-    callToFirstShot: span(rec.crewCall, rec.firstShot),
+    callToFirstShot: toFirst,
+    warnings,
     record: rec
   };
 }
@@ -424,6 +469,28 @@ export function removeKitItem(day, id) {
   return saveKit(day, kit);
 }
 
+/** Where an item sits now: { dept, index, item }, or null. The page asks
+    before a removal so Undo can put the row back where it was. */
+export function findKitItem(day, id) {
+  const kit = getKit(day);
+  for (const dept of DEPT_IDS) {
+    const index = kit[dept].findIndex((x) => x.id === id);
+    if (index >= 0) return { dept, index, item: kit[dept][index], neighbour: (kit[dept][index + 1] || kit[dept][index - 1] || {}).id || '' };
+  }
+  return null;
+}
+
+/** Put a removed item back at its old place (the end when the list
+    is shorter now). A no-op when the id is already there. */
+export function restoreKitItem(day, dept, index, item) {
+  if (!DEPT_IDS.includes(dept) || !item) return false;
+  const kit = getKit(day);
+  if (kit[dept].some((x) => x.id === item.id)) return false;
+  kit[dept].splice(Math.min(Math.max(0, index), kit[dept].length), 0, item);
+  saveKit(day, kit);
+  return true;
+}
+
 /** Totals for one day's kit: items, and how many are out and back. */
 export function kitTally(kit) {
   let items = 0, picked = 0, back = 0;
@@ -571,13 +638,13 @@ export function oneLiner(scenes) {
 }
 
 export default {
-  toMinutes, laterWrap, span, formatMinutes,
+  toMinutes, laterWrap, span, formatMinutes, cleanSetups,
   DPR_TIMES, DELAY_REASONS, blankDPR, blankDelay, blankIncident, getDPR, saveDPR,
-  addDelay, updateDelay, removeDelay, addIncident, updateIncident, removeIncident, dprSummary,
+  addDelay, updateDelay, removeDelay, restoreDelay, addIncident, updateIncident, removeIncident, restoreIncident, cleanMinutes, dprSummary,
   BANNER_KINDS, AFTER_DAY, bannerLabel, blankBanner, listBanners, allBanners, addBanner, updateBanner,
   removeBanner, bannerText, layoutDay, impliedMoves,
   DEFAULT_PAGE_TARGET, DAY_HOURS, pageTarget, setPageTarget, dayLoad, estimateHours,
-  DEPARTMENTS, blankKitItem, getKit, saveKit, addKitItem, updateKitItem, removeKitItem, kitTally,
+  DEPARTMENTS, blankKitItem, getKit, saveKit, addKitItem, updateKitItem, removeKitItem, findKitItem, restoreKitItem, kitTally,
   classifyEquipment, calcLines, readCalcLines, seedKitFromCalc, copyKit, CALC_KEY,
   castNumbers, oneLiner
 };

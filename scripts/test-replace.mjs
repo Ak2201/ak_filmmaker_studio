@@ -55,6 +55,12 @@ const edited = els(); edited[1].text = 'Someone else now.';
 eq(R.replaceOne(edited, hits[1], 'ravi', 'Arun', { wholeWord: true }), null, 'a stale hit is refused');
 eq(R.replaceOne(els(), { id: 'zz', start: 0, end: 4 }, 'ravi', 'Arun'), null, 'an unknown id is refused');
 
+// a leading capital is kept (QA: "Kitchen?" became "hall?")
+eq(R.replaceAll([{ id: 'k', text: "Kitchen? Ravi's kitchen." }], 'kitchen', 'hall').changes[0].after,
+  "Hall? Ravi's hall.", 'a match that starts with a capital keeps the capital');
+eq(R.replaceAll([{ id: 'r', text: 'The roof.' }], 'the', 'a').changes[0].after, 'A roof.', 'a sentence start keeps its capital');
+eq(R.replaceAll([{ id: 'r', text: 'The roof.' }], 'the', 'a', { matchCase: false }).count, 1, 'one match');
+
 // types and ids
 const t = R.replaceAll(els(), 'NIGHT', 'DAY');
 ok(t.changes.every((c) => Object.keys(c).join() === 'id,before,after'), 'a change carries only id, before and after');

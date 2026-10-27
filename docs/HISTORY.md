@@ -2876,3 +2876,113 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Guard: `npm run test:site` (`scripts/test-site-hygiene.mjs`, in CI after
     `build:verify`) reads the built markup and fails on any of the reel's
     tells; proved red by stripping the canonical, a noindex and llms.txt.
+
+65. **The launch week pass replaces the public free trial (27 Oct 2026).**
+    Owner decisions: a paid week of the whole studio (Pro), ₹49 today and
+    editable in the console (₹99 or any figure, quick-set buttons), once per
+    account, no credit toward a yearly plan, sold as a LAUNCH OFFER with a
+    real deadline and an optional real cap; when it ends the pass closes
+    entirely and only the yearly plans remain. Invite codes keep their free
+    trial. Built in three lanes on one contract, `src/lib/pass-offer.js`
+    (pure, startlib: the server's `pass` block, a countdown on the SERVER's
+    clock, fails closed).
+    - **Server (§61, `schema-61-week-pass.sql`).** Period `'pass'` on the
+      existing `pro` plan, priced from `billing_settings.pass_*`; `quote_pass`
+      refuses disabled / closed / inr_only / used / has_plan / code; a paid
+      pass is always activated even if the cap filled meanwhile; a yearly
+      purchase replaces a running pass from now (no credit, no stack); passes
+      stay out of founding seats, referral payouts and refund→trial;
+      `rzp-order` now returns `{error, reason}` for every refusal. **The free
+      trial is not switched off** (`trial_enabled` stays true, because
+      `trial_active()` carries the §30 grandfathered members); `start_trial()`
+      refuses a `signup` trial with `reason: 'pass'` while the pass is on.
+      57 schema checks in `week-pass.sql`.
+    - **App.** `pass-view.js` (state, may-buy, refusal sentences);
+      `buyPass()` / `passOffer()` in billing.js; invite.html leads with the
+      pass (signed out, the intent survives sign-in as `stashPlan('pass')`);
+      the wall offers the pass above the plans; pass-ending reminders at 24h
+      and 2h; "PASS ENDS IN" on the rail; a pass card on purchase.html; the
+      console's "Launch pass" block (live line, price with ₹49/₹99 quick-set,
+      days, plan, deadline in IST, cap, sold/left). `pass_buy` funnel step.
+    - **Public site.** One hidden launch band (`passBand()`) on start,
+      pricing, product, guide, switching and trust pages, filled at run time;
+      the static HTML holds no figure, date, count or clock (`test:marketing`
+      asserts it). Every public free-trial mention is gone; FAQ: "Is there a
+      free trial? No." Legal passages in terms §3/§4/§5/§7, refund and
+      privacy are DRAFTS awaiting the owner. Playbook, e-mails, captions and
+      posters rewritten around `{PASS_PRICE}` / `{PASS_ENDS}` / `{PASS_LEFT}`.
+    - Owner steps: `docs/LIVE-STEPS-2026-10-27.md`.
+
+66. **A clean slate, and auto-renew as a console choice (27 Oct 2026).**
+    - **Purge before launch.** The app never launched, so every account is a
+      test account (owner). `supabase/schema/patches/purge-test-data-2026-10-27.sql`
+      keeps exactly one admin, `arunkumarmohanans@gmail.com`, and removes
+      everything else: other accounts and their work, every payment, invoice,
+      refund and referral credit (the keeper's too), funnel counts and leads,
+      invite/promo codes, requests, testimonials, support and audit records.
+      Plans, prices, billing settings and the announcement are untouched. Three
+      parts (PREVIEW, PURGE in one guarded transaction, READ-BACK), each with
+      its own checksum; it refuses unless exactly one keeper exists and the
+      role is `postgres`, and refuses when a public table is unclassified, so
+      a new table must be placed on its lists. `scripts/schema-tests/purge.sql`
+      seeds every user-linked table, runs the REAL file and scans every uuid
+      and text column for a deleted person; it runs LAST in `test:schema`.
+      Invoice numbering restarts at 000001 — lawful only because every
+      invoice so far was test mode. `.env` `VITE_ADMIN_EMAILS` names the
+      keeper only.
+    - **Auto-renew (§62).** The owner reversed §18's "no subscription model"
+      as a CHOICE: `billing_settings.pass_mode` / `plan_mode` are `once`
+      (default, today's behaviour byte for byte) or `renew`, set in the
+      console; the buyer sees only that mode. Razorpay Subscriptions:
+      `rzp-subscribe` (lazy Razorpay plan per product/period/amount in
+      `rzp_plans`, so a console price change never touches an existing
+      subscriber — the price lock), `rzp-cancel` (cancel at cycle end: access
+      runs to the end of the paid period, no pro-rata refund), `rzp-verify`
+      checks `HMAC(payment_id|subscription_id)`, `rzp-webhook` applies every
+      `subscription.charged` through `apply_subscription_charge` (idempotent
+      on the payment id; one `payments` row and one invoice per charge; a
+      renewing pass stacks its days). An upgrade under renew mode is paid
+      once (reason `upgrade`: a subscription cannot carry upgrade credit).
+      The launch deadline and cap close the pass to NEW subscribers only.
+    - **Copy follows the mode.** `src/lib/offer-terms.js` (pure, startlib)
+      is the one wording of renewal terms; the public pages hold empty
+      `[data-offer-terms]` slots and hidden `[data-mode-answer]` FAQ answers
+      filled from `trial_offer()`'s `plan_mode` / `pass.mode`; an unknown
+      mode says neither. `test:marketing` fails a renewal claim typed outside
+      a slot. Legal passages are DRAFTS awaiting the owner.
+    - **prove:gate's false "0ms".** The veil recorder stopped ticking once
+      `<main>` had text, and index.html's static crawler summary has text
+      before the gate marks the page pending; it skips `main.hub-static` now
+      and keeps ticking until the veil is recorded.
+
+67. **Full-app QA, fixed and re-verified (25–27 Oct 2026).** The owner asked
+    for the whole app to be tested as QA, every bug fixed and re-verified, and
+    the result released to `main`. One Workflow script: 8 areas (Story,
+    Screenplay, Breakdown, Schedule & reports, Visualize & post, Budget &
+    money, Account & business, Public site & shell) × 2 testers with different
+    angles per round, 1–2 skeptics per finding, then one fixer per area in
+    turn in the main checkout. Four rounds (the cap; the fourth still found
+    new items, so it never ran dry).
+    - **Counts.** 422 confirmed (145 bugs, 167 UX, 110 polish; 18 high, 144
+      medium, 260 low), 49 refuted, 394 fixed, 29 declined with a reason
+      (`docs/KNOWN-ISSUES.md`, "Left open by the full-app QA"). Per round:
+      126, 135, 84, 77 confirmed. Every high was fixed; the two found in
+      round 4 (a >64 KB script arriving from another window was dropped and
+      then overwritten; the receipt PDF from the Purchase page printed the
+      whole page) were fixed in round 4 and are covered by `prove:script`
+      section 23 and `test:account-r4`, not by a fifth round of testers.
+    - **Shapes worth keeping.** Focus after a redraw goes to the control's
+      replacement, never `<body>`, and never with a scroll that moves the
+      page away (breakdown). Undo restores only what it wrote and refuses
+      when the text has moved on since (note → synopsis). A page that reads a
+      blob once and saves it later must re-read first (drafts.html). A fixed
+      delay in a proof is a race: wait for the signal (`prove:nav` waits for
+      `data-vid-help-pending` to clear, which is the Story-page flake fixed).
+    - **Copy.** The public header and footer say "Sign in", not "Log in";
+      the Catalog product is named "Elements" everywhere; the sign-up modal
+      says "Sign up to start your trial". The legal pages changed only in that
+      shared frame. The Pro plan's seed blurb reads "no cap on films, links or
+      collaborators" (the seed is `on conflict do nothing`, so the LIVE row
+      keeps its old text until a schema section updates it).
+    - CI now also runs `prove:notes`, `prove:beat-sync`, `prove:story-coedit`
+      and the other proofs that had been left out.

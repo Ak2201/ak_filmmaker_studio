@@ -99,6 +99,78 @@ export const alt = (o, k, i) => {
 /** Material Symbols mark. Always aria-hidden: the label beside it is the name. */
 const sym = (name, cls = '') => `<span class="sym${cls ? ' ' + cls : ''}" aria-hidden="true" translate="no">${esc(name)}</span>`;
 
+/* ---- THE LAUNCH PASS (27 Oct 2026) -----------------------------------
+   The free trial is retired for the public; while the launch offer runs
+   the pages offer a paid pass. NOTHING ABOUT IT IS TYPED: the copy holds
+   {price} and {length} tokens, written here as EMPTY runtime slots
+   (<span data-pass-price>, <span data-pass-length>) that marketing.js
+   fills from trial_offer().pass through src/lib/pass-offer.js. Every
+   element that names the pass is [data-pass-only] and hidden in the
+   markup, so a crawler, a link preview, verify and a reader with scripts
+   off meet no price, no length, no clock and no count; beside it a
+   [data-pass-off] variant says what is true with no pass (the yearly
+   plans, never a free trial). marketing.js swaps the two while the
+   server says the pass is open, and back when it closes. */
+export const passSlots = (text) => esc(text)
+  .replace(/\{price\}/g, '<span data-pass-price></span>')
+  .replace(/\{length\}/g, '<span data-pass-length></span>');
+/** The pass sentence beside the fallback: the fallback FIRST, the pass
+ *  variant hidden and LAST (a reader that cuts at the hidden span, as the
+ *  FAQ's JSON-LD would, keeps only what is true without the pass). */
+export const passOr = (passHtml, offHtml) => `<span data-pass-off>${offHtml}</span><span data-pass-only hidden>${passHtml}</span>`;
+/** A button label holding a slot: ONE flex item, so .mk-btn's gap does not
+ *  open a second space between the words and the price. */
+export const passBtn = (text) => `<span>${passSlots(text)}</span>`;
+
+/* ---- OFFER TERMS (27 Oct 2026) ----------------------------------------
+   Whether a purchase RENEWS is the owner's choice in the console, per
+   product (billing_settings.pass_mode / plan_mode, schema §62), and it can
+   change on any day without a rebuild. So the static page never says it
+   either way: the copy holds tokens, written here as EMPTY runtime slots
+   that marketing.js fills through src/lib/offer-terms.js (the ONLY wording
+   of renewal terms) from trial_offer() — pass.mode and plan_mode:
+     {planTerms}      a yearly plan's terms, as a sentence
+     {passTerms}      the launch pass's terms, as a sentence
+     {planRenewNote}  site.terms.renewNote, hidden, shown only on 'renew'
+   An unknown mode leaves every slot empty and every renew-only line
+   hidden, so the words around a token must be true in EITHER mode
+   (test:marketing reads the static markup for renewal wording). A token
+   inside a tag, the <title> or a <script> is a build error: an attribute
+   or a JSON-LD answer cannot hold a slot. */
+const TERMS_TOKEN = /\{(planTerms|passTerms|planRenewNote)\}/;
+/** One runtime slot. `chip` is the compact form (no full stop). */
+export const termsSlot = (product, chip = false) => `<span data-offer-terms data-offer-product="${product}"${chip ? ' data-offer-form="chip"' : ''}></span>`;
+/** A chip and its own separator, hidden until the slot has words. */
+export const termsChip = (product, cls, sep = true) => `<span class="${cls}" data-offer-wrap hidden>${sep ? '<span class="mk-pass-sep" aria-hidden="true"> &middot; </span>' : ''}${termsSlot(product, true)}</span>`;
+/** Every offer-terms token in a built page, as its slot. */
+export function termsSlots(html, site) {
+  const note = `<span data-mode-answer="renew" data-offer-product="year" hidden>${esc(site.terms.renewNote)}</span>`;
+  return html.replace(/<script\b[\s\S]*?<\/script>|<title>[\s\S]*?<\/title>|<[^>]*>|\{(planTerms|passTerms|planRenewNote)\}/g, (m, k) => {
+    if (!k) {
+      if (TERMS_TOKEN.test(m)) throw new Error('an offer-terms token inside a tag, a title or a script: ' + m.slice(0, 100));
+      return m;
+    }
+    return k === 'planRenewNote' ? note : termsSlot(k === 'passTerms' ? 'pass' : 'year');
+  });
+}
+
+/** THE LAUNCH BAND: one strip at the top of start, pricing and every
+ *  product, guide, switching and trust page. Hidden in the markup and
+ *  shown only while passState() says 'open'. The countdown digits are
+ *  aria-hidden (they change every second); [data-pass-spoken] carries the
+ *  same deadline to the minute for a screen reader, and nothing here is a
+ *  live region except the one "has ended" line. */
+export function passBand(site) {
+  const p = site.pass;
+  return `<aside class="mk-pass" id="mkPass" data-pass-band hidden aria-label="${esc(p.label)}">
+  <div class="mk-wrap mk-pass-in">
+    <p class="mk-pass-line" data-pass-live><strong class="mk-pass-tag">${esc(p.label)}</strong> <span class="mk-pass-what">${passSlots(p.line)}</span>${termsChip('pass', 'mk-pass-terms')}<span class="mk-pass-when" data-pass-when hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span>${esc(p.ends)} <span class="mk-pass-timer" data-pass-timer aria-hidden="true"></span><span class="mk-vh" data-pass-spoken></span></span><span class="mk-pass-left" data-pass-left-wrap hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span><span data-pass-left></span></span></p>
+    <p class="mk-pass-ended" data-pass-ended role="status" hidden>${esc(p.ended)}</p>
+    <a class="mk-btn mk-btn--primary mk-btn--sm mk-pass-cta" href="invite.html" data-open-signup data-pass-cta>${passBtn(p.cta)}</a>
+  </div>
+</aside>`;
+}
+
 export function loadInputs({ fixture = false } = {}) {
   const site = readJson(SITE_FILE);
   const pagesRel = fixture ? FIXTURE_FILE : PAGES_FILE;
@@ -113,6 +185,12 @@ export function loadInputs({ fixture = false } = {}) {
 export function validate({ site, pages, compare, faq }) {
   const bad = [];
   bad.push(...validatePricing(compare, faq));
+  /* the launch pass's copy: every figure is a runtime slot, never typed */
+  const ps = site.pass || {};
+  for (const k of ['label', 'line', 'ends', 'ended', 'cta', 'ctaFull', 'note']) if (!ps[k]) bad.push('marketing-site.json: pass.' + k + ' missing');
+  if (!/\{price\}/.test(ps.cta || '') || !/\{price\}/.test(ps.line || '') || !/\{length\}/.test(ps.line || '')) bad.push('marketing-site.json: pass.line names {length} and {price}, pass.cta names {price}');
+  if (!site.signup || !/\{price\}/.test(site.signup.headingPass || '') || !/\{length\}/.test(site.signup.offerPass || '')) bad.push('marketing-site.json: signup.headingPass names {price} and signup.offerPass names {length}');
+  if (!site.terms || !site.terms.renewNote) bad.push('marketing-site.json: terms.renewNote missing (the renew-only line beside {planRenewNote})');
   const ids = Object.keys(site.stepCounts);
   const staged = site.stages.flatMap((s) => s.pages);
   if ([...staged].sort().join() !== [...ids].sort().join()) bad.push('stages[].pages and stepCounts name different pages');
@@ -153,7 +231,7 @@ export function validatePricing(compare, faq) {
   const bad = [];
   const w = (m) => bad.push('pricing: ' + m);
   if (!compare) { w(COMPARE_FILE + ' was not loaded'); return bad; }
-  for (const k of ['meta', 'hero', 'trial', 'plans', 'offer', 'compare', 'faq', 'close']) if (!compare[k]) w('copy block ' + k + ' missing');
+  for (const k of ['meta', 'hero', 'pass', 'plans', 'offer', 'compare', 'faq', 'close']) if (!compare[k]) w('copy block ' + k + ' missing');
   if (!Array.isArray(compare.groups) || !compare.groups.length) { w('groups missing'); return bad; }
   const want = comparableRows().map((r) => r.key);
   const seen = new Map();
@@ -184,6 +262,7 @@ export function validatePricing(compare, faq) {
   if (!M.PAID.includes(compare.plans && compare.plans.pick)) w('plans.pick is not a paid plan');
   if (!Array.isArray(faq) || faq.length !== 3) w('marketing-faq.json must hold exactly three groups (Billing, Plans, Your data)');
   else faq.forEach((g) => { if (!g.group || !Array.isArray(g.items) || !g.items.length || g.items.some((i) => !i.q || !i.a)) w('faq group "' + g.group + '" is malformed'); });
+  if (Array.isArray(faq)) for (const g of faq) for (const i of g.items || []) if (i.modes && (!i.aOnce || !i.aRenew || !/cancel anytime/i.test(i.aRenew))) w('faq "' + i.q + '": a mode answer needs aOnce and aRenew, and aRenew says "cancel anytime"');
   const typed = JSON.stringify(compare);
   if (typed.includes('₹')) w('a bare rupee sign in the copy; prices are stamped, never typed');
   return bad;
@@ -218,7 +297,7 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
         <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}
         </div>
       </div>
-      <a class="mk-nav-link" href="pricing.html"${current === 'pricing' ? ' aria-current="page"' : ''}>${esc(u.pricing)}</a>
+      <a class="mk-nav-link mk-nav-pricing" href="pricing.html"${current === 'pricing' ? ' aria-current="page"' : ''}>${esc(u.pricing)}</a>
       <a class="mk-nav-link" href="guides.html"${current === 'guides' ? ' aria-current="page"' : ''}>${esc(u.guides)}</a>
       <a class="mk-nav-link" href="guides.html#compare"${current === 'compare' ? ' aria-current="page"' : ''}>${esc(u.compare)}</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
@@ -277,8 +356,8 @@ function modal(site) {
   <div class="mk-modal-scrim" data-close></div>
   <div class="mk-modal-card" tabindex="-1">
     <button class="mk-modal-x" type="button" data-close aria-label="${esc(s.close)}">${sym('close')}</button>
-    <h2 class="mk-modal-h" id="mkSignupTitle">${s.headingHtml || esc(s.heading)}</h2>
-    <p class="mk-modal-offer" id="mkOffer" data-off-text="${esc(s.offerOff)}" data-open-text="${esc(s.offerIn)}">${s.offer}</p>
+    <h2 class="mk-modal-h" id="mkSignupTitle">${passOr(passSlots(s.headingPass), esc(s.heading))}</h2>
+    <p class="mk-modal-offer" id="mkOffer" data-off-text="${esc(s.offerOff)}" data-open-text="${esc(s.offerIn)}">${passOr(passSlots(s.offerPass), esc(s.offer))}</p>
     <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="${esc(s.googleIn)}">${esc(s.google)}</a>
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">${terms}</p>
@@ -389,7 +468,8 @@ ${s.ids.map((tid) => `          <li>${toolLink(site, pages, tid, id)}</li>`).joi
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">${esc(p.midCta.h2)}</h2>
     <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(u.getStarted)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(u.getStarted)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.ctaFull)}</a>
       <a class="mk-link mk-link--lg" href="pricing.html">${esc(u.viewPricing)}${sym('arrow_forward')}</a>
     </div>
   </div>
@@ -432,6 +512,7 @@ ${ldScripts([softwareLd('product-' + id), crumbsLd([{ name: 'Home', slug: 'start
      sign-up modal and the step slot, and nothing else. -->
 ${header(site, pages, id)}
 <main id="main" class="mk ${stage.hue}">
+${passBand(site)}
 ${hero}
 ${labelBar}
 ${value}
@@ -473,6 +554,14 @@ export function eduBand(site, e) {
     </aside>`;
 }
 
+/** A question whose true answer depends on the console's mode ("Is it a
+ *  subscription?"): the NEUTRAL answer shown in the markup, the 'once' and
+ *  'renew' answers hidden beside it, marketing.js showing the one the
+ *  server names. Then the payment sentence, which is true in either. */
+const modeAnswers = (it) => `<span data-mode-answer="neutral" data-offer-product="year">${esc(it.a)}</span><span data-mode-answer="once" data-offer-product="year" hidden>${esc(it.aOnce)}</span><span data-mode-answer="renew" data-offer-product="year" hidden>${esc(it.aRenew)}</span>${it.aPay ? ' ' + chargeVariants(esc(it.aPay), it.aPayUsd && esc(it.aPayUsd)) : ''}`;
+/** An answer's extra sentence that is true only on auto-renew. */
+const renewNote = (it) => (it.aRenewNote ? `<span data-mode-answer="renew" data-offer-product="year" hidden> ${esc(it.aRenewNote)}</span>` : '');
+
 export function renderPricing({ site, pages, compare, faq }) {
   const c = compare;
   const u = site.ui;
@@ -490,7 +579,7 @@ export function renderPricing({ site, pages, compare, faq }) {
   const card = (id, i) => {
     const pick = id === c.plans.pick;
     const buy = `<a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
-    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span><ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-trial-link data-trial data-trial-only data-open-text="${esc(c.plans.altOpen)}">${esc(c.plans.alt)}</a></li>`;
+    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span>${termsChip('year', 'pr-charge pr-terms', false)}<ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="${esc(c.plans.altOpen)}">${passSlots(c.plans.alt)}</a></li>`;
   };
 
   const plans = `<section class="mk-sec mk-band-b pr-plans" id="pricing" aria-labelledby="prPlansH">
@@ -500,9 +589,9 @@ export function renderPricing({ site, pages, compare, faq }) {
       <p class="mk-body pr-lede">${esc(c.plans.lede)}</p>
     </div>
 
-    <aside class="pr-trial" data-trial aria-label="${esc(c.trial.h)}">
-      <div class="pr-trial-text"><strong>${esc(c.trial.h)}</strong><span class="pr-trial-say">${c.trial.bodyHtml}</span></div>
-      <a class="mk-btn mk-btn--outline" href="invite.html" data-start-auth="google" data-trial-only data-open-text="${esc(c.trial.ctaOpen)}">${c.trial.ctaHtml || esc(c.trial.cta)}</a>
+    <aside class="pr-pass" data-pass data-pass-only hidden aria-label="${esc(c.pass.label)}">
+      <div class="pr-pass-text"><strong>${esc(c.pass.h)}</strong><span class="pr-pass-say">${passSlots(c.pass.body)}</span>${termsChip('pass', 'pr-pass-say pr-pass-terms', false)}</div>
+      <a class="mk-btn mk-btn--outline" href="invite.html" data-open-signup data-pass-cta data-open-text="${esc(c.pass.ctaOpen)}">${passBtn(c.pass.cta)}</a>
     </aside>
 
     <div class="pr-offer" id="offer" hidden role="note" aria-labelledby="offer-h">
@@ -558,7 +647,7 @@ ${c.faq.contact ? `      <p class="mk-body pr-lede pr-contact">${esc(c.faq.conta
 ${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
         <summary><span>${esc(g.group)}</span>${sym('expand_more')}</summary>
         <dl class="pr-qa">
-${g.items.map((it) => { const t = it.trial ? ' data-trial' : ''; return `          <dt${t}>${esc(it.q)}</dt>\n          <dd${t}>${priceSpans(chargeVariants(it.aHtml || esc(it.a), it.aUsd && esc(it.aUsd)))}</dd>`; }).join('\n')}
+${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' data-mode-faq' : ''); const a = it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : it.modes ? modeAnswers(it) : chargeVariants(it.aHtml || esc(it.a), it.aUsd && esc(it.aUsd)); return `          <dt${t}>${esc(it.q)}</dt>\n          <dd${t}>${priceSpans(a)}${renewNote(it)}</dd>`; }).join('\n')}
         </dl>
       </details>`).join('\n')}
     </div>
@@ -607,9 +696,11 @@ ${g.items.map((it) => { const t = it.trial ? ' data-trial' : ''; return `       
      plan cards' names, prices and bullets are build-time (fms) stamps filled by
      vite.config.js at build time; a price is never typed. The words are in the
      markup on purpose (crawlers, link previews, scripts off); src/pages/pricing.js
-     adds the live trial line, the scheduled price rise and the buy hand-off. -->
+     adds the scheduled price rise and the buy hand-off; marketing.js fills the
+     launch pass's slots from the server. -->
 ${header(site, pages, 'pricing')}
 <main id="main" class="mk mk-pricing">
+${passBand(site)}
 ${hero}
 ${plans}
 ${compareSec}
@@ -655,12 +746,12 @@ export function validateHome(home, { site, pages }) {
   if (!home.pricing || !home.pricing.pill || !home.pricingTeaser) w('the closing needs pricingTeaser and pricing.pill');
   if (!home.optOut || !home.optOut.label || !home.optOut.done) w('optOut needs label and done (privacy.html promises the control)');
   if (!home.closing || !home.closing.h2 || !home.closing.sub || !home.closing.cta) w('closing needs h2, sub and cta');
-  /* the trial line beside the price: its LENGTH is never typed, marketing.js
-     fills [data-trial-length] from trial_offer() and hides [data-trial]
-     when trials are switched off */
-  const tr = home.trial;
-  if (!tr || !tr.html || !tr.open || !/<span data-trial-length="(label|length)">[^<]+<\/span>/.test(tr.html)) w('trial needs html (with a <span data-trial-length="label"> fallback) and open');
-  else if (/\d/.test(tr.html.replace(/<[^>]*>/g, ''))) w('trial.html types a number; the length comes from the server');
+  /* the pass line under the hero: no figure is typed, marketing.js fills
+     its slots from trial_offer().pass and shows it only while it is open */
+  const ps = home.pass;
+  if (!ps || !ps.note || !ps.off || !ps.open || !home.hero.ctaPass) w('pass needs note, off and open, and hero.ctaPass');
+  else if (/\d/.test(ps.note + ps.off + home.hero.ctaPass)) w('the pass copy types a number; every figure comes from the server');
+  else if (!/\{price\}/.test(home.hero.ctaPass)) w('hero.ctaPass names the price as {price}');
   const ex = home.exports;
   if (!ex || !ex.h2 || !ex.body || !Array.isArray(ex.items) || ex.items.length !== 3 || ex.items.some((i) => !i.sym || !i.title || !i.text)) w('exports needs h2, body and three {sym, title, text}');
   const an = home.answers;
@@ -683,9 +774,10 @@ export function renderHome({ site, pages, home }) {
       <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
       <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
       <div class="mk-cta-row">
-        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.hero.cta)}</a>
+        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.hero.cta)}</a>
+        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(home.hero.ctaPass)}</a>
       </div>
-      <p class="st-note" data-trial data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.trial.open)}">${home.trial.html}</p>
+      <p class="st-note" data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.pass.open)}">${passOr(passSlots(home.pass.note), esc(home.pass.off))}</p>
       <p class="st-note">${esc(home.hero.note)}</p>
     </div>
     <figure class="mk-player st-hero-media" aria-label="${esc(home.hero.mediaLabel)}">
@@ -753,11 +845,12 @@ ${home.stages.map(row).join('\n')}
     <h2 class="mk-h2" id="mkMidH">${esc(home.closing.h2)}</h2>
     <p class="mk-sub st-closing-sub">${esc(home.closing.sub)}</p>
     <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.closing.cta)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.closing.cta)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.cta)}</a>
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(home.pricing.pill)}</a>
     </div>
     <p class="st-note st-closing-note">${priceSpans(esc(home.pricingTeaser))}</p>
-    <p class="st-note st-closing-note" data-trial data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.trial.open)}">${home.trial.html}</p>
+    <p class="st-note st-closing-note" data-pass-only hidden>${passSlots(site.pass.note)}</p>
   </div>
 </section>`;
 
@@ -785,10 +878,10 @@ ${home.exports.items.map((it) => `      <article class="mk-card">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="stAnH">${esc(home.answers.h2)}</h2>
     <div class="mk-stages">
-${home.answers.items.map((it) => `      <article class="mk-card"${it.trial ? ' data-trial' : ''}>
+${home.answers.items.map((it) => `      <article class="mk-card">
         <span class="mk-card-icon">${sym(it.sym)}</span>
         <h3 class="mk-h3">${esc(it.q)}</h3>
-        <p class="mk-card-p">${it.aHtml || esc(it.a)}</p>
+        <p class="mk-card-p">${it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : (it.aHtml || esc(it.a))}</p>
       </article>`).join('\n')}
     </div>
     <p class="st-note">${esc(home.answers.contact.before)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(home.answers.contact.after)}</p>
@@ -842,6 +935,7 @@ ${home.answers.items.map((it) => `      <article class="mk-card"${it.trial ? ' d
      (vite.config.js startFigures()), never typed; no price is printed here. -->
 ${header(site, pages, 'home')}
 <main id="main" class="mk st">
+${passBand(site)}
 ${hero}
 ${facts}
 ${explorer}
@@ -862,9 +956,9 @@ ${modal(site)}
 /* ---- contact.html and about.html -------------------------------------
    The company pages: the same header, footer and sign-up modal, the copy
    from src/data/marketing-company.json, and ONE call to action on each,
-   the landing page's own: "Start your free trial" is the same
-   <a href="invite.html" data-open-signup> door start.html's Get started
-   is, and "See plans" goes to pricing.html. NO PERSONAL NAME: brand.json's
+   the landing page's own: "Get started" is the same
+   <a href="invite.html" data-open-signup> door start.html's is, and
+   "See plans" goes to pricing.html. NO PERSONAL NAME: brand.json's
    seller is empty by the owner's decision, so About is signed by the team.
 
    The contact form SENDS NOTHING. It has no action (the CSP's form-action
@@ -940,9 +1034,8 @@ ${ldScripts([orgLd()])}
 
 /** The one call to action both company pages carry: the same neutral "Get
  *  started" door start.html and the product pages use (data-open-signup),
- *  and the plans. Not "Start your free trial": live, purchases are off and
- *  marketing.js drops every promise of a trial then, and a trial can also
- *  be switched off; a neutral door is true in every state. */
+ *  and the plans. Not the launch pass: a neutral door is true in every
+ *  state, whether or not the pass is open. */
 function companyCta(company, h2) {
   const cta = company.cta;
   return `<section class="mk-sec mk-band-c mk-mid co-cta" id="start" aria-labelledby="mkMidH">
@@ -1233,8 +1326,8 @@ const genNote = (from) => `<!-- GENERATED by scripts/make-marketing-pages.mjs fr
      and src/data/marketing-site.json. Edit those, then run npm run make:marketing.
      npm run test:marketing fails when this file drifts from the generator. The
      words are in the markup on purpose (crawlers, link previews, scripts off);
-     src/pages/marketing.js adds the header, the sign-up modal and the live
-     trial length, and nothing else. -->`;
+     src/pages/marketing.js adds the header, the sign-up modal and the launch
+     pass's runtime slots, and nothing else. -->`;
 
 const pageTail = (site, pages) => `${footer(site, pages)}
 ${modal(site)}
@@ -1248,17 +1341,18 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 export const longDay = (iso) => { const [y, m, d] = String(iso).split('-').map(Number); return d + ' ' + MONTHS[m - 1] + ' ' + y; };
 
 /** The closing door every guide, comparison and the trust page share: the
- *  trial (data-trial-only: hidden when no trial runs; its length is filled
- *  into [data-trial-length]) and the plans, which are true in every state. */
-function trialClose(g, h2, hue = '') {
+ *  launch pass ([data-pass-only]: hidden in the markup, shown only while
+ *  the server says it is open, its figures runtime slots) and the plans,
+ *  which are true in every state. */
+function passClose(g, h2, hue = '') {
   return `<section class="mk-sec mk-band-c mk-mid${hue ? ' ' + hue : ''}" id="start" aria-labelledby="mkMidH">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
     <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-trial data-trial-only>${g.ui.ctaTrialHtml}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(g.ui.ctaPass)}</a>
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(g.ui.ctaPlans)}</a>
     </div>
-    <p class="mk-small mk-close-note" data-trial data-trial-only>${esc(g.ui.ctaNote)}</p>
+    <p class="mk-small mk-close-note" data-pass-only hidden>${passSlots(g.ui.ctaPassNote)}</p>
   </div>
 </section>`;
 }
@@ -1281,7 +1375,7 @@ export function validateGuides(g, c) {
   if (g.guides.length !== 7) w('seven guides, has ' + g.guides.length);
   const ids = g.guides.map((x) => x.id);
   if (new Set(ids).size !== ids.length) w('guide ids repeat');
-  if (!/<span data-trial-length="label">free trial<\/span>/.test(g.ui.ctaTrialHtml || '')) w('ui.ctaTrialHtml must wrap "free trial" in <span data-trial-length="label">');
+  if (!/\{price\}/.test(g.ui.ctaPass || '') || !g.ui.ctaPassNote || /\d/.test(g.ui.ctaPass + g.ui.ctaPassNote)) w('ui.ctaPass names the price as {price}, ui.ctaPassNote exists, and neither types a figure');
   for (const x of g.guides) {
     const t = (m) => w(x.id + ': ' + m);
     if (x.file !== 'guide-' + x.id + '.html') t('file must be guide-' + x.id + '.html');
@@ -1386,6 +1480,7 @@ ${x.sources.map((sc) => `      <li><a class="mk-link mk-link--inline" href="${es
 ${genNote(GUIDES_COPY)}
 ${header(site, pages, 'guides')}
 <main id="main" class="mk mk-guide ${x.hue}">
+${passBand(site)}
 ${articleHero(x.h1, x.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.ui.breadcrumbGuides, href: 'guides.html' }, { name: x.label }],
   `\n    <p class="mk-small mk-updated">${esc(g.ui.updatedLabel)} <time datetime="${esc(g.updated)}">${longDay(g.updated)}</time></p>`)}
 <section class="mk-sec mk-band-b mk-article" id="guide" aria-label="${esc(x.label)}">
@@ -1417,7 +1512,7 @@ ${x.related.map((rid) => guideCard(g, g.guides.find((y) => y.id === rid))).join(
     </div>
   </div>
 </section>
-${trialClose(g, g.ui.closeH, x.hue)}
+${passClose(g, g.ui.closeH, x.hue)}
 </main>
 ${pageTail(site, pages)}`;
 }
@@ -1435,6 +1530,7 @@ export function renderGuidesIndex({ site, pages, guides: g, versus: c }) {
 ${genNote(GUIDES_COPY + ', ' + COMPARE_COPY)}
 ${header(site, pages, 'guides')}
 <main id="main" class="mk mk-guides">
+${passBand(site)}
 ${articleHero(ix.h1, ix.sub, null)}
 <section class="mk-sec mk-band-b" id="guides" aria-labelledby="mkGuidesH">
   <div class="mk-wrap">
@@ -1464,7 +1560,7 @@ ${c.pages.map((p) => `      <article class="mk-card">
     </div>
   </div>
 </section>
-${trialClose(g, ix.closeH)}
+${passClose(g, ix.closeH)}
 </main>
 ${pageTail(site, pages)}`;
 }
@@ -1503,7 +1599,7 @@ export function renderCompare(id, { site, pages, guides: g, versus: c }) {
 ${read.map((r) => `          <tr>
             <th scope="row">${esc(r.feature)}</th>
             <td data-col="{{brand:name}}">${esc(c.us[r.us])}</td>
-            <td data-col="${esc(p.name)}">${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${esc(c.ui.checkedLabel)} <time datetime="${esc(r.checked)}">${longDay(r.checked)}</time>)</span></td>
+            <td data-col="${esc(p.name)}" data-them>${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${esc(c.ui.checkedLabel)} <time datetime="${esc(r.checked)}">${longDay(r.checked)}</time>)</span></td>
           </tr>`).join('\n')}
         </tbody>
       </table>
@@ -1516,6 +1612,7 @@ ${read.map((r) => `          <tr>
 ${genNote(COMPARE_COPY)}
 ${header(site, pages, 'compare')}
 <main id="main" class="mk mk-guide mk-compare">
+${passBand(site)}
 ${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }],
   `\n    <p class="mk-small mk-updated">${esc(c.ui.updatedLabel)} <time datetime="${esc(c.updated)}">${longDay(c.updated)}</time></p>`)}
 <section class="mk-sec mk-band-b mk-article" id="guide" aria-label="${esc(p.label)}">
@@ -1544,7 +1641,7 @@ ${c.also.map((x) => `      <article class="mk-card">
     <p class="mk-small mk-tm">${esc(c.ui.trademark)}</p>
   </div>
 </section>
-${trialClose(g, c.ui.ctaH)}
+${passClose(g, c.ui.ctaH)}
 </main>
 ${pageTail(site, pages)}`;
 }
@@ -1570,9 +1667,10 @@ ${s.body.map((b) => `    <p class="mk-body">${esc(b)}</p>`).join('\n')}${s.check
 ${genNote(COMPARE_COPY)}
 ${header(site, pages, 'trust')}
 <main id="main" class="mk mk-trust">
+${passBand(site)}
 ${articleHero(t.h1, t.sub, null, toc)}
 ${secs}
-${trialClose(g, t.ctaH)}
+${passClose(g, t.ctaH)}
 </main>
 ${pageTail(site, pages)}`;
 }
@@ -1638,7 +1736,7 @@ export function renderLlms(files) {
   const block = (h, list) => list.length ? `\n## ${h}\n\n${list.map(line).join('\n')}\n` : '';
   return `# ${brand.name}
 
-> ${brand.tagline}. A browser-based studio for independent filmmakers: write the screenplay, plan the shoot, run the set. Work is saved in the browser, with optional sign-in sync and Google Drive backup. Plans are bought one year at a time and nothing renews by itself; prices are on the pricing page.
+> ${brand.tagline}. A browser-based studio for independent filmmakers: write the screenplay, plan the shoot, run the set. Work is saved in the browser, with optional sign-in sync and Google Drive backup. Plans are bought one year at a time; each plan's price and terms are on the pricing page.
 
 This file is GENERATED by scripts/make-marketing-pages.mjs from the public pages' own titles and descriptions.
 ${block('Site', main)}${block('Product', products)}${block('Guides', guides)}${block('Switching', versus)}${block('Policies', LEGAL_FILES)}`;
@@ -1658,6 +1756,7 @@ export function buildAll(opts = {}) {
   out[GUIDES_INDEX] = renderGuidesIndex(inputs);
   for (const p of inputs.versus.pages) out[p.file] = renderCompare(p.id, inputs);
   out[TRUST_FILE] = renderTrust(inputs);
+  for (const f of Object.keys(out)) out[f] = termsSlots(out[f], inputs.site);
   /* The fixture swaps the page list, so the frame it would stamp is not the
      one on disk; the legal pages are built from the real copy only. */
   if (!opts.fixture) {

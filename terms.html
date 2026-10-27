@@ -49,7 +49,7 @@
             <p class="mk-mega-h">Pre-production</p>
             <ul>
               <li><a href="product-breakdown.html"><span class="sym" aria-hidden="true" translate="no">fact_check</span><span>Breakdown</span></a></li>
-              <li><a href="product-catalog.html"><span class="sym" aria-hidden="true" translate="no">category</span><span>Catalog</span></a></li>
+              <li><a href="product-catalog.html"><span class="sym" aria-hidden="true" translate="no">category</span><span>Elements</span></a></li>
               <li><a href="product-shot-list.html"><span class="sym" aria-hidden="true" translate="no">videocam</span><span>Shot list</span></a></li>
               <li><a href="product-schedule.html"><span class="sym" aria-hidden="true" translate="no">calendar_month</span><span>Schedule</span></a></li>
               <li><a href="product-cast-crew.html"><span class="sym" aria-hidden="true" translate="no">groups</span><span>Cast and crew</span></a></li>
@@ -65,13 +65,13 @@
           </div>
         </div>
       </div>
-      <a class="mk-nav-link" href="pricing.html">Pricing</a>
+      <a class="mk-nav-link mk-nav-pricing" href="pricing.html">Pricing</a>
       <a class="mk-nav-link" href="guides.html">Guides</a>
       <a class="mk-nav-link" href="guides.html#compare">Switching</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Log in</a>
+      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Log in</a>
+      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Sign in</a>
       <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
     </div>
@@ -86,7 +86,7 @@
       <li><a href="#changes-h">What changed on 21 October 2026</a></li>
       <li><a href="#about-these-terms">1. About these terms</a></li>
       <li><a href="#eligibility-and-accounts">2. Eligibility and accounts</a></li>
-      <li><a href="#access-free-trials-and-invite-codes">3. Access, free trials and invite codes</a></li>
+      <li><a href="#access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</a></li>
       <li><a href="#plans-and-payments">4. Plans and payments</a></li>
       <li><a href="#refunds-and-cancellation">5. Refunds and cancellation</a></li>
       <li><a href="#your-content">6. Your content</a></li>
@@ -111,7 +111,7 @@
       <li><a href="#changes-h">What changed on 21 October 2026</a></li>
       <li><a href="#about-these-terms">1. About these terms</a></li>
       <li><a href="#eligibility-and-accounts">2. Eligibility and accounts</a></li>
-      <li><a href="#access-free-trials-and-invite-codes">3. Access, free trials and invite codes</a></li>
+      <li><a href="#access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</a></li>
       <li><a href="#plans-and-payments">4. Plans and payments</a></li>
       <li><a href="#refunds-and-cancellation">5. Refunds and cancellation</a></li>
       <li><a href="#your-content">6. Your content</a></li>
@@ -149,6 +149,19 @@
 <section class="legal-changes" id="changes" aria-labelledby="changes-h">
   <h2 id="changes-h">What changed on 21 October 2026</h2>
   <ul>
+<!-- DRAFT, AWAITING THE OWNER -->
+<!-- Auto-renew (27 Oct 2026), written from the plan for schema section 62:
+     billing_settings.pass_mode / plan_mode ('once' | 'renew'), set by the
+     owner in the console per product, for new purchases only; a Razorpay
+     Subscription holds the mandate; a cancel stops future charges and the
+     paid period runs out; the amount is the Razorpay plan amount, so a
+     running auto-pay keeps the price it started at. -->
+    <li>Draft, 27 October 2026: sections 3, 4 and 5. A paid plan or a launch pass may be sold
+    either as a one-time purchase or on auto-renew, and which one is shown beside the price
+    before you pay. Section 4 sets out how auto-renew works: the amount and how often, the
+    notice your bank or UPI app sends before each charge, how to cancel, and the price staying
+    the same while you stay.</li>
+<!-- /DRAFT -->
     <li>Section 4: prices are shown in Indian Rupees in India and in US dollars elsewhere,
     the currency you are charged in is shown at checkout before you pay, and conversion fees
     charged by your bank or card issuer are theirs, not ours.</li>
@@ -189,22 +202,48 @@ use the Service.</p>
   are authorised to accept these Terms on its behalf.</li>
 </ul>
 
-<h2 id="access-free-trials-and-invite-codes">3. Access, free trials and invite codes</h2>
+<!-- DRAFT, AWAITING THE OWNER -->
+<!-- The launch pass (27 Oct 2026), written from the contract: schema
+     section 61 (quote_pass: once per account, INR only, refused while a
+     yearly plan runs, closed after pass_ends_at or once pass_cap passes are
+     sold; activate_payment: apply_plan(pass_plan = pro, 'pass', pass_days);
+     start_trial refuses a 'signup' trial while the pass is on; a refunded
+     pass removes its days and gives no trial). Do not release to main
+     before the owner approves these words. -->
+<h2 id="access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</h2>
 <ul>
   <li><strong>Whether a plan is required.</strong> We decide, and may change, whether using
   the studio requires a plan. While it does not, anyone signed in with Google can use the
-  studio, and cloud sync is for members. While it does, you need a running free trial or a
-  paid plan; without one, the studio shows you the plans instead of your work, and your
-  work is kept, not deleted.</li>
-  <li><strong>Becoming a member.</strong> You become a member by starting a free trial,
-  buying a plan, redeeming an invite code, having an invite request approved, or being
-  given access by us.</li>
-  <li><strong>Free trial.</strong> There is one free trial per person. It starts only when
-  you press the button that starts it (or when you redeem an invite code, below). Its
-  length is set by us and shown before you start. A trial may be limited to the sample
-  project, without projects of your own. A trial cannot be started on an account that has
-  bought a plan before or whose request for access we declined, but a refund starts a fresh
-  trial (section 5).</li>
+  studio, and cloud sync is for members. While it does, you need a paid plan, a running
+  launch pass or a running free trial; without one, the studio shows you the plans instead
+  of your work, and your work is kept, not deleted.</li>
+  <li><strong>Becoming a member.</strong> You become a member by buying a plan or a launch
+  pass, redeeming an invite code, having an invite request approved, or being given access
+  by us.</li>
+  <li><strong>The launch pass.</strong> While we run a launch offer, you can buy a launch
+  pass, in Indian Rupees, at the price shown before you pay, for the number of days shown
+  before you pay. It opens the tools of the Pro plan for those days, counted from the moment
+  it is activated. A pass is sold either as a one-time purchase or on auto-renew, and which
+  one is shown beside its price before you pay (section 4, &ldquo;One-time and auto-renew
+  purchases&rdquo;). Bought one-time, it ends by itself after those days and nothing is
+  charged again. On auto-renew, it renews for the same number of days, at the price you
+  signed up at, until you cancel. Your work is kept either way. There is one launch pass
+  sign-up per account, and it cannot be bought
+  while a paid plan is running on the account. It is a purchase of its own: its price is not
+  taken off a plan you buy later, and buying a yearly plan while a pass runs replaces the pass
+  from that moment. The launch offer is for a limited time: it ends on the date our pages show,
+  or once the number of passes they show has been sold, whichever comes first, and after that a
+  pass cannot be bought; a pass bought before then runs its full length, and a pass on
+  auto-renew keeps renewing until you cancel it. We may change the
+  price or the number of days for orders not yet placed. A pass is final like a plan, with the
+  same exceptions (section 5).</li>
+  <li><strong>Free trial.</strong> We no longer offer a free trial to the public while the
+  launch offer runs: a free trial is given through an invite code (below), or after a refund
+  of a plan (section 5). There is one free trial per person. Its length is set by us and shown
+  before it starts. A trial may be limited to the sample project, without projects of your
+  own. A trial cannot be started on an account that has bought a plan before or whose request
+  for access we declined, but a refund of a plan starts a fresh trial (section 5); a refund of
+  a launch pass does not.</li>
   <li><strong>Invite codes.</strong> A valid invite code is worth a free trial of the length
   shown when you use it (currently seven days), counted against the Google account you sign
   in with. Codes are personal and can expire or be limited to a number of uses; do not sell
@@ -214,24 +253,58 @@ use the Service.</p>
   request can be asked again after seven days.</li>
   <li>We may withdraw a code, a trial or a membership that is misused.</li>
 </ul>
+<!-- /DRAFT -->
 
 <h2 id="plans-and-payments">4. Plans and payments</h2>
 <ul>
   <li><strong>Three paid plans, no free plan.</strong> The plans are Basic, Intermediate and
-  Pro, and each includes everything in the one below it. There is no free plan, only the
-  free trial in section 3. Plans differ in the tools they include, their cloud limits (such
+  Pro, and each includes everything in the one below it. There is no free plan, only <!-- DRAFT, AWAITING THE OWNER -->the
+  launch pass and <!-- /DRAFT -->the free trial in section 3. Plans differ in the tools they include, their cloud limits (such
   as synced projects, share links, collaborators and team seats), Google Drive backup, AI
   tools and access to the Chrome extension. The current plans, what each includes and their
   prices are shown before you buy. A part of the Service that your plan does not include is
   closed to you, but nothing you have written in it is deleted: it reappears when your plan
   includes it, and you can download all of your work at any time, on any plan or none.</li>
-  <li><strong>One year, renewed only by you.</strong> A paid plan is bought with a single
-  payment and gives access to that plan for one year (365 days) from the moment it is
-  activated. Nothing renews or is charged automatically: when the year ends the plan ends,
-  and you keep it by buying it again, which adds another year (bought early, the new year
-  starts where the current one ends). The app shows the date your plan runs until. When a
-  plan ends, nothing you have written is deleted; the parts of the Service that need a plan
-  close until you buy one again. What a plan includes can change over time (section 12).</li>
+<!-- DRAFT, AWAITING THE OWNER -->
+  <li><strong>One year at a time.</strong> A paid plan gives access to that plan for one year
+  (365 days) from the moment it is activated. A plan is sold either as a one-time purchase or
+  on auto-renew, and which one is shown beside its price, and again at checkout, before you
+  pay (next item). Bought one-time, the plan ends when the year ends, and you keep it by
+  buying it again, which adds another year (bought early, the new year starts where the
+  current one ends). On auto-renew, the next year is charged and added when the current one
+  ends, until you cancel. The app shows the date your plan runs until. When a plan ends,
+  nothing you have written is deleted; the parts of the Service that need a plan close until
+  you buy one again. What a plan includes can change over time (section 12).</li>
+  <li><strong>One-time and auto-renew purchases.</strong> We choose, for each product (the
+  yearly plans and the launch pass), whether it is sold one-time or on auto-renew, and we
+  say which beside the price and at checkout before you pay; you are never moved from one to
+  the other without buying again. A change we make applies to new purchases only.
+    <ul>
+      <li><strong>One-time.</strong> You make one payment for the period shown. Nothing renews
+      and nothing is charged again; when the period ends, so does the purchase.</li>
+      <li><strong>Auto-renew: the amount and how often.</strong> You authorise a recurring
+      payment (a UPI Autopay mandate, or a card or bank e-mandate) through Razorpay for the
+      amount and the interval shown before you pay: every year for a plan, and every period of
+      the pass&rsquo;s number of days for a launch pass. Each charge buys the next period and
+      has its own invoice.</li>
+      <li><strong>Notice before each charge.</strong> Before each renewal charge, your bank or
+      UPI app sends you a pre-debit notice with the amount and the date, as Indian payment
+      rules require.</li>
+      <li><strong>How to cancel.</strong> You can cancel anytime in the app: Settings &rarr;
+      Plan &amp; purchases &rarr; Cancel auto-pay. You can also revoke the mandate in your UPI
+      app or with your bank, which cancels it the same way.</li>
+      <li><strong>After you cancel.</strong> Nothing more is charged. Your access continues to
+      the end of the period you have already paid for, and then ends; your work is kept.</li>
+      <li><strong>No refund for the rest of a period.</strong> Cancelling does not refund the
+      period already paid for, in whole or in part. The three exceptions in section 5 apply to
+      each charge on its own.</li>
+      <li><strong>Your price stays the same while you stay.</strong> While an auto-pay
+      continues, each renewal is charged at the amount you signed up at. A price we change
+      applies to new sign-ups only; once you cancel, buying again is at the price of that
+      day.</li>
+    </ul>
+  </li>
+<!-- /DRAFT -->
   <li><strong>Prices, currencies and taxes.</strong> We show prices in Indian Rupees (INR) to
   visitors in India and in US dollars (USD) to visitors elsewhere. Which one you see is
   worked out in your browser from your device&rsquo;s time zone and language settings, never
@@ -297,6 +370,14 @@ refund is issued, the year that payment bought is taken off your plan (other yea
 paid for stay); if no paid time is left, the plan ends and your account is given a fresh
 free trial of the length then set for the free trial; when it ends, a plan is needed again whenever a
 plan is required (section 3).</p>
+<!-- DRAFT, AWAITING THE OWNER -->
+<p>A launch pass (section 3) is covered by the same three exceptions and by nothing else. If a
+pass is refunded, the days it bought are taken off your account at once, and no free trial
+is given in their place.</p>
+<p>On auto-renew (section 4), each charge is a purchase of its own: the three exceptions apply
+to each charge, and a refund takes off the period that charge bought. Cancelling stops the
+charges still to come and does not refund the current period.</p>
+<!-- /DRAFT -->
 
 <h2 id="your-content">6. Your content</h2>
 <ul>
@@ -322,8 +403,11 @@ plan is required (section 3).</p>
 </ul>
 
 <h2 id="ai-features">7. AI features</h2>
-<p>AI tools are included in the Pro plan and in the free trial (and for everyone while a
-plan is not required), and work only with an API key you supply for
+<!-- DRAFT, AWAITING THE OWNER -->
+<p>AI tools are included in the Pro plan, in the launch pass and in the free trial (and for
+everyone while a plan is not required), and work only with an API key you supply for
+<!-- /DRAFT -->
+
 Anthropic or Google Gemini. Requests go directly from your browser to that provider, are
 billed to your account with them, and are governed by their terms. Nothing an AI tool
 drafts is saved into your project until you accept it, and storyboard pictures you accept
@@ -436,7 +520,7 @@ effect. Continuing to use the Service after that means you accept the updated Te
         <p class="mk-foot-h">Pre-production</p>
         <ul>
           <li><a href="product-breakdown.html">Breakdown</a></li>
-          <li><a href="product-catalog.html">Catalog</a></li>
+          <li><a href="product-catalog.html">Elements</a></li>
           <li><a href="product-shot-list.html">Shot list</a></li>
           <li><a href="product-schedule.html">Schedule</a></li>
           <li><a href="product-cast-crew.html">Cast and crew</a></li>

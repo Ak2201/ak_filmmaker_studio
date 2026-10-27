@@ -47,16 +47,26 @@ import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js'
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
+import { trialRefusal, trialOfferFrom } from '../lib/invite-model.js';
+import { errorSentence } from '../lib/gate.js';
 import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { priceNotice as publicPriceNotice, countPlanViewInApp } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
-import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay } from '../lib/price-model.js';
+import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay, perDayIn } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
-  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
+  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus, passHeading
 } from '../lib/purchase-model.js';
 import { clearAttribRef } from '../lib/attribution.js';
+/* THE LAUNCH PASS (§61): a card above the yearly ones while it is on
+   sale and this account may buy it. Every figure is the server's
+   (trial_offer().pass through billing.js passOffer(); pass-view.js). */
+import { passPhase, passFacts, mayBuyPass, passCta, onPass, passTerms, passMode } from '../lib/pass-view.js';
+import { offerTerms, renewsText, cancelledText } from '../lib/offer-terms.js';
+import { stashPlan } from '../lib/start-model.js';
+import { bindPassTimers, passClock } from '../lib/plan-gate.js';
+import { wantedPlan } from '../lib/purchase-model.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -94,12 +104,87 @@ function applyLinkCode() {
 
 let billing = { plans: null, st: null, error: '', missing: false, loading: false };
 
+/* ---- the launch pass ------------------------------------------------- */
+let passOfferNow = null;   // { raw, readAt } | null — null shows no pass at all
+const pass = { busy: false, msg: '', bad: false };
+let shownModes = null;   // the §62 modes last drawn (the deck and terms follow them)
+function loadPass(fresh = false) {
+  Billing.passOffer({ fresh }).then((o) => {
+    const had = JSON.stringify([passOfferNow && passOfferNow.raw, shownModes]);
+    passOfferNow = o;
+    shownModes = Billing.cachedModes();
+    if (JSON.stringify([o && o.raw, shownModes]) !== had) render();
+  }).catch(() => {});
+}
+/** The pass card, or null: only while it is on sale ('open') and, signed
+ *  in, only for an account that may buy it (never had one, no yearly
+ *  plan). Signed out it begins with Google and holds the intent. */
+function passCard(st, signedIn) {
+  if (passPhase(passOfferNow) !== 'open') return null;
+  if (signedIn && !mayBuyPass(st)) return null;
+  const f = passFacts(passOfferNow);
+  if (!f) return null;
+  const wanted = wantedPlan(location.search) === 'pass';
+  /* On auto-renew a price never stands without its terms: the heading
+     and the button name the offer, and the terms line carries the price. */
+  const renewing = passMode(passOfferNow) === 'renew';
+  const card = h('section#pass.pu-pass' + (wanted ? '.is-wanted' : ''), { 'aria-labelledby': 'puPassH' }, [
+    h('p.bd-eyebrow', { text: 'Launch offer' }),
+    h('h3.pu-h3', { id: 'puPassH', text: renewing ? 'The whole studio, every stage.' : 'The whole studio for ' + f.price + ', ' + f.length + '.' }),
+    /* the terms are the server's mode in offer-terms.js's words */
+    h('p.pu-pass-terms', { 'data-offer-mode': passMode(passOfferNow) || 'unknown', text: passTerms(passOfferNow).line }),
+    h('p.pu-pass-p', { text: passBody(f) }),
+    passClock(),
+    h('div.pu-actions', {}, [signedIn
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'OPENING…' : passCta(renewing ? null : f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(renewing ? null : f) })]),
+    pass.msg ? h('p.pl-status' + (pass.bad ? '.gt-error' : ''), { role: pass.bad ? 'alert' : 'status', text: pass.msg }) : null
+  ]);
+  return card;
+}
+/* What the pass is, by mode: the renewal itself is in the terms line above. */
+function passBody(f) {
+  const m = passMode(passOfferNow);
+  const base = 'Every stage, on your own films. Once per account, in Indian rupees through Razorpay, and it is not taken off a yearly plan.';
+  if (m === 'renew') return base + ' Cancel in Settings, under Plan & purchases, and you keep the days already paid for; your work stays either way.';
+  return base + ' When the ' + f.length + ' end, choose a yearly plan below, or don’t: your work stays.';
+}
+async function buyPassHere(btn) {
+  if (pass.busy) return;
+  pass.busy = true; pass.msg = ''; pass.bad = false;
+  render();
+  try {
+    await Billing.buyPass({ accountId: billing.st && billing.st.account_id, shownMode: passMode(passOfferNow), onStatus: (t) => { pass.msg = t; render(); } });
+    pass.msg = 'Your pass is on. The whole studio is open.'; pass.bad = false;
+    refreshInvoices();
+  } catch (e) {
+    pass.msg = (e && e.message) || 'The pass could not be bought just now. Please try again.';
+    pass.bad = !(e && e.code === 'dismissed');
+    if (e && (e.hint === 'closed' || e.code === 'closed' || e.hint === 'renew_off' || e.code === 'terms')) loadPass(true);
+  } finally {
+    pass.busy = false;
+    refreshBilling();
+  }
+}
+
 /* ---- the currency ---------------------------------------------------- */
 const wantCurrency = () => pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() });
 const shop = { want: wantCurrency(), view: null, loading: false, seq: 0 };
 async function refreshShop() {
   const seq = ++shop.seq;
-  if (shop.want !== 'USD') { shop.view = rupeeView('INR'); shop.loading = false; render(); return; }
+  if (shop.want !== 'USD') {
+    shop.view = rupeeView('INR'); shop.loading = false; render();
+    /* Rupees ask price_notice() too, quietly (no "Loading…"): it carries
+       each plan's CURRENT price, and the signed-out list and the deck's
+       per-day figure would otherwise quote LIST_PRICE, the price before
+       any scheduled rise, beside a checkout that charges the new one. */
+    let rn = null;
+    try { rn = await publicPriceNotice(); } catch (e) { rn = null; }
+    if (seq !== shop.seq) return;
+    const v = shopView('INR', rn);
+    if (Object.keys(v.plans).length) { shop.view = v; render(); }
+    return;
+  }
   shop.loading = true;
   render();
   let notice = null;
@@ -121,6 +206,31 @@ function currencyBlock() {
   ]);
 }
 const currentView = () => (shop.loading ? rupeeView('INR') : shop.view || rupeeView('INR'));
+/* START THE TRIAL from here — the page Settings points a member to. The
+   same two steps as invite.html's button: start_trial() writes the
+   membership, then the gate is asked again. Nothing starts by itself. */
+let trialBusy = false;
+let trialMsg = '';
+delegate(document, 'click', '[data-action="pu-start-trial"]', async () => {
+  if (trialBusy) return;
+  trialBusy = true; trialMsg = ''; render();
+  try {
+    const r = await Billing.startTrial();
+    if (!r || !r.started) trialMsg = trialRefusal(r && r.reason);
+    else {
+      trialMsg = 'Your free trial has started.';
+      const c = cloud();
+      if (c && c.runGate) await c.runGate();
+      Store.notify('billing:changed', null);
+    }
+  } catch (e) {
+    trialMsg = errorSentence(e, 'That did not start. Please try again.');
+  }
+  trialBusy = false; render();
+  const b = document.querySelector('[data-action="pu-start-trial"]') || document.getElementById('puTrialMsg');
+  if (b && (!document.activeElement || document.activeElement === document.body)) { if (b.id === 'puTrialMsg') b.setAttribute('tabindex', '-1'); try { b.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } }
+});
+
 delegate(document, 'click', '[data-action="pu-currency"]', (e, btn) => {
   const want = btn.dataset.value;
   if (want === shop.want || (want !== 'INR' && want !== 'USD')) return;
@@ -156,12 +266,22 @@ async function refreshBilling() {
    this page said they were on a plan. The line reads billing_status()
    (this page's own copy) and the server's clock through plan-gate. */
 function trialLine(st) {
-  const t = trialStatus(st, () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()));
+  const t = trialStatus(st, () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()), !!trialOfferFrom(st));
   if (!t) return null;
   /* §33. Access given by e-mail with no plan: in, uncapped, nothing owed
      while it stands. Said instead of any trial wording. */
   if (t.kind === 'granted') return h('p.pl-status.pu-granted', { text: t.text });
   if (t.kind === 'active') return h('p.pl-status.pu-trial', { text: t.text });
+  if (t.kind === 'fresh') {
+    return h('div.pu-trial.pu-trial-fresh', {}, [
+      h('p.pl-status', { text: t.text }),
+      h('div.pu-actions', {}, [
+        h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'pu-start-trial', disabled: trialBusy, text: trialBusy ? 'Starting…' : 'Start your free trial' }),
+        h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
+      ]),
+      h('p.bd-sub#puTrialMsg', { role: 'status', 'aria-live': 'polite', text: trialMsg })
+    ]);
+  }
   return h('div.pu-trial.pu-trial-over', {}, [
     h('p.pl-status', { text: t.text }),
     /* The way out sits beside the way through: this is the one page
@@ -175,15 +295,22 @@ function trialLine(st) {
    drawn right under the buy buttons (launch study, 21 Oct 2026: "purchases
    are final" with no visible exceptions was a reason to wait). The three
    exceptions are refund.html §4's, in its own headings and order; the
-   one-year line is refund.html §2 and §52 (nothing auto-renews). If
+   one-year line is refund.html §2 and §52, in the mode the server sells
+   (§62, offer-terms.js; an unknown mode states neither). If
    refund.html changes, change this, REFUND_TERMS in
    supabase/functions/_shared/terms.js and plan-cards.js's fine print
    together. No trial length is typed here: it is the console's to set. */
+function termsLead() {
+  const t = offerTerms(Billing.cachedModes().plan, '', 'year');
+  if (t.mode === 'renew') return 'A plan is a year of the studio. ' + t.short + ': cancel in Settings, under Plan & purchases, and nothing more is charged; you keep the year already paid for. A cancel is not a refund.';
+  if (t.mode === 'once') return 'A plan is a year of the studio. ' + t.short + ', so there is nothing to cancel: if you do not want another year, do nothing.';
+  return 'A plan is a year of the studio. Each plan card says how it is paid before you pay.';
+}
 function buyTerms() {
   const li = (head, text) => h('li', {}, [h('strong', { text: head }), ' \u2014 ' + text]);
   return h('aside.pu-terms', { 'aria-labelledby': 'puTermsH' }, [
     h('h3.pu-h3', { id: 'puTermsH', text: 'Before you pay' }),
-    h('p.pu-terms-lead', { text: 'A plan is one payment for one year. Nothing renews by itself, so there is nothing to cancel: if you do not want another year, do nothing.' }),
+    h('p.pu-terms-lead', { text: termsLead() }),
     h('p.pu-terms-sub', { text: 'A refund is given in these cases. They are not discretionary: if one applies, the refund is yours.' }),
     h('ul.pu-terms-list', {}, [
       li('A duplicate or erroneous charge', 'charged more than once for the same order, or an amount you did not agree to at checkout: the extra payment is refunded in full.'),
@@ -201,7 +328,16 @@ function buyTerms() {
 }
 
 /* The deck says the per-day figure in the currency the cards are drawn in. */
-const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : ''); };
+/* The cheapest plan a day, from the SAME rows the cards beside it are
+   drawn from: a signed-in rupee view reads the plans rows (billing.plans),
+   anybody else the shop view (price_notice). LIST_PRICE only when neither
+   has answered: it is the price before any scheduled rise. */
+function rowsFromDay() {
+  const paise = (billing.plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
+    .map((p) => Billing.priceFor(p, 'year')).filter((n) => Number(n) > 0);
+  return paise.length ? perDayIn(Math.min(...paise), 'INR') : '';
+}
+const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : (rowsFromDay() || fromDay(v)), Billing.cachedModes().plan); };
 /* What a plan actually does: deckFor(), in purchase-model.js. A plan decides
    which STAGES open (plan-matrix.json), and the trial's end walls the
    studio. Nothing written is ever deleted. */
@@ -222,8 +358,9 @@ function planSection() {
     /* The prices HERE, not one page away (start.html#pricing), which
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
+    { const pc = passCard(null, false); if (pc) sec.append(pc); }
     sec.append(currencyBlock());
-    sec.append(listPriceBlock(currentView()));
+    sec.append(listPriceBlock(currentView(), Billing.cachedModes().plan));
     /* The action straight under the prices, before the refund terms: at
        390px it sat two screens down, under the whole policy (UI review,
        22 Oct 2026). The terms still come before any payment, which is
@@ -258,7 +395,10 @@ function planSection() {
     sec.dataset.purchases = 'off';
     return sec;
   }
-  const buyer = !!(st && st.plan !== 'free');
+  /* A running PASS is not a plan held (quote_for treats it as none, and a
+     yearly plan replaces it from the day it is bought). */
+  const passing = onPass(st) && !(st && st.lapsed);
+  const buyer = !!(st && st.plan !== 'free') && !passing;
   const sec = h('section#plan.pu-sec');
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
 
@@ -269,11 +409,26 @@ function planSection() {
   const strip = h('div.pu-current' + (buyer ? '.is-buyer' : ''));
   const ident = h('div.pu-current-id', {}, [
     h('p.bd-eyebrow', { text: buyer ? 'Your plan' : 'Plan' }),
-    h('h2.bd-h2', { text: planHeading(st) })
+    h('h2.bd-h2', { text: passing ? passHeading(st) : planHeading(st) })
   ]);
+  if (passing) {
+    ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Pass']),
+      h('span', { text: st.plan_until ? ' The whole studio until ' + new Date(st.plan_until).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '. A yearly plan bought now starts today and replaces the pass.' : '' })]));
+  }
+  const ap = Billing.autopayOf(st);
   if (buyer && !(st && st.lapsed)) {
+    const dayOf = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    /* A running auto-pay renews by itself: the strip says when, and what;
+       a cancelled one, until when. Without one, the manual way. */
+    const line = ap && ap.open && ap.product === st.plan
+      ? ' ' + (ap.live ? renewsText(dayOf(ap.nextChargeAt || ap.currentEnd), ap.price) : cancelledText(dayOf(ap.currentEnd || st.plan_until))) + '.'
+      : st && st.plan_until ? ' Valid until ' + dayOf(st.plan_until) + '. Renew any time to add a year; move up and what is left of this year counts.' : ' Granted to you for good.';
     ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Active']),
-      h('span', { text: st && st.plan_until ? ' Valid until ' + new Date(st.plan_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '. Renew any time to add a year; move up and what is left of this year counts.' : ' Granted to you for good.' })]));
+      h('span', { text: line })]));
+  }
+  if (passing && ap && ap.open && ap.product === 'pass') {
+    const dayOf = (iso) => new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    ident.append(h('p.pu-current-state.pu-autopay', { text: ap.live ? renewsText(dayOf(ap.nextChargeAt || ap.currentEnd), ap.price) : cancelledText(dayOf(ap.currentEnd || st.plan_until)) }));
   }
   if (st) {
     const tl = trialLine(st);
@@ -287,14 +442,16 @@ function planSection() {
 
   /* THE PLANS: a heading, what a plan does, and the row. */
   sec.append(h('div.pu-plans-head', {}, [
-    h('h3.pu-h3', { text: buyer ? 'Plans' : 'Choose your plan' }),
+    /* 'Plans' for everyone: the status card above already says "Choose a plan." */
+    h('h3.pu-h3', { text: 'Plans' }),
     h('p.bd-sub', { text: deck() })
   ]));
+  { const pc = passCard(st, true); if (pc) sec.append(pc); }
   sec.append(currencyBlock());
   const view = currentView();
   const cards = planCards(billing.plans, st, {
     shop: view,
-    onBuy: (planId, period, onStatus, code, currency) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
+    onBuy: (planId, period, onStatus, code, currency, shownMode, passStopped) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, shownMode, passStopped, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
   });
   /* the terms go straight under the row of buy buttons, above the code
@@ -342,11 +499,17 @@ function render() {
   for (const x of afterSections()) body.append(x);
   main.append(body);
   if (!commitMain(app, main, mountShell)) return;
+  if (passOfferNow && document.querySelector('[data-pass-timer]')) bindPassTimers(passOfferNow, { onEnd: render });
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[purchase] chrome', e); }
   applyLinkCode();
 }
 
 document.addEventListener('click', (e) => {
+  const bp = e.target.closest('[data-pu-action="buy-pass"]');
+  if (bp && !bp.disabled) { buyPassHere(bp); return; }
+  /* Before the Google hop: the landing page's per-tab plan stash, which
+     invite.html spends by leading with the pass (start-model.js). */
+  if (e.target.closest('[data-pu-action="pass-intent"]')) stashPlan('pass');
   const el = e.target.closest('[data-pu-action="retry"]');
   if (el) { el.disabled = true; el.textContent = 'LOADING…'; refreshBilling(); }
 });
@@ -386,3 +549,4 @@ Store.subscribe('cloud:booted', () => refreshBilling());
 render();
 refreshBilling();
 refreshShop();
+loadPass();

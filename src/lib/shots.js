@@ -174,6 +174,21 @@ export function blockScale(block) {
   return Number.isFinite(w) && w > 0 ? w / BLOCK_W : null;   // metres per map unit
 }
 
+/** The widest floor a block may claim, in metres: a stadium. Past it the
+    distances and track lengths are drawn at a scale nobody measured. */
+export const BLOCK_WIDTH_MAX_M = 500;
+
+/** Says what is wrong with a typed floor width, or '' when it is usable
+    (blank is usable: it means "not said yet"). Pure. */
+export function floorWidthError(raw) {
+  const t = String(raw ?? '').trim();
+  if (!t) return '';
+  const w = Number(t.replace(',', '.'));
+  if (!Number.isFinite(w) || w <= 0) return 'Floor width must be a positive number of metres.';
+  if (w > BLOCK_WIDTH_MAX_M) return 'Floor width can be at most ' + BLOCK_WIDTH_MAX_M + ' metres.';
+  return '';
+}
+
 /** The derived distance callouts of a block: every camera to every actor,
     and the length of every dolly track. Metres, to a tenth, with the
     midpoint to print them at. Empty when the floor has no width — see
@@ -400,19 +415,35 @@ export function removeShot(id) {
     element of the flat array would move it across a scene boundary
     and silently reassign it, so the swap is done against the previous
     or next shot OF THE SAME SCENE. */
-export function moveShot(id, delta) {
+export function moveShot(id, delta, keep) {
   const shots = listShots();
   const shot = shots.find((s) => s.id === id);
   if (!shot) return shots;
   const siblings = shots.filter((s) => s.sceneId === shot.sceneId);
   const at = siblings.indexOf(shot);
-  const swapWith = siblings[at + delta];
-  if (!swapWith) return shots;
-  const i = shots.indexOf(shot);
-  const j = shots.indexOf(swapWith);
-  [shots[i], shots[j]] = [shots[j], shots[i]];
-  saveShots(shots);
-  return shots;
+  if (!keep) {
+    const swapWith = siblings[at + delta];
+    if (!swapWith) return shots;
+    const i = shots.indexOf(shot);
+    const j = shots.indexOf(swapWith);
+    [shots[i], shots[j]] = [shots[j], shots[i]];
+    saveShots(shots);
+    return shots;
+  }
+  /* With a filter on (`keep` is what the screen shows), a move steps
+     over the hidden shots to the next VISIBLE one and lands beside it,
+     the way a drop does: swapping with a hidden neighbour moved
+     nothing on screen and silently renumbered two shots. The hidden
+     shots keep their order relative to each other. */
+  const step = delta < 0 ? -1 : 1;
+  let j = at + step;
+  while (siblings[j] && !keep(siblings[j])) j += step;
+  const target = siblings[j];
+  if (!target) return shots;
+  const order = siblings.filter((s) => s !== shot);
+  order.splice(order.indexOf(target) + (step > 0 ? 1 : 0), 0, shot);
+  reorderShots(shot.sceneId, order.map((s) => s.id));
+  return listShots();
 }
 
 /* The shot list's optional columns, in table order. The number is
@@ -518,15 +549,58 @@ export function autoNumber(sceneId) {
     money.js rule: "12", "7.5", "20 min", "1h 30", "1:30" (h:mm) read;
     anything with other words in it reads 0 rather than a guess. */
 export function shotMinutes(shot) {
-  const t = String((shot && shot.mins) ?? '').trim().toLowerCase();
+  const n = parseMinutes(shot && shot.mins);
+  return n == null ? 0 : n;
+}
+
+/** The longest estimate one setup may carry: a day. */
+export const MAX_SHOT_MINUTES = 1440;
+
+/** PURE. The minutes a typed estimate means: null for text it cannot read
+    (or for a negative or over-a-day figure), 0 for blank. */
+export function parseMinutes(text) {
+  const t = String(text ?? '').trim().toLowerCase();
   if (!t) return 0;
+  let n = null;
   let m = t.match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?)?$/);
-  if (m) return Number(m[1]);
-  m = t.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?)(?:\s*(\d+)\s*(m|min|mins|minutes?)?)?$/);
-  if (m) return Number(m[1]) * 60 + (m[3] ? Number(m[3]) : 0);
-  m = t.match(/^(\d+):([0-5]\d)$/);
-  if (m) return Number(m[1]) * 60 + Number(m[2]);
-  return 0;
+  if (m) n = Number(m[1]);
+  if (n == null) {
+    m = t.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?)(?:\s*(\d+)\s*(m|min|mins|minutes?)?)?$/);
+    if (m) n = Number(m[1]) * 60 + (m[3] ? Number(m[3]) : 0);
+  }
+  if (n == null) {
+    m = t.match(/^(\d+):([0-5]\d)$/);
+    if (m) n = Number(m[1]) * 60 + Number(m[2]);
+  }
+  return n != null && n <= MAX_SHOT_MINUTES ? n : null;
+}
+
+/** PURE. '' when a typed estimate reads (or is blank), else the reason. */
+export function minutesProblem(text) {
+  return parseMinutes(text) == null
+    ? 'Time estimates read as 12, 7.5, 1h 30 or 1:30, and no more than a day.'
+    : '';
+}
+
+/** PURE. The shot numbers more than one shot of this list holds (trimmed,
+    upper-cased), so a typed clash can be named before it reaches the
+    paperwork. Blank numbers never clash. */
+export function duplicateNumbers(list) {
+  const seen = new Set(), dup = new Set();
+  for (const s of list || []) {
+    const n = String((s && s.number) ?? '').trim().toUpperCase();
+    if (!n) continue;
+    if (seen.has(n)) dup.add(n); else seen.add(n);
+  }
+  return dup;
+}
+
+/** PURE. The first free "Setup N" among a scene's diagrams. */
+export function nextBlockName(blocks) {
+  const taken = new Set((blocks || []).map((b) => String((b && b.name) ?? '').trim().toLowerCase()));
+  let n = 1;
+  while (taken.has('setup ' + n)) n++;
+  return 'Setup ' + n;
 }
 
 /** Total minutes over a list of shots, and how many carry an estimate. */
@@ -789,8 +863,7 @@ export function blocksOfScene(sceneId) {
 
 export function addBlock(sceneId, patch = {}) {
   const blocks = listBlocks();
-  const n = blocks.filter((b) => b.sceneId === sceneId).length;
-  const block = blankBlock({ sceneId, name: 'Setup ' + (n + 1), ...patch });
+  const block = blankBlock({ sceneId, name: nextBlockName(blocks.filter((b) => b.sceneId === sceneId)), ...patch });
   blocks.push(block);
   saveBlocks(blocks);
   return block;
@@ -805,6 +878,15 @@ export function updateBlock(id, patch) {
   return blocks[i];
 }
 
+/** Put a removed diagram back at its old place in the list (Undo). */
+export function restoreBlock(block, index) {
+  const blocks = listBlocks().filter((b) => b.id !== block.id);
+  const at = Number.isInteger(index) && index >= 0 && index <= blocks.length ? index : blocks.length;
+  blocks.splice(at, 0, block);
+  saveBlocks(blocks);
+  return blocks;
+}
+
 export function removeBlock(id) {
   const blocks = listBlocks().filter((b) => b.id !== id);
   saveBlocks(blocks);
@@ -815,13 +897,21 @@ export function addMark(blockId, kind, patch = {}) {
   const blocks = listBlocks();
   const block = blocks.find((b) => b.id === blockId);
   if (!block) return null;
-  const same = block.marks.filter((m) => m.kind === kind).length;
-  const label = kind === 'camera' ? (same ? 'Cam ' + String.fromCharCode(65 + same) : 'Cam A')
-    : kind === 'actor' ? 'Actor ' + (same + 1)
-    : kind === 'light' ? 'Light ' + (same + 1)
-    : kind === 'track' ? 'Track ' + (same + 1) : 'Mark ' + (same + 1);
+  /* The label and the spot are the first FREE ones, never a count: after
+     a delete a count hands out a label already in use and the spot of a
+     mark still on the map (the count-after-delete flaw shot numbers had). */
+  const labels = new Set(block.marks.map((m) => m.label));
+  const nameAt = (n) => (kind === 'camera' ? 'Cam ' + (n < 26 ? String.fromCharCode(65 + n) : n + 1)
+    : (kind === 'actor' ? 'Actor ' : kind === 'light' ? 'Light ' : kind === 'track' ? 'Track ' : 'Mark ') + (n + 1));
+  let n = 0;
+  while (labels.has(nameAt(n))) n++;
+  const label = nameAt(n);
   // New marks land staggered near the middle so each is easy to grab.
-  const at = clampPoint(22 + (block.marks.length % 5) * 14, 18 + (block.marks.length % 3) * 16);
+  const spot = (i) => clampPoint(22 + (i % 5) * 14, 18 + (i % 3) * 16);
+  const taken = new Set(block.marks.map((m) => m.x + ',' + m.y));
+  let i = 0;
+  while (i < 15 && taken.has(spot(i).x + ',' + spot(i).y)) i++;
+  const at = spot(i < 15 ? i : block.marks.length);
   const mark = cleanMark({ ...blankMark({ kind, label, ...at }), ...patch });
   block.marks.push(mark);
   saveBlocks(blocks);
@@ -949,10 +1039,11 @@ export default {
   SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, BOARD_SUGGESTIONS,
   sceneCameras, camOf, shotsOfCamera,
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
-  addBlock, updateBlock, removeBlock, addMark, updateMark, removeMark,
+  floorWidthError,
+  addBlock, updateBlock, removeBlock, restoreBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,
-  reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, minutesOf, formatMinutes,
+  reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, parseMinutes, minutesProblem, MAX_SHOT_MINUTES, duplicateNumbers, nextBlockName, minutesOf, formatMinutes,
   minutesByDay, setupOf, groupBySetup, frameAction, actionPatch,
   shotsByScene, takeSceneOut, putSceneBack,
   blankFrame, listFrames, saveFrames, addFrame, updateFrame, removeFrame,

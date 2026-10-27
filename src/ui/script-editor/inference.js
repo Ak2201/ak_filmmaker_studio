@@ -27,6 +27,8 @@ export function classifyInput(text, type) {
   return null;
 }
 
+const TRANSITION_WORDS = /^(?:FADE (?:IN|OUT|TO BLACK)|(?:CUT|SMASH(?: CUT)?|SMASH|FADE) TO BLACK|SMASH CUT|MATCH CUT|JUMP CUT|TIME CUT|INTERCUT|IRIS (?:IN|OUT)|WIPE)[.:]?$/;
+const CLOSING_CARD = /^(?:THE END|END|BLACK|BLACKOUT|END CREDITS|ROLL CREDITS)[.:]?$/;
 const isCapsLine = (s) => /^[A-Z0-9][A-Z0-9 '’.\-]*$/.test(s) && /[A-Z]/.test(s);
 
 /** Return at the end of an action line: what the line really was. */
@@ -40,6 +42,12 @@ export function classifyReturn(text, type) {
   }
   if (t[0] === '>') return null;                       // >centered<
   if (isCapsLine(t.replace(/:$/, '')) && /\bTO:$/.test(t)) return { type: 'transition', text: t };
+  /* The standard transitions that do not end in TO: (QA r4: FADE OUT.,
+     CUT TO BLACK. and SMASH CUT: became a character cue, or stayed
+     action). Same words the importer's TRANS_RE knows. A closing card
+     (THE END, BLACK.) is a line of action, never a cue. */
+  if (TRANSITION_WORDS.test(t)) return { type: 'transition', text: t };
+  if (CLOSING_CARD.test(t)) return null;
   if (t.endsWith(':')) return null;
   const base = t.replace(SUFFIXES, '').trim();
   const words = base.split(/\s+/);

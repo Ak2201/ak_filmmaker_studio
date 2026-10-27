@@ -128,6 +128,7 @@ let relandSpot = '';      // …and the same, landed again once the blueprint ho
 let extra = '';           // 'pitch' (only while the console has it on) or 'guide' (by its address) when a section after the path is the one shown
 let started = false;      // the start cards were answered this visit
 let undoBuild = null;     // one level: the synopsis before the last build
+let buildToast = null;    // the build's UNDO toast, taken down when the build is undone another way
 let lastSend = null;      // the scene ids the last send created
 let focusStep = '';       // an outline step whose field takes focus next
 let links = new Map();    // stepId -> { action, sceneId, binned } (Story.linkStates), set once per draw
@@ -164,6 +165,14 @@ function syncScenes() {
   try { return Story.reconcileStepScenes(SYNC_API); } catch (e) { console.warn('[story] scene sync', e); return null; }
 }
 
+/* Focus the first enabled `acts` button on step `id`, else its text. */
+function refocusStep(id, acts) {
+  const q = (act) => document.querySelector(`[data-st="${act}"][data-step="${CSS.escape(id)}"]:not([disabled])`);
+  const el = acts.map(q).find(Boolean) || document.getElementById('stStep_' + id);
+  if (el) el.focus({ preventScroll: true });
+  return !!el;
+}
+
 function commit(s, { rerender = true } = {}) {
   Story.saveStory(s);
   syncScenes();
@@ -175,7 +184,10 @@ function commit(s, { rerender = true } = {}) {
    that button before its click arrives, so typing an idea and pressing
    NEXT took two presses. So a field's change saves at once and, while a
    pointer is down, holds the redraw until the click has landed. A Tab
-   away redraws at once; preservingFocus() puts the focus back. */
+   away redraws one task later, once the focus has ARRIVED on the next
+   control: redrawing inside the change replaced the control Tab was
+   moving to and left the keyboard on <body>. render() then finds that
+   control again in the new page (keepFocus). */
 let pointerDown = false, held = false;
 document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
 document.addEventListener('pointerup', () => {
@@ -185,7 +197,35 @@ document.addEventListener('pointerup', () => {
 function commitField(s) {
   Story.saveStory(s);
   syncScenes();
-  if (pointerDown) held = true; else render();
+  held = true;
+  if (!pointerDown) setTimeout(() => { if (held) { held = false; render(); } }, 0);
+}
+
+/* The control the keyboard is on, found again after a redraw replaced
+   it: the same element by its data-* attributes (a step's Move down by
+   its step id), else by its id, else a link by its address and its
+   words. preservingFocus() does this for a typed field only; a
+   button, a link or a select pressed from the keyboard went to <body>. */
+function focusSpot(el) {
+  if (!el || el === document.body || !app.contains(el)) return null;
+  const attrs = [...el.attributes].filter((a) => a.name.startsWith('data-'));
+  const tag = el.tagName.toLowerCase();
+  const sel = attrs.length ? tag + attrs.map((a) => '[' + a.name + '="' + CSS.escape(a.value) + '"]').join('')
+    : el.id ? '#' + CSS.escape(el.id)
+    : el.hasAttribute('href') ? 'a[href="' + CSS.escape(el.getAttribute('href')) + '"]' : '';
+  const words = el.textContent;
+  const same = attrs.length || el.id ? () => true : (x) => x.textContent === words;   // a link with no ids: told apart by its words
+  return { el, sel, same, index: sel ? [...app.querySelectorAll(sel)].filter(same).indexOf(el) : -1 };
+}
+function keepFocus(spot) {
+  if (!spot) return;
+  const a = document.activeElement;
+  if (a && a !== document.body && a.isConnected) return;   // the redraw put it somewhere already
+  /* A blueprint host is MOVED into the new page, not rebuilt, and moving
+     a node blurs the field inside it: give it its focus back. */
+  if (spot.el.isConnected) { spot.el.focus({ preventScroll: true }); return; }
+  const el = spot.sel && spot.index >= 0 ? [...app.querySelectorAll(spot.sel)].filter(spot.same)[spot.index] : null;
+  if (el) el.focus({ preventScroll: true });
 }
 
 /* ---- the ways in (FR-402) ------------------------------------ */
@@ -205,7 +245,7 @@ function renderModes() {
     'Paste it and go straight to tagging it against a structure. Every step of the path stays a click away.',
     h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' })));
   const drop = h('label.st-drop', {}, [
-    h('span', { text: 'Drop a .docx, .pdf or .txt here, or choose a file' }),
+    h('span', { text: 'Drop a .docx, .pdf, .txt or .md here, or choose a file' }),
     h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'data-st-field': 'file' })
   ]);
   sec.append(card('Import', 'Bring a file.',
@@ -283,6 +323,11 @@ const learnBox = (topic) => {
    them, and the page is not redrawn for a field (that would cost the
    caret): the menu's ticks are patched in place instead (the strip keeps
    its scroll and the Steps button its focus). */
+/* A Bible or blueprint write changes the strip's figures: swap it in place. */
+function refreshStats() {
+  const old = document.querySelector('.st-stats');
+  if (old) old.replaceWith(renderStats(story()));
+}
 function refreshStepper() {
   const nav = storyNav();
   if (!nav) return;
@@ -292,7 +337,7 @@ function refreshStepper() {
 }
 /* A Bible write changes what the blueprint's derived views (the relationship
    map) and the stepper's ticks read: refresh both, in place. */
-wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
+wireBible({ getStory: story, saved: () => { refreshStepper(); refreshStats(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
   h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + pathNow().length }),
@@ -332,13 +377,13 @@ function renderWaysIn() {
   return h('div.st-offer.st-ways', { role: 'group', 'aria-label': 'Three ways in' }, [
     h('p.st-offer-text', {}, [
       h('span.st-example-k', { text: 'Three ways in: ' }),
-      'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file.'
+      'start from an idea below, paste a synopsis you already have, or import one from a .docx, .pdf, .txt or .md file.'
       + (samplesHere().length ? ' Or open the sample film to see a finished one.' : '')
     ]),
     h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'ways-idea', text: 'Start from an idea' }),
     h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' }),
     h('label.k-btn.k-btn--secondary.st-import', {}, [
-      h('span', { text: 'Import a .docx or .txt' }),
+      h('span', { text: 'Import a .docx, .pdf, .txt or .md' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis from a .docx, .txt or .pdf file' })
     ]),
     ...samplesHere().map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Open ' + sm.label }))
@@ -541,9 +586,12 @@ function renderFwPicker(s) {
       h('span.st-example-k', { text: 'Beat sheet' }),
       h('span.st-fw-cur', { text: cur.label }),
       h('span.st-badge' + (s.frameworkChosen ? '.is-on' : ''), { text: s.frameworkChosen ? 'In use' : 'Suggested' }),
-      h('span.st-fw-change', { text: 'Change' })
+      h('span.st-fw-change', { text: s.frameworkChosen ? 'Change' : 'Choose one' })
     ])
   ]);
+  /* One bar says it all while nothing is chosen: the badge reads Suggested and
+     the row offers Choose one; the sentence waits inside the opened box. */
+  if (!s.frameworkChosen) box.append(h('p.st-using', { text: 'Using ' + cur.label + ' until you choose a beat sheet.' }));
   box.append(h('p.st-muted', {
     text: 'The order your story’s big moments come in. Pick one to lay the outline out against; you do not have to. Switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new beat sheet waits in Unassigned rather than being lost.'
   }));
@@ -614,11 +662,6 @@ function renderOutline(s) {
     'What happens, beat by beat: one or two lines a step, numbered as you go. Add, reorder and move steps between beats as the story finds its shape.'));
   if (short) {
     sec.append(h('p.st-using', { text: 'A short film keeps to the ' + fw.label + ': ' + fw.beats.map((b) => b.label).join(', ') + '.' }));
-  } else if (!s.frameworkChosen) {
-    sec.append(h('p.st-using', {}, [
-      'Using ' + fw.label + ' until you choose a beat sheet. ',
-      h('button.st-link', { type: 'button', 'data-st': 'open-fw', text: 'Choose one' })
-    ]));
   }
 
   /* the head: picker, lock, send */
@@ -685,13 +728,13 @@ function renderOutline(s) {
       li.append(ol);
     }
     const acts = h('div.st-ol-actions');
-    if (!locked) acts.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'Add a step' }));
+    if (!locked) acts.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, 'aria-label': 'Add a step to ' + r.beat.label, text: 'Add a step' }));
     /* AI suggestions for this beat: the AI Desk's 'story-steps' task.
        The writer ticks the ones to keep and Accept adds them under this
        beat through commit() — the same save as ADD A STEP. */
     if (!locked) {
       const pill = aiPill({
-        label: 'Suggest steps for this beat', tasks: ['story-steps'],
+        label: 'Suggest steps for ' + r.beat.label, tasks: ['story-steps'],
         ctx: { identity: 'beat:' + r.key, beatKey: r.key, getStory: story, commit, format: projectFormat }
       });
       if (pill) acts.append(pill);
@@ -709,12 +752,12 @@ function renderOutline(s) {
   const un = h('section.st-unplaced' + (o.unplaced.length ? '' : '.is-empty'), { 'aria-label': 'Unassigned steps' });
   un.append(h('h3.st-ol-name', { text: 'Unassigned' + (o.unplaced.length ? ' · ' + o.unplaced.length : '') }));
   if (!o.unplaced.length) {
-    un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under a beat of ' + fw.short + '.' }));
+    un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under one of the ' + fw.short + ' beats.' }));
     sec.append(un);
   } else {
     un.append(h('p.st-muted', { text: short
       ? 'These steps were written under another beat sheet before this film kept to the five beats. They are kept as they are; file each one under one of the five.'
-      : 'These steps were written under another beat sheet. They are kept as they are; file them under a beat of ' + fw.short + ', or switch the beat sheet back to see them where they were.' }));
+      : 'These steps were written under another beat sheet. They are kept as they are; file them under one of the ' + fw.short + ' beats, or switch the beat sheet back to see them where they were.' }));
     if (o.unplaced.some((u) => u.suggest) && !locked) {
       un.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'file-all', text: 'File all by position' }));
     }
@@ -988,7 +1031,7 @@ function renderMatrix(s) {
       'aria-pressed': String(litBeat === b.id), text: b.label }));
     top.append(h('span.st-beat-at', { text: '~' + pct(b.at) }));
     const tid = 'stT_' + b.id;
-    top.append(h('label.st-beat-tlabel', { for: tid, text: 'Tension' }));
+    top.append(h('label.st-beat-tlabel', { for: tid, 'aria-label': 'Tension for ' + b.label, text: 'Tension' }));
     const ti = h('input#' + tid + '.st-beat-t', { type: 'number', min: 1, max: 10, step: 1,
       'data-st-field': 'tension', 'data-beat': b.id, value: String(row.tension) });
     top.append(ti);
@@ -1141,7 +1184,8 @@ function render() {
   const was = document.activeElement;
   const wasId = was && was.id && /^(INPUT|TEXTAREA|SELECT)$/.test(was.tagName) && app.contains(was) ? was.id : '';
   const top0 = wasId ? was.getBoundingClientRect().top : 0;
-  try { preservingFocus(draw); } finally {
+  const spot = focusSpot(was);
+  try { preservingFocus(draw); keepFocus(spot); } finally {
     if (wasId) {
       const now = document.activeElement;
       if (now && now.id === wasId) {
@@ -1221,7 +1265,10 @@ function after() {
   if (focusStep) {
     const el = document.getElementById('stStep_' + focusStep);
     focusStep = '';
-    if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); }
+    /* Instant, never the page's smooth scroll: the glide was retargeted
+       by the redraw's own layout (the strip sticking, the hosts filling)
+       and ended at the foot of the page, the new step far above it. */
+    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center', behavior: 'instant' }); }
   }
   applyView();
   if (landStep) {
@@ -1435,6 +1482,7 @@ async function undoTheBuild() {
   const s = story();
   Story.restoreSynopsis(s, mine.snap);
   undoBuild = null;
+  if (buildToast) { buildToast.dismiss(); buildToast = null; }   // its UNDO has nothing left to do
   if (!s.source.trim()) mode = 'edit';
   commit(s);
 }
@@ -1545,8 +1593,17 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     const f = document.querySelector('[data-key="lad_1_logline"]');
     const v = f ? String(f.value || '').trim() : '';
     if (!v) { StudioUI.toast('Nothing written in that earlier version yet.'); return; }
+    const was = String(s.logline || '');
     s.logline = v;
     commit(s);
+    /* A logline already written is replaced, so it comes back with one press. */
+    if (was.trim() && was !== v) {
+      StudioUI.toast('Your earlier logline was replaced.', { action: 'UNDO', onAction: () => {
+        const back = story();
+        if (back.logline !== v) return;   // edited since: keep the newer words
+        back.logline = was; commit(back);
+      } });
+    }
   } else if (act === 'lock' || act === 'unlock') {
     if (act === 'lock' && !Story.outlineByBeat(s, s.framework).withText) {
       StudioUI.toast('Write a step or two in the Beat Sheet first, then lock it.');
@@ -1554,6 +1611,9 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     }
     Story.setOutlineLock(s, act === 'lock');
     commit(s);
+    /* The pressed button is now its opposite (Locked / Lock the outline). */
+    const lb = document.querySelector('#stLockRow [data-st="' + (act === 'lock' ? 'unlock' : 'lock') + '"]');
+    if (lb) lb.focus({ preventScroll: true });
     StudioUI.toast(act === 'lock' ? 'Outline locked. Unlock any time to edit.' : 'Outline unlocked.');
   } else if (act === 'use-bp') {
     const f = el.getAttribute('data-field');
@@ -1563,6 +1623,10 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     s.framework = el.getAttribute('data-fw'); s.frameworkChosen = true; litBeat = '';
     fwPickOpen = false;   // chosen: the picker folds back into the Beat Sheet's head
     commit(s);
+    /* The pressed card is inside the folded picker: the keyboard goes to
+       the picker's own head, which says what is in use now. */
+    const sum = document.querySelector('#st-fw-pick > summary');
+    if (sum) sum.focus({ preventScroll: true });
     StudioUI.toast(`Beat sheet: ${Story.frameworkById(s.framework).label}.`);
   } else if (act === 'open-fw') {
     fwPickOpen = true;
@@ -1579,14 +1643,30 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     const back = document.querySelector(`[data-st="step-color"][data-step="${CSS.escape(id)}"][data-color="${CSS.escape(c)}"]`);
     if (back) back.focus({ preventScroll: true });
   } else if (act === 'step-up' || act === 'step-down') {
-    if (Story.moveOutlineStep(s, el.getAttribute('data-step'), { delta: act === 'step-up' ? -1 : 1 })) commit(s);
+    const id = el.getAttribute('data-step');
+    if (Story.moveOutlineStep(s, id, { delta: act === 'step-up' ? -1 : 1 })) {
+      commit(s);
+      /* The redraw replaced the button: focus its twin on the moved step
+         (the other arrow once this one is disabled at an end), never <body>. */
+      refocusStep(id, [act, act === 'step-up' ? 'step-down' : 'step-up']);
+    }
   } else if (act === 'step-del') {
     const id = el.getAttribute('data-step');
     const i = s.outline.findIndex((x) => x.id === id);
     const gone = s.outline[i];
     if (!gone) return;
+    /* After the redraw: the next step's Remove, else the one before, else the beat's Add. */
+    const row = el.closest('[data-step-row]');
+    const sib = row && (row.nextElementSibling || row.previousElementSibling);
+    const near = sib && sib.getAttribute('data-step-row');
+    const card = el.closest('[data-beat-card]');
+    const beatKey = (card && card.getAttribute('data-beat-card')) || gone.beat || '';
     Story.removeOutlineStep(s, id);
     commit(s);
+    if (!(near && refocusStep(near, ['step-del']))) {
+      const add = document.querySelector(`[data-st="step-add"][data-beat="${CSS.escape(beatKey)}"]`);
+      if (add) add.focus({ preventScroll: true });
+    }
     StudioUI.toast('Step removed.', { action: 'UNDO', onAction: () => {
       const back = story();
       if (back.outline.some((x) => x.id === gone.id)) return;   // it is back already (a copy that arrived kept it)
@@ -1604,7 +1684,11 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     mode = 'tag';
     commit(s);
     undoBuild = IO.buildUndo(snap, story());   // what the build left, as stored
-    StudioUI.toast('Synopsis built from the outline — every step tagged with its beat.', { action: 'UNDO', onAction: () => undoTheBuild() });
+    if (buildToast) buildToast.dismiss();
+    buildToast = StudioUI.toast('Synopsis built from the outline — every step tagged with its beat.', { action: 'UNDO', onAction: () => {
+      if (!undoBuild) { StudioUI.toast('Nothing left to undo: that build was already undone or replaced.'); return; }
+      undoTheBuild();
+    } });
   } else if (act === 'build-undo') {
     undoTheBuild();
   } else if (act === 'send') {
@@ -1740,10 +1824,16 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
     Story.updateOutlineStep(s, el.getAttribute('data-step'), { text: el.value });
     commitField(s);
   } else if (f === 'step-beat') {
-    if (el.value && Story.moveOutlineStep(s, el.getAttribute('data-step'), { beat: el.value })) commit(s);
+    const id = el.getAttribute('data-step');
+    if (el.value && Story.moveOutlineStep(s, id, { beat: el.value })) {
+      commit(s);
+      /* The step's card was redrawn under its new beat: keep the keyboard on its select. */
+      const sel = document.querySelector(`select[data-st-field="step-beat"][data-step="${CSS.escape(id)}"]`);
+      if (sel) sel.focus({ preventScroll: true });
+    }
   } else if (f === 'tension') {
     Story.setTension(s, s.framework, el.getAttribute('data-beat'), el.value);
-    commit(s);
+    commitField(s);   // a Tab away must reach the next control (an arrow step keeps the field: render)
   } else if (f === 'retag') {
     Story.tagMark(s, el.getAttribute('data-mark'), s.framework, el.value);
     commit(s);

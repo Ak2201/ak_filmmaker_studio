@@ -546,7 +546,7 @@ function railGlobal(g) {
   const on = g.href.toLowerCase() === CURRENT
     || (Array.isArray(g.modules) && g.id !== 'home' && g.modules.some((m) =>
       !String(m.href || '').includes('#') && String(m.href || '').toLowerCase() === CURRENT));
-  const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose });
+  const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose, 'aria-label': g.label });
   a.dataset.railId = g.id;
   a.append(iconSpan('sh-rail-icon', g),
            h('span.sh-rail-label', { text: g.label }));
@@ -760,7 +760,7 @@ function hideFly(now) {
    the stage's blurb, then each BUILT module's label and purpose. */
 function stageDescription(p) {
   const mods = (p.modules || [])
-    .filter((m) => m.status !== 'planned' && m.purpose)
+    .filter((m) => m.status !== 'planned' && m.purpose && !isDisabledEverywhere(m.id))
     .map((m) => m.label + ': ' + m.purpose);
   return [p.blurb || p.label, ...mods].join('. ') + '.';
 }
@@ -875,7 +875,7 @@ function openAcctMenu(btn) {
   const purchase = globals().find((g) => g.id === 'purchase');
   menu.append(h('div.sh-acct-list', {}, [
     row('a', { href: (settings && settings.href) || 'settings.html' }, 'settings', 'Settings'),
-    purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Plan & purchases') : null,
+    purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Purchase') : null,
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
     row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new'),
     signedIn
@@ -1609,7 +1609,12 @@ function measureChrome() {
     /* A row of chrome is at least a line of text tall. The floor is
        what keeps .reading-progress out of the sum — 2px, fixed, full
        width, and not a thing anything is hidden behind. */
-    if (r.height < 16 || r.width < vw * 0.5) continue;
+    /* The tab strip is the exception to "wide": at 1440 it is a 685px
+       strip beside the side-menu gutter, under half the viewport, so this
+       test dropped it and --sh-cover-h stayed the band alone: a tab landing
+       or a keyboard-focus scroll put the first lines under the strip. It
+       must still straddle the middle, below. */
+    if (r.height < 16 || (r.width < vw * 0.5 && !el.classList.contains('tabs'))) continue;
     /* AND NOT A SCREEN. plan-gate's .pg-lock is a fixed, full-width
        overlay parked at `top: var(--sh-chrome-h)`; with the band
        hidden (the paywall hides it) and no trial strip above it, it
@@ -1935,7 +1940,12 @@ function wire() {
   });
   /* Any choice in the account menu closes it; a click elsewhere or
      Escape does too. Arrow keys move between its rows. */
-  delegate(document, 'click', '.sh-acct-item', () => closeAcctMenu(false));
+  /* On WINDOW, which hears the click after every document-level handler:
+     closing first detached the row, so delegate()'s root.contains() check
+     failed for the row's own handler and 'Help & shortcuts' did nothing. */
+  window.addEventListener('click', (e) => {
+    if (e.target instanceof Element && e.target.closest('#shAcctMenu .sh-acct-item')) closeAcctMenu(false);
+  });
   document.addEventListener('click', (e) => {
     const m = document.getElementById('shAcctMenu');
     if (m && !m.contains(e.target) && !e.target.closest('.sh-rail-account')) closeAcctMenu(false);
@@ -1944,8 +1954,16 @@ function wire() {
     const m = document.getElementById('shAcctMenu');
     if (!m) return;
     if (e.key === 'Escape') { e.preventDefault(); closeAcctMenu(true); return; }
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    /* The menu sits at the end of <body>, so Tab would run out of it into
+       the footer under it. Tab closes it and carries on from the button. */
+    if (e.key === 'Tab') { closeAcctMenu(true); return; }
     const items = [...m.querySelectorAll('.sh-acct-item')];
+    if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      (e.key === 'Home' ? items[0] : items[items.length - 1]).focus();
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const i = items.indexOf(document.activeElement);
     const n = items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
     if (n) { e.preventDefault(); n.focus(); }
@@ -1953,6 +1971,9 @@ function wire() {
   window.addEventListener('resize', () => closeAcctMenu(false));
 
   delegate(document, 'click', '[data-action="rail-help"]', () => {
+    /* Close the menu first, here, so the sheet's opener is the Account
+       button and not a row that is about to be detached. */
+    closeAcctMenu(true);
     const ui = window.StudioUI;
     if (ui && ui.openShortcutSheet) ui.openShortcutSheet();
   });
@@ -2139,8 +2160,12 @@ export function mountShell() {
     const go = () => {
       if (done) return; done = true;
       EV.forEach((t) => window.removeEventListener(t, go, true));
-      import('./video-help.js').then((m) => m.mountHelp(document.querySelector('.sh-bar'), helpIds)).catch(() => {});
+      import('./video-help.js').then((m) => m.mountHelp(document.querySelector('.sh-bar'), helpIds)).catch(() => {})
+        .finally(() => document.documentElement.removeAttribute('data-vid-help-pending'));
     };
+    /* Marks the deferred import as not yet landed, so a check that reads
+       the band (prove:nav) can wait for it instead of guessing a delay. */
+    document.documentElement.setAttribute('data-vid-help-pending', '');
     EV.forEach((t) => window.addEventListener(t, go, { capture: true, passive: true }));
     setTimeout(go, 8000);
   }

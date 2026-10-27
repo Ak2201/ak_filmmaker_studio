@@ -15,6 +15,8 @@ import { admin as billingAdmin } from '../lib/billing.js';
 import { fmtMinor } from '../lib/price-model.js';
 import { ask } from './dialog.js';
 import { listInvoices } from '../lib/admin-api.js';
+import { isMissing, errorSentence } from '../lib/gate.js';
+import '../styles/gate.css';
 import '../styles/motion.css';
 
 const S = { mine: { state: 'idle', rows: [] }, all: { state: 'idle', rows: [] } };
@@ -30,8 +32,12 @@ async function load(kind) {
     S[kind] = { state: 'ready', rows: data || [] };
     rows[kind] = new Map(S[kind].rows.map((r) => [r.id, r]));
   } catch (e) {
-    // A project that has not run §28 yet answers "function not found": say nothing.
-    S[kind] = { state: 'missing', rows: [] };
+    /* ONLY "function not found" (PGRST202 / 42883) means §28 has not run.
+       A timeout, a dropped connection or a refusal is reported as what it
+       was, with a retry: calling every failure "not set up" named a cause
+       nobody had checked (CLAUDE.md, "Do not let a message GUESS"). */
+    S[kind] = isMissing(e) ? { state: 'missing', rows: [] }
+      : { state: 'error', rows: [], error: errorSentence(e, 'The server did not answer.') };
   }
   rerender();
 }
@@ -55,14 +61,28 @@ function table(kind, withBuyer) {
     ].filter(Boolean)));
   }
   t.append(body);
-  return t;
+  /* In its own sideways scroller, as every other console table is: bare,
+     its 34rem min-width pushed the whole page 457px wide at 390. */
+  return h('div.gt-scroll', {}, [t]);
+}
+/* What a failed read says: the observed reason, and the way to try again. */
+function failed(kind) {
+  return h('div.inv-failed', {}, [
+    h('p.gt-meta', { role: 'alert', text: 'The invoices did not load: ' + S[kind].error }),
+    h('button.k-btn.k-btn--secondary.k-btn--sm', { type: 'button', 'data-action': 'invoice-retry', 'data-kind': kind, text: 'Try again' })
+  ]);
 }
 
-/** Plan tab: null until there is something to show. */
+/** Plan tab: null until there is something to show. `st` is the
+ *  billing_status() reply, which carries NO `deployed` key — that is the
+ *  gate's studio_status(). Requiring it here meant my_invoices was never
+ *  asked and no buyer ever saw an invoice; a project without §28 already
+ *  reads as 'missing' below and draws nothing. */
 export function memberInvoicePanel(st, { rerender: rr } = {}) {
   if (rr) rerender = rr;
-  if (!st || !st.deployed) return null;
+  if (!st) return null;
   if (S.mine.state === 'idle') load('mine');
+  if (S.mine.state === 'error') return h('div.inv-panel', {}, [h('h3.gt-h3', { text: 'Invoices' }), failed('mine')]);
   if (S.mine.state !== 'ready') return null;
   const wrap = h('div.inv-panel', {}, [h('h3.gt-h3', { text: 'Invoices' })]);
   if (!faded) { faded = true; wrap.classList.add('mo-in'); }
@@ -78,6 +98,7 @@ export function invoiceAdminSection(section, st, { rerender: rr } = {}) {
   const sec = section('invoices', 'Invoices', 'Bills of Supply.', 'Every invoice issued on payment, newest first. Numbers are gapless within a financial year (April to March).');
   if (S.all.state === 'idle') load('all');
   if (S.all.state === 'missing') { sec.append(h('p.gt-meta', { text: 'Invoices are not set up on this project yet (schema §28).' })); return sec; }
+  if (S.all.state === 'error') { sec.append(failed('all')); return sec; }
   if (S.all.state !== 'ready') { sec.append(h('p.gt-meta', { text: 'Loading…' })); return sec; }
   sec.append(S.all.rows.length ? table('all', true) : h('p.gt-meta', { text: 'No invoices yet.' }));
   return sec;
@@ -88,6 +109,11 @@ export function refreshInvoices() { S.mine.state = 'idle'; S.all.state = 'idle';
 let wired = false;
 if (!wired && typeof document !== 'undefined') {
   wired = true;
+  delegate(document, 'click', '[data-action="invoice-retry"]', (e, el) => {
+    const kind = el.dataset.kind === 'mine' ? 'mine' : 'all';
+    S[kind].state = 'idle';
+    rerender();
+  });
   delegate(document, 'click', '[data-action="invoice-pdf"]', async (e, el) => {
     const inv = rows[el.dataset.kind] && rows[el.dataset.kind].get(el.dataset.id);
     if (!inv) return;

@@ -111,5 +111,25 @@ ok(d.cast.characters.length >= 8, 'Dragon: the cast (' + d.cast.characters.lengt
 ok(d.totals.seconds > 3600, 'Dragon: over an hour on screen');
 ok(!d.pacing.flags.some((f) => f.kind === 'long-run' && f.to - f.from > 20), 'Dragon: no "long run" covering the whole script');
 
+/* ---- QA r2: the structure table and the cast labels --------------------- */
+{
+  const HS = await import('../src/lib/hub-sample.js');
+  const SA = await import('../src/lib/screenplay-analysis.js');
+  const { SAMPLES } = await import('../src/lib/samples.js');
+  const meta = SAMPLES.find((x) => x.id === 'dragon');
+  const sample = { ...meta, data: (await meta.loadData()).default };
+  const sels = HS.sampleScript(sample, (await meta.loadScript()).default.elements).elements;
+  const sc = HS.sampleScenes(sample); HS.linkSampleScenes(sc, sels, SA);
+  const st = (await meta.loadStory()).default.story; HS.applyStoryBeats(sc, st);
+  const r = A.analyseScript({ elements: sels, scenes: sc, story: st, format: 'feature' });
+  const oi = r.structure.beats.find((b) => b.id === 'opening_image');
+  ok(oi && oi.targetPage === 1 && oi.opensOn === 1 && oi.drift === 0, 'a beat at 0% placed on p. 1 has no drift (not "p. 1 (+1)")');
+}
+eq(A.readableName('HR MANAGER'), 'HR Manager', 'an initialism keeps its capitals');
+eq(A.readableName("DR. RAGAVAN'S HOUSE - NIGHT"), "Dr. Ragavan's House - Night", 'an honorific and an apostrophe read as words');
+eq(A.readableName('COLLEGE CLERK'), 'College Clerk', 'a plain cue is title-cased');
+eq(A.sceneSpan('23', '23'), 'Sc 23', 'one scene is not a range from itself');
+eq(A.sceneSpan('4', '9'), 'Sc 4–9', 'a range');
+
 console.log(`\ntest:analysis — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

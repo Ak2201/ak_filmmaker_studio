@@ -31,22 +31,26 @@
 /* the plans start close under the hero, so the prices are on the first
    screen; on a wide screen the heading and its lede share one row */
 .mk-sec.pr-plans { padding-top: var(--s7); }
+/* the head owns the space under it at every width (the lede's own margin
+   is overridden by the generic .mk-sub rule below 1100px) */
+.pr-head { margin-bottom: var(--s6); }
+.pr-head .pr-lede { margin-bottom: 0; }
 @media (min-width: 1100px) {
   .pr-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s7); align-items: end; margin-bottom: var(--s6); }
   .pr-head .mk-h2, .pr-head .pr-lede { margin-bottom: 0; }
 }
 
-/* ---- the free trial strip ---------------------------------------- */
-.pr-trial {
+/* ---- the launch pass strip (hidden unless the pass is open) ------ */
+.pr-pass {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s5); flex-wrap: wrap;
   margin: 0 0 var(--s5); padding: var(--s4) var(--s5); box-sizing: border-box;
   background: color-mix(in srgb, var(--accent-primary) 10%, var(--surface-card));
   border: 1px solid color-mix(in srgb, var(--accent-primary) 38%, transparent);
   border-radius: var(--sk-radius, var(--radius-lg));
 }
-.pr-trial-text { display: grid; gap: var(--s1); min-width: 0; flex: 1 1 28rem; }
-.pr-trial-text strong { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); color: var(--ink); }
-.pr-trial-say { font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); }
+.pr-pass-text { display: grid; gap: var(--s1); min-width: 0; flex: 1 1 28rem; }
+.pr-pass-text strong { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); color: var(--ink); }
+.pr-pass-say { font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); }
 
 /* ---- the launch-price band (hidden unless the server announces a rise) ---- */
 .pr-offer {
@@ -192,7 +196,7 @@
 @media (max-width: 560px) {
   .pr-tier { padding: var(--s5); }
   .pr-pick-flag { left: var(--s5); }
-  .pr-trial .mk-btn { flex: 1 1 100%; }
+  .pr-pass .mk-btn { flex: 1 1 100%; }
   .pr-col-what { width: 31%; }
   .pr-th-name { font-size: var(--t-tiny); overflow-wrap: normal; letter-spacing: -0.01em; }
   .pr-th-price { font-size: var(--t-tiny); }

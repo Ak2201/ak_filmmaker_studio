@@ -41,6 +41,15 @@ eq(N.filterBoard(items, 'notes').map((x) => x.id), ['1', '3'], 'the Notes filter
 eq(N.filterBoard(items, 'blue').map((x) => x.id), ['3'], 'a colour filter');
 eq(N.hereFirst(items, { sceneId: 's9' }).map((x) => x.id), ['3', '1'], 'the pinned notes first, then the rest, no clippings');
 
+/* ---- undo of an append: never drops writing done since ------ */
+eq(N.undoAppend('A.\n\nNote', 'A.', 'A.\n\nNote'), 'A.', 'an untouched append undoes to the text before it');
+eq(N.undoAppend('A.\n\nNote MORE.', 'A.', 'A.\n\nNote'), 'A. MORE.', 'writing typed after the append survives its undo');
+eq(N.undoAppend('X A.\n\nNote', 'A.', 'A.\n\nNote'), 'X A.', 'writing typed before it survives too');
+eq(N.undoAppend('A.\n\nNo, changed', 'A.', 'A.\n\nNote'), null, 'an appended part since edited is not undone (null)');
+eq(N.undoAppend('A.\n\nNotebook', 'A.', 'A.\n\nNote'), null, 'the appended part run into a longer word is not cut');
+eq(N.undoAppend('Breakfast.\nKettle\nLATER EDIT', 'Breakfast.', 'Breakfast.\nKettle'), 'Breakfast.\nLATER EDIT', 'a scene synopsis keeps its later edit');
+eq(N.undoAppend('Note', '', 'Note'), '', 'an append to an empty synopsis undoes to empty');
+
 /* ---- the vault writes ---------------------------------------- */
 mem.clear();
 S.addToVault({ snippet: 'a clipping', url: 'https://example.com/x' });

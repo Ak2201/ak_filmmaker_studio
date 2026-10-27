@@ -143,7 +143,7 @@ export function extraRenderers(ctx, ns) {
       }
       if (b.kind === 'fest') {
         return fullGuideLink('short', b.step,
-          'The festival catalogue and your submission tracker (kept under their own key) are in the full Short Film guide.');
+          'The festival catalogue and your submission tracker are in the full Short Film guide.');
       }
       return document.createDocumentFragment();
     }

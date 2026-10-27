@@ -86,6 +86,11 @@ await page.evaluate(() => {
   const S = window.StudioStore;
   localStorage.clear();
   const p = S.createProject({ title: 'Proof Tamil', format: 'feature' });
+  /* Tamil typing is offered only for a film made in India (REGION-CONTENT,
+     22 Oct 2026). A film with no region follows the DEVICE, and a headless
+     browser's device reads as international, so the proof's film says
+     India itself or Alt+T is (correctly) refused. */
+  S.updateProject(p.id, { region: 'IN' });
   S.setCurrentProject(p.id);
 });
 await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });

@@ -74,3 +74,17 @@ export function amountInWords(paise, currency = 'INR') {
   if (currency === 'USD') return `US Dollars ${intlWords(r)}${ps ? ' and ' + below100(ps) + ' Cents' : ''} only`;
   return `Rupees ${words(r)}${ps ? ' and ' + below100(ps) + ' Paise' : ''} only`;
 }
+
+/* What this payment bought, in the invoice's own terms (27 Oct 2026). A
+   receipt records a payment, not a promise: it no longer says whether the
+   purchase renews — under §62 that is the console's choice, and the receipt
+   e-mail states the terms of each charge. A week pass (period 'pass', §61)
+   is "7-day pass", never "1-year plan", and gets no per-day figure (that
+   figure is a year divided by 365). The length is read from valid_from /
+   valid_until (§57), so it is whatever the payment actually covered. */
+export function coverLine(inv, day) {
+  const from = Date.parse(inv && inv.valid_from), until = Date.parse(inv && inv.valid_until);
+  const days = Number.isFinite(from) && Number.isFinite(until) ? Math.round((until - from) / 86400000) : null;
+  if (inv && inv.period === 'pass') return days > 0 ? days + '-day pass' : 'Week pass';
+  return '1-year plan' + (day ? ' · about ' + day + ' a day' : '');
+}

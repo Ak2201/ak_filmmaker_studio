@@ -18,6 +18,7 @@ import Shoot from './shootday.js';
 import Contacts from './contacts.js';
 import DPR from './dpr.js';
 import { recceLight } from './recce-light.js';
+import { paperDate } from './paper-date.js';
 
 const permById = Object.fromEntries(PERMISSIONS.map((p) => [p.id, p]));
 /** The permission record for an id, the first one for anything unknown. */
@@ -30,9 +31,12 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 /* '2026-01-12' → '12 January 2026'. Built by hand from the string, the
    same way contacts.js does it: a shoot date is a wall-clock day, and
    parsing it into an instant is how it lands a timezone away. */
-export function prettyDate(iso) {
+export function prettyDate(iso, prefs) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
   if (!m) return '';
+  /* In the film's own style when it has one ("February 12, 2024" on a US
+     film); a film with no region keeps the table below, byte for byte. */
+  if (prefs && prefs.dateStyle) return paperDate(m[0], prefs, 'long');
   return Number(m[3]) + ' ' + (MONTHS[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
 }
 
@@ -60,19 +64,36 @@ export function dateClashes(days) {
   return clashes;
 }
 
+/* A later shoot day dated BEFORE an earlier one is almost always a typo
+   (2024-01-01 for 2024-02-01), and the stripboard's span, the strip on
+   Shoot Day and the one-liner all rest on the dates as typed. Day number
+   follows shooting order, so: day → the number of the earlier day whose
+   date is the latest one it falls behind. Dated days only, in day order. */
+export function datesBehind(days) {
+  const behind = new Map();
+  let top = null;
+  [...days].filter((d) => d.date).sort((a, b) => a.day - b.day).forEach((d) => {
+    if (top && d.date < top.date) behind.set(d.day, top.day);
+    else top = d;
+  });
+  return behind;
+}
+
 /** How many shoot days have a date. */
 export const datedCount = (days) => days.filter((d) => d.date).length;
 
 /** The line beside a day's date field: weekday, date, and a clash. */
-export function dayWhen(entry, clashes) {
+export function dayWhen(entry, clashes, prefs, behind) {
   if (!entry.date) return 'No date yet';
-  const parts = [weekdayOf(entry.date), prettyDate(entry.date)].filter(Boolean);
+  const parts = [weekdayOf(entry.date), prettyDate(entry.date, prefs)].filter(Boolean);
   const shared = clashes && clashes.get(entry.date) > 1;
-  return parts.join(' · ') + (shared ? ' · shared with another day' : '');
+  const early = behind && behind.get(entry.day);
+  return parts.join(' · ') + (shared ? ' · shared with another day' : '')
+    + (early ? ' · dated before Day ' + early : '');
 }
 
 /** "Sunday · 12 January 2026", or the raw value when it is not a date. */
-export const orphanDateLabel = (o) => [weekdayOf(o.date), prettyDate(o.date)].filter(Boolean).join(' · ') || o.date;
+export const orphanDateLabel = (o, prefs) => [weekdayOf(o.date), prettyDate(o.date, prefs)].filter(Boolean).join(' · ') || o.date;
 
 /* ---- the light on a recce card ---------------------------------
    Sunrise, sunset and golden hour for each of this location's shoot

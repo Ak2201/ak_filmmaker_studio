@@ -67,5 +67,30 @@ ok(T.readTourState(5).step === 4, 'a read clamps the step to the steps that exis
 mem.set('fms_tour_v1', '[1,2]');
 ok(T.readTourState(5).active === false, 'an array reads as a fresh tour');
 
+// The activity line for the budget estimate (fix-money r1): a dollar
+// budget used to be logged as '₹ 9k', under 'Equipment list'.
+{
+  const seams = await import('./node-seams.mjs');
+  const HM = await import('../src/lib/hub-model.js');
+  const st = { f: { pct: 0 }, s: { pct: 0 }, l: { count: 0, total: 0, currency: 'USD' } };
+  HM.detectActivity(st);
+  HM.detectActivity({ ...st, l: { count: 2, total: 9000, currency: 'USD' } });
+  const line = JSON.parse(seams.mem.get('fms_studio_activity_v1')).entries[0];
+  ok(line && line.what === 'Budget estimate: 0 → 2 lines ($9k)' && line.url === 'budget.html#estimate',
+    'a dollar estimate is logged in dollars, as the budget estimate: ' + (line && line.what));
+  HM.detectActivity({ ...st, l: { count: 3, total: 150000 } });
+  const inr = JSON.parse(seams.mem.get('fms_studio_activity_v1')).entries[0];
+  ok(inr.what === 'Budget estimate: 2 → 3 lines (₹ 1.5 L)', 'a rupee estimate still reads in rupees: ' + inr.what);
+  // A hub load with nothing changed must not rewrite the log: the write
+  // goes through the scoped proxy, which marks the project edited.
+  let writes = 0;
+  const realSet = globalThis.localStorage.setItem;
+  globalThis.localStorage.setItem = (k, v) => { writes++; realSet(k, v); };
+  HM.detectActivity({ ...st, l: { count: 3, total: 150000 } });
+  HM.detectActivity({ ...st, l: { count: 3, total: 150000 } });
+  globalThis.localStorage.setItem = realSet;
+  ok(writes === 0, 'an unchanged snapshot writes nothing (' + writes + ' writes)');
+}
+
 console.log((fail ? '✗' : '✓') + ' hub models: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

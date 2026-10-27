@@ -408,6 +408,7 @@ export function togglePanel(key, host) {
   let panel = host.querySelector('.comment-panel[data-note-key="' + CSS.escape(key) + '"]');
   if (panel) {
     panel.classList.toggle('open');
+    setExpanded(key, panel.classList.contains('open'));
     if (panel.classList.contains('open')) {
       const ta = panel.querySelector('.cmt-note');
       if (ta) ta.focus();
@@ -422,8 +423,14 @@ export function togglePanel(key, host) {
   const ta = panel.querySelector('.cmt-note');
   ta.value = readNote(key);
   host.appendChild(panel);
+  setExpanded(key, true);
   ta.focus();
   refreshThread(key);
+}
+/* The pencil says whether its panel is open. */
+function setExpanded(key, open) {
+  document.querySelectorAll('.comment-btn[data-note-key="' + CSS.escape(key) + '"]')
+    .forEach((b) => b.setAttribute('aria-expanded', String(open)));
 }
 
 /** Re-render just the shared half of an open panel. */

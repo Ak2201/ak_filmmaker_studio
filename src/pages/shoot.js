@@ -76,7 +76,11 @@ const app = document.getElementById('app');
    at is not a fact about the film, and `verify` asserts zero idle
    localStorage writes — a page that persisted its own scroll
    position would trip it, correctly. */
-let openDay = null;
+let openDay = (() => {
+  /* The one way in from outside: `?day=N`, which the DPR's "Mark scenes
+     on the shoot day" passes, as this page's "End of day → DPR" does. */
+  try { return Shoot.dayFromSearch(location.search); } catch (e) { return null; }
+})();
 let rosterFilter = 'all';   // 'all' | 'incomplete' — the roster's view, never stored
 /* The floor note being edited, and what has been typed into it so far.
    Memory only: a draft is not a fact about the film until Save, and a
@@ -145,12 +149,12 @@ function noteBlock(scene) {
     return h('div.sd-note', {}, [
       h('p.sd-note-text', {}, [sym('sticky_note_2'), h('strong', { text: 'Floor note: ' }), h('span', { text: note })]),
       button({ label: 'Edit note', variant: 'ghost', size: 'sm', icon: 'edit_note',
-        attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Edit the floor note for scene ' + (scene.number || '') } })
+        attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Edit note, scene ' + (scene.number || '') } })
     ]);
   }
   return h('div.sd-note.is-empty', {}, [
     button({ label: 'Add floor note', variant: 'ghost', size: 'sm', icon: 'edit_note',
-      attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Add a floor note for scene ' + (scene.number || '') } })
+      attrs: { 'data-shoot-action': 'note-edit', 'data-scene': id, 'aria-label': 'Add floor note, scene ' + (scene.number || '') } })
   ]);
 }
 
@@ -178,7 +182,7 @@ function takesBlock(scene) {
   if (takes.length) {
     row.append(h('button.k-btn.k-btn--ghost.k-btn--sm.sd-take-undo', {
       type: 'button', 'data-shoot-action': 'untake', 'data-scene': scene.id,
-      'aria-label': 'Remove take ' + takes[takes.length - 1].n, text: 'Undo'
+      'aria-label': 'Undo take ' + takes[takes.length - 1].n, text: 'Undo'
     }));
   }
   box.append(row);
@@ -200,7 +204,7 @@ function sceneCard(scene, ctx, next) {
   card.append(head);
   card.append(h('h3.sd-slug', { text: slug(scene) }));
   card.append(h('p.sd-line', {}, [
-    h('span.sd-pgs', { text: formatEighths(scene.eighths || 0) + ' pages' }),
+    h('span.sd-pgs', { text: formatEighths(scene.eighths || 0) + (Number(scene.eighths) === 8 ? ' page' : ' pages') }),
     scene.pageNumber ? h('span.sd-pgs', { text: 'p. ' + scene.pageNumber }) : null
   ].filter(Boolean)));
 
@@ -320,14 +324,14 @@ function render(focus) {
   const titleBox = pageHeader({
     class: 'sd-hero-t',
     level: 2,
-    eyebrow: ['Shoot', isToday ? 'Today' : null, 'Day ' + pad(day.day) + ' of ' + pad(all.length)].filter(Boolean),
+    eyebrow: ['Shoot', isToday ? 'Today' : null, Shoot.dayOfLabel(day, all, pad)].filter(Boolean),
     title: 'Day ' + pad(day.day) + '.',
     sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one on the Plan’s calendar and the page can find it on the morning.',
     meta: isToday ? [h('span.sd-live', {}, [h('span.sd-dot.is-live', { 'aria-hidden': 'true' }), h('span', { text: 'Today' })])] : [],
     actions: [sheet
-      ? button({ label: 'View call sheet', icon: 'description', href: 'contacts.html#call-sheets',
+      ? button({ label: 'View call sheet', icon: 'description', href: 'contacts.html?sheet=' + encodeURIComponent(sheet.id) + '#call-sheets',
           attrs: { title: 'Open ' + (sheet.title || 'the call sheet') + ' on Call sheets' } })
-      : button({ label: 'Make the call sheet', icon: 'description', variant: 'ghost', href: 'contacts.html#call-sheets' })]
+      : button({ label: 'Make the call sheet', icon: 'description', variant: 'ghost', href: 'contacts.html?day=' + day.day + '#call-sheets' })]
   });
   const kpi = (label, value, of, fill, sub) => {
     const c = statCard({ label, value, unit: of || '', note: sub || '' });
@@ -336,12 +340,15 @@ function render(focus) {
   };
   const total = day.scenes.length;
   const kpis = statStrip([
-    kpi('Scenes shot', String(day.done), '/ ' + total, total ? day.done / total : 0,
-      day.remaining ? day.remaining + ' left today' : 'none left today'),
-    kpi('Pages shot', day.pagesDone, '/ ' + day.pagesTotal, day.eighthsTotal ? day.eighthsDone / day.eighthsTotal : 0),
-    /* The whole film, not the day: shot or dropped over every scene. */
-    kpi('In the can', String(overall.done), '/ ' + overall.scenes, overall.scenes ? overall.done / overall.scenes : 0,
-      overall.pagesDone + ' of ' + overall.pagesTotal + ' pages, film total'),
+    /* SHOT means shot: a dropped scene is settled (it is not "left")
+       but it was never filmed, the same split the DPR makes. And
+       "today" only when it is — the same rule as the eyebrow. */
+    kpi('Scenes shot', String(day.shot), '/ ' + total, total ? day.shot / total : 0,
+      (day.remaining ? day.remaining + ' left' : 'none left') + (isToday ? ' today' : '')),
+    kpi('Pages shot', day.pagesShot, '/ ' + day.pagesTotal, day.eighthsTotal ? day.eighthsShot / day.eighthsTotal : 0),
+    /* The whole film, not the day: shot over every scene. */
+    kpi('In the can', String(overall.shot), '/ ' + overall.scenes, overall.scenes ? overall.shot / overall.scenes : 0,
+      overall.pagesShot + ' of ' + overall.pagesTotal + ' pages, film total'),
     kpi('Wrap estimate', wrap.time || '—', wrap.time && lit ? lit.light.zone : '', null,
       wrapNote(wrap.kind))
   ], { class: 'sd-kpis', label: 'Day figures' });
@@ -358,7 +365,7 @@ function render(focus) {
   const nav = h('nav.sd-days', { 'aria-label': 'Shoot days' });
   nav.append(h('div.sd-days-h', {}, [
     h('span.sd-k', { text: 'Shooting days' }),
-    h('span.sd-k.sd-days-of', { text: 'Day ' + pad(day.day) + ' / ' + pad(all.length) })
+    h('span.sd-k.sd-days-of', { text: Shoot.dayOfLabel(day, all, pad, ' / ') })
   ]));
   const track = h('div.sd-days-track');
   all.forEach((d) => {
@@ -377,7 +384,7 @@ function render(focus) {
       h('span.sd-day-n', {}, [
         h('span', { text: 'D' + d.day }),
         d.complete ? h('span.sd-day-m', { 'aria-label': 'wrapped', text: '✓' }) : null,
-        !d.complete && (today || cur) ? h('span.sd-day-m.is-cur', { text: today ? 'today' : 'current' }) : null
+        !d.complete && (today || cur) ? h('span.sd-day-m.is-cur', { text: today ? 'today' : 'next up' }) : null
       ].filter(Boolean))
     ].filter(Boolean)));
   });
@@ -521,9 +528,9 @@ function renderSun(day, scenes, ctx) {
   ]));
   panel.append(timeline(light, ctx));
   if (place.fallback && first && 'geolocation' in navigator) {
-    panel.append(h('button.btn.sd-sun-btn', {
-      type: 'button', 'data-shoot-action': 'locate', 'data-loc': first,
-      text: 'Pin ' + first + ' where this phone is'
+    panel.append(button({
+      label: 'Pin ' + first + ' where this phone is', variant: 'secondary', size: 'sm', class: 'sd-sun-btn',
+      attrs: { 'data-shoot-action': 'locate', 'data-loc': first }
     }));
   }
   node.append(panel, timesRow(day, ctx));
@@ -565,9 +572,12 @@ function timesRow(day, ctx) {
 }
 
 function after(focus) {
-  if (focus) {
-    const node = document.querySelector(focus);
-    if (node) node.focus();
+  /* `focus` is one selector or a list tried in order, so a control that
+     has left the page (a card marked while "Incomplete" is on) hands focus
+     to the next best one instead of letting it fall to <body>. */
+  for (const sel of [].concat(focus || [])) {
+    const node = document.querySelector(sel);
+    if (node) { node.focus(); break; }
   }
   /* The blueprint's production questions, answered here (src/ui/stage-guide.js). */
   mountStageGuide(document.getElementById('main'), { stage: 'production' });
@@ -648,11 +658,25 @@ delegate(document, 'click', '[data-shoot-action]', (e, el) => {
     Shoot.mark(id, el.getAttribute('data-state') || '');
     /* The same state's button on the same scene: its data-state has
        flipped, so it is found by scene and class, not by state. */
-    render('[data-shoot-action="mark"][data-scene="' + CSS.escape(id) + '"]' + (btn ? '.' + btn : ''));
+    render([
+      '[data-shoot-action="mark"][data-scene="' + CSS.escape(id) + '"]' + (btn ? '.' + btn : ''),
+      '.sd-card [data-shoot-action="mark"]' + (btn ? '.' + btn : ''),
+      '[data-shoot-action="filter"][data-filter="' + rosterFilter + '"]'
+    ]);
   }
 });
 
 /* A note being typed survives a re-render caused by a tap elsewhere. */
+/* Escape leaves the note editor the way Cancel does (same click path, focus back on Add floor note). */
+delegate(document, 'keydown', '[data-shoot-note]', (e, el) => {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  const id = el.getAttribute('data-shoot-note');
+  const cancel = document.querySelector('[data-shoot-action="note-cancel"][data-scene="' + CSS.escape(id) + '"]');
+  if (!cancel) return;
+  e.preventDefault();
+  cancel.click();
+});
+
 delegate(document, 'input', '[data-shoot-note]', (e, el) => {
   noteDraft.set(el.getAttribute('data-shoot-note'), el.value);
 });

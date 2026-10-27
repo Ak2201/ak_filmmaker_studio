@@ -65,6 +65,10 @@ import { h } from './dom.js';
 import { bumpUsage } from './usage.js';
 import Billing from './billing.js';   // same chunk on every page; a dynamic import here moved nothing
 import { trialLength } from './trial-time.js';
+/* The launch pass (§61): what the wall offers before the plans, and the
+   reminders when a pass is running. pass-view.js is pure. */
+import { passPhase, passFacts, mayBuyPass, onPass, passName, passDays, passNow, countdownText, leftText, passTerms, passMode } from './pass-view.js';
+import { offerTerms } from './offer-terms.js';
 import '../styles/plan-gate.css';
 
 export const CAPABILITIES = [
@@ -305,7 +309,16 @@ async function _refreshOnce() {
           /* Anything paid, granted or refunded: start_trial() answers
              'paid' for these, so the wall does not offer a trial it
              would refuse. */
-          paidBefore: Array.isArray(st.payments) && st.payments.some((p) => p && /^(paid|granted|refunded)$/.test(p.status))
+          paidBefore: Array.isArray(st.payments) && st.payments.some((p) => p && /^(paid|granted|refunded)$/.test(p.status)),
+          /* §61, THE LAUNCH PASS: Pro for N days, period 'pass'. Every key
+             PRESENT to be believed (pass-view.js): a server without §61
+             sends none, and then nobody is on a pass or may buy one. */
+          passActive: onPass(st) && !!st.plan_until && Date.parse(st.plan_until) > Date.now() + skew,
+          passUsed: st.pass_used === true,
+          mayPass: mayBuyPass(st),
+          passDays: passDays(st),
+          /* §62: a running auto-pay (billing.js autopayOf), or null. */
+          autopay: Billing.autopayOf(st)
         };
       } else {
         ent = null;
@@ -324,6 +337,12 @@ async function _refreshOnce() {
   }
   apply();
   remindTrial();
+}
+
+/** When a running launch pass ends, as a Date, else null. */
+export function passEndsAt() {
+  const e = entitlement();
+  return e.passActive && e.planUntil ? new Date(e.planUntil) : null;
 }
 
 /* ---- the trial-ending reminders ----------------------------------
@@ -352,9 +371,16 @@ const REMIND_AT = [2, 24];               // hours left, lowest first
 let remindedMem = { e: '', s: [], m: 0 };
 /** The thresholds (hours) a trial of `lengthMs` gets a reminder at. Pure. */
 export const remindersFor = (lengthMs) => REMIND_AT.filter((hrs) => lengthMs > 2 * hrs * 3600000);
+/* A RUNNING PASS gets the same two reminders, a day and two hours out,
+   in place of a trial's: "Your 7-day pass ends …" and the yearly plans
+   from their per-day price (the cheapest plan row's, never typed). Its
+   length is known (its payment's own span), so a pass bought an hour
+   ago is not told it ends "in about 167 hours" — only the thresholds
+   inside its length fire, as for a trial. */
 function remindTrial() {
   if (typeof window === 'undefined' || /^(purchase|purchases|admin|screening|start|invite)$/.test(pageName())) return;
-  const ends = trialEndsAt();
+  const pe = passEndsAt();
+  const ends = pe || trialEndsAt();
   if (!ends) return;
   const ms = ends.getTime() - serverNow();
   if (!(ms > 0)) return;
@@ -363,7 +389,8 @@ function remindTrial() {
   const e = ends.toISOString();
   if (rec.e !== e) rec = { e, s: [], m: 0 };                   // another trial: its own reminders
   const ent0 = entitlement();
-  const known = ent0.trialSource === 'code' || ent0.trialSource === 'admin' ? 0 : (ent0.trialMinutes || 0) * 60000;
+  const known = pe ? (ent0.passDays || 0) * 86400000
+    : ent0.trialSource === 'code' || ent0.trialSource === 'admin' ? 0 : (ent0.trialMinutes || 0) * 60000;
   const seenLeft = Math.max(Number(rec.m) || 0, ms);
   const due = remindersFor(Math.max(known, seenLeft));
   const th = due.find((hrs) => ms <= hrs * 3600000);
@@ -379,11 +406,22 @@ function remindTrial() {
   const hrs = Math.ceil(ms / 3600000);
   const when = ends.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   const left = ms < 3600000 ? 'in under an hour' : 'in about ' + hrs + (hrs === 1 ? ' hour' : ' hours');
-  try {
-    const ui = window.StudioUI;
-    if (ui && ui.toast) ui.toast('Your free trial ends ' + left + ' (' + when + '). Choose a plan to keep working; everything you made stays.', {
-      type: 'info', action: 'CHOOSE A PLAN', onAction: () => { location.href = 'purchase.html'; } });
-  } catch (err) { /* no chrome on this page: the rail still counts */ }
+  const toast = (text) => {
+    try {
+      const ui = window.StudioUI;
+      if (ui && ui.toast) ui.toast(text, { type: 'info', action: 'CHOOSE A PLAN', onAction: () => { location.href = 'purchase.html'; } });
+    } catch (err) { /* no chrome on this page: the rail still counts */ }
+  };
+  if (!pe) { toast('Your free trial ends ' + left + ' (' + when + '). Choose a plan to keep working; everything you made stays.'); return; }
+  const lead = 'Your ' + passName(ent0.passDays) + ' ends ' + left + ' (' + when + ').';
+  cheapestPerDay().then((d) => toast(lead + ' Keep going with a yearly plan' + (d ? ' from about ' + d + ' a day' : '') + '; everything you made stays.'),
+    () => toast(lead + ' Keep going with a yearly plan; everything you made stays.'));
+}
+/** "₹1.64" — the cheapest active plan's price a day, from the plans rows. */
+async function cheapestPerDay() {
+  const plans = (await Billing.listPlans()) || [];
+  const prices = plans.filter((p) => p && p.id !== 'free' && p.active !== false).map((p) => Billing.priceFor(p, 'year')).filter((x) => x > 0);
+  return prices.length ? Billing.fmtPaise(Billing.perDayPaise(Math.min(...prices))) : '';
 }
 export function refresh() {
   /* TWO TRAPS, both of which left a free member ungated for good:
@@ -695,20 +733,115 @@ function gonePanel() {
 const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)$/;
 const pageName = () => file().replace(/\.html$/, '');
 
+/* ---- PASS TIMER — the launch offer's countdown, in the studio's pages
+   ------------------------------------------------------------
+   Binds every [data-pass-timer] on the page to the server's deadline
+   (pass-offer.js: the server's `now` plus the time since it was read,
+   so a visitor's clock cannot move it). The static markup carries no
+   number; the element is filled here, every second, while the tab is
+   visible. [data-pass-left] gets "N of CAP left" when the offer is
+   capped, and is hidden when it is not.
+
+   AT ZERO the offer has ended, because the server now refuses it
+   (quote_pass 'closed'): `onEnd` is called once so the page redraws
+   with "The launch offer has ended" and the plans first. Nothing here
+   decides anything a payment depends on.
+
+   One interval for the page, stopped when no timer is connected. The
+   ticking element is role="timer" with aria-live off: a screen reader
+   is not read a clock. No storage.
+   (Here rather than in a file of its own because it draws on the page,
+   and plan-gate is the logic layer's named DOM adapter that already
+   draws the wall it sits on; invite.html and purchase.html import it.) */
+let passTick = null;
+const passBound = new Set();   // { offer, onEnd, ended }
+
+function paintPassTimers() {
+  const now = Date.now();
+  for (const b of [...passBound]) {
+    const els = document.querySelectorAll('[data-pass-timer]');
+    if (!els.length) { passBound.delete(b); continue; }
+    const st = passNow(b.offer, now);
+    if (st.state !== 'open') {
+      if (!b.ended) { b.ended = true; passBound.delete(b); try { b.onEnd && b.onEnd(); } catch (e) { /* the page redraws on its next event */ } }
+      continue;
+    }
+    const text = countdownText(st.msLeft);
+    for (const el of els) {
+      if (el.textContent !== text) el.textContent = text;
+      const wrap = el.closest('[data-pass-ends]');
+      if (wrap) wrap.hidden = !text;
+    }
+    const left = leftText(st);
+    for (const el of document.querySelectorAll('[data-pass-left]')) {
+      if (el.textContent !== left) el.textContent = left;
+      el.hidden = !left;
+    }
+  }
+  if (!passBound.size && passTick) { clearInterval(passTick); passTick = null; }
+}
+
+/** Start (or restart) the countdown for `offer` ({ raw, readAt } from
+ *  billing.js passOffer()). Call after each render that drew a timer. */
+export function bindPassTimers(offer, { onEnd } = {}) {
+  if (typeof document === 'undefined' || !offer) return;
+  passBound.clear();
+  passBound.add({ offer, onEnd, ended: false });
+  paintPassTimers();
+  if (!passTick && !document.hidden && passBound.size) passTick = setInterval(paintPassTimers, 1000);
+}
+
+/** The countdown line and the cap line, empty and hidden until
+ *  bindPassTimers() fills them: "Offer ends in 3d 04:12:09" and
+ *  "312 of 500 left". `cls` prefixes the page's own classes. */
+export function passClock(cls = 'pass') {
+  return h('p.' + cls + '-clock', {}, [
+    h('span.' + cls + '-ends', { 'data-pass-ends': '', hidden: true }, [
+      'Offer ends in ',
+      h('strong.' + cls + '-timer', { 'data-pass-timer': '', role: 'timer', 'aria-live': 'off', 'aria-label': 'Time left in the launch offer' })
+    ]),
+    h('span.' + cls + '-left', { 'data-pass-left': '', hidden: true })
+  ]);
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (passTick) { clearInterval(passTick); passTick = null; } }
+    else if (passBound.size) { paintPassTimers(); if (!passTick && passBound.size) passTick = setInterval(paintPassTimers, 1000); }
+  });
+}
+
+/* THE LAUNCH PASS ON THE WALL (§61). While the pass is on sale and this
+   account may buy it, the wall's first button is the pass, with the
+   server's price, length and countdown; the free trial is offered only
+   where there is no pass at all (pass-view.js passPhase() 'off'). The
+   offer is public and read once per page (billing.js passOffer()). */
+let wallPass = null;        // { raw, readAt } | null
+let wallPassAsked = false;
+function askWallPass() {
+  if (wallPassAsked) return;
+  wallPassAsked = true;
+  Billing.passOffer().then((o) => { wallPass = o; if (o) apply(); }, () => {});
+}
+const wallPassOpen = () => passPhase(wallPass) === 'open';
+
 function wallPanel() {
   const e = entitlement();
   const off = e.reason === 'off';
+  const kind = wallKind();
+  if (kind === 'pass') return passWallPanel(e);
   /* §33. Somebody who is a member but never had a trial — e.g. one whose
      plan-less e-mail grant was revoked or ran out (while it stands they
      are 'granted' and never walled) — meets the wall on their first
      page. They are offered the trial everybody
      else gets rather than told one is "over". start_trial() decides; a
      refusal ('used', 'paid', 'disabled') is printed, never guessed. */
-  const fresh = !off && !e.used && e.trialEnabled && !e.paidBefore;
+  const fresh = kind === 'fresh';
   const len = trialLength(e.trialMinutes);
+  const passOver = e.passUsed && !e.passActive;
   const card = h('div.pg-lock-card.pg-wall-card', {}, [
-    h('p.bd-eyebrow', { text: off ? 'The studio' : 'Your trial' }),
-    h('h2.pg-lock-h', { text: off ? 'The studio is open to members.' : fresh ? 'Start your free trial.' : e.used ? 'Your free trial is over.' : 'Choose a plan to come in.' }),
+    h('p.bd-eyebrow', { text: off ? 'The studio' : passOver ? 'Your pass' : 'Your trial' }),
+    h('h2.pg-lock-h', { text: off ? 'The studio is open to members.' : fresh ? 'Start your free trial.' : passOver ? 'Your pass has ended.' : e.used ? 'Your free trial is over.' : 'Choose a plan to come in.' }),
     h('p.pg-lock-p', { text: off
       ? 'A plan opens the whole desk: your script, your breakdown, your schedule, your budget, your call sheets.'
       : fresh
@@ -746,9 +879,63 @@ function wallPanel() {
   return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': off ? 'Members only' : fresh ? 'Start your free trial' : 'Your trial has ended' }, [card]);
 }
 
+/** The wall while the pass is on sale to this account: the pass first,
+ *  the plans under it, the same safety line and ways out. */
+function passWallPanel(e) {
+  const f = passFacts(wallPass);
+  const card = h('div.pg-lock-card.pg-wall-card', {}, [
+    h('p.bd-eyebrow', { text: 'Launch offer' }),
+    h('h2.pg-lock-h', { text: e.used ? 'Your free trial is over.' : 'Choose how to come in.' }),
+    /* the terms in the server's mode (§62), offer-terms.js's words */
+    h('p.pg-lock-p.pg-wall-terms', { 'data-offer-mode': passMode(wallPass) || 'unknown', text: 'The whole studio: ' + passTerms(wallPass).line + '. Once per account. Or a yearly plan, below.' }),
+    passClock(),
+    /* The pass's button straight under its price and clock: at 390px the
+       plans below would otherwise push it two screens down. */
+    h('div.pg-lock-actions', {}, [
+      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: passMode(wallPass) === 'renew' ? 'TRY THE WHOLE STUDIO' : 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() })
+    ]),
+    h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' }),
+    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
+    wallPlans(),
+    h('div.pg-lock-actions', {}, [
+      h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' }),
+      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' }),
+      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+    ])
+  ]);
+  return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': 'Launch offer' }, [card]);
+}
+
+/** The wall's pass purchase: Billing.buyPass(), then the gate asked
+ *  again (activation writes the member row), then billing re-read, which
+ *  takes the wall down. A refusal is printed in the server's terms. */
+async function buyPassFromWall(btn) {
+  const card = btn && btn.closest('.pg-wall-card');
+  const msg = card && card.querySelector('.pg-wall-msg');
+  const say = (t) => { if (msg) msg.textContent = t; };
+  const was = btn.textContent;
+  btn.disabled = true;
+  try {
+    const c = window.StudioCloud;
+    let acc = null;
+    try { const st = await Billing.status(); acc = st && st.account_id; } catch (x) { acc = null; }
+    await Billing.buyPass({ accountId: acc, shownMode: passMode(wallPass), onStatus: (t) => { btn.textContent = t.toUpperCase(); } });
+    if (c && c.runGate) await c.runGate();
+    await refresh();
+  } catch (err) {
+    say((err && err.message) || 'The pass could not be bought just now. Please try again.');
+    btn.disabled = false; btn.textContent = was;
+    if (err && (err.hint === 'closed' || err.code === 'closed' || err.hint === 'used' || err.hint === 'has_plan' || err.hint === 'renew_off' || err.code === 'terms')) {
+      Billing.passOffer({ fresh: true }).then((o) => { wallPass = o; const w = document.querySelector('.pg-wall'); if (w && w.dataset.kind !== wallKind()) apply(); }, () => {});
+    }
+  }
+}
+
 function wallPlans() {
   const ul = h('ul.pg-wall-plans', { 'aria-label': 'Plans', hidden: true });
-  Billing.listPlans().then((plans) => {
+  Promise.all([Billing.listPlans(), Billing.offerModes()]).then(([plans, modes]) => {
+    /* each price with its terms, in the server's plan_mode (§62) */
+    const mode = modes && modes.plan;
     const paid = (plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
       .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
     for (const p of paid) {
@@ -757,12 +944,13 @@ function wallPlans() {
       const name = p.name || Billing.planName(p.id);
       ul.append(h('li', {}, [h('a.pg-wall-plan', { href: 'purchase.html?plan=' + encodeURIComponent(p.id) }, [
         h('strong', { text: name }),
-        h('span.pg-wall-price', { text: Billing.fmtPaise(paise) + ' a year · ≈ ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day' }),
+        h('span.pg-wall-price', { text: offerTerms(mode, Billing.fmtPaise(paise), 'year').line + ' · ≈ ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day' }),
         p.blurb ? h('span.pg-wall-blurb', { text: p.blurb }) : null
       ].filter(Boolean))]));
     }
     if (ul.children.length) {
-      ul.append(h('li.pg-wall-once', { text: 'Each plan runs for a year. Nothing renews by itself, and your work is already here.' }));
+      const t = offerTerms(mode, '', 'year');
+      ul.append(h('li.pg-wall-once', { text: 'Each plan runs for a year' + (t.short ? ' · ' + t.short : '') + '. Your work is already here.' }));
       ul.hidden = false;
     }
   }).catch(() => { /* the SEE PLANS button stands alone */ });
@@ -821,12 +1009,19 @@ if (typeof document !== 'undefined') {
     if (b) { ev.preventDefault(); exportFromWall(b); }
     const t = ev.target && ev.target.closest && ev.target.closest('[data-action="pg-start-trial"]');
     if (t && !t.disabled) { ev.preventDefault(); startTrialFromWall(t); }
+    const p = ev.target && ev.target.closest && ev.target.closest('[data-action="pg-buy-pass"]');
+    if (p && !p.disabled) { ev.preventDefault(); buyPassFromWall(p); }
   });
 }
 
 function wallKind() {
   const e = entitlement();
-  return e.reason === 'off' ? 'off' : (!e.used && e.trialEnabled && !e.paidBefore) ? 'fresh' : 'over';
+  if (e.reason === 'off') return 'off';
+  if (wallPassOpen() && e.mayPass && passFacts(wallPass)) return 'pass';
+  /* The free trial is offered only where no launch pass exists at all:
+     while the pass is on sale, or once the launch offer has ended,
+     start_trial() refuses a signup trial ('pass'). */
+  return (!e.used && e.trialEnabled && !e.paidBefore && passPhase(wallPass) === 'off') ? 'fresh' : 'over';
 }
 
 /** True when this page should be covered. */
@@ -958,10 +1153,12 @@ function apply() {
     const kind = wall ? wallKind() : '';
     const cur = document.querySelector('.pg-wall');
     if (cur && cur.dataset.kind !== kind) cur.remove();
+    if (wall) askWallPass();
     if (!document.querySelector('.' + want)) {
       const panel = wall ? wallPanel() : gone ? gonePanel() : lockPanel();
       if (wall) panel.dataset.kind = kind;
       document.body.append(panel);
+      if (kind === 'pass') bindPassTimers(wallPass, { onEnd: () => apply() });
     }
   } else {
     delete root.dataset.planLock;
@@ -1111,4 +1308,4 @@ if (typeof window !== 'undefined') {
 /* journey.js asks this, without importing the module (it runs in Node tests). */
 if (typeof window !== 'undefined') window.StudioPlan = { allowed, isDisabledEverywhere };
 
-export default { isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, quotedOffer, nudgeText, nudgeAction, offerForLimit, limitKey, limitOffer, limitText, remindersFor, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, pageGone, lockTabs, markLocked, CAPABILITIES };
+export default { passEndsAt, bindPassTimers, passClock, isDisabledEverywhere, OFF_BY_DEFAULT, offerFor, offerText, quotedOffer, nudgeText, nudgeAction, offerForLimit, limitKey, limitOffer, limitText, remindersFor, labelFor, serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, pageGone, lockTabs, markLocked, CAPABILITIES };

@@ -32,6 +32,15 @@
 .sc-main > .sc-done { grid-area: after; }
 .sc-main > #beatsPanel { grid-area: beats; }
 .sc-main > #scChips { grid-area: chips; }
+/* The stage guide (#guide) sits in this unpadded grid: its header and
+   intro took x=0 at 390 and sat 16px left of its own steps, which pad
+   themselves by the skin's band padding, inline var(--s4) (QA r4). The
+   guide takes that padding and the steps give theirs back, so the
+   heading and every step start on one line. And the line-type chips
+   are for writing a line, not reading the guide. */
+.sc-main > #guide { padding-inline: var(--s4); }
+.sc-main > #guide .sg-steps > .step { margin-inline: calc(-1 * var(--s4)); }
+.sc-main:has(> #guide:not([hidden])) > #scChips { display: none; }
 
 /* ============================================================
    THE TOP BAR — three rows: meta strip, tools, the hint strip
@@ -366,12 +375,20 @@
   --danger: var(--danger-deep);
 }
 @media (min-width: 720px) and (hover: hover) {
+  /* In the page's LEFT MARGIN, level with the line, never over text.
+     It sat centred ABOVE the line, and lines are 16–32px apart, so it
+     covered the middle of the line above and took clicks meant for it
+     (QA). The margin is the 1.5in gutter and holds nothing a writer
+     types; a cue's two word buttons wrap onto a second row there. */
   .sc-sheet .wr-el:focus-within > .sc-linebar {
     position: absolute;
     z-index: 4;
-    bottom: calc(100% + 0.4rem);
-    left: 50%;
-    transform: translateX(-50%);
+    top: 0;
+    right: calc(100% + var(--s2));
+    width: max-content;
+    max-width: 7.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     display: flex;
     align-items: center;
     gap: var(--s-half);
@@ -385,6 +402,14 @@
     line-height: 1.2;
     white-space: nowrap;
   }
+  /* A speech in a dual pair has the other speech for a left margin:
+     there it keeps the old place, above the line. */
+  .sc-sheet .wr-dual .wr-el:focus-within > .sc-linebar {
+    top: auto; right: auto; bottom: calc(100% + 0.4rem); left: 50%;
+    max-width: none; flex-wrap: nowrap;
+    transform: translateX(-50%);
+  }
+  .sc-sheet .wr-dual .sc-lb.is-cue { flex: none; }
   .sc-linebar[data-type]:not([data-type="character"]) .sc-lb.is-cue { display: none; }
   .sc-lb {
     display: inline-flex;
@@ -408,8 +433,8 @@
   .sc-lb:hover, .sc-lb:focus-visible { background: var(--surface-hover); color: var(--ink); outline: none; }
   .sc-lb.is-danger { color: var(--ink-muted); }
   .sc-lb.is-danger:hover, .sc-lb.is-danger:focus-visible { background: var(--danger-wash); color: var(--danger); }
-  /* a hairline between the cue's two words and the three icons */
-  .sc-lb.is-cue + .sc-lb.is-ico { margin-left: var(--s2); }
+  /* the cue's two words sit on their own rows above the three icons */
+  .sc-lb.is-cue { flex: 1 1 100%; }
 }
 /* The old ⋯ on the line: built, never shown (the toolbar replaced it;
    right-click and the menu remain). */
@@ -493,6 +518,12 @@
   text-transform: none;
   white-space: nowrap;
   box-shadow: none;
+}
+/* The compact height is a mouse size; a finger gets the 44px floor
+   base.css gives every other control (QA r3: these stayed 28px). */
+@media (pointer: coarse) {
+  .sc-sheet .wx-handoff-acts .btn { height: auto; min-height: var(--tap-min, 44px); }
+  .sc-done a { display: inline-flex; align-items: center; min-height: var(--tap-min, 44px); }
 }
 .sc-sheet .wx-handoff-acts .btn.wx-quiet { background: transparent; border-color: transparent; color: var(--ink-body); }
 .sc-sheet .wx-handoff-acts .btn.wx-quiet:hover { background: var(--surface-hover); color: var(--ink); }
@@ -635,6 +666,7 @@
 .sc-imp-x { align-self: start; color: var(--ink-muted); }
 .sc-imp-body { display: grid; gap: var(--s3); }
 .sc-imp-body > p { margin: 0; font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-body); }
+.sc-imp-warn { margin: 0; padding-inline-start: var(--s4); display: grid; gap: var(--s1); font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-muted); }
 .sc-imp-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: 0; }
 .sc-imp-modes { display: flex; flex-wrap: wrap; margin: 0; }
 .sc-imp-modes .k-seg-btn { flex: 1 1 12rem; white-space: normal; text-align: center; padding-block: var(--s1); }
@@ -867,6 +899,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 .sc-sheet-row {
   display: flex;
   align-items: center;
+  text-decoration: none;               /* the href rows are anchors (QA r3: underlined on the phone) */
   gap: var(--s3);
   width: 100%;
   min-height: var(--tap-min, 44px);
@@ -912,7 +945,9 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-top { position: relative; top: auto; }
   /* The meta strip: crumb, then the counts. */
   .sc-meta { gap: var(--s1) var(--s3); padding-block: var(--s2); }
-  .sc-draftline { flex-basis: 100%; }
+  /* The faces wrap to their own line rather than squeezing the draft's
+     name to "NO NUMBERED DRAFT…" (QA r4). */
+  .sc-draftline { flex-basis: 100%; flex-wrap: wrap; row-gap: var(--s1); }
   /* the running-time button keeps a thumb-sized target; the counts
      beside it sit on its centre line */
   .sc-stats { align-items: center; }
@@ -931,6 +966,23 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-tools-sheet-btn { display: inline-flex; }
   .sc-typekey { display: none; }
   .sc-typepill { height: var(--tap-min, 44px); }
+  /* ONE row (QA: the ⋯ button wrapped to a 44px row of its own, the
+     pill read "SCENE / HEADING" over two lines, the AI pill stood 28px
+     beside 44px neighbours and Notes was squeezed to 18px). The left
+     group gives way, not the row: the pill's name ellipsises. */
+  .sc-tools { min-width: 0; }   /* a flex item of .sc-top: never wider than the screen */
+  .sc-tools-l { flex: 1 1 0; flex-wrap: nowrap; }
+  .sc-tools-r { flex: none; flex-wrap: nowrap; }
+  .sc-tools-l > :not(.sc-typepill) { flex: none; }
+  .sc-typepill { min-width: 0; flex: 0 1 auto; white-space: nowrap; }
+  .sc-typename { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .sc-tools .ai-pill { height: var(--tap-min, 44px); }
+  .sc-tools .nt-open, .sc-beats-btn { min-width: var(--tap-min, 44px); justify-content: center; }
+  /* Beats is its icon here, as Notes is (notes.css): the word stays for
+     a screen reader, visually hidden, so the type pill keeps its name. */
+  .sc-beats-btn > span:not(.k-sym) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sc-typedot, .sc-typepill .sc-caret { display: none; }
+  .sc-typepill { padding-inline: var(--s2); letter-spacing: 0; }
 
   /* The paper page at 390px: 16px Courier, the format's indents as
      shares of the column, page breaks inside the page's own edges. */
@@ -1055,6 +1107,19 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-find-opts { grid-area: opts; }
   .sc-find-x { grid-area: x; }
   .sc-find-acts { grid-area: acts; }
+  /* #scTop scrolls away on a phone (above), and every search scrolls
+     to its match — so the field being typed in, the count and Replace
+     left the screen with the first keystroke (QA r2: the bar at
+     y=-783). While it is open the find bar alone is pinned under the
+     band; the match lands at the centre, clear of it. */
+  .sc-find:not([hidden]) {
+    position: fixed;
+    top: var(--sh-chrome-h, 0px);
+    inset-inline: 0;
+    z-index: 6;
+    background: var(--surface-rail);
+    border-bottom: 1px solid var(--border-hair);
+  }
 }
 .sc-find-count { min-width: 6.5em; color: var(--ink-muted); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 /* On the paper page: the page's own rule colour for a line with a

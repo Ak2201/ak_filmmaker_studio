@@ -800,8 +800,16 @@ const ENDS_IN_TO = /TO:$/;
 const TAMIL_CUE_SHAPE = (l) => /[஀-௿]/.test(l) && !/[a-z]/.test(l)
   && l.split(/\s+/).filter(Boolean).length <= 3 && l.length <= 30 && !/[.!?।…]$/.test(l);
 
+/* The importer reads *x*, **x** and _x_ as emphasis and takes the marks
+   off (QA r4). Text that would be read that way goes out ESCAPED, \* and
+   \_, which the importer turns back into the characters — so the
+   round trip keeps "5 *star* review" as typed. Mirrors `unmark` in
+   script-import.js. */
+const EMPHASIS_SHAPE = /(^|[^\\*])(\*{1,3})(?=[^\s*])[^*\n]*?[^\s*\\]\2(?!\*)|(^|[^\w\\])_(?=\S)[^_\n]*?[^\s\\]_(?!\w)/;
+const escapeEmphasis = (t) => (EMPHASIS_SHAPE.test(t) ? t.replace(/[*_]/g, '\\$&') : t);
+
 function fountainBlock(type, text) {
-  const t = text.trim();
+  const t = escapeEmphasis(text.trim());
   switch (type) {
     case 'scene': {
       const up = t.toUpperCase();
@@ -874,6 +882,11 @@ export function toFountain(doc, meta = {}) {
   const els = (doc && doc.elements) || [];
   // `^` only on a cue that really is the right half of a pair.
   const caret = new Set(dualPairs(els).map((p) => p.right[0]));
+  /* A LOCKED number goes out as Fountain's `#12A#`, which the importer
+     reads back (QA r3: the export dropped them, so a round trip
+     renumbered by position). Unlocked, the number is the position and
+     nothing is written, as before. */
+  const nums = isNumberingLocked(doc && doc.numbering) ? sceneNumbers(els, doc.numbering).byId : null;
 
   const body = [];
   let prev = null;
@@ -884,6 +897,7 @@ export function toFountain(doc, meta = {}) {
     const lines = fountainBlock(el.type, text);
     if (!lines.length) continue;
     if (caret.has(i)) lines[0] += ' ^';
+    if (nums && el.type === 'scene' && nums.get(el.id)) lines[0] += ' #' + nums.get(el.id) + '#';
     const glue = GLUED.has(el.type) && CUE_ISH.has(prev);
     if (body.length && !glue) body.push('');
     body.push(...lines);

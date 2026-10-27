@@ -204,6 +204,14 @@ ok(/,-\d/.test(act), 'negative variance stays a bare number');
 eq(C.toCSV([['=SUM(A1)', 'a,b', 'say "hi"']]), '"\'=SUM(A1)","a,b","say ""hi"""\r\n', 'formula defused, commas and quotes escaped');
 const ex = C.expensesCSV([{ date: '2026-11-02', shootDay: 1, line: 'ci_7', category: 'food', amount: 1180, gstPct: 18, vendor: 'Saravana', gstin: '', paidBy: 'c-ravi', method: 'upi', note: '', receipt: '' }], () => 'Unit food', (id) => names[id]);
 ok(ex.includes('2026-11-02,1,Unit food,Food,1180,18,180,Saravana,,Ravi,UPI'), 'expense CSV row');
+// fix-money r1: a dollar budget's CSVs name the currency on every money
+// column; a rupee budget's headers are byte-identical to before.
+eq(C.budgetCSV(rep, 'USD').split('\r\n')[0], 'Account,Description,Amount,Units,Rate (USD),Subtotal (USD)', 'USD budget CSV names its currency');
+eq(C.budgetCSV(rep, 'INR'), C.budgetCSV(rep), 'an INR budget CSV is unchanged');
+eq(C.actualsCSV(rep, 'USD').split('\r\n')[0], 'Account,Description,Estimate (USD),Actual (incl. GST) (USD),Actual (excl. GST) (USD),GST (USD),TDS withheld (USD),Variance (USD),% used', 'USD actuals CSV names its currency');
+ok(C.actualsCSV(rep).startsWith('Account,Description,Estimate,Actual (incl. GST),'), 'INR actuals headers unchanged');
+ok(C.expensesCSV([], undefined, undefined, 'USD').startsWith('Date,Shoot day,Budget line,Category,Amount (incl. GST) (USD),GST %,GST (USD),'), 'USD expenses CSV names its currency');
+ok(C.expensesCSV([]).startsWith('Date,Shoot day,Budget line,Category,Amount (incl. GST),GST %,GST,'), 'INR expenses headers unchanged');
 
 /* ---- locked versions, scales ----------------------------------- */
 reset();
@@ -309,6 +317,28 @@ eq(srep.depts.flatMap((d) => d.lines).filter((l) => !l.unbudgeted).map((l) => l.
   eq(L.rowSpan(before), { start: 1, count: 5 }, 'an existing blob from ci_1 draws exactly as before');
   eq(L.rowSpan({ ci_1_item: '', ci_12_rate: '1' }), { start: 1, count: 12 }, 'existing ids are all kept on screen');
   eq(L.rowSpan({}), { start: 1, count: 5 }, 'a new estimate starts at ci_1');
+}
+
+/* ---- QA round 2 (Budget & money) ------------------------------ */
+{
+  reset();
+  // A negative days/rate is not a price: it counts as nothing.
+  const neg = C.estimateLines({ ci_1_custom: 'Discount', ci_1_days: '1', ci_1_rate: '-5000', ci_2_custom: 'Camera', ci_2_days: '2', ci_2_rate: '1000' });
+  eq(neg.map((l) => l.estimate), [0, 2000], 'a negative rate prices at 0, never off the budget');
+  const r0 = C.costReport({ lines: neg, expenses: [] });
+  eq(C.budgetKpis(r0).over, false, 'nothing spent is never over budget');
+  // The top sheet lists only departments that have an estimate.
+  const loose = C.costReport({ lines: C.estimateLines({ ci_1_custom: 'Camera', ci_1_days: '1', ci_1_rate: '1000' }),
+    expenses: [{ id: 'x1', amount: 2800, category: 'food', line: '' }] });
+  const food = C.topSheet(loose).groups.flatMap((g) => g.depts).filter((d) => !d.estimate);
+  eq(food.length, 0, 'the top sheet drops a department that has only unbudgeted spend');
+  // Comparing a locked version shows a contingency move.
+  const lines = C.estimateLines({ ci_1_custom: 'Camera', ci_1_days: '10', ci_1_rate: '1000' });
+  const snap = C.snapshotBudget({ lines, report: C.costReport({ lines, expenses: [], settings: { contingencyPct: 10 } }), days: 0 });
+  const v = C.lockVersion({ name: 'v1', note: '', snapshot: snap });
+  const cmp = C.compareVersion(v, lines, 12000);
+  eq([cmp.total.delta, cmp.grand.then, cmp.grand.now, cmp.grand.delta], [0, v.grand, 12000, 12000 - v.grand], 'a contingency move shows in the comparison');
+  reset();
 }
 
 reset();

@@ -54,6 +54,8 @@ eq(Sync.headingsOf(base()).map((h) => h.id), ['h1', 'h2', 'h3'], 'headingsOf: th
 eq(Sync.headingsOf([el('scene', '   '), el('action', 'x')]), [], 'an empty heading is not a heading');
 eq(Sync.headingFields('12 INT. OFFICE - DAY'), { location: 'OFFICE', intExt: 'INT', dayNight: 'DAY', number: '12' }, 'fields from a numbered heading');
 eq(Sync.headingFields('KITCHEN'), { location: 'KITCHEN' }, 'a bare place says nothing about INT/EXT or time');
+eq(Sync.headingFields('INT. KITCHEN - DAY\n\nMara pours tea.\n\nMARA\nNot now.').location, 'KITCHEN',
+  'a heading with line breaks in it reads only its first line (QA: a pasted scene became the location)');
 
 /* ---- a fresh script: everything is new --------------------------- */
 let plan = Sync.reconcile(base(), [], {});
@@ -334,6 +336,16 @@ Sync.syncScript(base());
   Shots.addBlock(r3[1].id);
   Bin.unaddScenes([r3[1].id]);
   eq(Bin.listBin().length, 1, 'unaddScenes keeps an entry that holds only a blocking diagram');
+
+  // restoring in ANY order puts each scene among its neighbours
+  for (const order of [[0, 1, 2], [2, 1, 0], [1, 0, 2], [1, 2, 0]]) {
+    reset();
+    const ids = ['a', 'b', 'c', 'd', 'e'];
+    Scenes.saveScenes(ids.map((id, i) => ({ ...Scenes.blankScene(), id, number: String(i + 1) })));
+    const bins = ['b', 'c', 'd'].map((id) => Bin.binScene(id, { reason: 'hand' }));
+    order.forEach((k) => Bin.restoreFromBin(bins[k].id));
+    eq(Scenes.listScenes().map((s) => s.id), ids, 'restore order ' + order + ' keeps the scene order');
+  }
 }
 
 console.log(`test:sync — ${pass} passed, ${fail} failed`);

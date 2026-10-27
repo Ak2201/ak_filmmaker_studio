@@ -107,8 +107,8 @@ export function setBudgetCurrency(cur) {
 export function currencyMismatch(budgetCur, filmCur, hasMoney) {
   if (!hasMoney || !budgetCur || !filmCur || budgetCur === filmCur) return '';
   return budgetCur === 'INR'
-    ? 'This budget is in ₹, the film is set to US. Nothing was converted.'
-    : 'This budget is in $, the film is set to India. Nothing was converted.';
+    ? 'This budget is in ₹, the film is set to Elsewhere (US dollars). Nothing was converted.'
+    : 'This budget is in $, the film is set to India (rupees). Nothing was converted.';
 }
 
 /** A figure in the budget's currency, exact. INR is fmtINRExact, unchanged. */
@@ -368,6 +368,7 @@ export function usRateHint(name) {
     ≥ ₹1,000 to whole thousands, which is a lie in a budgeting tool. */
 export function fmtINRExact(n) {
   if (!n) return '₹ 0';
+  if (n < 0) return '−' + fmtINRExact(-n);
   return '₹ ' + INR.format(Math.round(n));
 }
 
@@ -387,6 +388,16 @@ export function totalCaption(total, count, fmtINR) {
     // fmtINR's one surviving job: a glance-sized magnitude in a
     // caption that has no room for eight digits.
     (total >= 100000 ? ` · ≈${fmtINR(total)}` : '');
+}
+
+/* A day count keeps its fraction: INR rounds to whole units, so 2.5
+   days once read '3 d × ₹ 25,000' beside a ₹ 62,500 subtotal. */
+const DAYS = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+
+/** The 'days × rate' line under a row's subtotal, or '' when either is
+    missing. `money` formats the rate in the budget's currency. */
+export function rowEquation(days, rate, money) {
+  return days > 0 && rate > 0 ? `${DAYS.format(days)} d × ${money(rate)}` : '';
 }
 
 /** The toast after "Use N days": what was filled and what was left. */

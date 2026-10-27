@@ -329,6 +329,22 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(I.parseSlug('EST. SKYLINE - DAY').intExt, 'EXT', '9: EST is exterior');
   eq(I.parseSlug('INT. CAR - LATER').dayNight + '|' + I.parseSlug('INT. CAR - LATER').location, 'CONTINUOUS|CAR', '15: LATER is a time, not part of the place');
   eq(['MOMENTS LATER', 'SAME', 'EVENING', 'DAWN', 'DUSK', 'NOON', 'MIDNIGHT', 'MORNING'].map((w) => I.parseSlug('INT. X - ' + w).location), Array(8).fill('X'), '15: time words leave the location alone');
+  // A qualifier after the time is not the time, and leaves the place (QA r2).
+  for (const [h, loc, dn] of [
+    ['INT. HOUSE - NIGHT (1995)', 'HOUSE', 'NIGHT'],
+    ['EXT. ROAD - NIGHT - FLASHBACK', 'ROAD', 'NIGHT'],
+    ['INT. KITCHEN - NIGHT (FLASHBACK)', 'KITCHEN', 'NIGHT'],
+    ['EXT. BEACH - NIGHT (PRESENT DAY)', 'BEACH', 'NIGHT'],
+    ['INT. KITCHEN—NIGHT', 'KITCHEN', 'NIGHT'],
+    ['INT. KITCHEN -- NIGHT', 'KITCHEN', 'NIGHT'],
+    ['INT. SCHOOL ASSEMBLY HALL, ASHOK NAGAR - DAY (2014)', 'SCHOOL ASSEMBLY HALL, ASHOK NAGAR', 'DAY'],
+    ['INT. HOUSE - KITCHEN - NIGHT', 'HOUSE - KITCHEN', 'NIGHT'],
+    ['INT. CO-OP STORE - DUSK', 'CO-OP STORE', 'DUSK'],
+  ]) {
+    const p = I.parseSlug(h);
+    eq(p.location + '|' + p.dayNight + '|' + p.guessedTime, loc + '|' + dn + '|false', 'qualifier: ' + h);
+  }
+  eq(I.parseSlug('INT. HOUSE - FLASHBACK').location + '|' + I.parseSlug('INT. HOUSE - FLASHBACK').guessedTime, 'HOUSE - FLASHBACK|true', 'qualifier: no time at all stays in the place, flagged');
   eq(I.parseSlug('உள். வீடு - இரவு'), { number: '', intExt: 'INT', dayNight: 'NIGHT', location: 'வீடு', guessedTime: false }, '15: Tamil heading');
   eq(I.parseSlug('வெளி. தெரு - பகல்').intExt + I.parseSlug('வெளி. தெரு - பகல்').dayNight, 'EXTDAY', '15: வெளி / பகல்');
   eq(ty('உள். வீடு - இரவு\n\nமணி\nவணக்கம்.', 'x.fountain'), 'scene character dialogue', '15: a Tamil heading is recognised unforced');
@@ -490,6 +506,26 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   ok(!toFDX({ elements: a }, { title: 'T' }).includes('Number='), 'fdx export: unlocked numbers are positions and are not written');
 }
 
+/* ---- QA r3: Fountain keeps locked numbers; a heading gives its number up ---- */
+{
+  const S = await import('../src/lib/script.js');
+  let n = 0;
+  const E = (type, text) => ({ id: 'fq' + (++n), type, text });
+  const a = [E('scene', 'INT. A - DAY'), E('action', 'x'), E('scene', 'EXT. B - NIGHT'), E('action', 'y')];
+  const numbering = S.lockNumbering(a);
+  const b = [a[0], a[1], E('scene', 'INT. C - DAY'), E('action', 'z'), a[2], a[3]];
+  const f = S.toFountain({ elements: b, numbering }, { title: 'T', date: '2026-10-06' });
+  eq([...f.matchAll(/#([0-9A-Z]+)#$/gm)].map((m) => m[1]), ['1', '1A', '2'], 'fountain export: locked numbers go out as #n#');
+  eq(I.parseScript(f, 'x.fountain').scenes.map((r) => r.number), ['1', '1A', '2'], 'fountain export -> import: the locked numbers come back');
+  ok(!/#\d+#/.test(S.toFountain({ elements: a }, { title: 'T', date: '2026-10-06' })), 'fountain export: unlocked numbers are not written');
+
+  const p = I.parseScript('12. INT. KITCHEN - DAY\n\nA.\n\nINT. HALL - DAY 13\n\nB.\n\nINT. YARD - DAY #14#\n\nC.\n\n15 EXT. ROAD - NIGHT 15\n\nD.\n\nEXT. HIGHWAY 66 - DAY\n\nE.', 'x.fountain');
+  eq(p.elements.filter((e) => e.type === 'scene').map((e) => e.text),
+    ['INT. KITCHEN - DAY', 'INT. HALL - DAY', 'INT. YARD - DAY', 'EXT. ROAD - NIGHT', 'EXT. HIGHWAY 66 - DAY'],
+    'import: a heading\'s scene number comes out of its text (an address stays)');
+  eq(p.scenes.map((r) => r.number), ['12', '13', '14', '15', '5'], 'import: and the Breakdown rows keep those numbers');
+}
+
 
 /* ---- audit bugs 13, 14, 15: lines the round trip used to lose -----
    13: a styled Word paragraph (or a dialogue line under a cue in a
@@ -561,6 +597,49 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   const br = [E('scene', 'INT. A - DAY'), E('action', 'He waits.\nThen he waits more.'), E('character', 'RAVI'), E('dialogue', 'One.\nTwo.')];
   const bb = await viaDocx({ elements: br });
   eq(shape(bb.elements), shape(br), '15: docx round trip keeps the line breaks inside an element');
+}
+
+/* ---- a paste into one line of the Writer (src/lib/script-paste.js) ----
+   QA: a multi-line paste into a heading made ONE element of the whole
+   scene. The editor parses it the way the Import paste box does. */
+{
+  const Paste = await import('../src/lib/script-paste.js');
+  const text = 'INT. KITCHEN - DAY\n\nMara pours tea.\n\nMARA\nNot now.';
+  ok(Paste.wantsSplit('scene', text) && Paste.wantsSplit('action', text), 'a multi-paragraph paste is split');
+  ok(Paste.wantsSplit('scene', 'A\nB') && !Paste.wantsSplit('action', 'one line\nnext line'), 'a one-line type takes no newline; action keeps its own line break');
+  ok(!Paste.wantsSplit('scene', 'INT. HALL - DAY'), 'a one-line paste is the browser\'s');
+  const parsed = I.parseScript(text, '').elements;
+  const plan = Paste.planPaste({ type: 'scene', before: '', after: '' }, parsed, text);
+  eq([plan.type + ':' + plan.text, ...plan.insert.map((e) => e.type + ':' + e.text)],
+    ['scene:INT. KITCHEN - DAY', 'action:Mara pours tea.', 'character:MARA', 'dialogue:Not now.'], 'the pasted scene becomes its elements');
+  const mid = Paste.planPaste({ type: 'action', before: 'He waits. ', after: ' Then sits.' }, parsed, text);
+  eq([mid.type + ':' + mid.text, ...mid.insert.map((e) => e.type + ':' + e.text)],
+    ['action:He waits.', 'scene:INT. KITCHEN - DAY', 'action:Mara pours tea.', 'character:MARA', 'dialogue:Not now.', 'action:Then sits.'],
+    'into the middle of a line: the line keeps its head, the tail follows the paste');
+  eq(Paste.planPaste({ type: 'scene', before: 'INT. ', after: '' }, [{ type: 'action', text: 'KITCHEN\n- DAY' }], 'KITCHEN\n- DAY').text,
+    'INT. KITCHEN - DAY', 'one piece into a heading: its line breaks fold to spaces');
+}
+
+/* ---- QA r4: Fountain says what it left out, and drops emphasis ---- */
+{
+  const S = await import('../src/lib/script.js');
+  const t = '# ACT ONE\n\n= synopsis\n\nINT. ROOM - DAY\n\n/* boneyard */\n\nHe **shouts** and _whispers_ and *leans*. 5 * 3, snake_case.\n\n[[a note]]\n\n===\n\nRAVI\nHi.\n';
+  const r = I.parseScript(t, 'a.fountain');
+  eq(r.elements[1].text, 'He shouts and whispers and leans. 5 * 3, snake_case.', 'fountain: emphasis marks come off, a lone * and a snake_case word stay');
+  ok(r.warnings.some((w) => /2 note or boneyard/.test(w)), 'fountain: dropped notes are reported');
+  ok(r.warnings.some((w) => /2 section or synopsis/.test(w)), 'fountain: dropped sections are reported');
+  ok(r.warnings.some((w) => /1 page break/.test(w)), 'fountain: dropped page breaks are reported');
+  const doc = [{ id: 'a', type: 'scene', text: 'INT. ROOM - DAY' }, { id: 'b', type: 'action', text: 'A 5 *star* review, file_name_here and _x_.' }];
+  const back = I.parseScript(S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' }), 'b.fountain');
+  eq(back.elements.find((e) => e.type === 'action').text, doc[1].text, 'fountain round trip keeps typed stars and underscores (escaped on the way out)');
+  /* PDF/.txt front matter fills the Title Page instead of vanishing. */
+  const C = ' '.repeat(28);
+  const txt = C + 'DRAGON TEST\n\n' + C + 'Written by\n\n' + C + 'Some Writer\n\f\nINT. ROOM - DAY\n\nHe sits.\n';
+  const tr = I.parseScript(txt, 'x.pdf');
+  eq(tr.titlePage && [tr.titlePage.title, tr.titlePage.credit, tr.titlePage.author], ['DRAGON TEST', 'Written by', 'Some Writer'], 'text: the title page before the first page break fills the Title Page');
+  ok(tr.warnings.some((w) => /read into the Title Page/.test(w)), 'text: the notice says the lines went to the Title Page');
+  const lone = I.parseScript(C + 'JUST A TITLE\n\f\nINT. ROOM - DAY\n\nHe sits.\n', 'y.pdf');
+  ok(lone.titlePage === null && lone.warnings.some((w) => /left out of the script as front matter/.test(w)), 'text: a front page with nothing to keep does not claim it was kept');
 }
 
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);

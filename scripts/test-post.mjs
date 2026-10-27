@@ -333,6 +333,30 @@ ok(csv.includes('"\'=SUM(1)"'), 'a formula-looking note is neutralised');
 eq(csv.trim().split('\r\n').length, 4, 'one row per scene plus the header');
 mem.clear();
 
+/* ---- a cut with no date takes the user's LOCAL day, not the UTC one ---- */
+{
+  const prevTZ = process.env.TZ, RealDate = Date;
+  process.env.TZ = 'Asia/Kolkata';
+  const at = new RealDate(2026, 9, 27, 1, 30);            // 01:30 IST on the 27th = the 26th, 20:00 UTC
+  eq(E.localISO(at), '2026-10-27', 'localISO is the local calendar day');
+  globalThis.Date = class extends RealDate { constructor(...a) { if (a.length) super(...a); else super(+at); } static now() { return +at; } };
+  mem.clear();
+  const c = E.addCut({ name: 'Assembly' });
+  globalThis.Date = RealDate;
+  if (prevTZ === undefined) delete process.env.TZ; else process.env.TZ = prevTZ;
+  eq(c.date, '2026-10-27', 'addCut with no date defaults to the local day at 01:30 IST');
+  mem.clear();
+}
+
+/* ---- the submission-tracker button goes to the tracker, in every format ---- */
+{
+  const { readFileSync } = await import('node:fs');
+  const dv = readFileSync(new URL('../src/pages/deliverables.js', import.meta.url), 'utf8');
+  ok(/label: feature \? 'Add festivals' : 'Open the submission tracker',\s*iconAfter: 'arrow_forward',\s*href: 'short\.html\?stay=1#step-10'/.test(dv), 'Open the submission tracker goes straight to the tracker, not a guide step without one');
+  const w = readFileSync(new URL('../src/ui/stage-guide-widgets.js', import.meta.url), 'utf8');
+  ok(!/kept under their own key/.test(w), 'no storage jargon on the stage guide page');
+}
+
 /* ---- deliverables: the optional streamer groups ------------- */
 mem.clear();
 const CAT = (await import('../src/data/deliverables.json')).default;

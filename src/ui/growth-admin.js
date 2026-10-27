@@ -9,9 +9,25 @@
                   console records the payout; the money moves outside
                   this app (bank, UPI).
 
+     Launch pass  (§61) the paid week of the whole studio sold as a
+                  launch offer: on/off, the price, the days, the
+                  deadline (IST) and an optional cap, with what is LIVE
+                  now read back from admin_pass_status(). A new price
+                  applies to new orders only.
+
+     Auto-renew   (§62) per product, one-time or auto-renew: the week
+                  pass and the yearly plans each have a switch, read
+                  back from admin_billing_modes(). New purchases only;
+                  an auto-pay already running keeps its price. Under
+                  it, every subscription with its status, amount and
+                  next charge, and CANCEL (at the period's end).
+
      Trial        (§30) whether signing in buys thirty minutes or the
                   wall, how long, what an invite code buys instead,
-                  and how much of the studio a trial shows.
+                  and how much of the studio a trial shows. While the
+                  launch pass is on, a signup trial is refused by the
+                  server; this block then serves invite codes and the
+                  support grant below it.
 
      Price rise   (§30) the scheduled, self-firing price change: the
                   new price per tier, the date they share, and the
@@ -30,6 +46,7 @@
    No inline handlers (CSP): delegate() on [data-gra-action] and
    [data-gra-form].
    ============================================================ */
+import { errorSentence } from '../lib/gate.js';
 import { h, delegate } from '../lib/dom.js';
 import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
@@ -45,7 +62,7 @@ import { funnel as funnelChart } from './admin-charts.js';
 import { cohorts as fetchCohorts } from '../lib/admin-api.js';
 
 let rerender = () => {};
-const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '', offer: null };
+const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '', offer: null, pass: null, passSaved: '', passDraft: null, modes: null, modesSaved: '', subs: null, subFilter: '' };
 
 /* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
    every form on the console from its defaults 2.5s after a save, under
@@ -87,6 +104,12 @@ async function load() {
        trial_scope, and before it a pressed trial is always the sample
        whatever the select below says. Null on any failure. */
     S.offer = await trialOffer().catch(() => null);
+    /* §61. Owner and finance only; a database without it answers
+       PGRST202 and the block says which section it needs. */
+    S.pass = await settle('pass', Billing.admin.passStatus);
+    /* §62. A database without it answers PGRST202: the block says so. */
+    S.modes = await settle('modes', Billing.admin.billingModes);
+    S.subs = S.missing.modes ? null : await settle('subs', () => Billing.admin.listSubscriptions(S.subFilter || null));
     /* The one-person trial grant needs somebody to pick. The gate's
        console already lists members and billing-admin.js already
        borrows that list for its own grant form — a third RPC that
@@ -98,7 +121,7 @@ async function load() {
     } catch (e) { S.members = []; }
     S.state = 'ready';
   } catch (e) {
-    S.error = e.message || 'The growth console could not load.'; S.state = 'error';
+    S.error = errorSentence(e, 'The growth console could not load.'); S.state = 'error';
   } finally { rerender(); }
 }
 
@@ -152,12 +175,163 @@ function referralBlock(sec) {
   sec.append(pay);
 }
 
+/* ---- the launch pass (§61) ---------------------------------------
+   The paid week of the whole studio, sold as a launch offer with a real
+   end. "Live now" is admin_pass_status() — what the server is selling
+   this minute — so the owner reads the figure the public reads, and
+   after SAVE the line is read back, never assumed. The deadline is set
+   and shown in IST (the owner's and the buyers' clock); it is stored as
+   an instant. ₹49 and ₹99 fill the price field and save nothing. */
+const IST_MS = 330 * 60000;
+/** "2026-10-30" and "23:59" in IST for an ISO instant, or ['', '']. */
+function istParts(iso) {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(t)) return ['', ''];
+  const d = new Date(t + IST_MS), p = (n) => String(n).padStart(2, '0');
+  return [`${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`, `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`];
+}
+/** A date and time typed in IST as an ISO instant; '' for no date; null for nonsense. */
+export function istToIso(date, time) {
+  if (!date) return '';
+  const t = Date.parse(`${date}T${time || '23:59'}:00+05:30`);
+  return Number.isFinite(t) ? new Date(t).toISOString() : null;
+}
+/** "30 Oct 23:59 IST". */
+export function fmtIst(iso) {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(t)) return '';
+  const d = new Date(t + IST_MS);
+  const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()];
+  return `${d.getUTCDate()} ${mon} ${istParts(iso)[1]} IST`;
+}
+/** "3d 04:12" until an instant, '' when it has passed or there is none. */
+function endsIn(iso) {
+  const ms = (iso ? Date.parse(iso) : NaN) - Date.now();
+  if (!(ms > 0)) return '';
+  const m = Math.floor(ms / 60000), d = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60), mm = m % 60;
+  return (d ? d + 'd ' : '') + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+/** The one line that says what the server is selling right now. */
+export function passLiveLine(ps) {
+  if (!ps || typeof ps !== 'object') return 'The launch pass could not be read.';
+  const price = Number(ps.paise) > 0 ? fmtPaise(ps.paise) : '—';
+  const days = Number(ps.days) > 0 ? ps.days + (ps.days === 1 ? ' day' : ' days') : '—';
+  const cap = Number.isInteger(ps.cap) && ps.cap > 0 ? ` · ${Number.isInteger(ps.left) ? ps.left : '—'} of ${ps.cap} left` : '';
+  const when = ps.ends_at ? ' · ends ' + fmtIst(ps.ends_at) : ' · no deadline';
+  if (!ps.enabled) return `Off: the pass is not on sale (set to ${price} · ${days}). The yearly plans and the free trial work as before.`;
+  if (!ps.open) return `Closed: the launch offer has ended (${price} · ${days}${when}${cap}). Only the yearly plans are sold.`;
+  return `Live now: ${price} · ${days}${when}${cap}.`;
+}
+
+function passBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'Launch pass' }));
+  if (S.missing.pass) { sec.append(h('p.gt-meta', { text: 'The launch pass needs schema section 61 on this database (admin_pass_status() is not there yet).' })); return; }
+  const ps = S.pass || {};
+  sec.append(h('p.gr-seats', { role: 'status', text: passLiveLine(S.pass) }));
+  const f = h('form.gr-panel', { 'data-gra-form': 'pass', autocomplete: 'off' });
+  const sw = h('input', { id: 'graPassOn', name: 'enabled', type: 'checkbox' });
+  sw.checked = !!ps.enabled;
+  f.append(h('div.gr-row', {}, [h('label.gr-check', { for: 'graPassOn' }, [sw, h('span', { text: 'The launch pass is on sale' })])]));
+  f.append(h('p.gr-meta', { text: 'On: the public offer is the pass (the whole studio for the days below), and a signup free trial is refused. Invite codes keep their own trial. Off: the yearly plans and the free trial, as before.' }));
+  const paid = ((S.prices && S.prices.plans) || []).filter((p) => p.id !== 'free');
+  const planSel = h('select', { id: 'graPassPlan', name: 'plan' }, paid.map((p) => h('option', { value: p.id, text: p.name || planName(p.id) })));
+  planSel.value = ps.plan || 'pro';
+  const [d0, t0] = istParts(ps.ends_at);
+  f.append(h('div.gr-fields', {}, [
+    h('div', {}, [h('label', { for: 'graPassPrice', text: 'Price (₹)' }),
+      /* What the owner typed (or a quick-set filled) survives a redraw of
+         the console: other blocks load in after this one and redraw it. */
+      h('input', { id: 'graPassPrice', name: 'price', type: 'text', inputmode: 'decimal', required: true, value: S.passDraft != null ? S.passDraft : Number(ps.paise) > 0 ? String(ps.paise / 100) : '' })]),
+    h('div', {}, [h('label', { for: 'graPassDays', text: 'Days' }), h('input', { id: 'graPassDays', name: 'days', type: 'number', min: 1, max: 31, step: 1, required: true, value: String(Number(ps.days) > 0 ? ps.days : 7) })]),
+    h('div', {}, [h('label', { for: 'graPassPlan', text: 'Opens the features of' }), planSel]),
+    h('div', {}, [h('label', { for: 'graPassDate', text: 'Offer ends on (IST)' }), h('input', { id: 'graPassDate', name: 'date', type: 'date', value: d0 })]),
+    h('div', {}, [h('label', { for: 'graPassTime', text: 'At (IST)' }), h('input', { id: 'graPassTime', name: 'time', type: 'time', value: t0 || '23:59' })]),
+    h('div', {}, [h('label', { for: 'graPassCap', text: 'Cap (passes, optional)' }), h('input', { id: 'graPassCap', name: 'cap', type: 'number', min: 1, step: 1, placeholder: 'no cap', value: Number.isInteger(ps.cap) ? String(ps.cap) : '' })])
+  ]));
+  f.append(h('div.gr-row', {}, [h('span.gr-meta', { text: 'Set the price to' })].concat(['49', '99'].map((r) =>
+    h('button.btn', { type: 'button', 'data-gra-action': 'pass-price', 'data-rupees': r, 'aria-label': 'Set the price field to ₹' + r, text: '₹' + r })))));
+  f.append(h('dl.gr-passfacts', {}, [
+    h('dt', { text: 'Sold' }), h('dd', { text: Number.isInteger(ps.sold) ? String(ps.sold) : '—' }),
+    h('dt', { text: 'Left' }), h('dd', { text: Number.isInteger(ps.cap) && ps.cap > 0 ? (Number.isInteger(ps.left) ? String(ps.left) : '—') : 'no cap' }),
+    h('dt', { text: 'Ends in' }), h('dd', { text: ps.ends_at ? (endsIn(ps.ends_at) || 'ended') : 'no deadline' })
+  ]));
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE LAUNCH PASS' }),
+    S.passSaved ? h('span.ba-saved', { role: 'status', text: S.passSaved }) : null].filter(Boolean)));
+  f.append(h('p.gr-meta', { text: 'Changing the price applies to new orders only. A payment already made keeps what it paid, and a pass already running keeps its days. Leave the date empty for no deadline (and no countdown).' }));
+  sec.append(f);
+}
+
+/* ---- auto-renew (§62) --------------------------------------------
+   Two switches, each read back from the server, and the subscriptions.
+   The console words nothing a BUYER reads: the cards take the mode from
+   trial_offer() and word it through offer-terms.js. */
+const MODE_LABEL = { once: 'One-time', renew: 'Auto-renew' };
+const SUB_STATUSES = ['created', 'authenticated', 'active', 'pending', 'halted', 'cancelled', 'completed', 'expired'];
+function modeSwitch(name, label, value) {
+  const id = (v) => 'graMode-' + name + '-' + v;
+  return h('fieldset.gr-mode', { 'data-mode-for': name }, [
+    h('legend', { text: label }),
+    h('div.gr-mode-opts', {}, ['once', 'renew'].map((v) => {
+      const r = h('input', { id: id(v), type: 'radio', name, value: v });
+      r.checked = value === v;
+      return h('label.gr-check', { for: id(v) }, [r, h('span', { text: MODE_LABEL[v] })]);
+    }))
+  ]);
+}
+function modesBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'One-time or auto-renew' }));
+  if (S.missing.modes) { sec.append(h('p.gt-meta', { text: 'Auto-renew needs schema section 62 on this database (admin_billing_modes() is not there yet). Every purchase is one-time.' })); return; }
+  const m = S.modes || {};
+  sec.append(h('p.gr-seats', { role: 'status', text: 'Live now: week pass ' + (MODE_LABEL[m.pass_mode] || '—') + ' · yearly plans ' + (MODE_LABEL[m.plan_mode] || '—') + '.' }));
+  const f = h('form.gr-panel', { 'data-gra-form': 'modes', autocomplete: 'off' });
+  f.append(modeSwitch('pass_mode', 'Week pass', m.pass_mode || 'once'));
+  f.append(modeSwitch('plan_mode', 'Yearly plans', m.plan_mode || 'once'));
+  f.append(h('p.gr-meta', { text: 'Applies to new purchases only; existing auto-pay keeps its price.' }));
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE' }),
+    S.modesSaved ? h('span.ba-saved', { role: 'status', text: S.modesSaved }) : null].filter(Boolean)));
+  sec.append(f);
+  subsBlock(sec);
+}
+const subProduct = (p) => (p === 'pass' ? 'Week pass' : planName(p));
+const subAmount = (r) => (Number.isInteger(r.amount_minor) ? fmtMinor(r.amount_minor, r.currency === 'USD' ? 'USD' : 'INR') : '—')
+  + (r.period === 'year' ? ' a year' : Number(r.days) > 0 ? ' / ' + r.days + (Number(r.days) === 1 ? ' day' : ' days') : '');
+const subLive = (r) => ['created', 'authenticated', 'active', 'pending', 'halted'].includes(r.status) && !r.cancel_at_period_end;
+function subsBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'Subscriptions' }));
+  if (S.missing.subs) { sec.append(h('p.gt-meta', { text: 'The subscriptions list needs schema section 62 (admin_list_subscriptions()).' })); return; }
+  const rows = Array.isArray(S.subs) ? S.subs : [];
+  const filter = h('select.ad-chip', { 'data-gra-sub-filter': '', 'aria-label': 'Show subscriptions' },
+    [h('option', { value: '', text: 'All' })].concat(SUB_STATUSES.map((s) => h('option', { value: s, text: s }))));
+  filter.value = S.subFilter || '';
+  sec.append(dataTable({
+    caption: rows.length + ' subscription' + (rows.length === 1 ? '' : 's'),
+    toolbar: [filter],
+    rows,
+    rowId: (r) => r.id,
+    empty: { title: 'No subscriptions', body: 'Nobody has started auto-pay yet.' },
+    columns: [
+      { label: 'Who', key: 'user_email' },
+      { label: 'Product', render: (r) => subProduct(r.product) },
+      { label: 'Amount', align: 'end', render: subAmount },
+      { label: 'Status', render: (r) => r.status + (r.cancel_at_period_end ? ' · ends at period end' : '') },
+      { label: 'Next charge', render: (r) => (subLive(r) && r.current_end ? fmtWhen(r.current_end) : r.current_end ? 'none · access to ' + fmtWhen(r.current_end) : '—') },
+      { label: '', render: (r) => (subLive(r) ? h('button.btn', { type: 'button', 'data-gra-action': 'sub-cancel', 'data-id': String(r.id), 'data-who': r.user_email || '', 'data-until': r.current_end || '', text: 'CANCEL' }) : '') }
+    ]
+  }));
+}
+
 /* ---- the trial (§30) ---------------------------------------------
    Four knobs and one switch, and the switch is the one that changes
    what a stranger sees, so the block says in plain words what each
    position MEANS rather than printing the column name. */
 function trialBlock(sec) {
-  sec.append(h('h3.gt-h3', { text: 'Trial' }));
+  sec.append(h('h3.gt-h3', { text: 'Trial · invite codes and support grants' }));
+  /* §61: while the launch pass is on sale the server refuses a SIGNUP
+     trial, so the public no longer gets one; the settings below still
+     decide what an invite code buys, and the support grant still works.
+     The switch stays on (turning it off would end the grandfathered
+     members' trials). */
+  if (S.pass && S.pass.enabled) sec.append(h('p.gr-meta', { text: 'The launch pass is on, so signing in no longer starts a free trial. These settings now serve invite codes and the support grant. Keep the switch on: members on a running trial depend on it.' }));
   if (S.missing.settings) { sec.append(h('p.gt-meta', { text: 'Settings are not available on this database yet (schema section 22 has not run).' })); return; }
   const st = S.settings || {};
   /* The RPC is older than the columns, so "has section 30 run" is the
@@ -557,7 +731,7 @@ async function loadCohorts() {
     COHORT.data = data; COHORT.phase = 'ok';
   } catch (e) {
     COHORT.phase = 'error';
-    COHORT.error = isMissing(e) ? 'The database has no admin_cohorts() yet \u2014 schema section 43 has not been run on it.' : (e && e.message) || 'The server did not say why.';
+    COHORT.error = isMissing(e) ? 'The database has no admin_cohorts() yet \u2014 schema section 43 has not been run on it.' : errorSentence(e, 'The server did not say why.');
   }
   rerender();
 }
@@ -613,10 +787,16 @@ function cohortsBlock(sec) {
 
 export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
-  const sec = section('growth', 'Growth', 'The trial, the price, referrals, affiliates, leads and the funnel.', '');
+  const sec = section('growth', 'Growth', 'The launch pass, one-time or auto-renew, the trial, the price, referrals, affiliates, leads and the funnel.', '');
   if (S.state === 'idle') load();
+  if (S.state === 'error') {
+    sec.append(errorState({ title: 'Growth could not load', why: S.error, onRetry: () => { S.error = ''; S.state = 'idle'; rerender(); } }));
+    return sec;
+  }
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (S.state !== 'ready') { sec.append(h('p.gt-meta', { text: S.state === 'loading' ? 'Loading…' : '' })); return sec; }
+  passBlock(sec);
+  modesBlock(sec);
   trialBlock(sec);
   priceRiseBlock(sec);
   referralBlock(sec);
@@ -651,7 +831,7 @@ delegate(document, 'submit', '[data-gra-form="referral"]', async (e, form) => {
     S.settings = await Growth.admin.setSettings(patch);
     S.saved = 'referral'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The referral terms were not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The referral terms were not saved.'), 'error'); }
 });
 
 /* ---- the trial (§30) ---------------------------------------------- */
@@ -675,7 +855,73 @@ delegate(document, 'submit', '[data-gra-form="trial"]', async (e, form) => {
     S.settings = await Growth.admin.setSettings(patch);
     S.saved = 'trial'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The trial terms were not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The trial terms were not saved.'), 'error'); }
+});
+
+/* ---- the launch pass (§61) ---------------------------------------- */
+delegate(document, 'click', '[data-gra-action="pass-price"]', (e, el) => {
+  const input = document.getElementById('graPassPrice');
+  S.passDraft = el.dataset.rupees;
+  if (input) { input.value = el.dataset.rupees; input.focus(); }   // fills the field; nothing saves until SAVE
+});
+delegate(document, 'input', '#graPassPrice', (e, el) => { S.passDraft = el.value; });
+delegate(document, 'submit', '[data-gra-form="pass"]', async (e, form) => {
+  e.preventDefault();
+  const f = new FormData(form);
+  const rawPrice = String(f.get('price') || '').trim();
+  const paise = parseRupees(rawPrice);
+  const days = parseInt(String(f.get('days') || ''), 10);
+  const capRaw = String(f.get('cap') || '').trim();
+  const cap = capRaw === '' ? null : parseInt(capRaw, 10);
+  const endsAt = istToIso(String(f.get('date') || ''), String(f.get('time') || ''));
+  const enabled = f.get('enabled') != null;
+  if (!(paise >= 100)) { toast(`"${rawPrice}" is not a price of at least ₹1.`, 'error'); return; }
+  if (!(days >= 1 && days <= 31)) { toast('A pass lasts 1 to 31 days.', 'error'); return; }
+  if (cap !== null && !(cap >= 1 && String(cap) === capRaw)) { toast('The cap is a whole number of passes, or empty for no cap.', 'error'); return; }
+  if (endsAt === null) { toast('That date and time could not be read.', 'error'); return; }
+  if (enabled && endsAt && Date.parse(endsAt) <= Date.now()) { toast('That deadline has already passed, so the offer would be closed. Choose a later date, or leave it empty for no deadline.', 'error'); return; }
+  try {
+    await Billing.admin.setPass({ enabled, paise, days, plan: String(f.get('plan') || 'pro'), endsAt: endsAt || null, cap });
+    /* Read back, never assumed: the line says what the server now sells. */
+    S.pass = await Billing.admin.passStatus();
+    S.passDraft = null;
+    S.passSaved = S.pass && S.pass.enabled ? `Saved. New orders now pay ${fmtPaise(S.pass.paise)}.` : 'Saved. The pass is off.';
+    rerender();
+    { const note = S.passSaved; setTimeout(() => { if (S.passSaved === note) S.passSaved = ''; clearNote(note); }, 6000); }
+  } catch (err) { toast(err.message || 'The launch pass was not saved.', 'error'); }
+});
+
+/* ---- auto-renew (§62) ---------------------------------------------- */
+delegate(document, 'submit', '[data-gra-form="modes"]', async (e, form) => {
+  e.preventDefault();
+  const f = new FormData(form);
+  const pm = String(f.get('pass_mode') || ''), lm = String(f.get('plan_mode') || '');
+  if (!MODE_LABEL[pm] || !MODE_LABEL[lm]) { toast('Choose one-time or auto-renew for both.', 'error'); return; }
+  try {
+    await Billing.admin.setBillingModes(pm, lm);
+    /* Read back, never assumed. */
+    S.modes = await Billing.admin.billingModes();
+    S.modesSaved = 'Saved. New purchases: week pass ' + (MODE_LABEL[S.modes && S.modes.pass_mode] || '—') + ', yearly plans ' + (MODE_LABEL[S.modes && S.modes.plan_mode] || '—') + '.';
+    rerender();
+    { const note = S.modesSaved; setTimeout(() => { if (S.modesSaved === note) S.modesSaved = ''; clearNote(note); }, 6000); }
+  } catch (err) { toast(err.message || 'The modes were not saved.', 'error'); }
+});
+delegate(document, 'change', '[data-gra-sub-filter]', async (e, el) => {
+  S.subFilter = el.value;
+  try { S.subs = await Billing.admin.listSubscriptions(S.subFilter || null); } catch (err) { toast(err.message || 'The subscriptions did not load.', 'error'); }
+  rerender();
+});
+delegate(document, 'click', '[data-gra-action="sub-cancel"]', async (e, btn) => {
+  const until = btn.dataset.until ? fmtWhen(btn.dataset.until) : 'the end of the period paid for';
+  const ok = await askDanger({ title: 'Cancel this auto-pay?', body: (btn.dataset.who || 'This person') + ' keeps access until ' + until + '. Nothing more will be charged. This is not a refund.', confirm: 'CANCEL AUTO-PAY', cancel: 'Keep it' });
+  if (!ok) return;
+  btn.disabled = true;
+  try {
+    await Billing.admin.cancelSubscription(btn.dataset.id);
+    S.subs = await Billing.admin.listSubscriptions(S.subFilter || null);
+    toast('Auto-pay cancelled. Access runs to ' + until + '.');
+  } catch (err) { toast(err.message || 'The auto-pay was not cancelled.', 'error'); btn.disabled = false; }
+  rerender();
 });
 
 delegate(document, 'submit', '[data-gra-form="granttrial"]', async (e, form) => {
@@ -690,7 +936,7 @@ delegate(document, 'submit', '[data-gra-form="granttrial"]', async (e, form) => 
     S.granted = `Granted — ${trialLength(mins)}, starting now.`;
     rerender();
     { const note = S.granted; setTimeout(() => { if (S.granted === note) S.granted = ''; clearNote(note); }, 4000); }
-  } catch (err) { toast(err.message || 'The time was not granted.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The time was not granted.'), 'error'); }
 });
 
 /* ---- the price rise (§30) ------------------------------------------
@@ -707,7 +953,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
   const lines = risePreview(rows, at, cap);
   /* The last gate before a public promise: the owner confirms the
      sentence itself, not "save changes?". */
-  if (lines.length && !await ask('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?')) return;
+  if (lines.length && !await ask('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?', { confirm: 'Schedule the rise' })) return;
   try {
     /* The cap first: it is one of the two triggers the sentence names,
        and a tier saved against a cap that failed to save would be
@@ -726,7 +972,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
     await refreshUsd();
     S.saved = 'pricerise'; rerender();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The price rise was not scheduled.', 'error'); await load(); }
+  } catch (err) { toast(errorSentence(err, 'The price rise was not scheduled.'), 'error'); await load(); }
 });
 
 /** " · in dollars $19 → $29", or " · in dollars $19, no dollar rise
@@ -748,7 +994,7 @@ delegate(document, 'click', '[data-gra-action="price-cancel"]', async (e, el) =>
     S.prices = await Billing.admin.setNextPrice(id, null, null);
     await refreshUsd();
     rerender();
-  } catch (err) { toast(err.message || 'The rise was not cancelled.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The rise was not cancelled.'), 'error'); }
 });
 
 delegate(document, 'submit', '[data-gra-form="payout"]', async (e, form) => {
@@ -760,7 +1006,7 @@ delegate(document, 'submit', '[data-gra-form="payout"]', async (e, form) => {
     const n = await Growth.admin.markReferralPaid(ids, String(f.get('note') || '').trim());
     toast(`Marked ${n} credit${n === 1 ? '' : 's'} paid.`);
     await load();
-  } catch (err) { toast(err.message || 'The credits were not marked.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The credits were not marked.'), 'error'); }
 });
 
 delegate(document, 'click', '[data-gra-action="aff-orders"]', async (e, el) => {
@@ -768,7 +1014,7 @@ delegate(document, 'click', '[data-gra-action="aff-orders"]', async (e, el) => {
   if (S.openAff === code) { S.openAff = ''; S.affOrders = null; rerender(); return; }
   S.openAff = code; S.affOrders = null; rerender();
   try { S.affOrders = await Growth.admin.affiliateOrders(code); }
-  catch (err) { S.affOrders = []; toast(err.message || 'The orders could not load.', 'error'); }
+  catch (err) { S.affOrders = []; toast(errorSentence(err, 'The orders could not load.'), 'error'); }
   rerender();
 });
 

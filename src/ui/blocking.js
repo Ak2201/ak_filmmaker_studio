@@ -41,6 +41,7 @@
    ============================================================ */
 import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
+import { formatEighths } from '../lib/scenes.js';
 import Shots, { BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockCallouts, blockScale, formatMetres } from '../lib/shots.js';
 import { button, buttonGroup, badge, intExtBadge, todBadge, field as kitField } from './kit/index.js';
 
@@ -432,7 +433,7 @@ function sbCol(title, body, cls) {
 
 export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, redraw) {
   rerender = redraw;
-  const wrap = h('section.vz-sceneboard', { id: 'scene-board', 'data-tab-icon': 'dashboard' });
+  const wrap = h('section.vz-sceneboard', { id: 'scene-board', 'data-tab-icon': 'article' });
   wrap.append(
     h('h2.bd-h2', { text: 'Scene board' }),
     h('p.bd-sub', {
@@ -455,7 +456,8 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
     badge({ label: scene.number || '—', tag: true, class: 'vz-scene-no' }),
     h('span.vz-scene-slug', { text: slugOf(scene) }),
     h('span.vz-scene-badges', {}, [intExtBadge(scene.intExt), todBadge(scene.dayNight)]),
-    h('span.vz-scene-count', { text: plural(Number(scene.eighths) || 0, 'eighth', 'eighths') })
+    // The length as every other view prints it ("2 2/8 pgs"), never raw eighths.
+    h('span.vz-scene-count', { text: formatEighths(Number(scene.eighths) || 0) + ' pgs' })
   ]));
   if (scene.synopsis) sheet.append(h('p.vz-sb-syn', { text: scene.synopsis }));
   if (scene.readerNote) sheet.append(h('p.vz-sb-syn', { text: 'Reader note: ' + scene.readerNote }));
@@ -490,7 +492,7 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
       return tr;
     })));
     shotBody = h('div.k-table-wrap', { role: 'region', tabindex: '0', 'aria-label': 'Shots in this scene' }, [t]);
-  } else shotBody = h('p.bd-none', { text: 'No shots yet for this scene.' });
+  } else shotBody = h('p.bd-none', { text: 'No shots yet for this scene. Add them in the Shot list tab.' });
   sheet.append(sbCol('Shots · ' + mine.length, shotBody, 'vz-sb-shots'));
 
   // The storyboard frames, in shot order.
@@ -499,7 +501,7 @@ export function renderSceneBoard(scenes, shots, frames, scriptElements, pairs, r
   sheet.append(sbCol('Frames · ' + fr.length, fr.length
     ? h('ol.vz-sb-frames', {}, fr.map(({ f, s }) =>
       h('li', {}, [h('strong', { text: 'Shot ' + (s.number || '?') + ' ' }), h('span', { text: Shots.frameAction(f) || f.ref || 'untitled frame' })])))
-    : h('p.bd-none', { text: 'No frames drawn for this scene.' })));
+    : h('p.bd-none', { text: 'No frames drawn for this scene. Draw them in the Storyboard tab.' })));
 
   // The maps, read-only.
   const blocks = Shots.blocksOfScene(scene.id);
@@ -682,9 +684,7 @@ delegate(document, 'keydown', '.vz-map.is-editable [data-mark], .vz-map.is-edita
   } else if (!end && (e.key === '[' || e.key === ']')) {
     Shots.updateMark(blockId, markId, { rot: m.rot + (e.key === ']' ? 15 : -15) });
   } else if (!end && (e.key === 'Delete' || e.key === 'Backspace')) {
-    Shots.removeMark(blockId, markId);
-    sel = { blockId, markId: '' };
-    rerender(`[data-block="${CSS.escape(blockId)}"] .vz-blk-tools .k-btn`);
+    removeMarkWithUndo(blockId, markId);
     e.preventDefault();
     return;
   } else return;
@@ -698,18 +698,27 @@ delegate(document, 'click', '[data-action="blk-add"]', () => {
   const b = Shots.addBlock(pickedScene);
   sel = { blockId: b.id, markId: '' };
   rerender(`[data-block="${CSS.escape(b.id)}"] .vz-blk-name`);
+  // The default name is a suggestion: select it so typing replaces it.
+  const nameBox = document.querySelector(`[data-block="${CSS.escape(b.id)}"] .vz-blk-name`);
+  if (nameBox && nameBox.select) nameBox.select();
 });
 delegate(document, 'click', '[data-action="blk-del"]', (e, el) => {
   const id = blockIdOf(el);
-  const was = Shots.listBlocks().find((b) => b.id === id);
+  const all = Shots.listBlocks();
+  const at = all.findIndex((b) => b.id === id);
+  const was = all[at];
   if (!was) return;
+  // Focus goes to a neighbouring setup's name, else the Add button.
+  const cards = [...document.querySelectorAll('.vz-blk[data-block]')];
+  const here = cards.findIndex((n) => n.dataset.block === id);
+  const near = cards[here + 1] || cards[here - 1] || null;
   Shots.removeBlock(id);
-  rerender();
+  rerender(near ? `[data-block="${CSS.escape(near.dataset.block)}"] .vz-blk-name` : '[data-action="blk-add"]');
   // Undo, not confirm: the toast carries the way back.
   try {
     StudioUI.toast('Deleted the setup “' + (was.name || 'setup') + '”.', {
       action: 'Undo',
-      onAction: () => { Shots.saveBlocks(Shots.listBlocks().concat([was])); rerender(); }
+      onAction: () => { Shots.restoreBlock(was, at); rerender(); }
     });
   } catch (err) { /* chrome may not be up */ }
 });
@@ -722,6 +731,16 @@ delegate(document, 'click', '[data-action="blk-add-mark"]', (e, el) => {
 });
 delegate(document, 'change', '[data-block-field]', (e, el) => {
   const id = blockIdOf(el);
+  if (el.dataset.blockField === 'widthM') {
+    /* An unusable width is said out loud and NOT stored, so the field and
+       the map never disagree about whether a scale exists. */
+    const err = Shots.floorWidthError(el.value);
+    const hintEl = el.closest('.vz-blk-width') && el.closest('.vz-blk-width').querySelector('.k-field-hint');
+    el.toggleAttribute('aria-invalid', !!err);
+    if (err) el.setAttribute('aria-invalid', 'true');
+    if (hintEl) hintEl.classList.toggle('is-error', !!err);
+    if (err) { if (hintEl) hintEl.textContent = err; return; }
+  }
   const b = Shots.updateBlock(id, { [el.dataset.blockField]: el.value });
   /* The floor width changes what the map prints (the distances), so the
      map and the hint under the field are redrawn IN PLACE: a full
@@ -735,7 +754,19 @@ delegate(document, 'change', '[data-block-field]', (e, el) => {
 });
 delegate(document, 'change', '[data-mark-field]', (e, el) => {
   Shots.updateMark(sel.blockId, sel.markId, { [el.dataset.markField]: el.value });
-  rerender();
+  /* The label is drawn on the map and named on the selected group.
+     Patched in place: a full re-render on `change` destroys the element
+     Tab is moving to. */
+  const b = Shots.listBlocks().find((x) => x.id === sel.blockId);
+  const card = el.closest('.vz-blk');
+  const map = card && card.querySelector('.vz-map');
+  if (b && map) map.replaceWith(drawBlock(b, { editable: true }));
+  const grp = card && card.querySelector('.vz-blk-sel');
+  const m = b && b.marks.find((x) => x.id === sel.markId);
+  if (grp && m) {
+    const kindEl = grp.querySelector('.k-eyebrow-muted');
+    grp.setAttribute('aria-label', 'Selected: ' + (m.label || (kindEl ? kindEl.textContent : m.kind)));
+  }
 });
 delegate(document, 'click', '[data-action="mk-turn"]', (e, el) => {
   const m = Shots.listBlocks().find((b) => b.id === sel.blockId)?.marks.find((x) => x.id === sel.markId);
@@ -753,10 +784,12 @@ delegate(document, 'click', '[data-action="mk-move-clear"]', () => {
   Shots.updateMark(sel.blockId, sel.markId, { toX: null, toY: null });
   rerender(`[data-block="${CSS.escape(sel.blockId)}"] [data-mark="${CSS.escape(sel.markId)}"]`);
 });
-delegate(document, 'click', '[data-action="mk-del"]', () => {
-  const b = sel.blockId;
-  const was = Shots.listBlocks().find((x) => x.id === b)?.marks.find((x) => x.id === sel.markId);
-  Shots.removeMark(b, sel.markId);
+/* One way to remove a mark, whether by the Remove mark button or the
+   Delete key on the map: the key used to remove it silently, with no
+   toast and so no way back. */
+function removeMarkWithUndo(b, markId) {
+  const was = Shots.listBlocks().find((x) => x.id === b)?.marks.find((x) => x.id === markId);
+  Shots.removeMark(b, markId);
   sel = { blockId: b, markId: '' };
   rerender(`[data-block="${CSS.escape(b)}"] .vz-blk-tools .k-btn`);
   if (was) {
@@ -769,5 +802,6 @@ delegate(document, 'click', '[data-action="mk-del"]', () => {
       }
     });
   }
-});
+}
+delegate(document, 'click', '[data-action="mk-del"]', () => removeMarkWithUndo(sel.blockId, sel.markId));
 delegate(document, 'click', '[data-action="board-print"]', () => { window.print(); });

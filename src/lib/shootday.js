@@ -31,6 +31,10 @@ import Locations from './locations.js';
 
 /** Done enough to not shoot again. 'part' is NOT done. */
 const isDone = (s) => s.shotState === 'shot' || s.shotState === 'dropped';
+/** Shot, and so in the can. A dropped scene is settled for the day
+ *  (isDone) but was never filmed, so it is not counted as shot — the
+ *  DPR counts the two apart and the shoot day must agree with it. */
+const isShot = (s) => s.shotState === 'shot';
 
 /**
  * Every shoot day with its own progress.
@@ -43,10 +47,14 @@ export function days(scenes) {
   const list = scenes || Scenes.listScenes();
   return Locations.calendarDays(list).map((d) => {
     const done  = d.scenes.filter(isDone);
+    const shot  = d.scenes.filter(isShot);
     const total = totalEighths(d.scenes);
     return {
       ...d,
       done:      done.length,
+      shot:      shot.length,
+      eighthsShot: totalEighths(shot),
+      pagesShot:   formatEighths(totalEighths(shot)),
       remaining: d.scenes.length - done.length,
       complete:  d.scenes.length > 0 && done.length === d.scenes.length,
       eighthsDone:  totalEighths(done),
@@ -75,6 +83,27 @@ export function pickDay(scenes, now) {
   if (match) return match.day;
   const next = all.find((d) => !d.complete);
   return (next || all[all.length - 1]).day;
+}
+
+/** `?day=N` from a query string, or null. The one way a link says
+ *  which shoot day to open (the DPR and the shoot day pass it both ways). */
+export function dayFromSearch(search) {
+  try { return parseInt(new URLSearchParams(search).get('day'), 10) || null; } catch (e) { return null; }
+}
+
+/**
+ * "Day 05 of 18". Day NUMBERS are never compacted — a day emptied on
+ * the stripboard leaves a gap — while the count is the days that still
+ * have scenes, so a bare "Day N of M" can read "Day 18 of 17". When the
+ * number and the position differ, the position is said instead:
+ * "Day 18 · 17 of 17". `pad` formats a number (identity by default).
+ */
+export function dayOfLabel(day, all, pad = String, sep = ' of ') {
+  const n = Number(day && day.day != null ? day.day : day);
+  const list = all || [];
+  const pos = list.findIndex((d) => d.day === n) + 1;
+  if (!pos || pos === n) return 'Day ' + pad(n) + sep + pad(list.length);
+  return 'Day ' + pad(n) + ' · ' + pos + sep + list.length;
 }
 
 /** Local calendar date, not UTC — the day the person is standing in. */
@@ -109,9 +138,13 @@ export function mark(sceneId, state) {
 export function overall(scenes) {
   const list = scenes || Scenes.listScenes();
   const done = list.filter(isDone);
+  const shot = list.filter(isShot);
   return {
     scenes: list.length,
     done: done.length,
+    shot: shot.length,
+    eighthsShot: totalEighths(shot),
+    pagesShot: formatEighths(totalEighths(shot)),
     eighthsDone: totalEighths(done),
     eighthsTotal: totalEighths(list),
     pagesDone: formatEighths(totalEighths(done)),
@@ -303,6 +336,6 @@ export function timelineAt(hhmm, from, to) {
   return Math.max(0, Math.min(1, v));
 }
 
-export default { days, pickDay, detail, mark, overall, toISODate, sheetsForDay,
+export default { days, pickDay, detail, mark, overall, toISODate, dayFromSearch, dayOfLabel, sheetsForDay,
   cleanTakes, takesOf, takesLine, logTake, circleTake, undoTake, scenesLeft, wrapEstimate, timelineAt,
-  cleanNote, floorNoteOf, setFloorNote, sceneNeeds, phoneIn, nearestHelp };
+  cleanNote, floorNoteOf, setFloorNote, sceneNeeds, phoneIn, nearestHelp, FLOOR_NOTE_MAX };

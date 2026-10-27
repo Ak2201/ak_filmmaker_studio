@@ -89,6 +89,14 @@ function costedRows(bag) {
   return rows.size;
 }
 
+/** How many shoot days carry a date: a stored date counts only while its
+    day still has scenes. A date left on a day emptied on the Stripboard
+    is an orphan the Plan lists apart, and the Stripboard and the Plan
+    already leave it out, so the dashboard must too. */
+export function datedDayCount(dates, days) {
+  return Object.keys(dates || {}).filter((d) => days.has(parseInt(d, 10)) && String((dates || {})[d] || '').trim()).length;
+}
+
 export function snapshot() {
   const scenes = safe(listScenes, []);
   const script = safe(loadScript, { elements: [], revisions: [], documents: [] });
@@ -112,7 +120,7 @@ export function snapshot() {
     callSheets: safe(listCallSheets, []).length,
     media: safe(listMedia, []).length,
     locations: safe(() => locationIndex(scenes), []).length,
-    dates: Object.keys(safe(listDayDates, {})).length,
+    dates: datedDayCount(safe(listDayDates, {}), days),
     feature: stepsTouched(blob(FEATURE_KEY), [[/^s(\d+)_/, 0], [/^v2s(\d+)_/, 12], [/^fc_v1_(\d+)/, 0], [/^fc_v2_(\d+)/, 12]]),
     short: stepsTouched(blob(SHORT_KEY), [[/^s(\d+)_/, 0], [/^ck_s(\d+)_/, 0]]),
     costed: costedRows(blob(LIB_CALC_KEY)),

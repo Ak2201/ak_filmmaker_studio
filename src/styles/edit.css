@@ -204,7 +204,7 @@
 .el-link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2); }
 .el-link { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-small); max-width: 100%; }
 .el-link a { color: var(--accent-deep); overflow-wrap: anywhere; }
-.el-link-add { display: flex; flex-wrap: wrap; gap: var(--s2); flex: 1 1 100%; }
+.el-link-add { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); flex: 1 1 100%; }
 .el-link-add input { flex: 1 1 140px; min-width: 0; font-size: var(--t-small); }
 
 .el-cuts { display: grid; gap: var(--s3); margin-top: var(--s4); }

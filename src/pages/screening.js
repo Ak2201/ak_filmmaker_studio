@@ -95,15 +95,16 @@ function renderEnter() {
      hides a header's sub). */
   main.append(pageHeader({ eyebrow: ['Studio', 'Screening Room'], title: 'Screening Room', class: 'bd-head' }));
   main.append(h('p.bd-deck.sc-enter-why', { text: 'You have been sent a film. Enter the screening pass you were given. It opens one project, read-only, for a limited time — no account needed.' }));
-  const form = h('form.sc-form', { 'data-sc-form': 'open', autocomplete: 'off' });
+  const form = h('form.sc-form', { 'data-sc-form': 'open', autocomplete: 'off', novalidate: true });
   form.append(h('label', { for: 'scCode', text: 'Screening pass' }));
   form.append(h('input#scCode.sc-code', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40,
-    placeholder: 'XXXX-XXXX-XXXX', value: formatCode(typed ? typed.code : prefill) }));
+    placeholder: 'XXXX-XXXX-XXXX', value: formatCode(typed ? typed.code : prefill),
+    ...(state.error ? { 'aria-invalid': 'true', 'aria-describedby': 'scError' } : {}) }));
   form.append(h('label', { for: 'scEmail', text: 'Your e-mail (optional)' }));
   form.append(h('input#scEmail.sc-email', { type: 'email', placeholder: 'you@example.com', maxlength: 255, value: typed ? typed.email : '' }));
   form.append(h('p.sc-note', { text: 'Whatever you open here is watermarked with this pass, the e-mail above and the time. The e-mail is not checked; it is printed on the page so the sender knows who is watching.' }));
   form.append(h('button.btn.primary', { type: 'submit', disabled: state.busy, text: state.busy ? 'OPENING…' : 'OPEN THE SCREENING' }));
-  if (state.error) form.append(h('p.sc-error', { role: 'alert', text: state.error }));
+  if (state.error) form.append(h('p#scError.sc-error', { role: 'alert', text: state.error }));
   main.append(form);
   return main;
 }
@@ -258,6 +259,12 @@ delegate(document, 'submit', '[data-sc-form="open"]', async (e) => {
     state.error = openFailedSentence(err);
   }
   render();
+  /* render() rebuilt the page, so the focused field went with it. A
+     refusal hands the reader back to the code to correct it (as the
+     empty-code branch above does); an open takes them to the room's
+     title. Either way, never to <body>. */
+  const to = state.stage === 'room' ? document.querySelector('.sc-head h1') : document.getElementById('scCode');
+  if (to) { if (to.tagName === 'H1') to.setAttribute('tabindex', '-1'); try { to.focus({ preventScroll: true }); } catch (e2) { /* not focusable */ } }
 });
 delegate(document, 'input', '#scCode', (e, el) => {
   const f = formatCode(el.value);

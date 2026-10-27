@@ -466,6 +466,92 @@ runChecks('signup-trial-scope.sql');
 }
 /* --- end §60 --- */
 
+/* --- §61 (the launch week pass) --- on §56–§60 (it restates §56's order and
+   activation path, §53's billing_status and refund, §52's apply_plan, §34's
+   refund trial, §58's event names and §60's start_trial / trial_offer),
+   loaded twice: it drops and re-creates CHECKs and one function whose
+   return type grew. Every earlier check file ran against the unrestated
+   bodies. --- */
+for (const f of ['supabase/schema/schema-61-week-pass.sql', 'supabase/schema/schema-61-week-pass.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §61 loads (and re-runs cleanly)');
+runChecks('week-pass.sql');
+{
+  /* The year path of each restated function is its predecessor's body plus
+     the lines marked §61 (a marked line, or a block from "-- §61:" to
+     "-- end §61"). Anything else that drifted is a refusal or a price that
+     changed without a test saying so. */
+  const body = (file, fn) => {
+    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const from = src.indexOf(`create or replace function public.${fn}(`);
+    const to = src.indexOf('$fn$;', from);
+    if (from < 0 || to < 0) fail(`§61: ${fn} not found in ${file}`);
+    return src.slice(from, to)
+      .replace(/\n[^\n]*-- §61:[^\n]*\n(?:[^\n]*\n)*?\s*-- end §61/g, '')
+      .split('\n').filter((l) => !/§61/.test(l)).join('\n');
+  };
+  const pairs = [
+    ['create_pending_payment', 'supabase/schema/schema-56-usd-checkout.sql'],
+    ['start_trial', 'supabase/schema/schema-60-signup-trial-scope.sql']
+  ];
+  for (const [fn, was] of pairs) {
+    total++;
+    if (body('supabase/schema/schema-61-week-pass.sql', fn) === body(was, fn)) console.log(`  ✓ 61. ${fn}() is its predecessor's body plus the lines marked §61`);
+    else { failed++; fail(`§61: ${fn}() differs from ${was} beyond the lines marked §61`); }
+  }
+}
+/* --- end §61 --- */
+
+/* --- §62 (auto-renew: Razorpay Subscriptions) --- on §61 (it restates
+   §61's pass_sold, pass_block, unapplied_sentence, trial_offer,
+   price_notice(text) and billing_status), loaded twice: it creates tables
+   and drops and re-adds a CHECK. --- */
+for (const f of ['supabase/schema/schema-62-autorenew.sql', 'supabase/schema/schema-62-autorenew.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §62 loads (and re-runs cleanly)');
+runChecks('autorenew.sql');
+{
+  /* Each restated function is §61's body plus the lines marked §62: in
+     'once' mode nothing else may differ. */
+  const body = (file, fn, end) => {
+    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const from = src.indexOf(`create or replace function public.${fn}(`);
+    const to = src.indexOf(end, from);
+    if (from < 0 || to < 0) fail(`§62: ${fn} not found in ${file}`);
+    return src.slice(from, to).split('\n').filter((l) => !/§62/.test(l)).join('\n')
+      // a marked line that ADDED a key to a call moved the closing paren onto it
+      .replace(/public\.pass_block\(\),\n/, 'public.pass_block())\n');
+  };
+  const pairs = [['billing_status', '$fn$;'], ['trial_offer', '$$;'], ['price_notice', '$$;']];
+  for (const [fn, end] of pairs) {
+    total++;
+    if (body('supabase/schema/schema-62-autorenew.sql', fn, end) === body('supabase/schema/schema-61-week-pass.sql', fn, end)) console.log(`  ✓ 62. ${fn}() is §61's body plus the lines marked §62`);
+    else { failed++; fail(`§62: ${fn}() differs from §61 beyond the lines marked §62`); }
+  }
+}
+/* --- end §62 --- */
+/* --- §63 (renewal reminders) --- on §62 (a column on subscriptions and two
+   service-only functions), loaded twice. ABOVE the purge, which must stay
+   last. --- */
+for (const f of ['supabase/schema/schema-63-renewal-reminders.sql', 'supabase/schema/schema-63-renewal-reminders.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §63 loads (and re-runs cleanly)');
+runChecks('renewal-reminders.sql');
+/* --- end §63 --- */
+/* --- the clean-slate purge (supabase/schema/patches/purge-test-data-2026-10-27.sql)
+   --- LAST, after every section (and §62's when it lands above this block):
+   it COMMITS and leaves one sign-in, so nothing may run after it. It runs
+   the patch file's own PART 2 and PART 3, cut out with the awk line the
+   owner checksums, and stands in for §62's tables when §62 is not loaded. --- */
+runChecks('purge.sql');
+/* --- end purge --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

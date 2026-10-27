@@ -12,6 +12,7 @@ import { ELEMENT_CATEGORIES } from './scenes.js';
 import { formatDuration } from './screenplay-analysis.js';
 import Locations from './locations.js';
 import DPR from './dpr.js';
+import { dayFromSearch } from './shootday.js';
 import { loadStory } from './story.js';
 import { resolveBeat, actsOf, qualify } from './beat-outline.js';
 /* Pure and import-free: the paperwork's date style (docs/US-MARKET-PLAN.md §A4). */
@@ -128,7 +129,7 @@ export function deltaLabel(targetMin, delta) {
 /** What the songs did to the estimate, as sentences. */
 export function runtimeNotes(est, songCount) {
   const said = [];
-  if (!songCount) said.push('No songs on the list, so this is the page estimate alone.');
+  if (!songCount) said.push('No songs on the list, so this is the script estimate alone.');
   else {
     said.push(`${plural(est.songsTimed, 'song has', 'songs have')} a length, adding ${formatDuration(est.songSeconds)}.`);
     if (est.songsUntimed) said.push(`${plural(est.songsUntimed, 'song has', 'songs have')} no length yet and add${est.songsUntimed === 1 ? 's' : ''} nothing — give each one below.`);
@@ -140,9 +141,7 @@ export function runtimeNotes(est, songCount) {
 /* ---- the shoot days --------------------------------------------- */
 
 /** The `?day=N` a link opened the page at, or null. */
-export function dayFromSearch(search) {
-  try { return parseInt(new URLSearchParams(search).get('day'), 10) || null; } catch (e) { return null; }
-}
+export { dayFromSearch };
 
 /** The day to open: `want` when it is one of `days`, else `pick()`. */
 export function openDay(want, days, pick) {
@@ -174,7 +173,7 @@ export function dprStatValues(sum) {
     [sum.pagesShot + ' / ' + sum.pagesPlanned, 'pages shot'],
     [String(sum.part.length), 'part shot'],
     [String(sum.dropped.length), 'dropped'],
-    [sum.record.setups || '—', 'setups'],
+    [DPR.cleanSetups(sum.record.setups) || '—', 'setups'],
     [sum.delayMinutes ? DPR.formatMinutes(sum.delayMinutes) : '—', 'lost to delays']
   ];
 }
@@ -185,7 +184,9 @@ export function calcLine(sum) {
   if (sum.lunchMinutes != null) bits.push('lunch ' + DPR.formatMinutes(sum.lunchMinutes));
   if (sum.workMinutes != null && sum.lunchMinutes != null) bits.push('worked ' + DPR.formatMinutes(sum.workMinutes));
   if (sum.callToFirstShot != null) bits.push('call to first shot ' + DPR.formatMinutes(sum.callToFirstShot));
-  return bits.length ? bits.join(' · ') + '.' : 'Type the call and wrap times and the day’s length works itself out.';
+  const warn = (sum.warnings || []).join(' ');
+  const line = bits.length ? bits.join(' · ') + '.' : 'Type the call and wrap times and the day’s length works itself out.';
+  return warn ? line + ' ' + warn : line;
 }
 
 export function kitTitle(day, tally, prefs) {

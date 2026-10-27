@@ -26,6 +26,7 @@
    the unlock, each at a click, each through the page's own save.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { button } from './kit/index.js';
 import '../styles/write-revisions.css';
 import StudioUI from './chrome.js';
 import Scenes from '../lib/scenes.js';
@@ -34,6 +35,7 @@ import {
   revisionColour, sceneNumbers, lockNumbering, isNumberingLocked, typeLabel
 } from '../lib/script.js';
 import { askDanger } from './dialog.js';
+import { issuedColour, issuedCount, revisionLabel, isSideCopy } from '../lib/script-incoming.js';
 
 const differ = () => import('../lib/script-diff.js');
 
@@ -54,8 +56,14 @@ function revLabel(doc, id) {
   if (id === LIVE) return 'The script now';
   const i = doc.revisions.findIndex((r) => r.id === id);
   if (i < 0) return '';
-  return revisionColour(i).name + ' — ' + doc.revisions[i].name;
+  return revisionLabel(doc.revisions, i);
 }
+/* The newest ISSUED draft: "Mark changes since" and the revised pages'
+   colour count issues, never the side copies an arrival kept (QA r4). */
+const latestIssuedId = (doc) => {
+  for (let i = doc.revisions.length - 1; i >= 0; i--) if (!isSideCopy(doc.revisions[i])) return doc.revisions[i].id;
+  return doc.revisions[doc.revisions.length - 1].id;
+};
 function revElements(doc, id) {
   if (id === LIVE) return doc.elements;
   const r = doc.revisions.find((x) => x.id === id);
@@ -77,10 +85,10 @@ export function renderRevisionTools() {
   return wrap;
 }
 
-function revOptions(doc, selected, withLive) {
-  const opts = doc.revisions.map((r, i) => h('option', {
-    value: r.id, text: revisionColour(i).name + ' — ' + r.name, selected: r.id === selected
-  }));
+function revOptions(doc, selected, withLive, issuedOnly) {
+  const opts = doc.revisions.map((r, i) => ((issuedOnly && isSideCopy(r) && issuedCount(doc.revisions)) ? null : h('option', {
+    value: r.id, text: revisionLabel(doc.revisions, i), selected: r.id === selected
+  }))).filter(Boolean);
   if (withLive) opts.push(h('option', { value: LIVE, text: 'The script now', selected: selected === LIVE }));
   return opts;
 }
@@ -100,7 +108,7 @@ function renderCompare(doc) {
         h('select#wr-cmp-from', { 'data-rt': 'cmp-from' }, revOptions(doc, cmpFrom, false))]),
       h('label.wr-field', {}, [h('span', { text: 'To' }),
         h('select#wr-cmp-to', { 'data-rt': 'cmp-to' }, revOptions(doc, cmpTo, true))]),
-      h('button.btn.primary', { type: 'button', 'data-action': 'rev-compare', text: 'Compare' })
+      button({ label: 'Compare', variant: 'primary', action: 'rev-compare' })
     ]),
     h('div.wr-cmp-out', { id: 'wr-cmp-out', 'aria-live': 'polite' },
       lastResult && lastResult.from === cmpFrom && lastResult.to === cmpTo ? resultNodes(doc, lastResult) : [])
@@ -110,7 +118,7 @@ function renderCompare(doc) {
 
 function renderRevisedPages(doc) {
   if (marksSince && !validRev(doc, marksSince)) marksSince = '';
-  const since = marksSince || doc.revisions[doc.revisions.length - 1].id;
+  const since = marksSince || latestIssuedId(doc);
   const box = h('section.wr-marks', { 'aria-labelledby': 'wr-marks-h' });
   box.append(
     h('h3.wr-tool-h', { id: 'wr-marks-h', text: 'Revised pages' }),
@@ -121,12 +129,12 @@ function renderRevisedPages(doc) {
     }),
     h('div.wr-tool-row', {}, [
       h('label.wr-field', {}, [h('span', { text: 'Mark changes since' }),
-        h('select#wr-marks-since', { 'data-rt': 'marks-since' }, revOptions(doc, since, false))]),
+        h('select#wr-marks-since', { 'data-rt': 'marks-since' }, revOptions(doc, since, false, true))]),
       h('label.wr-check', {}, [
         h('input#wr-marks-tint', { type: 'checkbox', 'data-rt': 'marks-tint', checked: marksTint }),
         h('span', { text: 'Tint revised pages in the colour' })
       ]),
-      h('button.btn', { type: 'button', 'data-action': 'export-pdf-revised', text: 'Save revised PDF' })
+      button({ label: 'Save revised PDF', action: 'export-pdf-revised' })
     ])
   );
   return box;
@@ -144,9 +152,7 @@ function renderNumbering(doc) {
             + 'in the pages as OMITTED, and no call sheet ends up pointing at the wrong scene.'
       }),
       h('div.wr-tool-row', {}, [
-        h('button.btn', {
-          type: 'button', 'data-action': 'numbers-lock', text: 'Lock scene numbers', disabled: heads === 0
-        })
+        button({ label: 'Lock scene numbers', action: 'numbers-lock', disabled: heads === 0 })
       ])
     );
     return box;
@@ -171,7 +177,7 @@ function renderNumbering(doc) {
           + 'renumbers every scene by position.'
     }),
     h('div.wr-tool-row', {}, [
-      h('button.btn', { type: 'button', 'data-action': 'numbers-unlock', text: 'Unlock and renumber…' })
+      button({ label: 'Unlock and renumber…', action: 'numbers-unlock' })
     ]),
     renderPagesLock(doc)
   ].filter(Boolean));
@@ -195,7 +201,7 @@ function renderPagesLock(doc) {
             + 'into 12A, 12B rather than pushing every later page on, and a page whose lines are '
             + 'all cut is folded into the one before it as 12-13, so a crew swaps in only the pages that changed.'
       }),
-      h('div.wr-tool-row', {}, [h('button.btn', { type: 'button', 'data-action': 'pages-lock', text: 'Lock page numbers' })])
+      h('div.wr-tool-row', {}, [button({ label: 'Lock page numbers', action: 'pages-lock' })])
     );
     return box;
   }
@@ -204,7 +210,7 @@ function renderPagesLock(doc) {
     h('span', { 'data-pages-summary': '', text: plural(lock.starts.length, 'page') + ' when locked.' })
   ]);
   box.append(summary, h('div.wr-tool-row', {}, [
-    h('button.btn', { type: 'button', 'data-action': 'pages-unlock', text: 'Unlock page numbers…' })
+    button({ label: 'Unlock page numbers…', action: 'pages-unlock' })
   ]));
   /* The A-pages and folded pages as they stand now, filled in once the
      typesetter has loaded. */
@@ -317,7 +323,7 @@ function wire() {
     const doc = ctx.getDoc();
     if (!doc || !doc.revisions.length) return;
     if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
-    const sinceId = marksSince && validRev(doc, marksSince) ? marksSince : doc.revisions[doc.revisions.length - 1].id;
+    const sinceId = marksSince && validRev(doc, marksSince) ? marksSince : latestIssuedId(doc);
     const since = doc.revisions.findIndex((r) => r.id === sinceId);
     let D;
     try { D = await differ(); } catch (e) { say('The revision marks could not be loaded. Check the connection and try again.', 'error'); return; }
@@ -330,12 +336,15 @@ function wire() {
     /* Which colour these pages are. If the script is exactly the latest
        snapshot, that snapshot IS this issue; otherwise this is the
        issue after it, not yet snapshotted. */
-    const latest = doc.revisions.length - 1;
+    const latestId = latestIssuedId(doc);
+    const latest = doc.revisions.findIndex((r) => r.id === latestId);
+    const count = issuedCount(doc.revisions);
     const issued = D.isUnchanged(D.diffElements(doc.revisions[latest].elements, doc.elements));
-    const colour = revisionColour(issued ? latest : latest + 1);
+    const colour = revisionColour(Math.max(0, issued ? count - 1 : count));
+    const sinceColour = issuedColour(doc.revisions, since);
     ctx.exportPDF({
       marks: { ids, label: colour.name + ' Revision', swatch: colour.swatch, tint: marksTint },
-      note: plural(ids.size, 'revised line') + ' since ' + revisionColour(since).name
+      note: plural(ids.size, 'revised line') + ' since ' + (sinceColour ? sinceColour.name : doc.revisions[since].name)
     });
   });
 
@@ -425,9 +434,16 @@ export function renderCompareTool() {
   const doc = ctx.getDoc();
   return doc && doc.revisions.length ? renderCompare(doc) : null;
 }
+/** The Revised pages panel on its own, for the Drafts page, where
+    write.html#revisions lands now (QA: the export was only on the
+    retired write.html). Null until there is a draft to mark against. */
+export function renderRevisedPagesTool() {
+  const doc = ctx.getDoc();
+  return doc && doc.revisions.length ? renderRevisedPages(doc) : null;
+}
 /** Preselect the two sides (a draft id, or 'live') and forget the last result. */
 export function presetCompare(from, to = LIVE) {
   cmpFrom = from; cmpTo = to; lastResult = null;
 }
 
-export default { mountRevisionTools, renderRevisionTools, renderCompareTool, presetCompare };
+export default { mountRevisionTools, renderRevisionTools, renderCompareTool, renderRevisedPagesTool, presetCompare };

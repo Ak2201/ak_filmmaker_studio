@@ -40,11 +40,13 @@
 
    No inline handlers; delegate() on [data-ba-action].
    ============================================================ */
+import { errorSentence } from '../lib/gate.js';
 import { h, delegate } from '../lib/dom.js';
 import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
 import { refundDialog, declineDialog, categoryText } from './refund-admin.js';
 import { ask } from './dialog.js';
+import { errorState } from './admin-kit.js';
 import { usdCall } from '../lib/admin-api.js';
 import { studioRole } from './admin-customer.js';
 import { fmtMinor, parseMinor } from '../lib/price-model.js';
@@ -120,7 +122,7 @@ async function load() {
     } catch (e) { S.members = []; }
     S.loaded = true;
   } catch (e) {
-    S.error = e.message || 'The billing console could not load.';
+    S.error = errorSentence(e, 'The billing console could not load.');
   } finally {
     S.busy = false; rerender();
   }
@@ -141,6 +143,10 @@ export function billingAdminSection(section, st, { part } = {}) {
       : section('billing', 'Billing', part ? 'Payments and refunds.' : 'Plans and payments.',
         part ? 'What has been paid, by whom, and the refund requests waiting for an answer.' : 'What each tier costs and allows, who has paid for what, and a way to grant a plan by hand. Prices change on the next purchase; nobody’s running plan is touched by an edit.');
   if (!S.loaded && !S.busy && !S.error) load();
+  if (S.error && !S.loaded) {
+    sec.append(errorState({ title: 'Purchases could not load', why: S.error, onRetry: () => load() }));
+    return sec;
+  }
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (!S.loaded) { sec.append(h('p.gt-meta', { text: S.busy ? 'Loading…' : '' })); return sec; }
 
@@ -150,7 +156,7 @@ export function billingAdminSection(section, st, { part } = {}) {
   const by = o.active_by_plan || {};
   /* The console's one stat tile (admin.css .ad-stat), not a second kind. */
   const grid = h('div.ad-stats.ba-grid');
-  const stat = (v, l, sub) => grid.append(h('div.ad-stat', {}, [h('span.ad-stat-n', { text: v }), h('span.ad-stat-l', { text: l }), sub ? h('span.ad-stat-sub', { text: sub }) : null].filter(Boolean)));
+  const stat = (v, l, sub) => grid.append(h('div.k-stat.ad-stat', {}, [h('span.k-stat-value.ad-stat-n', { text: v }), h('span.k-stat-label.ad-stat-l', { text: l }), sub ? h('span.k-stat-note.ad-stat-sub', { text: sub }) : null].filter(Boolean)));
   /* §56: paid_*_paise are RUPEES ONLY; dollars are in paid_by_currency
      and never added to them (no exchange rate is used anywhere). */
   const usdPaid = o.paid_by_currency && o.paid_by_currency.USD;
@@ -180,7 +186,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     field('name', 'Name', h('input', { id: `ba_${p.id}_name`, name: 'name', type: 'text', maxlength: 40, value: p.name }));
     if (p.id !== 'free') {
       const price = Number.isInteger(p.price_paise) ? p.price_paise : p.yearly_paise;
-      field('price', 'Price (₹, once)', h('input', { id: `ba_${p.id}_price`, name: 'price', type: 'text', inputmode: 'decimal', value: price ? String(price / 100) : '', placeholder: 'not for sale' }));
+      field('price', 'Price (₹, a year)', h('input', { id: `ba_${p.id}_price`, name: 'price', type: 'text', inputmode: 'decimal', value: price ? String(price / 100) : '', placeholder: 'not for sale' }));
     }
     for (const [key, label] of LIMIT_FIELDS) {
       const v = p.limits && Number.isInteger(p.limits[key]) ? String(p.limits[key]) : '';
@@ -296,6 +302,12 @@ export function billingAdminSection(section, st, { part } = {}) {
   if (!S.payments.length) sec.append(h('p.gt-meta', { text: 'No payments yet.' }));
   else {
     const table = h('table.gt-table.ba-ledger');
+    /* A refund removes that payment's own year (mark_payment_refunded
+       shortens accounts.plan_until) while the row keeps its ends_at, so
+       a refunded row printing "1 year · ends …" claimed access that is
+       gone. */
+    const accessCell = (p) => p.status === 'refunded' ? 'year removed (refunded)'
+      : p.ends_at ? (p.period === 'grant' ? 'grant' : '1 year') + ' · ends ' + fmtDate(p.ends_at) : 'for good';
     table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Plan', 'Access', 'Amount', 'Code', 'Status', 'Razorpay', ...(S.refunds ? [''] : [])].map((t) => h('th', { scope: 'col', text: t })))]));
     const tb = h('tbody');
     for (const p of S.payments) {
@@ -305,7 +317,7 @@ export function billingAdminSection(section, st, { part } = {}) {
         h('td', { text: fmtDate(p.paid_at || p.created_at) }),
         h('td', {}, [h('span', { text: p.email }), p.account_name ? h('br') : null, p.account_name ? h('span.gt-meta', { text: p.account_name }) : null].filter(Boolean)),
         h('td', { text: planName(p.plan_id) }),
-        h('td', { text: p.ends_at ? (p.period === 'grant' ? 'grant' : '1 year') + ' · ends ' + fmtDate(p.ends_at) : 'for good' }),
+        h('td', { text: accessCell(p) }),
         h('td', {}, [h('span', { text: p.status === 'granted' ? '₹0 (grant)' : money(p.amount_paise, p) + (p.credit_paise > 0 ? ` (upgrade; ${money(p.credit_paise, p)} already paid)` : '') }),
           intlBadge(p)].filter(Boolean)),
         h('td', { text: p.promo_code ? `${p.promo_code} (${money(p.discount_paise || 0, p)} off)` : '—' }),
@@ -452,7 +464,7 @@ delegate(document, 'submit', '[data-ba-form="plan"]', async (e, form) => {
     S.saved = id;
     await load();
     setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The plan was not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The plan was not saved.'), 'error'); }
 });
 
 delegate(document, 'submit', '[data-ba-form="grant"]', async (e, form) => {
@@ -464,7 +476,7 @@ delegate(document, 'submit', '[data-ba-form="grant"]', async (e, form) => {
     await Billing.admin.grantPlan(who, f.get('plan'), 0, f.get('note'));   // 0 days: a grant is for good (§52 honours days; this form offers none)
     S.granted = 'Granted — full access, for good.';
     await load();
-  } catch (err) { toast(err.message || 'The grant did not go through.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The grant did not go through.'), 'error'); }
 });
 
 delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
@@ -509,14 +521,14 @@ delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
     S.promoDraft = {};
     await load();
     { const made = S.promoMade; setTimeout(() => { if (S.promoMade === made) S.promoMade = ''; clearNote(made); }, 2500); }
-  } catch (err) { toast(err.message || 'The code was not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The code was not saved.'), 'error'); }
 });
 
 delegate(document, 'click', '[data-ba-action="promo-toggle"]', async (e, el) => {
   try {
     await Billing.admin.setPromoCode(el.dataset.code, { active: el.dataset.active !== 'true' });
     await load();
-  } catch (err) { toast(err.message || 'The code was not changed.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The code was not changed.'), 'error'); }
 });
 
 delegate(document, 'click', '[data-ba-action="refund"]', async (e, el) => {
@@ -552,7 +564,7 @@ delegate(document, 'change', '[data-ba-action="refund-switch"]', async (e, el) =
   try {
     S.rrEnabled = await Billing.admin.setRefundRequestsEnabled(el.checked);
     toast(S.rrEnabled ? 'Customers can now request refunds from Settings.' : 'Refund requests are off. Customers no longer see the form.', 'success');
-  } catch (err) { S.rrEnabled = !el.checked; toast(err.message || 'The switch was not changed.', 'error'); }
+  } catch (err) { S.rrEnabled = !el.checked; toast(errorSentence(err, 'The switch was not changed.'), 'error'); }
   S.rrBusy = false; rerender();
 });
 
@@ -579,7 +591,7 @@ delegate(document, 'submit', '[data-ba-form="usd-price"]', async (e, form) => {
     S.usd.notice = await setUsdPrice(id, amount, next, at) || S.usd.notice;
     S.usd.saved = id;
     setTimeout(() => { S.usd.saved = ''; clearNote('Saved.'); }, 2500);
-  } catch (err) { toast(err.message || 'The dollar price was not saved.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The dollar price was not saved.'), 'error'); }
   S.usd.busy = false; rerender();
 });
 delegate(document, 'change', '[data-ba-action="usd-switch"]', async (e, el) => {
@@ -594,7 +606,7 @@ delegate(document, 'change', '[data-ba-action="usd-switch"]', async (e, el) => {
   try {
     S.usd.notice = await setUsdCheckout(want) || S.usd.notice;
     toast(want ? 'Dollar checkout is on.' : 'Dollar checkout is off. Every order is in rupees.', 'success');
-  } catch (err) { toast(err.message || 'The switch was not changed.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'The switch was not changed.'), 'error'); }
   S.usd.busy = false; rerender();
 });
 

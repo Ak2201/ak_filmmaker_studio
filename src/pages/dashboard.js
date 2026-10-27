@@ -65,6 +65,7 @@ import { statStrip, badge, meter, button, buttonGroup, eyebrow as kEyebrow, pane
 import { readFields, writeFields, blobKey } from '../lib/blueprint-store.js';
 import { coverFields, coverNs } from '../lib/cover-fields.js';
 import { paperField } from '../ui/paper-field.js';
+import { preservingFocus } from '../lib/autosave.js';
 import { filmRegion, setFilmRegion } from '../lib/film-region.js';   // = region.js currentProjectPrefs / setProjectRegion; film-region.js says why
 import '../ui/india-content.js';   // the India-only switch follows this film's region
 
@@ -506,8 +507,11 @@ function renderHead(snap) {
       stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast', crewCastNote(snap)),
       stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots',
         snap.shots.length ? snap.shots.length + ' shots planned' : ''),
-      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Locked budget',
-        snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') : '')
+      // The live estimator's sum: nothing is locked, and contingency is
+      // not in it (the budget page's Total budget adds it). It once
+      // said 'Locked budget' while budget.html said 'Nothing locked yet'.
+      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Budget estimate',
+        snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') + ', before contingency' : '')
     ], { class: 'db-stats', label: 'This film in numbers' }));
   }
   return head;
@@ -532,6 +536,16 @@ const TP_HINTS = {
   meta_stage: 'Where the film is: Story, Screenplay, Pre-production…'
 };
 
+/* PROJECT TITLE is the project's name (store.js's AUTO TITLE BRIDGE
+   ties meta_title to it on the blueprints, but it binds once, ~100ms
+   after DOMContentLoaded, before this card exists). An empty stored
+   title shows the project's name, written nowhere until it is edited;
+   a changed one renames the project (saveProjectTitle below). */
+function tpValue(key, stored, project) {
+  const v = typeof stored === 'string' ? stored : '';
+  return key === 'meta_title' && !v.trim() ? ((project && project.title) || '') : v;
+}
+
 function renderTitlePage(project) {
   const fmt = coverNs(project.format);
   const fields = coverFields('story', fmt);
@@ -543,7 +557,7 @@ function renderTitlePage(project) {
   const vals = readFields(fmt, fields.map((f) => f.key));
   const grid = h('div.db-tp-grid');
   for (const f of fields) {
-    const v = typeof vals[f.key] === 'string' ? vals[f.key] : '';
+    const v = tpValue(f.key, vals[f.key], project);
     const attrs = { 'data-key': f.key, 'data-tp-ns': fmt };
     const hint = TP_HINTS[f.key] || '';
     grid.append(f.options
@@ -554,7 +568,7 @@ function renderTitlePage(project) {
         options: [{ value: '', label: f.empty || 'Choose…' },
           ...(v && !f.options.includes(v) ? [{ value: v, label: v }] : []),
           ...f.options.map((o) => ({ value: o, label: o }))] })
-      : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs, hint }));
+      : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.key === 'meta_stage' ? '' : (f.placeholder || ''), attrs, hint }));
   }
   /* A title page is writing: its text fields are paper (owner, 20 Oct
      2026). The genre select stays a control, and a date, a count, a
@@ -593,8 +607,12 @@ function renderRegionRow(project) {
 delegate(app, 'click', '[data-action="tp-region"]', (e, el) => {
   const p = Store.currentProject();
   if (!p) return;
-  if (!setFilmRegion(el.getAttribute('data-region'), p.id)) { StudioUI.toastError('The film\u2019s region could not be changed.'); return; }
+  const region = el.getAttribute('data-region');
+  if (!setFilmRegion(region, p.id)) { StudioUI.toastError('The film\u2019s region could not be changed.'); return; }
   render();
+  /* The redraw replaced the pressed button: the keyboard stays on it. */
+  const again = app.querySelector('[data-action="tp-region"][data-region="' + CSS.escape(region) + '"]');
+  if (again) again.focus({ preventScroll: true });
 });
 
 /* Title page keys that are a date, a number or money, not writing. */
@@ -973,12 +991,18 @@ const saveTitleField = (e, el) => {
   if (!ns || !key) return;
   const patch = { [key]: el.value };
   /* feature.js syncTitleAcrossCovers(): the two titles are twins, and
-     typing one fills the other while the other is empty. */
+     typing one fills the other when the other was empty — and it keeps
+     FOLLOWING for the rest of that typing (data-tp-follows). Checking
+     "is the twin empty" on every keystroke copied the first letter and
+     then stopped: Title "The Kettle", Working title "T". Typing in the
+     twin itself ends the following. */
+  delete el.dataset.tpFollows;
   const twin = key === 'meta_title' ? 'v1_title' : key === 'v1_title' ? 'meta_title' : null;
   const t = twin && app.querySelector('[data-tp-ns][data-key="' + twin + '"]');
-  if (t && el.value) {
+  if (t && t.dataset.tpFollows === key) { t.value = el.value; patch[twin] = el.value; }
+  else if (t && el.value) {
     const stored = readFields(ns, [twin])[twin];
-    if (t.value === '' && !(typeof stored === 'string' && stored)) { t.value = el.value; patch[twin] = el.value; }
+    if (t.value === '' && !(typeof stored === 'string' && stored)) { t.value = el.value; patch[twin] = el.value; t.dataset.tpFollows = key; }
   }
   if (!writeFields(ns, patch)) StudioUI.toastError('That was not saved: this browser refused the write.');
 };
@@ -986,6 +1010,22 @@ const saveTitleField = (e, el) => {
    select takes `change` only, so one pick is one write. */
 delegate(app, 'input', 'input[data-tp-ns][data-key], textarea[data-tp-ns][data-key]', saveTitleField);
 delegate(app, 'change', 'select[data-tp-ns][data-key]', saveTitleField);
+/* On commit (blur), not per keystroke: a rename re-renders the page —
+   one task later, once a Tab has landed on the next field, so the
+   redraw keeps THAT field (preservingFocus) instead of the one left. */
+delegate(app, 'change', 'input[data-tp-ns][data-key="meta_title"]', (e, el) => {
+  const p = Store.currentProject();
+  const v = el.value.trim();
+  if (p && v && v !== p.title) setTimeout(() => Store.updateProject(p.id, { title: v }), 0);
+  /* A film always has a name: a blank is refused, the field goes back to it
+     and the blank saved by the typing is overwritten, so the page never shows
+     a state a reload would undo. */
+  else if (p && !v && p.title) {
+    el.value = p.title;
+    writeFields(el.getAttribute('data-tp-ns'), { meta_title: p.title });
+    StudioUI.toast('A film needs a title, so the title page keeps “' + p.title + '”.');
+  }
+});
 
 /* The fields' values are PROPERTIES, which never reach innerHTML, so
    commitMain's signature cannot see a stored value change and may keep
@@ -1001,8 +1041,7 @@ function refreshTitleFields() {
   const active = document.activeElement;
   for (const el of els) {
     if (el === active) continue;
-    const v = vals[el.getAttribute('data-key')];
-    const want = typeof v === 'string' ? v : '';
+    const want = tpValue(el.getAttribute('data-key'), vals[el.getAttribute('data-key')], Store.currentProject());
     if (el.value !== want) el.value = want;
   }
 }
@@ -1039,7 +1078,9 @@ delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {
 });
 
 Store.subscribe('current:changed', () => render());
-Store.subscribe('project:meta', () => render());
+/* A rename from the Title page fires this while Tab is moving to the
+   next field: keep that field (and its caret) through the redraw. */
+Store.subscribe('project:meta', () => preservingFocus(render));
 Store.subscribe('plan:changed', () => render());
 Store.subscribe('gate:changed', () => render());   // signed in or out: the referral row follows the account
 

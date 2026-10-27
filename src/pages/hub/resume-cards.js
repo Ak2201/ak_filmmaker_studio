@@ -11,7 +11,7 @@
    passed in once; nothing here imports hub.js.
    ============================================================ */
 import Store from '../../lib/store.js';
-import { fmtMoney } from '../../lib/money.js';
+import { fmtGlance } from '../../lib/money.js';
 import * as Status from '../../lib/hub-status.js';
 import { h } from '../../lib/dom.js';
 import { PROJECT_HOME_URL, FORMAT_LABELS, fmtRelDate, title, $ } from './util.js';
@@ -61,7 +61,7 @@ function updateStatus() {
 
   const l = computeLibraryStatus(); lastLibStatus = l;
   setText('#lib-calc', l.count > 0 ? (l.count + ' items') : 'empty');
-  setText('#lib-total', l.total > 0 ? fmtMoney(l.total, l.currency, true) : '—');
+  setText('#lib-total', l.total > 0 ? fmtGlance(l.total, l.currency) : '—');
 
   { const sb = $('#storageBytes'); if (sb) sb.textContent = Status.storageSummary(f, s, l, Status.storageUsage(ALL_KEYS)); }
 

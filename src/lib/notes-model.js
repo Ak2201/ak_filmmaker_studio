@@ -102,4 +102,28 @@ export function hereFirst(items, ctx = {}) {
   return here.concat(notes.filter((x) => !here.includes(x)));
 }
 
-export default { COLORS, COLOR_LABEL, MAX_TEXT, isNote, colorOf, makeNote, pinValue, pinPatch, moveItem, notesFor, pinCounts, filterBoard, hereFirst };
+/**
+ * Undo an "Add to synopsis" / "Add to the scene" append. `before` was the
+ * text, `after` what the append made it, `current` what it is now. The
+ * Undo toast never times out, so the writer may have typed since: going
+ * back to `before` would throw that writing away. So: unchanged → `before`;
+ * changed → the text with ONLY the appended part taken out, when that part
+ * is still there exactly once and not run into a longer word; otherwise
+ * null (nothing safe to undo — the caller says so and writes nothing).
+ */
+export function undoAppend(current, before, after) {
+  const cur = String(current == null ? '' : current);
+  const b = String(before == null ? '' : before);
+  const a = String(after == null ? '' : after);
+  if (cur === a) return b;
+  const base = b.replace(/\s+$/, '');
+  if (!a.startsWith(base)) return null;
+  const added = a.slice(base.length);
+  if (!added.trim()) return null;
+  const at = cur.indexOf(added);
+  if (at < 0 || cur.indexOf(added, at + 1) >= 0) return null;
+  if (/[\p{L}\p{N}]/u.test(cur.charAt(at + added.length)) && /[\p{L}\p{N}]$/u.test(added)) return null;
+  return cur.slice(0, at) + cur.slice(at + added.length);
+}
+
+export default { COLORS, COLOR_LABEL, MAX_TEXT, isNote, colorOf, makeNote, pinValue, pinPatch, moveItem, notesFor, pinCounts, filterBoard, hereFirst, undoAppend };

@@ -351,6 +351,12 @@ html.sym-ready .tabs:not(.tabs-side) .tabs-sections-l {
   box-shadow: 0 0 0 100vmax var(--surface-canvas), 0 1px 0 100vmax var(--border-hair);
   clip-path: inset(0 -100vmax -1px);
 }
+/* ...and the narrow-width [data-more] edge MASK (chrome.css) must not
+   reach it: a mask fades the element's whole paint, the canvas above
+   included, so the page scrolling under a pinned strip showed through
+   both its ends. Pinned, the strip's own can-scroll-end ::after fade is the
+   edge hint. Three selectors beat the one-attribute rule in any order. */
+.tabs.is-stuck[data-more] { mask-image: none; }
 
 /* ---- the strip is the column's container's business below ----- */
 .st-body > .tabs { margin-inline: 0; }

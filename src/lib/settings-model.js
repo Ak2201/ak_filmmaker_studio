@@ -11,6 +11,10 @@
    ============================================================ */
 import Store from './store.js';
 import { OPTOUT_KEY } from './usage.js';
+import { passName } from './pass-view.js';
+import { renewsText } from './offer-terms.js';
+import { dayLabel, autopaySummary } from './pass-view.js';
+export { dayLabel, autopaySummary };
 
 /* ---- old anchors ----------------------------------------------------- */
 
@@ -76,7 +80,7 @@ export function bigTierFigure(u) {
     only ever computed with plan 'free', so its planName is the free plan's. */
 export function roleLine(cp, gateRole) {
   const role = gateRole === 'admin' ? 'Studio admin' : 'Member';
-  const plan = cp.reason === 'paid' ? cp.planName : cp.reason === 'granted' ? 'Access given by the studio' : cp.reason === 'trial' ? 'Free trial' : '';
+  const plan = cp.reason === 'paid' && cp.passActive ? passName(cp.passDays) : cp.reason === 'paid' ? cp.planName : cp.reason === 'granted' ? 'Access given by the studio' : cp.reason === 'trial' ? 'Free trial' : '';
   return role + (plan ? ' · ' + plan : '');
 }
 
@@ -86,19 +90,39 @@ export const seatsKey = (d) => (d && d.seats ? d.seats.used + '/' + d.seats.limi
 /** The plan card's words: { line, led: [word, tone] | null, usageNote, bought }.
     `trialEndsAt()` is asked only for a running trial. */
 export function planSummary(cp, { off, signedIn, trialEndsAt }) {
+  /* 'expired' is every not-entitled state while trials are on, which
+     includes somebody who never STARTED one (QA, 26 Oct 2026: the card
+     said "Your free trial has ended" beside "Start your free trial").
+     Told apart the way the wall tells them apart (plan-gate.js
+     wallPanel's `fresh`): never used, never paid and no launch pass is
+     nobody who has had anything yet. The public trial is retired (27 Oct
+     2026), so that state names no trial; a pass, a plan and a trial that
+     ran out each say which. */
+  const fresh = !off && cp.reason === 'expired' && !cp.used && !cp.paidBefore && !cp.passUsed;
   let line;
   if (off) line = 'The studio is free to use right now. Nothing needs buying.';
   else if (cp.reason === 'trial') {
     const end = trialEndsAt();
     line = 'Free trial' + (end ? ' · ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
-  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + (cp.planUntil ? ' · valid until ' + new Date(cp.planUntil).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '. Renew from Plan & purchases to add a year.' : ' · granted for good.');
+  } else if (cp.reason === 'paid' && cp.passActive && cp.autopay && cp.autopay.live && cp.autopay.product === 'pass') {
+    line = passName(cp.passDays) + ' · ' + renewsText(dayLabel(cp.autopay.nextChargeAt || cp.autopay.currentEnd || cp.planUntil), cp.autopay.price) + '. The whole studio is open.';
+  } else if (cp.reason === 'paid' && cp.passActive) {
+    /* §61: the launch pass is Pro for a few days, not a plan to renew. */
+    line = passName(cp.passDays) + (cp.planUntil ? ' · ends ' + new Date(cp.planUntil).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '. The whole studio is open; a yearly plan keeps it open after.';
+  } else if (cp.reason === 'paid' && cp.autopay && cp.autopay.live && cp.autopay.product === cp.plan) {
+    /* §62: a running auto-pay renews by itself; the card below it says more */
+    line = (cp.planName || 'Your plan') + ' · ' + renewsText(dayLabel(cp.autopay.nextChargeAt || cp.autopay.currentEnd || cp.planUntil), cp.autopay.price) + '.';
+  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + (cp.planUntil ? ' · valid until ' + new Date(cp.planUntil).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '. Renew from Purchase to add a year.' : ' · granted for good.');
   else if (cp.reason === 'granted') line = 'Access given to you by the studio.';   // its planName is the free plan's
-  else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
+  else if (cp.reason === 'expired' && cp.passUsed) line = 'Your launch pass has ended. A yearly plan opens the studio again.';
+  else if (cp.reason === 'expired' && cp.paidBefore) line = 'Your plan has ended. Buying a plan again brings it back.';
+  else if (cp.reason === 'expired' && cp.used) line = 'Your free trial has ended. A plan brings it back.';
+  else if (fresh) line = 'No plan yet. Choose one from Purchase.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
   /* One LED pill, read from the same facts as the line, so it can never
      say something the line does not. */
-  const led = off ? ['Open', 'ok'] : cp.reason === 'trial' ? ['Trial', 'warn'] : cp.reason === 'paid' ? ['Active', 'ok']
-    : cp.reason === 'granted' ? ['Granted', 'ok'] : cp.reason === 'expired' ? ['Ended', 'bad'] : null;
+  const led = off ? ['Open', 'ok'] : cp.reason === 'trial' ? ['Trial', 'warn'] : cp.reason === 'paid' && cp.passActive ? ['Pass', 'warn'] : cp.reason === 'paid' ? ['Active', 'ok']
+    : cp.reason === 'granted' ? ['Granted', 'ok'] : fresh ? ['No plan', 'warn'] : cp.reason === 'expired' ? ['Ended', 'bad'] : null;
   /* The second line: what the plan means for what you can keep and share. */
   let usageNote = '';
   if (off) usageNote = 'The studio is open, so nothing is capped: sync as many films as you like and share them freely.';
@@ -113,6 +137,12 @@ export function planSummary(cp, { off, signedIn, trialEndsAt }) {
 /** The answer after "Delete my cloud projects". */
 export function cloudDeleteReport(res) {
   const failed = (res && res.failed) || [];
+  if (res && res.readError) {
+    return { title: 'Could not read your cloud projects', body: 'Nothing was deleted and cloud sync was left as it was. ' + res.readError };
+  }
+  if (!failed.length && !(res && res.deleted)) {
+    return { title: 'No cloud projects to delete', body: 'You have no projects in the cloud. Cloud sync is paused.' };
+  }
   return {
     title: failed.length ? 'Some cloud projects were not deleted' : 'Cloud projects deleted',
     body: 'Deleted ' + ((res && res.deleted) || 0) + ' cloud project(s)' + (failed.length ? '; ' + failed.length + ' failed.' : '.') + ' Cloud sync is paused.'
@@ -128,4 +158,4 @@ export function setUsageCounting(on) {
   if (on) Store.rawRemove(OPTOUT_KEY); else Store.rawSet(OPTOUT_KEY, '1');
 }
 
-export default { OLD_BILLING_ANCHORS, movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting };
+export default { dayLabel, autopaySummary, OLD_BILLING_ANCHORS, movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting };

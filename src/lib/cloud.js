@@ -312,7 +312,11 @@ export function gateDetail(reason) {
     case 'revoked':     return 'Your invite was revoked — sync is paused';
     case 'notdeployed': return 'Signed in — invites are not open yet';
     case 'unreachable': return 'Could not reach the studio to check your invite — sync paused';
-    default:            return 'Signed in — awaiting an invite';
+    /* 'noinvite' and anything unnamed. The invite-request queue came off
+       the public door: the way in is a trial, a plan or a code, so
+       "awaiting an invite" told people to wait for something that was
+       not coming (QA, 26 Oct 2026). */
+    default:            return 'Signed in — sync starts with a free trial or a plan';
   }
 }
 
@@ -695,8 +699,8 @@ async function askTakeover(info) {
     if (!hasPort('takeoverDialog')) throw new Error('no takeover dialog');
     return await callPort('takeoverDialog', false, info);
   } catch (e) {
-    return await ask('Your account is currently active in another Chrome window. '
-      + 'Would you like to terminate that session and continue here?');
+    return await ask('Your account is currently active in another browser window or on another device. '
+      + 'Would you like to end that session and continue here?');
   }
 }
 
@@ -818,8 +822,8 @@ async function runGate() {
      signed in: redeem that code for this account, so "come in with the
      code, sign in later to sync" is one motion rather than a second
      form. A failure here is not a closed door — the code pass still
-     admits them to the site — so it is quiet; the pill says sync is
-     awaiting an invite, and invite.html still offers the box. */
+     admits them to the site — so it is quiet; the pill says sync starts
+     with a trial or a plan, and invite.html still offers the box. */
   const pass = getCodePass();
   if (!st.registered && !st.disabled && pass && pass.code) {
     try {
@@ -2685,9 +2689,11 @@ export async function deleteOwnedCloudProjects() {
   const sb = await ensureClient();
   if (!sb || !session) throw new Error('Sign in to delete your cloud projects.');
   const uid = session.user.id;
-  await setSyncEnabled(false);
+  /* The list is read BEFORE sync is paused: a read that fails attempts
+     nothing, so it neither pauses sync nor counts as a failed project. */
   const { data, error } = await sb.from('projects').select('id').eq('owner_id', uid);
-  if (error) return { ok: false, deleted: 0, failed: [{ id: '*', error: error.message || String(error) }] };
+  if (error) return { ok: false, deleted: 0, failed: [], readError: error.message || String(error) };
+  await setSyncEnabled(false);
   let deleted = 0;
   const failed = [];
   for (const row of data || []) {

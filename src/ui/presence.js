@@ -21,7 +21,7 @@
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { currentProjectId, subscribe } from '../lib/store.js';
-import { displayNameOf, initials, presencePeople, noteSeen, editingWarning } from '../lib/presence.js';
+import { displayNameOf, initials, caretTag, presencePeople, noteSeen, editingWarning } from '../lib/presence.js';
 
 const SEND_EVERY_MS = 2000;     // at most one presence message per two seconds
 const REDRAW_EVERY_MS = 10000;  // so "is typing" expires without a message
@@ -93,7 +93,11 @@ export function mountPresence(o) {
         title: p.name + (p.editing ? ', writing now' : ''),
         'data-editing': p.editing ? 'true' : 'false'
       }, [initials(p.name)])));
-      if (people.length > shown.length) strip.append(h('span.sc-peer.sc-peer-more', { text: '+' + (people.length - shown.length) }));
+      if (people.length > shown.length) {
+        /* The chip names who it stands for (QA r4: "+1" said nobody). */
+        const rest = people.slice(shown.length).map((p) => p.name).join(', ');
+        strip.append(h('span.sc-peer.sc-peer-more', { text: '+' + (people.length - shown.length), title: 'Also here: ' + rest }));
+      }
       strip.setAttribute('aria-label', people.length ? 'Also in this script: ' + people.map((p) => p.name).join(', ') : '');
     }
     for (const row of marked) { row.classList.remove('sc-peer-row'); delete row.dataset.peer; }
@@ -107,7 +111,7 @@ export function mountPresence(o) {
       const at = ta ? caretPoint(ta, p.pos) : null;
       if (!at) continue;
       const mark = h('span.sc-peer-caret', { 'aria-hidden': 'true', title: p.name, 'data-editing': p.editing ? 'true' : 'false' }, [
-        h('span.sc-peer-caret-name', { text: p.name.split(/\s+/)[0] })
+        h('span.sc-peer-caret-name', { text: caretTag(p.name) })
       ]);
       mark.style.left = at.left + 'px';
       mark.style.top = at.top + 'px';
@@ -126,7 +130,7 @@ export function mountPresence(o) {
     }
     const warn = o.warn();
     if (warn) {
-      const t = editingWarning(people);
+      const t = editingWarning(people, !!(o.coEdit && o.coEdit()));
       warn.hidden = !t;
       if (warn.textContent !== t) warn.textContent = t;
     }

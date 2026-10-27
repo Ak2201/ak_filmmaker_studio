@@ -17,7 +17,7 @@ import * as Story from '../lib/story.js';
 import { button, badge, emptyState, panel, segmented } from './kit/index.js';
 import { isNote, filterBoard, COLORS, COLOR_LABEL } from '../lib/notes-model.js';
 import { noteCard, noteAdd, dayLabel } from './note-card.js';
-import { pinOptions } from './notes-actions.js';
+import { pinOptions, projectFormat } from './notes-actions.js';
 import '../styles/notes.css';
 
 export const FILTERS = [
@@ -50,7 +50,7 @@ export function renderVault(s, view = { filter: 'all', color: '' }) {
 
   const add = h('div.st-vault-add');
   add.append(h('label.st-label', { for: 'stClip', text: 'Add a clipping' }));
-  add.append(paperTextarea('#stClip.st-text.k-textarea', { rows: 3 }));
+  add.append(paperTextarea('#stClip.st-text.k-textarea', { rows: 3, maxlength: String(Story.VAULT_MAX), placeholder: 'A quote, a link, a page of notes…' }));
   add.append(button({ label: 'Add to vault', variant: 'primary', icon: 'add', attrs: { 'data-st': 'clip-add' } }));
   sec.append(h('div.nt-board-adds', {}, [
     panel({ class: 'st-vault-panel nt-board-new', body: [noteAdd('ntBoardNew')] }),
@@ -75,7 +75,9 @@ export function renderVault(s, view = { filter: 'all', color: '' }) {
   const ordered = view.filter === 'all' && !view.color;
   if (!shown.length) { sec.append(h('p.nt-empty', { text: 'Nothing matches this filter.' })); return sec; }
 
-  const fw = Story.frameworkById(s.framework);
+  /* The beat sheet the Story page draws (a short film is always the
+     five beats), never the stored default: the note pins use the same. */
+  const fw = Story.frameworkById(Story.effectiveFramework(s, projectFormat()));
   const pins = pinOptions();
   const ul = h('ul.nt-board', { 'aria-label': 'Notes and clippings' });
   shown.forEach((it, i) => {

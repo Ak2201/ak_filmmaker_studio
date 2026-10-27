@@ -32,7 +32,10 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
    so this cannot cycle back into chrome.js the way an import of
    cloud.js would. It is in the same `studio` chunk already. */
 import Account from '../lib/account.js';
+import { errorSentence } from '../lib/gate.js';
 import { connectProject } from '../lib/chrome-auth.js';
+import { passOffer, cachedPassOffer } from '../lib/billing.js';
+import { passPhase, passFacts, passCta, passMode } from '../lib/pass-view.js';
 import '../styles/auth.css';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
@@ -54,7 +57,9 @@ function toastOk(msg) {
   if (u && u.toastSuccess) u.toastSuccess(msg); else console.log('[auth]', msg);
 }
 
-const errText = (e) => (e && (e.message || e.error_description)) || String(e || 'Something went wrong.');
+/* The browser's own words for a dropped connection ("TypeError: Failed to
+   fetch") become the studio's one sentence for it (gate.js errorSentence). */
+const errText = (e) => errorSentence(e, (e && e.error_description) || String(e || 'Something went wrong.'));
 
 // ============================================================
 // SIGN-IN PILL
@@ -149,7 +154,9 @@ export function refreshSignInPill() {
      The address is still in the title and the menu. */
   if (g.state === 'closed') {
     pill.dataset.sync = g.reason === 'unreachable' ? 'error' : 'waiting';
-    lab.textContent = g.reason === 'pending' ? 'Invite pending' : 'Invite needed';
+    /* 'Get access', not 'Invite needed': a closed door is the offer page
+       now (trial, plans, a code), so a code is not the only way in. */
+    lab.textContent = g.reason === 'pending' ? 'Invite pending' : 'Get access';
     setAvatar(pill, '');
   } else {
     /* The pill is a plain link to Settings > Account now (11 Oct
@@ -329,8 +336,11 @@ function paintAccountBlock() {
      nothing else. */
   if (!_acct.data) {
     wrap.append(
-      h('a.am-item', { href: 'settings.html#account', text: '+ CREATE A STUDIO ACCOUNT' }),
-      h('p.am-acct-note', { text: 'An account is how a film reaches somebody else.' })
+      /* The account is created in the TEAM tab (accountSection(), mounted
+         there as #account-people); #account is the tab this card is
+         already on, so the link used to go nowhere. */
+      h('p.am-acct-note', { text: 'An account is how a film reaches somebody else.' }),
+      h('a.k-btn.k-btn--secondary.k-btn--sm.am-create', { href: 'settings.html#team', text: 'Create a studio account' })
     );
     return;
   }
@@ -340,12 +350,12 @@ function paintAccountBlock() {
   const seat = seatWord(d.seats);
   const sub  = roleWord(d.role) + (seat ? ' · ' + seat : '');
 
-  /* settings.html#account resolves because accountSection() is
-     rendered whenever there is a session, and this menu only exists
-     when there is one. Worth stating: a nav target that depends on
-     data existing is a trap this codebase has already paid for. */
+  /* settings.html#team resolves because accountSection() is rendered
+     (in the Team tab) whenever there is a session, and this menu only
+     exists when there is one. Worth stating: a nav target that depends
+     on data existing is a trap this codebase has already paid for. */
   wrap.append(h('a.am-acct', {
-    href: 'settings.html#account',
+    href: 'settings.html#team',
     'aria-label': 'Account settings for ' + name + '. You are ' + roleWord(d.role) + '.'
   }, [
     h('span.am-acct-mark', { 'aria-hidden': 'true', text: initials(name) }),
@@ -419,13 +429,24 @@ export function renderAccountBlock() {
        door offers a free trial, a plan and a code now, so it says what
        the page actually does; a request already in flight still gets
        its own row and its own address. */
-    gateRows.push(g.reason === 'pending'
-      ? h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' })
-      : h('a.am-item', { href: 'invite.html', text: '→ START YOUR FREE TRIAL' }));
+    /* The public free trial is retired (owner, 27 Oct 2026): while the
+       launch pass is on sale the row names it, with the server's price;
+       otherwise it is the generic way to the offer page. */
+    /* On auto-renew (§62) a price never stands without its terms, and a
+       menu row has no room for them: the row names the offer, not the
+       price, and the offer page says both. */
+    const passRow = () => (passPhase(cachedPassOffer()) === 'open'
+      ? '→ ' + passCta(passMode(cachedPassOffer()) === 'renew' ? null : passFacts(cachedPassOffer())) : '→ SEE PLANS');
+    if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' }));
+    else {
+      const row = h('a.am-item', { href: 'invite.html', text: passRow() });
+      gateRows.push(row);
+      passOffer().then(() => { row.textContent = passRow(); }, () => {});
+    }
   }
   if (g.role === 'admin') {
-    gateRows.push(h('a.am-item', { href: 'admin.html',
-      text: waiting ? `→ CONSOLE · ${waiting} REQUEST${waiting === 1 ? '' : 'S'} WAITING` : '→ ADMIN CONSOLE' }));
+    gateRows.push(h('a.k-btn.k-btn--secondary.k-btn--sm.am-gate', { href: 'admin.html',
+      text: waiting ? `Console · ${waiting} request${waiting === 1 ? '' : 's'} waiting` : 'Admin console' }));
   }
   const block = h('div#amBlock.account-menu.am-inline.show', {}, [
     h('div.am-you', {}, [
@@ -442,11 +463,13 @@ export function renderAccountBlock() {
     ]),
     ...gateRows,
     /* The three actions are one row on the card at every width (a phone
-       wraps them to full-width buttons); the same buttons, one handler. */
+       wraps them to full-width buttons); the same buttons, one handler.
+       Kit buttons, sentence case: one button language on the page
+       (CLAUDE.md item 48), as the signed-out "Sign in" already was. */
     h('div.am-actions', {}, [
-      h('button.am-item', { type: 'button', 'data-auth-action': 'sync', text: '↻ SYNC NOW' }),
-      h('button.am-item', { type: 'button', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
-      h('button.am-item.danger', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+      h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'sync', text: 'Sync now' }),
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'settings', text: 'Cloud settings' }),
+      h('button.k-btn.k-btn--danger', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ]),
     h('p.am-foot', { text: 'Signing out leaves every project on this device.' })
   ]);

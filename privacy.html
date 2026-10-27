@@ -49,7 +49,7 @@
             <p class="mk-mega-h">Pre-production</p>
             <ul>
               <li><a href="product-breakdown.html"><span class="sym" aria-hidden="true" translate="no">fact_check</span><span>Breakdown</span></a></li>
-              <li><a href="product-catalog.html"><span class="sym" aria-hidden="true" translate="no">category</span><span>Catalog</span></a></li>
+              <li><a href="product-catalog.html"><span class="sym" aria-hidden="true" translate="no">category</span><span>Elements</span></a></li>
               <li><a href="product-shot-list.html"><span class="sym" aria-hidden="true" translate="no">videocam</span><span>Shot list</span></a></li>
               <li><a href="product-schedule.html"><span class="sym" aria-hidden="true" translate="no">calendar_month</span><span>Schedule</span></a></li>
               <li><a href="product-cast-crew.html"><span class="sym" aria-hidden="true" translate="no">groups</span><span>Cast and crew</span></a></li>
@@ -65,13 +65,13 @@
           </div>
         </div>
       </div>
-      <a class="mk-nav-link" href="pricing.html">Pricing</a>
+      <a class="mk-nav-link mk-nav-pricing" href="pricing.html">Pricing</a>
       <a class="mk-nav-link" href="guides.html">Guides</a>
       <a class="mk-nav-link" href="guides.html#compare">Switching</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Log in</a>
+      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Log in</a>
+      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Sign in</a>
       <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
     </div>
@@ -182,10 +182,13 @@ kept in the tab&rsquo;s session storage so the code survives the trip to Google 
   <li><strong>Account details</strong> &mdash; your name, e-mail address and profile
   picture as provided by Google, Google&rsquo;s identifier for your account, and an internal
   account identifier. We never see your Google password.</li>
+<!-- DRAFT, AWAITING THE OWNER -->
   <li><strong>Access records</strong> &mdash; whether you are a member and how you became
-  one (an invite code, an approved request, a free trial, a purchase, or access we gave you
-  by e-mail), when a free trial started and how long it runs, and which invite code you
-  redeemed.</li>
+  one (an invite code, an approved request, a free trial, a purchase of a plan or a launch
+  pass, or access we gave you by e-mail), when a free trial or a launch pass started and
+  how long it runs, whether your account has used its one launch pass, and which invite code
+  you redeemed.</li>
+<!-- /DRAFT -->
   <li><strong>Invite requests</strong> &mdash; if you ask for access, your e-mail address
   and name as Google gives them, the optional note you write, the type of browser you sent
   it from, and whether it was approved or declined.</li>
@@ -247,6 +250,19 @@ internal identifier for your account, to match the payment to it. We keep:</p>
   <li>if you have a referral code, the credits it has earned and whether they have been
   paid out.</li>
 </ul>
+<!-- DRAFT, AWAITING THE OWNER -->
+<!-- Auto-renew (27 Oct 2026), written from the plan for schema section 62:
+     a Razorpay Subscription holds the mandate; we keep its identifiers and
+     status so a renewal charge can be matched and a cancel carried out. -->
+<p><strong>When a purchase is on auto-renew.</strong> The payment mandate (your UPI Autopay
+mandate, or your card or bank e-mandate) is held by Razorpay, not by us: we never see or keep
+your card details or your UPI credentials. We keep the Razorpay subscription identifier, its
+status (for example active or cancelled), the amount and interval you agreed to, the date of
+the next charge, and a record of each renewal charge as a payment of its own, as listed
+above, so that each charge can be matched to your account, invoiced and, in the cases the
+refund policy lists, refunded. When you cancel, we tell Razorpay to stop the mandate and keep
+the record that you did.</p>
+<!-- /DRAFT -->
 
 <h3>Receipts and refund e-mails</h3>
 <p>After a purchase we e-mail a receipt to your account&rsquo;s address, and we e-mail you
@@ -378,7 +394,8 @@ the purpose listed:</p>
   and storyboard pictures. Google&rsquo;s sign-in script is loaded from
   <code>accounts.google.com</code> when Drive needs it, and your profile picture is shown
   from Google&rsquo;s servers.</li>
-  <li><strong>Razorpay</strong> &mdash; payment processing and refunds. Its checkout is
+  <li><strong>Razorpay</strong> &mdash; payment processing and refunds<!-- DRAFT, AWAITING THE OWNER -->, and, for a
+  purchase on auto-renew, holding the payment mandate<!-- /DRAFT -->. Its checkout is
   loaded from Razorpay when you start a purchase.</li>
   <li><strong>Resend</strong> &mdash; delivering receipt and refund e-mails.</li>
   <li><strong>YouTube (Google)</strong> &mdash; only if you press play on one of the
@@ -615,7 +632,7 @@ signed-in members know in the app or by e-mail before it takes effect.</p>
         <p class="mk-foot-h">Pre-production</p>
         <ul>
           <li><a href="product-breakdown.html">Breakdown</a></li>
-          <li><a href="product-catalog.html">Catalog</a></li>
+          <li><a href="product-catalog.html">Elements</a></li>
           <li><a href="product-shot-list.html">Shot list</a></li>
           <li><a href="product-schedule.html">Schedule</a></li>
           <li><a href="product-cast-crew.html">Cast and crew</a></li>

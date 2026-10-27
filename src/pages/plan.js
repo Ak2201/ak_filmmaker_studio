@@ -37,6 +37,7 @@ import '../styles/print.css';
 import '../styles/plan.css';
 
 import StudioUI from '../ui/chrome.js';
+import { filmPrefs } from '../lib/pdf.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import { pageHeader, statStrip, button } from '../ui/kit/index.js';
@@ -45,13 +46,15 @@ import Scenes, { formatEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS } from '../lib/locations.js';
 import Geo from '../lib/recce-geo.js';
 import {
-  permOf, prettyDate, weekdayOf, plural, pagesOf, slugOf, dateClashes, datedCount, dayWhen,
+  permOf, prettyDate, weekdayOf, plural, pagesOf, slugOf, dateClashes, datesBehind, datedCount, dayWhen,
   orphanDateLabel, locationLight, lightTimes, lightFlagText, pinRefusal, dateReady, dateUnchanged,
   isOpenable, kindOptions, linkOptions, mediaLabel
 } from '../lib/plan-model.js';
 import { askDanger } from '../ui/dialog.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 
+/* The film's date style (region), for the dates this page prints. */
+const prefsNow = () => { try { return filmPrefs(); } catch (e) { return null; } };
 const app = document.getElementById('app');
 
 /* ---- header -------------------------------------------------- */
@@ -71,10 +74,13 @@ function renderHeader(scenes, days, locs, media) {
       button({ label: '\u2190 Stripboard & DOOD', variant: 'secondary', size: 'sm', href: 'stripboard.html#stripboard', class: 'pl-back-sb' })
     ]
   });
+  /* No scenes: a dash, as the stripboard prints, never a "0" that
+     claims an empty schedule has been counted (item 48). */
+  const none = !scenes.length;
   head.append(statStrip([
-    { value: String(days.length), label: days.length === 1 ? 'shoot day' : 'shoot days' },
-    { value: String(dated), label: dated === 1 ? 'date set' : 'dates set', attrs: { 'data-pl-dated': '' } },
-    { value: String(locs.length), label: locs.length === 1 ? 'location' : 'locations' },
+    { value: none ? '' : String(days.length), label: days.length === 1 ? 'shoot day' : 'shoot days', note: none ? 'no scenes yet' : '', class: 'pl-kpi-days' },
+    { value: none ? '' : String(dated), label: dated === 1 ? 'date set' : 'dates set', attrs: { 'data-pl-dated': '' } },
+    { value: none ? '' : String(locs.length), label: locs.length === 1 ? 'location' : 'locations' },
     /* The reference index is the Media module, off for every plan. */
     isDisabledEverywhere('media') ? null : { value: String(media.length), label: media.length === 1 ? 'reference' : 'references' }
   ].filter(Boolean), { label: 'The plan in figures' }));
@@ -157,7 +163,8 @@ function renderCalendar(scenes) {
     // only place it is visible is here. Counted once, read per card.
     const clashes = dateClashes(days);
     const grid = h('div.pl-days');
-    days.forEach((d) => grid.append(renderDay(d, clashes)));
+    const behind = datesBehind(days);
+    days.forEach((d) => grid.append(renderDay(d, clashes, behind)));
     wrap.append(grid);
   }
 
@@ -180,7 +187,7 @@ function renderCalendar(scenes) {
   return wrap;
 }
 
-function renderDay(entry, clashes) {
+function renderDay(entry, clashes, behind) {
   const card = h('article.pl-day', { 'data-day': String(entry.day) });
 
   card.append(h('div.pl-day-head', {}, [
@@ -189,7 +196,7 @@ function renderDay(entry, clashes) {
       h('span.pl-flabel', { text: 'Date' }),
       dateInput(entry)
     ]),
-    h('span.pl-day-when', { text: dayWhen(entry, clashes) }),
+    h('span.pl-day-when', { text: dayWhen(entry, clashes, prefsNow(), behind) }),
     h('span.pl-day-meta', {
       text: plural(entry.scenes.length, 'scene', 'scenes') + ' · ' + pagesOf(entry.eighths)
     })
@@ -266,7 +273,7 @@ function renderOrphanDays(orphans) {
   );
   orphans.forEach((o) => block.append(h('div.pl-orphan', { 'data-day': String(o.day) }, [
     h('span.pl-chip', { text: 'Day ' + o.day }),
-    h('span.pl-orphan-date', { text: orphanDateLabel(o) }),
+    h('span.pl-orphan-date', { text: orphanDateLabel(o, prefsNow()) }),
     h('button.bd-icon.is-danger', {
       type: 'button', 'data-action': 'day-clear',
       title: 'Clear this date', 'aria-label': 'Clear the date on shoot day ' + o.day, text: '✕'
@@ -419,7 +426,7 @@ function renderLight(loc) {
   const list = h('ul.pl-light-list');
   out.rows.forEach((r) => {
     const li = h('li.pl-light-row', { 'data-light-day': String(r.day) }, [
-      h('strong', { text: 'Day ' + r.day + ' · ' + weekdayOf(r.date).slice(0, 3) + ' ' + prettyDate(r.date) }),
+      h('strong', { text: 'Day ' + r.day + ' · ' + weekdayOf(r.date).slice(0, 3) + ' ' + prettyDate(r.date, prefsNow()) }),
       h('span.pl-light-times', { text: lightTimes(r.light) })
     ]);
     if (r.flag) {
@@ -448,8 +455,23 @@ function patchLight() {
 }
 
 function labelled(label, control) {
-  return h('label.pl-field', {}, [h('span.pl-flabel', { text: label }), control]);
+  const kids = [h('span.pl-flabel', { text: label }), control];
+  /* A one-line input cannot wrap on paper and prints its placeholder when
+     empty, so a recce answer was cut mid-sentence and an example printed
+     as a fact. Print shows this mirror instead (plan.css, section 6);
+     it is kept in step by the `mirrorPrint` listeners below. */
+  if (control.classList && control.classList.contains('pl-input')) {
+    kids.push(h('span.pl-print', { 'aria-hidden': 'true', text: control.value }));
+  }
+  return h('label.pl-field', {}, kids);
 }
+/* Keep a field's print mirror equal to what is typed. */
+const mirrorPrint = (e, el) => {
+  const m = el.nextElementSibling;
+  if (m && m.classList.contains('pl-print')) m.textContent = el.value;
+};
+delegate(document, 'input', '.pl-input', mirrorPrint);
+delegate(document, 'change', '.pl-input', mirrorPrint);
 
 function pinField(recce) {
   const pin = Geo.coordsOf(recce);
@@ -708,9 +730,10 @@ function commitDate(el, leaving) {
 function patchCalendarDates() {
   const days = Locations.calendarDays(Scenes.listScenes());
   const clashes = dateClashes(days);
+  const behind = datesBehind(days);
   days.forEach((d) => {
     const when = document.querySelector('.pl-day[data-day="' + d.day + '"] .pl-day-when');
-    if (when) when.textContent = dayWhen(d, clashes);
+    if (when) when.textContent = dayWhen(d, clashes, prefsNow(), behind);
   });
   const dated = datedCount(days);
   document.querySelectorAll('.bd-head [data-pl-dated]').forEach((st) => {
@@ -730,9 +753,28 @@ delegate(document, 'keydown', '[data-day-field="date"]', (e, el) => {
 delegate(document, 'click', '[data-action="day-clear"]', (e, el) => {
   const day = dayOf(el);
   if (!day) return;
+  const was = Locations.dayDate(day);
+  /* The next orphan row, else the first date box: focus stays on the
+     calendar rather than falling to <body> with the row it was on. */
+  const rows = [...document.querySelectorAll('.pl-orphan[data-day]')];
+  const at = rows.indexOf(el.closest('.pl-orphan'));
+  const nb = rows[at + 1] || rows[at - 1];
+  const nextDay = nb ? nb.dataset.day : '';
   Locations.setDayDate(day, '');
   refreshCalendar();
   patchLight();
+  const focusFirst = (sels) => { for (const q of sels) { const n = document.querySelector(q); if (n) { n.focus(); return; } } };
+  focusFirst([nextDay ? '.pl-orphan[data-day="' + nextDay + '"] [data-action="day-clear"]' : '', '#calendar .pl-date'].filter(Boolean));
+  if (was) StudioUI.toast('Cleared the date on Day ' + day + '.', {
+    action: 'Undo',
+    onAction: () => {
+      Locations.setDayDate(day, was);
+      refreshCalendar();
+      patchLight();
+      focusFirst(['.pl-orphan[data-day="' + day + '"] [data-action="day-clear"]']);
+      StudioUI.toast('Put the date on Day ' + day + ' back.');
+    }
+  });
 });
 
 delegate(document, 'change', '[data-recce-field]', (e, el) => {

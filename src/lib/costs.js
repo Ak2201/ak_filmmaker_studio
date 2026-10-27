@@ -116,6 +116,16 @@ export const GROUPS = [
   { id: 'post',  label: 'Below the line — post' },
   { id: 'other', label: 'Below the line — other' }
 ];
+/* A DOLLAR budget drops India-only words. Ids are storage and never move;
+   only the label a person reads changes, and only for USD. */
+const US_CATEGORY = { batta: 'Per diem' };
+const US_METHOD = { upi: 'Mobile pay' };
+const US_DEPT = { food: 'Food & per diem' };
+const relabel = (list, map, currency) => (currency === 'USD'
+  ? list.map((x) => (map[x.id] ? { ...x, label: map[x.id] } : x)) : list);
+export const categoriesFor = (currency) => relabel(CATEGORIES, US_CATEGORY, currency);
+export const methodsFor = (currency) => relabel(METHODS, US_METHOD, currency);
+export const deptsFor = (currency) => relabel(DEPTS, US_DEPT, currency);
 const DEPT = new Map(DEPTS.map((d) => [d.id, d]));
 export const deptOf = (id) => DEPT.get(id) || DEPT.get('other');
 
@@ -315,7 +325,7 @@ export function restoreVersion(row, index) {
   writePart('versions', list);
 }
 /** A locked version against the budget as it stands. PURE, mutates nothing. */
-export function compareVersion(version, lines = []) {
+export function compareVersion(version, lines = [], grandNow = null) {
   const v = cleanVersion(version);
   const now = (Array.isArray(lines) ? lines : []).map(cleanVersionLine).map((l) => ({ ...l, estimate: round2(l.days * l.rate) }));
   const nowIds = new Map(now.map((l) => [l.id, l]));
@@ -336,6 +346,8 @@ export function compareVersion(version, lines = []) {
   const tNow = round2(now.reduce((s, l) => s + l.estimate, 0));
   return {
     total: { then: tThen, now: tNow, delta: round2(tNow - tThen) },
+    // With contingency: the figure the card and the Lock button print.
+    grand: grandNow === null ? null : { then: v.grand, now: round2(grandNow), delta: round2(grandNow - v.grand) },
     depts,
     lines: {
       added: now.filter((l) => !thenIds.has(l.id)),
@@ -541,8 +553,10 @@ export function estimateLines(calc, lineMeta = {}) {
     const g = (f) => String(blob[`ci_${n}_${f}`] || '').trim();
     const item = g('item');
     const name = g('custom') || (item && item !== 'Other (custom)' ? item : '');
-    const days = amt(g('days'));
-    const rate = amt(g('rate'));
+    // A negative day count or rate is not a price: it counts as nothing
+    // (the estimator flags the field) rather than taking money off the budget.
+    const days = Math.max(0, amt(g('days')));
+    const rate = Math.max(0, amt(g('rate')));
     if (!name && !rate && !days) continue;
     const id = 'ci_' + n;
     const meta = lineMeta[id] || {};
@@ -804,7 +818,7 @@ export function budgetKpis(report) {
     approved, actual,
     pctUsed: approved > 0 ? Math.round((actual / approved) * 100) : 0,
     remaining: round2(approved - actual),
-    over: actual > approved + 0.005,
+    over: actual > Math.max(approved, 0) + 0.005,
     contingency: { pct: t.contingencyPct || 0, pool, used, left: round2(pool - used) }
   };
 }
@@ -812,7 +826,7 @@ export function budgetKpis(report) {
 /** THE TOP SHEET: the cost report folded to departments and groups. */
 export function topSheet(report) {
   const groups = GROUPS.map((g) => {
-    const depts = report.depts.filter((d) => d.group === g.id && (d.estimate || d.actual));
+    const depts = report.depts.filter((d) => d.group === g.id && d.estimate);
     return { ...g, depts, estimate: round2(depts.reduce((s, d) => s + d.estimate, 0)), actual: round2(depts.reduce((s, d) => s + d.actual, 0)) };
   });
   const atl = groups.find((g) => g.id === 'atl').estimate;
@@ -855,14 +869,20 @@ const csvCell = (v) => {
 };
 export const toCSV = (rows) => rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 
+/* A money column names its currency in a DOLLAR budget, so a $ sheet
+   cannot be read as rupees. A rupee budget's headers are unchanged:
+   a film with no region exports exactly what it always did. */
+const moneyHead = (currency) => (h) => (currency === 'USD' ? h + ' (USD)' : h);
+
 /**
  * The budget as an account-numbered sheet: Account, Description,
  * Amount, Units, Rate, Subtotal — the column set Movie Magic Budgeting
  * and its imitators read. A department header row carries its total;
  * each line is `<acct>-<nn>`. Contingency and the grand total close it.
  */
-export function budgetCSV(report) {
-  const out = [['Account', 'Description', 'Amount', 'Units', 'Rate', 'Subtotal']];
+export function budgetCSV(report, currency) {
+  const m = moneyHead(currency);
+  const out = [['Account', 'Description', 'Amount', 'Units', m('Rate'), m('Subtotal')]];
   for (const d of report.depts) {
     const lines = d.lines.filter((l) => !l.unbudgeted);
     if (!lines.length) continue;
@@ -879,8 +899,9 @@ export function budgetCSV(report) {
 }
 
 /** Actuals, one row per budget line (unbudgeted spend included). */
-export function actualsCSV(report) {
-  const out = [['Account', 'Description', 'Estimate', 'Actual (incl. GST)', 'Actual (excl. GST)', 'GST', 'TDS withheld', 'Variance', '% used']];
+export function actualsCSV(report, currency) {
+  const m = moneyHead(currency);
+  const out = [['Account', 'Description', ...['Estimate', 'Actual (incl. GST)', 'Actual (excl. GST)', 'GST', 'TDS withheld', 'Variance'].map(m), '% used']];
   for (const d of report.depts) {
     d.lines.forEach((l, i) => {
       out.push([l.unbudgeted ? d.acct + '-UB' : d.acct + '-' + String(i + 1).padStart(2, '0'), l.name, l.estimate, l.actual, l.actualNet, l.gst, l.tds, l.variance, l.pctUsed === null ? '' : l.pctUsed]);
@@ -894,12 +915,13 @@ export function actualsCSV(report) {
 }
 
 /** Every expense, for the accountant. */
-export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x) {
-  const out = [['Date', 'Shoot day', 'Budget line', 'Category', 'Amount (incl. GST)', 'GST %', 'GST', 'Vendor', 'GSTIN', 'Paid by', 'Method', 'Note', 'Receipt']];
+export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x, currency) {
+  const m = moneyHead(currency);
+  const out = [['Date', 'Shoot day', 'Budget line', 'Category', m('Amount (incl. GST)'), 'GST %', m('GST'), 'Vendor', 'GSTIN', 'Paid by', 'Method', 'Note', 'Receipt']];
   for (const e of expenses) {
     const s = gstSplit(e.amount, e.gstPct);
-    out.push([e.date, e.shootDay || '', e.line ? lineName(e.line) : '', (CATEGORIES.find((c) => c.id === e.category) || {}).label || e.category,
-      s.gross, e.gstPct, s.tax, e.vendor, e.gstin, e.paidBy ? nameOf(e.paidBy) : '', (METHODS.find((m) => m.id === e.method) || {}).label || e.method, e.note, e.receipt]);
+    out.push([e.date, e.shootDay || '', e.line ? lineName(e.line) : '', (categoriesFor(currency).find((c) => c.id === e.category) || {}).label || e.category,
+      s.gross, e.gstPct, s.tax, e.vendor, e.gstin, e.paidBy ? nameOf(e.paidBy) : '', (methodsFor(currency).find((m) => m.id === e.method) || {}).label || e.method, e.note, e.receipt]);
   }
   return toCSV(out);
 }
@@ -908,7 +930,7 @@ export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x) {
 export const gstinLooksValid = (s) => /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(String(s || '').trim().toUpperCase());
 
 export default {
-  COSTS_KEY, CATEGORIES, METHODS, GST_RATES, TDS_RATES, DEPTS, GROUPS,
+  COSTS_KEY, CATEGORIES, METHODS, categoriesFor, methodsFor, deptsFor, GST_RATES, TDS_RATES, DEPTS, GROUPS,
   readAll, listExpenses, addExpense, updateExpense, removeExpense, restoreExpense,
   listFloats, addFloat, removeFloat, listCrew, getCrew, setCrew, removeCrew,
   listPayments, addPayment, removePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,

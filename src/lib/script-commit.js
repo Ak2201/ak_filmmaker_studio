@@ -20,7 +20,7 @@
    Replacing the script takes a revision first. Replacing the scene list
    sends the old rows to the bin WITH their dependants
    (src/lib/scene-bin.js), so nothing is lost. Returns
-   { elements, scenes, renumbered, doc }.
+   { elements, scenes, renumbered, binned, doc }.
    ============================================================ */
 import Script, { blankElement, hasTitlePage, normaliseTitlePage } from './script.js';
 import Scenes from './scenes.js';
@@ -78,13 +78,16 @@ export function commitImportedScript(plan, opts = {}) {
      shots, frames, call-sheet rows and edit-log state, rather than
      dropping the rows and stranding everything that pointed at them
      (BLUEPRINT-REALIGN-PLAN §1d). */
+  let binned = 0;
   if (replaceScenes) {
     for (const s of existingScenes) {
-      binScene(s.id, { reason: 'hand', heading: [s.intExt, s.location, s.dayNight].filter(Boolean).join(' ') });
+      if (binScene(s.id, { reason: 'hand', heading: [s.intExt, s.location, s.dayNight].filter(Boolean).join(' ') })) binned++;
     }
   }
   Scenes.saveScenes(replaceScenes ? rows : Scenes.listScenes().concat(rows));
-  return { elements: incoming.length, scenes: rows.length, renumbered, doc };
+  /* `binned` is said in the result toast (importDoneText): the rows left
+     the Breakdown, and the writer is told where they went. */
+  return { elements: incoming.length, scenes: rows.length, renumbered, binned, doc };
 }
 
 export default { commitImportedScript };

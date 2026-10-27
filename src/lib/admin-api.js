@@ -21,10 +21,15 @@
    Every admin RPC re-checks is_studio_admin() / require_role() on the
    server; nothing here is the boundary.
    ============================================================ */
+import { errorSentence } from './gate.js';
 
 const NO_CLOUD = 'Cloud is not available on this page.';
 const NO_PROJECT = 'This build has no cloud project configured.';
 const NO_CLIENT = 'There is no connection to the project (signed out, or this build carries no Supabase project).';
+
+/* A dropped connection is the browser's words ("TypeError: Failed to
+   fetch"); the console says it as the rest of the studio does. */
+const isNetwork = (e) => /failed to fetch|load failed|networkerror|network request failed/i.test(String((e && e.message) || ''));
 
 /* ---- the tab slots (src/pages/admin-tabs/_rpc.js) ----------------- */
 
@@ -32,6 +37,7 @@ const SECTION_OF = { admin_usage: 43, admin_cohorts: 43, admin_sync_overview: 44
 
 /** A slot's failure as a sentence: a missing section is named as one. */
 export function reasonOf(name, err) {
+  if (isNetwork(err)) return errorSentence(err);
   const raw = String((err && (err.message || err.code)) || err || '');
   if (/PGRST202|does not exist|Could not find/i.test(`${err && err.code} ${raw}`)) {
     return `The database has no ${name}() yet — schema section ${SECTION_OF[name] || '?'} has not been run on it.`;
@@ -56,6 +62,7 @@ export async function slotCall(cloud, name, args) {
 /** What the server said, as a sentence. */
 export function describeError(e, name) {
   if (!e) return 'The server did not say why.';
+  if (isNetwork(e)) return errorSentence(e);
   const code = e.code || '';
   const msg = String(e.message || '').trim();
   if (code === 'PGRST202' || /Could not find the function/i.test(msg)) return `The server has no function ${name || 'with that name'} (${code || 'PGRST202'}).`;

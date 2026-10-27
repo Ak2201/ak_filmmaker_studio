@@ -169,6 +169,38 @@ console.log('\n10. page 1 is script, vertical gaps are paragraphs, two columns a
     JSON.stringify(d.plan.elements.map((e) => [e.type, e.text, !!e.dual])));
 }
 
+console.log('\n11. a stream whose data ends in 0x0D, a lone /Contents ref, an unreadable page (QA r3)');
+{
+  const zlib = await import('node:zlib');
+  const word = (n) => 'Rai' + 'n'.repeat(n);
+  const lines = (n) => [['action', 'INT. CANTEEN - DAY'], ['blank'], ['action', 'Rain number ' + word(n) + '.']];
+  // About one deflate stream in 256 ends in 0x0D (the Adler-32's last byte);
+  // each extra 'n' (odd byte) moves that byte, so one of 256 lengths hits it.
+  let n = 0;
+  while (n < 600 && zlib.deflateSync(Buffer.from(screenplayOps(lines(n)), 'latin1')).at(-1) !== 0x0d) n++;
+  ok('found a stream ending in 0x0D', n < 600, '');
+  const read = async (b) => extractLayoutText(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+  const cr = await read(buildPDF([screenplayOps(lines(n))], { compress: true }));
+  ok('a page whose stream ends in 0x0D before a lone LF is read', !cr.fatal && cr.text.includes('Rain number ' + word(n) + '.'),
+    cr.fatal || JSON.stringify(cr.text.slice(0, 80)));
+
+  // `/Contents 7 0 R /Thumb 9 0 R`: one ref, not two (page 2's stream must not join page 1).
+  const two = buildPDF([screenplayOps([['action', 'INT. ONE - DAY']]), screenplayOps([['action', 'INT. TWO - DAY']])], { compress: true });
+  const patched = Buffer.from(two.toString('latin1').replace('/Contents 7 0 R >>', '/Contents 7 0 R /Thumb 9 0 R >>'), 'latin1');
+  const one = await read(patched);
+  ok('a single /Contents ref reads one stream', !one.fatal && (one.text.match(/INT\. TWO/g) || []).length === 1,
+    one.fatal || JSON.stringify(one.text));
+
+  // Break page 2's zlib header: the import must say a page is missing.
+  const src = two.toString('latin1');
+  const at = src.indexOf('stream\n', src.indexOf('9 0 obj')) + 7;
+  const broken = Buffer.from(two); broken[at] = 0; broken[at + 1] = 0; broken[at + 2] = 0xff; broken[at + 3] = 0xff;
+  const lost = await read(broken);
+  ok('an undecodable page is named in a warning',
+    !lost.fatal && lost.warnings.some((w) => /Page 2 of that PDF could not be read/.test(w)),
+    lost.fatal || JSON.stringify(lost.warnings));
+}
+
 await run('6. encrypted',buildPDF(ops, { encrypt: true }), true);
 await run('7. a scan — no text at all', buildPDF(ops, { noText: true }), true);
 await run('8. not a PDF', Buffer.from('this is a text file, not a pdf'), true);

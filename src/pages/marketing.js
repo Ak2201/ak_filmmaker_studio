@@ -6,8 +6,8 @@
    pages.mjs writes them. This module adds only what cannot be static.
 
    WHAT IT MAY IMPORT. Stylesheets and the pure leaf libraries start.js
-   already uses (funnel.js, trial-time.js, invite-code.js in the `startlib`
-   chunk; start-auth.js, which reaches only auth-scope.js; visitor-region.js,
+   already uses (funnel.js, trial-time.js, invite-code.js, pass-offer.js
+   in the `startlib` chunk; start-auth.js, which reaches only auth-scope.js; visitor-region.js,
    which reaches only region-core.js). NOT store.js,
    chrome.js, cloud.js, gate.js, plan-gate.js, billing.js, dom.js or
    modal-focus.js: every one of those lives in (or drags in) the `studio`
@@ -21,6 +21,10 @@
      3. the Product mega-menu and the phone menu
      4. the step slot: one shared frame, the stills cross-fade
      5. the sign-up modal: Google through start-auth.js, the live offer line
+     5b. the LAUNCH PASS: the band, its countdown and every [data-pass-*]
+        slot, from trial_offer().pass through pass-offer.js
+     5c. the OFFER TERMS: every [data-offer-terms] slot and [data-mode-answer]
+        line, from trial_offer()'s pass.mode / plan_mode through offer-terms.js
      6. an invite code in the address bar (held, stripped, announced) —
         the same hold start.js does, so a code link works from any page
      7. the demo loops, played while on screen
@@ -34,7 +38,9 @@ import '../styles/base.css';
 import '../styles/marketing.css';
 import { bumpEvent, bumpOnce, sourceBucket, purchasesRequired, trialOffer, addLead } from '../lib/funnel.js';
 import { captureAttribution, attribution } from '../lib/attribution.js';
-import { trialMode, trialCopy, validEmail, consentText } from '../lib/start-model.js';
+import { passCopy, validEmail, consentText } from '../lib/start-model.js';
+import * as PassOffer from '../lib/pass-offer.js';
+import { offerTerms, readMode } from '../lib/offer-terms.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { visitorRegion } from '../lib/visitor-region.js';
@@ -179,6 +185,28 @@ document.addEventListener('keydown', (e) => {
   if (item && item.hasAttribute('data-open')) { setMega(false, { focus: true }); return; }
   if (top && top.hasAttribute('data-menu')) setMenu(false, { focus: true });
 });
+/* The open phone sheet keeps Tab to itself. #mkNav comes BEFORE the
+   burger in the DOM, so a plain Tab from the burger walked forward into
+   <main>, onto controls the full-screen sheet covers, and the menu's own
+   links were reachable only with Shift+Tab. The cycle is the burger, then
+   the sheet's visible links in the order they are drawn (the phone sheet
+   reorders Sign in and Pricing to the top). */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab' || !burger || !top || !top.hasAttribute('data-menu')) return;
+  const nav = byId('mkNav');
+  if (!nav) return;
+  const links = $$('a[href], button', nav)
+    .filter((a) => a.getClientRects().length && getComputedStyle(a).visibility !== 'hidden')
+    .map((a) => ({ a, r: a.getBoundingClientRect() }))
+    .sort((x, y) => (x.r.top - y.r.top) || (x.r.left - y.r.left))
+    .map((x) => x.a);
+  const ring = [burger, ...links];
+  if (ring.length < 2) return;
+  const i = ring.indexOf(document.activeElement);
+  const next = ring[(i < 0 ? 0 : i + (e.shiftKey ? -1 : 1) + ring.length) % ring.length];
+  e.preventDefault();
+  next.focus();
+});
 try { (wide.addEventListener ? wide.addEventListener.bind(wide, 'change') : wide.addListener.bind(wide))(() => { setMega(false); setMenu(false); }); } catch (e) { /* no media query events */ }
 
 /* ---- 4. the step slot ----------------------------------------------
@@ -305,13 +333,9 @@ document.addEventListener('click', (e) => {
 });
 if (location.hash === '#signup' && !SIGNED_IN) openModal();
 
-/* The live offer line, read the way start.js reads it. The markup keeps
-   the trial wording (what a crawler and a failed request see). Signed in
-   wins over purchases-off; purchases off drops the promise of a trial,
-   because nothing starts one by itself and the studio is open; a trial
-   switched off removes the line; the trial's real length replaces "a
-   limited time". textContent only: nothing here builds markup from a
-   server string. */
+/* The live offer line. Signed in wins over purchases-off: the markup's
+   words are replaced by data-open-text / data-off-text. textContent
+   only: nothing here builds markup from a server string. */
 function swapWords(off) {
   for (const n of $$('[data-open-text], [data-off-text]')) {
     const t = SIGNED_IN && n.dataset.openText ? n.dataset.openText : (off ? n.dataset.offText : '');
@@ -322,29 +346,138 @@ function swapWords(off) {
 }
 swapWords(false);
 try {
-  purchasesRequired().then((req) => { if (req === false) { root.dataset.purchases = 'off'; swapWords(true); } }, () => {});
+  purchasesRequired().then((req) => { if (req === false) { root.dataset.purchases = 'off'; swapWords(true); launchPass.off(); } }, () => {});
 } catch (e) { /* never breaks the page */ }
-try {
-  trialOffer().then((t) => {
-    if (!t) return;
-    const offer = byId('mkOffer');
-    /* [data-trial-only] says nothing true once trials are off, whoever reads it */
-    if (t.trial_enabled === false) $$('[data-trial-only]').forEach((n) => { n.hidden = true; });
-    if (t.trial_enabled === false) {
-      if (!SIGNED_IN && root.dataset.purchases !== 'off') {
-        if (offer) offer.hidden = true;
-        /* every trial line and the answers that describe a trial (pricing.js also hides its own strip) */
-        $$('[data-trial]').forEach((n) => { n.hidden = true; });
-      }
+
+/* ---- 5b. THE LAUNCH PASS (27 Oct 2026) -------------------------------
+   The free trial is retired for the public. While the launch offer runs,
+   the pages sell a paid pass, and EVERY FIGURE IN IT IS THE SERVER'S:
+   trial_offer().pass = { open, amount_paise, days, plan, ends_at, cap,
+   left, now }, read through pass-offer.js (passState fails CLOSED: a
+   missing or malformed field is no offer at all) and said through
+   start-model.js passCopy(). The markup holds no price, no length, no
+   date and no count: every [data-pass-only] element is hidden there and
+   every slot is empty, so a crawler, verify and a reader with scripts off
+   see the [data-pass-off] fallback, which speaks of the yearly plans.
+
+   THE SCARCITY IS TRUE. The countdown runs to the server's deadline on
+   the server's clock (`now`, plus the local time elapsed since it was
+   read), so every visitor sees the same end and a visitor's own clock
+   cannot move it; nothing restarts per visit; at zero the band says the
+   offer has ended (the server now refuses it too, quote_pass 'closed'),
+   then hides itself and every [data-pass-only] thing; "N of CAP left" is
+   the real count of paid passes. No deadline: no timer. Purchases not
+   required: no pass (nothing is being sold).
+
+   ACCESSIBILITY. The ticking digits are aria-hidden; [data-pass-spoken]
+   carries the same deadline to the MINUTE and is rewritten only when the
+   minute changes, and it is not a live region, so a screen reader is
+   never interrupted every second. The one announcement is the "has
+   ended" line (role=status). No animation anywhere: it is text. */
+/* ---- 5c. THE OFFER TERMS (27 Oct 2026) ------------------------------
+   Whether a purchase renews is the owner's choice in the console, per
+   product (schema §62), so the markup never says it: every sentence that
+   would is an EMPTY [data-offer-terms] slot (data-offer-product "year" or
+   "pass"), and every line true in one mode only is a hidden
+   [data-mode-answer="once"|"renew"] beside a visible "neutral" one. The
+   words come from src/lib/offer-terms.js alone, from trial_offer()'s
+   top-level plan_mode and pass.mode. A mode that is missing or anything
+   but 'once' / 'renew' is UNKNOWN: the slots stay empty and the neutral
+   answers stand, so nothing is ever claimed either way. A pass slot speaks
+   only while the pass is open (it needs the server's price and length).
+   A [data-offer-wrap] around a chip hides with it. textContent only. */
+const offerSlots = (function () {
+  let planMode = null, pass = null;            // pass: { mode, price, days } while open
+  function words(product, chip) {
+    const t = product === 'pass'
+      ? (pass ? offerTerms(pass.mode, pass.price, 'pass', pass.days).short : '')
+      : offerTerms(planMode, '', 'year').short;
+    return t ? (chip ? t : t + '.') : '';
+  }
+  function apply() {
+    for (const n of $$('[data-offer-terms]')) {
+      const t = words(n.dataset.offerProduct, n.dataset.offerForm === 'chip');
+      if (n.textContent !== t) n.textContent = t;
+    }
+    for (const w of $$('[data-offer-wrap]')) {
+      const slot = $('[data-offer-terms]', w);
+      w.hidden = !(slot && slot.textContent);
+    }
+    for (const n of $$('[data-mode-answer]')) {
+      const m = n.dataset.offerProduct === 'pass' ? (pass ? readMode(pass.mode) : null) : planMode;
+      const want = n.dataset.modeAnswer;
+      n.hidden = want === 'neutral' ? m !== null : want !== m;
+    }
+    if (planMode) root.dataset.planMode = planMode; else delete root.dataset.planMode;
+  }
+  return {
+    take(t) { planMode = t && typeof t === 'object' ? readMode(t.plan_mode) : null; apply(); },
+    pass(p) {
+      const next = p ? { mode: readMode(p.mode), price: p.price, days: p.days } : null;
+      if (JSON.stringify(next) === JSON.stringify(pass)) return;
+      pass = next; apply();
+    }
+  };
+})();
+
+const launchPass = (function () {
+  const band = byId('mkPass');
+  let raw = null, readAt = 0, timer = 0, wasOpen = false, off = false, lastSpoken = '';
+  const setAll = (sel, text) => $$(sel).forEach((n) => { if (n.textContent !== text) n.textContent = text; });
+  function show(open) {
+    $$('[data-pass-only]').forEach((n) => { n.hidden = !open; });
+    $$('[data-pass-off]').forEach((n) => { n.hidden = open; });
+    if (open) root.dataset.pass = 'open'; else delete root.dataset.pass;
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = 0; } }
+  function ended() {
+    stop();
+    show(false);
+    if (!band || band.hidden) return;
+    /* the band says so once, then goes with everything else that named it */
+    $$('[data-pass-live], [data-pass-cta]', band).forEach((n) => { n.hidden = true; });
+    const e = $('[data-pass-ended]', band);
+    if (e) e.hidden = false;
+    setTimeout(() => { band.hidden = true; }, 8000);
+  }
+  function apply() {
+    const st = raw && !off ? PassOffer.passState(raw, Date.now(), readAt) : { state: 'none' };
+    const v = passCopy(st, PassOffer);
+    offerSlots.pass(v.open ? { mode: raw.mode, price: v.price, days: st.pass.days } : null);
+    if (!v.open) {
+      if (wasOpen) ended(); else { stop(); show(false); }
+      wasOpen = false;
       return;
     }
-    /* "3 days" inside a sentence, "3-day free trial" where the markup's
-       own fallback is a label (start-model.js trialMode) */
-    $$('[data-trial-length]').forEach((n) => {
-      const c = trialCopy(t, trialMode(n.getAttribute('data-trial-length'), n.textContent));
-      if (c.text) n.textContent = c.text;
-    });
-  }, () => {});
+    wasOpen = true;
+    setAll('[data-pass-price]', v.price);
+    setAll('[data-pass-length]', v.length);
+    setAll('[data-pass-timer]', v.timer);
+    if (v.spoken !== lastSpoken) { lastSpoken = v.spoken; setAll('[data-pass-spoken]', v.spoken); }
+    $$('[data-pass-when]').forEach((n) => { n.hidden = !v.timer; });
+    setAll('[data-pass-left]', v.left);
+    $$('[data-pass-left-wrap]').forEach((n) => { n.hidden = !v.left; });
+    show(true);
+    if (band) band.hidden = false;
+    if (v.timer && !timer) timer = setInterval(apply, 1000);
+    if (!v.timer) stop();
+  }
+  return {
+    take(t) {
+      if (!t || typeof t !== 'object') return;
+      if (t.purchase_required === false) off = true;
+      raw = t.pass || null;
+      readAt = Date.now();
+      apply();
+    },
+    off() { off = true; apply(); }
+  };
+})();
+/* A signed-in visitor's pass button goes to the checkout page (the pass
+   card is there), not through the sign-up modal. */
+if (SIGNED_IN) for (const a of $$('[data-pass-cta]')) a.setAttribute('href', 'purchase.html');
+try {
+  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => {});
 } catch (e) { /* never breaks the page */ }
 
 /* ---- 6. an invite code in the address bar ---------------------------

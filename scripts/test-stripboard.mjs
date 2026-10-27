@@ -178,6 +178,32 @@ eq(cal[0].eighths, 24, 'and the pages are unchanged by it');
 const Shoot = await import('../src/lib/shootday.js');
 eq(ids(Shoot.detail(1).scenes), ['s3', 's1', 's2'], 'shootday.detail() — what shoot.html lists — sees the order');
 
+/* ---- a dropped scene is settled, never shot -------------------
+   shoot.html labels these "Scenes shot", "Pages shot" and "In the
+   can"; the DPR counts shot and dropped apart, and the two pages must
+   agree. `done` / `remaining` still count dropped as settled. */
+seed();
+Shoot.mark('s1', 'dropped');
+{
+  const d1 = Shoot.days().find((d) => d.day === 1);
+  eq([d1.done, d1.remaining, d1.shot, d1.eighthsShot], [1, 2, 0, 0], 'a dropped scene is done for the day, not shot');
+  const all = Shoot.overall();
+  eq([all.done, all.shot, all.pagesShot], [1, 0, '0'], 'overall: dropped is not in the can');
+  Shoot.mark('s2', 'shot');
+  const d1b = Shoot.days().find((d) => d.day === 1);
+  eq([d1b.shot, d1b.eighthsShot, Shoot.overall().shot], [1, 8, 1], 'a shot scene is shot');
+}
+
+/* ---- "Day N of M" never reads "Day 18 of 17" -------------------- */
+{
+  const gap = [{ day: 1 }, { day: 2 }, { day: 4 }];
+  eq([Shoot.dayOfLabel(gap[1], gap), Shoot.dayOfLabel(gap[2], gap), Shoot.dayOfLabel(gap[2], gap, String, ' / ')],
+    ['Day 2 of 3', 'Day 4 · 3 of 3', 'Day 4 · 3 / 3'], 'dayOfLabel: the position when the number has a gap before it');
+  const pad = (n) => String(n).padStart(2, '0');
+  eq(Shoot.dayOfLabel({ day: 5 }, [1, 2, 3, 4, 5, 6].map((day) => ({ day })), pad), 'Day 05 of 06', 'dayOfLabel: no gap, unchanged');
+  eq([Shoot.dayFromSearch('?day=7'), Shoot.dayFromSearch(''), Shoot.dayFromSearch('?day=x')], [7, null, null], 'dayFromSearch');
+}
+
 /* ---- clearDayOrders leaves the rest alone --------------------- */
 seed();
 L.setDayDate(1, '2026-11-02');
@@ -380,6 +406,88 @@ eq([B.targetMinutes(110, 95), B.targetMinutes(0, 95), B.targetMinutes(0, 0)], [1
   seed();
   const dd = R.readiness().checks.find((c) => c.id === 'day-date');
   eq(dd && [dd.count, dd.where], [2, 'plan.html#calendar'], 'readiness: undated days link to the Plan’s calendar, the only page that sets a date');
+}
+
+/* ---- schedule QA round 2 -------------------------------------- */
+{
+  const CM = await import('../src/lib/contacts-model.js');
+  seed();
+  const days = L.calendarDays(Scenes.listScenes());
+  const title = (p) => p && p.title;
+  eq([title(CM.nextSheetPatch([], days)), title(CM.nextSheetPatch([], days, 2)), title(CM.nextSheetPatch([], days, 9))],
+    ['Day 1', 'Day 2', 'Day 1'], 'a new call sheet is for the day asked for (?day=), else the first uncovered day');
+  eq(title(CM.nextSheetPatch([{ sceneIds: ['s4'] }], days, 2)), 'Day 1', 'a requested day that already has a sheet falls back to the first free day');
+
+  const LM = await import('../src/lib/launcher-model.js');
+  eq(LM.datedDayCount({ 1: '2026-11-02', 2: '2026-11-03', 18: '2026-12-01' }, new Set([1, 2])), 2,
+    'the dashboard counts dated days that still have scenes, not an orphan date');
+
+  /* DPR: a count is a non-negative whole number; a swapped pair is flagged, not shown as 23h 30m. */
+  const RM = await import('../src/lib/reports-model.js');
+  eq([D.cleanSetups('-3'), D.cleanSetups('abc'), D.cleanSetups(' 12 '), D.cleanSetups('0'), D.cleanSetups('')], ['', '', '12', '0', ''], 'cleanSetups');
+  seed();
+  D.saveDPR(1, { setups: '-3' });
+  eq(D.getDPR(1).setups, '', 'a negative setups count is not stored');
+  eq(RM.dprStatValues(D.dprSummary(1))[4][0], '—', 'and the strip does not print SETUPS -3');
+  D.saveDPR(1, { crewCall: '07:00', wrap: '19:00', lunchIn: '13:00', lunchOut: '12:30', firstShot: '06:30' });
+  const bad = D.dprSummary(1);
+  eq([bad.lunchMinutes, bad.callToFirstShot, bad.warnings.length], [null, null, 2], 'lunch ending before it starts and a first shot before call are left out and warned');
+  ok(/Check the two times/.test(RM.calcLine(bad)) && !/23h/.test(RM.calcLine(bad)), 'the DPR line says so and never prints 23h 30m');
+  D.saveDPR(1, { crewCall: '18:00', wrap: '06:00', lunchIn: '23:30', lunchOut: '00:15', firstShot: '19:00' });
+  const night = D.dprSummary(1);
+  eq([night.lunchMinutes, night.callToFirstShot, night.warnings.length], [45, 60, 0], 'a night shoot lunch across midnight is still fine');
+  D.saveDPR(1, { crewCall: '06:00', wrap: '05:00', lunchIn: '', lunchOut: '', firstShot: '' });
+  const wrapped = D.dprSummary(1);
+  ok(wrapped.dayMinutes === null && wrapped.warnings.length === 1 && !/23h/.test(RM.calcLine(wrapped)) && /Check the two times/.test(RM.calcLine(wrapped)), 'a wrap before the call is not read as a 23h day: left out and warned');
+  D.saveDPR(1, { crewCall: '06:00', wrap: '06:00' });
+  ok(D.dprSummary(1).dayMinutes === null && D.dprSummary(1).warnings.length === 1, 'call equal to wrap is a zero-length day: left out and warned');
+  D.saveDPR(1, { crewCall: '06:00', wrap: '19:00' });
+  eq(D.dprSummary(1).dayMinutes, 13 * 60, 'a long but real 13h day still counts');
+
+  /* Delay minutes: a whole number 0..1440 or blank, and the total adds what the box shows. */
+  eq([D.cleanMinutes('-30'), D.cleanMinutes('1.5'), D.cleanMinutes('99999'), D.cleanMinutes('abc'), D.cleanMinutes(' 45 '), D.cleanMinutes('')], ['', '1', '', '', '45', ''], 'cleanMinutes');
+  seed();
+  const dl = D.addDelay(1);
+  D.updateDelay(1, dl.id, { minutes: '-30' });
+  eq(D.getDPR(1).delays[0].minutes, '', 'a negative delay is not stored');
+  D.updateDelay(1, dl.id, { minutes: '99999' });
+  eq([D.getDPR(1).delays[0].minutes, D.dprSummary(1).delayMinutes], ['', 0], 'an absurd delay is not stored, so no 1666h total');
+  D.updateDelay(1, dl.id, { minutes: '1.5' });
+  eq(D.getDPR(1).delays[0].minutes, '1', 'a fractional delay is stored as the whole number the total adds');
+  /* Removing a delay or incident hands the row back, and restore puts it where it was. */
+  const d2 = D.addDelay(1, { reason: 'Light', minutes: '20' });
+  const gone = D.removeDelay(1, dl.id);
+  eq([gone.index, gone.item.id, D.getDPR(1).delays.length], [0, dl.id, 1], 'removeDelay returns the row and its place');
+  D.restoreDelay(1, gone.index, gone.item);
+  eq(D.getDPR(1).delays.map((x) => x.id), [dl.id, d2.id], 'restoreDelay puts it back at its index');
+  D.restoreDelay(1, 0, gone.item);
+  eq(D.getDPR(1).delays.length, 2, 'restoring twice adds nothing');
+  const inc = D.addIncident(1); D.updateIncident(1, inc.id, { what: 'Cut finger' });
+  const gi = D.removeIncident(1, inc.id);
+  D.restoreIncident(1, gi.index, gi.item);
+  eq(D.getDPR(1).incidents.map((x) => x.what), ['Cut finger'], 'an incident comes back with its text');
+
+  /* Equipment: Undo puts a removed row back where it was. */
+  seed();
+  const k1 = D.addKitItem(1, 'camera', { item: 'A' }), k2 = D.addKitItem(1, 'camera', { item: 'B' }), k3 = D.addKitItem(1, 'camera', { item: 'C' });
+  const was = D.findKitItem(1, k2.id);
+  eq([was.dept, was.index, was.neighbour], ['camera', 1, k3.id], 'findKitItem names the place and the neighbour');
+  D.removeKitItem(1, k2.id);
+  D.restoreKitItem(1, was.dept, was.index, was.item);
+  eq(D.getKit(1).camera.map((x) => x.item), ['A', 'B', 'C'], 'restoreKitItem puts the row back in its place');
+  ok(!D.restoreKitItem(1, 'camera', 0, k1), 'restoring a row that is already there is a no-op');
+
+  const { readFileSync } = await import('node:fs');
+  const shootSrc = readFileSync(new URL('../src/pages/shoot.js', import.meta.url), 'utf8');
+  ok(!/button\.btn\.sd-sun-btn/.test(shootSrc), 'Shoot Day\u2019s pin button is a kit button, not the legacy .btn');
+  const PM = await import('../src/lib/plan-model.js');
+  eq([PM.prettyDate('2024-02-12'), PM.prettyDate('2024-02-12', { dateStyle: '' }), PM.prettyDate('2024-02-12', { dateStyle: 'US' })],
+    ['12 February 2024', '12 February 2024', 'February 12, 2024'], 'the Plan calendar date follows the film’s style; no region is unchanged');
+  const dd = [{ day: 1, date: '2024-02-12' }, { day: 2, date: '2024-02-13' }, { day: 3, date: '2024-02-01' }, { day: 4, date: '2024-02-15' }, { day: 5, date: '' }];
+  const behind = PM.datesBehind(dd);
+  eq([...behind], [[3, 2]], 'a later day dated before an earlier one is flagged against that earlier day; in-order, later and undated days are not');
+  ok(/dated before Day 2/.test(PM.dayWhen({ day: 3, date: '2024-02-01' }, PM.dateClashes(dd), {}, behind)), 'the calendar note names the earlier day');
+  ok(!/before/.test(PM.dayWhen({ day: 4, date: '2024-02-15' }, PM.dateClashes(dd), {}, behind)), 'an in-order day carries no note');
 }
 
 console.log(`test:stripboard — ${pass} passed, ${fail} failed`);

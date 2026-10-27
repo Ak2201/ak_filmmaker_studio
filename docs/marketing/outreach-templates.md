@@ -5,8 +5,9 @@ the person. Never a mass send, never to a bought list. Sign with the trading
 name and your first name only if you choose to; `brand.json` keeps `seller`
 empty, so the owner's full name is never written.
 
-Fill before sending: `{TRIAL_LENGTH}` and `{TRIAL_OPENS}` from
-`trial_offer()` (playbook §0 rule 6), `{RISE_DATE}` and prices only from
+Fill before sending: `{PASS_PRICE}`, `{PASS_LENGTH}` and `{PASS_ENDS}` from
+`trial_offer()->'pass'` (playbook §0 rules 3 and 6; if it reads `open`
+false, leave the pass out), `{RISE_DATE}` and prices only from
 `price_notice()`, a code's discount only from the console, all read the day
 you send. Every link is tagged per `docs/MARKETING-PLAYBOOK.md` §3; the
 console shows the bucket (`creator-*` is `partner`, `school-*` is `school`,
@@ -60,8 +61,9 @@ What I need from you:
   the list. Please do not promise features that are not built yet, a free
   plan (there is none) or refunds (purchases are final except a duplicate
   charge, a plan never activated, and what Indian law requires).
-- Plans are one year each; nothing renews by itself. Please do not say
-  "pay once" or "lifetime".
+- Plans are one year each, {PLAN_TERMS}. Please do not say "pay once" or
+  "lifetime", and do not say whether a plan renews except as the pricing
+  page says it on the day.
 
 Either of us can end this any time; commission already earned is still paid.
 ```
@@ -76,8 +78,8 @@ Either of us can end this any time; commission already earned is still paid.
 | Imports Fountain, Final Draft, Word, text, real-text PDF; exports PDF, Word, Final Draft, Fountain | "Imports scanned PDFs" |
 | Works offline once installed | "Never needs the internet" |
 | Your work lives in your browser first; Drive backup on Intermediate and Pro | "Nothing ever leaves your computer" |
-| One payment for one year; nothing renews by itself | "Pay once", "lifetime" |
-| A {TRIAL_LENGTH} free trial of {TRIAL_OPENS}, no card | A trial length you have not just checked, or "share it with your team" on the trial |
+| A year of the studio; {PLAN_TERMS} (read from the console that day) | "Pay once", "lifetime", "nothing renews" or "renews" typed from memory |
+| The launch pass: {PASS_PRICE} for {PASS_LENGTH} of the whole studio, once per account | "Free trial", "no card", a price or length you have not just checked, "₹49 off a plan" |
 | Founding prices until {RISE_DATE} | "Last chance", a countdown, "only N left" |
 
 ## 3. Film schools (short first contact)
@@ -144,8 +146,8 @@ if links or promotion are not allowed, do not post one, and ask the admin.
 ```
 I make a browser tool for planning films — script import, breakdown,
 stripboard, budget in rupees, call sheets as a WhatsApp message. It is built
-for Tamil units first. There is a {TRIAL_LENGTH} free trial of
-{TRIAL_OPENS}, no card. Happy to answer questions here or in DM.
+for Tamil units first. Launch offer: {PASS_PRICE} for {PASS_LENGTH} of the
+whole studio, ends {PASS_ENDS}. Happy to answer questions here or in DM.
 https://filmmakerstudio.in/start?src=wa-group&utm_campaign=share-v1
 ```
 
@@ -180,5 +182,5 @@ Template ending, when a tool was asked for:
 ```
 Disclosure: I make FilmMakerStudio, which does this in a browser (script
 import to breakdown, stripboard and call sheet; rupee budgets). There is a
-free trial: https://filmmakerstudio.in/start?src=reddit&utm_campaign={subreddit}
+launch offer on: https://filmmakerstudio.in/start?src=reddit&utm_campaign={subreddit}
 ```

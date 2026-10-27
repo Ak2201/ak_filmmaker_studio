@@ -1534,3 +1534,163 @@ those caps. RLS is untouched.
 7. Owner console: scope back to `sample` → a fresh account's trial is `sample` and
    `features.sample_only` is true (the old behaviour, by setting).
 
+
+## §61 THE LAUNCH WEEK PASS — WRITTEN 27 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-61-week-pass.sql`; checks in
+`scripts/schema-tests/week-pass.sql` (57), plus two in `scripts/test-schema.mjs`
+that the restated `create_pending_payment` and `start_trial` are their
+predecessors' bodies plus the lines marked §61.
+
+**What anon can reach.** Nothing new to call: `trial_offer()` and
+`price_notice(text)` (already anon) gain a `pass` block — the console's
+settings and one aggregate, `left` (cap minus paid passes; null without a
+cap). No user id, no e-mail, no row. `pass_sold()`, `pass_open()`,
+`pass_block()` and `quote_pass()` are revoked from public, anon and
+authenticated; they run only inside the SECURITY DEFINER functions above and
+inside `create_pending_payment` (service role).
+
+**Who can set it.** `admin_set_pass()` and `admin_pass_status()` are granted to
+`authenticated` only, refuse a non-administrator (42501 "Administrators only")
+and then `require_role(array['finance'])`: owner or finance, never support.
+Every change is one `admin_audit` row (`set_pass`, before and after); a
+refused call writes none.
+
+**Who can buy, and how often.** The amount, plan and days are the database's;
+the client sends only `period: 'pass'`. Once per person is `paid_at` on any
+`'pass'` payment (a refund does not reopen it). `has_plan`, `inr_only`, `code`,
+`disabled` and `closed` are refusals before any Razorpay order exists. The cap
+and the deadline are enforced in `quote_pass`, not in a page.
+
+**What it does not widen.** RLS policies are untouched. A pass's limits are
+the plan's (`user_limits()` reads `user_plan()`, which is the pass's plan while
+it runs), the same as a year of that plan. A pass ends by `plan_until`; work is
+never deleted. `trial_enabled` is not read differently, so the §30
+grandfathered members keep their entitlement.
+
+**Live checks to run** (after §61; two throwaway accounts A and B that never
+paid, one finance and one support administrator, Razorpay TEST mode):
+1. Read back the 61.16 checks in the section file. anon
+   `POST /rest/v1/rpc/trial_offer` → `pass.open` false, `amount_paise` 4900,
+   `days` 7.
+2. As the support administrator: `POST /rest/v1/rpc/admin_set_pass
+   {"p_enabled":true,"p_paise":4900,"p_days":7,"p_plan":"pro","p_ends_at":null,"p_cap":null}`
+   → 403/42501. As anon → 401/42501. As A (not an admin) → 42501.
+3. As the finance administrator, the same call with a deadline a week out and
+   cap 2 → `open: true`, `left: 2`; one `set_pass` row in `admin_audit`.
+4. As A (signed in): press START MY FREE TRIAL / `POST /rest/v1/rpc/start_trial {}`
+   → `{started: false, reason: "pass"}`.
+5. As A: buy the pass (test card) → `billing_status()` `pass_active` true,
+   `plan` pro, `plan_until` 7 days out; anon `trial_offer().pass.left` → 1.
+6. As A: `rzp-order {"period":"pass"}` again → 400 `{reason: "used"}`.
+   With `"currency":"USD"` as B → 400 `{reason: "inr_only"}`; with a code →
+   400 `{reason: "code"}`.
+7. As A: buy yearly Basic → full price, no credit; `plan` starter, 365 days.
+8. Refund B's pass after B buys one (console) → B's `plan` free, no
+   `trial_started_at` written; B's `rzp-order {"period":"pass"}` → `used`.
+9. Finance: set the deadline to a minute from now; after it passes, a fresh
+   account's `rzp-order {"period":"pass"}` → 400 `{reason: "closed"}`.
+10. Finance: `admin_set_pass(false, …)` → anon `trial_offer().pass.open` false,
+    and a fresh account's `start_trial` → `started: true` again.
+
+## §62 AUTO-RENEW (RAZORPAY SUBSCRIPTIONS) — WRITTEN 27 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-62-autorenew.sql`; checks in
+`scripts/schema-tests/autorenew.sql` (96), plus three in `scripts/test-schema.mjs`
+that the restated `billing_status`, `trial_offer` and `price_notice` are §61's
+bodies plus the lines marked §62.
+
+**Two new tables.** `subscriptions`: RLS on, one policy, `sub_select_own`
+(`user_id = auth.uid()`), for SELECT only. INSERT, UPDATE, DELETE and TRUNCATE
+are revoked from `anon` and `authenticated`, and `anon` has no SELECT at all.
+`rzp_plans`: RLS on with no policy, and every privilege revoked from `anon`
+and `authenticated` (service role only). The only writers are the SECURITY
+DEFINER functions and the edge functions under the service role.
+
+**What anon can reach.** Nothing new to call. `trial_offer()` and
+`price_notice(text)` gain two console settings: `pass.mode` and `plan_mode`
+(`'once'` or `'renew'`). No row, id or count.
+
+**What a member can reach.** `billing_status().autopay`: their OWN
+subscription's status, product, period, days, amount, currency, current_end,
+next_charge_at and cancel_at_period_end. `request_cancel_subscription()`:
+marks their OWN live subscription to stop at the period end (it can reach no
+other row). Everything else is revoked from `authenticated` and also calls
+`billing_require_service()`: `quote_subscription`,
+`create_pending_subscription`, `set_subscription_rzp_ids`, `rzp_plan_for`,
+`remember_rzp_plan`, `apply_subscription_charge`, `mark_subscription_status`,
+`claim_charge_receipt_email` and `undo_cancel_subscription`.
+
+**The console.** `admin_billing_modes()`, `admin_set_billing_modes()`,
+`admin_list_subscriptions()` and `admin_cancel_subscription()` refuse a
+non-administrator (42501), then `require_role(array['finance'])`: owner or
+finance, never support. A mode change (`set_billing_modes`) and a console
+cancel (`cancel_subscription`) are one `admin_audit` row each; reads and
+no-ops write none. `admin_list_subscriptions` carries the subscriber's e-mail,
+which finance can already see in the people list.
+
+**Money.** The amount is the database's at sign-up and is LOCKED on the row. A
+charge for any other amount or currency is refused (22023 `amount`). A charge
+is applied once per Razorpay payment id. No status (halted, cancelled,
+completed, expired) and no cancel ever shortens `plan_until`. A charge after a
+cancel is recorded paid and unapplied (`cancelled`), so it can be refunded.
+
+**Live checks to run** (after §62; Razorpay TEST mode with Subscriptions
+enabled; accounts A and B that never paid; one finance and one support
+administrator):
+1. Read back the 62.12 checks in the section file. anon `trial_offer()` →
+   `pass.mode` `once`, `plan_mode` `once`.
+2. With the modes `once`: as A, `rzp-subscribe {"product":"pass"}` → 400
+   `{reason: "renew_off"}`.
+3. As support: `POST /rest/v1/rpc/admin_set_billing_modes
+   {"p_pass_mode":"renew","p_plan_mode":"renew"}` → 403/42501. As A → 42501.
+   As anon → 401/42501. As finance → `{pass_mode: renew, plan_mode: renew}`,
+   one `set_billing_modes` audit row.
+4. As A: `rzp-subscribe {"product":"pass"}` → 200 with a `subscription_id`.
+   Again → 400 `{reason: "subscribed"}`. Complete Checkout with a test card.
+   After the webhook, A's `billing_status().autopay.status` is `active` and
+   `plan_until` is 7 days out.
+5. As B (signed in), `GET /rest/v1/subscriptions?select=*` → only B's rows (none).
+   As anon → 401/42501. As B, `PATCH /rest/v1/subscriptions` → 42501.
+6. As B: `POST /rest/v1/rpc/apply_subscription_charge` with A's ids → 42501.
+7. As A: `rzp-cancel {}` → 200 `{current_end}`. The Razorpay dashboard shows
+   the subscription cancelling at cycle end. A's `plan_until` is unchanged.
+8. As finance: `admin_list_subscriptions()` lists A's row with
+   `cancel_at_period_end` true. `rzp-cancel {"subscription_id": <B's row>}`
+   as B (not an admin) → 403.
+9. Refund A's charge from the console: A's 7 days come off, there is no
+   `trial_started_at`, and the subscription row is unchanged.
+10. As finance: `admin_set_billing_modes('once','once')`. A new
+    `rzp-subscribe` is refused `renew_off`, and an existing running
+    subscription still renews.
+
+## §63 RENEWAL REMINDERS — WRITTEN 27 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-63-renewal-reminders.sql`; checks in
+`scripts/schema-tests/renewal-reminders.sql` (21).
+
+**Surface.** One column, `subscriptions.reminded_for`, readable by the row's
+owner through §62's `sub_select_own` (it is a date and says nothing new).
+Two functions, `claim_renewal_reminders(interval, int)` and
+`release_renewal_reminder(uuid, timestamptz)`: SECURITY DEFINER, execute
+revoked from `public`, `anon` and `authenticated`, granted to `service_role`,
+and each calls `billing_require_service()` as well. The claim returns e-mail
+addresses, so it must never be reachable from a client.
+
+**The function.** `rzp-remind` runs with `--no-verify-jwt`; its only guard is
+the `x-cron-secret` header against `CRON_SECRET`, compared in constant time.
+An unset secret is a 503, never a pass. The secret lives in the function's
+secrets and in Vault (pg_cron) or a GitHub repository secret, never in a
+file or in `cron.job`'s command text.
+
+**Live checks to run** (after §63):
+1. `has_function_privilege` for `anon` / `authenticated` /
+   `service_role` on `claim_renewal_reminders(interval,int)` → f, f, t (63.4).
+2. As a signed-in member: `POST /rest/v1/rpc/claim_renewal_reminders` → 42501
+   (or 404 from PostgREST for a function the role cannot execute). As anon →
+   the same. Same for `release_renewal_reminder`.
+3. `curl -X POST …/functions/v1/rzp-remind` with no header → 401; with a
+   wrong header → 401; with the right one → 200 (or 503 while Resend is not
+   configured, and then no row's `reminded_for` changed).
+4. With a TEST subscription due within 48 hours: one run → one e-mail and
+   `reminded_for = current_end`; a second run → `sent: 0`.

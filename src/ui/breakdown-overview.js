@@ -20,7 +20,6 @@ import { formatEighths } from '../lib/scenes.js';
 import { loadScript, pageCount, formatPages } from '../lib/script.js';
 import { headingsOf } from '../lib/scene-sync.js';
 import { summarize } from '../lib/breakdown-run.js';
-import { titleCase } from '../lib/screenplay-analysis.js';
 
 /* learn() belongs to another lane and may not exist yet. A glob names
    the file without requiring it: missing, it is an empty map and the
@@ -81,7 +80,7 @@ function charactersView(sum) {
     wrap.append(h('p.bd-none', { text: 'No speaking characters found yet. A character is anyone with a cue in the script, so write or import some dialogue first.' }));
   } else {
     const rows = sum.characters.map((c) => h('tr', {}, [
-      cell(titleCase(c.name.toLowerCase()), 'bdo-name'),
+      cell(c.name, 'bdo-name'),
       cell(c.scenes.length ? plural(c.scenes.length, 'scene') + ' · ' + c.scenes.slice(0, 12).join(', ') + (c.scenes.length > 12 ? '…' : '') : '—'),
       cell(c.firstScene ? 'Scene ' + c.firstScene : '—'),
       cell(c.lines || '—'),
@@ -104,6 +103,13 @@ function locationsView(sum) {
   return table(['Location', 'INT / EXT', 'Day / night', 'Scenes', 'Pages'], rows, 'Locations');
 }
 
+/** DAY / NIGHT, and a third figure only when other times (dusk, dawn,
+ *  continuous) exist, so the tile always adds up to the scene count. */
+export function dayNightCard(t, card) {
+  const day = t.dayNight.DAY || 0, night = t.dayNight.NIGHT || 0;
+  const other = Object.keys(t.dayNight).reduce((n, k) => n + (k === 'DAY' || k === 'NIGHT' ? 0 : t.dayNight[k] || 0), 0);
+  return other ? card(day + ' / ' + night + ' / ' + other, 'day / night / other') : card(day + ' / ' + night, 'day / night');
+}
 function totalsView(sum) {
   const t = sum.totals;
   const card = (value, label) => h('div.bd-stat', {}, [h('strong', { text: String(value) }), h('span', { text: label })]);
@@ -111,7 +117,7 @@ function totalsView(sum) {
     card(t.scenes, t.scenes === 1 ? 'scene' : 'scenes'),
     card(t.pages, 'pages'),
     card((t.intExt.INT || 0) + ' / ' + (t.intExt.EXT || 0), 'INT / EXT'),
-    card((t.dayNight.DAY || 0) + ' / ' + (t.dayNight.NIGHT || 0), 'day / night'),
+    dayNightCard(t, card),
     card(t.nightPages, 'night pages'),
     card(t.cast, 'cast'),
     card(t.locations, t.locations === 1 ? 'location' : 'locations'),
@@ -243,7 +249,7 @@ export function renderOverview(scenes, status = '') {
   }
   /* Already broken down: the result leads, and running it again is a
      closed disclosure under it rather than the page's first ask. */
-  wrap.append(h('details.bdo-rerun', {}, [
+  wrap.append(h('details.bdo-rerun', { open: !hasScript }, [
     h('summary', { text: hasScript ? 'Run the breakdown again' : 'Upload a script to break down' }),
     how,
     start

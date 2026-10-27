@@ -74,7 +74,10 @@ export function renderCurve(s) {
   const dots = h('div.pc-dots', { role: 'group', 'aria-label': 'Beats on the curve — press one to open its card' });
   pts.forEach((p) => {
     const cls = 'button.pc-dot' + (p.overridden ? '.is-set' : '') + (p.placed === 'tagged' ? '.is-tagged' : '') +
-      (p.tension >= Pacing.HIGH_TENSION ? '.is-high' : p.tension <= Story.PACING.lowTension ? '.is-low' : '');
+      (p.tension >= Pacing.HIGH_TENSION ? '.is-high' : p.tension <= Story.PACING.lowTension ? '.is-low' : '') +
+      /* The label is anchored to the side that has room: centred on the
+         last dots it ran past the chart ("15 Final Ima" at 390px). */
+      (p.at >= 0.7 ? '.tip-end' : p.at <= 0.3 ? '.tip-start' : '');
     const b = h(cls, {
       type: 'button', 'data-st': 'pc-beat', 'data-beat': p.beat.id,
       'aria-label': `Beat ${p.n}, ${p.beat.label}: tension ${p.tension} of 10` +
@@ -235,7 +238,9 @@ export function renderStats(s, { scenes = [], elements = [], characters = 0 } = 
   const deck = Pacing.beatDeck({ story: s, scenes, elements });
   const n = deck.beats.length;
   const tagged = deck.beats.filter((b) => b.passage && !b.passage.inferred).length;
-  const peak = deck.beats.reduce((a, b) => (b.tension > a.tension ? b : a), deck.beats[0]);
+  /* A figure with nothing behind it prints a dash: the template's own
+     tension for the Finale is not the writer's film. */
+  const peak = !tagged ? null : deck.beats.reduce((a, b) => (b.tension > a.tension ? b : a), deck.beats[0]);
   const cards = [
     { label: 'Beats tagged', value: `${tagged} / ${n}`, note: tagged === n ? 'Every beat has a passage' : (n - tagged) + ' still to tag', noteTone: tagged === n ? 'ok' : '' },
     { label: 'Characters', value: characters ? String(characters) : '—', note: characters ? 'in the Story Bible' : 'add them in the Story Bible', class: characters ? '' : 'is-empty' },

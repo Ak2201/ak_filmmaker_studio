@@ -117,7 +117,7 @@ function renderClosed() {
 function renderLost() {
   const main = h('main#main.pn-main');
   main.append(head('Session elsewhere', 'Active on another device.',
-    'Your account is open in another Chrome window. Take the session back to continue here; the other window pauses.'));
+    'Your account is open in another browser window or on another device. Take the session back to continue here; the other one pauses.'));
   main.append(h('button.btn.primary', { type: 'button', 'data-pn': 'takeover', text: 'TAKE OVER SESSION' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));
   return main;

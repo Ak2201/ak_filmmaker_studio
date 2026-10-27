@@ -155,6 +155,12 @@
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
+/* A mark is a word in a line of the page, not a button on a toolbar: the
+   touch floor in base.css (44px, inline-flex) made every one a 44x44 box,
+   so "fans" left a gap and a line holding a mark ran twice as tall. Inline
+   targets are exempt from WCAG 2.5.8 (the glossary terms say the same).
+   The doubled class outranks the floor whatever order the sheets load in. */
+:root .bdp-mark.bdp-mark { display: inline; min-height: 0; min-width: 0; }
 .bdp-mark:hover { background: color-mix(in srgb, var(--hue) 52%, var(--paper-page)); }
 .bdp-mark:focus-visible { outline: 2px solid var(--paper-page-ink); outline-offset: 1px; }
 .bdp-mark.is-sug { background: transparent; border-bottom: 2px dashed var(--hue); }

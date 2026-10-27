@@ -11,7 +11,8 @@
    Pure: no `document`, no storage, no view imports. Every input is a
    parameter, so each function answers the same thing in Node.
    ============================================================ */
-import { revisionColour, wordCount } from './script.js';
+import { wordCount } from './script.js';
+import { isSideCopy, revisionLabel } from './script-incoming.js';
 import { matchScenes } from './screenplay-analysis.js';
 import { basicJobs } from './shot-rules.js';
 import { formatStamp, prettyStamp, TITLE_LABELS, titlePlaceholder, pageAnchors } from './write-format.js';
@@ -190,8 +191,12 @@ export function genFailState(err) {
 /** "White — Second draft", or '' if no revision has been issued. */
 export function currentRevision(doc) {
   if (!doc.revisions.length) return '';
-  const i = doc.revisions.length - 1;
-  return revisionColour(i).name + ' — ' + doc.revisions[i].name;
+  /* The newest ISSUED draft, coloured by its place among the issues; a
+     side copy an arrival kept is no revision (QA r4). */
+  for (let i = doc.revisions.length - 1; i >= 0; i--) {
+    if (!isSideCopy(doc.revisions[i])) return revisionLabel(doc.revisions, i);
+  }
+  return '';
 }
 
 /** The typesetter's header for an export made now. */

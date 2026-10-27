@@ -63,22 +63,38 @@ export function takeInvitePlan(signedIn) {
 /* ---- what the page says ------------------------------------------ */
 
 /** The deck under the title: which of the four situations this is.
- *  `gateDetail` is cloud.js's sentence for a gate reason, when present. */
-export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, reason, gateDetail }) {
+ *  `gateDetail` is cloud.js's sentence for a gate reason, when present.
+ *  `pass` is pass-view.js passPhase() ('open' | 'ended' | 'off') and
+ *  `passPrice` its price ("₹49"): while the launch pass runs, or once the
+ *  launch offer has ended, the free trial is not offered to the public. */
+export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, walled, trialHere, reason, gateDetail, pass = 'off', passPrice = '', passShort = '' }) {
   if (!configured) return 'Invites are not available right now. Everything you write is saved in this browser.';
   if (!signedIn && codeHeld) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
+  const passOpen = pass === 'open' && !!passPrice;
+  /* `passShort` is offer-terms.js's chip for the server's mode (§62):
+     an auto-renew price never stands without it. */
+  const tryLine = 'Try the whole studio for ' + passPrice + (passShort ? ' (' + passShort + ')' : '');
   if (!signedIn) {
-    return !trialsOff
+    if (passOpen) return tryLine + ', buy a yearly plan, or come in on the code you were given. Each of them begins by signing in with Google.';
+    return !trialsOff && pass === 'off'
       ? 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.'
       : 'Buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
   }
   if (state === 'unknown') return 'Checking your invite…';
+  /* Through the gate but not entitled: not in yet, and nothing syncs. */
+  if (state === 'open' && walled) {
+    return (trialHere ? 'Start your free trial or choose a plan to come in.' : 'Choose a plan to come in.')
+      + ' Sync is off until then. Everything on this device is still here.';
+  }
   if (state === 'open') return 'You are in. Your projects sync to this account.';
   if (state === 'lost') return 'This account is active on another device, so sync is paused here.';
   /* CLOSED. Say what they can do, and keep the one thing they will
      actually be worried about. */
   if (state === 'closed' && (!reason || reason === 'noinvite')) {
-    return 'Start a free trial, buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';
+    if (passOpen) return tryLine + ', buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';
+    return pass === 'off'
+      ? 'Start a free trial, buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.'
+      : 'Buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';
   }
   return gateDetail ? gateDetail(reason) + '. Everything on this device is still here.' : 'Sync is paused.';
 }
@@ -106,6 +122,16 @@ export const retryable = (reason, whyRaw) =>
 
 /** `&demo=1` on an invite link (the console's "Create demo link"). */
 export const isDemoHash = (hash) => /(?:^#|&)demo=1(?:&|$)/.test(String(hash || ''));
+
+/** The landing page's plan stash names the launch pass ('pass'): spend
+ *  it and say so. The pass is bought on this page, so the visitor stays;
+ *  a stash naming a yearly plan is takeInvitePlan()'s, untouched. */
+export function takePassIntent() {
+  const v = readPlanStash();
+  if (!v || !v.buy || v.plan !== 'pass') return false;
+  clearPlanStash();
+  return true;
+}
 
 /* ---- the trial --------------------------------------------------- */
 
@@ -137,12 +163,14 @@ export function trialRefusal(reason) {
   return {
     used: 'You have already had your trial on this account. A plan opens the studio for a year.',
     paid: 'You have already bought a plan — you should be in. Try reloading.',
-    disabled: 'Trials are not open at the moment.'
+    disabled: 'Trials are not open at the moment.',
+    /* §61: a signup trial is refused while the launch pass is on sale. */
+    pass: 'The free trial is closed while the launch pass is on sale. The pass or a yearly plan opens the studio.'
   }[reason] || 'That did not start. Please try again.';
 }
 
 export default {
   readGateWhyRaw, clearGateWhy, readGateWhy, readSiteOpen, saveSiteOpen, wantsRequestView, forgetRequestView,
-  clearSitegatePass, takeInvitePlan, deckFor, whySentence, retryable, isDemoHash, paidBefore, trialOfferFrom,
+  clearSitegatePass, takeInvitePlan, takePassIntent, deckFor, whySentence, retryable, isDemoHash, paidBefore, trialOfferFrom,
   anonTrialFrom, trialRefusal
 };

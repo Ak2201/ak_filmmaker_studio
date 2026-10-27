@@ -17,7 +17,7 @@
    draft (a `revisions` entry, the existing Drafts mechanism — no new
    key), so the writer can open it on drafts.html and take lines back.
    ============================================================ */
-import { makeRevision } from './script.js';
+import { makeRevision, revisionColour } from './script.js';
 
 /** What the script holds that the writer would miss, as one string. */
 export function scriptSignature(doc) {
@@ -68,8 +68,51 @@ const COALESCE_MS = 10 * 60 * 1000;
    never touched; "Your version" drafts are the writer's own lines and
    are left alone too. The newest ARRIVAL_KEEP stay. */
 export const ARRIVAL_PREFIX = 'From another device, ';
+/** The same, for a copy saved by another WINDOW of this browser: calling
+    that "another device" named a device that does not exist (QA r2).
+    NEUTRAL on purpose: both windows read this one draft, and for the
+    window whose own lines it holds, "from another window" was false
+    (QA r3). The old name is still recognised for drafts already kept. */
+export const ARRIVAL_WINDOW_PREFIX = 'Kept when two windows saved, ';
+const OLD_WINDOW_PREFIX = 'From another window, ';
+/** The name "Use theirs" gives the writer's own copy as it steps aside. */
+export const YOURS_PREFIX = 'Your version, ';
 const ARRIVAL_KEEP = 10;
-const isArrival = (r) => String((r && r.name) || '').startsWith(ARRIVAL_PREFIX);
+const isArrival = (r) => {
+  const n = String((r && r.name) || '');
+  return n.startsWith(ARRIVAL_PREFIX) || n.startsWith(ARRIVAL_WINDOW_PREFIX) || n.startsWith(OLD_WINDOW_PREFIX);
+};
+/** A copy this module kept by itself (an arrival, or "Your version") and
+    the writer never numbered: a SIDE copy, not a draft. It is listed on
+    drafts.html, but it is never the "current" draft, the one "changed
+    since the last draft" is measured against or the one Update
+    overwrites (QA: an arrival became Current, and Update replaced the
+    only copy of the other device's lines). */
+export const isSideCopy = (r) => !!r && !(Number.isFinite(r.number) && r.number > 0)
+  && (isArrival(r) || String(r.name || '').startsWith(YOURS_PREFIX));
+
+/** The issue colour of revision i: its place among the ISSUED drafts
+    (side copies skipped), or null for a side copy, which is no issue.
+    Counting the whole list made the writer's Draft 2 Pink and handed
+    Blue to "From another device, 10:42" (QA r4). Derived, never stored. */
+export function issuedColour(revs, i) {
+  const list = Array.isArray(revs) ? revs : [];
+  if (!list[i] || isSideCopy(list[i])) return null;
+  let n = 0;
+  for (let k = 0; k < i; k++) if (!isSideCopy(list[k])) n++;
+  return revisionColour(n);
+}
+
+/** How many issued drafts the list holds (side copies not counted). */
+export const issuedCount = (revs) => (Array.isArray(revs) ? revs : []).filter((r) => !isSideCopy(r)).length;
+
+/** "Blue — Draft 2", or a side copy's own name with no colour. */
+export function revisionLabel(revs, i) {
+  const r = (revs || [])[i];
+  if (!r) return '';
+  const c = issuedColour(revs, i);
+  return c ? c.name + ' — ' + r.name : r.name;
+}
 
 function capArrivals(revs) {
   const arrivals = revs.filter(isArrival);
@@ -109,4 +152,19 @@ export function takeTheirs(mine, fresh, label) {
   };
 }
 
-export default { scriptSignature, incomingAction, unionRevisions, keepBoth, takeTheirs };
+/** The side copy in `fresh` that holds exactly the lines this page
+    saved (`savedEls`, [type, text] pairs), when `fresh` itself does not:
+    the other side was mid-edit, kept its own copy and filed this page's
+    as a draft. Null when this page's lines are on `fresh`'s page, or
+    were not filed. */
+export function displacedCopy(fresh, savedEls) {
+  if (!fresh || !Array.isArray(savedEls)) return null;
+  const key = (els) => JSON.stringify((els || []).map((e) => Array.isArray(e) ? e : [e.type, String(e.text ?? '')]));
+  const mine = key(savedEls);
+  if (key(fresh.elements) === mine) return null;
+  const revs = (fresh.revisions || []).filter(isSideCopy);
+  for (let i = revs.length - 1; i >= 0; i--) if (key(revs[i].elements) === mine) return revs[i];
+  return null;
+}
+
+export default { scriptSignature, incomingAction, displacedCopy, unionRevisions, keepBoth, takeTheirs, isSideCopy, issuedColour, issuedCount, revisionLabel, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };

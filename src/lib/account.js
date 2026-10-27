@@ -36,6 +36,7 @@
    able to mint themselves an unlimited account, so this does not do
    it — but the hole is in the schema and belongs in the audit.
    ============================================================ */
+import { errorSentence } from './gate.js';
 
 /** The one place this module reaches the network. */
 async function client() {
@@ -66,7 +67,7 @@ export function explain(error) {
   if (code === '23505') return 'That address has already been invited to this account.';
   if (code === '42501') return 'The database refused that: you do not have the role it needs.';
   if (code === '23514') return 'That role is not one this account allows.';
-  return msg;
+  return errorSentence(error, msg);   // a dropped connection, said as a sentence
 }
 
 /**

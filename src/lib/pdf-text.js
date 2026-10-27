@@ -150,10 +150,27 @@ function scanObjects(bytes, src) {
            `endstream` is a delimiter and not part of the data, so
            it comes off here rather than being left for the filter
            to choke on. */
+        /* A DIRECT /Length is believed when `endstream` follows it.
+           Guessing at the EOL is ambiguous: a lone LF after data
+           whose last byte is 0x0D (a compressed stream's checksum
+           ends in that byte about once in 256) looks exactly like a
+           CRLF, and stripping both cut a real byte, so the page
+           failed to inflate and vanished from the import (QA r3: a
+           116-page PDF this app printed lost its page 11). */
+        const dict = src.slice(bodyStart, streamAt);
+        const lm = /\/Length\s+(\d+)\b(?!\s+\d+\s+R)/.exec(dict);
+        const at = lm ? p + Number(lm[1]) : -1;
         let dataEnd = endStream;
-        if (src[dataEnd - 1] === '\n') dataEnd--;
-        if (src[dataEnd - 1] === '\r') dataEnd--;
+        let wide = null;
+        if (at >= p && /^[\r\n\t\f ]*endstream/.test(src.slice(at, at + 24))) {
+          dataEnd = at;
+          endStream = src.indexOf('endstream', at);
+        } else {
+          if (src[dataEnd - 1] === '\n') dataEnd--;
+          if (src[dataEnd - 1] === '\r') { wide = bytes.subarray(p, dataEnd); dataEnd--; }
+        }
         stream = bytes.subarray(p, Math.max(p, dataEnd));
+        if (wide) stream.wide = wide;
         end = src.indexOf('endobj', endStream);
       }
     }
@@ -200,6 +217,10 @@ function dictRefs(dict, key) {
   const out = [];
   const re = /(\d+)\s+\d+\s+R/g;
   let m;
+  /* Only an ARRAY holds several. `/Contents 26 0 R /Parent 238 0 R`
+     is one ref, and scanning to the next `]` swept the page's
+     /Parent in as a second content stream (QA r3). */
+  if (v[0] !== '[') { const one = dictRef(dict, key); return one != null ? [one] : []; }
   // Stop at the end of the array so a following key's refs are not swept in.
   const close = v.indexOf(']');
   const scope = close >= 0 ? v.slice(0, close) : v;
@@ -220,7 +241,9 @@ async function streamBytes(obj) {
   if (!obj || !obj.stream) return null;
   const filter = dictGet(obj.dict, 'Filter') || '';
   if (/FlateDecode/.test(filter)) {
-    const out = await inflate(obj.stream);
+    /* `wide` is the same bytes with the 0x0D before the LF kept:
+       with no usable /Length, that byte may be data, not an EOL. */
+    const out = (await inflate(obj.stream)) || (obj.stream.wide ? await inflate(obj.stream.wide) : null);
     if (!out) return null;
     /* A Flate stream may be predicted (PNG row filters). Content
        streams essentially never are — it is a cross-reference and
@@ -701,6 +724,7 @@ export async function extractLayoutText(buffer) {
   let opaqueFonts = false;
   let undecoded = 0;
   let total = 0;
+  const unread = [];
 
   for (const page of pages) {
     const fonts = await buildFontMap(objects, page);
@@ -708,10 +732,17 @@ export async function extractLayoutText(buffer) {
     const single = dictRef(page.dict, 'Contents');
     const list = refs.length ? refs : (single != null ? [single] : []);
     let content = '';
+    let failed = false;
     for (const ref of list) {
-      const data = await streamBytes(objects.get(ref));
+      const obj = objects.get(ref);
+      const data = await streamBytes(obj);
       if (data) content += LATIN1.decode(data) + '\n';
+      else if (obj && obj.stream && obj.stream.length) failed = true;
     }
+    /* A page whose content could not be decoded is said, never
+       passed off as blank: a page missing from the middle of a
+       script is lost writing that nothing else would point at. */
+    if (failed) unread.push(out.length + 1);
     if (!content) { out.push(''); continue; }
     const { items, opaque } = runPage(content, fonts);
     if (opaque) opaqueFonts = true;
@@ -732,6 +763,11 @@ export async function extractLayoutText(buffer) {
     return fail('That PDF’s fonts do not say which letters their codes stand for, '
       + 'so the text would come out as nonsense. Export it again with "embed fonts" or '
       + '"searchable text" turned on, or save it as Fountain, .fdx or .txt and import that.');
+  }
+  if (unread.length) {
+    warnings.push((unread.length === 1 ? 'Page ' + unread[0] + ' of that PDF could not be read and is'
+      : 'Pages ' + unread.join(', ') + ' of that PDF could not be read and are')
+      + ' missing from this import. Check the preview against the PDF, or import a Fountain, .fdx or .txt copy instead.');
   }
   if (undecoded) {
     warnings.push(undecoded + ' character(s) in that PDF could not be decoded and came through as �.');

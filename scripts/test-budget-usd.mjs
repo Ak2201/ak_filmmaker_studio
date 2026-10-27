@@ -98,8 +98,8 @@ eq(JSON.parse(mem.get(CALC)).ci_currency, 'USD', 'a later save that does not nam
 eq(C.estimateLines(JSON.parse(mem.get(CALC)))[0].rate, 2000000, 'a dollar estimate parses "2m" as two million');
 film('IN');
 eq(B.budgetCurrency(), 'USD', 'moving the film to India does not relabel the budget');
-eq(B.currencyMismatch('USD', 'INR', true), 'This budget is in $, the film is set to India. Nothing was converted.', 'the mismatch is said');
-eq(B.currencyMismatch('INR', 'USD', true), 'This budget is in ₹, the film is set to US. Nothing was converted.', 'both ways');
+eq(B.currencyMismatch('USD', 'INR', true), 'This budget is in $, the film is set to India (rupees). Nothing was converted.', 'the mismatch is said');
+eq(B.currencyMismatch('INR', 'USD', true), 'This budget is in ₹, the film is set to Elsewhere (US dollars). Nothing was converted.', 'both ways');
 eq(B.currencyMismatch('INR', 'USD', false), '', 'an empty budget has no mismatch');
 eq(B.currencyMismatch('INR', 'INR', true), '', 'agreeing currencies say nothing');
 ok(B.setBudgetCurrency('INR'), 'the deliberate switch');
@@ -237,6 +237,39 @@ ok(!/[0-9]+[,.]?[0-9]*\s*(lakh|cr)/i.test(B.rateProvenance('USD')), 'the US prov
   eq(H.computeLibraryStatus().total, 300000, 'and a rupee budget exactly as before');
   reset();
 }
+
+// fix-money r1: the row's 'days × rate' line keeps a fractional day.
+eq(B.rowEquation(2.5, 25000, (n) => M.fmtMoney(n, 'INR')), '2.5 d × ₹ 25,000', 'a fractional day is not rounded in the equation');
+eq(B.rowEquation(3, 1500, (n) => M.fmtMoney(n, 'USD')), '3 d × $1,500', 'a whole day reads as before');
+eq(B.rowEquation(0, 1500, String), '', 'no days, no equation');
+
+// fix-money r3: cents survive, small totals are exact, a tiny spend is not 0%, negatives are not money.
+eq([M.fmtMoney(12.99, 'USD'), M.fmtMoney(0.5, 'USD'), M.fmtMoney(16.9, 'USD'), M.fmtMoney(4, 'USD'), M.fmtMoney(-3.75, 'USD')], ['$12.99', '$0.50', '$16.90', '$4', '\u2212$3.75'], 'a dollar bill keeps its cents; a whole figure prints as before');
+eq(M.fmtMoney(1250.5, 'INR'), '\u20b9 1,251', 'a rupee figure is still whole rupees');
+reset(); film('INT'); BCM.costContext();
+eq([BCM.glance(1200), BCM.glance(45000), BCM.glance(250000)], ['$1,200', '$45,000', '$250k'], 'the header shows a small dollar total exactly');
+reset(); film('IN'); BCM.costContext();
+eq([BCM.glance(1200), BCM.glance(1499), BCM.glance(250000)], ['\u20b9 1,200', '\u20b9 1,499', '\u20b9 2.5 L'], 'the header shows a small rupee total exactly, lakhs as before');
+eq([BCM.pct(0, 5000), BCM.pct(0, 0), BCM.pct(12, 5), BCM.pct(null)], ['<1%', '0%', '12%', '\u2014'], 'a non-zero spend that rounds to 0 reads <1%');
+reset(); film('IN');
+mem.set(CALC, JSON.stringify({ ci_1_days: '10', ci_1_rate: '1000', ci_2_days: '-5', ci_2_rate: '-1000' }));
+const H = await import('../src/lib/hub-status.js');
+eq(H.computeLibraryStatus().total, 10000, 'the hub counts a negative-times-negative line as nothing');
+const DM = await import('../src/lib/dashboard-model.js');
+eq(DM.budgetStatus().total, 10000, 'the dashboard counts it as nothing too');
+// fix-money r4: dashboard headline exact under a lakh; paise survive; USD drops India-only words.
+mem.set(CALC, JSON.stringify({ ci_1_days: '1', ci_1_rate: '1200' }));
+eq(DM.budgetStatus().short, '\u20b9 1,200', 'the dashboard headline is exact under a lakh');
+mem.set(CALC, JSON.stringify({ ci_1_days: '1', ci_1_rate: '99999' }));
+eq(DM.budgetStatus().short, '\u20b9 99,999', '99,999 is not "1 L"');
+mem.set(CALC, JSON.stringify({ ci_1_days: '1', ci_1_rate: '250000' }));
+eq(DM.budgetStatus().short, '\u20b9 2.5 L', 'a lakh and over is still abbreviated');
+eq([M.fmtGlance(12634.9, 'USD'), M.fmtGlance(250000, 'USD')], ['$12,634.90', '$250k'], 'dollar glance: cents under 100k');
+eq([BCM.rupees(100.5), BCM.rupees(0.4), BCM.rupees(100000.99), BCM.rupees(-2.25), BCM.rupees(1234)], ['\u20b9 100.50', '\u20b9 0.40', '\u20b9 1,00,000.99', '\u2212\u20b9 2.25', '\u20b9 1,234'], 'paise show only when there are paise');
+eq([C.categoriesFor('USD').find((x) => x.id === 'batta').label, C.methodsFor('USD').find((x) => x.id === 'upi').label, C.deptsFor('USD').find((x) => x.id === 'food').label], ['Per diem', 'Mobile pay', 'Food & per diem'], 'a dollar budget drops Batta, UPI and Food & batta');
+eq([C.categoriesFor('INR')[0].label, C.methodsFor('INR')[1].label, C.deptsFor('INR').find((x) => x.id === 'food').label], ['Batta', 'UPI', 'Food & batta'], 'a rupee budget keeps them');
+eq(C.categoriesFor('USD').map((x) => x.id), C.CATEGORIES.map((x) => x.id), 'ids (storage) never change');
+reset();
 
 console.log(`test:budget-usd — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

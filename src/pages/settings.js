@@ -124,10 +124,12 @@ import { restorePreview, replaceSentences } from '../ui/restore-preview.js';
 import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
 import { usageOptedOut } from '../lib/usage.js';
-import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting } from '../lib/settings-model.js';
+import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting, autopaySummary } from '../lib/settings-model.js';
+import { cancelledText } from '../lib/offer-terms.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
+import { passName } from '../lib/pass-view.js';
 
 /* Old billing anchors: settings.html#plan etc. now live on purchase.html. */
 {
@@ -175,6 +177,9 @@ function choices(label, attr, current, options) {
   const grp = h('div.st-group', { role: 'radiogroup', 'aria-label': label });
   grp.append(h('span.st-group-label', { text: label }));
   const row = h('div.st-choices');
+  /* Radio pattern: one Tab stop per group, on the chosen option (or the
+     first when nothing is chosen); arrow keys move and choose. */
+  const stop = options.some((o) => o.value === current) ? current : options[0] && options[0].value;
   options.forEach((o) => {
     const on = o.value === current;
     /* The kit's button as well as `.st-choice`: this is the studio's
@@ -185,6 +190,7 @@ function choices(label, attr, current, options) {
       type: 'button',
       role: 'radio',
       'aria-checked': String(on),
+      tabindex: o.value === stop ? '0' : '-1',
       title: o.title || o.label
     });
     b.setAttribute(attr, o.value);
@@ -194,6 +200,18 @@ function choices(label, attr, current, options) {
   grp.append(row);
   return grp;
 }
+
+document.addEventListener('keydown', (e) => {
+  const r = e.target && e.target.closest && e.target.closest('.st-choice[role="radio"]');
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!r || !step || e.altKey || e.ctrlKey || e.metaKey) return;
+  const all = [...r.closest('[role="radiogroup"]').querySelectorAll('.st-choice[role="radio"]')];
+  const next = all[(all.indexOf(r) + step + all.length) % all.length];
+  e.preventDefault();
+  if (next === r) return;
+  next.focus();
+  next.click();
+});
 
 /* ---- the key ------------------------------------------------ */
 function renderKey() {
@@ -423,11 +441,9 @@ function renderStorage() {
       + 'as screenplays are kept in a second, much larger store.');
 
   if (u.tier === 'unavailable') sec.append(tierDownCard());
-  else if (u.tier !== 'ready') {
-    sec.append(h('p.st-note', {
-      text: 'Large-item storage has not been checked yet, so its figure below is not shown.'
-    }));
-  }
+  /* No "not checked yet" note for a COLD tier: store.js opens the tier at
+     boot whenever any stub exists, so cold means nothing large is stored,
+     which the figure below already says. The note contradicted it. */
 
   const tiers = h('div.st-tiers');
 
@@ -487,7 +503,7 @@ function renderStorage() {
   }));
 
   sec.append(h('p.st-note', {
-    text: 'To take a copy of every project, use Backup in the top bar (Export everything). '
+    text: 'To take a copy of every project, use Backup in the rail, above your avatar (Tools on a phone) and choose Export everything. '
         + 'Keep it somewhere safe \u2014 browsers can clear their storage without asking.'
   }));
 
@@ -639,7 +655,7 @@ function renderDrive() {
     'Back up to Google Drive.',
     'A copy of every project on this browser, in your own Google Drive. '
       + 'Drive keeps earlier versions, so you can go back. Your AI key is never '
-      + 'included. (Quick exports and imports are in Backup, in the top bar.)');
+      + 'included. (Quick exports and imports are in Backup, in the rail, above your avatar (Tools on a phone).)');
 
   /* The plan's `drive_backup` (src/data/plan-matrix.json: Intermediate
      and up). Locked: say so and offer the way up; the backup FILE stays
@@ -648,7 +664,7 @@ function renderDrive() {
     sec.dataset.planLocked = 'drive_backup';
     const note = h('p.st-note', {
       text: 'Google Drive backup is not part of your plan. You can still '
-          + 'export a backup file from Backup in the top bar.'
+          + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).'
     });
     const see = h('a.k-btn.k-btn--secondary', { href: 'purchase.html', text: 'See plans' });
     sec.append(note, h('div.st-drive-actions', {}, [see]));
@@ -656,7 +672,7 @@ function renderDrive() {
     PlanGate.offerFor(['drive_backup']).then((o) => {
       if (!o) return;
       note.textContent = 'Google Drive backup comes with ' + PlanGate.offerText(o) + ' a year. You can still '
-        + 'export a backup file from Backup in the top bar.';
+        + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).';
       see.href = o.href;
       see.textContent = 'See ' + o.name;
     }).catch(() => { /* the plain note stands */ });
@@ -666,7 +682,7 @@ function renderDrive() {
   if (!st.configured) {
     sec.append(h('p.st-note', {
       text: 'Google Drive backup is not available right now. You can still '
-          + 'export a backup file from Backup in the top bar.'
+          + 'export a backup file from Backup, in the rail, above your avatar (Tools on a phone).'
     }));
     return sec;
   }
@@ -1009,11 +1025,63 @@ function renderPlanCard() {
   }
   card.append(h('p.st-plan-link', {}, [button({
     href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward',
-    label: bought ? 'Manage plan' : 'Plan & purchases'
+    label: bought ? 'Manage plan' : 'Purchase'
   })]));
   sec.append(card);
   return sec;
 }
+
+/* ---- Auto-pay (§62) -------------------------------------------------
+   Only while there is one: what it charges and when, and the way to stop
+   it. CANCEL is cancel-at-period-end (rzp-cancel): nothing more is
+   charged, the time already paid for is kept, and a cancel is not a
+   refund. The words are offer-terms.js's, through settings-model.js. */
+const autopayState = { busy: false, msg: '', bad: false };
+function renderAutopay() {
+  const cp = PlanGate.currentPlan();
+  const nameOf = (p) => (p === 'pass' ? passName(cp.passDays) : Billing.planName(p));
+  const sum = autopaySummary(cp.autopay, nameOf);
+  if (!sum && !autopayState.msg) return null;
+  const sec = section('autopay', 'Plan & purchases', 'Auto-pay.',
+    'The payment that repeats by itself, and the way to stop it. Stopping keeps the time already paid for.');
+  const card = h('div.st-plan-card.st-autopay');
+  if (sum) {
+    card.append(h('p.st-plan-pills', {}, [h('span.st-led.is-' + sum.led[1], {}, [h('span.st-dot.is-' + sum.led[1], { 'aria-hidden': 'true' }), sum.led[0]])]));
+    card.append(h('p.st-plan-line', { text: sum.name + ' · ' + sum.line }));
+    if (sum.note) card.append(h('p.st-plan-note', { text: sum.note }));
+    if (sum.canCancel) {
+      card.append(h('p.st-plan-link', {}, [h('button.k-btn.k-btn--secondary', {
+        type: 'button', 'data-action': 'autopay-cancel', 'data-until': sum.until, disabled: autopayState.busy ? true : null,
+        text: autopayState.busy ? 'CANCELLING…' : 'CANCEL AUTO-PAY' })]));
+    }
+  }
+  if (autopayState.msg) card.append(h('p.st-plan-note' + (autopayState.bad ? '.gt-error' : ''), { role: autopayState.bad ? 'alert' : 'status', text: autopayState.msg }));
+  sec.append(card);
+  return sec;
+}
+delegate(document, 'click', '[data-action="autopay-cancel"]', async (e, btn) => {
+  if (autopayState.busy) return;
+  const until = btn.dataset.until || '';
+  const ok = await ask({
+    title: 'Cancel auto-pay?',
+    body: 'You keep access until ' + (until || 'the end of the period already paid for') + '. Nothing more will be charged.',
+    confirm: 'CANCEL AUTO-PAY', cancel: 'Keep auto-pay'
+  });
+  if (!ok) return;
+  autopayState.busy = true; autopayState.msg = ''; autopayState.bad = false;
+  render();
+  try {
+    const out = await Billing.cancelAutopay();
+    const end = out && out.current_end ? new Date(out.current_end).toLocaleDateString(undefined, { dateStyle: 'medium' }) : until;
+    autopayState.msg = cancelledText(end) + '.';
+  } catch (err) {
+    autopayState.msg = (err && err.message) || 'Auto-pay could not be cancelled just now. Please try again.';
+    autopayState.bad = true;
+  } finally {
+    autopayState.busy = false;
+    render();
+  }
+});
 
 /* ---- What's in my plan ---------------------------------------------
    The current plan's modules and tools, and what the NEXT plan adds with
@@ -1049,6 +1117,7 @@ function renderPlanContents() {
     const ended = cp.planUntil && Date.parse(cp.planUntil) <= PlanGate.serverNow() ? new Date(cp.planUntil) : null;
     const sec = section('plan-contents', 'Your plan', 'What’s in my plan.',
       cp.lapsed || ended ? 'Your plan’s year ' + (ended ? 'ended on ' + ended.toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'has ended') + '. Nothing is open until you choose a plan; everything you made is kept.'
+        : cp.passUsed ? 'Your launch pass has ended. Nothing is open until you choose a yearly plan; everything you made is kept.'
         : why === 'off' || !cp.used ? 'No plan is active. Everything you made is kept; a plan opens the studio again.'
         : 'Your free trial has ended. Nothing is open until you choose a plan; everything you made is kept.');
     sec.append(h('p.st-plan-link', {}, [button({ href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward', label: 'Choose a plan' })]));
@@ -1079,7 +1148,10 @@ function renderPlanContents() {
     cp.plan === 'free'
       ? (sample ? 'What your trial opens right now, on the sample films. Choose a plan to start a film of your own.'
                 : 'What your trial opens right now. Choose a plan to keep working on your own film after it ends.')
-      : 'What the ' + (cp.planName || 'current') + ' plan includes, read from the plan itself.');
+      : cp.passActive
+        /* §61: "7-day pass · ends 3 Nov": a pass is the whole studio for its days. */
+        ? passName(cp.passDays) + (cp.planUntil ? ' · ends ' + new Date(cp.planUntil).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '') + '. The whole studio, read from the plan itself; choose a yearly plan to keep it.'
+        : 'What the ' + (cp.planName || 'current') + ' plan includes, read from the plan itself.');
   const list = (rs, cls) => h('ul.st-pc-list' + (cls || ''), {}, rs.map((r) => h('li', { text: labelOf(r) })));
   const mods = mine.filter((r) => r.kind === 'module');
   const tools = mine.filter((r) => r.kind !== 'module');
@@ -1166,9 +1238,11 @@ function renderDanger() {
   const c = window.StudioCloud;
   const signedIn = !!(c && c.getSession && c.getSession());
   const sec = section('danger', 'Danger zone', 'Erase what you have written.',
-    'These cannot be undone. Export a backup first (Backup, in the top bar) if you want to keep anything.');
+    'These cannot be undone. Export a backup first (Backup, in the rail, above your avatar (Tools on a phone)) if you want to keep anything.');
   sec.append(h('div.st-danger-row', {}, [
-    h('p', { text: 'Removes every project, setting and saved key from this browser, and signs you out.' }),
+    /* Erase never signs out (CLAUDE.md item 29), and the dialog one click
+       on says so: this line promised a sign-out that never happened. */
+    h('p', { text: 'Removes every project, setting and saved key from this browser.' + (signedIn ? ' You stay signed in, and the copies in the cloud are not touched.' : '') }),
     h('button.k-btn.k-btn--danger', { type: 'button', 'data-action': 'erase-all', text: 'Erase everything on this device' })
   ]));
   if (signedIn) {
@@ -1250,7 +1324,13 @@ function render() {
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [
-    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderPlanContents(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your activity and invites.' }),
+    /* PLAN & PURCHASES (27 Oct 2026): its own tab, because the public
+       copy and the legal draft name the cancel path as Settings → Plan &
+       purchases → Cancel auto-pay: the button is tap one, the dialog.js
+       confirm tap two. Id 'purchases', not 'plan' (#plan is an old
+       billing anchor that redirects to purchase.html). */
+    tabPane('purchases', 'Plan & purchases', 'You', [renderPlanCard(), renderAutopay(), renderPlanContents()], { icon: 'payments', hint: 'Your plan, auto-pay and what the plan opens.' }),
     tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
     tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
     tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),

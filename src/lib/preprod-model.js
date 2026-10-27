@@ -15,7 +15,7 @@ export const STATE_TONE = { done: 'ok', doing: 'warn', todo: null };
 /* One mark per step, all in src/data/section-icons.json. */
 export const ICON = {
   script: 'description', scenes: 'view_list', breakdown: 'label', vision: 'palette', shots: 'format_list_numbered',
-  people: 'groups', places: 'place', songs: 'music_note', budget: 'currency_rupee', schedule: 'calendar_month',
+  people: 'groups', places: 'place', songs: 'music_note', budget: 'payments', schedule: 'calendar_month',
   sheets: 'content_cut', ready: 'fact_check'
 };
 

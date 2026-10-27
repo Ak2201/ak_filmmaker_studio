@@ -17,6 +17,8 @@ import { loadStory } from './story.js';
 import { resolveBeat, actsOf, qualify } from './beat-outline.js';
 /* Pure and import-free: the paperwork's date style (docs/US-MARKET-PLAN.md §A4). */
 import { paperDate } from './paper-date.js';
+/* Pure, no imports: the formula guard every CSV in the studio shares. */
+import { csvCell } from './admin-format.js';
 
 /* Hue = data. A bucket's colour says WHICH bucket, and the same
    bucket is the same colour in the card and in the table. Nothing
@@ -210,7 +212,36 @@ export function offlineRowText(r) {
     : 'not kept yet');
 }
 
+/* ---- CSV: screen time and the cast matrix ------------------
+   A spreadsheet's view of the two tables on reports.html. BOM first so
+   Excel reads a Tamil name as Tamil; CRLF rows; csvCell() quotes and
+   defuses a formula. Times are SECONDS (a number a sheet can add up),
+   never "1:05", which Excel reads as a clock time. Nothing is stored. */
+const csvRows = (rows) => '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+const numOf = (numbers, s) => (numbers && numbers.get(s.id)) || s.number || '';
+
+export const SCREEN_TIME_CSV_HEADER = ['Scene', 'Slug line', 'Estimate (seconds)', 'By pages (seconds)', 'Dialogue words', 'Read from'];
+export function screenTimeCSV(st, numbers) {
+  const rows = ((st && st.rows) || []).map((r) => [
+    numOf(numbers, r.scene), r.heading || slugOf(r.scene), r.seconds, r.byPage,
+    r.method === 'script' ? r.dialogueWords : '', readFrom(r)
+  ]);
+  return csvRows([SCREEN_TIME_CSV_HEADER, ...rows]);
+}
+
+/** Characters down, scenes across: 1 where the character is in the scene,
+    blank where not, and a last row counting the cast each scene calls. */
+export function castMatrixCSV(cm, numbers) {
+  const cols = (cm && cm.density) || [];
+  const head = ['Character', 'Scenes', ...cols.map((d) => numOf(numbers, d.scene))];
+  const rows = ((cm && cm.characters) || []).map((c) => [
+    c.name, c.scenes.size, ...cols.map((d) => (c.scenes.has(d.scene.id) ? 1 : ''))
+  ]);
+  return csvRows([head, ...rows, ['Cast called', '', ...cols.map((d) => d.count)]]);
+}
+
 export default {
+  screenTimeCSV, castMatrixCSV,
   IE_HUE, DN_HUE, NO_LOCATION, catById, sceneNumbers, tally, byCategory, mix, plural, slugOf, locationCount,
   selectionLabel, readFrom, runtimeGroups, fmtDelta, deltaLabel, runtimeNotes, dayFromSearch, openDay, shortDate,
   dprStatValues, calcLine, kitTitle, dayPdfSubtitle, PACK_LABEL, offlineRowText

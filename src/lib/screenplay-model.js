@@ -119,13 +119,6 @@ export function targetDeltaText(estimateMin, targetMin) {
 export const targetLabel = (target) =>
   'Target ' + target.minutes + ' min' + (target.source === 'edit' ? ' (Edit Log)' : ' (Reports)');
 
-/** Where the beats should land: a page a minute against the target
-    when one is set; otherwise a feature's ~110 pages or a short's ~15. */
-export function targetPagesFor(target, projectFormat) {
-  if (target.minutes > 0) return target.minutes;
-  return /short/i.test(String(projectFormat || '')) ? 15 : 110;
-}
-
 /* ---- the position strip ---------------------------------------- */
 /** "Scene 4 of 31" ("Scene 12A (13 of 37)" with locked numbers), "31
     scenes", or "No scenes yet". */

@@ -410,6 +410,19 @@ const cmx = await page.$eval('#cast-matrix .rp-scroll', (n) => ({ ov: getCompute
 ok(cmx.ov === 'visible' && cmx.sw <= cmx.cw + 1 && cmx.cols > 20, '13 printing the cast matrix fits every scene column', cmx);
 await page.emulateMedia({ media: 'screen' });
 await page.setViewportSize({ width: 1440, height: 900 });
+/* 14 Cast matrix and Screen time each have one Export menu (print, PDF, CSV), and the CSV downloads. */
+for (const [id, tag, csvName] of [['cast-matrix', 'castmatrix', 'cast-matrix.csv'], ['screentime', 'screentime', 'screen-time.csv']]) {
+  await page.goto(url('reports.html#' + id), { waitUntil: 'networkidle' });
+  await settle(page);
+  const acts = await page.$$eval(`#${id} [data-action]`, (ns) => ns.map((n) => n.getAttribute('data-action')));
+  ok(['print-', 'pdf-', 'csv-'].every((p) => acts.includes(p + tag)), `14 ${id} has print, PDF and CSV in its Export menu`, acts);
+  await page.click(`#${id} .tb-menu-btn`).catch(() => {});
+  const [dl] = await Promise.all([
+    page.waitForEvent('download', { timeout: 5000 }).catch(() => null),
+    page.click(`#${id} [data-action="csv-${tag}"]`, { force: true }).catch(() => {})
+  ]);
+  ok(!!dl && dl.suggestedFilename().endsWith(csvName), `14 ${id} CSV downloads as *-${csvName}`, dl && dl.suggestedFilename());
+}
 
 /* ---- round 3 -------------------------------------------------- */
 const daysOf = async () => (await scenes()).map((s) => [s.id, Number(s.shootDay) || 0]);
@@ -620,6 +633,29 @@ ok(await page.locator('#dpr input[data-field="note"]').first().inputValue() === 
   const fix = await q.$$eval('.pp-check a', (ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)));
   ok(fix.length > 0 && fix.every((h) => h >= 44), R(19, 'the Fix → links are 44px tall on a touch screen'), fix);
   await ph4.close();
+}
+
+/* ---- 26 leftovers: Edit Log conflict buttons keep focus -------- */
+{
+  const target = (await scenes())[0].id;
+  await writeScenes(`scenes.find((s) => s.id === ${JSON.stringify(target)}).shotState = 'dropped';`);
+  const seedCut = () => page.evaluate((id) => {
+    const d = JSON.parse(localStorage.getItem('fms_edit_v1') || '{}');
+    d.scenes = Object.assign({}, d.scenes, { [id]: { cut: 'in' } });
+    localStorage.setItem('fms_edit_v1', JSON.stringify(d));
+  }, target);
+  for (const act of ['conflict-cut-out', 'conflict-pickup']) {
+    await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+    await seedCut();
+    await page.goto(url('edit.html'), { waitUntil: 'networkidle' });
+    await settle(page, 600);
+    const btn = `[data-edit-action="${act}"][data-scene="${target}"]`;
+    if (!(await page.$(btn))) { ok(false, `26 a dropped scene still in the cut shows ${act}`); continue; }
+    await page.click(btn);
+    await settle(page, 500);
+    const f = await page.evaluate(() => { const a = document.activeElement; return { tag: a && a.tagName, field: a && a.getAttribute && a.getAttribute('data-edit-field'), scene: a && a.getAttribute && a.getAttribute('data-scene') }; });
+    ok(f.tag !== 'BODY' && f.field === 'cut' && f.scene === target, `26 ${act} puts focus on the scene's cut-status select`, f);
+  }
 }
 
 ok(errors.length === 0, '0  no page errors', errors);

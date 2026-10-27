@@ -398,6 +398,15 @@ for (const id of IDS) {
     const toc = (h.match(/<nav class="legal-toc"[\s\S]*?<\/nav>/) || [''])[0];
     const linked = [...toc.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
     ok(h2s > 0 && ids.length === h2s && JSON.stringify(ids) === JSON.stringify(linked), f + ': every heading has an id and the contents list links each, in order (' + ids.length + '/' + h2s + ')');
+    /* Finalised 28 Oct 2026: a legal page never ships a passage awaiting
+       approval (CLAUDE.md item 64: "never release to main with a DRAFT
+       comment in a legal page"), and the date at the top is the date of
+       the latest "What changed" note, so the two cannot disagree. */
+    const draft = h.match(/.{0,40}(\bDRAFT\b|AWAITING THE OWNER|<li>\s*Draft,).{0,40}/);
+    ok(!draft, f + ': no DRAFT passage or marker' + (draft ? ': "' + draft[0].trim() + '"' : ''));
+    const upd = (main.match(/<p class="legal-date">Last updated (\d{1,2} [A-Z][a-z]+ \d{4})<\/p>/) || [])[1];
+    const chg = (main.match(/<h2 id="changes-h">What changed on (\d{1,2} [A-Z][a-z]+ \d{4})<\/h2>/) || [])[1];
+    ok(upd && upd === chg, f + ': "Last updated" (' + upd + ') is the date of the "What changed" note (' + chg + ')');
   }
   const ljs = read('src/pages/legal.js');
   const limports = [...ljs.matchAll(/^import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);

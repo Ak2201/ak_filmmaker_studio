@@ -75,8 +75,6 @@ ok('screenplay model', () => {
   assert.equal(S.scenePosText({ scene: 2 }, 5), 'Scene 2 of 5');
   assert.equal(S.shotsSummary([{ movement: 'Pan' }, { movement: 'Pan' }, {}]), '3 shots · Pan 2');
   assert.equal(S.shotsSummary([]), 'No shots planned');
-  assert.equal(S.targetPagesFor({ minutes: 0 }, 'Short film'), 15);
-  assert.equal(S.targetPagesFor({ minutes: 0 }, ''), 110);
   assert.equal(S.targetDeltaText(100, 90), '10 min over');
   assert.equal(S.isBlankScript([{ text: ' ' }]), true);
   assert.equal(S.showStartHint([{ text: '' }, { text: '' }]), false);

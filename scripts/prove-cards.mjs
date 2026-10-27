@@ -480,6 +480,66 @@ ok(errors.length === 0, '7  no page errors', errors.slice(0, 5));
   ok(outside === 0, '10 Tab stays inside the open Element index sheet', outside);
   await r.close();
 }
+/* 11 (leftovers, 27 Oct 2026): behaviour the pure tests only read as text.
+   The empty state's link to Whole script keeps focus; Delete focuses the
+   neighbour; Removed scenes jumps to the bin; the tag menu stays in the window. */
+{
+  const r = await ctx.newPage();
+  r.on('pageerror', (e) => errors.push(e.message));
+  await r.setViewportSize({ width: 1280, height: 700 });
+  await r.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await r.evaluate(() => {
+    const S = window.StudioStore;
+    localStorage.clear();
+    const p = S.createProject({ title: 'Round4', format: 'feature' });
+    S.setCurrentProject(p.id);
+  });
+  await r.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(400);
+  await r.click('a[data-action="bd-to-overview"]');
+  await r.waitForTimeout(500);
+  const f1 = await r.evaluate(() => { const a = document.activeElement; return { tag: a && a.tagName, inOv: !!(a && a.closest('#overview')) }; });
+  ok(f1.inOv && f1.tag !== 'BODY', '11 the empty state link lands focus inside the Whole script tab', f1);
+
+  await r.goto(url('index.html'), { waitUntil: 'networkidle' });
+  await r.evaluate(() => {
+    const sc = (n, loc) => ({ id: 'q' + n, number: String(n), intExt: 'INT', dayNight: 'DAY', location: loc, synopsis: 'x', eighths: 8, elements: {} });
+    localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes: [sc(1, 'ONE'), sc(2, 'TWO'), sc(3, 'THREE')] }));
+    const el = (id, type, text) => ({ id, type, text });
+    localStorage.setItem('fms_script_v1', JSON.stringify({ elements: [
+      el('h1', 'scene', 'INT. ONE - DAY'), el('a1', 'action', 'Arun lifts the knife and walks to the window.')
+    ] }));
+  });
+  await r.goto(url('breakdown.html#scenes'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(400);
+  if (!(await r.isVisible('.bd-sl[data-scene="q2"] [data-action="scene-del"]'))) await r.click('.bd-sl[data-scene="q2"] .bd-sl-toggle');
+  await r.click('.bd-sl[data-scene="q2"] [data-action="scene-del"]');
+  await r.waitForTimeout(400);
+  const f2 = await r.evaluate(() => document.activeElement?.closest('[data-scene]')?.dataset.scene);
+  ok(f2 === 'q3' || f2 === 'q1', '11 deleting a scene puts focus on a neighbouring row, not <body>', f2);
+  await r.click('[data-action="sl-bin"]');
+  await r.waitForTimeout(300);
+  const f3 = await r.evaluate(() => { const h = document.querySelector('.bd-bin .bd-h2'); const b = h.getBoundingClientRect(); return { focused: document.activeElement === h, top: Math.round(b.top), h: innerHeight }; });
+  ok(f3.focused && f3.top >= 0 && f3.top < f3.h, '11 Removed scenes jumps to the bin heading and focuses it', f3);
+
+  await r.goto(url('breakdown.html#breakdown'), { waitUntil: 'networkidle' });
+  await r.waitForTimeout(500);
+  const sel = await r.evaluate(() => {
+    const host = document.querySelector('#breakdown .bdp-page, #breakdown [class*="bdp-"] p, #breakdown .bdp-line');
+    const walker = document.createTreeWalker(document.querySelector('#breakdown'), NodeFilter.SHOW_TEXT);
+    let n; while ((n = walker.nextNode())) { if (/knife/.test(n.textContent) && n.parentElement.offsetParent) { const i = n.textContent.indexOf('knife'); const rg = document.createRange(); rg.setStart(n, i); rg.setEnd(n, i + 5); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); const b = rg.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; } }
+    return null;
+  });
+  if (!sel) ok(false, '11 found the word to select in the paper');
+  else {
+    await r.mouse.move(sel.x, sel.y);
+    await r.evaluate(() => document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })));
+    await r.waitForTimeout(300);
+    const m = await r.evaluate(() => { const t = document.querySelector('#breakdown .bdp-tagger'); if (!t || t.hidden) return null; const b = t.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right), vw: innerWidth, vh: innerHeight }; });
+    ok(m && m.top >= 0 && m.bottom <= m.vh && m.left >= 0 && m.right <= m.vw, '11 the tag menu opens inside the window', m);
+  }
+  await r.close();
+}
 ok(errors.length === 0, '10 no page errors', errors.slice(0, 5));
 
 await browser.close();

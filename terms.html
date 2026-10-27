@@ -83,7 +83,7 @@
 <nav class="legal-toc" aria-label="On this page">
   <p class="legal-toc-h">On this page</p>
   <ol>
-      <li><a href="#changes-h">What changed on 21 October 2026</a></li>
+      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#about-these-terms">1. About these terms</a></li>
       <li><a href="#eligibility-and-accounts">2. Eligibility and accounts</a></li>
       <li><a href="#access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</a></li>
@@ -108,7 +108,7 @@
 <details class="legal-toc-m">
   <summary>On this page</summary>
   <ol>
-      <li><a href="#changes-h">What changed on 21 October 2026</a></li>
+      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#about-these-terms">1. About these terms</a></li>
       <li><a href="#eligibility-and-accounts">2. Eligibility and accounts</a></li>
       <li><a href="#access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</a></li>
@@ -136,7 +136,7 @@
 
 <h1>Terms of Service</h1>
 <p class="legal-sub">The agreement between you and {{brand:name}} when you use the studio.</p>
-<p class="legal-date">Last updated 21 October 2026</p>
+<p class="legal-date">Last updated 28 October 2026</p>
 
 <div class="legal-key">
   <p><strong>Your work is yours.</strong> We do not claim ownership of anything you write
@@ -147,31 +147,37 @@
 </div>
 
 <section class="legal-changes" id="changes" aria-labelledby="changes-h">
-  <h2 id="changes-h">What changed on 21 October 2026</h2>
+  <h2 id="changes-h">What changed on 28 October 2026</h2>
   <ul>
-<!-- DRAFT, AWAITING THE OWNER -->
-<!-- Auto-renew (27 Oct 2026), written from the plan for schema section 62:
-     billing_settings.pass_mode / plan_mode ('once' | 'renew'), set by the
-     owner in the console per product, for new purchases only; a Razorpay
-     Subscription holds the mandate; a cancel stops future charges and the
-     paid period runs out; the amount is the Razorpay plan amount, so a
-     running auto-pay keeps the price it started at. -->
-    <li>Draft, 27 October 2026: sections 3, 4 and 5. A paid plan or a launch pass may be sold
-    either as a one-time purchase or on auto-renew, and which one is shown beside the price
-    before you pay. Section 4 sets out how auto-renew works: the amount and how often, the
-    notice your bank or UPI app sends before each charge, how to cancel, and the price staying
-    the same while you stay.</li>
-<!-- /DRAFT -->
-    <li>Section 4: prices are shown in Indian Rupees in India and in US dollars elsewhere,
+<!-- Auto-renew, finalised 28 Oct 2026 from schema section 62:
+     billing_settings.pass_mode / plan_mode ('once' | 'renew', both 'once'
+     by default), set by the owner in the console per product, for new
+     purchases only; a Razorpay Subscription holds the mandate; a cancel
+     stops future charges and the paid period runs out; the amount is the
+     Razorpay plan amount, so a running auto-pay keeps the price it started
+     at; an upgrade over a running lower year is always one-time. -->
+    <li>Section 3: the launch pass, which, while a launch offer runs, opens a plan&rsquo;s
+    tools for a set number of days, once per person. While it is on offer, a free trial is
+    given through an invite code, by us, or after a refund of a plan, rather than started by
+    anyone who asks.</li>
+    <li>Section 4: a paid plan or a launch pass may be sold either as a one-time purchase or on
+    auto-renew, and which one is shown beside the price before you pay. Section 4 sets out how
+    auto-renew works: the amount and how often, the notice sent before each charge, how to
+    cancel, and the price staying the same while you stay.</li>
+    <li>Section 5: a launch pass is covered by the same three exceptions; on auto-renew they
+    apply to each charge, and a charge taken after you cancelled is refunded in full.</li>
+    <li>Section 7: which plans and passes include the AI tools, worded so that it stays true
+    whatever a free trial opens.</li>
+    <li>On 21 October 2026, section 4: prices are shown in Indian Rupees in India and in US dollars elsewhere,
     the currency you are charged in is shown at checkout before you pay, and conversion fees
     charged by your bank or card issuer are theirs, not ours.</li>
-    <li>Section 4: a paid plan is now bought for <strong>one year</strong>, not for good. Nothing
+    <li>On 21 October 2026, section 4: a paid plan became a purchase of <strong>one year</strong>, not for good. Nothing
     renews or is charged automatically; buying the plan again adds another year, and an
     upgrade credits the unused part of your current year.</li>
     <li>If you bought a plan before 21 October 2026, it runs for one year from the day the
     change took effect on your account; we have e-mailed you the date.</li>
-    <li>Section 5: a refund takes off the year that payment bought, not other years on the
-    plan.</li>
+    <li>On 21 October 2026, section 5: a refund takes off the year that payment bought, not
+    other years on the plan.</li>
     <li>On 19 October 2026: section 3 described access as it works now; section 4 added promo
     and referral codes, other currencies, invoices and price-rise notices; sections 4 and 12
     stopped promising that a plan keeps every tool; sections 6 and 7 covered share links,
@@ -202,14 +208,15 @@ use the Service.</p>
   are authorised to accept these Terms on its behalf.</li>
 </ul>
 
-<!-- DRAFT, AWAITING THE OWNER -->
-<!-- The launch pass (27 Oct 2026), written from the contract: schema
-     section 61 (quote_pass: once per account, INR only, refused while a
-     yearly plan runs, closed after pass_ends_at or once pass_cap passes are
-     sold; activate_payment: apply_plan(pass_plan = pro, 'pass', pass_days);
+<!-- The launch pass, finalised 28 Oct 2026 from the contract: schema
+     section 61 (quote_pass: once per person, a refunded pass included,
+     INR only, refused while a yearly plan runs, closed after pass_ends_at
+     or once pass_cap passes are sold; activate_payment applies
+     billing_settings.pass_plan, 'pro' by default, for pass_days;
      start_trial refuses a 'signup' trial while the pass is on; a refunded
-     pass removes its days and gives no trial). Do not release to main
-     before the owner approves these words. -->
+     pass removes its days only while the account is still on it, and
+     gives no trial). The free-trial bullet is worded for both states of
+     pass_enabled, because the console can turn the pass on and off. -->
 <h2 id="access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</h2>
 <ul>
   <li><strong>Whether a plan is required.</strong> We decide, and may change, whether using
@@ -222,13 +229,14 @@ use the Service.</p>
   by us.</li>
   <li><strong>The launch pass.</strong> While we run a launch offer, you can buy a launch
   pass, in Indian Rupees, at the price shown before you pay, for the number of days shown
-  before you pay. It opens the tools of the Pro plan for those days, counted from the moment
-  it is activated. A pass is sold either as a one-time purchase or on auto-renew, and which
+  before you pay. It opens the tools of the plan named before you pay (the Pro plan, unless
+  we say otherwise) for those days, counted from the moment it is activated. A pass is sold either as a one-time purchase or on auto-renew, and which
   one is shown beside its price before you pay (section 4, &ldquo;One-time and auto-renew
   purchases&rdquo;). Bought one-time, it ends by itself after those days and nothing is
   charged again. On auto-renew, it renews for the same number of days, at the price you
-  signed up at, until you cancel. Your work is kept either way. There is one launch pass
-  sign-up per account, and it cannot be bought
+  signed up at, until you cancel. Your work is kept either way. There is one launch pass per
+  person: once you have bought one, another cannot be bought, even if the first was refunded
+  (the renewals of a pass on auto-renew are part of the same pass). A pass cannot be bought
   while a paid plan is running on the account. It is a purchase of its own: its price is not
   taken off a plan you buy later, and buying a yearly plan while a pass runs replaces the pass
   from that moment. The launch offer is for a limited time: it ends on the date our pages show,
@@ -237,9 +245,10 @@ use the Service.</p>
   auto-renew keeps renewing until you cancel it. We may change the
   price or the number of days for orders not yet placed. A pass is final like a plan, with the
   same exceptions (section 5).</li>
-  <li><strong>Free trial.</strong> We no longer offer a free trial to the public while the
-  launch offer runs: a free trial is given through an invite code (below), or after a refund
-  of a plan (section 5). There is one free trial per person. Its length is set by us and shown
+  <li><strong>Free trial.</strong> We decide whether a free trial can be started by anyone
+  who asks for one. While the launch pass is on offer, it cannot: a free trial is then given
+  through an invite code (below), by us, or after a refund of a plan (section 5). There is
+  one free trial per person. Its length is set by us and shown
   before it starts. A trial may be limited to the sample project, without projects of your
   own. A trial cannot be started on an account that has bought a plan before or whose request
   for access we declined, but a refund of a plan starts a fresh trial (section 5); a refund of
@@ -253,19 +262,17 @@ use the Service.</p>
   request can be asked again after seven days.</li>
   <li>We may withdraw a code, a trial or a membership that is misused.</li>
 </ul>
-<!-- /DRAFT -->
 
 <h2 id="plans-and-payments">4. Plans and payments</h2>
 <ul>
   <li><strong>Three paid plans, no free plan.</strong> The plans are Basic, Intermediate and
-  Pro, and each includes everything in the one below it. There is no free plan, only <!-- DRAFT, AWAITING THE OWNER -->the
-  launch pass and <!-- /DRAFT -->the free trial in section 3. Plans differ in the tools they include, their cloud limits (such
+  Pro, and each includes everything in the one below it. There is no free plan, only the
+  launch pass (while it is offered) and the free trial in section 3. Plans differ in the tools they include, their cloud limits (such
   as synced projects, share links, collaborators and team seats), Google Drive backup, AI
   tools and access to the Chrome extension. The current plans, what each includes and their
   prices are shown before you buy. A part of the Service that your plan does not include is
   closed to you, but nothing you have written in it is deleted: it reappears when your plan
   includes it, and you can download all of your work at any time, on any plan or none.</li>
-<!-- DRAFT, AWAITING THE OWNER -->
   <li><strong>One year at a time.</strong> A paid plan gives access to that plan for one year
   (365 days) from the moment it is activated. A plan is sold either as a one-time purchase or
   on auto-renew, and which one is shown beside its price, and again at checkout, before you
@@ -278,7 +285,10 @@ use the Service.</p>
   <li><strong>One-time and auto-renew purchases.</strong> We choose, for each product (the
   yearly plans and the launch pass), whether it is sold one-time or on auto-renew, and we
   say which beside the price and at checkout before you pay; you are never moved from one to
-  the other without buying again. A change we make applies to new purchases only.
+  the other without buying again. A change we make applies to new purchases only. An upgrade
+  is always a one-time payment, because its price takes off the unused part of your current
+  year; where the higher plan is sold on auto-renew, auto-renew can begin once that year
+  ends.
     <ul>
       <li><strong>One-time.</strong> You make one payment for the period shown. Nothing renews
       and nothing is charged again; when the period ends, so does the purchase.</li>
@@ -287,9 +297,10 @@ use the Service.</p>
       amount and the interval shown before you pay: every year for a plan, and every period of
       the pass&rsquo;s number of days for a launch pass. Each charge buys the next period and
       has its own invoice.</li>
-      <li><strong>Notice before each charge.</strong> Before each renewal charge, your bank or
-      UPI app sends you a pre-debit notice with the amount and the date, as Indian payment
-      rules require.</li>
+      <li><strong>Notice before each charge.</strong> Before each renewal charge, you are sent
+      a pre-debit notice with the amount and the date, by your bank, your UPI app or the
+      payment processor, as Indian payment rules require. We may also e-mail you a reminder
+      before the charge.</li>
       <li><strong>How to cancel.</strong> You can cancel anytime in the app: Settings &rarr;
       Plan &amp; purchases &rarr; Cancel auto-pay. You can also revoke the mandate in your UPI
       app or with your bank, which cancels it the same way.</li>
@@ -304,7 +315,6 @@ use the Service.</p>
       day.</li>
     </ul>
   </li>
-<!-- /DRAFT -->
   <li><strong>Prices, currencies and taxes.</strong> We show prices in Indian Rupees (INR) to
   visitors in India and in US dollars (USD) to visitors elsewhere. Which one you see is
   worked out in your browser from your device&rsquo;s time zone and language settings, never
@@ -370,14 +380,14 @@ refund is issued, the year that payment bought is taken off your plan (other yea
 paid for stay); if no paid time is left, the plan ends and your account is given a fresh
 free trial of the length then set for the free trial; when it ends, a plan is needed again whenever a
 plan is required (section 3).</p>
-<!-- DRAFT, AWAITING THE OWNER -->
 <p>A launch pass (section 3) is covered by the same three exceptions and by nothing else. If a
 pass is refunded, the days it bought are taken off your account at once, and no free trial
-is given in their place.</p>
+is given in their place; a yearly plan bought since, which replaced the pass, is not
+affected.</p>
 <p>On auto-renew (section 4), each charge is a purchase of its own: the three exceptions apply
-to each charge, and a refund takes off the period that charge bought. Cancelling stops the
-charges still to come and does not refund the current period.</p>
-<!-- /DRAFT -->
+to each charge, and a refund takes off the period that charge bought. A charge taken after
+you cancelled, or after the auto-pay had ended, adds nothing to your plan and is refunded in
+full. Cancelling stops the charges still to come and does not refund the current period.</p>
 
 <h2 id="your-content">6. Your content</h2>
 <ul>
@@ -403,11 +413,9 @@ charges still to come and does not refund the current period.</p>
 </ul>
 
 <h2 id="ai-features">7. AI features</h2>
-<!-- DRAFT, AWAITING THE OWNER -->
-<p>AI tools are included in the Pro plan, in the launch pass and in the free trial (and for
-everyone while a plan is not required), and work only with an API key you supply for
-<!-- /DRAFT -->
-
+<p>AI tools are included in the Pro plan and in a launch pass that opens the Pro plan&rsquo;s
+tools, in a free trial only where the tools it opens include them, and for everyone while a
+plan is not required. They work only with an API key you supply for
 Anthropic or Google Gemini. Requests go directly from your browser to that provider, are
 billed to your account with them, and are governed by their terms. Nothing an AI tool
 drafts is saved into your project until you accept it, and storyboard pictures you accept

@@ -227,7 +227,7 @@ function panelStart() {
     h('input', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-sk-file': 'synopsis', 'aria-label': 'Import a synopsis file into the Story page' })
   ]));
   kids.push(acts);
-  kids.push(h('p.sk-note', { text: 'A .docx, .pdf or .txt lands in the Story page’s synopsis, ready to tag against the beats. Nothing in this blueprint is changed by it.' }));
+  kids.push(h('p.sk-note', { text: 'A .docx, .pdf, .txt or .md lands in the Story page’s synopsis, ready to tag against the beats. Nothing in this blueprint is changed by it.' }));
   return kids;
 }
 

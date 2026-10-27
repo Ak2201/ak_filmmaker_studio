@@ -441,6 +441,39 @@ check('phone: the scene list with a choice fits', await page.evaluate(() => [!!d
   await c3.close();
 }
 
+/* ---- the beat-note line follows a note written in another window ------- */
+{
+  const setNote = (v) => page.evaluate((t) => {
+    const b = JSON.parse(localStorage.getItem('fms_filmmaker_combined_v1') || '{}');
+    b.b04 = t;
+    localStorage.setItem('fms_filmmaker_combined_v1', JSON.stringify(b));
+  }, v);
+  const shown = (pg) => pg.evaluate(() => {
+    const n = document.querySelector('[data-beat-card="save_the_cat:catalyst"] > .st-ol-bp');
+    return n ? n.textContent : null;
+  });
+  await go('index.html');
+  await setNote('');
+  const winA = await ctx.newPage();
+  winA.on('pageerror', (e) => errors.push(e.message));
+  await winA.goto(url('story.html#path-outline'), { waitUntil: 'networkidle' });
+  await winA.waitForTimeout(700);
+  check('beat note: none yet', await shown(winA), null);
+  await go('index.html');
+  await setNote('A letter arrives.');
+  await winA.waitForTimeout(600);
+  check('beat note: a note written in another window shows without a reload', await shown(winA), 'Your beat note: \u201cA letter arrives.\u201d');
+  await winA.focus('#stStep_s1');
+  await setNote('The letter is a summons.');
+  await winA.waitForTimeout(600);
+  check('beat note: not redrawn while the focus is inside its card', [await shown(winA), await winA.evaluate(() => document.activeElement && document.activeElement.id)],
+    ['Your beat note: \u201cA letter arrives.\u201d', 'stStep_s1']);
+  await winA.evaluate(() => document.activeElement.blur());
+  await winA.waitForTimeout(400);
+  check('beat note: redrawn when the focus leaves the card', await shown(winA), 'Your beat note: \u201cThe letter is a summons.\u201d');
+  await winA.close();
+}
+
 check('no page errors', errors, []);
 console.log(failed ? `✗ beat-sync proof: ${passed} passed, ${failed} failed` : `✓ beat-sync proof: ${passed} passed, 0 failed`);
 await browser.close();

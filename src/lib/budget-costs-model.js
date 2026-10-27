@@ -21,6 +21,22 @@ import wages from '../data/wages.fefsi.json';
 let shown = 'INR';
 /** The currency the cost tabs are showing: 'INR' | 'USD'. */
 export const shownCurrency = () => shown;
+/* A film made outside India hides India-only budget material (FEFSI
+   wages, GST, TDS, GSTIN) and reads "Per diem" / "Bank/card": the region
+   rule of film-region.js showIndia(), read once per render. HIDDEN, never
+   removed: stored ids and values do not change. */
+let abroad = false;
+let probe = null;
+/** The page registers the region rule (indiaContentShown) here; this
+    module stays free of the store's named exports so Node can run it. */
+export const setAbroadProbe = (fn) => { probe = fn; };
+/** True when the open film is not made in India (set by costContext). */
+export const filmAbroad = () => abroad;
+/** The currency to hand categoriesFor/methodsFor/deptsFor: 'USD' (the
+    plain, India-free labels) for a dollar budget OR a film made abroad. */
+export const labelCurrency = () => (abroad ? 'USD' : shown);
+/** True when tax wording should be plain "tax", not GST/TDS. */
+export const plainTax = () => abroad || shown === 'USD';
 /** The currency's sign, for field labels: '₹' or '$'. */
 export const sym = () => (shown === 'USD' ? '$' : '₹');
 
@@ -60,6 +76,7 @@ export const label = (list, id) => (list.find((x) => x.id === id) || {}).label |
 export function costContext() {
   let contacts = [], sheets = [], days = [];
   shown = C.budgetCurrency();
+  try { abroad = !!(probe && probe()); } catch (e) { abroad = false; }
   try { contacts = listContacts(); } catch (e) { /* none */ }
   try { sheets = listCallSheets(); } catch (e) { /* none */ }
   try { days = calendarDays(); } catch (e) { /* none */ }
@@ -94,4 +111,4 @@ export function wageHintRows(ctx, department) {
   return own.length ? [rows[0], ...own] : rows;
 }
 
-export default { rs, rupees, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows };
+export default { setAbroadProbe, filmAbroad, labelCurrency, plainTax, rs, rupees, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows };

@@ -60,7 +60,7 @@ export const MODES = {
   story: [
     ['Sample', 'The sample synopsis, ready to tag.', 'story.html?start=sample'],
     ['New', 'A blank synopsis and a beat framework.', 'story.html?start=new'],
-    ['Import', '.docx, .pdf or .txt — or drag it onto the page.', 'story.html?start=import']
+    ['Import', '.docx, .pdf, .txt or .md — or drag it onto the page.', 'story.html?start=import']
   ],
   screenplay: [
     ['Sample', 'Open the sample project, a whole feature filled in.', 'index.html?sample=1'],

@@ -649,6 +649,8 @@
   body.rp-print-reports :is(#oneliner, #dpr, #kit) { display: none !important; }
   body.rp-print-oneliner #main > *:not(#oneliner):not(#pdf-masthead),
   body.rp-print-dpr #main > *:not(#dpr):not(#pdf-masthead),
-  body.rp-print-kit #main > *:not(#kit):not(#pdf-masthead) { display: none !important; }
-  body:is(.rp-print-oneliner, .rp-print-dpr, .rp-print-kit) #sides { break-before: auto; }
+  body.rp-print-kit #main > *:not(#kit):not(#pdf-masthead),
+  body.rp-print-screentime #main > *:not(#screentime):not(#pdf-masthead),
+  body.rp-print-castmatrix #main > *:not(#cast-matrix):not(#pdf-masthead) { display: none !important; }
+  body:is(.rp-print-oneliner, .rp-print-dpr, .rp-print-kit, .rp-print-screentime, .rp-print-castmatrix) #sides { break-before: auto; }
 }

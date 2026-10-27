@@ -169,7 +169,7 @@ function renderEmpty() {
     ]),
     h('p.bd-sub', {}, [
       'Have a script already? ',
-      h('a', { href: '#overview', text: 'Upload it or break it down on the Whole script tab' }),
+      h('a', { href: '#overview', 'data-action': 'bd-to-overview', text: 'Upload it or break it down on the Whole script tab' }),
       ' and every scene, character and location is filled in for you.'
     ]),
     button({ label: '+  Add a scene by hand', variant: 'primary', pill: true, action: 'scene-add', class: 'bd-cta' })
@@ -1969,6 +1969,21 @@ async function manualFlow(tab) {
   catch (e) { console.warn('[breakdown] manual', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); }
 }
 delegate(document, 'click', '[data-action=run-breakdown]', () => manualFlow('#overview'));
+/* The empty state's link to the Whole script tab: the hash shows the tab
+   (tabs.js) a moment after the click, and the link it was pressed on is
+   hidden by then, so focus fell to <body>. Same approach as bdp-open:
+   once the tab is up, put it on the tab's first control. The anchor's own
+   navigation is left alone. */
+delegate(document, 'click', '[data-action="bd-to-overview"]', () => {
+  const land = () => {
+    const root = document.getElementById('overview');
+    if (!root || !root.offsetParent) return;
+    const to = root.querySelector('button, a[href], input, select, textarea');
+    if (to && document.activeElement !== to) to.focus({ preventScroll: true });
+  };
+  addEventListener('hashchange', () => requestAnimationFrame(land), { once: true });
+  setTimeout(land, 120);
+});
 /* Break down everything (src/lib/script-pipeline.js, drawn by
    src/ui/pipeline-checklist.js): the whole run by rules, blanks only,
    one Undo. Loaded at the click. */

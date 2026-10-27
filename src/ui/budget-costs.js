@@ -36,9 +36,9 @@ import Store from '../lib/store.js';
 // Money is formatted and parsed in the budget's own currency (budget-costs-model.js).
 import C from '../lib/costs.js';
 import { DEPARTMENTS } from '../lib/contacts.js';
-import { rs, rupees, glance, amountOf, sym, shownCurrency, pct, today, label, costContext, crewAccountFor, wageHintRows } from '../lib/budget-costs-model.js';
+import { rs, rupees, glance, amountOf, sym, shownCurrency, setAbroadProbe, labelCurrency, plainTax, filmAbroad, pct, today, label, costContext, crewAccountFor, wageHintRows } from '../lib/budget-costs-model.js';
+import { indiaContentShown } from './india-content.js';
 import wages from '../data/wages.fefsi.json';
-import { askDanger } from './dialog.js';
 import { brandPrint } from './footer.js';   // CORE: the "Made with" line on a plain print
 import { button, badge, statCard, statStrip, emptyState, notice, meter } from './kit/index.js';
 import { renderSchedule, renderVersions, impactActions, impactForms, bindImpact } from './budget-impact.js';
@@ -76,6 +76,12 @@ function field(text, control, hint) {
     hint ? h('span.cx-hint.k-field-hint', { text: hint }) : null
   ]);
 }
+/* India-only: hidden by india-content.css under a film made elsewhere;
+   the control stays in the DOM and keeps its value. */
+setAbroadProbe(() => !indiaContentShown());
+/** A film made abroad shows no TDS line unless TDS was actually withheld. */
+const hideTds = (acct) => filmAbroad() && !acct.tds;
+const indiaOnly = (el, on = true) => { if (el && on) el.setAttribute('data-india-only', ''); return el; };
 function select(attrs, options, value) {
   const el = h('select', attrs, options.map(([v, t]) => h('option', { value: v, text: t })));
   el.value = value === undefined || value === null ? '' : String(value);
@@ -156,21 +162,21 @@ function renderExpenses(ctx) {
       field('Amount (' + sym() + ', bill total)', h('input.cx-amount', { name: 'amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', placeholder: 'e.g. 1,850 or 2k', required: true, 'data-fk': 'x:amount' })),
       field('Date', h('input', { name: 'date', type: 'date', value: sticky.date || today(), 'data-fk': 'x:date' }))
     ]),
-    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Category' }), chips('category', C.categoriesFor(shownCurrency()), 'food', 'x:cat')]),
+    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Category' }), chips('category', C.categoriesFor(labelCurrency()), 'food', 'x:cat')]),
     h('div.cx-quick-row', {}, [
       field('Paid by', select({ name: 'paidBy', 'data-fk': 'x:paidBy' }, personOptions(ctx, 'Office / producer — no float'), sticky.paidBy)),
       field('Shoot day', select({ name: 'shootDay', 'data-fk': 'x:day' }, dayOptions(ctx), sticky.shootDay))
     ]),
-    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Paid with' }), chips('method', C.methodsFor(shownCurrency()).slice(0, 3), sticky.method, 'x:method')]),
+    h('fieldset.cx-set', {}, [h('legend.cx-flabel.k-field-label', { text: 'Paid with' }), chips('method', C.methodsFor(labelCurrency()).slice(0, 3), sticky.method, 'x:method')]),
     field('Budget line', select({ name: 'line', 'data-fk': 'x:line' }, lineOptions(ctx), '')),
     h('details.cx-more', {}, [
-      h('summary', { text: shownCurrency() === 'USD' ? 'Bill details — tax, vendor, receipt' : 'Bill details — GST, vendor, receipt' }),
+      h('summary', { text: plainTax() ? 'Bill details — tax, vendor, receipt' : 'Bill details — GST, vendor, receipt' }),
       h('div.cx-quick-row', {}, [
-        field(shownCurrency() === 'USD' ? 'Tax in the bill' : 'GST in the bill', select({ name: 'gstPct', 'data-fk': 'x:gst' }, C.GST_RATES.map((r) => [String(r), r ? r + '%' : 'No GST']), '0')),
+        indiaOnly(field(plainTax() ? 'Tax in the bill' : 'GST in the bill', select({ name: 'gstPct', 'data-fk': 'x:gst' }, C.GST_RATES.map((r) => [String(r), r ? r + '%' : 'No GST']), '0'))),
         field('Vendor', h('input', { name: 'vendor', type: 'text', autocomplete: 'off', 'data-fk': 'x:vendor' }))
       ]),
       h('div.cx-quick-row', {}, [
-        shownCurrency() === 'USD' ? null : field('Vendor GSTIN', h('input', { name: 'gstin', type: 'text', autocomplete: 'off', maxlength: '15', placeholder: '15 characters', 'data-fk': 'x:gstin' })),
+        shownCurrency() === 'USD' ? null : indiaOnly(field('Vendor GSTIN', h('input', { name: 'gstin', type: 'text', autocomplete: 'off', maxlength: '15', placeholder: '15 characters', 'data-fk': 'x:gstin' }))),
         field('Receipt link', h('input', { name: 'receipt', type: 'url', autocomplete: 'off', placeholder: 'https://… (a photo in your Drive)', 'data-fk': 'x:receipt' }))
       ]),
       field('Paid by someone not in contacts', h('input', { name: 'paidByName', type: 'text', autocomplete: 'off', placeholder: 'a name — used instead of the list above', 'data-fk': 'x:paidByName' })),
@@ -187,7 +193,7 @@ function renderExpenses(ctx) {
     ]),
     h('div.cx-quick-row', {}, [
       field('Date', h('input', { name: 'date', type: 'date', value: today(), 'data-fk': 'f:date' })),
-      field('Method', select({ name: 'method', 'data-fk': 'f:method' }, C.methodsFor(shownCurrency()).map((m) => [m.id, m.label]), 'cash'))
+      field('Method', select({ name: 'method', 'data-fk': 'f:method' }, C.methodsFor(labelCurrency()).map((m) => [m.id, m.label]), 'cash'))
     ]),
     field('Or a name not in contacts', h('input', { name: 'toName', type: 'text', autocomplete: 'off', 'data-fk': 'f:toName' })),
     h('div.cx-actions', {}, [button({ label: 'Issue float', icon: 'add', type: 'submit', attrs: { 'data-fk': 'f:submit' } })])
@@ -216,7 +222,7 @@ function renderExpenses(ctx) {
       h('summary', { text: ctx.floats.length + (ctx.floats.length === 1 ? ' float issued' : ' floats issued') }),
       h('ul.cx-log', {}, ctx.floats.slice().reverse().map((f) => h('li.cx-log-row', {}, [
         h('span.cx-log-amt.k-mono', { text: rs(f.amount) }),
-        h('span.cx-log-what', { text: 'to ' + ctx.nameOf(f.to) + (f.date ? ' · ' + f.date : '') + ' · ' + label(C.methodsFor(shownCurrency()), f.method) }),
+        h('span.cx-log-what', { text: 'to ' + ctx.nameOf(f.to) + (f.date ? ' · ' + f.date : '') + ' · ' + label(C.methodsFor(labelCurrency()), f.method) }),
         delBtn('del-float', f.id, 'Delete the ' + rs(f.amount) + ' float to ' + ctx.nameOf(f.to), 'fl:' + f.id)
       ])))
     ]));
@@ -242,12 +248,12 @@ function renderExpenses(ctx) {
       h('div.cx-day-head.k-panel-head', {}, [h('span.k-mono', { text: d || 'No date' }), h('span.cx-day-total.k-mono', { text: rs(total) })]),
       h('ul.cx-log', {}, rows.slice().reverse().map((e) => {
         const g = C.gstSplit(e.amount, e.gstPct);
-        const bits = [label(C.categoriesFor(shownCurrency()), e.category)];
+        const bits = [label(C.categoriesFor(labelCurrency()), e.category)];
         if (e.line) bits.push(ctx.lineName(e.line));
         if (e.shootDay) bits.push('Day ' + e.shootDay);
-        bits.push((e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.methodsFor(shownCurrency()), e.method));
-        if (e.gstPct) bits.push('GST ' + e.gstPct + '% ' + rs(g.tax));
-        if (e.vendor) bits.push(e.vendor + (e.gstin ? ' (' + e.gstin + ')' : ''));
+        bits.push((e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.methodsFor(labelCurrency()), e.method));
+        if (e.gstPct && !filmAbroad()) bits.push('GST ' + e.gstPct + '% ' + rs(g.tax));
+        if (e.vendor) bits.push(e.vendor + (e.gstin && !filmAbroad() ? ' (' + e.gstin + ')' : ''));
         return h('li.cx-log-row', {}, [
           h('span.cx-log-amt.k-mono', { text: rs(e.amount) }),
           h('span.cx-log-what', {}, [
@@ -274,7 +280,7 @@ function renderActuals(ctx) {
       type: 'text', inputmode: 'decimal', value: String(t.contingencyPct), 'data-cx-field': 'contingency', 'data-fk': 'r:cont', autocomplete: 'off'
     }), 'Usually 10%. It is added on top of the estimate; spending past the estimate eats into it.')
   ]));
-  const usd = shownCurrency() === 'USD';
+  const usd = plainTax();
   out.push(stats([
     stat(rs(t.estimate), 'estimate'),
     stat(rs(t.contingency), 'contingency ' + t.contingencyPct + '%'),
@@ -292,7 +298,7 @@ function renderActuals(ctx) {
       tone: 'danger',
       class: 'cx-alert',
       title: r.over.length + (r.over.length === 1 ? ' line is over budget' : ' lines are over budget'),
-      body: h('ul', {}, r.over.map((l) => h('li', { text: (l.unbudgeted ? label(C.deptsFor(shownCurrency()), l.dept) + ': ' : '') + l.name + ' — ' + rs(l.actual) + ' against ' + rs(l.estimate) + (l.unbudgeted ? ' (no line in the estimate)' : '') })))
+      body: h('ul', {}, r.over.map((l) => h('li', { text: (l.unbudgeted ? label(C.deptsFor(labelCurrency()), l.dept) + ': ' : '') + l.name + ' — ' + rs(l.actual) + ' against ' + rs(l.estimate) + (l.unbudgeted ? ' (no line in the estimate)' : '') })))
     }));
   }
   const table = h('table.cx-table.k-table.cx-report', {}, [
@@ -302,11 +308,11 @@ function renderActuals(ctx) {
       ...['Estimate', 'Actual', usd ? 'Excl. tax' : 'Excl. GST', 'Variance', 'Used'].map(numTh)
     ]))
   ]);
-  const deptOpts = C.deptsFor(shownCurrency()).map((d) => [d.id, d.acct + ' ' + d.label]);
+  const deptOpts = C.deptsFor(labelCurrency()).map((d) => [d.id, d.acct + ' ' + d.label]);
   for (const d of r.depts) {
     const tb = h('tbody.cx-dept');
     tb.append(h('tr.cx-dept-row', {}, [
-      h('th', { scope: 'rowgroup', colspan: '2' }, [h('span.k-mono.cx-acct', { text: d.acct }), ' · ' + label(C.deptsFor(shownCurrency()), d.id)]),
+      h('th', { scope: 'rowgroup', colspan: '2' }, [h('span.k-mono.cx-acct', { text: d.acct }), ' · ' + label(C.deptsFor(labelCurrency()), d.id)]),
       numTd(rs(d.estimate)), numTd(rs(d.actual)), numTd(rs(d.actualNet)),
       numTd(rs(d.variance), { class: d.over ? 'is-over' : null }), numTd(pct(d.pctUsed, d.actual))
     ]));
@@ -333,7 +339,7 @@ function renderActuals(ctx) {
   ]));
   out.push(scroll(table));
   out.push(h('p.cx-hint.cx-taxnote', {
-    text: shownCurrency() === 'USD'
+    text: plainTax()
       ? 'Tax paid on bills: ' + rs(t.gst) + '. Withheld on crew payments: ' + rs(t.tds)
         + ' — counted in the actual because it is part of the fee. An expense is logged as the bill total, tax included; the tax share is worked out from its rate.'
       : 'GST paid on bills: ' + rs(t.gst) + '. TDS withheld on crew payments: ' + rs(t.tds)
@@ -378,10 +384,10 @@ function renderCrewCard(ctx, c) {
       }))
     ]),
     h('div.cx-quick-row', {}, [
-      field('Wage-table hint', select({ 'data-cx-field': 'crew', 'data-k': 'wageRow', 'data-id': id, 'data-fk': 'cr:' + id + ':wr' },
-        [['', 'None'], ...hints.map((r) => [r.id, r.craft])], rec.wageRow), hintText || (usd ? 'Optional. Your own figure from the wage table tab; no US crew rate is offered.' : 'Optional. A starting point only — there is no current union floor.')),
+      indiaOnly(field('Wage-table hint', select({ 'data-cx-field': 'crew', 'data-k': 'wageRow', 'data-id': id, 'data-fk': 'cr:' + id + ':wr' },
+        [['', 'None'], ...hints.map((r) => [r.id, r.craft])], rec.wageRow), hintText || (usd ? 'Optional. Your own figure from the wage table tab; no US crew rate is offered.' : 'Optional. A starting point only — there is no current union floor.'))),
       picked && picked.bata && rec.feeType === 'day' && (own || !usd)
-        ? h('div.cx-field.cx-usefee', {}, [button({ label: 'Use ' + rs(picked.bata) + ' as the fee', size: 'sm', attrs: { 'data-cx': 'use-wage', 'data-id': id, 'data-v': String(picked.bata), 'data-fk': 'cr:' + id + ':use' } })])
+        ? indiaOnly(h('div.cx-field.cx-usefee', {}, [button({ label: 'Use ' + rs(picked.bata) + ' as the fee', size: 'sm', attrs: { 'data-cx': 'use-wage', 'data-id': id, 'data-v': String(picked.bata), 'data-fk': 'cr:' + id + ':use' } })]))
         : null
     ]),
     h('div.cx-quick-row', {}, [
@@ -390,27 +396,27 @@ function renderCrewCard(ctx, c) {
         placeholder: derived.days ? String(derived.days) : '0', disabled: rec.feeType === 'lump' ? true : null,
         'data-cx-field': 'crew', 'data-k': 'days', 'data-id': id, 'data-fk': 'cr:' + id + ':days'
       }), rec.feeType === 'lump' ? 'A lump sum does not count days.' : daysHint),
-      field('TDS deducted', select({ 'data-cx-field': 'crew', 'data-k': 'tdsPct', 'data-id': id, 'data-fk': 'cr:' + id + ':tds' },
-        C.TDS_RATES.map((r) => [String(r), r ? r + '%' : 'None']), String(rec.tdsPct)), '194J professional fees are usually 10%; 194C contracts 1–2%. Check with your accountant.')
+      indiaOnly(field('TDS deducted', select({ 'data-cx-field': 'crew', 'data-k': 'tdsPct', 'data-id': id, 'data-fk': 'cr:' + id + ':tds' },
+        C.TDS_RATES.map((r) => [String(r), r ? r + '%' : 'None']), String(rec.tdsPct)), '194J professional fees are usually 10%; 194C contracts 1–2%. Check with your accountant.'))
     ]),
     field('Budget line it is paid from', select({ 'data-cx-field': 'crew', 'data-k': 'line', 'data-id': id, 'data-fk': 'cr:' + id + ':line' }, lineOptions(ctx, 'Not on a budget line'), rec.line)),
     h('dl.cx-sum', {}, [
-      ['Gross fee', rs(acct.gross)], ['TDS ' + acct.tdsPct + '%', rs(acct.tds)], ['Net payable', rs(acct.net)],
+      ['Gross fee', rs(acct.gross)], hideTds(acct) ? null : ['TDS ' + acct.tdsPct + '%', rs(acct.tds)], ['Net payable', rs(acct.net)],
       ['Paid so far', rs(acct.paid)], [acct.balance < 0 ? 'Overpaid' : 'Balance due', rs(Math.abs(acct.balance))]
-    ].map(([k, v]) => h('div', {}, [h('dt', { text: k }), h('dd.k-mono', { text: v })]))),
+    ].filter(Boolean).map(([k, v]) => h('div', {}, [h('dt', { text: k }), h('dd.k-mono', { text: v })]))),
     h('h4.cx-h4', { text: 'Advances and payments' }),
     paid.length ? h('ul.cx-log', {}, paid.map((p) => h('li.cx-log-row', {}, [
       h('span.cx-log-amt.k-mono', { text: rs(p.amount) }),
-      h('span.cx-log-what', { text: (p.date || 'No date') + ' · ' + label(C.methodsFor(shownCurrency()), p.method) + (p.note ? ' · ' + p.note : '') }),
+      h('span.cx-log-what', { text: (p.date || 'No date') + ' · ' + label(C.methodsFor(labelCurrency()), p.method) + (p.note ? ' · ' + p.note : '') }),
       delBtn('del-payment', p.id, 'Delete this payment of ' + rs(p.amount), 'pl:' + p.id)
     ]))) : h('p.cx-hint', { text: 'Nothing paid yet.' }),
     h('form.cx-pay', { 'data-cx-form': 'payment', 'data-id': id, 'aria-label': 'Record a payment to ' + (c.name || 'this person') }, [
       h('div.cx-quick-row', {}, [
-        field('Amount paid (' + sym() + ', after TDS)', h('input', { name: 'amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', required: true, 'data-fk': 'pf:' + id + ':amt' })),
+        field('Amount paid (' + sym() + (plainTax() ? '' : ', after TDS') + ')', h('input', { name: 'amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', required: true, 'data-fk': 'pf:' + id + ':amt' })),
         field('Date', h('input', { name: 'date', type: 'date', value: today(), 'data-fk': 'pf:' + id + ':date' }))
       ]),
       h('div.cx-quick-row', {}, [
-        field('Method', select({ name: 'method', 'data-fk': 'pf:' + id + ':m' }, C.methodsFor(shownCurrency()).map((m) => [m.id, m.label]), 'bank')),
+        field('Method', select({ name: 'method', 'data-fk': 'pf:' + id + ':m' }, C.methodsFor(labelCurrency()).map((m) => [m.id, m.label]), 'bank')),
         field('Note', h('input', { name: 'note', type: 'text', autocomplete: 'off', placeholder: 'advance, final settlement…', 'data-fk': 'pf:' + id + ':note' }))
       ]),
       h('div.cx-actions', {}, [
@@ -444,8 +450,8 @@ function renderCrew(ctx) {
     gross += acct.gross; paid += acct.paid; due += Math.max(0, acct.balance); tds += acct.tds;
   }
   out.push(stats([
-    stat(rs(gross), 'fees agreed'), stat(rs(paid), 'paid'), stat(rs(due), 'still due'), stat(rs(tds), 'TDS to deposit')
-  ]));
+    stat(rs(gross), 'fees agreed'), stat(rs(paid), 'paid'), stat(rs(due), 'still due'), filmAbroad() && !tds ? null : stat(rs(tds), 'TDS to deposit')
+  ].filter(Boolean)));
   const order = [...DEPARTMENTS, ...new Set(ctx.contacts.map((c) => c.department).filter((d) => !DEPARTMENTS.includes(d)))];
   for (const dept of order) {
     const people = ctx.contacts.filter((c) => (c.department || '') === dept);
@@ -471,13 +477,13 @@ function settlementDoc(ctx, id) {
     h('table.cx-table', {}, [
       h('tbody', {}, [
         ['Fee', acct.feeType === 'lump' ? rs(acct.fee) + ' lump sum' : rs(acct.fee) + ' per day × ' + acct.days + ' day' + (acct.days === 1 ? '' : 's') + (acct.daysSource && acct.daysSource !== 'entered' ? ' (from the ' + acct.daysSource + ')' : '')],
-        ['Gross', rs(acct.gross)], ['TDS deducted (' + acct.tdsPct + '%)', rs(acct.tds)], ['Net payable', rs(acct.net)]
-      ].map(([k, v]) => h('tr', {}, [h('th', { scope: 'row', text: k }), h('td.num', { text: v })])))
+        ['Gross', rs(acct.gross)], hideTds(acct) ? null : ['TDS deducted (' + acct.tdsPct + '%)', rs(acct.tds)], ['Net payable', rs(acct.net)]
+      ].filter(Boolean).map(([k, v]) => h('tr', {}, [h('th', { scope: 'row', text: k }), h('td.num', { text: v })])))
     ]),
     h('table.cx-table', {}, [
       h('caption', { text: 'Paid' }),
       h('thead', {}, h('tr', {}, ['Date', 'Method', 'Note', 'Amount'].map((x, i) => h('th', { scope: 'col', class: i === 3 ? 'num' : null, text: x })))),
-      h('tbody', {}, paid.length ? paid.map((p) => h('tr', {}, [h('td', { text: p.date || '—' }), h('td', { text: label(C.methodsFor(shownCurrency()), p.method) }), h('td', { text: p.note }), h('td.num', { text: rs(p.amount) })]))
+      h('tbody', {}, paid.length ? paid.map((p) => h('tr', {}, [h('td', { text: p.date || '—' }), h('td', { text: label(C.methodsFor(labelCurrency()), p.method) }), h('td', { text: p.note }), h('td.num', { text: rs(p.amount) })]))
         : [h('tr', {}, [h('td', { colspan: '4', text: 'Nothing paid yet.' })])]),
       h('tfoot', {}, [
         h('tr', {}, [h('th', { scope: 'row', colspan: '3', text: 'Total paid' }), h('td.num', { text: rs(acct.paid) })]),
@@ -508,7 +514,7 @@ function topSheetDoc(ctx, screen) {
   for (const g of ts.groups) {
     if (!g.depts.length) continue;
     const tb = h('tbody', {}, [h('tr.cx-dept-row', {}, [h('th', { scope: 'rowgroup', colspan: '3', text: g.label })])]);
-    for (const d of g.depts) tb.append(h('tr', {}, [h('td' + (screen ? '.k-mono' : ''), { text: d.acct }), h('th', { scope: 'row', text: label(C.deptsFor(shownCurrency()), d.id) }), num(rs(d.estimate))]));
+    for (const d of g.depts) tb.append(h('tr', {}, [h('td' + (screen ? '.k-mono' : ''), { text: d.acct }), h('th', { scope: 'row', text: label(C.deptsFor(labelCurrency()), d.id) }), num(rs(d.estimate))]));
     tb.append(h('tr.cx-sub', {}, [h('td'), h('th', { scope: 'row', text: 'Total ' + g.label.toLowerCase() }), num(rs(g.estimate))]));
     table.append(tb);
   }
@@ -547,7 +553,7 @@ function renderTopSheet(ctx) {
 /* The wage inputs' column headers, which are also their accessible
    names: a label built from the field key read 'callHours for …'. */
 const WAGE_COLS = {
-  bata: () => 'Your batta (' + sym() + '/day)',
+  bata: () => 'Your ' + (filmAbroad() ? 'day rate' : 'batta') + ' (' + sym() + '/day)',
   callHours: () => 'Call hours',
   otRule: () => 'Overtime rule'
 };
@@ -555,8 +561,8 @@ const WAGE_COLS = {
 function renderWages(ctx) {
   const rows = C.wageRows(wages, ctx.overrides);
   const src = wages.sources || {};
-  const out = [intro('Crew wage table', 'A place to keep the daily batta your unit actually agreed, per craft, with the call hours and overtime rule beside it. The crew payments tab offers these as hints.')];
-  out.push(notice({
+  const out = [intro('Crew wage table', 'A place to keep the daily ' + (filmAbroad() ? 'rate' : 'batta') + ' your unit actually agreed, per craft, with the call hours and overtime rule beside it. The crew payments tab offers these as hints.')];
+  out.push(indiaOnly(notice({
     tone: 'warn',
     class: 'cx-alert cx-expired',
     title: 'Last published: ' + wages.title + ' — ' + wages.status.toUpperCase(),
@@ -565,10 +571,10 @@ function renderWages(ctx) {
       h('p', { text: wages.rules.note }),
       h('ul', {}, Object.values(src).map((s) => h('li', {}, [h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer', text: s.name }), ' — ' + s.says + (s.caveat ? ' ' + s.caveat : '')])))
     ])
-  }));
+  })));
   const table = h('table.cx-table.k-table.cx-wages', {}, [
-    h('caption', { text: 'Per craft · valid ' + wages.validFrom + ' to ' + wages.validTo + ' · checked ' + wages.lastChecked }),
-    h('thead', {}, h('tr', {}, ['Craft', 'Published', WAGE_COLS.bata(), WAGE_COLS.callHours(), WAGE_COLS.otRule(), ''].map((x) => h('th', { scope: 'col', text: x }))))
+    h('caption', { text: filmAbroad() ? 'Per craft' : 'Per craft · valid ' + wages.validFrom + ' to ' + wages.validTo + ' · checked ' + wages.lastChecked }),
+    h('thead', {}, h('tr', {}, ['Craft', 'Published', WAGE_COLS.bata(), WAGE_COLS.callHours(), WAGE_COLS.otRule(), ''].map((x) => indiaOnly(h('th', { scope: 'col', text: x }), x === 'Published'))))
   ]);
   const tb = h('tbody');
   for (const r of rows) {
@@ -579,7 +585,7 @@ function renderWages(ctx) {
     }));
     tb.append(h('tr', { class: r.overridden.length ? 'is-set' : null }, [
       h('th', { scope: 'row' }, [r.craft, r.department ? h('span.cx-hint', { text: ' ' + r.department }) : null]),
-      h('td' + (r.published.bata ? '.k-mono' : ''), { text: pub }),
+      indiaOnly(h('td' + (r.published.bata ? '.k-mono' : ''), { text: pub })),
       h('td', {}, inp('bata', r.bata, '—', 'decimal')),
       h('td', {}, inp('callHours', r.callHours, '—', 'decimal')),
       h('td', {}, inp('otRule', r.otRule, 'e.g. ½ batta per 2 h')),
@@ -601,9 +607,9 @@ function renderExport(ctx) {
     h('div.cx-export', {}, [
       card('div', {}, 'Budget', [h('p.cx-hint', { text: ctx.lines.length + ' line' + (ctx.lines.length === 1 ? '' : 's') + ' in ' + accounts + ' account' + (accounts === 1 ? '' : 's') + ', with contingency and the grand total.' }),
         button({ label: 'Download budget CSV', icon: 'download', variant: 'primary', attrs: { 'data-cx': 'csv-budget', 'data-fk': 'ex:b' } })]),
-      card('div', {}, 'Actuals', [h('p.cx-hint', { text: shownCurrency() === 'USD' ? 'Estimate, actual with and without tax, variance and % used, per line and department.' : 'Estimate, actual with and without GST, TDS, variance and % used, per line and department.' }),
+      card('div', {}, 'Actuals', [h('p.cx-hint', { text: plainTax() ? 'Estimate, actual with and without tax, variance and % used, per line and department.' : 'Estimate, actual with and without GST, TDS, variance and % used, per line and department.' }),
         button({ label: 'Download actuals CSV', icon: 'download', attrs: { 'data-cx': 'csv-actuals', 'data-fk': 'ex:a' } })]),
-      card('div', {}, 'Expense log', [h('p.cx-hint', { text: ctx.expenses.length + ' expense' + (ctx.expenses.length === 1 ? '' : 's') + (shownCurrency() === 'USD' ? ', with tax, vendor and receipt links — for the books.' : ', with GST, vendor GSTIN and receipt links — for the books.') }),
+      card('div', {}, 'Expense log', [h('p.cx-hint', { text: ctx.expenses.length + ' expense' + (ctx.expenses.length === 1 ? '' : 's') + (plainTax() ? ', with tax, vendor and receipt links — for the books.' : ', with GST, vendor GSTIN and receipt links — for the books.') }),
         button({ label: 'Download expenses CSV', icon: 'download', attrs: { 'data-cx': 'csv-expenses', 'data-fk': 'ex:x' } })])
     ])
   ];
@@ -680,8 +686,8 @@ function renderAside(ctx) {
     body.push(h('div.bud-aside-sec', {}, [
       h('p.bud-aside-h', {}, [h('span.k-eyebrow', { text: 'Logged today' }), h('span.k-mono', { text: rs(sum) })]),
       h('ul.bud-aside-list', {}, todays.slice(-3).reverse().map((e) => h('li.bud-aside-row', {}, [
-        h('span.bud-aside-name', { text: label(C.categoriesFor(shownCurrency()), e.category) + (e.vendor ? ' · ' + e.vendor : '') }),
-        h('span.bud-aside-sub', { text: (e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.methodsFor(shownCurrency()), e.method) }),
+        h('span.bud-aside-name', { text: label(C.categoriesFor(labelCurrency()), e.category) + (e.vendor ? ' · ' + e.vendor : '') }),
+        h('span.bud-aside-sub', { text: (e.paidBy ? ctx.nameOf(e.paidBy) : 'Office') + ' · ' + label(C.methodsFor(labelCurrency()), e.method) }),
         h('span.bud-aside-amt.k-mono', { text: rs(e.amount) })
       ])))
     ]));
@@ -815,8 +821,18 @@ const ACTIONS = {
     refresh();
     if (gone) toast('Expense of ' + rs(gone.amount) + ' deleted.', { action: 'UNDO', onAction: () => { C.restoreExpense(gone, index); refresh(); } });
   },
-  'del-float': async (el) => { if (await askDanger({ title: 'Delete this float?', body: 'The balance in that person\'s hand is worked out again without it.', confirm: 'Delete float' })) { C.removeFloat(el.dataset.id); refresh(); toast('Float deleted.'); } },
-  'del-payment': async (el) => { if (await askDanger({ title: 'Delete this payment?', body: 'It leaves the ledger and the balance is worked out again without it.', confirm: 'Delete payment' })) { C.removePayment(el.dataset.id); refresh(); toast('Payment deleted.'); } },
+  'del-float': (el) => {
+    const index = C.listFloats().findIndex((x) => x.id === el.dataset.id);
+    const gone = C.removeFloat(el.dataset.id);
+    refresh();
+    if (gone) toast('Float deleted.', { action: 'UNDO', onAction: () => { C.restoreFloat(gone, index); refresh(); } });
+  },
+  'del-payment': (el) => {
+    const index = C.listPayments().findIndex((x) => x.id === el.dataset.id);
+    const gone = C.removePayment(el.dataset.id);
+    refresh();
+    if (gone) toast('Payment deleted.', { action: 'UNDO', onAction: () => { C.restorePayment(gone, index); refresh(); } });
+  },
   'use-wage': (el) => { C.setCrew(el.dataset.id, { fee: Number(el.dataset.v) || 0, feeType: 'day' }); refresh(); toast('Fee set from the wage table — confirm it with the person and the union.'); },
   'reset-wage': (el) => { C.setWageOverride(el.dataset.id, { bata: '', callHours: '', otRule: '' }); refresh(); },
   'print-settlement': (el) => printDoc(settlementDoc(context(), el.dataset.id)),
@@ -846,7 +862,7 @@ const FORMS = {
     refresh();
     const again = document.querySelector('[data-fk="x:amount"]');
     if (again) again.focus({ preventScroll: true });
-    toast(rs(row.amount) + ' logged under ' + label(C.categoriesFor(shownCurrency()), row.category) + '.', { type: 'success', duration: 2000 });
+    toast(rs(row.amount) + ' logged under ' + label(C.categoriesFor(labelCurrency()), row.category) + '.', { type: 'success', duration: 2000 });
   },
   float(form) {
     const f = new FormData(form);

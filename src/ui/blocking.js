@@ -731,6 +731,16 @@ delegate(document, 'click', '[data-action="blk-add-mark"]', (e, el) => {
 });
 delegate(document, 'change', '[data-block-field]', (e, el) => {
   const id = blockIdOf(el);
+  if (el.dataset.blockField === 'widthM') {
+    /* An unusable width is said out loud and NOT stored, so the field and
+       the map never disagree about whether a scale exists. */
+    const err = Shots.floorWidthError(el.value);
+    const hintEl = el.closest('.vz-blk-width') && el.closest('.vz-blk-width').querySelector('.k-field-hint');
+    el.toggleAttribute('aria-invalid', !!err);
+    if (err) el.setAttribute('aria-invalid', 'true');
+    if (hintEl) hintEl.classList.toggle('is-error', !!err);
+    if (err) { if (hintEl) hintEl.textContent = err; return; }
+  }
   const b = Shots.updateBlock(id, { [el.dataset.blockField]: el.value });
   /* The floor width changes what the map prints (the distances), so the
      map and the hint under the field are redrawn IN PLACE: a full

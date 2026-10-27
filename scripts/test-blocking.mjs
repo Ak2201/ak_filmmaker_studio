@@ -145,6 +145,12 @@ reset();
   eq(S.blockScale({ widthM: '0' }), null, 'zero width, no scale');
   eq(S.blockScale({ widthM: '-4' }), null, 'negative width, no scale');
   eq(S.blockScale({ widthM: 'wide' }), null, 'words, no scale');
+  eq(S.floorWidthError('-3') !== '', true, 'negative width is refused with a message');
+  eq(S.floorWidthError('0') !== '', true, 'zero width is refused');
+  eq(S.floorWidthError('abc') !== '', true, 'words are refused');
+  eq(S.floorWidthError('100000') !== '', true, 'a 100 km floor is refused');
+  eq(S.floorWidthError('12,5'), '', 'a decimal comma is fine');
+  eq(S.floorWidthError(''), '', 'blank means not said yet');
   eq(S.blockScale({ widthM: '10' }), 0.1, '10 m across 100 units is 0.1 m a unit');
   eq(S.blockScale({ widthM: '12,5' }), 0.125, 'a decimal comma is read');
   const blk = { widthM: '', marks: [

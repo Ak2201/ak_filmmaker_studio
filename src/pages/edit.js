@@ -396,6 +396,7 @@ function csvDownload() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  if (StudioUI.toastSuccess) StudioUI.toastSuccess('Saved edit-log.csv');
 }
 
 function render(focus) {

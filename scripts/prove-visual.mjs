@@ -458,6 +458,32 @@ const ctR = await page.evaluate(() => {
 ok(ctR.n > 0 && ctR.grouped && ctR.named === ctR.n && ctR.uniqueDel > 1, 'R7 person rows are labelled groups and Remove names the person', ctR);
 ok(!/Ravi/.test(ctR.role), 'R9 the role placeholder offers roles only', ctR.role);
 
+// R10 blocking: an unusable floor width is said out loud and not stored
+await page.goto(url('visualize.html#blocking'), { waitUntil: 'networkidle' });
+await settle(page);
+if (!(await page.$('#blocking .vz-blk'))) { await page.click('[data-action="blk-add"]'); await settle(page, 300); }
+const wIn = '#blocking .vz-blk >> nth=0 >> [data-block-field="widthM"]';
+const wHint = '#blocking .vz-blk >> nth=0 >> .vz-blk-width .k-field-hint';
+const widthBad = [];
+for (const v of ['-3', '0', 'abc', '100000']) {
+  await page.fill(wIn, v);
+  await page.keyboard.press('Tab');
+  await settle(page, 200);
+  widthBad.push(await page.evaluate(([i, hsel]) => {
+    const q = (x) => document.querySelector('#blocking .vz-blk .' + x);
+    return { inv: q('vz-blk-width input').getAttribute('aria-invalid'), msg: q('vz-blk-width .k-field-hint').textContent };
+  }, [wIn, wHint]));
+}
+ok(widthBad.every((r) => r.inv === 'true' && /metres/.test(r.msg) && !/^Say how wide/.test(r.msg)), 'R10 a bad floor width shows a message and aria-invalid', widthBad);
+
+// R11 edit log: Export CSV confirms the file
+await page.goto(url('edit.html'), { waitUntil: 'networkidle' });
+await settle(page);
+await page.click('[data-edit-action="export-csv"]');
+await settle(page, 300);
+const csvToast = await page.evaluate(() => document.body.innerText);
+ok(/edit-log\.csv/.test(csvToast), 'R11 Export CSV toasts the file name');
+
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();
 server.close();

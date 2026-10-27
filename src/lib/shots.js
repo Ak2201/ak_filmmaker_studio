@@ -174,6 +174,21 @@ export function blockScale(block) {
   return Number.isFinite(w) && w > 0 ? w / BLOCK_W : null;   // metres per map unit
 }
 
+/** The widest floor a block may claim, in metres: a stadium. Past it the
+    distances and track lengths are drawn at a scale nobody measured. */
+export const BLOCK_WIDTH_MAX_M = 500;
+
+/** Says what is wrong with a typed floor width, or '' when it is usable
+    (blank is usable: it means "not said yet"). Pure. */
+export function floorWidthError(raw) {
+  const t = String(raw ?? '').trim();
+  if (!t) return '';
+  const w = Number(t.replace(',', '.'));
+  if (!Number.isFinite(w) || w <= 0) return 'Floor width must be a positive number of metres.';
+  if (w > BLOCK_WIDTH_MAX_M) return 'Floor width can be at most ' + BLOCK_WIDTH_MAX_M + ' metres.';
+  return '';
+}
+
 /** The derived distance callouts of a block: every camera to every actor,
     and the length of every dolly track. Metres, to a tenth, with the
     midpoint to print them at. Empty when the floor has no width — see
@@ -1024,6 +1039,7 @@ export default {
   SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, BOARD_SUGGESTIONS,
   sceneCameras, camOf, shotsOfCamera,
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
+  floorWidthError,
   addBlock, updateBlock, removeBlock, restoreBlock, addMark, updateMark, removeMark,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,

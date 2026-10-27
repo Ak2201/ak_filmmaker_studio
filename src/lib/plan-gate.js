@@ -67,7 +67,8 @@ import Billing from './billing.js';   // same chunk on every page; a dynamic imp
 import { trialLength } from './trial-time.js';
 /* The launch pass (§61): what the wall offers before the plans, and the
    reminders when a pass is running. pass-view.js is pure. */
-import { passPhase, passFacts, mayBuyPass, onPass, passName, passDays, passNow, countdownText, leftText } from './pass-view.js';
+import { passPhase, passFacts, mayBuyPass, onPass, passName, passDays, passNow, countdownText, leftText, passTerms, passMode } from './pass-view.js';
+import { offerTerms } from './offer-terms.js';
 import '../styles/plan-gate.css';
 
 export const CAPABILITIES = [
@@ -315,7 +316,9 @@ async function _refreshOnce() {
           passActive: onPass(st) && !!st.plan_until && Date.parse(st.plan_until) > Date.now() + skew,
           passUsed: st.pass_used === true,
           mayPass: mayBuyPass(st),
-          passDays: passDays(st)
+          passDays: passDays(st),
+          /* §62: a running auto-pay (billing.js autopayOf), or null. */
+          autopay: Billing.autopayOf(st)
         };
       } else {
         ent = null;
@@ -883,12 +886,13 @@ function passWallPanel(e) {
   const card = h('div.pg-lock-card.pg-wall-card', {}, [
     h('p.bd-eyebrow', { text: 'Launch offer' }),
     h('h2.pg-lock-h', { text: e.used ? 'Your free trial is over.' : 'Choose how to come in.' }),
-    h('p.pg-lock-p', { text: 'The whole studio for ' + f.price + ', ' + f.length + ', once per account. Or a yearly plan, below.' }),
+    /* the terms in the server's mode (§62), offer-terms.js's words */
+    h('p.pg-lock-p.pg-wall-terms', { 'data-offer-mode': passMode(wallPass) || 'unknown', text: 'The whole studio: ' + passTerms(wallPass).line + '. Once per account. Or a yearly plan, below.' }),
     passClock(),
     /* The pass's button straight under its price and clock: at 390px the
        plans below would otherwise push it two screens down. */
     h('div.pg-lock-actions', {}, [
-      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() })
+      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: passMode(wallPass) === 'renew' ? 'TRY THE WHOLE STUDIO' : 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() })
     ]),
     h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' }),
     h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
@@ -915,13 +919,13 @@ async function buyPassFromWall(btn) {
     const c = window.StudioCloud;
     let acc = null;
     try { const st = await Billing.status(); acc = st && st.account_id; } catch (x) { acc = null; }
-    await Billing.buyPass({ accountId: acc, onStatus: (t) => { btn.textContent = t.toUpperCase(); } });
+    await Billing.buyPass({ accountId: acc, shownMode: passMode(wallPass), onStatus: (t) => { btn.textContent = t.toUpperCase(); } });
     if (c && c.runGate) await c.runGate();
     await refresh();
   } catch (err) {
     say((err && err.message) || 'The pass could not be bought just now. Please try again.');
     btn.disabled = false; btn.textContent = was;
-    if (err && (err.hint === 'closed' || err.code === 'closed' || err.hint === 'used' || err.hint === 'has_plan')) {
+    if (err && (err.hint === 'closed' || err.code === 'closed' || err.hint === 'used' || err.hint === 'has_plan' || err.hint === 'renew_off' || err.code === 'terms')) {
       Billing.passOffer({ fresh: true }).then((o) => { wallPass = o; const w = document.querySelector('.pg-wall'); if (w && w.dataset.kind !== wallKind()) apply(); }, () => {});
     }
   }
@@ -929,7 +933,9 @@ async function buyPassFromWall(btn) {
 
 function wallPlans() {
   const ul = h('ul.pg-wall-plans', { 'aria-label': 'Plans', hidden: true });
-  Billing.listPlans().then((plans) => {
+  Promise.all([Billing.listPlans(), Billing.offerModes()]).then(([plans, modes]) => {
+    /* each price with its terms, in the server's plan_mode (§62) */
+    const mode = modes && modes.plan;
     const paid = (plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
       .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
     for (const p of paid) {
@@ -938,12 +944,13 @@ function wallPlans() {
       const name = p.name || Billing.planName(p.id);
       ul.append(h('li', {}, [h('a.pg-wall-plan', { href: 'purchase.html?plan=' + encodeURIComponent(p.id) }, [
         h('strong', { text: name }),
-        h('span.pg-wall-price', { text: Billing.fmtPaise(paise) + ' a year · ≈ ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day' }),
+        h('span.pg-wall-price', { text: offerTerms(mode, Billing.fmtPaise(paise), 'year').line + ' · ≈ ' + Billing.fmtPaise(Billing.perDayPaise(paise)) + ' a day' }),
         p.blurb ? h('span.pg-wall-blurb', { text: p.blurb }) : null
       ].filter(Boolean))]));
     }
     if (ul.children.length) {
-      ul.append(h('li.pg-wall-once', { text: 'Each plan runs for a year. Nothing renews by itself, and your work is already here.' }));
+      const t = offerTerms(mode, '', 'year');
+      ul.append(h('li.pg-wall-once', { text: 'Each plan runs for a year' + (t.short ? ' · ' + t.short : '') + '. Your work is already here.' }));
       ul.hidden = false;
     }
   }).catch(() => { /* the SEE PLANS button stands alone */ });

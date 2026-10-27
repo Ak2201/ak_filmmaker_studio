@@ -82,7 +82,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
-import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial } from './fake-supabase.mjs';
+import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial, chargeSubscription, passSold } from './fake-supabase.mjs';
 import { loadMatrixModule } from './make-plan-features-sql.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -118,7 +118,9 @@ const skip = (m) => { skipped++; console.log('  – skipped: ' + m); };
 /* Razorpay Checkout, stubbed: `open()` asks the fake for a genuine
    signature over this order and a fresh payment id, then calls the
    page's handler exactly as Checkout would. `RZP.mode` steers it:
-   'pay' | 'dismiss' | 'tamper'. */
+   'pay' | 'dismiss' | 'tamper'. A SUBSCRIPTION's Checkout (§62) carries
+   subscription_id instead of order_id and answers with
+   HMAC(payment|subscription), exactly as Razorpay does. */
 const CHECKOUT_STUB = `
 window.Razorpay = function (opts) {
   this.opts = opts; this.handlers = {};
@@ -126,12 +128,14 @@ window.Razorpay = function (opts) {
 window.Razorpay.prototype.on = function (ev, fn) { this.handlers[ev] = fn; };
 window.Razorpay.prototype.open = function () {
   const o = this.opts;
-  fetch('https://checkout.razorpay.com/__sign?order=' + encodeURIComponent(o.order_id)).then((r) => r.json()).then((s) => {
+  const q = o.subscription_id ? 'sub=' + encodeURIComponent(o.subscription_id) : 'order=' + encodeURIComponent(o.order_id);
+  fetch('https://checkout.razorpay.com/__sign?' + q).then((r) => r.json()).then((s) => {
     window.__rzpOpened = (window.__rzpOpened || 0) + 1;
-    window.__rzpLast = { amount: o.amount, currency: o.currency, order_id: o.order_id, key: o.key };
+    window.__rzpLast = { amount: o.amount, currency: o.currency, order_id: o.order_id, subscription_id: o.subscription_id, key: o.key, description: o.description };
     if (s.mode === 'dismiss') { o.modal && o.modal.ondismiss && o.modal.ondismiss(); return; }
     const sig = s.mode === 'tamper' ? s.signature.replace(/^./, (c) => (c === 'a' ? 'b' : 'a')) : s.signature;
-    o.handler({ razorpay_order_id: o.order_id, razorpay_payment_id: s.payment_id, razorpay_signature: sig });
+    if (o.subscription_id) o.handler({ razorpay_subscription_id: o.subscription_id, razorpay_payment_id: s.payment_id, razorpay_signature: sig });
+    else o.handler({ razorpay_order_id: o.order_id, razorpay_payment_id: s.payment_id, razorpay_signature: sig });
   });
 };`;
 
@@ -172,9 +176,11 @@ async function newContext(browser, { tok = null, timezoneId = null, locale = nul
   await ctx.route(new RegExp('https://' + BRAND_HOST.replace(/\./g, '\\.') + '/.*'), (r) => r.fulfill({ status: 200, contentType: 'image/png', body: '' }));
   await ctx.route('https://checkout.razorpay.com/v1/checkout.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: CHECKOUT_STUB }));
   await ctx.route(/https:\/\/checkout\.razorpay\.com\/__sign/, async (r) => {
-    const order = new URL(r.request().url()).searchParams.get('order');
+    const sp = new URL(r.request().url()).searchParams;
+    const order = sp.get('order'), sub = sp.get('sub');
     const payment_id = 'pay_' + Math.random().toString(36).slice(2, 10);
-    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ payment_id, signature: await signFor(order, payment_id), mode: RZP.mode }) });
+    const signature = sub ? await signFor(payment_id, sub) : await signFor(order, payment_id);
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ payment_id, signature, mode: RZP.mode }) });
   });
   if (tok) {
     await ctx.addInitScript(([k, v, uid]) => {
@@ -215,7 +221,7 @@ try {
     ok(p.length === 3 && p.map((x) => x[0]).join() === 'starter,indie,pro', 'three cards, the paid tiers in order, and no Free card: ' + p.map((x) => x[0]).join(', '));
     ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'the card shows the table’s ONE price (₹7,999)');
     { const t = await page.textContent('#plan');
-      ok(/a year/.test(t) && /≈ ₹21\.92 a day/.test(t) && /nothing renews by itself/.test(t), 'and says it is a year, priced by the day (₹7,999 ÷ 365 ≈ ₹21.92), nothing renewing by itself'); }
+      ok(/a year/.test(t) && /≈ ₹21\.92 a day/.test(t) && /₹7,999 for a year · one payment, nothing renews/.test(t), 'and says it is a year, priced by the day (₹7,999 ÷ 365 ≈ ₹21.92), one payment that does not renew (§62 one-time)'); }
     ok(!(await page.$('[data-plan-action="period"]')), 'there is no period switch — section 18 withdrew the subscription model');
     ok(!(await page.$('#plan .is-current')) && !/Baseline/.test(await page.textContent('#plan')), 'with nothing bought, no card is "Your plan" and none is a "Baseline"');
     ok(!(await page.textContent('#plan')).includes('Your usage'), 'and no usage against a free tier\'s caps (there is no free tier)');
@@ -1617,6 +1623,221 @@ try {
     await page.click('#growth form[data-gra-form="pass"] button[type="submit"]');
     await passWait(page, '#growth', /Saved\. New orders now pay ₹99\./, 'SAVE: "Saved. New orders now pay ₹99." (read back from the server)');
     ok(F.db.settings.pass_paise === 9900 && F.db.calls.some((c) => c.startsWith('rpc:admin_set_pass true 9900 7 pro')), 'admin_set_pass got ₹99 in paise');
+    allErrors.push(...errors); await ctx.close();
+  }
+
+  /* ---- (renew) AUTO-RENEW (schema §62, owner 27 Oct 2026) -------------
+     The owner chooses, per product, one-time or auto-renew; the buyer is
+     told. Every line is offer-terms.js's, from the server's mode. */
+  console.log('(renew) one-time or auto-renew');
+  /* PROVE_SHOTS=<dir>: a full-page screenshot at 1440 and 390 of each
+     state below, for a person to look at. Off by default. */
+  const SHOTS = process.env.PROVE_SHOTS || '';
+  const shot = async (page, name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    for (const w of [1440, 390]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: path.join(SHOTS, `${name}-${w}.png`), fullPage: true }).catch(() => {});
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+  };
+  const waitRe = (page, sel, re, label, timeout = 12000) => page.waitForFunction(([s, r]) => new RegExp(r).test((document.querySelector(s) || {}).textContent || ''), [sel, re.source], { timeout })
+    .then(() => ok(true, label), async () => ok(false, label + ' — read: ' + ((await page.textContent(sel).catch(() => '')) || '').replace(/\s+/g, ' ').slice(0, 200)));
+  const PASS_ON = () => Object.assign(F.db.settings, { pass_enabled: true, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: new Date(Date.now() + 3 * 86400e3).toISOString(), pass_cap: 500 });
+  {
+    /* a server WITHOUT §62: the price and the length, no claim either way */
+    F.reset(); RZP.mode = 'pay'; PASS_ON(); F.db.noRenewSchema = true;
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#pass .pu-pass-terms', { timeout: 12000 }).catch(() => {});
+    await page.waitForSelector('#plan .pl-card .pl-terms', { timeout: 12000 }).catch(() => {});
+    const t = await page.textContent('#plan').catch(() => '');
+    ok(/₹49 for 7 days/.test(t) && !/renew/i.test((await page.textContent('#pass').catch(() => '')) || 'renew'), 'no §62: the pass card says ₹49 for 7 days and claims neither one-time nor auto-renew');
+    ok(await page.$$eval('#plan .pl-terms', (els) => els.length === 3 && els.every((e) => e.dataset.offerMode === 'unknown' && !/renew/i.test(e.textContent))), 'and each plan card prints its price for a year, mode unknown, no renewal claim');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* modes OFF (one-time): today's path, said plainly */
+    F.reset(); RZP.mode = 'pay'; PASS_ON();
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html');
+    await waitRe(page, '#pass .pu-pass-terms', /^₹49 for 7 days · one payment, nothing renews$/, 'one-time: the pass card reads "₹49 for 7 days · one payment, nothing renews"');
+    await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 for a year · one payment, nothing renews$/, 'and the Intermediate card "₹7,999 for a year · one payment, nothing renews"');
+    await shot(page, 'purchase-once');
+    await page.click('#pass [data-pu-action="buy-pass"]');
+    await waitRe(page, '#pass, #plan', /pass is on|7-day pass/, 'the one-time pass is bought');
+    ok(F.db.calls.includes('fn:rzp-order pro pass') && !F.db.calls.some((c) => c.startsWith('fn:rzp-subscribe')), 'through rzp-order, as today (no subscription)');
+    { const last = await page.evaluate(() => window.__rzpLast).catch(() => null);
+      ok(last && last.order_id && /one payment, nothing renews/.test(last.description || ''), 'the checkout description is the one-time terms: ' + (last && last.description)); }
+    allErrors.push(...errors); await ctx.close();
+  }
+  let benSub = null;
+  {
+    /* the PASS on auto-renew: subscribe → Checkout → verify → the charge lands */
+    F.reset(); RZP.mode = 'pay'; PASS_ON(); F.db.settings.pass_mode = 'renew';
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html');
+    await waitRe(page, '#pass .pu-pass-terms', /^₹49 every 7 days · renews until you cancel · cancel anytime$/, 'auto-renew: the pass card reads "₹49 every 7 days · renews until you cancel · cancel anytime"');
+    await shot(page, 'purchase-pass-renew');
+    ok((await page.getAttribute('#pass .pu-pass-terms', 'data-offer-mode')) === 'renew', 'the mode on the card is the server\'s (renew)');
+    ok(/Cancel in Settings/.test(await page.textContent('#pass .pu-pass-p').catch(() => '')), 'and says where it is cancelled');
+    await page.click('#pass [data-pu-action="buy-pass"]');
+    await page.waitForFunction(() => /pass is on/i.test((document.querySelector('#pass .pl-status, #plan .pl-status') || {}).textContent || '') || /7-day pass/.test((document.querySelector('#plan .pu-current') || {}).textContent || ''), null, { timeout: 20000 })
+      .then(() => ok(true, 'the pass is on after the charge lands'), () => ok(false, 'the pass is on after the charge lands'));
+    ok(F.db.calls.includes('fn:rzp-subscribe pass INR') && !F.db.calls.includes('fn:rzp-order pro pass'), 'through rzp-subscribe for the pass (no order)');
+    benSub = F.db.subscriptions.find((x) => x.user_id === USERS['tok-ben'].id) || null;
+    { const last = await page.evaluate(() => window.__rzpLast).catch(() => null);
+      ok(last && benSub && last.subscription_id === benSub.id && !last.order_id && !last.amount, 'Checkout opened with the subscription_id (no amount, no order_id)');
+      ok(last && /₹49 every 7 days · renews until you cancel · cancel anytime/.test(last.description || ''), 'its description is the auto-renew terms, cancel anytime included'); }
+    ok(F.db.calls.includes('fn:rzp-verify sub ok'), 'rzp-verify accepted HMAC(payment|subscription)');
+    ok(benSub && benSub.status === 'active', 'the subscription is active');
+    const acc = () => F.db.accounts.find((a) => a.owner_id === USERS['tok-ben'].id);
+    const left = () => (acc() && acc().plan_until ? (Date.parse(acc().plan_until) - Date.now()) / 86400e3 : 0);
+    ok(acc() && acc().plan === 'pro' && acc().plan_period === 'pass' && left() > 6.9 && left() <= 7, 'Ben is on Pro for 7 days (' + left().toFixed(2) + ')');
+    await waitRe(page, '#plan .pu-current', /Renews .* · ₹49/, 'purchase.html says the pass renews, with the date and ₹49');
+
+    /* a renewal charge, as Razorpay would make it: 7 more days, stacked */
+    chargeSubscription(benSub.id);
+    ok(left() > 13.9 && left() <= 14, 'a renewal charge stacks 7 days onto the pass (' + left().toFixed(2) + ' days left)');
+    ok(F.db.payments.filter((p) => p.subscription_id === benSub.id && p.status === 'paid').length === 2 && passSold() === 1, 'two charges in the ledger, and the cap counts one pass sold');
+
+    /* the rail, then Settings: auto-pay on, cancel */
+    await page.goto(BASE + 'settings.html#autopay');
+    await waitRe(page, '#autopay', /Auto-pay on/, 'Settings has an Auto-pay card: Auto-pay on');
+    await waitRe(page, '#autopay', /7-day pass · Renews .* · ₹49/, 'with the next charge date and the amount');
+    await shot(page, 'settings-autopay-on');
+    ok(!!(await page.$('section#purchases[data-tab-label="Plan & purchases"] #autopay')), 'the card sits in Settings → Plan & purchases (tap 1 is its button, tap 2 the confirm)');
+    await page.click('#autopay [data-action="autopay-cancel"]');
+    await page.waitForSelector('button.mbtn.primary', { timeout: 5000 }).catch(() => {});
+    ok(/You keep access until .*\. Nothing more will be charged\./.test(await page.textContent('.dlg[role="dialog"]').catch(() => '')), 'the dialog says "You keep access until <date>. Nothing more will be charged."');
+    await page.click('button.mbtn.primary');
+    await waitRe(page, '#autopay', /Auto-pay off · access until /, 'after cancelling: "Auto-pay off · access until <date>"');
+    await shot(page, 'settings-autopay-off');
+    ok(benSub.cancel_at_period_end === true && F.db.calls.includes('fn:rzp-cancel ' + benSub.id), 'rzp-cancel cancelled it at the end of the period');
+    { const before = acc().plan_until; ok(chargeSubscription(benSub.id) === null && acc().plan_until === before, 'after a cancel no new charge is applied, and the days paid for are kept'); }
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* YEARLY plans on auto-renew */
+    F.db.settings.plan_mode = 'renew';
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'purchase.html');
+    await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 every year · renews until you cancel · cancel anytime$/, 'auto-renew: the Intermediate card reads "₹7,999 every year · renews until you cancel · cancel anytime"');
+    await shot(page, 'purchase-year-renew');
+    ok(!(await page.$('#plan [data-plan-promo]')), 'no code box on auto-renew (a code has nowhere to ride on a subscription)');
+    ok(/BUY INTERMEDIATE$/.test((await page.textContent('.pl-card[data-plan="indie"] [data-plan-action="buy"]').catch(() => '')).trim()), 'the button does not promise "1 YEAR"');
+    await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 20000 })
+      .then(() => ok(true, 'Intermediate becomes the current plan once the first charge lands'), () => ok(false, 'Intermediate becomes the current plan once the first charge lands'));
+    ok(F.db.calls.includes('fn:rzp-subscribe indie INR'), 'through rzp-subscribe for indie');
+    const sub = F.db.subscriptions.find((x) => x.user_id === USERS['tok-amy'].id);
+    const acc = () => F.db.accounts.find((a) => a.owner_id === USERS['tok-amy'].id);
+    const left = () => (acc() && acc().plan_until ? (Date.parse(acc().plan_until) - Date.now()) / 86400e3 : 0);
+    ok(sub && sub.status === 'active' && sub.amount_minor === 799900 && acc().plan === 'indie' && left() > 364.9 && left() <= 365, 'active at ₹7,999, Intermediate for a year (' + left().toFixed(2) + ')');
+    await waitRe(page, '#plan .is-current', /Renews .* · ₹7,999/, 'the current card says when it renews and at what amount');
+    await shot(page, 'purchase-year-renewing');
+    ok(!(await page.$('#plan [data-plan-action="buy"]')), 'and nothing more is bought while auto-pay runs');
+    ok(/Auto-pay is on/.test(await page.textContent('#plan').catch(() => '')), 'the row says auto-pay is on and links to Settings');
+    chargeSubscription(sub.id);
+    ok(left() > 729.9 && left() <= 730, 'a yearly renewal stacks a year (' + left().toFixed(2) + ' days left)');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* the console: two switches, read back; the subscriptions, cancel */
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
+    await page.goto(BASE + 'admin.html#growth');
+    await page.waitForSelector('#growth form[data-gra-form="modes"]', { timeout: 15000 }).then(() => ok(true, 'the console draws the one-time / auto-renew switches'), () => ok(false, 'the console draws the one-time / auto-renew switches'));
+    await waitRe(page, '#growth', /Live now: week pass Auto-renew · yearly plans Auto-renew\./, 'it reads what is live: both Auto-renew');
+    await page.evaluate(() => document.querySelector('#growth form[data-gra-form="modes"]').scrollIntoView());
+    await shot(page, 'console-modes');
+    ok(/Applies to new purchases only; existing auto-pay keeps its price\./.test(await page.textContent('#growth form[data-gra-form="modes"]')), 'with the note: new purchases only, existing auto-pay keeps its price');
+    await page.check('#graMode-pass_mode-once');
+    await page.click('#growth form[data-gra-form="modes"] button[type="submit"]');
+    await waitRe(page, '#growth', /Saved\. New purchases: week pass One-time, yearly plans Auto-renew\./, 'SAVE reads back: week pass One-time, yearly plans Auto-renew');
+    ok(F.db.settings.pass_mode === 'once' && F.db.settings.plan_mode === 'renew' && F.db.calls.includes('rpc:admin_set_billing_modes once renew'), 'admin_set_billing_modes got once / renew');
+    const rows = await page.$$eval('#growth .ad-table tbody tr', (trs) => trs.map((tr) => tr.textContent));
+    ok(rows.some((r) => /amy@/.test(r) && /Intermediate/.test(r) && /₹7,999 a year/.test(r) && /active/.test(r)), 'the subscriptions list has Amy: Intermediate, ₹7,999 a year, active');
+    ok(rows.some((r) => /ben@/.test(r) && /ends at period end/.test(r)), 'and Ben\'s, cancelled at the period end');
+    const amySub = F.db.subscriptions.find((x) => x.user_id === USERS['tok-amy'].id);
+    await page.click(`#growth [data-gra-action="sub-cancel"][data-id="${amySub.id}"]`);
+    await page.waitForSelector('button.mbtn.primary', { timeout: 5000 }).catch(() => {});
+    await page.click('button.mbtn.primary');
+    await page.waitForFunction(() => !document.querySelector('#growth [data-gra-action="sub-cancel"]'), null, { timeout: 8000 }).catch(() => {});
+    ok(amySub.cancel_at_period_end === true && F.db.calls.includes('fn:rzp-cancel ' + amySub.id + ' admin'), 'CANCEL in the console cancels Amy\'s at the period end (rzp-cancel, admin)');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* AN UPGRADE WHILE A YEAR RUNS, on auto-renew: a subscription cannot
+       carry the credit, so the card says it is paid once and rzp-order
+       takes it after rzp-subscribe refuses 'upgrade'. */
+    F.reset(); RZP.mode = 'pay';
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('.pl-card[data-plan="starter"] [data-plan-action="buy"]', { timeout: 12000 });
+    await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => (document.querySelector('#plan .is-current') || {}).dataset?.plan === 'starter', null, { timeout: 15000 }).catch(() => {});
+    F.db.settings.plan_mode = 'renew';
+    await page.reload();
+    await waitRe(page, '.pl-card[data-plan="pro"]', /This upgrade is paid once; auto-pay can start at your next renewal\./, 'renew mode, Basic year running: the Pro card says the upgrade is paid once');
+    await waitRe(page, '.pl-card[data-plan="pro"] .pl-terms', /one payment, nothing renews/, 'and its terms line is the one-time one (with the credited price)');
+    F.db.calls.length = 0;
+    await page.click('.pl-card[data-plan="pro"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => (document.querySelector('#plan .is-current') || {}).dataset?.plan === 'pro', null, { timeout: 20000 })
+      .then(() => ok(true, 'the upgrade to Pro goes through'), () => ok(false, 'the upgrade to Pro goes through'));
+    ok(F.db.calls.includes('fn:rzp-subscribe refused upgrade') && F.db.calls.includes('fn:rzp-order pro year'), 'rzp-subscribe refused it (upgrade) and rzp-order took it, once');
+    ok(!F.db.subscriptions.some((x) => x.user_id === USERS['tok-amy'].id && x.status === 'active'), 'and no subscription is running');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* A LIVE WEEKLY AUTO-PAY STOPS BEFORE A YEAR IS BOUGHT */
+    F.reset(); RZP.mode = 'pay'; PASS_ON(); F.db.settings.pass_mode = 'renew';
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#pass [data-pu-action="buy-pass"]', { timeout: 12000 });
+    await page.click('#pass [data-pu-action="buy-pass"]');
+    await page.waitForFunction(() => /7-day pass/.test((document.querySelector('#plan .pu-current') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
+    const sub = F.db.subscriptions.find((x) => x.user_id === USERS['tok-ben'].id);
+    ok(sub && sub.status === 'active', 'Ben is on a renewing pass');
+    /* plans one-time: dialog, rzp-cancel, then rzp-order */
+    await page.waitForSelector('.pl-card[data-plan="starter"] [data-plan-action="buy"]:not([disabled])', { timeout: 12000 }).catch(() => {});
+    await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await page.waitForSelector('.dlg[role="dialog"]', { timeout: 6000 }).catch(() => {});
+    ok(/Buying a yearly plan stops your weekly auto-pay\. Continue\?/.test(await page.textContent('.dlg[role="dialog"]').catch(() => '')), 'buying a year asks: "Buying a yearly plan stops your weekly auto-pay. Continue?"');
+    /* "Not now" buys nothing and stops nothing */
+    await page.click('.dlg[role="dialog"] button.mbtn:not(.primary)');
+    await page.waitForTimeout(600);
+    ok(!sub.cancel_at_period_end && !F.db.calls.some((c) => c.startsWith('fn:rzp-order starter')), '"Not now" stops nothing and buys nothing');
+    await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await page.waitForSelector('.dlg[role="dialog"] button.mbtn.primary', { timeout: 6000 }).catch(() => {});
+    await page.click('.dlg[role="dialog"] button.mbtn.primary');
+    await page.waitForFunction(() => (document.querySelector('#plan .is-current') || {}).dataset?.plan === 'starter', null, { timeout: 20000 })
+      .then(() => ok(true, 'then Basic is bought'), () => ok(false, 'then Basic is bought'));
+    { const ci = F.db.calls.indexOf('fn:rzp-cancel ' + sub.id), oi = F.db.calls.indexOf('fn:rzp-order starter year');
+      ok(sub.cancel_at_period_end && ci >= 0 && oi > ci, 'the weekly auto-pay was cancelled (rzp-cancel) BEFORE the order'); }
+    ok(chargeSubscription(sub.id) === null, 'and its next charge is never taken');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* the same on auto-renew plans: the stopped pass still counts as live
+       until its period ends ('subscribed'), so the year is paid once */
+    F.reset(); RZP.mode = 'pay'; PASS_ON(); Object.assign(F.db.settings, { pass_mode: 'renew', plan_mode: 'renew' });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#pass [data-pu-action="buy-pass"]', { timeout: 12000 });
+    await page.click('#pass [data-pu-action="buy-pass"]');
+    await page.waitForFunction(() => /7-day pass/.test((document.querySelector('#plan .pu-current') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
+    const sub = F.db.subscriptions.find((x) => x.user_id === USERS['tok-ben'].id);
+    await page.waitForSelector('.pl-card[data-plan="starter"] [data-plan-action="buy"]:not([disabled])', { timeout: 12000 }).catch(() => {});
+    await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await page.waitForSelector('.dlg[role="dialog"] button.mbtn.primary', { timeout: 6000 }).catch(() => {});
+    await page.click('.dlg[role="dialog"] button.mbtn.primary');
+    await page.waitForFunction(() => (document.querySelector('#plan .is-current') || {}).dataset?.plan === 'starter', null, { timeout: 20000 })
+      .then(() => ok(true, 'renew plans: after stopping the weekly auto-pay, Basic is bought'), () => ok(false, 'renew plans: after stopping the weekly auto-pay, Basic is bought'));
+    ok(sub && sub.cancel_at_period_end && F.db.calls.includes('fn:rzp-subscribe refused subscribed') && F.db.calls.includes('fn:rzp-order starter year'), 'rzp-subscribe said subscribed (the pass runs to its end), so the year was paid once through rzp-order');
     allErrors.push(...errors); await ctx.close();
   }
 } catch (e) {

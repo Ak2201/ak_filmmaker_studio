@@ -15,6 +15,13 @@
                   now read back from admin_pass_status(). A new price
                   applies to new orders only.
 
+     Auto-renew   (§62) per product, one-time or auto-renew: the week
+                  pass and the yearly plans each have a switch, read
+                  back from admin_billing_modes(). New purchases only;
+                  an auto-pay already running keeps its price. Under
+                  it, every subscription with its status, amount and
+                  next charge, and CANCEL (at the period's end).
+
      Trial        (§30) whether signing in buys thirty minutes or the
                   wall, how long, what an invite code buys instead,
                   and how much of the studio a trial shows. While the
@@ -54,7 +61,7 @@ import { funnel as funnelChart } from './admin-charts.js';
 import { cohorts as fetchCohorts } from '../lib/admin-api.js';
 
 let rerender = () => {};
-const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '', offer: null, pass: null, passSaved: '', passDraft: null };
+const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '', offer: null, pass: null, passSaved: '', passDraft: null, modes: null, modesSaved: '', subs: null, subFilter: '' };
 
 /* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
    every form on the console from its defaults 2.5s after a save, under
@@ -99,6 +106,9 @@ async function load() {
     /* §61. Owner and finance only; a database without it answers
        PGRST202 and the block says which section it needs. */
     S.pass = await settle('pass', Billing.admin.passStatus);
+    /* §62. A database without it answers PGRST202: the block says so. */
+    S.modes = await settle('modes', Billing.admin.billingModes);
+    S.subs = S.missing.modes ? null : await settle('subs', () => Billing.admin.listSubscriptions(S.subFilter || null));
     /* The one-person trial grant needs somebody to pick. The gate's
        console already lists members and billing-admin.js already
        borrows that list for its own grant form — a third RPC that
@@ -248,6 +258,65 @@ function passBlock(sec) {
     S.passSaved ? h('span.ba-saved', { role: 'status', text: S.passSaved }) : null].filter(Boolean)));
   f.append(h('p.gr-meta', { text: 'Changing the price applies to new orders only. A payment already made keeps what it paid, and a pass already running keeps its days. Leave the date empty for no deadline (and no countdown).' }));
   sec.append(f);
+}
+
+/* ---- auto-renew (§62) --------------------------------------------
+   Two switches, each read back from the server, and the subscriptions.
+   The console words nothing a BUYER reads: the cards take the mode from
+   trial_offer() and word it through offer-terms.js. */
+const MODE_LABEL = { once: 'One-time', renew: 'Auto-renew' };
+const SUB_STATUSES = ['created', 'authenticated', 'active', 'pending', 'halted', 'cancelled', 'completed', 'expired'];
+function modeSwitch(name, label, value) {
+  const id = (v) => 'graMode-' + name + '-' + v;
+  return h('fieldset.gr-mode', { 'data-mode-for': name }, [
+    h('legend', { text: label }),
+    h('div.gr-mode-opts', {}, ['once', 'renew'].map((v) => {
+      const r = h('input', { id: id(v), type: 'radio', name, value: v });
+      r.checked = value === v;
+      return h('label.gr-check', { for: id(v) }, [r, h('span', { text: MODE_LABEL[v] })]);
+    }))
+  ]);
+}
+function modesBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'One-time or auto-renew' }));
+  if (S.missing.modes) { sec.append(h('p.gt-meta', { text: 'Auto-renew needs schema section 62 on this database (admin_billing_modes() is not there yet). Every purchase is one-time.' })); return; }
+  const m = S.modes || {};
+  sec.append(h('p.gr-seats', { role: 'status', text: 'Live now: week pass ' + (MODE_LABEL[m.pass_mode] || '—') + ' · yearly plans ' + (MODE_LABEL[m.plan_mode] || '—') + '.' }));
+  const f = h('form.gr-panel', { 'data-gra-form': 'modes', autocomplete: 'off' });
+  f.append(modeSwitch('pass_mode', 'Week pass', m.pass_mode || 'once'));
+  f.append(modeSwitch('plan_mode', 'Yearly plans', m.plan_mode || 'once'));
+  f.append(h('p.gr-meta', { text: 'Applies to new purchases only; existing auto-pay keeps its price.' }));
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE' }),
+    S.modesSaved ? h('span.ba-saved', { role: 'status', text: S.modesSaved }) : null].filter(Boolean)));
+  sec.append(f);
+  subsBlock(sec);
+}
+const subProduct = (p) => (p === 'pass' ? 'Week pass' : planName(p));
+const subAmount = (r) => (Number.isInteger(r.amount_minor) ? fmtMinor(r.amount_minor, r.currency === 'USD' ? 'USD' : 'INR') : '—')
+  + (r.period === 'year' ? ' a year' : Number(r.days) > 0 ? ' / ' + r.days + (Number(r.days) === 1 ? ' day' : ' days') : '');
+const subLive = (r) => ['created', 'authenticated', 'active', 'pending', 'halted'].includes(r.status) && !r.cancel_at_period_end;
+function subsBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'Subscriptions' }));
+  if (S.missing.subs) { sec.append(h('p.gt-meta', { text: 'The subscriptions list needs schema section 62 (admin_list_subscriptions()).' })); return; }
+  const rows = Array.isArray(S.subs) ? S.subs : [];
+  const filter = h('select.ad-chip', { 'data-gra-sub-filter': '', 'aria-label': 'Show subscriptions' },
+    [h('option', { value: '', text: 'All' })].concat(SUB_STATUSES.map((s) => h('option', { value: s, text: s }))));
+  filter.value = S.subFilter || '';
+  sec.append(dataTable({
+    caption: rows.length + ' subscription' + (rows.length === 1 ? '' : 's'),
+    toolbar: [filter],
+    rows,
+    rowId: (r) => r.id,
+    empty: { title: 'No subscriptions', body: 'Nobody has started auto-pay yet.' },
+    columns: [
+      { label: 'Who', key: 'user_email' },
+      { label: 'Product', render: (r) => subProduct(r.product) },
+      { label: 'Amount', align: 'end', render: subAmount },
+      { label: 'Status', render: (r) => r.status + (r.cancel_at_period_end ? ' · ends at period end' : '') },
+      { label: 'Next charge', render: (r) => (subLive(r) && r.current_end ? fmtWhen(r.current_end) : r.current_end ? 'none · access to ' + fmtWhen(r.current_end) : '—') },
+      { label: '', render: (r) => (subLive(r) ? h('button.btn', { type: 'button', 'data-gra-action': 'sub-cancel', 'data-id': String(r.id), 'data-who': r.user_email || '', 'data-until': r.current_end || '', text: 'CANCEL' }) : '') }
+    ]
+  }));
 }
 
 /* ---- the trial (§30) ---------------------------------------------
@@ -717,11 +786,12 @@ function cohortsBlock(sec) {
 
 export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
-  const sec = section('growth', 'Growth', 'The launch pass, the trial, the price, referrals, affiliates, leads and the funnel.', '');
+  const sec = section('growth', 'Growth', 'The launch pass, one-time or auto-renew, the trial, the price, referrals, affiliates, leads and the funnel.', '');
   if (S.state === 'idle') load();
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (S.state !== 'ready') { sec.append(h('p.gt-meta', { text: S.state === 'loading' ? 'Loading…' : '' })); return sec; }
   passBlock(sec);
+  modesBlock(sec);
   trialBlock(sec);
   priceRiseBlock(sec);
   referralBlock(sec);
@@ -814,6 +884,39 @@ delegate(document, 'submit', '[data-gra-form="pass"]', async (e, form) => {
     rerender();
     { const note = S.passSaved; setTimeout(() => { if (S.passSaved === note) S.passSaved = ''; clearNote(note); }, 6000); }
   } catch (err) { toast(err.message || 'The launch pass was not saved.', 'error'); }
+});
+
+/* ---- auto-renew (§62) ---------------------------------------------- */
+delegate(document, 'submit', '[data-gra-form="modes"]', async (e, form) => {
+  e.preventDefault();
+  const f = new FormData(form);
+  const pm = String(f.get('pass_mode') || ''), lm = String(f.get('plan_mode') || '');
+  if (!MODE_LABEL[pm] || !MODE_LABEL[lm]) { toast('Choose one-time or auto-renew for both.', 'error'); return; }
+  try {
+    await Billing.admin.setBillingModes(pm, lm);
+    /* Read back, never assumed. */
+    S.modes = await Billing.admin.billingModes();
+    S.modesSaved = 'Saved. New purchases: week pass ' + (MODE_LABEL[S.modes && S.modes.pass_mode] || '—') + ', yearly plans ' + (MODE_LABEL[S.modes && S.modes.plan_mode] || '—') + '.';
+    rerender();
+    { const note = S.modesSaved; setTimeout(() => { if (S.modesSaved === note) S.modesSaved = ''; clearNote(note); }, 6000); }
+  } catch (err) { toast(err.message || 'The modes were not saved.', 'error'); }
+});
+delegate(document, 'change', '[data-gra-sub-filter]', async (e, el) => {
+  S.subFilter = el.value;
+  try { S.subs = await Billing.admin.listSubscriptions(S.subFilter || null); } catch (err) { toast(err.message || 'The subscriptions did not load.', 'error'); }
+  rerender();
+});
+delegate(document, 'click', '[data-gra-action="sub-cancel"]', async (e, btn) => {
+  const until = btn.dataset.until ? fmtWhen(btn.dataset.until) : 'the end of the period paid for';
+  const ok = await askDanger({ title: 'Cancel this auto-pay?', body: (btn.dataset.who || 'This person') + ' keeps access until ' + until + '. Nothing more will be charged. This is not a refund.', confirm: 'CANCEL AUTO-PAY', cancel: 'Keep it' });
+  if (!ok) return;
+  btn.disabled = true;
+  try {
+    await Billing.admin.cancelSubscription(btn.dataset.id);
+    S.subs = await Billing.admin.listSubscriptions(S.subFilter || null);
+    toast('Auto-pay cancelled. Access runs to ' + until + '.');
+  } catch (err) { toast(err.message || 'The auto-pay was not cancelled.', 'error'); btn.disabled = false; }
+  rerender();
 });
 
 delegate(document, 'submit', '[data-gra-form="granttrial"]', async (e, form) => {

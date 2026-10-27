@@ -67,12 +67,15 @@ export function takeInvitePlan(signedIn) {
  *  `pass` is pass-view.js passPhase() ('open' | 'ended' | 'off') and
  *  `passPrice` its price ("₹49"): while the launch pass runs, or once the
  *  launch offer has ended, the free trial is not offered to the public. */
-export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, reason, gateDetail, pass = 'off', passPrice = '' }) {
+export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, reason, gateDetail, pass = 'off', passPrice = '', passShort = '' }) {
   if (!configured) return 'Invites are not available right now. Everything you write is saved in this browser.';
   if (!signedIn && codeHeld) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
   const passOpen = pass === 'open' && !!passPrice;
+  /* `passShort` is offer-terms.js's chip for the server's mode (§62):
+     an auto-renew price never stands without it. */
+  const tryLine = 'Try the whole studio for ' + passPrice + (passShort ? ' (' + passShort + ')' : '');
   if (!signedIn) {
-    if (passOpen) return 'Try the whole studio for ' + passPrice + ', buy a yearly plan, or come in on the code you were given. Each of them begins by signing in with Google.';
+    if (passOpen) return tryLine + ', buy a yearly plan, or come in on the code you were given. Each of them begins by signing in with Google.';
     return !trialsOff && pass === 'off'
       ? 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.'
       : 'Buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
@@ -83,7 +86,7 @@ export function deckFor({ configured, signedIn, codeHeld, trialsOff, state, reas
   /* CLOSED. Say what they can do, and keep the one thing they will
      actually be worried about. */
   if (state === 'closed' && (!reason || reason === 'noinvite')) {
-    if (passOpen) return 'Try the whole studio for ' + passPrice + ', buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';
+    if (passOpen) return tryLine + ', buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';
     return pass === 'off'
       ? 'Start a free trial, buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.'
       : 'Buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';

@@ -50,6 +50,18 @@
    it makes the order, and the client sends no price, ever. The code
    lives in this module's memory for the page and in no storage.
 
+   ONE-TIME OR AUTO-RENEW (schema §62, owner 27 Oct 2026). The owner sets
+   it in the console; the buyer is TOLD, never asked. Every card's terms
+   line is offer-terms.js's, from the mode trial_offer() published
+   (billing.js cachedModes()): "₹599 every year · renews until you cancel
+   · cancel anytime", or "₹599 for a year · one payment, nothing renews",
+   or — a server that says neither — the price and the length alone. The
+   mode the card showed rides on BUY (`shownMode`), and billing.js refuses
+   to open a checkout whose terms changed since. On auto-renew a code has
+   nowhere to ride (a subscription's amount is the plan's), so the code
+   box is not drawn; an account whose auto-pay is running buys nothing
+   more here until it is cancelled (rzp-subscribe's 'subscribed').
+
    No inline handlers (CSP). Everything is delegate() on
    [data-plan-action]; the host page passes `onBuy(planId, period,
    onStatus, code)`.
@@ -57,11 +69,13 @@
 import { reveal } from '../lib/motion.js';
 import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
-import Billing, { priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
+import Billing, { priceFor, cap, planName, normalisePromo, UPGRADE_ONCE } from '../lib/billing.js';
+import { ask } from './dialog.js';
 import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
 import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { onPass } from '../lib/pass-view.js';
+import { offerTerms, renewsText, cancelledText } from '../lib/offer-terms.js';
 import { fmtMinor, perDayIn, orderCurrency, chargeCaption } from '../lib/price-model.js';
 import { meter } from './kit/meter.js';
 import SITE from '../data/marketing-site.json';   // student.live: the code is named only once it exists
@@ -267,6 +281,16 @@ function limitList(limits) {
 
 let staggered = false;
 
+/* The modes are read once for the page (the same trial_offer() answer as
+   the pass); the row redraws when they arrive. */
+let modesAsked = false;
+function wantModes() {
+  if (modesAsked || Billing.modesRead()) return;
+  modesAsked = true;
+  Billing.offerModes().then(() => { if (hooks.rerender) hooks.rerender(); }, () => {});
+}
+const planMode = () => Billing.cachedModes().plan;
+
 /** `st` is billing_status() or null (signed out / unknown). */
 export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false, shop = null } = {}) {
   hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender, onSuccess: onSuccess || hooks.onSuccess };
@@ -292,6 +316,14 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? (onPass(st) ? 'free' : st.plan) : null;
   const listed = listedIn(plans);
+  wantModes();
+  const mode = planMode();
+  /* A running YEARLY auto-pay: rzp-subscribe refuses a second, so on
+     auto-renew nothing more is bought here until it is cancelled. A
+     weekly (pass) auto-pay does not block a year: BUY stops it first
+     (the click handler below asks). */
+  const ap = Billing.autopayOf(st);
+  const apBlocks = mode === 'renew' && !!(ap && ap.open && ap.product !== 'pass');
   if (justBought) wrap.append(successCard(justBought, plans));
   if (!matrixMod) wantMatrix();
 
@@ -301,9 +333,15 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   for (const p of plans.filter((x) => x.id !== 'free' && (x.active || x.id === current))) {
     const isCurrent = p.id === current;
     const price = priceFor(p, period);
-    const pq = appliedQuote(p.id);
+    const pq = mode === 'renew' ? null : appliedQuote(p.id);
     const uq = upgradeQuote(p.id);
-    const q = pq || uq;
+    /* on auto-renew the amount is the plan's own (no code, no credit): the card
+       prints what the subscription charges */
+    /* AN UPGRADE WHILE A YEAR RUNS is paid once even on auto-renew (a
+       subscription cannot carry the credit; quote_subscription says
+       'upgrade'), so its card prints the credited one-time price. */
+    const upgradeOnce = mode === 'renew' && !apBlocks && !!current && current !== 'free' && Billing.planRank(p.id) > Billing.planRank(current) && !!(st && st.plan_until);
+    const q = pq || (mode === 'renew' && !upgradeOnce ? null : uq);
     const name = p.name || planName(p.id);
     const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);
     /* §52: the plan held, bought for a year, can be renewed (a grant for
@@ -312,7 +350,10 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const renew = isCurrent && !!until;
     /* the plan whose year has run out: buying it again is a renewal too */
     const lapsedHere = !!(st && st.lapsed && st.bought_plan === p.id);
-    const canBuy = p.id !== 'free' && price !== null && (higher || renew);
+    /* this card's own auto-pay, while it runs (it renews by itself, so
+       there is nothing to buy again by hand) */
+    const apHere = !!(isCurrent && ap && ap.open && ap.product === p.id);
+    const canBuy = p.id !== 'free' && price !== null && (higher || renew) && !apHere && !apBlocks;
     /* A tier BELOW the one held: on a phone it collapses to its name, its
        price and "Included in your plan" and drops under the buyer's own
        (plans.css), so the first full card a buyer reads is theirs. */
@@ -345,10 +386,15 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
         price === null ? null : h('span.pl-per', { text: credit > 0 ? ' now' : ' a year' }),
         q ? h('s.pl-list', { text: qFmt(q, 'list'), 'aria-label': 'list price ' + qFmt(q, 'list') }) : null
       ].filter(Boolean)),
-      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, 'list'), qCur(q)) : perDayIn(listMinor, listCur)} a day · 1 year, nothing renews by itself` }),
+      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, 'list'), qCur(q)) : perDayIn(listMinor, listCur)} a day` }),
+      price === null ? null : h('p.pl-price-cap.pl-terms', { 'data-offer-mode': mode || 'unknown',
+        /* the terms name the amount CHARGED: a dollar card charged in
+           rupees says the rupees here, as the caption under it does */
+        text: offerTerms(upgradeOnce ? 'once' : mode, q ? qFmt(q, 'amount') : listCur !== orderCur() && usdRow ? fmtMinor(usdRow.inrMinor != null ? usdRow.inrMinor : price, 'INR') : fmtMinor(listMinor, listCur), 'year').line }),
       price === null ? null : h('p.pl-price-cap.pl-charge', { text: charged })
     ].filter(Boolean)));
     if (credit > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${qFmt(q, 'amount')} today: the ${qFmt(q, 'credit')} left on your ${q.upgrade_from_name || planName(q.upgrade_from)} year counts toward it, and ${name}'s own year starts now.` }));
+    if (upgradeOnce) card.append(h('p.pl-upgrade.pl-upgrade-once', { text: UPGRADE_ONCE }));
     if (pq && qAmt(pq, 'discount') > 0) card.append(h('p.pl-save', { text: `${qFmt(pq, 'discount')} off with ${pq.code}` }));
 
     /* ACTION. A button only where there is something to buy: a higher
@@ -361,18 +407,26 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       buyable.push(p.id);
       const disabled = busyPlan !== '' || confirming.id !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
       const first = !current || current === 'free';
+      /* On auto-renew a press starts auto-pay, so the label does not
+         promise "1 YEAR" or "ADD A YEAR": the terms line above says how
+         it runs. */
+      const auto = mode === 'renew';
       const label = busyPlan === p.id ? 'OPENING…'
         : confirming.id === p.id ? 'PAYMENT RECEIVED — CONFIRMING…'
-        : renew || lapsedHere ? 'RENEW ' + name.toUpperCase() + ' — ADD A YEAR'
-        : first ? 'BUY ' + name.toUpperCase() + ' — 1 YEAR' : 'UPGRADE TO ' + name.toUpperCase();
+        : renew || lapsedHere ? (auto ? 'CONTINUE ' + name.toUpperCase() + ' — START AUTO-PAY' : 'RENEW ' + name.toUpperCase() + ' — ADD A YEAR')
+        : first ? (auto ? 'BUY ' + name.toUpperCase() : 'BUY ' + name.toUpperCase() + ' — 1 YEAR') : 'UPGRADE TO ' + name.toUpperCase();
       act.append(h('button.k-btn.k-btn--lg.k-btn--block' + (buyable.length === 1 ? '.k-btn--primary' : '.k-btn--secondary'), {
-        type: 'button', 'data-plan-action': 'buy', 'data-plan': p.id, disabled, text: label }));
+        type: 'button', 'data-plan-action': 'buy', 'data-plan': p.id, 'data-offer-mode': mode || '', disabled, text: label }));
       if (renew) {
         const left = daysTo(until);
         act.append(h('p.pl-until' + (left <= 30 ? '.is-soon' : ''), { text: left <= 30
           ? `Ends in ${left} day${left === 1 ? '' : 's'} (${day(until)}). Renew to keep full access; the new year starts when this one ends.`
           : `Valid until ${day(until)}. Renewing adds a year after that date.` }));
       }
+    } else if (apHere) {
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'YOUR CURRENT PLAN' }));
+      const when = day(ap.nextChargeAt || ap.currentEnd);
+      act.append(h('p.pl-until.pl-autopay', { text: ap.live ? renewsText(when, ap.price) : cancelledText(day(ap.currentEnd)) }));
     } else if (isCurrent && p.id !== 'free') {
       act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'YOUR CURRENT PLAN' }));
       act.append(h('p.pl-until', { text: 'Granted to you for good. Nothing to renew.' }));
@@ -423,11 +477,13 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   /* The offers sit side by side under the row: the code box and the
      student band. Drawn only where there is something to buy. */
-  if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(h('div.pl-offers', {}, [promoBox(buyable), eduCallout()]));
+  if (apBlocks) wrap.append(h('p.pl-note.pl-autopay-note', {}, ['Auto-pay is on for this account, so nothing more is bought here while it runs. ',
+    h('a', { href: 'settings.html#autopay', text: 'Manage auto-pay in Settings' }), '.']));
+  if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(h('div.pl-offers', {}, [mode === 'renew' ? null : promoBox(buyable), eduCallout()].filter(Boolean)));
   /* The fine print, together: what kind of payment, the refund terms and
      the upgrade credit (refund.html §4, schema section 21), the legal. */
   wrap.append(h('div.pl-fine', {}, [
-    h('p.pl-note', { text: `Each plan is a year of full access, paid once in ${orderCur() === 'USD' ? 'US dollars' : 'Indian rupees'} through Razorpay. Nothing renews or is charged automatically: when the year is ending, renew from this page and the new year starts where the old one stops.` }),
+    h('p.pl-note', { text: fineTerms(mode) }),
     h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
       'By paying you agree to the ',
@@ -443,6 +499,18 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   return wrap;
 }
 
+
+/* The fine print's first line: what kind of payment, in the mode's own
+   words (offer-terms.js short), then what the buyer does at the year's
+   end — which differs by mode, and is said only when the mode is known. */
+function fineTerms(mode) {
+  const cur = orderCur() === 'USD' ? 'US dollars' : 'Indian rupees';
+  const t = offerTerms(mode, '', 'year');
+  const head = `Each plan is a year of full access, paid in ${cur} through Razorpay`;
+  if (t.mode === 'renew') return `${head}. ${t.short}: cancel in Settings, under Plan & purchases, and you keep the year already paid for.`;
+  if (t.mode === 'once') return `${head}. ${t.short}: when the year is ending, buy the next from this page and it starts where the old one stops.`;
+  return `${head}. The card says how each one is paid before you pay.`;
+}
 
 /* "Have a code?" — a disclosure so the row reads as prices first and an
    offer second. `buyable` is the plan ids the row has a button for; the
@@ -666,21 +734,44 @@ export function usageTiles(st) {
 
 delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
   if (!hooks.onBuy || busyPlan) return;
-  busyPlan = el.dataset.plan; statusText = '';
+  const planId = el.dataset.plan, shownMode = el.dataset.offerMode || null;
+  /* A LIVE WEEKLY AUTO-PAY STOPS FIRST. Its next charge would land on an
+     account that now holds a year and be applied to nothing, so a year
+     is never bought while one runs: ask, cancel it (rzp-cancel, at the
+     period's end), then buy. Read fresh, not from the drawn billing. */
+  let passStopped = false;
+  {
+    let st = lastSt;
+    try { st = await Billing.status(); } catch (x) { /* the drawn billing */ }
+    const ap = Billing.autopayOf(st);
+    if (ap && ap.live && ap.product === 'pass') {
+      const yes = await ask({ title: 'Stop the weekly auto-pay?', body: 'Buying a yearly plan stops your weekly auto-pay. Continue?', confirm: 'STOP IT AND CONTINUE', cancel: 'Not now' });
+      if (!yes) return;
+      busyPlan = planId; statusText = 'Stopping the weekly auto-pay…';
+      if (hooks.rerender) hooks.rerender();
+      try { await Billing.cancelAutopay(); passStopped = true; }
+      catch (err) {
+        busyPlan = ''; statusText = (err && err.message) || 'The weekly auto-pay could not be stopped, so nothing was bought.';
+        if (hooks.rerender) hooks.rerender();
+        return;
+      }
+    }
+  }
+  busyPlan = planId; statusText = '';
   if (hooks.rerender) hooks.rerender();
   try {
-    const q = appliedQuote(el.dataset.plan);
+    const q = appliedQuote(planId);
     /* The ORDER currency: the quote's, when a code is applied (it was
        asked in the order currency), else what the cards say is charged. */
-    await hooks.onBuy(el.dataset.plan, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); }, q ? q.code : null, q ? qCur(q) : orderCur());
+    await hooks.onBuy(planId, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); }, q ? q.code : null, q ? qCur(q) : orderCur(), shownMode, passStopped);
     statusText = '';
-    justBought = el.dataset.plan;
+    justBought = planId;
     /* The quotes were taken before this purchase; see planCards(). */
     requote();
     if (hooks.onSuccess) { try { hooks.onSuccess(justBought); } catch (e) { /* redirect is a convenience */ } }
   } catch (err) {
     statusText = err && err.message ? err.message : 'The payment did not complete.';
-    if (err && err.afterPayment && err.unconfirmed) confirming = { id: el.dataset.plan, at: billingKey(lastSt) };
+    if (err && err.afterPayment && err.unconfirmed) confirming = { id: planId, at: billingKey(lastSt) };
   } finally {
     busyPlan = '';
     if (hooks.rerender) hooks.rerender();

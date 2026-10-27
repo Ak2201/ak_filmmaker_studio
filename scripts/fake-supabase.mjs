@@ -34,6 +34,24 @@
    is kept out of paid_buyers(), the referral code and payout, the §34
    refund trial, and the §52 year credit.
 
+   SECTION 62, AUTO-RENEW, is in here too:
+     F.db.settings.pass_mode / plan_mode ('once' default, as live)
+     F.db.noRenewSchema = true   a database without §62 (no modes, no
+                                 autopay key, the RPCs PGRST202)
+   trial_offer() / price_notice() carry pass.mode and plan_mode;
+   billing_status() carries `autopay`; rzp-subscribe makes a
+   subscription (refusing 'renew_off' | 'subscribed' | quote_pass's and
+   'downgrade' as 400 { error, reason }); rzp-verify takes a subscription
+   reply, checks HMAC(payment|subscription) and answers 200 { ok,
+   pending } — the "webhook" (chargeSubscription, after RZP.subDelay ms,
+   or never with RZP.subWebhook = 'off') applies the charge. A proof
+   triggers a RENEWAL with chargeSubscription(id): a pass stacks its days
+   from plan_until, a year stacks a year, and a cancelled one charges
+   nothing. rzp-cancel cancels at the period's end (the user's own; an
+   admin by subscription_id); admin_billing_modes /
+   admin_set_billing_modes / admin_list_subscriptions are owner or
+   finance only.
+
    setTrial/expireTrial/clearTrial are exported for the same reason
    webhookRefundProcessed() is: "this person is mid-trial" and "this
    person's thirty minutes are up" are the two states every paywall
@@ -67,7 +85,7 @@ export const EXT_FN = {};
    The key secret the fake "edge functions" verify with, and the mode
    the Checkout stub reads ('pay' | 'dismiss' | 'tamper'). signFor()
    is what Razorpay does: HMAC-SHA256(order|payment, KEY_SECRET). */
-export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay', refundMode: 'pending', capture: 'captured' };   // refundMode: 'pending' | 'processed' | 'fail'
+export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay', refundMode: 'pending', capture: 'captured', subDelay: 300, subWebhook: 'on' };   // refundMode: 'pending' | 'processed' | 'fail'
 // capture: what GET /v1/payments/{id} says when rzp-verify reads the payment back (§51) —
 //   'captured' (auto-capture), 'authorized' (manual capture; rzp-verify captures it),
 //   'held' (authorized and the capture does not go through: no plan, 202 pending)
@@ -177,7 +195,7 @@ export function paidBuyers() {
 }
 /* ---- section 61: the launch pass ---------------------------------- */
 /** pass_sold(): paid (not refunded) pass payments. */
-export function passSold() { return F.db.payments.filter((p) => p.period === 'pass' && p.status === 'paid').length; }
+export function passSold() { return F.db.payments.filter((p) => p.period === 'pass' && p.status === 'paid' && !p.renewal).length; }   // §62: a renewal is not a pass sold
 /** pass_open(): enabled, before the deadline, under the cap. */
 export function passOpen() {
   const s = F.db.settings;
@@ -369,6 +387,61 @@ export function paidCredit(uid) {
       return n + (x.amount_paise + (x.credit_paise || 0)) * Math.max(0, Math.min(1, (e - Math.max(now, s)) / (e - s)));
     }, 0));
 }
+/* ---- section 62: auto-renew --------------------------------------- */
+const SUB_LIVE = ['created', 'authenticated', 'active', 'pending', 'halted'];
+/** The subscription billing_status() reports: the newest one still
+ *  running, or a cancelled one whose paid period has not ended. */
+export function subFor(uid) {
+  const mine = F.db.subscriptions.filter((x) => x.user_id === uid).slice().reverse();
+  /* a 'created' row (Checkout never finished) is not shown, as live */
+  return mine.find((x) => x.status !== 'created' && SUB_LIVE.includes(x.status)) || mine.find((x) => x.status !== 'created' && x.current_end && Date.parse(x.current_end) > Date.now()) || null;
+}
+/* subscription_is_live(): a cancelled-at-period-end one still counts until it ends */
+const subLiveFor = (uid) => F.db.subscriptions.some((x) => x.user_id === uid && SUB_LIVE.includes(x.status));
+function autopayOf(uid) {
+  const x = subFor(uid);
+  if (!x) return null;
+  return { status: x.status, product: x.product, period: x.period, days: x.days, amount_minor: x.amount_minor, currency: x.currency, current_end: x.current_end,
+    next_charge_at: SUB_LIVE.includes(x.status) && !x.cancel_at_period_end ? x.current_end : null, cancel_at_period_end: !!x.cancel_at_period_end };
+}
+/** apply_subscription_charge(): idempotent on the payment id. A pass
+ *  stacks its days from plan_until (a renewing pass, §62's one change to
+ *  §61); a year stacks a year (apply_plan). A cancelled or halted
+ *  subscription charges nothing. Returns the payment row, or null. */
+export function chargeSubscription(subId, { paymentId = null } = {}) {
+  const x = F.db.subscriptions.find((s) => s.id === subId);
+  if (!x) return null;
+  const pid = paymentId || 'pay_' + Math.random().toString(36).slice(2, 10);
+  const had = F.db.payments.find((p) => p.razorpay_payment_id === pid);
+  if (had) return had;
+  if (x.cancel_at_period_end || !['created', 'authenticated', 'active', 'pending'].includes(x.status)) { F.db.calls.push('sub:charge refused ' + x.status + (x.cancel_at_period_end ? ' cancelled' : '')); return null; }
+  const a = accountForBuyer(x.user_id);
+  const isPass = x.product === 'pass';
+  const plan = isPass ? x.plan_id : x.product;
+  let until;
+  if (isPass) {
+    const running = a.plan === plan && a.plan_period === 'pass' && a.plan_until && Date.parse(a.plan_until) > Date.now();
+    until = new Date((running ? Date.parse(a.plan_until) : Date.now()) + x.days * DAY).toISOString();
+    applyPlan(a, plan, x.days, 'pass');
+    a.plan_until = until;
+  } else {
+    until = applyPlan(a, plan, 365, 'year');
+  }
+  const days = isPass ? x.days : 365;
+  const pay = { id: 'pay' + F.db.payments.length, user_id: x.user_id, account_id: a.id, plan_id: plan, period: isPass ? 'pass' : 'year', days, amount_paise: x.amount_minor, currency: x.currency,
+    list_paise: x.amount_minor, discount_paise: 0, promo_code: null, credit_paise: 0, razorpay_order_id: null, razorpay_payment_id: pid,
+    razorpay_subscription_id: x.id, subscription_id: x.id, renewal: (x.charges || 0) > 0, status: 'paid', paid_at: new Date().toISOString(), plan_applied: true,
+    starts_at: new Date(Date.parse(until) - days * DAY).toISOString(), ends_at: until, created_at: new Date().toISOString() };
+  F.db.payments.push(pay);
+  afterPaid(pay);
+  if (!F.db.members.has(x.user_id)) F.db.members.set(x.user_id, { role: 'user', disabled_at: null });
+  Object.assign(x, { status: 'active', current_start: x.current_start || pay.starts_at, current_end: until, charges: (x.charges || 0) + 1 });
+  F.db.calls.push('sub:charge ' + x.product + ' ' + x.amount_minor);
+  return pay;
+}
+const subRow = (x) => ({ id: x.id, user_email: (Object.values(USERS).find((u) => u.id === x.user_id) || {}).email || '', product: x.product, period: x.period, days: x.days,
+  amount_minor: x.amount_minor, currency: x.currency, status: x.status, current_end: x.current_end, cancel_at_period_end: !!x.cancel_at_period_end, created_at: x.created_at });
+
 /* section 21: public.quote_for(user, plan, code). `user` null = signed out. */
 export function quoteOrder(planId, rawCode, user = null) {
   const pl = F.db.plans.find((p) => p.id === planId && p.active);
@@ -502,6 +575,7 @@ export function freshDb() {
       { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', features: {}, price_paise: 1999900, monthly_paise: 199900, yearly_paise: 1999900, next_price_paise: null, next_price_at: null, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
     ],
     payments: [],
+    subscriptions: [],
     // section 20: one live launch code; the proof adds and refuses others
     promos: [{ code: 'LAUNCH10', percent_off: 10, amount_off_paise: null, plan_ids: null, max_uses: null, uses: 0, valid_from: null, valid_until: null, active: true, note: 'launch week', created_at: new Date(now).toISOString() }],
     // section 22, and section 30's knobs (30.1). The seeded figures are
@@ -521,6 +595,8 @@ export function freshDb() {
                 purchase_required: true,
                 /* section 61: the launch pass, off by default (as live) */
                 pass_enabled: false, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: null, pass_cap: null,
+                /* section 62: one-time or auto-renew, one-time by default (as live) */
+                pass_mode: 'once', plan_mode: 'once',
                 /* section 55: charging in US dollars, off until the owner turns it on */
                 usd_checkout: false },
     /* section 31's plan_prices for USD (cents), §31's seed figures; the
@@ -626,6 +702,8 @@ function rpc(name, args, user, route) {
         plan_period: pl !== 'free' && acc ? (acc.plan_period || null) : null,
         pass_used: passUsedBy(user.id),
         pass_active: !!(acc && acc.plan_period === 'pass' && acc.plan_until && Date.parse(acc.plan_until) > Date.now()),
+        // section 62
+        ...(F.db.noRenewSchema ? {} : { autopay: autopayOf(user.id) }),
         usage: { projects: F.db.projects.filter((p) => p.owner_id === user.id).length, shares: 0, collaborators: 0,
                  seats: acc ? F.db.accountMembers.filter((m) => m.account_id === acc.id).length : 0 },
         payments: F.db.payments.filter((x) => x.user_id === user.id).slice(-12).reverse()
@@ -696,6 +774,7 @@ function rpc(name, args, user, route) {
         })
       };
       out.pass = passBlock();   // §61
+      if (!F.db.noRenewSchema) { out.pass.mode = F.db.settings.pass_mode; out.plan_mode = F.db.settings.plan_mode; }   // §62
       if (want) Object.assign(out, { currency: want, usd_checkout: !!F.db.settings.usd_checkout,
         charged_currency: want === 'USD' && F.db.settings.usd_checkout && usdComplete ? 'USD' : 'INR' });
       return json(route, 200, out);
@@ -847,7 +926,27 @@ function rpc(name, args, user, route) {
       return json(route, 200, { trial_enabled: !!F.db.settings.trial_enabled, trial_minutes: F.db.settings.trial_minutes || 30,
         trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100, purchase_required: purchasesRequired(),
         /* §60 */ trial_scope: F.db.settings.trial_scope || 'sample',
-        /* §61 */ ...(F.db.noPassSchema ? {} : { pass: passBlock() }) });
+        /* §61 */ ...(F.db.noPassSchema ? {} : { pass: { ...passBlock(), ...(F.db.noRenewSchema ? {} : { mode: F.db.settings.pass_mode }) } }),
+        /* §62 */ ...(F.db.noRenewSchema ? {} : { plan_mode: F.db.settings.plan_mode }) });
+    /* ---- section 62: the console's modes and subscriptions (owner or finance) ---- */
+    case 'admin_billing_modes':
+    case 'admin_set_billing_modes':
+    case 'admin_list_subscriptions': {
+      if (F.db.noRenewSchema) return pgErr(route, 'PGRST202', `Could not find the function public.${name} in the schema cache`, 404);
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      { const cr = (F.db.members.get(user.id) || {}).consoleRole; if (cr && !['owner', 'finance'].includes(cr)) return pgErr(route, '42501', `Your role (${cr}) cannot do this. It needs the finance role.`); }
+      const s = F.db.settings;
+      if (name === 'admin_list_subscriptions') {
+        const want = args.p_status || null;
+        return json(route, 200, F.db.subscriptions.filter((x) => !want || x.status === want).slice().reverse().map(subRow));
+      }
+      if (name === 'admin_set_billing_modes') {
+        F.db.calls.push(`rpc:admin_set_billing_modes ${args.p_pass_mode} ${args.p_plan_mode}`);
+        if (!['once', 'renew'].includes(args.p_pass_mode) || !['once', 'renew'].includes(args.p_plan_mode)) return pgErr(route, '22023', 'A mode is once or renew.');
+        s.pass_mode = args.p_pass_mode; s.plan_mode = args.p_plan_mode;
+      }
+      return json(route, 200, { pass_mode: s.pass_mode, plan_mode: s.plan_mode });
+    }
     /* ---- section 61: the console's launch pass (owner or finance) ---- */
     case 'admin_pass_status':
     case 'admin_set_pass': {
@@ -1292,6 +1391,60 @@ export async function handle(route) {
     const [status, out] = EXT_FN[extFn[1]](body, user);
     return json(route, status, out);
   }
+  /* ---- section 62: rzp-subscribe and rzp-cancel ---- */
+  if (url.pathname === '/functions/v1/rzp-subscribe' && req.method() === 'POST') {
+    if (!user) return json(route, 401, { error: 'Sign in first.' });
+    if (F.db.noRenewSchema) return json(route, 404, { error: 'Requested function was not found' });
+    let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+    const product = String(body.product || '');
+    const currency = body.currency == null ? 'INR' : String(body.currency);
+    F.db.calls.push(`fn:rzp-subscribe ${product} ${currency}`);
+    const no = (reason, error) => { F.db.calls.push('fn:rzp-subscribe refused ' + reason); return json(route, 400, { error, reason }); };
+    if (F.db.members.get(user.id)?.disabled_at) return json(route, 403, { error: 'This account has been disabled by an administrator' });
+    const mode = product === 'pass' ? F.db.settings.pass_mode : F.db.settings.plan_mode;
+    if (mode !== 'renew') return no('renew_off', 'This is sold as a one-time payment now.');
+    if (subLiveFor(user.id)) return no('subscribed', 'Auto-pay is already on for this account.');
+    let amount, days, period, planId;
+    if (product === 'pass') {
+      let q;
+      try { q = quotePass(user, currency); } catch (e) { return no(e.hint || 'disabled', e.message); }
+      amount = q.amount_paise; days = q.days; period = 'pass'; planId = q.plan_id;
+    } else {
+      const plan = F.db.plans.find((p) => p.id === product && p.active && p.id !== 'free');
+      if (!plan) return json(route, 400, { error: 'That plan is not for sale' });
+      if (!['INR', 'USD'].includes(currency)) return json(route, 400, { error: 'Orders are in rupees (INR) or US dollars (USD).' });
+      if (currency === 'USD' && !F.db.settings.usd_checkout) return no('currency', 'Dollar checkout is not on.');
+      const held = heldPlan(F.db.accounts.find((a) => a.owner_id === user.id));
+      if ((PLAN_RANK[plan.id] ?? 0) < (PLAN_RANK[held] ?? 0)) return no('downgrade', 'A lower plan waits for your year to end.');
+      /* quote_subscription: a subscription cannot carry an upgrade credit */
+      if (held !== 'free' && (PLAN_RANK[plan.id] ?? 0) > (PLAN_RANK[held] ?? 0) && paidCredit(user.id) > 0) return no('upgrade', 'Your current year is still running. An upgrade is a single payment with that year credited; auto-pay can start when it ends.');
+      amount = effectivePriceMinor(plan.id, currency); days = 365; period = 'year'; planId = plan.id;
+    }
+    const id = 'sub_' + Math.random().toString(36).slice(2, 10);
+    F.db.subscriptions.push({ id, user_id: user.id, account_id: body.account_id || null, product, plan_id: planId, period, days, amount_minor: amount, currency,
+      status: 'created', current_start: null, current_end: null, cancel_at_period_end: false, cancelled_at: null, created_at: new Date().toISOString() });
+    const pl = F.db.plans.find((p) => p.id === planId) || {};
+    return json(route, 200, { subscription_id: id, key: RZP.keyId, amount, currency, description: product, period, days, subscription_row_id: id, product, plan_name: pl.name, prefill: { email: user.email, name: '' } });
+  }
+  if (url.pathname === '/functions/v1/rzp-cancel' && req.method() === 'POST') {
+    if (!user) return json(route, 401, { error: 'Sign in first.' });
+    let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+    let x;
+    if (body.subscription_id) {
+      const m = F.db.members.get(user.id);
+      if (!m || m.role !== 'admin') return json(route, 403, { error: 'Administrators only.' });
+      if (m.consoleRole && !['owner', 'finance'].includes(m.consoleRole)) return json(route, 403, { error: `Your role (${m.consoleRole}) cannot do this. It needs the finance role.` });
+      x = F.db.subscriptions.find((s) => s.id === body.subscription_id);
+    } else {
+      x = F.db.subscriptions.filter((s) => s.user_id === user.id && SUB_LIVE.includes(s.status) && !s.cancel_at_period_end).pop();
+    }
+    if (!x) return json(route, 400, { error: 'There is no auto-pay to cancel.', reason: 'none' });
+    const already = !!x.cancel_at_period_end;
+    Object.assign(x, { cancel_at_period_end: true, cancelled_at: x.cancelled_at || new Date().toISOString() });
+    F.db.calls.push(`fn:rzp-cancel ${x.id}${body.subscription_id ? ' admin' : ''}`);
+    return json(route, 200, { ok: true, current_end: x.current_end, already });
+  }
+
   /* ---- the two edge functions, as the browser reaches them ---- */
   if (url.pathname === '/functions/v1/rzp-order' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });
@@ -1342,6 +1495,22 @@ export async function handle(route) {
   if (url.pathname === '/functions/v1/rzp-verify' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });
     let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+    /* §62: a subscription's Checkout reply, HMAC(payment|subscription).
+       Verified, then the webhook applies the charge (no capture here). */
+    if (body.razorpay_subscription_id) {
+      const want = await signFor(body.razorpay_payment_id || '', body.razorpay_subscription_id);
+      if (!body.razorpay_signature || want !== String(body.razorpay_signature).toLowerCase()) {
+        F.db.calls.push('fn:rzp-verify sub bad');
+        return json(route, 400, { error: 'The payment could not be verified. If money left your account, it will be matched within a few minutes or refunded by Razorpay.' });
+      }
+      const x = F.db.subscriptions.find((s) => s.id === body.razorpay_subscription_id);
+      if (!x) return json(route, 404, { error: 'No such subscription.' });
+      if (x.user_id !== user.id) return json(route, 403, { error: 'That subscription belongs to another account.' });
+      if (x.status === 'created') x.status = 'authenticated';
+      F.db.calls.push('fn:rzp-verify sub ok');
+      if (RZP.subWebhook !== 'off') { const pid = body.razorpay_payment_id; setTimeout(() => { try { chargeSubscription(x.id, { paymentId: pid }); } catch (e) { /* the proof reads the ledger */ } }, RZP.subDelay); }
+      return json(route, 200, { ok: true, pending: true });
+    }
     const expected = await signFor(body.razorpay_order_id || '', body.razorpay_payment_id || '');
     if (!body.razorpay_signature || expected !== String(body.razorpay_signature).toLowerCase()) {
       F.db.calls.push('fn:rzp-verify bad');

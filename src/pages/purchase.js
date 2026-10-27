@@ -60,7 +60,8 @@ import { clearAttribRef } from '../lib/attribution.js';
 /* THE LAUNCH PASS (§61): a card above the yearly ones while it is on
    sale and this account may buy it. Every figure is the server's
    (trial_offer().pass through billing.js passOffer(); pass-view.js). */
-import { passPhase, passFacts, mayBuyPass, passCta, onPass } from '../lib/pass-view.js';
+import { passPhase, passFacts, mayBuyPass, passCta, onPass, passTerms, passMode } from '../lib/pass-view.js';
+import { offerTerms, renewsText, cancelledText } from '../lib/offer-terms.js';
 import { stashPlan } from '../lib/start-model.js';
 import { bindPassTimers, passClock } from '../lib/plan-gate.js';
 import { wantedPlan } from '../lib/purchase-model.js';
@@ -104,11 +105,13 @@ let billing = { plans: null, st: null, error: '', missing: false, loading: false
 /* ---- the launch pass ------------------------------------------------- */
 let passOfferNow = null;   // { raw, readAt } | null — null shows no pass at all
 const pass = { busy: false, msg: '', bad: false };
+let shownModes = null;   // the §62 modes last drawn (the deck and terms follow them)
 function loadPass(fresh = false) {
   Billing.passOffer({ fresh }).then((o) => {
-    const had = JSON.stringify(passOfferNow && passOfferNow.raw);
+    const had = JSON.stringify([passOfferNow && passOfferNow.raw, shownModes]);
     passOfferNow = o;
-    if (JSON.stringify(o && o.raw) !== had) render();
+    shownModes = Billing.cachedModes();
+    if (JSON.stringify([o && o.raw, shownModes]) !== had) render();
   }).catch(() => {});
 }
 /** The pass card, or null: only while it is on sale ('open') and, signed
@@ -120,30 +123,42 @@ function passCard(st, signedIn) {
   const f = passFacts(passOfferNow);
   if (!f) return null;
   const wanted = wantedPlan(location.search) === 'pass';
+  /* On auto-renew a price never stands without its terms: the heading
+     and the button name the offer, and the terms line carries the price. */
+  const renewing = passMode(passOfferNow) === 'renew';
   const card = h('section#pass.pu-pass' + (wanted ? '.is-wanted' : ''), { 'aria-labelledby': 'puPassH' }, [
     h('p.bd-eyebrow', { text: 'Launch offer' }),
-    h('h3.pu-h3', { id: 'puPassH', text: 'The whole studio for ' + f.price + ', ' + f.length + '.' }),
-    h('p.pu-pass-p', { text: 'Every stage, on your own films, for ' + f.length + '. Once per account, paid once in Indian rupees through Razorpay; nothing renews, and it is not taken off a yearly plan. When the ' + f.length + ' end, choose a yearly plan below, or don’t: your work stays.' }),
+    h('h3.pu-h3', { id: 'puPassH', text: renewing ? 'The whole studio, every stage.' : 'The whole studio for ' + f.price + ', ' + f.length + '.' }),
+    /* the terms are the server's mode in offer-terms.js's words */
+    h('p.pu-pass-terms', { 'data-offer-mode': passMode(passOfferNow) || 'unknown', text: passTerms(passOfferNow).line }),
+    h('p.pu-pass-p', { text: passBody(f) }),
     passClock(),
     h('div.pu-actions', {}, [signedIn
-      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'OPENING…' : passCta(f) })
-      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(f) })]),
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'OPENING…' : passCta(renewing ? null : f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(renewing ? null : f) })]),
     pass.msg ? h('p.pl-status' + (pass.bad ? '.gt-error' : ''), { role: pass.bad ? 'alert' : 'status', text: pass.msg }) : null
   ]);
   return card;
+}
+/* What the pass is, by mode: the renewal itself is in the terms line above. */
+function passBody(f) {
+  const m = passMode(passOfferNow);
+  const base = 'Every stage, on your own films. Once per account, in Indian rupees through Razorpay, and it is not taken off a yearly plan.';
+  if (m === 'renew') return base + ' Cancel in Settings, under Plan & purchases, and you keep the days already paid for; your work stays either way.';
+  return base + ' When the ' + f.length + ' end, choose a yearly plan below, or don’t: your work stays.';
 }
 async function buyPassHere(btn) {
   if (pass.busy) return;
   pass.busy = true; pass.msg = ''; pass.bad = false;
   render();
   try {
-    await Billing.buyPass({ accountId: billing.st && billing.st.account_id, onStatus: (t) => { pass.msg = t; render(); } });
+    await Billing.buyPass({ accountId: billing.st && billing.st.account_id, shownMode: passMode(passOfferNow), onStatus: (t) => { pass.msg = t; render(); } });
     pass.msg = 'Your pass is on. The whole studio is open.'; pass.bad = false;
     refreshInvoices();
   } catch (e) {
     pass.msg = (e && e.message) || 'The pass could not be bought just now. Please try again.';
     pass.bad = !(e && e.code === 'dismissed');
-    if (e && (e.hint === 'closed' || e.code === 'closed')) loadPass(true);
+    if (e && (e.hint === 'closed' || e.code === 'closed' || e.hint === 'renew_off' || e.code === 'terms')) loadPass(true);
   } finally {
     pass.busy = false;
     refreshBilling();
@@ -231,15 +246,22 @@ function trialLine(st) {
    drawn right under the buy buttons (launch study, 21 Oct 2026: "purchases
    are final" with no visible exceptions was a reason to wait). The three
    exceptions are refund.html §4's, in its own headings and order; the
-   one-year line is refund.html §2 and §52 (nothing auto-renews). If
+   one-year line is refund.html §2 and §52, in the mode the server sells
+   (§62, offer-terms.js; an unknown mode states neither). If
    refund.html changes, change this, REFUND_TERMS in
    supabase/functions/_shared/terms.js and plan-cards.js's fine print
    together. No trial length is typed here: it is the console's to set. */
+function termsLead() {
+  const t = offerTerms(Billing.cachedModes().plan, '', 'year');
+  if (t.mode === 'renew') return 'A plan is a year of the studio. ' + t.short + ': cancel in Settings, under Plan & purchases, and nothing more is charged; you keep the year already paid for. A cancel is not a refund.';
+  if (t.mode === 'once') return 'A plan is a year of the studio. ' + t.short + ', so there is nothing to cancel: if you do not want another year, do nothing.';
+  return 'A plan is a year of the studio. Each plan card says how it is paid before you pay.';
+}
 function buyTerms() {
   const li = (head, text) => h('li', {}, [h('strong', { text: head }), ' \u2014 ' + text]);
   return h('aside.pu-terms', { 'aria-labelledby': 'puTermsH' }, [
     h('h3.pu-h3', { id: 'puTermsH', text: 'Before you pay' }),
-    h('p.pu-terms-lead', { text: 'A plan is one payment for one year. Nothing renews by itself, so there is nothing to cancel: if you do not want another year, do nothing.' }),
+    h('p.pu-terms-lead', { text: termsLead() }),
     h('p.pu-terms-sub', { text: 'A refund is given in these cases. They are not discretionary: if one applies, the refund is yours.' }),
     h('ul.pu-terms-list', {}, [
       li('A duplicate or erroneous charge', 'charged more than once for the same order, or an amount you did not agree to at checkout: the extra payment is refunded in full.'),
@@ -257,7 +279,7 @@ function buyTerms() {
 }
 
 /* The deck says the per-day figure in the currency the cards are drawn in. */
-const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : ''); };
+const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : '', Billing.cachedModes().plan); };
 /* What a plan actually does: deckFor(), in purchase-model.js. A plan decides
    which STAGES open (plan-matrix.json), and the trial's end walls the
    studio. Nothing written is ever deleted. */
@@ -280,7 +302,7 @@ function planSection() {
        for. The link stays for the full comparison. */
     { const pc = passCard(null, false); if (pc) sec.append(pc); }
     sec.append(currencyBlock());
-    sec.append(listPriceBlock(currentView()));
+    sec.append(listPriceBlock(currentView(), Billing.cachedModes().plan));
     /* The action straight under the prices, before the refund terms: at
        390px it sat two screens down, under the whole policy (UI review,
        22 Oct 2026). The terms still come before any payment, which is
@@ -335,9 +357,20 @@ function planSection() {
     ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Pass']),
       h('span', { text: st.plan_until ? ' The whole studio until ' + new Date(st.plan_until).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '. A yearly plan bought now starts today and replaces the pass.' : '' })]));
   }
+  const ap = Billing.autopayOf(st);
   if (buyer && !(st && st.lapsed)) {
+    const dayOf = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    /* A running auto-pay renews by itself: the strip says when, and what;
+       a cancelled one, until when. Without one, the manual way. */
+    const line = ap && ap.open && ap.product === st.plan
+      ? ' ' + (ap.live ? renewsText(dayOf(ap.nextChargeAt || ap.currentEnd), ap.price) : cancelledText(dayOf(ap.currentEnd || st.plan_until))) + '.'
+      : st && st.plan_until ? ' Valid until ' + dayOf(st.plan_until) + '. Renew any time to add a year; move up and what is left of this year counts.' : ' Granted to you for good.';
     ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Active']),
-      h('span', { text: st && st.plan_until ? ' Valid until ' + new Date(st.plan_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '. Renew any time to add a year; move up and what is left of this year counts.' : ' Granted to you for good.' })]));
+      h('span', { text: line })]));
+  }
+  if (passing && ap && ap.open && ap.product === 'pass') {
+    const dayOf = (iso) => new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    ident.append(h('p.pu-current-state.pu-autopay', { text: ap.live ? renewsText(dayOf(ap.nextChargeAt || ap.currentEnd), ap.price) : cancelledText(dayOf(ap.currentEnd || st.plan_until)) }));
   }
   if (st) {
     const tl = trialLine(st);
@@ -359,7 +392,7 @@ function planSection() {
   const view = currentView();
   const cards = planCards(billing.plans, st, {
     shop: view,
-    onBuy: (planId, period, onStatus, code, currency) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
+    onBuy: (planId, period, onStatus, code, currency, shownMode, passStopped) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, shownMode, passStopped, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
   });
   /* the terms go straight under the row of buy buttons, above the code

@@ -48,8 +48,8 @@ ok(!R.timingSafeEqualHex('abcd', 'abc'), 'different lengths are unequal');
 ok(!R.timingSafeEqualHex('', ''), 'two empty strings are NOT equal (an unset signature never passes)');
 
 /* ---- one price, for a year (section 52) ---- */
-eq(R.PERIODS, ['year'], 'the only period sold is a year');
-eq(R.PLAN_DAYS, 365, 'a year is 365 days');
+eq(R.PERIODS, ['year', 'pass'], 'two periods are sold: a year, and (§61) the launch pass');
+eq(R.PLAN_DAYS, 365, 'a year is 365 days (PLAN_DAYS is the year; the pass length is the server\'s)');
 ok(!('periodEnd' in R), 'the client never computes an expiry; the database does (apply_plan)');
 eq(R.perDayPaise(59900), 164, '₹599 a year is ₹1.64 a day');
 eq(R.perDayPaise(79900), 219, '₹799 a year is ₹2.19 a day');
@@ -61,6 +61,7 @@ eq(R.priceFor(plan), 799900, 'the price is price_paise, not a period column');
 eq(R.priceFor(plan, 'year'), 799900, 'asked for explicitly');
 eq(R.priceFor(plan, 'lifetime'), null, '"for good" is not sold any more');
 eq(R.priceFor(plan, 'month'), null, 'a month is not a thing that is sold');
+eq(R.priceFor(plan, 'pass'), null, 'a pass is never priced from a plan row: the server prices it (§61 quote_pass)');
 eq(R.priceFor({ id: 'starter', yearly_paise: 299900 }), 299900, 'a row read before §18 ran falls back to the yearly figure');
 eq(R.priceFor({ id: 'free', price_paise: 0 }), null, 'a zero price is not for sale');
 eq(R.fmtPaise(49900), '₹499', 'paise -> rupees');
@@ -113,6 +114,26 @@ eq(M.receiptMail({ ...inv, buyer_email: '' }), null, 'no e-mail, no message');
 const rf = M.refundMail({ refund_id: 'r1', status: 'processed', amount_paise: 79900, buyer_email: 'b@x.in', plan_name: 'Intermediate', invoice_number: 'FMS/2026-27/000007' });
 ok(rf.subject.startsWith('Refund processed') && rf.text.includes('5 to 7 working days') && rf.text.includes('FMS/2026-27/000007'), 'processed refund mail');
 ok(M.refundMail({ status: 'failed', amount_paise: 100, buyer_email: 'b@x.in' }).subject.includes('could not be completed'), 'failed refund mail');
+ok(rf.text.includes('fresh free trial') && !rf.text.includes('pass'), 'a year\'s refund mail still describes the refund trial');
+
+/* ---- the launch pass (schema §61): worded from the row's own dates ---- */
+{
+  const pinv = { ...inv, plan_name: 'Pro', amount_paise: 4900, period: 'pass',
+    valid_from: '2026-10-27T10:00:00Z', valid_until: '2026-11-03T10:00:00Z' };
+  const pm = M.receiptMail(pinv);
+  ok(pm.subject.includes('7-day pass') && pm.subject.includes('FMS/2026-27/000007'), 'pass receipt subject: "7-day pass" and the invoice');
+  ok(pm.text.includes('7-day pass (until 3 November 2026)') && pm.text.includes('₹49'), 'pass receipt: "7-day pass (until …)" and ₹49');
+  ok(!pm.text.includes('1 year') && !pm.text.includes('for a year'), 'a pass receipt never says a year');
+  const p10 = M.receiptMail({ ...pinv, valid_until: '2026-11-06T10:00:00Z' });
+  ok(p10.text.includes('10-day pass (until 6 November 2026)'), 'the length is read from the dates, never typed (10 days)');
+  ok(M.receiptMail({ ...pinv, valid_from: null, valid_until: null }).text.includes('launch pass'), 'a pass with no dates says "launch pass", not a guessed length');
+  const yr = M.receiptMail({ ...inv, valid_until: '2027-10-11T10:00:00Z' });
+  ok(yr.text.includes('1 year (valid until 11 October 2027)'), 'a year\'s receipt reads the invoice\'s valid_until (§57)');
+  const pr = M.refundMail({ refund_id: 'r2', status: 'processed', amount_paise: 4900, buyer_email: 'b@x.in', plan_name: 'Pro',
+    period: 'pass', starts_at: pinv.valid_from, ends_at: pinv.valid_until });
+  ok(pr.text.includes('7-day pass this payment bought') && pr.text.includes('does not come with a free trial')
+     && !pr.text.includes('fresh free trial'), 'pass refund mail: the pass comes off and no trial follows');
+}
 
 const calls = [];
 const fakeFetch = (status = 200) => async (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify({ id: 'em_1' }), { status }); };

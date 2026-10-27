@@ -466,6 +466,44 @@ runChecks('signup-trial-scope.sql');
 }
 /* --- end §60 --- */
 
+/* --- §61 (the launch week pass) --- on §56–§60 (it restates §56's order and
+   activation path, §53's billing_status and refund, §52's apply_plan, §34's
+   refund trial, §58's event names and §60's start_trial / trial_offer),
+   loaded twice: it drops and re-creates CHECKs and one function whose
+   return type grew. Every earlier check file ran against the unrestated
+   bodies. --- */
+for (const f of ['supabase/schema/schema-61-week-pass.sql', 'supabase/schema/schema-61-week-pass.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §61 loads (and re-runs cleanly)');
+runChecks('week-pass.sql');
+{
+  /* The year path of each restated function is its predecessor's body plus
+     the lines marked §61 (a marked line, or a block from "-- §61:" to
+     "-- end §61"). Anything else that drifted is a refusal or a price that
+     changed without a test saying so. */
+  const body = (file, fn) => {
+    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const from = src.indexOf(`create or replace function public.${fn}(`);
+    const to = src.indexOf('$fn$;', from);
+    if (from < 0 || to < 0) fail(`§61: ${fn} not found in ${file}`);
+    return src.slice(from, to)
+      .replace(/\n[^\n]*-- §61:[^\n]*\n(?:[^\n]*\n)*?\s*-- end §61/g, '')
+      .split('\n').filter((l) => !/§61/.test(l)).join('\n');
+  };
+  const pairs = [
+    ['create_pending_payment', 'supabase/schema/schema-56-usd-checkout.sql'],
+    ['start_trial', 'supabase/schema/schema-60-signup-trial-scope.sql']
+  ];
+  for (const [fn, was] of pairs) {
+    total++;
+    if (body('supabase/schema/schema-61-week-pass.sql', fn) === body(was, fn)) console.log(`  ✓ 61. ${fn}() is its predecessor's body plus the lines marked §61`);
+    else { failed++; fail(`§61: ${fn}() differs from ${was} beyond the lines marked §61`); }
+  }
+}
+/* --- end §61 --- */
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

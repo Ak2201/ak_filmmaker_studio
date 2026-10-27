@@ -176,7 +176,7 @@ check('feature: a Characters & world answer is stored under the blueprint’s ke
 
 /* choosing the beat sheet in the Beat Sheet's own picker */
 await step('outline');
-await page.click('#path-outline [data-st="open-fw"]');
+await page.click('#path-outline #st-fw-pick > summary');
 await page.waitForTimeout(300);
 check('feature: "Choose one" opens the picker', await page.evaluate(() => document.getElementById('st-fw-pick').open), true);
 await page.click('.st-fw[data-fw="three_act"]');
@@ -401,7 +401,7 @@ check('beat sheet: Lock from the keyboard leaves the focus on the (now Locked) b
 await page.focus('#stLockRow [data-st="unlock"]');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(400);
-await page.click('[data-st="open-fw"]');
+await page.evaluate(() => { document.getElementById('st-fw-pick').open = true; });
 await page.waitForTimeout(300);
 await page.focus('[data-st="pick-fw"][data-fw="three_act"]');
 await page.keyboard.press('Enter');
@@ -487,6 +487,50 @@ await page.keyboard.press('Enter');
 await page.waitForTimeout(400);
 check('title page: the region button keeps the focus after the press', await page.evaluate(() =>
   document.activeElement.matches('[data-action="tp-region"][data-region="IN"]')), true);
+
+/* Round 4 fixes */
+/* a blank Project title is refused: the field goes back to the name */
+await page.fill('#tp_meta_title', '');
+await page.press('#tp_meta_title', 'Tab');
+await page.waitForTimeout(500);
+check('title page: a blanked PROJECT TITLE is put back at once, and stored so', [await page.inputValue('#tp_meta_title'), (await blob(FKEY)).meta_title], ['The Kettle', 'The Kettle']);
+check('title page: the Stage field has no placeholder repeating its hint', (await page.getAttribute('#tp_meta_stage', 'placeholder')) || '', '');
+
+await project('feature', 'QA r4');
+await open('#path-bible');
+check('story: the strip says no characters before one is added', await page.evaluate(() => /add them in the Story Bible/.test(document.querySelector('.st-stats').textContent)), true);
+await page.fill('#sb-newname', 'Maya');
+await page.click('[data-sb="add-char"]');
+await page.waitForTimeout(900);
+check('story: adding a character updates the strip without a reload', await page.evaluate(() => /1\s*in the Story Bible/.test(document.querySelector('.st-stats').textContent.replace(/\s+/g, ' '))), true);
+
+await step('outline');
+check('beat sheet: one bar while no beat sheet is chosen, offering Choose one', await page.evaluate(() => [
+  !!document.querySelector('#path-outline .st-fw-pick .st-using'), document.querySelectorAll('#path-outline .st-using').length,
+  document.querySelector('#path-outline .st-fw-change').textContent]), [true, 1, 'Choose one']);
+check('beat sheet: every beat’s Add a step names its beat', await page.evaluate(() => {
+  const n = [...document.querySelectorAll('#path-outline [data-st="step-add"]')].map((b) => b.getAttribute('aria-label'));
+  return [n.length > 1, new Set(n).size === n.length, n.every((x) => /^Add a step to \S/.test(x))];
+}), [true, true, true]);
+await step('synopsis');
+check('synopsis: every Tension field has its own accessible name', await page.evaluate(() => {
+  const n = [...document.querySelectorAll('#path-synopsis .st-beat-tlabel')].map((l) => l.getAttribute('aria-label'));
+  return [n.length > 1, new Set(n).size === n.length];
+}), [true, true]);
+
+/* 'Use this as my logline' over a written logline: replaced, with Undo */
+await step('idea');
+await openBoxes('#path-idea');
+await page.fill('#stLogline', 'First logline.');
+await page.waitForTimeout(500);
+await page.fill('[data-key="lad_1_logline"]', 'Rough draft.');
+await page.waitForTimeout(500);
+await page.click('[data-st="use-lad1"]');
+await page.waitForTimeout(600);
+check('idea: the earlier-version button replaces a written logline', (await story()).logline, 'Rough draft.');
+await page.click('.toast button:has-text("UNDO")').catch(() => {});
+await page.waitForTimeout(600);
+check('idea: …and the toast Undo puts the written logline back', (await story()).logline, 'First logline.');
 
 check('no page errors', errors, []);
 await browser.close();

@@ -38,7 +38,7 @@
   background: var(--nt-stock);
   color: var(--note-ink);
 }
-.nt-date { margin-inline-start: auto; font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--note-muted); }
+.nt-date { margin-inline-start: auto; flex-shrink: 0; white-space: nowrap; font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--note-muted); }
 
 /* The text: paper on the note's stock. Tripled like paper-field.css so
    it out-ranks the paper rule it refines (same specificity, later). */

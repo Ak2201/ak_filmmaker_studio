@@ -245,7 +245,7 @@ function renderModes() {
     'Paste it and go straight to tagging it against a structure. Every step of the path stays a click away.',
     h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' })));
   const drop = h('label.st-drop', {}, [
-    h('span', { text: 'Drop a .docx, .pdf or .txt here, or choose a file' }),
+    h('span', { text: 'Drop a .docx, .pdf, .txt or .md here, or choose a file' }),
     h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'data-st-field': 'file' })
   ]);
   sec.append(card('Import', 'Bring a file.',
@@ -323,6 +323,11 @@ const learnBox = (topic) => {
    them, and the page is not redrawn for a field (that would cost the
    caret): the menu's ticks are patched in place instead (the strip keeps
    its scroll and the Steps button its focus). */
+/* A Bible or blueprint write changes the strip's figures: swap it in place. */
+function refreshStats() {
+  const old = document.querySelector('.st-stats');
+  if (old) old.replaceWith(renderStats(story()));
+}
 function refreshStepper() {
   const nav = storyNav();
   if (!nav) return;
@@ -332,7 +337,7 @@ function refreshStepper() {
 }
 /* A Bible write changes what the blueprint's derived views (the relationship
    map) and the stepper's ticks read: refresh both, in place. */
-wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
+wireBible({ getStory: story, saved: () => { refreshStepper(); refreshStats(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
   h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + pathNow().length }),
@@ -372,13 +377,13 @@ function renderWaysIn() {
   return h('div.st-offer.st-ways', { role: 'group', 'aria-label': 'Three ways in' }, [
     h('p.st-offer-text', {}, [
       h('span.st-example-k', { text: 'Three ways in: ' }),
-      'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file.'
+      'start from an idea below, paste a synopsis you already have, or import one from a .docx, .pdf, .txt or .md file.'
       + (samplesHere().length ? ' Or open the sample film to see a finished one.' : '')
     ]),
     h('button.k-btn.k-btn--primary', { type: 'button', 'data-st': 'ways-idea', text: 'Start from an idea' }),
     h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'have-synopsis', text: 'Paste a synopsis' }),
     h('label.k-btn.k-btn--secondary.st-import', {}, [
-      h('span', { text: 'Import a .docx or .txt' }),
+      h('span', { text: 'Import a .docx, .pdf, .txt or .md' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis from a .docx, .txt or .pdf file' })
     ]),
     ...samplesHere().map((sm) => h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Open ' + sm.label }))
@@ -581,9 +586,12 @@ function renderFwPicker(s) {
       h('span.st-example-k', { text: 'Beat sheet' }),
       h('span.st-fw-cur', { text: cur.label }),
       h('span.st-badge' + (s.frameworkChosen ? '.is-on' : ''), { text: s.frameworkChosen ? 'In use' : 'Suggested' }),
-      h('span.st-fw-change', { text: 'Change' })
+      h('span.st-fw-change', { text: s.frameworkChosen ? 'Change' : 'Choose one' })
     ])
   ]);
+  /* One bar says it all while nothing is chosen: the badge reads Suggested and
+     the row offers Choose one; the sentence waits inside the opened box. */
+  if (!s.frameworkChosen) box.append(h('p.st-using', { text: 'Using ' + cur.label + ' until you choose a beat sheet.' }));
   box.append(h('p.st-muted', {
     text: 'The order your story’s big moments come in. Pick one to lay the outline out against; you do not have to. Switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new beat sheet waits in Unassigned rather than being lost.'
   }));
@@ -654,11 +662,6 @@ function renderOutline(s) {
     'What happens, beat by beat: one or two lines a step, numbered as you go. Add, reorder and move steps between beats as the story finds its shape.'));
   if (short) {
     sec.append(h('p.st-using', { text: 'A short film keeps to the ' + fw.label + ': ' + fw.beats.map((b) => b.label).join(', ') + '.' }));
-  } else if (!s.frameworkChosen) {
-    sec.append(h('p.st-using', {}, [
-      'Using ' + fw.label + ' until you choose a beat sheet. ',
-      h('button.st-link', { type: 'button', 'data-st': 'open-fw', text: 'Choose one' })
-    ]));
   }
 
   /* the head: picker, lock, send */
@@ -725,13 +728,13 @@ function renderOutline(s) {
       li.append(ol);
     }
     const acts = h('div.st-ol-actions');
-    if (!locked) acts.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'Add a step' }));
+    if (!locked) acts.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, 'aria-label': 'Add a step to ' + r.beat.label, text: 'Add a step' }));
     /* AI suggestions for this beat: the AI Desk's 'story-steps' task.
        The writer ticks the ones to keep and Accept adds them under this
        beat through commit() — the same save as ADD A STEP. */
     if (!locked) {
       const pill = aiPill({
-        label: 'Suggest steps for this beat', tasks: ['story-steps'],
+        label: 'Suggest steps for ' + r.beat.label, tasks: ['story-steps'],
         ctx: { identity: 'beat:' + r.key, beatKey: r.key, getStory: story, commit, format: projectFormat }
       });
       if (pill) acts.append(pill);
@@ -1028,7 +1031,7 @@ function renderMatrix(s) {
       'aria-pressed': String(litBeat === b.id), text: b.label }));
     top.append(h('span.st-beat-at', { text: '~' + pct(b.at) }));
     const tid = 'stT_' + b.id;
-    top.append(h('label.st-beat-tlabel', { for: tid, text: 'Tension' }));
+    top.append(h('label.st-beat-tlabel', { for: tid, 'aria-label': 'Tension for ' + b.label, text: 'Tension' }));
     const ti = h('input#' + tid + '.st-beat-t', { type: 'number', min: 1, max: 10, step: 1,
       'data-st-field': 'tension', 'data-beat': b.id, value: String(row.tension) });
     top.append(ti);
@@ -1590,8 +1593,17 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     const f = document.querySelector('[data-key="lad_1_logline"]');
     const v = f ? String(f.value || '').trim() : '';
     if (!v) { StudioUI.toast('Nothing written in that earlier version yet.'); return; }
+    const was = String(s.logline || '');
     s.logline = v;
     commit(s);
+    /* A logline already written is replaced, so it comes back with one press. */
+    if (was.trim() && was !== v) {
+      StudioUI.toast('Your earlier logline was replaced.', { action: 'UNDO', onAction: () => {
+        const back = story();
+        if (back.logline !== v) return;   // edited since: keep the newer words
+        back.logline = was; commit(back);
+      } });
+    }
   } else if (act === 'lock' || act === 'unlock') {
     if (act === 'lock' && !Story.outlineByBeat(s, s.framework).withText) {
       StudioUI.toast('Write a step or two in the Beat Sheet first, then lock it.');

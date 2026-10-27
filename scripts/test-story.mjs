@@ -609,5 +609,11 @@ eq(S.clipSourceHost(''), '', 'clipSourceHost: no URL, no link');
   eq(stored, 'pre-build synopsis', 'after a flush no pending save can land on the restored synopsis');
 }
 
+{
+  const IO = await import('../src/lib/story-io.js');
+  eq(IO.importedSentence({ name: 'a.txt', text: 'one' }), 'Imported a.txt — 1 word.', 'a one-word import is singular');
+  eq(IO.importedSentence({ name: 'a.txt', text: 'one two' }), 'Imported a.txt — 2 words.', 'two words stay plural');
+}
+
 console.log(`${fail ? '✗' : '✓'} story model + docx: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

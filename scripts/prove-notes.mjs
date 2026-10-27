@@ -128,6 +128,7 @@ check('vault: the two add cards start at the same height', await page.evaluate((
 }), true);
 check('vault: note colour dots are at least 24px', await page.evaluate(() =>
   [...document.querySelectorAll('.nt-dot')].filter((d) => d.offsetWidth).every((d) => d.getBoundingClientRect().width >= 24 && d.getBoundingClientRect().height >= 24)), true);
+check('vault: a note’s date stays on one line', await page.evaluate(() => { const d = document.querySelector('.nt-date'); return d ? [getComputedStyle(d).whiteSpace, d.getBoundingClientRect().height < 24] : 'none'; }), ['nowrap', true]);
 await page.fill('#ntBoardNew', 'Second thought');
 await page.click('[data-nt="add"][data-for="ntBoardNew"]');
 await page.waitForTimeout(300);

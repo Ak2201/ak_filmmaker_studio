@@ -193,8 +193,10 @@ export async function readSynopsisFile(file) {
 /** The confirm a replacing import asks, word for word on both pages. */
 export const replaceQuestion = (name) =>
   `Replace the synopsis on this page with ${name}? Highlights whose passages are not in the new text will show as detached.`;
-export const importedSentence = (r) =>
-  `Imported ${r.name} — ${r.text.split(/\s+/).length.toLocaleString()} words.`;
+export const importedSentence = (r) => {
+  const n = r.text.split(/\s+/).filter(Boolean).length;
+  return `Imported ${r.name} — ${n.toLocaleString()} word${n === 1 ? '' : 's'}.`;
+};
 
 /* ---- the sample ----------------------------------------------- */
 

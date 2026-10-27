@@ -567,7 +567,7 @@ function renderTitlePage(project) {
         options: [{ value: '', label: f.empty || 'Choose…' },
           ...(v && !f.options.includes(v) ? [{ value: v, label: v }] : []),
           ...f.options.map((o) => ({ value: o, label: o }))] })
-      : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.placeholder || '', attrs, hint }));
+      : field({ id: 'tp_' + f.key, label: f.label, value: v, placeholder: f.key === 'meta_stage' ? '' : (f.placeholder || ''), attrs, hint }));
   }
   /* A title page is writing: its text fields are paper (owner, 20 Oct
      2026). The genre select stays a control, and a date, a count, a
@@ -966,6 +966,14 @@ delegate(app, 'change', 'input[data-tp-ns][data-key="meta_title"]', (e, el) => {
   const p = Store.currentProject();
   const v = el.value.trim();
   if (p && v && v !== p.title) setTimeout(() => Store.updateProject(p.id, { title: v }), 0);
+  /* A film always has a name: a blank is refused, the field goes back to it
+     and the blank saved by the typing is overwritten, so the page never shows
+     a state a reload would undo. */
+  else if (p && !v && p.title) {
+    el.value = p.title;
+    writeFields(el.getAttribute('data-tp-ns'), { meta_title: p.title });
+    StudioUI.toast('A film needs a title, so the title page keeps “' + p.title + '”.');
+  }
 });
 
 /* The fields' values are PROPERTIES, which never reach innerHTML, so

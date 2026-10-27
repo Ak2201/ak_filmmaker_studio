@@ -110,6 +110,18 @@ jobs:
       - run: npm run prove:budget-privacy
       - run: npm run prove:budget-money
       - run: npm run prove:ai-desk
+      # Sticky notes, beat <-> scene sync and the shared beat sheet (HISTORY
+      # 61-62), then the proofs that ran only by hand until the full-app QA
+      # (HISTORY 63). All read this job's gate-off dist/.
+      - run: npm run prove:notes
+      - run: npm run prove:beat-sync
+      - run: npm run prove:story-coedit
+      - run: npm run prove:visual
+      - run: npm run prove:board-frames
+      - run: npm run prove:stage-guide
+      - run: npm run prove:tamil
+      - run: npm run prove:account-r3
+      - run: npm run prove:walk
 
   proofs:
     name: proofs

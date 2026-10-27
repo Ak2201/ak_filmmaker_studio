@@ -552,7 +552,7 @@ for (const width of [1280, 390]) {
       const desc = document.querySelector('[data-shot="h1"] .vz-desc');
       const sel = document.querySelector('[data-shot="h1"] .vz-c-size select');
       const widths = [...document.querySelectorAll('[data-shot="h1"] td')].map((t) => t.getBoundingClientRect().width);
-      return { fits: wrap.scrollWidth <= wrap.clientWidth, desc: desc.getBoundingClientRect().width, clip: desc.scrollHeight - desc.clientHeight,
+      return { fits: wrap.scrollWidth <= wrap.clientWidth, sw: wrap.scrollWidth, cw: wrap.clientWidth, cols: [...document.querySelectorAll("[data-shot=\"h1\"] td")].map((t) => (t.className || "?") + ":" + Math.round(t.getBoundingClientRect().width)).join(" "), desc: desc.getBoundingClientRect().width, clip: desc.scrollHeight - desc.clientHeight,
         widest: Math.max(...widths) === (desc.closest('td').getBoundingClientRect().width), rig: !!document.querySelector('[data-shot="h1"] .vz-rig'),
         size: sel.options[sel.selectedIndex].text, title: sel.title };
     });

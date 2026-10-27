@@ -19,7 +19,11 @@ plan (`plans: []` in `src/data/plan-matrix.json`).
 **Before posting anything here**, fill every `{PLACEHOLDER}` from the console
 that day: `{PASS_PRICE}`, `{PASS_LENGTH}`, `{PASS_ENDS}` and (with a cap)
 `{PASS_LEFT}` from `trial_offer()->'pass'`, `{RISE_DATE}` from
-`price_notice()` (`docs/MARKETING-PLAYBOOK.md` §0 rules 3 and 6). No date, no
+`price_notice()`, and `{PLAN_TERMS}` / `{PASS_TERMS}` from the console's
+one-time / auto-renew setting (`plan_mode`, `pass.mode`; worded as
+`src/lib/offer-terms.js` words them: "One payment · nothing renews" or
+"Renews every year · cancel anytime") (`docs/MARKETING-PLAYBOOK.md` §0 rules
+3, 5 and 6). Mode not known: leave the terms line out. No date, no
 price and no pass length is ever typed from this file, and when the pass
 reads `open` false the pass line is left out.
 
@@ -48,7 +52,7 @@ Built for Tamil units. Less than a tea a day.
 Alternates:
 
 - *Beginner-first:* You have never made a film. Here is the desk: story, screenplay, schedule, budget and call sheets, in your browser. Built for Tamil units.
-- *Tool-first:* A working desk for independent filmmakers. Story → screenplay → schedule → set → delivery. Works offline. A year for less than a cup of tea a day, nothing renews by itself.
+- *Tool-first:* A working desk for independent filmmakers. Story → screenplay → schedule → set → delivery. Works offline. A year for less than a cup of tea a day.
 
 **Link:** `https://filmmakerstudio.in/start?src=ig-bio&utm_campaign=profile`
 — point at `/start`, **not** the root. The root sits behind the site gate and
@@ -101,7 +105,7 @@ Post these first, in this order: announce → explain → convert.
 > with sources, CBFC checklists, festival deadlines. Tamil dialogue, English
 > slugs.
 >
-> A year for less than a cup of tea a day. Nothing renews by itself.
+> A year for less than a cup of tea a day. {PLAN_TERMS}
 
 ---
 
@@ -228,9 +232,14 @@ than the data does.
 founding prices are scheduled to rise on `{RISE_DATE}` (the server's date,
 read from `price_notice()` the day you post; the owner is moving it to the
 end of 2026, playbook §6 step 2), and a post is forever.
-What IS durable, and may go in any caption: **a plan is one payment for one
-year, nothing renews by itself**, and "less than a cup of tea a day", which
-holds at every tier before and after the rise. Never write "pay once",
+What IS durable, and may go in any caption: **a plan is a year of the
+studio**, and "less than a cup of tea a day", which holds at every tier
+before and after the rise. Whether it RENEWS is not durable: it is the
+owner's console setting (one-time or auto-renew, schema §62) and can change
+any day, so a caption says it only through `{PLAN_TERMS}` / `{PASS_TERMS}`,
+read that day, and never on a poster. "Lock the launch price while you
+stay" and "cancel anytime, in two taps" are true ONLY on auto-renew; post
+them only while the console says `renew`. Never write "pay once",
 "lifetime" or "own it forever" — plans have been yearly since 21 Oct 2026.
 A price card, if you make one, is a separate story or post with the figures
 read from `price_notice()` that day.
@@ -238,12 +247,14 @@ read from `price_notice()` that day.
 **The door is the launch pass now, not a free trial (owner, 27 Oct 2026).**
 While the launch offer runs, the public tries the studio with a paid pass:
 `{PASS_PRICE}` for `{PASS_LENGTH}` of the whole studio, once per account,
-ending by itself, not credited against a plan. Never write "free trial",
+`{PASS_TERMS}`, not credited against a plan. Never write "free trial",
 "try free" or "no card" in a caption. The deadline and any count are the
 server's (playbook §0 rule 2): say them once, plainly, and never invent
 one. `poster-1.png` was regenerated on 27 Oct 2026: it reads "Now open"
-and "One payment for a year · Nothing renews by itself", with no pass
-figure (a poster outlives the offer) and no "invite-only".
+and "A year of the studio · Less than a tea a day", with no pass figure,
+no renewal claim either way (a poster outlives the offer and the console's
+mode) and no "invite-only". The feature posters' foot reads "Works offline ·
+Saved in your browser · Nothing to install".
 
 **Say which plan a feature is on.** Call sheets, Shoot Day (13), Edit Log and
 Deliverables (14) and the AI tools are Pro; breakdown, auto-tagging (06),

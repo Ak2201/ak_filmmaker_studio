@@ -46,7 +46,7 @@
   "signup": {
     "heading": "Sign in to get started",
     "headingPass": "Sign in to try the whole studio for {price}",
-    "offer": "Sign in with Google, then choose a yearly plan. A plan is one payment for a year, and nothing renews by itself.",
+    "offer": "Sign in with Google, then choose a yearly plan. Each plan states its price and terms before you pay. {planTerms}",
     "offerPass": "{length} of the whole studio for {price}, once per account. You pay on the next page, after you sign in.",
     "offerOff": "The studio is open: sign in with Google and use it, with your work saved in your browser.",
     "offerIn": "You are already signed in.",
@@ -67,7 +67,11 @@
     "ended": "The launch offer has ended. The yearly plans are unchanged.",
     "cta": "Try it for {price}",
     "ctaFull": "Try the whole studio for {price}",
-    "note": "{length} of the whole studio for {price}, once per account. It ends by itself and nothing renews."
+    "note": "{length} of the whole studio for {price}, once per account. {passTerms}"
+  },
+  "terms": {
+    "_": "OFFER TERMS (27 Oct 2026). Whether a purchase renews is the owner's choice in the console, per product (pass_mode / plan_mode, schema §62), and it can change without a rebuild, so NO static sentence in the marketing JSON may say that a purchase renews or does not (test:marketing). The copy holds tokens instead: {planTerms} and {passTerms} are empty runtime slots that src/pages/marketing.js fills through src/lib/offer-terms.js (the one wording of renewal terms) from trial_offer(); {planRenewNote} is this renewNote, hidden, shown only while plan_mode is 'renew'. An unknown mode fills nothing, so the words around a token must be true either way. Never put a token in a meta description or a title.",
+    "renewNote": "Your price is locked while you stay, and cancelling takes two taps."
   },
   "student": {
     "_live": "false: no student promo code exists on the server yet, so the pricing page's students band asks the reader to write to us (contact.html) and names no code. Set true ONLY once the owner has created `code` in the console's promo codes and checked it with quote_order() in both currencies the page can show; the band then names the code and links purchase.html?plan=indie.",

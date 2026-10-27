@@ -149,6 +149,19 @@
 <section class="legal-changes" id="changes" aria-labelledby="changes-h">
   <h2 id="changes-h">What changed on 21 October 2026</h2>
   <ul>
+<!-- DRAFT, AWAITING THE OWNER -->
+<!-- Auto-renew (27 Oct 2026), written from the plan for schema section 62:
+     billing_settings.pass_mode / plan_mode ('once' | 'renew'), set by the
+     owner in the console per product, for new purchases only; a Razorpay
+     Subscription holds the mandate; a cancel stops future charges and the
+     paid period runs out; the amount is the Razorpay plan amount, so a
+     running auto-pay keeps the price it started at. -->
+    <li>Draft, 27 October 2026: sections 3, 4 and 5. A paid plan or a launch pass may be sold
+    either as a one-time purchase or on auto-renew, and which one is shown beside the price
+    before you pay. Section 4 sets out how auto-renew works: the amount and how often, the
+    notice your bank or UPI app sends before each charge, how to cancel, and the price staying
+    the same while you stay.</li>
+<!-- /DRAFT -->
     <li>Section 4: prices are shown in Indian Rupees in India and in US dollars elsewhere,
     the currency you are charged in is shown at checkout before you pay, and conversion fees
     charged by your bank or card issuer are theirs, not ours.</li>
@@ -208,15 +221,20 @@ use the Service.</p>
   pass, redeeming an invite code, having an invite request approved, or being given access
   by us.</li>
   <li><strong>The launch pass.</strong> While we run a launch offer, you can buy a launch
-  pass: one payment, in Indian Rupees, of the price shown before you pay, for the number of
-  days shown before you pay. It opens the tools of the Pro plan for those days, counted from
-  the moment it is activated, and then ends by itself: nothing renews and nothing is charged
-  again, and your work is kept. There is one launch pass per account, and it cannot be bought
+  pass, in Indian Rupees, at the price shown before you pay, for the number of days shown
+  before you pay. It opens the tools of the Pro plan for those days, counted from the moment
+  it is activated. A pass is sold either as a one-time purchase or on auto-renew, and which
+  one is shown beside its price before you pay (section 4, &ldquo;One-time and auto-renew
+  purchases&rdquo;). Bought one-time, it ends by itself after those days and nothing is
+  charged again. On auto-renew, it renews for the same number of days, at the price you
+  signed up at, until you cancel. Your work is kept either way. There is one launch pass
+  sign-up per account, and it cannot be bought
   while a paid plan is running on the account. It is a purchase of its own: its price is not
   taken off a plan you buy later, and buying a yearly plan while a pass runs replaces the pass
   from that moment. The launch offer is for a limited time: it ends on the date our pages show,
   or once the number of passes they show has been sold, whichever comes first, and after that a
-  pass cannot be bought; a pass bought before then runs its full length. We may change the
+  pass cannot be bought; a pass bought before then runs its full length, and a pass on
+  auto-renew keeps renewing until you cancel it. We may change the
   price or the number of days for orders not yet placed. A pass is final like a plan, with the
   same exceptions (section 5).</li>
   <li><strong>Free trial.</strong> We no longer offer a free trial to the public while the
@@ -247,13 +265,46 @@ use the Service.</p>
   prices are shown before you buy. A part of the Service that your plan does not include is
   closed to you, but nothing you have written in it is deleted: it reappears when your plan
   includes it, and you can download all of your work at any time, on any plan or none.</li>
-  <li><strong>One year, renewed only by you.</strong> A paid plan is bought with a single
-  payment and gives access to that plan for one year (365 days) from the moment it is
-  activated. Nothing renews or is charged automatically: when the year ends the plan ends,
-  and you keep it by buying it again, which adds another year (bought early, the new year
-  starts where the current one ends). The app shows the date your plan runs until. When a
-  plan ends, nothing you have written is deleted; the parts of the Service that need a plan
-  close until you buy one again. What a plan includes can change over time (section 12).</li>
+<!-- DRAFT, AWAITING THE OWNER -->
+  <li><strong>One year at a time.</strong> A paid plan gives access to that plan for one year
+  (365 days) from the moment it is activated. A plan is sold either as a one-time purchase or
+  on auto-renew, and which one is shown beside its price, and again at checkout, before you
+  pay (next item). Bought one-time, the plan ends when the year ends, and you keep it by
+  buying it again, which adds another year (bought early, the new year starts where the
+  current one ends). On auto-renew, the next year is charged and added when the current one
+  ends, until you cancel. The app shows the date your plan runs until. When a plan ends,
+  nothing you have written is deleted; the parts of the Service that need a plan close until
+  you buy one again. What a plan includes can change over time (section 12).</li>
+  <li><strong>One-time and auto-renew purchases.</strong> We choose, for each product (the
+  yearly plans and the launch pass), whether it is sold one-time or on auto-renew, and we
+  say which beside the price and at checkout before you pay; you are never moved from one to
+  the other without buying again. A change we make applies to new purchases only.
+    <ul>
+      <li><strong>One-time.</strong> You make one payment for the period shown. Nothing renews
+      and nothing is charged again; when the period ends, so does the purchase.</li>
+      <li><strong>Auto-renew: the amount and how often.</strong> You authorise a recurring
+      payment (a UPI Autopay mandate, or a card or bank e-mandate) through Razorpay for the
+      amount and the interval shown before you pay: every year for a plan, and every period of
+      the pass&rsquo;s number of days for a launch pass. Each charge buys the next period and
+      has its own invoice.</li>
+      <li><strong>Notice before each charge.</strong> Before each renewal charge, your bank or
+      UPI app sends you a pre-debit notice with the amount and the date, as Indian payment
+      rules require.</li>
+      <li><strong>How to cancel.</strong> You can cancel anytime in the app: Settings &rarr;
+      Plan &amp; purchases &rarr; Cancel auto-pay. You can also revoke the mandate in your UPI
+      app or with your bank, which cancels it the same way.</li>
+      <li><strong>After you cancel.</strong> Nothing more is charged. Your access continues to
+      the end of the period you have already paid for, and then ends; your work is kept.</li>
+      <li><strong>No refund for the rest of a period.</strong> Cancelling does not refund the
+      period already paid for, in whole or in part. The three exceptions in section 5 apply to
+      each charge on its own.</li>
+      <li><strong>Your price stays the same while you stay.</strong> While an auto-pay
+      continues, each renewal is charged at the amount you signed up at. A price we change
+      applies to new sign-ups only; once you cancel, buying again is at the price of that
+      day.</li>
+    </ul>
+  </li>
+<!-- /DRAFT -->
   <li><strong>Prices, currencies and taxes.</strong> We show prices in Indian Rupees (INR) to
   visitors in India and in US dollars (USD) to visitors elsewhere. Which one you see is
   worked out in your browser from your device&rsquo;s time zone and language settings, never
@@ -323,6 +374,9 @@ plan is required (section 3).</p>
 <p>A launch pass (section 3) is covered by the same three exceptions and by nothing else. If a
 pass is refunded, the days it bought are taken off your account at once, and no free trial
 is given in their place.</p>
+<p>On auto-renew (section 4), each charge is a purchase of its own: the three exceptions apply
+to each charge, and a refund takes off the period that charge bought. Cancelling stops the
+charges still to come and does not refund the current period.</p>
 <!-- /DRAFT -->
 
 <h2 id="your-content">6. Your content</h2>

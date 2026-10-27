@@ -23,6 +23,8 @@
      5. the sign-up modal: Google through start-auth.js, the live offer line
      5b. the LAUNCH PASS: the band, its countdown and every [data-pass-*]
         slot, from trial_offer().pass through pass-offer.js
+     5c. the OFFER TERMS: every [data-offer-terms] slot and [data-mode-answer]
+        line, from trial_offer()'s pass.mode / plan_mode through offer-terms.js
      6. an invite code in the address bar (held, stripped, announced) —
         the same hold start.js does, so a code link works from any page
      7. the demo loops, played while on screen
@@ -38,6 +40,7 @@ import { bumpEvent, bumpOnce, sourceBucket, purchasesRequired, trialOffer, addLe
 import { captureAttribution, attribution } from '../lib/attribution.js';
 import { passCopy, validEmail, consentText } from '../lib/start-model.js';
 import * as PassOffer from '../lib/pass-offer.js';
+import { offerTerms, readMode } from '../lib/offer-terms.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { visitorRegion } from '../lib/visitor-region.js';
@@ -349,6 +352,52 @@ try {
    minute changes, and it is not a live region, so a screen reader is
    never interrupted every second. The one announcement is the "has
    ended" line (role=status). No animation anywhere: it is text. */
+/* ---- 5c. THE OFFER TERMS (27 Oct 2026) ------------------------------
+   Whether a purchase renews is the owner's choice in the console, per
+   product (schema §62), so the markup never says it: every sentence that
+   would is an EMPTY [data-offer-terms] slot (data-offer-product "year" or
+   "pass"), and every line true in one mode only is a hidden
+   [data-mode-answer="once"|"renew"] beside a visible "neutral" one. The
+   words come from src/lib/offer-terms.js alone, from trial_offer()'s
+   top-level plan_mode and pass.mode. A mode that is missing or anything
+   but 'once' / 'renew' is UNKNOWN: the slots stay empty and the neutral
+   answers stand, so nothing is ever claimed either way. A pass slot speaks
+   only while the pass is open (it needs the server's price and length).
+   A [data-offer-wrap] around a chip hides with it. textContent only. */
+const offerSlots = (function () {
+  let planMode = null, pass = null;            // pass: { mode, price, days } while open
+  function words(product, chip) {
+    const t = product === 'pass'
+      ? (pass ? offerTerms(pass.mode, pass.price, 'pass', pass.days).short : '')
+      : offerTerms(planMode, '', 'year').short;
+    return t ? (chip ? t : t + '.') : '';
+  }
+  function apply() {
+    for (const n of $$('[data-offer-terms]')) {
+      const t = words(n.dataset.offerProduct, n.dataset.offerForm === 'chip');
+      if (n.textContent !== t) n.textContent = t;
+    }
+    for (const w of $$('[data-offer-wrap]')) {
+      const slot = $('[data-offer-terms]', w);
+      w.hidden = !(slot && slot.textContent);
+    }
+    for (const n of $$('[data-mode-answer]')) {
+      const m = n.dataset.offerProduct === 'pass' ? (pass ? readMode(pass.mode) : null) : planMode;
+      const want = n.dataset.modeAnswer;
+      n.hidden = want === 'neutral' ? m !== null : want !== m;
+    }
+    if (planMode) root.dataset.planMode = planMode; else delete root.dataset.planMode;
+  }
+  return {
+    take(t) { planMode = t && typeof t === 'object' ? readMode(t.plan_mode) : null; apply(); },
+    pass(p) {
+      const next = p ? { mode: readMode(p.mode), price: p.price, days: p.days } : null;
+      if (JSON.stringify(next) === JSON.stringify(pass)) return;
+      pass = next; apply();
+    }
+  };
+})();
+
 const launchPass = (function () {
   const band = byId('mkPass');
   let raw = null, readAt = 0, timer = 0, wasOpen = false, off = false, lastSpoken = '';
@@ -372,6 +421,7 @@ const launchPass = (function () {
   function apply() {
     const st = raw && !off ? PassOffer.passState(raw, Date.now(), readAt) : { state: 'none' };
     const v = passCopy(st, PassOffer);
+    offerSlots.pass(v.open ? { mode: raw.mode, price: v.price, days: st.pass.days } : null);
     if (!v.open) {
       if (wasOpen) ended(); else { stop(); show(false); }
       wasOpen = false;
@@ -405,7 +455,7 @@ const launchPass = (function () {
    card is there), not through the sign-up modal. */
 if (SIGNED_IN) for (const a of $$('[data-pass-cta]')) a.setAttribute('href', 'purchase.html');
 try {
-  trialOffer().then((t) => launchPass.take(t), () => {});
+  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => {});
 } catch (e) { /* never breaks the page */ }
 
 /* ---- 6. an invite code in the address bar ---------------------------

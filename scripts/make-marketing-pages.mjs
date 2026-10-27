@@ -122,6 +122,38 @@ export const passOr = (passHtml, offHtml) => `<span data-pass-off>${offHtml}</sp
  *  open a second space between the words and the price. */
 export const passBtn = (text) => `<span>${passSlots(text)}</span>`;
 
+/* ---- OFFER TERMS (27 Oct 2026) ----------------------------------------
+   Whether a purchase RENEWS is the owner's choice in the console, per
+   product (billing_settings.pass_mode / plan_mode, schema §62), and it can
+   change on any day without a rebuild. So the static page never says it
+   either way: the copy holds tokens, written here as EMPTY runtime slots
+   that marketing.js fills through src/lib/offer-terms.js (the ONLY wording
+   of renewal terms) from trial_offer() — pass.mode and plan_mode:
+     {planTerms}      a yearly plan's terms, as a sentence
+     {passTerms}      the launch pass's terms, as a sentence
+     {planRenewNote}  site.terms.renewNote, hidden, shown only on 'renew'
+   An unknown mode leaves every slot empty and every renew-only line
+   hidden, so the words around a token must be true in EITHER mode
+   (test:marketing reads the static markup for renewal wording). A token
+   inside a tag, the <title> or a <script> is a build error: an attribute
+   or a JSON-LD answer cannot hold a slot. */
+const TERMS_TOKEN = /\{(planTerms|passTerms|planRenewNote)\}/;
+/** One runtime slot. `chip` is the compact form (no full stop). */
+export const termsSlot = (product, chip = false) => `<span data-offer-terms data-offer-product="${product}"${chip ? ' data-offer-form="chip"' : ''}></span>`;
+/** A chip and its own separator, hidden until the slot has words. */
+export const termsChip = (product, cls, sep = true) => `<span class="${cls}" data-offer-wrap hidden>${sep ? '<span class="mk-pass-sep" aria-hidden="true"> &middot; </span>' : ''}${termsSlot(product, true)}</span>`;
+/** Every offer-terms token in a built page, as its slot. */
+export function termsSlots(html, site) {
+  const note = `<span data-mode-answer="renew" data-offer-product="year" hidden>${esc(site.terms.renewNote)}</span>`;
+  return html.replace(/<script\b[\s\S]*?<\/script>|<title>[\s\S]*?<\/title>|<[^>]*>|\{(planTerms|passTerms|planRenewNote)\}/g, (m, k) => {
+    if (!k) {
+      if (TERMS_TOKEN.test(m)) throw new Error('an offer-terms token inside a tag, a title or a script: ' + m.slice(0, 100));
+      return m;
+    }
+    return k === 'planRenewNote' ? note : termsSlot(k === 'passTerms' ? 'pass' : 'year');
+  });
+}
+
 /** THE LAUNCH BAND: one strip at the top of start, pricing and every
  *  product, guide, switching and trust page. Hidden in the markup and
  *  shown only while passState() says 'open'. The countdown digits are
@@ -132,7 +164,7 @@ export function passBand(site) {
   const p = site.pass;
   return `<aside class="mk-pass" id="mkPass" data-pass-band hidden aria-label="${esc(p.label)}">
   <div class="mk-wrap mk-pass-in">
-    <p class="mk-pass-line" data-pass-live><strong class="mk-pass-tag">${esc(p.label)}</strong> <span class="mk-pass-what">${passSlots(p.line)}</span><span class="mk-pass-when" data-pass-when hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span>${esc(p.ends)} <span class="mk-pass-timer" data-pass-timer aria-hidden="true"></span><span class="mk-vh" data-pass-spoken></span></span><span class="mk-pass-left" data-pass-left-wrap hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span><span data-pass-left></span></span></p>
+    <p class="mk-pass-line" data-pass-live><strong class="mk-pass-tag">${esc(p.label)}</strong> <span class="mk-pass-what">${passSlots(p.line)}</span>${termsChip('pass', 'mk-pass-terms')}<span class="mk-pass-when" data-pass-when hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span>${esc(p.ends)} <span class="mk-pass-timer" data-pass-timer aria-hidden="true"></span><span class="mk-vh" data-pass-spoken></span></span><span class="mk-pass-left" data-pass-left-wrap hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span><span data-pass-left></span></span></p>
     <p class="mk-pass-ended" data-pass-ended role="status" hidden>${esc(p.ended)}</p>
     <a class="mk-btn mk-btn--primary mk-btn--sm mk-pass-cta" href="invite.html" data-open-signup data-pass-cta>${passBtn(p.cta)}</a>
   </div>
@@ -158,6 +190,7 @@ export function validate({ site, pages, compare, faq }) {
   for (const k of ['label', 'line', 'ends', 'ended', 'cta', 'ctaFull', 'note']) if (!ps[k]) bad.push('marketing-site.json: pass.' + k + ' missing');
   if (!/\{price\}/.test(ps.cta || '') || !/\{price\}/.test(ps.line || '') || !/\{length\}/.test(ps.line || '')) bad.push('marketing-site.json: pass.line names {length} and {price}, pass.cta names {price}');
   if (!site.signup || !/\{price\}/.test(site.signup.headingPass || '') || !/\{length\}/.test(site.signup.offerPass || '')) bad.push('marketing-site.json: signup.headingPass names {price} and signup.offerPass names {length}');
+  if (!site.terms || !site.terms.renewNote) bad.push('marketing-site.json: terms.renewNote missing (the renew-only line beside {planRenewNote})');
   const ids = Object.keys(site.stepCounts);
   const staged = site.stages.flatMap((s) => s.pages);
   if ([...staged].sort().join() !== [...ids].sort().join()) bad.push('stages[].pages and stepCounts name different pages');
@@ -229,6 +262,7 @@ export function validatePricing(compare, faq) {
   if (!M.PAID.includes(compare.plans && compare.plans.pick)) w('plans.pick is not a paid plan');
   if (!Array.isArray(faq) || faq.length !== 3) w('marketing-faq.json must hold exactly three groups (Billing, Plans, Your data)');
   else faq.forEach((g) => { if (!g.group || !Array.isArray(g.items) || !g.items.length || g.items.some((i) => !i.q || !i.a)) w('faq group "' + g.group + '" is malformed'); });
+  if (Array.isArray(faq)) for (const g of faq) for (const i of g.items || []) if (i.modes && (!i.aOnce || !i.aRenew || !/cancel anytime/i.test(i.aRenew))) w('faq "' + i.q + '": a mode answer needs aOnce and aRenew, and aRenew says "cancel anytime"');
   const typed = JSON.stringify(compare);
   if (typed.includes('₹')) w('a bare rupee sign in the copy; prices are stamped, never typed');
   return bad;
@@ -520,6 +554,14 @@ export function eduBand(site, e) {
     </aside>`;
 }
 
+/** A question whose true answer depends on the console's mode ("Is it a
+ *  subscription?"): the NEUTRAL answer shown in the markup, the 'once' and
+ *  'renew' answers hidden beside it, marketing.js showing the one the
+ *  server names. Then the payment sentence, which is true in either. */
+const modeAnswers = (it) => `<span data-mode-answer="neutral" data-offer-product="year">${esc(it.a)}</span><span data-mode-answer="once" data-offer-product="year" hidden>${esc(it.aOnce)}</span><span data-mode-answer="renew" data-offer-product="year" hidden>${esc(it.aRenew)}</span>${it.aPay ? ' ' + chargeVariants(esc(it.aPay), it.aPayUsd && esc(it.aPayUsd)) : ''}`;
+/** An answer's extra sentence that is true only on auto-renew. */
+const renewNote = (it) => (it.aRenewNote ? `<span data-mode-answer="renew" data-offer-product="year" hidden> ${esc(it.aRenewNote)}</span>` : '');
+
 export function renderPricing({ site, pages, compare, faq }) {
   const c = compare;
   const u = site.ui;
@@ -537,7 +579,7 @@ export function renderPricing({ site, pages, compare, faq }) {
   const card = (id, i) => {
     const pick = id === c.plans.pick;
     const buy = `<a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
-    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span><ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="${esc(c.plans.altOpen)}">${passSlots(c.plans.alt)}</a></li>`;
+    return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span>${termsChip('year', 'pr-charge pr-terms', false)}<ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="${esc(c.plans.altOpen)}">${passSlots(c.plans.alt)}</a></li>`;
   };
 
   const plans = `<section class="mk-sec mk-band-b pr-plans" id="pricing" aria-labelledby="prPlansH">
@@ -548,7 +590,7 @@ export function renderPricing({ site, pages, compare, faq }) {
     </div>
 
     <aside class="pr-pass" data-pass data-pass-only hidden aria-label="${esc(c.pass.label)}">
-      <div class="pr-pass-text"><strong>${esc(c.pass.h)}</strong><span class="pr-pass-say">${passSlots(c.pass.body)}</span></div>
+      <div class="pr-pass-text"><strong>${esc(c.pass.h)}</strong><span class="pr-pass-say">${passSlots(c.pass.body)}</span>${termsChip('pass', 'pr-pass-say pr-pass-terms', false)}</div>
       <a class="mk-btn mk-btn--outline" href="invite.html" data-open-signup data-pass-cta data-open-text="${esc(c.pass.ctaOpen)}">${passBtn(c.pass.cta)}</a>
     </aside>
 
@@ -605,7 +647,7 @@ ${c.faq.contact ? `      <p class="mk-body pr-lede pr-contact">${esc(c.faq.conta
 ${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
         <summary><span>${esc(g.group)}</span>${sym('expand_more')}</summary>
         <dl class="pr-qa">
-${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : ''; const a = it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : chargeVariants(it.aHtml || esc(it.a), it.aUsd && esc(it.aUsd)); return `          <dt${t}>${esc(it.q)}</dt>\n          <dd${t}>${priceSpans(a)}</dd>`; }).join('\n')}
+${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' data-mode-faq' : ''); const a = it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : it.modes ? modeAnswers(it) : chargeVariants(it.aHtml || esc(it.a), it.aUsd && esc(it.aUsd)); return `          <dt${t}>${esc(it.q)}</dt>\n          <dd${t}>${priceSpans(a)}${renewNote(it)}</dd>`; }).join('\n')}
         </dl>
       </details>`).join('\n')}
     </div>
@@ -1557,7 +1599,7 @@ export function renderCompare(id, { site, pages, guides: g, versus: c }) {
 ${read.map((r) => `          <tr>
             <th scope="row">${esc(r.feature)}</th>
             <td data-col="{{brand:name}}">${esc(c.us[r.us])}</td>
-            <td data-col="${esc(p.name)}">${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${esc(c.ui.checkedLabel)} <time datetime="${esc(r.checked)}">${longDay(r.checked)}</time>)</span></td>
+            <td data-col="${esc(p.name)}" data-them>${esc(r.them)} <a class="mk-link mk-link--inline" href="${esc(r.source)}" rel="noopener noreferrer">${esc(c.ui.sourceLabel)}<span class="mk-vh"> for ${esc(p.name)}, ${esc(r.feature)}</span></a> <span class="mk-small">(${esc(c.ui.checkedLabel)} <time datetime="${esc(r.checked)}">${longDay(r.checked)}</time>)</span></td>
           </tr>`).join('\n')}
         </tbody>
       </table>
@@ -1694,7 +1736,7 @@ export function renderLlms(files) {
   const block = (h, list) => list.length ? `\n## ${h}\n\n${list.map(line).join('\n')}\n` : '';
   return `# ${brand.name}
 
-> ${brand.tagline}. A browser-based studio for independent filmmakers: write the screenplay, plan the shoot, run the set. Work is saved in the browser, with optional sign-in sync and Google Drive backup. Plans are bought one year at a time and nothing renews by itself; prices are on the pricing page.
+> ${brand.tagline}. A browser-based studio for independent filmmakers: write the screenplay, plan the shoot, run the set. Work is saved in the browser, with optional sign-in sync and Google Drive backup. Plans are bought one year at a time; each plan's price and terms are on the pricing page.
 
 This file is GENERATED by scripts/make-marketing-pages.mjs from the public pages' own titles and descriptions.
 ${block('Site', main)}${block('Product', products)}${block('Guides', guides)}${block('Switching', versus)}${block('Policies', LEGAL_FILES)}`;
@@ -1714,6 +1756,7 @@ export function buildAll(opts = {}) {
   out[GUIDES_INDEX] = renderGuidesIndex(inputs);
   for (const p of inputs.versus.pages) out[p.file] = renderCompare(p.id, inputs);
   out[TRUST_FILE] = renderTrust(inputs);
+  for (const f of Object.keys(out)) out[f] = termsSlots(out[f], inputs.site);
   /* The fixture swaps the page list, so the frame it would stamp is not the
      one on disk; the legal pages are built from the real copy only. */
   if (!opts.fixture) {

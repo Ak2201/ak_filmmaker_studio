@@ -159,7 +159,7 @@ export function priceRiseBand(notice, now, money = RUPEES) {
     line: 'Founding price ' + money.now(rise) + ' a year until ' + onDate(rise.next_price_at) + ' (IST). '
       + money.next(rise) + ' a year after that'
       + (capped ? ', or once ' + seatsTotal.toLocaleString('en-IN') + ' people have bought a plan, whichever comes first.' : '.')
-      + ' A plan bought now is a full year at the price you paid, and nothing renews by itself.',
+      + ' A plan bought now is a full year at the price you paid.',
     seats: capped && Number.isFinite(seatsTaken)
       ? seatsTaken.toLocaleString('en-IN') + ' of ' + seatsTotal.toLocaleString('en-IN') + ' founding places taken'
       : ''

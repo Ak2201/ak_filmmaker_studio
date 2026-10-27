@@ -203,8 +203,12 @@ function priceNoticeBody() {
    fields. ends_at and now are the SERVER's: PASS.ends is an instant this
    run chooses, `now` is the moment the request is answered. */
 const PASS = { on: false, open: true, ends: null, cap: null, left: null, paise: 4900, days: 7 };
+/* Schema §62 (another lane) adds pass.mode and a top-level plan_mode,
+   'once' | 'renew', the owner's console choice per product. Answered here
+   the same way: undefined leaves the key out (a server before §62). */
+const MODE = { plan: undefined, pass: undefined };
 const passBlock = () => ({ open: PASS.open, amount_paise: PASS.paise, days: PASS.days, plan: 'pro', ends_at: PASS.ends,
-  cap: PASS.cap, left: PASS.left, now: new Date().toISOString() });
+  cap: PASS.cap, left: PASS.left, now: new Date().toISOString(), ...(MODE.pass !== undefined ? { mode: MODE.pass } : {}) });
 
 const LEADS = [], EVENTS = [];   // §29, faked here: add_lead / bump_event
 const json200 = (r, status = 204, body = '') => r.fulfill({ status, contentType: 'application/json', body });
@@ -226,7 +230,7 @@ async function route(r) {
   if (url.pathname === '/rest/v1/rpc/trial_offer' && PASS.on) {
     const m = F.db.settings.trial_minutes || 30;
     return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ trial_enabled: !!F.db.settings.trial_enabled, trial_minutes: m,
-      trial_hours: Math.round(m / 60 * 100) / 100, purchase_required: F.db.settings.purchase_required !== false, trial_scope: F.db.settings.trial_scope || 'sample', pass: passBlock() }) });
+      trial_hours: Math.round(m / 60 * 100) / 100, purchase_required: F.db.settings.purchase_required !== false, trial_scope: F.db.settings.trial_scope || 'sample', pass: passBlock(), ...(MODE.plan !== undefined ? { plan_mode: MODE.plan } : {}) }) });
   }
   if (url.pathname === '/rest/v1/rpc/add_lead') {
     const a = JSON.parse(r.request().postData() || '{}');
@@ -787,6 +791,58 @@ try {
       allErrors.push(...c.errors); await c.ctx.close();
     }
     if (hadReq) F.db.settings.purchase_required = wasReq; else delete F.db.settings.purchase_required;
+    PASS.on = false;
+  }
+
+  console.log('(o) the offer terms: one-time, auto-renew, and a server that does not say');
+  {
+    /* Whether a purchase renews is the console's (schema §62). The static
+       page says neither; marketing.js fills [data-offer-terms] through
+       offer-terms.js and shows the [data-mode-answer] that matches. A mode
+       that is missing claims nothing either way. */
+    const termsView = (page) => page.evaluate(() => {
+      const vis = (n) => !!n && !n.closest('[hidden]');
+      const t = (n) => n.textContent.replace(/\s+/g, ' ').trim();
+      const slots = (product) => [...document.querySelectorAll(`[data-offer-terms][data-offer-product="${product}"]`)].map((n) => ({ text: t(n), chip: n.dataset.offerForm === 'chip', shown: vis(n) }));
+      const answers = [...document.querySelectorAll('[data-mode-answer]')].map((n) => ({ mode: n.dataset.modeAnswer, shown: !n.hidden }));
+      const bandChip = document.querySelector('#mkPass [data-offer-wrap]');
+      return { year: slots('year'), pass: slots('pass'), answers,
+        bandChip: bandChip && vis(bandChip) ? t(bandChip).replace(/^· /, '') : '',
+        faq: (() => { const dd = document.querySelector('dd[data-mode-faq]'); if (!dd) return null; const s = [...dd.querySelectorAll('[data-mode-answer]')].find((n) => !n.hidden); return s ? s.dataset.modeAnswer + ':' + t(s).slice(0, 40) : 'none'; })(),
+        text: document.body.innerText.replace(/\s+/g, ' ') };
+    });
+    const WANT = {
+      once: { year: 'One payment · nothing renews', pass: 'One payment · nothing renews' },
+      renew: { year: 'Renews every year · cancel anytime', pass: 'Renews every 7 days · cancel anytime' },
+      missing: { year: '', pass: '' }
+    };
+    PASS.on = true; PASS.open = true; PASS.cap = null; PASS.left = null;
+    PASS.ends = new Date(Date.now() + 3 * 86400e3).toISOString();
+    for (const mode of ['once', 'renew', 'missing']) {
+      MODE.plan = MODE.pass = mode === 'missing' ? undefined : mode;
+      const w = WANT[mode];
+      for (const file of ['start.html', 'pricing.html', 'product-writing.html']) {
+        const c = await context(browser);
+        await c.page.goto(BASE + file); await c.page.waitForLoadState('networkidle');
+        await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
+        const v = await termsView(c.page);
+        const want = (slot, words) => slot.text === (words ? (slot.chip ? words : words + '.') : '');
+        ok(v.year.length > 0 && v.year.every((s) => want(s, w.year)), `${mode} ${file}: every plan terms slot (${v.year.length}) reads "${w.year || '(empty)'}": ${JSON.stringify([...new Set(v.year.map((s) => s.text))])}`);
+        ok(v.pass.length > 0 && v.pass.every((s) => want(s, w.pass)), `${mode} ${file}: every pass terms slot (${v.pass.length}) reads "${w.pass || '(empty)'}"`);
+        ok(v.bandChip === w.pass, `${mode} ${file}: the launch band's terms chip ${w.pass ? 'says "' + w.pass + '"' : 'is hidden'}: "${v.bandChip}"`);
+        ok(v.answers.every((a) => a.shown === (mode === 'missing' ? a.mode === 'neutral' : a.mode === mode)), `${mode} ${file}: only the ${mode === 'missing' ? 'neutral' : mode} mode lines are shown (${v.answers.length})`);
+        if (mode === 'renew') ok(/cancel anytime/i.test(v.text), `${mode} ${file}: the page says "cancel anytime"`);
+        else { const hit = v.text.match(/.{0,50}(cancel anytime|locked while you stay|renews every (?:year|day|\d)|until you cancel).{0,30}/i); ok(!hit, `${mode} ${file}: no auto-renew wording on the page${hit ? ': "' + hit[0] + '"' : ''}`); }
+        if (mode === 'missing') { const hit = v.text.match(/.{0,50}(nothing renews|one payment|renews).{0,30}/i); ok(!hit, `${mode} ${file}: with no mode the page claims neither${hit ? ': "' + hit[0] + '"' : ''}`); }
+        if (file === 'pricing.html') {
+          ok(v.faq && v.faq.startsWith((mode === 'missing' ? 'neutral' : mode) + ':'), `${mode} pricing.html: "Is it a subscription?" shows the ${mode === 'missing' ? 'neutral' : mode} answer: ${v.faq}`);
+          if (mode === 'renew') ok(/locked while you stay/.test(v.text), 'renew pricing.html: "Your price is locked while you stay" is shown');
+          ok(await c.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${mode} pricing.html: no horizontal overflow`);
+        }
+        allErrors.push(...c.errors); await c.ctx.close();
+      }
+    }
+    MODE.plan = MODE.pass = undefined;
     PASS.on = false;
   }
 

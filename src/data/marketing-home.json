@@ -2,7 +2,7 @@
   "_about": "Copy for the rebuilt home page (start.html), rendered by scripts/make-marketing-pages.mjs. Every claim is checkable in this repo. No price, no date, no social proof. A figure is a {{fms:...}} stamp (dragon.*) filled by the fms-start-figures plugin in vite.config.js, never typed.",
   "hero": {
     "h1": "From first draft to final call sheet",
-    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place. Every keystroke is written to your own browser first, and sync is yours to switch off. A year of the studio from about {{fms:price.from.day}} a day, nothing renews by itself, and it keeps working when the signal drops.",
+    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place. Every keystroke is written to your own browser first, and sync is yours to switch off. A year of the studio from about {{fms:price.from.day}} a day, and it keeps working when the signal drops.",
     "note": "A sample feature, {{fms:dragon.scenes}} scenes long, shows the studio filled in, so you can look around before you write.",
     "cta": "Get started",
     "ctaPass": "Try the whole studio for {price}",
@@ -85,7 +85,7 @@
       "label": "Feeds breakdown, schedule, budget and call sheets"
     }
   ],
-  "pricingTeaser": "A plan is one year for one payment, from about {{fms:price.from.day}} a day, and what a plan lists is in it: breakdown, scheduling and call sheets are not add-ons. See what each one includes.",
+  "pricingTeaser": "A plan is a year of the studio, from about {{fms:price.from.day}} a day, and what a plan lists is in it: breakdown, scheduling and call sheets are not add-ons. See what each one includes.",
   "closing": {
     "h2": "Open the studio and write scene one",
     "sub": "Sign in with Google to start. Your work stays in your browser, and every tool reads the same scenes.",
@@ -125,8 +125,8 @@
   },
   "pass": {
     "_": "The line under the hero and the closing buttons. `note` shows only while the launch pass is open (its slots are filled from the server); `off` is what everybody else reads. `open` replaces both for a signed-in visitor.",
-    "note": "{length} of the whole studio for {price}, once per account, paid through Razorpay. It ends by itself; then choose a yearly plan, or don't.",
-    "off": "A plan is one payment for one year. Nothing renews by itself, and there is nothing to cancel.",
+    "note": "{length} of the whole studio for {price}, once per account, paid through Razorpay. {passTerms} Move to a yearly plan whenever you like.",
+    "off": "A plan is a year of the studio, and each plan card states its price and terms before you pay. {planTerms}",
     "open": "You are signed in: your plan is on the Purchase page."
   },
   "exports": {
@@ -168,8 +168,8 @@
         "sym": "timer",
         "q": "Is there a free trial?",
         "pass": true,
-        "a": "No. A plan is one payment for one year, and the Dragon sample shows the studio filled in before you buy.",
-        "aPass": "No. While the launch offer lasts, {length} of the whole studio is {price}, once per account. It ends by itself, and a plan after it costs what it costs on the day you buy it."
+        "a": "No. A plan is a year of the studio, and the Dragon sample shows the studio filled in before you buy.",
+        "aPass": "No. While the launch offer lasts, {length} of the whole studio is {price}, once per account. {passTerms} A plan after it costs what it costs on the day you buy it."
       },
       {
         "sym": "storage",

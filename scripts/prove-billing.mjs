@@ -376,8 +376,11 @@ try {
     await page.fill('#ba_indie_projects', '12');
     await page.click('form[data-plan="indie"] button[type="submit"]');
     await page.waitForSelector('.ba-saved', { timeout: 8000 });
+    /* .ba-saved can already be on the page from the render before this
+       save landed: wait for the fake's row itself (intermittent under load). */
+    for (let t = 0; t < 50 && F.db.plans.find((p) => p.id === 'indie').price_paise !== 59900; t++) await page.waitForTimeout(100);
     const indie = F.db.plans.find((p) => p.id === 'indie');
-    ok(indie.price_paise === 59900 && indie.limits.projects === 12, 'admin_set_plan received ₹599 as price_paise 59900 and projects 12');
+    ok(indie.price_paise === 59900 && indie.limits.projects === 12, 'admin_set_plan received ₹599 as price_paise 59900 and projects 12' + (indie.price_paise === 59900 && indie.limits.projects === 12 ? '' : ' — row: ' + JSON.stringify({ price: indie.price_paise, limits: indie.limits }) + ' toast: ' + (await page.evaluate(() => [...document.querySelectorAll('.toast-host')].map((n) => n.textContent).join(' | ')))));
     ok(indie.limits.seats === 3, 'untouched limits survived the save');
     // "Saved." clears itself with a re-render 2.5s on; fill the grant form after that, not under it.
     await page.waitForSelector('.ba-saved', { state: 'detached', timeout: 8000 });

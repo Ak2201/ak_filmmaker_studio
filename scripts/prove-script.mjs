@@ -727,7 +727,7 @@ await page.setViewportSize({ width: 1280, height: 900 });
   const yoursKept = (await toasts(page, 'Yours is kept')) + (await toasts(tabB, 'Yours is kept'));
   ok(yoursKept <= 1, '21c the two windows do not trade "Yours is kept" toasts', yoursKept);
   s = await stored();
-  const sides = (s.script.revisions || []).filter((r) => /^From another/.test(r.name));
+  const sides = (s.script.revisions || []).filter((r) => /^(From another|Kept when two windows saved)/.test(r.name));
   ok(sides.every((r) => /^Kept when two windows saved/.test(r.name)), '21c a copy from another window is named for windows, not a device, and not as if it were the other window\'s', sides.map((r) => r.name));
   const anyAAA = s.script.elements.some((e) => /AAA/.test(e.text)) || sides.some((r) => r.elements.some((e) => /AAA/.test(e.text)));
   ok(anyAAA, '21c and nothing typed is lost', s.script);

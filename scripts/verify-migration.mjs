@@ -363,13 +363,7 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "dashboard": {},
   "preprod": {},
   "screenplay": {},
-  "settings": {
-    "been": "Account QA round 4 (27 Oct 2026): the Storage note 'Large-item storage has not been checked yet, so its figure below is not shown.' is gone; a cold tier means nothing large is stored, which the figure says",
-    "below": "Account QA round 4 (27 Oct 2026): the Storage note 'Large-item storage has not been checked yet, so its figure below is not shown.' is gone; a cold tier means nothing large is stored, which the figure says",
-    "checked": "Account QA round 4 (27 Oct 2026): the Storage note 'Large-item storage has not been checked yet, so its figure below is not shown.' is gone; a cold tier means nothing large is stored, which the figure says",
-    "figure": "Account QA round 4 (27 Oct 2026): the Storage note 'Large-item storage has not been checked yet, so its figure below is not shown.' is gone; a cold tier means nothing large is stored, which the figure says",
-    "shown": "Account QA round 4 (27 Oct 2026): the Storage note 'Large-item storage has not been checked yet, so its figure below is not shown.' is gone; a cold tier means nothing large is stored, which the figure says",
-  },
+  "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 

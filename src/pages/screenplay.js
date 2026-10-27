@@ -273,7 +273,16 @@ function onIncomingScript(live, where = 'device') {
        right — this page has nothing unsaved — but the lines this writer
        saved are leaving the screen, and that has to be said (QA r2:
        they vanished silently after a toast had said "Yours is kept"). */
-    const gone = savedEls && displacedCopy(fresh, savedEls);
+    /* `savedEls` is cleared when an earlier arrival was filed as a draft
+       here, yet this page's lines can still be the ones the other window
+       just filed (both typing at once: prove:script 21c, intermittent).
+       With nothing unsaved, what is on screen IS what this page saved, so
+       it stands in — looked for only among drafts this arrival added or
+       changed, never an old copy that happens to read the same. */
+    const sig = (r) => r.id + '\u0000' + JSON.stringify((r.elements || []).map((e) => [e.type, String(e.text ?? '')]));
+    const known = new Set((doc.revisions || []).map(sig));
+    const added = { ...fresh, revisions: (fresh.revisions || []).filter((r) => !known.has(sig(r))) };
+    const gone = displacedCopy(added, savedEls || doc.elements.map((e) => [e.type, e.text]));
     savedEls = null;
     doc = fresh;
     savedSig = scriptSignature(doc);

@@ -147,7 +147,9 @@ export function inviteSection(section, st) {
      doorway itself. invite.html renders the request block beside it,
      so it does not need the pointer. */
   if (signedIn && !/(^|\/)invite(\.html)?$/.test(location.pathname)) {
-    sec.append(h('p.gt-meta', {}, [h('a', { href: 'invite.html', text: 'No code? Start a free trial →' })]));
+    /* No free trial is promised to the public any more (the launch pass,
+       27 Oct 2026): the offer page says what is on offer today. */
+    sec.append(h('p.gt-meta', {}, [h('a', { href: 'invite.html', text: 'No code? See how to come in →' })]));
   }
   sec.append(h('p.gt-meta', {}, [h('a', { href: 'start.html', text: 'What is this? About ' + BRAND.name + ' →' })]));   // the public landing page, outside the gate
   return sec;
@@ -160,8 +162,8 @@ async function submitCode(form) {
   codeTyped = raw;
   if (!normaliseCode(raw)) {
     codeError = c.getSession()
-      ? 'Enter the code you were given, or choose a plan or the free trial above.'
-      : 'Enter the code you were given. With no code, sign in with Google and choose a plan or a free trial.';
+      ? 'Enter the code you were given, or choose one of the ways in above.'
+      : 'Enter the code you were given. With no code, sign in with Google and choose a way in.';
     rerender();
     /* The redraw replaced the form, so the field is looked up again: the
        old reference is detached and focusing it moved nothing. */

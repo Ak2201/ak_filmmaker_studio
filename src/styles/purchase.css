@@ -50,6 +50,23 @@
 @media (max-width: 960px) { .pu-current.is-buyer { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 719px) { .pu-current { padding: var(--s4); } }
 
+/* ---- the launch pass (§61), above the yearly cards ------------------
+   One card, the brand rule on its leading edge so it reads as an offer
+   beside the plans rather than a fourth tier. */
+.pu-pass {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5);
+  background: var(--paper-raised);
+  border: 1px solid var(--border-hair);
+  border-left: var(--sk-hue-rule-w, 4px) solid var(--brand);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.pu-pass > * { margin: 0; }
+.pu-pass-p { color: var(--ink-body); max-width: var(--measure-text, 72ch); }
+.pu-pass.is-wanted { outline: 2px solid var(--cta-fill, var(--brand)); outline-offset: 2px; }
+@media (max-width: 719px) { .pu-pass { padding: var(--s4); } }
+
 /* ---- the plans heading -------------------------------------------- */
 .pu-plans-head { display: grid; gap: var(--s1); }
 .pu-h3 { margin: 0; font-family: var(--f-display); font-size: var(--t-xl); font-weight: 700; color: var(--ink); }

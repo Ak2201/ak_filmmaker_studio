@@ -17,6 +17,13 @@
    "no plan" state — but it is never drawn here as a choice, on
    purchase.html or invite.html. A trial is not a plan and is not sold.
 
+   THE LAUNCH PASS IS NOT A TIER EITHER (§61). It is a few days of Pro,
+   period 'pass', drawn by purchase.html as its own card above this row
+   and never here. An account on a running pass holds NO plan for this
+   row: quote_for treats it as none, so every tier is a first purchase
+   (no renewal, no upgrade credit), and the one bought replaces the pass
+   from that day.
+
    A YEAR AT A TIME (schema section 52, owner 21 Oct 2026). A plan lasts
    365 days; the price is per year and the card leads with what that
    costs a DAY (₹599 → ≈ ₹1.64). The current tier's card says until when
@@ -54,6 +61,7 @@ import Billing, { priceFor, cap, planName, normalisePromo } from '../lib/billing
 import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
 import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
+import { onPass } from '../lib/pass-view.js';
 import { fmtMinor, perDayIn, orderCurrency, chargeCaption } from '../lib/price-model.js';
 import { meter } from './kit/meter.js';
 import SITE from '../data/marketing-site.json';   // student.live: the code is named only once it exists
@@ -127,7 +135,7 @@ const upg = { key: '', quotes: {}, busy: false };
 const upgradeQuote = (planId) => { const q = upg.quotes[planId]; return q && q.ok && qAmt(q, 'credit') > 0 ? q : null; };
 function loadUpgradeQuotes(st, ids) {
   const paid = ((st && st.payments) || []).filter((p) => p.status === 'paid').length;
-  if (!st || st.plan === 'free' || !paid || !ids.length) { upg.key = ''; upg.quotes = {}; return; }
+  if (!st || st.plan === 'free' || onPass(st) || !paid || !ids.length) { upg.key = ''; upg.quotes = {}; return; }
   const cur = orderCur();
   const key = `${st.plan}:${paid}:${ids.join(',')}:${cur}`;
   if (upg.key === key || upg.busy) return;
@@ -282,7 +290,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   if (promo.code && promo.cur && promo.cur !== orderCur()) requote();
   const usd = !!(shop && shop.currency === 'USD');
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
-  const current = st ? st.plan : null;
+  const current = st ? (onPass(st) ? 'free' : st.plan) : null;
   const listed = listedIn(plans);
   if (justBought) wrap.append(successCard(justBought, plans));
   if (!matrixMod) wantMatrix();
@@ -420,7 +428,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
      the upgrade credit (refund.html §4, schema section 21), the legal. */
   wrap.append(h('div.pl-fine', {}, [
     h('p.pl-note', { text: `Each plan is a year of full access, paid once in ${orderCur() === 'USD' ? 'US dollars' : 'Indian rupees'} through Razorpay. Nothing renews or is charged automatically: when the year is ending, renew from this page and the new year starts where the old one stops.` }),
-    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final — which is why the trial comes first. Move up any time: what is left of your year counts toward the new plan.' }),
+    h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a year is final. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
       'By paying you agree to the ',
       h('a', { href: 'terms.html', text: 'Terms of Service' }),

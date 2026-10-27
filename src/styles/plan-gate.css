@@ -156,3 +156,19 @@
 :root[data-purchases="off"] a[href^="../purchase.html"],
 :root[data-purchases="off"] .st-plan-link:has(> a[href^="purchase.html"]),
 :root[data-purchases="off"] .db-tile:has(> a.db-tile-go[href^="purchase.html"]) { display: none !important; }
+
+/* The launch pass's countdown and cap line (src/lib/plan-gate.js
+   passClock), on the wall, invite.html and purchase.html: empty and
+   hidden until the server's figures fill them, so no static page
+   carries a number. Tabular figures so the clock does not jitter. */
+.pass-clock {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s4);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+}
+.pass-clock:not(:has(> :not([hidden]))) { display: none; }
+.pass-timer { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.pass-left { color: var(--ink-muted); }

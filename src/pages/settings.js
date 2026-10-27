@@ -128,6 +128,7 @@ import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigur
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
+import { passName } from '../lib/pass-view.js';
 
 /* Old billing anchors: settings.html#plan etc. now live on purchase.html. */
 {
@@ -1049,6 +1050,7 @@ function renderPlanContents() {
     const ended = cp.planUntil && Date.parse(cp.planUntil) <= PlanGate.serverNow() ? new Date(cp.planUntil) : null;
     const sec = section('plan-contents', 'Your plan', 'What’s in my plan.',
       cp.lapsed || ended ? 'Your plan’s year ' + (ended ? 'ended on ' + ended.toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'has ended') + '. Nothing is open until you choose a plan; everything you made is kept.'
+        : cp.passUsed ? 'Your launch pass has ended. Nothing is open until you choose a yearly plan; everything you made is kept.'
         : why === 'off' || !cp.used ? 'No plan is active. Everything you made is kept; a plan opens the studio again.'
         : 'Your free trial has ended. Nothing is open until you choose a plan; everything you made is kept.');
     sec.append(h('p.st-plan-link', {}, [button({ href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward', label: 'Choose a plan' })]));
@@ -1079,7 +1081,10 @@ function renderPlanContents() {
     cp.plan === 'free'
       ? (sample ? 'What your trial opens right now, on the sample films. Choose a plan to start a film of your own.'
                 : 'What your trial opens right now. Choose a plan to keep working on your own film after it ends.')
-      : 'What the ' + (cp.planName || 'current') + ' plan includes, read from the plan itself.');
+      : cp.passActive
+        /* §61: "7-day pass · ends 3 Nov": a pass is the whole studio for its days. */
+        ? passName(cp.passDays) + (cp.planUntil ? ' · ends ' + new Date(cp.planUntil).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '') + '. The whole studio, read from the plan itself; choose a yearly plan to keep it.'
+        : 'What the ' + (cp.planName || 'current') + ' plan includes, read from the plan itself.');
   const list = (rs, cls) => h('ul.st-pc-list' + (cls || ''), {}, rs.map((r) => h('li', { text: labelOf(r) })));
   const mods = mine.filter((r) => r.kind === 'module');
   const tools = mine.filter((r) => r.kind !== 'module');

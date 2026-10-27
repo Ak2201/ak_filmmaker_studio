@@ -160,6 +160,11 @@ export const countSignIn = (source) => bumpOnce('signin_done', source);
 export const countSampleOpen = (source) => bumpOnce('sample_open', source);
 export const countTrialStart = (source) => bumpOnce('trial_start', source);
 export const countPlanViewInApp = (source) => bumpOnce('plan_view_in_app', source);
+/* The launch pass (§61): a pass bought is its own funnel step, between
+   the sign-in and a yearly purchase, and is NOT counted as 'purchase' —
+   that step means a yearly plan. Every buy counts (a pass is once per
+   account on the server, so there is nothing to de-duplicate here). */
+export const countPassBuy = (source) => bumpEvent('pass_buy', source);
 
 /** The launch-offers form. Rejects with a sentence fit to show. */
 export async function addLead(email, consentText, source = 'start') {
@@ -205,7 +210,8 @@ export async function purchasesRequired() {
 }
 
 /** §33's trial_offer(): { trial_enabled, trial_minutes, trial_hours,
- *  purchase_required, and since §60 trial_scope ('sample' | 'full', what a
+ *  purchase_required, since §61 `pass` (the launch pass's public block,
+ *  read by pass-offer.js — absent means no offer), and since §60 trial_scope ('sample' | 'full', what a
  *  pressed trial opens; absent on an older server, so say nothing about
  *  scope then) } for the landing page's "Free trial" card, or
  *  null when it is not known (unconfigured, offline, a database that
@@ -215,4 +221,4 @@ export async function trialOffer() {
   try { const v = await rpc('trial_offer', {}); return v && typeof v === 'object' && typeof v.trial_enabled === 'boolean' ? v : null; } catch (e) { return null; }
 }
 
-export default { bumpEvent, bumpOnce, sourceBucket, funnelSource, SOURCES, countSignIn, countSampleOpen, countTrialStart, countPlanViewInApp, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired, trialOffer };
+export default { bumpEvent, bumpOnce, sourceBucket, funnelSource, SOURCES, countSignIn, countSampleOpen, countTrialStart, countPlanViewInApp, countPassBuy, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired, trialOffer };

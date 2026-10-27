@@ -11,6 +11,7 @@
    ============================================================ */
 import Store from './store.js';
 import { OPTOUT_KEY } from './usage.js';
+import { passName } from './pass-view.js';
 
 /* ---- old anchors ----------------------------------------------------- */
 
@@ -76,7 +77,7 @@ export function bigTierFigure(u) {
     only ever computed with plan 'free', so its planName is the free plan's. */
 export function roleLine(cp, gateRole) {
   const role = gateRole === 'admin' ? 'Studio admin' : 'Member';
-  const plan = cp.reason === 'paid' ? cp.planName : cp.reason === 'granted' ? 'Access given by the studio' : cp.reason === 'trial' ? 'Free trial' : '';
+  const plan = cp.reason === 'paid' && cp.passActive ? passName(cp.passDays) : cp.reason === 'paid' ? cp.planName : cp.reason === 'granted' ? 'Access given by the studio' : cp.reason === 'trial' ? 'Free trial' : '';
   return role + (plan ? ' · ' + plan : '');
 }
 
@@ -91,13 +92,16 @@ export function planSummary(cp, { off, signedIn, trialEndsAt }) {
   else if (cp.reason === 'trial') {
     const end = trialEndsAt();
     line = 'Free trial' + (end ? ' · ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
+  } else if (cp.reason === 'paid' && cp.passActive) {
+    /* §61: the launch pass is Pro for a few days, not a plan to renew. */
+    line = passName(cp.passDays) + (cp.planUntil ? ' · ends ' + new Date(cp.planUntil).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '. The whole studio is open; a yearly plan keeps it open after.';
   } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + (cp.planUntil ? ' · valid until ' + new Date(cp.planUntil).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '. Renew from Plan & purchases to add a year.' : ' · granted for good.');
   else if (cp.reason === 'granted') line = 'Access given to you by the studio.';   // its planName is the free plan's
-  else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
+  else if (cp.reason === 'expired') line = cp.passUsed ? 'Your launch pass has ended. A yearly plan opens the studio again.' : 'Your free trial has ended. A plan brings it back.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
   /* One LED pill, read from the same facts as the line, so it can never
      say something the line does not. */
-  const led = off ? ['Open', 'ok'] : cp.reason === 'trial' ? ['Trial', 'warn'] : cp.reason === 'paid' ? ['Active', 'ok']
+  const led = off ? ['Open', 'ok'] : cp.reason === 'trial' ? ['Trial', 'warn'] : cp.reason === 'paid' && cp.passActive ? ['Pass', 'warn'] : cp.reason === 'paid' ? ['Active', 'ok']
     : cp.reason === 'granted' ? ['Granted', 'ok'] : cp.reason === 'expired' ? ['Ended', 'bad'] : null;
   /* The second line: what the plan means for what you can keep and share. */
   let usageNote = '';

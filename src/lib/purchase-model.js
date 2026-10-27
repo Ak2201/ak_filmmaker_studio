@@ -13,6 +13,7 @@ import { session } from './prefs.js';
 import { timeLeft } from './trial-time.js';
 import { perDay, LIST_PRICE } from './plans.js';
 import { cleanRef, captureAttribution } from './attribution.js';
+import { passName, passDays } from './pass-view.js';
 
 /* ---- the plan they came to buy ------------------------------------ */
 
@@ -99,6 +100,10 @@ export function planHeading(st) {
     : st && st.granted === true ? 'Access given by the studio.' : 'Choose a plan.';
 }
 
+/** The heading for an account on the launch pass (§61): "7-day pass",
+ *  its length from its own paid payment's span, else "Launch pass". */
+export const passHeading = (st) => passName(passDays(st)) + (st && st.account_name ? ' · ' + st.account_name : '');
+
 /** The heading while the plans have not arrived. */
 export function plansPendingHeading({ missing, error }) {
   return missing ? 'Plans are not set up on this project yet.' : error ? 'The plans did not load.' : 'Loading the plans…';
@@ -141,5 +146,5 @@ export function trialStatus(st, now) {
 
 export default {
   wantedPlan, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
-  planHeading, plansPendingHeading, lapsedLine, trialStatus
+  planHeading, passHeading, plansPendingHeading, lapsedLine, trialStatus
 };

@@ -164,7 +164,7 @@ for (const id of IDS) {
     ok(/<a class="mk-nav-link" href="pricing\.html" aria-current="page">/.test(html), tag + 'the header marks Pricing as the current page');
     leadContract(html, tag);
     ok(/href="trust\.html"/.test(html), tag + 'links the trust page');
-    ok(/<aside class="pr-trial"[\s\S]*?data-trial-only[\s\S]*?<\/aside>/.test(html), tag + 'the trial strip\'s button is marked data-trial-only');
+    ok(/<aside class="pr-pass" data-pass data-pass-only hidden[\s\S]*?data-pass-cta[\s\S]*?<\/aside>/.test(html), tag + 'the pass strip is pass-only, hidden, and its button is the pass CTA');
     for (const other of IDS) ok(new RegExp(`href="${pages[other].file.replace(/[.]/g, '\\.')}"`).test(html), `${tag}links to ${pages[other].file} (header and footer)`);
 
     /* the cards: the paid plans of plan-matrix.json, in order, and no free card */
@@ -172,7 +172,6 @@ for (const id of IDS) {
     const PAID = Object.keys(matrix.plans).filter((id) => id !== 'free');
     const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"/g)].map((m) => m[1]);
     ok(tiers.join() === PAID.join(), tag + 'the cards are the paid plans in matrix order: ' + tiers.join(', '));
-    ok((html.match(/<aside\b[^>]*\sdata-trial[\s>]/g) || []).length === 1, tag + 'exactly one free-trial strip, and it is not a card');
     for (const id of PAID) {
       ok(html.includes('{{fms:plan.' + id + '}}') && html.includes('{{fms:price.' + id + '}}') && html.includes('{{fms:tier.list.' + id + '}}'), `${tag}${id}: name, price and bullets are build-time stamps`);
       ok(new RegExp(`data-start-buy="${id}" data-plan="${id}"`).test(html) && html.includes(`href="purchase.html?plan=${id}"`), `${tag}${id}: the buy link carries the plan`);
@@ -226,8 +225,8 @@ for (const id of IDS) {
     const faq = JSON.parse(read('src/data/marketing-faq.json'));
     const acc = [...html.matchAll(/<details class="pr-acc" name="([^"]+)" id="faq-\d">/g)];
     ok(acc.length === 3 && new Set(acc.map((a) => a[1])).size === 1 && acc.length === faq.length, tag + 'FAQ is three <details name=...> accordions (single-open)');
-    const nQ = (html.match(/<dt( data-trial)?>/g) || []).length;
-    ok(nQ === faq.reduce((n, g) => n + g.items.length, 0) && (html.match(/<dd( data-trial)?>/g) || []).length === nQ, tag + 'every question in marketing-faq.json is in the markup, answered');
+    const nQ = (html.match(/<dt( data-pass-faq)?>/g) || []).length;
+    ok(nQ === faq.reduce((n, g) => n + g.items.length, 0) && (html.match(/<dd( data-pass-faq)?>/g) || []).length === nQ, tag + 'every question in marketing-faq.json is in the markup, answered');
     ok(!/<details[^>]*\sopen[\s>]/.test(html), tag + 'the accordions start collapsed');
 
     /* icons the page draws are in the font subset */
@@ -418,7 +417,7 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 {
   const js = read('src/pages/marketing.js');
   const imports = [...js.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model)\.js$/];   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
+  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer)\.js$/];   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
   const stray = imports.filter((i) => !allowed.some((a) => a.test(i)));
   ok(stray.length === 0, 'marketing.js imports only the light allowlist (the startlib rule)' + (stray.length ? ': ' + stray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(js), 'marketing.js builds no markup from strings');
@@ -537,11 +536,10 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
     ok(types.includes('SoftwareApplication') && types.includes('BreadcrumbList'), tag + 'SoftwareApplication and BreadcrumbList JSON-LD: ' + types.join(', '));
     ok(!lds.some((t) => /"offers"|"price"/.test(t)), tag + 'no offers or price in the JSON-LD (a build-time price goes stale at the server-held price rise)');
     if (file.startsWith('guide-')) ok(types.includes('Article') || types.includes('HowTo'), tag + 'Article or HowTo JSON-LD');
-    /* the closing door: the trial (marked trial-only, its length a runtime
-       fill) and the plans, which are true when no trial runs */
-    ok(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup data-trial data-trial-only>Start your <span data-trial-length="label">free trial<\/span><\/a>/.test(html), tag + 'the trial CTA goes to invite.html, is data-trial-only and wraps "free trial" in [data-trial-length="label"]');
-    ok(/<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\.html">/.test(html), tag + 'a plans CTA that stands when no trial runs');
-    ok(!/\d+[- ]day (free )?trial/i.test(html.replace(/<[^>]+>/g, ' ')), tag + 'no trial length typed');
+    /* the closing door: the launch pass (pass-only, hidden, its price a
+       runtime slot) and the plans, which are true when no pass runs */
+    ok(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup data-pass-only hidden><span>Try the whole studio for <span data-pass-price><\/span><\/span><\/a>/.test(html), tag + 'the pass CTA goes to invite.html, is pass-only and hidden, and names the price as a runtime slot');
+    ok(/<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\.html">/.test(html), tag + 'a plans CTA that stands when no pass runs');
     ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b|users love/i.test(html), tag + 'no rating, testimonial or customer claim');
     ok(/<footer class="mk-foot"[\s\S]*trust\.html[\s\S]*guides\.html[\s\S]*privacy\.html/.test(html), tag + 'footer links trust, guides and the legal pages');
     /* external links: only the cited sources (guides) and the comparison's source cells */
@@ -603,67 +601,119 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
     const h = read(pages[id].file);
     ok(/"@type":"SoftwareApplication"/.test(h) && /"@type":"BreadcrumbList"/.test(h) && ![...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].some((m) => /"offers"|"price"/.test(m[1])), pages[id].file + ': SoftwareApplication + BreadcrumbList JSON-LD, no build-time price in it');
   }
-  /* trial wording: every public mention of the trial's length is the runtime fill */
-  for (const f of [HOME_FILE, PRICING_FILE, ...files]) {
-    for (const m of read(f).matchAll(/<span data-trial-length(?:="([a-z]*)")?>([^<]*)<\/span>/g)) ok(m[1] === 'label' && m[2] === 'free trial', f + ': [data-trial-length="label"] falls back to "free trial", got mode "' + m[1] + '" and "' + m[2] + '"');
+}
+
+/* ---- THE LAUNCH PASS (27 Oct 2026) -----------------------------------
+   The free trial is retired for the public; the pages offer the launch
+   pass, and every figure in it (price, length, deadline, count) is the
+   server's, filled at runtime from trial_offer().pass. These checks read
+   the committed markup and the copy:
+     - no price, length, date or count is typed anywhere a pass is named:
+       every pass element's slots are EMPTY in the markup, and the pass
+       copy in the JSON holds only the {price} / {length} tokens
+     - the band is on every page that should carry it, exactly once, and
+       hidden in the markup, with no countdown text in it
+     - no "free trial" anywhere in public copy, except the FAQ's question
+       "Is there a free trial?", whose answer starts "No"
+     - "whole studio" appears only inside a pass element ([data-pass-only]
+       or the band): it is the pass's scope, and with no pass it is no
+       promise anybody keeps
+     - pricing.html has exactly one pass strip, hidden in the markup
+     - every [data-pass-only] has a [data-pass-off] fallback or stands
+       alone as an extra (a button beside one that stays) */
+{
+  const g = inputs.guides, v = inputs.versus;
+  const extra = [...g.guides.map((x) => x.file), GUIDES_INDEX, ...v.pages.map((p) => p.file), TRUST_FILE];
+  const BAND_PAGES = [HOME_FILE, PRICING_FILE, ...IDS.map((i) => pages[i].file), ...extra];
+  const PUBLIC = [...BAND_PAGES, ABOUT_FILE, CONTACT_FILE];
+  const JSONS = ['src/data/marketing-site.json', 'src/data/marketing-home.json', 'src/data/marketing-faq.json', 'src/data/marketing-guides.json',
+    'src/data/pricing-compare.json', 'src/data/marketing-compare.json', 'src/data/marketing-pages.json', 'src/data/marketing-company.json'];
+  const noComments = (h) => h.replace(/<!--[\s\S]*?-->/g, '');
+  /* the outer HTML of every element carrying `attr`, nesting-aware */
+  const elementsWith = (html, attr) => {
+    const out = [];
+    const re = new RegExp('<([a-z][a-z0-9]*)\\b[^>]*\\s' + attr + '(?=[\\s>=])[^>]*>', 'g');
+    let m;
+    while ((m = re.exec(html))) {
+      const tag = m[1];
+      const tre = new RegExp('<(/?)' + tag + '\\b[^>]*>', 'g');
+      tre.lastIndex = m.index;
+      let depth = 0, end = -1, t;
+      while ((t = tre.exec(html))) { depth += t[1] ? -1 : 1; if (depth === 0) { end = tre.lastIndex; break; } }
+      out.push(html.slice(m.index, end < 0 ? html.length : end));
+    }
+    return out;
+  };
+  const text = (h) => h.replace(/<[^>]+>/g, ' ').replace(/&middot;/g, '·').replace(/\s+/g, ' ').trim();
+  let nPass = 0, nBand = 0;
+  for (const f of PUBLIC) {
+    const html = noComments(read(f));
+    /* every slot is empty in the markup */
+    const slots = [...html.matchAll(/<span data-pass-(price|length|timer|left|spoken)\b[^>]*>([^<]*)<\/span>/g)];
+    ok(slots.every((m) => m[2] === ''), f + ': every pass slot is empty in the markup' + (slots.some((m) => m[2]) ? ': ' + slots.filter((m) => m[2]).map((m) => m[1] + '=' + m[2]).join(', ') : ''));
+    /* no figure inside anything that names the pass */
+    const passEls = [...elementsWith(html, 'data-pass-only'), ...elementsWith(html, 'data-pass-band'), ...elementsWith(html, 'data-pass')];
+    for (const el of passEls) {
+      nPass++;
+      const t = text(el.replace(/\sdata-[a-z-]+="[^"]*"/g, ''));
+      ok(!/\d|₹|\$|\{\{fms:/.test(t), f + ': a pass element types a figure, a price stamp or a date: "' + t.slice(0, 120) + '"');
+    }
+    /* [data-pass-only] is hidden in the markup, every one */
+    const shown = [...html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\sdata-pass-only\b[^>]*>/g)].filter((m) => !/\shidden[\s>]/.test(m[0]));
+    ok(shown.length === 0, f + ': every [data-pass-only] is hidden in the markup' + (shown.length ? ': ' + shown.map((m) => m[0]).join(' ') : ''));
+    /* no free trial in public copy, but for the FAQ question that says there is none */
+    const plain = text(html.replace(/<script\b[\s\S]*?<\/script>/g, '').replace(/<head>[\s\S]*?<\/head>/, ''));
+    const free = plain.replace(/Is there a free trial\? No\b/g, '').replace(/Is there a free trial\?/g, '');
+    ok(!/free trial/i.test(free), f + ': no "free trial" in public copy (the pass replaced it)');
+    for (const m of html.matchAll(/<(dt|h3)\b[^>]*>Is there a free trial\?<\/\1>\s*<(dd|p)\b[^>]*>\s*(<span data-pass-off>)?([^<]*)/g)) ok(/^No\b/.test(m[4]), f + ': "Is there a free trial?" is answered "No": ' + m[4].slice(0, 40));
+    ok(!/data-trial/.test(html), f + ': no [data-trial*] slot is left');
+    /* "whole studio" only inside a pass element */
+    const outside = passEls.reduce((h, el) => h.split(el).join(''), html);
+    ok(!/whole studio/i.test(text(outside.replace(/<head>[\s\S]*?<\/head>/, ''))), f + ': "the whole studio" is said only inside a pass element');
+    /* the timer is never static */
+    ok(!/\b\d+d \d\d:\d\d:\d\d\b|\b\d\d:\d\d:\d\d\b/.test(plain), f + ': no countdown in the static page');
+    /* the band */
+    const bands = elementsWith(html, 'data-pass-band');
+    if (BAND_PAGES.includes(f)) {
+      nBand++;
+      ok(bands.length === 1, f + ': carries the launch band exactly once');
+      const b = bands[0] || '';
+      ok(/^<aside class="mk-pass" id="mkPass" data-pass-band hidden aria-label="[^"]+">/.test(b), f + ': the band is hidden in the markup');
+      ok(/data-pass-timer aria-hidden="true"/.test(b) && /data-pass-spoken/.test(b) && !/aria-live/.test(b), f + ': the ticking digits are aria-hidden, a minute-level label carries them, and nothing ticks into a live region');
+      ok(/<a class="mk-btn[^"]*" href="invite\.html" data-open-signup data-pass-cta><span>[^<]*<span data-pass-price><\/span><\/span><\/a>/.test(b), f + ': the band\'s button goes to the offer page (invite.html) and names the server\'s price');
+      ok(new RegExp('<main id="main"[^>]*>\\s*<aside class="mk-pass"').test(html), f + ': the band is the first thing in <main>');
+    } else ok(bands.length === 0, f + ': no launch band on this page');
   }
-  /* THE RUNTIME TRIAL TEXT IS GRAMMATICAL at every length. Every sentence
-     that holds a [data-trial-length] span, on every public page, is
-     rendered the way marketing.js renders it (trialMode + trialCopy from
-     start-model.js) with 30 minutes, 3 days (4320) and an unknown length,
-     and the result must not read "a 3 days", "a 30 minutes", "a a",
-     "free free" or "trial trial". */
+  ok(nPass >= PUBLIC.length * 2 && nBand === BAND_PAGES.length, `read ${nPass} pass elements on ${PUBLIC.length} public pages, the band on ${nBand}`);
+  /* the copy: tokens only, never a figure */
+  for (const f of JSONS) {
+    const raw = JSON.parse(read(f));
+    const walk = (o, at) => {
+      if (typeof o === 'string') {
+        if (/\{(price|length)\}|\b(pass|launch offer)\b/i.test(o) && !/^_/.test(at.split('.').pop())) {
+          ok(!/\d|₹|\$/.test(o.replace(/\{\{fms:[a-z.]+\}\}/g, '')), f + ' ' + at + ': pass copy types no figure: "' + o.slice(0, 80) + '"');
+        }
+        ok(!/free trial/i.test(o) || /^Is there a free trial\?$/.test(o) || /^_/.test(at.split('.').pop()), f + ' ' + at + ': no "free trial" in the copy');
+        return;
+      }
+      if (o && typeof o === 'object') for (const [k, x] of Object.entries(o)) walk(x, at + '.' + k);
+    };
+    walk(raw, '');
+  }
+  /* exactly one pass strip on pricing.html, never a card */
   {
-    const SM = await import(path.join(ROOT, 'src/lib/start-model.js'));
-    const offers = [{ trial_enabled: true, trial_minutes: 30 }, { trial_enabled: true, trial_minutes: 4320 }, null];
-    const want = ['30-minute free trial', '3-day free trial', 'free trial'];
-    const bad = /\ban? \d+(?:\.\d+)? (?:minutes|hours|days)\b|\ban? an?\b|\bthe (?:a|an|the)\b|\b(?:a|an) the\b|\bfree free\b|\btrial trial\b|\byour (?:a|an)\b/i;
-    const seen = new Set();
-    let n = 0;
-    for (const f of [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, ...IDS.map((i) => pages[i].file), ...files]) {
-      const html = read(f);
-      /* the innermost element that holds the span: its text is the sentence */
-      for (const m of html.matchAll(/<(p|h[1-6]|a|dd|li|span)\b[^>]*>((?:(?!<\/?\1\b)[\s\S])*?<span data-trial-length(?:="[a-z]*")?>[^<]*<\/span>(?:(?!<\/?\1\b)[\s\S])*?)<\/\1>/g)) {
-        const inner = m[2];
-        if (seen.has(inner)) continue;
-        seen.add(inner);
-        offers.forEach((offer, k) => {
-          const out = inner.replace(/<span data-trial-length(?:="([a-z]*)")?>([^<]*)<\/span>/g, (all, attr, fb) => {
-            const c = SM.trialCopy(offer, SM.trialMode(attr === undefined ? null : attr, fb));
-            return c.text || fb;
-          }).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-          n++;
-          ok(!bad.test(out) && out.includes(want[k]), f + ': trial text at ' + (offer ? offer.trial_minutes + ' minutes' : 'an unknown length') + ' reads "' + out + '"');
-        });
-      }
-    }
-    ok(n >= 3 * 6, 'the grammar check rendered every trial sentence at three lengths (' + n + ' renders, ' + seen.size + ' distinct sentences)');
-    console.log("  trial grammar: " + n + " renders of " + seen.size + " distinct sentences");
-    /* NO TRIAL SENTENCE CLAIMS A SCOPE. What a trial opens is decided on
-       the server (start_trial() writes 'sample' for a pressed trial;
-       billing_status() maps 'sample' to the sample films only and 'full'
-       to trial_plan's features, which need not be every module), and
-       trial_offer() returns neither, so the page cannot check a scope at
-       runtime. A sentence that names the trial stays generic. */
-    const scope = /\b(?:every|all(?: the)?) (?:module|tool|feature)s?\b|\bwhole studio\b|\bfull studio\b|\bevery part of the studio\b/i;
-    let nTrial = 0;
-    const scopeSrc = [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, ...IDS.map((i) => pages[i].file), ...files,
-      'src/data/marketing-site.json', 'src/data/marketing-home.json', 'src/data/marketing-faq.json', 'src/data/marketing-guides.json', 'src/data/pricing-compare.json', 'src/data/marketing-compare.json'];
-    for (const f of scopeSrc) {
-      const text = read(f).replace(/<[^>]+>/g, ' ').replace(/\\"/g, '"').replace(/\s+/g, ' ');
-      for (const s of text.split(/(?<=[.!?:"])\s+/)) {
-        /* the sample sentence sits under the trial line, so it is read the same way */
-        if (!/\b(?:trial|sample)\b/i.test(s)) continue;
-        nTrial++;
-        ok(!scope.test(s), f + ': a trial sentence claims a scope the page cannot check: "' + s.trim().slice(0, 160) + '"');
-      }
-    }
-    ok(nTrial >= 10, 'the trial-scope check read the trial sentences (' + nTrial + ')');
-    /* and the model itself, at the edges */
-    ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 1440 }, 'label').text === '24-hour free trial', 'one day reads "24-hour free trial"');
-    ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 4320 }, 'length').text === '3 days', 'length mode, 3 days');
-    ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 1 }, 'label').text === '1-minute free trial', 'one minute reads "1-minute free trial"');
-    ok(SM.trialCopy({ trial_enabled: false, trial_minutes: 4320 }, 'label').hide === true, 'trials off: hidden');
+    const ph = noComments(read(PRICING_FILE));
+    ok((ph.match(/<aside\b[^>]*\sdata-pass[\s>]/g) || []).length === 1, PRICING_FILE + ': exactly one pass strip, and it is not a card');
+    ok(/<aside class="pr-pass" data-pass data-pass-only hidden /.test(ph), PRICING_FILE + ': the pass strip is hidden in the markup');
+    ok(!/<li\b[^>]*\bdata-tier="pass"/.test(ph), PRICING_FILE + ': the pass is never drawn as a tier');
+  }
+  /* marketing.js binds it from the server, with the pure model */
+  {
+    const mj = read('src/pages/marketing.js');
+    ok(/from '\.\.\/lib\/pass-offer\.js'/.test(mj) && /passState\(raw, Date\.now\(\), readAt\)/.test(mj), 'marketing.js reads the pass through pass-offer.js passState, on the server clock (readAt)');
+    ok(/t\.pass/.test(mj) && /trialOffer\(\)\.then/.test(mj), 'marketing.js takes the pass from trial_offer()');
+    ok(/setInterval\(apply, 1000\)/.test(mj) && /\[data-pass-ended\]/.test(mj), 'marketing.js ticks every second and says the offer ended at zero');
+    ok(!/Date\.parse\(['"]\d{4}|new Date\(['"]\d{4}/.test(mj), 'marketing.js holds no deadline of its own');
   }
 }
 

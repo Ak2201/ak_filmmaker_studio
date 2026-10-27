@@ -223,47 +223,40 @@ export function swappedText({ openText, offText }, { signedIn, off }) {
   return signedIn && openText ? openText : (off ? offText : '');
 }
 
-/* ---- the trial's length, from §33's trial_offer() ------------------
-   The owner sets the length in the console (26 Oct 2026: 4320 minutes,
-   three days) and the pages SAY it; it is never typed into copy. Two
-   forms, because [data-trial-length] sits in two kinds of place:
-     'length'  inside a sentence: "free for <span>3 days</span>"
-     'label'   standing alone:    "<span>3-day free trial</span>"
-   Days only once it is two or more whole days, as trial-time.js's
-   trialLength() says it in the app (that module is not imported here:
-   this file stays import-free). */
-const trialMinutes = (offer) => {
-  if (!offer || typeof offer !== 'object') return 0;
-  const m = Number(offer.trial_minutes);
-  if (Number.isFinite(m) && m > 0) return Math.round(m);
-  const h = Number(offer.trial_hours);
-  return Number.isFinite(h) && h > 0 ? Math.round(h * 60) : 0;
-};
-function lengthParts(mins) {
-  if (!(mins > 0)) return null;
-  if (mins < 60) return { n: mins, unit: 'minute' };
-  if (mins >= 2880 && mins % 1440 === 0) return { n: mins / 1440, unit: 'day' };
-  return { n: Math.round((mins / 60) * 100) / 100, unit: 'hour' };
+/* ---- the launch pass, as the public pages say it (27 Oct 2026) -----
+   The free trial is retired for the public; the pages offer the launch
+   PASS instead, and every figure in it is the server's: trial_offer()'s
+   `pass` block, read through src/lib/pass-offer.js. This file stays pure
+   (no module of its own), so the formatters come in as the second argument (the
+   pass-offer module itself, or anything with the same four functions):
+
+     passCopy(passState(raw, now, readAt), PassOffer)
+
+   answers what each runtime slot shows:
+     { open, price, length, timer, left, spoken }
+   `open` false means show nothing of the pass (the markup's fallback
+   copy, the yearly plans, stands). `timer` is '' with no deadline, and
+   then no timer is drawn. `spoken` is the same deadline to the MINUTE
+   ("3 days 4 hours 12 minutes"), for the band's accessible label, so a
+   screen reader is never handed a figure that changes every second. */
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+/** "3 days 4 hours 12 minutes", to the minute; '' for nothing. */
+export function spokenLeft(msLeft) {
+  if (msLeft == null || !(msLeft > 0)) return '';
+  const m = Math.max(1, Math.floor(msLeft / 60000));
+  const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+  return [d && plural(d, 'day'), h && plural(h, 'hour'), mm && plural(mm, 'minute')].filter(Boolean).join(' ');
 }
-/** Which form an element wants: its data-trial-length value when that
- *  names one, else 'label' when the markup's own fallback is itself a
- *  label ("free trial"), else 'length'. */
-export const trialMode = (attr, fallback) => (attr === 'label' || attr === 'length' ? attr
-  : /\btrial\b/i.test(String(fallback || '')) ? 'label' : 'length');
-/** What a [data-trial-length] element shows: { hide, text }. `text` ''
- *  means keep the markup's fallback words (offer unknown, or no usable
- *  length); `hide` is true only when the server says trials are OFF. */
-export function trialCopy(offer, mode = 'length') {
-  if (!offer || typeof offer !== 'object') return { hide: false, text: '' };
-  if (offer.trial_enabled === false) return { hide: true, text: '' };
-  const p = lengthParts(trialMinutes(offer));
-  if (!p) return { hide: false, text: '' };
-  const text = mode === 'label' ? p.n + '-' + p.unit + ' free trial' : p.n + ' ' + p.unit + (p.n === 1 ? '' : 's');
-  return { hide: false, text };
+export function passCopy(st, P) {
+  const none = { open: false, price: '', length: '', timer: '', left: '', spoken: '' };
+  if (!st || st.state !== 'open' || !st.pass || !P) return none;
+  const price = P.passPrice(st.pass), length = P.passLength(st.pass);
+  if (!price || !length) return none;
+  return { open: true, price, length, timer: P.countdownText(st.msLeft), left: P.leftText(st), spoken: spokenLeft(st.msLeft) };
 }
 
 export default {
-  trialMode, trialCopy,
+  passCopy, spokenLeft,
   INVITE_PLAN_KEY, REGION_KEY, deviceRegion, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,
   priceRiseBand, foundingLeft, swappedText, RISE_ZONE, PLAN_DAYS, perDayOf, currentPrices, fromDayNow, stampedFromDay, swapFigure

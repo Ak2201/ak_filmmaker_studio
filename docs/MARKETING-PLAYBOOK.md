@@ -1,10 +1,14 @@
 # Marketing playbook — the owner's plan for finding paying filmmakers
 
-Written 26 Oct 2026; revised the same day for the source-bucket contract,
-the whole-studio trial decision and the switching guides. Status: a PLAN.
-Nothing in it has been posted, sent or spent. It replaces the marketing half of `docs/RELEASE-PLAN.md` §5 where the
-two disagree (that file still says "pay once" and "invite-only"; both are
-history since the yearly plans of 21 Oct and the trial decision of 26 Oct).
+Written 26 Oct 2026; **rewritten 27 Oct 2026 around the LAUNCH PASS**: the
+free trial is retired for the public, and while the launch offer runs a
+visitor tries the whole studio by paying for a short pass (the price, the
+length, the deadline and an optional cap are console settings, schema §61).
+Status: a PLAN. Nothing in it has been posted, sent or spent. It replaces the
+marketing half of `docs/RELEASE-PLAN.md` §5 where the two disagree (that file
+still says "pay once" and "invite-only"; both are history). The 26 Oct
+"3-day whole-studio free trial" decision is superseded for the public; it
+survives only as the trial an invite code is worth.
 
 Companion files:
 
@@ -31,34 +35,49 @@ India's CCPA dark-pattern guidelines, or both.
    holds **or** when the founding places are taken, whichever comes first.
    Quote the date from `price_notice()` the day you post. Never write "only N
    left" unless you read N from `price_notice()` that morning, and prefer not
-   to write it at all (§7.3).
+   to write it at all (§7.3). **The launch pass's scarcity is the server's
+   too:** its deadline is `trial_offer().pass.ends_at` and its count is
+   `pass.left` of `pass.cap`, the same for every visitor, never reset per
+   visit, and the server refuses the pass after either (`quote_pass`
+   `closed`). Never run an evergreen or per-visitor timer, never write a
+   deadline the console does not hold, and never extend a deadline you have
+   already announced without saying so in the same place.
 3. **Never type a price you have not just read.** The live figures are
    `price_notice()` (rupees) and `price_notice('USD')` (dollars plus the rupee
    amount actually charged). The table in §2.2 is a snapshot for planning.
    Ads and captions in `docs/marketing/` use placeholders (`{BASIC_YEAR}`,
    `{FROM_DAY}`, `{RISE_DATE}`) so a stale figure cannot be copied by accident.
-   **The same goes for the founding date and the trial**: copy meant for
-   posting never types the date or the length. `{RISE_DATE}` is read from
-   `price_notice()` `plans[].next_price_at` (an IST date; null means the rise
-   has fired, so drop the line) and `{TRIAL_LENGTH}` from `trial_offer()`
-   `trial_hours` (72 hours is "3 days"), both on the console the day you
-   post. Only §6, the owner's own steps, names the decided values.
+   **The same goes for the founding date and the launch pass**: copy meant
+   for posting never types the date, the price or the length. `{RISE_DATE}`
+   is read from `price_notice()` `plans[].next_price_at` (an IST date; null
+   means the rise has fired, so drop the line). The pass placeholders are
+   read from `select public.trial_offer()->'pass';` (anon) or the console's
+   Launch pass block, the morning you post:
+   `{PASS_PRICE}` = `amount_paise` ÷ 100 as rupees ("₹49"),
+   `{PASS_LENGTH}` = `days` ("7 days"),
+   `{PASS_ENDS}` = `ends_at` as an IST date and time (null: no deadline, so
+   no "ends" line at all),
+   `{PASS_LEFT}` = "`left` of `cap` left" (null cap: drop the line).
+   If `pass.open` is false, nothing about the pass is posted. Only §6, the
+   owner's own steps, names the decided values.
 4. **The charged amount is never hidden.** If a post shows a dollar figure,
    it also says what is charged today (rupees, until `usd_checkout` is on).
 5. **Plans are one year each.** Never "pay once", "lifetime", "own it
    forever". The true lines are: one payment for one year; nothing renews by
    itself; buy again to add a year; move up mid-year and the unused part is
    credited.
-6. **The trial is two server settings, and copy follows both.**
-   `{TRIAL_LENGTH}` is whatever `trial_offer()` answers that day; if you
-   have not just read it, write "a free trial" with no length. What the
-   trial opens is `{TRIAL_OPENS}`: "the whole studio" ONLY when
-   `trial_offer()` carries `trial_scope: "full"` (it gains that key with
-   schema §60; an older server sends none) and `trial_plan` is `pro`;
-   otherwise "the tools on the two sample films". A whole-studio trial still
-   keeps the no-plan limits (one film in the cloud, no share links, no
-   collaborators; local work is never capped), so never promise sharing or a
-   team on the trial.
+6. **There is no public free trial; there is the launch pass.** Never
+   write "free trial", "try free" or "no card" in public copy: the public
+   tries the studio with a paid pass while the launch offer runs, and with
+   no pass open the copy points at the yearly plans. The pass opens the Pro
+   features ("the whole studio") for `{PASS_LENGTH}` from activation, once
+   per account, paid in rupees through Razorpay, and then ends by itself:
+   nothing renews. It is a purchase of its own: it is NOT credited against a
+   yearly plan, so never write "₹49 off your plan". It is final like a plan,
+   with the same three refund exceptions, and a refunded pass gives no free
+   trial. Say "the whole studio" only beside the pass. Invite codes still
+   carry their own free trial (`code_trial_days`): say so only to the person
+   you hand a code to, never in public copy.
 7. **Purchases are final** except a duplicate charge, a plan never activated,
    and refunds Indian law requires. Never "money-back guarantee".
 8. **No real person** in a sample, a screenshot or an ad without consent.
@@ -129,9 +148,10 @@ before anybody raises them:
   deadline.
 - **The countdown backfired.** 10 of 24 read it as pressure, 1 as a reason to
   buy. So the founding date is stated once, plainly, and never shouted.
-- **"How long is the trial?"** was the most asked question. Say
-  `{TRIAL_LENGTH}` wherever the trial is offered (read that day), and say
-  what it opens: `{TRIAL_OPENS}` (rule 6).
+- **"How long is the trial?"** was the most asked question. There is no
+  trial now; wherever the pass is offered say all three facts at once:
+  `{PASS_PRICE}`, `{PASS_LENGTH}`, the whole studio, once per account (rule
+  6), and `{PASS_ENDS}` if there is a deadline.
 - **Writers want confidentiality in plain words**, crew are not the buyer,
   and non-Tamil personas wanted their own script. Do not promise Malayalam or
   Telugu tooling that does not exist.
@@ -142,7 +162,8 @@ before anybody raises them:
 
 | Piece | Truth to say | Where it lives |
 | --- | --- | --- |
-| **Free trial, `{TRIAL_LENGTH}`, `{TRIAL_OPENS}`** | Decided 26 Oct 2026: 3 days of the whole studio, no card. True only once schema §60 has run (a pressed trial then follows the console's `trial_scope`) and the console reads `trial_scope` full and `trial_plan` pro (§6.1). Until both read back, a pressed trial is the tools on the two sample films (The Dragon and The Dark Knight reconstructions), and copy says so. Either way: no card, it starts only when they press start (or redeem a code), and a whole-studio trial keeps the no-plan limits (one film in the cloud, no share links, no collaborators) | `trial_offer()` (`trial_hours`, and `trial_scope` once §60 has run); console Growth → Trial |
+| **Launch pass, `{PASS_PRICE}` for `{PASS_LENGTH}`** | The whole studio (the Pro plan's features) for `{PASS_LENGTH}`, once per account, paid in rupees, ends by itself, not credited to a plan. A launch offer with a real end: `{PASS_ENDS}`, and `{PASS_LEFT}` if the owner set a cap. Bought on the offer page (`invite.html`) after Google sign-in, or on `purchase.html` | `trial_offer().pass` / `price_notice().pass`; console Growth → Launch pass (§61) |
+| ~~Free trial~~ (retired for the public 27 Oct 2026; kept here as history) | Decided 26 Oct 2026: 3 days of the whole studio, no card. True only once schema §60 has run (a pressed trial then follows the console's `trial_scope`) and the console reads `trial_scope` full and `trial_plan` pro (§6.1). Until both read back, a pressed trial is the tools on the two sample films (The Dragon and The Dark Knight reconstructions), and copy says so. Either way: no card, it starts only when they press start (or redeem a code), and a whole-studio trial keeps the no-plan limits (one film in the cloud, no share links, no collaborators) | `trial_offer()` (`trial_hours`, and `trial_scope` once §60 has run); console Growth → Trial |
 | **Yearly plans** | Basic, Intermediate, Pro, one payment each for one year, nothing renews by itself | `price_notice()`; `pricing.html` |
 | **Founding prices** | Today's prices hold until `{RISE_DATE}` (the server's `next_price_at`; the owner is moving it to 31 Dec 2026, §6 step 2) or until the founding places fill, whichever is first. A plan bought now is a full year at the price paid | `price_notice()` |
 | **Student band** | Code `STUDENT50` gives the student price on Intermediate. Verify a student ID or college e-mail by hand for bulk requests | Promo code (§20); the button on the plan cards |
@@ -172,6 +193,79 @@ live `price_notice()` values recorded in `CLAUDE.md`:
 The USD column is the seed in `supabase-schema.sql` §56; the owner may have
 changed it on the console. `price_notice('USD')` is the only figure to quote.
 
+### 2.3 The launch-pass strategy, start to end
+
+The whole funnel in one place. Every figure in it is a placeholder (rule 3)
+read that morning; the honest-scarcity rule (rule 2) is the frame.
+
+1. **Hook: a launch offer with a real end.** "Launch offer: `{PASS_PRICE}`
+   for `{PASS_LENGTH}` of the whole studio. Ends `{PASS_ENDS}`." The price
+   of a chai and a samosa, for every tool a film needs. The countdown on the
+   site and "`{PASS_LEFT}`" (only with a cap) come from the server; after
+   the deadline the offer is gone, which is what makes the urgency true.
+   State the end ONCE, plainly (the simulated panel read a shouted countdown
+   as pressure, §1.4).
+2. **Channels, each with its `?src=` tag** (the bucket is the prefix,
+   `src/lib/funnel.js` `sourceBucket()`; the slug after the dash is never
+   counted, so it can be anything you need to tell links apart in your own
+   notes):
+
+   | Channel | Message | Link |
+   | --- | --- | --- |
+   | Instagram reels and bio | "Plan your short film's shoot in one evening for `{PASS_PRICE}`" | `/start?src=ig-reel-<n>`, `ig-bio` → `instagram` |
+   | Meta ads (Indian filmmaker interests) | the hook, one tool shown working | `/start?src=meta-<cell>` → `ads` |
+   | YouTube creators and affiliates | a real walk-through, the pass in the description | `/start?src=yt-<creator>&ref=CODE` → `youtube` (a creator's own code: `creator-<name>` → `partner`) |
+   | WhatsApp film groups and your broadcast | the call-sheet reel, one line, the link | `/start?src=wa-<group>` → `whatsapp` |
+   | Film schools and Viscom departments | the three-e-mail sequence (`docs/OUTREACH-FILM-SCHOOLS.md`) | `/start?src=school-<college>` → `school` |
+   | Festival and workshop desks | a desk card, a partner code with the festival's real deadline | `/start?src=fest-<festival>` → `event` |
+   | SEO guides | every guide ends in the pass CTA (built in, `guide-*.html`) | organic → `direct` / the search engine |
+
+3. **Landing.** `start.html`: the launch band at the top (price, length,
+   live countdown, count), the hero asks for the pass first ("Try the whole
+   studio for `{PASS_PRICE}`"), the plans sit on `pricing.html` with their
+   per-day prices. With the pass closed the same pages fall back to the
+   yearly plans by themselves: nothing to edit on the day it ends.
+4. **Pay.** Google sign-in, then Razorpay UPI for `{PASS_PRICE}` (about 20
+   seconds). The studio opens on the Dragon sample and a new project.
+5. **The week.** The first-week checklist runs day 1 to `{PASS_LENGTH}`:
+   write a scene, break it down, build a stripboard, print a call sheet. The
+   in-app nudges come near the end, and the band shows the days left.
+6. **Convert.** At the end the paywall offers the yearly plans by the day
+   (Basic from `{FROM_DAY}` a day, founding prices to `{RISE_DATE}`), and
+   `STUDENT50` for students once the code exists. Their work is never
+   deleted, so coming back costs nothing to re-enter.
+7. **Win-back.** E-mails on the day the pass ends and a week later, once
+   Resend is configured (`docs/marketing/email-series.md`): "your film is
+   where you left it".
+8. **Measure.** The funnel by source: `landing_view` → `signin_done` →
+   `pass_buy` → `purchase` (a yearly plan). Weekly targets [hypotheses]:
+   pass buys per day; pass → yearly conversion 15–25%; ad cost per pass
+   under about ₹150 (an owner budget figure, not copy). §7.2 has the rows.
+
+**More ideas around the launch pass (not built; for the owner to pick)**
+
+- **"Plan your film in `{PASS_LENGTH}`" challenge.** One small goal a day:
+  logline, five scenes, the breakdown, the stripboard, the budget, the call
+  sheet, share it. Builds on the first-week checklist and gives a reason to
+  come back every day, which is what converts.
+- **A weekly live session** (Instagram or YouTube Live): plan a short film
+  from scratch in an hour inside the studio; the pass link (`ig-live-<n>` /
+  `yt-live-<n>`) in the description.
+- **Film-school ambassadors.** One student per college with a referral code
+  (`?ref=`); their classmates' passes and plans counted under `school-*`,
+  rewarded through the existing referral and affiliate system.
+- **Festival-season timing.** Set the deadline a week before a big
+  submission date, so the urgency is the festival's own.
+- **Share-to-unlock on the call sheet.** The WhatsApp call sheet already
+  carries "Made with … /start?ref=CODE": every crew member who receives one
+  sees the offer. A loop at no cost.
+- **Day-6 retargeting.** A Meta Custom Audience of pass buyers (from the
+  owner's export, with consent): "your week ends tomorrow".
+- **A founding filmmaker wall.** With consent, launch buyers who make a
+  film, collected through the §59 testimonial flow. Real proof only.
+- **After the launch.** Reopen the pass at a new price for a festival week
+  or a holiday, from the console, each time with its own real deadline.
+
 ## 3. Tagged links: how every channel is counted
 
 The studio carries no ad pixel and no third-party script (by design; see
@@ -185,8 +279,9 @@ bucket. A `?ref=` code is carried to the purchase page's "Have a code?" box.
 **What is counted, and where (26 Oct 2026).** `landing_view` on `/start`
 (once per tab), `signup`, `signin_done` (the OAuth return, `cloud.js`),
 `sample_open` (the hub), `trial_start` (`billing.js`, when the server says
-the trial started), `plan_view_in_app` (the purchase page, signed in),
-`checkout_start` and `purchase` all carry the tab's bucket. Three things
+the trial started; invite codes only now), `pass_buy` (§61, a paid pass),
+`plan_view_in_app` (the purchase page, signed in), `checkout_start` and
+`purchase` all carry the tab's bucket. Three things
 still hold:
 
 - **A visit counts `landing_view` once per tab, on whichever public page it
@@ -310,8 +405,8 @@ No pixel, so optimise for **landing page views**, not purchases. Every
 cell's tag (`meta-*`) lands in the console's one `ads` bucket (§3), so a
 CELL is judged on Meta Ads Manager's own figures (spend, landing page views,
 cost per landing view), and the console's `ads` row says whether the paid
-traffic as a whole goes on to `trial_start` and `purchase`. To compare two
-cells on trials, run them on different days, not side by side.
+traffic as a whole goes on to `pass_buy` and `purchase`. To compare two
+cells on passes, run them on different days, not side by side.
 
 **Test 1 — week 2 of the calendar, 7 days, ₹2,100 total (₹300/day)**
 
@@ -332,9 +427,9 @@ creatives: swap one in when a cell is paused, never more than one a day.
 2. Pause a cell whose cost per landing view (Ads Manager) is twice the best
    cell's.
 3. Pause the test's weakest cell if the console's `ads` row shows 0
-   `trial_start` after ₹700 spent across the test.
+   `pass_buy` after ₹700 spent across the test.
 4. Pause **everything** if the console's `ads` row shows `landing_view` but
-   no `pricing_view` or `trial_start` after ₹1,500: the page or the tag is
+   no `pricing_view` or `pass_buy` after ₹1,500: the page or the tag is
    broken, not the audience. If `ads` shows NO `landing_view` while Ads
    Manager reports landing page views, the tag is broken: fix the link
    first.
@@ -342,7 +437,7 @@ creatives: swap one in when a cell is paused, never more than one a day.
    day.
 
 **Test 2 — the following week, ₹3,500 (₹500/day) on the one or two winners**.
-Move up only if the `ads` row's `trial_start` per ₹100 spent holds within
+Move up only if the `ads` row's `pass_buy` per ₹100 spent holds within
 30% of Test 1.
 
 **Scale** — +20% every 3 days while blended cost per purchase stays under
@@ -398,9 +493,10 @@ fails every rule, the money stops at ₹2,100.
 ### 4.5 Film schools
 
 Follow `docs/OUTREACH-FILM-SCHOOLS.md` (three e-mails, Harvey, the DPDP Act
-rules). It names no trial length: a pressed trial is `{TRIAL_LENGTH}` from
-`trial_offer()`, and an invite code is worth its own `code_trial_days`
-(console), so read whichever you offer on the day.
+rules). It names no figure: the launch pass is `{PASS_PRICE}` for
+`{PASS_LENGTH}` from `trial_offer().pass`, and an invite code handed to one
+teacher is worth its own `code_trial_days` free trial (console), so read
+whichever you offer on the day.
 
 - **Weekly**: 10 schools contacted (Harvey caps at 20 a day with approval on).
 - **Offer**: a faculty Pro grant to evaluate; `STUDENT50` for students; a
@@ -472,7 +568,7 @@ a trust page, generated like the rest of the public site. Linked here relative t
 
 ### 4.9 Product Hunt and directories
 
-- **Product Hunt**: launch in week 4 or later, after the trial and the
+- **Product Hunt**: launch in week 4 or later, after the pass and the
   first fixes from real users. Tuesday to Thursday, 00:01 Pacific. Prepare:
   tagline (≤ 60 chars, from `ad-copy.md`), 4 screenshots of real pages, a
   60-second demo, a maker comment that names what it does not do yet. Link
@@ -485,9 +581,9 @@ a trust page, generated like the rest of the public site. Linked here relative t
 
 ## 5. Launch week, day by day
 
-**Day 0 is the day the owner sets the trial live** (§6 step 1: 3 days of
-the whole studio, as decided). Do not start Day 0 until every item in the
-pre-flight list is true.
+**Day 0 is the day the owner switches the launch pass on** (§6 step 1:
+the price, the length, the deadline and any cap, as decided on the day). Do
+not start Day 0 until every item in the pre-flight list is true.
 
 **Before anything else, whatever else is ready: §6 step 2 (the founding
 date) must be done before 2026-10-31T18:29Z.** Day 0 waits on a live
@@ -496,16 +592,15 @@ rise waits for none of them.
 
 **Pre-flight (all must be true)**
 
-- [ ] Schema §60 ran with a checksum and read back (its 60.4 query), so a
-      pressed trial follows the console's `trial_scope` (§6 step 3)
-- [ ] `select public.trial_offer();` as anon reads `trial_minutes` 4320,
-      `trial_hours` 72 and `trial_scope` `full` (§6.1); the console reads
-      `trial_plan` `pro`
-- [ ] A pressed trial on a fresh Google account: `billing_status()` reads
-      `trial_scope` `full`, `features` has `call-sheets` true, and the account
-      can create a project of its own. If any of these fails, every line of
-      copy says "on the two sample films" instead, and nothing says "whole
-      studio" or "your own film"
+- [ ] Schema §61 ran with a checksum and read back, and the four functions
+      are redeployed (`docs/LIVE-STEPS-2026-10-27.md`)
+- [ ] `select public.trial_offer()->'pass';` as anon reads `open` true and
+      the price, days, `ends_at` and cap you set (§6.1); `/start`,
+      `/pricing` and one product page in a private window show the band with
+      the same figures and a countdown to the same instant
+- [ ] A pass bought on a fresh Google account: `billing_status()` reads
+      `pass_active` true and the Pro features (`call-sheets` true); a second
+      buy on the same account is refused (`used`)
 - [ ] `price_notice()` reads the rise at the decided instant (§6.2; due
       before 2026-10-31T18:29Z, not on Day 0)
 - [ ] §58 and §59 ran with a checksum and read back (§6.3); the console's
@@ -514,8 +609,8 @@ rise waits for none of them.
       `https://filmmakerstudio.in/start?src=ig-bio` in a private window,
       then `select * from public.admin_funnel_by_source(current_date,
       current_date);` shows a `landing_view` row for source `instagram`.
-      Then start the fresh account's trial from that same tab and see
-      `trial_start` under `instagram` too. Do not start Meta Test 1 until both
+      Then buy the fresh account's pass from that same tab and see
+      `pass_buy` under `instagram` too. Do not start Meta Test 1 until both
       rows appear
 - [ ] A LIVE Razorpay key is on, `RESEND_API_KEY` and `MAIL_FROM` are set,
       and one real ₹ payment and its receipt e-mail arrived (§6.5)
@@ -534,14 +629,14 @@ rise waits for none of them.
 
 | Day | Actions |
 | --- | --- |
-| **Day 0** (trial goes live) | Morning: §6.1, read back. Open `/start` and `/pricing` in a private window: the trial strip shows the length `trial_offer()` reads; the founding line shows the date `price_notice()` reads. Start one trial yourself on a fresh Google account and open your own project in it. Afternoon: post feed post 1 (announcement, `content-calendar.md` W1 Mon). Stories: "the trial is open: {TRIAL_LENGTH} of {TRIAL_OPENS}, no card" (filled that morning). Send e-mail 1 to the consented leads list (only once Resend is live and the list has a consented row). |
-| **Day 1** | Reel: script import to stripboard (real recording). Share in your own WhatsApp broadcast (`wa-bcast`). Message 5 YouTube creators. Answer every comment and DM. Read the console: `landing_view`, `trial_start` by source. |
-| **Day 2** | Post: "What the trial opens" carousel (`{TRIAL_OPENS}`, read that day). 3 Reddit/Quora answers with guide links. Send film-school e-mail 1 to 10 schools (Harvey, approval on). |
-| **Day 3** | With a 3-day trial, the first trials from Day 0 end today. Read `trial_start` → `checkout_start` → `purchase`. Reply personally to anyone who wrote in. Story: a question box "what stopped you?" |
-| **Day 4** | Reel: call sheet to WhatsApp (Pro). Directory listings (§4.9). Follow up the Day 1 creators once. |
+| **Day 0** (the pass goes live) | Morning: §6.1, read back. Open `/start` and `/pricing` in a private window: the band shows the price, length and countdown `trial_offer().pass` reads; the founding line shows the date `price_notice()` reads. Buy one pass yourself on a fresh Google account and open your own project in it. Afternoon: post feed post 1 (announcement, `content-calendar.md` W1 Mon). Stories: "Launch offer: `{PASS_PRICE}` for `{PASS_LENGTH}` of the whole studio, ends `{PASS_ENDS}`" (filled that morning). Send e-mail 1 to the consented leads list (only once Resend is live and the list has a consented row). |
+| **Day 1** | Reel: script import to stripboard (real recording). Share in your own WhatsApp broadcast (`wa-bcast`). Message 5 YouTube creators. Answer every comment and DM. Read the console: `landing_view`, `pass_buy` by source. |
+| **Day 2** | Post: "What `{PASS_PRICE}` opens" carousel (every tool, the plan names on each). 3 Reddit/Quora answers with guide links. Send film-school e-mail 1 to 10 schools (Harvey, approval on). |
+| **Day 3** | Read `landing_view` → `signin_done` → `pass_buy`. Reply personally to anyone who wrote in. Story: a question box "what stopped you?" |
+| **Day 4** | Reel: call sheet to WhatsApp. Directory listings (§4.9). Follow up the Day 1 creators once. |
 | **Day 5** | Post: the trust post ("where your script lives", linking `trust.html`). Second WhatsApp share in groups where you have already contributed. |
 | **Day 6** | Reel: budget in rupees from the Chennai rate card (say which figures are re-checked). Write down the week's numbers (§7.2) and the three most-asked questions. |
-| **Day 7** | Weekly review (§7.4). Decide: start Meta Test 1 next week only if `landing_view` → `trial_start` is working from organic sources (any trials at all under `instagram` or `whatsapp`). Fix the top question on the page or the FAQ before spending. |
+| **Day 7** | The first passes from Day 0 end today (with a 7-day pass): read `pass_buy` → `checkout_start` → `purchase`. Weekly review (§7.4). Decide: start Meta Test 1 next week only if `landing_view` → `pass_buy` is working from organic sources (any passes at all under `instagram` or `whatsapp`). Fix the top question on the page or the FAQ before spending. |
 
 ## 6. Console steps only the owner can make
 
@@ -550,30 +645,19 @@ SQL pasted into the editor follows the paste rule: base64 across the
 clipboard, decode in the page, compare the SHA-256 before pressing Run
 (`docs/LAUNCH.md` §4).
 
-1. **Trial: 3 days of the whole studio (owner decision, 26 Oct 2026).**
-   First run schema §60 (step 3): without it a pressed trial is always the
-   sample films, whatever the console says. Then `admin.html` → Growth →
-   Trial: length 4320 minutes, scope "full", trial plan "Pro"
-   (`admin_set_billing_settings` with
-   `{"trial_minutes": 4320, "trial_scope": "full", "trial_plan": "pro"}`; it
-   accepts 1 to 44,640 minutes). The trial plan matters: a full trial gets
-   the features of `trial_plan`, and with it unset that is Intermediate, so
-   no call sheets, Shoot Day, Edit Log, Deliverables or AI tools. Read back:
-   `select public.trial_offer();` as anon must show `trial_minutes` 4320,
-   `trial_hours` 72 and `trial_scope` `full`; then the §5 pre-flight's
-   fresh-account check. The pages read these values; no copy is edited to
-   change them, and posting copy fills `{TRIAL_LENGTH}` / `{TRIAL_OPENS}`
-   from them on the day.
-
-   Two things this does that are worth knowing before you press it:
-   - A whole-studio trial keeps the no-plan LIMITS (§60's header:
-     `user_limits()` still reads the free plan's row): one film in the
-     cloud, no share links, no collaborators. Local work is never capped.
-     Copy never promises sharing or a team on the trial.
-   - `trial_scope` and `trial_plan` also govern code and admin trials, so
-     every redeemed invite code becomes a full-studio Pro trial for its own
-     `code_trial_days`. Decide whether a code should still be worth that
-     many days, and set `code_trial_days` accordingly.
+1. **The launch pass (owner decision, 27 Oct 2026).** After schema §61 has
+   run and the four functions are redeployed: `admin.html` → Growth →
+   Launch pass: switch it ON, set the price (₹49 at launch), the days (7),
+   the plan (Pro), the deadline (an IST date and time) and, if wanted, a
+   cap. Read back: `select public.trial_offer()->'pass';` as anon must show
+   `open` true and exactly those values, and `now` close to the real time.
+   The pages read these values; no copy is edited to change them, and
+   posting copy fills `{PASS_PRICE}` / `{PASS_LENGTH}` / `{PASS_ENDS}` /
+   `{PASS_LEFT}` from them on the day. Changing the price applies to new
+   orders only. **Do not touch `trial_enabled`**: the §30 grandfathered
+   members' access reads it; the public free trial is retired by the pass
+   being on (start_trial refuses a sign-up trial then), not by that switch.
+   Invite codes keep their `code_trial_days` trial.
 2. **Move the founding-price date to 31 Dec 2026. DO BEFORE
    2026-10-31T18:29Z, whatever else is ready.** The live rise fires at that
    instant by itself: `effective_price()` switches to the higher price with
@@ -641,7 +725,7 @@ for each step, the count per BUCKET (§3), with no source shown as `direct`
 and an unknown tag as `other`.
 The ten steps are: `landing_view`, `pricing_view`, `invite_request`,
 `signup`, `signin_done`, `sample_open`, `trial_start`, `plan_view_in_app`,
-`checkout_start`, `purchase`. These are daily counters — how many, from
+`checkout_start`, `purchase`, and since §61 `pass_buy` (a paid pass). These are daily counters — how many, from
 where — never who. Visitors with Do Not Track or Global Privacy Control
 send nothing, so every count is a floor.
 
@@ -656,9 +740,11 @@ hand, weekly (per cell, use Ads Manager's own figures).
 | --- | --- | --- |
 | Visits | `landing_view`, total and per source | Trend, not a target |
 | Interest | `pricing_view` ÷ `landing_view` | 25%+ |
-| Trial rate | `trial_start` ÷ `landing_view` | 5%+ |
-| Activation | `sample_open` or real work in the trial (ask 5 triallists) | Most trials open a tool |
-| Trial → checkout | `checkout_start` ÷ `trial_start` (same week) | 15%+ |
+| Pass rate | `pass_buy` ÷ `landing_view` | 2%+ |
+| Pass buys per day | `pass_buy` per day, total and per source | Trend; the deadline should lift the last days |
+| Activation | real work in the pass week (ask 5 pass buyers) | Most passes open a tool |
+| Pass → yearly | yearly `purchase` ÷ `pass_buy` (passes that ended in the window) | 15–25% |
+| Ad cost per pass | Meta spend ÷ `pass_buy` in the `ads` bucket | Under about ₹150 |
 | Checkout → paid | `purchase` ÷ `checkout_start` | 50%+; lower means a payment problem, check Razorpay |
 | Paid cost per purchase | Meta spend ÷ `purchase` in the `ads` bucket | Under 40% of the plan price |
 | Plan mix | Basic / Intermediate / Pro from Billing | Read, do not steer |
@@ -670,7 +756,7 @@ percentages.
 
 ### 7.3 Reading it honestly
 
-- A source with visits and no `trial_start` is a message problem for that
+- A source with visits and no `pass_buy` is a message problem for that
   audience; a step that is low for **every** source is a page problem.
 - `direct` grows with SEO and word of mouth; it cannot be split further
   without a pixel, by design.
@@ -691,7 +777,10 @@ percentages.
 
 ## 8. What not to do
 
-- Do not run ads before the trial, the live key and receipts work.
+- Do not run ads before the pass, the live key and receipts work.
+- Do not run a fake, evergreen or per-visitor countdown, and do not invent a
+  "left" number: both come from `trial_offer().pass` only.
+- Do not say "free trial" or "no card" in public copy.
 - Do not buy followers, lists or reviews, or ask groups for upvotes.
 - Do not post a customer's film, name or message without written consent.
 - Do not advertise planned features (gift licences, bulk education

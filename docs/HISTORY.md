@@ -2912,3 +2912,45 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       privacy are DRAFTS awaiting the owner. Playbook, e-mails, captions and
       posters rewritten around `{PASS_PRICE}` / `{PASS_ENDS}` / `{PASS_LEFT}`.
     - Owner steps: `docs/LIVE-STEPS-2026-10-27.md`.
+
+66. **A clean slate, and auto-renew as a console choice (27 Oct 2026).**
+    - **Purge before launch.** The app never launched, so every account is a
+      test account (owner). `supabase/schema/patches/purge-test-data-2026-10-27.sql`
+      keeps exactly one admin, `arunkumarmohanans@gmail.com`, and removes
+      everything else: other accounts and their work, every payment, invoice,
+      refund and referral credit (the keeper's too), funnel counts and leads,
+      invite/promo codes, requests, testimonials, support and audit records.
+      Plans, prices, billing settings and the announcement are untouched. Three
+      parts (PREVIEW, PURGE in one guarded transaction, READ-BACK), each with
+      its own checksum; it refuses unless exactly one keeper exists and the
+      role is `postgres`, and refuses when a public table is unclassified, so
+      a new table must be placed on its lists. `scripts/schema-tests/purge.sql`
+      seeds every user-linked table, runs the REAL file and scans every uuid
+      and text column for a deleted person; it runs LAST in `test:schema`.
+      Invoice numbering restarts at 000001 — lawful only because every
+      invoice so far was test mode. `.env` `VITE_ADMIN_EMAILS` names the
+      keeper only.
+    - **Auto-renew (§62).** The owner reversed §18's "no subscription model"
+      as a CHOICE: `billing_settings.pass_mode` / `plan_mode` are `once`
+      (default, today's behaviour byte for byte) or `renew`, set in the
+      console; the buyer sees only that mode. Razorpay Subscriptions:
+      `rzp-subscribe` (lazy Razorpay plan per product/period/amount in
+      `rzp_plans`, so a console price change never touches an existing
+      subscriber — the price lock), `rzp-cancel` (cancel at cycle end: access
+      runs to the end of the paid period, no pro-rata refund), `rzp-verify`
+      checks `HMAC(payment_id|subscription_id)`, `rzp-webhook` applies every
+      `subscription.charged` through `apply_subscription_charge` (idempotent
+      on the payment id; one `payments` row and one invoice per charge; a
+      renewing pass stacks its days). An upgrade under renew mode is paid
+      once (reason `upgrade`: a subscription cannot carry upgrade credit).
+      The launch deadline and cap close the pass to NEW subscribers only.
+    - **Copy follows the mode.** `src/lib/offer-terms.js` (pure, startlib)
+      is the one wording of renewal terms; the public pages hold empty
+      `[data-offer-terms]` slots and hidden `[data-mode-answer]` FAQ answers
+      filled from `trial_offer()`'s `plan_mode` / `pass.mode`; an unknown
+      mode says neither. `test:marketing` fails a renewal claim typed outside
+      a slot. Legal passages are DRAFTS awaiting the owner.
+    - **prove:gate's false "0ms".** The veil recorder stopped ticking once
+      `<main>` had text, and index.html's static crawler summary has text
+      before the gate marks the page pending; it skips `main.hub-static` now
+      and keeps ticking until the veil is recorded.

@@ -12,6 +12,9 @@
 import Store from './store.js';
 import { OPTOUT_KEY } from './usage.js';
 import { passName } from './pass-view.js';
+import { renewsText } from './offer-terms.js';
+import { dayLabel, autopaySummary } from './pass-view.js';
+export { dayLabel, autopaySummary };
 
 /* ---- old anchors ----------------------------------------------------- */
 
@@ -95,6 +98,9 @@ export function planSummary(cp, { off, signedIn, trialEndsAt }) {
   } else if (cp.reason === 'paid' && cp.passActive) {
     /* §61: the launch pass is Pro for a few days, not a plan to renew. */
     line = passName(cp.passDays) + (cp.planUntil ? ' · ends ' + new Date(cp.planUntil).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '. The whole studio is open; a yearly plan keeps it open after.';
+  } else if (cp.reason === 'paid' && cp.autopay && cp.autopay.live && cp.autopay.product === cp.plan) {
+    /* §62: a running auto-pay renews by itself; the card below it says more */
+    line = (cp.planName || 'Your plan') + ' · ' + renewsText(dayLabel(cp.autopay.nextChargeAt || cp.autopay.currentEnd || cp.planUntil), cp.autopay.price) + '.';
   } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + (cp.planUntil ? ' · valid until ' + new Date(cp.planUntil).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '. Renew from Plan & purchases to add a year.' : ' · granted for good.');
   else if (cp.reason === 'granted') line = 'Access given to you by the studio.';   // its planName is the free plan's
   else if (cp.reason === 'expired') line = cp.passUsed ? 'Your launch pass has ended. A yearly plan opens the studio again.' : 'Your free trial has ended. A plan brings it back.';
@@ -132,4 +138,4 @@ export function setUsageCounting(on) {
   if (on) Store.rawRemove(OPTOUT_KEY); else Store.rawSet(OPTOUT_KEY, '1');
 }
 
-export default { OLD_BILLING_ANCHORS, movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting };
+export default { dayLabel, autopaySummary, OLD_BILLING_ANCHORS, movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting };

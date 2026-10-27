@@ -23,9 +23,10 @@
    offer a TRIAL in 'off' still asks the server, whose start_trial()
    refusal ('pass') is printed, never guessed.
 
-   PURE. Imports pass-offer.js only (itself import-free).
+   PURE. Imports pass-offer.js and offer-terms.js only (both import-free).
    ============================================================ */
 import { readPass, passState, passPrice, passLength, countdownText, leftText } from './pass-offer.js';
+import { offerTerms, readMode, renewsText, cancelledText } from './offer-terms.js';
 
 export { passPrice, passLength, countdownText, leftText };
 
@@ -52,6 +53,18 @@ export const passNow = (offer, nowMs = Date.now()) =>
 export function passFacts(offer) {
   const p = offer && offer.raw ? readPass(offer.raw) : null;
   return p ? { price: passPrice(p), length: passLength(p), plan: p.plan, days: p.days } : null;
+}
+
+/** One-time or auto-renew, as the SERVER publishes it (pass.mode, §62),
+ *  or null when it does not say. */
+export const passMode = (offer) => (offer && offer.raw ? readMode(offer.raw.mode) : null);
+
+/** The pass's terms through offer-terms.js — the one place renewal is
+ *  worded: { line, short, renews, neutral, mode }. An unknown mode gives
+ *  the price and the length only. */
+export function passTerms(offer) {
+  const f = passFacts(offer);
+  return f ? offerTerms(passMode(offer), f.price, 'pass', f.days) : offerTerms(null, '', 'pass', 0);
 }
 
 /** A yearly plan (or a grant) is running: the pass is never sold on top
@@ -87,7 +100,9 @@ export function passRefusal(hint, fallback) {
     inr_only: 'The launch pass is sold in Indian rupees only. Switch the prices to rupees to buy it.',
     used: 'You have already had the launch pass on this account. It is once per person; a yearly plan keeps the studio open.',
     has_plan: 'You already have a yearly plan, so the pass is not needed.',
-    code: 'A promo code does not apply to the launch pass. Buy it without one.'
+    code: 'A promo code does not apply to the launch pass. Buy it without one.',
+    renew_off: 'The terms of this offer changed a moment ago. Read the card again before you pay; nothing was charged.',
+    subscribed: 'Auto-pay is already on for this account. It can be cancelled in Settings, under Plan & purchases.'
   }[hint] || fallback || 'The pass could not be bought just now. Please try again.';
 }
 
@@ -105,4 +120,35 @@ export function passDays(st) {
 /** "7-day pass" for a pass of `days` (null → "Launch pass"). */
 export const passName = (days) => (days > 0 ? days + '-day pass' : 'Launch pass');
 
-export default { passPhase, passNow, passFacts, holdsPlan, mayBuyPass, onPass, passRefusal, passCta, passName, passDays, passPrice, passLength, countdownText, leftText };
+/** "3 Nov 2026" for an ISO time; '' for none. */
+export function dayLabel(iso) {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '';
+}
+
+/** THE AUTO-PAY CARD (§62), from billing.js autopayOf(): null when there
+ *  is nothing to say, else { led: [word, tone], name, line, canCancel,
+ *  until }. `nameOf(product)` names the plan or the pass. The words are
+ *  offer-terms.js's (renewsText / cancelledText); nothing here claims a
+ *  mode of its own. `now` is a time in ms. */
+export function autopaySummary(ap, nameOf, now = Date.now()) {
+  if (!ap) return null;
+  const name = nameOf ? nameOf(ap.product) : ap.product;
+  const until = dayLabel(ap.currentEnd);
+  if (ap.live) {
+    const due = ap.status === 'halted' || ap.status === 'pending';
+    return {
+      led: due ? ['Payment due', 'warn'] : ['Auto-pay on', 'ok'],
+      name,
+      line: renewsText(dayLabel(ap.nextChargeAt || ap.currentEnd), ap.price),
+      note: due ? 'The last charge did not go through. Razorpay tries again; your access runs to ' + (until || 'the end of the period paid for') + ' either way.' : '',
+      canCancel: true,
+      until
+    };
+  }
+  const ends = ap.currentEnd ? Date.parse(ap.currentEnd) : NaN;
+  if (Number.isFinite(ends) && ends > now) return { led: ['Auto-pay off', 'warn'], name, line: cancelledText(until), note: '', canCancel: false, until };
+  return null;
+}
+
+export default { dayLabel, autopaySummary, passPhase, passNow, passFacts, passMode, passTerms, holdsPlan, mayBuyPass, onPass, passRefusal, passCta, passName, passDays, passPrice, passLength, countdownText, leftText };

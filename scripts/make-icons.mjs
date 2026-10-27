@@ -144,3 +144,24 @@ await Promise.all([
   png(any, 120, 'icon-consent-120.png')
 ]);
 console.log(`  icon.svg / icon-maskable.svg  (palette from tokens.css: ink ${C.ink}, paper ${C.paper})`);
+
+/* favicon.ico at the site root (27 Oct 2026). Every page links icon.svg,
+   but browsers, link unfurlers and crawlers still ask for /favicon.ico
+   by name, and a 404 there is one of the tells of an unfinished site.
+   An .ico may hold PNG images directly (Vista+, every current browser),
+   so this writes the ICO header and directory by hand around two PNGs:
+   no extra dependency. */
+const icoSizes = [16, 32, 48];
+const icoPngs = await Promise.all(icoSizes.map((s) => sharp(Buffer.from(any)).resize(s, s).png({ compressionLevel: 9 }).toBuffer()));
+const icoHead = Buffer.alloc(6 + 16 * icoSizes.length);
+icoHead.writeUInt16LE(0, 0); icoHead.writeUInt16LE(1, 2); icoHead.writeUInt16LE(icoSizes.length, 4);
+let icoOff = icoHead.length;
+icoSizes.forEach((s, i) => {
+  const e = 6 + 16 * i;
+  icoHead.writeUInt8(s, e); icoHead.writeUInt8(s, e + 1);    // width, height (<256)
+  icoHead.writeUInt16LE(1, e + 4); icoHead.writeUInt16LE(32, e + 6);   // planes, bpp
+  icoHead.writeUInt32LE(icoPngs[i].length, e + 8); icoHead.writeUInt32LE(icoOff, e + 12);
+  icoOff += icoPngs[i].length;
+});
+writeFileSync(join(root, 'public', 'favicon.ico'), Buffer.concat([icoHead, ...icoPngs]));
+console.log(`  ../favicon.ico            ${icoSizes.join('/')}  ${icoOff} B`);

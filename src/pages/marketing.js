@@ -25,14 +25,34 @@
         the same hold start.js does, so a code link works from any page
      7. the demo loops, played while on screen
      8. the lines a visitor outside India reads instead (data-mk-intl)
+     9. the launch-offers form ([data-lead-form]), when a page has one
+   Before any of it: the link's ?ref= and source are held for the tab
+   (attribution.js), so a code in an ad or a referral link reaches the
+   checkout's code box after the Google round trip.
    ============================================================ */
 import '../styles/base.css';
 import '../styles/marketing.css';
-import { bumpEvent, purchasesRequired, trialOffer } from '../lib/funnel.js';
-import { trialLength } from '../lib/trial-time.js';
+import { bumpEvent, bumpOnce, sourceBucket, purchasesRequired, trialOffer, addLead } from '../lib/funnel.js';
+import { captureAttribution, attribution } from '../lib/attribution.js';
+import { trialMode, trialCopy, validEmail, consentText } from '../lib/start-model.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { visitorRegion } from '../lib/visitor-region.js';
+
+/* First, before a script below can strip or rewrite the address. */
+try { captureAttribution(location); } catch (e) { /* never breaks the page */ }
+
+/* The landing count, on whichever public page a visit starts: a guide,
+   a switching guide, the trust page, a product page, pricing, about or
+   contact. Once per tab (bumpOnce keeps its mark in sessionStorage, the
+   same mark start.js uses, so moving on to start.html counts nothing
+   more); Do Not Track, Global Privacy Control and "Don't count this
+   visit" are honoured inside funnel.js. start.html counts its own in
+   start.js. After captureAttribution, so the count carries the link's
+   source bucket. */
+try {
+  if (!/(^|\/)start(\.html)?$/.test(location.pathname)) bumpOnce('landing_view');
+} catch (e) { /* a counter never breaks the page */ }
 
 const root = document.documentElement;
 const $ = (sel, from = document) => from.querySelector(sel);
@@ -308,6 +328,8 @@ try {
   trialOffer().then((t) => {
     if (!t) return;
     const offer = byId('mkOffer');
+    /* [data-trial-only] says nothing true once trials are off, whoever reads it */
+    if (t.trial_enabled === false) $$('[data-trial-only]').forEach((n) => { n.hidden = true; });
     if (t.trial_enabled === false) {
       if (!SIGNED_IN && root.dataset.purchases !== 'off') {
         if (offer) offer.hidden = true;
@@ -316,8 +338,12 @@ try {
       }
       return;
     }
-    const len = trialLength(t.trial_minutes);
-    if (len) $$('[data-trial-length]').forEach((n) => { n.textContent = len; });
+    /* "3 days" inside a sentence, "3-day free trial" where the markup's
+       own fallback is a label (start-model.js trialMode) */
+    $$('[data-trial-length]').forEach((n) => {
+      const c = trialCopy(t, trialMode(n.getAttribute('data-trial-length'), n.textContent));
+      if (c.text) n.textContent = c.text;
+    });
   }, () => {});
 } catch (e) { /* never breaks the page */ }
 
@@ -402,3 +428,63 @@ try {
   root.setAttribute('data-mk-region', 'INT');
   els.forEach((el) => { el.textContent = el.getAttribute('data-mk-intl'); });
 })();
+
+/* ---- 9. the launch-offers form -----------------------------------
+   The page draws <form data-lead-form> with an e-mail field, a consent
+   box (input[name=consent]) and a submit button, and a [data-lead-status]
+   line for the answer. One delegated listener on the document (dom.js's
+   delegate() is CORE, which this page may not import — same shape,
+   written here), so a page without the form does nothing at all, and the
+   form works whenever it is drawn. Consent is REQUIRED and the words the
+   visitor ticked are the words sent (§29 keeps them with the address).
+   The source is the link's (?src= / utm_source, attribution.js), else the
+   page's own name. Nothing here navigates or waits on a navigation. */
+const statusOf = (form) => form.querySelector('[data-lead-status]') || $('[data-lead-status]');
+$$('[data-lead-status]').forEach((n) => { n.setAttribute('role', 'status'); n.setAttribute('aria-live', 'polite'); });
+function leadSays(form, text, bad) {
+  const out = statusOf(form);
+  if (!out) return;
+  /* a form drawn after load still gets a live region (set before the text) */
+  if (out.getAttribute('role') !== 'status') { out.setAttribute('role', 'status'); out.setAttribute('aria-live', 'polite'); }
+  out.textContent = text;
+  out.classList.toggle('mk-bad', !!bad);
+  out.dataset.state = bad ? 'error' : text ? 'ok' : '';
+}
+const pageSource = () => {
+  const name = String(location.pathname || '').split('/').pop().replace(/\.html$/, '').toLowerCase();
+  return /^[a-z0-9_-]{1,32}$/.test(name) ? name : 'start';
+};
+document.addEventListener('submit', (e) => {
+  const form = e.target && e.target.closest && e.target.closest('[data-lead-form]');
+  if (!form) return;
+  e.preventDefault();
+  if (form.dataset.busy) return;
+  const field = form.querySelector('input[name="email"]');
+  const consent = form.querySelector('input[name="consent"]');
+  const email = field ? field.value.trim() : '';
+  if (!validEmail(email)) { leadSays(form, 'That does not look like an e-mail address.', true); if (field) field.focus(); return; }
+  if (!consent || !consent.checked) { leadSays(form, 'Tick the box to say we may e-mail you.', true); if (consent) consent.focus(); return; }
+  const label = consent.closest('label') || (consent.id && form.querySelector('label[for="' + consent.id + '"]'));
+  const words = consentText(label ? label.textContent : '');
+  let source = pageSource();
+  /* The link's source as its BUCKET (funnel.js sourceBucket: 'instagram',
+     'school', 'other'...), never the raw ?src= slug: a lead is an e-mail
+     address, and a slug beside it ('creator-<name>', 'school-<name>')
+     would tie the address to a person or a school. privacy.html#leads
+     says exactly this. */
+  try { source = sourceBucket(attribution().src) || source; } catch (err) { /* the page's name stands */ }
+  const btn = form.querySelector('button[type="submit"], button:not([type])');
+  form.dataset.busy = '1';
+  if (btn) btn.disabled = true;
+  leadSays(form, 'Saving…');
+  addLead(email, words, source).then(() => {
+    leadSays(form, 'Thank you. You are on the list.');
+    if (field) field.value = '';
+    consent.checked = false;
+  }, (err) => {
+    leadSays(form, (err && err.message) || 'Could not save that just now. Please try again.', true);
+  }).finally(() => {
+    delete form.dataset.busy;
+    if (btn) btn.disabled = false;
+  });
+});

@@ -64,6 +64,7 @@ import { BRAND } from './brand.js';
    never held back. Fails open, like every plan check. */
 import PlanGate from './plan-gate.js';
 import { bumpUsage } from './usage.js';
+import { callPort } from './ports.js';
 /* The film's paper and date style (docs/US-MARKET-PLAN.md §A4). region.js
    is CORE already (navmodel imports it), so this costs no first paint;
    paper-date.js says why the date is not region-core's formatPaperDate. */
@@ -141,6 +142,7 @@ function masthead(parts) {
    paginated output back.
    ------------------------------------------------------------ */
 let active = null;
+const NO_BRAND_LINE = new Set(['invoice', 'pitch', 'callsheet']);
 
 export function stage(opts = {}) {
   if (active) unstage();
@@ -187,6 +189,19 @@ export function stage(opts = {}) {
     host.insertBefore(state.band, host.firstChild);
   }
 
+  /* "MADE WITH …" ON EVERY DOCUMENT (owner, 26 Oct 2026), from the one
+     builder in footer.js through the 'pdfBrandLine' port (null for a plan
+     that may remove it). The last child of <body>, after the document, so
+     it lands on the last page whatever the page hides: footer.css shows
+     #pdf-made-with above every "only this element prints" rule. Three
+     documents are left alone — the invoice is a receipt, and the pitch
+     deck and the call sheet already carry the line of their own. */
+  if (!NO_BRAND_LINE.has(state.scope)) {
+    let line = null;
+    try { line = callPort('pdfBrandLine', null); } catch (e) { line = null; }
+    if (line) { document.body.append(line); state.made = line; }
+  }
+
   classes.forEach((c) => document.body.classList.add(c));
   document.title = title;
 
@@ -201,6 +216,7 @@ export function unstage() {
   state.classes.forEach((c) => document.body.classList.remove(c));
   if (state.style) state.style.remove();
   if (state.band) state.band.remove();
+  if (state.made) state.made.remove();
   document.title = state.prevTitle;
   if (state.after) {
     try { state.after(); } catch (e) { console.warn('[pdf] after', e); }

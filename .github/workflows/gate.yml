@@ -136,6 +136,12 @@ jobs:
         run: npm run build:verify
       - run: npm run prove:growth
       - run: npm run prove:ai-coverage
+      # The in-app conversion surfaces (upgrade nudges, caps, referral row,
+      # "Made with" on every print, What's new, trial reminders) on the
+      # open build; it reads dist-verify/ by default, said here anyway.
+      - run: npm run prove:conversion
+        env:
+          PROVE_DIST: dist-verify
       # One frame per page whichever link opened it (colour, lit stage,
       # crumb stage, band tools, header, tab layout), at 1280 and 390.
       # dist/ here is the GATED build, so it reads the open one above.
@@ -148,5 +154,10 @@ jobs:
           PROVE_DIST: dist-verify
       # The legal pages sit inside the window under the fixed header.
       - run: npm run prove:legal
+        env:
+          PROVE_DIST: dist-verify
+      # The built markup a crawler gets: lang, titles, canonicals, one h1,
+      # noindex on studio shells, robots/sitemap/llms.txt/favicon, no source maps.
+      - run: npm run test:site
         env:
           PROVE_DIST: dist-verify

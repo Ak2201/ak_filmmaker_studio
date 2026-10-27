@@ -15,11 +15,12 @@
 <meta property="og:image" content="https://{{brand:host}}/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{{brand:name}}">
+<meta property="og:image:alt" content="{{brand:name}}: {{brand:tagline}}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{brand:name}}: from first draft to final call sheet">
 <meta name="twitter:description" content="Write the screenplay, break it down and plan the shoot in one place. Built for indie directors, writers and line producers; your work stays in your own browser.">
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
+<meta name="twitter:image:alt" content="{{brand:name}}: {{brand:tagline}}">
 <meta property="og:locale" content="en_IN">
 <meta name="theme-color" content="#0d0e13">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
@@ -83,6 +84,8 @@
         </div>
       </div>
       <a class="mk-nav-link" href="pricing.html">Pricing</a>
+      <a class="mk-nav-link" href="guides.html">Guides</a>
+      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Log in</a>
     </nav>
     <div class="mk-top-end">
@@ -101,8 +104,8 @@
       <div class="mk-cta-row">
         <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
       </div>
-      <p class="st-note" data-trial data-off-text="The studio is open: sign in with Google and every module is yours to use, saved in your browser." data-open-text="You are signed in: your plan or trial is on the Purchase page.">Try every module on the sample films free for <span data-trial-length>a limited time</span> before you buy. No card required.</p>
-      <p class="st-note">Every tool is open on a sample feature, {{fms:dragon.scenes}} scenes long, so you can look around before you write.</p>
+      <p class="st-note" data-trial data-off-text="The studio is open: sign in with Google and use it, with your work saved in your browser." data-open-text="You are signed in: your plan or trial is on the Purchase page.">Try the studio with a <span data-trial-length="label">free trial</span> before you buy. No card required.</p>
+      <p class="st-note">A sample feature, {{fms:dragon.scenes}} scenes long, shows the studio filled in, so you can look around before you write.</p>
     </div>
     <figure class="mk-player st-hero-media" aria-label="A scene of the sample feature, broken down on the page">
       <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/breakdown.webp">
@@ -247,7 +250,7 @@
       <article class="mk-card" data-trial>
         <span class="mk-card-icon"><span class="sym" aria-hidden="true" translate="no">timer</span></span>
         <h3 class="mk-h3">How long is the free trial?</h3>
-        <p class="mk-card-p">Today's trial: <span data-trial-length>its length is set by the studio and shown in the sign-up window</span>. It opens every module on the sample films, needs no card, and does not hold a price: a plan costs what it costs on the day you buy it.</p>
+        <p class="mk-card-p">Right now it is a <span data-trial-length="label">free trial</span>. The length is a studio setting, read live, so it is never typed here. It needs no card and does not hold a price: a plan costs what it costs on the day you buy it.</p>
       </article>
       <article class="mk-card">
         <span class="mk-card-icon"><span class="sym" aria-hidden="true" translate="no">storage</span></span>
@@ -256,6 +259,7 @@
       </article>
     </div>
     <p class="st-note">Something else? Talk to the team at <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. A person reads every message, and payment and refund questions are answered within two working days.</p>
+    <p class="st-note"><a class="mk-link" href="trust.html">How your work is kept, and how it comes out<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a></p>
   </div>
 </section>
 <section class="mk-sec mk-band-c mk-mid st-closing" id="start" aria-labelledby="mkMidH">
@@ -267,7 +271,24 @@
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">See the plans</a>
     </div>
     <p class="st-note st-closing-note">A plan is one year for one payment, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day, and what a plan lists is in it: breakdown, scheduling and call sheets are not add-ons. See what each one includes.</p>
-    <p class="st-note st-closing-note" data-trial data-off-text="The studio is open: sign in with Google and every module is yours to use, saved in your browser." data-open-text="You are signed in: your plan or trial is on the Purchase page.">Try every module on the sample films free for <span data-trial-length>a limited time</span> before you buy. No card required.</p>
+    <p class="st-note st-closing-note" data-trial data-off-text="The studio is open: sign in with Google and use it, with your work saved in your browser." data-open-text="You are signed in: your plan or trial is on the Purchase page.">Try the studio with a <span data-trial-length="label">free trial</span> before you buy. No card required.</p>
+  </div>
+</section>
+<section class="mk-sec mk-band-a mk-lead" id="news" aria-labelledby="stLeadH" hidden>
+  <div class="mk-wrap mk-lead-in">
+    <div class="mk-lead-text">
+      <h2 class="mk-h3" id="stLeadH">Product news by e-mail</h2>
+      <p class="mk-small">A short note when something new ships or a plan changes. Nothing else, and never shared.</p>
+    </div>
+    <form class="mk-lead-form" data-lead-form method="dialog" aria-labelledby="stLeadH">
+      <label class="mk-lead-label" for="stLeadEmail">Your e-mail address</label>
+      <div class="mk-lead-row">
+        <input class="mk-lead-input" id="stLeadEmail" name="email" type="email" autocomplete="email" inputmode="email" maxlength="200" required>
+        <button class="mk-btn mk-btn--outline" type="submit">Send me news</button>
+      </div>
+      <label class="mk-lead-consent"><input type="checkbox" name="consent" value="yes"><span>Send me product news. Unsubscribe anytime. <a class="mk-link mk-link--inline" href="privacy.html#leads">How we keep your address</a></span></label>
+      <p class="mk-small mk-lead-status" data-lead-status role="status"></p>
+    </form>
   </div>
 </section>
   <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="This visit is not counted">Don't count this visit</button></div>
@@ -311,6 +332,9 @@
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
           <li><a href="privacy.html">Privacy</a></li>
           <li><a href="terms.html">Terms</a></li>
@@ -329,8 +353,8 @@
   <div class="mk-modal-scrim" data-close></div>
   <div class="mk-modal-card" tabindex="-1">
     <button class="mk-modal-x" type="button" data-close aria-label="Close"><span class="sym" aria-hidden="true" translate="no">close</span></button>
-    <h2 class="mk-modal-h" id="mkSignupTitle">Sign in to start your trial</h2>
-    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and every module is yours to use, saved in your browser." data-open-text="You are already signed in.">Try every module on the sample films free for <span data-trial-length>a limited time</span>. No card required.</p>
+    <h2 class="mk-modal-h" id="mkSignupTitle">Sign in to start your <span data-trial-length="label">free trial</span></h2>
+    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and use it, with your work saved in your browser." data-open-text="You are already signed in.">Try the studio with a <span data-trial-length="label">free trial</span>. No card required.</p>
     <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Continue with Google</a>
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">By continuing you agree to the <a href="terms.html">Terms</a> and the <a href="privacy.html">Privacy Policy</a>.</p>

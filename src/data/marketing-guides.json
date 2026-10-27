@@ -1,0 +1,389 @@
+{
+  "_about": "Copy for the guide pages (guide-*.html) and their index (guides.html), read by scripts/make-marketing-pages.mjs. ORIGINAL WORDING, practical and plain. RULES. (1) A guide teaches the craft; the 'In the studio' block says only what the code does today (`ours` names the files that prove it, for whoever re-checks; it is not printed) and which plan opens it (src/data/plan-matrix.json). (2) The CBFC and OTT guides restate src/data/cbfc-rules.json and src/data/deliverables.json, never more: their `sources` are those files' own source URLs and `checked` dates, so when a rule changes there, change it here in the same commit. No legal advice; both pages say so. (3) No rupee figure, rate or deadline is typed: rates go stale, the build refuses a bare rupee sign on a public page, and a festival date belongs on the festival's own site. (4) Every guide ends on the same two doors: the trial (data-trial-only, its length filled at runtime into [data-trial-length]) and the plans. (5) `updated` is the date the copy was last checked against the product.",
+  "updated": "2026-10-26",
+  "ui": {
+    "eyebrow": "Guide",
+    "updatedLabel": "Updated",
+    "inStudio": "In the studio",
+    "onPlan": "Opens on",
+    "sourcesH": "Sources",
+    "sourcesNote": "Read on the date shown. Rules and specifications change: check the source before you rely on it.",
+    "relatedH": "More guides",
+    "ctaTrialHtml": "Start your <span data-trial-length=\"label\">free trial</span>",
+    "ctaPlans": "See the plans",
+    "ctaNote": "The trial needs no card.",
+    "read": "Read the guide",
+    "compareRead": "Read the switching guide",
+    "breadcrumbHome": "Home",
+    "breadcrumbGuides": "Guides",
+    "closeH": "Do this in the studio"
+  },
+  "index": {
+    "file": "guides.html",
+    "metaTitle": "Filmmaking guides: call sheets, breakdowns, budgets, CBFC and delivery",
+    "metaDescription": "Practical, plain-English guides for independent filmmakers in India: the call sheet, Tamil screenplay format, a short-film budget, the script breakdown, CBFC certification, OTT delivery and festival planning.",
+    "h1": "Guides for making a film",
+    "sub": "Practical notes on the paperwork between a script and a finished film, written for independent crews in India. Each one ends with how the studio does that job.",
+    "guidesH": "The guides",
+    "compareH": "Switching to the studio",
+    "compareLede": "Moving a screenplay from another tool: which files the studio imports, the import step by step, and what comes out again.",
+    "trustH": "Your work stays yours",
+    "trustText": "Where your script is kept, how it comes out in open formats, and who can read it.",
+    "trustLink": "Read how your work is kept",
+    "closeH": "See the studio before you decide"
+  },
+  "guides": [
+    {
+      "id": "call-sheet",
+      "file": "guide-call-sheet.html",
+      "kind": "HowTo",
+      "hue": "hue-shoot",
+      "sym": "assignment",
+      "label": "How to make a call sheet",
+      "card": "What a call sheet must say, who gets it and when, and how to send it on WhatsApp.",
+      "metaTitle": "How to make a film call sheet (with a WhatsApp version)",
+      "metaDescription": "A step-by-step guide to the film call sheet: what it must say, when to send it, and how to turn it into a WhatsApp message each person can read at five in the morning.",
+      "h1": "How to make a film call sheet",
+      "sub": "The call sheet is the one page every person on the unit reads before a shoot day. Here is what it must say, in what order, and how to get it to people who read the production group on their phone.",
+      "sections": [
+        { "h2": "What a call sheet is for", "body": [
+          "A call sheet tells each person where to be, when, and what will be shot. It is made from the schedule the evening before, once the day is settled, and it replaces every earlier message about that day.",
+          "If two versions of a call sheet are going round, the unit will follow the wrong one. Send one sheet, and if anything changes, send the whole sheet again with the change marked."
+        ] },
+        { "h2": "What it must say", "list": [
+          "The production, the shoot day number and the date.",
+          "The general call: the time the unit is expected, and the expected wrap.",
+          "Each location with a full address and a map link, plus where to park and where the unit base is.",
+          "The scenes in shooting order: scene number, slug line, day or night, page length and the cast in each.",
+          "Each person's own call time, which is often earlier than the general call for make-up, art and camera.",
+          "Sunrise and sunset, so exterior scenes are planned against the light.",
+          "The nearest hospital and police station to each location.",
+          "Who to call: the first assistant director and the production manager, with phone numbers.",
+          "Notes for the day: special equipment, a stunt, an animal, a child artist, or a permission to carry."
+        ] },
+        { "h2": "Step by step", "steps": [
+          { "name": "Lock the day on the schedule", "text": "Decide which scenes are being shot and in what order. The call sheet copies the schedule; it is not where the schedule is decided." },
+          { "name": "List who is needed", "text": "Read the cast from the scenes, then add the crew the day needs. Anyone not on the sheet is not called." },
+          { "name": "Set each call time", "text": "Work backwards from the first shot: make-up and costume before cast, camera and lights before the first set-up." },
+          { "name": "Add the location facts", "text": "Address, map link, parking, unit base, and the nearest hospital and police station." },
+          { "name": "Check and send the night before", "text": "Read it once against the schedule, then send it to everyone at the same time, early enough that people can plan their travel." }
+        ] },
+        { "h2": "The WhatsApp version", "body": [
+          "Many units read the production group on a phone rather than open a PDF. A plain-text message works better there: the person's own call time on the first line, then the location, the scenes and the contacts. Keep it short enough to read on a lock screen and send the full sheet as well for the heads of department."
+        ] }
+      ],
+      "studio": {
+        "plan": "pro",
+        "body": [
+          "Call sheets are built from your scenes and your cast and crew list, one sheet per shoot day. Tick the scenes being shot and their locations and page lengths come from the script; pick who is called and give each person a time.",
+          "Sunrise, sunset and golden hour are worked out on your device. The nearest hospital and police station come from the location recce if you filled them in.",
+          "Print the sheet, or send it as a WhatsApp message to the whole unit or to one person with their own call time first. A person's details are stored once, so a corrected phone number fixes every sheet they are on."
+        ],
+        "links": [ { "href": "product-call-sheets.html", "label": "See call sheets" }, { "href": "product-cast-crew.html", "label": "See cast and crew" } ],
+        "ours": "src/pages/contacts.js, src/lib/callsheet-text.js, src/lib/sun.js"
+      },
+      "related": ["script-breakdown", "short-film-budget", "festival-planner"]
+    },
+    {
+      "id": "tamil-screenplay-format",
+      "file": "guide-tamil-screenplay-format.html",
+      "kind": "Article",
+      "hue": "hue-library",
+      "sym": "translate",
+      "label": "Tamil screenplay format",
+      "card": "How Tamil units commonly lay out a script, and how to keep the page count honest.",
+      "metaTitle": "Tamil screenplay format: headings, dialogue and page count",
+      "metaDescription": "How to lay out a Tamil screenplay: English scene headings and action, dialogue in Tamil script or Tanglish, character cues, parentheticals, and why the page count stays honest only on a fixed-width grid.",
+      "h1": "Tamil screenplay format",
+      "sub": "There is no single official Tamil screenplay standard. This is the layout many Tamil units work with, and the reasons behind each part of it.",
+      "sections": [
+        { "h2": "The common layout", "body": [
+          "A common way to write a Tamil screenplay is the standard screenplay format with the dialogue in Tamil: scene headings and action in English, so every department head and every crew member from outside Tamil Nadu can read them, and the dialogue in Tamil script or in Tanglish (Tamil written in Roman letters), the way the actors will say it.",
+          "Whichever you choose, agree it with your assistant director before the first draft is shared. A script that switches between Tamil script and Tanglish from scene to scene is harder to break down and harder to subtitle."
+        ] },
+        { "h2": "Scene headings", "body": [
+          "Each scene starts with a heading in capitals: INT. or EXT. (inside or outside), the location, and the time of day after a dash, for example INT. COLLEGE CANTEEN - DAY. Use INT./EXT. for a scene in a car or across a doorway.",
+          "The heading is what the schedule is built from, so keep a location's name the same every time it appears. TEA SHOP and TEA STALL will be scheduled as two places."
+        ] },
+        { "h2": "Action, cues and dialogue", "list": [
+          "Action is in the present tense and short: three or four lines, then a new paragraph.",
+          "The character's name above each speech is in capitals and spelled the same every time, so the cast list counts one person, not two.",
+          "A parenthetical is one short note on how a line is said, such as (quietly) or (to Meena). Anything longer is action.",
+          "Dialogue sits in its own narrow column. Write it the way it will be spoken, in Tamil script or Tanglish, and keep songs or lyrics clearly marked."
+        ] },
+        { "h2": "Why the page count needs a fixed-width face", "body": [
+          "The rule of thumb that a page is about a minute of screen time holds only because a screenplay is set in 12-point Courier, a face where every character is the same width. That fixed grid is what makes a page count predictable.",
+          "Tamil script is not fixed-width, so a page with long Tamil passages in the structural parts (headings and action) no longer measures what an English page measures. Keeping Tamil to the dialogue keeps the rest of the page on the grid, and the page count stays meaningful for scheduling."
+        ] }
+      ],
+      "studio": {
+        "plan": "starter",
+        "body": [
+          "The Screenplay Writer sets the format as you type: Return and Tab pick the next element, scene headings are recognised and each one becomes a scene in the studio.",
+          "Tamil typing (Alt+T) is an opt-in mode for dialogue and parentheticals: type a word in Roman letters and it is offered in Tamil script, committed with Space or Return. Headings and action are left as you typed them, which is what keeps the page count exact.",
+          "A format guide notes common slips, such as a heading without INT. or EXT., a heading with no time of day, or a character name not in capitals. The finished script exports as PDF, Word, Final Draft and Fountain."
+        ],
+        "links": [ { "href": "product-writing.html", "label": "See the Screenplay Writer" } ],
+        "ours": "src/lib/tanglish.js, src/ui/tamil-type.js, src/data/format-rules.json, src/pages/screenplay.js"
+      },
+      "related": ["script-breakdown", "call-sheet", "cbfc-checklist"]
+    },
+    {
+      "id": "short-film-budget",
+      "file": "guide-short-film-budget.html",
+      "kind": "Article",
+      "hue": "hue-shoot",
+      "sym": "payments",
+      "label": "A short-film budget in rupees",
+      "card": "The lines a short-film budget needs, where the days come from, and how to track the spend.",
+      "metaTitle": "How to budget a short film in rupees",
+      "metaDescription": "How to build a short-film budget in India line by line: the categories, why the shoot days drive most of the cost, crew bata, contingency, and tracking petty cash against the plan once the shoot starts.",
+      "h1": "How to budget a short film in rupees",
+      "sub": "A budget is a list of decisions with a number beside each. Here is how to build one for a short film in India, and how to keep it honest once money starts moving.",
+      "sections": [
+        { "h2": "Start from the schedule, not a total", "body": [
+          "Most of a short film's cost grows with the number of shoot days: crew fees, bata, equipment hire, food, transport and locations are all paid per day. So schedule first, count the days, and let the days set those lines.",
+          "A figure decided before the schedule, then forced onto it, is how a two-day shoot quietly becomes three days on a two-day budget."
+        ] },
+        { "h2": "The lines a short film needs", "list": [
+          "Cast: fees, and bata for each day an actor works.",
+          "Crew: fees by department, and bata per working day.",
+          "Camera, lenses, lights and sound: hire per day, plus any extra day for a test or a pick-up.",
+          "Locations: hire, permissions and any police or corporation fees.",
+          "Art and costume: what is bought, what is hired, and what has to be made.",
+          "Food and transport for the whole unit, per day.",
+          "Post-production: edit, sound mix, grade, subtitles and music.",
+          "Festival and distribution: entry fees, the files each festival asks for, and posters.",
+          "Contingency: a share of the total kept back for what goes wrong."
+        ] },
+        { "h2": "Rates: write down where each number came from", "body": [
+          "A rate you heard last year is not a quote. Beside each figure, note who quoted it and when, so you can tell an old number from a current one. Where a rate is negotiated, the agreed figure is the one that goes in the budget, not a band.",
+          "Bata (the daily allowance for crew on a shoot day) is easy to forget because it is small per person. Across a unit and several days it is often one of the larger lines."
+        ] },
+        { "h2": "Once the shoot starts", "body": [
+          "Log every expense against the line it belongs to, and keep petty cash in its own record with a receipt or a note for each payment. Check spent against planned at the end of each day, not at wrap: an overrun found on day two can still be fixed.",
+          "Before the shoot, lock a version of the budget. When something changes, you can compare the new figure with the version everyone agreed."
+        ] }
+      ],
+      "studio": {
+        "plan": "indie",
+        "body": [
+          "The estimator starts from Chennai rate bands and a FEFSI bata table, each marked with when it was last checked and never inflated to look current. You can edit any figure to what you agreed.",
+          "Lines that grow with shoot days can take their days from your stripboard; only blank fields are filled, so your own entries stay yours.",
+          "During the shoot, log expenses and petty cash against the plan, set a contingency, and lock budget versions to compare. The budget, actuals and expenses download as CSV."
+        ],
+        "links": [ { "href": "product-budget.html", "label": "See the budget" }, { "href": "product-schedule.html", "label": "See the schedule" } ],
+        "ours": "src/lib/budget-model.js, src/data/rates.chennai.2024.json, src/data/wages.fefsi.json, src/pages/budget.js"
+      },
+      "related": ["call-sheet", "festival-planner", "script-breakdown"]
+    },
+    {
+      "id": "script-breakdown",
+      "file": "guide-script-breakdown.html",
+      "kind": "HowTo",
+      "hue": "hue-plan",
+      "sym": "fact_check",
+      "label": "Script breakdown walkthrough",
+      "card": "Read a script scene by scene and mark everything the shoot must find, hire or build.",
+      "metaTitle": "How to do a script breakdown, scene by scene",
+      "metaDescription": "A walkthrough of the script breakdown: numbering scenes, marking cast, props, wardrobe, vehicles and effects in a colour code, the breakdown sheet, and how the breakdown feeds the schedule and budget.",
+      "h1": "How to do a script breakdown",
+      "sub": "A breakdown turns a script into a list of everything the shoot has to find, hire or build, scene by scene. It is the first job of pre-production and everything after it reads from it.",
+      "sections": [
+        { "h2": "Why it comes first", "body": [
+          "The schedule groups scenes by location, cast and time of day; the budget counts what each scene needs; the call sheet lists who is in each scene. All three read the breakdown, so a mistake here travels into every later document."
+        ] },
+        { "h2": "Step by step", "steps": [
+          { "name": "Lock and number the scenes", "text": "Work from a numbered draft. Every scene heading is one scene; if a scene is added later it takes a letter, such as 12A, so the other numbers do not move." },
+          { "name": "Read each scene once for the story", "text": "Before marking anything, read the scene through so you know what happens in it." },
+          { "name": "Mark what the scene needs", "text": "Read it again and mark each element: cast, extras, props, wardrobe, make-up, vehicles, animals, stunts, special effects and sound. Use one colour per category, so a glance at the page shows what kind of day it is." },
+          { "name": "Note the facts the schedule needs", "text": "For each scene record the location, inside or outside, day or night, and its length in eighths of a page." },
+          { "name": "Fill the breakdown sheet", "text": "Copy each scene's elements onto its breakdown sheet, one sheet per scene, box by box. Department heads work from these sheets." },
+          { "name": "Gather the totals", "text": "Collect the elements for the whole film: every prop once, with the scenes it appears in. That list is what art, costume and transport plan from." }
+        ] },
+        { "h2": "Common slips", "list": [
+          "A character named two ways (RAVI and RAVI KUMAR) counted as two people.",
+          "A prop that carries across scenes noted in one and missed in the next, which becomes a continuity error.",
+          "A night exterior marked as day, which moves it to the wrong part of the schedule.",
+          "Elements implied by action but not named, such as rain, a crowd or a moving vehicle."
+        ] }
+      ],
+      "studio": {
+        "plan": "indie",
+        "body": [
+          "Import a Fountain, Final Draft, Word or PDF script, or write in the Screenplay Writer: each scene heading becomes a scene, with its location and day or night.",
+          "Auto-tag suggests cast, props, vehicles, stunts and sounds for each scene; nothing is added until you accept it. Mark elements on the page in a colour per category, with each scene's breakdown sheet beside it.",
+          "The element list, the stripboard, the day out of days and the budget all read the same tags, so a rewrite updates them instead of being typed twice."
+        ],
+        "links": [ { "href": "product-breakdown.html", "label": "See the breakdown" }, { "href": "product-catalog.html", "label": "See the element catalog" } ],
+        "ours": "src/lib/breakdown-run.js, src/lib/breakdown-model.js, src/pages/breakdown.js, src/lib/script-import.js"
+      },
+      "related": ["call-sheet", "short-film-budget", "tamil-screenplay-format"]
+    },
+    {
+      "id": "cbfc-checklist",
+      "file": "guide-cbfc-checklist.html",
+      "kind": "Article",
+      "hue": "hue-feature",
+      "sym": "verified",
+      "label": "CBFC certification checklist",
+      "card": "The certificate categories, and what to prepare before you apply: tobacco, drugs, animals, children.",
+      "metaTitle": "CBFC certification checklist for independent films",
+      "metaDescription": "A checklist for CBFC film certification in India: the U, UA 7+, UA 13+, UA 16+ and A categories, the tobacco and drug warnings, AWBI permission for animals, child artists, and what to prepare before applying. Sources and dates on the page.",
+      "h1": "A CBFC certification checklist",
+      "sub": "What to prepare before you apply for a CBFC certificate, read from the sources listed at the foot of this page. It is a checklist, not legal advice: check anything that matters with your regional CBFC office or a lawyer.",
+      "sections": [
+        { "h2": "The categories", "body": [
+          "Since the Cinematograph (Amendment) Act, 2023 and the Cinematograph (Certification) Rules, 2024, a film is certified U, UA 7+, UA 13+, UA 16+ or A. The three UA markers mean unrestricted exhibition with parental guidance for children under that age. The 2024 Rules also moved applications to the e-Cinepramaan portal.",
+          "The Board judges the finished film as a whole, so a category can only be planned for, never guaranteed."
+        ] },
+        { "h2": "If tobacco is on screen", "list": [
+          "Anti-tobacco health spots of at least 30 seconds at the beginning and the middle of the film.",
+          "An audio-visual disclaimer on the ill effects of tobacco, at least 20 seconds, at the beginning and the middle.",
+          "A static health warning at the bottom of the screen while tobacco is shown, in the language of the film.",
+          "An editorial justification for the display, given to the Board with the application.",
+          "No brand: packs and logos are masked or replaced by the art department."
+        ] },
+        { "h2": "If drugs are shown", "body": [
+          "The certification guidelines revised in September 2026 ask that scenes showing narcotic drugs or psychotropic substances carry the prescribed on-screen message, and that the film does not encourage, justify or glamorise drug use."
+        ] },
+        { "h2": "If an animal is in the film", "body": [
+          "The Animal Welfare Board of India gives its no-objection only after a pre-shoot permission, applied for online before the shoot with the owner's details and a fitness certificate. Some animals, including bulls, may not be exhibited or trained as performing animals at all, so check that before the scene is written into the schedule."
+        ] },
+        { "h2": "If a child under 14 works on the film", "body": [
+          "Take the District Magistrate's permission for the district where you are shooting, for every child artist, before the work starts. The rules also limit the working day and require rest, supervision and arrangements for schooling; read them before you schedule."
+        ] },
+        { "h2": "What the Board weighs", "list": [
+          "Violence, and how long the camera stays on it.",
+          "Sexual content and sexual violence, kept to the minimum the story needs.",
+          "Abusive language: record a clean alternative line for any word you may have to lose, and remember subtitles count.",
+          "Contempt for a community, and the use of national emblems, the flag and uniforms.",
+          "Real people and brands: a defamation and trade-mark question as well as a certification one."
+        ] }
+      ],
+      "studio": {
+        "plan": "pro",
+        "body": [
+          "The Deliverables page has a certification tab that searches your script for content the certification process asks about: tobacco, drugs, alcohol, animals, violence, language, children and more, in English, Tanglish and a starter list of Tamil-script terms.",
+          "Each flag shows the scenes it came from, what the rule asks for and the source it rests on. It is a word search, not a reading of the film, and the page says so; the likely-category line is the studio's own guess, not the Board's criteria."
+        ],
+        "links": [ { "href": "pricing.html#compare", "label": "See which plan includes Deliverables" } ],
+        "ours": "src/lib/cbfc.js, src/data/cbfc-rules.json, src/pages/deliverables.js"
+      },
+      "sources": [
+        { "label": "Cinematograph (Certification) Rules, 2024: summary (MediaNama)", "url": "https://www.medianama.com/2024/06/223-online-film-certification-portal-introduced-in-cinematograph-rules-2024-by-ib-ministry-summary-of-key-points/", "checked": "2026-10-08" },
+        { "label": "CBFC certification page", "url": "https://www.cbfcindia.gov.in/cbfcAdmin/certification.php", "checked": "2026-10-08" },
+        { "label": "COTPA film rules, G.S.R. 708(E) (Ministry of Health)", "url": "https://ntcp.mohfw.gov.in/assets/document/Acts-Rules-Regulations/GSR-708(E).pdf", "checked": "2026-10-08" },
+        { "label": "CBFC's 2026 guidelines explained (India TV)", "url": "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693", "checked": "2026-10-08" },
+        { "label": "Performing animals (Animal Welfare Board of India)", "url": "https://awbi.gov.in/view/index/performing-animal", "checked": "2026-10-08" },
+        { "label": "Child actors and child labour laws (S.S. Rana)", "url": "https://ssrana.in/articles/child-actors-and-child-labour-laws/", "checked": "2026-10-08" }
+      ],
+      "related": ["ott-delivery", "festival-planner", "tamil-screenplay-format"]
+    },
+    {
+      "id": "ott-delivery",
+      "file": "guide-ott-delivery.html",
+      "kind": "Article",
+      "hue": "hue-feature",
+      "sym": "movie",
+      "label": "OTT delivery checklist",
+      "card": "The masters, sound, subtitles and paperwork a streamer asks for, and where each platform publishes its spec.",
+      "metaTitle": "OTT delivery specs checklist: masters, sound, subtitles, paperwork",
+      "metaDescription": "A checklist of what a streaming platform asks a film to deliver: picture masters, textless versions, sound mixes and stems, timed text, the CBFC certificate and chain of title. With what Netflix and Prime Video publish, and what to ask platforms that do not.",
+      "h1": "An OTT delivery checklist",
+      "sub": "When a platform licenses your film, it sends a list of what to deliver. This checklist helps you plan for that list before the grade and the mix are locked, when changes are still cheap.",
+      "sections": [
+        { "h2": "Ask for the spec first", "body": [
+          "Every platform's own delivery specification, and the list it issues for your title, wins over any general checklist, this one included. Ask for it with the deal memo, before the grade and mix are locked."
+        ] },
+        { "h2": "Picture", "list": [
+          "A graded master in a high-quality format, such as ProRes 4444 or 422 HQ.",
+          "A textless or non-subtitled master: the picture with no burned-in subtitles, so subtitles and dubs can be added as separate files.",
+          "An HDR master only if the platform asks for one; a licensed SDR film may not need it.",
+          "A trailer or clips, if the platform asks."
+        ] },
+        { "h2": "Sound", "list": [
+          "A 5.1 printmaster and a stereo mix.",
+          "Music and effects (M&E) stems, and dialogue stems if asked, for dubbing. Make them while you mix; recovering them later is expensive.",
+          "A music cue sheet listing every piece of music and its rights."
+        ] },
+        { "h2": "Text and paperwork", "list": [
+          "Subtitles and captions in the format the platform names, timed to the master.",
+          "A dialogue list, which is the subtitler's starting point.",
+          "The CBFC certificate details, which many Indian platforms show with the title.",
+          "Chain of title and releases for cast, crew, locations, music and artwork.",
+          "Errors and omissions insurance, if the contract requires it.",
+          "Key art, stills, synopses and the full credit list."
+        ] },
+        { "h2": "What the platforms publish", "body": [
+          "Netflix publishes its delivery specifications: picture and sound go as an IMF package (SMPTE ST 2067-21, Application #2E), timed text as TTML1, and each title gets its own Delivery Requirements List, which wins over the general specification.",
+          "Prime Video publishes Tech Docs: a constant-frame-rate video mezzanine, a semi-textless master (no burned-in subtitles in any language), one audio asset per language, and a list of accepted timed-text formats.",
+          "For Aha, Sun NXT and ZEE5 we could not find a public delivery specification when we checked on 7 October 2026. Ask their acquisitions team for it in writing, and plan from that."
+        ] }
+      ],
+      "studio": {
+        "plan": "pro",
+        "body": [
+          "The Deliverables page is a checklist of what leaves with the film: picture masters, sound, subtitles, certification and chain of title, and publicity materials, with optional groups for Netflix, Prime Video, and templates for Aha, Sun NXT and ZEE5 to fill in from their spec.",
+          "Each platform group names the source it was read from and when. The dialogue list for your subtitler is built from your screenplay."
+        ],
+        "links": [ { "href": "pricing.html#compare", "label": "See which plan includes Deliverables" } ],
+        "ours": "src/lib/deliverables.js, src/data/deliverables.json, src/pages/deliverables.js, src/lib/dialogue-list.js"
+      },
+      "sources": [
+        { "label": "Netflix delivery specifications (Backlot help centre)", "url": "https://backlothelp.netflix.com/hc/en-us/articles/7262346654995", "checked": "2026-10-07" },
+        { "label": "Prime Video video requirements (Video Central)", "url": "https://videocentral.amazon.com/support/delivery-experience/videos/video-requirements", "checked": "2026-10-07" },
+        { "label": "Prime Video timed text (Video Central)", "url": "https://videocentral.amazon.com/support/delivery-experience/timed-text", "checked": "2026-10-07" }
+      ],
+      "related": ["cbfc-checklist", "festival-planner", "short-film-budget"]
+    },
+    {
+      "id": "festival-planner",
+      "file": "guide-festival-planner.html",
+      "kind": "Article",
+      "hue": "hue-library",
+      "sym": "event",
+      "label": "Film festival planner",
+      "card": "Premiere rules, tiers, a calendar built backwards from deadlines, and the files to have ready.",
+      "metaTitle": "Film festival planner: premieres, deadlines and formats",
+      "metaDescription": "How to plan a short film's festival run: why the premiere decides the order, choosing tiers, building a calendar back from deadlines, entry fees, and the screener and DCP files festivals ask for.",
+      "h1": "Planning a film festival run",
+      "sub": "A festival run is a sequence, not a list. The order you send the film out in decides which festivals can still take it, so plan it before you submit anywhere.",
+      "sections": [
+        { "h2": "The premiere decides the order", "body": [
+          "Many major festivals only select films that have not screened anywhere else first: a world, international or national premiere. Posting the film online counts as a screening. So the usual advice is to hold any online release until the festivals that want a premiere have answered.",
+          "Read each festival's premiere rule before you submit, and keep a note of which festivals are still holding a claim on your film."
+        ] },
+        { "h2": "Choose your tiers", "list": [
+          "A few top-tier festivals with strict premiere rules, sent to first.",
+          "A wider set of festivals that accept films that have screened before.",
+          "Festivals close to your audience: regional, language and genre festivals in India.",
+          "Online showcases last, once the premiere-holding festivals are done."
+        ] },
+        { "h2": "Build the calendar backwards", "body": [
+          "Write down each festival's deadline from its own website, for this year's edition, and work back: the date the screener must be ready, the date the subtitles must be final, the date the entry fee must be paid. Deadlines and rules change every year, so never plan from last year's dates or an aggregator listing.",
+          "Many festivals have early and late deadlines with different fees. Short and feature deadlines can differ too, which is an easy and expensive thing to misread."
+        ] },
+        { "h2": "Have these ready", "list": [
+          "A private screener link, and the film as an H.264 file.",
+          "English subtitles, and a version with them burned in if the festival asks.",
+          "A DCP or ProRes file for festivals that screen from one.",
+          "Stills, a poster, a logline and synopses of different lengths, and a director's statement and photograph.",
+          "A budget line for entry fees, and a record of what you sent where and when."
+        ] }
+      ],
+      "studio": {
+        "plan": null,
+        "planNote": "The festival catalogue and tracker are in the Short Film guide; the festival file requirements on Deliverables open on Pro.",
+        "body": [
+          "The Short Film guide's festival step holds a catalogue of eighteen festivals by tier, each with its premiere rule, and some with this edition's dates read from the festival's own site on the day shown on its card. A festival that was not re-checked says so instead of showing a guessed date.",
+          "Its submission tracker keeps what you sent where, what it cost and what came back, and warns when a planned online release would break a premiere that a festival is still holding.",
+          "On Pro, the Deliverables page lists the format each tracked festival asks for beside the rest of your delivery checklist."
+        ],
+        "links": [ { "href": "pricing.html#compare", "label": "Compare the plans" } ],
+        "ours": "src/lib/festivals.js, src/data/festivals.json, src/data/festivals.checks.json, src/pages/short.js, src/pages/deliverables.js"
+      },
+      "related": ["ott-delivery", "short-film-budget", "cbfc-checklist"]
+    }
+  ]
+}

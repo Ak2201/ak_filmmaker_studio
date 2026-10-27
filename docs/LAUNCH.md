@@ -206,9 +206,44 @@ that one.
 >    Then redeploy ALL FOUR functions with the CLI, enable USD / international payments on
 >    Razorpay, type the dollar prices in the console, and only then `admin_set_usd_checkout(true)`.
 >    Rupee checkout keeps working at every step in between; a client without §56 falls back to rupees.
+> 3. **§58** `schema-58-funnel-source.sql` (26 Oct 2026) — funnel counts by source and four
+>    more steps (trial_start, sample_open, signin_done, plan_view_in_app). Hash the file
+>    (`shasum -a 256`), paste the base64 way, compare the editor's SHA-256, Run. Read back:
+>    `select oid::regprocedure from pg_proc where proname = 'bump_event'` lists BOTH
+>    `bump_event(text)` and `bump_event(text,text)`, and
+>    `select pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.events'::regclass`
+>    shows the key `(day, name, source)`. No function redeploy. If the base file
+>    (`supabase-schema.sql`) is ever re-run, re-run §58 after it. Safe before it runs: the
+>    client retries a refused two-argument count with one argument and the console says
+>    "section 58 has not run".
+> 4. **§59** `schema-59-testimonials.sql` (26 Oct 2026) — testimonials with consent and revoke.
+>    Same checksum routine. Read back: `select relrowsecurity from pg_class where oid =
+>    'public.testimonials'::regclass` → true, and as anon `POST /rest/v1/rpc/public_testimonials`
+>    → `[]`, and `admin_mark_testimonial_removed(uuid)` exists, and
+>    `select tgname from pg_trigger where tgrelid = 'auth.users'::regclass and tgname =
+>    'testimonials_on_user_delete'` → one row, and
+>    `select confdeltype from pg_constraint where conname = 'testimonials_author_fkey'` → `n`
+>    (SET NULL: deleting an account revokes an approved testimonial instead of losing the
+>    takedown record). A taken-back testimonial
+>    that was on the site shows on the console Overview until you delete it from
+>    `src/data/testimonials.json`, redeploy, and press TAKEN OFF THE SITE. No function redeploy. Safe before it runs: the prompt never appears and the
+>    console's Testimonials tab says "section 59 has not run". Then the two-account checks in
+>    `docs/SECURITY-RLS.md` §59.
+>
+> 5. **§60** `schema-60-signup-trial-scope.sql` (26 Oct 2026) — a trial started by pressing
+>    START MY FREE TRIAL follows the console's trial scope (before, it was always the sample).
+>    Run AFTER §59, and BEFORE you set the console's trial scope to "The whole studio" for
+>    the 26 Oct decision (3 days = trial length 72 hours, scope full): until §60 runs, that
+>    setting widens only code trials. Same checksum routine; sha256
+>    `7f983a36d52f70613e378a42fbab152a1efc40afc325e334efb5c42c8d8c7e55` (the README row is the one to trust after any edit). Read back (§60.4 in the file):
+>    `select pg_get_functiondef('public.start_trial(text)'::regprocedure) like '%§60%'` → true,
+>    `… like '%then ''sample'' else%'` → false, `select public.trial_offer() ? 'trial_scope'`
+>    → true; after setting the console, `select trial_scope, trial_minutes from
+>    public.billing_settings` → `full`, `4320`. No function redeploy. Then the checks in
+>    `docs/SECURITY-RLS.md` §60.
 >
 > §53 and §54 ran live on 22 Oct 2026 and the four functions were redeployed that day
-> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §58 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
+> (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §61 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
 
 > **RAN LIVE 19 Oct 2026 (§36 re-run, §48–§51), each checksummed and probed over PostgREST** —
 > §48 `can_join_presence` and §49 `co_editing_enabled` answer, `claim_share` now answers 42501
@@ -487,10 +522,49 @@ and the logo.
 
 ## 8. Only then, ads
 
+**The marketing pass (26 Oct 2026) has its own owner steps, in order, in
+`docs/LIVE-STEPS-2026-10-26.md`** — the price-rise date first, before
+2026-10-31T18:29Z — and its channel plan, tagged links and copy in
+`docs/MARKETING-PLAYBOOK.md`. Every link you post carries a `?src=` tag from
+the playbook's table, so the console's funnel can say which channel sold.
+
 Meta Pixel is NOT installed, on purpose: it needs a `connect-src` /
 `script-src` change in both host configs, a privacy-policy paragraph, and
 it cuts against "your work stays in your browser". If you want it, put it
 on `start.html` ONLY, never inside the studio. Start with retargeting
 people who opened the sample, ₹500–1,000 a day, and the message that is
-true and rare: pay once, no subscription, works offline, built for Tamil
-crews.
+true and rare: one payment for a year with nothing renewing by itself,
+works offline, built for Tamil crews. (It used to say "pay once, no
+subscription"; since §52, 21 Oct 2026, a plan is one year, so that line is
+no longer true. Read the trial length and the price-rise date from the
+console, trial_offer() and price_notice(), never from an old ad.)
+
+### Before the public guides and comparisons are promoted (26 Oct 2026)
+
+Three owner steps the public pages are waiting on. None is a file the
+code can finish for you.
+
+- **The product-news form stays HIDDEN until privacy.html describes it.**
+  start.html and pricing.html carry the `form[data-lead-form]` markup, but
+  the section is `hidden` while `lead.live` is `false` in
+  `src/data/marketing-site.json`. privacy.html's only leads paragraph (the
+  h3 with `id="leads"`) says the old launch-offers form was removed, so a
+  form collecting an address under it would be a wrong privacy notice.
+  Write (it is legal copy, words in markup) a dated paragraph for the
+  product-news list: what is stored (address, the consent sentence, date,
+  source page), the purpose (product news only), who can read it, how to
+  unsubscribe or have it deleted. Move `id="leads"` onto that paragraph's
+  heading, then set `lead.live` to `true`, `npm run make:marketing`, and
+  check the form in a browser.
+- **Re-read the comparison sources.** Every row on compare-celtx.html and
+  compare-final-draft.html was taken from a search engine's summary of the
+  vendor's own page (the vendor sites did not resolve from the sandbox it
+  was written in), and the page says so beside each row. Open each of the
+  eight `source` URLs in `src/data/marketing-compare.json`, correct or
+  delete the row, then set its `method` to `"read"` and its `checked` to
+  that day.
+- **Rebuild after the price rise lands.** pricing.html's Product JSON-LD
+  carries the build-time list prices (`LIST_PRICE` in `src/lib/plans.js`);
+  the visible figures follow `price_notice()` at runtime, structured data
+  cannot. When the server's price rises, update `LIST_PRICE` and rebuild.
+  The other public pages carry no offers in their JSON-LD on purpose.

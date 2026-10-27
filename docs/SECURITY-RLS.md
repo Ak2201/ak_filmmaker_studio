@@ -1383,3 +1383,154 @@ with a read that must answer 5; 55.37 and 55.44 assert the same locally.
    no `library` / `costs`; `scenes` is still there.
 3. As B: `POST /rest/v1/rpc/set_budget_private` → 403 / 42501.
 4. Owner turns it off; step 2 lists both again.
+
+## §58 FUNNEL COUNTS BY SOURCE — WRITTEN 26 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-58-funnel-source.sql`; checks in
+`scripts/schema-tests/funnel-source.sql` (25, plus three in `scripts/test-schema.mjs`
+that a pre-§58 counter survives the new key, under `npm run test:schema`).
+
+**The rule.** `events` stays DAILY COUNTERS with no personal data. It gains one
+aggregate column, `source` (`''` or `^[a-z0-9_-]{1,32}$` with no run of 7+
+digits: no `@`, no `.`, no space, no phone number), and it joins the key —
+`(day, name, source)` — so a row is "how many, that day, from there". RLS stays
+on with NO grant to `anon` or `authenticated`: nobody reads or writes a raw row.
+The only ways in are `bump_event(name)` (unchanged for every deployed client) and
+`bump_event(name, source)` (new); both are SECURITY DEFINER with the name an
+allowlist and the source refused (22023) when it fails the pattern. A day holds
+at most 200 distinct sources; a new one past that counts as `other`. The only way
+out is `admin_funnel` / `admin_funnel_by_source`, administrators only (42501).
+
+**What the pattern does NOT do.** `kasi-v-example-com` and `john-smith` pass it.
+What keeps a person out of the column is the client: `src/lib/funnel.js`
+`sourceBucket()` sends only a name from a fixed list (google, instagram, youtube,
+email, ...) and `other` for anything else, and reads the visit's `src` only,
+never the `ref` referral code, which names one member (`npm run test:funnel`).
+A hand-made call to `bump_event` can still store any pattern-shaped word, at most
+200 a day; that is the residual risk, and it holds no more than a caller already
+knows.
+
+**Re-running the base file after §58.** §29's `bump_event(text)` and
+`admin_funnel` hand over to §58's (`to_regprocedure`), so a re-run of
+`supabase-schema.sql` does not put back the `ON CONFLICT (day, name)` body that
+would raise 42P10 on every count (`npm run test:schema` replays §29 after §58).
+
+**Live checks to run** (after §58):
+1. As anon: `POST /rest/v1/rpc/bump_event {"p_name":"landing_view"}` → 204;
+   `{"p_name":"landing_view","p_source":"google"}` → 204;
+   `{"p_name":"landing_view","p_source":"a@b.co"}` → 400 / 22023.
+2. As anon: `GET /rest/v1/events?select=*` → 401/42501 (permission denied), never rows.
+3. As a signed-in non-admin: `POST /rest/v1/rpc/admin_funnel_by_source {"p_from":null,"p_to":null}` → 42501.
+4. As the owner: the same call lists `landing_view` under `''` and under `google`.
+5. As anon: `{"p_name":"landing_view","p_source":"x9840012345"}` → 400 / 22023 (a phone number).
+
+## §59 TESTIMONIALS — WRITTEN 26 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-59-testimonials.sql`; checks in
+`scripts/schema-tests/testimonials.sql` (54, four authors, an owner, a support
+administrator and anon, under `npm run test:schema`).
+
+**The rule.** `testimonials` has RLS on. `authenticated` has SELECT on the table
+and INSERT on five columns only — `quote, display_name, role, film,
+consent_text` — so a client that names `status`, `author`, `approved_by` or
+`consented_at` is refused 42501 by the grant before any policy runs; `author`
+defaults to `auth.uid()` and the insert policy checks it, and a trigger sets
+`consented_at` from the database clock. The select policy is `author =
+auth.uid()`: another member sees none of your rows. There is no UPDATE or DELETE
+grant. The author takes one back through `revoke_testimonial(id)` (SECURITY
+DEFINER, own rows only; somebody else's id is "not found", P0002), which drops
+it from `public_testimonials()` at once. The PUBLIC SITE does not read that
+function: its testimonials are copied by hand into `src/data/testimonials.json`,
+so a revoke cannot take the site's copy down. A testimonial taken back after it
+was approved is listed by `admin_list_testimonials('takedown')` and counted on
+the console Overview's "Needs attention" until the owner removes it from the
+site and calls `admin_mark_testimonial_removed(id)` (owner only, revoked rows
+only, audited). The consent sentence the author agrees to says exactly that. `anon` has no grant on the table; it reads `public_testimonials()`,
+which returns only `id, quote, display_name, role, film, approved_at` of rows
+that are approved AND not revoked. The console reads `admin_list_testimonials()`
+(any administrator) and decides with `admin_set_testimonial_status()`, which
+needs the OWNER role (`require_role(array[]::text[])`), refuses a revoked row
+(22023) and writes `admin_audit`. At most 5 per author per day (P0429).
+
+**Live checks to run** (two real accounts A and B, after §59):
+1. As A: `POST /rest/v1/rpc/submit_testimonial` with a 20+ character quote → a
+   row with `status: pending`, `author` = A.
+2. As A: `POST /rest/v1/testimonials {"quote":"…","display_name":"A","consent_text":"…","status":"approved"}`
+   → 401/403 (42501: column privilege).
+3. As B: `GET /rest/v1/testimonials?select=id` → `[]`; `POST /rest/v1/rpc/revoke_testimonial {"p_id":"<A's id>"}` → P0002.
+4. As anon: `GET /rest/v1/testimonials` → 42501; `POST /rest/v1/rpc/public_testimonials` → `[]`.
+5. As a support-role admin: `admin_set_testimonial_status(<id>, 'approved')` → 42501.
+   As the owner: → approved; anon's `public_testimonials` now lists it, with no author or consent text.
+6. As A: `revoke_testimonial(<id>)` → anon's list is empty again at once; the owner's
+   approve on it → 22023.
+7. As the owner: `admin_list_testimonials('takedown')` lists it and the Overview shows
+   "taken back by the author and may still be on the site"; as a support admin
+   `admin_mark_testimonial_removed(<id>)` → 42501; as the owner → `site_removed_at` set,
+   and the takedown list is empty.
+8. APPROVE → UN-APPROVE → REVOKE (round-1 finding). As the owner approve B's row,
+   then set it to `rejected`; as B revoke it. `admin_list_testimonials('takedown')`
+   lists it (keyed on `first_approved_at`, which un-approving never clears).
+9. ACCOUNT DELETION. With an approved and a pending testimonial on a throwaway
+   account C, delete C (`admin_delete_user`, or the dashboard). Then: anon's
+   `public_testimonials` no longer lists C's quote; the owner's
+   `admin_list_testimonials('takedown')` lists it with `author` null,
+   `author_deleted` true and `revoked_at` set; the pending one is gone;
+   `admin_set_testimonial_status(<id>, 'approved')` → 22023. After the copy is off
+   the site, `admin_mark_testimonial_removed(<id>)` → the row is deleted, and the
+   audit row's `after` carries `author_deleted: true` and no words.
+   Read back first: `select tgname from pg_trigger where tgrelid = 'auth.users'::regclass
+   and tgname = 'testimonials_on_user_delete'` → one row; `select confdeltype from
+   pg_constraint where conname = 'testimonials_author_fkey'` → `n` (SET NULL).
+10. ALREADY OFF THE SITE, THEN DELETED. On a throwaway account D: approve, D revokes,
+   the owner presses TAKEN OFF THE SITE while D still exists (row kept, `author` set),
+   then delete D. `select count(*) from public.testimonials where id = <id>` → 0. (Such a
+   row is no longer on the takedown list, so the deletion is the only thing that would
+   ever remove its words.)
+
+**Why deletion is a revoke and not a cascade.** Until 26 Oct the author key was
+`ON DELETE CASCADE`: deleting an account removed its testimonial row, so a quote
+already copied onto the site lost the only record that it had to come down (it
+never reached the takedown list, and the consent row its `consentId` points to
+was gone). A `BEFORE DELETE` trigger on `auth.users` now deletes rows never
+approved and rows already marked off the site, stamps `revoked_at` on the rest, and the key sets `author` to null. The
+kept words exist only for the owner to find the copy; marking it off the site
+deletes them.
+
+## §60 A PRESSED TRIAL FOLLOWS THE TRIAL SCOPE — WRITTEN 26 OCT 2026. TESTED LOCALLY, NOT RUN LIVE.
+
+`supabase/schema/schema-60-signup-trial-scope.sql`; checks in
+`scripts/schema-tests/signup-trial-scope.sql` (24, plus one in `scripts/test-schema.mjs`
+that the restated body is §51.12's with only the scope line changed).
+
+**The rule.** `start_trial()` (SECURITY DEFINER, `authenticated` only) writes
+`coalesce(billing_settings.trial_scope, 'sample')` for EVERY trial; before §60 a
+pressed (`signup`) trial was always `sample`. Nothing about who may start a trial
+moved: no grant to anon (42501), anonymous sessions 42501, disabled 42501,
+declined and a declined re-ask 42501, switched off `{reason: disabled}`, a second
+trial `{reason: used}`, anybody with a `paid_at` (refunded too) `{reason: paid}`,
+and `p_source` still ignored for a non-administrator. The scope is the console's
+setting, which only `admin_set_billing_settings` writes (owner/finance per §46);
+the client never sends it. `trial_offer()` (anon) gains `trial_scope`: a setting,
+nothing about a person.
+
+**What a full trial opens.** `billing_status()` (§53.4): `entitled` true while it
+runs, `features` = the `trial_plan` row's (Indie when unset), so `sample_only` is
+absent and `new_projects` allowed. `limits` are the free plan's — one film in the
+cloud, no shares, no collaborators — so the P0402 triggers still hold a trial to
+those caps. RLS is untouched.
+
+**Live checks to run** (after §60; two throwaway accounts that never had a trial):
+1. Read back: `select pg_get_functiondef('public.start_trial(text)'::regprocedure) like '%§60%'`
+   → true; anon `POST /rest/v1/rpc/trial_offer` → has `trial_scope`.
+2. Owner console: trial scope `full`, minutes 4320. As account A press START MY FREE
+   TRIAL (or `POST /rest/v1/rpc/start_trial {}`) → `started: true`;
+   `billing_status()` → `entitled` true, `trial_scope` `full`, `features` has no
+   `sample_only`; the hub offers a new project.
+3. As A again: `start_trial` → `{started: false, reason: used}`.
+4. As anon: `POST /rest/v1/rpc/start_trial {}` → 401/42501.
+5. As a fresh account B: `POST /rest/v1/rpc/start_trial {"p_source":"code"}` →
+   B's `trial_source` is `signup` and `trial_minutes` 4320 (the source is not forgeable).
+6. A declined requester (decline one in the console) → `start_trial` 42501.
+7. Owner console: scope back to `sample` → a fresh account's trial is `sample` and
+   `features.sample_only` is true (the old behaviour, by setting).
+

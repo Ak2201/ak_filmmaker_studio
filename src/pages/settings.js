@@ -98,6 +98,7 @@ import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/r
 import { filmRegion, setFilmRegion } from '../lib/film-region.js';   // = region.js currentProjectPrefs / setProjectRegion; film-region.js says why
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
+import { mayRemoveBranding } from '../ui/footer.js';   // CORE: the PDF line's own rule
 import Account from '../lib/account.js';   // CORE: auth.js imports it too
 import { syncLine, ago } from '../ui/status-bar.js';
 import Billing from '../lib/billing.js';   // CORE (the `studio` chunk), so this adds no chunk
@@ -870,6 +871,10 @@ function renderAccountMine() {
   }
   sec.append(slot);
   if (signedIn) sec.append(renderIdentityFacts());
+  /* Your testimonials, and the route to take one back: the consent
+     sentence promises it lives here (testimonial-prompt.js). Filled
+     after the swap, so commitMain compares an empty host. */
+  if (signedIn) sec.append(h('div#myTestimonials'));
   return sec;
 }
 
@@ -1007,6 +1012,101 @@ function renderPlanCard() {
     label: bought ? 'Manage plan' : 'Plan & purchases'
   })]));
   sec.append(card);
+  return sec;
+}
+
+/* ---- What's in my plan ---------------------------------------------
+   The current plan's modules and tools, and what the NEXT plan adds with
+   the price this account would pay for it. The rows and their labels are
+   src/data/plan-matrix.json (plan-matrix.js labelOf, the same rows the
+   plan cards and start.html derive from); whether each is IN this plan is
+   the live answer (PlanGate.allowed(), the server's features map), so a
+   console edit shows here too. A module no plan sells is left out
+   (isDisabledEverywhere), as everywhere else. The figure is the server's
+   upgrade quote (PlanGate.quotedOffer: list price less the unused year);
+   without one the plan is named and the link stands with no figure.
+   Only for a signed-in account whose plan is known, and not while
+   purchases are off (everything is open then, so the list says nothing).
+   The matrix is a lazy import: it never rides on this page's first paint. */
+let matrixMod = null;
+let matrixAsked = false;
+const nextOffer = { key: '', o: null };
+function renderPlanContents() {
+  const cp = PlanGate.currentPlan();
+  if (!cp.gated || !cp.plan || PlanGate.purchasesOff()) return null;
+  /* THE ACCOUNT'S STATE DECIDES THE SECTION, the way plan-gate's wall
+     does (entitlement().reason), not the plan id alone: an ended trial,
+     a lapsed year and a grant all read as plan 'free', and the features
+     map allows whatever it does not name, so listing allowed() for them
+     told an account with nothing open that its trial opened every module
+     "right now". Nothing is open → no list, only the way back. A grant
+     is the studio's word, not a plan's: what it opens is the whole
+     studio while it stands (open_features()), which the Plan card above
+     already says. 'unknown' (billing_status() unread): nothing shown. */
+  const why = cp.reason;
+  if (why === 'unknown' || why === 'granted') return null;
+  if (cp.entitled === false) {
+    const ended = cp.planUntil && Date.parse(cp.planUntil) <= PlanGate.serverNow() ? new Date(cp.planUntil) : null;
+    const sec = section('plan-contents', 'Your plan', 'What’s in my plan.',
+      cp.lapsed || ended ? 'Your plan’s year ' + (ended ? 'ended on ' + ended.toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'has ended') + '. Nothing is open until you choose a plan; everything you made is kept.'
+        : why === 'off' || !cp.used ? 'No plan is active. Everything you made is kept; a plan opens the studio again.'
+        : 'Your free trial has ended. Nothing is open until you choose a plan; everything you made is kept.');
+    sec.append(h('p.st-plan-link', {}, [button({ href: 'purchase.html', variant: 'primary', iconAfter: 'arrow_forward', label: 'Choose a plan' })]));
+    return sec;
+  }
+  if (!matrixMod) {
+    if (!matrixAsked) { matrixAsked = true; import('../lib/plan-matrix.js').then((m) => { matrixMod = m; if (!busy) render(); }, () => { /* no list */ }); }
+    return null;
+  }
+  const { MATRIX, PAID, labelOf, planHas } = matrixMod;
+  const rows = MATRIX.features.filter((r) => !r.inverted && r.kind !== 'limit'
+    && !(r.kind === 'module' && PlanGate.isDisabledEverywhere(r.key)));
+  /* Two capabilities have their OWN rule, stricter than the features
+     map: the PDF "Made with" line (footer.js mayRemoveBranding(), never
+     for a trial) and the AI tools (aiUnlocked(), fails closed). Reading
+     allowed() for them told a full-scope trial it could remove the line
+     every PDF it exported still printed. A trial lists modules only. */
+  const included = (r) => (r.key === 'remove_branding' ? mayRemoveBranding(cp)
+    : r.key === 'ai_tools' ? PlanGate.aiUnlocked() : PlanGate.allowed(r.key));
+  const mine = rows.filter((r) => (cp.plan !== 'free' || r.kind === 'module') && included(r));
+  const at = PAID.indexOf(cp.plan);
+  const next = at >= 0 ? PAID[at + 1] : null;
+  const extras = next ? rows.filter((r) => planHas(r, next) && !included(r)) : [];
+  /* A sample-scope trial opens the sample films only (§33): its modules
+     are the ones it can show you there, and it says so. */
+  const sample = cp.plan === 'free' && PlanGate.sampleOnly();
+  const sec = section('plan-contents', 'Your plan', 'What’s in my plan.',
+    cp.plan === 'free'
+      ? (sample ? 'What your trial opens right now, on the sample films. Choose a plan to start a film of your own.'
+                : 'What your trial opens right now. Choose a plan to keep working on your own film after it ends.')
+      : 'What the ' + (cp.planName || 'current') + ' plan includes, read from the plan itself.');
+  const list = (rs, cls) => h('ul.st-pc-list' + (cls || ''), {}, rs.map((r) => h('li', { text: labelOf(r) })));
+  const mods = mine.filter((r) => r.kind === 'module');
+  const tools = mine.filter((r) => r.kind !== 'module');
+  if (mods.length) sec.append(h('h3.st-plan-sub', { text: 'Modules · ' + mods.length }), list(mods));
+  if (tools.length) sec.append(h('h3.st-plan-sub', { text: 'Tools' }), list(tools));
+  if (extras.length) {
+    const ids = extras.map((r) => r.key);
+    const key = cp.plan + ':' + ids.join(',');
+    if (nextOffer.key !== key) {
+      nextOffer.key = key; nextOffer.o = null;
+      PlanGate.quotedOffer(ids).then((o) => { if (nextOffer.key === key) { nextOffer.o = o; if (!busy) render(); } }, () => { /* named without a figure */ });
+    }
+    const o = nextOffer.o;
+    const name = (o && o.name) || MATRIX.plans[next] || 'the next plan';
+    const box = h('div.st-pc-next');
+    box.append(h('h3.st-plan-sub', { text: 'Upgrade to ' + name + ' to get' }), list(extras, '.is-next'));
+    box.append(h('p.st-plan-note', { text: o && o.due
+      ? (o.more ? 'Upgrade for ' + o.due + ' more: the unused part of your plan is counted.' : name + ' is ' + o.due + ' a year.')
+      : 'The Purchase page shows what the upgrade costs you.' }));
+    box.append(h('p.st-plan-link', {}, [button({
+      href: (o && o.href) || ('purchase.html?plan=' + encodeURIComponent(next)), iconAfter: 'arrow_forward',
+      label: o && o.due && o.more ? 'Upgrade to ' + name + ' for ' + o.due : 'See ' + name
+    })]));
+    sec.append(box);
+  } else if (cp.plan === 'free') {
+    sec.append(h('p.st-plan-link', {}, [button({ href: 'purchase.html', iconAfter: 'arrow_forward', label: 'Choose a plan' })]));
+  }
   return sec;
 }
 
@@ -1150,7 +1250,7 @@ function render() {
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [
-    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderPlanContents(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
     tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
     tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
     tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),
@@ -1163,6 +1263,9 @@ function render() {
   /* Nine events redraw this page; commitMain skips the swap when nothing
      changed and keeps scroll and focus when it does. */
   if (!commitMain(app, main, mountShell)) return;
+
+  const tHost = document.getElementById('myTestimonials');
+  if (tHost) import('../ui/testimonial-prompt.js').then((m) => m.mountMyTestimonials(tHost)).catch(() => { /* §59 absent or offline: nothing to list */ });
 
   /* Chrome initialises at import time, when #app is still empty, so
      every page re-inits after its own render. Without this the

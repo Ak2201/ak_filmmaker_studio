@@ -38,6 +38,7 @@ import { callPort, hasPort } from './ports.js';
    with no view to show it, the answer is no. */
 const ask = (q) => Promise.resolve(callPort('ask', false, q));
 import { bumpUsage } from './usage.js';
+import { countSignIn } from './funnel.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
 /* INSIDE THE CHROME EXTENSION (PRD FR-202) the gate's short-lived
@@ -1905,11 +1906,32 @@ function planLimitToast(message, opts) {
   }
   if (Date.now() - _planToastAt < 60000) return;   // once a minute, not once a keystroke
   _planToastAt = Date.now();
-  if (window.StudioUI && StudioUI.toast) {
-    StudioUI.toast(message + ' This film is saved on this device.', {
-      type: 'error', action: 'See plans', onAction: () => { location.href = 'purchase.html'; }
-    });
-  }
+  /* THE NEXT PLAN AND WHAT IT COSTS THIS ACCOUNT. Which cap was hit is
+     read off the server's own sentence (schema §54: "Your % plan syncs
+     up to % project%", "allows % live share link%"); a collaborator cap
+     is the film OWNER's plan, not this person's, so it names no plan.
+     plan-gate.js (CORE, already loaded) answers with the server's quote,
+     or with the plan alone when there is none — never a guessed figure.
+     The reading and the wording are plan-gate's limitKey / limitOffer /
+     limitText, shared with the share-link and seat refusals. */
+  if (!(window.StudioUI && StudioUI.toast)) return;
+  /* The toast goes up NOW (the cap is news the moment it happens); the
+     plan and the figure are added to the same toast when they arrive,
+     and its button follows them to that plan's card. */
+  let href = 'purchase.html';
+  StudioUI.toast(message + ' This film is saved on this device.', {
+    type: 'error', action: 'See plans', onAction: () => { location.href = href; }
+  });
+  const host = document.getElementById('toastHostAlert');
+  const msgEl = host && host.lastElementChild && host.lastElementChild.querySelector('.toast-msg');
+  if (!msgEl) return;
+  import('./plan-gate.js')
+    .then((PG) => PG.limitOffer(message).then((o) => {
+      if (!o || !msgEl.isConnected) return;
+      msgEl.textContent += ' ' + PG.limitText(o);
+      href = o.href;
+    }), () => { /* the plain toast stands */ })
+    .catch(() => { /* the plain toast stands */ });
 }
 
 async function _deleteProjectInCloud(projectId) {
@@ -2801,6 +2823,7 @@ async function boot() {
          load runs runGate(). */
       markGateLanding();
       notifyAuth('SIGNED_IN', session);
+      countSignIn();   // §58 daily count with the visit's source, once per tab
       toast('Signed in as ' + (getUserEmail() || 'your account') + '.', 'success', 2400);
     } else {
       /* Back from Google, and nothing survived. Two different faults

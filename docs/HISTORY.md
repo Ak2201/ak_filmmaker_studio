@@ -2800,3 +2800,79 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       Writer never merged on the page even with the switch on.
     - Tests: `test:step-sync`, `test:story-merge`, `test:cloud`, `test:presence`;
       proofs `prove:beat-sync`, `prove:story-coedit`.
+
+63. **The marketing and conversion pass (26 Oct 2026).** The owner asked for
+    every marketing strategy the product can carry, built fully, so that as
+    many visitors as possible buy. Owner decisions: a 3-day whole-studio trial
+    and the founding-price rise moved from 31 Oct to 31 Dec (both console
+    steps, `docs/LIVE-STEPS-2026-10-26.md`), comparison pages vs Celtx and
+    Final Draft (facts only), schema for funnel + traffic source and for
+    testimonial consent, no gift licences. Built by two workflows of lanes in
+    worktrees, each lane challenged by two refuting reviewers with one retry.
+    - **Attribution.** Pure, import-free `src/lib/attribution.js` (startlib):
+      `?ref=` and `?src=` / `utm_*` kept in sessionStorage
+      (`fms_attrib_session`, no localStorage key) and carried to purchase.html,
+      where the code box is prefilled and the ref cleared on a paid order or a
+      REMOVE. Referral links from shared documents (`/start?ref=`) no longer
+      lose the code.
+    - **Funnel + source (§58).** Ten steps (adds `trial_start`, `sample_open`,
+      `signin_done`, `plan_view_in_app`) per bucketed source; `bump_event` keeps
+      its one-argument form. `sourceBucket()` in funnel.js is the ONE contract:
+      fixed names plus prefix families (`ig-*`, `yt-*`, `school-*`, `fest-*` …),
+      never a slug, never `utm_campaign`. The playbook's tags follow it.
+    - **Testimonial consent (§59).** Members write their own; nothing is shown
+      until the owner approves in the console; Settings lists one's own with
+      TAKE IT BACK (`SETTINGS_ROUTE_WIRED`), revocation and account deletion
+      land in a takedown queue. Approved quotes are still copied by hand into
+      `testimonials.json`.
+    - **A pressed trial follows the scope (§60).** `start_trial()` forced
+      `src='signup'` trials to `sample`; it now reads `billing_settings.trial_scope`.
+      `trial_offer()` gains `trial_scope`. Public copy still names no scope
+      (`test:marketing` fails a trial or sample sentence that claims every
+      module or the whole studio): a scope sentence must be true under every
+      console setting.
+    - **Public site.** Seven guides, a guides index, two "Switching from
+      Celtx / Final Draft" pages (competitor rows render only when the owner
+      has read the source: `status: "read"` in `marketing-compare.json`; the
+      sources could not be fetched from the sandbox), a trust page, JSON-LD,
+      the trial length read from `trial_offer()` at runtime
+      (`data-trial-length`, grammatical at any length), the e-mail capture
+      form (hidden until `lead.live`, which waits on the owner's privacy
+      paragraph), a student band (names no code until `student.live`; the
+      purchase page's education band reads the same flag).
+    - **In the app.** Upgrade nudges name the next plan and the difference
+      price; a dashboard referral panel with copy and WhatsApp share
+      (`&src=referral`); a "Made with" line on every PDF export bar Pro;
+      Settings "What's in my plan"; a changelog drawer ("What's new" in the
+      avatar menu); a "Choose a plan" checklist step; trial-ending reminders
+      scaled to the trial's length. `prove:conversion`.
+    - **Playbook.** `docs/MARKETING-PLAYBOOK.md` and `docs/marketing/`
+      (e-mail series, ad copy, outreach, content calendar), `social/CAPTIONS.md`,
+      posters regenerated. Dates and the trial length are placeholders read
+      from the console on the day of posting. Claims checked against the code:
+      the budget starts from an INDICATIVE rate card, and only the figures
+      re-read against a public page carry a source.
+
+64. **Site hygiene against "the 20 signs of a vibe-coded website" (27 Oct
+    2026).** The owner shared a reel listing them; the built site was checked
+    item by item. Already true: own domain in every canonical and OG URL, a
+    404 page, distinct titles, meta descriptions, OG images, JSON-LD, one h1
+    per public page, `lang` on every page, alt on every img, no source maps,
+    robots.txt open to every crawler (AI ones included) with the sitemap
+    linked, and a ~32 KB first paint on the public pages. Fixed:
+    - the domain root (`index.html`, the gated hub) was an empty `#app` in
+      View Source with no canonical. It now carries a static h1, one sentence
+      and links to start/pricing/guides, and a canonical to `/start`; the
+      hub's `render()` uses `replaceChildren`, so members never see it;
+    - the 25 studio shells were indexable. The `fms-indexing` plugin in
+      `vite.config.js` gives every `#app` page except `index.html` a
+      `noindex` (unless it already states robots) and every page an
+      apple-touch-icon;
+    - `public/llms.txt`, generated by `make:marketing` from the public pages'
+      own titles and descriptions (drift-checked by `test:marketing`), and
+      named in robots.txt;
+    - `public/favicon.ico` (16/32/48 PNGs in an ICO; `npm run icons` writes it);
+    - Organization JSON-LD on about.html and contact.html (`orgLd()`).
+    Guard: `npm run test:site` (`scripts/test-site-hygiene.mjs`, in CI after
+    `build:verify`) reads the built markup and fails on any of the reel's
+    tells; proved red by stripping the canonical, a noindex and llms.txt.

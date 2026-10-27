@@ -128,7 +128,7 @@ function fontPreloads() {
         if (!ctx || !ctx.bundle) return;
         const where = String(ctx.path || ctx.filename || '');
         if (/panel\.html$/.test(where)) return;
-        if (!html.includes('id="app"') && !/(^|\/)(start|pricing|contact|about|product-[a-z-]+)\.html$/.test(where)) return;
+        if (!html.includes('id="app"') && !/(^|\/)(start|pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/.test(where)) return;
         const tags = [];
         for (const face of PRELOAD_FACES) {
           const a = Object.values(ctx.bundle).find((f) => f.type === 'asset' && /\.woff2$/.test(f.fileName)
@@ -430,7 +430,7 @@ function startFigures() {
    startFigures() into a shared function and add them here, rather than
    typing a second copy of that derivation.
    ============================================================ */
-const MARKETING_PAGE = /(^|[\\/])(pricing|contact|about|product-[a-z-]+)\.html$/;
+const MARKETING_PAGE = /(^|[\\/])(pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/;
 function marketingFigures() {
   const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
   const json = (p) => JSON.parse(readFileSync(resolve(__dirname, 'src/data/' + p), 'utf8'));
@@ -501,7 +501,7 @@ function marketingFigures() {
               brand: { '@type': 'Brand', name: BR.name },
               offers: PAID.filter((id) => LIST_PRICE[id] > 0).map((id) => ({
                 '@type': 'Offer', name: planName(id), price: String(LIST_PRICE[id]), priceCurrency: 'INR',
-                availability: 'https://schema.org/InStock', url: ORIGIN + '/purchase.html?plan=' + id })) },
+                availability: 'https://schema.org/InStock', url: ORIGIN + '/purchase?plan=' + id /* clean URL: cleanUrls 308s the .html form */ })) },
             { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq }
           ];
           values.jsonld = ld.map((o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('\n');
@@ -523,7 +523,7 @@ function marketingFigures() {
 function marketingInputs() {
   const out = {};
   for (const f of readdirSync(__dirname)) {
-    if (/^(pricing|contact|about|product-[a-z-]+)\.html$/.test(f)) out[f.replace(/\.html$/, '')] = resolve(__dirname, f);
+    if (/^(pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/.test(f)) out[f.replace(/\.html$/, '')] = resolve(__dirname, f);
   }
   return out;
 }
@@ -653,6 +653,40 @@ function themeColor() {
   };
 }
 
+/* ============================================================
+   WHAT A CRAWLER MAY INDEX (27 Oct 2026)
+   ------------------------------------------------------------
+   A studio page (one with #app) is an empty shell in View Source: its
+   words are drawn by JS behind the site gate, and a signed-out visitor
+   is sent to start.html. Indexed, those shells are the "empty <div
+   id=root>" tell of an unfinished site. So every studio page gets
+   noindex here, in one place, unless it already says something about
+   robots (invite, purchase, screening carry their own). index.html is
+   the exception: it is the domain root, carries static words and a
+   canonical to /start, and stays indexable. Every page also gets an
+   apple-touch-icon, because Safari ignores the SVG icon. robots.txt is
+   unchanged: the shells stay crawlable, only not indexed.
+   ============================================================ */
+function indexing() {
+  return {
+    name: 'fms-indexing',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        const file = String((ctx && (ctx.filename || ctx.path)) || '').split(/[\\/]/).pop();
+        let out = html;
+        if (out.includes('id="app"') && file !== 'index.html' && !/<meta name="robots"/.test(out)) {
+          out = out.replace('</head>', '<meta name="robots" content="noindex">\n</head>');
+        }
+        if (!/rel="apple-touch-icon"/.test(out)) {
+          out = out.replace('</head>', '<link rel="apple-touch-icon" href="./icons/icon-192.png">\n</head>');
+        }
+        return out;
+      }
+    }
+  };
+}
+
 export default defineConfig({
   base: './',
   appType: 'mpa',
@@ -690,6 +724,7 @@ export default defineConfig({
     materialSymbols(),
     fontPreloads(),
     themeColor(),
+    indexing(),
     stepIndex(),
     brandPlugin(),
     studySlicePlugin(),
@@ -872,6 +907,9 @@ export default defineConfig({
              209 KB comes back. trial-time.js (11 Oct 2026) joined them: the
              trial's length in hours is said the same way on the landing
              page and in the app, and it is pure for the same reason.
+             attribution.js (26 Oct 2026) holds a link's ?ref= and source for
+             the tab, read by the public pages, invite.html and purchase.html:
+             pure and import-free for the same reason.
              region-core.js (21 Oct 2026) is pure for the same reason but
              has its OWN chunk, `region`: startlib is on every page, and a
              chunk carries every export ANY importer calls. Once the public
@@ -880,7 +918,7 @@ export default defineConfig({
              page and the Library went over scripts/budget.json. CORE calls
              nothing from region-core, so in a chunk of its own it is
              fetched only by the pages that use it. */
-          if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time|prefs|ports)\.js$/.test(id)) return 'startlib';
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope|attribution|motion|trial-time|prefs|ports)\.js$/.test(id)) return 'startlib';
           if (/\/src\/lib\/region-core\.js$/.test(id)) return 'region';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account|cloud-api)\.js$/;
           /* kit/ (14 Oct 2026): the component builders are pure and small, and

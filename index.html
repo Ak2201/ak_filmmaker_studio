@@ -28,6 +28,7 @@
      un-verify the branding again.
      Only the home page needs it; the property is the site root. -->
 <meta name="google-site-verification" content="-V57AheDJ9rRv8rvQKN1QR5ddeJbuvc7jOgJKvTOocQ" />
+<link rel="canonical" href="https://{{brand:host}}/start">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <!-- The icon font (Material Symbols, subsetted to navigation.json's
@@ -37,7 +38,16 @@
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-<div id="app"></div>
+<div id="app">
+  <!-- The domain root, as a crawler, a link preview and View Source read it.
+       The hub's first render replaces this (hub.js render()); members never
+       see it, and a signed-out visitor is sent to start.html. -->
+  <main id="main" class="hub-static">
+    <h1>{{brand:name}}: {{brand:tagline}}</h1>
+    <p>A browser-based studio for independent filmmakers: write the screenplay, plan the shoot, run the set. Your work is saved in your browser, with optional sign-in sync and Google Drive backup.</p>
+    <p><a href="./start.html">See what the studio does</a> · <a href="./pricing.html">Pricing</a> · <a href="./guides.html">Guides</a></p>
+  </main>
+</div>
 <noscript>
   <p style="padding:2rem;font-family:Georgia,serif">
     The Studio needs JavaScript — it is a writing tool, not an article.

@@ -1,0 +1,16 @@
+/* What's new (src/ui/changelog.js): the entries inside the kit sheet.
+   Tokens only; the sheet's frame is mobile-nav.css's. */
+.cl-body { padding: var(--s2) var(--s4) var(--s5); }
+.cl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s5); }
+.cl-entry { display: grid; gap: var(--s1); padding-top: var(--s4); border-top: 1px solid var(--border-hair); }
+.cl-entry:first-child { border-top: 0; padding-top: 0; }
+.cl-date {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.cl-title { margin: 0; color: var(--ink); }
+.cl-items { margin: var(--s1) 0 0; padding-left: 1.2em; display: grid; gap: var(--s1); color: var(--ink-body, var(--ink)); }

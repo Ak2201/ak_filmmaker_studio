@@ -34,7 +34,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAll, validate, validatePricing, validateCompany, comparableRows, esc, PAGES_FILE, FIXTURE_FILE, PRICING_FILE, HOME_FILE, CONTACT_FILE, ABOUT_FILE } from './make-marketing-pages.mjs';
+import { buildAll, validate, validatePricing, validateCompany, validateGuides, readRows, comparableRows, esc, PAGES_FILE, FIXTURE_FILE, PRICING_FILE, HOME_FILE, CONTACT_FILE, ABOUT_FILE, GUIDES_INDEX, TRUST_FILE } from './make-marketing-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE = process.argv.includes('--fixture') || process.env.MARKETING_FIXTURE === '1';
@@ -144,10 +144,27 @@ for (const id of IDS) {
     const bad = urls.filter(({ v }) => EXTERNAL.test(v) && !/^https:\/\/{{brand:host}}\//.test(v));
     ok(bad.length === 0, tag + 'no external host in href/src' + (bad.length ? ': ' + bad.map((b) => b.v).join(', ') : ''));
     ok(urls.filter(({ v }) => /^mailto:/.test(v)).every(({ v }) => v === 'mailto:{{brand:email}}'), tag + 'mailto is the {{brand:email}} stamp');
-    ok(!/education|film school|student offer/i.test(html), tag + 'no Education tab or student card');
+    /* 26 Oct 2026: ONE students-and-schools band under the cards (the
+       launch study's most-asked gap), never an Education tab and never a
+       card in the plan list, and it prints no figure: the student price is
+       a promo quoted at checkout, which a stamp would make stale. */
+    ok(!/role="tab"[^>]*>[^<]*(education|student)/i.test(html) && !/data-tier="(edu|student|cohort)/.test(html), tag + 'no Education tab or student card');
+    {
+      const edu = (html.match(/<aside class="pr-edu"[\s\S]*?<\/aside>/) || [''])[0];
+      ok(!!edu && !/\{\{fms:price|data-price/.test(edu), tag + 'the students band prints no price');
+      /* A code is named only while marketing-site.json says the server has
+         it (site.student.live); until then the band asks the reader to
+         write to us and names no code at all. */
+      const st = site.student || {};
+      if (st.live === true) ok(edu.includes(esc(st.code)) && /href="purchase\.html\?plan=indie"/.test(edu), tag + 'student code live: the band names ' + st.code + ' and links the purchase page');
+      else ok(!edu.includes(st.code || 'STUDENT50') && !/\bcode\b/i.test(edu.replace(/<[^>]+>/g, ' ')) && /href="contact\.html"/.test(edu), tag + 'no student code is live: the band names no code and links contact.html');
+    }
     ok(!/testimonial|\brated\b|★|&#9733;|\bstars?\b|trusted by|\bcustomers?\b/i.test(html), tag + 'no rating, testimonial or customer claim');
     ok(/<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'footer links the three legal pages');
     ok(/<a class="mk-nav-link" href="pricing\.html" aria-current="page">/.test(html), tag + 'the header marks Pricing as the current page');
+    leadContract(html, tag);
+    ok(/href="trust\.html"/.test(html), tag + 'links the trust page');
+    ok(/<aside class="pr-trial"[\s\S]*?data-trial-only[\s\S]*?<\/aside>/.test(html), tag + 'the trial strip\'s button is marked data-trial-only');
     for (const other of IDS) ok(new RegExp(`href="${pages[other].file.replace(/[.]/g, '\\.')}"`).test(html), `${tag}links to ${pages[other].file} (header and footer)`);
 
     /* the cards: the paid plans of plan-matrix.json, in order, and no free card */
@@ -270,6 +287,8 @@ for (const id of IDS) {
     ok(/data-open-signup/.test(html) && /id="mkSignup"/.test(html), tag + 'Get started opens the sign-up modal');
     ok(/href="pricing\.html"/.test(html) && /<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'links pricing and the three legal pages');
     ok(home.facts.length === 4 && (html.match(/class="st-fact-n"/g) || []).length === 4, tag + 'four facts');
+    leadContract(html, tag);
+    ok(/href="trust\.html"/.test(html), tag + 'links the trust page');
     const icons = JSON.parse(read('src/data/section-icons.json')).icons;
     const nav = read('src/data/navigation.json');
     const drawn = new Set([...html.matchAll(/<span class="sym[^"]*" aria-hidden="true" translate="no">([a-z0-9_]+)<\/span>/g)].map((m) => m[1]));
@@ -303,7 +322,7 @@ for (const id of IDS) {
     ok((html.match(/<h1[\s>]/g) || []).length === 1, tag + 'exactly one h1');
     ok(!/\sstyle="/.test(html) && !/\son[a-z]+="/i.test(html), tag + 'no inline style or handler (CSP)');
     ok(/<script type="module" src="\/src\/pages\/company\.js"><\/script>/.test(html), tag + 'loads company.js');
-    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html), tag + 'no inline script');
+    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '')), tag + 'no inline script');
     ok(!/\{\{(?!brand:)/.test(html), tag + 'no stamp other than {{brand:...}}');
     ok(!html.includes('₹'), tag + 'no bare rupee sign');
     ok(new RegExp(`<link rel="canonical" href="https://{{brand:host}}/${slug}">`).test(html), tag + 'canonical is the {{brand:host}} stamp');
@@ -399,7 +418,7 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 {
   const js = read('src/pages/marketing.js');
   const imports = [...js.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region)\.js$/];   // visitor-region: import-free, public pages only
+  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model)\.js$/];   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
   const stray = imports.filter((i) => !allowed.some((a) => a.test(i)));
   ok(stray.length === 0, 'marketing.js imports only the light allowlist (the startlib rule)' + (stray.length ? ': ' + stray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(js), 'marketing.js builds no markup from strings');
@@ -420,7 +439,14 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
   ok(/for = "\/marketing\/\*"/.test(netlify), 'netlify.toml caches /marketing/* for long');
   ok(/globIgnores: \[[^\]]*'marketing\/\*\*'/.test(vite), 'the service worker does not precache /marketing/* (video size)');
   ok(/marketingInputs\(\)/.test(vite) && /fms-marketing-figures|marketingFigures\(\)/.test(vite), 'vite.config.js discovers the pages and stamps their figures');
-  for (const id of [...IDS.map((i) => 'product-' + i), 'pricing', 'contact', 'about']) {
+  const NEW = [...inputs.guides.guides.map((x) => x.file), GUIDES_INDEX, ...inputs.versus.pages.map((p) => p.file), TRUST_FILE].map((f) => f.replace(/\.html$/, ''));
+  for (const [f, re] of [['src/lib/plan-gate.js', /^const WALL_EXEMPT = \/(.*)\/;$/m], ['src/lib/return-to.js', /^const NEVER = \/(.*)\/;$/m]]) {
+    const rx = new RegExp((read(f).match(re) || [])[1] || '$^');
+    for (const id of NEW) ok(rx.test(f.includes('return-to') ? id + '.html' : id), `${id}: exempt in ${f}`);
+  }
+  const MP = new RegExp((vite.match(/^const MARKETING_PAGE = \/(.*)\/;$/m) || [])[1] || '$^');
+  for (const id of NEW) ok(MP.test(id + '.html') && vite.includes('|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\\.html$/.test(f)'), `${id}: stamped (MARKETING_PAGE) and a rollup input (marketingInputs)`);
+  for (const id of [...IDS.map((i) => 'product-' + i), 'pricing', 'contact', 'about', ...NEW]) {
     ok(gateRe.test('/' + id + '.html') && gateRe.test('/' + id), `${id} is exempt from the site gate (.html and clean)`);
     ok(vercel.rewrites.some((r) => r.source === '/' + id && r.destination === '/' + id + '.html'), `${id}: vercel rewrite`);
     ok(new RegExp(`from = "/${id}"\\s+to = "/${id}\\.html"\\s+status = 200`).test(netlify), `${id}: netlify rewrite`);
@@ -428,6 +454,217 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
   }
   const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   ok(locs.every((l) => l.startsWith('https://' + brandHost + '/')), 'every sitemap <loc> names the brand host');
+}
+
+/* ---- the e-mail capture markup (start.html, pricing.html) ----------
+   The contract src/pages/marketing.js binds (lane A, 26 Oct 2026). */
+function leadContract(html, tag) {
+  const form = (html.match(/<form\b[^>]*\bdata-lead-form\b[^>]*>[\s\S]*?<\/form>/) || [''])[0];
+  ok(!!form, tag + 'has form[data-lead-form]');
+  if (!form) return;
+  const sec = (html.match(/<section\b[^>]*\bid="news"[^>]*>/) || [''])[0];
+  ok(inputs.site.lead.live === true ? !/\shidden[\s>]/.test(sec) : /\shidden>/.test(sec),
+    tag + 'the lead section is hidden until site.lead.live is true (privacy.html must describe the list first)');
+  const open = form.match(/<form\b[^>]*>/)[0];
+  ok(!/\saction=/.test(open) && /\smethod="dialog"/.test(open), tag + 'the lead form has no action and method="dialog" (submits nowhere with scripts off)');
+  const email = (form.match(/<input\b[^>]*\bname="email"[^>]*>/) || [''])[0];
+  ok(/type="email"/.test(email) && /\srequired[\s>]/.test(email), tag + 'input[type=email][name=email][required]');
+  const id = (email.match(/\sid="([^"]+)"/) || [])[1];
+  ok(!!id && new RegExp(`<label[^>]*for="${id}"`).test(form), tag + 'the e-mail input has a label');
+  const consent = (form.match(/<label class="mk-lead-consent">[\s\S]*?<\/label>/) || [''])[0];
+  ok(/<input type="checkbox" name="consent"/.test(consent) && !/\schecked/.test(consent), tag + 'a consent checkbox, not pre-ticked');
+  ok(consent.includes(esc(inputs.site.lead.consent)) && /href="privacy\.html#leads"/.test(consent), tag + 'the consent sentence says it in words and links privacy.html#leads');
+  ok(/<button\b[^>]*type="submit"/.test(form), tag + 'a submit button');
+  ok(/<p\b[^>]*\bdata-lead-status\b[^>]*role="status"/.test(form), tag + 'p[data-lead-status][role=status]');
+}
+ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragraph carries id="leads" (the consent link lands on it)');
+{
+  /* The leads paragraph says what add_lead() keeps — the address, the
+     consent sentence, the source word and the time — and how to leave.
+     And the form sends the source as a BUCKET, never the raw slug. */
+  const pv = read('privacy.html');
+  const leads = (pv.match(/<h3 id="leads">[\s\S]*?(?=<h[23]\b)/) || [''])[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  ok(/e-mail address/.test(leads) && /consent sentence/.test(leads) && /source word|short word/.test(leads) && /the time/.test(leads), 'privacy.html#leads names the four things add_lead() stores');
+  ok(/unsubscribe/i.test(leads) && /delete/.test(leads) && leads.includes('{{brand:email}}'), 'privacy.html#leads says how to unsubscribe and delete');
+  ok((pv.match(/\sid="leads"/g) || []).length === 1, 'privacy.html: exactly one id="leads"');
+  const mj = read('src/pages/marketing.js');
+  ok(/sourceBucket\(attribution\(\)\.src\)/.test(mj), 'marketing.js: the lead\'s source is sourceBucket(), never the raw ?src= slug');
+  ok(/bumpOnce\('landing_view'\)/.test(mj), 'marketing.js: a guide, switching guide, trust or product page counts a landing_view (once per tab)');
+}
+
+/* ---- the guides, the comparisons, the trust page (26 Oct 2026) ------- */
+{
+  const g = inputs.guides, v = inputs.versus;
+  const vg = validateGuides(g, v);
+  ok(vg.length === 0, 'the guide and comparison copy validates' + (vg.length ? ': ' + vg.join('; ') : ''));
+  /* the CBFC and OTT guides cite only what the data files cite, on the date they say */
+  const cbfc = JSON.parse(read('src/data/cbfc-rules.json'));
+  const deliv = JSON.parse(read('src/data/deliverables.json'));
+  const known = new Map();
+  const add = (urls, d) => { for (const u of urls || []) if (!known.has(u)) known.set(u, d); };
+  add(cbfc.ratingsSource.sourceUrls, cbfc.ratingsSource.checked);
+  add(cbfc.guidelinesNote.sourceUrls, cbfc.guidelinesNote.checked);
+  for (const r of cbfc.rules) add(r.sourceUrls, r.checked);
+  for (const gr of deliv.groups) add(gr.sourceUrls, gr.checked);
+  for (const x of g.guides.filter((y) => y.sources)) for (const s of x.sources) {
+    ok(known.has(s.url) && known.get(s.url) === s.checked, `${x.file}: source ${s.url} is one cbfc-rules.json / deliverables.json cites, checked ${known.get(s.url)} (copy says ${s.checked})`);
+  }
+  const files = [...g.guides.map((x) => x.file), GUIDES_INDEX, ...v.pages.map((p) => p.file), TRUST_FILE];
+  const icons = JSON.parse(read('src/data/section-icons.json')).icons;
+  const nav = read('src/data/navigation.json');
+  /* llms.txt is generated from the public pages' own titles and descriptions */
+  ok(fs.existsSync(path.join(ROOT, 'public/llms.txt')) && fs.readFileSync(path.join(ROOT, 'public/llms.txt'), 'utf8') === built.files['public/llms.txt'], 'public/llms.txt equals the generator output (run npm run make:marketing)');
+  for (const file of files) {
+    const tag = file + ': ';
+    const at = path.join(ROOT, file);
+    if (!fs.existsSync(at)) { ok(false, tag + 'is not committed (run npm run make:marketing)'); continue; }
+    const html = fs.readFileSync(at, 'utf8');
+    const slug = file.replace(/\.html$/, '');
+    ok(html === built.files[file], tag + 'committed HTML equals the generator output (run npm run make:marketing)');
+    ok((html.match(/<h1[\s>]/g) || []).length === 1, tag + 'exactly one h1');
+    ok(!/\sstyle="/.test(html) && !/\son[a-z]+="/i.test(html), tag + 'no inline style or handler (CSP)');
+    ok(/<script type="module" src="\/src\/pages\/marketing\.js"><\/script>/.test(html), tag + 'loads marketing.js');
+    ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '')), tag + 'no inline script');
+    ok(!/\{\{(?!brand:|fms:)/.test(html), tag + 'no unknown {{ stamp');
+    ok(!html.includes('₹'), tag + 'no bare rupee sign');
+    ok(new RegExp(`<link rel="canonical" href="https://{{brand:host}}/${slug}">`).test(html), tag + 'canonical is the {{brand:host}} stamp');
+    for (const k of ['og:title', 'og:description', 'og:image', 'og:image:alt']) ok(new RegExp(`<meta property="${k}" content="[^"]+">`).test(html), tag + k);
+    ok(/<meta name="twitter:card" content="summary_large_image">/.test(html) && /<meta name="description" content="[^"]{60,}">/.test(html), tag + 'twitter card and a meta description');
+    const lds = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+    const parsed = lds.map((t) => { try { return JSON.parse(t); } catch (e) { return null; } });
+    ok(parsed.length > 0 && parsed.every(Boolean), tag + 'every JSON-LD block parses');
+    const types = parsed.filter(Boolean).map((o) => o['@type']);
+    ok(types.includes('SoftwareApplication') && types.includes('BreadcrumbList'), tag + 'SoftwareApplication and BreadcrumbList JSON-LD: ' + types.join(', '));
+    ok(!lds.some((t) => /"offers"|"price"/.test(t)), tag + 'no offers or price in the JSON-LD (a build-time price goes stale at the server-held price rise)');
+    if (file.startsWith('guide-')) ok(types.includes('Article') || types.includes('HowTo'), tag + 'Article or HowTo JSON-LD');
+    /* the closing door: the trial (marked trial-only, its length a runtime
+       fill) and the plans, which are true when no trial runs */
+    ok(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup data-trial data-trial-only>Start your <span data-trial-length="label">free trial<\/span><\/a>/.test(html), tag + 'the trial CTA goes to invite.html, is data-trial-only and wraps "free trial" in [data-trial-length="label"]');
+    ok(/<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\.html">/.test(html), tag + 'a plans CTA that stands when no trial runs');
+    ok(!/\d+[- ]day (free )?trial/i.test(html.replace(/<[^>]+>/g, ' ')), tag + 'no trial length typed');
+    ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b|users love/i.test(html), tag + 'no rating, testimonial or customer claim');
+    ok(/<footer class="mk-foot"[\s\S]*trust\.html[\s\S]*guides\.html[\s\S]*privacy\.html/.test(html), tag + 'footer links trust, guides and the legal pages');
+    /* external links: only the cited sources (guides) and the comparison's source cells */
+    const anchors = [...html.matchAll(/<a\b[^>]*\shref="(https?:\/\/[^"]+)"[^>]*>/g)].filter((m) => !/^https:\/\/{{brand:host}}\//.test(m[1]));
+    const guide = g.guides.find((x) => x.file === file);
+    const page = v.pages.find((p) => p.file === file);
+    const allowed = new Set([...((guide && guide.sources) || []).map((s) => esc(s.url)), ...((page && page.rows) || []).map((r) => esc(r.source))]);
+    ok(anchors.every((m) => allowed.has(m[1])), tag + 'external links are cited sources only (' + anchors.length + ')');
+    ok(anchors.every((m) => /rel="noopener noreferrer"/.test(m[0])), tag + 'every external link carries rel="noopener noreferrer"');
+    const drawn = new Set([...html.matchAll(/<span class="sym[^"]*" aria-hidden="true" translate="no">([a-z0-9_]+)<\/span>/g)].map((m) => m[1]));
+    const missing = [...drawn].filter((nme) => !icons.includes(nme) && !nav.includes('"sym": "' + nme + '"') && !nav.includes('"sym":"' + nme + '"'));
+    ok(missing.length === 0, tag + 'every icon is in the font subset' + (missing.length ? ': ' + missing.join(', ') : ''));
+  }
+  /* THE SWITCHING GUIDES (compare-*.html). A competitor fact reaches a
+     page only once a person has read it on the vendor's own page
+     (status "read"), and then with its source link and the day it was
+     read beside it. An unread row's words never render. */
+  for (const p of v.pages) {
+    const html = read(p.file);
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    const shown = readRows(p);
+    for (const r of p.rows) {
+      if (r.status === 'read') continue;
+      ok(!html.includes(esc(r.them)) && !html.includes(`href="${esc(r.source)}"`), p.file + ': the unread row "' + r.feature + '" does not render (neither its words nor its source)');
+    }
+    const body = (html.match(/<tbody>[\s\S]*?<\/tbody>/) || [''])[0];
+    ok((body.match(/<tr>/g) || []).length === shown.length, p.file + ': one table row per read fact (' + shown.length + ')');
+    for (const r of shown) {
+      const row = body.split('</tr>').find((t) => t.includes(esc(r.them))) || '';
+      ok(row.includes(`href="${esc(r.source)}"`) && row.includes(`<time datetime="${r.checked}">`), p.file + ': the read row "' + r.feature + '" links its source and says the day it was read');
+    }
+    if (shown.length) ok(/href="mailto:{{brand:email}}"/.test(body + html), p.file + ': says how to report a change');
+    if (!shown.length) ok(!/side by side|compared with/i.test(text), p.file + ': no comparison wording while no competitor fact is read');
+    ok(new RegExp('<h1 class="mk-h1" id="mkH1">' + esc(p.h1) + '</h1>').test(html) && /^Switching from /.test(p.h1) && /^Switching from /.test(p.label), p.file + ': the h1 and label say "Switching from ' + p.name + '"');
+    ok(html.includes(esc(v.ui.trademark)), p.file + ': carries the trademark note');
+    const lds = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+    const how = lds.find((o) => o['@type'] === 'HowTo');
+    ok(!!how && how.name === p.h1.replace(/\{\{brand:name\}\}/g, '{{brand:name}}') && Array.isArray(how.step) && how.step.length >= 3, p.file + ': HowTo JSON-LD named for the switching guide, with its steps');
+    ok(!lds.some((o) => JSON.stringify(o).includes('side by side')), p.file + ': no "side by side" left in the JSON-LD');
+  }
+  {
+    const ix = read(GUIDES_INDEX);
+    for (const p of v.pages) ok(ix.includes(`<h3 class="mk-h3">${esc(p.label)}</h3>`), GUIDES_INDEX + ': lists "' + p.label + '"');
+    ok(ix.includes(`<h2 class="mk-h2" id="mkCmpH">${esc(g.index.compareH)}</h2>`) && !/^Compare$/.test(g.index.compareH), GUIDES_INDEX + ': the section is about switching, not comparing');
+  }
+  for (const x of g.guides) {
+    const html = read(x.file);
+    ok(/id="studio"/.test(html), x.file + ': has the "In the studio" block');
+    if (x.studio.plan) ok(html.includes('{{fms:plan.' + x.studio.plan + '}}'), x.file + ': names the plan as a stamp');
+  }
+  /* every public page's header and footer reach the new pages */
+  for (const f of [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, 'privacy.html', ...IDS.map((i) => pages[i].file)]) {
+    const h = read(f);
+    ok(/<a class="mk-nav-link" href="guides\.html"/.test(h) && new RegExp('<a class="mk-nav-link" href="guides\\.html#compare"[^>]*>' + esc(site.ui.compare) + '</a>').test(h) && site.ui.compare === 'Switching', f + ': the header has Guides and Switching');
+    ok(/<footer class="mk-foot"[\s\S]*href="trust\.html"/.test(h), f + ': the footer links the trust page');
+    if (f !== 'privacy.html') ok(/<meta property="og:image:alt" content="[^"]+">/.test(h), f + ': og:image:alt');
+  }
+  for (const id of IDS) {
+    const h = read(pages[id].file);
+    ok(/"@type":"SoftwareApplication"/.test(h) && /"@type":"BreadcrumbList"/.test(h) && ![...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].some((m) => /"offers"|"price"/.test(m[1])), pages[id].file + ': SoftwareApplication + BreadcrumbList JSON-LD, no build-time price in it');
+  }
+  /* trial wording: every public mention of the trial's length is the runtime fill */
+  for (const f of [HOME_FILE, PRICING_FILE, ...files]) {
+    for (const m of read(f).matchAll(/<span data-trial-length(?:="([a-z]*)")?>([^<]*)<\/span>/g)) ok(m[1] === 'label' && m[2] === 'free trial', f + ': [data-trial-length="label"] falls back to "free trial", got mode "' + m[1] + '" and "' + m[2] + '"');
+  }
+  /* THE RUNTIME TRIAL TEXT IS GRAMMATICAL at every length. Every sentence
+     that holds a [data-trial-length] span, on every public page, is
+     rendered the way marketing.js renders it (trialMode + trialCopy from
+     start-model.js) with 30 minutes, 3 days (4320) and an unknown length,
+     and the result must not read "a 3 days", "a 30 minutes", "a a",
+     "free free" or "trial trial". */
+  {
+    const SM = await import(path.join(ROOT, 'src/lib/start-model.js'));
+    const offers = [{ trial_enabled: true, trial_minutes: 30 }, { trial_enabled: true, trial_minutes: 4320 }, null];
+    const want = ['30-minute free trial', '3-day free trial', 'free trial'];
+    const bad = /\ban? \d+(?:\.\d+)? (?:minutes|hours|days)\b|\ban? an?\b|\bthe (?:a|an|the)\b|\b(?:a|an) the\b|\bfree free\b|\btrial trial\b|\byour (?:a|an)\b/i;
+    const seen = new Set();
+    let n = 0;
+    for (const f of [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, ...IDS.map((i) => pages[i].file), ...files]) {
+      const html = read(f);
+      /* the innermost element that holds the span: its text is the sentence */
+      for (const m of html.matchAll(/<(p|h[1-6]|a|dd|li|span)\b[^>]*>((?:(?!<\/?\1\b)[\s\S])*?<span data-trial-length(?:="[a-z]*")?>[^<]*<\/span>(?:(?!<\/?\1\b)[\s\S])*?)<\/\1>/g)) {
+        const inner = m[2];
+        if (seen.has(inner)) continue;
+        seen.add(inner);
+        offers.forEach((offer, k) => {
+          const out = inner.replace(/<span data-trial-length(?:="([a-z]*)")?>([^<]*)<\/span>/g, (all, attr, fb) => {
+            const c = SM.trialCopy(offer, SM.trialMode(attr === undefined ? null : attr, fb));
+            return c.text || fb;
+          }).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+          n++;
+          ok(!bad.test(out) && out.includes(want[k]), f + ': trial text at ' + (offer ? offer.trial_minutes + ' minutes' : 'an unknown length') + ' reads "' + out + '"');
+        });
+      }
+    }
+    ok(n >= 3 * 6, 'the grammar check rendered every trial sentence at three lengths (' + n + ' renders, ' + seen.size + ' distinct sentences)');
+    console.log("  trial grammar: " + n + " renders of " + seen.size + " distinct sentences");
+    /* NO TRIAL SENTENCE CLAIMS A SCOPE. What a trial opens is decided on
+       the server (start_trial() writes 'sample' for a pressed trial;
+       billing_status() maps 'sample' to the sample films only and 'full'
+       to trial_plan's features, which need not be every module), and
+       trial_offer() returns neither, so the page cannot check a scope at
+       runtime. A sentence that names the trial stays generic. */
+    const scope = /\b(?:every|all(?: the)?) (?:module|tool|feature)s?\b|\bwhole studio\b|\bfull studio\b|\bevery part of the studio\b/i;
+    let nTrial = 0;
+    const scopeSrc = [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, ...IDS.map((i) => pages[i].file), ...files,
+      'src/data/marketing-site.json', 'src/data/marketing-home.json', 'src/data/marketing-faq.json', 'src/data/marketing-guides.json', 'src/data/pricing-compare.json', 'src/data/marketing-compare.json'];
+    for (const f of scopeSrc) {
+      const text = read(f).replace(/<[^>]+>/g, ' ').replace(/\\"/g, '"').replace(/\s+/g, ' ');
+      for (const s of text.split(/(?<=[.!?:"])\s+/)) {
+        /* the sample sentence sits under the trial line, so it is read the same way */
+        if (!/\b(?:trial|sample)\b/i.test(s)) continue;
+        nTrial++;
+        ok(!scope.test(s), f + ': a trial sentence claims a scope the page cannot check: "' + s.trim().slice(0, 160) + '"');
+      }
+    }
+    ok(nTrial >= 10, 'the trial-scope check read the trial sentences (' + nTrial + ')');
+    /* and the model itself, at the edges */
+    ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 1440 }, 'label').text === '24-hour free trial', 'one day reads "24-hour free trial"');
+    ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 4320 }, 'length').text === '3 days', 'length mode, 3 days');
+    ok(SM.trialCopy({ trial_enabled: true, trial_minutes: 1 }, 'label').text === '1-minute free trial', 'one minute reads "1-minute free trial"');
+    ok(SM.trialCopy({ trial_enabled: false, trial_minutes: 4320 }, 'label').hide === true, 'trials off: hidden');
+  }
 }
 
 /* ---- the price-rise date and the price today (start-model.js) -------

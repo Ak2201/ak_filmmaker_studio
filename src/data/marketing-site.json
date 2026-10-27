@@ -24,6 +24,8 @@
     "skip": "Skip to content",
     "product": "Product",
     "pricing": "Pricing",
+    "guides": "Guides",
+    "compare": "Switching",
     "login": "Log in",
     "signup": "Sign up",
     "menu": "Menu",
@@ -43,8 +45,9 @@
   },
   "signup": {
     "heading": "Sign in to start your trial",
-    "offer": "Try every module on the sample films free for <span data-trial-length>a limited time</span>. No card required.",
-    "offerOff": "The studio is open: sign in with Google and every module is yours to use, saved in your browser.",
+    "headingHtml": "Sign in to start your <span data-trial-length=\"label\">free trial</span>",
+    "offer": "Try the studio with a <span data-trial-length=\"label\">free trial</span>. No card required.",
+    "offerOff": "The studio is open: sign in with Google and use it, with your work saved in your browser.",
     "offerIn": "You are already signed in.",
     "google": "Continue with Google",
     "googleIn": "Open the studio",
@@ -55,10 +58,29 @@
     "haveLink": "Log in",
     "close": "Close"
   },
+  "student": {
+    "_live": "false: no student promo code exists on the server yet, so the pricing page's students band asks the reader to write to us (contact.html) and names no code. Set true ONLY once the owner has created `code` in the console's promo codes and checked it with quote_order() in both currencies the page can show; the band then names the code and links purchase.html?plan=indie.",
+    "live": false,
+    "code": "STUDENT50"
+  },
+  "trustLink": "How your work is kept, and how it comes out",
+  "lead": {
+    "_live": "false keeps the form hidden. Set true ONLY after privacy.html has an owner-written paragraph (id=\"leads\", moved off the old launch-offers h3) describing this product-news list: what is kept, why, the consent sentence, who reads it, how to unsubscribe or delete.",
+    "live": false,
+    "h": "Product news by e-mail",
+    "lede": "A short note when something new ships or a plan changes. Nothing else, and never shared.",
+    "label": "Your e-mail address",
+    "submit": "Send me news",
+    "consent": "Send me product news. Unsubscribe anytime.",
+    "privacy": "How we keep your address"
+  },
   "footer": {
     "legalHeading": "Company",
     "pricing": "Pricing",
     "about": "About us",
+    "trust": "Your work stays yours",
+    "guides": "Guides",
+    "compare": "Switching to the studio",
     "contact": "Contact us",
     "privacy": "Privacy",
     "terms": "Terms",

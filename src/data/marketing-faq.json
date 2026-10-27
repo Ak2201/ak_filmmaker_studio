@@ -4,7 +4,7 @@
     "items": [
       {
         "q": "Is it a subscription?",
-        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay.",
+        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Payment is through Razorpay, and checkout confirms the currency and the exact amount before you pay.",
         "aUsd": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay."
       },
       {
@@ -22,7 +22,8 @@
       {
         "q": "How long is the free trial?",
         "trial": true,
-        "a": "Its length is a setting the studio controls, so it is never typed into this answer: the free-trial strip beside the plans and the sign-up window show the length running today. A trial opens every module on the sample films and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
+        "a": "Right now it is a free trial. Its length is a studio setting, read live, so it is never typed into this answer. It needs no card. It does not hold a price: a plan costs what it costs on the day you buy it.",
+        "aHtml": "Right now it is a <span data-trial-length=\"label\">free trial</span>. Its length is a studio setting, read live, so it is never typed into this answer. It needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
       }
     ]
   },
@@ -51,7 +52,7 @@
       },
       {
         "q": "Do I need a plan to try the sample films?",
-        "a": "The Dragon sample project is there so you can see every tool filled in before you commit. What a visitor can open depends on whether a trial is running, which the sign-up window shows."
+        "a": "The Dragon sample project is there so you can see the studio filled in before you commit. What a visitor can open depends on whether a trial is running, which the sign-up window shows."
       },
       {
         "q": "Can I talk to a person before I buy?",

@@ -1,0 +1,65 @@
+{
+  "_about": "What's new: the RELEASED changes a member would notice, newest first, in plain words (src/ui/changelog.js draws them in a drawer from the dashboard). Only what is on main and switched on for people: nothing planned, nothing behind a switch the owner has not thrown, nothing that needs a server step that has not run. `id` is written into the device prefs blob (fms_studio_prefs_v1 `whatsNewSeen`) as the newest entry the reader has opened, so never reuse or rename one; add new entries at the TOP with a fresh id. Dates are the day it reached main.",
+  "entries": [
+    {
+      "id": "2026-10-24-beats",
+      "date": "2026-10-26",
+      "title": "Beat colours that follow your scenes",
+      "items": [
+        "Give a beat a colour, and the scenes it links show it on the Scene List and the beat board.",
+        "A beat's text and its linked scene's synopsis stay in step, whichever side you edit."
+      ]
+    },
+    {
+      "id": "2026-10-23-notes",
+      "date": "2026-10-23",
+      "title": "Sticky notes beside your writing",
+      "items": [
+        "Sticky notes open beside the Story path, the Scene List and the Screenplay Writer; pin one to a beat or a scene.",
+        "A short film's beat sheet keeps to its five beats."
+      ]
+    },
+    {
+      "id": "2026-10-22-one-list",
+      "date": "2026-10-22",
+      "title": "One list for every page",
+      "items": [
+        "The menu in the side rail and the tabs on each page now show the same sections, in the same order.",
+        "Receipts print as one branded page.",
+        "A pass over the whole studio: clearer buttons, steadier tab strips and fixes on the writing, production and post pages."
+      ]
+    },
+    {
+      "id": "2026-10-21-export",
+      "date": "2026-10-21",
+      "title": "Final Draft and Fountain export",
+      "items": [
+        "Export your screenplay as Final Draft (.fdx) or Fountain as well as PDF and Word.",
+        "The sync status says plainly what is saved where.",
+        "Backup and sync sit just above your account picture in the rail."
+      ]
+    },
+    {
+      "id": "2026-10-20-paper",
+      "date": "2026-10-20",
+      "title": "Write on paper, analyse the script",
+      "items": [
+        "Writing fields look like a page: dark ink on paper, in the screenplay face.",
+        "Script analysis is a tab of the Screenplay Writer, and the script pipeline fills only what is still blank.",
+        "The shot list can be reordered, and its PDF prints the columns you pick or storyboard sheets of four or six panels."
+      ]
+    },
+    {
+      "id": "2026-10-19-celtx",
+      "date": "2026-10-19",
+      "title": "Find and replace, index cards, Word files",
+      "items": [
+        "Find and replace in the screenplay (Ctrl or Cmd + Shift + H).",
+        "Index cards on the Scene List.",
+        "Import and export Word (.docx) screenplays, and lock pages once a draft goes out.",
+        "Story is four steps: Idea, Characters & world, Beat Sheet, Synopsis.",
+        "Your account sits in one menu at the foot of the rail, with your Google picture."
+      ]
+    }
+  ]
+}

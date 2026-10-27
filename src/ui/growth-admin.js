@@ -35,6 +35,7 @@ import { fmtDate } from '../lib/admin-format.js';
 import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
 import { fmtMinor } from '../lib/price-model.js';
 import Growth, { isMissing } from '../lib/growth.js';
+import { SOURCES, trialOffer } from '../lib/funnel.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
 import { ask, askDanger } from './dialog.js';
@@ -44,7 +45,7 @@ import { funnel as funnelChart } from './admin-charts.js';
 import { cohorts as fetchCohorts } from '../lib/admin-api.js';
 
 let rerender = () => {};
-const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '' };
+const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, usd: null, members: [], missing: {}, saved: '', granted: '', offer: null };
 
 /* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
    every form on the console from its defaults 2.5s after a save, under
@@ -74,6 +75,7 @@ async function load() {
     S.affiliates = await settle('affiliates', Growth.admin.affiliateReport);
     S.leads = await settle('leads', Growth.admin.leads);
     S.funnel = await settle('funnel', () => Growth.admin.funnel(S.from || null, S.to || null));
+    S.funnelBySource = await settle('funnelBySource', () => Growth.admin.funnelBySource(S.from || null, S.to || null));
     /* §30. The same read the signed-out landing page makes, on
        purpose — see the note on Billing.priceNotice(). */
     S.prices = await settle('prices', Billing.priceNotice);
@@ -81,6 +83,10 @@ async function load() {
        owner types dollar prices under Purchases → Tiers & grants. One
        date per plan; the dollar figure follows it. */
     S.usd = await Billing.priceNotice('USD').catch(() => null);
+    /* Only to learn whether §60 has run: its trial_offer() names
+       trial_scope, and before it a pressed trial is always the sample
+       whatever the select below says. Null on any failure. */
+    S.offer = await trialOffer().catch(() => null);
     /* The one-person trial grant needs somebody to pick. The gate's
        console already lists members and billing-admin.js already
        borrows that list for its own grant form — a third RPC that
@@ -174,8 +180,16 @@ function trialBlock(sec) {
   /* What the switch MEANS, stated for the position it is actually in.
      "trial_enabled: false" is a column name; "signing in lands
      straight on the paywall" is the decision being made. */
+  /* Since §60 a pressed trial follows the scope select as a code trial
+     always did; before §60 runs (trial_offer() has no trial_scope) a
+     pressed trial is still the sample, and the sentence says so rather
+     than promising what the database will not do. */
+  const s60 = !!(S.offer && 'trial_scope' in S.offer);
+  const full = st.trial_scope === 'full';
+  const shows = (full && s60) ? 'of the whole studio' : 'with the Dragon sample';
+  const note = (full && !s60) ? ' (A code trial gets the whole studio; a trial from signing in needs schema section 60 for that.)' : '';
   f.append(h('p.gr-meta', { text: on
-    ? `On: somebody who signs in gets a ${trialLength(mins)} free trial with the Dragon sample, then must buy a plan. An invite code gets ${days} day${days === 1 ? '' : 's'} instead.`
+    ? `On: somebody who signs in gets a ${trialLength(mins)} free trial ${shows}, then must buy a plan. An invite code gets ${days} day${days === 1 ? '' : 's'} instead.${note}`
     : 'Off: signing in lands on the paywall. A trial already running keeps its clock.' }));
 
   const scope = h('select', { id: 'graTrialScope', name: 'scope' }, [
@@ -194,7 +208,7 @@ function trialBlock(sec) {
   f.append(h('div.gr-fields', {}, [
     h('div', {}, [h('label', { for: 'graTrialHours', text: 'Trial length (hours)' }), h('input', { id: 'graTrialHours', name: 'hours', type: 'number', min: Math.min(0.5, hours), max: 744, step: 'any', inputmode: 'decimal', value: String(hours), required: true })]),
     h('div', {}, [h('label', { for: 'graTrialDays', text: 'An invite code buys (days)' }), h('input', { id: 'graTrialDays', name: 'days', type: 'number', min: 1, max: 365, step: 1, value: String(days), required: true })]),
-    h('div', {}, [h('label', { for: 'graTrialScope', text: 'A code trial shows' }), scope]),
+    h('div', {}, [h('label', { for: 'graTrialScope', text: s60 ? 'A trial shows' : 'A code trial shows' }), scope]),
     h('div', {}, [h('label', { for: 'graTrialPlan', text: 'A whole-studio trial borrows' }), planSel])
   ]));
   f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE TRIAL TERMS' }),
@@ -435,7 +449,34 @@ function byCurrency(inrPaise, usdCents) {
   return usd > 0 ? `${inr} + ${fmtMinor(usd, 'USD')}` : inr;
 }
 
-const FUNNEL_LABEL = { landing_view: 'Start page visits', pricing_view: 'Reached pricing', invite_request: 'Invite requests', signup: 'Sign-ups', checkout_start: 'Checkouts started', purchase: 'Purchases' };
+const FUNNEL_LABEL = { landing_view: 'Start page visits', pricing_view: 'Reached pricing', invite_request: 'Invite requests', signup: 'Sign-ups',
+  signin_done: 'Signed in', sample_open: 'Opened the sample', trial_start: 'Trials started', plan_view_in_app: 'Viewed plans in the app',
+  checkout_start: 'Checkouts started', purchase: 'Purchases' };
+/* §58's step order (public.funnel_event_names()). A step the server
+   answers with that is not here still shows, after these. */
+export const FUNNEL_STEPS = ['landing_view', 'pricing_view', 'invite_request', 'signup', 'signin_done', 'sample_open', 'trial_start', 'plan_view_in_app', 'checkout_start', 'purchase'];
+export const NO_SOURCE = 'direct / none';
+/** admin_funnel_by_source() rows {name, source, total} pivoted: one row per
+ *  source ('' becomes NO_SOURCE), a count per step, sources ordered by their
+ *  start-page visits and then by everything they brought. Steps are those
+ *  with any count, in funnel order. Pure, for the console and its test. */
+export function pivotBySource(rows) {
+  const by = new Map();
+  const seen = new Set();
+  for (const r of rows || []) {
+    const n = Number(r && r.total) || 0;
+    if (!r || !n) continue;
+    const src = String(r.source || '') || NO_SOURCE;
+    if (!by.has(src)) by.set(src, { source: src, counts: {}, all: 0 });
+    const o = by.get(src);
+    o.counts[r.name] = (o.counts[r.name] || 0) + n;
+    o.all += n;
+    seen.add(r.name);
+  }
+  const steps = FUNNEL_STEPS.filter((k) => seen.has(k)).concat([...seen].filter((k) => !FUNNEL_STEPS.includes(k)));
+  const sources = [...by.values()].sort((a, b) => (b.counts.landing_view || 0) - (a.counts.landing_view || 0) || b.all - a.all || a.source.localeCompare(b.source));
+  return { steps, sources };
+}
 const csvCell = (v) => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t.replace(/"/g, '""') : t.replace(/"/g, '""'); };
 export function leadsCsv(rows) {
   return ['email,source,created_at,consent_text'].concat(rows.map((r) => [r.email, r.source, r.created_at, r.consent_text].map((c) => '"' + csvCell(c) + '"').join(','))).join('\r\n');
@@ -467,6 +508,26 @@ function funnelBlock(sec) {
     h('td', { text: FUNNEL_LABEL[r.name] || r.name }), h('td', { text: String(r.total) }),
     h('td', { text: top && r.name !== 'landing_view' ? `${Math.round((Number(r.total) / top) * 1000) / 10}%` : '—' })
   ]))));
+  sec.append(h('div.gt-scroll', {}, [table]));
+  bySourceBlock(sec);
+}
+
+/* §58: the same anonymous counts, by where the visit came from. A
+   database without §58 says so in one line; the totals above still draw. */
+function bySourceBlock(sec) {
+  sec.append(h('h4.gt-h3', { text: 'Funnel by source' }));
+  if (S.missing.funnelBySource) { sec.append(h('p.gt-meta', { text: 'Counts by source are not available on this database yet (schema section 58 has not run).' })); return; }
+  const { steps, sources } = pivotBySource(S.funnelBySource);
+  if (!sources.length) { sec.append(h('p.gt-meta', { text: 'No counts in this window yet.' })); return; }
+  /* The names come from funnel.js's own list, so a bucket added there is
+     named here with no edit. A tag's slug (ig-bio, school-loyola) is never
+     counted, only its family. Referral codes are never a source. */
+  sec.append(h('p.gt-meta', { text: `A source is the ?src= or ?utm_source= the visit arrived with, counted as one name from a fixed list: ${SOURCES.join(', ')}. A tagged link counts under its family (ig-bio is instagram, school-anything is school), never under the part after the dash; anything else is "other". "${NO_SOURCE}" is everything that arrived without one, and every count made before section 58. Daily totals only: nobody is identified.` }));
+  const table = h('table.gt-table', { 'data-funnel-by-source': '' });
+  table.append(h('caption.visually-hidden', { text: 'Funnel counts by source' }));
+  table.append(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Source' })].concat(steps.map((k) => h('th', { scope: 'col', text: FUNNEL_LABEL[k] || k }))))]));
+  table.append(h('tbody', {}, sources.map((s) => h('tr', { 'data-source': s.source }, [h('th', { scope: 'row', text: s.source })]
+    .concat(steps.map((k) => h('td', { text: String(s.counts[k] || 0) })))))));
   sec.append(h('div.gt-scroll', {}, [table]));
 }
 

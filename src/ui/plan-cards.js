@@ -56,6 +56,7 @@ import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } fr
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { fmtMinor, perDayIn, orderCurrency, chargeCaption } from '../lib/price-model.js';
 import { meter } from './kit/meter.js';
+import SITE from '../data/marketing-site.json';   // student.live: the code is named only once it exists
 import '../styles/plans.css';
 import '../styles/growth.css';
 
@@ -464,6 +465,10 @@ function promoBox(buyable) {
    Drawn under the same condition as the box, because without the box
    the button has nothing to press. Deliberately not a form and not a
    pl-promo* class: prove:billing reads those as the promo box itself. */
+/* The same switch as the pricing page's students band (marketing-site.json
+   student.live): no code is named while it does not exist on the server. */
+const EDU_LIVE = !!(SITE.student && SITE.student.live === true);
+const EDU_CODE = String((SITE.student && SITE.student.code) || '');
 function eduCallout() {
   const mail = SUPPORT_EMAIL
     ? h('a', { href: 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent('Group access for a film school'), text: 'e-mail us' })
@@ -472,9 +477,11 @@ function eduCallout() {
     h('div.pl-edu-text', {}, [
       h('p.bd-eyebrow', { text: 'Education & film schools' }),
       h('p.pl-edu-lead', {}, [h('strong', { text: 'Film or Viscom student?' })]),
-      h('p.pl-edu-note', {}, ['Use code STUDENT50 for the student price on Intermediate. Film schools, clubs and workshops: ', mail, ' for group access.'])
+      EDU_LIVE
+        ? h('p.pl-edu-note', {}, ['Use code ' + EDU_CODE + ' for the student price on Intermediate. Film schools, clubs and workshops: ', mail, ' for group access.'])
+        : h('p.pl-edu-note', {}, ['Write to us and we will tell you what we can offer. Film schools, clubs and workshops: ', mail, ' for group access.'])
     ]),
-    h('button.btn', { type: 'button', 'data-plan-action': 'edu-apply', disabled: promo.busy || busyPlan !== '', text: 'APPLY STUDENT50' })
+    EDU_LIVE ? h('button.btn', { type: 'button', 'data-plan-action': 'edu-apply', disabled: promo.busy || busyPlan !== '', text: 'APPLY ' + EDU_CODE }) : null
   ]);
 }
 
@@ -704,7 +711,7 @@ delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   }
 });
 
-/* APPLY STUDENT50: through the promo box's own form, as purchase.js's
+/* APPLY <student code>: through the promo box's own form, as purchase.js's
    applyLinkCode() does, deferred so the submit's redraw is not inside
    this click. A box that is missing or disabled (a buy or a check in
    flight) is left alone. */
@@ -712,10 +719,11 @@ delegate(document, 'click', '[data-plan-action="edu-apply"]', () => {
   const input = document.getElementById('plPromoCode');
   const form = input && input.closest('form');
   if (!input || !form || input.disabled || promo.busy || busyPlan) return;
-  promo.typed = 'STUDENT50'; promo.open = true;
+  if (!EDU_LIVE) return;
+  promo.typed = EDU_CODE; promo.open = true;
   const det = input.closest('details');
   if (det) det.open = true;
-  input.value = 'STUDENT50';
+  input.value = EDU_CODE;
   setTimeout(() => {
     if (!form.isConnected) return;
     if (typeof form.requestSubmit === 'function') form.requestSubmit();

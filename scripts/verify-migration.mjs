@@ -2415,7 +2415,7 @@ let scriptsOff = { checked: false };
           const de = d.documentElement;
           const cs = d.defaultView.getComputedStyle(de);
           const out = {
-            scriptsRan: !!d.querySelector('#app') && d.querySelector('#app').children.length > 0,
+            scriptsRan: !!d.querySelector('#app') && [...d.querySelector('#app').children].some((c) => !c.classList.contains('hub-static')),   // index.html ships a static .hub-static summary for crawlers
             dataTheme: de.getAttribute('data-theme'),
             dataSkin: de.getAttribute('data-skin'),
             htmlBg: cs.backgroundColor,

@@ -20,6 +20,7 @@ export const TAB_DEFS = [
   { id: 'requests',  label: 'Access & sharing',  group: 'People',  icon: 'share',          hint: 'Invite requests, codes and shared films.' },
   { id: 'purchases', label: 'Purchases',         group: 'Money',   icon: 'shopping_cart',  hint: 'Payments, invoices, refunds and promo codes.' },
   { id: 'growth',    label: 'Growth',            group: 'Money',   icon: 'trending_up',    hint: 'Visits, sign-ups and the funnel.' },
+  { id: 'testimonials', label: 'Testimonials',   group: 'Money',   icon: 'favorite',       hint: 'What members offered to say, with their consent.' },
   { id: 'usage',     label: 'Usage',             group: 'Product', icon: 'bar_chart',      hint: 'What people use, and how much.' },
   { id: 'sync',      label: 'Sync & storage',    group: 'Product', icon: 'storage',        hint: 'Cloud sync, queues and stored work.' },
   { id: 'controls',  label: 'Controls',          group: 'Product', icon: 'toggle_on',      hint: 'Switches, plans and features.' }

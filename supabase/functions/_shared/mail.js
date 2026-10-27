@@ -44,10 +44,12 @@
    receipt above, word for word. A subscription CHARGE gets
    chargeReceiptMail ("Renews on <date> at <amount>. Cancel anytime in
    Settings → Plan."), a cancel gets cancelMail, and renewalReminderMail
-   is the builder for a pre-charge reminder.
+   is the pre-charge reminder, which rzp-remind sends once per billing
+   cycle (schema §63: claim_renewal_reminders stamps the cycle first,
+   release_renewal_reminder hands back a cycle whose send failed).
    ============================================================ */
 import { BRAND } from './brand.js';
-import { fmtMinor } from './razorpay.js';
+import { fmtMinor, hmacHex, timingSafeEqualHex } from './razorpay.js';
 import { REFUND_TERMS } from './terms.js';
 
 export { REFUND_TERMS };
@@ -216,23 +218,27 @@ export function cancelMail(c) {
 }
 
 /** A reminder before the next charge (the app's own, beside the pre-debit
- *  notice Razorpay sends under the RBI e-mandate rules). `r`: email,
- *  buyer_name, plan_name, period, days, amount_minor, currency,
- *  next_charge_at. Not sent by anything yet: a scheduled sender is an
- *  owner option (docs/BILLING.md §26). */
+ *  notice Razorpay sends under the RBI e-mandate rules). `r` is a
+ *  claim_renewal_reminders() row (schema §63): email, name (or
+ *  buyer_name), plan_name, period, days, amount_minor, currency,
+ *  next_charge_at. Sent once per billing cycle by rzp-remind
+ *  (sendRenewalReminders below). */
+export const CANCEL_PATH = 'Settings → Plan & purchases → Cancel auto-pay';
 export function renewalReminderMail(r) {
   if (!r || !r.next_charge_at || !dateIST(r.next_charge_at)) return null;
   const what = r.period === 'pass' ? `${r.plan_name || 'Pro'} pass` : `${r.plan_name || 'yearly'} plan`;
   const amount = fmtMinor(r.amount_minor, r.currency || 'INR');
-  return message(r.email, `Your ${what} renews on ${dateIST(r.next_charge_at)}`, [
+  const when = dateIST(r.next_charge_at);
+  return message(r.email, `Your ${what} renews on ${when}: ${amount}`, [
     ['Plan', what],
-    ['Next charge', `${amount} on ${dateIST(r.next_charge_at)}`],
+    ['Next charge', `${amount} on ${when}`],
     ['Repeats', everyLabel(r.period, r.days)]
   ], [
-    `Hi ${r.buyer_name || 'there'},`,
-    `Your auto-pay will charge ${amount} for the ${what} on ${dateIST(r.next_charge_at)}.`,
-    { html: `To stop it, cancel in Settings → Plan before then (<a href="${site('settings')}">${site('settings')}</a>). You keep the time already paid for.`,
-      text: `To stop it, cancel in Settings → Plan before then (${site('settings')}). You keep the time already paid for.` }
+    `Hi ${r.name || r.buyer_name || 'there'},`,
+    `A reminder: your auto-pay will charge ${amount} for the ${what} on ${when}. Nothing needs doing if you want it to continue.`,
+    `Cancel anytime in ${CANCEL_PATH}; nothing more is charged after you cancel, and you keep the time already paid for.`,
+    { html: `Settings: <a href="${site('settings')}">${site('settings')}</a>`,
+      text: `Settings: ${site('settings')}` }
   ]);
 }
 
@@ -324,5 +330,50 @@ export async function sendCancelMail(c, env = {}, opts = {}) {
     return await sendMail(cancelMail(c), { apiKey, from, idempotencyKey: 'cancel-' + (c && c.subscription_row_id), ...opts });
   } catch (e) {
     return { ok: false, reason: 'error', detail: String(e && e.message || e) };
+  }
+}
+
+/* ---- renewal reminders (schema §63) -------------------------------------
+   rzp-remind is called by a scheduler, not a person, so it has no JWT: it is
+   guarded by a shared secret in the x-cron-secret header. */
+
+/** 'unset' when no CRON_SECRET is configured (the function answers 503),
+ *  'bad' when the header does not match (401), 'ok' otherwise. Constant-
+ *  time in shape: both sides are HMACed under a fresh random key first, so
+ *  the compare is over two equal-length digests whatever was sent. */
+export async function checkCronSecret(header, secret) {
+  if (!secret) return 'unset';
+  if (!header) return 'bad';
+  const k = Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+  const [a, b] = await Promise.all([hmacHex(k, String(header)), hmacHex(k, String(secret))]);
+  return timingSafeEqualHex(a, b) ? 'ok' : 'bad';
+}
+
+/** Claim this run's reminders, send each, release each one that did not
+ *  go. With no Resend key nothing is claimed, so no cycle is marked as
+ *  reminded without a mail. Never throws.
+ *  -> { ok, sent, failed, skipped, reason?, detail? } */
+export async function sendRenewalReminders(svc, env = {}, opts = {}) {
+  const { apiKey, from } = cfg(env);
+  if (!apiKey || !from) return { ok: false, reason: 'not-configured', sent: 0, failed: 0, skipped: 0 };
+  let sent = 0, failed = 0, skipped = 0;
+  try {
+    const { data, error } = await svc.rpc('claim_renewal_reminders', { p_within: opts.within || '48 hours', p_limit: opts.limit || 200 });
+    if (error) return { ok: false, reason: 'claim', detail: error.message, sent, failed, skipped };
+    for (const row of Array.isArray(data) ? data : data ? [data] : []) {
+      const msg = renewalReminderMail(row);
+      // the claim only returns rows with an e-mail and a date, so a null
+      // message is a row this builder cannot word: keep it claimed rather
+      // than hand it back to be claimed again every hour
+      if (!msg) { skipped++; continue; }
+      const out = await sendMail(msg, { apiKey, from, fetch: opts.fetch,
+        idempotencyKey: `remind-${row.subscription_row_id}-${new Date(row.next_charge_at).toISOString()}` });
+      if (out.ok) { sent++; continue; }
+      failed++;
+      try { await svc.rpc('release_renewal_reminder', { p_row: row.subscription_row_id, p_for: row.next_charge_at }); } catch { /* the next run tries the others */ }
+    }
+    return { ok: failed === 0, sent, failed, skipped };
+  } catch (e) {
+    return { ok: false, reason: 'error', detail: String(e && e.message || e), sent, failed, skipped };
   }
 }

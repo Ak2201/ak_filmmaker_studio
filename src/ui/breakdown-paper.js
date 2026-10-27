@@ -25,7 +25,7 @@ import { h, delegate } from '../lib/dom.js';
 import Scenes from '../lib/scenes.js';
 import {
   paperScenes, needlesFor, markText, cueTag, cleanSelection, guessCategory,
-  taggedAs, sheetData, sheetCategories, categoryOf, headingOf
+  menuTop, taggedAs, sheetData, sheetCategories, categoryOf, headingOf
 } from '../lib/breakdown-paper.js';
 import { exportPDF, projectTitle } from '../lib/pdf.js';
 
@@ -147,7 +147,7 @@ function box(b, sceneId, editable) {
   if (editable) {
     wrap.append(h('input.bdp-add', {
       type: 'text', 'data-cat': b.id, 'data-scene-id': sceneId, maxlength: '80',
-      placeholder: '+ Add', 'aria-label': 'Add to ' + b.label, autocomplete: 'off'
+      placeholder: 'Name it, press Enter', 'aria-label': 'Add to ' + b.label, autocomplete: 'off'
     }));
   }
   return wrap;
@@ -347,9 +347,8 @@ function openTagger(rect, opts) {
   const w = Math.min(t.offsetWidth || 280, hostR.width);
   let left = rect.left - hostR.left;
   left = Math.max(0, Math.min(left, hostR.width - w));
-  let top = rect.bottom - hostR.top + 8;
-  const room = window.innerHeight - rect.bottom;
-  if (room < (t.offsetHeight || 320) + 16 && rect.top - hostR.top > (t.offsetHeight || 320)) top = rect.top - hostR.top - (t.offsetHeight || 320) - 8;
+  const mh = t.offsetHeight || 320;
+  const top = menuTop({ selTop: rect.top, selBottom: rect.bottom, menuH: mh, vh: window.innerHeight }) - hostR.top;
   t.style.left = left + 'px';
   t.style.top = top + 'px';
   const first = t.querySelector('.is-pick') || t.querySelector('.bdp-tg-item');

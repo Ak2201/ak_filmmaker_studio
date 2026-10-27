@@ -214,5 +214,30 @@ eq(r2.totals, r1.totals, 'and the totals are the same');
   eq(M.bulkText(3, 0), '3 selected', 'and says nothing when none are hidden');
 }
 
+/* ---- Breakdown QA round 4 ---- */
+{
+  const M = await import('../src/lib/breakdown-model.js');
+  const label = (c) => c.toUpperCase();
+  const line = M.suggestCountText({ total: 257, scenes: 36, guessed: 0, labelOf: label });
+  ok(/ADD ALL takes CAST, PROPS, VEHICLES, STUNTS, SOUND/.test(line), 'the count line names what ADD ALL takes');
+  ok(!/paired by position/.test(line), 'and says nothing of position pairs when there are none');
+  ok(/leaves out the 2 paired by position only/.test(M.suggestCountText({ total: 1, scenes: 1, guessed: 2, labelOf: label })), 'the position note stays');
+  eq(M.scopeSelector('[data-scene="a"] ', '.t, .g'), '[data-scene="a"] .t, [data-scene="a"] .g', 'every comma alternative is scoped to the scene');
+  const P = await import('../src/lib/breakdown-paper.js');
+  eq(P.menuTop({ selTop: 100, selBottom: 120, menuH: 300, vh: 700 }), 128, 'the tag menu sits under the word when it fits');
+  eq(P.menuTop({ selTop: 600, selBottom: 620, menuH: 300, vh: 700 }), 292, 'flips above when it does not');
+  eq(P.menuTop({ selTop: 100, selBottom: 120, menuH: 600, vh: 700 }), 92, 'pinned inside the window when neither side has room');
+  const src = (f) => readFileSync(new URL('../src/' + f, import.meta.url), 'utf8');
+  const pg = src('pages/breakdown.js'), pp = src('ui/breakdown-paper.js'), ov = src('ui/breakdown-overview.js');
+  ok(/'Any INT \/ EXT'/.test(pg), 'the INT/EXT filter default reads Any INT / EXT');
+  ok(!/on the Write page/.test(pg), 'Auto-Tag names the Screenplay Writer');
+  ok(/suggestionTags\(scenes, loadScript\(\)\.elements, null\)\.length/.test(pg), 'ADD ALL only shows while it has something to add');
+  ok(/Name it, press Enter/.test(pp) && !/placeholder: '\+ Add'/.test(pp), 'the element field says how to commit');
+  ok(/details\.bdo-rerun', \{ open: !hasScript/.test(ov), 'the only upload action is open when there is no script');
+  ok(/cell\(c\.name, 'bdo-name'\)/.test(ov), 'Characters print the name as stored');
+  ok(/data-action[^\n]*|action: 'sl-bin'/.test(pg) && /Removed scenes \(\$\{Bin\.listBin\(\)\.length\}\)/.test(pg), 'the filter bar carries a Removed scenes jump');
+  ok(/if \(!value\) s\.append\(h\('option', \{ value: ''/.test(pg), 'a blank INT/EXT or time is shown blank');
+}
+
 console.log(fail ? `\n${fail} FAILED, ${pass} passed` : `breakdown: ${pass} checks passed`);
 process.exit(fail ? 1 : 0);

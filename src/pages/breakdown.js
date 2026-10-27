@@ -40,7 +40,7 @@ import { shootDayOf } from '../lib/locations.js';
 import {
   breakdownFigures, readNumberLock, numberKey, dupNumbers, daySlot, sceneStatus, STATUS_TONE,
   castSummary, searchText, PRESET_KEYS, filterActive as filterOn, describeFilter, presetMatches,
-  rowMatches, filterCountText, applySuggestions, binEntryBits, binTotalsBits, headingInScript,
+  rowMatches, filterCountText, applySuggestions, suggestionTags, suggestCountText, scopeSelector, binEntryBits, binTotalsBits, headingInScript,
   sceneFieldValue, EIGHTHS_MAX, songFieldValue, runSaid, bulkText, restoreEighths
 } from '../lib/breakdown-model.js';
 import '../styles/breakdown-run.css';
@@ -526,7 +526,7 @@ function renderSceneBar(scenes) {
     h('span#bdSlKeys.visually-hidden', { text: KEYS_HINT }),
     h('input#bdSceneSearch.bd-sl-search', { type: 'search', value: SL.q, placeholder: 'Find a scene…', title: 'Find a scene by its number, place, cast or anything in it', 'data-action-key': 'sl-find', 'aria-label': 'Find a scene by its number, place, cast or anything in it' }),
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'ie', 'aria-label': 'Filter by interior or exterior' },
-      [opt('', 'INT / EXT', SL.ie)].concat(INT_EXT.map((v) => opt(v, v, SL.ie)))),
+      [opt('', 'Any INT / EXT', SL.ie)].concat(INT_EXT.map((v) => opt(v, v, SL.ie)))),
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'dn', 'aria-label': 'Filter by time of day' },
       [opt('', 'Any time', SL.dn)].concat(DAY_NIGHT.map((v) => opt(v, v, SL.dn)))),
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'st', 'aria-label': 'Filter by where the scene stands' },
@@ -537,6 +537,7 @@ function renderSceneBar(scenes) {
       options: [{ value: 'table', label: 'Table', icon: 'table_rows' }, { value: 'cards', label: 'Cards', icon: 'view_module' }]
     }),
     h('span.bd-sl-count', { role: 'status', 'aria-live': 'polite', title: KEYS_HINT, text: scenes.length + ' scenes' }),
+    Bin.listBin().length ? button({ label: `Removed scenes (${Bin.listBin().length})`, action: 'sl-bin', class: 'bd-sl-binjump' }) : null,
     notesButton()
   ]);
   const bulk = h('div.bd-sl-bulk', { hidden: !SL.sel.size, role: 'group', 'aria-label': 'Selected scenes' }, [
@@ -644,6 +645,8 @@ function field(spec, props, text) {
 }
 function select(options, value, fieldName, label) {
   const s = h('select.bd-sel', { 'data-scene-field': fieldName, 'aria-label': label });
+  /* A stored blank is shown as blank, not as the first option. */
+  if (!value) s.append(h('option', { value: '', text: 'Set\u2026', selected: true }));
   options.forEach((o) => {
     const opt = h('option', { value: o, text: o });
     if (o === value) opt.selected = true;
@@ -970,17 +973,17 @@ function renderSuggestions(scenes) {
   if (notes.length) wrap.append(h('p.bd-match-note', { text: notes.join(' ') }));
   if (!rows.length) {
     wrap.append(h('p.bd-none', { text: scenes.length
-      ? 'Nothing to suggest \u2014 either everything the script mentions is already tagged, or there is no script text yet. Write or import the script on the Write page.'
+      ? 'Nothing to suggest \u2014 either everything the script mentions is already tagged, or there is no script text yet. Write or import the script in the Screenplay Writer.'
       : 'Import or write a script and the elements it mentions are offered here, scene by scene.' }));
     return wrap;
   }
   const count = (r) => SUGGEST_CATS.reduce((m, c) => m + r.suggestions[c].length, 0);
   const total = rows.reduce((n, r) => n + count(r), 0);
   const guessed = rows.filter((r) => !isConfident(r.how));
+  const bulkLeft = suggestionTags(scenes, loadScript().elements, null).length;
   wrap.append(h('div.bd-sug-tools', {}, [
-    h('span.bd-sug-count', { text: `${total} suggestion${total === 1 ? '' : 's'} across ${rows.length} scene${rows.length === 1 ? '' : 's'}`
-      + (guessed.length ? ` \u00b7 ADD ALL leaves out the ${guessed.length} paired by position only` : '') }),
-    rows.length > guessed.length
+    h('span.bd-sug-count', { text: suggestCountText({ total, scenes: rows.length, guessed: guessed.length, labelOf: (c) => catById[c].label }) }),
+    bulkLeft
       ? button({ label: 'ADD ALL', action: 'sug-all' })
       : null
   ]));
@@ -1219,7 +1222,7 @@ function render(focus) {
   }
 }
 let keepToken = 0, keepAbort = null;
-const inScene = (id, sel) => '[data-scene="' + CSS.escape(id || '') + '"] ' + sel;
+const inScene = (id, sel) => scopeSelector('[data-scene="' + CSS.escape(id || '') + '"] ', sel);
 
 /* ---- events — delegated, no inline handlers ----------------- */
 const sceneIdOf = (el) => el.closest('[data-scene]')?.dataset.scene;
@@ -1669,6 +1672,13 @@ delegate(document, 'click', MEASURE_BTN, () => {
       StudioUI.toast(r.kept ? `Put the earlier lengths back, except ${r.kept} you changed since.` : 'Put the earlier lengths back.');
     }
   });
+});
+delegate(document, 'click', '[data-action="sl-bin"]', () => {
+  const head = document.querySelector('.bd-bin .bd-h2');
+  if (!head) return;
+  head.tabIndex = -1;
+  head.scrollIntoView({ block: 'start', behavior: 'instant' });
+  head.focus({ preventScroll: true });
 });
 delegate(document, 'click', '[data-action="sug-all"]', () => {
   const added = applySuggestions(null);

@@ -139,6 +139,18 @@ export function suggestionTags(scenes, elements, sceneIds) {
   }
   return tags;
 }
+/** The Auto-Tag count line. ADD ALL's category limit is said here, not
+ *  only in a comment, and the line names the categories it leaves to a
+ *  chip or a scene at a time. `labelOf` maps a category id to its label. */
+export function suggestCountText({ total, scenes, guessed, labelOf = (c) => c }) {
+  const rest = SUGGEST_CATEGORIES.filter((c) => !BULK_CATS.includes(c));
+  return `${total} suggestion${total === 1 ? '' : 's'} across ${scenes} scene${scenes === 1 ? '' : 's'}`
+    + ` \u00b7 ADD ALL takes ${BULK_CATS.map(labelOf).join(', ')}; ${rest.map(labelOf).join(', ')} are added one chip or one scene at a time`
+    + (guessed ? ` \u00b7 and it leaves out the ${guessed} paired by position only` : '');
+}
+/** `.sel` scoped under `[data-scene=id]`, EVERY comma alternative: a
+ *  bare "a, b" prefixed once leaves b unscoped and matches scene 1. */
+export const scopeSelector = (prefix, sel) => String(sel).split(',').map((x) => prefix + x.trim()).join(', ');
 /** Write the suggestions through the one tag writer; returns exactly the
  *  tags written, so an Undo removes those and nothing else. */
 export function applySuggestions(sceneIds) {

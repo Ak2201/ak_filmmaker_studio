@@ -29,7 +29,6 @@ import { BRAND } from './brand.js';
 import { bumpEvent, countTrialStart, countPassBuy, trialOffer } from './funnel.js';
 import { passNow, passFacts, passRefusal } from './pass-view.js';
 import { offerTerms, readMode } from './offer-terms.js';
-import { fmtMinor } from './price-model.js';   // import-free
 import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
@@ -304,6 +303,17 @@ function onceTerms(order, mode) {
   const t = offerTerms(mode, price, order.period === 'pass' ? 'pass' : 'year', order.days);
   return t.line || '1 year, full access';
 }
+/* "₹7,999" / "$12.50": a price-model.js fmtMinor() twin. Not imported:
+   price-model.js is not in CORE, and CORE (this file) importing a page
+   chunk reorders module evaluation on every page (the site gate's veil
+   lifted before it answered, prove:gate). */
+function fmtMinor(minor, currency) {
+  const usd = currency === 'USD';
+  const n = Math.round(Number(minor) || 0);
+  const whole = Math.floor(Math.abs(n) / 100), frac = Math.abs(n) % 100;
+  return (n < 0 ? '-' : '') + (usd ? '$' : '₹') + whole.toLocaleString(usd ? 'en-US' : 'en-IN') + (frac ? '.' + String(frac).padStart(2, '0') : '');
+}
+
 /* ---- auto-renew (§62) ---------------------------------------------
    A SUBSCRIPTION, for a product the owner has set to auto-renew. The
    same shape as an order, one step longer:

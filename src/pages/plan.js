@@ -154,7 +154,7 @@ function renderCalendar(scenes) {
 
   if (!days.length) {
     wrap.append(h('p.bd-none', {
-      text: 'None of the ' + plural(scenes.length, 'scene', 'scenes') + ' has a shoot day yet. '
+      text: (scenes.length === 1 ? 'The scene has no shoot day yet. ' : 'None of the ' + scenes.length + ' scenes have a shoot day yet. ')
           + 'Give a strip a day on the stripboard — or use "Schedule by location" there — '
           + 'and the calendar fills itself in.'
     }), button({ href: 'stripboard.html#stripboard', label: 'Go to the stripboard', iconAfter: 'arrow_forward', class: 'pl-jump' }));
@@ -311,7 +311,7 @@ function renderLocations(scenes) {
 
   if (!locs.length) {
     wrap.append(h('p.bd-none', {
-      text: 'None of the ' + plural(scenes.length, 'scene', 'scenes') + ' has a location typed on it '
+      text: (scenes.length === 1 ? 'The scene has no location typed on it ' : 'None of the ' + scenes.length + ' scenes have a location typed on them ')
           + 'yet. Fill in the location field on a scene and its recce card appears here.'
     }));
   } else {

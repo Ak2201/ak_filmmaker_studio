@@ -283,6 +283,65 @@ for (const [reg, abroad] of [['INT', true], ['IN', false]]) {
 }
 await rg.close();
 
+/* ---- leftovers (27 Oct 2026) ---- */
+{
+  const lo = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  page = await film(lo, null, {
+    ci_1_item: 'Other (custom)', ci_1_custom: 'Camera package with a very long descriptive name for the whole shoot', ci_1_days: '2', ci_1_rate: '25000',
+    ci_2_item: 'Other (custom)', ci_2_custom: 'Stunt coordinator', ci_2_days: '1', ci_2_rate: '9000'
+  });
+  await page.evaluate(() => {
+    const sc = (n, d, loc) => ({ id: 'l' + n, number: String(n), intExt: 'INT', dayNight: 'DAY', location: loc, synopsis: 'x', eighths: 8, shootDay: d, elements: {} });
+    localStorage.setItem('fms_scenes_v1', JSON.stringify({ scenes: [sc(1, 1, 'A VERY LONG LOCATION NAME FOR THE FIRST SCENE'), sc(2, 1, 'SECOND'), sc(3, 2, 'THIRD ONE')] }));
+  });
+  await open(page, 'budget.html#schedule');
+  await page.evaluate(() => document.querySelectorAll('#schedule details.cx-scales').forEach((d) => { d.open = true; }));
+  const fit = await page.evaluate(() => {
+    const de = document.documentElement;
+    const tbl = (sel) => { const t = document.querySelector(sel); if (!t) return null; const w = t.closest('.cx-scroll, .k-table-wrap'); return { own: !!w, tw: Math.round(t.getBoundingClientRect().width), box: w ? Math.round(w.clientWidth) : null }; };
+    return { page: de.scrollWidth - de.clientWidth, scales: tbl('#schedule .cx-scales table'), cut: tbl('#schedule .cx-cut table') };
+  });
+  ok(fit.scales && fit.cut && fit.page <= 0, '23 at 390px the schedule tables do not widen the page', fit);
+  ok(fit.scales && fit.cut && (fit.scales.tw <= fit.scales.box || fit.scales.own) && (fit.cut.tw <= fit.cut.box || fit.cut.own), '23 each table fits or scrolls in its own box', fit);
+
+  // float and payment deletes: no dialog, an Undo that restores the same row
+  await open(page, 'budget.html#expenses');
+  await page.fill('.cx-floats [name="toName"]', 'Ravi');
+  await page.fill('.cx-floats [name="amount"]', '100');
+  await page.click('.cx-floats button[type="submit"]');
+  await page.waitForTimeout(300);
+  const ids = () => page.evaluate(() => (JSON.parse(localStorage.getItem('fms_costs_v1') || '{}').floats || []).map((f) => f.id));
+  const before = await ids();
+  await page.evaluate(() => document.querySelectorAll('#expenses details').forEach((d) => { d.open = true; }));
+  await page.click('[data-cx="del-float"]');
+  await page.waitForTimeout(300);
+  const dlg = await page.evaluate(() => [...document.querySelectorAll('dialog[open], .modal-overlay, [role="dialog"], [role="alertdialog"]')].filter((e) => e.getClientRects().length).map((e) => e.className));
+  ok(dlg.length === 0 && (await ids()).length === 0, '24 deleting a float asks nothing and removes it', { dlg, ids: await ids() });
+  await page.click('.toast button:has-text("UNDO"), .k-toast button:has-text("UNDO"), [role="status"] button:has-text("UNDO")');
+  await page.waitForTimeout(300);
+  const after = await ids();
+  ok(before.length === 1 && JSON.stringify(after) === JSON.stringify(before), '24 Undo brings back the same float row (same id)', { before, after });
+  await lo.close();
+}
+
+/* ---- the estimator on paper ---- */
+{
+  const pr = await browser.newContext({ viewport: { width: 1100, height: 900 } });
+  page = await film(pr, null, { ci_1_item: 'Other (custom)', ci_1_custom: 'Camera', ci_1_days: '2', ci_1_rate: '25000' });
+  await open(page, 'budget.html#estimate');
+  await page.emulateMedia({ media: 'print' });
+  const pv = await page.evaluate(() => {
+    const shown = (q) => [...document.querySelectorAll(q)].map((e) => getComputedStyle(e).display !== 'none');
+    return { blank: shown('.bud-est .calc-row[data-blank]'), actions: shown('.bud-est .calc-actions'), head: shown('.bud-est .calc-row.head'), filled: shown('.bud-est .calc-row:not([data-blank]):not(.head)') };
+  });
+  ok(pv.blank.length > 0 && pv.blank.every((v) => !v), '25 print: unpriced spare rows are hidden', pv);
+  ok(pv.actions.every((v) => !v), '25 print: the add/clear buttons are hidden', pv);
+  ok(pv.head.length > 0 && pv.head.every((v) => v), '25 print: the column captions print', pv);
+  ok(pv.filled.length > 0 && pv.filled.every((v) => v), '25 print: a priced row prints', pv);
+  await page.emulateMedia({ media: 'screen' });
+  await pr.close();
+}
+
 await browser.close();
 server.close();
 console.log(failed ? `✗ prove:budget-money — ${failed} failed` : '✓ prove:budget-money — all passed');

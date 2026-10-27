@@ -357,6 +357,14 @@ export function compareVersion(version, lines = [], grandNow = null) {
   };
 }
 
+/* Shared by the float and payment undo: same id, same place. */
+function putBack(part, row, index) {
+  if (!row || !row.id) return;
+  const list = readAll()[part].filter((x) => x && x.id !== row.id);
+  list.splice(Math.min(Math.max(0, index | 0), list.length), 0, row);
+  writePart(part, list);
+}
+
 /* ---- floats -------------------------------------------------- */
 export const listFloats = () => readAll().floats.map(cleanFloat);
 export function addFloat(patch) {
@@ -365,9 +373,15 @@ export function addFloat(patch) {
   writePart('floats', [...readAll().floats, f]);
   return f;
 }
+/** Returns the removed row (or null) so a caller can offer Undo. */
 export function removeFloat(id) {
-  writePart('floats', readAll().floats.filter((x) => x && x.id !== id));
+  const list = readAll().floats;
+  const gone = list.find((x) => x && x.id === id) || null;
+  writePart('floats', list.filter((x) => x && x.id !== id));
+  return gone;
 }
+/** Undo of removeFloat: the exact row back in its place. */
+export function restoreFloat(row, index) { putBack('floats', row, index); }
 
 /* ---- crew and payments --------------------------------------- */
 export function listCrew() {
@@ -398,8 +412,13 @@ export function addPayment(patch) {
   return p;
 }
 export function removePayment(id) {
-  writePart('payments', readAll().payments.filter((x) => x && x.id !== id));
+  const list = readAll().payments;
+  const gone = list.find((x) => x && x.id === id) || null;
+  writePart('payments', list.filter((x) => x && x.id !== id));
+  return gone;
 }
+/** Undo of removePayment: the exact row back in its place. */
+export function restorePayment(row, index) { putBack('payments', row, index); }
 
 /* ---- line departments, settings, wage overrides --------------- */
 /* A line's meta is { dept?, scales? }: either field alone is enough to
@@ -932,8 +951,8 @@ export const gstinLooksValid = (s) => /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]
 export default {
   COSTS_KEY, CATEGORIES, METHODS, categoriesFor, methodsFor, deptsFor, GST_RATES, TDS_RATES, DEPTS, GROUPS,
   readAll, listExpenses, addExpense, updateExpense, removeExpense, restoreExpense,
-  listFloats, addFloat, removeFloat, listCrew, getCrew, setCrew, removeCrew,
-  listPayments, addPayment, removePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,
+  listFloats, addFloat, removeFloat, restoreFloat, listCrew, getCrew, setCrew, removeCrew,
+  listPayments, addPayment, removePayment, restorePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,
   estimateLines, readCalc, CALC_CURRENCY, calcHasContent, costsHasContent, resolveCurrency, projectCurrency, budgetCurrency, gstSplit, paymentCost, floatBalances, derivedDays, crewAccount,
   costReport, budgetKpis, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,
   deptOf, defaultDept, sectionOf, deptForContact, deptForCategory, castNames, toCSV

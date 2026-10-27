@@ -39,7 +39,6 @@ import { DEPARTMENTS } from '../lib/contacts.js';
 import { rs, rupees, glance, amountOf, sym, shownCurrency, setAbroadProbe, labelCurrency, plainTax, filmAbroad, pct, today, label, costContext, crewAccountFor, wageHintRows } from '../lib/budget-costs-model.js';
 import { indiaContentShown } from './india-content.js';
 import wages from '../data/wages.fefsi.json';
-import { askDanger } from './dialog.js';
 import { brandPrint } from './footer.js';   // CORE: the "Made with" line on a plain print
 import { button, badge, statCard, statStrip, emptyState, notice, meter } from './kit/index.js';
 import { renderSchedule, renderVersions, impactActions, impactForms, bindImpact } from './budget-impact.js';
@@ -822,8 +821,18 @@ const ACTIONS = {
     refresh();
     if (gone) toast('Expense of ' + rs(gone.amount) + ' deleted.', { action: 'UNDO', onAction: () => { C.restoreExpense(gone, index); refresh(); } });
   },
-  'del-float': async (el) => { if (await askDanger({ title: 'Delete this float?', body: 'The balance in that person\'s hand is worked out again without it.', confirm: 'Delete float' })) { C.removeFloat(el.dataset.id); refresh(); toast('Float deleted.'); } },
-  'del-payment': async (el) => { if (await askDanger({ title: 'Delete this payment?', body: 'It leaves the ledger and the balance is worked out again without it.', confirm: 'Delete payment' })) { C.removePayment(el.dataset.id); refresh(); toast('Payment deleted.'); } },
+  'del-float': (el) => {
+    const index = C.listFloats().findIndex((x) => x.id === el.dataset.id);
+    const gone = C.removeFloat(el.dataset.id);
+    refresh();
+    if (gone) toast('Float deleted.', { action: 'UNDO', onAction: () => { C.restoreFloat(gone, index); refresh(); } });
+  },
+  'del-payment': (el) => {
+    const index = C.listPayments().findIndex((x) => x.id === el.dataset.id);
+    const gone = C.removePayment(el.dataset.id);
+    refresh();
+    if (gone) toast('Payment deleted.', { action: 'UNDO', onAction: () => { C.restorePayment(gone, index); refresh(); } });
+  },
   'use-wage': (el) => { C.setCrew(el.dataset.id, { fee: Number(el.dataset.v) || 0, feeType: 'day' }); refresh(); toast('Fee set from the wage table — confirm it with the person and the union.'); },
   'reset-wage': (el) => { C.setWageOverride(el.dataset.id, { bata: '', callHours: '', otRule: '' }); refresh(); },
   'print-settlement': (el) => printDoc(settlementDoc(context(), el.dataset.id)),

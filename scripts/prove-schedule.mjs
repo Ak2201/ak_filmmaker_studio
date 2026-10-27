@@ -635,6 +635,29 @@ ok(await page.locator('#dpr input[data-field="note"]').first().inputValue() === 
   await ph4.close();
 }
 
+/* ---- 26 leftovers: Edit Log conflict buttons keep focus -------- */
+{
+  const target = (await scenes())[0].id;
+  await writeScenes(`scenes.find((s) => s.id === ${JSON.stringify(target)}).shotState = 'dropped';`);
+  const seedCut = () => page.evaluate((id) => {
+    const d = JSON.parse(localStorage.getItem('fms_edit_v1') || '{}');
+    d.scenes = Object.assign({}, d.scenes, { [id]: { cut: 'in' } });
+    localStorage.setItem('fms_edit_v1', JSON.stringify(d));
+  }, target);
+  for (const act of ['conflict-cut-out', 'conflict-pickup']) {
+    await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+    await seedCut();
+    await page.goto(url('edit.html'), { waitUntil: 'networkidle' });
+    await settle(page, 600);
+    const btn = `[data-edit-action="${act}"][data-scene="${target}"]`;
+    if (!(await page.$(btn))) { ok(false, `26 a dropped scene still in the cut shows ${act}`); continue; }
+    await page.click(btn);
+    await settle(page, 500);
+    const f = await page.evaluate(() => { const a = document.activeElement; return { tag: a && a.tagName, field: a && a.getAttribute && a.getAttribute('data-edit-field'), scene: a && a.getAttribute && a.getAttribute('data-scene') }; });
+    ok(f.tag !== 'BODY' && f.field === 'cut' && f.scene === target, `26 ${act} puts focus on the scene's cut-status select`, f);
+  }
+}
+
 ok(errors.length === 0, '0  no page errors', errors);
 await browser.close();
 server.close();

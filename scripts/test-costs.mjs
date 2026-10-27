@@ -79,6 +79,27 @@ C.updateExpense(e3.id, { amount: '2L' });
 eq(C.listExpenses()[2].amount, 200000, 'update parses too');
 C.removeExpense(e3.id);
 
+/* floats and payments: Undo restores the exact row (same id, same place) */
+{
+  const f1 = C.addFloat({ to: 'c-a', amount: '100' }), f2 = C.addFloat({ to: 'c-b', amount: '200' }), f3 = C.addFloat({ to: 'c-c', amount: '300' });
+  const fi = C.listFloats().findIndex((x) => x.id === f2.id);
+  const fgone = C.removeFloat(f2.id);
+  eq(fgone.id, f2.id, 'removeFloat returns the row');
+  C.restoreFloat(fgone, fi);
+  const fids = C.listFloats().map((x) => x.id);
+  eq(fids.slice(-3), [f1.id, f2.id, f3.id], 'a float comes back in its place with its id');
+  const p1 = C.addPayment({ contactId: 'c-a', amount: '10' }), p2 = C.addPayment({ contactId: 'c-a', amount: '20' }), p3 = C.addPayment({ contactId: 'c-a', amount: '30' });
+  const pi = C.listPayments().findIndex((x) => x.id === p2.id);
+  const pgone = C.removePayment(p2.id);
+  eq(pgone.id, p2.id, 'removePayment returns the row');
+  C.restorePayment(pgone, pi);
+  eq(C.listPayments().map((x) => x.id).slice(-3), [p1.id, p2.id, p3.id], 'a payment comes back in its place with its id');
+  C.restorePayment(pgone, 0);
+  eq(C.listPayments().filter((x) => x.id === p2.id).length, 1, 'restoring twice never duplicates a row');
+  for (const f of [f1, f2, f3]) C.removeFloat(f.id);
+  for (const p of [p1, p2, p3]) C.removePayment(p.id);
+}
+
 /* ---- estimate lines ------------------------------------------ */
 const calc = {
   ci_1_item: 'ARRI Alexa 35', ci_1_custom: '', ci_1_days: '18', ci_1_rate: '30000',

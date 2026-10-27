@@ -253,6 +253,38 @@ async function ctxAt(width, height, extra = {}) {
     heads.push(await page.evaluate(() => { const g = [...document.querySelectorAll('.mn-tools-group')].find((x) => x.querySelector('#signInPill')); return g ? g.querySelector('.mn-group-h').textContent : 'none'; }));
   }
   ok(heads.every((x) => x === 'Account'), 'the sign-in control carries the heading "Account" on every page [' + heads + ']');
+  /* the phone Tools sheet on a module page: "How this works" once, no bare chip */
+  await page.goto('about:blank');
+  await page.goto(BASE + 'story.html', { waitUntil: 'networkidle' });
+  await page.click('[data-mn-item="tools"]');
+  await page.waitForSelector('.mn-overlay');
+  await page.waitForTimeout(800);
+  const how = await page.evaluate(() => {
+    const vis = (e) => e.getClientRects().length > 0;
+    const g = document.querySelector('.mn-tools-group');
+    return { chip: [...document.querySelectorAll('.mn-tools-group .vid-help-more')].filter(vis).length,
+      how: [...document.querySelectorAll('.mn-tools-group button, .mn-tools-group a')].filter((e) => vis(e) && /how this works/i.test(e.textContent + ' ' + (e.getAttribute('aria-label') || ''))).length, g: !!g };
+  });
+  /* the chip only mounts when a module has approved videos, so probe the rule itself */
+  const chipDisplay = await page.evaluate(() => {
+    const g = document.querySelector('.mn-tools-group'); const c = document.createElement('button'); c.className = 'vid-help-more';
+    g.append(c); const d = getComputedStyle(c).display; c.remove(); return d;
+  });
+  ok(chipDisplay === 'none', 'phone Tools sheet: a .vid-help-more chip is never drawn (' + chipDisplay + ')');
+  ok(how.chip === 0 && how.how <= 1, 'phone Tools sheet: no bare overflow chip, "How this works" at most once (chip ' + how.chip + ', how ' + how.how + ')');
+  await page.keyboard.press('Escape');
+  /* Go to sub-rows meet the 44px floor on touch */
+  await page.click('[data-mn-item="goto"]');
+  await page.waitForSelector('.mn-overlay .mn-mod.is-sub');
+  const subH = await page.evaluate(() => Math.min(...[...document.querySelectorAll('.mn-sheet .mn-mod.is-sub')].filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().height)));
+  ok(subH >= 44, 'Go to sub-rows are at least 44px tall on touch (' + Math.round(subH) + 'px)');
+  /* the project pill: the accessible name carries the visible text */
+  const pill = await page.evaluate(() => { const b = document.querySelector('.ps-btn'); return b && { name: b.getAttribute('aria-label') || '', text: b.querySelector('.ps-title').textContent }; });
+  ok(pill && pill.name.toLowerCase().includes(pill.text.toLowerCase()), 'project pill: aria-label contains the visible text (' + JSON.stringify(pill) + ')');
+  await page.goto(BASE + 'pricing.html', { waitUntil: 'networkidle' });
+  await page.click('#mkBurger');
+  const pr = await page.evaluate(() => { const l = document.querySelector('#mkNav .mk-nav-pricing').getBoundingClientRect(); return { bottom: l.bottom, vh: innerHeight }; });
+  ok(pr.bottom <= pr.vh, 'pricing at 390: Pricing is visible in the open menu without scrolling (bottom ' + Math.round(pr.bottom) + ' of ' + pr.vh + ')');
   await page.goto(BASE + 'pricing.html', { waitUntil: 'networkidle' });
   const gap = await page.evaluate(() => { const l = document.querySelector('.pr-lede'), t = document.querySelector('.pr-trial'); return t.getBoundingClientRect().top - l.getBoundingClientRect().bottom; });
   ok(gap >= 16, 'pricing at 390: the lede and the trial card have room between them (' + Math.round(gap) + 'px)');

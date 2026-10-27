@@ -164,7 +164,7 @@ document.addEventListener('keydown', (e) => {
    <main>, onto controls the full-screen sheet covers, and the menu's own
    links were reachable only with Shift+Tab. The cycle is the burger, then
    the sheet's visible links in the order they are drawn (the phone sheet
-   reorders Log in to the top). */
+   reorders Sign in and Pricing to the top). */
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab' || !burger || !top || !top.hasAttribute('data-menu')) return;
   const nav = byId('mkNav');

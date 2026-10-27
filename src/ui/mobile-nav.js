@@ -314,7 +314,7 @@ export function openGoTo(phaseId) {
     h('span', { text: 'Project: ' + (current ? (current.title || 'Untitled') + ' · ' + formatLabel(current.format) : 'none open') + ' · Switch' })
   ]));
   if (list.length) proj.append(...projectRows());
-  proj.append(h('a.ps-link', { href: 'index.html', text: list.length ? '+ New project' : 'No project — start one' }));
+  proj.append(h('a.ps-link', { href: 'index.html', text: list.length ? '+ New project' : 'Start a project' }));
   /* the band's project pill opens the sheet HERE, on a global page too */
   if (!globalPage || phaseId === 'project') body.append(proj);
   if (!globalPage) for (const p of phases()) body.append(group(p, here, '.sh-ph-' + p.hue));

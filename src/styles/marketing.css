@@ -343,7 +343,8 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 @media (max-width: 899px) {
   .mk-burger.mk-burger { display: grid; }
   .mk-end-login { display: none; }
-  .mk-nav-login { display: inline-flex; order: -1; }   /* first in the phone sheet, not below the fold */
+  .mk-nav-login { display: inline-flex; order: -2; }   /* first in the phone sheet, not below the fold */
+  .mk-nav-pricing { order: -1; }                       /* the conversion link next, above the product groups */
   .mk-nav {
     display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch;
     gap: var(--s1); padding: var(--s4) var(--gutter) var(--s6); box-sizing: border-box;

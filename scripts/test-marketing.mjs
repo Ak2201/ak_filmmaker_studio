@@ -147,7 +147,7 @@ for (const id of IDS) {
     ok(!/education|film school|student offer/i.test(html), tag + 'no Education tab or student card');
     ok(!/testimonial|\brated\b|★|&#9733;|\bstars?\b|trusted by|\bcustomers?\b/i.test(html), tag + 'no rating, testimonial or customer claim');
     ok(/<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'footer links the three legal pages');
-    ok(/<a class="mk-nav-link" href="pricing\.html" aria-current="page">/.test(html), tag + 'the header marks Pricing as the current page');
+    ok(/<a class="mk-nav-link mk-nav-pricing" href="pricing\.html" aria-current="page">/.test(html), tag + 'the header marks Pricing as the current page');
     for (const other of IDS) ok(new RegExp(`href="${pages[other].file.replace(/[.]/g, '\\.')}"`).test(html), `${tag}links to ${pages[other].file} (header and footer)`);
 
     /* the cards: the paid plans of plan-matrix.json, in order, and no free card */
@@ -500,17 +500,18 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 }
 
 /* ---- one verb per action ------------------------------------------
-   The header says Log in / Sign up; the modal it opens said "Sign in to
-   start your trial", the pricing buttons swapped to "Sign in", and the
-   plans CTA was "See the plans" on one page and "See plans" on two. The
-   LABELS agree now (prose may still say "sign in" as a verb). */
+   The studio says "Sign in" everywhere, so the public header and modal do
+   too ("Sign up" stays: it is a different act). No control labelled "Log in",
+   and the phone menu puts Pricing straight after it (order, not DOM). */
 for (const [file, html] of Object.entries(files)) {
   if (!/\.html$/.test(file)) continue;
-  const labels = [...html.matchAll(/>\s*(Sign in[^<]*)</g)].map((m) => m[1].trim())
-    .concat([...html.matchAll(/data-off-text="(Sign in[^"]*)"/g)].map((m) => m[1]));
-  ok(labels.length === 0, file + ': no control or heading labelled "Sign in" [' + labels.join(' | ') + ']');
+  const labels = [...html.matchAll(/>\s*(Log in[^<]*)</g)].map((m) => m[1].trim())
+    .concat([...html.matchAll(/data-off-text="(Log in[^"]*)"/g)].map((m) => m[1]));
+  ok(labels.length === 0, file + ': no control or heading labelled "Log in" [' + labels.join(' | ') + ']');
   ok(!/See the plans/.test(html), file + ': the plans CTA reads "See plans"');
 }
+ok(/\.mk-nav-login \{[^}]*order: -2/.test(read('src/styles/marketing.css')) && /\.mk-nav-pricing \{ order: -1/.test(read('src/styles/marketing.css')), 'marketing.css: the phone menu orders Sign in, then Pricing, above the product groups');
+ok(/class="mk-nav-link mk-nav-pricing" href="pricing\.html"/.test(files[PRICING_FILE]), 'the header marks the Pricing link for the phone order');
 
 console.log(`\ntest:marketing: ${pass} passed, ${fail} failed${FIXTURE ? ' (fixture copy; media existence NOT checked)' : ''}`);
 process.exit(fail ? 1 : 0);

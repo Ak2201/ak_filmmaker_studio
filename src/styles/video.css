@@ -98,6 +98,10 @@
    drawn on a desk, and not in the phone Tools sheet, which borrows the
    real button. */
 .vid-help-more { display: none; }
+/* The phone Tools sheet borrows the whole band zone, button and overflow
+   chip both: show the named button once, not a bare "⋯" that opens a
+   menu saying the same thing. */
+:root .mn-tools-group .vid-help-more { display: none; }
 @media (max-width: 1099px) {
   /* `:root` is there for specificity, not scope: kit.css's phone tap
      floor (`:root :is(…, .site-foot a, …, .btn) { display: inline-flex }`)

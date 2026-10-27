@@ -678,5 +678,5 @@ html.mn-on .mn-sheet .mn-tools-group .sh-rail-tools .sh-rail-item,
 
 /* A module's sections (navigation.json `sections`), indented under it as
    in the rail's flyout: the page's own tabs. */
-.mn-sheet .mn-mod.is-sub { padding-left: calc(var(--s3) + 24px); min-height: 40px; }
+.mn-sheet .mn-mod.is-sub { padding-left: calc(var(--s3) + 24px); min-height: var(--tap-min, 44px); }
 .mn-sheet .mn-mod.is-sub .mn-mod-label { font-size: var(--t-small); color: var(--ink-body); }

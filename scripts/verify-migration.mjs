@@ -443,10 +443,10 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
      that followed the UI revamp and the plan features. The pricing
      pass's `finish` row (the Pro line reworded) was absorbed by the
      17 Oct 2026 recapture after the one-frame navigation pass. */
-  invite: { renews: 'Auto-renew (27 Oct 2026, schema §62): every price line takes its terms from offer-terms.js in the mode the server publishes; signed out with no server the mode is unknown, so the list prices claim neither one-time nor auto-renew and "nothing renews by itself" left the page.', payment: 'Yearly plans (21 Oct 2026, schema section 52): a plan is one year now, marketed by the day; the "one payment / pay once / yours for good" copy went with the lifetime model.', production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },
+  invite: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
   admin: {},
-  vault: { also: 'Sticky notes (23 Oct 2026): the Idea Vault became the board of notes and clippings; its intro and empty state were rewritten around notes, so the old clipping-only sentences left the page.', came: 'same change', can: 'same change', clipped: 'same change', hand: 'same change', lands: 'same change' },
-  purchase: { renews: 'Auto-renew (27 Oct 2026, schema §62): every price line takes its terms from offer-terms.js in the mode the server publishes; signed out with no server the mode is unknown, so the list prices claim neither one-time nor auto-renew and "nothing renews by itself" left the page.', production: 'Plan cards reworded to outcome lines, per the pricing spec (48052d0, 21 Oct 2026): the old bullets that said production, sheets and white-label no longer render.', sheets: 'same change', 'white-label': 'same change' },   // the once/pay/payment/yours rows retired 21 Oct 2026: the "Before you pay" terms (one payment for one year; the refund is yours) say them again
+  vault: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
+  purchase: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {}
 };
 /* The 26 Oct 2026 `currency` / `rupee` allowance (budget rail icon) was absorbed by the 27 Oct 2026 re-baseline. */
 

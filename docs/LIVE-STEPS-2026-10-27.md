@@ -120,6 +120,8 @@ shasum -a 256 supabase/schema/schema-60-signup-trial-scope.sql
 # 7f983a36d52f70613e378a42fbab152a1efc40afc325e334efb5c42c8d8c7e55
 shasum -a 256 supabase/schema/schema-61-week-pass.sql
 # 31eea622a83c5c0286128f0c867b529238629cf617542b8cfd36845bb8cd7658
+shasum -a 256 supabase/schema/schema-64-pro-blurb.sql
+# a61e9d0d593ff42942936640f3ce412c261d6a9eebe77d7a9be6b35727a31893
 ```
 
 If §58–§60 already ran under `docs/LIVE-STEPS-2026-10-26.md`, skip to step 3.
@@ -391,3 +393,23 @@ charge. Runbook: `docs/BILLING.md` §27; checks: `docs/SECURITY-RLS.md` §63.
    `current_end` is within 48 hours: the next run sends one e-mail ("Your
    Pro pass renews on …"), the row's `reminded_for` equals its
    `current_end`, and the run after sends nothing.
+
+## §64 Pro blurb
+
+The Pro seed's wording changed but the seed is `on conflict do nothing`, so the
+live row still reads "A production house. No caps." (`purchase.html` and the
+plan cards show it).
+
+1. **Run §64, with the checksum** (paste rule, step 1; any time, it needs only
+   §1):
+
+   ```bash
+   shasum -a 256 supabase/schema/schema-64-pro-blurb.sql
+   # a61e9d0d593ff42942936640f3ce412c261d6a9eebe77d7a9be6b35727a31893
+   ```
+
+   Read it back (the file ends with the same select):
+
+   ```sql
+   select blurb from public.plans where id = 'pro';   -- A production house: no cap on films, links or collaborators.
+   ```

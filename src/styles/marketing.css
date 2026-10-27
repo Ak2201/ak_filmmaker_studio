@@ -224,6 +224,34 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 .mk-label-nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-body); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
 .mk-label-nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 
+/* ---- the launch band (27 Oct 2026) ------------------------------
+   The first thing in <main> on start, pricing and every product, guide,
+   switching and trust page; HIDDEN in the markup and shown by
+   marketing.js only while trial_offer().pass is open. It sits under the
+   fixed header (its own top padding is the header's height), so the
+   hero after it gives that height back. Text only: no animation, so
+   reduced motion has nothing to stop. */
+.mk-pass { padding-top: var(--mk-top-h); background: var(--surface-canvas); }
+.mk-pass-in {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); flex-wrap: wrap;
+  padding: var(--s3) var(--s5); box-sizing: border-box;
+  background: color-mix(in srgb, var(--accent-primary) 12%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
+  border-radius: var(--sk-radius, var(--radius-lg));
+}
+.mk-pass-line, .mk-pass-ended { margin: 0; max-width: none; min-width: 0; flex: 1 1 24rem; font-size: var(--t-small); line-height: 1.5; color: var(--ink-body); }
+.mk-pass-tag { margin-right: var(--s2); color: var(--brand-lift); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: var(--t-tiny); }
+.mk-pass-what { color: var(--ink); font-weight: 600; }
+.mk-pass-timer { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.mk-pass-sep { color: var(--ink-muted); }
+.mk-pass-left { white-space: nowrap; }
+.mk-pass-cta { flex: none; }
+.mk-pass:not([hidden]) + .mk-hero { padding-top: var(--s7); }
+@media (max-width: 560px) {
+  .mk-pass-in { padding: var(--s3) var(--s4); }
+  .mk-pass-cta { flex: 1 1 100%; }
+}
+
 /* value: text left, a still right */
 .mk-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(var(--s6), 6vw, var(--s9)); align-items: center; }
 .mk-frame, .mk-slot, .mk-player {
@@ -410,4 +438,108 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
   .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media) { animation: none; }
   .mk-still, .mk-top, .mk-btn, .mk-card, .mk-step, .mk-link .sym, .mk-nav-prod .sym { transition: none; }
   .mk-mega, .mk-modal-card { animation: none; }
+}
+
+/* ============================================================
+   GUIDES, COMPARISONS, TRUST, AND THE E-MAIL CAPTURE (26 Oct 2026)
+   ------------------------------------------------------------
+   guide-*.html, guides.html, compare-*.html and trust.html are reading
+   pages: a short hero, then prose at a reading measure. Same rules as
+   above: tokens only, the skin's radii, travel times --motion.
+   ============================================================ */
+.mk:not([class*="hue-"]) .mk-hero--article { --hue: var(--accent-primary); }
+.mk-hero.mk-hero--article {
+  min-height: 0; align-items: flex-end;
+  padding-top: calc(var(--mk-top-h) + var(--s7)); padding-bottom: var(--s7);
+}
+.mk-hero--article .mk-h1 { font-size: clamp(var(--t-2xl), 5vw, var(--t-4xl)); max-width: 24ch; }
+.mk-hero--article .mk-sub { margin-bottom: var(--s4); max-width: 60ch; }
+.mk-small { margin: 0; max-width: 64ch; font-size: var(--t-small); line-height: 1.55; color: var(--ink-muted); }
+.mk-updated { margin-top: var(--s2); }
+
+.mk-crumbs ol { list-style: none; margin: 0 0 var(--s4); padding: 0; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); font-size: var(--t-small); }
+.mk-crumbs li { display: inline-flex; align-items: center; gap: var(--s2); color: var(--ink-muted); }
+.mk-crumbs li + li::before { content: '/'; color: var(--ink-muted); }
+.mk-crumbs a { display: inline-flex; align-items: center; min-height: 32px; color: var(--ink-body); text-decoration: underline; text-underline-offset: 3px; }
+.mk-crumbs a:hover { color: var(--ink); }
+.mk-crumbs [aria-current] { color: var(--ink); }
+
+/* the article: a sticky contents list beside the prose on a desk */
+.mk-article-grid { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: clamp(var(--s6), 5vw, var(--s8)); align-items: start; }
+.mk-toc { position: sticky; top: calc(var(--mk-top-h) + var(--s4)); }
+.mk-toc-h { margin: 0 0 var(--s3); font-size: var(--t-tiny); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+.mk-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.mk-toc a {
+  display: flex; align-items: center; min-height: 36px; padding: 0 var(--s3);
+  border-left: 2px solid var(--border-default);
+  color: var(--ink-body); font-size: var(--t-small); text-decoration: none;
+}
+.mk-toc a:hover { color: var(--ink); border-left-color: var(--hue, var(--accent-primary)); }
+.mk-toc--row { position: static; margin-top: var(--s4); }
+.mk-toc--row ol { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.mk-toc--row a { border: 1px solid var(--border-default); border-radius: var(--radius-pill); }
+
+.mk-prose { max-width: 46rem; }
+.mk-wrap.mk-prose { margin-inline: auto; max-width: calc(46rem + 2 * var(--gutter)); }
+.mk-prose .mk-h2 { font-size: clamp(var(--t-xl), 3vw, var(--t-2xl)); margin-top: var(--s7); }
+.mk-prose .mk-h2:first-child, .mk-prose .mk-card-icon + .mk-h2 { margin-top: 0; }
+.mk-prose .mk-body { max-width: none; }
+.mk-list { margin: 0 0 var(--s5); padding-left: 1.25em; display: grid; gap: var(--s2); font-size: var(--t-lg); line-height: 1.6; color: var(--ink-body); }
+.mk-list li::marker { color: var(--hue-lift, var(--brand-deep)); }
+.mk-list b { color: var(--ink); }
+.mk-list--steps { padding-left: 1.6em; }
+.mk-src-list { font-size: var(--t-small); }
+
+.mk-plan-note {
+  display: flex; align-items: flex-start; gap: var(--s2); margin: 0 0 var(--s4); max-width: none;
+  padding: var(--s3) var(--s4); background: var(--hue-wash, var(--surface-card));
+  border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg));
+  font-size: var(--t-small); line-height: 1.5; color: var(--ink-body);
+}
+.mk-plan-note .sym { color: var(--hue-lift, var(--brand-deep)); font-size: 20px; flex: none; }
+.mk-close-note { margin-top: var(--s4); }
+
+/* the comparison table: scrolls inside its own box on a phone, never the page */
+.mk-table-wrap { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg)); background: var(--surface-card); }
+.mk-table-wrap:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.mk-table { width: 100%; min-width: 40rem; border-collapse: collapse; font-size: var(--t-small); line-height: 1.55; }
+.mk-table th, .mk-table td { padding: var(--s4); text-align: left; vertical-align: top; border-bottom: 1px solid var(--border-hair); color: var(--ink-body); }
+.mk-table thead th { color: var(--ink); font-weight: 700; background: var(--surface-elevated); }
+.mk-table tbody th { color: var(--ink); font-weight: 600; width: 22%; }
+.mk-table tbody tr:last-child > * { border-bottom: 0; }
+.mk-checked { margin-top: var(--s4); }
+.mk-tm { margin-top: var(--s5); }
+.mk-also-links { margin-top: var(--s5); }
+
+/* the e-mail capture */
+.mk-lead { padding-block: var(--s7); border-top: 1px solid var(--border-hair); }
+.mk-lead-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s5) var(--s7); align-items: start; }
+.mk-lead-form { display: grid; gap: var(--s3); }
+.mk-lead-label { font-size: var(--t-small); font-weight: 600; color: var(--ink); }
+.mk-lead-row { display: flex; gap: var(--s3); flex-wrap: wrap; }
+.mk-lead-input {
+  flex: 1 1 16rem; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 0 var(--s4);
+  background: var(--surface-card); color: var(--ink); font: inherit; font-size: var(--t-base);
+  border: 1px solid var(--border-strong); border-radius: var(--sk-field-radius, var(--radius));
+}
+.mk-lead-input:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.mk-lead-consent { display: flex; align-items: flex-start; gap: var(--s3); font-size: var(--t-small); line-height: 1.5; color: var(--ink-body); }
+.mk-lead-consent input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--brand); }
+.mk-lead-status { min-height: 1.4em; }
+
+/* a phone reads the comparison as one card per fact: the row heading,
+   then each product's cell under its own name (data-col) */
+@media (max-width: 640px) {
+  .mk-table { min-width: 0; }
+  .mk-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .mk-table, .mk-table tbody, .mk-table tr, .mk-table th, .mk-table td { display: block; width: auto; }
+  .mk-table tbody tr { border-bottom: 1px solid var(--border-hair); padding-block: var(--s2); }
+  .mk-table tbody tr:last-child { border-bottom: 0; }
+  .mk-table tbody th, .mk-table td { border-bottom: 0; padding-block: var(--s2); }
+  .mk-table tbody th { width: auto; font-size: var(--t-base); }
+  .mk-table td::before { content: attr(data-col); display: block; margin-bottom: var(--s1); font-size: var(--t-tiny); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+}
+@media (max-width: 899px) {
+  .mk-article-grid, .mk-lead-in { grid-template-columns: 1fr; }
+  .mk-toc { position: static; }
 }

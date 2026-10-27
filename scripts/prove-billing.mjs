@@ -62,6 +62,14 @@
          purchase.html says the trial ended and offers SIGN OUT; a
          membership with no trial is offered one on the wall; two tabs:
          a plan bought in one takes the other's wall down with no focus
+     (pass) THE LAUNCH PASS (schema §61): the offer page leads with the
+         server's price, countdown and cap and offers no free trial; a
+         stranger buys it there (period 'pass', ₹49) and is a member on
+         Pro for 7 days; the rail says PASS ENDS IN; a second pass is
+         refused; a yearly plan bought on a pass starts now and replaces
+         it; the wall offers the pass first and plans only once the
+         offer has ended; switched off, the old offer returns; the
+         console reads what is live and saves ₹99 from the quick-set
      (r) HOURS AND NO FREE PLAN (owner, 11 Oct 2026): the console sets the
          trial in hours and stores minutes (round trip), the band and
          invite.html say hours; no Free card on purchase.html or
@@ -1275,13 +1283,17 @@ try {
     ok(inv.length === 3 && !inv.includes('free'), 'purchase.html’s cards are the three paid plans, no Free card: ' + inv.join(','));
     allErrors.push(...N.errors); await N.ctx.close();
 
-    /* pricing.html (the plans moved off start.html): no Free tier, no Free column, and the trial strip says 3 hours. */
+    /* pricing.html (the plans moved off start.html): no Free tier, no Free
+       column, and no free-trial strip any more (the launch pass, 27 Oct
+       2026): its one pass strip is filled from trial_offer().pass and stays
+       hidden while the pass is off, as it is in this scenario. */
     const S = await soloContext();
     await S.page.goto(BASE + 'pricing.html');
-    await S.page.waitForFunction(() => /3 hours/.test((document.querySelector('#pricing [data-trial] [data-trial-length]') || {}).textContent || ''), null, { timeout: 10000 }).catch(() => {});
-    ok(!(await S.page.$('.pr-tiers li[data-tier="free"]')) && !!(await S.page.$('#pricing [data-trial]')), 'pricing.html: no Free tier, and a free-trial strip in its place');
+    await S.page.waitForSelector('.pr-tiers li[data-tier="starter"]', { timeout: 10000 }).catch(() => {});
+    await S.page.waitForTimeout(1500);
+    ok(!(await S.page.$('.pr-tiers li[data-tier="free"]')) && !(await S.page.$('#pricing [data-trial]')), 'pricing.html: no Free tier, and no free-trial strip');
     ok(!(await S.page.$$eval('.pr-table thead .pr-th-name', (t) => t.map((x) => x.textContent.trim()))).includes('Free'), 'pricing.html: no Free column in the comparison table');
-    ok(/3 hours/.test(await S.page.textContent('#pricing [data-trial] [data-trial-length]').catch(() => '')), 'pricing.html: the trial strip says "3 hours", from the anon trial_offer()');
+    ok(await S.page.$eval('#pricing aside[data-pass]', (e) => e.hidden).catch(() => false), 'pricing.html: with the pass off, the pass strip stays hidden (no offer shown that does not exist)');
     allErrors.push(...S.errors); await S.ctx.close();
 
     /* the band, in hours */
@@ -1538,7 +1550,7 @@ try {
     await page.waitForSelector('#you .am-actions', { timeout: 15000 }).catch(() => {});
     await page.waitForFunction(() => /\S/.test((document.querySelector('.st-plan-line') || {}).textContent || '') && !/load when/i.test(document.querySelector('.st-plan-line').textContent), null, { timeout: 12000 }).catch(() => {});
     const planLine = (await page.textContent('.st-plan-line').catch(() => '')).trim();
-    ok(/trial is waiting/i.test(planLine) && !/has ended/i.test(planLine), 'never had a trial: the plan card offers it, not "Your free trial has ended" — ' + planLine);
+    ok(/No plan yet/i.test(planLine) && !/has ended/i.test(planLine), 'never had a trial, a pass or a plan: the plan card says "No plan yet", not "Your free trial has ended" — ' + planLine);
     const card = await page.evaluate(() => ({
       kit: document.querySelectorAll('#you .am-actions .k-btn').length,
       old: document.querySelectorAll('#you .am-actions .am-item, #you a.am-item').length,
@@ -1601,7 +1613,7 @@ try {
     }
     {
       const fine = await page.textContent('.pl-promise');
-      ok(/where Indian law requires it/.test(fine), 'the fine print names all three refund exceptions');
+      ok(/charged twice or by mistake/.test(fine) && /not activated/.test(fine), 'the fine print names the refund exceptions');
     }
     /* invite.html: the trial is offered, and the deck does not say "You are in". */
     await page.goto(BASE + 'invite.html');
@@ -1725,6 +1737,115 @@ try {
     const row = await A.page.evaluate(() => { const tr = [...document.querySelectorAll('tr')].find((r) => /Indie House/.test(r.textContent)); return tr ? [...tr.children].map((c) => c.textContent.trim()) : null; });
     ok(row && row.includes('Intermediate') && !row.includes('indie'), 'admin.html#people: Organisations names the plan, not the id: ' + JSON.stringify(row));
     allErrors.push(...A.errors); await A.ctx.close();
+  }
+  /* ---- (pass) THE LAUNCH PASS (schema §61, owner 27 Oct 2026) ----------
+     A paid week of the whole studio, sold as a launch offer with a real
+     end. Every figure is the server's: the fake's billing_settings. */
+  console.log('(pass) the launch pass');
+  F.reset(); RZP.mode = 'pay';
+  Object.assign(F.db.settings, { pass_enabled: true, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: new Date(Date.now() + 3 * 86400e3 + 3600e3).toISOString(), pass_cap: 500 });
+  const passWait = (page, sel, re, label) => page.waitForFunction(([s, r]) => new RegExp(r).test((document.querySelector(s) || {}).textContent || ''), [sel, re.source], { timeout: 10000 })
+    .then(() => ok(true, label), async () => ok(false, label + ' — read: ' + ((await page.textContent(sel).catch(() => '')) || '').replace(/\s+/g, ' ').slice(0, 160)));
+  {
+    /* signed out: the offer page leads with the pass, the trial is gone */
+    const { ctx, page, errors } = await newContext(browser);
+    await page.goto(BASE + 'invite.html');
+    await passWait(page, '#pass', /Try the whole studio for ₹49/, 'signed out, invite.html leads with the pass: "Try the whole studio for ₹49"');
+    await passWait(page, '#pass [data-pass-timer]', /^3d \d\d:\d\d:\d\d$/, 'the countdown runs to the server deadline (3d hh:mm:ss)');
+    await passWait(page, '#pass [data-pass-left]', /^500 of 500 left$/, 'and the cap line reads the real count: 500 of 500 left');
+    ok(/TRY IT FOR ₹49/.test(await page.textContent('#pass button').catch(() => '')) && (await page.getAttribute('#pass button', 'data-auth-action')) === 'google', 'TRY IT FOR ₹49 signs in first (Google)');
+    ok(!(await page.$('#trial')), 'and no free trial is offered to the public');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* signed in, not a member: buy the pass on the offer page */
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'invite.html');
+    await page.waitForSelector('#pass [data-iv-action="buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'Ben (not a member) is offered the pass to buy'), () => ok(false, 'Ben (not a member) is offered the pass to buy'));
+    ok(!(await page.$('#trial')), 'with no free trial beside it');
+    await page.click('#pass [data-iv-action="buy-pass"]');
+    await page.waitForURL(/\/(index(\.html)?)?$/, { timeout: 15000 }).catch(() => {});
+    ok(F.db.calls.includes('fn:rzp-order pro pass'), 'rzp-order was asked for the pass plan, period pass');
+    const last = await page.evaluate(() => window.__rzpLast).catch(() => null);
+    const pay = F.db.payments.find((x) => x.user_id === USERS['tok-ben'].id && x.period === 'pass');
+    ok(pay && pay.status === 'paid' && pay.amount_paise === 4900, 'the ledger reads ₹49 paid, period pass');
+    const acc = F.db.accounts.find((a) => a.owner_id === USERS['tok-ben'].id);
+    { const left = acc && acc.plan_until ? (Date.parse(acc.plan_until) - Date.now()) / 86400e3 : 0;
+      ok(acc && acc.plan === 'pro' && acc.plan_period === 'pass' && left > 6.9 && left <= 7, 'Ben is on Pro for 7 days, plan_period pass (' + left.toFixed(2) + ' days)'); }
+    ok(F.db.members.has(USERS['tok-ben'].id), 'paying for the pass made Ben a member (the gate opens)');
+    ok(F.db.events.some((e) => e.name === 'pass_buy') && !F.db.events.some((e) => e.name === 'purchase'), 'the funnel counts pass_buy, not purchase');
+    void last;
+    await page.goto(BASE + 'index.html');
+    ok(await waitGate(page, 'open'), 'the studio opens');
+    await page.waitForFunction(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && /PASS ENDS IN/.test(b.textContent); }, null, { timeout: 10000 })
+      .then(() => ok(true, 'the rail says PASS ENDS IN'), () => ok(false, 'the rail says PASS ENDS IN'));
+    ok(/7 days/.test(await page.textContent('#studioRail .sh-rail-trial').catch(() => '')), 'with 7 days left');
+    ok(!(await page.$('.pg-wall')), 'and no wall');
+
+    /* a second pass is refused: once per account */
+    await page.evaluate(async () => { const sb = await window.StudioCloud.ensureClient(); await sb.functions.invoke('rzp-order', { body: { plan: 'pro', period: 'pass', currency: 'INR' } }); });
+    ok(F.db.calls.includes('fn:rzp-order refused used'), 'a second pass is refused (used)');
+
+    /* purchase.html: no pass card, every tier a first purchase; a year replaces the pass */
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForSelector('#plan .pl-card', { timeout: 12000 });
+    await passWait(page, '#plan .pu-current', /7-day pass/, 'purchase.html names the 7-day pass as what Ben holds');
+    ok(!(await page.$('#pass')), 'and draws no pass card for somebody who has had one');
+    ok(!(await page.$('#plan .pl-card.is-current')), 'no tier is "Your plan" while on a pass');
+    await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'starter', null, { timeout: 15000 }).catch(() => {});
+    { const a = F.db.accounts.find((x) => x.owner_id === USERS['tok-ben'].id);
+      const left = a && a.plan_until ? (Date.parse(a.plan_until) - Date.now()) / 86400e3 : 0;
+      ok(a && a.plan === 'starter' && a.plan_period === 'year' && left > 364.9 && left <= 365, 'a yearly Basic bought on a pass starts now and replaces it (' + left.toFixed(2) + ' days, not stacked)'); }
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* the wall: a member whose trial ran out is offered the pass first */
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    expireTrial(USERS['tok-amy'].id);
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'index.html');
+    await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
+    ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall [data-action="pg-buy-pass"]').catch(() => '')), 'labelled TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');
+    ok(!(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'and no START MY FREE TRIAL');
+    /* the offer ends (the deadline passes on the server) */
+    F.db.settings.pass_ends_at = new Date(Date.now() - 1000).toISOString();
+    await page.reload();
+    await page.waitForSelector('.pg-wall', { timeout: 12000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    ok(!(await page.$('.pg-wall [data-action="pg-buy-pass"]')) && !(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'once the offer has ended the wall offers plans only (no pass, no trial)');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* ended, signed out: plans first, "The launch offer has ended" */
+    const { ctx, page, errors } = await newContext(browser);
+    await page.goto(BASE + 'invite.html');
+    await passWait(page, '#buy', /The launch offer has ended/, 'signed out after the deadline: "The launch offer has ended", plans first');
+    ok(!(await page.$('#pass')) && !(await page.$('#trial')), 'with no pass and no trial');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* switched off: the world before the pass (the trial is offered) */
+    F.db.settings.pass_enabled = false; F.db.settings.pass_ends_at = null;
+    const { ctx, page, errors } = await newContext(browser);
+    await page.goto(BASE + 'invite.html');
+    await page.waitForTimeout(1500);
+    ok(!(await page.$('#pass')) && !!(await page.$('#trial')), 'with the pass switched off, the offer page is as before (the trial, no pass)');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* the console: what is live, the quick-set prices, saved and read back */
+    F.db.settings.pass_enabled = true; F.db.settings.pass_ends_at = new Date(Date.now() + 2 * 86400e3).toISOString();
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
+    await page.goto(BASE + 'admin.html#growth');
+    await page.waitForSelector('#growth form[data-gra-form="pass"]', { timeout: 15000 }).then(() => ok(true, 'the console draws the Launch pass block'), () => ok(false, 'the console draws the Launch pass block'));
+    await passWait(page, '#growth', /Live now: ₹49 · 7 days · ends .* IST · \d+ of 500 left/, 'it says what is live now: ₹49 · 7 days · ends … IST · N of 500 left');
+    await page.click('#growth [data-gra-action="pass-price"][data-rupees="99"]');
+    ok((await page.inputValue('#graPassPrice')) === '99' && F.db.settings.pass_paise === 4900, '₹99 fills the field and saves nothing');
+    await page.click('#growth form[data-gra-form="pass"] button[type="submit"]');
+    await passWait(page, '#growth', /Saved\. New orders now pay ₹99\./, 'SAVE: "Saved. New orders now pay ₹99." (read back from the server)');
+    ok(F.db.settings.pass_paise === 9900 && F.db.calls.some((c) => c.startsWith('rpc:admin_set_pass true 9900 7 pro')), 'admin_set_pass got ₹99 in paise');
+    allErrors.push(...errors); await ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

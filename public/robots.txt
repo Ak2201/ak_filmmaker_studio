@@ -1,10 +1,14 @@
 # FilmMakerStudio. The app renders nothing for a visitor outside the
 # gate (a plan or a trial opens it), so the pages worth a crawler's time are the
-# public ones listed in the sitemap (start, pricing, about, contact, the product
-# pages and the three legal pages). Nothing is disallowed: the
-# other pages are static files that redirect to invite.html on load, and
-# a crawler finding them is a crawler finding the doorway.
+# public ones listed in the sitemap: start, pricing, about, contact, the product
+# pages, the guides and switching guides, trust, and the three legal pages.
+# Nothing is disallowed: the other pages are static files that send a
+# signed-out visitor to start.html (and anyone else outside the gate to
+# invite.html) on load, and a crawler finding them is a crawler finding the
+# doorway.
 User-agent: *
 Allow: /
 
 Sitemap: https://filmmakerstudio.in/sitemap.xml
+# A plain-text map of the public pages for language-model crawlers:
+# https://filmmakerstudio.in/llms.txt

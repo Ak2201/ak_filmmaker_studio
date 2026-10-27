@@ -48,8 +48,8 @@ ok(!R.timingSafeEqualHex('abcd', 'abc'), 'different lengths are unequal');
 ok(!R.timingSafeEqualHex('', ''), 'two empty strings are NOT equal (an unset signature never passes)');
 
 /* ---- one price, for a year (section 52) ---- */
-eq(R.PERIODS, ['year'], 'the only period sold is a year');
-eq(R.PLAN_DAYS, 365, 'a year is 365 days');
+eq(R.PERIODS, ['year', 'pass'], 'two periods are sold: a year, and (§61) the launch pass');
+eq(R.PLAN_DAYS, 365, 'a year is 365 days (PLAN_DAYS is the year; the pass length is the server\'s)');
 ok(!('periodEnd' in R), 'the client never computes an expiry; the database does (apply_plan)');
 eq(R.perDayPaise(59900), 164, '₹599 a year is ₹1.64 a day');
 eq(R.perDayPaise(79900), 219, '₹799 a year is ₹2.19 a day');
@@ -61,6 +61,7 @@ eq(R.priceFor(plan), 799900, 'the price is price_paise, not a period column');
 eq(R.priceFor(plan, 'year'), 799900, 'asked for explicitly');
 eq(R.priceFor(plan, 'lifetime'), null, '"for good" is not sold any more');
 eq(R.priceFor(plan, 'month'), null, 'a month is not a thing that is sold');
+eq(R.priceFor(plan, 'pass'), null, 'a pass is never priced from a plan row: the server prices it (§61 quote_pass)');
 eq(R.priceFor({ id: 'starter', yearly_paise: 299900 }), 299900, 'a row read before §18 ran falls back to the yearly figure');
 eq(R.priceFor({ id: 'free', price_paise: 0 }), null, 'a zero price is not for sale');
 eq(R.fmtPaise(49900), '₹499', 'paise -> rupees');
@@ -113,6 +114,26 @@ eq(M.receiptMail({ ...inv, buyer_email: '' }), null, 'no e-mail, no message');
 const rf = M.refundMail({ refund_id: 'r1', status: 'processed', amount_paise: 79900, buyer_email: 'b@x.in', plan_name: 'Intermediate', invoice_number: 'FMS/2026-27/000007' });
 ok(rf.subject.startsWith('Refund processed') && rf.text.includes('5 to 7 working days') && rf.text.includes('FMS/2026-27/000007'), 'processed refund mail');
 ok(M.refundMail({ status: 'failed', amount_paise: 100, buyer_email: 'b@x.in' }).subject.includes('could not be completed'), 'failed refund mail');
+ok(rf.text.includes('fresh free trial') && !rf.text.includes('pass'), 'a year\'s refund mail still describes the refund trial');
+
+/* ---- the launch pass (schema §61): worded from the row's own dates ---- */
+{
+  const pinv = { ...inv, plan_name: 'Pro', amount_paise: 4900, period: 'pass',
+    valid_from: '2026-10-27T10:00:00Z', valid_until: '2026-11-03T10:00:00Z' };
+  const pm = M.receiptMail(pinv);
+  ok(pm.subject.includes('7-day pass') && pm.subject.includes('FMS/2026-27/000007'), 'pass receipt subject: "7-day pass" and the invoice');
+  ok(pm.text.includes('7-day pass (until 3 November 2026)') && pm.text.includes('₹49'), 'pass receipt: "7-day pass (until …)" and ₹49');
+  ok(!pm.text.includes('1 year') && !pm.text.includes('for a year'), 'a pass receipt never says a year');
+  const p10 = M.receiptMail({ ...pinv, valid_until: '2026-11-06T10:00:00Z' });
+  ok(p10.text.includes('10-day pass (until 6 November 2026)'), 'the length is read from the dates, never typed (10 days)');
+  ok(M.receiptMail({ ...pinv, valid_from: null, valid_until: null }).text.includes('launch pass'), 'a pass with no dates says "launch pass", not a guessed length');
+  const yr = M.receiptMail({ ...inv, valid_until: '2027-10-11T10:00:00Z' });
+  ok(yr.text.includes('1 year (valid until 11 October 2027)'), 'a year\'s receipt reads the invoice\'s valid_until (§57)');
+  const pr = M.refundMail({ refund_id: 'r2', status: 'processed', amount_paise: 4900, buyer_email: 'b@x.in', plan_name: 'Pro',
+    period: 'pass', starts_at: pinv.valid_from, ends_at: pinv.valid_until });
+  ok(pr.text.includes('7-day pass this payment bought') && pr.text.includes('does not come with a free trial')
+     && !pr.text.includes('fresh free trial'), 'pass refund mail: the pass comes off and no trial follows');
+}
 
 const calls = [];
 const fakeFetch = (status = 200) => async (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify({ id: 'em_1' }), { status }); };
@@ -293,6 +314,103 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
   const sql = fs.readFileSync(new URL('../supabase/schema/schema-56-usd-checkout.sql', import.meta.url), 'utf8');
   ok(!/\b(?:1900|2900|3900)\b/.test(sql.replace(/^\s*--.*$/gm, '')), 'schema §56 hard-codes no dollar price (the owner types them)');
   ok(/admin_set_usd_checkout/.test(sql) && /require_role\(array\['owner'\]\)/.test(sql), 'schema §56: the switch exists and is owner only');
+}
+
+/* ---- auto-renew: subscriptions (schema §62) ---- */
+{
+  const fs = await import('node:fs');
+  const ssig = nodeHmac(SECRET, 'pay_S1|sub_S1');
+  const sb = { razorpay_payment_id: 'pay_S1', razorpay_subscription_id: 'sub_S1', razorpay_signature: ssig };
+  ok(await R.verifySubscriptionSignature(sb, SECRET), 'a genuine subscription checkout signature verifies (payment_id|subscription_id)');
+  ok(!(await R.verifySubscriptionSignature({ ...sb, razorpay_signature: nodeHmac(SECRET, 'sub_S1|pay_S1') }, SECRET)), 'the ids the other way round (an order\'s order) fail');
+  ok(!(await R.verifySubscriptionSignature({ ...sb, razorpay_subscription_id: 'sub_S2' }, SECRET)), 'a different subscription id fails');
+  ok(!(await R.verifySubscriptionSignature({ ...sb, razorpay_signature: ssig.slice(0, -1) + (ssig.endsWith('0') ? '1' : '0') }, SECRET)), 'one changed character fails');
+  ok(!(await R.verifySubscriptionSignature(sb, WH)), 'the webhook secret fails: checkout is signed with the KEY secret');
+  ok(!(await R.verifySubscriptionSignature(sb, '')), 'an empty secret fails');
+  ok(!(await R.verifySubscriptionSignature({ razorpay_payment_id: 'pay_S1', razorpay_signature: ssig }, SECRET)), 'a missing subscription id fails');
+  ok(!(await R.verifyPaymentSignature({ razorpay_order_id: 'sub_S1', razorpay_payment_id: 'pay_S1', razorpay_signature: ssig }, SECRET)),
+    'a subscription signature is not accepted as an order signature');
+
+  eq(R.rzpPeriod('pass', 7), { period: 'daily', interval: 7 }, 'a pass is a daily plan with the pass\'s days as the interval');
+  eq(R.rzpPeriod('year'), { period: 'yearly', interval: 1 }, 'a year is a yearly plan, interval 1');
+  eq(R.rzpPeriod('pass', 0), null, 'a pass of no days is refused');
+  eq(R.maxTotalCount('year'), R.MAX_YEARS, 'a year runs MAX_YEARS cycles');
+  eq(R.maxTotalCount('pass', 7), Math.floor(R.MAX_YEARS * 365 / 7), 'a 7-day pass runs MAX_YEARS of weeks');
+  const pb = R.planBody({ product: 'pass', period: 'pass', days: 7, amountMinor: 4900, currency: 'INR', planName: 'Pro' });
+  ok(pb.period === 'daily' && pb.interval === 7 && pb.item.amount === 4900 && pb.item.currency === 'INR' && pb.item.name === 'Pro, 7-day pass',
+    'planBody: daily × 7, ₹49, named "Pro, 7-day pass"');
+  eq(R.planBody({ product: 'pass', period: 'pass', days: 7, amountMinor: 50, planName: 'Pro' }), null, 'planBody refuses under Razorpay\'s minimum');
+  const desc = R.subscriptionDescription({ planName: 'Pro', period: 'pass', days: 7, amountMinor: 9900, currency: 'INR' });
+  ok(desc.includes('₹99') && desc.includes('every 7 days') && /cancel anytime/i.test(desc), 'the Checkout description states the amount, how often and "cancel anytime"');
+  ok(R.subscriptionDescription({ planName: 'Basic', period: 'year', amountMinor: 59900 }).includes('every year'), 'a yearly description says every year');
+  const sbody = R.subscriptionBody({ planId: 'plan_1', period: 'pass', days: 7, rowId: 'row-1', userId: 'u-1', product: 'pass' });
+  ok(sbody.plan_id === 'plan_1' && sbody.customer_notify === 1 && sbody.total_count === R.maxTotalCount('pass', 7)
+     && sbody.notes.subscription_row_id === 'row-1' && sbody.notes.user_id === 'u-1' && sbody.notes.product === 'pass' && !('start_at' in sbody),
+    'subscriptionBody: the plan, the max count, customer_notify 1, the notes, and no start_at (charged at authentication)');
+  eq(R.subscriptionBody({ planId: '', period: 'pass', days: 7 }), null, 'no plan, no subscription');
+  eq(R.cancelBody('active'), { cancel_at_cycle_end: 1 }, 'a running subscription is cancelled at the end of the cycle');
+  eq(R.cancelBody('created'), { cancel_at_cycle_end: 0 }, 'one never authenticated is cancelled at once');
+  eq(R.statusForEvent('subscription.activated'), 'active', 'subscription.activated means active');
+  eq(R.statusForEvent('subscription.charged'), 'active', 'subscription.charged means active');
+  eq(R.statusForEvent('subscription.paused'), 'halted', 'paused reads as halted');
+  eq(R.statusForEvent('subscription.halted'), 'halted', 'halted');
+  eq(R.statusForEvent('subscription.weird', { status: 'cancelled' }), 'cancelled', 'an unknown event falls back to the entity\'s status');
+  eq(R.statusForEvent('payment.captured', { status: 'nope' }), null, 'anything else is no status');
+  eq(R.subscriptionOfPayment({ id: 'p', subscription_id: 'sub_9' }), 'sub_9', 'a payment entity names its subscription');
+  eq(R.subscriptionOfPayment({ id: 'p' }), null, 'an order payment names none');
+  eq(R.isoFromUnix(1761523200), '2025-10-27T00:00:00.000Z', 'Razorpay seconds become ISO');
+
+  const Ms = await import('../supabase/functions/_shared/mail.js');
+  const cinv = { id: 'inv-9', number: 'FMS/2026-27/000042', buyer_email: 'sub@example.com', buyer_name: 'Sub', plan_name: 'Pro',
+    period: 'pass', sub_period: 'pass', amount_paise: 9900, currency: 'INR', paid_at: '2026-10-27T10:00:00Z',
+    valid_from: '2026-10-27T10:00:00Z', valid_until: '2026-11-03T10:00:00Z', razorpay_payment_id: 'pay_C1',
+    renews: true, renews_at: '2026-11-03T10:00:00Z', renew_minor: 9900, renew_currency: 'INR', every_days: 7 };
+  const cm = Ms.chargeReceiptMail(cinv);
+  ok(cm.text.includes('Renews on 3 November 2026 at ₹99. Cancel anytime in Settings → Plan.'),
+    'a charge receipt says "Renews on <date> at <amount>. Cancel anytime in Settings → Plan."');
+  ok(!/nothing renews/i.test(cm.text) && cm.text.includes('7-day pass') && cm.text.includes('FMS/2026-27/000042') && cm.text.includes(Ms.REFUND_TERMS),
+    'it never says "nothing renews", names the 7-day pass and the invoice, and keeps the refund terms');
+  const off = Ms.chargeReceiptMail({ ...cinv, renews: false });
+  ok(off.text.includes('Auto-pay is off. Nothing more will be charged') && !off.text.includes('Renews on'), 'after a cancel the receipt says nothing more will be charged');
+  ok(Ms.chargeReceiptMail({ ...cinv, period: 'year', sub_period: 'year', plan_name: 'Basic', valid_until: '2027-10-27T10:00:00Z', renews_at: '2027-10-27T10:00:00Z', renew_minor: 59900, amount_paise: 59900 })
+       .text.includes('Renews on 27 October 2027 at ₹599'), 'a yearly charge receipt names the next year\'s date and amount');
+  ok(Ms.receiptMail({ ...cinv, renews: undefined }).text.includes('nothing renews automatically'), 'a ONE-TIME pass receipt is unchanged ("nothing renews")');
+  const xm = Ms.cancelMail({ subscription_row_id: 'r1', email: 'sub@example.com', period: 'pass', days: 7, plan_name: 'Pro', amount_minor: 9900, currency: 'INR', current_end: '2026-11-03T10:00:00Z' });
+  ok(xm.subject === 'Auto-pay cancelled' && xm.text.includes('Nothing more will be charged') && xm.text.includes('3 November 2026')
+     && xm.text.includes('₹99 every 7 days') && /does not refund/.test(xm.text),
+    'the cancellation mail: nothing more charged, access until the date, what it was, no refund for a cancel');
+  eq(Ms.cancelMail({ email: '' }), null, 'no e-mail, no cancellation mail');
+  const rem = Ms.renewalReminderMail({ email: 'sub@example.com', plan_name: 'Pro', period: 'pass', days: 7, amount_minor: 9900, currency: 'INR', next_charge_at: '2026-11-03T10:00:00Z' });
+  ok(rem.subject.includes('3 November 2026') && rem.text.includes('₹99') && rem.text.includes('Settings → Plan'), 'the pre-charge reminder names the date, the amount and where to cancel');
+  eq(Ms.renewalReminderMail({ email: 'x@y.in' }), null, 'no next charge date, no reminder');
+  const cfake = (rows) => { const log = []; return { log, rpc: async (fn, args) => { log.push([fn, args]); return { data: rows[fn] ?? null, error: null }; } }; };
+  const cs = cfake({ claim_charge_receipt_email: cinv });
+  const cout = await Ms.sendChargeReceiptOnce(cs, 'pay_C1', { RESEND_API_KEY: 'k', MAIL_FROM: 'f' }, { fetch: async () => new Response('{"id":"e"}', { status: 200 }) });
+  ok(cout.ok && cs.log[0][0] === 'claim_charge_receipt_email' && cs.log[0][1].p_rzp_payment_id === 'pay_C1', 'sendChargeReceiptOnce claims by the payment id, then sends');
+  const cs2 = cfake({ claim_charge_receipt_email: cinv });
+  await Ms.sendChargeReceiptOnce(cs2, 'pay_C1', { RESEND_API_KEY: 'k', MAIL_FROM: 'f' }, { fetch: async () => new Response('no', { status: 500 }) });
+  ok(cs2.log.some(([fn, a]) => fn === 'release_receipt_email' && a.p_invoice === 'inv-9'), 'a failed send releases the claim');
+  const cs3 = cfake({});
+  ok((await Ms.sendChargeReceiptOnce(cs3, 'pay_C1', {})).reason === 'not-configured' && cs3.log.length === 0, 'unconfigured mail claims nothing');
+
+  const src = (f) => fs.readFileSync(new URL(`../supabase/functions/${f}`, import.meta.url), 'utf8');
+  const subscribe = src('rzp-subscribe/index.ts'), cancel = src('rzp-cancel/index.ts'), verify = src('rzp-verify/index.ts'), hook = src('rzp-webhook/index.ts');
+  ok(!/body\.amount/.test(subscribe) && /create_pending_subscription/.test(subscribe), 'rzp-subscribe never reads an amount; the database prices it');
+  ok(subscribe.indexOf("'set_subscription_rzp_ids'") > subscribe.indexOf("rzp('subscriptions'") && subscribe.indexOf("'set_subscription_rzp_ids'") < subscribe.indexOf('json(200'),
+    'rzp-subscribe stores Razorpay\'s id before it hands it to Checkout');
+  ok(/rzp_plan_for/.test(subscribe) && /remember_rzp_plan/.test(subscribe), 'rzp-subscribe finds or makes the plan for the exact price (the lock)');
+  ok(/verifySubscriptionSignature\(body, keySecret\)/.test(verify) && !/\/capture`[\s\S]{0,40}razorpay_subscription_id/.test(verify),
+    'rzp-verify checks a subscription signature and does not capture');
+  ok(/request_cancel_subscription/.test(cancel) && /admin_cancel_subscription/.test(cancel) && /asUser\.rpc\('admin_cancel_subscription'/.test(cancel),
+    'rzp-cancel marks the cancel AS THE CALLER (the database decides who may)');
+  ok(/undo_cancel_subscription/.test(cancel), 'rzp-cancel undoes its mark when Razorpay does not confirm');
+  ok(/'subscription\.charged'/.test(hook) && /apply_subscription_charge/.test(hook) && /mark_subscription_status/.test(hook) && /x-razorpay-event-id/.test(hook),
+    'rzp-webhook applies subscription.charged, records statuses and logs the event id');
+  ok(/case 'payment\.captured'[\s\S]{0,200}subscriptionOfPayment/.test(hook), 'payment.captured with a subscription goes to the charge, not to activate_payment');
+
+  const s62 = fs.readFileSync(new URL('../supabase/schema/schema-62-autorenew.sql', import.meta.url), 'utf8');
+  ok(/pass_mode text not null default 'once'/.test(s62) && /plan_mode text not null default 'once'/.test(s62), 'schema §62: both modes default to once');
+  ok(!/\b(?:4900|9900|59900)\b/.test(s62.replace(/^\s*--.*$/gm, '').replace(/coalesce\(s\.pass_paise, 4900\)/, '')), 'schema §62 hard-codes no price (the subscription takes the server\'s)');
 }
 
 console.log(`${fail ? '✗' : '✓'} billing: ${pass} passed, ${fail} failed`);

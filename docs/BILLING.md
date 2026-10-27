@@ -1503,3 +1503,203 @@ pages that show and take a dollar price are PRICING-CLIENT's.
    It answers `price_notice('USD')`, which should now say
    `charged_currency: 'USD'`. Make one USD test-mode purchase and one refund
    before taking a live dollar payment.
+
+## 25. The launch week pass (schema §61, 27 Oct 2026). NOT YET RUN LIVE.
+
+The owner's decision: the public free trial is retired, and in its place a
+**launch offer** — a short paid pass of the whole studio (₹49 for 7 days
+today), once per person, with a real deadline and an optional real cap. The
+yearly plans do not change. `supabase/schema/schema-61-week-pass.sql`; checks
+in `scripts/schema-tests/week-pass.sql` (`npm run test:schema`).
+
+- **Not a new tier.** The pass is period `'pass'` on the plan
+  `billing_settings.pass_plan` names (`pro`), priced from
+  `billing_settings.pass_paise` and lasting `pass_days`. Six columns:
+  `pass_enabled` (default **false**), `pass_paise` (4900, ≥ 100),
+  `pass_days` (7, 1–31), `pass_plan` (`pro`, FK plans), `pass_ends_at`
+  (null = no deadline, no timer), `pass_cap` (null = no cap).
+- **One predicate.** `pass_open()` = enabled, before `pass_ends_at`, and
+  `pass_sold()` (paid, not refunded, period `pass`) under `pass_cap`.
+- **The public read.** `trial_offer()` and `price_notice(text)` (anon) both
+  carry `pass: {open, amount_paise, days, plan, ends_at, cap, left, now}`;
+  `left` is `cap − sold` (never below 0, null without a cap) and `now` is the
+  server clock the countdown runs on (`src/lib/pass-offer.js`). Switched off
+  it says `open: false` with the amount and days, which the client reads as no
+  offer. `billing_status()` gains `plan_period`, `pass_active`, `pass_used`.
+- **Buying.** `rzp-order` takes `period: 'pass'` (the plan in the body is
+  ignored). `create_pending_payment(…, 'pass')` refuses a promo code (hint
+  `code`), then `quote_pass(user, account, currency)` refuses with SQLSTATE
+  22023, the sentence as the message and the reason as the HINT:
+  `disabled` (switched off), `closed` (deadline passed, or the cap reached —
+  counted under `pg_advisory_xact_lock`, §54's pattern), `inr_only` (rupees
+  only, whatever `usd_checkout` says), `used` (a paid OR refunded pass
+  already — once per person), `has_plan` (a current plan that is not a pass,
+  grants included). `rzp-order` answers **400 `{ error: <sentence>, reason:
+  <hint> }`** (403 for a 42501), and since §61 every refusal carries
+  `reason`, the year's too (`currency`, `currency_closed`, `same_plan`,
+  `downgrade`, a promo reason).
+- **Activating.** `activate_payment` applies `apply_plan(acc, plan, 'pass',
+  pass_days)`; the payment's `starts_at`/`ends_at` are the week; it still
+  writes `studio_members`, so the site gate admits the buyer. A pass that was
+  already PAID when the cap filled is still activated. A pass ordered, then
+  overtaken by a yearly plan bought before it was paid, is refused at
+  `payment_can_activate` (`has_plan`, so `rzp-verify` does not capture and
+  Razorpay releases the hold) and, if captured anyway, recorded unapplied
+  with `unapplied_reason = 'has_plan'` and refundable.
+- **A year over a running pass.** `quote_for` and `activate_payment` treat a
+  running pass as no plan: no downgrade refusal, no upgrade credit, no
+  stacking. The year is priced in full, starts now and replaces the pass
+  (Pro after a Pro pass is 365 days, not 372). `paid_credit_minor` counts only
+  `'year'`, so no credit can come from a pass by any route.
+- **Refunds.** The ordinary three cases. `mark_payment_refunded` takes the
+  week off while the account is still on that pass (a year bought over it is
+  left whole); the §34 refund trial is NOT given for a pass; a refunded pass
+  still counts as used.
+- **Kept out.** `paid_buyers()` (founding seats and the price rise) and the
+  referral payout ignore passes.
+- **The trial.** While `pass_enabled`, `start_trial()` refuses a pressed
+  (`signup`) trial with `{started: false, reason: 'pass'}`. Code trials,
+  administrator trials and refund trials are unchanged. **Do not set
+  `trial_enabled = false`:** `trial_active()` reads it for every trial row,
+  and the §30 grandfathered members are a year of `admin` trial — they would
+  be walled at once.
+- **E-mails.** `invoices.period` (copied by §57's trigger) and the refund
+  claim's `period`/`starts_at`/`ends_at` let `_shared/mail.js` say
+  "Pro, 7-day pass (until 3 November 2026)" and "a refunded pass does not come
+  with a free trial", with the length and date read from the row. A year's
+  receipt now prints its `valid_until` (it read `ends_at`, which an invoice
+  does not have, so the date never printed).
+- **The console.** `admin_pass_status()` → `{enabled, paise, days, plan,
+  ends_at, cap, sold, left, open}` and `admin_set_pass(enabled, paise, days,
+  plan, ends_at, cap)` → the same shape; owner or finance (`require_role`),
+  audited as `set_pass`. A null enabled/price/days/plan keeps the current
+  value; a null deadline or cap clears it. Refused: under 100 paise, outside
+  1–31 days, a plan that is not a paid plan on sale, a cap under 1, and
+  turning it ON with a deadline already past. A price change applies to new
+  orders only.
+- **Funnel.** `events` and `funnel_event_names()` learn `pass_buy`
+  (`admin_funnel` lists eleven steps). Re-running §58 after §61 would drop it;
+  re-run §61 after any re-run of §58 (and of §56, §57 or §60, which it restates).
+
+**Owner steps** are `docs/LIVE-STEPS-2026-10-27.md`: §58–§61 with checksums,
+redeploy `rzp-order`, `rzp-verify` and `rzp-webhook` (the shared `razorpay.js`
+and `mail.js` changed; `rzp-refund` imports `razorpay.js` too, so deploy all
+four), Resend before ANY real payment, then the pass in the console.
+
+## 26. Auto-renew: Razorpay Subscriptions, chosen per product (schema §62, 27 Oct 2026). NOT YET RUN LIVE.
+
+The owner's decision of 27 Oct 2026 reverses §18 ("no subscription model")
+and §52 ("no mandate"), but ONLY AS AN OPTION. In the console, the week pass
+and the yearly plans each have a mode: **one-time** or **auto-renew**
+(`billing_settings.pass_mode` / `plan_mode`). Both are `'once'` by default,
+and in `'once'` nothing changes: rzp-order, the receipts and every page work
+as §61 left them. A mode change applies to NEW purchases only.
+
+**Before setting either mode to auto-renew:**
+1. Ask Razorpay to enable **Subscriptions** on the account, with **UPI
+   Autopay** and **card e-mandate** (this needs KYC and can take days). Until
+   it is enabled, `POST /v1/plans` and `/v1/subscriptions` fail, and
+   rzp-subscribe answers 502 "Razorpay did not create the plan" (nothing is
+   charged).
+2. In Razorpay, Settings, Webhooks, add these events to the existing webhook
+   (the same URL and secret): `subscription.authenticated`,
+   `subscription.activated`, `subscription.charged`, `subscription.pending`,
+   `subscription.halted`, `subscription.cancelled`, `subscription.completed`
+   (and `subscription.paused` / `resumed` if offered).
+3. Run §62 (checksum in `docs/LIVE-STEPS-2026-10-27.md`). Then deploy the two
+   new functions and redeploy the four existing ones with the CLI:
+   `npx --yes supabase@latest functions deploy rzp-subscribe rzp-cancel rzp-order rzp-verify rzp-webhook rzp-refund --project-ref conhlrulxfwkhsnymakz`.
+   `rzp-subscribe` and `rzp-cancel` verify the JWT, like rzp-order. Probe
+   both: each answers 401 without a JWT.
+4. Set up Resend (§13, §16) first. The charge receipt and the cancellation
+   confirmation are sent through it.
+
+**RBI e-mandate rules (handled by Razorpay, not by us):**
+- **Additional Factor of Authentication (AFA) once, at sign-up.** The
+  buyer's first Checkout authenticates the mandate. We set no `start_at`, so
+  that authentication takes the first charge at the plan's own amount and
+  access starts at once.
+- **Pre-debit notice.** Razorpay notifies the customer at least 24 hours
+  before each recurring debit (`customer_notify: 1` on the subscription).
+  `_shared/mail.js` `renewalReminderMail()` is the builder for an extra
+  reminder of our own. Nothing sends it yet; a scheduled sender is an
+  optional owner step.
+- **Up to ₹15,000 per debit with no OTP.** Every price here is under it, so
+  renewals go through without the buyer. Above it, each debit would need the
+  customer's authentication.
+
+**How it works:**
+- **One Razorpay plan per price.** `(product, period, days, amount,
+  currency)` maps to one plan, made lazily by rzp-subscribe and cached in
+  `rzp_plans`. A pass is `period: 'daily', interval: <pass days>`. A year is
+  `period: 'yearly', interval: 1`. `total_count` is `MAX_YEARS` (10) of
+  cycles (`_shared/razorpay.js`). Razorpay plans cannot be edited, so this
+  is the **price lock**: a console price change makes a new plan for new
+  subscribers. A running subscription keeps its `amount_minor`, `days`,
+  `plan_id` and `rzp_plan_id`. `apply_subscription_charge` refuses any other
+  amount (22023 `amount`).
+- **One payments row per charge.** Its `subscription_id` and
+  `razorpay_subscription_id` are set and its `razorpay_order_id` is null. It
+  is made idempotent on `razorpay_payment_id`, and inserted `created` and then
+  moved to `paid`, so the invoice, referral and refund-trial triggers run as
+  for an order. A refund (`rzp-refund`, by payment) takes off that charge's
+  own days only and does not cancel the subscription.
+- **Stacking.** A yearly charge stacks a year from `plan_until` (as §52). A
+  renewing pass charge stacks its days from `plan_until`. This is a
+  deliberate change for subscription charges only; a one-time pass still never
+  stacks.
+- **The pass's limits.** Only the FIRST charge of a pass subscription counts
+  in `pass_sold()` (the cap). The deadline and the cap refuse NEW pass
+  subscriptions (`closed`), and existing ones keep renewing. Founding seats
+  (`paid_buyers`), the referral payout and the §34 refund trial still exclude
+  every pass row.
+- **Refusals** (`create_pending_subscription`, 400 `{error, reason}` from
+  rzp-subscribe):
+  - `renew_off`: the mode is `once`.
+  - `subscribed`: a live subscription already exists. A checkout left
+    half-done stops counting after 2 hours.
+  - For a pass: quote_pass's `disabled | closed | inr_only | used | has_plan`.
+  - For a year: quote_for's `currency | currency_closed | same_plan |
+    downgrade`, plus **`upgrade`**. A lower plan's year that is still running
+    cannot be credited into a fixed subscription amount, so an upgrade stays
+    a one-time, credited rzp-order purchase. Auto-pay on the SAME plan is
+    allowed, and its first charge stacks onto the year.
+- **Charges that buy nothing.** These are recorded paid with
+  `plan_applied = false`, so they can be refunded:
+  - a charge after the subscription was cancelled or completed
+    (`unapplied_reason 'cancelled'`);
+  - a pass charge over a yearly plan (`has_plan`);
+  - a yearly charge for a plan lower than a running one (`has_plan`).
+- **Cancel anytime.** `rzp-cancel` marks `cancel_at_period_end` as the
+  caller:
+  - `{}` cancels the caller's own subscription;
+  - `{subscription_id}` is the console's cancel (owner or finance, audited).
+
+  It then asks Razorpay to cancel at the end of the cycle. If Razorpay does
+  not confirm, the mark is undone and the buyer is told auto-pay is still on.
+  Paid time is never taken back, and a cancel refunds nothing (the three
+  refund exceptions still apply to each charge).
+
+**Edge shapes:**
+- `rzp-subscribe` (JWT) `POST {product: 'pass'|<plan id>, account_id?, currency: 'INR'}` →
+  200 `{subscription_id, key, amount, currency, description, period, days,
+  subscription_row_id, product, plan_name, prefill}`. Checkout opens with
+  `{key, subscription_id, recurring: true, description}`.
+- `rzp-verify` (JWT) `POST {razorpay_payment_id, razorpay_subscription_id, razorpay_signature}`.
+  The signature is `HMAC(payment_id|subscription_id, KEY_SECRET)`. Nothing is
+  captured. It answers 200 `{ok: true, pending: true}`, or, when the payment
+  is already captured at the locked amount and was applied here, 200
+  `{ok: true, pending: false, plan, ends_at, account_id, already}`. A bad
+  signature gives 400, another person's subscription 403.
+- `rzp-cancel` (JWT) `POST {}` or `{subscription_id}` → 200 `{ok: true,
+  current_end, already}`; 400 `{reason: 'none'}` when there is nothing to
+  cancel; 403 when the caller is not an admin; 502 when Razorpay did not
+  confirm.
+- `rzp-webhook`:
+  - `subscription.charged`, and a `payment.captured` that carries a
+    `subscription_id`, go to `apply_subscription_charge` and then the charge
+    receipt ("Renews on <date> at <amount>. Cancel anytime in Settings →
+    Plan.").
+  - Every `subscription.*` event goes to `mark_subscription_status`, which
+    never undoes a terminal status.
+  - `x-razorpay-event-id` is logged.

@@ -23,7 +23,11 @@
    - a price. A rupee figure is not durable, because the launch
      prices are scheduled to rise and a post is forever. "Less than a
      cup of tea a day" holds at every tier before and after the rise
-     (the dearest is about ₹5.48 a day), and nothing renews by itself.
+     (the dearest is about ₹5.48 a day).
+   - whether a purchase renews. That is the owner's console setting
+     (schema §62, one-time or auto-renew per product) and can change on
+     any day, so a poster says neither; the caption carries
+     {PLAN_TERMS} / {PASS_TERMS}, read from the console that day.
    - any testimonial or user count. testimonials.json is empty by
      design and inventing social proof is both prohibited here and
      trivially disproved.
@@ -67,13 +71,26 @@ const BRAND = J('src/data/brand.json');
 
 /* ---- THE FACTS, COUNTED — never typed ---------------------- */
 const nav = J('src/data/navigation.json');
+/* SWITCHED-OFF MODULES ARE NOT FEATURES (26 Oct 2026). A module whose
+   `plans` is [] in plan-matrix.json is hidden on every plan
+   (isDisabledEverywhere()), so a poster that names it, or counts it, is
+   advertising something nobody can open. The glossary, the dissected
+   feature and the lookbook all sat on these posters after they were
+   switched off, and the guided-steps count named blueprints whose stage
+   guides are retired (CLAUDE.md items 27 and 36). OFF is read, never
+   listed, and cite() below refuses an off module. */
+const OFF = new Set(J('src/data/plan-matrix.json').features
+  .filter((f) => f.kind === 'module' && Array.isArray(f.plans) && f.plans.length === 0)
+  .map((f) => f.key));
 const F = {
   stages: nav.phases.length,
-  modules: nav.phases.reduce((n, p) => n + (p.modules || []).length, 0),
-  shortSteps: J('src/data/steps.short.json').steps.length,
-  featureSteps: (() => { const f = J('src/data/steps.feature.json'); return f.vol1.length + f.vol2.length; })(),
-  terms: J('src/data/glossary.json').terms.length,
   films: J('src/data/films.json').length,
+  /* Only rows the overlay marks 'checked' were read off a Chennai
+     vendor's page on a stated date; every other line prints as the
+     2024-25 card, "indicative". Counted, so a poster never says "every
+     figure is sourced" (it was not true: review round 2). */
+  checkedRates: J('src/data/rates.chennai.checks.json').rows.filter((r) => r.confidence === 'checked').length,
+  rules: (() => { const r = J('src/data/rules.json'); return Array.isArray(r) ? r.length : NaN; })(),
   stageNames: nav.phases.map((p) => p.name || p.id)
 };
 /* THE GUARD HAS TO REJECT A NON-NUMBER, NOT JUST A BAD NUMBER.
@@ -141,15 +158,23 @@ const footer = (y = H - 70) => text(80, y, BRAND.host, { size: 34, weight: 700, 
 
 /* ============ 1 — the announcement ========================== */
 const p1 = frame(`
-  ${text(80, 150, 'LAUNCHING SOON', { size: 30, weight: 800, fill: C.brand, spacing: 7 })}
+  ${text(80, 150, 'NOW OPEN', { size: 30, weight: 800, fill: C.brand, spacing: 7 })}
   ${clapper(540, 400, 0.78)}
   ${text(80, 700, 'You have never', { size: 94, weight: 800 })}
   ${text(80, 790, 'made a film.', { size: 94, weight: 800 })}
-  ${text(80, 892, 'Start one tonight.', { size: 94, weight: 800, fill: C.brand })}
+  ${text(80, 892, 'Here is the desk.', { size: 94, weight: 800, fill: C.brand })}
   ${text(80, 985, esc(BRAND.tagline) + ' — all from one desk.', { size: 38, weight: 500, fill: BODY })}
-  ${text(80, 1046, `${F.shortSteps} steps from the idea in your head`, { size: 38, weight: 500, fill: BODY })}
-  ${text(80, 1100, 'to a short film that is ready to submit.', { size: 38, weight: 500, fill: BODY })}
-  ${text(80, 1192, 'Invite-only at launch.', { size: 32, weight: 700, fill: MUTED })}
+  ${text(80, 1046, 'Story, screenplay, breakdown, schedule,', { size: 38, weight: 500, fill: BODY })}
+  ${text(80, 1100, 'budget and call sheets, in your browser.', { size: 38, weight: 500, fill: BODY })}
+  ${/* NO FREE TRIAL, NO PASS FIGURE and no "invite-only". The public free
+       trial is retired (27 Oct 2026); the launch pass that replaced it has a
+       price, a length and a deadline that are console settings and END, and
+       a poster is forever, so the poster names none of them (the caption
+       carries {PASS_PRICE} / {PASS_LENGTH} / {PASS_ENDS}, read that day).
+       "A year of the studio" and "less than a tea a day" are true of every
+       plan, before and after the founding-price rise, and in either
+       renewal mode. */ ''}
+  ${text(80, 1192, 'A year of the studio · Less than a tea a day.', { size: 32, weight: 700, fill: MUTED })}
   ${footer()}`);
 
 /* ============ 2 — what it is ================================ */
@@ -165,11 +190,11 @@ const p2 = frame(`
   ${text(80, 150, 'WHAT IT IS', { size: 30, weight: 800, fill: C.brand, spacing: 7 })}
   ${text(80, 268, 'One desk, from', { size: 86, weight: 800 })}
   ${text(80, 356, 'idea to delivery.', { size: 86, weight: 800, fill: C.brand })}
-  ${text(80, 432, `${F.stages} stages. ${F.modules} tools. No installing anything.`, { size: 36, weight: 500, fill: BODY })}
+  ${text(80, 432, `${F.stages} stages. No installing anything.`, { size: 36, weight: 500, fill: BODY })}
   ${TITLES.slice(0, F.stages).map((n, i) => stageRow(i, n)).join('')}
   ${text(80, 1098, 'Write the script. Break it down. Schedule the', { size: 34, weight: 500, fill: BODY })}
   ${text(80, 1148, 'shoot. Budget it. Print call sheets. Run the set.', { size: 34, weight: 500, fill: BODY })}
-  ${text(80, 1222, 'Works offline. Your work stays in your browser.', { size: 32, weight: 700, fill: MUTED })}
+  ${text(80, 1222, 'Works offline. Your work lives in your browser first.', { size: 32, weight: 700, fill: MUTED })}
   ${footer()}`);
 
 /* ============ 3 — what you actually get ===================== */
@@ -191,20 +216,20 @@ const p3 = frame(`
   ${text(80, 272, 'Not a course', { size: 86, weight: 800 })}
   ${text(80, 360, 'to watch.', { size: 86, weight: 800 })}
   ${text(80, 446, 'A desk that walks you through it.', { size: 38, weight: 500, fill: BODY })}
-  ${block(0, `${F.shortSteps} + ${F.featureSteps} guided steps`, [
-    'Each explains the craft, shows a worked example,',
-    'asks you the questions, checks what you wrote.'
+  ${block(0, 'Script to call sheet', [
+    'Import the screenplay once. The breakdown, the',
+    'stripboard and the call sheet read the same scenes.'
   ])}
-  ${block(1, `${F.terms} terms in plain words`, [
-    'And a real feature taken apart beside you, so you can',
-    'see what the finished thing is supposed to look like.'
+  ${block(1, `${F.films} films to study`, [
+    `Directors, ${F.rules} rules of thumb with the reasons, and`,
+    'craft notes on story beats, open while you work.'
   ])}
   ${block(2, 'Made for Chennai', [
-    'Rates, crew terms, CBFC rules and festival deadlines',
-    'for films shot here. Tamil dialogue, English slugs.'
+    'A Chennai rate card to start from, CBFC checklists and',
+    'festival deadlines. Tamil dialogue, English slugs.'
   ])}
   ${text(80, 1148, 'A year for less than a tea a day.', { size: 50, weight: 800 })}
-  ${text(80, 1204, 'Nothing to install. Your work stays in your browser.', { size: 30, weight: 500, fill: MUTED })}
+  ${text(80, 1204, 'Nothing to install. Your work lives in your browser first.', { size: 30, weight: 500, fill: MUTED })}
   ${footer(1278)}`);
 
 /* ============ the profile picture ==========================
@@ -319,6 +344,7 @@ for (const ph of nav.phases) for (const m of (ph.modules || [])) moduleBy[m.id] 
 const cite = (id) => {
   const m = moduleBy[id];
   if (!m) throw new Error(`poster cites module "${id}", which is not in navigation.json`);
+  if (OFF.has(id)) throw new Error(`poster cites module "${id}", which is switched off on every plan (plans: [] in plan-matrix.json)`);
   return m;
 };
 
@@ -328,8 +354,8 @@ const FEATURES = [
     rows: ['Beats and pacing', 'Logline and synopsis', 'Story bible: character, conflict, stakes'] },
 
   { phase: 'story', cites: ['idea-vault'], title: ['Everything you', 'saved, in one place.'],
-    lede: ['The links, the pictures, the half-thoughts.', 'Clip them while you browse; find them later.'],
-    rows: ['Idea Vault', 'A browser side-panel clipper', 'Kept with the film, not in ten tabs'] },
+    lede: ['Every thought, line and half-idea,', 'on sticky notes kept with the film.'],
+    rows: ['Idea Vault', 'Pin a note to a beat or a scene', 'Kept with the film, not in ten tabs'] },
 
   { phase: 'screenplay', cites: ['screenplay'], title: ['Just write.', 'The format is', 'handled.'],
     lede: ['Slug lines, action, character, dialogue —', 'the layout is done for you as you type.'],
@@ -355,13 +381,13 @@ const FEATURES = [
     lede: ['The cast matrix shows which character is in', 'which scene, and who shares the most.'],
     rows: ['Screen time worked out from the pages', 'Scene list, in order, day or night', 'Page count and runtime that agree'] },
 
-  { phase: 'preprod', cites: ['shot-list', 'storyboard', 'lookbook'], title: ['See it before', 'you shoot it.'],
-    lede: ['Plan the shots, draw the frames, collect the', 'look — all against the scene they belong to.'],
-    rows: ['Shot list: how close, how it moves', 'Storyboard: a frame per shot', 'Lookbook: costume, set, colour, light'] },
+  { phase: 'preprod', cites: ['shot-list', 'storyboard'], title: ['See it before', 'you shoot it.'],
+    lede: ['Plan the shots and draw the frames, each', 'against the scene it belongs to.'],
+    rows: ['Shot list: how close, how it moves', 'Storyboard: a frame per shot', 'Reorder, print, export the list'] },
 
   { phase: 'preprod', cites: ['budget'], title: ['What it costs,', 'line by line.'],
-    lede: ['Starts from Chennai rates instead of a blank', 'page, and every figure shows its source.'],
-    rows: ['Crew, cast, equipment, locations, post', 'Sourced rates with the date they were checked', 'No invented numbers, no inflation guesses'] },
+    lede: ['Starts from the Chennai 2024-25 rate card,', 'each line marked indicative, not a blank page.'],
+    rows: ['Crew, cast, equipment, locations, post', `${F.checkedRates} figures re-checked and dated`, 'No invented numbers, no inflation guesses'] },
 
   { phase: 'preprod', cites: ['stripboard', 'dood', 'calendar'], title: ['Scenes into', 'shoot days.'],
     lede: ['Drag the strips into the order you will', 'actually shoot, and the rest follows.'],
@@ -381,10 +407,10 @@ const FEATURES = [
 ];
 
 const LIBRARY_POSTER = {
-  phase: 'story', hueOverride: 'library', title: ['Read a film.', 'Then take', 'one apart.'],
+  phase: 'story', hueOverride: 'library', title: ['Read a film.', 'Then write', 'your own.'],
   eyebrowOverride: 'THE LIBRARY',
   lede: ['The reference shelf, open from every page', 'of the studio while you work.'],
-  rows: [`${F.terms} terms in plain words`, `${F.films} films worth studying`, 'A real feature, dissected scene by scene', 'Fifty rules of thumb, with the reasons'] };
+  rows: [`${F.films} films worth studying`, 'The directors behind them', `${F.rules} rules of thumb, with the reasons`, 'Craft notes: emotional impact, story beats'] };
 
 function featurePoster(spec) {
   spec.cites?.forEach(cite);
@@ -405,7 +431,7 @@ function featurePoster(spec) {
   return frame(`
     ${text(80, 150, eyebrow, { size: 30, weight: 800, fill: hue, spacing: 7 })}
     ${titleSvg}${ledeSvg}${rowsSvg}
-    ${text(80, 1206, 'Works offline · Nothing renews by itself · Nothing to install', { size: 30, weight: 600, fill: MUTED })}
+    ${text(80, 1206, 'Works offline · Saved in your browser · Nothing to install', { size: 30, weight: 600, fill: MUTED })}
     ${footer(1278)}`);
 }
 

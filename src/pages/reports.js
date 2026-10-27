@@ -36,6 +36,7 @@ import { h, delegate } from '../lib/dom.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import { pageHeader, statStrip, statCard, button } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
+import { brandPrint } from '../ui/footer.js';   // CORE: the "Made with" line on a plain print
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
@@ -385,8 +386,10 @@ function refreshSides() {
 function printOnly(cls) {
   const body = document.body;
   body.classList.add(cls);
+  const unbrand = brandPrint();
   const clear = () => {
     body.classList.remove(cls);
+    unbrand();
     window.removeEventListener('afterprint', clear);
   };
   window.addEventListener('afterprint', clear);

@@ -51,24 +51,34 @@ import { trialRefusal, trialOfferFrom } from '../lib/invite-model.js';
 import { errorSentence } from '../lib/gate.js';
 import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
-import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
+import { priceNotice as publicPriceNotice, countPlanViewInApp } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
 import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay, perDayIn } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
-  linkCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus
+  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus, passHeading
 } from '../lib/purchase-model.js';
+import { clearAttribRef } from '../lib/attribution.js';
+/* THE LAUNCH PASS (§61): a card above the yearly ones while it is on
+   sale and this account may buy it. Every figure is the server's
+   (trial_offer().pass through billing.js passOffer(); pass-view.js). */
+import { passPhase, passFacts, mayBuyPass, passCta, onPass } from '../lib/pass-view.js';
+import { stashPlan } from '../lib/start-model.js';
+import { bindPassTimers, passClock } from '../lib/plan-gate.js';
+import { wantedPlan } from '../lib/purchase-model.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
 
 /* A referral link (growth-panels.js referralLink) opens this page as
-   /purchase?ref=REF-XXXXXX. The code is read from the address and held in
-   memory for this visit only — nothing is stored, so it survives neither a
-   reload nor the Google round trip, which is why the signed-out line below
-   says what to do rather than promising it is remembered. `code` is accepted
-   too, for a link somebody typed by hand. Same shape the server accepts. */
-const LINK_CODE = linkCode(location.search);
+   /purchase?ref=REF-XXXXXX, and any public page's ?ref= (an ad, an
+   affiliate's link) is held for the TAB by attribution.js — sessionStorage,
+   no localStorage key — so the code survives the Google round trip and a
+   reload, and is put in the "Have a code?" box once signed in. `code` is
+   accepted in this page's own address too, for a link typed by hand. Same
+   shape the server accepts. The visitor can clear the box, and clearing
+   it forgets the held code (below), so it does not come back. */
+const LINK_CODE = visitCode(location);
 let linkCodeApplied = false;
 
 /* Put the linked code in the "Have a code?" box and press APPLY — through
@@ -92,6 +102,55 @@ function applyLinkCode() {
 }
 
 let billing = { plans: null, st: null, error: '', missing: false, loading: false };
+
+/* ---- the launch pass ------------------------------------------------- */
+let passOfferNow = null;   // { raw, readAt } | null — null shows no pass at all
+const pass = { busy: false, msg: '', bad: false };
+function loadPass(fresh = false) {
+  Billing.passOffer({ fresh }).then((o) => {
+    const had = JSON.stringify(passOfferNow && passOfferNow.raw);
+    passOfferNow = o;
+    if (JSON.stringify(o && o.raw) !== had) render();
+  }).catch(() => {});
+}
+/** The pass card, or null: only while it is on sale ('open') and, signed
+ *  in, only for an account that may buy it (never had one, no yearly
+ *  plan). Signed out it begins with Google and holds the intent. */
+function passCard(st, signedIn) {
+  if (passPhase(passOfferNow) !== 'open') return null;
+  if (signedIn && !mayBuyPass(st)) return null;
+  const f = passFacts(passOfferNow);
+  if (!f) return null;
+  const wanted = wantedPlan(location.search) === 'pass';
+  const card = h('section#pass.pu-pass' + (wanted ? '.is-wanted' : ''), { 'aria-labelledby': 'puPassH' }, [
+    h('p.bd-eyebrow', { text: 'Launch offer' }),
+    h('h3.pu-h3', { id: 'puPassH', text: 'The whole studio for ' + f.price + ', ' + f.length + '.' }),
+    h('p.pu-pass-p', { text: 'Every stage, on your own films, for ' + f.length + '. Once per account, paid once in Indian rupees through Razorpay; nothing renews, and it is not taken off a yearly plan. When the ' + f.length + ' end, choose a yearly plan below, or don’t: your work stays.' }),
+    passClock(),
+    h('div.pu-actions', {}, [signedIn
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'OPENING…' : passCta(f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(f) })]),
+    pass.msg ? h('p.pl-status' + (pass.bad ? '.gt-error' : ''), { role: pass.bad ? 'alert' : 'status', text: pass.msg }) : null
+  ]);
+  return card;
+}
+async function buyPassHere(btn) {
+  if (pass.busy) return;
+  pass.busy = true; pass.msg = ''; pass.bad = false;
+  render();
+  try {
+    await Billing.buyPass({ accountId: billing.st && billing.st.account_id, onStatus: (t) => { pass.msg = t; render(); } });
+    pass.msg = 'Your pass is on. The whole studio is open.'; pass.bad = false;
+    refreshInvoices();
+  } catch (e) {
+    pass.msg = (e && e.message) || 'The pass could not be bought just now. Please try again.';
+    pass.bad = !(e && e.code === 'dismissed');
+    if (e && (e.hint === 'closed' || e.code === 'closed')) loadPass(true);
+  } finally {
+    pass.busy = false;
+    refreshBilling();
+  }
+}
 
 /* ---- the currency ---------------------------------------------------- */
 const wantCurrency = () => pricingCurrency({ override: readPayCurrency(), chosen: chosenRegion(), guess: guessVisitorRegion() });
@@ -264,6 +323,7 @@ const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD
 function planSection() {
   const c = cloud();
   const signedIn = !!(c && c.getSession && c.getSession());
+  if (signedIn) countPlanViewInApp();   // once per tab (bumpOnce); a counter, never a gate
   if (!c || !c.isConfigured()) {
     const sec = section('plan', 'Plan', 'No cloud, no plan.', deck());
     sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
@@ -276,6 +336,7 @@ function planSection() {
     /* The prices HERE, not one page away (start.html#pricing), which
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
+    { const pc = passCard(null, false); if (pc) sec.append(pc); }
     sec.append(currencyBlock());
     sec.append(listPriceBlock(currentView()));
     /* The action straight under the prices, before the refund terms: at
@@ -287,7 +348,7 @@ function planSection() {
       h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
     ]));
     if (LINK_CODE) {
-      sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the referral code ${LINK_CODE}. Sign in, then enter it under \u201cHave a code?\u201d below the plan cards to see your discount.` }));
+      sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the code ${LINK_CODE}. Sign in and it is filled in under \u201cHave a code?\u201d below the plan cards, with what it takes off; you can clear it there.` }));
     }
     sec.append(buyTerms());
     const x1 = planExtras(null); if (x1) sec.append(x1);
@@ -312,7 +373,10 @@ function planSection() {
     sec.dataset.purchases = 'off';
     return sec;
   }
-  const buyer = !!(st && st.plan !== 'free');
+  /* A running PASS is not a plan held (quote_for treats it as none, and a
+     yearly plan replaces it from the day it is bought). */
+  const passing = onPass(st) && !(st && st.lapsed);
+  const buyer = !!(st && st.plan !== 'free') && !passing;
   const sec = h('section#plan.pu-sec');
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
 
@@ -323,8 +387,12 @@ function planSection() {
   const strip = h('div.pu-current' + (buyer ? '.is-buyer' : ''));
   const ident = h('div.pu-current-id', {}, [
     h('p.bd-eyebrow', { text: buyer ? 'Your plan' : 'Plan' }),
-    h('h2.bd-h2', { text: planHeading(st) })
+    h('h2.bd-h2', { text: passing ? passHeading(st) : planHeading(st) })
   ]);
+  if (passing) {
+    ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Pass']),
+      h('span', { text: st.plan_until ? ' The whole studio until ' + new Date(st.plan_until).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '. A yearly plan bought now starts today and replaces the pass.' : '' })]));
+  }
   if (buyer && !(st && st.lapsed)) {
     ident.append(h('p.pu-current-state', {}, [h('span.k-badge.k-badge--ok', {}, [h('span.k-badge-dot', { 'aria-hidden': 'true' }), 'Active']),
       h('span', { text: st && st.plan_until ? ' Valid until ' + new Date(st.plan_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '. Renew any time to add a year; move up and what is left of this year counts.' : ' Granted to you for good.' })]));
@@ -345,11 +413,12 @@ function planSection() {
     h('h3.pu-h3', { text: 'Plans' }),
     h('p.bd-sub', { text: deck() })
   ]));
+  { const pc = passCard(st, true); if (pc) sec.append(pc); }
   sec.append(currencyBlock());
   const view = currentView();
   const cards = planCards(billing.plans, st, {
     shop: view,
-    onBuy: (planId, period, onStatus, code, currency) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, currency: currency || orderCurrency(view) }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
+    onBuy: (planId, period, onStatus, code, currency) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render
   });
   /* the terms go straight under the row of buy buttons, above the code
@@ -397,14 +466,40 @@ function render() {
   for (const x of afterSections()) body.append(x);
   main.append(body);
   if (!commitMain(app, main, mountShell)) return;
+  if (passOfferNow && document.querySelector('[data-pass-timer]')) bindPassTimers(passOfferNow, { onEnd: render });
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[purchase] chrome', e); }
   applyLinkCode();
 }
 
 document.addEventListener('click', (e) => {
+  const bp = e.target.closest('[data-pu-action="buy-pass"]');
+  if (bp && !bp.disabled) { buyPassHere(bp); return; }
+  /* Before the Google hop: the landing page's per-tab plan stash, which
+     invite.html spends by leading with the pass (start-model.js). */
+  if (e.target.closest('[data-pu-action="pass-intent"]')) stashPlan('pass');
   const el = e.target.closest('[data-pu-action="retry"]');
   if (el) { el.disabled = true; el.textContent = 'LOADING…'; refreshBilling(); }
 });
+/* Emptying the box the link filled, or pressing its REMOVE, is a "no":
+   the held code is forgotten for the tab, so the next redraw or reload
+   does not put it back. REMOVE fires no input event (plan-cards.js only
+   resets its promo state), so it needs its own listener. */
+function forgetLinkCode() {
+  if (!LINK_CODE) return;
+  clearAttribRef();
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.has('ref') || u.searchParams.has('code')) {
+      u.searchParams.delete('ref'); u.searchParams.delete('code');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    }
+  } catch (err) { /* the address keeps it; the box stays as they left it */ }
+}
+delegate(document, 'input', '#plPromoCode', (e, el) => { if (!el.value.trim()) forgetLinkCode(); });
+/* Capture phase: plan-cards.js's own REMOVE handler redraws the box, which
+   detaches the button, and a bubbling delegate() then finds it outside the
+   document and does nothing. */
+delegate(document, 'click', '[data-plan-action="promo-clear"]', forgetLinkCode, true);
 
 Store.subscribe('billing:changed', () => refreshBilling());
 /* §32: the switch moved while the page was open (plan-gate re-reads
@@ -421,3 +516,4 @@ Store.subscribe('cloud:booted', () => refreshBilling());
 render();
 refreshBilling();
 refreshShop();
+loadPass();

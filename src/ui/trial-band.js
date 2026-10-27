@@ -29,6 +29,12 @@
    paid year (never for a grant, which has no end). In days, not seconds:
    a renewal is a decision, not a countdown. Nothing is stored.
 
+   THE LAUNCH PASS TOO (schema §61). A pass is Pro for a few days, so for
+   its whole length the block says "PASS ENDS IN 5 days · CHOOSE A YEARLY
+   PLAN" (hours on its last day), the same block the year's end uses.
+   Read from billing_status() through plan-gate (passActive, plan_until);
+   when it runs out the server's answer walls the studio, not this.
+
    THE CLOCK IS NOT THE AUTHORITY. This only renders. When the time is
    up it asks plan-gate to re-read billing_status() and the SERVER
    decides; the wall follows from that answer, not from this timer.
@@ -69,6 +75,26 @@ function paintRenew() {
     h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'RENEW — ADD A YEAR' }));
   block.hidden = false;
   block.classList.toggle('is-urgent', left <= 3);
+  return true;
+}
+
+/** For the whole of a running launch pass, the rail block says when it
+ *  ends and points at the yearly plans. True when it drew. */
+function paintPass() {
+  const block = railBlock();
+  const ends = PlanGate.passEndsAt ? PlanGate.passEndsAt() : null;
+  if (!block || !ends) return false;
+  const ms = ends.getTime() - now();
+  if (!(ms > 0)) return false;
+  const days = Math.ceil(ms / 86400000), hrs = Math.ceil(ms / 3600000);
+  block.dataset.mode = 'pass';
+  block.replaceChildren(
+    h('span.sh-rail-trial-label', { text: 'PASS ENDS IN' }),
+    h('span.sh-rail-trial-time', { text: ms >= 86400000 ? days + ' days' : ms < 3600000 ? 'under an hour' : hrs + (hrs === 1 ? ' hour' : ' hours') }),
+    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'CHOOSE A YEARLY PLAN' }));
+  block.hidden = false;
+  block.classList.toggle('is-urgent', ms <= 86400000);
+  armExpiry(ends);
   return true;
 }
 
@@ -159,7 +185,7 @@ function paint(ends) {
   const text = countdown(ms);
   const block = railBlock();
   if (block) {
-    if (block.dataset.mode === 'renew') { block.replaceChildren(); delete block.dataset.mode; }
+    if (block.dataset.mode === 'renew' || block.dataset.mode === 'pass') { block.replaceChildren(); delete block.dataset.mode; }
     fillRail(block);
     block.hidden = false;
     const chip = takeChip();
@@ -216,7 +242,7 @@ export function renderTrialBand() {
   const ends = PlanGate.trialEndsAt();
   if (!ends || ends.getTime() <= now()) {
     release();
-    if (paintRenew()) return;
+    if (paintPass() || paintRenew()) return;
     /* Time is up here but the server still said "trial" when it was
        last asked — the request raced the clock. Ask again shortly,
        once, rather than leaving the page open until the 4-minute poll. */

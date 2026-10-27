@@ -47,7 +47,7 @@ import { loadStory } from '../lib/story.js';
 import { listCallSheets } from '../lib/contacts.js';
 import { unscheduledScenes } from '../lib/locations.js';
 import data from '../data/tour.json';
-import { isDisabledEverywhere } from '../lib/plan-gate.js';
+import { isDisabledEverywhere, entitlement, currentPlan, trialEndsAt, serverNow } from '../lib/plan-gate.js';
 import '../styles/tour.css';
 
 /* The tour's place (`fms_tour_v1`) is read and written by
@@ -90,6 +90,9 @@ const projects = () => { try { return Store.listProjects() || []; } catch (e) { 
 const current = () => { try { return Store.currentProject() || null; } catch (e) { return null; } };
 
 /* ---- the checklist's facts, derived -------------------------------- */
+/* The first-week list's own horizon (its title says a week). Not a trial
+   length: that is the server's. */
+const WEEK_MS = 7 * 86400000;
 export function firstWeekFacts({ match = sampleMatch } = {}) {
   const open = current();
   const facts = { sample: !!match && projects().some((p) => match(p.title)) };
@@ -112,6 +115,31 @@ export function firstWeekFacts({ match = sampleMatch } = {}) {
   facts.scheduled = scenes.length > 0 && unscheduled < scenes.length;
   facts.callsheet = sheets.length > 0;
   facts.shot = scenes.some((s) => s && s.shotState);
+  /* "Choose a plan": the account's own state, not the film's, so it is
+     read even on the sample. plan-gate.js knows it; signed out it is
+     'unknown' and the item is not listed at all. */
+  /* TICKED only for a plan actually bought: reason 'paid' is any
+     entitled account that is not a trial or a grant, and a plan id of
+     'free' under it is an account let in without buying, which has
+     chosen nothing. LISTED for a bought plan, and for a trial that
+     ends inside this list's own week: the §30 grandfather backfill is a
+     trial too (a year long), and "Choose a plan" is not a first-week
+     task for somebody whose access runs for months. A grant, an ended
+     trial and an unknown state list nothing. */
+  let reason = 'unknown', bought = false, soon = false;
+  try {
+    reason = entitlement().reason;
+    const id = currentPlan().plan;
+    /* A LAUNCH PASS (§61) is a few paid days, not a plan chosen: the item
+       is listed for its whole length (it is a week long by design) and
+       ticks only once a yearly plan is bought. */
+    const pass = !!currentPlan().passActive;
+    bought = reason === 'paid' && !!id && id !== 'free' && !pass;
+    const ends = reason === 'trial' ? trialEndsAt() : null;
+    soon = pass || (!!ends && ends.getTime() - serverNow() <= WEEK_MS);
+  } catch (e) { reason = 'unknown'; }
+  facts.planListed = bought || soon;
+  facts.plan = bought;
   return facts;
 }
 
@@ -326,7 +354,7 @@ function renderChecklist() {
   const t = readTour();
   if (t.hideList) { if (listHost) { listHost.remove(); listHost = null; } return; }
   const facts = firstWeekFacts();
-  const items = CHECK_ITEMS;
+  const items = CHECK_ITEMS.filter((it) => it.during !== 'trial' || facts.planListed);
   const onSample = !!facts.onSample;
   const done = items.filter((it) => facts[it.id]).length;
 
@@ -394,6 +422,7 @@ export async function boot() {
     ready(draw);
     Store.subscribe('projects:changed', () => { draw(); refreshStep(); });
     Store.subscribe('current:changed', () => { draw(); refreshStep(); });
+    Store.subscribe('plan:changed', () => draw());   // the "Choose a plan" item follows the trial
     window.addEventListener('focus', draw);
   }
   const t = readTour();

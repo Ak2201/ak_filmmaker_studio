@@ -877,6 +877,7 @@ function openAcctMenu(btn) {
     row('a', { href: (settings && settings.href) || 'settings.html' }, 'settings', 'Settings'),
     purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Purchase') : null,
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
+    row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new'),
     signedIn
       ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out')
       : row('button', { type: 'button', 'data-auth-action': 'pill' }, 'login', 'Sign in')
@@ -1930,6 +1931,13 @@ function wire() {
   /* Help in the rail's foot: the shortcut sheet, which already lists the
      keys and the page's own help. */
   delegate(document, 'click', '[data-action="rail-account"]', (e, el) => openAcctMenu(el));
+  /* What's new: the same drawer the dashboard opens (src/ui/changelog.js),
+     fetched on the click so neither it nor the entries ride on any page's
+     first paint. Focus goes back to the avatar, since the menu closes. */
+  delegate(document, 'click', '[data-action="rail-whatsnew"]', () => {
+    const back = document.querySelector('#studioRail .sh-rail-account');
+    import('./changelog.js').then((m) => m.openChangelog(back), () => { /* offline: nothing opens */ });
+  });
   /* Any choice in the account menu closes it; a click elsewhere or
      Escape does too. Arrow keys move between its rows. */
   /* On WINDOW, which hears the click after every document-level handler:

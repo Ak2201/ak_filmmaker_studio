@@ -1059,3 +1059,20 @@
 .db-tp-region { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-top: var(--s4); }
 .db-tp-region-label { font-size: var(--t-small); color: var(--ink-muted); }
 .db-tp-region-note { flex-basis: 100%; margin: 0; font-size: var(--t-small); color: var(--ink-muted); max-width: var(--measure); }
+
+/* The member row (26 Oct 2026): What's new, and — for a member with a
+   referral code — the compact share (growth-panels.js referralShare). */
+.db-main > .db-member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--s3) var(--s5);
+  margin-block: var(--s4);
+}
+.db-member-news { display: flex; align-items: center; gap: var(--s2); }
+.db-member .gr-share {
+  flex: 1 1 min(28rem, 100%);
+  min-width: 0;
+  margin: 0;
+}
+.db-member .gr-share-h { margin: 0; font-size: var(--t-body, 1rem); }

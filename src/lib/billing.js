@@ -26,8 +26,9 @@
    ============================================================ */
 import Store from './store.js';
 import { BRAND } from './brand.js';
-import { bumpEvent } from './funnel.js';
 import { errorSentence } from './gate.js';
+import { bumpEvent, countTrialStart, countPassBuy, trialOffer } from './funnel.js';
+import { passNow, passFacts, passRefusal } from './pass-view.js';
 import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
@@ -148,7 +149,8 @@ async function invoke(name, body) {
   if (error) {
     // supabase-js wraps a non-2xx as FunctionsHttpError with the Response on `context`.
     let detail = '';
-    try { const j = await error.context?.json?.(); detail = (j && j.error) || ''; } catch (e) { /* no body */ }
+    let hint = '';
+    try { const j = await error.context?.json?.(); detail = (j && j.error) || ''; hint = (j && typeof j.reason === 'string' && j.reason) || (j && typeof j.hint === 'string' && j.hint) || ''; } catch (e) { /* no body */ }
     /* A 401 is the session not being accepted: retrying cannot work, so
        the sentence says to sign in again rather than "try again". */
     const status = error.context && error.context.status;
@@ -156,6 +158,10 @@ async function invoke(name, body) {
       ? 'Your sign-in was not accepted. Sign out, sign in again, and then retry.'
       : 'The payment service answered with an error. Try again in a moment.';
     const err = new BillingError(detail || errorSentence(error, fallback), 'edge');
+    /* A refusal the server NAMED in `reason` (§61's pass: 'disabled' |
+       'closed' | 'inr_only' | 'used' | 'has_plan' | 'code'; a year's:
+       'currency', 'downgrade', …), for a caller that words it. */
+    err.hint = hint;
     /* Whether the SERVER said this (a sentence in the body) or nothing
        came back at all — a dropped connection, a gateway timeout. After
        a payment the two mean different things; see buy(). */
@@ -181,12 +187,19 @@ async function invoke(name, body) {
  * currency and never the amount, and sends 'USD' only once the server
  * has said dollars are charged (price-model.js orderCurrency()).
  */
-export async function buy(planId, period = 'year', { accountId = null, onStatus = () => {}, code = null, currency = 'INR' } = {}) {
+export async function buy(planId, period = 'year', { accountId = null, onStatus = () => {}, code = null, currency = 'INR', description = '' } = {}) {
   if (!paymentsConfigured()) throw new BillingError('Payments are not switched on for this studio yet.', 'notconfigured');
-  if (!PERIODS.includes(period)) throw new BillingError('Plans are bought a year at a time.', 'period');
+  /* 'pass' is named here as well as in PERIODS: the shared list gains it
+     with §61's edge functions, and this file must not refuse the pass in
+     the meantime. The server still decides (rzp-order re-checks). */
+  if (!PERIODS.includes(period) && period !== 'pass') throw new BillingError('Plans are bought a year at a time.', 'period');
+  const isPass = period === 'pass';
   bumpEvent('checkout_start');   // §29 daily count, fire-and-forget
   onStatus('Preparing your order…');
-  const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId, code: normalisePromo(code) || null, currency: currency === 'USD' ? 'USD' : 'INR' }), loadCheckout()]);
+  /* The pass takes no promo code and is sold in rupees only (quote_pass). */
+  const [order] = await Promise.all([invoke('rzp-order', isPass
+    ? { plan: planId, period, account_id: accountId, currency: 'INR' }
+    : { plan: planId, period, account_id: accountId, code: normalisePromo(code) || null, currency: currency === 'USD' ? 'USD' : 'INR' }), loadCheckout()]);
   if (!order || !order.order_id) throw new BillingError('No order came back.', 'edge');
 
   onStatus('Opening the payment form…');
@@ -211,7 +224,7 @@ export async function buy(planId, period = 'year', { accountId = null, onStatus 
          more place the old address survives. 192px square is what
          Razorpay draws it at. */
       image: `https://${BRAND.host}/icons/icon-192.png`,
-      description: `${order.plan_name || planName(planId)} · 1 year, full access${order.promo_code ? ' · code ' + order.promo_code : ''}`,
+      description: description || `${order.plan_name || planName(planId)} · 1 year, full access${order.promo_code ? ' · code ' + order.promo_code : ''}`,
       prefill: order.prefill || {},
       notes: { plan: planId, period, promo_code: order.promo_code || '' },
       ...(themeColour() ? { theme: { color: themeColour() } } : {}),
@@ -248,7 +261,7 @@ export async function buy(planId, period = 'year', { accountId = null, onStatus 
   } catch (err) {
     throw afterPayment(err, planId);
   }
-  bumpEvent('purchase');
+  if (isPass) countPassBuy(); else bumpEvent('purchase');
   Store.notify('billing:changed', result);
   // Paying grants entry: a non-member is a member now. Ask the gate again.
   try { const c = cloud(); if (c && c.runGate) await c.runGate(); } catch (e) { /* the status call will say */ }
@@ -354,7 +367,59 @@ export async function startTrial() {
   const sb = await client();
   const { data, error } = await sb.rpc('start_trial');
   if (error) throw error;
+  if (data && data.started === true) countTrialStart();   // §58 daily count, fire-and-forget
   return data || { started: false, reason: 'unknown' };
+}
+
+/* ---- the launch pass (§61) --------------------------------------
+   A paid week of the whole studio, sold as a launch offer with a real
+   end (src/lib/pass-offer.js says what "true scarcity" means here). The
+   offer is public — trial_offer().pass, anon, the same for every
+   visitor — so it is read with funnel.js's plain fetch, and a page that
+   only shows it never loads the SDK. */
+
+let _pass = null;          // { raw, readAt } | null, once asked
+let _passAsk = null;       // the in-flight read (shared, like ensureClient)
+let _passAt = 0;
+const PASS_FRESH_MS = 60000;
+/** The pass offer as { raw, readAt } — `raw` is the server's block,
+ *  `readAt` the local time it arrived (passState() measures the
+ *  countdown from the server's `now` plus the time since) — or null
+ *  when there is none to show. FAILS CLOSED: unconfigured, offline, a
+ *  database without §61, a malformed block, all null. Never throws. */
+export function passOffer({ fresh = false } = {}) {
+  if (!fresh && _passAsk) return _passAsk;
+  if (!fresh && _passAt && Date.now() - _passAt < PASS_FRESH_MS) return Promise.resolve(_pass);
+  _passAsk = trialOffer().then((t) => {
+    const raw = t && t.pass && typeof t.pass === 'object' ? t.pass : null;
+    _pass = raw && passFacts({ raw }) ? { raw, readAt: Date.now() } : null;
+    _passAt = Date.now();
+    return _pass;
+  }, () => { _pass = null; _passAt = Date.now(); return null; })
+    .finally(() => { _passAsk = null; });
+  return _passAsk;
+}
+/** The last answer passOffer() got, synchronously (null before one). */
+export const cachedPassOffer = () => _pass;
+
+/** Buy the launch pass for this account. The price, the length and the
+ *  plan are the SERVER's: the client names only the period. Refusals
+ *  arrive as a BillingError whose message is the sentence to show (the
+ *  hint words it: passRefusal()). */
+export async function buyPass({ accountId = null, onStatus = () => {} } = {}) {
+  const offer = await passOffer({ fresh: true });
+  const st = passNow(offer);
+  if (st.state !== 'open') {
+    throw new BillingError(passRefusal(st.state === 'closed' ? 'closed' : 'disabled'), st.state === 'closed' ? 'closed' : 'disabled');
+  }
+  const f = passFacts(offer);
+  try {
+    return await buy(f.plan, 'pass', { accountId, onStatus, currency: 'INR', description: f.length + ' · the whole studio' });
+  } catch (e) {
+    if (e && e.hint) e.message = passRefusal(e.hint, e.message);
+    if (e && e.hint === 'closed') _passAt = 0;   // the next read asks again
+    throw e;
+  }
 }
 
 /** price_notice() (§30.7): what every active plan costs RIGHT NOW, what
@@ -471,6 +536,25 @@ export const admin = {
   },
   /* Promo codes (section 20). The table is closed to the client; these
      two RPCs are the only way to it, and both re-check the admin role. */
+  /** §61. The launch pass as the console sees it: { enabled, paise, days,
+   *  plan, ends_at, cap, sold, left, open }. Owner and finance only. */
+  async passStatus() {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_pass_status');
+    if (error) throw error;
+    return data || null;
+  },
+  /** §61. Set the pass. A new price applies to NEW orders only; a payment
+   *  already made keeps what it paid. Resolves to the same shape. */
+  async setPass({ enabled, paise, days, plan, endsAt, cap }) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_set_pass', {
+      p_enabled: !!enabled, p_paise: paise, p_days: days, p_plan: plan || 'pro', p_ends_at: endsAt || null, p_cap: cap == null ? null : cap
+    });
+    if (error) throw error;
+    _passAt = 0;
+    return data || null;
+  },
   async listPromoCodes() {
     const sb = await client();
     const { data, error } = await sb.rpc('admin_list_promo_codes');
@@ -487,4 +571,4 @@ export const admin = {
   }
 };
 
-export default { startTrial, priceNotice, requestRefund, myRefundStatus, refundRequestsEnabled, isRefundsMissing, REFUND_CATEGORIES, listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
+export default { startTrial, passOffer, cachedPassOffer, buyPass, priceNotice, requestRefund, myRefundStatus, refundRequestsEnabled, isRefundsMissing, REFUND_CATEGORIES, listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, perDayPaise, PLAN_DAYS, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };

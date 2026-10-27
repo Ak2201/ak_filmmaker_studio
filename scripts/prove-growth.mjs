@@ -46,6 +46,20 @@
          from the server's own instant — so it only ever decreases
          across a reload. Also: the landing page fetches neither a
          supabase-* nor a studio-* chunk
+     (m) ATTRIBUTION: start.html?ref=CODE&src=insta is held for the tab
+         (sessionStorage only) and fills purchase.html's code box after a
+         simulated sign-in; clearing the box forgets it. The lead form
+         ([data-lead-form]) needs consent and posts to add_lead with the
+         link's source
+     (n) THE LAUNCH PASS (27 Oct 2026): with trial_offer().pass open the
+         band on start, pricing and a product page shows the server's
+         ₹49 and 7 days and a countdown that runs down to the server's
+         deadline; the pass CTAs and the pricing strip appear and the
+         fallbacks go; a cap shows the real count; no deadline, no timer;
+         the digits are aria-hidden and the label is to the minute; at
+         zero the band says the offer ended and then hides; closed or
+         absent, nothing of the pass is shown. The pass block is answered
+         HERE (PASS below), not by the shared fake.
 
    Run:  node scripts/prove-growth.mjs     (SKIP_BUILD=1 to reuse dist-growth)
    ============================================================ */
@@ -182,6 +196,20 @@ function priceNoticeBody() {
   };
 }
 
+/* ---- the launch pass, driven from here (27 Oct 2026) ---------------
+   trial_offer() and price_notice() gain `pass` in schema §61 (another
+   lane). This proof answers trial_offer() ITSELF while PASS.on, so the
+   shared fake is not edited: the rest of the answer is the fake's own
+   fields. ends_at and now are the SERVER's: PASS.ends is an instant this
+   run chooses, `now` is the moment the request is answered. */
+const PASS = { on: false, open: true, ends: null, cap: null, left: null, paise: 4900, days: 7 };
+/* Schema §62 (another lane) adds pass.mode and a top-level plan_mode,
+   'once' | 'renew', the owner's console choice per product. Answered here
+   the same way: undefined leaves the key out (a server before §62). */
+const MODE = { plan: undefined, pass: undefined };
+const passBlock = () => ({ open: PASS.open, amount_paise: PASS.paise, days: PASS.days, plan: 'pro', ends_at: PASS.ends,
+  cap: PASS.cap, left: PASS.left, now: new Date().toISOString(), ...(MODE.pass !== undefined ? { mode: MODE.pass } : {}) });
+
 const LEADS = [], EVENTS = [];   // §29, faked here: add_lead / bump_event
 const json200 = (r, status = 204, body = '') => r.fulfill({ status, contentType: 'application/json', body });
 let refFor = {};   // user id -> referral code my_referral() reports
@@ -197,7 +225,12 @@ async function route(r) {
   }
   if (url.pathname === '/rest/v1/rpc/price_notice') {
     noticeCalls++;
-    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(priceNoticeBody()) });
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...priceNoticeBody(), ...(PASS.on ? { pass: passBlock() } : {}) }) });
+  }
+  if (url.pathname === '/rest/v1/rpc/trial_offer' && PASS.on) {
+    const m = F.db.settings.trial_minutes || 30;
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ trial_enabled: !!F.db.settings.trial_enabled, trial_minutes: m,
+      trial_hours: Math.round(m / 60 * 100) / 100, purchase_required: F.db.settings.purchase_required !== false, trial_scope: F.db.settings.trial_scope || 'sample', pass: passBlock(), ...(MODE.plan !== undefined ? { plan_mode: MODE.plan } : {}) }) });
   }
   if (url.pathname === '/rest/v1/rpc/add_lead') {
     const a = JSON.parse(r.request().postData() || '{}');
@@ -570,6 +603,247 @@ try {
     await dp.goto(BASE + 'start.html'); await dp.waitForLoadState('networkidle'); await dp.waitForTimeout(500);
     ok(EVENTS.length === 0, 'Global Privacy Control: nothing is counted');
     await d.close();
+  }
+
+  console.log('(m) attribution: ?ref= and ?src= to the checkout, the lead form');
+  {
+    const { ctx, page, errors } = await context(browser);
+    LEADS.length = 0;
+    await page.goto(BASE + 'start.html?ref=founder50&src=Insta'); await page.waitForLoadState('networkidle');
+    ok(await page.evaluate(() => !document.querySelector('[data-trial-length], [data-trial]')), 'no free-trial slot is left on the landing page');
+    const held = await page.evaluate(() => sessionStorage.getItem('fms_attrib_session'));
+    ok(/"ref":"FOUNDER50"/.test(held || '') && /"src":"insta"/.test(held || ''), 'the code and the source are held for the tab: ' + held);
+    ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /attrib|ref|utm|lead/i.test(k))), 'and nothing of it is in localStorage');
+
+    /* THE LEAD FORM. The page draws <form data-lead-form> inside a
+       section that stays [hidden] while marketing-site.json lead.live is
+       false (the owner shows it after approving privacy.html#leads), so
+       the proof un-hides that section to exercise the real form; a page
+       without one gets the same contract drawn here, which the delegated
+       listener must handle exactly as it would the page's own. */
+    await page.evaluate(() => {
+      const real = document.querySelector('[data-lead-form]');
+      if (real) { for (let n = real; n; n = n.parentElement) n.hidden = false; return; }
+      const f = document.createElement('form');
+      f.setAttribute('data-lead-form', '');
+      f.innerHTML = '<input type="email" name="email"><label><input type="checkbox" name="consent"> Send me product news. Unsubscribe anytime.</label><button type="submit">Send</button><p data-lead-status></p>';
+      document.body.append(f);
+    });
+    const form = '[data-lead-form]';
+    await page.fill(form + ' input[name="email"]', 'lead@example.com');
+    await page.click(form + ' button[type="submit"]'); await page.waitForTimeout(400);
+    ok(LEADS.length === 0 && /tick/i.test(await page.textContent(form + ' [data-lead-status]')), 'without consent nothing is sent, and the status line says why');
+    await page.check(form + ' input[name="consent"]');
+    await page.click(form + ' button[type="submit"]');
+    await page.waitForFunction((sel) => /on the list/i.test((document.querySelector(sel + ' [data-lead-status]') || {}).textContent || ''), form, { timeout: 6000 }).catch(() => {});
+    const lead = LEADS[0] || {};
+    ok(LEADS.length === 1 && lead.p_email === 'lead@example.com' && lead.p_source === 'instagram' && /product news/i.test(lead.p_consent || ''),
+      'with consent it posts to add_lead with the address, the ticked words and the link\'s source: ' + JSON.stringify({ e: lead.p_email, s: lead.p_source }));
+    ok(await page.evaluate((sel) => { const s = document.querySelector(sel + ' [data-lead-status]'); return s.getAttribute('role') === 'status' && /on the list/i.test(s.textContent); }, form), 'the status line is role=status and says it worked');
+    ok(/start/.test(page.url()), 'the page did not navigate');
+
+    /* A SIMULATED SIGN-IN in the same tab (sessionStorage is per tab):
+       the session the Google return would leave, then purchase.html with
+       no ?ref= in its address. */
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    await page.evaluate(([k, v, uid]) => { localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid); },
+      [`sb-${REF}-auth-token`, sessionFor('tok-amy'), USERS['tok-amy'].id]);
+    await page.goto(BASE + 'purchase.html#plan');
+    const boxed = await page.waitForSelector('#plPromoCode', { timeout: 10000 }).then(() => true, () => false);
+    await page.waitForLoadState('networkidle'); await page.waitForTimeout(600);
+    ok(boxed && await page.inputValue('#plPromoCode').catch(() => '') === 'FOUNDER50', "purchase.html's code box is filled from start.html's ?ref=, after sign-in: " + JSON.stringify(await page.inputValue('#plPromoCode').catch(() => null)));
+    if (boxed) {
+      await page.fill('#plPromoCode', '');
+      ok(await page.evaluate(() => !/FOUNDER50/.test(sessionStorage.getItem('fms_attrib_session') || '')), 'clearing the box forgets the held code');
+      await page.reload(); await page.waitForSelector('#plPromoCode', { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(600);
+      ok(await page.inputValue('#plPromoCode').catch(() => '') === '', 'and a reload does not put it back');
+    } else { skip('clearing the code box: there was no box'); skip('the reload after clearing'); }
+    /* The box's own REMOVE is the other way to say no, and it fires no
+       input event: a code the fake ACCEPTS (LAUNCH10) is what draws it. */
+    await page.goto(BASE + 'start.html?ref=launch10'); await page.waitForLoadState('networkidle');
+    await page.goto(BASE + 'purchase.html#plan');
+    const removable = await page.waitForSelector('[data-plan-action="promo-clear"]', { timeout: 10000 }).then(() => true, () => false);
+    ok(removable && /LAUNCH10 applied/.test(await page.textContent('#plPromoHint').catch(() => '') || ''), 'a held code the server accepts is applied on purchase.html, with REMOVE beside it');
+    if (removable) {
+      /* A DOM click: by now the gate's own dialog (gate-ui) may be drawn
+         over the page for this faked account, and what is proved here is
+         the REMOVE listener, not the pointer path past that overlay. */
+      await page.evaluate(() => document.querySelector('[data-plan-action="promo-clear"]').click()); await page.waitForTimeout(300);
+      ok(await page.evaluate(() => !/LAUNCH10/.test(sessionStorage.getItem('fms_attrib_session') || '')), 'REMOVE forgets the held code');
+      await page.reload(); await page.waitForSelector('#plPromoCode', { timeout: 10000 }).catch(() => {}); await page.waitForLoadState('networkidle'); await page.waitForTimeout(600);
+      ok(await page.inputValue('#plPromoCode').catch(() => '') === '', 'and a reload after REMOVE leaves the box empty: ' + JSON.stringify(await page.inputValue('#plPromoCode').catch(() => null)));
+    } else { skip('REMOVE: the accepted code drew no REMOVE button'); skip('the reload after REMOVE'); }
+    allErrors.push(...errors); await ctx.close();
+  }
+
+  console.log('(n) the launch pass: the band, the countdown, the cap, the end');
+  {
+    const passView = (page) => page.evaluate(() => {
+      const band = document.getElementById('mkPass');
+      const vis = (n) => !!n && !n.closest('[hidden]') && n.getClientRects().length > 0;
+      const txt = (sel) => { const n = document.querySelector(sel); return n ? n.textContent.replace(/\s+/g, ' ').trim() : null; };
+      return {
+        found: !!band, shown: vis(band),
+        line: band ? (band.querySelector('[data-pass-live]') || {}).innerText.replace(/\s+/g, ' ').trim() : '',
+        timer: txt('#mkPass [data-pass-timer]'), spoken: txt('#mkPass [data-pass-spoken]'),
+        timerShown: vis(document.querySelector('#mkPass [data-pass-timer]')),
+        digitsHidden: (document.querySelector('#mkPass [data-pass-timer]') || {}).getAttribute?.('aria-hidden') === 'true',
+        live: !!document.querySelector('#mkPass [aria-live]'),
+        cta: txt('#mkPass [data-pass-cta]'), left: vis(document.querySelector('#mkPass [data-pass-left]')) ? txt('#mkPass [data-pass-left]') : '',
+        ended: vis(document.querySelector('#mkPass [data-pass-ended]')),
+        passOnly: [...document.querySelectorAll('[data-pass-only]')].filter(vis).length,
+        passOff: [...document.querySelectorAll('[data-pass-off]')].filter(vis).length,
+        anyPassOnly: document.querySelectorAll('[data-pass-only]').length,
+        strip: vis(document.querySelector('aside[data-pass]')),
+        stripText: txt('aside[data-pass]'),
+        body: document.body.textContent.replace(/\s+/g, ' ')
+      };
+    });
+    const secs = (t) => { const m = /(?:(\d+)d )?(\d\d):(\d\d):(\d\d)/.exec(t || ''); return m ? (+(m[1] || 0)) * 86400 + (+m[2]) * 3600 + (+m[3]) * 60 + (+m[4]) : null; };
+    const DAYS3 = 3 * 86400e3 + 4 * 3600e3 + 12 * 60e3;   // 3d 04:12:xx
+    PASS.on = true; PASS.open = true; PASS.cap = null; PASS.left = null;
+    PASS.ends = new Date(Date.now() + DAYS3).toISOString();
+    for (const [file, w] of [['start.html', 1280], ['pricing.html', 390], ['product-writing.html', 1280]]) {
+      const c = await context(browser, { width: w });
+      await c.page.goto(BASE + file); await c.page.waitForLoadState('networkidle');
+      await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
+      const a = await passView(c.page);
+      ok(a.found && a.shown, `${file} @${w}: the launch band is shown while the server says the pass is open`);
+      ok(/₹49/.test(a.line) && /7 days/.test(a.line) && /whole studio/.test(a.line), `${file}: the band says the server's ₹49 and 7 days: "${a.line.slice(0, 90)}"`);
+      ok(/^3d 04:1[12]:\d\d$/.test(a.timer || '') && a.timerShown, `${file}: a countdown to the server's deadline: "${a.timer}"`);
+      ok(a.digitsHidden && !a.live && /^3 days 4 hours 1[12] minutes$/.test(a.spoken || ''), `${file}: the digits are aria-hidden, the label is to the minute ("${a.spoken}"), and nothing is a live region`);
+      ok(a.cta === 'Try it for ₹49', `${file}: the band's button names the price: "${a.cta}"`);
+      ok(a.passOnly >= 1 && !/free trial(?! \?)/i.test(a.body.replace(/Is there a free trial\?/g, '')), `${file}: the pass copy is shown (${a.passOnly}) and no free trial is offered`);
+      await c.page.waitForTimeout(2100);
+      const b = await passView(c.page);
+      const d = secs(a.timer) - secs(b.timer);
+      ok(d >= 1 && d <= 3, `${file}: it ticks down (${a.timer} → ${b.timer})`);
+      if (file === 'pricing.html') {
+        ok(a.strip && /₹49 for 7 days, the whole studio/.test(a.stripText || ''), 'pricing.html: the pass strip above the cards: "' + (a.stripText || '').slice(0, 90) + '"');
+        ok(await c.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'pricing.html: no horizontal overflow at 390px with the band shown');
+      }
+      if (file === 'start.html') {
+        const hero = await c.page.evaluate(() => [...document.querySelectorAll('.st-hero .mk-btn')].filter((n) => !n.closest('[hidden]')).map((n) => n.textContent.trim()));
+        ok(hero.length === 1 && hero[0] === 'Try the whole studio for ₹49', 'start.html: the hero asks for the pass first: ' + JSON.stringify(hero));
+      }
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    /* a cap: the real count left */
+    PASS.cap = 500; PASS.left = 312;
+    {
+      const c = await context(browser);
+      await c.page.goto(BASE + 'product-budget.html'); await c.page.waitForLoadState('networkidle');
+      await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
+      ok((await passView(c.page)).left === '312 of 500 left', 'a cap: the band shows the real count, "312 of 500 left"');
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    PASS.left = 0;
+    {
+      const c = await context(browser);
+      await c.page.goto(BASE + 'product-budget.html'); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
+      const v = await passView(c.page);
+      ok(!v.shown && v.passOnly === 0 && v.passOff > 0, 'the cap reached: no band, no pass copy, the fallback stands');
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    /* no deadline: no timer, the pass still shows */
+    PASS.cap = null; PASS.left = null; PASS.ends = null;
+    {
+      const c = await context(browser);
+      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle');
+      await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
+      const v = await passView(c.page);
+      ok(v.shown && !v.timerShown && !/ends in/.test(v.line), 'no deadline: the band shows the pass and draws no timer: "' + v.line + '"');
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    /* the zero crossing: the band says it ended, the pass copy goes, then the band */
+    PASS.ends = new Date(Date.now() + 4000).toISOString();
+    {
+      const c = await context(browser);
+      await c.page.goto(BASE + 'pricing.html'); await c.page.waitForLoadState('networkidle');
+      const v0 = await passView(c.page);
+      ok(v0.shown && v0.strip, 'four seconds before the deadline the band and the strip are shown');
+      await c.page.waitForFunction(() => { const e = document.querySelector('#mkPass [data-pass-ended]'); return e && !e.hidden; }, null, { timeout: 9000 }).catch(() => {});
+      const v1 = await passView(c.page);
+      ok(v1.ended && v1.passOnly === 0 && !v1.strip && v1.passOff > 0, 'at zero: "The launch offer has ended", the pass copy and the strip go, the fallbacks return');
+      await c.page.waitForFunction(() => document.getElementById('mkPass').hidden, null, { timeout: 12000 }).catch(() => {});
+      ok(!(await passView(c.page)).shown, 'and then the band hides itself');
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    /* closed by the server, and no pass block at all */
+    PASS.ends = new Date(Date.now() + DAYS3).toISOString(); PASS.open = false;
+    for (const label of ['closed', 'absent']) {
+      if (label === 'absent') PASS.on = false;
+      const c = await context(browser);
+      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
+      const v = await passView(c.page);
+      ok(v.found && !v.shown && v.passOnly === 0 && v.passOff > 0, `pass ${label}: the band stays hidden, nothing of the pass is shown, the fallback stands`);
+      ok(!/₹49|7 days|free trial(?!\?)/.test(v.body.replace(/Is there a free trial\?/g, '')), `pass ${label}: no pass figure and no free trial anywhere on the page`);
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    /* purchases not required: nothing is being sold, so no pass */
+    PASS.on = true; PASS.open = true;
+    const hadReq = 'purchase_required' in F.db.settings, wasReq = F.db.settings.purchase_required;
+    F.db.settings.purchase_required = false;
+    {
+      const c = await context(browser);
+      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
+      ok(!(await passView(c.page)).shown, 'purchases not required: the band stays hidden');
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    if (hadReq) F.db.settings.purchase_required = wasReq; else delete F.db.settings.purchase_required;
+    PASS.on = false;
+  }
+
+  console.log('(o) the offer terms: one-time, auto-renew, and a server that does not say');
+  {
+    /* Whether a purchase renews is the console's (schema §62). The static
+       page says neither; marketing.js fills [data-offer-terms] through
+       offer-terms.js and shows the [data-mode-answer] that matches. A mode
+       that is missing claims nothing either way. */
+    const termsView = (page) => page.evaluate(() => {
+      const vis = (n) => !!n && !n.closest('[hidden]');
+      const t = (n) => n.textContent.replace(/\s+/g, ' ').trim();
+      const slots = (product) => [...document.querySelectorAll(`[data-offer-terms][data-offer-product="${product}"]`)].map((n) => ({ text: t(n), chip: n.dataset.offerForm === 'chip', shown: vis(n) }));
+      const answers = [...document.querySelectorAll('[data-mode-answer]')].map((n) => ({ mode: n.dataset.modeAnswer, shown: !n.hidden }));
+      const bandChip = document.querySelector('#mkPass [data-offer-wrap]');
+      return { year: slots('year'), pass: slots('pass'), answers,
+        bandChip: bandChip && vis(bandChip) ? t(bandChip).replace(/^· /, '') : '',
+        faq: (() => { const dd = document.querySelector('dd[data-mode-faq]'); if (!dd) return null; const s = [...dd.querySelectorAll('[data-mode-answer]')].find((n) => !n.hidden); return s ? s.dataset.modeAnswer + ':' + t(s).slice(0, 40) : 'none'; })(),
+        text: document.body.innerText.replace(/\s+/g, ' ') };
+    });
+    const WANT = {
+      once: { year: 'One payment · nothing renews', pass: 'One payment · nothing renews' },
+      renew: { year: 'Renews every year · cancel anytime', pass: 'Renews every 7 days · cancel anytime' },
+      missing: { year: '', pass: '' }
+    };
+    PASS.on = true; PASS.open = true; PASS.cap = null; PASS.left = null;
+    PASS.ends = new Date(Date.now() + 3 * 86400e3).toISOString();
+    for (const mode of ['once', 'renew', 'missing']) {
+      MODE.plan = MODE.pass = mode === 'missing' ? undefined : mode;
+      const w = WANT[mode];
+      for (const file of ['start.html', 'pricing.html', 'product-writing.html']) {
+        const c = await context(browser);
+        await c.page.goto(BASE + file); await c.page.waitForLoadState('networkidle');
+        await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
+        const v = await termsView(c.page);
+        const want = (slot, words) => slot.text === (words ? (slot.chip ? words : words + '.') : '');
+        ok(v.year.length > 0 && v.year.every((s) => want(s, w.year)), `${mode} ${file}: every plan terms slot (${v.year.length}) reads "${w.year || '(empty)'}": ${JSON.stringify([...new Set(v.year.map((s) => s.text))])}`);
+        ok(v.pass.length > 0 && v.pass.every((s) => want(s, w.pass)), `${mode} ${file}: every pass terms slot (${v.pass.length}) reads "${w.pass || '(empty)'}"`);
+        ok(v.bandChip === w.pass, `${mode} ${file}: the launch band's terms chip ${w.pass ? 'says "' + w.pass + '"' : 'is hidden'}: "${v.bandChip}"`);
+        ok(v.answers.every((a) => a.shown === (mode === 'missing' ? a.mode === 'neutral' : a.mode === mode)), `${mode} ${file}: only the ${mode === 'missing' ? 'neutral' : mode} mode lines are shown (${v.answers.length})`);
+        if (mode === 'renew') ok(/cancel anytime/i.test(v.text), `${mode} ${file}: the page says "cancel anytime"`);
+        else { const hit = v.text.match(/.{0,50}(cancel anytime|locked while you stay|renews every (?:year|day|\d)|until you cancel).{0,30}/i); ok(!hit, `${mode} ${file}: no auto-renew wording on the page${hit ? ': "' + hit[0] + '"' : ''}`); }
+        if (mode === 'missing') { const hit = v.text.match(/.{0,50}(nothing renews|one payment|renews).{0,30}/i); ok(!hit, `${mode} ${file}: with no mode the page claims neither${hit ? ': "' + hit[0] + '"' : ''}`); }
+        if (file === 'pricing.html') {
+          ok(v.faq && v.faq.startsWith((mode === 'missing' ? 'neutral' : mode) + ':'), `${mode} pricing.html: "Is it a subscription?" shows the ${mode === 'missing' ? 'neutral' : mode} answer: ${v.faq}`);
+          if (mode === 'renew') ok(/locked while you stay/.test(v.text), 'renew pricing.html: "Your price is locked while you stay" is shown');
+          ok(await c.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${mode} pricing.html: no horizontal overflow`);
+        }
+        allErrors.push(...c.errors); await c.ctx.close();
+      }
+    }
+    MODE.plan = MODE.pass = undefined;
+    PASS.on = false;
   }
 
   console.log('(l) the price rise: the band, the standing price, the countdown');

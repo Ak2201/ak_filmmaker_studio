@@ -47,6 +47,7 @@ import Store from '../lib/store.js';
 import { delegate } from '../lib/dom.js';
 import { BRAND, BRAND_HOST, BRAND_PATH } from '../lib/brand.js';
 import { setPort } from '../lib/ports.js';
+import { currentPlan } from '../lib/plan-gate.js';   // CORE, like this file
 import { brandingPrefOff, saveBrandingOff, tourActive } from '../lib/chrome-prefs.js';
 import '../styles/footer.css';
 
@@ -142,7 +143,9 @@ export function brandLine({ ref, className = 'made-with' } = {}) {
    and only for a signed-in member on a page that prints a branded
    document: never an extra round trip on every page of the studio.
    growth.js is imported lazily so it stays out of first paint. */
-const BRANDED_PAGES = /(^|\/)(contacts|story|feature)(\.html)?$/;
+/* Every page with a PDF export carries the line now (pdfBrandLine below),
+   so every one of them may want the code. */
+const BRANDED_PAGES = /(^|\/)(contacts|story|feature|short|screenplay|write|drafts|breakdown|stripboard|reports|visualize|deliverables|dashboard|budget|index)?(\.html)?$/;
 async function learnReferral() {
   if (refAsked || !BRANDED_PAGES.test(location.pathname)) return;
   refAsked = true;
@@ -171,6 +174,52 @@ if (typeof window !== 'undefined') {
     syncFootBrand();
     if (p && p.gated) learnReferral();
   });
+}
+
+/* ---- the line on every PDF the studio prints ------------------------
+   pdf.js stage() asks for it through the 'pdfBrandLine' port and puts it
+   at the very end of <body>, after the document, so it falls on the last
+   page; footer.css keeps it one small line on paper. The rule is the
+   plan's alone (owner, 26 Oct 2026): a plan that keeps branding prints
+   it, a plan whose features allow remove_branding (Pro) does not — the
+   Settings switch still governs only the deck, the call sheet and the
+   screening room, which carry the line of their own. One builder: the
+   same brandLine() the footer and the deck use. */
+/* The plan as plan-gate holds it NOW, not the last 'plan:changed' this
+   file heard: a Pro member exporting in the first second must not get
+   the line because an event had not arrived yet. Until a plan is known
+   it is not gated, and the line prints — erring toward the brand. */
+function planNow() {
+  try { const cp = currentPlan(); if (cp && cp.gated) return cp; } catch (e) { /* below */ }
+  return lastPlan;
+}
+export function pdfBrandLine(plan = planNow()) {
+  if (mayRemoveBranding(plan)) return null;
+  const p = brandLine({ className: 'made-with pdf-made-with' });
+  p.id = 'pdf-made-with';
+  return p;
+}
+
+/* ---- the same line on a PLAIN print ---------------------------------
+   The budget's top sheet and settlement, the budget page, the
+   stripboard's Print and the reports' one-view prints go through
+   window.print() with their own "only this prints" body class, not
+   through pdf.js stage(). They carry the same line by the same rule
+   (none on a plan that may remove it), for the length of that one
+   print: brandPrint() appends it as the last child of <body> and returns
+   the function that takes it off again (afterprint does too). footer.css
+   shows .pdf-made-plain above every page's print rule. A staged job has
+   its own already, so this adds nothing then. Call it right before
+   window.print(). */
+export function brandPrint() {
+  if (typeof document === 'undefined' || document.getElementById('pdf-made-with')) return () => {};
+  const line = pdfBrandLine();
+  if (!line) return () => {};
+  line.classList.add('pdf-made-plain');
+  document.body.append(line);
+  const off = () => { line.remove(); window.removeEventListener('afterprint', off); };
+  window.addEventListener('afterprint', off);
+  return off;
 }
 
 /* ---- Settings → Plan: the toggle and the help link ----------------- */
@@ -261,9 +310,10 @@ export function injectFooter() {
   return foot;
 }
 
-export default { injectFooter, brandLine, brandingOn, mayRemoveBranding, setBrandingOff, planExtras, whatsAppLink, whatsAppHref, SUPPORT_WHATSAPP };
+export default { injectFooter, brandLine, pdfBrandLine, brandPrint, brandingOn, mayRemoveBranding, setBrandingOff, planExtras, whatsAppLink, whatsAppHref, SUPPORT_WHATSAPP };
 
 /* The pitch deck (src/lib/pitch-deck.js) closes on this line through a
    port, so the logic layer never imports the footer. Null when the
    member turned branding off. */
 setPort('brandLine', (o = {}) => (brandingOn() ? brandLine(o) : null));
+setPort('pdfBrandLine', () => pdfBrandLine());

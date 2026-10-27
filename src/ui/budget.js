@@ -32,6 +32,7 @@ import {
 import C, { readAll as readCosts, calcHasContent, costsHasContent, projectCurrency } from '../lib/costs.js';
 import { highestLineIndex, rowSpan } from '../lib/budget-line-ids.js';
 import { ask, askDanger } from './dialog.js';
+import { brandPrint } from './footer.js';   // CORE: the "Made with" line on a plain print
 import { revealTarget } from './tabs.js';
 import { button, badge, sym } from './kit/index.js';
 
@@ -556,7 +557,7 @@ export const BUDGET_ACTIONS = {
   'add-row': () => focusNewRow(addCalcRow(1)),
   'add-5': () => focusNewRow(addCalcRow(5)),
   reset: resetCalc,
-  print: () => window.print(),
+  print: () => { const off = brandPrint(); try { window.print(); } finally { setTimeout(off, 1000); } },
   'budget-currency': async (el) => {
     const want = el && el.dataset ? el.dataset.cur : '';
     if (!want || want === cur) return;

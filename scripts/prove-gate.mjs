@@ -401,7 +401,7 @@ try {
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
     const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.querySelector('.tabs-tab-l').textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
     /* the row's label span: a row's textContent now also holds its icon's name and its count */
-    ok(tabs.join(',') === 'Overview*,Launch & health,Audit log,People,Support,Access & sharing,Purchases,Growth,Usage,Sync & storage,Controls', 'the console is eleven tabs in four groups, Overview selected: ' + tabs.join(', '));
+    ok(tabs.join(',') === 'Overview*,Launch & health,Audit log,People,Support,Access & sharing,Purchases,Growth,Testimonials,Usage,Sync & storage,Controls', 'the console is twelve tabs in four groups, Overview selected: ' + tabs.join(', '));
     ok(!!(await A.page.$('#purchases #billing')) && !!(await A.page.$('#purchases #promos')) && !!(await A.page.$('#people #giveAccess')) && !!(await A.page.$('#requests #admin-console')), 'each block sits in its tab (payments and promos under Purchases, Give access under People, the queue under Requests)');
     ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');
     await A.page.click('.tabs [data-tab="people"]');
@@ -1299,6 +1299,27 @@ try {
     st = await status();
     ok(st.pending === 0 && st.state === 'synced', '(t) back online, it flushes and reads Synced: ' + st.pending + ' / ' + st.state);
     allErrors.push(...T.errors); await T.ctx.close();
+  }
+
+  console.log('(pass) the launch pass at the door (schema §61)');
+  {
+    /* While the pass is on sale the door leads with it, not with a free
+       trial; an invite CODE still opens the studio on its own trial. */
+    F.reset();
+    Object.assign(F.db.settings, { pass_enabled: true, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: new Date(Date.now() + 86400e3).toISOString(), pass_cap: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'invite.html');
+    await page.waitForSelector('#pass [data-iv-action="buy-pass"]', { timeout: 10000 }).then(() => ok(true, 'the door leads with the pass for a signed-in stranger'), () => ok(false, 'the door leads with the pass for a signed-in stranger'));
+    ok(!(await page.$('#trial')), 'and offers no free trial');
+    ok(/Try the whole studio for ₹49/.test(await page.textContent('main').catch(() => '')), 'the deck and the section name the server\'s price');
+    ok(!(await page.$('#pass [data-pass-left]:not([hidden])')), 'with no cap, no "left" line');
+    const order = await page.evaluate(() => [...document.querySelectorAll('main section[id]')].map((s) => s.id).join(','));
+    ok(/^pass,buy,invite/.test(order), 'the order is pass, plans, code: ' + order);
+    await page.fill('#gtCode', 'BEN CODE 2345 6');
+    await page.click('#invite button[type="submit"]');
+    ok(await waitGate(page, 'open'), 'an invite code still opens the gate while the pass is on sale');
+    ok(F.db.members.has(USERS['tok-ben'].id) && !F.db.payments.some((p) => p.user_id === USERS['tok-ben'].id), 'Ben is a member on the code, having paid nothing');
+    allErrors.push(...errors); await ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

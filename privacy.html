@@ -66,6 +66,8 @@
         </div>
       </div>
       <a class="mk-nav-link mk-nav-pricing" href="pricing.html">Pricing</a>
+      <a class="mk-nav-link" href="guides.html">Guides</a>
+      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
@@ -138,6 +140,9 @@
 <section class="legal-changes" id="changes" aria-labelledby="changes-h">
   <h2 id="changes-h">What changed on 21 October 2026</h2>
   <ul>
+    <li>On 26 October 2026: section 2 now counts the first public page a visit lands on, not
+    only the start page, and says that a count can name the kind of link that brought the visit;
+    and it describes the product-news e-mail form, what it keeps and how to leave the list.</li>
     <li>New section 9, for people in the United States: the California (CCPA/CPRA)
     categories of personal information we collect, that we do not sell or share it, how to
     ask for access or deletion, and that exercising a right never changes your price or your
@@ -177,10 +182,13 @@ kept in the tab&rsquo;s session storage so the code survives the trip to Google 
   <li><strong>Account details</strong> &mdash; your name, e-mail address and profile
   picture as provided by Google, Google&rsquo;s identifier for your account, and an internal
   account identifier. We never see your Google password.</li>
+<!-- DRAFT, AWAITING THE OWNER -->
   <li><strong>Access records</strong> &mdash; whether you are a member and how you became
-  one (an invite code, an approved request, a free trial, a purchase, or access we gave you
-  by e-mail), when a free trial started and how long it runs, and which invite code you
-  redeemed.</li>
+  one (an invite code, an approved request, a free trial, a purchase of a plan or a launch
+  pass, or access we gave you by e-mail), when a free trial or a launch pass started and
+  how long it runs, whether your account has used its one launch pass, and which invite code
+  you redeemed.</li>
+<!-- /DRAFT -->
   <li><strong>Invite requests</strong> &mdash; if you ask for access, your e-mail address
   and name as Google gives them, the optional note you write, the type of browser you sent
   it from, and whether it was approved or declined.</li>
@@ -242,6 +250,19 @@ internal identifier for your account, to match the payment to it. We keep:</p>
   <li>if you have a referral code, the credits it has earned and whether they have been
   paid out.</li>
 </ul>
+<!-- DRAFT, AWAITING THE OWNER -->
+<!-- Auto-renew (27 Oct 2026), written from the plan for schema section 62:
+     a Razorpay Subscription holds the mandate; we keep its identifiers and
+     status so a renewal charge can be matched and a cancel carried out. -->
+<p><strong>When a purchase is on auto-renew.</strong> The payment mandate (your UPI Autopay
+mandate, or your card or bank e-mandate) is held by Razorpay, not by us: we never see or keep
+your card details or your UPI credentials. We keep the Razorpay subscription identifier, its
+status (for example active or cancelled), the amount and interval you agreed to, the date of
+the next charge, and a record of each renewal charge as a payment of its own, as listed
+above, so that each charge can be matched to your account, invoiced and, in the cases the
+refund policy lists, refunded. When you cancel, we tell Razorpay to stop the mandate and keep
+the record that you did.</p>
+<!-- /DRAFT -->
 
 <h3>Receipts and refund e-mails</h3>
 <p>After a purchase we e-mail a receipt to your account&rsquo;s address, and we e-mail you
@@ -298,16 +319,51 @@ The choice is kept on your device and takes effect from your next click; it also
 you are not signed in, nothing is counted.
 We send the totals once, as you leave or hide the page; we never send them in the background.</p>
 
-<h3>Visit counts and the old launch-offers list</h3>
-<p>We count visits to the start page and the pricing section, invite requests, sign-ups,
-checkouts started and purchases as plain daily totals, with no identifier, IP address or
-cookie attached, so a count cannot be traced to you. We honour Do Not Track and Global
+<!-- DRAFT, AWAITING THE OWNER'S APPROVAL (26 Oct 2026), together with
+     #leads below and the 26 October line under "What changed". The first
+     sentence used to read "We count visits to the start page and the
+     pricing section, ..."; since 26 Oct src/pages/marketing.js counts a
+     landing (bumpOnce('landing_view'), once per tab) on every public page,
+     not only start.html, and every count carries the source bucket of
+     funnel.js sourceBucket(). Do not release to main before the owner
+     approves these words. -->
+<h3 id="visit-counts">Visit counts and the old launch-offers list</h3>
+<p>We count the first of our public pages you land on in a visit (the start page, pricing, a
+guide, a product page or another public page), the pricing section coming into view, invite
+requests, sign-ups, checkouts started and purchases as plain daily totals. Each total can
+also say what kind of link brought the visit (for example &ldquo;instagram&rdquo; or
+&ldquo;school&rdquo;), never a person&rsquo;s or a school&rsquo;s name and never the rest of the link. No identifier, IP address or
+cookie is attached, so a count cannot be traced to you. We honour Do Not Track and Global
 Privacy Control, and the start page has a &ldquo;Don&rsquo;t count this visit&rdquo; button.</p>
 <p>Our start page used to have a &ldquo;Get launch offers&rdquo; form. It has been removed.
 If you used it, we still hold the address, the exact consent sentence you saw, and the date;
 we use it only to write to you about {{brand:name}}&rsquo;s launch and offers, only an
 administrator can read the list, and it is not shared. Ask us at {{brand:email}} and we
 will delete it.</p>
+
+<!-- DRAFT, AWAITING THE OWNER'S APPROVAL (26 Oct 2026), with #visit-counts above. Written from the code:
+     src/pages/marketing.js (the form) -> src/lib/funnel.js addLead() ->
+     add_lead() and public.leads in supabase/schema/supabase-schema.sql §29.
+     The form stays hidden (marketing-site.json lead.live false) until the
+     owner approves these words. -->
+<h3 id="leads">Product news by e-mail</h3>
+<p>Some of our public pages can show a &ldquo;Product news by e-mail&rdquo; form. It sends nothing
+unless you type your address and tick its box. If you do, we keep four things: your e-mail
+address (in lower case), the exact consent sentence beside the box you ticked, one short word for
+where you signed up &mdash; the page&rsquo;s name (for example &ldquo;pricing&rdquo;) or the kind of
+link that brought you (for example &ldquo;instagram&rdquo;), never a person&rsquo;s or a
+school&rsquo;s name and never the rest of the link &mdash; and the time you sent it. No account,
+IP address or cookie is stored with it, and sending the same address again changes nothing.</p>
+<p><strong>Why:</strong> we use each address only for what the sentence you ticked said, which is
+why we keep that sentence. An address given on this form is used only to send you an occasional
+note when something new ships or a plan changes; an address from the old launch-offers form above
+is used only for launch and offers, as its own sentence said. Both are kept in the same list.
+<strong>Who sends it:</strong> no product-news e-mail is being sent yet. Before the first one goes
+out, this section will name the service that sends it. <strong>Who can read it:</strong> only a
+{{brand:name}} administrator, in the console. The list is kept in our database (Supabase, section 4)
+and is never shared or sold. <strong>How long:</strong> until you unsubscribe or ask us to delete it.
+<strong>To unsubscribe or delete it:</strong> write to {{brand:email}} from that address, and we
+delete the address together with its consent sentence, its source word and its time.</p>
 
 <h2 id="why-we-use-it">3. Why we use it</h2>
 <ul>
@@ -338,7 +394,8 @@ the purpose listed:</p>
   and storyboard pictures. Google&rsquo;s sign-in script is loaded from
   <code>accounts.google.com</code> when Drive needs it, and your profile picture is shown
   from Google&rsquo;s servers.</li>
-  <li><strong>Razorpay</strong> &mdash; payment processing and refunds. Its checkout is
+  <li><strong>Razorpay</strong> &mdash; payment processing and refunds<!-- DRAFT, AWAITING THE OWNER -->, and, for a
+  purchase on auto-renew, holding the payment mandate<!-- /DRAFT -->. Its checkout is
   loaded from Razorpay when you start a purchase.</li>
   <li><strong>Resend</strong> &mdash; delivering receipt and refund e-mails.</li>
   <li><strong>YouTube (Google)</strong> &mdash; only if you press play on one of the
@@ -594,6 +651,9 @@ signed-in members know in the app or by e-mail before it takes effect.</p>
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
           <li><a href="privacy.html">Privacy</a></li>
           <li><a href="terms.html">Terms</a></li>

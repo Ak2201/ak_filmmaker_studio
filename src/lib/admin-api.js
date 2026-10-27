@@ -33,7 +33,7 @@ const isNetwork = (e) => /failed to fetch|load failed|networkerror|network reque
 
 /* ---- the tab slots (src/pages/admin-tabs/_rpc.js) ----------------- */
 
-const SECTION_OF = { admin_usage: 43, admin_cohorts: 43, admin_sync_overview: 44, admin_limit_pressure: 44 };
+const SECTION_OF = { admin_usage: 43, admin_cohorts: 43, admin_sync_overview: 44, admin_limit_pressure: 44, admin_funnel_by_source: 58, admin_list_testimonials: 59 };
 
 /** A slot's failure as a sentence: a missing section is named as one. */
 export function reasonOf(name, err) {

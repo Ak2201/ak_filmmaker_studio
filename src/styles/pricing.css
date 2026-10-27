@@ -40,17 +40,17 @@
   .pr-head .mk-h2, .pr-head .pr-lede { margin-bottom: 0; }
 }
 
-/* ---- the free trial strip ---------------------------------------- */
-.pr-trial {
+/* ---- the launch pass strip (hidden unless the pass is open) ------ */
+.pr-pass {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s5); flex-wrap: wrap;
   margin: 0 0 var(--s5); padding: var(--s4) var(--s5); box-sizing: border-box;
   background: color-mix(in srgb, var(--accent-primary) 10%, var(--surface-card));
   border: 1px solid color-mix(in srgb, var(--accent-primary) 38%, transparent);
   border-radius: var(--sk-radius, var(--radius-lg));
 }
-.pr-trial-text { display: grid; gap: var(--s1); min-width: 0; flex: 1 1 28rem; }
-.pr-trial-text strong { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); color: var(--ink); }
-.pr-trial-say { font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); }
+.pr-pass-text { display: grid; gap: var(--s1); min-width: 0; flex: 1 1 28rem; }
+.pr-pass-text strong { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); color: var(--ink); }
+.pr-pass-say { font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); }
 
 /* ---- the launch-price band (hidden unless the server announces a rise) ---- */
 .pr-offer {
@@ -196,7 +196,7 @@
 @media (max-width: 560px) {
   .pr-tier { padding: var(--s5); }
   .pr-pick-flag { left: var(--s5); }
-  .pr-trial .mk-btn { flex: 1 1 100%; }
+  .pr-pass .mk-btn { flex: 1 1 100%; }
   .pr-col-what { width: 31%; }
   .pr-th-name { font-size: var(--t-tiny); overflow-wrap: normal; letter-spacing: -0.01em; }
   .pr-th-price { font-size: var(--t-tiny); }
@@ -209,3 +209,15 @@
 @media (prefers-reduced-motion: reduce) {
   .pr-tier, .pr-acc summary .sym { transition: none; }
 }
+
+/* ---- students and film schools: one band under the cards, no price ----
+   The figure is never printed: the student price is a promo the server
+   quotes at checkout, and a stamped figure would go stale at a price rise. */
+.pr-edu {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4) var(--s6); flex-wrap: wrap;
+  margin-top: var(--s6); padding: var(--s5);
+  background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg));
+}
+.pr-edu-text { display: grid; gap: var(--s2); flex: 1 1 24rem; min-width: 0; }
+.pr-edu .mk-h3 { margin: 0; }
+.pr-edu strong { color: var(--ink); }

@@ -35,8 +35,8 @@
    them nothing is claimed and nothing is sent.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { verifyPaymentSignature, basicAuth, settleAuthorized } from '../_shared/razorpay.js';
-import { sendReceiptOnce } from '../_shared/mail.js';
+import { verifyPaymentSignature, verifySubscriptionSignature, basicAuth, settleAuthorized, isoFromUnix } from '../_shared/razorpay.js';
+import { sendReceiptOnce, sendChargeReceiptOnce } from '../_shared/mail.js';
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 const mailEnv = () => ({ RESEND_API_KEY: Deno.env.get('RESEND_API_KEY') ?? '', MAIL_FROM: Deno.env.get('MAIL_FROM') ?? '' });
@@ -79,6 +79,43 @@ Deno.serve(async (req) => {
     if (!out.ok) return json(502, { error: out.reason === 'not-configured' ? 'E-mail is not set up on this studio yet (RESEND_API_KEY, MAIL_FROM).' : `The receipt could not be sent (${out.reason}).` });
     return json(200, { ok: true, sent: !out.skipped });
   }
+  /* AUTO-RENEW (schema §62). A subscription's Checkout hands back
+     { razorpay_payment_id, razorpay_subscription_id, razorpay_signature },
+     signed HMAC(payment_id|subscription_id). Razorpay captures a
+     subscription charge itself, so nothing is captured here: the webhook
+     (subscription.charged) applies it. If the payment is already captured
+     at the locked amount it is applied now — apply_subscription_charge is
+     idempotent on the payment id, so the webhook then finds it done. */
+  if (body.razorpay_subscription_id) {
+    if (!(await verifySubscriptionSignature(body, keySecret))) {
+      return json(400, { error: 'The payment could not be verified. If money left your account, it will be matched within a few minutes or refunded by Razorpay.' });
+    }
+    const svc = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const { data: sub } = await svc.from('subscriptions').select('id, user_id, amount_minor, currency')
+      .eq('rzp_subscription_id', body.razorpay_subscription_id).maybeSingle();
+    if (!sub) return json(404, { error: 'No such subscription.' });
+    if (sub.user_id !== who.user.id) return json(403, { error: 'That subscription belongs to another account.' });
+    const pid = encodeURIComponent(body.razorpay_payment_id);
+    const got = await fetch(`https://api.razorpay.com/v1/payments/${pid}`, { headers: { Authorization: basicAuth(keyId, keySecret) } }).catch(() => null);
+    const entity = got && got.ok ? await got.json().catch(() => null) : null;
+    if (entity && entity.status === 'captured' && Number(entity.amount) === Number(sub.amount_minor)
+        && String(entity.currency || '').toUpperCase() === String(sub.currency).toUpperCase()) {
+      const { data: applied, error: aerr } = await svc.rpc('apply_subscription_charge', {
+        p_rzp_subscription_id: body.razorpay_subscription_id, p_rzp_payment_id: body.razorpay_payment_id,
+        p_amount_minor: Number(entity.amount), p_currency: entity.currency,
+        p_paid_at: isoFromUnix(entity.created_at), p_event: { source: 'verify', payment: entity }
+      });
+      if (!aerr && applied) {
+        background(sendChargeReceiptOnce(svc, body.razorpay_payment_id, mailEnv()).then((m) => {
+          if (!m.ok && m.reason !== 'not-configured') console.warn('[rzp-verify] charge receipt', m.reason, m.detail ?? '');
+        }));
+        if (applied.applied) return json(200, { ok: true, pending: false, plan: applied.plan_id, ends_at: applied.ends_at, account_id: applied.account_id, already: !!applied.already });
+      }
+      if (aerr) console.warn('[rzp-verify] apply_subscription_charge', aerr.message);
+    }
+    return json(200, { ok: true, pending: true });
+  }
+
   const ok = await verifyPaymentSignature(body, keySecret);
   if (!ok) return json(400, { error: 'The payment could not be verified. If money left your account, it will be matched within a few minutes or refunded by Razorpay.' });
 

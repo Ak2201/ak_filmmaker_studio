@@ -55,6 +55,7 @@ import { priceNotice as publicPriceNotice } from '../lib/funnel.js';
    session. Plain fetch, no SDK — funnel.js owns that pattern. */
 import { trialOffer as anonTrialOffer, purchasesRequired } from '../lib/funnel.js';
 import { resolveReturn, clearReturn } from '../lib/return-to.js';
+import { captureAttribution } from '../lib/attribution.js';
 import { inviteSection, wireGateUI, markDemoPending, enterAddress } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 import { getCodePass, setCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
@@ -63,8 +64,15 @@ import { getCodePass, setCodePass, clearCodePass, codeFromLocation, formatCode, 
 import {
   readGateWhyRaw, clearGateWhy, readGateWhy, readSiteOpen, saveSiteOpen, wantsRequestView, forgetRequestView,
   clearSitegatePass, takeInvitePlan, deckFor as deckSentence, whySentence as whyFrom, retryable as isRetryable,
-  isDemoHash, trialOfferFrom, anonTrialFrom, trialRefusal
+  isDemoHash, trialOfferFrom, anonTrialFrom, trialRefusal, takePassIntent
 } from '../lib/invite-model.js';
+import { stashPlan } from '../lib/start-model.js';
+/* THE LAUNCH PASS (owner, 27 Oct 2026): the public's free trial is
+   retired; a paid week of the whole studio leads this page instead, with
+   its price, its length, its deadline and its cap read from the server
+   (billing.js passOffer(), pass-view.js) and never typed here. */
+import { passPhase, passFacts, mayBuyPass, passCta } from '../lib/pass-view.js';
+import { bindPassTimers, passClock } from '../lib/plan-gate.js';
 
 const app = document.getElementById('app');
 
@@ -86,6 +94,20 @@ function refreshShop() {
 }
 const prices = () => listPriceBlock(shopNow);
 const fromAbout = () => (shopNow && fromDay(shopNow)) || perDay(LIST_PRICE.starter);
+
+/* A ?ref= code from the link that brought this tab (an ad, a referral,
+   an affiliate), held by attribution.js in sessionStorage. It is a
+   PROMO / REFERRAL code, which this page's box (invite or screening pass
+   codes, gate.js) would refuse, so it is not typed into that box: it is
+   carried to purchase.html, whose "Have a code?" box fills it in once
+   signed in and lets the buyer clear it. This line says so, under each
+   "See plans and buy". */
+let HELD_REF = '';
+try { HELD_REF = captureAttribution(location).ref; } catch (e) { HELD_REF = ''; }
+const heldCodeLine = () => (HELD_REF
+  ? h('p.bd-sub.iv-ref', { text: 'You arrived with the code ' + HELD_REF + '. It is filled in at checkout, where you can see what it takes off or clear it.' })
+  : null);
+const buyHref = () => (HELD_REF ? 'purchase.html?ref=' + encodeURIComponent(HELD_REF) : 'purchase.html');
 const cloud = () => window.StudioCloud || null;
 
 function section(id, eyebrow, title, deck) {
@@ -118,6 +140,8 @@ function deckFor(c, g, walled) {
     signedIn,
     codeHeld: configured && !signedIn && !!getCodePass(),
     trialsOff: configured && !signedIn && trialsOff(),
+    pass: passPhaseNow(),
+    passPrice: (passFacts(passOfferNow) || {}).price || '',
     state: g.state,
     walled: !!walled,
     trialHere: !!trialOffer,
@@ -196,6 +220,35 @@ function refreshReturn() {
 const wantsRequest = () => wantsRequestView(location.hash);
 const forgetRequest = forgetRequestView;
 
+/* ---- the launch pass ---------------------------------------------- */
+/* { raw, readAt } once trial_offer() has answered with a pass block;
+   null before, and for good when there is none (fails closed). */
+let passOfferNow = null;
+const passPhaseNow = () => passPhase(passOfferNow);
+/* The visitor pressed TRY IT on the landing page and came back from
+   Google: the pass section is the one they asked for (it stays first). */
+let passWanted = false;
+
+/* The pass, first. Signed out it begins with Google, holding the intent
+   in the landing page's own plan stash (start-model.js, the per-tab key
+   it already uses for ?plan=), so the return lands here, on the pass.
+   Signed in, the button buys it. */
+function passSection(signedIn) {
+  const f = passFacts(passOfferNow);
+  if (!f) return null;
+  const t = section('pass', 'Launch offer', 'Try the whole studio for ' + f.price + '.',
+    f.length + ' of the whole studio, every stage, on your own films, for ' + f.price + '. Once per account, paid once through Razorpay; nothing renews. Then choose a yearly plan, or don’t.');
+  t.append(passClock());
+  t.append(h('div.iv-actions', {}, [
+    signedIn
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'buy-pass', text: passCta(f) })
+      : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-iv-action': 'pass-intent', text: passCta(f) })
+  ]));
+  if (signedIn) t.append(h('p.bd-sub', { id: 'passMsg', role: 'status', 'aria-live': 'polite', text: '' }));
+  else t.append(legalLine('You sign in with Google first; the payment comes after. By continuing you agree to the '));
+  return t;
+}
+
 function render() {
   const typed = keepTyped();
   const c = cloud();
@@ -263,7 +316,9 @@ function render() {
        which is what verify's baseline is captured under) leaves the card
        in place, the same fail-open rule start.js applies to its own card.
        Plans and the code box stay either way. */
-    if (!trialsOff()) {
+    const phase = passPhaseNow();
+    if (phase === 'open') { const ps = passSection(false); if (ps) body.append(ps); }
+    if (!trialsOff() && phase === 'off') {
       const len = anonTrial && anonTrial.enabled ? trialLength(anonTrial.minutes) : '';
       /* The LENGTH belongs in the deck, not in the heading: "Start your
          30 minutes free trial" is not a sentence anybody says. */
@@ -279,14 +334,17 @@ function render() {
        on start.html and the buy screen is purchase.html, which asks for the
        sign-in itself. */
     {
-      const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A year of full access, from about ' + fromAbout() + ' a day — no trial first if you already know you want it.');
+      const buy = phase === 'ended'
+        ? section('buy', 'Plans', 'The launch offer has ended.', 'The yearly plans are here: a year of full access, from about ' + fromAbout() + ' a day.')
+        : section('buy', 'Or', 'Buy a plan and come straight in.',
+            'A year of full access, from about ' + fromAbout() + ' a day' + (phase === 'open' ? '.' : ' — no trial first if you already know you want it.'));
       /* The prices on this page (src/ui/list-prices.js), not a link away. */
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.k-btn.k-btn--primary', { href: 'purchase.html', text: 'See plans and buy' }),
+        h('a.k-btn.k-btn--primary', { href: buyHref(), text: 'See plans and buy' }),
         h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
       ]));
+      { const held = heldCodeLine(); if (held) buy.append(held); }
       body.append(buy);
     }
     /* Third, and no longer a door of its own: the box holds the code and
@@ -303,23 +361,28 @@ function render() {
        owner reported. It says what is true now, and offers the two
        real ways on — buy, or sign out. */
     const used = lastStatus.trial_used === true;
-    /* A member who never started a trial is offered it here too, first:
-       Settings and the account menu send them to start it, and this
-       branch used to offer only plans (QA r2, 26 Oct 2026). */
-    if (trialOffer) body.append(trialSection(section));
-    const sec = trialOffer
+    /* A member who may still buy the launch pass (never had one, no
+       yearly plan) is offered it first, as a stranger is; the free trial
+       only where no pass exists at all ('off'), first there too, since
+       Settings and the account menu send a member here to start it. */
+    if (passPhaseNow() === 'open' && mayBuyPass(lastStatus)) { const ps = passSection(true); if (ps) body.append(ps); }
+    const trialHereNow = !!trialOffer && passPhaseNow() === 'off';
+    if (trialHereNow) body.append(trialSection(section));
+    const passOver = lastStatus.pass_used === true && lastStatus.pass_active !== true;
+    const sec = trialHereNow
       ? section('through', 'Or', 'Buy a plan and come straight in.',
           'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for a year.')
-      : section('through', used ? 'Your trial' : 'The studio', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
+      : section('through', passOver ? 'Your pass' : used ? 'Your trial' : 'The studio', passOver ? 'Your pass has ended.' : used ? 'Your free trial is over.' : 'Choose a plan to come in.',
           'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for a year.');
     /* The same prices and the same button a new signup gets: this branch
        used to offer one bare SEE PLANS, one hop more than a stranger.
        Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
     sec.append(prices());
     sec.append(h('div.iv-actions', {}, [
-      h('a.k-btn' + (trialOffer ? '.k-btn--secondary' : '.k-btn--primary'), { href: 'purchase.html', text: 'See plans and buy' }),
+      h('a.k-btn' + (trialHereNow ? '.k-btn--secondary' : '.k-btn--primary'), { href: buyHref(), text: 'See plans and buy' }),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ]));
+    { const held = heldCodeLine(); if (held) sec.append(held); }
     body.append(sec);
     /* A held or typed code can still be entered here: the box was only
        drawn for somebody with no membership, which left a member whose
@@ -373,7 +436,13 @@ function render() {
        conditional on a schema version. */
     const st = g.status;
     const used = !!(lastStatus && lastStatus.trial_used === true);
-    if (trialOffer) body.append(trialSection(section));
+    const phase = passPhaseNow();
+    /* THE PASS LEADS while it is on sale and this account may buy it; the
+       free trial is offered only where no pass exists at all ('off'). */
+    const passSec = phase === 'open' && mayBuyPass(lastStatus) ? passSection(true) : null;
+    if (passSec) body.append(passSec);
+    const trialShown = !!trialOffer && phase === 'off';
+    if (trialShown) body.append(trialSection(section));
     /* PAYING GRANTS ENTRY (schema section 16). The plans themselves are
        NOT drawn here any more (owner, 12 Oct 2026: "all purchases only in
        the Purchase space"). purchase.html is exempt from the site gate, so
@@ -381,15 +450,20 @@ function render() {
        buy screen is the one place prices, promo codes, checkout and
        upgrade credits live. */
     {
-      const buy = trialOffer
+      const lead = trialShown || !!passSec;
+      const buy = lead
         ? section('buy', 'Or', 'Buy a plan and come straight in.',
-            'A year of full access, from about ' + fromAbout() + ' a day — and the only thing that keeps the studio open once a trial has run out.')
-        : section('buy', used ? 'Your trial' : 'Plans', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
-            'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. A plan opens it again for a year.');
+            'A year of full access, from about ' + fromAbout() + ' a day — and the only thing that keeps the studio open once ' + (passSec ? 'a pass' : 'a trial') + ' has run out.')
+        : phase === 'ended'
+          ? section('buy', 'Plans', 'The launch offer has ended.',
+              'Signed in as ' + email + '. A yearly plan opens the studio; everything you wrote is still saved on this device.')
+          : section('buy', used ? 'Your trial' : 'Plans', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
+              'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. A plan opens it again for a year.');
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.k-btn' + (trialOffer ? '.k-btn--secondary' : '.k-btn--primary'), { href: 'purchase.html', text: 'See plans and buy' })
+        h('a.k-btn' + (lead ? '.k-btn--secondary' : '.k-btn--primary'), { href: buyHref(), text: 'See plans and buy' })
       ]));
+      { const held = heldCodeLine(); if (held) buy.append(held); }
       body.append(buy);
     }
     const code = inviteSection(section, st);
@@ -429,6 +503,13 @@ function render() {
 
   main.append(body);
   if (!commitMain(app, main, () => { restoreTyped(typed); mountShell(); })) return;
+  /* The countdown: the server's deadline, every second; at zero the page
+     redraws with the launch offer ended. */
+  if (passOfferNow && document.querySelector('[data-pass-timer]')) bindPassTimers(passOfferNow, { onEnd: render });
+  if (passWanted && document.getElementById('pass')) {
+    passWanted = false;
+    try { document.getElementById('pass').scrollIntoView({ block: 'start', behavior: 'instant' }); } catch (e) { /* */ }
+  }
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -446,6 +527,10 @@ document.addEventListener('click', (e) => {
     render();
   }
   if (el.dataset.ivAction === 'start-trial') startTrial(el);
+  if (el.dataset.ivAction === 'buy-pass') buyPass(el);
+  /* Before the Google hop (data-auth-action on the same button does the
+     sign-in): hold the intent for the return. Nothing is bought yet. */
+  if (el.dataset.ivAction === 'pass-intent') stashPlan('pass');
   if (el.dataset.ivAction === 'enter') clearReturn();   // the link goes where it points; the errand is spent
   if (el.dataset.ivAction === 'retry') retryGate(el);
 });
@@ -466,6 +551,7 @@ async function retryGate(btn) {
    named — plan-cards.js marks that card. The stash is spent when it is used. */
 function forwardPlan() {
   try {
+    if (takePassIntent()) { passWanted = true; return; }   // the pass is bought HERE
     const to = takeInvitePlan(!!(cloud() && cloud().getSession && cloud().getSession()));
     if (to) location.replace(to);
   } catch (e) { /* the page still offers SEE PLANS AND BUY */ }
@@ -508,6 +594,29 @@ async function startTrial(btn) {
   } catch (e) {
     say(errorSentence(e, 'That did not start. Please try again.'), true);
     btn.disabled = false; btn.textContent = was;
+  }
+}
+
+/* THE PASS, BOUGHT HERE. Billing.buyPass() is buy() for the server's
+   pass plan and period 'pass': the server prices it, refuses it with a
+   named reason (said in pass-view.js's words), and activation writes the
+   member row — so, as with a trial, the gate is asked again before the
+   studio will open. */
+async function buyPass(btn) {
+  const msg = document.getElementById('passMsg');
+  const say = (t, bad) => { if (msg) { msg.textContent = t; msg.classList.toggle('iv-bad', !!bad); } };
+  const was = btn.textContent;
+  btn.disabled = true;
+  try {
+    await Billing.buyPass({ accountId: lastStatus && lastStatus.account_id, onStatus: (t) => { btn.textContent = t; } });
+    say('You are in for the week. Opening the studio…');
+    const c = cloud();
+    if (c && c.runGate) await c.runGate();
+    location.href = returnHref || 'index.html';
+  } catch (e) {
+    btn.disabled = false; btn.textContent = was;
+    say((e && e.message) || 'The pass could not be bought just now. Please try again.', !(e && e.code === 'dismissed'));
+    if (e && (e.hint === 'closed' || e.code === 'closed')) loadPass(true);
   }
 }
 
@@ -590,6 +699,15 @@ if (!(cloud() && cloud().getSession && cloud().getSession())) {
     render();
   }).catch(() => { /* the length is a courtesy, never a gate */ });
 }
+/* The pass offer is public (trial_offer().pass, anon): read signed in
+   or out, and redrawn when it lands. Null leaves the page as it was. */
+function loadPass(fresh = false) {
+  Billing.passOffer({ fresh }).then((o) => {
+    const had = JSON.stringify(passOfferNow && passOfferNow.raw);
+    passOfferNow = o;
+    if (JSON.stringify(o && o.raw) !== had) render();
+  }).catch(() => { /* no offer */ });
+}
 async function loadPlans() {
   const c = cloud();
   if (!c || !c.isConfigured() || !c.getSession()) return;
@@ -647,3 +765,4 @@ Store.subscribe('gate:changed', render);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(render, 0));
 render();
 refreshShop();
+loadPass();

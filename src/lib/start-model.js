@@ -57,7 +57,7 @@ export function takeAuthError(key) {
    would land them on the landing page they came from. The exempt pages
    (invite.html first: it is the no-JS fallback of every sign-in CTA)
    keep their hrefs. */
-const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening|purchase|pricing|contact|about|product-[\w-]+)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
+const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening|purchase|pricing|contact|about|product-[\w-]+|guides|guide-[\w-]+|compare-[\w-]+|trust)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
 /** Is this href a link INTO the gated app? */
 export const isAppPage = (href) => APP_PAGE.test(href);
 
@@ -159,7 +159,7 @@ export function priceRiseBand(notice, now, money = RUPEES) {
     line: 'Founding price ' + money.now(rise) + ' a year until ' + onDate(rise.next_price_at) + ' (IST). '
       + money.next(rise) + ' a year after that'
       + (capped ? ', or once ' + seatsTotal.toLocaleString('en-IN') + ' people have bought a plan, whichever comes first.' : '.')
-      + ' A plan bought now is a full year at the price you paid, and nothing renews by itself.',
+      + ' A plan bought now is a full year at the price you paid.',
     seats: capped && Number.isFinite(seatsTaken)
       ? seatsTaken.toLocaleString('en-IN') + ' of ' + seatsTotal.toLocaleString('en-IN') + ' founding places taken'
       : ''
@@ -223,7 +223,40 @@ export function swappedText({ openText, offText }, { signedIn, off }) {
   return signedIn && openText ? openText : (off ? offText : '');
 }
 
+/* ---- the launch pass, as the public pages say it (27 Oct 2026) -----
+   The free trial is retired for the public; the pages offer the launch
+   PASS instead, and every figure in it is the server's: trial_offer()'s
+   `pass` block, read through src/lib/pass-offer.js. This file stays pure
+   (no module of its own), so the formatters come in as the second argument (the
+   pass-offer module itself, or anything with the same four functions):
+
+     passCopy(passState(raw, now, readAt), PassOffer)
+
+   answers what each runtime slot shows:
+     { open, price, length, timer, left, spoken }
+   `open` false means show nothing of the pass (the markup's fallback
+   copy, the yearly plans, stands). `timer` is '' with no deadline, and
+   then no timer is drawn. `spoken` is the same deadline to the MINUTE
+   ("3 days 4 hours 12 minutes"), for the band's accessible label, so a
+   screen reader is never handed a figure that changes every second. */
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+/** "3 days 4 hours 12 minutes", to the minute; '' for nothing. */
+export function spokenLeft(msLeft) {
+  if (msLeft == null || !(msLeft > 0)) return '';
+  const m = Math.max(1, Math.floor(msLeft / 60000));
+  const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+  return [d && plural(d, 'day'), h && plural(h, 'hour'), mm && plural(mm, 'minute')].filter(Boolean).join(' ');
+}
+export function passCopy(st, P) {
+  const none = { open: false, price: '', length: '', timer: '', left: '', spoken: '' };
+  if (!st || st.state !== 'open' || !st.pass || !P) return none;
+  const price = P.passPrice(st.pass), length = P.passLength(st.pass);
+  if (!price || !length) return none;
+  return { open: true, price, length, timer: P.countdownText(st.msLeft), left: P.leftText(st), spoken: spokenLeft(st.msLeft) };
+}
+
 export default {
+  passCopy, spokenLeft,
   INVITE_PLAN_KEY, REGION_KEY, deviceRegion, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,
   priceRiseBand, foundingLeft, swappedText, RISE_ZONE, PLAN_DAYS, perDayOf, currentPrices, fromDayNow, stampedFromDay, swapFigure

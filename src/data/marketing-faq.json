@@ -4,12 +4,18 @@
     "items": [
       {
         "q": "Is it a subscription?",
-        "a": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in Indian rupees, paid through Razorpay, and the amount is confirmed at checkout before you pay.",
-        "aUsd": "Not one that charges you by itself. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel. Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay."
+        "modes": true,
+        "_modes": "Whether a plan renews is the owner's choice in the console (plan_mode, schema §62). `a` is shown in the markup and says neither; marketing.js shows `aOnce` or `aRenew` when trial_offer() names the mode. `aRenew` must say \"cancel anytime\" (test:marketing).",
+        "a": "Each plan card says what a plan costs, how long it lasts and what happens when it ends, before you pay, and checkout says it again. A plan is a year of the studio, from about {{fms:price.from.day}} a day, and your work stays in your browser either way.",
+        "aOnce": "No. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel.",
+        "aRenew": "Yes: a plan renews every year until you cancel, from about {{fms:price.from.day}} a day. Cancel anytime, in two taps, under Settings, Plan & purchases, Cancel auto-pay: nothing more is charged, and the plan runs to the end of the year you paid for. Your price is locked while you stay, and your bank or UPI app tells you before each charge.",
+        "aPay": "Payment is through Razorpay, and checkout confirms the currency and the exact amount before you pay.",
+        "aPayUsd": "Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay."
       },
       {
         "q": "Can I get a refund?",
-        "a": "Purchases are final, with three exceptions that are not discretionary: a duplicate or erroneous charge, a payment for a plan that was never activated on your account, and any refund the law of India requires. The Refund and Cancellation Policy has the detail."
+        "a": "Purchases are final, with three exceptions that are not discretionary: a duplicate or erroneous charge, a payment for a plan that was never activated on your account, and any refund the law of India requires. The Refund and Cancellation Policy has the detail.",
+        "aRenewNote": "On auto-pay the same three cases apply to each charge, and cancelling stops the charges still to come without refunding the year already paid."
       },
       {
         "q": "How do I ask for a refund in one of those cases?",
@@ -20,9 +26,10 @@
         "a": "On the Purchase page once you are signed in. It lists your plan, your invoices and a way to request a refund in the cases above."
       },
       {
-        "q": "How long is the free trial?",
-        "trial": true,
-        "a": "Its length is a setting the studio controls, so it is never typed into this answer: the free-trial strip beside the plans and the sign-up window show the length running today. A trial opens every module on the sample films and needs no card. It does not hold a price: a plan costs what it costs on the day you buy it."
+        "q": "Is there a free trial?",
+        "pass": true,
+        "a": "No. A plan is a year of the studio, and you pay the price of the day you buy it. The Dragon sample shows the studio filled in first.",
+        "aPass": "No. While the launch offer lasts, {length} of the whole studio is {price}, once per account. {passTerms} After it, a plan costs what it costs on the day you buy it."
       }
     ]
   },
@@ -43,7 +50,7 @@
       },
       {
         "q": "Is there a free plan?",
-        "a": "No. There is no free plan. Whether purchases are required, and whether a trial is running, are settings that can change, so the pricing page always shows what applies today."
+        "a": "No. There is no free plan. Whether purchases are required is a setting that can change, so the pricing page always shows what applies today."
       },
       {
         "q": "Where can I see exactly what each plan includes?",
@@ -51,7 +58,7 @@
       },
       {
         "q": "Do I need a plan to try the sample films?",
-        "a": "The Dragon sample project is there so you can see every tool filled in before you commit. What a visitor can open depends on whether a trial is running, which the sign-up window shows."
+        "a": "The Dragon sample project is there so you can see the studio filled in before you commit."
       },
       {
         "q": "Can I talk to a person before I buy?",
@@ -68,11 +75,11 @@
       },
       {
         "q": "Why do I sign in with Google if my work is local?",
-        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan or free trial before it opens. It is also what lets your projects sync between your devices and lets you connect your own Google Drive. Your work is written to your browser first either way."
+        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan before it opens. It is also what lets your projects sync between your devices and lets you connect your own Google Drive. Your work is written to your browser first either way."
       },
       {
         "q": "What leaves my browser, and when?",
-        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan or trial and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
+        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
       },
       {
         "q": "Does it work offline on a film set?",

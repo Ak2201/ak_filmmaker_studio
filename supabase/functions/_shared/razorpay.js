@@ -13,6 +13,8 @@
                        -> razorpay_signature in the handler's response
      webhook delivery  HMAC-SHA256( raw request body,  WEBHOOK_SECRET )
                        -> X-Razorpay-Signature header
+     subscription      HMAC-SHA256( payment_id + "|" + subscription_id,  KEY_SECRET )
+       checkout        (schema §62; note the order of the two ids)
 
    Both are hex, both compared in constant time. A plain `===` on hex
    strings leaks how many leading characters matched, one byte of
@@ -66,10 +68,19 @@ export function basicAuth(keyId, keySecret) {
 
 /** A YEAR AT A TIME (schema section 52, owner 21 Oct 2026): a plan is
  *  bought for 365 days and renewed by buying it again (the database stacks
- *  the new year onto the time left). Nothing is charged automatically.
+ *  the new year onto the time left). An ORDER is never charged again; when
+ *  the console sets a product to auto-renew (§62) it is sold as a
+ *  SUBSCRIPTION instead (the helpers at the foot of this file).
  *  Section 18's "for good" ended with it; a grant can still be for good,
- *  but nothing is SOLD that way. */
-export const PERIODS = ['year'];
+ *  but nothing is SOLD that way.
+ *
+ *  'pass' (schema §61, owner 27 Oct 2026) is the LAUNCH WEEK PASS: a short
+ *  paid stretch of one plan (Pro), sold once per person while the owner's
+ *  offer is open. The SERVER prices it and sets its length
+ *  (billing_settings.pass_paise / pass_days, through quote_pass), so
+ *  nothing here knows ₹49 or 7 days. PLAN_DAYS stays the YEAR: every
+ *  per-day figure is a year's price over 365. */
+export const PERIODS = ['year', 'pass'];
 export const PLAN_DAYS = 365;
 
 /** What a year costs a day, in paise (rounded to the paisa): the figure
@@ -82,9 +93,10 @@ export function perDayPaise(paise) {
 /** The one price of a plan, in paise, or null when it is not for sale.
  *  `plan` is a row of the plans table; `price_paise` is section 18's
  *  column, with the yearly figure as the fallback for a row read before
- *  that section ran. */
+ *  that section ran. A pass is never priced from a plan row: the server
+ *  prices it (§61), so priceFor(plan, 'pass') is null. */
 export function priceFor(plan, period = 'year') {
-  if (!plan || !PERIODS.includes(period)) return null;
+  if (!plan || period !== 'year') return null;
   const v = Number.isInteger(plan.price_paise) ? plan.price_paise : plan.yearly_paise;
   return Number.isInteger(v) && v > 0 ? v : null;
 }
@@ -279,4 +291,121 @@ export function refundOutcome({ threw = false, status = 0, body = null } = {}) {
 export function refundByReceipt(list, receipt) {
   const items = Array.isArray(list) ? list : Array.isArray(list?.items) ? list.items : [];
   return (receipt && items.find((x) => x && x.receipt === receipt)) || null;
+}
+
+/* ---- auto-renew: Razorpay Subscriptions (schema §62) -------------------
+   The owner chooses per product, in the console, whether a purchase is
+   one-time (an ORDER, everything above) or auto-renew (a SUBSCRIPTION,
+   below). The database prices a subscription and locks it
+   (create_pending_subscription); these helpers only shape what Razorpay is
+   sent and check what it signs.
+
+   WHAT RAZORPAY SIGNS for a subscription's checkout — the fields are the
+   other way round from an order's, and with the KEY secret:
+
+     HMAC-SHA256( payment_id + "|" + subscription_id,  KEY_SECRET )
+
+   ONE RAZORPAY PLAN PER PRICE. A Razorpay plan cannot be edited, so each
+   (product, period, days, amount, currency) gets its own, made lazily and
+   cached in rzp_plans: a console price change makes a new plan for NEW
+   subscribers and leaves every running one at its own amount (the lock).
+     pass  period 'daily',  interval = the pass's days (a 'weekly' plan is
+           fixed at 7, and the console's day count is not)
+     year  period 'yearly', interval 1
+   total_count is MAX_YEARS of cycles, which is "until you cancel" for
+   every practical purpose and inside the mandate lengths the banks accept.
+   Change MAX_YEARS here if Razorpay says the account allows otherwise. */
+
+/** The subscription checkout's three fields against the KEY secret. */
+export async function verifySubscriptionSignature({ razorpay_payment_id, razorpay_subscription_id, razorpay_signature }, keySecret) {
+  if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature || !keySecret) return false;
+  const expected = await hmacHex(keySecret, `${razorpay_payment_id}|${razorpay_subscription_id}`);
+  return timingSafeEqualHex(expected, razorpay_signature);
+}
+
+export const MAX_YEARS = 10;
+export const SUBSCRIPTION_STATUSES = ['created', 'authenticated', 'active', 'pending', 'halted', 'cancelled', 'completed', 'expired'];
+
+/** Razorpay's period and interval for one of ours, or null. */
+export function rzpPeriod(period, days) {
+  if (period === 'year') return { period: 'yearly', interval: 1 };
+  const d = Math.round(Number(days));
+  if (period === 'pass' && d >= 1 && d <= 366) return { period: 'daily', interval: d };
+  return null;
+}
+
+/** How many cycles: MAX_YEARS of them (at least 1), or null. */
+export function maxTotalCount(period, days) {
+  if (period === 'year') return MAX_YEARS;
+  const d = Math.round(Number(days));
+  return period === 'pass' && d >= 1 ? Math.max(1, Math.floor((MAX_YEARS * 365) / d)) : null;
+}
+
+const everyWords = (period, days) => {
+  if (period === 'year') return 'every year';
+  const d = Math.round(Number(days));
+  return d === 1 ? 'every day' : `every ${d} days`;
+};
+
+/** "Pro, 7-day pass" / "Basic, yearly plan" (a plan item, Checkout's name). */
+export function subscriptionName(planName, period, days) {
+  const n = String(planName || '').trim() || 'Plan';
+  return period === 'year' ? `${n}, yearly plan` : `${n}, ${Math.round(Number(days))}-day pass`;
+}
+
+/** Checkout's description: the price, how often, and "cancel anytime". */
+export function subscriptionDescription({ planName, period, days, amountMinor, currency = 'INR' }) {
+  return `${subscriptionName(planName, period, days)}: ${fmtMinor(amountMinor, currency)} ${everyWords(period, days)} until you cancel. Cancel anytime.`;
+}
+
+/** POST /v1/plans body, or null for a shape Razorpay cannot take. */
+export function planBody({ product, period, days, amountMinor, currency = 'INR', planName }) {
+  const p = rzpPeriod(period, days);
+  const amount = Math.round(Number(amountMinor));
+  if (!p || !(amount >= MIN_ORDER_PAISE)) return null;
+  return {
+    ...p,
+    item: { name: subscriptionName(planName, period, days), amount, currency: String(currency).toUpperCase(),
+            description: subscriptionDescription({ planName, period, days, amountMinor: amount, currency }) },
+    notes: { product: String(product), period: String(period), days: period === 'pass' ? String(Math.round(Number(days))) : '' }
+  };
+}
+
+/** POST /v1/subscriptions body. customer_notify 1: Razorpay sends the
+ *  mandate's own notices (the RBI pre-debit notice among them). No
+ *  start_at: the first charge is taken at authentication, so access starts
+ *  at once and the first charge is the plan's own amount. */
+export function subscriptionBody({ planId, period, days, rowId, userId, product }) {
+  const total = maxTotalCount(period, days);
+  if (!planId || !total) return null;
+  return { plan_id: planId, total_count: total, customer_notify: 1,
+           notes: { subscription_row_id: String(rowId), user_id: String(userId), product: String(product) } };
+}
+
+/** POST /v1/subscriptions/{id}/cancel body: at the end of the cycle for a
+ *  running one, at once for one that never started (nothing is due). */
+export function cancelBody(status) {
+  return { cancel_at_cycle_end: ['active', 'pending', 'halted'].includes(status) ? 1 : 0 };
+}
+
+/** The status a subscription.* webhook event means, or null. The event
+ *  name decides (the entity can lag it); the entity is the fallback. */
+export function statusForEvent(event, entity) {
+  const m = /^subscription\.(\w+)$/.exec(String(event || ''));
+  const map = { authenticated: 'authenticated', activated: 'active', charged: 'active', pending: 'pending', halted: 'halted',
+                cancelled: 'cancelled', completed: 'completed', expired: 'expired', paused: 'halted', resumed: 'active' };
+  if (m && map[m[1]]) return map[m[1]];
+  const s = String(entity?.status || '');
+  return SUBSCRIPTION_STATUSES.includes(s) ? s : null;
+}
+
+/** The Razorpay subscription a payment entity belongs to, when it says. */
+export function subscriptionOfPayment(payment) {
+  return (payment && (payment.subscription_id || payment.notes?.subscription_id)) || null;
+}
+
+/** A Razorpay unix-seconds timestamp as ISO, or null. */
+export function isoFromUnix(sec) {
+  const n = Number(sec);
+  return Number.isFinite(n) && n > 0 ? new Date(n * 1000).toISOString() : null;
 }

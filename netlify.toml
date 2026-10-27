@@ -318,6 +318,61 @@
   status = 200
 
 [[redirects]]
+  from = "/guides"
+  to = "/guides.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide-call-sheet"
+  to = "/guide-call-sheet.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide-tamil-screenplay-format"
+  to = "/guide-tamil-screenplay-format.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide-short-film-budget"
+  to = "/guide-short-film-budget.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide-script-breakdown"
+  to = "/guide-script-breakdown.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide-cbfc-checklist"
+  to = "/guide-cbfc-checklist.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide-ott-delivery"
+  to = "/guide-ott-delivery.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide-festival-planner"
+  to = "/guide-festival-planner.html"
+  status = 200
+
+[[redirects]]
+  from = "/compare-celtx"
+  to = "/compare-celtx.html"
+  status = 200
+
+[[redirects]]
+  from = "/compare-final-draft"
+  to = "/compare-final-draft.html"
+  status = 200
+
+[[redirects]]
+  from = "/trust"
+  to = "/trust.html"
+  status = 200
+
+[[redirects]]
   from = "/screenplay"
   to = "/screenplay.html"
   status = 200

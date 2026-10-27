@@ -70,6 +70,7 @@ import { h, delegate } from '../lib/dom.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import PDF from '../lib/pdf.js';
 import { paperDate } from '../lib/paper-date.js';
+import { brandPrint } from '../ui/footer.js';   // CORE: the "Made with" line on a plain print
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
 import * as Songs from '../lib/songs.js';
@@ -1566,7 +1567,7 @@ delegate(document, 'click', '[data-action="pdf-dood"]', () => {
   PDF.exportPDF({ scope: 'dood', subtitle: boardSummary(Scenes.listScenes()) });
 });
 
-delegate(document, 'click', '[data-action="sb-print"]', () => window.print());
+delegate(document, 'click', '[data-action="sb-print"]', () => { const off = brandPrint(); try { window.print(); } finally { setTimeout(off, 1000); } });
 
 /* ---- CSV -----------------------------------------------------
    The board in SHOOT order (each day as the AD ordered it, the

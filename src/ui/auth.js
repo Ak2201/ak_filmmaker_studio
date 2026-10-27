@@ -34,6 +34,8 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
 import Account from '../lib/account.js';
 import { errorSentence } from '../lib/gate.js';
 import { connectProject } from '../lib/chrome-auth.js';
+import { passOffer, cachedPassOffer } from '../lib/billing.js';
+import { passPhase, passFacts, passCta } from '../lib/pass-view.js';
 import '../styles/auth.css';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
@@ -427,9 +429,16 @@ export function renderAccountBlock() {
        door offers a free trial, a plan and a code now, so it says what
        the page actually does; a request already in flight still gets
        its own row and its own address. */
-    gateRows.push(g.reason === 'pending'
-      ? h('a.k-btn.k-btn--secondary.k-btn--sm.am-gate', { href: 'invite.html#request', text: 'Your invite request' })
-      : h('a.k-btn.k-btn--secondary.k-btn--sm.am-gate', { href: 'invite.html', text: 'Start your free trial' }));
+    /* The public free trial is retired (owner, 27 Oct 2026): while the
+       launch pass is on sale the row names it, with the server's price;
+       otherwise it is the generic way to the offer page. */
+    const passRow = () => (passPhase(cachedPassOffer()) === 'open' ? '→ ' + passCta(passFacts(cachedPassOffer())) : '→ SEE PLANS');
+    if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' }));
+    else {
+      const row = h('a.am-item', { href: 'invite.html', text: passRow() });
+      gateRows.push(row);
+      passOffer().then(() => { row.textContent = passRow(); }, () => {});
+    }
   }
   if (g.role === 'admin') {
     gateRows.push(h('a.k-btn.k-btn--secondary.k-btn--sm.am-gate', { href: 'admin.html',

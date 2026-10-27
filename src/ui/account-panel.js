@@ -28,8 +28,9 @@
 import { h, delegate } from '../lib/dom.js';
 import Account from '../lib/account.js';
 import { ask, askDanger } from './dialog.js';
+import { quotedOffer, limitOffer, limitText } from '../lib/plan-gate.js';   // CORE: the seat cap's next plan
 
-let state = { phase: 'idle', data: null, error: '', busy: '' };
+let state = { phase: 'idle', data: null, error: '', busy: '', nudge: null };
 let host  = null;
 let readFor = null;   // the account the last read was for
 
@@ -75,7 +76,23 @@ function memberRow(m, canManage, myEmail) {
   return row;
 }
 
-function seatLine(seats) {
+/* The plan that raises a FULL account's seats, and what it costs the
+   owner (plan-gate quotedOffer, the server's quote or no figure), asked
+   once per account and seat count. `at`: only when the account's seat
+   limit IS its plan's cap — a lower seat_limit is not a plan's to lift. */
+const seatNudge = { key: '', o: null };
+function seatOffer(d) {
+  if (!d || !d.isOwner || !d.seats || d.seats.used < d.seats.limit) return null;
+  const key = d.account.id + ':' + d.seats.limit;
+  if (seatNudge.key !== key) {
+    seatNudge.key = key; seatNudge.o = null;
+    quotedOffer([], { limit: 'seats', at: d.seats.limit })
+      .then((o) => { if (seatNudge.key === key && o) { seatNudge.o = o; paint(); } }, () => { /* the plain sentence stands */ });
+  }
+  return seatNudge.o;
+}
+
+function seatLine(seats, offer) {
   const full = seats.used >= seats.limit;
   const p = h('p.acct-seats' + (full ? '.is-full' : ''), {
     text: 'Seats: ' + seats.used + ' of ' + seats.limit + '.'
@@ -90,6 +107,7 @@ function seatLine(seats) {
       text: ' To invite anyone else you need another seat — upgrade your plan '
           + 'to add seats.'
     }));
+    if (offer) p.append(' ' + limitText(offer) + ' ', h('a', { href: offer.href, text: 'See ' + offer.name }));
   }
   return p;
 }
@@ -120,7 +138,7 @@ function renderMembers(d, myEmail) {
   const wrap = h('div.acct-body');
 
   wrap.append(h('p.acct-name', { text: d.account.name }));
-  wrap.append(seatLine(d.seats));
+  wrap.append(seatLine(d.seats, seatOffer(d)));
 
   const list = h('ul.acct-list');
   if (!d.members.length) {
@@ -216,33 +234,39 @@ function filmsBlock(d) {
 
 /* ---- paint -------------------------------------------------- */
 
-/* THE LIVE HOST. Settings rebuilds `main` on every auth, gate, plan and
-   fetch event, and commitMain() (dom.js) DISCARDS a rebuild that is
-   byte-identical to what is on the page. Each rebuild made a new
-   #acctHost and pointed `host` at it, so after a discarded one every
-   later paint went into a detached div and the panel on the page read
-   "Reading the account…" for good (QA, 26 Oct 2026). A host that is no
-   longer in the document gives way to the one that is. */
-function liveHost() {
-  if (host && host.isConnected) return host;
-  const onPage = typeof document !== 'undefined' && document.getElementById('acctHost');
-  if (onPage) host = onPage;
-  return host;
-}
-
 function paint() {
-  const el = liveHost();
-  if (el) paintInto(el);
+  /* Settings can build this section for a render it then throws away
+     (it rebuilds main often, and not every build is the one attached),
+     so the newest host is not always the one on the page. Painting only
+     a detached host left the visible panel on "Reading the account…" for
+     good and swallowed every refusal, so the one on the page is painted
+     too. (The newest is painted even while detached: accountSection()
+     paints before its section is attached.) */
+  if (!host) return;
+  paintInto(host);
+  if (!host.isConnected) { const live = document.getElementById('acctHost'); if (live && live !== host) paintInto(live); }
 }
 
-function paintInto(el) {
+function paintInto(host) {
   const c = window.StudioCloud;
   const myEmail = (c && c.getUserEmail && c.getUserEmail()) || '';
 
-  el.replaceChildren();
+  /* A repaint (every re-read redraws) must not eat what is being typed. */
+  const typed = ['acctEmail', 'acctRole', 'acctName'].map((id) => { const el = document.getElementById(id); return [id, el ? el.value : null]; });
+  const focused = document.activeElement && host.contains(document.activeElement) ? document.activeElement.id : '';
+  host.replaceChildren();
+  queueMicrotask(() => {
+    for (const [id, v] of typed) { const el = v !== null && document.getElementById(id); if (el && host.contains(el)) el.value = v; }
+    const f = focused && document.getElementById(focused);
+    if (f && host.contains(f)) f.focus();
+  });
 
   if (state.error) {
-    el.append(h('p.acct-error', { role: 'alert', text: state.error }));
+    /* The seat cap's nudge belongs to the refusal it was read from; a
+       later error (or none) drops it. */
+    const n = state.nudge && state.nudge.for === state.error ? state.nudge : null;
+    host.append(h('p.acct-error', { role: 'alert' }, [state.error,
+      n ? ' ' + n.text + ' ' : null, n ? h('a', { href: n.href, text: 'See ' + n.name }) : null]));
   }
 
   if (state.phase === 'loading') {
@@ -255,8 +279,26 @@ function paintInto(el) {
 
 /* ---- load --------------------------------------------------- */
 
-export async function refresh() {
-  setState({ phase: 'loading', error: '' });
+/* ONE READ AT A TIME. Settings rebuilds this section on every render and
+   each build asks for a refresh, so a burst of renders started several
+   reads at once. A refresh asked for while one is in flight runs once
+   more after it instead of beside it (the plan-gate.js refresh() pattern; the
+   marker is cleared on the promise, after the assignment). A panel that
+   already shows the account keeps showing it while it re-reads. */
+let _reading = null;
+let _readAgain = false;
+export function refresh() {
+  if (_reading) { _readAgain = true; return _reading; }
+  _reading = (async () => {
+    do { _readAgain = false; await refreshOnce(); } while (_readAgain);
+  })().finally(() => { _reading = null; });
+  return _reading;
+}
+async function refreshOnce() {
+  /* A re-read of an account already shown leaves a refusal on screen:
+     a redraw of the page is not the person dismissing it (every action
+     here clears the error itself when it starts). */
+  if (state.phase !== 'ready') setState({ phase: 'loading', error: '' });
   try {
     const d = await Account.loadAccount();
     if (d) { try { d.projects = await Account.listProjects(); } catch (e) { d.projects = []; } }
@@ -318,8 +360,21 @@ delegate(document, 'click', '[data-acct-action]', async (e, el) => {
     const role  = (document.getElementById('acctRole')  || {}).value || 'member';
     setState({ busy: 'invite', error: '' });
     Account.inviteMember(state.data.account.id, email, role)
-      .then(() => refresh())
-      .catch((err) => setState({ busy: '', error: Account.explain(err) }));
+      .then(() => { const el = document.getElementById('acctEmail'); if (el) el.value = ''; return refresh(); })
+      .catch((err) => {
+        const msg = Account.explain(err);
+        setState({ busy: '', error: msg });
+        /* THE SEAT CAP (53400) names the plan that raises it and what it
+           costs, as the project and share caps do — but only for the
+           account's OWNER (the seats are the owner's plan's), and only
+           when the plan's cap is the one that refused (limitOffer reads
+           "(2 of 2)"; an account's own lower seat_limit is not a plan's). */
+        if (err && err.code === '53400' && state.data && state.data.isOwner) {
+          limitOffer(err.message || '', 'seats').then((o) => {
+            if (o && state.error === msg) setState({ nudge: { for: msg, text: limitText(o), href: o.href, name: o.name } });
+          }, () => { /* the server's sentence stands */ });
+        }
+      });
     return;
   }
 

@@ -7,6 +7,11 @@
    route handler for the project's origin. `F.db` is the live state;
    `F.reset()` starts a scenario clean.
 
+   SECTIONS 58 AND 59 are in here too: bump_event (one argument or two),
+   admin_funnel / admin_funnel_by_source over F.db.events, and the
+   testimonial RPCs over F.db.testimonials (an author's own, the owner's
+   approval, the public list of approved and unrevoked ones).
+
    SECTION 30 (the trial, and the price rise that fires itself) is in
    here too, and it is DRIVEN THE SAME WAY EVERYTHING ELSE IS: a proof
    reaches into `F.db` and says what it wants to be true. The knobs:
@@ -15,6 +20,19 @@
                    trial_scope / trial_plan / price_rises_after_buyers
      F.db.plans[n].next_price_paise / next_price_at   (the scheduled rise)
      setTrial(uid, {...})  expireTrial(uid)  clearTrial(uid)
+
+   SECTION 61, THE LAUNCH PASS, is in here too and driven the same way:
+     F.db.settings.pass_enabled / pass_paise / pass_days / pass_plan /
+                   pass_ends_at / pass_cap      (off by default, as live)
+   trial_offer() and price_notice() carry the public `pass` block;
+   rzp-order takes period 'pass' (refusing 'disabled' | 'closed' |
+   'inr_only' | 'used' | 'has_plan' | 'code' as 400 { error, reason }); activation applies
+   the pass plan for pass_days with plan_period 'pass'; billing_status()
+   adds pass_used / pass_active / plan_period; start_trial() refuses a
+   signup trial with reason 'pass' while the pass is enabled; and
+   admin_pass_status / admin_set_pass are owner or finance only. A pass
+   is kept out of paid_buyers(), the referral code and payout, the §34
+   refund trial, and the §52 year credit.
 
    setTrial/expireTrial/clearTrial are exported for the same reason
    webhookRefundProcessed() is: "this person is mid-trial" and "this
@@ -155,7 +173,40 @@ export function clearTrial(uid) {
    moves next_price_at into the past sees the new figure everywhere at
    once, the way the database arranges it. */
 export function paidBuyers() {
-  return new Set(F.db.payments.filter((p) => p.status === 'paid' && p.amount_paise > 0).map((p) => p.user_id)).size;
+  return new Set(F.db.payments.filter((p) => p.status === 'paid' && p.amount_paise > 0 && p.period !== 'pass').map((p) => p.user_id)).size;
+}
+/* ---- section 61: the launch pass ---------------------------------- */
+/** pass_sold(): paid (not refunded) pass payments. */
+export function passSold() { return F.db.payments.filter((p) => p.period === 'pass' && p.status === 'paid').length; }
+/** pass_open(): enabled, before the deadline, under the cap. */
+export function passOpen() {
+  const s = F.db.settings;
+  if (!s.pass_enabled) return false;
+  if (s.pass_ends_at && Date.parse(s.pass_ends_at) <= Date.now()) return false;
+  return s.pass_cap == null || passSold() < s.pass_cap;
+}
+/** The public block trial_offer() and price_notice() carry. */
+export function passBlock() {
+  const s = F.db.settings;
+  return { open: passOpen(), amount_paise: s.pass_paise, days: s.pass_days, plan: s.pass_plan, ends_at: s.pass_ends_at || null,
+    cap: s.pass_cap ?? null, left: s.pass_cap == null ? null : Math.max(0, s.pass_cap - passSold()),
+    now: new Date(Date.now() + (F.db.serverSkewMs || 0)).toISOString() };
+}
+/** A pass this person paid for or had refunded: once per person. */
+const passUsedBy = (uid) => F.db.payments.some((p) => p.user_id === uid && p.period === 'pass' && (p.status === 'paid' || p.status === 'refunded'));
+/** quote_pass(): the refusals, each with its hint, then the price. */
+export function quotePass(user, currency = 'INR') {
+  const s = F.db.settings;
+  const no = (hint, message) => { throw Object.assign(new Error(message), { code: '22023', hint }); };
+  if (!s.pass_enabled) no('disabled', 'The launch pass is not on sale.');
+  if (!passOpen()) no('closed', 'The launch offer has ended.');
+  if (currency !== 'INR') no('inr_only', 'The launch pass is sold in rupees only.');
+  if (user && passUsedBy(user.id)) no('used', 'You have already had the launch pass.');
+  if (user) {
+    const held = F.db.accounts.filter((a) => a.owner_id === user.id).some((a) => accountPlan(a) !== 'free' && a.plan_period !== 'pass');
+    if (held) no('has_plan', 'You already have a plan.');
+  }
+  return { plan_id: s.pass_plan, period: 'pass', days: s.pass_days, amount_paise: s.pass_paise, list_paise: s.pass_paise, discount_paise: 0, credit_paise: 0, code: null, ok: true };
 }
 export function effectivePrice(planId) {
   const p = F.db.plans.find((x) => x.id === planId);
@@ -181,21 +232,29 @@ function applyPlan(a, plan, days = 0, period = 'year') {
   const lim = (F.db.plans.find((p) => p.id === plan) || {}).limits || {};
   a.seat_limit = Math.max(1, cap(lim, 'seats') ?? 1000);
   if (!(days > 0)) { a.plan = plan; a.plan_period = period === 'grant' ? 'grant' : 'lifetime'; a.plan_until = null; return null; }
-  const running = a.plan === plan && a.plan_until && Date.parse(a.plan_until) > Date.now();
+  /* §61: a running PASS is never stacked onto — a yearly plan bought on a
+     pass starts now and replaces it, and a pass starts now. */
+  const running = a.plan === plan && a.plan_period !== 'pass' && period !== 'pass' && a.plan_until && Date.parse(a.plan_until) > Date.now();
   const until = new Date((running ? Date.parse(a.plan_until) : Date.now()) + days * DAY).toISOString();
-  a.plan = plan; a.plan_period = period === 'grant' ? 'grant' : 'year'; a.plan_until = until;
+  a.plan = plan; a.plan_period = period === 'grant' ? 'grant' : period === 'pass' ? 'pass' : 'year'; a.plan_until = until;
   return until;
 }
+/* What the account HOLDS for ranking a purchase: a running pass is no plan. */
+const heldPlan = (a) => (a && a.plan_period === 'pass' ? 'free' : accountPlan(a));
 function activate(orderId, paymentId, raw) {
   const pay = F.db.payments.find((x) => x.razorpay_order_id === orderId);
   if (!pay) throw Object.assign(new Error('No payment with that order id'), { code: '22023' });
   if (pay.status === 'paid') return { already: true, pay };
   const a = accountForBuyer(pay.user_id);
+  /* §61: a pass is applied for its own days, always (a buyer who paid is
+     never refused), with plan_period 'pass'. */
+  const isPass = pay.period === 'pass';
+  const days = isPass ? (pay.days || F.db.settings.pass_days || 7) : 365;
   // section 52: applied when it is the same plan (a renewal) or a higher one
-  const applied = (PLAN_RANK[pay.plan_id] ?? 0) >= (PLAN_RANK[accountPlan(a)] ?? 0);
-  const until = applied ? applyPlan(a, pay.plan_id, 365) : null;
-  Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, period: 'year', plan_applied: applied,
-    starts_at: until ? new Date(Date.parse(until) - 365 * DAY).toISOString() : null, ends_at: until, raw });
+  const applied = isPass || (PLAN_RANK[pay.plan_id] ?? 0) >= (PLAN_RANK[heldPlan(a)] ?? 0);
+  const until = applied ? applyPlan(a, pay.plan_id, days, isPass ? 'pass' : 'year') : null;
+  Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, period: isPass ? 'pass' : 'year', plan_applied: applied,
+    starts_at: until ? new Date(Date.parse(until) - days * DAY).toISOString() : null, ends_at: until, raw });
   // section 20: a code is spent at activation, once
   if (pay.promo_code) { const c = F.db.promos.find((x) => x.code === pay.promo_code); if (c) c.uses++; }
   afterPaid(pay);
@@ -253,8 +312,9 @@ function endPlanByRefund(pay) {
     a.plan_until = new Date(left > Date.now() ? left : Date.now() - 1000).toISOString();
   }
   /* section 34: the trigger at commit — no other plan left, so the trial
-     restarts now, for the configured length and scope, source 'refund'. */
-  if (userPlan(pay.user_id) === 'free') {
+     restarts now, for the configured length and scope, source 'refund'.
+     §61: never for a refunded PASS. */
+  if (pay.period !== 'pass' && userPlan(pay.user_id) === 'free') {
     const cur = F.db.members.get(pay.user_id);
     setTrial(pay.user_id, { minutes: F.db.settings.trial_minutes || 30, source: 'refund',
       scope: F.db.settings.trial_scope || 'sample', startedAt: Date.now(), role: (cur && cur.role) || 'user' });
@@ -280,7 +340,7 @@ const randCode = (prefix, n) => prefix + Array.from({ length: n }, () => ALPHA[M
 export function ensureReferralCode(uid) {
   const c = F.db.promos.find((x) => x.kind === 'referral' && x.owner_user_id === uid);
   if (c) return c.code;
-  if (!F.db.payments.some((x) => x.user_id === uid && x.status === 'paid' && x.amount_paise > 0)) return null;
+  if (!F.db.payments.some((x) => x.user_id === uid && x.status === 'paid' && x.amount_paise > 0 && x.period !== 'pass')) return null;
   let code;
   do { code = randCode('REF-', 6); } while (F.db.promos.some((x) => x.code === code));
   F.db.promos.push({ code, percent_off: F.db.settings.referral_friend_pct, amount_off_paise: null, plan_ids: null, max_uses: null, uses: 0, valid_from: null, valid_until: null,
@@ -288,6 +348,7 @@ export function ensureReferralCode(uid) {
   return code;
 }
 function afterPaid(pay) {
+  if (pay.period === 'pass') return;   // §61: no referral code, no payout, for a pass
   if (pay.amount_paise > 0) ensureReferralCode(pay.user_id);
   const c = pay.promo_code && F.db.promos.find((x) => x.code === pay.promo_code);
   if (c && c.kind === 'referral' && c.owner_user_id && c.owner_user_id !== pay.user_id && !F.db.credits.some((r) => r.payment_id === pay.id)) {
@@ -318,7 +379,8 @@ export function quoteOrder(planId, rawCode, user = null) {
   if (!pl || !(price > 0)) throw Object.assign(new Error('That plan is not for sale'), { code: '22023' });
   let credit = 0, cur = 'free', renewal = false, curUntil = null;
   if (user) {
-    cur = userPlan(user.id);
+    /* §61: a running pass is "no plan" — no renewal, no credit, no downgrade refusal */
+    cur = F.db.accounts.filter((a) => a.owner_id === user.id).map(heldPlan).sort((x, y) => PLAN_RANK[y] - PLAN_RANK[x])[0] || 'free';
     if (cur !== 'free') {
       const held = F.db.accounts.find((a) => a.owner_id === user.id && accountPlan(a) === cur);
       curUntil = held ? held.plan_until ?? null : null;
@@ -457,6 +519,8 @@ export function freshDb() {
                    that has not run §32: billing_status() then carries
                    no key at all. */
                 purchase_required: true,
+                /* section 61: the launch pass, off by default (as live) */
+                pass_enabled: false, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: null, pass_cap: null,
                 /* section 55: charging in US dollars, off until the owner turns it on */
                 usd_checkout: false },
     /* section 31's plan_prices for USD (cents), §31's seed figures; the
@@ -472,9 +536,23 @@ export function freshDb() {
     credits: [],
     // section 27: refunds, customer requests, the switch (off by default), and what the fake Razorpay was asked
     refunds: [], rreqs: [], rrEnabled: false, rzpRefunds: [],
+    /* section 58: the daily counters, now per source ('' = none) —
+       { day, name, source, count }. bump_event takes one argument or two. */
+    events: [],
+    /* section 59: testimonials, each { id, author, author_email, quote,
+       display_name, role, film, consent_text, consented_at, revoked_at,
+       status, approved_by, approved_at, created_at, site_removed_at,
+       first_approved_at, author_deleted }. */
+    testimonials: [],
     calls: []
   };
 }
+
+/* ---- sections 58 and 59, as the browser reaches them --------------- */
+const FUNNEL_NAMES = ['landing_view', 'pricing_view', 'invite_request', 'signup', 'signin_done', 'sample_open', 'trial_start', 'plan_view_in_app', 'checkout_start', 'pass_buy', 'purchase'];
+const inWindow = (day, from, to) => (!from || day >= from) && (!to || day <= to);
+const TM_PUBLIC = (t) => ({ id: t.id, quote: t.quote, display_name: t.display_name, role: t.role, film: t.film, approved_at: t.approved_at });
+const tmOwn = (t) => { const { author_email, ...rest } = t; return rest; };
 
 const json = (route, status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 const pgErr = (route, code, message, status = 400) => json(route, status, { code, message, details: null, hint: null });
@@ -544,6 +622,10 @@ function rpc(name, args, user, route) {
         plan_until: pl !== 'free' && acc ? acc.plan_until : null, bought_plan: acc ? acc.plan : null,
         lapsed: !!(acc && acc.plan !== 'free' && acc.plan_until && Date.parse(acc.plan_until) <= Date.now()),
         disabled: !!F.db.members.get(user.id)?.disabled_at, member: isMember(user),
+        // section 61
+        plan_period: pl !== 'free' && acc ? (acc.plan_period || null) : null,
+        pass_used: passUsedBy(user.id),
+        pass_active: !!(acc && acc.plan_period === 'pass' && acc.plan_until && Date.parse(acc.plan_until) > Date.now()),
         usage: { projects: F.db.projects.filter((p) => p.owner_id === user.id).length, shares: 0, collaborators: 0,
                  seats: acc ? F.db.accountMembers.filter((m) => m.account_id === acc.id).length : 0 },
         payments: F.db.payments.filter((x) => x.user_id === user.id).slice(-12).reverse()
@@ -568,13 +650,16 @@ function rpc(name, args, user, route) {
          administrator; for everybody else it is derived from the
          invite code on their row, which only redeem_invite writes. */
       const src = (args.p_source && isAdmin(user)) ? args.p_source : (m && m.invite_code_id ? 'code' : 'signup');
+      /* §61: the public's free trial is retired while the launch pass is on */
+      if (src === 'signup' && F.db.settings.pass_enabled) return json(route, 200, { started: false, reason: 'pass' });
       const mins = src === 'code' ? (F.db.settings.code_trial_days || 7) * 1440 : (F.db.settings.trial_minutes || 30);
       /* Inserting the row is what admits them (30.5), so the request
          closes too — and admit() REPLACES the row, so it goes first or
          it would wipe the trial that was just written. */
       admit(user.id);
       setTrial(user.id, { minutes: mins, source: src, startedAt: Date.now(),
-        scope: src === 'signup' ? 'sample' : (F.db.settings.trial_scope || 'sample'),
+        /* §60: every trial follows the console's scope (a pressed one was always the sample) */
+        scope: F.db.settings.trial_scope || 'sample',
         role: (F.db.members.get(user.id) || {}).role || 'user' });
       accountForBuyer(user.id);
       let status = null;
@@ -610,6 +695,7 @@ function rpc(name, args, user, route) {
             display_next_minor: has && pending ? (pp.next_amount_minor || null) : null };
         })
       };
+      out.pass = passBlock();   // §61
       if (want) Object.assign(out, { currency: want, usd_checkout: !!F.db.settings.usd_checkout,
         charged_currency: want === 'USD' && F.db.settings.usd_checkout && usdComplete ? 'USD' : 'INR' });
       return json(route, 200, out);
@@ -759,7 +845,28 @@ function rpc(name, args, user, route) {
     /* section 33: the landing page's read, anon */
     case 'trial_offer':
       return json(route, 200, { trial_enabled: !!F.db.settings.trial_enabled, trial_minutes: F.db.settings.trial_minutes || 30,
-        trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100, purchase_required: purchasesRequired() });
+        trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100, purchase_required: purchasesRequired(),
+        /* §60 */ trial_scope: F.db.settings.trial_scope || 'sample',
+        /* §61 */ ...(F.db.noPassSchema ? {} : { pass: passBlock() }) });
+    /* ---- section 61: the console's launch pass (owner or finance) ---- */
+    case 'admin_pass_status':
+    case 'admin_set_pass': {
+      if (F.db.noPassSchema) return pgErr(route, 'PGRST202', `Could not find the function public.${name} in the schema cache`, 404);
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      { const cr = (F.db.members.get(user.id) || {}).consoleRole; if (cr && !['owner', 'finance'].includes(cr)) return pgErr(route, '42501', `Your role (${cr}) cannot do this. It needs the finance role.`); }
+      const s = F.db.settings;
+      if (name === 'admin_set_pass') {
+        F.db.calls.push(`rpc:admin_set_pass ${args.p_enabled} ${args.p_paise} ${args.p_days} ${args.p_plan} ${args.p_ends_at || '-'} ${args.p_cap ?? '-'}`);
+        if (!(Number.isInteger(args.p_paise) && args.p_paise >= 100)) return pgErr(route, '22023', 'A pass costs at least ₹1 (100 paise).');
+        if (!(Number.isInteger(args.p_days) && args.p_days >= 1 && args.p_days <= 31)) return pgErr(route, '22023', 'A pass lasts 1 to 31 days.');
+        if (!F.db.plans.some((p) => p.id === args.p_plan && p.id !== 'free')) return pgErr(route, '22023', `No such plan "${args.p_plan}"`);
+        if (args.p_cap != null && !(Number.isInteger(args.p_cap) && args.p_cap >= 1)) return pgErr(route, '22023', 'The cap is a whole number of passes, or none.');
+        Object.assign(s, { pass_enabled: !!args.p_enabled, pass_paise: args.p_paise, pass_days: args.p_days, pass_plan: args.p_plan, pass_ends_at: args.p_ends_at || null, pass_cap: args.p_cap ?? null });
+      }
+      const sold = passSold();
+      return json(route, 200, { enabled: !!s.pass_enabled, paise: s.pass_paise, days: s.pass_days, plan: s.pass_plan, ends_at: s.pass_ends_at || null,
+        cap: s.pass_cap ?? null, sold, left: s.pass_cap == null ? null : Math.max(0, s.pass_cap - sold), open: passOpen() });
+    }
     case 'purchases_required':
       if (!('purchase_required' in F.db.settings)) return pgErr(route, 'PGRST202', 'Could not find the function public.purchases_required in the schema cache', 404);
       return json(route, 200, purchasesRequired());
@@ -1063,6 +1170,87 @@ function rpc(name, args, user, route) {
       const scopes = {}; for (const k of ['story', 'feature', 'short', 'scenes']) if (d[k]) scopes[k] = d[k];
       return json(route, 200, [{ project_id: p.id, title: p.title, format: p.format, access_id: aid, expires_at: c.expires_at, scopes }]);
     }
+    /* ---- section 58 ---- */
+    case 'bump_event': {
+      if (!FUNNEL_NAMES.includes(args.p_name)) return pgErr(route, '22023', 'Unknown event.');
+      const src = String(args.p_source == null ? '' : args.p_source).trim().toLowerCase();
+      if (src && (!/^[a-z0-9_-]{1,32}$/.test(src) || /[0-9]{7}/.test(src))) return pgErr(route, '22023', 'A source is up to 32 of a-z, 0-9, _ and -, with no long number in it.');
+      const day = new Date().toISOString().slice(0, 10);
+      const row = F.db.events.find((e) => e.day === day && e.name === args.p_name && e.source === src);
+      if (row) row.count++; else F.db.events.push({ day, name: args.p_name, source: src, count: 1 });
+      return route.fulfill({ status: 204, body: '' });
+    }
+    case 'admin_funnel': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, FUNNEL_NAMES.map((name) => ({ name, total: F.db.events.filter((e) => e.name === name && inWindow(e.day, args.p_from, args.p_to)).reduce((n, e) => n + e.count, 0) })));
+    }
+    case 'admin_funnel_by_source': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const m = new Map();
+      for (const e of F.db.events) {
+        if (!inWindow(e.day, args.p_from, args.p_to)) continue;
+        const k = e.name + '|' + e.source;
+        m.set(k, { name: e.name, source: e.source, total: (m.get(k) ? m.get(k).total : 0) + e.count });
+      }
+      return json(route, 200, [...m.values()].sort((a, b) => FUNNEL_NAMES.indexOf(a.name) - FUNNEL_NAMES.indexOf(b.name) || b.total - a.total));
+    }
+    /* ---- section 59 ---- */
+    case 'submit_testimonial': {
+      if (!user) return pgErr(route, '42501', 'Sign in to send a testimonial.', 401);
+      const q = String(args.p_quote || '').trim(), n = String(args.p_display_name || '').trim(), c = String(args.p_consent || '').trim();
+      if (q.length < 20 || q.length > 600 || !n || n.length > 80 || c.length < 20) return pgErr(route, '23514', 'new row for relation "testimonials" violates check constraint');
+      if (F.db.testimonials.filter((t) => t.author === user.id && Date.now() - Date.parse(t.created_at) < DAY).length >= 5) return pgErr(route, 'P0429', 'That is plenty for one day. Thank you.');
+      const now = new Date().toISOString();
+      const t = { id: 'tm' + (F.db.testimonials.length + 1) + '-0000-4000-8000-000000000000', author: user.id, author_email: user.email, quote: q, display_name: n,
+        role: String(args.p_role || '').trim() || null, film: String(args.p_film || '').trim() || null, consent_text: c, consented_at: now, revoked_at: null,
+        status: 'pending', approved_by: null, approved_at: null, created_at: now, site_removed_at: null,
+        first_approved_at: null, author_deleted: false };
+      F.db.testimonials.push(t);
+      return json(route, 200, tmOwn(t));
+    }
+    case 'my_testimonials':
+      if (!user) return pgErr(route, '42501', 'permission denied for function my_testimonials', 401);
+      return json(route, 200, F.db.testimonials.filter((t) => t.author === user.id).slice().reverse().map(tmOwn));
+    case 'revoke_testimonial': {
+      const t = user && F.db.testimonials.find((x) => x.id === args.p_id && x.author === user.id);
+      if (!t) return pgErr(route, 'P0002', 'No such testimonial of yours.');
+      t.revoked_at = t.revoked_at || new Date().toISOString();
+      return json(route, 200, tmOwn(t));
+    }
+    case 'public_testimonials':
+      return json(route, 200, F.db.testimonials.filter((t) => t.status === 'approved' && !t.revoked_at).map(TM_PUBLIC));
+    case 'admin_list_testimonials': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const st = args.p_status || null;
+      const pick = (t) => !st || (st === 'revoked' ? !!t.revoked_at
+        : st === 'takedown' ? !!(t.revoked_at && t.first_approved_at && !t.site_removed_at)
+          : (t.status === st && !t.revoked_at));
+      return json(route, 200, F.db.testimonials.filter(pick).slice().reverse());
+    }
+    case 'admin_mark_testimonial_removed': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const role = (F.db.members.get(user.id) || {}).consoleRole || 'owner';
+      if (role !== 'owner') return pgErr(route, '42501', `Your role (${role}) cannot do this. It needs the owner role.`);
+      const t = F.db.testimonials.find((x) => x.id === args.p_id);
+      if (!t) return pgErr(route, 'P0002', 'No such testimonial.');
+      if (!t.revoked_at) return pgErr(route, '22023', 'Only a testimonial its author took back is marked off the site.');
+      t.site_removed_at = t.site_removed_at || new Date().toISOString();
+      return json(route, 200, t);
+    }
+    case 'admin_set_testimonial_status': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const role = (F.db.members.get(user.id) || {}).consoleRole || 'owner';
+      if (role !== 'owner') return pgErr(route, '42501', `Your role (${role}) cannot do this. It needs the owner role.`);
+      if (!['pending', 'approved', 'rejected'].includes(args.p_status)) return pgErr(route, '22023', 'A testimonial is pending, approved or rejected.');
+      const t = F.db.testimonials.find((x) => x.id === args.p_id);
+      if (!t) return pgErr(route, 'P0002', 'No such testimonial.');
+      if (t.revoked_at) return pgErr(route, '22023', 'The author took this back. It cannot be published.');
+      t.status = args.p_status;
+      t.approved_by = args.p_status === 'approved' ? user.id : null;
+      t.approved_at = args.p_status === 'approved' ? new Date().toISOString() : null;
+      t.first_approved_at = t.first_approved_at || t.approved_at;
+      return json(route, 200, t);
+    }
     default:
       return json(route, 200, []);
   }
@@ -1111,6 +1299,22 @@ export async function handle(route) {
     const plan = F.db.plans.find((p) => p.id === body.plan && p.active);
     F.db.calls.push(`fn:rzp-order ${body.plan} ${body.period}`);
     if (F.db.members.get(user.id)?.disabled_at) return json(route, 403, { error: 'This account has been disabled by an administrator' });
+    /* §61: the launch pass, priced by quote_pass; no promo code. Refusals
+       carry a `hint` (the client words them). */
+    if (body.period === 'pass') {
+      const currency = body.currency == null ? 'INR' : String(body.currency);
+      let q;
+      try { q = quotePass(user, currency); } catch (e) { F.db.calls.push(`fn:rzp-order refused ${e.hint || ''}`); return json(route, 400, { error: e.message, reason: e.hint || null }); }
+      if (body.code) { F.db.calls.push('fn:rzp-order refused code'); return json(route, 400, { error: 'A promo code does not apply to the launch pass.', reason: 'code' }); }
+      if (body.plan && body.plan !== q.plan_id) return json(route, 400, { error: 'That plan is not the pass plan.', reason: 'disabled' });
+      const id = 'pay' + F.db.payments.length;
+      const order_id = 'order_' + Math.random().toString(36).slice(2, 10);
+      F.db.payments.push({ id, user_id: user.id, account_id: body.account_id || null, plan_id: q.plan_id, period: 'pass', days: q.days, amount_paise: q.amount_paise, currency: 'INR',
+        list_paise: q.amount_paise, discount_paise: 0, promo_code: null, credit_paise: 0, razorpay_order_id: order_id, razorpay_payment_id: null, status: 'created', created_at: new Date().toISOString() });
+      const pl = F.db.plans.find((p) => p.id === q.plan_id) || {};
+      return json(route, 200, { order_id, amount: q.amount_paise, amount_minor: q.amount_paise, currency: 'INR', key_id: RZP.keyId, plan: q.plan_id, period: 'pass', plan_name: pl.name, payment_id: id,
+        list_paise: q.amount_paise, discount_paise: 0, promo_code: null, credit_paise: 0, prefill: { email: user.email } });
+    }
     if (!plan) return json(route, 400, { error: 'That plan is not for sale' });
     /* §52: a year at a time; an older client's 'lifetime' is read as a year */
     if (body.period == null || body.period === 'lifetime') body.period = 'year';
@@ -1123,9 +1327,9 @@ export async function handle(route) {
     if (!['INR', 'USD'].includes(currency)) return json(route, 400, { error: 'Orders are in rupees (INR) or US dollars (USD).' });
     F.db.calls.push(`currency:rzp-order ${currency}`);
     let q;
-    try { q = quoteOrderIn(plan.id, body.code, user, currency); } catch (e) { F.db.calls.push(`fn:rzp-order refused ${e.hint || ''}`); return json(route, 400, { error: e.message }); }
+    try { q = quoteOrderIn(plan.id, body.code, user, currency); } catch (e) { F.db.calls.push(`fn:rzp-order refused ${e.hint || ''}`); return json(route, 400, { error: e.message, ...(e.hint ? { reason: e.hint } : {}) }); }
     F.db.calls.push(`fn:rzp-order code ${q.code || '-'} ${q.ok ? 'ok' : q.reason}`);
-    if (!q.ok) return json(route, 400, { error: q.sentence });
+    if (!q.ok) return json(route, 400, { error: q.sentence, reason: q.reason });
     const amount = q.amount_paise;
     const id = 'pay' + F.db.payments.length;
     const order_id = 'order_' + Math.random().toString(36).slice(2, 10);

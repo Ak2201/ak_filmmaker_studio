@@ -446,6 +446,40 @@ check(`AA pass actually measured text (${aa.total} nodes over ${aa.themes * aa.s
 check(`every text node in the panel clears 4.5:1, all ${aa.themes * aa.skins} combination(s)`, aa.fails, []);
 console.log(`        (${aa.total} measurements across ${aa.themes} themes x ${aa.skins} skins)`);
 
+// ------------------------------------------------------------
+// (e) THE SAMPLE IS OPENABLE AT ANY TIME, from Home and from the account
+//     menu, idempotently, beside the user's own film. Signed-out context.
+// ------------------------------------------------------------
+{
+  const sctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const sp = await sctx.newPage();
+  sp.on('pageerror', (e) => errors.push('sample: ' + e.message));
+  const titles = () => sp.evaluate(() => window.StudioStore.listProjects().map((p) => p.title));
+  await sp.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
+  await sp.evaluate(() => {
+    localStorage.clear();
+    const S = window.StudioStore; const p = S.createProject({ title: 'My Own Film', format: 'feature' });
+    S.setCurrentProject(p.id); S.notify('projects:changed', { reason: 'test' });
+  });
+  await sp.reload({ waitUntil: 'networkidle' });
+  await sp.click('[data-action="sample-project"][data-go]');
+  await sp.waitForURL(/dashboard\.html/, { timeout: 20000 });
+  let t = await titles();
+  check('Home: Open the sample project adds the sample beside the user\'s film', t.length, 2);
+  check('Home: the user\'s own film is untouched', t.includes('My Own Film'), true);
+  check('Home: the open project is the sample', await sp.evaluate(() => window.StudioStore.currentProject().title !== 'My Own Film'), true);
+  // The account menu, from another page, a second time: re-opens, no duplicate.
+  await sp.evaluate(() => window.StudioStore.setCurrentProject(window.StudioStore.listProjects().find((p) => p.title === 'My Own Film').id));
+  await sp.reload({ waitUntil: 'networkidle' });
+  await sp.click('[data-action="rail-account"]');
+  await sp.click('#shAcctMenu a[href*="sample=1"]');
+  await sp.waitForURL(/dashboard\.html/, { timeout: 20000 });
+  t = await titles();
+  check('Menu: re-opens the existing sample, no duplicate', t.length, 2);
+  check('Menu: the sample is the open project again', await sp.evaluate(() => window.StudioStore.currentProject().title !== 'My Own Film'), true);
+  await sctx.close();
+}
+
 check('no page errors anywhere in this run', errors, []);
 
 await browser.close();

@@ -108,10 +108,14 @@ for (const id of IDS) {
   ok(!relLinks.includes(file), tag + 'related does not list itself');
   ok(relLinks.every((l) => IDS.some((x) => pages[x].file === l)), tag + 'every related link is a product page');
 
-  /* the header and the footer list every page, the tools block too */
+  /* the header's Product menu and the footer list every page. (28 Oct
+     2026: the "tools for every stage" block that repeated the same list a
+     third time left the product pages, so two links, not three.) */
   for (const other of IDS) {
     const count = (html.match(new RegExp(`href="${pages[other].file.replace(/[.]/g, '\\.')}"`, 'g')) || []).length;
-    ok(count >= 3, `${tag}${pages[other].file} is linked from the header, the stage block and the footer (${count})`);
+    const inHead = new RegExp(`<header class="mk-top"[\\s\\S]*href="${pages[other].file.replace(/[.]/g, '\\.')}"[\\s\\S]*</header>`).test(html);
+    const inFoot = new RegExp(`<footer class="mk-foot"[\\s\\S]*href="${pages[other].file.replace(/[.]/g, '\\.')}"[\\s\\S]*</footer>`).test(html);
+    ok(count >= 2 && inHead && inFoot, `${tag}${pages[other].file} is linked from the header and the footer (${count})`);
   }
   ok(/<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'footer links the three legal pages');
 
@@ -273,20 +277,29 @@ for (const id of IDS) {
     const bad = urls.filter(({ v }) => EXTERNAL.test(v) && !/^https:\/\/{{brand:host}}\//.test(v));
     ok(bad.length === 0, tag + 'no external host in href/src/poster' + (bad.length ? ': ' + bad.map((b) => b.v).join(', ') : ''));
     ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b|st-voice|id="voices"|inviteBand|leadForm/i.test(html), tag + 'no social proof, voices block, invite banner or e-mail offers form');
-    /* five stages, media alternating; the fifth has no CTA and no video */
-    const arts = [...html.matchAll(/<article class="st-stage[^"]*"[\s\S]*?<\/article>/g)].map((m) => m[0]);
-    ok(arts.length === 5, tag + 'five stage rows');
+    /* THE HOME PAGE'S SHAPE (28 Oct 2026, the owner's template): a hero
+       with ONE visible action and the product video, four stage cards,
+       three points on keeping your work, a plans teaser that names the
+       from-per-day figure as a stamp, and one closing action. (It was a
+       hero, four facts, five alternating stage rows, an exports block and
+       four answers; the layout assertions follow the new shape.) */
+    const heroSec = (html.match(/<section class="mk-hero st-hero"[\s\S]*?<\/section>/) || [''])[0];
+    ok(/<video controls muted loop playsinline preload="none"/.test(heroSec), tag + 'the hero shows the product video');
+    ok((heroSec.match(/<a class="mk-btn[^"]*"(?![^>]*\shidden)[^>]*>/g) || []).length === 1, tag + 'the hero has one visible action (its pass twin is hidden)');
+    const arts = [...html.matchAll(/<article class="mk-card st-stage[^"]*"[\s\S]*?<\/article>/g)].map((m) => m[0]);
+    ok(arts.length === 4, tag + 'four stage cards');
     arts.forEach((a, i) => {
-      ok(/st-stage--flip/.test(a) === (i % 2 === 1), `${tag}stage ${i + 1} puts its media ${i % 2 ? 'right' : 'left'}`);
-      ok((i < 4) === /<video controls muted loop playsinline preload="none"/.test(a), `${tag}stage ${i + 1} ${i < 4 ? 'has' : 'has no'} demo video`);
-      ok((i < 4) === /class="mk-link" href="product-/.test(a), `${tag}stage ${i + 1} ${i < 4 ? 'links to its product page' : 'has no CTA'}`);
+      const href = (a.match(/class="mk-link" href="(product-[a-z-]+)\.html"/) || [])[1];
+      ok(!!href && a.includes(`src="/marketing/${href.replace(/^product-/, '')}.webp"`), `${tag}stage card ${i + 1} links its product page and shows that page's own poster (${href})`);
     });
+    ok((html.match(/<li class="mk-point">/g) || []).length === 3, tag + 'three points on keeping your work');
+    const plansSec = (html.match(/<section class="mk-sec[^"]*" id="plans"[\s\S]*?<\/section>/) || [''])[0];
+    ok(/\{\{fms:price\.from\.day\}\}/.test(plansSec) && /href="pricing\.html"/.test(plansSec), tag + 'the plans teaser names the from-per-day stamp and links pricing.html');
     const refs = [...html.matchAll(/(?:src|poster)="(\/marketing\/[^"]+)"/g)].map((m) => m[1]);
     if (!FIXTURE) for (const r of new Set(refs)) ok(fs.existsSync(path.join(ROOT, 'public', r)), `${tag}${r} exists under public/`);
     ok(/id="tools"/.test(html) && /id="start"/.test(html), tag + 'the #tools and #start anchors resolve');
     ok(/data-open-signup/.test(html) && /id="mkSignup"/.test(html), tag + 'Get started opens the sign-up modal');
     ok(/href="pricing\.html"/.test(html) && /<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'links pricing and the three legal pages');
-    ok(home.facts.length === 4 && (html.match(/class="st-fact-n"/g) || []).length === 4, tag + 'four facts');
     leadContract(html, tag);
     ok(/href="trust\.html"/.test(html), tag + 'links the trust page');
     const icons = JSON.parse(read('src/data/section-icons.json')).icons;
@@ -427,7 +440,7 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 {
   const js = read('src/pages/marketing.js');
   const imports = [...js.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer|offer-terms)\.js$/];   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
+  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer|offer-terms)\.js$/, /^motion\/mini$/];   // motion/mini (28 Oct 2026): the motion package's WAAPI animate() only, a leaf with no app code; prove:growth still asserts no studio-* chunk   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
   const stray = imports.filter((i) => !allowed.some((a) => a.test(i)));
   ok(stray.length === 0, 'marketing.js imports only the light allowlist (the startlib rule)' + (stray.length ? ': ' + stray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(js), 'marketing.js builds no markup from strings');
@@ -603,7 +616,10 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
   /* every public page's header and footer reach the new pages */
   for (const f of [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, 'privacy.html', ...IDS.map((i) => pages[i].file)]) {
     const h = read(f);
-    ok(/<a class="mk-nav-link" href="guides\.html"/.test(h) && new RegExp('<a class="mk-nav-link" href="guides\\.html#compare"[^>]*>' + esc(site.ui.compare) + '</a>').test(h) && site.ui.compare === 'Switching', f + ': the header has Guides and Switching');
+    /* 28 Oct 2026: the bar holds Product, Pricing, Sign in and Get
+       started; Guides and Switching are the Product menu's Learn column. */
+    const head = (h.match(/<header class="mk-top"[\s\S]*?<\/header>/) || [''])[0];
+    ok(/<a href="guides\.html"[^>]*>/.test(head) && new RegExp('<a href="guides\\.html#compare"[^>]*>[^]*?<span>' + esc(site.ui.compare) + '</span></a>').test(head) && site.ui.compare === 'Switching', f + ': the header\'s Product menu has Guides and Switching');
     ok(/<footer class="mk-foot"[\s\S]*href="trust\.html"/.test(h), f + ': the footer links the trust page');
     if (f !== 'privacy.html') ok(/<meta property="og:image:alt" content="[^"]+">/.test(h), f + ': og:image:alt');
   }

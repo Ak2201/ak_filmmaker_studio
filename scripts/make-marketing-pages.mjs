@@ -171,7 +171,24 @@ export function passBand(site) {
 </aside>`;
 }
 
+/** THE CLOSING BAND every public page ends on (28 Oct 2026): one dark
+ *  band, one heading, the action(s) under it, and an optional line. The
+ *  buttons are passed in, because what a page may offer differs (the pass
+ *  pair, or the neutral door and the plans). id="start" is the anchor the
+ *  pages already link to. */
+export function closeBand(h2, buttons, extra = '', hue = '', sub = '') {
+  return `<section class="mk-sec mk-close${hue ? ' ' + hue : ''}" id="start" aria-labelledby="mkMidH" data-surface="dark">
+  <div class="mk-wrap mk-center">
+    <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>${sub ? `
+    <p class="mk-sub">${sub}</p>` : ''}
+    <div class="mk-cta-row mk-cta-row--center">${buttons}
+    </div>${extra}
+  </div>
+</section>`;
+}
+
 export function loadInputs({ fixture = false } = {}) {
+
   const site = readJson(SITE_FILE);
   const pagesRel = fixture ? FIXTURE_FILE : PAGES_FILE;
   if (!fs.existsSync(path.join(ROOT, pagesRel))) {
@@ -286,62 +303,70 @@ function header(site, pages, current) {
 ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li>`).join('\n')}
             </ul>
           </div>`).join('');
+  /* Guides, the switching guides and the trust page sit in the Product
+     menu's last column, so the bar itself holds four things: Product,
+     Pricing, Sign in, Get started (28 Oct 2026). */
+  const cur = (k) => (current === k ? ' aria-current="page"' : '');
+  const resources = `
+          <div class="mk-mega-col mk-mega-col--more">
+            <p class="mk-mega-h">${esc(u.resources)}</p>
+            <ul>
+              <li><a href="guides.html"${cur('guides')}>${sym('menu_book')}<span>${esc(u.guides)}</span></a></li>
+              <li><a href="guides.html#compare"${cur('compare')}>${sym('swap_horiz')}<span>${esc(u.compare)}</span></a></li>
+              <li><a href="trust.html"${cur('trust')}>${sym('lock')}<span>${esc(site.footer.trust)}</span></a></li>
+            </ul>
+          </div>`;
   return `<a class="mk-skip" href="#main">${esc(u.skip)}</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
-<header class="mk-top" id="mkTop">
+<header class="mk-top" id="mkTop" data-surface="dark">
   <div class="mk-top-in">
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="${esc(u.mainNav)}">
       <div class="mk-nav-item">
         <a class="mk-nav-link mk-nav-prod" id="mkProd" href="start.html#tools" aria-haspopup="true" aria-expanded="false" aria-controls="mkMega"><span>${esc(u.product)}</span>${sym('expand_more')}</a>
-        <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}
+        <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}${resources}
         </div>
       </div>
-      <a class="mk-nav-link mk-nav-pricing" href="pricing.html"${current === 'pricing' ? ' aria-current="page"' : ''}>${esc(u.pricing)}</a>
-      <a class="mk-nav-link" href="guides.html"${current === 'guides' ? ' aria-current="page"' : ''}>${esc(u.guides)}</a>
-      <a class="mk-nav-link" href="guides.html#compare"${current === 'compare' ? ' aria-current="page"' : ''}>${esc(u.compare)}</a>
+      <a class="mk-nav-link mk-nav-pricing" href="pricing.html"${cur('pricing')}>${esc(u.pricing)}</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
     </nav>
     <div class="mk-top-end">
       <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>${esc(u.signup)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--sm" href="invite.html" data-open-signup>${esc(u.getStarted)}</a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="${esc(u.menu)}">${sym('menu')}</a>
     </div>
   </div>
 </header>`;
 }
 
+/* The footer: the brand and one line, then three columns (the tools, the
+   company, the reading), then the legal row. Dark, like the header. */
 function footer(site, pages) {
   const f = site.footer;
-  const cols = navOrder(site).map((s) => `
-      <div class="mk-foot-col ${s.hue}">
-        <p class="mk-foot-h">${esc(s.label)}</p>
+  const tools = navOrder(site).flatMap((s) => s.ids);
+  const a = (href, t) => `<a href="${href}">${esc(t)}</a>`;
+  const col = (h, items, cls = '') => `
+      <div class="mk-foot-col${cls}">
+        <p class="mk-foot-h">${esc(h)}</p>
         <ul>
-${s.ids.map((id) => `          <li><a href="${esc(pages[id].file)}">${esc(pages[id].label)}</a></li>`).join('\n')}
+${items.map((it) => `          <li>${it}</li>`).join('\n')}
         </ul>
-      </div>`).join('');
-  return `<footer class="mk-foot" id="mkFoot">
+      </div>`;
+  return `<footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
-    <div class="mk-foot-grid">${cols}
-      <div class="mk-foot-col">
-        <p class="mk-foot-h">${esc(f.legalHeading)}</p>
-        <ul>
-          <li><a href="pricing.html">${esc(f.pricing)}</a></li>
-          <li><a href="about.html">${esc(f.about)}</a></li>
-          <li><a href="trust.html">${esc(f.trust)}</a></li>
-          <li><a href="guides.html">${esc(f.guides)}</a></li>
-          <li><a href="guides.html#compare">${esc(f.compare)}</a></li>
-          <li><a href="contact.html">${esc(f.contact)}</a></li>
-          <li><a href="privacy.html">${esc(f.privacy)}</a></li>
-          <li><a href="terms.html">${esc(f.terms)}</a></li>
-          <li><a href="refund.html">${esc(f.refund)}</a></li>
-          <li><a href="mailto:{{brand:email}}">${esc(f.support)}</a></li>
-        </ul>
-      </div>
+    <div class="mk-foot-grid">
+      <div class="mk-foot-brand">
+        <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+        <p class="mk-foot-note">${esc(f.note)}</p>
+      </div>${col(f.productHeading, tools.map((id) => a(esc(pages[id].file), pages[id].label)), ' mk-foot-col--tools')}${col(f.legalHeading, [a('pricing.html', f.pricing), a('about.html', f.about), a('contact.html', f.contact), a('trust.html', f.trust)])}${col(f.readHeading, [a('guides.html', f.guides), a('guides.html#compare', f.compare), a('mailto:{{brand:email}}', f.support)])}
     </div>
     <div class="mk-foot-base">
-      <p class="mk-foot-note">${esc(f.note)}</p>
       <p class="mk-foot-copy">${f.copyright}</p>
+      <ul class="mk-foot-legal">
+        <li>${a('privacy.html', f.privacy)}</li>
+        <li>${a('terms.html', f.terms)}</li>
+        <li>${a('refund.html', f.refund)}</li>
+      </ul>
     </div>
   </div>
 </footer>`;
@@ -375,14 +400,13 @@ export function renderPage(id, { site, pages }) {
   const media = (name) => MEDIA_BASE + name;
   const still = (n) => media(id + '-' + n + '.webp');
 
-  /* The hero shows the tool working: the headline across the top, the
-     words and the one action under it, then the demo loop at full width,
-     large on the first screen (the page's one moving picture, played in
-     view by marketing.js). The player carries id="demo"; the label bar
-     does not link to it, since the bar sits below it. No eyebrow: the label bar is the
-     breadcrumb. */
-  const hero = `<section class="mk-hero mk-hero--media ${stage.hue}" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in mk-hero-grid">
+  /* THE TEMPLATE (28 Oct 2026): one dark hero (the stage as a kicker, the
+     headline, one sentence, one action, then the tool working at full
+     width), three plain facts, How it works, three related tools, and
+     one closing action. The player carries id="demo". */
+  const hero = `<section class="mk-hero mk-hero--media ${stage.hue}" id="top" aria-labelledby="mkH1" data-surface="dark">
+  <div class="mk-wrap mk-hero-in">
+    <p class="mk-kicker">${sym(site.tools[id].icon)}<span>${esc(stage.label)}</span></p>
     <h1 class="mk-h1" id="mkH1">${esc(p.hero.h1)}</h1>
     <p class="mk-sub"${alt(p.hero, 'sub')}>${esc(p.hero.sub)}</p>
     <div class="mk-cta-row">
@@ -397,29 +421,19 @@ export function renderPage(id, { site, pages }) {
   </div>
 </section>`;
 
-  const labelBar = `<div class="mk-label ${stage.hue}">
-  <div class="mk-wrap mk-label-in">
-    <p class="mk-label-path">${sym(site.tools[id].icon)}${stage.label === p.label ? '' : `<span>${esc(stage.label)}</span><span class="mk-label-sep" aria-hidden="true">/</span>`}<strong>${esc(p.label)}</strong></p>
-    <nav class="mk-label-nav" aria-label="${esc(u.labelNav)}">
-      <a href="#how">${esc(u.labelHow)}</a>
-      <a href="pricing.html">${esc(u.pricing)}</a>
-    </nav>
-  </div>
-</div>`;
-
-  const value = `<section class="mk-sec mk-band-b" id="value" aria-labelledby="mkValueH">
-  <div class="mk-wrap mk-split">
-    <div class="mk-split-text">
+  const value = `<section class="mk-sec mk-band-a" id="value" aria-labelledby="mkValueH">
+  <div class="mk-wrap grid gap-10 lg:grid-cols-12 lg:gap-16">
+    <div class="mk-intro lg:col-span-5">
       <h2 class="mk-h2" id="mkValueH">${esc(p.value.h2)}</h2>
 ${p.value.body.map((t, i) => `      <p class="mk-body"${alt(p.value, 'body', i)}>${esc(t)}</p>`).join('\n')}
     </div>
-    <ul class="mk-facts mk-facts--side" id="facts" aria-label="${esc(u.factsHeading)}">
+    <ul class="mk-facts grid gap-4 sm:grid-cols-3 lg:col-span-7 lg:grid-cols-1" id="facts" aria-label="${esc(u.factsHeading)}">
 ${p.facts.map((f) => `      <li><b class="mk-fact-n"${alt(f, 'value')}>${esc(f.value)}</b><span class="mk-fact-l"${alt(f, 'label')}>${esc(f.label)}</span></li>`).join('\n')}
     </ul>
   </div>
 </section>`;
 
-  const how = `<section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
+  const how = `<section class="mk-sec mk-band-b" id="how" aria-labelledby="mkHowH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="mkHowH">${esc(u.howHeading)}</h2>
     <div class="mk-how ${stage.hue}" data-steps="${p.steps.length}">
@@ -436,7 +450,7 @@ ${p.steps.map((s, i) => `        <figure class="mk-still${i === 0 ? ' is-on' : '
   const related = `<section class="mk-sec mk-band-a" id="related" aria-labelledby="mkRelH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="mkRelH">${esc(u.relatedHeading)}</h2>
-    <div class="mk-cards">
+    <div class="mk-cards grid gap-5 md:grid-cols-3">
 ${p.related.map((rid) => {
     const rs = site.stages.find((s) => s.id === pages[rid].stage);
     return `      <article class="mk-card ${rs.hue}">
@@ -450,30 +464,10 @@ ${p.related.map((rid) => {
   </div>
 </section>`;
 
-  const tools = `<section class="mk-sec mk-band-b" id="tools" aria-labelledby="mkToolsH">
-  <div class="mk-wrap">
-    <h2 class="mk-h2" id="mkToolsH">${esc(u.toolsHeading)}</h2>
-    <div class="mk-stages">
-${navOrder(site).map((s) => `      <div class="mk-stage ${s.hue}">
-        <p class="mk-stage-h"><span class="mk-dot" aria-hidden="true"></span>${esc(s.label)}</p>
-        <ul>
-${s.ids.map((tid) => `          <li>${toolLink(site, pages, tid, id)}</li>`).join('\n')}
-        </ul>
-      </div>`).join('\n')}
-    </div>
-  </div>
-</section>`;
-
-  const mid = `<section class="mk-sec mk-band-c mk-mid ${stage.hue}" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(p.midCta.h2)}</h2>
-    <div class="mk-cta-row mk-cta-row--center">
+  const mid = closeBand(p.midCta.h2, `
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(u.getStarted)}</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.ctaFull)}</a>
-      <a class="mk-link mk-link--lg" href="pricing.html">${esc(u.viewPricing)}${sym('arrow_forward')}</a>
-    </div>
-  </div>
-</section>`;
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.ctaFull)}</a>`, '', stage.hue);
+
 
   return `<!DOCTYPE html>
 <html lang="en" data-volume="studio" data-fms-marketing>
@@ -497,7 +491,7 @@ ${s.ids.map((tid) => `          <li>${toolLink(site, pages, tid, id)}</li>`).joi
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -514,11 +508,9 @@ ${header(site, pages, id)}
 <main id="main" class="mk ${stage.hue}">
 ${passBand(site)}
 ${hero}
-${labelBar}
 ${value}
 ${how}
 ${related}
-${tools}
 ${mid}
 </main>
 ${footer(site, pages)}
@@ -569,7 +561,7 @@ export function renderPricing({ site, pages, compare, faq }) {
   const stamp = (kind, id) => '{{fms:' + kind + '.' + id + '}}';
   const buyText = (id) => esc(c.plans.buy).replace('{name}', stamp('plan', id));
 
-  const hero = `<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1">
+  const hero = `<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
     <h1 class="mk-h1" id="mkH1">${esc(c.hero.h1)}</h1>
     <p class="mk-sub">${priceSpans(chargeVariants(esc(c.hero.sub), c.hero.subUsd && esc(c.hero.subUsd)))}</p>
@@ -626,12 +618,15 @@ ${g.keys.map((k) => { const r = rowOf(Array.isArray(k) ? k[0] : k); return `    
   <div class="mk-wrap">
     <h2 class="mk-h2" id="prCompH">${esc(c.compare.h)}</h2>
     <p class="mk-body pr-lede">${esc(c.compare.lede)}</p>
+    <details class="pr-more" id="compare-table">
+      <summary class="pr-more-s"><span>${esc(c.compare.toggle)}</span>${sym('expand_more')}</summary>
     <table class="pr-table">
       <caption class="mk-vh">${esc(c.compare.caption)}</caption>
       <colgroup><col class="pr-col-what">${PAID.map(() => '<col>').join('')}</colgroup>
       <thead><tr><th scope="col">${esc(c.compare.what)}</th>${PAID.map((p) => `<th scope="col"><span class="pr-th-name">${stamp('plan', p)}</span><span class="pr-th-price">${priceSpans(stamp('price', p))}</span></th>`).join('')}</tr></thead>
 ${body}
     </table>
+    </details>
   </div>
 </section>`;
 
@@ -645,7 +640,7 @@ ${c.faq.contact ? `      <p class="mk-body pr-lede pr-contact">${esc(c.faq.conta
     </div>
     <div class="pr-acc-list">
 ${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
-        <summary><span>${esc(g.group)}</span>${sym('expand_more')}</summary>
+        <summary><span>${esc(g.group)}</span><span class="mk-mark" aria-hidden="true"></span></summary>
         <dl class="pr-qa">
 ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' data-mode-faq' : ''); const a = it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : it.modes ? modeAnswers(it) : chargeVariants(it.aHtml || esc(it.a), it.aUsd && esc(it.aUsd)); return `          <dt${t}>${esc(it.q)}</dt>\n          <dd${t}>${priceSpans(a)}${renewNote(it)}</dd>`; }).join('\n')}
         </dl>
@@ -654,12 +649,8 @@ ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' dat
   </div>
 </section>`;
 
-  const close = `<section class="mk-sec mk-band-c mk-mid pr-close" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(c.close.h)}</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(c.close.cta)}</a>
-  </div>
-</section>`;
+  const close = closeBand(c.close.h, `
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(c.close.cta)}</a>`);
 
   return `<!DOCTYPE html>
 <html lang="en" data-volume="studio" data-fms-marketing>
@@ -682,7 +673,7 @@ ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' dat
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -726,168 +717,107 @@ export function validateHome(home, { site, pages }) {
   const w = (m) => bad.push('marketing-home.json: ' + m);
   if (!home.hero || !home.hero.h1 || !home.hero.sub || !home.hero.note || !home.hero.cta || !home.hero.mediaLabel) w('hero needs h1, sub, note, cta and mediaLabel');
   if (!home.meta || !home.meta.title || !home.meta.description) w('meta needs title and description');
-  if (!Array.isArray(home.stages) || home.stages.length !== 5) w('five stages');
+  /* THE HOME PAGE (28 Oct 2026): a hero, four stage cards, three points
+     on keeping your work, a plans teaser and one closing action. */
+  if (!home.stagesH2) w('stagesH2 missing');
+  if (!Array.isArray(home.stages) || home.stages.length !== 4) w('four stage cards');
   else home.stages.forEach((s, i) => {
-    const last = i === 4;
     if (!s.id || !s.sym || !s.h2 || !s.body) w('stage ' + (i + 1) + ' needs id, sym, h2 and body');
-    if (last) { if (s.cta || s.video) w('the fifth stage has no CTA and no video'); }
-    else {
-      if (!s.cta || !pages[s.cta.page] || !s.cta.label) w('stage ' + (i + 1) + ': cta.page must be a product page id');
-      /* A stage's clip is a product page's, or one of the recorder's
-         cross-page clips (record-marketing-media.mjs SPACES.chain: the
-         scene chain end to end), which no single product page owns. */
-      const HOME_CLIPS = ['chain'];
-      if (!s.video || !(site.stepCounts[s.video] || HOME_CLIPS.includes(s.video))) w('stage ' + (i + 1) + ': video must be a product page id or one of ' + HOME_CLIPS.join(', '));
-      if (!site.stages.some((g) => g.id === s.id)) w('stage ' + (i + 1) + ': id ' + s.id + ' is not a stage in marketing-site.json');
-    }
+    if (!s.cta || !pages[s.cta.page] || !s.cta.label) w('stage ' + (i + 1) + ': cta.page must be a product page id');
+    if (!site.stages.some((g) => g.id === s.id)) w('stage ' + (i + 1) + ': id ' + s.id + ' is not a stage in marketing-site.json');
   });
-  if (!Array.isArray(home.facts) || home.facts.length !== 4) w('exactly four facts');
-  if (!home.panel || !Array.isArray(home.panel.items) || home.panel.items.length !== 3) w('panel needs three items');
-  if (!home.pricing || !home.pricing.pill || !home.pricingTeaser) w('the closing needs pricingTeaser and pricing.pill');
+  if (!home.own || !home.own.h2 || !Array.isArray(home.own.items) || home.own.items.length !== 3 || home.own.items.some((i) => !i.sym || !i.title || !i.text)) w('own needs h2 and three {sym, title, text}');
+  if (!home.plans || !home.plans.h2 || !home.plans.pill || !/\{\{fms:price\.from\.day\}\}/.test(home.plans.teaser || '')) w('plans needs h2, pill and a teaser naming {{fms:price.from.day}}');
   if (!home.optOut || !home.optOut.label || !home.optOut.done) w('optOut needs label and done (privacy.html promises the control)');
   if (!home.closing || !home.closing.h2 || !home.closing.sub || !home.closing.cta) w('closing needs h2, sub and cta');
-  /* the pass line under the hero: no figure is typed, marketing.js fills
-     its slots from trial_offer().pass and shows it only while it is open */
+  /* the pass line in the plans teaser: no figure is typed, marketing.js
+     fills its slots from trial_offer().pass and shows it only while it is open */
   const ps = home.pass;
   if (!ps || !ps.note || !ps.off || !ps.open || !home.hero.ctaPass) w('pass needs note, off and open, and hero.ctaPass');
   else if (/\d/.test(ps.note + ps.off + home.hero.ctaPass)) w('the pass copy types a number; every figure comes from the server');
   else if (!/\{price\}/.test(home.hero.ctaPass)) w('hero.ctaPass names the price as {price}');
-  const ex = home.exports;
-  if (!ex || !ex.h2 || !ex.body || !Array.isArray(ex.items) || ex.items.length !== 3 || ex.items.some((i) => !i.sym || !i.title || !i.text)) w('exports needs h2, body and three {sym, title, text}');
-  const an = home.answers;
-  if (!an || !an.h2 || !Array.isArray(an.items) || an.items.length !== 4 || an.items.some((i) => !i.sym || !i.q || !(i.a || i.aHtml))) w('answers needs h2 and four {sym, q, a|aHtml}');
-  if (!an || !an.contact || !an.contact.before || !an.contact.after) w('answers.contact needs before and after');
   return bad;
 }
+
+/* The stage card's picture: its product page's own poster frame. */
+export const HOME_HERO_CLIP = 'chain';
 
 export function renderHome({ site, pages, home }) {
   const u = site.ui;
   const media = (name) => MEDIA_BASE + name;
   const hue = (id) => (site.stages.find((s) => s.id === id) || {}).hue || '';
 
-  /* The first screen shows the product: the sample feature's scene list,
-     large, beside the words (breakdown.* is the one loop the explorer
-     below does not already use). */
-  const hero = `<section class="mk-hero st-hero" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in st-hero-grid">
-    <div class="st-hero-copy">
-      <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
-      <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
-      <div class="mk-cta-row">
-        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.hero.cta)}</a>
-        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(home.hero.ctaPass)}</a>
-      </div>
-      <p class="st-note" data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.pass.open)}">${passOr(passSlots(home.pass.note), esc(home.pass.off))}</p>
-      <p class="st-note">${esc(home.hero.note)}</p>
+  /* The first screen: one line, one sentence, one action, and the scene
+     chain running end to end under it (the recorder's cross-page clip). */
+  const hero = `<section class="mk-hero st-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
+  <div class="mk-wrap mk-hero-in">
+    <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
+    <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
+    <div class="mk-cta-row">
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.hero.cta)}</a>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(home.hero.ctaPass)}</a>
     </div>
-    <figure class="mk-player st-hero-media" aria-label="${esc(home.hero.mediaLabel)}">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media('breakdown.webp')}">
-        <source src="${media('breakdown.webm')}" type="video/webm">
+    <figure class="mk-player mk-hero-media st-hero-media" aria-label="${esc(home.hero.mediaLabel)}">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(HOME_HERO_CLIP + '.webp')}">
+        <source src="${media(HOME_HERO_CLIP + '.webm')}" type="video/webm">
         ${esc(u.demoFallback)}
       </video>
     </figure>
+    <p class="mk-caption">${esc(home.hero.note)}</p>
   </div>
 </section>`;
 
-  const facts = `<section class="st-facts-band" id="facts" aria-label="${esc(home.factsLabel)}">
-  <div class="mk-wrap">
-    <ul class="st-facts">
-${home.facts.map((f) => `      <li><b class="st-fact-n"${alt(f, 'value')}>${esc(f.value)}</b><span class="st-fact-l"${alt(f, 'label')}>${esc(f.label)}</span></li>`).join('\n')}
-    </ul>
-  </div>
-</section>`;
-
-  const row = (s, i) => {
+  const card = (s) => {
     const h = hue(s.id);
-    const copy = `    <div class="st-copy">
-      <span class="st-glyph">${sym(s.sym)}</span>
-      <h2 class="mk-h2" id="st-h-${esc(s.id)}">${esc(s.h2)}</h2>
-      <p class="mk-body"${alt(s, 'body')}>${esc(s.body)}</p>${s.cta ? `
-      <a class="mk-link" href="${esc(pages[s.cta.page].file)}">${esc(s.cta.label)}${sym('arrow_forward')}</a>` : ''}
-    </div>`;
-    let mediaHtml;
-    if (s.video) {
-      mediaHtml = `    <div class="st-media">
-      <div class="mk-player st-player">
-        <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(s.video + '.webp')}">
-          <source src="${media(s.video + '.webm')}" type="video/webm">
-          ${esc(u.demoFallback)}
-        </video>
-      </div>
-    </div>`;
-    } else {
-      mediaHtml = `    <div class="st-media">
-      <div class="st-panel" role="group" aria-label="${esc(home.panel.label)}">
-        <ul>
-${home.panel.items.map((it) => `          <li>${sym(it.sym)}<div><b>${esc(it.title)}</b><span>${esc(it.text)}</span></div></li>`).join('\n')}
-        </ul>
-      </div>
-    </div>`;
-    }
-    /* Three compositions, not one zigzag five times: the first stage is
-       WIDE (words in a row, the loop full width under them), the middle
-       three alternate at varied ratios, the last is a FIELD (no media). */
-    const shape = i === 0 ? ' st-stage--wide' : (!s.video ? ' st-stage--field' : (s.mediaWide ? ' st-stage--media-wide' : ''));
-    return `  <article class="st-stage${h ? ' ' + h : ' st-stage--brand'}${i % 2 ? ' st-stage--flip' : ''}${shape}" id="stage-${esc(s.id)}" aria-labelledby="st-h-${esc(s.id)}">
-${copy}
-${mediaHtml}
-  </article>`;
+    const page = pages[s.cta.page];
+    return `      <article class="mk-card st-stage ${h}" id="stage-${esc(s.id)}" aria-labelledby="st-h-${esc(s.id)}">
+        <img class="st-shot" src="${media(s.cta.page + '.webp')}" width="1280" height="720" alt="" loading="lazy" decoding="async">
+        <div class="st-stage-in">
+          <span class="mk-card-icon">${sym(s.sym)}</span>
+          <h3 class="mk-h3" id="st-h-${esc(s.id)}">${esc(s.h2)}</h3>
+          <p class="mk-card-p"${alt(s, 'body')}>${esc(s.body)}</p>
+          <a class="mk-link" href="${esc(page.file)}">${esc(s.cta.label)}${sym('arrow_forward')}</a>
+        </div>
+      </article>`;
   };
-
-  const explorer = `<section class="mk-sec mk-band-b st-explorer" id="tools" aria-label="${esc(u.product)}">
-  <div class="mk-wrap st-stages">
-${home.stages.map(row).join('\n')}
+  const stages = `<section class="mk-sec mk-band-a st-tools" id="tools" aria-labelledby="stToolsH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stToolsH">${esc(home.stagesH2)}</h2>
+    <div class="st-stages grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+${home.stages.map(card).join('\n')}
+    </div>
   </div>
 </section>`;
 
-  const closing = `<section class="mk-sec mk-band-c mk-mid st-closing" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(home.closing.h2)}</h2>
-    <p class="mk-sub st-closing-sub">${esc(home.closing.sub)}</p>
-    <div class="mk-cta-row mk-cta-row--center">
+  const own = `<section class="mk-sec mk-band-b st-own" id="local-first" aria-labelledby="stOwnH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stOwnH">${esc(home.own.h2)}</h2>
+    <ul class="st-points grid gap-5 md:grid-cols-3">
+${home.own.items.map((it) => `      <li class="mk-point"><span class="mk-card-icon">${sym(it.sym)}</span><b class="mk-h3">${esc(it.title)}</b><span class="mk-card-p">${esc(it.text)}</span></li>`).join('\n')}
+    </ul>
+    <p class="mk-more"><a class="mk-link" href="trust.html">${esc(site.trustLink)}${sym('arrow_forward')}</a></p>
+  </div>
+</section>`;
+
+  const plans = `<section class="mk-sec mk-band-a st-plans" id="plans" aria-labelledby="stPlansH">
+  <div class="mk-wrap">
+    <div class="st-plans-in grid gap-8 lg:grid-cols-12 lg:items-center">
+      <div class="lg:col-span-8">
+        <h2 class="mk-h2" id="stPlansH">${esc(home.plans.h2)}</h2>
+        <p class="mk-body">${priceSpans(esc(home.plans.teaser))}</p>
+        <p class="mk-small st-note" data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.pass.open)}">${passOr(passSlots(home.pass.note), esc(home.pass.off))}</p>
+      </div>
+      <div class="st-plans-cta lg:col-span-4">
+        <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(home.plans.pill)}</a>
+      </div>
+    </div>
+  </div>
+</section>`;
+
+  const closing = closeBand(home.closing.h2, `
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.closing.cta)}</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.cta)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(home.pricing.pill)}</a>
-    </div>
-    <p class="st-note st-closing-note">${priceSpans(esc(home.pricingTeaser))}</p>
-    <p class="st-note st-closing-note" data-pass-only hidden>${passSlots(site.pass.note)}</p>
-  </div>
-</section>`;
-
-  /* What comes out (every format listed is a download the studio has
-     today), then the four questions the launch study's panel asked
-     first, answered, and the support address. Both reuse the shared
-     card classes in marketing.css: three export cards in .mk-cards, four
-     answers in .mk-stages (4 / 2 / 1 columns). */
-  const exportsSec = `<section class="mk-sec mk-band-a" id="exports" aria-labelledby="stExH">
-  <div class="mk-wrap">
-    <h2 class="mk-h2" id="stExH">${esc(home.exports.h2)}</h2>
-    <p class="mk-body">${esc(home.exports.body)}</p>
-    <div class="mk-cards">
-${home.exports.items.map((it) => `      <article class="mk-card">
-        <span class="mk-card-icon">${sym(it.sym)}</span>
-        <h3 class="mk-h3">${esc(it.title)}</h3>
-        <p class="mk-card-p">${esc(it.text)}</p>
-      </article>`).join('\n')}
-    </div>${home.exports.footHtml ? `
-    <p class="mk-body mk-ex-foot">${home.exports.footHtml.replace('{{media}}', MEDIA_BASE)}</p>` : ''}
-  </div>
-</section>`;
-
-  const answersSec = `<section class="mk-sec mk-band-b" id="answers" aria-labelledby="stAnH">
-  <div class="mk-wrap">
-    <h2 class="mk-h2" id="stAnH">${esc(home.answers.h2)}</h2>
-    <div class="mk-stages">
-${home.answers.items.map((it) => `      <article class="mk-card">
-        <span class="mk-card-icon">${sym(it.sym)}</span>
-        <h3 class="mk-h3">${esc(it.q)}</h3>
-        <p class="mk-card-p">${it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : (it.aHtml || esc(it.a))}</p>
-      </article>`).join('\n')}
-    </div>
-    <p class="st-note">${esc(home.answers.contact.before)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(home.answers.contact.after)}</p>
-    <p class="st-note"><a class="mk-link" href="trust.html">${esc(site.trustLink)}${sym('arrow_forward')}</a></p>
-  </div>
-</section>`;
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.cta)}</a>`,
+  '', '', esc(home.closing.sub));
 
   const t = esc(home.meta.title), d = esc(home.meta.description);
   return `<!DOCTYPE html>
@@ -898,7 +828,7 @@ ${home.answers.items.map((it) => `      <article class="mk-card">
 <title>${t}</title>
 <meta name="description" content="${d}">
 <link rel="canonical" href="https://{{brand:host}}/start">
-<link rel="preload" as="image" href="${media('breakdown.webp')}" fetchpriority="high">
+<link rel="preload" as="image" href="${media(HOME_HERO_CLIP + '.webp')}" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="${t}">
@@ -914,7 +844,7 @@ ${home.answers.items.map((it) => `      <article class="mk-card">
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -932,15 +862,14 @@ ${home.answers.items.map((it) => `      <article class="mk-card">
      mega-menu, sign-up modal, invite-code hold): the reason a Google sign-in
      did not complete, the landing_view count and the doorway rewrite of app
      links under the site gate. Every figure is an fms stamp
-     (vite.config.js startFigures()), never typed; no price is printed here. -->
+     (vite.config.js startFigures()), never typed. -->
 ${header(site, pages, 'home')}
 <main id="main" class="mk st">
 ${passBand(site)}
 ${hero}
-${facts}
-${explorer}
-${exportsSec}
-${answersSec}
+${stages}
+${own}
+${plans}
 ${closing}
 ${leadForm(site.lead, 'st')}
   <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></div>
@@ -952,6 +881,7 @@ ${modal(site)}
 </html>
 `;
 }
+
 
 /* ---- contact.html and about.html -------------------------------------
    The company pages: the same header, footer and sign-up modal, the copy
@@ -1018,7 +948,7 @@ function companyHead({ title, description, slug }) {
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -1038,20 +968,14 @@ ${ldScripts([orgLd()])}
  *  state, whether or not the pass is open. */
 function companyCta(company, h2) {
   const cta = company.cta;
-  return `<section class="mk-sec mk-band-c mk-mid co-cta" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
-    <div class="mk-cta-row mk-cta-row--center">
+  return closeBand(h2, `
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
-    </div>
-  </div>
-</section>`;
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>`);
 }
 
 function companyHero(company, h1, sub) {
   const cta = company.cta;
-  return `<section class="mk-hero co-hero" id="top" aria-labelledby="mkH1">
+  return `<section class="mk-hero co-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
     <h1 class="mk-h1" id="mkH1">${esc(h1)}</h1>
     <p class="mk-sub">${esc(sub)}</p>
@@ -1313,7 +1237,7 @@ function publicHead({ title, description, slug, ld }) {
 <meta name="twitter:image" content="${ORIGIN}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -1345,16 +1269,10 @@ export const longDay = (iso) => { const [y, m, d] = String(iso).split('-').map(N
  *  the server says it is open, its figures runtime slots) and the plans,
  *  which are true in every state. */
 function passClose(g, h2, hue = '') {
-  return `<section class="mk-sec mk-band-c mk-mid${hue ? ' ' + hue : ''}" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
-    <div class="mk-cta-row mk-cta-row--center">
+  return closeBand(h2, `
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(g.ui.ctaPass)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(g.ui.ctaPlans)}</a>
-    </div>
-    <p class="mk-small mk-close-note" data-pass-only hidden>${passSlots(g.ui.ctaPassNote)}</p>
-  </div>
-</section>`;
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(g.ui.ctaPlans)}</a>`, `
+    <p class="mk-small mk-close-note" data-pass-only hidden>${passSlots(g.ui.ctaPassNote)}</p>`, hue);
 }
 
 /* ---- the guides, the comparisons and the trust page (26 Oct 2026) ------
@@ -1440,7 +1358,7 @@ function guideCard(g, y) {
 }
 
 function articleHero(h1, sub, crumbItems, extra = '') {
-  return `<section class="mk-hero mk-hero--article" id="top" aria-labelledby="mkH1">
+  return `<section class="mk-hero mk-hero--article" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
 ${crumbItems ? `    ${crumbs(crumbItems)}\n` : ''}    <h1 class="mk-h1" id="mkH1">${esc(h1)}</h1>
     <p class="mk-sub">${esc(sub)}</p>${extra}
@@ -1483,7 +1401,7 @@ ${header(site, pages, 'guides')}
 ${passBand(site)}
 ${articleHero(x.h1, x.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.ui.breadcrumbGuides, href: 'guides.html' }, { name: x.label }],
   `\n    <p class="mk-small mk-updated">${esc(g.ui.updatedLabel)} <time datetime="${esc(g.updated)}">${longDay(g.updated)}</time></p>`)}
-<section class="mk-sec mk-band-b mk-article" id="guide" aria-label="${esc(x.label)}">
+<section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(x.label)}">
   <div class="mk-wrap mk-article-grid">
     <nav class="mk-toc" aria-label="${esc(site.ui.labelNav)}">
       <p class="mk-toc-h">${esc(site.ui.labelNav)}</p>
@@ -1494,7 +1412,7 @@ ${x.sections.map(guideBlock).join('\n')}
     </div>
   </div>
 </section>
-<section class="mk-sec mk-band-a mk-studio" id="studio" aria-labelledby="mkStudioH">
+<section class="mk-sec mk-band-b mk-studio" id="studio" aria-labelledby="mkStudioH">
   <div class="mk-wrap mk-prose">
     <h2 class="mk-h2" id="mkStudioH">${esc(g.ui.inStudio)}</h2>
 ${st.body.map((t) => `    <p class="mk-body">${esc(t)}</p>`).join('\n')}
@@ -1615,7 +1533,7 @@ ${header(site, pages, 'compare')}
 ${passBand(site)}
 ${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }],
   `\n    <p class="mk-small mk-updated">${esc(c.ui.updatedLabel)} <time datetime="${esc(c.updated)}">${longDay(c.updated)}</time></p>`)}
-<section class="mk-sec mk-band-b mk-article" id="guide" aria-label="${esc(p.label)}">
+<section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(p.label)}">
   <div class="mk-wrap mk-article-grid">
     <nav class="mk-toc" aria-label="${esc(site.ui.labelNav)}">
       <p class="mk-toc-h">${esc(site.ui.labelNav)}</p>

@@ -1,138 +1,43 @@
 /* ============================================================
    THE HOME PAGE (start.html) — what it adds to marketing.css
    ------------------------------------------------------------
-   marketing.css (imported by marketing.js) holds the header, the buttons,
-   the bands, the player, the footer and the sign-up modal. This sheet is
-   only the home page's own pieces: the hero's brand glow, the facts strip,
-   the product explorer's alternating rows, the Local-first panel, the
-   pricing teaser and the closing band.
-
-   Same rules as marketing.css: tokens only (no colour literal), shapes from
-   --sk-radius, every transform times --motion, hue as text is --hue-lift.
+   marketing.css (imported by marketing.js) holds the header, the bands,
+   the type, the buttons, the cards, the player, the footer and the
+   sign-up modal. This sheet is only the home page's own pieces: the
+   stage cards' pictures, the plans teaser and the opt-out line. Layout
+   (the card grid, the teaser's columns) is Tailwind utilities in the
+   markup; nothing here sets a colour literal or a typed radius, and every
+   translate is multiplied by --motion.
    ============================================================ */
 
-/* the hero: the brand's violet, soft, from the top. No photograph. */
-.st-hero { --hue: var(--accent-primary); --hue-lift: var(--brand-lift); }
-/* the first screen shows the product, large: words 5, picture 7. The
-   picture stays inside the wrap (equal outer margins) at the footage's own
-   16:9, uncropped: it is the live UI, and a crop cuts the UI off */
-.st-hero { min-height: 0; }
-.st-hero .mk-h1 { font-size: clamp(var(--t-3xl), 3.3vw, var(--t-4xl)); max-width: none; }
-.st-hero .mk-sub { font-size: clamp(var(--t-base), 1.6vw, var(--t-lg)); }
-.st-hero-grid {
-  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: clamp(var(--s6), 5vw, var(--s8)); align-items: center;
-}
-.st-hero-copy { min-width: 0; }
-.st-hero-media { max-width: none; aspect-ratio: 16 / 9; }
+.st-hero .mk-h1 { max-width: 16ch; }
 .st-hero-media video { object-fit: contain; }
-.st-note { margin: var(--s5) 0 0; max-width: 48ch; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
 
-/* the facts strip, where a badge strip would be */
-.st-facts-band { background: var(--surface-rail); border-block: 1px solid var(--border-hair); padding-block: var(--s6); }
-.st-facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s5); }
-.st-facts li { display: flex; flex-direction: column; gap: var(--s1); max-width: none; }
-.st-fact-n { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-xl); font-weight: 700; line-height: 1.2; color: var(--ink); text-wrap: balance; }
-.st-fact-l { font-size: var(--t-small); line-height: 1.45; color: var(--ink-muted); }
-
-/* the product explorer: five alternating rows on the dark band */
-.st-explorer { background: var(--surface-canvas); }
-.st-stages { display: grid; gap: clamp(var(--s8), 9vw, var(--s9)); }
-.st-stage {
-  --hue: var(--accent-primary);
-  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(var(--s6), 6vw, var(--s9)); align-items: center;
+/* ---- the four stage cards: the tool's own poster frame on top ------ */
+.st-stage { padding: 0; overflow: hidden; }
+.st-shot {
+  display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top left;
+  border-bottom: 1px solid var(--border-hair); background: var(--surface-active);
 }
-.st-stage.hue-library { --hue: var(--library); }
-.st-stage.hue-feature { --hue: var(--feature); }
-.st-stage.hue-plan { --hue: var(--plan); }
-.st-stage.hue-shoot { --hue: var(--shoot); }
-.st-stage--brand { --hue-lift: var(--brand-lift); --hue-wash: color-mix(in srgb, var(--accent-primary) 16%, transparent); }
-/* media left on 1, 3, 5; right on 2, 4 */
-.st-media { grid-column: 1; grid-row: 1; min-width: 0; }
-.st-copy { grid-column: 2; grid-row: 1; min-width: 0; }
-.st-stage--flip .st-media { grid-column: 2; }
-.st-stage--flip .st-copy { grid-column: 1; }
-/* the stage's icon, bare in its hue: no tinted square behind it */
-.st-glyph { display: block; margin-bottom: var(--s3); color: var(--hue-lift); }
-.st-glyph .sym { font-size: 28px; }
-.st-copy .mk-h2 { max-width: 20ch; margin-bottom: var(--s4); }
-/* ratios vary: stages 2 and 4 give the picture 7 of 12, and a stage
-   marked "mediaWide" in marketing-home.json does too (picture left) */
-.st-stage--flip { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-.st-stage--media-wide { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.st-stage-in { display: flex; flex-direction: column; align-items: flex-start; flex: 1; width: 100%; box-sizing: border-box; padding: var(--s5) var(--s6) var(--s6); }
 
-/* stage 1, WIDE: the words in one row (heading left, text right), the
-   loop full width beneath them */
-.st-stage--wide { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); row-gap: var(--s6); align-items: start; }
-.st-stage--wide .st-copy {
-  grid-column: 1 / -1; grid-row: 1;
-  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(var(--s6), 6vw, var(--s9)); align-items: start;
+/* ---- the plans teaser --------------------------------------------- */
+.st-plans .mk-body { margin-bottom: var(--s3); }
+.st-note { margin: 0; max-width: 60ch; }
+.st-plans-cta { display: flex; }
+@media (min-width: 1024px) { .st-plans-cta { justify-content: flex-end; } }
+
+/* ---- "Don't count this visit" -------------------------------------
+   privacy.html promises the control, so it stays on the page that counts. */
+.st-optout { display: flex; justify-content: center; padding-block: var(--s4); }
+.st-optout-btn {
+  min-height: 32px; padding: 0 var(--s3); border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: var(--t-small); color: var(--ink-muted); text-decoration: underline; text-underline-offset: 3px;
 }
-.st-stage--wide .st-glyph { grid-column: 1; grid-row: 1; }
-.st-stage--wide .mk-h2 { grid-column: 1; grid-row: 2; margin-bottom: 0; }
-.st-stage--wide .mk-body { grid-column: 2; grid-row: 2; }
-.st-stage--wide .mk-link { grid-column: 2; grid-row: 3; justify-self: start; }
-.st-stage--wide .st-media { grid-column: 1 / -1; grid-row: 2; }
-.st-stage--wide .st-player { aspect-ratio: 16 / 9; }
+.st-optout-btn:hover { color: var(--ink); }
+.st-optout-btn:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 2px; }
+.st-optout-btn:disabled { cursor: default; text-decoration: none; }
 
-/* stage 5, FIELD: no picture; the whole row is one tone-stepped surface
-   and the three local-first facts sit across it */
-.st-stage--field {
-  grid-template-columns: 1fr; gap: var(--s6);
-  padding: clamp(var(--s6), 5vw, var(--s8)); box-sizing: border-box;
-  background: var(--surface-card); border-radius: var(--sk-radius, var(--radius-lg));
-}
-.st-stage--field .st-copy, .st-stage--field .st-media { grid-column: 1; }
-.st-stage--field .st-copy {
-  grid-row: 1;
-  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(var(--s6), 6vw, var(--s9)); align-items: start;
-}
-.st-stage--field .st-glyph { grid-column: 1; grid-row: 1; }
-.st-stage--field .mk-h2 { grid-column: 1; grid-row: 2; margin-bottom: 0; }
-.st-stage--field .mk-body { grid-column: 2; grid-row: 2; margin-bottom: 0; }
-.st-stage--field .st-media { grid-row: 2; }
-.st-stage--field .st-copy .mk-h2 { max-width: 16ch; }
-.st-player { max-width: none; aspect-ratio: 16 / 9; }
-.st-player video { object-fit: cover; }
-
-/* Local-first: the three facts as a row inside the field */
-.st-panel ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s6); width: 100%; }
-.st-panel li { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3); max-width: none; }
-.st-panel .sym { flex: none; font-size: 28px; color: var(--brand-lift); }
-.st-panel b { display: block; font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
-.st-panel span:not(.sym) { display: block; margin-top: var(--s1); font-size: var(--t-base); line-height: 1.5; color: var(--ink-body); }
-
-/* closing */
-.st-closing { --hue: var(--accent-primary); }
-.st-closing-sub { max-width: 44ch; margin-inline: auto; }
-.st-closing-note { margin-inline: auto; text-align: center; }
-
-@media (max-width: 899px) {
-  .st-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5) var(--s4); }
-  .st-hero-grid { grid-template-columns: 1fr; }
-  .st-stage, .st-stage--flip, .st-stage--media-wide, .st-stage--wide { grid-template-columns: 1fr; gap: var(--s5); }
-  .st-copy, .st-stage--flip .st-copy { grid-column: 1; grid-row: 1; }
-  .st-media, .st-stage--flip .st-media { grid-column: 1; grid-row: 2; }
-  .st-stage--wide .st-copy, .st-stage--field .st-copy { display: block; }
-  .st-stage--wide .mk-h2, .st-stage--field .mk-h2 { margin-bottom: var(--s4); }
-  .st-stage--wide .st-media { grid-row: 2; }
-  .st-panel ul { grid-template-columns: 1fr; gap: var(--s5); }
-}
-/* a phone keeps the facts 2 by 2 (its own composition, not a tall stack) */
 @media (max-width: 560px) {
-  .st-facts-band { padding-block: var(--s5); }
-  .st-facts { gap: var(--s4) var(--s3); }
-  .st-fact-n { font-size: var(--t-lg); }
+  .st-stage-in { padding: var(--s4) var(--s5) var(--s5); }
 }
-
-/* the opt-out the privacy page promises: quiet, below the closing band */
-.st-optout { padding-block: var(--s4); text-align: center; background: var(--surface-card); max-width: none; }
-.st-optout-btn { min-height: 44px; padding: 0 var(--s4); border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: var(--t-tiny); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-.st-optout-btn:hover:not(:disabled) { color: var(--ink); }
-.st-optout-btn:disabled { text-decoration: none; cursor: default; }
-
-/* the line under the export cards had no rule of its own and sat flush on them */
-.mk-ex-foot { margin-top: var(--s5); }
-/* the answers: one long answer stretched every card in its row to its height,
-   leaving the short ones with a block of empty space */
-#answers .mk-stages { align-items: start; }

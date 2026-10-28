@@ -1,12 +1,16 @@
 /* ============================================================
    THE SHELL — a vertical app rail and one phase bar
    ------------------------------------------------------------
-   SWISS PRECISION (14 Oct 2026): the rail is a 64px icon column whose
-   five stage cells open flyouts of their modules (buildRailStages),
-   and the band is one 56px row — crumb, search, the page's tools, the
-   studio's zone. The stage strip that used to sit in the band is gone;
-   what follows below is the history of how the shell got here, kept
-   because the measuring and "where am I" reasoning still holds.
+   THE APP-KIT FRAME (owner, 28 Oct 2026): the rail is a 224px dark
+   sidebar whose items are icon + word in one row (chrome.css, "THE
+   LABELLED RAIL"), its five stage cells open flyouts of their MODULES
+   only (a module's sections are the page's own tab strip), and the
+   band is one slim 56px row — the crumb (stage › page, no purpose
+   line), search, the page's tools, the project. It replaced the 64px
+   icon column of SWISS PRECISION (14 Oct 2026), which had the same
+   elements with the words as tooltips. What follows below is the
+   history of how the shell got here, kept because the measuring and
+   "where am I" reasoning still holds.
 
    Everything here is rendered from src/data/navigation.json. Adding a
    module is a JSON edit; nothing in this file names one.
@@ -58,7 +62,7 @@ import { renderTrialBand } from './trial-band.js';
 import { syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked, allowed, isDisabledEverywhere } from '../lib/plan-gate.js';
-import { monogram } from '../lib/brand.js';
+import { monogram, BRAND } from '../lib/brand.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -387,15 +391,16 @@ function renderCrumb(crumb, loc) {
      is two names for one place and reads like a bug. */
   const atHome = here === home;
 
-  crumb.append(crumbStep(atHome ? 'span' : 'a', '.sh-where-root' + (atHome ? '.sh-where-here' : ''),
-    home, 'Studio',
-    atHome ? { 'aria-current': 'page', title: home.purpose } : { href: home.href, title: home.purpose }));
-
+  /* STAGE › PAGE, AND NOTHING ELSE (owner, 28 Oct 2026). The band is a
+     slim app bar: the "Studio" root left it on every page but the hub
+     (the rail's Home is the way back, and it was one more Tab stop), and
+     so did each module's purpose line, which made the band a paragraph.
+     The purposes still ride on the rail's links as title/description. */
   if (atHome) {
-    crumb.append(h('span.sh-where-purpose', { text: home.purpose }));
+    crumb.append(crumbStep('span', '.sh-where-root.sh-where-here', home, 'Studio',
+      { 'aria-current': 'page', title: home.purpose }));
   } else {
     if (loc.phase && !isGlobalMode()) {
-      crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
       crumb.append(crumbStep('button', '.sh-where-phase', loc.phase, loc.phase.label, {
         type: 'button',
         'data-action': 'crumb-phase',
@@ -404,8 +409,7 @@ function renderCrumb(crumb, loc) {
       }));
     } else if (loc.global && loc.module && loc.global !== home) {
       /* A module owned by an app-scope entry (Library › Dissection):
-         the entry is the middle segment, as a link back to it. */
-      crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
+         the entry is the first segment, as a link back to it. */
       crumb.append(crumbStep('a', '.sh-where-group', loc.global, loc.global.label, {
         href: loc.global.href, title: loc.global.purpose || ''
       }));
@@ -419,9 +423,8 @@ function renderCrumb(crumb, loc) {
       && String(here.label || '').trim().toLowerCase() === String(loc.phase.label || '').trim().toLowerCase());
     if (here && repeatsStage) {
       crumb.querySelector('.sh-where-phase')?.setAttribute('aria-current', 'page');
-      if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
     } else if (here) {
-      crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
+      if (crumb.firstChild) crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
       crumb.append(crumbStep('span', '.sh-where-here', here, here.label, {
         'aria-current': 'page'
       }));
@@ -437,7 +440,7 @@ function renderCrumb(crumb, loc) {
           (pt.guide.part ? 'Part ' + pt.guide.part + ' · ' : '') + pt.phase.label,
           { href: '#' + pt.frag, title: pt.guide.label });
         crumb.append(seg);
-      } else if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
+      }
     }
   }
 
@@ -571,10 +574,12 @@ function buildRail() {
      is the real way home, so this one is out of the Tab order and the
      accessibility tree rather than a duplicate stop. */
   const homeG = globals().find((g) => g.id === 'home');
+  /* The tile, and beside it the product's name where the rail is wide
+     enough to carry words (chrome.css, the labelled rail). Both from
+     brand.json, never typed. */
   rail.append(h('a.sh-rail-logo', {
-    href: (homeG && homeG.href) || 'index.html', tabindex: '-1', 'aria-hidden': 'true',
-    text: monogram()
-  }));
+    href: (homeG && homeG.href) || 'index.html', tabindex: '-1', 'aria-hidden': 'true'
+  }, [h('span.sh-rail-mono', { text: monogram() }), h('span.sh-rail-brand', { text: BRAND.name })]));
   /* The Dashboard is the project's home (the launcher) and leads the rail
      again. The Library is always there (owner, 19 Oct 2026): its films,
      directors, rules, rates and watch list are not modules, so switching
@@ -676,24 +681,15 @@ function buildFly(p) {
     if (m.group && m.group !== sub) list.append(h('p.sh-fly-sub', { text: m.group }));
     sub = m.group || null;
     list.append(flyRow(m));
-    /* its sections, indented under it: the page's tabs that are not
-       modules of their own, so this list is the page strip's list */
-    if (m.status !== 'planned' && m.href) for (const sec of moduleSections(m)) list.append(flySubRow(m, sec));
+    /* MODULES ONLY (owner, 28 Oct 2026). A module's sections (Budget's
+       nine, Reports' DPR…) used to be indented under it, which made the
+       Pre-Production flyout forty rows long. They are reached from the
+       page's own tab strip, which still takes its labels and order from
+       navigation.json (tabs.js), so the two lists cannot disagree about
+       the modules they share; prove:nav compares exactly those. */
   }
   fly.append(list);
   return fly;
-}
-
-/* A section of a module: a link to the page's tab, gated with its
-   module (data-module-id is the parent's, so markLocked hides or flags
-   it with the parent). */
-function flySubRow(m, sec) {
-  const row = h('a.sh-fly-mod.is-sub', { href: m.href.split('#')[0] + '#' + sec.id });
-  row.dataset.moduleId = m.id;
-  row.dataset.section = sec.id;
-  row.append(iconSpan('sh-fly-icon', { sym: sec.sym }), h('span.sh-fly-label', { text: sec.label }));
-  if (sec.purpose) row.title = sec.purpose;
-  return row;
 }
 
 function flyRow(m) {
@@ -811,6 +807,11 @@ function syncRailAccount() {
   if (person && person.hidden !== !!text) person.hidden = !!text;
   const title = (pill && pill.title) || 'Your account';
   if (cell.title !== title) cell.title = title;
+  /* The labelled rail prints who you are: the name when signed in,
+     "Account" otherwise. */
+  const lab = cell.querySelector('.sh-rail-label');
+  const word = (text && pill && String(pill.dataset.name || '').trim()) || 'Account';
+  if (lab && lab.textContent !== word) lab.textContent = word;
 }
 function initialsOf(name) {
   const parts = String(name || '').trim().split(/[\s._-]+/).filter(Boolean);
@@ -1200,17 +1201,18 @@ function gatherTools(bar, tools) {
 
 let current = null;         // the last resolution we displayed
 
-/* The flyout row for where you are: a SECTION row when the address names
-   one of this page's sections (reports.html#dpr), else the module's own
-   row. Run on every hash change, since a section is not a location the
-   crumb resolves exactly. */
+/* The flyout row for where you are: the module's own row (a section of
+   it, reports.html#dpr, lights its module — the flyout lists modules
+   only). Run on every hash change. */
 function markFlyHere(loc) {
   const tab = (location.hash || '').replace(/^#/, '').split('?')[0];
-  const sub = tab ? [...document.querySelectorAll('.sh-fly-mod.is-sub')].find((r) =>
-    r.dataset.section === tab && pageFile((r.getAttribute('href') || '').split('#')[0]) === CURRENT) : null;
+  let owner = null;
+  if (tab) for (const p of phases()) for (const m of p.modules || []) {
+    if (!owner && m.href && pageFile(m.href.split('#')[0]) === CURRENT && moduleSections(m).some((s) => s.id === tab)) owner = m.id;
+  }
+  const id = owner || (loc && loc.module && loc.module.id) || null;
   document.querySelectorAll('.sh-fly-mod').forEach((m) => {
-    const here = sub ? m === sub
-      : !m.classList.contains('is-sub') && !!(loc && loc.module && m.dataset.moduleId === loc.module.id);
+    const here = !!id && m.dataset.moduleId === id;
     m.classList.toggle('is-here', here);
     if (here) m.setAttribute('aria-current', 'page'); else m.removeAttribute('aria-current');
   });

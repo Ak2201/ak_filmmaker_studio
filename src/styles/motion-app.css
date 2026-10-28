@@ -134,3 +134,15 @@
 
 /* Settings > Appearance > Reduce motion: html.ma-off */
 html.ma-off *, html.ma-off ::before, html.ma-off ::after { animation: none !important; transition: none !important; }
+
+/* PANELS (motion-app.js panels(), the motion package): a panel waiting
+   for its scroll is transparent and nothing else — it keeps its box, so
+   the page never jumps, and the rise is the animation's own transform.
+   Only under html.ma-on and no reduced-motion preference: with no JS
+   every panel is simply there. */
+@media (prefers-reduced-motion: no-preference) {
+  .ma-on .ma-pveil { opacity: 0; }
+}
+@media print {
+  .ma-pveil { opacity: 1 !important; }
+}

@@ -100,6 +100,28 @@ for (const h of hrefs) {
   byFile.get(f).add(h);
 }
 
+/* ---- the sections each page's strip may hold that the rail does not ----
+   Since 28 Oct 2026 the rail's flyouts list MODULES only; a module's
+   `sections` (Budget's nine, Reports' DPR, the Story path's steps) are
+   reached from the page's own tab strip. So the strip↔flyout identity
+   is asserted over the module tabs: the strip's tabs minus exactly the
+   sections navigation.json declares for this page must equal the rail's
+   rows for this page, in order. Nothing else is excused — a tab that is
+   neither a module nor a declared section still fails, and so does a
+   section row that creeps back into a flyout. */
+const STORY_PATHS = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/story-paths.json'), 'utf8'));
+const sectionsByFile = new Map();
+for (const p of nav.phases) for (const m of p.modules || []) {
+  if (!m.href) continue;
+  const f = fileOf(m.href);
+  const ids = m.sectionsFrom === 'story-paths'
+    ? Object.values(STORY_PATHS).filter(Array.isArray).flat().map((st) => 'path-' + st.id)
+    : (m.sections || []).map((s) => s.id);
+  if (!ids.length) continue;
+  if (!sectionsByFile.has(f)) sectionsByFile.set(f, new Set());
+  ids.forEach((id) => sectionsByFile.get(f).add(id));
+}
+
 /* ---- the static attribute, as served -------------------------- */
 const staticPhase = (f) => {
   const src = fs.readFileSync(path.join(DIST, f), 'utf8');
@@ -146,7 +168,8 @@ let seeded;
 }
 
 /* What the frame says, read off the page. */
-const probe = () => {
+const probe = (secIds) => {
+  const sections = new Set(secIds || []);
   const de = document.documentElement;
   const txt = (sel) => { const el = document.querySelector(sel); return el ? el.textContent.replace(/\s+/g, ' ').trim() : null; };
   const tools = document.querySelector('.sh-tools');
@@ -183,7 +206,10 @@ const probe = () => {
      visible tabs, in order, against the visible flyout rows that point
      at a tab of this page, in order. A row for the page itself (Budget,
      Story) or for an action (Import Screenplay) points at no tab and is
-     not compared; a tab with no row, or a row with no tab, is. */
+     not compared; a tab with no row, or a row with no tab, is. Since
+     28 Oct 2026 the comparison is over the MODULE tabs: the sections
+     navigation.json declares for the page are the strip's alone (see
+     sectionsByFile), and a section row in a flyout fails. */
   const file = !seg ? 'index.html' : /\.html$/.test(seg) ? seg : seg + '.html';
   const word = (e) => { const l = e.querySelector('.tabs-tab-l, .sm-label'); const c = (l || e).cloneNode(true); c.querySelectorAll('.sym, [aria-hidden="true"], .sm-badge, .tabs-badge').forEach((x) => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
   const tabEls = [...document.querySelectorAll('main [role="tab"], .tabs [role="tab"], .dv-tabs [role="tab"]')]
@@ -197,9 +223,19 @@ const probe = () => {
     .filter((a) => { const [f] = (a.getAttribute('href') || '').split('#'); return f.toLowerCase().replace(/^\.?\//, '') === file; });
   const railRows = onPage.map((a) => ({ id: (a.getAttribute('href').split('#')[1] || stem), label: word(a) }))
     .filter((r) => tabIds.has(r.id));
+  /* the module tabs: every tab but the sections navigation.json declares
+     for this page (see sectionsByFile) */
+  const moduleTabs = tabEls.filter((e) => !sections.has(tabId(e)));
+  /* a section row in a flyout is a regression: the rail lists modules */
+  const sectionRows = onPage.filter((a) => sections.has((a.getAttribute('href') || '').split('#')[1] || '')).map((a) => word(a));
   /* a page no flyout lists (the Library, Settings, the Pre-Production
      path) has no rail list to agree with */
-  const lists = onPage.length ? { strip: tabEls.map((e) => word(e) + '#' + tabId(e)).join(' | '), rail: railRows.map((r) => r.label + '#' + r.id).join(' | ') } : null;
+  const lists = onPage.length ? {
+    strip: moduleTabs.map((e) => word(e) + '#' + tabId(e)).join(' | '),
+    rail: railRows.map((r) => r.label + '#' + r.id).join(' | '),
+    sectionRows: sectionRows.join(' | '),
+    sectionTabs: tabEls.length - moduleTabs.length
+  } : null;
   return {
     file,
     lists,
@@ -248,7 +284,7 @@ async function worker() {
          500ms read some arrivals before the button was mounted */
       await page.waitForFunction(() => !document.documentElement.hasAttribute('data-vid-help-pending'), null, { timeout: 15000 });
       await page.waitForTimeout(500);
-      results.push({ ...job, ...(await page.evaluate(probe)), errors });
+      results.push({ ...job, ...(await page.evaluate(probe, [...(sectionsByFile.get(job.file) || [])])), errors });
     } catch (e) {
       results.push({ ...job, error: String(e.message || e).split('\n')[0], errors });
     }
@@ -311,13 +347,16 @@ for (const file of [...byFile.keys()].sort()) {
 /* ---- one list: the rail's flyout and the page's strip -------- */
 {
   const seen = new Set();
+  let sectionTabs = 0;
   for (const r of results) {
     if (r.error || r.vp.width !== WIDTHS[0].width || r.file !== fileOf(r.href) || seen.has(r.file) || !r.lists) continue;
     seen.add(r.file);
-    if (!r.lists.strip) continue;   // a page with no strip has nothing to agree with
-    if (r.lists.strip !== r.lists.rail) fail(r.file, `the tab strip and the rail's flyout list different things:\n      strip: ${r.lists.strip}\n      rail : ${r.lists.rail}`);
+    if (r.lists.sectionRows) fail(r.file, `the rail's flyout lists sections, which belong to the page's tab strip: ${r.lists.sectionRows}`);
+    if (!r.lists.strip) continue;   // a page with no module tabs has nothing to agree with
+    if (r.lists.strip !== r.lists.rail) fail(r.file, `the tab strip's modules and the rail's flyout list different things:\n      strip: ${r.lists.strip}\n      rail : ${r.lists.rail}`);
+    sectionTabs += r.lists.sectionTabs;
   }
-  console.log(`rail vs strip: ${seen.size} pages compared`);
+  console.log(`rail vs strip: ${seen.size} pages compared (module tabs; ${sectionTabs} section tabs left to the strip)`);
 }
 
 /* ---- one frame ACROSS pages ---------------------------------

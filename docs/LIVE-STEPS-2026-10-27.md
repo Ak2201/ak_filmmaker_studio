@@ -43,6 +43,10 @@ cards NOT requested**, so USD orders cannot work until the owner submits "Reques
 for international cards" and it is approved. The webhook secret's match with the
 Supabase secret was not checkable.
 
+### Admin account on Pro for good, 28 Oct 2026
+
+The purge left the keeper (`arunkumarmohanans@gmail.com`) with no plan. Granted **Pro for good** on its account (`6f91ada4-d693-49a8-8348-77c1cc06a108`) from the SQL editor with `select public.apply_plan(<account>, 'pro', 'grant', 0)`, the same routine the console's "grant plan" calls (0 days = for good). Read back: `plan` = `pro`, `plan_until` null, `plan_period` = `grant`, `seat_limit` 10, `user_plan()` = `pro`. Done from the editor, so there is NO `admin_audit` row and NO `granted` payments row; granting again from the console (People → grant plan) adds the audit row and changes nothing else. A grant has no end date, so the yearly-expiry logic never touches it; only another purge would remove it. It is not a rule for future admins. It is not a payment, so `paid_buyers()` and the founding-seat count are unaffected.
+
 ### Auto-renew deploy, 28 Oct 2026 03:45–03:50 UTC (all but the switch)
 
 - **Functions deployed** from `develop` at `2616fb61`: `rzp-subscribe` v1 and `rzp-cancel` v1 (JWT), `rzp-remind` v1 (NO JWT), `rzp-order` / `rzp-verify` / `rzp-webhook` v14, `rzp-refund` v8. Probed: the JWT ones answer 401 "Missing authorization header", `rzp-webhook` 401 "bad signature", `rzp-remind` 401 "bad cron secret".

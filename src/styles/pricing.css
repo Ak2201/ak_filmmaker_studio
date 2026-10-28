@@ -12,25 +12,20 @@
      - every translate is multiplied by --motion
      - a fill is not a text colour: the brand as TEXT is --brand-deep,
        as a fill or a mark it is --brand / --accent-primary
-   The cards sit on --surface-elevated (a card lifted off the rail band),
-   not on the screenplay's paper tokens: the studio is dark-only and a
-   white card would be a second palette on the one page every visitor
-   reads first.
+   THE 8B TEMPLATE (28 Oct 2026): a dark hero, white cards on the pale
+   band, the full comparison folded into one <details> (the table stays
+   in the DOM for crawlers and the FAQPage build), and the FAQ as three
+   native <details> with the template's violet mark.
    ============================================================ */
 
-/* ---- the header block: obsidian with a glow from the brand ------ */
-.pr-hero {
-  --hue: var(--accent-primary);
-  min-height: 0; align-items: flex-end;
-  padding-top: calc(var(--mk-top-h) + var(--s7)); padding-bottom: var(--s6);
-}
-.pr-hero .mk-h1 { max-width: 20ch; }
-.pr-hero .mk-sub { margin-bottom: 0; }
+/* ---- the header block ------------------------------------------ */
+.pr-hero .mk-h1 { max-width: 16ch; }
+.pr-hero .mk-sub { margin-bottom: 0; max-width: 56ch; }
 
 .pr-lede { max-width: 60ch; margin-bottom: var(--s6); }
 /* the plans start close under the hero, so the prices are on the first
    screen; on a wide screen the heading and its lede share one row */
-.mk-sec.pr-plans { padding-top: var(--s7); }
+.mk-sec.pr-plans { padding-top: var(--s8); }
 /* the head owns the space under it at every width (the lede's own margin
    is overridden by the generic .mk-sub rule below 1100px) */
 .pr-head { margin-bottom: var(--s6); }
@@ -44,19 +39,19 @@
 .pr-pass {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s5); flex-wrap: wrap;
   margin: 0 0 var(--s5); padding: var(--s4) var(--s5); box-sizing: border-box;
-  background: color-mix(in srgb, var(--accent-primary) 10%, var(--surface-card));
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 38%, transparent);
-  border-radius: var(--sk-radius, var(--radius-lg));
+  background: var(--brand-wash);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  border-radius: var(--radius-xl);
 }
 .pr-pass-text { display: grid; gap: var(--s1); min-width: 0; flex: 1 1 28rem; }
-.pr-pass-text strong { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); color: var(--ink); }
+.pr-pass-text strong { font-family: var(--face-display); font-size: var(--t-lg); color: var(--ink); }
 .pr-pass-say { font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); }
 
 /* ---- the launch-price band (hidden unless the server announces a rise) ---- */
 .pr-offer {
   margin: 0 0 var(--s5); padding: var(--s5); box-sizing: border-box;
   background: var(--surface-card); border: 1px solid var(--border-strong);
-  border-radius: var(--sk-radius, var(--radius-lg));
+  border-radius: var(--radius-xl);
 }
 .pr-offer p { max-width: 62ch; }
 .pr-offer-meta { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s3) 0; }
@@ -76,16 +71,13 @@
 }
 .pr-tier {
   position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3);
-  max-width: none; padding: var(--s6); box-sizing: border-box;
-  background: var(--surface-elevated); border: 1px solid var(--border-default);
-  border-radius: var(--sk-radius, var(--radius-lg)); box-shadow: var(--shadow-card-rest);
-  transition: border-color .18s var(--ease), transform .18s var(--ease);
+  max-width: none; margin: 0; padding: var(--s6); box-sizing: border-box;
+  background: var(--surface-card); border: 1px solid var(--border-hair);
+  border-radius: var(--radius-2xl);
+  transition: border-color var(--speed) var(--ease), transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out);
 }
-.pr-tier:hover { border-color: var(--border-strong); transform: translateY(calc(-2px * var(--motion))); }
-.pr-pick {
-  border-color: var(--accent-primary);
-  box-shadow: var(--shadow-card-rest), 0 0 0 1px var(--accent-primary), 0 12px 40px color-mix(in srgb, var(--accent-primary) 22%, transparent);
-}
+.pr-tier:hover { border-color: var(--border-strong); transform: translateY(calc(-3px * var(--motion))); box-shadow: var(--shadow-card-hover); }
+.pr-pick { border: 2px solid var(--accent-primary); }
 .pr-pick:hover { border-color: var(--accent-primary); }
 .pr-pick-flag {
   /* on the card's top edge, out of the flow, so the picked card's tag,
@@ -96,10 +88,10 @@
   font-size: var(--t-tiny); font-weight: 700; letter-spacing: .02em; max-width: none;
 }
 .pr-tier-tag { font-size: var(--t-tiny); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); }
-.pr-tier-name { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-2xl); font-weight: 700; line-height: 1.1; color: var(--ink); }
+.pr-tier-name { font-family: var(--face-display); font-size: var(--t-2xl); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: var(--ink); }
 .pr-tier-line { margin: 0; max-width: none; font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); min-height: 3.1em; }
 .pr-price {
-  display: block; font-family: var(--sk-display, var(--f-display)); font-weight: 700; font-style: normal;
+  display: block; font-family: var(--face-display); font-weight: 800; font-style: normal; letter-spacing: -0.04em;
   font-size: clamp(var(--t-3xl), 5vw, var(--t-4xl)); line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums;
 }
 .pr-price-next { display: block; margin-top: var(--s2); font-family: var(--f-body); font-size: var(--t-small); font-weight: 600; color: var(--ink-muted); letter-spacing: 0; }
@@ -113,9 +105,9 @@
 .pr-cur { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); margin: 0 0 var(--s5); }
 .pr-cur[hidden] { display: none; }
 .pr-cur-line { margin: 0; max-width: 60ch; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
-.pr-cur-seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--border-strong); border-radius: var(--sk-field-radius, var(--radius)); background: var(--surface-card); }
+.pr-cur-seg { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface-card); }
 .pr-cur-btn {
-  min-height: 36px; padding: 0 var(--s4); border: 0; border-radius: var(--radius-sm); background: transparent;
+  min-height: 36px; padding: 0 var(--s4); border: 0; border-radius: var(--radius-pill); background: transparent;
   font: inherit; font-size: var(--t-small); font-weight: 700; color: var(--ink-body); cursor: pointer;
 }
 .pr-cur-btn:hover { color: var(--ink); background: var(--surface-elevated); }
@@ -123,7 +115,7 @@
 .pr-cur-btn:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
 .pr-inc { list-style: none; margin: var(--s2) 0 var(--s3); padding: var(--s4) 0 0; width: 100%; flex: 1; display: grid; gap: var(--s2); align-content: start; border-top: 1px solid var(--border-hair); }
 .pr-inc li {
-  position: relative; max-width: none; padding-left: var(--s5); font-size: var(--t-small); line-height: 1.5; color: var(--ink-body);
+  position: relative; max-width: none; margin: 0; padding-left: var(--s5); font-size: var(--t-small); line-height: 1.5; color: var(--ink-body);
 }
 .pr-inc li::before { content: '\2713'; position: absolute; left: 0; top: 0; font-weight: 700; color: var(--accent-primary); }
 .pr-inc .pr-inc-all { font-weight: 700; color: var(--ink); }
@@ -134,6 +126,20 @@
 .pr-alt:hover { color: var(--ink); }
 .pr-note { margin: var(--s6) 0 0; max-width: 72ch; font-size: var(--t-small); line-height: 1.6; color: var(--ink-muted); }
 .pr-note a { color: var(--brand-deep); text-underline-offset: 3px; }
+
+/* ---- the comparison, folded --------------------------------------------
+   One <details>: the table is in the DOM (crawlers, scripts off, the
+   build's checks), shown on a press. */
+.pr-more { border-top: 1px solid var(--border-default); }
+.pr-more-s {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
+  min-height: 64px; cursor: pointer; list-style: none;
+  font-family: var(--face-display); font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.02em; color: var(--ink);
+}
+.pr-more-s::-webkit-details-marker { display: none; }
+.pr-more-s .sym { font-size: 28px; color: var(--brand-deep); transition: transform var(--speed) var(--ease); }
+.pr-more[open] .pr-more-s .sym { transform: rotate(180deg); }
+.pr-more[open] .pr-more-s { margin-bottom: var(--s4); }
 
 /* ---- the comparison table -------------------------------------------
    No overflow wrapper: an ancestor with overflow would become the
@@ -147,7 +153,7 @@
   background: var(--surface-canvas); border-bottom: 1px solid var(--border-strong); color: var(--ink);
 }
 .pr-table thead th:first-child { text-align: left; padding-left: var(--s3); color: var(--ink-muted); font-weight: 600; }
-.pr-th-name { display: block; font-family: var(--sk-display, var(--f-display)); font-size: var(--t-base); font-weight: 700; overflow-wrap: anywhere; }
+.pr-th-name { display: block; font-family: var(--face-display); font-size: var(--t-base); font-weight: 700; overflow-wrap: anywhere; }
 .pr-th-price { display: block; margin-top: var(--s1); font-size: var(--t-small); font-weight: 600; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .pr-group th {
   padding: var(--s6) var(--s3) var(--s2); text-align: left; background: transparent;
@@ -161,29 +167,31 @@
 .pr-no { color: var(--ink-muted); }
 .pr-table tbody tr:not(.pr-group):hover > * { background: var(--surface-hover); }
 
-/* ---- the FAQ: three <details> accordions, no script ----------------- */
+/* ---- the FAQ: three <details> accordions, no script -----------------
+   The 8B mark: a ring with a violet dot that grows when the group opens. */
 /* the heading holds a column of its own beside the questions */
 .pr-faq-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s7); align-items: start; }
 .pr-faq-head { position: sticky; top: calc(var(--mk-top-h) + var(--s5)); }
 .pr-faq-head .mk-h2 { font-size: clamp(var(--t-2xl), 2.4vw, var(--t-3xl)); }
-.pr-acc-list { display: grid; gap: var(--s3); min-width: 0; }
-.pr-acc {
-  background: var(--surface-card); border: 1px solid var(--border-default);
-  border-radius: var(--sk-radius, var(--radius-lg)); overflow: hidden;
-}
-.pr-acc[open] { border-color: var(--border-strong); }
+.pr-acc-list { display: grid; min-width: 0; border-top: 1px solid var(--border-strong); }
+.pr-acc { border-bottom: 1px solid var(--border-strong); }
 .pr-acc summary {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
-  min-height: 56px; padding: var(--s3) var(--s5); box-sizing: border-box; cursor: pointer; list-style: none;
-  font-family: var(--sk-display, var(--f-display)); font-size: var(--t-xl); font-weight: 600; color: var(--ink);
+  min-height: 72px; padding: var(--s4) 0; box-sizing: border-box; cursor: pointer; list-style: none;
+  font-family: var(--face-display); font-size: clamp(var(--t-xl), 2.2vw, var(--t-2xl)); font-weight: 700; letter-spacing: -0.025em; color: var(--ink);
 }
 .pr-acc summary::-webkit-details-marker { display: none; }
-.pr-acc summary:hover { background: var(--surface-hover); }
-.pr-acc summary:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
-.pr-acc summary .sym { font-size: 26px; color: var(--ink-muted); transition: transform .18s var(--ease); }
-.pr-acc[open] summary .sym { transform: rotate(180deg); }
-.pr-qa { margin: 0; padding: var(--s2) var(--s5) var(--s5); display: grid; gap: var(--s2); border-top: 1px solid var(--border-hair); }
+.pr-acc summary:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 3px; }
+.mk-mark { position: relative; flex: none; width: 34px; height: 34px; border: 1.5px solid var(--ink); border-radius: var(--radius-pill); }
+.mk-mark::after {
+  content: ''; position: absolute; inset: 0; margin: auto; width: 10px; height: 10px;
+  border-radius: var(--radius-pill); background: var(--accent-primary); transition: transform var(--speed-lazy) var(--ease);
+}
+.pr-acc summary:hover .mk-mark::after { transform: scale(1.8); }
+.pr-acc[open] .mk-mark::after { transform: scale(3.1); }
+.pr-qa { margin: 0; padding: 0 0 var(--s6); display: grid; gap: var(--s2); }
 .pr-qa dt { margin-top: var(--s4); font-weight: 700; color: var(--ink); }
+.pr-qa dt:first-child { margin-top: 0; }
 .pr-qa dd { margin: 0; max-width: 64ch; line-height: 1.6; color: var(--ink-body); }
 
 /* ---- narrow ---------------------------------------------------------- */
@@ -202,12 +210,11 @@
   .pr-th-price { font-size: var(--t-tiny); }
   .pr-table { font-size: var(--t-tiny); }
   .pr-table thead th, .pr-table tbody tr:not(.pr-group) > * { padding-inline: var(--s1); }
-  .pr-acc summary { padding-inline: var(--s4); font-size: var(--t-lg); }
-  .pr-qa { padding-inline: var(--s4); }
+  .pr-acc summary { font-size: var(--t-lg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pr-tier, .pr-acc summary .sym { transition: none; }
+  .pr-tier, .pr-more-s .sym, .mk-mark::after { transition: none; }
 }
 
 /* ---- students and film schools: one band under the cards, no price ----
@@ -216,7 +223,7 @@
 .pr-edu {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s4) var(--s6); flex-wrap: wrap;
   margin-top: var(--s6); padding: var(--s5);
-  background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg));
+  background: var(--surface-card); border: 1px solid var(--border-hair); border-radius: var(--radius-xl);
 }
 .pr-edu-text { display: grid; gap: var(--s2); flex: 1 1 24rem; min-width: 0; }
 .pr-edu .mk-h3 { margin: 0; }

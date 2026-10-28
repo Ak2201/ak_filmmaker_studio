@@ -44,6 +44,7 @@ import { offerTerms, readMode } from '../lib/offer-terms.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { visitorRegion } from '../lib/visitor-region.js';
+import { animate } from 'motion/mini';   // the motion package's WAAPI animate(), ~8 KB; see 10
 
 /* First, before a script below can strip or rewrite the address. */
 try { captureAttribution(location); } catch (e) { /* never breaks the page */ }
@@ -621,3 +622,65 @@ document.addEventListener('submit', (e) => {
     if (btn) btn.disabled = false;
   });
 });
+
+/* ---- 10. calm motion (28 Oct 2026) ------------------------------------
+   The 8B template's entrances, made with the bundled `motion` package and
+   motion/mini only (WAAPI, about 8 KB; the full package is 69 KB). What moves: a section's heading rises in as the
+   section enters, and its cards, points, facts and steps stack in after
+   it, a beat apart. The hero's own entrance is CSS (marketing.css), so it
+   needs no script at all. Hover is CSS too.
+
+   WHAT NEVER HAPPENS. Nothing is hidden that is already on screen when
+   this runs (no flash of a painted page): only sections wholly below the
+   fold are prepared, and they are prepared synchronously, before any
+   paint can show them. A fragment target only FADES (an element with an
+   id that travels would be measured where it was; prove:scroll caught
+   that once). Reduced motion, a --motion of 0, a browser with no
+   IntersectionObserver and Playwright (navigator.webdriver, like
+   src/ui/motion-app.js) get no motion at all and the page as written.
+   If anything throws, every prepared element is put back. */
+(function calmMotion() {
+  let k = 1;
+  try {
+    if (navigator.webdriver || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!('IntersectionObserver' in window) || typeof Element.prototype.animate !== 'function') return;
+    const m = parseFloat(getComputedStyle(root).getPropertyValue('--motion'));
+    k = Number.isFinite(m) ? m : 1;
+  } catch (e) { return; }
+  if (!k) return;
+  const PARTS = ':is(.mk-h2, .mk-cards > *, .mk-stages > *, .st-stages > *, .st-points > *, .mk-facts > li, .mk-steps > li, .pr-tiers > li, .co-cards > *, .co-principles > li, .mk-slot)';
+  const fold = window.innerHeight || 800;
+  const groups = [];
+  for (const sec of $$('main .mk-sec')) {
+    if (sec.getBoundingClientRect().top < fold) continue;          // on screen, or above: leave it
+    const els = $$(PARTS, sec).filter((n) => !n.closest('[hidden]'));
+    if (!els.length) continue;
+    for (const n of els) n.style.opacity = '0';
+    groups.push({ sec, els });
+  }
+  if (!groups.length) return;
+  const restore = () => groups.forEach((g) => g.els.forEach((n) => { n.style.opacity = ''; }));
+  /* motion/mini's animate() (imported statically: a dynamic import()
+     makes Vite add its preload helper, which the build puts in the studio
+     CORE chunk, and prove:growth asserts no studio-* chunk reaches a public
+     page). The "in view" trigger is the page's own IntersectionObserver. */
+  try {
+    const ease = [0.16, 1, 0.3, 1];
+    const run = (g) => g.els.forEach((n, i) => {
+      const travel = !n.id;                                          // fragment targets: fade only
+      const a = animate(n, travel ? { opacity: [0, 1], transform: [`translateY(${20 * k}px)`, 'none'] } : { opacity: [0, 1] },
+        { duration: travel ? 0.7 : 0.6, delay: Math.min(i, 8) * 0.06, ease });
+      const done = () => { n.style.opacity = ''; n.style.transform = ''; };
+      if (a && typeof a.then === 'function') a.then(done, done); else done();
+    });
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        io.unobserve(e.target);
+        const g = groups.find((x) => x.sec === e.target);
+        if (g) run(g);
+      }
+    }, { threshold: 0, rootMargin: '0px 0px -12% 0px' });
+    groups.forEach((g) => io.observe(g.sec));
+  } catch (e) { restore(); }
+})();

@@ -1,9 +1,12 @@
 /* ============================================================
    THE PUBLIC SITE'S UTILITIES — Tailwind v4, the public site ONLY
    ------------------------------------------------------------
-   Compiled by @tailwindcss/vite (vite.config.js). Imported by the
-   public pages' entries (src/pages/marketing, start, pricing, company,
-   legal) and by NOTHING in the studio: the studio is styled through
+   Compiled by @tailwindcss/vite (vite.config.js). Imported at the top of
+   src/styles/marketing.css, which every public page loads (marketing.js,
+   and legal.js for the legal frame), and by NOTHING in the studio. The
+   utilities are used for LAYOUT on containers (grid, columns, gaps,
+   spans); type, colour and spacing of elements base.css styles stay in
+   marketing.css, because unlayered base.css beats a layered utility: the studio is styled through
    tokens.css, skins/studio.css and the kit, and its ~41k lines of
    unlayered CSS would beat layered utilities in every tie anyway.
 

@@ -28,9 +28,8 @@
   width: 100%;
   max-width: var(--mk-wrap, 1200px);
   margin-inline: auto;
-  /* The header is position: fixed, so the page starts below it, as the
-     marketing hero does. */
-  padding: calc(var(--mk-top-h, 72px) + var(--s7)) var(--gutter) var(--s9);
+  /* The header is sticky (in the flow), so the page starts under it. */
+  padding: var(--s8) var(--gutter) var(--s9);
   box-sizing: border-box;
 }
 /* a page in the frame with no contents list (404.html): one column */

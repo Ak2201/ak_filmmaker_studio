@@ -243,9 +243,18 @@ export function renewalReminderMail(r) {
 }
 
 /** POST one message to Resend. Never throws. */
-export async function sendMail(msg, { apiKey, from, idempotencyKey, fetch: f = globalThis.fetch } = {}) {
+export async function sendMail(msg, { apiKey, from, smtp, smtpSend, idempotencyKey, fetch: f = globalThis.fetch } = {}) {
   if (!msg) return { ok: false, reason: 'no-recipient' };
-  if (!apiKey || !from) return { ok: false, reason: 'not-configured' };
+  if (!from || !(apiKey || smtp)) return { ok: false, reason: 'not-configured' };
+  if (!apiKey) {
+    try {
+      const send = smtpSend || (await import('./smtp.js')).smtpSend;
+      await send(smtp, { from, to: msg.to, replyTo: BRAND.supportEmail, subject: msg.subject, html: msg.html, text: msg.text });
+      return { ok: true, id: null };
+    } catch (e) {
+      return { ok: false, reason: 'smtp', detail: String(e && e.message || e).slice(0, 300) };
+    }
+  }
   try {
     const res = await f(RESEND_URL, {
       method: 'POST',
@@ -266,19 +275,36 @@ export async function sendMail(msg, { apiKey, from, idempotencyKey, fetch: f = g
 }
 
 const one = (data) => (Array.isArray(data) ? data[0] : data) || null;
-const cfg = (env) => ({ apiKey: env.RESEND_API_KEY || '', from: env.MAIL_FROM || '' });
+/** Resend when RESEND_API_KEY is set; otherwise a mailbox over SMTP when
+ *  SMTP_USER and SMTP_PASSWORD are (host defaults to Hostinger's, port 465). */
+const cfg = (env) => ({
+  apiKey: env.RESEND_API_KEY || '',
+  from: env.MAIL_FROM || '',
+  smtp: env.SMTP_USER && env.SMTP_PASSWORD
+    ? { host: env.SMTP_HOST || 'smtp.hostinger.com', port: Number(env.SMTP_PORT) || 465, user: env.SMTP_USER, pass: env.SMTP_PASSWORD }
+    : null
+});
+/** True when something can send: a From address and either transport. */
+export const mailConfigured = (env = {}) => { const c = cfg(env); return !!(c.from && (c.apiKey || c.smtp)); };
+
+/** The env every function passes in, read through its own Deno.env.get. */
+export const mailEnvFrom = (get) => ({
+  RESEND_API_KEY: get('RESEND_API_KEY') ?? '', MAIL_FROM: get('MAIL_FROM') ?? '',
+  SMTP_HOST: get('SMTP_HOST') ?? '', SMTP_PORT: get('SMTP_PORT') ?? '',
+  SMTP_USER: get('SMTP_USER') ?? '', SMTP_PASSWORD: get('SMTP_PASSWORD') ?? ''
+});
 
 /** Claim, send, and release on failure. `svc` is a service-role client
  *  (anything with .rpc). Never throws. */
 export async function sendReceiptOnce(svc, orderId, env = {}, opts = {}) {
-  const { apiKey, from } = cfg(env);
-  if (!apiKey || !from) return { ok: false, reason: 'not-configured' };   // claim nothing: mail later, once it is set up
+  const { apiKey, from, smtp } = cfg(env);
+  if (!from || !(apiKey || smtp)) return { ok: false, reason: 'not-configured' };   // claim nothing: mail later, once it is set up
   try {
     const { data, error } = await svc.rpc('claim_receipt_email', { p_order_id: orderId });
     if (error) return { ok: false, reason: 'claim', detail: error.message };
     const inv = one(data);
     if (!inv || !inv.id) return { ok: true, skipped: 'already-sent-or-no-invoice' };
-    const out = await sendMail(receiptMail(inv), { apiKey, from, idempotencyKey: 'receipt-' + inv.id, ...opts });
+    const out = await sendMail(receiptMail(inv), { apiKey, from, smtp, idempotencyKey: 'receipt-' + inv.id, ...opts });
     if (!out.ok) await svc.rpc('release_receipt_email', { p_invoice: inv.id });
     return out;
   } catch (e) {
@@ -287,14 +313,14 @@ export async function sendReceiptOnce(svc, orderId, env = {}, opts = {}) {
 }
 
 export async function sendRefundOnce(svc, rzpRefundId, status, env = {}, opts = {}) {
-  const { apiKey, from } = cfg(env);
-  if (!apiKey || !from) return { ok: false, reason: 'not-configured' };
+  const { apiKey, from, smtp } = cfg(env);
+  if (!from || !(apiKey || smtp)) return { ok: false, reason: 'not-configured' };
   try {
     const { data, error } = await svc.rpc('claim_refund_email', { p_rzp_refund: rzpRefundId, p_status: status });
     if (error) return { ok: false, reason: 'claim', detail: error.message };
     const r = one(data);
     if (!r || !r.refund_id) return { ok: true, skipped: 'already-sent-or-no-refund' };
-    const out = await sendMail(refundMail(r), { apiKey, from, idempotencyKey: `refund-${r.refund_id}-${r.status}`, ...opts });
+    const out = await sendMail(refundMail(r), { apiKey, from, smtp, idempotencyKey: `refund-${r.refund_id}-${r.status}`, ...opts });
     if (!out.ok) await svc.rpc('release_refund_email', { p_refund: r.refund_id });
     return out;
   } catch (e) {
@@ -305,14 +331,14 @@ export async function sendRefundOnce(svc, rzpRefundId, status, env = {}, opts = 
 /** §62: the receipt for one subscription charge, by Razorpay payment id.
  *  Claimed first, released on a failed send, like sendReceiptOnce. */
 export async function sendChargeReceiptOnce(svc, rzpPaymentId, env = {}, opts = {}) {
-  const { apiKey, from } = cfg(env);
-  if (!apiKey || !from) return { ok: false, reason: 'not-configured' };
+  const { apiKey, from, smtp } = cfg(env);
+  if (!from || !(apiKey || smtp)) return { ok: false, reason: 'not-configured' };
   try {
     const { data, error } = await svc.rpc('claim_charge_receipt_email', { p_rzp_payment_id: rzpPaymentId });
     if (error) return { ok: false, reason: 'claim', detail: error.message };
     const inv = one(data);
     if (!inv || !inv.id) return { ok: true, skipped: 'already-sent-or-no-invoice' };
-    const out = await sendMail(chargeReceiptMail(inv), { apiKey, from, idempotencyKey: 'receipt-' + inv.id, ...opts });
+    const out = await sendMail(chargeReceiptMail(inv), { apiKey, from, smtp, idempotencyKey: 'receipt-' + inv.id, ...opts });
     if (!out.ok) await svc.rpc('release_receipt_email', { p_invoice: inv.id });
     return out;
   } catch (e) {
@@ -324,10 +350,10 @@ export async function sendChargeReceiptOnce(svc, rzpPaymentId, env = {}, opts = 
  *  sends it only for the request that set the flag (already = false), and
  *  Resend's Idempotency-Key covers a retry of that request. Never throws. */
 export async function sendCancelMail(c, env = {}, opts = {}) {
-  const { apiKey, from } = cfg(env);
-  if (!apiKey || !from) return { ok: false, reason: 'not-configured' };
+  const { apiKey, from, smtp } = cfg(env);
+  if (!from || !(apiKey || smtp)) return { ok: false, reason: 'not-configured' };
   try {
-    return await sendMail(cancelMail(c), { apiKey, from, idempotencyKey: 'cancel-' + (c && c.subscription_row_id), ...opts });
+    return await sendMail(cancelMail(c), { apiKey, from, smtp, idempotencyKey: 'cancel-' + (c && c.subscription_row_id), ...opts });
   } catch (e) {
     return { ok: false, reason: 'error', detail: String(e && e.message || e) };
   }
@@ -354,8 +380,8 @@ export async function checkCronSecret(header, secret) {
  *  reminded without a mail. Never throws.
  *  -> { ok, sent, failed, skipped, reason?, detail? } */
 export async function sendRenewalReminders(svc, env = {}, opts = {}) {
-  const { apiKey, from } = cfg(env);
-  if (!apiKey || !from) return { ok: false, reason: 'not-configured', sent: 0, failed: 0, skipped: 0 };
+  const { apiKey, from, smtp } = cfg(env);
+  if (!from || !(apiKey || smtp)) return { ok: false, reason: 'not-configured', sent: 0, failed: 0, skipped: 0 };
   let sent = 0, failed = 0, skipped = 0;
   try {
     const { data, error } = await svc.rpc('claim_renewal_reminders', { p_within: opts.within || '48 hours', p_limit: opts.limit || 200 });
@@ -366,7 +392,7 @@ export async function sendRenewalReminders(svc, env = {}, opts = {}) {
       // message is a row this builder cannot word: keep it claimed rather
       // than hand it back to be claimed again every hour
       if (!msg) { skipped++; continue; }
-      const out = await sendMail(msg, { apiKey, from, fetch: opts.fetch,
+      const out = await sendMail(msg, { apiKey, from, smtp, smtpSend: opts.smtpSend, fetch: opts.fetch,
         idempotencyKey: `remind-${row.subscription_row_id}-${new Date(row.next_charge_at).toISOString()}` });
       if (out.ok) { sent++; continue; }
       failed++;

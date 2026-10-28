@@ -843,6 +843,32 @@ still describe the switched-on database), `prove:billing` (p),
 `prove:gate` (m2), `prove:growth` (start.html off). The fake defaults the
 switch ON so every older proof still asserts the wall.
 
+### Option B: send through your own mailbox (Hostinger SMTP), no Resend
+
+Added 28 Oct 2026. If `RESEND_API_KEY` is NOT set, `_shared/mail.js` sends
+through a mailbox over SMTP instead (`_shared/smtp.js`, denomailer). With both
+set, Resend wins. Nothing else changes: the same claim-then-send, the same
+release on failure, never in the payment path.
+
+1. Create (or pick) a mailbox in Hostinger for sending; a dedicated one such as
+   `noreply@filmmakerstudio.in` keeps the password away from the inbox people
+   write to.
+2. `supabase secrets set MAIL_FROM="FilmMakerStudio <support@filmmakerstudio.in>" SMTP_USER=<the mailbox address> SMTP_PASSWORD=<its password> --project-ref conhlrulxfwkhsnymakz`
+   (`SMTP_HOST` defaults to `smtp.hostinger.com`, `SMTP_PORT` to `465`; set them
+   only to change that). Never put the password in the repo or in chat. The
+   `From` address should be the mailbox or an alias of it, or Hostinger may
+   refuse the send.
+3. Redeploy all four payment functions (and `rzp-cancel` / `rzp-remind` if
+   deployed): they all import `_shared/mail.js`.
+
+PORT 465 ONLY: Supabase edge functions refuse outbound 25 and 587. Hostinger
+limits messages per hour and per day, depending on the plan, and SMTP gives no
+delivery log or bounce handling. The SMTP library import
+(`https://deno.land/x/denomailer@1.6.0`) was NOT run under Deno when it was
+written (no Deno in the build environment); the first real send is its test.
+`mailConfigured()` and `mailEnvFrom()` are the one definition of "configured"
+and of the variables every function reads.
+
 ### Deploy (owner)
 
 1. Run **§32** (from `-- 32. PURCHASES REQUIRED` down to, NOT including,

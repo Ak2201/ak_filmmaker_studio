@@ -150,6 +150,28 @@ eq((await M.sendMail(rm, { apiKey: 'k', from: 'f', fetch: async () => { throw ne
 // claim -> send -> release on failure, against a fake service client
 const fakeSvc = (rowsByFn) => { const log = []; return { log, rpc: async (fn, args) => { log.push([fn, args]); return { data: rowsByFn[fn] ?? null, error: null }; } }; };
 const env = { RESEND_API_KEY: 'k', MAIL_FROM: 'f' };
+
+// SMTP path (a mailbox, e.g. Hostinger's): used only when there is no Resend key
+const smtpCalls = [];
+const fakeSmtp = (fail) => async (conn, m) => { smtpCalls.push({ conn, m }); if (fail) throw new Error('535 auth'); };
+const smtpEnv = { MAIL_FROM: 'Studio <support@x.in>', SMTP_USER: 'support@x.in', SMTP_PASSWORD: 'pw' };
+ok(M.mailConfigured(smtpEnv) && !M.mailConfigured({ MAIL_FROM: 'f' }) && M.mailConfigured({ MAIL_FROM: 'f', RESEND_API_KEY: 'k' }) && !M.mailConfigured({ SMTP_USER: 'u', SMTP_PASSWORD: 'p' }),
+  'configured = a From address and either a Resend key or an SMTP user and password');
+{
+  const smtpSvc = fakeSvc({ claim_receipt_email: [inv] });
+  const out = await M.sendReceiptOnce(smtpSvc, 'order_1', smtpEnv, { smtpSend: fakeSmtp(false), fetch: async () => { throw new Error('Resend must not be called'); } });
+  ok(out.ok && smtpCalls.length === 1, 'no Resend key: one SMTP send, Resend never called');
+  ok(smtpCalls[0].conn.host === 'smtp.hostinger.com' && smtpCalls[0].conn.port === 465 && smtpCalls[0].conn.user === 'support@x.in' && smtpCalls[0].conn.pass === 'pw', 'Hostinger on 465 by default');
+  ok(smtpCalls[0].m.from === 'Studio <support@x.in>' && smtpCalls[0].m.to === 'buyer@example.com' && smtpCalls[0].m.replyTo === brandJson.supportEmail && smtpCalls[0].m.html && smtpCalls[0].m.text, 'from, to, reply-to, html and text');
+  const bad = fakeSvc({ claim_receipt_email: [inv] });
+  const fo = await M.sendReceiptOnce(bad, 'order_1', smtpEnv, { smtpSend: fakeSmtp(true) });
+  ok(!fo.ok && fo.reason === 'smtp' && bad.log.some(([fn, a]) => fn === 'release_receipt_email' && a.p_invoice === 'inv-1'), 'a failed SMTP send is reported and releases the claim');
+  const both = fakeSvc({ claim_receipt_email: [inv] }); calls.length = 0; smtpCalls.length = 0;
+  await M.sendReceiptOnce(both, 'order_1', { ...smtpEnv, RESEND_API_KEY: 'k' }, { smtpSend: fakeSmtp(false), fetch: fakeFetch() });
+  ok(calls.length === 1 && smtpCalls.length === 0, 'with both set, Resend wins');
+  ok(M.mailEnvFrom((k) => ({ SMTP_USER: 'u' })[k]).SMTP_USER === 'u' && M.mailEnvFrom(() => undefined).SMTP_PASSWORD === '', 'mailEnvFrom reads all six variables and defaults to empty');
+}
+
 let svc = fakeSvc({ claim_receipt_email: [inv] }); calls.length = 0;
 ok((await M.sendReceiptOnce(svc, 'order_1', env, { fetch: fakeFetch() })).ok && calls.length === 1, 'claimed -> one mail');
 ok(!svc.log.some(([fn]) => fn === 'release_receipt_email'), '... and no release');

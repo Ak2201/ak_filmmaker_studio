@@ -47,9 +47,9 @@
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyWebhookSignature, statusForEvent, subscriptionOfPayment, isoFromUnix } from '../_shared/razorpay.js';
-import { sendReceiptOnce, sendRefundOnce, sendChargeReceiptOnce } from '../_shared/mail.js';
+import { sendReceiptOnce, sendRefundOnce, sendChargeReceiptOnce, mailEnvFrom } from '../_shared/mail.js';
 
-const mailEnv = () => ({ RESEND_API_KEY: Deno.env.get('RESEND_API_KEY') ?? '', MAIL_FROM: Deno.env.get('MAIL_FROM') ?? '' });
+const mailEnv = () => mailEnvFrom((k) => Deno.env.get(k));
 const logMail = (what: string) => (m: { ok: boolean; reason?: string; detail?: string }) => {
   if (!m.ok && m.reason !== 'not-configured') console.warn('[rzp-webhook] ' + what, m.reason, m.detail ?? '');
 };

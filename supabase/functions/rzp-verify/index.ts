@@ -36,10 +36,10 @@
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyPaymentSignature, verifySubscriptionSignature, basicAuth, settleAuthorized, isoFromUnix } from '../_shared/razorpay.js';
-import { sendReceiptOnce, sendChargeReceiptOnce } from '../_shared/mail.js';
+import { sendReceiptOnce, sendChargeReceiptOnce, mailEnvFrom } from '../_shared/mail.js';
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
-const mailEnv = () => ({ RESEND_API_KEY: Deno.env.get('RESEND_API_KEY') ?? '', MAIL_FROM: Deno.env.get('MAIL_FROM') ?? '' });
+const mailEnv = () => mailEnvFrom((k) => Deno.env.get(k));
 const background = (p: Promise<unknown>) => {
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(p); else p.catch(() => {});
 };
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     if (rerr) return json(rerr.code === '42501' ? 403 : 400, { error: rerr.message });
     const svc = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
     const out = await sendReceiptOnce(svc, String(orderId), mailEnv());
-    if (!out.ok) return json(502, { error: out.reason === 'not-configured' ? 'E-mail is not set up on this studio yet (RESEND_API_KEY, MAIL_FROM).' : `The receipt could not be sent (${out.reason}).` });
+    if (!out.ok) return json(502, { error: out.reason === 'not-configured' ? 'E-mail is not set up on this studio yet (MAIL_FROM and RESEND_API_KEY, or SMTP_USER and SMTP_PASSWORD).' : `The receipt could not be sent (${out.reason}).` });
     return json(200, { ok: true, sent: !out.skipped });
   }
   /* AUTO-RENEW (schema §62). A subscription's Checkout hands back

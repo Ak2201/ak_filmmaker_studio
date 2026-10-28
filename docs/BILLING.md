@@ -1504,7 +1504,7 @@ pages that show and take a dollar price are PRICING-CLIENT's.
    `charged_currency: 'USD'`. Make one USD test-mode purchase and one refund
    before taking a live dollar payment.
 
-## 25. The launch week pass (schema §61, 27 Oct 2026). NOT YET RUN LIVE.
+## 25. The launch week pass (schema §61, 27 Oct 2026). RUN LIVE 28 Oct 2026; functions NOT yet redeployed.
 
 The owner's decision: the public free trial is retired, and in its place a
 **launch offer** — a short paid pass of the whole studio (₹49 for 7 days

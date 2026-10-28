@@ -9,6 +9,39 @@ Nothing in the database changes behaviour until the console switches the pass
 on: `pass_enabled` is false by default, so after §61 runs, every page and every
 order works exactly as it does today. Do the steps in this order.
 
+## Status, 28 Oct 2026
+
+Run live on `conhlrulxfwkhsnymakz` through the SQL editor, each file loaded at
+`1b1b004d`, its SHA-256 compared with the line in step 1 before Run, then read
+back. Supabase showed its generic "destructive operations" dialog for §59 and
+§61; the drops are CHECK constraints §61 re-adds wider and §59's own policies,
+triggers and functions, none on user data.
+
+| Step | State |
+| --- | --- |
+| §57 invoice year | **RUN LIVE.** `invoices.valid_from`, `valid_until`, `invoices_payment_facts()` present |
+| §58 funnel source | **RUN LIVE.** `events.source`, both `bump_event` forms, `admin_funnel_by_source`, primary key includes `source` |
+| §59 testimonials | **RUN LIVE.** RLS on, `public_testimonials()` answers (0), `testimonials_on_user_delete` trigger, author FK is set-null, `submit_testimonial`, `admin_set_testimonial_status` |
+| §60 trial scope | **RUN LIVE.** `start_trial` carries §60; `trial_offer()` has `trial_scope` (live value `sample`, 30 minutes: the console's trial setting is NOT changed) |
+| §61 week pass | **RUN LIVE.** Pass off, 4900 paise, 7 days, `pro`, no deadline, no cap; `trial_enabled` still true; the four CHECKs name `pass` / `pass_buy` / `has_plan`; `start_trial` carries §61; `paid_buyers()` = 2. `quote_pass` / `admin_set_pass` rows were below the visible grid and not read |
+| §62 auto-renew | **NOT RUN, on purpose.** Needs Razorpay Subscriptions and the two new functions; changes nothing while modes are one-time |
+| §63 renewal reminders | **NOT RUN, on purpose.** After §62 |
+| §64 Pro blurb | **RUN LIVE.** `plans.blurb` for `pro` reads "A production house: no cap on films, links or collaborators." |
+| Functions redeploy (step 4) | **NOT DONE.** Live versions are still v9 / v9 / v9 / v3 from 22 Oct 13:35 UTC, before `_shared/razorpay.js` (PERIODS now `year`, `pass`) and `_shared/mail.js` changed. The old `rzp-order` refuses `period: 'pass'`, and the pass is off, so nothing breaks in between |
+| Purge script (step 0) | **NOT RUN.** Irreversible; needs the owner's backup and explicit go-ahead |
+| Price rise (26 Oct step 1) | **NOT DONE.** `plans.next_price_at` still reads 2026-10-31 18:29 UTC for starter, indie and pro. The owner's decision is 2026-12-31 18:29 UTC; it must be moved before the 31st |
+| Pass switched on (step 8) | **NOT DONE.** `pass_enabled` is false |
+
+Razorpay (dashboard read, 28 Oct, nothing changed): live mode; one webhook to
+`/functions/v1/rzp-webhook`, enabled, 7 events (`payment.authorized`,
+`payment.failed`, `payment.captured`, `settlement.processed`,
+`refund.processed`, `refund.failed`, `refund.created`), no `subscription.*`
+events yet; `filmmakerstudio.in` added and VERIFIED (the old vercel.app host is
+still approved); domestic cards and Cards Recurring activated; **international
+cards NOT requested**, so USD orders cannot work until the owner submits "Request
+for international cards" and it is approved. The webhook secret's match with the
+Supabase secret was not checkable.
+
 ## 0. Clean slate before launch (one admin, no test data)
 
 **Owner decision, 27 Oct 2026:** the app never launched, so every account in

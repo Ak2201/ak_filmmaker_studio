@@ -281,3 +281,16 @@
   border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--border-hair));
   border-radius: var(--sk-radius, var(--radius));
 }
+
+/* ---- 8B PASS (28 Oct 2026, lane C): labels in the body face ---------
+   The template sets every label in the body face, sentence case, with no
+   tracking; mono capitals stay for DATA (figures, codes, the breakdown
+   sheet, the printed shot list) and the script page. These rules came
+   last on purpose (the ordering trap in CLAUDE.md): the same selectors,
+   later in the file, so they win on order and nothing else. */
+.book-label {
+  font-family: var(--f-body);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}

@@ -40,7 +40,9 @@ bindNoteActions();
 
 function render() {
   const s = Story.loadStory();
-  const main = h('main#main');
+  /* the studio's one column (.k-page), so the header's rule takes the
+     measure like every page's instead of the viewport (8B pass) */
+  const main = h('main#main.k-page');
   main.append(pageHeader({
     class: 'bd-head vault-head',
     eyebrow: ['Story', 'Idea Vault'],

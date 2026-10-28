@@ -210,3 +210,31 @@
   font-weight: 600;
 }
 :root :is(.tw-actions, .tour-actions, .tour-invite-actions) .btn.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--brand-on); }
+
+/* ---- 8B PASS (28 Oct 2026, lane C): the checklist is a CARD ----------
+   It was a full-bleed grey band under a white hero. On the one-ground
+   Home it is a card in the page column: same surface, border and radius
+   as the project cards, the count in the body face. */
+#main > .tw-section.tw-section { background: transparent; border-bottom: 0; padding: 0 var(--s5) var(--s7); }
+#main > .tw-section.tw-section > .section-inner {
+  padding: var(--s5);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow, none);
+}
+.tw-section .section-head h2 { font-size: var(--t-xl); }
+.tw-section .section-head .deck { margin-top: var(--s1); }
+.tw-section .tw-count {
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tw-item { background: var(--surface-canvas); border-color: var(--border-hair); }
+.tw-link { text-decoration: none; }
+.tw-link:hover { text-decoration: underline; }
+@media (max-width: 719px) {
+  #main > .tw-section.tw-section { padding-inline: var(--s4); }
+  #main > .tw-section.tw-section > .section-inner { padding: var(--s4); }
+}

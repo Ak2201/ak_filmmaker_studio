@@ -1616,7 +1616,9 @@ redeploy `rzp-order`, `rzp-verify` and `rzp-webhook` (the shared `razorpay.js`
 and `mail.js` changed; `rzp-refund` imports `razorpay.js` too, so deploy all
 four), Resend before ANY real payment, then the pass in the console.
 
-## 26. Auto-renew: Razorpay Subscriptions, chosen per product (schema §62, 27 Oct 2026). NOT YET RUN LIVE.
+> **State of auto-renew, 28 Oct 2026.** §62 and §63 are live and change nothing while both modes read `once`. Razorpay LIVE mode has Subscriptions enabled (UPI Autopay and cards; no plans yet, the app creates them) and Cards Recurring activated. NOT done: `rzp-subscribe`, `rzp-cancel` and `rzp-remind` are in the repo but not deployed (only the four payment functions are live); the webhook has 7 events and needs the `subscription.*` ones (the code handles `subscription.charged` among them); `CRON_SECRET` and the reminder job; a TEST-mode run (`docs/SECURITY-RLS.md` §62 checks 2 to 10); the auto-renew legal passages approved; then `admin_set_billing_modes`.
+
+## 26. Auto-renew: Razorpay Subscriptions, chosen per product (schema §62, 27 Oct 2026). SCHEMA RUN LIVE 28 Oct 2026; functions NOT deployed, modes still one-time.
 
 The owner's decision of 27 Oct 2026 reverses §18 ("no subscription model")
 and §52 ("no mandate"), but ONLY AS AN OPTION. In the console, the week pass
@@ -1734,7 +1736,7 @@ as §61 left them. A mode change applies to NEW purchases only.
     never undoes a terminal status.
   - `x-razorpay-event-id` is logged.
 
-## 27. Renewal reminders (schema §63, 27 Oct 2026). NOT YET RUN LIVE.
+## 27. Renewal reminders (schema §63, 27 Oct 2026). SCHEMA RUN LIVE 28 Oct 2026; `rzp-remind` NOT deployed.
 
 One e-mail before each auto-pay charge, about 48 hours ahead, once per
 billing cycle. It is a courtesy beside Razorpay's own pre-debit notice and is

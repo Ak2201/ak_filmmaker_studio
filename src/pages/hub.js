@@ -229,7 +229,10 @@ function projectsMarkup() {
     title: 'Home',
     sub: 'A working desk for the working filmmaker.',
     /* Secondary: with films on the desk, Open project is the main action. */
-    actions: [button({ label: 'New project', variant: 'secondary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
+    actions: [
+      button({ label: 'Open the sample project', variant: 'ghost', icon: 'movie', attrs: { 'data-action': 'sample-project', 'data-sample': DEFAULT_SAMPLE, 'data-go': '1' } }),
+      button({ label: 'New project', variant: 'secondary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })
+    ]
   });
   const hh = head.querySelector('.k-page-title');
   hh.id = 'projectsHeading';
@@ -394,12 +397,28 @@ function openSampleFromURL() {
   params.delete('sample');
   const q = params.toString();
   try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) { /* ignore */ }
+  /* `open=dashboard` is the account menu's and Home's "Open the sample
+     project": land on the sample's dashboard. The bare demo link keeps
+     its landing on Home. */
+  const toDashboard = params.get('open') === 'dashboard';
+  if (toDashboard) { params.delete('open'); }
+  reopenOrOpenSample(sample.id, toDashboard);
+}
+
+/* ONE entry for every "open the sample": a sample already in this
+   namespace is RE-OPENED (never duplicated, never touching the user's
+   films), otherwise it is created. Sample projects are matched by
+   title (isSampleTitle), the same rule the plan gate uses. */
+function reopenOrOpenSample(id, toDashboard) {
+  const sample = sampleById(id) || sampleById(DEFAULT_SAMPLE);
   const existing = Store.listProjects().find((p) => p.title === sample.title);
+  const done = () => { if (toDashboard) location.href = 'dashboard.html'; };
   if (existing) {
     if (Store.currentProjectId() !== existing.id) Store.setCurrentProject(existing.id);
-    return;
+    done();
+    return Promise.resolve();
   }
-  openSampleProject(sample.id).catch(sampleFailed);
+  return openSampleProject(sample.id).then(done).catch(sampleFailed);
 }
 
 /* §30. A TRIAL IS THIRTY MINUTES; NONE OF THEM SHOULD GO ON FINDING
@@ -707,7 +726,7 @@ const CLICK_ACTIONS = {
      unhandled rejection rather than an error the click surfaces —
      and `verify` asserts zero console errors, which is the wrong
      place to find out. */
-  'sample-project':        (el) => { openSampleProject(el && el.dataset && el.dataset.sample).catch(sampleFailed); },
+  'sample-project':        (el) => { reopenOrOpenSample(el && el.dataset && el.dataset.sample, !!(el && el.dataset && el.dataset.go)); },
   'adopt-device-projects': () => adoptDeviceProjectsNow(),
   'close-project-modal':   () => closeProjectModal(),
   'switch-project':        (el) => switchToProject(el.dataset.id),

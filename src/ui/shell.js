@@ -877,6 +877,7 @@ function openAcctMenu(btn) {
   menu.append(h('div.sh-acct-list', {}, [
     row('a', { href: (settings && settings.href) || 'settings.html' }, 'settings', 'Settings'),
     purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Purchase') : null,
+    row('a', { href: 'index.html?sample=1&open=dashboard' }, 'movie', 'Open the sample project'),
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
     row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new'),
     signedIn

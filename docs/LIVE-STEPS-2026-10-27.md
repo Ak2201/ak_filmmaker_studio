@@ -43,6 +43,13 @@ cards NOT requested**, so USD orders cannot work until the owner submits "Reques
 for international cards" and it is approved. The webhook secret's match with the
 Supabase secret was not checkable.
 
+### Auto-renew deploy, 28 Oct 2026 03:45–03:50 UTC (all but the switch)
+
+- **Functions deployed** from `develop` at `2616fb61`: `rzp-subscribe` v1 and `rzp-cancel` v1 (JWT), `rzp-remind` v1 (NO JWT), `rzp-order` / `rzp-verify` / `rzp-webhook` v14, `rzp-refund` v8. Probed: the JWT ones answer 401 "Missing authorization header", `rzp-webhook` 401 "bad signature", `rzp-remind` 401 "bad cron secret".
+- **Razorpay webhook** `…/functions/v1/rzp-webhook` now has 15 events: the 7 payment / refund / settlement events plus `subscription.authenticated`, `paused`, `resumed`, `activated`, `pending`, `halted`, `cancelled`, `completed` and `charged`. URL and secret untouched.
+- **Reminders:** `CRON_SECRET` set in Supabase (non-empty, checked by digest) and in GitHub Actions together with `FMS_FUNCTIONS_URL`; a hand-run of `renewal-reminders` succeeded with `{"sent":0,"failed":0,"skipped":0}`.
+- **NOT done:** the switch (`admin_set_billing_modes`, owner or finance, console, signed in), and any subscribe / renew / cancel / refund run. The order for that is `docs/AUTORENEW-TEST-CHECKLIST.md`. The modes still read `once` / `once`.
+
 ## 0. Clean slate before launch (one admin, no test data)
 
 **Owner decision, 27 Oct 2026:** the app never launched, so every account in

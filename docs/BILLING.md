@@ -1616,7 +1616,9 @@ redeploy `rzp-order`, `rzp-verify` and `rzp-webhook` (the shared `razorpay.js`
 and `mail.js` changed; `rzp-refund` imports `razorpay.js` too, so deploy all
 four), Resend before ANY real payment, then the pass in the console.
 
-> **State of auto-renew, 28 Oct 2026.** §62 and §63 are live and change nothing while both modes read `once`. Razorpay LIVE mode has Subscriptions enabled (UPI Autopay and cards; no plans yet, the app creates them) and Cards Recurring activated. NOT done: `rzp-subscribe`, `rzp-cancel` and `rzp-remind` are in the repo but not deployed (only the four payment functions are live); the webhook has 7 events and needs the `subscription.*` ones (the code handles `subscription.charged` among them); `CRON_SECRET` and the reminder job; a TEST-mode run (`docs/SECURITY-RLS.md` §62 checks 2 to 10); the auto-renew legal passages approved; then `admin_set_billing_modes`.
+> **Update, 28 Oct 2026 (later):** the three functions are deployed, the webhook carries the subscription events, `CRON_SECRET` and the hourly job work. Only the test run and the switch are open: see `docs/AUTORENEW-TEST-CHECKLIST.md`.
+>
+> **State of auto-renew, 28 Oct 2026 (earlier).** §62 and §63 are live and change nothing while both modes read `once`. Razorpay LIVE mode has Subscriptions enabled (UPI Autopay and cards; no plans yet, the app creates them) and Cards Recurring activated. NOT done: `rzp-subscribe`, `rzp-cancel` and `rzp-remind` are in the repo but not deployed (only the four payment functions are live); the webhook has 7 events and needs the `subscription.*` ones (the code handles `subscription.charged` among them); `CRON_SECRET` and the reminder job; a TEST-mode run (`docs/SECURITY-RLS.md` §62 checks 2 to 10); the auto-renew legal passages approved; then `admin_set_billing_modes`.
 
 ## 26. Auto-renew: Razorpay Subscriptions, chosen per product (schema §62, 27 Oct 2026). SCHEMA RUN LIVE 28 Oct 2026; functions NOT deployed, modes still one-time.
 

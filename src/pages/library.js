@@ -457,10 +457,9 @@ function railFold(section) {
 
 function renderCover() {
   const blurb =
-    `A curated reference: ${N_FILMS} Tamil & Indian films analyzed for craft, ` +
-    `${N_DIRECTORS} director archetypes, ${N_RULES} craft rules, equipment cost ` +
-    `ranges (Chennai ${rates.asOf}), and a ${N_WATCHFILMS}-film watch list mapped ` +
-    `to the blueprint's steps, beside two craft-book shelves.`;
+    `${N_FILMS} Tamil and Indian films studied for craft, ${N_DIRECTORS} director ` +
+    `archetypes, ${N_RULES} craft rules, Chennai equipment rates (${rates.asOf}), ` +
+    `a ${N_WATCHFILMS}-film watch list and two craft books.`;
 
   /* ONE PAGE FRAME: the kit header every studio page opens with, h1 the
      page's name; the cover keeps the blurb and the contents under it. */
@@ -472,9 +471,9 @@ function renderCover() {
   return [head, h('section.cover', {}, [
     h('div', {}, [
       h('div.cover-row', {}, [
-        h('p.cover-sub', { text: blurb }),
-        /* the count is the real number of shelves below */
-        h('p.cover-pills', {}, [h('span.cover-pill', {}, [h('span.cover-pill-dot', { 'aria-hidden': 'true' }), `${openShelves().length} SHELVES`])])
+        /* 8B pass (28 Oct 2026): the "N SHELVES" pill beside this line
+           left; the cards below are the count. */
+        h('p.cover-sub', { text: blurb })
       ]),
       h('nav.cover-toc', { 'aria-label': 'Contents' },
         openShelves().map((s, i, all) => h('a.toc-item', { href: `#${s.id}` }, [
@@ -489,7 +488,7 @@ function renderCover() {
           ]),
           h('span.title', { text: s.tocTitle }),
           h('span.desc', { text: s.tocDesc }),
-          h('span.toc-foot', {}, [h('span.toc-count', { text: '\u25B6 ' + s.count.toLowerCase() })])
+          h('span.toc-foot', {}, [h('span.toc-count', { text: s.count.toLowerCase() })])
         ])))
     ])
   ])];
@@ -527,7 +526,7 @@ function railFor(section) {
   const items = railItems(section);
   if (!items.length) return null;
   return h('nav.lib-rail', { 'aria-label': `In ${section.tocTitle}` }, [
-    h('div.lib-rail-label', { text: 'IN THIS TAB' }),
+    h('div.lib-rail-label', { text: 'In this tab' }),
     ...items.map((it) => h('a', { href: `#${it.id}`, text: it.label }))
   ]);
 }

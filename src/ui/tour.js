@@ -383,9 +383,9 @@ function renderChecklist() {
         h('div.label', { text: data.checklist.label }),
         h('h2#twHeading', { text: data.checklist.title }),
         h('p.deck', { text: data.checklist.deck }),
-        onSample ? h('p.deck.tw-hint', { text: 'You are in the sample film, so these stay unticked. Start your own film to tick them off.' }) : null
+        onSample ? h('p.deck.tw-hint', { text: 'The sample film does not tick these. Your own film does.' }) : null
       ].filter(Boolean)),
-      h('div.right', { text: done + ' OF ' + items.length + ' DONE' })
+      h('div.right.tw-count', { text: done + ' of ' + items.length + ' done' })
     ]),
     h('div.tw-meter', { role: 'img', 'aria-label': done + ' of ' + items.length + ' first-week items done' }, [
       h('span.tw-fill', { style: 'width:' + Math.round((done / items.length) * 100) + '%' })

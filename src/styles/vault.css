@@ -18,3 +18,5 @@
 #vault .st-vault-panel { margin-bottom: var(--s4); }
 #vault .st-vault-add { display: grid; gap: var(--s2); justify-items: start; }
 #vault .st-clip { background: var(--surface-card); border: 1px solid var(--border-hair); border-radius: var(--sk-radius); padding: var(--sk-card-pad); }
+/* Inside the page column (main.k-page, 8B pass) the column owns the gutter. */
+.k-page > #vault.st-sec { max-width: none; padding-inline: 0; }

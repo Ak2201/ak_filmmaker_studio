@@ -47,11 +47,11 @@ function projectStatus(p, active, openJourney) {
   if (active && openJourney) {
     return {
       pct: g.pct,
-      label: openJourney.complete ? 'ALL ' + STAGES.length + ' STAGES'
-                                  : openJourney.currentLabel.toUpperCase()
+      label: openJourney.complete ? 'All ' + STAGES.length + ' stages'
+                                  : openJourney.currentLabel
     };
   }
-  return { pct: g.pct, label: g.started ? g.currentLabel.toUpperCase() : 'EMPTY' };
+  return { pct: g.pct, label: g.started ? g.currentLabel : 'Not started' };
 }
 
 function projectCard(p, currentId, openJourney) {
@@ -62,7 +62,7 @@ function projectCard(p, currentId, openJourney) {
     class: 'project-card' + (active ? ' active' : '') + ' format-' + p.format,
     tabindex: '0', role: 'button',
     'data-action': 'switch-project', 'data-id': p.id,
-    'aria-label': 'Switch to project ' + p.title
+    'aria-label': active ? p.title + ', the open project' : 'Switch to project ' + p.title
   }, [
     /* The kit's icon tray (CLAUDE.md row 48: one button language). The
        glyphs it replaced (✎ ⎘ ×) printed in the mono face at micro size. */
@@ -77,8 +77,7 @@ function projectCard(p, currentId, openJourney) {
     })(),
     active && h('span.pc-pulse', { 'aria-hidden': 'true' }),
     h('div.pc-format', {
-      text: (FORMAT_LABELS[p.format] || String(p.format).toUpperCase()) +
-            (active ? ' · ACTIVE' : '') + ' · ' + status.label
+      text: (FORMAT_LABELS[p.format] || String(p.format)) + ' · ' + status.label   // the open film says so by its ring and dot
     }),
     h('div.pc-title', { title: 'Double-click to rename', 'data-dblaction': 'rename-project', 'data-id': p.id, text: p.title }),
     /* SHARE and OPEN sit IN the meta row, not over it. Share was
@@ -181,7 +180,7 @@ function renderAdoptNotice() {
   const list = h('ul.adopt-list');
   adoptable.forEach((p) => list.append(h('li.adopt-item', {}, [
     h('span.adopt-name', { text: p.title }),
-    h('span.adopt-fmt',  { text: FORMAT_LABELS[p.format] || String(p.format).toUpperCase() })
+    h('span.adopt-fmt',  { text: FORMAT_LABELS[p.format] || String(p.format) })
   ])));
   panel.append(list);
 
@@ -260,7 +259,7 @@ function renderProjects() {
     out.append(h('div.empty-projects-state', {}, [
       h('div.eps-title', { text: 'No projects match.' }),
       h('div.eps-deck', { text: 'Try a different filter or clear your search.' }),
-      h('button.btn', { 'data-action': 'reset-project-filters', text: 'RESET FILTERS' })
+      h('button.btn', { 'data-action': 'reset-project-filters', text: 'Reset filters' })
     ]));
     commit();
     return;
@@ -275,7 +274,7 @@ function renderProjects() {
       tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'
     }, [
       h('div.pc-plus', { 'aria-hidden': 'true', text: '+' }),
-      h('div.pc-cta', { text: 'NEW PROJECT' })
+      h('div.pc-cta', { text: 'New project' })
     ]));
   } else if (sampleOnly) {
     /* "Your plan" was wrong for the commonest reader of this line — a

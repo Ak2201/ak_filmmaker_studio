@@ -4877,3 +4877,226 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 }
 /* the word's tooltip gives way to the open menu it names */
 :root .sh-rail-item.tb-menu-btn[aria-expanded="true"] .sh-rail-label { opacity: 0; visibility: hidden; }
+
+/* ============================================================
+   THE LABELLED RAIL AND THE SLIM BAND (owner, 28 Oct 2026)
+   ------------------------------------------------------------
+   An app-kit frame: a dark sidebar whose items say what they are
+   (icon + word in one row, not an icon with a tooltip), a slim dark
+   band that carries the crumb (stage › page), search and the
+   project, and the light work canvas beside them.
+
+   WHERE IT APPLIES. From 1100px up, where the rail is furniture, and
+   below 1100px, where it is the burger's drawer (an overlay, so its
+   width costs the page nothing). The 64px icon column above is still
+   the rule nowhere else: its tooltips and placement stay in the sheet
+   because the drawer and the desk share every element.
+
+   Declared LAST, for the reason every block above gives: equal
+   specificity, and order decides. Tokens and --sk-* only; no class,
+   id or data-action a proof reads is changed. Every rail label is
+   still the element it was (.sh-rail-label): it is now simply shown
+   in place instead of floated beside the column.
+   ============================================================ */
+:root { --sh-rail-pad: var(--s3); }
+@media all {
+  :root { --sh-rail-w: 224px; }
+  :root .sh-rail {
+    align-items: stretch;
+    padding: var(--s3) var(--sh-rail-pad) var(--s3);
+    border-right: 1px solid var(--border-hair);
+  }
+
+  /* the product: tile and name in one row */
+  :root .sh-rail-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    width: auto;
+    height: auto;
+    margin: 0 0 var(--s4);
+    padding: var(--s1) var(--s2);
+    background: none;
+    border: 0;
+    color: var(--ink);
+  }
+  .sh-rail-mono {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md, var(--radius));
+    background: var(--brand);
+    color: var(--brand-on);
+    font-family: var(--f-display);
+    font-size: var(--t-tiny);
+    font-weight: 700;
+  }
+  .sh-rail-brand {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--f-display);
+    font-size: var(--t-ui);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  :root .sh-rail-logo:hover .sh-rail-mono { background: var(--brand-hover); }
+
+  .sh-rail-main,
+  .sh-rail-foot { align-items: stretch; gap: 2px; }
+  .sh-rail .sh-rail-stages,
+  .sh-rail .sh-rail-group,
+  .sh-rail .sh-rail-tools {
+    align-items: stretch;
+    gap: 2px;
+    width: auto;
+    margin: var(--s3) 0 0;
+    padding: var(--s3) 0 0;
+  }
+  /* a group says what it holds, in the rail's quietest type; the words
+     are the group's own aria-label, so nothing new is written */
+  .sh-rail .sh-rail-stages::before,
+  .sh-rail .sh-rail-group::before {
+    content: attr(aria-label);
+    display: block;
+    padding: 0 var(--s3) var(--s1);
+    font-family: var(--f-body);
+    font-size: var(--t-nano);
+    font-weight: 600;
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .sh-rail .sh-rail-tools {
+    margin: 0 0 var(--s2);
+    padding: 0 0 var(--s2);
+    border-top: 0;
+    border-bottom: 1px solid var(--border-hair);
+  }
+
+  /* an item: icon, word, then a status mark at the end */
+  .sh-rail .sh-rail-item {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: start;
+    column-gap: var(--s3);
+    width: 100%;
+    height: auto;
+    min-height: 36px;
+    padding: 0 var(--s3);
+    border-radius: var(--radius-md, var(--radius));
+    color: var(--ink-body);
+    text-align: left;
+  }
+  .sh-rail .sh-rail-item > .sh-rail-icon { grid-column: 1; grid-row: 1; justify-self: center; font-size: 18px; }
+  .sh-rail .sh-rail-item:hover,
+  .sh-rail .sh-rail-stagecell.is-fly > .sh-rail-item { background: var(--surface-hover); color: var(--ink); }
+  .sh-rail .sh-rail-item.is-active {
+    background: var(--surface-active);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .sh-rail .sh-rail-item.is-active .sh-rail-icon { color: var(--brand-deep); }
+  .sh-rail .sh-rail-item.is-active::before {
+    inset: 50% auto auto calc(-1 * var(--sh-rail-pad));
+    height: 18px;
+  }
+
+  /* the word, in place: every tooltip property of the icon rail undone */
+  .sh-rail .sh-rail-item .sh-rail-label,
+  .sh-rail .sh-rail-item:hover .sh-rail-label,
+  .sh-rail .sh-rail-item:focus-visible .sh-rail-label,
+  .sh-rail .sh-rail-stage .sh-rail-label,
+  .sh-rail .sh-rail-stage:hover .sh-rail-label,
+  .sh-rail .sh-rail-stage:focus-visible .sh-rail-label,
+  .sh-rail .sh-rail-item.tb-menu-btn[aria-expanded="true"] .sh-rail-label {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    padding: 0;
+    overflow: hidden;
+    clip: auto;
+    clip-path: none;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    color: inherit;
+    font-family: var(--f-body);
+    font-size: var(--t-ui);
+    font-weight: inherit;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    transition: none;
+    pointer-events: none;
+  }
+  /* a stage's hue, and the dots that mark sync and a stale backup, sit
+     at the row's end instead of on the icon's corner */
+  .sh-rail-dot,
+  .sh-rail .sh-rail-tools .sh-sync .sh-sync-led,
+  .sh-rail .sh-rail-tools .is-backup-stale > .tb-menu-btn > .tb-backup-dot {
+    position: static;
+    grid-column: 3;
+    grid-row: 1;
+    width: 7px;
+    height: 7px;
+    box-shadow: none;
+  }
+  .sh-rail .sh-rail-item > .pg-flag {
+    position: static;
+    grid-column: 3;
+    grid-row: 1;
+    transform: none;
+    background: none;
+  }
+  .sh-rail .sh-rail-tools .sh-sync { height: auto; gap: 0 var(--s3); }
+  .sh-rail .sh-rail-tools .sh-sync .sh-sync-icon { font-size: 18px; }
+
+  /* the trial clock spans the rail like everything else */
+  :root .sh-rail-trial { width: auto; padding: var(--s2) var(--s3); text-align: left; }
+
+  /* the account: the photo or initials, then the name */
+  .sh-rail .sh-rail-account { min-height: 44px; }
+  .sh-rail .sh-rail-account .sh-rail-avatar {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: 28px;
+    height: 28px;
+    font-size: var(--t-micro);
+  }
+  .sh-rail .sh-rail-account { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: var(--s2); padding-left: var(--s2); }
+
+  /* the flyout opens beside the wider column */
+  .sh-fly { left: calc(var(--sh-rail-w) + var(--s1)); width: 272px; }
+}
+
+/* THE BAND: slim, dark, and short of words. The purpose lines left it
+   (shell.js renderCrumb); the crumb is two segments, stage › page. */
+:root .sh-bar { column-gap: var(--s3); }
+:root .sh-bar > .sh-where { font-size: var(--t-ui); }
+:root .sh-where-here { font-weight: 600; }
+:root .sh-where-phase { color: var(--ink-body); }
+/* With no stage strip and no purpose line beside it, the crumb is short
+   at every desk width, so the stage segment no longer gives way between
+   720 and 1279px (the phone keeps mobile-nav.css's own rule). */
+@media (min-width: 720px) {
+  :root .sh-bar .sh-where-phase { display: inline-flex; }
+  :root .sh-bar .sh-where-phase + .sh-where-sep { display: inline; }
+}
+/* the band's search keeps its whole placeholder below 1280px: the key
+   cap gives way, the palette still answers the shortcut */
+@media (max-width: 1279px) {
+  :root .sh-bar .sh-find .sh-find-key { display: none; }
+}

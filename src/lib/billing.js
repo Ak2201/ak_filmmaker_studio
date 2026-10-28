@@ -339,15 +339,41 @@ const POLL_MS = [800, 1500, 2500, 4000, 6000, 8000];
 async function subscribe(planId, period, { accountId, onStatus, currency }) {
   bumpEvent('checkout_start');
   onStatus('Preparing your auto-pay…');
+  const timer1 = setTimeout(() => { onStatus('Connecting to secure payment gateway…'); }, 2000);
+  const timer2 = setTimeout(() => { onStatus('Almost ready…'); }, 4500);
+
   const product = period === 'pass' ? 'pass' : planId;
-  const ask = invoke('rzp-subscribe', { product, account_id: accountId, currency: currency === 'USD' ? 'USD' : 'INR' }).catch((e) => {
+  const requestSub = () => invoke('rzp-subscribe', { product, account_id: accountId, currency: currency === 'USD' ? 'USD' : 'INR' });
+
+  const ask = requestSub().catch(async (e) => {
+    /* If a user closed a previous checkout session and clicked Buy again within 5s,
+       the edge function's 5-second threshold hasn't expired yet, causing hint: 'subscribed'.
+       If the user does not actually have an active auto-pay subscription, reset and retry once. */
+    if (e && e.hint === 'subscribed') {
+      let st = null;
+      try { st = await status(); } catch (err) { st = null; }
+      const ap = autopayOf(st);
+      if (!ap || (!ap.live && !ap.open)) {
+        onStatus('Resetting previous payment session…');
+        await new Promise((r) => setTimeout(r, 4200));
+        return requestSub();
+      }
+    }
     /* the two refusals only a subscription has; a plan's other reasons
        are rzp-order's and come back with the server's own sentence */
     if (e && product !== 'pass' && (e.hint === 'renew_off' || e.hint === 'subscribed')) e.message = passRefusal(e.hint, e.message);
     if (e && e.hint === 'renew_off') { _passAt = 0; try { Store.notify('billing:changed', null); } catch (x) { /* nobody listening */ } }
     throw e;
   });
-  const [sub] = await Promise.all([ask, loadCheckout()]);
+
+  let sub = null;
+  try {
+    const [res] = await Promise.all([ask, loadCheckout()]);
+    sub = res;
+  } finally {
+    clearTimeout(timer1);
+    clearTimeout(timer2);
+  }
   if (!sub || !sub.subscription_id) throw new BillingError('No subscription came back.', 'edge');
   const price = Number.isInteger(sub.amount) ? fmtMinor(sub.amount, sub.currency) : '';
   const terms = offerTerms('renew', price, sub.period === 'year' ? 'year' : 'pass', sub.days);

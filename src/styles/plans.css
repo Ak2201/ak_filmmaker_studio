@@ -48,7 +48,7 @@
 .pl-save { margin: 0; font-size: var(--t-tiny); font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ok-deep); }
 .pl-upgrade { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
 .pl-cta { display: grid; gap: var(--s2); }
-.pl-cta .k-btn { font-weight: 600; letter-spacing: .02em; }
+.pl-cta .k-btn { font-weight: 600; letter-spacing: .02em; min-height: 44px; }
 .pl-card-body { display: grid; gap: var(--s2); align-content: start; flex: 1 1 auto; padding-top: var(--s3); border-top: 1px solid var(--border-hair); }
 .pl-adds { display: grid; gap: var(--s2); margin: 0; }
 .pl-adds-lead { margin: 0; font-size: var(--t-small); font-weight: 600; color: var(--ink); }

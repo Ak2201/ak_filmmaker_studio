@@ -3019,3 +3019,108 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       breakdown, the edit log and the estimator print.
     - **§64** (`schema-64-pro-blurb.sql`) updates the live Pro blurb. It is an
       owner step, with its checksum in `docs/LIVE-STEPS-2026-10-27.md`.
+
+69. **The 8B revamp, and its final QA fix pass (28 Oct 2026).** The owner
+    asked for the whole site, public pages and studio, to read as ONE
+    professionally built template product: a consistent grid and type
+    scale, restrained colour, one obvious primary action per screen, plain
+    short copy, features kept but presented simply. One foundation commit,
+    four lanes (public, shell, writing, production) merged into `develop`
+    in that order, then a QA round and this fix pass.
+    - **Palette: the "dark only" rule is REVERSED, on purpose.** The 14 Oct
+      Swiss Precision palette (obsidian ground, dark only) is replaced by
+      the 8B template mix: bare `:root` is the LIGHT work surface (canvas
+      `#f4f3f8`, white cards, near-black inks) and a class-scoped DARK SCOPE
+      (`.sh-rail`, `.sh-bar`, the phone bar and sheets, `[data-surface="dark"]`)
+      restates the same token names for the rail, the band and the public
+      site's dark bands. ONE violet (`#6c3cff`). Still one palette and no
+      toggle: `fms_studio_theme_v1` is read, never written. verify's
+      scripts-off probe now expects the light canvas under both OS
+      preferences; that was changed deliberately in the foundation commit.
+    - **Fonts.** Gabarito (headings) and Onest (interface) self-hosted from
+      `@fontsource`, with the template's metric-matched fallbacks. Courier
+      Prime stays for screenplay text and the Tamil face stays LAST in
+      `--f-script`. JetBrains Mono is now DATA only (eighths, timecodes,
+      DOOD codes, INT/EXT tags, slugs, money columns).
+    - **Tailwind v4 is the public site only** (`src/styles/site.css` via
+      `@tailwindcss/vite`, `source(none)` scanning the public pages, `@theme
+      inline` mapped to the tokens). Studio pages are styled through
+      `tokens.css`, `skins/studio.css`, the kit and page CSS: 41k lines of
+      unlayered CSS would beat layered utilities.
+    - **Motion.** The bundled `motion` package (`motion/mini`): public
+      headings rise in and cards stack on scroll, studio panels and lists
+      move subtly. Every translate is multiplied by `--motion`; nothing
+      moves under `prefers-reduced-motion` or the device's own Reduce
+      motion switch; pages read fully without JS. `motion-app.js` is still
+      inert under `navigator.webdriver`, so motion was checked by hand with
+      it hidden (no page errors; only the sandbox proxy's
+      `ERR_TUNNEL_CONNECTION_FAILED`).
+    - **Templates and licences.** 8B design-studio template (MIT) is the
+      code base; its notice is in `docs/CREDITS.md`. Cruip (GPL-3.0) was
+      LAYOUT INSPIRATION ONLY: no code, markup or class list was copied.
+      The UI UX Pro Max rulebook was used from the scratchpad but is NOT
+      vendored into `.claude/skills`: its `package.json` says MIT and its
+      README says CC-BY-NC-4.0, and a non-commercial licence cannot be
+      checked into a commercial product's repo on a guess. The owner can
+      vendor it once the licence is settled.
+    - **Removed or moved by the lanes.** Dashboard: the closed Project
+      overview, the favourite-film line, the "Project dashboard" chip, the
+      "Boarded shots" figure. Rail flyouts: section rows (sections live in
+      the page's tab strip; `prove:nav` compares exactly that). Band: purpose
+      lines and the "Studio" root crumb. Rail: the 64px icon column became a
+      labelled 224px sidebar. Hub: the "ACTIVE" tag. Story: "Clear synopsis"
+      into a More menu. Library: the "N SHELVES" pill and the ▶ glyph. Plan
+      recce card: 7 answers behind "More details" (still in the DOM and in
+      print). Budget: the who-can-see paragraph into a disclosure. Public
+      home: the facts, exports and four-answers blocks. Public header and
+      footer: Guides and Switching into the Product menu, a 3-column footer.
+      Pricing: 9 FAQ questions cut (21 to 12), the comparison table
+      collapsed. Product pages: the label bar and the duplicate tools block.
+    - **The fix pass (QA findings).** ONE FILL: every selected, active,
+      pressed and progress fill is `--brand`; a phase hue is a mark only
+      (rail dot, 3px rule, icon tile wash), and a selected tab is a tint
+      (`--brand-wash` under `--brand-deep`). About 300 mono-caps LABEL rules
+      moved to Onest, sentence case, normal tracking, by a block-level
+      rewrite that skipped data selectors (slug, tag, eighths, numbers,
+      DOOD, codes, time); the band's "[FEATURE]" is a small badge. The
+      first-run doors are three equal kit cards with one primary. The
+      dashboard: the h1 is the film's title, ONE Continue card (the
+      "Suggested next" row only when it names another stage), and the
+      readiness list, all tools and the title page behind `details.db-more`
+      disclosures; `revealTarget()` in `tabs.js` now opens a closed
+      disclosure around a fragment target, so `dashboard.html#title-page`
+      still lands. The readiness eyebrow no longer runs into its heading.
+      Phones: one navigation entry (the band's rail toggle is hidden under
+      `html.mn-on`; Go to carries the navmodel), the crumb in Onest, a
+      compact stat strip. The save state sits in the band beside the crumb.
+      `fragments.js` moves FOCUS with an in-page jump, so "Skip to content"
+      works for a keyboard. Plan's permission chips take `-deep` inks (they
+      were 2.15–2.54:1). Dialogs carry `aria-describedby`. Dingbats in UI
+      chrome (✓ ✕) are Material Symbols. At most three glossary terms per
+      section. Visualize's shot table and the scene board's Shots table fit
+      their panels again beside the 224px rail. Public: the analytics
+      opt-out is in the footer's legal row; veiled sections are restored for
+      print and after an 8s backstop; the device Reduce-motion switch is
+      honoured (`src/lib/device-motion.js`, read-only, import-free); 44px
+      targets under a coarse pointer; the header reflows at 320px; videos
+      have an accessible name; two h1 tiers (76px display on home and
+      product pages, 60px elsewhere, pricing included); the contact hero
+      leads with "Write to us". `npm run density` had a hard-coded macOS
+      path and now resolves the repo itself.
+    - **Tests changed, each a layout or wording-shape update, none a
+      weakened behaviour check.** `prove-story-path` opens the dashboard's
+      "Project details" before filling the Title page; `prove-schedule`
+      reads the launcher's "days dated" through `textContent` (it sits in a
+      closed disclosure); `prove-budget-money` 19 matches the sentence-case
+      stat labels case-insensitively; `prove-shell-a11y` keeps only the
+      "not mapped to every step" half of the library cover check (the word
+      "craft-book" left with the copy rewrite); `test-region-content` reads
+      the sentence-case setup question; `prove-conversion` uses
+      plan-gate's documented `__fmsKeepWall` hook for the wall's and
+      Settings' own wording and gains two checks that a walled member is
+      SENT to purchase.html and offered the pass there (the "one payment
+      page" commit 0c92506 had made five checks stale before the revamp);
+      `test-marketing` allows the import-free `device-motion.js` and
+      asserts it never writes. `scripts/baseline.json` was re-baselined
+      deliberately: the dashboard lost "go, next, stands, suggested" (its
+      sub line and the duplicate suggestion), no data-key was lost (851).

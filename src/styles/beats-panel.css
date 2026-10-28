@@ -56,10 +56,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bp-caret { color: var(--ink-muted); font-size: var(--t-micro); }
@@ -79,10 +79,10 @@
   justify-content: space-between;
   gap: var(--s1) var(--s3);
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bp-progress strong { color: var(--brand-deep); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -138,10 +138,10 @@
 }
 .is-current > .bp-beat .bp-page { color: var(--brand-deep); }
 .bp-sub {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-nano);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .bp-state { color: var(--ink-muted); }
 .bp-beat.is-linked .bp-state { color: var(--ok-deep); }
@@ -164,10 +164,10 @@
   align-items: baseline;
   gap: var(--s1) var(--s2);
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bp-target strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -184,10 +184,10 @@
   display: flex;
   align-items: center;
   gap: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-nano);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bp-tension-l { flex: none; font-variant-numeric: tabular-nums; }

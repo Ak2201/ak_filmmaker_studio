@@ -376,13 +376,20 @@ function injectReadingProgress() {
 // ============================================================
 function ensureSaveIndicator() {
   let el = document.getElementById('saveIndicator');
-  if (el) return el;
-  el = document.createElement('div');
-  el.id = 'saveIndicator';
-  el.className = 'save-indicator';
-  el.setAttribute('aria-live', 'polite');
-  el.innerHTML = '<span class="si-dot"></span><span class="si-msg">SAVED</span>';
-  document.body.appendChild(el);
+  const band = document.querySelector('.sh-bar > .sh-where');
+  if (el && el.isConnected && (el.classList.contains('in-band') || !band)) return el;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'saveIndicator';
+    el.className = 'save-indicator';
+    el.setAttribute('aria-live', 'polite');
+    el.innerHTML = '<span class="si-dot"></span><span class="si-msg">Saved</span>';
+  }
+  /* IN THE BAND, beside the crumb (28 Oct 2026): a fixed pill floated
+     over the content's first column. Pages without the shell keep the
+     fixed pill. */
+  if (band) { el.classList.add('in-band'); band.after(el); }
+  else document.body.appendChild(el);
   return el;
 }
 let saveTimer = null;
@@ -391,16 +398,16 @@ function setIndicator(state, msg) {
   el.classList.remove('saving', 'error');
   if (state === 'saving') el.classList.add('saving');
   if (state === 'error')  el.classList.add('error');
-  el.querySelector('.si-msg').textContent = msg || 'SAVED';
+  el.querySelector('.si-msg').textContent = msg || 'Saved';
   el.classList.add('show');
   clearTimeout(saveTimer);
   if (state !== 'saving') {
     saveTimer = setTimeout(() => el.classList.remove('show'), 1800);
   }
 }
-StudioUI.markSaving = (msg) => setIndicator('saving', msg || 'SAVING…');
-StudioUI.markSaved  = (msg) => setIndicator('saved', msg || 'SAVED');
-StudioUI.markError  = (msg) => setIndicator('error', msg || 'SAVE FAILED');
+StudioUI.markSaving = (msg) => setIndicator('saving', msg || 'Saving…');
+StudioUI.markSaved  = (msg) => setIndicator('saved', msg || 'Saved');
+StudioUI.markError  = (msg) => setIndicator('error', msg || 'Save failed');
 
 // Field-saved tick (per textarea / input)
 StudioUI.flashFieldSaved = function (el) {
@@ -1147,6 +1154,9 @@ function autoTagGlossary(root) {
         if (node.nodeType !== 3) continue;            // text nodes only
         const text = node.nodeValue;
         if (!text || text.length < 4) continue;
+        /* At most three terms per section (28 Oct 2026): a dotted
+           underline in every paragraph read as noise. */
+        if (used.size >= 3) break;
         for (const key of GLOSSARY_KEYS) {
           if (used.has(key)) continue;
           // Whole words only, where "word" means what the verifier's
@@ -1860,10 +1870,10 @@ if (document.readyState === 'loading') {
 // Debounced so a stream of input events shows ONE pill, not 50.
 let _saveDebounce = null;
 Store.subscribe('saved', () => {
-  StudioUI.markSaving('SAVING…');
+  StudioUI.markSaving('Saving…');
   clearTimeout(_saveDebounce);
   _saveDebounce = setTimeout(() => {
-    StudioUI.markSaved('SAVED');
+    StudioUI.markSaved('Saved');
   }, 450);
 });
 

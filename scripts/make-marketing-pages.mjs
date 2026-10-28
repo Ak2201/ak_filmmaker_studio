@@ -341,7 +341,7 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
 
 /* The footer: the brand and one line, then three columns (the tools, the
    company, the reading), then the legal row. Dark, like the header. */
-function footer(site, pages) {
+function footer(site, pages, extraLegal = '') {
   const f = site.footer;
   const tools = navOrder(site).flatMap((s) => s.ids);
   const a = (href, t) => `<a href="${href}">${esc(t)}</a>`;
@@ -365,7 +365,7 @@ ${items.map((it) => `          <li>${it}</li>`).join('\n')}
       <ul class="mk-foot-legal">
         <li>${a('privacy.html', f.privacy)}</li>
         <li>${a('terms.html', f.terms)}</li>
-        <li>${a('refund.html', f.refund)}</li>
+        <li>${a('refund.html', f.refund)}</li>${extraLegal}
       </ul>
     </div>
   </div>
@@ -413,7 +413,7 @@ export function renderPage(id, { site, pages }) {
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(u.getStarted)}</a>
     </div>
     <figure class="mk-player mk-hero-media" id="demo" aria-label="${esc(p.demo.h2)}">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(id + '.webp')}">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(id + '.webp')}" aria-label="${esc(p.demo.h2)}">
         <source src="${media(id + '.webm')}" type="video/webm">
         ${esc(u.demoFallback)}
       </video>
@@ -758,7 +758,7 @@ export function renderHome({ site, pages, home }) {
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(home.hero.ctaPass)}</a>
     </div>
     <figure class="mk-player mk-hero-media st-hero-media" aria-label="${esc(home.hero.mediaLabel)}">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(HOME_HERO_CLIP + '.webp')}">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(HOME_HERO_CLIP + '.webp')}" aria-label="${esc(home.hero.mediaLabel)}">
         <source src="${media(HOME_HERO_CLIP + '.webm')}" type="video/webm">
         ${esc(u.demoFallback)}
       </video>
@@ -872,9 +872,9 @@ ${own}
 ${plans}
 ${closing}
 ${leadForm(site.lead, 'st')}
-  <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></div>
 </main>
-${footer(site, pages)}
+${footer(site, pages, `
+        <li class="st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></li>`)}
 ${modal(site)}
 <script type="module" src="/src/pages/start.js"></script>
 </body>
@@ -973,15 +973,20 @@ function companyCta(company, h2) {
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>`);
 }
 
-function companyHero(company, h1, sub) {
+function companyHero(company, h1, sub, own) {
   const cta = company.cta;
+  /* A page with its own job (contact: send a message) leads with THAT,
+     as the one primary, instead of the site-wide pair (28 Oct 2026). */
+  const row = own
+    ? `<a class="mk-btn mk-btn--primary mk-btn--lg" href="${own.href}">${esc(own.label)}</a>`
+    : `<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>`;
   return `<section class="mk-hero co-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
     <h1 class="mk-h1" id="mkH1">${esc(h1)}</h1>
     <p class="mk-sub">${esc(sub)}</p>
     <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
+      ${row}
     </div>
   </div>
 </section>`;
@@ -1039,7 +1044,7 @@ ${field('message', f.message, `<textarea class="co-input co-area" id="co-message
   return `${companyHead({ title: c.meta.title, description: c.meta.description, slug: 'contact' })}
 ${header(site, pages, 'contact')}
 <main id="main" class="mk mk-company co-page">
-${companyHero(company, c.hero.h1, c.hero.sub)}
+${companyHero(company, c.hero.h1, c.hero.sub, { href: '#write', label: c.hero.cta || 'Write to us' })}
 ${form}
 ${companyCta(company, c.close.h2)}
 </main>

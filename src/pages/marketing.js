@@ -38,6 +38,7 @@ import '../styles/base.css';
 import '../styles/marketing.css';
 import { bumpEvent, bumpOnce, sourceBucket, purchasesRequired, trialOffer, addLead } from '../lib/funnel.js';
 import { captureAttribution, attribution } from '../lib/attribution.js';
+import { deviceReducedMotion } from '../lib/device-motion.js';
 import { passCopy, validEmail, consentText } from '../lib/start-model.js';
 import * as PassOffer from '../lib/pass-offer.js';
 import { offerTerms, readMode } from '../lib/offer-terms.js';
@@ -62,6 +63,11 @@ try {
 } catch (e) { /* a counter never breaks the page */ }
 
 const root = document.documentElement;
+/* The device's own "Reduce motion" switch (Settings > Preferences), read
+   here as well as the OS preference (28 Oct 2026), and applied the way
+   src/ui/motion-pref.js applies it: html.ma-off and --motion: 0. */
+const deviceReduce = deviceReducedMotion();
+if (deviceReduce) { root.classList.add('ma-off'); root.style.setProperty('--motion', '0'); }
 const $ = (sel, from = document) => from.querySelector(sel);
 const $$ = (sel, from = document) => Array.from(from.querySelectorAll(sel));
 const byId = (id) => document.getElementById(id);
@@ -517,7 +523,7 @@ try {
   const vids = $$('video');
   if (!vids.length || !('IntersectionObserver' in window)) return;
   try {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (deviceReduce || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (navigator.connection && navigator.connection.saveData) return;
   } catch (e) { return; }
   const auto = new WeakSet(); /* play/pause calls the observer made */
@@ -642,7 +648,7 @@ document.addEventListener('submit', (e) => {
 (function calmMotion() {
   let k = 1;
   try {
-    if (navigator.webdriver || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (deviceReduce || navigator.webdriver || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (!('IntersectionObserver' in window) || typeof Element.prototype.animate !== 'function') return;
     const m = parseFloat(getComputedStyle(root).getPropertyValue('--motion'));
     k = Number.isFinite(m) ? m : 1;
@@ -659,14 +665,24 @@ document.addEventListener('submit', (e) => {
     groups.push({ sec, els });
   }
   if (!groups.length) return;
-  const restore = () => groups.forEach((g) => g.els.forEach((n) => { n.style.opacity = ''; }));
+  let restored = false;
+  const restore = () => { restored = true; groups.forEach((g) => g.els.forEach((n) => { n.style.opacity = ''; n.style.transform = ''; })); };
+  /* NOTHING STAYS VEILED FOR PRINT, or for a stalled observer: printing
+     straight after load printed blank sections (28 Oct 2026). The studio
+     helper (src/ui/motion.js) has the same two backstops. */
+  try {
+    window.addEventListener('beforeprint', restore);
+    const pm = matchMedia('print');
+    if (pm.addEventListener) pm.addEventListener('change', (e) => { if (e.matches) restore(); });
+  } catch (e) { /* the timeout below still restores */ }
+  setTimeout(restore, 8000);
   /* motion/mini's animate() (imported statically: a dynamic import()
      makes Vite add its preload helper, which the build puts in the studio
      CORE chunk, and prove:growth asserts no studio-* chunk reaches a public
      page). The "in view" trigger is the page's own IntersectionObserver. */
   try {
     const ease = [0.16, 1, 0.3, 1];
-    const run = (g) => g.els.forEach((n, i) => {
+    const run = (g) => restored || g.els.forEach((n, i) => {
       const travel = !n.id;                                          // fragment targets: fade only
       const a = animate(n, travel ? { opacity: [0, 1], transform: [`translateY(${20 * k}px)`, 'none'] } : { opacity: [0, 1] },
         { duration: travel ? 0.7 : 0.6, delay: Math.min(i, 8) * 0.06, ease });

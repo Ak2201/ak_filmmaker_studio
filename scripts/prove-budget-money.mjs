@@ -197,7 +197,7 @@ await page.fill('[name="amount"] >> nth=0', '40');
 await page.click('.cx-submit');
 await page.waitForTimeout(300);
 const strip = await page.evaluate(() => document.getElementById('expenses').textContent);
-ok(/spent from floats/.test(strip) && /paid by the office/.test(strip), '19 the petty cash strip splits float spending from office-paid bills', strip.slice(0, 300));
+ok(/spent from floats/i.test(strip) && /paid by the office/i.test(strip) /* stat labels are sentence case since 28 Oct 2026 */, '19 the petty cash strip splits float spending from office-paid bills', strip.slice(0, 300));
 const hdr = await page.evaluate(() => document.getElementById('bdKpis').textContent);
 ok(!/Nothing to measure against/.test(hdr) || !/Spent beyond the budget/.test(hdr), '20 the header does not say both "nothing to measure" and "over budget"', hdr);
 await r3.close();

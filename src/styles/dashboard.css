@@ -74,7 +74,7 @@
 .db-head {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;   /* under the h1 (the film's title since 28 Oct 2026) */
   min-width: 0;
 }
 .db-chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s3); }
@@ -274,8 +274,39 @@
 }
 .db-tp-region .k-btn-group .k-btn[aria-pressed="true"]:hover { background: var(--brand-hover); }
 
-/* readiness: the score sits on the heading's line */
-.db-main > #readiness > .bd-h2 { display: inline-block; vertical-align: middle; }
+/* readiness: the eyebrow on its own line, then the heading and its
+   score in one flex row (28 Oct 2026: they ran together inline). */
+.db-main > #readiness > .k-eyebrow { display: flex; margin-bottom: var(--s2); }
+.db-sec-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.db-sec-row > .bd-h2 { margin: 0; }
+
+/* ONE disclosure style for what the dashboard keeps one click away:
+   all tools, the readiness list, the project details. */
+.db-more { margin-top: var(--s4); }
+.db-main > .db-more { padding: 0; background: var(--sk-card-bg); border: var(--sk-card-line-w, 1px) solid var(--sk-card-line); border-radius: var(--sk-radius, var(--radius)); }
+.db-more > .db-more-sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: var(--s2) var(--s4);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--sk-radius, var(--radius));
+}
+.db-more > .db-more-sum::-webkit-details-marker { display: none; }
+.db-more > .db-more-sum:hover { background: var(--surface-hover); }
+.db-more > .db-more-sum:focus-visible { outline: 2px solid var(--focus-ring, var(--accent-primary)); outline-offset: 2px; }
+.db-more > .db-more-sum .sym { color: var(--ink-muted); transition: transform var(--speed, .2s) var(--ease, ease); }
+.db-more[open] > .db-more-sum .sym { transform: rotate(180deg); }
+.db-main > .db-more[open] > :not(summary) { margin: 0 var(--s4) var(--s4); }
+.rd-more { border-top: 1px solid var(--border-hair); }
+.rd-more > .db-more-sum { padding-left: 0; padding-right: 0; }
 
 /* The five figures: one value never breaks ("₹ 25.06 L" split its L
    onto a second line at 1100px) and the cards are padded as a strip,

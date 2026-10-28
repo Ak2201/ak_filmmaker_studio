@@ -1,6 +1,6 @@
 /* KIT · STAT CARD + STAT STRIP
    statCard({ label, value, unit, note, noteTone, hue, id })
-     value     printed in JetBrains Mono, tabular figures
+     value     printed in the display face, tabular figures
      noteTone  'ok' | 'warn' | 'danger' colours the note line
      hue       a hue class (e.g. 'hue-plan', 'hue-day') draws a top stripe
    statStrip(cards | specs) — a responsive row of them */
@@ -12,7 +12,9 @@ export function statCard(o = {}) {
   const value = h('span.k-stat-value', { text: o.value == null || o.value === '' ? '—' : String(o.value) });
   if (o.unit) value.append(h('span.k-stat-unit', { text: o.unit }));
   kids(el, [
-    h('span.k-stat-label', { text: o.label || '' }),
+    /* Sentence case at the source (28 Oct 2026): some callers passed
+       'scenes' / 'night pages', others 'Scenes'. */
+    h('span.k-stat-label', { text: o.label ? String(o.label).charAt(0).toUpperCase() + String(o.label).slice(1) : '' }),
     value,
     o.note ? h('span', { class: cx('k-stat-note', o.noteTone && 'is-' + o.noteTone), text: o.note }) : null
   ]);

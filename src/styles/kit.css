@@ -34,10 +34,10 @@
   align-items: center;
   gap: var(--s2);
   margin: 0;
-  font-family: var(--sk-eyebrow-face, var(--f-mono));
+  font-family: var(--sk-eyebrow-face, var(--f-body));
   font-size: var(--sk-eyebrow-size, var(--t-micro));
   font-weight: 600;
-  letter-spacing: var(--sk-eyebrow-track, var(--track-label));
+  letter-spacing: 0;
   text-transform: var(--sk-eyebrow-transform, uppercase);
   color: var(--accent-deep);
 }
@@ -212,7 +212,7 @@
   white-space: nowrap;
 }
 .k-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--hue, currentColor); flex: none; }
-.k-chip-cat { font-family: var(--f-mono); font-size: 0.625rem; letter-spacing: .04em; text-transform: uppercase; opacity: .9; }
+.k-chip-cat { font-family: var(--f-body); font-size: 0.625rem; letter-spacing: 0; text-transform: none; opacity: .9; }
 .k-chip-count { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink-muted); }
 .k-chip-x {
   display: inline-flex; align-items: center; justify-content: center;
@@ -222,6 +222,9 @@
 }
 .k-chip-x:hover { background: color-mix(in srgb, var(--hue, var(--ink)) 20%, transparent); }
 .k-chip-x:focus-visible { outline: var(--focus); outline-offset: 1px; }
+/* A 24px hit area around the 16px glyph (WCAG 2.5.8), with no layout change. */
+.k-chip-x { position: relative; }
+.k-chip-x::after { content: ''; position: absolute; inset: -4px; }
 
 /* ============================================================
    PAGE HEADER — mono eyebrow, Space Grotesk title, actions
@@ -450,10 +453,10 @@
   gap: var(--s1);
   height: 100%;
   padding: 0 var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   white-space: nowrap;
 }
@@ -579,7 +582,7 @@
 }
 .k-strip-sc { font-family: var(--f-mono); font-size: var(--t-tiny); font-weight: 600; color: var(--ink); white-space: nowrap; }
 .k-strip-slug { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-ui); font-weight: 600; color: var(--ink); }
-.k-strip-meta { display: flex; gap: var(--s4); font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); white-space: nowrap; }
+.k-strip-meta { display: flex; gap: var(--s4); font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); white-space: nowrap; }
 .k-strip-meta b { font-weight: 600; color: var(--hue-deep, var(--ink)); }
 .k-strip-end { display: flex; align-items: center; gap: var(--s2); }
 @media (max-width: 720px) {
@@ -603,7 +606,7 @@
   border: 1px solid color-mix(in srgb, var(--strip-move) 55%, transparent);
   border-radius: var(--radius-pill);
   background: var(--strip-move-bg);
-  font-family: var(--f-mono); font-size: 0.625rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  font-family: var(--f-body); font-size: 0.625rem; font-weight: 600; letter-spacing: 0; text-transform: none;
   text-align: center;
 }
 .k-strip-banner-pill .sym { font-size: 14px; }
@@ -666,7 +669,7 @@
    METER / PROGRESS
    ============================================================ */
 .k-meter { display: grid; gap: var(--s1h); min-width: 0; }
-.k-meter-row { display: flex; justify-content: space-between; gap: var(--s2); font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+.k-meter-row { display: flex; justify-content: space-between; gap: var(--s2); font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .k-meter-row b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .k-meter-track { position: relative; height: 4px; background: var(--surface-hover); border-radius: var(--radius-pill); overflow: hidden; }
 .k-meter-fill {
@@ -712,7 +715,7 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
 .k-stage-top .k-badge { margin-left: auto; }
 .k-stage-title { margin: 0; font-family: var(--f-display); font-size: var(--t-lg); font-weight: 700; letter-spacing: var(--track-tight); color: var(--ink); }
 .k-stage-body { margin: 0; font-size: var(--t-tiny); line-height: var(--lh-body); color: var(--ink-muted); }
-.k-stage-next { display: inline-flex; align-items: center; gap: var(--s1); font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: .04em; text-transform: uppercase; color: var(--hue-deep, var(--brand-deep)); }
+.k-stage-next { display: inline-flex; align-items: center; gap: var(--s1); font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--hue-deep, var(--brand-deep)); }
 .k-stage.is-current { box-shadow: 0 0 0 1px var(--hue, var(--accent-primary)); }
 
 /* ============================================================
@@ -1213,11 +1216,11 @@ details.k-panel--collapsible > summary.k-panel-head .k-panel-meta { margin-left:
   .k-table--stack td[data-label]::before,
   .k-table--stack th[data-label]::before {
     content: attr(data-label);
-    font-family: var(--f-mono);
+    font-family: var(--f-body);
     font-size: var(--t-micro);
     font-weight: 500;
-    letter-spacing: var(--track-label);
-    text-transform: uppercase;
+    letter-spacing: 0;
+    text-transform: none;
     color: var(--ink-muted);
   }
   /* The row header is the card's title: full width, no label. */
@@ -1334,4 +1337,14 @@ details.k-panel--collapsible > summary.k-panel-head .k-panel-meta { margin-left:
   :root:root :is(.k-check, .ct-pick-row, .ct-call-who, .dv-ott-row) > input[type="checkbox"]:focus-visible {
     outline: var(--focus); outline-offset: -2px;
   }
+}
+
+/* PHONE STAT STRIP (28 Oct 2026): compact cards, three to a row, so the
+   page's content starts in the first screen (stripboard showed six full
+   cards before anything else). */
+@media (max-width: 719px) {
+  .k-stat-strip { grid-template-columns: repeat(auto-fill, minmax(min(6.5rem, 100%), 1fr)); gap: var(--s2); }
+  .k-stat-strip > .k-stat { padding: var(--s2) var(--s3); gap: 2px; }
+  .k-stat-strip .k-stat-value { font-size: var(--t-lg); }
+  .k-stat-strip .k-stat-note { display: none; }
 }

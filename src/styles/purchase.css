@@ -46,7 +46,7 @@
 .pu-current-id > .bd-h2 { overflow-wrap: anywhere; }
 .pu-current-state { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); font-size: var(--t-small); color: var(--ink-body); }
 .pu-current-use { display: grid; gap: var(--s2); min-width: 0; }
-.pu-use-h { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.pu-use-h { margin: 0; font-family: var(--f-body); font-size: var(--t-micro); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 @media (max-width: 960px) { .pu-current.is-buyer { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 719px) { .pu-current { padding: var(--s4); } }
 
@@ -139,10 +139,10 @@
 }
 .pu-refund-eyebrow {
   margin: 0 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--brand-deep);
 }
 .pu-refund-h {

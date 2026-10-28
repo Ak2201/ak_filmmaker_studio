@@ -31,10 +31,10 @@
 }
 .wr-xa-lab,
 .wr-xa-check {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-xa-lab { display: inline; margin: 0; }

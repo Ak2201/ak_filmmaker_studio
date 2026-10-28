@@ -181,8 +181,7 @@ export function blueprintEntry(data) {
      has no other route to that. */
   panel.append(h('button.bp-entry-x', {
     type: 'button', 'data-action': 'dismissEntry',
-    title: 'Hide this', 'aria-label': 'Hide the ways-in panel', text: '✕'
-  }));
+    title: 'Hide this', 'aria-label': 'Hide the ways-in panel', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })]));
 
   panel.append(
     h('p.bp-entry-eyebrow', { text: 'BEFORE STEP 01' }),

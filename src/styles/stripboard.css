@@ -153,10 +153,10 @@
 .sb-group-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .sb-group-meta.k-badge { border-radius: var(--radius-sm); }
 .sb-group-hours {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--ink-muted);
@@ -305,11 +305,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s1h);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
   white-space: nowrap;
 }
@@ -387,10 +387,10 @@ body.sb-is-dragging .sb-strip .sb-grip-btn { cursor: grabbing; }
   border: 1px dashed var(--border-strong);
   border-radius: var(--sk-radius);
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: center;
   transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease);
 }

@@ -70,7 +70,7 @@
   "pass": {
     "_": "The line in the plans teaser and the hero and closing buttons. `note` shows only while the launch pass is open (its slots are filled from the server); `off` is what everybody else reads. `open` replaces both for a signed-in visitor.",
     "note": "{length} of the whole studio for {price}, once per account, paid through Razorpay. {passTerms} Move to a yearly plan whenever you like.",
-    "off": "Each plan card states its price and terms before you pay. {planTerms}",
+    "off": "See each plan's price and terms on the plans page before you pay. {planTerms}",
     "open": "You are signed in: your plan is on the Purchase page."
   }
 }

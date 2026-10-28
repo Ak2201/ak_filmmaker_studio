@@ -144,7 +144,7 @@ function fillRow(btn, it, on) {
       if (el.textContent !== text) el.textContent = text;
     } else if (el) el.remove();
   };
-  slot('tabs-done', it.done ? '✓' : '');
+  slot('tabs-done.sym', it.done ? 'check' : '');   /* a Material Symbol, not a dingbat */
   slot('tabs-doing', it.doing ? '◐' : '');
   slot('tabs-badge', it.badge);
   slot('tabs-flag', it.locked ? 'PLAN' : '');
@@ -417,7 +417,7 @@ export function openSectionsSheet({ groups, active, onSelect, title = 'Sections'
         ].filter(Boolean)),
         h('span.sm-row-end', { 'aria-hidden': 'true' }, [
           it.badge ? h('span.sm-badge', { text: it.badge }) : null,
-          it.done ? h('span.sm-done', { text: '✓' }) : null,
+          it.done ? h('span.sm-done.sym', { 'aria-hidden': 'true', text: 'check' }) : null,
           it.doing ? h('span.sm-doing', { text: '◐' }) : null,
           it.locked ? h('span.mn-mod-flag', { text: 'PLAN' }) : null
         ].filter(Boolean))

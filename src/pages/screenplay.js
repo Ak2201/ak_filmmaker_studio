@@ -147,7 +147,7 @@ function persistNow() {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
     if (saveRefused) { savedSig = null; setStatus('Not saved: this browser is out of storage'); return; }
-    setStatus('Autosaved ✓');
+    setStatus('Autosaved');
     refreshDraftLabel();
   };
   flushStorage().then(settle, settle);
@@ -526,7 +526,7 @@ delegate(document, 'click', '[data-action="sc-pipeline"]', () => {
 });
 
 function buildTop() {
-  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Autosaved ✓' });
+  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Autosaved' });
   typeSel = h('select.sc-type', { id: 'scType', 'aria-label': 'Current line type' });
   ELEMENT_TYPES.forEach((t) => typeSel.append(h('option', { value: t.id, text: t.label })));
   /* The pill SHOWS the type and its Alt+digit; the real <select> sits

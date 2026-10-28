@@ -334,6 +334,19 @@ function isThisPage(href) {
   } catch (e) { return false; }
 }
 
+/* THE FOCUS GOES WITH THE SCROLL (28 Oct 2026). preventDefault() above
+   also cancels the browser's own move of the sequential-focus start
+   point, so "Skip to content" scrolled and left focus on the link: the
+   next Tab went to the rail. A target that cannot take focus is given
+   tabindex=-1 (focusable by script only, never a Tab stop), and the
+   scroll is left to the landing above. */
+function moveFocus(id) {
+  const el = document.getElementById(id);
+  if (!el || el.contains(document.activeElement) && document.activeElement !== document.body) return;
+  if (!el.matches('a[href], button, input, select, textarea, [tabindex]')) el.setAttribute('tabindex', '-1');
+  try { el.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+}
+
 export function installFragmentNav() {
   if (!document.body) return;        // called again from the ready hook below
 
@@ -364,6 +377,7 @@ export function installFragmentNav() {
        lays itself out. */
     revealTarget(id);
     tryLand(id);
+    moveFocus(id);
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
 

@@ -379,9 +379,9 @@
   border-radius: var(--sk-btn-radius);
 }
 .fest-track:hover:not(:disabled) {
-  color: var(--accent-on);
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--brand-on);
+  background: var(--brand);
+  border-color: var(--brand);
 }
 .fest-track:disabled {
   cursor: default;

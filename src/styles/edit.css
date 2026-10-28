@@ -44,9 +44,9 @@
    was the keyboard focus ring exactly, so the selected filter read as
    "focused" and a focused one as "selected". Doubled class: `:root .btn`
    in chrome.css is 0,2,0 and declared later. */
-.el-filter.el-filter.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.el-filter.el-filter.is-on { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 .el-filter.el-filter.is-on:hover,
-.el-filter.el-filter.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
+.el-filter.el-filter.is-on:focus-visible { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--brand-on); }
 
 /* ---- a row ----------------------------------------------------- */
 .el-list { display: grid; gap: var(--s3); }
@@ -101,10 +101,10 @@
   padding: var(--s1) var(--s3);
   border: 1px solid var(--rule);
   border-radius: var(--radius-pill);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
   text-decoration: none;
   background: var(--paper-sunk);
@@ -267,10 +267,10 @@
   border-radius: var(--radius-pill);
   background: var(--warn-wash);
   color: var(--warn-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 /* Audio synced reads as a state: the ticked one takes the ok tone. */
 .el-sync.is-synced { color: var(--ok-deep); }

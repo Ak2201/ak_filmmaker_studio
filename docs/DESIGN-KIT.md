@@ -1,6 +1,6 @@
 # The design kit — the 8B mix
 
-Last reviewed: 2026-10-28 (the palette, faces, shapes and kit restyle of the 8B foundation).
+Last reviewed: 2026-10-28 (the 8B foundation, then the final QA pass: one fill, labels in Onest, tinted tabs, h1 tiers).
 
 Since 28 Oct 2026 the studio and the public site share one look taken from the
 8B design-studio template (MIT — `docs/CREDITS.md`): **near-black and white
@@ -79,7 +79,15 @@ Light: `--ink` `#0D0C11` · `--ink-body` `#2B2932` · `--ink-muted` `#5D5A67`
 | `--brand-wash` | `#EFEAFF` (dark scope `#1F1838`) | selected row / info ground |
 
 The primary button is a flat violet pill — no glow, no gradient (`--shadow-cta`
-and every `*-sheen` resolve to nothing). Page accents still follow
+and every `*-sheen` resolve to nothing).
+
+**ONE FILL (final pass, 28 Oct 2026).** Every selected, active, pressed or
+progress FILL is `--brand` (text `--brand-on`): `.is-on` chips and filters,
+`[aria-pressed="true"]` segments, meters, primary buttons. A phase hue is a
+MARK only — the rail dot, a 3px rule, an icon tile's wash. A SELECTED TAB is a
+tint, not a fill (`--brand-wash` under `--brand-deep`, `tabs.css`,
+`.dv-tab.is-on`), so the one solid violet on a view is its primary action.
+Page accents still follow
 `<html data-phase|data-volume>`: `--accent`, `--accent-deep` (text),
 `--accent-on` (text on the fill), `--accent-hover` (the fill's hover),
 `--accent-night` (text on near-black).
@@ -103,12 +111,19 @@ A fill is never a text colour: text takes `-deep` / `-ink` / `-on`.
 | --- | --- | --- |
 | `--f-display` (`--face-display`) | Gabarito 500–800 | page titles, headings, panel titles, stat figures |
 | `--f-body` / `--f-sans` (`--face-sans`) | Onest 400–700 | interface, labels, running text |
-| `--f-mono` | JetBrains Mono | data only: eighths, timecodes, DOOD codes, tags |
+| `--f-mono` | JetBrains Mono | data only: eighths, timecodes, DOOD codes, INT/EXT tags, slugs, money columns. NEVER a label, chip, button or crumb (final pass: ~300 mono-caps label rules moved to Onest, sentence case, normal tracking) |
 | `--f-editorial` | Playfair Display *italic* | ONLY the project title / cover preview and the landing tagline |
 | `--f-script` | Courier Prime (Noto Sans Tamil LAST) | screenplay text |
 
 Labels are sentence case in Onest (badges, field labels, table heads, stat
-labels); eyebrows stay small caps in Onest. Headings track tight
+labels — `statCard()` capitalises the first letter at the source); eyebrows
+stay small caps in Onest. Icons are Material Symbols through `.sym`, never a
+dingbat (✓ ✕) in UI chrome; a dingbat that is CONTENT (export text, a PDF,
+a category mark from data) stays.
+
+**Public h1 tiers.** DISPLAY (`.mk-h1`, 76px at 1440) on the home page and the
+product pages; PAGE TITLE (60px, `.pr-hero` / `.co-hero` / `.mk-hero--article`)
+on every other marketing page, pricing included; legal pages 48px. Headings track tight
 (`--track-tight` −0.025em, `--track-display` −0.04em). "Gabarito Fallback" /
 "Onest Fallback" are metric-matched local Arial faces from the template, so
 the webfont swap does not move the line. Catamaran (Tamil subset only) follows
@@ -146,6 +161,17 @@ Every translate and scale is `calc(<distance> * var(--motion))`; reduced
 motion sets `--motion: 0`. The `motion` npm package is bundled for the
 public site's rise-in and the studio's panel transitions; `motion-app.js` is
 inert under `navigator.webdriver`, so check motion by hand.
+
+### One page, one primary, one screen
+
+The studio dashboard is the model: the h1 is the FILM's title (the page name
+lives in the crumb), ONE primary action (Continue), the rest one click away in
+`details.db-more` disclosures (readiness, all tools, project details) — a
+fragment target inside one is opened by `revealTarget()` in `tabs.js`. Phones
+have ONE navigation entry: the bottom bar's Go to (the band's rail toggle is
+hidden under `html.mn-on`). The save state sits in the band beside the crumb
+(`.save-indicator.in-band`), never over content. An in-page jump moves FOCUS
+with the scroll (`fragments.js` `moveFocus`).
 
 ## Components
 

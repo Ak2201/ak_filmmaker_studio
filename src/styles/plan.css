@@ -136,8 +136,8 @@
   min-height: 30px;
   padding-inline: var(--s3);
   border-radius: var(--sk-radius, var(--radius));
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
@@ -223,10 +223,10 @@
 /* Permission sets --perm, and the left rule and the chip both read
    it. One declaration per state, in one place, so the card and its
    badge cannot end up disagreeing. */
-.pl-loc.perm-none { --perm: var(--rule); }
-.pl-loc.perm-open { --perm: var(--warn); }
-.pl-loc.perm-ok   { --perm: var(--ok); }
-.pl-loc.perm-no   { --perm: var(--danger); }
+.pl-loc.perm-none { --perm: var(--rule); --perm-ink: var(--ink-muted); }
+.pl-loc.perm-open { --perm: var(--warn); --perm-ink: var(--warn-deep); }
+.pl-loc.perm-ok   { --perm: var(--ok); --perm-ink: var(--ok-deep); }
+.pl-loc.perm-no   { --perm: var(--danger); --perm-ink: var(--danger-deep, var(--danger)); }
 
 .pl-loc-head {
   display: flex;
@@ -245,11 +245,13 @@
   padding: 2px var(--s2);
   border: 1px solid var(--perm, var(--rule));
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--perm, var(--ink-muted));
+  letter-spacing: 0;
+  text-transform: none;
+  /* A fill is not a text colour: the border wears the status hue, the
+     word its -deep ink (AA; it was 2.15-2.54:1 on the white card). */
+  color: var(--perm-ink, var(--ink-muted));
   white-space: nowrap;
 }
 .pl-loc.perm-none .pl-perm-chip { color: var(--ink-muted); }
@@ -437,10 +439,10 @@
 
 .pl-media-open {
   flex: 0 0 auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
   white-space: nowrap;
 }

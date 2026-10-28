@@ -29,15 +29,21 @@
 
 /* ---- "Don't count this visit" -------------------------------------
    privacy.html promises the control, so it stays on the page that counts. */
-.st-optout { display: flex; justify-content: center; padding-block: var(--s4); }
+/* In the footer's legal row since 28 Oct 2026, a quiet text button on the
+   footer's ground: an analytics opt-out is not a band of its own. */
+.st-optout { display: inline-flex; }
 .st-optout-btn {
-  min-height: 32px; padding: 0 var(--s3); border: 0; background: transparent; cursor: pointer;
-  font: inherit; font-size: var(--t-small); color: var(--ink-muted); text-decoration: underline; text-underline-offset: 3px;
+  min-height: 32px; padding: 0; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: var(--t-small); color: var(--ink-body); text-decoration: none;
 }
-.st-optout-btn:hover { color: var(--ink); }
+.st-optout-btn:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .st-optout-btn:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 2px; }
 .st-optout-btn:disabled { cursor: default; text-decoration: none; }
 
 @media (max-width: 560px) {
   .st-stage-in { padding: var(--s4) var(--s5) var(--s5); }
 }
+
+/* "Your work stays yours": the list sits on the .mk-wrap edge like the
+   stage cards above it (28 Oct 2026: the UA list indent put it 25px in). */
+.st-points { list-style: none; margin: 0 0 var(--s5); padding: 0; }

@@ -116,7 +116,7 @@
 .sa-aud-draft {
   display: inline-block; margin-left: var(--s2); padding: 0 var(--s1h);
   border: 1px solid var(--status-warning); border-radius: var(--radius-pill);
-  color: var(--ink); font-size: var(--t-micro); font-family: var(--f-mono); text-transform: uppercase; letter-spacing: .04em;
+  color: var(--ink); font-size: var(--t-micro); font-family: var(--f-body); text-transform: none; letter-spacing: 0;
 }
 .sa-aud-draft[hidden] { display: none; }
 .sa-aud-who { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }

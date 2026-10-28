@@ -228,7 +228,8 @@ function projectsMarkup() {
     eyebrow: 'Projects · one per film',
     title: 'Home',
     sub: 'A working desk for the working filmmaker.',
-    actions: [button({ label: 'New project', variant: 'primary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
+    /* Secondary: with films on the desk, Open project is the main action. */
+    actions: [button({ label: 'New project', variant: 'secondary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
   });
   const hh = head.querySelector('.k-page-title');
   hh.id = 'projectsHeading';

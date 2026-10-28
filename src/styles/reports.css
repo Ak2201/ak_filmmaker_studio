@@ -67,10 +67,10 @@
 }
 .rp-spacer { margin-left: auto; }
 .rp-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -269,10 +269,10 @@
   letter-spacing: var(--track-tight);
 }
 .rp-sides-meta {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -299,8 +299,8 @@
   place-items: center;
   min-width: 28px;
   padding: 2px var(--s2);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   border-radius: var(--sk-radius);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -337,10 +337,10 @@
   align-items: baseline;
 }
 .rp-side-el-cat {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .rp-side-el-names {
@@ -512,11 +512,11 @@
   background: var(--paper-sunk);
   border-top: 2px solid var(--ink);
   text-align: left;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
 }
 .rp-ol .rp-ol-banner td {
@@ -527,10 +527,10 @@
   border-left: 3px solid var(--ink);
 }
 .rp-ol .rp-ol-total td {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   border-bottom: 1px solid var(--rule);
 }
@@ -559,11 +559,11 @@
 .rp-in-num { width: 100%; }
 .rp-notes { width: 100%; resize: vertical; line-height: var(--lh-snug); }
 .rp-mark {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 0 var(--s2);
   border: 1px solid var(--ink-faint);
   border-left-width: 3px;

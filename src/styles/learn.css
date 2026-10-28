@@ -45,10 +45,10 @@
 .learn-tn { color: var(--ink-muted); font-style: italic; }
 .learn-ex-film { color: var(--ink); }
 .learn-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
   margin-bottom: var(--s1);
 }

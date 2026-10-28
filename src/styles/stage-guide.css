@@ -15,11 +15,11 @@
 }
 .sg-eyebrow {
   margin: 0 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--brand-deep);
 }
 .sg-title { margin: 0 0 var(--s3); }

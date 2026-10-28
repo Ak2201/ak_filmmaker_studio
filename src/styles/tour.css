@@ -47,10 +47,10 @@
 }
 .tour-count {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .tour-title {
@@ -90,7 +90,7 @@
    margin (and, under 900px, its padding) put 80px between that label and
    this meter, so the two read as unrelated. The meter sits right under
    its label here (UI review, 22 Oct 2026). */
-.tw-section .section-head { margin-bottom: var(--s2); padding-bottom: 0; }
+.tw-section .section-head { margin-bottom: var(--s2); padding-top: 0; padding-bottom: 0; }   /* no 48px spacer over the eyebrow (28 Oct 2026) */
 /* The track is --border-strong: --paper-sunk on the canvas measured
    about 1.07:1, so an empty meter was no meter at all. */
 .tw-meter {

@@ -276,8 +276,7 @@ function renderOrphanDays(orphans) {
     h('span.pl-orphan-date', { text: orphanDateLabel(o, prefsNow()) }),
     h('button.bd-icon.is-danger', {
       type: 'button', 'data-action': 'day-clear',
-      title: 'Clear this date', 'aria-label': 'Clear the date on shoot day ' + o.day, text: '✕'
-    })
+      title: 'Clear this date', 'aria-label': 'Clear the date on shoot day ' + o.day, }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
   ])));
   return block;
 }
@@ -553,8 +552,7 @@ function renderOrphanRecces(orphans) {
     h('span.pl-orphan-date', { text: o.recce.address || o.recce.contact || permOf(o.recce.permission).label }),
     h('button.bd-icon.is-danger', {
       type: 'button', 'data-action': 'recce-del',
-      title: 'Discard these notes', 'aria-label': 'Discard the recce notes for ' + o.key, text: '✕'
-    })
+      title: 'Discard these notes', 'aria-label': 'Discard the recce notes for ' + o.key, }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
   ])));
   return block;
 }
@@ -622,8 +620,7 @@ function renderMediaItem(item, scenes) {
     linkSelect(item.linkedTo, scenes),
     h('button.bd-icon.is-danger', {
       type: 'button', 'data-action': 'media-del',
-      title: 'Remove this reference', 'aria-label': 'Remove this reference', text: '✕'
-    })
+      title: 'Remove this reference', 'aria-label': 'Remove this reference', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
   ]));
 
   const url = h('input.pl-media-url', {

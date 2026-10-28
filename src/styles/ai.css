@@ -41,10 +41,10 @@
   padding: var(--s1) 0;
   background: none;
   border: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -102,10 +102,10 @@
 
 .ai-field { display: grid; gap: var(--s1); min-width: 0; }
 .ai-flabel {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ai-key-input,
@@ -230,10 +230,10 @@
 .ai-disclose strong {
   display: block;
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 .ai-disclose p {
@@ -245,10 +245,10 @@
 }
 
 .ai-peek summary {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -281,10 +281,10 @@
 .ai-mark {
   display: inline-block;
   padding: var(--s1) var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   color: var(--warn-deep);
   background: var(--warn-wash);
@@ -297,10 +297,10 @@
   background: none;
   border: var(--sk-card-line-w) solid var(--rule);
   border-radius: var(--sk-btn-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -392,10 +392,10 @@
 
 .ai-col-label {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ai-speech {

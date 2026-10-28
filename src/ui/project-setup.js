@@ -77,15 +77,15 @@ function build() {
   }, [
     h('form.modal.ps-sheet', { id: 'projectSetupForm', novalidate: 'novalidate' }, [
       h('button.modal-close', { type: 'button', 'data-ps-close': '', title: 'Close', 'aria-label': 'Close', text: '×' }),
-      h('h3#psHeading', { html: 'Start your <em>film.</em>' }),
+      h('h3#psHeading', { text: 'Start your film' }),
       h('p.deck', { text: 'Two quick questions. You can switch between films whenever you like and pick up where you left off.' }),
 
-      h('label', { for: 'psTitle', text: 'PROJECT NAME' }),
+      h('label', { for: 'psTitle', text: 'Project name' }),
       h('input', { id: 'psTitle', type: 'text', maxlength: '120', required: 'required', autocomplete: 'off' }),
       h('p.ps-error', { id: 'psError', role: 'alert', hidden: 'hidden', text: 'Give your project a name.' }),
 
       h('fieldset.ps-format', {}, [
-        h('legend', { text: 'FORMAT' }),
+        h('legend', { text: 'Format' }),
         h('div.ps-format-row', { role: 'radiogroup', 'aria-label': 'Format' }, Object.keys(FORMATS).map((k) =>
           h('label.ps-format-opt', { for: 'psFormat_' + k }, [
             h('input', { type: 'radio', name: 'psFormat', id: 'psFormat_' + k, value: k }),
@@ -94,7 +94,7 @@ function build() {
       ]),
 
       h('fieldset.ps-format.ps-region', {}, [
-        h('legend', { text: 'WHERE IS THIS FILM BEING MADE?' }),
+        h('legend', { text: 'Where is this film being made?' }),
         h('div.ps-format-row', { role: 'radiogroup', 'aria-label': 'Where is this film being made?' }, Object.keys(REGION_CHOICES).map((k) =>
           h('label.ps-format-opt', { for: 'psRegion_' + k }, [
             h('input', { type: 'radio', name: 'psRegion', id: 'psRegion_' + k, value: k }),
@@ -104,14 +104,14 @@ function build() {
       ]),
 
       h('fieldset.ps-films', {}, [
-        h('legend', { text: 'YOUR FAVOURITE FILM' }),
+        h('legend', { text: 'Your favourite film' }),
         h('p.ps-hint', { text: 'Pick one. We’ll explain every step with it, so the ideas land on a film you already know.' }),
         h('div.ps-film-grid', { role: 'radiogroup', 'aria-label': 'Your favourite film' }, cards)
       ]),
 
       h('div.modal-actions', {}, [
-        h('button.mbtn', { type: 'button', 'data-ps-close': '', text: 'CANCEL' }),
-        h('button.mbtn.primary', { id: 'psSubmit', type: 'submit', text: 'CREATE & OPEN' })
+        h('button.mbtn', { type: 'button', 'data-ps-close': '', text: 'Cancel' }),
+        h('button.mbtn.primary', { id: 'psSubmit', type: 'submit', text: 'Create and open' })
       ])
     ])
   ]);

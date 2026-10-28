@@ -511,3 +511,26 @@ html.mk-modal-open { overflow: hidden; }
   .mk-article-grid, .mk-lead-in { grid-template-columns: 1fr; }
   .mk-toc { position: static; }
 }
+
+/* TOUCH TARGETS (28 Oct 2026): the studio floors a tap target at 44px
+   under a coarse pointer (base.css); the public site now does the same
+   for its footer links, its text links and the opt-out. */
+@media (pointer: coarse) {
+  .mk-foot a:not(.mk-brand), .mk-link, .mk-foot .st-optout-btn { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* REFLOW AT 320px (WCAG 1.4.10; 400% zoom of 1280): the brand gives way
+   before the burger is pushed off the edge. */
+@media (max-width: 380px) {
+  .mk-top-in { padding-inline: var(--s3); gap: var(--s1); }
+  .mk-top .mk-brand { font-size: var(--t-base); gap: var(--s1h); min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mk-top-end .mk-btn--sm { padding: 0 var(--s2); }
+}
+
+/* The device's "Reduce motion" switch (marketing.js sets html.ma-off). */
+html.ma-off *, html.ma-off ::before, html.ma-off ::after { animation: none !important; transition: none !important; }
+
+/* TWO H1 TIERS (28 Oct 2026; docs/DESIGN-KIT.md): DISPLAY (.mk-h1, 76px
+   at 1440) for the home page and the product pages, PAGE TITLE (60px)
+   for every other marketing page, pricing included; legal pages 48px. */
+.mk-hero.pr-hero .mk-h1, .mk-hero.co-hero .mk-h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); }

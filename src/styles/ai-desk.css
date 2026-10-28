@@ -117,10 +117,10 @@ html.ai-desk-open.ai-desk-open .toast-host {
 }
 .ai-desk-model {
   margin: var(--s1) 0 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ai-desk-close { flex: none; }
@@ -129,10 +129,10 @@ html.ai-desk-open.ai-desk-open .toast-host {
 .ai-desk-sec { display: grid; gap: var(--s3); min-width: 0; }
 .ai-desk-label {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 

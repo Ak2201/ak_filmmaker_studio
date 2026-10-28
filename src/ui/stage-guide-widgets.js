@@ -203,7 +203,7 @@ function sceneMapRow(prefill) {
   const ctrl = document.createElement('td'); ctrl.className = 'row-ctrl';
   ctrl.append(
     h('button.row-ctrl-btn', { type: 'button', 'data-sg': 'map-dup', title: 'Duplicate', 'aria-label': 'Duplicate this scene', text: '⎘' }),
-    h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'map-del', title: 'Delete', 'aria-label': 'Delete this scene', text: '✕' })
+    h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'map-del', title: 'Delete', 'aria-label': 'Delete this scene', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
   );
   tr.append(num, cell(slug), cell(who), cell(what), cell(beat), cell(pages), ctrl);
   return tr;
@@ -295,7 +295,7 @@ function dialogueBlock(prefill) {
   return h('div.dialogue-block', {}, [
     h('div.dlg-row', {}, [
       character, line,
-      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-dlg', title: 'Delete', 'aria-label': 'Delete this dialogue', text: '✕' })
+      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-dlg', title: 'Delete', 'aria-label': 'Delete this dialogue', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]),
     h('div.paren', {}, [paren])
   ]);
@@ -311,7 +311,7 @@ function sceneBlock(prefill) {
   return h('div.scene-block', {}, [
     h('div.scene-header', {}, [
       h('span.scene-tag', { text: 'SCENE 01' }), slug,
-      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-scene', title: 'Delete this scene', 'aria-label': 'Delete this scene', text: '✕' })
+      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-scene', title: 'Delete this scene', 'aria-label': 'Delete this scene', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]),
     h('span.action-label', { text: 'ACTION' }),
     action, dialogues,

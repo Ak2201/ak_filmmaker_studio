@@ -16,7 +16,7 @@ ok('project-setup starts the sheet on the device choice, else the VISITOR guess 
 ok('nothing in the app calls regionForNewProject() (CORE would then fetch the region chunk on every page)', ![setup, read('src/pages/hub.js')].some((t) => /regionForNewProject\(\)/.test(t.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))));
 ok('regionForNewProject() falls back on the VISITOR guess (§A3, §B), not the map\'s', /newProjectRegion\(\{ chosen: chosenRegion\(\), guess: visitorGuess\(\) \}\)/.test(read('src/lib/region.js')));
 ok('project-setup passes region to createProject', /Store\.createProject\(\{[^}]*region: state\.region/.test(setup));
-ok('project-setup asks where the film is made', /WHERE IS THIS FILM BEING MADE\?/.test(setup) && /psRegion_/.test(setup));
+ok('project-setup asks where the film is made', /where is this film being made\?/i.test(setup) /* sentence case since 28 Oct 2026 */ && /psRegion_/.test(setup));
 const hub = read('src/pages/hub.js');
 ok('hub duplicate copies region', /createProject\(\{ title: p\.title \+ ' \(copy\)'[^}]*region: p\.region/.test(hub));
 ok('hub project modal creates with the device choice, else the visitor guess, as project-setup does', /createProject\(\{ title: titleValue, format, region: chosenRegion\(\) \|\| guessVisitorRegion\(\)/.test(hub));

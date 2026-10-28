@@ -40,10 +40,10 @@
 
 .st-path-eyebrow {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--sk-eyebrow-track);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -155,10 +155,10 @@
   align-self: center;
   flex: 0 0 auto;
   padding: var(--s1) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   color: var(--accent-deep);
   background: var(--accent-wash);

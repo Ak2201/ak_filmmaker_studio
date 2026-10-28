@@ -80,8 +80,8 @@
 .wr-cmp-no {
   padding-inline: var(--s2);
   border-radius: var(--sk-radius, var(--radius));
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
 }
 .wr-cmp-tag {
   padding-inline: var(--s2);
@@ -114,10 +114,10 @@
 .wr-cmp-line.is-removed .wr-cmp-text { text-decoration: line-through; }
 .wr-cmp-mark { font-family: var(--f-mono); font-weight: 700; color: var(--ink); text-align: center; }
 .wr-cmp-type {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-cmp-text {

@@ -47,10 +47,10 @@
 .sd-stat span {
   display: block;
   margin-top: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 
@@ -69,15 +69,15 @@
    was the keyboard focus ring exactly, so the selected filter read as
    "focused" and a focused one as "selected". Doubled class: `:root .btn`
    in chrome.css is 0,2,0 and declared later. */
-.sd-day.sd-day.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.sd-day.sd-day.is-on { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 .sd-day.sd-day.is-on:hover,
-.sd-day.sd-day.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
+.sd-day.sd-day.is-on:focus-visible { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--brand-on); }
 .sd-day.is-done { border-color: var(--ok); color: var(--ink-muted); }
 
 /* ---- a scene ------------------------------------------------ */
 .sd-list { display: grid; gap: var(--s3); }
 @media (min-width: 1000px) { .sd-list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
-.sd-live { display: inline-flex; align-items: center; gap: var(--s2); font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ok-deep); }
+.sd-live { display: inline-flex; align-items: center; gap: var(--s2); font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ok-deep); }
 
 .sd-card {
   padding: var(--s4);
@@ -128,10 +128,10 @@
   display: flex;
   gap: var(--s3);
   margin: var(--s2) 0 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sd-state { color: var(--ink); }
@@ -146,10 +146,10 @@
 
 .sd-cast { margin: var(--s3) 0 0; }
 .sd-cast.is-none {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .sd-chip {
@@ -282,10 +282,10 @@
   align-items: center;
   gap: var(--s2);
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--brand-deep);
 }
 .sd-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); flex: none; }
@@ -354,7 +354,7 @@
   font-family: var(--f-mono);
 }
 .sd-day-d { font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); line-height: 1.2; }
-.sd-day.sd-day.is-on .sd-day-d { color: var(--accent-on); }
+.sd-day.sd-day.is-on .sd-day-d { color: var(--brand-on); }
 .sd-day-n { display: inline-flex; align-items: center; gap: var(--s1); line-height: 1.3; }
 /* On a phone the eighteen days are ONE line that scrolls sideways,
    parked on the open day by shoot.js — four wrapped rows of buttons
@@ -376,7 +376,7 @@
 .sd-day-m { font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ok-deep); }
 .sd-day-m.is-cur { color: var(--brand-deep); }
 .sd-day.sd-day.is-on .sd-day-m,
-.sd-day.sd-day.is-on .sd-day-m.is-cur { color: var(--accent-on); }
+.sd-day.sd-day.is-on .sd-day-m.is-cur { color: var(--brand-on); }
 .sd-day.is-current:not(.is-on) { border-color: var(--brand); }
 
 /* ---- daylight + the day's times ------------------------------ */
@@ -436,7 +436,7 @@
 .sd-roster-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s3); }
 .sd-roster-t { margin: 0; font-family: var(--face-display); font-weight: 700; font-size: var(--t-xl); color: var(--ink); }
 .sd-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.sd-fbtn.sd-fbtn.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.sd-fbtn.sd-fbtn.is-on { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 .sd-card.is-next { border-left-color: var(--brand); }
 .sd-head { flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .sd-num { font-family: var(--f-mono); font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--brand-deep); }
@@ -489,7 +489,7 @@
 .sd-help-t { display: grid; gap: var(--s-half, 2px); flex: 1 1 auto; min-width: 0; }
 .sd-help-v { font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }
 .sd-help-place + .sd-help-place { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--rule-hair); }
-.sd-help-loc { margin: 0 0 var(--s2); font-family: var(--f-mono); font-size: var(--t-tiny); font-weight: 700; text-transform: uppercase; letter-spacing: var(--track-label); color: var(--ink-body); }
+.sd-help-loc { margin: 0 0 var(--s2); font-family: var(--f-body); font-size: var(--t-tiny); font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--ink-body); }
 .sd-help-row .k-btn { flex: none; }
 
 /* The day's two exits, a thumb wide each on a phone. */
@@ -500,10 +500,10 @@
 .sd-pill {
   padding: var(--s1) var(--s2);
   border-radius: var(--radius-pill);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   border: 1px solid var(--rule);
   color: var(--ink-muted);
   background: var(--paper-sunk);
@@ -542,3 +542,6 @@
 @media print {
   .sd-days, .sd-filter { display: none !important; }
 }
+
+/* Reflow at 320px (WCAG 1.4.10, 28 Oct 2026). */
+.sd-card { min-width: 0; overflow-wrap: anywhere; }

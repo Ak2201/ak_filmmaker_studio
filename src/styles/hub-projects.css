@@ -315,11 +315,11 @@
 }
 .hub-shelves-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0; font-weight: 400; }
 .hub-shelves-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .hub-shelves-dot { color: var(--ink-muted); }

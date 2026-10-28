@@ -118,7 +118,7 @@
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden><span>Try the whole studio for <span data-pass-price></span></span></a>
     </div>
     <figure class="mk-player mk-hero-media st-hero-media" aria-label="On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/chain.webp">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/chain.webp" aria-label="On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board">
         <source src="/marketing/chain.webm" type="video/webm">
         Your browser cannot play this video.
       </video>
@@ -186,7 +186,7 @@
       <div class="lg:col-span-8">
         <h2 class="mk-h2" id="stPlansH">Plans by the year</h2>
         <p class="mk-body">A year of the studio from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. Breakdown, scheduling and call sheets are part of the plans, not add-ons.</p>
-        <p class="mk-small st-note" data-off-text="The studio is open: sign in with Google and use it, with your work saved in your browser." data-open-text="You are signed in: your plan is on the Purchase page."><span data-pass-off>Each plan card states its price and terms before you pay. <span data-offer-terms data-offer-product="year"></span></span><span data-pass-only hidden><span data-pass-length></span> of the whole studio for <span data-pass-price></span>, once per account, paid through Razorpay. <span data-offer-terms data-offer-product="pass"></span> Move to a yearly plan whenever you like.</span></p>
+        <p class="mk-small st-note" data-off-text="The studio is open: sign in with Google and use it, with your work saved in your browser." data-open-text="You are signed in: your plan is on the Purchase page."><span data-pass-off>See each plan's price and terms on the plans page before you pay. <span data-offer-terms data-offer-product="year"></span></span><span data-pass-only hidden><span data-pass-length></span> of the whole studio for <span data-pass-price></span>, once per account, paid through Razorpay. <span data-offer-terms data-offer-product="pass"></span> Move to a yearly plan whenever you like.</span></p>
       </div>
       <div class="st-plans-cta lg:col-span-4">
         <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">See plans</a>
@@ -221,7 +221,6 @@
     </form>
   </div>
 </section>
-  <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="This visit is not counted">Don't count this visit</button></div>
 </main>
 <footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
@@ -270,6 +269,7 @@
         <li><a href="privacy.html">Privacy</a></li>
         <li><a href="terms.html">Terms</a></li>
         <li><a href="refund.html">Refunds</a></li>
+        <li class="st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="This visit is not counted">Don't count this visit</button></li>
       </ul>
     </div>
   </div>

@@ -380,14 +380,17 @@ compared like for like. Every one of those edits is inside a `<script>` block,
 which the extractor strips, so they never affected verification.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
-Every colour is a token. **SWISS PRECISION, DARK ONLY (owner, 14 Oct 2026).**
-One palette on bare `:root`: a layered obsidian ground (`--surface-canvas`
-`#0D0E13` → rail `#121318` → card `#1A1B21` → elevated `#22232B`), white
-hairlines at 8% / 16%, and ONE violet accent. The light theme (`paper`) and
-its toggle are gone; `docs/DESIGN-KIT.md` is the token table and the kit
+Every colour is a token. **THE 8B MIX, LIGHT WORK SURFACE (owner, 28 Oct
+2026)** — this REVERSES the 14 Oct "Swiss Precision, dark only" rule, on
+purpose. One palette, no toggle: bare `:root` is the LIGHT work surface
+(canvas `#f4f3f8`, white cards), and a dark scope (`.sh-rail`, `.sh-bar`, the
+phone bar and sheets, `[data-surface="dark"]`) restates the same token names
+with near-black values for the rail, the top band and the public site's dark
+bands. ONE violet. `docs/DESIGN-KIT.md` is the token table and the kit
 reference, and **to change the look you edit `tokens.css` (and, for shapes,
 `skins/studio.css`) and nothing else.** Every older token NAME is still
-declared and re-pointed, so the page sheets did not change.
+declared and re-pointed, so the page sheets did not change. The scripts-off
+probe in verify asserts the light canvas under BOTH OS preferences.
 
 Three things worth knowing before you pick a colour:
 
@@ -1527,6 +1530,7 @@ numbered as they are in the history.
 | 67 | Clean slate + auto-renew as a console choice (27 Oct 2026) | Built; **purge, §62 not run live**; Razorpay Subscriptions not enabled; legal DRAFTs await the owner | HISTORY item 66. The purge patch keeps ONE admin (`arunkumarmohanans@gmail.com`) and refuses on any unclassified public table: a new table must be added to its lists (and its four checksums recomputed). `pass_mode` / `plan_mode` default `once`; never word renewal terms outside `src/lib/offer-terms.js` and the `[data-offer-terms]` slots (`test:marketing`). One `payments` row per subscription charge, idempotent on `razorpay_payment_id`; a subscription keeps its signed-up amount (price lock). Cancel = at cycle end, access to `current_end`. |
 | 68 | Full-app QA, fixed and re-verified (27 Oct 2026) | Done; 29 medium/low left open in `docs/KNOWN-ISSUES.md` | HISTORY item 67. 4 rounds × 16 testers, skeptics per finding, one fixer per area in turn: 422 confirmed, 394 fixed, every high fixed. Focus after a redraw goes to the replacement control, never `<body>` and never with a scroll; an Undo restores only what it wrote; a page that read a blob once re-reads before saving. A proof waits for a signal, never a fixed delay (`data-vid-help-pending`). The Pro seed blurb changed in the schema file only; the live row needs its own section. |
 | 69 | Repo-side finish after the QA (28 Oct 2026) | Done; **§64 not run live** | HISTORY item 68. Legal pages final (no DRAFT; `test:marketing` fails on one, and on a stale date). Beat pages: `beatPageBasis()`, the target if set, else the script as written, named on both views. Budget: `showIndia()` hides GST/TDS/GSTIN and the FEFSI material for a film made outside India; Batta/UPI are display labels only, ids never change. A clipping cut at `VAULT_MAX` has `cut: true`. The beat-note line never redraws under focus. |
+| 70 | Final QA fix pass on the revamp (28 Oct 2026) | Done; gate green except the sandbox-proxy proofs | HISTORY item 69. ONE FILL: every selected/active/progress fill is `--brand`, a phase hue is a mark only; a selected tab is a tint. Mono is DATA only (labels, chips, crumb, switcher badge are Onest sentence case). Dashboard: h1 = the film, one Continue, readiness/tools/details in `details.db-more` (`revealTarget()` opens a closed disclosure for a fragment). Phone: one nav entry (Go to). Skip links move focus (`moveFocus`). Public: veils restored for print and after 8s, the device Reduce-motion switch honoured (`device-motion.js`, read-only, import-free), opt-out in the footer, h1 tiers. UI UX Pro Max NOT vendored: its README says CC-BY-NC-4.0 while package.json says MIT. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on
@@ -1682,7 +1686,7 @@ argument for asking.
   badge or the one primary CTA of a view (`.k-btn--pill`) — never every
   button. (It was 2px "printed matter", then 16px and pills; each was one line
   in one skin file, which is the point of the contract.)
-- **One theme, dark.** Sepia and desk went first, then paper (14 Oct 2026).
+- **One theme, no toggle.** Sepia and desk went first, then paper (14 Oct 2026); since 28 Oct 2026 the one palette is the 8B mix: a light work surface with a dark rail and band.
 - **Serif only in three places.** Playfair Display *italic*
   (`--f-editorial`) is the project title / cover preview and the landing
   tagline; Courier Prime is screenplay text. A page title is Space Grotesk,

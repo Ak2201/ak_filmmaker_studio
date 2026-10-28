@@ -21,12 +21,50 @@ a.door-cta { text-decoration: none; }
 }
 .hero .search-wrap { margin-bottom: var(--s5); }
 .first-run-doors .fr-pick { margin-bottom: var(--s5); max-width: 62ch; }
-.first-run-doors .fr-pick .lab {
-  margin-bottom: var(--s2);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-wide);
-  color: var(--accent-deep);
+.first-run-doors .fr-title {
+  margin: 0 0 var(--s2);
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 700;
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
 }
+/* The three doors: equal kit cards (28 Oct 2026). One primary button. */
+.fr-doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--sk-grid-gap, var(--s4));
+}
+.fr-door {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s3);
+  min-width: 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow, none);
+}
+.fr-door-ic {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--sk-field-radius, var(--radius));
+  background: var(--brand-wash);
+  color: var(--brand-deep);
+}
+.fr-door-ic .sym { font-size: 22px; }
+.fr-door-title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 700;
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.fr-door-sub { margin: 0; flex: 1 1 auto; color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-snug, 1.45); }
 .first-run-doors .eps-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s5); }
 .first-run-doors .eps-fine { margin-top: var(--s3); max-width: 62ch; color: var(--ink-muted); font-size: var(--t-small); }

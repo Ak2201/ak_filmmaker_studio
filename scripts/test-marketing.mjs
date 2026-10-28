@@ -440,9 +440,11 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 {
   const js = read('src/pages/marketing.js');
   const imports = [...js.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer|offer-terms)\.js$/, /^motion\/mini$/];   // motion/mini (28 Oct 2026): the motion package's WAAPI animate() only, a leaf with no app code; prove:growth still asserts no studio-* chunk   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
+  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer|offer-terms|device-motion)\.js$/, /^motion\/mini$/];   // device-motion (28 Oct 2026): a read-only, import-free leaf, asserted below   // motion/mini (28 Oct 2026): the motion package's WAAPI animate() only, a leaf with no app code; prove:growth still asserts no studio-* chunk   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
   const stray = imports.filter((i) => !allowed.some((a) => a.test(i)));
   ok(stray.length === 0, 'marketing.js imports only the light allowlist (the startlib rule)' + (stray.length ? ': ' + stray.join(', ') : ''));
+  const dm = read('src/lib/device-motion.js');
+  ok(!/^import\s/m.test(dm) && !/setItem|removeItem/.test(dm), 'device-motion.js imports nothing and never writes storage');
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(js), 'marketing.js builds no markup from strings');
 }
 

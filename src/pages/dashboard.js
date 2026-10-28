@@ -157,30 +157,43 @@ function renderReadiness() {
   const nPass = r.checks.filter((c) => c.passed).length;
   if (r.checks.length) {
     const pct = Math.round((nPass / r.checks.length) * 100);
-    sec.querySelector('.bd-h2').after(badge({ label: pct + '% ready', tone: pct === 100 ? 'ok' : r.blockers ? 'danger' : 'warn', class: 'db-pct' }));
+    /* The heading and its score share one flex row; the eyebrow keeps
+       its own line above (it ran into the heading as one word). */
+    const h2 = sec.querySelector('.bd-h2');
+    const row = h('div.db-sec-row');
+    h2.replaceWith(row);
+    row.append(h2, badge({ label: pct + '% ready', tone: pct === 100 ? 'ok' : r.blockers ? 'danger' : 'warn', class: 'db-pct' }));
   }
 
   /* Failures first and blockers above gaps, because the order IS the
      advice. Passed checks are still SHOWN, as evidence the question
-     was asked — but as one compact row of ticks under the work, so
-     five green cards no longer outweigh the two things to do. */
+     was asked — but inside ONE summary row that opens on demand
+     (28 Oct 2026), so the dashboard stays about two screens. */
   const sorted = sortChecks(r.checks);
   const fails = sorted.filter((c) => !c.passed);
   const passes = sorted.filter((c) => c.passed);
+  const more = h('details.db-more.rd-more', { 'data-more': 'ready' });
+  more.append(h('summary.db-more-sum', {}, [
+    h('span', { text: fails.length
+      ? fails.length + (fails.length === 1 ? ' thing' : ' things') + ' to fix · Show'
+      : 'Every check passes · Show' }),
+    h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })
+  ]));
   if (fails.length) {
     const list = h('ul.rd-list');
     fails.forEach((c) => list.append(readinessRow(c)));
-    sec.append(list);
+    more.append(list);
   }
   if (passes.length) {
-    sec.append(h('p.rd-pass-h', { text: 'Passing \u00b7 ' + passes.length + ' of ' + r.checks.length }));
+    more.append(h('p.rd-pass-h', { text: 'Passing \u00b7 ' + passes.length + ' of ' + r.checks.length }));
     const ul = h('ul.rd-pass');
     passes.forEach((c) => ul.append(h('li.rd-chip', {}, [
-      h('span.rd-mark', { 'aria-hidden': 'true', text: '\u2713' }),
+      h('span.rd-mark.sym', { 'aria-hidden': 'true', text: 'check' }),
       h('span', { text: c.label + ' — none' })
     ])));
-    sec.append(ul);
+    more.append(ul);
   }
+  if (r.checks.length) sec.append(more);
 
   const dot = sec.querySelector('.bd-eyebrow');
   if (dot) dot.classList.add(tone);
@@ -191,7 +204,7 @@ function readinessRow(c) {
   const row = h('li.rd-row' + (c.passed ? '.is-pass'
     : c.severity === 'blocker' ? '.is-blocker' : '.is-gap'));
 
-  row.append(h('span.rd-mark', { 'aria-hidden': 'true', text: c.passed ? '\u2713' : '\u2022' }));
+  row.append(c.passed ? h('span.rd-mark.sym', { 'aria-hidden': 'true', text: 'check' }) : h('span.rd-mark', { 'aria-hidden': 'true', text: '\u2022' }));
 
   const body = h('div.rd-body');
   body.append(h('p.rd-label', {
@@ -207,7 +220,7 @@ function readinessRow(c) {
     const more  = c.items.length > 5 ? ' … and ' + (c.items.length - 5) + ' more' : '';
     body.append(h('p.rd-items', { text: shown + more }));
     body.append(h('p.rd-hint', { text: c.hint }));
-    if (c.where) body.append(h('a.rd-go', { href: c.where, text: 'Fix it \u2192' }));
+    if (c.where) body.append(h('a.k-btn.k-btn--ghost.k-btn--sm.rd-go', { href: c.where, text: 'Fix it' }));
   }
 
   row.append(body);
@@ -254,7 +267,7 @@ function renderContinue(snap) {
      launcher prints. Left out when there is nothing to count. */
   const cur = snap.journey && snap.journey.stages.find((x) => x.id === snap.journey.current);
   if (cur && cur.tools.total) {
-    card.append(meter({ label: cur.label + ' · ' + cur.tools.done + ' of ' + cur.tools.total + ' done', value: cur.tools.pct, max: 100, hue: stageHueClass(cur.hue), class: 'db-continue-meter' }));
+    card.append(meter({ label: cur.label + ' · ' + cur.tools.done + ' of ' + cur.tools.total + ' done', value: cur.tools.pct, max: 100, class: 'db-continue-meter' }));
   }
   card.append(button({ label: 'Continue', variant: 'primary', size: 'lg', iconAfter: 'arrow_forward', href: t.href, class: 'db-big', attrs: { 'aria-label': 'Continue: ' + t.what } }));
 
@@ -262,6 +275,10 @@ function renderContinue(snap) {
      a second primary button (journey.js: "Suggested next" is never forced). */
   const sug = snap.suggest;
   const sugState = sug && snap.states.find((s) => s.id === sug.id);
+  /* Left out when it names the stage Continue is already in: the same
+     advice twice. #suggested then sits on the card, so it resolves. */
+  const same = !sugState || (snap.journey && sug.id === snap.journey.current);
+  if (same) { card.id = 'suggested'; return card; }
   const box = h('p.db-next', { id: 'suggested' });
   if (sugState && sugState.href) {
     box.append(h('span.db-next-k', { text: 'Suggested next' }), ' ',
@@ -288,10 +305,9 @@ function renderHead(snap) {
   const j = snap.journey;
   head.append(
     h('div.db-chips', {}, [
-      badge({ label: FORMAT_LABEL[p.format] || 'Project', tag: true, tone: 'info' }),
-      j ? badge({ label: 'Stage: ' + j.currentLabel, tag: true }) : null
+      badge({ label: FORMAT_LABEL[p.format] || 'Project', tone: 'info' }),
+      j ? badge({ label: 'Stage: ' + j.currentLabel }) : null
     ]),
-    h('h2.bd-title.k-project-title.db-project-title', { text: p.title }),
     h('p.db-slate', { id: 'slate' }, p.subtitle ? [
       h('span.db-slate-v', { text: p.subtitle }), txt(' · '),
       h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'change' })
@@ -356,7 +372,7 @@ function tpValue(key, stored, project) {
 function renderTitlePage(project) {
   const fmt = coverNs(project.format);
   const fields = coverFields('story', fmt);
-  const sec = section('title-page', null, 'The title page',
+  const sec = section('title-page', null, 'Title page',
     (fmt === 'short' ? 'What heads this film’s title page: its title, writer, start date and runtime.' : 'What heads this film’s title page: its title, writer, genre and draft.')
     + ' Change it here.');
   sec.classList.add('db-title-page');
@@ -503,13 +519,17 @@ delegate(document, 'click', '[data-action="db-whatsnew"]', (e, el) => {
    ============================================================ */
 
 
+const OPEN_MORE = new Set();
 function render() {
   const project = Store.currentProject();
   const main = h('main.db-main.k-page', { id: 'main' });
   main.append(pageHeader({
+    /* ONE TITLE (28 Oct 2026): with a film open the h1 IS the film's
+       title and "Dashboard" lives in the crumb; two near-equal headings
+       ("Dashboard" over "Dragon") competed. */
     eyebrow: ['Studio', 'Dashboard'],
-    title: 'Dashboard',
-    sub: 'Where this film stands, and where to go next.',
+    title: project ? (project.title || 'Untitled') : 'Dashboard',
+    sub: project ? null : 'Where this film stands, and where to go next.',
     class: 'bd-head'
   }));
 
@@ -528,7 +548,12 @@ function render() {
     const hero = h('div.db-hero', { id: 'focus' }, [renderHead(snap), renderContinue(snap)]);
     /* The launcher IS the map of the stages, so it carries the ids the
        stage cards did (#stages on the section, #journey on its grid). */
-    const tools = h('div.db-tools', { id: 'stages' }, [renderLauncher()]);
+    /* Every tool, behind one closed disclosure (28 Oct 2026): the rail
+       already lists them, so the dashboard no longer repeats 26 tiles. */
+    const tools = h('details.db-tools.db-more', { id: 'stages', 'data-more': 'tools' }, [
+      h('summary.db-more-sum', {}, [h('span', { text: 'All tools for this film' }), h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })]),
+      renderLauncher()
+    ]);
     const grid = tools.querySelector('.lx-grid');
     if (grid) grid.id = 'journey';
     /* Readiness is OUTSIDE any isEmpty test on purpose: `isEmpty` asks
@@ -536,9 +561,20 @@ function render() {
        the SCENES — a producer who imported a script and answered no step
        is exactly who it is for. Without scenes it renders the section's
        empty state, so #readiness always resolves. */
-    main.append(hero, ...[renderStats(snap)].filter(Boolean), tools, renderReadiness(), renderTitlePage(project), renderMemberRow());
+    /* The title page, under one closed "Project details" disclosure. */
+    const details = h('details.db-more.db-details', { 'data-more': 'details' }, [
+      h('summary.db-more-sum', {}, [h('span', { text: 'Project details and title page' }), h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })]),
+      renderTitlePage(project)
+    ]);
+    main.append(hero, ...[renderStats(snap)].filter(Boolean), renderReadiness(), tools, details, renderMemberRow());
   }
 
+  /* A disclosure the reader opened stays open across a re-render (in
+     memory only; nothing is stored). */
+  main.querySelectorAll('details[data-more]').forEach((d) => {
+    if (OPEN_MORE.has(d.dataset.more)) d.open = true;
+    d.addEventListener('toggle', () => { if (d.open) OPEN_MORE.add(d.dataset.more); else OPEN_MORE.delete(d.dataset.more); });
+  });
   const painted = commitMain(app, main, mountShell);
   if (project) refreshTitleFields();
   if (!painted) return;

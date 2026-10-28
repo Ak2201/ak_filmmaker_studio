@@ -28,11 +28,11 @@
 
 .sk-eyebrow {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .sk-title {
@@ -45,10 +45,10 @@
 }
 .sk-sub {
   margin: var(--s5) 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sk-lead {
@@ -130,10 +130,10 @@
 .sk-clip-meta a { color: var(--accent-deep); }
 .sk-vault-add { margin-top: var(--s3); display: grid; gap: var(--s1); }
 .sk-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sk-text {
@@ -167,10 +167,10 @@
 .sk-ref:empty { display: none; }
 .sk-ref-k {
   margin: 0 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sk-ref-steps,

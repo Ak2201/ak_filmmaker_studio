@@ -41,10 +41,10 @@
   cursor: pointer;
   transition: color var(--speed) var(--ease), background-color var(--speed) var(--ease);
 }
-@media (hover: hover) { .dv-tab:not(.is-on):hover { color: var(--ink); background: var(--accent-wash); } }
-.dv-tab.is-on {
-  color: var(--accent-on);
-  background: var(--accent);
+@media (hover: hover) { .dv-tab:not(.is-on):hover { color: var(--ink); background: var(--surface-hover); } }
+.dv-tab.is-on {   /* a tint, like every tab strip (tabs.css, 28 Oct 2026) */
+  color: var(--brand-deep);
+  background: var(--brand-wash);
   font-weight: 600;
 }
 .dv-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: var(--focus-offset); }
@@ -106,10 +106,10 @@
 .dv-ott-row label { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); min-width: 0; cursor: pointer; }
 .dv-ott-name { font-weight: 600; color: var(--ink); }
 .dv-ott-kind {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dv-ott-kind.is-template { color: var(--warn-deep); }
@@ -140,10 +140,10 @@
 }
 .dv-hint p { margin: 0; }
 .dv-hint-eyebrow {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .dv-hint-rating {
@@ -204,10 +204,10 @@
 .dv-flag.is-review      { border-left-color: var(--warn); }
 .dv-flag.is-caution     { border-left-color: var(--accent); }
 .dv-flag-kind {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dv-flag-label { font-weight: 600; color: var(--ink); }

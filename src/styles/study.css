@@ -174,10 +174,10 @@
   white-space: nowrap;
   appearance: none;
   font: inherit;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   background: transparent;
   padding: var(--s1) var(--s3);
@@ -186,7 +186,7 @@
   cursor: pointer;
 }
 .cs-tab:hover { color: var(--ink); border-color: var(--sk-card-line); }
-.cs-tab[aria-selected="true"] { color: var(--accent-on); background: var(--accent); border-color: var(--accent); }
+.cs-tab[aria-selected="true"] { color: var(--brand-on); background: var(--brand); border-color: var(--brand); }
 .cs-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
 /* The part, AND every anchor inside it: `#cs-beats-h` (a heading the
    old study.html links name) is a target too, and without this it
@@ -213,10 +213,10 @@
 
 .st-byline {
   margin: 0 0 var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-head-gap {
@@ -299,11 +299,11 @@
 .st-part-lab {
   align-self: center;
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 /* Everything after the label spans the full width and lines up under
@@ -338,11 +338,11 @@
 .st-line-lab {
   display: block;
   margin-bottom: 2px;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-line-body {
@@ -382,10 +382,10 @@
   color: var(--ink-body);
 }
 .st-gap-sub {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-gap-list {
@@ -423,11 +423,11 @@
 .st-anat { margin-top: var(--s4); }
 .st-anat td { font-size: var(--t-small); line-height: var(--lh-snug); }
 .st-anat-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
   white-space: nowrap;
 }
@@ -469,10 +469,10 @@
   border: 1px solid currentColor;
   border-radius: var(--sk-radius, var(--radius));
   color: var(--hue-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* Want against need, external against internal. Two columns where
@@ -488,11 +488,11 @@
 }
 .st-pair-col { display: grid; align-content: start; gap: 2px; min-width: 0; }
 .st-pair-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .st-pair-job { font-size: var(--t-micro); line-height: var(--lh-snug); color: var(--ink-muted); }
@@ -515,11 +515,11 @@
   color: var(--ink);
 }
 .st-arc-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -538,11 +538,11 @@
   border-bottom: 1px solid var(--hue);
 }
 .st-act-no {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-wide);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .st-act-name {
@@ -580,10 +580,10 @@
   color: var(--ink);
 }
 .st-beat-act {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-craft {
@@ -599,11 +599,11 @@
   color: var(--ink-body);
 }
 .st-craft-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -658,10 +658,10 @@
 }
 .st-sheet-attr {
   margin: 0 0 var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-sheet-base {
@@ -673,11 +673,11 @@
   color: var(--ink-body);
 }
 .st-sheet-base-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .st-sheet-note {
@@ -708,10 +708,10 @@
    edge on one line and wraps beneath it rather than beside it. */
 .st-sheet-beat .st-beat-label { flex: 1 1 auto; }
 .st-sheet-page {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-sheet-bar {
@@ -723,7 +723,7 @@
 .st-sheet-bar-fill {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: var(--brand);
   border-radius: var(--radius-pill);
 }
 
@@ -773,10 +773,10 @@
   border: 1px solid currentColor;
   border-radius: var(--sk-radius, var(--radius));
   color: var(--hue-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 /* .bd-example centres itself in a band; inside a card it is just the
    quotation, so it takes the card's width and the film's hue. */
@@ -836,10 +836,10 @@
   margin-bottom: var(--s4);
 }
 .st-gloss-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-gloss-input {

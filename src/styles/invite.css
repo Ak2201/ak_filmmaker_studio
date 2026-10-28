@@ -45,7 +45,7 @@
 .ir-who dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
 .ir-textarea { width: 100%; min-width: 0; resize: vertical; font: inherit; }
 .ir-state { margin: 0; color: var(--ink); }
-.ir-state strong { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; }
+.ir-state strong { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; }
 .ir-state.is-pending strong { color: var(--accent-deep); }
 .ir-state.is-declined strong { color: var(--danger); }
 .ir-note {
@@ -67,3 +67,7 @@
 @media (max-width: 719px) {
   .iv-body { padding-inline: var(--s4); }
 }
+
+/* Reflow at 320px (WCAG 1.4.10, 28 Oct 2026): nothing on the doorway
+   may be wider than the window. */
+.iv-sec, .iv-sec .bd-deck { min-width: 0; overflow-wrap: anywhere; }

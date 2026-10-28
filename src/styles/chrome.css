@@ -82,7 +82,7 @@ a:focus-visible { outline-offset: 3px; }
      resting state, not a distance travelled, so it is NOT x --motion. */
   height: 100%;
   width: 100%;
-  background: var(--accent);
+  background: var(--brand);
   transform-origin: left center;
   transform: scaleX(0);
 }
@@ -208,9 +208,9 @@ a:focus-visible { outline-offset: 3px; }
    as a hook for a proof (stepper.js's Back / Next) keeps the kit's paint.
    Zero specificity, so nothing that already beat these rules changes. */
 .btn.primary:where(:not(.k-btn)) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
 }
 .btn.primary:where(:not(.k-btn)):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
@@ -634,7 +634,7 @@ a:focus-visible { outline-offset: 3px; }
   text-orientation: mixed;
   transition: background var(--speed) var(--ease);
 }
-.step-rail-toggle:hover { background: var(--accent); color: var(--accent-on); }
+.step-rail-toggle:hover { background: var(--brand); color: var(--brand-on); }
 
 .step-rail-head {
   margin-bottom: var(--s3);
@@ -678,7 +678,7 @@ a:focus-visible { outline-offset: 3px; }
   top: var(--s1);
   bottom: var(--s1);
   width: 2px;
-  background: var(--accent);
+  background: var(--brand);
 }
 .step-rail-item .sri-num {
   min-width: 18px;
@@ -814,8 +814,8 @@ a:focus-visible { outline-offset: 3px; }
     text-align: center;
   }
 }
-body:not(.rail-shown) .save-indicator:not(.error) { padding: var(--s2); }
-body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
+body:not(.rail-shown) .save-indicator:not(.error):not(.in-band) { padding: var(--s2); }
+body:not(.rail-shown) .save-indicator:not(.error):not(.in-band) .si-msg {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1005,9 +1005,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .cm-btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .modal-actions .mbtn.primary,
 .cm-btn.primary {
-  background: var(--accent);
-  color: var(--accent-on);
-  border-color: var(--accent);
+  background: var(--brand);
+  color: var(--brand-on);
+  border-color: var(--brand);
 }
 .modal-actions .mbtn.primary:hover,
 .cm-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
@@ -1573,6 +1573,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 @media (hover: none) {
   .project-card .pc-actions,
   .project-card .pc-share { opacity: 1; }
+  /* ...and in the card's flow, at its foot (28 Oct 2026): floated top-
+     right it covered the format line ("Pre-Productic"). */
+  .project-card .pc-actions { position: static; order: 99; align-self: flex-end; margin-top: var(--s2); background: transparent; box-shadow: none; }
 }
 .project-card .pc-actions .k-btn { color: var(--ink-muted); }
 .project-card .pc-actions .k-btn:hover { color: var(--ink); }
@@ -1773,11 +1776,11 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .glossary-popover.show { opacity: 1; transform: translateY(0); }
 .glossary-popover .gp-term {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--panel-gilt);
 }
 .glossary-popover .gp-tn {
@@ -1804,10 +1807,10 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   color: var(--panel-ink);
 }
 .glossary-popover .gp-film {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-gilt);
 }
 
@@ -2250,10 +2253,10 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .sh-where-step {
   display: inline-flex;
@@ -2445,10 +2448,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 }
 .sh-phase-menu-head {
   padding: var(--s2) var(--s3) var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .sh-mod {
@@ -2542,10 +2545,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   margin-top: var(--s2);
   padding: var(--s2) var(--s3) var(--s1);
   border-top: 1px solid var(--panel-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .sh-phase-menu-head + .sh-phase-menu-group { margin-top: 0; border-top: 0; }
@@ -2561,10 +2564,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   font-size: var(--t-tiny);
 }
 .sh-guide-head {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .sh-guide-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); }
@@ -2809,10 +2812,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   border-radius: var(--sk-btn-radius, var(--radius));
   color: var(--chrome-muted);
   cursor: pointer;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .sh-pagenav-btn:hover,
@@ -2940,10 +2943,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
 .tb-group { padding: var(--s2) var(--s3) var(--s3); }
 .tb-group-label {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .tb-choices { display: flex; flex-wrap: wrap; gap: var(--s1); }
@@ -2956,10 +2959,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   border-radius: var(--sk-radius, var(--radius));
   color: var(--panel-muted);
   cursor: pointer;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .tb-choice:hover { background: var(--panel-raised); color: var(--panel-ink); }
@@ -2997,10 +3000,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   border-radius: var(--sk-btn-radius);
   background: var(--chrome-fill);
   color: var(--chrome-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   transition: background-color var(--speed-tap), color var(--speed-tap),
               border-color var(--speed-tap);
@@ -4486,10 +4489,10 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   margin: var(--s2) 0 2px;
   padding: var(--s2) var(--s2) 0;
   border-top: 1px solid var(--border-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-nano);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sh-fly-list > .sh-fly-sub:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
@@ -4733,23 +4736,24 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 :root .sh-bar .icon-btn,
 :root .sh-bar .tb-menu-btn.is-compact { width: var(--sh-ctl-h); min-width: var(--sh-ctl-h); padding: 0; }
 
-/* [FEATURE] Dragon ▾ — the format in violet mono, then the project. */
+/* Feature · Dragon ▾ — the format as a small badge, then the project
+   (28 Oct 2026: the bracketed mono "[FEATURE]" form is gone). */
 :root .sh-bar .ps-btn { gap: var(--s2); max-width: 260px; padding: 0 var(--s2) 0 var(--s3); }
 :root .sh-bar .ps-btn .ps-fmt:not([hidden]) {
-  display: inline;
-  padding: 0;
-  background: none;
-  border: 0;
-  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 var(--s2);
+  background: var(--brand-wash);
+  border: 1px solid var(--info-line);
+  border-radius: var(--radius-pill);
   color: var(--brand-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-nano);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
-:root .sh-bar .ps-btn .ps-fmt:not([hidden])::before { content: "["; }
-:root .sh-bar .ps-btn .ps-fmt:not([hidden])::after { content: "]"; }
 :root .sh-bar .ps-btn .ps-title { max-width: 16ch; font-family: var(--f-body); font-size: var(--t-tiny); font-weight: 600; color: var(--ink); }
 :root .sh-bar .ps-btn .ps-caret { color: var(--ink-muted); font-size: var(--t-nano); }
 
@@ -5099,4 +5103,30 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
    cap gives way, the palette still answers the shortcut */
 @media (max-width: 1279px) {
   :root .sh-bar .sh-find .sh-find-key { display: none; }
+}
+
+/* THE SAVE STATE IN THE BAND (28 Oct 2026): beside the crumb, quiet
+   body text, never over the content. The fixed pill above stays for a
+   page with no shell. */
+.sh-bar > .save-indicator.in-band {
+  position: static;
+  flex: none;
+  z-index: auto;
+  padding: 0 var(--s2);
+  background: transparent;
+  color: var(--ink-muted);
+  box-shadow: none;
+  border-radius: 0;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  letter-spacing: 0;
+  transform: none;
+  max-width: none;
+}
+.sh-bar > .save-indicator.in-band.error { color: var(--danger); }
+@media (max-width: 719px) {
+  .sh-bar > .save-indicator.in-band:not(.error) .si-msg {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
 }

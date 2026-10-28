@@ -17,7 +17,7 @@
 .gr-list { margin: 0; padding-left: var(--s4); display: grid; gap: var(--s1); font-size: var(--t-small); color: var(--ink-body); }
 .gr-list .is-off { color: var(--ink-muted); }
 .gr-fields { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
-.gr-fields label { display: block; font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; margin-bottom: var(--s1); }
+.gr-fields label { display: block; font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-body); letter-spacing: 0; text-transform: none; margin-bottom: var(--s1); }
 .gr-fields input, .gr-fields select { width: 100%; box-sizing: border-box; }
 .gr-msg { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
 .gr-msg.is-error { color: var(--ink); background: var(--danger-wash); border-left: 3px solid var(--danger); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); }
@@ -37,8 +37,8 @@
    reads it as copy rather than skims it as a label. The same reason
    the eyebrow above it is quiet: the paragraph is the thing. */
 .gr-seats { margin: 0; font-size: var(--t-small); color: var(--ink-body); max-width: var(--measure); }
-.gr-preview-h { margin: var(--s2) 0 0; font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-mono);
-  letter-spacing: var(--track-label); text-transform: uppercase; }
+.gr-preview-h { margin: var(--s2) 0 0; font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-body);
+  letter-spacing: 0; text-transform: none; }
 .gr-preview { display: grid; gap: var(--s2); padding: var(--s3); max-width: var(--measure);
   background: var(--paper-sunk); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
 .gr-preview:empty { display: none; }

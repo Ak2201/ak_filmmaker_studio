@@ -119,14 +119,17 @@
   border-radius: 50%;
   background: currentColor;
 }
+/* THE SELECTED TAB IS A TINT, not a fill (28 Oct 2026): the one solid
+   violet on a view is its primary action, and a filled tab beside a
+   filled button read as two primaries. */
 .tabs-tab[aria-selected="true"] {
-  color: var(--accent-on);
-  background: var(--accent);
+  color: var(--brand-deep);
+  background: var(--brand-wash);
   font-weight: 600;
-  box-shadow: var(--shadow-cta, none);
+  box-shadow: none;
 }
 @media (hover: hover) {
-  .tabs-tab:not([aria-selected="true"]):hover { color: var(--ink); background: var(--accent-wash); }
+  .tabs-tab:not([aria-selected="true"]):hover { color: var(--ink); background: var(--surface-hover); }
 }
 .tabs-tab:focus-visible,
 .tabs-sections:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
@@ -171,7 +174,7 @@
   text-align: center;
   letter-spacing: 0;
 }
-.tabs-tab[aria-selected="true"] .tabs-badge { background: var(--paper-raised); color: var(--ink); }
+.tabs-tab[aria-selected="true"] .tabs-badge { background: var(--surface-card); color: var(--ink); }
 .tabs-done { flex: none; margin-left: auto; font-size: var(--t-small); color: var(--ok-deep, var(--ok)); }
 .tabs-tab[aria-selected="true"] .tabs-done { color: currentColor; }
 /* the middle state of a path (preprod, story): a shape, read aloud as "in progress" */
@@ -273,14 +276,14 @@ button.mn-mod.sm-row.is-here { background: var(--chrome-fill-strong); }
   border-radius: var(--sk-field-radius, var(--radius));
 }
 .tabs:not(.tabs-side) .tabs-tab[aria-selected="true"] {
-  color: var(--brand-on);
-  background-color: var(--brand);
-  background-image: var(--cta-sheen, none);
-  box-shadow: var(--shadow-cta, none);
+  color: var(--brand-deep);
+  background-color: var(--brand-wash);
+  background-image: none;
+  box-shadow: inset 0 0 0 1px var(--info-line, var(--border-default));
 }
 .tabs:not(.tabs-side) .tabs-tab[aria-selected="true"]::after { content: none; }
 @media (hover: hover) {
-  .tabs:not(.tabs-side) .tabs-tab[aria-selected="true"]:hover { background-color: var(--brand-hover, var(--brand)); }
+  .tabs:not(.tabs-side) .tabs-tab[aria-selected="true"]:hover { background-color: var(--brand-wash); }
 }
 @media (pointer: coarse) {
   .tabs:not(.tabs-side) .tabs-tab { min-height: 44px; }
@@ -432,11 +435,11 @@ html.sym-ready .tabs:not(.tabs-side) .tabs-sections-l {
   .tabs-side .tabs-group-h {
     display: block;
     padding: 0 var(--s3) var(--s1);
-    font-family: var(--f-mono);
+    font-family: var(--f-body);
     font-size: var(--t-micro);
     font-weight: 500;
-    letter-spacing: var(--track-label);
-    text-transform: uppercase;
+    letter-spacing: 0;
+    text-transform: none;
     color: var(--ink-muted);
   }
   .tabs-side .tabs-tab {
